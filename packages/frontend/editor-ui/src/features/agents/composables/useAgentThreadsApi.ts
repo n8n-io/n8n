@@ -1,5 +1,6 @@
 import type {
 	AgentMessageAuthor,
+	AgentPersistedMessageDto,
 	AgentSessionPreviewAccess,
 	AgentSessionLangSmithExportResponse,
 	AgentSessionOrigin,
@@ -91,6 +92,7 @@ export interface AgentExecution {
 	stoppedAt: string | null;
 	duration: number;
 	userMessage: string | null;
+	inputMessages?: AgentPersistedMessageDto[];
 	/** Chat platform user who wrote the turn; null outside chat integrations. */
 	author: AgentMessageAuthor | null;
 	attachments: AgentExecutionAttachment[] | null;

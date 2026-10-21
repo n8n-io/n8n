@@ -13,7 +13,7 @@ import type {
 	ExecutionSummary,
 	Workflow,
 } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 
@@ -135,6 +135,20 @@ export class EngineV2ExecutionReader {
 			stoppedAt: item.finishedAt ? new Date(item.finishedAt) : undefined,
 			annotation: { tags: [] },
 		};
+	}
+
+	/** Read identity without steps. The caller must check workflow access. */
+	async findReference(
+		executionId: ExecutionIdV2,
+	): Promise<{ id: string; workflowId: string } | undefined> {
+		const snapshot = await this.dataPlane.getExecution(executionId, {
+			includeSteps: false,
+		});
+		if (!snapshot) return undefined;
+		if (snapshot.id !== executionId) {
+			throw new UnexpectedError('The execution response does not match the requested execution.');
+		}
+		return { id: snapshot.id, workflowId: snapshot.workflowId };
 	}
 
 	/** `undefined` for absent and for inaccessible alike, so neither reveals the other. */

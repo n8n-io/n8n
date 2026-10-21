@@ -1,12 +1,13 @@
 import type { Serialized } from '@langchain/core/load/serializable';
 import type { BaseMessage } from '@langchain/core/messages';
-import type { LLMResult } from '@langchain/core/outputs';
+import { AIMessage } from '@langchain/core/messages';
+import type { ChatGeneration, Generation, LLMResult } from '@langchain/core/outputs';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 
 import * as logAiEventModule from 'src/utils/log-ai-event';
-import { N8nLlmTracing } from 'src/utils/n8n-llm-tracing';
+import { anthropicTokensUsageParser, N8nLlmTracing } from 'src/utils/n8n-llm-tracing';
 import * as tokenEstimatorModule from 'src/utils/tokenizer/token-estimator';
 
 // Mock the dependencies
@@ -628,6 +629,118 @@ describe('N8nLlmTracing', () => {
 		});
 	});
 
+	describe('responding model name', () => {
+		const runId = 'run-123';
+
+		type PersistedGeneration = { text: string; generationInfo?: Record<string, unknown> };
+
+		const persistGeneration = async (generation: Generation): Promise<PersistedGeneration> => {
+			const tracer = new N8nLlmTracing(mockExecutionFunctions);
+			tracer.runsMap[runId] = { index: 0, messages: ['Test'], options: {} };
+
+			await tracer.handleLLMEnd({ generations: [[generation]], llmOutput: {} }, runId);
+
+			const [, , data] = mockExecutionFunctions.addOutputData.mock.calls[0] as unknown as [
+				unknown,
+				unknown,
+				Array<Array<{ json: { response: { generations: PersistedGeneration[][] } } }>>,
+			];
+			return data[0][0].json.response.generations[0][0];
+		};
+
+		const createChatGeneration = (
+			responseMetadata: Record<string, unknown>,
+			generationInfo?: Record<string, unknown>,
+		): ChatGeneration => ({
+			text: 'Hello',
+			message: new AIMessage({ content: 'Hello', response_metadata: responseMetadata }),
+			...(generationInfo && { generationInfo }),
+		});
+
+		it('keeps the name LangChain wrote to generationInfo when streaming', async () => {
+			const persisted = await persistGeneration({
+				text: 'Hello',
+				generationInfo: { finish_reason: 'stop', model_name: 'gpt-4.1-mini-2025-04-14' },
+			});
+
+			expect(persisted.generationInfo).toEqual({
+				finish_reason: 'stop',
+				model_name: 'gpt-4.1-mini-2025-04-14',
+			});
+		});
+
+		it('creates generationInfo from the message name when the generation has none', async () => {
+			const persisted = await persistGeneration(
+				createChatGeneration({ model_name: 'gpt-4.1-mini-2025-04-14' }),
+			);
+
+			expect(persisted).toEqual({
+				text: 'Hello',
+				generationInfo: { model_name: 'gpt-4.1-mini-2025-04-14' },
+			});
+		});
+
+		it('adds the message name to the existing generationInfo', async () => {
+			const persisted = await persistGeneration(
+				createChatGeneration({ model_name: 'gpt-4.1-mini-2025-04-14' }, { finish_reason: 'stop' }),
+			);
+
+			expect(persisted.generationInfo).toEqual({
+				finish_reason: 'stop',
+				model_name: 'gpt-4.1-mini-2025-04-14',
+			});
+		});
+
+		it('omits model_name when nothing reports a name', async () => {
+			const withInfo = await persistGeneration(createChatGeneration({}, { finish_reason: 'stop' }));
+			expect(withInfo.generationInfo).toEqual({ finish_reason: 'stop' });
+			expect('model_name' in (withInfo.generationInfo ?? {})).toBe(false);
+
+			mockExecutionFunctions.addOutputData.mockClear();
+
+			const withoutInfo = await persistGeneration(createChatGeneration({}));
+			expect('generationInfo' in withoutInfo).toBe(false);
+		});
+
+		it.each([
+			['blank', ''],
+			['whitespace-only', '   '],
+			['non-string', 42],
+			['null', null],
+			['undefined', undefined],
+		])(
+			'omits an unresolvable %s model_name that is already in generationInfo',
+			async (_, value) => {
+				const persisted = await persistGeneration({
+					text: 'Hello',
+					generationInfo: { finish_reason: 'stop', model_name: value },
+				});
+
+				expect(persisted.generationInfo).toEqual({ finish_reason: 'stop' });
+				expect('model_name' in (persisted.generationInfo ?? {})).toBe(false);
+			},
+		);
+
+		it('replaces an unresolvable model_name with the name from the message', async () => {
+			const persisted = await persistGeneration(
+				createChatGeneration({ model_name: 'gpt-4.1-mini-2025-04-14' }, { model_name: '' }),
+			);
+
+			expect(persisted.generationInfo).toEqual({ model_name: 'gpt-4.1-mini-2025-04-14' });
+		});
+
+		it('never lets the raw model key reach the output', async () => {
+			const persisted = await persistGeneration(
+				createChatGeneration({ model: 'gpt-4.1-minigpt-4.1-mini' }),
+			);
+
+			expect('generationInfo' in persisted).toBe(false);
+			expect(JSON.stringify(mockExecutionFunctions.addOutputData.mock.calls)).not.toContain(
+				'gpt-4.1-minigpt-4.1-mini',
+			);
+		});
+	});
+
 	describe('handleLLMError', () => {
 		it('should handle NodeError', async () => {
 			const tracer = new N8nLlmTracing(mockExecutionFunctions);
@@ -1009,6 +1122,42 @@ describe('N8nLlmTracing', () => {
 			expect(tracer.runsMap['run-1']).toBeDefined();
 			expect(tracer.runsMap['run-2']).toBeDefined();
 			expect(tracer.runsMap['run-3']).toBeDefined();
+		});
+	});
+});
+
+describe('anthropicTokensUsageParser', () => {
+	const result = (usage?: Record<string, number>): LLMResult => ({
+		generations: [],
+		llmOutput: usage ? { usage } : {},
+	});
+
+	it('should count cache creation and cache read tokens as prompt tokens', () => {
+		expect(
+			anthropicTokensUsageParser(
+				result({
+					input_tokens: 10,
+					output_tokens: 5,
+					cache_creation_input_tokens: 3,
+					cache_read_input_tokens: 2,
+				}),
+			),
+		).toEqual({ promptTokens: 15, completionTokens: 5, totalTokens: 20 });
+	});
+
+	it('should work without cache fields', () => {
+		expect(anthropicTokensUsageParser(result({ input_tokens: 10, output_tokens: 5 }))).toEqual({
+			promptTokens: 10,
+			completionTokens: 5,
+			totalTokens: 15,
+		});
+	});
+
+	it('should return zeros when usage is missing', () => {
+		expect(anthropicTokensUsageParser(result())).toEqual({
+			promptTokens: 0,
+			completionTokens: 0,
+			totalTokens: 0,
 		});
 	});
 });

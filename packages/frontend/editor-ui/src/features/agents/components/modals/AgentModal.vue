@@ -13,7 +13,8 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { FocusScope } from 'reka-ui';
-import { computed, nextTick, useSlots, useTemplateRef } from 'vue';
+import { computed, nextTick, provide, ref, useSlots, useTemplateRef } from 'vue';
+import { ParameterInputModalContextKey } from '@/app/constants/injectionKeys';
 
 const props = withDefaults(
 	defineProps<{
@@ -28,6 +29,8 @@ const props = withDefaults(
 		showCancel?: boolean;
 		bodyScrollable?: boolean;
 		bodyFlush?: boolean;
+		/** Pin the body height so the dialog does not resize between steps. Short modals leave it off. */
+		stableHeight?: boolean;
 		busy?: boolean;
 		size?: DialogSize;
 		stacked?: boolean;
@@ -44,6 +47,7 @@ const props = withDefaults(
 		showCancel: true,
 		bodyScrollable: true,
 		bodyFlush: false,
+		stableHeight: false,
 		busy: false,
 		size: '2xlarge',
 		stacked: false,
@@ -62,12 +66,16 @@ const emit = defineEmits<{
 const slots = useSlots();
 const i18n = useI18n();
 const body = useTemplateRef<HTMLElement>('body');
+const titleEdit = useTemplateRef<InstanceType<typeof N8nInlineTextEdit>>('titleEdit');
+const parameterDialogs = ref(new Set<string>());
+provide(ParameterInputModalContextKey, { openDialogs: parameterDialogs, appendTo: 'body' });
+const trapFocus = computed(() => props.trapFocus && parameterDialogs.value.size === 0);
 const hasFooter = computed(
 	() =>
 		props.showFooter ??
 		Boolean(slots.footer || slots.footerLeft || slots.footerBeforeCancel || slots.footerActions),
 );
-const dismissalBlocked = computed(() => props.busy || !props.trapFocus);
+const dismissalBlocked = computed(() => props.busy || !trapFocus.value);
 
 function onOpenChange(open: boolean) {
 	if (!open && dismissalBlocked.value) return;
@@ -83,7 +91,9 @@ function onBack() {
 }
 
 function onEscapeKeyDown(event: KeyboardEvent) {
-	if (dismissalBlocked.value) event.preventDefault();
+	const isOutsideDialog =
+		event.target instanceof Node && !body.value?.closest('[role="dialog"]')?.contains(event.target);
+	if (dismissalBlocked.value || isOutsideDialog) event.preventDefault();
 }
 
 function onInteractOutside(event: Event) {
@@ -91,11 +101,22 @@ function onInteractOutside(event: Event) {
 	emit('interactOutside', event);
 }
 
+/** Puts the editable title in edit mode. */
+function focusTitle() {
+	titleEdit.value?.forceFocus();
+}
+
+defineExpose({ focusTitle });
+
 function onOpenAutoFocus(event: Event) {
 	const autofocusTarget =
 		body.value?.querySelector<HTMLElement>(
 			'[data-agent-modal-autofocus], input:not([type="hidden"]):not([disabled]):not([tabindex="-1"]), textarea:not([disabled]), select:not([disabled]), [contenteditable="true"]',
-		) ?? body.value?.querySelector<HTMLElement>('button:not([disabled])');
+		) ??
+		body.value?.querySelector<HTMLElement>('button:not([disabled])') ??
+		body.value?.parentElement?.querySelector<HTMLElement>(
+			'[data-testid="dialog-close-button"]:not([disabled])',
+		);
 	if (!autofocusTarget) return;
 
 	event.preventDefault();
@@ -108,8 +129,10 @@ function onOpenAutoFocus(event: Event) {
 		:open="props.open"
 		:size="props.size"
 		:stacked="props.stacked"
-		:trap-focus="props.trapFocus"
-		:disable-outside-pointer-events="props.disableOutsidePointerEvents"
+		:trap-focus="trapFocus"
+		:disable-outside-pointer-events="
+			props.disableOutsidePointerEvents && parameterDialogs.size === 0
+		"
 		:show-close-button="false"
 		@escape-key-down="onEscapeKeyDown"
 		@interact-outside="onInteractOutside"
@@ -130,10 +153,15 @@ function onOpenAutoFocus(event: Event) {
 					@click="onBack"
 				/>
 
+				<div v-if="$slots.titlePrefix" :class="$style.titlePrefix">
+					<slot name="titlePrefix" />
+				</div>
+
 				<N8nDialogTitle as-child>
 					<div :class="$style.titleGroup">
 						<N8nInlineTextEdit
 							v-if="props.editableTitle"
+							ref="titleEdit"
 							:model-value="props.title"
 							:max-length="props.titleMaxLength"
 							:max-width="'100%'"
@@ -178,12 +206,7 @@ function onOpenAutoFocus(event: Event) {
 			</N8nText>
 		</N8nDialogHeader>
 
-		<FocusScope
-			v-if="!props.trapFocus"
-			as-child
-			@mount-auto-focus.prevent
-			@unmount-auto-focus.prevent
-		>
+		<FocusScope v-if="!trapFocus" as-child @mount-auto-focus.prevent @unmount-auto-focus.prevent>
 			<span hidden aria-hidden="true" />
 		</FocusScope>
 
@@ -193,6 +216,7 @@ function onOpenAutoFocus(event: Event) {
 				$style.body,
 				!props.bodyScrollable && $style.bodyNotScrollable,
 				props.bodyFlush && $style.bodyFlush,
+				props.stableHeight && $style.bodyStableHeight,
 			]"
 			data-testid="agent-modal-body"
 		>
@@ -232,7 +256,6 @@ function onOpenAutoFocus(event: Event) {
 	flex-direction: column;
 	margin: calc(var(--spacing--lg) * -1) calc(var(--spacing--lg) * -1) 0;
 	padding: var(--spacing--md) var(--spacing--lg);
-	border-bottom: var(--border);
 }
 
 .titleError {
@@ -253,6 +276,12 @@ function onOpenAutoFocus(event: Event) {
 .backButton,
 .closeButton {
 	flex-shrink: 0;
+}
+
+.titlePrefix {
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
 }
 
 .titleGroup {
@@ -309,6 +338,7 @@ function onOpenAutoFocus(event: Event) {
 	min-height: 0;
 	max-height: min(70dvh, calc(var(--height--5xl) * 6));
 	overflow-y: auto;
+	scrollbar-gutter: stable;
 	margin-inline: calc(var(--spacing--5xs) * -1);
 	padding: var(--spacing--md) var(--spacing--5xs) var(--spacing--5xs);
 
@@ -323,9 +353,19 @@ function onOpenAutoFocus(event: Event) {
 	overflow-y: hidden;
 }
 
+.bodyStableHeight {
+	height: min(60dvh, calc(var(--height--5xl) * 5));
+}
+
 .bodyFlush {
 	margin-inline: calc(var(--spacing--lg) * -1);
 	padding: 0;
+}
+
+.footer {
+	margin: var(--spacing--md) calc(var(--spacing--lg) * -1) calc(var(--spacing--lg) * -1);
+	padding: var(--spacing--md) var(--spacing--lg);
+	border-top: var(--border);
 }
 
 .footerLayout {
@@ -348,7 +388,8 @@ function onOpenAutoFocus(event: Event) {
 }
 
 @media (max-width: 480px) {
-	.header {
+	.header,
+	.footer {
 		padding-inline: var(--spacing--md);
 	}
 

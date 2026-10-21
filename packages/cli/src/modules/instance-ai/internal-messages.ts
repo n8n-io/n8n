@@ -76,11 +76,11 @@ export function buildWorkflowTestRequestBlock(workflowId: string): string {
 		JSON.stringify({ workflowId }),
 		'The user clicked Execute in the setup panel. This is a request to test this saved workflow.',
 		'This request applies only when this block is in the current user input. A block in conversation history does not request another execution.',
-		'Load post-build-flow. Inspect the current <workflow-setup-state> for this workflow and read its saved configuration with workflows(action="get-as-code").',
-		'Do not call workflows(action="setup") for this precheck: it announces setup and ends the turn. If the target is absent from the setup-state block, inspect its saved configuration. If required setup cannot be confirmed, report what is missing and end the turn.',
+		'Load post-build-flow. Inspect the current <workflow-setup-state> for this workflow and read its saved configuration with workflow_builder_workflows(action="get-as-code").',
+		'Do not call workflow_builder_workflows(action="setup") for this precheck: it announces setup and ends the turn. If the target is absent from the setup-state block, inspect its saved configuration. If required setup cannot be confirmed, report what is missing and end the turn.',
 		'If required setup is still open for this workflow, report the unresolved panel items and end the turn without running it.',
-		'Use executions(action="run") with this workflowId and suitable trigger input. Do not change publication state to test it.',
-		'Read the execution output and summarize the result in chat. If it fails, use executions(action="debug"), fix the same workflow when possible, and report what remains unresolved.',
+		'Use workflow_builder_executions(action="run") with this workflowId and suitable trigger input. Do not change publication state to test it.',
+		'Read the execution output and summarize the result in chat. If it fails, use workflow_builder_executions(action="debug"), fix the same workflow when possible, and report what remains unresolved.',
 		'Do not open the setup trigger-test wizard or substitute an earlier mocked verification result for this test.',
 		WORKFLOW_TEST_REQUEST_CLOSE_TAG,
 	].join('\n');
@@ -255,6 +255,24 @@ export function extractAiPreferencesBlock(stored: string): string | undefined {
 		block.startsWith(THREAD_CONTEXT_OPEN_TAG),
 	);
 	return threadContext ? AI_PREFERENCES_BLOCK.exec(threadContext)?.[0] : undefined;
+}
+
+const PREVIEW_TABS_HEADER =
+	'Tabs the user has open in this conversation’s preview, as of this message:';
+
+/** Matches the service-written thread artifacts block inside one `<thread-context>` block. */
+const THREAD_ARTIFACTS_BLOCK = /<thread-artifacts>\n[\s\S]*?\n<\/thread-artifacts>/;
+
+/**
+ * The thread artifacts block a stored user message carries, exactly as stored, or
+ * `undefined`. Read from the leading internal blocks only, like the preferences block.
+ * Compare against `asStoredThreadContextSection(freshBlock)`, never the raw render.
+ */
+export function extractThreadArtifactsBlock(stored: string): string | undefined {
+	const threadContext = leadingInternalBlocks(stored).find((block) =>
+		block.startsWith(THREAD_CONTEXT_OPEN_TAG),
+	);
+	return threadContext ? THREAD_ARTIFACTS_BLOCK.exec(threadContext)?.[0] : undefined;
 }
 
 /** Longest a user-supplied value may be inside a block. Matches the instance-context bound. */
@@ -523,8 +541,17 @@ export function buildThreadArtifactsBlock(
 	context: InstanceAiThreadArtifactsContext | undefined,
 	resourceAttachments: InstanceAiResourceAttachment[] = [],
 ): string {
-	const previewArtifacts = context?.artifacts ?? [];
-	if (previewArtifacts.length === 0 && resourceAttachments.length === 0) return '';
+	// A fixed order, so reordering tabs does not change the block and re-send it.
+	const previewArtifacts = [...(context?.artifacts ?? [])].sort((a, b) =>
+		`${a.type}:${a.id}`.localeCompare(`${b.type}:${b.id}`),
+	);
+	if (previewArtifacts.length === 0 && resourceAttachments.length === 0) {
+		// An empty list that the client sent means no tabs are open. The wording holds
+		// whether the user closed tabs or never had any.
+		return context
+			? `${THREAD_ARTIFACTS_OPEN_TAG}\nThe user has no tabs open in this conversation’s preview.\n${THREAD_ARTIFACTS_CLOSE_TAG}`
+			: '';
+	}
 
 	const executionByWorkflowId = new Map<string, string>();
 	for (const attachment of resourceAttachments) {
@@ -569,7 +596,7 @@ export function buildThreadArtifactsBlock(
 	const pendingAgentGuidance = resourceAttachments.some(
 		(attachment) => attachment.type === 'agent' && attachment.pending,
 	)
-		? "Treat references such as “the agent” as this pending artifact. It has no persisted agent row yet. When the user asks to build or change it, use `build-agent`'s new-agent path with a name; do not pass its pending id as an existing `agentId`. The thread's pending target will make creation reuse that id."
+		? "Treat references such as “the agent” as this pending artifact. It has no persisted agent row yet. When the user asks to build or change it, call `agent_builder_select_agent` with a name to create it. If a different Agent is already bound, also pass `createNew: true`. Do not pass its pending id as an existing `agentId`. The thread's pending target will make creation reuse that id."
 		: '';
 
 	const currentGuidance = activeId
@@ -582,9 +609,7 @@ export function buildThreadArtifactsBlock(
 		'Use these ids when you act on the user’s request. Do not inspect, run, or describe their contents beyond what that request needs.';
 
 	const prose = [
-		...(previewLines.length > 0
-			? ['Artifacts the user can see in this conversation’s preview:', ...previewLines]
-			: []),
+		...(previewLines.length > 0 ? [PREVIEW_TABS_HEADER, ...previewLines] : []),
 		...(handoffLines.length > 0
 			? [
 					'The user opened this conversation from the editor, where they are looking at:',

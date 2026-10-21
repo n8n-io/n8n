@@ -7,6 +7,16 @@ import { mock } from 'vitest-mock-extended';
 
 import { AbstractServer } from '@/abstract-server';
 import { ExternalHooks } from '@/external-hooks';
+import { LiveWebhooks } from '@/webhooks/live-webhooks';
+import { SlackInteractionWebhooks } from '@/webhooks/slack-interaction-webhooks';
+import { TelegramInteractionWebhooks } from '@/webhooks/telegram-interaction-webhooks';
+import { WaitingForms } from '@/webhooks/waiting-forms';
+import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
+import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
+
+vi.mock('@/webhooks/webhook-request-handler', () => ({
+	createWebhookHandlerFor: vi.fn(),
+}));
 
 const mockServer = mock<http.Server>();
 
@@ -85,6 +95,21 @@ describe('AbstractServer health endpoints', () => {
 
 		testServer = new TestServer();
 		await testServer.init();
+	});
+
+	describe('webhook route registration', () => {
+		it('should register the waiting-forms route with the form sandbox family', async () => {
+			const waitingForms = mock<WaitingForms>();
+			Container.set(LiveWebhooks, mock<LiveWebhooks>());
+			Container.set(WaitingForms, waitingForms);
+			Container.set(WaitingWebhooks, mock<WaitingWebhooks>());
+			Container.set(SlackInteractionWebhooks, mock<SlackInteractionWebhooks>());
+			Container.set(TelegramInteractionWebhooks, mock<TelegramInteractionWebhooks>());
+
+			await testServer.start();
+
+			expect(createWebhookHandlerFor).toHaveBeenCalledWith(waitingForms, undefined, 'form');
+		});
 	});
 
 	describe('/healthz (liveness)', () => {

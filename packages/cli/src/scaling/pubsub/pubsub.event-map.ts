@@ -41,12 +41,17 @@ export type PubSubCommandMap = {
 
 	// #endregion
 
+	// # region OAuth server
+	'reload-oauth-signing-keys': never;
+	// #endregion
+
 	'reload-source-control-config': never;
 
 	'reload-mcp-registry': never;
 
 	'reload-otel-config': never;
 	'reload-instance-ai-settings': never;
+	'reload-agents-settings': never;
 
 	// #region Community packages
 
@@ -145,8 +150,12 @@ export type PubSubCommandMap = {
 		threadId: string;
 		executionId: string;
 		userId: string;
+		/** Older mains read only `productionN8nChat`, so senders set both. */
+		surface?: 'preview' | 'n8n-chat' | 'system';
 		productionN8nChat?: boolean;
 	};
+
+	'cancel-agent-chat-foreground': PubSubCommandMap['cancel-agent-chat-execution'];
 
 	'relay-agent-message-queue-update': {
 		data: PushPayload<'agentMessageQueueUpdated'>;

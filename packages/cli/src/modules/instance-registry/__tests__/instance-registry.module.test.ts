@@ -2,6 +2,7 @@ import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import { InstanceRegistryReconciliationTask } from '../checks/instance-registry-reconciliation.task';
+import { InstanceRegistryHeartbeatTask } from '../instance-registry-heartbeat.task';
 import { InstanceRegistryModule } from '../instance-registry.module';
 import { InstanceRegistryService } from '../instance-registry.service';
 import { StaleMemberCleanupTask } from '../stale-member-cleanup.task';
@@ -11,12 +12,16 @@ describe('InstanceRegistryModule', () => {
 		Container.set(InstanceRegistryService, mock<InstanceRegistryService>({ storageBackend }));
 	};
 
-	it('should register the cleanup and reconciliation system tasks when the registry uses Redis', async () => {
+	it('should register the heartbeat, cleanup, and reconciliation system tasks when the registry uses Redis', async () => {
 		useBackend('redis');
 
 		const tasks = await new InstanceRegistryModule().systemTasks();
 
-		expect(tasks).toEqual([StaleMemberCleanupTask, InstanceRegistryReconciliationTask]);
+		expect(tasks).toEqual([
+			InstanceRegistryHeartbeatTask,
+			StaleMemberCleanupTask,
+			InstanceRegistryReconciliationTask,
+		]);
 	});
 
 	it('should register only the reconciliation system task when the registry uses memory storage', async () => {

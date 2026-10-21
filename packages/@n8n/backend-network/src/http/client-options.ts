@@ -1,3 +1,5 @@
+import type { IHttpRequestOptions } from 'n8n-workflow';
+
 import type { HttpRequestDefaultHeaders } from './client-default-headers';
 import type { UseDefaultSsrfPolicy } from './use-default-ssrf-policy';
 
@@ -27,4 +29,24 @@ export interface HttpRequestClientOptions {
 	 * Set it once here instead of repeating it on each request.
 	 */
 	timeout?: number;
+
+	/**
+	 * Reuse connections across requests on this client.
+	 * The client creates its agents once, with these settings, and `request()` sends through them.
+	 * `keepAlive` defaults to `true`.
+	 * Call `close()` on the client to release them.
+	 *
+	 * Redirect hops create their own agents, and `requestLegacy()` does not use the pool.
+	 * `maxSockets` and `close()` do not apply to them.
+	 *
+	 * A request on this client must not set `proxy`, `agentOptions` or `skipSslCertificateValidation`.
+	 * The client throws if it does, because the shared agents cannot apply them.
+	 */
+	connectionPool?: HttpConnectionPoolOptions;
+}
+
+export interface HttpConnectionPoolOptions {
+	proxy?: IHttpRequestOptions['proxy'];
+	agentOptions?: IHttpRequestOptions['agentOptions'];
+	skipSslCertificateValidation?: boolean;
 }

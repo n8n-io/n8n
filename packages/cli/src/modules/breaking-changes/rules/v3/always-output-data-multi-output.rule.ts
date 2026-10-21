@@ -27,7 +27,7 @@ export class AlwaysOutputDataMultiOutputRule implements IBreakingChangeWorkflowR
 			description:
 				'On nodes with multiple outputs, "Always Output Data" currently adds an empty item to the first output even when another output produced data, which misroutes items. A future version fixes this so the empty item is only added when every output is empty. Workflows relying on the current behavior will produce different output.',
 			category: BreakingChangeCategory.workflow,
-			severity: 'medium',
+			impact: 'behaviorChanges',
 		};
 	}
 

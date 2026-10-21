@@ -1,10 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type {
-	ExecutionResponse,
-	ExecutionResponseSender,
-	JsonValue,
-	ResponseEmitter,
-} from '@n8n/engine';
+import type { ExecutionResponse, ExecutionResponseSender } from '@n8n/engine';
 import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -53,12 +48,6 @@ export class RedisExecutionResponseSender implements ExecutionResponseSender {
 		this.inFlightPublishes.add(publishTask);
 
 		return frameResult.ok ? createResultOk(undefined) : createResultError(frameResult.error);
-	}
-
-	emitterFor(executionId: string): ResponseEmitter {
-		return {
-			send: (payload: JsonValue) => this.send({ type: 'response', executionId, payload }),
-		};
 	}
 
 	async stop(): Promise<void> {

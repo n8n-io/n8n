@@ -10,8 +10,9 @@ import type {
 } from 'ai';
 
 import type { FinishReason, SerializableAgentState, TokenUsage } from '../index';
+import type { GuardrailStop } from '../sdk/guardrail';
 import type { ExecutionOptions, RunOptions } from '../sdk/agent';
-import type { AgentMessage } from '../sdk/message';
+import type { AgentDbMessage, AgentMessage } from '../sdk/message';
 import type { JSONObject } from '../utils/json';
 import type { AgentMessageList } from '../../runtime/model/message-list';
 import type { ToolCallBatchResult, ToolCallInput, ToolCallSuspension } from './tool-execution';
@@ -74,6 +75,7 @@ export interface ModelCallContext {
 
 /** Data needed to emit a terminal suspension result. */
 export interface SuspendEmission {
+	finishReason?: 'paused';
 	suspendRunId: string;
 	list: AgentMessageList;
 	usage: TokenUsage | undefined;
@@ -87,6 +89,7 @@ export interface CompleteEmission {
 	finishReason: FinishReason;
 	usage: TokenUsage | undefined;
 	structuredOutput: unknown;
+	guardrail?: GuardrailStop;
 }
 
 /**
@@ -113,6 +116,9 @@ export interface RunServices {
  * `StreamChunk`s through the stream writer guard.
  */
 export interface RunOutputSink<TResult> {
+	/** Wait until the host has recorded preceding output before it commits input. */
+	inputBoundary?(signal: AbortSignal): Promise<void>;
+	emitInput?(message: AgentDbMessage): Promise<void>;
 	/** Run one LLM turn. Streaming implementations also emit text/tool chunks here. */
 	callModel(ctx: ModelCallContext): Promise<ModelTurnResult>;
 	/**

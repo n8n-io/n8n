@@ -1,4 +1,4 @@
-import { computed, nextTick, reactive, ref, triggerRef, watch } from 'vue';
+import { computed, nextTick, reactive, ref, shallowRef, triggerRef, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { ResponseError } from '@n8n/rest-api-client';
 import {
@@ -12,6 +12,10 @@ import {
 	aiPreferencesAppliedPayloadSchema,
 	instanceAiEventSchema,
 	isSafeObjectKey,
+	resolveBuilderToolName,
+	REMOVED_BUILDER_TOOL_NAMES,
+	SHARED_BUILDER_TOOL_NAMES,
+	WORKFLOW_BUILDER_TOOL_NAMES,
 	type InstanceAiConfirmation,
 	type InstanceAiConfirmRequest,
 	type InstanceAiConfirmResponse,
@@ -62,13 +66,17 @@ import {
 	EMPTY_ASSISTANT_MENTION_COUNTS,
 	type AssistantMentionCounts,
 } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
-import { handleEvent as reduceEvent, createRunStateFromTree } from './instanceAi.reducer';
+import {
+	handleEvent as reduceEvent,
+	createRunStateFromTree,
+	normalizeAgentTreeToolNames,
+} from './instanceAi.reducer';
 import { getLatestBuildResult, type RememberedManualExecution } from './canvasPreview.utils';
 import {
 	useResourceRegistry,
 	type TransientWorkflowArtifactReference,
 } from './useResourceRegistry';
-import { buildThreadArtifactsContext } from './threadArtifacts';
+import { buildThreadArtifactsContext, type OpenThreadTab } from './threadArtifacts';
 import { useResponseFeedback } from './useResponseFeedback';
 import {
 	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
@@ -133,7 +141,7 @@ export type OnboardingExitOutcome = 'build' | 'left' | 'run_failed';
 /** Tool calls that end the onboarding flow, with the outcome each one reports. */
 const ONBOARDING_EXIT_OUTCOMES = new Map<string, OnboardingExitOutcome>([
 	['leave-onboarding', 'left'],
-	['build-workflow', 'build'],
+	[WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW, 'build'],
 ]);
 /** Mirrors the backend's per-thread event buffer cap (MAX_EVENTS_PER_THREAD × 2). */
 const MAX_SEEN_EVENT_IDS = 1000;
@@ -174,7 +182,7 @@ export interface ThreadRuntimeHooks {
 	onTitleUpdated: (threadId: string, title: string) => void;
 	/** A run finished — refresh the thread list to pick up server-generated titles. */
 	onRunFinish: () => void;
-	/** SSE delivered a tool call that ends the onboarding flow (`leave-onboarding` or `build-workflow`), or a failed run. */
+	/** SSE delivered a tool call that ends the onboarding flow (`leave-onboarding` or `workflow_builder_build_workflow`), or a failed run. */
 	onOnboardingLeft?: (
 		threadId: string,
 		outcome: OnboardingExitOutcome,
@@ -190,16 +198,23 @@ export interface ThreadRuntimeHooks {
  * rendering only on a defined value avoids a "New conversation" → real title
  * flash. Shared by `InstanceAiThreadView` and the embedded `InstanceAiChatPanel`.
  */
+const FIRST_MESSAGE_TITLE_LENGTH = 60;
+
+/** A thread title made from its first user message, for a thread that has no title yet. */
+export function firstMessageTitle(text: string): string {
+	const trimmed = text.trim();
+	return trimmed.length > FIRST_MESSAGE_TITLE_LENGTH
+		? trimmed.slice(0, FIRST_MESSAGE_TITLE_LENGTH) + '…'
+		: trimmed;
+}
+
 export function getThreadDisplayTitle(
 	summary: InstanceAiThreadSummary | undefined,
 	messages: InstanceAiMessage[],
 ): string | undefined {
 	if (summary?.title && summary.title !== NEW_CONVERSATION_TITLE) return summary.title;
 	const firstUserMessage = messages.find((message) => message.role === 'user');
-	if (firstUserMessage?.content) {
-		const text = firstUserMessage.content.trim();
-		return text.length > 60 ? text.slice(0, 60) + '…' : text;
-	}
+	if (firstUserMessage?.content) return firstMessageTitle(firstUserMessage.content);
 	return undefined;
 }
 
@@ -530,6 +545,13 @@ export function createThreadRuntime(
 	const lastEventId = ref<number | undefined>(undefined);
 	/** Focused preview tab id while the artifacts preview is open. */
 	const activeArtifactId = ref<string>();
+	/**
+	 * The tabs the thread view has open, sent to the agent with each message.
+	 * `undefined` when no view reports tabs; the agent then gets every artifact.
+	 * `null` while the view's stored tabs load; the message then carries no tabs,
+	 * so the agent keeps the last tabs it has instead of closed ones.
+	 */
+	const openTabs = shallowRef<OpenThreadTab[] | null>();
 	// Event ids already applied on this thread — guards against replay overlap,
 	// e.g. an auto-reconnect replaying an id that already arrived just before
 	// the disconnect. Not reactive: only consulted inside onSSEMessage.
@@ -592,6 +614,17 @@ export function createThreadRuntime(
 	function forgetManualExecution(workflowId: string): void {
 		rememberedManualExecutions.delete(workflowId);
 	}
+
+	// Artifact logs panel auto-open bookkeeping. It lives here because the preview
+	// remounts on every tab switch. A fresh runtime per thread resets it (INS-1192).
+	const logsPanelMemory = {
+		// The user collapsed the panel in this thread, so later runs do not open it again.
+		collapsedByUser: false,
+		// Only a panel that opened automatically collapses after a successful run.
+		autoOpened: false,
+		// Latest started run per workflow id. Only the success of that run collapses the panel.
+		latestStartedExecutionIds: new Map<string, string>(),
+	};
 
 	// --- Reducer routing state ---
 	// Plain Maps: the routing tables themselves are never rendered. The run
@@ -960,46 +993,50 @@ export function createThreadRuntime(
 
 	/**
 	 * Returns null when an edit grant cannot be scoped to a workflow ID — storing a
-	 * generic `build-workflow:` key would auto-approve later foreign edits.
+	 * generic `workflow_builder_build_workflow:` key would auto-approve later foreign edits.
 	 */
 	function buildAlwaysAllowKey(
-		toolName: string,
+		rawToolName: string,
 		args: Record<string, unknown>,
 		confirmationWorkflowId?: string,
 	): string | null {
-		if (toolName === 'submit-workflow') {
+		const toolName = resolveBuilderToolName(rawToolName);
+		if (toolName === REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW) {
 			const isUpdate = typeof args.workflowId === 'string' && args.workflowId.length > 0;
-			return `submit-workflow:${isUpdate ? 'update' : 'create'}`;
+			return `${REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW}:${isUpdate ? 'update' : 'create'}`;
 		}
 		const action = typeof args.action === 'string' ? args.action : '';
 		const workflowId = resolveAlwaysAllowWorkflowId(args, confirmationWorkflowId);
 		// Running a workflow grants "always allow" per workflow, so the grant applies only to the
 		// workflow the user approved.
-		if (toolName === 'executions' && action === 'run') {
+		if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS && action === 'run') {
 			return buildRunWorkflowSessionGrantKey(workflowId);
 		}
 		// Running one node grants "always allow" per node, so a debug loop on one
 		// node stops prompting while the rest of the workflow still asks. Without
 		// a node name the key cannot be scoped — refuse to store one (fail closed).
-		if (toolName === 'executions' && action === 'run-step') {
+		if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS && action === 'run-step') {
 			const nodeName = typeof args.nodeName === 'string' ? args.nodeName : '';
 			if (!workflowId || !nodeName) return null;
 			return buildRunStepSessionGrantKey(workflowId, nodeName);
 		}
-		// Editing a workflow (build-workflow save or workflows update) is also per-workflow,
-		// matching the backend `workflows:update:<id>` thread grant. Bound build-workflow
+		// Editing a workflow (workflow_builder_build_workflow save or workflows update) is also per-workflow,
+		// matching the backend `workflows:update:<id>` thread grant. Bound workflow_builder_build_workflow
 		// saves often omit args.workflowId — use confirmation.workflowId from the suspend
 		// payload instead. Without either ID, refuse to store a key (fail closed).
-		if ((toolName === 'workflows' && action === 'update') || toolName === 'build-workflow') {
+		if (
+			(toolName === WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS && action === 'update') ||
+			toolName === WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW
+		) {
 			if (!workflowId) return null;
 			return buildUpdateWorkflowSessionGrantKey(workflowId);
 		}
-		if (toolName === 'data-tables') {
+		if (toolName === SHARED_BUILDER_TOOL_NAMES.DATA_TABLES) {
 			return buildDataTablesSessionGrantKey(action);
 		}
 		// Executing a node grants "always allow" per node type + resource + operation,
 		// mirroring the backend thread grant. Without a type, fail closed.
-		if (toolName === 'nodes' && action === 'execute') {
+		if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.NODES && action === 'execute') {
 			const nodeType = typeof args.type === 'string' ? args.type : '';
 			if (!nodeType) return null;
 			const config = isRecord(args.config) ? args.config : undefined;
@@ -1042,6 +1079,7 @@ export function createThreadRuntime(
 		if (conf.credentialFlow) return false;
 		if (conf.questions?.length) return false;
 		if (conf.channelConfig) return false;
+		if (conf.testListener) return false;
 		return true;
 	}
 
@@ -1198,7 +1236,9 @@ export function createThreadRuntime(
 			// A failed or interrupted run (provider down, key rejected, crash, ...) ends the onboarding
 			// too, so the user gets the normal chrome back instead of a stuck flow.
 			if (parsed.data.type === 'tool-call') {
-				const outcome = ONBOARDING_EXIT_OUTCOMES.get(parsed.data.payload.toolName);
+				const outcome = ONBOARDING_EXIT_OUTCOMES.get(
+					resolveBuilderToolName(parsed.data.payload.toolName),
+				);
 				const reason = parsed.data.payload.args.reason;
 				if (outcome) {
 					hooks.onOnboardingLeft?.(
@@ -1397,6 +1437,10 @@ export function createThreadRuntime(
 		activeArtifactId.value = id;
 	}
 
+	function setOpenTabs(tabs?: OpenThreadTab[] | null): void {
+		openTabs.value = tabs;
+	}
+
 	/** Reset all state owned by this runtime. */
 	function resetState(): void {
 		hydrationGeneration += 1;
@@ -1421,6 +1465,7 @@ export function createThreadRuntime(
 		lastEventId.value = undefined;
 		seenEventIds.clear();
 		activeArtifactId.value = undefined;
+		openTabs.value = undefined;
 		pendingWorkflowAttachment.value = null;
 		transientWorkflowReferences.clear();
 		pendingHandoff.value = null;
@@ -1459,6 +1504,9 @@ export function createThreadRuntime(
 				if (messages.value.length > 0) return 'skipped';
 				// Backend now returns InstanceAiMessage[] directly — no conversion needed.
 				if (result.messages.length > 0) {
+					for (const msg of result.messages) {
+						if (msg.agentTree) normalizeAgentTreeToolNames(msg.agentTree);
+					}
 					messages.value = result.messages;
 					latestTasks.value = findLatestTasksFromMessages(result.messages);
 					latestSetupItems.value = findLatestSetupItemsFromMessages(result.messages);
@@ -1626,7 +1674,13 @@ export function createThreadRuntime(
 				Intl.DateTimeFormat().resolvedOptions().timeZone,
 				pushRef,
 				instanceAiSettingsStore.computerUseChannels,
-				buildThreadArtifactsContext(producedArtifacts.values(), activeArtifactId.value),
+				openTabs.value === null
+					? undefined
+					: buildThreadArtifactsContext(
+							producedArtifacts.values(),
+							activeArtifactId.value,
+							openTabs.value,
+						),
 			);
 
 			return runId;
@@ -1929,6 +1983,7 @@ export function createThreadRuntime(
 		producedArtifactOrigins,
 		activeArtifactId,
 		setActiveArtifactId,
+		setOpenTabs,
 		feedbackByResponseId,
 		rateableResponseId,
 		currentTasks,
@@ -1950,6 +2005,7 @@ export function createThreadRuntime(
 		rememberManualExecution,
 		getRememberedManualExecution,
 		forgetManualExecution,
+		logsPanelMemory,
 		resetState,
 		dispose,
 		applyEvent,

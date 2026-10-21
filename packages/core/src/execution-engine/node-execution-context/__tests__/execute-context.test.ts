@@ -398,29 +398,6 @@ describe('ExecuteContext', () => {
 		});
 	});
 
-	describe('getRuntimeCredential', () => {
-		beforeEach(() => {
-			additionalData.getRuntimeCredential.mockReset();
-		});
-
-		it('forwards the alias to the additionalData callback and returns its value', async () => {
-			additionalData.getRuntimeCredential.mockResolvedValue('Bearer xyz');
-
-			const result = await executeContext.getRuntimeCredential('api_key');
-
-			expect(result).toBe('Bearer xyz');
-			expect(additionalData.getRuntimeCredential).toHaveBeenCalledWith(runExecutionData, 'api_key');
-		});
-
-		it('returns undefined when the underlying callback yields undefined', async () => {
-			additionalData.getRuntimeCredential.mockResolvedValue(undefined);
-
-			const result = await executeContext.getRuntimeCredential('missing');
-
-			expect(result).toBeUndefined();
-		});
-	});
-
 	describe('executeAgent', () => {
 		const webhookNode: INode = {
 			id: 'webhook-node-id',
@@ -856,6 +833,19 @@ describe('ExecuteContext', () => {
 				source: `[Node: "${node.name}"]`,
 				messages: ['hello', 42],
 			});
+		});
+
+		it('redacts console messages when a sub-workflow reported the channel', () => {
+			const context = makeContext('manual', {
+				executionData: {
+					runtimeData: {
+						redaction: { version: 2, production: false, manual: false },
+						subWorkflowRedaction: { production: true, manual: true },
+					},
+				},
+			} as unknown as IRunExecutionData);
+
+			expect(context.isConsoleOutputRedacted()).toBe(true);
 		});
 
 		it('fails closed when resolving the policy throws', () => {

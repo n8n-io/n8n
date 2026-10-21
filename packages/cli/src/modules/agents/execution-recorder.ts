@@ -200,59 +200,18 @@ function sanitizeExecutionLogRecord(value: unknown): Record<string, unknown> | u
 	return isRecord(sanitized) ? sanitized : undefined;
 }
 
-export interface ToolCallDetails {
-	toolName: string;
-	displayName?: string;
-	kind: ToolRegistryEntry['kind'];
-	input: unknown;
-	node?: {
-		type: string;
-		typeVersion?: number;
-		parameters?: Record<string, unknown>;
-	};
-	workflow?: {
-		id?: string;
-		name?: string;
-		triggerType?: string;
-	};
-}
-
-/** Build the sanitized, resolved tool configuration shown in preview approvals. */
-export function buildToolCallDetails(
-	registry: ToolRegistry,
-	toolName: string,
-	input: unknown,
-): ToolCallDetails {
-	const entry = registry.get(toolName);
-	const kind = entry?.kind ?? 'tool';
-	const details: ToolCallDetails = {
-		toolName,
-		kind,
-		input: sanitizeExecutionLogValue(input),
-	};
-
-	if (entry?.nodeDisplayName) details.displayName = entry.nodeDisplayName;
-
-	if (kind === 'node' && entry?.nodeType) {
-		details.node = {
-			type: entry.nodeType,
-			...(entry.nodeTypeVersion !== undefined && { typeVersion: entry.nodeTypeVersion }),
-			...(entry.nodeParameters !== undefined && {
-				parameters: sanitizeExecutionLogRecord(
-					resolveTemplatesInValue(entry.nodeParameters, isRecord(input) ? input : {}),
-				),
-			}),
-		};
-	} else if (kind === 'workflow') {
-		details.workflow = {
-			...(entry?.workflowId !== undefined && { id: entry.workflowId }),
-			...(entry?.workflowName !== undefined && { name: entry.workflowName }),
-			...(entry?.triggerType !== undefined && { triggerType: entry.triggerType }),
-		};
-		if (entry?.workflowName) details.displayName = entry.workflowName;
+export function buildApprovalArgs(input: unknown, entry?: ToolRegistryEntry): unknown {
+	const sanitizedInput = sanitizeExecutionLogValue(input);
+	if (!entry?.nodeParameters || Object.keys(entry.nodeParameters).length === 0) {
+		return sanitizedInput;
 	}
 
-	return details;
+	return {
+		parameters: sanitizeExecutionLogRecord(
+			resolveTemplatesInValue(entry.nodeParameters, isRecord(sanitizedInput) ? sanitizedInput : {}),
+		),
+		...(isRecord(input) && Object.keys(input).length === 0 ? {} : { input: sanitizedInput }),
+	};
 }
 
 export interface RecordedUsage {
@@ -262,6 +221,7 @@ export interface RecordedUsage {
 }
 
 export type TimelineEvent =
+	| { type: 'input'; messageId: string; timestamp: number }
 	| { type: 'background-task-signal'; signal: AgentBackgroundJobSignal; timestamp: number }
 	| { type: 'text'; content: string; timestamp: number; endTime?: number }
 	| { type: 'reasoning'; content: string; timestamp: number; endTime?: number }
@@ -275,6 +235,7 @@ export type TimelineEvent =
 			startTime: number;
 			endTime: number;
 			success: boolean;
+			canceled?: boolean;
 			workflowId?: string;
 			workflowName?: string;
 			workflowExecutionId?: string;
@@ -383,6 +344,17 @@ export class ExecutionRecorder {
 
 	private childTraceChars = new Map<string, number>();
 
+	/** Record additional input only after its transaction commits. */
+	recordInputs(events: Array<Extract<TimelineEvent, { type: 'input' }>>): void {
+		this.flushReasoningBuffer();
+		this.flushTextBuffer();
+		for (const event of events) {
+			if (this.timeline.some((item) => item.type === 'input' && item.messageId === event.messageId))
+				continue;
+			this.appendCompletedEvent(event);
+		}
+	}
+
 	/** Record the human response that caused a suspended tool call to resume. */
 	recordHitlResponse(toolCallId: string, response: unknown): void {
 		this.flushReasoningBuffer();
@@ -458,6 +430,7 @@ export class ExecutionRecorder {
 					chunk.toolName,
 					chunk.output,
 					chunk.isError === true,
+					chunk.canceled === true,
 				);
 				break;
 			case 'finish':
@@ -702,6 +675,7 @@ export class ExecutionRecorder {
 		name: string,
 		output: unknown,
 		isError: boolean,
+		canceled: boolean,
 	): void {
 		const recordedOutput = sanitizeExecutionLogValue(
 			isError ? normaliseToolErrorOutput(output) : output,
@@ -717,6 +691,7 @@ export class ExecutionRecorder {
 		if (pendingTimeline) {
 			pendingTimeline.output = recordedOutput;
 			pendingTimeline.success = !isError;
+			if (canceled) pendingTimeline.canceled = true;
 			// `tool-execution-end` (real per-tool finish) normally closed this entry
 			// already; only fall back to the batched result time if it never fired.
 			if (pendingTimeline.endTime === 0) {
@@ -748,6 +723,7 @@ export class ExecutionRecorder {
 			startTime: now,
 			endTime: now,
 			success: !isError,
+			...(canceled ? { canceled: true } : {}),
 			workflowId: entry?.workflowId,
 			workflowName: entry?.workflowName,
 			triggerType: entry?.triggerType,

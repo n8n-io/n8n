@@ -43,6 +43,7 @@ export interface LangTracerCreateCaseBody {
 	 *  promote/scrub over there, so pushing one would fabricate provenance. */
 	seed?: PushableSeed;
 	credentialFixture?: string;
+	requiresMemoryCompaction?: boolean;
 }
 
 type InlineSeed = Extract<CaseSeed, { mode: 'inline' }>;
@@ -160,6 +161,9 @@ export function diskCaseToLangTracerCreate(
 	// Replay never reaches here — `unsupportedPushReason` skips those cases upstream.
 	if (testCase.seed?.mode === 'inline') body.seed = pushableSeed(testCase.seed);
 	if (testCase.credentialFixture !== undefined) body.credentialFixture = testCase.credentialFixture;
+	if (testCase.requiresMemoryCompaction !== undefined) {
+		body.requiresMemoryCompaction = testCase.requiresMemoryCompaction;
+	}
 
 	return body;
 }

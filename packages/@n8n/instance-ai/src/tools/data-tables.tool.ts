@@ -1,8 +1,9 @@
 /**
- * Consolidated data-tables tool — list, schema, query, create, delete,
+ * Consolidated data_tables tool — list, schema, query, create, delete,
  * add-column, delete-column, rename-column, insert-rows, update-rows, delete-rows.
  */
 import {
+	getLegacyBuilderToolNames,
 	instanceAiApprovalDetailsSchema,
 	instanceAiApprovalResumeSchema,
 	buildDataTablesSessionGrantKey,
@@ -381,6 +382,40 @@ async function resolveDataTableReference(
 
 // ── Handlers ───────────────────────────────────────────────────────────────
 
+/**
+ * Tell the host that the agent worked on a table, so it shows the table's tab.
+ * Reads count too, because the frontend also previews a table the agent reads.
+ */
+async function reportDataTableAction(
+	context: InstanceAiContext,
+	table: { id: string; name?: string; projectId?: string },
+) {
+	await context.onArtifactChanged?.({
+		type: 'data-table',
+		id: table.id,
+		...(table.name ? { name: table.name } : {}),
+		...(table.projectId ? { projectId: table.projectId } : {}),
+	});
+}
+
+/**
+ * Report a table that a column action changed. The action accepts a table name
+ * as `dataTableId`, so resolve it to the table's ID. A failed lookup must not
+ * fail the change that already happened.
+ */
+async function reportChangedDataTable(context: InstanceAiContext, input: DataTableReferenceInput) {
+	const table = await resolveDataTableReference(context, input, 'read').catch(() => ({
+		dataTableId: input.dataTableId,
+		dataTableName: input.dataTableName,
+		projectId: input.projectId,
+	}));
+	await reportDataTableAction(context, {
+		id: table.dataTableId,
+		name: table.dataTableName,
+		projectId: table.projectId,
+	});
+}
+
 async function handleList(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'list' }>,
@@ -396,6 +431,11 @@ async function handleSchema(
 	const table = await resolveDataTableReference(context, input, 'read');
 	const columns = await context.dataTableService.getSchema(input.dataTableId, {
 		projectId: input.projectId,
+	});
+	await reportDataTableAction(context, {
+		id: table.dataTableId,
+		name: table.dataTableName,
+		projectId: table.projectId,
 	});
 	return { ...table, columns };
 }
@@ -459,10 +499,15 @@ async function handleQuery(
 	}
 	if (remaining > 0) {
 		hints.push(
-			`${remaining} more rows available. Use additional paginated data-tables queries for bulk operations.`,
+			`${remaining} more rows available. Use additional paginated data_tables queries for bulk operations.`,
 		);
 	}
 
+	await reportDataTableAction(context, {
+		id: table.dataTableId,
+		name: table.dataTableName,
+		projectId: table.projectId,
+	});
 	const response = { ...table, count: result.count, data };
 	return hints.length > 0 ? { ...response, hint: hints.join(' ') } : response;
 }
@@ -509,6 +554,7 @@ async function handleCreate(
 		const table = await context.dataTableService.create(input.name, input.columns, {
 			projectId: input.projectId,
 		});
+		await reportDataTableAction(context, table);
 		return { table };
 	} catch (error) {
 		// If table already exists, guide the agent to use the existing one
@@ -516,7 +562,7 @@ async function handleCreate(
 		if (isNameConflictError(error)) {
 			return {
 				denied: true,
-				reason: `Table "${input.name}" already exists. Use data-tables(action="list") to find it and data-tables(action="schema") to check its columns.`,
+				reason: `Table "${input.name}" already exists. Use data_tables(action="list") to find it and data_tables(action="schema") to check its columns.`,
 			};
 		}
 		throw error;
@@ -603,6 +649,7 @@ async function handleAddColumn(
 		{ name: input.columnName, type: input.type },
 		{ projectId: input.projectId },
 	);
+	await reportChangedDataTable(context, input);
 	return { column };
 }
 
@@ -646,6 +693,7 @@ async function handleDeleteColumn(
 	await context.dataTableService.deleteColumn(input.dataTableId, input.columnId, {
 		projectId: input.projectId,
 	});
+	await reportChangedDataTable(context, input);
 	return { success: true };
 }
 
@@ -690,6 +738,7 @@ async function handleRenameColumn(
 	await context.dataTableService.renameColumn(input.dataTableId, input.columnId, input.newName, {
 		projectId: input.projectId,
 	});
+	await reportChangedDataTable(context, input);
 	return { success: true };
 }
 
@@ -739,9 +788,15 @@ async function handleInsertRows(
 	await persistSessionGrantIfRequested(context, 'insert-rows', resumeData);
 
 	// State 3: Approved or always_allow — execute
-	return await context.dataTableService.insertRows(input.dataTableId, input.rows, {
+	const result = await context.dataTableService.insertRows(input.dataTableId, input.rows, {
 		projectId: input.projectId,
 	});
+	await reportDataTableAction(context, {
+		id: result.dataTableId,
+		name: result.tableName,
+		projectId: result.projectId,
+	});
+	return result;
 }
 
 async function handleUpdateRows(
@@ -785,9 +840,18 @@ async function handleUpdateRows(
 	await persistSessionGrantIfRequested(context, 'update-rows', resumeData);
 
 	// State 3: Approved or always_allow — execute
-	return await context.dataTableService.updateRows(input.dataTableId, input.filter, input.data, {
-		projectId: input.projectId,
+	const result = await context.dataTableService.updateRows(
+		input.dataTableId,
+		input.filter,
+		input.data,
+		{ projectId: input.projectId },
+	);
+	await reportDataTableAction(context, {
+		id: result.dataTableId,
+		name: result.tableName,
+		projectId: result.projectId,
 	});
+	return result;
 }
 
 async function handleDeleteRows(
@@ -830,6 +894,11 @@ async function handleDeleteRows(
 	const result = await context.dataTableService.deleteRows(input.dataTableId, input.filter, {
 		projectId: input.projectId,
 	});
+	await reportDataTableAction(context, {
+		id: result.dataTableId,
+		name: result.tableName,
+		projectId: result.projectId,
+	});
 	return {
 		success: true,
 		deletedCount: result.deletedCount,
@@ -845,12 +914,13 @@ export function createDataTablesTool(context: InstanceAiContext) {
 	const inputSchema = sanitizeInputSchema(z.discriminatedUnion('action', [...allActions]));
 
 	return new Tool(DATA_TABLES_TOOL_ID)
+		.legacyNames(...getLegacyBuilderToolNames(DATA_TABLES_TOOL_ID))
 		.description(
 			'Manage data tables — list, query, create, modify columns, and manage rows. ' +
 				'Load `data-table-manager` via `load_skill` before calling this tool — including natural ' +
 				'list/show requests like "what data tables do I have?" or "show/list my tables". ' +
 				'For workflow builds that create or write Data Tables, load `data-table-manager` then ' +
-				'`workflow-builder` before `build-workflow`. Use list, create, and schema before ' +
+				'`workflow-builder` before `workflow_builder_build_workflow`. Use list, create, and schema before ' +
 				'referencing tables in SDK code. Keep queries targeted (column filter and/or limit ≤ 5), ' +
 				'especially when diagnosing — never pull a table unfiltered, and after a failed or 0-row ' +
 				'query only retry strictly narrower.',

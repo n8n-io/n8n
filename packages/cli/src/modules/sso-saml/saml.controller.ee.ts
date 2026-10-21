@@ -1,4 +1,5 @@
 import { SamlAcsDto, SamlPreferences, SamlToggleDto } from '@n8n/api-types';
+import { EventService, UrlService } from '@n8n/backend-services';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, Post, RestController, GlobalScope, Body } from '@n8n/decorators';
@@ -10,15 +11,14 @@ import url from 'url';
 
 import { AuthService } from '@/auth/auth.service';
 import { AuthError, ForbiddenError } from '@n8n/errors';
-import { EventService } from '@/events/event.service';
 import { SSO_ACCESS_DENIED_REDIRECT_PATH } from '@/modules/provisioning.ee/constants';
 import { SsoAccessDeniedError } from '@/modules/provisioning.ee/errors/sso-access-denied.error';
 import { AuthlessRequest } from '@/requests';
 import { sendErrorResponse } from '@/response-helper';
-import { UrlService } from '@n8n/backend-services';
 import { isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers';
 import { validateRedirectUrl } from '@/utils/validate-redirect-url';
 
+import { SamlEmailNotVerifiedError } from './errors/saml-email-not-verified.error';
 import {
 	samlLicensedAndEnabledMiddleware,
 	samlLicensedMiddleware,
@@ -188,8 +188,9 @@ export class SamlController {
 				return res.render('saml-connection-test-failed', { message: (error as Error).message });
 			}
 			this.eventService.emit('user-login-failed', {
-				userEmail: 'unknown',
+				userEmail: error instanceof SamlEmailNotVerifiedError ? error.email : 'unknown',
 				authenticationMethod: 'saml',
+				reason: (error as Error).message,
 			});
 			// A login denied by role mapping is not a failure to authenticate: send the
 			// user to the sign-in page, which explains they have no access.
@@ -214,6 +215,7 @@ export class SamlController {
 		try {
 			const refererUrl = req.headers.referer;
 			if (refererUrl) {
+				// oxlint-disable-next-line typescript/no-deprecated
 				const parsedUrl = url.parse(refererUrl);
 				if (parsedUrl?.query) {
 					const parsedQueryParams = querystring.parse(parsedUrl.query);

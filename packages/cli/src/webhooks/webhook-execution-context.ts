@@ -74,6 +74,8 @@ export class WebhookExecutionContext {
 	 * `webhookDescriptionFields` in n8n-workflow). Like the engine path, the
 	 * resolved value is returned as-is: `defaultValue` only stands in for a
 	 * field the description does not define at all.
+	 *
+	 * TODO(native-evaluation rollout, CAT-4699): remove; callers evaluate the template.
 	 */
 	private resolveNatively(propertyName: WebhookDescriptionKey) {
 		return resolveWebhookDescriptionField(

@@ -6,7 +6,9 @@ import { McpRegistryCapabilities } from '../mcp-registry-capabilities';
 describe('McpRegistryCapabilities', () => {
 	it.each([
 		['default', undefined, true],
+		['default', ['supabase-oauth2-credentials'], true],
 		['default', ['n8n-cloud'], false],
+		['cloud', ['supabase-oauth2-credentials'], true],
 		['cloud', ['n8n-cloud'], true],
 		['cloud', ['n8n-cloud', 'unsupported-capability'], false],
 	])('checks capabilities for a %s deployment', (deploymentType, required, expected) => {

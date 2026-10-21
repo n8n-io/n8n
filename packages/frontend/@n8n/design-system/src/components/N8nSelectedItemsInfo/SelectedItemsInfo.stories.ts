@@ -59,8 +59,8 @@ export const CustomActions: Story = {
 			<div style="position: relative; height: 200px;">
 				<N8nSelectedItemsInfo v-bind="args" @clear-selection="onClearSelection">
 					<template #actions>
-						<N8nButton variant="subtle" label="Archive" />
-						<N8nButton variant="subtle" label="Export" />
+						<N8nButton variant="outline" label="Archive" />
+						<N8nButton variant="outline" label="Export" />
 					</template>
 				</N8nSelectedItemsInfo>
 			</div>

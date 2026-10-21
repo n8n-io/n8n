@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import { testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -15,7 +16,6 @@ import { sleep } from '@n8n/utils/sleep';
 import type { Span, Tracing } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
 import { WorkflowPublicationOutboxCleanupService } from '@/workflows/publication/workflow-publication-outbox-cleanup.service';
 import { WorkflowPublicationOutboxCleanupTask } from '@/workflows/publication/workflow-publication-outbox-cleanup.task';
 

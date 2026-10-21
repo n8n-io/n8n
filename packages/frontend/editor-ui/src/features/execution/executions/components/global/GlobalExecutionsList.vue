@@ -370,6 +370,7 @@ const goToUpgrade = () => {
 			<div :class="$style.execHeaderRight">
 				<ExecutionStopAllText :executions="props.executions" />
 				<ExecutionsFilter
+					:initial-filters="props.filters"
 					:workflows="workflows"
 					class="execFilter"
 					@filter-changed="onFilterChanged"

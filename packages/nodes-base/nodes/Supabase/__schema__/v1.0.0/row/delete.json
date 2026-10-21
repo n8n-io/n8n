@@ -4,6 +4,9 @@
         "content": {
             "type": "string"
         },
+        "created_at": {
+            "type": "string"
+        },
         "embedding": {
             "type": "string"
         },
@@ -38,5 +41,5 @@
             }
         }
     },
-    "version": 2
+    "version": 3
 }

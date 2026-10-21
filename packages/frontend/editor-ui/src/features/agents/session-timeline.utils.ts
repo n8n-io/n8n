@@ -1,7 +1,13 @@
-import { WORKFLOW_WAIT_SUSPEND_TYPE, type AgentBackgroundJobSignal } from '@n8n/api-types';
+import {
+	WORKFLOW_WAIT_SUSPEND_TYPE,
+	type AgentBackgroundJobSignal,
+	type AgentPersistedMessageDto,
+} from '@n8n/api-types';
 import type { BadgeVariant } from '@n8n/design-system';
 import type { BaseTextKey, useI18n } from '@n8n/i18n';
 import { isRecord } from '@n8n/utils/is-record';
+import { convertDbMessages } from '@/features/ai/shared/agentsChat/messageMappers';
+import type { ThinkingSegment } from '@/features/ai/shared/agentsChat/types';
 import type {
 	EventKind,
 	HitlRequestType,
@@ -435,6 +441,19 @@ interface RawTextEvent {
 	endTime?: number;
 }
 
+interface RawReasoningEvent {
+	type: 'reasoning';
+	content: string;
+	timestamp: number;
+	endTime?: number;
+}
+
+interface RawInputEvent {
+	type: 'input';
+	messageId: string;
+	timestamp: number;
+}
+
 interface RawSuspensionEvent {
 	type: 'suspension';
 	toolName: string;
@@ -460,6 +479,8 @@ interface RawBackgroundJobSignalEvent {
 type RawEvent =
 	| RawToolCallEvent
 	| RawTextEvent
+	| RawReasoningEvent
+	| RawInputEvent
 	| RawSuspensionEvent
 	| RawHitlResponseEvent
 	| RawBackgroundJobSignalEvent;
@@ -646,6 +667,25 @@ function hitlResponseItem(
 	};
 }
 
+function inputTimelineItem(
+	input: AgentPersistedMessageDto,
+	executionId: string,
+	timestamp: number,
+): TimelineItem | undefined {
+	const [message] = convertDbMessages([input]);
+	if (!message) return undefined;
+	return {
+		kind: 'user',
+		executionId,
+		content: message.content,
+		timestamp,
+		...(input.author && { authorName: input.author.name }),
+		attachments: message.attachments?.flatMap(({ fileId, fileName, mimeType, sizeBytes }) =>
+			fileId ? [{ id: fileId, fileName, mimeType, sizeBytes: sizeBytes ?? 0 }] : [],
+		),
+	};
+}
+
 export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): TimelineItem[] {
 	const items: TimelineItem[] = [];
 	const initialToolCalls = new Map<string, RawToolCallEvent>();
@@ -656,19 +696,59 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 		const isResumed = exec.hitlStatus === 'resumed';
 		let resumedTagUsed = false;
 
-		// Attachment-only sends record a null userMessage but still carry files.
-		if (exec.userMessage || exec.attachments?.length) {
+		const events = timelineEvents(exec);
+		const timestamp = exec.startedAt ? new Date(exec.startedAt).getTime() : 0;
+		let thinkingSegments: ThinkingSegment[] = [];
+		let thinkingItemIndex = items.length;
+		const appendAgentItem = (event: RawTextEvent, insertAt = items.length) => {
+			const showResumed = isResumed && !resumedTagUsed;
+			if (showResumed) resumedTagUsed = true;
+			const startTs = event.timestamp ?? 0;
+			items.splice(insertAt, 0, {
+				kind: 'agent',
+				executionId: exec.id,
+				content: event.content,
+				timestamp: startTs,
+				// Older records have no generation duration.
+				endTimestamp: event.endTime && event.endTime > startTs ? event.endTime : undefined,
+				resumed: showResumed,
+				...(thinkingSegments.length > 0 && { thinkingSegments }),
+			});
+			thinkingSegments = [];
+		};
+		const flushThinking = () => {
+			if (!thinkingSegments.length) return;
+			appendAgentItem(
+				{
+					type: 'text',
+					content: '',
+					timestamp: thinkingSegments[0].startTime ?? timestamp,
+					endTime: thinkingSegments.at(-1)?.endTime,
+				},
+				thinkingItemIndex,
+			);
+		};
+		if (exec.inputMessages !== undefined) {
+			const steeredIds = new Set(
+				events.filter((event) => event.type === 'input').map((event) => event.messageId),
+			);
+			for (const input of exec.inputMessages) {
+				if (steeredIds.has(input.id)) continue;
+				const item = inputTimelineItem(input, exec.id, timestamp);
+				if (item) items.push(item);
+			}
+		} else if (exec.userMessage || exec.attachments?.length) {
 			items.push({
 				kind: 'user',
 				executionId: exec.id,
 				content: exec.userMessage ?? '',
-				timestamp: exec.startedAt ? new Date(exec.startedAt).getTime() : 0,
+				timestamp,
 				...(exec.author && { authorName: exec.author.name }),
 				...(exec.attachments?.length && { attachments: exec.attachments }),
 			});
 		}
 
-		for (const event of timelineEvents(exec)) {
+		for (const [eventIndex, event] of events.entries()) {
 			if (event.type === 'background-task-signal') {
 				items.push({
 					kind: 'background-task-signal',
@@ -676,20 +756,23 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 					timestamp: event.timestamp,
 					backgroundJobSignal: event.signal,
 				});
-			} else if (event.type === 'text') {
-				const showResumed = isResumed && !resumedTagUsed;
-				if (showResumed) resumedTagUsed = true;
-				const startTs = event.timestamp ?? 0;
-				items.push({
-					kind: 'agent',
-					executionId: exec.id,
+			} else if (event.type === 'input') {
+				flushThinking();
+				const input = exec.inputMessages?.find(({ id }) => id === event.messageId);
+				if (!input) continue;
+				const item = inputTimelineItem(input, exec.id, event.timestamp);
+				if (item) items.push(item);
+			} else if (event.type === 'reasoning') {
+				if (!event.content.trim()) continue;
+				if (!thinkingSegments.length) thinkingItemIndex = items.length;
+				thinkingSegments.push({
+					id: `${exec.id}:reasoning:${eventIndex}`,
 					content: event.content,
-					timestamp: startTs,
-					// Generation duration: from first delta to flush. Older records without
-					// `endTime` skip this so the popover doesn't show a misleading 0.
-					endTimestamp: event.endTime && event.endTime > startTs ? event.endTime : undefined,
-					resumed: showResumed,
+					startTime: event.timestamp,
+					endTime: event.endTime,
 				});
+			} else if (event.type === 'text') {
+				appendAgentItem(event);
 			} else if (event.type === 'tool-call') {
 				const hitlContext = hitlContexts.get(event.toolCallId);
 				if (hitlContext) {
@@ -763,6 +846,7 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 				items.push(hitlResponseItem(hitlContext, exec.id, event.response, event.timestamp ?? 0));
 			}
 		}
+		flushThinking();
 		if (exec.status === 'error' || exec.status === 'interrupted') {
 			const terminalTimestamp = exec.stoppedAt ?? exec.startedAt ?? exec.createdAt;
 			items.push({

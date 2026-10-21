@@ -139,6 +139,12 @@ export function getMappedSamlAttributesFromFlowResult(
 			lastName,
 			userPrincipalName,
 		};
+		if (attributeMapping.emailVerified) {
+			const emailVerified = attributes[attributeMapping.emailVerified];
+			result.attributes.emailVerified = Array.isArray(emailVerified)
+				? emailVerified[0]
+				: emailVerified;
+		}
 		if (jitClaimNames.instanceRole && typeof attributes[jitClaimNames.instanceRole] === 'string') {
 			result.attributes.n8nInstanceRole = attributes[jitClaimNames.instanceRole] as string;
 		}

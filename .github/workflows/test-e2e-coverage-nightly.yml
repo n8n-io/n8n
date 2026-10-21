@@ -53,7 +53,7 @@ jobs:
       - name: Generate matrix (up to 20 shards, duration-weighted)
         id: gen
         run: |
-          MATRIX=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix 20 --orchestrate --project=coverage)
+          MATRIX=$(node packages/quality/testing/playwright/scripts/distribute-tests.mjs --matrix 20 --orchestrate --project=coverage)
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
 
   e2e:
@@ -215,7 +215,7 @@ jobs:
       # Merges all lcovs into one lcov.info (SF: paths normalised to repo-root-
       # relative) and builds the per-spec E2E impact map for PR selection.
       - name: Aggregate coverage + build impact map
-        working-directory: packages/testing/playwright
+        working-directory: packages/quality/testing/playwright
         run: |
           node scripts/aggregate-coverage.mjs \
             --shards=/tmp/shards \
@@ -227,7 +227,7 @@ jobs:
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: coverage-report
-          path: packages/testing/playwright/coverage/
+          path: packages/quality/testing/playwright/coverage/
           retention-days: 14
 
       - name: Upload Combined Coverage to Codecov
@@ -235,7 +235,7 @@ jobs:
         uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: packages/testing/playwright/coverage/lcov.info
+          files: packages/quality/testing/playwright/coverage/lcov.info
           flags: nightly-full
           name: nightly-full-coverage
           fail_ci_if_error: false
@@ -256,7 +256,7 @@ jobs:
         env:
           CODECOV_API_TOKEN: ${{ secrets.CODECOV_API_TOKEN }}
         run: |
-          node packages/testing/playwright/scripts/coverage-analysis.mjs \
+          node packages/quality/testing/playwright/scripts/coverage-analysis.mjs \
             --md --top=15 --out-json=coverage-gaps.json >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload Coverage Gap Report

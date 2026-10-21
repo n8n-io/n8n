@@ -64,6 +64,7 @@ export class WorkflowImporter {
 		context: ImportContext,
 		prepared: PreparedWorkflow[],
 		options: ImportWorkflowProperties,
+		{ checkRootPlacement }: { checkRootPlacement: boolean },
 	): Promise<WorkflowImportPlan> {
 		const { matches: existingBySourceWorkflowId, lineageConflicts } =
 			await this.workflowImportMatchService.findBySourceWorkflowIds(
@@ -114,8 +115,10 @@ export class WorkflowImporter {
 			}
 
 			// Only an update writes the workflow in place, so only an update can clash on location.
+			// A `null` target is the project root. It is a location only when the package sets the
+			// layout. Otherwise no location was asked for, and the update keeps the current folder.
 			const targetFolderId = workflow.parentFolderId ?? context.folderId;
-			if (targetFolderId && item.action === 'update') {
+			if (item.action === 'update' && (targetFolderId !== null || checkRootPlacement)) {
 				const existingParentFolderId = item.existing.parentFolder?.id ?? null;
 				if (existingParentFolderId !== targetFolderId) {
 					folderConflicts.push({
@@ -286,6 +289,11 @@ export class WorkflowImporter {
 			publicApi: true,
 			source: 'import',
 			allowArchivedUpdate: item.existing.isArchived,
+			// `settings.errorWorkflow` is a package reference this importer rebinds. The
+			// handler it now points at can still be unwritten (later in this loop) and is
+			// unpublished until the package-wide sweep, so the write-time check on that
+			// reference cannot apply here.
+			allowUnresolvedErrorWorkflow: true,
 			...(tagIds !== undefined ? { tagIds } : {}),
 		});
 

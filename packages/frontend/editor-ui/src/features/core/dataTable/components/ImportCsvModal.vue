@@ -199,7 +199,7 @@ onBeforeUnmount(() => {
 					@mouseleave="isUploadHovered = false"
 				>
 					<N8nIcon
-						icon="file"
+						icon="cloud-arrow-up"
 						:size="24"
 						:color="isUploadHovered ? 'text-dark' : 'text-light'"
 						:class="$style.uploadIcon"
@@ -283,7 +283,7 @@ onBeforeUnmount(() => {
 		<template #footer>
 			<div :class="$style.footer">
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					size="large"
 					:label="i18n.baseText('generic.cancel')"
 					data-test-id="import-csv-cancel"
@@ -356,7 +356,7 @@ onBeforeUnmount(() => {
 }
 
 .readyToImport {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .footer {

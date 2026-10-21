@@ -117,15 +117,6 @@ describe('JwksResolverService', () => {
 			expect(result.keys.map((k) => k.kid)).toEqual(['rsa-1', 'ec-1']);
 		});
 
-		it('should resolve Ed25519 OKP JWK to EdDSA', async () => {
-			const fetcher = mockFetchResponse([{ ...ed25519Jwk, kid: 'ed-1' }]);
-
-			const result = await service.resolveKeys(DEFAULT_SOURCE, { fetcher });
-
-			expect(result.keys).toHaveLength(1);
-			expect(result.keys[0].algorithms).toEqual(['EdDSA']);
-		});
-
 		it('should infer RS256 from RSA JWK without explicit alg', async () => {
 			const fetcher = mockFetchResponse([{ ...rsaJwk, kid: 'rsa-no-alg' }]);
 
@@ -198,6 +189,28 @@ describe('JwksResolverService', () => {
 
 			expect(result.keys).toHaveLength(1);
 			expect(result.keys[0].kid).toBe('rsa-1');
+		});
+
+		// jsonwebtoken has no EdDSA support, so the resolver must not store a key it can never verify.
+		it('should skip Ed25519 keys (kty: OKP)', async () => {
+			const fetcher = mockFetchResponse([
+				{ ...ed25519Jwk, kid: 'ed-key', alg: 'EdDSA' },
+				{ ...rsaJwk, kid: 'rsa-1', alg: 'RS256' },
+			]);
+
+			const result = await service.resolveKeys(DEFAULT_SOURCE, { fetcher });
+
+			expect(result.keys).toHaveLength(1);
+			expect(result.keys[0].kid).toBe('rsa-1');
+			expect(result.skipped).toEqual([{ kid: 'ed-key', reason: 'failed schema validation' }]);
+		});
+
+		it('should throw OperationalError when an Ed25519 key is the only key', async () => {
+			const fetcher = mockFetchResponse([{ ...ed25519Jwk, kid: 'ed-key', alg: 'EdDSA' }]);
+
+			const error = await service.resolveKeys(DEFAULT_SOURCE, { fetcher }).catch((e) => e);
+			expect(error).toBeInstanceOf(OperationalError);
+			expect(error.message).toMatch(/no usable signing keys.*ed-key/);
 		});
 
 		it('should skip keys with unsupported explicit alg', async () => {

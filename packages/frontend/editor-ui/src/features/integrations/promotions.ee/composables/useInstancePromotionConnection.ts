@@ -1,35 +1,37 @@
 import { computed, ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
-	fetchPromotionConnections,
-	type PromotionConnectionSummary,
+	fetchPromotionEnvironments,
+	type PromotionEnvironmentSummary,
 } from '../promotionsSettings.api';
 
-let instanceConnection: Promise<PromotionConnectionSummary | null> | undefined;
+let instanceEnvironments: Promise<PromotionEnvironmentSummary[]> | undefined;
 
 export function invalidateInstancePromotionConnection() {
-	instanceConnection = undefined;
+	instanceEnvironments = undefined;
 }
 
-/** The instance connection and which directions it has, so callers only ask for those. */
+/** The instance environments and their directions, so callers only ask for those. */
 export function useInstancePromotionConnection() {
 	const rootStore = useRootStore();
-	const connection = ref<PromotionConnectionSummary | null>(null);
+	const environments = ref<PromotionEnvironmentSummary[]>([]);
 
 	async function load() {
-		instanceConnection ??= fetchPromotionConnections(rootStore.publicApiContext, {
+		instanceEnvironments ??= fetchPromotionEnvironments(rootStore.publicApiContext, {
 			scope: 'instance',
-		})
-			.then((connections) => connections[0] ?? null)
-			.catch(() => {
-				invalidateInstancePromotionConnection();
-				return null;
-			});
-		connection.value = await instanceConnection;
+		}).catch(() => {
+			invalidateInstancePromotionConnection();
+			return [];
+		});
+		environments.value = await instanceEnvironments;
 	}
 
-	const hasPromoteConfig = computed(() => connection.value?.configs.promote !== undefined);
-	const hasApplyConfig = computed(() => connection.value?.configs.apply !== undefined);
+	const hasPromoteConfig = computed(() =>
+		environments.value.some(({ direction }) => direction === 'promote'),
+	);
+	const hasApplyConfig = computed(() =>
+		environments.value.some(({ direction }) => direction === 'apply'),
+	);
 
-	return { connection, hasPromoteConfig, hasApplyConfig, load };
+	return { environments, hasPromoteConfig, hasApplyConfig, load };
 }

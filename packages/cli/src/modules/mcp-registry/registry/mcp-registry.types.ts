@@ -103,7 +103,14 @@ const mcpRegistryServerBaseSchema = z.object({
 		z.object({
 			name: z.string(),
 			title: optionalField(z.string()),
-			annotations: optionalField(z.object({ readOnlyHint: optionalField(z.boolean()) })),
+			annotations: optionalField(
+				z.object({
+					readOnlyHint: optionalField(z.boolean()),
+					destructiveHint: optionalField(z.boolean()),
+					idempotentHint: optionalField(z.boolean()),
+					openWorldHint: optionalField(z.boolean()),
+				}),
+			),
 		}),
 	),
 	isOfficial: z.boolean(),

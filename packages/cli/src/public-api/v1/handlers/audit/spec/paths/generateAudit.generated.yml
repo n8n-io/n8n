@@ -4,9 +4,8 @@ tags:
 summary: Generate an audit
 description: Generate a security audit for your n8n instance.
 x-required-scope: securityAudit:generate
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
+parameters:
+  - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
 requestBody:
   content:
     application/json:
@@ -129,10 +128,10 @@ responses:
                                     - kind
                                     - nodeType
                                     - filePath
+                              type: object
                           settings:
                             type: object
-                            additionalProperties:
-                              nullable: true
+                            additionalProperties: {}
                           nextVersions:
                             type: array
                             items:
@@ -245,10 +244,10 @@ responses:
                                     - kind
                                     - nodeType
                                     - filePath
+                              type: object
                           settings:
                             type: object
-                            additionalProperties:
-                              nullable: true
+                            additionalProperties: {}
                           nextVersions:
                             type: array
                             items:
@@ -364,10 +363,10 @@ responses:
                                     - kind
                                     - nodeType
                                     - filePath
+                              type: object
                           settings:
                             type: object
-                            additionalProperties:
-                              nullable: true
+                            additionalProperties: {}
                           nextVersions:
                             type: array
                             items:
@@ -483,10 +482,10 @@ responses:
                                     - kind
                                     - nodeType
                                     - filePath
+                              type: object
                           settings:
                             type: object
-                            additionalProperties:
-                              nullable: true
+                            additionalProperties: {}
                           nextVersions:
                             type: array
                             items:
@@ -599,10 +598,10 @@ responses:
                                     - kind
                                     - nodeType
                                     - filePath
+                              type: object
                           settings:
                             type: object
-                            additionalProperties:
-                              nullable: true
+                            additionalProperties: {}
                           nextVersions:
                             type: array
                             items:
@@ -628,8 +627,7 @@ responses:
                             nodeName: Webhook
                             nodeType: n8n-nodes-base.webhook
             - type: array
-              items:
-                nullable: true
+              items: {}
               maxItems: 0
   '400':
     $ref: ../../../../shared/spec/responses/badRequest.yml
@@ -637,7 +635,11 @@ responses:
     $ref: ../../../../shared/spec/responses/unauthorized.yml
   '403':
     $ref: ../../../../shared/spec/responses/forbidden.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '422':
+    $ref: ../../../../shared/spec/responses/unprocessableEntity.yml
   '500':
     $ref: ../../../../shared/spec/responses/internalServerError.yml

@@ -12,6 +12,7 @@ import {
 	CANVAS_GROUP_HEADER_TOGGLE_SUPPRESS_DURATION,
 	CanvasKey,
 	MODAL_CONFIRM,
+	STICKY_NODE_TYPE,
 } from '@/app/constants';
 import { useMessage } from '@/app/composables/useMessage';
 import { findGroupIdsWithTrigger } from '../nodeGroups.utils';
@@ -151,7 +152,8 @@ const emit = defineEmits<{
 	'delete:node': [id: string];
 	'replace:node': [id: string];
 	'create:node': [source: NodeCreatorOpenSource];
-	'create:sticky': [];
+	'create:sticky': [position?: XYPosition];
+	'cursor:position': [position: XYPosition];
 	'delete:nodes': [ids: string[], deleteWholeGroupIds?: string[]];
 	'update:nodes:enabled': [ids: string[]];
 	'copy:nodes': [ids: string[]];
@@ -464,7 +466,7 @@ const {
 	readOnly: () => props.readOnly || props.suppressInteraction,
 });
 
-const { isSelectionExtractable } = useSelectionValidation();
+const { isSelectionExtractable, isSubworkflowConversionDisabled } = useSelectionValidation();
 const { allowTriggerInGroup } = useNodeGroupRules();
 
 // Groups that start the workflow themselves
@@ -483,7 +485,7 @@ const groupIdsWithTrigger = computed(() => {
 // Groups that can be extracted to sub-workflows
 const extractableGroupIds = computed(() => {
 	const ids = new Set<string>();
-	if (settingsStore.isSubworkflowConversionDisabled) return ids;
+	if (isSubworkflowConversionDisabled()) return ids;
 	for (const group of workflowDocumentStore.value.allGroups) {
 		if (isEmptyGroup(group.id)) continue;
 		if (isSelectionExtractable(group.nodeIds).valid) {
@@ -595,7 +597,10 @@ const keyMap = computed(() => {
 				props.eventBus.emit('deprecated:tab-shortcut');
 			},
 		},
-		shift_s: () => emit('create:sticky'),
+		shift_s: {
+			disabled: () => nodeTypesStore.isNodeTypeUnavailable(STICKY_NODE_TYPE),
+			run: () => emit('create:sticky'),
+		},
 		shift_f: () => emit('toggle:focus-panel'),
 		ctrl_alt_n: {
 			disabled: () => settingsStore.isCanvasOnly,
@@ -610,7 +615,7 @@ const keyMap = computed(() => {
 		},
 		shift_alt_t: async () => await onTidyUp({ source: 'keyboard-shortcut' }),
 		alt_x: {
-			disabled: () => settingsStore.isSubworkflowConversionDisabled || soleSelectedEmptyGroup.value,
+			disabled: () => isSubworkflowConversionDisabled() || soleSelectedEmptyGroup.value,
 			run: emitWithSelectedNodes((ids) => emit('extract-workflow', ids)),
 		},
 		c: () => emit('start-chat'),
@@ -1653,6 +1658,22 @@ function onOpenContextMenu(
 	});
 }
 
+let paneContextMenuPosition: XYPosition | undefined;
+
+function onPaneContextMenu(event: MouseEvent) {
+	paneContextMenuPosition = getProjectedPosition(event);
+	emit('cursor:position', paneContextMenuPosition);
+	clearSelectedNodes();
+	nodesSelectionActive.value = false;
+	lastSelectedNode.value = undefined;
+	emit('update:node:selected', undefined);
+	contextMenu.open(event, {
+		source: 'canvas',
+		nodeIds: [],
+		readOnly: isContextMenuReadOnly.value,
+	});
+}
+
 function onOpenSelectionContextMenu({ event }: { event: MouseEvent }) {
 	onOpenContextMenu(event);
 }
@@ -1707,7 +1728,7 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 		case 'add_node':
 			return emit('create:node', 'context_menu');
 		case 'add_sticky':
-			return emit('create:sticky');
+			return emit('create:sticky', paneContextMenuPosition);
 		case 'copy':
 			return emit('copy:nodes', nodeIds);
 		case 'delete': {
@@ -2064,7 +2085,7 @@ defineExpose({
 		@connect="onConnect"
 		@connect-end="onConnectEnd"
 		@pane-click="onClickPane"
-		@pane-context-menu="onOpenContextMenu"
+		@pane-context-menu="onPaneContextMenu"
 		@move="onPaneMove"
 		@move-end="onPaneMoveEnd"
 		@node-drag-start="onNodeDragStart"

@@ -319,6 +319,7 @@ describe('LogsOverviewPanel', () => {
 
 	it('should trigger partial execution if the button is clicked', async () => {
 		const spyRun = vi.spyOn(workflowsStore, 'runWorkflow');
+		workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
 
 		const logs = createLogTree(
 			createTestWorkflowObject(aiManualWorkflow),

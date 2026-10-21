@@ -89,7 +89,7 @@ export class BuilderModelLiveLookupService {
 
 		const usableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
 			user,
-			{ projectId },
+			{ projectId, excludePersonalRoute: true },
 		);
 		const usable = usableCredentials.find((c) => c.id === credentialId);
 		if (!usable || usable.type !== credentialType) {
@@ -190,7 +190,11 @@ export class BuilderModelLiveLookupService {
 
 			return {
 				status: 'success',
-				models: models.map((model) => ({ name: model.name, value: model.id })),
+				models: models.map((model) => ({
+					name: model.name,
+					value: model.id,
+					...(model.priority !== undefined ? { priority: model.priority } : {}),
+				})),
 				policy,
 			};
 		} catch (error) {

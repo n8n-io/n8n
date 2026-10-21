@@ -139,7 +139,7 @@ const globalStubs = {
 			'configValidationStatus',
 			'beforePublish',
 		],
-		emits: ['published', 'unpublished', 'reverted'],
+		emits: ['publish-ready', 'published', 'unpublished', 'reverted'],
 	},
 };
 
@@ -156,6 +156,7 @@ function mountHeader(
 		sessionOptions: Array<{ id: string; label: string }>;
 		configValidationStatus: 'valid' | 'invalid' | null;
 		beforePublish: () => Promise<boolean>;
+		saveStatus: 'idle' | 'saving' | 'saved';
 	}> = {},
 ) {
 	return mount(AgentBuilderHeader, {
@@ -173,6 +174,7 @@ function mountHeader(
 			sessionOptions: overrides.sessionOptions,
 			configValidationStatus: overrides.configValidationStatus,
 			beforePublish: overrides.beforePublish,
+			saveStatus: overrides.saveStatus,
 		},
 		global: { stubs: globalStubs },
 	});
@@ -313,6 +315,16 @@ describe('AgentBuilderHeader', () => {
 		expect(wrapper.emitted('reverted')).toBeTruthy();
 	});
 
+	it('forwards publish readiness changes', () => {
+		const wrapper = mountHeader();
+		const publish = wrapper.findComponent({ name: 'AgentPublishButton' });
+
+		publish.vm.$emit('publish-ready', false);
+		publish.vm.$emit('publish-ready', true);
+
+		expect(wrapper.emitted('publish-ready')).toEqual([[false], [true]]);
+	});
+
 	it('forwards header-action from the action menu', () => {
 		const wrapper = mountHeader({ headerActions: [{ id: 'delete', label: 'Delete' }] });
 		const action = getDropdown(wrapper, 'agent-header-actions');
@@ -325,24 +337,26 @@ describe('AgentBuilderHeader', () => {
 			label: 'opens',
 			isPreviewOpen: false,
 			event: 'open-preview',
+			payload: ['primary'],
 			accessibleLabel: 'agents.builder.preview.button',
 		},
 		{
 			label: 'closes',
 			isPreviewOpen: true,
 			event: 'close-preview',
+			payload: [],
 			accessibleLabel: 'agents.builder.preview.close.ariaLabel',
 		},
 	])(
 		'$label Preview from the preview action',
-		async ({ isPreviewOpen, event, accessibleLabel }) => {
+		async ({ isPreviewOpen, event, payload, accessibleLabel }) => {
 			const wrapper = mountHeader({ isPreviewOpen });
 			const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
 			expect(previewButton.attributes('data-icon')).toBe('flask-conical');
 			expect(previewButton.text()).toBe(accessibleLabel);
 
 			await previewButton.trigger('click');
-			expect(wrapper.emitted(event)).toEqual([[]]);
+			expect(wrapper.emitted(event)).toEqual([payload]);
 			expect(wrapper.emitted(isPreviewOpen ? 'open-preview' : 'close-preview')).toBeUndefined();
 		},
 	);

@@ -51,3 +51,6 @@ export class MigrationFinding extends WithTimestamps {
 	@DateTimeColumn()
 	statusChangedAt: Date;
 }
+
+/** Primary key of a `migration_finding` row. */
+export type MigrationFindingId = MigrationFinding['id'];

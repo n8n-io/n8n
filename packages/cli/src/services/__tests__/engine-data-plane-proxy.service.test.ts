@@ -87,4 +87,23 @@ describe('EngineDataPlaneProxyService', () => {
 
 		expect(provider.getExecution).toHaveBeenCalledWith(executionId, { includeSteps: true });
 	});
+
+	it('reports no execution to cancel without a provider', async () => {
+		await expect(proxy.cancelExecution(executionId)).resolves.toBeUndefined();
+	});
+
+	it('forwards a cancel to the provider', async () => {
+		const provider = mock<EngineDataPlaneProvider>();
+		provider.cancelExecution.mockResolvedValue({
+			cancelled: true,
+			finishedAt: new Date('2026-10-02T09:00:00.000Z'),
+		});
+		proxy.registerProvider(provider);
+
+		await expect(proxy.cancelExecution(executionId)).resolves.toEqual({
+			cancelled: true,
+			finishedAt: new Date('2026-10-02T09:00:00.000Z'),
+		});
+		expect(provider.cancelExecution).toHaveBeenCalledWith(executionId);
+	});
 });

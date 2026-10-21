@@ -12,6 +12,7 @@ export * from './uuid';
 export const LICENSE_FEATURES = {
 	SHARING: 'feat:sharing',
 	LDAP: 'feat:ldap',
+	SCIM: 'feat:scim',
 	TYPE_AVAILABILITY_POLICIES: 'feat:typeAvailabilityPolicies',
 	SAML: 'feat:saml',
 	OIDC: 'feat:oidc',
@@ -58,6 +59,7 @@ export const LICENSE_FEATURES = {
 	OTEL_CUSTOM_SPAN_ATTRIBUTES: 'feat:otel:customSpanAttributes',
 	WORKFLOW_REVIEWS: 'feat:workflowReviews',
 	WORKER_POOLS: 'feat:workerPools',
+	TRUSTED_SOURCE_MANAGE: 'feat:trustedSourceManage',
 } as const;
 
 export const LICENSE_QUOTAS = {

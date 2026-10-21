@@ -4,7 +4,7 @@ import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import type { EntityManager, FindOptionsWhere, SelectQueryBuilder } from '@n8n/typeorm';
 import { DataSource, In, Not, Repository } from '@n8n/typeorm';
 
-import type { User } from '../entities';
+import type { CredentialsEntity, User } from '../entities';
 import { Project, ProjectRelation, SharedCredentials } from '../entities';
 import { chunkIds } from '../utils/chunk-ids';
 
@@ -22,6 +22,18 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 				role,
 			},
 		});
+	}
+
+	/** Credentials owned by any of the given projects. */
+	async findOwnedCredentialsByProjects(projectIds: string[]): Promise<CredentialsEntity[]> {
+		if (projectIds.length === 0) return [];
+
+		const rows = await this.find({
+			relations: { credentials: true },
+			where: { projectId: In(projectIds), role: 'credential:owner' },
+		});
+
+		return rows.map(({ credentials }) => credentials);
 	}
 
 	async findOwnerProjectsByCredentialIds(credentialIds: string[]): Promise<Map<string, Project>> {

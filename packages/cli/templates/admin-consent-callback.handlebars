@@ -1,0 +1,19 @@
+<html>
+	<head>
+		<title>n8n - Administrator consent</title>
+		<style>
+			body { font-family: 'Open Sans', sans-serif; padding: 10px; }
+		</style>
+	</head>
+	<body>
+		<h4>Permissions approved</h4>
+		Everyone in your organisation can now sign in to n8n for this setup. The window can be
+		closed, and the sign-in can be started again.
+		{{!--
+			Deliberately silent. The other callback pages announce themselves on a
+			channel every credential sign-in listens to, and this grant lands on the
+			tenant rather than on a credential -- so saying "success" here would
+			report whichever sign-in happened to be waiting as connected.
+		--}}
+	</body>
+</html>

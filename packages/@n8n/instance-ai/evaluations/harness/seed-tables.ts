@@ -151,6 +151,16 @@ export function scenariosRequireSerialSeeding(scenarios: ExecutionScenario[]): b
 	return scenarios.some((scenario) => (scenario.seedDataTables?.length ?? 0) > 0);
 }
 
+const REMOVE_DUPLICATES_NODE_TYPE = 'n8n-nodes-base.removeDuplicates';
+
+/** Remove Duplicates keeps its seen keys per workflow (n8n's processed_data), and the
+ *  eval resets them around every run, so scenarios of such a workflow must not interleave. */
+export function workflowDeduplicates(
+	workflow: { nodes?: Array<{ type: string }> } | undefined,
+): boolean {
+	return workflow?.nodes?.some((node) => node.type === REMOVE_DUPLICATES_NODE_TYPE) ?? false;
+}
+
 /**
  * Reset + row-seed a scenario's declared data tables into their pre-seeded real
  * ids, just before that scenario executes. Clears whatever rows a

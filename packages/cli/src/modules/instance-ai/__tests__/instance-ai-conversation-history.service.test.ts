@@ -367,6 +367,25 @@ describe('InstanceAiConversationHistoryService', () => {
 			expect(hits[0].matchedIn).toEqual(['user-answers']);
 		});
 
+		it('renders ask-user answers stored under the former tool name', async () => {
+			const repos = setup();
+			givenSearchHit(repos, {
+				candidates: [
+					messageRow({
+						role: 'assistant',
+						content: askUserContent(
+							[{ question: 'Which timezone?', selectedOptions: ['Europe/Berlin'] }],
+							{ toolName: 'ask-user' },
+						),
+					}),
+				],
+			});
+
+			const { hits } = await repos.history.search({ query: 'timezone', limit: 10 });
+
+			expect(hits[0].excerpts[0].text).toBe('Q: Which timezone? → A: Europe/Berlin');
+		});
+
 		it('ignores ask-user calls that were never resolved', async () => {
 			const repos = setup();
 			givenSearchHit(repos, {

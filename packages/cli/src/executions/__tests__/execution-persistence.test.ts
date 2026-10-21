@@ -1,6 +1,7 @@
 /* eslint-disable id-denylist */
 /* eslint-disable @typescript-eslint/unbound-method */
 
+import type { EventService } from '@n8n/backend-services';
 import type { DatabaseConfig, ExecutionsConfig } from '@n8n/config';
 import {
 	ExecutionEntity,
@@ -17,7 +18,6 @@ import { createEmptyRunExecutionData, UnexpectedError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
-import type { EventService } from '@/events/event.service';
 import { CorruptedExecutionDataError } from '@/executions/execution-data/corrupted-execution-data.error';
 import type { DbStore } from '@/executions/execution-data/db-store';
 import type { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
@@ -2008,6 +2008,35 @@ describe('ExecutionPersistence', () => {
 				'exec-4',
 			]);
 			expect(jsonStore.delete).toHaveBeenCalledWith([targets[0], targets[1], targets[2]]);
+		});
+
+		it('should not delete the rows when the blob delete rejects', async () => {
+			const target = { ...baseTarget, storedAt: 'fs' as const };
+			jsonStore.delete.mockRejectedValueOnce(new Error('blob store down'));
+
+			await expect(executionPersistence.hardDelete(target)).rejects.toThrow('blob store down');
+
+			expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
+		});
+
+		it('should not delete the rows when the binary data delete rejects', async () => {
+			const target = { ...baseTarget, storedAt: 'fs' as const };
+			binaryDataService.deleteMany.mockRejectedValueOnce(new Error('binary store down'));
+
+			await expect(executionPersistence.hardDelete(target)).rejects.toThrow('binary store down');
+
+			expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
+		});
+
+		it('should delete the rows after both file deletes', async () => {
+			const target = { ...baseTarget, storedAt: 'fs' as const };
+
+			await executionPersistence.hardDelete(target);
+
+			const [rows] = executionRepository.deleteByIds.mock.invocationCallOrder;
+			const [binary] = binaryDataService.deleteMany.mock.invocationCallOrder;
+			const [blobs] = jsonStore.delete.mock.invocationCallOrder;
+			expect(rows).toBeGreaterThan(Math.max(binary, blobs));
 		});
 	});
 

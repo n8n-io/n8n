@@ -287,7 +287,6 @@ describe('VirtualSchema.vue', () => {
 			isCalloutDismissed: vi.fn(() => false),
 			dismissCallout: vi.fn(),
 			openSampleWorkflowTemplate: vi.fn(),
-			getTutorialTemplatesNodeCreatorItems: vi.fn(() => []),
 			isRagStarterCalloutVisible: computed(() => false),
 		});
 
@@ -1333,7 +1332,6 @@ describe('VirtualSchema.vue', () => {
 				isCalloutDismissed: vi.fn((id: string) => id === 'Merge-mergeNotice'),
 				dismissCallout: dismissMock,
 				openSampleWorkflowTemplate: vi.fn(),
-				getTutorialTemplatesNodeCreatorItems: vi.fn(() => []),
 				isRagStarterCalloutVisible: computed(() => false),
 			});
 

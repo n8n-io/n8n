@@ -81,6 +81,7 @@ const emit = defineEmits<{
 }
 
 .label {
+	opacity: var(--agent-row-label-opacity, 1);
 	--n8n--row-label-width: max(7%, calc(var(--spacing--3xl) + var(--spacing--sm)));
 	flex: 0 0 var(--n8n--row-label-width);
 	line-height: var(--line-height--sm);

@@ -1,3 +1,4 @@
+import type { EventService } from '@n8n/backend-services';
 import type { Mock } from 'vitest';
 import type { SourceControlledFile } from '@n8n/api-types';
 import { isContainedWithin } from '@n8n/backend-common';
@@ -10,7 +11,6 @@ import type { CommitResult, PullResult, PushResult } from 'simple-git';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
 import { ForbiddenError } from '@n8n/errors';
-import type { EventService } from '@/events/event.service';
 import type { SourceControlExportService } from '../source-control-export.service.ee';
 import type { SourceControlGitService } from '../source-control-git.service.ee';
 import type { SourceControlImportService } from '../source-control-import.service.ee';
@@ -683,6 +683,49 @@ describe('SourceControlService', () => {
 			});
 		});
 
+		it('does not run the policy preview, because the import enforces on its own', async () => {
+			mockStatusService.getStatus.mockResolvedValueOnce([]);
+			sourceControlImportService.importWorkflowFromWorkFolder.mockResolvedValue([]);
+
+			await sourceControlService.pullWorkfolder(mock<User>({ id: 'user-1' }), {
+				force: true,
+				autoPublish: 'none',
+			});
+
+			expect(sourceControlImportService.previewContentImportPolicy).not.toHaveBeenCalled();
+		});
+
+		it('announces each pulled workflow, but not one skipped by the content policy', async () => {
+			const user = mock<User>({ id: 'user-1' });
+			mockStatusService.getStatus.mockResolvedValueOnce([
+				mock<SourceControlledFile>({ id: 'workflow-1', type: 'workflow', conflict: false }),
+				mock<SourceControlledFile>({ id: 'workflow-2', type: 'workflow', conflict: false }),
+			]);
+			sourceControlImportService.importWorkflowFromWorkFolder.mockResolvedValue([
+				{ id: 'workflow-1', name: 'workflow-1.json', publishingError: undefined },
+				{
+					id: 'workflow-2',
+					name: 'workflow-2.json',
+					publishingError: undefined,
+					contentImportPolicy: {
+						violations: [
+							{ kind: 'node-type-unavailable', checkId: 'test.check', message: 'not allowed' },
+						],
+						checkErrors: [],
+					},
+				},
+			]);
+
+			await sourceControlService.pullWorkfolder(user, { force: true, autoPublish: 'none' });
+
+			expect(eventService.emit).toHaveBeenCalledWith('workflow-imported', {
+				workflowId: 'workflow-1',
+			});
+			expect(eventService.emit).not.toHaveBeenCalledWith('workflow-imported', {
+				workflowId: 'workflow-2',
+			});
+		});
+
 		it('adds the reason a skipped workflow was blocked to the pull result', async () => {
 			const user = mock<User>({ id: 'user-1' });
 			const workflowStatus = mock<SourceControlledFile>({
@@ -1080,6 +1123,34 @@ describe('SourceControlService', () => {
 
 			expect(pullResult.find((i) => i.type === 'folders')).toHaveProperty('conflict', true);
 			expect(pushResult.find((i) => i.type === 'folders')).toHaveProperty('conflict', false);
+		});
+
+		it('previews the content-import policy on a pull status', async () => {
+			const files = [mock<SourceControlledFile>({ id: 'workflow-1', type: 'workflow' })];
+			mockStatusService.getStatus.mockResolvedValue(files);
+
+			await sourceControlService.getStatus(globalAdminUserWithId, {
+				direction: 'pull',
+				verbose: false,
+				preferLocalVersion: false,
+			});
+
+			expect(sourceControlImportService.previewContentImportPolicy).toHaveBeenCalledWith(
+				files,
+				globalAdminUserWithId.id,
+			);
+		});
+
+		it('does not preview the content-import policy on a push status', async () => {
+			mockStatusService.getStatus.mockResolvedValue([]);
+
+			await sourceControlService.getStatus(globalAdminUser, {
+				direction: 'push',
+				verbose: false,
+				preferLocalVersion: false,
+			});
+
+			expect(sourceControlImportService.previewContentImportPolicy).not.toHaveBeenCalled();
 		});
 
 		it('should throw `ForbiddenError` if direction is pull and user is not allowed to globally pull', async () => {
@@ -1621,6 +1692,7 @@ describe('SourceControlService', () => {
 
 			// Once the push releases the lock, the queued reset runs - but only after the commit.
 			expect(gitService.resetBranch).toHaveBeenCalled();
+			expect(gitService.pull).toHaveBeenCalled();
 			expect(callOrder).toEqual(['commit', 'reset']);
 		});
 

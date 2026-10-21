@@ -338,6 +338,29 @@ describe('workflows tool', () => {
 	});
 
 	describe('version actions', () => {
+		it('reports a restored workflow as changed, and a failed restore as not changed', async () => {
+			const onArtifactChanged = vi.fn().mockResolvedValue(undefined);
+			const context = createMockContext({
+				onArtifactChanged,
+				permissions: { restoreWorkflowVersion: 'always_allow' },
+			});
+			context.workflowService.restoreVersion = vi
+				.fn()
+				.mockResolvedValueOnce({ versionId: 'v1', activeVersionId: null })
+				.mockRejectedValueOnce(new Error('Version not found'));
+			const tool = createWorkflowsTool(context, 'full');
+			const input = { action: 'restore-version', workflowId: 'wf1', versionId: 'v1' } as never;
+
+			await executeTool(tool, input, {} as never);
+			expect(onArtifactChanged).toHaveBeenCalledWith({ type: 'workflow', id: 'wf1' });
+
+			onArtifactChanged.mockClear();
+			await expect(executeTool(tool, input, {} as never)).resolves.toMatchObject({
+				success: false,
+			});
+			expect(onArtifactChanged).not.toHaveBeenCalled();
+		});
+
 		it('should support version actions when listVersions exists', async () => {
 			const context = createMockContext();
 			const versions = [{ id: 'v1', versionId: 1 }];
@@ -3054,6 +3077,28 @@ describe('workflows tool', () => {
 			);
 		});
 
+		it('returns a failed result when the save fails so nothing counts as applied', async () => {
+			// The save is where a credential the workflow's project cannot use is
+			// rejected. Reporting it as a partial success would hide the reason.
+			(applyNodeChanges as Mock).mockResolvedValue({
+				applied: [],
+				failed: [{ nodeName: 'HTTP Request', error: 'Failed to save workflow: no access' }],
+				saveError: 'Failed to save workflow: no access',
+			});
+
+			const tool = createWorkflowsTool(createMockContext());
+			const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+				resumeData: {
+					approved: true,
+					action: 'apply',
+					credentials: { 'HTTP Request': { httpHeaderAuth: 'cred-1' } },
+				},
+			} as never);
+
+			expect(result).toEqual({ success: false, error: 'Failed to save workflow: no access' });
+			expect(analyzeWorkflow).not.toHaveBeenCalled();
+		});
+
 		it('reports a just-applied credential whose test failed as a failed node', async () => {
 			// A bound credential is settled (needsAction=false) even when its test
 			// fails, so the apply path must re-analyze with includeSettled to keep
@@ -3428,6 +3473,78 @@ describe('workflows tool', () => {
 				expect(suspend.mock.calls[0][0]).toMatchObject({ setupRequests: [sheetsRequest] });
 			});
 
+			describe('nodes the build left out of setup', () => {
+				// The build changed only the Sheets node; Slack is pre-existing and unconfigured.
+				function createScopedContext() {
+					const context = createGrantAwareContext();
+					context.runId = 'run-1';
+					(context as { workflowBuildContext?: unknown }).workflowBuildContext = {
+						threadId: 't1',
+						runId: 'run-1',
+						taskId: 'task-1',
+						workItemId: 'wi-1',
+						workflowTaskService: {
+							getLatestBuildOutcomeForWorkflow: vi
+								.fn()
+								.mockResolvedValue({ runId: 'run-1', changedNodeNames: ['Log to Sheet'] }),
+						},
+					};
+					return context;
+				}
+
+				beforeEach(() => {
+					(analyzeWorkflow as Mock).mockResolvedValue([slackRequest, sheetsRequest]);
+					(applyNodeChanges as Mock).mockResolvedValue({ applied: [], failed: [] });
+					(buildCompletedReport as Mock).mockReturnValue([]);
+				});
+
+				it('does not record them as skipped when the user skips the card', async () => {
+					const context = createScopedContext();
+
+					const tool = createWorkflowsTool(context);
+					const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+						resumeData: { approved: false },
+					} as never);
+
+					expect(context.grantSessionToolApproval).not.toHaveBeenCalledWith(
+						'workflows:setup-skip:cred:slackApi',
+					);
+					expect(result).toMatchObject({ skippedByUser: [{ nodeName: 'Log to Sheet' }] });
+				});
+
+				it('does not report them as still needing setup after apply', async () => {
+					const context = createScopedContext();
+
+					const tool = createWorkflowsTool(context);
+					const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+						resumeData: { approved: true, action: 'apply' },
+					} as never);
+
+					expect(result).toMatchObject({
+						partial: true,
+						nodesStillNeedingSetup: [{ nodeName: 'Log to Sheet' }],
+					});
+				});
+
+				it('keeps them out of the panel a trigger test rebuilds', async () => {
+					const context = createScopedContext();
+					(context.executionService.run as Mock).mockResolvedValue({ status: 'success' });
+					const suspend = vi.fn();
+
+					const tool = createWorkflowsTool(context);
+					await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+						suspend,
+						resumeData: {
+							approved: true,
+							action: 'test-trigger',
+							testTriggerNode: 'Log to Sheet',
+						},
+					} as never);
+
+					expect(suspend.mock.calls[0][0]).toMatchObject({ setupRequests: [sheetsRequest] });
+				});
+			});
+
 			it('revalidates the credential test destination after a trigger test', async () => {
 				const fixture = templatedSetupFixture({ testUrl: 'https://status.example.net/me' });
 				(analyzeWorkflow as Mock).mockResolvedValue([fixture.request]);
@@ -3772,7 +3889,7 @@ describe('node usage', () => {
 	});
 });
 
-describe('workflows(action="setup") — setup panel', () => {
+describe('workflow_builder_workflows(action="setup") — setup panel', () => {
 	const openSlack = {
 		node: { name: 'Slack', type: 'n8n-nodes-base.slack' },
 		credentialType: 'slackApi',
@@ -3904,7 +4021,14 @@ describe('workflows(action="setup") — setup panel', () => {
 	});
 
 	it('keeps explicit credential replacement in the selection card', async () => {
-		const replacement = { ...openSlack, preferNewCredential: true };
+		const replacement = {
+			...openSlack,
+			node: {
+				...openSlack.node,
+				credentials: { slackApi: { id: 'old-account', name: 'Old account' } },
+			},
+			preferNewCredential: true,
+		};
 		(analyzeWorkflow as Mock).mockResolvedValue([replacement, boundGmail]);
 		const { context, emitter, markWorkflowSetupHandled } = panelContext();
 		const suspend = vi.fn();
@@ -3918,6 +4042,73 @@ describe('workflows(action="setup") — setup panel', () => {
 		expect(suspend).toHaveBeenCalledWith(expect.objectContaining({ setupRequests: [replacement] }));
 		expect(emitter.announce).not.toHaveBeenCalled();
 		expect(markWorkflowSetupHandled).not.toHaveBeenCalled();
+	});
+
+	it('announces unbound new-account requirements without opening a setup card', async () => {
+		(analyzeWorkflow as Mock).mockResolvedValue([
+			{ ...openSlack, preferNewCredential: true },
+			boundGmail,
+			sheetParams,
+		]);
+		const { context, emitter, markWorkflowSetupHandled } = panelContext();
+		const suspend = vi.fn();
+		const result = await executeTool(
+			createWorkflowsTool(context, 'full'),
+			{ action: 'setup', workflowId: 'wf1', preferNewCredentials: ['slackApi'] },
+			{ suspend, resumeData: undefined } as never,
+		);
+		expect(result).toMatchObject({ success: true, announced: true });
+		expect(suspend).not.toHaveBeenCalled();
+		expect(emitter.announce).toHaveBeenCalledWith(
+			'wf1',
+			expect.arrayContaining([
+				expect.objectContaining({ credentialType: 'slackApi', preferNew: true }),
+				expect.objectContaining({ credentialType: 'gmailOAuth2' }),
+				expect.objectContaining({ parameterNames: ['documentId'] }),
+			]),
+		);
+		expect(markWorkflowSetupHandled).toHaveBeenCalledWith('wf1');
+	});
+
+	it('does not reopen an account selected during the current build', async () => {
+		(analyzeWorkflow as Mock).mockResolvedValue([boundGmail]);
+		const { context } = panelContext({
+			runId: 'run-early',
+			threadId: 'thread-early',
+			threadMemory: {
+				getThread: vi.fn().mockResolvedValue({
+					id: 'thread-early',
+					resourceId: 'user-1',
+					createdAt: new Date(),
+					updatedAt: new Date(),
+					metadata: {
+						instanceAiWorkflowSourceFiles: {
+							'src/workflows/main.ts': {
+								filePath: 'src/workflows/main.ts',
+								workflowId: 'wf1',
+								setupPreferences: {
+									runId: 'run-early',
+									satisfiedCredentialTypes: ['gmailOAuth2'],
+									preferNewCredentialTypes: [],
+								},
+							},
+						},
+					},
+				}),
+				saveThread: vi.fn().mockResolvedValue(undefined),
+			},
+		});
+		const suspend = vi.fn();
+		const result = await executeTool(
+			createWorkflowsTool(context, 'full'),
+			{ action: 'setup', workflowId: 'wf1', preferNewCredentials: ['gmailOAuth2'] },
+			{ suspend, resumeData: undefined } as never,
+		);
+		expect(result).toMatchObject({ success: true, announced: true, open: [] });
+		expect(suspend).not.toHaveBeenCalled();
+		expect(analyzeWorkflow).toHaveBeenCalledWith(context, 'wf1', undefined, {
+			includeSettled: true,
+		});
 	});
 
 	it('keeps failed connection checks in the announcement', async () => {

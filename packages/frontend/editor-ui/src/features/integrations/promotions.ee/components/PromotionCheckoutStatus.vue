@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import type { PromotionConfigCheckout } from '@n8n/api-types';
+import type { PromotionEnvironmentCheckout } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
 const props = defineProps<{
 	/** Undefined until the direction is saved on the server. */
-	checkout: PromotionConfigCheckout | undefined;
+	checkout: PromotionEnvironmentCheckout | undefined;
 	branchName: string;
 	/** Which action is in flight, so the spinner lands on the clicked button. */
 	busy: 'connect' | 'disconnect' | false;
@@ -28,7 +28,7 @@ type Status = 'blocked' | 'not-connected' | 'connected' | 'stale';
 const status = computed<Status>(() => {
 	if (!props.checkout) return 'blocked';
 	if (!props.checkout.hasCheckout) return 'not-connected';
-	return props.checkout.matchesConfig ? 'connected' : 'stale';
+	return props.checkout.matchesEnvironment ? 'connected' : 'stale';
 });
 
 const isConnected = computed(() => props.checkout?.hasCheckout ?? false);

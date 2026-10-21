@@ -1,10 +1,10 @@
-import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
-import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
+import { clusterTarget, intervalFromSeconds, SystemTask } from '@n8n/decorators';
+import type { SystemTaskSchedule } from '@n8n/decorators';
 
 import { TrustedKeyService } from './trusted-key.service';
 
 /** How often to poll sources to check if any are due for refresh. */
-const REFRESH_POLL_INTERVAL_SECONDS = 30;
+const REFRESH_POLL_INTERVAL_SECONDS = 60;
 
 /**
  * Re-fetches trusted public keys whose refresh interval has lapsed, so JWT
@@ -16,9 +16,7 @@ export class TrustedKeyRefreshTask implements SystemTask {
 
 	readonly schedule: SystemTaskSchedule = intervalFromSeconds(REFRESH_POLL_INTERVAL_SECONDS);
 
-	readonly effects: SystemTaskEffects = 'idempotent';
-
-	readonly placement: SystemTaskPlacement = { scope: 'cluster', durable: false };
+	readonly target = clusterTarget({ scheduler: { retryOnFailure: true } });
 
 	constructor(private readonly trustedKeyService: TrustedKeyService) {}
 

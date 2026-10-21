@@ -33,12 +33,7 @@ const gitConnectionPermissions = computed(
 
 // Each banner needs the direction configured on the instance connection, so a
 // source never asks for incoming changes and a destination never asks for outgoing ones.
-const {
-	connection,
-	hasPromoteConfig,
-	hasApplyConfig,
-	load: loadConnection,
-} = useInstancePromotionConnection();
+const { hasPromoteConfig, hasApplyConfig, load: loadConnection } = useInstancePromotionConnection();
 
 const canPreviewChanges = computed(
 	() =>
@@ -83,6 +78,11 @@ async function onPromotionApplied({ projectId, project }: PromotionEventBusEvent
 	await Promise.all([refetchPromotable(), refetchIncoming()]);
 }
 
+async function onPromoted({ projectId }: PromotionEventBusEvents['promoted']) {
+	if (projectsStore.currentProjectId !== projectId) return;
+	await refetchPromotable();
+}
+
 async function onProjectRemoved({ projectId }: PromotionEventBusEvents['projectRemoved']) {
 	if (projectsStore.currentProjectId !== projectId) return;
 	await router.replace({ name: VIEWS.HOMEPAGE });
@@ -90,11 +90,13 @@ async function onProjectRemoved({ projectId }: PromotionEventBusEvents['projectR
 
 onMounted(() => {
 	promotionEventBus.on('applied', onPromotionApplied);
+	promotionEventBus.on('promoted', onPromoted);
 	promotionEventBus.on('projectRemoved', onProjectRemoved);
 });
 
 onBeforeUnmount(() => {
 	promotionEventBus.off('applied', onPromotionApplied);
+	promotionEventBus.off('promoted', onPromoted);
 	promotionEventBus.off('projectRemoved', onProjectRemoved);
 });
 
@@ -126,19 +128,10 @@ function onOpenPromotionModal() {
 }
 
 function onOpenIncomingModal() {
-	const applyConfig = connection.value?.configs.apply;
-	if (!currentProjectId.value || !connection.value || !applyConfig) return;
+	if (!currentProjectId.value) return;
 	uiStore.openModalWithData({
 		name: PROMOTION_SELECT_MODAL_KEY,
-		data: {
-			projectId: currentProjectId.value,
-			direction: 'apply',
-			apply: {
-				connectionId: connection.value.id,
-				configId: applyConfig.id,
-				branchName: applyConfig.settings.branchName,
-			},
-		},
+		data: { projectId: currentProjectId.value, direction: 'apply' },
 	});
 }
 </script>

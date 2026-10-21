@@ -1,6 +1,8 @@
 import type {
 	AgentExecutionStatus,
 	AgentMessageAuthor,
+	AgentN8nChatThreadSummary,
+	AgentN8nChatThreadsResponse,
 	AgentSessionPreviewAccess,
 	AgentSessionQueryFilters,
 	AgentSessionStatus,
@@ -32,11 +34,13 @@ import type { AgentMessageEntity, AgentMessageOrigin } from './entities/agent-me
 import { messageToDto } from './agent-message-mapper';
 import { buildInboundUserMessage } from './utils/inbound-attachments';
 import { buildAgentTurnMetrics } from './agent-telemetry';
+import { toAgentRef } from './utils/agent-ref';
 import {
 	AgentExecutionThread,
 	type AgentThreadAccess,
 } from './entities/agent-execution-thread.entity';
 import { AgentExecution, type AgentExecutionHitlStatus } from './entities/agent-execution.entity';
+import { isProjectAgent } from './entities/agent.entity';
 import type { MessageRecord, TimelineEvent } from './execution-recorder';
 import {
 	AgentExecutionLogStore,
@@ -44,11 +48,14 @@ import {
 } from './execution-log/agent-execution-log-store';
 import { N8nMemory } from './integrations/n8n-memory';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
-import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 import {
+	draftChatMemoryResourceId,
+	productionChatMemoryResourceId,
+} from './utils/agent-memory-scope';
+import {
+	canContinueThreadInN8nChat,
 	canContinueThreadInPreview,
 	canUseTopLevelDraftThread,
-	N8N_CHAT_PRODUCTION_SOURCE,
 	threadBelongsTo,
 	type AgentSessionMode,
 } from './utils/agent-thread-access';
@@ -62,6 +69,7 @@ import {
 	computeExecutionFailureSummary,
 	type ThreadFailureSummary,
 } from './utils/execution-failure-summary';
+import { applyFatalSessionOutcome } from './utils/fatal-session-outcome';
 
 export interface RecordMessageParams {
 	threadId: string;
@@ -97,6 +105,9 @@ export interface StartExecutionParams extends Omit<RecordMessageParams, 'record'
 	messageOrigin?: Omit<AgentMessageOrigin, 'source' | 'hidden'>;
 	hideUserMessageFromTranscript?: boolean;
 	access: AgentThreadAccess;
+	previewChat?: boolean;
+	/** Whether the execution accepts mid-turn steering. See `acceptsSteering` in `types/agent-queued-message`. */
+	acceptsSteering?: boolean;
 	sessionMode?: AgentSessionMode;
 	initialTimeline?: TimelineEvent[];
 	/** Internal admission data. These fields are not stored on the execution. */
@@ -152,8 +163,24 @@ export class AgentExecutionService {
 	>();
 
 	private readonly timelineSnapshotWrites = new Map<string, Promise<void>>();
+	private readonly pausedTimelineSnapshots = new Set<string>();
 
 	private readonly executionsNeedingTitleSync = new Set<string>();
+
+	/**
+	 * Side-call cost report ids with an in-flight transaction. Concurrent
+	 * deliveries of the same `reportId` coalesce onto the in-flight promise
+	 * instead of each running its own transaction, which would double-count.
+	 * The entry is removed when the attempt settles; a failed attempt is not
+	 * claimed, so a later replay can retry.
+	 */
+	private readonly sideCallReportInFlight = new Map<string, Promise<void>>();
+
+	/**
+	 * Per-execution in-flight side-call cost recordings, drained by
+	 * `writeTerminalExecution` before the terminal UPDATE.
+	 */
+	private readonly sideCallUsageInFlightByExecution = new Map<string, Set<Promise<void>>>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -192,12 +219,17 @@ export class AgentExecutionService {
 		params: StartExecutionParams,
 		startedAt: Date,
 		ctx: OperationContext,
+		lockedQueueThread?: AgentExecutionThread,
 	): Promise<AgentExecutionReservation> {
-		const prepared = await this.prepareThread(params, ctx);
+		// The queue already locked the session. Its consumer validates the owner before execution.
+		const prepared = lockedQueueThread
+			? { thread: lockedQueueThread, created: false }
+			: await this.prepareThread(params, ctx);
 		const { queueItem, predecessorId } = await this.checkAdmission(params, ctx);
 		const execution = this.agentExecutionRepository.create({
 			threadId: params.threadId,
 			status: 'running',
+			acceptsSteering: params.acceptsSteering === true,
 			startedAt,
 			stoppedAt: null,
 			duration: 0,
@@ -218,7 +250,13 @@ export class AgentExecutionService {
 			attachments: null,
 		});
 		const inserted = await this.agentExecutionRepository.saveInContext(execution, ctx);
-		const inputMessageIds = await this.reserveInput(params, inserted.id, predecessorId, ctx);
+		const inputMessageIds = await this.reserveInput(
+			params,
+			inserted.id,
+			predecessorId,
+			queueItem?.messageId,
+			ctx,
+		);
 		if (
 			queueItem &&
 			!(await this.queueRepository.linkExecution(
@@ -241,6 +279,7 @@ export class AgentExecutionService {
 		params: StartExecutionParams,
 		executionId: string,
 		predecessorId: string | undefined,
+		queuedMessageId: string | undefined,
 		ctx: OperationContext,
 	): Promise<string[]> {
 		if (predecessorId) {
@@ -252,10 +291,13 @@ export class AgentExecutionService {
 			);
 		}
 		if (params.resumeRunId || params.userMessage === null) return [];
+		if (queuedMessageId) {
+			await this.messageRepository.linkExecutionInput(executionId, queuedMessageId, params, ctx);
+			return [queuedMessageId];
+		}
 		const [content] = buildInboundUserMessage(params.userMessage, params.attachments ?? []);
-		const id = await this.messageRepository.createExecutionInput(
+		const message = await this.messageRepository.createInput(
 			{
-				executionId,
 				threadId: params.threadId,
 				resourceId: params.resourceId,
 				content,
@@ -268,7 +310,8 @@ export class AgentExecutionService {
 			},
 			ctx,
 		);
-		return [id];
+		await this.messageRepository.linkExecutionInput(executionId, message.id, params, ctx);
+		return [message.id];
 	}
 
 	private async checkAdmission(params: StartExecutionParams, ctx: OperationContext) {
@@ -337,10 +380,26 @@ export class AgentExecutionService {
 		this.ensureTimelineSnapshotWrite(executionId);
 	}
 
+	/** Keep older snapshots behind the transaction that commits additional input. */
+	async withTimelineWritesPaused<T>(executionId: string, commit: () => Promise<T>): Promise<T> {
+		this.pausedTimelineSnapshots.add(executionId);
+		try {
+			await this.timelineSnapshotWrites.get(executionId);
+			return await commit();
+		} catch (error) {
+			this.pendingTimelineSnapshots.delete(executionId);
+			throw error;
+		} finally {
+			this.pausedTimelineSnapshots.delete(executionId);
+			this.ensureTimelineSnapshotWrite(executionId);
+		}
+	}
+
 	async finalizeExecution(executionId: string, params: RecordMessageParams): Promise<string> {
 		this.stopHeartbeat(executionId);
 		this.pendingTimelineSnapshots.delete(executionId);
-		const { record } = params;
+		const record = applyFatalSessionOutcome(params.record);
+		const settled = record === params.record ? params : { ...params, record };
 		const status = executionStatus(record);
 		const stoppedAt = new Date(record.startTime + record.duration);
 		const failureSummary = computeExecutionFailureSummary({
@@ -353,10 +412,10 @@ export class AgentExecutionService {
 			record.timeline.length > 0 ? this.storageConfig.modeTag : 'db';
 
 		try {
-			await this.writeTerminalExecution(executionId, params, status, stoppedAt, failureSummary);
+			await this.writeTerminalExecution(executionId, settled, status, stoppedAt, failureSummary);
 
 			// Save the terminal row first. A rejected finalization must not replace a stored blob.
-			await this.moveFinalTimelineToBlob(executionId, params, storedAt);
+			await this.moveFinalTimelineToBlob(executionId, settled, storedAt);
 
 			this.executionUpdateBroadcaster.notify({
 				projectId: params.projectId,
@@ -364,7 +423,7 @@ export class AgentExecutionService {
 				threadId: params.threadId,
 				executionId,
 			});
-			await this.completeRecordedExecution(params, executionId, status);
+			await this.completeRecordedExecution(settled, executionId, status);
 			return executionId;
 		} catch (error) {
 			this.errorReporter.error(error);
@@ -482,6 +541,7 @@ export class AgentExecutionService {
 
 	private ensureTimelineSnapshotWrite(executionId: string): void {
 		if (
+			this.pausedTimelineSnapshots.has(executionId) ||
 			this.timelineSnapshotWrites.has(executionId) ||
 			!this.pendingTimelineSnapshots.has(executionId)
 		) {
@@ -495,7 +555,7 @@ export class AgentExecutionService {
 	}
 
 	private async drainTimelineSnapshots(executionId: string): Promise<void> {
-		while (true) {
+		while (!this.pausedTimelineSnapshots.has(executionId)) {
 			const snapshot = this.pendingTimelineSnapshots.get(executionId);
 			if (!snapshot) return;
 			this.pendingTimelineSnapshots.delete(executionId);
@@ -680,6 +740,53 @@ export class AgentExecutionService {
 		return { ...page, threads: await this.toThreadListItems(page.threads, userId) };
 	}
 
+	/**
+	 * The user's own n8n Chat threads across the given `agentIds`, newest
+	 * first. The caller (`AgentsService`) has already narrowed `agentIds` to
+	 * the agents the user can currently reach over n8n Chat, so a chat-only
+	 * member never sees a thread under an agent they cannot talk to.
+	 */
+	async findN8nChatThreadsForAgents(
+		userId: string,
+		agentIds: string[],
+		options: { limit: number; cursor?: string; search?: string },
+	): Promise<AgentN8nChatThreadsResponse> {
+		const { threads, nextCursor } =
+			await this.agentExecutionThreadRepository.findN8nChatThreadsForOwner(
+				userId,
+				agentIds,
+				options,
+			);
+		return { data: threads.map(toN8nChatThreadSummary), nextCursor };
+	}
+
+	/**
+	 * One of the user's own n8n Chat threads across the given `agentIds`
+	 * (already narrowed to the agents the user can currently reach over n8n
+	 * Chat). `null` when the thread doesn't exist, isn't the user's own, or
+	 * falls outside `agentIds`.
+	 */
+	async findN8nChatThreadForAgents(
+		userId: string,
+		agentIds: string[],
+		threadId: string,
+	): Promise<AgentN8nChatThreadSummary | null> {
+		const thread = await this.agentExecutionThreadRepository.findN8nChatThreadForOwner(
+			userId,
+			agentIds,
+			threadId,
+		);
+		return thread ? toN8nChatThreadSummary(thread) : null;
+	}
+
+	/** How many of the user's own n8n Chat threads reference each agent, for the usage sort. */
+	async countN8nChatThreadsByAgent(
+		userId: string,
+		projectIds: string[] | null,
+	): Promise<Map<string, number>> {
+		return await this.agentExecutionThreadRepository.countN8nChatThreadsByAgent(userId, projectIds);
+	}
+
 	private async toThreadListItems(
 		threads: AgentExecutionThread[],
 		userId: string,
@@ -702,7 +809,7 @@ export class AgentExecutionService {
 				firstMessage: cleanUserMessage(messageMap.get(t.id) ?? null, t.agentName),
 				source,
 				failureSummary: failureSummaryMap.get(t.id) ?? null,
-				status: toSessionStatus(latestStatusMap.get(t.id), failureSummaryMap.has(t.id)),
+				status: toSessionStatus(latestStatusMap.get(t.id)),
 			};
 		});
 	}
@@ -850,7 +957,7 @@ export class AgentExecutionService {
 			return canContinueThreadInPreview(thread, userId, sources.get(threadId));
 		}
 		if (options.sessionMode === 'existing') return false;
-		return await this.canUseUnrecordedDraftThread(threadId, agentId, userId);
+		return await this.canUseUnrecordedThread(threadId, agentId, draftChatMemoryResourceId(userId));
 	}
 
 	async canUseProductionChatThread(
@@ -861,24 +968,31 @@ export class AgentExecutionService {
 		sessionMode: AgentSessionMode,
 	): Promise<boolean> {
 		const thread = await this.findThreadById(threadId);
-		if (!thread) return sessionMode === 'new';
+		if (!thread)
+			return (
+				sessionMode === 'new' &&
+				(await this.canUseUnrecordedThread(
+					threadId,
+					agentId,
+					productionChatMemoryResourceId(userId),
+				))
+			);
 		if (
 			thread.projectId !== projectId ||
 			thread.agentId !== agentId ||
-			!canUseTopLevelDraftThread(thread, userId) ||
-			thread.taskId !== null
+			!canUseTopLevelDraftThread(thread, userId)
 		)
 			return false;
 		const sources = await this.agentExecutionRepository.findFirstSourceByThreadIds([threadId]);
-		return sources.get(threadId) === N8N_CHAT_PRODUCTION_SOURCE;
+		return canContinueThreadInN8nChat(thread, userId, sources.get(threadId));
 	}
 
-	private async canUseUnrecordedDraftThread(
+	/** A session ID without a thread is free only when no other memory scope uses it. */
+	private async canUseUnrecordedThread(
 		threadId: string,
 		agentId: string,
-		userId: string,
+		resourceId: string,
 	): Promise<boolean> {
-		const resourceId = draftChatMemoryResourceId(userId);
 		const memory = await this.n8nMemory.getImplementation(agentId).getThread(threadId);
 		if (memory && memory.resourceId !== resourceId) return false;
 		return await this.checkpointStorage.hasNoConflictingThreadResource(
@@ -906,7 +1020,29 @@ export class AgentExecutionService {
 	): Promise<void> {
 		const { record, hitlStatus } = params;
 		await this.timelineSnapshotWrites.get(executionId);
-		const finalized = await this.agentExecutionRepository.updateIfRunning(executionId, {
+		// Drain in-flight side-call cost recordings before the terminal UPDATE
+		// so a process exit right after finalization cannot lose side-call cost.
+		const inFlight = this.sideCallUsageInFlightByExecution.get(executionId);
+		if (inFlight) {
+			this.sideCallUsageInFlightByExecution.delete(executionId);
+			await Promise.allSettled(inFlight);
+		}
+		// The terminal status write and the main-loop cost increment run as one
+		// atomic UPDATE (`status = ... , cost = COALESCE(cost, 0) + :costIncrement`),
+		// so they commit or roll back together. Cost is applied additively rather
+		// than assigned, so a side-call `incrementCost` that lands before this
+		// terminal write is not overwritten. `record.totalCost` is the main-loop
+		// cost only; side calls price themselves onto the same column.
+		//
+		// A transient failure (DB blip, deadlock) leaves the row `running`. The
+		// heartbeat is already stopped at this point, so without a retry the row
+		// would stay `running` until the sweeper marks it `interrupted` and the
+		// main-loop cost would be lost. Retry a bounded number of times with linear
+		// backoff; the total worst-case wait stays under the sweeper's 2-min grace
+		// so a finalized row is never prematurely reaped. The one error that is
+		// definitive — `OperationalError('Agent execution is no longer running')`
+		// — means another path already finalized the row, so it is not retried.
+		const terminalValues = {
 			status,
 			stoppedAt,
 			duration: record.duration,
@@ -914,18 +1050,48 @@ export class AgentExecutionService {
 			promptTokens: record.usage?.promptTokens ?? null,
 			completionTokens: record.usage?.completionTokens ?? null,
 			totalTokens: record.usage?.totalTokens ?? null,
-			cost: record.totalCost,
 			timeline: record.timeline.length > 0 ? record.timeline : null,
-			storedAt: 'db',
+			storedAt: 'db' as const,
 			error: record.error,
 			failureSummary,
 			hitlStatus: hitlStatus ?? null,
-		});
-		if (!finalized) {
-			throw new OperationalError('Agent execution is no longer running', {
-				extra: { executionId },
-			});
+		};
+		const maxAttempts = 3;
+		let lastError: unknown;
+		for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+			try {
+				const finalized = await this.txRunner.run({}, async (ctx) => {
+					if (!(await this.agentExecutionThreadRepository.lockById(params.threadId, ctx)))
+						return false;
+					return await this.agentExecutionRepository.updateIfRunning(
+						executionId,
+						terminalValues,
+						undefined,
+						ctx,
+						record.totalCost ?? undefined,
+					);
+				});
+				if (!finalized) {
+					throw new OperationalError('Agent execution is no longer running', {
+						extra: { executionId },
+					});
+				}
+				return;
+			} catch (error) {
+				if (
+					error instanceof OperationalError &&
+					error.message === 'Agent execution is no longer running'
+				) {
+					throw error;
+				}
+				lastError = error;
+				if (attempt < maxAttempts) {
+					const delay = 100 * attempt;
+					await new Promise((resolve) => setTimeout(resolve, delay));
+				}
+			}
 		}
+		throw lastError;
 	}
 
 	private async moveFinalTimelineToBlob(
@@ -1015,6 +1181,82 @@ export class AgentExecutionService {
 		}
 	}
 
+	/**
+	 * Apply a side-call model cost (title generation, observation-log
+	 * observer/reflector, episodic-memory model calls) onto its execution row
+	 * and thread totals. The SDK prices the call and sends `{ task, model,
+	 * usage, cost, reportId }`; the host only adds `cost`. Best-effort: a
+	 * failure logs a warning and never breaks the run.
+	 *
+	 * Both totals are updated in one transaction. Concurrent deliveries of the
+	 * same `reportId` coalesce onto a single in-flight transaction so they
+	 * cannot each run their own and double-count. The in-flight entry is
+	 * removed when the attempt settles, so the map does not grow unbounded.
+	 * The SDK calls `onSideCallUsage` once per model call with a fresh
+	 * `reportId`, so a sequential replay is not expected; cross-process
+	 * idempotency would need a DB-backed unique constraint, not a process-local
+	 * set.
+	 */
+	async recordSideCallUsage(
+		executionId: string,
+		threadId: string,
+		report: { task: string; model?: string; cost: number; reportId: string },
+	): Promise<void> {
+		// Register the in-flight promise synchronously (before any await) so a
+		// concurrent delivery observes it and waits on the same attempt rather
+		// than starting a second transaction that would double-count.
+		let attempt = this.sideCallReportInFlight.get(report.reportId);
+		if (attempt === undefined) {
+			const created = this.applySideCallUsage(executionId, threadId, report);
+			attempt = created;
+			this.sideCallReportInFlight.set(report.reportId, created);
+			let bucket = this.sideCallUsageInFlightByExecution.get(executionId);
+			if (!bucket) {
+				bucket = new Set();
+				this.sideCallUsageInFlightByExecution.set(executionId, bucket);
+			}
+			bucket.add(created);
+			void created.finally(() => bucket?.delete(created));
+		}
+		try {
+			await attempt;
+		} finally {
+			// Only the caller that created the attempt clears the slot, so a
+			// coalesced delivery does not delete a later attempt's entry.
+			if (this.sideCallReportInFlight.get(report.reportId) === attempt) {
+				this.sideCallReportInFlight.delete(report.reportId);
+			}
+		}
+	}
+
+	private async applySideCallUsage(
+		executionId: string,
+		threadId: string,
+		report: { task: string; model?: string; cost: number; reportId: string },
+	): Promise<void> {
+		try {
+			await this.txRunner.run({}, async (ctx) => {
+				await this.agentExecutionRepository.incrementCost(executionId, report.cost, ctx);
+				await this.agentExecutionThreadRepository.incrementUsage(
+					threadId,
+					0,
+					0,
+					report.cost,
+					0,
+					ctx,
+				);
+			});
+		} catch (error) {
+			this.logger.warn('Failed to record agent side-call usage', {
+				executionId,
+				threadId,
+				task: report.task,
+				reportId: report.reportId,
+				error,
+			});
+		}
+	}
+
 	private trackFinishedTurn(params: RecordMessageParams, status: AgentExecutionStatus): void {
 		if (!params.telemetry) return;
 		const { agentId, threadId, record } = params;
@@ -1024,6 +1266,7 @@ export class AgentExecutionService {
 				user_id: params.telemetry.userId,
 				thread_id: threadId,
 				run_type: params.telemetry.runType,
+				source: params.source,
 				turn_status: status === 'success' ? 'succeeded' : 'failed',
 				configuration: params.telemetry.configuration,
 				...buildAgentTurnMetrics(record),
@@ -1040,10 +1283,9 @@ export class AgentExecutionService {
 
 export function toSessionStatus(
 	latestStatus: AgentExecutionStatus | undefined,
-	hasFailureSummary: boolean,
 ): AgentSessionStatus | null {
 	if (!latestStatus) return null;
-	if (latestStatus === 'success') return hasFailureSummary ? 'error' : 'succeeded';
+	if (latestStatus === 'success') return 'succeeded';
 	return latestStatus;
 }
 
@@ -1060,4 +1302,19 @@ function executionStatus(record: MessageRecord): AgentExecution['status'] {
 	if (record.error !== null || record.finishReason === 'error') return 'error';
 	if (record.finishReason === 'cancelled') return 'cancelled';
 	return 'success';
+}
+
+/** Maps a thread (with `agent` and `agent.activeVersion` loaded) to the
+ *  cross-agent n8n Chat thread list shape. */
+function toN8nChatThreadSummary(thread: AgentExecutionThread): AgentN8nChatThreadSummary {
+	// The callers narrow `agentIds` to chat-reachable project agents.
+	if (!isProjectAgent(thread.agent)) {
+		throw new UnexpectedError(`Thread ${thread.id} does not belong to a project agent`);
+	}
+	return {
+		id: thread.id,
+		title: thread.title,
+		updatedAt: thread.updatedAt.toISOString(),
+		agent: { ...toAgentRef(thread.agent), projectId: thread.agent.projectId },
+	};
 }

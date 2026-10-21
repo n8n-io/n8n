@@ -215,6 +215,7 @@ describe('toV1ExecuteMode', () => {
 		mode: 'production',
 		iteration: 0,
 		callerContext: { hostMode: 'trigger' },
+		responseExpectation: { kind: 'none' },
 		...overrides,
 	});
 

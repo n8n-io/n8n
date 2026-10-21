@@ -6,7 +6,7 @@ import { OperationalError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
-import type { RedisClientService } from '@/services/redis-client.service';
+import type { RedisClientService } from '@n8n/backend-services';
 
 import { RedisLockService } from '../redis-lock.service';
 

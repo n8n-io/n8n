@@ -160,11 +160,7 @@ const onUpdate = async () => {
 		if (settingsStore.isUnverifiedPackagesEnabled) {
 			await communityNodesStore.updatePackage(props.activePackageName);
 		} else if (settingsStore.isCommunityNodesFeatureEnabled) {
-			await communityNodesStore.updatePackage(
-				props.activePackageName,
-				updateVersion.value,
-				nodeTypeStorePackage.value?.checksum,
-			);
+			await communityNodesStore.updatePackage(props.activePackageName, updateVersion.value);
 		} else {
 			throw new Error('Community nodes feature is not correctly enabled.');
 		}
@@ -274,7 +270,7 @@ onMounted(async () => {
 		<template #footer>
 			<div :class="$style.footerContainer">
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					:label="i18n.baseText('settings.communityNodes.confirmModal.cancel')"
 					size="large"
 					data-test-id="close-button"

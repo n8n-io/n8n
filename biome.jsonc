@@ -18,6 +18,7 @@
 			"**/cl100k_base.json",
 			"**/o200k_base.json",
 			"**/*.generated.ts",
+			"**/benchmark/scripts/mock-api/**",
 			"**/expectations/**"
 		]
 	},

@@ -122,11 +122,7 @@ describe('CommunityPackageManageConfirmModal', () => {
 		await flushPromises();
 		await fireEvent.click(getByRole('button', { name: 'Confirm update' }));
 
-		expect(communityNodesStore.updatePackage).toHaveBeenCalledWith(
-			'n8n-nodes-test',
-			'2.0.5',
-			'correct-checksum',
-		);
+		expect(communityNodesStore.updatePackage).toHaveBeenCalledWith('n8n-nodes-test', '2.0.5');
 	});
 
 	it('should call nodeTypesStore methods and update latestVerifiedVersion on mount', async () => {

@@ -1,4 +1,5 @@
 import { testModules } from '@n8n/backend-test-utils';
+import type { TransactionRunner } from '@n8n/db';
 import type { DataSource, EntityManager } from '@n8n/typeorm';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -39,7 +40,11 @@ describe('DataTableColumnRepository', () => {
 			manager: mockEntityManager,
 		});
 
-		repository = new DataTableColumnRepository(mockDataSource, mockDDLService);
+		repository = new DataTableColumnRepository(
+			mockDataSource,
+			mockDDLService,
+			mock<TransactionRunner>(),
+		);
 	});
 
 	describe('renameColumn', () => {

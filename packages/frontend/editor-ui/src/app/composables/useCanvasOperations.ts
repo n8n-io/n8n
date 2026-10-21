@@ -172,6 +172,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { isValidNodeConnectionType } from '@/app/utils/typeGuards';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
+import { useRestrictedNodeWarning } from '@/features/shared/nodeCreator/composables/useRestrictedNodeWarning';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { useEmptyCanvasGroupsFlag } from '@/features/workflows/canvas/composables/useEmptyCanvasGroupsFlag';
 import { clearAllNodeResourceLocatorValues } from '@/features/workflows/templates/utils/templateTransforms';
@@ -273,6 +274,7 @@ export function useCanvasOperations() {
 	const workflowHelpers = useWorkflowHelpers();
 	const nodeHelpers = useNodeHelpers();
 	const aiSimulatedDataGuard = useAiSimulatedDataGuard();
+	const { warnIfRestricted } = useRestrictedNodeWarning();
 	const {
 		requireNodeTypeDescription,
 		resolveNodeParameters,
@@ -1138,6 +1140,7 @@ export function useCanvasOperations() {
 		{ trackHistory = true, trackBulk = true } = {},
 	) {
 		const nodes = workflowDocumentStore.value.getNodesByIds(ids);
+		if (refuseRestrictedNodes(nodes)) return;
 
 		// Filter to only pinnable nodes
 		const pinnableNodesWithPinnedData = nodes
@@ -3378,18 +3381,23 @@ export function useCanvasOperations() {
 			// Fix the node position as it could be totally offscreen
 			// and the pasted nodes would so not be directly visible to
 			// the user
+			const groupSize =
+				workflowData.nodes && workflowData.nodes.length > 1
+					? getNodesGroupSize(workflowData.nodes)
+					: DEFAULT_NODE_SIZE;
+			const pastePosition: XYPosition =
+				source === 'paste' && viewport
+					? [
+							(viewport.xMin + viewport.xMax - groupSize[0]) / 2,
+							(viewport.yMin + viewport.yMax - groupSize[1]) / 2,
+						]
+					: lastClickPosition.value;
 			workflowHelpers.updateNodePositions(
 				workflowData,
-				NodeViewUtils.getNewNodePosition(
-					workflowDocumentStore.value.allNodes,
-					lastClickPosition.value,
-					{
-						...(workflowData.nodes && workflowData.nodes.length > 1
-							? { size: getNodesGroupSize(workflowData.nodes) }
-							: {}),
-						viewport,
-					},
-				),
+				NodeViewUtils.getNewNodePosition(workflowDocumentStore.value.allNodes, pastePosition, {
+					size: groupSize,
+					viewport,
+				}),
 			);
 
 			if (ownsImportBulk) {
@@ -3617,7 +3625,7 @@ export function useCanvasOperations() {
 			Object.entries(credentials).filter(([, credential]) => {
 				if (!credential.id) return Boolean(credential.__aiGatewayManaged);
 				const used = usedCredentials[credential.id];
-				return !used || used.currentUserHasAccess;
+				return !used || used.currentUserCanUse;
 			}),
 		);
 	}
@@ -3662,8 +3670,24 @@ export function useCanvasOperations() {
 		return filteredConnections;
 	}
 
+	/**
+	 * Refuses an operation on a restricted node, and says why.
+	 * The context menu disables its own items, but the keyboard shortcuts cannot,
+	 * so the refusal must explain itself.
+	 */
+	function refuseRestrictedNodes(nodes: INodeUi[]): boolean {
+		const restricted = nodes.find((node) => isNodeTypeRestricted(node.type));
+		if (!restricted) return false;
+
+		warnIfRestricted(restricted.type);
+		return true;
+	}
+
 	async function duplicateNodes(ids: string[], options: { viewport?: ViewportBoundaries } = {}) {
-		const workflowData = deepCopy(getNodesToSave(workflowDocumentStore.value.getNodesByIds(ids)));
+		const nodes = workflowDocumentStore.value.getNodesByIds(ids);
+		if (refuseRestrictedNodes(nodes)) return [];
+
+		const workflowData = deepCopy(getNodesToSave(nodes));
 		const result = await importWorkflowData(workflowData, 'duplicate', {
 			viewport: options.viewport,
 			importTags: false,
@@ -3671,11 +3695,9 @@ export function useCanvasOperations() {
 
 		return result.nodes?.map((node) => node.id).filter(isPresent) ?? [];
 	}
-	async function copyNodes(ids: string[]): Promise<boolean> {
-		const nodes = workflowDocumentStore.value.getNodesByIds(ids);
-		const hasRestrictedNode = nodes.some((node) => isNodeTypeRestricted(node.type));
-		if (hasRestrictedNode) return false;
 
+	async function copyNodes(ids: string[]) {
+		const nodes = workflowDocumentStore.value.getNodesByIds(ids);
 		const workflowData = deepCopy(getNodesToSave(nodes));
 		if (!emptyCanvasGroupsEnabled.value) {
 			removeEmptyCanvasGroupsFromWorkflowData(workflowData, nodes);
@@ -3692,13 +3714,10 @@ export function useCanvasOperations() {
 			node_types: workflowData.nodes.map((node) => node.type),
 			workflow_id: workflowDocumentStore.value.workflowId,
 		});
-
-		return true;
 	}
 
 	async function cutNodes(ids: string[], deleteWholeGroupIds: string[] = []) {
-		if (!(await copyNodes(ids))) return;
-
+		await copyNodes(ids);
 		deleteNodes(ids, { deleteWholeGroupIds });
 	}
 
@@ -3890,6 +3909,17 @@ export function useCanvasOperations() {
 			trackBulk?: boolean;
 		},
 	) {
+		// New nodes only: imports go through `addNodes` and keep unknown types as placeholders.
+		const unavailable = nodes.filter((node) => nodeTypesStore.isNodeTypeUnavailable(node.type));
+		if (unavailable.length > 0) {
+			console.warn(
+				'Skipped adding node types this instance does not load:',
+				unavailable.map((node) => node.type),
+			);
+			uiStore.resetLastInteractedWith();
+			return { addedNodes: [] };
+		}
+
 		// An empty group contains only its internal anchor, which the selected node must replace.
 		const replacementTargetId = options.replaceNodeId;
 		const replacementTarget = replacementTargetId

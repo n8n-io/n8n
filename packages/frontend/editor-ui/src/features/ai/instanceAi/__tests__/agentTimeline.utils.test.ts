@@ -8,6 +8,8 @@ import type {
 import {
 	buildTimelineBlocks,
 	extractArtifacts,
+	extractBuiltAgentArtifacts,
+	extractBuiltWorkflowArtifacts,
 	isStreamingTimelineEntry,
 } from '../agentTimeline.utils';
 
@@ -124,7 +126,7 @@ describe('extractArtifacts', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'workflow_builder_build_workflow',
 					args: { name: '' },
 					result: { workflowId: 'wf-1', workflowName: '' },
 				}),
@@ -137,7 +139,7 @@ describe('extractArtifacts', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'data-tables',
+					toolName: 'data_tables',
 					result: { tableId: 'dt-1', name: '  ' },
 				}),
 			],
@@ -156,7 +158,7 @@ describe('extractArtifacts', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'workflow_builder_build_workflow',
 					result: { workflowId: 'wf-2', workflowName: 'Built WF' },
 					completedAt: '2026-01-01T00:00:00Z',
 				}),
@@ -189,7 +191,7 @@ describe('extractArtifacts', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'workflow_builder_build_workflow',
 					args: { name: 'Name From Args' },
 					result: { workflowId: 'wf-4' },
 				}),
@@ -202,7 +204,7 @@ describe('extractArtifacts', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'workflow_builder_build_workflow',
 					result: { workflowId: 'wf-5' },
 				}),
 			],
@@ -262,7 +264,7 @@ describe('extractArtifacts', () => {
 			targetResource: { id: 'wf-1', type: 'workflow', name: 'WF From Target' },
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'workflow_builder_build_workflow',
 					result: { workflowId: 'wf-1', workflowName: 'WF From ToolCall' },
 				}),
 			],
@@ -277,7 +279,7 @@ describe('extractArtifacts', () => {
 			agentId: 'child-1',
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'workflow_builder_build_workflow',
 					result: { workflowId: 'wf-child', workflowName: 'Child WF' },
 				}),
 			],
@@ -286,7 +288,7 @@ describe('extractArtifacts', () => {
 			children: [child],
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'workflow_builder_build_workflow',
 					result: { workflowId: 'wf-parent', workflowName: 'Parent WF' },
 				}),
 			],
@@ -301,12 +303,112 @@ describe('extractArtifacts', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'workflow_builder_build_workflow',
 					result: undefined,
 				}),
 			],
 		});
 		expect(extractArtifacts(node)).toEqual([]);
+	});
+});
+
+describe('extractBuiltWorkflowArtifacts', () => {
+	test('returns each successfully built workflow once', () => {
+		const toolCalls = [
+			makeToolCall({
+				toolCallId: 'tc-1',
+				toolName: 'workflow_builder_build_workflow',
+				result: { success: true, workflowId: 'wf-1', workflowName: 'Hello World' },
+				completedAt: '2026-10-01T10:00:00.000Z',
+			}),
+			makeToolCall({
+				toolCallId: 'tc-2',
+				toolName: 'workflow_builder_build_workflow',
+				result: { success: true, workflowId: 'wf-1', workflowName: 'Hello World' },
+			}),
+			makeToolCall({
+				toolCallId: 'tc-3',
+				toolName: 'workflow_builder_build_workflow',
+				result: { success: false, workflowId: 'wf-2', errors: ['invalid'] },
+			}),
+			makeToolCall({
+				toolCallId: 'tc-4',
+				toolName: 'workflow_builder_workflows',
+				result: { workflowId: 'wf-3' },
+			}),
+		];
+
+		expect(extractBuiltWorkflowArtifacts(toolCalls)).toEqual([
+			{
+				type: 'workflow',
+				resourceId: 'wf-1',
+				name: 'Hello World',
+				completedAt: '2026-10-01T10:00:00.000Z',
+			},
+		]);
+	});
+
+	test('ignores build-workflow calls that have no result yet', () => {
+		expect(
+			extractBuiltWorkflowArtifacts([
+				makeToolCall({ toolName: 'workflow_builder_build_workflow', isLoading: true }),
+			]),
+		).toEqual([]);
+	});
+});
+
+describe('extractBuiltAgentArtifacts', () => {
+	test('returns a created or changed Agent once, with its latest name', () => {
+		const toolCalls = [
+			makeToolCall({
+				toolCallId: 'tc-1',
+				toolName: 'agent_builder_select_agent',
+				result: {
+					ok: true,
+					agentId: 'agent-1',
+					projectId: 'project-1',
+					agentName: 'Untitled agent',
+					agentChange: 'created',
+				},
+			}),
+			makeToolCall({
+				toolCallId: 'tc-2',
+				toolName: 'agent_builder_write_config',
+				result: {
+					ok: true,
+					configMutated: true,
+					agentId: 'agent-1',
+					agentName: 'Support triage',
+				},
+				completedAt: '2026-10-01T10:00:00.000Z',
+			}),
+		];
+
+		expect(extractBuiltAgentArtifacts(toolCalls)).toEqual([
+			{
+				type: 'agent',
+				resourceId: 'agent-1',
+				name: 'Support triage',
+				projectId: 'project-1',
+				completedAt: '2026-10-01T10:00:00.000Z',
+			},
+		]);
+	});
+
+	test('ignores selections, reads, and calls that are still running', () => {
+		expect(
+			extractBuiltAgentArtifacts([
+				makeToolCall({
+					toolName: 'agent_builder_select_agent',
+					result: { ok: true, agentId: 'agent-1', projectId: 'project-1', agentChange: 'none' },
+				}),
+				makeToolCall({
+					toolName: 'agent_builder_patch_config',
+					result: { ok: false, agentId: 'agent-1' },
+				}),
+				makeToolCall({ toolName: 'agent_builder_write_config', isLoading: true }),
+			]),
+		).toEqual([]);
 	});
 });
 
@@ -442,7 +544,7 @@ describe('buildTimelineBlocks', () => {
 	test('text before a tool call that suspended on a setup card stays user-facing', () => {
 		const setupCard = makeToolCall({
 			toolCallId: 'tc-setup',
-			toolName: 'workflows',
+			toolName: 'workflow_builder_workflows',
 			args: { action: 'setup', workflowId: 'wf-1' },
 			isLoading: true,
 			confirmation: {
@@ -468,7 +570,7 @@ describe('buildTimelineBlocks', () => {
 	test('text before an approval-gated tool call stays user-facing', () => {
 		const approval = makeToolCall({
 			toolCallId: 'tc-run',
-			toolName: 'executions',
+			toolName: 'workflow_builder_executions',
 			args: { action: 'run', workflowId: 'wf-1' },
 			confirmation: {
 				requestId: 'req-1',
@@ -622,7 +724,11 @@ describe('buildTimelineBlocks', () => {
 		const blocks = blocksOf(
 			[toolEntry('tc-build', 'r1'), toolEntry('tc-delegated', 'r1')],
 			[
-				makeToolCall({ toolCallId: 'tc-build', toolName: 'build-workflow', renderHint: 'builder' }),
+				makeToolCall({
+					toolCallId: 'tc-build',
+					toolName: 'workflow_builder_build_workflow',
+					renderHint: 'builder',
+				}),
 				makeToolCall({
 					toolCallId: 'tc-delegated',
 					toolName: 'build-workflow-with-agent',
@@ -654,7 +760,7 @@ describe('buildTimelineBlocks', () => {
 			[
 				makeToolCall({
 					toolCallId: 'tc-build-agent',
-					toolName: 'build-agent',
+					toolName: 'agent_builder_build_agent',
 				}),
 			],
 			'completed',
@@ -670,7 +776,7 @@ describe('buildTimelineBlocks', () => {
 			[
 				makeToolCall({
 					toolCallId: 'tc-build-agent',
-					toolName: 'build-agent',
+					toolName: 'agent_builder_build_agent',
 				}),
 			],
 		);
@@ -694,7 +800,7 @@ describe('buildTimelineBlocks', () => {
 			[
 				makeToolCall({
 					toolCallId: 'tc-build-agent',
-					toolName: 'build-agent',
+					toolName: 'agent_builder_build_agent',
 				}),
 			],
 			'completed',

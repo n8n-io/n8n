@@ -16,7 +16,7 @@ import type {
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import type { ListQuery } from '@/requests';
-import type { FolderFinderService } from '@/services/folder-finder.service';
+import type { FolderFinderService } from '@n8n/backend-services';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowService } from '@/workflows/workflow.service';
 import { describeFolderError } from './folder-error.utils';

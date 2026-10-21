@@ -6,7 +6,7 @@ export type RedisExecutionResponseChannelNameGenerator = (executionId: string) =
 
 /** Both planes must derive the same channel name, so they share this helper. */
 async function createChannelNameGenerator(): Promise<RedisExecutionResponseChannelNameGenerator> {
-	const { RedisClientService } = await import('@/services/redis-client.service.js');
+	const { RedisClientService } = await import('@n8n/backend-services');
 	const prefix = Container.get(RedisClientService).toValidPrefix(
 		Container.get(GlobalConfig).redis.prefix,
 	);
@@ -17,7 +17,7 @@ async function createChannelNameGenerator(): Promise<RedisExecutionResponseChann
 
 /** Creates the data plane end of the Redis response channel. */
 export async function createRedisExecutionResponseSender(logger: Logger) {
-	const { RedisClientService } = await import('@/services/redis-client.service.js');
+	const { RedisClientService } = await import('@n8n/backend-services');
 	const { RedisExecutionResponseSender } = await import('./redis-execution-response-sender.js');
 
 	return new RedisExecutionResponseSender(
@@ -29,7 +29,7 @@ export async function createRedisExecutionResponseSender(logger: Logger) {
 
 /** Creates and starts the control plane end of the Redis response channel. */
 export async function startRedisExecutionResponseReceiver(logger: Logger) {
-	const { RedisClientService } = await import('@/services/redis-client.service.js');
+	const { RedisClientService } = await import('@n8n/backend-services');
 	const { RedisExecutionResponseReceiver } = await import('./redis-execution-response-receiver.js');
 
 	const receiver = new RedisExecutionResponseReceiver(

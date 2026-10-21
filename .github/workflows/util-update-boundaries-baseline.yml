@@ -100,6 +100,9 @@ jobs:
   approve-and-automerge:
     needs: [update-baseline]
     if: needs.update-baseline.outputs.pull-request-number != ''
+    permissions:
+      contents: write
+      pull-requests: write
     # The callee's app credentials live on the release environment and cannot
     # be forwarded as named secrets by the caller.
     uses: ./.github/workflows/util-approve-and-set-automerge.yml # zizmor: ignore[secrets-inherit]

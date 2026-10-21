@@ -32,16 +32,18 @@ const emit = defineEmits<{
 
 const menuItemTextViewport = ref<HTMLElement | null>(null);
 const menuItemText = ref<ComponentPublicInstance | null>(null);
-const labelOverflows = ref(false);
+const labelOverflowDistance = ref(0);
 
 // Observing the text too catches label changes, which do not resize the viewport.
 useResizeObserver([menuItemTextViewport, menuItemText], () => {
 	const viewport = menuItemTextViewport.value;
-	labelOverflows.value = viewport !== null && viewport.scrollWidth > viewport.clientWidth;
+	labelOverflowDistance.value = viewport
+		? Math.max(0, viewport.scrollWidth - viewport.clientWidth)
+		: 0;
 });
 
 const isLabelOverflowing = computed(
-	() => Boolean(props.scrollLabelOnOverflow) && labelOverflows.value,
+	() => Boolean(props.scrollLabelOnOverflow) && labelOverflowDistance.value > 0,
 );
 
 const to = computed(() => {
@@ -135,15 +137,22 @@ const tooltipPlacement = computed(() => {
 				@click="handleClick"
 			>
 				<div
-					v-if="item.icon"
+					v-if="item.icon || $slots.icon"
 					:class="[$style.menuItemIcon, { [$style.notification]: item.notification }]"
 				>
-					<N8nText
-						v-if="item.icon && typeof item.icon === 'object' && item.icon.type === 'emoji'"
-						:class="$style.menuItemEmoji"
-						>{{ item.icon.value }}</N8nText
-					>
-					<N8nIcon v-else-if="icon" :color="iconColor" :icon="icon" />
+					<slot name="icon">
+						<N8nText
+							v-if="item.icon && typeof item.icon === 'object' && item.icon.type === 'emoji'"
+							:class="$style.menuItemEmoji"
+							>{{ item.icon.value }}</N8nText
+						>
+						<N8nIcon
+							v-else-if="icon"
+							:color="iconColor"
+							:icon="icon"
+							:size="props.compact ? 'medium' : undefined"
+						/>
+					</slot>
 				</div>
 				<div :class="$style.menuItemLabel">
 					<div
@@ -156,6 +165,11 @@ const tooltipPlacement = computed(() => {
 								[$style.labelOverflowing]: isLabelOverflowing,
 							},
 						]"
+						:style="
+							isLabelOverflowing
+								? { '--menu-item--label-overflow': labelOverflowDistance }
+								: undefined
+						"
 					>
 						<N8nText
 							ref="menuItemText"
@@ -178,13 +192,19 @@ const tooltipPlacement = computed(() => {
 						{{ item.creditsTag }}
 					</N8nBadge>
 				</div>
-				<N8nIcon v-if="item.children && !compact" icon="chevron-right" color="text-light" />
+				<N8nIcon
+					v-if="item.children && !compact"
+					icon="chevron-right-12"
+					:size="12"
+					color="text-light"
+				/>
 			</N8nRoute>
 		</N8nTooltip>
 	</div>
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/_focus.scss';
 @use '../../css/mixins/mixins' as scroll-mask;
 @use '../../css/mixins/motion' as motion;
 
@@ -201,13 +221,12 @@ const tooltipPlacement = computed(() => {
 	justify-content: center;
 	// Match the height of items with icons (24px icon + 2 * 4px padding), so
 	// icon-less items (e.g. modal sidebar tabs) don't render shorter.
-	min-height: var(--spacing--xl);
+	height: var(--spacing--xl);
 	padding: var(--spacing--4xs);
 	gap: var(--spacing--4xs);
-	cursor: pointer;
-	color: var(--color--text);
-	border-radius: var(--spacing--4xs);
-	cursor: pointer;
+	color: var(--text-color);
+	border-radius: var(--radius);
+	border: 1px solid transparent;
 	min-width: 0;
 	width: 100%;
 	position: relative;
@@ -228,11 +247,19 @@ const tooltipPlacement = computed(() => {
 
 	&.compact {
 		gap: 0;
+		border-radius: var(--radius--full);
+		height: var(--height--sm);
+		width: var(--height--sm);
+		margin-inline: auto;
+
+		.menuItemLabel {
+			display: none;
+		}
 	}
 }
 
 .menuItem:focus-visible {
-	outline: 1px solid var(--color--secondary);
+	@include focus.focus-ring-with-border;
 	outline-offset: -1px;
 }
 
@@ -262,6 +289,9 @@ const tooltipPlacement = computed(() => {
 }
 
 .scrollLabelOnOverflow {
+	// In px per second. The duration follows the overflow distance, so every label
+	// scrolls at the same pace whatever its length.
+	--menu-item--label-scroll-speed: 70;
 	container-type: inline-size;
 	margin-inline-end: calc(var(--spacing--4xs) * -1);
 
@@ -286,7 +316,9 @@ const tooltipPlacement = computed(() => {
 
 		.menuItemText {
 			transform: translateX(min(0px, calc(-100% + 100cqi)));
-			transition-duration: calc(var(--duration--slowest) + var(--duration--slowest));
+			transition-duration: calc(
+				var(--menu-item--label-overflow, 0) / var(--menu-item--label-scroll-speed) * 1s
+			);
 			transition-delay: var(--duration--base);
 			transition-timing-function: linear;
 		}

@@ -1,4 +1,6 @@
 import type { StreamTextTransform, TextStreamPart, ToolSet } from 'ai';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { raceWithAbort } from '../../sdk/abort';
 
 import { finalizeRun } from './run-output-sink';
 import type {
@@ -9,9 +11,10 @@ import type {
 	RunServices,
 	SuspendEmission,
 } from '../../types/runtime/agent-loop';
+import { withPromptSizeBreakdown } from './prompt-size-usage';
 import { classifyModelTurnError, mergeUsage } from './runtime-helpers';
 import type { ExecutionOptions, TokenUsage } from '../../types/sdk/agent';
-import type { AgentMessage } from '../../types/sdk/message';
+import type { AgentDbMessage, AgentMessage } from '../../types/sdk/message';
 import { isAttachmentValidationError } from '../model/attachment-validation-error';
 import { loadAi } from '../model/lazy-ai';
 import { fromAiFinishReason, fromAiMessages } from '../model/messages';
@@ -53,6 +56,25 @@ const STALL_RETRY_SAFE_CHUNK_TYPES = new Set<string>([
  * chunks. Owns the smooth-stream transform option.
  */
 export class StreamSink implements RunOutputSink<void> {
+	async inputBoundary(signal: AbortSignal): Promise<void> {
+		const acknowledged = createDeferredPromise();
+		await raceWithAbort(
+			async () => {
+				await this.guard.write({
+					type: 'input-boundary',
+					acknowledge: () => acknowledged.resolve(),
+				});
+				if (this.guard.isClosed) throw new Error('Agent stream closed before input consumption');
+				await acknowledged.promise;
+			},
+			AbortSignal.any([signal, this.guard.closedSignal]),
+		);
+	}
+
+	async emitInput(message: AgentDbMessage): Promise<void> {
+		await this.guard.write({ type: 'input', message });
+	}
+
 	private lastUsage: TokenUsage | undefined;
 	// Reads the in-flight turn's usage from the provider's raw stream events so an
 	// aborted run can still be billed (the SDK reports no usage on abort). The
@@ -103,7 +125,7 @@ export class StreamSink implements RunOutputSink<void> {
 	 */
 	getTerminalFinish(): { usage?: TokenUsage; model: string } {
 		const usage = this.services.applyCost(
-			mergeUsage(this.lastUsage, this.rawUsageReader?.getUsage()),
+			mergeUsage(this.lastUsage, withPromptSizeBreakdown(this.rawUsageReader?.getUsage())),
 		);
 		return { ...(usage && { usage }), model: this.services.modelId };
 	}
@@ -364,9 +386,8 @@ export class StreamSink implements RunOutputSink<void> {
 
 		const aiFinishReason = await settle(result.finishReason);
 		const usage = await settle(result.usage);
-		const providerMetadata = await settle(result.providerMetadata);
-		const response = await settle(result.response);
-		const newMessages = fromAiMessages(response.messages);
+		const finalStep = await settle(result.finalStep);
+		const newMessages = fromAiMessages(await settle(result.responseMessages));
 		const errorReason = classifyModelTurnError({
 			aiFinishReason,
 			newMessages,
@@ -376,7 +397,7 @@ export class StreamSink implements RunOutputSink<void> {
 		return {
 			aiFinishReason,
 			finishReason: fromAiFinishReason(aiFinishReason),
-			usage: toTokenUsage(usage, providerMetadata),
+			usage: toTokenUsage(usage, finalStep.providerMetadata),
 			newMessages,
 			toolCalls: await settle(result.toolCalls),
 			structuredOutput:
@@ -431,7 +452,7 @@ export class StreamSink implements RunOutputSink<void> {
 		const costUsage = this.services.applyCost(emission.usage);
 		await this.guard.write({
 			type: 'finish',
-			finishReason: 'tool-calls',
+			finishReason: emission.finishReason ?? 'tool-calls',
 			...(costUsage && { usage: costUsage }),
 			model: this.services.modelId,
 		});
@@ -450,6 +471,7 @@ export class StreamSink implements RunOutputSink<void> {
 			...(costUsage && { usage: costUsage }),
 			model: this.services.modelId,
 			...(structuredOutput !== undefined && { structuredOutput }),
+			...(emission.guardrail && { guardrail: emission.guardrail }),
 		});
 		this.services.updateState({ status: 'success', messageList: list.serialize() });
 		this.services.emitAgentEnd(list.responseDelta());

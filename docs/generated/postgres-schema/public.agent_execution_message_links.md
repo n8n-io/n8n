@@ -48,6 +48,7 @@ erDiagram
   integer position
 }
 "public.agent_execution" {
+  boolean acceptsSteering
   json attachments
   json author
   integer completionTokens

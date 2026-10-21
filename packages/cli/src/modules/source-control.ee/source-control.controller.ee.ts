@@ -4,6 +4,7 @@ import {
 	type GitCommitInfo,
 	type SourceControlledFile,
 } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, Post, Patch, RestController, GlobalScope, Body } from '@n8n/decorators';
 import { hasGlobalScope } from '@n8n/permissions';
@@ -23,7 +24,6 @@ import { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
 
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
-import { EventService } from '@/events/event.service';
 import { IWorkflowToImport } from '@/interfaces';
 
 @RestController('/source-control')

@@ -22,6 +22,12 @@
                         "isEncrypted": {
                             "type": "boolean"
                         },
+                        "maskedSubstrings": {
+                            "type": "null"
+                        },
+                        "persistenceTimestamp": {
+                            "type": "integer"
+                        },
                         "requestId": {
                             "type": "string"
                         },
@@ -82,6 +88,9 @@
                     "properties": {
                         "isEncrypted": {
                             "type": "boolean"
+                        },
+                        "maskedSubstrings": {
+                            "type": "null"
                         },
                         "persistenceTimestamp": {
                             "type": "integer"
@@ -153,5 +162,5 @@
             }
         }
     },
-    "version": 5
+    "version": 6
 }

@@ -391,6 +391,24 @@ export function isSafeObjectProperty(property: string) {
 	return !unsafeObjectProperties.has(property);
 }
 
+/**
+ * Checks if a value can be used as an own key of a plain object: it has to be a string,
+ * and not a name that resolves to an inherited member.
+ *
+ * Use this where the key comes from data rather than from code — a node name, or a
+ * connection field in a stored workflow. `isSafeObjectProperty` is declared
+ * `(property: string)` but only tests the name, so a value that is not a string at
+ * runtime passes it and is then coerced by the bracket access that follows:
+ * `obj[['__proto__']]` writes to `obj['__proto__']`.
+ *
+ * It is a separate function on purpose. `isSafeObjectProperty` is also called with keys
+ * that are legitimately not strings, such as the numeric literal in `items[0]` while an
+ * expression is sanitised, so it cannot require a string itself.
+ */
+export function isUsableObjectKey(value: unknown): value is string {
+	return typeof value === 'string' && isSafeObjectProperty(value);
+}
+
 // eslint-disable-next-line n8n-local-rules/no-dynamic-regexp -- static pattern
 const unsafeObjectPropertyTokenPattern = new RegExp(
 	`\\b(?:${[...unsafeObjectProperties]

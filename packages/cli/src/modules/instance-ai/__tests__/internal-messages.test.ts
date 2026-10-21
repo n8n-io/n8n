@@ -12,6 +12,7 @@ import {
 	cleanStoredUserMessage,
 	extractAgentPreviewHandoffContext,
 	extractAiPreferencesBlock,
+	extractThreadArtifactsBlock,
 	extractEditorContextResourceAttachments,
 	withCurrentDateTime,
 	withPastConversations,
@@ -21,7 +22,7 @@ import {
 	getProjectContextSection,
 	AUTO_FOLLOW_UP_MESSAGE,
 } from '../internal-messages';
-import { renderAiPreferencesBlock } from '@/services/ai-preference.service';
+import { renderAiPreferencesBlock } from '@n8n/backend-services';
 
 /** A saved preference now carries its id. Ids do not affect rendering, so the text doubles as one. */
 const saved = (...texts: string[]) => texts.map((content) => ({ id: content, content }));
@@ -747,10 +748,52 @@ describe('extractAiPreferencesBlock', () => {
 	});
 });
 
+describe('extractThreadArtifactsBlock', () => {
+	const block = buildThreadArtifactsBlock({
+		artifacts: [{ type: 'workflow', id: 'wf-1', name: 'Digest' }],
+		activeId: 'wf-1',
+	});
+
+	it('returns the block exactly as the thread-context wrapper stored it', () => {
+		const stored = [
+			buildThreadContextBlock([
+				instanceContextMarker(),
+				block,
+				buildCurrentDateTimeBlock('Monday 1 January 2026'),
+			]),
+			'Change it',
+		].join('\n\n');
+
+		expect(extractThreadArtifactsBlock(stored)).toBe(asStoredThreadContextSection(block));
+	});
+
+	it('ignores a tag lookalike in the user text', () => {
+		expect(extractThreadArtifactsBlock(`Please explain\n${block}`)).toBeUndefined();
+	});
+});
+
 describe('buildThreadArtifactsBlock', () => {
-	it('returns empty when there are no artifacts', () => {
+	it('returns empty when the client sent no tabs', () => {
 		expect(buildThreadArtifactsBlock(undefined)).toBe('');
-		expect(buildThreadArtifactsBlock({ artifacts: [] })).toBe('');
+	});
+
+	it('says the user has no tabs open when the client sent an empty list', () => {
+		expect(buildThreadArtifactsBlock({ artifacts: [] })).toBe(
+			'<thread-artifacts>\nThe user has no tabs open in this conversation’s preview.\n</thread-artifacts>',
+		);
+	});
+
+	it('lists the open tabs as of this message, in the same order however the tabs are sorted', () => {
+		const workflow = { type: 'workflow' as const, id: 'wf-1', name: 'Digest' };
+		const table = { type: 'data-table' as const, id: 'dt-1', name: 'FAQ' };
+
+		const block = buildThreadArtifactsBlock({ artifacts: [workflow, table] });
+
+		expect(block).toContain(
+			'Tabs the user has open in this conversation’s preview, as of this message:',
+		);
+		expect(block.indexOf('Data table "FAQ"')).toBeLessThan(block.indexOf('Workflow "Digest"'));
+		expect(buildThreadArtifactsBlock({ artifacts: [table, workflow] })).toBe(block);
 	});
 
 	it('marks the focused tab as current and lists the rest', () => {
@@ -830,7 +873,8 @@ describe('buildThreadArtifactsBlock', () => {
 		]);
 
 		expect(block).toContain('New unsaved Agent "New Agent" (pending id: `pending-1`');
-		expect(block).toContain('do not pass its pending id');
+		expect(block).toContain('Do not pass its pending id');
+		expect(block).toContain('If a different Agent is already bound, also pass `createNew: true`.');
 	});
 
 	it('keeps a tag inside an attachment name out of the JSON line and restores it on parse', () => {

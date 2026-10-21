@@ -1,11 +1,16 @@
 import type { ToolDescriptor } from '@n8n/agents';
+import type { AgentSkill } from '@n8n/api-types';
 
 import type { AgentHistory } from '../entities/agent-history.entity';
 import type { Agent } from '../entities/agent.entity';
 
 export type AgentRuntimeAssets = ReturnType<typeof getAgentRuntimeAssets>;
 
-export function getAgentRuntimeAssets(agent: Pick<Agent | AgentHistory, 'tools' | 'skills'>) {
+/** `skills`: the skill bodies from the skills hub that the draft or version runs. */
+export function getAgentRuntimeAssets(
+	agent: Pick<Agent | AgentHistory, 'tools'>,
+	skills: Record<string, AgentSkill>,
+) {
 	const toolDescriptors: Record<string, ToolDescriptor> = {};
 	const toolCodeByName: Record<string, string> = {};
 
@@ -14,5 +19,5 @@ export function getAgentRuntimeAssets(agent: Pick<Agent | AgentHistory, 'tools' 
 		toolCodeByName[toolEntry.descriptor.name] = toolEntry.code;
 	}
 
-	return { toolDescriptors, toolCodeByName, skills: agent.skills ?? {} };
+	return { toolDescriptors, toolCodeByName, skills };
 }

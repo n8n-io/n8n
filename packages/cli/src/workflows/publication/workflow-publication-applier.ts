@@ -22,7 +22,10 @@ import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
 import { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
 import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
-import { formatNodeFailures } from '@/workflows/publication/format-node-failures';
+import {
+	formatFailedActivationError,
+	formatNodeFailures,
+} from '@/workflows/publication/format-node-failures';
 import { healNodeIds } from '@/workflows/publication/heal-node-ids';
 import type {
 	PublicationResult,
@@ -41,7 +44,7 @@ import {
 	type TriggerOperationAbort,
 	type TriggerTeardownFailure,
 } from '@/workflows/triggers/workflow-trigger-activator';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+import { WorkflowPublishedDataService } from '@n8n/backend-services';
 
 /** A node whose type this instance cannot load, with the loader's error. */
 type UnresolvableNode = { node: INode; error: Error };
@@ -443,11 +446,12 @@ export class WorkflowPublicationApplier {
 		newVersion: WorkflowHistory,
 	): Promise<PublicationResult | null> {
 		try {
-			await enforceWorkflowPublishPolicy(this.policyEnforcementService, this.ownershipService, {
-				id: workflow.id,
-				name: workflow.name,
-				nodes: newVersion.nodes,
-			});
+			await enforceWorkflowPublishPolicy(
+				this.policyEnforcementService,
+				this.ownershipService,
+				{ id: workflow.id, name: workflow.name, nodes: newVersion.nodes },
+				{ kind: 'system', reason: 'publication' },
+			);
 
 			return null;
 		} catch (e) {
@@ -609,13 +613,14 @@ export class WorkflowPublicationApplier {
 	 * Combines multiple per trigger failures into a single error.
 	 */
 	private toActivationError(failures: TriggerActivationFailure[]): Error {
+		// The lone error keeps its class: the reporter checks it for a policy refusal.
 		if (failures.length === 1) return failures[0].error;
 
-		const detail = formatNodeFailures(
-			failures.map(({ nodeName, error }) => ({ nodeName, message: error.message })),
+		return new Error(
+			formatFailedActivationError(
+				failures.map(({ nodeName, error }) => ({ nodeName, message: error.message })),
+			),
 		);
-
-		return new Error(`Triggers failed to activate: ${detail}`);
 	}
 
 	/**

@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "instance_monitoring_report" ("id" varchar PRIMARY KEY NOT NULL, "dataPoints" text NOT NULL, "status" varchar(64) NOT NULL DEFAULT ('pending'), "deliveredAt" datetime(3), "attempts" integer NOT NULL DEFAULT (0), "lastAttemptAt" datetime(3), "lastError" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "reportDate" varchar(10), CONSTRAINT "CHK_instance_monitoring_report_status" CHECK (("status" IN ('pending', 'delivered', 'skipped_after_max_retries'))))
+CREATE TABLE "instance_monitoring_report" ("id" varchar PRIMARY KEY NOT NULL, "dataPoints" text NOT NULL, "status" varchar(64) NOT NULL DEFAULT ('pending'), "deliveredAt" datetime(3), "attempts" integer NOT NULL DEFAULT (0), "lastAttemptAt" datetime(3), "lastError" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "reportDate" varchar(10), CONSTRAINT "CHK_instance_monitoring_report_status" CHECK ("status" IN ('pending', 'delivered', 'skipped_after_max_retries', 'sending')))
 ```
 
 </details>
@@ -30,7 +30,7 @@ CREATE TABLE "instance_monitoring_report" ("id" varchar PRIMARY KEY NOT NULL, "d
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK (("status" IN ('pending', 'delivered', 'skipped_after_max_retries'))) |
+| - | CHECK | CHECK ("status" IN ('pending', 'delivered', 'skipped_after_max_retries', 'sending')) |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_instance_monitoring_report_1 | PRIMARY KEY | PRIMARY KEY (id) |
 

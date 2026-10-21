@@ -77,7 +77,7 @@ jobs:
       - name: Generate matrix (up to 20 shards, duration-weighted)
         id: gen
         run: |
-          MATRIX=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix 20 --orchestrate --project=sqlite:e2e)
+          MATRIX=$(node packages/quality/testing/playwright/scripts/distribute-tests.mjs --matrix 20 --orchestrate --project=sqlite:e2e)
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
 
   e2e:

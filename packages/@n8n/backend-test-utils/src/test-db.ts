@@ -233,6 +233,8 @@ type EntityName =
 	| 'TokenExchangeJti'
 	| 'TrustedKeySourceEntity'
 	| 'TrustedKeyEntity'
+	| 'TrustedSourceEntity'
+	| 'TrustedSourceIdentityEntity'
 	| 'WorkflowStatisticsDelta';
 
 /**

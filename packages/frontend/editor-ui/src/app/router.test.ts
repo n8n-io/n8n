@@ -137,8 +137,6 @@ describe('router', () => {
 		],
 		['/settings/sso', VIEWS.WORKFLOWS, []],
 		['/settings/sso', VIEWS.SSO_SETTINGS, ['saml:manage']],
-		['/settings/log-streaming', VIEWS.WORKFLOWS, []],
-		['/settings/log-streaming', VIEWS.LOG_STREAMING_SETTINGS, ['logStreaming:manage']],
 		['/settings/community-nodes', VIEWS.WORKFLOWS, []],
 		[
 			'/settings/community-nodes',
@@ -264,9 +262,6 @@ describe('router', () => {
 
 		test('waits for delayed flag hydration before allowing enrolled users through', async () => {
 			const posthog = usePostHog();
-			const hasPendingFeatureFlagsSpy = vi
-				.spyOn(posthog, 'hasPendingFeatureFlags')
-				.mockReturnValue(true);
 			const waitForFeatureFlagsSpy = vi
 				.spyOn(posthog, 'waitForFeatureFlags')
 				.mockImplementation(async () => {
@@ -283,7 +278,6 @@ describe('router', () => {
 				expect(router.currentRoute.value.name).toBe(VIEWS.RESOURCE_CENTER);
 			} finally {
 				waitForFeatureFlagsSpy.mockRestore();
-				hasPendingFeatureFlagsSpy.mockRestore();
 			}
 		});
 	});

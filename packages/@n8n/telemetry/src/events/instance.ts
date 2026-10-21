@@ -17,6 +17,18 @@ export const INSTANCE_TELEMETRY = defineTelemetryEvents({
 					'Postgres server version, or SQLite library version. Null when it could not be determined, which for `postgresdb` means the query failed rather than that the instance runs SQLite.',
 				),
 			n8n_version_notifications_enabled: z.boolean(),
+			db_vendor: z
+				.enum(['aurora', 'rds', 'azure', 'cloud-sql', 'other'])
+				.optional()
+				.describe(
+					'Managed Postgres service n8n runs on. `other` covers self-managed and unrecognized providers. Absent on SQLite',
+				),
+			redis_vendor: z
+				.enum(['elasticache', 'azure-cache', 'other'])
+				.optional()
+				.describe(
+					'Managed Redis service n8n uses. `other` covers self-managed and unrecognized providers. Absent outside queue mode',
+				),
 			n8n_disable_production_main_process: z.boolean(),
 			system_info: z.object({
 				os: z.object({
@@ -30,6 +42,43 @@ export const INSTANCE_TELEMETRY = defineTelemetryEvents({
 					speed: z.number().describe('Clock speed in MHz'),
 				}),
 				is_docker: z.boolean(),
+				runtime: z
+					.enum([
+						'kubernetes',
+						'ecs',
+						'cloud-run',
+						'azure-container-apps',
+						'azure-app-service',
+						'docker',
+						'other',
+					])
+					.optional()
+					.describe('Platform n8n runs on, read from well-known platform variables'),
+				memory_limit: z
+					.number()
+					.nullable()
+					.describe('Memory limit n8n was given in KiB. Null when it has none'),
+				cpu_limit: z
+					.number()
+					.nullable()
+					.describe('CPU quota n8n was given, in CPUs, for example 0.5. Null when it has none'),
+				cpu_limit_source: z
+					.enum(['cgroup_v2', 'cgroup_v1', 'unreadable'])
+					.describe(
+						'Where cpu_limit was read from. Unreadable means n8n could not read it, so a null cpu_limit is unknown, not "no limit"',
+					),
+				cpu_weight: z
+					.number()
+					.nullable()
+					.describe(
+						'Raw cgroup CPU weight (cgroup v2 cpu.weight) or shares (cgroup v1 cpu.shares). Kubernetes derives it from the CPU request. Null when unreadable',
+					),
+				kubernetes_provider: z
+					.enum(['aws', 'azure', 'gcp', 'other'])
+					.optional()
+					.describe(
+						'Cloud the node runs on, read from vendor tags in the kernel release. `other` also covers node images that do not name their cloud. Only for `kubernetes`',
+					),
 			}),
 			execution_variables: z.object({
 				executions_mode: z.enum(['regular', 'queue']),
@@ -44,10 +93,15 @@ export const INSTANCE_TELEMETRY = defineTelemetryEvents({
 			}),
 			workflow_history: z.object({
 				compaction_optimizing_time_window_hours: z.number(),
-				compaction_trim_on_start_up: z.boolean(),
 				compaction_trimming_time_window_days: z.number(),
 			}),
 			n8n_deployment_type: z.string(),
+			n8n_deployment_artifact: z
+				.string()
+				.optional()
+				.describe(
+					'Official artifact that installed n8n, as `<artifact>[/<version>]`, e.g. `helm-chart/1.14.0`',
+				),
 			n8n_binary_data_mode: z.enum(['default', 'filesystem', 's3', 'azure', 'database']),
 			smtp_set_up: z.boolean(),
 			ldap_allowed: z.boolean(),

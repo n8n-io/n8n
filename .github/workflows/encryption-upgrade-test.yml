@@ -29,10 +29,10 @@ on:
   # verify themselves (both modes) before the merge.
   pull_request:
     paths:
-      - 'packages/testing/playwright/tests/infrastructure/encryption/**'
-      - 'packages/testing/containers/services/n8n.ts'
-      - 'packages/testing/containers/services/types.ts'
-      - 'packages/testing/containers/stack.ts'
+      - 'packages/quality/testing/playwright/tests/infrastructure/encryption/**'
+      - 'packages/quality/environments/containers/services/n8n.ts'
+      - 'packages/quality/environments/containers/services/types.ts'
+      - 'packages/quality/environments/containers/stack.ts'
       - '.github/workflows/encryption-upgrade-test.yml'
 
 permissions:

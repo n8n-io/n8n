@@ -6,12 +6,12 @@ interface OnboardingOpening {
 	title: string;
 	/**
 	 * First assistant message. Markdown: a blank line starts a paragraph, and the chat shows the
-	 * paragraphs one after the other before the card. `{{firstName}}` becomes the user's first
-	 * name, or "there".
+	 * paragraphs one after the other before the card. A new paragraph needs its own animation rule
+	 * in `InstanceAiConversation.vue`. `{{firstName}}` becomes the user's first name, or "there".
 	 */
 	greeting: string;
 	/**
-	 * Steps of the ONE `ask-user` card shown before the agent's first turn, in this order. A
+	 * Steps of the ONE `workflow_builder_ask_user` card shown before the agent's first turn, in this order. A
 	 * `required` step has no Skip button; the card's own "Something else" free text is the way out
 	 * of a `single` or `multi` step. The host skips a step the signup survey already answered; that
 	 * answer still reaches the agent. The answers reach the agent in an `<onboarding-answer>` block,
@@ -33,9 +33,9 @@ export const ONBOARDING_OPENING: OnboardingOpening = {
 	greeting: [
 		"Hi {{firstName}}, I'm your Assistant.",
 		'Think of me as your n8n expert.',
-		"Two final questions, then I'll suggest automations that fit how you work.",
+		'Two final questions, so I can suggest automations for you.',
 	].join('\n\n'),
-	followUp: 'Got it. Finally, tell me a little about how you use {{apps}}.',
+	followUp: 'Last one: what do you usually do in {{apps}}?',
 	questions: [
 		// The n8n Cloud signup form's team labels, so the answers stay comparable with the Cloud
 		// metadata (`what_team_are_you_on`). The card hides options that start with "other"; its

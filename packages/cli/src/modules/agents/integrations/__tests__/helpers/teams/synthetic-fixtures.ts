@@ -131,6 +131,35 @@ export const channelFollowUp: TeamsActivityFixture = channelActivity({
 	text: 'follow up',
 });
 
+/** A new channel post with no mention. Teams puts its own id in the conversation id. */
+export const channelRootPost: TeamsActivityFixture = channelActivity({
+	id: '1700000000009',
+	text: 'anyone seen the build fail?',
+	conversation: {
+		id: `${TEAMS_CHANNEL_ID};messageid=1700000000009`,
+		conversationType: 'channel',
+		tenantId: TEAMS_TENANT_ID,
+	},
+});
+
+/** A reply with no mention in a thread the agent never joined. */
+export const channelUnjoinedReply: TeamsActivityFixture = channelActivity({
+	id: 'activity-channel-4',
+	text: 'me too',
+	conversation: {
+		id: TEAMS_CHANNEL_SECOND_THREAD_CONVERSATION_ID,
+		conversationType: 'channel',
+		tenantId: TEAMS_TENANT_ID,
+	},
+});
+
+/** Another bot posting in the channel, with no mention. */
+export const channelBotPost: TeamsActivityFixture = channelActivity({
+	id: 'activity-channel-5',
+	text: 'deploy finished',
+	from: { id: '28:other-bot', name: 'Deploy Bot' },
+});
+
 export const channelSecondThreadMention: TeamsActivityFixture = channelActivity({
 	id: 'activity-channel-3',
 	text: '<at>n8n Agent</at> a different thread',

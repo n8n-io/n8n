@@ -1,7 +1,7 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import type { McpJsonNudgeAction } from '@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeTrigger';
 import type { McpJsonNudgeSurface } from '@/experiments/mcpJsonNudge/constants';
-import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
+import { MCP_SETTINGS_VIEW } from '@n8n/frontend-module-mcp';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import userEvent from '@testing-library/user-event';
 import type { Mock } from 'vitest';

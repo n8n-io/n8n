@@ -23,6 +23,7 @@ import {
 	N8nDialogTitle,
 } from '../N8nDialog';
 import { N8nDropdownMenu } from '../N8nDropdownMenu';
+import N8nExternalLink from '../N8nExternalLink';
 import N8nIcon from '../N8nIcon';
 import type { IconName } from '../N8nIcon/icons';
 import N8nInput from '../N8nInput';
@@ -534,7 +535,7 @@ const BrandButton = defineComponent({
 			:href="href"
 			target="_blank"
 			rel="noopener noreferrer"
-			style="display: inline-flex; align-items: center; gap: var(--spacing--2xs); width: fit-content; padding: var(--spacing--2xs) var(--spacing--sm); border-radius: var(--radius); font-size: var(--font-size--sm); font-weight: var(--font-weight--bold); line-height: var(--line-height--lg); text-decoration: none; cursor: pointer;"
+			style="display: inline-flex; align-items: center; gap: var(--spacing--2xs); width: fit-content; padding: var(--spacing--2xs) var(--spacing--sm); border-radius: var(--radius); font-size: var(--font-size--sm); font-weight: var(--font-weight--medium); line-height: var(--line-height--lg); text-decoration: none; cursor: pointer;"
 		>
 			<span class="mcp-brand-button__leading">
 				<slot name="leading" />
@@ -652,6 +653,7 @@ const components = {
 	N8nDialog,
 	N8nDialogClose,
 	N8nDialogFooter,
+	N8nExternalLink,
 	N8nInput,
 	N8nSelect,
 	N8nOption,
@@ -847,12 +849,9 @@ export const ThisInstance: Story = {
 						<N8nSettingsRow title="Updates" description="2.10.2 available · 3 versions behind">
 							<template #action>
 								<div style="display: flex; flex-direction: row; align-items: center; justify-content: flex-end; gap: var(--spacing--sm);">
-									<a
-										href="https://docs.n8n.io/release-notes"
-										target="_blank"
-										rel="noopener noreferrer"
-										style="color: var(--text-color--subtle); font-size: var(--font-size--sm); line-height: var(--line-height--lg); text-decoration: none; cursor: pointer;"
-									><span style="text-decoration: underline;">Release notes</span><span aria-hidden="true">↗</span></a>
+									<N8nText size="medium" color="text-base"
+										><N8nExternalLink inline size="small" href="https://docs.n8n.io/release-notes">Release notes</N8nExternalLink></N8nText
+									>
 									<N8nButton variant="outline" size="medium" label="Update" />
 								</div>
 							</template>
@@ -1359,7 +1358,7 @@ const ClientDetailsDialog = defineComponent({
 				'.mcp-client-details__access { display: flex; flex-direction: column; gap: var(--spacing--xs); min-width: 0; }' +
 				'.mcp-client-details__group { display: flex; flex-direction: column; gap: var(--spacing--5xs); }' +
 				// Same uppercase mini-heading treatment as the Connect picker's category headers.
-				'.mcp-client-details__group-title { font-size: var(--font-size--3xs); font-weight: var(--font-weight--bold); letter-spacing: var(--letter-spacing--wider); text-transform: uppercase; color: var(--text-color--subtle); }';
+				'.mcp-client-details__group-title { font-size: var(--font-size--3xs); font-weight: var(--font-weight--medium); letter-spacing: var(--letter-spacing--wider); text-transform: uppercase; color: var(--text-color--subtle); }';
 			document.head.appendChild(style);
 		}
 
@@ -1600,13 +1599,13 @@ export const ModelContextProtocol: Story = {
 				confirmSaved('MCP access enabled');
 				showExposeAllDialog.value = true;
 			};
-			// "Expose all workflows" from the follow-up dialog. In the app/prototype this flips every
+			// "Enable MCP access" from the follow-up dialog. In the app/prototype this flips every
 			// workflow's exposure (and the auto-expose-new flag) in the shared store so the Workflows
 			// available page reflects it; here the main page and that page are separate story instances,
 			// so this just closes + confirms to keep the UX demonstrable.
 			const onExposeAll = () => {
 				showExposeAllDialog.value = false;
-				confirmSaved('All workflows exposed to MCP');
+				confirmSaved('MCP access enabled for workflows');
 			};
 			const onConfirmDisable = () => {
 				enabled.value = false;
@@ -1978,14 +1977,14 @@ export const ModelContextProtocol: Story = {
 				<N8nDialog
 					v-model:open="showExposeAllDialog"
 					size="small"
-					header="Expose all workflows to MCP?"
-					description="This lets connected clients reach every workflow on this instance right away. You can hide any workflow or revoke access at any time."
+					header="Enable MCP access for all workflows?"
+					description="This lets connected clients reach every workflow on this instance right away. You can disable MCP access for individual workflows at any time."
 				>
 					<N8nDialogFooter>
 						<N8nDialogClose as-child>
 							<N8nButton variant="outline" label="Not now" />
 						</N8nDialogClose>
-						<N8nButton variant="solid" label="Expose all workflows" @click="onExposeAll" />
+						<N8nButton variant="solid" label="Enable MCP access" @click="onExposeAll" />
 					</N8nDialogFooter>
 				</N8nDialog>
 
@@ -2052,7 +2051,7 @@ export const ModelContextProtocol: Story = {
 										<template #item-label="{ item }">
 											<span
 												v-if="item.data.kind === 'header'"
-												style="display: block; padding-block: var(--spacing--5xs); font-size: var(--font-size--3xs); font-weight: var(--font-weight--bold); letter-spacing: var(--letter-spacing--wider); text-transform: uppercase; color: var(--text-color--subtle);"
+												style="display: block; padding-block: var(--spacing--5xs); font-size: var(--font-size--3xs); font-weight: var(--font-weight--medium); letter-spacing: var(--letter-spacing--wider); text-transform: uppercase; color: var(--text-color--subtle);"
 											>{{ item.label }}</span>
 											<N8nText v-else size="medium" color="text-dark">{{ item.label }}</N8nText>
 										</template>

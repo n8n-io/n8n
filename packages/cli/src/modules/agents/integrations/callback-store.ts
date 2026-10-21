@@ -2,7 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 
 import { LockNamespace, type LockService } from '@n8n/backend-common';
 
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@n8n/backend-services';
 
 export interface CallbackPayload {
 	actionId: string;

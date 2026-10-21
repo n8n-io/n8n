@@ -276,6 +276,7 @@ describe('useCanvasOperations', () => {
 		vi.mocked(workflowDocumentStoreInstance.getWorkflowObjectAccessorSnapshot).mockReturnValue({
 			id: workflowDocumentStoreInstance.workflowId,
 			connectionsBySourceNode: workflowDocumentStoreInstance.connectionsBySourceNode,
+			connectionsByDestinationNode: workflowDocumentStoreInstance.connectionsByDestinationNode,
 			pinData: workflowDocumentStoreInstance.pinnedDataByNodeName as IPinData,
 			expression: workflowDocumentStoreInstance.getExpressionHandler(),
 			getNode: workflowDocumentStoreInstance.getNodeByName,
@@ -1558,6 +1559,20 @@ describe('useCanvasOperations', () => {
 		});
 	});
 
+	describe('addNodesAndConnections', () => {
+		it('should add nothing and clear the connection context when a node type is not loaded', async () => {
+			vi.mocked(useNodeTypesStore().isNodeTypeUnavailable).mockReturnValue(true);
+			const addNodeSpy = vi.spyOn(workflowDocumentStoreInstance, 'addNode');
+
+			const { addNodesAndConnections } = useCanvasOperations();
+			const { addedNodes } = await addNodesAndConnections([{ type: 'type' }], [], {});
+
+			expect(addedNodes).toEqual([]);
+			expect(addNodeSpy).not.toHaveBeenCalled();
+			expect(useUIStore().resetLastInteractedWith).toHaveBeenCalled();
+		});
+	});
+
 	describe('addNodes', () => {
 		it('should add nodes at specified positions', async () => {
 			const nodeTypesStore = useNodeTypesStore();
@@ -2723,6 +2738,40 @@ describe('useCanvasOperations', () => {
 			// Verify no pinning or unpinning occurred
 			expect(setDataMock).not.toHaveBeenCalled();
 			expect(unsetDataMock).not.toHaveBeenCalled();
+		});
+
+		it('should not pin a selection that contains a restricted node type', () => {
+			const historyStore = mockedStore(useHistoryStore);
+			const toast = useToast();
+
+			const restrictedNode = createTestNode({
+				id: '1',
+				name: 'RestrictedNode',
+				type: 'n8n-nodes-base.slack',
+			});
+			const pinnableNode = createTestNode({ id: '2', name: 'PinnableNode' });
+
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodesByIds').mockReturnValue([
+				restrictedNode,
+				pinnableNode,
+			]);
+			canPinNodeMock.mockReturnValue(true);
+			getInputDataWithPinnedMock.mockReturnValue([{ json: { test: 'data' } }]);
+			mockedStore(useTypeAvailabilityPoliciesStore).getNodeTypeAvailability.mockImplementation(
+				(name) => ({ name, available: name !== 'n8n-nodes-base.slack' }),
+			);
+
+			useCanvasOperations().toggleNodesPinned(['1', '2'], 'pin-icon-click');
+
+			expect(setDataMock).not.toHaveBeenCalled();
+			expect(unsetDataMock).not.toHaveBeenCalled();
+			expect(historyStore.startRecordingUndo).not.toHaveBeenCalled();
+			expect(toast.showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'warning',
+					message: expect.stringContaining('n8n-nodes-base.slack'),
+				}),
+			);
 		});
 	});
 
@@ -5094,20 +5143,25 @@ describe('useCanvasOperations', () => {
 			expect(copiedData.nodeGroups).toBeUndefined();
 		});
 
-		it('should not copy a selection that contains a restricted node type', async () => {
+		it('should copy a selection that contains a restricted node type', async () => {
+			const toast = useToast();
 			const nodes = buildImportNodes();
 			nodes[1].type = 'n8n-nodes-base.slack';
 			workflowDocumentStoreInstance.allNodes = nodes;
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodesByIds').mockReturnValue(nodes);
+			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
 			mockedStore(useTypeAvailabilityPoliciesStore).getNodeTypeAvailability.mockImplementation(
 				(name) => ({ name, available: name !== 'n8n-nodes-base.slack' }),
 			);
 
 			const { copyNodes } = useCanvasOperations();
-			const copied = await copyNodes(['1', '2']);
+			await copyNodes(['1', '2']);
 
-			expect(copied).toBe(false);
-			expect(useClipboard().copy).not.toHaveBeenCalled();
+			const copiedData = JSON.parse(vi.mocked(useClipboard().copy).mock.calls[0][0] as string);
+			expect(copiedData.nodes.map((node: INodeUi) => node.type)).toContain('n8n-nodes-base.slack');
+			expect(toast.showMessage).not.toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'warning' }),
+			);
 		});
 
 		it('should include nodeGroups when all group members are copied', async () => {
@@ -5250,7 +5304,7 @@ describe('useCanvasOperations', () => {
 			).toEqual({ openAiApi: storedCredential });
 		});
 
-		it('keeps stored credentials the current user can access when sharing is enabled', () => {
+		it('keeps stored credentials the current user can use when sharing is enabled', () => {
 			const ownedCredential = mock<ICredentialsResponse>({ id: 'cred-1', name: 'Mine' });
 			const storedCredential = { id: ownedCredential.id, name: ownedCredential.name };
 
@@ -5263,14 +5317,14 @@ describe('useCanvasOperations', () => {
 							id: ownedCredential.id,
 							name: ownedCredential.name,
 							credentialType: 'openAiApi',
-							currentUserHasAccess: true,
+							currentUserCanUse: true,
 						},
 					},
 				}),
 			).toEqual({ openAiApi: storedCredential });
 		});
 
-		it('drops stored credentials the current user cannot access when sharing is enabled', () => {
+		it('drops stored credentials the current user cannot use when sharing is enabled', () => {
 			const foreignCredential = mock<ICredentialsResponse>({
 				id: 'cred-foreign',
 				name: 'Someone else',
@@ -5287,7 +5341,7 @@ describe('useCanvasOperations', () => {
 							id: foreignCredential.id,
 							name: foreignCredential.name,
 							credentialType: 'openAiApi',
-							currentUserHasAccess: false,
+							currentUserCanUse: false,
 						},
 					},
 				}),
@@ -5313,6 +5367,28 @@ describe('useCanvasOperations', () => {
 			await cutNodes(['1', '2']);
 			expect(useClipboard().copy).toHaveBeenCalledTimes(1);
 			expect(vi.mocked(useClipboard().copy).mock.calls).toMatchSnapshot();
+		});
+
+		it('should cut a selection that contains a restricted node type', async () => {
+			const nodes = buildImportNodes();
+			nodes[1].type = 'n8n-nodes-base.slack';
+			workflowDocumentStoreInstance.allNodes = nodes;
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodesByIds').mockReturnValue(nodes);
+			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
+			mockedStore(useTypeAvailabilityPoliciesStore).getNodeTypeAvailability.mockImplementation(
+				(name) => ({ name, available: name !== 'n8n-nodes-base.slack' }),
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id) =>
+				nodes.find((node) => node.id === id),
+			);
+			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
+			const removeNodeByIdSpy = vi.spyOn(workflowDocumentStoreInstance, 'removeNodeById');
+
+			const { cutNodes } = useCanvasOperations();
+			await cutNodes(['1', '2']);
+
+			expect(useClipboard().copy).toHaveBeenCalledTimes(1);
+			expect(removeNodeByIdSpy).toHaveBeenCalledWith('2');
 		});
 
 		it('does not restore an anchor when cutting an explicitly selected group', async () => {
@@ -6243,6 +6319,48 @@ describe('useCanvasOperations', () => {
 			nodes: [], //buildImportNodes(),
 			connections: {},
 		};
+
+		it('centers a pasted node in the viewport instead of using the last click', async () => {
+			const nodes = [createTestNode({ name: 'Pasted', position: [100, 100] })];
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+				(importedNodes, connections) =>
+					createTestWorkflowObject({ nodes: importedNodes, connections }),
+			);
+
+			const canvasOperations = useCanvasOperations();
+			canvasOperations.lastClickPosition.value = [900, 900];
+			const result = await canvasOperations.importWorkflowData(
+				{ nodes, connections: {} },
+				'paste',
+				{ viewport: { xMin: 0, yMin: 0, xMax: 1000, yMax: 1000 }, trackEvents: false },
+			);
+
+			expect(result.nodes?.[0].position).toEqual([464, 464]);
+		});
+
+		it('centers the bounding box when pasting nodes with different leftmost and topmost nodes', async () => {
+			const nodes = [
+				createTestNode({ name: 'Top', position: [400, 0] }),
+				createTestNode({ name: 'Left', position: [0, 200] }),
+			];
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+				(importedNodes, connections) =>
+					createTestWorkflowObject({ nodes: importedNodes, connections }),
+			);
+
+			const canvasOperations = useCanvasOperations();
+			canvasOperations.lastClickPosition.value = [900, 900];
+			const result = await canvasOperations.importWorkflowData(
+				{ nodes, connections: {} },
+				'paste',
+				{ viewport: { xMin: 0, yMin: 0, xMax: 1000, yMax: 1000 }, trackEvents: false },
+			);
+
+			expect(result.nodes?.map((node) => node.position)).toEqual([
+				[656, 352],
+				[256, 552],
+			]);
+		});
 
 		it.each(['paste', 'file', 'url'] as const)(
 			'strips empty groups before importing from %s when the feature is disabled',
@@ -7345,6 +7463,28 @@ describe('useCanvasOperations', () => {
 
 			expect(duplicatedNodeIds).toHaveLength(1);
 			expect(workflowDocumentStoreInstance.createGroup).not.toHaveBeenCalled();
+		});
+
+		it('should not duplicate a selection that contains a restricted node type', async () => {
+			const toast = useToast();
+			const nodes = buildImportNodes();
+			nodes[1].type = 'n8n-nodes-base.slack';
+			workflowDocumentStoreInstance.allNodes = nodes;
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodesByIds').mockReturnValue(nodes);
+			mockedStore(useTypeAvailabilityPoliciesStore).getNodeTypeAvailability.mockImplementation(
+				(name) => ({ name, available: name !== 'n8n-nodes-base.slack' }),
+			);
+
+			const duplicatedNodeIds = await useCanvasOperations().duplicateNodes(['1', '2']);
+
+			expect(duplicatedNodeIds).toEqual([]);
+			expect(workflowDocumentStoreInstance.addNode).not.toHaveBeenCalled();
+			expect(toast.showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'warning',
+					message: expect.stringContaining('n8n-nodes-base.slack'),
+				}),
+			);
 		});
 
 		it('should show max node type error when duplicating nodes that exceed maxNodes limit', async () => {

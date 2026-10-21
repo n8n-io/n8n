@@ -19,7 +19,7 @@ import { NodeTypes } from '@/node-types';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+import { WorkflowPublishedDataService } from '@n8n/backend-services';
 import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
@@ -216,6 +216,9 @@ export class LiveWebhooks implements IWebhookManager {
 	 * description field of the trigger resolves natively (see
 	 * `webhookDescriptionFields` in n8n-workflow) and the node's own parameters
 	 * contain no expressions. Anything not proven below acquires eagerly.
+	 *
+	 * TODO(native-evaluation rollout, CAT-4699): delete this gate and its flag; under
+	 * lazy acquisition with native evaluation the prediction is unnecessary.
 	 */
 	private webhookPhaseNeedsIsolate(startNode: INode | null): boolean {
 		if (!this.expressionEngineConfig.allowWebhookIsolateSkip) return true;

@@ -22,6 +22,7 @@ export class Function implements INodeType {
 		displayName: 'Function',
 		name: 'function',
 		hidden: true,
+		deprecated: true,
 		icon: 'fa:code',
 		group: ['transform'],
 		version: 1,
