@@ -53,7 +53,12 @@ function isNonPositiveDimension(value: unknown): boolean {
 function hasIgnoredQuality(parameters: INodeParameters): boolean {
 	const options = asParameters(parameters.options);
 	if (options?.quality === undefined) return false;
-	return options.format === 'png' || options.format === 'tiff';
+	return (
+		options.format === undefined ||
+		options.format === 'png' ||
+		options.format === 'tiff' ||
+		options.format === 'tif'
+	);
 }
 
 /** Returns only the parameter-specific warnings that apply to this node's saved config. */

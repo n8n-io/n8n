@@ -138,6 +138,32 @@ describe('EditImageVersionRule', () => {
 			expect(result.issues[0].description).toContain(EDIT_IMAGE_WARNING.quality);
 		});
 
+		it('should warn when TIF quality is set', async () => {
+			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
+				createNode('Edit Image', EDIT_IMAGE_NODE_TYPE, {
+					operation: 'border',
+					options: { format: 'tif', quality: 50 },
+				}),
+			]);
+
+			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
+
+			expect(result.issues[0].description).toContain(EDIT_IMAGE_WARNING.quality);
+		});
+
+		it('should warn when quality is set without an output format', async () => {
+			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
+				createNode('Edit Image', EDIT_IMAGE_NODE_TYPE, {
+					operation: 'border',
+					options: { quality: 80 },
+				}),
+			]);
+
+			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
+
+			expect(result.issues[0].description).toContain(EDIT_IMAGE_WARNING.quality);
+		});
+
 		it('should not warn about quality for JPEG', async () => {
 			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
 				createNode('Edit Image', EDIT_IMAGE_NODE_TYPE, {
