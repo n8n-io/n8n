@@ -133,6 +133,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.scheduled_task](public.scheduled_task.md) | 19 |  | BASE TABLE |
 | [public.scope](public.scope.md) | 3 |  | BASE TABLE |
 | [public.secrets_provider_connection](public.secrets_provider_connection.md) | 7 |  | BASE TABLE |
+| [public.self_healing_investigation](public.self_healing_investigation.md) | 12 |  | BASE TABLE |
 | [public.self_healing_result](public.self_healing_result.md) | 15 |  | BASE TABLE |
 | [public.settings](public.settings.md) | 3 |  | BASE TABLE |
 | [public.shared_credentials](public.shared_credentials.md) | 5 |  | BASE TABLE |
@@ -386,6 +387,10 @@ erDiagram
 "public.role_scope" }o--|| "public.scope" : "FOREIGN KEY (#quot;scopeSlug#quot;) REFERENCES scope(slug) ON UPDATE CASCADE ON DELETE CASCADE"
 "public.role_scope" }o--|| "public.role" : "FOREIGN KEY (#quot;roleSlug#quot;) REFERENCES role(slug) ON UPDATE CASCADE ON DELETE CASCADE"
 "public.scheduled_task" }o--|| "public.scheduled_job" : "FOREIGN KEY (#quot;jobId#quot;) REFERENCES scheduled_job(id) ON DELETE CASCADE"
+"public.self_healing_investigation" }o--|| "public.user" : "FOREIGN KEY (#quot;backgroundUserId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
+"public.self_healing_investigation" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
+"public.self_healing_investigation" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.self_healing_investigation" }o--o| "public.self_healing_result" : "FOREIGN KEY (#quot;resultId#quot;) REFERENCES self_healing_result(id) ON DELETE CASCADE"
 "public.self_healing_result" }o--|| "public.user" : "FOREIGN KEY (#quot;backgroundUserId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.self_healing_result" }o--o| "public.user" : "FOREIGN KEY (#quot;dismissedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.self_healing_result" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
@@ -1708,6 +1713,20 @@ erDiagram
   varchar_128_ providerKey
   varchar_36_ type
   timestamp_3__with_time_zone updatedAt
+}
+"public.self_healing_investigation" {
+  uuid backgroundUserId FK
+  json baseline
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ executionId
+  timestamp_3__with_time_zone finishedAt
+  varchar_36_ id
+  varchar_36_ projectId FK
+  varchar_36_ resultId FK
+  uuid runId
+  uuid threadId
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ workflowId FK
 }
 "public.self_healing_result" {
   uuid backgroundUserId FK
