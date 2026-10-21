@@ -158,6 +158,17 @@ describe('ApiKeyRateLimitsSection', () => {
 		);
 	});
 
+	it('does not offer to turn rate limiting off when an environment variable turns it on', async () => {
+		const { getByTestId } = await renderLoaded({ enabled: true, envManagedFields: ['enabled'] });
+
+		await userEvent.click(getByTestId('rate-limits-edit'));
+		await clearAllLimits();
+
+		const save = screen.getByTestId('rate-limits-save');
+		expect(save).not.toHaveTextContent('Disable limits');
+		expect(save).toBeDisabled();
+	});
+
 	it('shows an error for an invalid limit and does not save', async () => {
 		const { getByTestId } = await renderLoaded({ enabled: true });
 

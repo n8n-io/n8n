@@ -84,7 +84,9 @@ const hasErrors = computed(() =>
 );
 const isEmpty = computed(() => isDraftEmpty(draft.value));
 const showFixMessage = computed(() => submitted.value && hasErrors.value);
-const willDisable = computed(() => props.mode === 'edit' && isEmpty.value && !hasErrors.value);
+const isEnabledLocked = computed(() => props.envManagedFields.includes('enabled'));
+const canDisable = computed(() => props.mode === 'edit' && !isEnabledLocked.value);
+const willDisable = computed(() => canDisable.value && isEmpty.value && !hasErrors.value);
 
 const title = computed(() =>
 	props.mode === 'enable'
@@ -101,9 +103,7 @@ const primaryLabel = computed(() => {
 		: i18n.baseText('settings.security.rateLimits.dialog.save');
 });
 
-const isPrimaryDisabled = computed(
-	() => props.mode === 'enable' && isEmpty.value && !hasErrors.value,
-);
+const isPrimaryDisabled = computed(() => !canDisable.value && isEmpty.value && !hasErrors.value);
 
 function resetText(key: RateLimitRowKey) {
 	const limit = Number(isLimitLocked(key) ? draft.value[key].limit : defaultDraft.value[key].limit);
