@@ -132,7 +132,7 @@ graph TD
 ```
 
 **Orchestrator** handles directly:
-- Read-only queries (`workflow_builder_workflows`, `workflow_builder_executions`, `credentials` read actions)
+- Read-only queries (`workflow_builder_workflows`, `workflow_builder_executions`, `list_credentials`, `search_credential_types`)
 - Execution triggers (`workflow_builder_executions(action="run")`)
 - Workflow building (`workflow-builder` skill + workspace files + `workflow_builder_build_workflow`)
 - Verification and credential application (workflow_builder_verify_built_workflow, workflow_builder_apply_workflow_credentials)
@@ -334,7 +334,7 @@ To keep the orchestrator's context lean, tools are stratified into two tiers:
 
 - **Core tools** (always-loaded when registered, as selected by
   `ALWAYS_LOADED_TOOL_NAMES` in `tools/tool-ids.ts`): `workflow_builder_ask_user`, `workflow_builder_workflows`,
-  `workflow_builder_executions`, `credentials`, `data_tables`, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node`, `workflow_builder_build_workflow`,
+  `workflow_builder_executions`, the credential tools, `data_tables`, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node`, `workflow_builder_build_workflow`,
   `workflow_builder_search_models`, `research`, and `n8n-docs`. `workflow_builder_verify_built_workflow`, `parse-file`, `agents`,
   `agent_builder_build_agent`, and `mcp-servers` are also direct when their required runtime
   context or feature is available.

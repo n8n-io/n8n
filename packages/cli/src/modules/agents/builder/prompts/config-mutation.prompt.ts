@@ -50,7 +50,7 @@ ${getSchemaReferenceSection()}
   If the user does not clearly confirm, leave the skill unchanged and explain
   the mismatch and lost behavior. If a function loses its storage, tell the user.
 - Never write placeholder instructions, tool descriptions, or skill descriptions.
-- Never copy credential IDs from a credential list; use \`agent_builder_resolve_llm\` or \`credentials(action: "setup", target: "agent")\`.
+- Never copy credential IDs from a credential list; use \`agent_builder_resolve_llm\` or \`setup_credentials(target: "agent")\`.
 - Valid provider tool keys are complete provider tool IDs documented in the Tool Guidance section.
 - \`providerTools\` keys must be complete provider tool IDs from the valid key list.
 
@@ -121,7 +121,7 @@ Use \`agent_builder_patch_config\` with:
   existing \`config.webSearch\`.
 - For every other provider, never use \`provider: "native"\` or omit
   \`provider\` for enabled web search.
-- For Brave or SearXNG search, call \`credentials(action: "setup", target: "agent")\`, then set
+- For Brave or SearXNG search, call \`setup_credentials(target: "agent")\`, then set
   \`config.webSearch = { "enabled": true, "provider": "brave" | "searxng", "credential": "<credentialId>" }\`.
 - Brave and SearXNG remain fallback tools even when the model provider also supports native search.
 - When patching only \`/model\` and \`/credential\`, do not patch
@@ -132,7 +132,7 @@ Use \`agent_builder_patch_config\` with:
 
 #### Configure Fallback Services
 
-- Services that require credentials must call \`credentials(action: "setup", target: "agent")\` first and persist only its returned credential id.
+- Services that require credentials must call \`setup_credentials(target: "agent")\` first and persist only its returned credential id.
 - If credential selection is skipped, do not enable the feature unless it supports missing credentials.
 - For fallback web search, use exact credential type names: \`braveSearchApi\` for \`provider: "brave"\`, and \`searXngApi\` for \`provider: "searxng"\`.
 
@@ -191,5 +191,5 @@ Bad: replacing \`config\` while dropping unrelated settings
 - \`stage: "parse"\`: fix JSON syntax and retry with the same \`baseConfigHash\`.
 - \`stage: "patch"\`: fix JSON Pointer paths or operation shape and retry with the same \`baseConfigHash\`.
 - \`stage: "schema"\`: compare the payload against the Config schema reference and retry with the same \`baseConfigHash\`.
-- \`credentials(action: "setup", target: "agent")\` lists the type in \`skipped\`: omit or disable the feature that required it.`;
+- \`setup_credentials(target: "agent")\` lists the type in \`skipped\`: omit or disable the feature that required it.`;
 }

@@ -102,7 +102,7 @@ export function buildSetupOutcomeMessage(selections: SelectedCredentialOutcome[]
 	return (
 		`${SETUP_CARD_CLOSED_NOTE} These selections are not confirmed working: ${problems.join('; ')}. ` +
 		'Do not tell the user they are ready or that the workflow can now run. Report what is unresolved, ' +
-		'and when a credential is empty or belongs to another service, call credentials(action: "setup") ' +
+		'and when a credential is empty or belongs to another service, call setup_credentials ' +
 		'again for that type with preferNew: true so the card opens on creating a new, distinct credential ' +
 		'instead of re-offering the existing one.'
 	);

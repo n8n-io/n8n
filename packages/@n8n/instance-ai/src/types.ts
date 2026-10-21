@@ -903,7 +903,7 @@ export interface InstanceAiActivityEntry {
 
 /**
  * An entry in full, plus the rest of what the log knows about the same resource. Deliberately not
- * the live record: `workflow_builder_workflows` and `credentials` already fetch those, and the entry carries the ids
+ * the live record: `workflow_builder_workflows` and `list_credentials` already fetch those, and the entry carries the ids
  * to call them with.
  */
 export interface InstanceAiActivityExpansion {

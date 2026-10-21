@@ -347,7 +347,13 @@ describe('Instance AI skills', () => {
 
 		expect(skill).toMatchObject({
 			name: 'n8n-docs-assistant',
-			recommendedTools: ['n8n-docs', 'credentials', 'search_nodes', 'get_node_types'],
+			recommendedTools: [
+				'n8n-docs',
+				'list_credentials',
+				'search_credential_types',
+				'search_nodes',
+				'get_node_types',
+			],
 		});
 		// `n8n-docs` is always loaded, so the catalog must not ask the model to load it.
 		expect(skill?.description).not.toContain('load_tool');
@@ -385,7 +391,10 @@ describe('Instance AI skills', () => {
 			'get_node_parameter_options',
 			'execute_node',
 			'data_tables',
-			'credentials',
+			'list_credentials',
+			'search_credential_types',
+			'setup_credentials',
+			'test_credential',
 			'workflow_builder_verify_built_workflow',
 			'workflow_builder_executions',
 		]);
@@ -563,7 +572,7 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain('unreconstructable-context');
 		expect(loaded?.instructions).toContain('do this unprompted');
 		expect(loaded?.instructions).toContain('## Before you name a cause');
-		expect(loaded?.instructions).toContain('credentials(action="test")');
+		expect(loaded?.instructions).toContain('test_credential');
 		expect(skill?.description).toContain('a live run you started');
 	});
 });

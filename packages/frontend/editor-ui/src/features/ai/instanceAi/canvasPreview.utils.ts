@@ -280,8 +280,8 @@ export function isAgentEditingWorkflow(
 			getLatestWorkflowUpdateResult(node)?.workflowId === workflowId ||
 			node.toolCalls.some(
 				(call) =>
-					resolveBuilderToolName(call.toolName) === SHARED_BUILDER_TOOL_NAMES.CREDENTIALS &&
-					call.args?.action === 'setup' &&
+					resolveBuilderToolName(call.toolName, call.args?.action) ===
+						SHARED_BUILDER_TOOL_NAMES.SETUP_CREDENTIALS &&
 					isRecord(call.result) &&
 					call.result.announced === true &&
 					call.result.preBuild === true &&
