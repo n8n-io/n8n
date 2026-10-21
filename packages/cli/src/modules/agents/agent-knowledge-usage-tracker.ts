@@ -1,5 +1,9 @@
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+
+import type { AgentRunTelemetryType } from '@/interfaces';
+import { Telemetry } from '@/telemetry';
 
 export type KnowledgeToolCall = 'file_find' | 'file_search' | 'file_read' | 'vector_store_search';
 
@@ -29,6 +33,26 @@ const STALE_RUN_MS = Time.hours.toMilliseconds;
 @Service()
 export class AgentKnowledgeUsageTracker {
 	private readonly runs = new Map<string, { usage: KnowledgeRunUsage; lastCallAt: number }>();
+
+	constructor(private readonly telemetry: Telemetry) {}
+
+	sendRunUsage(
+		runId: string,
+		run: { agentId: string; runType: AgentRunTelemetryType; userId?: string },
+	): void {
+		const usage = this.takeRunUsage(runId);
+		if (!usage) {
+			return;
+		}
+
+		this.telemetry.track(TELEMETRY_EVENT.AGENTS.AGENT_RUN_USED_KNOWLEDGE, {
+			agent_id: run.agentId,
+			run_id: runId,
+			run_type: run.runType,
+			...(run.userId ? { user_id: run.userId } : {}),
+			...usage,
+		});
+	}
 
 	recordToolCall(runId: string | undefined, call: KnowledgeToolCall): void {
 		if (!runId) {

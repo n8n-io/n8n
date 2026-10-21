@@ -36,7 +36,7 @@ import { AgentWakeService } from '../background/agent-wake.service';
 import { AgentBackgroundJobService } from '../background/agent-background-job.service';
 import { SubAgentBackgroundRunner } from '../background/sub-agent-background-runner';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
-import { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
+import type { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
 import {
 	encodeAgentSandboxHostMetadata,
 	hashAgentSandboxPrincipal,
@@ -144,7 +144,7 @@ function makeReconstructionService(
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
 		mock<CredentialsService>(),
-		new AgentKnowledgeUsageTracker(),
+		mock<AgentKnowledgeUsageTracker>(),
 	);
 }
 

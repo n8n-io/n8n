@@ -1,3 +1,4 @@
+import type { AgentKnowledgeUsageTracker } from '../../agent-knowledge-usage-tracker';
 import type { AgentMessageSteeringService } from '../../agent-message-steering.service';
 import {
 	INLINE_SUB_AGENT_ID,
@@ -159,6 +160,7 @@ describe('SubAgentRunner', () => {
 				mock<AgentMessageQueueService>(),
 				mock<AgentMessageSteeringService>(),
 				toolApprovalService,
+				mock<AgentKnowledgeUsageTracker>(),
 			),
 			checkpointStorage,
 			logger,

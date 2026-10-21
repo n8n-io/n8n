@@ -1,3 +1,4 @@
+import type { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
 import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type {
 	Agent as RuntimeAgent,
@@ -214,6 +215,7 @@ function makeService(sandboxEnabled = false) {
 		backgroundJobs,
 	);
 	const telemetry = mock<Telemetry>();
+	const knowledgeUsageTracker = mock<AgentKnowledgeUsageTracker>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const contextService = new IntegrationMessageContextService(
 		mock<AgentThreadRepository>(),
@@ -282,6 +284,7 @@ function makeService(sandboxEnabled = false) {
 			mock<AgentMessageQueueService>(),
 			mock<AgentMessageSteeringService>(),
 			toolApprovalService,
+			knowledgeUsageTracker,
 		),
 		telemetry,
 		runtimeCacheService,
@@ -309,6 +312,7 @@ function makeService(sandboxEnabled = false) {
 		executionService,
 		toolApprovalService,
 		telemetry,
+		knowledgeUsageTracker,
 		runtimeCacheService,
 		integrationMessageContextService,
 		agentRunTracingService,
@@ -845,6 +849,48 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect(executionService.startExecutionRecording).not.toHaveBeenCalled();
 		},
 	);
+
+	it('sends the knowledge use of the runtime run when the turn ends', async () => {
+		const { service, runtimeCacheService, knowledgeUsageTracker } = makeService();
+		runtimeCacheService.getRuntime.mockResolvedValue(makeRuntime());
+
+		await collect(
+			service.executeForChat({
+				agentId,
+				projectId,
+				user,
+				message: 'Hello',
+				memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+			}),
+		);
+
+		expect(knowledgeUsageTracker.sendRunUsage).toHaveBeenCalledTimes(1);
+		expect(knowledgeUsageTracker.sendRunUsage).toHaveBeenCalledWith(
+			'runtime-run-1',
+			expect.objectContaining({ agentId, runType: 'test' }),
+		);
+	});
+
+	it('sends the knowledge use even when recording the turn fails', async () => {
+		const { service, runtimeCacheService, executionService, knowledgeUsageTracker } = makeService();
+		runtimeCacheService.getRuntime.mockResolvedValue(makeRuntime());
+		executionService.finalizeExecution.mockRejectedValue(new Error('database unavailable'));
+
+		await collect(
+			service.executeForChat({
+				agentId,
+				projectId,
+				user,
+				message: 'Hello',
+				memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+			}),
+		).catch(() => {});
+
+		expect(knowledgeUsageTracker.sendRunUsage).toHaveBeenCalledWith(
+			'runtime-run-1',
+			expect.anything(),
+		);
+	});
 
 	it('finishes an admitted queued run after Agents is disabled', async () => {
 		const { service, runtimeCacheService, settingsService, executionService } = makeService();

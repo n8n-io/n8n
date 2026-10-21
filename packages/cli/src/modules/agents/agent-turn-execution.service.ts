@@ -15,6 +15,7 @@ import type { AgentChatSurface, AgentSessionMode } from './utils/agent-thread-ac
 import { AgentExecutionRecordingError } from './agent-execution-recording.error';
 import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
 import { AgentChatExecutionService } from './agent-chat-execution.service';
+import { AgentKnowledgeUsageTracker } from './agent-knowledge-usage-tracker';
 import { AgentMessageQueueService } from './agent-message-queue.service';
 import { AgentMessageSteeringService } from './agent-message-steering.service';
 import type { AgentExecutionStreamChunk, SteeredMessageEvent } from './types/agent-steering';
@@ -71,6 +72,7 @@ interface TurnExecutionState {
 	executionError?: unknown;
 	receivedFinish: boolean;
 	suspendedRunId?: string;
+	runId?: string;
 }
 
 /** Preview and n8n Chat both run under one of these — a steerable, cancellable chat turn. */
@@ -103,6 +105,7 @@ export class AgentTurnExecutionService {
 		private readonly messageQueue: AgentMessageQueueService,
 		private readonly steering: AgentMessageSteeringService,
 		private readonly toolApprovalService: AgentToolApprovalService,
+		private readonly knowledgeUsageTracker: AgentKnowledgeUsageTracker,
 	) {}
 
 	async getSessionMode(threadId: string): Promise<AgentSessionMode> {
@@ -206,20 +209,22 @@ export class AgentTurnExecutionService {
 		turn.options.abortSignal?.throwIfAborted();
 		if (turn.type === 'start') {
 			state.executionStarted = true;
-			return (await config.agentInstance.stream(turn.input, turn.options)).stream;
+			const started = await config.agentInstance.stream(turn.input, turn.options);
+			state.runId = started.runId;
+			return started.stream;
 		}
 
 		const { options, resumeData } = turn;
-		return (
-			await config.agentInstance.resume('stream', resumeData, {
-				...options,
-				onResumeClaimed: async () => {
-					state.executionStarted = true;
-					recorder.recordHitlResponse(options.toolCallId, resumeData);
-					await options.onResumeClaimed?.();
-				},
-			})
-		).stream;
+		const resumed = await config.agentInstance.resume('stream', resumeData, {
+			...options,
+			onResumeClaimed: async () => {
+				state.executionStarted = true;
+				recorder.recordHitlResponse(options.toolCallId, resumeData);
+				await options.onResumeClaimed?.();
+			},
+		});
+		state.runId = resumed.runId;
+		return resumed.stream;
 	}
 
 	private async *streamTurn(
@@ -305,16 +310,39 @@ export class AgentTurnExecutionService {
 		if (recorder.suspended) hitlStatus = 'suspended';
 		else if (turn.type === 'resume' && state.executionStarted) hitlStatus = 'resumed';
 
-		await this.finalizeExecution({
-			executionId,
-			executionStarted: state.executionStarted,
-			executionError: state.executionError,
-			onExecutionRecorded: config.onExecutionRecorded,
-			params: {
-				...turn.recording,
-				record: cancelled ? { ...record, finishReason: 'cancelled', error: null } : record,
-				hitlStatus,
-			},
+		try {
+			await this.finalizeExecution({
+				executionId,
+				executionStarted: state.executionStarted,
+				executionError: state.executionError,
+				onExecutionRecorded: config.onExecutionRecorded,
+				params: {
+					...turn.recording,
+					record: cancelled ? { ...record, finishReason: 'cancelled', error: null } : record,
+					hitlStatus,
+				},
+			});
+		} finally {
+			// Make sure the run's knowledge counts leave memory, also when recording fails.
+			this.sendKnowledgeUsage(turn, state);
+		}
+	}
+
+	private sendKnowledgeUsage(turn: AgentTurnRequest, state: TurnExecutionState) {
+		if (!state.runId) {
+			return;
+		}
+
+		const { agentId, telemetry } = turn.recording;
+		if (!telemetry) {
+			this.knowledgeUsageTracker.takeRunUsage(state.runId);
+			return;
+		}
+
+		this.knowledgeUsageTracker.sendRunUsage(state.runId, {
+			agentId,
+			runType: telemetry.runType,
+			userId: telemetry.userId,
 		});
 	}
 

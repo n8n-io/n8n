@@ -1,3 +1,4 @@
+import type { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
 import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { Agent as RuntimeAgent, ExecutionOptions, RunOptions, StreamChunk } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
@@ -171,6 +172,7 @@ function makeService() {
 			mock<AgentMessageQueueService>(),
 			mock<AgentMessageSteeringService>(),
 			mock<AgentToolApprovalService>(),
+			mock<AgentKnowledgeUsageTracker>(),
 		),
 		telemetry,
 		credentialsService,
