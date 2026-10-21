@@ -75,7 +75,10 @@ describe('AgentBackgroundJobRepository', () => {
 	});
 
 	async function insertJob(
-		overrides: Partial<AgentBackgroundJob> & { id: string; parentThreadId: string },
+		overrides: Omit<Partial<AgentBackgroundJob>, 'plan' | 'sourceExecution'> & {
+			id: string;
+			parentThreadId: string;
+		},
 	) {
 		await repository.insert({
 			kind: 'subagent',
