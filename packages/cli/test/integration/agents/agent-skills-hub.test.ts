@@ -16,7 +16,8 @@ import { TransactionRunner, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
-import { setSkillsHubFlag } from '@/modules/agents/__tests__/test-utils/skills-hub-flag';
+import { setSkillsHubFlag } from '@/modules/skills/__tests__/test-utils/skills-hub-flag';
+import { registerSkillAgentsProvider } from '@/modules/agents/register-skill-agents-provider';
 import { AgentPublishService } from '@/modules/agents/agent-publish.service';
 import { AgentRuntimeCacheService } from '@/modules/agents/agent-runtime-cache.service';
 import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
@@ -26,10 +27,15 @@ import { AgentUpdateBroadcaster } from '@/modules/agents/agent-update-broadcaste
 import { AgentValidationService } from '@/modules/agents/agent-validation.service';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
-import type { Agent } from '@/modules/agents/entities/agent.entity';
+import {
+	type Agent,
+	isProjectAgent,
+	type ProjectAgent,
+} from '@/modules/agents/entities/agent.entity';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import { SkillRepository } from '@/modules/agents/repositories/skill.repository';
-import { SkillService, toAgentSkill } from '@/modules/agents/skills/skill.service';
+import { SkillRepository } from '@/modules/skills/skill.repository';
+import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
+import { SkillService, toAgentSkill } from '@/modules/skills/skill.service';
 import {
 	markAgentDraftDirty,
 	saveAgentDraftFenced,
@@ -37,7 +43,8 @@ import {
 import { getAgentSkillHash } from '@/modules/agents/utils/agent-config-hash';
 import { Telemetry } from '@/telemetry';
 
-import { createMember, createOwner } from '../shared/db/users';
+import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
+import { createMember, createOwner, createUser } from '../shared/db/users';
 
 const config: AgentJsonConfig = { name: 'Agent', model: '', instructions: 'Help.' };
 
@@ -64,8 +71,9 @@ describe('Agent skills in the skills hub', () => {
 		mockInstance(AgentTaskService).requestReconcile.mockResolvedValue(undefined);
 		const validation = mockInstance(AgentValidationService);
 		validation.validateAgentEntityConfiguration.mockResolvedValue({ status: 'valid', issues: [] });
-		await testModules.loadModules(['agents']);
+		await testModules.loadModules(['skills', 'agents']);
 		await testDb.init();
+		registerSkillAgentsProvider();
 		await Container.get(AgentsSettingsService).setEnabled(true);
 		owner = await createOwner();
 		editor = await createMember();
@@ -120,11 +128,13 @@ describe('Agent skills in the skills hub', () => {
 		});
 	}
 
-	async function reload(agent: Agent) {
-		return await agentRepository.findOneByOrFail({ id: agent.id });
+	async function reload(agent: Agent): Promise<ProjectAgent> {
+		const found = await agentRepository.findOneByOrFail({ id: agent.id });
+		if (!isProjectAgent(found)) throw new Error(`Agent "${agent.id}" is not a project agent`);
+		return found;
 	}
 
-	async function publish(agent: Agent) {
+	async function publish(agent: ProjectAgent) {
 		await publishService.publishAgent(agent.id, agent.projectId, owner, {
 			by: 'user',
 			trigger: 'explicit',
@@ -216,9 +226,9 @@ describe('Agent skills in the skills hub', () => {
 		await publishService.revertToPublishedAgent(agent.id, project.id, owner, 'user');
 
 		const refs = await skillRefs.refsForDraft(agent, {});
-		const pinned = (await Container.get(SkillRepository).findPinned(agent.activeVersionId!)).get(
-			skill,
-		);
+		const pinned = (
+			await Container.get(AgentSkillRepository).findPinned(agent.activeVersionId!)
+		).get(skill);
 		expect(refs).toEqual([{ type: 'skill', id: skill, versionId: pinned?.version.id }]);
 		const draft = await skillRefs.readDraft(agent, {});
 		expect(await instructionsOf(draft.skills)).toEqual({ [skill]: 'Published text.' });
@@ -394,6 +404,65 @@ describe('Agent skills in the skills hub', () => {
 		expect(copy).toMatchObject({ projectId: null, agentId: duplicate.id });
 		const { skills } = await skillRefs.readDraft(duplicate, {});
 		expect(Object.values(skills)).toEqual([body('Private')]);
+	});
+
+	it('refuses to move a skill out of a scope where the user cannot delete it', async () => {
+		// A custom role that may create and edit instance skills but delete none.
+		const role = await createCustomRoleWithScopeSlugs(
+			['skill:create', 'skill:read', 'skill:update'],
+			{
+				roleType: 'global',
+			},
+		);
+		const noDelete = await createUser({ role });
+		await linkUserToProject(noDelete, project, 'project:editor');
+		const instanceSkill = await createSkill(body('Company glossary'), { projectId: null });
+		const agent = await createAgent([instanceSkill]);
+
+		await expect(
+			agentSkillsService.updateSkill(
+				agent.id,
+				project.id,
+				instanceSkill,
+				{},
+				{ user: noDelete, modifiedBy: 'user' },
+				undefined,
+				undefined,
+				'agent',
+			),
+		).rejects.toThrow('You are not allowed to move this skill out of its scope.');
+		expect((await Container.get(SkillRepository).findByIds([instanceSkill]))[0]).toMatchObject({
+			projectId: null,
+			agentId: null,
+		});
+	});
+
+	it('refuses to move a project skill for a project role without delete', async () => {
+		const role = await createCustomRoleWithScopeSlugs(
+			['projectSkill:create', 'projectSkill:read', 'projectSkill:update'],
+			{ roleType: 'project' },
+		);
+		const noDelete = await createMember();
+		await linkUserToProject(noDelete, project, role.slug as never);
+		const projectSkill = await createSkill(body('Tone of voice'));
+		const agent = await createAgent([projectSkill]);
+
+		await expect(
+			agentSkillsService.updateSkill(
+				agent.id,
+				project.id,
+				projectSkill,
+				{},
+				{ user: noDelete, modifiedBy: 'user' },
+				undefined,
+				undefined,
+				'agent',
+			),
+		).rejects.toThrow('You are not allowed to move this skill out of its scope.');
+		expect((await Container.get(SkillRepository).findByIds([projectSkill]))[0]).toMatchObject({
+			projectId: project.id,
+			agentId: null,
+		});
 	});
 
 	it('trims the name of a skill the agent page creates, and refuses a blank one', async () => {

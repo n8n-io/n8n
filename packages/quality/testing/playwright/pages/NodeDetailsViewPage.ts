@@ -256,8 +256,21 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getParameterInput(parameterName).locator('.el-input-group__prepend').locator('..');
 	}
 
+	getParameterExpressionPrefixBorder(parameterName: string) {
+		return this.getParameterInput(parameterName).locator('.el-input-group__prepend');
+	}
+
+	getParameterCodeEditorBorder(parameterName: string) {
+		return this.getParameterInput(parameterName).locator('.cm-editor');
+	}
+
 	getFromAiOverrideButton(parameterName: string) {
-		return this.getParameterInput(parameterName).getByTestId('from-ai-override-button');
+		const inlineButton =
+			this.getParameterInput(parameterName).getByTestId('from-ai-override-button');
+		const standaloneButton = this.container
+			.getByTestId(`${parameterName}-parameter-input-persistent-options-container`)
+			.getByTestId('from-ai-override-button');
+		return inlineButton.or(standaloneButton);
 	}
 
 	getParameterInputTextbox(parameterName: string, index?: number) {

@@ -366,6 +366,12 @@ export type RelayEventMap = {
 		reason?: string;
 	};
 
+	'user-login-email-conflict': {
+		user: UserLike;
+		authenticationMethod: AuthenticationMethod;
+		assertedEmail: string;
+	};
+
 	'user-changed-role': {
 		userId: string;
 		targetUserId: string;
@@ -1450,7 +1456,8 @@ export type RelayEventMap = {
 		after: { defaultAction: PolicyAction; version: number };
 		rulesBefore: readonly PolicyRule[] | null;
 		rulesAfter: readonly PolicyRule[];
-		warningCount: number;
+		shadowWarningCount: number;
+		notLoadedWarningCount: number;
 	};
 
 	'node-type-policy-attachments-updated': {

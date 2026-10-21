@@ -42,11 +42,13 @@ const formTriggerNode = ({
 	authentication = 'n8nUserAuth',
 	disabled = false,
 	requireExecuteAccess,
+	trustedSource,
 }: {
 	name?: string;
 	authentication?: string;
 	disabled?: boolean;
 	requireExecuteAccess?: boolean;
+	trustedSource?: string;
 } = {}): INode => ({
 	id: randomUUID(),
 	name,
@@ -59,6 +61,7 @@ const formTriggerNode = ({
 		authentication,
 		// Omitted when undefined so the "absent param ⇒ secure default" path is exercised too.
 		...(requireExecuteAccess === undefined ? {} : { requireExecuteAccess }),
+		...(trustedSource === undefined ? {} : { trustedSource }),
 	},
 });
 
@@ -116,6 +119,26 @@ afterEach(async () => {
 		'WorkflowEntity',
 		'WorkflowHistory',
 	]);
+});
+
+describe('accepted trusted sources', () => {
+	test("accepts only the instance's own OAuth2 server when the node has no trustedSource", async () => {
+		const webhookPath = randomUUID();
+		await registerTestWebhook(webhookPath, formTriggerNode());
+
+		const resource = await resolveResource(webhookPath);
+
+		expect(resource?.getAcceptedSourceIds?.()).toEqual(['n8n-internal']);
+	});
+
+	test('accepts only the trusted source the node selected', async () => {
+		const webhookPath = randomUUID();
+		await registerTestWebhook(webhookPath, formTriggerNode({ trustedSource: 'customer-idp' }));
+
+		const resource = await resolveResource(webhookPath);
+
+		expect(resource?.getAcceptedSourceIds?.()).toEqual(['customer-idp']);
+	});
 });
 
 describe('protected resource metadata for test form triggers', () => {

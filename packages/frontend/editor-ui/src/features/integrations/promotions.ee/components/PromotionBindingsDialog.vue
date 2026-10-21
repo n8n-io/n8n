@@ -40,7 +40,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const title = useTemplateRef<{ $el: HTMLElement }>('title');
+const title = useTemplateRef<HTMLElement>('title');
 const bindings = usePromotionBindings();
 const {
 	preflight,
@@ -160,7 +160,7 @@ function preventEscapeDismissal(event: KeyboardEvent) {
 
 function focusTitle(event: Event) {
 	event.preventDefault();
-	void nextTick(() => title.value?.$el.focus());
+	void nextTick(() => title.value?.focus());
 }
 
 function destinationScope(binding: MissingPromotionBinding) {
@@ -235,10 +235,12 @@ async function continueApply() {
 				@click="close"
 			/>
 			<div>
-				<N8nDialogTitle ref="title" tabindex="-1">
-					{{ header.title }}
+				<N8nDialogTitle as-child>
+					<h2 ref="title" :class="$style.title" tabindex="-1">
+						{{ header.title }}
+					</h2>
 				</N8nDialogTitle>
-				<N8nDialogDescription>
+				<N8nDialogDescription :class="$style.subtitle">
 					{{ header.subtitle }}
 				</N8nDialogDescription>
 			</div>
@@ -474,6 +476,16 @@ async function continueApply() {
 	align-items: flex-start;
 	gap: var(--spacing--2xs);
 	flex-shrink: 0;
+}
+
+.subtitle {
+	line-height: var(--line-height--xs);
+	font-size: var(--font-size--2xs);
+	color: var(--text-color--subtler);
+}
+
+.title:focus {
+	outline: none;
 }
 
 .body {

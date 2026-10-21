@@ -5,6 +5,7 @@ import {
 	trustedSourceConfigSchemaFor,
 	type Extracted,
 	type Jwk,
+	type LocalAuthorizationServer,
 	type Result,
 	type SurfaceId,
 	type TrustedSource,
@@ -66,7 +67,7 @@ function source(overrides: SourceOverrides = {}): TrustedSource {
 		createdAt: '2026-09-30T10:00:00.000Z',
 		updatedAt: '2026-10-01T12:00:00.000Z',
 		config: migrateToLatest(
-			trustedSourceConfigSchemaFor('admin').parse({
+			trustedSourceConfigSchemaFor(rest.managedBy ?? 'admin').parse({
 				version: 1,
 				authentication: { type: 'oauth2', ...authentication },
 				surfaces,
@@ -106,6 +107,7 @@ function ok<T>(result: Result<T>): T {
 }
 
 let store: MockProxy<TrustedSourceStore>;
+let localServer: MockProxy<LocalAuthorizationServer>;
 let driver: Oauth2BearerDriver;
 
 beforeAll(async () => {
@@ -122,9 +124,11 @@ beforeAll(async () => {
 
 beforeEach(() => {
 	store = mock<TrustedSourceStore>();
+	localServer = mock<LocalAuthorizationServer>();
+	localServer.isAccessTokenActive.mockResolvedValue(true);
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
-	driver = new Oauth2BearerDriver(store, logger);
+	driver = new Oauth2BearerDriver(store, localServer, logger);
 });
 
 describe('Oauth2BearerDriver', () => {
@@ -332,6 +336,34 @@ describe('Oauth2BearerDriver', () => {
 				ok: false,
 				reason: 'source-unusable',
 			});
+		});
+	});
+
+	describe('revocation at the local server', () => {
+		const localSource = () =>
+			source({ managedBy: 'system', authentication: { keys: { kind: 'local-keystore' } } });
+
+		it('refuses a token the local server no longer honours', async () => {
+			localServer.isAccessTokenActive.mockResolvedValue(false);
+			const token = await sign();
+
+			expect(await driver.verify(extracted(token), localSource())).toEqual({
+				ok: false,
+				reason: 'revoked',
+			});
+			expect(localServer.isAccessTokenActive).toHaveBeenCalledWith(token);
+		});
+
+		it('accepts a token the local server still honours', async () => {
+			expect(await driver.verify(extracted(await sign()), localSource())).toMatchObject({
+				ok: true,
+			});
+		});
+
+		it('never consults the local server for a remote source', async () => {
+			expect(await driver.verify(extracted(await sign()), source())).toMatchObject({ ok: true });
+
+			expect(localServer.isAccessTokenActive).not.toHaveBeenCalled();
 		});
 	});
 

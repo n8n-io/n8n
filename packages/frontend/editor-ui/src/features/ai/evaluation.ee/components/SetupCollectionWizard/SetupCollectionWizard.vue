@@ -273,7 +273,7 @@ const onSubmit = async () => {
 		@update:open="emit('update:open', $event)"
 	>
 		<N8nDialogBody :class="$style.body" data-test-id="setup-collection-wizard">
-			<N8nDialogDescription>
+			<N8nDialogDescription :class="$style.description">
 				{{ i18n.baseText('evaluation.setup.subtitle') }}
 			</N8nDialogDescription>
 			<div :class="$style.field">
@@ -435,6 +435,11 @@ const onSubmit = async () => {
 </template>
 
 <style module lang="scss">
+.description {
+	// The body gap already separates this from the fields below.
+	margin-bottom: 0;
+}
+
 .body {
 	gap: var(--spacing--md);
 }

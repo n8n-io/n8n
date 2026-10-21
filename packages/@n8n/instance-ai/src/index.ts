@@ -20,13 +20,13 @@ import type * as ResumableStreamExecutorMod from './runtime/resumable-stream-exe
 import type * as RunStateRegistryMod from './runtime/run-state-registry';
 import type * as StreamRunnerMod from './runtime/stream-runner';
 import type * as TerminalResponseGuardMod from './runtime/terminal-response-guard';
-import type * as MaterializeRuntimeSkillsMod from './skills/materialize-runtime-skills';
-import type * as RuntimeSkillsMod from './skills/runtime-skills';
+import type * as SkillsMod from './skills/skills';
 import type * as StorageMod from './storage';
 import type * as InstanceContextReachMod from './stream/instance-context-reach';
 import type * as MapChunkMod from './stream/map-chunk';
 import type * as UsageAccumulatorMod from './stream/usage-accumulator';
 import type * as WorkSummaryAccumulatorMod from './stream/work-summary-accumulator';
+import type * as AgentBuildMetricsMod from './tools/orchestration/agent-build-metrics';
 import type * as AgentPersistenceMod from './tools/orchestration/agent-persistence';
 import type * as AgentContextToolMod from './tools/agent-context.tool';
 import type * as SanitizeWebContentMod from './tools/web-research/sanitize-web-content';
@@ -95,6 +95,9 @@ const loadTraceReplay = lazyModule(
 const loadAgentSnapshotEvent = lazyModule(
 	() => require('./tracing/agent-snapshot-event') as typeof AgentSnapshotEventMod,
 );
+const loadAgentBuildMetrics = lazyModule(
+	() => require('./tools/orchestration/agent-build-metrics') as typeof AgentBuildMetricsMod,
+);
 const loadInstanceAgent = lazyModule(
 	() => require('./agent/instance-agent') as typeof InstanceAgentMod,
 );
@@ -138,14 +141,9 @@ const loadInstanceContextReach = lazyModule<typeof InstanceContextReachMod>(() =
 const loadInstanceContextState = lazyModule<typeof InstanceContextStateMod>(() =>
 	require('./runtime/instance-context-state'),
 );
-const loadRuntimeSkills = lazyModule(
-	() => require('./skills/runtime-skills') as typeof RuntimeSkillsMod,
-);
+const loadSkills = lazyModule(() => require('./skills/skills') as typeof SkillsMod);
 const loadPromptProfiles = lazyModule(
 	() => require('./prompts/prompt-profiles') as typeof PromptProfilesMod,
-);
-const loadMaterializeRuntimeSkills = lazyModule(
-	() => require('./skills/materialize-runtime-skills') as typeof MaterializeRuntimeSkillsMod,
 );
 const loadEvalAgents = lazyModule(() => require('./utils/eval-agents') as typeof EvalAgentsMod);
 const loadEvalUsage = lazyModule(() => require('./utils/eval-usage') as typeof EvalUsageMod);
@@ -218,16 +216,6 @@ export {
 } from './types';
 export { deriveCredentialHosts } from './tools/workflows/credential-url-resolver';
 export { instanceAiBuilderThreadPrefix } from './tools/orchestration/builder-thread-id';
-export {
-	builderRequiredArtifactSchema,
-	builderRequiredArtifactsSchema,
-	REPORT_REQUIRED_ARTIFACT_TOOL_NAME,
-	reportRequiredArtifactInputSchema,
-} from './tools/orchestration/builder-required-artifact';
-export type {
-	BuilderRequiredArtifact,
-	ReportRequiredArtifactInput,
-} from './tools/orchestration/builder-required-artifact';
 export type { CredentialHostMeta } from './tools/workflows/credential-url-resolver';
 export {
 	agentBuilderTargetMetadata,
@@ -262,6 +250,9 @@ export type {
 	AgentSnapshotArtifact,
 	AgentSnapshotReason,
 } from './tracing/agent-snapshot-event';
+
+export const carryAgentBuildRunState: typeof AgentBuildMetricsMod.carryAgentBuildRunState =
+	lazyFunction(() => loadAgentBuildMetrics().carryAgentBuildRunState);
 
 // Plain re-export, not a lazyFunction: this is a pure mapping with no imports,
 // so it costs nothing to load eagerly.
@@ -326,14 +317,13 @@ export type {
 	TraceToolSuspend,
 	TraceToolResume,
 } from './tracing/trace-replay';
-export type { SubAgentOptions } from './agent/sub-agent-factory';
-export declare const INSTANCE_AI_SKILLS_DIR: typeof RuntimeSkillsMod.INSTANCE_AI_SKILLS_DIR;
-export const loadInstanceAiRuntimeSkillSource: typeof RuntimeSkillsMod.loadInstanceAiRuntimeSkillSource =
-	lazyFunction(() => loadRuntimeSkills().loadInstanceAiRuntimeSkillSource);
-export const loadInstanceAiRuntimeSkillSourceForBuildMode: typeof RuntimeSkillsMod.loadInstanceAiRuntimeSkillSourceForBuildMode =
-	lazyFunction(() => loadRuntimeSkills().loadInstanceAiRuntimeSkillSourceForBuildMode);
-export const loadInstanceAiPromptSkills: typeof RuntimeSkillsMod.loadInstanceAiPromptSkills =
-	lazyFunction(() => loadRuntimeSkills().loadInstanceAiPromptSkills);
+export const loadInstanceAiSkills: typeof SkillsMod.loadInstanceAiSkills = lazyFunction(
+	() => loadSkills().loadInstanceAiSkills,
+);
+export const loadInstanceAiPromptSkills: typeof SkillsMod.loadInstanceAiPromptSkills = lazyFunction(
+	() => loadSkills().loadInstanceAiPromptSkills,
+);
+export type { PromptProfile } from './prompts/prompt-profiles';
 export const resolvePromptProfile: typeof PromptProfilesMod.resolvePromptProfile = lazyFunction(
 	() => loadPromptProfiles().resolvePromptProfile,
 );
@@ -343,26 +333,6 @@ export const assertInstanceAiPromptVersion: typeof PromptProfilesMod.assertInsta
 export const describePromptProfile: typeof PromptProfilesMod.describePromptProfile = lazyFunction(
 	() => loadPromptProfiles().describePromptProfile,
 );
-export const createLazyWorkspaceRuntimeSkillSource: typeof MaterializeRuntimeSkillsMod.createLazyWorkspaceRuntimeSkillSource =
-	lazyFunction(() => loadMaterializeRuntimeSkills().createLazyWorkspaceRuntimeSkillSource);
-export {
-	CONFIG_EVALS_SKILL_ID,
-	disabledInstanceAiSkillIds,
-	type InstanceAiSkillFlags,
-} from './skills/skill-gates';
-export declare const SANDBOX_RUNTIME_SKILLS_DIR: typeof MaterializeRuntimeSkillsMod.SANDBOX_RUNTIME_SKILLS_DIR;
-export declare const SANDBOX_RUNTIME_SKILL_REGISTRY_FILE: typeof MaterializeRuntimeSkillsMod.SANDBOX_RUNTIME_SKILL_REGISTRY_FILE;
-export declare const RUNTIME_SKILL_MANIFEST_FILE: typeof MaterializeRuntimeSkillsMod.RUNTIME_SKILL_MANIFEST_FILE;
-export declare const RUNTIME_SKILL_MANIFEST_SCHEMA_VERSION: typeof MaterializeRuntimeSkillsMod.RUNTIME_SKILL_MANIFEST_SCHEMA_VERSION;
-export declare const N8N_SKILLS_DIR_ENV: typeof MaterializeRuntimeSkillsMod.N8N_SKILLS_DIR_ENV;
-export declare const N8N_SKILL_DIR_ENV: typeof MaterializeRuntimeSkillsMod.N8N_SKILL_DIR_ENV;
-export declare const N8N_WORKSPACE_DIR_ENV: typeof MaterializeRuntimeSkillsMod.N8N_WORKSPACE_DIR_ENV;
-export type {
-	MaterializedRuntimeSkill,
-	MaterializedRuntimeSkills,
-	RuntimeSkillWorkspaceBundle,
-	RuntimeSkillWorkspaceManifest,
-} from './skills/materialize-runtime-skills';
 
 export const createInstanceAgent: typeof InstanceAgentMod.createInstanceAgent = lazyFunction(
 	() => loadInstanceAgent().createInstanceAgent,
@@ -469,29 +439,6 @@ defineLazyExport(
 	() => loadInstanceContextState().suspendedInstanceContextSchema,
 );
 defineLazyExport('CONCISE_PROMPT_VERSION', () => loadPromptProfiles().CONCISE_PROMPT_VERSION);
-defineLazyExport('INSTANCE_AI_SKILLS_DIR', () => loadRuntimeSkills().INSTANCE_AI_SKILLS_DIR);
-defineLazyExport(
-	'SANDBOX_RUNTIME_SKILLS_DIR',
-	() => loadMaterializeRuntimeSkills().SANDBOX_RUNTIME_SKILLS_DIR,
-);
-defineLazyExport(
-	'SANDBOX_RUNTIME_SKILL_REGISTRY_FILE',
-	() => loadMaterializeRuntimeSkills().SANDBOX_RUNTIME_SKILL_REGISTRY_FILE,
-);
-defineLazyExport(
-	'RUNTIME_SKILL_MANIFEST_FILE',
-	() => loadMaterializeRuntimeSkills().RUNTIME_SKILL_MANIFEST_FILE,
-);
-defineLazyExport(
-	'RUNTIME_SKILL_MANIFEST_SCHEMA_VERSION',
-	() => loadMaterializeRuntimeSkills().RUNTIME_SKILL_MANIFEST_SCHEMA_VERSION,
-);
-defineLazyExport('N8N_SKILLS_DIR_ENV', () => loadMaterializeRuntimeSkills().N8N_SKILLS_DIR_ENV);
-defineLazyExport('N8N_SKILL_DIR_ENV', () => loadMaterializeRuntimeSkills().N8N_SKILL_DIR_ENV);
-defineLazyExport(
-	'N8N_WORKSPACE_DIR_ENV',
-	() => loadMaterializeRuntimeSkills().N8N_WORKSPACE_DIR_ENV,
-);
 defineLazyExport(
 	'INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG',
 	() => loadLivenessPolicy().INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG,
@@ -773,10 +720,8 @@ export type {
 	FolderSummary,
 	ServiceProxyConfig,
 	InstanceAiBuilderDelegate,
-	BuilderDelegateSession,
-	BuilderTurnStream,
-	BuilderOpenSuspension,
-	SessionWorkflowRef,
+	AgentValidationSummary,
+	BuilderToolsSession,
 	InstanceAiConversationHistoryReader,
 	ConversationHistoryMatchSource,
 	ConversationHistoryExcerpt,
@@ -787,6 +732,7 @@ export type {
 	AgentSessionSummary,
 	AgentContextLookup,
 	InstanceAiAgentContextReader,
+	InstanceAiSkillService,
 	ComputerUseChannel,
 	ComputerUseChannelState,
 	ComputerUseState,

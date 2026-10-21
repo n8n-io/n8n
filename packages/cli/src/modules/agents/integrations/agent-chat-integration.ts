@@ -10,6 +10,8 @@ import { UserError, type Logger } from 'n8n-workflow';
 
 import type { ChatInstance } from './chat-integration.service';
 import type { NormalizeComponentsContext, SuspendComponent } from './component-mapper';
+import type { IntegrationErrorCode } from './integration-error-codes';
+import { normalizePlatformId } from './integration-helpers';
 import type { SlackThreadContext } from './platforms/slack/slack-bridge-behavior';
 import {
 	resolveIntegrationActionDefinitions,
@@ -106,24 +108,37 @@ export interface PlatformAgentContext {
 
 export interface BridgeStatusHandle {
 	clearBeforeResponse(): Promise<void>;
+	/** Keep the status active while the reply is streamed or edited. */
+	keepDuringResponse?: boolean;
+	/** Restore the status when tools continue after a progress message. */
+	resumeAfterResponse?(): Promise<void>;
 }
 
 /**
- * Wrap a status handle so the underlying clear runs at most once, with every
- * caller awaiting the same in-flight clear. The bridge clears both from the
- * stream consumer (right before the first response) and from its cleanup
- * path, so this wrapper keeps platform handles free of dedupe concerns.
+ * Clear each active status once. Share the pending clear with cleanup callers.
+ * A resumed status needs its own clear before the next response or cleanup.
  */
 export function onceStatusHandle(
 	handle: BridgeStatusHandle | undefined,
 ): BridgeStatusHandle | undefined {
 	if (!handle) return undefined;
 	let clearing: Promise<void> | undefined;
+	const resume = handle.resumeAfterResponse?.bind(handle);
 	return {
+		keepDuringResponse: handle.keepDuringResponse,
 		clearBeforeResponse: async () => {
 			clearing ??= handle.clearBeforeResponse();
 			await clearing;
 		},
+		...(resume
+			? {
+					resumeAfterResponse: async () => {
+						await clearing;
+						clearing = undefined;
+						await resume();
+					},
+				}
+			: {}),
 	};
 }
 
@@ -343,6 +358,12 @@ export abstract class AgentChatIntegration {
 	readonly internal: boolean = false;
 
 	/**
+	 * True when an agent can hold only one connection of this type, because
+	 * inbound webhooks carry nothing that tells two connections apart.
+	 */
+	readonly singleConnectionPerAgent: boolean = false;
+
+	/**
 	 * True when this integration needs a platform Chat SDK instance (adapter +
 	 * credential) to execute actions and context queries. Internal channels
 	 * (e.g. the in-app n8n chat) set this to false — the executors then skip
@@ -463,6 +484,24 @@ export abstract class AgentChatIntegration {
 		thread: Thread<unknown, unknown>,
 		integration: AgentIntegrationConfig,
 	): Promise<void>;
+
+	/**
+	 * Converts a channel ID the model passes to `send_channel_message` into a
+	 * Chat SDK channel ID. By default a bare ID gets the `<platform>:` prefix.
+	 */
+	normalizeChannelId(channelId: string, _adapter: unknown): string {
+		return normalizePlatformId(this.type, channelId);
+	}
+
+	/**
+	 * Explains a failed send in words the agent can act on, for errors where the
+	 * platform message alone gives the model nothing to do next. Return
+	 * undefined to keep the default error.
+	 */
+	describeActionError?(
+		action: IntegrationAction,
+		error: unknown,
+	): { code: IntegrationErrorCode; message: string } | undefined;
 
 	/**
 	 * Optional hook run on EVERY main once the connection is live, regardless

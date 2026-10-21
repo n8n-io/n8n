@@ -134,6 +134,9 @@ export type ContentToolCall = ContentMetadata & {
 
 	providerExecuted?: boolean;
 
+	/** Provider options for the result. Its item ID can differ from the call ID. */
+	resultProviderOptions?: ProviderOptions;
+
 	/**
 	 * Skills this tool activated programmatically (via `ctx.loadSkill`), so the
 	 * skill body can re-anchor to this result on a later turn instead of falling

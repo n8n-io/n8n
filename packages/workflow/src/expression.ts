@@ -91,6 +91,11 @@ function errorClassOf(error: unknown): string {
 	// Timeout and memory errors share the name `ExpressionError`, so classify them first.
 	const runtimeClass = classifyExpressionError(error);
 	if (runtimeClass !== 'unknown') return runtimeClass;
+	// A minified build renames classes, and n8n errors take their `name` from the
+	// constructor, so check the class before the name. The subclass comes first.
+	if (error instanceof ExpressionExtensionError) return 'ExpressionExtensionError';
+	if (error instanceof ExpressionError) return 'ExpressionError';
+	if (error instanceof UserError) return 'UserError';
 	if (!(error instanceof Error)) return typeof error;
 	return KNOWN_ERROR_CLASSES.has(error.name) ? error.name : 'other';
 }
@@ -688,7 +693,10 @@ export class Expression {
 	 *
 	 */
 	convertObjectValueToString(value: object): string {
-		if (value instanceof DateTime && value.invalidReason !== null) {
+		// `isDateTime` only checks the `isLuxonDateTime` field, so a plain object can
+		// pass it. Only a real invalid DateTime has a string `invalidReason`: a valid
+		// one gives `null`, and a plain object gives `undefined`.
+		if (DateTime.isDateTime(value) && typeof value.invalidReason === 'string') {
 			throw new UserError('invalid DateTime');
 		}
 

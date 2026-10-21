@@ -24,7 +24,7 @@ import {
 import { buildHttpsGitConfig, buildSshCommand, generateSshKeyPair } from './promotions-git.utils';
 import type { PromotionGitCredentials } from './promotions.types';
 
-/** Where one config keeps its checkout and its pinned host keys. */
+/** Where one environment keeps its checkout and its pinned host keys. */
 type PromotionGitPaths = {
 	rootFolder: string;
 	repositoryFolder: string;
@@ -37,8 +37,8 @@ type GitOperation = {
 	credentials: PromotionGitCredentials;
 	paths: PromotionGitPaths;
 	branchName: string;
-	/** Only for logging, so a failure points at the right config. */
-	configId: string;
+	/** Only for logging, so a failure points at the right environment. */
+	environmentId: string;
 };
 
 /** A full SHA-1 or SHA-256 object name, as `rev-parse` prints it. */
@@ -149,7 +149,7 @@ export class PromotionsGitService {
 		return await generateSshKeyPair(keyType, PROMOTION_KEY_COMMENT);
 	}
 
-	async clone({ remoteUrl, credentials, paths, branchName, configId }: GitOperation) {
+	async clone({ remoteUrl, credentials, paths, branchName, environmentId }: GitOperation) {
 		await this.validateBranchName(branchName);
 		await mkdir(paths.rootFolder, { recursive: true });
 		const { repositoryFolder, nextRepositoryFolder, sshDir } = paths;
@@ -200,7 +200,7 @@ export class PromotionsGitService {
 				}
 			});
 		} catch (error) {
-			throw this.mapGitError(error, { configId, branchName });
+			throw this.mapGitError(error, { environmentId, branchName });
 		}
 	}
 
@@ -223,7 +223,7 @@ export class PromotionsGitService {
 		paths,
 		branchName,
 		targetBranchName,
-		configId,
+		environmentId,
 		author,
 		commitMessage,
 		force,
@@ -303,7 +303,7 @@ export class PromotionsGitService {
 										this.logger.warn(
 											'Failed to restore the Git revision after a failed promotion',
 											{
-												configId,
+												environmentId,
 												branchName,
 											},
 										);
@@ -315,13 +315,13 @@ export class PromotionsGitService {
 					),
 			);
 		} catch (error) {
-			throw this.mapGitError(error, { configId, branchName: targetBranchName ?? branchName });
+			throw this.mapGitError(error, { environmentId, branchName: targetBranchName ?? branchName });
 		}
 	}
 
 	/** Reset the checkout to the latest base branch before one branched promotion. */
 	async prepareCheckoutForPromotion(operation: GitOperation): Promise<void> {
-		const { remoteUrl, credentials, paths, branchName, configId } = operation;
+		const { remoteUrl, credentials, paths, branchName, environmentId } = operation;
 		try {
 			await this.lockCheckout(paths.repositoryFolder, async () => {
 				await this.withGit(
@@ -346,7 +346,7 @@ export class PromotionsGitService {
 				);
 			});
 		} catch (error) {
-			throw this.mapGitError(error, { configId, branchName });
+			throw this.mapGitError(error, { environmentId, branchName });
 		}
 	}
 
@@ -443,7 +443,7 @@ export class PromotionsGitService {
 	}
 
 	async refreshCheckout(operation: GitOperation): Promise<{ commitSha: string }> {
-		const { paths, branchName, configId } = operation;
+		const { paths, branchName, environmentId } = operation;
 		try {
 			return await this.lockCheckout(paths.repositoryFolder, async () => {
 				await this.fetchBranch(operation);
@@ -452,7 +452,7 @@ export class PromotionsGitService {
 				return { commitSha: (await git.revparse(['HEAD'])).trim() };
 			});
 		} catch (error) {
-			throw this.mapGitError(error, { configId, branchName });
+			throw this.mapGitError(error, { environmentId, branchName });
 		}
 	}
 
@@ -463,7 +463,7 @@ export class PromotionsGitService {
 		commitSha: string | null;
 		lsTreeOutput: string;
 	}> {
-		const { remoteUrl, credentials, paths, branchName, configId } = operation;
+		const { remoteUrl, credentials, paths, branchName, environmentId } = operation;
 		try {
 			return await this.lockCheckout(paths.repositoryFolder, async () => {
 				const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder });
@@ -485,7 +485,7 @@ export class PromotionsGitService {
 				return { commitSha, lsTreeOutput };
 			});
 		} catch (error) {
-			throw this.mapGitError(error, { configId, branchName });
+			throw this.mapGitError(error, { environmentId, branchName });
 		}
 	}
 
@@ -493,9 +493,9 @@ export class PromotionsGitService {
 	async hasCommittedPath({
 		paths,
 		branchName,
-		configId,
+		environmentId,
 		pathspec,
-	}: Pick<GitOperation, 'paths' | 'branchName' | 'configId'> & {
+	}: Pick<GitOperation, 'paths' | 'branchName' | 'environmentId'> & {
 		pathspec: string;
 	}): Promise<boolean> {
 		try {
@@ -508,17 +508,51 @@ export class PromotionsGitService {
 				return (await git.raw(['ls-tree', head, '--', pathspec])).trim() !== '';
 			});
 		} catch (error) {
-			throw this.mapGitError(error, { configId, branchName });
+			throw this.mapGitError(error, { environmentId, branchName });
+		}
+	}
+
+	/** The paths among `filePaths` that exist at the commit. */
+	async findPathsAtCommit({
+		paths,
+		branchName,
+		environmentId,
+		commitSha,
+		filePaths,
+	}: Pick<GitOperation, 'paths' | 'branchName' | 'environmentId'> & {
+		commitSha: string;
+		filePaths: readonly string[];
+	}): Promise<Set<string>> {
+		if (!COMMIT_SHA.test(commitSha)) {
+			throw new UnexpectedError('The commit SHA is not a Git object name');
+		}
+		if (filePaths.length === 0) return new Set();
+		try {
+			return await this.lockCheckout(paths.repositoryFolder, async () => {
+				const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder });
+				const output = await git.raw([
+					'ls-tree',
+					'-r',
+					'-z',
+					'--name-only',
+					commitSha,
+					'--',
+					...filePaths,
+				]);
+				return new Set(output.split('\0').filter(Boolean));
+			});
+		} catch (error) {
+			throw this.mapGitError(error, { environmentId, branchName });
 		}
 	}
 
 	async readFilesAtCommit({
 		paths,
 		branchName,
-		configId,
+		environmentId,
 		commitSha,
 		filePaths,
-	}: Pick<GitOperation, 'paths' | 'branchName' | 'configId'> & {
+	}: Pick<GitOperation, 'paths' | 'branchName' | 'environmentId'> & {
 		commitSha: string;
 		filePaths: readonly string[];
 	}): Promise<Map<string, string>> {
@@ -541,7 +575,7 @@ export class PromotionsGitService {
 				return new Map(files);
 			});
 		} catch (error) {
-			throw this.mapGitError(error, { configId, branchName });
+			throw this.mapGitError(error, { environmentId, branchName });
 		}
 	}
 
@@ -610,7 +644,7 @@ export class PromotionsGitService {
 	}
 
 	// Timeouts are retryable; all other Git errors are redacted because output may contain secrets.
-	private mapGitError(error: unknown, ctx: { configId: string; branchName: string }): Error {
+	private mapGitError(error: unknown, ctx: { environmentId: string; branchName: string }): Error {
 		if (error instanceof BadRequestError || error instanceof ServiceUnavailableError) return error;
 
 		if (error instanceof GitPluginError && error.plugin === 'timeout') {

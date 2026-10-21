@@ -220,31 +220,40 @@ describe('FrontendService', () => {
 		// constructor-injected mock above must also be registered here.
 		Container.set(License, license);
 
-		return {
-			service: new FrontendService(
-				globalConfig,
-				logger,
-				loadNodesAndCredentials,
-				credentialTypes,
-				credentialsOverwrites,
+		// Suppress the constructor's background write so it cannot outlive the test.
+		// Restore the method so tests and reload handlers can call it explicitly.
+		const generateTypes = vi
+			.spyOn(FrontendService.prototype, 'generateTypes')
+			.mockResolvedValueOnce();
+		try {
+			return {
+				service: new FrontendService(
+					globalConfig,
+					logger,
+					loadNodesAndCredentials,
+					credentialTypes,
+					credentialsOverwrites,
+					license,
+					mailer,
+					instanceSettings,
+					urlService,
+					securityConfig,
+					pushConfig,
+					binaryDataConfig,
+					licenseState,
+					moduleRegistry,
+					mfaService,
+					ownershipService,
+					aiUsageService,
+					workflowRepository,
+					workflowReviewPolicyService,
+					inboxService,
+				),
 				license,
-				mailer,
-				instanceSettings,
-				urlService,
-				securityConfig,
-				pushConfig,
-				binaryDataConfig,
-				licenseState,
-				moduleRegistry,
-				mfaService,
-				ownershipService,
-				aiUsageService,
-				workflowRepository,
-				workflowReviewPolicyService,
-				inboxService,
-			),
-			license,
-		};
+			};
+		} finally {
+			generateTypes.mockRestore();
+		}
 	};
 
 	beforeEach(() => {
@@ -763,22 +772,6 @@ describe('FrontendService', () => {
 
 			// Restore default
 			(globalConfig as any).userManagement = { password: { minLength: 8 } };
-		});
-
-		it('reports granular credential sharing off unless the env flag is set', async () => {
-			delete process.env.N8N_ENV_FEAT_CRED_SHARING;
-
-			const { service } = createMockService();
-
-			expect((await service.getSettings()).granularCredentialSharing).toBe(false);
-		});
-
-		it('reports granular credential sharing on when the env flag is set', async () => {
-			process.env.N8N_ENV_FEAT_CRED_SHARING = 'true';
-
-			const { service } = createMockService();
-
-			expect((await service.getSettings()).granularCredentialSharing).toBe(true);
 		});
 
 		it('should set showSetupOnFirstLoad to false in preview mode', async () => {
@@ -1368,9 +1361,9 @@ describe('FrontendService', () => {
 				const largeNodes = createNodes(5000);
 				const smallNodes = createNodes(1);
 				const collectTypes = loadNodesAndCredentials.collectTypes as Mock;
-				collectTypes.mockReturnValueOnce(new Promise(() => {}));
 
 				const { service } = createMockService();
+				expect(collectTypes).not.toHaveBeenCalled();
 
 				for (let attempt = 0; attempt < 10; attempt++) {
 					collectTypes
@@ -1383,6 +1376,8 @@ describe('FrontendService', () => {
 					expect(readTypesFile('credentials')).toEqual([]);
 					expect(readTypesFile('node-versions')).toEqual(expect.any(Array));
 				}
+
+				expect(collectTypes).toHaveBeenCalledTimes(20);
 			});
 		});
 	});

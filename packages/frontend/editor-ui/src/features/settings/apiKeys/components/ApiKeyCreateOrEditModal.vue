@@ -57,6 +57,7 @@ const rbacStore = useRBACStore();
 const documentTitle = useDocumentTitle();
 
 const label = ref('');
+const inputRef = ref<InstanceType<typeof N8nInput> | null>(null);
 const expirationDaysFromNow = ref(EXPIRATION_OPTIONS['30_DAYS']);
 const modalOpen = computed(
 	() => uiStore.modalsById[API_KEY_CREATE_OR_EDIT_MODAL_KEY]?.open === true,
@@ -184,6 +185,10 @@ onMounted(() => {
 		rawApiKey.value = props.rotatedApiKey.rawApiKey;
 		return;
 	}
+
+	setTimeout(() => {
+		inputRef.value?.focus();
+	});
 
 	if (props.mode === 'edit') {
 		const apiKey = apiKeysById[props.activeId];
@@ -368,10 +373,11 @@ async function handleEnterKey(event: KeyboardEvent) {
 						<N8nCopyInput
 							:value="rawApiKey"
 							:display-value="apiKeyDisplay"
+							:label="i18n.baseText('generic.apiKey')"
 							size="large"
 							:copy-label="i18n.baseText('generic.copy')"
 							:copied-label="i18n.baseText('generic.copiedToClipboard')"
-							class="ph-no-capture"
+							redact
 							data-test-id="copy-input"
 							@copy="onApiKeyCopied"
 						/>
@@ -383,6 +389,7 @@ async function handleEnterKey(event: KeyboardEvent) {
 							color="text-dark"
 						>
 							<N8nInput
+								ref="inputRef"
 								required
 								:model-value="label"
 								size="large"

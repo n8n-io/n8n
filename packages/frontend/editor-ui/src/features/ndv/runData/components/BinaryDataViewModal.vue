@@ -146,7 +146,7 @@ function onDialogOpenUpdate(open: boolean) {
 	<N8nDialog
 		:open="modalOpen"
 		size="2xlarge"
-		header="File Preview"
+		:header="i18n.baseText('binaryDataDisplay.filePreview')"
 		container-class="binary-data-view-dialog"
 		@update:open="onDialogOpenUpdate"
 	>
@@ -155,8 +155,12 @@ function onDialogOpenUpdate(open: boolean) {
 				:class="['binary-data-modal-content', binaryData.fileType]"
 				data-test-id="binaryDataView-modal"
 			>
-				<div v-if="isLoading" class="loading-message">Loading binary data...</div>
-				<div v-else-if="error" class="error-message">Error loading binary data</div>
+				<div v-if="isLoading" class="loading-message">
+					{{ i18n.baseText('binaryDataDisplay.loading') }}
+				</div>
+				<div v-else-if="error" class="error-message">
+					{{ i18n.baseText('binaryDataDisplay.errorLoading') }}
+				</div>
 
 				<div v-else class="content-wrapper">
 					<!-- VIDEO -->
@@ -175,7 +179,7 @@ function onDialogOpenUpdate(open: boolean) {
 					<img
 						v-else-if="binaryData.fileType === 'image'"
 						:src="embedSource"
-						:alt="binaryData.fileName || 'Image preview'"
+						:alt="binaryData.fileName || i18n.baseText('binaryDataDisplay.imagePreview')"
 					/>
 
 					<!-- JSON -->
@@ -211,7 +215,9 @@ function onDialogOpenUpdate(open: boolean) {
 					/>
 
 					<!-- UNKNOWN -->
-					<div v-else class="error-message">Preview not available for this file type</div>
+					<div v-else class="error-message">
+						{{ i18n.baseText('binaryDataDisplay.previewNotAvailable') }}
+					</div>
 				</div>
 			</div>
 		</N8nDialogBody>

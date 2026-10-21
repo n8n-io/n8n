@@ -43,15 +43,19 @@ const loadActivityTool = lazyMod(
 const loadSaveUserPreferenceTool = lazyMod(
 	() => require('./save-user-preference.tool') as typeof import('./save-user-preference.tool'),
 );
+const loadSkillsTool = lazyMod(() => require('./skills.tool') as typeof import('./skills.tool'));
 const loadN8nDocsTool = lazyMod(
 	() => require('./n8n-docs.tool') as typeof import('./n8n-docs.tool'),
 );
 const loadAgentContextTool = lazyMod(
 	() => require('./agent-context.tool') as typeof import('./agent-context.tool'),
 );
-const loadBuildAgentTool = lazyMod(
+const loadSelectAgentTool = lazyMod(
 	() =>
-		require('./orchestration/build-agent.tool') as typeof import('./orchestration/build-agent.tool'),
+		require('./orchestration/select-agent.tool') as typeof import('./orchestration/select-agent.tool'),
+);
+const loadAgentBuilderTools = lazyMod(
+	() => require('./orchestration/builder-tools') as typeof import('./orchestration/builder-tools'),
 );
 const loadGetSessionTool = lazyMod(
 	() =>
@@ -115,7 +119,7 @@ function getOrchestratorDomainToolFactories(
 		[DOMAIN_TOOL_IDS.N8N_DOCS, () => loadN8nDocsTool().createN8nDocsTool(context)],
 		[DOMAIN_TOOL_IDS.NODES, () => loadNodesTool().createNodesTool(context)],
 		[DOMAIN_TOOL_IDS.SEARCH_MODELS, () => loadSearchModelsTool().createSearchModelsTool()],
-		[DOMAIN_TOOL_IDS.ASK_USER, () => loadAskUserTool().createAskUserTool(context)],
+		[DOMAIN_TOOL_IDS.ASK_USER, () => loadAskUserTool().createAskUserTool()],
 		[
 			DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
 			() => loadBuildWorkflowTool().createBuildWorkflowTool(context),
@@ -188,6 +192,10 @@ function getOrchestratorDomainToolFactories(
 		]);
 	}
 
+	if (context.skillService) {
+		tools.push([DOMAIN_TOOL_IDS.SKILLS, () => loadSkillsTool().createSkillsTool(context)]);
+	}
+
 	if (context.currentUserAttachments?.some(isParseableAttachment)) {
 		tools.push([
 			DOMAIN_TOOL_IDS.PARSE_FILE,
@@ -245,11 +253,15 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 		]);
 	}
 
-	if (context.domainContext?.builderDelegate) {
+	const builderDelegate = context.domainContext?.builderDelegate;
+	if (builderDelegate) {
 		tools.push([
-			ORCHESTRATION_TOOL_IDS.BUILD_AGENT,
-			loadBuildAgentTool().createBuildAgentTool(context),
+			ORCHESTRATION_TOOL_IDS.SELECT_AGENT,
+			loadSelectAgentTool().createSelectAgentTool(context),
 		]);
+		for (const tool of loadAgentBuilderTools().createAgentBuilderTools(context, builderDelegate)) {
+			tools.push([tool.name, tool]);
+		}
 	}
 
 	if (context.domainContext?.agentPreviewSession && context.domainContext?.resolvePreviewSession) {

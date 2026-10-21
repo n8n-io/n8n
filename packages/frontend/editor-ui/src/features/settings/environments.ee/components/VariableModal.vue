@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { VARIABLE_MODAL_KEY } from '../environments.constants';
-import { computed, reactive, ref, onMounted } from 'vue';
+import { computed, nextTick, reactive, ref, onMounted } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useToast } from '@n8n/composables/useToast';
 import {
@@ -44,6 +44,7 @@ const sourceControlStore = useSourceControlStore();
 
 const modalOpen = computed(() => uiStore.modalsById[VARIABLE_MODAL_KEY]?.open === true);
 const loading = ref(false);
+const keyInputRef = ref<InstanceType<typeof N8nFormInput> | null>(null);
 
 const keyValidationRules: Array<Rule | RuleGroup> = [
 	{ name: 'REQUIRED' },
@@ -187,9 +188,14 @@ const destinationName = computed(() =>
 	props.destination?.kind === 'resolved' ? props.destination.project.name : props.destination?.name,
 );
 
+// On a protected instance, source control owns which variables exist and their keys.
+// Users can still edit values, because source control does not carry them.
+const isProtectedInstance = computed(() => sourceControlStore.preferences.branchReadOnly);
+const isKeyLocked = computed(() => props.mode === 'edit' && isProtectedInstance.value);
+
 const canCreate = computed(() => {
+	if (props.mode === 'new' && isProtectedInstance.value) return false;
 	if (!props.onCreate) return true;
-	if (sourceControlStore.preferences.branchReadOnly) return false;
 	const destination = props.destination;
 	if (!destination)
 		return !!getResourcePermissions(usersStore.currentUser?.globalScopes).variable.create;
@@ -246,8 +252,15 @@ async function handleSubmit() {
 	}
 }
 
-onMounted(() => {
+onMounted(async () => {
 	void projectsStore.getMyProjects();
+	await nextTick();
+	const input = keyInputRef.value?.inputRef;
+	if (input) {
+		requestAnimationFrame(() => {
+			input.focus();
+		});
+	}
 	if (props.mode === 'new') {
 		// This validation rule is not added for "edit" mode
 		// since we added this rule a while after variables were released
@@ -278,8 +291,9 @@ onMounted(() => {
 					<N8nCallout v-if="notice" theme="info">{{ notice() }}</N8nCallout>
 					<N8nText v-if="destinationName">{{ destinationName }}</N8nText>
 					<N8nFormInput
+						ref="keyInputRef"
 						v-model="form.key"
-						:disabled="fixedKey || loading"
+						:disabled="fixedKey || isKeyLocked || loading"
 						:label="i18n.baseText('variables.modal.key.label')"
 						name="key"
 						focus-initially

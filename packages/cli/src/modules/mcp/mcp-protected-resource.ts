@@ -1,6 +1,7 @@
 import {
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	MCP_AGENT_SCOPES,
+	MCP_SKILL_SCOPES,
 	MCP_INSTANCE_SCOPES,
 } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
@@ -10,6 +11,7 @@ import { Container, Service } from '@n8n/di';
 
 import type { ProtectedResource, ResourcePrincipal, ResourceUser } from '@n8n/inbound-auth';
 import { UrlService } from '@n8n/backend-services';
+import { SkillsHubRollout } from '@/modules/skills/skills-hub-rollout';
 import { PostHogClient } from '@/posthog';
 
 import {
@@ -22,6 +24,7 @@ import {
 import {
 	areAgentToolsAvailable,
 	arePreferenceToolsEnabled,
+	areSkillToolsAvailable,
 	isCommunityNodeInstallAvailable,
 } from './mcp-tool-availability';
 import { McpConfig } from './mcp.config';
@@ -33,6 +36,7 @@ import { McpSettingsService } from './mcp.settings.service';
  */
 export const SUPPORTED_SCOPES: string[] = [...MCP_INSTANCE_SCOPES];
 const AGENT_SCOPES = new Set<string>(MCP_AGENT_SCOPES);
+const SKILL_SCOPES = new Set<string>(MCP_SKILL_SCOPES);
 const PREFERENCE_SCOPES = new Set<string>(['aiPreference:read', 'aiPreference:write']);
 
 const MCP_RESOURCE_PATH = '/mcp-server/http';
@@ -74,8 +78,13 @@ export class McpProtectedResource implements ProtectedResource {
 	) {}
 
 	get scopes(): string[] {
-		if (areAgentToolsAvailable(this.globalConfig, this.moduleRegistry)) return SUPPORTED_SCOPES;
-		return SUPPORTED_SCOPES.filter((scope) => !AGENT_SCOPES.has(scope));
+		const agentsAvailable = areAgentToolsAvailable(this.globalConfig, this.moduleRegistry);
+		const skillsAvailable = areSkillToolsAvailable(Container.get(SkillsHubRollout));
+		return SUPPORTED_SCOPES.filter(
+			(scope) =>
+				(agentsAvailable || !AGENT_SCOPES.has(scope)) &&
+				(skillsAvailable || !SKILL_SCOPES.has(scope)),
+		);
 	}
 
 	/**

@@ -3,6 +3,7 @@ import { nextTick } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
+import { i18n, i18nInstance } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import BinaryDataViewModal from './BinaryDataViewModal.vue';
 import { BINARY_DATA_VIEW_MODAL_KEY } from '@/app/constants';
@@ -534,6 +535,70 @@ describe('BinaryDataViewModal.vue', async () => {
 
 			await waitFor(() => {
 				expect(getByText('Preview not available for this file type')).toBeInTheDocument();
+			});
+		});
+	});
+
+	describe('Localization', () => {
+		const TEST_LOCALE = 'test-locale';
+		const originalLocale = i18nInstance.global.locale.value;
+
+		beforeEach(() => {
+			i18nInstance.global.setLocaleMessage(TEST_LOCALE, {
+				'binaryDataDisplay.filePreview': 'Translated file preview',
+				'binaryDataDisplay.loading': 'Translated loading',
+				'binaryDataDisplay.errorLoading': 'Translated error',
+				'binaryDataDisplay.previewNotAvailable': 'Translated preview not available',
+			});
+			i18nInstance.global.locale.value = TEST_LOCALE;
+			i18n.clearCache();
+		});
+
+		afterEach(() => {
+			i18nInstance.global.locale.value = originalLocale;
+			i18n.clearCache();
+		});
+
+		it('should localize the modal title and the loading message', async () => {
+			workflowsStore.getBinaryUrl.mockReturnValue('http://test.com/binary');
+			(global.fetch as ReturnType<typeof vi.fn>).mockReturnValue(new Promise(() => {}));
+
+			const { getByRole, getByText } = await renderOpenModal({
+				props: {
+					data: { binaryData: createBinaryMetadata() },
+				},
+			});
+
+			expect(getByRole('heading', { name: 'Translated file preview' })).toBeInTheDocument();
+			expect(getByText('Translated loading')).toBeInTheDocument();
+		});
+
+		it('should localize the error message', async () => {
+			workflowsStore.getBinaryUrl.mockReturnValue('http://test.com/binary');
+			(global.fetch as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Fetch failed'));
+
+			const { getByText } = await renderOpenModal({
+				props: {
+					data: { binaryData: createBinaryMetadata({ mimeType: 'text/plain' }) },
+				},
+			});
+
+			await waitFor(() => {
+				expect(getByText('Translated error')).toBeInTheDocument();
+			});
+		});
+
+		it('should localize the message for file types without a preview', async () => {
+			workflowsStore.getBinaryUrl.mockReturnValue('http://test.com/file.zip');
+
+			const { getByText } = await renderOpenModal({
+				props: {
+					data: { binaryData: createBinaryMetadata({ mimeType: 'application/zip' }) },
+				},
+			});
+
+			await waitFor(() => {
+				expect(getByText('Translated preview not available')).toBeInTheDocument();
 			});
 		});
 	});
