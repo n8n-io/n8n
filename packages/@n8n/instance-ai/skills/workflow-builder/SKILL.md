@@ -978,7 +978,7 @@ For AI Agent workflows:
 
 After building a workflow that uses a trigger with an HTTP endpoint, share the
 full production URL with the user. Use the Webhook base URL and Form base URL
-from Instance Info in the system prompt. Each trigger type has a distinct
+from the `<instance-urls>` block in the user's turn. Each trigger type has a distinct
 pattern:
 
 - **Webhook Trigger**: `{webhookBaseUrl}/{path}` (where `{path}` is the node's
