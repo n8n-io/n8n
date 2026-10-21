@@ -83,6 +83,10 @@ function isPersistenceAdapter(file: SourceFile): boolean {
 	const repositoryNames = new Set([
 		...typeormImports.flatMap((declaration) => namedImportBindings(declaration, 'Repository')),
 		...dbImports.flatMap((declaration) => namedImportBindings(declaration, 'BaseRepository')),
+		...file
+			.getImportDeclarations()
+			.filter((declaration) => declaration.getModuleSpecifierValue() === './base-repository')
+			.flatMap((declaration) => namedImportBindings(declaration, 'BaseRepository')),
 	]);
 	const namespaceNames = new Set(
 		typeormImports.flatMap((declaration) => {

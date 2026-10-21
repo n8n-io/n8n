@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type { ApiKey, ApiKeyRepository, User } from '@n8n/db';
+import type { ApiKey, ApiKeyRepository, TransactionRunner, User } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
@@ -20,7 +20,13 @@ describe('PublicApiKeyService', () => {
 	const mailer = mock<UserManagementMailer>();
 	const logger = mock<Logger>();
 
-	const service = new PublicApiKeyService(apiKeyRepository, jwtService, mailer, logger);
+	const service = new PublicApiKeyService(
+		apiKeyRepository,
+		jwtService,
+		mailer,
+		logger,
+		mock<TransactionRunner>(),
+	);
 
 	const hasGlobalScopeMock = vi.mocked(hasGlobalScope);
 

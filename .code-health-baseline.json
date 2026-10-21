@@ -1563,14 +1563,6 @@
 				"hash": "5f5086c28a45"
 			}
 		],
-		"packages/cli/src/services/public-api-key.service.ts": [
-			{
-				"rule": "typeorm-persistence-boundary",
-				"line": 15,
-				"message": "Business logic imports TypeORM directly.",
-				"hash": "848bd2e47604"
-			}
-		],
 		"packages/cli/src/services/user.service.ts": [
 			{
 				"rule": "typeorm-persistence-boundary",
