@@ -175,10 +175,10 @@ describe('context.utils', () => {
 	describe('keepSortOnClear', () => {
 		const byName = [{ id: 'name', desc: false }];
 
-		it('keeps a new sort', () => {
-			expect(keepSortOnClear(byName, [{ id: 'name', desc: true }])).toEqual([
-				{ id: 'name', desc: true },
-			]);
+		it('keeps a new sort on another column', () => {
+			const byUpdate = [{ id: 'updatedAt', desc: false }];
+
+			expect(keepSortOnClear(byName, byUpdate)).toEqual(byUpdate);
 		});
 
 		it('turns the order around instead of clearing it', () => {

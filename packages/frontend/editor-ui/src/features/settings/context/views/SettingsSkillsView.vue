@@ -37,7 +37,7 @@ import { DEBOUNCE_TIME, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { AGENT_SKILL_MODAL_KEY } from '@/features/agents/constants';
-import { listAgentsPageGlobal } from '@/features/agents/composables/useAgentApi';
+import { listAgentsGlobal } from '@/features/agents/composables/useAgentApi';
 import { isSkillNameTakenError } from '@/features/agents/utils/agentSkill';
 import { exportAgentSkill } from '@/features/agents/utils/agentSkillExport';
 import type {
@@ -61,8 +61,6 @@ import { useSkillScopeDisplay } from '../skills.utils';
 
 const INSTANCE_SCOPE = 'instance';
 const PROJECT_SCOPE_PREFIX = 'project:';
-/** One page of agents for the agent filter, as the global agents list allows. */
-const AGENT_FILTER_LIMIT = 250;
 
 /** Empty means no filter, so the filters dropdown counts only the set ones. */
 type SkillFilters = {
@@ -231,12 +229,9 @@ async function resetFilters() {
 /** Options for the filters. Each one is optional, so a failed read leaves its list empty. */
 async function loadFilterOptions() {
 	await Promise.all([
-		listAgentsPageGlobal(rootStore.restApiContext, {
-			take: AGENT_FILTER_LIMIT,
-			sortBy: 'name:asc',
-		})
-			.then(({ data }) => {
-				agentOptions.value = data.map(({ id, name }) => ({ id, name }));
+		listAgentsGlobal(rootStore.restApiContext, { sortBy: 'name:asc' })
+			.then((agents) => {
+				agentOptions.value = agents.map(({ id, name }) => ({ id, name }));
 			})
 			.catch(() => undefined),
 		skillsStore

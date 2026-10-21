@@ -30,7 +30,7 @@ const saveAsMock = vi.fn();
 const listAgentsMock = vi.fn();
 
 vi.mock('@/features/agents/composables/useAgentApi', () => ({
-	listAgentsPageGlobal: async (...args: unknown[]) => await listAgentsMock(...args),
+	listAgentsGlobal: async (...args: unknown[]) => await listAgentsMock(...args),
 }));
 
 vi.mock('file-saver', () => ({ saveAs: (...args: unknown[]) => saveAsMock(...args) }));
@@ -142,10 +142,7 @@ describe('SettingsSkillsView', () => {
 		trackMock.mockClear();
 		saveAsMock.mockClear();
 		listAgentsMock.mockReset();
-		listAgentsMock.mockResolvedValue({
-			count: 1,
-			data: [{ id: 'agent-1', name: 'Support bot', projectId: 'team-1' }],
-		});
+		listAgentsMock.mockResolvedValue([{ id: 'agent-1', name: 'Support bot', projectId: 'team-1' }]);
 		skillsStore.fetchCreators.mockResolvedValue([
 			{ id: 'user-2', email: 'ada@example.com', firstName: 'Ada', lastName: 'Lovelace' },
 		]);
@@ -287,10 +284,7 @@ describe('SettingsSkillsView', () => {
 				sortBy: 'updatedAt:desc',
 			}),
 		);
-		expect(listAgentsMock).toHaveBeenCalledWith(expect.anything(), {
-			take: 250,
-			sortBy: 'name:asc',
-		});
+		expect(listAgentsMock).toHaveBeenCalledWith(expect.anything(), { sortBy: 'name:asc' });
 		expect(view.getByTestId('resources-list-filters-count')).toHaveTextContent('2');
 		vi.useRealTimers();
 	});

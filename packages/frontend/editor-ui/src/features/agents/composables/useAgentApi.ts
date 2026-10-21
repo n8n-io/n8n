@@ -137,6 +137,29 @@ export const listAgentsPageGlobal = async (
 	return await getFullApiResponse<AgentResource[]>(context, 'GET', '/agents/v2', options);
 };
 
+/** Every agent the user can list across projects, read page by page. */
+export const listAgentsGlobal = async (
+	context: IRestApiContext,
+	options: Omit<ListAgentsOptions, 'skip' | 'take'> = {},
+): Promise<AgentResource[]> => {
+	const agents: AgentResource[] = [];
+	let total = 0;
+
+	do {
+		const { count, data } = await listAgentsPageGlobal(context, {
+			...options,
+			skip: agents.length,
+			take: AGENTS_LIST_PAGE_SIZE,
+		});
+		agents.push(...data);
+		total = count;
+
+		if (data.length === 0) break;
+	} while (agents.length < total);
+
+	return agents;
+};
+
 /** One agent as the n8n Chat page needs it (see the backend route's doc for why `getAgent` won't do). */
 export const getN8nChatAgent = async (
 	context: IRestApiContext,

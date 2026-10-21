@@ -20,6 +20,7 @@ import {
 	updateAgentQueuedMessage,
 	getChatMessages,
 	listAgents,
+	listAgentsGlobal,
 	listAgentsPage,
 	listN8nChatAgents,
 	listN8nChatThreads,
@@ -184,6 +185,37 @@ describe('useAgentApi', () => {
 				'/projects/project-1/agents/v2',
 				{ skip: 1, take: 250 },
 			);
+		});
+	});
+
+	describe('listAgentsGlobal', () => {
+		it('reads every page of the cross-project list with the given options', async () => {
+			const firstPage = [{ id: 'agent-1', name: 'One' }] as AgentResource[];
+			const secondPage = [{ id: 'agent-2', name: 'Two' }] as AgentResource[];
+			vi.mocked(getFullApiResponse)
+				.mockResolvedValueOnce({ count: 2, data: firstPage })
+				.mockResolvedValueOnce({ count: 2, data: secondPage });
+
+			const result = await listAgentsGlobal(restApiContext, { sortBy: 'name:asc' });
+
+			expect(result).toEqual([...firstPage, ...secondPage]);
+			expect(getFullApiResponse).toHaveBeenNthCalledWith(1, restApiContext, 'GET', '/agents/v2', {
+				sortBy: 'name:asc',
+				skip: 0,
+				take: 250,
+			});
+			expect(getFullApiResponse).toHaveBeenNthCalledWith(2, restApiContext, 'GET', '/agents/v2', {
+				sortBy: 'name:asc',
+				skip: 1,
+				take: 250,
+			});
+		});
+
+		it('stops when a page comes back empty before the count is reached', async () => {
+			vi.mocked(getFullApiResponse).mockResolvedValueOnce({ count: 5, data: [] });
+
+			expect(await listAgentsGlobal(restApiContext)).toEqual([]);
+			expect(getFullApiResponse).toHaveBeenCalledTimes(1);
 		});
 	});
 
