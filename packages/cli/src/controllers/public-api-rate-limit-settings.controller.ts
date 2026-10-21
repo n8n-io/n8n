@@ -18,10 +18,10 @@ export class PublicApiRateLimitSettingsController {
 	@Put('/')
 	@GlobalScope('securitySettings:manage')
 	async updateSettings(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Body dto: UpdatePublicApiRateLimitSettingsDto,
 	) {
-		return await this.rateLimitSettingsService.saveSettings(dto);
+		return await this.rateLimitSettingsService.saveSettings(dto, req.user);
 	}
 }

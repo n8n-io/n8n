@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import { PublicApiRateLimitConfig } from '@n8n/config';
 import type { Settings, SettingsRepository } from '@n8n/db';
@@ -20,9 +21,18 @@ const stored = {
 	endpointWriteLimit: 5,
 };
 
+const actor = {
+	id: 'user-1',
+	email: 'owner@example.com',
+	firstName: 'Ada',
+	lastName: 'Owner',
+	role: { slug: 'global:owner' },
+};
+
 describe('PublicApiRateLimitSettingsService', () => {
 	const logger = mock<Logger>();
 	const settingsRepository = mock<SettingsRepository>();
+	const eventService = mock<EventService>();
 	let config: PublicApiRateLimitConfig;
 	let service: PublicApiRateLimitSettingsService;
 
@@ -37,6 +47,7 @@ describe('PublicApiRateLimitSettingsService', () => {
 		service = new PublicApiRateLimitSettingsService(
 			{ publicApi: { rateLimit: config } } as GlobalConfig,
 			settingsRepository,
+			eventService,
 			logger,
 		);
 	});
@@ -104,7 +115,7 @@ describe('PublicApiRateLimitSettingsService', () => {
 
 	describe('saveSettings', () => {
 		it('stores the settings and returns them', async () => {
-			const result = await service.saveSettings(stored);
+			const result = await service.saveSettings(stored, actor);
 
 			expect(settingsRepository.upsertByKey).toHaveBeenCalledWith(
 				PUBLIC_API_RATE_LIMIT_SETTINGS_KEY,
@@ -119,14 +130,14 @@ describe('PublicApiRateLimitSettingsService', () => {
 			vi.stubEnv('N8N_PUBLIC_API_RATE_LIMIT_ENABLED', 'false');
 			config.enabled = false;
 
-			await service.saveSettings(stored);
+			await service.saveSettings(stored, actor);
 
 			const [, value] = settingsRepository.upsertByKey.mock.calls[0];
 			expect(JSON.parse(value)).toEqual({ ...stored, enabled: false });
 		});
 
 		it('keeps the limits when rate limiting is turned off', async () => {
-			await service.saveSettings({ ...stored, enabled: false });
+			await service.saveSettings({ ...stored, enabled: false }, actor);
 
 			const [, value] = settingsRepository.upsertByKey.mock.calls[0];
 			expect(JSON.parse(value)).toEqual({ ...stored, enabled: false });
@@ -141,8 +152,28 @@ describe('PublicApiRateLimitSettingsService', () => {
 				endpointWriteLimit: 0,
 			};
 
-			await expect(service.saveSettings(noLimits)).rejects.toThrow(BadRequestError);
+			await expect(service.saveSettings(noLimits, actor)).rejects.toThrow(BadRequestError);
 			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
+		});
+
+		it('emits a policy event with only the user fields when rate limiting is turned on', async () => {
+			const user = { ...actor, password: 'password-hash' };
+
+			await service.saveSettings(stored, user);
+
+			expect(eventService.emit).toHaveBeenCalledWith('instance-policies-updated', {
+				user: actor,
+				settingName: 'public_api_rate_limit',
+				value: true,
+			});
+		});
+
+		it('does not emit a policy event when only the limits change', async () => {
+			storeRow(JSON.stringify(stored));
+
+			await service.saveSettings({ ...stored, globalReadLimit: 20 }, actor);
+
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 	});
 
