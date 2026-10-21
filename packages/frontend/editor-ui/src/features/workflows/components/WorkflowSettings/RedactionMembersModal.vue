@@ -1,6 +1,15 @@
 <script setup lang="ts">
 import { useRolesStore } from '@n8n/stores/roles.store';
-import { N8nDialog, N8nIconButton, N8nLoading, N8nText, N8nUserInfo } from '@n8n/design-system';
+import {
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogHeader,
+	N8nDialogTitle,
+	N8nIconButton,
+	N8nLoading,
+	N8nText,
+	N8nUserInfo,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { ref, watch } from 'vue';
 
@@ -47,20 +56,21 @@ watch(
 		:show-close-button="false"
 		@update:open="emit('update:open', $event)"
 	>
-		<div :class="$style.header">
-			<N8nIconButton
-				icon="chevron-left"
-				variant="ghost"
-				size="small"
-				:aria-label="i18n.baseText('generic.back')"
-				@click="emit('update:open', false)"
-			/>
-			<N8nText tag="h2" size="large" bold>
-				{{ i18n.baseText('workflowSettings.redactionMembersModal.title') }}
-			</N8nText>
-		</div>
-
-		<div :class="$style.content">
+		<N8nDialogHeader>
+			<div :class="$style.header">
+				<N8nIconButton
+					icon="chevron-left"
+					variant="ghost"
+					size="small"
+					:aria-label="i18n.baseText('generic.back')"
+					@click="emit('update:open', false)"
+				/>
+				<N8nDialogTitle>
+					{{ i18n.baseText('workflowSettings.redactionMembersModal.title') }}
+				</N8nDialogTitle>
+			</div>
+		</N8nDialogHeader>
+		<N8nDialogBody :class="$style.body">
 			<N8nText color="text-base" size="small" :class="$style.description">
 				{{ i18n.baseText('workflowSettings.redactionMembersModal.description') }}
 			</N8nText>
@@ -74,21 +84,19 @@ watch(
 					/>
 				</div>
 			</div>
-		</div>
+		</N8nDialogBody>
 	</N8nDialog>
 </template>
 
 <style lang="css" module>
+.body {
+	max-height: 400px;
+}
+
 .header {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
-	padding-bottom: var(--spacing--xs);
-}
-
-.content {
-	max-height: 400px;
-	overflow-y: auto;
 }
 
 .description {
