@@ -202,6 +202,7 @@ const helpTexts = computed(() => ({
 	redactProductionData: i18n.baseText('workflowSettings.helpTexts.redactProductionData'),
 	redactManualData: i18n.baseText('workflowSettings.helpTexts.redactManualData'),
 	redactCallerExecutions: i18n.baseText('workflowSettings.helpTexts.redactCallerExecutions'),
+	engineType: i18n.baseText('workflowSettings.helpTexts.engineType'),
 }));
 
 const defaultValues = ref({
@@ -254,6 +255,8 @@ const isDataRedactionLicensed = computed(
 );
 
 const isRedactionSettingVisible = computed(() => settingsStore.isModuleActive('redaction'));
+
+const isEngineTypeSettingVisible = computed(() => settingsStore.isModuleActive('engine-v2'));
 
 const isProductionRedactionLockedByFloor = computed(
 	() => instanceRedactionFloor.value === 'production' || instanceRedactionFloor.value === 'all',
@@ -825,6 +828,10 @@ const toggleTimeout = () => {
 	workflowSettings.value.executionTimeout = workflowSettings.value.executionTimeout === -1 ? 0 : -1;
 };
 
+const toggleEngineType = (useEngineV2: boolean) => {
+	workflowSettings.value.engineType = useEngineV2 ? 'v2' : 'v1';
+};
+
 const toggleAvailableInMCP = () => {
 	workflowSettings.value.availableInMCP = !workflowSettings.value.availableInMCP;
 };
@@ -1040,6 +1047,27 @@ onBeforeUnmount(() => {
 				:class="$style['workflow-settings']"
 				data-test-id="workflow-settings-dialog"
 			>
+				<ElRow v-if="isEngineTypeSettingVisible" data-test-id="workflow-settings-engine-type">
+					<ElCol :span="10" :class="$style['setting-name']">
+						{{ i18n.baseText('workflowSettings.engineType') }}
+						<N8nTooltip placement="top">
+							<template #content>
+								<div v-text="helpTexts.engineType"></div>
+							</template>
+							<N8nIcon icon="circle-help" />
+						</N8nTooltip>
+					</ElCol>
+					<ElCol :span="14">
+						<div>
+							<ElSwitch
+								:disabled="isWorkflowSettingsReadOnly"
+								:model-value="workflowSettings.engineType === 'v2'"
+								data-test-id="workflow-settings-engine-type-switch"
+								@update:model-value="toggleEngineType"
+							></ElSwitch>
+						</div>
+					</ElCol>
+				</ElRow>
 				<ElRow>
 					<ElCol :span="10" :class="$style['setting-name']">
 						{{ i18n.baseText('workflowSettings.executionLogic') }}
