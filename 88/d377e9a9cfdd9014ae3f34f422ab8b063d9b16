@@ -382,8 +382,10 @@ packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
 packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.vue
   s_7f7a4dee511a6b::t_8e4f70fa8d72c0 16,39,192,195
   s_7f7a4dee511a6b::t_0ece4d89ee19b7 14
+  s_7f7a4dee511a6b::t_651ea40a5f75e9 171
 packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionOutcome.ts
   s_7f7a4dee511a6b::t_17b63b3b1d36b6 2-7,9-17,19-21,30-77
+  s_7f7a4dee511a6b::t_01c8937a6866e9 1,8,18,22-29
 ---
 {
   "schema_version": "authorship/3.0.0",
