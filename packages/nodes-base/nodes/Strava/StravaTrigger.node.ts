@@ -1,4 +1,3 @@
-import { randomBytes } from 'crypto';
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -147,7 +146,7 @@ export class StravaTrigger implements INodeType {
 
 				const body = {
 					callback_url: webhookUrl,
-					verify_token: randomBytes(20).toString('hex'),
+					verify_token: this.getNode().id,
 				};
 
 				let responseData;
@@ -180,7 +179,7 @@ export class StravaTrigger implements INodeType {
 									// now there is room create a subscription with the n8n data
 									const requestBody = {
 										callback_url: webhookUrl,
-										verify_token: randomBytes(20).toString('hex'),
+										verify_token: this.getNode().id,
 									};
 
 									responseData = await stravaApiRequest.call(
@@ -254,12 +253,24 @@ export class StravaTrigger implements INodeType {
 		if (this.getWebhookName() === 'setup') {
 			if (query['hub.challenge']) {
 				// Is a create webhook confirmation request
+				if (query['hub.verify_token'] !== this.getNode().id) {
+					return {};
+				}
+
 				const res = this.getResponseObject();
 				res.status(200).json({ 'hub.challenge': query['hub.challenge'] }).end();
 				return {
 					noWebhookResponse: true,
 				};
 			}
+		}
+
+		const webhookData = this.getWorkflowStaticData('node');
+		if (
+			body.subscription_id === undefined ||
+			String(body.subscription_id) !== String(webhookData.webhookId)
+		) {
+			return {};
 		}
 
 		if (object !== '*' && !objectType.includes(body.object_type as string)) {
