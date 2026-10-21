@@ -1,6 +1,7 @@
-import { createWorkflow, testDb } from '@n8n/backend-test-utils';
+import { createActiveWorkflow, createWorkflow, testDb } from '@n8n/backend-test-utils';
 import { EngineConfig } from '@n8n/config';
 import type { IWorkflowDb, User } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mintActionToken } from '@n8n/engine';
 import { ExecuteWorkflowTrigger } from 'n8n-nodes-base/nodes/ExecuteWorkflow/ExecuteWorkflowTrigger/ExecuteWorkflowTrigger.node';
@@ -94,6 +95,7 @@ describe('Engine v2 sub-workflow resolve (integration)', () => {
 		overrides: Partial<ResolveSubWorkflowRequest> = {},
 	): ResolveSubWorkflowRequest => ({
 		workflowId,
+		executionId: '01a03900-0000-7000-8000-000000000001',
 		parent: { executionId: 'exec-parent', workflowId: parent.id, mode: 'manual' },
 		context: { userId: member.id },
 		items: [{ json: { a: 1 } }],
@@ -114,6 +116,38 @@ describe('Engine v2 sub-workflow resolve (integration)', () => {
 		expect(result.triggerOutputs).toEqual([[{ json: { a: 1 } }]]);
 		expect(result.returnLastRunOnly).toBe(false);
 		expect(result.workflow).toMatchObject({ id: workflow.id });
+	});
+
+	it('resolves the published version of a child for a production run, not its draft', async () => {
+		const workflow = await createActiveWorkflow(
+			{
+				settings: { engineType: 'v2', callerPolicy: 'any' },
+				nodes: [triggerNode, setNode],
+				connections,
+			},
+			member,
+		);
+		// The draft moves on after the publish.
+		await Container.get(WorkflowRepository).update(
+			{ id: workflow.id },
+			{
+				nodes: [triggerNode, { ...setNode, name: 'Draft Set' }],
+				connections: {
+					[TRIGGER_NAME]: { main: [[{ node: 'Draft Set', type: 'main', index: 0 }]] },
+				},
+			},
+		);
+		const production = {
+			executionId: 'exec-parent',
+			workflowId: parent.id,
+			mode: 'trigger' as const,
+		};
+
+		const published = await resolve(request(workflow.id, { parent: production }));
+		const draft = await resolve(request(workflow.id));
+
+		expect(published.graph.nodes.map(({ name }) => name)).toEqual([TRIGGER_NAME, 'Set']);
+		expect(draft.graph.nodes.map(({ name }) => name)).toEqual([TRIGGER_NAME, 'Draft Set']);
 	});
 
 	it('refuses a child whose caller policy excludes the parent', async () => {

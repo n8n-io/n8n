@@ -62,6 +62,7 @@ export class EngineSubWorkflowService {
 
 	async resolve({
 		workflowId,
+		executionId,
 		parent,
 		context,
 		items,
@@ -69,7 +70,7 @@ export class EngineSubWorkflowService {
 		const workflowData = await this.load(workflowId, parent);
 		await this.assertCallable(workflowData, parent, context);
 		const trigger = this.findTrigger(workflowData);
-		const outputs = await this.runTrigger(workflowData, trigger, items, context);
+		const outputs = await this.runTrigger(workflowData, trigger, items, executionId, context);
 
 		// Lazily imported: a top-level import would pull the v1 step executor and
 		// its dependencies into every n8n process, including ones with the module off.
@@ -168,6 +169,7 @@ export class EngineSubWorkflowService {
 		workflowData: IWorkflowBase,
 		trigger: INode,
 		items: INodeExecutionData[],
+		executionId: string,
 		context: ResolveSubWorkflowRequest['context'],
 	): Promise<INodeExecutionData[][]> {
 		const nodeType = this.nodeTypes.getByNameAndVersion(trigger.type, trigger.typeVersion);
@@ -188,6 +190,8 @@ export class EngineSubWorkflowService {
 			workflowId: workflowData.id,
 			projectId: context.projectId,
 		});
+		// The trigger runs as the child's first node, so `$execution.id` is the child's.
+		additionalData.executionId = executionId;
 		const inputData: ITaskDataConnections = { main: [items] };
 		const executeData: IExecuteData = { node: trigger, data: inputData, source: null };
 		const executeContext = new ExecuteContext(

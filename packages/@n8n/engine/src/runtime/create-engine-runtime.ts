@@ -129,6 +129,7 @@ export function createEngineRuntime({
 			lifecycleEventPublisher,
 			responseSender,
 			startExecution,
+			cancelExecution,
 			// A deadline set after the sweeper armed would otherwise wait for its next pass.
 			() => waitSweeper.noteSuspended(),
 		),

@@ -207,6 +207,21 @@ describe('CancelExecutionService', () => {
 		expect(executionStore.refreshLiveStatus).toHaveBeenCalledWith('exec-parent');
 	});
 
+	it('resumes no parent for a child it does not wait for', async () => {
+		const parent = { executionId: 'exec-parent', stepId: 'step-fire', awaited: false };
+		const executionStore = makeExecutionStore({
+			loadExecution: vi
+				.fn()
+				.mockResolvedValue({ ...execution, parent, status: 'cancelled', finishedAt: new Date() }),
+		});
+		const { service, stepStore, stepQueue } = makeService(executionStore);
+
+		await service.cancel('exec-1');
+
+		expect(stepStore.resumeStep).not.toHaveBeenCalled();
+		expect(stepQueue.publish).not.toHaveBeenCalled();
+	});
+
 	it('announces no resume when the parent step no longer waits', async () => {
 		// The parent was cancelled first, and its cascade is what cancels this child.
 		const parent = { executionId: 'exec-parent', stepId: 'step-call', awaited: true };
