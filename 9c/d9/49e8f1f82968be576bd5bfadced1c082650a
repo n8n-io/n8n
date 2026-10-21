@@ -1,0 +1,273 @@
+packages/@n8n/api-types/src/dto/promotions/promotion-preview.dto.ts
+  s_2cc11fea2f54fd::t_2408c934faea8b 1-5,13-49,52-90,122-126,129-131
+  s_2cc11fea2f54fd::t_e3cb3db9ca1b9c 127-128
+  s_fe1b5f36be2fdf::t_4592c887534290 98,101
+  s_fe1b5f36be2fdf::t_e3df24e5d4aa0a 6-12
+  s_fe1b5f36be2fdf::t_69ebfbe52ebdb0 91-97,102-121
+  s_fe1b5f36be2fdf::t_678ad1cbd9c46b 99-100
+  s_a0c92b179996b0::t_0359491aecc8af 50-51
+packages/@n8n/api-types/src/dto/index.ts
+  s_2cc11fea2f54fd::t_5bc6b8cccc32be 769
+  s_fe1b5f36be2fdf::t_8ece52c4952a05 539-546
+packages/@n8n/api-types/src/dto/promotions/promotion-binding-preflight.dto.ts
+  s_2cc11fea2f54fd::t_cd20252ce6209d 102,181,227
+packages/cli/src/modules/promotions.ee/promotion-changes.controller.ts
+  s_2cc11fea2f54fd::t_56bc9036162642 47-52
+  s_2cc11fea2f54fd::t_3b7aa744730f1b 4,7-9,13-22,46,54,68-91
+packages/cli/src/modules/n8n-packages/io/hashing-package-writer.ts
+  s_2cc11fea2f54fd::t_f39ba5413e0199 5-12,18
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_2cc11fea2f54fd::t_60c3fd5c8f781a 8,54
+  s_13fdf695fc0ff1::t_ddaf5fe64eaa8d 1458
+  s_13fdf695fc0ff1::t_1b2084cbc466dd 1495-1496,1500,1502-1529
+  s_a0c92b179996b0::t_ca605d6a2466ca 73
+  s_a0c92b179996b0::t_2a314b9c76020d 1651-1688,1690-1691
+  s_a0c92b179996b0::t_ce4e46ac9865b6 2203
+  s_a0c92b179996b0::t_7a4d09936c1ed3 1689
+  s_a0c92b179996b0::t_510cef407438e4 464-484
+packages/cli/src/modules/promotions.ee/promotion-preview.ts
+  s_2cc11fea2f54fd::t_ec734ba1ed05f4 41-42,45,92-93,96-101,103-107,119-125,135,142-144,166-167,170-171,179-180,185-186,193-205,215,223-228,253-255,258-259,297-299,303,327-338,340,346-348,376-377,384-387,395-397,399-402,407-416,434-437
+  s_2cc11fea2f54fd::t_dd4f9c629b97e0 1-14,16-40,43-44,48,51-62,71-86,90-91,94-95,102,108-118,126-134,136-141,145-165,172-178,181-184,187-191,206-208,216-219,222,229,231-233,256-257,260-267,269-280,282-296,300-302,313,315,317,339,341-345,349-371,375,378-383,391-394,398,405-406,417-433,438
+  s_2cc11fea2f54fd::t_32b1e0ab4498b2 209-212,214,388-390
+  s_2cc11fea2f54fd::t_a686b1cf3c8120 250-251,403-404
+  s_2cc11fea2f54fd::t_56bc9036162642 87-89,304-308
+  s_2cc11fea2f54fd::t_d70fde1b1be016 49-50,63-66,67-70,168-169,213,230,248-249,252
+  s_2cc11fea2f54fd::t_a652e03343d2e6 15,192,268,281,309-312,314,316,318-326,372-374
+  s_a0c92b179996b0::t_2c0aaae801e2b3 234-240,242-245
+  s_a0c92b179996b0::t_2c4efbd96daae4 220-221
+  s_a0c92b179996b0::t_8c4197c299d482 46-47
+  s_a0c92b179996b0::t_748d2de1a8ab7f 241,246-247
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_2cc11fea2f54fd::t_53b51e52f645f4 165-180,183-190,196-202,204-239,241-245,248-261,272-273,275-276,279,294-295,305,307-313,346-351
+  s_2cc11fea2f54fd::t_1995fb8833ebe7 530-531,542,547
+  s_2cc11fea2f54fd::t_a686b1cf3c8120 120,583
+  s_2cc11fea2f54fd::t_9a4d010cf94ed3 6-10,23,25-26,40-42,44-45,72-78,104-118,124,143-147,599,601-619,621-624,633,636-650,652,655,675,681-682,683
+  s_2cc11fea2f54fd::t_5af9ca2bb266ab 449-453,456,472,475,477,488,496-498,500,503-529,532-533,535-541,544-546,548-550,576-582,584-585
+  s_2cc11fea2f54fd::t_7a03ef32a4cbcc 191-195,203,274,277-278,296-304
+  s_2cc11fea2f54fd::t_56bc9036162642 181-182
+  s_2cc11fea2f54fd::t_8169f0f18bf32e 240,597-598,600
+  s_2cc11fea2f54fd::t_b308be73c3fee3 119,121,684
+  s_2cc11fea2f54fd::t_e3cb3db9ca1b9c 246-247,306
+  s_fe1b5f36be2fdf::t_5d1f87c77625e1 14-21,37,629-632,634-635,651,653-654,656-674,676-680
+  s_fe1b5f36be2fdf::t_ec5f56a046490d 12
+  s_fe1b5f36be2fdf::t_bd929685e27296 13
+  s_fe1b5f36be2fdf::t_953c79d597ae13 625-628
+  s_a0c92b179996b0::t_9a79f3567a8f78 43
+  s_a0c92b179996b0::t_bca87ec425f688 280-281
+  s_a0c92b179996b0::t_6056acd823d06c 543
+  s_a0c92b179996b0::t_bde0efd3e4641e 534
+  s_a0c92b179996b0::t_1fdab9c73226a1 262-271
+  s_a0c92b179996b0::t_07e29e3e089d27 551-575
+  s_a0c92b179996b0::t_cc5c3aaead7323 122-123
+packages/cli/src/modules/promotions.ee/promotions-git.service.ts
+  s_2cc11fea2f54fd::t_5ed0c01c333bfc 524-527,529-530,532-553,555-557
+  s_ff8b9aa92a9930::t_b4cb523842caa6 588-590
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_2cc11fea2f54fd::t_bdc5855132f915 222,529,592,674
+  s_2cc11fea2f54fd::t_3593d01e803c96 18,924-926
+  s_2cc11fea2f54fd::t_175d814c1a885e 40,47,777,833,833,836-839,836-839,841-842,847-848,852-857,859-861,863-864,866-867,873,880-900,903-923,927-948,950-951,958,960,971-980,987-988,1008-1026,1031,1033-1042,1048-1050,1114-1116,1119-1120,1122-1146,1150-1158,1161,1197
+  s_2cc11fea2f54fd::t_019a9ad4ee92bc 962,967-970
+  s_2cc11fea2f54fd::t_c8d06c8f4d5665 14,27,43,840,843-846,851,858,862,865,868-872,874-879,949,952-957,959,961,963-964,981-986,989-1007,1029-1030,1032,1043-1047,1166-1179,1181-1196
+  s_2cc11fea2f54fd::t_20d581c610e955 1198
+  s_2cc11fea2f54fd::t_8f42ef7456d2a6 1113,1121,1147-1148,1159-1160,1162-1165
+  s_ff8b9aa92a9930::t_8addefa9e8c921 776-777
+  s_a0c92b179996b0::t_65bdf6d32ef91f 46,48
+  s_a0c92b179996b0::t_7013cc3ec594c2 1057,1066,1073,1076-1077,1086-1095,1098-1102,1104-1106,1108
+  s_a0c92b179996b0::t_fb6ccbdf5e000f 84-85
+  s_a0c92b179996b0::t_84715510e516a0 1075,1078-1084,1096,1103,1107,1109-1111
+  s_a0c92b179996b0::t_6256aa488867db 17,21
+  s_a0c92b179996b0::t_b4835d395cf11a 1051-1056,1058-1065,1067-1072,1074,1085,1097,1112
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_2cc11fea2f54fd::t_d139a4844932d3 895,898-906,909,911,917-919
+  s_2cc11fea2f54fd::t_eff59e119cfd0a 896-897,907,912-916
+  s_40263e1c54798e::t_4108d289678601 894
+  s_ff8b9aa92a9930::t_549728615da5fb 595
+  s_a0c92b179996b0::t_39418213256a1d 735
+packages/cli/src/modules/external-secrets.ee/redaction.service.ee.ts
+  s_fe1b5f36be2fdf::t_f17f356b416c93 2
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-published-state.ts
+  s_fe1b5f36be2fdf::t_ec5f56a046490d 1
+packages/@n8n/api-types/src/dto/packages/credential.schema.ts
+  s_fe1b5f36be2fdf::t_ec21409f830f24 1-35
+packages/@n8n/api-types/src/dto/packages/variable.schema.ts
+  s_fe1b5f36be2fdf::t_ec21409f830f24 1-13
+packages/cli/src/modules/n8n-packages/engine/__tests__/package-layout.test.ts
+  s_fe1b5f36be2fdf::t_ec5f56a046490d 1
+  s_fe1b5f36be2fdf::t_47e4b9d7b4b7a4 2
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_fe1b5f36be2fdf::t_ec5f56a046490d 1
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.types.ts
+  s_fe1b5f36be2fdf::t_ec5f56a046490d 1
+packages/@n8n/utils/src/string/contains-expression.test.ts
+  s_fe1b5f36be2fdf::t_f7e0ae4022be36 1-49
+packages/cli/src/modules/n8n-packages/entities/folder/folder.serializer.ts
+  s_fe1b5f36be2fdf::t_ec5f56a046490d 1
+packages/cli/src/modules/n8n-packages/entities/credential/credential-importer.ts
+  s_fe1b5f36be2fdf::t_ec5f56a046490d 1
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-compat.ts
+  s_fe1b5f36be2fdf::t_ec5f56a046490d 1
+packages/cli/src/modules/n8n-packages/entities/variable/variable.serializer.ts
+  s_fe1b5f36be2fdf::t_ec5f56a046490d 1
+packages/cli/src/modules/n8n-packages/entities/credential/credential.serializer.ts
+  s_fe1b5f36be2fdf::t_ec5f56a046490d 4-8
+packages/cli/src/modules/n8n-packages/io/directory/package-directory-inventory-reader.ts
+  s_fe1b5f36be2fdf::t_ec5f56a046490d 1-11
+packages/cli/src/modules/n8n-packages/entities/credential/credential.types.ts
+  s_fe1b5f36be2fdf::t_ec5f56a046490d 1
+  s_fe1b5f36be2fdf::t_47e4b9d7b4b7a4 2
+packages/cli/src/modules/n8n-packages/engine/package-layout.ts
+  s_fe1b5f36be2fdf::t_ec5f56a046490d 1
+packages/cli/src/modules/n8n-packages/entities/project/project.serializer.ts
+  s_fe1b5f36be2fdf::t_ec5f56a046490d 1
+packages/cli/src/modules/n8n-packages/entities/tag/tag.exporter.ts
+  s_fe1b5f36be2fdf::t_ec5f56a046490d 1
+  s_a0c92b179996b0::t_4e1fc0010bd5ae 67-73
+  s_a0c92b179996b0::t_d3884533789a19 28-32
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.serializer.ts
+  s_fe1b5f36be2fdf::t_ec5f56a046490d 1-6
+packages/cli/src/modules/n8n-packages/__tests__/import-credential-conflict.integration.test.ts
+  s_fe1b5f36be2fdf::t_ec5f56a046490d 1
+packages/cli/src/credentials/credential-data-merge.ts
+  s_fe1b5f36be2fdf::t_f17f356b416c93 2
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-importer.ts
+  s_fe1b5f36be2fdf::t_ec5f56a046490d 1
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.serializer.ts
+  s_fe1b5f36be2fdf::t_ec5f56a046490d 1-5
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/package-fixtures.ts
+  s_fe1b5f36be2fdf::t_ec5f56a046490d 1-9
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_fe1b5f36be2fdf::t_ec5f56a046490d 1-15
+packages/cli/src/modules/n8n-packages/entities/credential/credential-conflict-policy.ts
+  s_fe1b5f36be2fdf::t_ec5f56a046490d 1
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow.serializer.test.ts
+  s_fe1b5f36be2fdf::t_ec5f56a046490d 1
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-schema-conflict-policy.ts
+  s_fe1b5f36be2fdf::t_47e4b9d7b4b7a4 2
+  s_fe1b5f36be2fdf::t_ec5f56a046490d 1
+packages/@n8n/utils/src/string/contains-expression.ts
+  s_fe1b5f36be2fdf::t_f7e0ae4022be36 1-6
+packages/cli/src/modules/n8n-packages/io/manifest-entry.ts
+  s_fe1b5f36be2fdf::t_47e4b9d7b4b7a4 2
+  s_fe1b5f36be2fdf::t_ec5f56a046490d 1
+packages/cli/src/modules/source-control.ee/source-control-helper.ee.ts
+  s_fe1b5f36be2fdf::t_f17f356b416c93 5
+packages/cli/src/modules/n8n-packages/entities/credential/credential-export-policy.ts
+  s_fe1b5f36be2fdf::t_f17f356b416c93 2,5
+  s_fe1b5f36be2fdf::t_ec5f56a046490d 1
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  s_fe1b5f36be2fdf::t_ec5f56a046490d 1
+packages/@n8n/api-types/src/dto/packages/data-table.schema.ts
+  s_fe1b5f36be2fdf::t_ec21409f830f24 1-18,20-26,29-58
+  s_fe1b5f36be2fdf::t_678ad1cbd9c46b 19,27-28
+packages/cli/src/modules/n8n-packages/entities/variable/variable.exporter.ts
+  s_fe1b5f36be2fdf::t_ec5f56a046490d 1
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-importer.test.ts
+  s_fe1b5f36be2fdf::t_ec5f56a046490d 1
+packages/cli/src/modules/n8n-packages/entities/project/project-import.types.ts
+  s_fe1b5f36be2fdf::t_ec5f56a046490d 1
+  s_fe1b5f36be2fdf::t_47e4b9d7b4b7a4 2
+packages/@n8n/api-types/src/dto/packages/workflow.schema.ts
+  s_fe1b5f36be2fdf::t_678ad1cbd9c46b 15-17,35
+  s_fe1b5f36be2fdf::t_a8d1a2bbee9075 9-10
+packages/@n8n/api-types/src/dto/packages/folder.schema.ts
+  s_fe1b5f36be2fdf::t_678ad1cbd9c46b 7-8
+packages/@n8n/api-types/src/dto/packages/workflow-metadata.schema.ts
+  s_fe1b5f36be2fdf::t_678ad1cbd9c46b 4-5
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.schema.ts
+  s_13fdf695fc0ff1::t_38d8adb971b8c4 111
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_13fdf695fc0ff1::t_648e63de946f15 118-119
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-import.types.ts
+  s_13fdf695fc0ff1::t_6800de651ffc6c 82
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_13fdf695fc0ff1::t_bf8e539350f33e 301,303
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.openapi.ts
+  s_13fdf695fc0ff1::t_669017475b0a2d 38,42,47
+  s_13fdf695fc0ff1::t_c9931755e58825 39-41,48-49
+packages/cli/src/public-api/v1/shared/spec/schemas/importBlockingIssue.generated.yml
+  s_13fdf695fc0ff1::t_efc2ee6b64e5e4 94-95,105
+packages/cli/src/modules/n8n-packages/CLAUDE.md
+  s_a0c92b179996b0::t_44e787af560472 14-17
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_a0c92b179996b0::t_49eb670c45ce4a 313-314
+  s_a0c92b179996b0::t_4b5f3780f9896a 324
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_a0c92b179996b0::t_038d1f1e72c831 99-100
+  s_a0c92b179996b0::t_f00c7708da6349 633
+  s_a0c92b179996b0::t_d1189751899277 53
+  s_a0c92b179996b0::t_aca9bfededd4b5 127
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_a0c92b179996b0::t_71fbdc3d1e4a34 1519,1640
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9cd949e8f1f82968be576bd5bfadced1c082650a",
+  "prompts": {},
+  "sessions": {
+    "s_13fdf695fc0ff1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d68ad11-e5a3-42cc-a4cf-9389fb57dfde",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_2cc11fea2f54fd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2424be1e-cf29-4877-a74e-de56398714d7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_40263e1c54798e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1483c-9b4b-75f0-8329-038d448609a3",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_7f7a4dee511a6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed162b42-c275-4534-848a-37f52720dc22",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_983eea3c47ac98": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6afe657c-702d-4003-8734-85a65b043c95",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_a0c92b179996b0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b56759c2-2e98-4e80-abcb-5f332f8ff366",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_fe1b5f36be2fdf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ecc479a7-de22-48fb-83ea-8221212b76b4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_ff8b9aa92a9930": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0f5ab687-045b-4fa4-82f0-836e06007165",
+        "model": "unknown"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
