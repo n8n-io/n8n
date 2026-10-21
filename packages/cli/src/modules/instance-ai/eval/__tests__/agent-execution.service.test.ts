@@ -17,7 +17,6 @@ import { mock } from 'vitest-mock-extended';
 
 import { AgentEvaluationService } from '@/modules/agents/evaluation/agent-evaluation.service';
 import type {
-	AgentEvaluationAgent,
 	AgentEvaluationPreparation,
 	AgentEvaluationRunSource,
 } from '@/modules/agents/evaluation/agent-evaluation.contracts';
@@ -140,14 +139,6 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		});
 		await buildService().executeWithLlmMock('agent-1', user, request, 'Case', { source });
 		expect(agentEvaluation.prepare).toHaveBeenCalledWith(user, 'proj-1', 'agent-1', source);
-	});
-
-	it('captures a run source through the agent evaluation service', async () => {
-		const agent = mock<AgentEvaluationAgent>();
-		const source = mock<AgentEvaluationRunSource>();
-		agentEvaluation.captureRunSource.mockResolvedValue(source);
-		expect(await buildService().captureRunSource(agent)).toBe(source);
-		expect(agentEvaluation.captureRunSource).toHaveBeenCalledWith(agent);
 	});
 
 	it.each([false, true])(

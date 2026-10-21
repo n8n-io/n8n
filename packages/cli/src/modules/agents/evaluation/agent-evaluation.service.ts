@@ -20,12 +20,16 @@ import type { AgentRunSource } from '../utils/agent-published-snapshot';
 import type {
 	AgentRuntimeInstrumentation,
 	AgentEvaluationPreparationResult,
+	AgentEvaluationRunSource,
 	AgentEvaluationSkippedFeature,
 } from './agent-evaluation.contracts';
 import { pruneConfigForEval, summarizeTools } from './evaluation-config';
 
 @Service()
 export class AgentEvaluationService {
+	/** Captured batch content, keyed by the handle the caller holds. */
+	private readonly runSources = new WeakMap<AgentEvaluationRunSource, AgentRunSource>();
+
 	constructor(
 		private readonly settings: AgentsSettingsService,
 		private readonly executionsConfig: ExecutionsConfig,
@@ -58,7 +62,7 @@ export class AgentEvaluationService {
 	}
 
 	/** Keep the root agent and resolved skills fixed while a batch is in flight. */
-	async captureRunSource(agent: ProjectAgent): Promise<AgentRunSource> {
+	async captureRunSource(agent: ProjectAgent): Promise<AgentEvaluationRunSource> {
 		const detached = {
 			...agent,
 			schema: structuredClone(agent.schema),
@@ -67,7 +71,9 @@ export class AgentEvaluationService {
 			integrations: structuredClone(agent.integrations),
 		};
 		const skills = await this.skillRefs.readDraft(detached, {});
-		return { agent: detached, ...structuredClone(skills) };
+		const handle = Object.freeze({}) as AgentEvaluationRunSource;
+		this.runSources.set(handle, { agent: detached, ...structuredClone(skills) });
+		return handle;
 	}
 
 	/**
@@ -78,10 +84,12 @@ export class AgentEvaluationService {
 		user: User,
 		projectId: string,
 		agentId: string,
-		source?: AgentRunSource,
+		runSource?: AgentEvaluationRunSource,
 	): Promise<AgentEvaluationPreparationResult> {
 		const error = await this.accessError(user, projectId, agentId);
 		if (error) return { error };
+		const source = runSource && this.runSources.get(runSource);
+		if (runSource && !source) return { error: `Agent ${agentId} not found or not accessible` };
 		if (source && (source.agent.id !== agentId || source.agent.projectId !== projectId)) {
 			return { error: `Agent ${agentId} not found or not accessible` };
 		}

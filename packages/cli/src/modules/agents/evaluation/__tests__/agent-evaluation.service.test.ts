@@ -12,6 +12,7 @@ import {
 } from '../../__tests__/test-utils/stored-agent-config';
 import { Agent } from '../../entities/agent.entity';
 import { createAgentCredentialProvider } from '../../utils/agent-credential-provider';
+import type { AgentEvaluationRunSource } from '../agent-evaluation.contracts';
 import { AgentEvaluationService } from '../agent-evaluation.service';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
@@ -238,7 +239,8 @@ describe('AgentEvaluationService', () => {
 			);
 			expect(snapshot.skills.alpha.instructions).toBe('Old skill');
 		}
-		expect(source.agent.schema?.instructions).toBe(baseConfig.instructions);
+		// The handle keeps the captured Agent private.
+		expect(Object.keys(source)).toEqual([]);
 		expect(userHasScopes).toHaveBeenCalledTimes(4);
 
 		const { preparation } = await service.prepare(user, 'proj-1', 'agent-1');
@@ -268,6 +270,14 @@ describe('AgentEvaluationService', () => {
 		});
 		repository.findByIdAndProjectId.mockResolvedValue(null);
 		expect(await service.prepare(user, 'proj-1', 'agent-1', source)).toEqual({
+			error: 'Agent agent-1 not found or not accessible',
+		});
+	});
+
+	it('refuses a run source it did not capture', async () => {
+		const { service } = setup();
+		const foreign = {} as AgentEvaluationRunSource;
+		expect(await service.prepare(user, 'proj-1', 'agent-1', foreign)).toEqual({
 			error: 'Agent agent-1 not found or not accessible',
 		});
 	});

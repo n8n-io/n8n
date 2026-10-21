@@ -31,7 +31,8 @@ import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-co
 import { License } from '@/license';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
-import type { AgentRunSource } from '@/modules/agents/utils/agent-published-snapshot';
+import type { AgentEvaluationRunSource } from '@/modules/agents/evaluation/agent-evaluation.contracts';
+import { AgentEvaluationService } from '@/modules/agents/evaluation/agent-evaluation.service';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { EvalAgentExecutionService } from '@/modules/instance-ai/eval/agent-execution.service';
@@ -111,6 +112,7 @@ export class AgentEvalRunnerService {
 		private readonly agentsSettingsService: AgentsSettingsService,
 		private readonly agentConfigService: AgentConfigService,
 		private readonly credentialsService: CredentialsService,
+		private readonly agentEvaluation: AgentEvaluationService,
 	) {}
 
 	/**
@@ -163,7 +165,7 @@ export class AgentEvalRunnerService {
 			throw new BadRequestError('The dataset has no rows to run.');
 		}
 
-		const source = await this.evalAgentExecutionService.captureRunSource(agent);
+		const source = await this.agentEvaluation.captureRunSource(agent);
 
 		const run = await this.runRepository.createRun({
 			datasetId: dataset.id,
@@ -313,7 +315,7 @@ export class AgentEvalRunnerService {
 		user: User;
 		cases: ResolvedCase[];
 		seeded: AgentEvalResult[];
-		source: AgentRunSource;
+		source: AgentEvaluationRunSource;
 		timeoutMs?: number;
 	}): Promise<void> {
 		const { runId, cases, seeded } = ctx;
@@ -705,7 +707,7 @@ export class AgentEvalRunnerService {
 			projectId: string;
 			user: User;
 			timeoutMs?: number;
-			source?: AgentRunSource;
+			source?: AgentEvaluationRunSource;
 			onAttemptStarted?: (runAt: Date) => void;
 		},
 	): Promise<CaseUsage | undefined> {
