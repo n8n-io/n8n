@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 
-import Modal from '@/app/components/Modal.vue';
 import { useStorage } from '@n8n/composables/useStorage';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -16,9 +15,17 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 } from '@/app/constants';
 
-import { N8nButton, N8nCheckbox, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCheckbox,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nText,
+} from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
+defineOptions({ inheritAttrs: false });
 const checked = ref(false);
 
 const executionsStore = useExecutionsStore();
@@ -27,6 +34,17 @@ const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const router = useRouter();
 const i18n = useI18n();
+
+const modalOpen = computed(() => uiStore.modalsById[WORKFLOW_ACTIVE_MODAL_KEY]?.open === true);
+
+function closeDialog() {
+	if (uiStore.modalsById[WORKFLOW_ACTIVE_MODAL_KEY]?.open !== true) return;
+	uiStore.closeModal(WORKFLOW_ACTIVE_MODAL_KEY);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) closeDialog();
+}
 
 const modalTitle = computed(() => i18n.baseText('activationModal.workflowPublished'));
 
@@ -99,35 +117,35 @@ const handleCheckboxChange = (checkboxValue: string | number | boolean) => {
 </script>
 
 <template>
-	<Modal :name="WORKFLOW_ACTIVE_MODAL_KEY" :title="modalTitle" width="460px">
-		<template #content>
-			<div>
-				<N8nText>{{ triggerContent }}</N8nText>
-			</div>
-			<div :class="$style.spaced">
-				<N8nText>
-					<N8nText :bold="true">
-						{{ i18n.baseText('activationModal.theseExecutionsWillNotShowUp') }}
+	<N8nDialog :open="modalOpen" size="medium" :header="modalTitle" @update:open="onDialogOpenUpdate">
+		<N8nDialogBody>
+			<div data-test-id="activation-modal">
+				<div>
+					<N8nText>{{ triggerContent }}</N8nText>
+				</div>
+				<div :class="$style.spaced">
+					<N8nText>
+						<N8nText :bold="true">
+							{{ i18n.baseText('activationModal.theseExecutionsWillNotShowUp') }}
+						</N8nText>
+						{{ i18n.baseText('activationModal.butYouCanSeeThem') }}
+						<a @click="showExecutionsList">
+							{{ i18n.baseText('activationModal.executionList') }}
+						</a>
+						{{ i18n.baseText('activationModal.ifYouChooseTo') }}
+						<a @click="showSettings">{{ i18n.baseText('activationModal.saveExecutions') }}</a>
 					</N8nText>
-					{{ i18n.baseText('activationModal.butYouCanSeeThem') }}
-					<a @click="showExecutionsList">
-						{{ i18n.baseText('activationModal.executionList') }}
-					</a>
-					{{ i18n.baseText('activationModal.ifYouChooseTo') }}
-					<a @click="showSettings">{{ i18n.baseText('activationModal.saveExecutions') }}</a>
-				</N8nText>
+				</div>
 			</div>
-		</template>
+		</N8nDialogBody>
 
-		<template #footer="{ close }">
-			<div :class="$style.footer">
-				<N8nCheckbox :model-value="checked" @update:model-value="handleCheckboxChange">
-					<template #label>{{ i18n.baseText('generic.dontShowAgain') }}</template>
-				</N8nCheckbox>
-				<N8nButton :label="i18n.baseText('activationModal.gotIt')" @click="close" />
-			</div>
-		</template>
-	</Modal>
+		<N8nDialogFooter :class="$style.footer">
+			<N8nCheckbox :model-value="checked" @update:model-value="handleCheckboxChange">
+				<template #label> {{ i18n.baseText('generic.dontShowAgain') }}</template>
+			</N8nCheckbox>
+			<N8nButton :label="i18n.baseText('activationModal.gotIt')" @click="closeDialog" />
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
@@ -136,12 +154,6 @@ const handleCheckboxChange = (checkboxValue: string | number | boolean) => {
 }
 
 .footer {
-	display: flex;
-	justify-content: flex-end;
 	align-items: center;
-
-	> button {
-		margin-left: auto;
-	}
 }
 </style>

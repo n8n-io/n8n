@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import Modal from '@/app/components/Modal.vue';
 import { useSetupWorkflowCredentialsModalState } from '../composables/useSetupWorkflowCredentialsModalState';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import AppsRequiringCredsNotice from './AppsRequiringCredsNotice.vue';
@@ -8,8 +7,10 @@ import { computed, onMounted, onUnmounted } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useUIStore } from '@/app/stores/ui.store';
 
-import { N8nButton, N8nHeading } from '@n8n/design-system';
+import { N8nButton, N8nDialog, N8nDialogBody, N8nDialogFooter } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+
+defineOptions({ inheritAttrs: false });
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const workflowDocumentStore = injectWorkflowDocumentStore();
@@ -25,6 +26,17 @@ const props = defineProps<{
 	modalName: string;
 	data: ModalData;
 }>();
+
+const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
+
+function closeDialog() {
+	if (uiStore.modalsById[props.modalName]?.open !== true) return;
+	uiStore.closeModal(props.modalName);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) closeDialog();
+}
 
 const modalTitle = computed(() => {
 	if (props.data?.source === 'builder') {
@@ -61,63 +73,49 @@ onUnmounted(() => {
 </script>
 
 <template>
-	<Modal width="700px" max-height="90%" :name="props.modalName">
-		<template #header>
-			<N8nHeading tag="h2" size="xlarge">
-				{{ modalTitle }}
-			</N8nHeading>
-		</template>
-
-		<template #content>
-			<div :class="$style.grid">
-				<div :class="$style.notice" data-test-id="info-callout">
-					<AppsRequiringCredsNotice
-						:app-credentials="appCredentials"
-						:source="props.data?.source"
-					/>
-				</div>
-
-				<div>
-					<ol :class="$style.appCredentialsContainer">
-						<SetupTemplateFormStep
-							v-for="(credentials, index) in credentialUsages"
-							:key="credentials.key"
-							:class="$style.appCredential"
-							:order="index + 1"
-							:credentials="credentials"
-							:selected-credential-id="selectedCredentialIdByKey[credentials.key]"
-							:source="props.data?.source"
-							@credential-selected="setCredential($event.credentialUsageKey, $event.credentialId)"
-							@credential-deselected="unsetCredential($event.credentialUsageKey)"
-						/>
-					</ol>
-				</div>
+	<N8nDialog
+		:open="modalOpen"
+		size="2xlarge"
+		:header="modalTitle"
+		@update:open="onDialogOpenUpdate"
+	>
+		<N8nDialogBody :data-test-id="`${modalName}-modal`">
+			<div :class="$style.notice" data-test-id="info-callout">
+				<AppsRequiringCredsNotice :app-credentials="appCredentials" :source="props.data?.source" />
 			</div>
-		</template>
 
-		<template #footer>
+			<div>
+				<ol :class="$style.appCredentialsContainer">
+					<SetupTemplateFormStep
+						v-for="(credentials, index) in credentialUsages"
+						:key="credentials.key"
+						:class="$style.appCredential"
+						:order="index + 1"
+						:credentials="credentials"
+						:selected-credential-id="selectedCredentialIdByKey[credentials.key]"
+						:source="props.data?.source"
+						@credential-selected="setCredential($event.credentialUsageKey, $event.credentialId)"
+						@credential-deselected="unsetCredential($event.credentialUsageKey)"
+					/>
+				</ol>
+			</div>
+		</N8nDialogBody>
+
+		<N8nDialogFooter>
 			<div :class="$style.footer">
 				<N8nButton
 					size="large"
 					:label="i18n.baseText('templateSetup.continue.button')"
 					:disabled="numFilledCredentials === 0"
 					data-test-id="continue-button"
-					@click="uiStore.closeModal(props.modalName)"
+					@click="closeDialog"
 				/>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
-.grid {
-	margin: 0 auto;
-	margin-top: var(--spacing--lg);
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
-}
-
 .notice {
 	margin-bottom: var(--spacing--2xl);
 }

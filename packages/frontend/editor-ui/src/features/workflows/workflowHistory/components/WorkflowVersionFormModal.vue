@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import Modal from '@/app/components/Modal.vue';
-import { N8nHeading, N8nButton } from '@n8n/design-system';
+import { N8nButton, N8nDialog, N8nDialogBody, N8nDialogFooter } from '@n8n/design-system';
 import WorkflowVersionForm from '@/app/components/WorkflowVersionForm.vue';
 import { useI18n } from '@n8n/i18n';
-import { createEventBus } from '@n8n/utils/event-bus';
 import { useUIStore } from '@/app/stores/ui.store';
-import { ref, computed, onMounted, onBeforeUnmount, useTemplateRef } from 'vue';
+import { ref, computed, onMounted, watch, nextTick, useTemplateRef } from 'vue';
 import { generateVersionLabelFromId } from '@/features/workflows/workflowHistory/utils';
 import type { EventBus } from '@n8n/utils/event-bus';
+
+defineOptions({ inheritAttrs: false });
 
 export type WorkflowVersionFormModalEventBusEvents = {
 	submit: { versionId: string; name: string; description: string };
@@ -30,8 +30,8 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
-const modalEventBus = createEventBus();
 const uiStore = useUIStore();
+const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 
 const versionForm = useTemplateRef<InstanceType<typeof WorkflowVersionForm>>('versionForm');
 
@@ -54,22 +54,35 @@ onMounted(() => {
 	if (props.data.description) {
 		description.value = props.data.description;
 	}
-
-	modalEventBus.on('opened', onModalOpened);
 });
 
-onBeforeUnmount(() => {
-	modalEventBus.off('opened', onModalOpened);
-});
+watch(
+	modalOpen,
+	(open) => {
+		if (!open) return;
+		void nextTick(() => {
+			void nextTick(() => {
+				onModalOpened();
+			});
+		});
+	},
+	{ immediate: true },
+);
 
-const closeModal = () => {
-	uiStore.closeModal(props.modalName);
-};
-
-const onCancel = () => {
+const onCancel = (): boolean | void => {
 	props.data.eventBus.emit('cancel');
-	closeModal();
 };
+
+async function closeDialog() {
+	if (uiStore.modalsById[props.modalName]?.open !== true) return;
+	const shouldClose = await onCancel();
+	if (shouldClose === false) return;
+	uiStore.closeModal(props.modalName);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
 
 const handleSubmit = () => {
 	if (versionName.value.trim().length === 0) {
@@ -85,19 +98,18 @@ const handleSubmit = () => {
 </script>
 
 <template>
-	<Modal
-		width="500px"
-		max-height="85vh"
-		:name="modalName"
-		:event-bus="modalEventBus"
-		:center="true"
-		:before-close="onCancel"
+	<N8nDialog
+		:open="modalOpen"
+		size="medium"
+		:header="data.modalTitle"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #header>
-			<N8nHeading size="xlarge">{{ data.modalTitle }}</N8nHeading>
-		</template>
-		<template #content>
-			<div :class="$style.content">
+		<N8nDialogBody>
+			<form
+				:id="`${modalName}-form`"
+				:data-test-id="`${modalName}-modal`"
+				@submit.prevent="handleSubmit"
+			>
 				<WorkflowVersionForm
 					ref="versionForm"
 					v-model:version-name="versionName"
@@ -106,36 +118,24 @@ const handleSubmit = () => {
 					:description-test-id="`${modalName}-description-input`"
 					@submit="handleSubmit"
 				/>
-				<div :class="$style.actions">
-					<N8nButton
-						variant="outline"
-						:disabled="submitting"
-						:label="i18n.baseText('generic.cancel')"
-						:data-test-id="`${modalName}-cancel-button`"
-						@click="onCancel"
-					/>
-					<N8nButton
-						:loading="submitting"
-						:disabled="versionName.trim().length === 0"
-						:label="data.submitButtonLabel"
-						:data-test-id="`${modalName}-submit-button`"
-						@click="handleSubmit"
-					/>
-				</div>
-			</div>
-		</template>
-	</Modal>
+			</form>
+		</N8nDialogBody>
+		<N8nDialogFooter>
+			<N8nButton
+				variant="outline"
+				:disabled="submitting"
+				:label="i18n.baseText('generic.cancel')"
+				:data-test-id="`${modalName}-cancel-button`"
+				@click="closeDialog"
+			/>
+			<N8nButton
+				type="submit"
+				:form="`${modalName}-form`"
+				:loading="submitting"
+				:disabled="versionName.trim().length === 0"
+				:label="data.submitButtonLabel"
+				:data-test-id="`${modalName}-submit-button`"
+			/>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
-<style lang="scss" module>
-.content {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--lg);
-}
-
-.actions {
-	display: flex;
-	justify-content: flex-end;
-	gap: var(--spacing--xs);
-}
-</style>
