@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import { truncate } from '@n8n/utils/string/truncate';
 import { useClipboard } from '@n8n/composables/useClipboard';
-import { useToast } from '@n8n/composables/useToast';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
@@ -26,14 +25,11 @@ import {
 import AgentSessionTimelineHeader from '@/features/agents/components/AgentSessionTimelineHeader.vue';
 import AgentSessionTimelinePanel from '@/features/agents/components/AgentSessionTimelinePanel.vue';
 import { useAgentConfig } from '@/features/agents/composables/useAgentConfig';
-import { useBackOrFallback } from '@/features/agents/composables/useBackOrFallback';
-import type { AgentResource } from '@/features/agents/types';
 import {
 	increasedBudgetConfig,
 	type BudgetAmountField,
 } from '@/features/agents/utils/budget-config';
 import { useToast } from '@n8n/composables/useToast';
-import { useRootStore } from '@n8n/stores/useRootStore';
 import type { SessionTimelineMetadata } from '@/features/agents/types';
 import { useI18n } from '@n8n/i18n';
 import type { DropdownMenuItemProps, IconName, PathItem } from '@n8n/design-system';
@@ -50,8 +46,6 @@ const {
 	isExporting,
 	sendSession,
 } = useAgentSessionLangSmithExport();
-const rootStore = useRootStore();
-const toast = useToast();
 const { config: localConfig, fetchConfig, updateConfig } = useAgentConfig();
 
 const projectId = computed(() => route.params.projectId as string);
@@ -60,7 +54,7 @@ const threadId = computed(() => route.params.threadId as string);
 
 const clipboard = useClipboard();
 const toast = useToast();
-const { canUpdate: canDeleteSession } = useAgentPermissions(projectId);
+const { canUpdate, canUpdate: canDeleteSession } = useAgentPermissions(projectId);
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
 const isDeletingSession = ref(false);
 let isDisposed = false;
@@ -290,13 +284,6 @@ function onSessionSelect(nextThreadId: string) {
 	});
 }
 
-async function onDeletePreviewSession(sessionId: string) {
-	if (!canDeleteSession.value) return;
-	const deleted = await deleteSession(sessionId);
-	if (!deleted || sessionId !== threadId.value) return;
-	void router.replace(agentExecutionsRoute.value);
-}
-
 /**
  * Raises a budget cap from the timeline's budget notice. Only a persisted cap
  * counts: a stale or failed save would stop the next run against the old cap.
@@ -320,15 +307,6 @@ async function onIncreaseBudget(payload: {
 	}
 }
 
-function togglePreview() {
-	if (!canPreviewSession.value) return;
-	isPreviewOpen.value = !isPreviewOpen.value;
-}
-
-function viewPreviewTrace() {
-	if (!effectiveSessionId.value) return;
-	onSessionSelect(effectiveSessionId.value);
-}
 </script>
 
 <template>

@@ -61,6 +61,7 @@ const time = computed(() => formatTimelineTime(props.item.timestamp));
 				<N8nAiActivityStepButton
 					:class="$style.activityButton"
 					size="small"
+					:loading="task.status === 'running'"
 					:interactive="false"
 					full-width
 					:tabindex="-1"
