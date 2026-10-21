@@ -45,13 +45,19 @@ const SAMPLES_TO_ACT = 2;
  * Longest wait of a held execution before the guard stops the largest execution. After
  * a stop, the wait starts again, so that the guard does not stop one execution after another.
  */
-const HOLD_LIMIT_MS = 5_000;
+const HOLD_LIMIT_MS = 30_000;
 
 /**
  * Least time between two held executions that start because nothing runs. An execution
  * shows as running only after a database write, which can take longer than one sample.
  */
 const STARVATION_ADMIT_INTERVAL_MS = 1_000;
+
+/**
+ * Least time between two batches of held executions after a hold. A started execution
+ * needs this time before memory shows what it uses.
+ */
+const ADMIT_INTERVAL_MS = 1_000;
 
 /** Longest wait for the running node of a stopped execution to return. */
 const RELEASE_TIMEOUT_MS = 5_000;
@@ -108,8 +114,12 @@ export class MemoryGuardService {
 
 	private fastSamplingUntil = 0;
 
-	/** How many held executions to let start at the next sample after a hold. Doubles each time. */
+	/** How many held executions to let start in the next batch after a hold. */
 	private admitBatch = 1;
+
+	private lastAdmitAt = 0;
+
+	private utilizationAtLastAdmit = 0;
 
 	private lastStarvationAdmitAt = 0;
 
@@ -117,7 +127,10 @@ export class MemoryGuardService {
 
 	private pendingStop: Promise<void> | undefined;
 
-	/** Set when a stop frees no memory, until memory falls below the resume level. */
+	/**
+	 * Set when a stop frees no memory, until memory falls below the resume level. The guard
+	 * then still holds, but stops only at the critical level.
+	 */
 	private isStandingDown = false;
 
 	/** Set when nothing can be stopped to end a hold, until memory falls below the resume level. */
@@ -182,11 +195,7 @@ export class MemoryGuardService {
 		this.stopStreak = utilization >= STOP_LEVEL ? this.stopStreak + 1 : 0;
 		const isCritical = utilization >= CRITICAL_LEVEL;
 
-		if (this.isStandingDown) {
-			if (utilization >= RESUME_LEVEL) {
-				this.admitHeldGradually();
-				return;
-			}
+		if (this.isStandingDown && utilization < RESUME_LEVEL) {
 			this.isStandingDown = false;
 			this.logger.info('Memory recovered, the memory guard acts again');
 		}
@@ -207,22 +216,30 @@ export class MemoryGuardService {
 			// A stopped engine still runs after its execution leaves the active list.
 			if (!this.pendingStop && !this.hasRunningExecution()) this.admitOneHeld();
 		} else {
-			this.admitHeldGradually();
+			this.admitHeldGradually(utilization);
 		}
 
 		if (this.pendingStop) return;
+
+		if (this.isStandingDown) {
+			if (isCritical) this.stop(usage, 'critical');
+			else if (this.hasHoldLimitPassed()) this.suspendHold('The last stop freed no memory');
+			return;
+		}
 
 		const trigger = this.getStopTrigger(isCritical);
 		if (!trigger) return;
 
 		const isStopped = this.stop(usage, trigger);
 		if (!isStopped && this.hasHoldLimitPassed()) {
-			this.isHoldSuspended = true;
-			this.endHold();
-			this.logger.warn(
-				'No execution can be stopped to end the hold, so the memory guard stops holding until memory falls',
-			);
+			this.suspendHold('No execution can be stopped to end the hold');
 		}
+	}
+
+	private suspendHold(reason: string) {
+		this.isHoldSuspended = true;
+		this.endHold();
+		this.logger.warn(`${reason}, so the memory guard stops holding until memory falls`);
 	}
 
 	private hasRunningExecution() {
@@ -260,15 +277,26 @@ export class MemoryGuardService {
 		return Date.now() - Math.max(oldestHeldAt, this.lastStopEndedAt) >= HOLD_LIMIT_MS;
 	}
 
-	/** Let held executions start in batches that double, so that memory can rise slowly. */
-	private admitHeldGradually() {
+	/**
+	 * Let held executions start in batches, so that memory can rise slowly. A batch doubles
+	 * only when memory did not rise since the batch before it.
+	 */
+	private admitHeldGradually(utilization: number) {
 		if (this.concurrencyControl.heldCount === 0) {
 			this.admitBatch = 1;
 			return;
 		}
 
+		const now = Date.now();
+		if (now - this.lastAdmitAt < ADMIT_INTERVAL_MS) return;
+
+		if (utilization >= RESUME_LEVEL || utilization > this.utilizationAtLastAdmit) {
+			this.admitBatch = 1;
+		}
 		this.concurrencyControl.admitHeld(this.admitBatch);
 		this.admitBatch *= 2;
+		this.lastAdmitAt = now;
+		this.utilizationAtLastAdmit = utilization;
 	}
 
 	private startHold(usage: MemoryUsage) {
@@ -352,9 +380,8 @@ export class MemoryGuardService {
 
 		if (!freedMemory) {
 			this.isStandingDown = true;
-			this.endHold();
 			this.logger.warn(
-				'The stop freed no memory, so the memory guard stops acting until memory falls',
+				'The stop freed no memory, so the memory guard stops only at the critical level until memory falls',
 			);
 		}
 	}

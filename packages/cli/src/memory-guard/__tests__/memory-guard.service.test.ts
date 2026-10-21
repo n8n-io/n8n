@@ -31,6 +31,8 @@ vi.mock('../memory-usage', () => ({
 
 const MB = 1024 * 1024;
 
+const HOLD_LIMIT_MS = 30_000;
+
 describe('MemoryGuardService', () => {
 	let utilization = 0.5;
 	vi.mocked(readMemoryUsage).mockImplementation(() => ({
@@ -257,9 +259,35 @@ describe('MemoryGuardService', () => {
 			);
 
 			await sample();
+			expect(concurrencyControl.heldCount).toBe(3);
+
+			await vi.advanceTimersByTimeAsync(1_000);
 			expect(concurrencyControl.heldCount).toBe(1);
 
+			await vi.advanceTimersByTimeAsync(1_000);
+			expect(concurrencyControl.heldCount).toBe(0);
+			await Promise.all(held);
+		});
+
+		it('should not grow the next batch of held executions when memory rose', async () => {
+			addExecution('running', { mode: 'manual' });
+			utilization = 0.82;
+			await sample(2);
+			const held = ['1', '2', '3', '4'].map(
+				async (executionId) => await concurrencyControl.throttle({ mode: 'webhook', executionId }),
+			);
+			await vi.advanceTimersByTimeAsync(0);
+
+			utilization = 0.6;
 			await sample();
+			expect(concurrencyControl.heldCount).toBe(3);
+
+			utilization = 0.7;
+			await vi.advanceTimersByTimeAsync(1_000);
+			expect(concurrencyControl.heldCount).toBe(2);
+
+			utilization = 0.7;
+			await vi.advanceTimersByTimeAsync(1_000);
 			expect(concurrencyControl.heldCount).toBe(0);
 			await Promise.all(held);
 		});
@@ -367,7 +395,7 @@ describe('MemoryGuardService', () => {
 				await sample(2);
 				const held = concurrencyControl.throttle({ mode: 'webhook', executionId: 'held' });
 
-				await vi.advanceTimersByTimeAsync(6_000);
+				await vi.advanceTimersByTimeAsync(HOLD_LIMIT_MS + 1_000);
 
 				expect(await isAdmitted(held)).toBe(true);
 				expect(activeExecutions.stopExecution).not.toHaveBeenCalled();
@@ -380,7 +408,7 @@ describe('MemoryGuardService', () => {
 			await sample(2);
 			void concurrencyControl.throttle({ mode: 'webhook', executionId: 'held' });
 
-			await vi.advanceTimersByTimeAsync(4_900);
+			await vi.advanceTimersByTimeAsync(HOLD_LIMIT_MS - 100);
 			expect(activeExecutions.stopExecution).not.toHaveBeenCalled();
 
 			await vi.advanceTimersByTimeAsync(400);
@@ -398,10 +426,10 @@ describe('MemoryGuardService', () => {
 			await sample(2);
 			void concurrencyControl.throttle({ mode: 'webhook', executionId: 'held' });
 
-			await vi.advanceTimersByTimeAsync(5_300);
+			await vi.advanceTimersByTimeAsync(HOLD_LIMIT_MS + 300);
 			expect(stoppedIds()).toEqual(['first']);
 
-			await vi.advanceTimersByTimeAsync(4_000);
+			await vi.advanceTimersByTimeAsync(HOLD_LIMIT_MS - 1_000);
 			expect(stoppedIds()).toEqual(['first']);
 
 			await vi.advanceTimersByTimeAsync(1_500);
@@ -415,7 +443,7 @@ describe('MemoryGuardService', () => {
 			void concurrencyControl.throttle({ mode: 'webhook', executionId: 'held' });
 			utilization = 0.78;
 
-			await vi.advanceTimersByTimeAsync(5_300);
+			await vi.advanceTimersByTimeAsync(HOLD_LIMIT_MS + 300);
 			await vi.advanceTimersByTimeAsync(3_000);
 
 			expect(stoppedIds()).toEqual(['large']);
@@ -428,7 +456,7 @@ describe('MemoryGuardService', () => {
 			await sample(2);
 			const held = concurrencyControl.throttle({ mode: 'webhook', executionId: 'held' });
 
-			await vi.advanceTimersByTimeAsync(5_300);
+			await vi.advanceTimersByTimeAsync(HOLD_LIMIT_MS + 300);
 			expect(await isAdmitted(held)).toBe(true);
 
 			const arrival = concurrencyControl.throttle({ mode: 'webhook', executionId: 'arrival' });
@@ -448,7 +476,7 @@ describe('MemoryGuardService', () => {
 			utilization = 0.82;
 			await sample(2);
 			void concurrencyControl.throttle({ mode: 'webhook', executionId: 'held' });
-			await vi.advanceTimersByTimeAsync(5_300);
+			await vi.advanceTimersByTimeAsync(HOLD_LIMIT_MS + 300);
 
 			estimates.set('fetching', {
 				totalBytes: 300 * MB,
@@ -533,27 +561,43 @@ describe('MemoryGuardService', () => {
 			expect(guardLogger.warn).not.toHaveBeenCalledWith(expect.stringContaining('freed no memory'));
 		});
 
-		it('should stop acting until memory falls when a stop frees no memory', async () => {
+		it('should keep holding and stop only at the critical level after a stop frees no memory', async () => {
 			addExecution('first', { megabytes: 300 });
 			addExecution('second', { megabytes: 200 });
+			addExecution('third', { megabytes: 100 });
 			utilization = 0.96;
 			await sample();
+			utilization = 0.9;
 			await vi.advanceTimersByTimeAsync(3_000);
 			expect(stoppedIds()).toEqual(['first']);
 			expect(guardLogger.warn).toHaveBeenCalledWith(expect.stringContaining('freed no memory'));
-			expect(guardLogger.info).not.toHaveBeenCalledWith(
-				expect.stringContaining('letting held executions start'),
-			);
 
 			const arrival = concurrencyControl.throttle({ mode: 'webhook', executionId: 'arrival' });
 			await sample(3);
 			expect(stoppedIds()).toEqual(['first']);
-			expect(await isAdmitted(arrival)).toBe(true);
+			expect(await isAdmitted(arrival)).toBe(false);
+
+			utilization = 0.96;
+			await sample();
+			expect(stoppedIds()).toEqual(['first', 'second']);
+		});
+
+		it('should act normally again when memory falls after a stop that freed no memory', async () => {
+			addExecution('first', { megabytes: 300 });
+			addExecution('second', { megabytes: 200 });
+			utilization = 0.96;
+			await sample();
+			utilization = 0.9;
+			await vi.advanceTimersByTimeAsync(3_000);
+			await sample(2);
+			expect(stoppedIds()).toEqual(['first']);
 
 			utilization = 0.7;
 			await sample();
-			utilization = 0.96;
-			await sample();
+			expect(guardLogger.info).toHaveBeenCalledWith(expect.stringContaining('acts again'));
+
+			utilization = 0.9;
+			await sample(2);
 			expect(stoppedIds()).toEqual(['first', 'second']);
 		});
 
