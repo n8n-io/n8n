@@ -2,8 +2,14 @@ import { renderComponent } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import type { Extension } from '@codemirror/state';
+import { captureException } from '@sentry/vue';
 import ExpressionOutput from './ExpressionOutput.vue';
 import type { Segment } from '../../../../../app/types/expressions';
+
+vi.mock('@sentry/vue', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@sentry/vue')>()),
+	captureException: vi.fn(),
+}));
 
 describe('ExpressionOutput.vue', () => {
 	const basicSegments: Segment[] = [
@@ -548,6 +554,43 @@ describe('ExpressionOutput.vue', () => {
 
 			const output = container.querySelector('[data-test-id="expression-output"]');
 			expect(output?.textContent).toBe('Hello John, age: 25');
+		});
+
+		it('highlights the segments that follow a resolvable with an empty result', async () => {
+			const segments: Segment[] = [
+				{ kind: 'plaintext', from: 0, to: 6, plaintext: 'Hello ' },
+				{
+					kind: 'resolvable',
+					from: 6,
+					to: 23,
+					resolvable: '{{ $json.empty }}',
+					resolved: '',
+					state: 'valid',
+					error: null,
+				},
+				{
+					kind: 'resolvable',
+					from: 23,
+					to: 39,
+					resolvable: '{{ $json.name }}',
+					resolved: 'World',
+					state: 'valid',
+					error: null,
+				},
+			];
+
+			const { container } = renderComponent(ExpressionOutput, {
+				pinia: createTestingPinia(),
+				props: { segments, render: 'text' },
+			});
+
+			const output = container.querySelector('[data-test-id="expression-output"]');
+			expect(output?.textContent).toBe('Hello World');
+
+			await waitFor(() => {
+				expect(container.querySelector('.cm-valid-resolvable')?.textContent).toBe('World');
+			});
+			expect(captureException).not.toHaveBeenCalled();
 		});
 
 		it('should handle custom extensions in text mode', () => {
