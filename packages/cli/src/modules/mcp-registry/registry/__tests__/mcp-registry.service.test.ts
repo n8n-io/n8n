@@ -506,6 +506,22 @@ describe('McpRegistryService', () => {
 			expect(savedRows(repository)).toEqual([{ slug: 'linear', status: 'deprecated' }]);
 		});
 
+		it('saves the updates of both sources together, and reloads once', async () => {
+			const { service, apiClient, repository, publisher } = createService({
+				aiGateway: { enabled: true, servers: [firecrawlAiGatewayMockServer] },
+			});
+			apiClient.fetchServersMetadata.mockResolvedValue(unchangedRegistryMetadata.slice(0, 1));
+
+			await service.refreshFromApi();
+
+			expect(repository.upsertFetchedServers).toHaveBeenCalledTimes(1);
+			expect(savedRows(repository)).toEqual([
+				{ slug: 'linear', status: 'deprecated' },
+				{ slug: 'n8n-connect-firecrawl', status: 'active' },
+			]);
+			expect(publisher.publishCommand).toHaveBeenCalledTimes(1);
+		});
+
 		it('keeps AI Gateway rows out of the registry diff', async () => {
 			const { service, apiClient, repository } = createService({
 				storedServers: [notionMockServer, linearMockServer, firecrawlAiGatewayMockServer],

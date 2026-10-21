@@ -145,28 +145,38 @@ export class McpRegistryService {
 	}
 
 	/**
-	 * Refreshes both sources of registry rows: the MCP registry, then the AI
-	 * Gateway. Each source saves its own rows, so an AI Gateway failure does not
-	 * undo the registry refresh.
+	 * Refreshes both sources of registry rows, the MCP registry and the AI Gateway,
+	 * at the same time, then saves and reloads once. A failed source does not stop
+	 * the other one: its error is thrown after the other source's rows are saved.
 	 */
 	async refreshFromApi(signal?: AbortSignal): Promise<void> {
-		await this.refreshRegistryServers(signal);
-		await this.refreshAiGatewayServers(signal);
+		const fetchedAt = await this.repository.readDbNow();
+		const results = await Promise.allSettled([
+			this.refreshRegistryServers(signal),
+			this.refreshAiGatewayServers(signal),
+		]);
+		const updatedServers = results.flatMap((result) =>
+			result.status === 'fulfilled' ? result.value : [],
+		);
+		if (updatedServers.length > 0) {
+			signal?.throwIfAborted();
+			await this.saveAndReload(updatedServers, fetchedAt);
+		}
+		const failure = results.find((result) => result.status === 'rejected');
+		if (failure) throw failure.reason;
 	}
 
 	/**
-	 * Refreshes the registry from the remote API and reloads the generated node
-	 * types. Skips the write and the reload when nothing changed.
+	 * Returns the new, changed and removed rows of the MCP registry, for
+	 * `refreshFromApi` to save. Returns no rows when nothing changed.
 	 * Overlapping runs are safe: each row keeps the newest fetch, whichever run
 	 * writes last, and the loader rebuild is republished as a whole.
-	 * @throws when the remote API or the database write fails, or when the
-	 * signal aborts before the write starts. The signal cancels the API requests.
+	 * @throws when the remote API fails. The signal cancels the API requests.
 	 */
-	private async refreshRegistryServers(signal?: AbortSignal): Promise<void> {
+	private async refreshRegistryServers(signal?: AbortSignal): Promise<McpRegistryServer[]> {
 		const existingServers = (await this.getStoredServers(true)).filter(
 			(server) => !isAiGatewayMcpServer(server),
 		);
-		const fetchedAt = await this.repository.readDbNow();
 		let updatedServers: McpRegistryServer[];
 		if (existingServers.length === 0) {
 			updatedServers = await this.apiClient.fetchAllServers(signal);
@@ -174,16 +184,14 @@ export class McpRegistryService {
 			const result = await this.refreshUpdatedServers(existingServers, signal);
 			if (result === null) {
 				this.logger.debug('MCP registry is up to date');
-				return;
+				return [];
 			}
 
 			updatedServers = result;
 		}
 
-		signal?.throwIfAborted();
-		await this.saveAndReload(updatedServers, fetchedAt);
-
 		this.logger.debug('MCP registry refreshed', { serverCount: updatedServers.length });
+		return updatedServers;
 	}
 
 	private async getStoredServers(includeDeprecated: boolean): Promise<McpRegistryServer[]> {
@@ -232,15 +240,14 @@ export class McpRegistryService {
 	}
 
 	/**
-	 * Saves new and changed AI Gateway rows, and deprecates the rows that the AI
+	 * Returns new and changed AI Gateway rows, and deprecates the rows that the AI
 	 * Gateway no longer lists. While Gateway credits are off, the stored rows stay.
-	 * @throws when the AI Gateway request fails, or when the signal aborts before the write.
+	 * @throws when the AI Gateway request fails.
 	 */
-	private async refreshAiGatewayServers(signal?: AbortSignal): Promise<void> {
-		if (!this.aiGatewayService.isEnabled()) return;
+	private async refreshAiGatewayServers(signal?: AbortSignal): Promise<McpRegistryServer[]> {
+		if (!this.aiGatewayService.isEnabled()) return [];
 
 		const storedServers = (await this.getStoredServers(true)).filter(isAiGatewayMcpServer);
-		const fetchedAt = await this.repository.readDbNow();
 		const fetchedServers = await this.aiGatewayService.fetchAiGatewayMcpServers(signal);
 		const storedBySlug = new Map(storedServers.map((server) => [server.slug, server]));
 		const fetchedSlugs = new Set(fetchedServers.map(({ slug }) => slug));
@@ -256,10 +263,7 @@ export class McpRegistryService {
 				updatedAt: new Date().toISOString(),
 			}));
 
-		const updatedServers = [...changedServers, ...retiredServers];
-		if (updatedServers.length === 0) return;
-		signal?.throwIfAborted();
-		await this.saveAndReload(updatedServers, fetchedAt);
+		return [...changedServers, ...retiredServers];
 	}
 
 	private async saveServers(servers: McpRegistryServer[], fetchedAt: Date): Promise<void> {
