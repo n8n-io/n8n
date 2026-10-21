@@ -31,6 +31,7 @@ const RRF_K = 60;
 // fall out of topK behind recent unrelated ones.
 const RECENCY_RRF_WEIGHT = 0.25;
 const CAPTURE_STORE_METHODS = [
+	'getEntriesByContentHashes',
 	'enqueueCaptureCandidate',
 	'getPendingCaptureCandidates',
 	'completeCaptureCandidates',

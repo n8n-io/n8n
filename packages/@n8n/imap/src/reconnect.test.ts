@@ -326,16 +326,12 @@ describe('reconnecting', () => {
 	});
 
 	it('gives up on an attempt that outlives the timeout', async () => {
-		const first = new FakeTransport();
+		const [first, second] = [new FakeTransport(), new FakeTransport()];
+		second.connect.mockImplementation(neverSettles);
 		const onError = vi.fn();
 		const onClose = vi.fn();
-		let handedOutFirst = false;
 
-		const connection = await openWatching(() => {
-			if (handedOutFirst) return { connect: neverSettles } as unknown as ImapTransport;
-			handedOutFirst = true;
-			return first as unknown as ImapTransport;
-		});
+		const connection = await openWatching(handOut(first, second));
 		connection.onError(onError).onClose(onClose);
 
 		first.emit('close');

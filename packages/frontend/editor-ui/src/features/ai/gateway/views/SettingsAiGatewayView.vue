@@ -192,7 +192,7 @@ onMounted(async () => {
 			/>
 		</header>
 
-		<div :class="$style.usageTableContainer">
+		<div>
 			<div v-if="showUsageSectionSkeleton">
 				<N8nLoading :loading="true" variant="h1" :class="$style.usageTableHeader" />
 				<N8nLoading :loading="true" variant="p" :rows="5" :shrink-last="false" />
@@ -226,6 +226,7 @@ onMounted(async () => {
 					:headers="tableHeaders"
 					:items="entries"
 					:items-length="entries.length"
+					:pagination="false"
 					:loading="isLoading && isAppending"
 					:item-value="rowId"
 					:row-props="(row) => (isRowClickable(row) ? { class: $style.clickableRow } : {})"
@@ -304,12 +305,6 @@ onMounted(async () => {
 	flex-wrap: wrap;
 	gap: var(--spacing--2xs);
 	margin-bottom: var(--spacing--5xs);
-}
-
-.usageTableContainer {
-	:global(.table-pagination) {
-		display: none;
-	}
 }
 
 .usageTableHeader {
