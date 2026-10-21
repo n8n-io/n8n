@@ -12,8 +12,8 @@ export function buildLinearOriginDraft(
 	return {
 		type: 'linear',
 		issueId: text(decoded.issueId),
-		identifier: subject?.id,
-		title: subject?.title,
-		projectId: subject?.projectId,
+		identifier: text(subject?.id),
+		title: text(subject?.title),
+		projectId: text(subject?.projectId),
 	};
 }

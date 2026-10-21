@@ -128,6 +128,18 @@ describe('buildIntegrationOrigin', () => {
 		).resolves.toEqual({ type: 'linear', issueId: 'issue-uuid' });
 	});
 
+	it('omits empty optional Linear fields and keeps the issue ID', async () => {
+		const thread = makeThread({ issueId: 'issue-uuid' });
+		const subject = { type: 'issue', id: 'ENG-1', title: '' };
+
+		await expect(
+			buildIntegrationOrigin(
+				{ platform: 'linear', thread, message: makeMessage(), subject },
+				logger,
+			),
+		).resolves.toEqual({ type: 'linear', issueId: 'issue-uuid', identifier: 'ENG-1' });
+	});
+
 	it('records native identifiers for Telegram, Teams and WhatsApp', async () => {
 		const telegram = makeThread({ chatId: '-100', messageThreadId: 7 });
 		const teams = makeThread({
