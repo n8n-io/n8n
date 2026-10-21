@@ -170,14 +170,15 @@ export class WorkflowPackageImporter {
 			checkRootPlacement: false,
 		});
 
+		const plannedCredentialRequest = plan.input.credentialRequest;
 		const missingCredentialIds = new Set(
 			plan.credentialPlan.failures.filter(canStubNotFoundFailure).map(({ sourceId }) => sourceId),
 		);
 		if (needsBundledCredentialData(request, missingCredentialIds.size > 0)) {
-			credentialRequest.requirements = placeCredentialData({
-				requirements: credentialRequirements,
+			plannedCredentialRequest.requirements = placeCredentialData({
+				requirements: plannedCredentialRequest.requirements,
 				bundledCredentials:
-					credentialRequest.packageCredentials ??
+					plannedCredentialRequest.packageCredentials ??
 					(await this.packageParser.getCredentials(reader, missingCredentialIds)),
 			});
 		}
@@ -201,7 +202,7 @@ export class WorkflowPackageImporter {
 			{
 				context,
 				imported: content,
-				credentialRequest,
+				credentialRequest: plannedCredentialRequest,
 				dataTableRequest,
 				variableRequest,
 				tagRequest,

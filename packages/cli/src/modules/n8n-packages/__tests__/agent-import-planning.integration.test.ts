@@ -22,6 +22,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ForbiddenError } from '@n8n/errors';
+import { Credentials } from 'n8n-core';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialTypes } from '@/credential-types';
@@ -36,9 +37,16 @@ import { createMember, createOwner } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';
 
 import { importPackageRequest } from './fixtures/import-request';
+import { looseAgentsFixture, writeAgentPackageFixture } from './fixtures/agent-package-fixtures';
+import { streamToBuffer } from './utils/tar-support';
 import { ImportOrchestrator, type ImportOrchestrationInput } from '../engine/import-orchestrator';
+import { WorkflowPackageImporter } from '../engine/workflow-package-importer';
 import type { PreparedAgent } from '../entities/agent/agent-import.types';
+import { TarPackageReader } from '../io/tar/tar-package-reader';
+import { TarPackageWriter } from '../io/tar/tar-package-writer';
+import { PackageImportConfig } from '../n8n-packages.config';
 import type { WorkflowConflictPolicy, WorkflowPublishingPolicy } from '../n8n-packages.types';
+import { serializedAgentSchema } from '../spec/serialized/agent.schema';
 
 const license = new LicenseMocker();
 mockInstance(ActiveWorkflowManager);
@@ -136,6 +144,81 @@ async function records() {
 		Container.get(AgentHistoryRepository).find({ order: { versionId: 'ASC' } }),
 	]);
 }
+
+it('seeds bundled credential expressions after planning and excludes skipped Agent dependencies', async () => {
+	const fixture = looseAgentsFixture();
+	const credential = {
+		id: 'model-credential',
+		name: 'Model',
+		type: 'openAiApi',
+		data: { apiKey: '={{ $env.OPENAI_API_KEY }}' },
+		dataIsComplete: true,
+	};
+	const source = serializedAgentSchema.parse(fixture.files['agents/support/agent.json']);
+	fixture.files['agents/support/agent.json'] = {
+		...source,
+		tools: {},
+		config: {
+			...source.config,
+			model: 'openai/gpt-4.1-mini',
+			credential: credential.id,
+			tools: [],
+		},
+	};
+	fixture.manifest.credentials = [
+		{ id: credential.id, name: credential.name, target: 'credentials/model' },
+	];
+	fixture.manifest.requirements = {
+		credentials: [
+			{
+				id: credential.id,
+				name: credential.name,
+				type: credential.type,
+				usedBy: [{ kind: 'agent', id: 'support_source' }],
+			},
+			{
+				id: 'skipped-credential',
+				type: 'openAiApi',
+				usedBy: [{ kind: 'agent', id: 'research_source' }],
+			},
+		],
+	};
+	fixture.files['credentials/model/credential.json'] = credential;
+	await agents.save({ id: 'research_source', name: 'Existing', projectId: project.id });
+	const writer = new TarPackageWriter();
+	await writeAgentPackageFixture(writer, fixture);
+	const packageBuffer = await streamToBuffer(writer.finalize());
+	const reader = new TarPackageReader(packageBuffer, new PackageImportConfig());
+	const { result, scopes } = await Container.get(WorkflowPackageImporter).import(
+		{
+			...importPackageRequest({
+				user,
+				projectId: project.id,
+				packageBuffer,
+				workflowConflictPolicy: 'skip',
+				credentialMissingMode: 'create-with-values',
+			}),
+			folderConflictPolicy: 'merge',
+		},
+		reader,
+		fixture.manifest,
+	);
+
+	expect(result.credentials).toEqual({
+		matched: [],
+		stubbed: [],
+		seeded: [credential.id],
+		incomplete: [],
+	});
+	const stored = await Container.get(CredentialsRepository).findOneByOrFail({
+		id: result.bindings.credentials[credential.id],
+	});
+	expect(
+		await new Credentials({ id: stored.id, name: stored.name }, stored.type, stored.data).getData(),
+	).toEqual(credential.data);
+	expect(await Container.get(CredentialsRepository).count()).toBe(1);
+	expect(scopes[0].credentialRequest.requirements?.map(({ id }) => id)).toEqual([credential.id]);
+});
 
 it('plans cycles, typed bindings and task IDs without changing definitions or destination records', async () => {
 	const first = agent('shared', {
