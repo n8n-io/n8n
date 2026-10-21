@@ -15,13 +15,16 @@ import type { WebhookNotification } from './v2/helpers/types';
 import {
 	createSubscriptions,
 	deleteSubscription,
+	deleteSubscriptions,
 	generateClientState,
 	getResourcePath,
+	getStoredIds,
 	getStoredSecret,
 	handleLifecycleNotifications,
 	isLifecycleNotification,
 	isLiveSubscription,
 	listOwnSubscriptions,
+	logTrigger,
 	verifyWebhook,
 } from './v2/helpers/utils-trigger';
 import { listSearch } from './v2/methods';
@@ -432,26 +435,28 @@ export class MicrosoftTeamsTrigger implements INodeType {
 			},
 
 			async delete(this: IHookFunctions): Promise<boolean> {
+				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
-				const storedIds = webhookData.subscriptionIds as string[] | undefined;
 
-				if (!Array.isArray(storedIds)) {
-					return false;
-				}
-
+				const ids = new Set(getStoredIds(webhookData));
 				try {
-					await Promise.all(
-						storedIds.map(
-							async (subscriptionId) => await deleteSubscription.call(this, subscriptionId),
-						),
-					);
-
-					delete webhookData.subscriptionIds;
-					delete webhookData.webhookSecret;
-					return true;
+					for (const { id } of await listOwnSubscriptions.call(this, webhookUrl)) ids.add(id);
 				} catch (error) {
-					return false;
+					logTrigger.call(
+						this,
+						'warn',
+						'failed to list subscriptions, removing the stored ids only',
+						{
+							error: ensureError(error).message,
+						},
+					);
 				}
+				const failures = await deleteSubscriptions.call(this, ids);
+				// A leftover at this URL is removed by the next publish, one at an old URL expires
+				// within three days, and core ignores the result.
+				delete webhookData.subscriptionIds;
+				delete webhookData.webhookSecret;
+				return failures.length === 0;
 			},
 		},
 	};
