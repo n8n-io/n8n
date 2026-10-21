@@ -1,3 +1,12 @@
+## [2.44.5](https://github.com/n8n-io/n8n/compare/n8n@2.44.4...n8n@2.44.5) (2026-10-21)
+
+
+### Bug Fixes
+
+* **core:** Key queue job outcomes by job on shutdown resume ([#41404](https://github.com/n8n-io/n8n/issues/41404)) ([1f074d4](https://github.com/n8n-io/n8n/commit/1f074d4ea734cbe07b4e49e8b7db4d1cccc74a89))
+* **editor:** Load credential types on startup ([#41405](https://github.com/n8n-io/n8n/issues/41405)) ([6ff3198](https://github.com/n8n-io/n8n/commit/6ff319863b85557eab4db82c20da693763dade0b))
+
+
 ## [2.44.4](https://github.com/n8n-io/n8n/compare/n8n@2.44.3...n8n@2.44.4) (2026-10-19)
 
 
