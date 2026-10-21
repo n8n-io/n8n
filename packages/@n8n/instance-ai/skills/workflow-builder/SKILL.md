@@ -18,10 +18,9 @@ description: >-
   workflow's evaluations, model choices, credential setup, error workflows, and
   post-build verification: this skill lists the references for those steps.
 recommended_tools:
-  - read_file
-  - write_file
-  - edit_file
-  - execute_command
+  - workspace_read_file
+  - workspace_write_file
+  - workspace_execute_command
   - workflow_builder_build_workflow
   - workflow_builder_workflows
   - search_nodes
@@ -81,6 +80,15 @@ Pick the source `filePath` and call credential setup with the complete list
 of types known so far. Make it the only tool call in that response. Wait for
 its successful `preBuild: true` result before continuing. Add later discoveries
 with another complete list. Do not batch setup with source writing.
+Reuse the same `filePath` throughout the build. Include `workflowId` for an
+existing workflow and `folderPath` when you create in a known folder. Announce
+only supported service-specific types; leave ambiguous services and generic
+authentication to build-time discovery. If the plan changes, pass the complete
+list again, or an empty list when every requirement is dropped. Do not wait for
+the user to connect: after `preBuild: true`, continue generating source, omit
+`folderPath` from `workflow_builder_build_workflow`, and do not end your turn.
+Use the announced credential types when you configure matching nodes. Do not
+repeat the early announcement or the final setup without changed requirements.
 
 When early setup is unavailable, keep the post-build setup flow below.
 

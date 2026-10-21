@@ -102,6 +102,11 @@ true`, respect the user's choice and do not retry with any other setup tool.
 A result carrying `skippedByUser` names credentials the user already passed on:
 never re-open setup for those, in this turn or any later one — see
 [Credentials the user skipped](#credentials-the-user-skipped).
+When a node in `nodesStillNeedingSetup` carries `parameterIssues`, the
+connected credential cannot reach the configured value (for example, a model
+that the credential does not allow). Fix the value, then tell the user which
+value did not work and what you set instead. Never swap a model or another
+parameter without saying so.
 After setup completes or is applied, follow
 [Mocked verification live-test follow-up](#mocked-verification-live-test-follow-up)
 if the payload or prior verification evidence says mocked credentials,

@@ -382,10 +382,9 @@ describe('Instance AI skills', () => {
 		expect(skill?.name).toBe('workflow-builder');
 		expect(skill?.platforms).toBeUndefined();
 		expect(skill?.recommendedTools).toEqual([
-			'read_file',
-			'write_file',
-			'edit_file',
-			'execute_command',
+			'workspace_read_file',
+			'workspace_write_file',
+			'workspace_execute_command',
 			'workflow_builder_build_workflow',
 			'workflow_builder_workflows',
 			'search_nodes',

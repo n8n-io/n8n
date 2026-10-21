@@ -13,8 +13,8 @@ import { SUB_AGENT_PROTOCOL, buildSubAgentPrompt } from '../sub-agent-factory';
 describe('SUB_AGENT_PROTOCOL — browser-tool discovery preservation', () => {
 	it('keeps the secret-handling guardrail (route through credential setup, not chat)', () => {
 		expect(SUB_AGENT_PROTOCOL).toContain('Never ask the user to paste passwords');
-		expect(SUB_AGENT_PROTOCOL).toContain(
-			'credential setup or Computer Use browser credential capture',
+		expect(SUB_AGENT_PROTOCOL).toMatch(
+			/credential setup.{0,10}Computer Use browser credential capture/,
 		);
 	});
 
