@@ -71,10 +71,12 @@ Grant `read_api` and `write_repository`. Protected branches can require the
 Maintainer role. API validation does not prove write permission on a repository.
 
 Merge requests need the `api` scope. A branched Promote opens one. Approve in
-n8n approves and merges it as the token's bot user, at the head commit that the
-reviewer saw, and deletes the source branch. The token needs permission to merge
-into the base branch. The bot user also opened the merge request, so GitLab
-approval rules can block the merge. Do not require approvals on the repository.
+n8n approves and merges it as the GitLab user of the token, at the head commit
+that the reviewer saw, and deletes the source branch. A group access token acts
+as its bot user, and a personal access token acts as its owner. That user needs
+permission to merge into the base branch. The same user also opened the merge
+request, so GitLab approval rules can block the merge. Do not require approvals
+on the repository.
 
 GitLab API authentication uses only the access token. Omit `auth.username` for a
 GitLab provider. The service ignores a supplied username and stores `n8n` for Git

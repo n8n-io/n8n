@@ -254,6 +254,31 @@ describe('PromotionReviewRepository', () => {
 		});
 	});
 
+	it('releases only the approval claim that failed', async () => {
+		const { review } = await insertReview();
+		const expired = new Date(Date.now() - 3 * 60_000);
+		const renewed = new Date();
+		const staleBefore = new Date(renewed.getTime() - 2 * 60_000);
+		await expect(
+			reviewRepository.claimApproval(review.id, owner.id, expired, staleBefore),
+		).resolves.toBe(true);
+		await expect(
+			reviewRepository.claimApproval(review.id, owner.id, renewed, staleBefore),
+		).resolves.toBe(true);
+
+		await reviewRepository.releaseApproval(review.id, owner.id, expired);
+		expect(await reviewRepository.findOneBy({ id: review.id })).toMatchObject({
+			approvedById: owner.id,
+			approvedAt: renewed,
+		});
+
+		await reviewRepository.releaseApproval(review.id, owner.id, renewed);
+		expect(await reviewRepository.findOneBy({ id: review.id })).toMatchObject({
+			approvedById: null,
+			approvedAt: null,
+		});
+	});
+
 	it('rejects a second review with the same remote id on one environment', async () => {
 		await insertReview({ remoteReviewId: '7!1' });
 

@@ -10,7 +10,7 @@ const escapeGitLabQuickActions = (text: string) =>
 const displayName = ({ firstName, lastName }: User) =>
 	[firstName, lastName].filter(Boolean).join(' ') || null;
 
-/** GitLab shows the token's bot user as the approver, so the note names the n8n user. */
+/** GitLab shows the GitLab user of the token as the approver, so the note names the n8n user. */
 export const approvalNote = (approver: User) =>
 	escapeGitLabQuickActions(
 		`Approved and merged in n8n by ${displayName(approver) ?? approver.email}.`,

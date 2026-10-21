@@ -81,7 +81,7 @@ export const parseGitLabReviewId = (remoteReviewId: string): MergeRequestRef => 
 	return { projectId: Number(groups.projectId), iid: Number(groups.iid) };
 };
 
-/** Opens, reads, and merges GitLab merge requests. GitLab records each write as the token's bot user. */
+/** Opens, reads, and merges GitLab merge requests. GitLab records each write as the token's user. */
 @Service()
 export class GitLabMergeRequestClient {
 	private readonly http: HttpRequestClient;

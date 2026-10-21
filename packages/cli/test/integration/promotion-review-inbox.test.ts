@@ -69,10 +69,13 @@ function gitlab(answers: Record<number, GitLabAnswer>, { delayMs = 0 } = {}) {
  * Answers the approve, merge, and note calls for one merge request with the next status
  * in each list, and returns the calls with their bodies, in call order.
  */
-function gitlabWrites(iid: number, { approve = [201], merge = [200], mergeDelayMs = 0 } = {}) {
+function gitlabWrites(
+	iid: number,
+	{ approve = [201], merge = [200], mergeDelayMs = 0, beforeMerge = async () => {} } = {},
+) {
 	const calls: Array<[string, unknown]> = [];
 	const path = `/api/v4/projects/${projectId}/merge_requests/${iid}`;
-	const answer = (statuses: number[], ok: object) => {
+	const answer = (statuses: number[], ok: object): [number, object] => {
 		// The last status repeats.
 		const [status] = statuses.length > 1 ? statuses.splice(0, 1) : statuses;
 		return status < 300 ? [status, ok] : [status, { message: `${status} refused` }];
@@ -87,9 +90,11 @@ function gitlabWrites(iid: number, { approve = [201], merge = [200], mergeDelayM
 		})
 		.put(`${path}/merge`)
 		.delay(mergeDelayMs)
-		.reply((_uri, body) => {
+		.reply((_uri, body, respond) => {
 			calls.push(['merge', body]);
-			return answer(merge, mergeRequest(iid, { state: 'merged' }));
+			void beforeMerge().then(() =>
+				respond(null, answer(merge, mergeRequest(iid, { state: 'merged' }))),
+			);
 		})
 		.post(`${path}/notes`)
 		.reply((_uri, body) => {
@@ -504,6 +509,20 @@ describe('Promotion reviews in the Inbox', () => {
 				'note',
 				{ body: `Approved and merged in n8n by ${admin.email}.` },
 			]);
+		});
+
+		it('answers Merged when an Inbox sync records the merge first', async () => {
+			const reviewId = await insertReview(1);
+			gitlab({ 1: { state: 'opened' } });
+			gitlabWrites(1, {
+				beforeMerge: async () => {
+					await reviewRepository.update({ id: reviewId }, { state: 'merged' });
+				},
+			});
+
+			const response = await approve(await createAdmin(), reviewId);
+
+			expect(response.body.data).toMatchObject({ state: 'closed', reviewState: 'merged' });
 		});
 
 		it('lets an admin take a claim older than two minutes', async () => {

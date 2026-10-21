@@ -70,10 +70,13 @@ export class PromotionReviewRepository extends BaseRepository<PromotionReview> {
 		return (result.affected ?? 0) > 0;
 	}
 
-	/** Undoes a claim after a failed merge. A terminal row or a newer claim stays. */
-	async releaseApproval(id: string, approvedById: string): Promise<void> {
+	/**
+	 * Undoes one claim after a failed merge. A terminal row keeps its approver, and a newer
+	 * claim stays, also when the same admin took it after this claim expired.
+	 */
+	async releaseApproval(id: string, approvedById: string, approvedAt: Date): Promise<void> {
 		await this.update(
-			{ id, approvedById, state: In(OPEN_STATES) },
+			{ id, approvedById, approvedAt, state: In(OPEN_STATES) },
 			{ approvedById: null, approvedAt: null },
 		);
 	}

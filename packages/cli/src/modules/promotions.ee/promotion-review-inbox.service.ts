@@ -96,8 +96,8 @@ export class PromotionReviewInboxService {
 	}
 
 	/**
-	 * Approves and merges on the host as the token's bot user, then names the n8n approver
-	 * in a note. The stored state can be old, so this reads the host first.
+	 * Approves and merges on the host as the GitLab user of the token, then names the n8n
+	 * approver in a note. The stored state can be old, so this reads the host first.
 	 */
 	async approve(
 		user: User,
@@ -108,7 +108,9 @@ export class PromotionReviewInboxService {
 		const review = await this.reviewRepository.findByIdWithRelations(reviewId);
 		if (!review) throw new NotFoundError('Promotion review not found.');
 		if (review.createdById === user.id) {
-			throw new ForbiddenError('You requested this promotion. Another admin must approve it.');
+			throw new ForbiddenError(
+				'You requested this promotion. Another owner or admin must approve it.',
+			);
 		}
 		if (review.state === 'merged' || review.state === 'closed') {
 			throw new ConflictError(`This promotion review is already ${review.state}.`);
@@ -138,7 +140,7 @@ export class PromotionReviewInboxService {
 		const claimedAt = new Date();
 		const staleBefore = new Date(claimedAt.getTime() - APPROVAL_CLAIM_TTL_MS);
 		if (!(await this.reviewRepository.claimApproval(review.id, user.id, claimedAt, staleBefore))) {
-			throw new ConflictError('Another admin is approving this promotion review.');
+			throw new ConflictError('Another owner or admin is approving this promotion review.');
 		}
 
 		let merged: GitLabMergeRequest;
@@ -146,24 +148,27 @@ export class PromotionReviewInboxService {
 			await this.mergeRequests.approve(access, ref, headCommitSha).catch((error: unknown) => {
 				// GitLab refuses a second approval, and an approval by the author. The merge decides.
 				if (!(error instanceof BadRequestError)) throw error;
-				this.logger.info('GitLab did not accept the approval from the bot user', {
+				// The message can quote the GitLab response, so log only the error class.
+				this.logger.info('GitLab did not accept the approval', {
 					reviewId,
-					message: error.message,
+					error: error.constructor.name,
 				});
 			});
 			merged = await this.mergeRequests.merge(access, ref, headCommitSha);
 		} catch (error) {
-			await this.reviewRepository.releaseApproval(review.id, user.id);
+			await this.reviewRepository.releaseApproval(review.id, user.id, claimedAt);
 			throw error instanceof ConflictError ? new ConflictError(CHANGED_ON_HOST) : error;
 		}
 
 		await this.applyHostState(review, merged);
+		// A sync can record the merge first. Then the guarded write changes nothing.
+		review.state = toReviewState(merged);
 		Object.assign(review, { approvedById: user.id, approvedBy: user, approvedAt: claimedAt });
 		// The merge is done, so a failed note must not fail the approval.
 		await this.mergeRequests.createNote(access, ref, approvalNote(user)).catch((error: unknown) => {
 			this.logger.warn('Could not post the approval note on GitLab', {
 				reviewId,
-				message: error instanceof Error ? error.message : String(error),
+				error: error instanceof Error ? error.constructor.name : typeof error,
 			});
 		});
 		return toItem(review, run, { mergeRequest: merged, remoteError: null });

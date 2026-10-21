@@ -2,11 +2,15 @@
 import type { InboxPromotionReviewItem, PromotionReviewState } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import {
-	N8nAlertDialog,
 	N8nAvatar,
 	N8nBadge,
 	N8nButton,
 	N8nCallout,
+	N8nDialog,
+	N8nDialogDescription,
+	N8nDialogFooter,
+	N8nDialogHeader,
+	N8nDialogTitle,
 	N8nHeading,
 	N8nIcon,
 	N8nLink,
@@ -39,7 +43,8 @@ const stateBadge: Record<PromotionReviewState, BadgeVariant> = {
 	closed: 'subtle',
 };
 
-const confirming = ref(false);
+/** What the admin confirms. A later change of the selected row does not change it. */
+const pendingApproval = ref<{ id: string; headCommitSha: string } | null>(null);
 const approving = ref(false);
 
 const disabledReason = computed(() => {
@@ -54,12 +59,25 @@ const disabledReason = computed(() => {
 	if (item.remoteError) {
 		return i18n.baseText(`inbox.promotionReview.remoteError.${item.remoteError}`);
 	}
+	if (!item.headCommitSha) {
+		return i18n.baseText('inbox.promotionReview.approve.disabled.noHeadCommit');
+	}
 	return null;
 });
 
-async function onApprove() {
+function openApproval() {
 	const { id, headCommitSha } = props.item;
-	if (!headCommitSha || approving.value) return;
+	if (headCommitSha) pendingApproval.value = { id, headCommitSha };
+}
+
+// A close cannot stop GitLab, so the dialog stays open until the request ends.
+function closeApproval() {
+	if (!approving.value) pendingApproval.value = null;
+}
+
+async function onApprove() {
+	if (!pendingApproval.value || approving.value) return;
+	const { id, headCommitSha } = pendingApproval.value;
 	// The Inbox can reconcile this result after the viewer selects another item.
 	const onItemChange = props.onItemChange;
 	approving.value = true;
@@ -74,7 +92,7 @@ async function onApprove() {
 		onItemChange({ type: 'promotion_review', id });
 	} finally {
 		approving.value = false;
-		confirming.value = false;
+		pendingApproval.value = null;
 	}
 }
 </script>
@@ -103,10 +121,10 @@ async function onApprove() {
 						>
 							<N8nButton
 								size="small"
-								:disabled="!!disabledReason || !item.headCommitSha"
+								:disabled="!!disabledReason"
 								:loading="approving"
 								data-test-id="inbox-promotion-review-approve"
-								@click="confirming = true"
+								@click="openApproval"
 							>
 								{{ i18n.baseText('inbox.promotionReview.approve.button') }}
 							</N8nButton>
@@ -152,16 +170,36 @@ async function onApprove() {
 		>
 			{{ i18n.baseText(`inbox.promotionReview.detail.remoteError.${item.remoteError}`) }}
 		</N8nCallout>
-		<N8nAlertDialog
-			:open="confirming"
-			:title="i18n.baseText('inbox.promotionReview.approve.confirm.title')"
-			:description="i18n.baseText('inbox.promotionReview.approve.confirm.description')"
-			:action-label="i18n.baseText('inbox.promotionReview.approve.button')"
-			:loading="approving"
-			@action="onApprove"
-			@cancel="confirming = false"
-			@update:open="confirming = $event"
-		/>
+		<N8nDialog
+			:open="!!pendingApproval"
+			size="small"
+			:show-close-button="false"
+			:close-on-overlay-click="!approving"
+			:close-on-escape="!approving"
+			@update:open="closeApproval"
+		>
+			<N8nDialogHeader>
+				<N8nDialogTitle>
+					{{ i18n.baseText('inbox.promotionReview.approve.confirm.title') }}
+				</N8nDialogTitle>
+				<N8nDialogDescription>
+					{{ i18n.baseText('inbox.promotionReview.approve.confirm.description') }}
+				</N8nDialogDescription>
+			</N8nDialogHeader>
+			<N8nDialogFooter>
+				<N8nButton
+					variant="outline"
+					:label="i18n.baseText('generic.cancel')"
+					:disabled="approving"
+					@click="closeApproval"
+				/>
+				<N8nButton
+					:label="i18n.baseText('inbox.promotionReview.approve.button')"
+					:loading="approving"
+					@click="onApprove"
+				/>
+			</N8nDialogFooter>
+		</N8nDialog>
 	</section>
 </template>
 

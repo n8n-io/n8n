@@ -3,7 +3,8 @@ import { useToast } from '@n8n/composables/useToast';
 import { createComponentRenderer, mockedStore } from '@n8n/frontend-test-utils';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { createTestingPinia } from '@pinia/testing';
-import { within } from '@testing-library/vue';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
 import PromotionReviewDetail from './PromotionReviewDetail.vue';
@@ -105,36 +106,46 @@ it('falls back to the branch name, explains why GitLab did not answer, and shows
 	expect(queryByTestId('inbox-promotion-review-approve')).not.toBeInTheDocument();
 });
 
-it('approves the head the admin saw after the confirmation, and a cancel makes no call', async () => {
-	vi.mocked(approvePromotionReview).mockResolvedValue(
-		item({ state: 'closed', reviewState: 'merged', updatedAt: '2026-01-02T00:00:00.000Z' }),
-	);
-	const rendered = renderComponent({ props: { item: item(), onItemChange } });
-	const { getByRole, getByTestId } = rendered;
+it('approves the review the admin confirmed, and locks the dialog until GitLab answers', async () => {
+	const merged = createDeferredPromise<InboxPromotionReviewItem>();
+	vi.mocked(approvePromotionReview).mockReturnValue(merged.promise);
+	const { getByRole, getByTestId, rerender } = renderComponent({
+		props: { item: item(), onItemChange },
+	});
+	const dialogButton = (name: string) => within(getByRole('dialog')).getByRole('button', { name });
 	expect(getByTestId('approve-tooltip')).toHaveAttribute('data-disabled', 'true');
 
 	await userEvent.click(getByTestId('inbox-promotion-review-approve'));
-	await userEvent.click(within(getByRole('dialog')).getByRole('button', { name: 'Cancel' }));
+	await userEvent.click(dialogButton('Cancel'));
 	expect(approvePromotionReview).not.toHaveBeenCalled();
 
-	await approveInDialog(rendered);
+	await userEvent.click(getByTestId('inbox-promotion-review-approve'));
+	await rerender({ item: item({ id: 'rev-2', headCommitSha: 'b'.repeat(40) }), onItemChange });
+	await userEvent.click(dialogButton('Approve and merge'));
 
 	expect(approvePromotionReview).toHaveBeenCalledWith(expect.anything(), 'rev-1', {
 		headCommitSha,
 	});
-	expect(onItemChange).toHaveBeenCalledWith({
-		type: 'promotion_review',
-		id: 'rev-1',
-		state: 'closed',
-		updatedAt: '2026-01-02T00:00:00.000Z',
-	});
+	expect(dialogButton('Cancel')).toBeDisabled();
+
+	merged.resolve(
+		item({ state: 'closed', reviewState: 'merged', updatedAt: '2026-01-02T00:00:00.000Z' }),
+	);
+	await waitFor(() =>
+		expect(onItemChange).toHaveBeenCalledWith({
+			type: 'promotion_review',
+			id: 'rev-1',
+			state: 'closed',
+			updatedAt: '2026-01-02T00:00:00.000Z',
+		}),
+	);
 });
 
 it.each([
 	[
 		'the viewer requested the promotion',
 		{ requester: { id: 'u2', firstName: 'Grace', lastName: 'Hopper', email: null } },
-		'You requested this promotion. Another admin must approve it.',
+		'You requested this promotion. Another owner or admin must approve it.',
 	],
 	[
 		'a reviewer requested changes',
@@ -150,6 +161,11 @@ it.each([
 		'GitLab did not answer',
 		{ remoteError: 'unreachable' as const, headCommitSha: null },
 		'GitLab unreachable',
+	],
+	[
+		'GitLab did not report the head commit',
+		{ headCommitSha: null },
+		"GitLab didn't report the latest commit of this merge request. Reload the Inbox and try again.",
 	],
 ])('disables approve with the reason when %s', (_case, props, reason) => {
 	const { getByTestId } = renderComponent({ props: { item: item(props), onItemChange } });
