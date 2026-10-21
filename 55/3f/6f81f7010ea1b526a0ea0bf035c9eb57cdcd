@@ -1,0 +1,33 @@
+packages/cli/src/modules/agents/integrations/platforms/linear-origin.ts
+  s_e301d8294f60c4::t_da7a0cebf6acca 1-18
+packages/cli/src/modules/agents/integrations/platforms/whatsapp/whatsapp-origin.ts
+  s_e301d8294f60c4::t_da7a0cebf6acca 1-9
+packages/cli/src/modules/agents/integrations/integration-origin.ts
+  s_e301d8294f60c4::t_da7a0cebf6acca 6,9-15,44,46,48,50,52,54,60
+packages/cli/src/modules/agents/integrations/integration-origin-support.ts
+  s_e301d8294f60c4::t_da7a0cebf6acca 1-51
+packages/cli/src/modules/agents/integrations/platforms/telegram-origin.ts
+  s_e301d8294f60c4::t_da7a0cebf6acca 1-9
+packages/cli/src/modules/agents/integrations/platforms/discord-origin.ts
+  s_e301d8294f60c4::t_da7a0cebf6acca 1-20
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-origin.ts
+  s_e301d8294f60c4::t_da7a0cebf6acca 1-33
+packages/cli/src/modules/agents/integrations/platforms/teams/teams-origin.ts
+  s_e301d8294f60c4::t_da7a0cebf6acca 1-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "553f6f81f7010ea1b526a0ea0bf035c9eb57cdcd",
+  "prompts": {},
+  "sessions": {
+    "s_e301d8294f60c4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "254d4248-4a92-4bc9-a4ba-d776e64b364c",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
