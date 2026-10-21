@@ -58,6 +58,7 @@ vi.mock('@n8n/instance-ai', async () => {
 		},
 		createDomainAccessTracker: vi.fn(),
 		emitAgentSnapshotTraceEvent: vi.fn(async () => await Promise.resolve('emitted')),
+		carryAgentBuildRunState: vi.fn(),
 		createSandbox: vi.fn(),
 		createWorkspace: vi.fn(),
 		createLazyRuntimeWorkspace: vi.fn(
@@ -273,6 +274,7 @@ import {
 	setupSandboxWorkspace,
 	shutdownProductTelemetryProviders,
 	emitAgentSnapshotTraceEvent,
+	carryAgentBuildRunState,
 	threadProvenanceMetadata,
 	type BuilderUsageItem,
 	type WorkSummary,
@@ -280,6 +282,7 @@ import {
 	type ManagedBackgroundTask,
 	type InstanceAiTraceContext,
 	type ModelConfig,
+	type OrchestrationContext,
 	type TraceStatus,
 	type WorkflowVerificationObligation,
 } from '@n8n/instance-ai';
@@ -289,13 +292,10 @@ import { UserError } from 'n8n-workflow';
 import type { Mock, MockedFunction } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
+import { InstanceAiBuilderDelegateAdapterService } from '../instance-ai-builder-delegate.adapter';
 import { ForbiddenError } from '@n8n/errors';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import {
-	AI_PREFERENCES_CLEARED_BLOCK,
-	renderAiPreferencesBlock,
-} from '@/services/ai-preference.service';
+import { AI_PREFERENCES_CLEARED_BLOCK, renderAiPreferencesBlock } from '@n8n/backend-services';
 
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import {
@@ -628,6 +628,10 @@ type TerminalGuardOrderServiceInternals = {
 		message: string,
 		abortController: AbortController,
 	) => Promise<void>;
+	trackInFlightExecution: (
+		promise: Promise<unknown>,
+		context?: { threadId: string; runId: string },
+	) => void;
 	processResumedStream: (
 		agent: unknown,
 		resumeData: unknown,
@@ -1433,6 +1437,22 @@ describe('InstanceAiService — runtime workspace setup', () => {
 });
 
 describe('InstanceAiService — shutdown', () => {
+	it('logs an escaped execution rejection and clears tracking', async () => {
+		const service = createTerminalGuardOrderService();
+		service.inFlightExecutions = new Set();
+		const error = new Error('Execution failed');
+		const context = { threadId: 'thread-1', runId: 'run-1' };
+
+		service.trackInFlightExecution(Promise.reject(error), context);
+		await Promise.all(service.inFlightExecutions);
+
+		expect(service.logger.error).toHaveBeenCalledExactlyOnceWith(
+			'Unexpected Instance AI execution failure',
+			{ ...context, error },
+		);
+		expect(service.inFlightExecutions.size).toBe(0);
+	});
+
 	it('does not destroy thread-scoped sandboxes on service shutdown', async () => {
 		const service = Object.create(
 			InstanceAiService.prototype,
@@ -1544,7 +1564,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 			Object.create(InstanceAiService.prototype) as {
 				startSelfHealingRun: InstanceAiService['startSelfHealingRun'];
 				shutdown: InstanceAiService['shutdown'];
-				drainInFlightExecutions: (timeoutMs: number) => Promise<void>;
+				stopRunsForQuotaExhaustion: (user: User) => void;
 			},
 			{
 				selfHealingAgent: {
@@ -1552,6 +1572,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 					execute: vi.fn<SelfHealingAgentService['execute']>(),
 				},
 				runState: new RunStateRegistry<User>((user) => user.id),
+				finalizingSelfHealingRuns: new Set<string>(),
 				liveness: {
 					shutdown: vi.fn(),
 					clearThreadState: vi.fn(),
@@ -1563,7 +1584,13 @@ describe('InstanceAiService — self-healing launcher', () => {
 				eventService: { emit: vi.fn() },
 				eventBus: { clear: vi.fn() },
 				eventLog: { flushAll: vi.fn(async () => {}) },
-				backgroundTasks: { cancelAll: vi.fn(() => []) },
+				backgroundTasks: {
+					cancelAll: vi.fn(() => []),
+					cancelThread: vi.fn(() => []),
+					listRunningTasks: vi.fn(() => []),
+				},
+				cancelAwaitingApprovalPlan: vi.fn(),
+				suspendedThreads: { dropPendingConfirmationsForThread: vi.fn() },
 				gatewayService: { disconnectAll: vi.fn() },
 				browserSessionService: { shutdown: vi.fn(async () => {}) },
 				domainAccessTrackersByThread: new Map(),
@@ -1634,6 +1661,31 @@ describe('InstanceAiService — self-healing launcher', () => {
 		expect(service.runState.activeRunCount()).toBe(1);
 	});
 
+	it.each([false, true])('handles quota exhaustion with finalizing=%s', async (finalizing) => {
+		const service = createLauncher();
+		const pending = createDeferredPromise<SelfHealingRunResult>();
+		service.selfHealingAgent.execute.mockImplementation(async (_input, options) => {
+			if (finalizing) options.onFinalizing();
+			await pending.promise;
+			return {
+				...completedRun(options),
+				status: options.signal.aborted ? 'cancelled' : 'completed',
+			};
+		});
+		const run = service.startSelfHealingRun(input, lifecycle);
+		const options = service.selfHealingAgent.execute.mock.calls[0][1];
+		const other = service.runState.startRun({ threadId: 'other-chat', user: fakeUser });
+
+		service.stopRunsForQuotaExhaustion(fakeUser);
+
+		expect(options.signal.aborted).toBe(!finalizing);
+		expect(other.abortController.signal.aborted).toBe(true);
+		pending.resolve(completedRun(options));
+		expect((await run).status).toBe(finalizing ? 'completed' : 'cancelled');
+		expect(service.finalizingSelfHealingRuns.size).toBe(0);
+		expect(service.runState.getActiveRunId(options.threadId)).toBeUndefined();
+	});
+
 	it('checks the gate before registering a run', async () => {
 		const service = createLauncher();
 		service.selfHealingAgent.assertEnabled.mockImplementation(() => {
@@ -1653,37 +1705,40 @@ describe('InstanceAiService — self-healing launcher', () => {
 		await expect(service.startSelfHealingRun(input, lifecycle)).rejects.toThrow(
 			'Storage unavailable',
 		);
-		await service.drainInFlightExecutions(1000);
+		await service.shutdown();
 
 		expect(service.runState.activeRunCount()).toBe(0);
 		expect(service.inFlightExecutions.size).toBe(0);
 	});
 
-	it('lets shutdown abort setup and waits for its cleanup to finish', async () => {
-		const service = createLauncher();
-		const cleanup = createDeferredPromise<undefined>();
-		service.selfHealingAgent.execute.mockImplementation(async (_input, options) => {
-			await new Promise<void>((resolve) =>
-				options.signal.addEventListener('abort', () => resolve(), { once: true }),
-			);
-			await cleanup.promise;
-			return { ...completedRun(options), status: 'cancelled', reason: options.getAbortReason() };
-		});
-		const run = service.startSelfHealingRun(input, lifecycle);
-		const { activeRuns } = service.runState.shutdown();
-		for (const active of activeRuns) active.abortController.abort('service_shutdown');
-		let drained = false;
-		const drain = service.drainInFlightExecutions(1000).then(() => {
-			drained = true;
-		});
-		await Promise.resolve();
-		expect(drained).toBe(false);
+	it.each([false, true])(
+		'lets shutdown abort with finalizing=%s and waits for cleanup',
+		async (finalizing) => {
+			const service = createLauncher();
+			const cleanup = createDeferredPromise<undefined>();
+			service.selfHealingAgent.execute.mockImplementation(async (_input, options) => {
+				if (finalizing) options.onFinalizing();
+				await new Promise<void>((resolve) =>
+					options.signal.addEventListener('abort', () => resolve(), { once: true }),
+				);
+				await cleanup.promise;
+				return { ...completedRun(options), status: 'cancelled', reason: options.getAbortReason() };
+			});
+			const run = service.startSelfHealingRun(input, lifecycle);
+			let shutDown = false;
+			const shutdown = service.shutdown().then(() => {
+				shutDown = true;
+			});
+			await new Promise<void>((resolve) => setImmediate(resolve));
+			expect(service.selfHealingAgent.execute.mock.calls[0][1].signal.aborted).toBe(true);
+			expect(shutDown).toBe(false);
 
-		cleanup.resolve(undefined);
-		expect(await run).toMatchObject({ status: 'cancelled', reason: 'service_shutdown' });
-		await drain;
-		expect(service.inFlightExecutions.size).toBe(0);
-	});
+			cleanup.resolve(undefined);
+			expect(await run).toMatchObject({ status: 'cancelled', reason: 'service_shutdown' });
+			await shutdown;
+			expect(service.inFlightExecutions.size).toBe(0);
+		},
+	);
 
 	it('preserves finish reasons without starting chat title work', async () => {
 		const service = createLauncher();
@@ -1711,7 +1766,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 	});
 
 	it.each(['completed', 'cancelled'] as const)(
-		'preserves the final %s status when a run settles during shutdown tracing',
+		'publishes shutdown cancellation once and preserves the %s result',
 		async (status) => {
 			const service = createLauncher();
 			const settle = createDeferredPromise<undefined>();
@@ -1730,8 +1785,8 @@ describe('InstanceAiService — self-healing launcher', () => {
 			await service.shutdown();
 			const result = await run;
 
-			expect(service.publishRunFinish).toHaveBeenNthCalledWith(
-				1,
+			expect(result.status).toBe(status);
+			expect(service.publishRunFinish).toHaveBeenCalledExactlyOnceWith(
 				result.threadId,
 				result.runId,
 				'cancelled',
@@ -1740,20 +1795,6 @@ describe('InstanceAiService — self-healing launcher', () => {
 				undefined,
 				{ promptVersion: undefined },
 			);
-			if (status === 'completed') {
-				expect(service.publishRunFinish).toHaveBeenCalledTimes(2);
-				expect(service.publishRunFinish).toHaveBeenLastCalledWith(
-					result.threadId,
-					result.runId,
-					'completed',
-					undefined,
-					undefined,
-					fakeUser.id,
-					{ modelId: 'model-1', promptVersion: 'self-healing-v1' },
-				);
-			} else {
-				expect(service.publishRunFinish).toHaveBeenCalledTimes(1);
-			}
 			expect(service.emitRunMetrics).toHaveBeenCalledExactlyOnceWith(
 				result.threadId,
 				status,
@@ -1811,34 +1852,41 @@ describe('InstanceAiService — self-healing launcher', () => {
 	});
 
 	it('rejects an actor who tries to use a producer thread as ordinary chat', async () => {
-		const service = Object.assign(
-			Object.create(InstanceAiService.prototype) as {
-				createExecutionEnvironment: (
-					user: User,
-					threadId: string,
-					runId: string,
-					signal: AbortSignal,
-				) => Promise<unknown>;
+		const service = Object.assign(createTerminalGuardOrderService(), {
+			startRun: InstanceAiService.prototype.startRun,
+			agentMemory: {
+				getThread: vi.fn(async () => ({ resourceId: `ia-self-healing:${fakeUser.id}` })),
+				getThreadProjectId: vi.fn(),
 			},
-			{
-				agentMemory: {
-					getThread: vi.fn(async () => ({ resourceId: `ia-self-healing:${fakeUser.id}` })),
-					getThreadProjectId: vi.fn(),
-				},
-				adapterService: { createContext: vi.fn() },
-			},
+			inFlightExecutions: new Set<Promise<unknown>>(),
+			instanceAiConfig: { maxConcurrentRuns: 5, maxConcurrentRunsPerUser: 3 },
+			adapterService: { resolveExperimentGates: vi.fn(), createContext: vi.fn() },
+			publishRunFinish: vi.fn(),
+		});
+		Object.assign(service.runState, createStartRunService().runState);
+		Object.assign(service.liveness, { clearThreadState: vi.fn() });
+		stubInitialRunSurface(service);
+		Reflect.deleteProperty(service, 'createExecutionEnvironment');
+		const createContext = vi.fn();
+		Object.assign(service.adapterService, { createContext });
+
+		const runId = service.startRun(fakeUser, 'internal-thread', 'hello');
+		await Promise.all(service.inFlightExecutions);
+
+		expect(service.instanceAiErrorReporter.report).toHaveBeenCalledWith(
+			expect.any(ForbiddenError),
+			expect.objectContaining({ threadId: 'internal-thread', runId }),
 		);
-
-		await expect(
-			service.createExecutionEnvironment(
-				fakeUser,
-				'internal-thread',
-				'run-1',
-				new AbortController().signal,
-			),
-		).rejects.toThrow(ForbiddenError);
-
-		expect(service.adapterService.createContext).not.toHaveBeenCalled();
+		expect(service.publishRunFinish).toHaveBeenCalledWith(
+			'internal-thread',
+			runId,
+			'errored',
+			expect.any(String),
+			[],
+			fakeUser.id,
+			expect.objectContaining({ errorMessage: 'Not authorized for this thread' }),
+		);
+		expect(createContext).not.toHaveBeenCalled();
 		expect(service.agentMemory.getThreadProjectId).not.toHaveBeenCalled();
 	});
 });
@@ -3236,7 +3284,7 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 		);
 	});
 
-	it.each(['workflows', 'build-agent'])(
+	it.each(['workflow_builder_workflows', 'agent_builder_build_agent', 'build-agent'])(
 		'rebuilds the suspended %s call when autoSetup is set',
 		async (toolName) => {
 			const service = createSuspendedRunResumeService();
@@ -3286,6 +3334,35 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 			expect(resumeDataArg).not.toHaveProperty('requiresAgentRebuild');
 		},
 	);
+
+	it('carries the agent build state to the rebuilt orchestration context', async () => {
+		const service = createSuspendedRunResumeService();
+		const suspended = service.runState.findSuspendedByRequestId('req-1');
+		const previousContext = { id: 'previous' } as unknown as OrchestrationContext;
+		const rebuiltContext = { id: 'rebuilt' } as unknown as OrchestrationContext;
+		service.runState.findSuspendedByRequestId.mockReturnValue({
+			...suspended,
+			orchestrationContext: previousContext,
+		});
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1', disabled: false } as User);
+		service.rebuildAgentForResume.mockResolvedValue({
+			agent: { id: 'rebuilt-agent' },
+			modelId: { provider: 'anthropic', model: 'claude' },
+			orchestrationContext: rebuiltContext,
+		});
+
+		await service.resumeSuspendedRun('user-1', 'req-1', {
+			approved: true,
+			connectedSlugs: ['github'],
+		});
+
+		expect(carryAgentBuildRunState).toHaveBeenCalledWith(previousContext, rebuiltContext);
+		expect(service.processResumedStream).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.anything(),
+			expect.objectContaining({ orchestrationContext: rebuiltContext }),
+		);
+	});
 
 	it('fails the resume and cancels the run when the rebuild fails', async () => {
 		const service = createSuspendedRunResumeService();
@@ -6392,7 +6469,7 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 		const service = createSetupFollowUpService({});
 
 		expect(
-			service.getWorkflowSetupSuspensionWorkflowId('workflows', {
+			service.getWorkflowSetupSuspensionWorkflowId('workflow_builder_workflows', {
 				workflowId: 'wf-1',
 				setupRequests: [],
 			}),
@@ -6400,11 +6477,17 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 		expect(
 			service.getWorkflowSetupSuspensionWorkflowId('workflows', {
 				workflowId: 'wf-1',
+				setupRequests: [],
+			}),
+		).toBe('wf-1');
+		expect(
+			service.getWorkflowSetupSuspensionWorkflowId('workflow_builder_workflows', {
+				workflowId: 'wf-1',
 				message: 'Publish workflow?',
 			}),
 		).toBeUndefined();
 		expect(
-			service.getWorkflowSetupSuspensionWorkflowId('credentials', {
+			service.getWorkflowSetupSuspensionWorkflowId('workflow_builder_credentials', {
 				workflowId: 'wf-1',
 				setupRequests: [],
 			}),

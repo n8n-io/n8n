@@ -83,6 +83,7 @@ export class InstanceAiCreditService {
 		dedupeId: string,
 		usage: BuilderUsageItem[],
 		status: TraceStatus,
+		source: 'chat' | 'self_healing' = 'chat',
 	): Promise<number | undefined> {
 		if (!this.aiService.isProxyEnabled()) {
 			this.logger.debug('Skipping Instance AI credit claim: proxy disabled', {
@@ -120,6 +121,7 @@ export class InstanceAiCreditService {
 				thread_id: threadId,
 				agent_run_id: dedupeId,
 				status,
+				source,
 				success: false,
 				error_message: getErrorMessage(error),
 				attempted_usage: usage,
@@ -188,6 +190,7 @@ export class InstanceAiCreditService {
 			thread_id: threadId,
 			agent_run_id: dedupeId,
 			status,
+			source,
 			success: true,
 			credits_used: delta,
 			credits_claimed_total: creditsClaimed,

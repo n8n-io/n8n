@@ -1,3 +1,4 @@
+import type { SerializedCredential, SerializedVariable } from '@n8n/api-types';
 import { UserError } from 'n8n-workflow';
 
 import { resolveCredentialConflictPolicy } from '../entities/credential/credential-conflict-policy';
@@ -16,8 +17,6 @@ import type {
 	PackageCredentialRequirement,
 	PackageVariableRequirement,
 } from '../spec/requirements.schema';
-import type { SerializedCredential } from '../spec/serialized/credential.schema';
-import type { SerializedVariable } from '../spec/serialized/variable.schema';
 
 export function foldersInScope(
 	entries: ManifestEntry[] | undefined,

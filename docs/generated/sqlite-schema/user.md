@@ -398,9 +398,9 @@ erDiagram
 "promotion_review" {
   datetime_3_ approvedAt
   varchar approvedById FK
-  varchar_36_ connectionId FK
   datetime_3_ createdAt
   varchar createdById FK
+  varchar environmentId FK
   varchar id PK
   datetime_3_ lastStateChangeAt
   varchar_255_ remoteReviewId
@@ -408,11 +408,11 @@ erDiagram
   varchar_16_ type
 }
 "promotion_run" {
-  varchar_36_ configId FK
   datetime_3_ createdAt
   varchar createdById FK
   TEXT details
   varchar_16_ direction
+  varchar environmentId FK
   varchar id PK
   varchar reviewId FK
   varchar_16_ type
@@ -465,6 +465,7 @@ erDiagram
 }
 "skill" {
   varchar_36_ agentId FK
+  boolean availableToAssistant
   datetime_3_ createdAt
   varchar createdById FK
   varchar_36_ id PK

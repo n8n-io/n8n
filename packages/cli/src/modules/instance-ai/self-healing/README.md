@@ -50,10 +50,13 @@ A workflow can have one unfinished investigation or open result.
 An unfinished investigation blocks the workflow across projects and configurations.
 An open result blocks investigations only in the workflow's current project.
 Repeated starts for the same failed execution return the original investigation, including after completion.
-Automatic failure triggers remain the caller's responsibility.
+Automatic triggers and eligibility for a new failure remain the caller's responsibility.
 When an access check fails, the producer pauses the configuration. Another eligible user must
 explicitly enable it before new work can start.
-Re-enablement does not change the actor recorded on an existing investigation.
+User deletion also removes that user's investigations and results.
+Leaving the project does not delete those records or necessarily remove globally granted access.
+The user who re-enables self-healing becomes the background user for new investigations.
+Re-enablement does not change the background user recorded on an existing investigation.
 
 The producer calls `InstanceAiService.startSelfHealingRun()` with its stored thread and run IDs.
 This uses the existing Assistant run lifecycle. It does not create another job runner.
@@ -76,7 +79,8 @@ The agent has no save, publish, credential setup, MCP, browser, or delegation to
 It does not request user confirmation or start follow-up runs.
 
 The runtime returns technical `status`, finish information, `usage`, and validated `output`
-when available. Output has `outcome`, `summary`, `report`, and an optional `candidateFilePath`.
+when available. Output requires `outcome`, `summary`, `report`, and `candidateFilePath`.
+Set `candidateFilePath` to `null` when there is no candidate.
 `fix_ready` requires a candidate path. `could_not_fix` excludes one.
 The result includes a candidate compiler when validated output names a candidate file.
 If final compilation reports mocked credential types, the producer changes `fix_ready` to `needs_you`.

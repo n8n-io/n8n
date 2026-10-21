@@ -7,7 +7,6 @@ import { concurrencyLimitSchema } from '../schemas';
 export class InstanceAiConfig {
 	/**
 	 * Enable workflow suggestions, self-healing investigations, and result review.
-	 * Restart n8n after changing this setting.
 	 */
 	@Env('N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED')
 	workflowSuggestionsEnabled: boolean = false;

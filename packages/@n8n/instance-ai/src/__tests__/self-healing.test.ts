@@ -11,29 +11,40 @@ describe('self-healing output', () => {
 	it.each([
 		{ outcome: 'fix_ready', candidateFilePath: 'self-healing/candidate.workflow.ts' },
 		{ outcome: 'needs_you', candidateFilePath: 'self-healing/candidate.workflow.ts' },
-		{ outcome: 'needs_you' },
-		{ outcome: 'could_not_fix' },
+		{ outcome: 'needs_you', candidateFilePath: null },
+		{ outcome: 'could_not_fix', candidateFilePath: null },
 	])('accepts $outcome with its candidate rules', (output) => {
 		expect(selfHealingOutputSchema.safeParse({ ...report, ...output }).success).toBe(true);
 	});
 
 	it.each([
 		{ outcome: 'fix_ready' },
+		{ outcome: 'needs_you', candidateFilePath: undefined },
 		{ outcome: 'could_not_fix', candidateFilePath: 'candidate.ts' },
 		{ outcome: 'needs_you', candidateFilePath: '' },
 		{ outcome: 'needs_you', summary: ' ' },
-		{ outcome: 'needs_you', summary: 'x'.repeat(81) },
 		{ outcome: 'needs_you', report: ' ' },
 		{ outcome: 'needs_you', report: 'x'.repeat(50_001) },
 		{ outcome: 'failed' },
 		{ outcome: 'needs_you', workflowId: 'other-workflow' },
 	])('rejects invalid output %#', (output) => {
-		expect(selfHealingOutputSchema.safeParse({ ...report, ...output }).success).toBe(false);
+		expect(
+			selfHealingOutputSchema.safeParse({ ...report, candidateFilePath: null, ...output }).success,
+		).toBe(false);
 	});
 
-	it('accepts a title at the character limit and preserves report formatting', () => {
-		const output = { ...report, outcome: 'needs_you', summary: 'x'.repeat(80) };
-		expect(selfHealingOutputSchema.parse(output)).toEqual(output);
+	it.each([
+		['x'.repeat(80), 'x'.repeat(80)],
+		['x'.repeat(81), 'x'.repeat(80)],
+		[`${'x'.repeat(79)}😀 trailing text`, `${'x'.repeat(79)}😀`],
+	])('caps title %# at 80 code points and preserves report formatting', (summary, expected) => {
+		const output = {
+			...report,
+			outcome: 'needs_you',
+			summary,
+			candidateFilePath: null,
+		};
+		expect(selfHealingOutputSchema.parse(output)).toEqual({ ...output, summary: expected });
 	});
 
 	it('rejects missing and malformed output', () => {

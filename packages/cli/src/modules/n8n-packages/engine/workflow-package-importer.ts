@@ -148,6 +148,7 @@ export class WorkflowPackageImporter {
 			tagRequest,
 			options: request,
 			subWorkflowRequirements: identifyRequirements(manifest.requirements?.workflows, workflows),
+			checkRootPlacement: false,
 		});
 
 		const missingCredentialIds = new Set(

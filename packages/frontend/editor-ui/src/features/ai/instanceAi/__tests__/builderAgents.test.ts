@@ -43,7 +43,14 @@ describe('messageHasVisibleContent', () => {
 					{ type: 'tool-call', toolCallId: 'tc-build', responseId: 'r1' },
 					{ type: 'child', agentId: 'builder-1', responseId: 'r1' },
 				],
-				toolCalls: [{ toolCallId: 'tc-build', toolName: 'build-agent', args: {}, isLoading: true }],
+				toolCalls: [
+					{
+						toolCallId: 'tc-build',
+						toolName: 'agent_builder_build_agent',
+						args: {},
+						isLoading: true,
+					},
+				],
 				children: [builderChild],
 			}),
 		);
@@ -66,7 +73,12 @@ describe('messageHasVisibleContent', () => {
 					{ type: 'child', agentId: 'builder-1', responseId: 'r2' },
 				],
 				toolCalls: [
-					{ toolCallId: 'tc-build-old', toolName: 'build-agent', args: {}, isLoading: false },
+					{
+						toolCallId: 'tc-build-old',
+						toolName: 'agent_builder_build_agent',
+						args: {},
+						isLoading: false,
+					},
 				],
 				children: [builderChild],
 			}),

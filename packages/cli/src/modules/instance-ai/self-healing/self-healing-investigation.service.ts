@@ -243,24 +243,31 @@ export class SelfHealingInvestigationService {
 			const candidate = await run.candidate.compile();
 			if (!candidate.success) throw new BadRequestError(candidate.errors.join('\n'));
 
+			const placeholderWarnings = candidate.warnings.filter(
+				({ code }) => code === 'unresolved_placeholders',
+			);
 			if (
 				output.outcome === 'fix_ready' &&
-				candidate.credentialResolution.mockedCredentialTypes.length > 0
+				(candidate.credentialResolution.mockedCredentialTypes.length > 0 ||
+					placeholderWarnings.length > 0)
 			) {
-				const missingCredentials = Object.entries(
-					candidate.credentialResolution.mockedCredentialsByNode,
-				).map(([node, types]) => `- ${node}: ${types.join(', ')}`);
+				const missingSetup = [
+					...Object.entries(candidate.credentialResolution.mockedCredentialsByNode).map(
+						([node, types]) => `- Connect credentials for ${node}: ${types.join(', ')}`,
+					),
+					...placeholderWarnings.map(({ message }) => `- ${message}`),
+				];
 				result.output = {
 					...output,
 					outcome: 'needs_you',
-					summary: 'Connect the missing credentials to complete this repair',
+					summary: 'Complete the missing setup to use this repair',
 					report:
 						'**What happened**\n\n' +
-						`The proposed repair still needs credentials for:\n\n${missingCredentials.join('\n')}\n\n` +
+						`The proposed repair still needs setup:\n\n${missingSetup.join('\n')}\n\n` +
 						'**What changed**\n\n' +
 						'The proposed repair has not been applied. ' +
-						'Simulated verification does not confirm that these connections work. ' +
-						'Continue in chat to connect the credentials and verify the repair.',
+						'Simulated verification does not confirm that this setup works. ' +
+						'Continue in chat to complete the setup and verify the repair.',
 				};
 			}
 
@@ -272,10 +279,7 @@ export class SelfHealingInvestigationService {
 		const outputFields = selfHealingOutputSchema.innerType().shape;
 		result.output = {
 			...result.output,
-			summary: scrubSecretsInText(result.output.summary).slice(
-				0,
-				outputFields.summary.maxLength ?? undefined,
-			),
+			summary: outputFields.summary.parse(scrubSecretsInText(result.output.summary)),
 			report: scrubSecretsInText(result.output.report).slice(
 				0,
 				outputFields.report.maxLength ?? undefined,

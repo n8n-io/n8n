@@ -3,12 +3,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { PushMessage } from '@n8n/api-types';
 import { enableAutoUnmount, mount, flushPromises } from '@vue/test-utils';
 import { reactive } from 'vue';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import AgentSessionTimelinePanel from '../components/AgentSessionTimelinePanel.vue';
 import type { ThreadDetail } from '../composables/useAgentThreadsApi';
 import type { FilterOption } from '../session-timeline.types';
 
 const getThreadDetail = vi.fn();
 const showError = vi.fn();
+const track = vi.fn();
 const pushHandlers = new Set<(event: PushMessage) => void>();
 const pushStore = reactive({
 	isConnected: false,
@@ -19,6 +21,13 @@ const pushStore = reactive({
 		return () => pushHandlers.delete(handler);
 	}),
 });
+
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track }),
+}));
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ pushRef: 'session-xyz' }),
+}));
 
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError }),
@@ -46,10 +55,15 @@ vi.mock('@/features/agents/composables/useSubAgentNames', () => ({
 }));
 
 const stubs = {
-	SessionTimelineChart: { template: '<div data-test-id="chart-stub" />' },
+	SessionTimelineChart: {
+		name: 'SessionTimelineChart',
+		emits: ['select'],
+		template: '<div data-test-id="chart-stub" />',
+	},
 	SessionTimelineTable: {
 		name: 'SessionTimelineTable',
 		props: ['selectedIndex', 'items'],
+		emits: ['select'],
 		template:
 			'<div data-test-id="table-stub" :data-selected-index="selectedIndex ?? undefined" :data-item-count="items.length" />',
 	},
@@ -58,7 +72,11 @@ const stubs = {
 		props: ['available'],
 		template: '<div data-test-id="filter-stub" />',
 	},
-	SessionDetailPanel: { template: '<div data-test-id="detail-stub" />' },
+	SessionDetailPanel: {
+		name: 'SessionDetailPanel',
+		emits: ['close'],
+		template: '<div data-test-id="detail-stub" />',
+	},
 	N8nInput: { template: '<input data-test-id="search-stub" />' },
 	N8nIcon: { template: '<i />' },
 };
@@ -169,7 +187,29 @@ describe('AgentSessionTimelinePanel', () => {
 		await flushPromises();
 
 		expect(getThreadDetail).toHaveBeenCalledWith('p1', 'a1', 't1');
+		expect(track).not.toHaveBeenCalled();
 	});
+
+	it.each(['SessionTimelineChart', 'SessionTimelineTable'])(
+		'tracks user selection from %s but not closing or deselection',
+		async (component) => {
+			getThreadDetail.mockResolvedValueOnce({ ...detail, executions: [keyboardExecution] });
+			const wrapper = mountPanel();
+			await flushPromises();
+
+			wrapper.getComponent({ name: component }).vm.$emit('select', 1);
+			await flushPromises();
+			wrapper.getComponent({ name: 'SessionDetailPanel' }).vm.$emit('close');
+			wrapper.getComponent({ name: component }).vm.$emit('select', null);
+			await flushPromises();
+
+			expect(wrapper.find('[data-test-id="detail-stub"]').exists()).toBe(false);
+			expect(track).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_ITEM,
+				{ agent_id: 'a1', session_id: 'session-xyz', item_type: 'agent' },
+			);
+		},
+	);
 
 	it('emits loaded(null) at load start and the detail once resolved', async () => {
 		const wrapper = mountPanel();
@@ -267,6 +307,7 @@ describe('AgentSessionTimelinePanel', () => {
 			const outsideKeyup = dispatchKeyboardEvent('keyup', 'ArrowDown');
 			expect(outsideKeyup.defaultPrevented).toBe(false);
 			expect(wrapper.find('[data-test-id="detail-stub"]').exists()).toBe(false);
+			expect(track).not.toHaveBeenCalled();
 
 			(timelineRow.element as HTMLElement).focus();
 			const insideKeyup = dispatchKeyboardEvent('keyup', 'ArrowDown');
@@ -280,6 +321,16 @@ describe('AgentSessionTimelinePanel', () => {
 			expect(document.activeElement).toBe(timelineRows[1].element);
 			const moveKeyup = dispatchKeyboardEvent('keyup', 'ArrowDown');
 			expect(moveKeyup.defaultPrevented).toBe(true);
+			expect(track.mock.calls).toEqual([
+				[
+					TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_ITEM,
+					{ agent_id: 'a1', session_id: 'session-xyz', item_type: 'user' },
+				],
+				[
+					TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_ITEM,
+					{ agent_id: 'a1', session_id: 'session-xyz', item_type: 'agent' },
+				],
+			]);
 
 			(wrapper.get('[data-test-id="search-stub"]').element as HTMLInputElement).focus();
 			const inputEscape = dispatchKeyboardEvent('keydown', 'Escape');
@@ -290,6 +341,12 @@ describe('AgentSessionTimelinePanel', () => {
 			const outsideEscape = dispatchKeyboardEvent('keydown', 'Escape');
 			expect(outsideEscape.defaultPrevented).toBe(false);
 			expect(wrapper.find('[data-test-id="detail-stub"]').exists()).toBe(true);
+
+			(timelineRow.element as HTMLElement).focus();
+			dispatchKeyboardEvent('keydown', 'Escape');
+			await flushPromises();
+			expect(wrapper.find('[data-test-id="detail-stub"]').exists()).toBe(false);
+			expect(track).toHaveBeenCalledTimes(2);
 		} finally {
 			wrapper.unmount();
 			host.remove();
@@ -443,5 +500,10 @@ describe('AgentSessionTimelinePanel', () => {
 		await flushPromises();
 
 		expect(wrapper.find('[data-test-id="table-stub"]').attributes('data-selected-index')).toBe('2');
+		expect(track).toHaveBeenCalledExactlyOnceWith(TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_ITEM, {
+			agent_id: 'a1',
+			session_id: 'session-xyz',
+			item_type: 'agent',
+		});
 	});
 });

@@ -14,6 +14,7 @@ import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import {
 	createInstanceAiTraceContext,
 	createSelfHealingAgent,
+	generateWorkflowSource,
 	getSelfHealingResourceId,
 	orchestratorAgentId,
 	SELF_HEALING_PROFILE_VERSION,
@@ -30,18 +31,19 @@ import {
 	type StreamRunResult,
 } from '@n8n/instance-ai';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
-import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
+import { sanitizeErrorDetail } from '@n8n/utils/redaction/sanitize-error-detail';
 import { nanoid } from 'nanoid';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
 import type { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { AiUsageService } from '@/services/ai-usage.service';
-import { modelStreamStallOptions } from '@/modules/agents/model-stream-stall-options';
+import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 
 import { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { InstanceAiCreditService } from '../instance-ai-credit.service';
+import { InstanceAiErrorReporterService } from '../instance-ai-error-reporter.service';
 import { InstanceAiModelService } from '../instance-ai-model.service';
 import { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import type { InstanceAiSandboxService } from '../sandbox/instance-ai-sandbox.service';
@@ -51,7 +53,7 @@ import { WorkflowSuggestionService } from '../workflow-suggestions/workflow-sugg
 import { toWorkflowJSON } from '../workflow-json';
 import { SelfHealingExecutionReferenceService } from './self-healing-execution-reference.service';
 import { SelfHealingCandidateService } from './self-healing-candidate.service';
-import { compileCandidateWorkflow, type CandidateWorkflowResult } from './candidate-workflow';
+import type { CandidateWorkflowResult } from './candidate-workflow';
 
 export type SelfHealingRunInput = {
 	user: User;
@@ -101,6 +103,7 @@ export type SelfHealingRunOptions = {
 	createProxyRunConfig: () => Promise<ProxyRunConfig>;
 	assertCreditsAvailable: () => Promise<void>;
 	onActivity: () => void;
+	onFinalizing: () => void;
 	onComplete: SelfHealingRunLifecycle['onComplete'];
 	getAbortReason: () => string;
 	onFinish: (
@@ -129,6 +132,7 @@ export class SelfHealingAgentService {
 		private readonly credits: InstanceAiCreditService,
 		private readonly events: InProcessEventBus,
 		private readonly candidates: SelfHealingCandidateService,
+		private readonly errorReporter: InstanceAiErrorReporterService,
 	) {}
 
 	assertEnabled(): void {
@@ -163,6 +167,7 @@ export class SelfHealingAgentService {
 		let tracing: InstanceAiTraceContext | undefined;
 		let modelId: ModelConfig | undefined;
 		let stream: StreamRunResult | undefined;
+		let providerStream = false;
 		const result: SelfHealingRunResult = {
 			threadId,
 			runId,
@@ -211,7 +216,13 @@ export class SelfHealingAgentService {
 				userId: user.id,
 				modelId,
 				input: { message: INVESTIGATION_MESSAGE },
-				metadata,
+				metadata: {
+					...metadata,
+					self_healing: true,
+					self_healing_workflow_id: baseline.workflowId,
+					self_healing_execution_id: executionId,
+					self_healing_project_id: baseline.projectId,
+				},
 				proxyConfig: proxy.tracingProxyConfig,
 				n8nVersion: N8N_VERSION,
 				workflowSdkVersion: WORKFLOW_SDK_VERSION,
@@ -238,6 +249,9 @@ export class SelfHealingAgentService {
 				context,
 				modelId,
 				metadata,
+				onStreamStart: () => {
+					providerStream = true;
+				},
 			});
 			result.status = stream.status;
 			result.finishReason = stream.finishReason;
@@ -251,7 +265,10 @@ export class SelfHealingAgentService {
 				result.candidate = {
 					filePath,
 					compile: async () =>
-						await compileCandidateWorkflow({ baseline, context, filePath, abortSignal: signal }),
+						await this.candidates.compile(
+							{ baseline, context, filePath, abortSignal: signal },
+							await this.suggestions.requireEditor(baseline.backgroundUserId, baseline.workflowId),
+						),
 				};
 			}
 			if (stream.status === 'suspended') {
@@ -260,9 +277,10 @@ export class SelfHealingAgentService {
 		} catch (error) {
 			result.status = signal.aborted ? 'cancelled' : 'errored';
 			result.error = error;
-			result.reason = scrubSecretsInText(getErrorMessage(error)).slice(0, 1000);
-			this.logger.error('Self-healing run failed.', { threadId, runId, error: result.reason });
+			result.reason = sanitizeErrorDetail(getErrorMessage(error), 1000);
 		} finally {
+			// Model work has stopped. The final charge must not cancel result persistence.
+			options.onFinalizing();
 			result.usage.durationSeconds = (Date.now() - startedAt) / 1000;
 
 			if ('promptTokens' in result.usage) {
@@ -277,6 +295,7 @@ export class SelfHealingAgentService {
 					stream?.agentRunId || runId,
 					stream?.usage?.usage ?? [],
 					result.status,
+					'self_healing',
 				);
 				if ('credits' in result.usage) {
 					result.usage.credits = credits ?? null;
@@ -287,41 +306,53 @@ export class SelfHealingAgentService {
 					error: getErrorMessage(error),
 				});
 			}
-			if (signal.aborted) result.status = 'cancelled';
-			if (result.status === 'cancelled') {
-				result.reason = options.getAbortReason();
-				delete result.output;
-				delete result.candidate;
-				delete result.finishReason;
-				delete result.validationError;
+			if (signal.aborted || result.status === 'cancelled') {
+				this.markResultCancelled(result, options.getAbortReason());
 			}
+		}
+
+		if (result.status === 'errored' && result.error !== undefined) {
+			this.errorReporter.report(result.error, {
+				component: 'instance-ai-self-healing',
+				role: 'self-healing',
+				threadId,
+				runId,
+				userId: user.id,
+				projectId: baseline.projectId,
+				tracing,
+				providerStream,
+			});
 		}
 
 		try {
 			await options.onComplete(result, signal);
 		} catch (error) {
 			if (signal.aborted && result.status !== 'cancelled') {
-				result.status = 'cancelled';
-				result.reason = options.getAbortReason();
-				delete result.output;
-				delete result.candidate;
-				delete result.finishReason;
-				delete result.validationError;
+				this.markResultCancelled(result, options.getAbortReason());
 			}
 			throw error;
 		} finally {
 			// A successful completion has committed. A later abort cannot undo that result.
 			await this.finish(result, stream, tracing, modelId, options);
-			if (!stream) {
-				await options.sandbox.destroySandbox(threadId, user.id).catch((error: unknown) => {
-					this.logger.warn('Could not clear the incomplete self-healing workspace.', {
+			await options.sandbox
+				.destroySandbox(threadId, 'thread_cleanup', user.id)
+				.catch((error: unknown) => {
+					this.logger.warn('Could not clear the self-healing workspace.', {
 						runId,
 						error: getErrorMessage(error),
 					});
 				});
-			}
 		}
 		return result;
+	}
+
+	private markResultCancelled(result: SelfHealingRunResult, reason: string): void {
+		result.status = 'cancelled';
+		result.reason = reason;
+		delete result.output;
+		delete result.candidate;
+		delete result.finishReason;
+		delete result.validationError;
 	}
 
 	private async validateInput({ user, baseline, executionId }: SelfHealingRunInput) {
@@ -388,18 +419,11 @@ export class SelfHealingAgentService {
 	) {
 		const workflowService = context.workflowService;
 
-		const requireTarget = async (workflowId: string) => {
-			if (workflowId !== baseline.workflowId) {
-				throw new ForbiddenError('Read the workflow assigned to this investigation.');
-			}
-
-			await this.suggestions.requireEditor(user.id, workflowId);
-		};
-
 		context.workflowService = {
 			...workflowService,
 			get: async (workflowId) => {
-				await requireTarget(workflowId);
+				if (workflowId !== baseline.workflowId) return await workflowService.get(workflowId);
+				await this.suggestions.requireEditor(user.id, workflowId);
 				const detail = await workflowService.get(workflowId);
 
 				return {
@@ -420,7 +444,10 @@ export class SelfHealingAgentService {
 			},
 
 			getAsWorkflowJSON: async (workflowId, versionId) => {
-				await requireTarget(workflowId);
+				if (workflowId !== baseline.workflowId) {
+					return await workflowService.getAsWorkflowJSON(workflowId, versionId);
+				}
+				await this.suggestions.requireEditor(user.id, workflowId);
 				if (versionId && versionId !== baseline.expectedBaseline.publishedVersionId) {
 					throw new ForbiddenError('Read the published baseline assigned to this investigation.');
 				}
@@ -431,12 +458,15 @@ export class SelfHealingAgentService {
 				);
 			},
 			getVersion: async (workflowId, versionId) => {
-				await requireTarget(workflowId);
-				if (versionId !== baseline.expectedBaseline.publishedVersionId) {
-					throw new ForbiddenError('Read the published baseline assigned to this investigation.');
+				if (workflowId === baseline.workflowId) {
+					await this.suggestions.requireEditor(user.id, workflowId);
+					if (versionId !== baseline.expectedBaseline.publishedVersionId) {
+						throw new ForbiddenError('Read the published baseline assigned to this investigation.');
+					}
 				}
 				const version = await workflowService.getVersion?.(workflowId, versionId);
-				if (!version) throw new BadRequestError('The captured workflow version is unavailable.');
+				if (!version) throw new BadRequestError('The requested workflow version is unavailable.');
+				if (workflowId !== baseline.workflowId) return version;
 				return {
 					...version,
 					nodes: baseline.original.nodes.map((node) => ({
@@ -455,12 +485,14 @@ export class SelfHealingAgentService {
 		context,
 		modelId,
 		metadata,
+		onStreamStart,
 	}: {
 		input: SelfHealingRunInput;
 		options: SelfHealingRunOptions;
 		context: InstanceAiContext;
 		modelId: ModelConfig;
 		metadata: SelfHealingThreadMetadata;
+		onStreamStart: () => void;
 	}): Promise<StreamRunResult> {
 		const { user, baseline, executionId } = input;
 		const { runId, threadId, signal } = options;
@@ -486,8 +518,9 @@ export class SelfHealingAgentService {
 		});
 
 		signal.throwIfAborted();
-		const consume = async () =>
-			await streamAgentRun(
+		const consume = async () => {
+			onStreamStart();
+			return await streamAgentRun(
 				agent,
 				`${INVESTIGATION_MESSAGE}\n\nWorkflow: ${baseline.workflowId}\nFailed execution: ${executionId}\nCandidate: ${CANDIDATE_FILE_PATH}`,
 				{
@@ -508,6 +541,7 @@ export class SelfHealingAgentService {
 					onActivity: options.onActivity,
 				},
 			);
+		};
 
 		return tracing ? await tracing.withActiveSpan(tracing.actorRun, consume) : await consume();
 	}
@@ -518,20 +552,16 @@ export class SelfHealingAgentService {
 		shareParameters: boolean,
 		abortSignal: AbortSignal,
 	): Promise<void> {
-		const { generateWorkflowCode, buildImports } = await import('@n8n/workflow-sdk');
 		const workflow = toWorkflowJSON(
 			{ ...baseline.original, id: baseline.workflowId },
 			{ redactParameters: !shareParameters },
 		);
-		const body = generateWorkflowCode({ workflow, includeNodeIds: true, includePositions: false });
-		const imports = buildImports(body);
+		const source = await generateWorkflowSource(workflow);
 
-		await writeWorkspaceFile(
-			workspace,
-			CANDIDATE_FILE_PATH,
-			imports ? `${imports}\n\n${body}` : body,
-			{ logger: this.logger, abortSignal },
-		);
+		await writeWorkspaceFile(workspace, CANDIDATE_FILE_PATH, source, {
+			logger: this.logger,
+			abortSignal,
+		});
 	}
 
 	private async finish(

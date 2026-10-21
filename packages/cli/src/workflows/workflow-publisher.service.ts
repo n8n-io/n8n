@@ -4,8 +4,6 @@ import { Service } from '@n8n/di';
 import type { IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
-import { isCredSharingEnabled } from '@/constants/credential-sharing';
-
 /**
  * Resolves who a triggered execution should be attributed to.
  *
@@ -29,9 +27,6 @@ export class WorkflowPublisherService {
 	 * Left empty rather than substituted with a stand-in. A run with no identity
 	 * behaves exactly as it does today, so callers need no fallback: this only
 	 * ever adds attribution where there was none.
-	 *
-	 * Returns `undefined` while the feature flag is off, which is the single
-	 * gate for this behaviour — call sites stay unconditional.
 	 *
 	 * @param executedVersionId - the version whose nodes the run executes, which
 	 * every caller already holds. Deliberately not the workflow row's
@@ -70,8 +65,6 @@ export class WorkflowPublisherService {
 		workflowId: string,
 		executedVersionId: string | null | undefined,
 	): Promise<string | undefined> {
-		if (!isCredSharingEnabled()) return undefined;
-
 		if (!executedVersionId) {
 			// Nothing to attribute to. The latest activation belongs to whichever
 			// version was published last, which is not the one running here, so

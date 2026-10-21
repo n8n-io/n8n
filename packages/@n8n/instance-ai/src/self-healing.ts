@@ -11,8 +11,10 @@ export const selfHealingOutputSchema = z
 			.string()
 			.trim()
 			.min(1)
-			.max(80)
-			.describe('Short, plain-language title. Aim for 5–10 words. Do not use Markdown.'),
+			.transform((summary) => Array.from(summary).slice(0, 80).join(''))
+			.describe(
+				'Short, plain-language title. Aim for 5–10 words, at most 80 characters. Do not use Markdown.',
+			),
 		report: z
 			.string()
 			.trim()
@@ -22,7 +24,7 @@ export const selfHealingOutputSchema = z
 				'A concise Markdown report under 150 words. Use only **What happened** and **What changed** sections. ' +
 					'Include verification limits and any next step under What changed. State when no changes were made.',
 			),
-		candidateFilePath: z.string().trim().min(1).optional(),
+		candidateFilePath: z.string().trim().min(1).nullable(),
 	})
 	.strict()
 	.superRefine((output, ctx) => {
@@ -34,7 +36,7 @@ export const selfHealingOutputSchema = z
 			});
 		}
 
-		if (output.outcome === 'could_not_fix' && output.candidateFilePath !== undefined) {
+		if (output.outcome === 'could_not_fix' && output.candidateFilePath !== null) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				path: ['candidateFilePath'],

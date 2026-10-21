@@ -6,6 +6,7 @@ import InstanceAiView from '../InstanceAiView.vue';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { INSTANCE_AI_VIEW } from '../constants';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 
@@ -125,6 +126,12 @@ describe('InstanceAiView', () => {
 			instance_id: TEST_INSTANCE_ID,
 			source_url: null,
 		});
+	});
+
+	it('loads node types on mount', () => {
+		renderView({ pinia });
+
+		expect(useNodeTypesStore().loadNodeTypesIfNotLoaded).toHaveBeenCalledOnce();
 	});
 
 	it('shows onboarding to self-managed admins and returns to chat after completion', async () => {

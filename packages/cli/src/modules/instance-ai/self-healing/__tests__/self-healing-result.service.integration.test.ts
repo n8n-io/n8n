@@ -202,7 +202,7 @@ async function prepareInvestigation(
 			outcome,
 			summary: input.summary,
 			report: input.report,
-			...(withSuggestion ? { candidateFilePath: 'candidate.workflow.ts' } : {}),
+			candidateFilePath: withSuggestion ? 'candidate.workflow.ts' : null,
 		},
 		usage: input.usage,
 		completedAt: new Date().toISOString(),

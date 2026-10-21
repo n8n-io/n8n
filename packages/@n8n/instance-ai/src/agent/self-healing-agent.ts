@@ -1,5 +1,4 @@
-import { Agent, Memory, Tool, loadRuntimeSkillSourceFromDirectory } from '@n8n/agents';
-import { resolve } from 'node:path';
+import { Agent, Memory, Tool } from '@n8n/agents';
 
 import { applyAgentThinking } from './apply-agent-thinking';
 import { getSandboxWorkspaceSection, UNTRUSTED_CONTENT_DOCTRINE } from './shared-prompts';
@@ -9,6 +8,7 @@ import {
 	selfHealingOutputSchema,
 	type SelfHealingCandidateVerifier,
 } from '../self-healing';
+import { SELF_HEALING_PROMPT } from '../self-healing/self-healing.prompt';
 import { createToolRegistryFromTools, toolRegistryValues } from '../tool-registry';
 import { createDataTablesTool } from '../tools/data-tables.tool';
 import { createExecutionsTool } from '../tools/executions.tool';
@@ -38,7 +38,8 @@ export interface CreateSelfHealingAgentOptions {
 const SOURCE_GUIDANCE =
 	'Read workflow source for context. Keep edits in the supplied self-healing candidate file. ' +
 	'Use workspace_read_file and workspace_str_replace_file, then verify_candidate. ' +
-	'Workflow reads return the original baseline for this investigation.';
+	'Reads of the target workflow return its captured baseline. ' +
+	'You can read other accessible workflows for context, including sub-workflows.';
 
 function createSelfHealingTools(
 	context: InstanceAiContext,
@@ -109,17 +110,11 @@ export async function createSelfHealingAgent(
 			tags: [SELF_HEALING_PROFILE_VERSION],
 		}) ?? tools;
 
-	const skillSource = loadRuntimeSkillSourceFromDirectory(
-		resolve(__dirname, '..', '..', 'skills', 'internal'),
-	);
-	const skill = await skillSource.loadSkill('self-healing');
-	if (!skill) throw new Error('Self-healing skill is unavailable');
-
 	const systemPrompt = [
 		'Investigate the supplied failed execution. Prepare one candidate workflow for review.',
 		'Work without user interaction. Report blockers in the structured output.',
 		UNTRUSTED_CONTENT_DOCTRINE,
-		skill.instructions,
+		SELF_HEALING_PROMPT,
 	].join('\n\n');
 
 	setTracePromptVersion(tracing, SELF_HEALING_PROFILE_VERSION);
@@ -153,7 +148,6 @@ export async function createSelfHealingAgent(
 			tools: tracedTools,
 			modelId,
 			toolSearchEnabled: false,
-			skills: skillSource.registry,
 		}),
 	);
 
