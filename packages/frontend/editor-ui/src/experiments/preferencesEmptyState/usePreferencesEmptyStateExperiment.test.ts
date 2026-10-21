@@ -1,6 +1,5 @@
 import { reactive } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import {
 	EXPERIMENTS_TO_TRACK,
@@ -11,7 +10,6 @@ import { usePreferencesEmptyStateExperiment } from './usePreferencesEmptyStateEx
 
 const getVariant = vi.fn();
 const trackExposure = vi.fn();
-const track = vi.fn();
 const instanceAiModule = reactive({ active: true, enabled: true, setupCompleted: true });
 const settingsStore = {
 	isModuleActive: (name: string) => name === 'instance-ai' && instanceAiModule.active,
@@ -29,10 +27,6 @@ vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: vi.fn(() => ({ getVariant, trackExposure })),
 }));
 
-vi.mock('@n8n/composables/useTelemetry', () => ({
-	useTelemetry: () => ({ track }),
-}));
-
 vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: () => settingsStore,
 }));
@@ -46,7 +40,6 @@ describe('usePreferencesEmptyStateExperiment', () => {
 	beforeEach(() => {
 		getVariant.mockReset();
 		trackExposure.mockReset();
-		track.mockReset();
 		instanceAiModule.active = true;
 		instanceAiModule.enabled = true;
 		instanceAiModule.setupCompleted = true;
@@ -81,19 +74,15 @@ describe('usePreferencesEmptyStateExperiment', () => {
 
 		expect(experiment.variant.value).toBeUndefined();
 		expect(trackExposure).not.toHaveBeenCalled();
-		expect(track).not.toHaveBeenCalled();
 	});
 
-	it('tracks the exposure with the experiment payload', () => {
+	it('tracks the exposure through PostHog', () => {
 		getVariant.mockReturnValue('assistant');
 
 		usePreferencesEmptyStateExperiment().trackExposure();
 
+		expect(trackExposure).toHaveBeenCalledTimes(1);
 		expect(trackExposure).toHaveBeenCalledWith(PREFERENCES_EMPTY_STATE_EXPERIMENT.name);
-		expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.PREFERENCES_EMPTY_STATE_EXPOSED, {
-			variant: 'assistant',
-			'$feature/127_preferences_empty_state': 'assistant',
-		});
 	});
 
 	it('tracks no exposure without a variant', () => {
@@ -102,7 +91,6 @@ describe('usePreferencesEmptyStateExperiment', () => {
 		usePreferencesEmptyStateExperiment().trackExposure();
 
 		expect(trackExposure).not.toHaveBeenCalled();
-		expect(track).not.toHaveBeenCalled();
 	});
 
 	it('registers the experiment for centralized enrollment tracking', () => {

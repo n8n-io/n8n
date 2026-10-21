@@ -1,10 +1,7 @@
 import { computed } from 'vue';
-import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import { PREFERENCES_EMPTY_STATE_EXPERIMENT } from '@/app/constants/experiments';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { getExperimentTelemetryPayload } from '@/experiments/utils';
 import { useInstanceAiReady } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 
 const PREFERENCES_EMPTY_STATE_VARIANTS = [
@@ -21,7 +18,6 @@ function isPreferencesEmptyStateVariant(value: unknown): value is PreferencesEmp
 
 export function usePreferencesEmptyStateExperiment() {
 	const posthogStore = usePostHog();
-	const telemetry = useTelemetry();
 	const instanceAiReady = useInstanceAiReady();
 
 	const variant = computed<PreferencesEmptyStateVariant | undefined>(() => {
@@ -31,13 +27,8 @@ export function usePreferencesEmptyStateExperiment() {
 	});
 
 	function trackExposure() {
-		const current = variant.value;
-		if (!current) return;
+		if (!variant.value) return;
 		posthogStore.trackExposure(PREFERENCES_EMPTY_STATE_EXPERIMENT.name);
-		telemetry.track(
-			TELEMETRY_EVENT.CONTEXT.PREFERENCES_EMPTY_STATE_EXPOSED,
-			getExperimentTelemetryPayload(PREFERENCES_EMPTY_STATE_EXPERIMENT, current),
-		);
 	}
 
 	return { variant, trackExposure };
