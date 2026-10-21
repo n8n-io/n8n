@@ -14,6 +14,7 @@
 // ---------------------------------------------------------------------------
 
 import { REMOVED_BUILDER_TOOL_NAMES, resolveBuilderToolName } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { jsonParse } from 'n8n-workflow';
 import { promises as fs } from 'node:fs';
@@ -706,7 +707,12 @@ function summarizeToolCallArgs(toolName: string, args: unknown): string {
 			return trunc(`${str(a.name)} ${str(a.filePath)}`);
 		case ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW:
 			return trunc(str(a.workflowId) || str(a.workItemId));
-		case DOMAIN_TOOL_IDS.CREDENTIALS:
+		case DOMAIN_TOOL_IDS.SETUP_CREDENTIALS:
+			return trunc(
+				Array.isArray(a.credentials)
+					? a.credentials.map((c: unknown) => (isRecord(c) ? str(c.credentialType) : '')).join(', ')
+					: '',
+			);
 		case DOMAIN_TOOL_IDS.DATA_TABLES:
 		case DOMAIN_TOOL_IDS.NODES:
 		case DOMAIN_TOOL_IDS.WORKFLOWS:

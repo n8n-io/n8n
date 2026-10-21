@@ -65,7 +65,11 @@ const BUILDER_TOOL_TRANSLATION_KEYS: Record<string, BaseTextKey> = {
 	[SHARED_BUILDER_TOOL_NAMES.GET_NODE_PARAMETER_OPTIONS]:
 		'instanceAi.tools.get_node_parameter_options',
 	[SHARED_BUILDER_TOOL_NAMES.EXECUTE_NODE]: 'instanceAi.tools.execute_node',
-	[AGENT_BUILDER_TOOL_NAMES.LIST_CREDENTIALS]: 'instanceAi.tools.agent_builder_list_credentials',
+	[SHARED_BUILDER_TOOL_NAMES.LIST_CREDENTIALS]: 'instanceAi.tools.list_credentials',
+	[SHARED_BUILDER_TOOL_NAMES.SEARCH_CREDENTIAL_TYPES]: 'instanceAi.tools.search_credential_types',
+	[SHARED_BUILDER_TOOL_NAMES.SETUP_CREDENTIALS]: 'instanceAi.tools.setup_credentials',
+	[SHARED_BUILDER_TOOL_NAMES.TEST_CREDENTIAL]: 'instanceAi.tools.test_credential',
+	[SHARED_BUILDER_TOOL_NAMES.DELETE_CREDENTIAL]: 'instanceAi.tools.delete_credential',
 };
 
 export function getToolNameTranslationKey(

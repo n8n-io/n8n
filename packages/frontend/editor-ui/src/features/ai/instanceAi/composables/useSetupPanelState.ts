@@ -94,9 +94,8 @@ export function useSetupPanelState(options: {
 				if (!isRecord(call.result) || call.result.success !== true || call.result.workflowId !== id)
 					continue;
 				const earlySetup =
-					resolveBuilderToolName(call.toolName) === SHARED_BUILDER_TOOL_NAMES.CREDENTIALS &&
-					call.args.action === 'setup' &&
-					call.result.preBuild === true;
+					resolveBuilderToolName(call.toolName, call.args.action) ===
+						SHARED_BUILDER_TOOL_NAMES.SETUP_CREDENTIALS && call.result.preBuild === true;
 				if (
 					!earlySetup &&
 					call.toolName !== WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW &&
