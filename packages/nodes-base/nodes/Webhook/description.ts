@@ -155,8 +155,10 @@ export const trustedSourceProperty = (propertyName = 'authentication'): INodePro
 	typeOptions: { loadOptionsMethod: 'listTrustedSources' },
 	default: DEFAULT_TRUSTED_SOURCE_ID,
 	displayOptions: { show: { [propertyName]: ['n8nOAuth2'] } },
-	description:
-		'The identity provider whose access tokens can trigger this workflow. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+	// The resolvers read the raw value without an execution context, so it must be static.
+	noDataExpression: true,
+	// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
+	description: 'The identity provider whose access tokens can trigger this workflow',
 });
 
 export const httpMethodsProperty: INodeProperties = {
