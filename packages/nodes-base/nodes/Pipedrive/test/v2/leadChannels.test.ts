@@ -53,6 +53,15 @@ describe('PipedriveV2 loadOptions => getLeadChannels', () => {
 
 		const result = await getLeadChannels.call(mockThis);
 
+		expect(pipedriveApiRequest).toHaveBeenCalledTimes(2);
+		expect(pipedriveApiRequest).toHaveBeenNthCalledWith(
+			1,
+			'GET',
+			'/leadFields',
+			{},
+			{},
+			{ apiVersion: 'v1' },
+		);
 		expect(pipedriveApiRequest).toHaveBeenNthCalledWith(
 			2,
 			'GET',
