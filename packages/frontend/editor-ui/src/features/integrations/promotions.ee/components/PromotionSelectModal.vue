@@ -6,13 +6,20 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { createEventBus } from '@n8n/utils/event-bus';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants/modals';
-import Modal from '@/app/components/Modal.vue';
 import TimeAgo from '@/app/components/TimeAgo.vue';
-import { N8nButton, N8nCheckbox, N8nInput, N8nNewBadge, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCheckbox,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nInput,
+	N8nNewBadge,
+	N8nText,
+} from '@n8n/design-system';
 import type { PromotableResourceStatus, PromotionDirection } from '@n8n/api-types';
 import { usePromotionChanges } from '../composables/usePromotionChanges';
 import { promotionEventBus } from '../promotions.eventBus';
@@ -21,6 +28,8 @@ import { getPromoteErrorMessage } from '../promoteErrorMessage';
 import { promoteSuccessToast } from '../promotionResult';
 import PromotionBindingsFlow from './PromotionBindingsFlow.vue';
 import type { AppliedResult, BlockedApplyResult } from '../promotions.types';
+
+defineOptions({ inheritAttrs: false });
 
 interface Props {
 	modalName: string;
@@ -39,7 +48,7 @@ const usersStore = useUsersStore();
 const rootStore = useRootStore();
 const message = useMessage();
 const toast = useToast();
-const modalBus = createEventBus();
+const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 
 const { direction } = props.data;
 const isIncoming = direction === 'apply';
@@ -162,6 +171,23 @@ function beforeClose() {
 function onClose() {
 	if (beforeClose() === false) return;
 	uiStore.closeModal(props.modalName);
+}
+
+function canDismissDialog() {
+	return !isApplying.value && !isSubmitting.value;
+}
+
+function closeDialog() {
+	if (!canDismissDialog()) return;
+	uiStore.closeModal(props.modalName);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) closeDialog();
+}
+
+function onDismissBlocked(event: Event) {
+	if (!canDismissDialog()) event.preventDefault();
 }
 
 async function onPromote() {
@@ -314,21 +340,17 @@ onMounted(async () => {
 </script>
 
 <template>
-	<Modal
+	<N8nDialog
 		v-if="!blockedResult"
-		:before-close="() => !isApplying && !isSubmitting"
-		:name="modalName"
-		:title="title"
-		:event-bus="modalBus"
-		:show-close="!isApplying && !isSubmitting"
-		:close-on-click-modal="!isApplying && !isSubmitting"
-		:close-on-press-escape="!isApplying && !isSubmitting"
-		width="640px"
-		height="80vh"
-		max-height="680px"
-		custom-class="promotion-modal"
+		:open="modalOpen"
+		size="xlarge"
+		:header="title"
+		:show-close-button="!isApplying && !isSubmitting"
+		@update:open="onDialogOpenUpdate"
+		@interact-outside="onDismissBlocked"
+		@escape-key-down="onDismissBlocked"
 	>
-		<template #content>
+		<N8nDialogBody>
 			<div :class="$style.content">
 				<div :class="$style.toolbar">
 					<N8nCheckbox
@@ -485,45 +507,39 @@ onMounted(async () => {
 					</div>
 				</template>
 			</div>
-		</template>
+		</N8nDialogBody>
+		<N8nDialogFooter>
+			<N8nText v-if="selectedCount > 0" size="small" color="text-light">
+				{{
+					i18n.baseText('promotions.modal.incoming.selected', {
+						interpolate: { count: String(selectedCount) },
+					})
+				}}
+			</N8nText>
 
-		<template #footer>
-			<div :class="$style.footer">
-				<div :class="$style.footerLeft">
-					<N8nText v-if="selectedCount > 0" size="small" color="text-light">
-						{{
-							i18n.baseText('promotions.modal.incoming.selected', {
-								interpolate: { count: String(selectedCount) },
-							})
-						}}
-					</N8nText>
-				</div>
-				<div :class="$style.footerRight">
-					<N8nButton variant="outline" :disabled="isSubmitting" @click="onClose">
-						{{ i18n.baseText('promotions.modal.close') }}
-					</N8nButton>
-					<N8nButton
-						v-if="isIncoming"
-						:loading="isApplying"
-						:disabled="isLoading || !!error || selectedCount === 0"
-						data-test-id="promotion-apply-selected"
-						@click="onApplySelected"
-					>
-						{{ getApplySelectedButtonLabel() }}
-					</N8nButton>
-					<N8nButton
-						v-else
-						data-test-id="promotion-submit"
-						:disabled="isPromoteDisabled"
-						:loading="isSubmitting"
-						@click="onPromote"
-					>
-						{{ getPromoteButtonLabel() }}
-					</N8nButton>
-				</div>
-			</div>
-		</template>
-	</Modal>
+			<N8nButton variant="outline" :disabled="isSubmitting" @click="onClose">
+				{{ i18n.baseText('promotions.modal.close') }}
+			</N8nButton>
+			<N8nButton
+				v-if="isIncoming"
+				:loading="isApplying"
+				:disabled="isLoading || !!error || selectedCount === 0"
+				data-test-id="promotion-apply-selected"
+				@click="onApplySelected"
+			>
+				{{ getApplySelectedButtonLabel() }}
+			</N8nButton>
+			<N8nButton
+				v-else
+				data-test-id="promotion-submit"
+				:disabled="isPromoteDisabled"
+				:loading="isSubmitting"
+				@click="onPromote"
+			>
+				{{ getPromoteButtonLabel() }}
+			</N8nButton>
+		</N8nDialogFooter>
+	</N8nDialog>
 	<PromotionBindingsFlow
 		v-else
 		:open="true"
@@ -542,26 +558,6 @@ onMounted(async () => {
 		@source-changed="onSourceChanged"
 	/>
 </template>
-
-<style lang="scss">
-.promotion-modal {
-	.el-dialog__body {
-		padding-inline: 0;
-		padding: 0;
-	}
-
-	.modal-content {
-		padding-inline: 0;
-		margin-inline: 0;
-	}
-
-	.modal-content ~ div {
-		margin-top: 0;
-		border-top: var(--border);
-		padding: var(--spacing--sm) var(--spacing--md);
-	}
-}
-</style>
 
 <style lang="scss" module>
 :global(body) {
@@ -704,6 +700,7 @@ onMounted(async () => {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+	width: 100%;
 }
 
 .footerLeft {
