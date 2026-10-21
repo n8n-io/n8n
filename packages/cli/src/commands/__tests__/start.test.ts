@@ -87,9 +87,17 @@ const pollJobProvider = mockInstance(PollJobProvider);
 
 const instanceSettings = Container.get(InstanceSettings);
 
-const { FakeRunDataTracker } = vi.hoisted(() => ({ FakeRunDataTracker: class {} }));
+const { FakeRunDataTracker, FakeMemoryGuardService } = vi.hoisted(() => ({
+	FakeRunDataTracker: class {},
+	FakeMemoryGuardService: class {
+		init = vi.fn();
+	},
+}));
 vi.mock('@/memory-guard/run-data-tracker', () => ({
 	RunDataTracker: FakeRunDataTracker,
+}));
+vi.mock('@/memory-guard/memory-guard.service', () => ({
+	MemoryGuardService: FakeMemoryGuardService,
 }));
 
 describe('Start - AuthRolesService initialization', () => {
@@ -413,13 +421,16 @@ describe('Start - AuthRolesService initialization', () => {
 			containerGet.mockRestore();
 		});
 
-		it('should start the run data tracker when the guard is enabled in regular mode', async () => {
+		it('should start the run data tracker and the guard when the guard is enabled in regular mode', async () => {
+			const guard = new FakeMemoryGuardService();
+			Container.set(FakeMemoryGuardService, guard);
 			// @ts-expect-error - Accessing protected property for testing
 			start.globalConfig.memoryGuard = { enabled: true };
 
 			await start.init();
 
 			expect(containerGet).toHaveBeenCalledWith(FakeRunDataTracker);
+			expect(guard.init).toHaveBeenCalled();
 		});
 
 		it('should not start the run data tracker when the guard is disabled', async () => {
