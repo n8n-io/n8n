@@ -560,6 +560,7 @@ export type {
 	CloudBrowserCredentialToCreate,
 	CloudBrowserAgentOutcome,
 	CloudBrowserAgentResult,
+	CloudBrowserUserActionHost,
 	RunCloudBrowserAgentOptions,
 } from './agent/cloud-browser-agent';
 export const executeResumableStream: typeof ResumableStreamExecutorMod.executeResumableStream =

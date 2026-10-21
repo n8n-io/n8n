@@ -1,6 +1,7 @@
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
+	InstanceAiCloudBrowserLiveViewResponse,
 	AiPreferenceScope,
 	ComputerUseChannel,
 	InstanceAiAttachment,
@@ -107,6 +108,55 @@ export async function postCancelTask(
 	taskId: string,
 ): Promise<void> {
 	await makeRestApiRequest(context, 'POST', `/instance-ai/chat/${threadId}/tasks/${taskId}/cancel`);
+}
+
+/**
+ * GET /instance-ai/chat/:threadId/tasks/:taskId/live-view
+ * The live view of a cloud browser task. The link lets anyone who has it control the browser,
+ * so keep it in memory only.
+ */
+export async function fetchCloudBrowserLiveView(
+	context: IRestApiContext,
+	threadId: string,
+	taskId: string,
+): Promise<InstanceAiCloudBrowserLiveViewResponse> {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/instance-ai/chat/${threadId}/tasks/${taskId}/live-view`,
+	);
+}
+
+/**
+ * GET /instance-ai/chat/:threadId/tasks/:taskId/page
+ * The page a cloud browser task is on. Cheap enough to poll.
+ */
+export async function fetchCloudBrowserPage(
+	context: IRestApiContext,
+	threadId: string,
+	taskId: string,
+): Promise<{ pageUrl?: string }> {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/instance-ai/chat/${threadId}/tasks/${taskId}/page`,
+	);
+}
+
+/**
+ * POST /instance-ai/chat/:threadId/tasks/:taskId/take-over
+ * The user takes over a cloud browser task's browser. The agent pauses at its next call.
+ */
+export async function postCloudBrowserTakeOver(
+	context: IRestApiContext,
+	threadId: string,
+	taskId: string,
+): Promise<void> {
+	await makeRestApiRequest(
+		context,
+		'POST',
+		`/instance-ai/chat/${threadId}/tasks/${taskId}/take-over`,
+	);
 }
 
 /**

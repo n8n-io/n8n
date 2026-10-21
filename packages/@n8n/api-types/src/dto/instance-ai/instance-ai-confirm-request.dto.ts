@@ -78,6 +78,13 @@ const resourceDecisionConfirmSchema = z.object({
 	resourceDecision: instanceGatewayResourceDecisionSchema,
 });
 
+/** The user hands the cloud browser back to the agent (inputType='browser-user-action'). */
+const browserReturnControlConfirmSchema = z.object({
+	kind: z.literal('browserReturnControl'),
+	/** What the user changed, after they took over without the agent asking. */
+	userInput: z.string().max(2000).optional(),
+});
+
 /** Per-node credential map: `Record<nodeName, Record<credentialType, credentialId>>`. */
 const nodeCredentialsRecord = z.record(credentialIdByTypeSchema).optional();
 /** Per-node parameter map: `Record<nodeName, Record<paramName, value>>`. */
@@ -117,6 +124,7 @@ export const InstanceAiConfirmRequestDto = z.discriminatedUnion('kind', [
 	domainAccessDenySchema,
 	planDenySchema,
 	resourceDecisionConfirmSchema,
+	browserReturnControlConfirmSchema,
 	setupWorkflowApplyConfirmSchema,
 	setupWorkflowTestTriggerConfirmSchema,
 	mcpConnectConfirmSchema,

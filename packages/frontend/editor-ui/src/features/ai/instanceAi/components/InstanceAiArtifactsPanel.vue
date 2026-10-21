@@ -12,6 +12,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { computed, inject, type Ref } from 'vue';
 import { useBuildingArtifactIds } from '../composables/useBuildingArtifactIds';
+import InstanceAiCloudBrowsersCard from './InstanceAiCloudBrowsersCard.vue';
 import { useInstanceAiStore, useThread } from '../instanceAi.store';
 import type { ResourceEntry } from '../useResourceRegistry';
 import {
@@ -376,6 +377,7 @@ async function dismissContext(key: string) {
 				</div>
 			</div>
 		</div>
+		<InstanceAiCloudBrowsersCard />
 	</aside>
 </template>
 

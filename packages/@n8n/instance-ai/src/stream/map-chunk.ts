@@ -9,6 +9,7 @@ import {
 	taskListSchema,
 	plannedTaskArgSchema,
 	gatewayConfirmationRequiredPayloadSchema,
+	browserUserActionPayloadSchema,
 	webSearchMetaSchema,
 	channelConfigSchema,
 	mcpConnectRequestSchema,
@@ -218,7 +219,8 @@ type ConfirmationInputType =
 	| 'questions'
 	| 'plan-review'
 	| 'resource-decision'
-	| 'continue';
+	| 'continue'
+	| 'browser-user-action';
 
 /** A non-empty string, or undefined for anything else (matches the legacy `value ? value : undefined` gate). */
 function presentString(value: unknown): string | undefined {
@@ -255,6 +257,7 @@ function parseInputType(value: unknown): ConfirmationInputType | undefined {
 		'plan-review',
 		'resource-decision',
 		'continue',
+		'browser-user-action',
 	] as const;
 	return (valid as readonly string[]).includes(raw ?? '')
 		? (raw as (typeof valid)[number])
@@ -353,6 +356,10 @@ function mapSuspendedChunk(
 		suspendPayload.resourceDecision,
 		gatewayConfirmationRequiredPayloadSchema,
 	);
+	const browserUserAction = parseSchemaRecord(
+		suspendPayload.browserUserAction,
+		browserUserActionPayloadSchema,
+	);
 	const channelConfig = parseSchemaRecord(suspendPayload.channelConfig, channelConfigSchema);
 	const mcpConnectRequest = parseSchemaRecord(
 		suspendPayload.mcpConnectRequest,
@@ -407,6 +414,7 @@ function mapSuspendedChunk(
 			...(tasks ? { tasks } : {}),
 			...(planItems ? { planItems } : {}),
 			...(resourceDecision ? { resourceDecision } : {}),
+			...(browserUserAction ? { browserUserAction } : {}),
 			...(channelConfig ? { channelConfig } : {}),
 			...(mcpConnectRequest ? { mcpConnectRequest } : {}),
 			...(testListener ? { testListener } : {}),

@@ -1186,6 +1186,26 @@ export class PlaywrightAdapter {
 		return state;
 	}
 
+	/**
+	 * The browser's own id for a tracked page: its CDP target id. Page ids here are generated, so
+	 * this is how a caller matches a page to what the browser reports, such as a live view per tab.
+	 */
+	async getPageTargetId(pageId: string): Promise<string | undefined> {
+		const state = this.pageStates.get(pageId);
+		if (!state) return undefined;
+		try {
+			const cdp = await state.page.context().newCDPSession(state.page);
+			try {
+				const { targetInfo } = await cdp.send('Target.getTargetInfo');
+				return targetInfo.targetId;
+			} finally {
+				await cdp.detach().catch(() => {});
+			}
+		} catch {
+			return undefined;
+		}
+	}
+
 	/** Get the live URL for a tracked page (synchronous, from Playwright's page.url()). */
 	getPageUrl(pageId: string): string | undefined {
 		const state = this.pageStates.get(pageId);

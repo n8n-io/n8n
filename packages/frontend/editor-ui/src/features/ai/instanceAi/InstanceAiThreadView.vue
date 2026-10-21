@@ -32,7 +32,11 @@ import {
 	getThreadDisplayTitle,
 } from './instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
-import { useCanvasPreview } from './useCanvasPreview';
+import { isArtifactTab, useCanvasPreview } from './useCanvasPreview';
+import {
+	CloudBrowserLiveViewsKey,
+	useCloudBrowserLiveViews,
+} from './composables/useCloudBrowserLiveViews';
 import { fetchThreadTabs, saveThreadTabs } from './instanceAi.memory.api';
 import { buildInstanceAiAgentPreviewHandoffContext } from './composables/useInstanceAiHandoff';
 import type { AgentPreviewHandoffParams } from './composables/useInstanceAiAgentPreviewHandoff';
@@ -58,6 +62,8 @@ import { buildFixWithAiPrompt } from './fixWithAi';
 import { isAgentWorthTesting, testAgentOfferKey } from './testAgentOffer';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
+import InstanceAiBrowserPreview from './components/InstanceAiBrowserPreview.vue';
+import InstanceAiCloudBrowserUserActionPanel from './components/InstanceAiCloudBrowserUserActionPanel.vue';
 import { TabsRoot } from 'reka-ui';
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
@@ -275,7 +281,11 @@ const preview = useCanvasPreview({
 watch(
 	[() => preview.activeTabId.value, () => preview.isPreviewVisible.value],
 	([tabId, previewVisible]) => {
-		thread.setActiveArtifactId(previewVisible ? tabId : undefined);
+		// The agent only hears about artifacts, not browser tabs.
+		const isArtifact = !!preview.openTabs.value.find(
+			(tab) => tab.id === tabId && isArtifactTab(tab),
+		);
+		thread.setActiveArtifactId(previewVisible && isArtifact ? tabId : undefined);
 	},
 	{ immediate: true },
 );
@@ -283,7 +293,7 @@ watch(
 // stored tabs load, the default tabs can still hold closed ones, so send none.
 watch(
 	[() => preview.openTabs.value, () => preview.tabsLoaded.value],
-	([tabs, loaded]) => thread.setOpenTabs(loaded ? tabs : null),
+	([tabs, loaded]) => thread.setOpenTabs(loaded ? tabs.filter(isArtifactTab) : null),
 	{ immediate: true },
 );
 // --- Setup panel (checklist docked above the composer) ---
@@ -359,6 +369,11 @@ const activeAgentPreviewSessionId = computed(() => {
 provide('openWorkflowPreview', openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAgentPreview', preview.openAgentPreview);
+provide('openCloudBrowserTab', preview.openCloudBrowserTab);
+provide(
+	CloudBrowserLiveViewsKey,
+	useCloudBrowserLiveViews(preview.cloudBrowserTasks, () => props.threadId),
+);
 provide('openAgentChatPreview', openAgentChatPreview);
 provide('pendingComposerContext', handoffContext);
 provide(
@@ -966,6 +981,7 @@ function handleNewThreadClick() {
 					@agent-attachment-restored="onAgentAttachmentRestored"
 				>
 					<template #above-input>
+						<InstanceAiCloudBrowserUserActionPanel />
 						<InstanceAiSetupPanel
 							v-if="setupPanelWorkflowId"
 							ref="setupPanel"
@@ -1123,6 +1139,17 @@ function handleNewThreadClick() {
 								:pending="preview.activeAgentPending.value"
 								@preview-open-change="handleAgentPreviewDockOpenChange"
 								@assistant-handoff="handleAgentPreviewAssistantHandoff"
+							/>
+							<!-- Every browser tab stays mounted, so its live view does not reload on each switch. -->
+							<InstanceAiBrowserPreview
+								v-for="browserTab in preview.browserTabs.value"
+								v-show="
+									preview.isPreviewVisible.value &&
+									preview.activeBrowserTab.value?.id === browserTab.id
+								"
+								:key="browserTab.id"
+								:class="$style.previewSlot"
+								:tab="browserTab"
 							/>
 						</div>
 					</TabsRoot>

@@ -140,6 +140,8 @@ export interface Adapter {
 	clearStorage(pageId: string, kind: 'local' | 'session'): Promise<void>;
 	// Sync helpers used by tool helpers
 	getPageUrl(pageId: string): string | undefined;
+	/** The browser's own id for a page (its CDP target id), or `undefined` when unknown. */
+	getPageTargetId?(pageId: string): Promise<string | undefined>;
 	// Credential capture
 	getElementValue(pageId: string, target: ElementTarget): Promise<string>;
 }

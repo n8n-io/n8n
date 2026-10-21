@@ -51,6 +51,8 @@ export function toConfirmationData(request: InstanceAiConfirmRequest): Confirmat
 			};
 		case 'resourceDecision':
 			return { approved: true, resourceDecision: request.resourceDecision };
+		case 'browserReturnControl':
+			return { approved: true, userInput: request.userInput };
 		case 'mcpConnect':
 			return { approved: request.approved, connectedSlugs: request.connectedSlugs };
 		case 'setupWorkflowApply':

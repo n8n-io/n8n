@@ -252,19 +252,23 @@ export class InstanceAiCloudBrowserTaskService {
 		const { taskId, agentId } = task;
 		const { user, runId, threadId } = run;
 		const confirmationCards = new Set<string>();
+		// "Allow once" lasts for the task, not the run that started it: that run usually ends first,
+		// and its approvals with it.
+		const domainGate = { ...run.domainGate, runId: taskId };
 
 		try {
 			const mcpServer = await cloudBrowserService.createServer(
 				user.id,
 				threadId,
 				taskId,
-				run.domainGate,
+				domainGate,
 			);
 			try {
 				const result = await runCloudBrowserAgent({
 					agentId,
 					brief,
 					mcpServer,
+					userActionHost: mcpServer,
 					modelId: run.modelId,
 					threadId,
 					runId,
@@ -282,6 +286,7 @@ export class InstanceAiCloudBrowserTaskService {
 				return { text: result.summary, outcome: { outcome: result.outcome } };
 			} finally {
 				await cloudBrowserService.release(taskId);
+				domainGate.tracker.clearRun(taskId);
 				// A task that ends with a card open, stopped or failed, must not leave it answerable.
 				for (const requestId of confirmationCards) await this.closeConfirmationCard(requestId);
 			}

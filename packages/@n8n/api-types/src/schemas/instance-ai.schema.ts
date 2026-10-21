@@ -798,6 +798,16 @@ export type GatewayConfirmationRequiredPayload = z.infer<
 	typeof gatewayConfirmationRequiredPayloadSchema
 >;
 
+// ── Cloud browser user action ────────────────────────────────────────────────
+
+export const browserUserActionPayloadSchema = z.object({
+	/** What the user must do in the browser, in the agent's words. */
+	reason: z.string().min(1),
+	/** Set when the user took over without the agent asking, so the agent paused at its next call. */
+	userTookOver: z.boolean().optional(),
+});
+export type BrowserUserActionPayload = z.infer<typeof browserUserActionPayloadSchema>;
+
 // ---------------------------------------------------------------------------
 
 export const channelConfigSchema = z.object({
@@ -840,6 +850,7 @@ export const confirmationInputTypeSchema = z.enum([
 	'plan-review',
 	'resource-decision',
 	'continue',
+	'browser-user-action',
 ]);
 export type InstanceAiConfirmationInputType = z.infer<typeof confirmationInputTypeSchema>;
 
@@ -969,6 +980,9 @@ export const confirmationRequestPayloadSchema = z.object({
 	resourceDecision: gatewayConfirmationRequiredPayloadSchema
 		.optional()
 		.describe('Gateway resource-access decision data (inputType=resource-decision)'),
+	browserUserAction: browserUserActionPayloadSchema
+		.optional()
+		.describe('Why the cloud browser waits for the user (inputType=browser-user-action)'),
 	channelConfig: channelConfigSchema
 		.optional()
 		.describe(
@@ -1030,6 +1044,8 @@ export function isDisplayableConfirmationRequest(
 			return hasItems(payload.planItems) || argsContainPlannedTasks(payload.args);
 		case 'resource-decision':
 			return payload.resourceDecision !== undefined;
+		case 'browser-user-action':
+			return payload.browserUserAction !== undefined;
 		default:
 			return assertNever(inputType);
 	}
@@ -1168,6 +1184,16 @@ export interface InstanceAiBrowserStatusResponse {
 	connectedAt: string | null;
 	toolCategories: ToolCategory[];
 }
+
+/**
+ * The live view of a cloud browser task. `live` carries a link that lets anyone who has it
+ * control the browser, so the client keeps it in memory only. `starting`: the task runs but has
+ * no browser open yet. `ended`: this instance runs no such task.
+ */
+export type InstanceAiCloudBrowserLiveViewResponse =
+	| { status: 'live'; liveViewUrl: string; pageUrl?: string }
+	| { status: 'starting' }
+	| { status: 'ended' };
 
 // ---------------------------------------------------------------------------
 // Filesystem bridge payloads (browser ↔ server round-trip)

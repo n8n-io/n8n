@@ -32,6 +32,7 @@ import {
 } from '@n8n/api-types';
 import type {
 	InstanceAiAdminSettingsResponse,
+	InstanceAiCloudBrowserLiveViewResponse,
 	InstanceAiEvalThreadMemoryResponse,
 	InstanceAiEvent,
 	InstanceAiThreadTabsResponse,
@@ -71,6 +72,7 @@ import {
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
+import { InstanceAiCloudBrowserService } from './browser/instance-ai-cloud-browser.service';
 import { EvalAgentExecutionService } from './eval/agent-execution.service';
 import { EvalExecutionService } from './eval/execution.service';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
@@ -134,6 +136,7 @@ export class InstanceAiController {
 		private readonly preferenceCardService: InstanceAiPreferenceCardService,
 		globalConfig: GlobalConfig,
 		private readonly threadTabsService: InstanceAiThreadTabsService,
+		private readonly cloudBrowserService: InstanceAiCloudBrowserService,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
 		this.instanceAiConfig = globalConfig.instanceAi;
@@ -665,6 +668,50 @@ export class InstanceAiController {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
 		await this.instanceAiService.routeCancelBackgroundTask(threadId, taskId);
+		return { ok: true };
+	}
+
+	/** The live view of a cloud browser task. The link is never stored, so the client asks again. */
+	@Get('/chat/:threadId/tasks/:taskId/live-view')
+	@GlobalScope('instanceAi:message')
+	async cloudBrowserLiveView(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Param('taskId') taskId: string,
+	): Promise<InstanceAiCloudBrowserLiveViewResponse> {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return await this.cloudBrowserService.getLiveView(req.user.id, threadId, taskId);
+	}
+
+	/** The page a cloud browser task is on. Cheaper than the live view, so the client polls it. */
+	@Get('/chat/:threadId/tasks/:taskId/page')
+	@GlobalScope('instanceAi:message')
+	async cloudBrowserPage(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Param('taskId') taskId: string,
+	): Promise<{ pageUrl?: string }> {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return this.cloudBrowserService.getPageUrl(req.user.id, threadId, taskId);
+	}
+
+	/** The user takes over a cloud browser task's browser. The agent pauses at its next call. */
+	@Post('/chat/:threadId/tasks/:taskId/take-over')
+	@GlobalScope('instanceAi:message')
+	async takeOverCloudBrowser(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Param('taskId') taskId: string,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		const error = await this.cloudBrowserService.takeOver(req.user.id, threadId, taskId);
+		if (error) throw new ConflictError(error);
 		return { ok: true };
 	}
 

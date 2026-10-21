@@ -1,7 +1,7 @@
 import type { McpTool, McpToolCallRequest, McpToolCallResult } from '@n8n/api-types';
 import { mcpToolSchema } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { LocalMcpServer } from '@n8n/instance-ai';
+import type { CloudBrowserUserActionHost, LocalMcpServer } from '@n8n/instance-ai';
 import type {
 	AffectedResource,
 	BrowserToolkit,
@@ -20,6 +20,7 @@ import {
 	type BrowserDomainGate,
 } from './browser.helpers';
 import type {
+	CloudBrowserLivePage,
 	CloudBrowserSessionScope,
 	CloudBrowserSessionProvider,
 } from './cloud-browser-session-provider';
@@ -47,6 +48,12 @@ export const START_SESSION_TOOL_NAME = 'browser_start_session';
  */
 export const SESSION_IDLE_TIMEOUT_MS = 15 * 60 * 1000;
 
+/**
+ * While the user has control, the session stays open this long without a tool call, so they
+ * have time to sign in. Browserbase ends a session after 60 minutes in any case.
+ */
+export const USER_CONTROL_TIMEOUT_MS = 30 * 60 * 1000;
+
 const START_SESSION_MCP_TOOL: McpTool = mcpToolSchema.parse({
 	name: START_SESSION_TOOL_NAME,
 	description:
@@ -66,7 +73,11 @@ const START_SESSION_MCP_TOOL: McpTool = mcpToolSchema.parse({
  * Why browser tools cannot run: no session was started, or the session ended without
  * the model asking for it.
  */
-type SessionUnavailableReason = 'notStarted' | 'connectionLost' | 'idleTimeout';
+type SessionUnavailableReason =
+	| 'notStarted'
+	| 'connectionLost'
+	| 'idleTimeout'
+	| 'userControlTimeout';
 
 const RELEASED_MESSAGE = 'The browser job has ended. No browser tools can run.';
 
@@ -78,6 +89,7 @@ const SESSION_UNAVAILABLE_MESSAGES: Record<SessionUnavailableReason, string> = {
 	notStarted: `No browser session is open. ${START_SESSION_HINT}`,
 	connectionLost: `The browser session closed unexpectedly. Its pages, sign-ins and cookies are gone. ${START_SESSION_HINT}`,
 	idleTimeout: `The browser session was closed because no browser tool was used for ${SESSION_IDLE_TIMEOUT_MS / 60_000} minutes. Its pages, sign-ins and cookies are gone. ${START_SESSION_HINT}`,
+	userControlTimeout: `The browser session was closed because the user did not return control within ${USER_CONTROL_TIMEOUT_MS / 60_000} minutes. Its pages, sign-ins and cookies are gone. Report the task as blocked.`,
 };
 
 const startSessionArgsSchema = z.object({ url: z.string().url() });
@@ -102,7 +114,7 @@ interface ActiveSession {
 }
 
 /** Browser tools on a Browserbase session, for one background job. */
-export class CloudBrowserLocalMcpServer implements LocalMcpServer {
+export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserUserActionHost {
 	private readonly toolList: McpTool[] = [START_SESSION_MCP_TOOL];
 
 	private activeSession?: ActiveSession;
@@ -110,6 +122,9 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 	private sessionUnavailableReason: SessionUnavailableReason = 'notStarted';
 
 	private idleTimer?: NodeJS.Timeout;
+
+	/** Set while the user has control of the browser, from the agent's request until they return control. */
+	private userHasControl = false;
 
 	/** Tool calls that have not returned yet. The idle timer runs only when this is zero. */
 	private pendingCalls = 0;
@@ -174,6 +189,77 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 			this.pendingCalls--;
 			this.scheduleIdleRelease();
 		}
+	}
+
+	/**
+	 * The live view of the tab the agent works in, or `undefined` when no session is open. The
+	 * link lets anyone who has it control the browser, so callers must never log or store it.
+	 */
+	async getLiveView(): Promise<{ liveViewUrl: string; pageUrl?: string } | undefined> {
+		const session = this.activeSession;
+		if (!session?.connection.isConnected) return undefined;
+
+		const { scope, sessionProvider } = this.options;
+		const pages = await sessionProvider.getLivePages(scope, session.id);
+		const active = await getActivePage(session.connection);
+		// The gateway names each tab by the browser's own id. Without a match, the newest tab is
+		// the likeliest one.
+		const page: CloudBrowserLivePage | undefined =
+			pages.find((p) => !!active?.targetId && p.id === active.targetId) ?? pages.at(-1);
+		if (!page) return undefined;
+		return { liveViewUrl: page.liveViewUrl, pageUrl: active?.url };
+	}
+
+	/**
+	 * Marks the user as in control of the browser. While they are, the session gets the longer idle
+	 * limit. Returns why it cannot, for example when no session is open.
+	 */
+	async markUserInControl(): Promise<string | undefined> {
+		await this.sessionLock;
+		if (this.isReleased) return RELEASED_MESSAGE;
+		if (!(await this.getConnectedSession())) {
+			return SESSION_UNAVAILABLE_MESSAGES[this.sessionUnavailableReason];
+		}
+		this.userHasControl = true;
+		this.scheduleIdleRelease();
+		return undefined;
+	}
+
+	/** The URL of the tab the agent works in. Cheap: it asks the browser, not the gateway. */
+	getPageUrl(): string | undefined {
+		const session = this.activeSession;
+		if (!session?.connection.isConnected) return undefined;
+		try {
+			const { adapter, activePageId } = session.connection.getConnection();
+			return adapter.getPageUrl(activePageId);
+		} catch {
+			return undefined;
+		}
+	}
+
+	/** Whether the user is in control, also when they took over without the agent asking. */
+	isUserInControl(): boolean {
+		return this.userHasControl;
+	}
+
+	/**
+	 * Marks the user's control as ended, and returns a snapshot of the page they left. The page may
+	 * be on a site that needs approval, so the snapshot is gated like any call.
+	 */
+	async markUserControlEnded(): Promise<{ ok: true; page: string } | { ok: false; error: string }> {
+		this.userHasControl = false;
+		const snapshot = await this.callTool({ name: 'browser_snapshot', arguments: {} });
+		const text = snapshot.content
+			.map((block) => (block.type === 'text' ? block.text : ''))
+			.filter(Boolean)
+			.join('\n');
+		if (!snapshot.isError) return { ok: true, page: text };
+		// The session closed while the user had control: pass on why.
+		if (!this.activeSession) return { ok: false, error: text };
+		return {
+			ok: false,
+			error: 'Could not read the page. Call browser_snapshot before you continue.',
+		};
 	}
 
 	/** A new session only loads its URL, so it touches the URL's host. */
@@ -345,6 +431,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 	/** Disconnects the tools and releases the active session, if one is open. */
 	private async endActiveSession(): Promise<void> {
 		this.clearIdleTimer();
+		this.userHasControl = false;
 		const session = this.activeSession;
 		if (!session) return;
 		this.activeSession = undefined;
@@ -373,7 +460,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 
 		this.idleTimer = setTimeout(
 			async () => await this.releaseIdleSession(),
-			SESSION_IDLE_TIMEOUT_MS,
+			this.userHasControl ? USER_CONTROL_TIMEOUT_MS : SESSION_IDLE_TIMEOUT_MS,
 		);
 		// The timer alone must not keep the process running.
 		this.idleTimer.unref();
@@ -392,8 +479,9 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 		});
 		await this.withSessionLock(async () => {
 			if (!this.activeSession) return;
+			const reason = this.userHasControl ? 'userControlTimeout' : 'idleTimeout';
 			await this.endActiveSession();
-			this.sessionUnavailableReason = 'idleTimeout';
+			this.sessionUnavailableReason = reason;
 		});
 	}
 
@@ -407,6 +495,21 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 
 	private getAvailableToolsFromToolkit(toolkit: BrowserToolkit): ToolDefinition[] {
 		return toolkit.tools.filter((t) => !HIDDEN_BROWSER_TOOLS.has(t.name));
+	}
+}
+
+/** The browser's own id and the URL of the tab the toolkit acts on, or `undefined` when it cannot tell. */
+async function getActivePage(
+	connection: BrowserToolkit['connection'],
+): Promise<{ targetId?: string; url?: string } | undefined> {
+	try {
+		const { adapter, activePageId } = connection.getConnection();
+		return {
+			targetId: await adapter.getPageTargetId?.(activePageId),
+			url: adapter.getPageUrl(activePageId),
+		};
+	} catch {
+		return undefined;
 	}
 }
 

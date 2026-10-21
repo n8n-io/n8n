@@ -1,4 +1,7 @@
-import { INSTANCE_AI_CLOUD_BROWSER_FLAG } from '@n8n/api-types';
+import {
+	INSTANCE_AI_CLOUD_BROWSER_FLAG,
+	type InstanceAiCloudBrowserLiveViewResponse,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { UserRepository } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
@@ -25,7 +28,7 @@ export class InstanceAiCloudBrowserService {
 
 	private readonly serversByJobId = new Map<
 		string,
-		{ userId: string; server: CloudBrowserLocalMcpServer }
+		{ userId: string; threadId: string; server: CloudBrowserLocalMcpServer }
 	>();
 
 	constructor(
@@ -98,12 +101,47 @@ export class InstanceAiCloudBrowserService {
 			domainGate,
 			logger: this.logger,
 		});
-		this.serversByJobId.set(jobId, { userId, server });
+		this.serversByJobId.set(jobId, { userId, threadId, server });
 		return server;
 	}
 
 	findServer(jobId: string): CloudBrowserLocalMcpServer | undefined {
 		return this.serversByJobId.get(jobId)?.server;
+	}
+
+	/** The URL of the page the job's browser is on, for its owner only. */
+	getPageUrl(userId: string, threadId: string, jobId: string): { pageUrl?: string } {
+		const entry = this.serversByJobId.get(jobId);
+		if (entry?.userId !== userId || entry.threadId !== threadId) return {};
+		return { pageUrl: entry.server.getPageUrl() };
+	}
+
+	/**
+	 * Marks the user as in control of the job's browser, for its owner only. The agent pauses at
+	 * its next call. Returns why it cannot, for example when no session is open.
+	 */
+	async takeOver(userId: string, threadId: string, jobId: string): Promise<string | undefined> {
+		const entry = this.serversByJobId.get(jobId);
+		if (entry?.userId !== userId || entry.threadId !== threadId) {
+			return 'This browser task is not running.';
+		}
+		return await entry.server.markUserInControl();
+	}
+
+	/**
+	 * The live view of the job's browser, for its owner only. A job that another user or thread
+	 * owns reads as ended, so the response does not tell whether it exists.
+	 */
+	async getLiveView(
+		userId: string,
+		threadId: string,
+		jobId: string,
+	): Promise<InstanceAiCloudBrowserLiveViewResponse> {
+		const entry = this.serversByJobId.get(jobId);
+		if (entry?.userId !== userId || entry.threadId !== threadId) return { status: 'ended' };
+
+		const view = await entry.server.getLiveView();
+		return view ? { status: 'live', ...view } : { status: 'starting' };
 	}
 
 	/** Ends the job's browser and forgets its server. Called when the job ends. */
@@ -142,6 +180,14 @@ export class InstanceAiCloudBrowserService {
 					attribution: { instanceAiThreadId: threadId, instanceAiJobId: jobId },
 					sessionId,
 				}),
+			getLivePages: async ({ userId, threadId, jobId }, sessionId) => {
+				const { pages } = await this.aiGatewayBrowserUseService.getLiveView({
+					userId,
+					attribution: { instanceAiThreadId: threadId, instanceAiJobId: jobId },
+					sessionId,
+				});
+				return pages.map((page) => ({ id: page.id, liveViewUrl: page.debuggerFullscreenUrl }));
+			},
 		};
 	}
 }

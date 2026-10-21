@@ -37,6 +37,7 @@ export function isPendingItemFloating(item: PendingConfirmationItem): boolean {
 		case 'plan-review':
 		case 'text':
 		case 'continue':
+		case 'browser-user-action':
 			return false;
 		case 'resource-decision':
 			return isCloudBrowserResourceDecision(item);

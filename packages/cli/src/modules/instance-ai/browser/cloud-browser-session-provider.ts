@@ -5,6 +5,13 @@ export interface CloudBrowserSession {
 	connectUrl: string;
 }
 
+/** One tab of a session. `liveViewUrl` lets anyone who has it control the browser: never log or store it. */
+export interface CloudBrowserLivePage {
+	/** The browser's own id for the tab (its CDP target id). */
+	id: string;
+	liveViewUrl: string;
+}
+
 /** The user and background job that a session is scoped to. */
 export interface CloudBrowserSessionScope {
 	userId: string;
@@ -21,4 +28,6 @@ export interface CloudBrowserSessionScope {
 export interface CloudBrowserSessionProvider {
 	createSession(scope: CloudBrowserSessionScope): Promise<CloudBrowserSession>;
 	releaseSession(scope: CloudBrowserSessionScope, sessionId: string): Promise<void>;
+	/** The session's tabs, oldest first. */
+	getLivePages(scope: CloudBrowserSessionScope, sessionId: string): Promise<CloudBrowserLivePage[]>;
 }

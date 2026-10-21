@@ -327,7 +327,13 @@ function collectActionableConfirmations(
 /** Confirmations the panel owns: everything except the timeline-rendered kinds. */
 function isPanelConfirmation(item: PendingConfirmationItem): boolean {
 	const conf = item.toolCall.confirmation;
-	return conf.inputType !== 'plan-review' && !conf.mcpConnectRequest;
+	// A cloud browser user action shows in the browser tab and the bottom bar, not in the panel,
+	// and the user can keep chatting while it waits.
+	return (
+		conf.inputType !== 'plan-review' &&
+		conf.inputType !== 'browser-user-action' &&
+		!conf.mcpConnectRequest
+	);
 }
 
 /**
@@ -935,6 +941,13 @@ export function createThreadRuntime(
 		}
 		return null;
 	});
+
+	/** Cloud browser tasks that wait for the user to do a step in the browser. */
+	const pendingBrowserUserActions = computed((): PendingConfirmationItem[] =>
+		actionableConfirmations.value.filter(
+			(item) => item.toolCall.confirmation.inputType === 'browser-user-action',
+		),
+	);
 
 	/** True while the run is paused awaiting the user to resolve a confirmation. */
 	const isAwaitingConfirmation = computed(() => pendingConfirmations.value.length > 0);
@@ -1991,6 +2004,7 @@ export function createThreadRuntime(
 		latestSetupWorkflowId,
 		contextualSuggestion,
 		pendingConfirmations,
+		pendingBrowserUserActions,
 		isAwaitingConfirmation,
 
 		// actions
