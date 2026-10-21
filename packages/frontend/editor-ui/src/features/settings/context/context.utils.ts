@@ -20,7 +20,7 @@ import { splitName } from '@/features/collaboration/projects/projects.utils';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 
-import { PREFERENCES_DEFAULT_SORT_BY } from './context.constants';
+import { CONTEXT_DEFAULT_SORT_BY } from './context.constants';
 import type { Preference, PreferencePermissions } from './context.types';
 
 /**
@@ -118,12 +118,29 @@ export function preferenceUserName(user: AiPreferenceUserDto | null): string {
 	return fullName || user.email || '';
 }
 
+/** The table sort as a list endpoint takes it. A column the endpoint cannot sort is dropped. */
+export function toSortOption<T extends string>(
+	sortBy: TableOptions['sortBy'],
+	options: readonly T[],
+): T | undefined {
+	const [sort] = sortBy.length > 0 ? sortBy : CONTEXT_DEFAULT_SORT_BY;
+	const option = `${sort.id}:${sort.desc ? 'desc' : 'asc'}`;
+	return options.find((candidate) => candidate === option);
+}
+
 export function toPreferenceSortOption(
 	sortBy: TableOptions['sortBy'],
 ): AiPreferenceSortOption | undefined {
-	const [sort] = sortBy.length > 0 ? sortBy : PREFERENCES_DEFAULT_SORT_BY;
-	const option = `${sort.id}:${sort.desc ? 'desc' : 'asc'}`;
-	return AI_PREFERENCES_SORT_OPTIONS.find((candidate) => candidate === option);
+	return toSortOption(sortBy, AI_PREFERENCES_SORT_OPTIONS);
+}
+
+/** A third click on a sorted column turns its order around instead of clearing the sort. */
+export function keepSortOnClear(
+	previous: TableOptions['sortBy'],
+	next: TableOptions['sortBy'],
+): TableOptions['sortBy'] {
+	const [last] = previous;
+	return next.length > 0 || !last ? next : [{ id: last.id, desc: !last.desc }];
 }
 
 /** The API reports row scopes in the `aiPreference` namespace whatever granted them. */

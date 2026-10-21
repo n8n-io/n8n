@@ -100,7 +100,7 @@ export class SkillRepository extends BaseRepository<Skill> {
 					qb.where('skill.agentId = :usedByAgentId');
 					if (skillIds.length > 0) qb.orWhere('skill.id IN (:...usedSkillIds)');
 				}),
-				{ usedByAgentId: agentId, usedSkillIds: unique(skillIds) },
+				{ usedByAgentId: agentId, usedSkillIds: skillIds },
 			);
 		}
 		if (filter.createdById !== undefined) {

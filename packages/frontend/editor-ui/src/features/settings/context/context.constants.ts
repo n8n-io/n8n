@@ -6,9 +6,5 @@ export const PREFERENCE_TEXT_MAX_LENGTH = AI_PREFERENCE_CONTENT_MAX_LENGTH;
 
 export const PREFERENCES_PAGE_SIZES = [10, 25, 50];
 export const PREFERENCES_DEFAULT_PAGE_SIZE = AI_PREFERENCES_DEFAULT_PAGE_SIZE;
-export const PREFERENCES_DEFAULT_SORT_BY: TableOptions['sortBy'] = [
-	{ id: 'updatedAt', desc: true },
-];
-
-/** The order the skills list had before it could sort: most recently changed first. */
-export const SKILLS_DEFAULT_SORT_BY: TableOptions['sortBy'] = [{ id: 'updatedAt', desc: true }];
+/** The preferences and skills lists show the most recently changed rows first. */
+export const CONTEXT_DEFAULT_SORT_BY: TableOptions['sortBy'] = [{ id: 'updatedAt', desc: true }];

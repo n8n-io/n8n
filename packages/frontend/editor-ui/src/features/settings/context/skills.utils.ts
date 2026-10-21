@@ -1,11 +1,9 @@
-import { SKILLS_SORT_OPTIONS, type SkillListItem, type SkillSortOption } from '@n8n/api-types';
-import type { IconName, TableOptions } from '@n8n/design-system';
+import type { SkillListItem } from '@n8n/api-types';
+import type { IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { splitName } from '@/features/collaboration/projects/projects.utils';
-
-import { SKILLS_DEFAULT_SORT_BY } from './context.constants';
 
 export type SkillScopeDisplay = { icon: IconName; label: string };
 
@@ -58,11 +56,4 @@ export function useSkillScopeDisplay() {
 	}
 
 	return { scopeDisplay };
-}
-
-/** The table sort as the list endpoint takes it. A column the endpoint cannot sort is dropped. */
-export function toSkillSortOption(sortBy: TableOptions['sortBy']): SkillSortOption | undefined {
-	const [sort] = sortBy.length > 0 ? sortBy : SKILLS_DEFAULT_SORT_BY;
-	const option = `${sort.id}:${sort.desc ? 'desc' : 'asc'}`;
-	return SKILLS_SORT_OPTIONS.find((candidate) => candidate === option);
 }

@@ -3,7 +3,13 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn } from '@vueuse/core';
 import { saveAs } from 'file-saver';
-import type { AgentSkill, SkillCreateMethod, SkillListItem, SkillUserDto } from '@n8n/api-types';
+import {
+	SKILLS_SORT_OPTIONS,
+	type AgentSkill,
+	type SkillCreateMethod,
+	type SkillListItem,
+	type SkillUserDto,
+} from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -41,11 +47,17 @@ import type {
 } from '@/features/agents/components/AgentSkillModal.vue';
 
 import SkillsTable from '../components/SkillsTable.vue';
-import { PREFERENCES_DEFAULT_PAGE_SIZE, SKILLS_DEFAULT_SORT_BY } from '../context.constants';
-import { canWriteInstanceSkillScope, canWriteProjectSkillScope } from '../context.utils';
+import { CONTEXT_DEFAULT_SORT_BY, PREFERENCES_DEFAULT_PAGE_SIZE } from '../context.constants';
+import {
+	canWriteInstanceSkillScope,
+	canWriteProjectSkillScope,
+	keepSortOnClear,
+	preferenceUserName,
+	toSortOption,
+} from '../context.utils';
 import type { SkillListQuery } from '../skills.api';
 import { useSkillsStore } from '../skills.store';
-import { toSkillSortOption, useSkillScopeDisplay } from '../skills.utils';
+import { useSkillScopeDisplay } from '../skills.utils';
 
 const INSTANCE_SCOPE = 'instance';
 const PROJECT_SCOPE_PREFIX = 'project:';
@@ -79,7 +91,7 @@ const { scopeDisplay } = useSkillScopeDisplay();
 const tableOptions = ref<TableOptions>({
 	page: 0,
 	itemsPerPage: PREFERENCES_DEFAULT_PAGE_SIZE,
-	sortBy: SKILLS_DEFAULT_SORT_BY,
+	sortBy: CONTEXT_DEFAULT_SORT_BY,
 });
 const search = ref('');
 const filters = ref<SkillFilters>({ ...NO_FILTERS });
@@ -110,8 +122,7 @@ const scopeFilterOptions = computed(() =>
 
 /** The name of a creator, or the email when the name is unknown. */
 function creatorLabel(creator: SkillUserDto): string {
-	const name = [creator.firstName, creator.lastName].filter(Boolean).join(' ');
-	return name || creator.email || creator.id;
+	return preferenceUserName(creator) || creator.id;
 }
 
 function scopeQuery(scope: string): Pick<SkillListQuery, 'scope'> {
@@ -121,7 +132,7 @@ function scopeQuery(scope: string): Pick<SkillListQuery, 'scope'> {
 function listQuery(page: number, itemsPerPage: number): SkillListQuery {
 	const term = search.value.trim();
 	const { scope, agentId, createdById } = filters.value;
-	const sortBy = toSkillSortOption(tableOptions.value.sortBy);
+	const sortBy = toSortOption(tableOptions.value.sortBy, SKILLS_SORT_OPTIONS);
 	return {
 		skip: page * itemsPerPage,
 		take: itemsPerPage,
@@ -190,14 +201,11 @@ async function load() {
 	}
 }
 
-/** A third click on a column turns its order around instead of clearing it, as on preferences. */
 async function onOptionsUpdate(options: TableOptions) {
-	const [previous] = tableOptions.value.sortBy;
-	const sortBy =
-		options.sortBy.length > 0 || !previous
-			? options.sortBy
-			: [{ id: previous.id, desc: !previous.desc }];
-	tableOptions.value = { ...options, sortBy };
+	tableOptions.value = {
+		...options,
+		sortBy: keepSortOnClear(tableOptions.value.sortBy, options.sortBy),
+	};
 	await load();
 }
 
@@ -457,11 +465,9 @@ async function goBack() {
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.context.skills.title'));
-	await Promise.all([
-		load(),
-		projectsStore.getMyProjects().catch(() => undefined),
-		loadFilterOptions(),
-	]);
+	// The filter options are not needed for the first page or the deep links below.
+	void loadFilterOptions();
+	await Promise.all([load(), projectsStore.getMyProjects().catch(() => undefined)]);
 	// Once for the visit, not once for each page. A failed load reports nothing, so a zero
 	// here is an empty list and never a broken one.
 	if (!loadFailed.value) {

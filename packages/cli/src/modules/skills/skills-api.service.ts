@@ -23,7 +23,12 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { SkillAgentsProxy } from './skill-agents-proxy.service';
 import { getSkillHash } from './skill-hash';
 import type { Skill } from './skill.entity';
-import { SkillRepository, type SkillListSort, type SkillTarget } from './skill.repository';
+import {
+	SkillRepository,
+	type SkillListSort,
+	type SkillTarget,
+	type SkillVisibility,
+} from './skill.repository';
 import { SkillService, toAgentSkill } from './skill.service';
 import { SkillsTelemetry, type SkillTelemetrySource } from './skills-telemetry';
 
@@ -66,44 +71,37 @@ export class SkillsApiService {
 		if (query.projectId && projectIds !== null && !projectIds.includes(query.projectId)) {
 			return { count: 0, data: [] };
 		}
-		const usedBy = await this.usedByFilter(user, query.agentId);
+		const [usedBy, attachableTo, visibility, projectAgentIds] = await Promise.all([
+			this.usedByFilter(user, query.agentId),
+			this.attachTarget(query.attachableTo),
+			this.visibilityOf(projectIds),
+			query.projectId ? this.skillAgents.findAgentIdsInProjects([query.projectId]) : undefined,
+		]);
 		if (usedBy === null) return { count: 0, data: [] };
-		const attachableTo = await this.attachTarget(query.attachableTo);
-		// An agent skill has no projectId: it belongs to the project of its agent.
-		const agentIds =
-			projectIds === null ? 'all' : await this.skillAgents.findAgentIdsInProjects(projectIds);
-		const project = query.projectId
-			? {
-					id: query.projectId,
-					agentIds: await this.skillAgents.findAgentIdsInProjects([query.projectId]),
-				}
-			: undefined;
-		const { skills, count } = await this.skillRepository.findVisiblePage(
-			{ projectIds: projectIds ?? 'all', agentIds },
-			{
-				scope: query.scope,
-				project,
-				attachableTo,
-				usedBy,
-				createdById: query.createdById,
-				search: query.search,
-				sort: query.sortBy && LIST_SORTS[query.sortBy],
-				skip: query.skip,
-				take: query.take,
-			},
-		);
+		const project =
+			query.projectId && projectAgentIds
+				? { id: query.projectId, agentIds: projectAgentIds }
+				: undefined;
+		const { skills, count } = await this.skillRepository.findVisiblePage(visibility, {
+			scope: query.scope,
+			project,
+			attachableTo,
+			usedBy,
+			createdById: query.createdById,
+			search: query.search,
+			sort: query.sortBy && LIST_SORTS[query.sortBy],
+			skip: query.skip,
+			take: query.take,
+		});
 		return { count, data: await this.toListItems(user, skills) };
 	}
 
 	/** The users who created a skill that the user may see, for the creator filter. */
 	async listCreators(user: User): Promise<SkillUserDto[]> {
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['projectSkill:list']);
-		const agentIds =
-			projectIds === null ? 'all' : await this.skillAgents.findAgentIdsInProjects(projectIds);
-		const creatorIds = await this.skillRepository.findVisibleCreatorIds({
-			projectIds: projectIds ?? 'all',
-			agentIds,
-		});
+		const creatorIds = await this.skillRepository.findVisibleCreatorIds(
+			await this.visibilityOf(projectIds),
+		);
 		return [...(await this.findCreators(creatorIds)).values()];
 	}
 
@@ -253,11 +251,23 @@ export class SkillsApiService {
 		agentId: string | undefined,
 	): Promise<{ agentId: string; skillIds: string[] } | undefined | null> {
 		if (agentId === undefined) return undefined;
-		const agent = (await this.skillAgents.findAgents([agentId])).get(agentId);
+		const [agents, readable] = await Promise.all([
+			this.skillAgents.findAgents([agentId]),
+			this.projectScopeService.getProjectIds(user, ['agent:read']),
+		]);
+		const agent = agents.get(agentId);
 		if (!agent) return null;
-		const readable = await this.projectScopeService.getProjectIds(user, ['agent:read']);
 		if (readable !== null && !readable.includes(agent.projectId)) return null;
 		return { agentId, skillIds: await this.skillAgents.findSkillIdsUsedByAgent(agentId) };
+	}
+
+	/**
+	 * The skills a user may list, from the projects where they hold `projectSkill:list`
+	 * (null for all). An agent skill has no projectId: it belongs to the project of its agent.
+	 */
+	private async visibilityOf(projectIds: string[] | null): Promise<SkillVisibility> {
+		if (projectIds === null) return { projectIds: 'all', agentIds: 'all' };
+		return { projectIds, agentIds: await this.skillAgents.findAgentIdsInProjects(projectIds) };
 	}
 
 	/** The agent of an `attachableTo` filter with its project. An unknown agent can attach nothing. */
