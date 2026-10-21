@@ -62,7 +62,7 @@ export class InstanceRegistryService {
 			}));
 
 			if (versions.length > 1) {
-				this.logger.info(`Cluster is running multiple n8n versions: ${versions.join(', ')}`, {
+				this.logger.warn(`Cluster is running multiple n8n versions: ${versions.join(', ')}`, {
 					instances,
 				});
 			} else if (versions.length === 1) {

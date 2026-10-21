@@ -279,7 +279,7 @@ describe('InstanceRegistryService', () => {
 
 			await service.init();
 
-			expect(logger.info).toHaveBeenCalledWith(
+			expect(logger.warn).toHaveBeenCalledWith(
 				`Cluster is running multiple n8n versions: 2.27.4, ${N8N_VERSION}`,
 				{
 					instances: expect.arrayContaining([
