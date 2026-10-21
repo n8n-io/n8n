@@ -55,7 +55,7 @@ const mockChanges = [
 ];
 
 const COMMIT_SHA = 'a'.repeat(40);
-const SOURCE = { configId: 'config-1', branchName: 'main' };
+const SOURCE = { environmentId: 'config-1', branchName: 'main' };
 
 describe('usePromotionChanges', () => {
 	beforeEach(() => {
@@ -146,8 +146,7 @@ describe('usePromotionChanges', () => {
 
 	it('should post selected workflow ids to the promote endpoint', async () => {
 		vi.mocked(promotionsApi.promoteProjectSelection).mockResolvedValue({
-			connectionId: 'c1',
-			configId: 'cfg1',
+			environmentId: 'cfg1',
 			counts: {
 				workflows: 1,
 				folders: 0,

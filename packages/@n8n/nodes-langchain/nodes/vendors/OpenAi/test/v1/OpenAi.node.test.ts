@@ -569,7 +569,7 @@ describe('OpenAi', () => {
 
 			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/chat/completions', {
 				body: {
-					max_tokens: 300,
+					max_completion_tokens: 300,
 					messages: [
 						{
 							content: [
@@ -583,6 +583,25 @@ describe('OpenAi', () => {
 					model: 'gpt-4-vision-preview',
 				},
 			});
+		});
+
+		it("analyze => should send the caller's token limit as max_completion_tokens", async () => {
+			apiRequestMock.mockResolvedValueOnce({ success: true });
+
+			await image.analyze.execute.call(
+				createExecuteFunctionsMock({
+					text: 'image text',
+					inputType: 'url',
+					imageUrls: 'image-url1',
+					options: { detail: 'low', maxTokens: 1024 },
+				}),
+				0,
+			);
+
+			const [, , { body }] = apiRequestMock.mock.calls[0];
+			expect(body).toHaveProperty('max_completion_tokens', 1024);
+			// `max_tokens` is what the newer models reject.
+			expect(body).not.toHaveProperty('max_tokens');
 		});
 	});
 

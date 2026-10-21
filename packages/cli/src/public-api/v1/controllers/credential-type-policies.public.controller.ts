@@ -43,6 +43,7 @@ import type { Response } from 'express';
 import { NotFoundError, ServiceUnavailableError } from '@n8n/errors';
 import { CREDENTIAL_TYPES_KIND } from '@/modules/type-availability-policies/constants';
 import type { TypeAvailabilityPolicy } from '@/modules/type-availability-policies/database/entities/type-availability-policy.entity';
+import type { ScopeAttachments } from '@/modules/type-availability-policies/type-availability-policy.service';
 import {
 	encodeNextCursor,
 	resolveOffsetPagination,
@@ -59,6 +60,18 @@ function toPublicDocument(policy: TypeAvailabilityPolicy): CredentialTypePolicyD
 		updatedBy: policy.updatedBy,
 		createdAt: policy.createdAt.toISOString(),
 		updatedAt: policy.updatedAt.toISOString(),
+	};
+}
+
+function toPublicAttachments(result: ScopeAttachments): CredentialTypePolicyAttachmentsPublicDto {
+	return {
+		attachments: result.attachments.map((attachment) => ({
+			policyId: attachment.policyId,
+			rules: [...attachment.rules],
+			priority: attachment.priority,
+			isFloor: attachment.isFloor,
+		})),
+		version: result.version,
 	};
 }
 
@@ -331,6 +344,28 @@ export class CredentialTypePoliciesPublicController {
 		await (await this.service()).deletePolicyDocument(CREDENTIAL_TYPES_KIND, policyId, req.user.id);
 	}
 
+	@Get('/scopes/:scopeId/attachments')
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
+	@ApiKeyScope('credentialTypePolicy:manage')
+	@GlobalScope('credentialTypePolicy:manage')
+	@ApiSummary("Preview: Retrieve a scope's attached policy documents")
+	@ApiDescription(
+		'**Preview** — breaking changes may still occur without major version bump.\n\nReturns every attached policy document and the scope version. Attachments use evaluation order: floor first, then priority ascending within each group. Use this version when replacing the attachments. `scopeId` comes from `GET /instance` or `GET /projects/{projectId}`, and is null until the scope is first written. This route needs instance-level access, also for a project scope.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, CredentialTypePolicyAttachmentsPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
+	async getCredentialTypePolicyAttachments(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('scopeId', credentialTypePolicyScopeIdParamSchema) scopeId: string,
+	): Promise<CredentialTypePolicyAttachmentsPublicDto> {
+		const result = await (await this.service()).getAttachments(CREDENTIAL_TYPES_KIND, scopeId);
+
+		return toPublicAttachments(result);
+	}
+
 	@Put('/scopes/:scopeId/attachments')
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('credentialTypePolicy:manage')
@@ -358,14 +393,6 @@ export class CredentialTypePoliciesPublicController {
 			req.user.id,
 		);
 
-		return {
-			attachments: result.attachments.map((attachment) => ({
-				policyId: attachment.policyId,
-				rules: [...attachment.rules],
-				priority: attachment.priority,
-				isFloor: attachment.isFloor,
-			})),
-			version: result.version,
-		};
+		return toPublicAttachments(result);
 	}
 }

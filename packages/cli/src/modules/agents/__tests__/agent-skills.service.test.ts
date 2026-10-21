@@ -15,11 +15,11 @@ import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentSaveCompletionService } from '../agent-save-completion.service';
 import { AgentSkillsService } from '../agent-skills.service';
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
-import type { Agent } from '../entities/agent.entity';
+import type { ProjectAgent } from '../entities/agent.entity';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
 import type { AgentRepository } from '../repositories/agent.repository';
-import type { SkillSaveResult, SkillService } from '../skills/skill.service';
-import type { SkillsTelemetry } from '../skills/skills-telemetry';
+import type { SkillSaveResult, SkillService } from '@/modules/skills/skill.service';
+import type { SkillsTelemetry } from '@/modules/skills/skills-telemetry';
 import { getAgentConfigHash, getAgentSkillHash } from '../utils/agent-config-hash';
 import {
 	type AgentFixtureOverrides,
@@ -47,7 +47,7 @@ const skill: AgentSkill = {
 	instructions: 'Extract decisions and action items.',
 };
 
-function makeAgent(overrides: AgentFixtureOverrides = {}): Agent {
+function makeAgent(overrides: AgentFixtureOverrides = {}): ProjectAgent {
 	return {
 		id: agentId,
 		projectId,
@@ -58,7 +58,7 @@ function makeAgent(overrides: AgentFixtureOverrides = {}): Agent {
 		tools: {},
 		updatedAt: new Date(),
 		...overrides,
-	} as unknown as Agent;
+	} as unknown as ProjectAgent;
 }
 
 function saveResult(overrides: Partial<SkillSaveResult> = {}): SkillSaveResult {
@@ -520,7 +520,11 @@ describe('AgentSkillsService', () => {
 				schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },
 				skills: { skill_a: skill },
 			});
-			const fresh = { ...agent, versionId: 'v2' } as Agent;
+			const fresh = {
+				...agent,
+				versionId: 'v2',
+				schema: { ...agent.schema, instructions: 'Saved by a concurrent config edit.' },
+			} as ProjectAgent;
 			agentRepository.findByIdAndProjectId
 				.mockResolvedValueOnce(agent)
 				.mockResolvedValueOnce(fresh);
@@ -555,6 +559,13 @@ describe('AgentSkillsService', () => {
 			expect(agentUpdateBroadcaster.notify).toHaveBeenCalledWith(
 				{ projectId, agentId, source: 'user' },
 				'push-ref-1',
+			);
+			expect(modificationTelemetry.record).toHaveBeenCalledWith(
+				expect.objectContaining({
+					agent: fresh,
+					config: expect.objectContaining({ instructions: 'Saved by a concurrent config edit.' }),
+					changedParts: ['skills'],
+				}),
 			);
 			expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
 			expect(result).toEqual({

@@ -85,6 +85,7 @@ import { SubAgentRunner } from '../sub-agents/sub-agent-runner';
 import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { AgentPolicyService } from '@/modules/agents/agent-policy.service';
+import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
 
 const agentId = 'agent-1';
@@ -152,6 +153,7 @@ function makeRuntimeReconstructionService(
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
 		mock<CredentialsService>(),
+		makeKnowledgeAvailabilityService(),
 	);
 }
 
@@ -287,12 +289,16 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 				credentialsService,
 				mock<WorkflowRepository>(),
 				mock<NodeToolAiGatewayService>(),
+				agentRepository,
+				agentTaskRepository,
+				skillRefs,
+				new AgentPolicyService(new PolicyEnforcementService()),
 			),
 			mock<AgentSetupCompletionService>(),
 			transactionRunner,
 			saveCompletion,
-			new AgentPolicyService(new PolicyEnforcementService()),
 			skillRefs,
+			mock<ChatIntegrationRegistry>(),
 		);
 		agentCustomToolsService = new AgentCustomToolsService(
 			logger,
@@ -384,6 +390,9 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			new AgentPolicyService(new PolicyEnforcementService()),
 			skillRefs,
 			transactionRunner,
+			mock<AgentConfigPreparationService>(),
+			saveCompletion,
+			mock<AgentSetupCompletionService>(),
 		);
 		service = agentExecutionOrchestratorService;
 		markSharedTestSetupAsUsed(
@@ -423,6 +432,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 
 			const toolNames: string[] = [];
 			const runtimeAgent = {
+				nativeToolDeferral: vi.fn(),
 				tool: vi.fn((tool: { name?: string } | Array<{ name?: string }>) => {
 					for (const item of Array.isArray(tool) ? tool : [tool]) {
 						if (item.name) toolNames.push(item.name);
@@ -469,6 +479,18 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 					availableSubAgents: [],
 				},
 				credentialIntegrations: [{ type: 'slack', credentialId: 'cred-slack' }],
+			});
+
+			expect(runtimeAgent.nativeToolDeferral).toHaveBeenCalledWith({
+				eagerToolNames: [
+					'workspace_read_file',
+					'workspace_read_tool_result',
+					'workspace_write_file',
+					'workspace_str_replace_file',
+					'workspace_execute_command',
+					'load_skill',
+					'mark_session_failed',
+				],
 			});
 
 			expect(toolNames.filter((name) => name === 'slack_context')).toHaveLength(1);

@@ -3,6 +3,7 @@ export { useTypeAvailabilityPoliciesStore } from './type-availability-policies.s
 export { SCOPE_LABEL_KEY, type RestrictedTypeKind } from './type-availability-policies.constants';
 export {
 	describeNodeTypeRestriction,
+	describeRestrictedNodeTypes,
 	getNodeTypeRestriction,
 	isNodeTypeRestricted,
 	useNodeTypeRestriction,

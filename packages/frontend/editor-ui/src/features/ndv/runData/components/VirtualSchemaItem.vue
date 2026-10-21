@@ -124,7 +124,7 @@ const emit = defineEmits<{
 				}"
 				@click="downloadBinaryData"
 			>
-				<N8nIcon class="type-icon" :icon="'download'" size="small" />
+				<N8nIcon class="type-icon" icon="arrow-circle-down" size="small" />
 			</div>
 			<div
 				class="pill binary-control-pill"

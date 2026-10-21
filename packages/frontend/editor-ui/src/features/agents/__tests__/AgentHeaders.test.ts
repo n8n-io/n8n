@@ -1,9 +1,20 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount, type VueWrapper } from '@vue/test-utils';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import AgentPreviewHeader from '../components/AgentPreviewHeader.vue';
 import AgentSessionTimelineHeader from '../components/AgentSessionTimelineHeader.vue';
+
+const track = vi.fn();
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track }),
+}));
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ pushRef: 'session-xyz' }),
+}));
+
+beforeEach(() => vi.clearAllMocks());
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
@@ -156,6 +167,7 @@ describe('AgentPreviewHeader', () => {
 	function mountPreviewHeader() {
 		return mount(AgentPreviewHeader, {
 			props: {
+				agentId: 'agent-1',
 				agentName: 'Darwin',
 				agentHref: '/projects/project-1/agents/agent-1',
 				sessionTitle: 'Alpha',
@@ -178,6 +190,18 @@ describe('AgentPreviewHeader', () => {
 			},
 		});
 	}
+
+	it('tracks the standalone New chat button once and preserves its event', async () => {
+		const wrapper = mountPreviewHeader();
+		expect(track).not.toHaveBeenCalled();
+		await wrapper.get('[data-testid="agent-preview-new-chat-btn"]').trigger('click');
+
+		expect(wrapper.emitted('new-session')).toEqual([[]]);
+		expect(track).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_TEST_CHAT_ICON_FROM_TEST_PANEL,
+			{ agent_id: 'agent-1', session_id: 'session-xyz', source: 'standalone' },
+		);
+	});
 
 	it('forwards history props and events', () => {
 		const wrapper = mountPreviewHeader();
