@@ -32,6 +32,13 @@ const props = withDefaults(defineProps<N8nTooltipProps>(), {
 	avoidCollisions: true,
 });
 
+const emit = defineEmits<{
+	/** Emitted when the tooltip starts to open */
+	'before-show': [];
+	/** Emitted when the tooltip closes */
+	hide: [];
+}>();
+
 // Get append-to target from composable, defaulting to body for proper z-index stacking
 const injectedAppendTo = useInjectTooltipAppendTo();
 const appendTo = computed(() => injectedAppendTo.value ?? 'body');
@@ -74,6 +81,12 @@ const isControlled = computed(() => props.visible !== undefined);
 
 const handleOpenChange = (open: boolean) => {
 	isOpen.value = open;
+	// Consumers use these events to lazy-load the tooltip content
+	if (open) {
+		emit('before-show');
+	} else {
+		emit('hide');
+	}
 };
 </script>
 
