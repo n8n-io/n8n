@@ -87,6 +87,30 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 		return rows.map((r) => this.toEvent(r));
 	}
 
+	async getRunFinish(threadId: string, runId: string) {
+		const row = await this.findOne({
+			where: { threadId, runId, type: 'run-finish' },
+			order: { seq: 'DESC' },
+		});
+		if (!row) return null;
+		const event = this.toEvent(row);
+		return event.type === 'run-finish'
+			? { status: event.payload.status, reason: event.payload.reason }
+			: null;
+	}
+
+	/** Read terminal facts before a writer admits more activity for these runs. */
+	async getActivityTerminalEvents(threadId: string, runIds: string[]): Promise<InstanceAiEvent[]> {
+		if (runIds.length === 0) return [];
+		const rows = await this.createQueryBuilder('e')
+			.where('e.threadId = :threadId', { threadId })
+			.andWhere('e.runId IN (:...runIds)', { runIds })
+			.andWhere('e.type IN (:...types)', { types: ['run-finish', 'agent-completed'] })
+			.orderBy('e.seq', 'ASC')
+			.getMany();
+		return rows.map((row) => this.toEvent(row));
+	}
+
 	/** Facts for specific runs in seq order, with the run and write-time context
 	 *  the fold-on-read history derivation needs. Scoped rather than
 	 *  whole-thread: a paged history read folds only the runs behind the page it

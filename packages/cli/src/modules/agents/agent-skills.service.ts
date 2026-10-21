@@ -4,6 +4,7 @@ import {
 	type AgentSkillAvailability,
 	type AgentSkill,
 	type AgentSkillMutationResponse,
+	type SkillCreateMethod,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { TransactionRunner, type User } from '@n8n/db';
@@ -14,11 +15,18 @@ import { UserError } from 'n8n-workflow';
 import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { findIntroducedNameClashes, findNameClashGroups } from '@/modules/skills/skill-names';
+import type { SkillTarget } from '@/modules/skills/skill.repository';
+import { SkillService, withTrimmedName } from '@/modules/skills/skill.service';
+import {
+	SkillsTelemetry,
+	type SkillTelemetryMethod,
+	type SkillTelemetrySource,
+} from '@/modules/skills/skills-telemetry';
 
 import {
 	type AgentMutationTelemetryContext,
 	buildAgentMutationEvent,
-	captureAgentMutation,
 } from './agent-modification-telemetry.service';
 import { AgentSaveCompletionService } from './agent-save-completion.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
@@ -26,8 +34,6 @@ import type { Agent } from './entities/agent.entity';
 import { composeJsonConfig } from './json-config/agent-config-composition';
 import type { AgentSkillRefs } from './json-config/agent-document';
 import { AgentRepository } from './repositories/agent.repository';
-import { findIntroducedNameClashes, findNameClashGroups } from './skills/skill-names';
-import { SkillService } from './skills/skill.service';
 import { getAgentConfigHash, getAgentSkillHash } from './utils/agent-config-hash';
 import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
@@ -51,6 +57,7 @@ export class AgentSkillsService {
 		private readonly agentSkillRefs: AgentSkillRefsService,
 		private readonly skillService: SkillService,
 		private readonly transactionRunner: TransactionRunner,
+		private readonly skillsTelemetry: SkillsTelemetry,
 	) {}
 
 	/** The skills of the agent draft, keyed by skill id: the versions that the draft runs. */
@@ -104,6 +111,7 @@ export class AgentSkillsService {
 		skill: AgentSkill,
 		context: AgentMutationTelemetryContext,
 		availableTo: AgentSkillAvailability = 'project',
+		method?: SkillCreateMethod,
 	): Promise<AgentSkillMutationResponse> {
 		const { results } = await this.createSkillsBatch(
 			agentId,
@@ -111,6 +119,7 @@ export class AgentSkillsService {
 			[skill],
 			context,
 			availableTo,
+			method,
 		);
 		return results[0];
 	}
@@ -121,6 +130,7 @@ export class AgentSkillsService {
 		skills: AgentSkill[],
 		context: AgentMutationTelemetryContext,
 		availableTo: AgentSkillAvailability = 'project',
+		method?: SkillCreateMethod,
 	): Promise<{ results: AgentSkillMutationResponse[]; saved: Agent; skillRefs: AgentSkillRefs }> {
 		if (skills.length === 0) {
 			throw new UserError('At least one skill is required.');
@@ -134,10 +144,13 @@ export class AgentSkillsService {
 		);
 		if (!entity.schema) throw new UserError('Agent has no JSON config yet.');
 
-		// With the hub off, skills keep `allowedTools` as on master. Hub skills ignore it.
+		// With the hub off, skills keep `allowedTools` as on master. Hub skills ignore it, and
+		// get the trimmed name the hub stores, so the answer and its hash match the saved skill.
 		const bodies = skills.map((skill) => {
 			const validated = this.validateSkill(skill);
-			return this.agentSkillRefs.usesSkillsHub ? toStoredSkill(validated) : validated;
+			return this.agentSkillRefs.usesSkillsHub
+				? withTrimmedName(toStoredSkill(validated))
+				: validated;
 		});
 		if (this.agentSkillRefs.usesSkillsHub) {
 			await this.assertCanCreateSkills(context.user, entity.projectId, availableTo);
@@ -145,7 +158,6 @@ export class AgentSkillsService {
 
 		const previous = await this.agentSkillRefs.readDraft(entity, {});
 		this.assertNoNameClashes(previous.skills, bodies);
-		const snapshot = captureAgentMutation(entity, previous.skillRefs);
 
 		markAgentDraftDirty(entity);
 		const { ids, skillRefs } = await this.transactionRunner.run({}, async (ctx) => {
@@ -169,11 +181,20 @@ export class AgentSkillsService {
 		});
 
 		await this.saveCompletion.bodySaved(
-			buildAgentMutationEvent(entity, skillRefs, projectId, context, snapshot, { skills: true }),
+			buildAgentMutationEvent(entity, skillRefs, projectId, context, ['skills']),
 			context.pushRef,
 		);
 
 		this.logger.debug('Created and attached agent skills', { agentId, projectId, skillIds: ids });
+		// With the hub off, the skills stay on the agent row and the hub has nothing to report.
+		if (this.agentSkillRefs.usesSkillsHub) {
+			await this.skillsTelemetry.created(
+				context.user.id,
+				ids,
+				telemetrySourceOf(context),
+				telemetryMethodOf(context, method),
+			);
+		}
 
 		return {
 			results: ids.map((id, index) => ({
@@ -239,14 +260,24 @@ export class AgentSkillsService {
 		this.validateSkill(updated);
 
 		const nextAvailability = await this.availabilityChange(skillId, availableTo);
+		let checkedSource: SkillTarget | undefined;
 		if (nextAvailability) {
 			await this.skillService.assertCanEdit(context.user, [skillId]);
+			checkedSource = await this.skillService.assertCanMove(context.user, skillId);
 			await this.assertCanCreateSkills(context.user, entity.projectId, nextAvailability);
 		}
 
 		if (isEqual(existing, updated)) {
 			if (nextAvailability) {
-				await this.agentSkillRefs.setAvailability(entity, skillId, nextAvailability, {});
+				await this.agentSkillRefs.setAvailability(
+					entity,
+					skillId,
+					nextAvailability,
+					{},
+					{
+						checkedSource,
+					},
+				);
 			}
 			return {
 				id: skillId,
@@ -272,12 +303,15 @@ export class AgentSkillsService {
 			}
 		}
 		await this.skillService.assertCanEdit(context.user, [skillId]);
-		const snapshot = captureAgentMutation(entity, skillRefs);
 
 		if (pinned) markAgentDraftDirty(entity);
 		const saved = await this.transactionRunner.run({}, async (ctx) => {
 			if (nextAvailability) {
-				await this.agentSkillRefs.setAvailability(entity, skillId, nextAvailability, ctx);
+				// The move checks the name the skill has after the save, not the old one.
+				await this.agentSkillRefs.setAvailability(entity, skillId, nextAvailability, ctx, {
+					nameAfterMove: updated.name,
+					checkedSource,
+				});
 			}
 			if (pinned) {
 				await saveAgentDraftFenced(this.agentRepository, entity, ctx);
@@ -308,11 +342,20 @@ export class AgentSkillsService {
 				await this.agentSkillRefs.refsForDraft(fresh, {}),
 				projectId,
 				context,
-				snapshot,
-				{ skills: true },
+				['skills'],
 			),
 			context.pushRef,
 		);
+
+		if (saved.created) {
+			await this.skillsTelemetry.updated(
+				context.user.id,
+				skillId,
+				telemetrySourceOf(context),
+				saved.version,
+				nextAvailability !== undefined,
+			);
+		}
 
 		this.logger.debug('Updated agent skill', {
 			agentId,
@@ -348,8 +391,6 @@ export class AgentSkillsService {
 		if (!previousSkillRefs?.some((ref) => ref.id === skillId)) {
 			throw new NotFoundError('Skill not found');
 		}
-		const snapshot = captureAgentMutation(entity, previousSkillRefs);
-
 		markAgentDraftDirty(entity);
 		const skillRefs = await this.transactionRunner.run({}, async (ctx) => {
 			await saveAgentDraftFenced(this.agentRepository, entity, ctx);
@@ -361,7 +402,7 @@ export class AgentSkillsService {
 			return await this.agentSkillRefs.refsForDraft(entity, ctx);
 		});
 		await this.saveCompletion.bodySaved(
-			buildAgentMutationEvent(entity, skillRefs, projectId, context, snapshot, { skills: true }),
+			buildAgentMutationEvent(entity, skillRefs, projectId, context, ['skills']),
 			context.pushRef,
 		);
 
@@ -388,14 +429,13 @@ export class AgentSkillsService {
 		// Every body on the agent row counts, with or without a ref, as on master.
 		const { [skillId]: _self, ...others } = entity.skills ?? {};
 		this.assertNoNameClashes(others, [updated]);
-		const snapshot = captureAgentMutation(entity, skillRefs);
 		entity.skills = { ...entity.skills, [skillId]: updated };
 		markAgentDraftDirty(entity);
 		await this.transactionRunner.run({}, async (ctx) => {
 			await saveAgentDraftFenced(this.agentRepository, entity, ctx);
 		});
 		await this.saveCompletion.bodySaved(
-			buildAgentMutationEvent(entity, skillRefs, projectId, context, snapshot, { skills: true }),
+			buildAgentMutationEvent(entity, skillRefs, projectId, context, ['skills']),
 			context.pushRef,
 		);
 		this.logger.debug('Updated agent skill', { agentId: entity.id, projectId, skillId });
@@ -466,4 +506,17 @@ function toStoredSkill(skill: AgentSkill): AgentSkill {
 		instructions: skill.instructions,
 		...(skill.references?.length ? { references: skill.references } : {}),
 	};
+}
+
+/** A person in the agent builder and n8n Assistant building the agent both report as `agent`. */
+function telemetrySourceOf(context: AgentMutationTelemetryContext): SkillTelemetrySource {
+	return context.modifiedBy === 'mcp' ? 'mcp' : 'agent';
+}
+
+/** Only a person in the skill modal types or uploads. n8n Assistant and MCP clients write with AI. */
+function telemetryMethodOf(
+	context: AgentMutationTelemetryContext,
+	method: SkillCreateMethod | undefined,
+): SkillTelemetryMethod {
+	return context.modifiedBy === 'user' ? (method ?? 'manual') : 'ai';
 }

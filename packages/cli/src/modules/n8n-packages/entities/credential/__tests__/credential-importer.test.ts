@@ -1,3 +1,4 @@
+import type { SerializedCredential } from '@n8n/api-types';
 import type { CredentialsFinderService } from '@n8n/backend-services';
 import type { CredentialsEntity, Project, SharedCredentials, User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -10,7 +11,6 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import type { ImportContext } from '../../../n8n-packages.types';
 import { CredentialImporter } from '../credential-importer';
 import { CredentialMatcherFactory } from '../credential-matcher-factory';
-import type { SerializedCredential } from '../../../spec/serialized/credential.schema';
 import type { CredentialBindingRequest, CredentialResolutionFailure } from '../credential.types';
 import { IdBasedCredentialMatcher } from '../id-based-credential-matcher';
 import type { NameAndTypeCredentialMatcher } from '../name-and-type-credential-matcher';
@@ -256,6 +256,7 @@ describe('CredentialImporter', () => {
 				matched: [],
 				stubbed: ['missing-cred'],
 				seeded: [],
+				incomplete: [],
 			});
 		});
 
@@ -277,6 +278,7 @@ describe('CredentialImporter', () => {
 				matched: [],
 				stubbed: [],
 				seeded: [],
+				incomplete: [],
 			});
 		});
 
@@ -367,6 +369,7 @@ describe('CredentialImporter', () => {
 				matched: ['cred-source'],
 				stubbed: [],
 				seeded: [],
+				incomplete: [],
 			});
 		});
 
@@ -631,6 +634,7 @@ describe('CredentialImporter', () => {
 			const missingCredential = packageCredential({
 				id: 'missing-cred',
 				packageData: { token: '={{ $secrets.github.token }}' },
+				packageDataIsComplete: true,
 			});
 
 			const result = await importer.apply(
@@ -657,6 +661,7 @@ describe('CredentialImporter', () => {
 				matched: [],
 				stubbed: [],
 				seeded: ['missing-cred'],
+				incomplete: [],
 			});
 		});
 
@@ -716,6 +721,7 @@ describe('CredentialImporter', () => {
 			);
 			expect(result.stubbed).toEqual(['missing-cred']);
 			expect(result.seeded).toEqual([]);
+			expect(result.incomplete).toEqual([]);
 		});
 	});
 });

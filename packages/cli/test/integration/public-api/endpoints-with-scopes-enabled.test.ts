@@ -84,7 +84,7 @@ describe('Public API endpoints with API key scopes', () => {
 		const { ScopedJwtStrategy } = await import(
 			'@/modules/token-exchange/services/scoped-jwt.strategy.js'
 		);
-		const { AuthStrategyRegistry } = await import('@/services/auth-strategy.registry.js');
+		const { AuthStrategyRegistry } = await import('@n8n/backend-services/auth');
 		Container.get(AuthStrategyRegistry).register(Container.get(ScopedJwtStrategy));
 	});
 

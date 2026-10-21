@@ -10,6 +10,8 @@ import type {
 import { mockDeep } from 'vitest-mock-extended';
 
 import { resolveLakebaseSchemaUrl, resolveLakebaseTableUrl } from '../actions/lakebase/helpers';
+import { OPENAPI_DISABLED_NOTICE } from '../actions/lakebase/openApiDocument';
+import { LAKEBASE_ERROR_HINTS } from '../transport/lakebaseErrors';
 
 // The shared Lakebase transport waits before its schema-cache retry
 vi.mock('@n8n/utils/sleep', () => ({
@@ -501,21 +503,19 @@ describe('listSearch -> getLakebaseTables', () => {
 		expect(error.message).toBe(
 			'Turn on the "OpenAPI specification" setting of the Data API to list tables, or enter the table name By ID',
 		);
-		expect(error.description).toBe(
-			'In Databricks open the project, then Data API > API > Advanced settings, and enable OpenAPI specification.',
-		);
+		expect(error.description).toBe(OPENAPI_DISABLED_NOTICE);
 	});
 
-	it('rethrows other Data API errors untouched', async () => {
+	it('rethrows another Data API error with its own hint, not the OpenAPI one', async () => {
 		const context = createLoadOptionsContext(selectedSchema);
 		const error = apiErrorFromBody(401, { code: 'PGRST301', message: 'invalid token permissions' });
-		const { message: originalMessage, description: originalDescription } = error;
 		apiMock(context).mockResolvedValueOnce(endpointsResponse).mockRejectedValueOnce(error);
 
 		await expect(getLakebaseTables.call(context)).rejects.toBe(error);
 
-		expect(error.message).toBe(originalMessage);
-		expect(error.description).toBe(originalDescription);
+		expect(error.message).toBe('invalid token permissions');
+		expect(error.description).toBe(LAKEBASE_ERROR_HINTS.get('PGRST301'));
+		expect(error.description).not.toContain('OpenAPI');
 	});
 
 	it('surfaces a legible PERMISSION_DENIED from the endpoints lookup', async () => {

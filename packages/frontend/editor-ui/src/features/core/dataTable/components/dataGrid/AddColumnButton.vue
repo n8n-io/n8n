@@ -34,10 +34,13 @@ const props = withDefaults(
 		params: {
 			onAddColumn: (column: DataTableColumnCreatePayload) => Promise<AddColumnResponse>;
 			disabled?: boolean | (() => boolean);
+			disabledTooltip?: string | (() => string | undefined);
 		};
 		popoverId?: string;
 		useTextTrigger?: boolean;
 		disabled?: boolean;
+		/** Shown instead of the default label while the button is disabled. */
+		disabledTooltip?: string;
 	}>(),
 	{
 		disabled: false,
@@ -47,7 +50,17 @@ const props = withDefaults(
 // Use disabled from params if available (when used as AG Grid header), otherwise use prop
 const isDisabled = computed(() => toValue(props.params?.disabled ?? props.disabled));
 
+const disabledTooltip = computed(() =>
+	toValue(props.params?.disabledTooltip ?? props.disabledTooltip),
+);
+
 const i18n = useI18n();
+
+const tooltipContent = computed(() =>
+	isDisabled.value && disabledTooltip.value
+		? disabledTooltip.value
+		: i18n.baseText('dataTable.addColumn.label'),
+);
 const { getIconForType } = useDataTableTypes();
 const { debounce } = useDebounce();
 
@@ -150,7 +163,7 @@ const onInput = debounce(validateName, { debounceTime: 100 });
 </script>
 
 <template>
-	<N8nTooltip :disabled="popoverOpen" :content="i18n.baseText('dataTable.addColumn.label')">
+	<N8nTooltip :disabled="popoverOpen" :content="tooltipContent">
 		<div class="add-column-header-component-wrapper">
 			<N8nPopover
 				:id="popoverId"

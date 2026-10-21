@@ -46,7 +46,7 @@ import {
 import type { AgentsChatInteractionExtension } from '@/features/ai/shared/agentsChat/interactionRegistry';
 import { getMessageThinkingSegments } from '@/features/ai/shared/agentsChat/thinking';
 import type { ChatMessage, ThinkingSegment, ToolCall } from '@/features/ai/shared/agentsChat/types';
-import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
+import { CHAT_MESSAGE_ROLE, CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 import { summariseToolCall } from '@/features/ai/shared/agentsChat/interactiveSummary';
 import { isPolicyRefusedToolOutput } from '@/features/ai/shared/agentsChat/toolPolicyRefusal';
 import { isBudgetStopCode, type BudgetNoticeCode } from '../utils/budget-config';
@@ -220,7 +220,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const messagingState = computed<'idle' | 'waitingFirstChunk' | 'receiving'>(() => {
 		if (!isStreaming.value) return 'idle';
 		const lastMsg = messages.value[messages.value.length - 1];
-		if (!lastMsg || lastMsg.role === 'user') return 'waitingFirstChunk';
+		if (!lastMsg || lastMsg.role === CHAT_MESSAGE_ROLE.USER) return 'waitingFirstChunk';
 		return 'receiving';
 	});
 
@@ -729,7 +729,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		const restored = next.map((message) => ({ ...message }));
 		for (let index = restored.length - 1; index >= 0; index--) {
 			const message = restored[index];
-			if (message.role !== 'assistant' || message.executionId === undefined) continue;
+			if (message.role !== CHAT_MESSAGE_ROLE.ASSISTANT || message.executionId === undefined)
+				continue;
 			const notices = pending.get(message.executionId);
 			if (!notices) continue;
 			message.budgetNotices = notices;
@@ -1014,7 +1015,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				if (session.userMessage) {
 					if (
 						!messages.value.some(
-							(message) => message.role === 'user' && message.executionId === event.executionId,
+							(message) =>
+								message.role === CHAT_MESSAGE_ROLE.USER &&
+								message.executionId === event.executionId,
 						)
 					) {
 						messages.value.push({

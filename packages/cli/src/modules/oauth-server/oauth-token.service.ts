@@ -16,12 +16,12 @@ import { randomBytes, randomUUID } from 'node:crypto';
 
 import { authorizeAgainstGrant } from '@/modules/inbound-auth-core/grant-authorization';
 import { JwtService, UrlService } from '@n8n/backend-services';
-import type {
-	OAuthTokenVerifier,
-	UserWithContext,
-} from '@/services/oauth-token-verifier-proxy.service';
-import type { ProtectedResource } from '@/services/protected-resource.registry';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import {
+	type OAuthTokenVerifier,
+	type UserWithContext,
+	type ProtectedResource,
+	ProtectedResourceRegistry,
+} from '@n8n/backend-services/auth';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
@@ -93,9 +93,6 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 				// (empty string for scope-less grants), so an absent claim
 				// unambiguously identifies a token minted before scoping shipped.
 				scope: scopes.join(' '),
-				meta: {
-					isOAuth: true,
-				},
 			},
 			audience,
 		);

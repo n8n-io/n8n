@@ -1,21 +1,24 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import {
+	EventService,
+	type ExecutionRedaction,
+	type ExecutionRedactionOptions,
+	type RedactableExecution,
+} from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	channelsToPolicy,
+	mergeRedactionChannels,
+	policyToChannels,
+	runDataUsedCredentialIds,
 	runDataUsedDynamicCredentials,
 	WorkflowExecuteMode,
 	WorkflowSettings,
 } from 'n8n-workflow';
 
-import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { ForbiddenError, ScopeForbiddenError } from '@n8n/errors';
-import type {
-	ExecutionRedaction,
-	ExecutionRedactionOptions,
-	RedactableExecution,
-} from '@/executions/execution-redaction';
+
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -207,6 +210,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 				enforceDynCredRedaction,
 				enforceCredentialUsabilityRedaction,
 				inaccessibleCredentialIds,
+				redactedBySubWorkflow: this.isRedactedBySubWorkflow(execution),
 				memo: new Map(),
 			};
 			const pipeline = this.buildPipeline(execution, context, policyAllowsReveal);
@@ -298,8 +302,6 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	/**
 	 * Batched check for whether the viewer can use every credential each
 	 * execution's workflow references, independent of dynamic credentials.
-	 * Gated behind {@link isCredSharingEnabled}: while the flag is off this makes
-	 * no DB call and returns an empty set, so redaction behaves exactly as before.
 	 *
 	 * Returns the subset of `executions` that reference at least one credential
 	 * the viewer cannot use. Such executions must always be redacted with
@@ -313,14 +315,19 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		executions: RedactableExecution[],
 		user: User,
 	): Promise<Map<RedactableExecution, string[]>> {
-		if (!isCredSharingEnabled()) return new Map();
-
 		const credentialIdsByExecution = new Map<RedactableExecution, string[]>();
 		const allCredentialIds = new Set<string>();
 		for (const execution of executions) {
-			const credentialIds = this.credentialsPermissionChecker.getCredentialIdsForNodes(
-				execution.workflowData.nodes,
-			);
+			// The execution's own nodes, plus what its sub-workflows reported onto the calling
+			// nodes' tasks: their output is embedded here.
+			const credentialIds = [
+				...new Set([
+					...this.credentialsPermissionChecker.getCredentialIdsForNodes(
+						execution.workflowData.nodes,
+					),
+					...runDataUsedCredentialIds(execution.data.resultData?.runData),
+				]),
+			];
 			if (credentialIds.length === 0) continue;
 			credentialIdsByExecution.set(execution, credentialIds);
 			for (const id of credentialIds) allCredentialIds.add(id);
@@ -397,27 +404,60 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	 *     exempt from this policy, so the data is still accessible to all.
 	 */
 	private policyAllowsReveal(execution: RedactableExecution): boolean {
-		const policy = this.resolvePolicy(execution);
+		return this.policyAllowsMode(this.resolvePolicy(execution), execution.mode);
+	}
+
+	private policyAllowsMode(
+		policy: WorkflowSettings.RedactionPolicy,
+		mode: WorkflowExecuteMode,
+	): boolean {
 		return (
 			policy === 'none' ||
-			(policy === 'non-manual' && MANUAL_MODES.has(execution.mode)) ||
-			(policy === 'manual-only' && !MANUAL_MODES.has(execution.mode))
+			(policy === 'non-manual' && MANUAL_MODES.has(mode)) ||
+			(policy === 'manual-only' && !MANUAL_MODES.has(mode))
 		);
 	}
 
 	/**
-	 * Resolves the effective redaction policy for an execution.
-	 *
-	 * Prefers the snapshot captured in `runtimeData.redaction` at execution time. That snapshot
-	 * is versioned: V2 stores per-channel booleans (reconstructed into the policy enum), while
-	 * V1 (older executions) stores the policy enum directly. Falls back to `workflowData.settings`
-	 * for executions captured before runtime snapshots existed, and defaults to 'none'.
+	 * Returns true when the execution's own policy does not redact its mode, but the
+	 * channels its sub-workflows reported do. Drives the `sub_workflow_redaction_policy`
+	 * reason, so the user can see why the data is redacted.
+	 */
+	private isRedactedBySubWorkflow(execution: RedactableExecution): boolean {
+		if (!this.licenseState.isDataRedactionLicensed()) return false;
+		return (
+			this.policyAllowsMode(this.resolveBasePolicy(execution), execution.mode) &&
+			!this.policyAllowsMode(this.resolvePolicy(execution), execution.mode)
+		);
+	}
+
+	/**
+	 * Resolves the effective redaction policy for an execution: its own policy (see
+	 * {@link resolveBasePolicy}) combined, strictest per channel, with the channels its
+	 * sub-workflows reported (`runtimeData.subWorkflowRedaction`). The execution keeps a
+	 * copy of each sub-workflow's output, so it redacts at least what they redact.
 	 * Returns 'none' when the data-redaction license is not active, so that user-configured
 	 * policies are not applied without the license.
 	 */
 	private resolvePolicy(execution: RedactableExecution): WorkflowSettings.RedactionPolicy {
 		if (!this.licenseState.isDataRedactionLicensed()) return 'none';
 
+		const policy = this.resolveBasePolicy(execution);
+		const reported = execution.data.executionData?.runtimeData?.subWorkflowRedaction;
+		if (!reported?.production && !reported?.manual) return policy;
+
+		return channelsToPolicy(mergeRedactionChannels(policyToChannels(policy), reported));
+	}
+
+	/**
+	 * Resolves the execution's own redaction policy.
+	 *
+	 * Prefers the snapshot captured in `runtimeData.redaction` at execution time. That snapshot
+	 * is versioned: V2 stores per-channel booleans (reconstructed into the policy enum), while
+	 * V1 (older executions) stores the policy enum directly. Falls back to `workflowData.settings`
+	 * for executions captured before runtime snapshots existed, and defaults to 'none'.
+	 */
+	private resolveBasePolicy(execution: RedactableExecution): WorkflowSettings.RedactionPolicy {
 		const redaction = execution.data.executionData?.runtimeData?.redaction;
 
 		if (redaction?.version === 2) {

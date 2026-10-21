@@ -1,3 +1,5 @@
+import type { SerializedCredential, SerializedCredentialData } from '@n8n/api-types';
+
 import type {
 	ImportBindingMap,
 	CredentialConflictPolicy,
@@ -8,10 +10,6 @@ import type {
 	PackageCredentialRequirement,
 	PackageRequirementConsumer,
 } from '../../spec/requirements.schema';
-import type {
-	SerializedCredential,
-	SerializedCredentialData,
-} from '../../spec/serialized/credential.schema';
 import type { AgentRequirementSource } from '../requirement-source';
 
 /** A requirement enriched with the expression data the package bundles for it, when any. */
@@ -118,6 +116,7 @@ export interface CredentialApplyResult {
 	matched: string[];
 	stubbed: string[];
 	seeded: string[];
+	incomplete: string[];
 }
 
 export interface CredentialBindingRequest {
