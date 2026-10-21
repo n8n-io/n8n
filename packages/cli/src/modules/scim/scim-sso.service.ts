@@ -1,5 +1,6 @@
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
+import { SettingsRepository, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { ScimSwitchReader } from '@/sso.ee/scim-switch-reader';
@@ -26,10 +27,28 @@ export class ScimSsoService {
 		private readonly scimSettingsService: ScimSettingsService,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly scimSwitchReader: ScimSwitchReader,
+		private readonly settingsRepository: SettingsRepository,
 	) {}
 
 	isSsoEnabled(): boolean {
 		return isSamlOrOidcLoginEnabled();
+	}
+
+	/**
+	 * Tells if single sign-on is on, and also reads the saved authentication
+	 * method in `ctx`. Another main can turn single sign-on off before this
+	 * main gets the reload message, so the method in memory can be old. The
+	 * other main saves the method before its SSO-off cascade starts.
+	 */
+	async isSsoEnabledInTransaction(ctx: OperationContext): Promise<boolean> {
+		if (!this.isSsoEnabled()) return false;
+
+		const saved = await this.settingsRepository.findByKeyInContext(
+			'userManagement.authenticationMethod',
+			ctx,
+		);
+		// Without a saved method, the method in memory is the newest one.
+		return !saved || saved.value === 'saml' || saved.value === 'oidc';
 	}
 
 	/**

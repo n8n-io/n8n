@@ -422,6 +422,27 @@ describe('SCIM and single sign-on', () => {
 		expect(await scimSettings().isEnabled()).toBe(false);
 	});
 
+	// Another main can turn single sign-on off and save the method before this
+	// main reloads it. The enable check reads the saved method under the lock.
+	it('returns 400 and keeps SCIM off when the saved method is email but this main still says SAML', async () => {
+		await scimSettings().setEnabled(false);
+		await turnOnSso('saml');
+		await Container.get(SettingsRepository).upsertByKey(
+			'userManagement.authenticationMethod',
+			'email',
+			true,
+			{},
+		);
+
+		const response = await testServer
+			.authAgentFor(admin)
+			.patch('/scim/config')
+			.send({ enabled: true });
+
+		expect(response.status).toBe(400);
+		expect(await scimSettings().isEnabled()).toBe(false);
+	});
+
 	it('returns 400 while LDAP is the authentication method', async () => {
 		await scimSettings().setEnabled(false);
 		await setCurrentAuthenticationMethod('ldap');
