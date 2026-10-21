@@ -5064,7 +5064,8 @@ export function redactExecuteNodeResult(
 	allowSendingParameterValues: boolean,
 ): InstanceAiExecuteNodeResult {
 	if (result.status === 'redacted') {
-		const redaction = { reason: result.reason };
+		// The execution row is deleted after the read, so nothing is left to reveal.
+		const redaction = { reason: result.reason, canReveal: false };
 		const guidance = describeExecuteNodeRedaction(result.reason);
 		if (result.failed) {
 			return {

@@ -367,7 +367,7 @@ describe('Instance AI execution redaction (integration)', () => {
 			expect(result).toMatchObject({
 				status: 'success',
 				output: '',
-				redaction: { reason: 'workflow_redaction_policy' },
+				redaction: { reason: 'workflow_redaction_policy', canReveal: false },
 			});
 			expect(JSON.stringify(result)).not.toContain('tok_secret');
 		});

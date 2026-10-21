@@ -735,7 +735,7 @@ describe('redactExecuteNodeResult', () => {
 			outputSuppressed:
 				'The node executed successfully, but n8n redacted its output for this user (workflow_redaction_policy). ' +
 				'n8n hides the data of every run like this one, so do not run the node again to see it. Tell the user that n8n redacted the data.',
-			redaction: { reason: 'workflow_redaction_policy' },
+			redaction: { reason: 'workflow_redaction_policy', canReveal: false },
 		});
 	});
 
@@ -773,7 +773,7 @@ describe('redactExecuteNodeResult', () => {
 					'Do not run the node again with this credential. Use a credential that the user owns or that is shared with them.',
 				nodeErrorType: 'NodeApiError',
 			},
-			redaction: { reason: 'credential_inaccessible' },
+			redaction: { reason: 'credential_inaccessible', canReveal: false },
 		});
 	});
 
