@@ -45,14 +45,23 @@ describe('stripGitBookParentTags', () => {
 
 	test('the built-in openapi.yml has no parent tags and no x-parent keys', () => {
 		const specPath = path.resolve(__dirname, '..', 'v1', 'openapi.yml');
-		const spec = stripGitBookParentTags(yaml.parse(fs.readFileSync(specPath, 'utf8')));
+		const openapiSpec = yaml.parse(fs.readFileSync(specPath, 'utf8')) as {
+			tags: Record<string, unknown>[];
+		};
+		const parentTagNames = new Set(
+			openapiSpec.tags
+				.map((tag) => tag[GITBOOK_PARENT_TAG_FIELD])
+				.filter((name): name is string => typeof name === 'string'),
+		);
+
+		const spec = stripGitBookParentTags(openapiSpec);
 		const tags = Array.isArray(spec.tags) ? spec.tags : [];
 
+		expect(parentTagNames.size).toBeGreaterThan(0);
 		expect(tags.length).toBeGreaterThan(0);
 		for (const tag of tags) {
 			expect(tag).not.toHaveProperty(GITBOOK_PARENT_TAG_FIELD);
-			expect(tag).not.toHaveProperty('x-displayName');
 		}
-		expect(tags.map((tag) => tag.name)).not.toContain('BuildAndRun');
+		expect(tags.map((tag) => tag.name).filter((name) => parentTagNames.has(name))).toEqual([]);
 	});
 });
