@@ -59,53 +59,59 @@ export class RunDataTracker {
 
 	@OnLifecycleEvent('workflowExecuteBefore')
 	onExecutionStart({ executionId, executionData }: WorkflowExecuteBeforeContext) {
-		this.track(executionId, executionData?.resultData.runData);
+		this.safely(executionId, () => this.track(executionId, executionData?.resultData.runData));
 	}
 
 	@OnLifecycleEvent('workflowExecuteResume')
 	onExecutionResume({ executionId, executionData }: WorkflowExecuteResumeContext) {
-		this.track(executionId, executionData.resultData.runData);
+		this.safely(executionId, () => this.track(executionId, executionData.resultData.runData));
 	}
 
 	@OnLifecycleEvent('nodeExecuteBefore')
 	onNodeStart({ executionId, nodeName, taskData }: NodeExecuteBeforeContext) {
-		const execution = this.executions.get(executionId);
-		if (!execution) return;
+		this.safely(executionId, () => {
+			const execution = this.executions.get(executionId);
+			if (!execution) return;
 
-		execution.runningNodes.set(taskData.executionIndex, {
-			name: nodeName,
-			source: taskData.source[0]?.previousNode,
+			execution.runningNodes.set(taskData.executionIndex, {
+				name: nodeName,
+				source: taskData.source[0]?.previousNode,
+			});
+
+			// An AI sub-node stores its input when it starts, and can then wait long for a model.
+			// At finish, `seen` skips the input, so only its item wrappers count again.
+			if (hasInputOverride(taskData)) {
+				this.addEstimate(execution, executionId, nodeName, () =>
+					estimateInputSize(taskData, execution.seen),
+				);
+			}
 		});
-
-		// An AI sub-node stores its input when it starts, and can then wait long for a model.
-		// At finish, `seen` skips the input, so only its item wrappers count again.
-		if (hasInputOverride(taskData)) {
-			this.addEstimate(execution, executionId, nodeName, () =>
-				estimateInputSize(taskData, execution.seen),
-			);
-		}
 	}
 
 	@OnLifecycleEvent('nodeExecuteAfter')
 	onNodeFinish({ executionId, nodeName, taskData, executionData }: NodeExecuteAfterContext) {
-		const execution = this.executions.get(executionId);
-		if (!execution) return;
+		this.safely(executionId, () => {
+			const execution = this.executions.get(executionId);
+			if (!execution) return;
 
-		this.finishRun(execution, nodeName, taskData.executionIndex);
+			this.finishRun(execution, nodeName, taskData.executionIndex);
 
-		const { runData } = executionData.resultData;
-		this.addEstimate(execution, executionId, nodeName, () =>
-			estimateTaskDataSize(taskData, runData, execution.seen),
-		);
+			const { runData } = executionData.resultData;
+			this.addEstimate(execution, executionId, nodeName, () =>
+				estimateTaskDataSize(taskData, runData, execution.seen),
+			);
+		});
 	}
 
 	@OnLifecycleEvent('workflowExecuteAfter')
 	onExecutionEnd({ executionId }: WorkflowExecuteAfterContext) {
-		const execution = this.executions.get(executionId);
-		if (!execution) return;
+		this.safely(executionId, () => {
+			const execution = this.executions.get(executionId);
+			if (!execution) return;
 
-		this.executions.delete(executionId);
-		this.logEstimate(executionId, execution);
+			this.executions.delete(executionId);
+			this.logEstimate(executionId, execution);
+		});
 	}
 
 	getEstimate(executionId: string): RunDataEstimate | undefined {
@@ -117,6 +123,16 @@ export class RunDataTracker {
 			bytesByNode: execution.bytesByNode,
 			runningNode: [...execution.runningNodes.values()].at(-1)?.name,
 		};
+	}
+
+	/** Run a handler so that a failure in the tracker never reaches the execution. */
+	private safely(executionId: string, handler: () => void) {
+		try {
+			handler();
+		} catch {
+			// Reading the thrown value can throw too.
+			this.logger.debug('Failed to track run data', { executionId });
+		}
 	}
 
 	private finishRun(execution: TrackedExecution, nodeName: string, executionIndex: number) {

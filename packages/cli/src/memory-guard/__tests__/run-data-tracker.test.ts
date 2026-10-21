@@ -292,6 +292,49 @@ describe('RunDataTracker', () => {
 	});
 
 	it.each([
+		[
+			'an execution start',
+			() =>
+				tracker.onExecutionStart({
+					executionId: '2',
+					executionData: {},
+				} as unknown as WorkflowExecuteBeforeContext),
+		],
+		[
+			'an execution resume',
+			() =>
+				tracker.onExecutionResume({
+					executionId: '2',
+					executionData: {},
+				} as unknown as WorkflowExecuteResumeContext),
+		],
+		[
+			'a node start',
+			() =>
+				tracker.onNodeStart({
+					executionId: '1',
+					nodeName: 'Node',
+					taskData: { executionIndex: 0 },
+				} as unknown as NodeExecuteBeforeContext),
+		],
+		[
+			'a node finish',
+			() =>
+				tracker.onNodeFinish({
+					executionId: '1',
+					nodeName: 'Node',
+					taskData: { executionIndex: 0, data: { main: [toItems(1)] } },
+					executionData: {},
+				} as unknown as NodeExecuteAfterContext),
+		],
+	])('should not throw when the event data of %s is malformed', (_, handle) => {
+		start('1');
+
+		expect(handle).not.toThrow();
+		expect(tracker.getEstimate('1')?.totalBytes).toBe(0);
+	});
+
+	it.each([
 		['an object without a prototype', Object.create(null) as unknown],
 		[
 			'an error whose message throws',
