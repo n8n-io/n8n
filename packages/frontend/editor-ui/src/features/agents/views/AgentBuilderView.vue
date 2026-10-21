@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { OPEN_AGENT_PREVIEW_KEY } from './AgentSessionsListView.vue';
 import { useAgentPromptInspiration } from '../composables/useAgentPromptInspiration';
 import { useAgentBuilderExperimentStore } from '@/experiments/agentBuilder/stores/agentBuilder.store';
 import {
@@ -2118,6 +2119,11 @@ const runConfigWrite: AgentConfigWrite = async (write) => {
 	}
 };
 provide(AGENT_CONFIG_WRITE_KEY, runConfigWrite);
+provide(OPEN_AGENT_PREVIEW_KEY, {
+	open: () => onOpenPreview(),
+	isRunnable: computed(() => agent.value?.isRunnable === true),
+	validationIssues: computed(() => configValidation.value?.issues ?? []),
+});
 
 async function flushAutosave(): Promise<AutosaveResult> {
 	return await flushAutosaveLoops();

@@ -1,3 +1,13 @@
+<script lang="ts">
+export const OPEN_AGENT_PREVIEW_KEY: import('vue').InjectionKey<{
+	open: () => Promise<boolean>;
+	isRunnable: import('vue').ComputedRef<boolean>;
+	validationIssues: import('vue').ComputedRef<
+		import('@n8n/api-types').AgentConfigValidationIssue[]
+	>;
+}> = Symbol('openAgentPreview');
+</script>
+
 <script lang="ts" setup>
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
@@ -21,15 +31,17 @@ import type {
 	AgentSessionStatus,
 } from '@/features/agents/composables/useAgentThreadsApi';
 import AgentSessionsFilter from '@/features/agents/components/AgentSessionsFilter.vue';
+import AgentPreviewButton from '@/features/agents/components/AgentPreviewButton.vue';
 import { generateWhimsicalLabel } from '@/features/ai/shared/utils/whimsicalLabel';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 
 import {
 	N8nActionDropdown,
 	N8nButton,
 	N8nCheckbox,
+	N8nEmptyState,
 	N8nBadge,
 	N8nText,
 	N8nSpinner,
@@ -77,6 +89,7 @@ const props = withDefaults(
 	},
 );
 
+const openAgentPreview = inject(OPEN_AGENT_PREVIEW_KEY, undefined);
 const i18n = useI18n();
 const threadTitleOf = useThreadTitle();
 const route = useRoute();
@@ -479,22 +492,38 @@ const skeletonMetaWidths = ['var(--spacing--2xl)', 'var(--spacing--xl)', 'var(--
 				</div>
 			</li>
 			<li v-if="!sessionsStore.threads.length && !sessionsStore.loading">
-				<div :class="$style.emptyState">
-					<span data-test-id="agent-sessions-empty">
-						{{
-							i18n.baseText(
-								hasActiveFilters ? 'agentSessions.emptyWithFilters' : 'agentSessions.empty',
-							)
-						}}
-					</span>
-					<span
-						v-if="!hasActiveFilters"
-						:class="$style.emptyStateDescription"
-						data-test-id="agent-sessions-empty-description"
-					>
-						{{ i18n.baseText('agentSessions.emptyDescription') }}
-					</span>
-				</div>
+				<N8nEmptyState
+					:class="$style.emptyState"
+					:icon="{ type: 'icon', value: 'bot' }"
+					:hide-border="true"
+					:description="
+						hasActiveFilters ? undefined : i18n.baseText('agentSessions.emptyDescription')
+					"
+					button-icon="flask-conical"
+				>
+					<template #heading>
+						<span data-test-id="agent-sessions-empty">
+							{{
+								i18n.baseText(
+									hasActiveFilters ? 'agentSessions.emptyWithFilters' : 'agentSessions.empty',
+								)
+							}}
+						</span>
+					</template>
+					<template v-if="!hasActiveFilters && openAgentPreview" #additionalContent>
+						<AgentPreviewButton
+							variant="solid"
+							:is-runnable="openAgentPreview.isRunnable.value"
+							:validation-issues="openAgentPreview.validationIssues.value"
+							@open-preview="openAgentPreview.open()"
+						/>
+					</template>
+					<template #description>
+						<span data-test-id="agent-sessions-empty-description">
+							{{ i18n.baseText('agentSessions.emptyDescription') }}
+						</span>
+					</template>
+				</N8nEmptyState>
 			</li>
 			<li
 				v-for="row in sessionRows"
@@ -622,7 +651,7 @@ const skeletonMetaWidths = ['var(--spacing--2xl)', 'var(--spacing--xl)', 'var(--
 					/>
 				</div>
 			</li>
-			<li v-if="sessionsStore.nextCursor">
+			<li v-if="sessionsStore.nextCursor" :class="$style.loadMore">
 				<N8nButton
 					icon="refresh-cw"
 					variant="ghost"
@@ -652,6 +681,8 @@ const skeletonMetaWidths = ['var(--spacing--2xl)', 'var(--spacing--xl)', 'var(--
 	overflow-y: auto;
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
+
+	--n8n-agent-session-list-row--radius: var(--radius);
 }
 
 .embedded {
@@ -667,7 +698,7 @@ const skeletonMetaWidths = ['var(--spacing--2xl)', 'var(--spacing--xl)', 'var(--
 	margin: 0;
 	list-style: none;
 	background-color: var(--background--surface);
-	border-radius: var(--radius);
+	border-radius: var(--n8n-agent-session-list-row--radius);
 	padding: var(--spacing--5xs);
 	outline: var(--border);
 	box-shadow: var(--shadow--xs);
@@ -675,13 +706,13 @@ const skeletonMetaWidths = ['var(--spacing--2xl)', 'var(--spacing--xl)', 'var(--
 
 .listRow {
 	/** Gap between the rail, status icon and title. The rail geometry depends on it. */
-	--list-start-gap: var(--spacing--2xs);
+	--n8n-agent-session-list-start-gap: var(--spacing--2xs);
 	/** Rails extend over this border so lines join across rows. */
-	--list-row-border-width: 1px;
+	--n8n-agent-session-list-row-border-width: 1px;
 
 	display: flex;
 	align-items: stretch;
-	border: var(--list-row-border-width) solid transparent;
+	border: var(--n8n-agent-session-list-row-border-width) solid transparent;
 	border-radius: var(--radius);
 
 	&:hover:not(:has(.actionGroup:hover)) {
@@ -712,7 +743,7 @@ const skeletonMetaWidths = ['var(--spacing--2xl)', 'var(--spacing--xl)', 'var(--
 .listEnd {
 	display: flex;
 	align-items: center;
-	gap: var(--list-start-gap, var(--spacing--2xs));
+	gap: var(--n8n-agent-session-list-start-gap, var(--spacing--2xs));
 }
 
 .listStart {
@@ -732,13 +763,13 @@ const skeletonMetaWidths = ['var(--spacing--2xl)', 'var(--spacing--xl)', 'var(--
  * Half-gap negative margins put the cell centre line under the parent's status icon.
  */
 .rail {
-	--rail-cell-width: calc(var(--height--2xs) + var(--list-start-gap));
+	--rail-cell-width: calc(var(--height--2xs) + var(--n8n-agent-session-list-start-gap));
 
 	display: flex;
 	align-self: stretch;
 	flex-shrink: 0;
-	margin-inline: calc(var(--list-start-gap) / -2);
-	margin-block: calc(-1 * var(--list-row-border-width));
+	margin-inline: calc(var(--n8n-agent-session-list-start-gap) / -2);
+	margin-block: calc(-1 * var(--n8n-agent-session-list-row-border-width));
 }
 
 .railCell,
@@ -763,7 +794,9 @@ const skeletonMetaWidths = ['var(--spacing--2xl)', 'var(--spacing--xl)', 'var(--
 	top: 100%;
 	left: 0;
 	width: 100%;
-	height: calc((var(--height--2xl) - var(--height--2xs)) / 2 + var(--list-row-border-width));
+	height: calc(
+		(var(--height--2xl) - var(--height--2xs)) / 2 + var(--n8n-agent-session-list-row-border-width)
+	);
 }
 
 .listIconContainer {
@@ -810,15 +843,11 @@ const skeletonMetaWidths = ['var(--spacing--2xl)', 'var(--spacing--xl)', 'var(--
 .emptyState {
 	display: flex;
 	flex-direction: column;
+	justify-content: center;
 	align-items: center;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--xs);
 	text-align: center;
-}
-
-.emptyStateDescription {
-	max-width: 100%;
-	color: var(--text-color--subtler);
-	white-space: normal;
+	aspect-ratio: 4/2;
 }
 
 .activityLabel {
@@ -828,6 +857,21 @@ const skeletonMetaWidths = ['var(--spacing--2xl)', 'var(--spacing--xl)', 'var(--
 
 .activityWord {
 	grid-area: 1 / 1;
+}
+
+.loadMore {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	padding: var(--spacing--3xs);
+	border-top: 1px solid var(--border-color);
+	margin-inline: calc(var(--spacing--5xs) * -1);
+	margin-top: var(--spacing--5xs);
+
+	> button {
+		width: 100%;
+		border-radius: var(--n8n-agent-session-list-row--radius);
+	}
 }
 
 .labelEnterActive,

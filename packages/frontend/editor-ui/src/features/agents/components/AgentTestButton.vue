@@ -12,7 +12,7 @@ const props = withDefaults(
 		isPreviewOpen?: boolean;
 		disabledReason?: string;
 		iconOnly?: boolean;
-		variant?: 'outline' | 'ghost';
+		variant?: 'outline' | 'ghost' | 'solid';
 		validationIssues?: AgentConfigValidationIssue[];
 		testId?: string;
 	}>(),
