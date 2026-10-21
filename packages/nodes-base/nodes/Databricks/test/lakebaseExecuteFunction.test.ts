@@ -54,8 +54,13 @@ describe('Lakebase -> Execute Function', () => {
 		apiMock(context).mockResolvedValue({ statusCode, body, headers: {} });
 		return { context, result: executeFunction.call(context, itemIndex) };
 	};
-	const requestOptions = (context: ReturnType<typeof setupContext>) =>
-		apiMock(context).mock.calls[0][1] as { body: unknown; headers: Record<string, string> };
+	const requestOptions = (context: ReturnType<typeof setupContext>) => {
+		const options = apiMock(context).mock.calls[0][1] as {
+			body: string;
+			headers: Record<string, string>;
+		};
+		return { ...options, body: JSON.parse(options.body) as unknown };
+	};
 
 	it('posts the form arguments to the function', async () => {
 		const { context, result } = run(3);
@@ -68,11 +73,30 @@ describe('Lakebase -> Execute Function', () => {
 				url: FN_URL,
 				json: true,
 				returnFullResponse: true,
-				body: { a: 1, b: 2 },
-				headers: expect.objectContaining({ Accept: 'application/json' }),
+				headers: expect.objectContaining({
+					Accept: 'application/json',
+					'Content-Type': 'application/json',
+				}),
 			}),
 		);
+		expect(requestOptions(context).body).toEqual({ a: 1, b: 2 });
 		expect(requestOptions(context).headers.Prefer).toBeUndefined();
+	});
+
+	it.each([
+		['the function takes no arguments', { 'functionArguments.value': {} }],
+		['every optional argument is blank', { 'functionArguments.value': { status_filter: null } }],
+		['the JSON arguments are an empty object', { specifyArguments: 'json', argumentsJson: '{}' }],
+	])('sends an empty JSON body when %s', async (_name, overrides) => {
+		const { context, result } = run(3, overrides);
+		await result;
+
+		const options = apiMock(context).mock.calls[0][1] as {
+			body: unknown;
+			headers: Record<string, string>;
+		};
+		expect(options.body).toBe('{}');
+		expect(options.headers['Content-Type']).toBe('application/json');
 	});
 
 	it.each([

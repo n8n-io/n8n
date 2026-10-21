@@ -102,6 +102,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'user-signed-up': (event) => this.userSignedUp(event),
 			'user-logged-in': (event) => this.userLoggedIn(event),
 			'user-login-failed': (event) => this.userLoginFailed(event),
+			'user-login-email-conflict': (event) => this.userLoginEmailConflict(event),
 			'user-invite-email-click': (event) => this.userInviteEmailClick(event),
 			'user-password-reset-email-click': (event) => this.userPasswordResetEmailClick(event),
 			'user-password-reset-request-click': (event) => this.userPasswordResetRequestClick(event),
@@ -626,6 +627,18 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.login.failed',
 			payload: event,
+		});
+	}
+
+	@Redactable()
+	private userLoginEmailConflict({
+		user,
+		authenticationMethod,
+		assertedEmail,
+	}: RelayEventMap['user-login-email-conflict']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.user.login.emailConflict',
+			payload: { ...user, authenticationMethod, _assertedEmail: assertedEmail },
 		});
 	}
 

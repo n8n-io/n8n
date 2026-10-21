@@ -442,8 +442,8 @@ function buildCoverageNote(
 	// wait-gate guidance — nodes behind a gate stay uncoverable either way.
 	const triggerScopeNote = triggerNodeName
 		? ` This pass started from trigger "${triggerNodeName}", so it covers that trigger's branch ` +
-			"only — nodes on another trigger's branch are expected to be unreached here. Call " +
-			'workflow_builder_verify_built_workflow again with `triggerNodeName` set to each remaining trigger and ' +
+			"only — nodes on another trigger's branch are expected to be unreached here. Run " +
+			'verification again with `triggerNodeName` set to each remaining trigger and ' +
 			'treat coverage as the union of those passes. Do not edit, disable, reorder, or copy the ' +
 			'workflow to reach them.'
 		: '';

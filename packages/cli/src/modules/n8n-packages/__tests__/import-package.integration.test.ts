@@ -2388,7 +2388,7 @@ describe('credential-missing-mode: create-stub', () => {
 		expect(stored.activeVersionId).toBe(originalActiveVersionId);
 	});
 
-	it('does not require the credential:create scope for create-stub', async () => {
+	it('does not require the API key credential:create scope for create-stub', async () => {
 		const owner = await createOwner();
 
 		const result = await importPackage({
