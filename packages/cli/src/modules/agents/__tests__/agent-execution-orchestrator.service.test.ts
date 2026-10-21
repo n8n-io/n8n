@@ -3190,6 +3190,9 @@ describe('AgentExecutionOrchestratorService', () => {
 			usePublishedVersion: true,
 			sandboxPrincipalHash: integrationPrincipalHash,
 		});
+		expect(runtime.agent.stream.mock.calls[0][1]?.persistence?.hostMetadata).toMatchObject(
+			encodeEpisodicScopeMetadata({ disabled: true }),
+		);
 		expect(externalHooks.run).toHaveBeenCalledWith('agent.preExecute', [agentId]);
 		expect(chatIntegrationService.getBridge).toHaveBeenCalledWith(agentId, 'slack', 'credential-1');
 		// The third argument keeps a card the woken turn raises addressed to the
