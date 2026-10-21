@@ -1,5 +1,5 @@
 ---
-name: progressive-building
+name: incremental-builder
 dependencies:
   tools:
     - workflow_builder_build_workflow
@@ -7,16 +7,7 @@ dependencies:
     - workflow_builder_workflows
     - workflow_builder_executions
 description: >-
-  Load before workflow_builder_build_workflow and before scoping or planning new workflows and
-  feature additions, including requests spanning multiple workflows. For a new
-  kept build, load intent-recognition first when it is listed. Implement
-  one increment per user message. Finish setup and inspect a successful real
-  execution before offering another increment. Then wait for the next user
-  reply. Partial setup is incomplete. A first setup or test refusal pauses
-  building. Follow the skill's full-build exceptions. Also supports workflow edits
-  and repairs. For workflows that create or write Data Tables, load
-  data-table-manager first. Requests only to
-  run, inspect, or manage existing resources use their normal tools and skills.
+  Use when building or extending a workflow, to deliver it one tested step at a time.
 ---
 
 # Progressive building
@@ -53,7 +44,7 @@ Ask a single-choice question if several named services are equally central.
 Otherwise state a reasonable starting assumption. Do not offer a multi-select
 list that adds services or triggers to the first version.
 
-The `planning` skill and `workflow_builder_create_tasks` tool are unavailable in this mode.
+The `task-planner` skill and `workflow_builder_create_tasks` tool are unavailable in this mode.
 Keep additional workflows as later roadmap items.
 
 ## Build, set up, and run

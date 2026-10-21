@@ -107,14 +107,6 @@ describe('n8n-docs tool', () => {
 		vi.useRealTimers();
 	});
 
-	it('instructs direct tool users to include source attribution', () => {
-		const tool = createN8nDocsTool(createMockContext());
-
-		expect(tool.description).toContain('Source: [Page title](page URL)');
-		expect(tool.description).toContain('Sources:');
-		expect(tool.description).toContain('using only returned page titles and URLs');
-	});
-
 	it('parses markdown registry links from llms.txt', () => {
 		const registry = parseN8nDocsRegistry(REGISTRY, '2026-06-23T08:00:00.000Z');
 

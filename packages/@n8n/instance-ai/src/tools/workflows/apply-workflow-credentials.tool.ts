@@ -31,10 +31,7 @@ export const applyWorkflowCredentialsInputSchema = z.object({
 export function createApplyWorkflowCredentialsTool(context: OrchestrationContext) {
 	return new Tool(ORCHESTRATION_TOOL_IDS.APPLY_WORKFLOW_CREDENTIALS)
 		.legacyNames(...getLegacyBuilderToolNames(ORCHESTRATION_TOOL_IDS.APPLY_WORKFLOW_CREDENTIALS))
-		.description(
-			'Apply real credentials to a workflow that was built with mocked credentials. ' +
-				'Only updates nodes that were mocked — never overwrites existing real credentials.',
-		)
+		.description('Replace the mocked credentials in a built workflow with real ones.')
 		.input(applyWorkflowCredentialsInputSchema)
 		.output(
 			z.object({

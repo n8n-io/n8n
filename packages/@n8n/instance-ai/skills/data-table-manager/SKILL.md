@@ -1,16 +1,7 @@
 ---
 name: data-table-manager
 description: >-
-  Load before calling data_tables or parse-file. Use for natural standalone
-  requests like "what data tables do I have?", "show/list my tables", or "what
-  columns are in this table?", and whenever the user asks to list, show,
-  create, inspect, import, seed, query, update, clean up, rename columns in, or
-  delete data tables and rows, especially from CSV/XLSX/JSON attachments. Also
-  load before building or planning workflows that create or write to Data
-  Tables (then load workflow-builder before workflow_builder_build_workflow).
-recommended_tools:
-  - data_tables
-  - parse-file
+  Use when the user wants to see, create, import into, query, or change data tables, or when a workflow will create or write to one.
 platforms:
   - daytona
 ---
@@ -28,7 +19,7 @@ create a background plan for data-table-only work.
 
 Also load this skill before planning or building a workflow whose trigger,
 processing steps, or outputs create, inspect, or write Data Table records, then
-pass the relevant schema/row-handling guidance to the planning skill or builder.
+pass the relevant schema/row-handling guidance to the `task-planner` skill or builder.
 
 n8n Data Tables are flat, workflow-friendly stores. Design them so future
 workflow expressions can read predictable field names and so updates/deletes

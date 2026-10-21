@@ -50,24 +50,7 @@ export const askUserResumeSchema = z.object({
 export function createAskUserTool() {
 	return new Tool(ASK_USER_TOOL_ID)
 		.legacyNames(...getLegacyBuilderToolNames(ASK_USER_TOOL_ID))
-		.description(
-			'Ask the user when only a human can decide; the run suspends until they respond. ' +
-				'Questions are single-select, multi-select, or free-text. ' +
-				'Before the first build, ask only about choices that change what you build, and do not ask for setup values ' +
-				'(recipients, accounts, resources, channels, credentials, timezone); leave them for setup. ' +
-				'When the request does not yet say what to build (no trigger, no steps, no named workflow or Agent), ' +
-				'ask about the goal: the result the user wants, whether it happens once now or keeps running, and ' +
-				'whether people chat with it. Do not call it a workflow or an Agent yet, and do not ask about triggers or nodes. ' +
-				'The UI adds a built-in "Something else" free-text input to every select question: NEVER include ' +
-				'catch-all options ("Something else", "Other", "None of the above") in the options array, and NEVER ' +
-				'add a follow-up question elaborating a previous "other" answer. Keep questions concise and independent ' +
-				"of each other's answers. A skip or dismissal (answered: false, or skipped: true) grants no additional permission. " +
-				'Choose defaults only for unspecified details within the requested task, or leave those details for setup. ' +
-				'If a skipped question seeks permission to change existing authentication, delete nodes, or expand scope, ' +
-				'preserve the existing state and report any remaining blocker. ' +
-				'NEVER re-present an answered, deferred, or skipped question. ' +
-				'NEVER ask the user to paste passwords, API keys, tokens, cookies, connection strings, or private keys here.',
-		)
+		.description('Ask the user questions and wait for their answers.')
 		.input(askUserInputSchema)
 		.output(
 			z.object({

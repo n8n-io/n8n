@@ -250,15 +250,7 @@ async function handleFetchUrl(
 
 export function createResearchTool(context: InstanceAiContext) {
 	return new Tool('research')
-		.description(
-			'Search the web or fetch page content for external (non-n8n) documentation. ' +
-				'For n8n-specific questions — product behavior, node setup, credentials, hosting, ' +
-				'or feature docs, including which OAuth scopes a provider app needs — prefer the ' +
-				'sandbox knowledge base and `n8n-docs`, which is always loaded and takes one ' +
-				'call, over web search. Use this tool when those ' +
-				'sources and node type definitions are insufficient, or when researching a ' +
-				'third-party API/service.',
-		)
+		.description('Search the web and fetch page content for information outside n8n.')
 		.input(inputSchema)
 		.suspend(domainGatingSuspendSchema)
 		.resume(domainGatingResumeSchema)

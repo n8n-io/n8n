@@ -1,24 +1,9 @@
 ---
 name: agent-builder
 description: >-
-  Load immediately after an Agent intent, before the first agent_builder_* call.
-  Governs how you create, configure, test, and publish n8n Agents yourself with
-  the agent_builder_* tools: targeting, prerequisites, initial build, config
-  freshness, interactive setup, models, memory, tools, and reply style. Use
-  directly for routine Agent follow-ups; rerun intent-recognition only when the
-  requested artifact is no longer clear.
+  Use when the user wants to create, configure, test, or publish an n8n Agent, including follow-up changes to one.
 shared_references:
   - credential-setup-with-computer-use
-recommended_tools:
-  - agent_builder_select_agent
-  - agent-context
-  - agent_builder_write_config
-  - agent_builder_patch_config
-  - agent_builder_resolve_llm
-  - agent_builder_finish_setup
-  - agent_builder_call_agent
-  - workflow_builder_build_workflow
-  - data_tables
 ---
 
 # Agent Builder
@@ -30,7 +15,7 @@ conversation. It holds the config rules and the config schema reference.
 
 ## Routing
 
-Use this skill after `intent-recognition` chooses an agent-anchored design, or
+Use this skill after `intent-classifier` chooses an agent-anchored design, or
 when the conversation already targets an Agent and the user is continuing that
 build. Do not rerun intent recognition for routine Agent edits or extensions.
 Use the `agent_builder_*` tools only for Agent artifacts.

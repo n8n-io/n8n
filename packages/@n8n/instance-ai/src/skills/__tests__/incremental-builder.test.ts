@@ -14,14 +14,14 @@ describe('progressive workflow skill variants', () => {
 		const source = loadInstanceAiSkills();
 		const originalRegistry = structuredClone(source.registry);
 		const progressive = await loadModeSkills('progressive');
-		const policy = await source.loadSkill('progressive-building');
+		const policy = await source.loadSkill('incremental-builder');
 		if (!policy) throw new Error('Expected the progressive policy');
 
 		for (const entry of source.registry.skills) {
 			const original = await source.loadSkill(entry.id);
 			const selected = await progressive.loadSkill(entry.id);
 			const selectedEntry = progressive.registry.skills.find(({ id }) => id === entry.id);
-			if (entry.id === 'planning' || entry.id === 'progressive-building') {
+			if (entry.id === 'task-planner' || entry.id === 'incremental-builder') {
 				expect(original).not.toBeNull();
 				expect(selected).toBeNull();
 				expect(selectedEntry).toBeUndefined();
@@ -29,9 +29,9 @@ describe('progressive workflow skill variants', () => {
 				expect(selected?.instructions).toContain(original?.instructions);
 				expect(selected?.instructions).toContain(policy.instructions);
 				expect(selectedEntry?.hash).not.toBe(entry.hash);
-			} else if (entry.id === 'planned-task-runtime') {
+			} else if (entry.id === 'planned-task-runner') {
 				expect(selected?.instructions).toBe(original?.instructions);
-				expect(selected?.recommendedTools).not.toContain('workflow_builder_create_tasks');
+				expect(selected?.recommendedTools).toBeUndefined();
 			} else {
 				expect(selected).toEqual(original);
 				expect(selectedEntry).toEqual(entry);
@@ -42,13 +42,13 @@ describe('progressive workflow skill variants', () => {
 		expect(source.registry).toEqual(originalRegistry);
 		const control = await loadModeSkills('default');
 		expect(control.registry).toEqual(
-			filterRuntimeSkillSource(source, ['progressive-building']).registry,
+			filterRuntimeSkillSource(source, ['incremental-builder']).registry,
 		);
 		await expect(loadModeSkills(undefined)).resolves.toBe(control);
 	});
 
 	it('serves the selected skills through load_skill', async () => {
-		const policy = await loadInstanceAiSkills().loadSkill('progressive-building');
+		const policy = await loadInstanceAiSkills().loadSkill('incremental-builder');
 		if (!policy) throw new Error('Expected the progressive policy');
 		const progressive = await loadModeSkills('progressive');
 		const loadProgressive = createSkillLoadTool(progressive);
@@ -65,10 +65,12 @@ describe('progressive workflow skill variants', () => {
 			);
 		}
 
-		await expect(loadProgressive.handler?.({ skillId: 'planning' }, {})).resolves.toMatchObject({
-			success: false,
-		});
-		await expect(progressive.loadSkill('progressive-building')).resolves.toBeNull();
+		await expect(loadProgressive.handler?.({ skillId: 'task-planner' }, {})).resolves.toMatchObject(
+			{
+				success: false,
+			},
+		);
+		await expect(progressive.loadSkill('incremental-builder')).resolves.toBeNull();
 	});
 
 	it('keeps the progressive policy out of the general system prompt', () => {

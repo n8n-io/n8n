@@ -181,7 +181,7 @@ export const MCP_BUILD_KEY_SUPPORT: Record<
 	// Caps user-proxy follow-ups in the orchestrator chat loop — simply doesn't
 	// apply to a single-shot `claude` build, so it is NOT flagged.
 	messageBudget: 'supported',
-	// Drives the Instance AI orchestrator's progressive-building loop; a
+	// Drives the Instance AI orchestrator's incremental-builder loop; a
 	// single-shot `claude` build has no mode to set, so a case that pins it
 	// explicitly must run through the orchestrator.
 	buildMode: 'orchestrator-only',

@@ -215,13 +215,7 @@ type VerifyInput = z.infer<typeof verifyBuiltWorkflowInputSchema>;
 export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 	return new Tool(ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW)
 		.legacyNames(...getLegacyBuilderToolNames(ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW))
-		.description(
-			'Standard post-build verifier: runs a built workflow with sidecar verification context from the build outcome ' +
-				'(pin data, mocked credentials, trigger-shaped inputData; all trigger types supported). ' +
-				'Use `workflow_builder_executions(action="run")` only for ad hoc runs outside build verification. ' +
-				'CRITICAL: `inputData` shape depends on the trigger type (see the field description) — a wrong shape produces ' +
-				'null downstream values that look like an expression bug; re-run verify with the correct shape instead of patching the workflow.',
-		)
+		.description('Run a built workflow with test data to verify that it works.')
 		.input(verifyBuiltWorkflowInputSchema)
 		.output(verifyBuiltWorkflowOutputSchema)
 		.handler(async (input: VerifyInput) => {

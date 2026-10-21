@@ -77,7 +77,7 @@ describe('createPlanTool — planning context guard', () => {
 
 		expect(out.taskCount).toBe(0);
 		expect(out.result).toContain('`workflow_builder_create_tasks` requires `planningContext`');
-		expect(out.result).toContain('load the `planning` skill');
+		expect(out.result).toContain('load the `task-planner` skill');
 		expect(out.result).not.toContain('`plan`');
 		expect(out.result).not.toContain('skipPlannerDiscovery');
 		expect(context.logger.warn).toHaveBeenCalledWith(
@@ -95,7 +95,7 @@ describe('createPlanTool — planning context guard', () => {
 		);
 	});
 
-	it('accepts initial plans from the planning skill', async () => {
+	it('accepts initial plans from the `task-planner` skill', async () => {
 		const trackTelemetry = vi.fn();
 		const context = createMockContext({
 			currentUserMessage: 'Create a data table for users, then build a workflow',

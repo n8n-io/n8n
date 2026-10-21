@@ -762,13 +762,7 @@ export function createSearchNodesTool(context: InstanceAiContext) {
 
 	return new Tool(DOMAIN_TOOL_IDS.SEARCH_NODES)
 		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.SEARCH_NODES))
-		.description(
-			'Search n8n node types by service name, category, AI connection type, or Gateway credits coverage. ' +
-				'Use `categories` for curated workflow category recommendations, `query` or `queries` for service-specific discovery ' +
-				'(short service names like "Gmail" or "Slack", not full task phrases), `scope="agent_tool"` when finding executable *Tool ' +
-				'nodes for an n8n Agent, and `gatewayCreditsOnly=true` to list services covered by Gateway credits (no API key needed). ' +
-				'After finding a node, call `get_node_types` to read its parameter schema.',
-		)
+		.description('Search the available n8n node types.')
 		.input(searchNodesInputSchema)
 		.handler(async (input) => {
 			const queryList = [
@@ -884,10 +878,7 @@ export function createGetNodeTypesTool(context: InstanceAiContext) {
 	return new Tool(DOMAIN_TOOL_IDS.GET_NODE_TYPES)
 		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.GET_NODE_TYPES))
 		.description(
-			'Get TypeScript type definitions and metadata for n8n nodes — exact parameter names, enum values, ' +
-				'credential types, display conditions, `@builderHint` annotations, Gateway credits (`aiGateway`) metadata, ' +
-				'and webhook/trigger details. Pass `nodeTypes` (or `nodeIds`). For split nodes (e.g. Slack, Gmail, Google Sheets), ' +
-				'pass the object form with `resource` and `operation` (or `mode`) discriminators.',
+			'Get the type definitions of n8n node types: their parameters, credentials, and metadata.',
 		)
 		.input(getNodeTypesInputSchema)
 		.handler(async (input, ctx) => {
@@ -946,12 +937,7 @@ const getNodeParameterOptionsInputSchema = z.object({
 export function createGetNodeParameterOptionsTool(context: InstanceAiContext) {
 	return new Tool(DOMAIN_TOOL_IDS.GET_NODE_PARAMETER_OPTIONS)
 		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.GET_NODE_PARAMETER_OPTIONS))
-		.description(
-			"Fetch live credential-backed options for a node's dynamic parameter (resourceLocator, loadOptionsMethod, or loadOptions routing) — " +
-				'e.g. Google Sheets documents/tabs, Slack channels, Linear teams, or provider models. ' +
-				'Pass `parameterPath` (preferred, e.g. "channelId" or "documentId") or `methodName` + `methodType` from `get_node_types`, ' +
-				'along with `credentialType` + `credentialId` (or `credentials` map).',
-		)
+		.description("Get the live options for a node's dynamic parameter, using a credential.")
 		.input(getNodeParameterOptionsInputSchema)
 		.handler(async (input) => {
 			const version = input.version ?? input.nodeTypeVersion;
@@ -1030,14 +1016,7 @@ export function createGetNodeParameterOptionsTool(context: InstanceAiContext) {
 export function createExecuteNodeTool(context: InstanceAiContext) {
 	return new Tool(DOMAIN_TOOL_IDS.EXECUTE_NODE)
 		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.EXECUTE_NODE))
-		.description(
-			'Execute a single n8n node standalone with real credentials and return its real output items. ' +
-				'Use it to perform a one-off operation or to learn the exact output shape of a node before wiring ' +
-				'downstream expressions. Always read the node via `get_node_types` first and build the parameters ' +
-				'from it — never guess parameter names, resource/operation values, or the version. The node really ' +
-				'runs (requires user approval, real side effects). Expressions referencing other nodes cannot resolve; ' +
-				'binary output is returned as metadata only.',
-		)
+		.description('Run a single n8n node on its own and return its output.')
 		.input(sanitizeInputSchema(executeNodeInputSchema))
 		.suspend(suspendSchema)
 		.resume(instanceAiApprovalResumeSchema)
@@ -1091,10 +1070,7 @@ export function createNodesTool(
 		return new Tool(DOMAIN_TOOL_IDS.NODES)
 			.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.NODES))
 			.description(
-				"Read node type definitions or query real resources for a node's RLC parameters " +
-					'(e.g. list Google Sheets, OpenAI models, Slack channels). Use `type-definition` ' +
-					'first to read `@searchListMethod` / `@loadOptionsMethod` annotations, then ' +
-					'`explore-resources` with the real method name and a credential.',
+				"Read n8n node type definitions and list the live options for a node's parameters.",
 			)
 			.input(orchestratorInputSchema)
 			.handler(async (input: OrchestratorInput, ctx) => {
@@ -1110,10 +1086,7 @@ export function createNodesTool(
 
 	return new Tool(DOMAIN_TOOL_IDS.NODES)
 		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.NODES))
-		.description(
-			options.description ??
-				'Work with n8n node types. Use `suggested` for known workflow categories, `search` for service-specific discovery, `type-definition` before configuring nodes, `explore-resources` for live credential-backed lists, and `execute` to run one node standalone (requires user approval, real side effects).',
-		)
+		.description(options.description ?? 'Find, read, and run n8n node types.')
 		.input(restrictToolActions(actions, options.allowedActions))
 		.suspend(suspendSchema)
 		.resume(instanceAiApprovalResumeSchema)

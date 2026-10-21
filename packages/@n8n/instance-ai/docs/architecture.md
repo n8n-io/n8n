@@ -102,7 +102,7 @@ The system implements the four pillars of the deep agent pattern:
 
 ### 1. Explicit Planning
 
-The orchestrator loads the `planning` skill to externalize its execution
+The orchestrator loads the `task-planner` skill to externalize its execution
 strategy for work that needs dependency coordination: multiple workflows, shared
 artifacts, cross-workflow data contracts, or ambiguous business process design.
 After normal discovery, it calls `workflow_builder_create_tasks` to persist the task graph for
@@ -133,7 +133,7 @@ tool usage guidelines.
 
 ```mermaid
 graph TD
-    O[Orchestrator Agent] -->|planning skill + load workflow_builder_create_tasks| S3[Planned Tasks]
+    O[Orchestrator Agent] -->|task-planner skill + load workflow_builder_create_tasks| S3[Planned Tasks]
     O -->|workflow-builder skill| T10[workflow_builder_build_workflow]
     O -->|direct| T1[workflows]
     O -->|direct| T2[executions]
@@ -156,13 +156,13 @@ graph TD
 **Orchestrator** handles directly:
 - Read-only queries (`workflow_builder_workflows`, `workflow_builder_executions`, `list_credentials`, `search_credential_types`)
 - Execution triggers (`workflow_builder_executions(action="run")`)
-- Planning (`planning` skill + deferred `workflow_builder_create_tasks`)
+- Planning (`task-planner` skill + deferred `workflow_builder_create_tasks`)
 - Workflow building (`workflow-builder` skill + workspace files + `workflow_builder_build_workflow`)
 - Verification and credential application (workflow_builder_verify_built_workflow, workflow_builder_apply_workflow_credentials)
 - Data-table work (`data-table-manager` skill + `data_tables` / `parse-file`)
 - Config-based evaluations (`config-evals` skill + `eval-config`)
 
-**Planned tasks** (`planning` skill + `workflow_builder_create_tasks`):
+**Planned tasks** (`task-planner` skill + `workflow_builder_create_tasks`):
 - Dependency-aware task graphs with parallel execution
 - `build-workflow` tasks run as orchestrator follow-ups with the workflow-builder skill
 - `checkpoint` tasks run as orchestrator follow-ups for semantic or cross-workflow validation
@@ -336,7 +336,7 @@ In-memory registry of active, suspended, and pending runs per thread. Manages:
 
 ### Planned Task System
 
-The `planning` skill guides discovery and `workflow_builder_create_tasks` creates
+The `task-planner` skill guides discovery and `workflow_builder_create_tasks` creates
 dependency-aware task graphs for multi-step work. Each task has a `kind` that
 determines its executor:
 

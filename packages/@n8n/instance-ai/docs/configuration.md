@@ -181,7 +181,7 @@ features and does not gate Instance AI.
 
 The `agents` module is also in the default module set. When it is active and
 the Settings > Agents switch is on, the Assistant gets the `build-agent` and
-`agent-context` tools, the `agent-builder` and `intent-recognition` skills, and
+`agent-context` tools, the `agent-builder` and `intent-classifier` skills, and
 Agent preview handoff. When an admin turns the switch off, the Assistant loses
 all of these at once. A run that is building an Agent fails at its next step.
 To remove the module, add `agents` to `N8N_DISABLED_MODULES`.

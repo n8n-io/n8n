@@ -1,16 +1,7 @@
 ---
-name: suggest-automations
+name: automation-suggester
 description: >-
-  Offer the three most common automations for a user as a single-choice card,
-  from your own knowledge of their team and their apps, then build the one
-  they choose once they confirm, or offer more. The system preloads it on
-  onboarding threads, where the opening card already asked the user about
-  themselves.
-  Use it on other threads when the user asks what they could automate or
-  wants ideas for a first workflow.
-recommended_tools:
-  - workflow_builder_ask_user
-  - workflow_builder_build_workflow
+  Use when the user asks what they could automate or wants ideas for a first workflow. Preloaded on onboarding threads.
 ---
 
 # Suggest automations

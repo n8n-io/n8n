@@ -111,9 +111,7 @@ async function handleCorrectTask(
 export function createTaskControlTool(context: OrchestrationContext) {
 	return new Tool(ORCHESTRATION_TOOL_IDS.TASK_CONTROL)
 		.legacyNames(...getLegacyBuilderToolNames(ORCHESTRATION_TOOL_IDS.TASK_CONTROL))
-		.description(
-			'Manage tasks and background work. Use action="update-checklist" only for lightweight visible checklists that do not need scheduler-driven execution; for coordinated background tasks use workflow_builder_create_tasks instead.',
-		)
+		.description('Manage tasks and background work.')
 		.input(inputSchema)
 		.handler(async (input: Input) => {
 			switch (input.action) {

@@ -237,16 +237,6 @@ describe('data_tables tool', () => {
 	// ── Tool construction ──────────────────────────────────────────────────
 
 	describe('tool construction', () => {
-		it('should require loading data-table-manager before use', () => {
-			const context = createMockContext();
-			const tool = createDataTablesTool(context);
-
-			expect(tool.description).toContain('data tables');
-			expect(tool.description).toContain('data-table-manager');
-			expect(tool.description).toContain('load_skill');
-			expect(tool.description).toContain('what data tables do I have?');
-		});
-
 		// The SDK validates resume payloads against this schema (converted to JSON
 		// schema with additionalProperties: false) and replaces resume data with the
 		// parse result — an undeclared `scope` is rejected or silently stripped, so

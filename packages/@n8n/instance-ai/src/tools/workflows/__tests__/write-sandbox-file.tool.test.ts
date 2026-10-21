@@ -50,7 +50,7 @@ describe('createWriteSandboxFileTool', () => {
 		const tool = createWriteSandboxFileTool(workspace);
 
 		expect(tool.name).toBe('write-file');
-		expect(tool.description).toContain('Write content to a file');
+		expect(tool.description).toContain('Write a file');
 	});
 
 	describe('relative path resolution', () => {

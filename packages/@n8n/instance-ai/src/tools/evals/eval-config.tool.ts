@@ -293,14 +293,7 @@ export function createEvalConfigTool(context: InstanceAiContext) {
 	const inputSchema = sanitizeInputSchema(z.discriminatedUnion('action', [...allActions]));
 
 	return new Tool(EVAL_CONFIG_TOOL_ID)
-		.description(
-			'Manage configuration-based evaluations on a workflow. ' +
-				'A config-based eval attaches a name, a start/end node, judged metrics, and a Data Table ' +
-				'dataset to the workflow via the evaluation-config API (no eval nodes are added to the canvas). ' +
-				'Create/populate the dataset Data Table with the data_tables tool first, then link it by id. ' +
-				'"get" returns a summary (metric names/types); "describe" returns full metric detail — ' +
-				'read with "describe" before "update", which replaces the entire config.',
-		)
+		.description('Manage the evaluation configuration of a workflow.')
 		.input(inputSchema)
 		.suspend(confirmationSuspendSchema)
 		.resume(confirmationResumeSchema)

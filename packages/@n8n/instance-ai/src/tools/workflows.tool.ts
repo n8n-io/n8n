@@ -2290,13 +2290,8 @@ function getToolDescription(context: InstanceAiContext, options: WorkflowsToolOp
 	const supportedSchemas = getSupportedWorkflowActionSchemas(context, options);
 	const actionList = formatWorkflowActionList(getWorkflowActions(supportedSchemas, options));
 	const description = `${options.descriptionPrefix ?? 'Manage workflows'} — ${actionList}.`;
-	const suffix =
-		options.descriptionSuffix ??
-		(options.descriptionPrefix
-			? undefined
-			: 'Workflow results use activeVersionId: null for unpublished workflows.');
 
-	return suffix ? `${description} ${suffix}` : description;
+	return options.descriptionSuffix ? `${description} ${options.descriptionSuffix}` : description;
 }
 
 // ── Tool factory ────────────────────────────────────────────────────────────

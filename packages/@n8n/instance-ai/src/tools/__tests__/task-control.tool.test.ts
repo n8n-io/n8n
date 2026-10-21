@@ -32,15 +32,6 @@ function createMockContext(overrides: Partial<OrchestrationContext> = {}): Orche
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
 describe('workflow_builder_task_control tool', () => {
-	it('describes update-checklist as lightweight and non-scheduler', () => {
-		const tool = createTaskControlTool(createMockContext());
-
-		expect(tool.description).toContain('update-checklist');
-		expect(tool.description).toContain('lightweight visible checklists');
-		expect(tool.description).toContain('do not need scheduler-driven execution');
-		expect(tool.description).toContain('workflow_builder_create_tasks');
-	});
-
 	// ── update-checklist ────────────────────────────────────────────────────
 
 	describe('update-checklist action', () => {

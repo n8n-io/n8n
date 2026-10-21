@@ -72,7 +72,7 @@ them. Some are conditional on context availability.
 ### `workflow_builder_create_tasks`
 
 Persist a dependency-aware task plan for detached multi-step execution. For
-initial plan-worthy work, the orchestrator loads the `planning` skill, performs
+initial plan-worthy work, the orchestrator loads the `task-planner` skill, performs
 discovery with normal domain tools, loads `workflow_builder_create_tasks` via `load_tool`, then
 calls `workflow_builder_create_tasks` with
 `planningContext.source: "planning-skill"`. For
@@ -785,7 +785,7 @@ systems. It suits reads and transforms. A node that writes
 (`create`/`update`/`delete`/`send`/`append`, non-GET HTTP Request) performs its
 effect again, so debug that from `debug` and `get-resolved-node-parameters`
 instead. `mockInput` does not change this: only the input is invented, the node
-still runs. See the `debugging-executions` skill.
+still runs. See the `execution-debugger` skill.
 
 **Approval**: the same gate as `action="run"` — the admin `runWorkflow` policy,
 the pre-authorized workflow list, and session grants. The session grant is per

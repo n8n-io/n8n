@@ -45,7 +45,7 @@ const planInputSchema = z.object({
 			source: z
 				.enum(['planning-skill', 'replan'])
 				.describe(
-					'Use "planning-skill" for initial plan-worthy work after loading the planning skill; use "replan" only in planned-task replan follow-up turns.',
+					'Use "planning-skill" for initial plan-worthy work after loading the `task-planner` skill; use "replan" only in planned-task replan follow-up turns.',
 				),
 			summary: z.string().min(1).describe('Brief summary of the plan and why it is needed'),
 			assumptions: z.array(z.string()).optional().describe('Important assumptions behind the plan'),
@@ -115,7 +115,7 @@ function validatePlanningContext(
 		});
 		return (
 			'Error: `workflow_builder_create_tasks` requires `planningContext`. For initial plan-worthy work, load the ' +
-			'`planning` skill first, perform discovery with normal tools, load `workflow_builder_create_tasks` via ' +
+			'`task-planner` skill first, perform discovery with normal tools, load `workflow_builder_create_tasks` via ' +
 			'`load_tool`, then call `workflow_builder_create_tasks` with `planningContext.source: "planning-skill"`. ' +
 			'For planned-task replan follow-ups, load `workflow_builder_create_tasks` if needed, then use ' +
 			'`planningContext.source: "replan"`.'
@@ -144,7 +144,7 @@ function validatePlanningContext(
 		});
 		return (
 			'Error: `planningContext.source: "replan"` is only valid in planned-task replan follow-up turns. ' +
-			'For initial plan-worthy work, load the `planning` skill, perform discovery with normal tools, ' +
+			'For initial plan-worthy work, load the `task-planner` skill, perform discovery with normal tools, ' +
 			'load `workflow_builder_create_tasks` via `load_tool`, then call `workflow_builder_create_tasks` with ' +
 			'`planningContext.source: "planning-skill"`.'
 		);
@@ -156,15 +156,7 @@ function validatePlanningContext(
 export function createPlanTool(context: OrchestrationContext) {
 	return new Tool(ORCHESTRATION_TOOL_IDS.CREATE_TASKS)
 		.legacyNames(...getLegacyBuilderToolNames(ORCHESTRATION_TOOL_IDS.CREATE_TASKS))
-		.description(
-			'Submit a dependency-aware task graph for detached multi-step execution. ' +
-				'Load via `load_tool` before calling (search "create tasks" if not visible). ' +
-				'Use after loading the `planning` skill for initial plan-worthy work, or during ' +
-				'`<planned-task-follow-up type="replan">` when multiple dependent tasks still need scheduling. ' +
-				'Requires `planningContext.source` to be `planning-skill` or `replan` as appropriate. ' +
-				'The task list is shown to the user for approval before execution starts. ' +
-				'After calling workflow_builder_create_tasks, do not write visible text; the approval card is the user-visible surface.',
-		)
+		.description('Submit a plan of dependent tasks to run in the background.')
 		.input(planInputSchema)
 		.output(planOutputSchema)
 		.suspend(

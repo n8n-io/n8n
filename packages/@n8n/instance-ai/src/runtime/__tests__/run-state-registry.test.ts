@@ -112,7 +112,7 @@ describe('RunStateRegistry', () => {
 		const metadata = {
 			version: 'progressive@1',
 			systemPromptVersion: 'instance-agent@1',
-			skillVariants: ['progressive-building@1'],
+			skillVariants: ['incremental-builder@1'],
 			skillsHash: 'selected-skills',
 		};
 		registry.setPromptConfiguration('thread-1', metadata);
@@ -1134,7 +1134,7 @@ describe('RunStateRegistry', () => {
 			registry.setPromptConfiguration('thread-1', {
 				version: 'progressive@1',
 				systemPromptVersion: 'instance-agent@1',
-				skillVariants: ['progressive-building@1'],
+				skillVariants: ['incremental-builder@1'],
 				skillsHash: 'selected-skills',
 			});
 			registry.startRun({ threadId: 'thread-2', user: { id: 'u2', name: 'B' } });

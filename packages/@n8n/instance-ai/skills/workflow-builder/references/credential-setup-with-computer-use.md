@@ -4,18 +4,6 @@ description: >-
   Guides n8n credential setup through Computer Use browser tools. Use when a
   user needs OAuth apps, API keys, client IDs, client secrets, or other
   credential values from an external service console.
-recommended_tools:
-  - research
-  - workflow_builder_ask_user
-  - browser_connect
-  - browser_tab_open
-  - browser_navigate
-  - browser_snapshot
-  - browser_content
-  - browser_click
-  - browser_type
-  - browser_capture_secret
-  - browser_create_credential
 ---
 
 # Credential Setup With Computer Use

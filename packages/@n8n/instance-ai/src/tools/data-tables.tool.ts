@@ -923,17 +923,7 @@ export function createDataTablesTool(
 
 	return new Tool(DATA_TABLES_TOOL_ID)
 		.legacyNames(...getLegacyBuilderToolNames(DATA_TABLES_TOOL_ID))
-		.description(
-			options.description ??
-				'Manage data tables — list, query, create, modify columns, and manage rows. ' +
-					'Load `data-table-manager` via `load_skill` before calling this tool — including natural ' +
-					'list/show requests like "what data tables do I have?" or "show/list my tables". ' +
-					'For workflow builds that create or write Data Tables, load `data-table-manager` then ' +
-					'`workflow-builder` before `workflow_builder_build_workflow`. Use list, create, and schema before ' +
-					'referencing tables in SDK code. Keep queries targeted (column filter and/or limit ≤ 5), ' +
-					'especially when diagnosing — never pull a table unfiltered, and after a failed or 0-row ' +
-					'query only retry strictly narrower.',
-		)
+		.description(options.description ?? 'Manage data tables: their columns and rows.')
 		.input(inputSchema)
 		.suspend(confirmationSuspendSchema)
 		.resume(confirmationResumeSchema)

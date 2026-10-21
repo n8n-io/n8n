@@ -130,7 +130,7 @@ describe('eval-config tool', () => {
 	describe('tool construction', () => {
 		it('should describe config-based evaluations', () => {
 			const tool = createEvalConfigTool(createMockContext());
-			expect(tool.description).toContain('configuration-based evaluations');
+			expect(tool.description).toContain('evaluation configuration');
 		});
 	});
 

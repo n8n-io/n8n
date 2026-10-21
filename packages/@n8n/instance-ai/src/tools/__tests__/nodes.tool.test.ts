@@ -81,7 +81,6 @@ describe('nodes tool', () => {
 			const context = createMockContext();
 			const tool = createNodesTool(context, 'orchestrator');
 
-			expect(tool.description).toContain('RLC parameters');
 			expect(tool.description).not.toContain('list —');
 			expect(tool.description).not.toContain('search —');
 		});

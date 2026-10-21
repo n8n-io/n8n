@@ -330,10 +330,7 @@ export function createSkillsTool(context: InstanceAiContext) {
 	const inputSchema = sanitizeInputSchema(z.discriminatedUnion('action', [...allActions]));
 
 	return new Tool(DOMAIN_TOOL_IDS.SKILLS)
-		.description(
-			'Manage skills in the skills hub: list, get, create, update and delete. A skill is reusable instructions. ' +
-				'This tool does not attach a skill to an agent.',
-		)
+		.description('Manage the reusable instruction sets (skills) in the skills hub.')
 		.input(inputSchema)
 		.untrustedOutput()
 		.suspend(confirmationSuspendSchema)

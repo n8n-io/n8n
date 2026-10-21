@@ -84,14 +84,7 @@ const activityOutputSchema = z.object({
 export function createActivityTool(context: InstanceAiContext) {
 	return new Tool(DOMAIN_TOOL_IDS.ACTIVITY)
 		.description(
-			'Read the instance activity log — what has recently been created, changed, published, ' +
-				'or deleted here, and who did it. You are given a window of it at the start of a turn; ' +
-				'use this to look further back, to filter to one kind of entry or one resource, or to ' +
-				'open a single entry with `expand`. Expanding an entry also returns everything else the ' +
-				"log knows about the same resource, which is how you see a workflow's recent history at " +
-				'a glance. Read-only, and it returns log entries rather than live records — use ' +
-				'`workflow_builder_workflows`, `workflow_builder_executions` or `list_credentials` with the ids it gives you for those. An ' +
-				'entry may name a resource that has since been deleted.',
+			'Read the instance activity log: what was created, changed, published, or deleted, and by whom. Read-only.',
 		)
 		.input(activityInputSchema)
 		.output(activityOutputSchema)

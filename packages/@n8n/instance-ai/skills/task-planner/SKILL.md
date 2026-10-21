@@ -1,26 +1,10 @@
 ---
-name: planning
+name: task-planner
 dependencies:
   tools:
     - workflow_builder_create_tasks
 description: >-
-  ONLY for coordinated multi-artifact work: multiple workflows with dependencies,
-  shared data-table schema/migration across tasks, or the user explicitly asked
-  to review a plan first. If workflow_builder_create_tasks is not visible, load it via load_tool
-  (search "create tasks"). Do NOT use for new one-off workflows,
-  single-workflow edits, verification-only requests, or standalone data-table
-  ops — use workflow-builder or data-table-manager instead.
-recommended_tools:
-  - workflow_builder_create_tasks
-  - workflow_builder_workflows
-  - search_nodes
-  - get_node_types
-  - list_credentials
-  - search_credential_types
-  - data_tables
-  - parse-file
-  - research
-  - workflow_builder_ask_user
+  Use only for coordinated work across several workflows or shared data tables, or when the user wants to review a plan first.
 ---
 
 # Planning

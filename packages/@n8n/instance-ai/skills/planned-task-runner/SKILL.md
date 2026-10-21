@@ -1,18 +1,7 @@
 ---
-name: planned-task-runtime
+name: planned-task-runner
 description: >-
-  Handles system follow-up turns: planned-task-follow-up (synthesize, replan,
-  build-workflow, checkpoint), background-task-completed, running-tasks context,
-  and workflow_builder_create_tasks silence rules. Load whenever any of these tags appear or
-  after calling workflow_builder_create_tasks.
-recommended_tools:
-  - workflow_builder_create_tasks
-  - workflow_builder_complete_checkpoint
-  - workflow_builder_build_workflow
-  - workflow_builder_task_control
-  - workflow_builder_workflows
-  - workflow_builder_verify_built_workflow
-  - workflow_builder_executions
+  System skill. Use on planned-task, background-task, or running-tasks follow-up turns, and after creating tasks.
 ---
 
 # Planned Task Runtime

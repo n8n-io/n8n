@@ -316,15 +316,7 @@ async function verifyTarget(
 
 export function createSelectAgentTool(context: OrchestrationContext) {
 	return new Tool(ORCHESTRATION_TOOL_IDS.SELECT_AGENT)
-		.description(
-			'Selects the n8n Agent that the agent_builder_* tools create, change, test, and publish. ' +
-				'Load `agent-builder` via `load_skill` before calling this tool. Call it once at the ' +
-				'start of every Agent build request: pass `name` to create a new Agent, `agentRef` to ' +
-				'select an Agent from this conversation, or `agentId` to adopt an existing one. With no ' +
-				'arguments it keeps the current Agent. Returns the selected `agentRef`/`agentId` and the ' +
-				'`sessionContext` with the Preview link and model recommendations. This tool is only for ' +
-				'Agent artifacts; for read-only research use `agent-context`.',
-		)
+		.description('Select or create the n8n Agent that the Agent builder tools work on.')
 		.input(selectAgentInputSchema)
 		.output(selectAgentOutputSchema)
 		.handler(async (input: SelectAgentInput): Promise<SelectAgentOutput> => {

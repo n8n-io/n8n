@@ -142,10 +142,6 @@ function property(schema: JsonSchema, name: string): JsonSchema {
 	return value;
 }
 
-function toolDescription(): string {
-	return createMcpServersTool(makeContext(makeService([]))).description;
-}
-
 describe('mcp-servers tool', () => {
 	describe('input schema', () => {
 		it('is a top-level object rather than a bare union', () => {
@@ -183,39 +179,6 @@ describe('mcp-servers tool', () => {
 			);
 			expect(property(schema, 'queries').description).toContain('"search"');
 			expect(property(schema, 'serverSlugs').description).toContain('at most 3');
-		});
-	});
-
-	describe('description', () => {
-		it('names who changes a connection, so a missing server is not read as expiry', () => {
-			const description = toolDescription();
-
-			expect(description).toContain('Only the user connects or disconnects');
-			expect(description).toContain('never connected or disconnected');
-		});
-
-		it('places a connection on the account, not on the conversation', () => {
-			expect(toolDescription()).toContain('persist across conversations');
-		});
-
-		it('sends the orchestrator to the tool instead of the transcript', () => {
-			expect(toolDescription()).toContain('ask here instead of answering from the conversation');
-		});
-
-		// Distinct from a missing server: these are connections to third-party services.
-		it('explains a connected server with no tools', () => {
-			expect(toolDescription()).toContain('broken or expired connection');
-		});
-
-		it('says tool names come from `details` alone', () => {
-			expect(toolDescription()).toContain('`connected` never returns them');
-		});
-
-		it('scopes the tool against workflow building and the credentials tool', () => {
-			const description = toolDescription();
-
-			expect(description).toContain('not for building');
-			expect(description).toContain('`credentials`');
 		});
 	});
 

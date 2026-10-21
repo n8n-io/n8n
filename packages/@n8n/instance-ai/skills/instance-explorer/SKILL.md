@@ -1,19 +1,7 @@
 ---
-name: instance-awareness
+name: instance-explorer
 description: >-
-  Load when the request depends on what is already on this instance rather than
-  on what the user just typed: a short or ambiguous opener ("fix it", "carry on",
-  "what should I look at"), a reference to earlier work in a new conversation, or
-  any question about what has recently run or broken.
-recommended_tools:
-  - activity
-  - workflow_builder_workflows
-  - workflow_builder_executions
-  - list_credentials
-  - search_credential_types
-  - setup_credentials
-  - test_credential
-  - delete_credential
+  Use when the request depends on what already exists on this instance: vague openers ("fix it", "carry on"), references to earlier work, or questions about what recently ran or broke.
 ---
 
 # Instance Awareness

@@ -13,10 +13,10 @@ import type { InstanceAiFeatureFlags } from './instance-ai.adapter.service';
 export const SKILLS = {
 	configEvals: 'config-evals',
 	configEvalPlaybook: 'config-eval-playbook',
-	instanceAwareness: 'instance-awareness',
+	instanceAwareness: 'instance-explorer',
 	agentBuilder: 'agent-builder',
-	intentRecognition: 'intent-recognition',
-	suggestAutomations: 'suggest-automations',
+	intentRecognition: 'intent-classifier',
+	suggestAutomations: 'automation-suggester',
 } as const;
 
 export type SkillId = (typeof SKILLS)[keyof typeof SKILLS];

@@ -48,7 +48,7 @@ describe('InstanceAiSkillsService', () => {
 			});
 
 			expect(skills.disabledTools).toEqual(['workflow_builder_create_tasks']);
-			expect(skills.source.registry.skills.map(({ id }) => id)).not.toContain('planning');
+			expect(skills.source.registry.skills.map(({ id }) => id)).not.toContain('task-planner');
 		});
 
 		it.each(gatedSkills)('removes the skills that %s turns off', async (_, scope, skillIds) => {

@@ -22,12 +22,12 @@ const SYSTEM_PROMPT_VERSION = 'instance-agent@1';
 const CONCISE_SYSTEM_PROMPT_VERSION = 'instance-agent-concise@1';
 
 const progressiveBuilding: SkillVariant = {
-	id: 'progressive-building@1',
+	id: 'incremental-builder@1',
 	changes: [
-		{ skillId: 'workflow-builder', appendFrom: 'progressive-building', useDescription: true },
-		{ skillId: 'post-build-flow', appendFrom: 'progressive-building' },
+		{ skillId: 'workflow-builder', appendFrom: 'incremental-builder', useDescription: true },
+		{ skillId: 'post-build-flow', appendFrom: 'incremental-builder' },
 	],
-	disabledSkills: ['planning'],
+	disabledSkills: ['task-planner'],
 	disabledTools: [ORCHESTRATION_TOOL_IDS.CREATE_TASKS],
 };
 

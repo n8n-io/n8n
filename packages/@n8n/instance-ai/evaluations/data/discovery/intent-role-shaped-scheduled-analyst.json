@@ -5,7 +5,7 @@
 		"allOfToolCalls": [
 			{
 				"toolName": "load_skill",
-				"argsContainAny": ["intent-recognition"]
+				"argsContainAny": ["intent-classifier"]
 			},
 			{
 				"toolName": "load_skill",

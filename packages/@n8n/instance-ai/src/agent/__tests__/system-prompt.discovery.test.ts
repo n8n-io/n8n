@@ -10,7 +10,6 @@
  * not churn them but intent-shifting edits fail loudly.
  */
 
-import { createSetupCredentialsTool } from '../../tools/credentials.tool';
 import type { ComputerUseState } from '../../types';
 import { getSystemPrompt } from '../system-prompt';
 
@@ -22,22 +21,6 @@ const browserCapableOptions: { computerUseState: ComputerUseState } = {
 };
 
 describe('getSystemPrompt — browser/computer-use discoverability', () => {
-	describe('credentials tool → Computer Use credential setup skill', () => {
-		it('routes needsBrowserSetup=true credential responses to the Computer Use skill', () => {
-			const tool = createSetupCredentialsTool({} as never);
-
-			expect(tool.description).toContain('needsBrowserSetup=true');
-			expect(tool.description).toContain('credential-setup-with-computer-use');
-			expect(tool.description).toMatch(/use Computer Use `browser_\*` tools directly/);
-		});
-
-		it('routes browser credential setup through Computer Use tools', () => {
-			const tool = createSetupCredentialsTool({} as never);
-
-			expect(tool.description).toMatch(/use Computer Use `browser_\*` tools directly/);
-		});
-	});
-
 	describe('Computer Use proactive suggestions are reachable from the orchestrator prompt', () => {
 		it('includes the Computer Use section when the gateway is connected with browser available', () => {
 			const prompt = getSystemPrompt(browserCapableOptions);

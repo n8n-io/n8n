@@ -1,39 +1,7 @@
 ---
 name: workflow-builder
 description: >-
-  Load before calling workflow_builder_build_workflow. Use for single-workflow
-  work: new one-off workflows, existing-workflow edits, verification repairs,
-  and workflow-local data tables. For any other new workflow, load
-  intent-recognition first when it is listed. Write or edit a workspace source file, run
-  workflow-sdk validate via workspace_execute_command, then call workflow_builder_build_workflow
-  with filePath. When the workflow creates or writes Data Tables, load
-  data-table-manager first, then this skill. Do not load planning or
-  workflow_builder_create_tasks first. Load planning only when multiple coordinated workflows
-  or shared cross-task data tables require a dependency-aware task graph.
-  Don't use this skill for explicit one-off tasks that can be done by a single
-  node execution: load one-off-operations and run the node with
-  execute_node. Once the user wants a workflow, load
-  it before you ask any question about that workflow. Do not load it to ask
-  about a request that does not yet say what to build. Also load for a
-  workflow's evaluations, model choices, credential setup, error workflows, and
-  post-build verification: this skill lists the references for those steps.
-recommended_tools:
-  - workspace_read_file
-  - workspace_write_file
-  - workspace_execute_command
-  - workflow_builder_build_workflow
-  - workflow_builder_workflows
-  - search_nodes
-  - get_node_types
-  - get_node_parameter_options
-  - execute_node
-  - data_tables
-  - list_credentials
-  - search_credential_types
-  - setup_credentials
-  - test_credential
-  - workflow_builder_verify_built_workflow
-  - workflow_builder_executions
+  Use when the user wants a new workflow or a change to an existing one, including its credentials, evaluations, and verification.
 ---
 
 # Workflow Builder
@@ -58,7 +26,7 @@ lines you need, apply the edit with `workspace_str_replace_file`, then call
 is needed. Never re-emit the whole source with `workspace_write_file`, and do
 not fetch the same unchanged workflow again in another format. All edits go
 through the workspace source file and `workflow_builder_build_workflow`. Do not load
-`planning` or call `workflow_builder_create_tasks` first; `planning` is only for coordinated
+`task-planner` or call `workflow_builder_create_tasks` first; `task-planner` is only for coordinated
 multi-artifact work per the orchestrator routing rules. Do not create a plan
 just for verification.
 
@@ -95,7 +63,7 @@ When early setup is unavailable, keep the post-build setup flow below.
 ## Repair Strategy
 
 When the edit is to fix a node the user reports as erroring or showing a red
-expression error, inspect it first via `debugging-executions` (run the
+expression error, inspect it first via `execution-debugger` (run the
 workflow, read the failing node's real error and resolved parameters) before
 editing anything — never guess at the cause or change the node on a hunch.
 
@@ -187,7 +155,7 @@ setup steps or node semantics from memory when those sources can answer.
    - `node-types/index.txt` — searchable catalog of
      available n8n nodes
 2. **Runtime skills** — when another skill matches (e.g. `data-table-manager`,
-   `debugging-executions`, `post-build-flow`), `load_skill` and follow it
+   `execution-debugger`, `post-build-flow`), `load_skill` and follow it
    instead of improvising.
 3. **Official n8n docs** — for credential setup, product features, hosting, or
    node docs that the knowledge base does not cover, load `n8n-docs-assistant`

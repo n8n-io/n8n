@@ -11,7 +11,7 @@ import {
 } from '../skills';
 
 const ORIGINAL_ENABLED_MODULES = process.env.N8N_ENABLED_MODULES;
-const AGENT_BUILDING_SKILL_IDS = ['agent-builder', 'intent-recognition'];
+const AGENT_BUILDING_SKILL_IDS = ['agent-builder', 'intent-classifier'];
 
 describe('Instance AI skills', () => {
 	afterEach(() => {
@@ -107,7 +107,6 @@ describe('Instance AI skills', () => {
 
 		expect(recipeResearch).toMatchObject({
 			name: 'credential-recipe-research',
-			recommendedTools: ['research', 'workflow_builder_workflows'],
 		});
 		expect(recipeResearch?.description).toContain('Load before composing');
 		expect(recipeResearch?.description).toContain('credentialHints');
@@ -127,15 +126,15 @@ describe('Instance AI skills', () => {
 
 		expect(topLevel.sort()).toEqual([
 			'agent-builder',
+			'automation-suggester',
 			'data-table-manager',
-			'debugging-executions',
-			'instance-awareness',
-			'intent-recognition',
+			'execution-debugger',
+			'incremental-builder',
+			'instance-explorer',
+			'intent-classifier',
 			'n8n-docs-assistant',
-			'planned-task-runtime',
-			'planning',
-			'progressive-building',
-			'suggest-automations',
+			'planned-task-runner',
+			'task-planner',
 			'workflow-builder',
 		]);
 	});
@@ -208,7 +207,6 @@ describe('Instance AI skills', () => {
 		expect(dataTableManager).toMatchObject({
 			name: 'data-table-manager',
 			platforms: ['daytona'],
-			recommendedTools: ['data_tables', 'parse-file'],
 		});
 		expect(dataTableManager?.description).toContain(
 			'Load before calling data_tables or parse-file',
@@ -246,7 +244,6 @@ describe('Instance AI skills', () => {
 		expect(configEvals).toMatchObject({
 			name: 'config-evals',
 			platforms: ['daytona'],
-			recommendedTools: ['eval-config', 'data_tables'],
 			parents: ['workflow-builder'],
 		});
 
@@ -262,18 +259,18 @@ describe('Instance AI skills', () => {
 		expect(playbook).toContain('Config Eval Playbook');
 	});
 
-	it('keeps the progressive-building fragment out of both profile catalogs', async () => {
+	it('keeps the incremental-builder fragment out of both profile catalogs', async () => {
 		const source = loadInstanceAiSkills();
 		const progressive = source.registry.skills.find(
-			(skill) => skill.name === 'progressive-building',
+			(skill) => skill.name === 'incremental-builder',
 		);
-		expect(progressive?.id).toBe('progressive-building');
+		expect(progressive?.id).toBe('incremental-builder');
 		for (const mode of ['default', 'progressive'] as const) {
 			const { source: selected } = await loadInstanceAiPromptSkills(
 				resolvePromptProfile({ mode }).profile,
 			);
-			expect(selected.registry.skills.map(({ id }) => id)).not.toContain('progressive-building');
-			await expect(selected.loadSkill('progressive-building')).resolves.toBeNull();
+			expect(selected.registry.skills.map(({ id }) => id)).not.toContain('incremental-builder');
+			await expect(selected.loadSkill('incremental-builder')).resolves.toBeNull();
 		}
 	});
 
@@ -319,16 +316,6 @@ describe('Instance AI skills', () => {
 		);
 
 		expect(skill?.name).toBe('credential-setup-with-computer-use');
-		for (const tool of [
-			'research',
-			'workflow_builder_ask_user',
-			'browser_connect',
-			'browser_snapshot',
-			'browser_capture_secret',
-			'browser_create_credential',
-		]) {
-			expect(skill?.recommendedTools).toContain(tool);
-		}
 		expect(skill?.linkedFiles.references).toEqual([]);
 
 		const loaded = await source.loadSkill('credential-setup-with-computer-use');
@@ -349,13 +336,6 @@ describe('Instance AI skills', () => {
 
 		expect(skill).toMatchObject({
 			name: 'n8n-docs-assistant',
-			recommendedTools: [
-				'n8n-docs',
-				'list_credentials',
-				'search_credential_types',
-				'search_nodes',
-				'get_node_types',
-			],
 		});
 		// `n8n-docs` is always loaded, so the catalog must not ask the model to load it.
 		expect(skill?.description).not.toContain('load_tool');
@@ -381,35 +361,17 @@ describe('Instance AI skills', () => {
 
 		expect(skill?.name).toBe('workflow-builder');
 		expect(skill?.platforms).toBeUndefined();
-		expect(skill?.recommendedTools).toEqual([
-			'workspace_read_file',
-			'workspace_write_file',
-			'workspace_execute_command',
-			'workflow_builder_build_workflow',
-			'workflow_builder_workflows',
-			'search_nodes',
-			'get_node_types',
-			'get_node_parameter_options',
-			'execute_node',
-			'data_tables',
-			'list_credentials',
-			'search_credential_types',
-			'setup_credentials',
-			'test_credential',
-			'workflow_builder_verify_built_workflow',
-			'workflow_builder_executions',
-		]);
 		expect(skill?.description).toContain('Load before calling workflow_builder_build_workflow');
 		expect(skill?.description).not.toContain('Default path');
 		expect(skill?.description).toContain('new one-off workflows');
 		expect(skill?.description).toContain('Once the user wants a workflow, load it before you ask');
 		expect(skill?.description).toContain(
-			'For any other new workflow, load intent-recognition first when it is listed',
+			'For any other new workflow, load intent-classifier first when it is listed',
 		);
 		expect(skill?.description).toContain('workflow-sdk validate');
 		expect(skill?.description).toContain('load data-table-manager first');
 		expect(skill?.description).toContain(
-			'Do not load planning or workflow_builder_create_tasks first',
+			'Do not load task-planner or workflow_builder_create_tasks first',
 		);
 
 		const loaded = await source.loadSkill('workflow-builder');
@@ -454,14 +416,14 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain(
 			'never stop before the first\n`workflow_builder_build_workflow` call',
 		);
-		expect(loaded?.instructions).toContain('inspect it first via `debugging-executions`');
+		expect(loaded?.instructions).toContain('inspect it first via `execution-debugger`');
 		expect(loaded?.instructions).toContain('SDK node `output` mocks are raw `$json` objects');
 		expect(loaded?.instructions).toMatch(/inline setup card in the n8n\s+Assistant panel/);
 		expect(loaded?.instructions).toContain(
 			'never ask for\nsetup values before the first successful build',
 		);
 		expect(loaded?.instructions).toContain(
-			'`planning` or call `workflow_builder_create_tasks` first',
+			'`task-planner` or call `workflow_builder_create_tasks` first',
 		);
 		expect(loaded?.instructions).toContain('.to(isImportant)');
 		expect(loaded?.instructions).toContain('.onTrue(handleImportant)');
@@ -473,27 +435,15 @@ describe('Instance AI skills', () => {
 
 	it('loads the bundled planning skill', async () => {
 		const source = loadInstanceAiSkills();
-		const skill = source.registry.skills.find((entry) => entry.name === 'planning');
+		const skill = source.registry.skills.find((entry) => entry.name === 'task-planner');
 
-		expect(skill?.name).toBe('planning');
-		expect(skill?.recommendedTools).toEqual([
-			'workflow_builder_create_tasks',
-			'workflow_builder_workflows',
-			'search_nodes',
-			'get_node_types',
-			'list_credentials',
-			'search_credential_types',
-			'data_tables',
-			'parse-file',
-			'research',
-			'workflow_builder_ask_user',
-		]);
+		expect(skill?.name).toBe('task-planner');
 		expect(skill?.description).toContain(
 			'If workflow_builder_create_tasks is not visible, load it via load_tool',
 		);
 		expect(skill?.description).toContain('Do NOT use for new one-off workflows');
 
-		const loaded = await source.loadSkill('planning');
+		const loaded = await source.loadSkill('task-planner');
 		expect(loaded?.instructions).toContain('## When NOT to use this skill');
 		expect(loaded?.instructions).toContain('Consult the knowledge base before planning');
 		expect(loaded?.instructions).toContain('never load `templates/index.json` wholesale');
@@ -599,13 +549,13 @@ describe('Instance AI skills', () => {
 		expect(reference).toContain('Do NOT wrap in `formFields`');
 	});
 
-	it('loads the bundled planned-task-runtime skill', async () => {
+	it('loads the bundled planned-task-runner skill', async () => {
 		const source = loadInstanceAiSkills();
-		const skill = source.registry.skills.find((entry) => entry.name === 'planned-task-runtime');
+		const skill = source.registry.skills.find((entry) => entry.name === 'planned-task-runner');
 
 		expect(skill?.description).toContain('planned-task-follow-up');
 
-		const loaded = await source.loadSkill('planned-task-runtime');
+		const loaded = await source.loadSkill('planned-task-runner');
 		expect(loaded?.instructions).toContain(
 			'Before calling `workflow_builder_create_tasks`, load it via `load_tool`',
 		);
@@ -626,26 +576,21 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain('Never poll and never sleep');
 	});
 
-	it('loads the bundled instance-awareness skill', async () => {
+	it('loads the bundled instance-explorer skill', async () => {
 		const source = loadInstanceAiSkills();
-		const skill = source.registry.skills.find((entry) => entry.name === 'instance-awareness');
+		const skill = source.registry.skills.find((entry) => entry.name === 'instance-explorer');
 
 		expect(skill).toBeDefined();
 
-		const loaded = await source.loadSkill('instance-awareness');
+		const loaded = await source.loadSkill('instance-explorer');
 		expect(loaded?.instructions).toContain('<instance-context>');
 	});
 
-	it('loads the bundled debugging-executions skill', async () => {
+	it('loads the bundled execution-debugger skill', async () => {
 		const source = loadInstanceAiSkills();
-		const skill = source.registry.skills.find((entry) => entry.name === 'debugging-executions');
+		const skill = source.registry.skills.find((entry) => entry.name === 'execution-debugger');
 
-		expect(skill?.recommendedTools).toEqual([
-			'workflow_builder_executions',
-			'workflow_builder_workflows',
-		]);
-
-		const loaded = await source.loadSkill('debugging-executions');
+		const loaded = await source.loadSkill('execution-debugger');
 		expect(loaded?.instructions).toContain('workflow_builder_executions(action="debug")');
 		expect(loaded?.instructions).toContain(
 			'workflow_builder_executions(action="get-resolved-node-parameters", executionId, nodeName)',

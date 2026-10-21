@@ -1,19 +1,7 @@
 ---
-name: intent-recognition
+name: intent-classifier
 description: >-
-  Load before you build any new kept workflow or Agent. It decides which one to
-  build, or what to ask first. Classifies automation requests using two decisions:
-  anchor (which primitive owns the top-level control flow — workflow-anchored, agent-anchored,
-  needs-clarification, or out-of-scope) and embeds_other (whether the other
-  primitive appears embedded inside — an agent step inside a workflow, or a
-  workflow invoked as an agent tool). Must be used whenever the current turn
-  requires choosing or reconsidering the intent of an automation request,
-  including compound requests, independent automations introduced mid-build,
-  one-off questions or reports that need external systems you cannot query
-  directly, and requests that need clarification before an anchor can be
-  chosen. An explicit Agent request routes to agent-builder before workflow_builder_ask_user.
-  Do not load for routine edits or extensions when the conversation already
-  targets a workflow or Agent.
+  Use before building a new automation, to decide whether it should be a workflow or an Agent, or what to ask first. Skip it for edits to something already being built.
 ---
 
 # Intent recognition

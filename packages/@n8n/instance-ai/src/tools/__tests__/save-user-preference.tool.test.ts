@@ -13,10 +13,7 @@ import {
 	SAVE_USER_PREFERENCE_DESCRIPTION,
 } from '../save-user-preference.tool';
 
-const DESCRIPTION =
-	'Saves a durable preference for this user: a node or credential choice, a naming rule, how they organize their work, or a pattern to avoid. ' +
-	'Call this when the user states something they want you to keep following in later conversations, not a one-off instruction for the current task. ' +
-	'The saved text appears in the chat, where the user can edit or undo it. If this preference conflicts with one already saved, say so and let the user decide.';
+const DESCRIPTION = 'Save a preference that applies to this user across conversations.';
 
 const saved: InstanceAiPreferenceWriteResult = {
 	ok: true,

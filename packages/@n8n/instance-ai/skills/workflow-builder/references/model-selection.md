@@ -16,12 +16,6 @@ description: >-
 dependencies:
   tools:
     - workflow_builder_search_models
-recommended_tools:
-  - get_node_types
-  - get_node_parameter_options
-  - list_credentials
-  - workflow_builder_search_models
-  - research
 ---
 
 # Model selection

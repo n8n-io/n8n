@@ -1,18 +1,7 @@
 ---
 name: n8n-docs-assistant
 description: >-
-  Answers n8n product, setup, credential, node, hosting, API, and usage
-  questions from current n8n docs. Use when the user asks how to configure,
-  set up, troubleshoot, or understand n8n behavior, especially credential setup
-  questions — including which OAuth scopes or permissions a provider app needs,
-  how to wire a provider webhook trigger, and how to connect Claude or another
-  MCP client to n8n.
-recommended_tools:
-  - n8n-docs
-  - list_credentials
-  - search_credential_types
-  - search_nodes
-  - get_node_types
+  Use when the user asks how n8n works or how to set something up: nodes, credentials and OAuth scopes, webhooks, hosting, the API, or MCP clients.
 ---
 
 # n8n Docs Assistant

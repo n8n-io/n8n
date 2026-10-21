@@ -1,15 +1,7 @@
 ---
-name: debugging-executions
+name: execution-debugger
 description: >-
-  Debug failed or wrong-output workflow executions using executions tools. Load
-  when the user reports execution failures, unexpected node output, empty
-  parameter values after a successful run, or a node showing a red or failed
-  expression error. Also load when a live run you started for the user fails
-  with an error from a node or an external service (for example a 401), before
-  you explain the cause to the user.
-recommended_tools:
-  - workflow_builder_executions
-  - workflow_builder_workflows
+  Use when a workflow run failed or produced wrong or empty output, before explaining the cause.
 ---
 
 # Debugging Executions

@@ -28,15 +28,15 @@ describe('prompt profiles', () => {
 		const selected = resolvePromptProfile({ mode: 'progressive' });
 		const result = await loadInstanceAiPromptSkills(selected.profile);
 		expect(result.disabledTools).toEqual(['workflow_builder_create_tasks']);
-		await expect(result.source.loadSkill('planning')).resolves.toBeNull();
-		await expect(result.source.loadSkill('progressive-building')).resolves.toBeNull();
+		await expect(result.source.loadSkill('task-planner')).resolves.toBeNull();
+		await expect(result.source.loadSkill('incremental-builder')).resolves.toBeNull();
 		expect((await result.source.loadSkill('workflow-builder'))?.version).toBe(
-			'progressive-building@1',
+			'incremental-builder@1',
 		);
 		expect(describePromptProfile(selected, result.source)).toEqual({
 			version: 'progressive@1',
 			systemPromptVersion: 'instance-agent@1',
-			skillVariants: ['progressive-building@1'],
+			skillVariants: ['incremental-builder@1'],
 			skillsHash: result.source.registry.skillsHash,
 		});
 	});
