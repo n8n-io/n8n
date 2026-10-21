@@ -1,5 +1,6 @@
 packages/cli/src/modules/n8n-packages/entities/agent/agent-import.types.ts
   s_71ad2034164515::t_3e02ddac2aa0f9 38
+  s_71ad2034164515::t_92797b6da66807 38
 ---
 {
   "schema_version": "authorship/3.0.0",
