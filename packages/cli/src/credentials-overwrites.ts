@@ -25,8 +25,8 @@ const CREDENTIALS_OVERWRITE_KEY = 'credentialsOverwrite';
 export class CredentialsOverwrites {
 	private overwriteData: ICredentialsOverwrite = {};
 
-	/** Version of the flat entry, for OAuth types that state one. A missing type means version 1. */
-	private flatVersions: Record<string, number> = {};
+	/** Version of the base entry, for OAuth types that state one. A missing type means version 1. */
+	private entryVersions: Record<string, number> = {};
 
 	/** The newer app of a rollout, for OAuth types that list one in `__versions`. */
 	private newerApps: Record<string, ManagedVersionEntry> = {};
@@ -124,7 +124,7 @@ export class CredentialsOverwrites {
 	 * Sets the overwrites from a payload. Throws a `UserError` when the payload is invalid,
 	 * and then keeps the previous overwrites.
 	 *
-	 * A type entry is a flat object. During a rollout, `__versions` adds a newer app for an
+	 * A type entry is a plain object. During a rollout, `__versions` adds a newer app for an
 	 * OAuth type. See `parseOverwritesPayload` for the format.
 	 */
 	setPlainData(overwriteData: Record<string, unknown>) {
@@ -134,11 +134,11 @@ export class CredentialsOverwrites {
 		this.resolvedTypes.length = 0;
 
 		this.overwriteData = parsed.entries;
-		this.flatVersions = parsed.flatVersions;
+		this.entryVersions = parsed.entryVersions;
 		this.newerApps = parsed.versions;
 
 		for (const type in this.overwriteData) {
-			const overwrites = this.getResolvedFlat(type);
+			const overwrites = this.getOverwritesWithParents(type);
 
 			if (overwrites && Object.keys(overwrites).length) {
 				this.overwriteData[type] = overwrites;
@@ -168,15 +168,15 @@ export class CredentialsOverwrites {
 	 * @throws UserError when the version matches no app in the config
 	 */
 	applyOverwrite(type: string, data: ICredentialDataDecryptedObject, versionOverride?: number) {
-		const flat = this.get(type);
+		const base = this.get(type);
 
-		if (flat === undefined) {
+		if (base === undefined) {
 			return data;
 		}
 
 		const overwrites = this.pickApp(
 			type,
-			flat,
+			base,
 			versionOverride ?? this.resolveBoundVersion(type, data),
 		);
 
@@ -215,27 +215,27 @@ export class CredentialsOverwrites {
 
 	/**
 	 * The overwrite of a type. Without a version, it is the default app: the newer app of
-	 * a rollout, or the flat entry.
+	 * a rollout, or the base entry.
 	 *
 	 * @throws UserError when the version matches no app in the config
 	 */
 	getOverwrites(type: string, version?: number): ICredentialDataDecryptedObject | undefined {
-		const flat = this.getResolvedFlat(type);
-		if (flat === undefined) return undefined;
+		const base = this.getOverwritesWithParents(type);
+		if (base === undefined) return undefined;
 
-		return this.pickApp(type, flat, version);
+		return this.pickApp(type, base, version);
 	}
 
 	/**
 	 * The version of the default app of an OAuth type that has an overwrite: the newer app
-	 * of a rollout, or the flat entry. `undefined` for any other type.
+	 * of a rollout, or the base entry. `undefined` for any other type.
 	 */
 	getDefaultVersion(type: string): number | undefined {
 		if (!this.getClientFields(type) || this.get(type) === undefined) return undefined;
 
 		return (
 			this.nearest(type, this.newerApps)?.version ??
-			this.nearest(type, this.flatVersions) ??
+			this.nearest(type, this.entryVersions) ??
 			IMPLICIT_MANAGED_VERSION
 		);
 	}
@@ -292,24 +292,24 @@ export class CredentialsOverwrites {
 		return undefined;
 	}
 
-	/** Picks the app of an OAuth type from its flat overwrite and its newer app, if any. */
-	private pickApp(type: string, flat: ICredentialDataDecryptedObject, version?: number) {
-		if (!this.getClientFields(type)) return flat;
+	/** Picks the app of an OAuth type from its base overwrite and its newer app, if any. */
+	private pickApp(type: string, base: ICredentialDataDecryptedObject, version?: number) {
+		if (!this.getClientFields(type)) return base;
 
 		const newer = this.nearest(type, this.newerApps);
-		const flatVersion = this.nearest(type, this.flatVersions) ?? IMPLICIT_MANAGED_VERSION;
-		const target = version ?? newer?.version ?? flatVersion;
+		const baseVersion = this.nearest(type, this.entryVersions) ?? IMPLICIT_MANAGED_VERSION;
+		const target = version ?? newer?.version ?? baseVersion;
 
-		if (target === flatVersion) return flat;
-		// The newer app takes the fields of the flat entry that it does not set.
-		if (newer && target === newer.version) return { ...flat, ...withoutVersion(newer) };
+		if (target === baseVersion) return base;
+		// The newer app takes the fields of the base entry that it does not set.
+		if (newer && target === newer.version) return { ...base, ...withoutVersion(newer) };
 
 		throw new UserError(
 			`The credentials overwrite of "${type}" has no app with version ${target}. Check the overwrites of this instance.`,
 		);
 	}
 
-	private getResolvedFlat(type: string): ICredentialDataDecryptedObject | undefined {
+	private getOverwritesWithParents(type: string): ICredentialDataDecryptedObject | undefined {
 		if (this.resolvedTypes.includes(type)) {
 			// Type got already resolved and can so returned directly
 			return this.overwriteData[type];
@@ -329,7 +329,7 @@ export class CredentialsOverwrites {
 
 		const overwrites: ICredentialDataDecryptedObject = {};
 		for (const credentialsTypeName of credentialTypeData.extends) {
-			Object.assign(overwrites, this.getResolvedFlat(credentialsTypeName));
+			Object.assign(overwrites, this.getOverwritesWithParents(credentialsTypeName));
 		}
 
 		if (this.overwriteData[type] !== undefined) {

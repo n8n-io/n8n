@@ -41,11 +41,11 @@ export interface ICredentialsOverwrite {
 /** Client fields of one managed OAuth app, with the version that identifies it. */
 export type ManagedVersionEntry = ICredentialDataDecryptedObject & { version: number };
 
-/** An overwrite payload after parsing: the flat entries and the newer app of each type in a rollout. */
+/** An overwrite payload after parsing: the base entries and the newer app of each type in a rollout. */
 export interface ParsedCredentialsOverwrites {
 	entries: ICredentialsOverwrite;
-	/** Version of the flat entry, for types that state one. A missing type means version 1. */
-	flatVersions: Record<string, number>;
+	/** Version of the base entry, for types that state one. A missing type means version 1. */
+	entryVersions: Record<string, number>;
 	versions: Record<string, ManagedVersionEntry>;
 }
 

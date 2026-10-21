@@ -77,7 +77,7 @@ export function withStoredVersion(
 /**
  * Parses and validates an overwrite payload.
  *
- * A type entry is a flat object. For OAuth types it can state a `version` (default 1).
+ * A type entry is a plain object. For OAuth types it can state a `version` (default 1).
  * `__versions` holds at most one newer app for each OAuth type, with a greater version.
  * Throws a `UserError` for any invalid payload, so the caller keeps its previous config.
  *
@@ -88,7 +88,7 @@ export function parseOverwritesPayload(
 	clientFieldsOf: (type: string) => readonly string[] | undefined,
 ): ParsedCredentialsOverwrites {
 	const entries: ICredentialsOverwrite = {};
-	const flatVersions: Record<string, number> = {};
+	const entryVersions: Record<string, number> = {};
 	const versions: Record<string, ManagedVersionEntry> = {};
 
 	for (const [type, value] of Object.entries(payload)) {
@@ -105,7 +105,7 @@ export function parseOverwritesPayload(
 					`The version of the credentials overwrite for "${type}" must be an integer of at least 1.`,
 				);
 			}
-			flatVersions[type] = version;
+			entryVersions[type] = version;
 			entries[type] = fields;
 		} else {
 			entries[type] = value;
@@ -113,7 +113,7 @@ export function parseOverwritesPayload(
 	}
 
 	const versionsPayload = payload[VERSIONS_PAYLOAD_KEY];
-	if (versionsPayload === undefined) return { entries, flatVersions, versions };
+	if (versionsPayload === undefined) return { entries, entryVersions, versions };
 
 	if (!isRecord(versionsPayload)) {
 		throw new UserError(`"${VERSIONS_PAYLOAD_KEY}" must be an object keyed by credential type.`);
@@ -129,7 +129,7 @@ export function parseOverwritesPayload(
 
 		if (Array.isArray(value)) {
 			throw new UserError(
-				`"${VERSIONS_PAYLOAD_KEY}" for "${type}" must be one object. At most two apps can exist at one time: the flat entry and one entry in "${VERSIONS_PAYLOAD_KEY}".`,
+				`"${VERSIONS_PAYLOAD_KEY}" for "${type}" must be one object. At most two apps can exist at one time: the base entry and one entry in "${VERSIONS_PAYLOAD_KEY}".`,
 			);
 		}
 
@@ -141,14 +141,14 @@ export function parseOverwritesPayload(
 
 		if (!entries[type]) {
 			throw new UserError(
-				`"${VERSIONS_PAYLOAD_KEY}" for "${type}" needs a flat entry for the same type.`,
+				`"${VERSIONS_PAYLOAD_KEY}" for "${type}" needs a base entry for the same type.`,
 			);
 		}
 
-		const flatVersion = flatVersions[type] ?? IMPLICIT_MANAGED_VERSION;
-		if (value.version <= flatVersion) {
+		const baseVersion = entryVersions[type] ?? IMPLICIT_MANAGED_VERSION;
+		if (value.version <= baseVersion) {
 			throw new UserError(
-				`The version in "${VERSIONS_PAYLOAD_KEY}" for "${type}" (${value.version}) must be greater than the version of the flat entry (${flatVersion}). Never reuse a version.`,
+				`The version in "${VERSIONS_PAYLOAD_KEY}" for "${type}" (${value.version}) must be greater than the version of the base entry (${baseVersion}). Never reuse a version.`,
 			);
 		}
 
@@ -163,5 +163,5 @@ export function parseOverwritesPayload(
 		versions[type] = value;
 	}
 
-	return { entries, flatVersions, versions };
+	return { entries, entryVersions, versions };
 }
