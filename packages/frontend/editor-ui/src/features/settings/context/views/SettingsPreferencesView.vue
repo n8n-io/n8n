@@ -233,6 +233,11 @@ onMounted(async () => {
 					@click="onDeleteSelected"
 				/>
 				<N8nButton
+					:variant="
+						showEmptyState && emptyStateVariant === PREFERENCES_EMPTY_STATE_EXPERIMENT.assistant
+							? 'outline'
+							: 'solid'
+					"
 					:label="i18n.baseText('settings.context.preferences.actions.create')"
 					data-test-id="preferences-create-button"
 					@click="openCreateModal"

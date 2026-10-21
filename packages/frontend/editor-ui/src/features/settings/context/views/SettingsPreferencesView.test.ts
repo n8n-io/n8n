@@ -344,6 +344,26 @@ describe('SettingsPreferencesView', () => {
 		},
 	);
 
+	it.each([
+		{ variant: undefined, count: 0, style: 'solid' },
+		{ variant: 'control' as const, count: 0, style: 'solid' },
+		{ variant: 'examples' as const, count: 0, style: 'solid' },
+		{ variant: 'assistant' as const, count: 0, style: 'outline' },
+		{ variant: 'assistant' as const, count: 1, style: 'solid' },
+	])(
+		'shows the $style toolbar create button for the $variant variant with $count preferences',
+		async ({ variant, count, style }) => {
+			contextStore.preferences = count > 0 ? [preference()] : [];
+			contextStore.count = count;
+			emptyStateVariant.value = variant;
+
+			const { getByTestId } = renderView();
+			await new Promise(process.nextTick);
+
+			expect(getByTestId('preferences-create-button').className).toContain(style);
+		},
+	);
+
 	it('tracks no empty state experiment exposure when the page has preferences', async () => {
 		contextStore.preferences = [preference()];
 		contextStore.count = 1;
