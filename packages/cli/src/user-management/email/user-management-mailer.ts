@@ -331,9 +331,11 @@ export class UserManagementMailer {
 	async notifyWorkflowAutodeactivated({
 		recipient,
 		workflow,
+		reason = 'crashes',
 	}: {
 		recipient: User;
 		workflow: IWorkflowBase;
+		reason?: 'crashes' | 'memory-pressure';
 	}): Promise<SendEmailResult> {
 		const recipients = await this.userRepository.getEmailsByIds([recipient.id]);
 		const baseUrl = this.urlService.getInstanceBaseUrl();
@@ -345,6 +347,10 @@ export class UserManagementMailer {
 			getTemplateData: () => ({
 				workflowName: workflow.name,
 				workflowUrl: `${baseUrl}/workflow/${workflow.id}`,
+				reason:
+					reason === 'crashes'
+						? 'repeated crashes'
+						: 'repeated stops to keep the instance from running out of memory',
 			}),
 			subjectBuilder: () => 'n8n has automatically autodeactivated a workflow',
 			messageType: 'Workflow auto-deactivated',
