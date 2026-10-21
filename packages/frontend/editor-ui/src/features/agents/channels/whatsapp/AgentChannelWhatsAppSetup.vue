@@ -316,17 +316,6 @@ onBeforeUnmount(() => {
 
 const ready = computed(() => credentialVerified.value && webhookVerified.value && !props.connected);
 
-const connectBlockedHint = computed(() => {
-	if (props.connected || ready.value) return '';
-	if (!credentialVerified.value && !webhookVerified.value) {
-		return i18n.baseText('agents.channels.whatsapp.setup.connect.needsBoth');
-	}
-	if (!webhookVerified.value) {
-		return i18n.baseText('agents.channels.whatsapp.setup.connect.needsWebhook');
-	}
-	return i18n.baseText('agents.channels.whatsapp.setup.connect.needsCredential');
-});
-
 // A conflict is about the credential itself, so it stays in step 2.
 const showConnectError = computed(
 	() => Boolean(props.errorMessage) && !props.errorIsConflict && !props.connected,
@@ -356,7 +345,6 @@ const steps = computed(() => [
 	{
 		id: 'connect',
 		title: i18n.baseText('agents.channels.whatsapp.setup.connect.title'),
-		description: i18n.baseText('agents.channels.whatsapp.setup.connect.description'),
 	},
 ]);
 
@@ -403,8 +391,6 @@ async function afterSave() {
 	toast.showMessage({
 		type: 'success',
 		title: i18n.baseText('agents.channels.whatsapp.setup.connect.connected'),
-		// An unpublished agent does not answer yet, so the try-it hint needs this.
-		...(props.isPublished ? {} : { message: i18n.baseText('agents.channels.setup.publishNotice') }),
 	});
 }
 
@@ -555,7 +541,7 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 							{{ i18n.baseText('agents.channels.whatsapp.setup.verify.verified') }}
 						</N8nText>
 						<N8nText
-							v-else
+							v-else-if="credentialId"
 							size="small"
 							:class="[$style.hint, $style.verified]"
 							data-testid="whatsapp-webhook-waiting"
@@ -574,14 +560,6 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 							show-connect
 							@connect="emit('connect')"
 						/>
-						<N8nText
-							v-if="connectBlockedHint"
-							:class="$style.hint"
-							size="small"
-							data-testid="whatsapp-connect-blocked"
-						>
-							{{ connectBlockedHint }}
-						</N8nText>
 						<!-- Connect errors otherwise land in step 2, far from this button. -->
 						<N8nText
 							v-if="showConnectError"
@@ -590,14 +568,6 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 							data-testid="whatsapp-connect-error"
 						>
 							{{ errorMessage }}
-						</N8nText>
-						<N8nText
-							v-if="connected && !isPublished"
-							:class="$style.hint"
-							size="small"
-							data-testid="whatsapp-publish-notice"
-						>
-							{{ i18n.baseText('agents.channels.setup.publishNotice') }}
 						</N8nText>
 					</div>
 				</div>
@@ -646,15 +616,6 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 					<N8nIcon icon="arrow-up-right" size="xsmall" />
 				</span>
 			</N8nLink>
-
-			<N8nText
-				v-if="connected && !isPublished"
-				:class="$style.hint"
-				size="small"
-				data-testid="whatsapp-publish-notice"
-			>
-				{{ i18n.baseText('agents.channels.setup.publishNotice') }}
-			</N8nText>
 		</div>
 	</div>
 </template>
