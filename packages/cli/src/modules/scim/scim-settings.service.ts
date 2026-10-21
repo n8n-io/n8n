@@ -10,10 +10,10 @@ const ENABLED_KEY = SCIM_PROVISIONING_ENABLED_KEY;
 export interface ScimSettingsChange {
 	enabled: boolean;
 	/**
-	 * Runs before an enable is saved, while the switch is locked. An error
-	 * from it cancels the whole change.
+	 * Runs before an enable is saved, while the switch is locked, in the
+	 * transaction of the change. An error from it cancels the whole change.
 	 */
-	assertCanEnable?: () => void;
+	assertCanEnable?: (ctx: OperationContext) => Promise<void>;
 }
 
 export interface ScimSettingsChangeResult {
@@ -87,7 +87,7 @@ export class ScimSettingsService {
 	}: ScimSettingsChange): Promise<ScimSettingsChangeResult> {
 		const result = await this.transactionRunner.run({}, async (ctx) => {
 			const wasEnabled = (await this.lockSwitch(ctx)).value === 'true';
-			if (enabled) assertCanEnable?.();
+			if (enabled) await assertCanEnable?.(ctx);
 			await this.settingsRepository.upsertByKey(ENABLED_KEY, enabled.toString(), true, ctx);
 
 			return { wasEnabled, enabled };

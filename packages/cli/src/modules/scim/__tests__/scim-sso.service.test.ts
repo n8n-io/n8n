@@ -17,6 +17,7 @@ describe('ScimSsoService', () => {
 	let moduleRegistry: Mocked<ModuleRegistry>;
 	let logger: ReturnType<typeof mockLogger>;
 	let scimSwitchReader: ScimSwitchReader;
+	let settingsRepository: Mocked<SettingsRepository>;
 	let service: ScimSsoService;
 
 	const ssoOn = (on: boolean) =>
@@ -40,12 +41,14 @@ describe('ScimSsoService', () => {
 		moduleRegistry = mock<ModuleRegistry>();
 		logger = mockLogger();
 		scimSwitchReader = new ScimSwitchReader(mock<LicenseState>(), mock<SettingsRepository>());
+		settingsRepository = mock<SettingsRepository>();
 		service = new ScimSsoService(
 			logger,
 			eventService,
 			scimSettingsService,
 			moduleRegistry,
 			scimSwitchReader,
+			settingsRepository,
 		);
 	});
 
@@ -53,6 +56,55 @@ describe('ScimSsoService', () => {
 		ssoOn(on);
 
 		expect(service.isSsoEnabled()).toBe(on);
+	});
+
+	// Another main can turn single sign-on off before this main reloads the
+	// method, so the check under the SCIM switch lock also reads the saved one.
+	describe('isSsoEnabledInTransaction', () => {
+		const ctx = {};
+		const savedMethod = (value: string | null) =>
+			settingsRepository.findByKeyInContext.mockResolvedValue(
+				value === null
+					? null
+					: ({ key: 'userManagement.authenticationMethod', value } as Awaited<
+							ReturnType<SettingsRepository['findByKeyInContext']>
+						>),
+			);
+
+		it.each(['saml', 'oidc'])('is true while %s is the saved method', async (method) => {
+			ssoOn(true);
+			savedMethod(method);
+
+			expect(await service.isSsoEnabledInTransaction(ctx)).toBe(true);
+			expect(settingsRepository.findByKeyInContext).toHaveBeenCalledWith(
+				'userManagement.authenticationMethod',
+				ctx,
+			);
+		});
+
+		it.each(['email', 'ldap'])(
+			'is false while %s is the saved method, also when memory says single sign-on is on',
+			async (method) => {
+				ssoOn(true);
+				savedMethod(method);
+
+				expect(await service.isSsoEnabledInTransaction(ctx)).toBe(false);
+			},
+		);
+
+		it('uses the method in memory when no method is saved', async () => {
+			ssoOn(true);
+			savedMethod(null);
+
+			expect(await service.isSsoEnabledInTransaction(ctx)).toBe(true);
+		});
+
+		it('is false without reading the database when memory says single sign-on is off', async () => {
+			ssoOn(false);
+
+			expect(await service.isSsoEnabledInTransaction(ctx)).toBe(false);
+			expect(settingsRepository.findByKeyInContext).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('on sso-login-disabled', () => {

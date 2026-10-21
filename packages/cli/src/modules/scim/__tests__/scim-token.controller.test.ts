@@ -144,15 +144,17 @@ describe('ScimTokenController', () => {
 		// The SSO-off cascade takes the same lock as the save, so the check
 		// under the lock sees single sign-on that turned off after the first check.
 		it('returns 400 and saves nothing when single sign-on turns off before the save', async () => {
+			const ctx = {};
 			scimSettingsService.update.mockImplementation(async ({ assertCanEnable }) => {
-				scimSsoService.isSsoEnabled.mockReturnValue(false);
-				assertCanEnable?.();
+				scimSsoService.isSsoEnabledInTransaction.mockResolvedValue(false);
+				await assertCanEnable?.(ctx);
 				return { wasEnabled: false, enabled: true };
 			});
 			const res = makeRes();
 
 			await controller.updateConfig(req, res, { enabled: true });
 
+			expect(scimSsoService.isSsoEnabledInTransaction).toHaveBeenCalledWith(ctx);
 			expect(res.status).toHaveBeenCalledWith(400);
 			expect(res.json).toHaveBeenCalledWith({
 				message: 'Turn on SAML or OIDC single sign-on before you enable SCIM provisioning.',

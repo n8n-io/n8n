@@ -74,10 +74,15 @@ export class ScimTokenController {
 
 			const saved = await this.scimSettingsService.update({
 				enabled,
-				// Single sign-on can turn off after the check above. The SSO-off
-				// cascade takes the lock that this check runs under. Thus this
-				// check sees single sign-on off, or the cascade sees this enable.
-				assertCanEnable: () => this.assertSsoEnabled(),
+				// Single sign-on can turn off after the check above, also on another
+				// main. The SSO-off cascade takes the lock that this check runs
+				// under, and this check reads the saved method. Thus this check
+				// sees single sign-on off, or the cascade sees this enable.
+				assertCanEnable: async (ctx) => {
+					if (!(await this.scimSsoService.isSsoEnabledInTransaction(ctx))) {
+						throw new ScimSsoRequiredError();
+					}
+				},
 			});
 
 			// `/rest/module-settings` serves a cached snapshot, so refresh it or

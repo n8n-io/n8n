@@ -159,6 +159,9 @@ describe('ScimSettingsService', () => {
 
 			await service.update({ enabled: true, assertCanEnable });
 
+			// The check reads the saved method in the same transaction.
+			expect(assertCanEnable).toHaveBeenCalledWith(trxCtx);
+
 			const lockOrder = settingsRepository.getOrCreateWithWriteLock.mock.invocationCallOrder[0];
 			const checkOrder = assertCanEnable.mock.invocationCallOrder[0];
 			const saveOrder = settingsRepository.upsertByKey.mock.invocationCallOrder[0];
