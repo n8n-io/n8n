@@ -24,8 +24,11 @@ function changeText(change: PromotionDataTableChange): ChangeText {
 				names: { column: change.column, type: typeLabel(change.type) },
 			};
 		case 'remove-column':
+			// Only Apply marks a removal as destructive. Promote changes the branch, so no values go.
 			return {
-				keypath: 'promotions.preview.dataTable.removeColumn',
+				keypath: change.destructive
+					? 'promotions.preview.dataTable.removeColumnWithValues'
+					: 'promotions.preview.dataTable.removeColumn',
 				names: { column: change.column },
 			};
 		case 'change-column-type':

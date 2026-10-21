@@ -162,6 +162,37 @@ describe('PromotionChangeCard', () => {
 		}
 	});
 
+	it('should describe a column removal on Promote without a loss of values', () => {
+		const { getAllByTestId } = renderComponent({
+			pinia: createTestingPinia(),
+			props: {
+				resource: { ...billingResources.invoicesTable, revision },
+				graph: buildSelectionGraph(billingPreview(), 'promote'),
+				direction: 'promote',
+				entry: {
+					status: 'loaded',
+					detail: {
+						key: 'dataTable:t1',
+						type: 'dataTable',
+						before: null,
+						after: null,
+						revision,
+						dataTableChanges: [
+							{ kind: 'remove-column', column: 'notes', type: 'string', destructive: true },
+						],
+					},
+				},
+				included: false,
+				inspected: false,
+			},
+		});
+
+		// Promote changes the branch only. The values go only when the branch is applied.
+		expect(getAllByTestId('promotion-preview-data-table-change')[0]).toHaveTextContent(
+			/^Removes column notes$/,
+		);
+	});
+
 	it('should collapse a card from its header and open it again when the tree inspects it', async () => {
 		const { getByTestId, findByText, rerender } = renderComponent({
 			pinia: createTestingPinia(),
