@@ -19,6 +19,7 @@ import type { IExecutingWorkflowData } from '@/interfaces';
 import type { License } from '@/license';
 import type { Telemetry } from '@/telemetry';
 
+import { HOLD_LIMIT_MS } from '../memory-guard.constants';
 import { MemoryGuardService } from '../memory-guard.service';
 import { readMemoryUsage } from '../memory-usage';
 import type { RunDataEstimate, RunDataTracker } from '../run-data-tracker';
@@ -30,8 +31,6 @@ vi.mock('../memory-usage', () => ({
 }));
 
 const MB = 1024 * 1024;
-
-const HOLD_LIMIT_MS = 30_000;
 
 describe('MemoryGuardService', () => {
 	let utilization = 0.5;
@@ -625,7 +624,7 @@ describe('MemoryGuardService', () => {
 		});
 	});
 
-	/** Make the next memory read return this utilization, after which reads use `utilization`. */
+	/** Make only the next memory read return `value`. Later reads return `utilization`. */
 	function readMemoryUsageOnce(value: number) {
 		vi.mocked(readMemoryUsage).mockImplementationOnce(() => ({
 			utilization: value,

@@ -344,7 +344,7 @@ function hookFunctionsPush(
 	});
 	hooks.addHandler('nodeExecuteAfter', async function (nodeName, data, executionData) {
 		const { executionId } = this;
-		// The editor clears node state when the execution finishes.
+		// Do not push node data of a stopped execution. The editor clears it at the end.
 		if (stoppedExecutions.isStopped(executionId)) return;
 
 		// Push data to session which started workflow after each rendered node

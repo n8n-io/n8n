@@ -45,7 +45,7 @@ export class StoppedExecutions {
 		}
 	}
 
-	/** A resumed execution keeps its ID, so a mark from before the wait must not skip it. */
+	/** A resumed execution keeps its ID, so clear its finishing mark from before the wait. */
 	onWorkflowExecuteStart(executionId: string) {
 		this.finishing.delete(executionId);
 	}

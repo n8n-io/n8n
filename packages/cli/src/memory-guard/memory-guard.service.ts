@@ -4,87 +4,34 @@ import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { formatBytes } from '@n8n/utils/number/bytes';
 import { sleep } from '@n8n/utils/sleep';
-import type { IWorkflowBase } from 'n8n-workflow';
-import { MemoryPressureExecutionCancelledError, WorkflowOperationError } from 'n8n-workflow';
-import { setFlagsFromString } from 'node:v8';
-import { runInNewContext } from 'node:vm';
+import { MemoryPressureExecutionCancelledError } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 
+import {
+	ADMIT_INTERVAL_MS,
+	CRITICAL_LEVEL,
+	FAST_INTERVAL_MS,
+	FAST_SAMPLING_AFTER_HOLD_MS,
+	FAST_SAMPLING_LEVEL,
+	FREED_SHARE,
+	HOLD_LEVEL,
+	HOLD_LIMIT_MS,
+	RELEASE_TIMEOUT_MS,
+	REMEASURE_INTERVAL_MS,
+	REMEASURE_TIMEOUT_MS,
+	RESUME_LEVEL,
+	SAMPLES_TO_ACT,
+	SLOW_INTERVAL_MS,
+	STARVATION_ADMIT_INTERVAL_MS,
+	STOP_LEVEL,
+} from './memory-guard.constants';
+import type { StopTarget, StopTrigger } from './memory-guard.types';
+import { buildStopError, exposeGc, settleWithin } from './memory-guard.utils';
 import { getContainerLimit, type MemoryUsage, readMemoryUsage } from './memory-usage';
-import { type RunDataEstimate, RunDataTracker } from './run-data-tracker';
+import { RunDataTracker } from './run-data-tracker';
 import { StoppedExecutions } from './stopped-executions';
-
-/** Utilization at which new production executions start to wait. */
-const HOLD_LEVEL = 0.8;
-
-/** Utilization below which the hold ends. */
-const RESUME_LEVEL = 0.75;
-
-/** Utilization at which the guard stops the execution that holds the most run data. */
-const STOP_LEVEL = 0.85;
-
-/** Utilization at which one sample is enough to hold and to stop. */
-const CRITICAL_LEVEL = 0.95;
-
-/** Utilization below which the guard samples slowly. */
-const FAST_SAMPLING_LEVEL = 0.7;
-
-const FAST_INTERVAL_MS = 250;
-
-const SLOW_INTERVAL_MS = 2_000;
-
-/** How long the guard samples fast after a hold ends, because held executions then start. */
-const FAST_SAMPLING_AFTER_HOLD_MS = 5_000;
-
-/** Consecutive samples at a level before the guard acts on it. */
-const SAMPLES_TO_ACT = 2;
-
-/**
- * Longest wait of a held execution before the guard stops the largest execution. After
- * a stop, the wait starts again, so that the guard does not stop one execution after another.
- */
-const HOLD_LIMIT_MS = 30_000;
-
-/**
- * Least time between two held executions that start because nothing runs. An execution
- * shows as running only after a database write, which can take longer than one sample.
- */
-const STARVATION_ADMIT_INTERVAL_MS = 1_000;
-
-/**
- * Least time between two batches of held executions after a hold. A started execution
- * needs this time before memory shows what it uses.
- */
-const ADMIT_INTERVAL_MS = 1_000;
-
-/** Longest wait for the running node of a stopped execution to return. */
-const RELEASE_TIMEOUT_MS = 5_000;
-
-/**
- * Longest time to measure memory again after a stop. The save of a stopped execution
- * still holds its run data for a short time after its engine ends.
- */
-const REMEASURE_TIMEOUT_MS = 3_000;
-
-const REMEASURE_INTERVAL_MS = 500;
-
-/** Share of the stopped run data estimate that memory must drop by for a stop to count. */
-const FREED_SHARE = 0.5;
-
-const MEMORY_DOCS_URL =
-	'https://docs.n8n.io/deploy/host-n8n/configure-n8n/scaling/fix-memory-issues';
-
-type StopTrigger = 'threshold' | 'critical' | 'hold-limit';
-
-interface StopTarget {
-	rootId: string;
-	workflow: IWorkflowBase;
-	/** Running executions of the tree, the root first. */
-	memberIds: string[];
-	estimatedBytes: number;
-}
 
 /**
  * Keeps the instance from running out of memory. When memory is high, new production
@@ -133,7 +80,10 @@ export class MemoryGuardService {
 	 */
 	private isStandingDown = false;
 
-	/** Set when nothing can be stopped to end a hold, until memory falls below the resume level. */
+	/**
+	 * Set when a held execution waits too long and the guard cannot stop an execution, until
+	 * memory falls below the resume level.
+	 */
 	private isHoldSuspended = false;
 
 	constructor(
@@ -212,8 +162,8 @@ export class MemoryGuardService {
 
 		if (this.isHolding) {
 			this.admitBatch = 1;
-			// With nothing running, no execution can free memory, so let one held execution start.
-			// A stopped engine still runs after its execution leaves the active list.
+			// With nothing running, no stop can free memory, so let one held execution start.
+			// Wait for a pending stop, because its engine runs after it leaves the active list.
 			if (!this.pendingStop && !this.hasRunningExecution()) this.admitOneHeld();
 		} else {
 			this.admitHeldGradually(utilization);
@@ -260,8 +210,8 @@ export class MemoryGuardService {
 	}
 
 	/**
-	 * Memory stays high after a save until the next garbage collection, so collect
-	 * before a stop. When memory falls, the streak starts again, to limit collections.
+	 * Freed memory shows only after a garbage collection, so collect before a threshold stop.
+	 * If memory falls below the stop level, the streak starts again, to limit collections.
 	 */
 	private isAboveStopLevelAfterGc() {
 		if (!this.forceGc) return true;
@@ -331,9 +281,9 @@ export class MemoryGuardService {
 				runningNode: estimate?.runningNode,
 			});
 
-			// A node that ignores the stop can still return and fire node events until the
-			// engine ends, so the hooks must treat the execution as stopped until then.
-			// Keep only the end of the engine: its result holds the full run data.
+			// A node that ignores the stop can fire events until the engine ends, so the
+			// execution stays marked as stopped until then. Do not keep the engine result,
+			// because it holds the full run data.
 			const forget = () => this.stoppedExecutions.forget(executionId);
 			engines.push(Promise.resolve(execution.workflowExecution).then(forget, forget));
 		}
@@ -360,9 +310,9 @@ export class MemoryGuardService {
 	}
 
 	/**
-	 * Wait until the stopped engines end, free their memory, and check whether the stop
-	 * helped. If it did not, executions are not what holds the memory, so the guard stops
-	 * acting until memory falls, instead of stopping one execution after another.
+	 * Wait until the stopped engines end, then check whether the stop freed memory. If it
+	 * did not, executions do not hold the memory, so the guard stops only at the critical
+	 * level until memory falls.
 	 */
 	private async finishStop(
 		target: StopTarget,
@@ -449,77 +399,5 @@ export class MemoryGuardService {
 			depth++;
 		}
 		return { rootId, depth };
-	}
-}
-
-function buildStopError(
-	workflow: IWorkflowBase,
-	estimate: RunDataEstimate | undefined,
-	usage: MemoryUsage,
-) {
-	// Self-healing can hide the description, so the message names the nodes.
-	const sentences = ['Execution stopped because the instance was running out of memory.'];
-	const runningNode = estimate?.runningNode;
-	if (runningNode) sentences.push(`Running node: "${runningNode}".`);
-	const largest = largestNode(estimate);
-	if (largest) {
-		sentences.push(
-			`Node holding the most data: "${largest.name}" (about ${formatBytes(largest.bytes)}).`,
-		);
-	}
-
-	const description = [
-		`Memory was at ${formatBytes(usage.usedBytes)} of ${formatBytes(usage.limitBytes)}.`,
-		'To keep the instance and its other executions running, n8n stopped the execution that held the most data.',
-		'This execution is the likely cause, but not a certain one.',
-		`To use less memory, process data in smaller batches. See ${MEMORY_DOCS_URL}`,
-	].join(' ');
-
-	const node = workflow.nodes.find((n) => n.name === runningNode);
-	return new WorkflowOperationError(sentences.join(' '), node, description);
-}
-
-function largestNode(estimate: RunDataEstimate | undefined) {
-	let largest: { name: string; bytes: number } | undefined;
-	for (const [name, bytes] of estimate?.bytesByNode ?? []) {
-		if (!largest || bytes > largest.bytes) largest = { name, bytes };
-	}
-	return largest;
-}
-
-async function settleWithin(promises: Array<Promise<void>>, timeoutMs: number) {
-	let timeout: NodeJS.Timeout | undefined;
-	await Promise.race([
-		Promise.allSettled(promises),
-		new Promise<void>((resolve) => {
-			timeout = setTimeout(resolve, timeoutMs);
-		}),
-	]);
-	clearTimeout(timeout);
-}
-
-type GarbageCollect = (options: {
-	type: 'major';
-	execution: 'sync';
-	flavor: 'last-resort';
-}) => void;
-
-function isGarbageCollect(value: unknown): value is GarbageCollect {
-	return typeof value === 'function';
-}
-
-/**
- * A regular collection frees the heap but leaves RSS high for many seconds, so a stop
- * would not show in the next sample. The last-resort flavor returns the pages at once.
- */
-function exposeGc(): (() => void) | undefined {
-	try {
-		setFlagsFromString('--expose-gc');
-		const gc: unknown = runInNewContext('gc');
-		setFlagsFromString('--no-expose-gc');
-		if (!isGarbageCollect(gc)) return undefined;
-		return () => gc({ type: 'major', execution: 'sync', flavor: 'last-resort' });
-	} catch {
-		return undefined;
 	}
 }

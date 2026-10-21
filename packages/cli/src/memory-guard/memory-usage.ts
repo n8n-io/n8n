@@ -20,9 +20,8 @@ export function getContainerLimit(): number | undefined {
 }
 
 /**
- * The kernel kills the container when its memory reaches the cgroup limit, and in the
- * container that n8n runs in, RSS is close to the memory that the cgroup counts.
- * V8 aborts when the heap reaches its own limit, so the heap counts as well.
+ * The kernel kills the container at its cgroup limit, and RSS is close to what the cgroup
+ * counts. V8 aborts at the heap limit, so the heap counts as well.
  */
 export function readMemoryUsage(containerLimit: number | undefined): MemoryUsage {
 	const heap = getHeapStatistics();
