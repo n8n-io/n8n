@@ -170,7 +170,7 @@ describe('AgentTaskService', () => {
 			),
 			settingsService,
 			transactionRunner,
-			createAgentSkillRefsService(agentRepository),
+			createAgentSkillRefsService(),
 		);
 	}
 
@@ -638,7 +638,6 @@ describe('AgentTaskService', () => {
 			expect.objectContaining({
 				by: 'user',
 				changedParts: ['tasks'],
-				wasUnconfigured: false,
 			}),
 		);
 

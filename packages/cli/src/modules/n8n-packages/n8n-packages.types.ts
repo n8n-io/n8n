@@ -2,6 +2,10 @@ import type { PolicyViolation } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import type { Readable } from 'node:stream';
 
+import type {
+	CredentialConflict,
+	CredentialUpdateForbidden,
+} from './entities/credential/credential.types';
 import type { DataTableResolutionFailure } from './entities/data-table/data-table.types';
 import type { TagResolutionFailure } from './entities/tag/tag.types';
 import type {
@@ -166,6 +170,15 @@ export const VariableConflictPolicy = {
 	Fail: 'fail',
 } as const;
 
+export const CredentialConflictPolicy = {
+	/** Does not change a matched credential, also when the package has a different name or different values. */
+	KeepExisting: 'keep-existing',
+	/** Writes the package name and expression values to a matched credential. Keeps the other stored values. */
+	Overwrite: 'overwrite',
+	/** Blocks the import when `overwrite` would change a matched credential. */
+	Fail: 'fail',
+} as const;
+
 export const VariableParentPolicy = {
 	Project: 'project',
 	Global: 'global',
@@ -223,6 +236,9 @@ export type VariableMissingMode = (typeof VariableMissingMode)[keyof typeof Vari
 
 export type VariableConflictPolicy =
 	(typeof VariableConflictPolicy)[keyof typeof VariableConflictPolicy];
+
+export type CredentialConflictPolicy =
+	(typeof CredentialConflictPolicy)[keyof typeof CredentialConflictPolicy];
 
 export type VariableParentPolicy = (typeof VariableParentPolicy)[keyof typeof VariableParentPolicy];
 
@@ -294,8 +310,8 @@ export interface ImportSelection {
 /**
  * Match or create the destination project from the package. Callers cannot override its location.
  * The service fixes all policies except `workflowConflictPolicy`, `workflowIdPolicy`,
- * `overwriteDeletionPolicy` (how removals are carried out; defaults to `archive`), and
- * `dataTableSchemaConflictPolicy` (defaults to `fail`).
+ * `overwriteDeletionPolicy` (how removals are carried out; defaults to `archive`),
+ * `dataTableSchemaConflictPolicy` (defaults to `fail`), and `tagConflictPolicy` (defaults to `skip`).
  */
 export type ImportSelectionRequest = {
 	user: User;
@@ -305,6 +321,7 @@ export type ImportSelectionRequest = {
 	workflowIdPolicy?: WorkflowIdPolicy;
 	overwriteDeletionPolicy?: OverwriteDeletionPolicy;
 	dataTableSchemaConflictPolicy?: DataTableSchemaConflictPolicy;
+	tagConflictPolicy?: TagConflictPolicy;
 };
 
 export type ImportPackageSelectionRequest = ImportSelectionRequest & {
@@ -314,6 +331,8 @@ export type ImportPackageSelectionRequest = ImportSelectionRequest & {
 export type ImportCredentialProperties = {
 	credentialMatchingMode: CredentialMatchingMode;
 	credentialMissingMode: CredentialMissingMode;
+	/** Omitted means `keep-existing`. */
+	credentialConflictPolicy?: CredentialConflictPolicy;
 };
 
 export type ImportWorkflowProperties = {
@@ -379,7 +398,7 @@ export interface ImportContext {
 	folderId: string | null;
 }
 
-export type ImportPackageEventOptions = ImportCredentialProperties &
+export type ImportPackageEventOptions = Required<ImportCredentialProperties> &
 	ImportWorkflowProperties &
 	ImportProjectProperties &
 	ResolvedImportFolderProperties &
@@ -563,6 +582,8 @@ export type BlockingIssue =
 			actualType?: string;
 			usedBy: PackageRequirementConsumer[];
 	  }
+	| ({ type: 'credential-conflict' } & CredentialConflict)
+	| ({ type: 'credential-update-forbidden' } & CredentialUpdateForbidden)
 	| ({ type: 'project-conflict' } & ProjectConflict)
 	| ({ type: 'folder-conflict' } & FolderConflict)
 	| ({ type: 'workflow-removal-forbidden' } & WorkflowRemovalFailure)
@@ -697,8 +718,10 @@ export interface ImportPackageSummary {
 export interface ImportCredentialSummary {
 	matched: string[];
 	stubbed: string[];
-	/** Source ids of credentials created and seeded from the package's bundled expression data. */
+	/** Source ids of credentials created with all their source data from the package. */
 	seeded: string[];
+	/** Source ids of credentials created from package data that is not confirmed as complete. */
+	incomplete: string[];
 }
 
 export interface ImportVariableSummary {

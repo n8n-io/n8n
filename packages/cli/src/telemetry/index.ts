@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
+import { InstanceRegistryProxyService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
 	ProjectRelationRepository,
@@ -29,6 +30,7 @@ import { PostHogClient } from '@/posthog';
 
 import { SourceControlPreferencesService } from '../modules/source-control.ee/source-control-preferences.service.ee';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../modules/mcp/mcp.constants';
+import { summarizeFootprint } from './cluster-footprint';
 
 type ExecutionTrackDataKey =
 	| 'manual_error'
@@ -260,6 +262,7 @@ export class Telemetry {
 			read_only_instance: sourceControlPreferences.branchReadOnly,
 			team_projects: (await Container.get(ProjectRepository).getProjectCounts()).team,
 			project_role_count: await Container.get(ProjectRelationRepository).countUsersByRole(),
+			...summarizeFootprint(await Container.get(InstanceRegistryProxyService).getAllInstances()),
 		};
 
 		this.track('pulse', pulsePacket);

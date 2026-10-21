@@ -24,6 +24,7 @@ import {
 	InstanceAiEvalExecutionRequest,
 	InstanceAiEvalAgentExecutionRequest,
 	InstanceAiEvalCredentialAllowlistRequest,
+	InstanceAiEvalCredentialTestTargetRequest,
 	InstanceAiEvalRestoreThreadRequest,
 	InstanceAiEvalSeedDataTableRowsRequest,
 	findSeedFolderIssues,
@@ -104,6 +105,8 @@ const KEEP_ALIVE_INTERVAL_MS = 15_000;
 export class InstanceAiController {
 	private readonly gatewayApiKey: string;
 
+	private readonly instanceAiConfig: GlobalConfig['instanceAi'];
+
 	constructor(
 		private readonly instanceAiService: InstanceAiService,
 		private readonly gatewayService: InstanceAiGatewayService,
@@ -133,6 +136,7 @@ export class InstanceAiController {
 		private readonly threadTabsService: InstanceAiThreadTabsService,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
+		this.instanceAiConfig = globalConfig.instanceAi;
 	}
 
 	private requireInstanceAiEnabled(): void {
@@ -276,14 +280,43 @@ export class InstanceAiController {
 		if (ownership === 'other_user') {
 			throw new ForbiddenError('Not authorized for this thread');
 		}
-		// When the thread didn't exist at connect time, another user could create
-		// and own it before events start flowing. We re-check once on the first
-		// event and close the stream if ownership changed. Events are buffered
-		// until the check resolves to prevent leaking data during the async gap.
+		// A thread created after subscription can have a different owner.
+		// Verify ownership before sending events or a bootstrap frame.
 		let ownershipVerified = ownership === 'owned';
-		let ownershipCheckInFlight = false;
+		let ownershipCheck: Promise<boolean> | undefined;
 		const pendingEvents: StoredEvent[] = [];
 		const userId = req.user.id;
+		let closed = false;
+
+		const verifyOwnership = async () => {
+			ownershipCheck ??= this.memoryService
+				.checkThreadOwnership(userId, threadId)
+				.then((currentOwnership) => {
+					if (closed) return false;
+
+					ownershipVerified = currentOwnership === 'owned';
+					if (!ownershipVerified) {
+						pendingEvents.length = 0;
+						closed = true;
+						res.end();
+						return false;
+					}
+
+					// Drain before live delivery can observe the verified owner.
+					for (const stored of pendingEvents) this.writeSseEvent(res, stored);
+					pendingEvents.length = 0;
+
+					return true;
+				})
+				.catch(() => {
+					pendingEvents.length = 0;
+					closed = true;
+					res.end();
+					return false;
+				});
+
+			return await ownershipCheck;
+		};
 
 		// 1. Subscribe to live events before the async bootstrap below.
 		//    hasSubscribers() must be true across the awaits that follow: in
@@ -295,36 +328,15 @@ export class InstanceAiController {
 		let bootstrapping = true;
 
 		const deliver = (stored: StoredEvent) => {
+			if (closed) return;
+
 			if (ownershipVerified) {
 				this.writeSseEvent(res, stored);
 				return;
 			}
 
-			// When the thread was not_found at connect time, re-validate ownership
-			// on the first event. Buffer all events until the check resolves to
-			// avoid leaking data during the async gap.
 			pendingEvents.push(stored);
-
-			if (ownershipCheckInFlight) return;
-			ownershipCheckInFlight = true;
-
-			void this.memoryService
-				.checkThreadOwnership(userId, threadId)
-				.then((currentOwnership) => {
-					if (currentOwnership === 'other_user') {
-						res.end();
-						return;
-					}
-					ownershipVerified = true;
-					for (const buffered of pendingEvents) {
-						this.writeSseEvent(res, buffered);
-					}
-					pendingEvents.length = 0;
-				})
-				.catch(() => {
-					pendingEvents.length = 0;
-					res.end();
-				});
+			void verifyOwnership();
 		};
 
 		const unsubscribe = this.eventBus.subscribe(threadId, (stored) => {
@@ -335,7 +347,6 @@ export class InstanceAiController {
 		// Cleanup is registered before the async bootstrap so a client disconnect
 		// (or an error response) during the awaits below doesn't leak the
 		// subscription.
-		let closed = false;
 		let keepAlive: NodeJS.Timeout | undefined = undefined;
 		const cleanup = () => {
 			closed = true;
@@ -412,6 +423,7 @@ export class InstanceAiController {
 			runEvents: InstanceAiEvent[],
 		) => {
 			if (runEvents.length === 0) return;
+			if (!ownershipVerified && !(await verifyOwnership())) return;
 
 			const agentTree = buildAgentTreeFromEvents(runEvents);
 			// The fold records that a confirmation was requested, not that it was
@@ -1021,7 +1033,7 @@ export class InstanceAiController {
 	/**
 	 * Persist the pending new-agent artifact this thread has open, and bind it to
 	 * the thread in the same request. Idempotent under a concurrent writer on the
-	 * same client-minted id (the chat's build-agent tool), unlike the strict
+	 * same client-minted id (the chat's agent_builder_build_agent tool), unlike the strict
 	 * project-scoped agent create.
 	 */
 	@Post('/threads/:threadId/agent')
@@ -1034,7 +1046,12 @@ export class InstanceAiController {
 	) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
-		return await this.pendingAgentService.persistAndBind(req.user, threadId, payload);
+		return await this.pendingAgentService.persistAndBind(
+			req.user,
+			threadId,
+			payload,
+			req.headers?.['push-ref'],
+		);
 	}
 
 	@Get('/threads/:threadId/messages')
@@ -1209,6 +1226,29 @@ export class InstanceAiController {
 	}
 
 	/**
+	 * Send the thread's connection tests for one credential type to a provider
+	 * stand-in, so the agent's own test checks the captured secret.
+	 */
+	@Post('/eval/thread-credential-test-target')
+	@GlobalScope('instanceAi:eval')
+	async setThreadCredentialTestTarget(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiEvalCredentialTestTargetRequest,
+	) {
+		this.requireInstanceAiEnabled();
+		// Redirecting a credential test sends its secret elsewhere, so only a
+		// throwaway eval instance offers it.
+		if (!this.instanceAiConfig.evalInstance) {
+			throw new NotFoundError('Credential test targets are only available on an eval instance');
+		}
+		await this.assertThreadAccess(req.user.id, payload.threadId);
+		const { threadId, ...target } = payload;
+		this.evalCredentialAllowlists.setTestTarget(threadId, target);
+		return { ok: true };
+	}
+
+	/**
 	 * Observational memory for a thread, for a context eval to assert on.
 	 *
 	 * Returns the observation text, an LLM-written summary of the user's conversation.
@@ -1341,7 +1381,7 @@ export class InstanceAiController {
 						)
 					: undefined;
 			// Bind the thread as the conversation that built these agents would have, or
-			// the live turn's first `build-agent` call is rejected as an unknown agentRef.
+			// the live turn's first `agent_builder_build_agent` call is rejected as an unknown agentRef.
 			// BEFORE the messages, and undoable: the catch restores the prior metadata,
 			// so a message failure can't leave a binding pointing at deleted agents, and
 			// a binding failure can't leave messages referencing them.
@@ -1371,7 +1411,7 @@ export class InstanceAiController {
 					// that triggered the rollback.
 				}
 			}
-			await this.evalThreadRestore.deleteAgents(createdAgentIds, projectId);
+			await this.evalThreadRestore.deleteAgents(createdAgentIds, projectId, req.user);
 			// Every seed this restore published, not only the created ones: a re-applied
 			// seed is not in `createdWorkflowIds`, so the delete below never sees it.
 			await this.evalThreadRestore.unpublishWorkflows(publishedWorkflowIds);

@@ -70,6 +70,20 @@ describe('OwnershipService', () => {
 			expect(returnedProject).toBe(mockProject);
 		});
 
+		test('should ignore a cached project without an id and read the project from the database', async () => {
+			const mockProject = Object.assign(new Project(), { id: 'project-id' });
+			// A cached value without an id, as a lookup of the key `__proto__` used to return
+			cacheService.getHashValue.mockResolvedValueOnce({});
+			sharedWorkflowRepository.findOneOrFail.mockResolvedValueOnce(
+				Object.assign(new SharedWorkflow(), { role: 'workflow:owner', project: mockProject }),
+			);
+
+			const returnedProject = await ownershipService.getWorkflowProjectCached('some-workflow-id');
+
+			expect(returnedProject).toBe(mockProject);
+			expect(sharedWorkflowRepository.findOneOrFail).toHaveBeenCalled();
+		});
+
 		test('should throw if no workflow owner project found', async () => {
 			sharedWorkflowRepository.findOneOrFail.mockRejectedValue(new Error());
 
@@ -104,6 +118,7 @@ describe('OwnershipService', () => {
 			const owner = await ownershipService.getPersonalProjectOwnerCached('some-project-id');
 
 			expect(owner).toBeNull();
+			expect(cacheService.setHash).not.toHaveBeenCalled();
 		});
 
 		test('should not use the repository if the owner was found in the cache', async () => {

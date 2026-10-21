@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import type { SsrfBridge } from '@n8n/backend-network';
 import { EventService } from '@n8n/backend-services';
+import { OAuthJweServiceProxy } from '@n8n/backend-services/auth';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { ClientOAuth2 } from '@n8n/client-oauth2';
 import { type CredentialsEntity, type User } from '@n8n/db';
@@ -12,7 +13,6 @@ import { mock } from 'vitest-mock-extended';
 import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credential.controller';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { ExternalHooks } from '@/external-hooks';
-import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 import { OauthService } from '@/oauth/oauth.service';
 import type { OAuthRequest } from '@/requests';
 
@@ -1380,6 +1380,7 @@ describe('OAuth2CredentialController', () => {
 				oauthJweServiceProxy.decryptOAuth2TokenData.mockRejectedValue(
 					new UserError('Expected at least one JWE-encrypted token but received only plaintext'),
 				);
+				oauthService.extractCallbackErrorMessage.mockImplementationOnce((error) => error.message);
 				await setupCallback(true, { access_token: 'plaintext' });
 
 				const req = mock<OAuthRequest.OAuth2Credential.Callback>({
@@ -1496,12 +1497,14 @@ describe('OAuth2CredentialController', () => {
 
 		it('should handle errors and render error page', async () => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
-			const mockGetToken = vi.fn().mockRejectedValue(new Error('Token exchange failed'));
+			const tokenError = new Error('Token exchange failed');
+			const mockGetToken = vi.fn().mockRejectedValue(tokenError);
+			oauthService.extractCallbackErrorMessage.mockReturnValueOnce('Rendered message');
 			vi.mocked(ClientOAuth2).mockImplementation(function () {
 				return { code: { getToken: mockGetToken } } as any;
 			});
 
-			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
+			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1', type: 'oAuth2Api' });
 			const mockState = {
 				token: 'token',
 				cid: '1',
@@ -1538,9 +1541,13 @@ describe('OAuth2CredentialController', () => {
 
 			await controller.handleCallback(req, res);
 
+			expect(oauthService.extractCallbackErrorMessage).toHaveBeenCalledWith(
+				tokenError,
+				'oAuth2Api',
+			);
 			expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
 				res,
-				'Token exchange failed',
+				'Rendered message',
 				undefined,
 			);
 		});

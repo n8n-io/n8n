@@ -535,15 +535,36 @@ export function getActiveCredentialTypes(
 	}
 
 	try {
+		// Saved nodes drop parameters that hold their default value, but the Workflow
+		// constructor restores those defaults before a node reads its credentials.
+		// Resolve the same defaults here so the credential display options evaluate
+		// what execution evaluates. Resolved values win — this keeps nested defaults
+		// and stripped expression prefixes in step with execution — and raw values
+		// fill in only the parameters the node type does not declare.
+		const resolved =
+			getNodeParameters(
+				nodeTypeDescription.properties ?? [],
+				node.parameters,
+				true,
+				true,
+				node,
+				nodeTypeDescription,
+			) ?? {};
+		const declaredNames = new Set((nodeTypeDescription.properties ?? []).map((p) => p.name));
+		const parameters: INodeParameters = { ...resolved };
+		for (const name of Object.keys(node.parameters)) {
+			if (!declaredNames.has(name)) parameters[name] = node.parameters[name];
+		}
+
 		const activeTypes = new Set<string>();
 
 		for (const credentialDescription of nodeTypeDescription.credentials ?? []) {
-			if (displayParameter(node.parameters, credentialDescription, node, nodeTypeDescription)) {
+			if (displayParameter(parameters, credentialDescription, node, nodeTypeDescription)) {
 				activeTypes.add(credentialDescription.name);
 			}
 		}
 
-		const { nodeCredentialType, genericAuthType } = node.parameters;
+		const { nodeCredentialType, genericAuthType } = parameters;
 		for (const paramName of ['nodeCredentialType', 'genericAuthType'] as const) {
 			const paramValue = paramName === 'nodeCredentialType' ? nodeCredentialType : genericAuthType;
 			if (typeof paramValue !== 'string' || !paramValue) {
@@ -561,7 +582,7 @@ export function getActiveCredentialTypes(
 			);
 			if (
 				paramDescription &&
-				!displayParameter(node.parameters, paramDescription, node, nodeTypeDescription)
+				!displayParameter(parameters, paramDescription, node, nodeTypeDescription)
 			) {
 				continue;
 			}

@@ -113,7 +113,7 @@ defineExpose({ credentialId, currentSettings, validationError });
 					/>
 					<div v-else-if="step.id === 'connect'" :class="$style.connectStep">
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							size="medium"
 							:loading="loading"
 							:disabled="!canConnect"

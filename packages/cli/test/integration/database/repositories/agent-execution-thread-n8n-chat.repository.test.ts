@@ -42,7 +42,6 @@ describe('AgentExecutionThreadRepository n8n Chat queries', () => {
 				projectId,
 				integrations: [],
 				tools: {},
-				skills: {},
 			} as Partial<Agent>),
 		);
 		agentId = agent.id;
@@ -145,7 +144,6 @@ describe('AgentExecutionThreadRepository n8n Chat queries', () => {
 					projectId,
 					integrations: {},
 					tools: {},
-					skills: {},
 				} as Partial<Agent>),
 			);
 			const inScope = await createThread({ ownerId: owner.id });
@@ -175,7 +173,6 @@ describe('AgentExecutionThreadRepository n8n Chat queries', () => {
 					personalisation: { icon: 'bot', gradient: { from: '#000000', to: '#FFFFFF' } },
 				},
 				tools: null,
-				skills: null,
 			});
 			await agentRepo.update({ id: agentId }, { activeVersionId: versionId });
 			const thread = await createThread({ ownerId: owner.id });
@@ -285,7 +282,6 @@ describe('AgentExecutionThreadRepository n8n Chat queries', () => {
 					projectId,
 					integrations: {},
 					tools: {},
-					skills: {},
 				} as Partial<Agent>),
 			);
 			const thread = await createThread({ ownerId: owner.id, agentId: otherAgent.id });
@@ -325,7 +321,6 @@ describe('AgentExecutionThreadRepository n8n Chat queries', () => {
 					projectId,
 					integrations: [],
 					tools: {},
-					skills: {},
 				} as Partial<Agent>),
 			);
 			const lightThread = await createThread({ ownerId: owner.id });
@@ -388,7 +383,6 @@ describe('AgentExecutionThreadRepository n8n Chat queries', () => {
 					projectId: otherProject.id,
 					integrations: {},
 					tools: {},
-					skills: {},
 				} as Partial<Agent>),
 			);
 			const inScope = await createThread({ ownerId: owner.id });

@@ -2,8 +2,7 @@ import { type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { randomUUID } from 'crypto';
 
-import { JwtService } from '@/services/jwt.service';
-import { UrlService } from '@n8n/backend-services';
+import { JwtService, UrlService } from '@n8n/backend-services';
 
 import { ScimApiKeyRepository } from './database/scim-api-key.repository';
 

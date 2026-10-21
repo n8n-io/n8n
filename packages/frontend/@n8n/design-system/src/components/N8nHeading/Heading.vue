@@ -59,7 +59,7 @@ const classes = computed(() => {
 
 <style lang="scss" module>
 .bold {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .regular {

@@ -1581,6 +1581,86 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(hook.messages.value[1]?.budgetNotices?.[0]?.code).toBe('budget.monthly');
 	});
 
+	it('stores the budget owner on a child-sourced budget notice', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'text-delta', id: 't-1', delta: 'partial' },
+			{ type: 'budget-notice', code: 'budget.monthly', agentId: 'child-agent-1' },
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook(undefined, { budgetCards: true });
+		await hook.sendMessage('hi');
+		await flushPromises();
+
+		expect(hook.messages.value[1]?.budgetNotices?.[0]).toMatchObject({
+			code: 'budget.monthly',
+			agentId: 'child-agent-1',
+		});
+	});
+
+	it('keeps both owners of the same notice code and dedupes per owner', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'text-delta', id: 't-1', delta: 'partial' },
+			{ type: 'budget-notice', code: 'budget.monthly', agentId: 'child-agent-1' },
+			{ type: 'budget-notice', code: 'budget.monthly', agentId: 'child-agent-2' },
+			{ type: 'budget-notice', code: 'budget.monthly', agentId: 'child-agent-1' },
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook(undefined, { budgetCards: true });
+		await hook.sendMessage('hi');
+		await flushPromises();
+
+		expect(hook.messages.value[1]?.budgetNotices?.map((notice) => notice.agentId)).toEqual([
+			'child-agent-1',
+			'child-agent-2',
+		]);
+	});
+
+	it('keeps both owners of the same notice code across a history refresh', async () => {
+		const firstRead = Promise.withResolvers<AgentChatMessagesResponse>();
+		getTestChatMessagesMock.mockReturnValueOnce(firstRead.promise);
+		const events: AgentSseEvent[] = [
+			{ type: 'text-delta', id: 't-1', delta: 'partial' },
+			{ type: 'budget-notice', code: 'budget.monthly', agentId: 'child-agent-1' },
+			{ type: 'budget-notice', code: 'budget.monthly', agentId: 'child-agent-2' },
+			{ type: 'finish', finishReason: 'stop' },
+			{ type: 'done', executionId: 'exec-1' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook(undefined, { budgetCards: true });
+		await hook.sendMessage('hi');
+		await flushPromises();
+
+		firstRead.resolve({
+			messages: [
+				{
+					id: 'user-1',
+					role: 'user',
+					content: [{ type: 'text', text: 'hi' }],
+					executionId: 'exec-1',
+				},
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'partial' }],
+					executionId: 'exec-1',
+				},
+			],
+			openSuspensions: [],
+		});
+		await flushPromises();
+
+		const after = hook.messages.value.find((message) => message.role === 'assistant');
+		expect(after?.budgetNotices?.map((notice) => notice.agentId)).toEqual([
+			'child-agent-1',
+			'child-agent-2',
+		]);
+	});
+
 	it('keeps the turn running when the budget alert arrives', async () => {
 		let emitMore: (events: AgentSseEvent[]) => void = () => {};
 		let closeStream: (events?: AgentSseEvent[]) => void = () => {};

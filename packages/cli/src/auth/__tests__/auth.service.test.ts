@@ -1,3 +1,6 @@
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import { EventService } from '@n8n/backend-services';
+// EOF Experiment cleanup
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -16,8 +19,7 @@ import { AuthService } from '@/auth/auth.service';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import type { License } from '@/license';
 import type { MfaService } from '@/mfa/mfa.service';
-import { JwtService } from '@/services/jwt.service';
-import type { UrlService } from '@n8n/backend-services';
+import { JwtService, type UrlService } from '@n8n/backend-services';
 
 describe('AuthService', () => {
 	const browserId = 'test-browser-id';
@@ -48,7 +50,13 @@ describe('AuthService', () => {
 	const mfaService = mock<MfaService>();
 	const license = mock<License>();
 	const logger = mock<Logger>();
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	const discoveryActivity = mock<EventService>();
+	// EOF Experiment cleanup
 	const authService = new AuthService(
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		discoveryActivity,
+		// EOF Experiment cleanup
 		globalConfig,
 		logger,
 		license,
@@ -736,6 +744,31 @@ describe('AuthService', () => {
 			});
 		});
 
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		it('emits the login time after setting the cookie synchronously', () => {
+			const result = authService.issueCookie(res, user, false, browserId);
+			expect(result).toBeUndefined();
+			expect(res.cookie).toHaveBeenCalled();
+			expect(discoveryActivity.emit).toHaveBeenCalledWith('experiment-user-first-login', {
+				userId: user.id,
+				at: now.getTime(),
+			});
+			expect(res.cookie.mock.invocationCallOrder[0]).toBeLessThan(
+				discoveryActivity.emit.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('does not record a login if cookie issuance fails', () => {
+			res.cookie.mockImplementationOnce(() => {
+				throw new Error('Headers already sent');
+			});
+			expect(() => authService.issueCookie(res, user, false, browserId)).toThrow(
+				'Headers already sent',
+			);
+			expect(discoveryActivity.emit).not.toHaveBeenCalled();
+		});
+		// EOF Experiment cleanup
+
 		describe('when user limit is reached', () => {
 			it('should block issuance if the user is not the global owner', async () => {
 				user.role = GLOBAL_MEMBER_ROLE;
@@ -743,6 +776,9 @@ describe('AuthService', () => {
 				expect(() => {
 					authService.issueCookie(res, user, false, browserId);
 				}).toThrowError('Maximum number of users reached');
+				// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+				expect(discoveryActivity.emit).not.toHaveBeenCalled();
+				// EOF Experiment cleanup
 			});
 
 			it('should allow issuance if the user is the global owner', async () => {
@@ -1028,6 +1064,9 @@ describe('AuthService', () => {
 				secure: true,
 			});
 
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			expect(discoveryActivity.emit).not.toHaveBeenCalled();
+			// EOF Experiment cleanup
 			const newToken = res.cookie.mock.calls[0].at(1);
 			expect(newToken).not.toBe(validToken);
 			expect(await authService.resolveJwt(newToken, req, res)).toEqual([user, { usedMfa: false }]);
@@ -1073,6 +1112,9 @@ describe('AuthService', () => {
 				secure: true,
 			});
 
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			expect(discoveryActivity.emit).not.toHaveBeenCalled();
+			// EOF Experiment cleanup
 			const refreshedToken = res.cookie.mock.calls[0].at(1);
 			const decoded = jwt.decode(refreshedToken) as jwt.JwtPayload;
 			expect(decoded.isEmbed).toBe(true);

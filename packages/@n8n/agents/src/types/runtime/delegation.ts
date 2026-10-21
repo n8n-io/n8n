@@ -12,6 +12,7 @@ import type {
 	StreamChunk,
 	TokenUsage,
 } from '../sdk/agent';
+import type { GuardrailNotice } from '../sdk/guardrail';
 import type { BuiltProviderTool, ToolContext } from '../sdk/tool';
 import type { BuiltTelemetry } from '../telemetry';
 import type { JSONObject, JSONValue } from '../utils/json';
@@ -194,6 +195,7 @@ export interface DelegateSubAgentRequest extends DelegateSubAgentInput {
 	childCount: number;
 	/** Effective policy for this delegation. */
 	policy?: DelegateSubAgentPolicy;
+	parentOnGuardrailNotice?: (notice: GuardrailNotice) => void;
 }
 
 /** The result a delegation returns to the parent model and to lifecycle events. */

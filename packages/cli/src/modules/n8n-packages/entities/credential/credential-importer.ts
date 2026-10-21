@@ -1,8 +1,12 @@
+import type { SerializedCredential } from '@n8n/api-types';
+import { CredentialsFinderService } from '@n8n/backend-services';
+import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UnexpectedError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 
+import { credentialDiffers, isUpdateCandidate } from './credential-conflict-policy';
 import { CredentialMatcherFactory } from './credential-matcher-factory';
 import {
 	credentialBlockingFailures,
@@ -12,35 +16,130 @@ import {
 import type {
 	CredentialApplyResult,
 	CredentialBindingRequest,
+	CredentialImportPlan,
+	CredentialMatch,
 	CredentialResolution,
 	CredentialResolutionFailure,
+	CredentialUpdateCandidate,
 	PlacedCredentialRequirement,
 } from './credential.types';
 import type { ImportBindingMap, ImportContext } from '../../n8n-packages.types';
+import { mergeRequirementConsumers } from '../../spec/requirement-consumers';
 
 @Service()
 export class CredentialImporter {
 	constructor(
 		private readonly credentialMatcherFactory: CredentialMatcherFactory,
 		private readonly credentialsService: CredentialsService,
+		private readonly credentialsFinder: CredentialsFinderService,
 	) {}
 
 	/**
 	 * Resolves which target-project credentials the package's references map to.
 	 * Read-only: returns matched `successes` and unresolved `failures` without
-	 * acting on the failures. Mirrors the workflow side's `plan`.
+	 * acting on the failures. Mirrors the workflow side's `plan`. Unless the conflict
+	 * policy is `keep-existing`, also finds the matches the policy can update.
 	 */
 	async plan(
 		context: ImportContext,
 		request: CredentialBindingRequest,
-	): Promise<CredentialResolution> {
-		return await this.credentialMatcherFactory
+	): Promise<CredentialImportPlan> {
+		const resolution = await this.credentialMatcherFactory
 			.getMatcher(request.matchingMode)
 			.match(request.requirements, {
 				projectId: context.projectId,
 				user: context.user,
 				credentialBindings: request.credentialBindings,
 			});
+
+		if (request.conflictPolicy === 'keep-existing') {
+			return { ...resolution, candidates: [], updates: [], forbidden: [] };
+		}
+
+		return { ...resolution, ...(await this.planUpdates(context.user, request, resolution)) };
+	}
+
+	/**
+	 * Compares each matched credential in the update scope that has a package file with its
+	 * stored state. A match the user cannot update is `forbidden` instead, and is not read.
+	 * Decrypted values stay in this method: the plan keeps only ids and the package payload.
+	 */
+	private async planUpdates(
+		user: User,
+		request: CredentialBindingRequest,
+		resolution: CredentialResolution,
+	): Promise<Pick<CredentialImportPlan, 'candidates' | 'updates' | 'forbidden'>> {
+		const requirementsById = new Map(
+			(request.requirements ?? []).map((requirement) => [requirement.id, requirement]),
+		);
+		const destinations = new Map<string, CredentialsEntity | null>();
+		const inScope: Array<{
+			match: CredentialMatch;
+			packageCredential: SerializedCredential;
+			destination: CredentialsEntity;
+		}> = [];
+
+		for (const [sourceId, targetId] of resolution.successes) {
+			// No file means the exporting user could not read the credential: bind only.
+			const packageCredential = request.packageCredentials?.get(sourceId);
+			if (packageCredential === undefined) continue;
+
+			if (!destinations.has(targetId)) {
+				destinations.set(
+					targetId,
+					await this.credentialsFinder.findById(targetId, { includeSharedProject: true }),
+				);
+			}
+			const destination = destinations.get(targetId);
+			if (!destination || !isUpdateCandidate(destination, request.updateScope)) continue;
+
+			inScope.push({
+				match: {
+					sourceId,
+					targetId,
+					targetName: destination.name,
+					usedBy: mergeRequirementConsumers(requirementsById.get(sourceId)?.usedBy ?? []),
+				},
+				packageCredential,
+				destination,
+			});
+		}
+
+		// Matching needs only use access. The comparison reads the stored secret, so a match in
+		// scope that the user cannot update blocks without being read.
+		const updatableIds =
+			inScope.length > 0
+				? await this.credentialsFinder.findCredentialIdsWithScopeForUser(
+						[...new Set(inScope.map(({ match }) => match.targetId))],
+						user,
+						['credential:update'],
+					)
+				: new Set<string>();
+		const candidates: CredentialUpdateCandidate[] = [];
+		const updates: CredentialUpdateCandidate[] = [];
+		const forbidden: CredentialMatch[] = [];
+
+		for (const { match, packageCredential, destination } of inScope) {
+			if (!updatableIds.has(match.targetId)) {
+				forbidden.push(match);
+				continue;
+			}
+
+			const candidate: CredentialUpdateCandidate = {
+				...match,
+				name: packageCredential.name,
+				...(packageCredential.data !== undefined ? { data: packageCredential.data } : {}),
+			};
+			candidates.push(candidate);
+
+			const differs = credentialDiffers(
+				{ name: destination.name, data: await this.credentialsService.decrypt(destination, true) },
+				packageCredential,
+			);
+			if (differs) updates.push(candidate);
+		}
+
+		return { candidates, updates, forbidden };
 	}
 
 	/**
@@ -59,11 +158,20 @@ export class CredentialImporter {
 		context: ImportContext,
 		request: CredentialBindingRequest,
 		resolution: CredentialResolution,
+		projectPendingCreation: boolean,
 	): Promise<void> {
+		const toCreate = credentialsToStub(request.missingMode, resolution);
+		if (toCreate.length === 0) return;
+
+		// The import creates this project and makes the user its admin, so it has no scopes to look up yet.
+		if (!projectPendingCreation) {
+			await this.credentialsService.assertCanCreateInProject(context.user, context.projectId);
+		}
+
 		if (!credentialMissingModeUsesPackageData(request.missingMode)) return;
 
 		const packageData = packageDataBySourceId(request.requirements);
-		for (const { sourceId } of credentialsToStub(request.missingMode, resolution)) {
+		for (const { sourceId } of toCreate) {
 			const data = packageData.get(sourceId);
 			if (data !== undefined) {
 				await this.credentialsService.validateStubCredentialData(
@@ -84,6 +192,7 @@ export class CredentialImporter {
 		const matched = [...resolution.successes.keys()];
 		const stubbed: string[] = [];
 		const seeded: string[] = [];
+		const incomplete: string[] = [];
 
 		const packageData = credentialMissingModeUsesPackageData(request.missingMode)
 			? packageDataBySourceId(request.requirements)
@@ -111,10 +220,17 @@ export class CredentialImporter {
 			);
 
 			bindings.set(sourceId, stubCredential.id);
-			(data !== undefined ? seeded : stubbed).push(sourceId);
+			if (data === undefined) {
+				stubbed.push(sourceId);
+			} else {
+				(request.requirements?.find(({ id }) => id === sourceId)?.packageDataIsComplete
+					? seeded
+					: incomplete
+				).push(sourceId);
+			}
 		}
 
-		return { bindings, matched, stubbed, seeded };
+		return { bindings, matched, stubbed, seeded, incomplete };
 	}
 }
 

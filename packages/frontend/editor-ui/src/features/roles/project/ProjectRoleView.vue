@@ -82,12 +82,18 @@ const onBackClick = () => {
 };
 
 const scopeTypes = computed(() => {
-	if (!settingsStore.moduleSettings['external-secrets']?.roleBasedAccess) {
-		return SCOPE_TYPES.filter(
-			(type) => type !== 'externalSecretsProvider' && type !== 'externalSecret',
-		);
+	let types = SCOPE_TYPES;
+	if (!settingsStore.isAppsEnabled) {
+		types = types.filter((type) => type !== 'app');
 	}
-	return SCOPE_TYPES;
+	if (!settingsStore.moduleSettings['external-secrets']?.roleBasedAccess) {
+		types = types.filter((type) => type !== 'externalSecretsProvider' && type !== 'externalSecret');
+	}
+	// Project skills exist only while the skills hub is on.
+	if (!settingsStore.moduleSettings.agents?.skillsHubEnabled) {
+		types = types.filter((type) => type !== 'projectSkill');
+	}
+	return types;
 });
 const scopes = SCOPES;
 
@@ -362,13 +368,13 @@ const editorLabels = computed<RoleEditorLabels>(() => ({
 				</N8nText>
 
 				<div class="mb-s" :class="$style.presetsContainer">
-					<N8nButton variant="subtle" @click="setPreset('project:admin')">
+					<N8nButton variant="outline" @click="setPreset('project:admin')">
 						{{ i18n.baseText('projectRoles.admin') }}
 					</N8nButton>
-					<N8nButton variant="subtle" @click="setPreset('project:editor')">
+					<N8nButton variant="outline" @click="setPreset('project:editor')">
 						{{ i18n.baseText('projectRoles.editor') }}
 					</N8nButton>
-					<N8nButton variant="subtle" @click="setPreset('project:viewer')">
+					<N8nButton variant="outline" @click="setPreset('project:viewer')">
 						{{ i18n.baseText('projectRoles.viewer') }}
 					</N8nButton>
 				</div>

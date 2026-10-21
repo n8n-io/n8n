@@ -201,13 +201,7 @@ $slide-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	padding: var(--spacing--xs) var(--n8n-settings-save-bar--padding-inline);
 	background: var(--background--surface);
 	border: var(--border-width, 1px) solid var(--border-color--subtle);
-	/*
-	 * Gently rounded rectangle, not a pill: radius--sm (12px) in the DS3 scale, per design
-	 * feedback. Hardcoded because the legacy compat layer (_tokens.legacy.scss) still overrides
-	 * --radius--sm to 2px at :root for old --border-radius-small consumers, so the token can't be
-	 * used directly yet. Switch to var(--radius--sm) once that legacy override is removed.
-	 */
-	border-radius: 0.75rem; /* 12px */
+	border-radius: var(--radius--sm);
 	box-shadow: var(--shadow--xl);
 	/*
 	 * Chrome fade + padding tuck between the stuck (overlay) and docked (part-of-the-page)

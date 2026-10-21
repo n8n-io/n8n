@@ -16,6 +16,10 @@ vi.mock('@n8n/design-system', async () => {
 				size: String,
 				trapFocus: Boolean,
 				disableOutsidePointerEvents: Boolean,
+				showCloseButton: {
+					type: Boolean,
+					default: true,
+				},
 			},
 			emits: ['update:open', 'escapeKeyDown', 'interactOutside', 'openAutoFocus'],
 			setup(_, { emit }) {
@@ -48,12 +52,18 @@ vi.mock('@n8n/design-system', async () => {
 					:data-escape-prevented="escapePrevented"
 				>
 					<slot />
+					<button
+						v-if="showCloseButton"
+						data-testid="dialog-close-button"
+						@click="$emit('update:open', false)"
+					/>
 					<button data-test-id="dialog-escape" @click="pressEscape" />
 					<button data-test-id="dialog-dismiss" @click="$emit('update:open', false)" />
 				</section>
 			`,
 		}),
 		N8nDialogHeader: defineComponent({ template: '<header><slot /></header>' }),
+		N8nDialogBody: defineComponent({ template: '<div><slot /></div>' }),
 		N8nDialogFooter: defineComponent({ template: '<footer><slot /></footer>' }),
 		N8nDialogTitle: defineComponent({ template: '<div><slot /></div>' }),
 		N8nButton: defineComponent({
@@ -189,6 +199,19 @@ describe('AgentModal', () => {
 		expect(document.activeElement).toBe(wrapper.get('[data-test-id="first-body-field"]').element);
 	});
 
+	it('focuses a marked container instead of the field inside it', async () => {
+		const wrapper = mountModal(
+			{},
+			{
+				default:
+					'<div data-test-id="marked" tabindex="-1" data-agent-modal-autofocus><input /></div>',
+			},
+		);
+		await flushPromises();
+
+		expect(document.activeElement).toBe(wrapper.get('[data-test-id="marked"]').element);
+	});
+
 	it('uses the dialog fallback focus when the body has no interactive control', async () => {
 		const wrapper = mountModal(
 			{ editableTitle: true },
@@ -210,7 +233,7 @@ describe('AgentModal', () => {
 
 		expect(wrapper.get('[role="dialog"]').attributes('data-escape-prevented')).toBe('true');
 		expect(wrapper.get('[data-testid="agent-modal-back"]').attributes('disabled')).toBeDefined();
-		expect(wrapper.get('[data-testid="dialog-close-button"]').attributes('disabled')).toBeDefined();
+		expect(wrapper.find('[data-testid="dialog-close-button"]').exists()).toBe(false);
 		expect(wrapper.emitted('update:open')).toBeUndefined();
 	});
 
@@ -278,11 +301,11 @@ describe('AgentModal', () => {
 		expect(wrapper.emitted('update:open')).toEqual([[false]]);
 	});
 
-	it('keeps Back, Close, and dismiss disabled while busy', async () => {
+	it('keeps Back disabled and hides Close while busy', async () => {
 		const wrapper = mountModal({ showBack: true, busy: true });
 
 		expect(wrapper.get('[data-testid="agent-modal-back"]').attributes('disabled')).toBeDefined();
-		expect(wrapper.get('[data-testid="dialog-close-button"]').attributes('disabled')).toBeDefined();
+		expect(wrapper.find('[data-testid="dialog-close-button"]').exists()).toBe(false);
 		await wrapper.get('[data-test-id="dialog-dismiss"]').trigger('click');
 
 		expect(wrapper.emitted('back')).toBeUndefined();

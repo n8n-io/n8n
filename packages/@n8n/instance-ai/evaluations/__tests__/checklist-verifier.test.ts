@@ -9,6 +9,7 @@ vi.mock('../../src/utils/eval-agents', () => ({
 		providerModelId: 'test-model',
 		apiKey: 'test-key',
 	})),
+	resolveJudgeModel: vi.fn(() => 'anthropic/test-model'),
 	EPHEMERAL_CACHE: {},
 }));
 

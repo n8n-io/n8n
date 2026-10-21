@@ -8,6 +8,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
 	N8nButton,
 	N8nDialog,
+	N8nDialogBody,
 	N8nDialogFooter,
 	N8nFormInput,
 	N8nIcon,
@@ -310,7 +311,7 @@ watch(
 		data-test-id="preference-modal"
 		@update:open="emit('update:open', $event)"
 	>
-		<div :class="$style.form">
+		<N8nDialogBody :class="$style.form">
 			<N8nFormInput
 				v-model="form.content"
 				name="content"
@@ -368,10 +369,10 @@ watch(
 					</N8nOption>
 				</N8nSelect>
 			</N8nInputLabel>
-		</div>
+		</N8nDialogBody>
 		<N8nDialogFooter>
 			<N8nButton
-				variant="subtle"
+				variant="outline"
 				:label="i18n.baseText('settings.context.preferences.modal.cancel')"
 				data-test-id="preference-modal-cancel-button"
 				@click="closeModal"
@@ -392,7 +393,6 @@ watch(
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
-	padding: var(--spacing--sm) 0;
 }
 
 .counter {

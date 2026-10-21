@@ -289,7 +289,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
                           icononly="false"
                           loading="false"
                           size="xsmall"
-                          variant="subtle"
+                          variant="outline"
                         />
                       </div>
                       <div
@@ -301,7 +301,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
                           icononly="false"
                           loading="false"
                           size="xsmall"
-                          variant="subtle"
+                          variant="outline"
                         />
                       </div>
                       

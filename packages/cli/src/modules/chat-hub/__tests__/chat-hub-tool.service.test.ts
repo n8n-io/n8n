@@ -136,6 +136,85 @@ describe('ChatHubToolService', () => {
 		});
 	});
 
+	describe('setSessionTools', () => {
+		it('should set tools that the user owns', async () => {
+			const tool = makeTool();
+			chatToolRepository.getByIds.mockResolvedValue([tool]);
+
+			await service.setSessionTools(mockSessionId, mockUserId, [tool.id]);
+
+			expect(chatToolRepository.setSessionTools).toHaveBeenCalledWith(
+				mockSessionId,
+				[tool.id],
+				undefined,
+			);
+		});
+
+		it('should not set tools when the user does not own one of them', async () => {
+			chatToolRepository.getByIds.mockResolvedValue([]);
+
+			await expect(service.setSessionTools(mockSessionId, mockUserId, [uuid()])).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(chatToolRepository.setSessionTools).not.toHaveBeenCalled();
+		});
+
+		it('should not set tools when the user owns only some of them', async () => {
+			const ownTool = makeTool();
+			chatToolRepository.getByIds.mockResolvedValue([ownTool]);
+
+			await expect(
+				service.setSessionTools(mockSessionId, mockUserId, [ownTool.id, uuid()]),
+			).rejects.toThrow(NotFoundError);
+			expect(chatToolRepository.setSessionTools).not.toHaveBeenCalled();
+		});
+
+		it('should check and store each tool once when IDs repeat', async () => {
+			const tool = makeTool();
+			chatToolRepository.getByIds.mockResolvedValue([tool]);
+
+			await service.setSessionTools(mockSessionId, mockUserId, [tool.id, tool.id]);
+
+			expect(chatToolRepository.getByIds).toHaveBeenCalledWith([tool.id], mockUserId, undefined);
+			expect(chatToolRepository.setSessionTools).toHaveBeenCalledWith(
+				mockSessionId,
+				[tool.id],
+				undefined,
+			);
+		});
+
+		it('should clear the tools without a lookup when the list is empty', async () => {
+			await service.setSessionTools(mockSessionId, mockUserId, []);
+
+			expect(chatToolRepository.getByIds).not.toHaveBeenCalled();
+			expect(chatToolRepository.setSessionTools).toHaveBeenCalledWith(mockSessionId, [], undefined);
+		});
+	});
+
+	describe('setAgentTools', () => {
+		it('should set tools that the user owns', async () => {
+			const tool = makeTool();
+			chatToolRepository.getByIds.mockResolvedValue([tool]);
+
+			await service.setAgentTools(mockAgentId, mockUserId, [tool.id]);
+
+			expect(chatToolRepository.setAgentTools).toHaveBeenCalledWith(
+				mockAgentId,
+				[tool.id],
+				undefined,
+			);
+		});
+
+		it('should not set tools when the user does not own one of them', async () => {
+			chatToolRepository.getByIds.mockResolvedValue([]);
+
+			await expect(service.setAgentTools(mockAgentId, mockUserId, [uuid()])).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(chatToolRepository.setAgentTools).not.toHaveBeenCalled();
+		});
+	});
+
 	const deprecatedCodeTool: INode = {
 		...mockDefinition,
 		type: '@n8n/n8n-nodes-langchain.code',

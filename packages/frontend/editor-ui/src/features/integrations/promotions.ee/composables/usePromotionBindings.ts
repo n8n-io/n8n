@@ -40,9 +40,17 @@ type PromotionBindingsError =
 	| { kind: 'continue'; cause: unknown };
 
 type DestructiveChange = Extract<PromotionBindingConflict, { code: 'destructive-change' }>;
+type ProjectDeletion = Extract<PromotionBindingConflict, { code: 'project-deletion' }>;
 
 const isDestructiveChange = (conflict: PromotionBindingConflict): conflict is DestructiveChange =>
 	conflict.code === 'destructive-change';
+const isProjectDeletion = (conflict: PromotionBindingConflict): conflict is ProjectDeletion =>
+	conflict.code === 'project-deletion';
+// Continue can't confirm these, so they block the apply.
+const isHardConflict = (
+	conflict: PromotionBindingConflict,
+): conflict is Exclude<PromotionBindingConflict, DestructiveChange | ProjectDeletion> =>
+	!isDestructiveChange(conflict) && !isProjectDeletion(conflict);
 
 type BindingGroup = {
 	project: PromotionBindingConsumer['project'];
@@ -80,7 +88,7 @@ export function usePromotionBindings() {
 	const error = shallowRef<PromotionBindingsError | null>(null);
 	let session = 0;
 	let expectedSource: ContinueApplyPackageDto['expectedSource'] | undefined;
-	let connectionId: string | undefined;
+	let environmentId: string | undefined;
 	let continueTarget: ContinueTarget | undefined;
 
 	function statusOf(key: string, projectId: string): BindingStatus {
@@ -122,13 +130,17 @@ export function usePromotionBindings() {
 	const destructiveChanges = computed(
 		() => preflight.value?.conflicts.filter(isDestructiveChange) ?? [],
 	);
-	const hardConflicts = computed(
-		() => preflight.value?.conflicts.filter((conflict) => !isDestructiveChange(conflict)) ?? [],
+	const projectDeletions = computed(
+		() => preflight.value?.conflicts.filter(isProjectDeletion) ?? [],
 	);
+	const needsConfirmation = computed(
+		() => destructiveChanges.value.length > 0 || projectDeletions.value.length > 0,
+	);
+	const hardConflicts = computed(() => preflight.value?.conflicts.filter(isHardConflict) ?? []);
 	const mode = computed<'blocked' | 'review' | 'bindings'>(() => {
 		if (hardConflicts.value.length || preflight.value?.accessRequirements.length) return 'blocked';
 		// A session that started with bindings keeps its table after the last one is created.
-		if (destructiveChanges.value.length && knownBindings.value.size === 0) return 'review';
+		if (needsConfirmation.value && knownBindings.value.size === 0) return 'review';
 		return 'bindings';
 	});
 	const unresolvedCount = computed(
@@ -164,9 +176,9 @@ export function usePromotionBindings() {
 	function start(result: BlockedApplyResult, target: ContinueTarget) {
 		session++;
 		originalResult.value = result;
-		connectionId = result.connectionId;
+		environmentId = result.environmentId;
 		continueTarget = target;
-		expectedSource = { configId: result.configId, ...result.git };
+		expectedSource = { environmentId: result.environmentId, ...result.git };
 		knownBindings.value = new Map();
 		createdBindings.value = new Map();
 		isSubmitting.value = false;
@@ -215,12 +227,12 @@ export function usePromotionBindings() {
 	}
 
 	async function continueApply() {
-		if (!canContinue.value || !connectionId || !expectedSource || !continueTarget) return;
+		if (!canContinue.value || !environmentId || !expectedSource || !continueTarget) return;
 		const currentSession = session;
 		isSubmitting.value = true;
 		error.value = null;
 		try {
-			const confirmDestructiveChanges = destructiveChanges.value.length > 0 || undefined;
+			const confirmDestructiveChanges = needsConfirmation.value || undefined;
 			const result =
 				continueTarget.kind === 'selection'
 					? await continueApplyProjectSelection(
@@ -232,7 +244,7 @@ export function usePromotionBindings() {
 								confirmDestructiveChanges,
 							},
 						)
-					: await continueApplyPromotion(rootStore.publicApiContext, connectionId, {
+					: await continueApplyPromotion(rootStore.publicApiContext, environmentId, {
 							expectedSource: { ...expectedSource },
 							confirmDestructiveChanges,
 						});
@@ -254,6 +266,8 @@ export function usePromotionBindings() {
 		preflight,
 		groups,
 		destructiveChanges,
+		projectDeletions,
+		needsConfirmation,
 		hardConflicts,
 		mode,
 		unresolvedCount,
