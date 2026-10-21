@@ -1,11 +1,10 @@
 import { shallowMount, flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { ref } from 'vue';
-import { N8nInlineTextEdit } from '@n8n/design-system';
+import { N8nDialog, N8nInlineTextEdit } from '@n8n/design-system';
 import { defaultMessageEventBusDestinationWebhookOptions } from 'n8n-workflow';
 import { createEventBus } from '@n8n/utils/event-bus';
 import SaveButton from '@/app/components/SaveButton.vue';
-import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useLogStreamingStore } from '../logStreaming.store';
 import EventDestinationSettingsModal from './EventDestinationSettingsModal.vue';
@@ -58,12 +57,6 @@ describe('EventDestinationSettingsModal save', () => {
 			},
 			global: {
 				plugins: [pinia],
-				stubs: {
-					Modal: {
-						props: ['beforeClose'],
-						template: '<div><slot name="header" /><slot name="content" /></div>',
-					},
-				},
 				renderStubDefaultSlot: true,
 			},
 		});
@@ -167,7 +160,7 @@ describe('EventDestinationSettingsModal save', () => {
 		);
 		saveButton.vm.$emit('click');
 		await flushPromises();
-		wrapper.findComponent(Modal).props('beforeClose')?.();
+		wrapper.findComponent(N8nDialog).vm.$emit('update:open', false);
 		vi.mocked(uiStore.markStateClean).mockClear();
 		finish(true);
 		await flushPromises();
@@ -189,7 +182,7 @@ describe('EventDestinationSettingsModal save', () => {
 		);
 		saveButton.vm.$emit('click');
 		await flushPromises();
-		if (action === 'close') wrapper.findComponent(Modal).props('beforeClose')?.();
+		if (action === 'close') wrapper.findComponent(N8nDialog).vm.$emit('update:open', false);
 		else wrapper.unmount();
 		const error = new Error('Invalid URL');
 		fail(error);
@@ -212,7 +205,7 @@ describe('EventDestinationSettingsModal save', () => {
 			);
 			saveButton.vm.$emit('click');
 			await flushPromises();
-			wrapper.findComponent(Modal).props('beforeClose')?.();
+			wrapper.findComponent(N8nDialog).vm.$emit('update:open', false);
 			expect(store.removeDestination).not.toHaveBeenCalled();
 			finish();
 			await flushPromises();
@@ -230,7 +223,7 @@ describe('EventDestinationSettingsModal save', () => {
 		);
 		saveButton.vm.$emit('click');
 		await flushPromises();
-		wrapper.findComponent(Modal).props('beforeClose')?.();
+		wrapper.findComponent(N8nDialog).vm.$emit('update:open', false);
 		store.items.destinationId.destination = { id: 'destinationId' };
 		fail(new Error('Request timed out'));
 		await flushPromises();

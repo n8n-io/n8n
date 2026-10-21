@@ -35,13 +35,15 @@ import { computed, onBeforeMount, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
-import Modal from '@/app/components/Modal.vue';
-
 import {
 	N8nBadge,
 	N8nButton,
 	N8nCallout,
-	N8nHeading,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nDialogHeader,
+	N8nDialogTitle,
 	N8nHoverCard,
 	N8nIcon,
 	N8nIconButton,
@@ -54,6 +56,8 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+
+defineOptions({ inheritAttrs: false });
 type SourceControlledFileType = SourceControlledFile['type'];
 type SourceControlledFileWithProject = SourceControlledFile & {
 	project?: ProjectListItem;
@@ -426,6 +430,16 @@ function close() {
 	router.back();
 }
 
+const modalOpen = computed(() => uiStore.modalsById[SOURCE_CONTROL_PULL_MODAL_KEY]?.open === true);
+
+function closeDialog() {
+	close();
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) closeDialog();
+}
+
 async function pullWorkfolder() {
 	loadingService.startLoading(i18n.baseText('settings.sourceControl.loading.checkingForChanges'));
 
@@ -502,19 +516,22 @@ onMounted(() => {
 </script>
 
 <template>
-	<Modal
+	<N8nDialog
 		v-if="!isLoading"
-		width="812px"
-		:event-bus="data.eventBus"
-		:name="SOURCE_CONTROL_PULL_MODAL_KEY"
-		:height="modalHeight"
-		:custom-class="$style.sourceControlPull"
-		:before-close="close"
+		:open="modalOpen"
+		size="2xlarge"
+		:container-class="
+			[
+				$style.sourceControlPull,
+				modalHeight === 'auto' ? $style.autoHeight : $style.fixedHeight,
+			].join(' ')
+		"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #header>
-			<N8nHeading tag="h1" size="xlarge">
+		<N8nDialogHeader>
+			<N8nDialogTitle>
 				{{ i18n.baseText('settings.sourceControl.modals.pull.title') }}
-			</N8nHeading>
+			</N8nDialogTitle>
 
 			<div :class="[$style.filtersRow]" class="mt-xs">
 				<N8nText tag="div">
@@ -524,8 +541,8 @@ onMounted(() => {
 					</N8nLink>
 				</N8nText>
 			</div>
-		</template>
-		<template #content>
+		</N8nDialogHeader>
+		<N8nDialogBody>
 			<div style="display: flex; flex-direction: column; height: 100%">
 				<N8nCallout
 					v-if="policyBlockedCount > 0"
@@ -802,9 +819,8 @@ onMounted(() => {
 					</div>
 				</div>
 			</div>
-		</template>
-
-		<template #footer>
+		</N8nDialogBody>
+		<N8nDialogFooter>
 			<N8nNotice v-if="hasModifiedCredentials" :compact="false" class="mt-0">
 				<N8nText size="small">
 					{{ i18n.baseText('settings.sourceControl.modals.pull.modifiedCredentialsNotice') }}
@@ -836,19 +852,34 @@ onMounted(() => {
 					{{ pullButtonLabel }}
 				</N8nButton>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style module lang="scss">
 .sourceControlPull {
-	&:global(.el-dialog) {
-		margin: 0;
-	}
-
-	:global(.el-dialog__header) {
+	header {
 		padding-bottom: var(--spacing--xs);
 	}
+
+	footer {
+		display: flex;
+		flex-direction: column;
+		align-items: stretch;
+		width: 100%;
+	}
+}
+
+.fixedHeight {
+	/* Previous dialog height. No spacing token for 850px. */
+	height: min(80vh, 850px);
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+.autoHeight {
+	height: auto;
 }
 
 .filtersRow {
@@ -944,7 +975,6 @@ onMounted(() => {
 	display: flex;
 	flex-direction: row;
 	justify-content: flex-end;
-	margin-top: 8px;
 }
 
 .warningContent {
