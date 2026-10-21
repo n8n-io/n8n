@@ -1,0 +1,58 @@
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-operations.dto.test.ts
+  s_bbc52937c57305::t_50087690468276 12-13
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_bbc52937c57305::t_5bfc2db44c6775 307,318-328,624-628,822-855,1067
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_bbc52937c57305::t_e95f5de626dd01 14-20
+packages/@n8n/cli/src/__tests__/promotion-connection-operations.test.ts
+  s_bbc52937c57305::t_7730deae693a95 122-136
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promotePackage.generated.yml
+  s_bbc52937c57305::t_70d01439b7eae9 26
+packages/cli/test/integration/public-api/promotions.test.ts
+  s_bbc52937c57305::t_82f5f7fdabaeec 1883-1904
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromoteInstanceDialog.vue
+  s_bbc52937c57305::t_018802c222873e 13,52,56,105
+  s_ea937ea2ac308b::t_2625acb8da8148 57
+packages/@n8n/cli/skills/n8n-cli/SKILL.md
+  s_bbc52937c57305::t_7730deae693a95 215
+packages/@n8n/cli/docs/commands/promotions.md
+  s_bbc52937c57305::t_7730deae693a95 215,221
+packages/cli/src/modules/promotions.ee/__tests__/promotion-commit-message.test.ts
+  s_bbc52937c57305::t_ebe976e46c36d8 1-92
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromoteInstanceDialog.test.ts
+  s_bbc52937c57305::t_018802c222873e 52-53,55-56,59,61,63,75,77
+  s_ea937ea2ac308b::t_2625acb8da8148 66
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_bbc52937c57305::t_e95f5de626dd01 30,57-59,77-81,233-237,264,271,354-360,438,897-918
+  s_bbc52937c57305::t_bacf46c4653a9e 55
+packages/@n8n/cli/src/commands/promotion-connection/promote.ts
+  s_bbc52937c57305::t_018802c222873e 10,20
+packages/@n8n/cli/src/client.ts
+  s_bbc52937c57305::t_018802c222873e 439
+packages/cli/src/modules/promotions.ee/promotion-commit-message.ts
+  s_bbc52937c57305::t_b98ff5618874ae 1-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d90418c0ca86864eef17ae5efe70a9d98409f383",
+  "prompts": {},
+  "sessions": {
+    "s_bbc52937c57305": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0eacde6c-6447-4389-a009-0188bf4f0678",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_ea937ea2ac308b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e3f3c5a3-eade-4950-a450-a6551350d91c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
