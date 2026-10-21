@@ -57,6 +57,15 @@ const openedExample = ref<PreferenceExample>();
 const showEmptyState = computed(
 	() => !contextStore.loading && !loadFailed.value && contextStore.count === 0,
 );
+const showAssistantEmptyState = computed(
+	() =>
+		showEmptyState.value &&
+		emptyStateVariant.value === PREFERENCES_EMPTY_STATE_EXPERIMENT.assistant,
+);
+const showExamplesEmptyState = computed(
+	() =>
+		showEmptyState.value && emptyStateVariant.value === PREFERENCES_EMPTY_STATE_EXPERIMENT.examples,
+);
 const selectedCount = computed(() => selection.value.length);
 
 async function load() {
@@ -223,8 +232,10 @@ onMounted(async () => {
 			:show-docs-link="false"
 		/>
 
-		<PreferencesEmptyStateAssistant
-			v-if="showEmptyState && emptyStateVariant === PREFERENCES_EMPTY_STATE_EXPERIMENT.assistant"
+		<PreferencesEmptyStateAssistant v-if="showAssistantEmptyState" @write-own="openCreateModal" />
+		<PreferencesEmptyStateExamples
+			v-else-if="showExamplesEmptyState"
+			@use-example="openExampleModal"
 			@write-own="openCreateModal"
 		/>
 		<div v-else :class="$style.tableArea">
@@ -263,12 +274,7 @@ onMounted(async () => {
 				@update:options="onOptionsUpdate"
 			>
 				<template #empty>
-					<PreferencesEmptyStateExamples
-						v-if="emptyStateVariant === PREFERENCES_EMPTY_STATE_EXPERIMENT.examples"
-						@use-example="openExampleModal"
-						@write-own="openCreateModal"
-					/>
-					<div v-else :class="$style.empty" data-test-id="preferences-empty-state">
+					<div :class="$style.empty" data-test-id="preferences-empty-state">
 						<N8nHeading tag="h2" size="medium" bold>
 							{{ i18n.baseText('settings.context.preferences.empty.title') }}
 						</N8nHeading>
