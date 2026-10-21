@@ -101,7 +101,7 @@ describe('ProjectTabs', () => {
 
 		expect(getByText('Agents')).toBeInTheDocument();
 		expect(getByText('Preview')).toBeInTheDocument();
-		expect(container.querySelector('.preview')).toBeInTheDocument();
+		expect(container.querySelector('.badge')).toBeInTheDocument();
 	});
 
 	const getTabValuesInOrder = (container: ParentNode) =>
