@@ -157,15 +157,53 @@ describe('ToolRow', () => {
 			expect(emitted('disconnect')).toBeUndefined();
 		});
 
-		it('keeps focus on the action when the skill becomes added', async () => {
-			const { getByTestId, rerender } = renderSkill(skill);
+		// jsdom does not apply :hover or :focus-visible styles, so these tests read the
+		// classes that gate the "Remove" swap: `addedActionArmed` for hover and
+		// `addedActionIdle` for keyboard focus.
+		const armed = /addedActionArmed/;
+		const idle = /addedActionIdle/;
+
+		it('holds back the hover remove after a click on add until the pointer leaves', async () => {
+			const { getByTestId, emitted, rerender } = renderSkill(skill);
 
 			const add = getByTestId('tools-connection-row-attach');
-			add.focus();
+			await userEvent.click(add);
+			expect(emitted('connect')).toEqual([[skill]]);
 			await rerender({ item: { ...skill, attached: true } });
 
-			expect(getByTestId('tools-connection-row-detach')).toBe(add);
-			expect(add).toHaveFocus();
+			// Same element, so focus and the pointer stay on it.
+			const action = getByTestId('tools-connection-row-detach');
+			expect(action).toBe(add);
+			expect(action).toHaveTextContent('Added');
+			expect(action.className).not.toMatch(armed);
+			expect(action.className).toMatch(idle);
+
+			await userEvent.unhover(action);
+			expect(action.className).toMatch(armed);
+			await userEvent.hover(action);
+			expect(action.className).toMatch(armed);
+		});
+
+		it('keeps the hover remove armed after a keyboard add', async () => {
+			const { getByTestId, emitted, rerender } = renderSkill(skill);
+
+			getByTestId('tools-connection-row-attach').focus();
+			await userEvent.keyboard('{Enter}');
+			expect(emitted('connect')).toEqual([[skill]]);
+			await rerender({ item: { ...skill, attached: true } });
+
+			const action = getByTestId('tools-connection-row-detach');
+			expect(action).toHaveFocus();
+			expect(action.className).toMatch(armed);
+			expect(action.className).toMatch(idle);
+		});
+
+		it('does not offer remove while the skill is still being added', () => {
+			const { getByTestId } = renderSkill({ ...skill, attached: true, attaching: true });
+
+			const action = getByTestId('tools-connection-row-detach');
+			expect(action.className).not.toMatch(armed);
+			expect(action.className).not.toMatch(idle);
 		});
 
 		it('falls back to the shared labels', () => {

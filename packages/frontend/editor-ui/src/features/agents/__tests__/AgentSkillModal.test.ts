@@ -64,6 +64,7 @@ vi.mock('@/features/shared/toolsConnection/ToolsConnectionModal.vue', () => ({
 			'categoryLabels',
 			'hideEmptyCategories',
 			'connectLabel',
+			'connectAriaLabel',
 			'connectedLabel',
 			'disconnectLabel',
 			'disconnectAriaLabel',
@@ -86,7 +87,7 @@ vi.mock('@/features/shared/toolsConnection/ToolsConnectionModal.vue', () => ({
 					<button data-testid="agent-skill-picker-row-open" @click="$emit('open-detail', item)">{{ item.title }}</button>
 					<span data-testid="agent-skill-picker-category">{{ item.category }}</span>
 					<span v-if="item.disabled" data-testid="agent-skill-picker-disabled">{{ item.disabledReason }}</span>
-					<button v-else data-testid="agent-skill-picker-toggle" :data-attached="String(item.attached)" :aria-label="item.attached ? disconnectAriaLabel?.(item) : undefined" @click="$emit(item.attached ? 'disconnect' : 'connect', item)">{{ item.attached ? connectedLabel?.(item) + ' ' + disconnectLabel?.(item) : connectLabel?.(item) }}</button>
+					<button v-else data-testid="agent-skill-picker-toggle" :data-attached="String(item.attached)" :aria-label="item.attached ? disconnectAriaLabel?.(item) : connectAriaLabel?.(item)" @click="$emit(item.attached ? 'disconnect' : 'connect', item)">{{ item.attached ? connectedLabel?.(item) + ' ' + disconnectLabel?.(item) : connectLabel?.(item) }}</button>
 				</div>
 			</div>
 		`,
@@ -711,6 +712,10 @@ describe('AgentSkillModal', () => {
 
 			const [toAdd, added] = await findAllByTestId('agent-skill-picker-toggle');
 			expect(toAdd).toHaveTextContent('agents.builder.skills.picker.add');
+			expect(toAdd).toHaveAttribute(
+				'aria-label',
+				'agents.builder.skills.picker.addAriaLabel Support tone',
+			);
 			expect(added).toHaveTextContent(
 				'agents.builder.skills.picker.added agents.builder.skills.picker.remove',
 			);

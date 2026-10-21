@@ -137,15 +137,20 @@ function handleRowClick() {
 }
 
 /**
- * The pointer is still on the button right after an add. Hold back the hover
- * "Remove" until it leaves, so a second click cannot undo the add by accident.
+ * After a pointer click on "Add" the pointer is still on the button. Hold back the
+ * hover "Remove" until it leaves, so a second click cannot undo the add by accident.
+ * A keyboard add (`detail` 0) leaves the pointer elsewhere, so it does not disarm.
  */
 const removeArmed = ref(true);
 
-function handleSkillAction() {
+/**
+ * While the skill is being added, the click is ignored instead of disabling the
+ * button: a disabled button drops keyboard focus in the middle of the add.
+ */
+function handleSkillAction(event: MouseEvent) {
 	if (props.item.kind !== 'skill') return;
 	if (!props.item.attached) {
-		removeArmed.value = false;
+		if (event.detail > 0) removeArmed.value = false;
 		emit('connect', props.item);
 	} else if (!props.item.attaching) {
 		emit('disconnect', props.item);

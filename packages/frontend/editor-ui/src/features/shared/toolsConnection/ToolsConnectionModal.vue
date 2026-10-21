@@ -346,12 +346,17 @@ const tabOptions = computed<Array<TabOptions<ToolCategoryKey>>>(() =>
 
 // The active tab can still disappear — a consumer changing its declared set, or
 // a hide-when-empty category losing its last item. Fall back to a tab that
-// exists rather than leaving no tab selected.
-watch(visibleCategories, (categories) => {
-	if (categories.length > 0 && !categories.includes(activeCategory.value)) {
-		activeCategory.value = categories[0];
-	}
-});
+// exists rather than leaving no tab selected. Runs at once too, because the
+// first declared category can be hidden from the start.
+watch(
+	visibleCategories,
+	(categories) => {
+		if (categories.length > 0 && !categories.includes(activeCategory.value)) {
+			activeCategory.value = categories[0];
+		}
+	},
+	{ immediate: true },
+);
 
 const isListEmpty = computed(() =>
 	isGroupedSearch.value ? groupedSearchRows.value.length === 0 : toolRows.value.length === 0,

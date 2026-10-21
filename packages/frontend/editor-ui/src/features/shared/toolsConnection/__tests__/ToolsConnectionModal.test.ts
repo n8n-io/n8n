@@ -512,6 +512,18 @@ describe('ToolsConnectionModal', () => {
 		});
 	});
 
+	it('opens on the first visible tab when the first declared one starts hidden', () => {
+		const withoutCommunity = realisticItems.filter((item) => item.category !== 'community');
+		const { getByTestId, queryByTestId } = renderWith({
+			items: withoutCommunity,
+			categories: ['community', 'mcp', 'workflows'],
+		});
+
+		expect(queryByTestId('tab-community')).toBeNull();
+		expect(getByTestId('tab-mcp')).toHaveAttribute('aria-selected', 'true');
+		expect(queryByTestId('tools-connection-empty')).toBeNull();
+	});
+
 	it('states a count on every tab, zero included', () => {
 		const items = realisticItems.filter((item) => item.status !== 'connected');
 		const { getByTestId } = renderWith({ items, categories: ALL_CATEGORIES });
