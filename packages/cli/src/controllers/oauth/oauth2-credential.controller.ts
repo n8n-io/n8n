@@ -14,6 +14,7 @@ import { jsonParse } from 'n8n-workflow';
 
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { ExternalHooks } from '@/external-hooks';
+import { withTokenVersion } from '@/managed-versions';
 import { OauthService, OauthVersion } from '@/oauth/oauth.service';
 import { OAuthRequest } from '@/requests';
 
@@ -152,8 +153,15 @@ export class OAuth2CredentialController {
 				oauthTokenData.resource = state.resource;
 			}
 
+			// Store the managed app version with the tokens, so every later request of this
+			// credential uses the app that issued them.
+			const tokenDataToSave =
+				flowState.managedVersion === undefined
+					? oauthTokenData
+					: withTokenVersion(oauthTokenData, flowState.managedVersion);
+
 			if (!state.origin || state.origin === 'static-credential') {
-				await this.oauthService.encryptAndSaveData(credential, { oauthTokenData });
+				await this.oauthService.encryptAndSaveData(credential, { oauthTokenData: tokenDataToSave });
 
 				this.logger.debug('OAuth2 callback successful for credential', {
 					credentialId: credential.id,
@@ -177,7 +185,7 @@ export class OAuth2CredentialController {
 
 				await this.oauthService.saveDynamicCredential(
 					credential,
-					{ oauthTokenData },
+					{ oauthTokenData: tokenDataToSave },
 					state.authorizationHeader.split('Bearer ')[1],
 					state.credentialResolverId,
 					(state.authMetadata as Record<string, unknown>) ?? {},

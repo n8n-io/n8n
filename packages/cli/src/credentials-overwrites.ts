@@ -5,10 +5,17 @@ import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
-import { deepCopy, jsonParse } from 'n8n-workflow';
+import { deepCopy, IMPLICIT_MANAGED_VERSION, jsonParse, UserError } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
-import type { ICredentialsOverwrite } from '@/interfaces';
+import type { ICredentialsOverwrite, ManagedVersionEntry } from '@/interfaces';
+import {
+	hasEmptyClientFields,
+	hasTokenData,
+	parseOverwritesPayload,
+	readStoredVersion,
+	withoutVersion,
+} from '@/managed-versions';
 
 import { StaticAuthService } from './services/static-auth-service';
 
@@ -17,6 +24,12 @@ const CREDENTIALS_OVERWRITE_KEY = 'credentialsOverwrite';
 @Service()
 export class CredentialsOverwrites {
 	private overwriteData: ICredentialsOverwrite = {};
+
+	/** Version of the flat entry, for OAuth types that state one. A missing type means version 1. */
+	private flatVersions: Record<string, number> = {};
+
+	/** The newer app of a rollout, for OAuth types that list one in `__versions`. */
+	private newerApps: Record<string, ManagedVersionEntry> = {};
 
 	private resolvedTypes: string[] = [];
 
@@ -39,7 +52,7 @@ export class CredentialsOverwrites {
 		const data = this.globalConfig.credentials.overwrite.data;
 		if (data) {
 			this.logger.debug('Loading overwrite credentials from static envvar');
-			const overwriteData = jsonParse<ICredentialsOverwrite>(data, {
+			const overwriteData = jsonParse<Record<string, unknown>>(data, {
 				errorMessage: 'The credentials-overwrite is not valid JSON.',
 			});
 
@@ -70,7 +83,7 @@ export class CredentialsOverwrites {
 
 			if (data) {
 				const decryptedData = await this.cipher.decryptV2(data.value);
-				const overwriteData = jsonParse<ICredentialsOverwrite>(decryptedData, {
+				const overwriteData = jsonParse<Record<string, unknown>>(decryptedData, {
 					errorMessage: 'The credentials-overwrite is not valid JSON.',
 				});
 
@@ -88,7 +101,7 @@ export class CredentialsOverwrites {
 		await Container.get(Publisher).publishCommand({ command: 'reload-overwrite-credentials' });
 	}
 
-	async saveOverwriteDataToDB(overwriteData: ICredentialsOverwrite, broadcast: boolean = true) {
+	async saveOverwriteDataToDB(overwriteData: Record<string, unknown>, broadcast: boolean = true) {
 		const data = await this.cipher.encryptV2(JSON.stringify(overwriteData));
 		const setting = this.settings.create({
 			key: CREDENTIALS_OVERWRITE_KEY,
@@ -107,14 +120,25 @@ export class CredentialsOverwrites {
 		return StaticAuthService.getStaticAuthMiddleware(endpointAuthToken);
 	}
 
-	setPlainData(overwriteData: ICredentialsOverwrite) {
+	/**
+	 * Sets the overwrites from a payload. Throws a `UserError` when the payload is invalid,
+	 * and then keeps the previous overwrites.
+	 *
+	 * A type entry is a flat object. During a rollout, `__versions` adds a newer app for an
+	 * OAuth type. See `parseOverwritesPayload` for the format.
+	 */
+	setPlainData(overwriteData: Record<string, unknown>) {
+		const parsed = parseOverwritesPayload(overwriteData, (type) => this.getClientFields(type));
+
 		// If data gets reinitialized reset the resolved types cache
 		this.resolvedTypes.length = 0;
 
-		this.overwriteData = overwriteData;
+		this.overwriteData = parsed.entries;
+		this.flatVersions = parsed.flatVersions;
+		this.newerApps = parsed.versions;
 
-		for (const type in overwriteData) {
-			const overwrites = this.getOverwrites(type);
+		for (const type in this.overwriteData) {
+			const overwrites = this.getResolvedFlat(type);
 
 			if (overwrites && Object.keys(overwrites).length) {
 				this.overwriteData[type] = overwrites;
@@ -123,7 +147,7 @@ export class CredentialsOverwrites {
 	}
 
 	async setData(
-		overwriteData: ICredentialsOverwrite,
+		overwriteData: Record<string, unknown>,
 		storeInDb: boolean = true,
 		reloadFrontend: boolean = true,
 	) {
@@ -137,12 +161,24 @@ export class CredentialsOverwrites {
 		}
 	}
 
-	applyOverwrite(type: string, data: ICredentialDataDecryptedObject) {
-		const overwrites = this.get(type);
+	/**
+	 * Fills the empty fields of a credential from the overwrite of its type.
+	 *
+	 * @param versionOverride the app version to use. By default it is the version of the credential.
+	 * @throws UserError when the version matches no app in the config
+	 */
+	applyOverwrite(type: string, data: ICredentialDataDecryptedObject, versionOverride?: number) {
+		const flat = this.get(type);
 
-		if (overwrites === undefined) {
+		if (flat === undefined) {
 			return data;
 		}
+
+		const overwrites = this.pickApp(
+			type,
+			flat,
+			versionOverride ?? this.resolveBoundVersion(type, data),
+		);
 
 		// For skip-list types, don't apply overwrite if the credential has been
 		// customized (any overwrite field has a non-empty value that differs from
@@ -177,7 +213,103 @@ export class CredentialsOverwrites {
 		return returnData;
 	}
 
-	getOverwrites(type: string): ICredentialDataDecryptedObject | undefined {
+	/**
+	 * The overwrite of a type. Without a version, it is the default app: the newer app of
+	 * a rollout, or the flat entry.
+	 *
+	 * @throws UserError when the version matches no app in the config
+	 */
+	getOverwrites(type: string, version?: number): ICredentialDataDecryptedObject | undefined {
+		const flat = this.getResolvedFlat(type);
+		if (flat === undefined) return undefined;
+
+		return this.pickApp(type, flat, version);
+	}
+
+	/**
+	 * The version of the default app of an OAuth type that has an overwrite: the newer app
+	 * of a rollout, or the flat entry. `undefined` for any other type.
+	 */
+	getDefaultVersion(type: string): number | undefined {
+		if (!this.getClientFields(type) || this.get(type) === undefined) return undefined;
+
+		return (
+			this.nearest(type, this.newerApps)?.version ??
+			this.nearest(type, this.flatVersions) ??
+			IMPLICIT_MANAGED_VERSION
+		);
+	}
+
+	/**
+	 * The version to store when a credential connects. It is the default version when the
+	 * overwrite supplies the client, and `undefined` for a user-owned app.
+	 */
+	getNewConnectionVersion(type: string, data: ICredentialDataDecryptedObject): number | undefined {
+		const clientFields = this.getClientFields(type);
+		if (!clientFields || !hasEmptyClientFields(data, clientFields)) return undefined;
+
+		return this.getDefaultVersion(type);
+	}
+
+	/**
+	 * The version of the app a credential uses, or `undefined` for the default app.
+	 *
+	 * - A user-owned app (client fields set in the credential) uses no managed app.
+	 * - A stored version is used as it is.
+	 * - A credential with tokens and no stored version was connected before versions
+	 *   existed: version 1.
+	 * - A credential with no tokens at all is tied to no app yet: the default app.
+	 */
+	resolveBoundVersion(type: string, data: ICredentialDataDecryptedObject): number | undefined {
+		const clientFields = this.getClientFields(type);
+		if (!clientFields || !hasEmptyClientFields(data, clientFields)) return undefined;
+
+		const stored = readStoredVersion(data);
+		if (stored !== undefined) return stored;
+
+		return hasTokenData(data) ? IMPLICIT_MANAGED_VERSION : undefined;
+	}
+
+	/** Client fields of an OAuth credential type. `undefined` for any other type. */
+	private getClientFields(type: string): readonly string[] | undefined {
+		if (!this.credentialTypes.recognizes(type)) return undefined;
+
+		// OAuth2 identifies its client with clientId/clientSecret, OAuth1 with
+		// consumerKey/consumerSecret. Detect the version so the right pair is checked
+		// (checking clientId/clientSecret for both would never match an OAuth1 client).
+		const parentTypes = this.credentialTypes.getParentTypes(type);
+		const extendsBase = (base: string) => type === base || parentTypes.includes(base);
+		if (extendsBase('oAuth2Api')) return ['clientId', 'clientSecret'];
+		if (extendsBase('oAuth1Api')) return ['consumerKey', 'consumerSecret'];
+		return undefined;
+	}
+
+	/** The value of the type, or of its nearest parent type that has one. */
+	private nearest<T>(type: string, values: Record<string, T>): T | undefined {
+		for (const name of [type, ...this.credentialTypes.getParentTypes(type)]) {
+			if (Object.hasOwn(values, name)) return values[name];
+		}
+		return undefined;
+	}
+
+	/** Picks the app of an OAuth type from its flat overwrite and its newer app, if any. */
+	private pickApp(type: string, flat: ICredentialDataDecryptedObject, version?: number) {
+		if (!this.getClientFields(type)) return flat;
+
+		const newer = this.nearest(type, this.newerApps);
+		const flatVersion = this.nearest(type, this.flatVersions) ?? IMPLICIT_MANAGED_VERSION;
+		const target = version ?? newer?.version ?? flatVersion;
+
+		if (target === flatVersion) return flat;
+		// The newer app takes the fields of the flat entry that it does not set.
+		if (newer && target === newer.version) return { ...flat, ...withoutVersion(newer) };
+
+		throw new UserError(
+			`The credentials overwrite of "${type}" has no app with version ${target}. Check the overwrites of this instance.`,
+		);
+	}
+
+	private getResolvedFlat(type: string): ICredentialDataDecryptedObject | undefined {
 		if (this.resolvedTypes.includes(type)) {
 			// Type got already resolved and can so returned directly
 			return this.overwriteData[type];
@@ -197,7 +329,7 @@ export class CredentialsOverwrites {
 
 		const overwrites: ICredentialDataDecryptedObject = {};
 		for (const credentialsTypeName of credentialTypeData.extends) {
-			Object.assign(overwrites, this.getOverwrites(credentialsTypeName));
+			Object.assign(overwrites, this.getResolvedFlat(credentialsTypeName));
 		}
 
 		if (this.overwriteData[type] !== undefined) {
@@ -238,18 +370,7 @@ export class CredentialsOverwrites {
 	 * creation is disabled. These types support one-click connect in the editor.
 	 */
 	isManagedOAuthType(type: string): boolean {
-		if (!this.credentialTypes.recognizes(type)) return false;
-
-		// OAuth2 identifies its client with clientId/clientSecret, OAuth1 with
-		// consumerKey/consumerSecret. Detect the version so the right pair is checked
-		// (checking clientId/clientSecret for both would never match an OAuth1 client).
-		const parentTypes = this.credentialTypes.getParentTypes(type);
-		const extendsBase = (base: string) => type === base || parentTypes.includes(base);
-		const clientFields = extendsBase('oAuth2Api')
-			? (['clientId', 'clientSecret'] as const)
-			: extendsBase('oAuth1Api')
-				? (['consumerKey', 'consumerSecret'] as const)
-				: undefined;
+		const clientFields = this.getClientFields(type);
 		if (!clientFields) return false;
 
 		if (this.globalConfig.credentials.overwrite?.skipTypes?.includes(type)) return false;
@@ -264,7 +385,14 @@ export class CredentialsOverwrites {
 
 		// Managed iff applying the overwrite actually injects a value. Delegating to
 		// applyOverwrite keeps this in lockstep with the skip-list / customization rules.
-		const applied = this.applyOverwrite(type, data as ICredentialDataDecryptedObject);
-		return Object.keys(overwrites).some((key) => applied[key] !== data[key]);
+		try {
+			const applied = this.applyOverwrite(type, data as ICredentialDataDecryptedObject);
+			return Object.keys(overwrites).some((key) => applied[key] !== data[key]);
+		} catch (error) {
+			// A version that matches no app is an error for the caller that runs the
+			// credential. This check only reports, so it does not fail.
+			if (error instanceof UserError) return false;
+			throw error;
+		}
 	}
 }

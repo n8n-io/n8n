@@ -90,6 +90,11 @@ export type OauthFlowState = {
 	codeVerifier?: string;
 	/** OAuth1 request-token secret, needed to sign the access-token request in the callback. */
 	oauthTokenSecret?: string;
+	/**
+	 * Version of the managed app that the authorization URL was built with. The callback
+	 * uses the same app and stores this version. Not set for a user-owned app.
+	 */
+	managedVersion?: number;
 };
 
 const OAUTH_FLOW_CACHE_PREFIX = 'oauth:flow:';
@@ -413,6 +418,7 @@ export class OauthService {
 		credential: ICredentialsDb,
 		decryptedData: ICredentialDataDecryptedObject,
 		additionalData: IWorkflowExecuteAdditionalData,
+		managedVersion?: number,
 	) {
 		return (await this.credentialsHelper.applyDefaultsAndOverwrites(
 			additionalData,
@@ -421,6 +427,7 @@ export class OauthService {
 			'internal',
 			undefined,
 			undefined,
+			managedVersion,
 		)) as unknown as T;
 	}
 
@@ -634,6 +641,14 @@ export class OauthService {
 			throw new NotFoundError(RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL);
 		}
 
+		// The flow state pins the managed app that the authorization URL used, so it is
+		// read before the credential data is resolved.
+		const flowState = await this.consumeOauthFlowState(state.token);
+
+		if (!flowState || !this.verifyCsrfState(flowState, state)) {
+			throw new UnexpectedError('The OAuth callback state is invalid!');
+		}
+
 		// The state holds the verified starter; the callback request may carry no user at all.
 		const additionalData = await this.getAdditionalData(csrfUserId(state));
 		const decryptedDataOriginal = await this.getDecryptedDataForCallback(
@@ -645,13 +660,8 @@ export class OauthService {
 			credential,
 			decryptedDataOriginal,
 			additionalData,
+			flowState.managedVersion,
 		);
-
-		const flowState = await this.consumeOauthFlowState(state.token);
-
-		if (!flowState || !this.verifyCsrfState(flowState, state)) {
-			throw new UnexpectedError('The OAuth callback state is invalid!');
-		}
 
 		return [credential, decryptedDataOriginal, oauthCredentials, state, flowState];
 	}
@@ -702,7 +712,42 @@ export class OauthService {
 		return causes.length ? causes.join(': ') : undefined;
 	}
 
+	/**
+	 * The OAuth credentials of an existing connection. A managed app is the one that the
+	 * credential stores.
+	 */
 	async getOAuthCredentials<T>(credential: CredentialsEntity, userId?: string): Promise<T> {
+		const { additionalData, decryptedData } = await this.loadCredentialData(credential, userId);
+
+		return await this.applyDefaultsAndOverwrites<T>(credential, decryptedData, additionalData);
+	}
+
+	/**
+	 * The OAuth credentials for a new connection. A managed app is the default one, also when
+	 * the credential is connected to another one. `managedVersion` is the version of that app,
+	 * or `undefined` for a user-owned app. Store it with the tokens.
+	 */
+	async getNewConnectionCredentials<T>(
+		credential: CredentialsEntity,
+		userId?: string,
+	): Promise<{ oauthCredentials: T; managedVersion?: number }> {
+		const { additionalData, decryptedData } = await this.loadCredentialData(credential, userId);
+
+		const managedVersion = this.credentialsHelper.getNewConnectionVersion(
+			credential.type,
+			decryptedData,
+		);
+		const oauthCredentials = await this.applyDefaultsAndOverwrites<T>(
+			credential,
+			decryptedData,
+			additionalData,
+			managedVersion,
+		);
+
+		return { oauthCredentials, managedVersion };
+	}
+
+	private async loadCredentialData(credential: CredentialsEntity, userId?: string) {
 		const additionalData = await this.getAdditionalData(userId);
 		const decryptedDataOriginal = await this.getDecryptedDataForAuthUri(credential, additionalData);
 
@@ -724,13 +769,7 @@ export class OauthService {
 			delete decryptedDataOriginal.scope;
 		}
 
-		const oauthCredentials = await this.applyDefaultsAndOverwrites<T>(
-			credential,
-			decryptedDataOriginal,
-			additionalData,
-		);
-
-		return oauthCredentials;
+		return { additionalData, decryptedData: decryptedDataOriginal };
 	}
 
 	private credentialIsAccessibleToProject(credential: CredentialsEntity, projectId: string) {
@@ -1072,8 +1111,11 @@ export class OauthService {
 	): Promise<string> {
 		this.applyBrowserBindingIfEnabled(csrfData, req, res);
 
-		const oauthCredentials: OAuth2CredentialData =
-			await this.getOAuthCredentials<OAuth2CredentialData>(credential, csrfUserId(csrfData));
+		const { oauthCredentials, managedVersion } =
+			await this.getNewConnectionCredentials<OAuth2CredentialData>(
+				credential,
+				csrfUserId(csrfData),
+			);
 
 		const toUpdate: ICredentialDataDecryptedObject = {};
 		const toDelete: string[] = [];
@@ -1123,7 +1165,7 @@ export class OauthService {
 
 		await this.externalHooks.run('oauth2.authenticate', [oAuthOptions]);
 
-		const flowState: OauthFlowState = { csrfSecret, stateData: csrfData };
+		const flowState: OauthFlowState = { csrfSecret, stateData: csrfData, managedVersion };
 		if (this.shouldUsePkce(oauthCredentials)) {
 			const { code_verifier, code_challenge } = await pkceChallenge();
 			oAuthOptions.query = {
@@ -1311,8 +1353,11 @@ export class OauthService {
 	): Promise<string> {
 		this.applyBrowserBindingIfEnabled(csrfData, req, res);
 
-		const oauthCredentials: OAuth1CredentialData =
-			await this.getOAuthCredentials<OAuth1CredentialData>(credential, csrfUserId(csrfData));
+		const { oauthCredentials, managedVersion } =
+			await this.getNewConnectionCredentials<OAuth1CredentialData>(
+				credential,
+				csrfUserId(csrfData),
+			);
 
 		this.validateOAuthUrlOrThrow(oauthCredentials.authUrl ?? '');
 		this.validateOAuthUrlOrThrow(oauthCredentials.requestTokenUrl ?? '');
@@ -1385,6 +1430,7 @@ export class OauthService {
 			csrfSecret,
 			stateData: csrfData,
 			oauthTokenSecret: responseJson.oauth_token_secret ?? '',
+			managedVersion,
 		});
 
 		this.logger.debug('OAuth1 authorization url created for credential', {

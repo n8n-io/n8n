@@ -217,6 +217,85 @@ describe('CredentialsHelper', () => {
 			expect(result).not.toHaveProperty('headerValue');
 		});
 
+		describe('managed app version', () => {
+			const credentialType: ICredentialType = {
+				name: 'managedOAuth2Api',
+				displayName: 'Managed OAuth2',
+				properties: [{ displayName: 'Client ID', name: 'clientId', type: 'string', default: '' }],
+			};
+
+			const createHelper = (credentialsOverwrites: CredentialsOverwrites) => {
+				mockNodesAndCredentials.getCredential.calledWith(credentialType.name).mockReturnValue({
+					type: credentialType,
+					sourcePath: '',
+				});
+				return new CredentialsHelper(
+					new CredentialTypes(mockNodesAndCredentials),
+					credentialsOverwrites,
+					credentialsRepository,
+					dynamicCredentialProxy,
+					secretsProviderRepository,
+					licenseState,
+					externalSecretsConfig,
+					mock<AiGatewayService>(),
+					policyEnforcementService,
+				);
+			};
+
+			test('passes the managed version to the overwrites', async () => {
+				const credentialsOverwrites = mock<CredentialsOverwrites>();
+				credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) => data);
+				const helper = createHelper(credentialsOverwrites);
+
+				await helper.applyDefaultsAndOverwrites(
+					mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+					{ clientId: '' },
+					credentialType.name,
+					'internal',
+					undefined,
+					undefined,
+					2,
+				);
+
+				expect(credentialsOverwrites.applyOverwrite).toHaveBeenCalledWith(
+					credentialType.name,
+					{ clientId: '' },
+					2,
+				);
+			});
+
+			test('leaves the version to the credential when none is given', async () => {
+				const credentialsOverwrites = mock<CredentialsOverwrites>();
+				credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) => data);
+				const helper = createHelper(credentialsOverwrites);
+
+				await helper.applyDefaultsAndOverwrites(
+					mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+					{ clientId: '' },
+					credentialType.name,
+					'internal',
+				);
+
+				expect(credentialsOverwrites.applyOverwrite).toHaveBeenCalledWith(
+					credentialType.name,
+					{ clientId: '' },
+					undefined,
+				);
+			});
+
+			test('gets the version of a new connection from the overwrites', () => {
+				const credentialsOverwrites = mock<CredentialsOverwrites>();
+				credentialsOverwrites.getNewConnectionVersion.mockReturnValue(2);
+				const helper = createHelper(credentialsOverwrites);
+
+				expect(helper.getNewConnectionVersion(credentialType.name, { clientId: '' })).toBe(2);
+				expect(credentialsOverwrites.getNewConnectionVersion).toHaveBeenCalledWith(
+					credentialType.name,
+					{ clientId: '' },
+				);
+			});
+		});
+
 		test('throws when an unmarked credential field cannot resolve without execution context', async () => {
 			const credentialType: ICredentialType = {
 				name: 'openAiApi',

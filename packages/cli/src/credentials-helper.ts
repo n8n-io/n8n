@@ -721,7 +721,17 @@ export class CredentialsHelper extends ICredentialsHelper {
 	}
 
 	/**
+	 * The managed app version that a new connection of this credential stores.
+	 * `undefined` when the credential does not use a managed app.
+	 */
+	getNewConnectionVersion(type: string, decryptedData: ICredentialDataDecryptedObject) {
+		return this.credentialsOverwrites.getNewConnectionVersion(type, decryptedData);
+	}
+
+	/**
 	 * Applies credential default data and overwrites
+	 *
+	 * @param managedVersion the managed app version to use. By default it is the version of the credential.
 	 */
 	async applyDefaultsAndOverwrites(
 		additionalData: IWorkflowExecuteAdditionalData,
@@ -730,6 +740,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		mode: WorkflowExecuteMode,
 		executeData?: IExecuteData,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
+		managedVersion?: number,
 	): Promise<ICredentialDataDecryptedObject> {
 		const credentialsProperties = this.getCredentialsProperties(type);
 
@@ -743,7 +754,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 		}
 
 		// Load and apply the credentials overwrites if any exist
-		const dataWithOverwrites = this.credentialsOverwrites.applyOverwrite(type, storedData);
+		const dataWithOverwrites = this.credentialsOverwrites.applyOverwrite(
+			type,
+			storedData,
+			managedVersion,
+		);
 
 		// Add the default credential values
 		let decryptedData = NodeHelpers.getNodeParameters(

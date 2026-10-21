@@ -219,3 +219,12 @@ export const BINARY_IN_JSON_PROPERTY = '_files';
 
 export const BINARY_MODE_SEPARATE = 'separate';
 export const BINARY_MODE_COMBINED = 'combined';
+
+/**
+ * Key inside `oauthTokenData` that records which version of a managed OAuth app
+ * a credential was connected with.
+ */
+export const MANAGED_VERSION_KEY = 'n8n_managed_version';
+
+/** Version of a managed OAuth app when a credential or a config does not state one. */
+export const IMPLICIT_MANAGED_VERSION = 1;
