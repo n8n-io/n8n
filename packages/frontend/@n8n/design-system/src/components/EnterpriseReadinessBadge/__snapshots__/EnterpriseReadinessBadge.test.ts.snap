@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`EnterpriseReadinessBadge > renders medium badge correctly 1`] = `
+exports[`EnterpriseReadinessBadge > renders xsmall badge correctly 1`] = `
 <div>
   
   
@@ -34,7 +34,7 @@ exports[`EnterpriseReadinessBadge > renders medium badge correctly 1`] = `
 </div>
 `;
 
-exports[`EnterpriseReadinessBadge > renders small badge correctly 1`] = `
+exports[`EnterpriseReadinessBadge > renders xxsmall badge correctly 1`] = `
 <div>
   
   

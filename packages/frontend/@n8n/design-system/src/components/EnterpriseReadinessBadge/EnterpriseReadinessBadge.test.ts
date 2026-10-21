@@ -9,13 +9,13 @@ describe('EnterpriseReadinessBadge', () => {
 		expect(getByText('Limited enterprise support')).toBeInTheDocument();
 	});
 
-	it('renders small badge correctly', () => {
-		const { container } = render(EnterpriseReadinessBadge, { props: { size: 'small' } });
+	it('renders xxsmall badge correctly', () => {
+		const { container } = render(EnterpriseReadinessBadge, { props: { size: 'xxsmall' } });
 		expect(container).toMatchSnapshot();
 	});
 
-	it('renders medium badge correctly', () => {
-		const { container } = render(EnterpriseReadinessBadge, { props: { size: 'medium' } });
+	it('renders xsmall badge correctly', () => {
+		const { container } = render(EnterpriseReadinessBadge, { props: { size: 'xsmall' } });
 		expect(container).toMatchSnapshot();
 	});
 

@@ -227,6 +227,10 @@ export interface BuiltEpisodicMemoryStore {
 }
 
 export interface EpisodicMemoryCaptureMethods {
+	getEntriesByContentHashes(
+		scope: EpisodicMemoryScope,
+		contentHashes: string[],
+	): Promise<EpisodicMemoryEntry[]>;
 	enqueueCaptureCandidate(
 		candidate: NewEpisodicMemoryCaptureCandidate,
 	): Promise<EpisodicMemoryCaptureCandidate>;

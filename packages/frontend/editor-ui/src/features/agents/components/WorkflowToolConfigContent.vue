@@ -42,6 +42,9 @@ const { availableWorkflows, projectWorkflows, loadWorkflows } = useAgentToolCata
 
 const name = ref(props.initialRef.name ?? props.initialRef.workflow ?? '');
 const description = ref(props.initialRef.description ?? '');
+const showDescriptionError = computed(
+	() => (props.submitCount ?? 0) > 0 && description.value.trim().length === 0,
+);
 const allOutputs = ref(props.initialRef.allOutputs ?? false);
 const workflow = ref(props.initialRef.workflow ?? '');
 const workflowId = ref<string | undefined>(props.initialRef.workflowId);
@@ -284,8 +287,11 @@ defineExpose({
 			<N8nInput
 				id="workflow-tool-description"
 				v-model="description"
+				:class="{ [$style.invalidDescription]: showDescriptionError }"
 				type="textarea"
 				:rows="4"
+				aria-required="true"
+				:aria-invalid="showDescriptionError"
 				:placeholder="i18n.baseText('agents.toolConfig.workflow.description.placeholder')"
 				data-test-id="agent-workflow-tool-description"
 			/>
@@ -512,6 +518,12 @@ defineExpose({
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
+}
+
+.field .invalidDescription {
+	--input--border-color: var(--color--danger);
+	--input--border-color--hover: var(--color--danger);
+	--input--border-color--focus: var(--color--danger);
 }
 
 .label {

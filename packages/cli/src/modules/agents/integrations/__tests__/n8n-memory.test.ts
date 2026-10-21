@@ -63,7 +63,6 @@ describe('N8nMemory', () => {
 	let transactionMemoryEntryUpdate: Mock;
 	let transactionMemoryEntrySourceCreate: Mock;
 	let transactionMemoryEntrySourceFind: Mock;
-	let transactionMemoryEntrySourceFindOneBy: Mock;
 	let transactionMemoryEntrySourceSave: Mock;
 
 	beforeEach(() => {
@@ -133,7 +132,6 @@ describe('N8nMemory', () => {
 			(input) => ({ ...input }) as AgentMemoryEntrySourceEntity,
 		);
 		transactionMemoryEntrySourceFind = vi.fn().mockResolvedValue([]);
-		transactionMemoryEntrySourceFindOneBy = vi.fn().mockResolvedValue(null);
 		transactionMemoryEntrySourceSave = vi.fn(async (input: AgentMemoryEntrySourceEntity[]) =>
 			input.map((entity, index) => ({
 				...entity,
@@ -186,7 +184,6 @@ describe('N8nMemory', () => {
 						return {
 							create: transactionMemoryEntrySourceCreate,
 							find: transactionMemoryEntrySourceFind,
-							findOneBy: transactionMemoryEntrySourceFindOneBy,
 							save: transactionMemoryEntrySourceSave,
 						};
 					}),
@@ -1241,22 +1238,18 @@ describe('N8nMemory', () => {
 
 	describe('episodic memory', () => {
 		beforeEach(() => {
-			memoryEntryRepository.create.mockImplementation(
-				(input) => ({ ...input }) as AgentMemoryEntryEntity,
-			);
-			memoryEntrySourceRepository.create.mockImplementation(
-				(input) => ({ ...input }) as AgentMemoryEntrySourceEntity,
+			memoryEntryRepository.saveEntryWithSources.mockImplementation(async (agentId, entry) =>
+				makeMemoryEntryEntity({
+					...entry,
+					agentId,
+					embedding: entry.embedding ?? null,
+					embeddingModel: entry.embeddingModel ?? null,
+					metadata: entry.metadata ?? null,
+				}),
 			);
 		});
 
-		it('stores active source-backed entries with a content hash', async () => {
-			transactionMemoryEntrySave.mockResolvedValueOnce([
-				makeMemoryEntryEntity({
-					id: 'memory-1',
-					content: 'User chose Postgres for the memory store.',
-				}),
-			]);
-
+		it('delegates source-backed saves to the entry repository', async () => {
 			const result = await memory.episodic.saveEntryWithSources(
 				{
 					resourceId: 'resource-1',
@@ -1273,24 +1266,17 @@ describe('N8nMemory', () => {
 				],
 			);
 
-			expect(transactionMemoryEntryCreate).toHaveBeenCalledWith(
+			expect(memoryEntryRepository.saveEntryWithSources).toHaveBeenCalledWith(
+				'agent-1',
 				expect.objectContaining({
-					agentId: 'agent-1',
 					resourceId: 'resource-1',
-					status: 'active',
-					supersededBy: null,
-					contentHash: expect.any(String),
+					content: 'User chose Postgres for the memory store.',
+					embedding: [1, 0],
+					embeddingModel: 'openai/text-embedding-3-small',
 				}),
+				[{ observationId: 'obs-1', threadId: 'thread-1', evidenceText: 'User chose Postgres' }],
+				{},
 			);
-			expect(transactionMemoryEntrySourceSave).toHaveBeenCalledWith([
-				expect.objectContaining({
-					agentId: 'agent-1',
-					memoryEntryId: 'memory-1',
-					observationId: 'obs-1',
-					evidenceHash: hashEpisodicMemoryEvidence('User chose Postgres'),
-					evidenceText: 'User chose Postgres',
-				}),
-			]);
 			expect(result).toMatchObject({
 				id: 'memory-1',
 				content: 'User chose Postgres for the memory store.',
@@ -1310,15 +1296,40 @@ describe('N8nMemory', () => {
 				[{ candidateId: 'candidate-1', threadId: 'thread-1', evidenceText: 'Use three eggs.' }],
 			);
 
-			expect(transactionMemoryEntryCreate).toHaveBeenCalledTimes(1);
-			expect(transactionMemoryEntryCreate).toHaveBeenCalledWith(
-				expect.objectContaining({ agentId: 'agent-1', resourceId: 'thread:thread-1' }),
+			expect(memoryEntryRepository.saveEntryWithSources).toHaveBeenCalledExactlyOnceWith(
+				'agent-1',
+				expect.objectContaining({ resourceId: 'thread:thread-1' }),
+				[{ candidateId: 'candidate-1', threadId: 'thread-1', evidenceText: 'Use three eggs.' }],
+				{},
 			);
 			expect(resourceInsertQueryBuilder.values).toHaveBeenCalledWith({
 				id: 'thread:thread-1',
 				metadata: null,
 			});
-			expect(result).toMatchObject({ id: 'merged-memory-1', resourceId: 'thread:thread-1' });
+			expect(result).toMatchObject({ id: 'memory-1', resourceId: 'thread:thread-1' });
+		});
+
+		it.each([
+			['resource-1', 'resource-1'],
+			['integration:slack:U_BOB', 'thread:thread-1'],
+		])('looks up exact hashes in the write scope for %s', async (resourceId, writeScope) => {
+			memoryEntryRepository.findByContentHashes.mockResolvedValue([
+				makeMemoryEntryEntity({ status: 'dropped', resourceId: writeScope }),
+			]);
+
+			const entries = await memory.episodic.getEntriesByContentHashes(
+				{ resourceId, threadId: 'thread-1' },
+				['hash-1'],
+			);
+
+			expect(memoryEntryRepository.findByContentHashes).toHaveBeenCalledExactlyOnceWith(
+				'agent-1',
+				writeScope,
+				['hash-1'],
+			);
+			expect(entries).toEqual([
+				expect.objectContaining({ id: 'memory-1', status: 'dropped', embedding: [1, 0] }),
+			]);
 		});
 
 		it('enqueues and drains capture candidates under the thread scope', async () => {
@@ -1447,61 +1458,10 @@ describe('N8nMemory', () => {
 			expect(results.map((result) => result.id)).toEqual(['memory-current']);
 		});
 
-		it('stores an episodic entry and its sources in one transaction', async () => {
-			transactionMemoryEntrySave.mockResolvedValueOnce([
-				makeMemoryEntryEntity({
-					id: 'memory-atomic',
-					content: 'User chose Postgres for durable memory storage.',
-				}),
-			]);
-			transactionMemoryEntrySourceSave.mockResolvedValueOnce([
-				makeMemoryEntrySourceEntity({
-					id: 'source-atomic',
-					memoryEntryId: 'memory-atomic',
-					observationId: 'obs-atomic',
-					evidenceText: 'User chose Postgres',
-				}),
-			]);
-
-			const result = await memory.episodic.saveEntryWithSources(
-				{
-					resourceId: 'resource-1',
-					content: 'User chose Postgres for durable memory storage.',
-					embedding: [1, 0],
-					embeddingModel: 'openai/text-embedding-3-small',
-				},
-				[
-					{
-						observationId: 'obs-atomic',
-						threadId: 'thread-1',
-						evidenceText: 'User chose Postgres',
-					},
-				],
+		it('propagates transactional save failures', async () => {
+			memoryEntryRepository.saveEntryWithSources.mockRejectedValueOnce(
+				new Error('source write failed'),
 			);
-
-			expect(memoryEntryRunInTransaction).toHaveBeenCalledWith(expect.any(Function));
-			expect(memoryEntryRepository.save).not.toHaveBeenCalled();
-			expect(memoryEntrySourceRepository.save).not.toHaveBeenCalled();
-			expect(transactionMemoryEntrySourceSave).toHaveBeenCalledWith([
-				expect.objectContaining({
-					agentId: 'agent-1',
-					memoryEntryId: 'memory-atomic',
-					observationId: 'obs-atomic',
-					evidenceHash: hashEpisodicMemoryEvidence('User chose Postgres'),
-					evidenceText: 'User chose Postgres',
-				}),
-			]);
-			expect(result).toEqual(expect.objectContaining({ id: 'memory-atomic' }));
-		});
-
-		it('rolls back the episodic entry transaction when source persistence fails', async () => {
-			transactionMemoryEntrySave.mockResolvedValueOnce([
-				makeMemoryEntryEntity({
-					id: 'memory-atomic',
-					content: 'User chose Postgres for durable memory storage.',
-				}),
-			]);
-			transactionMemoryEntrySourceSave.mockRejectedValueOnce(new Error('source write failed'));
 
 			await expect(
 				memory.episodic.saveEntryWithSources(
@@ -1518,10 +1478,6 @@ describe('N8nMemory', () => {
 					],
 				),
 			).rejects.toThrow('source write failed');
-
-			expect(memoryEntryRunInTransaction).toHaveBeenCalledWith(expect.any(Function));
-			expect(memoryEntryRepository.save).not.toHaveBeenCalled();
-			expect(memoryEntrySourceRepository.save).not.toHaveBeenCalled();
 		});
 
 		it('reads source links for episodic entries', async () => {
@@ -1537,6 +1493,50 @@ describe('N8nMemory', () => {
 			});
 			expect(sources).toHaveLength(1);
 			expect(sources[0].memoryEntryId).toBe('memory-1');
+		});
+
+		it('attaches the author and origin of the quoted message to candidate sources', async () => {
+			const origin = {
+				source: 'slack',
+				integration: {
+					type: 'slack' as const,
+					workspaceId: 'T1',
+					conversationKind: 'channel' as const,
+					channelId: 'C1',
+				},
+			};
+			memoryEntrySourceRepository.find.mockResolvedValue([
+				makeMemoryEntrySourceEntity({
+					id: 'source-quoted',
+					memoryEntryId: 'memory-1',
+					observationId: null,
+					candidateId: 'candidate-1',
+				}),
+				makeMemoryEntrySourceEntity({
+					id: 'source-orphan',
+					memoryEntryId: 'memory-1',
+					observationId: null,
+					candidateId: 'candidate-2',
+				}),
+				makeMemoryEntrySourceEntity({ id: 'source-observed', memoryEntryId: 'memory-1' }),
+			]);
+			memoryEntryCandidateRepository.findSourceMessages.mockResolvedValue(
+				new Map([['candidate-1', { author: { id: 'U1', name: 'Alice' }, origin }]]),
+			);
+
+			const sources = await memory.getEntrySourcesWithMessageContext(['memory-1']);
+
+			expect(memoryEntryCandidateRepository.findSourceMessages).toHaveBeenCalledWith('agent-1', [
+				'candidate-1',
+				'candidate-2',
+			]);
+			expect(sources[0]).toMatchObject({
+				id: 'source-quoted',
+				author: { id: 'U1', name: 'Alice' },
+				origin,
+			});
+			expect(sources[1]).not.toHaveProperty('origin');
+			expect(sources[2]).not.toHaveProperty('origin');
 		});
 
 		it('applies episodic reflection inside the thread scope and copies source links to replacements', async () => {

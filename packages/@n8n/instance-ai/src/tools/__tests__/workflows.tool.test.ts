@@ -1316,6 +1316,26 @@ describe('workflows tool', () => {
 			expect(files.get(filePath)).toBe(edited);
 		});
 
+		it('keeps the conflict warning with investigation source guidance', async () => {
+			const files = new Map<string, string>();
+			const context = createWorkspaceContext(files);
+			const guidance = 'Edit the investigation candidate.';
+			const tool = createWorkflowsTool(context, { surface: 'full', sourceGuidance: guidance });
+			await executeTool(tool, { action: 'get-as-code', workflowId: 'wf1' }, {} as never);
+			const filePath = 'src/workflows/test-wf.workflow.ts';
+			const edited = `${files.get(filePath)}\n// local edit`;
+			files.set(filePath, edited);
+			const result = await executeTool<{ status: string; note: string }>(
+				tool,
+				{ action: 'get-as-code', workflowId: 'wf1' },
+				{} as never,
+			);
+			expect(result.status).toBe('conflict');
+			expect(result.note).toContain('unbuilt edits');
+			expect(result.note).toContain(guidance);
+			expect(files.get(filePath)).toBe(edited);
+		});
+
 		it('regenerates the file when the saved workflow changed and the file has no local edits', async () => {
 			const files = new Map<string, string>();
 			const context = createWorkspaceContext(files);
@@ -3889,7 +3909,7 @@ describe('node usage', () => {
 	});
 });
 
-describe('workflows(action="setup") — setup panel', () => {
+describe('workflow_builder_workflows(action="setup") — setup panel', () => {
 	const openSlack = {
 		node: { name: 'Slack', type: 'n8n-nodes-base.slack' },
 		credentialType: 'slackApi',

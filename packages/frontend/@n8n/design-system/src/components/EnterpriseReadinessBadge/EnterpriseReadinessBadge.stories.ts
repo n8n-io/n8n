@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 
 import EnterpriseReadinessBadge from './EnterpriseReadinessBadge.vue';
+import { BADGE_SIZE } from '../N8nBadge/Badge.type';
 import PreviewBadge from '../PreviewBadge/PreviewBadge.vue';
 
 const meta = {
@@ -9,7 +10,7 @@ const meta = {
 	argTypes: {
 		size: {
 			control: 'select',
-			options: ['small', 'medium'],
+			options: BADGE_SIZE,
 		},
 	},
 } satisfies Meta<typeof EnterpriseReadinessBadge>;
@@ -28,7 +29,7 @@ export const Default: Story = {
 		};
 	},
 	args: {
-		size: 'small',
+		size: 'xxsmall',
 	},
 };
 
@@ -38,8 +39,8 @@ export const Sizes: Story = {
 			components: { EnterpriseReadinessBadge },
 			template: `
 				<div style="display: flex; gap: var(--spacing--sm); align-items: center;">
-					<EnterpriseReadinessBadge size="small" />
-					<EnterpriseReadinessBadge size="medium" />
+					<EnterpriseReadinessBadge size="xxsmall" />
+					<EnterpriseReadinessBadge size="xsmall" />
 				</div>
 			`,
 		};
@@ -52,8 +53,8 @@ export const WithPreviewBadge: Story = {
 			components: { EnterpriseReadinessBadge, PreviewBadge },
 			template: `
 				<div style="display: flex; gap: var(--spacing--2xs); align-items: center;">
-					<PreviewBadge size="small" />
-					<EnterpriseReadinessBadge size="small" />
+					<PreviewBadge />
+					<EnterpriseReadinessBadge />
 				</div>
 			`,
 		};

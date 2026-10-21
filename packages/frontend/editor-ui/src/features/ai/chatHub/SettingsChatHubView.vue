@@ -133,10 +133,10 @@ onMounted(async () => {
 			<N8nHeading size="2xlarge">
 				{{ i18n.baseText('settings.chatHub') }}
 			</N8nHeading>
-			<N8nPreviewBadge size="medium" data-test-id="chat-hub-preview-badge" />
+			<N8nPreviewBadge size="xsmall" data-test-id="chat-hub-preview-badge" />
 			<N8nEnterpriseReadinessBadge
 				v-if="settingsStore.isEnterprisePlan"
-				size="medium"
+				size="xsmall"
 				data-test-id="chat-hub-enterprise-readiness-badge"
 			/>
 		</div>
