@@ -1,11 +1,9 @@
-packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
-  s_71ad2034164515::t_a3011e72f60e77 258
-packages/@n8n/cli/src/commands/package/export.ts
-  s_71ad2034164515::t_373592189e8ae4 188
-packages/@n8n/cli/src/__tests__/package-export.test.ts
-  s_71ad2034164515::t_373592189e8ae4 100-104,107,111
 packages/@n8n/cli/docs/commands/package.md
-  s_71ad2034164515::t_7aca3efd8ea5ca 81,107-108
+  s_71ad2034164515::t_36cacfba3ea687 81,107-108
+packages/@n8n/cli/src/__tests__/package-export.test.ts
+  s_71ad2034164515::t_2f70f440684ad7 100-104,107,111
+packages/@n8n/cli/src/commands/package/export.ts
+  s_71ad2034164515::t_a240938312e3a9 188
 ---
 {
   "schema_version": "authorship/3.0.0",
