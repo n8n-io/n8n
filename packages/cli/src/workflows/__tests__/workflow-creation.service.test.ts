@@ -1192,6 +1192,12 @@ describe('WorkflowCreationService', () => {
 		const activateEngineV2Module = () =>
 			vi.spyOn(moduleRegistry, 'isActive').mockImplementation((name) => name === 'engine-v2');
 
+		const expectSavedSettings = (settings: WorkflowEntity['settings']) =>
+			expect(workflowRepositoryMock.createContent).toHaveBeenCalledWith(
+				expect.objectContaining({ settings }),
+				expect.anything(),
+			);
+
 		beforeEach(() => {
 			projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
 			licenseStateMock.isSharingLicensed.mockReturnValue(false);
@@ -1212,10 +1218,7 @@ describe('WorkflowCreationService', () => {
 
 			await workflowCreationService.createWorkflow(user, workflow, { projectId: 'project-1' });
 
-			expect(workflowRepositoryMock.createContent).toHaveBeenCalledWith(
-				expect.objectContaining({ settings: { executionOrder: 'v1', engineType: 'v2' } }),
-				expect.anything(),
-			);
+			expectSavedSettings({ executionOrder: 'v1', engineType: 'v2' });
 		});
 
 		it.each([
@@ -1230,7 +1233,7 @@ describe('WorkflowCreationService', () => {
 
 				await workflowCreationService.createWorkflow(user, workflow, { projectId: 'project-1' });
 
-				expect(workflow.settings?.engineType).toBe(engineType);
+				expectSavedSettings({ engineType });
 			},
 		);
 
@@ -1240,7 +1243,7 @@ describe('WorkflowCreationService', () => {
 
 			await workflowCreationService.createWorkflow(user, workflow, { projectId: 'project-1' });
 
-			expect(workflow.settings?.engineType).toBe('v1');
+			expectSavedSettings({ engineType: 'v1' });
 		});
 
 		it('saves a workflow on v1 when the default is v1', async () => {
@@ -1249,7 +1252,7 @@ describe('WorkflowCreationService', () => {
 
 			await workflowCreationService.createWorkflow(user, workflow, { projectId: 'project-1' });
 
-			expect(workflow.settings).toEqual({ executionOrder: 'v1', engineType: 'v1' });
+			expectSavedSettings({ executionOrder: 'v1', engineType: 'v1' });
 		});
 
 		it('creates the settings when the workflow has none', async () => {
@@ -1257,7 +1260,7 @@ describe('WorkflowCreationService', () => {
 
 			await workflowCreationService.createWorkflow(user, workflow, { projectId: 'project-1' });
 
-			expect(workflow.settings).toEqual({ engineType: 'v1' });
+			expectSavedSettings({ engineType: 'v1' });
 		});
 	});
 });

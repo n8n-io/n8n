@@ -187,7 +187,7 @@ requestBody:
               engineType:
                 type: string
                 nullable: true
-                description: The execution engine that runs this workflow. n8n sets it when it creates the workflow. It is included in workflow responses for reference, but any value sent when creating or updating a workflow is ignored.
+                description: The execution engine that runs this workflow. n8n sets it on new workflows created through this API. It is included in workflow responses for reference, but any value sent when creating or updating a workflow is ignored.
                 example: v1
               callerPolicy:
                 type: string
@@ -781,11 +781,8 @@ responses:
                   description: Controls how binary data is resolved from a node's input. This is a derived, internal setting rather than something intended to be set programmatically. It is included in workflow responses for reference, but any value sent when creating or updating a workflow is ignored.
                 engineType:
                   type: string
-                  enum:
-                    - v1
-                    - v2
                   example: v1
-                  description: The execution engine that runs this workflow. n8n sets it when it creates the workflow. It is included in workflow responses for reference, but any value sent when creating or updating a workflow is ignored.
+                  description: The execution engine that runs this workflow. n8n sets it on new workflows created through this API. It is included in workflow responses for reference, but any value sent when creating or updating a workflow is ignored.
                 callerPolicy:
                   type: string
                   enum:

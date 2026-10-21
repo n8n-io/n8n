@@ -12,8 +12,8 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
  * exact undo, but it changes no behaviour: an unset engine and `v1` run the same.
  *
  * On Postgres the column is `json` and the update goes through `jsonb`, which
- * rejects the escaped NUL character (`\u0000`). A settings object that holds one
- * makes the migration fail.
+ * rejects the escaped NUL character (`\u0000`) and unpaired surrogate escapes (such
+ * as `\ud83d`). A settings object that holds one makes the migration fail.
  */
 export class BackfillWorkflowEngineType1792568520444 implements ReversibleMigration {
 	async up(context: MigrationContext) {

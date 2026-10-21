@@ -1709,8 +1709,8 @@ export class InstanceAiAdapterService {
 				}
 
 				// Without an explicit order the engine falls back to legacy v0, which walks
-				// the graph breadth-first. Generated code still wins if it sets its own,
-				// and the same holds for the engine default.
+				// the graph breadth-first. Generated code still wins if it sets its own order
+				// or engine.
 				const settings = Container.get(WorkflowEngineDefaults).applyTo({
 					executionOrder: 'v1',
 					...(json.settings ?? {}),

@@ -32,9 +32,10 @@ export class EngineConfig {
 	mode: EngineMode = 'in-process';
 
 	/**
-	 * Execution engine for new workflows only, when the user doesn't choose one. One of `v1`,
-	 * `v2`, and `v2` only applies when `N8N_ENABLED_MODULES` includes `engine-v2`. This is in
-	 * development and not ready for use.
+	 * Execution engine for new workflows that don't set one, either `v1` or `v2`. `v2` applies
+	 * only when `N8N_ENABLED_MODULES` includes `engine-v2`, otherwise new workflows use `v1`.
+	 *
+	 * This is in development and not ready for use.
 	 */
 	@Env('N8N_ENGINE_DEFAULT_TYPE', engineDefaultTypeSchema)
 	defaultType: EngineDefaultType = 'v1';
