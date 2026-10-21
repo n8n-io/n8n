@@ -1,0 +1,24 @@
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_71ad2034164515::t_8a1db2be6bdb40 49,52
+packages/cli/src/modules/agents/utils/agent-definition.ts
+  s_71ad2034164515::t_8a1db2be6bdb40 22
+  s_71ad2034164515::t_49fd14e70adb29 23
+packages/cli/src/modules/agents/agents.service.ts
+  s_71ad2034164515::t_961dcd505c9228 22-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "601f6ac0da529d8809d124a8447a838ebedbe863",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
