@@ -1,6 +1,7 @@
-import type { ModuleRegistry } from '@n8n/backend-common';
+import type { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { EventService } from '@n8n/backend-services';
+import type { SettingsRepository } from '@n8n/db';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -38,7 +39,7 @@ describe('ScimSsoService', () => {
 		scimSettingsService = mock<ScimSettingsService>();
 		moduleRegistry = mock<ModuleRegistry>();
 		logger = mockLogger();
-		scimSwitchReader = new ScimSwitchReader();
+		scimSwitchReader = new ScimSwitchReader(mock<LicenseState>(), mock<SettingsRepository>());
 		service = new ScimSsoService(
 			logger,
 			eventService,

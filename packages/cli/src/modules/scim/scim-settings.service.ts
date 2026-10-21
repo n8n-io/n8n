@@ -3,7 +3,9 @@ import { Service } from '@n8n/di';
 
 import { CacheService } from '@n8n/backend-services';
 
-const ENABLED_KEY = 'scim.provisioning.enabled';
+import { SCIM_PROVISIONING_ENABLED_KEY } from '@/sso.ee/scim-switch-reader';
+
+const ENABLED_KEY = SCIM_PROVISIONING_ENABLED_KEY;
 
 export interface ScimSettingsChange {
 	enabled: boolean;
