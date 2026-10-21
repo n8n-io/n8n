@@ -3,6 +3,7 @@ import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { formatBytes } from '@n8n/utils/number/bytes';
+import { sleep } from '@n8n/utils/sleep';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { MemoryPressureExecutionCancelledError, WorkflowOperationError } from 'n8n-workflow';
 import { setFlagsFromString } from 'node:v8';
@@ -34,10 +35,16 @@ const FAST_INTERVAL_MS = 250;
 
 const SLOW_INTERVAL_MS = 2_000;
 
+/** How long the guard samples fast after a hold ends, because held executions then start. */
+const FAST_SAMPLING_AFTER_HOLD_MS = 5_000;
+
 /** Consecutive samples at a level before the guard acts on it. */
 const SAMPLES_TO_ACT = 2;
 
-/** Longest wait of a held execution before the guard stops the largest execution. */
+/**
+ * Longest wait of a held execution before the guard stops the largest execution. After
+ * a stop, the wait starts again, so that the guard does not stop one execution after another.
+ */
 const HOLD_LIMIT_MS = 5_000;
 
 /**
@@ -49,8 +56,16 @@ const STARVATION_ADMIT_INTERVAL_MS = 1_000;
 /** Longest wait for the running node of a stopped execution to return. */
 const RELEASE_TIMEOUT_MS = 5_000;
 
-/** Drop in utilization that counts as freeing memory, when a stop does not end the hold. */
-const FREED_DROP = 0.05;
+/**
+ * Longest time to measure memory again after a stop. The save of a stopped execution
+ * still holds its run data for a short time after its engine ends.
+ */
+const REMEASURE_TIMEOUT_MS = 3_000;
+
+const REMEASURE_INTERVAL_MS = 500;
+
+/** Share of the stopped run data estimate that memory must drop by for a stop to count. */
+const FREED_SHARE = 0.5;
 
 const MEMORY_DOCS_URL =
 	'https://docs.n8n.io/deploy/host-n8n/configure-n8n/scaling/fix-memory-issues';
@@ -91,10 +106,14 @@ export class MemoryGuardService {
 
 	private holdStartedAt: number | undefined;
 
+	private fastSamplingUntil = 0;
+
 	/** How many held executions to let start at the next sample after a hold. Doubles each time. */
 	private admitBatch = 1;
 
 	private lastStarvationAdmitAt = 0;
+
+	private lastStopEndedAt = 0;
 
 	private pendingStop: Promise<void> | undefined;
 
@@ -147,7 +166,8 @@ export class MemoryGuardService {
 			this.isHolding ||
 			this.concurrencyControl.heldCount > 0 ||
 			this.pendingStop !== undefined ||
-			this.isStandingDown;
+			this.isStandingDown ||
+			Date.now() < this.fastSamplingUntil;
 		this.scheduleNext(isUnderPressure ? FAST_INTERVAL_MS : SLOW_INTERVAL_MS);
 	}
 
@@ -177,7 +197,8 @@ export class MemoryGuardService {
 		if (!this.isHolding && !this.isHoldSuspended && shouldHold) {
 			this.startHold(usage);
 		} else if (this.isHolding && utilization < RESUME_LEVEL) {
-			this.endHold();
+			const heldMs = this.endHold();
+			this.logger.info(`Memory recovered after ${heldMs}ms, letting held executions start`);
 		}
 
 		if (this.isHolding) {
@@ -216,16 +237,27 @@ export class MemoryGuardService {
 
 	private getStopTrigger(isCritical: boolean): StopTrigger | undefined {
 		if (isCritical) return 'critical';
-		if (this.stopStreak >= SAMPLES_TO_ACT) return 'threshold';
+		if (this.stopStreak >= SAMPLES_TO_ACT && this.isAboveStopLevelAfterGc()) return 'threshold';
 		if (this.hasHoldLimitPassed()) return 'hold-limit';
 		return undefined;
 	}
 
+	/**
+	 * Memory stays high after a save until the next garbage collection, so collect
+	 * before a stop. When memory falls, the streak starts again, to limit collections.
+	 */
+	private isAboveStopLevelAfterGc() {
+		if (!this.forceGc) return true;
+		this.forceGc();
+		if (readMemoryUsage(this.containerLimit).utilization >= STOP_LEVEL) return true;
+		this.stopStreak = 0;
+		return false;
+	}
+
 	private hasHoldLimitPassed() {
 		const { oldestHeldAt } = this.concurrencyControl;
-		return (
-			this.isHolding && oldestHeldAt !== undefined && Date.now() - oldestHeldAt >= HOLD_LIMIT_MS
-		);
+		if (!this.isHolding || oldestHeldAt === undefined) return false;
+		return Date.now() - Math.max(oldestHeldAt, this.lastStopEndedAt) >= HOLD_LIMIT_MS;
 	}
 
 	/** Let held executions start in batches that double, so that memory can rise slowly. */
@@ -252,8 +284,9 @@ export class MemoryGuardService {
 
 		const heldMs = Date.now() - this.holdStartedAt;
 		this.holdStartedAt = undefined;
+		this.fastSamplingUntil = Date.now() + FAST_SAMPLING_AFTER_HOLD_MS;
 		this.concurrencyControl.endProductionHold();
-		this.logger.info(`Memory recovered after ${heldMs}ms, letting held executions start`);
+		return heldMs;
 	}
 
 	/** Stop the execution tree that holds the most run data. Returns whether it stopped one. */
@@ -292,6 +325,7 @@ export class MemoryGuardService {
 			})
 			.finally(() => {
 				this.pendingStop = undefined;
+				this.lastStopEndedAt = Date.now();
 			});
 
 		return true;
@@ -309,11 +343,7 @@ export class MemoryGuardService {
 		trigger: StopTrigger,
 	) {
 		await settleWithin(engines, RELEASE_TIMEOUT_MS);
-		this.forceGc?.();
-		const after = readMemoryUsage(this.containerLimit);
-
-		const freedMemory =
-			after.utilization < HOLD_LEVEL || before.utilization - after.utilization >= FREED_DROP;
+		const { after, freedMemory } = await this.measureAfterStop(before, target.estimatedBytes);
 
 		this.logger.warn(
 			`Stopped execution ${target.rootId} of workflow ${target.workflow.id} at ${formatBytes(before.usedBytes)} of ${formatBytes(before.limitBytes)} (${trigger}). It held an estimated ${formatBytes(target.estimatedBytes)} of run data. Memory after the stop: ${formatBytes(after.usedBytes)}`,
@@ -326,6 +356,17 @@ export class MemoryGuardService {
 			this.logger.warn(
 				'The stop freed no memory, so the memory guard stops acting until memory falls',
 			);
+		}
+	}
+
+	private async measureAfterStop(before: MemoryUsage, estimatedBytes: number) {
+		const deadline = Date.now() + REMEASURE_TIMEOUT_MS;
+		for (;;) {
+			this.forceGc?.();
+			const after = readMemoryUsage(this.containerLimit);
+			const freedMemory = before.usedBytes - after.usedBytes >= estimatedBytes * FREED_SHARE;
+			if (freedMemory || Date.now() >= deadline) return { after, freedMemory };
+			await sleep(REMEASURE_INTERVAL_MS);
 		}
 	}
 
