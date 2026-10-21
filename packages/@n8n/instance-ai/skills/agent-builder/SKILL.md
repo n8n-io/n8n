@@ -16,6 +16,8 @@ recommended_tools:
   - agent_builder_resolve_llm
   - agent_builder_finish_setup
   - agent_builder_call_agent
+  - workflow_builder_build_workflow
+  - data_tables
 ---
 
 # Agent Builder
@@ -27,9 +29,9 @@ conversation. It holds the config rules and the config schema reference.
 
 ## Routing
 
-Use this skill for every Agent build, and when the conversation already
-targets an Agent and the user is continuing that build.
-Use the `agent_builder_*` tools only for Agent artifacts.
+Use this skill for every Agent build, and when the conversation already targets
+an Agent and the user is continuing that build. Use the `agent_builder_*` tools
+only for Agent artifacts.
 
 For read-only research, use `agent-context` directly. This includes explaining
 an Agent, comparing Agents, inspecting its config or resources, and diagnosing
@@ -37,7 +39,8 @@ sessions. Do not call `agent_builder_select_agent` for these requests.
 
 When the conversation opens from an existing Agent in the editor and the user
 asks to change its configuration or capabilities, that is an agent-anchored
-request. Target that Agent and build it.
+request. Target that Agent and build it. Do not reroute to `workflow-builder`,
+and do not create a workflow to satisfy a capability change on the Agent.
 
 ## Targeting
 
@@ -46,7 +49,8 @@ creates, changes, tests, or publishes an Agent, before any other
 `agent_builder_*` call. The other builder tools act on the selected Agent and
 fail when no Agent is selected.
 
-Address Agents in this conversation with `agentRef`, a short stable key.
+Address Agents in this conversation with `agentRef`, a short stable key similar
+to a workflow `filePath`.
 
 - For the first Agent, pass a fresh `agentRef` and `name`.
 - Reuse that `agentRef` on later calls. A call with neither `agentRef` nor
@@ -97,11 +101,26 @@ in English and configure the Agent to reply in Italian.
 
 ## Prerequisites
 
-The `agent_builder_*` tools cannot create workflows or data tables, and you
-have no other tools that can. When the Agent needs an existing workflow as a
-tool, find it with `agent-context({ type: "attachable-workflows" })` and
-reference it as
-`{ "type": "workflow", "workflowId": "<id>", "workflow": "<name>" }`.
+The `agent_builder_*` tools cannot create workflows or data tables. You create
+them with your own tools:
+
+- Create a workflow tool only when one Agent tool call must run an ordered
+  multi-node procedure, or when the user explicitly needs that workflow to be
+  reusable, manually callable, or usable outside the Agent. Follow
+  `workflow-builder` to build it. Then find it with
+  `agent-context({ type: "attachable-workflows" })` and reference it as
+  `{ "type": "workflow", "workflowId": "<id>", "workflow": "<name>" }`.
+- When the Agent will store or query tabular data, follow `data-table-manager`
+  and create the required tables with `data_tables`.
+- Never ask the user to create prerequisites manually.
+
+For an unsupported chat channel that the user explicitly wants as the
+conversation surface, build an `agent-entrypoint` workflow after the Agent
+exists. It connects the platform trigger to Message an Agent, maps the
+incoming message, uses a stable platform conversation or sender identifier as
+the custom session key, and sends the Agent's `text` response through the
+platform. This workflow invokes the Agent. Never attach it to the Agent as a
+tool. Native Agent channels do not need this wrapper.
 
 ## Saved sub-agent dependencies
 
@@ -131,7 +150,9 @@ or Microsoft Teams):
   platform as an Agent tool to fake the channel.
 - Do not claim the channel is configured or available.
 - Explain that the channel is not supported for Agents, list the supported
-  alternatives with their `capabilities`, and ask which one to use.
+  alternatives with their `capabilities`, and ask which one to use. Or ask
+  whether the user wants the unsupported platform as the conversation surface
+  through the `agent-entrypoint` workflow in Prerequisites.
 
 When the user asks to change the target Agent's channels, prefer a supported
 one from the list. Never invent a type.

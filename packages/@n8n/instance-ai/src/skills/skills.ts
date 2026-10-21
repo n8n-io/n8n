@@ -12,15 +12,12 @@ import { PROMPT_FRAGMENT_SKILLS, type PromptProfile } from '../prompts/prompt-pr
 
 export const INSTANCE_AI_SKILLS_DIR = resolve(__dirname, '..', '..', 'skills');
 
-// Experiment: the Assistant builds only Agents, so every workflow and one-off skill is hidden.
-const AGENTS_ONLY_HIDDEN_SKILLS = [
-	'workflow-builder',
+// Experiment: keep the skills that teach the build and run tools, and hide the routing and planning skills.
+const HIDDEN_ROUTING_SKILLS = [
 	'progressive-building',
 	'planning',
 	'planned-task-runtime',
 	'suggest-automations',
-	'debugging-executions',
-	'data-table-manager',
 	'intent-recognition',
 	'instance-awareness',
 ];
@@ -46,7 +43,7 @@ export function loadInstanceAiSkills(): RuntimeSkillSource {
 		loadRuntimeSkillSourceFromDirectory(INSTANCE_AI_SKILLS_DIR, {
 			transformInstructions: substituteSkillPlaceholders,
 		}),
-		AGENTS_ONLY_HIDDEN_SKILLS,
+		HIDDEN_ROUTING_SKILLS,
 	);
 	return cachedSkills;
 }

@@ -8,6 +8,7 @@ description: >-
 recommended_tools:
   - n8n-docs
   - workflow_builder_credentials
+  - workflow_builder_nodes
 ---
 
 # n8n Docs Assistant

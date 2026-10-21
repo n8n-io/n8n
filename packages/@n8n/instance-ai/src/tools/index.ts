@@ -21,6 +21,16 @@ const loadCredentialsTool = lazyMod(
 const loadConversationHistoryTool = lazyMod(
 	() => require('./conversation-history.tool') as typeof import('./conversation-history.tool'),
 );
+const loadDataTablesTool = lazyMod(
+	() => require('./data-tables.tool') as typeof import('./data-tables.tool'),
+);
+const loadEvalConfigTool = lazyMod(
+	() => require('./evals/eval-config.tool') as typeof import('./evals/eval-config.tool'),
+);
+const loadExecutionsTool = lazyMod(
+	() => require('./executions.tool') as typeof import('./executions.tool'),
+);
+const loadNodesTool = lazyMod(() => require('./nodes.tool') as typeof import('./nodes.tool'));
 const loadSearchModelsTool = lazyMod(
 	() => require('./search-models.tool') as typeof import('./search-models.tool'),
 );
@@ -51,6 +61,14 @@ const loadGetSessionTool = lazyMod(
 	() =>
 		require('./orchestration/get-session.tool') as typeof import('./orchestration/get-session.tool'),
 );
+const loadReportVerificationVerdictTool = lazyMod(
+	() =>
+		require('./orchestration/report-verification-verdict.tool') as typeof import('./orchestration/report-verification-verdict.tool'),
+);
+const loadVerifyBuiltWorkflowTool = lazyMod(
+	() =>
+		require('./orchestration/verify-built-workflow.tool') as typeof import('./orchestration/verify-built-workflow.tool'),
+);
 const loadResearchTool = lazyMod(
 	() => require('./research.tool') as typeof import('./research.tool'),
 );
@@ -61,6 +79,20 @@ const loadLeaveOnboardingTool = lazyMod(
 	() =>
 		require('./shared/leave-onboarding.tool') as typeof import('./shared/leave-onboarding.tool'),
 );
+const loadApplyWorkflowCredentialsTool = lazyMod(
+	() =>
+		require('./workflows/apply-workflow-credentials.tool') as typeof import('./workflows/apply-workflow-credentials.tool'),
+);
+const loadBuildWorkflowTool = lazyMod(
+	() =>
+		require('./workflows/build-workflow.tool') as typeof import('./workflows/build-workflow.tool'),
+);
+const loadWorkflowsTool = lazyMod(
+	() => require('./workflows.tool') as typeof import('./workflows.tool'),
+);
+const loadWorkspaceTool = lazyMod(
+	() => require('./workspace.tool') as typeof import('./workspace.tool'),
+);
 
 type DomainToolFactory = () => BuiltTool;
 
@@ -68,11 +100,20 @@ function getOrchestratorDomainToolFactories(
 	context: InstanceAiContext,
 ): Array<[string, DomainToolFactory]> {
 	const tools: Array<[string, DomainToolFactory]> = [
+		[DOMAIN_TOOL_IDS.WORKFLOWS, () => loadWorkflowsTool().createWorkflowsTool(context)],
+		[DOMAIN_TOOL_IDS.EXECUTIONS, () => loadExecutionsTool().createExecutionsTool(context)],
 		[DOMAIN_TOOL_IDS.CREDENTIALS, () => loadCredentialsTool().createCredentialsTool(context)],
+		[DOMAIN_TOOL_IDS.DATA_TABLES, () => loadDataTablesTool().createDataTablesTool(context)],
+		[DOMAIN_TOOL_IDS.WORKSPACE, () => loadWorkspaceTool().createWorkspaceTool(context)],
 		[DOMAIN_TOOL_IDS.RESEARCH, () => loadResearchTool().createResearchTool(context)],
 		[DOMAIN_TOOL_IDS.N8N_DOCS, () => loadN8nDocsTool().createN8nDocsTool(context)],
+		[DOMAIN_TOOL_IDS.NODES, () => loadNodesTool().createNodesTool(context)],
 		[DOMAIN_TOOL_IDS.SEARCH_MODELS, () => loadSearchModelsTool().createSearchModelsTool()],
 		[DOMAIN_TOOL_IDS.ASK_USER, () => loadAskUserTool().createAskUserTool()],
+		[
+			DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
+			() => loadBuildWorkflowTool().createBuildWorkflowTool(context),
+		],
 	];
 
 	// Onboarding threads only: the tool ends the flow the host seeded, and the frontend restores
@@ -81,6 +122,15 @@ function getOrchestratorDomainToolFactories(
 		tools.push([
 			DOMAIN_TOOL_IDS.LEAVE_ONBOARDING,
 			() => loadLeaveOnboardingTool().createLeaveOnboardingTool(),
+		]);
+	}
+
+	// eval-config is flag-gated: the adapter only wires evaluationConfigService
+	// when `088_config_evaluations` is on, so presence = expose the tool.
+	if (context.evaluationConfigService) {
+		tools.push([
+			DOMAIN_TOOL_IDS.EVAL_CONFIG,
+			() => loadEvalConfigTool().createEvalConfigTool(context),
 		]);
 	}
 
@@ -166,6 +216,24 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
  */
 export function createOrchestrationTools(context: OrchestrationContext): InstanceAiToolRegistry {
 	const tools: Array<[string, BuiltTool]> = [];
+	if (context.workflowTaskService) {
+		tools.push([
+			ORCHESTRATION_TOOL_IDS.REPORT_VERIFICATION_VERDICT,
+			loadReportVerificationVerdictTool().createReportVerificationVerdictTool(context),
+		]);
+	}
+
+	if (context.workflowTaskService && context.domainContext) {
+		tools.push([
+			ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW,
+			loadVerifyBuiltWorkflowTool().createVerifyBuiltWorkflowTool(context),
+		]);
+		tools.push([
+			ORCHESTRATION_TOOL_IDS.APPLY_WORKFLOW_CREDENTIALS,
+			loadApplyWorkflowCredentialsTool().createApplyWorkflowCredentialsTool(context),
+		]);
+	}
+
 	const builderDelegate = context.domainContext?.builderDelegate;
 	if (builderDelegate) {
 		tools.push([
