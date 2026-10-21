@@ -91,6 +91,8 @@ function handleArtifactClick(artifact: ResourceEntry, e: MouseEvent) {
 		openAgentPreview(artifact.id, artifact.projectId);
 	} else if (artifact.type === 'skill' && artifact.id) {
 		if (!openSkillPreview) return;
+		// Always prevent: this row has no target="_blank", so the browser would
+		// navigate the chat tab away even when the skill tab is already active.
 		e.preventDefault();
 		openSkillPreview(artifact.id);
 	}
