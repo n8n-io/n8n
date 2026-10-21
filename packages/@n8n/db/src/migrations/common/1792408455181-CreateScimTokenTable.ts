@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import type { MigrationContext, ReversibleMigration } from '../migration-types';
+import type { IrreversibleMigration, MigrationContext } from '../migration-types';
 
 const tableName = 'scim_token';
 
@@ -28,8 +28,13 @@ type ScimApiKeyRow = {
  * The table keeps only a SHA-256 hash of the token and its last four
  * characters. The token is shown once, when it is created, so no code path
  * needs the value again.
+ *
+ * Irreversible: `up()` deletes the SCIM keys from `user_api_keys` and keeps
+ * only the hash, so a `down()` cannot restore a working key. After a
+ * downgrade, an admin generates a new SCIM token and enters it in the
+ * identity provider.
  */
-export class CreateScimTokenTable1792408455181 implements ReversibleMigration {
+export class CreateScimTokenTable1792408455181 implements IrreversibleMigration {
 	async up(context: MigrationContext) {
 		const {
 			schemaBuilder: { createTable, column },
@@ -73,18 +78,6 @@ export class CreateScimTokenTable1792408455181 implements ReversibleMigration {
 
 		await this.keepNewestWorkingScimKey(context);
 		await this.deleteScimKeys(context);
-	}
-
-	/**
-	 * The table holds only a hash of the token, so the previous schema cannot
-	 * get the token back. After a revert, an admin generates a new SCIM token
-	 * and enters it in the identity provider.
-	 */
-	async down({ schemaBuilder: { dropTable }, logger, migrationName }: MigrationContext) {
-		await dropTable(tableName);
-		logger.warn(
-			`[${migrationName}] The SCIM token cannot be restored. Generate a new SCIM token and enter it in the identity provider.`,
-		);
 	}
 
 	/**

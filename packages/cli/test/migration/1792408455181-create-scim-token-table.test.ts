@@ -2,10 +2,9 @@ import {
 	createTestMigrationContext,
 	initDbUpToMigration,
 	runSingleMigration,
-	undoLastSingleMigration,
 	type TestMigrationContext,
 } from '@n8n/backend-test-utils';
-import { DbConnection } from '@n8n/db';
+import { DbConnection, sqliteMigrations } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
@@ -246,24 +245,11 @@ describe('CreateScimTokenTable migration', () => {
 		});
 	});
 
-	// Only the hash is stored, so a revert cannot give the token back.
-	it('drops the table on revert and leaves no SCIM key', async () => {
-		await withContext(async (context) => {
-			await insertApiKey(context, {
-				userId: await insertUser(context),
-				apiKey: 'admin-token',
-				createdAt: '2026-01-01T00:00:00.000Z',
-			});
-		});
-		await runSingleMigration(MIGRATION_NAME);
+	// Only the hash is stored, so `db:revert` must stop at this migration.
+	it('has no down migration', () => {
+		const migration = sqliteMigrations.find(({ name }) => name === MIGRATION_NAME);
 
-		await undoLastSingleMigration();
-		dataSource = Container.get(DataSource);
-
-		await withContext(async (context) => {
-			expect(await getApiKeys(context)).toEqual([]);
-			const table = context.escape.tableName('scim_token');
-			await expect(context.runQuery(`SELECT 1 FROM ${table}`)).rejects.toThrow();
-		});
+		expect(migration).toBeDefined();
+		expect(migration?.prototype.down).toBeUndefined();
 	});
 });
