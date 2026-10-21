@@ -32,6 +32,7 @@ import {
 	CredentialsFinderService,
 	FolderFinderService,
 	InstanceWriteAccessService,
+	AiPreferenceService,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Time, TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
@@ -95,6 +96,7 @@ import type {
 	UpsertEvaluationConfigInput,
 	InstanceAiActivityService,
 	InstanceAiPreferenceService,
+	InstanceAiSkillService,
 	InstanceAiMcpService,
 	InstanceAiExecuteNodeService,
 	ExecuteNodeResult as InstanceAiExecuteNodeResult,
@@ -173,6 +175,7 @@ import {
 } from './eval/scoped-credential-provider';
 import type { EvalCredentialTestTarget } from './eval/thread-credential-allowlist.service';
 import { InstanceAiBuilderDelegateAdapterService } from './instance-ai-builder-delegate.adapter';
+import { InstanceAiSkillsAdapterService } from './instance-ai-skills.adapter';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import {
@@ -196,7 +199,6 @@ import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { writeAssistantPreference } from '@/services/ai-preference-write';
-import { AiPreferenceService } from '@/services/ai-preference.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -246,6 +248,7 @@ import type { InstanceContextScope } from './instance-context.service';
 import { InstanceAiMcpRegistryService } from './mcp';
 import { listNodeDiscriminators } from './node-definition-resolver';
 import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research';
+import { toWorkflowJSON } from './workflow-json';
 import { WorkflowTemplatesService } from './workflow-templates.service';
 
 type BuilderTemplatesServiceInstance = InstanceType<typeof BuilderTemplatesService>;
@@ -635,6 +638,7 @@ export class InstanceAiAdapterService {
 				? { activityService: this.createActivityAdapter(user, projectId) }
 				: {}),
 			...(aiPreferencesEnabled ? { aiPreferenceService: this.createPreferenceAdapter(user) } : {}),
+			skillService: this.getSkillService(user),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user, projectId),
 			templatesService: this.getTemplatesService(),
@@ -689,6 +693,20 @@ export class InstanceAiAdapterService {
 		return getCredentialIdAllowlist
 			? scopeCredentialProvider(provider, getCredentialIdAllowlist)
 			: provider;
+	}
+
+	private getSkillService(user: User): InstanceAiSkillService | undefined {
+		try {
+			const moduleRegistry = Container.get(ModuleRegistry);
+			if (!moduleRegistry.isActive('agents')) return undefined;
+			if (moduleRegistry.settings.get('agents')?.skillsHubEnabled !== true) return undefined;
+			return Container.get(InstanceAiSkillsAdapterService).createService(user);
+		} catch (error) {
+			this.logger.warn('Failed to resolve the skills adapter; skill tools disabled', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return undefined;
+		}
 	}
 
 	/**
@@ -1071,6 +1089,9 @@ export class InstanceAiAdapterService {
 			executionPersistence,
 			license,
 			telemetry,
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			eventService,
+			// EOF Experiment cleanup
 			collaborationService,
 			policyEnforcementService,
 			workflowDependencyQueryService,
@@ -1805,6 +1826,12 @@ export class InstanceAiAdapterService {
 				}
 
 				if (threadId) {
+					// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+					eventService.emit('experiment-assistant-change-saved', {
+						userId: user.id,
+						at: Date.now(),
+					});
+					// EOF Experiment cleanup
 					telemetry.track('Builder created workflow', {
 						...setupExperimentProperties,
 						user_id: user.id,
@@ -1913,6 +1940,12 @@ export class InstanceAiAdapterService {
 				}
 
 				if (threadId) {
+					// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+					eventService.emit('experiment-assistant-change-saved', {
+						userId: user.id,
+						at: Date.now(),
+					});
+					// EOF Experiment cleanup
 					telemetry.track('Builder modified workflow', {
 						...setupExperimentProperties,
 						user_id: user.id,
@@ -5478,49 +5511,6 @@ function sanitizeCredentialReferencesForSave(nodes: WorkflowJSON['nodes']): Work
 		}
 		return sanitized;
 	});
-}
-
-function toWorkflowJSON(
-	workflow: WorkflowEntity,
-	options?: {
-		redactParameters?: boolean;
-		/** Substitute a history version's graph; id/name/settings stay from the live entity, as history rows only carry a version label. */
-		graph?: Pick<WorkflowEntity, 'nodes' | 'connections' | 'nodeGroups'>;
-	},
-): WorkflowJSON {
-	const redact = options?.redactParameters ?? false;
-	const source = options?.graph ?? workflow;
-	return {
-		id: workflow.id,
-		name: workflow.name,
-		nodes: (source.nodes ?? []).map((n) => ({
-			id: n.id ?? '',
-			name: n.name,
-			type: n.type,
-			typeVersion: n.typeVersion,
-			position: n.position,
-			parameters: redact ? {} : n.parameters,
-			credentials: n.credentials,
-			webhookId: n.webhookId,
-			disabled: n.disabled,
-			notes: n.notes,
-			notesInFlow: n.notesInFlow,
-			executeOnce: n.executeOnce,
-			retryOnFail: n.retryOnFail,
-			maxTries: n.maxTries,
-			waitBetweenTries: n.waitBetweenTries,
-			alwaysOutputData: n.alwaysOutputData,
-			// `continueOnFail` is the pre-`onError` spelling and has no SDK config field, so
-			// read it the way the editor does. An agent save writes these nodes over the saved
-			// ones, and dropping the flag would silently reset the node to `stopWorkflow`.
-			onError: n.onError ?? (n.continueOnFail ? 'continueRegularOutput' : undefined),
-			extendsCredential: n.extendsCredential,
-			customTelemetryTags: n.customTelemetryTags,
-		})),
-		connections: source.connections,
-		settings: workflow.settings as WorkflowJSON['settings'],
-		...(source.nodeGroups ? { nodeGroups: source.nodeGroups } : {}),
-	};
 }
 
 function toWorkflowDetail(

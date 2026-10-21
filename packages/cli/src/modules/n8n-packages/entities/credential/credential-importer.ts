@@ -1,3 +1,4 @@
+import type { SerializedCredential } from '@n8n/api-types';
 import { CredentialsFinderService } from '@n8n/backend-services';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -24,7 +25,6 @@ import type {
 } from './credential.types';
 import type { ImportBindingMap, ImportContext } from '../../n8n-packages.types';
 import { mergeRequirementConsumers } from '../../spec/requirement-consumers';
-import type { SerializedCredential } from '../../spec/serialized/credential.schema';
 
 @Service()
 export class CredentialImporter {
@@ -158,11 +158,20 @@ export class CredentialImporter {
 		context: ImportContext,
 		request: CredentialBindingRequest,
 		resolution: CredentialResolution,
+		projectPendingCreation: boolean,
 	): Promise<void> {
+		const toCreate = credentialsToStub(request.missingMode, resolution);
+		if (toCreate.length === 0) return;
+
+		// The import creates this project and makes the user its admin, so it has no scopes to look up yet.
+		if (!projectPendingCreation) {
+			await this.credentialsService.assertCanCreateInProject(context.user, context.projectId);
+		}
+
 		if (!credentialMissingModeUsesPackageData(request.missingMode)) return;
 
 		const packageData = packageDataBySourceId(request.requirements);
-		for (const { sourceId } of credentialsToStub(request.missingMode, resolution)) {
+		for (const { sourceId } of toCreate) {
 			const data = packageData.get(sourceId);
 			if (data !== undefined) {
 				await this.credentialsService.validateStubCredentialData(

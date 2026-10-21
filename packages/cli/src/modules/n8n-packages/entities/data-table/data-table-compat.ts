@@ -1,12 +1,9 @@
+import type { SerializedDataTable, SerializedDataTableColumn } from '@n8n/api-types';
 import type { DataTableColumnType } from 'n8n-workflow';
 
 import { pairDataTableColumns } from '@/modules/data-table/utils/pair-columns';
 
 import type { DataTableColumnTypeMismatch, DataTableSchemaOperation } from './data-table.types';
-import type {
-	SerializedDataTable,
-	SerializedDataTableColumn,
-} from '../../spec/serialized/data-table.schema';
 
 export type TargetColumn = { id?: string; name: string; type: DataTableColumnType; index: number };
 

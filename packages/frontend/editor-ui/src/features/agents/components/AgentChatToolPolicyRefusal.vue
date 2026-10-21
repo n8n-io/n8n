@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { N8nLink } from '@n8n/design-system';
 import {
-	ContactInstanceAdminModal,
+	ContactAdminModal,
 	type RestrictedTypeKind,
 } from '@n8n/frontend-module-type-availability-policies';
 import { useI18n } from '@n8n/i18n';
@@ -48,7 +48,7 @@ onMounted(() => {
 		>
 			{{ i18n.baseText('typeAvailabilityPolicies.restrictedNode.contactAdmin') }}
 		</N8nLink>
-		<ContactInstanceAdminModal
+		<ContactAdminModal
 			v-model:open="isContactAdminOpen"
 			:node-type-name="adminSubject"
 			:kind="adminSubjectKind"
