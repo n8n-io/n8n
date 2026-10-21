@@ -135,6 +135,7 @@ onMounted(async () => {
 			</N8nHeading>
 			<N8nPreviewBadge size="medium" data-test-id="chat-hub-preview-badge" />
 			<N8nEnterpriseReadinessBadge
+				v-if="settingsStore.isEnterprisePlan"
 				size="medium"
 				data-test-id="chat-hub-enterprise-readiness-badge"
 			/>

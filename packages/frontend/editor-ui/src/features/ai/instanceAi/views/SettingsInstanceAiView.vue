@@ -465,7 +465,7 @@ function openAiUsageSettings() {
 			:docs-url="DOCS_URL"
 			:docs-label="i18n.baseText('settings.n8nAgent.docsLabel')"
 		>
-			<template #titleTrailing>
+			<template v-if="settingsStore.isEnterprisePlan" #titleTrailing>
 				<N8nEnterpriseReadinessBadge
 					size="medium"
 					data-test-id="n8n-agent-enterprise-readiness-badge"
