@@ -22,9 +22,14 @@ vi.mock('./useWhatsAppMetaStatus', () => ({
 }));
 
 const baseProps = {
-	mode: 'edit',
+	mode: 'edit' as const,
 	modelValue: 'cred-1',
-	integration: { type: 'whatsapp', label: 'WhatsApp', icon: 'whatsapp' },
+	integration: {
+		type: 'whatsapp',
+		label: 'WhatsApp',
+		icon: 'whatsapp',
+		credentialTypes: ['whatsAppBotApi'],
+	},
 	credentials: [],
 	credentialPermissions: {},
 	credentialsLoading: false,

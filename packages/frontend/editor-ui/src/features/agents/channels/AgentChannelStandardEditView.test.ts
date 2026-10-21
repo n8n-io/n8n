@@ -1,11 +1,17 @@
 import { mount } from '@vue/test-utils';
+import { ref } from 'vue';
 import { describe, expect, it } from 'vitest';
 
 import AgentChannelStandardEditView from './AgentChannelStandardEditView.vue';
 
 const props = {
-	mode: 'edit',
-	integration: { type: 'whatsapp', label: 'WhatsApp', icon: 'whatsapp' },
+	mode: 'edit' as const,
+	integration: {
+		type: 'whatsapp',
+		label: 'WhatsApp',
+		icon: 'whatsapp',
+		credentialTypes: ['whatsAppBotApi'],
+	},
 	modelValue: 'cred-1',
 	credentials: [],
 	credentialPermissions: {},
@@ -21,7 +27,7 @@ const props = {
 	agentId: 'agent-1',
 	forceNewCredential: false,
 	simpleSetup: false,
-	runtime: { load: async () => {}, loading: { value: false } },
+	runtime: { load: async () => {}, loading: ref(false) },
 	detailsComponent: { template: '<div data-testid="details" />' },
 };
 
