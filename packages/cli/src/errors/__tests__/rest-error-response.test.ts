@@ -3,6 +3,7 @@ import { serializeInternalRestError, serializePublicApiError } from '@n8n/backen
 import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import { toImportBlockedError } from '@/modules/n8n-packages/engine/import-blocked.error';
+import type { BlockingIssue } from '@/modules/n8n-packages/n8n-packages.types';
 import { PromotionsWorkflowsMovedCrossProjectError } from '@/modules/promotions.ee/promotions-selective-push.error';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 
@@ -76,12 +77,12 @@ describe('rest-error-response', () => {
 	});
 
 	it('serializePublicApiError: 422 with issues when only credentials are unresolved', () => {
-		const issues = [
+		const issues: BlockingIssue[] = [
 			{
 				type: 'credential-unresolved' as const,
 				kind: 'not_found' as const,
 				sourceId: 'cred-1',
-				usedByWorkflows: ['wf-1'],
+				usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 			},
 		];
 		const descriptor = classifyRestError(toImportBlockedError(issues));
@@ -92,7 +93,7 @@ describe('rest-error-response', () => {
 	});
 
 	it('serializePublicApiError: 409 with issues when a workflow conflicts', () => {
-		const issues = [
+		const issues: BlockingIssue[] = [
 			{
 				type: 'workflow-conflict' as const,
 				sourceWorkflowId: 'wf-1',
@@ -103,7 +104,7 @@ describe('rest-error-response', () => {
 				type: 'credential-unresolved' as const,
 				kind: 'not_found' as const,
 				sourceId: 'cred-1',
-				usedByWorkflows: ['wf-1'],
+				usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 			},
 		];
 		const descriptor = classifyRestError(toImportBlockedError(issues));

@@ -7,7 +7,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsHelper } from '@/credentials-helper';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
-import type { AiGatewayModelCredentialResolver } from '../json-config/model-config';
+import type { AiGatewayModelCredentialResolver } from '../agent-credential-provider.contracts';
 import type { AiGatewaySearchCredentialResolver } from '../json-config/web-search-credential';
 import { decryptAgentCredential } from '../utils/decrypt-agent-credential';
 
@@ -136,6 +136,7 @@ export class AgentsCredentialProvider
 		// used to limit available credentials to the user's access when calling agent builder
 		return await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(this.user, {
 			projectId: this.projectId,
+			excludePersonalRoute: true,
 		});
 	}
 

@@ -1745,10 +1745,13 @@ export class WorkflowExecute {
 	 * so `executeWorkflow` never reports again). Restore it so the new task and
 	 * `runtimeData.executedByUserId` still inherit the flags. The stash is
 	 * transport-only, so consume it to keep it out of the persisted task metadata.
+	 * It also resets and restores the plain credential ids sub-workflows report
+	 * (`currentNodeUsedCredentialIds`), which credential usability redaction reads.
 	 */
 	private resetDynamicCredentialsUsage(executionData: IExecuteData): void {
 		this.additionalData.currentNodeUsedDynamicCredentials = false;
 		this.additionalData.currentNodeAttemptedDynamicCredentials = false;
+		this.additionalData.currentNodeUsedCredentialIds = undefined;
 
 		const reportedUsage = executionData.metadata?.dynamicCredentialsUsage;
 		if (reportedUsage) {
@@ -1910,6 +1913,10 @@ export class WorkflowExecute {
 		}
 
 		if (nodeSuccessData && executionData.node.onError === 'continueErrorOutput') {
+			// Pair output items before the split. After the split there are two output
+			// arrays and `assignPairedItems` can no longer match items by count, so
+			// items the node did not pair itself would lose their lineage.
+			this.assignPairedItems(nodeSuccessData, executionData);
 			this.handleNodeErrorOutput(workflow, executionData, nodeSuccessData, runIndex);
 		}
 
@@ -2033,6 +2040,9 @@ export class WorkflowExecute {
 			usedDynamicCredentials: this.additionalData.currentNodeUsedDynamicCredentials || undefined,
 			attemptedDynamicCredentials:
 				this.additionalData.currentNodeAttemptedDynamicCredentials || undefined,
+			...(this.additionalData.currentNodeUsedCredentialIds?.length && {
+				usedCredentialIds: [...this.additionalData.currentNodeUsedCredentialIds],
+			}),
 		};
 	}
 

@@ -13,6 +13,19 @@ import type { BreakingChangeLightReportResult } from '@n8n/api-types';
 vi.mock('@n8n/rest-api-client/api/breaking-changes', () => ({
 	getReport: vi.fn(),
 	refreshReport: vi.fn(),
+	exportReport: vi.fn(),
+}));
+
+const { saveAs, showError } = vi.hoisted(() => ({
+	saveAs: vi.fn(),
+	showError: vi.fn(),
+}));
+
+vi.mock('file-saver', () => ({ saveAs }));
+
+vi.mock('@n8n/composables/useToast', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	useToast: () => ({ showError }),
 }));
 
 let rootStore: ReturnType<typeof mockedStore<typeof useRootStore>>;
@@ -204,7 +217,7 @@ describe('MigrationRules', () => {
 				expect(screen.getByText('5 Workflows')).toBeInTheDocument();
 
 				// Impact tag
-				expect(screen.getByText('Executions fail')).toBeInTheDocument();
+				expect(screen.getByText('Executions will fail')).toBeInTheDocument();
 
 				// Documentation link
 				expect(screen.getAllByText('Documentation').length).toBeGreaterThan(0);
@@ -288,7 +301,7 @@ describe('MigrationRules', () => {
 				expect(screen.getByText('Test Rule 1')).toBeInTheDocument();
 				expect(screen.getByText('Test Rule 2')).toBeInTheDocument();
 				expect(screen.getByText('Test Rule 3')).toBeInTheDocument();
-				expect(screen.getByText('Executions fail')).toBeInTheDocument();
+				expect(screen.getByText('Executions will fail')).toBeInTheDocument();
 				expect(screen.getByText('Behavior changes')).toBeInTheDocument();
 				expect(screen.getByText('Upgrade blocked')).toBeInTheDocument();
 				expect(screen.getByText('Capability removed')).toBeInTheDocument();
@@ -545,7 +558,7 @@ describe('MigrationRules', () => {
 			},
 		);
 
-		it('should show when the report was last synced, from generatedAt', async () => {
+		it('should show when the report was last updated, from generatedAt', async () => {
 			// One year in the past, so the relative label is stable whatever the test date.
 			const generatedAt = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
 			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(
@@ -563,12 +576,26 @@ describe('MigrationRules', () => {
 			renderComponent();
 
 			await waitFor(() => {
-				const lastSynced = screen.getByTestId('migration-report-last-synced');
-				expect(lastSynced).toHaveTextContent(/Last synced\s+1 year ago/);
+				const lastUpdated = screen.getByTestId('migration-report-last-updated');
+				expect(lastUpdated).toHaveTextContent(/Last updated\s+1 year ago/);
 			});
 		});
 
-		it('should update the last synced time after Refresh', async () => {
+		it('should show "Never updated" when the report has no generatedAt', async () => {
+			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(
+				createMockReport({ report: { ...mockReport.report, generatedAt: undefined } }),
+			);
+
+			renderComponent();
+
+			await waitFor(() => {
+				expect(screen.getByTestId('migration-report-last-updated')).toHaveTextContent(
+					'Never updated',
+				);
+			});
+		});
+
+		it('should update the last updated time after Refresh', async () => {
 			const oldDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
 			const newDate = new Date(Date.now() - 60 * 1000);
 			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(
@@ -581,13 +608,13 @@ describe('MigrationRules', () => {
 			renderComponent();
 
 			await waitFor(() => {
-				expect(screen.getByTestId('migration-report-last-synced')).toHaveTextContent(/1 year ago/);
+				expect(screen.getByTestId('migration-report-last-updated')).toHaveTextContent(/1 year ago/);
 			});
 
 			await userEvent.click(screen.getByText('Refresh'));
 
 			await waitFor(() => {
-				expect(screen.getByTestId('migration-report-last-synced')).toHaveTextContent(
+				expect(screen.getByTestId('migration-report-last-updated')).toHaveTextContent(
 					/1 minute ago/,
 				);
 			});
@@ -766,7 +793,7 @@ describe('MigrationRules', () => {
 			},
 			{
 				impact: 'executionsFail',
-				label: 'Executions fail',
+				label: 'Executions will fail',
 				tooltipText: 'will fail',
 			},
 			{
@@ -862,6 +889,56 @@ describe('MigrationRules', () => {
 					screen.getByText(/0 of your 0 workflows are already compatible/, { exact: false }),
 				).toBeInTheDocument();
 			});
+		});
+	});
+
+	describe('export', () => {
+		it('downloads the CSV the server returns, under the name the server gives it', async () => {
+			const blob = new Blob(['target_version\r\n'], { type: 'text/csv' });
+			vi.mocked(breakingChangesApi.exportReport).mockResolvedValue({
+				blob,
+				filename: 'migration-report-v3-2026-10-20.csv',
+			});
+			renderComponent();
+			await waitFor(() => {
+				expect(screen.getByText('Test Rule 1')).toBeInTheDocument();
+			});
+
+			await userEvent.click(screen.getByTestId('migration-report-export'));
+
+			await waitFor(() => {
+				expect(saveAs).toHaveBeenCalledWith(blob, 'migration-report-v3-2026-10-20.csv');
+			});
+			expect(breakingChangesApi.exportReport).toHaveBeenCalledWith(rootStore.restApiContext, {
+				version: 'v3',
+			});
+			expect(showError).not.toHaveBeenCalled();
+		});
+
+		it('shows an error toast when the export fails', async () => {
+			const error = new Error('Forbidden');
+			vi.mocked(breakingChangesApi.exportReport).mockRejectedValue(error);
+			renderComponent();
+			await waitFor(() => {
+				expect(screen.getByText('Test Rule 1')).toBeInTheDocument();
+			});
+
+			await userEvent.click(screen.getByTestId('migration-report-export'));
+
+			await waitFor(() => {
+				expect(showError).toHaveBeenCalledWith(error, 'Could not export the report');
+			});
+			expect(saveAs).not.toHaveBeenCalled();
+		});
+
+		it('is offered to a user who cannot edit every workflow', async () => {
+			rbacStore.hasScope.mockReturnValue(false);
+			renderComponent();
+			await waitFor(() => {
+				expect(screen.getByText('Test Rule 1')).toBeInTheDocument();
+			});
+
+			expect(screen.getByTestId('migration-report-export')).toBeInTheDocument();
 		});
 	});
 });

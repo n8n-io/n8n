@@ -241,7 +241,7 @@ function onAddToChat() {
 				v-if="isFocusNodeVisible"
 				variant="ghost"
 				size="small"
-				icon="crosshair"
+				icon="node-focus"
 				:aria-label="i18n.baseText('node.focusNode')"
 				@click.stop="onFocusNode"
 			/>
@@ -256,7 +256,7 @@ function onAddToChat() {
 					variant="ghost"
 					size="small"
 					text
-					icon="sparkles"
+					icon="node-sparkle"
 					:aria-label="i18n.baseText('node.addToAi')"
 					@click.stop="onAddToAi"
 				/>
@@ -271,7 +271,7 @@ function onAddToChat() {
 					variant="ghost"
 					size="small"
 					text
-					icon="sparkles"
+					icon="node-sparkle"
 					:aria-label="i18n.baseText('node.addToChat')"
 					@click.stop="onAddToChat"
 				/>

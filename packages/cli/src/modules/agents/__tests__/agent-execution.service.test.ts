@@ -26,6 +26,7 @@ import type { AgentMessageRepository } from '../repositories/agent-message.repos
 import type { AgentMessageQueueRepository } from '../repositories/agent-message-queue.repository';
 import { MARK_SESSION_FAILED_TOOL_NAME } from '../tools/mark-session-failed.tool';
 import { MAX_ITERATIONS_STOPPED_MESSAGE } from '../utils/fatal-session-outcome';
+import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
 
 const previewAccess = { accessScope: 'user' as const, ownerId: 'user-1' };
 
@@ -148,6 +149,7 @@ describe('AgentExecutionService', () => {
 			txRunner,
 			queueRepository,
 			messageRepository,
+			new SystemAgentRegistry(),
 		);
 	});
 
@@ -783,6 +785,7 @@ describe('AgentExecutionService', () => {
 				txRunner,
 				queueRepository,
 				messageRepository,
+				new SystemAgentRegistry(),
 			);
 
 			const record = makeMessageRecord({
@@ -880,6 +883,7 @@ describe('AgentExecutionService', () => {
 					txRunner,
 					queueRepository,
 					messageRepository,
+					new SystemAgentRegistry(),
 				);
 
 				const record = makeMessageRecord({
@@ -1110,6 +1114,7 @@ describe('AgentExecutionService', () => {
 				agentName: 'Agent',
 				projectId: 'project-1',
 				userMessage: 'Run',
+				source: 'instance-ai',
 				record: makeMessageRecord({
 					usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
 					totalCost: 25,
@@ -1145,6 +1150,7 @@ describe('AgentExecutionService', () => {
 				agent_id: 'agent-1',
 				thread_id: 'thread-1',
 				run_type: 'test',
+				source: 'instance-ai',
 				turn_status: 'succeeded',
 				configuration: {
 					model: 'anthropic/claude-sonnet-4-5',
@@ -1492,6 +1498,7 @@ describe('AgentExecutionService', () => {
 				txRunner,
 				queueRepository,
 				messageRepository,
+				new SystemAgentRegistry(),
 			);
 			const partial = [{ type: 'text', content: 'Partial', timestamp: 1, endTime: 2 }] as const;
 			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);

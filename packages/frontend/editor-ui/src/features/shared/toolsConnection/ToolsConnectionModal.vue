@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, defineComponent, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
 import {
 	N8nDialog,
+	N8nDialogBody,
 	N8nIcon,
 	N8nInput,
 	N8nRecycleScroller,
@@ -28,7 +29,7 @@ import {
 } from './types';
 
 type PickerCreateAction = {
-	category: ToolCategoryKey;
+	category?: ToolCategoryKey;
 	label: string;
 	description?: string;
 	testId?: string;
@@ -55,11 +56,14 @@ const props = withDefaults(
 		/** Render only the modal body when an owning feature supplies the dialog shell. */
 		embedded?: boolean;
 		showConnectActions?: boolean;
+		/** Show matches from all categories under category headings while searching. */
+		groupSearchResults?: boolean;
 		/** Keep the list scrollbar visible instead of revealing it on hover. */
 		persistentScrollbar?: boolean;
 		connectLabel?: (item: ToolConnectionItem) => string;
 		connectAriaLabel?: (item: ToolConnectionItem) => string;
 		connectedLabel?: (item: ToolConnectionItem) => string;
+		categoryLabels?: Partial<Record<ToolCategoryKey, string>>;
 	}>(),
 	{
 		open: false,
@@ -73,6 +77,7 @@ const props = withDefaults(
 		noResultsMessage: undefined,
 		embedded: false,
 		showConnectActions: false,
+		groupSearchResults: false,
 		persistentScrollbar: false,
 	},
 );
@@ -89,12 +94,20 @@ const emit = defineEmits<{
 	'new-credential-connect': [item: ToolConnectionItem];
 	'open-detail': [item: ToolConnectionItem];
 	connect: [item: ToolConnectionItem];
-	create: [];
+	create: [category: ToolCategoryKey];
 }>();
 
 const i18n = useI18n();
 const modalTitle = computed(() => props.title ?? i18n.baseText('tools.connection.title'));
 const containerComponent = computed(() => (props.embedded ? 'div' : N8nDialog));
+// Embedded mode is not a dialog. Skip N8nDialogBody so the panel has no dialog padding.
+const SlotOnly = defineComponent({
+	name: 'SlotOnly',
+	setup(_, { slots }) {
+		return () => slots.default?.();
+	},
+});
+const bodyComponent = computed(() => (props.embedded ? SlotOnly : N8nDialogBody));
 const containerProps = computed(() =>
 	props.embedded
 		? {}
@@ -163,6 +176,7 @@ onMounted(() => {
 
 const normalizedSearchQuery = computed(() => debouncedSearchQuery.value.trim());
 const hasActiveSearch = computed(() => normalizedSearchQuery.value.length > 0);
+const isGroupedSearch = computed(() => props.groupSearchResults && hasActiveSearch.value);
 
 function matchesQuery(item: ToolConnectionItem): boolean {
 	if (!normalizedSearchQuery.value) return true;
@@ -225,18 +239,16 @@ function tabCount(category: ToolCategoryKey): string {
 	return count > MAX_DISPLAYED_COUNT ? `${MAX_DISPLAYED_COUNT}+` : String(count);
 }
 
-type ListRow = FlattenedRow | { key: 'suggestion' };
+type CategoryListRow = {
+	key: `category:${ToolCategoryKey}`;
+	category: ToolCategoryKey;
+};
+type ListRow = FlattenedRow | CategoryListRow | { key: 'suggestion' };
 
 const toolRows = computed<FlattenedRow[]>(() =>
 	partitionLast(itemsForCategory(activeCategory.value).filter(matchesQuery), isRestrictedItem).map(
 		(item) => ({ key: `item:${item.id}`, item }),
 	),
-);
-
-const flattenedRows = computed<ListRow[]>(() =>
-	isMcpCategory.value || props.showSuggestionFooter
-		? [...toolRows.value, { key: 'suggestion' }]
-		: toolRows.value,
 );
 
 /** Categories only worth a tab once they hold something. */
@@ -276,12 +288,34 @@ const CATEGORY_I18N: Record<ToolCategoryKey, BaseTextKey> = {
 	community: 'tools.connection.categories.community',
 	workflows: 'tools.connection.categories.workflows',
 	agents: 'tools.connection.categories.agents',
+	project: 'tools.connection.categories.project',
+	'this-agent': 'tools.connection.categories.thisAgent',
+	global: 'tools.connection.categories.global',
 	data: 'tools.connection.categories.data',
 };
 
 function categoryLabel(category: ToolCategoryKey): string {
-	return i18n.baseText(CATEGORY_I18N[category]);
+	return props.categoryLabels?.[category] ?? i18n.baseText(CATEGORY_I18N[category]);
 }
+
+const groupedSearchRows = computed<ListRow[]>(() => {
+	const rows: ListRow[] = [];
+	for (const category of visibleCategories.value) {
+		if (category === 'all') continue;
+		const matches = itemsForCategory(category).filter(matchesQuery);
+		if (matches.length === 0) continue;
+		rows.push({ key: `category:${category}`, category } satisfies CategoryListRow);
+		rows.push(...matches.map((item) => ({ key: `item:${item.id}`, item })));
+	}
+	return rows;
+});
+
+const flattenedRows = computed<ListRow[]>(() => {
+	if (isGroupedSearch.value) return groupedSearchRows.value;
+	return isMcpCategory.value || props.showSuggestionFooter
+		? [...toolRows.value, { key: 'suggestion' }]
+		: toolRows.value;
+});
 
 /**
  * The count rides in the label rather than `tag`, which would render a chip per
@@ -303,7 +337,9 @@ watch(visibleCategories, (categories) => {
 	}
 });
 
-const isListEmpty = computed(() => toolRows.value.length === 0);
+const isListEmpty = computed(() =>
+	isGroupedSearch.value ? groupedSearchRows.value.length === 0 : toolRows.value.length === 0,
+);
 const resolvedEmptyMessage = computed(() => {
 	if (hasActiveSearch.value) {
 		if (props.noResultsMessage) return props.noResultsMessage;
@@ -313,7 +349,12 @@ const resolvedEmptyMessage = computed(() => {
 	}
 	return props.emptyMessage ?? i18n.baseText('tools.connection.empty.title');
 });
-const showCreateAction = computed(() => props.createAction?.category === activeCategory.value);
+const showCreateAction = computed(
+	() =>
+		props.createAction !== undefined &&
+		(props.createAction.category === undefined ||
+			props.createAction.category === activeCategory.value),
+);
 
 function openDetail(item: ToolConnectionItem) {
 	emit('open-detail', item);
@@ -340,9 +381,8 @@ function handleOpenChange(value: boolean) {
 		data-test-id="tools-connection-modal"
 		@update:open="handleOpenChange"
 	>
-		<div :class="$style.body">
+		<div v-if="detailItem && detailMode === 'settings'" :class="$style.body">
 			<ToolSettingsView
-				v-if="detailItem && detailMode === 'settings'"
 				:key="detailItem.id"
 				:item="detailItem"
 				:hide-back-button="hideBackButton"
@@ -361,121 +401,135 @@ function handleOpenChange(value: boolean) {
 					<slot name="settings-body" v-bind="slotProps" />
 				</template>
 			</ToolSettingsView>
-			<ToolDetailView
-				v-else-if="detailItem"
-				:item="detailItem"
-				:hide-back-button="hideBackButton"
-				@back="closeDetail"
-				@close="handleOpenChange(false)"
-				@select-credential="
-					(item, authType, credentialId) => emit('select-credential', item, authType, credentialId)
-				"
-				@credential-dropdown-open="emit('credential-dropdown-open', $event)"
-				@first-credential-connect="emit('first-credential-connect', $event)"
-				@new-credential-connect="emit('new-credential-connect', $event)"
-			>
-				<template v-if="$slots['detail-body']" #body="slotProps">
-					<slot name="detail-body" v-bind="slotProps" />
-				</template>
-			</ToolDetailView>
-			<template v-else>
-				<N8nInput
-					ref="searchInputRef"
-					v-model="searchQuery"
-					:placeholder="searchPlaceholder"
-					clearable
-					data-test-id="tools-connection-search"
-					:class="$style.searchInput"
+		</div>
+		<component v-else :is="bodyComponent">
+			<div :class="$style.body">
+				<ToolDetailView
+					v-if="detailItem"
+					:item="detailItem"
+					:hide-back-button="hideBackButton"
+					@back="closeDetail"
+					@close="handleOpenChange(false)"
+					@select-credential="
+						(item, authType, credentialId) =>
+							emit('select-credential', item, authType, credentialId)
+					"
+					@credential-dropdown-open="emit('credential-dropdown-open', $event)"
+					@first-credential-connect="emit('first-credential-connect', $event)"
+					@new-credential-connect="emit('new-credential-connect', $event)"
 				>
-					<template #prefix>
-						<N8nIcon icon="search" />
+					<template v-if="$slots['detail-body']" #body="slotProps">
+						<slot name="detail-body" v-bind="slotProps" />
 					</template>
-				</N8nInput>
-
-				<N8nTabs
-					v-if="tabsVisible"
-					:model-value="activeCategory"
-					:options="tabOptions"
-					size="small"
-					variant="modern"
-					justified
-					:class="$style.tabs"
-					data-test-id="tools-connection-tabs"
-					@update:model-value="selectCategory"
-				/>
-
-				<button
-					v-if="showCreateAction && createAction"
-					type="button"
-					:class="$style.createRow"
-					:disabled="createActionLoading"
-					:aria-busy="createActionLoading"
-					:data-test-id="createAction.testId ?? 'tools-connection-create'"
-					@click="emit('create')"
-				>
-					<span :class="$style.createIcon" aria-hidden="true">
-						<N8nIcon
-							:icon="createActionLoading ? 'loader-circle' : 'plus'"
-							:size="20"
-							:spin="createActionLoading"
-						/>
-					</span>
-					<span :class="$style.createText">
-						<N8nText tag="span" bold>
-							{{ createAction.label }}
-						</N8nText>
-						<N8nText v-if="createAction.description" tag="span" size="small" color="text-light">
-							{{ createAction.description }}
-						</N8nText>
-					</span>
-				</button>
-
-				<div :class="$style.listWrapper">
-					<template v-if="isListEmpty">
-						<div :class="$style.empty" data-test-id="tools-connection-empty">
-							<N8nText color="text-light">{{ resolvedEmptyMessage }}</N8nText>
-						</div>
-						<div v-if="isMcpCategory || showSuggestionFooter" :class="$style.suggestionRow">
-							<slot name="suggestion-footer" />
-						</div>
-					</template>
-					<N8nRecycleScroller
-						v-else
-						ref="scrollerRef"
-						:items="flattenedRows"
-						:item-size="ITEM_HEIGHT"
-						item-key="key"
-						:class="[$style.scroller, persistentScrollbar && $style.persistentScrollbar]"
+				</ToolDetailView>
+				<template v-else>
+					<N8nInput
+						ref="searchInputRef"
+						v-model="searchQuery"
+						:placeholder="searchPlaceholder"
+						clearable
+						data-test-id="tools-connection-search"
+						:class="$style.searchInput"
 					>
-						<template #default="{ item: row }">
-							<ToolRow
-								v-if="'item' in row"
-								:item="row.item"
-								:show-connect-action="props.showConnectActions"
-								:connect-label="props.connectLabel?.(row.item)"
-								:connect-aria-label="props.connectAriaLabel?.(row.item)"
-								:connected-label="props.connectedLabel?.(row.item)"
-								@open-detail="openDetail($event)"
-								@connect="emit('connect', $event)"
-								@select-credential="
-									(item, authType, credentialId) =>
-										emit('select-credential', item, authType, credentialId)
-								"
-								@credential-dropdown-open="emit('credential-dropdown-open', $event)"
-								@first-credential-connect="emit('first-credential-connect', $event)"
-								@new-credential-connect="emit('new-credential-connect', $event)"
+						<template #prefix>
+							<N8nIcon icon="search" />
+						</template>
+					</N8nInput>
+
+					<N8nTabs
+						v-if="tabsVisible && !isGroupedSearch"
+						:model-value="activeCategory"
+						:options="tabOptions"
+						size="small"
+						variant="modern"
+						justified
+						:class="$style.tabs"
+						data-test-id="tools-connection-tabs"
+						@update:model-value="selectCategory"
+					/>
+
+					<button
+						v-if="showCreateAction && createAction"
+						type="button"
+						:class="$style.createRow"
+						:disabled="createActionLoading"
+						:aria-busy="createActionLoading"
+						:data-test-id="createAction.testId ?? 'tools-connection-create'"
+						@click="emit('create', activeCategory)"
+					>
+						<span :class="$style.createIcon" aria-hidden="true">
+							<N8nIcon
+								:icon="createActionLoading ? 'loader-circle' : 'plus'"
+								:size="20"
+								:spin="createActionLoading"
 							/>
-							<div v-else :class="$style.suggestionRow">
+						</span>
+						<span :class="$style.createText">
+							<N8nText tag="span" bold>
+								{{ createAction.label }}
+							</N8nText>
+							<N8nText v-if="createAction.description" tag="span" size="small" color="text-light">
+								{{ createAction.description }}
+							</N8nText>
+						</span>
+					</button>
+
+					<div :class="$style.listWrapper">
+						<template v-if="isListEmpty">
+							<div :class="$style.empty" data-test-id="tools-connection-empty">
+								<N8nText color="text-light">{{ resolvedEmptyMessage }}</N8nText>
+							</div>
+							<div v-if="isMcpCategory || showSuggestionFooter" :class="$style.suggestionRow">
 								<slot name="suggestion-footer" />
 							</div>
 						</template>
-					</N8nRecycleScroller>
-				</div>
-			</template>
-		</div>
+						<N8nRecycleScroller
+							v-else
+							ref="scrollerRef"
+							:items="flattenedRows"
+							:item-size="ITEM_HEIGHT"
+							item-key="key"
+							:class="[$style.scroller, persistentScrollbar && $style.persistentScrollbar]"
+						>
+							<template #default="{ item: row }">
+								<div
+									v-if="'category' in row"
+									:class="$style.categoryHeader"
+									:data-test-id="`tools-connection-search-category-${row.category}`"
+								>
+									<N8nText tag="h3" size="small" bold color="text-light">
+										{{ categoryLabel(row.category) }}
+									</N8nText>
+								</div>
+								<ToolRow
+									v-else-if="'item' in row"
+									:item="row.item"
+									:show-connect-action="props.showConnectActions"
+									:connect-label="props.connectLabel?.(row.item)"
+									:connect-aria-label="props.connectAriaLabel?.(row.item)"
+									:connected-label="props.connectedLabel?.(row.item)"
+									@open-detail="openDetail($event)"
+									@connect="emit('connect', $event)"
+									@disconnect="emit('disconnect', $event)"
+									@select-credential="
+										(item, authType, credentialId) =>
+											emit('select-credential', item, authType, credentialId)
+									"
+									@credential-dropdown-open="emit('credential-dropdown-open', $event)"
+									@first-credential-connect="emit('first-credential-connect', $event)"
+									@new-credential-connect="emit('new-credential-connect', $event)"
+								/>
+								<div v-else :class="$style.suggestionRow">
+									<slot name="suggestion-footer" />
+								</div>
+							</template>
+						</N8nRecycleScroller>
+					</div>
+				</template>
+			</div>
+		</component>
 	</component>
 </template>
-
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/mixins' as scrollbar-mixins;
 
@@ -500,12 +554,23 @@ function handleOpenChange(value: boolean) {
 		margin-top: 0;
 		margin-bottom: var(--spacing--lg);
 	}
+
+	.listWrapper {
+		margin-inline: 0;
+		margin-bottom: calc(-1 * var(--spacing--lg));
+	}
+
+	.scroller {
+		padding-inline: 0;
+	}
 }
 
 .searchInput {
 	width: 100%;
 	flex-shrink: 0;
-	margin-block: var(--spacing--sm);
+	// The dialog header already leaves a gap under the title.
+	margin-block-start: 0;
+	margin-block-end: var(--spacing--sm);
 }
 
 // N8nTabs owns the tab styling, and the justified strip gives every tab an equal
@@ -522,6 +587,7 @@ function handleOpenChange(value: boolean) {
 	gap: var(--spacing--xs);
 	width: 100%;
 	min-height: 58px;
+	margin-top: var(--spacing--sm);
 	padding: var(--spacing--2xs);
 	border: 0;
 	border-radius: var(--radius--2xs);
@@ -568,12 +634,25 @@ function handleOpenChange(value: boolean) {
 	flex: 1 1 0;
 	min-height: 0;
 	overflow: hidden;
-	margin-bottom: calc(-1 * var(--spacing--lg));
+	// Cancel the dialog body padding so the scrollbar sits on the dialog edge.
+	margin-inline: calc(-1 * var(--n8n-dialog-region--padding, var(--spacing--md)));
+	margin-bottom: calc(-1 * var(--n8n-dialog-region--padding, var(--spacing--md)));
 }
 
 .scroller {
 	height: 100%;
 	overflow-y: auto;
+	// Put the same inset back on the rows so they line up with the search field.
+	padding-inline: var(--n8n-dialog-region--padding, var(--spacing--md));
+}
+
+.categoryHeader {
+	display: flex;
+	align-items: center;
+	height: 100%;
+	padding-inline: var(--spacing--2xs);
+	border-bottom: 1px solid var(--border-color--subtle);
+	box-sizing: border-box;
 }
 
 .persistentScrollbar {

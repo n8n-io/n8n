@@ -16,6 +16,7 @@ import {
 	N8nSettingsRowConfigure,
 	N8nSettingsRowGroup,
 	N8nSettingsSection,
+	N8nStatusDot,
 	N8nSwitch,
 	N8nText,
 	type DropdownMenuItemProps,
@@ -36,7 +37,10 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import DefaultEditorSetting from '@/experiments/openWorkflowInAssistant/components/DefaultEditorSetting.vue';
 import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
-import { isContextPreferencesEnabled } from '@/features/settings/context/context.utils';
+import {
+	isContextPreferencesEnabled,
+	isContextSkillsEnabled,
+} from '@/features/settings/context/context.utils';
 import { useInstanceCredentialTest } from '../composables/useInstanceCredentialTest';
 import { useInstanceAiConfiguration } from '../composables/useInstanceAiConfiguration';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
@@ -223,11 +227,17 @@ const PREFERENCES_PERMISSION_GROUP: PermissionGroup = {
 	keys: ['createPreference'],
 };
 
-const permissionGroups = computed(() =>
-	isContextPreferencesEnabled()
-		? [...PERMISSION_GROUPS, PREFERENCES_PERMISSION_GROUP]
-		: PERMISSION_GROUPS,
-);
+const SKILLS_PERMISSION_GROUP: PermissionGroup = {
+	id: 'skills',
+	labelKey: 'settings.n8nAgent.permissions.group.skills',
+	keys: ['createSkill', 'updateSkill', 'deleteSkill'],
+};
+
+const permissionGroups = computed(() => [
+	...PERMISSION_GROUPS,
+	...(isContextPreferencesEnabled() ? [PREFERENCES_PERMISSION_GROUP] : []),
+	...(isContextSkillsEnabled() ? [SKILLS_PERMISSION_GROUP] : []),
+]);
 
 const expandedGroups = reactive<Record<string, boolean>>({});
 
@@ -465,7 +475,7 @@ function openAiUsageSettings() {
 			:docs-label="i18n.baseText('settings.n8nAgent.docsLabel')"
 		>
 			<template #titleTrailing>
-				<N8nPreviewBadge size="medium" />
+				<N8nPreviewBadge size="xsmall" />
 			</template>
 		</N8nSettingsPageHeader>
 
@@ -520,12 +530,10 @@ function openAiUsageSettings() {
 										:aria-label="i18n.baseText('settings.n8nAgent.status.manage')"
 									>
 										<span :class="$style.statusLabel">
-											<span
-												:class="[
-													$style.statusDot,
-													isSetupRequired ? $style.statusDotWarning : $style.statusDotSuccess,
-												]"
-												aria-hidden="true"
+											<N8nStatusDot
+												:variant="isSetupRequired ? 'warning' : 'success'"
+												:pulse="!isSetupRequired"
+												data-test-id="n8n-agent-status-dot"
 											/>
 											{{
 												isSetupRequired
@@ -828,20 +836,6 @@ function openAiUsageSettings() {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
-}
-
-.statusDot {
-	width: var(--spacing--2xs);
-	height: var(--spacing--2xs);
-	border-radius: var(--radius--full);
-}
-
-.statusDotSuccess {
-	background: var(--text-color--success);
-}
-
-.statusDotWarning {
-	background: var(--text-color--warning);
 }
 
 .danger {

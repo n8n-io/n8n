@@ -2,19 +2,7 @@ import {
 	ImportPackageRequestDto,
 	IMPORT_PACKAGE_REQUEST_FORM_FIELDS,
 } from '../import-package-request.dto';
-
-function withPackageFile<T extends Record<string, unknown>>(fields: T) {
-	return {
-		package: {
-			fieldname: 'package',
-			originalname: 'export.n8np',
-			mimetype: 'application/gzip',
-			size: 5,
-			buffer: new Uint8Array([1, 2, 3, 4, 5]),
-		},
-		...fields,
-	};
-}
+import { withPackageFile } from './with-package-file';
 
 describe('ImportPackageRequestDto', () => {
 	it('accepts omitted routing fields and defaults credential modes', () => {
@@ -254,6 +242,19 @@ describe('ImportPackageRequestDto', () => {
 		expect(result.success).toBe(true);
 		if (result.success) {
 			expect(result.data.credentialMissingMode).toBe('create-stub');
+		}
+	});
+
+	it('accepts create-with-values credentialMissingMode', () => {
+		const result = ImportPackageRequestDto.safeParse(
+			withPackageFile({
+				credentialMissingMode: 'create-with-values',
+				workflowConflictPolicy: 'fail',
+			}),
+		);
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.credentialMissingMode).toBe('create-with-values');
 		}
 	});
 

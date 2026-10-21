@@ -87,6 +87,7 @@ export type {
 	AgentInputBoundary,
 	SmoothStreamOptions,
 	TokenUsage,
+	PromptSizeUsage,
 	AgentExecutionCounter,
 	SideCallTask,
 	SideCallUsageReport,
@@ -94,6 +95,7 @@ export type {
 	AnthropicPromptCachingConfig,
 	OpenAIPromptCachingConfig,
 	PromptCachingConfig,
+	NativeToolDeferralConfig,
 	BuiltTelemetry,
 	AttributeValue,
 	ObservationCursor,
@@ -102,6 +104,9 @@ export type {
 	BuiltObservationLogTaskLockStore,
 	MemoryTaskUsageReport,
 	NewObservationLogEntry,
+	ObservationLogBatch,
+	ObservationLogBatchEntry,
+	ObservationLogBatchCommitResult,
 	ObservationLogEntry,
 	ObservationLogMarker,
 	ObservationLogMerge,
@@ -119,7 +124,7 @@ export type {
 export { FINISH_REASONS, isFinishReason } from './types';
 export type { ProviderOptions } from '@ai-sdk/provider-utils';
 export { AgentEvent } from './types';
-export type { AgentEventData, AgentEventHandler } from './types';
+export type { AgentEventData, AgentEventHandler, ForwardedChildChunk } from './types';
 export {
 	OBSERVATION_LOG_MARKERS,
 	OBSERVATION_LOG_STATUSES,
@@ -198,6 +203,10 @@ export { deriveSubAgentTelemetry } from './runtime/telemetry/sub-agent-telemetry
 export { LangSmithTelemetry } from './integrations/langsmith';
 export type { LangSmithTelemetryConfig } from './integrations/langsmith';
 export { Agent } from './sdk/agent';
+export {
+	PROMPT_SIZE_BUCKET_THRESHOLDS,
+	withPromptSizeBreakdown,
+} from './runtime/loop/prompt-size-usage';
 export type {
 	VolatileInstructionsContext,
 	VolatileInstructionsProvider,
@@ -209,6 +218,7 @@ export {
 	createRuntimeSkillSource,
 	createRuntimeSkillTools,
 	createSkillLoadTool,
+	extendRuntimeSkillSource,
 	filterRuntimeSkillSource,
 	formatSkillValidationErrors,
 	InvalidRuntimeSkillError,
@@ -415,6 +425,7 @@ export type {
 	MemoryLifecycleState,
 	MemoryLifecycleStatus,
 } from './runtime/memory/memory-lifecycle';
+export { prepareObservationLogBatchCursor } from './runtime/memory/observation-log-batch';
 export {
 	parseObservationLogMarkdown,
 	renderObserverTranscript,

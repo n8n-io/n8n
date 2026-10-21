@@ -1,7 +1,18 @@
 import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
-import type { WorkflowListPublicationStatus, WorkflowExecutionBlockCause } from '@n8n/api-types';
+import type {
+	CallableSubworkflowsResponse,
+	ListCallableSubworkflowsQueryDto,
+	WorkflowExecutionBlockCause,
+	WorkflowListPublicationStatus,
+} from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
-import { EventService, RoleService } from '@n8n/backend-services';
+import {
+	EventService,
+	RoleService,
+	RestrictedNodeTypesProviderProxy,
+	WorkflowMutationHooksProxy,
+	WorkflowPublishGuardProxy,
+} from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type {
 	User,
@@ -38,25 +49,30 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 import type { INode, INodes, IWorkflowSettings, JsonValue, IConnections } from 'n8n-workflow';
-import { PROJECT_ROOT, Workflow, assert, calculateWorkflowChecksum } from 'n8n-workflow';
+import {
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	PROJECT_ROOT,
+	Workflow,
+	assert,
+	calculateWorkflowChecksum,
+} from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import { staticErrorWorkflowId } from './error-workflow-id';
 import {
 	ErrorWorkflowValidationService,
-	staticErrorWorkflowId,
 	type ErrorWorkflowProblem,
 } from './error-workflow-validation.service';
 import { DeprecatedNodesValidationService } from './deprecated-nodes-validation.service';
 import { WorkflowPublicationNotifier } from './publication/workflow-publication-notifier';
 import { WorkflowPublicationStatusService } from './publication/workflow-publication-status.service';
 import { NodeGroupRulesFlagGate } from './node-group-rules-flag-gate';
-import { RestrictedNodeTypesProviderProxy } from './restricted-node-types-provider-proxy.service';
+
 import { getEnabledTriggerNodes } from './triggers/enabled-trigger-nodes';
 import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
-import { WorkflowMutationHooksProxy } from './workflow-mutation-hooks-proxy.service';
-import { WorkflowPublishGuardProxy } from './workflow-publish-guard-proxy.service';
+
 import { WorkflowValidationService } from './workflow-validation.service';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -126,6 +142,8 @@ type WorkflowUpdateOptions = {
 	allowArchivedUpdate?: boolean;
 	/** Skips the settings.errorWorkflow check for a package import. */
 	allowUnresolvedErrorWorkflow?: boolean;
+	/** The history version this update restores, so its nodes keep their credentials. */
+	restoredFromVersionId?: string;
 };
 
 type PreparedWorkflowUpdate = {
@@ -301,11 +319,6 @@ export class WorkflowService {
 			sharingOptions.workflowRoles = workflowRoles;
 		}
 
-		const callableForParentWorkflowId = await this.resolveCallableForParentWorkflowId(
-			user,
-			options,
-		);
-
 		const workflowIdsIn = await this.resolveRestrictedWorkflowIds(options);
 		const listOptions = workflowIdsIn === undefined ? options : { ...options, workflowIdsIn };
 
@@ -316,7 +329,6 @@ export class WorkflowService {
 					user,
 					sharingOptions,
 					listOptions,
-					callableForParentWorkflowId,
 				);
 
 			workflows = workflowsAndFolders.filter((wf) => wf.resource === 'workflow');
@@ -325,7 +337,6 @@ export class WorkflowService {
 				user,
 				sharingOptions,
 				listOptions,
-				callableForParentWorkflowId,
 			));
 		}
 
@@ -378,25 +389,42 @@ export class WorkflowService {
 		};
 	}
 
-	private async resolveCallableForParentWorkflowId(
+	/**
+	 * List the workflows that `parentWorkflowId` can call as sub-workflows, for
+	 * the sub-workflow picker. The caller must check that the user can update
+	 * the parent workflow. Each row holds only the fields the picker shows.
+	 */
+	async getCallableSubworkflows(
 		user: User,
-		options?: ListQuery.Options,
-	): Promise<string | undefined> {
-		if (options?.filter?.includeCallableSubworkflows !== true) return undefined;
+		parentWorkflowId: string,
+		{ query, skip, take }: ListCallableSubworkflowsQueryDto,
+	): Promise<CallableSubworkflowsResponse> {
+		const requiredScopes: Scope[] = ['workflow:read'];
+		const [projectRoles, workflowRoles] = await Promise.all([
+			this.roleService.rolesWithScope('project', requiredScopes),
+			this.roleService.rolesWithScope('workflow', requiredScopes),
+		]);
 
-		const parentWorkflowId =
-			typeof options.filter.parentWorkflowId === 'string'
-				? options.filter.parentWorkflowId
-				: undefined;
-		if (!parentWorkflowId) return undefined;
-
-		const parentWorkflow = await this.workflowFinderService.findWorkflowForUser(
-			parentWorkflowId,
+		const { workflows, count } = await this.workflowRepository.findCallableSubworkflows(
 			user,
-			['workflow:read'],
+			{ scopes: requiredScopes, projectRoles, workflowRoles },
+			parentWorkflowId,
+			{ query, triggerNodeTypes: [EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE], skip, take },
 		);
 
-		return parentWorkflow ? parentWorkflowId : undefined;
+		const data = workflows.map((workflow) => {
+			const project = workflow.shared?.[0]?.project;
+			return {
+				id: workflow.id,
+				name: workflow.name,
+				active: workflow.activeVersionId !== null,
+				isArchived: workflow.isArchived,
+				// Personal project names hold user names and emails, so only team names are returned.
+				...(project?.type === 'team' ? { projectName: project.name } : {}),
+			};
+		});
+
+		return { count, data };
 	}
 
 	private async resolveRestrictedWorkflowIds(
@@ -556,6 +584,7 @@ export class WorkflowService {
 			versionDescription,
 			allowArchivedUpdate = false,
 			allowUnresolvedErrorWorkflow = false,
+			restoredFromVersionId,
 		} = options;
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:update',
@@ -605,11 +634,32 @@ export class WorkflowService {
 		// Loaded lazily to avoid a circular import (workflow.service.ee pulls in
 		// folder/project services which import this module).
 		if (this.licenseState.isSharingLicensed()) {
+			// A restore may bring back nodes whose credentials the user cannot use. Only a
+			// version from this workflow's own history qualifies.
+			let restoredNodes: INode[] | undefined;
+			if (restoredFromVersionId) {
+				const restoredVersion = await this.workflowHistoryService.findVersion(
+					workflowId,
+					restoredFromVersionId,
+				);
+				if (!restoredVersion) {
+					throw new BadRequestError("The version to restore is not in this workflow's history.");
+				}
+				// Normalize the stored nodes the way the submitted ones were above, so a
+				// credential renamed since that version still matches.
+				const normalizedVersion = await WorkflowHelpers.replaceInvalidCredentials(
+					{ ...workflowUpdateData, nodes: structuredClone(restoredVersion.nodes) },
+					ownerProject.id,
+				);
+				restoredNodes = normalizedVersion.nodes;
+			}
+
 			const { EnterpriseWorkflowService } = await import('./workflow.service.ee.js');
 			await Container.get(EnterpriseWorkflowService).preventTampering(
 				workflowUpdateData,
 				workflowId,
 				user,
+				restoredNodes,
 			);
 		}
 
@@ -702,6 +752,29 @@ export class WorkflowService {
 			});
 			if (!canUpdate) {
 				delete workflowUpdateData.settings.redactionPolicy;
+			}
+		}
+
+		// redactCallerExecutions is on when it is not set. Turning it off lowers redaction and
+		// turning it on raises it, so strip a change the license or the user's scopes do not allow.
+		if (workflowUpdateData.settings?.redactCallerExecutions !== undefined) {
+			// The settings schema does not check this value. Any value other than `false` keeps the
+			// setting on, so store a boolean and select the scope from it.
+			const value: unknown = workflowUpdateData.settings.redactCallerExecutions;
+			const turnsOn = value !== false;
+			workflowUpdateData.settings.redactCallerExecutions = turnsOn;
+			const wasOn = workflow.settings?.redactCallerExecutions !== false;
+			const canUpdate =
+				turnsOn === wasOn ||
+				(this.licenseState.isDataRedactionLicensed() &&
+					(await userHasScopes(
+						user,
+						[turnsOn ? 'workflow:enableRedaction' : 'workflow:disableRedaction'],
+						false,
+						{ projectId: ownerProject.id },
+					)));
+			if (!canUpdate) {
+				delete workflowUpdateData.settings.redactCallerExecutions;
 			}
 		}
 
@@ -1707,13 +1780,17 @@ export class WorkflowService {
 		// workflow cannot be deleted and unpublishing deprovisions them. This covers
 		// the paths that never published and anything an interrupted unpublish left.
 		//
-		// Both writes commit together. A deprovision of its own would leave a workflow
+		// All three writes commit together. A deprovision of its own would leave a workflow
 		// whose delete then failed alive with its schedules stripped.
-		await this.workflowRepository.runInTransaction({}, async (trx) => {
+		await this.workflowRepository.runInTransaction({}, async (trx, ctx) => {
 			await this.durableJobProvisioner.deprovisionOwnerInTransaction(
 				trx,
 				this.workflowScheduledJobOwner.ref(workflowId),
 			);
+
+			// A new workflow can be created at this id once the row is gone, so allowlists lose
+			// the entry in the same transaction.
+			await this.workflowRepository.removeFromCallerAllowlists([workflowId], ctx);
 
 			await trx.delete(WorkflowEntity, { id: workflowId });
 		});

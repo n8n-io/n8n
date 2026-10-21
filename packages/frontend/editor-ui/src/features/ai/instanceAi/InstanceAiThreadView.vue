@@ -39,7 +39,6 @@ import type { AgentPreviewHandoffParams } from './composables/useInstanceAiAgent
 import { useTransitionGate } from './useTransitionGate';
 import { INSTANCE_AI_VIEW } from './constants';
 import { getDismissedContextKeys } from './instanceAi.handoffContext';
-import { getLatestCallAgentResult } from './canvasPreview.utils';
 import InstanceAiDebugPanel from './components/InstanceAiDebugPanel.vue';
 import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue';
 import InstanceAiFixWithAiPanel from './components/InstanceAiFixWithAiPanel.vue';
@@ -66,7 +65,7 @@ import { useIsAgentWorking } from './composables/useIsAgentWorking';
 import { useAgentReturnContextStore } from '@/features/agents/agentReturnContext.store';
 import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
 import { useIsAssistantAtMentionsEnabled } from '@/features/ai/assistant-at-mentions/composables/useIsAssistantAtMentionsEnabled';
-import { useTestAgentPreviewExperiment } from '@/experiments/testAgentPreview/useTestAgentPreviewExperiment';
+import { useTestAgentPreviewFlag } from '@/features/agents/composables/useTestAgentPreviewFlag';
 
 const props = defineProps<{ threadId: string }>();
 
@@ -214,26 +213,7 @@ watch(
 	{ immediate: true },
 );
 
-const { isFeatureEnabled: isTestAgentPreviewVariant } = useTestAgentPreviewExperiment();
-
-// The builder's own "Testing agent" step (the `call_agent` tool) already runs
-// a representative message against the draft agent — reused here so the
-// preview panel can show a real result immediately instead of generating and
-// running a case of its own. Scoped to the agent the panel is actually
-// offering to test, so a test run from an earlier agent built in this thread
-// is never shown as if it were this agent's.
-const latestCallAgentResult = computed(() => {
-	const targetAgentId = latchedTestAgentOffer.value?.agentId;
-	if (!targetAgentId) return null;
-	for (let i = thread.messages.length - 1; i >= 0; i--) {
-		const msg = thread.messages[i];
-		if (msg.agentTree) {
-			const result = getLatestCallAgentResult(msg.agentTree, targetAgentId);
-			if (result) return result;
-		}
-	}
-	return null;
-});
+const { isFeatureEnabled: isTestAgentPreviewEnabled } = useTestAgentPreviewFlag();
 
 // --- Header title ---
 // Returns the resolved title once we have one, or undefined while we're still
@@ -987,17 +967,16 @@ function handleNewThreadClick() {
 						</Transition>
 						<Transition name="confirmation-slide">
 							<InstanceAiTestAgentPanel
-								v-if="activeTestAgentOffer && !isTestAgentPreviewVariant"
+								v-if="activeTestAgentOffer && !isTestAgentPreviewEnabled"
 								@generate="handleGenerateTestCasesFromOffer"
 								@dismiss="dismissTestAgentOffer"
 							/>
 						</Transition>
 						<Transition name="confirmation-slide">
 							<InstanceAiTestAgentPreviewPanel
-								v-if="latchedTestAgentOffer && isTestAgentPreviewVariant"
+								v-if="latchedTestAgentOffer && isTestAgentPreviewEnabled"
 								:key="latchedTestAgentOffer.agentId"
 								:target="latchedTestAgentOffer"
-								:initial-case="latestCallAgentResult"
 								@confirm="handleConfirmTestAgentPreview"
 								@dismiss="dismissTestAgentOffer"
 								@open-evals="handleOpenEvalsFromPreview($event)"

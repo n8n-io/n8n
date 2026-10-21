@@ -111,9 +111,6 @@ export class ScheduleTriggerJobRegistrar {
 	/** How a fixed second/minute interval is represented (see `SchedulerConfig`). */
 	private readonly triggerNodeMode: 'legacy' | 'new';
 
-	/** Whether a node's "Skip Durable Scheduler" toggle is honored (see `SchedulerConfig`). */
-	private readonly allowSkipDurableScheduler: boolean;
-
 	constructor(
 		private readonly logger: Logger,
 		globalConfig: GlobalConfig,
@@ -122,12 +119,14 @@ export class ScheduleTriggerJobRegistrar {
 		private readonly owner: WorkflowScheduledJobOwner,
 	) {
 		this.intercepting =
+			// oxlint-disable-next-line typescript/no-deprecated -- the in-memory scheduler will be removed in a future version
 			globalConfig.scheduler.enabled && workflowsConfig.useWorkflowPublicationService;
 		this.defaultTimezone = globalConfig.generic.timezone;
+		// oxlint-disable-next-line typescript/no-deprecated -- the in-memory scheduler will be removed in a future version
 		this.triggerNodeMode = globalConfig.scheduler.triggerNodeMode;
-		this.allowSkipDurableScheduler = globalConfig.scheduler.allowSkipDurableScheduler;
 		this.logger = this.logger.scoped('scheduler');
 
+		// oxlint-disable-next-line typescript/no-deprecated -- the in-memory scheduler will be removed in a future version
 		if (globalConfig.scheduler.enabled && !workflowsConfig.useWorkflowPublicationService) {
 			this.logger.warn(
 				'N8N_SCHEDULER_ENABLED is set but the workflow publication service is disabled. The durable scheduler cannot take over schedule and cron triggers, which keep using the legacy in-memory engine.',
@@ -145,8 +144,7 @@ export class ScheduleTriggerJobRegistrar {
 	interceptsNode(node: INode): boolean {
 		if (
 			!this.intercepting ||
-			(node.type !== SCHEDULE_TRIGGER_NODE_TYPE && node.type !== CRON_NODE_TYPE) ||
-			(this.allowSkipDurableScheduler && node.parameters?.skipDurableScheduler === true)
+			(node.type !== SCHEDULE_TRIGGER_NODE_TYPE && node.type !== CRON_NODE_TYPE)
 		) {
 			return false;
 		}

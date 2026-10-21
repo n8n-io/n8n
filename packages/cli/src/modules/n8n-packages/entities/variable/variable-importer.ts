@@ -1,5 +1,6 @@
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
+import uniqBy from 'lodash/uniqBy';
 import { pickVariableForProject } from 'n8n-workflow';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
@@ -12,12 +13,7 @@ import {
 	variableMissingModeCreates,
 	variableMissingModeUsesPackageValue,
 } from './variable-missing-mode';
-import {
-	computeVariableLimitFailure,
-	createFailure,
-	dedupeCreationsByDestination,
-	destinationKey,
-} from './variable.types';
+import { computeVariableLimitFailure, destinationKey } from './variable.types';
 import type {
 	VariableApplyResult,
 	VariableConflict,
@@ -76,27 +72,24 @@ export class VariableImporter {
 				}
 
 				const scope = picked.project ? { projectId: picked.project.id } : {};
-				const usedByWorkflows = [...new Set(requirement.usedByWorkflows)].sort();
-				conflicts.push({ name: requirement.name, ...scope, usedByWorkflows });
+				conflicts.push({ name: requirement.name, ...scope });
 				if (overwritesConflicts) {
 					overwrites.push({
 						variableId: picked.id,
 						name: requirement.name,
 						...scope,
 						value: packageValue,
-						usedByWorkflows,
 					});
 				}
 				continue;
 			}
-			missing.push(createFailure(requirement));
+			missing.push({ name: requirement.name });
 			if (createsMissing) {
 				const value = usesPackageValue ? requirement.packageValue : undefined;
 				creations.push({
 					name: requirement.name,
 					...(requirement.globalPlacement ? {} : { projectId: context.projectId }),
 					...(value !== undefined ? { value } : {}),
-					usedByWorkflows: [...new Set(requirement.usedByWorkflows)].sort(),
 				});
 			}
 		}
@@ -109,7 +102,7 @@ export class VariableImporter {
 		if (creations.length === 0) return undefined;
 
 		return computeVariableLimitFailure(
-			dedupeCreationsByDestination(creations),
+			uniqBy(creations, destinationKey),
 			await this.variablesService.getRemainingVariableQuota(),
 		);
 	}

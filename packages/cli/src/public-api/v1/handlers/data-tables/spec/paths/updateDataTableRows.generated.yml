@@ -4,9 +4,6 @@ tags:
 summary: Update rows in a data table
 description: Update rows matching filter conditions in a data table.
 x-required-scope: dataTableRow:update
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

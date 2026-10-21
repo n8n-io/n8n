@@ -8,6 +8,7 @@ import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
 import type { ResponseInputImage } from 'openai/resources/responses/responses';
 import type { ChatContent, ChatResponse, ChatResponseRequest } from '../../../helpers/interfaces';
+import { accumulateImageTokenUsage } from '../../../helpers/token-usage';
 import { apiRequest } from '../../../transport';
 import { modelRLC } from '../descriptions';
 import { getBinaryDataFile } from '../../../helpers/binary-data';
@@ -195,6 +196,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const response = (await apiRequest.call(this, 'POST', '/responses', {
 		body,
 	})) as ChatResponse;
+
+	accumulateImageTokenUsage(this, response.usage);
 
 	const simplify = this.getNodeParameter('simplify', i) as boolean;
 

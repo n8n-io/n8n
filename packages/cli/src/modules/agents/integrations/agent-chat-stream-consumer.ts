@@ -85,6 +85,7 @@ interface ResponseState {
 interface ResponseLifecycle {
 	startStreamingResponse: () => Promise<void>;
 	startDiscreteResponse: () => Promise<void>;
+	resumeThinking: () => Promise<void>;
 	finish: () => Promise<void>;
 }
 
@@ -95,6 +96,18 @@ const createResponseState = (options: ConsumeStreamOptions): ResponseState => ({
 	fallbackError: null,
 	quietErrors: options.quietErrors === true,
 });
+
+const BUDGET_STOP_TEXT = {
+	'budget.session':
+		'⚠️ This session reached its cost cap and stopped. Open the agent in n8n and increase the cap.',
+	'budget.monthly':
+		'⚠️ This agent reached its monthly budget and stopped. Open the agent in n8n and increase the cap.',
+} as const;
+
+function budgetStopText(code: string | undefined): string | undefined {
+	if (code === 'budget.session' || code === 'budget.monthly') return BUDGET_STOP_TEXT[code];
+	return undefined;
+}
 
 export class AgentChatStreamConsumer {
 	constructor(private readonly options: AgentChatStreamConsumerOptions) {}
@@ -115,11 +128,17 @@ export class AgentChatStreamConsumer {
 		// by `ensureStreamingPost()`). TypeScript cannot track mutations through
 		// closures, so it incorrectly narrows these to `never` after the
 		// assignment. We use a wrapper object to avoid the TS closure analysis issue.
-		const textStream: { yield: TextYieldFn | null; end: TextEndFn | null } = {
+		const textStream: {
+			yield: TextYieldFn | null;
+			end: TextEndFn | null;
+			flush: (() => Promise<void>) | null;
+		} = {
 			yield: null,
 			end: null,
+			flush: null,
 		};
 		let streamingPost: Promise<unknown> | null = null;
+		let statusRestoredForPost = false;
 		/** Text the platform is not yet known to have rendered. */
 		let pendingText = '';
 		let streamingStopped = false;
@@ -130,7 +149,7 @@ export class AgentChatStreamConsumer {
 		let streamingPostError: unknown;
 
 		const createTextIterable = (): AsyncIterable<string> => {
-			const queue: string[] = [];
+			const queue: Array<string | (() => void)> = [];
 			let done = false;
 			let waiting: ((result: IteratorResult<string>) => void) | null = null;
 
@@ -152,13 +171,20 @@ export class AgentChatStreamConsumer {
 					resolve({ value: '', done: true });
 				}
 			};
+			// The SDK requests the next item after it has processed the prior text.
+			textStream.flush = async () => {
+				if (waiting || done) return;
+				await new Promise<void>((resolve) => queue.push(resolve));
+			};
 
 			return {
 				[Symbol.asyncIterator]() {
 					return {
 						async next(): Promise<IteratorResult<string>> {
-							if (queue.length > 0) {
-								return { value: queue.shift()!, done: false };
+							while (queue.length > 0) {
+								const item = queue.shift()!;
+								if (typeof item === 'string') return { value: item, done: false };
+								item();
 							}
 							if (done) {
 								return { value: '', done: true };
@@ -174,6 +200,7 @@ export class AgentChatStreamConsumer {
 
 		const startStreamingPost = () => {
 			const iterable = createTextIterable();
+			statusRestoredForPost = false;
 			streamingPostRejected = false;
 			streamingPostError = undefined;
 			streamingPost = thread.post(iterable).catch((postError: unknown) => {
@@ -190,6 +217,7 @@ export class AgentChatStreamConsumer {
 				textStream.end();
 				textStream.end = null;
 				textStream.yield = null;
+				textStream.flush = null;
 			}
 			if (streamingPost) {
 				const post = streamingPost;
@@ -210,6 +238,11 @@ export class AgentChatStreamConsumer {
 			pendingText = '';
 			if (text.trim()) await this.postBufferedText(thread, text, responseState);
 		};
+		const flushStreamingPost = async () => {
+			if (!options.statusHandle?.resumeAfterResponse || !textStream.flush || !streamingPost) return;
+			// A failed post stops reading the iterable. Do not wait on it to drain.
+			await Promise.race([textStream.flush(), streamingPost]);
+		};
 
 		// Don't start streaming post eagerly — wait for first text delta
 		const ensureStreamingPost = () => {
@@ -222,6 +255,7 @@ export class AgentChatStreamConsumer {
 			endStreamingPost,
 		});
 		const responseState = createResponseState(options);
+		let budgetStop: string | undefined;
 
 		try {
 			for await (const chunk of stream) {
@@ -236,8 +270,20 @@ export class AgentChatStreamConsumer {
 						if (retainText) pendingText += delta;
 						textStream.yield?.(delta);
 						if (delta.trim()) responseState.hasVisibleResponse = true;
+						if (!statusRestoredForPost && options.statusHandle?.resumeAfterResponse) {
+							await flushStreamingPost();
+							await responseLifecycle.resumeThinking();
+							statusRestoredForPost = true;
+						}
 						break;
 					}
+					case 'text-end':
+						await flushStreamingPost();
+						break;
+					case 'tool-call':
+						await flushStreamingPost();
+						await responseLifecycle.resumeThinking();
+						break;
 					case 'tool-call-suspended': {
 						await responseLifecycle.startDiscreteResponse();
 						const result = await this.options.handleSuspension(chunk, thread, options.actingUserId);
@@ -249,10 +295,12 @@ export class AgentChatStreamConsumer {
 						// Don't start new streaming post — wait for next text delta
 						break;
 					}
-					case 'message':
+					case 'message': {
 						await responseLifecycle.startDiscreteResponse();
-						responseState.hasVisibleResponse ||= await this.options.handleMessage(chunk, thread);
+						const posted = await this.options.handleMessage(chunk, thread);
+						responseState.hasVisibleResponse ||= posted;
 						break;
+					}
 					case 'error':
 						await responseLifecycle.startDiscreteResponse();
 						await this.postError(thread, chunk.error, responseState);
@@ -267,13 +315,20 @@ export class AgentChatStreamConsumer {
 							pendingText = '';
 						}
 						break;
+					case 'finish':
+						budgetStop ??= budgetStopText(chunk.guardrail?.code);
+						break;
 					default:
-						// Ignore non-user-visible chunks (reasoning, finish,
-						// tool-input-*, start-step, finish-step, etc.)
+						// Ignore non-user-visible chunks (reasoning, tool-input-*,
+						// start-step, finish-step, etc.)
 						break;
 				}
 			}
-			await this.postFallbackIfNeeded(responseState, responseLifecycle, thread);
+			if (budgetStop !== undefined) {
+				await this.postBudgetStop(thread, budgetStop, responseState, responseLifecycle);
+			} else {
+				await this.postFallbackIfNeeded(responseState, responseLifecycle, thread);
+			}
 		} finally {
 			await responseLifecycle.finish();
 		}
@@ -325,6 +380,18 @@ export class AgentChatStreamConsumer {
 			if (throwOnDeliveryError) throw postError;
 			await this.postError(thread, postError, state);
 		}
+	}
+
+	private async postBudgetStop(
+		thread: Thread<unknown, unknown>,
+		text: string,
+		state: ResponseState,
+		lifecycle: ResponseLifecycle,
+		throwOnDeliveryError = false,
+	): Promise<void> {
+		await lifecycle.startDiscreteResponse();
+		await this.postBufferedText(thread, text, state, throwOnDeliveryError);
+		state.hasVisibleResponse = true;
 	}
 
 	private async postError(
@@ -381,7 +448,9 @@ export class AgentChatStreamConsumer {
 		const clearStatusBeforeFirstResponse = async () => {
 			if (responseStarted) return;
 			responseStarted = true;
-			await options.statusHandle?.clearBeforeResponse();
+			if (!options.statusHandle?.keepDuringResponse) {
+				await options.statusHandle?.clearBeforeResponse();
+			}
 		};
 
 		return {
@@ -393,9 +462,19 @@ export class AgentChatStreamConsumer {
 				await options.endStreamingPost?.();
 				await clearStatusBeforeFirstResponse();
 			},
+			resumeThinking: async () => {
+				if (!responseStarted || !options.statusHandle?.resumeAfterResponse) return;
+				await options.statusHandle.resumeAfterResponse();
+				responseStarted = false;
+			},
 			finish: async () => {
-				await options.endStreamingPost?.();
-				await clearStatusBeforeFirstResponse();
+				try {
+					await options.endStreamingPost?.();
+				} finally {
+					if (options.statusHandle?.keepDuringResponse || !responseStarted) {
+						await options.statusHandle?.clearBeforeResponse();
+					}
+				}
 			},
 		};
 	}
@@ -436,6 +515,7 @@ export class AgentChatStreamConsumer {
 			await this.postBufferedText(thread, text, responseState, options.throwOnDeliveryError);
 			responseState.hasVisibleResponse = true;
 		};
+		let budgetStop: string | undefined;
 
 		try {
 			for await (const chunk of stream) {
@@ -488,17 +568,30 @@ export class AgentChatStreamConsumer {
 							buffer = '';
 						}
 						break;
+					case 'finish':
+						budgetStop ??= budgetStopText(chunk.guardrail?.code);
+						break;
 					default:
 						break;
 				}
 			}
 			await flushBuffer();
-			await this.postFallbackIfNeeded(
-				responseState,
-				responseLifecycle,
-				thread,
-				options.throwOnDeliveryError,
-			);
+			if (budgetStop !== undefined) {
+				await this.postBudgetStop(
+					thread,
+					budgetStop,
+					responseState,
+					responseLifecycle,
+					options.throwOnDeliveryError,
+				);
+			} else {
+				await this.postFallbackIfNeeded(
+					responseState,
+					responseLifecycle,
+					thread,
+					options.throwOnDeliveryError,
+				);
+			}
 		} finally {
 			await flushBuffer();
 			await responseLifecycle.finish();

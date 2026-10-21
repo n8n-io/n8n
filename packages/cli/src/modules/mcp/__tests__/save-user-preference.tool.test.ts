@@ -6,10 +6,8 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { CLIENT_CAPABILITIES_META_KEY } from '@modelcontextprotocol/server';
 import type { InputRequiredResult } from '@modelcontextprotocol/server';
 
-import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
+import { AiPreferenceScopeFullError, AiPreferenceService, UrlService } from '@n8n/backend-services';
 import { BadRequestError, ConflictError, ForbiddenError } from '@n8n/errors';
-import { AiPreferenceService } from '@/services/ai-preference.service';
-import { UrlService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
@@ -45,6 +43,7 @@ const dto = (overrides: Partial<AiPreferenceDto> = {}): AiPreferenceDto => ({
 	projectId: null,
 	project: null,
 	source: 'mcp',
+	createdBy: null,
 	scopes: ['aiPreference:read', 'aiPreference:update', 'aiPreference:delete'],
 	createdAt: new Date(Date.now() - 30_000).toISOString(),
 	updatedAt: new Date().toISOString(),

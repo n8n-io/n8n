@@ -344,10 +344,9 @@ describe('CanvasNodeToolbar', () => {
 	});
 
 	describe('when the workflow uses a credential the user cannot use', () => {
-		const renderWithCredentials = (currentUserCanUse: boolean, sharingEnabled = true) => {
+		const renderWithCredentials = (currentUserCanUse: boolean) => {
 			const testingPinia = createTestingPinia({ stubActions: false });
 			setActivePinia(testingPinia);
-			useSettingsStore().settings.granularCredentialSharing = sharingEnabled;
 
 			const documentStore = {
 				usedCredentials: {
@@ -394,12 +393,6 @@ describe('CanvasNodeToolbar', () => {
 
 		it('should keep the execute node button enabled when the user can use the credential', () => {
 			const { getByTestId } = renderWithCredentials(true);
-
-			expect(getByTestId('execute-node-button')).toBeEnabled();
-		});
-
-		it('should keep the execute node button enabled when credential sharing is off', () => {
-			const { getByTestId } = renderWithCredentials(false, false);
 
 			expect(getByTestId('execute-node-button')).toBeEnabled();
 		});

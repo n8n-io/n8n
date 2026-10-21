@@ -47,6 +47,7 @@ import type {
 } from './agent-chat-integration';
 import {
 	ChatIntegrationRegistry,
+	InboundAttachmentAccessError,
 	onceStatusHandle,
 	postToUserOrThread,
 } from './agent-chat-integration';
@@ -61,11 +62,13 @@ import { CallbackStore, type CallbackMetadata } from './callback-store';
 import type { ComponentMapper, ShortenCallback } from './component-mapper';
 import { loadChatSdk } from './esm-loader';
 import { IntegrationMessageContextService } from './integration-message-context.service';
+import { buildIntegrationOrigin } from './integration-origin';
 import type {
 	IntegrationMessageContext,
 	IntegrationPlatformMessageContext,
 } from './integration-tools';
-import { downloadDiscordAttachment } from './platforms/discord-operations';
+import { downloadDiscordAttachment } from './platforms/discord/discord-operations';
+import { SLACK_STREAMING_OPTIONS } from './platforms/slack/slack-bridge-behavior';
 
 import { type InternalThread, toInternalThreadId } from './types';
 
@@ -291,6 +294,7 @@ export class AgentChatBridge {
 					thread,
 					logger: this.logger,
 					agentId: this.agentId,
+					integration: this.integration,
 				};
 				const resumeExecutionContext =
 					await this.integrationImpl?.createResumeExecutionContext?.(params);
@@ -780,7 +784,7 @@ export class AgentChatBridge {
 		message: Message,
 		options: InboundOptions,
 	): Promise<void> {
-		const inbound = await this.readInboundMessage(message);
+		const inbound = await this.readInboundMessage(thread, message);
 		if (!inbound) return;
 		if (isResetCommand(inbound)) {
 			if (options.allowReset !== false) await this.resetSession(thread);
@@ -789,16 +793,40 @@ export class AgentChatBridge {
 		await this.runTurn(thread, message, inbound, options);
 	}
 
-	private async readInboundMessage(message: Message): Promise<InboundMessage | null> {
+	private async readInboundMessage(
+		thread: Thread,
+		message: Message,
+	): Promise<InboundMessage | null> {
 		const platformAgentContext = this.getPlatformAgentContext();
 		const text = this.prepareInboundText(
 			await this.getInboundText(message),
 			platformAgentContext,
 		).trim();
 		// `?? []` guards rehydrated/serialized messages that predate the field.
-		const attachments = message.attachments ?? [];
+		const attachments = [
+			...(message.attachments ?? []),
+			...(await this.fetchInboundAttachments(thread, message)),
+		];
 		if (!text && attachments.length === 0) return null;
 		return { text, attachments };
+	}
+
+	/**
+	 * A failed lookup drops only the extra files: a message with text is still answered.
+	 * It is only logged: the activity does not say whether the message has files
+	 * (a Teams channel message carries no sign of them), so a note to the agent
+	 * would appear on every message, not only on one whose files were lost.
+	 */
+	private async fetchInboundAttachments(thread: Thread, message: Message): Promise<Attachment[]> {
+		try {
+			return (await this.integrationImpl?.fetchInboundAttachments?.({ thread, message })) ?? [];
+		} catch (error) {
+			this.logger.warn('[AgentChatBridge] Failed to look up message attachments', {
+				agentId: this.agentId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return [];
+		}
 	}
 
 	private async runTurn(
@@ -885,13 +913,24 @@ export class AgentChatBridge {
 			}) ?? 'required';
 		let accepted = false;
 		try {
-			const [context, subject] = await Promise.all([
+			const subjectPromise = this.messageContextBridge.resolveSubject(message);
+			const [context, subject, integrationOrigin] = await Promise.all([
 				this.resolveBridgeExecutionContext(thread, message, platformAgentContext, {
 					isNewMention,
 					inSubscribedThread,
 					replyExpectation,
 				}),
-				this.messageContextBridge.resolveSubject(message),
+				subjectPromise,
+				// The origin lookup overlaps the other fetches so it adds little delay.
+				subjectPromise.then(
+					async (subject) =>
+						this.integrationImpl &&
+						(await buildIntegrationOrigin(
+							this.integrationImpl,
+							{ thread, message, subject },
+							this.logger,
+						)),
+				),
 			]);
 			const messageContext = this.messageContextBridge.capture(thread, {
 				messageId: message.id,
@@ -918,6 +957,7 @@ export class AgentChatBridge {
 						context,
 					),
 					author,
+					integrationOrigin,
 					sender: { userId, userName, fullName, isBot, isMe },
 					attachments: attachments.length ? attachments : undefined,
 					resourceId: session.memory.resourceId,
@@ -959,6 +999,7 @@ export class AgentChatBridge {
 					logger: this.logger,
 					agentId: this.agentId,
 					slackThreadContext: payload.slackThreadContext,
+					integration,
 				});
 				statusHandle = onceStatusHandle(context?.statusHandle);
 			}
@@ -1019,6 +1060,7 @@ export class AgentChatBridge {
 			isDM: thread.isDM,
 			adapter: thread.adapter,
 			stateAdapter: this.chat.getState(),
+			...SLACK_STREAMING_OPTIONS,
 			currentMessage: new Message({
 				id: payload.messageContext.messageId ?? '',
 				threadId: thread.id,
@@ -1046,6 +1088,16 @@ export class AgentChatBridge {
 		const attachments: StoredAttachmentRef[] = [];
 		const attachmentNotes: string[] = [];
 		if (!this.attachmentService || inboundAttachments.length === 0) {
+			return { attachments, attachmentNotes };
+		}
+
+		if (this.integrationImpl?.shouldDownloadAttachments?.(this.integration) === false) {
+			// The agent still learns that a file arrived, so it can ask for text instead.
+			for (const attachment of inboundAttachments) {
+				attachmentNotes.push(
+					`[Attachment "${attachment.name ?? 'file'}" was not downloaded: media downloads are turned off for this channel]`,
+				);
+			}
 			return { attachments, attachmentNotes };
 		}
 
@@ -1109,7 +1161,11 @@ export class AgentChatBridge {
 					threadId,
 					error: error instanceof Error ? error.message : String(error),
 				});
-				attachmentNotes.push(`[Attachment "${name}" could not be processed]`);
+				attachmentNotes.push(
+					error instanceof InboundAttachmentAccessError
+						? `[Attachment "${name}" could not be read: ${error.message}]`
+						: `[Attachment "${name}" could not be processed]`,
+				);
 			}
 		}
 

@@ -26,15 +26,20 @@ export class UserRepository extends BaseRepository<User> {
 		userIds: string[],
 		options?: {
 			includeRole?: boolean;
+			includeAuthIdentities?: boolean;
 			offset?: number;
 			limit?: number;
 		},
 	) {
+		const relations = [
+			...(options?.includeRole ? ['role'] : []),
+			...(options?.includeAuthIdentities ? ['authIdentities'] : []),
+		];
 		return await this.find({
 			where: { id: In(userIds) },
 			skip: options?.offset,
 			take: options?.limit,
-			relations: options?.includeRole ? ['role'] : undefined,
+			relations: relations.length > 0 ? relations : undefined,
 			order: { id: 'ASC' },
 		});
 	}
@@ -46,6 +51,15 @@ export class UserRepository extends BaseRepository<User> {
 			relations: options?.includeRole ? ['role'] : undefined,
 			order: { id: 'ASC' },
 		});
+	}
+
+	/**
+	 * Every user with the relations `isPending` needs: the role and the auth
+	 * identities. Without the identities, a user who signs in through SSO or LDAP
+	 * and so has no password would read as pending.
+	 */
+	async findAllWithRoleAndAuthIdentities(): Promise<User[]> {
+		return await this.find({ relations: ['role', 'authIdentities'], order: { id: 'ASC' } });
 	}
 
 	async findByIdWithRole(id: string, ctx: OperationContext = {}): Promise<User | null> {

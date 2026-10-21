@@ -1,3 +1,14 @@
+import {
+	type SerializedCredential,
+	serializedCredentialSchema,
+	type SerializedDataTable,
+	serializedDataTableSchema,
+	type SerializedProject,
+	serializedProjectSchema,
+	type SerializedVariable,
+	serializedVariableSchema,
+	serializedWorkflowSchema,
+} from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { jsonParse, UserError } from 'n8n-workflow';
 import type { z } from 'zod';
@@ -7,23 +18,6 @@ import {
 	WorkflowSerializer,
 	type WorkflowPackageContent,
 } from '../../entities/workflow/workflow.serializer';
-import {
-	serializedCredentialSchema,
-	type SerializedCredential,
-} from '../../spec/serialized/credential.schema';
-import {
-	serializedDataTableSchema,
-	type SerializedDataTable,
-} from '../../spec/serialized/data-table.schema';
-import {
-	serializedProjectSchema,
-	type SerializedProject,
-} from '../../spec/serialized/project.schema';
-import {
-	serializedVariableSchema,
-	type SerializedVariable,
-} from '../../spec/serialized/variable.schema';
-import { serializedWorkflowSchema } from '../../spec/serialized/workflow.schema';
 import { PACKAGE_ENTITY_LAYOUT } from '../manifest-entry';
 import type { PackageReader } from '../package-reader';
 
@@ -230,6 +224,7 @@ export class PackageDirectoryInventoryReader {
 	): Promise<InventoryDataTable[]> {
 		const dataTables: InventoryDataTable[] = [];
 		const seenIds = new Set<string>();
+		const seenColumnIds = new Set<string>();
 
 		for (const file of files.filter((f) => f.kind === 'dataTables')) {
 			if (!isCollectionLocation(file.segments, 'dataTables')) throw unsupportedLocation(file);
@@ -237,6 +232,9 @@ export class PackageDirectoryInventoryReader {
 			projectIdOf(file);
 			const dataTable = await this.readEntity(source, file, serializedDataTableSchema);
 			assertUnseen(seenIds, dataTable.id, 'data table id');
+			for (const { id } of dataTable.columns) {
+				if (id) assertUnseen(seenColumnIds, id, 'data table column id');
+			}
 			dataTables.push({ path: file.path, dataTable });
 		}
 
@@ -304,7 +302,12 @@ function unsupportedLocation(file: EntityFile): UserError {
 	);
 }
 
-function assertUnseen(seen: Set<string>, key: string, label: string, displayKey = key): void {
+export function assertUnseen(
+	seen: Set<string>,
+	key: string,
+	label: string,
+	displayKey = key,
+): void {
 	if (seen.has(key)) throw new UserError(`Package contains a duplicate ${label}: ${displayKey}`);
 	seen.add(key);
 }

@@ -59,7 +59,6 @@ import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstructi
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import { AgentSaveCompletionService } from '../agent-save-completion.service';
 import { AgentDefinitionService } from '../agent-definition.service';
-import { AgentSkillsService } from '../agent-skills.service';
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 
 import type { AgentTaskService } from '../agent-task.service';
@@ -86,6 +85,8 @@ import { SubAgentRunner } from '../sub-agents/sub-agent-runner';
 import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { AgentPolicyService } from '@/modules/agents/agent-policy.service';
+import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
+import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -151,6 +152,8 @@ function makeRuntimeReconstructionService(
 		mock<CredentialsFinderService>(),
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
+		mock<CredentialsService>(),
+		makeKnowledgeAvailabilityService(),
 	);
 }
 
@@ -209,7 +212,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 	let globalConfig: Mocked<GlobalConfig>;
 	let telemetry: Mocked<Telemetry>;
 	let runtimeCacheService: AgentRuntimeCacheService;
-	let agentSkillsService: AgentSkillsService;
 	let agentConfigService: AgentConfigService;
 	let agentCustomToolsService: AgentCustomToolsService;
 	let agentExecutionOrchestratorService: AgentExecutionOrchestratorService;
@@ -251,6 +253,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			isEnabled: () => false,
 		});
 
+		const skillRefs = createAgentSkillRefsService();
 		runtimeCacheService = new AgentRuntimeCacheService(
 			logger,
 			agentRepository,
@@ -258,6 +261,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentRuntimeReconstructionService,
 			credentialsService,
 			agentSandboxRuntimeService,
+			skillRefs,
 		);
 		Container.set(AgentRuntimeCacheService, runtimeCacheService);
 		const modificationTelemetry = mock<AgentModificationTelemetryService>();
@@ -275,24 +279,33 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentTaskSnapshotRepository,
 			agentRepository,
 			transactionRunner,
+			skillRefs,
 		);
-		agentSkillsService = new AgentSkillsService(logger, agentRepository, saveCompletion);
 		agentConfigService = new AgentConfigService(
 			logger,
 			agentRepository,
 			agentTaskRepository,
-			agentSkillsService,
 			new AgentConfigPreparationService(
 				credentialsService,
 				mock<WorkflowRepository>(),
 				mock<NodeToolAiGatewayService>(),
+				agentRepository,
+				agentTaskRepository,
+				skillRefs,
+				new AgentPolicyService(new PolicyEnforcementService()),
 			),
 			mock<AgentSetupCompletionService>(),
 			transactionRunner,
 			saveCompletion,
-			new AgentPolicyService(new PolicyEnforcementService()),
+			skillRefs,
+			mock<ChatIntegrationRegistry>(),
 		);
-		agentCustomToolsService = new AgentCustomToolsService(logger, agentRepository, saveCompletion);
+		agentCustomToolsService = new AgentCustomToolsService(
+			logger,
+			agentRepository,
+			saveCompletion,
+			skillRefs,
+		);
 		agentExecutionOrchestratorService = new AgentExecutionOrchestratorService(
 			logger,
 			n8nCheckpointStorage,
@@ -317,6 +330,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AgentBackgroundJobRepository>(),
 			mock<AgentBackgroundJobService>(),
 			mock<AgentsSettingsService>(),
+			skillRefs,
 		);
 		agentIntegrationPersistenceService = new AgentIntegrationPersistenceService(
 			agentRepository,
@@ -326,6 +340,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			modificationTelemetry,
 			credentialsService,
 			mock<AgentSetupCompletionService>(),
+			skillRefs,
 		);
 		agentValidationService = new AgentValidationService(
 			agentRepository,
@@ -334,6 +349,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<WorkflowRepository>(),
 			chatIntegrationRegistry,
 			mock<AiGatewayService>(),
+			skillRefs,
 		);
 		agentPublishService = new AgentPublishService(
 			logger,
@@ -353,6 +369,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			saveCompletion,
 			definitionService,
 			new AgentPolicyService(new PolicyEnforcementService()),
+			skillRefs,
 		);
 		agentTestChatService = new AgentTestChatService(n8nMemory, mock<AgentChatAttachmentService>());
 		agentsService = new AgentsService(
@@ -371,6 +388,11 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<ProjectScopeService>(),
 			mock<AgentsSettingsService>(),
 			new AgentPolicyService(new PolicyEnforcementService()),
+			skillRefs,
+			transactionRunner,
+			mock<AgentConfigPreparationService>(),
+			saveCompletion,
+			mock<AgentSetupCompletionService>(),
 		);
 		service = agentExecutionOrchestratorService;
 		markSharedTestSetupAsUsed(
@@ -410,6 +432,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 
 			const toolNames: string[] = [];
 			const runtimeAgent = {
+				nativeToolDeferral: vi.fn(),
 				tool: vi.fn((tool: { name?: string } | Array<{ name?: string }>) => {
 					for (const item of Array.isArray(tool) ? tool : [tool]) {
 						if (item.name) toolNames.push(item.name);
@@ -456,6 +479,18 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 					availableSubAgents: [],
 				},
 				credentialIntegrations: [{ type: 'slack', credentialId: 'cred-slack' }],
+			});
+
+			expect(runtimeAgent.nativeToolDeferral).toHaveBeenCalledWith({
+				eagerToolNames: [
+					'workspace_read_file',
+					'workspace_read_tool_result',
+					'workspace_write_file',
+					'workspace_str_replace_file',
+					'workspace_execute_command',
+					'load_skill',
+					'mark_session_failed',
+				],
 			});
 
 			expect(toolNames.filter((name) => name === 'slack_context')).toHaveLength(1);

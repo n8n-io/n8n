@@ -151,6 +151,28 @@ describe('WorkflowToolConfigContent', () => {
 		expect(lastEmit(emitted, 'update:valid')).toBe(false);
 	});
 
+	it.each(['', '   '])(
+		'marks description %j invalid after Save and clears it after correction',
+		async (description) => {
+			const { getByTestId, getByRole, onConfirm } = renderForm(createRef({ description }));
+			const field = getByTestId('agent-workflow-tool-description');
+
+			expect(field).not.toHaveAttribute('aria-invalid', 'true');
+			await fireEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(field).toHaveAttribute('aria-invalid', 'true');
+			expect(onConfirm).not.toHaveBeenCalled();
+
+			await fireEvent.update(field, 'Send a notification');
+
+			expect(field).toHaveAttribute('aria-invalid', 'false');
+			await fireEvent.click(getByRole('button', { name: 'Save' }));
+			expect(onConfirm).toHaveBeenCalledWith(
+				expect.objectContaining({ description: 'Send a notification' }),
+			);
+		},
+	);
+
 	it('emits valid=false for a whitespace-only description', () => {
 		const { emitted } = renderComponent({
 			props: { initialRef: createRef({ description: '   ' }) },

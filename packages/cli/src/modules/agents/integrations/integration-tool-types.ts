@@ -71,6 +71,8 @@ export interface IntegrationMessageSubject {
 	description?: string;
 	url?: string;
 	status?: string;
+	/** The project the subject belongs to, when the platform reports one. */
+	projectId?: string;
 	labels?: string[];
 	assignee?: IntegrationSubjectPerson;
 	author?: IntegrationSubjectPerson;

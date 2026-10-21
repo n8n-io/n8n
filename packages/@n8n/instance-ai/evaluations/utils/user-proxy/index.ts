@@ -51,6 +51,8 @@ export interface CredentialCreationConfig {
 	 *  credentials with no way to tell which one an agent picked). Defaults to
 	 *  a fresh, unshared `Map` if omitted. */
 	nameCounts?: Map<string, number>;
+	/** The build's project. Absent: the client's personal project. */
+	projectId?: string;
 }
 
 /**
@@ -272,13 +274,13 @@ export class UserProxyLlm {
 			// throw here means that invariant broke, not a normal runtime failure.
 			throw new Error('createCredential invoked without a credentialCreation config');
 		}
-		const { client, threadId, createdCredentialIds } = this.credentialCreation;
+		const { client, threadId, createdCredentialIds, projectId } = this.credentialCreation;
 		const created = await createOneCredential(
 			client,
 			credentialType,
 			undefined,
 			this.createdCredentialNameCounts,
-			{ logger: this.logger, setupHint: options?.setupHint },
+			{ logger: this.logger, setupHint: options?.setupHint, projectId },
 		);
 		createdCredentialIds?.add(created.id);
 		this.allowlistedCredentialIds = [...this.allowlistedCredentialIds, created.id];
@@ -439,7 +441,7 @@ export class UserProxyLlm {
 			return undefined;
 		}
 
-		// ask-user questions go to the LLM; only single-blob plan-review/text are scripted here.
+		// workflow_builder_ask_user questions go to the LLM; only single-blob plan-review/text are scripted here.
 		if (inputType === 'plan-review') {
 			const userInput = this.consumeAllRemainingUserScriptTurns(
 				'Before I approve, use these details:',
