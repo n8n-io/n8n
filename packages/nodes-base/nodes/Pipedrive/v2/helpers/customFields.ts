@@ -3,6 +3,9 @@ import { setSafeObjectProperty } from 'n8n-workflow';
 
 import type { ICustomProperties, ICustomInterface } from '../transport';
 
+/** Pipedrive custom field keys are 40-character hashes. Default fields have readable keys. */
+const CUSTOM_FIELD_KEY = /^[0-9a-f]{40}$/;
+
 /** Field types that are passed through without enum/set resolution in resolve functions. */
 const PASSTHROUGH_FIELD_TYPES = [
 	'date',
@@ -164,9 +167,25 @@ export function flattenCustomFieldsToRoot(body: IDataObject): void {
 	}
 
 	for (const [key, value] of Object.entries(customFields as IDataObject)) {
-		setSafeObjectProperty(body, key, value);
+		// The v1 format for a multi-option field is a comma-separated list of option IDs.
+		setSafeObjectProperty(body, key, Array.isArray(value) ? value.join(',') : value);
 	}
 	delete body.custom_fields;
+}
+
+/**
+ * /leadFields lists the default lead fields (title, value, owner_id, ...) and the custom
+ * fields. Keeps only the custom fields, so a custom field name such as "Value" cannot
+ * resolve to a default field and overwrite it in the request body.
+ */
+export function leadCustomFieldsOnly(customProperties: ICustomProperties): ICustomProperties {
+	const customFields: ICustomProperties = {};
+	for (const [key, data] of Object.entries(customProperties)) {
+		if (CUSTOM_FIELD_KEY.test(key)) {
+			customFields[key] = data;
+		}
+	}
+	return customFields;
 }
 
 /**
@@ -175,8 +194,6 @@ export function flattenCustomFieldsToRoot(body: IDataObject): void {
  * map them to human-readable names, keeping lead output consistent with other
  * v2 resources.
  */
-const CUSTOM_FIELD_KEY = /^[0-9a-f]{40}$/;
-
 export function nestRootCustomFields(
 	customProperties: ICustomProperties,
 	item: INodeExecutionData,

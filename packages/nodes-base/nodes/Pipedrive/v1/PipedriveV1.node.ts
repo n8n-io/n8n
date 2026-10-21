@@ -9,7 +9,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, setSafeObjectProperty } from 'n8n-workflow';
 
 import type { ICustomProperties } from './GenericFunctions';
 import {
@@ -42,7 +42,7 @@ function addAdditionalFields(body: IDataObject, additionalFields: IDataObject) {
 		) {
 			for (const customProperty of (additionalFields.customProperties as IDataObject)
 				.property! as CustomProperty[]) {
-				body[customProperty.name] = customProperty.value;
+				setSafeObjectProperty(body, customProperty.name, customProperty.value);
 			}
 		} else {
 			body[key] = additionalFields[key];

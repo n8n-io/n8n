@@ -6,8 +6,7 @@ import type {
 } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
-import type { ICustomProperties } from '../../transport';
-import { pipedriveApiRequest, pipedriveGetCustomProperties } from '../../transport';
+import { pipedriveApiRequest } from '../../transport';
 import {
 	encodeCustomFieldsV2,
 	resolveCustomFieldsV2,
@@ -21,6 +20,7 @@ import {
 	visibleToOption,
 } from '../common.description';
 import { currencies } from '../../../utils';
+import { loadLeadCustomProperties } from './customProperties';
 
 const properties: INodeProperties[] = [
 	{
@@ -147,30 +147,11 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	const items = this.getInputData();
 	const returnData: INodeExecutionData[] = [];
 
-	// Resolving custom field keys/IDs to human-readable names on output was added
-	// after v2 shipped without lead custom field support. Gate it to v2.1+ so leads
-	// created on v2 keep the raw Pipedrive keys they returned before.
-	const resolveOutput = this.getNode().typeVersion >= 2.1;
-
-	const rawKeys = this.getNodeParameter('rawCustomFieldKeys', 0, false) as boolean;
-	// Fetch the lead field metadata once, but surface a failure through the
-	// per-item error path below so `continueOnFail` keeps working.
-	let customProperties: ICustomProperties | undefined;
-	let customPropertiesError: Error | undefined;
-	// Version 2 lead operations did not read the lead fields. Keep it that way unless
-	// a custom field is set, so existing workflows send no extra request.
-	const usesCustomFields = items.some(
-		(_, i) =>
-			(this.getNodeParameter('updateFields', i, {}) as IDataObject).customFields !== undefined,
-	);
-	if (!rawKeys && (resolveOutput || usesCustomFields)) {
-		try {
-			customProperties = await pipedriveGetCustomProperties.call(this, 'lead');
-		} catch (error) {
-			if (!this.continueOnFail()) throw error;
-			customPropertiesError = error as Error;
-		}
-	}
+	const {
+		customProperties,
+		error: customPropertiesError,
+		resolveOutput,
+	} = await loadLeadCustomProperties.call(this, 'updateFields');
 
 	for (let i = 0; i < items.length; i++) {
 		try {
@@ -179,7 +160,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const leadId = this.getNodeParameter('leadId', i) as string;
 
 			const updateFields = this.getNodeParameter('updateFields', i);
-			const { value, expected_close_date, ...rest } = updateFields as {
+			const { value, expected_close_date, visible_to, ...rest } = updateFields as {
 				value?: {
 					valueProperties: {
 						amount: number;
@@ -187,6 +168,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					};
 				};
 				expected_close_date?: string;
+				visible_to?: string;
 				[key: string]: unknown;
 			};
 
@@ -194,11 +176,12 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			if (Object.keys(rest).length) {
 				addFieldsToBody(body, rest as IDataObject);
-				// addFieldsToBody makes visible_to a number for the v2 API. The v1 leads endpoint
-				// takes it as a string.
-				if (body.visible_to !== undefined) {
-					body.visible_to = String(body.visible_to);
-				}
+			}
+
+			// addFieldsToBody would turn visible_to into a number for the v2 API. The v1
+			// leads endpoint takes the string option value, so it is passed through unchanged.
+			if (visible_to !== undefined) {
+				body.visible_to = visible_to;
 			}
 
 			if (value) {

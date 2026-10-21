@@ -2,6 +2,7 @@ export {
 	encodeCustomFieldsV2,
 	resolveCustomFieldsV2,
 	flattenCustomFieldsToRoot,
+	leadCustomFieldsOnly,
 	nestRootCustomFields,
 } from './customFields';
 
