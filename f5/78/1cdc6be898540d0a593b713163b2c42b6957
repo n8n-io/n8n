@@ -1,0 +1,25 @@
+packages/cli/src/public-api/public-api-rate-limit-settings.service.ts
+  s_925dcfedebf0c9::t_2ad10bfacbd51a 32-33,91
+packages/cli/test/integration/controllers/public-api-rate-limit-settings.controller.test.ts
+  s_925dcfedebf0c9::t_a2889417861619 9,37
+packages/cli/src/public-api/__tests__/public-api-rate-limit-settings.service.test.ts
+  s_925dcfedebf0c9::t_a2889417861619 14,53,92
+packages/@n8n/api-types/src/dto/public-api-rate-limit-settings/update-public-api-rate-limit-settings.dto.ts
+  s_925dcfedebf0c9::t_2ad10bfacbd51a 25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f5781cdc6be898540d0a593b713163b2c42b6957",
+  "prompts": {},
+  "sessions": {
+    "s_925dcfedebf0c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e954afe-0aa2-4cb1-89bb-81545b98a90a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}
