@@ -149,7 +149,7 @@ describe('PromotionChangeCard', () => {
 			pinia: createTestingPinia(),
 			props: {
 				resource: detail && !stale ? { ...card, revision: detail.revision } : card,
-				graph: buildSelectionGraph(billingPreview()),
+				graph: buildSelectionGraph(billingPreview(), 'promote'),
 				direction,
 				entry: detail ? { status: 'loaded', detail } : undefined,
 				included: false,
@@ -167,7 +167,7 @@ describe('PromotionChangeCard', () => {
 			pinia: createTestingPinia(),
 			props: {
 				resource: billingResources.stripe,
-				graph: buildSelectionGraph(billingPreview()),
+				graph: buildSelectionGraph(billingPreview(), 'promote'),
 				direction: 'apply',
 				included: false,
 				inspected: false,
@@ -186,7 +186,7 @@ describe('PromotionChangeCard', () => {
 	it('should show in the header whether the operation includes a dependency, and which workflows use it', () => {
 		const props = {
 			resource: billingResources.stripe,
-			graph: buildSelectionGraph(billingPreview()),
+			graph: buildSelectionGraph(billingPreview(), 'promote'),
 			direction: 'promote' as const,
 			included: false,
 			inspected: false,

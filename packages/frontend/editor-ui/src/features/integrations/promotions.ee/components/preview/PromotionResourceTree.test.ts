@@ -9,7 +9,7 @@ import { buildSelectionGraph, resolveInclusion } from '../../promotionPreview.se
 import { buildPreviewTree } from '../../promotionPreview.tree';
 import PromotionResourceTree from './PromotionResourceTree.vue';
 
-const graph = buildSelectionGraph(billingPreview());
+const graph = buildSelectionGraph(billingPreview(), 'promote');
 const tree = buildPreviewTree(billingPreview(), { workflows: 'workflows', group: (id) => id });
 const renderComponent = createComponentRenderer(PromotionResourceTree);
 
