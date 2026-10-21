@@ -9,7 +9,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'AddWaitingStatusToAgentExecution1792418677998';
+const MIGRATION_NAME = 'AddWaitingStatusToAgentExecution1792496430068';
 
 describe('AddWaitingStatusToAgentExecution migration', () => {
 	let dataSource: DataSource;
