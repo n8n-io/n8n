@@ -18,6 +18,7 @@ function leadToSet(expression: string): WorkflowResponse {
 					assignments: { assignments: [{ name: 'body', value: '={{ {} }}' }] },
 				},
 			},
+			{ name: 'Code', type: 'n8n-nodes-base.code', typeVersion: 2, parameters: {} },
 			{
 				name: 'Normalize',
 				type: 'n8n-nodes-base.set',
@@ -70,6 +71,34 @@ describe('validFieldReferences', () => {
 	it('fails when every alternative in the fallback chain is missing', async () => {
 		const result = await validFieldReferences.run(
 			leadToSet('={{ $json.email ?? $json.mail ?? "" }}'),
+			{ prompt: '' },
+		);
+
+		expect(result.pass).toBe(false);
+	});
+	it('fails when the missing field is read further before the fallback', async () => {
+		const result = await validFieldReferences.run(
+			leadToSet('={{ $json.email.address ?? $json.body }}'),
+			{ prompt: '' },
+		);
+
+		expect(result.pass).toBe(false);
+	});
+
+	it('fails when a separate fallback chain has every alternative missing', async () => {
+		const result = await validFieldReferences.run(
+			leadToSet('={{ ($json.body ?? $json.lead) + ($json.email ?? $json.mail) }}'),
+			{ prompt: '' },
+		);
+
+		expect(result.pass).toBe(false);
+		expect(result.comment).toContain('"email"');
+		expect(result.comment).not.toContain('"lead"');
+	});
+
+	it('fails when the only other alternative cannot be checked', async () => {
+		const result = await validFieldReferences.run(
+			leadToSet('={{ $json.email ?? $("Code").item.json.email }}'),
 			{ prompt: '' },
 		);
 

@@ -26,38 +26,36 @@ interface FieldReference {
 	field: string;
 	/** The node name providing the data, or undefined for $json (upstream) */
 	sourceNode: string | undefined;
-	/** True when the reference is an operand of `??` or `||` */
-	fallback: boolean;
+	/** Where the reference starts in the expression */
+	start: number;
+	/** Where the reference ends, after any property access or call on it */
+	end: number;
+	/** False when a plain `.prop` read on the field would throw if the field is missing */
+	safeWhenMissing: boolean;
 }
 
 /** Property access, optional chaining or calls that follow a matched reference. */
 const ACCESS_TAIL = /^(?:\?\.\w+|\.\w+|\[[^\]]*\]|\(\))*/;
-const FALLBACK_OPERATOR = /^\s*(?:\?\?|\|\|)/;
-const FALLBACK_OPERATOR_BEFORE = /(?:\?\?|\|\|)\s*\(*\s*$/;
-
-/** Whether the match at `start`..`end` sits next to a `??` or `||` operator. */
-function isFallbackOperand(expression: string, start: number, end: number): boolean {
-	const rest = expression.slice(end);
-	const tail = ACCESS_TAIL.exec(rest)?.[0].length ?? 0;
-	return (
-		FALLBACK_OPERATOR.test(rest.slice(tail)) ||
-		FALLBACK_OPERATOR_BEFORE.test(expression.slice(0, start))
-	);
-}
+/** The text between two operands of one `??` / `||` chain. */
+const FALLBACK_LINK = /^\s*\)*\s*(?:\?\?|\|\|)\s*\(*\s*$/;
 
 function unescapeNodeName(raw: string): string {
 	return raw.replace(/\\(.)/g, '$1');
 }
 
-/** Extract field references from a single expression string. */
+/** Extract field references from a single expression string, in order of appearance. */
 function extractFieldReferences(expression: string): FieldReference[] {
 	const refs: FieldReference[] = [];
 	const add = (m: RegExpMatchArray, field: string, sourceNode: string | undefined) => {
 		const start = m.index ?? 0;
+		const matchEnd = start + m[0].length;
+		const tail = ACCESS_TAIL.exec(expression.slice(matchEnd))?.[0] ?? '';
 		refs.push({
 			field,
 			sourceNode,
-			fallback: isFallbackOperand(expression, start, start + m[0].length),
+			start,
+			end: matchEnd + tail.length,
+			safeWhenMissing: tail === '' || tail.startsWith('?.'),
 		});
 	};
 
@@ -75,7 +73,17 @@ function extractFieldReferences(expression: string): FieldReference[] {
 		add(m, m[3], unescapeNodeName(m[2]));
 	}
 
-	return refs;
+	return refs.sort((x, y) => x.start - y.start);
+}
+
+/** Group references into `??` / `||` chains: each chain id is the index of its first reference. */
+function fallbackChains(expression: string, refs: FieldReference[]): number[] {
+	const chain: number[] = [];
+	refs.forEach((ref, i) => {
+		const linked = i > 0 && FALLBACK_LINK.test(expression.slice(refs[i - 1].end, ref.start));
+		chain.push(linked ? chain[i - 1] : i);
+	});
+	return chain;
 }
 
 // ---------------------------------------------------------------------------
@@ -245,21 +253,28 @@ export const validFieldReferences: BinaryCheck = {
 				const refs = extractFieldReferences(expr);
 				if (refs.length > 0) sawAnyFieldRef = true;
 
-				const missing = refs.map((ref) => {
+				// present: a known schema has the field; missing: a known schema lacks it;
+				// unknown: no source or no schema to check against.
+				const status = refs.map((ref) => {
 					const sourceNode = resolveSourceNode(ref, node.name, nodeByName, upstreamMap);
 					const knownFields = sourceNode ? getKnownOutputFields(sourceNode) : undefined;
-					// No source or no schema: can't tell, so treat the field as present.
-					return sourceNode && knownFields && !knownFields.has(ref.field) ? sourceNode : undefined;
+					if (!sourceNode || !knownFields) return { state: 'unknown' as const };
+					return knownFields.has(ref.field)
+						? { state: 'present' as const }
+						: { state: 'missing' as const, sourceNode };
 				});
-				// One fallback that resolves anywhere in the expression clears every missing
-				// fallback in it, even one in a separate `??` chain of the same expression.
-				const someFallbackResolves = refs.some((ref, i) => ref.fallback && !missing[i]);
+				const chain = fallbackChains(expr, refs);
 
 				refs.forEach((ref, i) => {
-					const sourceNode = missing[i];
-					if (!sourceNode || (ref.fallback && someFallbackResolves)) return;
+					const result = status[i];
+					if (result.state !== 'missing') return;
+					// A missing field is fine when another alternative in its chain exists.
+					const covered =
+						ref.safeWhenMissing &&
+						refs.some((_, j) => j !== i && chain[j] === chain[i] && status[j].state === 'present');
+					if (covered) return;
 					invalid.push(
-						`"${ref.field}" not in output of "${sourceNode.name}" (in node "${node.name}")`,
+						`"${ref.field}" not in output of "${result.sourceNode.name}" (in node "${node.name}")`,
 					);
 				});
 			}
