@@ -197,6 +197,17 @@ export function parseCliArgs(argv: string[]): CliArgs {
 			'--build-via-mcp requires LangSmith experiment tracking — set LANGSMITH_API_KEY. The no-LangSmith direct loop does not support MCP builds.',
 		);
 	}
+	// An isolated build gets an empty CLAUDE_CONFIG_DIR, so a stored `claude` login is not visible.
+	const claudeEnvAuth = ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN'];
+	if (
+		validated.buildViaMcp &&
+		!validated.buildCwd &&
+		!claudeEnvAuth.some((name) => process.env[name])
+	) {
+		throw new Error(
+			`--build-via-mcp without --build-cwd runs claude isolated from ~/.claude — set one of ${claudeEnvAuth.join(', ')}, or pass --build-cwd to use the host claude setup.`,
+		);
+	}
 	// Build knobs without --build-via-mcp would parse fine and then be silently
 	// ignored — the run would look like it honored them. Fail loudly instead.
 	if (!validated.buildViaMcp && raw.buildOnlyFlags.length > 0) {

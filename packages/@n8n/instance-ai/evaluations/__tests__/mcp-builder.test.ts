@@ -211,6 +211,47 @@ class FakeChild extends EventEmitter {
 	}
 }
 
+/** A spawned child that prints `events` as stream-json lines, then exits. */
+const emitting = (events: object[]): FakeChild => {
+	const child = new FakeChild(1234);
+	setImmediate(() => {
+		child.stdout.emit('data', Buffer.from(events.map((e) => JSON.stringify(e)).join('\n') + '\n'));
+		child.emit('close', 0, null);
+	});
+	return child;
+};
+
+const resultEvent = (fields: Record<string, unknown>) => ({
+	type: 'result',
+	subtype: 'success',
+	...fields,
+});
+
+const initEvent = (sessionId: string) => ({
+	type: 'system',
+	subtype: 'init',
+	session_id: sessionId,
+});
+
+const assistantEvent = (...content: object[]) => ({ type: 'assistant', message: { content } });
+
+const toolResultEvent = (toolUseId: string, text: string, isError = false) => ({
+	type: 'user',
+	message: {
+		content: [
+			{
+				type: 'tool_result',
+				tool_use_id: toolUseId,
+				content: [{ type: 'text', text }],
+				is_error: isError,
+			},
+		],
+	},
+});
+
+type SpawnCall = [string, string[], { cwd?: string; env?: Record<string, string | undefined> }];
+const spawnCall = (index: number): SpawnCall => vi.mocked(spawn).mock.calls[index] as SpawnCall;
+
 describe('buildWorkflowViaMcp', () => {
 	const settings = {
 		serverName: 'n8n-local',
@@ -263,25 +304,20 @@ describe('buildWorkflowViaMcp', () => {
 		expect(vi.mocked(spawn)).toHaveBeenCalledTimes(1);
 		expect(result.logFile).not.toBeNull();
 		const logged = readFileSync(String(result.logFile), 'utf-8');
-		expect(logged).toBe(JSON.stringify({ subtype: 'spawn-error', error: 'spawn claude ENOENT' }));
+		expect(logged.trim()).toBe(
+			JSON.stringify({ subtype: 'spawn-error', error: 'spawn claude ENOENT' }),
+		);
 	});
 
 	it('retries up to maxAttempts when claude exits without a WORKFLOW_ID', async () => {
-		spawnReturning(() => {
-			const child = new FakeChild(1234);
-			setImmediate(() => {
-				child.stdout.emit('data', Buffer.from('{"result":"built something, forgot the id"}'));
-				child.emit('close', 0, null);
-			});
-			return child;
-		});
+		spawnReturning(() => emitting([resultEvent({ result: 'built something, forgot the id' })]));
 
 		const result = await buildWorkflowViaMcp(buildOpts());
 
 		expect(result.workflowId).toBeNull();
 		// The session's result text is appended so an upstream provider error can
 		// be classified downstream; the subtype still leads.
-		expect(result.failureReason).toContain('no-stdout');
+		expect(result.failureReason).toContain('success');
 		expect(vi.mocked(spawn)).toHaveBeenCalledTimes(3);
 	});
 
@@ -289,22 +325,14 @@ describe('buildWorkflowViaMcp', () => {
 	// bare subtype, so `findProviderOutage` had nothing to match and the run was
 	// filed as a BUILDER failure. The session's own error text has to ride along.
 	it('carries the provider error text out, not just the session subtype', async () => {
-		spawnReturning(() => {
-			const child = new FakeChild(1234);
-			setImmediate(() => {
-				child.stdout.emit(
-					'data',
-					Buffer.from(
-						JSON.stringify({
-							subtype: 'error_during_execution',
-							result: 'AI_APICallError: Overloaded (HTTP 529)',
-						}),
-					),
-				);
-				child.emit('close', 0, null);
-			});
-			return child;
-		});
+		spawnReturning(() =>
+			emitting([
+				resultEvent({
+					subtype: 'error_during_execution',
+					result: 'AI_APICallError: Overloaded (HTTP 529)',
+				}),
+			]),
+		);
 
 		// One attempt: the provider backoff between retries is exercised separately;
 		// this pins that the evidence survives into `failureReason`.
@@ -319,17 +347,7 @@ describe('buildWorkflowViaMcp', () => {
 	});
 
 	it('returns the workflow id from a successful first attempt', async () => {
-		spawnReturning(() => {
-			const child = new FakeChild(1234);
-			setImmediate(() => {
-				child.stdout.emit(
-					'data',
-					Buffer.from(JSON.stringify({ result: 'done\nWORKFLOW_ID=wf123' })),
-				);
-				child.emit('close', 0, null);
-			});
-			return child;
-		});
+		spawnReturning(() => emitting([resultEvent({ result: 'done\nWORKFLOW_ID=wf123' })]));
 
 		const result = await buildWorkflowViaMcp(buildOpts());
 
@@ -341,7 +359,6 @@ describe('buildWorkflowViaMcp', () => {
 	it('sums cost, turns and duration across attempts — failed attempts cost money too', async () => {
 		let call = 0;
 		spawnReturning(() => {
-			const child = new FakeChild(1234);
 			call++;
 			const session =
 				call === 1
@@ -357,11 +374,7 @@ describe('buildWorkflowViaMcp', () => {
 							num_turns: 5,
 							duration_ms: 3000,
 						};
-			setImmediate(() => {
-				child.stdout.emit('data', Buffer.from(JSON.stringify(session)));
-				child.emit('close', 0, null);
-			});
-			return child;
+			return emitting([resultEvent(session)]);
 		});
 
 		const result = await buildWorkflowViaMcp(buildOpts());
@@ -371,6 +384,223 @@ describe('buildWorkflowViaMcp', () => {
 		expect(result.turns).toBe(7);
 		expect(result.durationMs).toBe(4000);
 		expect(vi.mocked(spawn)).toHaveBeenCalledTimes(2);
+	});
+
+	it('builds the transcript from the stream and reads the id from the tool result', async () => {
+		spawnReturning(() =>
+			emitting([
+				initEvent('sess-1'),
+				assistantEvent(
+					{ type: 'thinking', thinking: 'hidden' },
+					{ type: 'text', text: 'Creating it now.' },
+					{
+						type: 'tool_use',
+						id: 'tu-1',
+						name: 'mcp__n8n-local__create_workflow_from_code',
+						input: { code: 'workflow()' },
+					},
+				),
+				toolResultEvent('tu-1', JSON.stringify({ workflowId: 'wfT', name: 'Form' })),
+				assistantEvent({ type: 'text', text: 'Done.' }),
+				resultEvent({ result: 'Done.', session_id: 'sess-1' }),
+			]),
+		);
+
+		const result = await buildWorkflowViaMcp(buildOpts());
+
+		expect(result.workflowId).toBe('wfT');
+		expect(result.transcript).toEqual([
+			{
+				userMessage: 'Build a contact form',
+				steps: [
+					{ kind: 'agent-text', text: 'Creating it now.' },
+					{
+						kind: 'tool-call',
+						toolName: 'create_workflow_from_code',
+						toolCallId: 'tu-1',
+						args: { code: 'workflow()' },
+						result: { workflowId: 'wfT', name: 'Form' },
+					},
+					{ kind: 'agent-text', text: 'Done.' },
+				],
+			},
+		]);
+	});
+
+	it('treats an Agent from create_agent as a build, without retrying', async () => {
+		spawnReturning(() =>
+			emitting([
+				assistantEvent({
+					type: 'tool_use',
+					id: 'tu-1',
+					name: 'mcp__n8n-local__create_agent',
+					input: { name: 'Clinic Assistant' },
+				}),
+				toolResultEvent(
+					'tu-1',
+					JSON.stringify({ ok: true, agent: { id: 'ag1', projectId: 'p1', published: false } }),
+				),
+				resultEvent({ result: 'Your Agent is ready.' }),
+			]),
+		);
+
+		const result = await buildWorkflowViaMcp(buildOpts());
+
+		expect(result.workflowId).toBeNull();
+		expect(result.agent).toEqual({ id: 'ag1', projectId: 'p1' });
+		expect(result.failureReason).toBeUndefined();
+		expect(vi.mocked(spawn)).toHaveBeenCalledTimes(1);
+	});
+
+	it('records a failed tool call as an error, without taking its id', async () => {
+		spawnReturning(() =>
+			emitting([
+				assistantEvent({
+					type: 'tool_use',
+					id: 'tu-1',
+					name: 'mcp__n8n-local__create_workflow_from_code',
+					input: {},
+				}),
+				toolResultEvent('tu-1', 'Validation failed', true),
+				resultEvent({ result: 'Could not create it.' }),
+			]),
+		);
+
+		const result = await buildWorkflowViaMcp({
+			...buildOpts(),
+			settings: { ...settings, maxAttempts: 1 },
+		});
+
+		expect(result.workflowId).toBeNull();
+		expect(result.transcript[0]?.steps).toEqual([
+			{
+				kind: 'tool-call',
+				toolName: 'create_workflow_from_code',
+				toolCallId: 'tu-1',
+				args: {},
+				error: 'Validation failed',
+			},
+		]);
+	});
+
+	it('runs isolated without a build cwd: own config dir, empty cwd, Read of saved results only', async () => {
+		spawnReturning(() => emitting([resultEvent({ result: 'WORKFLOW_ID=wf1' })]));
+
+		await buildWorkflowViaMcp(buildOpts());
+
+		const [, args, options] = spawnCall(0);
+		expect(args).toEqual(expect.arrayContaining(['--output-format', 'stream-json', '--verbose']));
+		const toolsIndex = args.indexOf('--tools');
+		expect(args[toolsIndex + 1]).toBe('Read');
+		expect(args).toEqual(expect.arrayContaining(['--permission-mode', 'dontAsk']));
+		const configDir = String(options.env?.CLAUDE_CONFIG_DIR);
+		expect(args).toContain(`Read(/${configDir}/**)`);
+		expect(configDir).toContain('n8n-mcp-build-');
+		expect(options.cwd).toContain('n8n-mcp-build-');
+		expect(options.env?.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC).toBe('1');
+		expect(options.env?.CLAUDE_CODE_DISABLE_AUTO_MEMORY).toBe('1');
+		// The throwaway home is removed once the attempt ends.
+		expect(() => statSync(configDir)).toThrow();
+	});
+
+	it('keeps the host setup when a build cwd is given', async () => {
+		spawnReturning(() => emitting([resultEvent({ result: 'WORKFLOW_ID=wf1' })]));
+
+		await buildWorkflowViaMcp({ ...buildOpts(), settings: { ...settings, buildCwd: logDir } });
+
+		const [, args, options] = spawnCall(0);
+		expect(args).not.toContain('--tools');
+		expect(options.cwd).toBe(logDir);
+		expect(options.env?.CLAUDE_CONFIG_DIR).toBe(process.env.CLAUDE_CONFIG_DIR);
+	});
+
+	describe('with a simulated user', () => {
+		const multiTurn = [user('Build a contact form'), user('[Ask for a Slack alert too]')];
+
+		const makeDriver = (
+			decisions: Array<{ kind: 'followUp'; message: string } | { kind: 'done' }>,
+		) => {
+			const recordAssistantMessage = vi.fn();
+			const decideFollowUp = vi.fn(async () => decisions.shift() ?? { kind: 'done' as const });
+			return { recordAssistantMessage, decideFollowUp };
+		};
+
+		it('sends only the first user turn, then resumes the session with each follow-up', async () => {
+			let call = 0;
+			spawnReturning(() => {
+				call++;
+				return call === 1
+					? emitting([
+							initEvent('sess-1'),
+							assistantEvent({ type: 'text', text: 'Which channel?' }),
+							resultEvent({ result: 'Which channel?', session_id: 'sess-1', total_cost_usd: 0.1 }),
+						])
+					: emitting([
+							initEvent('sess-1'),
+							assistantEvent({ type: 'text', text: 'Built.\nWORKFLOW_ID=wf9' }),
+							// A resumed session reports its cumulative cost.
+							resultEvent({ result: 'Built.\nWORKFLOW_ID=wf9', total_cost_usd: 0.3 }),
+						]);
+			});
+			const driver = makeDriver([{ kind: 'followUp', message: 'Use #alerts' }]);
+
+			const result = await buildWorkflowViaMcp({
+				...buildOpts(),
+				conversation: multiTurn,
+				createDriver: () => driver,
+			});
+
+			expect(result.workflowId).toBe('wf9');
+			expect(result.cost).toBeCloseTo(0.3);
+			const [, firstArgs] = spawnCall(0);
+			// The user's own words only: no later turns and no WORKFLOW_ID trailer.
+			expect(firstArgs[1]).toBe('Build a contact form');
+			expect(firstArgs).not.toContain('--resume');
+			const [, secondArgs] = spawnCall(1);
+			expect(secondArgs[1]).toBe('Use #alerts');
+			expect(secondArgs).toEqual(expect.arrayContaining(['--resume', 'sess-1']));
+			expect(driver.recordAssistantMessage).toHaveBeenNthCalledWith(1, 'Which channel?');
+			expect(result.transcript.map((turn) => turn.userMessage)).toEqual([
+				'Build a contact form',
+				'Use #alerts',
+			]);
+		});
+
+		it('does not retry a conversation that ended without a workflow', async () => {
+			spawnReturning(() =>
+				emitting([initEvent('sess-1'), resultEvent({ result: 'I need more details.' })]),
+			);
+
+			const result = await buildWorkflowViaMcp({
+				...buildOpts(),
+				conversation: multiTurn,
+				createDriver: () => makeDriver([]),
+			});
+
+			expect(result.workflowId).toBeNull();
+			expect(result.failureReason).toBe('no-workflow: I need more details.');
+			expect(vi.mocked(spawn)).toHaveBeenCalledTimes(1);
+		});
+
+		it('retries an unfinished conversation with a fresh simulated user', async () => {
+			let call = 0;
+			spawnReturning(() => {
+				call++;
+				return call === 1
+					? emitting([initEvent('sess-1'), resultEvent({ subtype: 'error_during_execution' })])
+					: emitting([initEvent('sess-2'), resultEvent({ result: 'WORKFLOW_ID=wf2' })]);
+			});
+			const createDriver = vi.fn(() => makeDriver([]));
+
+			const result = await buildWorkflowViaMcp({
+				...buildOpts(),
+				conversation: multiTurn,
+				createDriver,
+			});
+
+			expect(result.workflowId).toBe('wf2');
+			expect(createDriver).toHaveBeenCalledTimes(2);
+		});
 	});
 });
 
