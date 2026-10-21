@@ -9,6 +9,7 @@ import { join } from 'node:path';
 
 import { readRgbaPixels, type Rgba } from './png-pixels';
 import { buildTeamsIconSvgs, renderTeamsAppIcons } from '../teams-app-icons';
+import { ACCENT_COLOR } from '../teams-manifest.service';
 
 const workers = vi.hoisted(() => ({ live: 0, mostAtOnce: 0 }));
 
@@ -132,8 +133,15 @@ describe('renderTeamsAppIcons', () => {
 		expect(pixels.some(({ a }) => a === 0)).toBe(true);
 	});
 
-	it('draws the default icon when the agent has no personalisation', async () => {
-		await expect(renderTeamsAppIcons(null)).resolves.toBeDefined();
+	// When this fails, write the color, outline and accentColor of renderTeamsAppIcons(null)
+	// to the assets folder and to ACCENT_COLOR.
+	it('bundles the default agent icon, so a failed render looks like an agent without personalisation', async () => {
+		const icons = await render(null);
+		const bundled = (name: string) => readFileSync(join(__dirname, '..', 'assets', name));
+
+		expect(icons.color.equals(bundled('color.png'))).toBe(true);
+		expect(icons.outline.equals(bundled('outline.png'))).toBe(true);
+		expect(icons.accentColor).toBe(ACCENT_COLOR);
 	});
 
 	it('draws the default agent icon for an icon name Lucide does not have', async () => {
