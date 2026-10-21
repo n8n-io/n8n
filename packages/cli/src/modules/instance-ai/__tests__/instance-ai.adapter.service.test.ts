@@ -8,12 +8,14 @@ vi.mock('@n8n/instance-ai', async () => {
 		WorkflowNotFoundError,
 		WorkflowEditorLockedError,
 		FolderResolutionError,
+		formatRedactedError,
 	} = await import('@n8n/instance-ai/errors');
 	return {
 		WorkflowSaveConflictError,
 		WorkflowNotFoundError,
 		WorkflowEditorLockedError,
 		FolderResolutionError,
+		formatRedactedError,
 		wrapUntrustedData(content: string, source: string, label?: string): string {
 			const esc = (s: string) =>
 				s
@@ -86,6 +88,7 @@ import {
 } from '@n8n/api-types';
 
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { NodeCatalogService } from '@/node-catalog';
 import type { NodeTypes } from '@/node-types';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
@@ -147,18 +150,9 @@ function createMockCollaborationService() {
 	};
 }
 
-function createMockExecutionRepository(
-	// `workflowId` is optional here: the failed-execution builders further down
-	// predate it and only the step-run tests read it.
-	execution?: Omit<ReturnType<typeof makeExecution>, 'workflowId'> & { workflowId?: string },
-): Mocked<Pick<ExecutionRepository, 'findSingleExecution'>> {
-	const executionPersistence = mock<ExecutionPersistence>();
-	executionPersistence.findSingleExecution.mockResolvedValue(execution as never);
-	vi.spyOn(Container, 'get').mockReturnValue(executionPersistence);
-
-	return {
-		findSingleExecution: vi.fn().mockResolvedValue(execution),
-	};
+/** Type a fixture as the loaded execution the extractors take. */
+function asExecution(execution: object): IExecutionResponse {
+	return execution as unknown as IExecutionResponse;
 }
 
 /** The subset of a workflow node the adapter helpers read. */
@@ -230,7 +224,7 @@ const FILTER_NODE: WorkflowNode = { name: 'Filter', type: 'n8n-nodes-base.filter
  */
 function mockMultiOutputRun(outputs: Array<IDataObject[] | null>, node = FILTER_NODE) {
 	const main = outputs.map((items) => items?.map((json) => ({ json })) ?? null);
-	createMockExecutionRepository(
+	return asExecution(
 		makeExecution({
 			workflowNodes: [node],
 			runData: { [node.name]: [{ ...makeTaskData([]), data: { main } }] },
@@ -262,25 +256,17 @@ function unwrapJson(wrapped: unknown): unknown {
 // ---------------------------------------------------------------------------
 
 describe('extractExecutionResult', () => {
-	it('returns unknown status when execution is not found', async () => {
-		createMockExecutionRepository(undefined);
-
-		const result = await extractExecutionResult('missing-id');
-
-		expect(result).toEqual({ executionId: 'missing-id', status: 'unknown' });
-	});
-
 	it('maps "error" status to "error"', async () => {
-		createMockExecutionRepository(makeExecution({ status: 'error', error: { message: 'boom' } }));
+		const execution = asExecution(makeExecution({ status: 'error', error: { message: 'boom' } }));
 
-		const result = await extractExecutionResult('exec-1');
+		const result = await extractExecutionResult(execution);
 
 		expect(result.status).toBe('error');
 		expect(result.error).toBe('boom');
 	});
 
 	it('combines message, description, and upstream messages when the error is a deserialized NodeOperationError', async () => {
-		createMockExecutionRepository(
+		const execution = asExecution(
 			makeExecution({
 				status: 'error',
 				error: {
@@ -292,7 +278,7 @@ describe('extractExecutionResult', () => {
 			}),
 		);
 
-		const result = await extractExecutionResult('exec-1', true);
+		const result = await extractExecutionResult(execution, true);
 
 		expect(result.error).toContain('Bad request - please check your parameters');
 		expect(result.error).toContain('Your credit balance is too low');
@@ -301,7 +287,7 @@ describe('extractExecutionResult', () => {
 	});
 
 	it('suppresses upstream description and messages when allowSendingParameterValues is false', async () => {
-		createMockExecutionRepository(
+		const execution = asExecution(
 			makeExecution({
 				status: 'error',
 				error: {
@@ -313,7 +299,7 @@ describe('extractExecutionResult', () => {
 			}),
 		);
 
-		const result = await extractExecutionResult('exec-1', false);
+		const result = await extractExecutionResult(execution, false);
 
 		expect(result.error).toContain('Bad request - please check your parameters');
 		expect(result.error).not.toContain('Your credit balance is too low');
@@ -322,33 +308,33 @@ describe('extractExecutionResult', () => {
 	});
 
 	it('maps "crashed" status to "error"', async () => {
-		createMockExecutionRepository(makeExecution({ status: 'crashed' }));
+		const execution = asExecution(makeExecution({ status: 'crashed' }));
 
-		const result = await extractExecutionResult('exec-1');
+		const result = await extractExecutionResult(execution);
 
 		expect(result.status).toBe('error');
 	});
 
 	it('maps "running" status to "running"', async () => {
-		createMockExecutionRepository(makeExecution({ status: 'running' }));
+		const execution = asExecution(makeExecution({ status: 'running' }));
 
-		const result = await extractExecutionResult('exec-1');
+		const result = await extractExecutionResult(execution);
 
 		expect(result.status).toBe('running');
 	});
 
 	it('maps "new" status to "running"', async () => {
-		createMockExecutionRepository(makeExecution({ status: 'new' }));
+		const execution = asExecution(makeExecution({ status: 'new' }));
 
-		const result = await extractExecutionResult('exec-1');
+		const result = await extractExecutionResult(execution);
 
 		expect(result.status).toBe('running');
 	});
 
 	it('maps "waiting" status to "waiting"', async () => {
-		createMockExecutionRepository(makeExecution({ status: 'waiting' }));
+		const execution = asExecution(makeExecution({ status: 'waiting' }));
 
-		const result = await extractExecutionResult('exec-1');
+		const result = await extractExecutionResult(execution);
 
 		expect(result.status).toBe('waiting');
 	});
@@ -356,9 +342,9 @@ describe('extractExecutionResult', () => {
 	it('maps "success" status to "success"', async () => {
 		const startedAt = new Date('2026-02-01T10:00:00Z');
 		const stoppedAt = new Date('2026-02-01T10:01:30Z');
-		createMockExecutionRepository(makeExecution({ status: 'success', startedAt, stoppedAt }));
+		const execution = asExecution(makeExecution({ status: 'success', startedAt, stoppedAt }));
 
-		const result = await extractExecutionResult('exec-1');
+		const result = await extractExecutionResult(execution);
 
 		expect(result.status).toBe('success');
 		expect(result.startedAt).toBe(startedAt.toISOString());
@@ -366,15 +352,15 @@ describe('extractExecutionResult', () => {
 	});
 
 	it('maps any other status (e.g. "canceled") to "success"', async () => {
-		createMockExecutionRepository(makeExecution({ status: 'canceled' }));
+		const execution = asExecution(makeExecution({ status: 'canceled' }));
 
-		const result = await extractExecutionResult('exec-1');
+		const result = await extractExecutionResult(execution);
 
 		expect(result.status).toBe('success');
 	});
 
 	it('includes node output data when includeOutputData is true', async () => {
-		createMockExecutionRepository(
+		const execution = asExecution(
 			makeExecution({
 				status: 'success',
 				runData: {
@@ -383,7 +369,7 @@ describe('extractExecutionResult', () => {
 			}),
 		);
 
-		const result = await extractExecutionResult('exec-1', true);
+		const result = await extractExecutionResult(execution, true);
 
 		expect(result.data).toBeDefined();
 		// After prompt-injection hardening, node output is wrapped in boundary tags
@@ -393,9 +379,9 @@ describe('extractExecutionResult', () => {
 	});
 
 	it('groups the output data of a multi-output node per output', async () => {
-		mockMultiOutputRun([[{ text: '$TSLA' }], [{ text: 'plain' }]]);
+		const execution = mockMultiOutputRun([[{ text: '$TSLA' }], [{ text: 'plain' }]]);
 
-		const result = await extractExecutionResult('exec-1', true, filterNodeTypes());
+		const result = await extractExecutionResult(execution, true, filterNodeTypes());
 
 		expect(unwrapJson(result.data!.Filter)).toEqual({
 			outputs: [
@@ -407,9 +393,9 @@ describe('extractExecutionResult', () => {
 	});
 
 	it('reports a null output as empty', async () => {
-		mockMultiOutputRun([null, [{ id: 1 }]]);
+		const execution = mockMultiOutputRun([null, [{ id: 1 }]]);
 
-		const result = await extractExecutionResult('exec-1', true);
+		const result = await extractExecutionResult(execution, true);
 
 		expect(unwrapJson(result.data!.Filter)).toEqual({
 			outputs: [
@@ -421,7 +407,7 @@ describe('extractExecutionResult', () => {
 	});
 
 	it('excludes node output data when includeOutputData is false', async () => {
-		createMockExecutionRepository(
+		const execution = asExecution(
 			makeExecution({
 				status: 'success',
 				runData: {
@@ -430,7 +416,7 @@ describe('extractExecutionResult', () => {
 			}),
 		);
 
-		const result = await extractExecutionResult('exec-1', false);
+		const result = await extractExecutionResult(execution, false);
 
 		expect(result.data).toBeUndefined();
 	});
@@ -444,20 +430,20 @@ describe('extractExecutionResult', () => {
 			data: { main: [[]] },
 		} as unknown as ITaskData;
 
-		createMockExecutionRepository(
+		const execution = asExecution(
 			makeExecution({
 				status: 'success',
 				runData: { 'Empty Node': [emptyTaskData] },
 			}),
 		);
 
-		const result = await extractExecutionResult('exec-1', true);
+		const result = await extractExecutionResult(execution, true);
 
 		expect(result.data).toBeUndefined();
 	});
 
 	it('includes node-level errors even when the execution completed successfully', async () => {
-		createMockExecutionRepository(
+		const execution = asExecution(
 			makeExecution({
 				status: 'success',
 				runData: {
@@ -474,7 +460,7 @@ describe('extractExecutionResult', () => {
 			}),
 		);
 
-		const result = await extractExecutionResult('exec-1', false);
+		const result = await extractExecutionResult(execution, false);
 
 		expect(result.status).toBe('success');
 		expect(result.error).toBeUndefined();
@@ -487,7 +473,7 @@ describe('extractExecutionResult', () => {
 	});
 
 	it('omits errors on nodes configured to continue on error', async () => {
-		createMockExecutionRepository(
+		const execution = asExecution(
 			makeExecution({
 				status: 'success',
 				workflowNodes: [
@@ -508,13 +494,13 @@ describe('extractExecutionResult', () => {
 			}),
 		);
 
-		const result = await extractExecutionResult('exec-1', false);
+		const result = await extractExecutionResult(execution, false);
 
 		expect(result.nodeErrors).toBeUndefined();
 	});
 
 	it('reports a single entry for a node that errored on multiple runs', async () => {
-		createMockExecutionRepository(
+		const execution = asExecution(
 			makeExecution({
 				status: 'success',
 				runData: {
@@ -532,7 +518,7 @@ describe('extractExecutionResult', () => {
 			}),
 		);
 
-		const result = await extractExecutionResult('exec-1', false);
+		const result = await extractExecutionResult(execution, false);
 
 		expect(result.nodeErrors).toEqual([{ nodeName: 'geocode_city', message: 'boom 1' }]);
 	});
@@ -541,6 +527,73 @@ describe('extractExecutionResult', () => {
 // ---------------------------------------------------------------------------
 // formatExecutionError
 // ---------------------------------------------------------------------------
+
+/** An execution the redaction service processed for a viewer who may not see its data. */
+function makeRedactedExecution(reason = 'workflow_redaction_policy') {
+	const execution = makeExecution({
+		status: 'error',
+		runData: {
+			Trigger: [
+				{
+					...makeTaskData([]),
+					data: { main: [[{ json: {}, redaction: { redacted: true, reason } }]] },
+				},
+			],
+			HTTP: [
+				{
+					...makeTaskData([]),
+					data: undefined,
+					redactedError: { type: 'NodeApiError', httpCode: '401' },
+				} as unknown as ITaskData,
+			],
+		},
+	});
+	execution.data.resultData.redactedError = { type: 'NodeApiError', httpCode: '401' };
+	execution.data.redactionInfo = { isRedacted: true, reason, canReveal: false };
+	return asExecution(execution);
+}
+
+describe('redacted executions', () => {
+	it('reports the redaction and no output items on the result', async () => {
+		const result = await extractExecutionResult(makeRedactedExecution(), true);
+
+		expect(result.redaction).toEqual({ reason: 'workflow_redaction_policy', canReveal: false });
+		expect(result.data).toBeUndefined();
+		expect(result.executedNodeNames).toEqual(['Trigger', 'HTTP']);
+		expect(result.error).toBe('NodeApiError error (401) (details hidden by n8n)');
+		expect(result.nodeErrors).toEqual([
+			{ nodeName: 'HTTP', message: 'NodeApiError error (401) (details hidden by n8n)' },
+		]);
+	});
+
+	it('returns no items from node output', async () => {
+		const result = await extractNodeOutput(makeRedactedExecution(), 'Trigger');
+
+		expect(result).toEqual({
+			nodeName: 'Trigger',
+			outputs: [],
+			totalItems: 0,
+			returned: { from: 0, to: 0 },
+			redaction: { reason: 'workflow_redaction_policy', canReveal: false },
+		});
+	});
+
+	it('names the failed node from its redacted error in debug info', async () => {
+		const result = await extractExecutionDebugInfo(
+			makeRedactedExecution(),
+			true,
+			mock<NodeTypes>(),
+		);
+
+		expect(result.redaction).toEqual({ reason: 'workflow_redaction_policy', canReveal: false });
+		expect(result.failedNode).toEqual({
+			name: 'HTTP',
+			type: 'unknown',
+			error: 'NodeApiError error (401) (details hidden by n8n)',
+		});
+		expect(result.nodeTrace.find((node) => node.name === 'HTTP')?.status).toBe('error');
+	});
+});
 
 describe('formatExecutionError', () => {
 	const nodeOpError = {
@@ -914,33 +967,22 @@ describe('truncateResultData', () => {
 // ---------------------------------------------------------------------------
 
 describe('extractExecutionDebugInfo', () => {
-	it('returns unknown status with empty nodeTrace when execution is not found', async () => {
-		createMockExecutionRepository(undefined);
-
-		const result = await extractExecutionDebugInfo('missing-id');
-
-		expect(result).toEqual({
-			executionId: 'missing-id',
-			status: 'unknown',
-			nodeTrace: [],
-		});
-	});
-
 	it('builds a node trace from run data', async () => {
-		const execution = makeExecution({
-			status: 'success',
-			workflowNodes: [
-				{ name: 'Start', type: 'n8n-nodes-base.start' },
-				{ name: 'HTTP', type: 'n8n-nodes-base.httpRequest' },
-			],
-			runData: {
-				Start: [makeTaskData([{ ok: true }], { startTime: 1000, executionTime: 100 })],
-				HTTP: [makeTaskData([{ response: 'ok' }], { startTime: 1100, executionTime: 200 })],
-			},
-		});
-		createMockExecutionRepository(execution);
+		const execution = asExecution(
+			makeExecution({
+				status: 'success',
+				workflowNodes: [
+					{ name: 'Start', type: 'n8n-nodes-base.start' },
+					{ name: 'HTTP', type: 'n8n-nodes-base.httpRequest' },
+				],
+				runData: {
+					Start: [makeTaskData([{ ok: true }], { startTime: 1000, executionTime: 100 })],
+					HTTP: [makeTaskData([{ response: 'ok' }], { startTime: 1100, executionTime: 200 })],
+				},
+			}),
+		);
 
-		const result = await extractExecutionDebugInfo('exec-1');
+		const result = await extractExecutionDebugInfo(execution);
 
 		expect(result.status).toBe('success');
 		expect(result.nodeTrace).toHaveLength(2);
@@ -958,27 +1000,28 @@ describe('extractExecutionDebugInfo', () => {
 
 	it('captures failed node information', async () => {
 		const nodeError = new Error('Connection refused');
-		const execution = makeExecution({
-			status: 'error',
-			error: { message: 'Workflow failed' },
-			workflowNodes: [
-				{ name: 'Start', type: 'n8n-nodes-base.start' },
-				{ name: 'HTTP', type: 'n8n-nodes-base.httpRequest' },
-			],
-			runData: {
-				Start: [makeTaskData([{ ok: true }], { startTime: 1000, executionTime: 100 })],
-				HTTP: [
-					makeTaskData([{ input: 'data' }], {
-						error: nodeError,
-						startTime: 1100,
-						executionTime: 50,
-					}),
+		const execution = asExecution(
+			makeExecution({
+				status: 'error',
+				error: { message: 'Workflow failed' },
+				workflowNodes: [
+					{ name: 'Start', type: 'n8n-nodes-base.start' },
+					{ name: 'HTTP', type: 'n8n-nodes-base.httpRequest' },
 				],
-			},
-		});
-		createMockExecutionRepository(execution);
+				runData: {
+					Start: [makeTaskData([{ ok: true }], { startTime: 1000, executionTime: 100 })],
+					HTTP: [
+						makeTaskData([{ input: 'data' }], {
+							error: nodeError,
+							startTime: 1100,
+							executionTime: 50,
+						}),
+					],
+				},
+			}),
+		);
 
-		const result = await extractExecutionDebugInfo('exec-1');
+		const result = await extractExecutionDebugInfo(execution);
 
 		expect(result.status).toBe('error');
 		expect(result.failedNode).toBeDefined();
@@ -997,22 +1040,23 @@ describe('extractExecutionDebugInfo', () => {
 			description: 'Your credit balance is too low to access the Anthropic API.',
 			messages: ['400 {"type":"error","error":{"message":"low balance"}}'],
 		};
-		const execution = makeExecution({
-			status: 'error',
-			workflowNodes: [{ name: 'AI Agent', type: '@n8n/n8n-nodes-langchain.agent' }],
-			runData: {
-				'AI Agent': [
-					makeTaskData([{ chatInput: 'Hello' }], {
-						error: deserialized,
-						startTime: 1100,
-						executionTime: 50,
-					}),
-				],
-			},
-		});
-		createMockExecutionRepository(execution);
+		const execution = asExecution(
+			makeExecution({
+				status: 'error',
+				workflowNodes: [{ name: 'AI Agent', type: '@n8n/n8n-nodes-langchain.agent' }],
+				runData: {
+					'AI Agent': [
+						makeTaskData([{ chatInput: 'Hello' }], {
+							error: deserialized,
+							startTime: 1100,
+							executionTime: 50,
+						}),
+					],
+				},
+			}),
+		);
 
-		const result = await extractExecutionDebugInfo('exec-1', true);
+		const result = await extractExecutionDebugInfo(execution, true);
 
 		expect(result.failedNode).toBeDefined();
 		expect(result.failedNode!.error).not.toBe('[object Object]');
@@ -1029,16 +1073,17 @@ describe('extractExecutionDebugInfo', () => {
 			description: 'Your credit balance is too low to access the Anthropic API.',
 			messages: ['400 {"type":"error","error":{"message":"low balance"}}'],
 		};
-		const execution = makeExecution({
-			status: 'error',
-			workflowNodes: [{ name: 'AI Agent', type: '@n8n/n8n-nodes-langchain.agent' }],
-			runData: {
-				'AI Agent': [makeTaskData([{ chatInput: 'Hello' }], { error: deserialized })],
-			},
-		});
-		createMockExecutionRepository(execution);
+		const execution = asExecution(
+			makeExecution({
+				status: 'error',
+				workflowNodes: [{ name: 'AI Agent', type: '@n8n/n8n-nodes-langchain.agent' }],
+				runData: {
+					'AI Agent': [makeTaskData([{ chatInput: 'Hello' }], { error: deserialized })],
+				},
+			}),
+		);
 
-		const result = await extractExecutionDebugInfo('exec-1', false);
+		const result = await extractExecutionDebugInfo(execution, false);
 
 		expect(result.failedNode!.error).toContain('Bad request');
 		expect(result.failedNode!.error).not.toContain('Your credit balance is too low');
@@ -1047,32 +1092,36 @@ describe('extractExecutionDebugInfo', () => {
 	});
 
 	it('uses "unknown" type when node is not in workflowData', async () => {
-		const execution = makeExecution({
-			status: 'success',
-			workflowNodes: [], // no workflow nodes
-			runData: {
-				'Mystery Node': [makeTaskData([{ foo: 'bar' }])],
-			},
-		});
-		createMockExecutionRepository(execution);
+		const execution = asExecution(
+			makeExecution({
+				status: 'success',
+				workflowNodes: [], // no workflow nodes
+				runData: {
+					'Mystery Node': [makeTaskData([{ foo: 'bar' }])],
+				},
+			}),
+		);
 
-		const result = await extractExecutionDebugInfo('exec-1');
+		const result = await extractExecutionDebugInfo(execution);
 
 		expect(result.nodeTrace).toHaveLength(1);
 		expect(result.nodeTrace[0].type).toBe('unknown');
 	});
 
 	it('computes startedAt and finishedAt from task data timing', async () => {
-		const execution = makeExecution({
-			status: 'success',
-			workflowNodes: [{ name: 'Node A', type: 'test.type' }],
-			runData: {
-				'Node A': [makeTaskData([{ ok: true }], { startTime: 1704067200000, executionTime: 5000 })],
-			},
-		});
-		createMockExecutionRepository(execution);
+		const execution = asExecution(
+			makeExecution({
+				status: 'success',
+				workflowNodes: [{ name: 'Node A', type: 'test.type' }],
+				runData: {
+					'Node A': [
+						makeTaskData([{ ok: true }], { startTime: 1704067200000, executionTime: 5000 }),
+					],
+				},
+			}),
+		);
 
-		const result = await extractExecutionDebugInfo('exec-1');
+		const result = await extractExecutionDebugInfo(execution);
 
 		const trace = result.nodeTrace[0];
 		expect(trace.startedAt).toBe(new Date(1704067200000).toISOString());
@@ -1132,15 +1181,16 @@ describe('extractExecutionDebugInfo', () => {
 					],
 				},
 			});
-			const execution = makeFailedExecution({
-				nodes: [trigger, failed],
-				connections: connect('Trigger', 'Edit Fields'),
-				failedNodeName: 'Edit Fields',
-				parentRunData: { Trigger: [makeTaskData([{}])] },
-			});
-			createMockExecutionRepository(execution);
+			const execution = asExecution(
+				makeFailedExecution({
+					nodes: [trigger, failed],
+					connections: connect('Trigger', 'Edit Fields'),
+					failedNodeName: 'Edit Fields',
+					parentRunData: { Trigger: [makeTaskData([{}])] },
+				}),
+			);
 
-			const result = await extractExecutionDebugInfo('exec-1', true, debugNodeTypes);
+			const result = await extractExecutionDebugInfo(execution, true, debugNodeTypes);
 
 			expect(result.failedNode?.name).toBe('Edit Fields');
 			const bundle = result.failedNode?.resolvedParameters;
@@ -1163,15 +1213,16 @@ describe('extractExecutionDebugInfo', () => {
 				// to a non-empty string "undefined/api" and are NOT flagged today.)
 				url: '={{ $json.missing }}',
 			});
-			const execution = makeFailedExecution({
-				nodes: [trigger, failed],
-				connections: connect('Trigger', 'HTTP'),
-				failedNodeName: 'HTTP',
-				parentRunData: { Trigger: [makeTaskData([{}])] },
-			});
-			createMockExecutionRepository(execution);
+			const execution = asExecution(
+				makeFailedExecution({
+					nodes: [trigger, failed],
+					connections: connect('Trigger', 'HTTP'),
+					failedNodeName: 'HTTP',
+					parentRunData: { Trigger: [makeTaskData([{}])] },
+				}),
+			);
 
-			const result = await extractExecutionDebugInfo('exec-1', true, debugNodeTypes);
+			const result = await extractExecutionDebugInfo(execution, true, debugNodeTypes);
 
 			const bundle = result.failedNode?.resolvedParameters;
 			expect(bundle?.emptyResolutions).toEqual([
@@ -1184,15 +1235,16 @@ describe('extractExecutionDebugInfo', () => {
 			const failed = makeNode('Edit Fields', 'n8n-nodes-base.set', {
 				value: '={{ $json.x }}',
 			});
-			const execution = makeFailedExecution({
-				nodes: [trigger, failed],
-				connections: connect('Trigger', 'Edit Fields'),
-				failedNodeName: 'Edit Fields',
-				parentRunData: { Trigger: [makeTaskData([{ x: 'hidden' }])] },
-			});
-			createMockExecutionRepository(execution);
+			const execution = asExecution(
+				makeFailedExecution({
+					nodes: [trigger, failed],
+					connections: connect('Trigger', 'Edit Fields'),
+					failedNodeName: 'Edit Fields',
+					parentRunData: { Trigger: [makeTaskData([{ x: 'hidden' }])] },
+				}),
+			);
 
-			const result = await extractExecutionDebugInfo('exec-1', false, debugNodeTypes);
+			const result = await extractExecutionDebugInfo(execution, false, debugNodeTypes);
 
 			expect(result.failedNode?.resolvedParameters).toBeUndefined();
 		});
@@ -1200,16 +1252,17 @@ describe('extractExecutionDebugInfo', () => {
 		it('omits resolvedParameters when nodeTypes is not passed (caller opted out)', async () => {
 			const trigger = makeNode('Trigger', 'n8n-nodes-base.manualTrigger');
 			const failed = makeNode('Edit Fields', 'n8n-nodes-base.set', { value: '={{ $json.x }}' });
-			const execution = makeFailedExecution({
-				nodes: [trigger, failed],
-				connections: connect('Trigger', 'Edit Fields'),
-				failedNodeName: 'Edit Fields',
-				parentRunData: { Trigger: [makeTaskData([{ x: 'ok' }])] },
-			});
-			createMockExecutionRepository(execution);
+			const execution = asExecution(
+				makeFailedExecution({
+					nodes: [trigger, failed],
+					connections: connect('Trigger', 'Edit Fields'),
+					failedNodeName: 'Edit Fields',
+					parentRunData: { Trigger: [makeTaskData([{ x: 'ok' }])] },
+				}),
+			);
 
 			const result = await extractExecutionDebugInfo(
-				'exec-1',
+				execution,
 				true,
 				// nodeTypes intentionally omitted
 			);
@@ -1222,15 +1275,16 @@ describe('extractExecutionDebugInfo', () => {
 			// Failed node is present in runData but missing from the workflow snapshot →
 			// extractResolvedNodeParameters throws "Node X not found in execution snapshot".
 			const trigger = makeNode('Trigger', 'n8n-nodes-base.manualTrigger');
-			const execution = makeFailedExecution({
-				nodes: [trigger], // failed node intentionally missing
-				connections: {},
-				failedNodeName: 'Missing Node',
-				parentRunData: { Trigger: [makeTaskData([{}])] },
-			});
-			createMockExecutionRepository(execution);
+			const execution = asExecution(
+				makeFailedExecution({
+					nodes: [trigger], // failed node intentionally missing
+					connections: {},
+					failedNodeName: 'Missing Node',
+					parentRunData: { Trigger: [makeTaskData([{}])] },
+				}),
+			);
 
-			const result = await extractExecutionDebugInfo('exec-1', true, debugNodeTypes);
+			const result = await extractExecutionDebugInfo(execution, true, debugNodeTypes);
 
 			expect(result.failedNode?.name).toBe('Missing Node');
 			expect(result.failedNode?.resolvedParameters).toBeUndefined();
@@ -1244,29 +1298,30 @@ describe('extractExecutionDebugInfo', () => {
 			const failed = makeNode('Edit Fields', 'n8n-nodes-base.set', {
 				value: '={{ $json.label }}',
 			});
-			const execution = makeFailedExecution({
-				nodes: [trigger, failed],
-				connections: connect('Trigger', 'Edit Fields'),
-				failedNodeName: 'Edit Fields',
-				parentRunData: {
-					Trigger: [
-						makeTaskData([
-							{ label: 'item-0' },
-							{ label: 'item-1' },
-							{ label: 'item-2' },
-							{ label: 'item-3-the-culprit' },
-						]),
-					],
-				},
-				error: {
-					name: 'ExpressionError',
-					message: 'boom on item 3',
-					context: { itemIndex: 3 },
-				},
-			});
-			createMockExecutionRepository(execution);
+			const execution = asExecution(
+				makeFailedExecution({
+					nodes: [trigger, failed],
+					connections: connect('Trigger', 'Edit Fields'),
+					failedNodeName: 'Edit Fields',
+					parentRunData: {
+						Trigger: [
+							makeTaskData([
+								{ label: 'item-0' },
+								{ label: 'item-1' },
+								{ label: 'item-2' },
+								{ label: 'item-3-the-culprit' },
+							]),
+						],
+					},
+					error: {
+						name: 'ExpressionError',
+						message: 'boom on item 3',
+						context: { itemIndex: 3 },
+					},
+				}),
+			);
 
-			const result = await extractExecutionDebugInfo('exec-1', true, debugNodeTypes);
+			const result = await extractExecutionDebugInfo(execution, true, debugNodeTypes);
 
 			const bundle = result.failedNode?.resolvedParameters;
 			expect(bundle?.itemIndex).toBe(3);
@@ -1328,14 +1383,14 @@ describe('search cache key via JSON.stringify', () => {
 describe('extractNodeOutput', () => {
 	it('returns paginated items from a node', async () => {
 		const items = Array.from({ length: 25 }, (_, i) => ({ json: { id: i } }));
-		createMockExecutionRepository(
+		const execution = asExecution(
 			makeExecution({
 				status: 'success',
 				runData: { 'Set Node': [makeTaskData(items.map((item) => item.json))] },
 			}),
 		);
 
-		const result = await extractNodeOutput('exec-1', 'Set Node');
+		const result = await extractNodeOutput(execution, 'Set Node');
 
 		expect(result.nodeName).toBe('Set Node');
 		expect(result.totalItems).toBe(25);
@@ -1347,7 +1402,7 @@ describe('extractNodeOutput', () => {
 		// A model, memory or tool never writes a `main` output. Without this the
 		// node was found but reported no items at all, which reads as "the model
 		// returned nothing".
-		createMockExecutionRepository(
+		const execution = asExecution(
 			makeExecution({
 				status: 'success',
 				runData: {
@@ -1365,7 +1420,7 @@ describe('extractNodeOutput', () => {
 			}),
 		);
 
-		const result = await extractNodeOutput('exec-1', 'OpenAI Chat Model');
+		const result = await extractNodeOutput(execution, 'OpenAI Chat Model');
 
 		expect(result.totalItems).toBe(1);
 		expect(result.outputs[0].items[0]).toContain('"response": "four"');
@@ -1384,14 +1439,14 @@ describe('extractNodeOutput', () => {
 				source: [],
 				data: { ai_tool: [[{ json: { response } }]] },
 			}) as ITaskData;
-		createMockExecutionRepository(
+		const execution = asExecution(
 			makeExecution({
 				status: 'success',
 				runData: { 'Search Tickets': [call('first', 0), call('second', 1), call('third', 2)] },
 			}),
 		);
 
-		const result = await extractNodeOutput('exec-1', 'Search Tickets');
+		const result = await extractNodeOutput(execution, 'Search Tickets');
 
 		expect(result.totalItems).toBe(3);
 		expect(result.totalRuns).toBe(3);
@@ -1410,11 +1465,11 @@ describe('extractNodeOutput', () => {
 				source: [],
 				data: { ai_tool: [[{ json: { n: executionIndex } }]] },
 			}) as ITaskData;
-		createMockExecutionRepository(
+		const execution = asExecution(
 			makeExecution({ status: 'success', runData: { Calculator: [call(0), call(1)] } }),
 		);
 
-		const result = await extractNodeOutput('exec-1', 'Calculator');
+		const result = await extractNodeOutput(execution, 'Calculator');
 
 		expect(String(result.outputs[0].items[0])).toContain('node:Calculator[call 1][0][0]');
 		expect(String(result.outputs[0].items[1])).toContain('node:Calculator[call 2][0][1]');
@@ -1432,14 +1487,14 @@ describe('extractNodeOutput', () => {
 				source: [],
 				data: { main: [[{ json: { value } }]] },
 			}) as ITaskData;
-		createMockExecutionRepository(
+		const execution = asExecution(
 			makeExecution({
 				status: 'success',
 				runData: { 'Set Node': [iteration('early', 0), iteration('late', 1)] },
 			}),
 		);
 
-		const result = await extractNodeOutput('exec-1', 'Set Node');
+		const result = await extractNodeOutput(execution, 'Set Node');
 
 		expect(result.totalItems).toBe(1);
 		expect(String(result.outputs[0].items[0])).toContain('"late"');
@@ -1470,14 +1525,14 @@ describe('extractNodeOutput', () => {
 			source: [],
 			error: { message: 'boom' },
 		} as unknown as ITaskData;
-		createMockExecutionRepository(
+		const execution = asExecution(
 			makeExecution({
 				status: 'error',
 				runData: { 'Set Node': [iteration('early', 0), iteration('late', 1), failed] },
 			}),
 		);
 
-		const result = await extractNodeOutput('exec-1', 'Set Node');
+		const result = await extractNodeOutput(execution, 'Set Node');
 
 		expect(result.totalItems).toBe(0);
 		expect(result.outputs).toEqual([]);
@@ -1506,14 +1561,14 @@ describe('extractNodeOutput', () => {
 			source: [],
 			error: { message: 'rate limited' },
 		} as unknown as ITaskData;
-		createMockExecutionRepository(
+		const execution = asExecution(
 			makeExecution({
 				status: 'error',
 				runData: { 'Search Tickets': [call('first', 0), call('second', 1), failed] },
 			}),
 		);
 
-		const result = await extractNodeOutput('exec-1', 'Search Tickets');
+		const result = await extractNodeOutput(execution, 'Search Tickets');
 
 		expect(result.totalItems).toBe(2);
 		expect(result.totalRuns).toBe(3);
@@ -1531,14 +1586,14 @@ describe('extractNodeOutput', () => {
 				source: [],
 				data: { ai_tool: [[{ json: { n: executionIndex } }]] },
 			}) as ITaskData;
-		createMockExecutionRepository(
+		const execution = asExecution(
 			makeExecution({
 				status: 'success',
 				runData: { Calculator: [call(0), call(1), call(2), call(3)] },
 			}),
 		);
 
-		const result = await extractNodeOutput('exec-1', 'Calculator', { startIndex: 2, maxItems: 1 });
+		const result = await extractNodeOutput(execution, 'Calculator', { startIndex: 2, maxItems: 1 });
 
 		expect(result.returned).toEqual({ from: 2, to: 3 });
 		expect(result.outputs[0].items).toHaveLength(1);
@@ -1546,7 +1601,7 @@ describe('extractNodeOutput', () => {
 	});
 
 	it('prefers the main output when a node has both', async () => {
-		createMockExecutionRepository(
+		const execution = asExecution(
 			makeExecution({
 				status: 'success',
 				runData: {
@@ -1567,7 +1622,7 @@ describe('extractNodeOutput', () => {
 			}),
 		);
 
-		const result = await extractNodeOutput('exec-1', 'Set Node');
+		const result = await extractNodeOutput(execution, 'Set Node');
 
 		expect(result.outputs[0].items[0]).toContain('"real": true');
 		expect(result.outputs).toHaveLength(1);
@@ -1575,14 +1630,14 @@ describe('extractNodeOutput', () => {
 
 	it('supports startIndex pagination', async () => {
 		const items = Array.from({ length: 25 }, (_, i) => ({ json: { id: i } }));
-		createMockExecutionRepository(
+		const execution = asExecution(
 			makeExecution({
 				status: 'success',
 				runData: { 'Set Node': [makeTaskData(items.map((item) => item.json))] },
 			}),
 		);
 
-		const result = await extractNodeOutput('exec-1', 'Set Node', { startIndex: 10, maxItems: 5 });
+		const result = await extractNodeOutput(execution, 'Set Node', { startIndex: 10, maxItems: 5 });
 
 		expect(result.totalItems).toBe(25);
 		expect(result.outputs[0].items).toHaveLength(5);
@@ -1594,14 +1649,14 @@ describe('extractNodeOutput', () => {
 
 	it('caps maxItems at 50', async () => {
 		const items = Array.from({ length: 100 }, (_, i) => ({ json: { id: i } }));
-		createMockExecutionRepository(
+		const execution = asExecution(
 			makeExecution({
 				status: 'success',
 				runData: { 'Set Node': [makeTaskData(items.map((item) => item.json))] },
 			}),
 		);
 
-		const result = await extractNodeOutput('exec-1', 'Set Node', { maxItems: 100 });
+		const result = await extractNodeOutput(execution, 'Set Node', { maxItems: 100 });
 
 		expect(result.outputs[0].items).toHaveLength(50);
 		expect(result.returned).toEqual({ from: 0, to: 50 });
@@ -1609,14 +1664,14 @@ describe('extractNodeOutput', () => {
 
 	it('truncates individual items exceeding 50K chars', async () => {
 		const bigItem = { data: 'x'.repeat(60_000) };
-		createMockExecutionRepository(
+		const execution = asExecution(
 			makeExecution({
 				status: 'success',
 				runData: { 'Big Node': [makeTaskData([bigItem])] },
 			}),
 		);
 
-		const result = await extractNodeOutput('exec-1', 'Big Node');
+		const result = await extractNodeOutput(execution, 'Big Node');
 
 		expect(result.totalItems).toBe(1);
 		expect(result.outputs[0].items).toHaveLength(1);
@@ -1627,36 +1682,28 @@ describe('extractNodeOutput', () => {
 		expect(wrapped).toContain('"originalLength"');
 	});
 
-	it('throws when execution is not found', async () => {
-		createMockExecutionRepository(undefined);
-
-		await expect(extractNodeOutput('missing', 'Node')).rejects.toThrow(
-			'Execution missing not found',
-		);
-	});
-
 	it('throws when node is not in execution data', async () => {
-		createMockExecutionRepository(
+		const execution = asExecution(
 			makeExecution({
 				status: 'success',
 				runData: { 'Other Node': [makeTaskData([{ ok: true }])] },
 			}),
 		);
 
-		await expect(extractNodeOutput('exec-1', 'Missing Node')).rejects.toThrow(
+		await expect(extractNodeOutput(execution, 'Missing Node')).rejects.toThrow(
 			'Node "Missing Node" not found in execution exec-1',
 		);
 	});
 
 	it('returns empty slice when startIndex is beyond total items', async () => {
-		createMockExecutionRepository(
+		const execution = asExecution(
 			makeExecution({
 				status: 'success',
 				runData: { Node: [makeTaskData([{ id: 1 }])] },
 			}),
 		);
 
-		const result = await extractNodeOutput('exec-1', 'Node', { startIndex: 100 });
+		const result = await extractNodeOutput(execution, 'Node', { startIndex: 100 });
 
 		expect(result.totalItems).toBe(1);
 		expect(result.outputs[0].items).toHaveLength(0);
@@ -1664,9 +1711,9 @@ describe('extractNodeOutput', () => {
 	});
 
 	it('reports each output of a multi-output node separately, with the node type labels', async () => {
-		mockMultiOutputRun([[{ text: '$TSLA' }], [{ text: 'plain' }]]);
+		const execution = mockMultiOutputRun([[{ text: '$TSLA' }], [{ text: 'plain' }]]);
 
-		const result = await extractNodeOutput('exec-1', 'Filter', undefined, filterNodeTypes());
+		const result = await extractNodeOutput(execution, 'Filter', undefined, filterNodeTypes());
 
 		expect(result.totalItems).toBe(2);
 		expect(result.returned).toEqual({ from: 0, to: 2 });
@@ -1687,9 +1734,9 @@ describe('extractNodeOutput', () => {
 	});
 
 	it('lists empty and null outputs as empty, and omits names without node types', async () => {
-		mockMultiOutputRun([[], null, [{ id: 1 }, { id: 2 }]]);
+		const execution = mockMultiOutputRun([[], null, [{ id: 1 }, { id: 2 }]]);
 
-		const result = await extractNodeOutput('exec-1', 'Filter');
+		const result = await extractNodeOutput(execution, 'Filter');
 
 		expect(result.totalItems).toBe(2);
 		expect(result.outputs).toEqual([
@@ -1704,12 +1751,12 @@ describe('extractNodeOutput', () => {
 	});
 
 	it('paginates across outputs as one sequence', async () => {
-		mockMultiOutputRun([
+		const execution = mockMultiOutputRun([
 			[{ id: 0 }, { id: 1 }],
 			[{ id: 2 }, { id: 3 }],
 		]);
 
-		const result = await extractNodeOutput('exec-1', 'Filter', { startIndex: 1, maxItems: 2 });
+		const result = await extractNodeOutput(execution, 'Filter', { startIndex: 1, maxItems: 2 });
 
 		expect(result.returned).toEqual({ from: 1, to: 3 });
 		expect(result.outputs[0].items).toEqual([expect.stringContaining('"id": 1')]);
@@ -1747,10 +1794,10 @@ describe('extractNodeOutput', () => {
 			names: ['Success', 'Error'],
 		},
 	])('$name', async ({ node, description, names }) => {
-		mockMultiOutputRun([[{ id: 1 }], [{ id: 2 }]], { ...FILTER_NODE, ...node });
+		const execution = mockMultiOutputRun([[{ id: 1 }], [{ id: 2 }]], { ...FILTER_NODE, ...node });
 
 		const result = await extractNodeOutput(
-			'exec-1',
+			execution,
 			'Filter',
 			undefined,
 			nodeTypesWith(description),
@@ -1760,7 +1807,7 @@ describe('extractNodeOutput', () => {
 	});
 
 	it('returns index-only outputs when the node type is unknown', async () => {
-		mockMultiOutputRun([[{ id: 1 }], [{ id: 2 }]], {
+		const execution = mockMultiOutputRun([[{ id: 1 }], [{ id: 2 }]], {
 			name: 'Filter',
 			type: 'n8n-nodes-community.missing',
 		});
@@ -1769,7 +1816,7 @@ describe('extractNodeOutput', () => {
 			throw new Error('Unrecognized node type');
 		});
 
-		const result = await extractNodeOutput('exec-1', 'Filter', undefined, nodeTypes);
+		const result = await extractNodeOutput(execution, 'Filter', undefined, nodeTypes);
 
 		expect(result.outputs).toEqual([
 			{ index: 0, totalItems: 1, items: [expect.stringContaining('"id": 1')] },
@@ -1809,6 +1856,7 @@ import type {
 	User,
 	CredentialsEntity,
 	ExecutionRepository,
+	IExecutionResponse,
 	ProjectRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
@@ -4733,6 +4781,7 @@ describe('createWorkflowAdapter', () => {
 					typeVersion: 4.2,
 					position: [0, 0],
 					parameters: { url: 'https://example.com' },
+					credentials: { httpHeaderAuth: { id: 'credential-id', name: 'Credential' } },
 				},
 			],
 			connections: {},
@@ -4748,6 +4797,8 @@ describe('createWorkflowAdapter', () => {
 			const result = await adapter.getAsWorkflowJSON('wf-1');
 
 			expect(result.nodes[0].parameters).toEqual({});
+			expect(result.nodes[0].credentials).toEqual(workflowWithParameters.nodes[0].credentials);
+			expect(workflowWithParameters.nodes[0].parameters).toEqual({ url: 'https://example.com' });
 		});
 
 		it('includes parameters on reads when the run allows them, even if the env value is off', async () => {
@@ -5944,6 +5995,35 @@ describe('createExecutionAdapter run()', () => {
 			expect(startedFrom(mockWorkflowRunner)).toBe('Weekly 5pm');
 		});
 
+		it('starts from the selected webhook and preserves its request envelope', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+				id: 'wf-1',
+				nodes: [
+					triggerNode('Daily 8am'),
+					triggerNode('Incoming Order', { type: 'n8n-nodes-base.webhook' }),
+				],
+			});
+			const inputData = {
+				body: { orderId: 'order-1', price: '12' },
+				query: { source: 'checkout' },
+				headers: { 'x-request-id': 'request-1' },
+				params: { shop: 'shop-1' },
+			};
+
+			await adapter.run('wf-1', inputData, {
+				triggerNodeName: 'Incoming Order',
+				isVerificationRun: true,
+			});
+
+			const runData = mockWorkflowRunner.run.mock.calls[0][0];
+			expect(runData.executionMode).toBe('webhook');
+			expect(runData.startNodes).toEqual([{ name: 'Incoming Order', sourceData: null }]);
+			expect(runData.pinData).toEqual({ 'Incoming Order': [{ json: inputData }] });
+			const firstStackItem = runData.executionData?.executionData?.nodeExecutionStack[0];
+			expect(firstStackItem?.node.name).toBe('Incoming Order');
+			expect(firstStackItem?.data.main[0]).toEqual([{ json: inputData }]);
+		});
+
 		it('auto-detects the first trigger when none is named', async () => {
 			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
 				id: 'wf-1',
@@ -6085,6 +6165,65 @@ describe('createExecutionAdapter run()', () => {
 		expect(runData.executionData?.manualData?.suppressErrorWorkflow).toBeUndefined();
 		// The user's setting is never stripped from the run itself.
 		expect(runData.workflowData.settings?.errorWorkflow).toBe('error-wf-1');
+	});
+
+	it('opts a run the credential check refuses out of the error workflow, and names the reason', async () => {
+		const scheduleNode = {
+			id: 'node-1',
+			name: 'Schedule Trigger',
+			type: 'n8n-nodes-base.scheduleTrigger',
+			typeVersion: 1,
+			parameters: {},
+			position: [0, 0],
+		};
+		const { adapter, mockWorkflowRunner, mockExecutionPersistence, mockTelemetry } =
+			createRunAdapterForTests(
+				{ id: 'wf-1', settings: { errorWorkflow: 'error-wf-1' }, nodes: [scheduleNode] },
+				{
+					execution: makeExecution({
+						status: 'error',
+						runData: {
+							'Schedule Trigger': [
+								{ ...makeTaskData([]), redactedError: { type: undefined } } as unknown as ITaskData,
+							],
+						},
+					}),
+					threadId: 'thread-1',
+				},
+			);
+		const checker = mock<CredentialsPermissionChecker>();
+		checker.check.mockRejectedValue(
+			Object.assign(
+				new UserError('Node "Schedule Trigger" uses the credential "Bot", which you cannot use', {
+					description: 'Ask its owner to share this credential with you.',
+				}),
+				{ node: scheduleNode },
+			),
+		);
+		vi.mocked(Container.get).mockImplementation(((token: unknown) =>
+			token === CredentialsPermissionChecker
+				? checker
+				: mockExecutionPersistence) as typeof Container.get);
+
+		const result = await adapter.run('wf-1');
+
+		const runData = mockWorkflowRunner.run.mock.calls[0][0];
+		expect(checker.check).toHaveBeenCalledWith('wf-1', [scheduleNode], 'user-1');
+		expect(runData.executionMode).toBe('trigger');
+		expect(runData.suppressErrorWorkflow).toBe(true);
+		expect(runData.executionData?.manualData?.suppressErrorWorkflow).toBe(true);
+		const reason =
+			'Node "Schedule Trigger" uses the credential "Bot", which you cannot use. Ask its owner to share this credential with you.';
+		expect(result.error).toBe(reason);
+		expect(result.nodeErrors).toEqual([{ nodeName: 'Schedule Trigger', message: reason }]);
+		// Redaction strips the saved reason, so telemetry gets it from the check.
+		expect(mockTelemetry.track).toHaveBeenCalledWith(
+			'Builder executed workflow',
+			expect.objectContaining({
+				status: 'error',
+				error: 'Node "Schedule Trigger" uses the credential "Bot", which you cannot use',
+			}),
+		);
 	});
 
 	it('wraps manual metadata into executionData when offloading to workers so the worker can run it', async () => {

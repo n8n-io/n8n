@@ -3,6 +3,7 @@ import type { PromotionDirection } from '@n8n/api-types';
 import { computed, nextTick, ref, watch } from 'vue';
 
 import type { DetailEntry } from '../../composables/usePromotionResourceDetails';
+import { blockersOf, type BlockerIndex } from '../../promotionOperation';
 import type { Inclusion, ResourceKey, SelectionGraph } from '../../promotionPreview.selection';
 import PromotionChangeCard from './PromotionChangeCard.vue';
 
@@ -13,6 +14,7 @@ const props = defineProps<{
 	inclusion: Inclusion;
 	entries: ReadonlyMap<ResourceKey, DetailEntry>;
 	inspectedKey?: ResourceKey;
+	blockers: BlockerIndex;
 }>();
 
 const emit = defineEmits<{
@@ -54,6 +56,7 @@ defineExpose({ scrollToCard });
 			:included="inclusion.included.has(resource.key)"
 			:entry="entries.get(resource.key)"
 			:inspected="inspectedKey === resource.key"
+			:blockers="blockersOf(blockers, resource)"
 			@inspect="emit('inspect', $event)"
 			@retry="emit('retry', resource.key)"
 			@refresh="emit('refresh')"

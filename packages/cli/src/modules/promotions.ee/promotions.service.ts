@@ -1,6 +1,7 @@
 import {
 	parsePromotionRunDetails,
 	promotionRunTypeSchema,
+	type ApplyCheckResult,
 	type ApplyPackageDto,
 	type ApplyPackageResultDto,
 	type ApplySelectionDto,
@@ -18,6 +19,7 @@ import { ProjectRepository, SharedWorkflowRepository, type User } from '@n8n/db'
 import { Service } from '@n8n/di';
 import { cp, mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 
@@ -614,7 +616,7 @@ export class PromotionsService {
 		inventory: PackageDirectoryInventory,
 		projectId: string,
 		workflowIds: string[],
-	): Promise<ImportSelection> {
+	): Promise<{ selection: ImportSelection; movedWorkflowIds: string[] }> {
 		const branchWorkflowIds = new Set(
 			inventory.workflows
 				.filter((workflow) => workflow.projectId === projectId)
@@ -651,14 +653,83 @@ export class PromotionsService {
 			);
 		}
 
-		if (movedWorkflowIds.length > 0) {
-			// Mirror the import engine, which rejects a move-shaped change with 409.
-			throw new ConflictError(
-				`These workflows moved to another project: ${movedWorkflowIds.join(', ')}. A selective apply cannot move them. Apply all projects instead.`,
+		return {
+			selection: { selectedProjectId: projectId, selectedWorkflowIds, deletedWorkflowIds },
+			movedWorkflowIds,
+		};
+	}
+
+	/**
+	 * Runs the Apply preflight for every workflow that the Apply preview of the project can list.
+	 * It reads the package at the preview's commit and writes nothing. Moved workflows are
+	 * returned instead of rejected.
+	 */
+	async checkApplyBlockers(projectId: string, commitSha: string): Promise<ApplyCheckResult> {
+		const input = await this.resolver.resolveForProject(projectId, 'apply');
+		await this.assertCheckoutReady(input, 'checking Apply blockers');
+
+		const branchName = checkoutBranchName(input.config);
+		const files = await this.gitService.readTreeAtCommit({
+			remoteUrl: repositoryUrl(input),
+			credentials: await this.credentialsFor(input),
+			paths: this.workingDirectory.paths(input.environmentId),
+			branchName,
+			environmentId: input.environmentId,
+			commitSha,
+			directory: PACKAGE_SUBFOLDER,
+			limits: this.packageImportConfig,
+		});
+		if (files.size === 0) {
+			throw new BadRequestError(
+				'The remote branch has no exported package to import. Promote to it first.',
 			);
 		}
+		const inventory = await this.inventoryReader.read({
+			listEntries: async () => [...files.keys()],
+			readFile: async (entryPath) => {
+				const content = files.get(entryPath);
+				if (!content) throw new BadRequestError(`Package does not contain entry: ${entryPath}`);
+				return content;
+			},
+		});
 
-		return { selectedProjectId: projectId, selectedWorkflowIds, deletedWorkflowIds };
+		const branchWorkflowIds = inventory.workflows
+			.filter((workflow) => workflow.projectId === projectId)
+			.map(({ id }) => id);
+		const ownedWorkflowIds = await this.sharedWorkflowRepository.findOwnedWorkflowIdsByProjects([
+			projectId,
+		]);
+		const { selection, movedWorkflowIds } = await this.classifyApplySelection(
+			inventory,
+			projectId,
+			[...new Set([...branchWorkflowIds, ...ownedWorkflowIds])],
+		);
+		const preflight = await this.bindingPreflight.checkInventory({
+			inventory,
+			selection: {
+				selectedProjectId: projectId,
+				selectedWorkflowIds: selection.selectedWorkflowIds,
+			},
+		});
+
+		const projects = new Map(inventory.projects.map(({ id, name }) => [id, { id, name }]));
+		const movedWorkflows = inventory.workflows
+			.filter(({ id }) => movedWorkflowIds.includes(id))
+			.map(({ id, name, projectId: branchProjectId }) => {
+				const project = projects.get(branchProjectId);
+				// The reader requires a project file for every project directory.
+				if (!project)
+					throw new UnexpectedError(`Package inventory has no project "${branchProjectId}"`);
+				return { id, name, project };
+			})
+			.sort((a, b) => a.id.localeCompare(b.id));
+
+		return {
+			environmentId: input.environmentId,
+			git: { commitSha, branchName },
+			preflight,
+			movedWorkflows,
+		};
 	}
 
 	private async applySelectionFromSource(
@@ -707,7 +778,17 @@ export class PromotionsService {
 
 		const reader = new DirectoryPackageReader(packageFolder, this.packageImportConfig);
 		const inventory = await this.inventoryReader.read(reader);
-		const selection = await this.classifyApplySelection(inventory, projectId, workflowIds);
+		const { selection, movedWorkflowIds } = await this.classifyApplySelection(
+			inventory,
+			projectId,
+			workflowIds,
+		);
+		if (movedWorkflowIds.length > 0) {
+			// Mirror the import engine, which rejects a move-shaped change with 409.
+			throw new ConflictError(
+				`These workflows moved to another project: ${movedWorkflowIds.join(', ')}. A selective apply cannot move them. Apply all projects instead.`,
+			);
+		}
 		const preflight = await this.bindingPreflight.checkInventory({
 			inventory,
 			selection: {
@@ -751,6 +832,7 @@ export class PromotionsService {
 				dataTableSchemaConflictPolicy: confirmDestructiveChanges
 					? DataTableSchemaConflictPolicy.Overwrite
 					: IMPORT_POLICY.dataTableSchemaConflictPolicy,
+				tagConflictPolicy: IMPORT_POLICY.tagConflictPolicy,
 			},
 			{ sourceDir: packageFolder },
 			selection,

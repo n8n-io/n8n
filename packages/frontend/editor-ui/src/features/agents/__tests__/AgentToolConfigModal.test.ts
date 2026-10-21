@@ -214,9 +214,9 @@ function renderModal({
 					props: ['code'],
 					template: '<pre data-test-id="agent-custom-tool-viewer">{{ code }}</pre>',
 				},
-				ContactInstanceAdminModal: {
+				ContactAdminModal: {
 					props: ['open', 'nodeTypeName'],
-					template: '<div v-if="open" data-test-id="contact-instance-admin-modal" />',
+					template: '<div v-if="open" data-test-id="contact-admin-modal" />',
 				},
 			},
 		},
@@ -688,10 +688,10 @@ describe('AgentToolConfigModal', () => {
 			const { getByTestId, queryByTestId } = renderModal();
 			await nextTick();
 
-			expect(queryByTestId('contact-instance-admin-modal')).toBeNull();
+			expect(queryByTestId('contact-admin-modal')).toBeNull();
 			await fireEvent.click(getByTestId('restricted-tool-contact-admin'));
 
-			expect(getByTestId('contact-instance-admin-modal')).toBeInTheDocument();
+			expect(getByTestId('contact-admin-modal')).toBeInTheDocument();
 		});
 
 		it('keeps Remove so the agent can be repaired', async () => {

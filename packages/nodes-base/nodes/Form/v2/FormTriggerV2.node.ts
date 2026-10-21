@@ -167,8 +167,10 @@ const descriptionV2: INodeTypeDescription = {
 			displayOptions: {
 				show: { authentication: ['n8nUserAuth'], '@version': [{ _cnd: { gte: 2.6 } }] },
 			},
-			description:
-				'The identity provider the user signs in with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			// The resolvers read the raw value without an execution context, so it must be static.
+			noDataExpression: true,
+			// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
+			description: 'The identity provider the user signs in with',
 		},
 		{ ...webhookPath, displayOptions: { show: { '@version': [{ _cnd: { lte: 2.1 } }] } } },
 		formTitle,

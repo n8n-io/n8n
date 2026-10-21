@@ -23,6 +23,27 @@ type ArrayParser = {
 	create: (source: string, transform: (entry: string) => unknown) => { parse: () => unknown[] };
 };
 
+type ParserFn = string | ((value: string) => unknown);
+
+function createTypeParsers(
+	pgp: PgpClient,
+	overrides: Map<number, (value: string) => unknown>,
+): PgTypesConfig {
+	return {
+		// this method doesn't seem to be ever called by pg package, but we keep it to satisfy typechecks
+		setTypeParser(id: number, formatOrParseFn: ParserFn, parseFn?: ParserFn) {
+			const fn = parseFn ?? formatOrParseFn;
+			if (typeof fn === 'function') overrides.set(id, fn);
+		},
+		// this method manages type parser override selection
+		getTypeParser(id: number, format?: 'text' | 'binary') {
+			const override = overrides.get(id);
+			if (override && (format === undefined || format === 'text')) return override;
+			return pgp.pg.types.getTypeParser(id, format);
+		},
+	};
+}
+
 /**
  * Per-connection type parsers that return date/timestamp columns (and their array variants) as
  * JSON-safe strings rather than live `Date` objects: DATE keeps its `YYYY-MM-DD` wire value,
@@ -34,28 +55,31 @@ export function getDateAsStringTypeParsers(pgp: PgpClient): PgTypesConfig {
 	const parseElements = (transform: (entry: string) => unknown) => (value: string) =>
 		(pgp.pg.types.arrayParser as unknown as ArrayParser).create(value, transform).parse();
 
-	const overrides = new Map<number, (value: string) => unknown>([
-		[builtins.DATE, (value) => value],
-		[builtins.TIMESTAMP, parseDateToISO],
-		[builtins.TIMESTAMPTZ, parseDateToISO],
-		[DATE_ARRAY_TYPE_ID, parseElements((value) => value)],
-		[TIMESTAMP_ARRAY_TYPE_ID, parseElements(parseDateToISO)],
-		[TIMESTAMPTZ_ARRAY_TYPE_ID, parseElements(parseDateToISO)],
-	]);
+	return createTypeParsers(
+		pgp,
+		new Map<number, (value: string) => unknown>([
+			[builtins.DATE, (value) => value],
+			[builtins.TIMESTAMP, parseDateToISO],
+			[builtins.TIMESTAMPTZ, parseDateToISO],
+			[DATE_ARRAY_TYPE_ID, parseElements((value) => value)],
+			[TIMESTAMP_ARRAY_TYPE_ID, parseElements(parseDateToISO)],
+			[TIMESTAMPTZ_ARRAY_TYPE_ID, parseElements(parseDateToISO)],
+		]),
+	);
+}
 
-	return {
-		setTypeParser(
-			id: number,
-			formatOrParseFn: string | ((value: string) => unknown),
-			parseFn?: string | ((value: string) => unknown),
-		) {
-			const fn = parseFn ?? formatOrParseFn;
-			if (typeof fn === 'function') overrides.set(id, fn);
-		},
-		getTypeParser(id: number, format?: 'text' | 'binary') {
-			const override = overrides.get(id);
-			if (override && (format === undefined || format === 'text')) return override;
-			return pgp.pg.types.getTypeParser(id, format);
-		},
-	};
+/**
+ * Per-connection type parsers for legacy Postgres node versions: only TIMESTAMP and TIMESTAMPTZ
+ * are normalized to ISO strings. DATE and array columns keep the default parsers, as before.
+ */
+export function getLegacyDateTypeParsers(pgp: PgpClient): PgTypesConfig {
+	const { builtins } = pgp.pg.types;
+
+	return createTypeParsers(
+		pgp,
+		new Map<number, (value: string) => unknown>([
+			[builtins.TIMESTAMP, parseDateToISO],
+			[builtins.TIMESTAMPTZ, parseDateToISO],
+		]),
+	);
 }
