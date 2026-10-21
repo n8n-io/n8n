@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/__tests__/agent-setup-completion.service.test.ts
+  s_d3c0f6f6f7d41c::t_895b67274df171 69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cb16c43ffbeca09ecd340f54dc85f387a065084f",
+  "prompts": {},
+  "sessions": {
+    "s_d3c0f6f6f7d41c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a152e5-4005-7111-8ca3-6a9ab5e71d29",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
