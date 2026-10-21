@@ -145,6 +145,24 @@ describe('Icon', () => {
 			expect(wrapper.container.querySelector('svg')?.innerHTML).toContain('M1 1h22v22H1z');
 		});
 	});
+
+	it('should load an icon again when it is selected again after a failed load', async () => {
+		loaderStub.mockRejectedValueOnce(new Error('chunk failed'));
+		const wrapper = render(Icon, {
+			props: { icon: 'app-window-mac', fallbackIcon: 'bot' },
+			...renderOptions,
+		});
+		await waitFor(() =>
+			expect(wrapper.container.querySelector('svg[data-icon="bot"]')).toBeTruthy(),
+		);
+
+		await wrapper.rerender({ icon: 'check' });
+		await wrapper.rerender({ icon: 'app-window-mac' });
+
+		await waitFor(() => {
+			expect(wrapper.container.querySelector('svg')?.innerHTML).toContain('M1 1h22v22H1z');
+		});
+	});
 });
 
 describe('isSupportedIconName', () => {

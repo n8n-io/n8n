@@ -89,7 +89,7 @@ const findComponent = (name: string) =>
 	deprecatedIconSet[name as keyof typeof deprecatedIconSet] ??
 	null;
 
-// The name the loader found nothing for. Keyed by name, so a new `icon` starts over.
+// The name the loader found nothing for. Cleared when `icon` changes, so a name selected again loads again.
 const missingIcon = ref<string | null>(null);
 // A node icon can arrive after the loader replied, so the requested icon always wins.
 const displayedIcon = computed(() =>
@@ -103,6 +103,7 @@ const resolvedComponent = computed(() => findComponent(displayedIcon.value));
 watch(
 	() => props.icon,
 	async (icon) => {
+		missingIcon.value = null;
 		if (typeof icon === 'string' && icon.startsWith('node:') && !nodeIconSetRef.value) {
 			const { nodeIconSet } = await import('./node-icons');
 			nodeIconSetRef.value = nodeIconSet;
