@@ -1,5 +1,4 @@
 import {
-	encodeEpisodicScopeMetadata,
 	type Agent as RuntimeAgent,
 	type EpisodicScopeDecision,
 	type SerializableAgentState,
@@ -35,6 +34,7 @@ import {
 	userIdFromDraftChatMemoryResourceId,
 	userIdFromProductionChatMemoryResourceId,
 } from './utils/agent-memory-scope';
+import { episodicScopeHostMetadata } from './utils/episodic-scope-metadata';
 import {
 	chatSurfaceMemoryResourceId,
 	N8N_CHAT_PRODUCTION_SOURCE,
@@ -60,7 +60,6 @@ import { AgentTurnExecutionService, type AgentTurnRequest } from './agent-turn-e
 import { withBudgetGuardrail } from './budget-guardrail';
 import { AgentExecutionRecordingError } from './agent-execution-recording.error';
 import type { AgentChatBridge } from './integrations/agent-chat-bridge';
-import { EpisodicScopeResolver } from './integrations/episodic-scope-resolver';
 import {
 	encodeIntegrationMessageContext,
 	inheritIntegrationMessageContext,
@@ -139,7 +138,7 @@ export interface ExecuteForChatConfig extends ChatExecutionInput, ChatExecutionC
 
 export interface ExecuteForChatPublishedConfig extends ChatExecutionInput {
 	messageContext?: IntegrationMessageContext | null;
-	/** The integration's own episodic ownership for this turn. Absent means the shared default. */
+	/** The channel's episodic scope decision. Absent on an integration resource means off. */
 	episodicScope?: EpisodicScopeDecision;
 	/** Platform conversation metadata scope. Execution memory can belong to a task. */
 	contextConversation?: SessionBinding;
@@ -238,7 +237,7 @@ export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecut
 	onAdmitted?: () => Promise<void>;
 	access: AgentThreadAccess;
 	messageContext?: IntegrationMessageContext | null;
-	/** A decided episodic scope. Absent means the shared default resolves at turn start. */
+	/** The channel's episodic scope decision. Absent on an integration resource means off. */
 	episodicScope?: EpisodicScopeDecision;
 	agentInstance: RuntimeAgent;
 	toolRegistry: ToolRegistry;
@@ -360,7 +359,6 @@ export class AgentExecutionOrchestratorService {
 		private readonly backgroundJobService: AgentBackgroundJobService,
 		private readonly settingsService: AgentsSettingsService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
-		private readonly episodicScopeResolver: EpisodicScopeResolver,
 	) {}
 
 	async getSessionMode(threadId: string): Promise<AgentSessionMode> {
@@ -1680,16 +1678,13 @@ export class AgentExecutionOrchestratorService {
 			config.messageContext === undefined
 				? await this.integrationMessageContextService.getLatest(threadId)
 				: config.messageContext;
-		const episodicScope =
-			config.episodicScope ??
-			(await this.episodicScopeResolver.resolveDefault(agentId, { threadId, resourceId }));
 		const hostMetadata = {
 			...encodeAgentSandboxHostMetadata({
 				projectId,
 				principalHash: sandboxPrincipalHash,
 			}),
 			...encodeIntegrationMessageContext(messageContext),
-			...encodeEpisodicScopeMetadata(episodicScope),
+			...episodicScopeHostMetadata(resourceId, config.episodicScope),
 			...(config.chatSurface !== undefined &&
 			!config.isWakeRun &&
 			!config.hideUserMessageFromTranscript

@@ -21,7 +21,9 @@ import {
 	type BridgeMessageContextParams,
 	type BridgeResumeExecutionContext,
 	type PlatformContextQueryParams,
+	type EpisodicScopeContext,
 } from '../../agent-chat-integration';
+import { resolveThreadSharedEpisodicScope } from '../../thread-shared-episodic-scope';
 import { expandSelectsToButtons, type SuspendComponent } from '../../component-mapper';
 import { assertCredentialNotClaimed } from '../../credential-claim';
 import { loadTeamsAdapter } from '../../esm-loader';
@@ -328,6 +330,10 @@ export class TeamsIntegration extends AgentChatIntegration {
 
 	buildOriginDraft(input: OriginInput, decoded: DecodedThread) {
 		return buildTeamsOriginDraft(input, decoded);
+	}
+
+	async resolveEpisodicScope(context: EpisodicScopeContext) {
+		return await resolveThreadSharedEpisodicScope(context);
 	}
 
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {

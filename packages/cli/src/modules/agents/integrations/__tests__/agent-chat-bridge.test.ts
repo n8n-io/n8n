@@ -14,6 +14,7 @@ import {
 	AgentResourceRepository,
 	type ChatSessionGeneration,
 } from '../../repositories/agent-resource.repository';
+import { AgentMessageRepository } from '../../repositories/agent-message.repository';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { AgentChatBridge } from '../agent-chat-bridge';
 import {
@@ -245,6 +246,10 @@ class BufferingTestIntegration extends AgentChatIntegration {
 		return undefined;
 	}
 
+	resolveEpisodicScope() {
+		return null;
+	}
+
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		return {};
 	}
@@ -259,6 +264,10 @@ class StreamingTestIntegration extends AgentChatIntegration {
 	readonly displayIcon = 'circle';
 	buildOriginDraft() {
 		return undefined;
+	}
+
+	resolveEpisodicScope() {
+		return null;
 	}
 
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
@@ -283,6 +292,10 @@ class FormattedBufferedTestIntegration extends AgentChatIntegration {
 		return undefined;
 	}
 
+	resolveEpisodicScope() {
+		return null;
+	}
+
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		return {};
 	}
@@ -301,6 +314,10 @@ class RestrictedTestIntegration extends AgentChatIntegration {
 	}
 	buildOriginDraft() {
 		return undefined;
+	}
+
+	resolveEpisodicScope() {
+		return null;
 	}
 
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
@@ -382,6 +399,9 @@ describe('AgentChatBridge — consumeStream', () => {
 		registry.register(new RestrictedTestIntegration());
 		registry.register(new SlackIntegration(mock<AgentRepository>()));
 		Container.set(ChatIntegrationRegistry, registry);
+		Container.set(AgentMessageRepository, {
+			findRecentThreadIdsByResourceId: vi.fn().mockResolvedValue([]),
+		} as never);
 		mockSessionGenerations();
 	});
 
@@ -3598,7 +3618,7 @@ describe('AgentChatBridge — consumeStream', () => {
 	describe('episodic memory scope', () => {
 		const scope = { writeScopeId: 'test:channel-1', readScopeIds: ['test:channel-1'] };
 
-		async function queuedPayload(resolveEpisodicScope?: () => typeof scope | null) {
+		async function queuedPayload(resolved: typeof scope | null) {
 			const { bot, handlers } = makeBot();
 			const queue = mock<AgentMessageQueueService>();
 			queue.enqueue.mockResolvedValue({ status: 'accepted', item: mock<AgentMessageQueue>() });
@@ -3615,29 +3635,41 @@ describe('AgentChatBridge — consumeStream', () => {
 				undefined,
 				queue,
 			);
-			const integrationImpl = registry.get('test-streaming')!;
-			if (resolveEpisodicScope) integrationImpl.resolveEpisodicScope = resolveEpisodicScope;
+			const resolveSpy = vi
+				.spyOn(registry.get('test-streaming')!, 'resolveEpisodicScope')
+				.mockReturnValue(resolved);
+			let calls: unknown[][] = [];
 			try {
 				await handlers.subscribed!(makeThread('thread-1'), {
 					text: 'hi',
 					author: { userId: 'u1', userName: 'user1' },
 				});
 			} finally {
-				delete integrationImpl.resolveEpisodicScope;
+				calls = [...resolveSpy.mock.calls];
+				resolveSpy.mockRestore();
 			}
-			return queue.enqueue.mock.calls[0][0].payload;
+			return { payload: queue.enqueue.mock.calls[0][0].payload, calls };
 		}
 
-		it('queues the scope the integration resolves for the incoming turn', async () => {
-			expect(await queuedPayload(() => scope)).toMatchObject({ episodicScope: scope });
+		it('queues the scope the channel resolves for the incoming turn', async () => {
+			const { payload, calls } = await queuedPayload(scope);
+
+			expect(payload).toMatchObject({ episodicScope: scope });
+			expect(calls).toEqual([
+				[
+					expect.objectContaining({
+						agentId: 'agent-1',
+						credentialId: 'cred-1',
+						author: expect.objectContaining({ id: 'u1' }),
+					}),
+				],
+			]);
 		});
 
-		it('queues a disabled marker when the integration cannot resolve identity', async () => {
-			expect(await queuedPayload(() => null)).toMatchObject({ episodicScope: { disabled: true } });
-		});
+		it('queues a disabled decision when the channel resolves no scope', async () => {
+			const { payload } = await queuedPayload(null);
 
-		it('queues no scope when the integration has no override', async () => {
-			expect(await queuedPayload()).not.toHaveProperty('episodicScope');
+			expect(payload).toMatchObject({ episodicScope: { disabled: true } });
 		});
 	});
 
@@ -3656,6 +3688,10 @@ describe('AgentChatBridge — consumeStream', () => {
 				readonly disableStreaming = true;
 				buildOriginDraft() {
 					return undefined;
+				}
+
+				resolveEpisodicScope() {
+					return null;
 				}
 
 				async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
@@ -3712,6 +3748,9 @@ describe('AgentChatBridge — Slack thread history', () => {
 		const registry = new ChatIntegrationRegistry();
 		registry.register(new SlackIntegration(mock<AgentRepository>()));
 		Container.set(ChatIntegrationRegistry, registry);
+		Container.set(AgentMessageRepository, {
+			findRecentThreadIdsByResourceId: vi.fn().mockResolvedValue([]),
+		} as never);
 		mockSessionGenerations();
 	});
 
@@ -4157,6 +4196,10 @@ class ListeningTestIntegration extends AgentChatIntegration {
 	}
 	buildOriginDraft() {
 		return undefined;
+	}
+
+	resolveEpisodicScope() {
+		return null;
 	}
 
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {

@@ -47,7 +47,7 @@ export interface QueuedIntegrationMessage extends QueuedMessageInput {
 	author: AgentMessageAuthor;
 	/** Typed platform context. The queue stores it on the message origin. */
 	integrationOrigin?: AgentMessageIntegrationOrigin;
-	/** The integration's own episodic ownership for this turn. Absent means the shared default. */
+	/** The channel's episodic ownership for this turn. Absent on work queued before channels resolved it: that work has no episodic memory. */
 	episodicScope?: EpisodicScopeDecision;
 	sender: Author;
 	messageContext: IntegrationMessageContext;

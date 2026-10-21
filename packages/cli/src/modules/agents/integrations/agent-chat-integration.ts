@@ -49,17 +49,22 @@ export interface AgentChannelPreconditionContext {
 	credentialId: string;
 }
 
-/** Per-connection context handed to AgentChatIntegration hooks. */
 /** Trusted source context of one incoming chat turn. */
 export interface EpisodicScopeContext {
 	agentId: string;
 	credentialId: string;
 	integrationType: string;
+	/** The conversation the turn belongs to. */
 	threadId: string;
+	/** The memory resource of the author. It is not an ownership scope. */
+	resourceId: string;
 	author: AgentMessageAuthor;
 	origin?: AgentMessageIntegrationOrigin;
+	/** Threads the author recently posted in. Reads the database only when called. */
+	loadParticipatedThreadIds: (limit: number) => Promise<string[]>;
 }
 
+/** Per-connection context handed to AgentChatIntegration hooks. */
 export interface AgentChatIntegrationContext extends AgentChannelPreconditionContext {
 	integration: AgentIntegrationConfig;
 	credential: Record<string, unknown>;
@@ -419,6 +424,17 @@ export abstract class AgentChatIntegration {
 		decoded: DecodedThread,
 	): Promise<OriginDraft | undefined> | OriginDraft | undefined;
 
+	/**
+	 * Decides who owns the episodic memories of an incoming chat turn. Every
+	 * channel must decide. Build identifiers from trusted source context and
+	 * namespace them by agent, platform, and workspace or account. Return `null`
+	 * when the channel has no policy or the required identity is missing: the turn
+	 * then runs without episodic memory. There is no shared fallback.
+	 */
+	abstract resolveEpisodicScope(
+		context: EpisodicScopeContext,
+	): Promise<ResolvedEpisodicScope | null> | ResolvedEpisodicScope | null;
+
 	/** Validate platform settings before credentials or persistence are touched. */
 	validateConfig?(integration: AgentIntegrationConfig): void;
 
@@ -623,15 +639,6 @@ export abstract class AgentChatIntegration {
 		isNewMention: boolean;
 		platformAgentContext: PlatformAgentContext;
 	}): ReplyExpectation;
-
-	/**
-	 * Optional episodic memory ownership override. Runs once for each incoming
-	 * chat turn. Build identifiers from trusted source context and namespace
-	 * them by agent, platform and workspace or account. Return `null` when the
-	 * required identity is missing: the turn then runs without episodic memory.
-	 * Without an implementation, the shared default policy applies.
-	 */
-	resolveEpisodicScope?(params: EpisodicScopeContext): ResolvedEpisodicScope | null;
 
 	/** Replacement text for action cards preserved after a user responds. */
 	formatActionDecisionMessage?(params: ActionDecisionMessageParams): string | undefined;

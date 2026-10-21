@@ -7,7 +7,9 @@ import {
 	type AgentChatIntegrationContext,
 	type PlatformActionParams,
 	type PlatformContextQueryParams,
+	type EpisodicScopeContext,
 } from '../../agent-chat-integration';
+import { resolveThreadSharedEpisodicScope } from '../../thread-shared-episodic-scope';
 import { loadLinearAdapter } from '../../esm-loader';
 import {
 	resolveIntegrationActionDefinitions,
@@ -108,6 +110,10 @@ export class LinearIntegration extends AgentChatIntegration {
 
 	buildOriginDraft(input: OriginInput, decoded: DecodedThread) {
 		return buildLinearOriginDraft(input, decoded);
+	}
+
+	async resolveEpisodicScope(context: EpisodicScopeContext) {
+		return await resolveThreadSharedEpisodicScope(context);
 	}
 
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {

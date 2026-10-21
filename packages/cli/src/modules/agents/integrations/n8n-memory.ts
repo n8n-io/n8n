@@ -70,16 +70,30 @@ import { AgentObservationRepository } from '../repositories/agent-observation.re
 import { AgentResourceRepository } from '../repositories/agent-resource.repository';
 import { AgentThreadRepository } from '../repositories/agent-thread.repository';
 import { EXECUTION_METADATA_KEY } from '../types/agent-queued-message';
-import {
-	defaultEpisodicMemoryReadScopeIds,
-	EPISODIC_MEMORY_MAX_THREAD_SCOPES,
-	episodicMemoryWriteScopeId,
-	isIntegrationMemoryResourceId,
-} from '../utils/agent-memory-scope';
+import { isIntegrationMemoryResourceId } from '../utils/agent-memory-scope';
 
-/** The scope a turn writes to. The host's resolved scope wins over the derived default. */
-function episodicWriteScopeId(scope: EpisodicMemoryScope): string {
-	return scope.episodic?.writeScopeId ?? episodicMemoryWriteScopeId(scope);
+/**
+ * Integration chats are shared conversations, so each channel resolves its own
+ * scope. A turn on an integration resource without one has no owner: it must
+ * not capture, and it recalls nothing. Other runs keep their resource as scope.
+ */
+function episodicWriteScopeId(scope: Pick<EpisodicMemoryScope, 'resourceId' | 'episodic'>): string {
+	if (scope.episodic) return scope.episodic.writeScopeId;
+	if (isIntegrationMemoryResourceId(scope.resourceId)) {
+		throw new UnexpectedError('An integration turn needs a resolved episodic memory scope');
+	}
+	return scope.resourceId;
+}
+
+/** The write scope as a list: empty when the turn has no owner, so reads stay empty. */
+function episodicWriteScopeIds(scope: EpisodicMemoryScope): string[] {
+	const hasOwner = scope.episodic !== undefined || !isIntegrationMemoryResourceId(scope.resourceId);
+	return hasOwner ? [episodicWriteScopeId(scope)] : [];
+}
+
+function episodicReadScopeIds(scope: EpisodicMemoryScope): string[] {
+	if (scope.episodic) return scope.episodic.readScopeIds;
+	return isIntegrationMemoryResourceId(scope.resourceId) ? [] : [scope.resourceId];
 }
 
 @Service()
@@ -696,9 +710,8 @@ export class N8nMemoryImpl
 		entry: NewEpisodicMemoryEntry,
 		sources: NewEpisodicMemoryEntrySourceForEntry[],
 	): Promise<EpisodicMemoryEntry | null> {
-		const { episodic, ...entryData } = entry;
-		const sourceThreadId = sources[0]?.threadId;
-		const resourceId = this.entryWriteScopeId(entryData.resourceId, sourceThreadId, episodic);
+		const { episodic: _episodic, ...entryData } = entry;
+		const resourceId = episodicWriteScopeId(entry);
 		await this.resourceRepository.ensureExists(resourceId);
 
 		const persisted = await this.memoryEntryRepository.saveEntryWithSources(
@@ -710,17 +723,6 @@ export class N8nMemoryImpl
 		return this.toEpisodicMemoryEntry(persisted);
 	}
 
-	private entryWriteScopeId(
-		resourceId: string,
-		sourceThreadId: string | undefined,
-		episodic: EpisodicMemoryScope['episodic'],
-	): string {
-		if (episodic) return episodic.writeScopeId;
-		return sourceThreadId
-			? episodicMemoryWriteScopeId({ resourceId, threadId: sourceThreadId })
-			: resourceId;
-	}
-
 	private async searchEpisodicMemoryEntries(
 		scope: EpisodicMemoryScope,
 		query: string,
@@ -729,8 +731,9 @@ export class N8nMemoryImpl
 		const statuses = opts?.includeStatuses ?? ['active'];
 		// Reflection must not pull entries from other scopes into a shared thread.
 		const resourceIds = opts?.writeScopeOnly
-			? [episodicWriteScopeId(scope)]
-			: (scope.episodic?.readScopeIds ?? (await this.episodicMemoryReadScopeIds(scope)));
+			? episodicWriteScopeIds(scope)
+			: episodicReadScopeIds(scope);
+		if (resourceIds.length === 0) return [];
 		const entities = await this.memoryEntryRepository.find({
 			where: {
 				agentId: this.agentId,
@@ -750,17 +753,6 @@ export class N8nMemoryImpl
 			query,
 			opts,
 		);
-	}
-
-	private async episodicMemoryReadScopeIds(scope: EpisodicMemoryScope): Promise<string[]> {
-		const threadIds = isIntegrationMemoryResourceId(scope.resourceId)
-			? await this.messageRepository.findRecentThreadIdsByResourceId(
-					this.agentId,
-					scope.resourceId,
-					EPISODIC_MEMORY_MAX_THREAD_SCOPES,
-				)
-			: [];
-		return defaultEpisodicMemoryReadScopeIds(scope, threadIds);
 	}
 
 	private async getEpisodicMemoryEntrySources(

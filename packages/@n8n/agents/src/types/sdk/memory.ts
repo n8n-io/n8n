@@ -98,7 +98,8 @@ export type EpisodicScopeDecision = ResolvedEpisodicScope | { disabled: true };
 
 /**
  * Who asked and where. When `episodic` is set, the store uses it as given.
- * Without it, the store decides the storage scope from the resource and thread.
+ * Without it, the resource is the scope. The host sets `episodic` for shared
+ * conversations, where an unresolved scope means episodic memory stays off.
  */
 export interface EpisodicMemoryScope {
 	resourceId: string;

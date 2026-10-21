@@ -26,7 +26,6 @@ import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
-import type { EpisodicScopeResolver } from '@/modules/agents/integrations/episodic-scope-resolver';
 import type { Telemetry } from '@/telemetry';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { ExternalHooks } from '@/external-hooks';
@@ -1522,11 +1521,6 @@ describe('AgentExecutionRepository', () => {
 				mock<AgentBackgroundJobService>(),
 				mock<AgentsSettingsService>(),
 				mock<AgentSkillRefsService>(),
-				mock<EpisodicScopeResolver>({
-					resolveDefault: vi
-						.fn()
-						.mockResolvedValue({ writeScopeId: 'scope-1', readScopeIds: ['scope-1'] }),
-				}),
 			);
 			const resume = async (
 				user: User,

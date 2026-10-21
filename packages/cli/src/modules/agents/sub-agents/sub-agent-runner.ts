@@ -38,6 +38,7 @@ import type { AgentRunTelemetryType } from '@/interfaces';
 
 import type { StartExecutionParams } from '../agent-execution.service';
 import { EXECUTION_METADATA_KEY } from '../types/agent-queued-message';
+import { episodicScopeHostMetadata } from '../utils/episodic-scope-metadata';
 import { bindExecutionInput } from '../utils/execution-input';
 import { BACKGROUND_SUB_AGENT_METADATA_KEY } from '../background/sub-agent-background-state';
 import type { IntegrationMessageContext } from '../integrations/integration-tool-types';
@@ -397,6 +398,7 @@ export class SubAgentRunner {
 									runtimeSource,
 									sandboxPrincipalHash,
 								),
+								...episodicScopeHostMetadata(resourceId),
 								[EXECUTION_METADATA_KEY]: executionId,
 							},
 						},

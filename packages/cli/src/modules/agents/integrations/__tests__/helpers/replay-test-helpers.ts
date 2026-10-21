@@ -18,6 +18,7 @@ import type {
 	IntegrationMessageContextStore,
 } from '../../integration-tools';
 import { getIntegrationToolConnectionDescriptors } from '../../integration-tools';
+import { AgentMessageRepository } from '../../../repositories/agent-message.repository';
 import { AgentResourceRepository } from '../../../repositories/agent-resource.repository';
 import type { AgentMessageQueueService } from '../../../agent-message-queue.service';
 import type { AgentMessageQueue } from '../../../entities/agent-message-queue.entity';
@@ -253,6 +254,9 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 	const resources = mock<AgentResourceRepository>();
 	resources.findChatSessionGeneration.mockResolvedValue(null);
 	Container.set(AgentResourceRepository, resources);
+	const messages = mock<AgentMessageRepository>();
+	messages.findRecentThreadIdsByResourceId.mockResolvedValue([]);
+	Container.set(AgentMessageRepository, messages);
 
 	let stream = params.stream ?? [
 		{ type: 'text-delta', id: 'text-1', delta: 'Got it' },

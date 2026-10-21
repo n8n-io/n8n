@@ -67,7 +67,6 @@ import {
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import { AgentWakeService } from '../background/agent-wake.service';
 import { SubAgentBackgroundRunner } from '../background/sub-agent-background-runner';
-import type { EpisodicScopeResolver } from '../integrations/episodic-scope-resolver';
 import type { AgentChatBridge } from '../integrations/agent-chat-bridge';
 import { ChatIntegrationService } from '../integrations/chat-integration.service';
 import { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
@@ -196,8 +195,6 @@ function makeRuntime(
 	};
 }
 
-const defaultEpisodicScope = { writeScopeId: 'scope-1', readScopeIds: ['scope-1'] };
-
 function makeService(sandboxEnabled = false) {
 	const settingsService = mock<AgentsSettingsService>();
 	const checkpointStorage = mock<N8NCheckpointStorage>();
@@ -277,8 +274,6 @@ function makeService(sandboxEnabled = false) {
 	executionService.finalizeExecution.mockResolvedValue('execution-1');
 	agentRunTracingService.build.mockResolvedValue(undefined);
 
-	const episodicScopeResolver = mock<EpisodicScopeResolver>();
-	episodicScopeResolver.resolveDefault.mockResolvedValue(defaultEpisodicScope);
 	const service = new AgentExecutionOrchestratorService(
 		mockLogger(),
 		checkpointStorage,
@@ -304,12 +299,10 @@ function makeService(sandboxEnabled = false) {
 		backgroundJobs,
 		settingsService,
 		createAgentSkillRefsService(),
-		episodicScopeResolver,
 	);
 
 	return {
 		service,
-		episodicScopeResolver,
 		settingsService,
 		backgroundJobRepository,
 		backgroundJobs,
@@ -2599,7 +2592,6 @@ describe('AgentExecutionOrchestratorService', () => {
 						hostMetadata: {
 							...encodeAgentSandboxHostMetadata({ projectId, principalHash: taskPrincipalHash }),
 							...encodeIntegrationMessageContext(selectedContext),
-							...encodeEpisodicScopeMetadata(defaultEpisodicScope),
 							n8nExecutionId: 'execution-1',
 						},
 					},
@@ -2621,35 +2613,49 @@ describe('AgentExecutionOrchestratorService', () => {
 		},
 	);
 
-	it.each([
-		['an integration scope', { writeScopeId: 'slack:T1:C1', readScopeIds: ['slack:T1:C1'] }],
-		['a disabled scope', { disabled: true as const }],
-	])('carries %s into the run without the default policy', async (_label, episodicScope) => {
-		const { service, runtimeCacheService, episodicScopeResolver } = makeService();
-		const runtime = makeRuntime();
-		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
-		await collect(
-			service.executeForChatPublished({
-				agentId,
-				projectId,
-				message: 'hello',
-				memory: { threadId: 'thread-1', resourceId: 'integration:slack:U1' },
-				messageContext: selectedContext,
-				integrationType: 'slack',
-				sandboxPrincipalHash: taskPrincipalHash,
-				episodicScope,
-			}),
-		);
-
-		expect(runtime.agent.stream).toHaveBeenCalledWith(
-			expect.anything(),
-			expect.objectContaining({
-				persistence: expect.objectContaining({
-					hostMetadata: expect.objectContaining(encodeEpisodicScopeMetadata(episodicScope)),
+	describe('episodic memory scope', () => {
+		async function runPublishedTurn(
+			resourceId: string,
+			episodicScope?: Parameters<typeof encodeEpisodicScopeMetadata>[0],
+		) {
+			const { service, runtimeCacheService } = makeService();
+			const runtime = makeRuntime();
+			runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+			await collect(
+				service.executeForChatPublished({
+					agentId,
+					projectId,
+					message: 'hello',
+					memory: { threadId: 'thread-1', resourceId },
+					messageContext: selectedContext,
+					integrationType: 'slack',
+					sandboxPrincipalHash: taskPrincipalHash,
+					episodicScope,
 				}),
-			}),
-		);
-		expect(episodicScopeResolver.resolveDefault).not.toHaveBeenCalled();
+			);
+			return runtime.agent.stream.mock.calls[0][1]?.persistence?.hostMetadata;
+		}
+
+		it.each([
+			['a resolved scope', { writeScopeId: 'slack:T1:C1', readScopeIds: ['slack:T1:C1'] }],
+			['a disabled decision', { disabled: true as const }],
+		])('carries %s from the channel into the run', async (_label, episodicScope) => {
+			const hostMetadata = await runPublishedTurn('integration:slack:U1', episodicScope);
+
+			expect(hostMetadata).toMatchObject(encodeEpisodicScopeMetadata(episodicScope));
+		});
+
+		it('turns episodic memory off for an integration resource without a decision', async () => {
+			const hostMetadata = await runPublishedTurn('integration:slack:U1');
+
+			expect(hostMetadata).toMatchObject(encodeEpisodicScopeMetadata({ disabled: true }));
+		});
+
+		it('leaves other resources on their own scope', async () => {
+			const hostMetadata = await runPublishedTurn('task:task-1');
+
+			expect(hostMetadata).not.toHaveProperty(EPISODIC_SCOPE_METADATA_KEY);
+		});
 	});
 
 	it.each(['new', 'existing'] as const)(
