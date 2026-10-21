@@ -130,7 +130,7 @@ export class ExpressionEngineConfig {
 	 * n8n always uses the engine's result and reports differences to Sentry.
 	 * 0 compares none, 1 compares all.
 	 * Use 1 on a test instance and 0.1 in production.
-	 * Only applies to the `vm` and `quickjs` engines, when error reporting to Sentry is active.
+	 * Only applies to the `vm` and `quickjs` engines, when `N8N_SENTRY_DSN` is set.
 	 * Ignored while `N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION` is true.
 	 */
 	@Env(
