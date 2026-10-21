@@ -1188,6 +1188,28 @@ export async function executeWebhook(
 			responseHeaders.applyToResponse(res);
 		}
 
+		const respondOnReceived = (id: string) => {
+			// oxlint-disable-next-line typescript/no-deprecated
+			additionalKeys.$executionId = id;
+			additionalKeys.$execution = {
+				id,
+				mode: executionMode === 'manual' ? 'test' : 'production',
+				resumeUrl: `${additionalData.webhookWaitingBaseUrl}/${id}`,
+				resumeFormUrl: `${additionalData.formWaitingBaseUrl}/${id}`,
+			};
+			const evaluatedResponseData = context.evaluateComplexWebhookDescriptionExpression<string>(
+				'responseData',
+				undefined,
+				'firstEntryJson',
+			);
+
+			const responseBody = extractWebhookOnReceivedResponse(
+				evaluatedResponseData,
+				webhookResultData,
+			);
+			responder.respondWith(createStaticResponse(responseBody, responseCode, responseHeaders));
+		};
+
 		const shouldContinueWorkflowExecution = handleImmediateWebhookResponse({
 			webhookResultData,
 			responseCode,
@@ -1210,9 +1232,25 @@ export async function executeWebhook(
 		});
 		if (!shouldContinueAfterCredentialGate) return;
 
-		// For "onReceived" mode, we need to defer response sending until after the execution
-		// is created, so that `$execution.id` is available in response data expressions.
-		const shouldDeferOnReceivedResponse = responseMode === 'onReceived' && !responder.hasResponded;
+		// A resumed form already has an execution ID, so it can be acknowledged as soon as
+		// WorkflowRunner has claimed the persisted execution. Waiting for the complete run
+		// would let synchronous downstream work delay the response, while responding before
+		// the claim could report success for a concurrent or failed resume.
+		const resumedWaitFormExecutionId =
+			responseMode === 'onReceived' &&
+			executionId !== undefined &&
+			workflowStartNode.type === WAIT_NODE_TYPE &&
+			workflowStartNode.parameters.resume === 'form' &&
+			!responder.hasResponded
+				? executionId
+				: undefined;
+
+		// New executions still need to defer the response until after the execution is
+		// created, so that `$execution.id` is available in response data expressions.
+		const shouldDeferOnReceivedResponse =
+			responseMode === 'onReceived' &&
+			resumedWaitFormExecutionId === undefined &&
+			!responder.hasResponded;
 
 		// Prepare execution data
 		const { runExecutionData: preparedRunExecutionData, pinData } = prepareExecutionData(
@@ -1349,7 +1387,17 @@ export async function executeWebhook(
 			!responder.hasResponded && !shouldDeferOnReceivedResponse,
 			// An execution id here means we are resuming one that is waiting on this webhook
 			executionId
-				? { executionId, expectedStatus: 'waiting', storedAt: options?.storedAt }
+				? {
+						executionId,
+						expectedStatus: 'waiting',
+						storedAt: options?.storedAt,
+						onClaimed:
+							resumedWaitFormExecutionId === undefined
+								? undefined
+								: () => {
+										if (!responder.hasResponded) respondOnReceived(resumedWaitFormExecutionId);
+									},
+					}
 				: undefined,
 			responsePromise,
 		);
@@ -1366,26 +1414,7 @@ export async function executeWebhook(
 		}
 
 		if (shouldDeferOnReceivedResponse) {
-			// oxlint-disable-next-line typescript/no-deprecated
-			additionalKeys.$executionId = executionId;
-			additionalKeys.$execution = {
-				id: executionId,
-				mode: executionMode === 'manual' ? 'test' : 'production',
-				resumeUrl: `${additionalData.webhookWaitingBaseUrl}/${executionId}`,
-				resumeFormUrl: `${additionalData.formWaitingBaseUrl}/${executionId}`,
-			};
-			const evaluatedResponseData = context.evaluateComplexWebhookDescriptionExpression<string>(
-				'responseData',
-				undefined,
-				'firstEntryJson',
-			);
-
-			const responseBody = extractWebhookOnReceivedResponse(
-				evaluatedResponseData,
-				webhookResultData,
-			);
-			const webhookResponse = createStaticResponse(responseBody, responseCode, responseHeaders);
-			responder.respondWith(webhookResponse);
+			respondOnReceived(executionId);
 		}
 
 		Container.get(EventService).emit('workflow-executed', {
