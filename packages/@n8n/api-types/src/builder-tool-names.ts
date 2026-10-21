@@ -41,8 +41,6 @@ export const AGENT_BUILDER_TOOL_NAMES = {
 	VERIFY_MCP_SERVER: 'agent_builder_verify_mcp_server',
 	SEARCH_NODES: 'agent_builder_search_nodes',
 	GET_NODE_TYPES: 'agent_builder_get_node_types',
-	/** No longer registered. Builders use the shared `list_credentials` tool. */
-	LIST_CREDENTIALS: 'agent_builder_list_credentials',
 	/** No longer registered. Builders use `setup_credentials` with target `agent`. */
 	ASK_CREDENTIAL: 'agent_builder_ask_credential',
 	/** No longer registered. Builders use `setup_credentials` with `allowManaged`. */
