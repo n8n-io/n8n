@@ -3564,6 +3564,7 @@
 	"settings.context.skills.save.hidden": "Skill saved. Your search or filter hides it.",
 	"settings.context.skills.error.load": "Could not load skills",
 	"settings.context.skills.error.loadOne": "Could not load the skill",
+	"settings.context.skills.error.notFound": "This skill does not exist, or you do not have access to it",
 	"settings.context.skills.error.agents": "Could not load the agents",
 	"settings.context.skills.error.save": "Could not save the skill",
 	"settings.context.skills.error.nameTaken": "That name is taken, choose another",

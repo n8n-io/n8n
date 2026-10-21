@@ -1,8 +1,15 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn } from '@vueuse/core';
-import type { AgentSkill, SkillCreateMethod, SkillListItem, SkillScope } from '@n8n/api-types';
+import type {
+	AgentSkill,
+	SkillCreateMethod,
+	SkillDetail,
+	SkillListItem,
+	SkillScope,
+} from '@n8n/api-types';
+import { ResponseError } from '@n8n/rest-api-client';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
@@ -24,7 +31,7 @@ import type { DropdownMenuItemProps, TableOptions } from '@n8n/design-system';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
 import { DEBOUNCE_TIME, MODAL_CONFIRM, VIEWS } from '@/app/constants';
-import { useUIStore } from '@/app/stores/ui.store';
+import { listenForModalChanges, useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { AGENT_SKILL_MODAL_KEY } from '@/features/agents/constants';
 import { isSkillNameTakenError } from '@/features/agents/utils/agentSkill';
@@ -181,10 +188,13 @@ function openModal(data: AgentSkillModalData) {
 	uiStore.openModalWithData({ name: AGENT_SKILL_MODAL_KEY, data });
 }
 
-/** Starts at the SKILL.md upload step, which also offers "Add manually". */
-function openCreateModal() {
+/**
+ * Starts at the SKILL.md upload step, which also offers "Add manually". Returns false
+ * when the user cannot create a skill in any scope.
+ */
+function openCreateModal(): boolean {
 	const options = scopeOptions.value;
-	if (options.length === 0) return;
+	if (options.length === 0) return false;
 	openModal({
 		scopeOptions: options,
 		initialScope: options[0].value,
@@ -197,6 +207,7 @@ function openCreateModal() {
 		onConfirm: async ({ skill, scope, method }) =>
 			await onCreate(skill, scope ?? options[0].value, method),
 	});
+	return true;
 }
 
 /**
@@ -278,41 +289,144 @@ function scopeLock(
 	return {};
 }
 
-async function openEditModal(item: Pick<SkillListItem, 'id'>) {
+/*
+ * The URL drives the skill modal, as on the credentials page: `?skillId=<id>` shows
+ * that skill and `?create=true` starts a new one. The page only writes the URL, and
+ * one watcher opens or closes the modal to match it. Closing the modal clears the URL.
+ */
+
+/** The page opens the modal from the URL only after the list and the projects load. */
+const isReady = ref(false);
+
+const requestedSkillId = computed<string | null>(() => {
+	const { skillId } = route.query;
+	return typeof skillId === 'string' && skillId !== '' ? skillId : null;
+});
+const requestsCreate = computed(() => !requestedSkillId.value && route.query.create === 'true');
+
+/** What the URL asks the modal to show: one skill, a new skill, or nothing. */
+const modalInUrl = computed<string | null>(() => {
+	if (requestedSkillId.value) return `skill:${requestedSkillId.value}`;
+	return requestsCreate.value ? 'create' : null;
+});
+
+/** What the open modal shows, in the same form as `modalInUrl`. */
+let shownModal: string | null = null;
+
+/** Writes the modal state to the URL and keeps the other query parameters. */
+async function setModalQuery(next: { skillId?: string; create?: 'true' }) {
+	// A late call after the user left the page must not change the next page's URL.
+	if (route.name !== VIEWS.SETTINGS_CONTEXT_SKILLS) return;
+	const { skillId: _skillId, create: _create, ...query } = route.query;
+	await router.replace({ query: { ...query, ...next } });
+}
+
+async function onOpenSkill(item: Pick<SkillListItem, 'id'>) {
+	await setModalQuery({ skillId: item.id });
+}
+
+async function onCreateSkill() {
+	await setModalQuery({ create: 'true' });
+}
+
+/** The API answers 404 for a missing skill and for one the user cannot see. */
+function isSkillNotFoundError(error: unknown): boolean {
+	return error instanceof ResponseError && error.httpStatusCode === 404;
+}
+
+/**
+ * Counts the requests to open a skill. Only the latest one may open the modal: a slow
+ * answer for a skill that the URL no longer names must not replace the current one.
+ */
+let openRequest = 0;
+
+function cancelPendingOpen() {
+	openRequest++;
+}
+
+async function openEditModal(skillId: string) {
+	const request = ++openRequest;
+	let detail: SkillDetail;
 	try {
-		const detail = await skillsStore.fetchSkill(item.id);
-		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_OPENED_SKILL, {
-			skill_id: detail.id,
-			scope: detail.scope,
-			...(detail.projectId ? { project_id: detail.projectId } : {}),
-			read_only: !detail.canEdit,
-		});
-		const currentValue = scopeValueOf(detail);
-		// The current scope is listed even when the user could not create a skill there,
-		// such as an agent skill, which is only made from inside its agent.
-		const options = scopeOptions.value.some((option) => option.value === currentValue)
-			? scopeOptions.value
-			: [{ value: currentValue, ...scopeDisplay(detail) }, ...scopeOptions.value];
-		openModal({
-			skill: detail.skill,
-			skillId: detail.id,
-			readOnly: !detail.canEdit,
-			scopeOptions: options,
-			initialScope: currentValue,
-			...scopeLock(detail),
-			existingSkillNames: [],
-			onConfirm: async ({ skill, scope }) =>
-				await onSave(
-					detail.id,
-					skill,
-					detail.skillHash,
-					scope !== currentValue ? scope : undefined,
-				),
-		});
+		detail = await skillsStore.fetchSkill(skillId);
 	} catch (error) {
-		showError(error, i18n.baseText('settings.context.skills.error.loadOne'));
+		if (request !== openRequest) return;
+		// A link to a skill that is not there leaves the list, not a broken modal.
+		await setModalQuery({});
+		if (isSkillNotFoundError(error)) {
+			showMessage({
+				title: i18n.baseText('settings.context.skills.error.notFound'),
+				type: 'warning',
+			});
+		} else {
+			showError(error, i18n.baseText('settings.context.skills.error.loadOne'));
+		}
+		return;
+	}
+	if (request !== openRequest) return;
+	telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_OPENED_SKILL, {
+		skill_id: detail.id,
+		scope: detail.scope,
+		...(detail.projectId ? { project_id: detail.projectId } : {}),
+		read_only: !detail.canEdit,
+	});
+	const currentValue = scopeValueOf(detail);
+	// The current scope is listed even when the user could not create a skill there,
+	// such as an agent skill, which is only made from inside its agent.
+	const options = scopeOptions.value.some((option) => option.value === currentValue)
+		? scopeOptions.value
+		: [{ value: currentValue, ...scopeDisplay(detail) }, ...scopeOptions.value];
+	openModal({
+		skill: detail.skill,
+		skillId: detail.id,
+		readOnly: !detail.canEdit,
+		scopeOptions: options,
+		initialScope: currentValue,
+		...scopeLock(detail),
+		existingSkillNames: [],
+		onConfirm: async ({ skill, scope }) =>
+			await onSave(detail.id, skill, detail.skillHash, scope !== currentValue ? scope : undefined),
+	});
+	shownModal = `skill:${detail.id}`;
+}
+
+/** Opens, replaces or closes the modal so that it shows what the URL names. */
+async function syncModalWithUrl() {
+	if (!isReady.value || route.name !== VIEWS.SETTINGS_CONTEXT_SKILLS) return;
+	// The URL changed, so a pending open is out of date.
+	cancelPendingOpen();
+	if (modalInUrl.value === shownModal) return;
+	if (shownModal !== null) {
+		shownModal = null;
+		uiStore.closeModal(AGENT_SKILL_MODAL_KEY);
+		// The modal remounts, so it does not keep the fields of the previous skill.
+		await nextTick();
+	}
+	if (requestedSkillId.value) {
+		await openEditModal(requestedSkillId.value);
+	} else if (requestsCreate.value) {
+		if (openCreateModal()) {
+			shownModal = 'create';
+		} else {
+			// The user cannot create a skill anywhere, so the link has nothing to show.
+			await setModalQuery({});
+		}
 	}
 }
+
+watch([isReady, modalInUrl], syncModalWithUrl);
+
+// The user closes the modal, so the URL follows it and a refresh shows the list.
+listenForModalChanges({
+	store: uiStore,
+	onModalClosed(modalName) {
+		if (modalName !== AGENT_SKILL_MODAL_KEY) return;
+		const closed = shownModal;
+		shownModal = null;
+		// The URL may already name another skill, which the page opens next.
+		if (closed !== null && closed === modalInUrl.value) void setModalQuery({});
+	},
+});
 
 /** Saves the next version. There are no drafts: what the modal shows is what gets saved. */
 /** `newScope` is set when the user picked another scope: the save also moves the skill. */
@@ -383,15 +497,13 @@ onMounted(async () => {
 	if (!loadFailed.value) {
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_VIEWED_SKILLS, { count: skillsStore.count });
 	}
-	// Deep links: one skill to open, or a new one to start. The skill may be on another
-	// page, so it is read by id rather than from the list.
-	const { skillId, create } = route.query;
-	if (typeof skillId === 'string') {
-		await openEditModal({ id: skillId });
-	} else if (create === 'true') {
-		openCreateModal();
-	}
+	// The scope options need the projects, so the modal waits for them. The skill may be
+	// on another page, so it is read by id rather than from the list.
+	isReady.value = true;
 });
+
+// The modal is global, so a late answer must not open it on the next page.
+onBeforeUnmount(cancelPendingOpen);
 </script>
 
 <template>
@@ -449,7 +561,7 @@ onMounted(async () => {
 				v-if="scopeOptions.length > 0"
 				:label="i18n.baseText('settings.context.skills.actions.create')"
 				data-test-id="skills-create-button"
-				@click="openCreateModal"
+				@click="onCreateSkill"
 			/>
 		</div>
 
@@ -459,7 +571,7 @@ onMounted(async () => {
 			:items-length="skillsStore.count"
 			:loading="skillsStore.loading"
 			:show-empty="showEmptyState"
-			@open="openEditModal"
+			@open="onOpenSkill"
 			@delete="onDelete"
 			@update:options="onOptionsUpdate"
 		>
@@ -475,7 +587,7 @@ onMounted(async () => {
 						v-if="scopeOptions.length > 0"
 						:label="i18n.baseText('settings.context.skills.actions.create')"
 						data-test-id="skills-empty-create-button"
-						@click="openCreateModal"
+						@click="onCreateSkill"
 					/>
 				</div>
 			</template>
