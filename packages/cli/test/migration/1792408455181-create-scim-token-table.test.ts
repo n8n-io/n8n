@@ -4,7 +4,7 @@ import {
 	runSingleMigration,
 	type TestMigrationContext,
 } from '@n8n/backend-test-utils';
-import { DbConnection, sqliteMigrations } from '@n8n/db';
+import { DbConnection, sqliteMigrations, type Migration } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
@@ -285,7 +285,8 @@ describe('CreateScimTokenTable migration', () => {
 
 	// Only the hash is stored, so `db:revert` must stop at this migration.
 	it('has no down migration', () => {
-		const migration = sqliteMigrations.find(({ name }) => name === MIGRATION_NAME);
+		const migrations: Migration[] = sqliteMigrations;
+		const migration = migrations.find(({ name }) => name === MIGRATION_NAME);
 
 		expect(migration).toBeDefined();
 		expect(migration?.prototype.down).toBeUndefined();
