@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { pipedriveApiRequest } from '../../transport';
@@ -131,12 +132,23 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			const additionalFields = this.getNodeParameter('additionalFields', i);
 
-			if (additionalFields.fields) {
+			// No selected field means all fields, so an empty list adds no parameter.
+			if ((additionalFields.fields as string[] | undefined)?.length) {
 				qs.fields = (additionalFields.fields as string[]).join(',');
 			}
 
+			const toId = (name: string, input: unknown) => {
+				const id = parseInt(String(input), 10);
+				if (Number.isNaN(id)) {
+					throw new NodeOperationError(this.getNode(), `${name} "${input}" is not a number`, {
+						itemIndex: i,
+					});
+				}
+				return id;
+			};
+
 			if (additionalFields.organizationId) {
-				qs.organization_id = parseInt(additionalFields.organizationId as string, 10);
+				qs.organization_id = toId('Organization ID', additionalFields.organizationId);
 			}
 
 			if (additionalFields.includeFields) {
@@ -144,18 +156,23 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			}
 
 			if (additionalFields.personId) {
-				qs.person_id = parseInt(additionalFields.personId as string, 10);
+				qs.person_id = toId('Person ID', additionalFields.personId);
 			}
 
 			// The lead search exists only in the v2 API. It pages with a cursor and returns
 			// at most 100 items for each page.
 			qs.limit = returnAll ? 100 : qs.limit;
 			const results: IDataObject[] = [];
-			do {
+			let morePages = true;
+			while (morePages) {
 				const page = await pipedriveApiRequest.call(this, 'GET', '/leads/search', {}, qs);
-				results.push(...(((page.data as IDataObject)?.items as IDataObject[]) ?? []));
-				qs.cursor = page.additionalData?.next_cursor as string | undefined;
-			} while (returnAll && qs.cursor);
+				const pageItems = ((page.data as IDataObject)?.items as IDataObject[]) ?? [];
+				results.push(...pageItems);
+				const nextCursor = page.additionalData?.next_cursor as string | undefined;
+				// Stop on the last page, and also when a page brings no progress.
+				morePages = returnAll && !!nextCursor && pageItems.length > 0 && nextCursor !== qs.cursor;
+				qs.cursor = nextCursor;
+			}
 			const responseData = { data: { items: results } };
 
 			const data = parseSearchResponse(responseData);
