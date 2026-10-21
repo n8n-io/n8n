@@ -14,6 +14,11 @@ describe('Test N8n Node', () => {
 		const { pinData } = await import('./workflow.n8n.workflows.json');
 		const apiResponse = pinData.n8n.map((item) => item.json);
 		nock(baseUrl).get('/workflows?tags=n8n-test').reply(200, { data: apiResponse });
+		nock(baseUrl)
+			.post('/projects/proj-123/users', {
+				relations: [{ userId: 'user-456', role: 'project:editor' }],
+			})
+			.reply(201);
 	});
 
 	new NodeTestHarness().setupTests({ credentials });

@@ -52,6 +52,7 @@ import { DataTableRepository } from '@/modules/data-table/data-table.repository'
 import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DataTableSerializer } from '@/modules/n8n-packages/entities/data-table/data-table.serializer';
+import { TagImporter } from '@/modules/n8n-packages/entities/tag/tag-importer';
 import {
 	PACKAGE_ENTITY_LAYOUT,
 	entityFilePath,
@@ -70,6 +71,7 @@ import {
 } from '@/modules/n8n-packages/n8n-packages.types';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 import { ProjectService } from '@/services/project.service.ee';
+import { TagService } from '@/services/tag.service';
 import { createFolder } from '@test-integration/db/folders';
 import { createOwnerWithApiKey } from '@test-integration/db/users';
 import { createProjectVariable, createVariable } from '@test-integration/db/variables';
@@ -361,7 +363,7 @@ async function prepareBindingApply(unselectedVariableName?: string) {
 				variableNames: [unselectedVariable.key],
 			})
 		: undefined;
-	await service.promote(environments.promote.id, owner, {
+	const promoted = await service.promote(environments.promote.id, owner, {
 		canExportVariableValues: true,
 		commitMessage: 'Export orders',
 	});
@@ -379,6 +381,7 @@ async function prepareBindingApply(unselectedVariableName?: string) {
 	return {
 		remote,
 		environments,
+		commitSha: promoted.git.commitSha,
 		project,
 		credential,
 		variable,
@@ -464,6 +467,27 @@ async function setupProjectWithWorkflows(projectName: string, workflowNames: str
 	return { project, workflows };
 }
 
+/** The Apply preview, read through the test's `service` and its working directory. */
+async function listApplyChanges(projectId: string) {
+	const changeService = new PromotionChangeService(
+		service,
+		packagesService,
+		Container.get(WorkflowRepository),
+		Container.get(VariablesRepository),
+		Container.get(CredentialsRepository),
+		Container.get(TagImporter),
+		Container.get(DataTableService),
+		Container.get(DataTableSerializer),
+		Container.get(ModuleRegistry),
+		mockLogger(),
+	);
+	const { changes } = await changeService.getChanges(owner, projectId, 'apply', {
+		sort: 'name',
+		order: 'asc',
+	});
+	return changes;
+}
+
 function dataTableNode(table: { id: string; name: string }): INode {
 	return {
 		id: `node-${table.id}`,
@@ -502,11 +526,20 @@ async function promoteDataTableWorkflows() {
 		{ name: 'Send report', nodes: [], connections: {} },
 		project,
 	);
-	await service.promote(environments.promote.id, owner, {
+	const promoted = await service.promote(environments.promote.id, owner, {
 		canExportVariableValues: true,
 		commitMessage: 'Export sales',
 	});
-	return { environments, project, workflow, plainWorkflow, orders, customers, dataTableService };
+	return {
+		environments,
+		commitSha: promoted.git.commitSha,
+		project,
+		workflow,
+		plainWorkflow,
+		orders,
+		customers,
+		dataTableService,
+	};
 }
 
 async function writeRemoteFile(remote: TestRemote, relativePath: string, content: string) {
@@ -1621,6 +1654,186 @@ describe('Apply a project selection', () => {
 		});
 		expect(await snapshotApplyState()).toEqual(before);
 	});
+
+	it.each([
+		{
+			drift: 'a different name',
+			changeLocalTag: async (tagId: string) =>
+				await Container.get(TagRepository).update(tagId, { name: 'released' }),
+		},
+		{
+			drift: 'a different id',
+			changeLocalTag: async (tagId: string) =>
+				await Container.get(TagService).reconcileTagId(tagId, 'localTagId'),
+		},
+	])(
+		'keeps the tag of a selected workflow when the local tag has $drift',
+		async ({ changeLocalTag }) => {
+			const remote = await createRemote();
+			const environments = await createInstanceEnvironments(remote.bareDir);
+			await service.clone(environments.promote.id);
+			await service.clone(environments.apply.id);
+			const { project, workflows } = await setupProjectWithWorkflows('Orders', ['Tagged']);
+			const tag = await createTag({ name: 'release' }, workflows[0]);
+			await service.promote(environments.promote.id, owner, {
+				canExportVariableValues: true,
+				commitMessage: 'Export tagged workflow',
+			});
+			await changeLocalTag(tag.id);
+
+			const result = await service.applyProjectSelection(project.id, owner, {
+				workflowIds: [workflows[0].id],
+			});
+
+			assert(result.status === 'applied', JSON.stringify(result));
+			expect(
+				await Container.get(WorkflowTagMappingRepository).findBy({ workflowId: workflows[0].id }),
+			).toEqual([expect.objectContaining({ tagId: tag.id })]);
+			expect(await Container.get(TagRepository).find({ select: ['id', 'name'] })).toEqual([
+				expect.objectContaining({ id: tag.id, name: 'release' }),
+			]);
+			expect(await listApplyChanges(project.id)).toEqual([]);
+		},
+	);
+});
+
+describe('Check Apply blockers', () => {
+	it('reports the same blockers as Apply for all workflows of the project and changes nothing', async () => {
+		const { commitSha, project, workflow, unselectedWorkflow } =
+			await prepareBindingApply('UNSELECTED_URL');
+		assert(unselectedWorkflow);
+		const before = await snapshotApplyState();
+
+		const check = await service.checkApplyBlockers(project.id, commitSha);
+
+		expect(await snapshotApplyState()).toEqual(before);
+		expect(check.preflight.missingBindings).toHaveLength(3);
+		expect(check.movedWorkflows).toEqual([]);
+		expect(
+			await service.applyProjectSelection(project.id, owner, {
+				workflowIds: [workflow.id, unselectedWorkflow.id],
+				expectedSource: { environmentId: check.environmentId, ...check.git },
+			}),
+		).toEqual({
+			status: 'blocked',
+			environmentId: check.environmentId,
+			git: check.git,
+			preflight: check.preflight,
+		});
+	});
+
+	it('reports a workflow that moved to another project, next to the blockers of other workflows', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.promote.id);
+		await service.clone(environments.apply.id);
+		const {
+			project: orders,
+			workflows: [moved],
+		} = await setupProjectWithWorkflows('Orders', ['Moved workflow']);
+		const { project: billing } = await setupProjectWithWorkflows('Billing', []);
+		const variable = await createVariable('API_URL', 'source value');
+		const dependent = await buildWorkflowReferencingVariables({
+			name: 'Uses API_URL',
+			project: orders,
+			variableNames: [variable.key],
+		});
+		// The branch holds the workflow in Billing, while this instance still has it in Orders.
+		const sharedWorkflows = Container.get(SharedWorkflowRepository);
+		await sharedWorkflows.update(
+			{ workflowId: moved.id, role: 'workflow:owner' },
+			{ projectId: billing.id },
+		);
+		const promoted = await service.promote(environments.promote.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Move a workflow to Billing',
+		});
+		await sharedWorkflows.update(
+			{ workflowId: moved.id, role: 'workflow:owner' },
+			{ projectId: orders.id },
+		);
+		await Container.get(VariablesRepository).delete(variable.id);
+		await Container.get(VariablesService).updateCache();
+
+		const check = await service.checkApplyBlockers(orders.id, promoted.git.commitSha);
+
+		expect(check.movedWorkflows).toEqual([
+			{ id: moved.id, name: moved.name, project: { id: billing.id, name: billing.name } },
+		]);
+		expect(check.preflight.missingBindings).toEqual([
+			expect.objectContaining({
+				kind: 'variable',
+				name: 'API_URL',
+				consumers: [
+					{
+						project: { id: orders.id, name: orders.name },
+						workflows: [{ id: dependent.id, name: dependent.name }],
+					},
+				],
+			}),
+		]);
+	});
+
+	it('reports a data table change that removes column values, with the workflow that uses the table', async () => {
+		const { commitSha, project, workflow, orders, dataTableService } =
+			await promoteDataTableWorkflows();
+		await dataTableService.addColumn(orders.id, project.id, { name: 'extra', type: 'string' });
+
+		const check = await service.checkApplyBlockers(project.id, commitSha);
+
+		expect(check.preflight.conflicts).toEqual([
+			expect.objectContaining({
+				code: 'destructive-change',
+				id: orders.id,
+				consumers: [
+					{
+						project: { id: project.id, name: project.name },
+						workflows: [{ id: workflow.id, name: workflow.name }],
+					},
+				],
+			}),
+		]);
+		expect(check.preflight.missingBindings).toEqual([]);
+	});
+
+	it('reports a global variable that a project variable overrides as a warning, not a blocker', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.promote.id);
+		await service.clone(environments.apply.id);
+		const project = await createTeamProject('Orders', owner);
+		const variable = await createVariable('API_URL', 'global value');
+		const workflow = await buildWorkflowReferencingVariables({
+			name: 'Uses API_URL',
+			project,
+			variableNames: [variable.key],
+		});
+		const promoted = await service.promote(environments.promote.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Export orders',
+		});
+		await createProjectVariable(variable.key, 'project value', project);
+
+		const check = await service.checkApplyBlockers(project.id, promoted.git.commitSha);
+
+		expect(check.preflight).toMatchObject({
+			missingBindings: [],
+			accessRequirements: [],
+			conflicts: [],
+			warnings: [
+				{
+					code: 'variable-shadowed',
+					name: 'API_URL',
+					consumers: [
+						{
+							project: { id: project.id, name: project.name },
+							workflows: [{ id: workflow.id, name: workflow.name }],
+						},
+					],
+				},
+			],
+		});
+	});
 });
 
 describe('Apply a project selection over the public API', () => {
@@ -1993,23 +2206,7 @@ describe('Apply data table changes', () => {
 			).toEqual(['email', 'note']);
 			const { data } = await dataTableService.getManyRowsAndCount(orders.id, project.id, {});
 			expect(data).toEqual([expect.objectContaining({ email: 'a@example.com', note: 'keep me' })]);
-			const changeService = new PromotionChangeService(
-				service,
-				packagesService,
-				Container.get(WorkflowRepository),
-				Container.get(VariablesRepository),
-				Container.get(CredentialsRepository),
-				Container.get(TagRepository),
-				dataTableService,
-				Container.get(DataTableSerializer),
-				Container.get(ModuleRegistry),
-				mockLogger(),
-			);
-			const { changes } = await changeService.getChanges(owner, project.id, 'apply', {
-				sort: 'name',
-				order: 'asc',
-			});
-			expect(changes).toEqual([]);
+			expect(await listApplyChanges(project.id)).toEqual([]);
 		},
 	);
 });

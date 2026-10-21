@@ -34,7 +34,8 @@ const urlService = Container.get(UrlService);
 
 /**
  * Surfaces that authenticate through the inbound-auth pipeline advertise the trusted sources
- * accepted there. The trigger surface joins with its own ticket.
+ * accepted there. A trigger resource joins through `getAcceptedSourceIds()` instead, which also
+ * narrows the advertised issuers to the source its node selected.
  */
 const PIPELINE_SURFACES: ReadonlySet<SurfaceId> = new Set<SurfaceId>([
 	'public-api',
@@ -349,17 +350,22 @@ export class OAuthController {
 	private async buildProtectedResourceMetadata(
 		resource: ProtectedResource,
 	): Promise<Record<string, unknown>> {
-		const authorizationServers = PIPELINE_SURFACES.has(resource.surface)
-			? (
-					await this.authenticationService.advertise({
-						surface: resource.surface,
-						resource: {
-							url: resource.getResourceUrl(),
-							acceptedAudiences: resource.getAudiences(),
-						},
-					})
-				).authorizationServers
-			: [this.urlService.getInstanceBaseUrl()];
+		// A trigger narrows the surface to the source its node selected, so it advertises that
+		// source's issuer only. Resources outside the pipeline keep this instance.
+		const acceptedSourceIds = resource.getAcceptedSourceIds?.();
+		const authorizationServers =
+			PIPELINE_SURFACES.has(resource.surface) || acceptedSourceIds !== undefined
+				? (
+						await this.authenticationService.advertise({
+							surface: resource.surface,
+							resource: {
+								url: resource.getResourceUrl(),
+								acceptedAudiences: resource.getAudiences(),
+							},
+							...(acceptedSourceIds !== undefined && { acceptedSourceIds }),
+						})
+					).authorizationServers
+				: [this.urlService.getInstanceBaseUrl()];
 
 		const metadata: Record<string, unknown> = {
 			resource: resource.getResourceUrl(),

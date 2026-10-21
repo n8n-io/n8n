@@ -195,9 +195,25 @@ export interface ExecutionResult {
 	 * about the trigger's ingress (auth, payload shape, response mode).
 	 */
 	injectedTriggerNodeName?: string;
+	/**
+	 * Set when n8n redacted this execution's data for the current user, the same
+	 * way the executions list in the editor does. Output items are then empty and
+	 * errors carry only their type. `reason` is n8n's redaction reason, e.g.
+	 * `credential_inaccessible` or `workflow_redaction_policy`.
+	 */
+	redaction?: ExecutionRedaction;
 	error?: string;
 	startedAt?: string;
 	finishedAt?: string;
+}
+
+export interface ExecutionRedaction {
+	reason: string;
+	/**
+	 * Whether the user can reveal the data in the editor. Always false for
+	 * `credential_inaccessible` and `dynamic_credentials`.
+	 */
+	canReveal: boolean;
 }
 
 /** How a step run produced the target node's input. */
@@ -269,6 +285,13 @@ export interface NodeOutputResult {
 	 * are all read; a node in the main graph reports the last of them.
 	 */
 	totalRuns?: number;
+	/**
+	 * Set when n8n redacted this execution's data for the current user, the same
+	 * way the executions list in the editor does. Output items are then empty and
+	 * errors carry only their type. `reason` is n8n's redaction reason, e.g.
+	 * `credential_inaccessible` or `workflow_redaction_policy`.
+	 */
+	redaction?: ExecutionRedaction;
 }
 
 export interface ResolvedExpressionFailure {
@@ -327,8 +350,11 @@ export interface ResolvedNodeParametersResult {
 	 * fields downstream when the runtime did not throw.
 	 */
 	emptyResolutions: EmptyExpressionResolution[];
-	/** Present only when the resolution was refused (e.g. parameter-values gate is off). */
-	suppressed?: 'parameter-values-disabled';
+	/**
+	 * Present only when the resolution was refused: the parameter-values gate is
+	 * off, or n8n redacted the execution's data for the current user.
+	 */
+	suppressed?: 'parameter-values-disabled' | 'execution-redacted';
 }
 
 /**

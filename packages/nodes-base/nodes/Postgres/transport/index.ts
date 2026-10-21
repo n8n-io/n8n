@@ -11,7 +11,7 @@ import pgPromise from 'pg-promise';
 
 import { ConnectionPoolManager } from '@utils/connection-pool-manager';
 import { LOCALHOST } from '@utils/constants';
-import { getDateAsStringTypeParsers, parseDateToISO } from '@utils/postgres';
+import { getDateAsStringTypeParsers, getLegacyDateTypeParsers } from '@utils/postgres';
 
 import type {
 	ConnectionsData,
@@ -135,9 +135,7 @@ export async function configurePostgres(
 			dbConfig.types = getDateAsStringTypeParsers(pgp);
 		} else if (typeof options.nodeVersion === 'number' && options.nodeVersion >= 2.1) {
 			// DATE columns still return Date objects on these versions
-			[pgp.pg.types.builtins.TIMESTAMP, pgp.pg.types.builtins.TIMESTAMPTZ].forEach((type) => {
-				pgp.pg.types.setTypeParser(type, parseDateToISO);
-			});
+			dbConfig.types = getLegacyDateTypeParsers(pgp);
 		}
 
 		if (!credentials.sshTunnel) {

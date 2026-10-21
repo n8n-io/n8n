@@ -13,6 +13,19 @@ import type { BreakingChangeLightReportResult } from '@n8n/api-types';
 vi.mock('@n8n/rest-api-client/api/breaking-changes', () => ({
 	getReport: vi.fn(),
 	refreshReport: vi.fn(),
+	exportReport: vi.fn(),
+}));
+
+const { saveAs, showError } = vi.hoisted(() => ({
+	saveAs: vi.fn(),
+	showError: vi.fn(),
+}));
+
+vi.mock('file-saver', () => ({ saveAs }));
+
+vi.mock('@n8n/composables/useToast', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	useToast: () => ({ showError }),
 }));
 
 let rootStore: ReturnType<typeof mockedStore<typeof useRootStore>>;
@@ -876,6 +889,56 @@ describe('MigrationRules', () => {
 					screen.getByText(/0 of your 0 workflows are already compatible/, { exact: false }),
 				).toBeInTheDocument();
 			});
+		});
+	});
+
+	describe('export', () => {
+		it('downloads the CSV the server returns, under the name the server gives it', async () => {
+			const blob = new Blob(['target_version\r\n'], { type: 'text/csv' });
+			vi.mocked(breakingChangesApi.exportReport).mockResolvedValue({
+				blob,
+				filename: 'migration-report-v3-2026-10-20.csv',
+			});
+			renderComponent();
+			await waitFor(() => {
+				expect(screen.getByText('Test Rule 1')).toBeInTheDocument();
+			});
+
+			await userEvent.click(screen.getByTestId('migration-report-export'));
+
+			await waitFor(() => {
+				expect(saveAs).toHaveBeenCalledWith(blob, 'migration-report-v3-2026-10-20.csv');
+			});
+			expect(breakingChangesApi.exportReport).toHaveBeenCalledWith(rootStore.restApiContext, {
+				version: 'v3',
+			});
+			expect(showError).not.toHaveBeenCalled();
+		});
+
+		it('shows an error toast when the export fails', async () => {
+			const error = new Error('Forbidden');
+			vi.mocked(breakingChangesApi.exportReport).mockRejectedValue(error);
+			renderComponent();
+			await waitFor(() => {
+				expect(screen.getByText('Test Rule 1')).toBeInTheDocument();
+			});
+
+			await userEvent.click(screen.getByTestId('migration-report-export'));
+
+			await waitFor(() => {
+				expect(showError).toHaveBeenCalledWith(error, 'Could not export the report');
+			});
+			expect(saveAs).not.toHaveBeenCalled();
+		});
+
+		it('is offered to a user who cannot edit every workflow', async () => {
+			rbacStore.hasScope.mockReturnValue(false);
+			renderComponent();
+			await waitFor(() => {
+				expect(screen.getByText('Test Rule 1')).toBeInTheDocument();
+			});
+
+			expect(screen.getByTestId('migration-report-export')).toBeInTheDocument();
 		});
 	});
 });

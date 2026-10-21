@@ -23,7 +23,6 @@ import { InstanceAiThreadGrantRepository } from '../../repositories/instance-ai-
 import { InstanceAiThreadRepository } from '../../repositories/instance-ai-thread.repository';
 import { TypeORMAgentMemory } from '../../storage/typeorm-agent-memory';
 import { SelfHealingResultRepository } from '../database/self-healing-result.repository';
-import { SelfHealingResultService } from '../self-healing-result.service';
 
 mockInstance(ActiveWorkflowManager);
 mockInstance(WorkflowPublicationNotifier);
@@ -64,24 +63,25 @@ async function savedResult() {
 		backgroundUser.id,
 	);
 	const execution = await createExecution({ status: 'error' }, workflow);
-	const service = Container.get(SelfHealingResultService);
-	const result = await service.complete({
-		workflowId: workflow.id,
-		projectId: ownerProject.id,
-		backgroundUserId: backgroundUser.id,
-		executionId: execution.id,
-		usage: {
-			credits: 1,
-			turns: 2,
-			durationSeconds: 30,
-			promptTokens: 1000,
-			completionTokens: 200,
-			totalTokens: 1200,
+	const result = await Container.get(SelfHealingResultRepository).createResult(
+		{
+			workflowId: workflow.id,
+			projectId: ownerProject.id,
+			backgroundUserId: backgroundUser.id,
+			executionId: execution.id,
+			usage: {
+				credits: 1,
+				turns: 2,
+				durationSeconds: 30,
+			},
+			outcome: 'needs_you',
+			summary: 'Review the failed request.',
+			report: 'The request failed. Check the connection settings, then retry the workflow.',
+			completedAt: new Date(),
+			suggestionId: null,
 		},
-		outcome: 'needs_you',
-		summary: 'Review the failed request.',
-		report: 'The request failed. Check the connection settings, then retry the workflow.',
-	});
+		{},
+	);
 	const url = `/projects/${ownerProject.id}/workflows/${workflow.id}/self-healing-results/${result.id}`;
 	return { backgroundUser, workflow, ownerProject, execution, result, url };
 }
