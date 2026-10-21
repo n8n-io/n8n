@@ -38,9 +38,10 @@ export async function sendStreamToResponse(
 	}
 
 	// Runs before pipeline's own listener, so the stream is still open when the client left first.
+	// A stream that was read to the end is destroyed too (autoDestroy), but that is not a failure.
 	let clientDisconnected = false;
 	const onClose = () => {
-		clientDisconnected = !res.writableFinished && !stream.destroyed;
+		clientDisconnected = !res.writableFinished && (stream.readableEnded || !stream.destroyed);
 		stream.destroy();
 	};
 	res.once('close', onClose);
@@ -85,7 +86,7 @@ export function sendSuccessResponse(
 		void sendStreamToResponse(res, data).catch((e: unknown) => {
 			const error = ensureError(e);
 			reportError(error);
-			if (!res.headersSent) sendErrorResponse(res, error);
+			sendErrorResponse(res, error);
 		});
 		return;
 	}
@@ -104,6 +105,12 @@ export function sendSuccessResponse(
 }
 
 export function sendErrorResponse(res: Response, error: Error) {
+	if (res.headersSent) {
+		// Part of the body is already sent. Destroying the response tells the client it is incomplete.
+		res.destroy();
+		return;
+	}
+
 	if (isResponseError(error)) {
 		if (inDevelopment) {
 			Container.get(Logger).error(picocolors.red([error.httpStatusCode, error.message].join(' ')));
@@ -191,12 +198,6 @@ export function send<T, R extends Request, S extends Response>(
 					user: user ? { id: user.id } : undefined,
 				},
 			});
-
-			// The response already started, so destroying it is the only way to tell the client it failed.
-			if (res.headersSent) {
-				res.destroy();
-				return;
-			}
 
 			if (isUniqueConstraintError(error)) {
 				error.message = 'There is already an entry with this name';

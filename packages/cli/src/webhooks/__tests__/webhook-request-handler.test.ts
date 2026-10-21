@@ -53,7 +53,7 @@ describe('WebhookRequestHandler', () => {
 			path: '/',
 			method: 'CONNECT' as IHttpRequestMethods,
 		});
-		const res = mock<Response>();
+		const res = mock<Response>({ headersSent: false });
 		res.status.mockReturnValue(res);
 
 		await handler(req, res);
@@ -425,7 +425,7 @@ describe('WebhookRequestHandler', () => {
 					path: '/',
 					method: 'CONNECT' as IHttpRequestMethods,
 				});
-				const res = mock<Response>();
+				const res = mock<Response>({ headersSent: false });
 				res.status.mockReturnValue(res);
 
 				await handler(req, res);
