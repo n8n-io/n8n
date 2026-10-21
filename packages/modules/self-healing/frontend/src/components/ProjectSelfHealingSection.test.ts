@@ -1,4 +1,5 @@
 import type { SelfHealingConfigurationDto } from '@n8n/api-types';
+import { SELF_HEALING_CONFIGURATION_VIEW } from '@n8n/frontend-constants/self-healing';
 import { fireEvent, render, waitFor } from '@testing-library/vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
@@ -38,7 +39,7 @@ async function renderSection() {
 			{ path: '/projects/:projectId/settings', component: { render: () => null } },
 			{
 				path: '/projects/:projectId/settings/self-healing/:configurationId',
-				name: 'self-healing-configuration',
+				name: SELF_HEALING_CONFIGURATION_VIEW,
 				component: { render: () => null },
 			},
 		],
@@ -77,7 +78,12 @@ it('opens the configuration from the action menu', async () => {
 	const { view, router } = await renderSection();
 	await fireEvent.click(view.getByRole('button', { name: 'Actions' }));
 	await fireEvent.click(await view.findByRole('menuitem', { name: 'Edit' }));
-	await waitFor(() => expect(router.currentRoute.value.params.configurationId).toBe('1'));
+	await waitFor(() =>
+		expect(router.currentRoute.value).toMatchObject({
+			name: SELF_HEALING_CONFIGURATION_VIEW,
+			params: { projectId: 'project', configurationId: '1' },
+		}),
+	);
 });
 
 it('removes a configuration from the action menu only after confirmation', async () => {
@@ -99,4 +105,15 @@ it('shows relative last activity and the prototype empty label', async () => {
 	store.configurations.project[0].lastActivity = new Date(Date.now() - 5 * 60_000).toISOString();
 	expect(await view.findByText('5 minutes ago')).toBeVisible();
 	expect(view.queryByText('No failures yet')).not.toBeInTheDocument();
+});
+
+it('opens a new configuration in the current project', async () => {
+	const { view, router } = await renderSection();
+	await fireEvent.click(view.getByTestId('self-healing-create'));
+	await waitFor(() =>
+		expect(router.currentRoute.value).toMatchObject({
+			name: SELF_HEALING_CONFIGURATION_VIEW,
+			params: { projectId: 'project', configurationId: 'new' },
+		}),
+	);
 });

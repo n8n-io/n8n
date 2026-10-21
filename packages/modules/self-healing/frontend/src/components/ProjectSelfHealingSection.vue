@@ -14,6 +14,7 @@ import {
 } from '@n8n/design-system';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
+import { SELF_HEALING_CONFIGURATION_VIEW } from '@n8n/frontend-constants/self-healing';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, nextTick, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -105,7 +106,7 @@ watch(() => props.projectId, load, { immediate: true });
 
 function edit(id: number | 'new') {
 	void router.push({
-		name: 'self-healing-configuration',
+		name: SELF_HEALING_CONFIGURATION_VIEW,
 		params: { projectId: props.projectId, configurationId: String(id) },
 	});
 }

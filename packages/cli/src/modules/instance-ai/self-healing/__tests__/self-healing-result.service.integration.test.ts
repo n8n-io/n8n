@@ -1376,6 +1376,132 @@ describe('Inbox source reads', () => {
 });
 
 describe('configuration lifecycle', () => {
+	it('pauses admission without reviewers and preserves the report for a replacement reviewer', async () => {
+		const { user, project, original, input, result } = await fixture('could_not_fix');
+		const configurations = Container.get(SelfHealingConfigurationService);
+		const reviewer = await createUser({ role: GLOBAL_OWNER_ROLE });
+		await configurations.save(
+			user,
+			project.id,
+			{
+				scope: 'all',
+				workflowIds: [],
+				reviewerIds: [reviewer.id],
+			},
+			result.configurationId,
+		);
+		await Container.get(UserRepository).delete(reviewer.id);
+		const nextExecution = await createExecution(
+			{ status: 'error', mode: 'trigger', workflowVersionId: original.versionId },
+			original,
+		);
+		const producer = Container.get(SelfHealingInvestigationService);
+		const failure = { ...input, executionId: nextExecution.id };
+
+		expect(await producer.start(failure)).toBeNull();
+		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
+		expect(await configurations.get(project.id, result.configurationId)).toMatchObject({
+			enabled: false,
+			enabledById: user.id,
+			reviewerIds: [],
+		});
+		expect(await results.findOneBy({ id: result.id })).not.toBeNull();
+
+		await configurations.save(
+			user,
+			project.id,
+			{
+				scope: 'all',
+				workflowIds: [],
+				reviewerIds: [user.id],
+			},
+			result.configurationId,
+		);
+		expect(await service.getDetail(user, project.id, original.id, result.id)).toMatchObject({
+			resultId: result.id,
+		});
+		await configurations.setEnabled(user, project.id, result.configurationId, true);
+		expect(await producer.start(failure)).toEqual({ kind: 'result', resultId: result.id });
+	});
+
+	it('pauses when the sole reviewer is deleted between admission and claim', async () => {
+		const { user, project, original, input } = await prepareFixture();
+		const configurations = Container.get(SelfHealingConfigurationService);
+		const reviewer = await createUser({ role: GLOBAL_OWNER_ROLE });
+		await configurations.save(
+			user,
+			project.id,
+			{
+				scope: 'all',
+				workflowIds: [],
+				reviewerIds: [reviewer.id],
+			},
+			input.configurationId,
+		);
+		const references = Container.get(SelfHealingExecutionReferenceService);
+		const validateFailure = references.validateFailure.bind(references);
+		vi.spyOn(references, 'validateFailure').mockImplementationOnce(async (...args) => {
+			await validateFailure(...args);
+			await Container.get(UserRepository).delete(reviewer.id);
+		});
+
+		expect(await Container.get(SelfHealingInvestigationService).start(input)).toBeNull();
+		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
+		expect(await investigations.getForExecution(original.id, input.executionId)).toBeNull();
+		expect(await configurations.get(project.id, input.configurationId)).toMatchObject({
+			enabled: false,
+			enabledById: user.id,
+		});
+	});
+
+	it.each([false, true])(
+		'finishes without a result after reviewer deletion with suggestion=%s',
+		async (withSuggestion) => {
+			const { user, project, original, investigation, completion } = await prepareInvestigation(
+				withSuggestion ? 'fix_ready' : 'could_not_fix',
+				withSuggestion,
+			);
+			const configurations = Container.get(SelfHealingConfigurationService);
+			const reviewer = await createUser({ role: GLOBAL_OWNER_ROLE });
+			await configurations.save(
+				user,
+				project.id,
+				{
+					scope: 'all',
+					workflowIds: [],
+					reviewerIds: [reviewer.id],
+				},
+				investigation.configurationId,
+			);
+			if (withSuggestion) {
+				const prepare = suggestionService.prepareSuggestion.bind(suggestionService);
+				vi.spyOn(suggestionService, 'prepareSuggestion').mockImplementationOnce(async (...args) => {
+					const prepared = await prepare(...args);
+					await Container.get(UserRepository).delete(reviewer.id);
+					return prepared;
+				});
+			} else {
+				await Container.get(UserRepository).delete(reviewer.id);
+			}
+
+			expect(
+				await service.complete({ investigationId: investigation.id, ...completion }),
+			).toBeNull();
+			expect(await investigations.findInvestigation(investigation.id)).toMatchObject({
+				finishedAt: expect.any(Date),
+				resultId: null,
+			});
+			expect(await investigations.getUnfinishedForWorkflow(original.id)).toBeNull();
+			expect(await results.count()).toBe(0);
+			expect(await suggestions.getPendingForWorkflow(original.id)).toBeNull();
+			expect(await configurations.get(project.id, investigation.configurationId)).toMatchObject({
+				enabled: false,
+				enabledById: user.id,
+				reviewerIds: [],
+			});
+		},
+	);
+
 	it('keeps the source configuration enabled when a workflow moves during a run', async () => {
 		const { input, user, project, original } = await prepareFixture('could_not_fix');
 		const releaseRun = createDeferredPromise();

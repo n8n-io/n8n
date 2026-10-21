@@ -4,7 +4,13 @@ import {
 	linkUserToProject,
 	mockInstance,
 } from '@n8n/backend-test-utils';
-import { TransactionRunner, postgresMigrations, sqliteMigrations, wrapMigration } from '@n8n/db';
+import {
+	TransactionRunner,
+	UserRepository,
+	postgresMigrations,
+	sqliteMigrations,
+	wrapMigration,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { WorkflowMutationHooksProxy } from '@n8n/backend-services';
@@ -15,6 +21,7 @@ import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
 import { ControllerRegistry } from '@/controller.registry';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { createFolder } from '@test-integration/db/folders';
+import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createUser } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
@@ -70,6 +77,108 @@ it('persists disabled configurations through the settings API and captures the e
 	expect(loaded.body.data).toEqual(created.body.data);
 	const resumed = await agent.patch(`${url}/${id}/enabled`).send({ enabled: true }).expect(200);
 	expect(resumed.body.data).toMatchObject({ enabled: true, enabledById: user.id });
+});
+
+it.each([false, true])(
+	'keeps the current enabled=%s state when saving a stale form',
+	async (enabled) => {
+		const { user, project, input, url } = await fixture();
+		const editor = await createUser();
+		await linkUserToProject(editor, project, 'project:admin');
+		const configuration = await configurations.save(user, project.id, {
+			...input,
+			enabled: !enabled,
+		});
+		await configurations.setEnabled(user, project.id, configuration.id, enabled);
+		const current = await configurations.get(project.id, configuration.id);
+		const edited = { ...input, scope: 'all' as const, workflowIds: [], enabled: !enabled };
+
+		const saved = await server
+			.authAgentFor(editor)
+			.patch(`${url}/${configuration.id}`)
+			.send(edited)
+			.expect(200);
+		expect(saved.body.data).toMatchObject({
+			scope: 'all',
+			workflowIds: [],
+			enabled,
+			enabledById: current.enabledById,
+		});
+		// Internal callers must also preserve the persisted state.
+		expect(await configurations.save(editor, project.id, edited, configuration.id)).toMatchObject({
+			enabled,
+			enabledById: current.enabledById,
+		});
+	},
+);
+
+it('keeps an enabled configuration active when an edit omits enabled', async () => {
+	const { user, project, input, url } = await fixture();
+	const configuration = await configurations.save(user, project.id, { ...input, enabled: true });
+	const saved = await server
+		.authAgentFor(user)
+		.patch(`${url}/${configuration.id}`)
+		.send({
+			scope: 'all',
+			workflowIds: [],
+			reviewerIds: input.reviewerIds,
+		})
+		.expect(200);
+	expect(saved.body.data).toMatchObject({ scope: 'all', enabled: true, enabledById: user.id });
+});
+
+it('pauses after the sole reviewer is deleted and requires a replacement before resuming', async () => {
+	const { user, project, workflow, input } = await fixture();
+	const reviewer = await createUser();
+	await linkUserToProject(reviewer, project, 'project:editor');
+	const configuration = await configurations.save(user, project.id, {
+		...input,
+		enabled: true,
+		reviewerIds: [reviewer.id],
+	});
+	await Container.get(UserRepository).delete(reviewer.id);
+	await expect(configurations.setEnabled(user, project.id, configuration.id, true)).rejects.toThrow(
+		'Select at least one reviewer',
+	);
+
+	await configurations.recheckAccess(configuration.id, project.id, workflow.id);
+	expect(await configurations.get(project.id, configuration.id)).toMatchObject({
+		enabled: false,
+		enabledById: user.id,
+		reviewerIds: [],
+	});
+	await expect(configurations.setEnabled(user, project.id, configuration.id, true)).rejects.toThrow(
+		'Select at least one reviewer',
+	);
+	expect(await configurations.save(user, project.id, input, configuration.id)).toMatchObject({
+		enabled: false,
+		enabledById: user.id,
+		reviewerIds: [user.id],
+	});
+	expect(await configurations.setEnabled(user, project.id, configuration.id, true)).toMatchObject({
+		enabled: true,
+		enabledById: user.id,
+	});
+});
+
+it('checks workflow and execution access when creating an enabled configuration', async () => {
+	const { user, project, input, url } = await fixture();
+	const settingsAdmin = await createUser();
+	const role = await createCustomRoleWithScopeSlugs(['project:update']);
+	await linkUserToProject(settingsAdmin, project, role.slug);
+	const agent = server.authAgentFor(settingsAdmin);
+
+	await agent
+		.post(url)
+		.send({ ...input, enabled: true })
+		.expect(403);
+	expect(await configurations.list(project.id)).toEqual([]);
+	const created = await agent.post(url).send(input).expect(200);
+	expect(created.body.data).toMatchObject({
+		enabled: false,
+		enabledById: null,
+		reviewerIds: [user.id],
+	});
 });
 
 it('requires existing project settings permission for every operation', async () => {

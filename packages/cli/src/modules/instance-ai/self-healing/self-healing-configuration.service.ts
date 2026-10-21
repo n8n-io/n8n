@@ -1,6 +1,7 @@
 import type {
 	SaveSelfHealingConfigurationDto,
 	SelfHealingConfigurationOptions,
+	UpdateSelfHealingConfigurationDto,
 } from '@n8n/api-types';
 import { RoleService } from '@n8n/backend-services';
 import {
@@ -71,11 +72,16 @@ export class SelfHealingConfigurationService {
 		};
 	}
 
-	async save(user: User, projectId: string, input: SaveSelfHealingConfigurationDto, id?: number) {
+	async save(
+		user: User,
+		projectId: string,
+		input: SaveSelfHealingConfigurationDto | UpdateSelfHealingConfigurationDto,
+		id?: number,
+	) {
 		await this.validateSelections(projectId, input);
 
 		let canEnable = false;
-		if (input.enabled) {
+		if (id === undefined && 'enabled' in input && input.enabled) {
 			canEnable = await this.canEnable(user, projectId);
 		}
 
@@ -86,11 +92,11 @@ export class SelfHealingConfigurationService {
 				configuration.projectId = projectId;
 				configuration.enabled = false;
 				configuration.enabledById = null;
+				this.changeEnabled(configuration, 'enabled' in input && input.enabled, user, canEnable);
 			} else {
 				configuration = await this.requireConfiguration(id, projectId, ctx);
 			}
 
-			this.changeEnabled(configuration, input.enabled, user, canEnable);
 			configuration.scope = input.scope;
 
 			await this.configurations.saveConfiguration(configuration, ctx);
@@ -109,6 +115,9 @@ export class SelfHealingConfigurationService {
 
 		await this.transactionRunner.run({}, async (ctx) => {
 			const configuration = await this.requireConfiguration(id, projectId, ctx);
+			if (enabled && !(await this.configurations.hasReviewers(id, ctx))) {
+				throw new BadRequestError('Select at least one reviewer before enabling self-healing.');
+			}
 			this.changeEnabled(configuration, enabled, user, canEnable);
 			await this.configurations.saveConfiguration(configuration, ctx);
 		});
@@ -116,7 +125,7 @@ export class SelfHealingConfigurationService {
 		return await this.get(projectId, id);
 	}
 
-	private async validateSelections(projectId: string, input: SaveSelfHealingConfigurationDto) {
+	private async validateSelections(projectId: string, input: UpdateSelfHealingConfigurationDto) {
 		if (input.scope === 'selected' && input.workflowIds.length === 0) {
 			throw new BadRequestError('Select at least one workflow.');
 		}
@@ -193,6 +202,12 @@ export class SelfHealingConfigurationService {
 		ctx: OperationContext,
 	) {
 		if (!configuration.enabled) return null;
+
+		if (!(await this.configurations.hasReviewers(configuration.id, ctx))) {
+			configuration.enabled = false;
+			await this.configurations.saveConfiguration(configuration, ctx);
+			return null;
+		}
 
 		if (configuration.enabledById) {
 			const user = await this.users.findByIdWithRole(configuration.enabledById, ctx);

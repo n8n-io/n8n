@@ -17,7 +17,7 @@ export async function createConfiguration(projectId: string, userId: string) {
 		await repository.saveConfiguration(configuration, ctx);
 		await repository.replaceSelections(
 			configuration,
-			{ scope: 'all', enabled: true, workflowIds: [], reviewerIds: [userId] },
+			{ workflowIds: [], reviewerIds: [userId] },
 			ctx,
 		);
 		return configuration;

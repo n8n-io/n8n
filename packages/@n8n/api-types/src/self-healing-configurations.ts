@@ -2,10 +2,13 @@ import { z } from 'zod';
 
 import { Z } from './zod-class';
 
-export class SaveSelfHealingConfigurationDto extends Z.class({
+export class UpdateSelfHealingConfigurationDto extends Z.class({
 	scope: z.enum(['all', 'selected']),
 	workflowIds: z.array(z.string().min(1).max(36)).default([]),
 	reviewerIds: z.array(z.string().uuid()).min(1),
+}) {}
+
+export class SaveSelfHealingConfigurationDto extends UpdateSelfHealingConfigurationDto.extend({
 	enabled: z.boolean().default(false),
 }) {}
 

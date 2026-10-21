@@ -2,6 +2,7 @@ import type {
 	SaveSelfHealingConfigurationDto,
 	SelfHealingConfigurationDto,
 	SelfHealingConfigurationOptions,
+	UpdateSelfHealingConfigurationDto,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { defineStore } from 'pinia';
@@ -35,13 +36,16 @@ export const useSelfHealingStore = defineStore('selfHealing', () => {
 	function remember(projectId: string, configuration: SelfHealingConfigurationDto) {
 		pendingLoads.delete(projectId);
 		const rows = configurations.value[projectId] ?? [];
-		configurations.value[projectId] = [
-			...rows.filter(({ id }) => id !== configuration.id),
-			configuration,
-		];
+		configurations.value[projectId] = rows.some(({ id }) => id === configuration.id)
+			? rows.map((row) => (row.id === configuration.id ? configuration : row))
+			: [...rows, configuration];
 	}
 
-	async function save(projectId: string, input: SaveSelfHealingConfigurationDto, id?: number) {
+	async function save(
+		projectId: string,
+		input: SaveSelfHealingConfigurationDto | UpdateSelfHealingConfigurationDto,
+		id?: number,
+	) {
 		const configuration = await api.saveConfiguration(root.restApiContext, projectId, input, id);
 		remember(projectId, configuration);
 

@@ -126,9 +126,15 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 		}
 	}
 
+	async hasReviewers(configurationId: number, ctx: OperationContext) {
+		return await this.managerFor(ctx).existsBy(SelfHealingConfigurationReviewer, {
+			configurationId,
+		});
+	}
+
 	async replaceSelections(
 		configuration: SelfHealingConfiguration,
-		input: SaveSelfHealingConfigurationDto,
+		input: Pick<SaveSelfHealingConfigurationDto, 'workflowIds' | 'reviewerIds'>,
 		ctx: OperationContext,
 	) {
 		const manager = this.managerFor(ctx);
