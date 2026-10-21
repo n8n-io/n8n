@@ -1,0 +1,106 @@
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 171-172,177,181-182
+packages/cli/src/modules/n8n-packages/entities/__tests__/import-conflict-policy.test.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 1-17
+packages/cli/src/workflows/workflow-finder.service.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 191,194
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 2,11-15,87,97,99,105-106,145,156,222-227,295-334,346-352,395-403,440,640-671
+  s_3d603ecb7cc413::t_0cddd999a99f3f 672-673
+packages/cli/src/modules/n8n-packages/engine/__tests__/n8n-package-parser.agent.test.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 276-286
+packages/cli/src/modules/n8n-packages/entities/credential/id-based-credential-matcher.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 15-16
+packages/cli/src/modules/n8n-packages/__tests__/blocking-issue-schema-contract.test.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 5
+packages/@n8n/api-types/src/dto/packages/__tests__/import-result.dto.test.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 1,103-131
+  s_3d603ecb7cc413::t_553fca6e0993cd 132
+packages/cli/src/modules/n8n-packages/entities/workflow/missing-node-type-mode.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 1,16,18-19,23-24
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-importer.test.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 14-19,21-22,63-71,103-104,239-249,262,293-294,315-316,340,349-353,357,372-373,418-419,671-672,706-710,740-741
+packages/cli/src/modules/n8n-packages/entities/credential/credential.types.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 79
+packages/cli/src/modules/n8n-packages/entities/import-conflict-policy.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 1-21
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 27-28,220-223
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 138,149,151-152,316-319,330-334,349,358,383-384,394-398
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-publishing-policy.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 11,13,47-55
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import.types.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 1-4,9-24,66-74
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.schema.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 400-428,451-459
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import-bindings.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 1-341
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import-match.service.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 12,16,87,89-92,94,97-102,104,107,111-116,118-124,127
+packages/cli/src/modules/agents/agent-custom-tools.service.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 35-42,63
+packages/cli/src/modules/agents/agent-policy.service.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 33-45
+packages/cli/src/modules/agents/agent-skills.service.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 450-454
+packages/cli/src/modules/agents/agent-task.service.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 151,153,662-674,707
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-result.test.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 47-50
+packages/cli/src/modules/n8n-packages/entities/agent/agent-body-issues.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 1-24
+packages/cli/src/modules/n8n-packages/CLAUDE.md
+  s_3d603ecb7cc413::t_790be1c16be7e1 47
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-planning.integration.test.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 1-645
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-matcher.test.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 83,87-197
+  s_3d603ecb7cc413::t_9856e50eb1ba85 198
+packages/cli/src/modules/agents/agent-config-preparation.service.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 287,313,315
+packages/cli/src/modules/n8n-packages/entities/credential/credential-importer.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 5,55-60,63,66-70,200,214-215,217,224
+packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent-import-match.service.test.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 39-40,46-47
+packages/cli/src/modules/n8n-packages/entities/credential/credential-matcher.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 39-40,51-56,68,86-120,173,182-190
+packages/cli/src/modules/n8n-packages/entities/credential/credential-missing-mode.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 7-9
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-published-state.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 6-9
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 80,84,88,108,110-114,125-129,158-159,164-168,254,257-258
+packages/cli/src/modules/n8n-packages/engine/import-blocked.error.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 15
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 1,569
+packages/cli/src/modules/n8n-packages/entities/workflow/references/sub-workflow-node.reference.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 1,45-48
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 40,92,94,384
+packages/cli/src/modules/agents/utils/visit-agent-credential-references.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 10,55,59-60,68-69,74,82
+packages/cli/src/modules/n8n-packages/entities/agent/agent-importer.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 1-195
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-identities.integration.test.ts
+  s_3d603ecb7cc413::t_790be1c16be7e1 66,71,80,109-110,122-125,190-191
+packages/cli/src/public-api/v1/shared/spec/schemas/importBlockingIssue.generated.yml
+  s_3d603ecb7cc413::t_9bb2b6d3ea9ac9 2-123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dc08efbe5619c4c956d03e0007a9ae8f53d62152",
+  "prompts": {},
+  "sessions": {
+    "s_3d603ecb7cc413": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "820e497a-8b5a-46a8-b24e-e243dbaa7c63",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
