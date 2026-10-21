@@ -11,7 +11,7 @@ export const selfHealingOutputSchema = z
 			.string()
 			.trim()
 			.min(1)
-			.transform((summary) => summary.slice(0, 80))
+			.transform((summary) => Array.from(summary).slice(0, 80).join(''))
 			.describe(
 				'Short, plain-language title. Aim for 5–10 words, at most 80 characters. Do not use Markdown.',
 			),

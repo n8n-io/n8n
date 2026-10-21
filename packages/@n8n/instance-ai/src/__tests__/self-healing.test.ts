@@ -33,14 +33,18 @@ describe('self-healing output', () => {
 		).toBe(false);
 	});
 
-	it.each([80, 81])('caps a %i-character title and preserves report formatting', (length) => {
+	it.each([
+		['x'.repeat(80), 'x'.repeat(80)],
+		['x'.repeat(81), 'x'.repeat(80)],
+		[`${'x'.repeat(79)}😀 trailing text`, `${'x'.repeat(79)}😀`],
+	])('caps title %# at 80 code points and preserves report formatting', (summary, expected) => {
 		const output = {
 			...report,
 			outcome: 'needs_you',
-			summary: 'x'.repeat(length),
+			summary,
 			candidateFilePath: null,
 		};
-		expect(selfHealingOutputSchema.parse(output)).toEqual({ ...output, summary: 'x'.repeat(80) });
+		expect(selfHealingOutputSchema.parse(output)).toEqual({ ...output, summary: expected });
 	});
 
 	it('rejects missing and malformed output', () => {
