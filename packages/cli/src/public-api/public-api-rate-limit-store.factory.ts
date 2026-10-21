@@ -38,8 +38,9 @@ class ReportingRedisStore extends RedisStore {
 		private readonly health: RedisHealth,
 	) {
 		super(options);
-		// Nothing awaits these first script loads, so a failure would be an unhandled rejection.
-		// The store loads the scripts again when it needs them.
+		// `RedisStore` from `rate-limit-redis` starts to load its scripts in its constructor, and
+		// nothing awaits these promises. So a failure would be an unhandled rejection. The store
+		// loads the scripts again when it needs them.
 		this.incrementScriptSha.catch(() => {});
 		this.getScriptSha.catch(() => {});
 	}
