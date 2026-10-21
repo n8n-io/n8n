@@ -8,7 +8,9 @@ import { Logger } from '@n8n/backend-common';
 import { isUniqueConstraintError } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
+import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
+import { pipeline } from 'node:stream/promises';
 import { unlink } from 'node:fs/promises';
 import path from 'node:path';
 import type { Readable } from 'node:stream';
@@ -28,6 +30,11 @@ import { AgentRepository } from './repositories/agent.repository';
 
 const MAX_AGENT_FILE_METADATA_LENGTH = 255;
 
+export interface UploadedKnowledgeFile {
+	file: AgentFileDto;
+	contentHash?: string;
+}
+
 @Service()
 export class AgentKnowledgeService {
 	constructor(
@@ -43,16 +50,20 @@ export class AgentKnowledgeService {
 		agentId: string,
 		projectId: string,
 		files: Express.Multer.File[],
-	): Promise<AgentFileDto[]> {
+	): Promise<UploadedKnowledgeFile[]> {
 		try {
 			await getAgentOrThrow(this.agentRepository, agentId, projectId);
 			this.validateUploadMetadata(files);
 			await this.validateUploadBatch(agentId, files);
 
 			const uploadedFiles: AgentFile[] = [];
+			const results: UploadedKnowledgeFile[] = [];
 			try {
 				for (const file of files) {
-					uploadedFiles.push(await this.storeAgentFile(agentId, file));
+					const contentHash = await this.hashUploadedFile(file.path);
+					const storedFile = await this.storeAgentFile(agentId, file);
+					uploadedFiles.push(storedFile);
+					results.push({ file: toAgentFileDto(storedFile), contentHash });
 				}
 			} catch (error) {
 				await this.cleanupUploadedFiles(uploadedFiles);
@@ -61,9 +72,21 @@ export class AgentKnowledgeService {
 
 			this.agentKnowledgeMirrorService.prewarmMirrorInBackground(projectId, agentId);
 
-			return uploadedFiles.map((file) => toAgentFileDto(file));
+			return results;
 		} finally {
 			await this.cleanupUploadTempFiles(files);
+		}
+	}
+
+	private async hashUploadedFile(filePath: string): Promise<string | undefined> {
+		try {
+			const hash = createHash('sha256');
+			await pipeline(createReadStream(filePath), hash);
+			return hash.digest('hex');
+		} catch {
+			// A telemetry read must not reject an otherwise valid upload.
+			this.logger.warn('Could not hash an agent knowledge upload for telemetry');
+			return undefined;
 		}
 	}
 

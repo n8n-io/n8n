@@ -7,6 +7,7 @@ import isEqual from 'lodash/isEqual';
 import { Telemetry } from '@/telemetry';
 
 import { buildAgentCapabilityTelemetryProperties } from './agent-telemetry';
+import { buildVectorStoreFingerprints } from './agent-knowledge-telemetry';
 import type { Agent } from './entities/agent.entity';
 import { toAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
 
@@ -136,7 +137,16 @@ export class AgentModificationTelemetryService {
 		if (event.changedParts.length === 0) return;
 		try {
 			const { by } = event;
-			const properties = modificationProperties(event);
+			const properties = {
+				...modificationProperties(event),
+				...(event.changedParts.includes('vectorStores')
+					? {
+							vector_store_fingerprints: buildVectorStoreFingerprints(
+								event.config?.vectorStores ?? [],
+							),
+						}
+					: {}),
+			};
 
 			const entry = {
 				user: TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
