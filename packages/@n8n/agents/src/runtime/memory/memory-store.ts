@@ -126,6 +126,14 @@ export class InMemoryMemory
 	private episodicMemoryLocksByResource = new Map<string, EpisodicMemoryTaskLockHandle>();
 
 	readonly episodic: BuiltEpisodicMemoryCaptureStore['episodic'] = {
+		getEntriesByContentHashes: async (scope, contentHashes) => {
+			const hashes = new Set(contentHashes);
+			return await Promise.resolve(
+				this.episodicMemory
+					.filter((entry) => entry.resourceId === scope.resourceId && hashes.has(entry.contentHash))
+					.map(cloneEpisodicMemoryEntry),
+			);
+		},
 		saveEntryWithSources: async (entry, sources) =>
 			await this.saveEpisodicMemoryEntryWithSources(entry, sources),
 		searchEntries: async (scope, query, opts) =>
@@ -591,9 +599,7 @@ export class InMemoryMemory
 					existing.resourceId === entry.resourceId && existing.contentHash === contentHash,
 			);
 			if (duplicate) {
-				markLifecycleActive(duplicate);
-				duplicate.lastSeenAt = entry.lastSeenAt ?? now;
-				duplicate.updatedAt = now;
+				refreshEpisodicMemoryEntry(duplicate, entry, now);
 				saved.push(cloneEpisodicMemoryEntry(duplicate));
 				continue;
 			}
@@ -805,6 +811,18 @@ export async function saveMessagesToThread(
 		messages,
 		...(hostMetadata && { hostMetadata }),
 	});
+}
+
+function refreshEpisodicMemoryEntry(
+	entry: EpisodicMemoryEntry,
+	update: NewEpisodicMemoryEntry,
+	now: Date,
+): void {
+	markLifecycleActive(entry);
+	entry.lastSeenAt = update.lastSeenAt ?? now;
+	entry.updatedAt = now;
+	if (update.embedding !== undefined) entry.embedding = [...update.embedding];
+	if (update.embeddingModel !== undefined) entry.embeddingModel = update.embeddingModel;
 }
 
 function cloneEpisodicMemoryEntry(entry: EpisodicMemoryEntry): EpisodicMemoryEntry {

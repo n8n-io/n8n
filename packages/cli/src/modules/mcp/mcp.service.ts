@@ -39,6 +39,7 @@ import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
+import { SkillsHubRollout } from '@/modules/skills/skills-hub-rollout';
 import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
@@ -860,7 +861,7 @@ export class McpService {
 			);
 		}
 
-		if (areSkillToolsAvailable(this.globalConfig, this.moduleRegistry)) {
+		if (areSkillToolsAvailable(Container.get(SkillsHubRollout))) {
 			const { McpSkillToolsService } = await import('./tools/skills/skill-tools.service.js');
 			Container.get(McpSkillToolsService).registerTools(registerIfAllowed, user);
 		}

@@ -46,6 +46,7 @@ export const MODULE_NAMES = [
 	'instance-reporting',
 	'inbound-auth-core',
 	'scim',
+	'skills',
 	'apps',
 ] as const;
 
