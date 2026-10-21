@@ -21,7 +21,7 @@ function integrationFor(platform: string): AgentChatIntegration {
 		linear: buildLinearOriginDraft,
 		telegram: (_input: unknown, decoded: Record<string, unknown>) =>
 			buildTelegramOriginDraft(decoded),
-		teams: (_input: unknown, decoded: Record<string, unknown>) => buildTeamsOriginDraft(decoded),
+		teams: buildTeamsOriginDraft,
 		whatsapp: (_input: unknown, decoded: Record<string, unknown>) =>
 			buildWhatsAppOriginDraft(decoded),
 	} as Record<string, AgentChatIntegration['buildOriginDraft']>;
@@ -192,6 +192,57 @@ describe('buildIntegrationOrigin', () => {
 		await expect(
 			buildIntegrationOrigin(integrationFor('whatsapp'), { thread: whatsapp, message }, logger),
 		).resolves.toEqual({ type: 'whatsapp', phoneNumberId: 'p1', userWaId: 'u1' });
+	});
+
+	describe('Teams conversation type', () => {
+		const serviceUrl = 'https://smba.trafficmanager.net/teams/';
+
+		async function teamsThread(conversationType: 'channel' | 'groupChat' | 'personal') {
+			const { encodeThreadId, decodeThreadId } = await import('@chat-adapter/teams');
+			const id = encodeThreadId({
+				conversationId: '19:abc@thread.tacv2',
+				conversationType,
+				serviceUrl,
+			});
+			return {
+				id,
+				isDM: false,
+				adapter: { decodeThreadId },
+			} as unknown as Thread<unknown, unknown>;
+		}
+
+		it.each(['channel', 'groupChat'] as const)(
+			'reads a %s type from the activity when the thread ID has none',
+			async (conversationType) => {
+				const thread = await teamsThread(conversationType);
+				const message = makeMessage({ conversation: { conversationType } });
+
+				await expect(
+					buildIntegrationOrigin(integrationFor('teams'), { thread, message }, logger),
+				).resolves.toEqual({
+					type: 'teams',
+					conversationId: '19:abc@thread.tacv2',
+					conversationType,
+				});
+			},
+		);
+
+		it('falls back to the type in the thread ID when the activity has none', async () => {
+			const thread = await teamsThread('personal');
+
+			await expect(
+				buildIntegrationOrigin(integrationFor('teams'), { thread, message: makeMessage() }, logger),
+			).resolves.toMatchObject({ conversationType: 'personal' });
+		});
+
+		it('drops the origin when the activity reports an unknown type', async () => {
+			const thread = await teamsThread('channel');
+			const message = makeMessage({ conversation: { conversationType: 'meeting' } });
+
+			await expect(
+				buildIntegrationOrigin(integrationFor('teams'), { thread, message }, logger),
+			).resolves.toBeUndefined();
+		});
 	});
 
 	it('returns nothing when the adapter cannot decode the thread', async () => {

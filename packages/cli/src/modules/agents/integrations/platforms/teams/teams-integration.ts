@@ -331,8 +331,8 @@ export class TeamsIntegration extends AgentChatIntegration {
 		super();
 	}
 
-	buildOriginDraft(_input: OriginInput, decoded: DecodedThread) {
-		return buildTeamsOriginDraft(decoded);
+	buildOriginDraft(input: OriginInput, decoded: DecodedThread) {
+		return buildTeamsOriginDraft(input, decoded);
 	}
 
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {
