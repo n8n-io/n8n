@@ -180,7 +180,7 @@
 		"src/modules/agents/integrations/agent-channel-reconciler.service.ts",
 		"src/modules/agents/integrations/leader-channel-relay.service.ts",
 		"src/modules/agents/integrations/n8n-memory.ts",
-		"src/modules/agents/integrations/platforms/discord-integration.ts",
+		"src/modules/agents/integrations/platforms/discord/discord-integration.ts",
 		"src/modules/agents/repositories/agent-background-job.repository.ts",
 		"src/modules/agents/tools/workflow-tool-workflow-resolver.ts",
 		"src/modules/breaking-changes/breaking-changes.service.ts",

@@ -577,6 +577,16 @@ async function handleStop(context: InstanceAiContext, input: Extract<Input, { ac
 
 // ── Tool factory ───────────────────────────────────────────────────────────
 
+/**
+ * Appended to every description, a custom one too: each caller reads
+ * executions redacted for its user.
+ */
+const REDACTED_RESULT_GUIDANCE =
+	' A result with `redaction` set carries no output items: n8n hides that ' +
+	"execution's data from this user, for example because a node uses a colleague's " +
+	'personal credential. Tell the user so. Do not read the empty result as a bug, ' +
+	'and do not try to get the data another way.';
+
 export function createExecutionsTool(
 	context: InstanceAiContext,
 	options: ExecutionsToolOptions = {},
@@ -586,7 +596,7 @@ export function createExecutionsTool(
 	return new Tool(DOMAIN_TOOL_IDS.EXECUTIONS)
 		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.EXECUTIONS))
 		.description(
-			options.description ??
+			(options.description ??
 				'Manage workflow executions — list, inspect, run, run one node, debug, ' +
 					'get node output, get resolved node parameters for a past run, and stop. ' +
 					'action="run" is how you satisfy "trigger/run my <workflow>": find the workflow with ' +
@@ -598,7 +608,7 @@ export function createExecutionsTool(
 					'"Execute step" button. Use it to see what one node really returns — when ' +
 					'debugging a read node that failed a real execution, pass reuseExecutionId so ' +
 					'the node re-runs on the data it actually received. It runs for real, so do ' +
-					'not point it at a node that writes.',
+					'not point it at a node that writes.') + REDACTED_RESULT_GUIDANCE,
 		)
 		.input(inputSchema)
 		.suspend(suspendSchema)

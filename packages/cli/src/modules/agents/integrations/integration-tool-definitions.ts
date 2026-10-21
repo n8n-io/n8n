@@ -10,7 +10,7 @@ import { z } from 'zod';
 import {
 	LINEAR_ACTION_TOOL_DEFINITIONS,
 	LINEAR_CONTEXT_QUERY_TOOL_DEFINITIONS,
-} from './platforms/linear-tool-definitions';
+} from './platforms/linear/linear-tool-definitions';
 import type {
 	IntegrationAction,
 	IntegrationActionDefinition,

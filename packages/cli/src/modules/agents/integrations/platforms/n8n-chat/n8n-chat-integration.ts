@@ -8,15 +8,15 @@ import {
 	AgentChatIntegration,
 	type PlatformActionParams,
 	type PlatformContextQueryParams,
-} from '../agent-chat-integration';
-import { respondInputSchema } from '../integration-action-executor';
-import { INTEGRATION_ERROR_CODES } from '../integration-error-codes';
-import { integrationError, unsupportedQuery } from '../integration-helpers';
+} from '../../agent-chat-integration';
+import { respondInputSchema } from '../../integration-action-executor';
+import { INTEGRATION_ERROR_CODES } from '../../integration-error-codes';
+import { integrationError, unsupportedQuery } from '../../integration-helpers';
 import {
 	resolveIntegrationActionDefinitions,
 	resolveIntegrationContextQueryDefinitions,
-} from '../integration-tool-definitions';
-import type { IntegrationActionResult } from '../integration-tools';
+} from '../../integration-tool-definitions';
+import type { IntegrationActionResult } from '../../integration-tools';
 
 /**
  * The in-app chat channel ("n8n Chat").
@@ -66,6 +66,11 @@ export class N8nChatIntegration extends AgentChatIntegration {
 
 	constructor(private readonly userRepository: UserRepository) {
 		super();
+	}
+
+	/** Internal n8n chat does not go through the bridge and has no platform context. */
+	buildOriginDraft() {
+		return undefined;
 	}
 
 	async createAdapter(): Promise<unknown> {
