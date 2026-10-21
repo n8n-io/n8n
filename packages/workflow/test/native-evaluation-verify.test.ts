@@ -229,6 +229,19 @@ describe('Expression - native evaluation verify mode', () => {
 			expect(report).not.toHaveBeenCalled();
 		});
 
+		test('does not report an object key that holds undefined', () => {
+			expect(evaluate('={{ $json }}', { n: 1, u: undefined })).toEqual({ n: 1 });
+			expect(evaluateNatively).toHaveBeenCalled();
+			expect(report).not.toHaveBeenCalled();
+		});
+
+		test('reports a different object value next to a key that holds undefined', () => {
+			evaluateNatively.mockReturnValueOnce({ handled: true, value: { n: 2, u: undefined } });
+
+			evaluate('={{ $json }}', { n: 1, u: undefined });
+			expect(report).toHaveBeenCalledTimes(1);
+		});
+
 		test('does not report a match', () => {
 			expect(evaluate('={{ $json.name.slice(0, 6) }}')).toBe('secret');
 			expect(evaluateNatively).toHaveBeenCalled();
