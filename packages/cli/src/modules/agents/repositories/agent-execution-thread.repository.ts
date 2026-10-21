@@ -723,7 +723,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		return { executionLogs, attachments };
 	}
 
-	async latest(threadId: string, ctx: OperationContext = {}): Promise<TaskStopScope | null> {
+	async findTaskStop(threadId: string, ctx: OperationContext = {}): Promise<TaskStopScope | null> {
 		const thread = await this.managerFor(ctx).findOneBy(AgentExecutionThread, { id: threadId });
 		return this.readStop(thread);
 	}
@@ -765,7 +765,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 	}
 
 	async blocksQueue(threadId: string, ctx: OperationContext) {
-		const stop = await this.latest(threadId, ctx);
+		const stop = await this.findTaskStop(threadId, ctx);
 		return Boolean(stop && !stop.pause.reportedAt);
 	}
 
@@ -780,7 +780,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		wake: { jobIds: string[]; planStopId?: string },
 		ctx: OperationContext,
 	) {
-		const pause = await this.latest(threadId, ctx);
+		const pause = await this.findTaskStop(threadId, ctx);
 		if (wake.planStopId) {
 			if (
 				!pause ||
@@ -809,7 +809,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 	}
 
 	async isCancelled(threadId: string, executionId?: string, ctx: OperationContext = {}) {
-		const request = await this.latest(threadId, ctx);
+		const request = await this.findTaskStop(threadId, ctx);
 		if (!request) return false;
 		if (executionId) return request.generation.executionIds.includes(executionId);
 		const execution = await this.managerFor(ctx).findOne(AgentExecution, {
@@ -939,7 +939,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		},
 		ctx: OperationContext,
 	) {
-		const stop = await this.latest(threadId, ctx);
+		const stop = await this.findTaskStop(threadId, ctx);
 		if (!stop) return;
 		if (input.planStopId) {
 			stop.pause.reportExecutionId = executionId;
@@ -982,7 +982,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 	async finishPauseReport(threadId: string, stopId: string, failed = false) {
 		return await this.runInTransaction({}, async (manager, ctx) => {
 			await this.lockById(threadId, ctx);
-			const stop = await this.latest(threadId, ctx);
+			const stop = await this.findTaskStop(threadId, ctx);
 			if (!stop || stop.pause.id !== stopId || stop.pause.reportedAt) return;
 			const execution = stop.pause.reportExecutionId
 				? await manager.findOneBy(AgentExecution, { id: stop.pause.reportExecutionId })

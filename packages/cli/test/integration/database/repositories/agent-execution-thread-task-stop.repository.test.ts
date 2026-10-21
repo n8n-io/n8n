@@ -124,9 +124,9 @@ describe('AgentExecutionThreadRepository task stops', () => {
 			failures: [],
 		};
 		await db.getRepository(AgentExecutionThread).update(thread.id, { taskStop: legacy });
-		const stop = await repository.latest(thread.id);
+		const stop = await repository.findTaskStop(thread.id);
 		expect(stop).toMatchObject(legacy);
-		expect(await repository.latest(thread.id)).toEqual(stop);
+		expect(await repository.findTaskStop(thread.id)).toEqual(stop);
 		expect(await repository.blocksQueue(thread.id, {})).toBe(false);
 		expect(await repository.pausedScope(thread.id)).toBeNull();
 		expect(await repository.isCancelled(thread.id, old.id)).toBe(true);
@@ -191,7 +191,7 @@ describe('AgentExecutionThreadRepository task stops', () => {
 		expect(await repository.blocksQueue(thread.id, {})).toBe(false);
 		expect(await repository.pendingPauseReports()).not.toContain(thread.id);
 		await repository.recordAdmission(thread.id, randomUUID(), { userInitiated: true }, {});
-		expect((await repository.latest(thread.id))?.pause.resumedAt).toBeDefined();
+		expect((await repository.findTaskStop(thread.id))?.pause.resumedAt).toBeDefined();
 		expect(await repository.isCancelled(thread.id, old.id)).toBe(true);
 		await expect(
 			repository.assertWakeAdmission(thread.id, { jobIds: [] }, {}),
@@ -230,7 +230,7 @@ describe('AgentExecutionThreadRepository task stops', () => {
 		await expect(
 			repository.assertWakeAdmission(thread.id, { jobIds: [], planStopId: stop.pause.id }, {}),
 		).rejects.toThrow('no longer available');
-		expect((await repository.latest(thread.id))?.pause).toMatchObject({
+		expect((await repository.findTaskStop(thread.id))?.pause).toMatchObject({
 			reportFailed: true,
 			reportedAt: expect.any(String),
 		});
@@ -254,14 +254,16 @@ describe('AgentExecutionThreadRepository task stops', () => {
 		expect(
 			(await db.getRepository(AgentExecutionThread).findOneByOrFail({ id: thread.id })).taskStop,
 		).toMatchObject({ requestedAt: original.requestedAt });
-		expect(await repository.latest(other.id)).toBeNull();
+		expect(await repository.findTaskStop(other.id)).toBeNull();
 		const execution = await db.getRepository(AgentExecution).save({
 			id: randomUUID(),
 			threadId: thread.id,
 			status: 'success',
 		});
 		await request();
-		expect((await repository.latest(thread.id))?.generation.executionIds).toContain(execution.id);
+		expect((await repository.findTaskStop(thread.id))?.generation.executionIds).toContain(
+			execution.id,
+		);
 		const runner = db.createQueryRunner();
 		try {
 			expect(await runner.hasTable('agent_task_cancellation')).toBe(false);
@@ -461,7 +463,7 @@ describe('AgentExecutionThreadRepository task stops', () => {
 			childExecutionId: '123',
 			sourceExecutionId: source.id,
 		});
-		expect(await repository.latest(thread.id)).toEqual(cancellation);
+		expect(await repository.findTaskStop(thread.id)).toEqual(cancellation);
 		expect((await repository.targetedJobs(cancellation)).map((job) => job.id)).toContain(id);
 	});
 
