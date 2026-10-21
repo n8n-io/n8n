@@ -272,6 +272,24 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			status: agentStatus,
 		}),
 	},
+	AGENT_RUN_USED_KNOWLEDGE: {
+		name: 'Agent run used knowledge',
+		description:
+			'Sent when an agent run ends, if the agent used its knowledge files or vector stores at least once in that run. A run without knowledge use sends no event. A run that pauses for an approval and then resumes sends one event for each part, with the same run_id, so count distinct run_id values to count runs.',
+		properties: z.object({
+			agent_id: z.string(),
+			run_id: z.string().describe('Run id of the agent runtime'),
+			run_type: agentRunType,
+			user_id: z
+				.string()
+				.optional()
+				.describe('Absent for runs without an n8n user, such as some chat integrations'),
+			file_find_count: z.number().describe('Calls that listed knowledge files by name'),
+			file_search_count: z.number().describe('Calls that searched text inside knowledge files'),
+			file_read_count: z.number().describe('Calls that read part of a knowledge file'),
+			vector_store_search_count: z.number().describe('Searches in any vector store of the agent'),
+		}),
+	},
 	AGENT_EXECUTION_COUNT: {
 		name: 'Agent execution count',
 		description:
