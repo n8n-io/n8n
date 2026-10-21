@@ -224,6 +224,7 @@ describe('GlobalConfig', () => {
 			swaggerUiDisabled: false,
 			rateLimit: {
 				enabled: false,
+				mode: 'enforce',
 				globalReadLimit: 1200,
 				globalReadWindowSeconds: 60,
 				globalWriteLimit: 300,
@@ -1036,6 +1037,7 @@ describe('GlobalConfig', () => {
 		it('should read the rate limit settings from env variables', () => {
 			process.env = {
 				N8N_PUBLIC_API_RATE_LIMIT_ENABLED: 'true',
+				N8N_PUBLIC_API_RATE_LIMIT_MODE: 'observe',
 				N8N_PUBLIC_API_RATE_LIMIT_GLOBAL_READ_LIMIT: '100',
 				N8N_PUBLIC_API_RATE_LIMIT_GLOBAL_READ_WINDOW_SECONDS: '10',
 				N8N_PUBLIC_API_RATE_LIMIT_GLOBAL_WRITE_LIMIT: '50',
@@ -1048,6 +1050,7 @@ describe('GlobalConfig', () => {
 			const config = Container.get(GlobalConfig);
 			expect(config.publicApi.rateLimit).toEqual({
 				enabled: true,
+				mode: 'observe',
 				globalReadLimit: 100,
 				globalReadWindowSeconds: 10,
 				globalWriteLimit: 50,
@@ -1057,6 +1060,12 @@ describe('GlobalConfig', () => {
 				endpointWriteLimit: 10,
 				endpointWriteWindowSeconds: 40,
 			});
+		});
+
+		it('should fall back to enforce for an unknown mode', () => {
+			process.env = { N8N_PUBLIC_API_RATE_LIMIT_MODE: 'audit' };
+			const config = Container.get(GlobalConfig);
+			expect(config.publicApi.rateLimit.mode).toBe('enforce');
 		});
 
 		it('should accept a limit of 0', () => {

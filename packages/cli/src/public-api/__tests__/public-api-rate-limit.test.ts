@@ -24,6 +24,7 @@ import { mock } from 'vitest-mock-extended';
 import { markPublicApiController } from '@/public-api/__tests__/public-api-controller-test-utils';
 import type { IdempotencyKeyService } from '@/public-api/idempotency-key.service';
 import { PublicApiControllerRegistry } from '@/public-api/public-api-controller.registry';
+import { PublicApiRateLimitSummary } from '@/public-api/public-api-rate-limit-summary';
 import { PublicApiRateLimitService } from '@/public-api/public-api-rate-limit.service';
 import { RateLimitService } from '@/services/rate-limit.service';
 import type { LastActiveAtService } from '@/services/last-active-at.service';
@@ -39,12 +40,15 @@ describe('Public API rate limiting', () => {
 	const authStrategyRegistry = mock<AuthStrategyRegistry>();
 	const lastActiveAtService = mock<LastActiveAtService>();
 	const authenticatedUser = mock<User>({ id: 'user-1' });
+	let summary: PublicApiRateLimitSummary;
 
 	function activate(rateLimit: Partial<RateLimitConfig> = {}): express.Express {
 		const globalConfig = mock<GlobalConfig>({
+			diagnostics: { enabled: true },
 			publicApi: {
 				rateLimit: {
 					enabled: true,
+					mode: 'enforce',
 					globalReadLimit: 100,
 					globalReadWindowSeconds: 60,
 					globalWriteLimit: 100,
@@ -58,6 +62,7 @@ describe('Public API rate limiting', () => {
 			},
 		});
 
+		summary = new PublicApiRateLimitSummary(globalConfig);
 		const app = express();
 		const router = express.Router({ mergeParams: true });
 		new PublicApiControllerRegistry(
@@ -65,7 +70,7 @@ describe('Public API rate limiting', () => {
 			authStrategyRegistry,
 			lastActiveAtService,
 			mock<EventService>(),
-			new PublicApiRateLimitService(globalConfig, new RateLimitService()),
+			new PublicApiRateLimitService(globalConfig, new RateLimitService(), summary),
 			mock<IdempotencyKeyService>(),
 			mock<Logger>(),
 		).activate(router, 'v1');
@@ -329,6 +334,7 @@ describe('Public API rate limiting', () => {
 				},
 			}),
 			new RateLimitService(),
+			mock<PublicApiRateLimitSummary>(),
 		);
 		const widgets = service.createRouteLimiters('get');
 		const others = service.createRouteLimiters('get');
@@ -445,6 +451,53 @@ describe('Public API rate limiting', () => {
 			vi.advanceTimersByTime(11 * Time.seconds.toMilliseconds);
 
 			expect(await sendTimes(app, 1, 'get', '/widgets')).toEqual([200]);
+		});
+	});
+
+	describe('in observe mode', () => {
+		it('lets a request over the limit pass without rate-limit headers', async () => {
+			const app = activate({ mode: 'observe', globalReadLimit: 2 });
+
+			const responses = [
+				await send(app, 'get', '/widgets'),
+				await send(app, 'get', '/widgets/other'),
+				await send(app, 'get', '/widgets/1'),
+			];
+
+			expect(responses.map((response) => response.status)).toEqual([200, 200, 200]);
+			for (const response of responses) {
+				expect(response.headers['x-ratelimit-limit']).toBeUndefined();
+				expect(response.headers['retry-after']).toBeUndefined();
+			}
+		});
+
+		it('keeps the count of a request over the limit', async () => {
+			const app = activate({ mode: 'observe', endpointReadLimit: 1 });
+			const record = vi.spyOn(summary, 'record');
+
+			expect(await sendTimes(app, 3, 'get', '/widgets')).toEqual([200, 200, 200]);
+
+			const endpointCounts = record.mock.calls
+				.filter(([name]) => name === 'read_endpoint')
+				.map(([, limit]) => limit.used);
+			expect(endpointCounts).toEqual([1, 2, 3]);
+			expect(summary.take()?.read_endpoint).toMatchObject({
+				keys_over_limit: 1,
+				requests_over_limit: 2,
+			});
+		});
+	});
+
+	it('records the requests that get a 429 in the summary', async () => {
+		const app = activate({ endpointReadLimit: 1 });
+
+		expect(await sendTimes(app, 3, 'get', '/widgets')).toEqual([200, 429, 429]);
+
+		expect(summary.take()).toMatchObject({
+			mode: 'enforce',
+			active_keys: 1,
+			read_endpoint: { keys_over_limit: 1, requests_over_limit: 2 },
+			read_all_endpoints: { keys_over_limit: 0, requests_over_limit: 0 },
 		});
 	});
 
