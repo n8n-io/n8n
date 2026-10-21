@@ -283,7 +283,10 @@ export async function truncate(entities: EntityName[]) {
 			}
 			continue;
 		}
-		await connection.getRepository(name).delete({});
+		// A child entity deletes only its own rows, so clear its whole table instead:
+		// 'User' also removes service accounts.
+		const { parentEntityMetadata } = connection.getMetadata(name);
+		await connection.getRepository(parentEntityMetadata?.target ?? name).delete({});
 	}
 }
 

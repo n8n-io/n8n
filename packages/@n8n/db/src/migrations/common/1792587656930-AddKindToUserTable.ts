@@ -2,36 +2,39 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 /**
  * Service accounts share the `user` table with humans. The `kind` column tells
- * the two apart. The table has incoming foreign keys, so the column is added
- * with a raw `ALTER TABLE`: the DSL recreates the table on SQLite, and the
- * recreate fires the CASCADE rules of those keys.
+ * the two apart.
+ *
+ * The column is added and dropped with raw SQL, so SQLite never rebuilds
+ * `user`. A rebuild copies every row, and in `down` it would run with foreign
+ * keys on, so its DROP TABLE would fire the CASCADE rules of the 48 tables
+ * that reference `user`.
+ *
+ * Only PostgreSQL gets a CHECK. SQLite refuses to drop a column that a
+ * table-level CHECK names, and any later TypeORM rebuild of `user` turns an
+ * inline CHECK into one. `down` would then need a rebuild with foreign keys
+ * off, and then the delete of the service accounts would not cascade.
  */
 export class AddKindToUserTable1792587656930 implements ReversibleMigration {
 	async up({ escape, runQuery, isPostgres, tablePrefix }: MigrationContext) {
 		const table = escape.tableName('user');
 		const kind = escape.columnName('kind');
-		const checkName = escape.columnName(`CHK_${tablePrefix}user_kind`);
-		const check = `CHECK (${kind} IN ('human', 'service'))`;
+
+		await runQuery(`ALTER TABLE ${table} ADD COLUMN ${kind} VARCHAR(16) NOT NULL DEFAULT 'human'`);
 
 		if (isPostgres) {
+			const checkName = escape.columnName(`CHK_${tablePrefix}user_kind`);
 			// `NOT VALID` skips the scan of existing rows. They all get the default.
 			await runQuery(
-				`ALTER TABLE ${table} ADD COLUMN ${kind} VARCHAR(16) NOT NULL DEFAULT 'human'`,
+				`ALTER TABLE ${table} ADD CONSTRAINT ${checkName} CHECK (${kind} IN ('human', 'service')) NOT VALID`,
 			);
-			await runQuery(`ALTER TABLE ${table} ADD CONSTRAINT ${checkName} ${check} NOT VALID`);
 			await runQuery(`COMMENT ON COLUMN ${table}.${kind} IS 'Kind of account: human or service'`);
-			return;
 		}
-
-		await runQuery(
-			`ALTER TABLE ${table} ADD COLUMN ${kind} VARCHAR(16) NOT NULL DEFAULT 'human' CONSTRAINT ${checkName} ${check}`,
-		);
 	}
 
 	/**
 	 * Removes every service account before the column goes. Linked rows follow
 	 * the delete rules of their foreign keys, except `auth_identity`, whose key
-	 * has no delete rule.
+	 * has no delete rule. On PostgreSQL, the CHECK goes with the column.
 	 */
 	async down({ escape, runQuery }: MigrationContext) {
 		const table = escape.tableName('user');

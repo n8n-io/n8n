@@ -7,7 +7,7 @@ import {
 } from '@n8n/backend-test-utils';
 import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
+import { DataSource, TableCheck } from '@n8n/typeorm';
 import { v7 as uuidv7 } from 'uuid';
 
 const MIGRATION_NAME = 'AddKindToUserTable1792587656930';
@@ -20,6 +20,7 @@ describe('AddKindToUserTable Migration', () => {
 	let context: TestMigrationContext;
 	let foreignKeysBefore: ForeignKeyRow[];
 	const existingUserId = uuidv7();
+	const projectId = uuidv7();
 
 	beforeAll(async () => {
 		const dbConnection = Container.get(DbConnection);
@@ -34,6 +35,11 @@ describe('AddKindToUserTable Migration', () => {
 
 		context = createTestMigrationContext(dataSource);
 		await insertUser(existingUserId);
+		await context.runQuery(
+			`INSERT INTO ${table('project')} (id, name, type) VALUES (:id, :name, :type)`,
+			{ id: projectId, name: 'Acme', type: 'team' },
+		);
+		await addToProject(existingUserId, projectId);
 		foreignKeysBefore = await listForeignKeysToUser();
 		// Release the connection: on SQLite the migration waits for its write lock.
 		await context.queryRunner.release();
@@ -107,6 +113,21 @@ describe('AddKindToUserTable Migration', () => {
 		return rows.sort((a, b) => `${a.table}.${a.column}`.localeCompare(`${b.table}.${b.column}`));
 	}
 
+	/**
+	 * A later migration can rebuild `user` on SQLite, as seven earlier ones did.
+	 * `down` must still be able to drop the column after that.
+	 */
+	async function rebuildUserTable() {
+		const userTable = `${context.tablePrefix}user`;
+		await context.runQuery('PRAGMA foreign_keys=OFF');
+		await context.queryRunner.getTable(userTable);
+		await context.queryRunner.createCheckConstraint(
+			userTable,
+			new TableCheck({ name: 'CHK_test_rebuild', expression: `${column('disabled')} IN (0, 1)` }),
+		);
+		await context.runQuery('PRAGMA foreign_keys=ON');
+	}
+
 	it('gives every existing user the human kind and keeps its id', async () => {
 		// An earlier migration seeds the instance owner, so more than one row exists.
 		const rows = await selectUsers();
@@ -114,17 +135,26 @@ describe('AddKindToUserTable Migration', () => {
 		expect(rows.every((row) => row.kind === 'human')).toBe(true);
 	});
 
+	it('keeps the linked rows of existing users', async () => {
+		expect(await countRows('project_relation', existingUserId)).toBe(1);
+	});
+
 	it('keeps every foreign key to user with its delete rule', async () => {
 		expect(foreignKeysBefore.length).toBeGreaterThan(0);
 		expect(await listForeignKeysToUser()).toEqual(foreignKeysBefore);
 	});
 
-	it('accepts the service kind and rejects other values', async () => {
+	it('accepts the service kind', async () => {
 		const serviceAccountId = uuidv7();
 		await insertUser(serviceAccountId, 'service');
 
 		const row = (await selectUsers()).find((user) => user.id === serviceAccountId);
 		expect(row?.kind).toBe('service');
+	});
+
+	it('rejects other kinds on PostgreSQL', async () => {
+		// SQLite has no CHECK on `kind`. The migration docblock explains why.
+		if (context.isSqlite) return;
 
 		await expect(insertUser(uuidv7(), 'robot')).rejects.toThrow();
 	});
@@ -133,13 +163,7 @@ describe('AddKindToUserTable Migration', () => {
 	it('down removes service accounts with their linked rows and drops the column', async () => {
 		const serviceAccountId = uuidv7();
 		await insertUser(serviceAccountId, 'service');
-		const projectId = uuidv7();
-		await context.runQuery(
-			`INSERT INTO ${table('project')} (id, name, type) VALUES (:id, :name, :type)`,
-			{ id: projectId, name: 'Acme', type: 'team' },
-		);
 		await addToProject(serviceAccountId, projectId);
-		await addToProject(existingUserId, projectId);
 		// `auth_identity` has no delete rule, so `down` removes these rows itself.
 		await context.runQuery(
 			`INSERT INTO ${table('auth_identity')} (${column('userId')}, ${column('providerId')}, ${column('providerType')}) VALUES (:userId, :providerId, :providerType)`,
@@ -148,6 +172,7 @@ describe('AddKindToUserTable Migration', () => {
 		const humanIds = (await selectUsers())
 			.filter((row) => row.kind === 'human')
 			.map((row) => row.id);
+		if (context.isSqlite) await rebuildUserTable();
 		await context.queryRunner.release();
 
 		await undoLastSingleMigration();

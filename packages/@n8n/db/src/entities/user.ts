@@ -71,14 +71,8 @@ export class User extends Actor implements IUser {
 		}
 	}
 
-	@Column({ type: Boolean, default: false })
-	mfaEnabled: boolean;
-
 	@Column({ type: String, nullable: true })
 	mfaSecret?: string | null;
-
-	@Column({ type: 'simple-array', default: '' })
-	mfaRecoveryCodes: string[];
 
 	@Column({ type: 'date', nullable: true })
 	lastActiveAt?: Date | null;
@@ -101,7 +95,7 @@ export class User extends Actor implements IUser {
 			this.role?.slug !== GLOBAL_OWNER_ROLE.slug;
 	}
 
-	toJSON() {
+	override toJSON() {
 		const { password, mfaSecret, mfaRecoveryCodes, ...rest } = this;
 		return rest;
 	}

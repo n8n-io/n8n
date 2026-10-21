@@ -15,9 +15,10 @@ import {
 import { WithTimestamps } from './abstract-entity';
 import { Role } from './role';
 
+const secretFields = new Set(['password', 'mfaSecret', 'mfaRecoveryCodes']);
+
 /** The same values a `Principal` carries, so an `Actor` maps to a `Principal` without translation. */
 export type ActorKind = PrincipalType;
-export const actorKinds = ['human', 'service'] as const satisfies readonly ActorKind[];
 
 /**
  * An account that holds a global role. Humans and service accounts share the
@@ -28,13 +29,12 @@ export const actorKinds = ['human', 'service'] as const satisfies readonly Actor
  * a relation that must accept a service account has to target `Actor`.
  */
 @Entity({ name: 'user' })
-@TableInheritance({ column: { type: 'varchar', name: 'kind', length: 16 } })
+@TableInheritance({ column: 'kind' })
 export abstract class Actor extends WithTimestamps implements AuthPrincipal {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
 
-	/** Set by TypeORM from the discriminator of the child entity. */
-	@Column({ type: 'varchar', length: 16 })
+	@Column({ type: 'varchar', length: 16, default: 'human', update: false })
 	readonly kind: ActorKind;
 
 	@ManyToOne(() => Role)
@@ -43,6 +43,12 @@ export abstract class Actor extends WithTimestamps implements AuthPrincipal {
 
 	@Column({ type: Boolean, default: false })
 	disabled: boolean;
+
+	@Column({ type: Boolean, default: false })
+	mfaEnabled: boolean;
+
+	@Column({ type: 'simple-array', default: '' })
+	mfaRecoveryCodes: string[];
 
 	/*
 	 * TypeORM attaches the lifecycle hooks of every child to this base entity
@@ -58,4 +64,7 @@ export abstract class Actor extends WithTimestamps implements AuthPrincipal {
 	@AfterLoad()
 	@AfterUpdate()
 	postLoadHook(): void {}
+	toJSON() {
+		return Object.fromEntries(Object.entries(this).filter(([key]) => !secretFields.has(key)));
+	}
 }

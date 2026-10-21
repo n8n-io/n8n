@@ -1,9 +1,10 @@
-import { type Actor, ServiceAccount, type User } from '../entities';
+import { Actor, ServiceAccount, User } from '../entities';
 
 /*
- * Human is the default, as it is for the `kind` column. An account is a
- * service account only when it says so. This also covers an object that was
- * not built from the class, for example a cached copy or a test double.
+ * Human is the default, as it is for the `kind` column. A plain object, for
+ * example a cached copy or a test double, counts as a user unless its `kind`
+ * says `service`. A bare `Actor` instance counts as neither: TypeORM returns
+ * one for a partial select, and it has none of the `User` methods.
  */
 
 export function isServiceAccount(actor: Actor): actor is ServiceAccount {
@@ -11,5 +12,6 @@ export function isServiceAccount(actor: Actor): actor is ServiceAccount {
 }
 
 export function isUser(actor: Actor): actor is User {
-	return !isServiceAccount(actor);
+	if (actor instanceof User) return true;
+	return !(actor instanceof Actor) && !isServiceAccount(actor);
 }

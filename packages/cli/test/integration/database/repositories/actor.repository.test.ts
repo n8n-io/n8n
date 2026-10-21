@@ -1,13 +1,17 @@
 import { testDb } from '@n8n/backend-test-utils';
 import {
+	Actor,
 	ActorRepository,
 	GLOBAL_MEMBER_ROLE,
+	isServiceAccount,
+	isUser,
 	ServiceAccount,
 	ServiceAccountRepository,
 	User,
 	UserRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 
 import { createMember } from '../../shared/db/users';
 
@@ -24,8 +28,7 @@ describe('ActorRepository', () => {
 	});
 
 	beforeEach(async () => {
-		// `User` would delete humans only.
-		await testDb.truncate(['Actor']);
+		await testDb.truncate(['User']);
 	});
 
 	afterAll(async () => {
@@ -71,7 +74,71 @@ describe('ActorRepository', () => {
 		);
 	});
 
+	it('sets the kind on a newly saved account', async () => {
+		const serviceAccount = await createServiceAccount();
+		const human = await userRepository.save(userRepository.create({ role: GLOBAL_MEMBER_ROLE }));
+
+		expect(serviceAccount.kind).toBe('service');
+		expect(human.kind).toBe('human');
+	});
+
+	it('rejects insert and upsert', async () => {
+		await expect(actorRepository.insert()).rejects.toThrow(
+			'Use UserRepository or ServiceAccountRepository to insert',
+		);
+		await expect(actorRepository.upsert()).rejects.toThrow(
+			'Use UserRepository or ServiceAccountRepository to upsert',
+		);
+	});
+
+	it('does not change the kind on update', async () => {
+		const serviceAccount = await createServiceAccount();
+
+		await actorRepository.update({ id: serviceAccount.id }, {
+			kind: 'human',
+			disabled: true,
+		} as Partial<Actor>);
+
+		const loaded = await actorRepository.findOneBy({ id: serviceAccount.id });
+		expect(loaded).toBeInstanceOf(ServiceAccount);
+		expect(loaded?.disabled).toBe(true);
+	});
+
+	it('returns a bare Actor for a partial select, which neither guard accepts', async () => {
+		const serviceAccount = await createServiceAccount();
+
+		const [partial] = await actorRepository.find({
+			select: { id: true },
+			where: { id: serviceAccount.id },
+		});
+
+		expect(isUser(partial)).toBe(false);
+		expect(isServiceAccount(partial)).toBe(false);
+		expect(JSON.stringify(Object.assign(partial, { password: 'secret' }))).not.toContain('secret');
+	});
+
+	it('declares every lifecycle hook on Actor, so it runs on both kinds', () => {
+		const { ownListeners } = Container.get(DataSource).getMetadata(Actor);
+
+		// A hook declared on a child runs on rows of the other child too, and fails there.
+		const declaredOnChild = ownListeners.filter(
+			({ target }) =>
+				target !== Actor && !(typeof target === 'function' && Actor.prototype instanceof target),
+		);
+		expect(declaredOnChild.map(({ propertyName }) => propertyName)).toEqual([]);
+	});
+
 	describe('UserRepository', () => {
+		it('saves a plain object twice without a NOT NULL error', async () => {
+			const human = await createMember();
+			const partial: Partial<User> = { id: human.id, firstName: 'Ada' };
+
+			await userRepository.save(partial);
+			partial.firstName = 'Grace';
+
+			await expect(userRepository.save(partial)).resolves.toBeDefined();
+		});
+
 		it('does not return service accounts', async () => {
 			const human = await createMember();
 			const serviceAccount = await createServiceAccount();

@@ -25,7 +25,7 @@ describe('LicenseMetricsRepository', () => {
 
 	beforeEach(async () => {
 		await testDb.truncate([
-			'Actor',
+			'User',
 			'CredentialsEntity',
 			'WorkflowEntity',
 			'ExecutionEntity',

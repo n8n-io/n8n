@@ -1,4 +1,4 @@
-import { Actor, actorKinds, type ActorKind } from './actor';
+import { Actor, type ActorKind } from './actor';
 import {
 	ActivityEvent,
 	activityEventCategories,
@@ -120,7 +120,6 @@ import { WorkflowTagMapping } from './workflow-tag-mapping';
 
 export {
 	Actor,
-	actorKinds,
 	type ActorKind,
 	ServiceAccount,
 	ActivityEvent,

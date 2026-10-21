@@ -7,11 +7,6 @@ import { BaseRepository } from './base-repository';
 import { Actor, ServiceAccount, User } from '../entities';
 import { TransactionRunner } from '../services/transaction';
 
-/**
- * Loads accounts of both kinds. Each row comes back as the child entity that
- * its `kind` names (`User` or `ServiceAccount`). Use `UserRepository` or
- * `ServiceAccountRepository` when only one kind can appear.
- */
 type ActorInstance = User | ServiceAccount;
 
 @Service()
@@ -21,9 +16,8 @@ export class ActorRepository extends BaseRepository<Actor> {
 	}
 
 	/*
-	 * `Repository.save` writes with the metadata of the repository's entity, so
-	 * a save through `Actor` would not set a valid `kind`. The manager takes the
-	 * metadata from the class of the instance, so only child instances work.
+	 * A save takes the `kind` from the class of the instance. A plain object has
+	 * no child class, so TypeORM would write the discriminator of `Actor`.
 	 */
 	override save<T extends ActorInstance>(
 		entities: T[],
@@ -46,5 +40,14 @@ export class ActorRepository extends BaseRepository<Actor> {
 			);
 		}
 		return await this.manager.save(entityOrEntities, options);
+	}
+
+	/** Inserts skip the class of the instance and write the `Actor` discriminator. */
+	override async insert(): Promise<never> {
+		throw new UnexpectedError('Use UserRepository or ServiceAccountRepository to insert');
+	}
+
+	override async upsert(): Promise<never> {
+		throw new UnexpectedError('Use UserRepository or ServiceAccountRepository to upsert');
 	}
 }

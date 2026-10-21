@@ -1,6 +1,6 @@
 import { mock } from 'vitest-mock-extended';
 
-import { type Actor, ServiceAccount, User } from '../../entities';
+import { Actor, ServiceAccount, User } from '../../entities';
 import { isServiceAccount, isUser } from '../actor-guards';
 
 describe('actor guards', () => {
@@ -26,6 +26,13 @@ describe('actor guards', () => {
 		const actor = { id: 'id' } as Actor;
 
 		expect(isUser(actor)).toBe(true);
+		expect(isServiceAccount(actor)).toBe(false);
+	});
+
+	it('treats a bare Actor instance as neither kind', () => {
+		const actor = Object.create(Actor.prototype) as Actor;
+
+		expect(isUser(actor)).toBe(false);
 		expect(isServiceAccount(actor)).toBe(false);
 	});
 });
