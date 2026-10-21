@@ -1,3 +1,18 @@
+## [2.45.1](https://github.com/n8n-io/n8n/compare/n8n@2.45.0...n8n@2.45.1) (2026-10-21)
+
+
+### Bug Fixes
+
+* **core:** Claim an idle worker's next queue job and its lock in one step ([#41558](https://github.com/n8n-io/n8n/issues/41558)) ([5f0b562](https://github.com/n8n-io/n8n/commit/5f0b5629215249c8dd312fb831c48d4bc1db9622))
+* **editor:** Center badge text when icons are absent ([#41581](https://github.com/n8n-io/n8n/issues/41581)) ([648fa2a](https://github.com/n8n-io/n8n/commit/648fa2a4a34ec8c900028e540100d894249343cc))
+* **Microsoft Teams Trigger Node:** Renew the Graph subscription via lifecycle notifications ([#41539](https://github.com/n8n-io/n8n/issues/41539)) ([f054ffe](https://github.com/n8n-io/n8n/commit/f054ffe3a8843bd9d78a7097a55e391bbb0c8dd6))
+
+
+### Features
+
+* **core:** Let workflow editors triage the migration findings of their workflows ([#41532](https://github.com/n8n-io/n8n/issues/41532)) ([8473735](https://github.com/n8n-io/n8n/commit/8473735946bb072f4fba54ec0825d05d059caccf))
+
+
 # [2.45.0](https://github.com/n8n-io/n8n/compare/n8n@2.44.0...n8n@2.45.0) (2026-10-20)
 
 
