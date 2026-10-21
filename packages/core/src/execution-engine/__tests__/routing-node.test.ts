@@ -2456,10 +2456,12 @@ describe('RoutingNode', () => {
 			continueOnFail,
 			requestErrorUrl,
 			requestError = new Error('Request failed'),
+			arrayResponseUrl,
 		}: {
 			continueOnFail: boolean;
 			requestErrorUrl?: string;
 			requestError?: Error;
+			arrayResponseUrl?: string;
 		}) => {
 			const items: INodeExecutionData[] = [
 				{ json: { id: 'first' } },
@@ -2513,6 +2515,14 @@ describe('RoutingNode', () => {
 					requestUrls.push(requestOptions.url);
 					if (requestOptions.url === requestErrorUrl) {
 						throw requestError;
+					}
+					if (requestOptions.url === arrayResponseUrl) {
+						return {
+							body: [
+								{ url: requestOptions.url, part: 1 },
+								{ url: requestOptions.url, part: 2 },
+							],
+						};
 					}
 					return { body: { url: requestOptions.url } };
 				});
@@ -2592,14 +2602,27 @@ describe('RoutingNode', () => {
 		});
 
 		test('pairs every success and error item with its input item', async () => {
-			const { run } = createRoutingNode({ continueOnFail: true, requestErrorUrl: '/items/second' });
+			// Three inputs produce four outputs: an array response for the first input,
+			// an error item for the second, and one item for the third.
+			const { run } = createRoutingNode({
+				continueOnFail: true,
+				arrayResponseUrl: '/items/first',
+				requestErrorUrl: '/items/second',
+			});
 
 			const result = await run;
 
 			expect(result?.[0]?.map((item) => item.pairedItem)).toEqual([
 				{ item: 0 },
+				{ item: 0 },
 				{ item: 1 },
 				{ item: 2 },
+			]);
+			expect(result?.[0]?.map((item) => item.json)).toEqual([
+				{ url: '/items/first', part: 1 },
+				{ url: '/items/first', part: 2 },
+				{},
+				{ url: '/items/third' },
 			]);
 		});
 
