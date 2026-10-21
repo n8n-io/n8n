@@ -1,18 +1,26 @@
-import type { CredentialTypeAvailability, NodeTypeAvailability } from '@n8n/api-types';
+import type {
+	CredentialTypeAvailability,
+	NodeTypeAvailability,
+	SubWorkflowPolicyCheckResponse,
+} from '@n8n/api-types';
 import { getProject, type Project } from '@n8n/rest-api-client';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { defineStore } from 'pinia';
-import { computed, ref, shallowRef } from 'vue';
+import { computed, reactive, ref, shallowRef } from 'vue';
 
 import {
 	fetchAvailableCredentialTypes,
 	fetchAvailableTypes,
+	fetchSubWorkflowPolicyCheck,
 } from './type-availability-policies.api';
 import {
 	TYPE_AVAILABILITY_POLICIES_MODULE_ID,
 	TYPE_AVAILABILITY_POLICIES_STORE_ID,
 } from './type-availability-policies.constants';
+
+const subWorkflowCheckKey = (parentWorkflowId: string, subWorkflowId: string) =>
+	`${parentWorkflowId}:${subWorkflowId}`;
 
 function unavailableByName<T extends { name: string; available: boolean }>(
 	entries: T[],
@@ -35,6 +43,15 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 		const requestedProjectId = ref<string | null>(null);
 		const isLoading = ref(false);
 		let latestRequest = 0;
+
+		/**
+		 * Keyed by parent and sub-workflow, because the answer depends on whether the parent may
+		 * call the sub-workflow. `null` means there is nothing to show: the call is not allowed,
+		 * or the check failed.
+		 */
+		const subWorkflowChecks = reactive(new Map<string, SubWorkflowPolicyCheckResponse | null>());
+		const subWorkflowRequests = new Map<string, Promise<void>>();
+		let subWorkflowGeneration = 0;
 
 		const isEnabled = computed(
 			() => settingsStore.isModuleActive(TYPE_AVAILABILITY_POLICIES_MODULE_ID) ?? false,
@@ -110,8 +127,53 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 			return restrictedCredentialTypes.value.get(name) ?? { name, available: true };
 		}
 
+		/**
+		 * Loads the policy check for one sub-workflow call. Callers that render the same call share
+		 * one request. `force` refetches a loaded answer, for a surface that must be current.
+		 */
+		async function fetchSubWorkflowCheck(
+			parentWorkflowId: string,
+			subWorkflowId: string,
+			{ force = false }: { force?: boolean } = {},
+		): Promise<void> {
+			if (!isEnabled.value) return;
+
+			const key = subWorkflowCheckKey(parentWorkflowId, subWorkflowId);
+			const pending = subWorkflowRequests.get(key);
+			if (pending) return await pending;
+			if (!force && subWorkflowChecks.has(key)) return;
+
+			const generation = subWorkflowGeneration;
+			const request = fetchSubWorkflowPolicyCheck(
+				rootStore.restApiContext,
+				parentWorkflowId,
+				subWorkflowId,
+			)
+				// A 404 is the normal answer for a call the caller policy refuses.
+				.catch(() => null)
+				.then((check) => {
+					if (generation !== subWorkflowGeneration) return;
+
+					subWorkflowChecks.set(key, check);
+					subWorkflowRequests.delete(key);
+				});
+			subWorkflowRequests.set(key, request);
+
+			await request;
+		}
+
+		function getSubWorkflowCheck(
+			parentWorkflowId: string,
+			subWorkflowId: string,
+		): SubWorkflowPolicyCheckResponse | null {
+			return subWorkflowChecks.get(subWorkflowCheckKey(parentWorkflowId, subWorkflowId)) ?? null;
+		}
+
 		function reset(): void {
 			latestRequest++;
+			subWorkflowGeneration++;
+			subWorkflowChecks.clear();
+			subWorkflowRequests.clear();
 			restrictedNodeTypes.value = new Map();
 			restrictedCredentialTypes.value = new Map();
 			policyProject.value = null;
@@ -130,6 +192,8 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 			getNodeTypeAvailability,
 			isNodeTypeAvailable,
 			getCredentialTypeAvailability,
+			fetchSubWorkflowCheck,
+			getSubWorkflowCheck,
 			reset,
 		};
 	},

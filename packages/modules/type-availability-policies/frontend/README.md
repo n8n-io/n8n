@@ -48,6 +48,16 @@ popover and the dialog. The caller passes the row element and whether the row is
 contact and replace actions. The shell renders the popover and the panel where a restricted node
 appears; the module owns their copy and behaviour.
 
+`useSubWorkflowRestriction({ parentWorkflowId, node, enabled })` tells whether the sub-workflow
+an Execute Workflow node calls uses a blocked node type. It reads
+`/workflows/:workflowId/sub-workflows/:subWorkflowId/policy-check`, which judges the
+sub-workflow against its own project. The store caches one answer for each parent and
+sub-workflow pair, and callers that render the same call share one request. Only a stored
+sub-workflow selected by id is checked: inline and URL sources, and expressions, are skipped.
+`RestrictedSubWorkflowCallout` is the NDV explanation. It refetches on open, and names the
+sub-workflow's project only when the server returned its name. The shell passes `enabled`, which
+must require `workflow:update` on the parent, because the endpoint refuses other users.
+
 `getPolicyViolations(error)` reads the structured violations off a refused save, publish or run,
 and `PolicyViolationList` groups them by scope and lists each blocked node or credential type,
 with an optional jump. The shell resolves display names and the nodes to jump to, because only
