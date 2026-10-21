@@ -7,14 +7,13 @@ import {
 	N8nIconButton,
 	N8nText,
 	N8nTooltip,
-	TOOLTIP_DELAY_MS,
 	type DropdownMenuItemProps,
 	type IconOrEmoji,
 	type PathItem,
 } from '@n8n/design-system';
 
-import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
+import { useI18n } from '@n8n/i18n';
 import type { SessionTimelineMetadata } from '@/features/agents/types';
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 
@@ -31,22 +30,64 @@ const props = defineProps<{
 	showLangsmithExport: boolean;
 	langsmithExportLoading: boolean;
 	metadata?: SessionTimelineMetadata;
+	hasSession?: boolean;
+	canDeleteSession?: boolean;
+	isDeletingSession?: boolean;
 }>();
 
 const emit = defineEmits<{
 	'breadcrumb-select': [item: PathItem];
 	'session-select': [sessionId: string];
 	'langsmith-export': [];
+	'copy-link': [];
+	'delete-session': [];
 	edit: [];
 }>();
 
 const i18n = useI18n();
 
-const breadcrumbItems = computed(() =>
-	props.breadcrumbItems.map((item, index) =>
-		index === 0 ? { ...item, icon: props.projectIcon } : item,
-	),
-);
+const menuItems = computed<Array<DropdownMenuItemProps<string>>>(() => [
+	{
+		id: 'copy-link',
+		label: i18n.baseText('agents.builder.preview.more.copyLink'),
+		icon: { type: 'icon', value: 'link' },
+		disabled: !props.hasSession,
+	},
+	...(props.showLangsmithExport
+		? ([
+				{
+					id: 'export-session',
+					label: i18n.baseText('agentSessions.langsmithExport.button'),
+					icon: { type: 'icon', value: 'bug' },
+					disabled: !props.hasSession || props.langsmithExportLoading,
+				},
+			] satisfies Array<DropdownMenuItemProps<string>>)
+		: []),
+	...(props.canDeleteSession
+		? ([
+				{
+					id: 'delete-session',
+					label: i18n.baseText('agentSessions.delete'),
+					icon: { type: 'icon', value: 'trash-2' },
+					divided: true,
+					destructive: true,
+					disabled: !props.hasSession || props.isDeletingSession,
+				},
+			] satisfies Array<DropdownMenuItemProps<string>>)
+		: []),
+]);
+
+function onMenuSelect(action: string) {
+	if (!props.hasSession) return;
+	if (action === 'copy-link') emit('copy-link');
+	if (action === 'export-session' && props.showLangsmithExport && !props.langsmithExportLoading) {
+		emit('langsmith-export');
+	}
+	if (action === 'delete-session' && props.canDeleteSession && !props.isDeletingSession) {
+		emit('delete-session');
+	}
+}
+
 const tokenFormatter = new Intl.NumberFormat('en-US', {
 	notation: 'compact',
 	maximumFractionDigits: 1,
@@ -100,23 +141,6 @@ const costFormatter = new Intl.NumberFormat('en-US', {
 			</N8nBreadcrumbs>
 		</div>
 		<div :class="$style.topBarRight">
-			<N8nTooltip
-				v-if="props.showLangsmithExport"
-				:content="i18n.baseText('agentSessions.langsmithExport.button')"
-				placement="bottom"
-				:show-after="TOOLTIP_DELAY_MS"
-			>
-				<N8nIconButton
-					icon="bug"
-					variant="ghost"
-					size="small"
-					icon-size="large"
-					:loading="props.langsmithExportLoading"
-					:aria-label="i18n.baseText('agentSessions.langsmithExport.button')"
-					data-testid="agent-session-langsmith-export"
-					@click="emit('langsmith-export')"
-				/>
-			</N8nTooltip>
 			<ul
 				v-if="metadata"
 				:class="$style.descriptionList"
@@ -149,6 +173,25 @@ const costFormatter = new Intl.NumberFormat('en-US', {
 				@click="emit('edit')"
 				>{{ i18n.baseText('agentNode.ndv.referenced.editInBuilder') }}</N8nButton
 			>
+			<N8nTooltip placement="bottom" :content="i18n.baseText('agentSessions.actions')">
+				<N8nDropdownMenu
+					:items="menuItems"
+					placement="bottom-end"
+					data-testid="agent-session-timeline-more-menu"
+					@select="onMenuSelect"
+				>
+					<template #trigger>
+						<N8nIconButton
+							icon="ellipsis"
+							variant="ghost"
+							size="small"
+							icon-size="large"
+							:aria-label="i18n.baseText('agentSessions.actions')"
+							data-testid="agent-session-timeline-more-btn"
+						/>
+					</template>
+				</N8nDropdownMenu>
+			</N8nTooltip>
 		</div>
 	</div>
 </template>
@@ -158,13 +201,14 @@ const costFormatter = new Intl.NumberFormat('en-US', {
 
 .topBar {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--xs) var(--spacing--md);
 	background-color: var(--background--surface);
 	border-bottom: var(--border);
 	flex-shrink: 0;
-	height: var(--height--4xl);
+	min-height: var(--height--4xl);
 }
 
 .topBarLeft {
@@ -178,7 +222,16 @@ const costFormatter = new Intl.NumberFormat('en-US', {
 	min-width: 0;
 }
 
+.topBarLeft :global(.n8n-breadcrumbs > ul) {
+	min-width: 0;
+}
+
+.topBarLeft :global(.n8n-breadcrumbs > ul > li:first-child) {
+	display: none;
+}
+
 .topBarLeft :global(.n8n-breadcrumbs [data-test-id='breadcrumbs-item']) {
+	min-width: 0;
 	display: flex;
 	align-items: center;
 	height: var(--height--md);
@@ -187,6 +240,9 @@ const costFormatter = new Intl.NumberFormat('en-US', {
 
 .topBarRight {
 	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	max-width: 100%;
 	align-items: center;
 	gap: var(--spacing--xs);
 	font-size: var(--font-size--xs);
@@ -204,6 +260,7 @@ const costFormatter = new Intl.NumberFormat('en-US', {
 }
 
 .switcherButton {
+	flex-shrink: 0;
 	font-size: var(--font-size--sm);
 	gap: var(--spacing--4xs);
 }
@@ -244,6 +301,7 @@ const costFormatter = new Intl.NumberFormat('en-US', {
 }
 .descriptionList {
 	display: flex;
+	flex-wrap: wrap;
 	flex-direction: row;
 	gap: var(--spacing--sm);
 

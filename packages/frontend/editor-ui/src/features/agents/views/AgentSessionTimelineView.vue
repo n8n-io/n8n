@@ -1,10 +1,18 @@
 <script lang="ts" setup>
 import { truncate } from '@n8n/utils/string/truncate';
-import { VIEWS } from '@/app/constants';
+import { useClipboard } from '@n8n/composables/useClipboard';
+import { useToast } from '@n8n/composables/useToast';
+import { useAgentPermissions } from '../composables/useAgentPermissions';
+import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
+import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useAgentProjectBreadcrumb } from '@/features/agents/composables/useAgentProjectBreadcrumb';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
-import { AGENT_BUILDER_VIEW, AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
+import {
+	AGENT_BUILDER_VIEW,
+	AGENT_SESSION_DETAIL_VIEW,
+	AGENT_SESSIONS_LIST_VIEW,
+} from '@/features/agents/constants';
 import { useAgentSessionLangSmithExport } from '@/features/agents/composables/useAgentSessionLangSmithExport';
 import { useAgentSessionUsage } from '@/features/agents/composables/useAgentSessionUsage';
 import { useAgentExecutionUpdates } from '@/features/agents/composables/useAgentExecutionUpdates';
@@ -29,7 +37,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import type { SessionTimelineMetadata } from '@/features/agents/types';
 import { useI18n } from '@n8n/i18n';
 import type { DropdownMenuItemProps, IconName, PathItem } from '@n8n/design-system';
-import { computed, ref, watch } from 'vue';
+import { computed, onScopeDispose, ref, watch } from 'vue';
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router';
 
 const i18n = useI18n();
@@ -49,6 +57,68 @@ const { config: localConfig, fetchConfig, updateConfig } = useAgentConfig();
 const projectId = computed(() => route.params.projectId as string);
 const agentId = computed(() => route.params.agentId as string);
 const threadId = computed(() => route.params.threadId as string);
+
+const clipboard = useClipboard();
+const toast = useToast();
+const { canUpdate: canDeleteSession } = useAgentPermissions(projectId);
+const { openAgentConfirmationModal } = useAgentConfirmationModal();
+const isDeletingSession = ref(false);
+let isDisposed = false;
+onScopeDispose(() => {
+	isDisposed = true;
+});
+
+async function copySessionLink() {
+	if (!hasLoadedThread.value) return;
+	try {
+		const { href } = router.resolve({
+			name: AGENT_SESSION_DETAIL_VIEW,
+			params: { projectId: projectId.value, agentId: agentId.value, threadId: threadId.value },
+		});
+		await clipboard.copy(new URL(href, window.location.origin).href);
+		toast.showMessage({
+			title: i18n.baseText('agents.builder.preview.more.linkCopied'),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.builder.preview.more.copyLinkError'));
+	}
+}
+
+async function deleteSession() {
+	if (!hasLoadedThread.value || !canDeleteSession.value || isDeletingSession.value) return;
+	const target = { projectId: projectId.value, agentId: agentId.value, threadId: threadId.value };
+	const isCurrentSession = () =>
+		!isDisposed &&
+		projectId.value === target.projectId &&
+		agentId.value === target.agentId &&
+		threadId.value === target.threadId;
+	isDeletingSession.value = true;
+	try {
+		const confirmed = await openAgentConfirmationModal({
+			title: i18n.baseText('agentSessions.deleteConfirm.headline'),
+			description: i18n.baseText('agentSessions.deleteConfirm.message'),
+			confirmButtonText: i18n.baseText('agentSessions.deleteConfirm.confirmButtonText'),
+			cancelButtonText: i18n.baseText('generic.cancel'),
+		});
+		if (confirmed !== MODAL_CONFIRM || !isCurrentSession() || !canDeleteSession.value) return;
+		await sessionsStore.deleteThread(target.projectId, target.agentId, target.threadId);
+		toast.showMessage({
+			title: i18n.baseText('agentSessions.showMessage.deleted'),
+			type: 'success',
+		});
+		if (isCurrentSession()) {
+			await router.push({
+				name: AGENT_SESSIONS_LIST_VIEW,
+				params: { projectId: target.projectId, agentId: target.agentId },
+			});
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agentSessions.showError.delete'));
+	} finally {
+		isDeletingSession.value = false;
+	}
+}
 
 // Populated by the timeline panel's `loaded` event so the header can render its
 // title/metrics/trigger without a second fetch of the same thread.
@@ -270,7 +340,12 @@ function viewPreviewTrace() {
 			:session-options="sessionOptions"
 			:show-langsmith-export="isLangSmithExportEnabled && hasLoadedThread"
 			:langsmith-export-loading="isExporting"
-			:metadata="thread ? sessionMetadata : undefined"
+			:metadata="hasLoadedThread ? sessionMetadata : undefined"
+			:has-session="hasLoadedThread"
+			:can-delete-session="canDeleteSession"
+			:is-deleting-session="isDeletingSession"
+			@copy-link="copySessionLink"
+			@delete-session="deleteSession"
 			@breadcrumb-select="onBreadcrumbSelect"
 			@session-select="onSessionSelect"
 			@langsmith-export="sendSession({ projectId, agentId, threadId })"
