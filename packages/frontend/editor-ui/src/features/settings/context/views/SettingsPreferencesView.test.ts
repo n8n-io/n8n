@@ -2,6 +2,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
+import { waitFor, within } from '@testing-library/vue';
 
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
@@ -61,6 +62,14 @@ const PreferenceModalStub = {
 		</div>
 	`,
 };
+
+async function clickRowAction(table: HTMLElement, action: 'edit' | 'delete') {
+	await userEvent.click(within(table).getByTestId('preference-actions').querySelector('button')!);
+	await waitFor(() =>
+		expect(document.querySelector(`[data-test-id="action-${action}"]`)).toBeInTheDocument(),
+	);
+	await userEvent.click(document.querySelector(`[data-test-id="action-${action}"]`)!);
+}
 
 const renderComponent = createComponentRenderer(SettingsPreferencesView, {
 	global: { stubs: { PreferenceModal: PreferenceModalStub } },
@@ -152,15 +161,15 @@ describe('SettingsPreferencesView', () => {
 		expect(getByTestId('preference-modal-stub')).toHaveAttribute('data-preference-id', '');
 	});
 
-	it('opens the edit modal with the row it was triggered from', async () => {
+	it('opens the edit modal when a row is clicked', async () => {
 		const row = preference();
 		contextStore.preferences = [row];
 		contextStore.count = 1;
 
-		const { getByTestId } = renderView();
+		const { getByTestId, getByText } = renderView();
 		await new Promise(process.nextTick);
 
-		await userEvent.click(getByTestId('preference-edit-button'));
+		await userEvent.click(getByText(row.content));
 
 		expect(getByTestId('preference-modal-stub')).toHaveAttribute('data-open', 'true');
 		expect(getByTestId('preference-modal-stub')).toHaveAttribute('data-preference-id', row.id);
@@ -189,7 +198,7 @@ describe('SettingsPreferencesView', () => {
 		const { getByTestId } = renderView();
 		await new Promise(process.nextTick);
 
-		await userEvent.click(getByTestId('preference-delete-button'));
+		await clickRowAction(getByTestId('preferences-table'), 'delete');
 		await new Promise(process.nextTick);
 
 		expect(contextStore.deletePreference).toHaveBeenCalledWith('p1');
@@ -245,7 +254,7 @@ describe('SettingsPreferencesView', () => {
 		const { getByTestId } = renderView();
 		await new Promise(process.nextTick);
 
-		await userEvent.click(getByTestId('preference-delete-button'));
+		await clickRowAction(getByTestId('preferences-table'), 'delete');
 		await new Promise(process.nextTick);
 
 		expect(contextStore.deletePreference).not.toHaveBeenCalled();

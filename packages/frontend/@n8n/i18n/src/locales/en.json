@@ -3587,7 +3587,7 @@
 	"settings.context.preferences.scope.personalProject": "Just you · Personal project",
 	"settings.context.preferences.scope.otherUser": "{name} · All projects",
 	"settings.context.preferences.scope.otherPersonalProject": "{name} · Personal project",
-	"settings.context.preferences.scope.instance": "Everyone",
+	"settings.context.preferences.scope.instance": "Global",
 	"settings.context.preferences.scope.project": "Project",
 	"settings.context.preferences.selected": "{count} selected",
 	"settings.context.preferences.readOnly.tooltip": "You do not have permission to change this preference",

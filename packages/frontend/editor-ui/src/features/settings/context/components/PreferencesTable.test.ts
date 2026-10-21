@@ -5,6 +5,7 @@ import { STORES } from '@n8n/stores';
 import { useUsersStore } from '@n8n/stores/users.store';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import userEvent from '@testing-library/user-event';
+import { waitFor, within } from '@testing-library/vue';
 import { mock } from 'vitest-mock-extended';
 
 import PreferencesTable from './PreferencesTable.vue';
@@ -38,6 +39,14 @@ function render(preferences: Preference[], showEmpty = false) {
 	return renderTable({
 		props: { preferences, itemsLength: preferences.length, loading: false, showEmpty },
 	});
+}
+
+async function openActions(table: HTMLElement) {
+	await userEvent.click(within(table).getByTestId('preference-actions').querySelector('button')!);
+}
+
+function menuItem(action: 'edit' | 'delete') {
+	return document.querySelector(`[data-test-id="action-${action}"]`);
 }
 
 describe('PreferencesTable', () => {
@@ -77,7 +86,8 @@ describe('PreferencesTable', () => {
 
 		const badges = getAllByTestId('preference-scope-badge');
 		expect(badges[0]).toHaveTextContent('Just you · All projects');
-		expect(badges[1]).toHaveTextContent('Everyone');
+		expect(badges[1]).toHaveTextContent('Global');
+		expect(badges[1].querySelector('[data-icon="globe"]')).not.toBeNull();
 		expect(badges[2]).toHaveTextContent('Darwin');
 	});
 
@@ -148,18 +158,23 @@ describe('PreferencesTable', () => {
 		expect(getByTestId('preference-updated-at')).not.toBeEmptyDOMElement();
 	});
 
-	it('enables both actions when the row carries write scopes', () => {
+	it('enables both actions when the row carries write scopes', async () => {
 		const { getByTestId } = render([preference({ scopes: WRITABLE })]);
 
-		expect(getByTestId('preference-edit-button')).toBeEnabled();
-		expect(getByTestId('preference-delete-button')).toBeEnabled();
+		await openActions(getByTestId('preferences-table'));
+
+		await waitFor(() => expect(menuItem('edit')).toBeInTheDocument());
+		expect(menuItem('edit')).not.toHaveAttribute('data-disabled');
+		expect(menuItem('delete')).not.toHaveAttribute('data-disabled');
 	});
 
-	it('disables both actions on a read-only row', () => {
+	it('disables both actions on a read-only row', async () => {
 		const { getByTestId } = render([preference({ scopes: READ_ONLY })]);
 
-		expect(getByTestId('preference-edit-button')).toBeDisabled();
-		expect(getByTestId('preference-delete-button')).toBeDisabled();
+		await openActions(getByTestId('preferences-table'));
+
+		await waitFor(() => expect(menuItem('edit')).toHaveAttribute('data-disabled'));
+		expect(menuItem('delete')).toHaveAttribute('data-disabled');
 	});
 
 	// The data table renders its cover row whenever the slot exists, so an always-on
@@ -183,10 +198,42 @@ describe('PreferencesTable', () => {
 		const row = preference({ scopes: WRITABLE });
 		const { getByTestId, emitted } = render([row]);
 
-		await userEvent.click(getByTestId('preference-edit-button'));
-		await userEvent.click(getByTestId('preference-delete-button'));
+		await openActions(getByTestId('preferences-table'));
+		await waitFor(() => expect(menuItem('edit')).toBeInTheDocument());
+		await userEvent.click(menuItem('edit')!);
+
+		await openActions(getByTestId('preferences-table'));
+		await waitFor(() => expect(menuItem('delete')).toBeInTheDocument());
+		await userEvent.click(menuItem('delete')!);
 
 		expect(emitted().edit).toEqual([[row]]);
 		expect(emitted().delete).toEqual([[row]]);
+	});
+
+	it('emits edit when a writable row is clicked', async () => {
+		const row = preference({ scopes: WRITABLE });
+		const { getByText, emitted } = render([row]);
+
+		await userEvent.click(getByText('Keep replies short.'));
+
+		expect(emitted().edit).toEqual([[row]]);
+	});
+
+	it('does not emit edit when a read-only row is clicked', async () => {
+		const { getByText, emitted } = render([preference({ scopes: READ_ONLY })]);
+
+		await userEvent.click(getByText('Keep replies short.'));
+
+		expect(emitted().edit).toBeUndefined();
+	});
+
+	it('selects the row without opening it when its checkbox is clicked', async () => {
+		const { getAllByRole, emitted } = render([preference({ scopes: WRITABLE })]);
+
+		// The first checkbox is the header one; the second belongs to the row.
+		await userEvent.click(getAllByRole('checkbox')[1]);
+
+		expect(emitted().edit).toBeUndefined();
+		expect(emitted()['update:selection']).toEqual([[['p1']]]);
 	});
 });
