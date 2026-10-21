@@ -16,7 +16,7 @@ import { numberProperty, stringProperty } from '../../integration-helpers';
 const WHATSAPP_CREDENTIAL_TYPE = 'whatsAppBotApi';
 
 /** The version the pinned `@chat-adapter/whatsapp` sends to, so both see the same API. */
-const GRAPH_API_BASE_URL = 'https://graph.facebook.com/v25.0';
+export const GRAPH_API_BASE_URL = 'https://graph.facebook.com/v25.0';
 
 /**
  * The token on the API Setup page lasts about 24 hours. A permanent system

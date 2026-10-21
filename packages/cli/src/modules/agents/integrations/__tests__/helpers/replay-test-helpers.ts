@@ -21,7 +21,10 @@ import { getIntegrationToolConnectionDescriptors } from '../../integration-tools
 import { AgentResourceRepository } from '../../../repositories/agent-resource.repository';
 import type { AgentMessageQueueService } from '../../../agent-message-queue.service';
 import type { AgentMessageQueue } from '../../../entities/agent-message-queue.entity';
-import type { QueuedIntegrationMessage } from '../../../types/agent-queued-message';
+import type {
+	QueuedIntegrationMessage,
+	QueuedUserChatMessage,
+} from '../../../types/agent-queued-message';
 
 export type ReplayWebhookOptions = { waitUntil?: (task: Promise<unknown>) => void };
 
@@ -40,6 +43,7 @@ export interface ReplayApiCall {
 export class MemoryMessageContextStore implements IntegrationMessageContextStore {
 	private readonly contexts = new Map<string, IntegrationMessageContext>();
 	private readonly bindings = new Map<string, { threadId: string; resourceId: string }>();
+	private readonly sentMessages = new Map<string, { threadId: string; resourceId: string }>();
 
 	async getLatest(threadId: string): Promise<IntegrationMessageContext | null> {
 		return await Promise.resolve(this.contexts.get(threadId) ?? null);
@@ -69,6 +73,22 @@ export class MemoryMessageContextStore implements IntegrationMessageContextStore
 		derivedThreadId: string,
 	): Promise<{ threadId: string; resourceId: string } | null> {
 		return await Promise.resolve(this.bindings.get(derivedThreadId) ?? null);
+	}
+
+	async recordSentMessage(
+		derivedThreadId: string,
+		messageId: string,
+		origin: { threadId: string; resourceId: string },
+	): Promise<void> {
+		this.sentMessages.set(`${derivedThreadId}|${messageId}`, origin);
+		await Promise.resolve();
+	}
+
+	async resolveSentMessage(
+		derivedThreadId: string,
+		messageId: string,
+	): Promise<{ threadId: string; resourceId: string } | null> {
+		return await Promise.resolve(this.sentMessages.get(`${derivedThreadId}|${messageId}`) ?? null);
 	}
 
 	async unbindSession(derivedThreadId: string): Promise<void> {
@@ -219,6 +239,8 @@ export interface ReplayContextSetup<TChat extends ChatInstance = ChatInstance> {
 	descriptor: ReturnType<typeof getIntegrationToolConnectionDescriptors>[number];
 	integration: AgentIntegrationConfig;
 	messageContextStore: MemoryMessageContextStore;
+	/** Messages the bridge queued for a chat session, which need no consumer in these tests. */
+	chatQueued: QueuedUserChatMessage[];
 	attachmentService?: AgentChatAttachmentService;
 	latestContext: () => IntegrationMessageContext | undefined;
 	latestThreadId: () => string | undefined;
@@ -278,8 +300,12 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 	const { attachmentService } = params;
 	const pending: Array<{ payload: QueuedIntegrationMessage; threadId: string }> = [];
 	const queue = mock<AgentMessageQueueService>();
+	const chatQueued: QueuedUserChatMessage[] = [];
 	queue.enqueue.mockImplementation(async ({ payload, threadId }) => {
-		if (payload.kind !== 'integration') throw new Error('Expected integration input');
+		if (payload.kind !== 'integration') {
+			chatQueued.push(payload);
+			return { status: 'accepted', item: mock<AgentMessageQueue>() };
+		}
 		pending.push({ payload: deepCopy(payload), threadId });
 		return { status: 'accepted', item: mock<AgentMessageQueue>() };
 	});
@@ -316,6 +342,7 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 		descriptor,
 		integration: params.integration,
 		messageContextStore,
+		chatQueued,
 		attachmentService,
 		latestContext: () => selectedContext,
 		latestThreadId: () => selectedThreadId,

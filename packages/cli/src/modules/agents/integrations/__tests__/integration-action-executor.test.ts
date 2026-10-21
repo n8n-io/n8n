@@ -269,6 +269,99 @@ describe('ChatIntegrationActionExecutor', () => {
 		});
 	});
 
+	it('opens a WhatsApp DM on the WhatsApp adapter instead of inferring it from the user ID', async () => {
+		const sentMessage = { id: 'wamid.1', threadId: 'whatsapp:111:447700900123' };
+		const thread = {
+			id: 'whatsapp:111:447700900123',
+			post: vi.fn().mockResolvedValue(sentMessage),
+		};
+		const adapter = { openDM: vi.fn().mockResolvedValue('whatsapp:111:447700900123') };
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue(adapter);
+		chat.thread.mockReturnValue(thread as never);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+		);
+		const descriptor = getIntegrationToolConnectionDescriptors(
+			[{ type: 'whatsapp', credentialId: 'cred-whatsapp' }],
+			'agent-1',
+		)[0];
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'send_dm',
+			input: { userId: '447700900123', message: { text: 'Hello' } },
+			awaitResponse: false,
+		});
+
+		expect(chat.getAdapter).toHaveBeenCalledWith('whatsapp');
+		expect(adapter.openDM).toHaveBeenCalledWith('447700900123');
+		expect(chat.openDM).not.toHaveBeenCalled();
+		expect(chat.thread).toHaveBeenCalledWith('whatsapp:111:447700900123');
+		expect(thread.post).toHaveBeenCalledWith('Hello');
+		expect(result).toMatchObject({
+			ok: true,
+			messageContext: {
+				target: { type: 'dm', userId: '447700900123', threadId: 'whatsapp:111:447700900123' },
+				messageId: 'wamid.1',
+			},
+		});
+	});
+
+	it('returns an unsupported-action error when the WhatsApp adapter cannot open a DM', async () => {
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue({});
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+		);
+		const descriptor = getIntegrationToolConnectionDescriptors(
+			[{ type: 'whatsapp', credentialId: 'cred-whatsapp' }],
+			'agent-1',
+		)[0];
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'send_dm',
+			input: { userId: '447700900123', message: { text: 'Hello' } },
+			awaitResponse: false,
+		});
+
+		expect(result).toMatchObject({ ok: false });
+		expect(chat.openDM).not.toHaveBeenCalled();
+	});
+
+	it('falls back to chat.openDM when a non-WhatsApp adapter cannot open a DM', async () => {
+		const thread = { id: 'telegram:42', post: vi.fn().mockResolvedValue({ id: '1' }) };
+		const chat = mock<ChatInstance>();
+		chat.openDM.mockResolvedValue(thread as never);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+		);
+		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1')[0];
+
+		await executor.execute({
+			descriptor,
+			action: 'send_dm',
+			input: { userId: '42', message: { text: 'Hello' } },
+			awaitResponse: false,
+		});
+
+		expect(chat.getAdapter).toHaveBeenCalledWith('telegram');
+		expect(chat.openDM).toHaveBeenCalledWith('42');
+	});
+
 	it('re-anchors a Slack DM at the sent message ts when openDM returns the channel pseudo-thread', async () => {
 		// openDM returns the conversation-scoped pseudo-thread (empty thread_ts);
 		// follow-ups arrive in the thread anchored at the sent message's own ts.
