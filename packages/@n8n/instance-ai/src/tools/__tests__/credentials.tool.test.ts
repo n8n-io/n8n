@@ -4,6 +4,7 @@ import type { InstanceAiPermissions } from '@n8n/api-types';
 import type { Mock } from 'vitest';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
+import { OutsideThreadProjectError } from '../../errors/outside-thread-project.error';
 import type { InstanceAiContext, CredentialSummary, CredentialDetail } from '../../types';
 import { createCredentialsTool, type CredentialAction } from '../credentials.tool';
 import { prepareWorkflowSetup } from '../workflows/prepare-workflow-setup';
@@ -745,9 +746,7 @@ describe('credentials tool', () => {
 		});
 
 		it('should reject a credential outside the thread project before asking for approval', async () => {
-			const assertInThreadProject = vi
-				.fn()
-				.mockRejectedValue(new Error('This conversation has no permission to change cred-1'));
+			const assertInThreadProject = vi.fn().mockRejectedValue(new OutsideThreadProjectError());
 			const context = createMockContext({ assertInThreadProject });
 			const suspendFn = vi.fn();
 
@@ -758,7 +757,7 @@ describe('credentials tool', () => {
 					{ action: 'delete' as const, credentialId: 'cred-1' },
 					suspendCtx(suspendFn),
 				),
-			).rejects.toThrow('no permission');
+			).rejects.toThrow(OutsideThreadProjectError);
 
 			expect(assertInThreadProject).toHaveBeenCalledWith({ kind: 'credential', id: 'cred-1' });
 			expect(suspendFn).not.toHaveBeenCalled();

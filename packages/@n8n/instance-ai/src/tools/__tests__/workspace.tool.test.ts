@@ -2,6 +2,7 @@ import type { InstanceAiPermissions } from '@n8n/api-types';
 import type { Mock } from 'vitest';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
+import { OutsideThreadProjectError } from '../../errors/outside-thread-project.error';
 import type { InstanceAiContext } from '../../types';
 import { createWorkspaceTool } from '../workspace.tool';
 
@@ -441,9 +442,7 @@ describe('workspace tool', () => {
 	] as const)(
 		'should reject $input.action outside the thread project before asking for approval',
 		async ({ input, target, method }) => {
-			const assertInThreadProject = vi
-				.fn()
-				.mockRejectedValue(new Error('This conversation has no permission to change it'));
+			const assertInThreadProject = vi.fn().mockRejectedValue(new OutsideThreadProjectError());
 			const context = createMockContext({ assertInThreadProject });
 			context.workspaceService!.listFolders = vi.fn();
 			context.workspaceService!.createFolder = vi.fn();
@@ -454,7 +453,7 @@ describe('workspace tool', () => {
 			const tool = createWorkspaceTool(context);
 			await expect(
 				executeTool(tool, input, { suspend, resumeData: undefined } as never),
-			).rejects.toThrow('no permission');
+			).rejects.toThrow(OutsideThreadProjectError);
 
 			expect(assertInThreadProject).toHaveBeenCalledWith(target);
 			expect(suspend).not.toHaveBeenCalled();

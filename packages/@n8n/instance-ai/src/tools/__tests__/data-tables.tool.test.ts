@@ -3,6 +3,7 @@ import type { Mock } from 'vitest';
 import type { z } from 'zod';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
+import { OutsideThreadProjectError } from '../../errors/outside-thread-project.error';
 import type { InstanceAiContext } from '../../types';
 import { createDataTablesTool } from '../data-tables.tool';
 
@@ -254,9 +255,7 @@ describe('data_tables tool', () => {
 	] as const)(
 		'rejects $input.action outside the thread project before asking for approval',
 		async ({ input, method }) => {
-			const assertInThreadProject = vi
-				.fn()
-				.mockRejectedValue(new Error('This conversation has no permission to change Contacts'));
+			const assertInThreadProject = vi.fn().mockRejectedValue(new OutsideThreadProjectError());
 			const context = createMockContext({ assertInThreadProject });
 			const suspend = vi.fn();
 
@@ -266,7 +265,7 @@ describe('data_tables tool', () => {
 					{ ...input, dataTableId: 'Contacts', projectId: 'proj-2' },
 					suspendCtx(suspend),
 				),
-			).rejects.toThrow('no permission');
+			).rejects.toThrow(OutsideThreadProjectError);
 
 			expect(assertInThreadProject).toHaveBeenCalledWith({
 				kind: 'data-table',

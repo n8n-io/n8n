@@ -3,6 +3,7 @@ import type { Mock } from 'vitest';
 import type { z } from 'zod';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
+import { OutsideThreadProjectError } from '../../errors/outside-thread-project.error';
 import type { InstanceAiContext, ExecutionResult } from '../../types';
 import type { VerificationClaim } from '../../workflow-loop/workflow-loop-state';
 import { createExecutionsTool } from '../executions.tool';
@@ -915,16 +916,14 @@ describe('executions tool', () => {
 		{ action: 'run' as const, workflowId: 'wf-1' },
 		{ action: 'run-step' as const, workflowId: 'wf-1', nodeName: 'Send Slack message' },
 	])('rejects $action outside the thread project before asking for approval', async (input) => {
-		const assertInThreadProject = vi
-			.fn()
-			.mockRejectedValue(new Error('This conversation has no permission to change wf-1'));
+		const assertInThreadProject = vi.fn().mockRejectedValue(new OutsideThreadProjectError());
 		const suspendFn = vi.fn();
 		const context = createMockContext({ permissions: {}, assertInThreadProject });
 
 		const tool = createExecutionsTool(context);
 		await expect(
 			executeTool(tool, input, createAgentCtx({ suspend: suspendFn }) as never),
-		).rejects.toThrow('no permission');
+		).rejects.toThrow(OutsideThreadProjectError);
 
 		expect(assertInThreadProject).toHaveBeenCalledWith({ kind: 'workflow', id: 'wf-1' });
 		expect(suspendFn).not.toHaveBeenCalled();

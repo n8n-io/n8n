@@ -8,6 +8,7 @@ import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import type { Mock } from 'vitest';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
+import { OutsideThreadProjectError } from '../../errors/outside-thread-project.error';
 import type { InstanceAiContext } from '../../types';
 import {
 	analyzeWorkflow,
@@ -1541,9 +1542,8 @@ describe('workflows tool', () => {
 		it('keeps a workflow outside the thread project inline and unbound', async () => {
 			const files = new Map<string, string>();
 			const context = createWorkspaceContext(files);
-			context.assertInThreadProject = vi
-				.fn()
-				.mockRejectedValue(new Error('This conversation has no permission to change resources'));
+			const error = new OutsideThreadProjectError();
+			context.assertInThreadProject = vi.fn().mockRejectedValue(error);
 			const tool = createWorkflowsTool(context, 'full');
 
 			const result = await executeTool<{ code?: string; filePath?: string; note?: string }>(
@@ -1554,7 +1554,7 @@ describe('workflows tool', () => {
 
 			expect(result.code).toContain(GENERATED);
 			expect(result.filePath).toBeUndefined();
-			expect(result.note).toContain('This conversation has no permission to change resources');
+			expect(result.note).toContain(error.message);
 			expect(files.size).toBe(0);
 			await expect(
 				getWorkflowSourceFileBinding(context, 'src/workflows/test-wf.workflow.ts'),
@@ -1731,7 +1731,7 @@ describe('workflows tool', () => {
 		});
 
 		it('fails without an approval card for a workflow outside the thread project', async () => {
-			const error = new Error('This conversation has no permission to change resources');
+			const error = new OutsideThreadProjectError();
 			const context = createMockContext({
 				assertInThreadProject: vi.fn().mockRejectedValue(error),
 			});
@@ -2202,7 +2202,7 @@ describe('workflows tool', () => {
 		});
 
 		it('publishes nothing when a supporting workflow is outside the thread project', async () => {
-			const error = new Error('This conversation has no permission to change resources');
+			const error = new OutsideThreadProjectError();
 			const assertInThreadProject = vi.fn(async ({ id }: { id: string }) => {
 				if (id === 'sub-b') throw error;
 			});

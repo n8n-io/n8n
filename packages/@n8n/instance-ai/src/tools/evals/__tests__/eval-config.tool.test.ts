@@ -1,6 +1,7 @@
 import type { Mock } from 'vitest';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
+import { OutsideThreadProjectError } from '../../../errors/outside-thread-project.error';
 import type {
 	EvaluationConfigDetail,
 	EvaluationConfigSummary,
@@ -303,13 +304,13 @@ describe('eval-config tool', () => {
 		'should reject $input.action outside the thread project before asking for approval',
 		async ({ input, method }) => {
 			const service = createMockEvalConfigService();
-			const assertInThreadProject = vi
-				.fn()
-				.mockRejectedValue(new Error('This conversation has no permission to change wf-1'));
+			const assertInThreadProject = vi.fn().mockRejectedValue(new OutsideThreadProjectError());
 			const suspend = vi.fn();
 			const tool = createEvalConfigTool({ ...createMockContext(service), assertInThreadProject });
 
-			await expect(executeTool(tool, input, suspendCtx(suspend))).rejects.toThrow('no permission');
+			await expect(executeTool(tool, input, suspendCtx(suspend))).rejects.toThrow(
+				OutsideThreadProjectError,
+			);
 
 			expect(assertInThreadProject).toHaveBeenCalledWith({ kind: 'workflow', id: 'wf-1' });
 			expect(suspend).not.toHaveBeenCalled();
