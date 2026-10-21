@@ -1,0 +1,114 @@
+packages/cli/src/modules/instance-ai/instance-ai-pending-agent.service.ts
+  s_58620fba057bad::t_610faffc360637 7,23,42,94
+  s_58620fba057bad::t_af15416c3de6a8 24,56,70-75,86
+packages/cli/src/modules/instance-ai/eval/__tests__/thread-restore.service.test.ts
+  s_58620fba057bad::t_af15416c3de6a8 636-645,675,709,721,750,801,824,833,845,859,868,880-884,893
+  s_58620fba057bad::t_610faffc360637 19,609
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_58620fba057bad::t_af15416c3de6a8 1594-1598,1611-1615,1634-1638
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-pending-agent.service.test.ts
+  s_58620fba057bad::t_4166e6d972a528 13-15
+  s_58620fba057bad::t_610faffc360637 7-8,28
+  s_58620fba057bad::t_af15416c3de6a8 4,17-18,20,23,27,32-35,37-43,45-47,49,54-75,77-82,85-103,105-109,111-141
+packages/cli/src/modules/agents/agent-draft.contracts.ts
+  s_58620fba057bad::t_5bee3019161cce 8-27
+  s_58620fba057bad::t_4166e6d972a528 2-7
+  s_58620fba057bad::t_af15416c3de6a8 1,28-49
+packages/cli/src/modules/agents/__tests__/agent-draft.service.test.ts
+  s_58620fba057bad::t_4166e6d972a528 55-57
+  s_58620fba057bad::t_17e2e371f23a41 7,29
+  s_58620fba057bad::t_5f05b1b0fab4f8 1-6,8-28,30-54,58-73,79-137
+  s_58620fba057bad::t_54783a9e34eae5 74-78
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_58620fba057bad::t_af15416c3de6a8 1401
+packages/cli/src/modules/instance-ai/eval/thread-restore.service.ts
+  s_58620fba057bad::t_af15416c3de6a8 315,318,323,381
+  s_58620fba057bad::t_610faffc360637 34,294,384,393,397
+packages/cli/src/modules/agents/agent-draft.service.ts
+  s_58620fba057bad::t_51b77643b5c94a 77
+  s_58620fba057bad::t_5bee3019161cce 1-76,78-88
+packages/cli/src/modules/agents/builder/__tests__/format-preview-context.test.ts
+  s_58620fba057bad::t_138951cd615e90 7-10,12,14-18,20-21,23-24,25-32,34-128,130-175,176-269
+packages/cli/src/modules/agents/builder/format-preview-context.ts
+  s_58620fba057bad::t_138951cd615e90 1-2,9-51,53-87,89-113,115,117-134,136-158,161-238
+packages/cli/src/modules/agents/__tests__/instance-ai-agent-context.adapter.test.ts
+  s_58620fba057bad::t_954d8815cdf36f 1,2,3,10,12,16,31,33,42-43,44,48,49,59,61,65,66
+  s_58620fba057bad::t_205eb1297efb20 1,2,3,10,12,16,31,33,42-43,44,48,49,59,61,65,66
+packages/cli/src/modules/agents/instance-ai-agent-context.adapter.ts
+  s_58620fba057bad::t_954d8815cdf36f 1-2,4,6,8-9,12,15-16,28-29
+  s_58620fba057bad::t_d7c0ef23295e5a 1-2,4,6,8-9,12,15-16,28-29
+packages/cli/src/modules/agents/agent-runtime-instrumentation.ts
+  s_58620fba057bad::t_610faffc360637 6-76
+packages/cli/src/modules/instance-ai/eval/__tests__/agent-execution.service.test.ts
+  s_58620fba057bad::t_4166e6d972a528 45
+  s_58620fba057bad::t_0f1c1e75d4f387 193
+packages/cli/src/modules/agents/__tests__/model-stream-stall-options.test.ts
+  s_58620fba057bad::t_d7c0ef23295e5a 1-2,4-45
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_58620fba057bad::t_d604cc6016da96 7953,7960
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_58620fba057bad::t_451fd19c8cdd8a 649-650,653
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_58620fba057bad::t_aca595935e946b 686
+  s_58620fba057bad::t_4d22957a15f9c6 686
+packages/cli/src/modules/agents/model-stream-stall-options.ts
+  s_58620fba057bad::t_d7c0ef23295e5a 1-36
+packages/cli/src/modules/instance-ai/eval/agent-execution.service.ts
+  s_58620fba057bad::t_323ef95adee07c 194
+docs/generated/postgres-schema/README.md
+  s_71ad2034164515::t_fa53744259dc35 33,39
+docs/generated/sqlite-schema/README.md
+  s_71ad2034164515::t_d439915523030a 33,39
+docs/generated/sqlite-schema/agent_task_definition.md
+  s_d3c0f6f6f7d41c::t_b27fe632d3b6a4 9
+docs/generated/sqlite-schema/agents.md
+  s_71ad2034164515::t_c60d686975f8ee 9
+packages/cli/src/modules/agents/agent-task.service.ts
+  s_d3c0f6f6f7d41c::t_230037dff95241 42
+packages/cli/src/modules/agents/entities/agent.entity.ts
+  s_d3c0f6f6f7d41c::t_a464c9653d3003 4
+packages/cli/src/modules/agents/repositories/agent-task.repository.ts
+  s_71ad2034164515::t_d6c87f8e9b4dd1 4
+packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent.exporter.test.ts
+  s_d3c0f6f6f7d41c::t_15571462695336 271-286
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aad59a59ae4c10792bc469b0dcd8ea83ccaca3d2",
+  "prompts": {},
+  "sessions": {
+    "s_2397c9db9d923f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11062-0f35-7542-b063-84df367d8ec4",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_58620fba057bad": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13f8e-afeb-7511-82e8-d8246a12076c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": null
+    },
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_d3c0f6f6f7d41c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a152e5-4005-7111-8ca3-6a9ab5e71d29",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

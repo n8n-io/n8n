@@ -1,0 +1,24 @@
+packages/cli/src/modules/n8n-packages/entities/credential/credential-importer.ts
+  s_3dfeaa108f1834::t_5a938a531f8327 167-168
+packages/cli/src/credentials/credentials.service.ts
+  s_3dfeaa108f1834::t_e96ef1b6cc81c0 1358-1370
+  s_3dfeaa108f1834::t_1b58088dac786c 1394-1395,1399
+  s_3dfeaa108f1834::t_227aeb6bf5cc17 1306
+  s_3dfeaa108f1834::t_f0aa7a709b0186 1290,1294
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5870d0d9bd4b971a0aeb18e7dd08ca79dad528ab",
+  "prompts": {},
+  "sessions": {
+    "s_3dfeaa108f1834": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "76154e9a-f642-4d08-954b-c9bc5c8372b0",
+        "model": "unknown"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}
