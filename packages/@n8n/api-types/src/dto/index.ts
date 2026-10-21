@@ -1,13 +1,9 @@
 export { GetNodeTypesByIdentifierRequestDto } from './node-types/get-node-types-by-identifier.dto';
 
-<<<<<<< HEAD
-=======
 export { CreateAppDto } from './app/create-app.dto';
 export { UpdateAppDto } from './app/update-app.dto';
 export { ListAppsQueryDto } from './app/list-apps-query.dto';
 
-export { AiAskRequestDto } from './ai/ai-ask-request.dto';
->>>>>>> 1ebe2cf55975b220aa63df91fe8e7f6d9659c94f
 export { AiChatRequestDto } from './ai/ai-chat-request.dto';
 export {
 	AiBuilderChatRequestDto,
