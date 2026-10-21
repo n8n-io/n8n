@@ -1,0 +1,25 @@
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_75cf32e96d61e7::t_d340104b8f79de 14
+packages/cli/src/modules/agents/__tests__/agent-turn-execution.service.test.ts
+  s_75cf32e96d61e7::t_d340104b8f79de 10
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_75cf32e96d61e7::t_d340104b8f79de 6
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_75cf32e96d61e7::t_d340104b8f79de 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5e7d784514019ea4b784bea28288ab3de45abc20",
+  "prompts": {},
+  "sessions": {
+    "s_75cf32e96d61e7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6a44cf67-3e94-4efa-a4ca-7556b707ab3e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
