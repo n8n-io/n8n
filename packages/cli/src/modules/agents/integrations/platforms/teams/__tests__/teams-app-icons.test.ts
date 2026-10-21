@@ -1,4 +1,4 @@
-import type { AgentPersonalisation } from '@n8n/api-types';
+import { DEFAULT_AGENT_PERSONALISATION, type AgentPersonalisation } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { icons as lucide } from '@iconify-json/lucide';
@@ -9,6 +9,7 @@ import { join } from 'node:path';
 
 import { readRgbaPixels, type Rgba } from './png-pixels';
 import { buildTeamsIconSvgs, renderTeamsAppIcons } from '../teams-app-icons';
+import { ACCENT_COLOR } from '../teams-manifest.service';
 
 const workers = vi.hoisted(() => ({ live: 0, mostAtOnce: 0 }));
 
@@ -132,14 +133,35 @@ describe('renderTeamsAppIcons', () => {
 		expect(pixels.some(({ a }) => a === 0)).toBe(true);
 	});
 
-	it('draws the default icon when the agent has no personalisation', async () => {
-		await expect(renderTeamsAppIcons(null)).resolves.toBeDefined();
+	// When this fails, write the color, outline and accentColor of renderTeamsAppIcons(null)
+	// to the assets folder and to ACCENT_COLOR.
+	it('bundles the default agent icon, so a failed render looks like an agent without personalisation', async () => {
+		const icons = await render(null);
+		const bundled = (name: string) => readFileSync(join(__dirname, '..', 'assets', name));
+
+		expect(icons.color.equals(bundled('color.png'))).toBe(true);
+		expect(icons.outline.equals(bundled('outline.png'))).toBe(true);
+		expect(icons.accentColor).toBe(ACCENT_COLOR);
 	});
 
-	it('returns undefined for an icon name Lucide does not have', async () => {
-		await expect(
-			renderTeamsAppIcons(personalisation('not-a-lucide-icon')),
-		).resolves.toBeUndefined();
+	it('draws the default agent icon for an icon name Lucide does not have', async () => {
+		const unknown = await render(personalisation('not-a-lucide-icon'));
+		const fallback = await render(personalisation(DEFAULT_AGENT_PERSONALISATION.icon));
+
+		expect(unknown).toEqual(fallback);
+	});
+
+	it('draws the icon on the default gradient for a stored gradient the schema would reject', async () => {
+		const icons = await render({
+			icon: 'heart',
+			gradient: { ...personalisation('heart').gradient, from: '#X000FF' },
+		});
+		const onDefault = await render({
+			icon: 'heart',
+			gradient: { ...DEFAULT_AGENT_PERSONALISATION.gradient },
+		});
+
+		expect(icons).toEqual(onDefault);
 	});
 
 	it('renders downloads that arrive together one at a time', async () => {
@@ -161,10 +183,6 @@ describe('renderTeamsAppIcons', () => {
 		const missing: string[] = [];
 		for (const name of Object.keys(lucide.icons)) {
 			const svgs = await buildTeamsIconSvgs(name, personalisation(name).gradient);
-			if (!svgs) {
-				missing.push(name);
-				continue;
-			}
 			// One wasm instance serves the whole loop, so each render is freed by hand.
 			const resvg = new Resvg(svgs.outline);
 			const image = resvg.render();
@@ -183,7 +201,7 @@ describe('renderTeamsAppIcons', () => {
 
 	it('reads the same Lucide release the editor picker offers', () => {
 		// The picker reads Lucide from `@iconify/json`, a separately versioned
-		// package. If the two drift, a picked icon falls back to the n8n icons.
+		// package. If the two drift, a picked icon falls back to the default icon.
 		const designSystem = join(__dirname, '../../../../../../../../frontend/@n8n/design-system');
 		const editorSet: { lastModified?: number; icons: Record<string, unknown> } = JSON.parse(
 			readFileSync(
