@@ -94,8 +94,11 @@ describe('ScimTokenService', () => {
 	});
 
 	it('stores no token value, only a hex SHA-256 hash', () => {
-		expect(hashScimToken('token')).toMatch(/^[0-9a-f]{64}$/);
-		expect(hashScimToken('token')).not.toContain('token');
+		// The SHA-256 digest of 'token', from `printf token | shasum -a 256`.
+		expect(hashScimToken('token')).toBe(
+			'3c469e9d6c5875d37a43f353d4f88e61fcf812c66eee3457465a40b0da4153e0',
+		);
+		expect(hashScimToken('token-a')).not.toBe(hashScimToken('token-b'));
 	});
 
 	describe('rotateToken', () => {

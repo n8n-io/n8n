@@ -14,6 +14,7 @@ const MIGRATION_NAME = 'CreateScimTokenTable1792408455181';
 const SCIM_LABEL = 'SCIM Provisioning API Key';
 
 type ScimTokenRow = { tokenHash: string; tokenHint: string; createdById: string | null };
+type ScimTokenTimesRow = { createdAt: Date | string; lastUsedAt: Date | string | null };
 
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
 type ApiKeyRow = { userId: string; apiKey: string; audience: string; label: string };
@@ -66,6 +67,12 @@ describe('CreateScimTokenTable migration', () => {
 	const timestamp = (context: TestMigrationContext, iso: string) =>
 		context.isSqlite ? iso.replace('T', ' ').replace('Z', '') : new Date(iso);
 
+	/** SQLite returns the stored UTC text without a zone. PostgreSQL returns a Date. */
+	const toIso = (value: Date | string | null) => {
+		if (value === null) return null;
+		return (value instanceof Date ? value : new Date(`${value.replace(' ', 'T')}Z`)).toISOString();
+	};
+
 	async function insertUser(
 		context: TestMigrationContext,
 		{ role = 'global:admin', disabled = false }: { role?: string; disabled?: boolean } = {},
@@ -87,15 +94,23 @@ describe('CreateScimTokenTable migration', () => {
 			userId,
 			apiKey,
 			createdAt,
+			lastUsedAt,
 			audience = 'scim-api',
 			label = SCIM_LABEL,
-		}: { userId: string; apiKey: string; createdAt: string; audience?: string; label?: string },
+		}: {
+			userId: string;
+			apiKey: string;
+			createdAt: string;
+			lastUsedAt?: string;
+			audience?: string;
+			label?: string;
+		},
 	) {
 		const { escape, runQuery } = context;
 		const col = (name: string) => escape.columnName(name);
 		await runQuery(
-			`INSERT INTO ${escape.tableName('user_api_keys')} (${col('id')}, ${col('userId')}, ${col('label')}, ${col('apiKey')}, ${col('scopes')}, ${col('audience')}, ${col('createdAt')}, ${col('updatedAt')})
-			 VALUES (:id, :userId, :label, :apiKey, '[]', :audience, :createdAt, :createdAt)`,
+			`INSERT INTO ${escape.tableName('user_api_keys')} (${col('id')}, ${col('userId')}, ${col('label')}, ${col('apiKey')}, ${col('scopes')}, ${col('audience')}, ${col('createdAt')}, ${col('updatedAt')}, ${col('lastUsedAt')})
+			 VALUES (:id, :userId, :label, :apiKey, '[]', :audience, :createdAt, :createdAt, :lastUsedAt)`,
 			{
 				id: generateNanoId(),
 				userId,
@@ -103,6 +118,7 @@ describe('CreateScimTokenTable migration', () => {
 				apiKey,
 				audience,
 				createdAt: timestamp(context, createdAt),
+				lastUsedAt: lastUsedAt ? timestamp(context, lastUsedAt) : null,
 			},
 		);
 	}
@@ -114,6 +130,20 @@ describe('CreateScimTokenTable migration', () => {
 			`SELECT ${col('tokenHash')} AS ${col('tokenHash')}, ${col('tokenHint')} AS ${col('tokenHint')}, ${col('createdById')} AS ${col('createdById')}
 			 FROM ${escape.tableName('scim_token')}`,
 		);
+	}
+
+	/** The times of the token, as ISO strings. */
+	async function getScimTokenTimes(context: TestMigrationContext) {
+		const { escape, runQuery } = context;
+		const col = (name: string) => escape.columnName(name);
+		const rows = await runQuery<ScimTokenTimesRow[]>(
+			`SELECT ${col('createdAt')} AS ${col('createdAt')}, ${col('lastUsedAt')} AS ${col('lastUsedAt')}
+			 FROM ${escape.tableName('scim_token')}`,
+		);
+		return rows.map(({ createdAt, lastUsedAt }) => ({
+			createdAt: toIso(createdAt),
+			lastUsedAt: toIso(lastUsedAt),
+		}));
 	}
 
 	async function getApiKeys(context: TestMigrationContext) {
@@ -141,6 +171,7 @@ describe('CreateScimTokenTable migration', () => {
 				userId: newestAdmin,
 				apiKey: 'newest-admin-token',
 				createdAt: '2026-02-01T00:00:00.000Z',
+				lastUsedAt: '2026-02-15T10:30:00.000Z',
 			});
 			// The previous check rejected these two keys, so neither can win.
 			await insertApiKey(context, {
@@ -174,6 +205,10 @@ describe('CreateScimTokenTable migration', () => {
 					tokenHint: 'oken',
 					createdById: newestAdmin,
 				},
+			]);
+			// The status reads these times, so a key in use stays `connected`.
+			expect(await getScimTokenTimes(context)).toEqual([
+				{ createdAt: '2026-02-01T00:00:00.000Z', lastUsedAt: '2026-02-15T10:30:00.000Z' },
 			]);
 			expect(await getApiKeys(context)).toEqual([
 				{ userId: olderAdmin, apiKey: 'public-api-token', audience: 'public-api', label: 'My key' },
@@ -241,6 +276,9 @@ describe('CreateScimTokenTable migration', () => {
 			);
 			expect(await getScimTokens(context)).toEqual([
 				{ tokenHash: sha256('admin-token'), tokenHint: 'oken', createdById: null },
+			]);
+			expect(await getScimTokenTimes(context)).toEqual([
+				{ createdAt: '2026-01-01T00:00:00.000Z', lastUsedAt: null },
 			]);
 		});
 	});
