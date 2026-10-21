@@ -33,6 +33,7 @@ describe('Perplexity API credential validation with Agent API access', () => {
 	const credentials: ICredentialsDecrypted = {
 		id: 'perplexity-test-credential',
 		name: 'Perplexity test credential',
+		type: credentialType.name,
 		data: { apiKey: 'test-api-key' },
 	};
 	const agentResponse = {
@@ -99,7 +100,7 @@ describe('Perplexity API credential validation with Agent API access', () => {
 			headers: {
 				...options.headers,
 				...(workflow.expression.getParameterValue(
-					credentialType.authenticate.properties.headers,
+					credentialType.authenticate.properties.headers as INodeParameters,
 					null,
 					0,
 					0,
