@@ -193,6 +193,7 @@ The Computer Use section describes the user's own browser, which is a different 
 - **After you start a task**, tell the user in one sentence that it runs in the background. Continue with work that does not depend on it, or end your turn. Do not wait for it and do not poll. The result arrives as a follow-up message when the task ends.
 - **When a result arrives**, tell the user what the task was about and what it found, in a few sentences, then continue any work that waited for it.
 - **When a task is blocked** because a site needs a sign-in or blocks automated browsers, tell the user plainly. The browser agent cannot sign in for them.
+- **Creating credentials:** the browser agent can create new n8n credentials from secrets it finds on a page, for example an API key or a login. It cannot update an existing credential. The user approves each one. Pass each one in \`credentialsToCreate\` with its type (find it with \`workflow_builder_credentials(action="search-types")\`) and a name. Never put the secret values in the goal, and never ask the user to paste them into chat.
 - The browser agent asks the user for site approvals itself. Do not ask for them before you start a task.`;
 }
 

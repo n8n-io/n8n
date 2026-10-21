@@ -3008,6 +3008,7 @@ export class InstanceAiService {
 						permissionMode: context.permissions?.fetchUrl,
 						createCredentialPermissionMode: context.permissions?.createCredential,
 					},
+					getCredentialFields: context.credentialService.getCredentialFields,
 				});
 		}
 

@@ -30,6 +30,27 @@ export const cloudBrowserTaskInputSchema = z.object({
 		.url()
 		.optional()
 		.describe('The page to open first. Leave it out when you do not know the URL.'),
+	credentialsToCreate: z
+		.array(
+			z.object({
+				type: z
+					.string()
+					.trim()
+					.min(1)
+					.describe(
+						'The n8n credential type, for example "httpBasicAuth". Find it with workflow_builder_credentials(action="search-types").',
+					),
+				name: z
+					.string()
+					.trim()
+					.min(1)
+					.describe("The credential's name in the user's credentials list."),
+			}),
+		)
+		.optional()
+		.describe(
+			'New n8n credentials the browser agent creates from values it finds on the pages. Never put the values in the goal.',
+		),
 });
 export type CloudBrowserTaskInput = z.infer<typeof cloudBrowserTaskInputSchema>;
 

@@ -25,7 +25,12 @@ import type { ConfirmationData } from '../runtime/run-state-registry';
 import type { BuilderUsageItem } from '../stream/usage-accumulator';
 import { createToolRegistry, toolRegistryValues } from '../tool-registry';
 import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
-import type { InstanceAiTraceContext, LocalMcpServer, ModelConfig } from '../types';
+import type {
+	CredentialFieldInfo,
+	InstanceAiTraceContext,
+	LocalMcpServer,
+	ModelConfig,
+} from '../types';
 
 const REPORT_RESULT_TOOL_ID = 'report_result';
 
@@ -72,6 +77,13 @@ const CLOUD_BROWSER_AGENT_PROMPT = `You are a browser agent for n8n Assistant. Y
 ${UNTRUSTED_CONTENT_DOCTRINE}
 - Never type passwords, codes or other secrets. You cannot sign in for the user.
 
+## Creating credentials
+Only when the task message lists credentials to create:
+- Capture each secret from the page with browser_capture_secret. Use one credentialsKey for each credential, and the field names from the task message.
+- Then call browser_create_credential with the type and name from the task message. Put the captured fields in resolveData, and values that are not secret in data.
+- The user approves each new credential. If they deny it, report denied.
+- Never write the secret values in a message or in your summary. Say which credentials you created.
+
 ## Reporting
 Call ${REPORT_RESULT_TOOL_ID} once, as your last action, with one of these outcomes:
 - succeeded: the goal is done.
@@ -81,18 +93,36 @@ Call ${REPORT_RESULT_TOOL_ID} once, as your last action, with one of these outco
 The summary says what you did, the data the goal asks for, and what is not done. Never put secrets in it.`;
 
 /** The agent's first message. */
-function buildTaskMessage(brief: CloudBrowserAgentBrief): string {
+export function buildTaskMessage(brief: CloudBrowserAgentBrief): string {
 	const lines = [`Goal: ${brief.goal}`];
 	if (brief.startUrl) lines.push(`Start URL: ${brief.startUrl}`);
+	if (brief.credentialsToCreate?.length) {
+		lines.push('', 'Credentials to create:');
+		for (const credential of brief.credentialsToCreate) {
+			const fields = credential.fields.map(
+				(field) => `${field.name} (${field.displayName}${field.required ? ', required' : ''})`,
+			);
+			lines.push(`- Name: "${credential.name}", type: ${credential.type}`);
+			lines.push(`  Fields: ${fields.join(', ')}`);
+		}
+	}
 	return lines.join('\n');
 }
 
 // ── Runner ──────────────────────────────────────────────────────────────────
 
+/** A new credential the agent creates, with the fields of its type. */
+export interface CloudBrowserCredentialToCreate {
+	type: string;
+	name: string;
+	fields: CredentialFieldInfo[];
+}
+
 /** What the orchestrator gives the agent. */
 export interface CloudBrowserAgentBrief {
 	goal: string;
 	startUrl?: string;
+	credentialsToCreate?: CloudBrowserCredentialToCreate[];
 }
 
 export interface RunCloudBrowserAgentOptions {

@@ -6,10 +6,13 @@ import {
 	orchestratorAgentId,
 	runCloudBrowserAgent,
 	type BackgroundTaskManager,
+	type CloudBrowserAgentBrief,
+	type CloudBrowserCredentialToCreate,
 	type CloudBrowserTaskInput,
 	type CloudBrowserTaskRecord,
 	type CloudBrowserTaskStartResult,
 	type ConfirmationData,
+	type InstanceAiCredentialService,
 	type InstanceAiEventBus,
 	type InstanceAiTraceContext,
 	type Logger,
@@ -69,6 +72,11 @@ export interface CloudBrowserRunOptions {
 	tracing?: InstanceAiTraceContext;
 	/** The run's site approvals and permissions. */
 	domainGate: BrowserDomainGate;
+	/**
+	 * The run's credential type lookup, for the credentials the task creates. Empty for an
+	 * unknown type. Absent when the host cannot look up credential types.
+	 */
+	getCredentialFields?: InstanceAiCredentialService['getCredentialFields'];
 }
 
 /**
@@ -89,6 +97,32 @@ export class InstanceAiCloudBrowserTaskService {
 	): Promise<CloudBrowserTaskStartResult> {
 		const { eventBus, backgroundTaskManager } = this.options;
 		const { user, runId, threadId } = run;
+
+		const credentialsToCreate: CloudBrowserCredentialToCreate[] = [];
+		if (input.credentialsToCreate?.length) {
+			const { getCredentialFields } = run;
+			if (!getCredentialFields) {
+				return {
+					status: 'rejected',
+					message: 'Creating credentials from the cloud browser is not available.',
+				};
+			}
+			for (const { type, name } of input.credentialsToCreate) {
+				const fields = await getCredentialFields(type);
+				if (fields.length === 0) {
+					return {
+						status: 'rejected',
+						message: `There is no credential type "${type}". Find the type with workflow_builder_credentials(action="search-types").`,
+					};
+				}
+				credentialsToCreate.push({ type, name, fields });
+			}
+		}
+		const brief: CloudBrowserAgentBrief = {
+			goal: input.goal,
+			startUrl: input.startUrl,
+			...(credentialsToCreate.length > 0 ? { credentialsToCreate } : {}),
+		};
 
 		const taskId = `task_${nanoid()}`;
 		const agentId = `agent_${nanoid()}`;
@@ -112,7 +146,7 @@ export class InstanceAiCloudBrowserTaskService {
 				role: INSTANCE_AI_CLOUD_BROWSER_AGENT_ROLE,
 				agentId,
 				messageGroupId: run.messageGroupId,
-				run: async (signal) => await this.runTask(signal, { taskId, agentId }, input, run),
+				run: async (signal) => await this.runTask(signal, { taskId, agentId }, brief, run),
 				// The card in the sidebar closes with the task.
 				onCompleted: (task) => {
 					eventBus.publish(threadId, {
@@ -181,7 +215,7 @@ export class InstanceAiCloudBrowserTaskService {
 	private async runTask(
 		signal: AbortSignal,
 		task: { taskId: string; agentId: string },
-		input: CloudBrowserTaskInput,
+		brief: CloudBrowserAgentBrief,
 		run: CloudBrowserRunOptions,
 	): Promise<{ text: string; outcome: { outcome: string } }> {
 		const { cloudBrowserService, eventBus, backgroundTaskManager, logger } = this.options;
@@ -199,7 +233,7 @@ export class InstanceAiCloudBrowserTaskService {
 			try {
 				const result = await runCloudBrowserAgent({
 					agentId,
-					brief: { goal: input.goal, startUrl: input.startUrl },
+					brief,
 					mcpServer,
 					modelId: run.modelId,
 					threadId,

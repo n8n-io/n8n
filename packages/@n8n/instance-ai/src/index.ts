@@ -557,6 +557,7 @@ export const runCloudBrowserAgent: typeof CloudBrowserAgentMod.runCloudBrowserAg
 );
 export type {
 	CloudBrowserAgentBrief,
+	CloudBrowserCredentialToCreate,
 	CloudBrowserAgentOutcome,
 	CloudBrowserAgentResult,
 	RunCloudBrowserAgentOptions,
