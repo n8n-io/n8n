@@ -98,7 +98,12 @@ function makeService() {
 	const saveCompletion = new AgentSaveCompletionService(
 		eventService,
 		broadcaster,
-		new AgentModificationTelemetryService(telemetry),
+		new AgentModificationTelemetryService(
+			telemetry,
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			eventService,
+			// EOF Experiment cleanup
+		),
 	);
 	const setupCompletion = mock<AgentSetupCompletionService>();
 	setupCompletion.recordIfSetupComplete.mockResolvedValue(null);
@@ -221,6 +226,7 @@ describe('AgentsService', () => {
 					event_version: version,
 				}),
 			);
+			expect(telemetry.track.mock.calls[0]?.[1]).not.toHaveProperty('changed_settings');
 		},
 	);
 

@@ -19,20 +19,18 @@ export class PromotionsModule implements ModuleInterface {
 
 	async entities() {
 		const { PromotionProvider } = await import('./database/entities/promotion-provider.entity.js');
-		const { PromotionConnection } = await import(
-			'./database/entities/promotion-connection.entity.js'
+		const { PromotionEnvironment } = await import(
+			'./database/entities/promotion-environment.entity.js'
 		);
-		const { PromotionConnectionProject } = await import(
-			'./database/entities/promotion-connection-project.entity.js'
+		const { PromotionEnvironmentProject } = await import(
+			'./database/entities/promotion-environment-project.entity.js'
 		);
-		const { PromotionConfig } = await import('./database/entities/promotion-config.entity.js');
 		const { PromotionRun } = await import('./database/entities/promotion-run.entity.js');
 		const { PromotionReview } = await import('./database/entities/promotion-review.entity.js');
 		return [
 			PromotionProvider,
-			PromotionConnection,
-			PromotionConnectionProject,
-			PromotionConfig,
+			PromotionEnvironment,
+			PromotionEnvironmentProject,
 			PromotionRun,
 			PromotionReview,
 		];

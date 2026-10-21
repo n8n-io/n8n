@@ -8,7 +8,7 @@ import { PromotionReview } from '../entities/promotion-review.entity';
 /** The caller supplies the id, so the review link can exist before the row does. */
 export type NewPromotionReview = Pick<
 	PromotionReview,
-	'id' | 'connectionId' | 'type' | 'remoteReviewId' | 'createdById'
+	'id' | 'environmentId' | 'type' | 'remoteReviewId' | 'createdById'
 >;
 
 /** Still on the host. The open tab shows both. */
@@ -17,17 +17,17 @@ const TERMINAL_STATES: PromotionReviewState[] = ['merged', 'closed'];
 
 // Do not load runs for inbox rows. The summary does not use them.
 const LIST_RELATIONS = {
-	connection: true,
+	environment: true,
 	createdBy: true,
 	approvedBy: true,
 } as const;
 
 /** The newest run carries the branch and the commit. Loaded only for one review. */
 const DETAIL_RELATIONS = {
-	connection: true,
+	environment: true,
 	createdBy: true,
 	approvedBy: true,
-	runs: { config: { connection: true }, createdBy: true },
+	runs: { createdBy: true },
 } as const;
 
 @Service()

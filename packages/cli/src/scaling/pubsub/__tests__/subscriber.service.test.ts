@@ -146,6 +146,54 @@ describe('Subscriber', () => {
 			await vi.waitFor(() => expect(client.subscribe).toHaveBeenCalledTimes(2));
 		});
 
+		it('should emit pubsub-reconnected once after a successful resubscribe', async () => {
+			const pubsubEventBus = mock<PubSubEventBus>();
+			const subscriber = new Subscriber(
+				mockLogger(),
+				mock(),
+				pubsubEventBus,
+				redisClientService,
+				executionsConfig,
+				globalConfig,
+			);
+			await subscriber.subscribe(subscriber.getCommandChannel());
+			client.subscribe.mockClear();
+
+			getHandler('close')();
+			getHandler('ready')();
+			await vi.waitFor(() => expect(pubsubEventBus.emit).toHaveBeenCalledTimes(1));
+
+			expect(pubsubEventBus.emit).toHaveBeenCalledWith('pubsub-reconnected');
+		});
+
+		it('should not emit pubsub-reconnected when resubscribing fails', async () => {
+			const pubsubEventBus = mock<PubSubEventBus>();
+			const scopedLogger = mock<Logger>();
+			const logger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
+			const subscriber = new Subscriber(
+				logger,
+				mock(),
+				pubsubEventBus,
+				redisClientService,
+				executionsConfig,
+				globalConfig,
+			);
+			await subscriber.subscribe(subscriber.getCommandChannel());
+			client.subscribe.mockClear();
+			client.subscribe.mockRejectedValueOnce(new Error('write ECONNRESET'));
+
+			getHandler('close')();
+			getHandler('ready')();
+			await vi.waitFor(() =>
+				expect(scopedLogger.error).toHaveBeenCalledWith(
+					'Failed to resubscribe to pubsub channels after Redis reconnect',
+					expect.any(Object),
+				),
+			);
+
+			expect(pubsubEventBus.emit).not.toHaveBeenCalled();
+		});
+
 		it('should not resubscribe on the initial ready', async () => {
 			const subscriber = new Subscriber(
 				mockLogger(),

@@ -58,6 +58,7 @@ describe('eligibleModules', () => {
 	});
 
 	it.each([
+		'skills',
 		'instance-ai',
 		'knowledge',
 		'agents',
@@ -69,6 +70,7 @@ describe('eligibleModules', () => {
 	});
 
 	it.each([
+		'skills',
 		'instance-ai',
 		'knowledge',
 		'agents',
@@ -95,6 +97,9 @@ describe('eligibleModules', () => {
 			'data-table',
 			'oauth-server',
 			'mcp',
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			'mcp-discovery',
+			// EOF Experiment cleanup
 			'provisioning',
 			'breaking-changes',
 			'source-control',
@@ -119,6 +124,7 @@ describe('eligibleModules', () => {
 			'mcp-registry',
 			'workflow-reviews',
 			'inbox',
+			'skills',
 			'instance-ai',
 			'knowledge',
 			'agents',
@@ -139,6 +145,9 @@ describe('eligibleModules', () => {
 			'data-table',
 			'oauth-server',
 			'mcp',
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			'mcp-discovery',
+			// EOF Experiment cleanup
 			'provisioning',
 			'breaking-changes',
 			'source-control',
@@ -163,6 +172,7 @@ describe('eligibleModules', () => {
 			'mcp-registry',
 			'workflow-reviews',
 			'inbox',
+			'skills',
 			'instance-ai',
 			'knowledge',
 			'agents',
