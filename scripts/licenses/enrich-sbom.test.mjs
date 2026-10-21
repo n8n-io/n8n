@@ -160,10 +160,8 @@ describe('nested package SBOMs', () => {
 		const root = await mkdtemp(path.join(os.tmpdir(), 'nested-sboms-'));
 		try {
 			const scoped = path.join(root, '@napi-rs', 'canvas-linux-x64-musl');
-			const image = path.join(root, '@napi-rs', 'image-linux-x64-musl');
 			const nested = path.join(root, 'parent', 'node_modules', 'child');
 			await mkdir(scoped, { recursive: true });
-			await mkdir(image, { recursive: true });
 			await mkdir(nested, { recursive: true });
 			await writeFile(
 				path.join(scoped, 'sbom.cdx.json'),
@@ -178,22 +176,6 @@ describe('nested package SBOMs', () => {
 				}),
 			);
 			await writeFile(
-				path.join(scoped, 'package.json'),
-				JSON.stringify({
-					name: '@napi-rs/canvas-linux-x64-musl',
-					version: '1.0.11',
-					license: 'MIT',
-				}),
-			);
-			await writeFile(
-				path.join(image, 'package.json'),
-				JSON.stringify({
-					name: '@napi-rs/image-linux-x64-musl',
-					version: '1.15.0',
-					license: 'MIT',
-				}),
-			);
-			await writeFile(
 				path.join(nested, 'sbom.cdx.json'),
 				JSON.stringify({ components: [{ name: 'nested-child' }] }),
 			);
@@ -202,14 +184,8 @@ describe('nested package SBOMs', () => {
 
 			assert.deepEqual(found.map(({ source }) => source).sort(), [
 				'@napi-rs/canvas-linux-x64-musl/sbom.cdx.json',
-				'@napi-rs/image-linux-x64-musl/package.json',
 				'parent/node_modules/child/sbom.cdx.json',
 			]);
-			assert.equal(
-				found.find(({ source }) => source.endsWith('image-linux-x64-musl/package.json')).sbom
-					.metadata.component.purl,
-				'pkg:npm/%40napi-rs/image-linux-x64-musl@1.15.0',
-			);
 		} finally {
 			await rm(root, { recursive: true, force: true });
 		}

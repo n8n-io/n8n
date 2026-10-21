@@ -12,8 +12,6 @@ import { $, echo, fs, chalk } from 'zx';
 import path from 'path';
 import os from 'os';
 
-import { copiedNativeModulesConfig } from './copied-native-modules.mjs';
-
 // Check if running in a CI environment
 const isCI = process.env.CI === 'true';
 
@@ -69,67 +67,6 @@ function printHeader(title) {
 
 function printDivider() {
 	echo(chalk.gray('-----------------------------------------------'));
-}
-
-async function installNativeModules(compiledAppDir, nativeConfig) {
-	const nativeBindingsDir = await fs.mkdtemp(path.join(os.tmpdir(), 'n8n-native-bindings-'));
-	try {
-		const dependencies = {};
-		const moduleDirs = new Map();
-		for (const nativeModule of nativeConfig.modules) {
-			const moduleCandidates = [
-				path.join(compiledAppDir, 'node_modules', nativeModule.packageName),
-				path.join(
-					compiledAppDir,
-					'node_modules',
-					'.pnpm',
-					'node_modules',
-					nativeModule.packageName,
-				),
-			];
-			const modulePath = (
-				await Promise.all(
-					moduleCandidates.map(async (candidate) =>
-						(await fs.pathExists(candidate)) ? candidate : null,
-					),
-				)
-			).find(Boolean);
-			if (!modulePath) {
-				throw new Error(`Could not resolve ${nativeModule.packageName} in the deployed closure`);
-			}
-			const moduleDir = await fs.realpath(modulePath);
-			moduleDirs.set(nativeModule.packageName, moduleDir);
-			const manifest = await fs.readJson(path.join(moduleDir, 'package.json'));
-			for (const binding of nativeModule.bindings) {
-				const version = manifest.optionalDependencies?.[binding];
-				if (!version) {
-					throw new Error(
-						`${binding} is not an optional dependency of ${nativeModule.packageName}`,
-					);
-				}
-				dependencies[binding] = version;
-			}
-		}
-
-		await fs.writeJson(path.join(nativeBindingsDir, 'package.json'), {
-			private: true,
-			dependencies,
-		});
-		const cpu = nativeConfig.target.cpu.join(',');
-		await $`pnpm --dir ${nativeBindingsDir} --ignore-workspace install --prod --frozen-lockfile=false --os=${nativeConfig.target.os} --cpu=${cpu} --libc=${nativeConfig.target.libc} --ignore-scripts`;
-
-		for (const nativeModule of nativeConfig.modules) {
-			const moduleDir = moduleDirs.get(nativeModule.packageName);
-			if (!moduleDir) throw new Error(`Could not resolve ${nativeModule.packageName}`);
-
-			for (const binding of nativeModule.bindings) {
-				const source = await fs.realpath(path.join(nativeBindingsDir, 'node_modules', binding));
-				await fs.copy(source, path.join(path.dirname(moduleDir), path.basename(binding)));
-			}
-		}
-	} finally {
-		await fs.remove(nativeBindingsDir);
-	}
 }
 
 // #endregion ===== Helper Functions =====
@@ -301,10 +238,6 @@ try {
 	await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=n8n ${deployFlags} deploy --no-optional ./compiled`;
 	await verifyNoPnpmIntermediateLinks(config.compiledAppDir);
 	await removePnpmDeployFiles(config.compiledAppDir);
-
-	// The app deploy excludes optional dependencies, but these packages contain the
-	// native bindings that Edit Image loads at runtime.
-	await installNativeModules(config.compiledAppDir, copiedNativeModulesConfig);
 
 	// Strip test/example/benchmark dirs shipped inside production deps that lack a
 	// `files` field in their package.json. These are valid runtime deps but their
@@ -479,12 +412,6 @@ try {
 
 	echo(chalk.green('✅ Strips verified'));
 
-	const copiedNativeAssetGlobs = copiedNativeModulesConfig.modules.flatMap(
-		({ packageName, bindings }) =>
-			bindings.map(
-				(binding) => `*${packageName.replace('/', '+')}@*/node_modules/${binding}/*.node`,
-			),
-	);
 	const runtimeAssetGlobs = [
 		'*/@n8n/instance-ai/skills/*',
 		'*/@n8n/instance-ai/knowledge-base/*',
@@ -495,7 +422,6 @@ try {
 		'*agent-browser/bin/*linux-musl*',
 		// The launcher that package.json's `bin` resolves to.
 		'*agent-browser/bin/agent-browser.js',
-		...copiedNativeAssetGlobs,
 	];
 
 	echo(chalk.yellow('INFO: Verifying Runtime assets'));

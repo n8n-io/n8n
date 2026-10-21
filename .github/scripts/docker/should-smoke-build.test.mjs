@@ -82,7 +82,7 @@ describe('nativePinsChanged', () => {
 		assert.equal(changed, true);
 	});
 
-	it('catches a copied native dependency bump', () => {
+	it('catches an Edit Image native dependency bump', () => {
 		const { changed } = nativePinsChanged(workspace(), workspace({ canvas: '1.0.12' }));
 		assert.equal(changed, true);
 	});

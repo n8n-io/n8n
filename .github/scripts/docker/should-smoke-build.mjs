@@ -13,10 +13,16 @@ import { execFileSync } from 'node:child_process';
 import { appendFileSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
-import { copiedNativePackageNames } from '../../../scripts/copied-native-modules.mjs';
-
 const WORKSPACE_FILE = 'pnpm-workspace.yaml';
 const ROOT_MANIFEST = 'package.json';
+const EDIT_IMAGE_NATIVE_PACKAGES = new Set([
+	'@napi-rs/canvas',
+	'@napi-rs/canvas-linux-arm64-musl',
+	'@napi-rs/canvas-linux-x64-musl',
+	'@napi-rs/image',
+	'@napi-rs/image-linux-arm64-musl',
+	'@napi-rs/image-linux-x64-musl',
+]);
 
 const BUMP_ONLY = [/^pnpm-workspace\.yaml$/, /^pnpm-lock\.yaml$/, /(^|\/)package\.json$/];
 
@@ -56,7 +62,7 @@ function pinsFor(text, deps) {
 export function nativePinsChanged(baseText, headText) {
 	const baseDeps = buildableDeps(baseText);
 	const headDeps = buildableDeps(headText);
-	const union = new Set([...baseDeps, ...headDeps, ...copiedNativePackageNames]);
+	const union = new Set([...baseDeps, ...headDeps, ...EDIT_IMAGE_NATIVE_PACKAGES]);
 
 	if (
 		baseDeps.size !== headDeps.size ||
