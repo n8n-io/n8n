@@ -87,6 +87,11 @@ function toRecord(rows: Map<string, ResolvedSkillRow>): Record<string, AgentSkil
 	return Object.fromEntries([...rows].map(([refId, row]) => [refId, toAgentSkill(row)]));
 }
 
+/** How a refusal counts the agents in projects the user may not read. */
+function agentsInOtherProjects(count: number): string {
+	return `${count} ${count === 1 ? 'agent' : 'agents'} in other projects`;
+}
+
 export type SkillMoveOptions = {
 	/** The name the skill has after this request, when the same request renames it. */
 	nameAfterMove?: string;
@@ -418,9 +423,7 @@ export class SkillService {
 				hidden++;
 			}
 		}
-		if (hidden > 0) {
-			named.push(`${hidden} ${hidden === 1 ? 'agent' : 'agents'} in other projects`);
-		}
+		if (hidden > 0) named.push(agentsInOtherProjects(hidden));
 		const one = losing.length === 1;
 		throw new ConflictError(
 			`${named.join(', ')} would lose access to this skill. Choose a scope that includes ${
@@ -555,11 +558,7 @@ export class SkillService {
 							`${pin.agentName} (${pin.version === null ? 'older published version' : `published v${pin.version}`})`,
 					),
 				];
-				if (usage.hiddenAgents > 0) {
-					users.push(
-						`${usage.hiddenAgents} ${usage.hiddenAgents === 1 ? 'agent' : 'agents'} in other projects`,
-					);
-				}
+				if (usage.hiddenAgents > 0) users.push(agentsInOtherProjects(usage.hiddenAgents));
 				throw new ConflictError(
 					`Skill "${name}" is used by ${[...new Set(users)].join(', ')} and cannot be deleted.`,
 				);

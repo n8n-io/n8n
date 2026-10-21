@@ -324,16 +324,36 @@ const availabilityOptions = computed(() => [
 			]
 		: []),
 ]);
+/** Where a changed scope or "available to" field moves the skill, with its label and users. */
+const pendingMove = computed<
+	{ target: SkillMoveTarget; destination: string; usage: SkillUsage } | undefined
+>(() => {
+	if (showScope.value) {
+		if (!canChangeScope.value || scope.value === props.data.initialScope) return undefined;
+		const option = props.data.scopeOptions?.find(({ value }) => value === scope.value);
+		const usage = props.data.usedBy;
+		return option?.target && usage
+			? { target: option.target, destination: option.label, usage }
+			: undefined;
+	}
+	const agentId = props.data.agentId;
+	const usage = skillAccess.value?.usedBy;
+	if (!showAvailabilitySelect.value || !isEditing.value || !agentId || !usage) return undefined;
+	if (availableTo.value === savedTarget.value) return undefined;
+	const target: SkillMoveTarget =
+		availableTo.value === 'project'
+			? { projectId: props.data.projectId ?? null, agentId: null }
+			: { projectId: null, agentId: availableTo.value === 'agent' ? agentId : null };
+	const option = availabilityOptions.value.find(({ value }) => value === availableTo.value);
+	return { target, destination: option?.label ?? '', usage };
+});
 /**
  * The warning for a move that takes the skill from agents that use it, or an empty string.
  * The backend refuses such a move, so Save stays off while the warning shows.
  */
-function accessLossWarning(
-	target: SkillMoveTarget | undefined,
-	destination: string,
-	usage: SkillUsage | undefined,
-): string {
-	if (!target || !usage) return '';
+const accessWarning = computed(() => {
+	if (!pendingMove.value) return '';
+	const { target, destination, usage } = pendingMove.value;
 	const { names, hidden } = agentsLosingSkill(usage, target, props.data.agentId);
 	const parts: string[] = [];
 	if (names.length > 0) {
@@ -358,31 +378,7 @@ function accessLossWarning(
 		);
 	}
 	return parts.join(' ');
-}
-const scopeAccessWarning = computed(() => {
-	if (!canChangeScope.value || scope.value === props.data.initialScope) return '';
-	const option = props.data.scopeOptions?.find(({ value }) => value === scope.value);
-	return accessLossWarning(option?.target, option?.label ?? '', props.data.usedBy);
 });
-const availabilityAccessWarning = computed(() => {
-	const agentId = props.data.agentId;
-	if (!showAvailabilitySelect.value || !isEditing.value || !agentId) return '';
-	if (availableTo.value === savedTarget.value) return '';
-	const targets: Record<AgentSkillAvailability, SkillMoveTarget> = {
-		project: { projectId: props.data.projectId ?? null, agentId: null },
-		agent: { projectId: null, agentId },
-		instance: { projectId: null, agentId: null },
-	};
-	const option = availabilityOptions.value.find(({ value }) => value === availableTo.value);
-	return accessLossWarning(
-		targets[availableTo.value],
-		option?.label ?? '',
-		skillAccess.value?.usedBy,
-	);
-});
-const accessWarning = computed(() =>
-	showScope.value ? scopeAccessWarning.value : availabilityAccessWarning.value,
-);
 const removeLabel = computed(() =>
 	props.data.hubSkillsEnabled
 		? i18n.baseText('agents.builder.skills.detach')
@@ -880,9 +876,10 @@ function onRemove() {
 						@update:skill="onSkillUpdate"
 						@update:valid="onValidUpdate"
 					>
-						<template v-if="showScope" #fields-start>
+						<template v-if="showScope || showAvailabilitySelect" #fields-start>
 							<div :class="$style.scopeField">
 								<N8nInputLabel
+									v-if="showScope"
 									:label="i18n.baseText('settings.context.skills.modal.scope.label')"
 									:tooltip-text="i18n.baseText('settings.context.skills.modal.scope.tooltip')"
 									size="small"
@@ -920,19 +917,8 @@ function onRemove() {
 										</div>
 									</N8nTooltip>
 								</N8nInputLabel>
-								<N8nCallout
-									v-if="scopeAccessWarning"
-									theme="warning"
-									slim
-									data-testid="agent-skill-access-warning"
-								>
-									{{ scopeAccessWarning }}
-								</N8nCallout>
-							</div>
-						</template>
-						<template v-else-if="showAvailabilitySelect" #fields-start>
-							<div :class="$style.scopeField">
 								<N8nInputLabel
+									v-else
 									:label="i18n.baseText('agents.builder.skills.availableTo.label')"
 									:tooltip-text="i18n.baseText('agents.builder.skills.availableTo.tooltip')"
 									show-tooltip
@@ -964,12 +950,12 @@ function onRemove() {
 									</N8nSelect>
 								</N8nInputLabel>
 								<N8nCallout
-									v-if="availabilityAccessWarning"
+									v-if="accessWarning"
 									theme="warning"
 									slim
 									data-testid="agent-skill-access-warning"
 								>
-									{{ availabilityAccessWarning }}
+									{{ accessWarning }}
 								</N8nCallout>
 							</div>
 						</template>

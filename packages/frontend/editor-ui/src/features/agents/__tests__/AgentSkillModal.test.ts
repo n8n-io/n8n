@@ -1110,7 +1110,11 @@ describe('AgentSkillModal', () => {
 				instructions: 'Be kind',
 			};
 
-			async function renderEdit(detail: SkillDetail, onConfirm = vi.fn()) {
+			async function renderEdit(
+				detail: SkillDetail,
+				onConfirm = vi.fn(),
+				extra: Pick<AgentSkillModalData, 'canCreateInstanceSkills'> = {},
+			) {
 				getHubSkill.mockResolvedValue(detail);
 				const result = renderModal({
 					hubSkillsEnabled: true,
@@ -1118,6 +1122,7 @@ describe('AgentSkillModal', () => {
 					skill: tone,
 					onConfirm,
 					onRemove: vi.fn(),
+					...extra,
 				});
 				await result.findByTestId('agent-skill-availability-select');
 				return result;
@@ -1226,23 +1231,18 @@ describe('AgentSkillModal', () => {
 
 			it('lets the user widen a skill that other agents use to the instance', async () => {
 				const onConfirm = vi.fn();
-				getHubSkill.mockResolvedValue({
-					...makeDetail({ id: 'tone', name: 'Support tone', scope: 'project' }),
-					usedBy: {
-						drafts: [{ agentId: 'a2', agentName: 'Other', projectId: 'p1' }],
-						pins: [],
-						hiddenAgents: 1,
+				const result = await renderEdit(
+					{
+						...makeDetail({ id: 'tone', name: 'Support tone', scope: 'project' }),
+						usedBy: {
+							drafts: [{ agentId: 'a2', agentName: 'Other', projectId: 'p1' }],
+							pins: [],
+							hiddenAgents: 1,
+						},
 					},
-				});
-				const result = renderModal({
-					hubSkillsEnabled: true,
-					canCreateInstanceSkills: true,
-					skillId: 'tone',
-					skill: tone,
 					onConfirm,
-					onRemove: vi.fn(),
-				});
-				await result.findByTestId('agent-skill-availability-select');
+					{ canCreateInstanceSkills: true },
+				);
 
 				await pickTarget(result, 'agents.builder.skills.availableTo.instance');
 
