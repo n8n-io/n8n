@@ -12,7 +12,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * MCP tool permissions are set for each connection. New connections use the built-in defaults.
  * Connections keep their own saved permissions.
  */
-export class RemoveMcpToolPermissionSettings1792399724132 implements IrreversibleMigration {
+export class RemoveMcpToolPermissionSettings1792590447446 implements IrreversibleMigration {
 	async up({ escape, logger, migrationName, parseJson, runQuery }: MigrationContext) {
 		const table = escape.tableName('settings');
 		const keyColumn = escape.columnName('key');

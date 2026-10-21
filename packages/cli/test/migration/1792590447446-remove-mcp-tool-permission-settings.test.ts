@@ -9,7 +9,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { jsonParse } from 'n8n-workflow';
 
-const MIGRATION_NAME = 'RemoveMcpToolPermissionSettings1792399724132';
+const MIGRATION_NAME = 'RemoveMcpToolPermissionSettings1792590447446';
 const SETTINGS_KEY = 'instanceAi.settings';
 
 describe('RemoveMcpToolPermissionSettings migration', () => {
