@@ -391,8 +391,9 @@ export class OauthService {
 	protected async getDecryptedDataForAuthUri(
 		credential: ICredentialsDb,
 		additionalData: IWorkflowExecuteAdditionalData,
+		managedVersion?: number,
 	) {
-		return await this.getDecryptedData(credential, additionalData, false);
+		return await this.getDecryptedData(credential, additionalData, false, managedVersion);
 	}
 
 	/**
@@ -409,7 +410,21 @@ export class OauthService {
 		credential: ICredentialsDb,
 		additionalData: IWorkflowExecuteAdditionalData,
 		raw: boolean,
+		managedVersion?: number,
 	) {
+		if (managedVersion !== undefined) {
+			return await this.credentialsHelper.getDecrypted(
+				additionalData,
+				credential,
+				credential.type,
+				'internal',
+				undefined,
+				raw,
+				undefined,
+				{ managedVersion },
+			);
+		}
+
 		return await this.credentialsHelper.getDecrypted(
 			additionalData,
 			credential,
@@ -756,7 +771,8 @@ export class OauthService {
 	 * credential stores.
 	 */
 	async getOAuthCredentials<T>(credential: CredentialsEntity, userId?: string): Promise<T> {
-		const { additionalData, decryptedData } = await this.loadCredentialData(credential, userId);
+		const additionalData = await this.getAdditionalData(userId);
+		const decryptedData = await this.loadCredentialData(credential, additionalData);
 
 		return await this.applyDefaultsAndOverwrites<T>(credential, decryptedData, additionalData);
 	}
@@ -770,12 +786,17 @@ export class OauthService {
 		credential: CredentialsEntity,
 		userId?: string,
 	): Promise<{ oauthCredentials: T; managedVersion?: number }> {
-		const { additionalData, decryptedData } = await this.loadCredentialData(credential, userId);
+		const additionalData = await this.getAdditionalData(userId);
 
+		// The stored data has no overwrite applied. Whether the credential uses a managed app
+		// follows from its own client fields, which an overwrite would fill.
+		const storedData = await this.getDecryptedDataForCallback(credential, additionalData);
 		const managedVersion = this.credentialsHelper.getNewConnectionVersion(
 			credential.type,
-			decryptedData,
+			storedData,
 		);
+
+		const decryptedData = await this.loadCredentialData(credential, additionalData, managedVersion);
 		const oauthCredentials = await this.applyDefaultsAndOverwrites<T>(
 			credential,
 			decryptedData,
@@ -786,9 +807,16 @@ export class OauthService {
 		return { oauthCredentials, managedVersion };
 	}
 
-	private async loadCredentialData(credential: CredentialsEntity, userId?: string) {
-		const additionalData = await this.getAdditionalData(userId);
-		const decryptedDataOriginal = await this.getDecryptedDataForAuthUri(credential, additionalData);
+	private async loadCredentialData(
+		credential: CredentialsEntity,
+		additionalData: IWorkflowExecuteAdditionalData,
+		managedVersion?: number,
+	) {
+		const decryptedDataOriginal = await this.getDecryptedDataForAuthUri(
+			credential,
+			additionalData,
+			managedVersion,
+		);
 
 		// At some point in the past we saved hidden scopes to credentials (but shouldn't)
 		// Delete scope before applying defaults to make sure new scopes are present on reconnect
@@ -808,7 +836,7 @@ export class OauthService {
 			delete decryptedDataOriginal.scope;
 		}
 
-		return { additionalData, decryptedData: decryptedDataOriginal };
+		return decryptedDataOriginal;
 	}
 
 	private credentialIsAccessibleToProject(credential: CredentialsEntity, projectId: string) {

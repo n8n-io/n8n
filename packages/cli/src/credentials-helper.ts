@@ -566,7 +566,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 	}
 
 	/**
-	 * Returns the decrypted credential data with applied overwrites
+	 * Returns the decrypted credential data with applied overwrites. `options.managedVersion`
+	 * names the managed app to apply. By default it is the version stored on the credential.
 	 */
 	async getDecrypted(
 		additionalData: IWorkflowExecuteAdditionalData,
@@ -576,7 +577,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		executeData?: IExecuteData,
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
-		options?: IGetDecryptedCredentialsOptions & { actor?: PolicyActor },
+		options?: IGetDecryptedCredentialsOptions & { actor?: PolicyActor; managedVersion?: number },
 	): Promise<ICredentialDataDecryptedObject> {
 		// Sub-nodes, such as a chat model connected to a chain or agent, inherit executeData.node
 		// from their parent. Prefer expressionResolveValues.node when present: it is always
@@ -709,6 +710,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			mode,
 			executeData,
 			expressionResolveValues,
+			options?.managedVersion,
 		);
 		return this.trackStoredData(decryptedData, credentialsEntity);
 	}
