@@ -1067,7 +1067,7 @@ describe('createInstanceAiTraceContext', () => {
 							{
 								type: 'tool-call',
 								toolCallId: 'toolu-1',
-								toolName: 'workflow_builder_credentials',
+								toolName: 'credentials',
 								input: { action: 'list', name: 'Slack account' },
 								providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' } } },
 							},
@@ -1079,7 +1079,7 @@ describe('createInstanceAiTraceContext', () => {
 							{
 								type: 'tool-result',
 								toolCallId: 'toolu-1',
-								toolName: 'workflow_builder_credentials',
+								toolName: 'credentials',
 								output: {
 									ok: true,
 									items: [{ name: 'Slack account', apiKey: 'sk-secret' }],
@@ -1091,7 +1091,7 @@ describe('createInstanceAiTraceContext', () => {
 				'ai.prompt.tools': [
 					JSON.stringify({
 						type: 'function',
-						name: 'workflow_builder_credentials',
+						name: 'credentials',
 						description: 'List credentials',
 						input_schema: {
 							type: 'object',
@@ -1120,7 +1120,7 @@ describe('createInstanceAiTraceContext', () => {
 					id: 'toolu-1',
 					type: 'function',
 					function: {
-						name: 'workflow_builder_credentials',
+						name: 'credentials',
 						arguments: JSON.stringify({ action: 'list', name: 'Slack account' }),
 					},
 				},
@@ -1129,7 +1129,7 @@ describe('createInstanceAiTraceContext', () => {
 		expect(prompt.input[2]).toEqual({
 			role: 'tool',
 			tool_call_id: 'toolu-1',
-			name: 'workflow_builder_credentials',
+			name: 'credentials',
 			content: JSON.stringify({
 				ok: true,
 				items: [{ name: 'Slack account', apiKey: '[redacted]' }],

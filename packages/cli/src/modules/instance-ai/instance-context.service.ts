@@ -1071,7 +1071,7 @@ function liveRecordHint(
 			workflow: row.resourceId
 				? `workflow_builder_workflows(action="get", workflowId="${row.resourceId}")`
 				: undefined,
-			credential: 'workflow_builder_credentials(action="list")',
+			credential: 'credentials(action="list")',
 		},
 		mcp: {
 			workflow: row.resourceId ? `get_workflow_details(workflowId="${row.resourceId}")` : undefined,

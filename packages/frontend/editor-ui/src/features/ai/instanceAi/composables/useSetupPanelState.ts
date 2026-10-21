@@ -1,6 +1,11 @@
 import { computed, shallowReactive, toValue, watch, type MaybeRefOrGetter } from 'vue';
 
-import { REMOVED_BUILDER_TOOL_NAMES, WORKFLOW_BUILDER_TOOL_NAMES } from '@n8n/api-types';
+import {
+	REMOVED_BUILDER_TOOL_NAMES,
+	SHARED_BUILDER_TOOL_NAMES,
+	WORKFLOW_BUILDER_TOOL_NAMES,
+	resolveBuilderToolName,
+} from '@n8n/api-types';
 import type { InstanceAiAgentNode, InstanceAiSetupItem } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { useWorkflowSetupItems } from '@/features/setupPanel/composables/useWorkflowSetupItems';
@@ -89,7 +94,7 @@ export function useSetupPanelState(options: {
 				if (!isRecord(call.result) || call.result.success !== true || call.result.workflowId !== id)
 					continue;
 				const earlySetup =
-					call.toolName === WORKFLOW_BUILDER_TOOL_NAMES.CREDENTIALS &&
+					resolveBuilderToolName(call.toolName) === SHARED_BUILDER_TOOL_NAMES.CREDENTIALS &&
 					call.args.action === 'setup' &&
 					call.result.preBuild === true;
 				if (
