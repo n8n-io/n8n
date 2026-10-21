@@ -19,6 +19,11 @@ import type {
 	AgentJsonConfig,
 	AgentSessionStatus,
 	AgentSkill,
+	SaveSkillDto,
+	SkillDetail,
+	SkillListResponse,
+	SkillSaveResponse,
+	SkillScope,
 	EvaluationMetric,
 	TaskList,
 	InstanceAiPromptConfiguration,
@@ -1124,6 +1129,25 @@ export interface InstanceAiPreferenceService {
 	): void;
 }
 
+export interface InstanceAiSkillService {
+	list(options: {
+		query?: string;
+		scope?: SkillScope;
+		projectId?: string;
+		attachableToAgentId?: string;
+		limit: number;
+		skip: number;
+	}): Promise<SkillListResponse>;
+	get(skillId: string): Promise<SkillDetail>;
+	create(input: {
+		scope: 'project' | 'instance';
+		projectId?: string;
+		skill: Omit<AgentSkill, 'allowedTools'>;
+	}): Promise<SkillDetail>;
+	update(skillId: string, input: SaveSkillDto): Promise<SkillSaveResponse>;
+	delete(skillId: string): Promise<void>;
+}
+
 export interface InstanceAiDataTableService {
 	list(options?: { projectId?: string }): Promise<DataTableSummary[]>;
 	create(
@@ -1576,6 +1600,7 @@ export interface InstanceAiContext {
 	/** Present only when saved preferences are enabled for this user; its
 	 *  absence hides the `save_user_preference` tool. */
 	aiPreferenceService?: InstanceAiPreferenceService;
+	skillService?: InstanceAiSkillService;
 	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
 	 *  agent is built, which is also when its MCP tools are attached, so it always
 	 *  matches what this agent can actually call. */

@@ -1,9 +1,22 @@
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
 
 import { DEFAULT_AGENT_PERSONALISATION } from '@n8n/api-types';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import type { Telemetry } from '@/telemetry';
+import { AgentConfigPreparationService } from '../agent-config-preparation.service';
+import { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
+import { AgentSaveCompletionService } from '../agent-save-completion.service';
+import type { AgentSetupCompletionService } from '../agent-setup-completion.service';
+import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
+import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
 import type { EventService, ProjectScopeService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { ProjectRelationRepository, TransactionRunner, User } from '@n8n/db';
+import type {
+	ProjectRelationRepository,
+	TransactionRunner,
+	User,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock, type MockProxy } from 'vitest-mock-extended';
@@ -28,8 +41,13 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import type { AgentPolicyService } from '../agent-policy.service';
 import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
 
-const agentId = 'agent-1';
-const actor = { kind: 'user', user: { id: 'user-1' } } as const;
+const agentId = vi.hoisted(() => 'agent-1');
+
+vi.mock('@n8n/utils/generate-nano-id', () => ({
+	generateNanoId: () => agentId,
+}));
+const user = mock<User>({ id: 'user-1' });
+const actor = { kind: 'user', user } as const;
 const projectId = 'project-1';
 
 /** Mirror `Repository.create`: the returned entity holds the fields that `create` got. */
@@ -72,6 +90,32 @@ function makeService() {
 	const projectScopeService = mock<ProjectScopeService>();
 	const agentsSettingsService = mock<AgentsSettingsService>();
 	const agentPolicyService = mock<AgentPolicyService>();
+	const workflowRepository = mock<WorkflowRepository>();
+	workflowRepository.findManyByAgentToolReferences.mockResolvedValue([]);
+	agentTaskRepository.findByAgentId.mockResolvedValue([]);
+	const telemetry = mock<Telemetry>();
+	const broadcaster = mock<AgentUpdateBroadcaster>();
+	const saveCompletion = new AgentSaveCompletionService(
+		eventService,
+		broadcaster,
+		new AgentModificationTelemetryService(
+			telemetry,
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			eventService,
+			// EOF Experiment cleanup
+		),
+	);
+	const setupCompletion = mock<AgentSetupCompletionService>();
+	setupCompletion.recordIfSetupComplete.mockResolvedValue(null);
+	const configPreparation = new AgentConfigPreparationService(
+		credentialsService,
+		workflowRepository,
+		mock<NodeToolAiGatewayService>(),
+		agentRepository,
+		agentTaskRepository,
+		skillRefs,
+		agentPolicyService,
+	);
 
 	agentsSettingsService.getEnabled.mockResolvedValue(true);
 	agentRepository.findByIdsAndProjectId.mockResolvedValue([]);
@@ -107,10 +151,16 @@ function makeService() {
 		agentPolicyService,
 		skillRefs,
 		transactionRunner,
+		configPreparation,
+		saveCompletion,
+		setupCompletion,
 	);
 
 	return {
 		service,
+		telemetry,
+		setupCompletion,
+		transactionRunner,
 		skillRefs,
 		agentPolicyService,
 		agentRepository,
@@ -140,6 +190,116 @@ describe('AgentsService', () => {
 		Container.reset();
 	});
 
+	it.each([
+		['user', undefined, TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT, '3'],
+		['user', 'openai/gpt-5-mini', TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT, '3'],
+		['builder', undefined, TELEMETRY_EVENT.AGENTS.BUILDER_CREATED_AGENT, '3'],
+		['builder', 'openai/gpt-5-mini', TELEMETRY_EVENT.AGENTS.BUILDER_CREATED_AGENT, '3'],
+		['mcp', undefined, TELEMETRY_EVENT.AGENTS.MCP_CREATED_AGENT, '2'],
+		['mcp', 'openai/gpt-5-mini', TELEMETRY_EVENT.AGENTS.MCP_CREATED_AGENT, '2'],
+	] as const)(
+		'reports a committed %s creation with model %s',
+		async (createdBy, model, entry, version) => {
+			const { service, agentRepository, telemetry, transactionRunner } = makeService();
+			mockCreateReturning(agentRepository, makeAgent());
+			transactionRunner.run.mockImplementation(async (ctx, write) => {
+				const result = await write(ctx);
+				expect(telemetry.track).not.toHaveBeenCalled();
+				return result;
+			});
+
+			const result = await service.createOrAdopt(projectId, 'Support Agent', {
+				actor,
+				user,
+				createdBy,
+				...(model ? { defaultModel: { model, credential: '' } } : {}),
+			});
+
+			expect(result.adopted).toBe(false);
+			expect(result.config?.model).toBe(model ?? '');
+			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(
+				entry,
+				expect.objectContaining({
+					agent_id: agentId,
+					project_id: projectId,
+					user_id: user.id,
+					event_version: version,
+				}),
+			);
+			expect(telemetry.track.mock.calls[0]?.[1]).not.toHaveProperty('changed_settings');
+		},
+	);
+
+	it('saves the prepared initial configuration and reports the stored profile', async () => {
+		const { service, agentRepository, telemetry, setupCompletion } = makeService();
+		const saved = makeAgent();
+		mockCreateReturning(agentRepository, saved);
+		const emitSetupCompleted = vi.fn();
+		setupCompletion.recordIfSetupComplete.mockResolvedValue(emitSetupCompleted);
+		const result = await service.createOrAdopt(projectId, 'Support Agent', {
+			actor,
+			user,
+			createdBy: 'user',
+			defaultModel: { model: 'anthropic/default', credential: '' },
+			config: {
+				model: 'openai/gpt-5-mini',
+				instructions: 'Help users',
+				credential: 'inaccessible',
+			},
+		});
+
+		expect(saved.schema).toMatchObject({
+			model: 'openai/gpt-5-mini',
+			instructions: 'Help users',
+			credential: '',
+		});
+		expect(result.config).toMatchObject(saved.schema!);
+		expect(result.configHash).toMatch(/^[a-f0-9]{64}$/);
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT,
+			expect.objectContaining({ model: 'openai/gpt-5-mini' }),
+		);
+		expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
+		expect(setupCompletion.recordIfSetupComplete).toHaveBeenCalledWith(
+			saved,
+			[],
+			projectId,
+			expect.anything(),
+			user,
+		);
+		expect(emitSetupCompleted).toHaveBeenCalledOnce();
+	});
+
+	it('rejects invalid initial configuration before inserting an Agent', async () => {
+		const { service, agentRepository, telemetry } = makeService();
+		mockCreateReturning(agentRepository, makeAgent());
+		await expect(
+			service.create(projectId, 'Support Agent', {
+				actor,
+				user,
+				createdBy: 'user',
+				config: { model: null },
+			}),
+		).rejects.toThrow('Invalid agent config');
+		expect(agentRepository.insertNew).not.toHaveBeenCalled();
+		expect(telemetry.track).not.toHaveBeenCalled();
+	});
+
+	it('does not report creation when the skill-reference write fails', async () => {
+		const { service, agentRepository, skillRefs, telemetry } = makeService();
+		mockCreateReturning(agentRepository, makeAgent());
+		skillRefs.replaceDraftRefs.mockRejectedValue(new Error('Skill write failed'));
+		await expect(
+			service.create(projectId, 'Support Agent', {
+				actor,
+				user,
+				createdBy: 'user',
+				config: { instructions: 'Help users' },
+			}),
+		).rejects.toThrow('Skill write failed');
+		expect(telemetry.track).not.toHaveBeenCalled();
+	});
+
 	it('creates a draft agent without a default model or credential', async () => {
 		const { service, agentRepository, skillRefs } = makeService();
 		const saved = makeAgent();
@@ -148,6 +308,7 @@ describe('AgentsService', () => {
 
 		await expect(service.create(projectId, 'Support Agent', { actor })).resolves.toBe(saved);
 		expect(agentRepository.create).toHaveBeenCalledWith({
+			id: agentId,
 			name: 'Support Agent',
 			projectId,
 			schema: {
@@ -399,8 +560,8 @@ describe('AgentsService', () => {
 			expect(entity.integrations).toEqual([{ type: 'telegram', credentialId: '' }]);
 		});
 
-		it('emits agent-saved for the duplicate (creation is tracked by the frontend "User duplicated agent" event)', async () => {
-			const { service, agentRepository, eventService } = makeService();
+		it('reports creation and indexes a duplicate', async () => {
+			const { service, agentRepository, eventService, telemetry } = makeService();
 			const saved = makeAgent();
 			mockCreateReturning(agentRepository, saved);
 
@@ -412,9 +573,14 @@ describe('AgentsService', () => {
 					instructions: 'Triage tickets.',
 				},
 				user,
+				createdBy: 'user',
 			});
 
 			expect(eventService.emit).toHaveBeenCalledWith('agent-saved', { agentId: saved.id });
+			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT,
+				expect.objectContaining({ event_version: '3', model: 'anthropic/claude-sonnet-4-5' }),
+			);
 		});
 
 		it('stays silent on an empty-draft create (no user) — no event', async () => {
@@ -428,7 +594,7 @@ describe('AgentsService', () => {
 		});
 
 		it('stays silent on eval seeding (schema but no user)', async () => {
-			const { service, agentRepository, eventService } = makeService();
+			const { service, agentRepository, eventService, telemetry } = makeService();
 			const saved = makeAgent();
 			mockCreateReturning(agentRepository, saved);
 
@@ -446,6 +612,7 @@ describe('AgentsService', () => {
 			const [entity] = agentRepository.create.mock.calls[0];
 			expect(entity.integrations).toEqual([{ type: 'slack', credentialId: 'cred-slack-1' }]);
 			expect(eventService.emit).not.toHaveBeenCalledWith('agent-saved', expect.anything());
+			expect(telemetry.track).not.toHaveBeenCalled();
 		});
 	});
 
@@ -480,6 +647,7 @@ describe('AgentsService', () => {
 
 		it('saves nothing when a policy refuses the seeded config', async () => {
 			const { service, agentRepository, agentPolicyService } = makeService();
+			mockCreateReturning(agentRepository, makeAgent());
 			agentPolicyService.enforceSave.mockRejectedValue(new Error('Blocked by policy'));
 
 			await expect(
@@ -553,7 +721,7 @@ describe('AgentsService', () => {
 		// The whole point of the adoption path: the winner of the insert usually
 		// gets to configure the row before the loser collides on it.
 		it('adopts an already configured same-project row, unchanged', async () => {
-			const { service, agentRepository } = makeService();
+			const { service, agentRepository, telemetry, skillRefs } = makeService();
 			const configured = makeAgent({
 				id: mintedId,
 				name: 'Support Triage',
@@ -564,19 +732,24 @@ describe('AgentsService', () => {
 				},
 				integrations: [],
 			});
-			agentRepository.create.mockReturnValue(makeAgent({ id: mintedId }));
+			mockCreateReturning(agentRepository, makeAgent({ id: mintedId }));
 			agentRepository.insertNew.mockRejectedValue(uniqueViolation());
 			agentRepository.findByIdAndProjectId.mockResolvedValue(configured);
 
-			await expect(
-				service.create(projectId, 'New Agent', {
-					actor,
-					id: mintedId,
-					adoptOnCollision: true,
-				}),
-			).resolves.toBe(configured);
+			const result = await service.createOrAdopt(projectId, 'New Agent', {
+				actor,
+				user,
+				createdBy: 'user',
+				id: mintedId,
+				adoptOnCollision: true,
+				config: { instructions: 'Losing editor snapshot' },
+			});
+			expect(result).toMatchObject({ agent: configured, adopted: true, config: configured.schema });
+			expect(result.configHash).toMatch(/^[a-f0-9]{64}$/);
 			// The draft name/config this call carried must not overwrite the winner's.
 			expect(agentRepository.insertNew).toHaveBeenCalledTimes(1);
+			expect(skillRefs.replaceDraftRefs).not.toHaveBeenCalled();
+			expect(telemetry.track).not.toHaveBeenCalled();
 		});
 
 		it('rejects without disclosing when the id collides outside this project', async () => {

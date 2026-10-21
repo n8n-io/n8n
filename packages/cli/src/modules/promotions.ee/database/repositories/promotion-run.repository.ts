@@ -7,7 +7,7 @@ import { PromotionRun } from '../entities/promotion-run.entity';
 /** The id is generated on insert. `reviewId` stays NULL until a review is attached. */
 export type NewPromotionRun = Pick<
 	PromotionRun,
-	'configId' | 'createdById' | 'direction' | 'type' | 'details' | 'reviewId'
+	'environmentId' | 'createdById' | 'direction' | 'type' | 'details' | 'reviewId'
 >;
 
 @Service()

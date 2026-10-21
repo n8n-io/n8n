@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { PromotionRepository } from '@n8n/api-types';
-import { N8nButton, N8nNotice, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nNotice, N8nOption, N8nSelect } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref, watch } from 'vue';
 
@@ -8,12 +8,12 @@ import { usePromotionGitHostDiscovery } from '../composables/usePromotionGitHost
 
 const props = defineProps<{
 	modelValue: string;
+	selectedLabel?: string;
 	providerId: string;
 	kind: 'repository' | 'branch';
 	repositoryId?: string;
 	revision?: number;
 	inputId: string;
-	descriptionId?: string;
 	disabled?: boolean;
 }>();
 
@@ -53,7 +53,7 @@ const visibleOptions = computed(() => {
 					label: selectedRepository.value.fullPath,
 					repository: selectedRepository.value,
 				}
-			: { value: props.modelValue, label: props.modelValue };
+			: { value: props.modelValue, label: props.selectedLabel ?? props.modelValue };
 	return [selected, ...options.value];
 });
 
@@ -78,11 +78,9 @@ function onInput(event: Event) {
 	<div :class="$style.picker" @input="onInput">
 		<N8nSelect
 			:id="inputId"
-			:aria-describedby="descriptionId"
 			:model-value="modelValue"
 			:disabled="unavailable"
 			:loading="loading"
-			:teleported="false"
 			filterable
 			remote
 			:placeholder="
@@ -103,17 +101,16 @@ function onInput(event: Event) {
 				:label="option.label"
 			/>
 		</N8nSelect>
-		<N8nText v-if="search" size="small" color="text-light" role="status">
-			{{ i18n.baseText('settings.promotions.discovery.searchHint', { interpolate: { search } }) }}
-		</N8nText>
-		<N8nText
-			v-if="!loading && !error && !unavailable && options.length === 0 && (!modelValue || search)"
-			size="small"
-			color="text-light"
-			role="status"
-		>
-			{{ emptyMessage }}
-		</N8nText>
+		<span :class="$style.srOnly" role="status">
+			<span v-if="search">
+				{{ i18n.baseText('settings.promotions.discovery.searchHint', { interpolate: { search } }) }}
+			</span>
+			<span
+				v-if="!loading && !error && !unavailable && options.length === 0 && (!modelValue || search)"
+			>
+				{{ emptyMessage }}
+			</span>
+		</span>
 		<N8nNotice v-if="error" theme="danger" role="alert">
 			{{ error }}
 			<N8nButton
@@ -133,5 +130,14 @@ function onInput(event: Event) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+}
+
+.srOnly {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
 }
 </style>

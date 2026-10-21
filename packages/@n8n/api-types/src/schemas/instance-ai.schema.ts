@@ -1935,6 +1935,7 @@ export class InstanceAiPersistPendingAgentRequest extends Z.class({
 	projectId: z.string().min(1),
 	agentId: clientMintedAgentIdSchema,
 	name: z.string().min(1),
+	config: z.record(z.unknown()).optional(),
 }) {}
 
 export const instanceAiGatewayKeySchema = z.string().min(1).max(256);
@@ -2348,6 +2349,9 @@ const instanceAiPermissionsSchema = z.object({
 	restoreWorkflowVersion: instanceAiPermissionModeSchema,
 	executeNode: instanceAiPermissionModeSchema,
 	createPreference: instanceAiPermissionModeSchema,
+	createSkill: instanceAiPermissionModeSchema,
+	updateSkill: instanceAiPermissionModeSchema,
+	deleteSkill: instanceAiPermissionModeSchema,
 });
 
 export type InstanceAiPermissions = z.infer<typeof instanceAiPermissionsSchema>;
@@ -2378,6 +2382,9 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	// from the chat card, so there is no approval step for require_approval to
 	// gate. always_allow is the only workable default; blocked is the feature off.
 	createPreference: 'always_allow',
+	createSkill: 'require_approval',
+	updateSkill: 'require_approval',
+	deleteSkill: 'require_approval',
 };
 
 /**
@@ -2404,6 +2411,9 @@ const BRANCH_READ_ONLY_SAFE_PERMISSIONS: ReadonlySet<keyof InstanceAiPermissions
 	'deleteCredential',
 	'restoreWorkflowVersion',
 	'mutateDataTableRows',
+	'createSkill',
+	'updateSkill',
+	'deleteSkill',
 ]);
 
 /** Returns a copy of permissions with all write operations set to 'blocked',

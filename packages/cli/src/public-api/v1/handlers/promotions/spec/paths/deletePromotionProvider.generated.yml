@@ -2,7 +2,7 @@ operationId: deletePromotionProvider
 tags:
   - Promotions
 summary: Delete a promotion provider
-description: A provider used by a connection cannot be deleted.
+description: A provider used by an environment cannot be deleted.
 x-required-scope: gitConnection:delete
 parameters:
   - schema:

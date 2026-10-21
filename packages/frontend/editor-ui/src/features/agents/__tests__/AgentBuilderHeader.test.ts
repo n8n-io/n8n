@@ -337,24 +337,26 @@ describe('AgentBuilderHeader', () => {
 			label: 'opens',
 			isPreviewOpen: false,
 			event: 'open-preview',
+			payload: ['primary'],
 			accessibleLabel: 'agents.builder.preview.button',
 		},
 		{
 			label: 'closes',
 			isPreviewOpen: true,
 			event: 'close-preview',
+			payload: [],
 			accessibleLabel: 'agents.builder.preview.close.ariaLabel',
 		},
 	])(
 		'$label Preview from the preview action',
-		async ({ isPreviewOpen, event, accessibleLabel }) => {
+		async ({ isPreviewOpen, event, payload, accessibleLabel }) => {
 			const wrapper = mountHeader({ isPreviewOpen });
 			const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
 			expect(previewButton.attributes('data-icon')).toBe('flask-conical');
 			expect(previewButton.text()).toBe(accessibleLabel);
 
 			await previewButton.trigger('click');
-			expect(wrapper.emitted(event)).toEqual([[]]);
+			expect(wrapper.emitted(event)).toEqual([payload]);
 			expect(wrapper.emitted(isPreviewOpen ? 'open-preview' : 'close-preview')).toBeUndefined();
 		},
 	);

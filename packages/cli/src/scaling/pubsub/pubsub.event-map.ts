@@ -155,6 +155,8 @@ export type PubSubCommandMap = {
 		productionN8nChat?: boolean;
 	};
 
+	'cancel-agent-chat-foreground': PubSubCommandMap['cancel-agent-chat-execution'];
+
 	'relay-agent-message-queue-update': {
 		data: PushPayload<'agentMessageQueueUpdated'>;
 		userIds: string[];
@@ -431,6 +433,16 @@ export type PubSubCommandMap = {
 	'redaction-floor-changed': never;
 
 	// #endregion
+
+	// #region Policies
+
+	/**
+	 * Reload the type availability policy snapshot. Published after a policy write commits.
+	 * The writing process reloads its own snapshot, so this is not a self-send command.
+	 */
+	'reload-type-availability-policies': never;
+
+	// #endregion
 };
 
 export type PubSubWorkerResponseMap = {
@@ -439,4 +451,10 @@ export type PubSubWorkerResponseMap = {
 	};
 };
 
-export type PubSubEventMap = PubSubCommandMap & PubSubWorkerResponseMap;
+/** Emitted on this process only, never published. */
+export type PubSubLocalEventMap = {
+	/** The subscriber is back on its channels. Commands sent while it was away are lost. */
+	'pubsub-reconnected': never;
+};
+
+export type PubSubEventMap = PubSubCommandMap & PubSubWorkerResponseMap & PubSubLocalEventMap;

@@ -160,6 +160,8 @@ export class TeamsIntegration extends AgentChatIntegration {
 	/** Hidden from the catalog and the add-trigger UI until the setup stepper ships. */
 	readonly internal = true;
 
+	readonly singleConnectionPerAgent = true;
+
 	readonly builderGuidance = {
 		capabilities: [
 			'Receive Microsoft Teams direct messages, team channel messages and group chat messages as agent triggers.',

@@ -1,3 +1,4 @@
+import type { InstanceAiPersistPendingAgentRequest } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -51,7 +52,8 @@ export class InstanceAiPendingAgentService {
 	async persistAndBind(
 		user: User,
 		threadId: string,
-		{ projectId, agentId, name }: { projectId: string; agentId: string; name: string },
+		{ projectId, agentId, name, config }: InstanceAiPersistPendingAgentRequest,
+		pushRef?: string,
 	) {
 		const agents = this.agentsModule();
 		// A thread belongs to one project, and instance-ai already ignores a pending
@@ -71,6 +73,8 @@ export class InstanceAiPendingAgentService {
 			id: agentId,
 			name,
 			adoptOnCollision: adoptable,
+			config,
+			pushRef,
 		});
 		if (!agent) throw new ForbiddenError('This thread has no pending agent with that id');
 
