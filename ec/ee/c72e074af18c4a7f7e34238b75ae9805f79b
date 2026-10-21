@@ -1,0 +1,48 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_1be06eba3ffd38::t_9d4ddeffc9fec5 4005-4006,4033,4036
+packages/workflow/src/workflow-checksum.ts
+  s_1be06eba3ffd38::t_2e2ad06834c849 1,84
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_1be06eba3ffd38::t_9d4ddeffc9fec5 639,673,684,1275,1633,1717
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_1be06eba3ffd38::t_82e8f720347386 442-446,448-480
+  s_1be06eba3ffd38::t_4514bef41087da 447
+packages/frontend/editor-ui/src/features/agents/__tests__/agentTelemetry.utils.test.ts
+  s_1be06eba3ffd38::t_82e8f720347386 1,52-59
+  s_1be06eba3ffd38::t_e56ebfdedc0812 60-61
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderSession.ts
+  s_1be06eba3ffd38::t_9d4ddeffc9fec5 110
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionTimelineView.spec.ts
+  s_1be06eba3ffd38::t_9d4ddeffc9fec5 159-161
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/AgentN8nChatView.vue
+  s_1be06eba3ffd38::t_9d4ddeffc9fec5 107
+packages/@n8n/utils/src/sha256.test.ts
+  s_1be06eba3ffd38::t_2e2ad06834c849 1-21
+packages/frontend/editor-ui/src/features/agents/composables/agentTelemetry.utils.ts
+  s_1be06eba3ffd38::t_2e2ad06834c849 2,25
+packages/@n8n/utils/src/sha256.ts
+  s_1be06eba3ffd38::t_2e2ad06834c849 1-7,9-16
+  s_1be06eba3ffd38::t_d94520f44f657e 8
+packages/@n8n/utils/package.json
+  s_1be06eba3ffd38::t_2e2ad06834c849 44
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderTelemetry.ts
+  s_1be06eba3ffd38::t_2e2ad06834c849 75-76
+pnpm-lock.yaml
+  s_1be06eba3ffd38::t_ca3b569cb4cffd 4612-4614
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eceec72e074af18c4a7f7e34238b75ae9805f79b",
+  "prompts": {},
+  "sessions": {
+    "s_1be06eba3ffd38": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15a1c-19a7-7aa1-8c68-b589ebbf365b",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
