@@ -26,8 +26,8 @@ export const ACTIVITY_PERMISSION_FORBIDDEN = {
 } satisfies MicrosoftGraphForbiddenHint;
 
 // Graph answers 403 `ExtensionError` with this text when a second `/teams/{id}/channels`
-// subscription is created for the same account and webhook URL. The match names no
-// subject, so an app-subject variant under the Service Principal credential also matches.
+// subscription is created for the same account. The match names no subject, so an
+// app-subject variant under the Service Principal credential also matches.
 export const SUBSCRIPTION_LIMIT_FORBIDDEN = {
 	endpoint: '/subscriptions',
 	match: 'has reached its limit of',
