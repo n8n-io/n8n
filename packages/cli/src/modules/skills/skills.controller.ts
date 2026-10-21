@@ -47,6 +47,12 @@ export class SkillsController {
 		return await this.skillsApi.list(req.user, query);
 	}
 
+	/** The creators of the skills the user may see. Registered before `/:skillId`. */
+	@Get('/creators')
+	async creators(req: AuthenticatedRequest) {
+		return await this.skillsApi.listCreators(req.user);
+	}
+
 	/** Registered before `/:skillId`, which would take `new-name` as an id. */
 	@Get('/new-name')
 	async newName(req: AuthenticatedRequest, _res: Response, @Query query: SkillNewNameQueryDto) {

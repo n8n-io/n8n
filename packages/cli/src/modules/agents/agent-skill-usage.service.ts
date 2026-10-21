@@ -164,6 +164,10 @@ export class AgentSkillUsageService implements SkillAgentsProvider {
 		return await this.agentSkillRepository.findUsingAgentIds(skillId, ctx);
 	}
 
+	async findSkillIdsUsedByAgent(agentId: string, ctx: OperationContext) {
+		return await this.agentSkillRepository.findSkillIdsUsedByAgent(agentId, ctx);
+	}
+
 	async assertRenameKeepsNamesApart(
 		skillId: string,
 		oldName: string,

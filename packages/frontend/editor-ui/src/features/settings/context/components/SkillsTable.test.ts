@@ -153,6 +153,23 @@ describe('SkillsTable', () => {
 		expect(await findAllByText('FirstClassDarwin')).toHaveLength(1);
 	});
 
+	it('sorts by name and by last update only', async () => {
+		const { container, emitted } = render([skill()]);
+		const header = (title: string) =>
+			[...container.querySelectorAll('thead th')].find((th) => th.textContent?.includes(title))!;
+
+		await userEvent.click(header('Scope'));
+		await userEvent.click(header('Created by'));
+		expect(emitted('update:options')).toBeUndefined();
+
+		await userEvent.click(header('Skill'));
+		await userEvent.click(header('Last updated'));
+		expect(emitted('update:options')).toEqual([
+			[expect.objectContaining({ sortBy: [{ id: 'name', desc: false }] })],
+			[expect.objectContaining({ sortBy: [{ id: 'updatedAt', desc: false }] })],
+		]);
+	});
+
 	it('emits open when a row is clicked', async () => {
 		const row = skill();
 		const { getByText, emitted } = render([row]);

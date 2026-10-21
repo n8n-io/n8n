@@ -3,31 +3,35 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn } from '@vueuse/core';
 import { saveAs } from 'file-saver';
-import type { AgentSkill, SkillCreateMethod, SkillListItem, SkillScope } from '@n8n/api-types';
+import type { AgentSkill, SkillCreateMethod, SkillListItem, SkillUserDto } from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
 	N8nButton,
-	N8nDropdownMenu,
 	N8nHeading,
 	N8nIcon,
-	N8nIconButton,
 	N8nInput,
+	N8nInputLabel,
+	N8nOption,
+	N8nSelect,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nText,
 } from '@n8n/design-system';
-import type { DropdownMenuItemProps, TableOptions } from '@n8n/design-system';
+import type { TableOptions } from '@n8n/design-system';
 
+import ResourceFiltersDropdown from '@/app/components/forms/ResourceFiltersDropdown.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
 import { DEBOUNCE_TIME, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { AGENT_SKILL_MODAL_KEY } from '@/features/agents/constants';
+import { listAgentsPageGlobal } from '@/features/agents/composables/useAgentApi';
 import { isSkillNameTakenError } from '@/features/agents/utils/agentSkill';
 import { exportAgentSkill } from '@/features/agents/utils/agentSkillExport';
 import type {
@@ -37,17 +41,27 @@ import type {
 } from '@/features/agents/components/AgentSkillModal.vue';
 
 import SkillsTable from '../components/SkillsTable.vue';
-import { PREFERENCES_DEFAULT_PAGE_SIZE } from '../context.constants';
+import { PREFERENCES_DEFAULT_PAGE_SIZE, SKILLS_DEFAULT_SORT_BY } from '../context.constants';
 import { canWriteInstanceSkillScope, canWriteProjectSkillScope } from '../context.utils';
 import type { SkillListQuery } from '../skills.api';
 import { useSkillsStore } from '../skills.store';
-import { useSkillScopeDisplay } from '../skills.utils';
+import { toSkillSortOption, useSkillScopeDisplay } from '../skills.utils';
 
 const INSTANCE_SCOPE = 'instance';
 const PROJECT_SCOPE_PREFIX = 'project:';
-const ALL_SCOPES = 'all';
+/** One page of agents for the agent filter, as the global agents list allows. */
+const AGENT_FILTER_LIMIT = 250;
 
-type ScopeFilter = SkillScope | typeof ALL_SCOPES;
+/** Empty means no filter, so the filters dropdown counts only the set ones. */
+type SkillFilters = {
+	/** A scope kind, or `project:<id>` for one project and its agents. */
+	scope: string;
+	agentId: string;
+	createdById: string;
+};
+
+const FILTER_KEYS: Array<keyof SkillFilters> = ['scope', 'agentId', 'createdById'];
+const NO_FILTERS: SkillFilters = { scope: '', agentId: '', createdById: '' };
 
 const i18n = useI18n();
 const router = useRouter();
@@ -57,50 +71,73 @@ const message = useMessage();
 const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 const skillsStore = useSkillsStore();
+const rootStore = useRootStore();
 const telemetry = useTelemetry();
 const { showError, showMessage } = useToast();
-const { scopeDisplay } = useSkillScopeDisplay();
+const { scopeDisplay, projectLabel } = useSkillScopeDisplay();
 
 const tableOptions = ref<TableOptions>({
 	page: 0,
 	itemsPerPage: PREFERENCES_DEFAULT_PAGE_SIZE,
-	sortBy: [],
+	sortBy: SKILLS_DEFAULT_SORT_BY,
 });
 const search = ref('');
-const scopeFilter = ref<ScopeFilter>(ALL_SCOPES);
+const filters = ref<SkillFilters>({ ...NO_FILTERS });
+const agentOptions = ref<Array<{ id: string; name: string }>>([]);
+const creators = ref<SkillUserDto[]>([]);
 const loadFailed = ref(false);
 
-// Paging, search and the scope filter run on the server: the count and the page both
+// Paging, sort, search and filters run on the server: the count and the page both
 // describe the matching skills, and the page is the only slice the browser holds.
-const isFiltered = computed(() => search.value.trim() !== '' || scopeFilter.value !== ALL_SCOPES);
+const isFiltered = computed(
+	() => search.value.trim() !== '' || FILTER_KEYS.some((key) => filters.value[key] !== ''),
+);
 // A failed load also reports zero rows, so the empty state must not stand in for it. A
 // filter that matches nothing shows an empty table, not "No skills yet".
 const showEmptyState = computed(
 	() => !skillsStore.loading && !loadFailed.value && !isFiltered.value && skillsStore.count === 0,
 );
 
-const scopeFilterItems = computed<Array<DropdownMenuItemProps<ScopeFilter>>>(() =>
-	(
+/** The scope kinds, then each project the user can see, which also covers its agent skills. */
+const scopeFilterOptions = computed(() => [
+	...(
 		[
-			[ALL_SCOPES, 'settings.context.skills.filter.all'],
 			['instance', 'settings.context.skills.filter.instance'],
 			['project', 'settings.context.skills.filter.project'],
 			['agent', 'settings.context.skills.filter.agent'],
 		] as const
-	).map(([id, key]) => ({
-		id,
-		label: i18n.baseText(key),
-		checked: scopeFilter.value === id,
+	).map(([value, key]) => ({ value, label: i18n.baseText(key) })),
+	...projectsStore.availableProjects.map((project) => ({
+		value: `${PROJECT_SCOPE_PREFIX}${project.id}`,
+		label: projectLabel(project.id, project.name, project.type),
 	})),
-);
+]);
+
+/** The name of a creator, or the email when the name is unknown. */
+function creatorLabel(creator: SkillUserDto): string {
+	const name = [creator.firstName, creator.lastName].filter(Boolean).join(' ');
+	return name || creator.email || creator.id;
+}
+
+function scopeQuery(scope: string): Pick<SkillListQuery, 'scope' | 'projectId'> {
+	if (scope.startsWith(PROJECT_SCOPE_PREFIX)) {
+		return { projectId: scope.slice(PROJECT_SCOPE_PREFIX.length) };
+	}
+	return scope === 'instance' || scope === 'project' || scope === 'agent' ? { scope } : {};
+}
 
 function listQuery(page: number, itemsPerPage: number): SkillListQuery {
 	const term = search.value.trim();
+	const { scope, agentId, createdById } = filters.value;
+	const sortBy = toSkillSortOption(tableOptions.value.sortBy);
 	return {
 		skip: page * itemsPerPage,
 		take: itemsPerPage,
 		...(term ? { search: term } : {}),
-		...(scopeFilter.value !== ALL_SCOPES ? { scope: scopeFilter.value } : {}),
+		...scopeQuery(scope),
+		...(agentId ? { agentId } : {}),
+		...(createdById ? { createdById } : {}),
+		...(sortBy ? { sortBy } : {}),
 	};
 }
 
@@ -161,8 +198,14 @@ async function load() {
 	}
 }
 
+/** A third click on a column turns its order around instead of clearing it, as on preferences. */
 async function onOptionsUpdate(options: TableOptions) {
-	tableOptions.value = options;
+	const [previous] = tableOptions.value.sortBy;
+	const sortBy =
+		options.sortBy.length > 0 || !previous
+			? options.sortBy
+			: [{ id: previous.id, desc: !previous.desc }];
+	tableOptions.value = { ...options, sortBy };
 	await load();
 }
 
@@ -174,9 +217,40 @@ async function resetPage() {
 
 const onSearch = useDebounceFn(resetPage, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 
-async function onScopeFilter(value: ScopeFilter) {
-	scopeFilter.value = value;
+async function setFilter(key: keyof SkillFilters, value: unknown) {
+	// A cleared select reports an empty value, not an empty string.
+	filters.value = { ...filters.value, [key]: typeof value === 'string' ? value : '' };
 	await resetPage();
+}
+
+async function resetFilters() {
+	filters.value = { ...NO_FILTERS };
+	await resetPage();
+}
+
+/** Options for the filters. Each one is optional, so a failed read leaves its list empty. */
+async function loadFilterOptions() {
+	await Promise.all([
+		(async () => {
+			await projectsStore.getMyProjects();
+			// Admins may filter by any project, not only the ones they are members of.
+			if (projectsStore.globalProjectPermissions.list) await projectsStore.getAllProjects();
+		})().catch(() => undefined),
+		listAgentsPageGlobal(rootStore.restApiContext, {
+			take: AGENT_FILTER_LIMIT,
+			sortBy: 'name:asc',
+		})
+			.then(({ data }) => {
+				agentOptions.value = data.map(({ id, name }) => ({ id, name }));
+			})
+			.catch(() => undefined),
+		skillsStore
+			.fetchCreators()
+			.then((users) => {
+				creators.value = [...users].sort((a, b) => creatorLabel(a).localeCompare(creatorLabel(b)));
+			})
+			.catch(() => undefined),
+	]);
 }
 
 function openModal(data: AgentSkillModalData) {
@@ -396,7 +470,7 @@ async function goBack() {
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.context.skills.title'));
-	await Promise.all([load(), projectsStore.getMyProjects().catch(() => undefined)]);
+	await Promise.all([load(), loadFilterOptions()]);
 	// Once for the visit, not once for each page. A failed load reports nothing, so a zero
 	// here is an empty list and never a broken one.
 	if (!loadFailed.value) {
@@ -441,28 +515,86 @@ onMounted(async () => {
 					<N8nIcon icon="search" />
 				</template>
 			</N8nInput>
-			<N8nDropdownMenu
-				:items="scopeFilterItems"
-				placement="bottom-start"
-				content-test-id="skills-scope-filter-menu"
-				@select="onScopeFilter"
+			<ResourceFiltersDropdown
+				:model-value="filters"
+				:keys="FILTER_KEYS"
+				:reset="resetFilters"
+				:shareable="false"
+				just-icon
 			>
-				<template #trigger>
-					<span :class="$style.filterTrigger">
-						<N8nIconButton
-							variant="outline"
-							icon="funnel"
-							:aria-label="i18n.baseText('settings.context.skills.filter.label')"
-							data-test-id="skills-scope-filter"
+				<div :class="$style.filter">
+					<N8nInputLabel
+						:label="i18n.baseText('settings.context.skills.filter.scope')"
+						:bold="false"
+						size="small"
+						color="text-base"
+					/>
+					<N8nSelect
+						:model-value="filters.scope"
+						size="medium"
+						filterable
+						clearable
+						:placeholder="i18n.baseText('settings.context.skills.filter.all')"
+						data-test-id="skills-filter-scope"
+						@update:model-value="setFilter('scope', $event)"
+					>
+						<N8nOption
+							v-for="option in scopeFilterOptions"
+							:key="option.value"
+							:value="option.value"
+							:label="option.label"
 						/>
-						<span
-							v-if="scopeFilter !== 'all'"
-							:class="$style.filterDot"
-							data-test-id="skills-scope-filter-active"
+					</N8nSelect>
+				</div>
+				<div :class="$style.filter">
+					<N8nInputLabel
+						:label="i18n.baseText('settings.context.skills.filter.agentLabel')"
+						:bold="false"
+						size="small"
+						color="text-base"
+					/>
+					<N8nSelect
+						:model-value="filters.agentId"
+						size="medium"
+						filterable
+						clearable
+						:placeholder="i18n.baseText('settings.context.skills.filter.anyAgent')"
+						data-test-id="skills-filter-agent"
+						@update:model-value="setFilter('agentId', $event)"
+					>
+						<N8nOption
+							v-for="agent in agentOptions"
+							:key="agent.id"
+							:value="agent.id"
+							:label="agent.name"
 						/>
-					</span>
-				</template>
-			</N8nDropdownMenu>
+					</N8nSelect>
+				</div>
+				<div :class="$style.filter">
+					<N8nInputLabel
+						:label="i18n.baseText('settings.context.skills.filter.createdBy')"
+						:bold="false"
+						size="small"
+						color="text-base"
+					/>
+					<N8nSelect
+						:model-value="filters.createdById"
+						size="medium"
+						filterable
+						clearable
+						:placeholder="i18n.baseText('settings.context.skills.filter.anyone')"
+						data-test-id="skills-filter-created-by"
+						@update:model-value="setFilter('createdById', $event)"
+					>
+						<N8nOption
+							v-for="creator in creators"
+							:key="creator.id"
+							:value="creator.id"
+							:label="creatorLabel(creator)"
+						/>
+					</N8nSelect>
+				</div>
+			</ResourceFiltersDropdown>
 			<span :class="$style.spacer" />
 			<N8nButton
 				v-if="scopeOptions.length > 0"
@@ -528,21 +660,14 @@ onMounted(async () => {
 	max-width: 20rem;
 }
 
-.filterTrigger {
-	position: relative;
-	display: inline-flex;
-}
+.filter {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
 
-/* Marks an active scope filter, since the button itself has no label. */
-.filterDot {
-	position: absolute;
-	top: calc(-1 * var(--spacing--5xs));
-	right: calc(-1 * var(--spacing--5xs));
-	width: var(--spacing--2xs);
-	height: var(--spacing--2xs);
-	border-radius: 50%;
-	background-color: var(--color--primary);
-	pointer-events: none;
+	& + & {
+		margin-top: var(--spacing--sm);
+	}
 }
 
 .empty {

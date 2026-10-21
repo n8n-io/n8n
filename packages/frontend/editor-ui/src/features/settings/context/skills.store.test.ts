@@ -5,9 +5,11 @@ import { setActivePinia } from 'pinia';
 import { useSkillsStore } from './skills.store';
 
 const list = vi.fn();
+const creators = vi.fn();
 
 vi.mock('./skills.api', () => ({
 	getSkills: async (...args: unknown[]) => await list(...args),
+	getSkillCreators: async (...args: unknown[]) => await creators(...args),
 }));
 
 function deferred<T>() {
@@ -71,5 +73,15 @@ describe('useSkillsStore', () => {
 
 		expect(list).toHaveBeenCalledWith(expect.anything(), { take: 1 });
 		expect(store.count).toBe(7);
+	});
+
+	it('reads the creators for the creator filter without touching the list', async () => {
+		const ada = { id: 'u1', email: 'ada@example.com', firstName: 'Ada', lastName: null };
+		creators.mockResolvedValue([ada]);
+		const store = useSkillsStore();
+
+		expect(await store.fetchCreators()).toEqual([ada]);
+		expect(list).not.toHaveBeenCalled();
+		expect(store.loading).toBe(false);
 	});
 });

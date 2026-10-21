@@ -298,6 +298,50 @@ describe('SkillsController', () => {
 			]);
 			await editor.get('/skills').query({ attachableTo: support.id, scope: 'agent' }).expect(400);
 		});
+
+		it('filters by project, agent and creator, and sorts by name', async () => {
+			await create(editor, {
+				scope: 'project',
+				projectId: project.id,
+				skill: { ...body, name: 'beta team' },
+			});
+			await create(owner, { scope: 'instance', skill: { ...body, name: 'Alpha shared' } });
+			const used = await create(owner, { scope: 'instance', skill: { ...body, name: 'Used' } });
+			const support = await attachToNewAgent(used.id, 'Support bot', project.id);
+			const names = (response: { body: { data: { data: Array<{ name: string }> } } }) =>
+				response.body.data.data.map((s) => s.name);
+
+			const byProject = await editor.get('/skills').query({ projectId: project.id }).expect(200);
+			const hiddenProject = await member.get('/skills').query({ projectId: project.id });
+			const byAgent = await editor.get('/skills').query({ agentId: support.id }).expect(200);
+			const hiddenAgent = await member.get('/skills').query({ agentId: support.id });
+			const byCreator = await owner
+				.get('/skills')
+				.query({ createdById: ownerUser.id, sortBy: 'name:asc' })
+				.expect(200);
+			const byName = await owner.get('/skills').query({ sortBy: 'name:desc' }).expect(200);
+
+			expect(names(byProject)).toEqual(['beta team']);
+			expect(hiddenProject.body.data).toEqual({ count: 0, data: [] });
+			expect(names(byAgent)).toEqual(['Used']);
+			expect(hiddenAgent.body.data).toEqual({ count: 0, data: [] });
+			expect(names(byCreator)).toEqual(['Alpha shared', 'Used']);
+			expect(names(byName)).toEqual(['Used', 'beta team', 'Alpha shared']);
+			await owner.get('/skills').query({ sortBy: 'scope:asc' }).expect(400);
+		});
+
+		it('names the creators of the skills the user may see', async () => {
+			await create(owner, { scope: 'instance', skill: body });
+			await create(editor, { scope: 'project', projectId: project.id, skill: body });
+
+			const forEditor = await editor.get('/skills/creators').expect(200);
+			const forOutsider = await outsider.get('/skills/creators').expect(200);
+
+			expect(forEditor.body.data).toHaveLength(2);
+			expect(forOutsider.body.data).toEqual([
+				expect.objectContaining({ id: ownerUser.id, email: ownerUser.email }),
+			]);
+		});
 	});
 
 	describe('save', () => {

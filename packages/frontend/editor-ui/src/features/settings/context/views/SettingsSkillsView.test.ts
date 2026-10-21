@@ -7,9 +7,10 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useUsersStore } from '@n8n/stores/users.store';
 import userEvent from '@testing-library/user-event';
-import { waitFor, within } from '@testing-library/vue';
+import { waitFor } from '@testing-library/vue';
 import { mock } from 'vitest-mock-extended';
 
+import { getDropdownItems } from '@/__tests__/utils';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { AgentSkillModalData } from '@/features/agents/components/AgentSkillModal.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -25,6 +26,12 @@ const showMessageMock = vi.fn();
 const showErrorMock = vi.fn();
 const trackMock = vi.fn();
 const saveAsMock = vi.fn();
+
+const listAgentsMock = vi.fn();
+
+vi.mock('@/features/agents/composables/useAgentApi', () => ({
+	listAgentsPageGlobal: async (...args: unknown[]) => await listAgentsMock(...args),
+}));
 
 vi.mock('file-saver', () => ({ saveAs: (...args: unknown[]) => saveAsMock(...args) }));
 
@@ -134,13 +141,40 @@ describe('SettingsSkillsView', () => {
 		showErrorMock.mockClear();
 		trackMock.mockClear();
 		saveAsMock.mockClear();
+		listAgentsMock.mockReset();
+		listAgentsMock.mockResolvedValue({
+			count: 1,
+			data: [{ id: 'agent-1', name: 'Support bot', projectId: 'team-1' }],
+		});
+		skillsStore.fetchCreators.mockResolvedValue([
+			{ id: 'user-2', email: 'ada@example.com', firstName: 'Ada', lastName: 'Lovelace' },
+		]);
 	});
+
+	/** Opens the filters popover and picks an option of one filter. */
+	async function pickFilter(
+		view: ReturnType<typeof renderView>,
+		testId: string,
+		optionText: string,
+	) {
+		if (!view.queryByTestId('resources-list-filters-dropdown')) {
+			await userEvent.click(view.getByTestId('resources-list-filters-trigger'));
+		}
+		const items = await getDropdownItems(await view.findByTestId(testId));
+		const option = [...items].find((item) => item.textContent?.trim() === optionText);
+		if (!option) throw new Error(`No option ${optionText}`);
+		await userEvent.click(option);
+	}
 
 	it('loads the first page on mount', async () => {
 		renderView();
 		await new Promise(process.nextTick);
 
-		expect(skillsStore.fetchSkills).toHaveBeenCalledWith({ skip: 0, take: 50 });
+		expect(skillsStore.fetchSkills).toHaveBeenCalledWith({
+			skip: 0,
+			take: 50,
+			sortBy: 'updatedAt:desc',
+		});
 	});
 
 	it('shows the empty state when there are no skills', async () => {
@@ -195,27 +229,135 @@ describe('SettingsSkillsView', () => {
 			skip: 0,
 			take: 50,
 			search: 'brand',
+			sortBy: 'updatedAt:desc',
 		});
 		expect(queryByTestId('skills-empty-state')).not.toBeInTheDocument();
 		vi.useRealTimers();
 	});
 
-	it('filters by scope on the server', async () => {
-		const { getByTestId, findByTestId } = renderView();
+	it('filters by scope on the server and counts the filter', async () => {
+		const view = renderView();
 		await new Promise(process.nextTick);
 
-		await userEvent.click(getByTestId('skills-scope-filter'));
-		const menu = await findByTestId('skills-scope-filter-menu');
-		await userEvent.click(within(menu).getByText('Agents'));
+		await pickFilter(view, 'skills-filter-scope', 'Agents');
 
 		await waitFor(() =>
 			expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith({
 				skip: 0,
 				take: 50,
 				scope: 'agent',
+				sortBy: 'updatedAt:desc',
 			}),
 		);
-		expect(getByTestId('skills-scope-filter-active')).toBeInTheDocument();
+		expect(view.getByTestId('resources-list-filters-count')).toHaveTextContent('1');
+	});
+
+	it('filters by one project the user can see', async () => {
+		setPermissions({ projects: [{ id: 'team-1', name: 'Marketing', type: 'team', scopes: [] }] });
+		mockedStore(useProjectsStore).availableProjects = mockedStore(useProjectsStore)
+			.myProjects as never;
+		const view = renderView();
+		await new Promise(process.nextTick);
+
+		await pickFilter(view, 'skills-filter-scope', 'Marketing');
+
+		await waitFor(() =>
+			expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith(
+				expect.objectContaining({ projectId: 'team-1' }),
+			),
+		);
+		expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith(
+			expect.not.objectContaining({ scope: expect.anything() }),
+		);
+	});
+
+	it('loads every project for the project filter when the user may list them all', async () => {
+		mockedStore(useUsersStore).currentUser = mock<IUser>({
+			id: 'user-1',
+			globalScopes: ['project:list'],
+		});
+
+		renderView();
+		await new Promise(process.nextTick);
+
+		expect(mockedStore(useProjectsStore).getAllProjects).toHaveBeenCalled();
+	});
+
+	it('combines the agent and creator filters with the search, from the first page', async () => {
+		vi.useFakeTimers({ shouldAdvanceTime: true });
+		const view = renderView();
+		await new Promise(process.nextTick);
+
+		await userEvent.type(view.getByTestId('skills-search'), 'voice');
+		await vi.runAllTimersAsync();
+		await pickFilter(view, 'skills-filter-agent', 'Support bot');
+		await pickFilter(view, 'skills-filter-created-by', 'Ada Lovelace');
+
+		await waitFor(() =>
+			expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith({
+				skip: 0,
+				take: 50,
+				search: 'voice',
+				agentId: 'agent-1',
+				createdById: 'user-2',
+				sortBy: 'updatedAt:desc',
+			}),
+		);
+		expect(listAgentsMock).toHaveBeenCalledWith(expect.anything(), {
+			take: 250,
+			sortBy: 'name:asc',
+		});
+		expect(view.getByTestId('resources-list-filters-count')).toHaveTextContent('2');
+		vi.useRealTimers();
+	});
+
+	it('shows an empty table, not the empty state, when the filters match nothing', async () => {
+		const view = renderView();
+		await new Promise(process.nextTick);
+
+		await pickFilter(view, 'skills-filter-created-by', 'Ada Lovelace');
+
+		await waitFor(() => expect(skillsStore.fetchSkills).toHaveBeenCalledTimes(2));
+		expect(view.queryByTestId('skills-empty-state')).not.toBeInTheDocument();
+	});
+
+	it('still loads the list when the filter options fail to load', async () => {
+		listAgentsMock.mockRejectedValue(new Error('offline'));
+		skillsStore.fetchCreators.mockRejectedValue(new Error('offline'));
+
+		renderView();
+		await new Promise(process.nextTick);
+
+		expect(skillsStore.fetchSkills).toHaveBeenCalled();
+		expect(showErrorMock).not.toHaveBeenCalled();
+	});
+
+	it('sorts on the server and turns the order around instead of clearing it', async () => {
+		skillsStore.skills = [skill()];
+		skillsStore.count = 1;
+		const { container } = renderView();
+		await new Promise(process.nextTick);
+		const header = (title: string) =>
+			[...container.querySelectorAll('thead th')].find((th) => th.textContent?.includes(title))!;
+
+		await userEvent.click(header('Skill'));
+		await waitFor(() =>
+			expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith(
+				expect.objectContaining({ sortBy: 'name:asc' }),
+			),
+		);
+		await userEvent.click(header('Skill'));
+		await waitFor(() =>
+			expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith(
+				expect.objectContaining({ sortBy: 'name:desc' }),
+			),
+		);
+		await userEvent.click(header('Skill'));
+		await waitFor(() =>
+			expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith(
+				expect.objectContaining({ sortBy: 'name:asc' }),
+			),
+		);
 	});
 
 	describe('create', () => {

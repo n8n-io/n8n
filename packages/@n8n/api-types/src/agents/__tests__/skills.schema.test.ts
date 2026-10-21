@@ -31,6 +31,10 @@ describe('ListSkillsQueryDto', () => {
 		expect(ListSkillsQueryDto.safeParse({ take }).success).toBe(false);
 	});
 
+	it('leaves the sort unset when the client sends none', () => {
+		expect(ListSkillsQueryDto.parse({}).sortBy).toBeUndefined();
+	});
+
 	it('parses the project an agent attaches skills for', () => {
 		expect(ListSkillsQueryDto.parse({ attachableTo: 'p1' })).toMatchObject({ attachableTo: 'p1' });
 	});
@@ -38,6 +42,31 @@ describe('ListSkillsQueryDto', () => {
 	it.each(['team', 'user'])('rejects the unknown scope %s', (scope) => {
 		expect(ListSkillsQueryDto.safeParse({ scope }).success).toBe(false);
 	});
+
+	it('parses the agent and creator filters', () => {
+		expect(ListSkillsQueryDto.parse({ agentId: 'a1', createdById: 'u1' })).toMatchObject({
+			agentId: 'a1',
+			createdById: 'u1',
+		});
+	});
+
+	it.each([['agentId'], ['createdById']])('rejects a %s longer than an id', (key) => {
+		expect(ListSkillsQueryDto.safeParse({ [key]: 'x'.repeat(37) }).success).toBe(false);
+	});
+
+	it.each(['name:asc', 'name:desc', 'updatedAt:asc', 'updatedAt:desc'])(
+		'parses the sort %s',
+		(sortBy) => {
+			expect(ListSkillsQueryDto.parse({ sortBy }).sortBy).toBe(sortBy);
+		},
+	);
+
+	it.each(['createdAt:desc', 'name', 'name:up', 'scope:asc'])(
+		'rejects the unknown sort %s',
+		(sortBy) => {
+			expect(ListSkillsQueryDto.safeParse({ sortBy }).success).toBe(false);
+		},
+	);
 });
 
 describe('CreateSkillDto', () => {

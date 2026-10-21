@@ -359,6 +359,104 @@ describe('SkillRepository', () => {
 			expect(ids(page)).toEqual([percent]);
 		});
 
+		it('filters by the skills an agent uses and its own skills, with the other filters', async () => {
+			const support = await createAgent('Support');
+			const used = await createSkill({}, content({ name: 'Used one' }));
+			const usedOther = await createSkill({ projectId: otherProject.id });
+			const own = await createSkill({ agentId: support.id });
+			await createSkill();
+			await createSkill({ agentId: (await createAgent('Sales')).id });
+
+			const page = async (filter: { search?: string; projectIds?: string[] | 'all' } = {}) =>
+				ids(
+					await skills.findVisiblePage(await visibleTo(filter.projectIds ?? 'all'), {
+						skip: 0,
+						usedBy: { agentId: support.id, skillIds: [used, usedOther] },
+						search: filter.search,
+					}),
+				).sort();
+
+			expect(await page()).toEqual([used, usedOther, own].sort());
+			expect(await page({ search: 'used' })).toEqual([used]);
+			// The filter narrows the visible skills, it never adds to them.
+			expect(await page({ projectIds: [project.id] })).toEqual([used, own].sort());
+		});
+
+		it('lists only its own skills for an agent that uses none', async () => {
+			const support = await createAgent('Support');
+			const own = await createSkill({ agentId: support.id });
+			await createSkill();
+
+			const page = await skills.findVisiblePage(await visibleTo('all'), {
+				skip: 0,
+				usedBy: { agentId: support.id, skillIds: [] },
+			});
+
+			expect(ids(page)).toEqual([own]);
+		});
+
+		it('filters by creator', async () => {
+			const other = await createUser();
+			const mine = await createSkill();
+			await skills.update({ id: mine }, { createdById: user.id });
+			const theirs = await createSkill();
+			await skills.update({ id: theirs }, { createdById: other.id });
+			await createSkill();
+
+			const page = await skills.findVisiblePage(await visibleTo('all'), {
+				skip: 0,
+				createdById: user.id,
+			});
+
+			expect(ids(page)).toEqual([mine]);
+		});
+
+		it('sorts by the latest name without case, both ways, with the id as tie break', async () => {
+			const beta = await createSkill({}, content({ name: 'old' }));
+			await skills.insertSavedVersion(beta, 2, content({ name: 'beta' }), null);
+			const alpha = await createSkill({}, content({ name: 'Alpha' }));
+			const gamma1 = await createSkill({}, content({ name: 'Gamma' }));
+			const gamma2 = await createSkill({}, content({ name: 'gamma' }));
+			const visibility = { projectIds: [], agentIds: [] };
+			const gammas = [gamma1, gamma2].sort();
+
+			const asc = await skills.findVisiblePage(visibility, {
+				skip: 0,
+				sort: { by: 'name', order: 'ASC' },
+			});
+			const desc = await skills.findVisiblePage(visibility, {
+				skip: 0,
+				sort: { by: 'name', order: 'DESC' },
+			});
+			const secondPage = await skills.findVisiblePage(visibility, {
+				skip: 2,
+				take: 1,
+				sort: { by: 'name', order: 'ASC' },
+			});
+
+			expect(ids(asc)).toEqual([alpha, beta, ...gammas]);
+			expect(ids(desc)).toEqual([...gammas, beta, alpha]);
+			expect(ids(secondPage)).toEqual([gammas[0]]);
+			expect(secondPage.count).toBe(4);
+		});
+
+		it('sorts by last change, oldest first on request', async () => {
+			const first = await createSkill();
+			const second = await createSkill();
+			await skills.update({ id: first }, { updatedAt: new Date('2026-01-01T00:00:00.000Z') });
+			await skills.update({ id: second }, { updatedAt: new Date('2026-02-01T00:00:00.000Z') });
+			const visibility = { projectIds: [], agentIds: [] };
+
+			const asc = await skills.findVisiblePage(visibility, {
+				skip: 0,
+				sort: { by: 'updatedAt', order: 'ASC' },
+			});
+			const byDefault = await skills.findVisiblePage(visibility, { skip: 0 });
+
+			expect(ids(asc)).toEqual([first, second]);
+			expect(ids(byDefault)).toEqual([second, first]);
+		});
+
 		it('cuts the page with skip and take, and answers past the end with the full count', async () => {
 			for (let i = 0; i < 3; i++) await createSkill();
 			const visibility = { projectIds: [], agentIds: [] };
@@ -371,6 +469,26 @@ describe('SkillRepository', () => {
 			expect(ids(second)).toEqual([ids(all)[1]]);
 			expect(second.count).toBe(3);
 			expect(past).toEqual({ skills: [], count: 3 });
+		});
+	});
+
+	describe('findVisibleCreatorIds', () => {
+		it('lists each creator of a visible skill once', async () => {
+			const other = await createUser();
+			const hidden = await createUser();
+			const instance = await createSkill();
+			const team = await createSkill({ projectId: project.id });
+			const again = await createSkill();
+			const otherTeam = await createSkill({ projectId: otherProject.id });
+			await createSkill();
+			await skills.update({ id: instance }, { createdById: user.id });
+			await skills.update({ id: again }, { createdById: user.id });
+			await skills.update({ id: team }, { createdById: other.id });
+			await skills.update({ id: otherTeam }, { createdById: hidden.id });
+
+			const creators = await skills.findVisibleCreatorIds(await visibleTo([project.id]));
+
+			expect(creators.sort()).toEqual([user.id, other.id].sort());
 		});
 	});
 

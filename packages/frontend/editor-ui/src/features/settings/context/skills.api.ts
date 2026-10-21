@@ -5,6 +5,8 @@ import type {
 	SkillListResponse,
 	SkillNewNameResponse,
 	SkillSaveResponse,
+	SkillSortOption,
+	SkillUserDto,
 } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
@@ -18,6 +20,9 @@ export type SkillListQuery = {
 	search?: string;
 	scope?: CreateSkillDto['scope'];
 	projectId?: string;
+	agentId?: string;
+	createdById?: string;
+	sortBy?: SkillSortOption;
 };
 
 export async function getSkills(
@@ -25,6 +30,11 @@ export async function getSkills(
 	query: SkillListQuery = {},
 ): Promise<SkillListResponse> {
 	return await makeRestApiRequest<SkillListResponse>(context, 'GET', ENDPOINT, { ...query });
+}
+
+/** The users who created a skill that the current user can see. */
+export async function getSkillCreators(context: IRestApiContext): Promise<SkillUserDto[]> {
+	return await makeRestApiRequest<SkillUserDto[]>(context, 'GET', `${ENDPOINT}/creators`);
 }
 
 /** A name that no skill in the scope has yet: the requested name, or the name with a number. */

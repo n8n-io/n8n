@@ -29,6 +29,9 @@ export interface SkillAgentsProvider {
 	/** The agents that use the skill: a draft ref or a published pin. */
 	findUsingAgentIds(skillId: string, ctx: OperationContext): Promise<string[]>;
 
+	/** The skills the agent uses: a draft ref or a published pin. */
+	findSkillIdsUsedByAgent(agentId: string, ctx: OperationContext): Promise<string[]>;
+
 	/** Refuses a rename that makes the skill clash by name with another skill of an agent. */
 	assertRenameKeepsNamesApart(
 		skillId: string,
@@ -93,6 +96,11 @@ export class SkillAgentsProxy implements SkillAgentsProvider {
 	async findUsingAgentIds(skillId: string, ctx: OperationContext = {}) {
 		if (!this.provider) return [];
 		return await this.provider.findUsingAgentIds(skillId, ctx);
+	}
+
+	async findSkillIdsUsedByAgent(agentId: string, ctx: OperationContext = {}) {
+		if (!this.provider) return [];
+		return await this.provider.findSkillIdsUsedByAgent(agentId, ctx);
 	}
 
 	async assertRenameKeepsNamesApart(

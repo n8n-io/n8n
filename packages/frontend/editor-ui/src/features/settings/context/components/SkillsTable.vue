@@ -92,14 +92,13 @@ function onRowClick(_event: MouseEvent, payload: { item: SkillListItem }) {
 	emit('open', payload.item);
 }
 
-// Sorting is off until the endpoint supports ORDER BY. Pixel widths sum to the table's
+// The endpoint sorts by name and by last update only. Pixel widths sum to the table's
 // minimum width, so a new column takes its room from the others, not from the page.
 const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 	{
 		title: i18n.baseText('settings.context.skills.columns.skill'),
 		key: 'name',
 		width: 300,
-		disableSort: true,
 		resize: false,
 	},
 	{
@@ -127,7 +126,6 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 		title: i18n.baseText('settings.context.skills.columns.updatedAt'),
 		key: 'updatedAt',
 		width: 130,
-		disableSort: true,
 		resize: false,
 	},
 	{
@@ -147,6 +145,7 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 		<N8nDataTableServer
 			v-model:page="tableOptions.page"
 			v-model:items-per-page="tableOptions.itemsPerPage"
+			:sort-by="tableOptions.sortBy"
 			:headers="headers"
 			:items="props.skills"
 			:items-length="props.itemsLength"

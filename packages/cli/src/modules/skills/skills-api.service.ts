@@ -7,6 +7,7 @@ import type {
 	SkillSaveResponse,
 	SaveSkillDto,
 	SkillScope,
+	SkillSortOption,
 	SkillUserDto,
 	SkillNewNameQueryDto,
 	SkillNewNameResponse,
@@ -22,9 +23,16 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { SkillAgentsProxy } from './skill-agents-proxy.service';
 import { getSkillHash } from './skill-hash';
 import type { Skill } from './skill.entity';
-import { SkillRepository, type SkillTarget } from './skill.repository';
+import { SkillRepository, type SkillListSort, type SkillTarget } from './skill.repository';
 import { SkillService, toAgentSkill } from './skill.service';
 import { SkillsTelemetry, type SkillTelemetrySource } from './skills-telemetry';
+
+const LIST_SORTS: Record<SkillSortOption, SkillListSort> = {
+	'name:asc': { by: 'name', order: 'ASC' },
+	'name:desc': { by: 'name', order: 'DESC' },
+	'updatedAt:asc': { by: 'updatedAt', order: 'ASC' },
+	'updatedAt:desc': { by: 'updatedAt', order: 'DESC' },
+};
 
 function scopeOf(skill: Pick<Skill, 'projectId' | 'agentId'>): SkillScope {
 	if (skill.agentId) return 'agent';
@@ -50,10 +58,16 @@ export class SkillsApiService {
 	) {}
 
 	async list(user: User, query: ListSkillsQueryDto): Promise<SkillListResponse> {
-		if (query.attachableTo !== undefined && (query.scope || query.projectId)) {
-			throw new UserError('Filter by attachableTo alone, without scope or projectId.');
+		if (query.attachableTo !== undefined && (query.scope || query.projectId || query.agentId)) {
+			throw new UserError('Filter by attachableTo alone, without scope, projectId or agentId.');
 		}
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['projectSkill:list']);
+		// A project the user may not list answers like a project without skills.
+		if (query.projectId && projectIds !== null && !projectIds.includes(query.projectId)) {
+			return { count: 0, data: [] };
+		}
+		const usedBy = await this.usedByFilter(user, query.agentId);
+		if (usedBy === null) return { count: 0, data: [] };
 		const attachableTo = await this.attachTarget(query.attachableTo);
 		// An agent skill has no projectId: it belongs to the project of its agent.
 		const agentIds =
@@ -70,12 +84,27 @@ export class SkillsApiService {
 				scope: query.scope,
 				project,
 				attachableTo,
+				usedBy,
+				createdById: query.createdById,
 				search: query.search,
+				sort: query.sortBy && LIST_SORTS[query.sortBy],
 				skip: query.skip,
 				take: query.take,
 			},
 		);
 		return { count, data: await this.toListItems(user, skills) };
+	}
+
+	/** The users who created a skill that the user may see, for the creator filter. */
+	async listCreators(user: User): Promise<SkillUserDto[]> {
+		const projectIds = await this.projectScopeService.getProjectIds(user, ['projectSkill:list']);
+		const agentIds =
+			projectIds === null ? 'all' : await this.skillAgents.findAgentIdsInProjects(projectIds);
+		const creatorIds = await this.skillRepository.findVisibleCreatorIds({
+			projectIds: projectIds ?? 'all',
+			agentIds,
+		});
+		return [...(await this.findCreators(creatorIds)).values()];
 	}
 
 	async get(user: User, skillId: string): Promise<SkillDetail> {
@@ -214,6 +243,23 @@ export class SkillsApiService {
 		return skill;
 	}
 
+	/**
+	 * The agent filter: the skills the agent uses and its own agent skills. Null when the
+	 * agent does not exist or the user may not read it, so the list is empty and shows
+	 * nothing about that agent.
+	 */
+	private async usedByFilter(
+		user: User,
+		agentId: string | undefined,
+	): Promise<{ agentId: string; skillIds: string[] } | undefined | null> {
+		if (agentId === undefined) return undefined;
+		const agent = (await this.skillAgents.findAgents([agentId])).get(agentId);
+		if (!agent) return null;
+		const readable = await this.projectScopeService.getProjectIds(user, ['agent:read']);
+		if (readable !== null && !readable.includes(agent.projectId)) return null;
+		return { agentId, skillIds: await this.skillAgents.findSkillIdsUsedByAgent(agentId) };
+	}
+
 	/** The agent of an `attachableTo` filter with its project. An unknown agent can attach nothing. */
 	private async attachTarget(
 		agentId: string | undefined,
@@ -281,7 +327,7 @@ export class SkillsApiService {
 			this.skillRepository.findLatestSummaries(ids),
 			this.skillAgents.countUsingAgents(ids),
 			this.skillRepository.findProjects(skills.flatMap((skill) => projectOf(skill) ?? [])),
-			this.findCreators(skills),
+			this.findCreators(skills.flatMap((skill) => skill.createdById ?? [])),
 			this.skillService.accessCheck(user, 'update'),
 			this.skillService.accessCheck(user, 'delete'),
 		]);
@@ -313,9 +359,9 @@ export class SkillsApiService {
 		return items;
 	}
 
-	/** The creators of a page of skills, in one query. */
-	private async findCreators(skills: Skill[]): Promise<Map<string, SkillUserDto>> {
-		const ids = [...new Set(skills.flatMap((skill) => skill.createdById ?? []))];
+	/** The users with these ids, in one query. */
+	private async findCreators(userIds: string[]): Promise<Map<string, SkillUserDto>> {
+		const ids = [...new Set(userIds)];
 		if (ids.length === 0) return new Map();
 		const users = await this.userRepository.findManyByIds(ids);
 		return new Map(
