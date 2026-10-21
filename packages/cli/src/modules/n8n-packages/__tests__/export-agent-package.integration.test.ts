@@ -9,19 +9,21 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
-import { setSkillsHubFlag } from '@/modules/agents/__tests__/test-utils/skills-hub-flag';
+import { setSkillsHubFlag } from '@/modules/skills/__tests__/test-utils/skills-hub-flag';
+import { registerSkillAgentsProvider } from '@/modules/agents/register-skill-agents-provider';
 import { AgentSkillDependency } from '@/modules/agents/entities/agent-skill-dependency.entity';
 import { AgentVersionSkillDependency } from '@/modules/agents/entities/agent-version-skill-dependency.entity';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
-import { SkillFile } from '@/modules/agents/entities/skill-file.entity';
-import { SkillVersion } from '@/modules/agents/entities/skill-version.entity';
+import { SkillFile } from '@/modules/skills/skill-file.entity';
+import { SkillVersion } from '@/modules/skills/skill-version.entity';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentTaskSnapshotRepository } from '@/modules/agents/repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import { SkillRepository } from '@/modules/agents/repositories/skill.repository';
+import { SkillRepository } from '@/modules/skills/skill.repository';
+import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { withoutLegacySkillRefs } from '@/modules/agents/json-config/agent-document';
-import { toSkillContent } from '@/modules/agents/skills/skill.service';
+import { toSkillContent } from '@/modules/skills/skill.service';
 import type { NodeTypes } from '@/node-types';
 
 import { N8nPackageParser } from '../engine/n8n-package-parser';
@@ -71,8 +73,9 @@ async function readSourceRecords() {
 
 beforeAll(async () => {
 	setSkillsHubFlag(true);
-	await testModules.loadModules(['agents']);
+	await testModules.loadModules(['skills', 'agents']);
 	await testDb.init();
+	registerSkillAgentsProvider();
 	agentRepository = Container.get(AgentRepository);
 	historyRepository = Container.get(AgentHistoryRepository);
 	skillRepository = Container.get(SkillRepository);
@@ -132,7 +135,11 @@ beforeAll(async () => {
 			revision: 0,
 		});
 		await taskRepository.save(
-			Object.entries(draft.tasks).map(([id, task]) => ({ id, agentId: agent.id, ...task })),
+			Object.entries(draft.tasks).map(([id, task]) => ({
+				id,
+				agentId: agent.id,
+				...task,
+			})),
 		);
 		const history = await historyRepository.saveVersion({
 			versionId: `${agent.id}_published`,
@@ -141,8 +148,8 @@ beforeAll(async () => {
 			tools: published.tools,
 			publishedBy: 'Package test',
 		});
-		await skillRepository.replaceDependencies(agent.id, [{ skillId }]);
-		await skillRepository.insertPins([
+		await Container.get(AgentSkillRepository).replaceDependencies(agent.id, [{ skillId }]);
+		await Container.get(AgentSkillRepository).insertPins([
 			{ agentVersionId: history.versionId, skillId, skillVersionId: publishedSkillVersionId },
 		]);
 		await taskSnapshotRepository.saveForVersion(

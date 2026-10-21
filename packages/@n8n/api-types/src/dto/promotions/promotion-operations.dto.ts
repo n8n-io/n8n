@@ -8,6 +8,7 @@ import {
 	promotionBindingPreflightResultSchema,
 	promotionBindingWarningSchema,
 } from './promotion-binding-preflight.dto';
+import { promotionReviewResultSchema } from './promotion-review.dto';
 
 export class PromotePackageDto extends Z.class(
 	{
@@ -40,11 +41,22 @@ export const promotePackageCountsSchema = z.object({
 	tags: count(),
 });
 
+/** A follow-up step that failed after the push. `linkUrl` is an http(s) URL that n8n wrote. */
+export const promotionPromoteWarningSchema = z.object({
+	message: z.string(),
+	linkUrl: z.string().optional(),
+});
+export type PromotionPromoteWarning = z.infer<typeof promotionPromoteWarningSchema>;
+
 /** Describes the instance that handled the request, not any other instance. */
 export const promotePackageResultSchema = z.object({
 	environmentId: n8nIdSchema,
 	counts: promotePackageCountsSchema,
 	git: promotionGitResultSchema,
+	/** Set when the push opened a review for the promotion branch. */
+	review: promotionReviewResultSchema.optional(),
+	/** The push succeeded, but a follow-up step did not. The admin can finish it on the host. */
+	warnings: z.array(promotionPromoteWarningSchema).optional(),
 });
 
 export class PromotePackageResultDto extends Z.class(promotePackageResultSchema.shape) {}

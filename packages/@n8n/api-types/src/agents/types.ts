@@ -481,6 +481,19 @@ export interface AgentN8nChatThreadsResponse {
 	nextCursor: string | null;
 }
 
+/** One of the user's own threads with a system agent. `projectId` is its working project. */
+export interface SystemAgentThreadSummary {
+	id: string;
+	title: string | null;
+	updatedAt: string;
+	projectId: string;
+}
+
+/** The user's own threads with one system agent, newest first. */
+export interface SystemAgentThreadsResponse {
+	data: SystemAgentThreadSummary[];
+}
+
 export interface AgentSessionLangSmithExportResponse {
 	traceId: string;
 }

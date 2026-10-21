@@ -99,7 +99,12 @@ function makeService() {
 	const saveCompletion = new AgentSaveCompletionService(
 		eventService,
 		broadcaster,
-		new AgentModificationTelemetryService(telemetry),
+		new AgentModificationTelemetryService(
+			telemetry,
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			eventService,
+			// EOF Experiment cleanup
+		),
 	);
 	const setupCompletion = mock<AgentSetupCompletionService>();
 	setupCompletion.recordIfSetupComplete.mockResolvedValue(null);
