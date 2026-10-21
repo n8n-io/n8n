@@ -12,7 +12,8 @@ import { mock } from 'vitest-mock-extended';
 import type { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { AgentsSettingsService } from '../agents-settings.service';
-import { SkillService } from '../skills/skill.service';
+import { SkillService } from '@/modules/skills/skill.service';
+import { AgentSkillUsageService } from '../agent-skill-usage.service';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { ExecutionLevelTracer } from '@/modules/otel/execution-level-tracer';
@@ -25,7 +26,7 @@ import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import type {
 	AgentRuntimeInstrumentation,
 	PrepareWorkflowAgentForEval,
-} from '../agent-runtime-instrumentation';
+} from '../evaluation/agent-evaluation.contracts';
 import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import { AgentTurnExecutionService } from '../agent-turn-execution.service';
 import type { AgentToolApprovalService } from '../agent-tool-approval.service';
@@ -896,6 +897,7 @@ describe('AgentWorkflowExecutionService', () => {
 
 		it('runs the embedded skills and never calls the skill service', async () => {
 			const skillService = mockInstance(SkillService);
+			const agentSkillUsage = mockInstance(AgentSkillUsageService);
 			const { service, reconstructionService, skillRefs } = makeService();
 			reconstructionService.reconstructFromResolvedSource.mockResolvedValue(
 				makeRuntime([{ type: 'finish', finishReason: 'stop' }]),
@@ -929,8 +931,7 @@ describe('AgentWorkflowExecutionService', () => {
 				skillRefs.readVersion,
 				skillRefs.skillsForRefs,
 				skillService.resolveForAgentDraft,
-				skillService.resolvePinned,
-				skillService.checkRefs,
+				agentSkillUsage.checkRefs,
 				skillService.create,
 			]) {
 				expect(read).not.toHaveBeenCalled();

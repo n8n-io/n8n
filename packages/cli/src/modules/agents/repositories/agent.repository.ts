@@ -36,8 +36,17 @@ const projectScopeSql = "agent.scope = 'project'";
 /** The same filter for UPDATE builders, which have no `agent` alias. */
 const projectScopeUpdateSql = "scope = 'project'";
 
+/** In-memory twin of `AgentRepository.publishedN8nChatSql`: the published integrations carry n8n Chat. */
+export function hasN8nChatChannel(integrations: Array<{ type: string }> | undefined): boolean {
+	return (
+		integrations?.some((integration) => integration.type === N8N_CHAT_INTEGRATION_TYPE) ?? false
+	);
+}
+
 /** Integration and publication state for channel runtime decisions. */
 export type AgentIntegrationState = Pick<Agent, 'integrations' | 'versionId' | 'activeVersionId'>;
+
+export type AgentImportIdentity = Pick<Agent, 'id' | 'name' | 'projectId'>;
 
 export type AgentSummaryFilters = {
 	query?: string;
@@ -119,6 +128,30 @@ export class AgentRepository extends BaseRepository<Agent> {
 		return ids;
 	}
 
+	async findImportCandidates(
+		projectId: string,
+		sourceAgentIds: string[],
+	): Promise<AgentImportIdentity[]> {
+		const agents: AgentImportIdentity[] = [];
+		for (const ids of chunkIds([...new Set(sourceAgentIds)])) {
+			agents.push(
+				...(await this.find({
+					select: ['id', 'name', 'projectId'],
+					where: { projectId, id: In(ids) },
+				})),
+			);
+		}
+		return agents;
+	}
+
+	async findImportIdOwners(agentIds: string[]): Promise<Array<Pick<Agent, 'id' | 'projectId'>>> {
+		const agents: Array<Pick<Agent, 'id' | 'projectId'>> = [];
+		for (const ids of chunkIds([...new Set(agentIds)])) {
+			agents.push(...(await this.find({ select: ['id', 'projectId'], where: { id: In(ids) } })));
+		}
+		return agents;
+	}
+
 	/**
 	 * Lean listing for search surfaces: selects only summary columns, skipping
 	 * the JSON config columns and the activeVersion join, and pushes all
@@ -195,13 +228,61 @@ export class AgentRepository extends BaseRepository<Agent> {
 	}
 
 	/**
+	 * The n8n Chat page list: agents reachable over n8n Chat in `reachableProjectIds`
+	 * (any project when null), plus every agent in `ownedProjectIds` whether or
+	 * not it is published to n8n Chat, so the owner can make it available.
+	 */
+	async findN8nChatListPaginated(
+		reachableProjectIds: string[] | null,
+		ownedProjectIds: string[],
+		options: ListAgentsQueryDto,
+		usageCounts?: Map<string, number>,
+	): Promise<AgentListResult> {
+		if (reachableProjectIds?.length === 0 && ownedProjectIds.length === 0) {
+			return { count: 0, data: [] };
+		}
+
+		const query = this.createQueryBuilder('agent')
+			.leftJoinAndSelect('agent.activeVersion', 'activeVersion')
+			.leftJoinAndSelect('agent.project', 'project')
+			.where(projectScopeSql);
+
+		const published = this.publishedN8nChatSql();
+		const reachableOrOwned: string[] = [];
+		if (reachableProjectIds === null) reachableOrOwned.push(published);
+		else if (reachableProjectIds.length > 0) {
+			reachableOrOwned.push(`(agent.projectId IN (:...reachableProjectIds) AND ${published})`);
+		}
+		if (ownedProjectIds.length > 0)
+			reachableOrOwned.push('agent.projectId IN (:...ownedProjectIds)');
+		query.andWhere(`(${reachableOrOwned.join(' OR ')})`, {
+			reachableProjectIds,
+			ownedProjectIds,
+			n8nChatType: N8N_CHAT_INTEGRATION_TYPE,
+		});
+
+		// `true` is the default page view: drop it so owned drafts stay in the list.
+		// `false` still narrows the list to the agents not in n8n Chat yet.
+		this.applyFilters(query, {
+			...options.filter,
+			availableInChat: options.filter?.availableInChat === false ? false : undefined,
+		});
+		this.applySorting(query, options.sortBy, usageCounts);
+		query.skip(options.skip).take(options.take);
+
+		const [data, count] = await query.getManyAndCount();
+		return { count, data: data.filter(isProjectAgent) };
+	}
+
+	/**
 	 * Adds the shared n8n Chat reachability predicate to an already-started
 	 * `agent` query: the given projects (or any, when `projectIds` is null)
 	 * and {@link applyFilters}'s `availableInChat` predicate. Callers add their
 	 * own `where` first — this only appends `andWhere` clauses, so it never
 	 * discards a condition a caller already set. Shared by
 	 * `findChatReachableIds` and `findChatReachableById` so both stay in
-	 * lockstep with each other and with the chat agent list.
+	 * lockstep. {@link findN8nChatListPaginated} ORs the same predicate with
+	 * the owned projects, so keep the two in step.
 	 */
 	private chatReachableQuery(
 		query: SelectQueryBuilder<Agent>,
@@ -264,32 +345,37 @@ export class AgentRepository extends BaseRepository<Agent> {
 			});
 		}
 		if (filter?.availableInChat !== undefined) {
-			// Reachability is a property of the **published** config, not the draft:
-			// publish is what moves the channel live, and a draft edit must not change
-			// what production chat serves (see `AgentRepository.isN8nChatPublished`).
-			// So this reads `activeVersion.schema.integrations`, which also makes a
-			// separate `activeVersionId IS NOT NULL` check unnecessary — an agent with
-			// no active version has no snapshot to match.
-			// The column is JSON, so the predicate walks the array with each dialect's
-			// own functions and compares each entry's `type`. A text match over the
-			// column would also hit the literal elsewhere in it, in a Telegram
-			// allowlist entry of the same name for one. The match stays in SQL (not
-			// filtered in memory, unlike `findByIntegrationCredential`) so `count` and
-			// pagination stay correct. `COALESCE` keeps a missing or null `schema` out
-			// of the JSON functions, which reject a non-array argument.
-			const isPostgres = this.manager.connection.options.type === 'postgres';
-			const publishedChannels = isPostgres
-				? 'COALESCE("activeVersion"."schema"->\'integrations\', \'[]\'::json)'
-				: 'COALESCE(json_extract("activeVersion"."schema", \'$.integrations\'), \'[]\')';
-			const carriesChannel = isPostgres
-				? `EXISTS (SELECT 1 FROM json_array_elements(${publishedChannels}) AS integration ` +
-					"WHERE integration->>'type' = :n8nChatType)"
-				: `EXISTS (SELECT 1 FROM json_each(${publishedChannels}) AS integration ` +
-					"WHERE json_extract(integration.value, '$.type') = :n8nChatType)";
+			const carriesChannel = this.publishedN8nChatSql();
 			query.andWhere(filter.availableInChat ? carriesChannel : `NOT (${carriesChannel})`, {
 				n8nChatType: N8N_CHAT_INTEGRATION_TYPE,
 			});
 		}
+	}
+
+	// Reachability is a property of the **published** config, not the draft:
+	// publish is what moves the channel live, and a draft edit must not change
+	// what production chat serves (see `AgentRepository.isN8nChatPublished`).
+	// So this reads `activeVersion.schema.integrations`, which also makes a
+	// separate `activeVersionId IS NOT NULL` check unnecessary — an agent with
+	// no active version has no snapshot to match.
+	// The column is JSON, so the predicate walks the array with each dialect's
+	// own functions and compares each entry's `type`. A text match over the
+	// column would also hit the literal elsewhere in it, in a Telegram
+	// allowlist entry of the same name for one. The match stays in SQL (not
+	// filtered in memory, unlike `findByIntegrationCredential`) so `count` and
+	// pagination stay correct. `COALESCE` keeps a missing or null `schema` out
+	// of the JSON functions, which reject a non-array argument.
+	// Binds `:n8nChatType`; callers set it.
+	private publishedN8nChatSql(): string {
+		const isPostgres = this.manager.connection.options.type === 'postgres';
+		const publishedChannels = isPostgres
+			? 'COALESCE("activeVersion"."schema"->\'integrations\', \'[]\'::json)'
+			: 'COALESCE(json_extract("activeVersion"."schema", \'$.integrations\'), \'[]\')';
+		return isPostgres
+			? `EXISTS (SELECT 1 FROM json_array_elements(${publishedChannels}) AS integration ` +
+					"WHERE integration->>'type' = :n8nChatType)"
+			: `EXISTS (SELECT 1 FROM json_each(${publishedChannels}) AS integration ` +
+					"WHERE json_extract(integration.value, '$.type') = :n8nChatType)";
 	}
 
 	private applySorting(
@@ -362,11 +448,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 
 	async isN8nChatPublished(id: string, projectId: string): Promise<boolean> {
 		const agent = await this.findByIdAndProjectId(id, projectId);
-		return (
-			agent?.activeVersion?.schema?.integrations?.some(
-				(integration) => integration.type === N8N_CHAT_INTEGRATION_TYPE,
-			) ?? false
-		);
+		return hasN8nChatChannel(agent?.activeVersion?.schema?.integrations);
 	}
 
 	/**

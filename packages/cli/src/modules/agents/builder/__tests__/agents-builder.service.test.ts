@@ -2,7 +2,7 @@ import type { CredentialProvider } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { ForbiddenError } from '@n8n/errors';
-import { UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -162,6 +162,19 @@ describe('AgentsBuilderService', () => {
 		);
 		expect(agents.findById).not.toHaveBeenCalled();
 	});
+
+	it.each(['', 'thread-1:', 'ia-builder:', 'ia-builder::', 'ia-builder:thread-1'])(
+		'rejects an invalid builder session prefix: %j',
+		async (prefix) => {
+			const { service, memory, threads } = setup();
+			threads.findBuilderSessionIds.mockResolvedValue([]);
+
+			await expect(service.deleteBuilderSessions(prefix)).rejects.toThrow(UnexpectedError);
+
+			expect(threads.findBuilderSessionIds).not.toHaveBeenCalled();
+			expect(memory.getImplementation).not.toHaveBeenCalled();
+		},
+	);
 
 	it('deletes legacy builder sessions while Agents are disabled', async () => {
 		const { service, memory, threads, settings } = setup();

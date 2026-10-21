@@ -56,20 +56,46 @@ describe('InstanceAiPendingAgentService', () => {
 	it.each([pendingMetadata, boundMetadata])(
 		'attests adoption from the thread and binds the persisted name',
 		async (metadata) => {
-			const { service, memory, agents } = setup();
+			const { service, memory, agents, getState } = setup();
 			memory.getThreadMetadata.mockResolvedValue(metadata);
-			const result = await service.persistAndBind(user, 'thread-1', payload);
+			const config = { name: 'Saved name', model: 'anthropic/model', instructions: 'Help users' };
+			getState.mockResolvedValue(
+				mock<AgentDraftState>({
+					id: 'agent-1',
+					name: 'Saved name',
+					isRunnable: true,
+					config,
+					configHash: 'saved-hash',
+					adopted: false,
+					versionId: 'v1',
+				}),
+			);
+			const result = await service.persistAndBind(
+				user,
+				'thread-1',
+				{ ...payload, config },
+				'tab-1',
+			);
 			expect(agents.persistDraft).toHaveBeenCalledWith(user, 'project-1', {
 				id: 'agent-1',
 				name: 'Draft name',
 				adoptOnCollision: true,
+				config,
+				pushRef: 'tab-1',
 			});
 			expect(memory.bindAgentBuilderTarget).toHaveBeenCalledWith(user.id, 'thread-1', {
 				agentId: 'agent-1',
 				projectId: 'project-1',
 				name: 'Saved name',
 			});
-			expect(result.agent).toMatchObject({ id: 'agent-1', isRunnable: true });
+			expect(result.agent).toMatchObject({
+				id: 'agent-1',
+				isRunnable: true,
+				config,
+				configHash: 'saved-hash',
+				adopted: false,
+				versionId: 'v1',
+			});
 			expect(result.thread.metadata).toEqual(boundMetadata);
 		},
 	);

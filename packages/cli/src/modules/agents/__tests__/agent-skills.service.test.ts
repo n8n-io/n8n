@@ -18,8 +18,8 @@ import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { ProjectAgent } from '../entities/agent.entity';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
 import type { AgentRepository } from '../repositories/agent.repository';
-import type { SkillSaveResult, SkillService } from '../skills/skill.service';
-import type { SkillsTelemetry } from '../skills/skills-telemetry';
+import type { SkillSaveResult, SkillService } from '@/modules/skills/skill.service';
+import type { SkillsTelemetry } from '@/modules/skills/skills-telemetry';
 import { getAgentConfigHash, getAgentSkillHash } from '../utils/agent-config-hash';
 import {
 	type AgentFixtureOverrides,
@@ -520,7 +520,11 @@ describe('AgentSkillsService', () => {
 				schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },
 				skills: { skill_a: skill },
 			});
-			const fresh = { ...agent, versionId: 'v2' } as ProjectAgent;
+			const fresh = {
+				...agent,
+				versionId: 'v2',
+				schema: { ...agent.schema, instructions: 'Saved by a concurrent config edit.' },
+			} as ProjectAgent;
 			agentRepository.findByIdAndProjectId
 				.mockResolvedValueOnce(agent)
 				.mockResolvedValueOnce(fresh);
@@ -555,6 +559,13 @@ describe('AgentSkillsService', () => {
 			expect(agentUpdateBroadcaster.notify).toHaveBeenCalledWith(
 				{ projectId, agentId, source: 'user' },
 				'push-ref-1',
+			);
+			expect(modificationTelemetry.record).toHaveBeenCalledWith(
+				expect.objectContaining({
+					agent: fresh,
+					config: expect.objectContaining({ instructions: 'Saved by a concurrent config edit.' }),
+					changedParts: ['skills'],
+				}),
 			);
 			expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
 			expect(result).toEqual({

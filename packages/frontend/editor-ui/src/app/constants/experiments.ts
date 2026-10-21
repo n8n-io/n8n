@@ -161,6 +161,9 @@ export const MCP_JSON_NUDGE_EXPERIMENT = createExperiment('113_mcp_nudge_modal_o
 
 export const CREDENTIAL_DESCRIPTIONS_EXPERIMENT = createExperiment(CREDENTIAL_DESCRIPTIONS_FLAG);
 
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+export const MCP_DISCOVERY_EXPERIMENT = createExperiment('123_surface_mcp_to_claude_trial_users');
+// EOF Experiment cleanup
 export const SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT = createExperiment(
 	'119_surface_assistant_on_workflow_error',
 );
@@ -188,6 +191,9 @@ export const QUICKJS_EXPRESSION_SHADOW_EXPERIMENT = createExperiment(
 );
 
 export const EXPERIMENTS_TO_TRACK = [
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	MCP_DISCOVERY_EXPERIMENT.name,
+	// EOF Experiment cleanup
 	INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name,
 	AI_ASSISTANT_AT_MENTIONS_EXPERIMENT.name,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_EXPERIMENT.name,
