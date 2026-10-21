@@ -110,6 +110,7 @@ async function connect(extension: McpSkillExtensionService) {
 					headers: {
 						'content-type': 'application/json',
 						accept: 'application/json, text/event-stream',
+						'mcp-protocol-version': '2026-07-28',
 						'mcp-method': method,
 						...(method === 'resources/read' ? { 'mcp-name': String(params.uri) } : {}),
 					},
