@@ -1,7 +1,14 @@
 import type { Mock } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
-import type { IBinaryData, IExecuteSingleFunctions, IHttpRequestOptions } from 'n8n-workflow';
+import type {
+	IBinaryData,
+	IExecuteSingleFunctions,
+	IHttpRequestOptions,
+	INode,
+	ResourceMapperField,
+	ResourceMapperValue,
+} from 'n8n-workflow';
 
 import {
 	downloadFilePostReceive,
@@ -103,6 +110,67 @@ describe('Microsoft SharePoint Node', () => {
 				{ $filter: "fields/Title eq 'O''Brien'" },
 				{ Prefer: 'HonorNonIndexedQueriesWarningMayFailRandomly' },
 			);
+		});
+
+		describe('with Map Automatically', () => {
+			const schema = [
+				{ id: 'Title', readOnly: false },
+				{ id: 'Locked', readOnly: true },
+			] as ResourceMapperField[];
+
+			const setParams = (operation: string, columns: Partial<ResourceMapperValue>) => {
+				const params: Record<string, unknown> = {
+					columns: { mappingMode: 'autoMapInputData', matchingColumns: [], value: {}, ...columns },
+					operation,
+					site: 'site1',
+					list: 'list1',
+				};
+				executeSingleFunctions.getNodeParameter.mockImplementation(
+					(name: string) => params[name] as never,
+				);
+				executeSingleFunctions.getInputData.mockReturnValue({
+					json: { Title: 'Mapped', Locked: 'ignored', notAColumn: 'dropped' },
+				});
+				executeSingleFunctions.getNode.mockReturnValue(mock<INode>());
+			};
+
+			it('should send the input properties that match a writable column', async () => {
+				setParams('create', { schema });
+				const requestOptions: IHttpRequestOptions = { url: '/sites/site1/lists/list1/items' };
+
+				const result = await itemColumnsPreSend.call(executeSingleFunctions, requestOptions);
+
+				expect(result.body).toEqual({ fields: { Title: 'Mapped' } });
+			});
+
+			it('should match on the input value', async () => {
+				setParams('update', { schema, matchingColumns: ['Title'] });
+				apiRequest.mockResolvedValueOnce({ value: [{ id: 'item1' }] });
+				const requestOptions: IHttpRequestOptions = {
+					method: 'PATCH',
+					url: '/sites/site1/lists/list1/items',
+				};
+
+				const result = await itemColumnsPreSend.call(executeSingleFunctions, requestOptions);
+
+				expect(apiRequest).toHaveBeenCalledWith(
+					'GET',
+					'/sites/site1/lists/list1/items',
+					{},
+					{ $filter: "fields/Title eq 'Mapped'" },
+					{ Prefer: 'HonorNonIndexedQueriesWarningMayFailRandomly' },
+				);
+				expect(result.url).toBe('/sites/site1/lists/list1/items/item1');
+			});
+
+			it('should fail instead of creating an empty item when the node has no columns', async () => {
+				setParams('create', { schema: [] });
+				const requestOptions: IHttpRequestOptions = { url: '/sites/site1/lists/list1/items' };
+
+				await expect(
+					itemColumnsPreSend.call(executeSingleFunctions, requestOptions),
+				).rejects.toThrow('Could not map the input data to the list columns');
+			});
 		});
 
 		// The operations set `multiKeyMatch: false`, so the UI never sends a second
