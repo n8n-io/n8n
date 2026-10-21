@@ -10,7 +10,7 @@ import { DataSource } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { createHash, randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'CreateScimTokenTable1792408455181';
+const MIGRATION_NAME = 'CreateScimTokenTable1792739020203';
 const SCIM_LABEL = 'SCIM Provisioning API Key';
 
 type ScimTokenRow = { tokenHash: string; tokenHint: string; createdById: string | null };

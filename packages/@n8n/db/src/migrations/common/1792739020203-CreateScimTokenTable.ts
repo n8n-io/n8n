@@ -34,7 +34,7 @@ type ScimApiKeyRow = {
  * downgrade, an admin generates a new SCIM token and enters it in the
  * identity provider.
  */
-export class CreateScimTokenTable1792408455181 implements IrreversibleMigration {
+export class CreateScimTokenTable1792739020203 implements IrreversibleMigration {
 	async up(context: MigrationContext) {
 		const {
 			schemaBuilder: { createTable, column },
