@@ -170,6 +170,14 @@ describe('SkillsTable', () => {
 		]);
 	});
 
+	it('lets the user resize every column except the actions column', () => {
+		const { container } = render([skill()]);
+		const headers = [...container.querySelectorAll('thead th')];
+
+		expect(headers.slice(0, -1).every((th) => th.querySelector('.resizer'))).toBe(true);
+		expect(headers.at(-1)?.querySelector('.resizer')).toBeNull();
+	});
+
 	it('emits open when a row is clicked', async () => {
 		const row = skill();
 		const { getByText, emitted } = render([row]);

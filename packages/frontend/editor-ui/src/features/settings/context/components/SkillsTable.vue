@@ -92,41 +92,36 @@ function onRowClick(_event: MouseEvent, payload: { item: SkillListItem }) {
 	emit('open', payload.item);
 }
 
-// The endpoint sorts by name and by last update only. Pixel widths sum to the table's
-// minimum width, so a new column takes its room from the others, not from the page.
+// The endpoint sorts by name and by last update only. Pixel widths are the starting
+// sizes; the user can resize each column, as in the users table. The actions column stays fixed.
 const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 	{
 		title: i18n.baseText('settings.context.skills.columns.skill'),
 		key: 'name',
 		width: 300,
-		resize: false,
 	},
 	{
 		title: i18n.baseText('settings.context.skills.columns.scope'),
 		key: 'scope',
 		width: 220,
 		disableSort: true,
-		resize: false,
 	},
 	{
 		title: i18n.baseText('settings.context.skills.columns.agents'),
 		key: 'usedByAgents',
 		width: 110,
 		disableSort: true,
-		resize: false,
 	},
 	{
 		title: i18n.baseText('settings.context.skills.columns.createdBy'),
 		key: 'createdBy',
 		width: 220,
 		disableSort: true,
-		resize: false,
 	},
 	{
 		title: i18n.baseText('settings.context.skills.columns.updatedAt'),
 		key: 'updatedAt',
 		width: 130,
-		resize: false,
 	},
 	{
 		title: '',
