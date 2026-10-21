@@ -6,6 +6,7 @@ import {
 	fetchAllTeams,
 	fetchAllChannels,
 	createSubscription,
+	createSubscriptions,
 	deleteSubscription,
 	generateClientState,
 	getResourcePath,
@@ -698,23 +699,10 @@ describe('Microsoft Teams Helpers Functions', () => {
 		});
 	});
 
-	describe('handleLifecycleNotifications', () => {
+	describe('subscription helpers', () => {
 		const NOW = Date.parse('2026-10-16T10:00:00.000Z');
-		const expectedExpiry = new Date(NOW + 4318 * 60 * 1000).toISOString();
 		const webhookUrl = 'https://webhook.url';
 		const minutes = (n: number) => n * 60 * 1000;
-
-		const lifecycleItem = (
-			lifecycleEvent: string,
-			subscriptionId: string,
-			clientState = 'secret',
-		) => ({
-			subscriptionId,
-			subscriptionExpirationDateTime: new Date(NOW + minutes(10)).toISOString(),
-			tenantId: 't1',
-			clientState,
-			lifecycleEvent,
-		});
 
 		const subscription = (
 			id: string,
@@ -774,217 +762,350 @@ describe('Microsoft Teams Helpers Functions', () => {
 			vi.useRealTimers();
 		});
 
-		it('re-creates every removed resource once for a batch of subscriptionRemoved items', async () => {
-			const { ctx, staticData } = arrange({
-				staticData: { subscriptionIds: ['sub1', 'sub2'], webhookSecret: 'secret' },
-				params: { event: 'newChannel', watchAllTeams: true },
+		describe('createSubscriptions', () => {
+			it('creates one subscription per resource and returns the ids in resource order', async () => {
+				const { ctx } = arrange();
+				let releaseA: (value: unknown) => void = () => {};
+				(microsoftApiRequest.call as Mock).mockImplementation(
+					async (_ctx: unknown, _method: string, _path: string, body?: Record<string, unknown>) =>
+						body?.resource === '/a'
+							? await new Promise((resolve) => {
+									releaseA = resolve;
+								})
+							: { id: 'b' },
+				);
+
+				const pending = createSubscriptions.call(ctx, webhookUrl, ['/a', '/b'], 'secret');
+				await new Promise((resolve) => setImmediate(resolve));
+				expect(calls('POST').map((call) => call[3].resource)).toEqual(['/a', '/b']);
+				releaseA({ id: 'a' });
+
+				await expect(pending).resolves.toEqual({ ids: ['a', 'b'], failures: [] });
 			});
 
-			await handleLifecycleNotifications.call(ctx, [
-				lifecycleItem('subscriptionRemoved', 'sub1'),
-				lifecycleItem('subscriptionRemoved', 'sub2'),
-			]);
+			it('returns the failures with the original error and the ids that landed', async () => {
+				const { ctx } = arrange();
+				const error = new Error('create failed');
+				(microsoftApiRequest.call as Mock).mockImplementation(
+					async (_ctx: unknown, _method: string, _path: string, body?: Record<string, unknown>) => {
+						if (body?.resource === '/a') throw error;
+						return { id: 'b' };
+					},
+				);
 
-			expect(microsoftApiRequestAllItems.call).toHaveBeenCalledTimes(1);
-			expect(calls('POST').map((call) => call[3].resource)).toEqual([
-				'/teams/team1/channels',
-				'/teams/team2/channels',
-			]);
-			expect(staticData.subscriptionIds).toEqual(['new-team1', 'new-team2']);
-		});
+				const result = await createSubscriptions.call(ctx, webhookUrl, ['/a', '/b'], 'secret');
 
-		it('keeps a live own subscription, ignores a foreign one and adopts the live id', async () => {
-			const { ctx, staticData } = arrange({
-				staticData: { subscriptionIds: ['sub0'], webhookSecret: 'secret' },
-				subscriptions: [
-					subscription('sub1', '/me/chats', minutes(60)),
-					subscription('subX', '/me/chats', minutes(60), 'https://other.url'),
-				],
-			});
-
-			await handleLifecycleNotifications.call(ctx, [lifecycleItem('subscriptionRemoved', 'sub0')]);
-
-			expect(calls('POST')).toHaveLength(0);
-			expect(staticData.subscriptionIds).toEqual(['sub1']);
-		});
-
-		it('removes an own subscription that expires within the liveness margin, then replaces it', async () => {
-			const { ctx, staticData } = arrange({
-				staticData: { subscriptionIds: ['sub0', 'sub1'], webhookSecret: 'secret' },
-				subscriptions: [subscription('sub1', '/me/chats', minutes(2))],
-			});
-
-			await handleLifecycleNotifications.call(ctx, [lifecycleItem('subscriptionRemoved', 'sub0')]);
-
-			const graphCalls = (microsoftApiRequest.call as Mock).mock.calls.map((call) =>
-				call.slice(1, 3),
-			);
-			expect(graphCalls).toEqual([
-				['DELETE', '/v1.0/subscriptions/sub1'],
-				['POST', '/v1.0/subscriptions'],
-			]);
-			expect(calls('POST')[0][3].resource).toBe('/me/chats');
-			expect(staticData.subscriptionIds).toEqual(['new-chats']);
-		});
-
-		it('leaves the stored ids untouched when the reconcile finds the same set', async () => {
-			const ids = ['sub1'];
-			const { ctx, staticData } = arrange({
-				staticData: { subscriptionIds: ids, webhookSecret: 'secret' },
-				subscriptions: [subscription('sub1', '/me/chats', minutes(60))],
-			});
-
-			await handleLifecycleNotifications.call(ctx, [lifecycleItem('subscriptionRemoved', 'sub0')]);
-
-			expect(calls('POST')).toHaveLength(0);
-			// Same reference: a copy would mean a save.
-			expect(staticData.subscriptionIds).toBe(ids);
-		});
-
-		it('re-creates the resource when only a foreign subscription covers it', async () => {
-			const { ctx, staticData } = arrange({
-				staticData: { subscriptionIds: ['sub0'], webhookSecret: 'secret' },
-				subscriptions: [subscription('subX', '/me/chats', minutes(60), 'https://other.url')],
-			});
-
-			await handleLifecycleNotifications.call(ctx, [lifecycleItem('subscriptionRemoved', 'sub0')]);
-
-			expect(calls('POST').map((call) => call[3].resource)).toEqual(['/me/chats']);
-			expect(staticData.subscriptionIds).toEqual(['new-chats']);
-		});
-
-		it('keeps the ids that were created when one re-create fails', async () => {
-			const { ctx, staticData } = arrange({
-				params: { event: 'newChannel', watchAllTeams: true },
-				subscriptions: [subscription('sub3', '/teams/team3/channels', minutes(60))],
-			});
-			(microsoftApiRequest.call as Mock).mockImplementation(
-				async (_ctx: unknown, method: string, _path: string, body?: Record<string, unknown>) => {
-					if (method === 'GET') return { value: [{ id: 'team1' }, { id: 'team2' }] };
-					if (body?.resource === '/teams/team1/channels') throw new Error('create failed');
-					return { id: 'new-team2' };
-				},
-			);
-
-			await handleLifecycleNotifications.call(ctx, [lifecycleItem('subscriptionRemoved', 'sub1')]);
-
-			expect(ctx.logger.warn).toHaveBeenCalledTimes(1);
-			expect(ctx.logger.warn).toHaveBeenCalledWith(
-				'Microsoft Teams Trigger: failed to re-create subscription',
-				expect.objectContaining({ resource: '/teams/team1/channels', error: 'create failed' }),
-			);
-			expect(staticData.subscriptionIds).toEqual(['sub3', 'new-team2']);
-		});
-
-		it.each([
-			['the listing fails', 'newChat', new Error('list failed')],
-			['the event is unknown', 'bogus', undefined],
-		])('warns and leaves the static data alone when %s', async (_label, event, listError) => {
-			const { ctx, staticData } = arrange({ params: { event } });
-			if (listError) (microsoftApiRequestAllItems.call as Mock).mockRejectedValue(listError);
-
-			await handleLifecycleNotifications.call(ctx, [lifecycleItem('subscriptionRemoved', 'sub1')]);
-
-			expect(ctx.logger.warn).toHaveBeenCalledTimes(1);
-			expect(ctx.logger.warn).toHaveBeenCalledWith(
-				'Microsoft Teams Trigger: failed to list subscriptions or resolve resources, skipped re-create',
-				expect.objectContaining({ subscriptionIds: ['sub1'], error: expect.any(String) }),
-			);
-			expect(calls('POST')).toHaveLength(0);
-			expect(staticData).toEqual({ subscriptionIds: ['sub1'], webhookSecret: 'secret' });
-		});
-
-		it('re-creates with the stored secret as clientState, not the inbound value', async () => {
-			const { ctx } = arrange({
-				staticData: { subscriptionIds: ['sub1'], webhookSecret: 'stored-secret' },
-			});
-
-			await handleLifecycleNotifications.call(ctx, [
-				lifecycleItem('subscriptionRemoved', 'sub1', 'inbound-value'),
-			]);
-
-			expect(microsoftApiRequest.call).toHaveBeenCalledWith(
-				ctx,
-				'POST',
-				'/v1.0/subscriptions',
-				expect.objectContaining({ clientState: 'stored-secret' }),
-			);
-		});
-
-		it.each([{ subscriptionIds: ['sub1'] }, { subscriptionIds: ['sub1'], webhookSecret: '' }])(
-			'makes no Graph call and warns when no secret is stored (%j)',
-			async (stored) => {
-				const { ctx, staticData } = arrange({ staticData: { ...stored } });
-
-				await handleLifecycleNotifications.call(ctx, [
-					lifecycleItem('subscriptionRemoved', 'sub1', 'anything'),
-					lifecycleItem('reauthorizationRequired', 'sub1', 'anything'),
-				]);
-
-				expect(microsoftApiRequest.call).not.toHaveBeenCalled();
-				expect(microsoftApiRequestAllItems.call).not.toHaveBeenCalled();
+				expect(result.ids).toEqual(['b']);
+				expect(result.failures).toHaveLength(1);
+				expect(result.failures[0]).toMatchObject({ step: 'create', resource: '/a' });
+				expect(result.failures[0].error).toBe(error);
 				expect(ctx.logger.warn).toHaveBeenCalledTimes(1);
 				expect(ctx.logger.warn).toHaveBeenCalledWith(
-					'Microsoft Teams Trigger: skipped lifecycle notifications: no stored secret, republish the workflow',
-					expect.objectContaining({ workflowId: 'wf1' }),
+					'Microsoft Teams Trigger: failed to create subscription',
+					expect.objectContaining({ workflowId: 'wf1', resource: '/a', error: 'create failed' }),
 				);
-				expect(staticData).toEqual(stored);
-			},
-		);
-
-		it('ignores a lifecycle item whose subscriptionId is not a string', async () => {
-			const { ctx, staticData } = arrange();
-
-			await handleLifecycleNotifications.call(ctx, [
-				{ ...lifecycleItem('subscriptionRemoved', 'x'), subscriptionId: 42 },
-				{ ...lifecycleItem('reauthorizationRequired', 'x'), subscriptionId: undefined },
-			]);
-
-			expect(microsoftApiRequest.call).not.toHaveBeenCalled();
-			expect(microsoftApiRequestAllItems.call).not.toHaveBeenCalled();
-			expect(ctx.logger.debug).toHaveBeenCalledTimes(2);
-			expect(ctx.logger.debug).toHaveBeenCalledWith(
-				'Microsoft Teams Trigger: ignored lifecycle event without a subscription id',
-				expect.objectContaining({ lifecycleEvent: 'subscriptionRemoved' }),
-			);
-			expect(staticData).toEqual({ subscriptionIds: ['sub1'], webhookSecret: 'secret' });
-		});
-
-		it('skips the renewal of an unknown subscription and reconciles instead', async () => {
-			const { ctx, staticData } = arrange({
-				staticData: { subscriptionIds: ['sub0'], webhookSecret: 'secret' },
-				subscriptions: [subscription('sub1', '/me/chats', minutes(60))],
 			});
 
-			await handleLifecycleNotifications.call(ctx, [
-				lifecycleItem('reauthorizationRequired', 'sub9'),
-			]);
+			it('logs nothing on success', async () => {
+				const { ctx } = arrange();
 
-			expect(calls('PATCH')).toHaveLength(0);
-			expect(calls('POST')).toHaveLength(0);
-			expect(microsoftApiRequestAllItems.call).toHaveBeenCalledTimes(1);
-			expect(ctx.logger.debug).toHaveBeenCalledWith(
-				'Microsoft Teams Trigger: skipped renewal: unknown subscription',
-				expect.objectContaining({ subscriptionId: 'sub9' }),
-			);
-			expect(staticData.subscriptionIds).toEqual(['sub1']);
+				const result = await createSubscriptions.call(ctx, webhookUrl, ['/me/chats'], 'secret');
+
+				expect(result).toEqual({ ids: ['new-chats'], failures: [] });
+				expect(microsoftApiRequest.call).toHaveBeenCalledWith(
+					ctx,
+					'POST',
+					'/v1.0/subscriptions',
+					expect.objectContaining({ resource: '/me/chats', clientState: 'secret' }),
+				);
+				expect(ctx.logger.warn).not.toHaveBeenCalled();
+				expect(ctx.logger.debug).not.toHaveBeenCalled();
+			});
 		});
 
-		it.each([
-			{ stored: [], expected: ['sub1'] },
-			{ stored: 'garbage', expected: ['sub1'] },
-			{ stored: undefined, expected: ['sub1'] },
-			{ stored: ['sub0', 7], expected: ['sub0', 'sub1'] },
-		])(
-			'renews a live own subscription that the static data does not know and stores its id (stored: $stored)',
-			async ({ stored, expected }) => {
+		describe('handleLifecycleNotifications', () => {
+			const expectedExpiry = new Date(NOW + 4318 * 60 * 1000).toISOString();
+
+			const lifecycleItem = (
+				lifecycleEvent: string,
+				subscriptionId: string,
+				clientState = 'secret',
+			) => ({
+				subscriptionId,
+				subscriptionExpirationDateTime: new Date(NOW + minutes(10)).toISOString(),
+				tenantId: 't1',
+				clientState,
+				lifecycleEvent,
+			});
+
+			it('re-creates every removed resource once for a batch of subscriptionRemoved items', async () => {
 				const { ctx, staticData } = arrange({
-					staticData: { subscriptionIds: stored, webhookSecret: 'secret' },
+					staticData: { subscriptionIds: ['sub1', 'sub2'], webhookSecret: 'secret' },
+					params: { event: 'newChannel', watchAllTeams: true },
+				});
+
+				await handleLifecycleNotifications.call(ctx, [
+					lifecycleItem('subscriptionRemoved', 'sub1'),
+					lifecycleItem('subscriptionRemoved', 'sub2'),
+				]);
+
+				expect(microsoftApiRequestAllItems.call).toHaveBeenCalledTimes(1);
+				expect(calls('POST').map((call) => call[3].resource)).toEqual([
+					'/teams/team1/channels',
+					'/teams/team2/channels',
+				]);
+				expect(staticData.subscriptionIds).toEqual(['new-team1', 'new-team2']);
+			});
+
+			it('keeps a live own subscription, ignores a foreign one and adopts the live id', async () => {
+				const { ctx, staticData } = arrange({
+					staticData: { subscriptionIds: ['sub0'], webhookSecret: 'secret' },
+					subscriptions: [
+						subscription('sub1', '/me/chats', minutes(60)),
+						subscription('subX', '/me/chats', minutes(60), 'https://other.url'),
+					],
+				});
+
+				await handleLifecycleNotifications.call(ctx, [
+					lifecycleItem('subscriptionRemoved', 'sub0'),
+				]);
+
+				expect(calls('POST')).toHaveLength(0);
+				expect(staticData.subscriptionIds).toEqual(['sub1']);
+			});
+
+			it('removes an own subscription that expires within the liveness margin, then replaces it', async () => {
+				const { ctx, staticData } = arrange({
+					staticData: { subscriptionIds: ['sub0', 'sub1'], webhookSecret: 'secret' },
+					subscriptions: [subscription('sub1', '/me/chats', minutes(2))],
+				});
+
+				await handleLifecycleNotifications.call(ctx, [
+					lifecycleItem('subscriptionRemoved', 'sub0'),
+				]);
+
+				const graphCalls = (microsoftApiRequest.call as Mock).mock.calls.map((call) =>
+					call.slice(1, 3),
+				);
+				expect(graphCalls).toEqual([
+					['DELETE', '/v1.0/subscriptions/sub1'],
+					['POST', '/v1.0/subscriptions'],
+				]);
+				expect(calls('POST')[0][3].resource).toBe('/me/chats');
+				expect(staticData.subscriptionIds).toEqual(['new-chats']);
+			});
+
+			it('leaves the stored ids untouched when the reconcile finds the same set', async () => {
+				const ids = ['sub1'];
+				const { ctx, staticData } = arrange({
+					staticData: { subscriptionIds: ids, webhookSecret: 'secret' },
 					subscriptions: [subscription('sub1', '/me/chats', minutes(60))],
 				});
 
 				await handleLifecycleNotifications.call(ctx, [
+					lifecycleItem('subscriptionRemoved', 'sub0'),
+				]);
+
+				expect(calls('POST')).toHaveLength(0);
+				// Same reference: a copy would mean a save.
+				expect(staticData.subscriptionIds).toBe(ids);
+			});
+
+			it('re-creates the resource when only a foreign subscription covers it', async () => {
+				const { ctx, staticData } = arrange({
+					staticData: { subscriptionIds: ['sub0'], webhookSecret: 'secret' },
+					subscriptions: [subscription('subX', '/me/chats', minutes(60), 'https://other.url')],
+				});
+
+				await handleLifecycleNotifications.call(ctx, [
+					lifecycleItem('subscriptionRemoved', 'sub0'),
+				]);
+
+				expect(calls('POST').map((call) => call[3].resource)).toEqual(['/me/chats']);
+				expect(staticData.subscriptionIds).toEqual(['new-chats']);
+			});
+
+			it('keeps the ids that were created when one re-create fails', async () => {
+				const { ctx, staticData } = arrange({
+					params: { event: 'newChannel', watchAllTeams: true },
+					subscriptions: [subscription('sub3', '/teams/team3/channels', minutes(60))],
+				});
+				(microsoftApiRequest.call as Mock).mockImplementation(
+					async (_ctx: unknown, method: string, _path: string, body?: Record<string, unknown>) => {
+						if (method === 'GET') return { value: [{ id: 'team1' }, { id: 'team2' }] };
+						if (body?.resource === '/teams/team1/channels') throw new Error('create failed');
+						return { id: 'new-team2' };
+					},
+				);
+
+				await handleLifecycleNotifications.call(ctx, [
+					lifecycleItem('subscriptionRemoved', 'sub1'),
+				]);
+
+				expect(ctx.logger.warn).toHaveBeenCalledTimes(1);
+				expect(ctx.logger.warn).toHaveBeenCalledWith(
+					'Microsoft Teams Trigger: failed to re-create subscription',
+					expect.objectContaining({ resource: '/teams/team1/channels', error: 'create failed' }),
+				);
+				expect(staticData.subscriptionIds).toEqual(['sub3', 'new-team2']);
+			});
+
+			it.each([
+				['the listing fails', 'newChat', new Error('list failed')],
+				['the event is unknown', 'bogus', undefined],
+			])('warns and leaves the static data alone when %s', async (_label, event, listError) => {
+				const { ctx, staticData } = arrange({ params: { event } });
+				if (listError) (microsoftApiRequestAllItems.call as Mock).mockRejectedValue(listError);
+
+				await handleLifecycleNotifications.call(ctx, [
+					lifecycleItem('subscriptionRemoved', 'sub1'),
+				]);
+
+				expect(ctx.logger.warn).toHaveBeenCalledTimes(1);
+				expect(ctx.logger.warn).toHaveBeenCalledWith(
+					'Microsoft Teams Trigger: failed to list subscriptions or resolve resources, skipped re-create',
+					expect.objectContaining({ subscriptionIds: ['sub1'], error: expect.any(String) }),
+				);
+				expect(calls('POST')).toHaveLength(0);
+				expect(staticData).toEqual({ subscriptionIds: ['sub1'], webhookSecret: 'secret' });
+			});
+
+			it('re-creates with the stored secret as clientState, not the inbound value', async () => {
+				const { ctx } = arrange({
+					staticData: { subscriptionIds: ['sub1'], webhookSecret: 'stored-secret' },
+				});
+
+				await handleLifecycleNotifications.call(ctx, [
+					lifecycleItem('subscriptionRemoved', 'sub1', 'inbound-value'),
+				]);
+
+				expect(microsoftApiRequest.call).toHaveBeenCalledWith(
+					ctx,
+					'POST',
+					'/v1.0/subscriptions',
+					expect.objectContaining({ clientState: 'stored-secret' }),
+				);
+			});
+
+			it.each([{ subscriptionIds: ['sub1'] }, { subscriptionIds: ['sub1'], webhookSecret: '' }])(
+				'makes no Graph call and warns when no secret is stored (%j)',
+				async (stored) => {
+					const { ctx, staticData } = arrange({ staticData: { ...stored } });
+
+					await handleLifecycleNotifications.call(ctx, [
+						lifecycleItem('subscriptionRemoved', 'sub1', 'anything'),
+						lifecycleItem('reauthorizationRequired', 'sub1', 'anything'),
+					]);
+
+					expect(microsoftApiRequest.call).not.toHaveBeenCalled();
+					expect(microsoftApiRequestAllItems.call).not.toHaveBeenCalled();
+					expect(ctx.logger.warn).toHaveBeenCalledTimes(1);
+					expect(ctx.logger.warn).toHaveBeenCalledWith(
+						'Microsoft Teams Trigger: skipped lifecycle notifications: no stored secret, republish the workflow',
+						expect.objectContaining({ workflowId: 'wf1' }),
+					);
+					expect(staticData).toEqual(stored);
+				},
+			);
+
+			it('ignores a lifecycle item whose subscriptionId is not a string', async () => {
+				const { ctx, staticData } = arrange();
+
+				await handleLifecycleNotifications.call(ctx, [
+					{ ...lifecycleItem('subscriptionRemoved', 'x'), subscriptionId: 42 },
+					{ ...lifecycleItem('reauthorizationRequired', 'x'), subscriptionId: undefined },
+				]);
+
+				expect(microsoftApiRequest.call).not.toHaveBeenCalled();
+				expect(microsoftApiRequestAllItems.call).not.toHaveBeenCalled();
+				expect(ctx.logger.debug).toHaveBeenCalledTimes(2);
+				expect(ctx.logger.debug).toHaveBeenCalledWith(
+					'Microsoft Teams Trigger: ignored lifecycle event without a subscription id',
+					expect.objectContaining({ lifecycleEvent: 'subscriptionRemoved' }),
+				);
+				expect(staticData).toEqual({ subscriptionIds: ['sub1'], webhookSecret: 'secret' });
+			});
+
+			it('skips the renewal of an unknown subscription and reconciles instead', async () => {
+				const { ctx, staticData } = arrange({
+					staticData: { subscriptionIds: ['sub0'], webhookSecret: 'secret' },
+					subscriptions: [subscription('sub1', '/me/chats', minutes(60))],
+				});
+
+				await handleLifecycleNotifications.call(ctx, [
+					lifecycleItem('reauthorizationRequired', 'sub9'),
+				]);
+
+				expect(calls('PATCH')).toHaveLength(0);
+				expect(calls('POST')).toHaveLength(0);
+				expect(microsoftApiRequestAllItems.call).toHaveBeenCalledTimes(1);
+				expect(ctx.logger.debug).toHaveBeenCalledWith(
+					'Microsoft Teams Trigger: skipped renewal: unknown subscription',
+					expect.objectContaining({ subscriptionId: 'sub9' }),
+				);
+				expect(staticData.subscriptionIds).toEqual(['sub1']);
+			});
+
+			it.each([
+				{ stored: [], expected: ['sub1'] },
+				{ stored: 'garbage', expected: ['sub1'] },
+				{ stored: undefined, expected: ['sub1'] },
+				{ stored: ['sub0', 7], expected: ['sub0', 'sub1'] },
+			])(
+				'renews a live own subscription that the static data does not know and stores its id (stored: $stored)',
+				async ({ stored, expected }) => {
+					const { ctx, staticData } = arrange({
+						staticData: { subscriptionIds: stored, webhookSecret: 'secret' },
+						subscriptions: [subscription('sub1', '/me/chats', minutes(60))],
+					});
+
+					await handleLifecycleNotifications.call(ctx, [
+						lifecycleItem('reauthorizationRequired', 'sub1'),
+					]);
+
+					expect(microsoftApiRequest.call).toHaveBeenCalledWith(
+						ctx,
+						'PATCH',
+						'/v1.0/subscriptions/sub1',
+						{ expirationDateTime: expectedExpiry },
+					);
+					expect(microsoftApiRequestAllItems.call).toHaveBeenCalledTimes(1);
+					expect(calls('POST')).toHaveLength(0);
+					expect(ctx.logger.warn).not.toHaveBeenCalled();
+					expect(staticData.subscriptionIds).toEqual(expected);
+				},
+			);
+
+			it('renews a stored subscription without rewriting the stored ids', async () => {
+				const ids = ['sub1'];
+				const { ctx, staticData } = arrange({
+					staticData: { subscriptionIds: ids, webhookSecret: 'secret' },
+				});
+
+				await handleLifecycleNotifications.call(ctx, [
 					lifecycleItem('reauthorizationRequired', 'sub1'),
+				]);
+
+				expect(calls('PATCH')).toHaveLength(1);
+				// Same reference: a copy would mean a save.
+				expect(staticData.subscriptionIds).toBe(ids);
+			});
+
+			it('keeps a subscription renewed in this request when its listed expiry has passed', async () => {
+				const { ctx, staticData } = arrange({
+					staticData: { subscriptionIds: [], webhookSecret: 'secret' },
+					subscriptions: [subscription('sub1', '/me/chats', 1000)],
+				});
+				(microsoftApiRequest.call as Mock).mockImplementation(
+					async (_ctx: unknown, method: string) => {
+						if (method === 'PATCH') vi.setSystemTime(NOW + 2000);
+						return {};
+					},
+				);
+
+				await handleLifecycleNotifications.call(ctx, [
+					lifecycleItem('reauthorizationRequired', 'sub1'),
+					lifecycleItem('subscriptionRemoved', 'sub0'),
 				]);
 
 				expect(microsoftApiRequest.call).toHaveBeenCalledWith(
@@ -993,201 +1114,161 @@ describe('Microsoft Teams Helpers Functions', () => {
 					'/v1.0/subscriptions/sub1',
 					{ expirationDateTime: expectedExpiry },
 				);
-				expect(microsoftApiRequestAllItems.call).toHaveBeenCalledTimes(1);
 				expect(calls('POST')).toHaveLength(0);
-				expect(ctx.logger.warn).not.toHaveBeenCalled();
-				expect(staticData.subscriptionIds).toEqual(expected);
-			},
-		);
-
-		it('renews a stored subscription without rewriting the stored ids', async () => {
-			const ids = ['sub1'];
-			const { ctx, staticData } = arrange({
-				staticData: { subscriptionIds: ids, webhookSecret: 'secret' },
+				expect(staticData.subscriptionIds).toEqual(['sub1']);
 			});
 
-			await handleLifecycleNotifications.call(ctx, [
-				lifecycleItem('reauthorizationRequired', 'sub1'),
-			]);
-
-			expect(calls('PATCH')).toHaveLength(1);
-			// Same reference: a copy would mean a save.
-			expect(staticData.subscriptionIds).toBe(ids);
-		});
-
-		it('keeps a subscription renewed in this request when its listed expiry has passed', async () => {
-			const { ctx, staticData } = arrange({
-				staticData: { subscriptionIds: [], webhookSecret: 'secret' },
-				subscriptions: [subscription('sub1', '/me/chats', 1000)],
-			});
-			(microsoftApiRequest.call as Mock).mockImplementation(
-				async (_ctx: unknown, method: string) => {
-					if (method === 'PATCH') vi.setSystemTime(NOW + 2000);
-					return {};
-				},
-			);
-
-			await handleLifecycleNotifications.call(ctx, [
-				lifecycleItem('reauthorizationRequired', 'sub1'),
-				lifecycleItem('subscriptionRemoved', 'sub0'),
-			]);
-
-			expect(microsoftApiRequest.call).toHaveBeenCalledWith(
-				ctx,
-				'PATCH',
-				'/v1.0/subscriptions/sub1',
-				{ expirationDateTime: expectedExpiry },
-			);
-			expect(calls('POST')).toHaveLength(0);
-			expect(staticData.subscriptionIds).toEqual(['sub1']);
-		});
-
-		it('drops a listed subscription that Graph reports gone and re-creates its resource', async () => {
-			const { ctx, staticData } = arrange({
-				staticData: { subscriptionIds: [], webhookSecret: 'secret' },
-				subscriptions: [subscription('sub1', '/me/chats', minutes(60))],
-			});
-			(microsoftApiRequest.call as Mock).mockImplementation(
-				async (_ctx: unknown, method: string) => {
-					if (method === 'PATCH') {
-						throw new NodeApiError(ctx.getNode(), { message: 'Not found', httpCode: '404' });
-					}
-					return { id: 'new-chats' };
-				},
-			);
-
-			await handleLifecycleNotifications.call(ctx, [
-				lifecycleItem('reauthorizationRequired', 'sub1'),
-			]);
-
-			expect(microsoftApiRequestAllItems.call).toHaveBeenCalledTimes(1);
-			expect(calls('DELETE').map((call) => call[2])).toEqual(['/v1.0/subscriptions/sub1']);
-			expect(calls('POST').map((call) => call[3].resource)).toEqual(['/me/chats']);
-			expect(staticData.subscriptionIds).toEqual(['new-chats']);
-		});
-
-		it('lists once and warns once when the listing fails for a whole batch', async () => {
-			const { ctx, staticData } = arrange();
-			(microsoftApiRequestAllItems.call as Mock).mockRejectedValue(new Error('list failed'));
-
-			await handleLifecycleNotifications.call(ctx, [
-				lifecycleItem('reauthorizationRequired', 'subA'),
-				lifecycleItem('reauthorizationRequired', 'subB'),
-				lifecycleItem('subscriptionRemoved', 'sub1'),
-			]);
-
-			expect(microsoftApiRequestAllItems.call).toHaveBeenCalledTimes(1);
-			expect(ctx.logger.warn).toHaveBeenCalledTimes(1);
-			expect(ctx.logger.warn).toHaveBeenCalledWith(
-				expect.any(String),
-				expect.objectContaining({ subscriptionIds: ['sub1', 'subA', 'subB'] }),
-			);
-			expect(microsoftApiRequest.call).not.toHaveBeenCalled();
-			expect(staticData).toEqual({ subscriptionIds: ['sub1'], webhookSecret: 'secret' });
-		});
-
-		it('renews a subscription once when the batch repeats it', async () => {
-			const { ctx } = arrange();
-
-			await handleLifecycleNotifications.call(ctx, [
-				lifecycleItem('reauthorizationRequired', 'sub1'),
-				lifecycleItem('reauthorizationRequired', 'sub1'),
-				lifecycleItem('reauthorizationRequired', 'sub1'),
-			]);
-
-			expect(calls('PATCH')).toHaveLength(1);
-			expect(microsoftApiRequest.call).toHaveBeenCalledTimes(1);
-		});
-
-		it.each([
-			['before', ['subscriptionRemoved', 'reauthorizationRequired']],
-			['after', ['reauthorizationRequired', 'subscriptionRemoved']],
-		])(
-			'does not renew a subscription that the same batch reports removed (removal %s)',
-			async (_label, events) => {
-				const { ctx } = arrange();
-
-				await handleLifecycleNotifications.call(
-					ctx,
-					events.map((event) => lifecycleItem(event, 'sub1')),
+			it('drops a listed subscription that Graph reports gone and re-creates its resource', async () => {
+				const { ctx, staticData } = arrange({
+					staticData: { subscriptionIds: [], webhookSecret: 'secret' },
+					subscriptions: [subscription('sub1', '/me/chats', minutes(60))],
+				});
+				(microsoftApiRequest.call as Mock).mockImplementation(
+					async (_ctx: unknown, method: string) => {
+						if (method === 'PATCH') {
+							throw new NodeApiError(ctx.getNode(), { message: 'Not found', httpCode: '404' });
+						}
+						return { id: 'new-chats' };
+					},
 				);
 
-				expect(calls('PATCH')).toHaveLength(0);
-				expect(calls('DELETE')).toHaveLength(0);
+				await handleLifecycleNotifications.call(ctx, [
+					lifecycleItem('reauthorizationRequired', 'sub1'),
+				]);
+
+				expect(microsoftApiRequestAllItems.call).toHaveBeenCalledTimes(1);
+				expect(calls('DELETE').map((call) => call[2])).toEqual(['/v1.0/subscriptions/sub1']);
 				expect(calls('POST').map((call) => call[3].resource)).toEqual(['/me/chats']);
-			},
-		);
-
-		it('warns and skips the renewal when the id fails path validation', async () => {
-			const { ctx, staticData } = arrange({
-				staticData: { subscriptionIds: ['sub1/../x'], webhookSecret: 'secret' },
+				expect(staticData.subscriptionIds).toEqual(['new-chats']);
 			});
 
-			await handleLifecycleNotifications.call(ctx, [
-				lifecycleItem('reauthorizationRequired', 'sub1/../x'),
-			]);
+			it('lists once and warns once when the listing fails for a whole batch', async () => {
+				const { ctx, staticData } = arrange();
+				(microsoftApiRequestAllItems.call as Mock).mockRejectedValue(new Error('list failed'));
 
-			expect(calls('PATCH')).toHaveLength(0);
-			expect(ctx.logger.warn).toHaveBeenCalledTimes(1);
-			expect(ctx.logger.warn).toHaveBeenCalledWith(
-				'Microsoft Teams Trigger: failed to renew subscription',
-				expect.objectContaining({ error: 'The ID is not valid' }),
-			);
-			expect(microsoftApiRequestAllItems.call).not.toHaveBeenCalled();
-			expect(staticData).toEqual({ subscriptionIds: ['sub1/../x'], webhookSecret: 'secret' });
-		});
+				await handleLifecycleNotifications.call(ctx, [
+					lifecycleItem('reauthorizationRequired', 'subA'),
+					lifecycleItem('reauthorizationRequired', 'subB'),
+					lifecycleItem('subscriptionRemoved', 'sub1'),
+				]);
 
-		it('still re-creates when a stale subscription cannot be removed', async () => {
-			const { ctx, staticData } = arrange({
-				staticData: { subscriptionIds: ['sub0', 'sub1'], webhookSecret: 'secret' },
-				subscriptions: [subscription('sub1', '/me/chats', minutes(2))],
+				expect(microsoftApiRequestAllItems.call).toHaveBeenCalledTimes(1);
+				expect(ctx.logger.warn).toHaveBeenCalledTimes(1);
+				expect(ctx.logger.warn).toHaveBeenCalledWith(
+					expect.any(String),
+					expect.objectContaining({ subscriptionIds: ['sub1', 'subA', 'subB'] }),
+				);
+				expect(microsoftApiRequest.call).not.toHaveBeenCalled();
+				expect(staticData).toEqual({ subscriptionIds: ['sub1'], webhookSecret: 'secret' });
 			});
-			(microsoftApiRequest.call as Mock).mockImplementation(
-				async (_ctx: unknown, method: string, _path: string, body?: Record<string, unknown>) => {
-					if (method === 'DELETE') {
-						throw new NodeApiError(ctx.getNode(), { message: 'Forbidden', httpCode: '403' });
-					}
-					if (method === 'POST') return { id: NEW_IDS[String(body?.resource)] };
-					return {};
+
+			it('renews a subscription once when the batch repeats it', async () => {
+				const { ctx } = arrange();
+
+				await handleLifecycleNotifications.call(ctx, [
+					lifecycleItem('reauthorizationRequired', 'sub1'),
+					lifecycleItem('reauthorizationRequired', 'sub1'),
+					lifecycleItem('reauthorizationRequired', 'sub1'),
+				]);
+
+				expect(calls('PATCH')).toHaveLength(1);
+				expect(microsoftApiRequest.call).toHaveBeenCalledTimes(1);
+			});
+
+			it.each([
+				['before', ['subscriptionRemoved', 'reauthorizationRequired']],
+				['after', ['reauthorizationRequired', 'subscriptionRemoved']],
+			])(
+				'does not renew a subscription that the same batch reports removed (removal %s)',
+				async (_label, events) => {
+					const { ctx } = arrange();
+
+					await handleLifecycleNotifications.call(
+						ctx,
+						events.map((event) => lifecycleItem(event, 'sub1')),
+					);
+
+					expect(calls('PATCH')).toHaveLength(0);
+					expect(calls('DELETE')).toHaveLength(0);
+					expect(calls('POST').map((call) => call[3].resource)).toEqual(['/me/chats']);
 				},
 			);
 
-			await handleLifecycleNotifications.call(ctx, [lifecycleItem('subscriptionRemoved', 'sub0')]);
+			it('warns and skips the renewal when the id fails path validation', async () => {
+				const { ctx, staticData } = arrange({
+					staticData: { subscriptionIds: ['sub1/../x'], webhookSecret: 'secret' },
+				});
 
-			expect(calls('DELETE').map((call) => call[2])).toEqual(['/v1.0/subscriptions/sub1']);
-			expect(calls('POST').map((call) => call[3].resource)).toEqual(['/me/chats']);
-			expect(staticData.subscriptionIds).toEqual(['new-chats']);
-			expect(ctx.logger.debug).toHaveBeenCalledWith(
-				'Microsoft Teams Trigger: failed to remove a stale subscription',
-				expect.objectContaining({ subscriptionId: 'sub1', error: expect.any(String) }),
-			);
-			expect(ctx.logger.warn).not.toHaveBeenCalled();
-		});
+				await handleLifecycleNotifications.call(ctx, [
+					lifecycleItem('reauthorizationRequired', 'sub1/../x'),
+				]);
 
-		it('partitions live and stale subscriptions once, before the deletes', async () => {
-			const { ctx, staticData } = arrange({
-				staticData: { subscriptionIds: ['sub0', 'subA', 'subB'], webhookSecret: 'secret' },
-				params: { event: 'newChannel', watchAllTeams: true },
-				subscriptions: [
-					subscription('subA', '/teams/team1/channels', minutes(2)),
-					subscription('subB', '/teams/team2/channels', minutes(5) + 1000),
-				],
+				expect(calls('PATCH')).toHaveLength(0);
+				expect(ctx.logger.warn).toHaveBeenCalledTimes(1);
+				expect(ctx.logger.warn).toHaveBeenCalledWith(
+					'Microsoft Teams Trigger: failed to renew subscription',
+					expect.objectContaining({ error: 'The ID is not valid' }),
+				);
+				expect(microsoftApiRequestAllItems.call).not.toHaveBeenCalled();
+				expect(staticData).toEqual({ subscriptionIds: ['sub1/../x'], webhookSecret: 'secret' });
 			});
-			(microsoftApiRequest.call as Mock).mockImplementation(
-				async (_ctx: unknown, method: string, _path: string, body?: Record<string, unknown>) => {
-					if (method === 'GET') return { value: [{ id: 'team1' }, { id: 'team2' }] };
-					// A slow delete moves the clock past subB's margin.
-					if (method === 'DELETE') vi.setSystemTime(Date.now() + 2000);
-					if (method === 'POST') return { id: NEW_IDS[String(body?.resource)] };
-					return {};
-				},
-			);
 
-			await handleLifecycleNotifications.call(ctx, [lifecycleItem('subscriptionRemoved', 'sub0')]);
+			it('still re-creates when a stale subscription cannot be removed', async () => {
+				const { ctx, staticData } = arrange({
+					staticData: { subscriptionIds: ['sub0', 'sub1'], webhookSecret: 'secret' },
+					subscriptions: [subscription('sub1', '/me/chats', minutes(2))],
+				});
+				(microsoftApiRequest.call as Mock).mockImplementation(
+					async (_ctx: unknown, method: string, _path: string, body?: Record<string, unknown>) => {
+						if (method === 'DELETE') {
+							throw new NodeApiError(ctx.getNode(), { message: 'Forbidden', httpCode: '403' });
+						}
+						if (method === 'POST') return { id: NEW_IDS[String(body?.resource)] };
+						return {};
+					},
+				);
 
-			expect(calls('DELETE').map((call) => call[2])).toEqual(['/v1.0/subscriptions/subA']);
-			expect(calls('POST').map((call) => call[3].resource)).toEqual(['/teams/team1/channels']);
-			expect(staticData.subscriptionIds).toEqual(['subB', 'new-team1']);
+				await handleLifecycleNotifications.call(ctx, [
+					lifecycleItem('subscriptionRemoved', 'sub0'),
+				]);
+
+				expect(calls('DELETE').map((call) => call[2])).toEqual(['/v1.0/subscriptions/sub1']);
+				expect(calls('POST').map((call) => call[3].resource)).toEqual(['/me/chats']);
+				expect(staticData.subscriptionIds).toEqual(['new-chats']);
+				expect(ctx.logger.debug).toHaveBeenCalledWith(
+					'Microsoft Teams Trigger: failed to remove a stale subscription',
+					expect.objectContaining({ subscriptionId: 'sub1', error: expect.any(String) }),
+				);
+				expect(ctx.logger.warn).not.toHaveBeenCalled();
+			});
+
+			it('partitions live and stale subscriptions once, before the deletes', async () => {
+				const { ctx, staticData } = arrange({
+					staticData: { subscriptionIds: ['sub0', 'subA', 'subB'], webhookSecret: 'secret' },
+					params: { event: 'newChannel', watchAllTeams: true },
+					subscriptions: [
+						subscription('subA', '/teams/team1/channels', minutes(2)),
+						subscription('subB', '/teams/team2/channels', minutes(5) + 1000),
+					],
+				});
+				(microsoftApiRequest.call as Mock).mockImplementation(
+					async (_ctx: unknown, method: string, _path: string, body?: Record<string, unknown>) => {
+						if (method === 'GET') return { value: [{ id: 'team1' }, { id: 'team2' }] };
+						// A slow delete moves the clock past subB's margin.
+						if (method === 'DELETE') vi.setSystemTime(Date.now() + 2000);
+						if (method === 'POST') return { id: NEW_IDS[String(body?.resource)] };
+						return {};
+					},
+				);
+
+				await handleLifecycleNotifications.call(ctx, [
+					lifecycleItem('subscriptionRemoved', 'sub0'),
+				]);
+
+				expect(calls('DELETE').map((call) => call[2])).toEqual(['/v1.0/subscriptions/subA']);
+				expect(calls('POST').map((call) => call[3].resource)).toEqual(['/teams/team1/channels']);
+				expect(staticData.subscriptionIds).toEqual(['subB', 'new-team1']);
+			});
 		});
 	});
 });

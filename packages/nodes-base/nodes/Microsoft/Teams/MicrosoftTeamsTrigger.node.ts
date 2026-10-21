@@ -13,7 +13,7 @@ import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
 import type { WebhookNotification } from './v2/helpers/types';
 import {
-	createSubscription,
+	createSubscriptions,
 	deleteSubscription,
 	generateClientState,
 	getResourcePath,
@@ -441,6 +441,8 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				}
 			},
 
+			// Runs only after `checkExists` swept every own subscription and returned false,
+			// so a fresh secret never strands a live subscription.
 			async create(this: IHookFunctions): Promise<boolean> {
 				const event = this.getNodeParameter('event', 0) as string;
 				const webhookUrl = this.getNodeWebhookUrl('default');
@@ -455,33 +457,16 @@ export class MicrosoftTeamsTrigger implements INodeType {
 
 				const clientState = generateClientState();
 				const resourcePaths = await getResourcePath.call(this, event);
-				const subscriptionIds: string[] = [];
+				const requiredResources = Array.isArray(resourcePaths) ? resourcePaths : [resourcePaths];
+				const { ids, failures } = await createSubscriptions.call(
+					this,
+					webhookUrl,
+					requiredResources,
+					clientState,
+				);
+				if (failures.length > 0) throw failures[0].error;
 
-				if (Array.isArray(resourcePaths)) {
-					await Promise.all(
-						resourcePaths.map(async (resource) => {
-							const subscription = await createSubscription.call(
-								this,
-								webhookUrl,
-								resource,
-								clientState,
-							);
-							subscriptionIds.push(subscription.id);
-							return subscription;
-						}),
-					);
-
-					webhookData.subscriptionIds = subscriptionIds;
-				} else {
-					const subscription = await createSubscription.call(
-						this,
-						webhookUrl,
-						resourcePaths,
-						clientState,
-					);
-					webhookData.subscriptionIds = [subscription.id];
-				}
-
+				webhookData.subscriptionIds = ids;
 				webhookData.webhookSecret = clientState;
 				return true;
 			},

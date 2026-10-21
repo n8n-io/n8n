@@ -37,3 +37,8 @@ export interface SubscriptionResponse {
 	notificationUrl: string;
 	resource: string;
 }
+
+// `error` is the original object (ensureError), so a NodeApiError keeps its hint copy.
+export type SubscriptionFailure =
+	| { step: 'delete'; id: string; error: Error }
+	| { step: 'create'; resource: string; error: Error };

@@ -8,6 +8,7 @@ import type {
 	TeamResponse,
 	ChannelResponse,
 	SubscriptionResponse,
+	SubscriptionFailure,
 	LifecycleNotification,
 } from './types';
 import { verifySignature as verifySignatureGeneric } from '../../../../../utils/webhook-signature-verification';
@@ -23,6 +24,20 @@ import { CHAT_SUBSCRIPTION_FORBIDDEN } from '../transport/forbiddenHints';
 
 export function generateClientState(): string {
 	return randomBytes(32).toString('hex');
+}
+
+/** One shape for every trigger log line: the prefix, the workflow and node, then the fields. */
+export function logTrigger(
+	this: IHookFunctions | IWebhookFunctions,
+	level: 'debug' | 'warn',
+	message: string,
+	fields: Record<string, unknown> = {},
+): void {
+	this.logger[level](`Microsoft Teams Trigger: ${message}`, {
+		workflowId: this.getWorkflow().id,
+		nodeName: this.getNode().name,
+		...fields,
+	});
 }
 
 // Graph caps Teams subscriptions at 4320 minutes. 4318 keeps a margin for clock skew.
@@ -112,6 +127,40 @@ export async function createSubscription(
 	)) as SubscriptionResponse;
 
 	return response;
+}
+
+/**
+ * Creates one subscription per resource in parallel. Every POST settles first, so the
+ * ids that landed are visible to the cleanup core runs next (`delete()` lists by URL).
+ * A failure keeps its error as thrown, so a Graph 403 keeps its hint copy.
+ */
+export async function createSubscriptions(
+	this: IHookFunctions | IWebhookFunctions,
+	webhookUrl: string,
+	resources: string[],
+	clientState: string,
+): Promise<{ ids: string[]; failures: SubscriptionFailure[] }> {
+	const results = await Promise.allSettled(
+		resources.map(
+			async (resource) => await createSubscription.call(this, webhookUrl, resource, clientState),
+		),
+	);
+	const ids: string[] = [];
+	const failures: SubscriptionFailure[] = [];
+	results.forEach((result, index) => {
+		if (result.status === 'fulfilled') {
+			ids.push(result.value.id);
+			return;
+		}
+		const resource = resources[index];
+		const error = ensureError(result.reason);
+		logTrigger.call(this, 'warn', 'failed to create subscription', {
+			resource,
+			error: error.message,
+		});
+		failures.push({ step: 'create', resource, error });
+	});
+	return { ids, failures };
 }
 
 export async function listOwnSubscriptions(
