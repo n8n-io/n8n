@@ -28,6 +28,11 @@ export interface CloudBrowserTask {
 	agentId: string;
 	taskId: string;
 	title: string;
+	/**
+	 * `running`: the browser is open. `done` and `failed`: the task ended, and its result has not
+	 * reached the orchestrator yet. That waits until no run is live in the thread.
+	 */
+	state: 'running' | 'done' | 'failed';
 	/** Set while the task waits for the user to do a step in the browser. */
 	userAction?: CloudBrowserUserAction;
 	/**
@@ -49,7 +54,19 @@ function liveViewKeyOf(node: InstanceAiAgentNode): string {
 	return `${finished.length}:${finished.at(-1)?.toolCallId ?? ''}`;
 }
 
-/** The thread's running cloud browser tasks, oldest first, from the agent tree. */
+function taskStateOf(node: InstanceAiAgentNode): CloudBrowserTask['state'] | undefined {
+	if (node.status === 'active') return 'running';
+	if (node.resultDelivered) return undefined;
+	if (node.status === 'completed') return 'done';
+	if (node.status === 'error') return 'failed';
+	return undefined;
+}
+
+/**
+ * The thread's cloud browser tasks that still matter to the user, oldest first, from the agent
+ * tree: running ones, and finished ones whose result is still waiting to reach the orchestrator.
+ * A task the user stopped is left out.
+ */
 export function useCloudBrowserTasks(runtime?: ThreadRuntime): ComputedRef<CloudBrowserTask[]> {
 	const thread = runtime ?? useThread();
 
@@ -71,14 +88,20 @@ export function useCloudBrowserTasks(runtime?: ThreadRuntime): ComputedRef<Cloud
 			}
 		}
 
-		return nodes
-			.filter((node) => node.status === 'active' && node.taskId)
-			.map((node) => ({
+		const tasks: CloudBrowserTask[] = [];
+		for (const node of nodes) {
+			if (!node.taskId) continue;
+			const state = taskStateOf(node);
+			if (!state) continue;
+			tasks.push({
 				agentId: node.agentId,
-				taskId: node.taskId ?? '',
+				taskId: node.taskId,
 				title: node.title ?? node.subtitle ?? node.goal ?? '',
+				state,
 				userAction: userActions.get(node.agentId),
 				liveViewKey: liveViewKeyOf(node),
-			}));
+			});
+		}
+		return tasks;
 	});
 }

@@ -16,6 +16,8 @@ function isRunActivity(event: InstanceAiEvent): boolean {
 		case 'thread-title-updated':
 		case 'preference-card':
 		case 'tasks-update':
+		// Arrives after the browser agent completed, when a later run picks up its result.
+		case 'cloud-browser-result-delivered':
 			return false;
 		default:
 			return true;

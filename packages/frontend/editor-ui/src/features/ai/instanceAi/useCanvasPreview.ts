@@ -165,7 +165,11 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 	// --- Cloud browser tabs ---
 	// A running browser task gets a tab once the user opens it. Closing the tab only hides it.
 	// The tab goes away when the task ends, and is never stored: the link is short-lived.
-	const cloudBrowserTasks = useCloudBrowserTasks(thread);
+	// Only a running task has a browser to show.
+	const allCloudBrowserTasks = useCloudBrowserTasks(thread);
+	const cloudBrowserTasks = computed(() =>
+		allCloudBrowserTasks.value.filter((task) => task.state === 'running'),
+	);
 	const openedBrowserTaskIds = ref(new Set<string>());
 	const browserTabs = computed((): BrowserTab[] =>
 		cloudBrowserTasks.value

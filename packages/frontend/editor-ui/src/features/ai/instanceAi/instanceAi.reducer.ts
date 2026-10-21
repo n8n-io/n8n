@@ -332,6 +332,7 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 		case 'tool-interrupted':
 		case 'agent-spawned':
 		case 'agent-completed':
+		case 'cloud-browser-result-delivered':
 		case 'confirmation-request':
 		case 'tasks-update':
 		case 'setup-items':

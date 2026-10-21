@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 /**
  * The Browsers card in the sidebar: one row per running cloud browser task, with a small
- * read-only live view that opens the browser tab, and a stop button.
+ * read-only live view that opens the browser tab, and a stop button. A finished task stays, with
+ * no browser, until its result reaches the assistant.
  */
 import { N8nButton, N8nHeading } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -24,16 +25,26 @@ const openCloudBrowserTab = inject<((taskId: string) => void) | undefined>(
 	undefined,
 );
 
-// A task the instance no longer runs (for example after a restart) is not shown.
+// A running task the instance no longer runs (for example after a restart) is not shown.
 const rows = computed(() =>
-	tasks.value.filter((task) => liveViews?.get(task.taskId)?.status !== 'ended'),
+	tasks.value.filter(
+		(task) => task.state !== 'running' || liveViews?.get(task.taskId)?.status !== 'ended',
+	),
 );
+
+function dotClassOf(task: CloudBrowserTask): string {
+	if (task.state === 'done') return 'dotDone';
+	if (task.state === 'failed') return 'dotFailed';
+	return task.userAction ? 'dotWaiting' : 'dotRunning';
+}
 
 function liveViewUrlOf(task: CloudBrowserTask): string | undefined {
 	return liveViews?.get(task.taskId)?.liveViewUrl;
 }
 
 function subtitleOf(task: CloudBrowserTask): string {
+	if (task.state === 'done') return i18n.baseText('instanceAi.cloudBrowser.doneWaitingToSend');
+	if (task.state === 'failed') return i18n.baseText('instanceAi.cloudBrowser.failedWaitingToSend');
 	if (task.userAction) return i18n.baseText('instanceAi.cloudBrowser.needsYou');
 	return liveViewUrlOf(task)
 		? i18n.baseText('instanceAi.cloudBrowser.working')
@@ -57,7 +68,7 @@ function subtitleOf(task: CloudBrowserTask): string {
 				data-test-id="instance-ai-cloud-browser-row"
 			>
 				<div :class="$style.header">
-					<span :class="[$style.dot, task.userAction ? $style.dotWaiting : $style.dotRunning]" />
+					<span :class="[$style.dot, $style[dotClassOf(task)]]" />
 					<span :class="$style.text">
 						<span :class="$style.name" :title="task.title">{{ task.title }}</span>
 						<span
@@ -69,6 +80,7 @@ function subtitleOf(task: CloudBrowserTask): string {
 						</span>
 					</span>
 					<N8nButton
+						v-if="task.state === 'running'"
 						variant="ghost"
 						icon-only
 						icon="filled-square"
@@ -82,6 +94,7 @@ function subtitleOf(task: CloudBrowserTask): string {
 					/>
 				</div>
 				<button
+					v-if="task.state === 'running'"
 					type="button"
 					:class="$style.thumbnail"
 					:aria-label="i18n.baseText('instanceAi.cloudBrowser.openBrowser')"
@@ -163,6 +176,14 @@ function subtitleOf(task: CloudBrowserTask): string {
 .dotWaiting {
 	background: var(--color--warning);
 	animation: browser-pulse 1.4s ease-in-out infinite;
+}
+
+.dotDone {
+	background: var(--color--success);
+}
+
+.dotFailed {
+	background: var(--color--danger);
 }
 
 @keyframes browser-pulse {

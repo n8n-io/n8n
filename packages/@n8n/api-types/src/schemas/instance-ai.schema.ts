@@ -232,6 +232,7 @@ export const instanceAiEventTypeSchema = z.enum([
 	'run-finish',
 	'agent-spawned',
 	'agent-completed',
+	'cloud-browser-result-delivered',
 	'text-delta',
 	'reasoning-delta',
 	'text-block',
@@ -494,6 +495,11 @@ export const agentSpawnedPayloadSchema = z.object({
 		.boolean()
 		.optional()
 		.describe('Hide this sub-agent and its steps from the chat. Its approval cards still show'),
+});
+
+/** A cloud browser task's result reached the orchestrator in a follow-up run. */
+export const cloudBrowserResultDeliveredPayloadSchema = z.object({
+	taskId: z.string(),
 });
 
 export const agentCompletedPayloadSchema = z.object({
@@ -1361,6 +1367,11 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		...eventBase,
 		payload: agentCompletedPayloadSchema,
 	}),
+	z.object({
+		type: z.literal('cloud-browser-result-delivered'),
+		...eventBase,
+		payload: cloudBrowserResultDeliveredPayloadSchema,
+	}),
 	z.object({ type: z.literal('text-delta'), ...eventBase, payload: textDeltaPayloadSchema }),
 	z.object({
 		type: z.literal('reasoning-delta'),
@@ -2111,6 +2122,8 @@ export interface InstanceAiAgentNode {
 	activity?: InstanceAiAgentActivity;
 	/** Whether this sub-agent changed its Agent. */
 	agentChange?: InstanceAiAgentChange;
+	/** A finished cloud browser task whose result reached the orchestrator. */
+	resultDelivered?: boolean;
 	/** Short display title, e.g. "Building workflow". */
 	title?: string;
 	/** Brief task description for distinguishing sibling agents. */

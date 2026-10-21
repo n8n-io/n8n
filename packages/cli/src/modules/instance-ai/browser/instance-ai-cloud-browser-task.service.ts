@@ -360,6 +360,16 @@ export class InstanceAiCloudBrowserTaskService {
 				threadId,
 				undelivered.map((task) => task.taskId),
 			);
+			return;
+		}
+		// The sidebar shows a finished task as waiting until its result reaches the orchestrator.
+		for (const task of undelivered) {
+			this.options.eventBus.publish(threadId, {
+				type: 'cloud-browser-result-delivered',
+				runId: task.runId,
+				agentId: task.agentId,
+				payload: { taskId: task.taskId },
+			});
 		}
 	}
 }

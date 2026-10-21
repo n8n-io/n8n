@@ -7667,6 +7667,8 @@
 	"instanceAi.cloudBrowser.opening": "Opening the browser…",
 	"instanceAi.cloudBrowser.working": "Working",
 	"instanceAi.cloudBrowser.needsYou": "Needs you",
+	"instanceAi.cloudBrowser.doneWaitingToSend": "Done · waiting to send the result to the assistant",
+	"instanceAi.cloudBrowser.failedWaitingToSend": "Failed · waiting to send the result to the assistant",
 	"instanceAi.cloudBrowser.ended": "This browser task has ended.",
 	"instanceAi.cloudBrowser.needsInput": "Browser needs your input",
 	"instanceAi.cloudBrowser.takeOver": "Take over",
