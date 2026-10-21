@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { N8nCallout, N8nCheckbox, N8nLink, N8nLoading, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { computed } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { CUSTOM_ROLES_DOCS_URL } from '@/app/constants';
 import {
@@ -31,7 +33,12 @@ const props = withDefaults(
 
 const emit = defineEmits<{ 'update:modelValue': [scopes: string[]] }>();
 
-const groups = INSTANCE_SCOPE_GROUP_LIST;
+const settingsStore = useSettingsStore();
+const groups = computed(() =>
+	settingsStore.isAppsEnabled
+		? INSTANCE_SCOPE_GROUP_LIST
+		: INSTANCE_SCOPE_GROUP_LIST.filter((group) => group.resource !== 'app'),
+);
 
 /** data-testid must be a single value: turn "Manage own" into "manage-own". */
 function optionTestId(resource: string, option: InstanceScopeOption): string {

@@ -13,15 +13,12 @@ import { MODAL_CONFIRM } from '@/app/constants/modals';
 import Modal from '@/app/components/Modal.vue';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { N8nButton, N8nCheckbox, N8nInput, N8nText } from '@n8n/design-system';
-import {
-	PROMOTION_BRANCH_PREFIX,
-	type PromotableResourceStatus,
-	type PromotionDirection,
-} from '@n8n/api-types';
+import type { PromotableResourceStatus, PromotionDirection } from '@n8n/api-types';
 import { usePromotionChanges } from '../composables/usePromotionChanges';
 import { promotionEventBus } from '../promotions.eventBus';
 import { applyProjectSelection } from '../promotionsSettings.api';
 import { getPromoteErrorMessage } from '../promoteErrorMessage';
+import { promoteSuccessToast } from '../promotionResult';
 import PromotionBindingsFlow from './PromotionBindingsFlow.vue';
 import type { AppliedResult, BlockedApplyResult } from '../promotions.types';
 
@@ -167,15 +164,6 @@ function onClose() {
 	uiStore.closeModal(props.modalName);
 }
 
-function getPromoteSuccessMessage(branchName: string): string {
-	if (branchName.startsWith(PROMOTION_BRANCH_PREFIX)) {
-		return i18n.baseText('promotions.modal.toast.success.messageNewBranch');
-	}
-	return i18n.baseText('promotions.modal.toast.success.message', {
-		interpolate: { branch: branchName },
-	});
-}
-
 async function onPromote() {
 	if (isPromoteDisabled.value) return;
 
@@ -186,8 +174,14 @@ async function onPromote() {
 		promotionEventBus.emit('promoted', { projectId: props.data.projectId });
 		toast.showMessage({
 			title: i18n.baseText('promotions.modal.toast.success.title'),
-			message: getPromoteSuccessMessage(result.git.branchName),
-			type: 'success',
+			type: result.warnings?.length ? 'warning' : 'success',
+			...promoteSuccessToast(result, {
+				pushed: i18n.baseText('promotions.result.pushed', {
+					interpolate: { branch: result.git.branchName },
+				}),
+				viewMergeRequest: i18n.baseText('promotions.result.viewMergeRequest'),
+				reviewNotRecorded: i18n.baseText('promotions.result.reviewNotRecorded'),
+			}),
 		});
 		onClose();
 	} catch (promoteError) {

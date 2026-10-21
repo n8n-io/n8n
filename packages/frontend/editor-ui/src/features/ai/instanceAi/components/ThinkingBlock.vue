@@ -109,7 +109,7 @@ const durationSec = computed<number | undefined>(() => {
 			<N8nAiActivityStep
 				v-else-if="entry.type === 'tool-call' && toolCallFor(entry)"
 				:label="getToolLabel(toolCallFor(entry)!.toolName, toolCallFor(entry)!.args)"
-				:loading="toolCallFor(entry)!.isLoading"
+				:loading="props.agentNode.status === 'active' && toolCallFor(entry)!.isLoading"
 				:error="toolCallFor(entry)!.error"
 			>
 				<ToolResultJson v-if="toolCallFor(entry)!.args" :value="toolCallFor(entry)!.args" />

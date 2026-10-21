@@ -43,6 +43,13 @@ import type { NodeTypes } from '@/node-types';
 import type { PostHogClient } from '@/posthog';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { Telemetry } from '@/telemetry';
+import { getCpuLimit, getMemoryLimit } from '@/utils/container-limits';
+
+// The runner may itself run in a container with limits.
+vi.mock('@/utils/container-limits', () => ({
+	getMemoryLimit: vi.fn(() => null),
+	getCpuLimit: vi.fn(() => ({ limit: null, source: 'cgroup_v2' as const, weight: null })),
+}));
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
 
@@ -3877,6 +3884,65 @@ describe('TelemetryEventRelay', () => {
 			);
 		});
 
+		it('should report the memory and CPU limits in KiB and CPUs on `server-started`', async () => {
+			vi.mocked(getMemoryLimit).mockReturnValueOnce(1024 ** 3);
+			vi.mocked(getCpuLimit).mockReturnValueOnce({ limit: 0.5, source: 'cgroup_v2', weight: 39 });
+
+			eventService.emit('server-started');
+			await flushPromises();
+
+			expect(telemetry.identify).toHaveBeenCalledWith(
+				expect.objectContaining({
+					system_info: expect.objectContaining({
+						memory_limit: 1024 ** 2,
+						cpu_limit: 0.5,
+						cpu_limit_source: 'cgroup_v2',
+						cpu_weight: 39,
+					}),
+				}),
+			);
+		});
+
+		it('should report the managed database and Redis vendors, never the host names', async () => {
+			const original = { database: globalConfig.database, queue: globalConfig.queue };
+			const originalMode = globalConfig.executions.mode;
+			Object.assign(globalConfig, {
+				database: {
+					type: 'postgresdb',
+					postgresdb: { host: 'db.abc.eu-west-1.rds.amazonaws.com' },
+				},
+				queue: { bull: { redis: { host: 'n8n.abc.cache.amazonaws.com', clusterNodes: '' } } },
+			});
+			globalConfig.executions.mode = 'queue';
+			dbConnection.getManagedPostgresMarkers.mockResolvedValue({
+				aurora: false,
+				rds: true,
+				azure: false,
+				cloudSql: false,
+			});
+			try {
+				eventService.emit('server-started');
+				await flushPromises();
+			} finally {
+				Object.assign(globalConfig, original);
+				globalConfig.executions.mode = originalMode;
+			}
+
+			expect(telemetry.identify).toHaveBeenCalledWith(
+				expect.objectContaining({ db_vendor: 'rds', redis_vendor: 'elasticache' }),
+			);
+			expect(JSON.stringify(telemetry.identify.mock.calls)).not.toContain('amazonaws.com');
+		});
+
+		it('should leave out both vendors on SQLite without queue mode', async () => {
+			eventService.emit('server-started');
+			await flushPromises();
+
+			const [info] = telemetry.identify.mock.calls[0];
+			expect(info?.db_vendor).toBeUndefined();
+			expect(info?.redis_vendor).toBeUndefined();
+		});
+
 		it('should leave out the Kubernetes kind outside Kubernetes', async () => {
 			vi.stubEnv('ECS_CONTAINER_METADATA_URI_V4', 'http://169.254.170.2/v4/abc');
 
@@ -3939,6 +4005,10 @@ describe('TelemetryEventRelay', () => {
 					system_info: {
 						is_docker: false,
 						runtime: 'other',
+						memory_limit: null,
+						cpu_limit: null,
+						cpu_limit_source: 'cgroup_v2',
+						cpu_weight: null,
 						cpus: expect.objectContaining({
 							count: expect.any(Number),
 							model: expect.any(String),

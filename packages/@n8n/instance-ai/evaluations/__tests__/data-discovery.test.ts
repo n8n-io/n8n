@@ -76,7 +76,7 @@ describe('discoveryTestCaseSchema', () => {
 	const valid = {
 		id: 'my-scenario',
 		userMessage: 'do the thing',
-		expectedToolInvocations: { anyOf: ['build-workflow'] },
+		expectedToolInvocations: { anyOf: ['workflow_builder_build_workflow'] },
 	};
 
 	it('accepts a minimal valid case', () => {

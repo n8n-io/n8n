@@ -19,6 +19,7 @@ import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-netw
 import { AgentsConfig } from '@n8n/config';
 import type { UserRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -45,7 +46,7 @@ import type {
 	AgentSandboxRuntimeService,
 } from '../agent-sandbox-runtime.service';
 import type { AgentWorkspaceService } from '../agent-workspace.service';
-import type { Agent } from '../entities/agent.entity';
+import type { ProjectAgent } from '../entities/agent.entity';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import { ChatIntegrationActionExecutor } from '../integrations/integration-action-executor';
 import { ChatIntegrationContextQueryExecutor } from '../integrations/integration-context-query-executor';
@@ -149,7 +150,7 @@ function makeReconstructionService(
 function makeAgentEntity(
 	schemaConfig?: AgentJsonConfig['config'],
 	overrides?: Partial<AgentJsonConfig>,
-): Agent {
+): ProjectAgent {
 	const schema: AgentJsonConfig = {
 		name: 'Test',
 		model: 'anthropic/claude-sonnet-4-5',
@@ -162,7 +163,7 @@ function makeAgentEntity(
 		projectId: 'project-1',
 		schema,
 		tools: {},
-	} as unknown as Agent;
+	} as unknown as ProjectAgent;
 }
 
 describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP wiring', () => {
@@ -317,7 +318,10 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP w
 
 describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 	const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' });
-	const reconstructWithWorkspace = async (service: AgentRuntimeReconstructionService) =>
+	const reconstructWithWorkspace = async (
+		service: AgentRuntimeReconstructionService,
+		abortSignal?: AbortSignal,
+	) =>
 		await service.reconstructFromAgentEntity(
 			storedRunSource(makeAgentEntity()),
 			mock<CredentialProvider>(),
@@ -327,6 +331,7 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 			undefined,
 			'manual',
 			principalHash,
+			{ abortSignal },
 		);
 
 	beforeEach(() => {
@@ -386,6 +391,50 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 			expect.arrayContaining(['find_file', 'search_text', 'read_file']),
 		);
 	});
+
+	it.each(['runtime', 'workspace'])(
+		'cancels stalled %s construction and closes the runtime without later setup',
+		async (stage) => {
+			const started = createDeferredPromise();
+			const construction = createDeferredPromise<agents.Agent>();
+			const acquisition =
+				createDeferredPromise<Awaited<ReturnType<AgentWorkspaceService['getAgentWorkspace']>>>();
+			const agentFileRepository = mock<AgentFileRepository>();
+			const agentWorkspaceService = mock<AgentWorkspaceService>();
+			agentWorkspaceService.getAgentWorkspace.mockImplementationOnce(async () => {
+				started.resolve();
+				return await acquisition.promise;
+			});
+			buildFromJsonMock.mockImplementationOnce(async () => {
+				if (stage === 'runtime') {
+					started.resolve();
+					return await construction.promise;
+				}
+				return builtAgent;
+			});
+			builtAgent.close.mockRejectedValueOnce(new Error('teardown failed'));
+			const service = makeReconstructionService({
+				agentSandboxRuntimeService: mock<AgentSandboxRuntimeService>({ isEnabled: () => true }),
+				agentWorkspaceService,
+				agentFileRepository,
+			});
+			const controller = new AbortController();
+			const reason = new Error('setup cancelled');
+			const building = reconstructWithWorkspace(service, controller.signal);
+			const rejected = expect(building).rejects.toBe(reason);
+			await started.promise;
+			controller.abort(reason);
+			await rejected;
+			construction.resolve(builtAgent);
+			acquisition.resolve({ workspace: new Workspace({}), handle: mock<AgentSandboxRuntime>() });
+			await vi.waitFor(() => expect(builtAgent.close).toHaveBeenCalledTimes(1));
+
+			expect(builtAgent.workspace).not.toHaveBeenCalled();
+			expect(agentFileRepository.hasFilesForAgent).not.toHaveBeenCalled();
+			expect(builtAgent.fileStore).not.toHaveBeenCalled();
+		},
+		1_000,
+	);
 
 	it('does not attach a workspace to inline runtimes', async () => {
 		const agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>({
@@ -609,7 +658,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 				id: 'agent-2',
 				name: 'Research Agent',
 				activeVersionId: 'version-2',
-			} as Agent);
+			} as ProjectAgent);
 			const service = makeReconstructionService({ agentRepository });
 			const entity = makeAgentEntity(undefined, {
 				subAgents: { agents: [{ agentId: 'agent-2' }] },
@@ -652,7 +701,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 			id: 'agent-billing',
 			name: 'Billing Agent',
 			activeVersionId: 'version-billing',
-		} as Agent);
+		} as ProjectAgent);
 		const service = makeReconstructionService({ agentRepository });
 		const entity = makeAgentEntity(undefined, {
 			subAgents: {
@@ -686,7 +735,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 			id: 'agent-billing',
 			name: 'Billing Agent',
 			activeVersionId: 'version-billing',
-		} as Agent);
+		} as ProjectAgent);
 		const service = makeReconstructionService({ agentRepository });
 		const config: AgentJsonConfig = {
 			name: 'Test',
@@ -706,7 +755,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 			id: 'agent-billing',
 			name: 'Billing Agent',
 			activeVersionId: null,
-		} as Agent);
+		} as ProjectAgent);
 		const service = makeReconstructionService({ agentRepository });
 		const config: AgentJsonConfig = {
 			name: 'Test',
@@ -1102,7 +1151,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 	function setupWithRoster() {
 		const agentRepository = mock<AgentRepository>();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
-			mock<Agent>({ id: 'agent-2', name: 'Researcher', activeVersionId: 'version-1' }),
+			mock<ProjectAgent>({ id: 'agent-2', name: 'Researcher', activeVersionId: 'version-1' }),
 		);
 		return {
 			service: makeReconstructionService({ agentRepository }),
@@ -1151,7 +1200,9 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 	it('excludes disabled sub-agents from foreground and background delegation', async () => {
 		Container.get(AgentsConfig).backgroundTasksEnabled = true;
 		const agentRepository = mock<AgentRepository>();
-		agentRepository.findByIdAndProjectId.mockResolvedValue(mock<Agent>({ id: 'disabled-agent' }));
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			mock<ProjectAgent>({ id: 'disabled-agent' }),
+		);
 		const service = makeReconstructionService({ agentRepository });
 		await service.reconstructFromAgentEntity(
 			storedRunSource(

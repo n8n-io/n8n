@@ -396,6 +396,10 @@ describe('applyBranchReadOnlyOverrides', () => {
 		expect(result.createCredential).toBe('require_approval');
 		expect(result.deleteCredential).toBe('require_approval');
 		expect(result.restoreWorkflowVersion).toBe('require_approval');
+		expect(result.mutateDataTableRows).toBe('require_approval');
+		expect(result.createSkill).toBe('require_approval');
+		expect(result.updateSkill).toBe('require_approval');
+		expect(result.deleteSkill).toBe('require_approval');
 
 		// These should all be blocked
 		expect(result.createWorkflow).toBe('blocked');
@@ -409,7 +413,6 @@ describe('applyBranchReadOnlyOverrides', () => {
 		expect(result.createDataTable).toBe('blocked');
 		expect(result.deleteDataTable).toBe('blocked');
 		expect(result.mutateDataTableSchema).toBe('blocked');
-		expect(result.mutateDataTableRows).toBe('blocked');
 		expect(result.cleanupTestExecutions).toBe('blocked');
 		expect(result.executeNode).toBe('blocked');
 	});
@@ -427,6 +430,14 @@ describe('applyBranchReadOnlyOverrides', () => {
 		expect(result.publishWorkflow).toBe('always_allow');
 		expect(result.createCredential).toBe('always_allow');
 		expect(result.deleteCredential).toBe('always_allow');
+	});
+
+	it('keeps an admin block on data table row writes', () => {
+		const result = applyBranchReadOnlyOverrides({
+			...DEFAULT_INSTANCE_AI_PERMISSIONS,
+			mutateDataTableRows: 'blocked',
+		});
+		expect(result.mutateDataTableRows).toBe('blocked');
 	});
 
 	it('blocks createPreference on a read-only branch like every other write', () => {

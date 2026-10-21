@@ -1,10 +1,10 @@
+import type { SerializedWorkflow, SerializedWorkflowMetadata } from '@n8n/api-types';
+
 import { formatEntityFile } from './entity-file-format';
 import type { PackageWriter } from './package-writer';
 import { generateSlug } from './slug.utils';
 import { PackageExportBlockedError } from '../entities/package-export.errors';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
-import type { SerializedWorkflowMetadata } from '../spec/serialized/workflow-metadata.schema';
-import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
 /**
  * Derived from the manifest so a new collection cannot ship without a

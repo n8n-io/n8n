@@ -38,8 +38,12 @@ const oneChange = (name: string, status: string) => ({
 	data: { commitSha, changes: [{ id: 'workflow-1', name, type: 'workflow', status }] },
 });
 
-const connections = (configs: Record<string, unknown>) => ({
-	data: [{ id: 'connection-1', scope: 'instance', configs }],
+const environments = (...directions: string[]) => ({
+	data: directions.map((direction) => ({
+		id: `environment-${direction}`,
+		scope: 'instance',
+		direction,
+	})),
 	nextCursor: null,
 });
 
@@ -81,9 +85,7 @@ describe('PromotionBanners', () => {
 	});
 
 	it('shows outgoing changes only with export and push access', async () => {
-		server.get('/api/v1/promotions/connections', () =>
-			connections({ promote: { id: 'config-1' } }),
-		);
+		server.get('/api/v1/promotions/environments', () => environments('promote'));
 		server.get('/rest/promotions/project-1/changes/promote', () =>
 			oneChange('Changed workflow', 'modified'),
 		);
@@ -107,35 +109,28 @@ describe('PromotionBanners', () => {
 			scopes: ['project:export'],
 		});
 		expect(await findByTestId('promotion-banner')).toHaveTextContent('1 change');
-		// Listing connections alone is not enough, the direction needs its own scope.
+		// Listing environments alone is not enough, the direction needs its own scope.
 		usersStore.currentUser = mock<IUser>({ globalScopes: ['gitConnection:list'] });
 		await waitFor(() => expect(queryByTestId('promotion-banner')).not.toBeInTheDocument());
 	});
 
 	it('shows nothing while the promotion feature is off', async () => {
-		const connectionsRequest = vi.fn(() =>
-			connections({
-				promote: { id: 'config-1' },
-				apply: { id: 'config-2', settings: { branchName: 'main' } },
-			}),
-		);
-		server.get('/api/v1/promotions/connections', connectionsRequest);
+		const environmentsRequest = vi.fn(() => environments('promote', 'apply'));
+		server.get('/api/v1/promotions/environments', environmentsRequest);
 		settingsStore.settings = { ...settingsStore.settings, envFeatureFlags: {} };
 		usersStore.currentUser = mock<IUser>({
 			globalScopes: ['gitConnection:list', 'gitConnection:push', 'gitConnection:pull'],
 		});
 		const { queryByTestId } = renderComponent();
 
-		await waitFor(() => expect(connectionsRequest).not.toHaveBeenCalled());
+		await waitFor(() => expect(environmentsRequest).not.toHaveBeenCalled());
 		expect(queryByTestId('promotion-banner')).not.toBeInTheDocument();
 		expect(queryByTestId('promotion-incoming-banner')).not.toBeInTheDocument();
 	});
 
 	it('shows incoming changes only with pull access and an apply configuration', async () => {
 		const promoteChanges = vi.fn(() => ({ data: { commitSha, changes: [] } }));
-		server.get('/api/v1/promotions/connections', () =>
-			connections({ apply: { id: 'config-1', settings: { branchName: 'main' } } }),
-		);
+		server.get('/api/v1/promotions/environments', () => environments('apply'));
 		server.get('/rest/promotions/project-1/changes/promote', promoteChanges);
 		server.get('/rest/promotions/project-1/changes/apply', () =>
 			oneChange('Incoming workflow', 'new'),
@@ -163,12 +158,7 @@ describe('PromotionBanners', () => {
 	it('refetches only the promote count after a selective promote', async () => {
 		const promoteChanges = vi.fn(() => oneChange('Outgoing workflow', 'modified'));
 		const applyChanges = vi.fn(() => oneChange('Incoming workflow', 'new'));
-		server.get('/api/v1/promotions/connections', () =>
-			connections({
-				promote: { id: 'config-1' },
-				apply: { id: 'config-2', settings: { branchName: 'main' } },
-			}),
-		);
+		server.get('/api/v1/promotions/environments', () => environments('promote', 'apply'));
 		server.get('/rest/promotions/project-1/changes/promote', promoteChanges);
 		server.get('/rest/promotions/project-1/changes/apply', applyChanges);
 		usersStore.currentUser = mock<IUser>({
@@ -188,12 +178,7 @@ describe('PromotionBanners', () => {
 	it('refetches both counts after a package was applied', async () => {
 		const promoteChanges = vi.fn(() => oneChange('Outgoing workflow', 'modified'));
 		const applyChanges = vi.fn(() => oneChange('Incoming workflow', 'new'));
-		server.get('/api/v1/promotions/connections', () =>
-			connections({
-				promote: { id: 'config-1' },
-				apply: { id: 'config-2', settings: { branchName: 'main' } },
-			}),
-		);
+		server.get('/api/v1/promotions/environments', () => environments('promote', 'apply'));
 		server.get('/rest/promotions/project-1/changes/promote', promoteChanges);
 		server.get('/rest/promotions/project-1/changes/apply', applyChanges);
 		usersStore.currentUser = mock<IUser>({
@@ -213,9 +198,7 @@ describe('PromotionBanners', () => {
 	});
 
 	it('leaves the page when the applied package removed the project', async () => {
-		server.get('/api/v1/promotions/connections', () =>
-			connections({ apply: { id: 'config-1', settings: { branchName: 'main' } } }),
-		);
+		server.get('/api/v1/promotions/environments', () => environments('apply'));
 		server.get('/rest/promotions/project-1/changes/apply', () =>
 			oneChange('Incoming workflow', 'new'),
 		);
@@ -231,9 +214,7 @@ describe('PromotionBanners', () => {
 	});
 
 	it('ignores results for a project the user already left', async () => {
-		server.get('/api/v1/promotions/connections', () =>
-			connections({ apply: { id: 'config-1', settings: { branchName: 'main' } } }),
-		);
+		server.get('/api/v1/promotions/environments', () => environments('apply'));
 		server.get('/rest/promotions/:projectId/changes/apply', () =>
 			oneChange('Incoming workflow', 'new'),
 		);
@@ -259,12 +240,10 @@ describe('PromotionBanners', () => {
 
 	it('retries a failed connection lookup on the next project', async () => {
 		const lookup = vi
-			.spyOn(settingsApi, 'fetchPromotionConnections')
+			.spyOn(settingsApi, 'fetchPromotionEnvironments')
 			.mockRejectedValueOnce(new Error('offline'));
-		const connectionsRequest = vi.fn(() =>
-			connections({ apply: { id: 'config-1', settings: { branchName: 'main' } } }),
-		);
-		server.get('/api/v1/promotions/connections', connectionsRequest);
+		const environmentsRequest = vi.fn(() => environments('apply'));
+		server.get('/api/v1/promotions/environments', environmentsRequest);
 		server.get('/rest/promotions/project-2/changes/apply', () =>
 			oneChange('Incoming workflow', 'new'),
 		);
@@ -275,7 +254,7 @@ describe('PromotionBanners', () => {
 		await waitFor(() => expect(lookup).toHaveBeenCalledTimes(1));
 		// Let the rejection settle, a switch while the lookup is in flight joins the same request.
 		await waitAllPromises();
-		expect(connectionsRequest).not.toHaveBeenCalled();
+		expect(environmentsRequest).not.toHaveBeenCalled();
 		expect(queryByTestId('promotion-incoming-banner')).not.toBeInTheDocument();
 
 		projectsStore.currentProject = createTestProject({
@@ -284,16 +263,14 @@ describe('PromotionBanners', () => {
 		});
 
 		expect(await findByTestId('promotion-incoming-banner')).toHaveTextContent('1 incoming change');
-		expect(connectionsRequest).toHaveBeenCalledTimes(1);
+		expect(environmentsRequest).toHaveBeenCalledTimes(1);
 	});
 
 	it('keeps the incoming changes entry visible when the check fails', async () => {
-		server.get('/api/v1/promotions/connections', () =>
-			connections({ apply: { id: 'config-1', settings: { branchName: 'main' } } }),
-		);
+		server.get('/api/v1/promotions/environments', () => environments('apply'));
 		server.get(
 			'/rest/promotions/project-1/changes/apply',
-			() => new Response(400, {}, { message: 'The apply direction is not cloned' }),
+			() => new Response(400, {}, { message: 'The apply direction is not connected' }),
 		);
 		usersStore.currentUser = mock<IUser>({
 			globalScopes: ['gitConnection:list', 'gitConnection:pull'],

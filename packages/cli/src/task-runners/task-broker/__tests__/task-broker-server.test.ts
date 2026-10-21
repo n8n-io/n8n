@@ -1,5 +1,8 @@
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
+import assert from 'node:assert/strict';
+import { once } from 'node:events';
+import { createServer as createHttpServer, type Server } from 'node:http';
 import type { Socket } from 'node:net';
 import request from 'supertest';
 import { mock } from 'vitest-mock-extended';
@@ -14,6 +17,7 @@ describe('TaskBrokerServer', () => {
 	const createServer = (overrides?: {
 		authController?: TaskBrokerAuthController;
 		logger?: Logger;
+		port?: number;
 	}) => {
 		const authController = overrides?.authController ?? mock<TaskBrokerAuthController>();
 		const taskBrokerWsServer = mock<TaskBrokerWsServer>();
@@ -21,7 +25,12 @@ describe('TaskBrokerServer', () => {
 		const server = new TaskBrokerServer(
 			overrides?.logger ?? mock<Logger>(),
 			mock<GlobalConfig>({
-				taskRunners: { path: '/runners', authToken: 'token' },
+				taskRunners: {
+					path: '/runners',
+					authToken: 'token',
+					port: overrides?.port ?? 0,
+					listenAddress: '127.0.0.1',
+				},
 				endpoints: { health: '/health' },
 				sentry: { backendDsn: '' },
 			}),
@@ -32,6 +41,39 @@ describe('TaskBrokerServer', () => {
 
 		return { server, authController, taskBrokerWsServer };
 	};
+
+	describe('start', () => {
+		let server: TaskBrokerServer | undefined;
+		let occupyingServer: Server | undefined;
+
+		afterEach(async () => {
+			await server?.stop();
+			occupyingServer?.close();
+			server = undefined;
+			occupyingServer = undefined;
+		});
+
+		it('should listen on an OS-assigned port when the configured port is 0', async () => {
+			({ server } = createServer({ port: 0 }));
+
+			await server.start();
+
+			expect(server.port).toBeGreaterThan(0);
+			await request(`http://127.0.0.1:${server.port}`)
+				.get('/healthz')
+				.expect(200, { status: 'ok' });
+		});
+
+		it('should reject when the configured port is already in use', async () => {
+			occupyingServer = createHttpServer().listen(0, '127.0.0.1');
+			await once(occupyingServer, 'listening');
+			const address = occupyingServer.address();
+			assert(address && typeof address !== 'string');
+			({ server } = createServer({ port: address.port }));
+
+			await expect(server.start()).rejects.toMatchObject({ code: 'EADDRINUSE' });
+		});
+	});
 
 	describe('GET /healthz', () => {
 		it('should return 200 regardless of N8N_ENDPOINT_HEALTH', async () => {
