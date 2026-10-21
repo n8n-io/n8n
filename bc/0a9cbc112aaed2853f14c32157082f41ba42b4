@@ -4,7 +4,7 @@ packages/cli/src/modules/n8n-packages/entities/workflow/node-type-usage.ts
 {
   "schema_version": "authorship/3.0.0",
   "git_ai_version": "1.7.5",
-  "base_commit_sha": "9f85b8379c231bf2cc2f48fede498d6910b32af9",
+  "base_commit_sha": "bc0a9cbc112aaed2853f14c32157082f41ba42b4",
   "prompts": {},
   "sessions": {
     "s_2397c9db9d923f": {
