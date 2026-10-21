@@ -295,6 +295,8 @@ export function createLlmCompletionMockHandler(
 						: (input.content ?? '');
 					return 'Accepted.';
 				})
+				// Without this, the model keeps resubmitting after "Accepted." (about 14 calls a turn on Sonnet 5.5).
+				.endsTurnWhen((output) => output === 'Accepted.')
 				.build(),
 		);
 
