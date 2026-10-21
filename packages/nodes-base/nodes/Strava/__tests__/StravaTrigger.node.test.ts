@@ -47,6 +47,33 @@ describe('StravaTrigger', () => {
 		});
 	});
 
+	describe('create with an existing subscription', () => {
+		it('should replace it with the node id as verify token when deleteIfExist is set', async () => {
+			const hookFunctions = mockDeep<IHookFunctions>();
+			hookFunctions.getNode.mockReturnValue(mock({ id: nodeId }));
+			hookFunctions.getNodeWebhookUrl.mockReturnValue('https://n8n.example/webhook');
+			hookFunctions.getWorkflowStaticData.mockReturnValue({});
+			hookFunctions.getNodeParameter.mockReturnValue({ deleteIfExist: true });
+			const request = vi
+				.spyOn(GenericFunctions, 'stravaApiRequest')
+				.mockRejectedValueOnce({
+					cause: { error: { errors: [{ resource: 'PushSubscription', code: 'already exists' }] } },
+				})
+				.mockResolvedValueOnce([{ id: 1, callback_url: 'https://other.example/webhook' }])
+				.mockResolvedValueOnce({})
+				.mockResolvedValueOnce({ id: 123 });
+
+			const created = await node.webhookMethods.default.create.call(hookFunctions);
+
+			expect(created).toBe(true);
+			expect(request).toHaveBeenCalledWith('DELETE', '/push_subscriptions/1');
+			expect(request).toHaveBeenLastCalledWith('POST', '/push_subscriptions', {
+				callback_url: 'https://n8n.example/webhook',
+				verify_token: nodeId,
+			});
+		});
+	});
+
 	describe('webhook', () => {
 		const setup = ({
 			webhookName = 'default',
@@ -100,29 +127,34 @@ describe('StravaTrigger', () => {
 			expect(result).toEqual({});
 		});
 
-		it('should start the workflow for events of the registered subscription', async () => {
-			const body = { object_type: 'activity', aspect_type: 'create', subscription_id: 123 };
-			const { webhookFunctions } = setup({ body });
+		it.each([123, '123'])(
+			'should start the workflow for events of the registered subscription %j',
+			async (webhookId) => {
+				const body = { object_type: 'activity', aspect_type: 'create', subscription_id: 123 };
+				const { webhookFunctions } = setup({ body });
+				webhookFunctions.getWorkflowStaticData.mockReturnValue({ webhookId });
 
-			const result = await node.webhook.call(webhookFunctions);
+				const result = await node.webhook.call(webhookFunctions);
 
-			expect(result).toEqual({ workflowData: [[{ json: body }]] });
-		});
-
-		it('should match the subscription id when it is stored as a string', async () => {
-			const body = { object_type: 'activity', aspect_type: 'create', subscription_id: 123 };
-			const { webhookFunctions } = setup({ body });
-			webhookFunctions.getWorkflowStaticData.mockReturnValue({ webhookId: '123' });
-
-			const result = await node.webhook.call(webhookFunctions);
-
-			expect(result).toEqual({ workflowData: [[{ json: body }]] });
-		});
+				expect(result).toEqual({ workflowData: [[{ json: body }]] });
+			},
+		);
 
 		it('should ignore events of a different subscription', async () => {
 			const { webhookFunctions } = setup({
 				body: { object_type: 'activity', aspect_type: 'create', subscription_id: 999 },
 			});
+
+			const result = await node.webhook.call(webhookFunctions);
+
+			expect(result).toEqual({});
+		});
+
+		it('should ignore events when no subscription id is stored', async () => {
+			const { webhookFunctions } = setup({
+				body: { object_type: 'activity', aspect_type: 'create', subscription_id: 'undefined' },
+			});
+			webhookFunctions.getWorkflowStaticData.mockReturnValue({});
 
 			const result = await node.webhook.call(webhookFunctions);
 

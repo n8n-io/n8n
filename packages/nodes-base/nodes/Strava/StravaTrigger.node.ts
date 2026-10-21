@@ -177,17 +177,7 @@ export class StravaTrigger implements INodeType {
 									);
 
 									// now there is room create a subscription with the n8n data
-									const requestBody = {
-										callback_url: webhookUrl,
-										verify_token: this.getNode().id,
-									};
-
-									responseData = await stravaApiRequest.call(
-										this,
-										'POST',
-										'/push_subscriptions',
-										requestBody,
-									);
+									responseData = await stravaApiRequest.call(this, 'POST', endpoint, body);
 								} else {
 									error.message = `A subscription already exists [${webhooks[0].callback_url}]. If you want to delete this subscription and create a new one with the current parameters please go to options and set delete if exist to true`;
 									throw error;
@@ -267,7 +257,7 @@ export class StravaTrigger implements INodeType {
 
 		const webhookData = this.getWorkflowStaticData('node');
 		if (
-			body.subscription_id === undefined ||
+			webhookData.webhookId === undefined ||
 			String(body.subscription_id) !== String(webhookData.webhookId)
 		) {
 			return {};
