@@ -332,7 +332,7 @@ describe('EngineV2ExecutionReader', () => {
 						}),
 			);
 
-			const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID]);
+			const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID, 'wf-parent']);
 
 			expect(result?.data.resultData.runData.Trigger[0].metadata).toEqual({
 				parentExecution: { executionId: parentId, workflowId: 'wf-parent' },
@@ -362,8 +362,9 @@ describe('EngineV2ExecutionReader', () => {
 
 			const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID]);
 
+			// Scoped to what the caller can read, so no link names an execution it cannot open.
 			expect(dataPlane.searchExecutions).toHaveBeenCalledWith({
-				workflowIds: 'all',
+				workflowIds: [WORKFLOW_ID],
 				parentExecutionId: EXECUTION_ID,
 				limit: 100,
 			});
@@ -374,6 +375,22 @@ describe('EngineV2ExecutionReader', () => {
 				},
 				subExecutionsCount: 1,
 			});
+		});
+
+		it('should omit the parent link when the caller cannot read the parent workflow', async () => {
+			const parentId = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfb' as ExecutionIdV2;
+			dataPlane.getExecution.mockImplementation(async (id) =>
+				id === parentId
+					? snapshot({ id: parentId, workflowId: 'wf-private' })
+					: snapshot({
+							steps: [step()],
+							parent: { executionId: parentId, stepId: 'step-call', awaited: true },
+						}),
+			);
+
+			const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID]);
+
+			expect(result?.data.resultData.runData.Trigger[0].metadata).toBeUndefined();
 		});
 
 		it('should read the parent only when there is one', async () => {

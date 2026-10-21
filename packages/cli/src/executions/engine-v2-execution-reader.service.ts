@@ -178,33 +178,47 @@ export class EngineV2ExecutionReader {
 		return this.toExecutionResponse(
 			snapshot,
 			workflow,
-			toV1RunExecutionData(snapshot.graph, snapshot.steps ?? [], await this.findLinks(snapshot)),
+			toV1RunExecutionData(
+				snapshot.graph,
+				snapshot.steps ?? [],
+				await this.findLinks(snapshot, sharedWorkflowIds),
+			),
 		);
 	}
 
 	/**
 	 * The parent and the children of the execution, for the links the editor
-	 * shows. The row holds the parent's id only, so its workflow is read from the
-	 * parent. Both reads are by id: the caller's access was checked on this
-	 * execution, and the editor checks it again on the one it opens.
+	 * shows, limited to the workflows the caller can read: a link names an
+	 * execution, and naming one the caller cannot open tells them it exists.
+	 * The row holds the parent's id only, so its workflow is read from the parent.
 	 */
-	private async findLinks(snapshot: ExecutionSnapshot): Promise<ExecutionLinks> {
+	private async findLinks(
+		snapshot: ExecutionSnapshot,
+		sharedWorkflowIds: string[],
+	): Promise<ExecutionLinks> {
 		const parentId = snapshot.parent?.executionId;
+		const readable = [...new Set(sharedWorkflowIds)];
 		const [parent, children] = await Promise.all([
 			// Only the engine sets the link, with an id it minted.
 			parentId !== undefined && isExecutionIdV2(parentId)
 				? this.dataPlane.getExecution(parentId, { includeSteps: false })
 				: undefined,
-			this.dataPlane.searchExecutions({
-				workflowIds: 'all',
-				parentExecutionId: snapshot.id,
-				limit: MAX_CHILDREN,
-			}),
+			// A scope one search cannot hold yields no links rather than an error.
+			readable.length <= MAX_SCOPE_SIZE
+				? this.dataPlane.searchExecutions({
+						workflowIds: readable,
+						parentExecutionId: snapshot.id,
+						limit: MAX_CHILDREN,
+					})
+				: undefined,
 		]);
 
 		return {
-			parent: parent ? { executionId: parent.id, workflowId: parent.workflowId } : undefined,
-			children: children.items.flatMap((child) =>
+			parent:
+				parent && readable.includes(parent.workflowId)
+					? { executionId: parent.id, workflowId: parent.workflowId }
+					: undefined,
+			children: (children?.items ?? []).flatMap((child) =>
 				child.parent
 					? [{ stepId: child.parent.stepId, executionId: child.id, workflowId: child.workflowId }]
 					: [],
