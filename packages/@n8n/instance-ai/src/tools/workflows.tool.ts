@@ -73,6 +73,7 @@ import {
 	refreshWorkflowSourceFileBindingFromWorkflow,
 } from './workflows/workflow-file-bindings';
 import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
+import { generateWorkflowSource } from './workflows/workflow-source-generator';
 import {
 	INLINE_SOURCE_LIMIT_CHARS,
 	indexSourceNodes,
@@ -442,6 +443,8 @@ export interface WorkflowsToolOptions {
 	descriptionPrefix?: string;
 	descriptionSuffix?: string;
 	surface?: 'full' | 'orchestrator';
+	/** Override source-edit instructions for a caller with its own candidate lifecycle. */
+	sourceGuidance?: string;
 }
 
 type WorkflowsToolOptionsInput = WorkflowsToolOptions | 'full' | 'orchestrator';
@@ -486,6 +489,7 @@ function normalizeOptions(options: WorkflowsToolOptionsInput = {}): WorkflowsToo
 
 function getSupportedWorkflowActionSchemas(
 	context: InstanceAiContext,
+	options: WorkflowsToolOptions,
 ): Partial<Record<WorkflowAction, WorkflowActionSchema>> {
 	const hasNamedVersions = !!context.workflowService.updateVersion;
 	const hasVersions = !!context.workflowService.listVersions;
@@ -498,7 +502,11 @@ function getSupportedWorkflowActionSchemas(
 		list: pickListAction(context, hasNodeUsage),
 		...(hasNodeUsage ? { 'node-usage': nodeUsageAction } : {}),
 		get: getAction,
-		'get-as-code': getAsCodeAction,
+		'get-as-code': options.sourceGuidance
+			? getAsCodeAction.extend({
+					action: z.literal('get-as-code').describe(options.sourceGuidance),
+				})
+			: getAsCodeAction,
 		delete: deleteAction,
 		unarchive: unarchiveAction,
 		setup: setupAction,
@@ -526,7 +534,7 @@ function getWorkflowActions(
 }
 
 function buildInputSchema(context: InstanceAiContext, options: WorkflowsToolOptions) {
-	const supportedSchemas = getSupportedWorkflowActionSchemas(context);
+	const supportedSchemas = getSupportedWorkflowActionSchemas(context, options);
 	const actionSchemas: WorkflowActionSchema[] = [];
 	for (const action of getWorkflowActions(supportedSchemas, options)) {
 		const schema = supportedSchemas[action];
@@ -823,21 +831,6 @@ async function handleGetAsCode(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'get-as-code' }>,
 ) {
-	const { generateWorkflowCode, buildImports } = await import('@n8n/workflow-sdk');
-	const toCode = (json: WorkflowJSON): string => {
-		// Emit node ids: this code is edited and built back into the same saved workflow,
-		// and carrying the ids through is what keeps node identity stable. Positions stay
-		// out: workflow_builder_build_workflow restores the saved layout by id, so a position in the file
-		// is only an invitation to edit layout.
-		const body = generateWorkflowCode({
-			workflow: json,
-			includeNodeIds: true,
-			includePositions: false,
-		});
-		// The file must build as-is, so it carries the import line codegen omits.
-		const importLine = buildImports(body);
-		return importLine ? `${importLine}\n\n${body}` : body;
-	};
 	try {
 		// Historical reads are not bound to a file and must not advance the
 		// optimistic-concurrency lock; they stay inline.
@@ -846,7 +839,7 @@ async function handleGetAsCode(
 				input.workflowId,
 				input.versionId,
 			);
-			const code = toCode(json);
+			const code = await generateWorkflowSource(json);
 			return {
 				workflowId: input.workflowId,
 				name: json.name,
@@ -857,7 +850,7 @@ async function handleGetAsCode(
 		}
 
 		const { json, saved } = await readConsistentWorkflowSnapshot(context, input.workflowId);
-		const code = toCode(json);
+		const code = await generateWorkflowSource(json);
 		const nodeCount = json.nodes?.length ?? 0;
 		const base = { workflowId: input.workflowId, name: json.name, nodeCount };
 
@@ -2294,7 +2287,7 @@ function formatWorkflowActionList(actions: readonly WorkflowAction[]): string {
 }
 
 function getToolDescription(context: InstanceAiContext, options: WorkflowsToolOptions): string {
-	const supportedSchemas = getSupportedWorkflowActionSchemas(context);
+	const supportedSchemas = getSupportedWorkflowActionSchemas(context, options);
 	const actionList = formatWorkflowActionList(getWorkflowActions(supportedSchemas, options));
 	const description = `${options.descriptionPrefix ?? 'Manage workflows'} — ${actionList}.`;
 	const suffix =
@@ -2329,6 +2322,7 @@ export function createWorkflowsTool(
 		.resume(workflowsResumeSchema)
 		.handler(async (input, ctx) => {
 			const workflowInput = input as Input;
+
 			switch (workflowInput.action) {
 				case 'list':
 					return await handleList(context, workflowInput);
@@ -2336,8 +2330,17 @@ export function createWorkflowsTool(
 					return await handleNodeUsage(context, workflowInput);
 				case 'get':
 					return await handleGet(context, workflowInput);
-				case 'get-as-code':
-					return await handleGetAsCode(context, workflowInput);
+				case 'get-as-code': {
+					const result = await handleGetAsCode(context, workflowInput);
+
+					if (!options.sourceGuidance) return result;
+
+					const conflictNote =
+						'status' in result && result.status === 'conflict'
+							? 'The source file contains unbuilt edits and was left untouched. '
+							: '';
+					return { ...result, note: conflictNote + options.sourceGuidance };
+				}
 				case 'delete':
 					return await handleDelete(context, workflowInput, ctx);
 				case 'unarchive':
