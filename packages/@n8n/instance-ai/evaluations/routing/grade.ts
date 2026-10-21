@@ -29,7 +29,7 @@ import { ASK_USER_TOOL_ID, DOMAIN_TOOL_IDS } from '../../src/tools/tool-ids';
  * the read, so the run skips it. A tool or action not listed here gets a check.
  */
 const READ_ONLY_ACTIONS: Readonly<Record<string, ReadonlySet<unknown>>> = {
-	// `load_skill` and the read-only node tools have no `action` field.
+	// `load_skill` has no action.
 	load_skill: new Set([undefined]),
 	[DOMAIN_TOOL_IDS.SEARCH_NODES]: new Set([undefined]),
 	[DOMAIN_TOOL_IDS.GET_NODE_TYPES]: new Set([undefined]),

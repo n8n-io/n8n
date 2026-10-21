@@ -1,31 +1,27 @@
 /**
- * Unified node tools — search_nodes, get_node_types, get_node_parameter_options, execute_node
- * (plus legacy consolidated workflow_builder_nodes factory for backward compatibility).
+ * Consolidated workflow_builder_nodes tool — list, search, describe, type-definition, suggested,
+ * explore-resources, execute.
  */
 import { Tool, type ToolContext } from '@n8n/agents';
 import {
 	AI_CONNECTION_TYPES,
 	NodeSearchEngine,
 	categoryList,
-	findNodeParameterProperty,
-	getDynamicNodeParameterLookup,
 	suggestedNodesData,
-	toLoadedOptionParameterValue,
-	toResourceLocatorParameterValue,
 	type CategorySuggestedNode,
 	type SearchableNodeType,
 } from '@n8n/ai-utilities/node-catalog';
 import {
-	AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES,
 	UNSUPPORTED_AGENT_NODE_TOOL_OPERATIONS,
 	getLegacyBuilderToolNames,
+	isAgentToolNodeType,
 	buildExecuteNodeSessionGrantKey,
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
 	NODE_RESOURCE_GRANT_FALLBACK_KEYS,
 } from '@n8n/api-types';
 import { validateNodeConfig } from '@n8n/workflow-sdk';
-import { isToolType, isTriggerNodeType, type INodeProperties } from 'n8n-workflow';
+import { isToolType } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -39,21 +35,7 @@ import { addSetupPreference, type NodeWithSetupPreference } from './nodes/setup-
 import { buildCredentialMap } from './workflows/resolve-credentials';
 import { DOMAIN_TOOL_IDS } from './tool-ids';
 
-// ── Agent tool node filter & operation support ──────────────────────────────
-
-const hiddenAgentToolNodeTypes = new Set<string>(AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES);
 const unsupportedAgentNodeOperations = new Set<string>(UNSUPPORTED_AGENT_NODE_TOOL_OPERATIONS);
-const MCP_CLIENT_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpClientTool';
-const MCP_REGISTRY_PACKAGE_PREFIX = '@n8n/mcp-registry.';
-
-export const isAgentToolNodeType = (nodeId: string): boolean => {
-	if (isTriggerNodeType(nodeId)) return false;
-	if (hiddenAgentToolNodeTypes.has(nodeId)) return false;
-	if (nodeId === MCP_CLIENT_TOOL_NODE_TYPE || nodeId.startsWith(MCP_REGISTRY_PACKAGE_PREFIX)) {
-		return false;
-	}
-	return isToolType(nodeId, { includeHitl: false });
-};
 
 const isUnsupportedEphemeralNodeOperation = (operation: unknown): operation is string =>
 	typeof operation === 'string' && unsupportedAgentNodeOperations.has(operation);
@@ -220,9 +202,6 @@ const executeNodeFieldsShape = {
 	timeoutMs: z.number().int().positive().max(MAX_EXECUTE_TIMEOUT_MS).optional(),
 };
 
-// Envelope mirrors a workflow-sdk node so the agent can pass a node it is
-// building verbatim. Credentials take the resolved `{ id, name }` form only —
-// the SDK's placeholder/new-credential forms have no stored row to execute with.
 const executeAction = z.object({
 	action: z
 		.literal('execute')
@@ -410,7 +389,7 @@ async function handleDescribe(
 
 /**
  * Resolve TypeScript type definitions for a validated list of node requests.
- * Used by `get_node_types` and the legacy `workflow_builder_nodes` tool.
+ * Used by the consolidated `workflow_builder_nodes` tool's `type-definition` action.
  */
 async function resolveNodeTypeDefinitions(
 	context: InstanceAiContext,
@@ -732,7 +711,7 @@ async function handleExecute(
 	});
 }
 
-// ── 4 Unified Independent Tool Factories ────────────────────────────────────
+// ── Tool factory ────────────────────────────────────────────────────────────
 
 const searchNodesInputSchema = z.object({
 	query: z
@@ -988,72 +967,12 @@ export function createGetNodeParameterOptionsTool(context: InstanceAiContext) {
 					});
 				}
 
-				// Fallback when only getDescription + exploreResources are wired (e.g. unit tests)
-				try {
-					const desc = await context.nodeService.getDescription(input.nodeType, version);
-					const prop = findNodeParameterProperty(
-						desc.properties as unknown as INodeProperties[],
-						input.parameterPath,
-					);
-					const lookup = prop ? getDynamicNodeParameterLookup(prop) : null;
-					if (!lookup) {
-						return {
-							ok: false as const,
-							code: 'not_dynamic_selector' as const,
-							results: [],
-							error: `Parameter "${input.parameterPath}" does not expose a dynamic lookup on ${input.nodeType}.`,
-						};
-					}
-					const firstCredEntry = input.credentials
-						? Object.entries(input.credentials)[0]
-						: undefined;
-					const credentialType = input.credentialType ?? firstCredEntry?.[0] ?? '';
-					const credentialId = input.credentialId ?? firstCredEntry?.[1]?.id ?? '';
-					const methodName =
-						lookup.kind === 'loadOptionsRouting' ? input.parameterPath : lookup.methodName;
-					const methodType = lookup.kind === 'resourceLocator' ? 'listSearch' : 'loadOptions';
-					const explored = await handleExploreResources(context, {
-						action: 'explore-resources',
-						nodeType: input.nodeType,
-						version,
-						methodName,
-						methodType,
-						credentialType,
-						credentialId,
-						filter: input.filter,
-						paginationToken: input.paginationToken,
-						currentNodeParameters,
-					});
-					if ('error' in explored) {
-						return { ok: false as const, code: 'lookup_failed' as const, ...explored };
-					}
-					return {
-						ok: true as const,
-						kind: lookup.kind,
-						parameterPath: input.parameterPath,
-						methodName,
-						...(lookup.kind === 'resourceLocator' ? { mode: lookup.mode } : {}),
-						results: explored.results.map((r) => ({
-							...r,
-							parameterValue:
-								lookup.kind === 'resourceLocator'
-									? toResourceLocatorParameterValue(
-											{ name: r.name, value: r.value, url: r.url },
-											lookup.mode,
-										)
-									: toLoadedOptionParameterValue({ name: r.name, value: r.value }),
-						})),
-						paginationToken: explored.paginationToken,
-						...(explored.builderHint ? { builderHint: explored.builderHint } : {}),
-					};
-				} catch (error) {
-					return {
-						ok: false as const,
-						code: 'lookup_failed' as const,
-						results: [],
-						error: error instanceof Error ? error.message : String(error),
-					};
-				}
+				return {
+					ok: false as const,
+					code: 'lookup_failed' as const,
+					results: [],
+					error: 'Parameter option lookup is not available.',
+				};
 			}
 
 			if (input.methodName) {
@@ -1113,8 +1032,6 @@ export function createExecuteNodeTool(context: InstanceAiContext) {
 		})
 		.build();
 }
-
-// ── Legacy Consolidated Tool Factory (kept for backward compatibility) ──────
 
 export function createNodesTool(
 	context: InstanceAiContext,

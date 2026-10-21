@@ -1063,7 +1063,6 @@ export interface InstanceAiNodeService {
 	): Promise<{ resources: Array<{ name: string; operations: string[] }> } | null>;
 	/** Query real resources via a node's listSearch or loadOptions methods (e.g. list spreadsheets, models). */
 	exploreResources?(params: ExploreResourcesParams): Promise<ExploreResourcesResult>;
-	/** Resolve live options for a node parameter by parameterPath (resourceLocator / loadOptionsMethod / loadOptions). */
 	resolveParameterOptions?(
 		params: ResolveParameterOptionsParams,
 	): Promise<ResolveParameterOptionsResult>;

@@ -34,8 +34,6 @@ export type ApprovalResponder = (
 
 function resolveConfirmationToolName(toolName: string): string {
 	const resolved = resolveBuilderToolName(toolName);
-	// Only the `execute` action of the legacy `workflow_builder_nodes` tool ever suspended,
-	// which is now `execute_node`.
 	return resolved === WORKFLOW_BUILDER_TOOL_NAMES.NODES
 		? SHARED_BUILDER_TOOL_NAMES.EXECUTE_NODE
 		: resolved;
