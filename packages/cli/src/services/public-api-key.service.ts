@@ -1,24 +1,15 @@
 import type {
 	ApiKeyAudience,
-	ApiKeyOwnerSummary,
 	CreateApiKeyRequestDto,
 	UnixTimestamp,
 	UpdateApiKeyRequestDto,
 } from '@n8n/api-types';
-import { LIST_API_KEYS_SORT_OPTIONS } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { User } from '@n8n/db';
-import { ApiKey, ApiKeyRepository, escapeLike, LIKE_ESCAPE_CLAUSE, withTransaction } from '@n8n/db';
+import type { ApiKey, OperationContext, User } from '@n8n/db';
+import { ApiKeyRepository, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ApiKeyScope, AuthPrincipal } from '@n8n/permissions';
 import { getApiKeyScopesForRole, getOwnerOnlyApiKeyScopes, hasGlobalScope } from '@n8n/permissions';
-import {
-	In,
-	Raw,
-	type EntityManager,
-	type FindOptionsWhere,
-	type SelectQueryBuilder,
-} from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
@@ -39,6 +30,7 @@ export class PublicApiKeyService {
 		private readonly jwtService: JwtService,
 		private readonly mailer: UserManagementMailer,
 		private readonly logger: Logger,
+		private readonly txRunner: TransactionRunner,
 	) {}
 
 	async createPublicApiKeyForUser(
@@ -46,17 +38,13 @@ export class PublicApiKeyService {
 		{ label, expiresAt, scopes }: CreateApiKeyRequestDto,
 	) {
 		const apiKey = this.generateApiKey(user, expiresAt);
-		await this.apiKeyRepository.insert(
-			this.apiKeyRepository.create({
-				userId: user.id,
-				apiKey,
-				label,
-				scopes,
-				audience: API_KEY_AUDIENCE,
-			}),
-		);
-
-		return await this.apiKeyRepository.findOneByOrFail({ apiKey });
+		return await this.apiKeyRepository.createKey({
+			userId: user.id,
+			apiKey,
+			label,
+			scopes,
+			audience: API_KEY_AUDIENCE,
+		});
 	}
 
 	async getRedactedApiKeys(
@@ -72,32 +60,15 @@ export class PublicApiKeyService {
 	) {
 		const canSeeAll = hasGlobalScope(caller, 'apiKey:manage');
 		const includeOthers = canSeeAll && options.ownership !== 'mine';
-		const ownFilter = { userId: caller.id };
-		const labelFilter = options.label
-			? {
-					label: Raw((alias) => `LOWER(${alias}) LIKE LOWER(:label) ${LIKE_ESCAPE_CLAUSE}`, {
-						label: `%${escapeLike(options.label)}%`,
-					}),
-				}
-			: {};
 		// The owner filter only narrows the `all` view; it's meaningless for `mine`
 		// and ignored for callers who can't see other users' keys.
 		const ownerIds = includeOthers && options.ownerIds?.length ? options.ownerIds : undefined;
-		const ownerIdsFilter = ownerIds ? { userId: In(ownerIds) } : {};
-		const baseWhere = { audience: API_KEY_AUDIENCE, ...labelFilter };
-		const pageWhere = includeOthers
-			? { ...baseWhere, ...ownerIdsFilter }
-			: { ...baseWhere, ...ownFilter };
-
-		const qb = this.apiKeyRepository
-			.createQueryBuilder('apiKey')
-			.leftJoinAndSelect('apiKey.user', 'user')
-			.setFindOptions({ where: pageWhere });
-		this.applyApiKeyListSort(qb, options.sortBy);
-		qb.take(options.take);
-		qb.skip(options.skip);
-
-		const [apiKeys, count] = await qb.getManyAndCount();
+		const filter = { audience: API_KEY_AUDIENCE, label: options.label, ownerIds };
+		const [apiKeys, count] = await this.apiKeyRepository.findPageWithOwners(
+			{ ...filter, ...(!includeOthers ? { userId: caller.id } : {}) },
+			options.sortBy,
+			{ take: options.take, skip: options.skip },
+		);
 
 		// `totals` ignore the label and owner filters so tab badges + empty-state
 		// CTA render against the true population; recompute only when a filter is
@@ -105,21 +76,19 @@ export class PublicApiKeyService {
 		// are independent reads, so run them together.
 		const hasNarrowing = !!options.label || !!ownerIds;
 		const [counts, narrowedTotals, owners] = await Promise.all([
-			this.countApiKeys(
-				caller,
-				{ ...baseWhere, ...ownFilter },
-				{ ...baseWhere, ...ownerIdsFilter },
-				{ canSeeAll, includeOthers, pageCount: count },
-			),
+			this.apiKeyRepository.countMineAndAll(caller.id, filter, {
+				canSeeAll,
+				includeOthers,
+				pageCount: count,
+			}),
 			hasNarrowing
-				? this.countApiKeys(
-						caller,
-						{ audience: API_KEY_AUDIENCE, ...ownFilter },
+				? this.apiKeyRepository.countMineAndAll(
+						caller.id,
 						{ audience: API_KEY_AUDIENCE },
 						{ canSeeAll, includeOthers, pageCount: undefined },
 					)
 				: Promise.resolve(null),
-			canSeeAll ? this.getApiKeyOwners() : Promise.resolve([]),
+			canSeeAll ? this.apiKeyRepository.findOwnerSummaries(API_KEY_AUDIENCE) : Promise.resolve([]),
 		]);
 
 		return {
@@ -130,116 +99,19 @@ export class PublicApiKeyService {
 		};
 	}
 
-	// Distinct owners holding at least one key in the `all` population, with
-	// their key counts, used to populate the owner filter. Ignores label/owner
-	// narrowing on purpose so the option list stays stable as the caller toggles
-	// the filter.
-	private async getApiKeyOwners(): Promise<ApiKeyOwnerSummary[]> {
-		// Aggregate in SQL rather than loading every key row to dedupe in JS.
-		// Lowercase aliases keep the raw result keys stable across Postgres and
-		// sqlite.
-		const rows = await this.apiKeyRepository
-			.createQueryBuilder('apiKey')
-			.innerJoin('apiKey.user', 'user')
-			.where('apiKey.audience = :audience', { audience: API_KEY_AUDIENCE })
-			.select('user.id', 'id')
-			.addSelect('user.firstName', 'first_name')
-			.addSelect('user.lastName', 'last_name')
-			.addSelect('user.email', 'email')
-			.addSelect('COUNT(apiKey.id)', 'key_count')
-			.groupBy('user.id')
-			.addGroupBy('user.firstName')
-			.addGroupBy('user.lastName')
-			.addGroupBy('user.email')
-			.getRawMany<{
-				id: string;
-				first_name: string | null;
-				last_name: string | null;
-				email: string;
-				key_count: string | number;
-			}>();
-
-		return rows.map((row) => ({
-			id: row.id,
-			firstName: row.first_name ?? null,
-			lastName: row.last_name ?? null,
-			email: row.email,
-			keyCount: Number(row.key_count),
-		}));
-	}
-
-	// For non-admins the two counts are identical; the page total can be reused
-	// when it matches the shape we'd otherwise query separately.
-	private async countApiKeys(
-		_caller: User,
-		mineWhere: FindOptionsWhere<ApiKey>,
-		allWhere: FindOptionsWhere<ApiKey>,
-		{
-			canSeeAll,
-			includeOthers,
-			pageCount,
-		}: { canSeeAll: boolean; includeOthers: boolean; pageCount?: number },
-	) {
-		if (!canSeeAll) {
-			const count = pageCount ?? (await this.apiKeyRepository.countBy(mineWhere));
-			return { mine: count, all: count };
-		}
-		return {
-			mine:
-				pageCount !== undefined && !includeOthers
-					? pageCount
-					: await this.apiKeyRepository.countBy(mineWhere),
-			all:
-				pageCount !== undefined && includeOthers
-					? pageCount
-					: await this.apiKeyRepository.countBy(allWhere),
-		};
-	}
-
-	// `sortBy` is validated by the DTO; the allow-list here keeps the SQL safe
-	// against bypasses (tests, internal callers) that build options by hand.
-	private applyApiKeyListSort(qb: SelectQueryBuilder<ApiKey>, sortBy?: string) {
-		const allowList = LIST_API_KEYS_SORT_OPTIONS as readonly string[];
-		const valid = sortBy !== undefined && allowList.includes(sortBy);
-		if (!valid) {
-			qb.addOrderBy('apiKey.createdAt', 'DESC');
-			return;
-		}
-
-		const [field, order] = sortBy.split(':');
-		const direction = order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
-
-		if (field === 'scopes') {
-			// Raw expressions aren't auto-quoted, and `scopes` is `json` on Postgres
-			// but text-backed on sqlite — quote the alias and cast through text on PG.
-			const isPostgres = qb.connection.options.type === 'postgres';
-			const scopesText = isPostgres ? '"apiKey"."scopes"::text' : 'apiKey.scopes';
-			const scopesCountExpr = `CASE WHEN ${scopesText} = '[]' THEN 0 ELSE LENGTH(${scopesText}) - LENGTH(REPLACE(${scopesText}, ',', '')) + 1 END`;
-			qb.addSelect(scopesCountExpr, 'scopes_count');
-			qb.addOrderBy('scopes_count', direction);
-		} else {
-			qb.addOrderBy(`apiKey.${field}`, direction);
-		}
-
-		if (field !== 'createdAt') qb.addOrderBy('apiKey.createdAt', 'DESC');
-	}
-
 	// 404 (not 403) when the caller can't delete the key so they can't probe
 	// for the existence of another user's keys.
 	async deleteApiKey(caller: User, apiKeyId: string) {
 		const canDeleteAny = hasGlobalScope(caller, 'apiKey:manage');
-		const apiKey = await this.apiKeyRepository.findOne({
-			where: {
-				id: apiKeyId,
-				audience: API_KEY_AUDIENCE,
-				...(canDeleteAny ? {} : { userId: caller.id }),
-			},
-			relations: { user: true },
-		});
+		const apiKey = await this.apiKeyRepository.findWithOwner(
+			apiKeyId,
+			API_KEY_AUDIENCE,
+			canDeleteAny ? undefined : caller.id,
+		);
 		if (!apiKey) throw new NotFoundError('API key not found');
 
-		const result = await this.apiKeyRepository.delete({ id: apiKey.id });
-		if (!result.affected) throw new NotFoundError('API key not found');
+		const { deleted } = await this.apiKeyRepository.deleteById(apiKey.id);
+		if (!deleted) throw new NotFoundError('API key not found');
 
 		const isOwn = apiKey.userId === caller.id;
 
@@ -256,16 +128,9 @@ export class PublicApiKeyService {
 		return { isOwn };
 	}
 
-	async deleteAllApiKeysForUser(user: User, tx?: EntityManager) {
-		// oxlint-disable-next-line typescript/no-deprecated
-		return await withTransaction(this.apiKeyRepository.manager, tx, async (em) => {
-			const userApiKeys = await em.find(ApiKey, {
-				where: { userId: user.id, audience: API_KEY_AUDIENCE },
-			});
-
-			return await Promise.all(
-				userApiKeys.map(async (apiKey) => await em.delete(ApiKey, { id: apiKey.id })),
-			);
+	async deleteAllApiKeysForUser(user: User, ctx: OperationContext = {}) {
+		return await this.txRunner.run(ctx, async (ctx) => {
+			await this.apiKeyRepository.deleteAllForUser(user.id, API_KEY_AUDIENCE, ctx);
 		});
 	}
 
@@ -274,16 +139,14 @@ export class PublicApiKeyService {
 		apiKeyId: string,
 		{ label, scopes }: UpdateApiKeyRequestDto,
 	) {
-		await this.apiKeyRepository.update({ id: apiKeyId, userId: user.id }, { label, scopes });
+		await this.apiKeyRepository.updateOwnedKey(apiKeyId, user.id, { label, scopes });
 	}
 
 	// Owner-only: re-issues the secret in place, keeping the same id, label, scopes
 	// and expiry. Replacing the stored token invalidates the previous one, since
 	// auth matches on the token string.
 	async rotateApiKey(user: User, apiKeyId: string) {
-		const apiKey = await this.apiKeyRepository.findOne({
-			where: { id: apiKeyId, userId: user.id, audience: API_KEY_AUDIENCE },
-		});
+		const apiKey = await this.apiKeyRepository.findOwnedById(apiKeyId, user.id, API_KEY_AUDIENCE);
 		if (!apiKey) throw new NotFoundError('API key not found');
 
 		const expiresAt = this.getApiKeyExpiration(apiKey.apiKey);
@@ -292,10 +155,10 @@ export class PublicApiKeyService {
 		}
 
 		const newApiKey = this.generateApiKey(user, expiresAt);
-		await this.apiKeyRepository.update(
-			{ id: apiKey.id, userId: user.id },
-			{ apiKey: newApiKey, lastUsedAt: null },
-		);
+		await this.apiKeyRepository.updateOwnedKey(apiKey.id, user.id, {
+			apiKey: newApiKey,
+			lastUsedAt: null,
+		});
 
 		apiKey.apiKey = newApiKey;
 		apiKey.lastUsedAt = null;
@@ -356,35 +219,32 @@ export class PublicApiKeyService {
 	}
 
 	async apiKeyHasValidScopes(apiKey: string, endpointScope: ApiKeyScope) {
-		const apiKeyData = await this.apiKeyRepository.findOne({
-			where: { apiKey, audience: API_KEY_AUDIENCE },
-			select: { scopes: true },
-		});
-		if (!apiKeyData) return false;
-
-		return apiKeyData.scopes.includes(endpointScope);
+		const scopes = await this.apiKeyRepository.findScopesByKey(apiKey, API_KEY_AUDIENCE);
+		return scopes?.includes(endpointScope) ?? false;
 	}
 
-	async removeOwnerOnlyScopesFromApiKeys(user: User, tx?: EntityManager) {
-		const manager = tx ?? this.apiKeyRepository.manager;
+	async removeOwnerOnlyScopesFromApiKeys(user: User, ctx: OperationContext = {}) {
+		return await this.txRunner.run(ctx, async (ctx) => {
+			const ownerOnlyScopes = getOwnerOnlyApiKeyScopes();
+			const userApiKeys = await this.apiKeyRepository.findAllForUser(
+				user.id,
+				API_KEY_AUDIENCE,
+				ctx,
+			);
+			const keysWithOwnerScopes = userApiKeys.filter((apiKey) =>
+				apiKey.scopes.some((scope) => ownerOnlyScopes.includes(scope)),
+			);
 
-		const ownerOnlyScopes = getOwnerOnlyApiKeyScopes();
-
-		const userApiKeys = await manager.find(ApiKey, {
-			where: { userId: user.id, audience: API_KEY_AUDIENCE },
+			return await Promise.all(
+				keysWithOwnerScopes.map(
+					async (currentApiKey) =>
+						await this.apiKeyRepository.updateScopes(
+							currentApiKey.id,
+							currentApiKey.scopes.filter((scope) => !ownerOnlyScopes.includes(scope)),
+							ctx,
+						),
+				),
+			);
 		});
-
-		const keysWithOwnerScopes = userApiKeys.filter((apiKey) =>
-			apiKey.scopes.some((scope) => ownerOnlyScopes.includes(scope)),
-		);
-
-		return await Promise.all(
-			keysWithOwnerScopes.map(
-				async (currentApiKey) =>
-					await manager.update(ApiKey, currentApiKey.id, {
-						scopes: currentApiKey.scopes.filter((scope) => !ownerOnlyScopes.includes(scope)),
-					}),
-			),
-		);
 	}
 }

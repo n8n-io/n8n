@@ -4,15 +4,52 @@ import {
 	PROJECT_OWNER_ROLE_SLUG,
 	type ProjectRole,
 } from '@n8n/permissions';
-import { DataSource, In, Repository } from '@n8n/typeorm';
+import { DataSource, In, Not } from '@n8n/typeorm';
 
+import { BaseRepository } from './base-repository';
 import { ProjectRelation, Role } from '../entities';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { chunkIds } from '../utils/chunk-ids';
 
 @Service()
-export class ProjectRelationRepository extends Repository<ProjectRelation> {
-	constructor(dataSource: DataSource) {
-		super(ProjectRelation, dataSource.manager);
+export class ProjectRelationRepository extends BaseRepository<ProjectRelation> {
+	constructor(dataSource: DataSource, txRunner: TransactionRunner) {
+		super(ProjectRelation, dataSource.manager, txRunner);
+	}
+
+	async findSharedProjectRelationsForUser(userId: string, ctx: OperationContext) {
+		return await this.managerFor(ctx).find(ProjectRelation, {
+			where: { userId, role: { slug: Not(PROJECT_OWNER_ROLE_SLUG) } },
+			relations: ['role'],
+		});
+	}
+
+	async countOtherAdminsInProject(projectId: string, userId: string, ctx: OperationContext) {
+		return await this.managerFor(ctx).count(ProjectRelation, {
+			where: {
+				projectId,
+				role: { slug: In([PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG]) },
+				userId: Not(userId),
+			},
+		});
+	}
+
+	async deleteUserFromProject(projectId: string, userId: string, ctx: OperationContext) {
+		await this.managerFor(ctx).delete(ProjectRelation, { userId, projectId });
+	}
+
+	async changeRoleForUserInProject(
+		projectId: string,
+		userId: string,
+		fromRole: string,
+		toRole: string,
+		ctx: OperationContext,
+	) {
+		await this.managerFor(ctx).update(
+			ProjectRelation,
+			{ userId, projectId, role: { slug: fromRole } },
+			{ role: { slug: toRole } },
+		);
 	}
 
 	async findPersonalOwnerEmails(projectIds: string[]): Promise<Map<string, string>> {
