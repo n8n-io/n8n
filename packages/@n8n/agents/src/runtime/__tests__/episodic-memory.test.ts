@@ -9,6 +9,8 @@ import type {
 } from '../../types';
 import {
 	createRecallMemoryTool,
+	encodeEpisodicScopeMetadata,
+	EPISODIC_SCOPE_METADATA_KEY,
 	getEpisodicMemoryScope,
 	hashEpisodicMemoryContent,
 	rankEpisodicMemoryEntries,
@@ -356,6 +358,38 @@ describe('getEpisodicMemoryScope', () => {
 			resourceId: 'chat-user-1',
 			threadId: 'thread-1',
 		});
+	});
+
+	it('carries the host-resolved scope from persistence metadata', () => {
+		const episodic = { writeScopeId: 'slack:T1:C1', readScopeIds: ['slack:T1:C1'] };
+
+		expect(
+			getEpisodicMemoryScope({
+				resourceId: 'integration:slack:U1',
+				threadId: 'thread-1',
+				hostMetadata: encodeEpisodicScopeMetadata(episodic),
+			}),
+		).toEqual({ resourceId: 'integration:slack:U1', threadId: 'thread-1', episodic });
+	});
+
+	it('returns no scope when the host turned episodic memory off for the turn', () => {
+		expect(
+			getEpisodicMemoryScope({
+				resourceId: 'integration:slack:U1',
+				threadId: 'thread-1',
+				hostMetadata: encodeEpisodicScopeMetadata({ disabled: true }),
+			}),
+		).toBeNull();
+	});
+
+	it('turns episodic memory off when the carried scope is malformed', () => {
+		expect(
+			getEpisodicMemoryScope({
+				resourceId: 'integration:slack:U1',
+				threadId: 'thread-1',
+				hostMetadata: { [EPISODIC_SCOPE_METADATA_KEY]: { writeScopeId: '' } },
+			}),
+		).toBeNull();
 	});
 });
 

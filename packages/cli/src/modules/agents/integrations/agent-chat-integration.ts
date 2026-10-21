@@ -1,8 +1,11 @@
 import {
 	AgentIntegrationConfig,
 	type AgentIntegrationDisconnectWarning,
+	type AgentMessageAuthor,
+	type AgentMessageIntegrationOrigin,
 	type RichCardComponentType,
 } from '@n8n/api-types';
+import type { ResolvedEpisodicScope } from '@n8n/agents';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Attachment, Thread, Author, Message } from 'chat';
@@ -47,6 +50,16 @@ export interface AgentChannelPreconditionContext {
 }
 
 /** Per-connection context handed to AgentChatIntegration hooks. */
+/** Trusted source context of one incoming chat turn. */
+export interface EpisodicScopeContext {
+	agentId: string;
+	credentialId: string;
+	integrationType: string;
+	threadId: string;
+	author: AgentMessageAuthor;
+	origin?: AgentMessageIntegrationOrigin;
+}
+
 export interface AgentChatIntegrationContext extends AgentChannelPreconditionContext {
 	integration: AgentIntegrationConfig;
 	credential: Record<string, unknown>;
@@ -610,6 +623,15 @@ export abstract class AgentChatIntegration {
 		isNewMention: boolean;
 		platformAgentContext: PlatformAgentContext;
 	}): ReplyExpectation;
+
+	/**
+	 * Optional episodic memory ownership override. Runs once for each incoming
+	 * chat turn. Build identifiers from trusted source context and namespace
+	 * them by agent, platform and workspace or account. Return `null` when the
+	 * required identity is missing: the turn then runs without episodic memory.
+	 * Without an implementation, the shared default policy applies.
+	 */
+	resolveEpisodicScope?(params: EpisodicScopeContext): ResolvedEpisodicScope | null;
 
 	/** Replacement text for action cards preserved after a user responds. */
 	formatActionDecisionMessage?(params: ActionDecisionMessageParams): string | undefined;

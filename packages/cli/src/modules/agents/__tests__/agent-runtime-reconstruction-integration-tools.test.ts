@@ -3,6 +3,7 @@ import {
 	type EventService,
 	type ProjectScopeService,
 } from '@n8n/backend-services';
+import type { EpisodicScopeResolver } from '../integrations/episodic-scope-resolver';
 import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { Mocked } from 'vitest';
 import { type AgentJsonConfig } from '@n8n/api-types';
@@ -331,6 +332,11 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AgentBackgroundJobService>(),
 			mock<AgentsSettingsService>(),
 			skillRefs,
+			mock<EpisodicScopeResolver>({
+				resolveDefault: vi
+					.fn()
+					.mockResolvedValue({ writeScopeId: 'scope-1', readScopeIds: ['scope-1'] }),
+			}),
 		);
 		agentIntegrationPersistenceService = new AgentIntegrationPersistenceService(
 			agentRepository,

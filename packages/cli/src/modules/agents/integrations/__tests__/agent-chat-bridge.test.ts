@@ -3595,6 +3595,52 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 	});
 
+	describe('episodic memory scope', () => {
+		const scope = { writeScopeId: 'test:channel-1', readScopeIds: ['test:channel-1'] };
+
+		async function queuedPayload(resolveEpisodicScope?: () => typeof scope | null) {
+			const { bot, handlers } = makeBot();
+			const queue = mock<AgentMessageQueueService>();
+			queue.enqueue.mockResolvedValue({ status: 'accepted', item: mock<AgentMessageQueue>() });
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				makeAgentExecutor([finishChunk]) as never,
+				componentMapper,
+				logger,
+				'project-1',
+				streamingIntegration,
+				undefined,
+				undefined,
+				undefined,
+				queue,
+			);
+			const integrationImpl = registry.get('test-streaming')!;
+			if (resolveEpisodicScope) integrationImpl.resolveEpisodicScope = resolveEpisodicScope;
+			try {
+				await handlers.subscribed!(makeThread('thread-1'), {
+					text: 'hi',
+					author: { userId: 'u1', userName: 'user1' },
+				});
+			} finally {
+				delete integrationImpl.resolveEpisodicScope;
+			}
+			return queue.enqueue.mock.calls[0][0].payload;
+		}
+
+		it('queues the scope the integration resolves for the incoming turn', async () => {
+			expect(await queuedPayload(() => scope)).toMatchObject({ episodicScope: scope });
+		});
+
+		it('queues a disabled marker when the integration cannot resolve identity', async () => {
+			expect(await queuedPayload(() => null)).toMatchObject({ episodicScope: { disabled: true } });
+		});
+
+		it('queues no scope when the integration has no override', async () => {
+			expect(await queuedPayload()).not.toHaveProperty('episodicScope');
+		});
+	});
+
 	describe('status handle cleanup', () => {
 		it('clears the status handle when execution fails before stream consumption', async () => {
 			const { bot, handlers } = makeBot();

@@ -1,4 +1,5 @@
 import type { AgentMessageSteeringService } from '../agent-message-steering.service';
+import { EPISODIC_SCOPE_METADATA_KEY, encodeEpisodicScopeMetadata } from '@n8n/agents';
 import type {
 	Agent as RuntimeAgent,
 	CredentialProvider,
@@ -66,6 +67,7 @@ import {
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import { AgentWakeService } from '../background/agent-wake.service';
 import { SubAgentBackgroundRunner } from '../background/sub-agent-background-runner';
+import type { EpisodicScopeResolver } from '../integrations/episodic-scope-resolver';
 import type { AgentChatBridge } from '../integrations/agent-chat-bridge';
 import { ChatIntegrationService } from '../integrations/chat-integration.service';
 import { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
@@ -194,6 +196,8 @@ function makeRuntime(
 	};
 }
 
+const defaultEpisodicScope = { writeScopeId: 'scope-1', readScopeIds: ['scope-1'] };
+
 function makeService(sandboxEnabled = false) {
 	const settingsService = mock<AgentsSettingsService>();
 	const checkpointStorage = mock<N8NCheckpointStorage>();
@@ -273,6 +277,8 @@ function makeService(sandboxEnabled = false) {
 	executionService.finalizeExecution.mockResolvedValue('execution-1');
 	agentRunTracingService.build.mockResolvedValue(undefined);
 
+	const episodicScopeResolver = mock<EpisodicScopeResolver>();
+	episodicScopeResolver.resolveDefault.mockResolvedValue(defaultEpisodicScope);
 	const service = new AgentExecutionOrchestratorService(
 		mockLogger(),
 		checkpointStorage,
@@ -298,10 +304,12 @@ function makeService(sandboxEnabled = false) {
 		backgroundJobs,
 		settingsService,
 		createAgentSkillRefsService(),
+		episodicScopeResolver,
 	);
 
 	return {
 		service,
+		episodicScopeResolver,
 		settingsService,
 		backgroundJobRepository,
 		backgroundJobs,
@@ -2591,6 +2599,7 @@ describe('AgentExecutionOrchestratorService', () => {
 						hostMetadata: {
 							...encodeAgentSandboxHostMetadata({ projectId, principalHash: taskPrincipalHash }),
 							...encodeIntegrationMessageContext(selectedContext),
+							...encodeEpisodicScopeMetadata(defaultEpisodicScope),
 							n8nExecutionId: 'execution-1',
 						},
 					},
@@ -2611,6 +2620,37 @@ describe('AgentExecutionOrchestratorService', () => {
 			);
 		},
 	);
+
+	it.each([
+		['an integration scope', { writeScopeId: 'slack:T1:C1', readScopeIds: ['slack:T1:C1'] }],
+		['a disabled scope', { disabled: true as const }],
+	])('carries %s into the run without the default policy', async (_label, episodicScope) => {
+		const { service, runtimeCacheService, episodicScopeResolver } = makeService();
+		const runtime = makeRuntime();
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		await collect(
+			service.executeForChatPublished({
+				agentId,
+				projectId,
+				message: 'hello',
+				memory: { threadId: 'thread-1', resourceId: 'integration:slack:U1' },
+				messageContext: selectedContext,
+				integrationType: 'slack',
+				sandboxPrincipalHash: taskPrincipalHash,
+				episodicScope,
+			}),
+		);
+
+		expect(runtime.agent.stream).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({
+				persistence: expect.objectContaining({
+					hostMetadata: expect.objectContaining(encodeEpisodicScopeMetadata(episodicScope)),
+				}),
+			}),
+		);
+		expect(episodicScopeResolver.resolveDefault).not.toHaveBeenCalled();
+	});
 
 	it.each(['new', 'existing'] as const)(
 		'preserves %s intent when recording a failed runtime build',
@@ -3683,6 +3723,8 @@ describe('AgentExecutionOrchestratorService', () => {
 					agentUserId: 'bot',
 					subject: { type: 'issue', id: 'issue-1' },
 				});
+				// The resume merge lets new metadata win, so it must not carry a scope. The checkpoint's stays.
+				expect(options.hostMetadata).not.toHaveProperty(EPISODIC_SCOPE_METADATA_KEY);
 				if (!claimed) throw new Error('Already handled');
 				await options.onResumeClaimed?.();
 				return {

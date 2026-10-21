@@ -375,6 +375,41 @@ describe('N8nMemoryImpl', () => {
 			await expect(memory.episodic.getEntriesByContentHashes(scope, [])).resolves.toEqual([]);
 		});
 
+		it('isolates entries and pending candidates by the resolved scope instead of the thread', async () => {
+			const inChannel = (channelId: string, threadId: string) => ({
+				resourceId: 'integration:slack:U_ALICE',
+				threadId,
+				episodic: {
+					writeScopeId: `slack:T1:channel:${channelId}`,
+					readScopeIds: [`slack:T1:channel:${channelId}`],
+				},
+			});
+			const first = inChannel('C1', 'thread-a');
+			const second = inChannel('C1', 'thread-b');
+			const other = inChannel('C2', 'thread-c');
+			await captureEntry(memory, first, 'Channel one chose Postgres.', {
+				episodic: first.episodic,
+			});
+			await captureEntry(memory, second, 'Channel one wants weekly reports.', {
+				episodic: second.episodic,
+			});
+			await captureEntry(memory, other, 'Channel two chose MySQL.', { episodic: other.episodic });
+
+			const recalled = async (scope: typeof first) =>
+				(await memory.episodic.searchEntries(scope, 'Channel'))
+					.map(({ content }) => content)
+					.sort();
+
+			await expect(recalled(first)).resolves.toEqual([
+				'Channel one chose Postgres.',
+				'Channel one wants weekly reports.',
+			]);
+			await expect(recalled(second)).resolves.toEqual(await recalled(first));
+			await expect(recalled(other)).resolves.toEqual(['Channel two chose MySQL.']);
+			await expect(memory.episodic.getPendingCaptureCandidates(first)).resolves.toHaveLength(2);
+			await expect(memory.episodic.getPendingCaptureCandidates(other)).resolves.toHaveLength(1);
+		});
+
 		it.each([
 			{ name: 'missing', embedding: undefined, embeddingModel: undefined },
 			{ name: 'empty', embedding: [], embeddingModel: 'test-model' },

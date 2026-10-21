@@ -1,4 +1,4 @@
-import type { SerializableAgentState } from '@n8n/agents';
+import type { EpisodicScopeDecision, SerializableAgentState } from '@n8n/agents';
 import type { AgentMessageAuthor, AgentMessageIntegrationOrigin } from '@n8n/api-types';
 import type { Author } from 'chat';
 import type { BridgeExecutionContext } from '../integrations/agent-chat-integration';
@@ -47,6 +47,8 @@ export interface QueuedIntegrationMessage extends QueuedMessageInput {
 	author: AgentMessageAuthor;
 	/** Typed platform context. The queue stores it on the message origin. */
 	integrationOrigin?: AgentMessageIntegrationOrigin;
+	/** The integration's own episodic ownership for this turn. Absent means the shared default. */
+	episodicScope?: EpisodicScopeDecision;
 	sender: Author;
 	messageContext: IntegrationMessageContext;
 	contextConversation: SessionBinding;

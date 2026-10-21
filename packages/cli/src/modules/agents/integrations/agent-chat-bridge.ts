@@ -62,6 +62,7 @@ import { CallbackStore, type CallbackMetadata } from './callback-store';
 import type { ComponentMapper, ShortenCallback } from './component-mapper';
 import { loadChatSdk } from './esm-loader';
 import { IntegrationMessageContextService } from './integration-message-context.service';
+import { resolveEpisodicScopeOverride } from './episodic-scope-resolver';
 import { buildIntegrationOrigin } from './integration-origin';
 import type {
 	IntegrationMessageContext,
@@ -941,6 +942,18 @@ export class AgentChatBridge {
 				replyExpectation,
 			});
 			const author = toMessageAuthor(message.author);
+			const episodicScope = resolveEpisodicScopeOverride(
+				this.integrationImpl,
+				{
+					agentId: this.agentId,
+					credentialId: this.integration.credentialId,
+					integrationType: this.integration.type,
+					threadId: session.memory.threadId.id,
+					author,
+					origin: integrationOrigin,
+				},
+				this.logger,
+			);
 			const textWithNotes = [text, ...attachmentNotes].filter(Boolean).join('\n');
 			const { userId, userName, fullName, isBot, isMe } = message.author;
 			const result = await this.messageQueue.enqueue({
@@ -958,6 +971,7 @@ export class AgentChatBridge {
 					),
 					author,
 					integrationOrigin,
+					...(episodicScope && { episodicScope }),
 					sender: { userId, userName, fullName, isBot, isMe },
 					attachments: attachments.length ? attachments : undefined,
 					resourceId: session.memory.resourceId,
@@ -1012,6 +1026,7 @@ export class AgentChatBridge {
 				attachments: payload.attachments,
 				messageContext: payload.messageContext,
 				contextConversation: payload.contextConversation,
+				episodicScope: payload.episodicScope,
 				memory: { threadId: toInternalThreadId(threadId), resourceId: payload.resourceId },
 				sessionMode: 'existing',
 				integrationType: this.integration.type,

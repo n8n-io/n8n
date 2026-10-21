@@ -21,6 +21,28 @@ export function episodicMemoryWriteScopeId(scope: {
 		: scope.resourceId;
 }
 
+/** Bounds the thread scopes one default recall reads; older threads fall out first. */
+export const EPISODIC_MEMORY_MAX_THREAD_SCOPES = 200;
+
+/**
+ * Own scope plus every integration thread the resource has posted in: a
+ * participant recalls a thread's notes wherever they ask, and a late joiner
+ * gets them as soon as they post there.
+ */
+export function defaultEpisodicMemoryReadScopeIds(
+	scope: { resourceId: string; threadId: string },
+	participatedThreadIds: string[],
+): string[] {
+	if (!isIntegrationMemoryResourceId(scope.resourceId)) return [scope.resourceId];
+	return [
+		...new Set([
+			scope.resourceId,
+			threadMemoryResourceId(scope.threadId),
+			...participatedThreadIds.map(threadMemoryResourceId),
+		]),
+	];
+}
+
 export function draftChatMemoryResourceId(userId: string): string {
 	return `${DRAFT_CHAT_MEMORY_RESOURCE_PREFIX}${userId}`;
 }
