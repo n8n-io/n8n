@@ -292,7 +292,7 @@ describe('PromotionChangeCard', () => {
 
 		expect(getByTestId('promotion-preview-card-toggle')).toHaveTextContent('Not on this instance');
 		const blocker = getByTestId('promotion-preview-card-blocker');
-		expect(blocker).toHaveTextContent('Blocker');
+		expect(blocker).not.toHaveTextContent('Blocker');
 		expect(blocker).toHaveAttribute(
 			'aria-label',
 			expect.stringContaining(

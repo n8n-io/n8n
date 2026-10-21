@@ -177,9 +177,6 @@ const tagNote = computed(() => {
 							data-test-id="promotion-preview-card-blocker"
 						>
 							<N8nIcon icon="circle-alert" size="medium" color="--icon-color--warning" />
-							<N8nText step="sm">
-								{{ i18n.baseText('promotions.preview.card.blocker') }}
-							</N8nText>
 						</span>
 					</N8nTooltip>
 				</CollapsibleTrigger>
@@ -405,8 +402,6 @@ const tagNote = computed(() => {
 	display: flex;
 	flex-shrink: 0;
 	align-items: center;
-	gap: var(--spacing--3xs);
 	margin-left: auto;
-	color: var(--text-color--warning);
 }
 </style>
