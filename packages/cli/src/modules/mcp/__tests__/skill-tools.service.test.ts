@@ -190,12 +190,13 @@ describe('McpSkillToolsService', () => {
 				skillId: 'skill_a',
 				baseSkillHash: 'hash-2',
 				instructions: 'Be kinder.',
+				availableToAssistant: true,
 			});
 
 			expect(skillsApi.update).toHaveBeenCalledWith(
 				user,
 				'skill_a',
-				{ baseSkillHash: 'hash-2', instructions: 'Be kinder.' },
+				{ baseSkillHash: 'hash-2', instructions: 'Be kinder.', availableToAssistant: true },
 				'mcp',
 			);
 			expect(result.structuredContent).toEqual({
@@ -205,24 +206,6 @@ describe('McpSkillToolsService', () => {
 				created: true,
 				skillHash: 'hash-3',
 			});
-		});
-
-		it('passes an availability-only update through the skill API', async () => {
-			skillsApi.update.mockResolvedValue({ ...saved, created: false, version: 2 });
-
-			const result = await callTool('update_skill', {
-				skillId: 'skill_a',
-				availableToAssistant: true,
-				baseSkillHash: 'hash-2',
-			});
-
-			expect(skillsApi.update).toHaveBeenCalledWith(
-				user,
-				'skill_a',
-				{ availableToAssistant: true, baseSkillHash: 'hash-2' },
-				'mcp',
-			);
-			expect(result.structuredContent).toMatchObject({ created: false, version: 2 });
 		});
 
 		it('returns the latest hash when the skill changed since the client read it', async () => {

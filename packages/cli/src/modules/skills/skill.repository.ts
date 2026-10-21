@@ -145,7 +145,6 @@ export class SkillRepository extends BaseRepository<Skill> {
 		return { skills, count };
 	}
 
-	/** Enabled instance and project skills in the authorized session scope. */
 	async findAssistantSkillSummaries(projectId: string | null): Promise<AssistantSkillSummary[]> {
 		return await this.createQueryBuilder('skill')
 			.innerJoin(SkillVersion, 'version', 'version.skillId = skill.id')

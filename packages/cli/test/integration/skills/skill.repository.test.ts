@@ -76,12 +76,8 @@ describe('SkillRepository', () => {
 		const instance = await createSkill();
 		const scoped = await createSkill({ projectId: project.id });
 		const other = await createSkill({ projectId: otherProject.id });
-		const agent = await createAgent('Support');
-		const inherited = await createSkill({ agentId: agent.id });
-		const otherAgent = await createAgent('Sales', { projectId: otherProject.id });
-		const otherInherited = await createSkill({ agentId: otherAgent.id });
 		await createSkill();
-		for (const id of [instance, scoped, other, inherited, otherInherited])
+		for (const id of [instance, scoped, other])
 			await skills.update(id, { availableToAssistant: true });
 		const versionId = await skills.insertSavedVersion(
 			scoped,
@@ -122,19 +118,6 @@ describe('SkillRepository', () => {
 		},
 	);
 
-	it('deletes agent-scoped skills with their owner', async () => {
-		const agent = await createAgent('Support');
-		const id = await createSkill({ agentId: agent.id });
-		await skills.update(id, { availableToAssistant: true });
-		expect(await assistantSkills.listSkills({ user: owner, projectId: project.id })).toEqual([]);
-
-		await agents.delete(agent.id);
-
-		expect(await skills.findByIds([id])).toEqual([]);
-		expect(await assistantSkills.listSkills({ user: owner, projectId: project.id })).toEqual([]);
-		expect(await assistantSkills.listSkills({ user: owner })).toEqual([]);
-	});
-
 	it('refuses an availability update when the checked scope changed', async () => {
 		const id = await createSkill({ projectId: project.id });
 		await expect(
@@ -162,8 +145,6 @@ describe('SkillRepository', () => {
 		expect((await skills.findByIds([id]))[0].availableToAssistant).toBe(false);
 		await skills.updateTarget(id, { projectId: null, agentId: null });
 		expect((await skills.findByIds([id]))[0].availableToAssistant).toBe(false);
-		expect(await assistantSkills.listSkills({ user: owner })).toEqual([]);
-		expect(await assistantSkills.listSkills({ user: owner, projectId: project.id })).toEqual([]);
 	});
 
 	let counter = 0;

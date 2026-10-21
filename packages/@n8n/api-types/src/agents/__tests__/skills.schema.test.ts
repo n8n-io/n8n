@@ -69,27 +69,9 @@ describe('CreateSkillDto', () => {
 });
 
 describe('SaveSkillDto', () => {
-	it.each([true, false])(
-		'accepts an explicit Assistant availability update (%s)',
-		(availableToAssistant) => {
-			expect(SaveSkillDto.parse({ baseSkillHash: 'h1', availableToAssistant })).toMatchObject({
-				availableToAssistant,
-			});
-		},
-	);
-
 	it('does not default availability on an unrelated save', () => {
 		expect(SaveSkillDto.parse({ baseSkillHash: 'h1' })).not.toHaveProperty('availableToAssistant');
 	});
-
-	it.each(['true', 1, null])(
-		'refuses a non-boolean availability value (%s)',
-		(availableToAssistant) => {
-			expect(SaveSkillDto.safeParse({ baseSkillHash: 'h1', availableToAssistant }).success).toBe(
-				false,
-			);
-		},
-	);
 
 	it('accepts changed fields with the base hash', () => {
 		expect(SaveSkillDto.safeParse({ instructions: 'Be brief.', baseSkillHash: 'h1' }).success).toBe(

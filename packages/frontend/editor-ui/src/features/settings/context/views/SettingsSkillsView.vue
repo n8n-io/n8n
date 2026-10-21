@@ -346,8 +346,7 @@ async function onSave(
 	} catch (error) {
 		return saveFailed(error);
 	}
-	// Scope and availability can change without a new content version. Only "Nothing to save"
-	// gets a message: a real change shows in the table.
+	// Scope and availability changes do not create a content version.
 	if (created || newScope !== undefined || availableToAssistant !== undefined) {
 		await load();
 		confirmIfHidden(id, 'saved');

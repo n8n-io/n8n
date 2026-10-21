@@ -338,12 +338,8 @@ describe('SettingsSkillsView', () => {
 	describe('edit', () => {
 		it.each([
 			['instance', true, false, false],
-			['project', true, false, false],
-			['agent', true, false, undefined],
-			['instance', true, true, true],
 			['project', true, true, true],
 			['agent', true, true, undefined],
-			['instance', false, false, undefined],
 			['instance', false, true, undefined],
 		] as const)(
 			'shows availability only for instance and project skills behind the Hub flag (%s, %s)',

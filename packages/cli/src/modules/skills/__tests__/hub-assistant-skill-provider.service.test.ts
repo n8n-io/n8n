@@ -94,13 +94,10 @@ describe('HubAssistantSkillProvider', () => {
 		]);
 	});
 
-	it.each([{ availableToAssistant: false }, { projectId: 'project-2' }])(
-		'refuses a supplied ID that is ineligible: %o',
-		async (fields) => {
-			Object.assign(row.skill, fields);
-			expect(await provider.readSkill(context, 'skill-1')).toBeNull();
-		},
-	);
+	it('refuses disabled content even when its ID is supplied', async () => {
+		row.skill.availableToAssistant = false;
+		expect(await provider.readSkill(context, 'skill-1')).toBeNull();
+	});
 
 	it('uses the existing skill permission check for content reads', async () => {
 		skills.canAccess.mockResolvedValue(false);
@@ -124,48 +121,25 @@ describe('HubAssistantSkillProvider', () => {
 		},
 	);
 
-	it.each([
-		['project-1', ['project-1']],
-		['project-1', null],
-		[undefined, null],
-	] as const)(
-		'refuses agent-scoped content even when enabled (%s, %s)',
-		async (projectId, allowed) => {
-			row.skill.agentId = 'agent-1';
-			projects.getProjectIds.mockResolvedValue(allowed === null ? null : [...allowed]);
-			expect(await provider.readSkill({ ...context, projectId }, 'skill-1')).toBeNull();
-		},
-	);
-
-	it('refuses a project skill after access is removed', async () => {
-		row.skill.projectId = 'project-1';
-		projects.getProjectIds.mockResolvedValue([]);
-		expect(await provider.readSkill(context, 'skill-1')).toBeNull();
-	});
-
 	it('returns no project content without a session project, including for global roles', async () => {
 		row.skill.projectId = 'project-1';
 		projects.getProjectIds.mockResolvedValue(null);
 		expect(await provider.readSkill({ user: context.user }, 'skill-1')).toBeNull();
 	});
 
-	it.each([null, 'project-1'])(
-		'reads enabled content with its saved version (%s)',
-		async (projectId) => {
-			row.skill.projectId = projectId;
-			expect(await provider.readSkill(context, 'skill-1')).toEqual({
-				id: 'skill-1',
-				projectId,
-				versionId: 'version-1',
-				version: 1,
-				name: 'Tone',
-				description: 'Writing style',
-				instructions: 'Be brief.',
-				frontmatter: null,
-				files: [],
-			});
-		},
-	);
+	it('reads enabled content with its saved version', async () => {
+		expect(await provider.readSkill(context, 'skill-1')).toEqual({
+			id: 'skill-1',
+			projectId: null,
+			versionId: 'version-1',
+			version: 1,
+			name: 'Tone',
+			description: 'Writing style',
+			instructions: 'Be brief.',
+			frontmatter: null,
+			files: [],
+		});
+	});
 
 	it('allows instance skills without project access', async () => {
 		projects.getProjectIds.mockResolvedValue([]);

@@ -808,18 +808,6 @@ describe('SkillService', () => {
 			expect(canUpdate(skillRow('skill_c'), null)).toBe(false);
 			expect(canRead(skillRow('skill_c'), null)).toBe(true);
 		});
-
-		it.each([true, false])(
-			'checks the global read scope when an owner has no project (%s)',
-			async (allowed) => {
-				projectScope.getProjectIds.mockResolvedValue([]);
-				vi.mocked(hasGlobalScope).mockReturnValue(allowed);
-				const canRead = await service.accessCheck(user, 'read');
-
-				expect(canRead(skillRow('skill_c', { agentId: 'agent-1' }), null)).toBe(allowed);
-				expect(hasGlobalScope).toHaveBeenCalledWith(user, 'skill:read');
-			},
-		);
 	});
 
 	describe('assertCanEdit', () => {

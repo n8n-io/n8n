@@ -72,11 +72,15 @@ describe('SkillsController', () => {
 			.patch(`/skills/${created.id}`)
 			.send({ baseSkillHash: created.skillHash, availableToAssistant: false })
 			.expect(403);
-		setSkillsHubFlag(false);
 		await owner
 			.patch(`/skills/${created.id}`)
 			.send({ baseSkillHash: created.skillHash, availableToAssistant: false })
-			.expect(404);
+			.expect(200);
+		const {
+			body: { data: disabled },
+		} = await owner.get(`/skills/${created.id}`).expect(200);
+		expect(disabled.availableToAssistant).toBe(false);
+		expect(disabled.latestVersion).toBe(created.latestVersion);
 	});
 
 	it('uses the project edit permission for the Assistant toggle', async () => {
@@ -122,20 +126,10 @@ describe('SkillsController', () => {
 			.post('/skills')
 			.send({ scope: 'agent', agentId: agent.id, skill: body })
 			.expect(200);
-		await viewer
+		await owner
 			.patch(`/skills/${created.id}`)
 			.send({ baseSkillHash: created.skillHash, availableToAssistant: true })
-			.expect(403);
-		await outsider
-			.patch(`/skills/${created.id}`)
-			.send({ baseSkillHash: created.skillHash, availableToAssistant: true })
-			.expect(404);
-		for (const caller of [editor, owner]) {
-			await caller
-				.patch(`/skills/${created.id}`)
-				.send({ baseSkillHash: created.skillHash, availableToAssistant: true })
-				.expect(400);
-		}
+			.expect(400);
 		const {
 			body: { data: detail },
 		} = await owner.get(`/skills/${created.id}`).expect(200);

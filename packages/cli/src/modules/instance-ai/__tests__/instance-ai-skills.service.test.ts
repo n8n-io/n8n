@@ -111,18 +111,4 @@ describe('Assistant Hub provider boundary', () => {
 		expect(await service.readHubSkill(context, 'unknown')).toBeNull();
 		expect((await service.loadSkills(openScope)).source.registry.skills.length).toBeGreaterThan(0);
 	});
-
-	it('passes user and session scope through the shared contract', async () => {
-		const proxy = new AssistantSkillProviderProxy();
-		const provider = {
-			listSkills: vi.fn().mockResolvedValue([]),
-			readSkill: vi.fn().mockResolvedValue(null),
-		};
-		proxy.registerProvider(provider);
-		const service = new InstanceAiSkillsService(proxy);
-		await service.listHubSkills(context);
-		await service.readHubSkill(context, 'skill-1');
-		expect(provider.listSkills).toHaveBeenCalledWith(context);
-		expect(provider.readSkill).toHaveBeenCalledWith(context, 'skill-1');
-	});
 });

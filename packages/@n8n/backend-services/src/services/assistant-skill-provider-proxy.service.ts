@@ -25,11 +25,11 @@ export interface AssistantSkillContent extends AssistantSkillSummary {
 /** Both operations enforce current availability, user permissions, and session scope. */
 export interface AssistantSkillProvider {
 	listSkills(context: AssistantSkillContext): Promise<AssistantSkillSummary[]>;
-	/** Returns the latest saved content and identifies the version that supplied it. */
+	/** Reads the latest saved version. */
 	readSkill(context: AssistantSkillContext, skillId: string): Promise<AssistantSkillContent | null>;
 }
 
-/** The owning module registers a provider. An absent module contributes no skills. */
+/** Keeps the Assistant available when the Hub module is absent. */
 @Service()
 export class AssistantSkillProviderProxy implements AssistantSkillProvider {
 	private provider: AssistantSkillProvider | undefined;
