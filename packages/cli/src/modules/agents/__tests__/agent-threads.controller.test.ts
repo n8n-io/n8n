@@ -12,6 +12,7 @@ import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
 } from './test-utils/controller-route-metadata';
+import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
 
 describe('AgentThreadsController route access scopes', () => {
 	expectProjectScopedAgentRoutes(AgentThreadsController);
@@ -50,6 +51,7 @@ describe('AgentThreadsController route access scopes', () => {
 			agentExecutionService,
 			mock<AgentSessionLangSmithExportService>(),
 			mock<AgentExecutionOrchestratorService>(),
+			new SystemAgentRegistry(),
 		);
 		agentExecutionService.getThreadDetail.mockResolvedValue({
 			thread: mock<AgentExecutionThread>({
@@ -80,6 +82,7 @@ describe('AgentThreadsController task approval', () => {
 			mock<AgentExecutionService>(),
 			mock<AgentSessionLangSmithExportService>(),
 			orchestrator,
+			new SystemAgentRegistry(),
 		);
 		const user = mock<User>({ id: 'user-1' });
 		const req = mock<
@@ -124,6 +127,7 @@ describe('AgentThreadsController session details', () => {
 				service,
 				mock<AgentSessionLangSmithExportService>(),
 				mock<AgentExecutionOrchestratorService>(),
+				new SystemAgentRegistry(),
 			);
 			service.getThreadDetail.mockResolvedValue({
 				thread: mock<AgentExecutionThread>({

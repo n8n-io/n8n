@@ -80,6 +80,7 @@ import {
 import type { ToolRegistry } from '../tool-registry';
 import { AgentN8nChatUnavailableError } from '../agent-n8n-chat-unavailable.error';
 import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
+import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
 
 const aiConfigMock = mock<AiConfig>({
 	modelStreamIdleTimeoutMs: 90_000,
@@ -212,6 +213,7 @@ function makeService(sandboxEnabled = false) {
 		mock<AgentExecutionUpdateBroadcaster>(),
 		mock<AgentMessageSteeringService>(),
 		backgroundJobs,
+		new SystemAgentRegistry(),
 	);
 	const telemetry = mock<Telemetry>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();

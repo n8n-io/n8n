@@ -31,6 +31,7 @@ import {
 	type AgentExecutionAdmission,
 } from './types/agent-queued-message';
 import { AgentMessageRepository } from './repositories/agent-message.repository';
+import { SystemAgentRegistry } from './system-agents/system-agent-registry';
 import type { AgentMessageEntity, AgentMessageOrigin } from './entities/agent-message.entity';
 import { messageToDto } from './agent-message-mapper';
 import { buildInboundUserMessage } from './utils/inbound-attachments';
@@ -198,6 +199,7 @@ export class AgentExecutionService {
 		private readonly txRunner: TransactionRunner,
 		private readonly queueRepository: AgentMessageQueueRepository,
 		private readonly messageRepository: AgentMessageRepository,
+		private readonly systemAgents: SystemAgentRegistry,
 	) {}
 
 	async startExecutionRecording(
@@ -806,7 +808,12 @@ export class AgentExecutionService {
 			const source = sourceMap.get(t.id) ?? null;
 			return {
 				...t,
-				canContinueInPreview: canContinueThreadInPreview(thread, userId, source),
+				canContinueInPreview: canContinueThreadInPreview(
+					thread,
+					userId,
+					source,
+					this.systemAgents.has(thread.agentId),
+				),
 				firstMessage: cleanUserMessage(messageMap.get(t.id) ?? null, t.agentName),
 				source,
 				failureSummary: failureSummaryMap.get(t.id) ?? null,
@@ -955,7 +962,12 @@ export class AgentExecutionService {
 			if (!options.previewChat) return canUseTopLevelDraftThread(thread, userId);
 
 			const sources = await this.agentExecutionRepository.findFirstSourceByThreadIds([threadId]);
-			return canContinueThreadInPreview(thread, userId, sources.get(threadId));
+			return canContinueThreadInPreview(
+				thread,
+				userId,
+				sources.get(threadId),
+				this.systemAgents.has(thread.agentId),
+			);
 		}
 		if (options.sessionMode === 'existing') return false;
 		return await this.canUseUnrecordedThread(threadId, agentId, draftChatMemoryResourceId(userId));
@@ -985,7 +997,12 @@ export class AgentExecutionService {
 		)
 			return false;
 		const sources = await this.agentExecutionRepository.findFirstSourceByThreadIds([threadId]);
-		return canContinueThreadInN8nChat(thread, userId, sources.get(threadId));
+		return canContinueThreadInN8nChat(
+			thread,
+			userId,
+			sources.get(threadId),
+			this.systemAgents.has(thread.agentId),
+		);
 	}
 
 	/** A session ID without a thread is free only when no other memory scope uses it. */

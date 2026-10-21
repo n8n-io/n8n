@@ -12,6 +12,7 @@ import { NotFoundError } from '@n8n/errors';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentSessionLangSmithExportService } from './agent-session-langsmith-export.service';
+import { SystemAgentRegistry } from './system-agents/system-agent-registry';
 import { canContinueThreadInPreview } from './utils/agent-thread-access';
 import { parseThreadListLimit } from './utils/parse-thread-list-limit';
 
@@ -21,6 +22,7 @@ export class AgentThreadsController {
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly langsmithExportService: AgentSessionLangSmithExportService,
 		private readonly agentExecutionOrchestratorService: AgentExecutionOrchestratorService,
+		private readonly systemAgents: SystemAgentRegistry,
 	) {}
 
 	@Get('/:agentId/threads')
@@ -65,7 +67,12 @@ export class AgentThreadsController {
 		} = result.thread;
 		const source = result.executions.find((execution) => execution.source !== null)?.source;
 		const access: AgentSessionPreviewAccess = {
-			canContinueInPreview: canContinueThreadInPreview(result.thread, req.user.id, source),
+			canContinueInPreview: canContinueThreadInPreview(
+				result.thread,
+				req.user.id,
+				source,
+				this.systemAgents.has(result.thread.agentId),
+			),
 		};
 		return { ...result, thread: { ...thread, ...access, source: source ?? null } };
 	}
