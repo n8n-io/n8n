@@ -7,10 +7,12 @@ const i18n = useI18n();
 const props = withDefaults(
 	defineProps<{
 		titleKey?: BaseTextKey;
+		subtitleKey?: BaseTextKey;
 		showTitleIcon?: boolean;
 	}>(),
 	{
 		titleKey: 'instanceAi.emptyState.title',
+		subtitleKey: undefined,
 		showTitleIcon: false,
 	},
 );
@@ -21,6 +23,16 @@ const props = withDefaults(
 		<N8nText tag="h1" size="xlarge" bold :class="$style.title">
 			<N8nIcon v-if="props.showTitleIcon" icon="n8n-assistant" :class="$style.titleIcon" />
 			{{ i18n.baseText(props.titleKey) }}
+		</N8nText>
+		<N8nText
+			v-if="props.subtitleKey"
+			tag="p"
+			size="small"
+			color="text-light"
+			:class="$style.subtitle"
+			data-test-id="instance-ai-empty-state-subtitle"
+		>
+			{{ i18n.baseText(props.subtitleKey) }}
 		</N8nText>
 	</div>
 </template>
@@ -41,5 +53,11 @@ const props = withDefaults(
 
 .titleIcon {
 	margin-right: var(--spacing--2xs);
+}
+
+.subtitle {
+	max-width: 36rem;
+	margin: var(--spacing--2xs) 0 0;
+	text-align: center;
 }
 </style>

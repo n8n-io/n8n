@@ -27,11 +27,15 @@ function createExample(overrides: Partial<WorkflowPreviewExample> = {}): Workflo
 		id: 'example',
 		titleKey: TEXT_KEY,
 		promptKey: TEXT_KEY,
+		start: 'event',
 		nodes: [
 			{ id: 'trigger', labelKey: TEXT_KEY, icon: 'bolt', position: { x: 0, y: 0 } },
 			{ id: 'action', labelKey: TEXT_KEY, icon: 'bolt', position: { x: 200, y: 0 } },
 		],
 		connections: [{ source: 'trigger', target: 'action' }],
+		card: {
+			quoteKey: TEXT_KEY,
+		},
 		...overrides,
 	};
 }

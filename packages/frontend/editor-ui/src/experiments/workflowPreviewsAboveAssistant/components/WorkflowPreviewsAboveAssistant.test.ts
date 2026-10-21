@@ -1,254 +1,123 @@
 // Experiment cleanup (124_workflow_previews_above_assistant)
-import userEvent from '@testing-library/user-event';
-import { fireEvent } from '@testing-library/vue';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, screen, waitFor } from '@testing-library/vue';
+import { describe, expect, it } from 'vitest';
 
 import { createComponentRenderer } from '@/__tests__/render';
 
 import WorkflowPreviewsAboveAssistant from './WorkflowPreviewsAboveAssistant.vue';
 
-const reducedMotion = { value: 'no-preference' };
-const elementSize = { width: { value: 0 }, height: { value: 0 } };
-
-vi.mock('@vueuse/core', () => ({
-	usePreferredReducedMotion: () => reducedMotion,
-	useElementSize: () => elementSize,
-}));
-
 const renderComponent = createComponentRenderer(WorkflowPreviewsAboveAssistant);
 
 describe('WorkflowPreviewsAboveAssistant', () => {
-	beforeEach(() => {
-		vi.useFakeTimers();
-		reducedMotion.value = 'no-preference';
+	it('shows three example cards with a title and description only', () => {
+		const { getByTestId, queryByTestId, queryByRole } = renderComponent();
+		const leadCard = getByTestId('workflow-preview-card-score-my-leads');
+
+		expect(leadCard).toHaveTextContent('Lead enrichment & alerts');
+		expect(leadCard).toHaveTextContent(
+			'When someone fills the website form, enrich them with company data, score the lead and post the hot ones in Slack.',
+		);
+		expect(getByTestId('workflow-preview-card-schedule-social-posts')).toHaveTextContent(
+			'Weekly social post scheduler',
+		);
+		expect(getByTestId('workflow-preview-card-process-invoices')).toHaveTextContent(
+			'Invoice validation',
+		);
+		expect(
+			getByTestId('workflow-preview-cards').querySelectorAll('button[data-example-id]'),
+		).toHaveLength(3);
+		expect(leadCard).not.toHaveTextContent('Trigger · 5 nodes · 2 outputs');
+		expect(leadCard).not.toHaveTextContent('Sales');
+		expect(queryByTestId('workflow-preview-category-for-you')).not.toBeInTheDocument();
+		expect(queryByRole('button', { name: 'Next page' })).not.toBeInTheDocument();
+		expect(queryByRole('button', { name: 'Previous page' })).not.toBeInTheDocument();
+		expect(leadCard).toHaveStyle({ '--enter-index': '0' });
+		expect(getByTestId('workflow-preview-card-process-invoices')).toHaveStyle({
+			'--enter-index': '2',
+		});
 	});
 
-	afterEach(() => {
-		vi.useRealTimers();
-	});
-
-	it('shows the first example with its title and does not cycle on its own', async () => {
+	it('embeds the original workflow and plays it on hover without input or output cards', async () => {
 		const { getByTestId } = renderComponent();
+		const leadCard = getByTestId('workflow-preview-card-score-my-leads');
 
-		expect(getByTestId('workflow-preview-example')).toHaveAttribute(
-			'data-example-id',
-			'score-my-leads',
-		);
-		expect(getByTestId('workflow-preview-title')).toHaveTextContent('Score my leads');
+		expect(
+			leadCard.querySelector('[data-test-id="workflow-preview-node-salesforce-trigger"]'),
+		).toBeTruthy();
+		expect(
+			leadCard.querySelector('[data-test-id="workflow-preview-node-notify-sales"]'),
+		).toBeTruthy();
+		expect(leadCard.querySelector('[data-test-id="workflow-preview-input"]')).toBeNull();
+		expect(
+			leadCard.querySelector('[data-test-id="workflow-preview-output-notify-sales"]'),
+		).toBeNull();
 
-		await vi.advanceTimersByTimeAsync(10_000);
-
-		expect(getByTestId('workflow-preview-example')).toHaveAttribute(
-			'data-example-id',
-			'score-my-leads',
-		);
-	});
-
-	it('shows the switcher only once the first workflow has finished building', async () => {
-		const { getByTestId } = renderComponent();
-
-		expect(getByTestId('workflow-preview-caption').className).toContain('captionHidden');
-
-		await vi.advanceTimersByTimeAsync(3000);
-
-		expect(getByTestId('workflow-preview-example')).toHaveAttribute('data-phase', 'idle');
-		expect(getByTestId('workflow-preview-caption').className).not.toContain('captionHidden');
-	});
-
-	it('moves to the next example when the next arrow is clicked', async () => {
-		const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-		const { getByTestId } = renderComponent();
-
-		await user.click(getByTestId('workflow-preview-next'));
-
-		expect(getByTestId('workflow-preview-example')).toHaveAttribute(
-			'data-example-id',
-			'schedule-social-posts',
-		);
-		expect(getByTestId('workflow-preview-title')).toHaveTextContent('Schedule social posts');
-
-		await user.click(getByTestId('workflow-preview-next'));
-
-		expect(getByTestId('workflow-preview-example')).toHaveAttribute(
-			'data-example-id',
-			'process-invoices',
-		);
-		expect(getByTestId('workflow-preview-title')).toHaveTextContent(
-			'Process invoices from my inbox',
+		await fireEvent.mouseEnter(leadCard);
+		expect(leadCard.querySelector('[data-test-id="workflow-preview-stage"]')?.className).toContain(
+			'hovered',
 		);
 	});
 
-	it('wraps around in both directions', async () => {
-		const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-		const { getByTestId } = renderComponent();
-
-		await user.click(getByTestId('workflow-preview-previous'));
-		expect(getByTestId('workflow-preview-example')).toHaveAttribute(
-			'data-example-id',
-			'process-invoices',
-		);
-
-		await user.click(getByTestId('workflow-preview-next'));
-		expect(getByTestId('workflow-preview-example')).toHaveAttribute(
-			'data-example-id',
-			'score-my-leads',
-		);
-	});
-
-	it('keeps the preview height constant across examples so the switcher stays put', async () => {
-		const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-		const { getByTestId } = renderComponent();
-		const getWrapperHeight = () =>
-			getByTestId('workflow-preview-stage').parentElement?.style.height;
-
-		const initialHeight = getWrapperHeight();
-		expect(initialHeight).toMatch(/^\d+(\.\d+)?px$/);
-
-		await user.click(getByTestId('workflow-preview-next'));
-		expect(getWrapperHeight()).toBe(initialHeight);
-
-		await user.click(getByTestId('workflow-preview-next'));
-		expect(getWrapperHeight()).toBe(initialHeight);
-
-		await user.click(getByTestId('workflow-preview-next'));
-		expect(getWrapperHeight()).toBe(initialHeight);
-	});
-
-	it('dims caption and preview as one unit and hands hover to the preview', async () => {
-		const { getByTestId } = renderComponent();
-
-		expect(getByTestId('workflow-preview-unit').className).toContain('unitDimmed');
-		expect(getByTestId('workflow-preview-stage').className).not.toContain('hovered');
-
-		await fireEvent.mouseEnter(getByTestId('workflow-preview-unit'));
-		expect(getByTestId('workflow-preview-unit').className).not.toContain('unitDimmed');
-		expect(getByTestId('workflow-preview-stage').className).toContain('hovered');
-
-		await fireEvent.mouseLeave(getByTestId('workflow-preview-unit'));
-		expect(getByTestId('workflow-preview-unit').className).toContain('unitDimmed');
-		expect(getByTestId('workflow-preview-stage').className).not.toContain('hovered');
-	});
-
-	it('keeps one canvas surface behind the preview across hover and example swaps', async () => {
-		const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-		const { getByTestId } = renderComponent();
-		const area = getByTestId('workflow-preview-area');
-
-		expect(area.className).not.toContain('previewAreaHovered');
-		expect(area.contains(getByTestId('workflow-preview-example'))).toBe(true);
-		expect(area.contains(getByTestId('workflow-preview-title'))).toBe(false);
-
-		await fireEvent.mouseEnter(getByTestId('workflow-preview-unit'));
-		expect(area.className).toContain('previewAreaHovered');
-
-		await user.click(getByTestId('workflow-preview-next'));
-		expect(getByTestId('workflow-preview-area')).toBe(area);
-		expect(area.className).toContain('previewAreaHovered');
-		expect(area.contains(getByTestId('workflow-preview-example'))).toBe(true);
-	});
-
-	it('offers "Try this example" on hover, previewing and injecting the example prompt', async () => {
+	it('previews the prompt on hover and uses the example when the card is clicked', async () => {
 		const { getByTestId, emitted } = renderComponent();
-		const button = getByTestId('workflow-preview-try-example');
-		const scoreMyLeadsPromptKey =
-			'experiments.workflowPreviewsAboveAssistant.examples.scoreMyLeads.prompt';
+		const card = getByTestId('workflow-preview-card-score-my-leads');
+		const promptKey = 'experiments.workflowPreviewsAboveAssistant.examples.scoreMyLeads.prompt';
 
-		expect(button.className).not.toContain('tryExampleVisible');
+		await fireEvent.mouseEnter(card);
+		expect(emitted()['preview-prompt']).toEqual([[promptKey]]);
 
-		await fireEvent.mouseEnter(getByTestId('workflow-preview-unit'));
-		expect(button.className).toContain('tryExampleVisible');
-		expect(button).toHaveTextContent('Try this example');
-
-		await fireEvent.mouseEnter(button);
-		expect(emitted()['preview-prompt']).toEqual([[scoreMyLeadsPromptKey]]);
-
-		await fireEvent.click(button);
+		await fireEvent.click(card);
 		expect(emitted()['use-example']).toEqual([
-			[expect.objectContaining({ id: 'score-my-leads', promptKey: scoreMyLeadsPromptKey }), 1],
+			[expect.objectContaining({ id: 'score-my-leads', promptKey }), 1],
 		]);
 
-		await fireEvent.mouseLeave(button);
-		expect(emitted()['preview-prompt']).toEqual([[scoreMyLeadsPromptKey], [null]]);
-
-		await fireEvent.mouseEnter(button);
-		await fireEvent.mouseLeave(getByTestId('workflow-preview-unit'));
+		await fireEvent.mouseLeave(card);
 		expect(emitted()['preview-prompt']?.at(-1)).toEqual([null]);
-		expect(button.className).not.toContain('tryExampleVisible');
 	});
 
-	it('reveals "Try this example" on keyboard focus and previews its prompt', async () => {
-		const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-		const { getByTestId, emitted } = renderComponent();
-		const button = getByTestId('workflow-preview-try-example');
-		const scoreMyLeadsPromptKey =
-			'experiments.workflowPreviewsAboveAssistant.examples.scoreMyLeads.prompt';
+	it('shows a shuffle button and a see more button below the cards', () => {
+		const { getByTestId, getByRole } = renderComponent();
 
-		await user.tab();
-		expect(getByTestId('workflow-preview-previous')).toHaveFocus();
-		expect(button.className).toContain('tryExampleVisible');
-		expect(getByTestId('workflow-preview-unit').className).not.toContain('unitDimmed');
-
-		await user.tab();
-		await user.tab();
-		expect(button).toHaveFocus();
-		expect(emitted()['preview-prompt']).toEqual([[scoreMyLeadsPromptKey]]);
-
-		await user.tab();
-		expect(button).not.toHaveFocus();
-		expect(emitted()['preview-prompt']?.at(-1)).toEqual([null]);
-		expect(button.className).not.toContain('tryExampleVisible');
+		expect(getByRole('button', { name: 'Shuffle examples' })).toBe(
+			getByTestId('workflow-preview-shuffle'),
+		);
+		expect(getByTestId('workflow-preview-shuffle')).not.toHaveTextContent('Shuffle examples');
+		expect(getByTestId('workflow-preview-see-more')).toHaveTextContent('Browse examples');
+		expect(getByTestId('workflow-preview-actions')).toHaveStyle({ '--enter-index': '3' });
 	});
 
-	it('keeps "Try this example" visible while focused after the pointer leaves', async () => {
-		const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+	it('opens the catalog from see more and closes it once an example is picked', async () => {
 		const { getByTestId, emitted } = renderComponent();
-		const button = getByTestId('workflow-preview-try-example');
 
-		await user.tab();
-		await user.tab();
-		await user.tab();
-		await fireEvent.mouseEnter(getByTestId('workflow-preview-unit'));
-		await fireEvent.mouseLeave(getByTestId('workflow-preview-unit'));
+		expect(screen.queryByTestId('workflow-preview-catalog')).not.toBeInTheDocument();
 
-		expect(button.className).toContain('tryExampleVisible');
-		expect(emitted()['preview-prompt']?.at(-1)).not.toEqual([null]);
+		await fireEvent.click(getByTestId('workflow-preview-see-more'));
+		const catalog = await screen.findByTestId('workflow-preview-catalog');
+		expect(
+			screen
+				.getByTestId('workflow-preview-catalog-cards')
+				.querySelectorAll('button[data-example-id]'),
+		).toHaveLength(3);
+		expect(catalog).toContainElement(screen.getByTestId('workflow-preview-catalog-details'));
+
+		await fireEvent.click(screen.getByTestId('workflow-preview-catalog-next'));
+		await fireEvent.click(screen.getByTestId('workflow-preview-card-onboard-new-signups'));
+
+		expect(emitted()['use-example']).toEqual([
+			[expect.objectContaining({ id: 'onboard-new-signups' }), 6],
+		]);
+		await waitFor(() =>
+			expect(screen.queryByTestId('workflow-preview-catalog')).not.toBeInTheDocument(),
+		);
 	});
 
-	it('reports the position of the example the user tries', async () => {
-		const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+	it('reports the catalog position of a card that is not first', async () => {
 		const { getByTestId, emitted } = renderComponent();
 
-		await user.click(getByTestId('workflow-preview-next'));
-		await user.click(getByTestId('workflow-preview-next'));
-		await fireEvent.click(getByTestId('workflow-preview-try-example'));
+		await fireEvent.click(getByTestId('workflow-preview-card-process-invoices'));
 
 		expect(emitted()['use-example']).toEqual([
 			[expect.objectContaining({ id: 'process-invoices' }), 3],
 		]);
-	});
-
-	it('lets the unit rest when the pointer leaves after a mouse click on an arrow', async () => {
-		const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-		const { getByTestId } = renderComponent();
-		const unit = getByTestId('workflow-preview-unit');
-		const next = getByTestId('workflow-preview-next');
-
-		await fireEvent.mouseEnter(unit);
-		await user.click(next);
-		expect(next).toHaveFocus();
-
-		await fireEvent.mouseLeave(unit);
-
-		expect(unit.className).toContain('unitDimmed');
-		expect(getByTestId('workflow-preview-try-example').className).not.toContain(
-			'tryExampleVisible',
-		);
-	});
-
-	it('labels the arrows for assistive technology', () => {
-		const { getByRole } = renderComponent();
-
-		expect(getByRole('button', { name: 'Previous example' })).toBeInTheDocument();
-		expect(getByRole('button', { name: 'Next example' })).toBeInTheDocument();
 	});
 });

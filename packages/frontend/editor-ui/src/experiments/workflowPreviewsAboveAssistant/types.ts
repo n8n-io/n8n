@@ -49,13 +49,22 @@ export interface WorkflowPreviewIconCycle {
 	icons: string[];
 }
 
+export interface WorkflowPreviewCard {
+	quoteKey: BaseTextKey;
+}
+
+/** How the automation starts. The catalog filters on this. */
+export type WorkflowPreviewStart = 'event' | 'schedule';
+
 export interface WorkflowPreviewExample {
 	id: string;
 	titleKey: BaseTextKey;
 	promptKey: BaseTextKey;
+	start: WorkflowPreviewStart;
 	nodes: WorkflowPreviewNode[];
 	connections: WorkflowPreviewConnection[];
 	inputVisualization?: WorkflowPreviewCardVisualization;
 	outputVisualizations?: WorkflowPreviewOutputVisualization[];
 	iconCycle?: WorkflowPreviewIconCycle;
+	card: WorkflowPreviewCard;
 }

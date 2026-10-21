@@ -9,6 +9,7 @@ export const WORKFLOW_PREVIEW_EXAMPLES: [WorkflowPreviewExample, ...WorkflowPrev
 		id: 'score-my-leads',
 		titleKey: 'experiments.workflowPreviewsAboveAssistant.examples.scoreMyLeads.title',
 		promptKey: 'experiments.workflowPreviewsAboveAssistant.examples.scoreMyLeads.prompt',
+		start: 'event',
 		nodes: [
 			{
 				id: 'salesforce-trigger',
@@ -81,11 +82,15 @@ export const WORKFLOW_PREVIEW_EXAMPLES: [WorkflowPreviewExample, ...WorkflowPrev
 			nodeIds: ['salesforce-trigger', 'update-lead'],
 			icons: ['salesforce', 'pipedrive', 'hubspot'],
 		},
+		card: {
+			quoteKey: 'experiments.workflowPreviewsAboveAssistant.examples.scoreMyLeads.quote',
+		},
 	},
 	{
 		id: 'schedule-social-posts',
 		titleKey: 'experiments.workflowPreviewsAboveAssistant.examples.scheduleSocialPosts.title',
 		promptKey: 'experiments.workflowPreviewsAboveAssistant.examples.scheduleSocialPosts.prompt',
+		start: 'schedule',
 		nodes: [
 			{
 				id: 'schedule',
@@ -166,11 +171,15 @@ export const WORKFLOW_PREVIEW_EXAMPLES: [WorkflowPreviewExample, ...WorkflowPrev
 					'experiments.workflowPreviewsAboveAssistant.visualizations.scheduledToReddit.subtitle',
 			},
 		],
+		card: {
+			quoteKey: 'experiments.workflowPreviewsAboveAssistant.examples.scheduleSocialPosts.quote',
+		},
 	},
 	{
 		id: 'process-invoices',
 		titleKey: 'experiments.workflowPreviewsAboveAssistant.examples.processInvoices.title',
 		promptKey: 'experiments.workflowPreviewsAboveAssistant.examples.processInvoices.prompt',
+		start: 'event',
 		nodes: [
 			{
 				id: 'gmail-trigger',
@@ -227,5 +236,170 @@ export const WORKFLOW_PREVIEW_EXAMPLES: [WorkflowPreviewExample, ...WorkflowPrev
 					'experiments.workflowPreviewsAboveAssistant.visualizations.eventCreated.subtitle',
 			},
 		],
+		card: {
+			quoteKey: 'experiments.workflowPreviewsAboveAssistant.examples.processInvoices.quote',
+		},
+	},
+	{
+		id: 'triage-support-inbox',
+		titleKey: 'experiments.workflowPreviewsAboveAssistant.examples.triageSupportInbox.title',
+		promptKey: 'experiments.workflowPreviewsAboveAssistant.examples.triageSupportInbox.prompt',
+		start: 'event',
+		nodes: [
+			{
+				id: 'gmail-trigger',
+				labelKey: 'experiments.workflowPreviewsAboveAssistant.nodes.emailReceived',
+				icon: 'gmail',
+				position: { x: 48, y: 168 },
+			},
+			{
+				id: 'classify',
+				labelKey: 'experiments.workflowPreviewsAboveAssistant.nodes.classifyIntent',
+				icon: 'text-classifier',
+				position: { x: 272, y: 168 },
+			},
+			{
+				id: 'route',
+				labelKey: 'experiments.workflowPreviewsAboveAssistant.nodes.route',
+				icon: 'switch',
+				position: { x: 496, y: 168 },
+			},
+			{
+				id: 'escalate',
+				labelKey: 'experiments.workflowPreviewsAboveAssistant.nodes.escalate',
+				icon: 'slack',
+				position: { x: 720, y: 72 },
+			},
+			{
+				id: 'draft-reply',
+				labelKey: 'experiments.workflowPreviewsAboveAssistant.nodes.draftReply',
+				icon: 'anthropic',
+				position: { x: 720, y: 264 },
+			},
+			{
+				id: 'send-reply',
+				labelKey: 'experiments.workflowPreviewsAboveAssistant.nodes.sendReply',
+				icon: 'gmail',
+				position: { x: 944, y: 264 },
+			},
+		],
+		connections: [
+			{ source: 'gmail-trigger', target: 'classify' },
+			{ source: 'classify', target: 'route' },
+			{ source: 'route', target: 'escalate' },
+			{ source: 'route', target: 'draft-reply' },
+			{ source: 'draft-reply', target: 'send-reply' },
+		],
+		card: {
+			quoteKey: 'experiments.workflowPreviewsAboveAssistant.examples.triageSupportInbox.quote',
+		},
+	},
+	{
+		id: 'daily-news-digest',
+		titleKey: 'experiments.workflowPreviewsAboveAssistant.examples.dailyNewsDigest.title',
+		promptKey: 'experiments.workflowPreviewsAboveAssistant.examples.dailyNewsDigest.prompt',
+		start: 'schedule',
+		nodes: [
+			{
+				id: 'schedule',
+				labelKey: 'experiments.workflowPreviewsAboveAssistant.nodes.everyMorning',
+				icon: 'clock',
+				position: { x: 48, y: 168 },
+			},
+			{
+				id: 'read-feeds',
+				labelKey: 'experiments.workflowPreviewsAboveAssistant.nodes.readFeeds',
+				icon: 'rss-read',
+				position: { x: 272, y: 168 },
+			},
+			{
+				id: 'keep-relevant',
+				labelKey: 'experiments.workflowPreviewsAboveAssistant.nodes.keepRelevant',
+				icon: 'filter',
+				position: { x: 496, y: 168 },
+			},
+			{
+				id: 'summarize',
+				labelKey: 'experiments.workflowPreviewsAboveAssistant.nodes.summarize',
+				icon: 'gemini',
+				position: { x: 720, y: 168 },
+			},
+			{
+				id: 'email-digest',
+				labelKey: 'experiments.workflowPreviewsAboveAssistant.nodes.emailDigest',
+				icon: 'gmail',
+				position: { x: 944, y: 72 },
+			},
+			{
+				id: 'post-digest',
+				labelKey: 'experiments.workflowPreviewsAboveAssistant.nodes.postToSlack',
+				icon: 'slack',
+				position: { x: 944, y: 264 },
+			},
+		],
+		connections: [
+			{ source: 'schedule', target: 'read-feeds' },
+			{ source: 'read-feeds', target: 'keep-relevant' },
+			{ source: 'keep-relevant', target: 'summarize' },
+			{ source: 'summarize', target: 'email-digest' },
+			{ source: 'summarize', target: 'post-digest' },
+		],
+		card: {
+			quoteKey: 'experiments.workflowPreviewsAboveAssistant.examples.dailyNewsDigest.quote',
+		},
+	},
+	{
+		id: 'onboard-new-signups',
+		titleKey: 'experiments.workflowPreviewsAboveAssistant.examples.onboardNewSignups.title',
+		promptKey: 'experiments.workflowPreviewsAboveAssistant.examples.onboardNewSignups.prompt',
+		start: 'event',
+		nodes: [
+			{
+				id: 'form-trigger',
+				labelKey: 'experiments.workflowPreviewsAboveAssistant.nodes.formSubmitted',
+				icon: 'form-trigger',
+				position: { x: 48, y: 168 },
+			},
+			{
+				id: 'create-contact',
+				labelKey: 'experiments.workflowPreviewsAboveAssistant.nodes.createContact',
+				icon: 'hubspot',
+				position: { x: 272, y: 168 },
+			},
+			{
+				id: 'wait',
+				labelKey: 'experiments.workflowPreviewsAboveAssistant.nodes.waitADay',
+				icon: 'wait',
+				position: { x: 496, y: 168 },
+			},
+			{
+				id: 'welcome-email',
+				labelKey: 'experiments.workflowPreviewsAboveAssistant.nodes.welcomeEmail',
+				icon: 'gmail',
+				position: { x: 720, y: 168 },
+			},
+			{
+				id: 'notify-team',
+				labelKey: 'experiments.workflowPreviewsAboveAssistant.nodes.notifyTeam',
+				icon: 'slack',
+				position: { x: 944, y: 168 },
+			},
+		],
+		connections: [
+			{ source: 'form-trigger', target: 'create-contact' },
+			{ source: 'create-contact', target: 'wait' },
+			{ source: 'wait', target: 'welcome-email' },
+			{ source: 'welcome-email', target: 'notify-team' },
+		],
+		iconCycle: {
+			nodeIds: ['create-contact'],
+			icons: ['hubspot', 'salesforce', 'pipedrive'],
+		},
+		card: {
+			quoteKey: 'experiments.workflowPreviewsAboveAssistant.examples.onboardNewSignups.quote',
+		},
 	},
 ];
+
+/** The three examples shown above the composer. The catalog shows all of them. */
+export const FEATURED_WORKFLOW_PREVIEW_EXAMPLES = WORKFLOW_PREVIEW_EXAMPLES.slice(0, 3);

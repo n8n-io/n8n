@@ -1,0 +1,27 @@
+// Experiment cleanup (124_workflow_previews_above_assistant)
+// Left-to-right fade used by the cards above the composer and by the catalog.
+// Hosts set --enter-index per item and, optionally, --enter-delay on a parent.
+
+@mixin card-enter {
+	opacity: 0;
+	pointer-events: none;
+	animation: card-enter var(--duration--slow) var(--easing--ease-out-quint) both;
+	animation-delay: calc(var(--enter-delay, 0ms) + var(--enter-index, 0) * 180ms);
+
+	@media (prefers-reduced-motion: reduce) {
+		opacity: 1;
+		pointer-events: auto;
+		animation: none;
+	}
+}
+
+@keyframes card-enter {
+	from {
+		opacity: 0;
+	}
+
+	to {
+		opacity: 1;
+		pointer-events: auto;
+	}
+}

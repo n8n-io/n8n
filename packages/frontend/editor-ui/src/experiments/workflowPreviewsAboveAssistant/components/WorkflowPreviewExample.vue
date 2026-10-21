@@ -19,6 +19,7 @@ import {
 	NODE_HALF_SIZE,
 	NODE_LABEL_OFFSET,
 	NODE_SIZE,
+	PREVIEW_SCALE,
 	computePreviewLayout,
 	getRenderScale,
 	type CardBox,
@@ -46,8 +47,10 @@ const props = withDefaults(
 		example: WorkflowPreviewExample;
 		hovered?: boolean;
 		reservedHeight?: number;
+		/** Fit the graph inside a card and skip the input/output cards. */
+		embedded?: boolean;
 	}>(),
-	{ hovered: false, reservedHeight: undefined },
+	{ hovered: false, reservedHeight: undefined, embedded: false },
 );
 
 const emit = defineEmits<{ built: [] }>();
@@ -56,10 +59,15 @@ const i18n = useI18n();
 const reducedMotion = usePreferredReducedMotion();
 
 const previewRef = ref<HTMLElement | null>(null);
-const { width: previewWidth } = useElementSize(previewRef);
+const { width: previewWidth, height: previewHeight } = useElementSize(previewRef);
 
-const inputVisualization = computed(() => props.example.inputVisualization);
-const outputVisualizations = computed(() => props.example.outputVisualizations ?? []);
+const layoutExample = computed(() =>
+	props.embedded
+		? { ...props.example, inputVisualization: undefined, outputVisualizations: undefined }
+		: props.example,
+);
+const inputVisualization = computed(() => layoutExample.value.inputVisualization);
+const outputVisualizations = computed(() => layoutExample.value.outputVisualizations ?? []);
 
 const phase = ref<AnimationPhase>('building');
 const revealed = ref(false);
@@ -132,7 +140,7 @@ function getEdgeRevealStyle(connection: WorkflowPreviewConnection) {
 	};
 }
 
-const layout = computed(() => computePreviewLayout(props.example));
+const layout = computed(() => computePreviewLayout(layoutExample.value));
 const triggerNodeIds = computed(() => layout.value.triggerNodeIds);
 const graphBounds = computed(() => layout.value.graphBounds);
 const inputCardBox = computed(() => layout.value.inputCardBox);
@@ -158,7 +166,13 @@ function getCardIcon(iconKey: string) {
 	return { src: icon?.src, lightInvert: icon?.lightInvert ?? false };
 }
 
-const renderScale = computed(() => getRenderScale(stageBounds.value.width, previewWidth.value));
+const renderScale = computed(() => {
+	const { width, height } = stageBounds.value;
+	if (!props.embedded) return getRenderScale(width, previewWidth.value);
+	// Stay unscaled until the card slot has a size, so the graph does not flash past its frame.
+	if (previewWidth.value <= 0 || previewHeight.value <= 0 || width <= 0 || height <= 0) return 0;
+	return Math.min(previewWidth.value / width, previewHeight.value / height, PREVIEW_SCALE);
+});
 
 const stageHeight = computed(() => stageBounds.value.height * renderScale.value);
 
@@ -408,7 +422,7 @@ onUnmounted(() => {
 <template>
 	<section
 		ref="previewRef"
-		:class="$style.preview"
+		:class="[$style.preview, props.embedded && $style.embedded]"
 		:data-example-id="props.example.id"
 		:data-phase="phase"
 		data-test-id="workflow-preview-example"
@@ -535,8 +549,14 @@ onUnmounted(() => {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
+	justify-content: center;
 	flex-shrink: 0;
 	width: 100%;
+}
+
+.embedded {
+	height: 100%;
+	min-height: 0;
 }
 
 .stageWrapper {

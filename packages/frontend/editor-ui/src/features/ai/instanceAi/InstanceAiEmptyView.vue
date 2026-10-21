@@ -212,6 +212,7 @@ const workflowPreviewPromptKey = ref<BaseTextKey | null>(null);
 const workflowPreviewInjectPulse = ref(false);
 const workflowPreviewInputProps = computed(() => ({
 	previewPromptKey: composerHasContent.value ? null : workflowPreviewPromptKey.value,
+	placeholderKey: 'experiments.workflowPreviewsAboveAssistant.placeholder' as const,
 	suggestionCatalogVersion: WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_SUGGESTIONS_VERSION,
 }));
 // EOF Experiment cleanup
@@ -980,64 +981,83 @@ async function handleWorkflowPreviewExampleUse(
 					:project-id="selectedProject"
 					:disabled="isChatAgentPickerDisabled"
 				/>
-				<InstanceAiEmptyState v-else :title-key="emptyStateTitleKey" :show-title-icon="true" />
+				<!-- Experiment cleanup (124_workflow_previews_above_assistant): display:contents unless the previews layout needs this group centered -->
 				<div
-					ref="centeredInput"
-					:class="[
-						$style.centeredInput,
-						workflowPreviewInjectPulse && $style.promptInjected, // Experiment cleanup (124_workflow_previews_above_assistant)
-					]"
-					data-test-id="instance-ai-centered-input"
-					@animationend="
-						workflowPreviewInjectPulse = false // Experiment cleanup (124_workflow_previews_above_assistant)
+					:class="
+						showWorkflowPreviewsAboveAssistant
+							? $style.promptCluster
+							: $style.promptClusterPassthrough
 					"
 				>
-					<InstanceAiFreeNudge
-						:eligible="
-							store.creditsQuota !== undefined &&
-							!isOutOfCredits &&
-							!creditBanner.visible.value &&
-							settingsStore.isWorkflowBuilderAvailable
-						"
-					/>
-					<CreditWarningBanner
-						v-if="isOutOfCredits || creditBanner.visible.value"
-						:credits-remaining="store.creditsRemaining"
-						:credits-quota="store.creditsQuota"
-						:message="outOfCreditsMessage"
-						:dismissible="!isOutOfCredits"
-						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
-						@dismiss="creditBanner.dismiss()"
-					/>
-					<WorkflowBuilderUnavailableNotice v-if="!isComposerAvailable" />
-					<LimitedModeNotice />
-					<InstanceAiInput
-						ref="chatInputRef"
-						:is-submitting="isStartingThread"
-						:is-out-of-credits="isOutOfCredits"
-						:is-workflow-builder-available="isComposerAvailable"
-						:mentions-enabled="inputMentionsEnabled"
-						:mention-project-id="selectedProject"
-						:placeholder="isAgentsN8nChatVariantB ? n8nChatPickerPlaceholder : undefined"
-						:attach-only-mime-types="composerAttachOnlyMimeTypes"
-						v-bind="
-							// Experiment cleanup (124_workflow_previews_above_assistant)
+					<InstanceAiEmptyState
+						v-if="!isAgentsN8nChatVariantB"
+						:title-key="emptyStateTitleKey"
+						:subtitle-key="
 							showWorkflowPreviewsAboveAssistant
-								? workflowPreviewInputProps
-								: emptyStatePromptSuggestionProps
-							// EOF Experiment cleanup
+								? 'experiments.workflowPreviewsAboveAssistant.subtitle'
+								: undefined
 						"
-						@submit="handleSubmit"
-						@workflow-preview="handleWorkflowPreview"
-						@content-change="composerHasContent = $event"
+						:show-title-icon="true"
+					/>
+					<div
+						ref="centeredInput"
+						:class="[
+							$style.centeredInput,
+							workflowPreviewInjectPulse && $style.promptInjected, // Experiment cleanup (124_workflow_previews_above_assistant)
+						]"
+						data-test-id="instance-ai-centered-input"
+						@animationend="
+							workflowPreviewInjectPulse = false // Experiment cleanup (124_workflow_previews_above_assistant)
+						"
 					>
-						<template v-if="canSelectProject" #footer>
-							<div :class="$style.inputFooter">
-								<ProjectSelect v-model="selectedProject" />
-							</div>
-						</template>
-					</InstanceAiInput>
+						<InstanceAiFreeNudge
+							:eligible="
+								store.creditsQuota !== undefined &&
+								!isOutOfCredits &&
+								!creditBanner.visible.value &&
+								settingsStore.isWorkflowBuilderAvailable
+							"
+						/>
+						<CreditWarningBanner
+							v-if="isOutOfCredits || creditBanner.visible.value"
+							:credits-remaining="store.creditsRemaining"
+							:credits-quota="store.creditsQuota"
+							:message="outOfCreditsMessage"
+							:dismissible="!isOutOfCredits"
+							@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
+							@dismiss="creditBanner.dismiss()"
+						/>
+						<WorkflowBuilderUnavailableNotice v-if="!isComposerAvailable" />
+						<LimitedModeNotice />
+						<InstanceAiInput
+							ref="chatInputRef"
+							:is-submitting="isStartingThread"
+							:is-out-of-credits="isOutOfCredits"
+							:is-workflow-builder-available="isComposerAvailable"
+							:mentions-enabled="inputMentionsEnabled"
+							:mention-project-id="selectedProject"
+							:placeholder="isAgentsN8nChatVariantB ? n8nChatPickerPlaceholder : undefined"
+							:attach-only-mime-types="composerAttachOnlyMimeTypes"
+							v-bind="
+								// Experiment cleanup (124_workflow_previews_above_assistant)
+								showWorkflowPreviewsAboveAssistant
+									? workflowPreviewInputProps
+									: emptyStatePromptSuggestionProps
+								// EOF Experiment cleanup
+							"
+							@submit="handleSubmit"
+							@workflow-preview="handleWorkflowPreview"
+							@content-change="composerHasContent = $event"
+						>
+							<template v-if="canSelectProject" #footer>
+								<div :class="$style.inputFooter">
+									<ProjectSelect v-model="selectedProject" />
+								</div>
+							</template>
+						</InstanceAiInput>
+					</div>
 				</div>
+				<!-- EOF Experiment cleanup -->
 				<!-- Variant A shows the agent picker here instead of the workflow preview;
 				variant B drops the preview canvas entirely (hover preview stays off). -->
 				<N8nChatAgentSection v-if="isAgentsN8nChatVariantA" />
@@ -1060,7 +1080,13 @@ async function handleWorkflowPreviewExampleUse(
 			</div>
 		</div>
 
-		<DitherTrailGrid :height="640" />
+		<DitherTrailGrid
+			:height="640"
+			:class="{
+				// Experiment cleanup (124_workflow_previews_above_assistant)
+				[$style.ditherDimmed]: showWorkflowPreviewsAboveAssistant,
+			}"
+		/>
 	</div>
 </template>
 
@@ -1123,14 +1149,50 @@ async function handleWorkflowPreviewExampleUse(
 
 // Experiment cleanup (124_workflow_previews_above_assistant)
 .workflowPreviewsLayout {
-	gap: var(--spacing--lg);
-	padding: 0 var(--spacing--lg) var(--spacing--2xl);
+	justify-content: flex-start;
+	gap: 0;
+	padding: var(--spacing--xl) var(--spacing--xl) var(--spacing--lg);
+
+	// The free height is split 3:4:2 above the cards, between the cards and
+	// the prompt, and below the composer. This keeps the same proportions on
+	// any screen height.
+	&::before,
+	&::after {
+		content: '';
+		flex: 3 1 0;
+	}
+
+	&::after {
+		flex-grow: 2;
+	}
 }
 
 .workflowPreviewSlot {
-	flex: 1;
-	min-height: 0;
+	flex: 0 0 auto;
 	width: 100%;
+	/* Three example cards plus their gaps. No layout-width token covers this. */
+	max-width: 70rem;
+}
+
+// Keeps the heading and composer out of the parent flex unless this experiment centers them.
+.promptClusterPassthrough {
+	display: contents;
+}
+
+.promptCluster {
+	display: flex;
+	flex: 4 0 auto;
+	flex-direction: column;
+	align-items: center;
+	justify-content: flex-end;
+	width: 100%;
+	// Minimum distance to the cards when the screen is short.
+	padding-top: var(--spacing--2xl);
+	gap: var(--spacing--lg);
+}
+
+.ditherDimmed {
+	opacity: 0.5;
 }
 
 .promptInjected {

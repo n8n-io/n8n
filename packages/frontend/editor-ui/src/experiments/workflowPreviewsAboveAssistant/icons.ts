@@ -48,6 +48,15 @@ export const PREVIEW_ICONS: Record<string, PreviewIcon> = {
 	if: { icon: { type: 'icon', name: 'node:if' }, iconColor: 'green' },
 	'code-node': { icon: { type: 'icon', name: 'node:code' }, iconColor: 'amber' },
 	clock: { icon: { type: 'icon', name: 'clock' }, iconColor: 'amber' },
+	'text-classifier': {
+		icon: { type: 'icon', name: 'node:text-classifier' },
+		iconColor: 'violet',
+	},
+	switch: { icon: { type: 'icon', name: 'node:switch' }, iconColor: 'green' },
+	'rss-read': { icon: { type: 'icon', name: 'node:rss-read' }, iconColor: 'orange' },
+	filter: { icon: { type: 'icon', name: 'node:filter' }, iconColor: 'teal' },
+	'form-trigger': { icon: { type: 'icon', name: 'node:form-trigger' }, iconColor: 'lavender' },
+	wait: { icon: { type: 'icon', name: 'node:wait' }, iconColor: 'gray' },
 };
 
 const FALLBACK_ICON: PreviewIcon = { icon: { type: 'icon', name: 'circle' } };

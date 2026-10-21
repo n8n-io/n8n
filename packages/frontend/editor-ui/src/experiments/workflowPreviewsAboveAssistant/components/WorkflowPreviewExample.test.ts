@@ -24,6 +24,7 @@ const noCardsExample: WorkflowPreviewExampleData = {
 	id: 'no-cards',
 	titleKey: processInvoices.titleKey,
 	promptKey: processInvoices.promptKey,
+	start: 'event',
 	nodes: [
 		{
 			id: 'start',
@@ -39,6 +40,9 @@ const noCardsExample: WorkflowPreviewExampleData = {
 		},
 	],
 	connections: [{ source: 'start', target: 'end' }],
+	card: {
+		quoteKey: processInvoices.card.quoteKey,
+	},
 };
 
 const START_DELAY_MS = 120;
