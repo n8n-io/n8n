@@ -114,6 +114,7 @@ packages/cli/src/collaboration/                         @n8n-io/catalysts
 packages/cli/src/binary-data/                           @n8n-io/catalysts
 packages/cli/src/posthog/                               @n8n-io/growth
 packages/cli/src/modules/data-table/                    @n8n-io/knowledge
+packages/cli/src/modules/knowledge/                     @n8n-io/knowledge
 
 packages/cli/src/evaluation.ee/                         @n8n-io/ai-trust
 packages/cli/src/chat/                                  @n8n-io/ai-agents
@@ -121,6 +122,8 @@ packages/cli/src/modules/agents/                        @n8n-io/ai-agents
 packages/cli/src/tool-generation/                       @n8n-io/ai
 packages/modules/workflow-builder/                     @n8n-io/ai-assistant
 packages/cli/src/modules/mcp/                           @n8n-io/context
+packages/cli/src/modules/skills/                        @n8n-io/context
+packages/cli/test/integration/skills/                   @n8n-io/context
 packages/cli/src/modules/chat-hub/                      @n8n-io/ai-assistant
 packages/cli/src/modules/instance-ai/                   @n8n-io/ai-assistant
 packages/modules/inbox/                                @n8n-io/ligo

@@ -40,6 +40,8 @@ import {
 } from './slack-bridge-behavior';
 import { SlackManagedSetupService } from './slack-managed-setup.service';
 import { executeSlackContextQuery, subscribeSlackThread } from './slack-operations';
+import { buildSlackOriginDraft } from './slack-origin';
+import type { DecodedThread, OriginInput } from '../../integration-origin-support';
 
 /**
  * Slack platform integration.
@@ -193,6 +195,10 @@ export class SlackIntegration extends AgentChatIntegration {
 			query: params.query,
 			input: params.input,
 		});
+	}
+
+	async buildOriginDraft(input: OriginInput, decoded: DecodedThread) {
+		return await buildSlackOriginDraft(input, decoded);
 	}
 
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {

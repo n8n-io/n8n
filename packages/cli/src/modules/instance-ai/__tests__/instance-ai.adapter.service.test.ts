@@ -4739,6 +4739,7 @@ describe('createWorkflowAdapter', () => {
 					typeVersion: 4.2,
 					position: [0, 0],
 					parameters: { url: 'https://example.com' },
+					credentials: { httpHeaderAuth: { id: 'credential-id', name: 'Credential' } },
 				},
 			],
 			connections: {},
@@ -4754,6 +4755,8 @@ describe('createWorkflowAdapter', () => {
 			const result = await adapter.getAsWorkflowJSON('wf-1');
 
 			expect(result.nodes[0].parameters).toEqual({});
+			expect(result.nodes[0].credentials).toEqual(workflowWithParameters.nodes[0].credentials);
+			expect(workflowWithParameters.nodes[0].parameters).toEqual({ url: 'https://example.com' });
 		});
 
 		it('includes parameters on reads when the run allows them, even if the env value is off', async () => {
@@ -5948,6 +5951,35 @@ describe('createExecutionAdapter run()', () => {
 			await adapter.run('wf-1', undefined, { triggerNodeName: 'Weekly 5pm' });
 
 			expect(startedFrom(mockWorkflowRunner)).toBe('Weekly 5pm');
+		});
+
+		it('starts from the selected webhook and preserves its request envelope', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+				id: 'wf-1',
+				nodes: [
+					triggerNode('Daily 8am'),
+					triggerNode('Incoming Order', { type: 'n8n-nodes-base.webhook' }),
+				],
+			});
+			const inputData = {
+				body: { orderId: 'order-1', price: '12' },
+				query: { source: 'checkout' },
+				headers: { 'x-request-id': 'request-1' },
+				params: { shop: 'shop-1' },
+			};
+
+			await adapter.run('wf-1', inputData, {
+				triggerNodeName: 'Incoming Order',
+				isVerificationRun: true,
+			});
+
+			const runData = mockWorkflowRunner.run.mock.calls[0][0];
+			expect(runData.executionMode).toBe('webhook');
+			expect(runData.startNodes).toEqual([{ name: 'Incoming Order', sourceData: null }]);
+			expect(runData.pinData).toEqual({ 'Incoming Order': [{ json: inputData }] });
+			const firstStackItem = runData.executionData?.executionData?.nodeExecutionStack[0];
+			expect(firstStackItem?.node.name).toBe('Incoming Order');
+			expect(firstStackItem?.data.main[0]).toEqual([{ json: inputData }]);
 		});
 
 		it('auto-detects the first trigger when none is named', async () => {

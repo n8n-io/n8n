@@ -1,8 +1,9 @@
 ---
 name: intent-recognition
 description: >-
-  Classifies automation requests using two decisions: anchor (which primitive
-  owns the top-level control flow — workflow-anchored, agent-anchored,
+  Load before you build any new kept workflow or Agent. It decides which one to
+  build, or what to ask first. Classifies automation requests using two decisions:
+  anchor (which primitive owns the top-level control flow — workflow-anchored, agent-anchored,
   needs-clarification, or out-of-scope) and embeds_other (whether the other
   primitive appears embedded inside — an agent step inside a workflow, or a
   workflow invoked as an agent tool). Must be used whenever the current turn
@@ -146,9 +147,9 @@ build.
    between classification and that handoff. Forward the request without
    selecting services, tools, topics, schedules, or other implementation
    details. Agent Builder owns those questions. An explicit
-   workflow request normally selects a workflow. If its required interaction is
-   unambiguously Agent-shaped, such as ongoing open-ended chat, explain why an
-   Agent fits and say that you are deviating from the named workflow. The
+   workflow request selects a workflow, unless it fits a row in Close pairs.
+   Then the word "workflow" or named workflow nodes do not settle the choice:
+   ask that row's question before you build either one. The
    false-friends rule applies to task descriptions, not to an explicit Agent
    request.
 2. If the request is not a build intent — a meta or product question, or a
@@ -186,6 +187,19 @@ build.
    toss-up, say so and name both readings instead of feigning certainty.
    The workflow preference applies to task-shaped requests; it never
    overrides an explicitly requested agent artifact (step 1).
+
+## Close pairs
+
+Some artifacts look alike. Each row names a pair, the signal that a request
+fits both, and one question that tells them apart. When the user names one
+side and the signal fits the other side too, ask the row's question with
+`workflow_builder_ask_user`, then build what the user picks. Do not build
+either side first. An explicit Agent request does not use this table (step 1).
+A new artifact type adds a row here.
+
+| Pair | The request fits both when | Question |
+| --- | --- | --- |
+| Agent, or a workflow with a Chat Trigger or AI Agent node | People send it messages over time (a chat window, DMs, a messaging channel), and each reply needs judgment, memory of the person, or actions on their behalf. | Should it hold a conversation with each person and decide its replies, or run the same fixed steps on every message? |
 
 ## Signals
 
@@ -280,21 +294,25 @@ assume the workflow. Once the user names the target, follow context
 continuity for that primitive.
 
 **Unsupported capabilities**: when the user names a specific channel or
-capability for an agent (e.g. "WhatsApp", "Teams"), call
+capability for an agent (e.g. "Instagram", "Messenger"), call
 `agent-context` with `type: "capabilities"` before classifying. If the named channel is
-absent, it is unsupported for agents — do not classify the request as a
-workflow substitute, do not improvise workflow nodes to fake the channel,
-and do not claim it can be configured. Explain that it is unavailable for
-agents, offer the supported alternatives the tool returned (with their
-`capabilities`), and only build a workflow if the user explicitly chooses
-that path after the limitation is stated. This is an agent-anchored request
-that the agent cannot fully satisfy, not a workflow-anchored one.
+absent, it is not a native agent channel. Do not classify the request as a
+workflow substitute, do not add the platform as an agent tool, and do not
+claim the channel can be configured. Explain the limitation, then offer the
+agent behind an `agent-entrypoint` bridge workflow (the platform trigger
+sends each message to Message an Agent, as agent-builder describes) or a
+supported channel the tool returned (with its `capabilities`). Build a
+standalone workflow only if the user asks for one. This is an agent-anchored
+request, not a workflow-anchored one.
 
 **Clarify triggers**: rule-based vs judgment-based (what defines "important"
 or "urgent"?), scope/autonomy (act on its own vs draft for review),
 interaction mode (one-shot vs chat). Clarify when the missing answer changes
 the anchor. When the request supplies enough evidence and both designs remain
 valid, apply the growth tiebreaker instead of asking a theoretical preference.
+Until the anchor is chosen, word the question in plain terms: ask about the
+result, once now vs on a repeat, and whether people chat with it. Do not call
+it a workflow or an Agent, and do not ask about triggers, nodes, or steps.
 
 **False friends — not signals by themselves**:
 
@@ -354,9 +372,9 @@ valid, apply the growth tiebreaker instead of asking a theoretical preference.
   **agent-anchored**, `embeds_other: false`: the analyst owns a persistent,
   judgment-driven role; the morning cadence is a task on that Agent.
 - "Spin up a lightweight workflow that talks to shoppers on our storefront
-  and handles their product questions." -> **agent-anchored**: chat-based
-  Q&A means the LLM owns turn-by-turn control despite the word "workflow" —
-  a false friend in the other direction.
+  and handles their product questions." -> **needs-clarification**: the user
+  named a workflow, but shoppers chat with it, so it fits the first Close
+  pairs row. Ask that row's question before you build either one.
 - "Build me an agent that answers customer questions from our docs." ->
   **agent-anchored**, `embeds_other: false`: explicit agent artifact
   request plus chat-shaped open-ended Q&A. The deliverable is an n8n Agent
@@ -394,14 +412,13 @@ valid, apply the growth tiebreaker instead of asking a theoretical preference.
 - "Ingest each cybersecurity alert, analyze it, and take actions depending on
   the finding." -> **needs-clarification**: ask whether fixed rules select the
   actions or whether an investigator must choose and adapt them.
-- "Build me an agent my team can @mention on WhatsApp to triage customer
-  messages." -> **agent-anchored** (explicit agent artifact + chat
-  interaction), but call `agent-context` with `type: "capabilities"` first: WhatsApp is absent,
-  so do not build. Explain WhatsApp is unsupported for agents, offer the
-  supported chat channels the tool returned, with their
-  `capabilities`, and ask which to use — or whether the user wants a
-  workflow path instead. Do not improvise a workflow with a WhatsApp node
-  and do not claim the channel is configured.
+- "Build me an agent that triages our customers' Instagram messages." ->
+  **agent-anchored** (explicit agent artifact + chat
+  interaction), but call `agent-context` with `type: "capabilities"` first: Instagram is absent,
+  so it is not a native agent channel. Ask whether to connect the agent to
+  Instagram through an `agent-entrypoint` bridge workflow or to use a
+  supported chat channel the tool returned. Do not build a standalone
+  Instagram workflow instead, and do not claim the channel is configured.
 - (An existing agent is open in the editor.) "Make it also file a Linear
   ticket when it can't resolve an issue." -> **agent-anchored**: the open
   agent is the target; build that agent with the `agent-builder` skill to add the
