@@ -120,16 +120,13 @@ const renderModal = createComponentRenderer(SourceControlPushModal, {
 		stubs: {
 			DynamicScroller: DynamicScrollerStub,
 			DynamicScrollerItem: DynamicScrollerItemStub,
-			Modal: {
-				template: `
-					<div>
-						<slot name="header" />
-						<slot name="title" />
-						<slot name="content" />
-						<slot name="footer" />
-					</div>
-				`,
+			Dialog: {
+				template: '<div role="dialog"><slot /></div>',
 			},
+			DialogHeader: { template: '<div><slot /></div>' },
+			DialogTitle: { template: '<h2><slot /></h2>' },
+			DialogDescription: { template: '<p><slot /></p>' },
+			DialogFooter: { template: '<div><slot /></div>' },
 			RouterLink: {
 				template: '<a><slot /></a>',
 				props: ['to'],

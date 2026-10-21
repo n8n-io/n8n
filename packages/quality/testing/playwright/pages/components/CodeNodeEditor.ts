@@ -9,7 +9,7 @@ import type { Locator, Page } from '@playwright/test';
  *   - teleported overlays resolved through the derived `Page`: the CodeMirror
  *     lint tooltip (`.cm-tooltip-lint`)
  *   - teleported fullscreen code editor (`code-editor-fullscreen`). Its hosting
- *     `.el-dialog` shell is owned by `BaseModal` / `dialogLocators`; this
+ *     dialog shell is owned by `BaseModal` / `dialogLocators`; this
  *     component scopes only to its own teleport root.
  *
  * @example
@@ -47,7 +47,7 @@ export class CodeNodeEditor {
 	}
 
 	/**
-	 * Teleported fullscreen code editor (inside an `.el-dialog`). The dialog
+	 * Teleported fullscreen code editor (inside a dialog). The dialog
 	 * shell itself is owned by `BaseModal` / `dialogLocators` — see
 	 * `NodeDetailsViewPage.getCodeEditorDialog`.
 	 */

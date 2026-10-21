@@ -1,20 +1,32 @@
 <script lang="ts" setup>
-import Modal from '@/app/components/Modal.vue';
 import { MIGRATE_WORKFLOW_MODAL_KEY } from '@/app/constants';
 import type {
 	BreakingChangeRecommendation,
 	BreakingChangeWorkflowRuleResult,
 	WorkflowMigrationResult,
 } from '@n8n/api-types';
-import { N8nButton, N8nCallout, N8nHeading, N8nLink, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCallout,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nDialogHeader,
+	N8nDialogTitle,
+	N8nLink,
+	N8nText,
+} from '@n8n/design-system';
 import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useToast } from '@n8n/composables/useToast';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { computed, ref } from 'vue';
+
+defineOptions({ inheritAttrs: false });
 
 type AffectedWorkflow = BreakingChangeWorkflowRuleResult['affectedWorkflows'][number];
 
@@ -34,6 +46,8 @@ const props = defineProps<{
 const i18n = useI18n();
 const toast = useToast();
 const workflowsStore = useWorkflowsStore();
+const uiStore = useUIStore();
+const modalOpen = computed(() => uiStore.modalsById[MIGRATE_WORKFLOW_MODAL_KEY]?.open === true);
 
 const workflows = computed(() => props.data.workflows);
 const isBulk = computed(() => workflows.value.length > 1);
@@ -161,25 +175,31 @@ async function handlePublish() {
 	}
 }
 
-function close() {
-	props.data.eventBus.emit('close');
+function closeDialog() {
+	if (uiStore.modalsById[MIGRATE_WORKFLOW_MODAL_KEY]?.open !== true) return;
+	uiStore.closeModal(MIGRATE_WORKFLOW_MODAL_KEY);
+	props.data.eventBus.emit('closed');
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	// A migration in progress must finish. Escape and the overlay stay ignored until it does.
+	if (!open && !migrating.value) closeDialog();
 }
 </script>
 
 <template>
-	<Modal
-		:name="MIGRATE_WORKFLOW_MODAL_KEY"
-		:event-bus="data.eventBus"
-		:center="true"
-		:close-on-click-modal="false"
-		:before-close="() => !migrating"
-		width="540px"
+	<N8nDialog
+		:open="modalOpen"
+		size="large"
+		:close-on-overlay-click="false"
+		:close-on-escape="!migrating"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #header>
-			<N8nHeading size="xlarge">{{ title }}</N8nHeading>
-		</template>
-		<template #content>
-			<div :class="$style.content">
+		<N8nDialogHeader>
+			<N8nDialogTitle>{{ title }}</N8nDialogTitle>
+		</N8nDialogHeader>
+		<N8nDialogBody>
+			<div :class="$style.content" :data-test-id="`${MIGRATE_WORKFLOW_MODAL_KEY}-modal`">
 				<!-- Confirmation -->
 				<template v-if="phase === 'confirm'">
 					<div v-if="data.recommendations.length" :class="$style.section">
@@ -302,8 +322,8 @@ function close() {
 					</N8nText>
 				</template>
 			</div>
-		</template>
-		<template #footer>
+		</N8nDialogBody>
+		<N8nDialogFooter>
 			<div :class="$style.actions">
 				<template v-if="phase === 'confirm'">
 					<N8nButton
@@ -311,7 +331,7 @@ function close() {
 						:disabled="migrating"
 						:label="i18n.baseText('generic.cancel')"
 						data-test-id="migrate-modal-cancel-button"
-						@click="close"
+						@click="closeDialog"
 					/>
 					<!-- A loading button hides its label, so a bulk run only disables it to keep the progress visible. -->
 					<N8nButton
@@ -328,7 +348,7 @@ function close() {
 						:disabled="publishing"
 						:label="i18n.baseText('settings.migrationReport.detail.migrate.publish.skip')"
 						data-test-id="migrate-modal-skip-publish-button"
-						@click="close"
+						@click="closeDialog"
 					/>
 					<N8nButton
 						:loading="publishing"
@@ -349,18 +369,18 @@ function close() {
 					variant="outline"
 					:label="i18n.baseText('settings.migrationReport.detail.migrate.modal.done')"
 					data-test-id="migrate-modal-done-button"
-					@click="close"
+					@click="closeDialog"
 				/>
 				<N8nButton
 					v-else
 					variant="outline"
 					:label="i18n.baseText('generic.close')"
 					data-test-id="migrate-modal-close-button"
-					@click="close"
+					@click="closeDialog"
 				/>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>

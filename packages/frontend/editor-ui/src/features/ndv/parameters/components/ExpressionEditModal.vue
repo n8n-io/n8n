@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import ExpressionEditorModalInput from './ExpressionEditorModal/ExpressionEditorModalInput.vue';
 import { computed, inject, ref, toRaw, watch } from 'vue';
-import Close from 'virtual:icons/mdi/close';
 
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -17,16 +16,18 @@ import ExpressionOutput from '@/features/shared/editors/components/InlineExpress
 import VirtualSchema from '@/features/ndv/runData/components/VirtualSchema.vue';
 import OutputItemSelect from '@/features/shared/editors/components/InlineExpressionEditor/OutputItemSelect.vue';
 import { useI18n } from '@n8n/i18n';
+import { ParameterInputModalContextKey } from '@/app/constants/injectionKeys';
 import { useDebounce } from '@n8n/composables/useDebounce';
 import DraggableTarget from '@/app/components/DraggableTarget.vue';
 import { dropInExpressionEditor } from '@/features/shared/editors/plugins/codemirror/dragAndDrop';
 
-import { APP_MODALS_ELEMENT_ID } from '@/app/constants';
-import { ParameterInputModalContextKey } from '@/app/constants/injectionKeys';
 import { useThrottleFn } from '@vueuse/core';
 
-import { ElDialog } from 'element-plus';
 import {
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogHeader,
+	N8nDialogTitle,
 	N8nIcon,
 	N8nInput,
 	N8nSegmentControl,
@@ -34,8 +35,9 @@ import {
 	N8nText,
 	type ResizeData,
 } from '@n8n/design-system';
-import { useStyles } from '@n8n/composables/useStyles';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+
+defineOptions({ inheritAttrs: false });
 const DEFAULT_LEFT_SIDEBAR_WIDTH = 360;
 const parameterModalContext = inject(ParameterInputModalContextKey, undefined);
 
@@ -65,7 +67,6 @@ const emit = defineEmits<{
 const ndvStore = injectNDVStore();
 const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
-const { APP_Z_INDEXES } = useStyles();
 
 const lastSuccessfulExecution = computed(
 	() => workflowExecutionStateStore.value.lastSuccessfulExecution,
@@ -152,6 +153,10 @@ function closeDialog() {
 	emit('closeDialog');
 }
 
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) closeDialog();
+}
+
 async function onDrop(expression: string, event: MouseEvent) {
 	if (!inputEditor.value) return;
 
@@ -166,147 +171,141 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 </script>
 
 <template>
-	<ElDialog
-		width="calc(100% - var(--spacing--3xl))"
-		:append-to="parameterModalContext?.appendTo ?? `#${APP_MODALS_ELEMENT_ID}`"
-		:append-to-body="parameterModalContext?.appendTo === 'body'"
-		:class="$style.modal"
-		:model-value="dialogVisible"
-		:before-close="closeDialog"
-		:z-index="APP_Z_INDEXES.MODALS"
+	<N8nDialog
+		:open="dialogVisible"
+		size="cover"
+		:stacked="parameterModalContext !== undefined"
+		@update:open="onDialogOpenUpdate"
 	>
-		<button :class="$style.close" @click="closeDialog">
-			<Close height="18" width="18" />
-		</button>
-		<div :class="$style.container">
-			<N8nResizeWrapper
-				:width="sidebarWidth"
-				:min-width="200"
-				:style="{ width: `${sidebarWidth}px` }"
-				:grid-size="8"
-				:supported-directions="['left', 'right']"
-				@resize="onResizeThrottle"
-			>
-				<div :class="$style.sidebar">
-					<N8nInput
-						v-model="search"
-						size="small"
-						:class="$style.search"
-						:placeholder="i18n.baseText('ndv.search.placeholder.input.schema')"
-					>
-						<template #prefix>
-							<N8nIcon :class="$style.ioSearchIcon" icon="search" />
-						</template>
-					</N8nInput>
-
-					<VirtualSchema
-						:class="$style.schema"
-						:search="appliedSearch"
-						:nodes="parentNodes.length > 0 ? parentNodes : rootNodesParents"
-						:mapping-enabled="!isReadOnly"
-						:connection-type="NodeConnectionTypes.Main"
-						:preview-execution="lastSuccessfulExecution"
-						pane-type="input"
-					/>
-				</div>
-			</N8nResizeWrapper>
-
-			<div :class="$style.io">
-				<div :class="$style.input">
-					<div :class="$style.header">
-						<N8nText bold size="large">
-							{{ i18n.baseText('expressionEdit.expression') }}
-						</N8nText>
-						<N8nText
-							v-n8n-html="i18n.baseText('expressionTip.javascript')"
-							:class="$style.tip"
+		<N8nDialogHeader>
+			<N8nDialogTitle>
+				{{ i18n.baseText('expressionEdit.editExpression') }}
+			</N8nDialogTitle>
+		</N8nDialogHeader>
+		<N8nDialogBody :class="$style.body">
+			<div :class="$style.container">
+				<N8nResizeWrapper
+					:width="sidebarWidth"
+					:min-width="200"
+					:style="{ width: `${sidebarWidth}px` }"
+					:grid-size="8"
+					:supported-directions="['left', 'right']"
+					@resize="onResizeThrottle"
+				>
+					<div :class="$style.sidebar">
+						<N8nInput
+							v-model="search"
 							size="small"
+							:class="$style.search"
+							:placeholder="i18n.baseText('ndv.search.placeholder.input.schema')"
+						>
+							<template #prefix>
+								<N8nIcon :class="$style.ioSearchIcon" icon="search" />
+							</template>
+						</N8nInput>
+
+						<VirtualSchema
+							:class="$style.schema"
+							:search="appliedSearch"
+							:nodes="parentNodes.length > 0 ? parentNodes : rootNodesParents"
+							:mapping-enabled="!isReadOnly"
+							:connection-type="NodeConnectionTypes.Main"
+							:preview-execution="lastSuccessfulExecution"
+							pane-type="input"
 						/>
 					</div>
+				</N8nResizeWrapper>
 
-					<DraggableTarget :class="$style.editorContainer" type="mapping" @drop="onDrop">
-						<template #default>
-							<ExpressionEditorModalInput
-								ref="expressionInputRef"
-								:model-value="modelValue"
-								:is-read-only="isReadOnly"
-								:path="path"
-								:additional-data="additionalExpressionData"
-								:class="[
-									$style.editor,
-									{
-										'ph-no-capture': redactValues,
-									},
-								]"
-								data-test-id="expression-modal-input"
-								@change="valueChanged"
-								@close="closeDialog"
-							/>
-						</template>
-					</DraggableTarget>
-				</div>
-
-				<div :class="$style.output">
-					<div :class="$style.header">
-						<N8nText bold size="large">
-							{{ i18n.baseText('parameterInput.result') }}
-						</N8nText>
-						<div :class="$style.headerControls">
-							<OutputItemSelect />
-							<N8nSegmentControl
-								v-model="outputRenderMode"
+				<div :class="$style.io">
+					<div :class="$style.input">
+						<div :class="$style.header">
+							<N8nText bold size="large">
+								{{ i18n.baseText('expressionEdit.expression') }}
+							</N8nText>
+							<N8nText
+								v-n8n-html="i18n.baseText('expressionTip.javascript')"
+								:class="$style.tip"
 								size="small"
-								:options="[
-									{ label: i18n.baseText('ndv.render.text'), value: 'text' },
-									{ label: i18n.baseText('ndv.render.html'), value: 'html' },
-									{ label: i18n.baseText('ndv.render.markdown'), value: 'markdown' },
-								]"
+							/>
+						</div>
+
+						<DraggableTarget :class="$style.editorContainer" type="mapping" @drop="onDrop">
+							<template #default>
+								<ExpressionEditorModalInput
+									ref="expressionInputRef"
+									:model-value="modelValue"
+									:is-read-only="isReadOnly"
+									:path="path"
+									:additional-data="additionalExpressionData"
+									:class="[
+										$style.editor,
+										{
+											'ph-no-capture': redactValues,
+										},
+									]"
+									data-test-id="expression-modal-input"
+									@change="valueChanged"
+									@close="closeDialog"
+								/>
+							</template>
+						</DraggableTarget>
+					</div>
+
+					<div :class="$style.output">
+						<div :class="$style.header">
+							<N8nText bold size="large">
+								{{ i18n.baseText('parameterInput.result') }}
+							</N8nText>
+							<div :class="$style.headerControls">
+								<OutputItemSelect />
+								<N8nSegmentControl
+									v-model="outputRenderMode"
+									size="small"
+									:options="[
+										{ label: i18n.baseText('ndv.render.text'), value: 'text' },
+										{ label: i18n.baseText('ndv.render.html'), value: 'html' },
+										{ label: i18n.baseText('ndv.render.markdown'), value: 'markdown' },
+									]"
+								/>
+							</div>
+						</div>
+
+						<div :class="[$style.editorContainer, { 'ph-no-capture': redactValues }]">
+							<ExpressionOutput
+								ref="expressionResultRef"
+								:class="outputRenderMode === 'text' ? $style.editor : undefined"
+								:segments="segments"
+								:extensions="theme"
+								:render="outputRenderMode"
+								data-test-id="expression-modal-output"
 							/>
 						</div>
 					</div>
-
-					<div :class="[$style.editorContainer, { 'ph-no-capture': redactValues }]">
-						<ExpressionOutput
-							ref="expressionResultRef"
-							:class="outputRenderMode === 'text' ? $style.editor : undefined"
-							:segments="segments"
-							:extensions="theme"
-							:render="outputRenderMode"
-							data-test-id="expression-modal-output"
-						/>
-					</div>
 				</div>
 			</div>
-		</div>
-	</ElDialog>
+		</N8nDialogBody>
+	</N8nDialog>
 </template>
 
 <style module lang="scss">
 @use '@/app/css/variables' as *;
 
-.modal {
-	--dialog--close--spacing--top: var(--spacing--md);
-	display: flex;
-	flex-direction: column;
-	overflow: clip;
-	height: calc(100% - var(--spacing--4xl));
-	margin-bottom: 0;
-
-	:global(.el-dialog__body) {
-		height: 100%;
-		padding: var(--spacing--sm);
-	}
-
-	:global(.el-dialog__header) {
-		display: none;
+.body {
+	&.body {
+		display: flex;
+		min-height: 0;
+		overflow: hidden;
 	}
 }
 
 .container {
 	display: flex;
+	flex: 1 1 auto;
 	flex-flow: row nowrap;
 	gap: var(--spacing--2xs);
-	height: 100%;
+	min-height: 0;
+	min-width: 0;
+	width: 100%;
 }
 
 .sidebar {
@@ -381,23 +380,6 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 
 .tip {
 	min-height: 22px;
-}
-
-.close {
-	display: flex;
-	border: none;
-	background: none;
-	cursor: pointer;
-	padding: var(--spacing--4xs);
-	position: absolute;
-	right: var(--spacing--sm);
-	top: var(--spacing--sm);
-	color: var(--button--color--text--secondary);
-
-	&:hover,
-	&:active {
-		color: var(--color--primary);
-	}
 }
 
 @media (max-width: $breakpoint-md) {

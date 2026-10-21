@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { N8nCallout, N8nHeading, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
+import { N8nCallout, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
@@ -192,12 +192,6 @@ onBeforeUnmount(() => {
 
 <template>
 	<div :class="[$style.body, props.embedded && $style.bodyEmbedded]">
-		<div v-if="!props.embedded" :class="$style.header">
-			<N8nHeading tag="h2" size="large" :class="$style.title">
-				{{ i18n.baseText('instanceAi.welcomeModal.gateway.title') }}
-			</N8nHeading>
-		</div>
-
 		<template v-if="store.isGatewayConnected">
 			<div :class="$style.connectedBlock">
 				<div :class="$style.statusRow">
@@ -292,23 +286,10 @@ onBeforeUnmount(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
-	padding: var(--spacing--md);
 }
 
 .bodyEmbedded {
 	padding: 0;
-}
-
-.header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--xs);
-}
-
-.title {
-	margin: 0;
-	font-size: var(--font-size--xl);
 }
 
 .textBlock {

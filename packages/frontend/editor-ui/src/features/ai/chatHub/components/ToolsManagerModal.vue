@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import { v4 as uuidv4 } from 'uuid';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import Modal from '@/app/components/Modal.vue';
+import { useUIStore } from '@/app/stores/ui.store';
 import ToolListItem from './ToolListItem.vue';
 import NodeToolSettingsContent from '@/features/shared/toolConfig/NodeToolSettingsContent.vue';
 import {
 	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogHeader,
+	N8nDialogTitle,
 	N8nHeading,
 	N8nIcon,
 	N8nIconButton,
@@ -39,6 +43,8 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useRestrictedNodeWarning } from '@/features/shared/nodeCreator/composables/useRestrictedNodeWarning';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import { partitionLast } from '@n8n/utils/sort/partition-last';
+
+defineOptions({ inheritAttrs: false });
 
 const props = defineProps<{
 	modalName: string;
@@ -78,6 +84,8 @@ const toast = useToast();
 const message = useMessage();
 const usersStore = useUsersStore();
 const projectsStore = useProjectsStore();
+const uiStore = useUIStore();
+const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
 const { installNode: installCommunityNode } = useInstallNode();
 const { warnIfRestricted } = useRestrictedNodeWarning();
@@ -367,20 +375,29 @@ function handleSave() {
 function handleSettingsChangeName(name: string) {
 	settingsContentRef.value?.handleChangeName(name);
 }
+
+async function closeDialog() {
+	uiStore.closeModal(props.modalName);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
 </script>
 
 <template>
-	<Modal
-		:name="modalName"
-		width="780px"
-		:show-close="currentView === 'list'"
-		:custom-class="$style.modal"
+	<N8nDialog
+		:open="modalOpen"
+		size="2xlarge"
+		:show-close-button="currentView === 'list'"
+		:container-class="$style.modal"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #header>
+		<N8nDialogHeader>
 			<!-- List view header -->
-			<N8nHeading v-if="currentView === 'list'" tag="h2" size="large">
+			<N8nDialogTitle v-if="currentView === 'list'">
 				{{ modalTitle }}
-			</N8nHeading>
+			</N8nDialogTitle>
 
 			<!-- Settings view header -->
 			<div v-else :class="$style.settingsHeader">
@@ -393,20 +410,22 @@ function handleSettingsChangeName(name: string) {
 						:class="$style.backButton"
 						@click="handleBack"
 					/>
-					<N8nInlineTextEdit
-						:model-value="settingsNodeName"
-						:max-width="350"
-						:class="$style.title"
-						@update:model-value="handleSettingsChangeName"
-					/>
+					<N8nDialogTitle>
+						<N8nInlineTextEdit
+							:model-value="settingsNodeName"
+							:max-width="350"
+							:class="$style.title"
+							@update:model-value="handleSettingsChangeName"
+						/>
+					</N8nDialogTitle>
 				</div>
 				<N8nButton variant="solid" size="small" :disabled="!settingsIsValid" @click="handleSave">
 					{{ i18n.baseText('chatHub.toolSettings.confirm') }}
 				</N8nButton>
 			</div>
-		</template>
+		</N8nDialogHeader>
 
-		<template #content>
+		<N8nDialogBody>
 			<N8nInput
 				v-show="currentView === 'list'"
 				v-model="searchQuery"
@@ -487,8 +506,8 @@ function handleSettingsChangeName(name: string) {
 					@update:node-name="settingsNodeName = $event"
 				/>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogBody>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
@@ -500,9 +519,10 @@ function handleSettingsChangeName(name: string) {
 
 .settingsHeader {
 	display: flex;
+	flex: 1;
 	align-items: center;
 	justify-content: space-between;
-	width: 100%;
+	min-width: 0;
 }
 
 .settingsHeaderLeft {
@@ -519,10 +539,6 @@ function handleSettingsChangeName(name: string) {
 }
 
 .title {
-	font-size: var(--font-size--md);
-	font-weight: var(--font-weight--regular);
-	line-height: var(--line-height--lg);
-	color: var(--color--text--shade-1);
 	flex: 1;
 	min-width: 0;
 }
