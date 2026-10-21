@@ -103,6 +103,10 @@ class ShortCallbackTelegramIntegration extends AgentChatIntegration {
 
 	readonly needsShortCallbackData = true;
 
+	buildOriginDraft() {
+		return undefined;
+	}
+
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		return {};
 	}

@@ -68,6 +68,11 @@ export class N8nChatIntegration extends AgentChatIntegration {
 		super();
 	}
 
+	/** Internal n8n chat does not go through the bridge and has no platform context. */
+	buildOriginDraft() {
+		return undefined;
+	}
+
 	async createAdapter(): Promise<unknown> {
 		throw new UnexpectedError('The n8n chat integration has no platform adapter.');
 	}

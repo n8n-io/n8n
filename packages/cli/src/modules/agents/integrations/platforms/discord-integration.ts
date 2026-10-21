@@ -43,6 +43,8 @@ import {
 	settleDiscordActionMessage,
 } from './discord-operations';
 import { startTypingIndicator } from './typing-indicator';
+import { buildDiscordOriginDraft } from './discord-origin';
+import type { DecodedThread, OriginInput } from '../integration-origin-support';
 
 /** Discord's typing indicator expires after ~10s, so keep it alive on an interval. */
 const DISCORD_TYPING_REFRESH_MS = 8000;
@@ -213,6 +215,10 @@ export class DiscordIntegration extends AgentChatIntegration {
 		await this.assertStartupPreconditions(ctx);
 
 		await this.validateDiscordCredential(ctx);
+	}
+
+	async buildOriginDraft(input: OriginInput, decoded: DecodedThread) {
+		return await buildDiscordOriginDraft(input, decoded);
 	}
 
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {

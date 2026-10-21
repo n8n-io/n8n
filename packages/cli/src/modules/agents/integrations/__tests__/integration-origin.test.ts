@@ -2,9 +2,31 @@ import type { Message, Thread } from 'chat';
 import { mock } from 'vitest-mock-extended';
 import type { Logger } from 'n8n-workflow';
 
+import type { AgentChatIntegration } from '../agent-chat-integration';
 import { buildIntegrationOrigin } from '../integration-origin';
+import { buildDiscordOriginDraft } from '../platforms/discord-origin';
+import { buildLinearOriginDraft } from '../platforms/linear-origin';
+import { buildSlackOriginDraft } from '../platforms/slack/slack-origin';
+import { buildTeamsOriginDraft } from '../platforms/teams/teams-origin';
+import { buildTelegramOriginDraft } from '../platforms/telegram-origin';
+import { buildWhatsAppOriginDraft } from '../platforms/whatsapp/whatsapp-origin';
 
 const logger = mock<Logger>();
+
+/** Each integration class delegates to the builder from its own folder. */
+function integrationFor(platform: string): AgentChatIntegration {
+	const builders = {
+		slack: buildSlackOriginDraft,
+		discord: buildDiscordOriginDraft,
+		linear: buildLinearOriginDraft,
+		telegram: (_input: unknown, decoded: Record<string, unknown>) =>
+			buildTelegramOriginDraft(decoded),
+		teams: (_input: unknown, decoded: Record<string, unknown>) => buildTeamsOriginDraft(decoded),
+		whatsapp: (_input: unknown, decoded: Record<string, unknown>) =>
+			buildWhatsAppOriginDraft(decoded),
+	} as Record<string, AgentChatIntegration['buildOriginDraft']>;
+	return { buildOriginDraft: builders[platform] } as unknown as AgentChatIntegration;
+}
 
 function makeThread(
 	decoded: unknown,
@@ -30,7 +52,8 @@ describe('buildIntegrationOrigin', () => {
 
 		await expect(
 			buildIntegrationOrigin(
-				{ platform: 'slack', thread, message: makeMessage({ team_id: 'T1' }) },
+				integrationFor('slack'),
+				{ thread, message: makeMessage({ team_id: 'T1' }) },
 				logger,
 			),
 		).resolves.toEqual({
@@ -49,7 +72,8 @@ describe('buildIntegrationOrigin', () => {
 		const thread = makeThread({ channel: 'G1', threadTs: '' }, { isDM, channelName: 'x' });
 
 		const origin = await buildIntegrationOrigin(
-			{ platform: 'slack', thread, message: makeMessage(raw) },
+			integrationFor('slack'),
+			{ thread, message: makeMessage(raw) },
 			logger,
 		);
 
@@ -60,7 +84,8 @@ describe('buildIntegrationOrigin', () => {
 		const thread = makeThread({ channel: 'D1', threadTs: '' }, { isDM: true });
 
 		const origin = await buildIntegrationOrigin(
-			{ platform: 'slack', thread, message: makeMessage({ team_id: 'T1' }) },
+			integrationFor('slack'),
+			{ thread, message: makeMessage({ team_id: 'T1' }) },
 			logger,
 		);
 
@@ -73,7 +98,8 @@ describe('buildIntegrationOrigin', () => {
 
 		await expect(
 			buildIntegrationOrigin(
-				{ platform: 'slack', thread, message: makeMessage({ team_id: 'T1' }) },
+				integrationFor('slack'),
+				{ thread, message: makeMessage({ team_id: 'T1' }) },
 				logger,
 			),
 		).resolves.toEqual({
@@ -88,7 +114,7 @@ describe('buildIntegrationOrigin', () => {
 		const thread = makeThread({ channel: 'C1', threadTs: '' });
 
 		await expect(
-			buildIntegrationOrigin({ platform: 'slack', thread, message: makeMessage() }, logger),
+			buildIntegrationOrigin(integrationFor('slack'), { thread, message: makeMessage() }, logger),
 		).resolves.toBeUndefined();
 	});
 
@@ -98,12 +124,17 @@ describe('buildIntegrationOrigin', () => {
 
 		await expect(
 			buildIntegrationOrigin(
-				{ platform: 'discord', thread: server, message: makeMessage() },
+				integrationFor('discord'),
+				{ thread: server, message: makeMessage() },
 				logger,
 			),
 		).resolves.toEqual({ type: 'discord', serverId: 'G1', channelId: 'C1', channelName: 'dev' });
 		await expect(
-			buildIntegrationOrigin({ platform: 'discord', thread: dm, message: makeMessage() }, logger),
+			buildIntegrationOrigin(
+				integrationFor('discord'),
+				{ thread: dm, message: makeMessage() },
+				logger,
+			),
 		).resolves.toEqual({ type: 'discord', channelId: 'C2' });
 	});
 
@@ -113,7 +144,8 @@ describe('buildIntegrationOrigin', () => {
 
 		await expect(
 			buildIntegrationOrigin(
-				{ platform: 'linear', thread, message: makeMessage(), subject },
+				integrationFor('linear'),
+				{ thread, message: makeMessage(), subject },
 				logger,
 			),
 		).resolves.toEqual({
@@ -124,7 +156,7 @@ describe('buildIntegrationOrigin', () => {
 			projectId: 'project-1',
 		});
 		await expect(
-			buildIntegrationOrigin({ platform: 'linear', thread, message: makeMessage() }, logger),
+			buildIntegrationOrigin(integrationFor('linear'), { thread, message: makeMessage() }, logger),
 		).resolves.toEqual({ type: 'linear', issueId: 'issue-uuid' });
 	});
 
@@ -134,7 +166,8 @@ describe('buildIntegrationOrigin', () => {
 
 		await expect(
 			buildIntegrationOrigin(
-				{ platform: 'linear', thread, message: makeMessage(), subject },
+				integrationFor('linear'),
+				{ thread, message: makeMessage(), subject },
 				logger,
 			),
 		).resolves.toEqual({ type: 'linear', issueId: 'issue-uuid', identifier: 'ENG-1' });
@@ -151,13 +184,13 @@ describe('buildIntegrationOrigin', () => {
 		const message = makeMessage();
 
 		await expect(
-			buildIntegrationOrigin({ platform: 'telegram', thread: telegram, message }, logger),
+			buildIntegrationOrigin(integrationFor('telegram'), { thread: telegram, message }, logger),
 		).resolves.toEqual({ type: 'telegram', chatId: '-100', messageThreadId: '7' });
 		await expect(
-			buildIntegrationOrigin({ platform: 'teams', thread: teams, message }, logger),
+			buildIntegrationOrigin(integrationFor('teams'), { thread: teams, message }, logger),
 		).resolves.toEqual({ type: 'teams', conversationId: 'conv', conversationType: 'channel' });
 		await expect(
-			buildIntegrationOrigin({ platform: 'whatsapp', thread: whatsapp, message }, logger),
+			buildIntegrationOrigin(integrationFor('whatsapp'), { thread: whatsapp, message }, logger),
 		).resolves.toEqual({ type: 'whatsapp', phoneNumberId: 'p1', userWaId: 'u1' });
 	});
 
@@ -168,7 +201,11 @@ describe('buildIntegrationOrigin', () => {
 		});
 
 		await expect(
-			buildIntegrationOrigin({ platform: 'telegram', thread, message: makeMessage() }, logger),
+			buildIntegrationOrigin(
+				integrationFor('telegram'),
+				{ thread, message: makeMessage() },
+				logger,
+			),
 		).resolves.toBeUndefined();
 	});
 });

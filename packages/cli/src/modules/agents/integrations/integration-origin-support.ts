@@ -7,8 +7,6 @@ import type { IntegrationMessageSubject } from './integration-tool-types';
 const CHANNEL_NAME_TIMEOUT_MS = 500;
 
 export interface OriginInput {
-	/** The integration type, such as `slack`. */
-	platform: string;
 	thread: Thread<unknown, unknown>;
 	message: Message<unknown>;
 	subject?: IntegrationMessageSubject;

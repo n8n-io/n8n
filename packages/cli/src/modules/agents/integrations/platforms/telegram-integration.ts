@@ -30,6 +30,8 @@ import {
 	createTelegramBridgeExecutionContext,
 	createTelegramResumeExecutionContext,
 } from './telegram-bridge-behavior';
+import { buildTelegramOriginDraft } from './telegram-origin';
+import type { DecodedThread, OriginInput } from '../integration-origin-support';
 
 /**
  * Telegram platform integration.
@@ -151,6 +153,10 @@ export class TelegramIntegration extends AgentChatIntegration {
 		private readonly outboundHttp: OutboundHttp,
 	) {
 		super();
+	}
+
+	buildOriginDraft(_input: OriginInput, decoded: DecodedThread) {
+		return buildTelegramOriginDraft(decoded);
 	}
 
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {

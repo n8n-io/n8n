@@ -924,10 +924,12 @@ export class AgentChatBridge {
 				// The origin lookup overlaps the other fetches so it adds little delay.
 				subjectPromise.then(
 					async (subject) =>
-						await buildIntegrationOrigin(
-							{ platform: this.integration.type, thread, message, subject },
+						this.integrationImpl &&
+						(await buildIntegrationOrigin(
+							this.integrationImpl,
+							{ thread, message, subject },
 							this.logger,
-						),
+						)),
 				),
 			]);
 			const messageContext = this.messageContextBridge.capture(thread, {

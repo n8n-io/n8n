@@ -37,6 +37,8 @@ import { TeamsCleanupService } from './teams-cleanup.service';
 import { READ_PERMISSIONS } from './teams-manifest.service';
 import { fetchTeamsMessageFiles, graphHttpOf } from './teams-message-files';
 import { executeTeamsContextQuery } from './teams-operations';
+import { buildTeamsOriginDraft } from './teams-origin';
+import type { DecodedThread, OriginInput } from '../../integration-origin-support';
 
 /** Pinned so a stray TEAMS_API_URL env var cannot redirect proactive sends. */
 const TEAMS_API_URL = 'https://smba.trafficmanager.net/teams';
@@ -327,6 +329,10 @@ export class TeamsIntegration extends AgentChatIntegration {
 		private readonly agentRepository: AgentRepository,
 	) {
 		super();
+	}
+
+	buildOriginDraft(_input: OriginInput, decoded: DecodedThread) {
+		return buildTeamsOriginDraft(decoded);
 	}
 
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {

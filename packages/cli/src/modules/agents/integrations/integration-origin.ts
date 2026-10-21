@@ -6,24 +6,22 @@ import { isRecord } from '@n8n/utils/is-record';
 import type { Thread } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
-import type { DecodedThread, OriginDraft, OriginInput } from './integration-origin-support';
-import { buildDiscordOriginDraft } from './platforms/discord-origin';
-import { buildLinearOriginDraft } from './platforms/linear-origin';
-import { buildSlackOriginDraft } from './platforms/slack/slack-origin';
-import { buildTeamsOriginDraft } from './platforms/teams/teams-origin';
-import { buildTelegramOriginDraft } from './platforms/telegram-origin';
-import { buildWhatsAppOriginDraft } from './platforms/whatsapp/whatsapp-origin';
+import type { AgentChatIntegration } from './agent-chat-integration';
+import type { DecodedThread, OriginInput } from './integration-origin-support';
 
 /**
  * Builds the typed platform context for an inbound message from trusted adapter
  * data. Returns `undefined` when the context is missing or invalid. It never throws.
  */
 export async function buildIntegrationOrigin(
+	integration: AgentChatIntegration,
 	input: OriginInput,
 	logger: Logger,
 ): Promise<AgentMessageIntegrationOrigin | undefined> {
 	try {
-		const draft = await buildDraft(input);
+		const decoded = decodeThread(input.thread);
+		if (!decoded) return undefined;
+		const draft = await integration.buildOriginDraft(input, decoded);
 		if (!draft) return undefined;
 		const parsed = AgentMessageIntegrationOriginSchema.safeParse(draft);
 		if (parsed.success) return parsed.data;
@@ -34,27 +32,6 @@ export async function buildIntegrationOrigin(
 		});
 	}
 	return undefined;
-}
-
-async function buildDraft(input: OriginInput): Promise<OriginDraft | undefined> {
-	const decoded = decodeThread(input.thread);
-	if (!decoded) return undefined;
-	switch (input.platform) {
-		case 'slack':
-			return await buildSlackOriginDraft(input, decoded);
-		case 'discord':
-			return await buildDiscordOriginDraft(input, decoded);
-		case 'linear':
-			return buildLinearOriginDraft(input, decoded);
-		case 'telegram':
-			return buildTelegramOriginDraft(decoded);
-		case 'teams':
-			return buildTeamsOriginDraft(decoded);
-		case 'whatsapp':
-			return buildWhatsAppOriginDraft(decoded);
-		default:
-			return undefined;
-	}
 }
 
 function decodeThread(thread: Thread<unknown, unknown>): DecodedThread | undefined {

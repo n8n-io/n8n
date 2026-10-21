@@ -20,6 +20,8 @@ import {
 	LINEAR_ACTION_TOOL_DEFINITIONS,
 	LINEAR_CONTEXT_QUERY_TOOL_DEFINITIONS,
 } from './linear-tool-definitions';
+import { buildLinearOriginDraft } from './linear-origin';
+import type { DecodedThread, OriginInput } from '../integration-origin-support';
 
 /**
  * Linear platform integration.
@@ -102,6 +104,10 @@ export class LinearIntegration extends AgentChatIntegration {
 			action: params.action,
 			input: params.input,
 		});
+	}
+
+	buildOriginDraft(input: OriginInput, decoded: DecodedThread) {
+		return buildLinearOriginDraft(input, decoded);
 	}
 
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {
