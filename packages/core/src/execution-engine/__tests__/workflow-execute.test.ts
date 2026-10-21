@@ -1700,6 +1700,47 @@ describe('WorkflowExecute', () => {
 		});
 	});
 
+	describe('continueErrorOutput pairedItem', () => {
+		// A node that returns one item per input without pairing them itself, like a
+		// declarative node or a programmatic node on its continue-on-fail path.
+		const twoItemsNode = modifyNode(passThroughNode)
+			.return([[{ json: { city: 'a' } }, { json: { city: 'b' } }]])
+			.done();
+		const unpairedNode = modifyNode(passThroughNode)
+			.return([[{ json: { ok: true } }, { json: { error: 'boom' } }]])
+			.done();
+		const customNodeTypes = Helpers.NodeTypes({
+			...nodeTypeArguments,
+			twoItems: { type: twoItemsNode, sourcePath: '' },
+			unpaired: { type: unpairedNode, sourcePath: '' },
+		});
+
+		test('should pair success and error items with their input items', async () => {
+			const trigger = createNodeData({ name: 'trigger', type: 'twoItems' });
+			const node = {
+				...createNodeData({ name: 'node', type: 'unpaired' }),
+				onError: 'continueErrorOutput' as const,
+			};
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, node)
+				.addConnections({ from: trigger, to: node, type: NodeConnectionTypes.Main })
+				.toWorkflow({ name: '', active: false, nodeTypes: customNodeTypes });
+
+			const workflowExecute = new WorkflowExecute(
+				Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>()),
+				'manual',
+			);
+
+			const result = await workflowExecute.run({ workflow, startNode: trigger });
+
+			const [successOutput, errorOutput] = result.data.resultData.runData[node.name][0].data!.main;
+			expect(successOutput).toEqual([{ json: { ok: true }, pairedItem: { item: 0 } }]);
+			expect(errorOutput).toEqual([
+				{ json: { city: 'b', error: 'boom' }, pairedItem: { item: 1 } },
+			]);
+		});
+	});
+
 	describe('handleNodeErrorOutput', () => {
 		const testNode: INode = {
 			id: '1',
