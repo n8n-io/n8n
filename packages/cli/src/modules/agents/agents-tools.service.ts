@@ -1,9 +1,6 @@
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
-import type {
-	CodeBuilderSearchResult,
-	NodeRequest as CatalogNodeRequest,
-} from '@n8n/ai-utilities/node-catalog';
+import type { CodeBuilderSearchResult } from '@n8n/ai-utilities/node-catalog';
 import {
 	AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES,
 	getLegacyBuilderToolNames,
@@ -13,17 +10,9 @@ import { isToolType, isTriggerNodeType } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { NodeCatalogService } from '@/node-catalog';
-import {
-	isUnsupportedEphemeralNodeOperation,
-	unsupportedEphemeralNodeOperationMessage,
-} from '@/node-execution';
 
 import { BUILDER_TOOLS } from './builder/builder-tool-names';
 import { MCP_REGISTRY_PACKAGE_NAME } from '../mcp-registry/node-description-transform';
-
-type NodeRequest =
-	| string
-	| (Omit<Exclude<CatalogNodeRequest, string>, 'version'> & { version?: number });
 
 /**
  * Nodes the agent runtime can execute directly. Triggers are workflow entry
@@ -60,36 +49,6 @@ const MCP_CLIENT_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpClientTool';
 const isMcpToolNodeType = (nodeId: string): boolean =>
 	nodeId === MCP_CLIENT_TOOL_NODE_TYPE || nodeId.startsWith(MCP_REGISTRY_PACKAGE_NAME);
 
-const searchNodesInputSchema = z.object({
-	queries: z.array(z.string()).min(1).describe('Search queries (e.g., ["gmail", "slack", "http"])'),
-});
-
-const nodeVersionSchema = z
-	.number()
-	.describe(
-		'Tool node type version from agent_builder_search_nodes or agent-context integration results with kind "node"',
-	);
-
-const getNodeTypesInputSchema = z.object({
-	nodeIds: z
-		.array(
-			z.union([
-				z.string(),
-				z.object({
-					nodeId: z.string(),
-					version: nodeVersionSchema.optional(),
-					resource: z.string().optional(),
-					operation: z.string().optional(),
-					mode: z.string().optional(),
-				}),
-			]),
-		)
-		.min(1)
-		.describe(
-			'Tool node IDs from agent_builder_search_nodes or agent-context integration results with kind "node"; e.g., ["n8n-nodes-base.gmailTool"]',
-		),
-});
-
 const listCredentialsInputSchema = z.object({
 	types: z
 		.array(z.string())
@@ -97,7 +56,7 @@ const listCredentialsInputSchema = z.object({
 		.describe(
 			'Optional credential types to filter by (e.g., ["gmailOAuth2", "httpHeaderAuth"]). ' +
 				'When omitted, returns all credentials. Use the credential types declared in the ' +
-				'node schema from agent_builder_get_node_types to narrow the results.',
+				'node schema from get_node_types to narrow the results.',
 		),
 });
 
@@ -113,11 +72,7 @@ export class AgentsToolsService {
 		credentialProvider: CredentialProvider,
 		listCredentialsUsageHint: string,
 	): BuiltTool[] {
-		return [
-			this.buildSearchNodesTool(),
-			this.buildGetNodeTypesTool(),
-			this.buildListCredentialsTool(credentialProvider, listCredentialsUsageHint),
-		];
+		return [this.buildListCredentialsTool(credentialProvider, listCredentialsUsageHint)];
 	}
 
 	async searchAgentToolNodes(queries: string[]): Promise<CodeBuilderSearchResult> {
@@ -125,62 +80,6 @@ export class AgentsToolsService {
 		return await this.nodeCatalogService.searchNodes(queries, {
 			nodeFilter: isAgentToolNodeType,
 		});
-	}
-
-	private buildSearchNodesTool(): BuiltTool {
-		return new Tool(BUILDER_TOOLS.SEARCH_NODES)
-			.legacyNames(...getLegacyBuilderToolNames(BUILDER_TOOLS.SEARCH_NODES))
-			.description(
-				'Search for n8n nodes by name or service. Use this to find nodes that can be executed. ' +
-					'Returns tool node IDs, display names, versions, and descriptions. ' +
-					'After finding a node, call agent_builder_get_node_types to get its parameter schema. ' +
-					'Also consider n8n Connect covered services relevant to the task (they run on Gateway ' +
-					'credits, no API key needed) — e.g. web search, scraping, or document parsing services.',
-			)
-			.input(searchNodesInputSchema)
-			.handler(async ({ queries }: { queries: string[] }) => {
-				const { results } = await this.searchAgentToolNodes(queries);
-				return { results };
-			})
-			.build();
-	}
-
-	private buildGetNodeTypesTool(): BuiltTool {
-		return new Tool(BUILDER_TOOLS.GET_NODE_TYPES)
-			.legacyNames(...getLegacyBuilderToolNames(BUILDER_TOOLS.GET_NODE_TYPES))
-			.description(
-				'Get detailed parameter schema for specific n8n nodes. Use the node IDs from node ' +
-					'discovery results (agent_builder_search_nodes or agent-context integrations with kind "node"). Returns ' +
-					'parameter definitions needed to configure a node for execution. Use the tool node ' +
-					'IDs from discovery, usually ending in Tool. You can optionally filter by ' +
-					'resource/operation/mode.',
-			)
-			.input(getNodeTypesInputSchema)
-			.handler(async ({ nodeIds }: { nodeIds: NodeRequest[] }) => {
-				const unsupportedOperations = nodeIds.flatMap((request) => {
-					if (
-						typeof request === 'string' ||
-						!isUnsupportedEphemeralNodeOperation(request.operation)
-					) {
-						return [];
-					}
-
-					return [
-						`Node "${request.nodeId}": ${unsupportedEphemeralNodeOperationMessage(request.operation)}`,
-					];
-				});
-
-				if (unsupportedOperations.length > 0) {
-					return { results: `# Errors\n\n${unsupportedOperations.join('\n')}` };
-				}
-
-				await this.nodeCatalogService.initialize();
-				const results = await this.nodeCatalogService.getNodeTypes(
-					nodeIds.map(normalizeNodeRequestForCatalog),
-				);
-				return { results };
-			})
-			.build();
 	}
 
 	private buildListCredentialsTool(
@@ -203,14 +102,4 @@ export class AgentsToolsService {
 			})
 			.build();
 	}
-}
-
-/**
- * The catalog's `getNodeTypes` signature expects `version` as a string (matching the
- * builder tool's wire format); adapt at the boundary.
- */
-function normalizeNodeRequestForCatalog(req: NodeRequest): CatalogNodeRequest {
-	if (typeof req === 'string') return req;
-	const { version, ...rest } = req;
-	return version === undefined ? rest : { ...rest, version: String(version) };
 }

@@ -12,7 +12,7 @@ description: >-
   or shared cross-task data tables require a dependency-aware task graph.
   Don't use this skill for explicit one-off tasks that can be done by a single
   node execution: load one-off-operations and run the node with
-  workflow_builder_nodes(action="execute"). Once the user wants a workflow, load
+  execute_node. Once the user wants a workflow, load
   it before you ask any question about that workflow. Do not load it to ask
   about a request that does not yet say what to build. Also load for a
   workflow's evaluations, model choices, credential setup, error workflows, and
@@ -24,7 +24,10 @@ recommended_tools:
   - execute_command
   - workflow_builder_build_workflow
   - workflow_builder_workflows
-  - workflow_builder_nodes
+  - search_nodes
+  - get_node_types
+  - get_node_parameter_options
+  - execute_node
   - data_tables
   - workflow_builder_credentials
   - workflow_builder_verify_built_workflow
@@ -58,7 +61,7 @@ multi-artifact work per the orchestrator routing rules. Do not create a plan
 just for verification.
 
 When the needed node types are already obvious from the request, batch
-`workflow_builder_nodes(action="type-definition")` — object form with resource/operation or mode
+`get_node_types` — object form with resource/operation or mode
 discriminators — together with the `load_skill` call for this skill in your
 first action turn (each extra sequential turn resends the whole context). When
 unsure which nodes to use, load this skill first and follow its research
@@ -117,8 +120,8 @@ the first successful `workflow_builder_build_workflow` call, use
 intent or topology, such as the missing destination service for "send my team
 a summary". But when that choice is which service to use for a capability the
 user did not name (e.g. web search, scraping, a cloud browser), do not ask yet:
-discover coverage first with `workflow_builder_nodes(action="search")` or
-`workflow_builder_nodes(action="list", gatewayCreditsOnly=true)`, and use a
+discover coverage first with `search_nodes` or
+`search_nodes(gatewayCreditsOnly=true)`, and use a
 Gateway credits–covered node instead of asking when the user has no credential
 for a comparable tool (see Gateway credits Preference). Ask only when discovery
 finds no covered option and the choice changes the workflow. Announce known credentials through early
@@ -138,7 +141,7 @@ workflow/credential setup surfaces.
 Use `placeholder('descriptive hint')` for values that cannot be safely picked
 without the user: undiscoverable user-provided values (email recipients, phone
 numbers, custom URLs, notification targets, chat IDs) and resource IDs where
-`workflow_builder_nodes(action="explore-resources")` returns multiple candidates and the user
+`get_node_parameter_options` returns multiple candidates and the user
 named none. Never hardcode fake values (`user@example.com`, `YOUR_API_KEY`,
 bearer tokens, sample channel/chat IDs or recipient lists) and never ask for
 setup values before the first successful build — placeholders cover them, and
@@ -211,22 +214,22 @@ workflow, load the `error-workflows` reference and follow its build → publish
 
 1. Research only what the request actually needs. If the workflow fits a
    known category and you are unsure which nodes to use, call
-   `workflow_builder_nodes(action="suggested")` (categories: `notification`,
+   `search_nodes` with `categories` (categories: `notification`,
    `data_persistence`, `chatbot`, `scheduling`, `data_transformation`,
    `data_extraction`, `document_processing`, `form_input`,
    `content_generation`, `triage`, `scraping_and_research`); use
-   `workflow_builder_nodes(action="search")` for service-specific nodes you cannot name exactly
+   `search_nodes` with `query`/`queries` for service-specific nodes you cannot name exactly
    (short service names like "Gmail", not task phrases — results include
    resource/operation/mode discriminators).
-2. Call `workflow_builder_nodes(action="type-definition")` with the exact node IDs you will use
-   (up to five per call), including discriminators. Do not speculatively fetch
+2. Call `get_node_types` with the exact node IDs you will use
+   (up to ten per call), including discriminators. Do not speculatively fetch
    definitions for nodes you will not use.
 3. Read `@builderHint`, `@default`, `@searchListMethod`, `@loadOptionsMethod`,
    valid enum values, credential types, and display conditions in the returned
    definitions.
 4. Resolve real resource IDs: for each parameter with `searchListMethod` or
-   `loadOptionsMethod`, call `workflow_builder_nodes(action="explore-resources")` with the exact
-   method name, method type, credential type, and credential ID — mandatory
+   `loadOptionsMethod` (or `resourceLocator`), call `get_node_parameter_options` with the parameter
+   path (or exact method name and method type), credential type, and credential ID — mandatory
    for calendars, spreadsheets, channels, folders, databases, models, and any
    other list-backed parameter when a credential is available.
    For new model choices, follow `model-selection` before writing code,
@@ -498,18 +501,18 @@ it to choose between authentication methods for the same service.
 service. On instances licensed for it, several common AI-provider and
 scraping nodes can run with no API key required on the user's side.
 
-**Discovery (while building):** `workflow_builder_nodes(action="search")` and
-`workflow_builder_nodes(action="describe")` results carry an `aiGateway` field on covered nodes
+**Discovery (while building):** `search_nodes` and
+`get_node_types` results carry an `aiGateway` field on covered nodes
 — no separate lookup needed. When `aiGateway.supported === true`, prefer that
 node over comparable alternatives *when the user has not named a specific tool
 and has no usable credential for a comparable one* — it runs with no API key.
-Keep your normal `suggested`/search pick when the user already has a credential
+Keep your normal `categories`/search pick when the user already has a credential
 for a comparable tool.
 
-The `suggested` list and search *rank* don't prioritize Gateway credits coverage
+The `categories` list and search *rank* don't prioritize Gateway credits coverage
 (individual search results still flag it). When the user asks for a capability
 they have no usable credential for, search that
-capability — or run `workflow_builder_nodes(action="list", gatewayCreditsOnly=true)` — before
+capability — or run `search_nodes(gatewayCreditsOnly=true)` — before
 committing, and prefer a covered result.
 
 Respect the constraints it reports:
@@ -520,12 +523,12 @@ Respect the constraints it reports:
   - Do not set parameters listed in `aiGateway.hiddenProperties`.
 
 **Enumeration (answering "what does Gateway credits support?"):**
-  - All supported nodes: `workflow_builder_nodes(action="list", gatewayCreditsOnly=true)` — each
+  - All supported nodes: `search_nodes(gatewayCreditsOnly=true)` — each
     result carries the full `aiGateway` field (minVersion, operations,
     hiddenProperties).
   - All supported credential types:
     `workflow_builder_credentials(action="search-types", gatewayCreditsOnly=true)`.
-  - Operations for a specific supported node: `workflow_builder_nodes(action="describe", …)`
+  - Operations for a specific supported node: `get_node_types`
     → `aiGateway.operations`.
 
 **Preference rule:** When adding a new node that has no credential assigned
@@ -551,7 +554,7 @@ box, and do not offer a live test.
 
 ## Missing Resources
 
-When `workflow_builder_nodes(action="explore-resources")` returns no results for a required
+When `get_node_parameter_options` returns no results for a required
 resource:
 
 1. If the resource can be represented as a user choice, use
@@ -835,8 +838,8 @@ asked for that exact name.
 
 ## Node Configuration Safety Rules
 
-- Fetch `workflow_builder_nodes(action="type-definition")` for parameter names and shapes.
-- Use live `workflow_builder_nodes(action="explore-resources")` for resource locator, list, and
+- Fetch `get_node_types` for parameter names and shapes.
+- Use live `get_node_parameter_options` for resource locator, list, and
   model fields when credentials are available, including Gateway credits.
 - If a configuration is unclear after reading the definition, ask for
   clarification or use placeholders. Do not guess.

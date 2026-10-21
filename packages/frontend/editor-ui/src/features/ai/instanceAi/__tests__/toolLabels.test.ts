@@ -13,6 +13,7 @@ vi.mock('@n8n/i18n', () => ({
 				'instanceAi.tools.agent-context': 'Exploring agent context',
 				'instanceAi.tools.agent-context.config': 'Reading agent config',
 				'instanceAi.tools.agent-context.sessions': 'Checking agent sessions',
+				'instanceAi.tools.get_node_types': 'Reading node schema',
 				'instanceAi.tools.agent_builder_get_node_types': 'Reading node schema',
 				'instanceAi.tools.agent_builder_list_credentials': 'Inspecting credentials',
 				'instanceAi.tools.list_workflows': 'Listing workflows',

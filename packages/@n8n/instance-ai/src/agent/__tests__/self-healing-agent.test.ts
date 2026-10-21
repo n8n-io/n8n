@@ -225,7 +225,8 @@ describe('createSelfHealingAgent', () => {
 				DOMAIN_TOOL_IDS.WORKFLOWS,
 				DOMAIN_TOOL_IDS.EXECUTIONS,
 				DOMAIN_TOOL_IDS.DATA_TABLES,
-				DOMAIN_TOOL_IDS.NODES,
+				DOMAIN_TOOL_IDS.SEARCH_NODES,
+				DOMAIN_TOOL_IDS.GET_NODE_TYPES,
 				DOMAIN_TOOL_IDS.N8N_DOCS,
 				DOMAIN_TOOL_IDS.RESEARCH,
 				'verify_candidate',
@@ -253,8 +254,6 @@ describe('createSelfHealingAgent', () => {
 		[DOMAIN_TOOL_IDS.EXECUTIONS, { action: 'stop', executionId: 'execution' }],
 		[DOMAIN_TOOL_IDS.DATA_TABLES, { action: 'create', name: 'Table', columns: [] }],
 		[DOMAIN_TOOL_IDS.DATA_TABLES, { action: 'insert-rows', dataTableId: 'table', rows: [{}] }],
-		[DOMAIN_TOOL_IDS.NODES, { action: 'execute', nodeType: 'n8n-nodes-base.httpRequest' }],
-		[DOMAIN_TOOL_IDS.NODES, { action: 'explore-resources', nodeType: 'n8n-nodes-base.slack' }],
 	])('rejects unavailable %s actions in the schema', async (name, input) => {
 		const agent = await createAgent();
 		const tool = findTool(agent.declaredTools, name);

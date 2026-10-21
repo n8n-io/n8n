@@ -404,10 +404,14 @@ function summarizeToolCalls(result: WorkflowTestCaseResult): string[] {
 		(name) => name === ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW,
 	);
 
+	const nodeResearchCount =
+		count(DOMAIN_TOOL_IDS.NODES) +
+		count(DOMAIN_TOOL_IDS.SEARCH_NODES) +
+		count(DOMAIN_TOOL_IDS.GET_NODE_TYPES) +
+		count(DOMAIN_TOOL_IDS.GET_NODE_PARAMETER_OPTIONS);
+
 	const summaries = [
-		count(DOMAIN_TOOL_IDS.NODES) > 0
-			? `${String(count(DOMAIN_TOOL_IDS.NODES))} node-research call(s)`
-			: '',
+		nodeResearchCount > 0 ? `${String(nodeResearchCount)} node-research call(s)` : '',
 		count(DOMAIN_TOOL_IDS.CREDENTIALS) > 0
 			? `${String(count(DOMAIN_TOOL_IDS.CREDENTIALS))} credential lookup call(s)`
 			: '',
@@ -1327,7 +1331,12 @@ function renderWorkflowSummary(result: WorkflowTestCaseResult): string {
 			result.buildTrace?.toolCalls.filter((call) =>
 				toolNames.includes(resolveBuilderToolName(call.toolName)),
 			) ?? [];
-		const nodeResearchCalls = callsNamed(DOMAIN_TOOL_IDS.NODES);
+		const nodeResearchCalls = callsNamed(
+			DOMAIN_TOOL_IDS.NODES,
+			DOMAIN_TOOL_IDS.SEARCH_NODES,
+			DOMAIN_TOOL_IDS.GET_NODE_TYPES,
+			DOMAIN_TOOL_IDS.GET_NODE_PARAMETER_OPTIONS,
+		);
 		const workflowWriteCalls = callsNamed(
 			DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
 			REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW,

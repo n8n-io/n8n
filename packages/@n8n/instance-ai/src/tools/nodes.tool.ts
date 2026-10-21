@@ -1,17 +1,23 @@
 /**
- * Consolidated workflow_builder_nodes tool — list, search, describe, type-definition, suggested,
- * explore-resources, execute.
+ * Unified node tools — search_nodes, get_node_types, get_node_parameter_options, execute_node
+ * (plus legacy consolidated workflow_builder_nodes factory for backward compatibility).
  */
 import { Tool, type ToolContext } from '@n8n/agents';
 import {
 	AI_CONNECTION_TYPES,
 	NodeSearchEngine,
 	categoryList,
+	findNodeParameterProperty,
+	getDynamicNodeParameterLookup,
 	suggestedNodesData,
+	toLoadedOptionParameterValue,
+	toResourceLocatorParameterValue,
 	type CategorySuggestedNode,
 	type SearchableNodeType,
 } from '@n8n/ai-utilities/node-catalog';
 import {
+	AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES,
+	UNSUPPORTED_AGENT_NODE_TOOL_OPERATIONS,
 	getLegacyBuilderToolNames,
 	buildExecuteNodeSessionGrantKey,
 	instanceAiApprovalResumeSchema,
@@ -19,9 +25,11 @@ import {
 	NODE_RESOURCE_GRANT_FALLBACK_KEYS,
 } from '@n8n/api-types';
 import { validateNodeConfig } from '@n8n/workflow-sdk';
+import { isToolType, isTriggerNodeType, type INodeProperties } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import { RESOURCE_EXPLORATION_UNAVAILABLE } from '../constants/resource-exploration';
 import type { InstanceAiContext, NodeDescription } from '../types';
 import { restrictToolActions } from './restrict-tool-actions';
@@ -31,17 +39,41 @@ import { addSetupPreference, type NodeWithSetupPreference } from './nodes/setup-
 import { buildCredentialMap } from './workflows/resolve-credentials';
 import { DOMAIN_TOOL_IDS } from './tool-ids';
 
+// ── Agent tool node filter & operation support ──────────────────────────────
+
+const hiddenAgentToolNodeTypes = new Set<string>(AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES);
+const unsupportedAgentNodeOperations = new Set<string>(UNSUPPORTED_AGENT_NODE_TOOL_OPERATIONS);
+const MCP_CLIENT_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpClientTool';
+const MCP_REGISTRY_PACKAGE_PREFIX = '@n8n/mcp-registry.';
+
+export const isAgentToolNodeType = (nodeId: string): boolean => {
+	if (isTriggerNodeType(nodeId)) return false;
+	if (hiddenAgentToolNodeTypes.has(nodeId)) return false;
+	if (nodeId === MCP_CLIENT_TOOL_NODE_TYPE || nodeId.startsWith(MCP_REGISTRY_PACKAGE_PREFIX)) {
+		return false;
+	}
+	return isToolType(nodeId, { includeHitl: false });
+};
+
+const isUnsupportedEphemeralNodeOperation = (operation: unknown): operation is string =>
+	typeof operation === 'string' && unsupportedAgentNodeOperations.has(operation);
+
+const unsupportedEphemeralNodeOperationMessage = (operation: string): string =>
+	`Operation "${operation}" requires a persistent workflow and is not supported for agent tool execution. ` +
+	'Choose a non-waiting operation. For human approval, configure the intended action and set ' +
+	'requireApproval: true.';
+
 // ── Action schemas ──────────────────────────────────────────────────────────
 
 const NODE_TYPE_ID_DESCRIPTION = 'Node type ID, e.g. "n8n-nodes-base.httpRequest"';
 const METHOD_NAME_DESCRIPTION =
-	'Exact method name from the node\'s @searchListMethod/@loadOptionsMethod annotation — read it via `action: "type-definition"` first, never guess.';
+	"Exact method name from the node's @searchListMethod/@loadOptionsMethod annotation — read it via `get_node_types` first, never guess.";
 const METHOD_TYPE_DESCRIPTION =
 	'"listSearch" for @searchListMethod (supports filter/pagination); "loadOptions" for @loadOptionsMethod. Match the annotation.';
 const CURRENT_NODE_PARAMETERS_DESCRIPTION =
 	'Current node parameters for dependent lookups — e.g. sheetsSearch needs documentId { __rl: true, mode: "id", value: "<spreadsheetId>" }. Check displayOptions in the type definition.';
 const NODE_TYPES_ARRAY_DESCRIPTION =
-	'Node type IDs for node-level lookups (max 5). For split nodes (e.g. Slack, Gmail, Google Sheets), pass the object form WITH resource/operation (or mode) discriminators when you know them — a bare string errors with the resource→operations index for resource/operation nodes, and returns all mode variants for mode-split nodes.';
+	'Node type IDs for node-level lookups (max 10). For split nodes (e.g. Slack, Gmail, Google Sheets), pass the object form WITH resource/operation (or mode) discriminators when you know them — a bare string errors with the resource→operations index for resource/operation nodes, and returns all mode variants for mode-split nodes.';
 
 const listAction = z.object({
 	action: z
@@ -68,7 +100,7 @@ const searchAction = z.object({
 		.literal('search')
 		.describe(
 			'Search node types by name or AI connection type. Use for service-specific discovery — short service names like "Gmail" or "Slack", not full task phrases. ' +
-				'When the task fits a service covered by n8n Connect (web search, scraping, document parsing — no API key needed), surface that option too; list the covered set with `workflow_builder_nodes(action="list", gatewayCreditsOnly=true)`.',
+				'When the task fits a service covered by n8n Connect (web search, scraping, document parsing — no API key needed), surface that option too; list the covered set with `search_nodes(gatewayCreditsOnly=true)`.',
 		),
 	query: z
 		.string()
@@ -91,8 +123,12 @@ const describeAction = z.object({
 });
 
 const nodeRequestObjectSchema = z.object({
-	nodeType: z.string().describe(NODE_TYPE_ID_DESCRIPTION),
-	version: z.string().optional().describe('Version, e.g. "4.3" or "v43"'),
+	nodeType: z.string().optional().describe(NODE_TYPE_ID_DESCRIPTION),
+	nodeId: z.string().optional().describe('Alias for nodeType'),
+	version: z
+		.union([z.string(), z.number()])
+		.optional()
+		.describe('Version, e.g. "4.3", 4.3, or "v43"'),
 	resource: z.string().optional().describe('Resource discriminator for split nodes'),
 	operation: z.string().optional().describe('Operation discriminator for split nodes'),
 	mode: z.string().optional().describe('Mode discriminator for split nodes'),
@@ -111,7 +147,7 @@ const typeDefinitionAction = z.object({
 		.describe(
 			'Get TypeScript type definitions for nodes — exact parameter names, enum values, credential types, display conditions, and `@builderHint` annotations.',
 		),
-	nodeTypes: z.array(nodeRequestSchema).min(1).max(5).describe(NODE_TYPES_ARRAY_DESCRIPTION),
+	nodeTypes: z.array(nodeRequestSchema).min(1).max(10).describe(NODE_TYPES_ARRAY_DESCRIPTION),
 });
 
 const suggestedAction = z.object({
@@ -121,7 +157,7 @@ const suggestedAction = z.object({
 			'Get curated node recommendations by category. Call first when the workflow fits a known category. ' +
 				'The curated list is a starting point, not the full set: also add any n8n Connect covered services ' +
 				'relevant to the category (they run on Gateway credits, no API key needed). Check coverage with ' +
-				'`workflow_builder_nodes(action="list", gatewayCreditsOnly=true)` or `workflow_builder_credentials(action="search-types", gatewayCreditsOnly=true)`.',
+				'`search_nodes(gatewayCreditsOnly=true)` or `workflow_builder_credentials(action="search-types", gatewayCreditsOnly=true)`.',
 		),
 	categories: z
 		.array(z.string())
@@ -153,22 +189,7 @@ const exploreResourcesAction = z.object({
 
 const MAX_EXECUTE_TIMEOUT_MS = 60_000;
 
-// Envelope mirrors a workflow-sdk node so the agent can pass a node it is
-// building verbatim. Credentials take the resolved `{ id, name }` form only —
-// the SDK's placeholder/new-credential forms have no stored row to execute with.
-const executeAction = z.object({
-	action: z
-		.literal('execute')
-		.describe(
-			'Execute a single node standalone with real credentials and return its real output ' +
-				'items. Use it to learn the exact output shape of a node before wiring downstream ' +
-				"expressions, or to test one node in isolation. Always read the node's " +
-				'`action: "type-definition"` first and build the parameters from it — never guess ' +
-				'parameter names, resource/operation values, or the version. The node really runs — ' +
-				'side effects happen (messages get sent, rows get written). ' +
-				'Expressions referencing other nodes cannot resolve; binary ' +
-				'output is returned as metadata only.',
-		),
+const executeNodeFieldsShape = {
 	type: z.string().min(1).describe(NODE_TYPE_ID_DESCRIPTION),
 	version: z.number().describe('Node version, e.g. 4.7'),
 	config: z
@@ -197,7 +218,28 @@ const executeAction = z.object({
 		.optional()
 		.describe('Input items for the node (defaults to one empty item)'),
 	timeoutMs: z.number().int().positive().max(MAX_EXECUTE_TIMEOUT_MS).optional(),
+};
+
+// Envelope mirrors a workflow-sdk node so the agent can pass a node it is
+// building verbatim. Credentials take the resolved `{ id, name }` form only —
+// the SDK's placeholder/new-credential forms have no stored row to execute with.
+const executeAction = z.object({
+	action: z
+		.literal('execute')
+		.describe(
+			'Execute a single node standalone with real credentials and return its real output ' +
+				'items. Use it to learn the exact output shape of a node before wiring downstream ' +
+				'expressions, or to test one node in isolation. Always read the node via ' +
+				'`get_node_types` first and build the parameters from it — never guess ' +
+				'parameter names, resource/operation values, or the version. The node really runs — ' +
+				'side effects happen (messages get sent, rows get written). ' +
+				'Expressions referencing other nodes cannot resolve; binary ' +
+				'output is returned as metadata only.',
+		),
+	...executeNodeFieldsShape,
 });
+
+const executeNodeInputSchema = z.object(executeNodeFieldsShape);
 
 type ExecuteInput = z.infer<typeof executeAction>;
 
@@ -260,29 +302,10 @@ async function handleList(
 	return { nodes };
 }
 
-async function handleSearch(
+async function enrichSearchResults(
 	context: InstanceAiContext,
-	input: Extract<FullInput, { action: 'search' }>,
-	cache: SearchEngineCache,
+	results: ReturnType<NodeSearchEngine['searchByName']>,
 ) {
-	const nodeTypes = await context.nodeService.listSearchable();
-	let engine = cache.engine;
-	if (!engine || cache.nodeTypes !== nodeTypes || cache.nodeCount !== nodeTypes.length) {
-		cache.nodeTypes = nodeTypes;
-		cache.nodeCount = nodeTypes.length;
-		engine = new NodeSearchEngine(nodeTypes);
-		cache.engine = engine;
-	}
-
-	let results;
-	if (input.connectionType) {
-		results = engine.searchByConnectionType(input.connectionType, input.limit, input.query);
-	} else if (input.query) {
-		results = engine.searchByName(input.query, input.limit);
-	} else {
-		return { results: [], totalResults: 0 };
-	}
-
 	// Enrich results with discriminator and credential setup metadata when available.
 	const enriched = await Promise.all(
 		results.map(async (r) => {
@@ -330,6 +353,40 @@ async function handleSearch(
 	};
 }
 
+function getOrBuildSearchEngine(
+	nodeTypes: SearchableNodeType[],
+	cache: SearchEngineCache,
+): NodeSearchEngine {
+	let engine = cache.engine;
+	if (!engine || cache.nodeTypes !== nodeTypes || cache.nodeCount !== nodeTypes.length) {
+		cache.nodeTypes = nodeTypes;
+		cache.nodeCount = nodeTypes.length;
+		engine = new NodeSearchEngine(nodeTypes);
+		cache.engine = engine;
+	}
+	return engine;
+}
+
+async function handleSearch(
+	context: InstanceAiContext,
+	input: Extract<FullInput, { action: 'search' }>,
+	cache: SearchEngineCache,
+) {
+	const nodeTypes = await context.nodeService.listSearchable();
+	const engine = getOrBuildSearchEngine(nodeTypes, cache);
+
+	let results;
+	if (input.connectionType) {
+		results = engine.searchByConnectionType(input.connectionType, input.limit, input.query);
+	} else if (input.query) {
+		results = engine.searchByName(input.query, input.limit);
+	} else {
+		return { results: [], totalResults: 0 };
+	}
+
+	return await enrichSearchResults(context, results);
+}
+
 async function handleDescribe(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'describe' }>,
@@ -340,7 +397,7 @@ async function handleDescribe(
 	} catch {
 		return {
 			found: false,
-			error: `Node type "${input.nodeType}" not found. Use the search action to discover available node types.`,
+			error: `Node type "${input.nodeType}" not found. Use search_nodes to discover available node types.`,
 			name: input.nodeType,
 			displayName: '',
 			description: '',
@@ -353,7 +410,7 @@ async function handleDescribe(
 
 /**
  * Resolve TypeScript type definitions for a validated list of node requests.
- * Used by the consolidated `workflow_builder_nodes` tool's `type-definition` action.
+ * Used by `get_node_types` and the legacy `workflow_builder_nodes` tool.
  */
 async function resolveNodeTypeDefinitions(
 	context: InstanceAiContext,
@@ -362,7 +419,7 @@ async function resolveNodeTypeDefinitions(
 	if (!context.nodeService.getNodeTypeDefinition) {
 		return {
 			definitions: nodeTypes.map((req) => ({
-				nodeType: typeof req === 'string' ? req : req.nodeType,
+				nodeType: typeof req === 'string' ? req : (req.nodeType ?? req.nodeId ?? ''),
 				content: '',
 				error: 'Node type definitions are not available.',
 			})),
@@ -371,8 +428,36 @@ async function resolveNodeTypeDefinitions(
 
 	const definitions = await Promise.all(
 		nodeTypes.map(async (req) => {
-			const nodeType = typeof req === 'string' ? req : req.nodeType;
-			const options = typeof req === 'string' ? undefined : req;
+			const nodeType = typeof req === 'string' ? req : (req.nodeType ?? req.nodeId ?? '');
+			if (!nodeType) {
+				return {
+					nodeType: '',
+					content: '',
+					error: 'Node type ID is required.',
+				};
+			}
+
+			if (
+				typeof req !== 'string' &&
+				isToolType(nodeType, { includeHitl: false }) &&
+				isUnsupportedEphemeralNodeOperation(req.operation)
+			) {
+				return {
+					nodeType,
+					content: '',
+					error: `Node "${nodeType}": ${unsupportedEphemeralNodeOperationMessage(req.operation)}`,
+				};
+			}
+
+			const options =
+				typeof req === 'string'
+					? undefined
+					: {
+							...(req.version !== undefined ? { version: String(req.version) } : {}),
+							...(req.resource ? { resource: req.resource } : {}),
+							...(req.operation ? { operation: req.operation } : {}),
+							...(req.mode ? { mode: req.mode } : {}),
+						};
 
 			const result = await context.nodeService.getNodeTypeDefinition!(nodeType, options);
 
@@ -399,6 +484,10 @@ async function resolveNodeTypeDefinitions(
 				...(result.builderHint ? { builderHint: result.builderHint } : {}),
 				...(result.deprecated ? { deprecated: true } : {}),
 				...(result.unavailable ? { unavailable: result.unavailable } : {}),
+				...(result.aiGateway ? { aiGateway: result.aiGateway } : {}),
+				...(result.webhooks ? { webhooks: result.webhooks } : {}),
+				...(result.polling ? { polling: result.polling } : {}),
+				...(result.triggerPanel !== undefined ? { triggerPanel: result.triggerPanel } : {}),
 			};
 		}),
 	);
@@ -643,7 +732,389 @@ async function handleExecute(
 	});
 }
 
-// ── Tool factory ────────────────────────────────────────────────────────────
+// ── 4 Unified Independent Tool Factories ────────────────────────────────────
+
+const searchNodesInputSchema = z.object({
+	query: z
+		.string()
+		.optional()
+		.describe('Search query to filter by name or description (e.g. "slack", "http")'),
+	queries: z
+		.array(z.string().min(1))
+		.min(1)
+		.max(10)
+		.optional()
+		.describe(
+			'Batch of search queries (e.g. ["gmail", "slack", "http"]). Prefer batching multiple service lookups in one call.',
+		),
+	categories: z
+		.array(z.string())
+		.min(1)
+		.max(3)
+		.optional()
+		.describe(
+			`Curated workflow technique categories: ${categoryList.join(', ')}. Pass when the workflow fits a known category.`,
+		),
+	scope: z
+		.enum(['all', 'agent_tool'])
+		.optional()
+		.default('all')
+		.describe(
+			'Filter scope: "all" (default) searches workflow and tool nodes; "agent_tool" restricts to executable *Tool nodes usable by an n8n Agent.',
+		),
+	connectionType: z
+		.enum(AI_CONNECTION_TYPES)
+		.optional()
+		.describe('Filter results by AI sub-node connection type.'),
+	gatewayCreditsOnly: z
+		.boolean()
+		.optional()
+		.describe(
+			'When true, return only nodes supported by Gateway credits (each carries an `aiGateway` field with minVersion/operations).',
+		),
+	limit: z
+		.number()
+		.optional()
+		.default(10)
+		.describe('Maximum number of results to return per query (default: 10)'),
+});
+
+export function createSearchNodesTool(context: InstanceAiContext) {
+	const searchEngineCache: SearchEngineCache = {};
+
+	return new Tool(DOMAIN_TOOL_IDS.SEARCH_NODES)
+		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.SEARCH_NODES))
+		.description(
+			'Search n8n node types by service name, category, AI connection type, or Gateway credits coverage. ' +
+				'Use `categories` for curated workflow category recommendations, `query` or `queries` for service-specific discovery ' +
+				'(short service names like "Gmail" or "Slack", not full task phrases), `scope="agent_tool"` when finding executable *Tool ' +
+				'nodes for an n8n Agent, and `gatewayCreditsOnly=true` to list services covered by Gateway credits (no API key needed). ' +
+				'After finding a node, call `get_node_types` to read its parameter schema.',
+		)
+		.input(searchNodesInputSchema)
+		.handler(async (input) => {
+			const queryList = [
+				...new Set([...(input.queries ?? []), ...(input.query ? [input.query] : [])]),
+			];
+
+			const hasCategoryLookup = Boolean(input.categories && input.categories.length > 0);
+			const hasSearchLookup =
+				queryList.length > 0 || Boolean(input.connectionType) || Boolean(input.gatewayCreditsOnly);
+
+			if (hasCategoryLookup && !hasSearchLookup) {
+				return await handleSuggested(context, {
+					action: 'suggested',
+					categories: input.categories!,
+				});
+			}
+
+			const categorySummary = hasCategoryLookup
+				? await handleSuggested(context, {
+						action: 'suggested',
+						categories: input.categories!,
+					})
+				: undefined;
+
+			if (input.gatewayCreditsOnly && !input.connectionType) {
+				const nodes = await context.nodeService.listAvailable({
+					query: queryList[0],
+					gatewayCreditsOnly: true,
+				});
+				const filtered =
+					input.scope === 'agent_tool' ? nodes.filter((n) => isAgentToolNodeType(n.name)) : nodes;
+				return {
+					nodes: filtered,
+					results: filtered,
+					totalResults: filtered.length,
+					...(categorySummary
+						? {
+								categoryResults: categorySummary.results,
+								unknownCategories: categorySummary.unknownCategories,
+							}
+						: {}),
+				};
+			}
+
+			const nodeTypes = await context.nodeService.listSearchable();
+			const engine = getOrBuildSearchEngine(nodeTypes, searchEngineCache);
+			const nodeFilter = input.scope === 'agent_tool' ? isAgentToolNodeType : undefined;
+
+			const matchedByName = new Map<string, ReturnType<NodeSearchEngine['searchByName']>[number]>();
+
+			if (input.connectionType) {
+				const queriesOrUndefined = queryList.length > 0 ? queryList : [undefined];
+				for (const q of queriesOrUndefined) {
+					for (const item of engine.searchByConnectionType(input.connectionType, input.limit, q)) {
+						if (nodeFilter && !nodeFilter(item.name)) continue;
+						if (!matchedByName.has(item.name)) matchedByName.set(item.name, item);
+					}
+				}
+			} else if (queryList.length > 0) {
+				for (const q of queryList) {
+					for (const item of engine.searchByName(q, input.limit, nodeFilter)) {
+						if (!matchedByName.has(item.name)) matchedByName.set(item.name, item);
+					}
+				}
+			} else {
+				return { results: [], totalResults: 0 };
+			}
+
+			const enriched = await enrichSearchResults(context, [...matchedByName.values()]);
+			return {
+				...enriched,
+				...(categorySummary
+					? {
+							categoryResults: categorySummary.results,
+							unknownCategories: categorySummary.unknownCategories,
+						}
+					: {}),
+			};
+		})
+		.build();
+}
+
+const getNodeTypesInputSchema = z.object({
+	nodeTypes: z
+		.array(nodeRequestSchema)
+		.min(1)
+		.max(10)
+		.optional()
+		.describe(NODE_TYPES_ARRAY_DESCRIPTION),
+	nodeIds: z
+		.array(nodeRequestSchema)
+		.min(1)
+		.max(10)
+		.optional()
+		.describe('Alias for nodeTypes (e.g. ["n8n-nodes-base.gmailTool"])'),
+});
+
+export function createGetNodeTypesTool(context: InstanceAiContext) {
+	return new Tool(DOMAIN_TOOL_IDS.GET_NODE_TYPES)
+		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.GET_NODE_TYPES))
+		.description(
+			'Get TypeScript type definitions and metadata for n8n nodes — exact parameter names, enum values, ' +
+				'credential types, display conditions, `@builderHint` annotations, Gateway credits (`aiGateway`) metadata, ' +
+				'and webhook/trigger details. Pass `nodeTypes` (or `nodeIds`). For split nodes (e.g. Slack, Gmail, Google Sheets), ' +
+				'pass the object form with `resource` and `operation` (or `mode`) discriminators.',
+		)
+		.input(getNodeTypesInputSchema)
+		.handler(async (input, ctx) => {
+			const requests = input.nodeTypes ?? input.nodeIds;
+			if (!requests || requests.length === 0) {
+				return {
+					definitions: [],
+					error: 'nodeTypes: Required — provide at least one node type ID or request object.',
+				};
+			}
+
+			const result = await resolveNodeTypeDefinitions(context, requests);
+			if (ctx.loadSkill && (await needsModelSelection(context.nodeService, result.definitions))) {
+				await ctx.loadSkill('model-selection');
+			}
+			return result;
+		})
+		.build();
+}
+
+const getNodeParameterOptionsInputSchema = z.object({
+	nodeType: z.string().describe(NODE_TYPE_ID_DESCRIPTION),
+	version: z.number().optional().describe('Node version, e.g. 4.7'),
+	nodeTypeVersion: z.number().optional().describe('Alias for version'),
+	parameterPath: z
+		.string()
+		.optional()
+		.describe(
+			'Parameter path to resolve (preferred), e.g. "channelId", "documentId", "teamId", or "additionalFields.teamId". Resolves resourceLocator, loadOptionsMethod, and loadOptions routing automatically and returns ready-to-write `parameterValue` entries.',
+		),
+	methodName: z.string().optional().describe(METHOD_NAME_DESCRIPTION),
+	methodType: z.enum(['listSearch', 'loadOptions']).optional().describe(METHOD_TYPE_DESCRIPTION),
+	credentialType: z
+		.string()
+		.optional()
+		.describe('Credential type key, e.g. "googleSheetsOAuth2Api" or "slackApi"'),
+	credentialId: z.string().optional().describe('Credential ID from credential lookup or setup'),
+	credentials: z
+		.record(z.object({ id: z.string(), name: z.string() }))
+		.optional()
+		.describe(
+			'Node credentials map (e.g. returned by agent_builder_ask_credential), as an alternative to credentialType + credentialId.',
+		),
+	currentNodeParameters: z
+		.record(z.unknown())
+		.optional()
+		.describe(CURRENT_NODE_PARAMETERS_DESCRIPTION),
+	nodeParameters: z.record(z.unknown()).optional().describe('Alias for currentNodeParameters'),
+	filter: z.string().optional().describe('Search/filter text to narrow results'),
+	paginationToken: z
+		.string()
+		.optional()
+		.describe('Pagination token from a previous call to get more results'),
+});
+
+export function createGetNodeParameterOptionsTool(context: InstanceAiContext) {
+	return new Tool(DOMAIN_TOOL_IDS.GET_NODE_PARAMETER_OPTIONS)
+		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.GET_NODE_PARAMETER_OPTIONS))
+		.description(
+			"Fetch live credential-backed options for a node's dynamic parameter (resourceLocator, loadOptionsMethod, or loadOptions routing) — " +
+				'e.g. Google Sheets documents/tabs, Slack channels, Linear teams, or provider models. ' +
+				'Pass `parameterPath` (preferred, e.g. "channelId" or "documentId") or `methodName` + `methodType` from `get_node_types`, ' +
+				'along with `credentialType` + `credentialId` (or `credentials` map).',
+		)
+		.input(getNodeParameterOptionsInputSchema)
+		.handler(async (input) => {
+			const version = input.version ?? input.nodeTypeVersion;
+			if (version === undefined) {
+				return {
+					ok: false as const,
+					results: [],
+					error: 'version: Required — provide the node version number.',
+				};
+			}
+
+			const currentNodeParameters = input.currentNodeParameters ?? input.nodeParameters;
+
+			if (input.parameterPath) {
+				if (context.nodeService.resolveParameterOptions) {
+					return await context.nodeService.resolveParameterOptions({
+						nodeType: input.nodeType,
+						version,
+						parameterPath: input.parameterPath,
+						nodeParameters: currentNodeParameters,
+						credentials: input.credentials,
+						credentialType: input.credentialType,
+						credentialId: input.credentialId,
+						filter: input.filter,
+						paginationToken: input.paginationToken,
+					});
+				}
+
+				// Fallback when only getDescription + exploreResources are wired (e.g. unit tests)
+				try {
+					const desc = await context.nodeService.getDescription(input.nodeType, version);
+					const prop = findNodeParameterProperty(
+						desc.properties as unknown as INodeProperties[],
+						input.parameterPath,
+					);
+					const lookup = prop ? getDynamicNodeParameterLookup(prop) : null;
+					if (!lookup) {
+						return {
+							ok: false as const,
+							code: 'not_dynamic_selector' as const,
+							results: [],
+							error: `Parameter "${input.parameterPath}" does not expose a dynamic lookup on ${input.nodeType}.`,
+						};
+					}
+					const firstCredEntry = input.credentials
+						? Object.entries(input.credentials)[0]
+						: undefined;
+					const credentialType = input.credentialType ?? firstCredEntry?.[0] ?? '';
+					const credentialId = input.credentialId ?? firstCredEntry?.[1]?.id ?? '';
+					const methodName =
+						lookup.kind === 'loadOptionsRouting' ? input.parameterPath : lookup.methodName;
+					const methodType = lookup.kind === 'resourceLocator' ? 'listSearch' : 'loadOptions';
+					const explored = await handleExploreResources(context, {
+						action: 'explore-resources',
+						nodeType: input.nodeType,
+						version,
+						methodName,
+						methodType,
+						credentialType,
+						credentialId,
+						filter: input.filter,
+						paginationToken: input.paginationToken,
+						currentNodeParameters,
+					});
+					if ('error' in explored) {
+						return { ok: false as const, code: 'lookup_failed' as const, ...explored };
+					}
+					return {
+						ok: true as const,
+						kind: lookup.kind,
+						parameterPath: input.parameterPath,
+						methodName,
+						...(lookup.kind === 'resourceLocator' ? { mode: lookup.mode } : {}),
+						results: explored.results.map((r) => ({
+							...r,
+							parameterValue:
+								lookup.kind === 'resourceLocator'
+									? toResourceLocatorParameterValue(
+											{ name: r.name, value: r.value, url: r.url },
+											lookup.mode,
+										)
+									: toLoadedOptionParameterValue({ name: r.name, value: r.value }),
+						})),
+						paginationToken: explored.paginationToken,
+						...(explored.builderHint ? { builderHint: explored.builderHint } : {}),
+					};
+				} catch (error) {
+					return {
+						ok: false as const,
+						code: 'lookup_failed' as const,
+						results: [],
+						error: error instanceof Error ? error.message : String(error),
+					};
+				}
+			}
+
+			if (input.methodName) {
+				const firstCredEntry = input.credentials ? Object.entries(input.credentials)[0] : undefined;
+				const credentialType = input.credentialType ?? firstCredEntry?.[0];
+				const credentialId = input.credentialId ?? firstCredEntry?.[1]?.id;
+				if (!credentialType || !credentialId) {
+					return {
+						results: [],
+						error:
+							'credentialType and credentialId (or credentials map) are required when querying by methodName.',
+					};
+				}
+				return await handleExploreResources(context, {
+					action: 'explore-resources',
+					nodeType: input.nodeType,
+					version,
+					methodName: input.methodName,
+					methodType: input.methodType ?? 'listSearch',
+					credentialType,
+					credentialId,
+					filter: input.filter,
+					paginationToken: input.paginationToken,
+					currentNodeParameters,
+				});
+			}
+
+			return {
+				results: [],
+				error: 'Provide parameterPath (preferred) or methodName + methodType.',
+			};
+		})
+		.build();
+}
+
+export function createExecuteNodeTool(context: InstanceAiContext) {
+	return new Tool(DOMAIN_TOOL_IDS.EXECUTE_NODE)
+		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.EXECUTE_NODE))
+		.description(
+			'Execute a single n8n node standalone with real credentials and return its real output items. ' +
+				'Use it to perform a one-off operation or to learn the exact output shape of a node before wiring ' +
+				'downstream expressions. Always read the node via `get_node_types` first and build the parameters ' +
+				'from it — never guess parameter names, resource/operation values, or the version. The node really ' +
+				'runs (requires user approval, real side effects). Expressions referencing other nodes cannot resolve; ' +
+				'binary output is returned as metadata only.',
+		)
+		.input(sanitizeInputSchema(executeNodeInputSchema))
+		.suspend(suspendSchema)
+		.resume(instanceAiApprovalResumeSchema)
+		.handler(async (input, ctx) => {
+			return await handleExecute(
+				context,
+				{ action: 'execute', ...input },
+				ctx.resumeData,
+				ctx.suspend,
+			);
+		})
+		.build();
+}
+
+// ── Legacy Consolidated Tool Factory (kept for backward compatibility) ──────
 
 export function createNodesTool(
 	context: InstanceAiContext,

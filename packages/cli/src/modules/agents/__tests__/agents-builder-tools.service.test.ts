@@ -1167,7 +1167,7 @@ describe('AgentsBuilderToolsService', () => {
 				errors: [
 					expect.objectContaining({
 						path: '/tools/0/node/nodeParameters/teamId',
-						message: expect.stringContaining('agent_builder_get_resource_locator_options'),
+						message: expect.stringContaining('get_node_parameter_options'),
 					}),
 				],
 			});

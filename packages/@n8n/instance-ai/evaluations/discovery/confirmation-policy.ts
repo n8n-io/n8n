@@ -15,7 +15,11 @@
 // runner. A scenario can always bypass the lot with `resumeWith`.
 // ---------------------------------------------------------------------------
 
-import { resolveBuilderToolName } from '@n8n/api-types';
+import {
+	SHARED_BUILDER_TOOL_NAMES,
+	WORKFLOW_BUILDER_TOOL_NAMES,
+	resolveBuilderToolName,
+} from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
 import type { ConfirmationAnswer, DiscoveryTestCase } from './types';
@@ -28,6 +32,15 @@ export type ApprovalResponder = (
 	payload: Record<string, unknown>,
 ) => Record<string, unknown> | undefined;
 
+function resolveConfirmationToolName(toolName: string): string {
+	const resolved = resolveBuilderToolName(toolName);
+	// Only the `execute` action of the legacy `workflow_builder_nodes` tool ever suspended,
+	// which is now `execute_node`.
+	return resolved === WORKFLOW_BUILDER_TOOL_NAMES.NODES
+		? SHARED_BUILDER_TOOL_NAMES.EXECUTE_NODE
+		: resolved;
+}
+
 export function buildConfirmationPolicy(
 	scenario: Pick<DiscoveryTestCase, 'confirmations'>,
 ): ConfirmationPolicy {
@@ -35,7 +48,7 @@ export function buildConfirmationPolicy(
 	for (const [toolName, answer] of Object.entries(scenario.confirmations ?? {})) {
 		// Stored scenarios can key an answer by a former builder tool name.
 		policy.set(
-			resolveBuilderToolName(toolName),
+			resolveConfirmationToolName(toolName),
 			typeof answer === 'string' ? { decision: answer } : answer,
 		);
 	}
@@ -71,9 +84,9 @@ export function unmatchedConfirmations(
 }
 
 function suspendedToolName(suspension: SuspensionInfo | undefined): string {
-	if (suspension?.toolName) return resolveBuilderToolName(suspension.toolName);
+	if (suspension?.toolName) return resolveConfirmationToolName(suspension.toolName);
 	const payload = suspension?.suspendPayload;
 	return isRecord(payload) && typeof payload.toolName === 'string'
-		? resolveBuilderToolName(payload.toolName)
+		? resolveConfirmationToolName(payload.toolName)
 		: '';
 }
