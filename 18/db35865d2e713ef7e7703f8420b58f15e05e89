@@ -803,6 +803,7 @@ packages/cli/src/modules/agents/agent-config.service.ts
   s_d3c0f6f6f7d41c::t_3042b83d01b05a 162-171
   s_d3c0f6f6f7d41c::t_d899c1753c2590 25,30
   s_d3c0f6f6f7d41c::t_0270e27f7d4462 15-18,24,34,64,124-125,157-161,172-173,176
+  s_71ad2034164515::t_346ab0bd4f591d 14
 packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
   s_d3c0f6f6f7d41c::t_c057a57cc01518 865,910
 packages/cli/src/modules/n8n-packages/entities/workflow/references/__tests__/sub-workflow-node.reference.test.ts
