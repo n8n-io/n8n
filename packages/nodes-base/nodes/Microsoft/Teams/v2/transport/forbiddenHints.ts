@@ -96,14 +96,20 @@ export const CHAT_ALL_MESSAGES_SUBSCRIPTION_FORBIDDEN = {
 } satisfies MicrosoftGraphForbiddenHint;
 
 // Graph answers 403 `ExtensionError` with this text when a second `/teams/{id}/channels`
-// subscription is created for the same account. The match names no subject, so an
-// app-subject variant under the Service Principal credential also matches.
+// subscription is created for the same identity. The match names no subject, so the
+// app-subject variant under the Service Principal credential matches too; the main copy
+// is for that credential, the `delegated` copy for a signed-in Microsoft account.
 export const SUBSCRIPTION_LIMIT_FORBIDDEN = {
 	endpoint: SUBSCRIPTIONS_ENDPOINT,
 	match: 'has reached its limit of',
-	message: 'Microsoft Graph allows only one subscription of this kind per Microsoft account',
+	message: 'Microsoft Graph allows only one subscription of this kind per app registration',
 	description:
-		'Another workflow with the same Microsoft account already watches this team or chat, or an earlier subscription was left behind, for example by a deleted workflow or by another n8n instance. Unpublish the other workflow, wait up to three days for the old subscription to expire, or connect this credential with a different Microsoft account. Then publish again.',
+		'Another workflow or n8n instance that uses the same app registration already watches this team or chat, or an earlier subscription was left behind. Unpublish the other workflow, wait up to three days for the old subscription to expire, or use a different app registration. Then publish again.',
+	delegated: {
+		message: 'Microsoft Graph allows only one subscription of this kind per Microsoft account',
+		description:
+			'Another workflow with the same Microsoft account already watches this team or chat, or an earlier subscription was left behind, for example by a deleted workflow or by another n8n instance. Unpublish the other workflow, wait up to three days for the old subscription to expire, or connect this credential with a different Microsoft account. Then publish again.',
+	},
 } satisfies MicrosoftGraphForbiddenHint;
 
 export const TEAMS_FORBIDDEN_HINTS: readonly MicrosoftGraphForbiddenHint[] = Object.freeze([

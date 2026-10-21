@@ -69,8 +69,8 @@ describe('Microsoft Teams Trigger - createSubscription error surfacing', () => {
 			const error = await createAndCatch();
 
 			expect(error).toBeInstanceOf(NodeApiError);
-			expect(error.message).toBe(SUBSCRIPTION_LIMIT_FORBIDDEN.message);
-			expect(error.description).toBe(SUBSCRIPTION_LIMIT_FORBIDDEN.description);
+			expect(error.message).toBe(SUBSCRIPTION_LIMIT_FORBIDDEN.delegated.message);
+			expect(error.description).toBe(SUBSCRIPTION_LIMIT_FORBIDDEN.delegated.description);
 			expect(requestWithAuthentication).not.toHaveBeenCalled();
 		});
 
