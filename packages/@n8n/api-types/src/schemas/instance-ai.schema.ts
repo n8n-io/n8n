@@ -1824,6 +1824,7 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'agent_preview',
 	'assistant_page',
 	'onboarding',
+	'preferences_empty_state',
 	// Experiment cleanup: remove with openWorkflowInAssistant.
 	'workflow_list_auto',
 	'workflow_list_button',
@@ -1883,6 +1884,7 @@ export const INSTANCE_AI_PREFILL_TYPES = [
 	'v1_opener',
 	'workflow_attachment_opener',
 	'contextual_followup',
+	'preferences_suggestion',
 ] as const;
 export type InstanceAiPrefillType = (typeof INSTANCE_AI_PREFILL_TYPES)[number];
 
