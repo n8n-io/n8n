@@ -1,9 +1,9 @@
-packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
-  s_71ad2034164515::t_89c6d57dc0d627 33
 packages/cli/src/modules/agents/agent-config.service.ts
   s_71ad2034164515::t_0e40ffe6223305 30
 packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
   s_71ad2034164515::t_22b6f36b197f3b 258,260,267,310,319-322,337,376-383
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_71ad2034164515::t_89c6d57dc0d627 33
 ---
 {
   "schema_version": "authorship/3.0.0",
