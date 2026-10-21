@@ -117,23 +117,13 @@ export class PublicApiRateLimitSettingsService {
 		return !!value?.trim() || !!process.env[`${envVar}_FILE`];
 	}
 
-	private valueFor<K extends keyof PublicApiRateLimitSettings>(
-		field: K,
-		values: Partial<PublicApiRateLimitSettings>,
-	): PublicApiRateLimitSettings[K] {
-		if (this.isEnvManaged(field)) return this.config[field];
-
-		const value = values[field];
-		if (value !== undefined) return value;
-
-		return DEFAULTS[field];
-	}
-
 	private mergeWithEnvAndConfig(
 		values: Partial<PublicApiRateLimitSettings>,
 	): PublicApiRateLimitSettings {
-		const pick = <K extends keyof PublicApiRateLimitSettings>(field: K) =>
-			this.valueFor(field, values);
+		const pick = <K extends keyof PublicApiRateLimitSettings>(field: K) => {
+			if (this.isEnvManaged(field)) return this.config[field];
+			return values[field] ?? DEFAULTS[field];
+		};
 
 		return {
 			enabled: pick('enabled'),
