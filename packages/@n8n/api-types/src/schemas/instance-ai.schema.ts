@@ -777,6 +777,8 @@ export type InstanceGatewayResourceDecision = z.infer<typeof instanceGatewayReso
 
 export const gatewayConfirmationRequiredWirePayloadSchema = z.object({
 	toolGroup: z.string(),
+	/** What `resource` names. Browser tools set it, so the UI can word the card for it. */
+	kind: z.enum(['host', 'credential-write']).optional(),
 	resource: z.string(),
 	description: z.string(),
 	/** Available decision options. */

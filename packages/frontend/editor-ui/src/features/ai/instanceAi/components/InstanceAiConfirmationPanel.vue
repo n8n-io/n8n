@@ -18,9 +18,10 @@ import { computed, onBeforeUnmount, ref } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useThread, type PendingConfirmationItem } from '../instanceAi.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
-import { isPendingItemFloating } from '../confirmationKinds';
+import { isCloudBrowserResourceDecision, isPendingItemFloating } from '../confirmationKinds';
 import { formatApprovalDetails } from '../approvalDetails';
 import { useToolLabel } from '../toolLabels';
+import CloudBrowserResourceDecision from './CloudBrowserResourceDecision.vue';
 import DomainAccessApproval from './DomainAccessApproval.vue';
 import GatewayResourceDecision from './GatewayResourceDecision.vue';
 import InstanceAiChannelSetup from './InstanceAiChannelSetup.vue';
@@ -714,6 +715,20 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 				:request-id="chunk.item.toolCall.confirmation.requestId"
 				:query="chunk.item.toolCall.confirmation.webSearch.query"
 				:severity="chunk.item.toolCall.confirmation.severity"
+			/>
+
+			<CloudBrowserResourceDecision
+				v-else-if="
+					isCloudBrowserResourceDecision(chunk.item) &&
+					chunk.item.toolCall.confirmation.resourceDecision
+				"
+				:key="'floating-' + chunk.item.toolCall.confirmation.requestId"
+				data-test-id="instance-ai-confirmation-panel"
+				:request-id="chunk.item.toolCall.confirmation.requestId"
+				:kind="chunk.item.toolCall.confirmation.resourceDecision.kind"
+				:resource="chunk.item.toolCall.confirmation.resourceDecision.resource"
+				:description="chunk.item.toolCall.confirmation.resourceDecision.description"
+				:options="chunk.item.toolCall.confirmation.resourceDecision.options"
 			/>
 
 			<N8nApprovalCard

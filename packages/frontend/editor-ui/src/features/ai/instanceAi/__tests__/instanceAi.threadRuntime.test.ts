@@ -8,6 +8,7 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { fetchThreadMessages, fetchThreadStatus } from '../instanceAi.memory.api';
 import { ensureThread, postMessage, postConfirmation, postCancel } from '../instanceAi.api';
 import {
+	INSTANCE_AI_CLOUD_BROWSER_AGENT_ROLE,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 	type InstanceAiCredentialDestination,
 	type InstanceAiTargetApproval,
@@ -3950,5 +3951,74 @@ describe('createThreadRuntime - follow-up run after a reconnect', () => {
 			runtime.pendingConfirmations.map((item) => item.toolCall.confirmation.requestId),
 		).toEqual(['req-move']);
 		expect(runtime.isAwaitingConfirmation).toBe(true);
+	});
+});
+
+describe('createThreadRuntime - background agent confirmations', () => {
+	beforeEach(() => {
+		setupRuntimePinia();
+		activeThreadId = 'thread-background-agent';
+	});
+
+	it('attaches a confirmation to the background agent that raised it, even with hidden steps', () => {
+		const runtime = activeRuntime(createRuntimeRegistry());
+		runtime.messages = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				runId: 'run-1',
+				content: '',
+				reasoning: '',
+				isStreaming: false,
+				createdAt: '2026-01-01T00:00:00.000Z',
+				agentTree: {
+					agentId: 'agent-root',
+					role: 'orchestrator',
+					status: 'completed',
+					textContent: '',
+					reasoning: '',
+					toolCalls: [],
+					timeline: [],
+					children: [
+						{
+							agentId: 'agent-cloud-browser',
+							role: INSTANCE_AI_CLOUD_BROWSER_AGENT_ROLE,
+							status: 'active',
+							hideSteps: true,
+							textContent: '',
+							reasoning: '',
+							children: [],
+							timeline: [],
+							toolCalls: [
+								{
+									toolCallId: 'tc-navigate',
+									toolName: 'browser_navigate',
+									args: { url: 'https://example.com' },
+									isLoading: true,
+									confirmation: {
+										requestId: 'req-navigate',
+										severity: 'warning',
+										message: 'browser_navigate: Browser: example.com',
+										inputType: 'resource-decision',
+										resourceDecision: {
+											toolGroup: 'browser',
+											kind: 'host',
+											resource: 'example.com',
+											description: 'Browser: example.com',
+											options: ['denyOnce', 'allowOnce', 'allowForSession'],
+										},
+									},
+								},
+							],
+						},
+					],
+				},
+			},
+		] as unknown as typeof runtime.messages;
+
+		expect(runtime.pendingConfirmations).toHaveLength(1);
+		expect(runtime.pendingConfirmations[0].agentNode.role).toBe(
+			INSTANCE_AI_CLOUD_BROWSER_AGENT_ROLE,
+		);
 	});
 });

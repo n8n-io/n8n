@@ -204,6 +204,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 		};
 		const domainRequest = (host: string) => ({
 			toolGroup: 'browser',
+			kind: 'host',
 			resource: host,
 			description: `Browser: ${host}`,
 			options: ['denyOnce', 'allowOnce', 'allowForSession'],
@@ -349,6 +350,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 
 				expect(confirmationRequest(result)).toEqual({
 					toolGroup: 'browser',
+					kind: 'credential-write',
 					resource: 'credentials',
 					description: 'Create credential "Acme API"',
 					options: ['denyOnce', 'allowOnce'],

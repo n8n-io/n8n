@@ -224,6 +224,7 @@ function confirmationRequiredResult(
 ): McpToolCallResult {
 	const payload = {
 		toolGroup: affected.toolGroup,
+		kind: affected.kind,
 		resource: affected.resource,
 		description: affected.description,
 		options,

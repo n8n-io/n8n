@@ -1,11 +1,22 @@
+import { INSTANCE_AI_CLOUD_BROWSER_AGENT_ROLE } from '@n8n/api-types';
+
 import type { PendingConfirmationItem } from './instanceAi.store';
+
+/** A resource decision raised by the cloud browser agent. It gets its own floating card. */
+export function isCloudBrowserResourceDecision(item: PendingConfirmationItem): boolean {
+	return (
+		item.toolCall.confirmation.inputType === 'resource-decision' &&
+		item.agentNode.role === INSTANCE_AI_CLOUD_BROWSER_AGENT_ROLE
+	);
+}
 
 /**
  * Decides whether a pending confirmation belongs in the floating slot (takes
  * over the chat input) or the inline list (renders in the chat flow).
  *
- * Floating: structured questions, single-click approvals, and domain/web-search access.
- * Inline: plan-review, text, setup, credential, gateway resource-decision,
+ * Floating: structured questions, single-click approvals, domain/web-search access,
+ *   and cloud browser resource-decisions.
+ * Inline: plan-review, text, setup, credential, other gateway resource-decisions,
  *   continue, channel setup.
  *
  * Items are inline-by-presence: if `setupRequests` / `credentialRequests` /
@@ -25,9 +36,10 @@ export function isPendingItemFloating(item: PendingConfirmationItem): boolean {
 	switch (conf.inputType) {
 		case 'plan-review':
 		case 'text':
-		case 'resource-decision':
 		case 'continue':
 			return false;
+		case 'resource-decision':
+			return isCloudBrowserResourceDecision(item);
 		case 'questions':
 		case 'approval':
 		case undefined:
