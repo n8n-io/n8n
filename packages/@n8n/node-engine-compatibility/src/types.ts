@@ -69,6 +69,8 @@ export interface AdditionalDataContext {
  */
 export interface SubWorkflowResolveRequest {
 	workflowId: string;
+	/** The child execution's id, minted by the caller, so the trigger runs under it. */
+	executionId: string;
 	parent: {
 		executionId: string;
 		workflowId: string;

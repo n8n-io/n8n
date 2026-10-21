@@ -122,8 +122,8 @@ export class EngineAdditionalDataBuilder {
 			executeAgent: unimplemented('Agents (executeAgent)'),
 			listAgents: unimplemented('Agents (listAgents)'),
 			// The Execute Sub-workflow node reads the child's run data to trace paired
-			// items through it. The data plane has no v1 run data for a child, so the
-			// node falls back to matching items by index.
+			// items through it. The data plane has no v1 run data for a child. The shim
+			// drops the child items' own marks, so the node pairs them by index.
 			getRunExecutionData: async () => undefined,
 			getRuntimeCredential: unimplemented('Runtime credentials (getRuntimeCredential)'),
 			setExecutionStatus: () => {
