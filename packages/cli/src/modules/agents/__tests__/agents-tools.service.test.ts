@@ -1,5 +1,4 @@
 import { mock } from 'vitest-mock-extended';
-import type { CredentialProvider } from '@n8n/agents';
 import { AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES } from '@n8n/api-types';
 
 import type { NodeCatalogService } from '@/node-catalog';
@@ -9,12 +8,6 @@ import {
 	isExecutableNodeType,
 	AgentsToolsService,
 } from '../agents-tools.service';
-
-const ctx = {
-	resumeData: undefined,
-	suspend: vi.fn().mockResolvedValue(undefined as never),
-	parentTelemetry: undefined,
-};
 
 function makeService() {
 	const nodeCatalogService = mock<NodeCatalogService>();
@@ -29,90 +22,9 @@ function makeService() {
 	return { service, nodeCatalogService };
 }
 
-function makeCredentialProvider(
-	creds: Array<{ id: string; name: string; type: string }> = [],
-): CredentialProvider {
-	const provider = mock<CredentialProvider>();
-	provider.list.mockResolvedValue(creds);
-	return provider;
-}
-
 describe('AgentsToolsService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-	});
-
-	describe('getSharedTools()', () => {
-		it('returns agent_builder_list_credentials', () => {
-			const { service } = makeService();
-			const names = service.getSharedTools(makeCredentialProvider(), 'hint').map((t) => t.name);
-			expect(names).toEqual(['agent_builder_list_credentials']);
-		});
-
-		it('keeps the former tool names as legacy names', () => {
-			const { service } = makeService();
-			const legacyNames = service
-				.getSharedTools(makeCredentialProvider(), 'hint')
-				.map((t) => t.legacyNames);
-			expect(legacyNames).toEqual([['list_credentials']]);
-		});
-	});
-
-	describe('agent_builder_list_credentials handler', () => {
-		function getListTool(service: AgentsToolsService, provider: CredentialProvider) {
-			return service
-				.getSharedTools(provider, 'hint')
-				.find((t) => t.name === 'agent_builder_list_credentials')!;
-		}
-
-		it('returns all credentials when no types filter is provided', async () => {
-			const { service } = makeService();
-			const provider = makeCredentialProvider([
-				{ id: '1', name: 'Gmail', type: 'gmailOAuth2' },
-				{ id: '2', name: 'Header', type: 'httpHeaderAuth' },
-			]);
-
-			const result = await getListTool(service, provider).handler!({}, ctx);
-
-			expect(result).toEqual({
-				credentials: [
-					{ id: '1', name: 'Gmail', type: 'gmailOAuth2' },
-					{ id: '2', name: 'Header', type: 'httpHeaderAuth' },
-				],
-			});
-		});
-
-		it('filters by the provided credential types', async () => {
-			const { service } = makeService();
-			const provider = makeCredentialProvider([
-				{ id: '1', name: 'Gmail', type: 'gmailOAuth2' },
-				{ id: '2', name: 'Header', type: 'httpHeaderAuth' },
-				{ id: '3', name: 'Slack', type: 'slackApi' },
-			]);
-
-			const result = await getListTool(service, provider).handler!(
-				{ types: ['gmailOAuth2', 'slackApi'] },
-				ctx,
-			);
-
-			expect(result).toEqual({
-				credentials: [
-					{ id: '1', name: 'Gmail', type: 'gmailOAuth2' },
-					{ id: '3', name: 'Slack', type: 'slackApi' },
-				],
-			});
-		});
-
-		it('returns all credentials when types is an empty array', async () => {
-			const { service } = makeService();
-			const provider = makeCredentialProvider([{ id: '1', name: 'Gmail', type: 'gmailOAuth2' }]);
-
-			const result = await getListTool(service, provider).handler!({ types: [] }, ctx);
-
-			expect(result).toEqual({
-				credentials: [{ id: '1', name: 'Gmail', type: 'gmailOAuth2' }],
-			});
-		});
 	});
 
 	describe('searchAgentToolNodes()', () => {
