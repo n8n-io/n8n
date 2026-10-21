@@ -108,8 +108,8 @@ exports[`components > N8nDatatable > should render correctly 1`] = `
     </nav>
     <div data-test-id="pagination-sizes" aria-label="Page size" tabindex="0" class="selectTrigger medium pageSizes" role="combobox" aria-expanded="false" aria-required="false" aria-autocomplete="none" disabled="false" dir="ltr" data-state="closed">
       <!--v-if--><span style="pointer-events: none;" data-placeholder="Select an option" class="selectValue">10/page</span>
-      <!--v-if--><svg viewBox="0 0 24 24" width="1em" height="1em" class="n8n-icon trailingIcon" aria-hidden="true" focusable="false" role="img" data-icon="chevron-down">
-        <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m6 9l6 6l6-6"></path>
+      <!--v-if--><svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16" class="n8n-icon trailingIcon" aria-hidden="true" focusable="false" role="img" height="1em" width="1em" data-icon="chevron-down">
+        <path d="M15.56 5.25 8 12.81.44 5.25 1.5 4.19l6.5 6.5 6.5-6.5z"></path>
       </svg>
     </div>
     <!--v-if--><select aria-hidden="true" tabindex="-1" style="position: absolute; border: 0px; width: 1px; height: 1px; padding: 0px; margin: -1px; overflow: hidden; clip: rect(0px, 0px, 0px, 0px); clip-path: inset(50%); white-space: nowrap; word-wrap: normal;" value="10"></select>
