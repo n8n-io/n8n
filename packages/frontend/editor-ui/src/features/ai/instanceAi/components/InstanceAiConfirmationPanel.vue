@@ -222,8 +222,7 @@ function buildApprovalTitle(item: PendingConfirmationItem): string {
 	const toolName = resolveBuilderToolName(item.toolCall.toolName, args?.action);
 	// A former multi-action tool resolves to a single-action tool, which takes no action suffix.
 	const actionSelectsTool = toolName !== resolveBuilderToolName(item.toolCall.toolName);
-	const action =
-		typeof args?.action === 'string' && !actionSelectsTool ? args.action : undefined;
+	const action = typeof args?.action === 'string' && !actionSelectsTool ? args.action : undefined;
 	const keyBase = action
 		? `instanceAi.tools.${toolName}.${action}`
 		: `instanceAi.tools.${toolName}`;
