@@ -1,6 +1,10 @@
 import type { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 
-import { pipedriveApiRequest, sortOptionParameters } from '../transport';
+import {
+	pipedriveApiRequest,
+	pipedriveApiRequestAllItemsOffset,
+	sortOptionParameters,
+} from '../transport';
 
 /**
  * Get all activity types
@@ -226,24 +230,19 @@ export async function getLeadLabels(this: ILoadOptionsFunctions): Promise<INodeP
 /**
  * Get all lead channels
  * Pipedrive documents the channel options under the v1 deal fields. The lead fields
- * can also carry them, so the lead fields are read first.
+ * can also carry them, so the lead fields are read first. Both lists are read across
+ * all pages, because the channel field can be on a later page.
  */
 export async function getLeadChannels(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
 	const channelOptions = async (endpoint: string) => {
-		const { data } = await pipedriveApiRequest.call(
-			this,
-			'GET',
-			endpoint,
-			{},
-			{},
-			{ apiVersion: 'v1' },
-		);
+		const { data } = await pipedriveApiRequestAllItemsOffset.call(this, 'GET', endpoint, {});
 		const channel = (
 			data as Array<{ key: string; options?: Array<{ id: number; label: string }> }>
 		).find((field) => field.key === 'channel');
-		return channel?.options;
+		// An empty option list on the lead fields falls back to the deal fields too.
+		return channel?.options?.length ? channel.options : undefined;
 	};
 
 	const options =
