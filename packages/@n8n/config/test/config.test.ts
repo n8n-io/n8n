@@ -706,6 +706,7 @@ describe('GlobalConfig', () => {
 			lazyAcquire: false,
 			compileCache: false,
 			nativeEvaluation: false,
+			nativeEvaluationVerifySample: 0,
 		},
 		instanceSettingsLoader: {
 			ownerManagedByEnv: false,
