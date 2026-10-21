@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/evaluations/data/workflows/response-style-verbose-recap.json
+  s_19fd6642294ae3::t_0cd3ddfd552d76 28,30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bd49ae2d4a22a3303a79f191b5878dc4e8b2c88b",
+  "prompts": {},
+  "sessions": {
+    "s_19fd6642294ae3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f4631dfd-075c-445c-80e8-97d30beb6751",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,302 @@
+packages/@n8n/instance-ai/src/tools/agent-builder/agent-source-compiler.ts
+  s_a24089c0a79aa9::t_4e7bf96cfa57eb 1-2,4-185,188-193,197-199
+  s_a24089c0a79aa9::t_048df0919890ee 3,186-187,194-196
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_a24089c0a79aa9::t_1abcfbaa1640b9 24-27,115-121,159-161,277-286,288,297,299,304-311,323-335,339
+  s_a24089c0a79aa9::t_1b5ef73101db0f 74-78
+  s_a24089c0a79aa9::t_61d3be528e0496 21,303,312-313
+  s_a24089c0a79aa9::t_6114b8bbef85d8 23,28-30,40-43,142,179,346,348-349,352-362,367-379,383-393,396,398,403-415,424-428
+  s_a24089c0a79aa9::t_b5ecac2e5ffbbe 5,89-95
+packages/cli/src/modules/agents/errors/agent-config-reference-validation.error.ts
+  s_a24089c0a79aa9::t_6114b8bbef85d8 1-11,15-16
+  s_a24089c0a79aa9::t_048df0919890ee 12-14
+packages/@n8n/instance-ai/src/workspace/snapshot-manager.ts
+  s_a24089c0a79aa9::t_4e50a860fd0759 28,83
+packages/@n8n/instance-ai/src/tools/agent-builder/creation-tools.ts
+  s_a24089c0a79aa9::t_be07bd65a44c99 226-227
+packages/@n8n/instance-ai/src/workspace/pack-workspace-sdk.ts
+  s_a24089c0a79aa9::t_0edd827afe37be 5-6,47-50,67,78
+packages/@n8n/instance-ai/src/workspace/__tests__/snapshot-manager.test.ts
+  s_a24089c0a79aa9::t_4e50a860fd0759 185-187
+packages/@n8n/instance-ai/skills/agent-builder/references/mcp.md
+  s_a24089c0a79aa9::t_9dc5e7ae996d07 30-32,98,100-101
+packages/@n8n/instance-ai/skills/agent-builder/references/memory.md
+  s_a24089c0a79aa9::t_2b5390352fd24d 1-30,34-35,41-86
+  s_a24089c0a79aa9::t_de5f3896ec3161 31-33
+  s_a24089c0a79aa9::t_48dd7ce2933761 36-40
+packages/@n8n/instance-ai/src/tools/agent-builder/node-tools.ts
+  s_a24089c0a79aa9::t_bb4773eadb739a 26
+  s_a24089c0a79aa9::t_4d5e37d8a1f216 44
+  s_a24089c0a79aa9::t_03fb19b606c652 45-47
+  s_a24089c0a79aa9::t_ef8841684e69ce 94-98
+  s_a24089c0a79aa9::t_1b92f740cba93e 51-52,54-57
+  s_a24089c0a79aa9::t_7579e105229c9a 89-93,99-101
+  s_a24089c0a79aa9::t_920ed7e2b71c97 15,28-38,41,88
+  s_a24089c0a79aa9::t_9fa6d396f1926a 24-25,27,39-40,42-43,48-50
+  s_a24089c0a79aa9::t_5bd55df7617060 53,83,85-86
+packages/@n8n/workflow-sdk/src/agent/agent-source-generator.ts
+  s_a24089c0a79aa9::t_48c2b5a8c0aec1 61-63,79,125
+  s_a24089c0a79aa9::t_048df0919890ee 86-87,89-90
+  s_a24089c0a79aa9::t_02f477272aee7b 1-14,20-60,64-78,80-85,88,91-124,126-157
+  s_a24089c0a79aa9::t_1b92f740cba93e 15-19
+packages/@n8n/workflow-sdk/src/agent/index.ts
+  s_a24089c0a79aa9::t_1b2e120bfcf1f2 1-25,27-29
+  s_a24089c0a79aa9::t_02f477272aee7b 26,30-31
+  s_a24089c0a79aa9::t_3eeba9ac27d3be 32-38
+packages/@n8n/instance-ai/src/tools/agent-builder/read-agent-source.tool.ts
+  s_a24089c0a79aa9::t_048df0919890ee 29-31,44-46
+  s_a24089c0a79aa9::t_eef7f9f7628646 1-28,32-43,47-69
+packages/@n8n/instance-ai/skills/agent-builder/SKILL.md
+  s_a24089c0a79aa9::t_531bbcbb517502 23,35-50,52-53,55-63,89,98-99
+  s_a24089c0a79aa9::t_2b5390352fd24d 26-27,110
+  s_a24089c0a79aa9::t_60f900a1de41b5 111
+packages/@n8n/instance-ai/evaluations/harness/stub-services.ts
+  s_a24089c0a79aa9::t_e134ad87a82e97 368-370,374-376
+packages/@n8n/instance-ai/src/tools/agent-builder/__tests__/resolve-episodic-memory-credential.tool.test.ts
+  s_a24089c0a79aa9::t_22c4437e18b7a1 1-13,15-23,25,33-40,42-45,53-62,64-87
+  s_a24089c0a79aa9::t_e9e02978c976b8 14,24,41,63
+  s_a24089c0a79aa9::t_f8a6a0fa4e60b3 26-32,46-52
+packages/@n8n/workflow-sdk/src/agent/agent-source-artifact.ts
+  s_a24089c0a79aa9::t_4b8268ead54ab3 19-24
+  s_a24089c0a79aa9::t_935628380fef39 25,29-36
+  s_a24089c0a79aa9::t_1b2e120bfcf1f2 1-2,37-109,111,113-152
+  s_a24089c0a79aa9::t_02f477272aee7b 110,112
+  s_a24089c0a79aa9::t_8836cab89de96a 3-13,15-18
+  s_a24089c0a79aa9::t_f680f291cdff01 14
+  s_a24089c0a79aa9::t_1feeb1f3c8c37f 26-28
+packages/@n8n/workflow-sdk/src/agent/agent-definition-builder.ts
+  s_a24089c0a79aa9::t_02f477272aee7b 53-57,258-259,342-347,406
+  s_a24089c0a79aa9::t_1b2e120bfcf1f2 9-52,58-59,61-107,110-113,118-125,127-143,164-178,180-188,190-222,227-248,250-254,256-257,260-280,282-314,316,319,321-341,348-350,353-382,385-386,389-405,407-422,426-433
+  s_a24089c0a79aa9::t_048df0919890ee 108-109,179,189,223-226
+  s_a24089c0a79aa9::t_b5ecac2e5ffbbe 144-163,281,315,383-384,387-388,423-425
+  s_a24089c0a79aa9::t_085b39249f425a 1
+  s_a24089c0a79aa9::t_3eeba9ac27d3be 255,352
+  s_a24089c0a79aa9::t_e134ad87a82e97 351
+  s_a24089c0a79aa9::t_f680f291cdff01 2-8,249
+  s_a24089c0a79aa9::t_19f14726c9aca4 60,114-117,126
+  s_a24089c0a79aa9::t_7927b6913b5447 317-318,320
+packages/@n8n/instance-ai/src/tools/agent-builder/build-agent.tool.ts
+  s_a24089c0a79aa9::t_ec6004567268e6 45,50
+  s_a24089c0a79aa9::t_0e2d5c827ccfa5 111-113
+  s_a24089c0a79aa9::t_531318036c4ad2 5,9,135,142,144
+  s_a24089c0a79aa9::t_7579e105229c9a 118-128,134,136-141,143
+  s_a24089c0a79aa9::t_76eeea87f5a765 2,8,10,12,42-44,70-90,92,94,96,100-110,114
+  s_a24089c0a79aa9::t_048df0919890ee 16-33,53,116-117,129-133,145-153
+  s_a24089c0a79aa9::t_cb9e367c73c990 115
+packages/@n8n/workflow-sdk/src/agent/agent-memory-config.ts
+  s_a24089c0a79aa9::t_3eeba9ac27d3be 1-38
+packages/cli/src/modules/agents/attachable-workflows.service.ts
+  s_a24089c0a79aa9::t_6114b8bbef85d8 31-33,67-68,74,80,82-83,85,88-94,97,104
+  s_a24089c0a79aa9::t_391cdc477237a4 8,71
+  s_a24089c0a79aa9::t_048df0919890ee 28-30
+  s_a24089c0a79aa9::t_4fb8f95dabe6ad 81,84,86-87,95-96,98-103,105
+  s_a24089c0a79aa9::t_857a5077c8745e 106
+packages/@n8n/instance-ai/docs/sandboxing.md
+  s_a24089c0a79aa9::t_531bbcbb517502 234-239
+  s_a24089c0a79aa9::t_ebdad520d0cd04 156-160
+packages/@n8n/instance-ai/src/tools/agent-builder/__tests__/create-agent.tool.test.ts
+  s_a24089c0a79aa9::t_3779add45437bd 20
+packages/@n8n/instance-ai/skills/agent-builder/references/sub-agents.md
+  s_a24089c0a79aa9::t_9dc5e7ae996d07 48-51,60-62
+packages/@n8n/instance-ai/src/tools/agent-builder/config-tools.ts
+  s_a24089c0a79aa9::t_048df0919890ee 411
+  s_a24089c0a79aa9::t_0e2d5c827ccfa5 22,46-66,173-176,205-208,211,224-237,239,243-255,257-258,277-278,281-282,288-289,291-310,312-335,339-353,386,410,412-424
+  s_a24089c0a79aa9::t_76eeea87f5a765 15,163-172,177,203-204,209-210,212-223,336-337,379-385,387-389,405
+  s_a24089c0a79aa9::t_1abcfbaa1640b9 76-89,179-186
+  s_a24089c0a79aa9::t_f606cafdaa81db 311
+  s_a24089c0a79aa9::t_ea839bbb88d34b 71-75,187-194
+  s_a24089c0a79aa9::t_1b92f740cba93e 238,240-242,256,259-261,263-264,267-276,279-280,283-287,290
+  s_a24089c0a79aa9::t_ec6004567268e6 434-435
+  s_a24089c0a79aa9::t_4b8268ead54ab3 67-70,262,265-266
+  s_a24089c0a79aa9::t_4545fa72fc3cdc 338
+  s_a24089c0a79aa9::t_f0c277e2ed683b 425
+packages/@n8n/instance-ai/src/tools/agent-builder/router.ts
+  s_a24089c0a79aa9::t_531bbcbb517502 105-107
+  s_a24089c0a79aa9::t_eef7f9f7628646 35,45,132-133
+  s_a24089c0a79aa9::t_3779add45437bd 36,60,110-111
+packages/@n8n/instance-ai/src/tools/tool-ids.ts
+  s_a24089c0a79aa9::t_eef7f9f7628646 49
+  s_a24089c0a79aa9::t_3779add45437bd 55
+packages/@n8n/instance-ai/skills/agent-builder/references/target-skills.md
+  s_a24089c0a79aa9::t_9dc5e7ae996d07 66-68
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_a24089c0a79aa9::t_391cdc477237a4 1077,1084-1086
+packages/@n8n/instance-ai/skills/agent-builder/references/target-tasks.md
+  s_a24089c0a79aa9::t_43e3409492ec47 63-64,84-85,87
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_a24089c0a79aa9::t_b2f6522320f6f1 470-472,570
+  s_a24089c0a79aa9::t_b5ecac2e5ffbbe 315-333,558,560,566,571-584
+  s_a24089c0a79aa9::t_f27e65fd432758 585
+packages/@n8n/instance-ai/src/types.ts
+  s_a24089c0a79aa9::t_7579e105229c9a 492-493,495-498
+  s_a24089c0a79aa9::t_391cdc477237a4 888
+  s_a24089c0a79aa9::t_3779add45437bd 976-977
+  s_a24089c0a79aa9::t_920ed7e2b71c97 487
+  s_a24089c0a79aa9::t_5bd55df7617060 483,494
+packages/@n8n/api-types/src/agents/__tests__/agent-json-config.schema.test.ts
+  s_a24089c0a79aa9::t_b5ecac2e5ffbbe 3,470,475-484,505-542
+  s_a24089c0a79aa9::t_f580827983736d 343,349,357
+  s_a24089c0a79aa9::t_284f9e8bfd3342 543-544
+packages/@n8n/instance-ai/src/tools/agent-builder/resolve-episodic-memory-credential.tool.ts
+  s_a24089c0a79aa9::t_bddf88d2ac4b6f 16-17
+  s_a24089c0a79aa9::t_3779add45437bd 1-15,18-36,38-55,57-71
+  s_a24089c0a79aa9::t_de5f3896ec3161 37,56
+packages/@n8n/instance-ai/skills/agent-builder/references/source-authoring.md
+  s_a24089c0a79aa9::t_531bbcbb517502 1-31,37-59,62-63,71-76
+  s_a24089c0a79aa9::t_2b5390352fd24d 32-36,66-70
+  s_a24089c0a79aa9::t_e4df06e780c60b 60-61
+  s_a24089c0a79aa9::t_be07bd65a44c99 64-65
+packages/@n8n/workflow-sdk/src/agent/agent-definition-builder.test.ts
+  s_a24089c0a79aa9::t_b5ecac2e5ffbbe 160,162-169
+  s_a24089c0a79aa9::t_048df0919890ee 127-129
+  s_a24089c0a79aa9::t_0e1656598838d5 171,181-190
+  s_a24089c0a79aa9::t_7927b6913b5447 172-180
+  s_a24089c0a79aa9::t_992143fa1e716b 1,10-12,24-50,52-96,98-126,130-159,161,170,191
+  s_a24089c0a79aa9::t_22c4437e18b7a1 2-9,13-23,51,97
+packages/cli/src/modules/agents/errors/agent-config-node-validation.error.ts
+  s_a24089c0a79aa9::t_1abcfbaa1640b9 1-18
+packages/@n8n/instance-ai/src/workspace/__tests__/sandbox-setup.test.ts
+  s_a24089c0a79aa9::t_a9cb3df2fb16d0 405
+  s_a24089c0a79aa9::t_19c0070d9c45b5 69,267-273
+  s_a24089c0a79aa9::t_7927b6913b5447 308-310,312,316-318,356,397,403-404,406,410-424,426,430-447
+  s_a24089c0a79aa9::t_437fa8f46749b2 70,425,427-429
+  s_a24089c0a79aa9::t_67428fd9e75188 274-275
+  s_a24089c0a79aa9::t_a75184541bdb12 448-449
+packages/@n8n/instance-ai/src/tools/agent-builder/__tests__/config-tools.test.ts
+  s_a24089c0a79aa9::t_3779add45437bd 29
+packages/@n8n/instance-ai/src/tools/nodes.tool.ts
+  s_a24089c0a79aa9::t_920ed7e2b71c97 63-66
+packages/cli/src/node-catalog/node-catalog.service.ts
+  s_a24089c0a79aa9::t_048df0919890ee 355-364
+  s_a24089c0a79aa9::t_5bd55df7617060 69,368,380-389,392
+  s_a24089c0a79aa9::t_920ed7e2b71c97 36-37,61,353-354,445,459
+packages/@n8n/instance-ai/src/tools/agent-builder/__tests__/resolve-llm.tool.test.ts
+  s_a24089c0a79aa9::t_3779add45437bd 19
+packages/@n8n/instance-ai/src/tools/agent-builder/agent-source-generation.ts
+  s_a24089c0a79aa9::t_eef7f9f7628646 1-7,29-35,38-48
+  s_a24089c0a79aa9::t_1b92f740cba93e 8-28,36-37
+packages/@n8n/instance-ai/src/tools/agent-builder/__tests__/agent-source-compiler.test.ts
+  s_a24089c0a79aa9::t_048df0919890ee 56,99
+  s_a24089c0a79aa9::t_19c0070d9c45b5 1-55,57-98,100-123
+packages/cli/src/modules/agents/instance-ai-agent-builder.adapter.ts
+  s_a24089c0a79aa9::t_d20f9278e6f3b3 88,250-251
+  s_a24089c0a79aa9::t_07dfbb3a60a44b 30
+  s_a24089c0a79aa9::t_4fb8f95dabe6ad 144-145,152
+  s_a24089c0a79aa9::t_6114b8bbef85d8 43,141-143,146-151,153-167
+  s_a24089c0a79aa9::t_cc63b4f1e879b6 252
+packages/@n8n/instance-ai/skills/agent-builder/references/integrations.md
+  s_a24089c0a79aa9::t_43e3409492ec47 41-42
+packages/@n8n/instance-ai/docs/tools.md
+  s_a24089c0a79aa9::t_3e0776f5c56427 686
+  s_a24089c0a79aa9::t_531bbcbb517502 688-691,706,708
+  s_a24089c0a79aa9::t_ec6004567268e6 707
+  s_a24089c0a79aa9::t_fb07f6a3370219 722,730-732
+packages/cli/src/modules/agents/__tests__/instance-ai-agent-builder.adapter.test.ts
+  s_a24089c0a79aa9::t_7304524d08c390 6,212-220,222-229,231-234,238-247,249-255
+  s_a24089c0a79aa9::t_524943a05d5d95 12,32,54,69,203-211
+  s_a24089c0a79aa9::t_048df0919890ee 235-237
+  s_a24089c0a79aa9::t_391cdc477237a4 307-309
+  s_a24089c0a79aa9::t_4fb8f95dabe6ad 221,230,248
+  s_a24089c0a79aa9::t_af5ad8303a2443 256
+packages/@n8n/instance-ai/src/workspace/sandbox-setup.ts
+  s_a24089c0a79aa9::t_1b92f740cba93e 441,449-452,466-468,471,473-478,484-489,491-493,559-560,562
+  s_a24089c0a79aa9::t_437fa8f46749b2 453-454,472,479-483,490,561
+  s_a24089c0a79aa9::t_0edd827afe37be 126
+  s_a24089c0a79aa9::t_4e7bf96cfa57eb 253-270,504
+  s_a24089c0a79aa9::t_ebdad520d0cd04 113-115
+  s_a24089c0a79aa9::t_d87db5e98c2f12 469
+  s_a24089c0a79aa9::t_4802939e05e012 193
+  s_a24089c0a79aa9::t_26cae88b4f86a2 455-465
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_a24089c0a79aa9::t_1abcfbaa1640b9 196,198-206
+  s_a24089c0a79aa9::t_7304524d08c390 332-364,371-376
+  s_a24089c0a79aa9::t_666374412b8681 365,370
+  s_a24089c0a79aa9::t_fe9525c2136cdd 177-195,197,207-208
+  s_a24089c0a79aa9::t_df742c4ccadbbd 141-157
+  s_a24089c0a79aa9::t_9021bc126724d2 366-369
+packages/@n8n/instance-ai/src/tools/agent-builder/__tests__/build-agent.tool.test.ts
+  s_a24089c0a79aa9::t_4b8268ead54ab3 515-518
+  s_a24089c0a79aa9::t_bbc0c8cfeb4a90 1,6,10-18,20,86-87,189-193,201,206,209-253,256-288
+  s_a24089c0a79aa9::t_1f5fb877e8e63b 291-325,327-349,362-382,389-414,417-418,438
+  s_a24089c0a79aa9::t_15789c1610e17b 439-484,488-492
+  s_a24089c0a79aa9::t_f680f291cdff01 415-416,419
+  s_a24089c0a79aa9::t_6dd53308085bdc 485-487
+  s_a24089c0a79aa9::t_fcf90ef49177e1 624
+  s_a24089c0a79aa9::t_7579e105229c9a 350-358,361,383-386,388,420-437
+  s_a24089c0a79aa9::t_3779add45437bd 43
+  s_a24089c0a79aa9::t_1abcfbaa1640b9 559-598
+  s_a24089c0a79aa9::t_8b4510ff2ed94c 289,521-558
+  s_a24089c0a79aa9::t_7927b6913b5447 359-360,387
+  s_a24089c0a79aa9::t_048df0919890ee 254-255
+  s_a24089c0a79aa9::t_d4299e5b1ec372 68-71,73
+  s_a24089c0a79aa9::t_f606cafdaa81db 493-514,519-520
+  s_a24089c0a79aa9::t_309df39f6ebe97 290
+packages/@n8n/instance-ai/src/tools/agent-builder/__tests__/agent-source-generation.test.ts
+  s_a24089c0a79aa9::t_7927b6913b5447 42-60,62
+  s_a24089c0a79aa9::t_7579e105229c9a 61
+  s_a24089c0a79aa9::t_a97ac3319e5eb7 63-83
+  s_a24089c0a79aa9::t_840dca900a3bdf 1-41,84
+packages/cli/src/modules/agents/__tests__/workflow-tool-factory.test.ts
+  s_a24089c0a79aa9::t_05326361076442 164-167,169,171-176,185-188
+  s_a24089c0a79aa9::t_bb4773eadb739a 168
+  s_a24089c0a79aa9::t_be07bd65a44c99 170
+packages/@n8n/instance-ai/src/tools/agent-builder/__tests__/node-tools.test.ts
+  s_a24089c0a79aa9::t_7579e105229c9a 14,16-17,37,45
+  s_a24089c0a79aa9::t_bb4773eadb739a 100
+  s_a24089c0a79aa9::t_1d481a657483fa 79-90
+  s_a24089c0a79aa9::t_b434bea8452975 91-99,101-106
+  s_a24089c0a79aa9::t_616a5d8fe1ac93 13,23-29,43-44,46-47,52,54-65
+  s_a24089c0a79aa9::t_caa928595838b4 15
+  s_a24089c0a79aa9::t_7927b6913b5447 40-42
+packages/@n8n/workflow-sdk/src/agent/agent-source-generator.test.ts
+  s_a24089c0a79aa9::t_7927b6913b5447 87-90,92-95
+  s_a24089c0a79aa9::t_5838d9c8c04b81 1-23,25-71,76-86,96
+  s_a24089c0a79aa9::t_63e28d63fd287e 75
+  s_a24089c0a79aa9::t_048df0919890ee 24,72-74
+  s_a24089c0a79aa9::t_4b8268ead54ab3 91
+packages/@n8n/instance-ai/skills/agent-builder/references/resource-locators.md
+  s_a24089c0a79aa9::t_9dc5e7ae996d07 76-77
+packages/@n8n/instance-ai/src/workspace/__tests__/pack-workspace-sdk.test.ts
+  s_a24089c0a79aa9::t_44c86cb8a6c7ab 1-27
+packages/cli/src/node-catalog/__tests__/node-catalog.service.test.ts
+  s_a24089c0a79aa9::t_f118a77569e83e 640-675
+  s_a24089c0a79aa9::t_caa928595838b4 462-490
+packages/cli/src/modules/agents/__tests__/agent-json-config.test.ts
+  s_a24089c0a79aa9::t_f593a194800fbe 1-6,253-255
+  s_a24089c0a79aa9::t_31da4aa6cc7922 256
+packages/cli/src/modules/agents/__tests__/attachable-workflows.service.test.ts
+  s_a24089c0a79aa9::t_391cdc477237a4 80-82,102,108
+  s_a24089c0a79aa9::t_7304524d08c390 123-124,126-128,130,132-138
+  s_a24089c0a79aa9::t_b2f6522320f6f1 56
+  s_a24089c0a79aa9::t_4fb8f95dabe6ad 122,125,129,131
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_a24089c0a79aa9::t_05326361076442 560,562-563,565-568,573
+  s_a24089c0a79aa9::t_2f0629dff236ab 577
+packages/@n8n/workflow-sdk/package.json
+  s_a24089c0a79aa9::t_1b2e120bfcf1f2 10-13,72-74
+packages/@n8n/instance-ai/src/tools/agent-builder/__tests__/read-agent-source.tool.test.ts
+  s_a24089c0a79aa9::t_3779add45437bd 24
+  s_a24089c0a79aa9::t_f680f291cdff01 6
+  s_a24089c0a79aa9::t_840dca900a3bdf 1-5,7-23,25-68
+packages/@n8n/instance-ai/src/tools/agent-builder/__tests__/router.test.ts
+  s_a24089c0a79aa9::t_22c4437e18b7a1 131-144
+  s_a24089c0a79aa9::t_391cdc477237a4 105-107
+  s_a24089c0a79aa9::t_840dca900a3bdf 77-100
+  s_a24089c0a79aa9::t_3779add45437bd 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "97251e797a3358a3ab3538507a5b9a1d000e244c",
+  "prompts": {},
+  "sessions": {
+    "s_a24089c0a79aa9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4b74-0f58-75c2-9c9f-caa3589948ee",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

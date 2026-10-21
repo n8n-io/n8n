@@ -1,0 +1,41 @@
+packages/@n8n/mcp-browser/src/connection.ts
+  s_2a64d569f7fd95::t_daa48fd1884e09 32
+packages/cli/src/modules/instance-ai/browser/browser-local-mcp-server.ts
+  s_2a64d569f7fd95::t_244995e88c8f51 1-11,13,17-24,30-31,57-60,76-83,98-154,156-158
+packages/@n8n/mcp-browser/src/cdp-relay.ts
+  s_2a64d569f7fd95::t_d3a30a8ab9ae97 148,153
+  s_2a64d569f7fd95::t_03be22fd2c56d8 57
+packages/cli/src/modules/instance-ai/__tests__/browser-use-server.test.ts
+  s_2a64d569f7fd95::t_62093758b853c5 23
+packages/cli/src/modules/instance-ai/__tests__/browser-local-mcp-server.test.ts
+  s_2a64d569f7fd95::t_bea0dbc3fbe8d9 1-36,42-164
+  s_2a64d569f7fd95::t_37470144340482 37-41
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_2a64d569f7fd95::t_14dc74c54c2a05 3020
+  s_2a64d569f7fd95::t_e9e3ead080de07 3021-3025
+packages/@n8n/node-cli/src/configs/eslint.ts
+  h_44f8d1c0f2f8c4 77-78
+packages/cli/src/modules/instance-ai/browser/instance-ai-browser-session.service.ts
+  s_2a64d569f7fd95::t_253f7435eac129 108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "fae732a8fa39a2da85e84cffacaa5256e09d56b1",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_2a64d569f7fd95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ee9bcf49-2aeb-4b3f-b6cb-15acc1d3f9e1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

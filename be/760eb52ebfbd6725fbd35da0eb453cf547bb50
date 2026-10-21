@@ -1,0 +1,20 @@
+packages/testing/playwright/tests/e2e/instance-ai/fixtures.ts
+  s_c491120e42f4d5::t_9199177896292d 9
+  s_c491120e42f4d5::t_ea4fde49a643a0 7-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "be760eb52ebfbd6725fbd35da0eb453cf547bb50",
+  "prompts": {},
+  "sessions": {
+    "s_c491120e42f4d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7450e635-cf6a-4786-8b7c-b946ae65396a",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

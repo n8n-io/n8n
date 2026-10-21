@@ -1,0 +1,48 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentToolsConnectionModalWrapper.vue
+  s_1211055aa32911::t_031e7bdf9e1640 836,963
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigModal.vue
+  s_1211055aa32911::t_031e7bdf9e1640 99
+packages/frontend/editor-ui/src/features/agents/components/modals/AgentModal.vue
+  s_1211055aa32911::t_031e7bdf9e1640 4,28,42,184-192
+packages/frontend/editor-ui/src/features/agents/components/AgentConfirmationModal.vue
+  s_1211055aa32911::t_031e7bdf9e1640 59
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigForm.vue
+  s_1211055aa32911::t_031e7bdf9e1640 383
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_1211055aa32911::t_031e7bdf9e1640 24-26,49-52,69-71,78,97-98,121-122
+  s_1211055aa32911::t_ca9a35c7d19af7 33-40,105-112
+  s_1211055aa32911::t_b611c06caecd89 101
+  s_1211055aa32911::t_312c075b3d94a8 95
+packages/frontend/editor-ui/src/features/agents/components/AgentTaskModal.vue
+  s_1211055aa32911::t_031e7bdf9e1640 632
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  s_1211055aa32911::t_031e7bdf9e1640 594
+packages/frontend/editor-ui/src/features/agents/components/AgentVectorStoresModal.vue
+  s_1211055aa32911::t_031e7bdf9e1640 606
+packages/frontend/editor-ui/src/features/agents/components/AgentSubAgentsModal.vue
+  s_1211055aa32911::t_031e7bdf9e1640 277
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolsConnectionModal.vue
+  s_1211055aa32911::t_031e7bdf9e1640 471-475
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentModal.test.ts
+  s_1211055aa32911::t_38a1da72d6e2ed 37-41
+packages/frontend/editor-ui/src/features/agents/components/modals/AgentModalMultiStep.vue
+  s_1211055aa32911::t_031e7bdf9e1640 18,32,69,104-109
+packages/frontend/editor-ui/src/features/agents/components/AgentSkillModal.vue
+  s_1211055aa32911::t_031e7bdf9e1640 267
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "49f1bbafb2bb1bf16c81538a42b8b091c24047f5",
+  "prompts": {},
+  "sessions": {
+    "s_1211055aa32911": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c500-f15a-7422-92f7-4133f49bfe35",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

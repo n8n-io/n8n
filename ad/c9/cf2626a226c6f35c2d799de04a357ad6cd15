@@ -1,0 +1,32 @@
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_60a5a8efcab5c1::t_59a712b165f09f 1754-1755,1758
+  s_60a5a8efcab5c1::t_95f2e25da4a409 1870-1881,1885-1897
+  s_60a5a8efcab5c1::t_dbea5be2b81477 1816-1817
+  s_60a5a8efcab5c1::t_250188f9e89bc1 1781-1783
+  s_60a5a8efcab5c1::t_6b73dc859bb64b 37,40
+  s_60a5a8efcab5c1::t_d3d99dc2d55359 1882-1884
+packages/@n8n/scheduler/README.md
+  s_60a5a8efcab5c1::t_59a199c7cbb7d5 284-286
+  s_60a5a8efcab5c1::t_3aeb32d28907ee 325-331
+packages/@n8n/scheduler/src/core/reconciliation/reconcile.ts
+  s_60a5a8efcab5c1::t_021632497a92d4 285-289
+  s_60a5a8efcab5c1::t_1fe83cc1fb4bec 69
+packages/@n8n/scheduler/src/core/reconciliation/owner.ts
+  s_60a5a8efcab5c1::t_65a8f2754435a7 29-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "adc9cf2626a226c6f35c2d799de04a357ad6cd15",
+  "prompts": {},
+  "sessions": {
+    "s_60a5a8efcab5c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "817d39c1-0c59-45fe-aee9-61e817c9c3c1",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

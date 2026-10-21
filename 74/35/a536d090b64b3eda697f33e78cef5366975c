@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Jira/IssueDescription.ts
+  97eba238a05f4bcd 317,578
+packages/nodes-base/nodes/Jira/IssueCommentDescription.ts
+  97eba238a05f4bcd 144,447
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "7435a536d090b64b3eda697f33e78cef5366975c",
+  "prompts": {
+    "97eba238a05f4bcd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b0747906-08fb-4f19-9bdf-64f3babb87af",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts",
+      "messages": [],
+      "total_additions": 4,
+      "total_deletions": 4,
+      "accepted_lines": 3862,
+      "overriden_lines": 0
+    }
+  }
+}

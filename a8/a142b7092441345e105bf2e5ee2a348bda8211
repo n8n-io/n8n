@@ -1,0 +1,9 @@
+packages/cli/test/integration/scheduling/scheduled-job-owner-teardown.test.ts
+  ai_agent 10,142-232
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a8a142b7092441345e105bf2e5ee2a348bda8211",
+  "prompts": {}
+}

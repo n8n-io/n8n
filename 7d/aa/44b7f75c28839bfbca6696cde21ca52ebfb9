@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/features/execution/executions/views/ExecutionsView.test.ts
+  s_167f5a2407f9f5::t_d2e9be959a8d01 69,76
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_167f5a2407f9f5::t_33f22c7f73e17f 1333-1334
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListEmptyState.vue
+  s_167f5a2407f9f5::t_cab496e34344b6 29-35
+packages/frontend/editor-ui/src/features/execution/executions/views/ExecutionsView.vue
+  s_167f5a2407f9f5::t_ec7534001168cd 156
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListEmptyState.test.ts
+  s_167f5a2407f9f5::t_cc0cfdd0876188 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7daa44b7f75c28839bfbca6696cde21ca52ebfb9",
+  "prompts": {},
+  "sessions": {
+    "s_167f5a2407f9f5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69dd51d6-7911-4022-b187-68c7c1834e33",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

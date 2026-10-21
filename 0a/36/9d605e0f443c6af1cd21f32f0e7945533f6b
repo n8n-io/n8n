@@ -1,0 +1,88 @@
+packages/cli/src/modules/dynamic-credentials.ee/services/dynamic-credential.service.ts
+  s_0d8b5dc937377e::t_beefd1b843ae80 67,132,155-159
+packages/cli/src/credentials/credential-resolution-provider.interface.ts
+  s_0d8b5dc937377e::t_beefd1b843ae80 49
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/McpTrigger.node.ts
+  s_0d8b5dc937377e::t_beefd1b843ae80 183-187
+packages/cli/src/modules/dynamic-credentials.ee/services/__tests__/dynamic-credential.service.test.ts
+  s_8acbb276b18879::t_46e4bb204e4bfb 759
+  s_8acbb276b18879::t_64d03fb3363e89 665-673,675-676,715-724,837-846,1010-1019,1021-1022,1108-1119,1121-1122,1157-1166,1168-1169
+packages/core/src/execution-engine/__tests__/execution-context.test.ts
+  s_0d8b5dc937377e::t_a83b281d845dd5 780-782
+  s_0d8b5dc937377e::t_fff79788d95893 1384,1417
+  s_0d8b5dc937377e::t_76cd9c6538fec3 29-31
+  s_0d8b5dc937377e::t_3d41103cef172b 1,8,17-18,20
+  s_0d8b5dc937377e::t_90711bbd992c2f 1237-1239
+  s_0d8b5dc937377e::t_abd960d06ff76c 1320-1383,1385-1416,1418-1419
+packages/core/src/execution-engine/__tests__/execution-context.service.test.ts
+  s_0d8b5dc937377e::t_3f1032a0827550 454-486
+  s_8acbb276b18879::t_69f5255aa70a23 333,339,345-351,356-372,376-418,420-453
+packages/core/src/execution-engine/execution-context.service.ts
+  s_8acbb276b18879::t_14c2786f989107 74-76
+  s_0d8b5dc937377e::t_6d31e14f7f00b3 7,9,63-73,77-93,98-105
+packages/cli/src/credentials/dynamic-credentials-proxy.ts
+  s_0d8b5dc937377e::t_beefd1b843ae80 69,85
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/identifier-interface.ts
+  s_0d8b5dc937377e::t_beefd1b843ae80 25,29-33
+packages/core/src/execution-engine/node-execution-context/webhook-context.ts
+  s_0d8b5dc937377e::t_beefd1b843ae80 211,215
+packages/workflow/src/interfaces.ts
+  s_0d8b5dc937377e::t_beefd1b843ae80 1518,3662
+packages/core/src/execution-engine/__tests__/workflow-execute-node-error-reporting.test.ts
+  s_0d8b5dc937377e::t_35f88c7aebdc44 46-49
+  s_0d8b5dc937377e::t_07d3ea0613e2de 65-67
+packages/workflow/src/n8n-oauth2-auth.ts
+  s_0d8b5dc937377e::t_beefd1b843ae80 56,102
+packages/@n8n/decorators/src/credential-resolver/credential-resolver.ts
+  s_0d8b5dc937377e::t_beefd1b843ae80 53,65,77,100-104,119
+packages/core/src/execution-engine/execution-context.ts
+  s_0d8b5dc937377e::t_454fa34e122d03 114-116,118-126
+  s_0d8b5dc937377e::t_856643f2a1cf24 161-164,212-218
+  s_0d8b5dc937377e::t_9b7d0a5e30d592 141-146,165
+packages/workflow/src/execution-context.ts
+  s_8acbb276b18879::t_53828325f72b37 242-259
+  s_0d8b5dc937377e::t_35f2c5dd6ff610 241
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/__tests__/n8n-identifier.test.ts
+  s_8acbb276b18879::t_48e155c27511e1 2,16,23-24,26
+  s_8acbb276b18879::t_ee88b0e610d411 368-451
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/n8n-identifier.ts
+  s_8acbb276b18879::t_e2e2ebaa45931d 5
+  s_0d8b5dc937377e::t_beefd1b843ae80 81,90-93
+  s_0d8b5dc937377e::t_5e1538792b1d7a 84-86
+  s_0d8b5dc937377e::t_5c41c4bf062528 78-80
+  s_0d8b5dc937377e::t_e050d6c1fde662 82-83
+  s_0d8b5dc937377e::t_108552f8203514 87-89
+  s_0d8b5dc937377e::t_4c1f705274ce72 2,8,24,46,53-57,72-77
+packages/cli/src/credentials-helper.ts
+  s_8acbb276b18879::t_b5cf6ac29e9825 565
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_0d8b5dc937377e::t_beefd1b843ae80 617-621,624
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/__tests__/n8n-credential-resolver.test.ts
+  s_8acbb276b18879::t_f6ee196561bd44 129,191,213
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/n8n-credential-resolver.ts
+  s_0d8b5dc937377e::t_beefd1b843ae80 44,46,74,76,94,96,116,118,128,130,136,138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "0a369d605e0f443c6af1cd21f32f0e7945533f6b",
+  "prompts": {},
+  "sessions": {
+    "s_0d8b5dc937377e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a0463bb0-158e-49f4-8a50-4c81a6c8bfe9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_8acbb276b18879": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0a8ccd9d-aad1-4629-9b79-178d55723ff4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

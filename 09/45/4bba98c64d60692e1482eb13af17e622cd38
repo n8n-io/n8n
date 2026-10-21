@@ -1,0 +1,35 @@
+packages/@n8n/client-oauth2/test/client-oauth2.test.ts
+  s_18d0fdec38e462::t_7d7d34105ab8ab 576-578
+  s_18d0fdec38e462::t_7728aa12d3a1cf 347,349-372,375-390,393-400,412-426,429-432,435
+  s_18d0fdec38e462::t_4f73ca40e6ed91 391-392
+packages/@n8n/client-oauth2/src/client-oauth2.ts
+  s_18d0fdec38e462::t_2ef3481548c811 117-119
+  s_18d0fdec38e462::t_10e56c89710c2a 120-123
+  s_18d0fdec38e462::t_a05db2f0f927ae 141-142,147-149,155,162-165
+  s_18d0fdec38e462::t_0e9c46c58c26be 150-154
+packages/@n8n/client-oauth2/test/proxy-routing.integration.test.ts
+  s_18d0fdec38e462::t_c0ad0fc0b3192e 1-98,100-113
+  s_18d0fdec38e462::t_e6c8c45b111056 99
+packages/cli/src/commands/__tests__/start.test.ts
+  s_18d0fdec38e462::t_6034bc44cfafc8 8-9
+  s_18d0fdec38e462::t_b29d6d29a5ddd3 260-279
+packages/cli/src/commands/base-command.ts
+  s_18d0fdec38e462::t_9231c7dc714423 12
+  s_18d0fdec38e462::t_889f48bdd0e3f1 102-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "09454bba98c64d60692e1482eb13af17e622cd38",
+  "prompts": {},
+  "sessions": {
+    "s_18d0fdec38e462": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7585437b-85ec-4a97-b769-a8f4a40f3cc0",
+        "model": "claude-fable-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

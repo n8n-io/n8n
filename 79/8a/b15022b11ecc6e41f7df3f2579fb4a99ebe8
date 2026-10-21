@@ -1,0 +1,14 @@
+packages/@n8n/instance-ai/evaluations/routing/judge.ts
+  h_a348dde7c02e89 70-71,79,81-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "798ab15022b11ecc6e41f7df3f2579fb4a99ebe8",
+  "prompts": {},
+  "humans": {
+    "h_a348dde7c02e89": {
+      "author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

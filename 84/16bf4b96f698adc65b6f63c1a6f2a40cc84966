@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/features/settings/users/components/SettingsUsersRoleCell.vue
+  s_964c81da65187b::t_f45e43e174e3f4 11
+  s_964c81da65187b::t_6f250f430dae8f 52
+  s_964c81da65187b::t_4bf809939667fb 53-54
+packages/frontend/editor-ui/src/features/roles/components/RoleHoverPopover.vue
+  s_964c81da65187b::t_c7651bacfd2a3b 9
+  s_964c81da65187b::t_94e2b7ae6bbb73 45-47
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.vue
+  s_964c81da65187b::t_43b503ddb7a5f1 119-121
+packages/frontend/editor-ui/src/features/roles/components/RoleHoverPopover.test.ts
+  s_964c81da65187b::t_9e5053fcd7bbf1 134,155-156,171-172,187-188
+  s_964c81da65187b::t_c151f15666a907 11,14-16
+  s_964c81da65187b::t_b00f6b085aadf7 84
+  s_964c81da65187b::t_3b8e726e5577ae 124,144,207
+  s_964c81da65187b::t_40ff9730f0d08c 17
+  s_964c81da65187b::t_fa1baa9c414213 123
+  s_964c81da65187b::t_6f914395b32ed9 133
+  s_964c81da65187b::t_0acbaec0e14184 143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "8416bf4b96f698adc65b6f63c1a6f2a40cc84966",
+  "prompts": {},
+  "sessions": {
+    "s_964c81da65187b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "f31de938-5135-4cf5-af30-fa8246d3a384",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

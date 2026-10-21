@@ -1,0 +1,24 @@
+packages/@n8n/permissions/src/roles/scopes/project-scopes.ee.ts
+  s_008904e9a38bfb::t_c78d3b1950d5bb 200-202
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "418ad5e6404415b72cf1f2390c8667e2af7557c6",
+  "prompts": {},
+  "humans": {
+    "h_434a0dd003c3fd": {
+      "author": "Jonathan <jon@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_008904e9a38bfb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "98b21318-2fac-4a73-80b2-4bbce38f2299",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

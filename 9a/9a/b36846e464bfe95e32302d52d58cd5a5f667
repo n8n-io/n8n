@@ -1,0 +1,182 @@
+packages/nodes-base/nodes/TheHive/TheHive.node.ts
+  s_2e1fa95fc44f8f::t_eba73df6d7df59 13-14
+  s_2e1fa95fc44f8f::t_b08304968058d7 205
+  s_2e1fa95fc44f8f::t_498112f2c72a39 206-207
+  s_2e1fa95fc44f8f::t_9084b9c77c85af 112,131,149-150,152,209,371-377,446,468,497-503,521-527,577,605,625,635,647,664,715-720,777-783,805,816,838,867-873,893,920,923,942,959,989,1017,1087,1115,1139,1195-1201,1220,1249-1255,1284,1301,1318,1373,1401,1427-1432,1474-1480,1495-1500,1517,1546-1552,1572,1589,1620,1648,1702,1730,1751-1756,1771,1802,1805,1824,1853-1859,1879,1896,1926,1951
+packages/nodes-base/nodes/TravisCi/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_b9424f4b2b7d83 1-24
+packages/nodes-base/nodes/TheHiveProject/test/transport.test.ts
+  s_2e1fa95fc44f8f::t_1e17adf8e6e86f 2
+  s_0f34e61c0d2ecc::t_d9f1263ebf6a91 51,100,133,148
+packages/nodes-base/nodes/Todoist/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_35d51e259b2f16 56,63,66-78
+  s_2e1fa95fc44f8f::t_d63a5f90430555 3,6
+  s_2e1fa95fc44f8f::t_64939321029033 7-9
+  s_2e1fa95fc44f8f::t_bca089b80851df 79-81
+  s_2e1fa95fc44f8f::t_7e395079f77d1d 10,46,89,108,127,150,168,180,195,214,250,274,310,333,350,366,391,428,446
+packages/nodes-base/nodes/Todoist/v1/OperationHandler.ts
+  s_2e1fa95fc44f8f::t_efb9c3199f1347 2
+  s_2e1fa95fc44f8f::t_1b8909350b2165 60,110-115,127,139,151,181,198,210,258
+packages/nodes-base/nodes/Toggl/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_a3915f76208f91 11-13,15
+  s_2e1fa95fc44f8f::t_8006a9e65ca48c 25,28,30,33
+packages/nodes-base/nodes/TravisCi/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_ed51b61e0ee643 35
+  s_2e1fa95fc44f8f::t_de200fc8ea1054 56
+  s_2e1fa95fc44f8f::t_34b4100c15446f 10-12,14,19,22
+  s_2e1fa95fc44f8f::t_3192426e7ae677 25
+packages/nodes-base/nodes/Toggl/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_829268f50cd482 1-24
+packages/nodes-base/nodes/TheHiveProject/test/requestApi.test.ts
+  s_2e1fa95fc44f8f::t_0755f432a0fabc 1-28
+packages/nodes-base/nodes/Todoist/v2/TodoistV2.node.ts
+  s_2e1fa95fc44f8f::t_ea28f9bc949762 13
+  s_2e1fa95fc44f8f::t_8ba58b634f7280 1806-1809,1828-1831,1859,1896,1914
+packages/nodes-base/nodes/Todoist/v2/OperationHandler.ts
+  s_2e1fa95fc44f8f::t_718bf0abe69c52 6
+  s_2e1fa95fc44f8f::t_6ff9fdc098dfac 227-232,245,258,271,330,343,436,525,535,545,552,574,584,594,604,635,645,655,670,689,708,718,728,748,767,794,804,814,821,843,879-880
+packages/nodes-base/nodes/Todoist/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_5b444ec2fc420b 9-10,12
+  s_2e1fa95fc44f8f::t_cbd2eca616ccc8 25,32-33,35,38
+  s_2e1fa95fc44f8f::t_3e00db42f2777c 58,66,70
+  s_2e1fa95fc44f8f::t_569b80f8a8be78 88
+packages/nodes-base/nodes/Todoist/v1/TodoistV1.node.ts
+  s_2e1fa95fc44f8f::t_6a5c83437a2162 12
+  s_2e1fa95fc44f8f::t_1ec0c39ff4ea32 570,579,593,623-629,669,688
+packages/nodes-base/nodes/TravisCi/TravisCi.node.ts
+  s_2e1fa95fc44f8f::t_ca9a95e57fcb07 105
+  s_2e1fa95fc44f8f::t_b4a6bf770b3f1d 8
+  s_2e1fa95fc44f8f::t_5f20fef9065e37 75-81
+  s_2e1fa95fc44f8f::t_39ecff188f7273 127
+  s_2e1fa95fc44f8f::t_8015dbacf1a939 111-117
+  s_2e1fa95fc44f8f::t_51f3dea9aa8e52 138
+  s_2e1fa95fc44f8f::t_3811978e553ece 145
+  s_2e1fa95fc44f8f::t_42c8098814de92 164
+packages/nodes-base/nodes/TheHive/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_abe159fdfa3b70 1-28
+packages/nodes-base/nodes/TheHiveProject/transport/requestApi.ts
+  s_2e1fa95fc44f8f::t_8ade933b2d12f7 8-11,13,18,21-25,29,32
+packages/nodes-base/nodes/Toggl/TogglTrigger.node.ts
+  s_2e1fa95fc44f8f::t_1d8580e8ad0ee2 10,12
+  s_2e1fa95fc44f8f::t_bc4e9747d31c8f 57,60
+packages/nodes-base/nodes/TheHive/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_22b8a450415d86 9-11,13,20,23-24,28,31
+  s_2e1fa95fc44f8f::t_89c200e73d89f4 150-151,153
+packages/nodes-base/nodes/Todoist/v2/test/OperationHandler.test.ts
+  s_2e1fa95fc44f8f::t_2abaccb552e947 3
+  s_2e1fa95fc44f8f::t_f9633566a38e94 105,136,160-163,179,201,229,251-256,281,309,328-331,355,454,483,502,525,547,563-566,582-585,608,640,668,693,718,738,771,800,819,842,864,892,919,944,968,993,1013,1046,1085,1115,1145,1180,1210,1230
+packages/nodes-base/nodes/TheHiveProject/actions/alert/create.operation.ts
+  s_0f34e61c0d2ecc::t_3ca163407e4605 9,177,186
+packages/nodes-base/nodes/TheHiveProject/actions/alert/deleteAlert.operation.ts
+  s_0f34e61c0d2ecc::t_47d52c6498ebc5 2,23
+packages/nodes-base/nodes/TheHiveProject/actions/alert/get.operation.ts
+  s_0f34e61c0d2ecc::t_bba5a84f541e64 7,56,59,78
+packages/nodes-base/nodes/TheHiveProject/actions/alert/merge.operation.ts
+  s_0f34e61c0d2ecc::t_31e7bf66ca463a 7,35
+packages/nodes-base/nodes/TheHiveProject/actions/alert/status.operation.ts
+  s_0f34e61c0d2ecc::t_a20b617d736c78 2,38
+packages/nodes-base/nodes/TheHiveProject/actions/alert/update.operation.ts
+  s_0f34e61c0d2ecc::t_70a739e6a881f6 8,105,129,141
+packages/nodes-base/nodes/TheHiveProject/actions/case/addAttachment.operation.ts
+  s_0f34e61c0d2ecc::t_e4b52286b1a382 7,72
+packages/nodes-base/nodes/TheHiveProject/actions/case/create.operation.ts
+  s_0f34e61c0d2ecc::t_6db00a96423fe9 8,75
+packages/nodes-base/nodes/TheHiveProject/actions/case/deleteCase.operation.ts
+  s_0f34e61c0d2ecc::t_5c6e291e82ee97 2,23
+packages/nodes-base/nodes/TheHiveProject/actions/case/get.operation.ts
+  s_0f34e61c0d2ecc::t_a439a9e75a16b7 7,49
+packages/nodes-base/nodes/TheHiveProject/actions/case/getAttachment.operation.ts
+  s_0f34e61c0d2ecc::t_68910f1d89a50e 7,78
+packages/nodes-base/nodes/TheHiveProject/actions/case/update.operation.ts
+  s_0f34e61c0d2ecc::t_de712ff1c0ed67 8,101,125,137
+packages/nodes-base/nodes/TheHiveProject/actions/comment/deleteComment.operation.ts
+  s_0f34e61c0d2ecc::t_798da6e89e8adc 2,23
+packages/nodes-base/nodes/TheHiveProject/actions/log/addAttachment.operation.ts
+  s_0f34e61c0d2ecc::t_07e1c2ea5537ff 7,50
+packages/nodes-base/nodes/TheHiveProject/actions/log/deleteLog.operation.ts
+  s_0f34e61c0d2ecc::t_0e9a54e9c670c1 2,23
+packages/nodes-base/nodes/TheHiveProject/actions/log/get.operation.ts
+  s_0f34e61c0d2ecc::t_82935882768b18 7,39
+packages/nodes-base/nodes/TheHiveProject/actions/observable/create.operation.ts
+  s_0f34e61c0d2ecc::t_f6c61a936a6b1e 7-8,118
+packages/nodes-base/nodes/TheHiveProject/actions/observable/deleteObservable.operation.ts
+  s_0f34e61c0d2ecc::t_ab4a43a773dd44 2,25
+packages/nodes-base/nodes/TheHiveProject/actions/observable/executeAnalyzer.operation.ts
+  s_0f34e61c0d2ecc::t_c998a15860e1a4 7,68,79
+packages/nodes-base/nodes/TheHiveProject/actions/observable/get.operation.ts
+  s_0f34e61c0d2ecc::t_b8265c7f4c6f09 7,45
+packages/nodes-base/nodes/TheHiveProject/actions/observable/update.operation.ts
+  s_0f34e61c0d2ecc::t_c0aff7c57fd19d 8,94,118,130
+packages/nodes-base/nodes/TheHiveProject/actions/page/create.operation.ts
+  s_0f34e61c0d2ecc::t_5f3c1964e7fbab 7,87,89
+packages/nodes-base/nodes/TheHiveProject/actions/page/deletePage.operation.ts
+  s_0f34e61c0d2ecc::t_efee7b62da258b 2,54,56
+packages/nodes-base/nodes/TheHiveProject/actions/page/update.operation.ts
+  s_0f34e61c0d2ecc::t_2668f2e2f78534 7,103,105
+packages/nodes-base/nodes/TheHiveProject/actions/query/executeQuery.operation.ts
+  s_0f34e61c0d2ecc::t_ac2586753cca6c 7,66
+packages/nodes-base/nodes/TheHiveProject/actions/task/deleteTask.operation.ts
+  s_0f34e61c0d2ecc::t_758d137f7acec1 2,23
+packages/nodes-base/nodes/TheHiveProject/actions/task/get.operation.ts
+  s_0f34e61c0d2ecc::t_4db151ffaf2b91 7,43
+packages/nodes-base/nodes/TheHiveProject/actions/task/update.operation.ts
+  s_0f34e61c0d2ecc::t_3ac4670f3d90b5 8,87,111,123
+packages/nodes-base/nodes/TheHiveProject/methods/listSearch.ts
+  s_0f34e61c0d2ecc::t_551c73781db94d 2,39,177,256
+packages/nodes-base/nodes/TheHiveProject/methods/loadOptions.ts
+  s_0f34e61c0d2ecc::t_2c1d821dbd2292 2,38,62,81,109,137,165,190,213,238,260
+packages/nodes-base/nodes/TheHiveProject/methods/resourceMapping.ts
+  s_0f34e61c0d2ecc::t_e7f0197a3e94e0 8,26
+packages/nodes-base/nodes/TheHiveProject/transport/queryHelper.ts
+  s_0f34e61c0d2ecc::t_30a6cc0afd596a 2,65,77,91
+packages/nodes-base/nodes/TheHiveProject/actions/alert/executeResponder.operation.ts
+  s_2e1fa95fc44f8f::t_315ecaa62d939d 7,38-43,74
+packages/nodes-base/nodes/TheHiveProject/actions/alert/promote.operation.ts
+  s_2e1fa95fc44f8f::t_8c8e68d1317d6f 7,65-70
+packages/nodes-base/nodes/TheHiveProject/actions/case/deleteAttachment.operation.ts
+  s_2e1fa95fc44f8f::t_6a05eba7da3b2b 2,38-42
+packages/nodes-base/nodes/TheHiveProject/actions/case/executeResponder.operation.ts
+  s_2e1fa95fc44f8f::t_4f9a3836e70af3 7,38-43,71
+packages/nodes-base/nodes/TheHiveProject/actions/case/getTimeline.operation.ts
+  s_2e1fa95fc44f8f::t_edca188241d341 7,30-34
+packages/nodes-base/nodes/TheHiveProject/actions/comment/add.operation.ts
+  s_2e1fa95fc44f8f::t_fbc47611647288 7,82-87
+packages/nodes-base/nodes/TheHiveProject/actions/comment/update.operation.ts
+  s_2e1fa95fc44f8f::t_0a8bc84d14926a 7,47-52
+packages/nodes-base/nodes/TheHiveProject/actions/log/create.operation.ts
+  s_2e1fa95fc44f8f::t_d99c71113d560f 7,93,105-110
+packages/nodes-base/nodes/TheHiveProject/actions/log/deleteAttachment.operation.ts
+  s_2e1fa95fc44f8f::t_2d59205169c32d 2,39-43
+packages/nodes-base/nodes/TheHiveProject/actions/log/executeResponder.operation.ts
+  s_2e1fa95fc44f8f::t_f335bb5702689e 7,38-43,70
+packages/nodes-base/nodes/TheHiveProject/actions/observable/executeResponder.operation.ts
+  s_2e1fa95fc44f8f::t_9b7ca1018f0686 7,38-43,71
+packages/nodes-base/nodes/TheHiveProject/actions/task/create.operation.ts
+  s_2e1fa95fc44f8f::t_b80b2a230821d0 7,69-74
+packages/nodes-base/nodes/TheHiveProject/actions/task/executeResponder.operation.ts
+  s_2e1fa95fc44f8f::t_314b1f639c0fac 7,41-46,73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9a9ab36846e464bfe95e32302d52d58cd5a5f667",
+  "prompts": {},
+  "sessions": {
+    "s_0f34e61c0d2ecc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae6bbfaf0c713f71a",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

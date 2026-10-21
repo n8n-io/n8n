@@ -1,0 +1,39 @@
+packages/nodes-base/nodes/Microsoft/Dynamics/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_b22714ede05453 27,36-40
+  s_28e6bbc7021910::t_89bd7f78aa7608 11
+packages/nodes-base/nodes/Microsoft/Dynamics/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_439f0ac32b5f22 38-65
+  s_deeb0320f0a5cd::t_1737384cca9697 3,34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "81a16c40552ffb48cbad703cb17164e107374ef5",
+  "prompts": {},
+  "sessions": {
+    "s_28e6bbc7021910": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a824afeb5b956032c",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_deeb0320f0a5cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a5d46f28701a1c020",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

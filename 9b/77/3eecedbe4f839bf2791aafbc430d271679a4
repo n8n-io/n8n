@@ -1,0 +1,51 @@
+packages/@n8n/frontend-vite-config/aliases.ts
+  s_605e351391b0a3::t_cd0a5dd9762bd2 14-18
+packages/@n8n/module-cli/src/templates/frontend/vite.config.ts.template
+  s_605e351391b0a3::t_5903fde97c2765 5
+packages/frontend/editor-ui/package.json
+  s_605e351391b0a3::t_9a04a894423c13 139
+packages/@n8n/module-cli/src/templates/frontend/package.json.template
+  s_605e351391b0a3::t_20e338433f33d1 36
+packages/frontend/editor-ui/vite/aliases.mts
+  s_605e351391b0a3::t_12ec318249b744 4-8
+packages/frontend/editor-ui/vite/aliases.test.ts
+  s_605e351391b0a3::t_52ec8ef6dee8af 6
+packages/modules/instance-registry/frontend/vite.config.ts
+  s_605e351391b0a3::t_6792943dedf30d 5
+packages/@n8n/frontend-vite-config/tsconfig.build.json
+  s_605e351391b0a3::t_3ae34ed967198c 1-10
+packages/@n8n/frontend-vite-config/package.json
+  s_605e351391b0a3::t_8edc734578f637 1-33
+packages/modules/instance-registry/frontend/package.json
+  s_605e351391b0a3::t_1beb3b6744a765 36
+packages/@n8n/module-cli/src/frontend.mjs
+  s_605e351391b0a3::t_17c824f641b404 10,52-56
+  s_605e351391b0a3::t_cfe81332e08896 31-32
+  s_605e351391b0a3::t_4a3683820ae189 61
+packages/@n8n/module-cli/frontend-module-guide.md
+  s_605e351391b0a3::t_b5dad804871f55 48
+  s_605e351391b0a3::t_c0016520e2018b 246
+  s_605e351391b0a3::t_42db4f51609ba9 344
+packages/@n8n/frontend-vite-config/index.ts
+  s_605e351391b0a3::t_7216b49face556 1
+packages/@n8n/frontend-vite-config/tsconfig.json
+  s_605e351391b0a3::t_672c88fadb6f5e 1-10
+pnpm-lock.yaml
+  s_605e351391b0a3::t_2b1f1c394fa3fa 2575-2586,6146-6148,6327-6329
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "9b773eecedbe4f839bf2791aafbc430d271679a4",
+  "prompts": {},
+  "sessions": {
+    "s_605e351391b0a3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92b3d818-c5d3-4cfb-868f-4088e98f82ec",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

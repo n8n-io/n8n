@@ -1,0 +1,27 @@
+docs/generated/postgres-schema/public.workflow_review_activity.md
+  s_87b7dc096911b8::t_5299c9a1819866 1-8,13-20,22-33,35-43,46-51,53-78,80-101
+  s_87b7dc096911b8::t_f78cebd804189a 12
+  s_87b7dc096911b8::t_8c70669a0653e1 79
+  s_87b7dc096911b8::t_cc5bda811cc929 9
+packages/@n8n/db/src/migrations/common/1785843640527-CreateWorkflowReviewActivityTables.ts
+  s_87b7dc096911b8::t_0ac1f4fd30f065 1-2,9,74-75,92-93
+  s_87b7dc096911b8::t_59d6fdfd6012d2 3-8,10-30,32-34,37-40,46-61,73,77-78,80,84-91
+  s_87b7dc096911b8::t_def207f791134d 81-83
+  s_87b7dc096911b8::t_90971cb4982118 36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d8b7735dee73ed40847286c16e3b47dfb4a7cf93",
+  "prompts": {},
+  "sessions": {
+    "s_87b7dc096911b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a6260b0-b810-4125-8749-e2239809baa5",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

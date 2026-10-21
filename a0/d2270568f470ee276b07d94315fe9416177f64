@@ -1,0 +1,22 @@
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_0bf6d2ccb779ff::t_c7cef880675a11 183-221
+  s_0bf6d2ccb779ff::t_3f88a6dd7dbc8f 459,466-467,469,477,483-486
+  s_0bf6d2ccb779ff::t_155e7e861a3f11 415,417-427
+  s_0bf6d2ccb779ff::t_05ac33b2116ce2 635,642-643,645,655,661-664
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "a0d2270568f470ee276b07d94315fe9416177f64",
+  "prompts": {},
+  "sessions": {
+    "s_0bf6d2ccb779ff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d96b4f2b-f082-42a2-bd81-8d59d0458b78",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

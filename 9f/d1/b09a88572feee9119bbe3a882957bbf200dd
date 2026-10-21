@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_9ff4262de30095::t_285010a2bde36c 3434-3443,3466-3467,3470-3481,3483-3524
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_9ff4262de30095::t_d474e23894f872 803-808,1037-1038,1058-1062,1230-1234,1237-1241,1252-1253,1256,1262-1265,1268,1273-1278,1337-1338
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9fd1b09a88572feee9119bbe3a882957bbf200dd",
+  "prompts": {},
+  "sessions": {
+    "s_9ff4262de30095": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9868a5dd-91a6-459c-9b56-a6c634304b2f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/ndv/settings/composables/useNodeSettingsParameters.ts
+  s_314b485ec0128f::t_79fe9ec23d44a8 207
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c179d9c485c37a446a4c0a11f295f17a66a87912",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_314b485ec0128f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27918f6d-3518-402f-807d-9c0a4010c4d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

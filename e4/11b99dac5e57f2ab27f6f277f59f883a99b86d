@@ -1,0 +1,663 @@
+packages/nodes-base/nodes/Github/GithubTrigger.node.ts
+  s_176da1aff184f0::t_5bf115611bda33 17-27,493-498,513,567-592,594-595,598-647,668-669,674-679
+packages/cli/src/modules/community-packages/__tests__/community-packages.service.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 129-147
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiConfirmationPanel.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 23-31,35,39,42,185-236
+packages/@n8n/workflow-sdk/src/ast-interpreter/interpreter.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 11,1070-1348
+packages/nodes-base/credentials/HttpTemplatedCustomAuth.credentials.ts
+  s_176da1aff184f0::t_5bf115611bda33 86-92
+packages/nodes-base/nodes/Kafka/test/v2/KafkaTriggerV2.node.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 857-859
+packages/cli/src/chat/chat-execution-manager.ts
+  s_176da1aff184f0::t_5bf115611bda33 14,26,29,42-55,70-71,112-117,121-140,142,144-203,256-259,261-263
+packages/@n8n/instance-ai/evaluations/credentials/seeder.ts
+  s_176da1aff184f0::t_5bf115611bda33 226
+packages/cli/src/modules/instance-ai/eval/execution.service.ts
+  s_176da1aff184f0::t_5bf115611bda33 12,145,435-440
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/helpers/credentials.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-30
+packages/nodes-base/nodes/Elastic/Elasticsearch/Elasticsearch.node.ts
+  s_176da1aff184f0::t_5bf115611bda33 13,105,126,184,196,260,263,306,336-340,352-356,374-380
+packages/@n8n/nodes-langchain/nodes/ModelSelector/ModelSelector.node.ts
+  s_176da1aff184f0::t_5bf115611bda33 6,44-57,218-222
+packages/nodes-base/utils/url.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-32
+packages/cli/src/modules/instance-ai/eval/__tests__/execution.service.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1719-1761
+packages/nodes-base/nodes/Databricks/eslint-user-agent-restriction.mjs
+  s_176da1aff184f0::t_5bf115611bda33 1-52
+packages/cli/src/__tests__/active-workflow-manager.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 8,52-53,94,230,419-421,424-425,444,470-471,489-499,501-502,523-529,599-772,912,1365,1553,1632
+packages/cli/src/modules/community-packages/__tests__/community-packages.lifecycle.service.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 169-194
+packages/@n8n/nodes-langchain/nodes/mcp/shared/utils.ts
+  s_176da1aff184f0::t_5bf115611bda33 171-172,175,183,304,308,310,320-321,483
+packages/cli/src/workflows/workflow-push-notifier.service.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-20
+packages/@n8n/api-types/src/schemas/agent-run-reducer.ts
+  s_176da1aff184f0::t_5bf115611bda33 474-480
+packages/@n8n/instance-ai/src/tools/workflows/setup-workflow.service.ts
+  s_176da1aff184f0::t_5bf115611bda33 31,882-890
+packages/@n8n/workflow-sdk/src/ast-interpreter/validators.ts
+  s_176da1aff184f0::t_5bf115611bda33 424
+packages/frontend/@n8n/design-system/src/styleguide/utils/cssTokenSource.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-38
+packages/nodes-base/nodes/Databricks/actions/genie/getQueryResults.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 3,13
+packages/@n8n/api-types/src/workflow-publish-blocked-details.ts
+  s_176da1aff184f0::t_5bf115611bda33 3-13,15-27,32-44
+packages/cli/src/modules/mcp/tools/workflow-builder/validate-workflow-code.tool.ts
+  s_176da1aff184f0::t_5bf115611bda33 14,29,31
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/getCatalog.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 3-8,15
+packages/nodes-base/nodes/Git/test/Git.node.security.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 3-8,10-20,22,32-38,40-140,152,161-162,200-201,204,208,211,220,233,247,277,323-396,403-404,406,410,414-415,428-1019
+packages/@n8n/expression-runtime/src/extensions/object-extensions.ts
+  s_176da1aff184f0::t_5bf115611bda33 4-13,79-80,83-84,86
+packages/@n8n/instance-ai/src/runtime/__tests__/confirmation-payload.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 133-140,208
+packages/@n8n/instance-ai/src/tools/credentials.tool.ts
+  s_176da1aff184f0::t_5bf115611bda33 138-162,372-373,401,801
+packages/cli/src/modules/sso-oidc/oidc.service.ee.ts
+  s_176da1aff184f0::t_5bf115611bda33 222-227,229,277
+packages/@n8n/nodes-langchain/nodes/llms/test/LmChatAnthropic.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 429,440-444,491-496,498,574-576
+packages/nodes-base/credentials/test/DatabricksApi.credentials.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-15
+packages/@n8n/constants/src/nodes.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-4
+packages/workflow/test/expression.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 186-194,202-240,724-765,774-838
+packages/frontend/editor-ui/src/features/roles/project/ProjectRoleView.vue
+  s_176da1aff184f0::t_5bf115611bda33 25,63,246
+packages/cli/src/modules/sso-oidc/oidc.controller.ee.ts
+  s_176da1aff184f0::t_5bf115611bda33 161
+packages/@n8n/api-types/src/dto/instance-ai/__tests__/instance-ai-confirm-request.dto.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 66-73
+packages/nodes-base/nodes/Elastic/ElasticSecurity/tests/GenericFunctions.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-10
+packages/@n8n/expression-runtime/src/__tests__/integration.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 149-164
+packages/cli/src/scaling/redis-lock.service.ts
+  s_176da1aff184f0::t_5bf115611bda33 11,172
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialForm.ts
+  s_176da1aff184f0::t_5bf115611bda33 511
+packages/@n8n/tournament/test/VariablePolyfill.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 108-156
+packages/nodes-base/nodes/Databricks/test/unity-catalog-oauth2.workflow.json
+  s_176da1aff184f0::t_5bf115611bda33 1-49
+packages/@n8n/nodes-langchain/nodes/mcp/McpClientTool/__test__/McpClientTool.node.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 6,15,38-47,69,94,128,166,209,257,302,334,358,390,416,461,499,537,574,624,667,699,743,779,813,853,902,971,1037,1091,1145,1192,1238,1272,1321,1394,1447,1503,1552,1594,1649,1691,1727,1771,1806,1844,1874,1913,1953,1994,2117,2143
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/router.ts
+  s_176da1aff184f0::t_5bf115611bda33 14,74-77
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/versionDescription.ts
+  s_176da1aff184f0::t_5bf115611bda33 7,72,78,101-104,116
+packages/nodes-base/credentials/DatabricksApi.credentials.ts
+  s_176da1aff184f0::t_5bf115611bda33 8-9,39-42,57
+packages/cli/src/executions/pre-execution-checks/__tests__/subworkflow-policy-checker.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 9,122-164
+packages/cli/src/modules/chat-hub/__tests__/chat-hub.service.integration.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 2246-2250,2363-2507
+packages/cli/src/executions/execution-recovery.service.ts
+  s_176da1aff184f0::t_5bf115611bda33 15,28,48,93-96,135-136,139-142
+packages/@n8n/nodes-langchain/nodes/vendors/Microsoft/__tests__/microsoft-utils.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1,129-130,216-218,652,689,709-715,726,756-762,806-812,815-818,850-856,896-902,939,976,1010,1044,1085,1115,1149-1155,1178-1184,1204-1210,1265,1291,1330,1357,1393,1419-1421
+packages/cli/src/workflows/publication/publication-status-reporter.ts
+  s_176da1aff184f0::t_5bf115611bda33 23,47,57,67,88,112,155,194-195,208-210,214-215,220-223
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/servicePrincipalDisplayOptions.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 69-105
+packages/cli/src/controllers/role.controller.ts
+  s_176da1aff184f0::t_5bf115611bda33 32,34,43,73-83,100-120
+packages/@n8n/tournament/src/ExpressionBuilder.ts
+  s_176da1aff184f0::t_5bf115611bda33 11,126,182-190,210,263
+packages/@n8n/api-types/src/dto/workflows/__tests__/workflow-publish-forbidden-error-public.dto.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-34
+packages/cli/src/active-workflow-manager.ts
+  s_176da1aff184f0::t_5bf115611bda33 8,38-43,52,61-62,94,702,706-709,713-717,721,732,813,822-823,825-839,1029-1032
+packages/cli/src/modules/mcp/tools/workflow-builder/constants.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-3
+packages/@n8n/nodes-langchain/nodes/llms/LMOllama/LmOllama.node.ts
+  s_176da1aff184f0::t_5bf115611bda33 3,15,60-67,77-78,80,86-87
+packages/cli/src/services/pruning/__tests__/workflow-history-compaction.service.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 3,10-13,45-60,303-329
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.liveRunState.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 128-145
+packages/nodes-base/nodes/Databricks/actions/vectorSearch/getIndex.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 3,10
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/summarize-workflow.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-77
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsOllama/test/EmbeddingsOllama.node.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-126
+packages/cli/src/modules/log-streaming.ee/log-streaming.controller.ts
+  s_176da1aff184f0::t_5bf115611bda33 13,20,30,70-74,84,88-97
+packages/cli/src/public-api/v1/handlers/log-streaming/log-streaming.handler.ts
+  s_176da1aff184f0::t_5bf115611bda33 7,14,89-96,100,123-130,134,148-153
+packages/cli/src/webhooks/webhook-request-sanitizer.ts
+  s_176da1aff184f0::t_5bf115611bda33 3-12,16-23,27-31
+packages/nodes-base/credentials/test/HttpTemplatedCustomAuth.credentials.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-42
+packages/@n8n/eslint-plugin-community-nodes/src/rules/no-credential-reuse.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 22,101-130,197-219
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_176da1aff184f0::t_5bf115611bda33 18,84-88,388-393,397-400,431-432
+packages/cli/src/services/active-workflows.service.ts
+  s_176da1aff184f0::t_5bf115611bda33 3,5,10,17,32-35,37-41,43
+packages/workflow/src/extensions/expression-extension.ts
+  s_176da1aff184f0::t_5bf115611bda33 577,594-596,632
+packages/@n8n/ai-utilities/src/utils/http-proxy-agent.ts
+  s_176da1aff184f0::t_5bf115611bda33 20,47-53,59-63,66-68,73,85-94,97-111,118-123
+packages/cli/src/services/credentials-tester.service.ts
+  s_176da1aff184f0::t_5bf115611bda33 260,277-285
+packages/nodes-base/nodes/Databricks/actions/genie/createMessage.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 3,11
+packages/cli/test/integration/workflows/workflow-sharing.service.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 120-158
+packages/@n8n/instance-ai/src/stream/map-chunk.ts
+  s_176da1aff184f0::t_5bf115611bda33 11,343-346,392
+packages/cli/src/modules/source-control.ee/__tests__/source-control.service.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 305-308,310-421,424,429-430,432-433,440-491,493-495
+packages/@n8n/instance-ai/src/tools/workflows/credential-utils.ts
+  s_176da1aff184f0::t_5bf115611bda33 110-118,123-124
+packages/@n8n/db/src/repositories/shared-workflow.repository.ts
+  s_176da1aff184f0::t_5bf115611bda33 174-184
+packages/cli/src/server.ts
+  s_176da1aff184f0::t_5bf115611bda33 32,347,431-433,457,482,490-516
+packages/cli/src/webhooks/hitl-interaction-webhooks.ts
+  s_176da1aff184f0::t_5bf115611bda33 37-39,68-71,75
+packages/@n8n/instance-ai/src/tools/__tests__/credentials.tool.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 946,987-994
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 17,50,93-105
+packages/nodes-base/nodes/Databricks/actions/files/uploadFile.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 4,25
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/onlineMeeting/sharedGuard.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-24
+packages/@n8n/nodes-langchain/nodes/ModelSelector/test/ModelSelector.headers.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-85
+packages/@n8n/workflow-sdk/src/codegen/parse-workflow-code.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 179-198
+packages/@n8n/api-types/src/schemas/__tests__/agent-run-reducer.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 781-813
+packages/cli/src/errors/response-errors/workflow-publish-forbidden.error.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-26
+packages/cli/src/webhooks/webhook-response-headers.ts
+  s_176da1aff184f0::t_5bf115611bda33 22-31,44,47-52
+packages/nodes-base/nodes/Databricks/actions/vectorSearch/queryIndex.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 3,58
+packages/@n8n/instance-ai/src/runtime/confirmation-payload.ts
+  s_176da1aff184f0::t_5bf115611bda33 47-51,96
+packages/frontend/editor-ui/src/features/roles/project/RoleAssignmentsTab.vue
+  s_176da1aff184f0::t_5bf115611bda33 40-46,92-99,102-128,130-163,186-187
+packages/frontend/@n8n/design-system/src/styleguide/components/ShadowExamples.vue
+  s_176da1aff184f0::t_5bf115611bda33 1-53
+packages/cli/src/middlewares/__tests__/jitter.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1,7-11,79-88
+packages/cli/src/modules/oauth-server/oauth-session.service.ts
+  s_176da1aff184f0::t_5bf115611bda33 17,36,55,62
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/deleteFunction.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 3-8,15
+packages/@n8n/workflow-sdk/src/ast-interpreter/index.ts
+  s_176da1aff184f0::t_5bf115611bda33 31
+packages/cli/package.json
+  s_176da1aff184f0::t_5bf115611bda33 245
+packages/cli/src/modules/log-streaming.ee/destinations/destination-credentials-access.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-36
+packages/cli/src/modules/source-control.ee/source-control.service.ee.ts
+  s_176da1aff184f0::t_5bf115611bda33 321-370,387
+packages/nodes-base/nodes/Elastic/Elasticsearch/GenericFunctions.ts
+  s_176da1aff184f0::t_5bf115611bda33 10-11,96-99,103-109
+packages/@n8n/ai-utilities/src/__tests__/utils/http-proxy-agent.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1,18-23,46-47,49-50,54,57,59-72,160,171,222,226,233,247,265-266,275,291,295-299,363,365,368,372-388,391-395,411,415,421,424,434,437,448,466,480,493,507,510,512,521-525,544,555,566
+packages/@n8n/eslint-plugin-community-nodes/src/utils/ast-utils.ts
+  s_176da1aff184f0::t_5bf115611bda33 71-137
+packages/cli/src/services/__tests__/credentials-tester.service.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 357-375
+packages/cli/src/utils/__tests__/request-path.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-94
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/listVolumes.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 3-8,20
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/getFunction.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 3-8,15
+packages/nodes-base/nodes/Databricks/actions/vectorSearch/createIndex.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 3,28
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/deleteCatalog.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 3-8,15
+packages/cli/src/workflows/__tests__/workflow-sharing.service.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-111
+packages/frontend/@n8n/design-system/src/components/N8nAiActivityStep/AiActivityStep.vue
+  s_176da1aff184f0::t_5bf115611bda33 167-168
+packages/nodes-base/nodes/Databricks/test/Databricks.oauth2.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-37
+packages/nodes-base/nodes/Elastic/ElasticSecurity/ElasticSecurity.node.ts
+  s_176da1aff184f0::t_5bf115611bda33 12-13,216-220,230-234,291,315,338,355,377,408,425,436,448,467-470,473
+packages/@n8n/eslint-plugin-community-nodes/src/rules/valid-credential-references.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 22,101-130,187-191,194-232
+packages/@n8n/nodes-langchain/nodes/agents/OpenAiAssistant/OpenAiAssistant.node.ts
+  s_176da1aff184f0::t_5bf115611bda33 4,17,354
+packages/cli/src/webhooks/slack-interaction-webhooks.ts
+  s_176da1aff184f0::t_5bf115611bda33 21-22
+packages/@n8n/permissions/src/roles/custom-role-scopes.ee.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-2
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/listTables.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 3-8,20
+packages/cli/src/credentials/credentials.service.ts
+  s_176da1aff184f0::t_5bf115611bda33 91-100,1314-1316,1320-1329,1339-1342
+packages/frontend/@n8n/design-system/src/styleguide/components/TypeExamples.vue
+  s_176da1aff184f0::t_5bf115611bda33 1-213
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/listCatalogs.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 3,9
+packages/nodes-base/nodes/Github/__tests__/node/GithubTrigger.node.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 4-38,49,52-87,99,109,112-122,159-164,171-339,343-440,456-489
+packages/@n8n/db/src/repositories/user.repository.ts
+  s_176da1aff184f0::t_5bf115611bda33 230-257
+packages/nodes-base/nodes/Databricks/actions/files/deleteFile.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 4,21
+pnpm-workspace.yaml
+  s_176da1aff184f0::t_5bf115611bda33 251,364
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/createFunction.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 3-8,29
+packages/nodes-base/nodes/Databricks/actions/genie/getSpace.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 3,10
+packages/@n8n/expression-runtime/src/extensions/__tests__/object-extensions.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-44
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/credential-utils.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 6,99-109
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/createVolume.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 4-9,40
+packages/nodes-base/nodes/Databricks/constants.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-17
+packages/nodes-base/nodes/Databricks/test/helpers.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-114
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/onlineMeeting/create.minimal.workflow.json
+  s_176da1aff184f0::t_5bf115611bda33 1-88
+packages/nodes-base/nodes/Databricks/actions/files/downloadFile.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 5-10,30
+packages/workflow/test/expression-compatibility.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-890
+packages/@n8n/tournament/src/VariablePolyfill.ts
+  s_176da1aff184f0::t_5bf115611bda33 16-35,44
+packages/cli/src/chat/__tests__/chat-resume-node-types.integration.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-216
+packages/@n8n/backend-network/src/ssrf/passthrough-egress-filter.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-16
+packages/@n8n/instance-ai/src/tools/workflows/setup-workflow.schema.ts
+  s_176da1aff184f0::t_5bf115611bda33 8,28
+packages/cli/test/integration/controllers/role.controller-db.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 8,10,12,15-16,255-362
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/updateWorkflow.generated.yml
+  ai_agent 5,1105-1121
+packages/@n8n/nodes-langchain/nodes/mcp/shared/__test__/utils.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 38-42,376,400,418,435,458,487,511,529,548,569,591,614,634,652,666,668-669,684,696,714,741,764,787,815
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.threadRuntime.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 11-14,1829,1861-1863,1945-1961
+packages/@n8n/instance-ai/evaluations/credentials/__tests__/seeder.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 28,75
+packages/@n8n/nodes-langchain/nodes/llms/LMOllama/test/LmOllama.node.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-125
+packages/@n8n/nodes-langchain/nodes/llms/test/N8nNonEstimatingTracing.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-89
+packages/nodes-base/nodes/Databricks/actions/files/getFileInfo.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 4,21
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/factory.ts
+  s_176da1aff184f0::t_5bf115611bda33 1,90
+packages/nodes-base/credentials/MicrosoftTeamsOAuth2Api.credentials.ts
+  s_176da1aff184f0::t_5bf115611bda33 12
+packages/@n8n/expression-runtime/src/bridge/quickjs-bridge.ts
+  s_176da1aff184f0::t_5bf115611bda33 24-27,272,1163
+packages/nodes-base/nodes/Databricks/actions/databricksSql/executeQuery.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 6,34-42,44-46,64,109-114
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_176da1aff184f0::t_5bf115611bda33 38,614,633,665
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/createTable.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 3-8,37
+packages/nodes-base/nodes/Databricks/test/Databricks.node.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 72-75,196-215
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_176da1aff184f0::t_5bf115611bda33 7-11,23,292-293,797-880,928-947,1175-1183,1186,1251-1277,1303-1330
+packages/@n8n/api-types/src/__tests__/workflow-publish-blocked-details.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 21-38
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/deleteVolume.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 3-8,18
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/onlineMeeting/index.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-47
+packages/nodes-base/nodes/Github/__tests__/GithubTriggerHelpers.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 21-23,36-38,56,61,63-67
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/onlineMeeting/create.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-68
+packages/cli/test/integration/log-streaming.controller.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 3,6,20,162-223
+packages/cli/src/errors/response-errors/workflow-publish-blocked.error.ts
+  s_176da1aff184f0::t_5bf115611bda33 1,5,13
+packages/@n8n/nodes-langchain/nodes/llms/LMOpenAi/LmOpenAi.node.ts
+  s_176da1aff184f0::t_5bf115611bda33 3,16-17,216-220,277
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v1/actions/assistant/message.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 25,185
+packages/cli/src/modules/sso-oidc/__tests__/oidc.controller.ee.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 10,184-203
+packages/nodes-base/nodes/Github/GithubTriggerHelpers.ts
+  s_176da1aff184f0::t_5bf115611bda33 13,20-22,24-29
+packages/cli/src/chat/chat-service.ts
+  s_176da1aff184f0::t_5bf115611bda33 8,169-170,252-257,268-272,274-289,291
+packages/@n8n/backend-network/src/ssrf/index.ts
+  s_176da1aff184f0::t_5bf115611bda33 5
+packages/frontend/@n8n/design-system/src/styleguide/colour.mdx
+  s_176da1aff184f0::t_5bf115611bda33 3,6,22-24
+packages/@n8n/nodes-langchain/nodes/llms/N8nNonEstimatingTracing.ts
+  s_176da1aff184f0::t_5bf115611bda33 10,40-43,52,117-120
+packages/nodes-base/nodes/Databricks/actions/files/createDirectory.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 4,21
+packages/@n8n/api-types/src/dto/workflows/workflow-publish-forbidden-error-public.dto.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-13
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_176da1aff184f0::t_5bf115611bda33 67-71,421-432,459-461,481-493,755-759,1469-1472
+packages/@n8n/config/test/config.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 510
+packages/nodes-base/nodes/Databricks/actions/helpers.ts
+  s_176da1aff184f0::t_5bf115611bda33 2-9,13-39,67-69
+packages/cli/src/services/__tests__/active-workflows.service.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 2,10,15,22,52,55-62,64,66-71
+packages/@n8n/api-types/src/dto/index.ts
+  s_176da1aff184f0::t_5bf115611bda33 185-188
+packages/@n8n/nodes-langchain/nodes/mcp/shared/runtime.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 3,13,49-58,74,87,445,556,575,589
+packages/cli/src/webhooks/__tests__/slack-interaction-webhooks.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 81-86,97,245-250
+packages/@n8n/api-types/src/index.ts
+  s_176da1aff184f0::t_5bf115611bda33 309,373-374,544-545
+packages/cli/src/modules/sso-oidc/__tests__/oidc.service.ee.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 66-71,118,746-777
+packages/cli/test/integration/public-api/workflow-update-republish-scope.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-304
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/onlineMeeting/create.workflow.json
+  s_176da1aff184f0::t_5bf115611bda33 1-117
+packages/testing/containers/services/sandbox.ts
+  s_176da1aff184f0::t_5bf115611bda33 261,277-279,281
+packages/nodes-base/nodes/Git/test/Git.node.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 59-61,67-77,101-103,117-118,126-127,134,290-425,600-601,1850,1878,1898,1909,1928,1945
+packages/nodes-base/nodes/Git/GenericFunctions.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-4,135-260,267-272,283-285,287-289,292,295-296,317-319,323,327-331,333-348,350-351,353-354,357-361,373-383
+packages/workflow/src/extensions/object-extensions.ts
+  s_176da1aff184f0::t_5bf115611bda33 11-20,86-87,90-91,93
+packages/workflow/test/ExpressionExtensions/object-extensions.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 3-8,34-47,145-153
+packages/frontend/@n8n/design-system/src/styleguide/components/PrimitivesColorTable.vue
+  s_176da1aff184f0::t_5bf115611bda33 2,5-6,8,22,24,26-31,33-34,36-64,66-67,70-89,94,100,102-106,108,112-114,129-130,156,160-162,166-212,214-230,238-240,244,250,252-253,259-280,284,287-299,302,305-307,310-315,333-348
+packages/cli/src/chat/__tests__/chat-service.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 28-30,381,397-399,406-407
+packages/@n8n/nodes-langchain/nodes/vendors/Microsoft/microsoft-utils.ts
+  s_176da1aff184f0::t_5bf115611bda33 16,227,233-242,370,386-390,432,573
+packages/cli/src/webhooks/__tests__/webhook-request-sanitizer.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 4-7,340-362
+packages/cli/src/executions/pre-execution-checks/subworkflow-policy-checker.ts
+  s_176da1aff184f0::t_5bf115611bda33 5,14,29-34,56,67-97,99,115,117,142,144,158-164,167
+packages/nodes-base/nodes/Code/errors/WrappedExecutionError.ts
+  s_176da1aff184f0::t_5bf115611bda33 6-10,24,31
+packages/nodes-base/nodes/Elastic/Elasticsearch/tests/GenericFunctions.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1,3,113-137
+packages/@n8n/api-types/src/dto/instance-ai/instance-ai-confirm-request.dto.ts
+  s_176da1aff184f0::t_5bf115611bda33 4,53-57,115
+packages/@n8n/api-types/src/schemas/__tests__/instance-ai.schema.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 13,284-307,543-547
+packages/@n8n/workflow-sdk/src/ast-interpreter/interpreter.ts
+  s_176da1aff184f0::t_5bf115611bda33 12,41-45,52-57,63-66,84-85,108-125,179-180,183-184,193-328,426-436,447-453,543,550-556,577,579,583-584,593,598,603,605,609-612,616-617,670-671,701-703,705-707,709-721,729-731,733-739,741-745,748-760,762-788,791-803,849-851,978,980-987
+packages/cli/src/workflows/publication/__tests__/publication-status-reporter.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 8,17-18,33-34,43,61-62,72,111-118,140-146,229-235,250-256,275,290-296,319-325,346-352,471,486-492,499-506,508-527,529-530,534-541
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/setup-workflow.service.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 2162,2179-2181,2184,2188,2192
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConfirmationPanel.vue
+  s_176da1aff184f0::t_5bf115611bda33 4,45,139-144,170-181,201-216,290-298,304
+packages/workflow/src/interfaces.ts
+  s_176da1aff184f0::t_5bf115611bda33 1007-1008,1010
+packages/frontend/editor-ui/src/features/credentials/composables/__tests__/useCredentialForm.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 130,234
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_176da1aff184f0::t_5bf115611bda33 714
+packages/workflow/test/ExpressionExtensions/expression-extension.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 8-9,234-244,313-321
+packages/@n8n/eslint-plugin-community-nodes/src/rules/no-emoji-in-options.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 19-39,99-154
+packages/cli/src/webhooks/telegram-interaction-webhooks.ts
+  s_176da1aff184f0::t_5bf115611bda33 22-23
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/onlineMeeting/create.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-212
+packages/nodes-base/credentials/DatabricksOAuth2Api.credentials.ts
+  s_176da1aff184f0::t_5bf115611bda33 3-4,177
+packages/cli/src/public-api/v1/handlers/workflows/__tests__/workflow-publish-blocked.openapi.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 41-55
+packages/cli/src/workflows/workflow.service.ts
+  s_176da1aff184f0::t_5bf115611bda33 20,46,50,79-81,401-402,418,715-722,739-773,779,839-840,912,916-927,945-955
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/getTable.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 3-8,15
+packages/frontend/@n8n/design-system/src/styleguide/shadow.mdx
+  s_176da1aff184f0::t_5bf115611bda33 1,3-5,11,26-29,41-42,45-46,49-50,53-54,56-58,60-62,64
+packages/nodes-base/nodes/Databricks/test/files-download.workflow.json
+  s_176da1aff184f0::t_5bf115611bda33 1-63
+packages/nodes-base/nodes/Databricks/Databricks.node.ts
+  s_176da1aff184f0::t_5bf115611bda33 25,34
+packages/nodes-base/utils/url.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-19
+packages/frontend/editor-ui/src/features/roles/project/RoleAssignmentsTab.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 73-117
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_176da1aff184f0::t_5bf115611bda33 45,152,487-489
+packages/cli/src/workflows/workflow-sharing.service.ts
+  s_176da1aff184f0::t_5bf115611bda33 1,3,27-28,75-113
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/methods/searchModels.ts
+  s_176da1aff184f0::t_5bf115611bda33 12,23
+packages/cli/src/chat/__tests__/chat-execution-manager.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 47,65,75-92,96-102,155-192,492-494,544-546,582-584,625-627,779-976
+packages/cli/test/integration/server-static-assets.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-4,6-11,14-74,76-82,85-107,109-111,113-114,116-121,123,125-131,133-150,154-158,162-173,175-176,178,181-197,200-208,210-212,214-216,219-230,232-235,237-238,242-248,250-251,254-257,259,261-265,268-272,274
+packages/nodes-base/nodes/Git/__test__/GenericFunctions.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-3,7,9-10,12-13,16-33,108-146,298-410,426-589
+packages/nodes-base/nodes/Kafka/test/v2/KafkaV2.node.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1,135,369-371,571-576
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/node.type.ts
+  s_176da1aff184f0::t_5bf115611bda33 7
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/methods/__tests__/searchModels.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 47,52-57,79-81,87-88,100-102,113-115,170-175
+packages/nodes-base/eslint.config.mjs
+  s_176da1aff184f0::t_5bf115611bda33 6,14-19,203
+packages/@n8n/config/src/configs/security.config.ts
+  s_176da1aff184f0::t_5bf115611bda33 64
+packages/@n8n/nodes-langchain/nodes/llms/LmChatMistralCloud/LmChatMistralCloud.node.ts
+  s_176da1aff184f0::t_5bf115611bda33 197,199
+packages/cli/test/integration/services/active-workflows.service.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-48
+packages/@n8n/expression-runtime/src/extensions/function-extensions.ts
+  s_176da1aff184f0::t_5bf115611bda33 4-13,42
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 635,637
+packages/@n8n/ai-utilities/src/index.ts
+  s_176da1aff184f0::t_5bf115611bda33 18,59
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOllama/test/LmChatOllama.node.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-125
+packages/nodes-base/credentials/test/DatabricksOAuth2Api.credentials.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1,8-12
+packages/nodes-base/nodes/Databricks/actions/genie/executeMessageQuery.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 3,13
+packages/nodes-base/nodes/Kafka/test/utils.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 2,1022-1024,1313,1315,1317,1320-1322,1364-1372
+packages/cli/src/modules/log-streaming.ee/__tests__/log-streaming.controller.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 3,5-8,11,16,27,34,40,124-171,193-227
+packages/cli/src/modules/oauth-server/oauth-server.service.ts
+  s_176da1aff184f0::t_5bf115611bda33 46-85,307-310,315-324,340-345
+packages/nodes-base/nodes/Databricks/actions/modelServing/queryEndpoint.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 5,32-37,91
+packages/workflow/src/expression-sandboxing.ts
+  s_176da1aff184f0::t_5bf115611bda33 31-33,85-116,443-457
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOpenAi/methods/__tests__/loadModels.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 2-3,37,45-58,80-82,85-86,98-100,110-112,120-122,170-238,251-254
+packages/cli/src/errors/http-error-serializers.ts
+  s_176da1aff184f0::t_5bf115611bda33 37
+packages/cli/src/modules/agents/__tests__/workflow-tool-factory.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 8,101
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.liveRunState.ts
+  s_176da1aff184f0::t_5bf115611bda33 92
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/servicePrincipal.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 75-87
+packages/cli/src/chat/__tests__/utils.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 15,515,519,526,531,542-552,562-563,566,570-571,574,578-579,588-589,598-599,609,613,623-624,627-727,729-730
+packages/nodes-base/nodes/Databricks/actions/genie/startConversation.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 3,10
+packages/frontend/@n8n/design-system/src/styleguide/type.mdx
+  s_176da1aff184f0::t_5bf115611bda33 1,3,5,13-15,23-25
+packages/workflow/test/ExpressionExtensions/array-extensions.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 5,105-132,198-230,242-290,302-321
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/createCatalog.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 3-8,19
+packages/nodes-base/credentials/test/MicrosoftTeamsOAuth2Api.credentials.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 15,74,91,109
+docker/get-n8n-compose.yml
+  s_176da1aff184f0::t_5bf115611bda33 13,27,52
+packages/@n8n/eslint-plugin-community-nodes/src/rules/valid-credential-references.ts
+  s_176da1aff184f0::t_5bf115611bda33 5,60-61,65
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/ssrf-integration.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 15,236,239-242
+packages/nodes-base/nodes/Databricks/actions/vectorSearch/listIndexes.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 3,10
+packages/cli/src/executions/__tests__/execution-recovery.service.integration.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 37-38,51-52,79,85,194-231,573-604
+packages/nodes-base/nodes/Databricks/methods/listSearch.ts
+  s_176da1aff184f0::t_5bf115611bda33 8,24
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_176da1aff184f0::t_5bf115611bda33 3088-3089,7009-7013
+packages/cli/src/modules/mcp/tools/publish-workflow.tool.ts
+  s_176da1aff184f0::t_5bf115611bda33 4,48-49
+packages/@n8n/expression-runtime/src/extensions/__tests__/function-extensions.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-23
+packages/@n8n/instance-ai/src/runtime/run-state-registry.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-4,90
+packages/cli/test/integration/access-control/instance-roles.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 3,232-233,240,250-263
+pnpm-lock.yaml
+  ai_agent 523-524,759,3471,4504-4505,5329,6271,6968,18436-18439,20405-20406,22292-22294,34585,34590-34597,34601,34603,34607,34609,34611,34615,34617,34623-34624,34743,34756,34769,38280,39198-39204,41614,43889,43893,46251,46257,46263
+packages/cli/src/modules/chat-hub/chat-hub.service.ts
+  s_176da1aff184f0::t_5bf115611bda33 29,73,145-159
+packages/cli/src/modules/mcp/tools/workflow-builder/create-workflow-from-code.tool.ts
+  s_176da1aff184f0::t_5bf115611bda33 11-15,80,82
+packages/cli/src/modules/oauth-server/__tests__/oauth-server.service.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 419-538
+packages/cli/src/webhooks/__tests__/telegram-interaction-webhooks.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 204-241
+packages/cli/src/push/abstract.push.ts
+  s_176da1aff184f0::t_5bf115611bda33 117,119
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOpenAi/methods/loadModels.ts
+  s_176da1aff184f0::t_5bf115611bda33 8,15-19,21,30
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/helpers/credentials.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-95
+packages/cli/src/modules/log-streaming.ee/destinations/message-event-bus-destination-syslog.ee.ts
+  s_176da1aff184f0::t_5bf115611bda33 6,117
+packages/cli/src/workflows/__tests__/workflow-push-notifier.service.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-42
+packages/nodes-base/nodes/Code/test/WrappedExecutionError.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-34
+packages/nodes-base/nodes/Databricks/actions/genie/getMessage.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 3,12
+packages/cli/src/errors/subworkflow-policy-denial.error.ts
+  s_176da1aff184f0::t_5bf115611bda33 5-6,25-26,31-47,57,59,61,63-64,67-68,71-72,85
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/deleteTable.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 3-8,15
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/updateCatalog.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 3-8,16
+packages/cli/src/controllers/__tests__/role.controller.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1,5,7,15-16,25,154-240
+packages/cli/test/integration/workflows/workflows.controller.ee.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 21,40,2356-2440
+packages/nodes-base/nodes/Elastic/ElasticSecurity/GenericFunctions.ts
+  s_176da1aff184f0::t_5bf115611bda33 11-12,114
+packages/nodes-base/nodes/Kafka/test/Kafka.node.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 2,146,248-250,302-307
+packages/testing/containers/test-containers.ts
+  s_176da1aff184f0::t_5bf115611bda33 48-50
+packages/@n8n/eslint-plugin-community-nodes/src/rules/no-credential-reuse.ts
+  s_176da1aff184f0::t_5bf115611bda33 5,61-62,66
+packages/workflow/src/extensions/array-extensions.ts
+  s_176da1aff184f0::t_5bf115611bda33 17-33,95-96,190-198,228,231-232,253-254,280,284-290,306,310,312-315,317-322
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsOpenAI/EmbeddingsOpenAi.node.ts
+  s_176da1aff184f0::t_5bf115611bda33 15-16,256
+packages/cli/src/chat/utils.ts
+  s_176da1aff184f0::t_5bf115611bda33 15-50,67
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOllama/LmChatOllama.node.ts
+  s_176da1aff184f0::t_5bf115611bda33 10,63-70,80,82,86
+packages/cli/src/task-runners/task-broker/auth/__tests__/task-broker-auth.service.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 119-138
+packages/cli/src/utils/request-path.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-69
+packages/nodes-base/nodes/Kafka/test/KafkaTrigger.node.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 410-412,462-467,511-513
+packages/@n8n/expression-runtime/src/bridge/isolated-vm-bridge.ts
+  s_176da1aff184f0::t_5bf115611bda33 25-28,756
+packages/nodes-base/test/nodes/TriggerHelpers.ts
+  s_176da1aff184f0::t_5bf115611bda33 1,105,208
+.github/test-metrics/e2e-impact-map.json
+  s_176da1aff184f0::t_5bf115611bda33 1
+packages/@n8n/instance-ai/src/tools/__tests__/workflows.tool.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-6,25,48-86,172-175,2321-2469,2944-2997
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOpenAi/LmChatOpenAi.node.ts
+  s_176da1aff184f0::t_5bf115611bda33 19,774
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 4200-4209,4214,4231,4235-4247,4250-4254,4267
+packages/@n8n/instance-ai/src/tools/workflows/summarize-workflow.ts
+  s_176da1aff184f0::t_5bf115611bda33 3,34-35,38-39,53-54,57-58
+packages/cli/src/middlewares/jitter.ts
+  s_176da1aff184f0::t_5bf115611bda33 1,22
+packages/@n8n/eslint-plugin-community-nodes/src/rules/no-emoji-in-options.ts
+  s_176da1aff184f0::t_5bf115611bda33 6,96-97,101
+packages/cli/src/modules/community-packages/community-packages.service.ts
+  s_176da1aff184f0::t_5bf115611bda33 3,48-50,165-167
+packages/@n8n/expression-runtime/src/extensions/__tests__/array-extensions.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-134
+packages/cli/src/services/pruning/workflow-history-compaction.service.ts
+  s_176da1aff184f0::t_5bf115611bda33 16-19,161-165,197-201
+packages/cli/src/webhooks/__tests__/webhook-response-headers.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-2,12-17,79-108,204-219,297-313
+packages/@n8n/expression-runtime/src/extensions/array-extensions.ts
+  s_176da1aff184f0::t_5bf115611bda33 17-33,95-96,190-198,226,229-230,251-252,278,282-288,304,308,310-313,315-320
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsOllama/EmbeddingsOllama.node.ts
+  s_176da1aff184f0::t_5bf115611bda33 3,11,52-60,67-68,70,73-74
+packages/nodes-base/nodes/Databricks/actions/files/deleteDirectory.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 4,21
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/getVolume.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 3-8,18
+packages/nodes-base/nodes/Git/Git.node.ts
+  s_176da1aff184f0::t_5bf115611bda33 13,19,38,40,43,45,47,53-62,272-285,325-327,382-384,387-388,413,433,440,455,482-548,553,578-586,639-649,711,816,858,922
+packages/@n8n/workflow-sdk/src/ast-interpreter/errors.ts
+  s_176da1aff184f0::t_5bf115611bda33 104-118
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/file-system-helper-functions.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 212-229,243
+packages/nodes-base/nodes/Databricks/actions/files/listDirectory.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 4,29
+packages/cli/src/task-runners/task-broker/auth/task-broker-auth.service.ts
+  s_176da1aff184f0::t_5bf115611bda33 61-62
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/listFunctions.operation.ts
+  s_176da1aff184f0::t_5bf115611bda33 3-8,20
+.github/workflows/backport.yml
+  s_176da1aff184f0::t_5bf115611bda33 27-30
+packages/workflow/src/extensions/extended-functions.ts
+  s_176da1aff184f0::t_5bf115611bda33 10-19,49
+packages/cli/src/modules/log-streaming.ee/destinations/__tests__/destination-credentials-access.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 1-62
+packages/@n8n/instance-ai/src/stream/__tests__/map-chunk.test.ts
+  s_176da1aff184f0::t_5bf115611bda33 338-341,376-379,443-446
+packages/frontend/@n8n/design-system/src/styleguide/components/NamedTokensColorTable.vue
+  s_176da1aff184f0::t_5bf115611bda33 1-248
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e411b99dac5e57f2ab27f6f277f59f883a99b86d",
+  "prompts": {},
+  "sessions": {
+    "s_176da1aff184f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c8cc965-adbd-49e9-a63e-907c657a03a4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

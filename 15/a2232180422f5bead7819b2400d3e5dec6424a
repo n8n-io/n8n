@@ -1,0 +1,85 @@
+packages/frontend/@n8n/rest-api-client/src/typed-client.ts
+  s_40800c3e5ea4ce::t_a33dcd72017745 1-22,28-109
+  ai_agent 23-27
+packages/frontend/@n8n/rest-api-client/src/generated/internal-api-client.ts
+  s_40800c3e5ea4ce::t_70db331f55b94d 1-2,17-18,20,75-76
+  s_40800c3e5ea4ce::t_5c95bc3b5f9a0c 16,19
+  s_40800c3e5ea4ce::t_14ed99033beacf 21,55-57,77-80
+  ai_agent 3-15,22-54,58-74
+packages/@n8n/api-types/src/dto/otel/otel-test-trace-response.dto.ts
+  s_40800c3e5ea4ce::t_f6c53a351d32c8 1-19
+packages/frontend/@n8n/rest-api-client/src/api/api-keys.ts
+  s_40800c3e5ea4ce::t_c6c61f3a2d51d1 29
+  s_40800c3e5ea4ce::t_7f2172b2e7cfb5 44,51,58,66-69,76
+  s_40800c3e5ea4ce::t_b587c86cfcc701 7,11,25-28,30-39
+packages/cli/scripts/generate-internal-api-client.cjs
+  s_40800c3e5ea4ce::t_1aed43b1e74639 1-3,8,16,18-19,25-29,36,39,45-47,61-63,94-96,104-108,110-111,113,132-136
+  s_40800c3e5ea4ce::t_74a49064e47ff7 109,112
+  s_40800c3e5ea4ce::t_a60b34fff0be5e 33-35
+  s_40800c3e5ea4ce::t_cec79c2957f8a5 54-60
+  s_40800c3e5ea4ce::t_3ebff75058eada 114-119,121-131
+  s_40800c3e5ea4ce::t_cb7eb8b0873359 4-7,9-15,17,20-24,30-32,37-38,40-44,48-53,64-93,97-103,120,137-142
+packages/@n8n/api-types/src/dto/api-keys/api-key-response.dto.ts
+  s_40800c3e5ea4ce::t_c2bda7c2c8a4b1 38
+  s_40800c3e5ea4ce::t_edc39dbf5caf49 49-71
+  s_40800c3e5ea4ce::t_c47f6ccb6e2c9c 3
+  s_40800c3e5ea4ce::t_0008c8f6072d32 20-30,35-36,39
+  s_40800c3e5ea4ce::t_62b547a1fd1d43 1-2,4-19,31-34,37,40-48
+packages/frontend/@n8n/rest-api-client/src/index.ts
+  s_40800c3e5ea4ce::t_48833d60e173a0 4-5
+packages/cli/scripts/build.mjs
+  s_40800c3e5ea4ce::t_9e5e98a2572bc6 20,28-33
+packages/frontend/editor-ui/src/features/settings/otel/otel.api.ts
+  s_40800c3e5ea4ce::t_f7adc3689e4b43 24
+  s_40800c3e5ea4ce::t_6f0d3ef5380a32 49
+  s_40800c3e5ea4ce::t_04850553f1509d 22-23
+  s_40800c3e5ea4ce::t_26a751fd0f723c 2
+  s_40800c3e5ea4ce::t_9165533fd1a63b 31
+packages/frontend/@n8n/rest-api-client/package.json
+  s_40800c3e5ea4ce::t_356bf3fbd32dea 46-47
+packages/cli/src/modules/otel/otel-settings.controller.ts
+  s_40800c3e5ea4ce::t_efeedcbc1d9aea 51
+  s_40800c3e5ea4ce::t_db6327a11cb93d 36
+  s_40800c3e5ea4ce::t_c5e6600a23206e 1-6
+  s_40800c3e5ea4ce::t_43538973f26563 9
+  s_40800c3e5ea4ce::t_7ca3582697a058 29-30
+packages/@n8n/api-types/src/dto/otel/otel-settings-response.dto.ts
+  s_40800c3e5ea4ce::t_b09308c7dd8f66 5-17
+  s_40800c3e5ea4ce::t_7d3245315a5238 1-4,18-36,38
+  s_40800c3e5ea4ce::t_7adfe895da23a0 37
+packages/cli/src/controller.registry.ts
+  s_40800c3e5ea4ce::t_346ce3fbeb3ce9 115-132
+  s_40800c3e5ea4ce::t_a7755fcca2b971 2
+pnpm-lock.yaml
+  ai_agent 5506-5508,22480-22481,29403,42051
+packages/@n8n/api-types/src/dto/index.ts
+  s_40800c3e5ea4ce::t_f7e9335045d591 147-153
+  s_40800c3e5ea4ce::t_33790e0491b2a5 325
+  s_40800c3e5ea4ce::t_0ba9dc292356f2 326
+packages/cli/src/controllers/api-keys.controller.ts
+  s_40800c3e5ea4ce::t_174c890018279b 142
+  s_40800c3e5ea4ce::t_1846fe6d0fb7d3 2,12
+  s_40800c3e5ea4ce::t_6002ce5327dc73 3-4,7
+  s_40800c3e5ea4ce::t_3c89a91b2290af 73-75
+  s_40800c3e5ea4ce::t_2ca0f5b154d904 76
+  s_40800c3e5ea4ce::t_dca57eb9e903a0 91
+  s_40800c3e5ea4ce::t_258000a8a25ff6 48
+  s_40800c3e5ea4ce::t_39d92ded7eee7f 107
+  s_40800c3e5ea4ce::t_78efa5e2efad35 126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "15a2232180422f5bead7819b2400d3e5dec6424a",
+  "prompts": {},
+  "sessions": {
+    "s_40800c3e5ea4ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e6adcce-1790-4a29-8ab4-9724b9fa722e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

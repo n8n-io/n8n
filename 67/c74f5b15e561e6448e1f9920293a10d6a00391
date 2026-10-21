@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_068448c5f67c19::t_f193c4c73a9e3d 648
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "67c74f5b15e561e6448e1f9920293a10d6a00391",
+  "prompts": {},
+  "sessions": {
+    "s_068448c5f67c19": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01538-dbaf-7812-b4c6-213ee6fe8a2b",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

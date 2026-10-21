@@ -1,0 +1,24 @@
+packages/@n8n/api-types/src/schemas/user.schema.ts
+  s_d2f99add8a855c::t_f4b187fee25b00 16-17
+packages/frontend/editor-ui/src/features/settings/users/components/SettingsUsersProjectsCell.vue
+  s_d2f99add8a855c::t_cb30d7f0730109 14
+packages/frontend/editor-ui/src/features/settings/users/views/SettingsUsersView.test.ts
+  s_d2f99add8a855c::t_b34aee23e6e1be 795
+  s_d2f99add8a855c::t_da772fe86e5d9f 929
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "35525666512e14dbec0aa715096df5708cf30feb",
+  "prompts": {},
+  "sessions": {
+    "s_d2f99add8a855c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "113b8187-3559-47cb-9609-cb0769d6d0ea",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

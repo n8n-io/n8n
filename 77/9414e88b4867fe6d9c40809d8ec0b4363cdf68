@@ -1,0 +1,45 @@
+packages/@n8n/workflow-sdk/src/workflow-builder/control-flow-builders/if-else.test.ts
+  s_554c5b2110274f::t_45530e3d003443 402-405,408-463,469-489,491-498
+  s_554c5b2110274f::t_fc52711a456f79 406-407
+  s_554c5b2110274f::t_2c75831417ffc0 490
+  s_554c5b2110274f::t_e326962db682ef 464-468
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/composite-handlers/if-else-handler.ts
+  s_554c5b2110274f::t_98e356ac613d70 48-51
+  s_554c5b2110274f::t_05b8a683fc7958 46-47
+  s_554c5b2110274f::t_9fe74455c851b6 19
+  s_554c5b2110274f::t_93106b9943abfe 80-85
+packages/@n8n/workflow-sdk/src/workflow-builder.ts
+  s_554c5b2110274f::t_4e67e2fe1e0600 982
+  s_554c5b2110274f::t_419433a6fc5fc4 981,983-984
+  s_554c5b2110274f::t_171e36edefd87b 335-336
+  s_554c5b2110274f::t_ef70ae298b27db 337-338,340,347
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/composite-handlers/switch-case-handler.ts
+  s_554c5b2110274f::t_7a1ceeb29d4d92 19
+  s_554c5b2110274f::t_d1cb742f9e4f30 46-47
+  s_554c5b2110274f::t_21b46841945c79 48-51
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/composite-handlers/branch-handler-utils.ts
+  s_554c5b2110274f::t_2fc3eb2e525c89 89-95
+  s_554c5b2110274f::t_8e8730f05a19ff 39-45
+packages/@n8n/workflow-sdk/src/workflow-builder/control-flow-builders/switch-case.test.ts
+  s_554c5b2110274f::t_0ce2aadb0ef3a4 306-338
+packages/@n8n/workflow-sdk/src/workflow-builder/node-builders/node-builder.ts
+  s_554c5b2110274f::t_b2677688472a5c 765-769
+  s_554c5b2110274f::t_1805a3e5378acb 550-553
+  s_554c5b2110274f::t_48c3eaf988c88f 564-567
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "779414e88b4867fe6d9c40809d8ec0b4363cdf68",
+  "prompts": {},
+  "sessions": {
+    "s_554c5b2110274f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ccac9df1-112b-4981-a822-264dc8e8ab63",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

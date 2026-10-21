@@ -1,0 +1,33 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_a368babd049e69::t_409345abfb52f0 1653-1655,1674-1676
+  s_a368babd049e69::t_7ba7005e870463 1879-1880,1886,1891,1903,1921
+packages/cli/src/modules/instance-ai/__tests__/suspended-run-restorer.service.test.ts
+  s_a368babd049e69::t_cdfdcd65fd7c8d 1-2,4-45,47-169
+  s_a368babd049e69::t_9f77a635545ebc 3
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_a368babd049e69::t_1aee7780a7ed00 671-681
+  s_a368babd049e69::t_fff24e687057f8 570-571
+  s_a368babd049e69::t_0af6da26ac997b 106-110
+  s_a368babd049e69::t_234bbd27d6e572 4696-4697,4699
+packages/cli/src/modules/instance-ai/suspended-run-restorer.service.ts
+  s_a368babd049e69::t_504f166605a4ea 4
+  s_a368babd049e69::t_c425543bc197b8 63-65
+  s_a368babd049e69::t_c240ad1d3bd4f8 2
+  s_a368babd049e69::t_1425696bd7337f 1,3,5-62,66-259
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d1618fbb1c4dbe409aa5d516864d63c8e5b87541",
+  "prompts": {},
+  "sessions": {
+    "s_a368babd049e69": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ee84e420-6179-467e-9e59-749e8efb1232",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

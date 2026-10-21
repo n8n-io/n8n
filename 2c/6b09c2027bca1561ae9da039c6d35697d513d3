@@ -1,0 +1,27 @@
+packages/@n8n/nodes-langchain/utils/aws/test/aws-sdk-client-credentials.test.ts
+  s_fcd481f41350e5::t_d520eae9b71a07 50-56,62-63
+  s_fcd481f41350e5::t_7fac9e9ecd138f 498-523,525
+  s_fcd481f41350e5::t_215feee18597c7 244-252,256-257,260,263,265-271,282-286
+  s_fcd481f41350e5::t_fb074af7686f4b 188,196-198,200-207,212-214,217
+  s_fcd481f41350e5::t_67fff72dc89195 349,357
+  ai_agent 524
+  s_fcd481f41350e5::t_4b5c7f2a715386 14-18
+  s_fcd481f41350e5::t_8d519b1ab979a5 38-42
+  s_fcd481f41350e5::t_f9c39c05ed4f0a 376-399
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2c6b09c2027bca1561ae9da039c6d35697d513d3",
+  "prompts": {},
+  "sessions": {
+    "s_fcd481f41350e5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "36513934-6063-4c33-b223-fca13c85b537",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

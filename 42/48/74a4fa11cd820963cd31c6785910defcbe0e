@@ -1,0 +1,31 @@
+packages/@n8n/instance-ai/docs/tools.md
+  s_f4876d43d1babd::t_6ade8556328762 54,586,792-815
+packages/@n8n/instance-ai/evaluations/__tests__/stub-services.test.ts
+  s_f4876d43d1babd::t_e57df32ea373ec 144-183
+packages/@n8n/instance-ai/evaluations/harness/stub-services.ts
+  s_f4876d43d1babd::t_db6d719124c7d4 23,250-299
+packages/@n8n/instance-ai/src/index.ts
+  s_f4876d43d1babd::t_74a9c60b17c862 745-747
+packages/@n8n/instance-ai/src/tools/__tests__/executions.tool.test.ts
+  s_f4876d43d1babd::t_fe3ae832873f3f 912-1101
+packages/@n8n/instance-ai/src/tools/executions.tool.ts
+  s_f4876d43d1babd::t_c1e3b45974258d 2,11,222-231,242,253,261-262,265-272,351-362,364,366,368,381,423,425-460,467,478,487,587-685,721,724,735-739,753-754
+packages/@n8n/instance-ai/src/types.ts
+  s_f4876d43d1babd::t_dd2d877a6e194c 616-637,737-753
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "424874a4fa11cd820963cd31c6785910defcbe0e",
+  "prompts": {},
+  "sessions": {
+    "s_f4876d43d1babd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "af51ae32-1546-4f05-b981-05e15fb39150",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

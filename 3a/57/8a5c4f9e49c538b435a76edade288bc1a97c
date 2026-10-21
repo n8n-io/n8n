@@ -1,0 +1,32 @@
+packages/workflow/src/interfaces.ts
+  s_f478241a9d2448::t_03e5206c0cb771 1407-1408
+packages/core/src/execution-engine/node-execution-context/__tests__/local-load-options-context.test.ts
+  s_f478241a9d2448::t_d3bcb2249924e6 27
+  s_f478241a9d2448::t_d9e4de551ec28d 61-89
+packages/cli/src/services/__tests__/workflow-loader.service.test.ts
+  s_f478241a9d2448::t_556b164ff6e96a 51
+  s_f478241a9d2448::t_7b32f878891cb7 40
+  s_f478241a9d2448::t_48b28d60b82741 14
+  s_f478241a9d2448::t_bd99441f40a1a5 59
+  s_f478241a9d2448::t_993cdd7de50c7b 1-13,15-39,41-50,52-58,60-63
+packages/core/src/execution-engine/node-execution-context/local-load-options-context.ts
+  s_f478241a9d2448::t_febf4a7157659c 36-41
+packages/cli/src/services/workflow-loader.service.ts
+  s_f478241a9d2448::t_e3aeac7ba11386 1,5-6,9-15,17-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3a578a5c4f9e49c538b435a76edade288bc1a97c",
+  "prompts": {},
+  "sessions": {
+    "s_f478241a9d2448": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e02f618e-7081-46b3-bb59-bbf2fc1cbd87",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

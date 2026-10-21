@@ -1,0 +1,57 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  s_af7a4e8964d154::t_64d3c235065547 32,170-221
+packages/cli/src/modules/n8n-packages/n8n-packages.config.ts
+  s_af7a4e8964d154::t_28943dd59ee1dc 17
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_af7a4e8964d154::t_1b141654a45321 116
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_af7a4e8964d154::t_41956beb343129 112-113
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_af7a4e8964d154::t_2d01496b2883cb 227,243-247
+packages/cli/src/modules/n8n-packages/io/__tests__/tar-package-reader.test.ts
+  s_af7a4e8964d154::t_b87c5f6f0432b4 71-83,96-108
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_af7a4e8964d154::t_345f56471bb0b0 132
+packages/cli/src/modules/n8n-packages/io/tar/tar-package-reader.ts
+  s_af7a4e8964d154::t_3cec71c4a39792 38-39,66-67
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-importer.test.ts
+  s_af7a4e8964d154::t_988d6f3529c821 14,37-74
+  s_af7a4e8964d154::t_b61a582add5a15 11
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_af7a4e8964d154::t_632bacb83b6572 38,169-180
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_af7a4e8964d154::t_88440335dcdaad 37,184,186-190,192-194,196-197,199-200,202-206
+packages/cli/src/public-api/v1/handlers/n8n-packages/__tests__/n8n-packages.handler.test.ts
+  s_af7a4e8964d154::t_d5ea6fa405ade0 620,624,630,632
+  s_af7a4e8964d154::t_b61a582add5a15 621
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_af7a4e8964d154::t_b61a582add5a15 194-195
+  s_af7a4e8964d154::t_fecf87d2684309 86-87,106,193,259
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_af7a4e8964d154::t_947d2dc038e5b8 354
+  s_af7a4e8964d154::t_33b29bfa916048 351-352
+  s_af7a4e8964d154::t_01a230798a7ccf 353,355-361
+packages/cli/src/modules/n8n-packages/engine/__tests__/n8n-package-parser.project.test.ts
+  s_af7a4e8964d154::t_108377efbc9b15 79-92,96-118
+  s_af7a4e8964d154::t_0803584d3691f8 93-95
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_af7a4e8964d154::t_4a2887536a7559 271-272
+packages/cli/src/modules/n8n-packages/io/package-reader.ts
+  s_af7a4e8964d154::t_68ff9c4011e7fe 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5c131e16205319a993788a353db106124869ca82",
+  "prompts": {},
+  "sessions": {
+    "s_af7a4e8964d154": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "71e735b0-d546-4e84-bbf1-e491a11e273a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

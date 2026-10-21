@@ -1,0 +1,42 @@
+packages/frontend/editor-ui/src/app/composables/useExecutingNode.ts
+  s_27bf8a929ab032::t_5bd824596cd195 4,6-12,14-17,22-23,25-32,34,38-41,48
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/nodeExecuteBefore.test.ts
+  s_27bf8a929ab032::t_c2593270e6bd0b 17,23
+  s_27bf8a929ab032::t_2fc5085d73a2a0 43-44,48
+packages/frontend/editor-ui/src/app/stores/workflowExecutionState.store.test.ts
+  s_27bf8a929ab032::t_f32510c3200a92 771
+  s_27bf8a929ab032::t_f91ba365633639 940
+  s_27bf8a929ab032::t_cb4adfa5200b5c 901,917
+  s_27bf8a929ab032::t_39cb74a1a10739 1371
+  s_27bf8a929ab032::t_dc93370b21791b 1438
+  s_27bf8a929ab032::t_d5b8046b53a41d 1448,1454-1488
+  s_27bf8a929ab032::t_d15cb0fcd525dc 1489
+  s_27bf8a929ab032::t_f1be8cbf9f73bc 751
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/nodeExecuteBefore.ts
+  s_27bf8a929ab032::t_9b6b1512c45fd1 23
+packages/frontend/editor-ui/src/app/composables/useExecutingNode.test.ts
+  s_27bf8a929ab032::t_04ebf7b28c85e5 9-11,13,16-19,21-23,25-26,28-31,33-44,47-85,88-103,106-110
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/nodeExecuteAfter.ts
+  s_27bf8a929ab032::t_a7008a46394cbd 69-72
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/nodeExecuteAfter.test.ts
+  s_27bf8a929ab032::t_b2e5bebbfb0567 64,106,132,170,195,229
+  s_27bf8a929ab032::t_d514e3134ee01e 263,287
+packages/frontend/editor-ui/src/features/execution/logs/components/LogsPanel.test.ts
+  s_27bf8a929ab032::t_d88b2d091458e3 372
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "c2fe26391b19a03ea0503327f3492426fc39d66d",
+  "prompts": {},
+  "sessions": {
+    "s_27bf8a929ab032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "57771f1a-68b5-48e6-a727-09b13409333e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,38 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_dc1bcc8544e6b1::t_a9f08781fcc1dd 2026-2027,2030,2032-2049
+  s_dc1bcc8544e6b1::t_2dce11793d47a7 2028-2029,2031
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_dc1bcc8544e6b1::t_405bbe0d555521 647-648
+packages/frontend/editor-ui/src/features/agents/components/AgentPublishButton.vue
+  s_dc1bcc8544e6b1::t_1981814424d354 68-70
+  s_dc1bcc8544e6b1::t_5becd9ecb9367f 190-192
+  s_dc1bcc8544e6b1::t_a54ead495d9f44 10
+  s_dc1bcc8544e6b1::t_ba9dafd963f8ca 73-89,91-96
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_dc1bcc8544e6b1::t_a7e64845db0907 7686
+  s_dc1bcc8544e6b1::t_9376878e0614d7 8073
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPublishButton.test.ts
+  s_dc1bcc8544e6b1::t_c1dd30a7e033f6 512-514
+  s_dc1bcc8544e6b1::t_f5b5f027bb5e9b 511,515-542
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "eda902d4f9494c974db45bdff2d4a33e1165eaa0",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_dc1bcc8544e6b1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b230e043-4120-4803-80d6-26654a74875b",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

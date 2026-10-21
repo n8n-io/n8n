@@ -1,0 +1,57 @@
+packages/@n8n/agents/src/types/sdk/agent-builder.ts
+  s_77a32fd9603843::t_fb7b8d68f0cbdf 26
+packages/@n8n/agents/src/types/index.ts
+  s_77a32fd9603843::t_59ab9be8587913 23-31
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_77a32fd9603843::t_6a50d36233527a 4714-4738
+packages/@n8n/agents/src/sdk/__tests__/agent-reasoning.test.ts
+  s_77a32fd9603843::t_6a50d36233527a 1-15
+packages/@n8n/agents/src/runtime/loop/runtime-context.ts
+  s_77a32fd9603843::t_fb7b8d68f0cbdf 268,277-279,284,289
+  s_77a32fd9603843::t_3ca26bf2e91cda 20-24,269-275
+packages/@n8n/agents/src/sdk/__tests__/agent-isolated-runtime.test.ts
+  s_77a32fd9603843::t_1aded7c5306a84 121-136
+packages/@n8n/agents/src/sdk/__tests__/inline-sub-agent-tools.test.ts
+  s_77a32fd9603843::t_1aded7c5306a84 258-306
+packages/@n8n/agents/src/types/sdk/provider.ts
+  s_77a32fd9603843::t_fb7b8d68f0cbdf 22-23,32-36,64-68,79
+  s_77a32fd9603843::t_59ab9be8587913 1-21,24-31,37-63,69-78,80-84
+packages/@n8n/agents/src/sdk/agent.ts
+  s_77a32fd9603843::t_aee24284829830 63,68-69,122-123,185-186,441,457-462,691,1093,1179-1181,1198,1293-1307
+  s_77a32fd9603843::t_64c6d34ed7b338 235,442-456
+  s_2df5bb80907049::t_d3fdc7a940f0a6 1308
+packages/@n8n/agents/src/index.ts
+  s_77a32fd9603843::t_59ab9be8587913 23-29
+packages/@n8n/agents/src/runtime/__tests__/provider-quirks.test.ts
+  s_77a32fd9603843::t_2194540a96a583 33-39,41,43-46,50,58,64-66,70,81-83
+  s_77a32fd9603843::t_6a50d36233527a 32,40,42,47-49,51-57,59-63,67-69,71-80,84-85
+packages/@n8n/agents/src/runtime/model/provider-quirks.ts
+  s_77a32fd9603843::t_72c08a4845e9d3 18,42-43,46-47,53,70,73,87-88,90,94-95,103-104
+  s_77a32fd9603843::t_9ee6b6b91b4574 2-9,19,41,44-45,48-52,54-56,69,71-72,74-77,85-86,89,91-93,96-102,105-106
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_77a32fd9603843::t_3ca26bf2e91cda 38,99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "ea77a26964fff14d1729ac4e7cd7d5d6e2a8f1bd",
+  "prompts": {},
+  "sessions": {
+    "s_2df5bb80907049": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa973-8fa0-7ea0-97af-f07c3b2abc9e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_77a32fd9603843": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa3e4-3e06-77d3-b1b7-6e9670e39416",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

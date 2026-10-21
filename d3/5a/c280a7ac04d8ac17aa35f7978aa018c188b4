@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/__tests__/agent-session-langsmith-export.service.test.ts
+  s_606e1caffa7874::t_5fa4d909b67511 6,276
+packages/cli/src/modules/agents/agent-session-langsmith-export.service.ts
+  s_606e1caffa7874::t_4c39ac848da255 228
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "d35ac280a7ac04d8ac17aa35f7978aa018c188b4",
+  "prompts": {},
+  "sessions": {
+    "s_606e1caffa7874": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3eb89943-7576-4c35-8a6d-184eb790cc1f",
+        "model": "gpt-5.6-sol-xhigh-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

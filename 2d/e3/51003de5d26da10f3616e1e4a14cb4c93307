@@ -1,0 +1,26 @@
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/ChatTrigger.node.ts
+  s_ddc904fa1cfea9::t_bb3a4cb07146bb 848-849
+packages/cli/test/integration/chat-trigger-test-webhook-auth.api.test.ts
+  s_ddc904fa1cfea9::t_a97cebc9e5c96d 2,4-7,205-229,251,254
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "2de351003de5d26da10f3616e1e4a14cb4c93307",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_ddc904fa1cfea9": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "61e65709-b908-4eba-8a68-bc548add1b98",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

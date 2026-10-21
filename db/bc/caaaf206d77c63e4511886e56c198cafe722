@@ -1,0 +1,42 @@
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_ace7f3de59d727::t_454a5309ecb50e 18
+  s_ace7f3de59d727::t_fdc9dde6035ba6 100
+  ai_agent 1079-1084
+  s_ace7f3de59d727::t_2068ea77afa87a 1070-1078,1085-1160
+  s_ace7f3de59d727::t_31b86ed4de88a8 522
+packages/@n8n/decorators/src/pubsub/pubsub-metadata.ts
+  s_ace7f3de59d727::t_3644c958b2b376 29
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_ace7f3de59d727::t_c643a98719f690 448
+  s_ace7f3de59d727::t_c8bff22726ec75 433
+  s_ace7f3de59d727::t_a873b4124dc1ed 399
+  s_ace7f3de59d727::t_760ddb9b3ae48d 573
+packages/cli/src/scaling/constants.ts
+  s_ace7f3de59d727::t_88cf5f2298c907 36
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  ai_agent 2782-2787,2888-2892,2900-2904
+  s_ace7f3de59d727::t_2ab89187ec5633 2741-2781,2788-2887,2893-2899,2905-2914
+packages/cli/src/scaling/pubsub/pubsub.types.ts
+  s_ace7f3de59d727::t_980cdb925beb5b 63
+  s_ace7f3de59d727::t_92ee028835dbec 101
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_ace7f3de59d727::t_98d3f58938bf48 168-179
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_ace7f3de59d727::t_e7ec0565bbaee6 467,697,713,942
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dbbccaaaf206d77c63e4511886e56c198cafe722",
+  "prompts": {},
+  "sessions": {
+    "s_ace7f3de59d727": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "129c5f75-239b-49e1-babf-779653683eac",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

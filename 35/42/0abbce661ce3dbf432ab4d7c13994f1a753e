@@ -1,0 +1,67 @@
+packages/cli/src/modules/agents/agent-modification-telemetry.service.ts
+  s_95c73d897a5d27::t_915c2d76977752 1,19
+packages/@n8n/api-types/src/push/agents.ts
+  s_95c73d897a5d27::t_915c2d76977752 1-2,27-28
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_95c73d897a5d27::t_915c2d76977752 228,361,506,560
+packages/cli/src/modules/agents/__tests__/agent-integrations.controller.test.ts
+  s_95c73d897a5d27::t_11eca3457ca281 94,103,194,213
+  s_95c73d897a5d27::t_23e6ad4bd5ede4 192
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_95c73d897a5d27::t_23e6ad4bd5ede4 258-284
+packages/cli/src/modules/agents/agent-integrations.controller.ts
+  s_95c73d897a5d27::t_915c2d76977752 52,74
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_95c73d897a5d27::t_8f391c5314a947 5-11
+  s_95c73d897a5d27::t_e6aff8036ef823 22,38,1331-1352,1401-1405,1871,2328-2329,2331,2333-2339,2341-2348
+  s_95c73d897a5d27::t_95c5fb9b017de0 2112-2128,2330,2332,2340
+  s_95c73d897a5d27::t_df02511ce944d3 2111,2349
+packages/cli/src/modules/agents/__tests__/agent-skills.service.test.ts
+  s_95c73d897a5d27::t_11eca3457ca281 306
+packages/frontend/@n8n/design-system/src/components/index.ts
+  s_95c73d897a5d27::t_e6aff8036ef823 39
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_95c73d897a5d27::t_e6aff8036ef823 7714-7717
+packages/cli/src/modules/agents/agent-integration-management.service.ts
+  s_95c73d897a5d27::t_915c2d76977752 21,39,63,74,87,96,123,160,229-234
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_95c73d897a5d27::t_23e6ad4bd5ede4 452-455
+packages/cli/src/modules/agents/agent-task.service.ts
+  s_95c73d897a5d27::t_23e6ad4bd5ede4 173-176,259-262,306-309
+packages/cli/src/modules/agents/__tests__/agent-update-broadcaster.test.ts
+  s_95c73d897a5d27::t_88c6834a856d15 12
+packages/@n8n/api-types/src/agents/types.ts
+  s_95c73d897a5d27::t_915c2d76977752 7-8
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_95c73d897a5d27::t_ee2deaa15d0f98 2169-2170,2224-2228,2237-2257,2261-2269,2274-2278,2283-2285,2289-2297,2325,2328-2333,2338-2347,2742-2744
+  s_95c73d897a5d27::t_23e6ad4bd5ede4 2258-2260,2270-2273,2279-2282,2286-2288,2298-2324,2326-2327,2334-2337,2703-2718,2722-2740,2746-2758
+  s_95c73d897a5d27::t_4d226afc44aec6 2741,2745
+packages/cli/src/modules/agents/__tests__/agent-integration-management.service.test.ts
+  s_95c73d897a5d27::t_1e205852a1af6e 4,115-119,121,127-130
+  s_95c73d897a5d27::t_88c6834a856d15 13,47,70,77,150-156,160,169,174,184,490,494-497,503,508,530-533,562,569,581
+  s_95c73d897a5d27::t_23e6ad4bd5ede4 112-113,122-126,470-471,500-502,540-547
+packages/frontend/editor-ui/src/app/constants/durations.ts
+  s_95c73d897a5d27::t_e6aff8036ef823 47-48
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_95c73d897a5d27::t_23e6ad4bd5ede4 324-327
+packages/cli/src/modules/agents/agent-skills.service.ts
+  s_95c73d897a5d27::t_23e6ad4bd5ede4 123-126,199-202,254-257
+packages/cli/src/modules/agents/agent-custom-tools.service.ts
+  s_95c73d897a5d27::t_23e6ad4bd5ede4 78-81,134-137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "35420abbce661ce3dbf432ab4d7c13994f1a753e",
+  "prompts": {},
+  "sessions": {
+    "s_95c73d897a5d27": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a966-e367-7d72-a4cb-5df670f59db3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,269 @@
+packages/cli/src/workflows/workflow-creation.service.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 24,175-178,262-265
+docs/generated/sqlite-schema/agents.md
+  s_43e73a2b2c4d2b::t_0299d5da4f62e2 20,56,125-134
+docs/generated/postgres-schema/public.agents.md
+  s_43e73a2b2c4d2b::t_0299d5da4f62e2 9,52,121-130
+packages/cli/src/modules/mcp/__tests__/update-workflow.tool.test.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 188,205,342-472,997,1002
+packages/nodes-base/nodes/Microsoft/Teams/v1/MicrosoftTeamsV1.node.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 341-342,349-350,428,435-436,489,496-497,581-583,590-591,605,612-613
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/MicrosoftExcelSharePoint.node.test.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 4,7,9
+packages/@n8n/db/src/repositories/agent-eval-rating.repository.ee.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-37
+packages/@n8n/engine/src/database/migrations/1778529600000-CreateWorkflowExecution.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 12,32-36
+packages/@n8n/db/src/entities/index.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-4,83-90,164-167
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/chatMessage/getAll.operation.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 42,48-49
+packages/@n8n/db/src/repositories/__tests__/agent-eval-result.repository.test.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-102
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 4-10,26-30,406-409
+packages/frontend/editor-ui/src/app/stores/cloudPlan.store.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-7
+packages/@n8n/engine/src/database/migrations/index.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 2,4-7
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 94,636-684
+packages/nodes-base/nodes/Baserow/OperationDescription.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-5,451,456-457,463,469,474-475,481,487,493,499,505,510-511,517,523,529,535,541,547,553,559,565,571,576-577,582-583,588-589,595,601,607,712-727,733-734
+packages/cli/src/webhooks/live-webhooks.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 240-242
+packages/nodes-base/nodes/Microsoft/Teams/v2/transport/index.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 271,279-287,290-291
+packages/cli/src/modules/mcp/__tests__/workflow-operations.test.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 399-437,1016,1018,1029,1046-1079,1083,1091,1096-1103,1108-1110,1124,1135,1141-1414
+docs/generated/sqlite-schema/agent_eval_rating.md
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-100
+packages/cli/src/modules/mcp/tools/get-workflow-details.tool.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 16,140-143,175
+packages/cli/src/modules/mcp/tools/get-workflow-version.tool.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 3,13-19,57,180
+packages/cli/src/modules/mcp/tools/schemas.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-7,87-89,94-113
+packages/cli/src/webhooks/__tests__/live-webhooks.test.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 184-206
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/chatMessage/getAll.test.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 9
+packages/@n8n/engine/src/execution/execution.types.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 6-8
+packages/@n8n/db/src/repositories/__tests__/workflow-review-request.repository.test.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 25-26,30,227-229,231,233,235-237,243-247,249,251,253,256-260,262-263,267,270,274-280,282
+packages/@n8n/engine/src/database/__tests__/workflow-step-execution.integration.test.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-95
+packages/frontend/editor-ui/src/app/composables/useWorkflowHelpers.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 18,20,280-310,321,335-338
+docs/generated/sqlite-schema/agent_eval_dataset.md
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-117
+packages/@n8n/db/src/repositories/__tests__/agent-eval-rating.repository.test.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-69
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 595
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/getAll.limit.workflow.json
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-101
+packages/frontend/editor-ui/src/features/workflow-reviews/views/WorkflowReviewRequestsView.vue
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 26-27,81-82,140
+packages/@n8n/db/src/repositories/__tests__/agent-eval-dataset.repository.test.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-80
+packages/@n8n/db/src/entities/agent-eval-rating.ee.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-35
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channel/getAll.operation.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 30-31
+packages/@n8n/db/src/entities/agent-eval-result.ee.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-67
+packages/nodes-base/nodes/Baserow/__tests__/GenericFunctions.test.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 7,9,130-198
+packages/@n8n/db/src/repositories/__tests__/agent-eval-run.repository.test.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-117
+packages/cli/src/modules/mcp/tools/workflow-builder/workflow-operations.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 298,300,312-360,386-390,594-610,681-696,821-824,827,830,832-854,856-905,939
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewInbox.store.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 24-25,74-76,79,174-175,189-190
+docs/generated/sqlite-schema/user.md
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 22,56-58,103-138
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/build-workflow.tool.test.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 209-217
+packages/nodes-base/nodes/Microsoft/Teams/v1/GenericFunctions.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 49,57-65,68-69
+packages/@n8n/engine/src/database/typeorm-step-store.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-15
+packages/cli/src/modules/mcp/__tests__/get-workflow-details.tool.test.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 99-125
+packages/cli/src/node-types.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 116-118,120-121,144
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRules.vue
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 6-9,25,31-32,134-137,145-161,163-217,221-224,226-233,235-286
+docs/generated/postgres-schema/public.agent_eval_dataset.md
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-112
+packages/@n8n/nodes-langchain/nodes/tools/ToolWikipedia/ToolWikipedia.node.test.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 2-7,167-224
+packages/@n8n/engine/src/execution/step-store.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-16
+packages/@n8n/db/src/repositories/index.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-4
+docs/generated/postgres-schema/public.agent_eval_result.md
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-98
+packages/@n8n/instance-ai/skills/planning/SKILL.md
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 6-9
+pnpm-lock.yaml
+  ai_agent 2235-2237,4975-4983,5015-5017,5036-5041
+packages/cli/src/modules/mcp/tools/workflow-builder/update-workflow.tool.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 53,70-81,128-212,214-217,266-281,283-286,511-520,525,565-576,727-730
+docs/generated/sqlite-schema/README.md
+  s_43e73a2b2c4d2b::t_0299d5da4f62e2 14-17,144-150,351-403
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 283-284
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.controller.integration.test.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 775,780,783,788,791,796,799,809
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/task/getAll.operation.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 104-106,112-113,124
+packages/nodes-base/nodes/Baserow/Baserow.node.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 14-15,391-397
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.vue
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 226-232
+packages/@n8n/instance-ai/skills/n8n-docs-assistant/SKILL.md
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 5-6
+packages/@n8n/db/src/repositories/agent-eval-run.repository.ee.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-77
+packages/cli/src/__tests__/external-hooks.test.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 8-9,16,140-191
+packages/cli/src/external-hooks.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 29-64,107-116
+packages/cli/test/migration/1784815940112-create-agent-eval-tables.test.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-29,31-35,38-39,41-43,45,47-49,51,54-56,59-66,68-87,89-107,109-126,128-138,140-150,152-184,186-218,220-222,224-226,228-230,232,236-238,240-244
+packages/@n8n/engine/src/execution/index.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 6,8
+packages/frontend/editor-ui/src/app/init.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 119
+docs/generated/postgres-schema/public.agent_eval_run.md
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-119
+docs/generated/postgres-schema/public.user.md
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 11,50-52,97-132
+packages/frontend/@n8n/composables/package.json
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 33-35,48-49,56
+packages/cli/src/workflows/__tests__/workflow-creation.service.test.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 2,11,18,39-40,53-54,67,71,224-291
+packages/frontend/@n8n/stores/src/cloudPlan.store.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-317
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequestsSidebar.vue
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 20-21,41-50,111
+packages/@n8n/instance-ai/src/tools/data-tables.tool.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 640-644
+packages/frontend/editor-ui/src/app/composables/useWorkflowHelpers.test.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 3-7,17-22,1324-1401
+packages/@n8n/db/src/repositories/agent-eval-result.repository.ee.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-70
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/getAll.operation.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 39-47
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 6,11,29,100,362,1063,1131-1137,1146,1149,1155-1161,1300,1306-1312,1316-1325,1347-1348,1368-1370,1383,1402,1417-1429,1461-1686
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRuleDetail.test.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 111-121
+packages/frontend/@n8n/stores/src/cloudPlan.store.test.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 2,5,13,369-393
+packages/nodes-base/nodes/Baserow/GenericFunctions.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 13-127
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  ai_agent 223,449
+packages/@n8n/engine/src/database/index.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 2,4
+packages/@n8n/engine/src/database/entities/workflow-step-execution.entity.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-39
+docs/generated/sqlite-schema/agent_eval_run.md
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-125
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRules.test.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 108-114,123,542,559
+docs/generated/postgres-schema/README.md
+  s_43e73a2b2c4d2b::t_0299d5da4f62e2 14-17,161-167,364-416
+packages/@n8n/instance-ai/src/tools/attachments/parse-file.tool.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 163-164
+packages/@n8n/instance-ai/src/skills/__tests__/runtime-skills.test.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 54-60,86-91,227,262,264,268,327
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewInbox.store.test.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 15,17-18,42-43,49,51-52,59-61,65-83,148-149,159,222-223
+packages/@n8n/db/src/entities/agent-eval-dataset.ee.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-57
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/transport.test.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-88
+packages/@n8n/engine/src/database/entities/workflow-execution.entity.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 14,20,48-49
+packages/frontend/@n8n/composables/src/useToast.test.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-3,5-7,9,11,15-17,152-155,371-390
+packages/@n8n/db/src/repositories/agent-eval-dataset.repository.ee.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-41
+packages/@n8n/engine/src/database/migrations/1784890100000-CreateWorkflowStepExecution.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-53
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  ai_agent 231,467
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/getAll.test.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 67-92,95
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 310
+packages/@n8n/db/src/repositories/workflow-review-request.repository.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 31,36-40,155-156,158-161,165-168,170-173
+packages/frontend/editor-ui/src/app/composables/useToast.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-16
+packages/@n8n/instance-ai/src/tools/attachments/__tests__/parse-file.tool.test.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 84-91
+packages/@n8n/db/src/migrations/common/1784815940112-CreateAgentEvalTables.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-148
+packages/@n8n/instance-ai/skills/data-table-manager/SKILL.md
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 4-10,20-23
+packages/@n8n/db/src/entities/agent-eval-run.ee.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-73
+packages/cli/src/workflows/workflow.service.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 14,42,94,522-525,609-612,836-839,999-1002,1054-1057,1067-1084,1104-1107,1174-1177,1212-1215
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRuleDetail.vue
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 6,17,33-34,194-215,217-245,327,331-336
+packages/frontend/@n8n/composables/src/useToast.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-266
+packages/@n8n/instance-ai/src/tools/__tests__/data-tables.tool.test.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 57,62-64
+packages/cli/src/__tests__/node-types.test.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 189-227,255,341-356
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 118
+packages/nodes-base/nodes/Baserow/types.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 17
+docs/generated/postgres-schema/public.agent_eval_rating.md
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-93
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 5169-5170,5172-5173
+packages/@n8n/api-types/src/dto/workflow-reviews/list-workflow-review-inbox.dto.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 38-39
+packages/@n8n/nodes-langchain/nodes/tools/ToolWikipedia/ToolWikipedia.node.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 4,6,75-93
+packages/@n8n/engine/package.json
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 33
+packages/@n8n/engine/src/database/entities/index.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 2,4,7
+packages/cli/src/modules/mcp/__tests__/get-workflow-version.tool.test.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 69-72,77-78,80,86-103
+docs/generated/sqlite-schema/agent_eval_result.md
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-105
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/servicePrincipal.test.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 349-350
+packages/@n8n/engine/src/database/generate-id.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 1-10
+packages/@n8n/engine/src/index.ts
+  s_43e73a2b2c4d2b::t_6b0e801739ee79 33-35,38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "118bd906517d065d757fc0cf72b978c09682061d",
+  "prompts": {},
+  "sessions": {
+    "s_43e73a2b2c4d2b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9ee65c1-ad7c-4582-a87a-f1c9856b12f7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

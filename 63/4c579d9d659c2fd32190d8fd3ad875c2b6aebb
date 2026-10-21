@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/src/workspace/daytona-sandbox.ts
+  s_34c21ad3772d0b::t_c749251720d1fb 343-351
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "634c579d9d659c2fd32190d8fd3ad875c2b6aebb",
+  "prompts": {},
+  "sessions": {
+    "s_34c21ad3772d0b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7973ca20-f411-407e-87ab-44db53deb1c6",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

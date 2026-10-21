@@ -1,0 +1,122 @@
+packages/@n8n/cli/src/commands/promotion-connection/list-changes.ts
+  s_acfbc951dfd331::t_53482f0683dd5d 16
+  s_acfbc951dfd331::t_42ab2245ad933b 30
+packages/cli/src/modules/promotions.ee/__tests__/structural-promotion-rows.test.ts
+  s_acfbc951dfd331::t_b0fea7a8f9a6fa 106,113,116,147,182,185,254,261,269
+  s_acfbc951dfd331::t_d483993ac01168 31,247
+  s_acfbc951dfd331::t_d68f6bc813608d 1-2,5-6,8-16,22-30,32-39,105,107-112,114-115,117-132,137-146,148-173,180-181,183-184,186-201,204-246,248-253,255-260,262-268,273-274
+  s_acfbc951dfd331::t_bc9009a032e5c7 41-104
+  s_acfbc951dfd331::t_b7f64c02f2ac15 3-4,7
+  s_acfbc951dfd331::t_3663f7d6cd91e8 17-21,133-136,174-179,202-203,270-272
+  s_acfbc951dfd331::t_cd71b8156aa970 40
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promoteErrorMessage.test.ts
+  s_acfbc951dfd331::t_d483993ac01168 21
+  s_acfbc951dfd331::t_f99608f8136767 22
+packages/@n8n/cli/src/client.ts
+  s_acfbc951dfd331::t_9ccb3be4137c5d 161,165,175
+  s_acfbc951dfd331::t_06751acfd76c56 171-174
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_acfbc951dfd331::t_710ef95c5e7f37 306-324,326,330,334-336,338
+  s_acfbc951dfd331::t_34d3f606bd6646 498-509,518-523
+  s_acfbc951dfd331::t_61e500750f14da 337
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_acfbc951dfd331::t_836611a75f27b8 598
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_acfbc951dfd331::t_eebe0db005645f 9474-9479
+  s_acfbc951dfd331::t_a2e580f1f2f309 9468-9469
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChanges.ts
+  s_acfbc951dfd331::t_3c7f106e5fbd98 115-116,133-134,139
+  s_acfbc951dfd331::t_df57f6a7ee5f78 158
+  s_acfbc951dfd331::t_9ec142e4a6ab4e 10,12-13,16
+  s_acfbc951dfd331::t_893ea5f214cf0e 11,14-15,30-31,34,39,46-54,57-58,61,64-65,69,72-78,103,107-114,121,125-127,159-160
+  s_acfbc951dfd331::t_c7ba0f907357d9 35-37
+  s_acfbc951dfd331::t_fd14b3e44eb6da 42-45,59
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChanges.test.ts
+  s_acfbc951dfd331::t_67e3765390eef4 207,209-221,223-233,235-245,247-257,259-263,274-275,277,281-282,285,290,294-295,298,307-308,310-330
+  s_acfbc951dfd331::t_3663f7d6cd91e8 264-267,270-273
+  s_acfbc951dfd331::t_7ff5c77d35325d 37,61
+  s_acfbc951dfd331::t_d483993ac01168 24,36,48,60,222,234,246,258
+  s_acfbc951dfd331::t_9618c5911a6fb4 25
+  s_acfbc951dfd331::t_84f74d2326fe4e 49
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.test.ts
+  s_acfbc951dfd331::t_e321de68f46c86 247-251,263,276-278
+  ai_agent 54,65-68,394-410
+  s_acfbc951dfd331::t_d483993ac01168 209,221,233,513,524
+  s_acfbc951dfd331::t_9c9bd49f4c9605 198-208,210-220,222-232,234-238,240-246,256-261,269-270,274-275,279-280,282-288
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/structuralSelection.ts
+  s_acfbc951dfd331::t_a9f29bfc856e79 1-2,21,24-34,36,38,40-45,48-53,57-80,100,112-113,131
+  s_acfbc951dfd331::t_accc7b6235a817 3-20,22-23,35,37,39,46-47,81-99,101-111,114-130
+  s_acfbc951dfd331::t_3663f7d6cd91e8 54-56
+packages/@n8n/cli/docs/commands/promotions.md
+  s_acfbc951dfd331::t_08bb0c8c64c7c5 240
+  s_acfbc951dfd331::t_af9ca46776a3a0 230-231
+packages/cli/src/modules/promotions.ee/structural-promotion-rows.ts
+  s_acfbc951dfd331::t_edb12a55bf208d 1-2,5-7,9-24,71,73-100,103-107,109-116,119-124,126-130,132-133,137-141,143-151,154-159,161-166,169-179,181,183,185-190,192-202
+  s_acfbc951dfd331::t_23a9ebd8848d40 3-4
+  s_acfbc951dfd331::t_78fc22683d3115 25-70,72
+  s_acfbc951dfd331::t_d483993ac01168 152
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotable-resource.dto.test.ts
+  s_acfbc951dfd331::t_d483993ac01168 41,53
+  s_acfbc951dfd331::t_9a7296837cdda7 26,28-40,42-52,54-60
+  s_acfbc951dfd331::t_c54f0318e673a0 27
+packages/@n8n/api-types/src/dto/index.ts
+  s_acfbc951dfd331::t_985ca9e74f0c27 678-679,686-687
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionChanges.generated.yml
+  ai_agent 5,88-89,112-135,145-146
+packages/@n8n/api-types/src/dto/promotions/promotable-resource.dto.ts
+  s_acfbc951dfd331::t_4a84e15cbbdba4 23
+  s_acfbc951dfd331::t_06751acfd76c56 27-32
+  s_acfbc951dfd331::t_0aefa1ed6b0476 33-42
+  s_acfbc951dfd331::t_c32f77a2921b35 52-54
+  s_acfbc951dfd331::t_6e290140533eb3 55-59
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_acfbc951dfd331::t_92dca25588820b 90,258,466,521-540,555,566,592
+  s_acfbc951dfd331::t_d0ffbbf4f0285d 94-95
+  s_acfbc951dfd331::t_cd78504b2049c0 112-113
+  s_acfbc951dfd331::t_295ffeb46db704 262-263
+  s_acfbc951dfd331::t_de69f28b0914bd 198
+  s_acfbc951dfd331::t_12fa323f1c1ea9 427
+  s_acfbc951dfd331::t_10110e11fa65b9 52-53,55-58
+  s_acfbc951dfd331::t_359f2f0c6d127c 465,467,470-477,481
+  s_acfbc951dfd331::t_d7fcbb6629a807 195-197
+  s_acfbc951dfd331::t_06751acfd76c56 217-224
+  s_acfbc951dfd331::t_9ac68d025d66ca 2
+  s_acfbc951dfd331::t_a69d678a0a501c 593
+  s_acfbc951dfd331::t_3663f7d6cd91e8 389-392
+  s_acfbc951dfd331::t_2bcb42a091315c 152-156
+  s_acfbc951dfd331::t_5eace0e4d21621 54
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChangeCount.test.ts
+  s_acfbc951dfd331::t_d483993ac01168 31
+  s_acfbc951dfd331::t_c8f2dbf872ed60 32
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.vue
+  s_acfbc951dfd331::t_d143b5bce2dfe3 68
+  s_acfbc951dfd331::t_eebe0db005645f 169-185,188-191,567-577
+  s_acfbc951dfd331::t_873c31d2f7fdbd 545,547-550
+  s_acfbc951dfd331::t_8979ab1c32fc3c 746-750
+  s_acfbc951dfd331::t_71c68c55a4541f 26
+  s_acfbc951dfd331::t_985ddd0fb0a579 186-187,192-194
+  s_acfbc951dfd331::t_52396dfc54de32 500,514-515,517-521,535-537,539-540,542,544
+  s_acfbc951dfd331::t_6fba3aaa7f51bf 15,18
+  s_acfbc951dfd331::t_8d67f639373e3a 162-168,203-204,206-214
+  s_acfbc951dfd331::t_4a954d001fec79 349
+  s_acfbc951dfd331::t_aefbb96e53c822 777-783
+packages/@n8n/cli/src/__tests__/promotion-connection-list-changes.test.ts
+  s_acfbc951dfd331::t_b56829dce73011 39
+  s_acfbc951dfd331::t_d483993ac01168 38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7aea7e5e4fe776508c0f15fc1fc65ee1fe0c2d9a",
+  "prompts": {},
+  "sessions": {
+    "s_acfbc951dfd331": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3a44e980-bc00-41db-b9f5-03db56db01f3",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+packages/cli/src/modules/agents/builder/agents-builder-settings.service.ts
+  s_30fe1ce68aa2b1::t_f5eb8eab0299f3 154,167
+  s_30fe1ce68aa2b1::t_03bce3da6c31d9 5,20,26,44-47
+  s_30fe1ce68aa2b1::t_70e6a315f95c4a 215,217-218,223-226,240,251-261
+packages/cli/src/modules/agents/builder/agents-builder.service.ts
+  s_30fe1ce68aa2b1::t_1964bbbaa0be2d 171-172,222
+packages/cli/src/modules/agents/tracing/__tests__/builder-telemetry.test.ts
+  s_30fe1ce68aa2b1::t_eebd56df7b5b10 22-25,41,55-79
+packages/cli/src/modules/agents/builder/__tests__/agents-builder-settings.service.test.ts
+  s_30fe1ce68aa2b1::t_c22c54e4353f8a 86-87,92,99-100,102-108
+  s_30fe1ce68aa2b1::t_1dbdb07dec7850 16-21,85,88,101
+packages/cli/src/modules/agents/tracing/builder-telemetry.ts
+  s_30fe1ce68aa2b1::t_0af90a95baa6ba 6-17,20-21,23-31,33-37,39,69,84-85,92-100
+  s_30fe1ce68aa2b1::t_e817efc8b9981d 38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "09e162e0bf00506db3e8ac4e3f54692a23bc4612",
+  "prompts": {},
+  "sessions": {
+    "s_30fe1ce68aa2b1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019eeedc-1696-7831-80b4-d9af01669f6b",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

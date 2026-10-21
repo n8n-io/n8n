@@ -1,0 +1,19 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.builderAskedForInput.test.ts
+  s_579507d3eceab8::t_3feab5892f88a2 209-214,216-217,219
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "43b2486203f1c9e9cb6eb053f7c63aba05daa084",
+  "prompts": {},
+  "sessions": {
+    "s_579507d3eceab8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2cc35308-2bbd-4c82-997e-85152e8c7687",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

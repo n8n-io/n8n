@@ -1,0 +1,32 @@
+packages/cli/test/integration/agents/agent-session-fence.test.ts
+  s_782619aac31c26::t_5a6ab1572758fc 1-119
+  s_782619aac31c26::t_3436102bf6ab9e 120-122
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.test.ts
+  s_782619aac31c26::t_c63909fc7e7fd7 2,24,27,37,76-77,195,242-243,439-470,482-483,492,494,507-508,517,533-534,543,545,547,1406
+packages/cli/src/modules/agents/integrations/integration-message-context.service.ts
+  s_782619aac31c26::t_16724329fddf48 133,157,185
+packages/cli/src/modules/agents/integrations/n8n-memory.ts
+  s_782619aac31c26::t_2f19b168f70d9d 54,96,112,137,170,172-182,184,197,207,294,323-326,329,332-335,616,657,714
+packages/cli/src/modules/agents/repositories/agent-message.repository.ts
+  s_782619aac31c26::t_59857d41037bfa 1,3-4,9-23
+packages/cli/src/modules/agents/repositories/agent-resource.repository.ts
+  s_782619aac31c26::t_c488763eebe9ec 1,3,19-21,24,26-27
+packages/cli/src/modules/agents/repositories/agent-thread.repository.ts
+  s_782619aac31c26::t_4f8b81162f4deb 1,12-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c7ccc897015a8c03c24961291bc73dd77f31eb75",
+  "prompts": {},
+  "sessions": {
+    "s_782619aac31c26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6889b3f-b5e6-4aa7-a6ff-cca974b94b72",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

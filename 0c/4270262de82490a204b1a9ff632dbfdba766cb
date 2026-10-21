@@ -1,0 +1,19 @@
+scripts/preview-serve.mjs
+  s_a351b3d0681760::t_b7d8ae8d85058c 157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0c4270262de82490a204b1a9ff632dbfdba766cb",
+  "prompts": {},
+  "sessions": {
+    "s_a351b3d0681760": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dfb3d85a-ea94-4528-9c64-c372a5dc4137",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

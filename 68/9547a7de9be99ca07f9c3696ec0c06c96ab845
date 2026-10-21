@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/ActiveCampaign/__tests__/GenericFunctions.test.ts
+  s_401904c7bcadc9::t_1da816f547903d 36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "689547a7de9be99ca07f9c3696ec0c06c96ab845",
+  "prompts": {},
+  "sessions": {
+    "s_401904c7bcadc9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aa6dedfe825ee566c",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

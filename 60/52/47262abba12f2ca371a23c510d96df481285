@@ -1,0 +1,65 @@
+packages/@n8n/instance-ai/src/index.ts
+  s_f2ecf78efc7a31::t_28b90ca295e67b 618-620
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_f2ecf78efc7a31::t_37bf9a3ada1acb 66,167
+  s_f2ecf78efc7a31::t_e057d7221d803b 292,370-373,457-481
+packages/@n8n/instance-ai/src/tools/activity.tool.test.ts
+  s_f2ecf78efc7a31::t_e991043d55e3ff 1-28,32-121
+  ai_agent 29-31
+packages/@n8n/db/src/migrations/common/1787744205058-AddActivityEventResourceIndex.ts
+  s_f2ecf78efc7a31::t_084ca55bad2e6f 1-2,11,19-20,26-27
+  s_f2ecf78efc7a31::t_e4016851ec2975 3-10,12-18,21-25
+packages/@n8n/instance-ai/src/tools/index.ts
+  s_f2ecf78efc7a31::t_11ced83c5b2a1d 39-41
+  s_f2ecf78efc7a31::t_3e4cce87472bce 163-168
+packages/@n8n/instance-ai/src/tools/activity.tool.ts
+  s_f2ecf78efc7a31::t_446980049127a4 1-85,87-124
+  ai_agent 86
+packages/@n8n/instance-ai/src/types.ts
+  s_f2ecf78efc7a31::t_09e86e2d553ee7 540-576,1124-1125
+packages/@n8n/db/src/repositories/__tests__/activity-event.repository.test.ts
+  s_f2ecf78efc7a31::t_9b29442c62fb4d 2,82,85,91-95
+packages/@n8n/instance-ai/src/tools/tool-ids.ts
+  s_f2ecf78efc7a31::t_446980049127a4 19,78-81
+packages/cli/src/modules/instance-ai/activity-feed.service.ts
+  s_f2ecf78efc7a31::t_9413cdeabf0b32 28-30,131,160,163,193,252-286,291
+  ai_agent 7
+  s_f2ecf78efc7a31::t_2867d75e673000 4,68,94,114-130,132-159,161-162,164-177
+  s_f2ecf78efc7a31::t_509feb8af162e8 225-228,239
+  s_f2ecf78efc7a31::t_28b90ca295e67b 204-206
+packages/@n8n/db/src/entities/activity-event.ts
+  s_f2ecf78efc7a31::t_084ca55bad2e6f 29,32-33
+packages/cli/test/migration/1787744205058-add-activity-event-resource-index.test.ts
+  s_f2ecf78efc7a31::t_a74fa37ca43470 1-71
+packages/@n8n/db/src/repositories/activity-event.repository.ts
+  s_f2ecf78efc7a31::t_084ca55bad2e6f 30,78,92-107,109-110
+  s_f2ecf78efc7a31::t_680eccac44098d 2,22-27,29,70-75,77,108,111-131
+packages/cli/src/events/relays/activity-log.event-relay.ts
+  s_f2ecf78efc7a31::t_c8ffbf51457630 138-141,148,233-239,280-291
+docs/generated/sqlite-schema/activity_event.md
+  ai_agent 43
+packages/cli/src/modules/instance-ai/__tests__/activity-feed.service.test.ts
+  ai_agent 306
+  s_f2ecf78efc7a31::t_9953942a472117 238-305,307-327
+  s_f2ecf78efc7a31::t_28b90ca295e67b 35,39
+  s_f2ecf78efc7a31::t_fa86fc0769f0f9 3,44-76,157
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  ai_agent 1294-1297,1667-1670,1984-1987,3067-3070,3955-3958
+  s_f2ecf78efc7a31::t_f16989c4b2d90e 3334
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "605247262abba12f2ca371a23c510d96df481285",
+  "prompts": {},
+  "sessions": {
+    "s_f2ecf78efc7a31": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "571634ba-8cae-4e9a-a244-c914fd959e23",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

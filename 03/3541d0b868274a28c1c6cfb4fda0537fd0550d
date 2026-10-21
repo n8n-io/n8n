@@ -1,0 +1,23 @@
+packages/@n8n/scheduler/src/core/reaper/__tests__/reap.test.ts
+  s_c7b2cdf75802d2::t_6b1a8279280fc7 113,116-123,129-131,141-144,148-162
+  s_c7b2cdf75802d2::t_028539f9721668 115,124-128
+packages/@n8n/scheduler/src/core/reaper/reap.ts
+  s_c7b2cdf75802d2::t_366992ecd9077a 150-163,167,172-178
+  s_c7b2cdf75802d2::t_7ad0de33d0caae 165-166,168-169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "033541d0b868274a28c1c6cfb4fda0537fd0550d",
+  "prompts": {},
+  "sessions": {
+    "s_c7b2cdf75802d2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4bef1c6e-4ec2-4644-8a27-07aeb1566707",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

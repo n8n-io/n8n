@@ -1,0 +1,35 @@
+packages/@n8n/instance-ai/src/skills/runtime-skills.ts
+  s_4e6d59397c9227::t_7b1b9629afb56b 7
+packages/@n8n/instance-ai/src/skills/__tests__/runtime-skills.test.ts
+  s_4e6d59397c9227::t_3aa83af634ab53 9,140,143-146,149,153-155,157-159
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiMessage.vue
+  s_4e6d59397c9227::t_fa899498a0b980 85-91
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_4e6d59397c9227::t_be2facf25d8de7 151-153,934-941,946-947
+packages/@n8n/instance-ai/skills/agent-builder/SKILL.md
+  s_4e6d59397c9227::t_e5a120827e1230 1-94
+packages/@n8n/instance-ai/skills/intent-recognition/SKILL.md
+  s_4e6d59397c9227::t_7fd848de1a7eb1 81
+  s_4e6d59397c9227::t_306c6f4484fa25 8-14,21-26,80,91,96-97,110-113,220
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ac27b6309eb0b8eedfe03580283063c878860167",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_4e6d59397c9227": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "52e4519b-df4f-43fc-91a7-be961c4ddee9",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

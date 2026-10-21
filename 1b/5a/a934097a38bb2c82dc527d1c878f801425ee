@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/__tests__/agent-sse-stream.test.ts
+  s_a3a1bb25f6cdb8::t_65a25dfe5aab07 42-55,330-383
+  s_a3a1bb25f6cdb8::t_d8b2f2f060ca35 384-408
+packages/cli/src/modules/agents/agent-sse-stream.ts
+  s_a3a1bb25f6cdb8::t_d8b2f2f060ca35 8,72
+  s_a3a1bb25f6cdb8::t_328b163b7262e5 70-71,73-74,179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "1b5aa934097a38bb2c82dc527d1c878f801425ee",
+  "prompts": {},
+  "sessions": {
+    "s_a3a1bb25f6cdb8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fec4d-56b4-7281-b272-8e642a1691f9",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

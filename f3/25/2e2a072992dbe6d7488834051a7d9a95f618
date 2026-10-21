@@ -1,0 +1,19 @@
+packages/@n8n/db/src/repositories/workflow-publication-outbox.repository.ts
+  s_b1ae3677d6bc36::t_413a797f88fecd 192-196
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "f3252e2a072992dbe6d7488834051a7d9a95f618",
+  "prompts": {},
+  "sessions": {
+    "s_b1ae3677d6bc36": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14856d89-b227-4425-adeb-7f31ce9ea7b6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

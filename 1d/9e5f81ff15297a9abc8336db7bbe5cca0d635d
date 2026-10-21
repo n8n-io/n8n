@@ -1,0 +1,89 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/selection/CanvasSelectionToolbar.vue
+  s_bd2fe0090a610f::t_ef9c5ad4c8feea 37
+  s_bd2fe0090a610f::t_0c61eca4f2376a 54
+  s_bd2fe0090a610f::t_8c9c52bf1a02b1 12
+  s_bd2fe0090a610f::t_7a16c7d5de1242 52-53,55
+packages/frontend/editor-ui/src/features/workflows/components/WorkflowSettings/WorkflowSettings.vue
+  s_bd2fe0090a610f::t_e1b3ba807ec4ae 1162,1166,1170
+  s_bd2fe0090a610f::t_68ff57b9a505a8 917-918
+  s_bd2fe0090a610f::t_2a7c1791ecefad 1163-1165
+  s_bd2fe0090a610f::t_352ec99b4a9311 916
+packages/frontend/editor-ui/src/app/composables/useWorkflowExtraction.test.ts
+  s_bd2fe0090a610f::t_74d4eb69854936 209
+  s_bd2fe0090a610f::t_d86c26c1113c50 207-208,210-217
+  s_bd2fe0090a610f::t_f0af9d45617ca9 129
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.vue
+  s_bd2fe0090a610f::t_2fc5a6ddb1fb9a 443
+  s_bd2fe0090a610f::t_0d6b3af82ea8ad 551,553-554
+  s_bd2fe0090a610f::t_cee8398bb27c14 552
+packages/frontend/editor-ui/src/__tests__/defaults.ts
+  s_bd2fe0090a610f::t_169db87dc50b3d 137
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/selection/CanvasSelectionToolbar.test.ts
+  s_bd2fe0090a610f::t_2bbc6390601170 13
+  s_bd2fe0090a610f::t_6f6622ede79a67 192
+  s_bd2fe0090a610f::t_71d04a0a9d9333 191
+  s_bd2fe0090a610f::t_3ad60460cf88ca 193-199
+packages/frontend/editor-ui/src/features/workflows/components/WorkflowSettings/WorkflowSettings.test.ts
+  s_bd2fe0090a610f::t_19d7dcdf4a5a83 239-240,242,245-247,249-250,253-254
+  s_bd2fe0090a610f::t_f4125c54dc2bff 243-244,248,251-252
+  s_bd2fe0090a610f::t_8384496e0a4179 241
+  s_bd2fe0090a610f::t_424c3df61d8da3 255-256
+packages/frontend/editor-ui/src/app/composables/useWorkflowExtraction.ts
+  s_bd2fe0090a610f::t_cbb16db3d6df95 30
+  s_bd2fe0090a610f::t_3616ac8cfb7555 51
+  s_bd2fe0090a610f::t_607f450138bc75 694
+packages/cli/src/services/__tests__/frontend.service.test.ts
+  s_bd2fe0090a610f::t_afce2ec88504bd 279-287
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/useContextMenu.test.ts
+  s_bd2fe0090a610f::t_8761ce80807905 191,201
+  s_bd2fe0090a610f::t_139e7ed81981c9 188-190,192-200,202-210
+  s_bd2fe0090a610f::t_ed4c009ad094b9 26
+packages/frontend/@n8n/stores/src/settings.store.ts
+  s_bd2fe0090a610f::t_0cc77d963b9f04 16-21
+  s_bd2fe0090a610f::t_edf0f2326de1e2 277
+  s_bd2fe0090a610f::t_396a91458a1936 513
+  s_bd2fe0090a610f::t_f210a5e1ca1396 267
+  s_bd2fe0090a610f::t_3131311b6d112f 266,268-276,278-279
+  s_bd2fe0090a610f::t_87e16d6bb649be 512
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/useContextMenuItems.ts
+  s_bd2fe0090a610f::t_233953fd05a4f8 85
+  s_bd2fe0090a610f::t_8d61f8b8026a8a 267,269-270
+  s_bd2fe0090a610f::t_4b72fe25d581eb 268
+  s_bd2fe0090a610f::t_c8e19b4ea592ae 14
+packages/frontend/@n8n/stores/src/settings.store.test.ts
+  s_bd2fe0090a610f::t_fe3f1762be80f1 189-192
+  s_bd2fe0090a610f::t_e8f1a7b71f25fa 173-184
+  s_bd2fe0090a610f::t_e7e69bcce51940 149-172,185-186
+  s_bd2fe0090a610f::t_d67fe5c3d9f29d 187-188,193-216
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_bd2fe0090a610f::t_4491dda5e104d0 103
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.test.ts
+  s_bd2fe0090a610f::t_a2d41e68603ebf 808-809,811-813
+  s_bd2fe0090a610f::t_d3301791136702 810
+  s_bd2fe0090a610f::t_696b44ebb89079 806-807
+packages/cli/src/services/frontend.service.ts
+  s_bd2fe0090a610f::t_b20f143a91cd2a 223
+  h_ed1b2d65e81e8e 17
+  s_bd2fe0090a610f::t_8e6d84bd5fe63d 14-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "1d9e5f81ff15297a9abc8336db7bbe5cca0d635d",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_bd2fe0090a610f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "cb341868-8b33-4f6e-ad97-ee0621b3b27f",
+        "model": "grok-4.6"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

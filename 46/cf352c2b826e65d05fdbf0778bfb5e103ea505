@@ -1,0 +1,100 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiHandoff.ts
+  s_a3a1bb25f6cdb8::t_88b3898834d5a2 162,168,173-176,181,187-188,316-317,319-323,333-339,343-344
+  s_a3a1bb25f6cdb8::t_8ed042fe3b4f4b 294-297,331-332
+  s_a3a1bb25f6cdb8::t_76c73f669f0a2d 15,189,213-218,282-289,306,327,340,342,372,414,427
+  s_a3a1bb25f6cdb8::t_ee16d790e6abcf 20,318
+  s_a3a1bb25f6cdb8::t_5b124705b1fcf0 305,307-309,326,341
+  s_a3a1bb25f6cdb8::t_f91d578761cb88 190
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useInstanceAiHandoff.test.ts
+  s_a3a1bb25f6cdb8::t_e5dd1028656ed0 7,31,59,292,294-307
+  s_a3a1bb25f6cdb8::t_d4a2b29395bad6 253
+  s_a3a1bb25f6cdb8::t_ad2481e507ec2e 42,198-214
+  s_a3a1bb25f6cdb8::t_8a69c6321e8dfa 40-41,44-45,135,143-146,149,152-155,178-179,254-256,264-265
+  s_a3a1bb25f6cdb8::t_8e9450eb7d5e64 220-224,238
+  s_a3a1bb25f6cdb8::t_b14019895919fd 215-216,273-291,293,308
+  s_a3a1bb25f6cdb8::t_24502cb4991c68 217
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useInstanceAiAgentPreviewHandoff.test.ts
+  s_a3a1bb25f6cdb8::t_e72b472421c7d2 5,33,42-43,54,56-58,65-71,83,96,98-100,108-113,128,139,155
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiAgentPreview.vue
+  s_a3a1bb25f6cdb8::t_2f851e100a1e85 15,20,27,82,87
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_a3a1bb25f6cdb8::t_27dd66e98390c9 934-955
+  s_a3a1bb25f6cdb8::t_3831d8497347d4 889-933
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_a3a1bb25f6cdb8::t_6ea7ce744141fa 928-937
+  s_a3a1bb25f6cdb8::t_ba066e4c1e92b6 57-58,285-289,291,298,866-868,871-872,923-926,939,944,952,987-1003,1014
+  s_a3a1bb25f6cdb8::t_480aa63a313746 656-665
+  s_a3a1bb25f6cdb8::t_8dcbfb582be72f 908
+  s_a3a1bb25f6cdb8::t_76c73f669f0a2d 52,768
+  s_a3a1bb25f6cdb8::t_6fffb8b1f806de 36,60,118,915-920
+  s_a3a1bb25f6cdb8::t_6c6306d3bf5444 48,284,292,909-914,927,938,940-943,945-951,1370,1373
+  s_a3a1bb25f6cdb8::t_052989dc9ac360 290,865
+  s_a3a1bb25f6cdb8::t_7b98bde07eee8c 38-39,41,50-51,55-56,62,64-66,760-761,854,869-870,921-922
+  s_a3a1bb25f6cdb8::t_ee16d790e6abcf 40,63
+  s_a3a1bb25f6cdb8::t_5eab869d4e9e8f 953
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_a3a1bb25f6cdb8::t_351c549e3fa210 134-135,137-140
+  s_a3a1bb25f6cdb8::t_ee16d790e6abcf 48,133,136
+  s_a3a1bb25f6cdb8::t_b88177e7114321 141-142
+packages/frontend/editor-ui/src/features/ai/instanceAi/constants.ts
+  s_a3a1bb25f6cdb8::t_ee16d790e6abcf 26
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.threadRuntime.test.ts
+  s_a3a1bb25f6cdb8::t_d4a2b29395bad6 14,2195,2198-2199,2209-2210
+  s_a3a1bb25f6cdb8::t_f74a70a874c3dd 2194,2196-2197,2200-2208,2211,2213
+  s_a3a1bb25f6cdb8::t_64f0fcafb05569 2212
+  s_a3a1bb25f6cdb8::t_e380a8ff34d366 2214
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiThreadList.vue
+  s_a3a1bb25f6cdb8::t_76c73f669f0a2d 17,83
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiAgentPreview.test.ts
+  s_a3a1bb25f6cdb8::t_694c93543ffea9 37-38,53,55-59,65-75,79
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_a3a1bb25f6cdb8::t_211e7f882aaab3 608-611,613-619,624-629
+  s_a3a1bb25f6cdb8::t_ec70e6cb2cd501 887,944,962
+  s_a3a1bb25f6cdb8::t_69872f34a1d377 872,886,888
+  s_a3a1bb25f6cdb8::t_aa338f4121ea7f 550-551,556-560,562,567-585,606-607
+  s_a3a1bb25f6cdb8::t_63f25e07b99886 44,487,612,620,623
+  s_a3a1bb25f6cdb8::t_d4a2b29395bad6 45,76,621-622,718
+  s_a3a1bb25f6cdb8::t_faed8c7a77597e 709-717,722-724,735-740,753,760-763,771-778
+  s_a3a1bb25f6cdb8::t_24962da523104d 719-721,789-792
+  s_a3a1bb25f6cdb8::t_73a832ae6c3791 50-53,157,165-166,494-495
+  s_a3a1bb25f6cdb8::t_7e3b5c881e249f 561
+  s_a3a1bb25f6cdb8::t_f612e127b8d8a2 488,563-566,591-604
+  s_a3a1bb25f6cdb8::t_f6078e26cfd355 552-555,586-590,605
+  s_a3a1bb25f6cdb8::t_c9de851ca607fc 249,251,260,279-292
+  s_a3a1bb25f6cdb8::t_d15f9b15d07ea7 293
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiInput.vue
+  s_a3a1bb25f6cdb8::t_654c81682f170a 163-166,172
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_a3a1bb25f6cdb8::t_c501718c94c772 60-63,90-91,102,114,190,215-222,1542-1549
+  s_a3a1bb25f6cdb8::t_53176539a0a759 1550
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_a3a1bb25f6cdb8::t_76c73f669f0a2d 6680-6681
+  s_a3a1bb25f6cdb8::t_ee16d790e6abcf 6678-6679
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff.ts
+  s_a3a1bb25f6cdb8::t_5032cbbe453d67 10,24,38-52,59
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiArtifactsPanel.vue
+  s_a3a1bb25f6cdb8::t_ea894bde1eb3da 192,195
+  s_a3a1bb25f6cdb8::t_5b9c6510a8345d 55-58
+  s_a3a1bb25f6cdb8::t_7c5a0fe602d46b 191
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiArtifactsPanel.test.ts
+  s_a3a1bb25f6cdb8::t_5b93a1a58aceef 271
+  s_a3a1bb25f6cdb8::t_6f7e08fc20f71c 270,277-280,286,294-296
+  s_a3a1bb25f6cdb8::t_ea894bde1eb3da 297,301,331-332
+  s_a3a1bb25f6cdb8::t_79972efb7c8316 7,219
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "46cf352c2b826e65d05fdbf0778bfb5e103ea505",
+  "prompts": {},
+  "sessions": {
+    "s_a3a1bb25f6cdb8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fec4d-56b4-7281-b272-8e642a1691f9",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

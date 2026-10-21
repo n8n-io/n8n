@@ -1,0 +1,20 @@
+packages/workflow/test/expression-compatibility.test.ts
+  s_74c2aec9bd4605::t_179157b2af9423 173-176
+  s_74c2aec9bd4605::t_4d599bb46856a1 895-912
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "d3dea95919854530c2ffbe698d3feb4532d3769f",
+  "prompts": {},
+  "sessions": {
+    "s_74c2aec9bd4605": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "463b8362-726a-4b2b-bb94-60e03f5814ba",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

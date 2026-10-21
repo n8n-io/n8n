@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowDetails.test.ts
+  s_12107b09095a6b::t_e6fe0992d3812b 60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "ae823953b5e258e9795585e89fd2bb6207949f7f",
+  "prompts": {},
+  "humans": {
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_12107b09095a6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f36b6843-9b7a-45a5-8d52-4031db7468b2",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

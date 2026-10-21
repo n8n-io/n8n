@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/features/shared/banners/components/banners/BaseBanner.vue
+  s_e89eb3ef550467::t_97d7358eaa5961 14
+  s_e89eb3ef550467::t_2908efb65af6ce 28
+  s_e89eb3ef550467::t_61543fd6b49601 53
+packages/frontend/@n8n/design-system/src/components/N8nCallout/Callout.vue
+  s_e89eb3ef550467::t_6b2b52eb16e9f7 30
+  s_e89eb3ef550467::t_bad0782b02b8bb 64-67
+  s_e89eb3ef550467::t_c0e154dd534e28 20
+  s_e89eb3ef550467::t_e9a0733cd4f0f1 8
+packages/frontend/editor-ui/src/features/shared/banners/components/banners/TrialBanner.vue
+  s_e89eb3ef550467::t_9de6a17e9dd993 177
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_e89eb3ef550467::t_029042bc88c9cd 424
+packages/frontend/@n8n/design-system/src/components/N8nCallout/Callout.test.ts
+  s_e89eb3ef550467::t_ee79562f2b5649 92-123
+packages/frontend/editor-ui/src/features/shared/banners/components/banners/TrialBanner.test.ts
+  s_e89eb3ef550467::t_4b25fb4b69ff73 55,59
+  s_e89eb3ef550467::t_2053c5ce2dd6ba 120-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9dafe20175b16836c728edca33be2e7c32600305",
+  "prompts": {},
+  "sessions": {
+    "s_e89eb3ef550467": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bf34f719-a996-4f38-8781-2fe4d0253f19",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

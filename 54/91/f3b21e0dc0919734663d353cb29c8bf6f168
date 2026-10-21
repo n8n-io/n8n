@@ -1,0 +1,9 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  ai_agent 1104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5491f3b21e0dc0919734663d353cb29c8bf6f168",
+  "prompts": {}
+}

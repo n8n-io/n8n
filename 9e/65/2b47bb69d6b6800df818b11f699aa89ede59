@@ -1,0 +1,47 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_d661427bc520a1::t_e46b9978bbf553 3
+packages/cli/src/modules/agents/__tests__/agent-knowledge-sandbox.service.test.ts
+  s_c4f74e01ae495a::t_0b59e3ebd6cd5a 95,97,101
+  s_c4f74e01ae495a::t_e94c969ac54414 118,527,594,627,657,682
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_d661427bc520a1::t_c36d0af0d7c543 560
+packages/cli/src/modules/agents/__tests__/agent-knowledge.service.test.ts
+  s_c4f74e01ae495a::t_99fff98d20a197 170-175
+  s_c4f74e01ae495a::t_5d27e28a5ee7be 456,460
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_d661427bc520a1::t_e78bf397aa8bb7 786-791
+  s_c4f74e01ae495a::t_dae31c92e64c47 729-744
+  s_44f93aaa53cc22::t_0d6dc4c1ab1501 784-785
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "9e652b47bb69d6b6800df818b11f699aa89ede59",
+  "prompts": {},
+  "sessions": {
+    "s_44f93aaa53cc22": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "26e68124-0784-4aa1-bcf3-ea0500f2271f",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_c4f74e01ae495a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "df4f788d-29cd-4aea-85d6-2d97c9b20fce",
+        "model": "composer-2.5-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_d661427bc520a1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "eca5981d-0e39-4f0c-b5cb-761e3fb9aedc",
+        "model": "composer-2.5-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

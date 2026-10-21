@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_8aad20ae51f6b5::t_39a84415e11a28 1310-1311
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentsListView.test.ts
+  s_8aad20ae51f6b5::t_39a84415e11a28 430
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_8aad20ae51f6b5::t_39a84415e11a28 1043-1056
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7061c4db86f83eb70ef033c17c5a91bdbe78c25c",
+  "prompts": {},
+  "sessions": {
+    "s_8aad20ae51f6b5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bbcfc8f3-8687-4435-97d7-2d886ab72a3b",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

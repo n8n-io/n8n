@@ -1,0 +1,38 @@
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/MCPWorkflowsSelect.vue
+  s_785356c2e2c0fe::t_8b2f7376d26405 2,33,53,61,63,65-68
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useDataTableNavigationCommands.test.ts
+  s_785356c2e2c0fe::t_06584ec344a792 170-228
+  s_785356c2e2c0fe::t_9bba983aae4784 1,158-169,229-230
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/MCPWorkflowsSelect.test.ts
+  s_785356c2e2c0fe::t_8b2f7376d26405 1,5,189-197,199-201,203-232
+  s_785356c2e2c0fe::t_46157c471931ce 198,202
+  s_785356c2e2c0fe::t_58246fa5c707d9 233
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/OAuthClientsTable.test.ts
+  s_785356c2e2c0fe::t_06584ec344a792 82-106
+  s_785356c2e2c0fe::t_0161f9baa11b67 61-65,67-73,75-80
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/AgentsTable.test.ts
+  s_785356c2e2c0fe::t_06584ec344a792 35-57
+  s_785356c2e2c0fe::t_7bc64fe430f885 1-34,58
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPClientsView.test.ts
+  s_785356c2e2c0fe::t_db129df84cccaf 1-3,6,135-166
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPClientsView.vue
+  s_785356c2e2c0fe::t_432f14b4160f7d 2,32,37,44,49,65
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useDataTableNavigationCommands.ts
+  s_785356c2e2c0fe::t_8241293fa9fbf6 1,43,65,75,87,89,199-201,212-215,220-221,226-227
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7578108f4400f72727161481a61108acf74dcd7d",
+  "prompts": {},
+  "sessions": {
+    "s_785356c2e2c0fe": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0fb76-1508-78c2-8e51-ef1665537d54",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/@n8n/agents/src/runtime/memory/observation-log-observer.ts
+  s_1389ed5ff32164::t_378f2d90efd7e8 286-287
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ecf7910eb59ae3ed4ef4fa57322be822bc8f65de",
+  "prompts": {},
+  "sessions": {
+    "s_1389ed5ff32164": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0afb5-5cd8-7dd1-ab29-acad02c48f33",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

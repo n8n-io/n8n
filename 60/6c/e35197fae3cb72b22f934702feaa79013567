@@ -1,0 +1,14 @@
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  h_2f80f0e06f710c 786
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "606ce35197fae3cb72b22f934702feaa79013567",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

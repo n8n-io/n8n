@@ -1,0 +1,22 @@
+packages/nodes-base/nodes/Microsoft/test/GenericFunctions.test.ts
+  s_e7b82576de0350::t_e9810b18cf243f 19-20
+  s_e7b82576de0350::t_62867873e8c87a 1-18,21-161
+packages/nodes-base/nodes/Microsoft/GenericFunctions.ts
+  s_e7b82576de0350::t_a71a087e7a63b1 1-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "0d0394a6b09e6f2a64d43362131183a5d36f5377",
+  "prompts": {},
+  "sessions": {
+    "s_e7b82576de0350": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8559a775-ab76-4c98-9eef-2dc047602094",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

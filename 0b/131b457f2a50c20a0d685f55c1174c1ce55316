@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_a2f68281ff1fcf::t_7ee139723655df 1281,1291,1298,1305
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_a2f68281ff1fcf::t_6a222c4203b00d 688,1020
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "0b131b457f2a50c20a0d685f55c1174c1ce55316",
+  "prompts": {},
+  "sessions": {
+    "s_a2f68281ff1fcf": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c96b4683-dbcc-412d-86d9-c069d5dcb2ab",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

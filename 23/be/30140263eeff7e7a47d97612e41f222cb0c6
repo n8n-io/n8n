@@ -1,0 +1,100 @@
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-importer.test.ts
+  s_50b1b090121afc::t_f29f96abd4342f 548
+  s_50b1b090121afc::t_d54daa02a429b6 1-2,13,29,44-46,53-58,97,390-547
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_50b1b090121afc::t_c8b05ca11dfcb0 5,577
+  s_50b1b090121afc::t_e660583bdd6ac8 169,171,173,175-177,237-239,327-328
+  s_50b1b090121afc::t_64d3c432e61fd6 170,172,174,394
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_50b1b090121afc::t_6c28908db1b9a8 11-14,96
+  s_50b1b090121afc::t_477d522fe0eaf2 39-43,80-83,85,89-95
+packages/cli/src/modules/n8n-packages/__tests__/import-credential-conflict.integration.test.ts
+  s_50b1b090121afc::t_f8f9671ffe1351 4-9,145-147,201-203,426-430
+  s_50b1b090121afc::t_a3299c77f1b6b2 1-3,10-13,15-76,79-103,105-144,148-200,204-425,431-434
+  s_50b1b090121afc::t_2a271e2e5e6463 14,104
+  s_50b1b090121afc::t_978dc2fd1833c6 77-78
+packages/cli/src/modules/n8n-packages/__tests__/blocking-issue-schema-contract.test.ts
+  s_50b1b090121afc::t_5cf77489005c52 32-34
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_50b1b090121afc::t_55e821169814a5 148-149,177,275
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-conflict-policy.test.ts
+  s_50b1b090121afc::t_6c28908db1b9a8 6,57-71
+  s_50b1b090121afc::t_f8f9671ffe1351 41-43,254-256
+  s_50b1b090121afc::t_d18cc3444a19ef 1-5,7-40,44-56,72-253,257-303
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_50b1b090121afc::t_d06ff3e5e89b7e 1355
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.schema.ts
+  s_50b1b090121afc::t_5cf77489005c52 6-7,130-140,362
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_50b1b090121afc::t_c8b05ca11dfcb0 6,12,113,196-204
+  s_50b1b090121afc::t_c667b20478f5bc 205-206
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_50b1b090121afc::t_477d522fe0eaf2 10-13,42-46,66,117-122,285-288,313
+  s_50b1b090121afc::t_c228021bee7db8 314-315,331
+  s_50b1b090121afc::t_59e37e07af359d 283-284
+  s_50b1b090121afc::t_d092f108fd3177 123
+  s_50b1b090121afc::t_6c28908db1b9a8 6-9,124-128,147
+packages/@n8n/cli/src/__tests__/package-error.test.ts
+  s_50b1b090121afc::t_3ba5aacb2f2703 195-227
+packages/@n8n/cli/src/commands/package/package-error.ts
+  s_50b1b090121afc::t_0cb82a0702f3b6 34-41,137-143
+  s_50b1b090121afc::t_d1b2670dec8147 144
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/package-fixtures.ts
+  s_50b1b090121afc::t_bfb23f2f86f437 16,229-234,236-238,240-242,250-251,267,271,299-303,388-392,395,413,465-473,501-504
+  s_50b1b090121afc::t_741acec2c3600b 10,235,239
+  s_50b1b090121afc::t_f8f9671ffe1351 268-270
+packages/cli/src/public-api/v1/shared/spec/schemas/importBlockingIssue.generated.yml
+  s_50b1b090121afc::t_d731fa1e4d466c 168-203
+packages/cli/src/modules/n8n-packages/engine/package-layout.ts
+  s_50b1b090121afc::t_477d522fe0eaf2 3,6-11,45-53
+  s_50b1b090121afc::t_a483e8b124921b 54-56
+packages/cli/src/modules/n8n-packages/engine/import-blocked.error.ts
+  s_50b1b090121afc::t_c8b05ca11dfcb0 23
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_50b1b090121afc::t_d06ff3e5e89b7e 102
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_50b1b090121afc::t_55e821169814a5 75
+  s_50b1b090121afc::t_3a5482a60e18d8 157
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.openapi.ts
+  s_50b1b090121afc::t_5cf77489005c52 81-108
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_50b1b090121afc::t_55e821169814a5 3121,3192
+packages/cli/src/modules/n8n-packages/entities/credential/credential.types.ts
+  s_50b1b090121afc::t_05148b6dcb454e 3,8-11,44-88,100-103
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  s_50b1b090121afc::t_d06ff3e5e89b7e 114
+  s_50b1b090121afc::t_44786fe1184ab1 3
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_50b1b090121afc::t_1ae85d8b300926 1229
+packages/cli/src/modules/n8n-packages/entities/credential/credential-conflict-policy.ts
+  s_50b1b090121afc::t_f8f9671ffe1351 145-148
+  s_50b1b090121afc::t_74992e093871a6 1-8,10-21,33-49,54-144,149,153-160,163,168
+  s_50b1b090121afc::t_196efc61dadd20 9,150-152,161-162,164-167
+  s_50b1b090121afc::t_3babd183db4de9 50-53
+  s_50b1b090121afc::t_6c28908db1b9a8 22-32
+packages/cli/src/credentials/credential-data-merge.ts
+  s_50b1b090121afc::t_fa74ea803ad2de 2,98
+packages/cli/src/modules/n8n-packages/entities/credential/credential-importer.ts
+  s_50b1b090121afc::t_f99d7d88297e06 1-2,8,14,17,26,32-33,38-39,46-100
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-blocked.error.test.ts
+  s_50b1b090121afc::t_13b1b76a2de4ee 55-63,72
+  s_50b1b090121afc::t_f8f9671ffe1351 65-71
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_50b1b090121afc::t_d06ff3e5e89b7e 31,91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "23be30140263eeff7e7a47d97612e41f222cb0c6",
+  "prompts": {},
+  "sessions": {
+    "s_50b1b090121afc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "88f5dc47-7526-4a2e-8300-2455990e4d9c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

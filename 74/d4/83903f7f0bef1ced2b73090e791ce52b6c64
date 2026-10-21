@@ -1,0 +1,19 @@
+packages/@n8n/local-gateway/src/main/local-instance/instance-ui.test.ts
+  s_22dba21f85aaca::t_f02f647deb0f6f 27-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "74d483903f7f0bef1ced2b73090e791ce52b6c64",
+  "prompts": {},
+  "sessions": {
+    "s_22dba21f85aaca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e80c488b-60c5-4815-a664-397181ee7c3c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,16 @@
+.github/workflows/util-publish-api-schema.yml
+  h_5d40c27a8fdfd1 9,11,13-15
+packages/cli/src/public-api/v1/handlers/workflows/spec/schemas/tagIds.yml
+  h_5d40c27a8fdfd1 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e3ddf6dd2d463a3c0168c4cc3f924a487ddaeba2",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+packages/cli/src/workflows/publication/publication-status-reporter.ts
+  s_3e5f5c8fb38c1f::t_e7116836e81cbd 123-130
+  s_3e5f5c8fb38c1f::t_0a176545457185 50,56-57,64
+packages/cli/src/workflows/publication/__tests__/publication-status-reporter.test.ts
+  s_3e5f5c8fb38c1f::t_05fa6f6e72dbcb 57-60,71,81-84,95-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "43ad22acaf2bc8efd843a989c55abd7052738be8",
+  "prompts": {},
+  "sessions": {
+    "s_3e5f5c8fb38c1f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "520d8bd8-bf40-42fd-932a-3ce788d1b46c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/test/integration/agents/agent-builder-execution-records.test.ts
+  s_fcc77b2931f263::t_f6ec9c42c822d5 1-189
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "17d0a88a1266dba1b68cfc0acf0eefc185f16aac",
+  "prompts": {},
+  "sessions": {
+    "s_fcc77b2931f263": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "95e12481-8f3d-4649-a397-a7b2425a401f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

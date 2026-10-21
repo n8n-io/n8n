@@ -1,0 +1,19 @@
+docs/superpowers/specs/2026-07-20-episodic-memory-self-hosted-credentials-design.md
+  s_181b9e3693008d::t_f9483074d3105b 1-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "eb9ec9e5cdc6ceff93d6ec72c68bd121318e0926",
+  "prompts": {},
+  "sessions": {
+    "s_181b9e3693008d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7f2c-4745-7b31-8408-353b51f1200a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

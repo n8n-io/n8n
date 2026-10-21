@@ -1,0 +1,79 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-publisher.ts
+  s_71ad2034164515::t_9dcaf4a35bc391 24,182
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/missing-node-type-mode.test.ts
+  s_71ad2034164515::t_7b7becd7975ccb 8,140
+  s_71ad2034164515::t_2268e87da48e5c 141-162,164-165,167-169
+packages/cli/src/modules/n8n-packages/entities/publishing.ts
+  s_71ad2034164515::t_3a71746ecec9f5 10-13
+  s_71ad2034164515::t_9dcaf4a35bc391 1-9,14-31
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_71ad2034164515::t_d2fc255741fc6a 487,521,715
+  s_71ad2034164515::t_3a71746ecec9f5 19,690-701
+  s_71ad2034164515::t_3e3d0801b47879 13,59,70-75,520,687-689,702-713
+  s_71ad2034164515::t_7195e4e2bdfcc2 545,714
+  s_71ad2034164515::t_cb85767b8b031e 457,488,522,524,538-544,546-560,716
+packages/cli/src/modules/n8n-packages/entities/agent/agent-publisher.ts
+  s_71ad2034164515::t_9dcaf4a35bc391 1-89,93-100
+  s_71ad2034164515::t_2268e87da48e5c 90-92
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  s_71ad2034164515::t_3e3d0801b47879 4
+  s_71ad2034164515::t_a9611e5530abdd 33
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_71ad2034164515::t_7b7becd7975ccb 1365-1367,1369-1370,1374-1379
+  s_71ad2034164515::t_756206b03fb0b5 1362-1364,1368,1371-1373
+  s_71ad2034164515::t_2fcf87ab1d05cf 1380
+packages/cli/src/modules/n8n-packages/entities/credential/credential-missing-mode.ts
+  s_71ad2034164515::t_3a71746ecec9f5 65-66
+  s_71ad2034164515::t_baf322368b90ff 7
+  s_71ad2034164515::t_9dcaf4a35bc391 3-6,69,76-77
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-publishing-policy.types.ts
+  s_71ad2034164515::t_9dcaf4a35bc391 24-29
+packages/cli/src/modules/n8n-packages/spec/requirement-consumers.ts
+  s_71ad2034164515::t_9dcaf4a35bc391 9-16
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  s_71ad2034164515::t_fd56670ecfc4d8 24,29-30,42,49,54,76,88-91,99-101,120-123,148,154,175-200,207-209,212-216,521,531-534,536,545-547,559,571-575,586,592,596,604-606,615
+  s_71ad2034164515::t_bdb4ae1c30be57 520,522-525,548,560
+  s_71ad2034164515::t_5972b5ddbcef7f 498,540,576,591,601,603,612,626,628,647,649,711,713,716-723,729-730,732,756,758
+  s_71ad2034164515::t_d68f82422c3370 634
+  s_71ad2034164515::t_ee78771f1397f3 535,570,585,597,599,610,624,651,715,724,727-728,733-737,743-744,746,770,772
+  s_71ad2034164515::t_36fb5e4b14ffb0 106
+  s_71ad2034164515::t_87f57b02bb38e3 595
+  s_71ad2034164515::t_2f1f7a63659979 590,602,613,627,648,677,693,712,731,757,760
+  s_71ad2034164515::t_9a9a7d00120382 565-566,569,580-581,616-618,621,629,632,635,682,709
+  s_71ad2034164515::t_d4780723eb6ed9 530,564,579,582,593,608,622,653,738,741-742,747-751,759,784,786
+  s_71ad2034164515::t_aaa0d1e492f067 584,598,611,625,650,679,695,745,771,774
+  s_71ad2034164515::t_2268e87da48e5c 92-98,151-153,201-206,210-211,537-539,541-544,549-558,561-563,567-568,587,600,607,614,619-620,630-631,636-646,654-676,678,680,683-692,694,696,698-708,710,714,725,739-740,752-755,761-769,773,775-783,787,789-803
+  s_71ad2034164515::t_2ae50ad9f7713d 577
+  s_71ad2034164515::t_734ba3dd007431 726
+  s_71ad2034164515::t_afba49176fd889 526-529,633
+  s_71ad2034164515::t_ca60264ed6afde 578,594,609,623,652,681,697,785,788
+  s_71ad2034164515::t_fe69cbf35c6937 217-218,499,503,583
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import.types.ts
+  s_71ad2034164515::t_c9e1c5a76a0850 11
+  s_71ad2034164515::t_0f9069f2e11470 39,42-48
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_71ad2034164515::t_9dcaf4a35bc391 141,145-148,277,281-284
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_71ad2034164515::t_3e3d0801b47879 207,209
+  s_71ad2034164515::t_d1659c1d844821 292
+packages/cli/src/modules/n8n-packages/entities/workflow/missing-node-type-mode.ts
+  s_71ad2034164515::t_9dcaf4a35bc391 4-5,53-58
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_71ad2034164515::t_c809761509b681 187,189,233
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8e346c7878576edce2514c4ce90f7c28d4a422e0",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

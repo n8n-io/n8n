@@ -1,0 +1,14 @@
+.agents/skills/create-pr/SKILL.md
+  h_8fb27e0cdf6d1e 150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0b2f2d5cb819aef1d053da89d63f7a331e63a914",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

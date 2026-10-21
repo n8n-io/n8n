@@ -1,0 +1,20 @@
+packages/cli/test/integration/public-api/data-tables.test.ts
+  s_101038ccbc858a::t_d1369e7c89f60d 1589,1608-1625
+  s_101038ccbc858a::t_3ffa952b4e9647 1626-1627
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3adb5a34b3732197d84cd70e234f839b19680ba8",
+  "prompts": {},
+  "sessions": {
+    "s_101038ccbc858a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "130a5205-9941-4829-b850-89ce897499f4",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

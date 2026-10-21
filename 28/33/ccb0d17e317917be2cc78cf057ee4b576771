@@ -1,0 +1,52 @@
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_6de73f383a7912::t_32c9226ec7ec20 860,865-868
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-gateway.service.test.ts
+  s_6de73f383a7912::t_313a6e36eeb251 21,26-28
+  s_6de73f383a7912::t_abeec81354d1fa 7
+  s_6de73f383a7912::t_92016ab5e45d86 43-62
+packages/cli/src/modules/instance-ai/filesystem/local-gateway.ts
+  s_6de73f383a7912::t_0c9246b1a00a6b 84,87-94,101
+  h_44f8d1c0f2f8c4 85-86,96,180,182,195-200
+  s_6de73f383a7912::t_96ca953977b4ca 70-71
+  s_6de73f383a7912::t_e5179f77d0cd05 181
+  s_6de73f383a7912::t_d8771acc8a8a50 201-202
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_6de73f383a7912::t_522acb741c7aca 797
+  s_6de73f383a7912::t_bf4c02a97b098c 753
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_6de73f383a7912::t_f1162f9bf3b005 1761
+  s_6de73f383a7912::t_a3162a74e1ebbe 1826
+  s_6de73f383a7912::t_7759f816b1ed50 1760
+  s_6de73f383a7912::t_9e55cb03905eae 104
+  s_6de73f383a7912::t_fa64f7b6e1025c 1762-1763
+  s_6de73f383a7912::t_e6ea8bc08159d1 1817
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_6de73f383a7912::t_25158ae996a907 1076-1085
+packages/cli/src/modules/instance-ai/instance-ai-gateway.service.ts
+  s_6de73f383a7912::t_719518f662bb74 11-14,26-40
+  s_6de73f383a7912::t_4d2e36ed0f6668 119
+packages/cli/src/modules/instance-ai/__tests__/local-gateway.test.ts
+  s_6de73f383a7912::t_b06b53eff60087 256-270,279-281,283-287,289-293,300,302-310,312,317-319
+  s_6de73f383a7912::t_cd7e7e0b7d49ce 271-278,282,288,294-299,301,311,313-316
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "2833ccb0d17e317917be2cc78cf057ee4b576771",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6de73f383a7912": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9232d111-be63-4e94-a383-3f1161b3df85",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

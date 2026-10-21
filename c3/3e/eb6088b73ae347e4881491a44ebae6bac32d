@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/src/features/credentials/templatedAuth.utils.ts
+  s_03e31bd3d32fb7::t_4176d7e3f99e87 1-2
+  s_03e31bd3d32fb7::t_149fb14d4863bb 84-96
+  s_03e31bd3d32fb7::t_8a99e7aaad7ab1 74-76
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/TemplatedAuthSimpleView.vue
+  s_03e31bd3d32fb7::t_66ea925261138f 12
+  s_03e31bd3d32fb7::t_2fcd081018bd5b 95-97,104-109,114,118,128-133,136-143,148-153,155-157,160-161
+  s_03e31bd3d32fb7::t_ec0e87daf888d3 510
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/TemplatedAuthSimpleView.test.ts
+  s_03e31bd3d32fb7::t_3d3c96d692653d 159-182
+packages/frontend/editor-ui/src/features/credentials/templatedAuth.utils.test.ts
+  s_03e31bd3d32fb7::t_7130cc70278028 44-66
+  s_03e31bd3d32fb7::t_5f48424efb4425 1-2,9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "c33eeb6088b73ae347e4881491a44ebae6bac32d",
+  "prompts": {},
+  "sessions": {
+    "s_03e31bd3d32fb7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a23cf9e9-0732-42b0-a3d7-4997316c07d1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

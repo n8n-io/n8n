@@ -1,0 +1,116 @@
+packages/@n8n/engine/src/server/routes/workflow-executions.ts
+  s_493b74e1b8912c::t_6cf5b60b096f70 15
+  s_3596394468c594::t_de5b5f9ad37c4e 10-11
+  s_493b74e1b8912c::t_5d81b4b4eec2ee 137
+  s_493b74e1b8912c::t_2438f5ff287ee7 9
+  s_493b74e1b8912c::t_e98f181a0ea761 7-8,12
+  s_493b74e1b8912c::t_11becebe4d5030 63-64,66-77,79-92,94,110,129-136,138-154
+  s_493b74e1b8912c::t_1e582beb944ee1 155-157
+  s_493b74e1b8912c::t_75cfa297d9a50f 93
+  s_3596394468c594::t_a362178fa29bb7 65
+  s_3596394468c594::t_1b0fa495e7615a 78
+packages/@n8n/engine/src/database/create-stores.ts
+  s_3596394468c594::t_fe3fb838c0876d 4,7,15-16,20-21,23-25
+packages/@n8n/engine/src/database/__tests__/workflow-step-execution.integration.test.ts
+  s_493b74e1b8912c::t_2beb947189b821 230
+  s_3596394468c594::t_03138c8392b7eb 30-37
+  s_3596394468c594::t_663ba7bb2b0152 11
+  s_493b74e1b8912c::t_a8220cbf4185b9 735,737-745,747-750,752-753,755-756,758-768,770-771,779-781,783-785
+  s_3596394468c594::t_4080cbf249dacd 736,746,751,754,757,769,772-778,782
+packages/@n8n/engine/src/server/index.ts
+  s_493b74e1b8912c::t_a356d2319b7838 2
+packages/@n8n/engine/src/server/api.types.ts
+  s_493b74e1b8912c::t_e81d0cc65c383f 8-50
+  s_493b74e1b8912c::t_cb6254b23fd104 1-7
+packages/@n8n/engine/src/execution/step-store.ts
+  s_3596394468c594::t_8fe0f7df8aa7af 19-24
+  s_3596394468c594::t_093044138e981e 1
+packages/@n8n/engine/src/database/__tests__/workflow-execution.integration.test.ts
+  s_3596394468c594::t_ed01578b9c7ae4 6,9-10
+  s_3596394468c594::t_f01806d4b17d74 56-97
+packages/@n8n/engine/src/execution/__tests__/execution-query.service.test.ts
+  s_493b74e1b8912c::t_18f7e036425706 1-3,6,8,11-15,22-23,25-27,30,32-35,40-41,43-44
+  s_3596394468c594::t_0002c416dc8228 4-5,7,9-10,16-21,24,28-29,31,36-39,42
+packages/@n8n/engine/src/server/error-response.ts
+  s_493b74e1b8912c::t_ad9e13979f571b 6-7
+packages/@n8n/engine/AGENTS.md
+  s_3596394468c594::t_199fc2bb000b24 30-32
+  s_3596394468c594::t_4538f58c165547 87-98
+  s_3596394468c594::t_70a970dad76d4f 85-86,99
+packages/@n8n/engine/src/execution/step-ready-handler.ts
+  s_3596394468c594::t_0af9d817d992a0 9,16
+packages/@n8n/engine/src/server/__tests__/workflow-executions.integration.test.ts
+  s_493b74e1b8912c::t_faf6c6887867ec 305,310-311
+  s_3596394468c594::t_2447e013934f05 36,43,187,199
+  s_493b74e1b8912c::t_1194bb4a42fea9 12
+  s_493b74e1b8912c::t_3f4114941da564 9
+  ai_agent 38-42,194-198,288-290
+  s_493b74e1b8912c::t_5daa5be5a8ef31 172-186,188-193,200-257,277,292-304,306-309,312-320
+  s_493b74e1b8912c::t_a248392872db77 258-276,278-287,291
+packages/@n8n/engine/src/testing/__tests__/start-engine-server.integration.test.ts
+  s_493b74e1b8912c::t_1daaa98643524d 12-14,16
+  s_493b74e1b8912c::t_2311712f43d70c 4,15
+packages/@n8n/engine/src/server/create-engine-server.ts
+  s_493b74e1b8912c::t_2e6c244bc082fe 8-9,11,19
+  s_493b74e1b8912c::t_2f749bd1debd60 3,10
+packages/@n8n/engine/src/execution/execution-store.ts
+  s_3596394468c594::t_939c06abea507c 13-17
+packages/@n8n/engine/src/index.ts
+  s_3596394468c594::t_f8fda1e747087e 48,52,64
+  s_493b74e1b8912c::t_5e0890f637dd0b 4-9
+packages/@n8n/engine/src/database/typeorm-execution-read-store.ts
+  s_3596394468c594::t_86383ae0875901 3
+  s_3596394468c594::t_9886ee31468ccf 1-2,4-60
+packages/@n8n/engine/src/runtime/create-engine-runtime.ts
+  s_493b74e1b8912c::t_2f7b56c81cd353 9
+  s_3596394468c594::t_ee68e9e12d13fc 81
+  s_3596394468c594::t_eba1cf45a9a49f 62
+  s_3596394468c594::t_e762d64feb43d9 75
+  s_493b74e1b8912c::t_73c3f77a85201c 79-80,82
+packages/@n8n/engine/src/execution/execution-query.service.ts
+  s_493b74e1b8912c::t_a16219f4d5481a 11,16
+  s_3596394468c594::t_47cb9bb7ee7969 1,5,9,12-13,17-18
+  s_493b74e1b8912c::t_f45996526dd902 2-4,6-8,10,14-15,19-20
+packages/@n8n/engine/src/database/entities/workflow-step-execution.entity.ts
+  s_3596394468c594::t_2eb7495284fa00 11
+packages/@n8n/engine/src/testing/start-engine-server.ts
+  s_493b74e1b8912c::t_0a8f9be7d6997c 6-7,9,13
+  s_493b74e1b8912c::t_530d8c782ded0b 3,8
+packages/@n8n/engine/src/execution/execution.types.ts
+  s_3596394468c594::t_7e71c0461cc767 55-70
+packages/@n8n/engine/src/database/typeorm-step-store.ts
+  s_3596394468c594::t_d442604246a2b8 9
+  s_493b74e1b8912c::t_a18c3369cab894 45-50
+  s_3596394468c594::t_bf426b77dd6439 133
+packages/@n8n/engine/src/execution/index.ts
+  s_3596394468c594::t_27ec0238029c39 10,19,21
+  s_493b74e1b8912c::t_5c12bbab71e700 23
+packages/@n8n/engine/src/execution/execution-read-store.ts
+  s_3596394468c594::t_ba56b2accd2e0d 1-61
+packages/@n8n/engine/src/database/index.ts
+  s_3596394468c594::t_e4d74b40116355 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "53ad39d4dd62cb58d618bbaa490bd10a5db7e33e",
+  "prompts": {},
+  "sessions": {
+    "s_3596394468c594": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cf615383-9fd1-401f-aadf-102413384139",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_493b74e1b8912c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c65d520a-8080-4fca-99a4-c74081b75f13",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,35 @@
+packages/cli/src/public-api/v1/handlers/workflows/workflows.service.ts
+  s_bc1b6093516498::t_6ece432c858b39 69-71,75-76
+  s_bc1b6093516498::t_ffe688afd4f4cc 77
+packages/cli/src/public-api/v1/handlers/workflows/workflows.handler.ts
+  s_bc1b6093516498::t_43a61f97d73b51 315-318,322-323
+  s_bc1b6093516498::t_5c5e81a531d974 324
+packages/cli/src/public-api/v1/handlers/workflows/spec/schemas/workflowSettings.yml
+  s_bc1b6093516498::t_d4d8887872970b 125-129
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_bc1b6093516498::t_6a4b7b8ffc0f8f 1624-1626,1632,1639,1643
+  h_5d40c27a8fdfd1 1627
+  s_bc1b6093516498::t_f5fd1229a54add 2310-2333,2335,2337-2338,2340,2342
+  s_bc1b6093516498::t_e14c195980e5ff 2343-2344
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "efaf8074843a8ca77c03eb79a5697bec92e096d6",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_bc1b6093516498": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a6d8c234-2d9e-44c6-a753-318a830b1862",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

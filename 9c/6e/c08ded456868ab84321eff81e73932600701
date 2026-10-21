@@ -1,0 +1,95 @@
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMessageQueue.vue
+  s_750e77049c31ca::t_a294610abfe8e1 103-107,109-120,122-135,137-144,146-184,186-190,192-196,198-199,201-213,215-228,230-239
+  s_750e77049c31ca::t_00ec7c54a6ade8 2,4,79-82,89-92,94,102,240,272-273,285-289
+  s_750e77049c31ca::t_b688383616fdb7 83-88
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatCollapsibleContainer.vue
+  s_750e77049c31ca::t_207cd1f6c2915c 77-90
+  s_750e77049c31ca::t_378bd7e1e98d82 1-23,26-54,56-76,92-96,98-152
+  s_750e77049c31ca::t_ae152e8497db9b 24-25
+  s_750e77049c31ca::t_4757172984ad42 55
+  s_750e77049c31ca::t_8ed40483803eee 91
+  s_750e77049c31ca::t_677b0138a61d5e 97
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatCollapsibleContainer.test.ts
+  s_46c959dbdd3c68::t_3aea671627486d 5-7
+  s_46c959dbdd3c68::t_3790317e527ef2 1-4,8-53
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_46c959dbdd3c68::t_82a1b89dd05b1b 1391
+  s_46c959dbdd3c68::t_d38ec5b4ef26e0 1388-1390
+  s_46c959dbdd3c68::t_196ad6c3d340d0 1392
+  s_f01eeec9288a57::t_24b08c20d7936c 1387
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPlan.vue
+  s_1da67a04cb1977::t_dfe232fcaf7435 349
+  s_741ed38f0d02d1::t_a4ca43cb1aa9a1 123-126,220,255-256,288-291
+  s_1da67a04cb1977::t_44e15576b74e38 313,316-317,320
+  s_1da67a04cb1977::t_2472591c7cd8a6 181-182,184-188,190,215,331,340-341,343-344,350-353,355
+  s_741ed38f0d02d1::t_8538216f3f3dd6 205
+  s_46c959dbdd3c68::t_662f9527917c4f 15-20,155,199,201,208,211
+  s_1da67a04cb1977::t_1549285961368b 300,312
+  s_1da67a04cb1977::t_00901c257a96c4 338-339,342,356
+  s_46c959dbdd3c68::t_b7ecfb063f0cf9 5,221,229,244-246
+  s_1da67a04cb1977::t_7237a66148dacd 145-150,164-165,183,189,263,303-309,311,314-315,318-319,323-330,345-346,348,361
+  s_1da67a04cb1977::t_ecdc59e549882f 301-302,321-322
+  s_750e77049c31ca::t_00ec7c54a6ade8 9,14,92,94,98,109-110,232,238,240
+  s_750e77049c31ca::t_e918aa53510fe1 108
+  s_1da67a04cb1977::t_f35e7d9eebe17b 151-152
+  s_46c959dbdd3c68::t_184e45b1c2d92d 209-210
+  s_750e77049c31ca::t_5fec130dbd0ee6 241
+  s_741ed38f0d02d1::t_837ac57d56510d 257
+  s_1da67a04cb1977::t_455ca3312fbc1b 262
+  s_741ed38f0d02d1::t_b1c9549ec0674a 287
+  s_1da67a04cb1977::t_031c60beabb98b 310
+  s_1da67a04cb1977::t_4cadfafc53c266 332
+  s_1da67a04cb1977::t_5e3e343c98b30b 337
+  s_1da67a04cb1977::t_819ec458922c7c 347
+  s_1da67a04cb1977::t_f32c10d42575be 354
+  s_1da67a04cb1977::t_38c66196ba4e0a 362-363
+  s_46c959dbdd3c68::t_b9e2132dbadadb 75,80-87,103-104,113-121,133-139,169-177,206-207,212-214,270-271,274,284,294,365,367-368
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9c6ec08ded456868ab84321eff81e73932600701",
+  "prompts": {},
+  "sessions": {
+    "s_1da67a04cb1977": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1169e-83e3-7234-a9ac-40cd666a81b8",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_46c959dbdd3c68": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a116bd-f99d-7234-a9ac-40d00bcad499",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_741ed38f0d02d1": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1168b-a506-7234-a9ac-40cb42cb186d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_750e77049c31ca": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a11663-53df-7234-a9ac-40c689ba776c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_f01eeec9288a57": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a116e1-3ef9-717e-b925-cdd7f2a2c35f",
+        "model": "unknown"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

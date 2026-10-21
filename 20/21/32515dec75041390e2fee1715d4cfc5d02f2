@@ -1,0 +1,151 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupView.ts
+  s_11e1615c6411fe::t_4a4f127596f725 1,4,15,63
+  s_da80a4281289c9::t_50297bf2d404bd 5,31-62,70-71,73,75,78,84,98,101-102,124,127,134,168,170-174,199,206-207,214-218,227-229,295,297,303,306
+  s_60b7d3647f5916::t_b116d5b580ff04 208-213,219-226,230-258
+  h_df158766ffbd97 151
+  s_7ae1b8a292f559::t_c09ac38d50683f 298-302,304
+  s_11e1615c6411fe::t_5cd479a9b6df17 6-12,20-26,72,74,76-77,79-83,85-97,99-100,103-123,125-126,128-131,136-137,139-143,152-167,169,175-198,200-205,259-287,319-323
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupLayout.ts
+  s_60b7d3647f5916::t_be30cdbfa7aeb7 509-517,519,521
+  s_11e1615c6411fe::t_187a4a257deb9a 142-149
+  s_60b7d3647f5916::t_b96983586a6aee 189
+  s_7ae1b8a292f559::t_f219a5689a3577 228-230
+  s_da80a4281289c9::t_9aabceb715002d 62-63
+  s_cf146439ef70ed::t_20807a2d08f8ba 468-474
+  s_60b7d3647f5916::t_66c7b748b46d75 565-567
+  s_11e1615c6411fe::t_0dcf3b9c5eeda8 17-18,41,86,97-98
+  s_60b7d3647f5916::t_6695f312b211c5 518,520,525
+  s_11e1615c6411fe::t_d5aa94b5b34ad9 1-2,4,6-7,9-16,19-23,25-40,42-48,50-61,64-85,87-96,99,101-115,117-137,140-141,150-182,185-188,190-194,196-198,209,227,232-254,257-270,272-289,291-292,294,297-331,403,550-555,557-559,563,568,570,592-595
+  s_11e1615c6411fe::t_dcc8743a54b001 564
+  s_60b7d3647f5916::t_3448773efa6b17 360
+  s_60b7d3647f5916::t_b5e1a58e36966d 579
+  s_da80a4281289c9::t_ccb888136885bd 487,497
+  s_da80a4281289c9::t_a5c9b4f2add59e 422-423,425-426,446
+  s_60b7d3647f5916::t_61753d84a07c0e 488-493,502
+  s_da80a4281289c9::t_97ea54210258e0 100
+  s_60b7d3647f5916::t_fee0653b8aac9d 463
+  s_da80a4281289c9::t_8d85bd34727f45 271
+  s_11e1615c6411fe::t_e653605ea17526 24,49,290,293,295-296
+  s_60b7d3647f5916::t_5a1dac79c9b26b 199,203,205-207,231
+  s_60b7d3647f5916::t_81b8b9ee044965 256
+  s_da80a4281289c9::t_b1b72241864671 3,5,8
+  s_cf146439ef70ed::t_6013197afe8b46 578
+  s_da80a4281289c9::t_f2e85072dad333 183-184,195,200-202,204,208,210-226
+  s_da80a4281289c9::t_a4e61ab97742af 548
+  s_da80a4281289c9::t_6b2f193f4ab69a 138-139
+  s_da80a4281289c9::t_8b04a22ad9a20d 507
+  s_60b7d3647f5916::t_9948894d0001fd 388
+  s_da80a4281289c9::t_1f74b2b60b96da 560-562,569,591
+  s_da80a4281289c9::t_331b4ba80c3e1d 116
+  s_60b7d3647f5916::t_4802fe21e40c6c 458,464
+  s_60b7d3647f5916::t_64028424742d3d 540-547
+  s_cf146439ef70ed::t_9ea34357b8b3c6 457
+  s_11e1615c6411fe::t_94c7d7750cbadb 347-359,361-387,389-402,404-421,424,427-445,447-456,459-462,465-467,475-486,494-496,498-501,503-506,508,522-524,526-537,539,549,556,571-577,580-590
+  s_7ae1b8a292f559::t_1c5897206a1160 255
+  s_60b7d3647f5916::t_37dd314f7486dc 538
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.ts
+  s_11e1615c6411fe::t_2303893acfc1ed 644,650
+packages/frontend/editor-ui/src/app/constants/localStorage.ts
+  s_da80a4281289c9::t_443cd1d0e0b6a3 37
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupLayout.test.ts
+  s_da80a4281289c9::t_642925b28cefc5 9
+  s_da80a4281289c9::t_162f7d412ee48f 199-222,249-266
+  s_11e1615c6411fe::t_d5aa94b5b34ad9 1-4,6,8,10-46,48-49,58-198,267-377,382-444,480-494,503-537,541-578
+  s_7ae1b8a292f559::t_85287f51491147 50-57
+  s_7ae1b8a292f559::t_c5483851ae54c4 5,7
+  s_da80a4281289c9::t_d7078fd30097c5 223-248
+  s_11e1615c6411fe::t_04cf31bfcdddc0 446-472,474-478
+  s_11e1615c6411fe::t_adc967e6edba65 495-496
+  s_11e1615c6411fe::t_69b19ff7a8118a 47
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.groups.ts
+  s_da80a4281289c9::t_b4544de950edd8 160
+  s_da80a4281289c9::t_8de076bd6536d2 9
+  s_11e1615c6411fe::t_c1c5ec3113a62f 128,141,162,164,166-169
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupDrag.ts
+  s_da80a4281289c9::t_a85a4837e5b3b8 153
+  s_11e1615c6411fe::t_c23655658f1ca1 22,30,55,60,66,76-77,99-100
+  s_da80a4281289c9::t_492e4a5265e78a 46-47
+  s_da80a4281289c9::t_90a8a762f285b0 5-9
+  s_da80a4281289c9::t_3025632e2af112 271,274
+  s_da80a4281289c9::t_71251339e9bab4 219-227,237,244
+  s_da80a4281289c9::t_8b0b3bee8b1543 24
+  s_da80a4281289c9::t_47aabedec320f8 84,88,94-97,104
+  s_da80a4281289c9::t_3922fb0c0f5e99 217-218
+packages/frontend/editor-ui/src/features/workflows/canvas/canvas.types.ts
+  s_da80a4281289c9::t_ee772ae35488cb 143-152
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.groups.test.ts
+  s_11e1615c6411fe::t_eb49e43232959d 227-238,241-246
+  s_11e1615c6411fe::t_da9626e27e58f7 239-240
+packages/frontend/editor-ui/src/features/workflows/canvas/components/WorkflowCanvas.vue
+  s_da80a4281289c9::t_bdfc876c20ba02 99-108
+  s_11e1615c6411fe::t_3cdd11b9220235 9,14,98,109-114,120
+  s_11e1615c6411fe::t_7d8927095de9ef 75
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupView.test.ts
+  s_da80a4281289c9::t_10040fbeb3a93c 688-690,695
+  s_da80a4281289c9::t_39a69d611fce27 305
+  s_da80a4281289c9::t_ca23bd25497971 712-714,716,719
+  s_11e1615c6411fe::t_b3148e7c8d114d 15
+  s_11e1615c6411fe::t_d5aa94b5b34ad9 1,4,23-27,40-44,46-76,181-304,306-535,537-659,661-670,672-687,691-694,696-711,715,717-718,720-722
+  s_11e1615c6411fe::t_57be81ef2619e1 45
+  s_da80a4281289c9::t_c94eefde8ca011 660,671
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.vue
+  s_60b7d3647f5916::t_a7a7a7ddb9d656 548-549,557-560
+  s_da80a4281289c9::t_e74608a340fae3 553
+  s_7ae1b8a292f559::t_ecf58b449682bc 620-622
+  s_11e1615c6411fe::t_3c3240d91f24ee 556,561-562,568-576,585,600,658
+  s_7ae1b8a292f559::t_3db66bec7e126a 563-567
+  s_da80a4281289c9::t_d5e3ab857e1142 587
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "202132515dec75041390e2fee1715d4cfc5d02f2",
+  "prompts": {},
+  "humans": {
+    "h_df158766ffbd97": {
+      "author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_11e1615c6411fe": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e82aa-358d-72b3-bf35-70d39b30c372",
+        "model": "gpt-5.5"
+      },
+      "human_author": null
+    },
+    "s_60b7d3647f5916": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "036837b2-2b93-4e45-8ec1-3212ed864fc4",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
+    "s_7ae1b8a292f559": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "071340fa-b823-4c73-a09b-e196073379e9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    },
+    "s_cf146439ef70ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a6662640-48cc-436f-ba81-6ea6bd3a8bcb",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    },
+    "s_da80a4281289c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c52342dc-5ddf-4f7b-b597-326e9ddc1975",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}

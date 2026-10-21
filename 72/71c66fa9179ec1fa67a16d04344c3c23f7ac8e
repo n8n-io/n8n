@@ -1,0 +1,33 @@
+packages/workflow/src/interfaces.ts
+  s_6358c8cb4cd2a5::t_2ade5f392f1f73 1420-1422,1424-1425
+  s_6358c8cb4cd2a5::t_b29fd100e02b8d 1423
+packages/core/src/execution-engine/node-execution-context/poll-context.ts
+  s_6358c8cb4cd2a5::t_2ade5f392f1f73 1,48-52
+packages/cli/src/workflows/triggers/trigger-execution-context.factory.ts
+  s_6358c8cb4cd2a5::t_2ade5f392f1f73 2-3,84,285-295,427-429
+packages/cli/src/workflows/triggers/__tests__/trigger-execution-context.factory.test.ts
+  s_6358c8cb4cd2a5::t_2ade5f392f1f73 3,101,1004-1066
+packages/core/src/execution-engine/node-execution-context/__tests__/poll-context.test.ts
+  s_6358c8cb4cd2a5::t_2ade5f392f1f73 68-90
+packages/cli/test/integration/database/repositories/poller-state.repository.test.ts
+  s_6358c8cb4cd2a5::t_2ade5f392f1f73 2-6,10-11,13,253-326
+  s_6358c8cb4cd2a5::t_1f53cd74b7e7cd 1,327-328
+packages/cli/src/__tests__/active-workflow-manager.test.ts
+  s_6358c8cb4cd2a5::t_2ade5f392f1f73 4,444
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "7271c66fa9179ec1fa67a16d04344c3c23f7ac8e",
+  "prompts": {},
+  "sessions": {
+    "s_6358c8cb4cd2a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1f2839c-15c8-45f2-a3c3-ad2077007168",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

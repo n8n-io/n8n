@@ -1,0 +1,49 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_64cc0e0f88ad7f::t_f28603a6c65aad 680
+  s_64cc0e0f88ad7f::t_6747e99fc14e0b 717-722
+  s_64cc0e0f88ad7f::t_5788a0cd01efd0 1562
+  s_64cc0e0f88ad7f::t_1ed82e3e034798 1012-1028
+  s_64cc0e0f88ad7f::t_f7430065b70a2b 311-315
+  s_64cc0e0f88ad7f::t_aa18815bb84f9f 496-512
+  s_64cc0e0f88ad7f::t_f44ca9a384ca00 214-218
+  s_64cc0e0f88ad7f::t_2570791d0a691e 1594
+  s_64cc0e0f88ad7f::t_577a685388c4d4 743
+  s_64cc0e0f88ad7f::t_6105c3c25b6fd7 630-635
+packages/cli/src/modules/instance-ai/tracing/instance-ai-tracing.service.ts
+  s_64cc0e0f88ad7f::t_bd88f995bfb56a 2
+  s_64cc0e0f88ad7f::t_1694bf767f66ff 1,3-552
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-tracing.service.test.ts
+  s_64cc0e0f88ad7f::t_e96e4f64b2d76b 1-268
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_64cc0e0f88ad7f::t_6e2e18a30e844b 445-447
+  s_64cc0e0f88ad7f::t_b48a054b32c764 608-614
+  s_64cc0e0f88ad7f::t_47f6e15fc81fbe 1342
+  s_64cc0e0f88ad7f::t_851eb4ee2333fd 858
+  s_64cc0e0f88ad7f::t_214f6fce73094b 1179,1183,1187,1198,1202
+  s_64cc0e0f88ad7f::t_48777e0edae4bf 4331,4371,4444,4505,4549,5199
+  s_64cc0e0f88ad7f::t_8f86d997568074 944,1011,1042,1217,1224,1233,1235,1247,1272,1293,1304,1312,1326,1800,1814,2499,2965,3074,3241-3242,3244,3510,3573,3582,3631,3638,3685,3692,3727,4204,4407,4467,4474,4516,4523,4567,4574,4601,4652,4677,4691,4833,4942,4969,4972,5075
+  s_64cc0e0f88ad7f::t_965d29de7d6223 849
+  s_64cc0e0f88ad7f::t_67464751b1e552 1324
+  s_64cc0e0f88ad7f::t_66a0d25542166e 148-152
+packages/cli/src/modules/instance-ai/tracing/index.ts
+  s_64cc0e0f88ad7f::t_8c20cd63a4ea4d 1-12
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.threadPushRef.test.ts
+  s_64cc0e0f88ad7f::t_8acfc89dd4abf9 77-84
+  s_64cc0e0f88ad7f::t_ccf05530da15b5 104-111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4552ea267e77c7a2054defc0df743464556c17d9",
+  "prompts": {},
+  "sessions": {
+    "s_64cc0e0f88ad7f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b25ee82-9c2b-4428-aacf-a9c132fa0cf8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

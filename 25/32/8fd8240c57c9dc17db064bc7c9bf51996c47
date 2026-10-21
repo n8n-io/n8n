@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/app/utils/fileUtils.ts
+  s_3132781a89e3f6::t_3aa1d4d7083c65 4
+packages/frontend/editor-ui/src/app/utils/fileUtils.test.ts
+  s_3132781a89e3f6::t_f6af220167e50a 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "25328fd8240c57c9dc17db064bc7c9bf51996c47",
+  "prompts": {},
+  "sessions": {
+    "s_3132781a89e3f6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1bf71a34-fe0e-45ee-9b29-4e1e27963192",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

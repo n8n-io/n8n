@@ -1,0 +1,169 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_0853a3eb029ed7::t_95a940f3cab1f8 38-39
+  s_0853a3eb029ed7::t_bf5fac60133bb3 224-227
+packages/frontend/editor-ui/src/features/ai/instanceAi/constants.ts
+  s_0853a3eb029ed7::t_e1c28517361977 19-25
+packages/@n8n/instance-ai/src/types.ts
+  s_0853a3eb029ed7::t_f031ba58b0b3db 933-935
+packages/cli/src/modules/agents/__tests__/instance-ai-builder-delegate.adapter.test.ts
+  s_0853a3eb029ed7::t_b3102b956c43f6 364-366
+  s_0853a3eb029ed7::t_5bff510c89c157 370-383
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_0853a3eb029ed7::t_a92c7cd37e4ebf 120
+  s_0853a3eb029ed7::t_31538abf42022c 283-284
+  s_0853a3eb029ed7::t_07be255a898bbd 13
+  s_0853a3eb029ed7::t_346768e8edcc87 132
+  s_0853a3eb029ed7::t_5075d93c710f51 1639-1658
+  s_0853a3eb029ed7::t_3fc26558f20093 531-532
+  s_0853a3eb029ed7::t_70803cd3b49e2a 1604-1638,1659-1670
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiAgentPreview.vue
+  s_0853a3eb029ed7::t_1758875aad2629 4,6-7,24,33-48,59
+  s_0853a3eb029ed7::t_e78599a85291e3 12-13
+  s_0853a3eb029ed7::t_d26bebc3d795fe 57
+packages/frontend/editor-ui/src/features/ai/instanceAi/useCanvasPreview.ts
+  s_0853a3eb029ed7::t_88aa65b0adf9e9 450
+  s_0853a3eb029ed7::t_52d405684f3549 127-137,139
+  s_0853a3eb029ed7::t_695c85d606b276 89-93
+  s_0853a3eb029ed7::t_c5a3607bdb3331 24-25
+  s_0853a3eb029ed7::t_37973cddf1992c 55
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_0853a3eb029ed7::t_22a1e86fbf9a7a 102-104,110
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_0853a3eb029ed7::t_f5e2cd93bd6b2b 723
+  s_0853a3eb029ed7::t_6664c98f5f65da 835-848
+  s_0853a3eb029ed7::t_8f3d30f85d0283 195-203
+  s_0853a3eb029ed7::t_c456b313771211 849-852
+  s_0853a3eb029ed7::t_b1d68732927989 174-176
+  s_0853a3eb029ed7::t_49c49c6a9dac80 907-913
+  s_0853a3eb029ed7::t_c454f957282b74 44
+  s_0853a3eb029ed7::t_1f480a34bc1035 689-694
+  s_0853a3eb029ed7::t_3a2cfb93ac0525 717-722,724-726
+  s_0853a3eb029ed7::t_04b4f620b18fc3 738-742
+packages/cli/src/modules/agents/agent-knowledge.service.ts
+  s_0853a3eb029ed7::t_85f63c12732955 30
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_0853a3eb029ed7::t_1985d4da1e1458 378-382
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_0853a3eb029ed7::t_f66e7f78e7a911 3
+  s_0853a3eb029ed7::t_e4b61636527447 125-130
+  s_0853a3eb029ed7::t_118b087e48ec20 137-195
+  s_0853a3eb029ed7::t_54349af6ba7b76 7
+packages/cli/src/modules/agents/agents.controller.ts
+  s_0853a3eb029ed7::t_e8f9aafc9c3f9b 36
+packages/@n8n/api-types/src/agents/dto.ts
+  s_0853a3eb029ed7::t_7484c0b174b664 84-92
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitiesActions.ts
+  s_0853a3eb029ed7::t_d920d5d9d760b8 84-89
+  s_0853a3eb029ed7::t_eefd906e2987d8 110
+  s_0853a3eb029ed7::t_d55847964a2a13 445
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/agent-target-binding.test.ts
+  s_0853a3eb029ed7::t_57bd666144f4be 107-114,118-119
+  s_0853a3eb029ed7::t_24703237c34db1 115-117
+  s_0853a3eb029ed7::t_72851738327c69 21
+  s_0853a3eb029ed7::t_c18dae72051b09 6
+packages/cli/src/modules/agents/agents.service.ts
+  s_0853a3eb029ed7::t_e03b3847fb226c 3-4
+  s_0853a3eb029ed7::t_6de6eba1a8b471 19
+  s_0853a3eb029ed7::t_2dbe84f54fb490 67-73
+  s_0853a3eb029ed7::t_0ad6c0435b5ff9 50-55,59,77,85-96
+packages/frontend/editor-ui/src/features/agents/__tests__/NewAgentView.test.ts
+  s_0853a3eb029ed7::t_0a36607c82f31a 33,41,48,51,53,68,76-78
+packages/frontend/editor-ui/src/features/ai/instanceAi/useResourceRegistry.ts
+  s_0853a3eb029ed7::t_f15f8e4ff6063e 396-427
+  s_0853a3eb029ed7::t_6d74f17444be27 477-479
+  s_0853a3eb029ed7::t_4f80c678d125b3 56-61
+  s_0853a3eb029ed7::t_c9843b2a6a0c40 453
+  s_0853a3eb029ed7::t_5c8e72d3d58488 22-26
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCapabilitiesSection.test.ts
+  s_0853a3eb029ed7::t_5929f36a30326b 576-583
+packages/@n8n/api-types/src/agents/__tests__/agent-personalisation.test.ts
+  s_0853a3eb029ed7::t_2fe4f4bae73d51 6
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_0853a3eb029ed7::t_a9b2186a9462ce 122
+  s_0853a3eb029ed7::t_14f9b201b27902 140
+  s_0853a3eb029ed7::t_453cbd74afc476 48-49
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_0853a3eb029ed7::t_cbf456ed37eb7e 46-49
+  s_0853a3eb029ed7::t_8e0d2f406c73da 321
+  s_0853a3eb029ed7::t_4d037fc2a3ebef 122-131
+  s_0853a3eb029ed7::t_f4f5c9179e95b9 26
+  s_0853a3eb029ed7::t_7c1332ab48e6b6 406-409
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_0853a3eb029ed7::t_ca5470ce798dd2 1030
+packages/@n8n/api-types/src/agents/index.ts
+  s_0853a3eb029ed7::t_0b147c1e18e0b3 8
+packages/cli/src/modules/agents/instance-ai-builder-delegate.adapter.ts
+  s_0853a3eb029ed7::t_5ab22096548173 113,115
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_0853a3eb029ed7::t_a9c595acb53526 24
+  s_0853a3eb029ed7::t_74caeeeab82d41 898,1030-1063,1084
+  s_0853a3eb029ed7::t_b045d85fe7b3e4 1000,1014-1018,1064-1083
+  s_0853a3eb029ed7::t_f028772de009c7 39
+  s_0853a3eb029ed7::t_d44027807a338b 1085
+  s_0853a3eb029ed7::t_c8292ccb8ec36e 291,698,1021
+packages/cli/src/modules/agents/builder/prompts/initial-build.prompt.ts
+  s_0853a3eb029ed7::t_30742757e35919 14-16
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_0853a3eb029ed7::t_566f3363a9a854 3967-3978
+packages/frontend/editor-ui/src/features/agents/views/NewAgentView.vue
+  s_0853a3eb029ed7::t_fdae9f10cf1e7e 6,10,22-28,38-39,44,47
+packages/@n8n/api-types/src/agents/agent-personalisation.ts
+  s_0853a3eb029ed7::t_fafbbced1897e4 1
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.target-registry.test.ts
+  s_0853a3eb029ed7::t_0c570ce0c10b74 191-224
+  s_0853a3eb029ed7::t_6507767d4989f4 250
+  s_0853a3eb029ed7::t_f3536342c8da6d 253
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_0853a3eb029ed7::t_7908be8da1c241 108-112
+  s_0853a3eb029ed7::t_1c0be6a12e6b07 1218-1220,1224-1229,1231-1244
+  s_0853a3eb029ed7::t_bde7ff5badd22b 1221-1223,1230
+  s_0853a3eb029ed7::t_acf50e5d710694 66
+  s_0853a3eb029ed7::t_bada7d04abb342 668-671
+  s_0853a3eb029ed7::t_ce93ba81f2ab8e 61-64
+  s_0853a3eb029ed7::t_df64259ab26f75 424,643-667,672-679
+  s_0853a3eb029ed7::t_529cddb1ccc528 1280,1282-1283,1300-1307
+  s_0853a3eb029ed7::t_7e99f8144ce3d3 195-201
+  s_0853a3eb029ed7::t_4207b98b6df903 1281,1284-1285,1287-1292,1299,1308
+  s_0853a3eb029ed7::t_7c5525dfc76ebb 1286,1293-1298
+  s_0853a3eb029ed7::t_9644d191bede29 255-261
+  s_0853a3eb029ed7::t_d17f8506191489 1613
+  s_0853a3eb029ed7::t_dd8d784f60e1ac 35
+  s_0853a3eb029ed7::t_a663b3a0818593 1612
+  s_0853a3eb029ed7::t_47c1fa5ecbbebe 1322-1326
+  s_0853a3eb029ed7::t_3c1b30e3d792fb 95-97,104
+  s_0853a3eb029ed7::t_2b51e8b3c636b7 262-263,603-604,680-681,686,708,775,949
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelsSection.vue
+  s_0853a3eb029ed7::t_3b235f16f90c2c 21-22
+  s_0853a3eb029ed7::t_75b25d88eafd5c 100-105
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useResourceRegistry.test.ts
+  s_0853a3eb029ed7::t_8480831ca792f7 52,60
+  s_0853a3eb029ed7::t_c2bd3d765c51a0 913-943
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useCanvasPreview.test.ts
+  s_0853a3eb029ed7::t_7180c9fb4a6c92 1086-1103
+packages/@n8n/instance-ai/src/tools/orchestration/agent-target-binding.ts
+  s_0853a3eb029ed7::t_72f37feee3f94f 20-27
+  s_0853a3eb029ed7::t_e0a455bd2c2645 46-70
+  s_0853a3eb029ed7::t_26b8eac9d10969 145
+  s_0853a3eb029ed7::t_39e7b27eb2de26 71-72,146-147,176
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "bc4b49ecd9f190fc3e6b22833a0992c9146d97f9",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_0853a3eb029ed7": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0a75f873-f071-48f0-9c39-57ac1c149353",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

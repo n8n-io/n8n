@@ -1,0 +1,43 @@
+scripts/codespace-preview/serve-ready.test.mjs
+  s_8cd396a27af480::t_fc54c7db758a96 1-185
+.devcontainer/preview/devcontainer.json
+  s_8cd396a27af480::t_fc54c7db758a96 39
+.devcontainer/codespaces/README.md
+  s_8cd396a27af480::t_fc54c7db758a96 96,111
+.github/workflows/ci-pull-requests.yml
+  s_8cd396a27af480::t_fc54c7db758a96 81,97,135
+.github/WORKFLOWS.md
+  s_8cd396a27af480::t_fc54c7db758a96 257,269,313,318,339,805-807,809
+.devcontainer/preview/preview-signin-hook.cjs
+  s_8cd396a27af480::t_fc54c7db758a96 3
+scripts/codespace-preview/preview.mjs
+  s_8cd396a27af480::t_e2cdae89df6cfb 1-436
+.github/scripts/codespace-preview.mjs
+  s_8cd396a27af480::t_fc54c7db758a96 2,26-27,53
+scripts/dev-up.mjs
+  s_8cd396a27af480::t_fc54c7db758a96 22
+package.json
+  s_8cd396a27af480::t_fc54c7db758a96 37-38
+scripts/codespace-preview/preview-serve.mjs
+  s_8cd396a27af480::t_fc54c7db758a96 1-226
+scripts/codespace-preview/serve-ready.mjs
+  s_8cd396a27af480::t_fc54c7db758a96 1-72
+.github/scripts/package.json
+  s_8cd396a27af480::t_fc54c7db758a96 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c33c2b7c16268af8d1c7c8a79bdf87d84704dc19",
+  "prompts": {},
+  "sessions": {
+    "s_8cd396a27af480": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bdc0eb57-52c4-4f71-bb56-af9b07ab5196",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

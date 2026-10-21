@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/vite/aliases.mts
+  s_be09d53c080b81::t_43ae803a7ce17d 4-5
+packages/@n8n/frontend-vite-config/tsconfig.json
+  s_be09d53c080b81::t_189a3e1c2d7525 7
+packages/frontend/editor-ui/vitest.config.mts
+  s_be09d53c080b81::t_122fbe556213c0 6-7
+packages/frontend/editor-ui/vite/aliases.test.ts
+  s_be09d53c080b81::t_3ae15f011aa90f 120-121
+  s_be09d53c080b81::t_0f66884ee66c3f 128
+  s_be09d53c080b81::t_316243036eadaa 26
+  s_be09d53c080b81::t_1ffb4e441acc2a 43-44
+  s_be09d53c080b81::t_da9821a2417353 88
+  s_be09d53c080b81::t_b3fa895a9554d6 97-98
+  s_be09d53c080b81::t_c75526403f0e40 66
+packages/frontend/editor-ui/vite.config.mts
+  s_be09d53c080b81::t_3faad07138b437 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "4e86394adc0010d62db14a8f81c3e8a5c2fb69ce",
+  "prompts": {},
+  "sessions": {
+    "s_be09d53c080b81": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "28daf230-71eb-405f-a0c1-ca0384381fd9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

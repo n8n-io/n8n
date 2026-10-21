@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/integrations/agent-chat-stream-consumer.ts
+  s_d1df6ce57b1d24::t_e7d2dde51edb08 240
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_d1df6ce57b1d24::t_470a99d83af042 290-308
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6bf804797990fe813e880a4c5d38d5150ccde3be",
+  "prompts": {},
+  "sessions": {
+    "s_d1df6ce57b1d24": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "24de4708-d2c3-49e3-8aa5-37a1d6c7a84b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

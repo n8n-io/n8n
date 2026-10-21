@@ -1,0 +1,34 @@
+packages/cli/src/workflows/workflow.service.ts
+  s_f429e790b51b60::t_40414cfae60f21 842-852
+single-instance-promotion-prototype/implementation-phase/PLAN_NAME_AND_DESCRIPTION_FOR_ENV_PUBLISH.md
+  h_c63dce324dfc7b 1-171
+packages/frontend/@n8n/rest-api-client/src/api/projectEnvironments.ts
+  s_f429e790b51b60::t_e6cd1033847edb 73-74,79-80
+packages/frontend/editor-ui/src/features/environments/environments.store.ts
+  s_f429e790b51b60::t_4fa786558ba7cb 92-93,100-101
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowPublishModal.vue
+  s_f429e790b51b60::t_6d8632a1c49e25 430-437,450
+  s_f429e790b51b60::t_e454e0bcdd0109 259-270
+  s_f429e790b51b60::t_550ef67eed6bcb 73-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "ac493a0a47c94a5d440dddb810158dc5742286b1",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f429e790b51b60": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "48d67ad4-a281-4c1b-86dc-bf81444d9881",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

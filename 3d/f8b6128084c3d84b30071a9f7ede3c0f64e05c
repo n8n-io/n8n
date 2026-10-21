@@ -1,0 +1,82 @@
+packages/@n8n/scheduler/src/core/materializer/__tests__/materialize.test.ts
+  s_8d72dbd7211552::t_e44b06428fcc21 343,345-348,359-360,366,370-374,378,380-381,384,389-392,401-402
+  s_8d72dbd7211552::t_22c9537802aee7 369
+  s_9b1947a7550be5::t_ba2b22488968b9 334-342,344,349-358,361-365,367-368,375,377,379,382-383,385-388,393-400,403-405
+  s_c62aa8998a0ef5::t_d2797071894006 376
+  s_8d72dbd7211552::t_3346cac5c81ac2 118
+  s_8d72dbd7211552::t_82c9758cc1f2ad 24
+packages/@n8n/scheduler/src/core/materializer/plan.ts
+  s_8d72dbd7211552::t_82c9758cc1f2ad 49-54,65-66,77,103
+packages/@n8n/scheduler/src/core/materializer/__tests__/plan.test.ts
+  s_8d72dbd7211552::t_82c9758cc1f2ad 25
+packages/@n8n/scheduler/src/core/__tests__/factory.test.ts
+  s_9b1947a7550be5::t_ba2b22488968b9 435-445,447,449-456,458-470,472-473,475-480
+  s_9b1947a7550be5::t_591d39133ad05b 471
+  s_8d72dbd7211552::t_e44b06428fcc21 434,446,448,457,474
+  s_8d72dbd7211552::t_82c9758cc1f2ad 357,404,1316,1370,1667
+packages/@n8n/db/src/migrations/common/1789394488053-AddPlannedTimezoneToScheduledJob.ts
+  s_8d72dbd7211552::t_eeb5b086c4854a 1-30
+packages/@n8n/scheduler/src/core/types/schedule.ts
+  s_8d72dbd7211552::t_82c9758cc1f2ad 105-109
+packages/@n8n/db/src/entities/scheduled-job.ts
+  s_8d72dbd7211552::t_eeb5b086c4854a 153-159
+packages/cli/src/scheduling/durable-job-provisioner.ts
+  s_8d72dbd7211552::t_3e279979cd29d6 396
+packages/cli/test/integration/scheduling/scheduled-repositories.test.ts
+  s_8d72dbd7211552::t_3e279979cd29d6 136,173-178,342,349-351,357,366-371,393
+packages/@n8n/scheduler/src/core/materializer/__tests__/coalesce-group.test.ts
+  s_8d72dbd7211552::t_82c9758cc1f2ad 25,40
+packages/@n8n/scheduler/src/core/materializer/materialize.ts
+  s_9b1947a7550be5::t_ba2b22488968b9 228
+  s_8d72dbd7211552::t_22c9537802aee7 129,195,200,207-208,218-220,226-227,235,241,243,246
+  s_8d72dbd7211552::t_82c9758cc1f2ad 7,58-63,209,212-217,221-225,242,270
+  s_9b1947a7550be5::t_0eae5d90c4a05b 57,210-211
+packages/@n8n/db/src/migrations/sqlite/1789394488053-AddPlannedTimezoneToScheduledJob.ts
+  s_8d72dbd7211552::t_eeb5b086c4854a 1-10
+packages/@n8n/scheduler/src/core/factory.ts
+  s_9b1947a7550be5::t_0eae5d90c4a05b 395-396,399-400
+  s_9b1947a7550be5::t_a55ff2cbc619c4 397
+  s_8d72dbd7211552::t_82c9758cc1f2ad 394,398
+packages/@n8n/scheduler/src/core/recurrence/__tests__/resolve.test.ts
+  s_8d72dbd7211552::t_82c9758cc1f2ad 24
+packages/cli/src/scheduling/durable-scheduler.ts
+  s_8d72dbd7211552::t_eeb5b086c4854a 231
+packages/cli/src/scheduling/__tests__/durable-job-provisioner.test.ts
+  s_8d72dbd7211552::t_3e279979cd29d6 629,690,728
+packages/@n8n/scheduler/src/core/materializer/__tests__/plan.property.test.ts
+  s_8d72dbd7211552::t_82c9758cc1f2ad 23,43,65
+packages/@n8n/db/src/repositories/scheduled-job.repository.ts
+  s_8d72dbd7211552::t_eeb5b086c4854a 18,503,506,509,516-518
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3df8b6128084c3d84b30071a9f7ede3c0f64e05c",
+  "prompts": {},
+  "sessions": {
+    "s_8d72dbd7211552": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "31ecd045-1335-4989-8f7c-b9ee96e23780",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_9b1947a7550be5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "edd2a619-caf3-4970-a04e-f6a66ffb12ed",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_c62aa8998a0ef5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a012-baff-72d3-8835-9b87870fc317",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

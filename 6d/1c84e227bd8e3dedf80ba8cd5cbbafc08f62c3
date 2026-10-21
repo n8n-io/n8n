@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/app/views/OAuthConsentView.test.ts
+  s_f4037ec3e84992::t_0940e36c987019 7,13-21
+  s_f4037ec3e84992::t_52a3ddd7396459 89-119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "6d1c84e227bd8e3dedf80ba8cd5cbbafc08f62c3",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f4037ec3e84992": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c047bb52-f9ff-424b-8fe6-ebf66afb06bf",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

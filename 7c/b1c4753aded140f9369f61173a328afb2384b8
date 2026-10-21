@@ -1,0 +1,32 @@
+packages/frontend/editor-ui/src/app/composables/usePageRedirectionHelper.ts
+  s_cd9e2842ed6bc7::t_1c17731c12640a 8-25
+  s_cd9e2842ed6bc7::t_9191c53d184576 73
+packages/frontend/editor-ui/src/app/init.ts
+  s_cd9e2842ed6bc7::t_9c52bb04c6dfef 6
+  s_cd9e2842ed6bc7::t_07f06408449436 138-141
+  s_cd9e2842ed6bc7::t_a2e88a81c91f11 30
+packages/frontend/editor-ui/src/app/init.test.ts
+  s_cd9e2842ed6bc7::t_6e5be225ca9cd5 4-5
+  s_cd9e2842ed6bc7::t_21bcd0ed9ce2c2 44-51
+  s_cd9e2842ed6bc7::t_aa8db8aa9c74c7 265-266
+packages/frontend/editor-ui/src/app/composables/usePageRedirectionHelper.test.ts
+  s_cd9e2842ed6bc7::t_13423e1af56265 247-288
+  s_cd9e2842ed6bc7::t_10b9a17c50031a 4
+  s_cd9e2842ed6bc7::t_907b904a4caed7 41-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "7cb1c4753aded140f9369f61173a328afb2384b8",
+  "prompts": {},
+  "sessions": {
+    "s_cd9e2842ed6bc7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "763a8903-0cc1-48a2-b0f1-0366fe8a5dd7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

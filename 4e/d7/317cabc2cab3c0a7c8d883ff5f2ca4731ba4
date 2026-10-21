@@ -1,0 +1,21 @@
+packages/@n8n/engine/src/execution/step-ready-handler.ts
+  s_13d0f2e1be0144::t_980bfed939aee4 188-196
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  s_13d0f2e1be0144::t_628f61ba36032d 759-786
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "4ed7317cabc2cab3c0a7c8d883ff5f2ca4731ba4",
+  "prompts": {},
+  "sessions": {
+    "s_13d0f2e1be0144": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46caa7f3-0057-4c97-8c31-ca17c936adc0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

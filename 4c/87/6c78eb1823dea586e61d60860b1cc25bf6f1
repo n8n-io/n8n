@@ -1,0 +1,41 @@
+packages/@n8n/config/src/configs/deployment.config.ts
+  s_9a7361ab934490::t_9ec202ac9a07aa 8-14
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_9a7361ab934490::t_4308aabbcdd4f4 1932
+  s_9a7361ab934490::t_883e7bc8c3446a 1791-1792
+  s_9a7361ab934490::t_c0d2d81cd19301 1808
+  s_9a7361ab934490::t_1e7dc5bbcbd880 1830
+  s_9a7361ab934490::t_acb4ea0abf58fb 67-76
+  s_9a7361ab934490::t_16e6deb5ac9003 1895-1901,1904,1906-1915
+  s_9a7361ab934490::t_03773cded4cddf 17
+  s_9a7361ab934490::t_9e54a8df4444c6 1891-1894,1902-1903,1905
+packages/cli/src/telemetry/__tests__/runtime-info.test.ts
+  s_9a7361ab934490::t_2902e7b01ea9eb 1-58
+packages/cli/src/telemetry/runtime-info.ts
+  s_9a7361ab934490::t_42e20f5dfcc38e 1-36,39-84,134-140
+  s_9a7361ab934490::t_e407d7b19330a0 85-133
+  s_9a7361ab934490::t_91883e32445632 37-38
+packages/@n8n/telemetry/src/events/instance.ts
+  s_9a7361ab934490::t_b7f7acf9220a40 19-26
+  s_9a7361ab934490::t_38a8208243c5ea 41-60
+  s_9a7361ab934490::t_3d68365165b4dc 79-82
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_9a7361ab934490::t_6b683dfde9aed6 67
+  s_9a7361ab934490::t_3aac7ae9dcd1d5 3558-3563
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4c876c78eb1823dea586e61d60860b1cc25bf6f1",
+  "prompts": {},
+  "sessions": {
+    "s_9a7361ab934490": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bf0f41e7-f5d0-4056-8505-89dbb02b2f7b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

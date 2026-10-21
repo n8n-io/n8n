@@ -1,0 +1,9 @@
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  ai_agent 14-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "97f575f1b0f35d37db6951567735914f9dbfec01",
+  "prompts": {}
+}

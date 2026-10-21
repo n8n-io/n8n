@@ -1,0 +1,22 @@
+packages/cli/src/public-api/v1/openapi-gen/object-union-type.ts
+  s_b605b692be0ba9::t_1fe9b348922a9a 5-7
+  s_b605b692be0ba9::t_f059d7b4c6eb07 34-37
+packages/cli/src/public-api/v1/openapi-gen/__tests__/object-union-type.test.ts
+  s_b605b692be0ba9::t_0144e85214f5f2 35-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "81d9f0d1b1667cc31c89fb275d54cc2547931d14",
+  "prompts": {},
+  "sessions": {
+    "s_b605b692be0ba9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "73fef18a-e96c-41e0-9b79-5671c3ecbbed",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

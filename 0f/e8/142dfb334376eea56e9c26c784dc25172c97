@@ -1,0 +1,21 @@
+packages/cli/src/node-execution/execute-node.service.ts
+  s_878fa1842cff43::t_7d56daba113fc4 22,431-433
+packages/cli/src/node-execution/__tests__/execute-node.service.test.ts
+  s_878fa1842cff43::t_18e2f92a2b25ab 473-485
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0fe8142dfb334376eea56e9c26c784dc25172c97",
+  "prompts": {},
+  "sessions": {
+    "s_878fa1842cff43": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed3e90d8-82b6-4330-b30e-f5bb1e7b2fd1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

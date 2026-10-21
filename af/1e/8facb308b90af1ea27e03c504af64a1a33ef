@@ -1,0 +1,41 @@
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_9463dc17dd02b2::t_809e04c216e785 278,392
+  s_9463dc17dd02b2::t_81ee712550d919 303-307
+  s_9463dc17dd02b2::t_1836766935d976 986,988-994
+  s_9463dc17dd02b2::t_4d90895f2defa4 291
+  s_9463dc17dd02b2::t_e614df6b12066d 280,282-285,287-288
+  s_9463dc17dd02b2::t_f0f4678ff1b0a0 382-388,393
+  s_9463dc17dd02b2::t_7aa1d681d07f5d 279,281,286,289,984-985,987
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_9463dc17dd02b2::t_e298fa8f89d8d2 37,672-679,685,688
+  s_9463dc17dd02b2::t_05567046d27be1 152
+packages/cli/src/modules/promotions.ee/__tests__/promotions-git.service.test.ts
+  s_9463dc17dd02b2::t_32a4b704c66e5c 465,470,473-474,477,485-487,498-499,504-508
+  s_9463dc17dd02b2::t_f9b0c88ef8b709 471-472
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_9463dc17dd02b2::t_e00b1d915758da 1937,1941-1967,1971-1972,2008-2014,2016-2020,2022-2070
+  s_9463dc17dd02b2::t_32a4b704c66e5c 1968-1970
+  s_9463dc17dd02b2::t_7ef3b7a3f27f44 1973-1975
+  s_9463dc17dd02b2::t_71a0f095fd8ffc 2007
+  s_9463dc17dd02b2::t_b2221df36ccfd3 1976-2006
+packages/cli/src/modules/promotions.ee/promotions-git.service.ts
+  s_9463dc17dd02b2::t_b421394789f058 288,291-297
+  s_9463dc17dd02b2::t_89e2461a390183 488-510
+  s_9463dc17dd02b2::t_04a7a615c7f736 264,266-272
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "af1e8facb308b90af1ea27e03c504af64a1a33ef",
+  "prompts": {},
+  "sessions": {
+    "s_9463dc17dd02b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4a7af040-57c4-4add-b003-6608d2630824",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

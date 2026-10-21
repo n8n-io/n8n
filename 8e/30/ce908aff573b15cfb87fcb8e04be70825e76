@@ -1,0 +1,50 @@
+packages/@n8n/nodes-langchain/nodes/llms/gemini-common/test/vertex-location.test.ts
+  s_29be25dc060527::t_48f849b9c3128b 1-32
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleVertex/LmChatGoogleVertex.node.ts
+  s_29be25dc060527::t_258a633ec60e0e 25-28
+  s_29be25dc060527::t_f55b58a8c17cbc 4-8
+  s_29be25dc060527::t_7f932430c66434 104
+  s_29be25dc060527::t_191b85e20eb71e 193-194
+  s_29be25dc060527::t_25790c34873ad1 145-150
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleVertex/test/LmChatGoogleVertex.test.ts
+  s_29be25dc060527::t_e03cf08e355bb5 154
+  s_29be25dc060527::t_09a791a605c56e 135-136
+  s_29be25dc060527::t_7f1a6eebc9b9f2 101-115,117-134,137-153,155-157
+  s_29be25dc060527::t_ab7136b410676f 116
+packages/@n8n/nodes-langchain/nodes/llms/gemini-common/vertex-location.ts
+  s_29be25dc060527::t_ab2c3778f53218 20-23
+  s_29be25dc060527::t_b6e11df8832df8 25-26
+  s_29be25dc060527::t_db579ea77690fd 1-19,24,27-44
+packages/nodes-base/credentials/test/GoogleApi.credentials.test.ts
+  s_29be25dc060527::t_d235efe903ce63 51-54,62-63,65-68,73-74
+  s_29be25dc060527::t_a6a5e7f8016ae5 69-72
+  s_29be25dc060527::t_91c11daaed914b 55-61,64
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsGoogleVertex/EmbeddingsGoogleVertex.node.ts
+  s_29be25dc060527::t_4e459b67da4238 141-145,161-162
+  s_29be25dc060527::t_f55b58a8c17cbc 3
+  s_29be25dc060527::t_0996ccad489b0a 132
+  s_29be25dc060527::t_8a0975b91f8592 14-18
+  s_29be25dc060527::t_3f88bd08534103 140
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsGoogleVertex/test/EmbeddingsGoogleVertex.test.ts
+  s_29be25dc060527::t_440767ddf4647b 1-78
+packages/nodes-base/credentials/GoogleApi.credentials.ts
+  s_29be25dc060527::t_387398d8c14b46 236-237,239-240
+  s_29be25dc060527::t_e5ffb7b9f3ac68 235,238,241-245
+  s_29be25dc060527::t_0628b538da557c 246-247
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "8e30ce908aff573b15cfb87fcb8e04be70825e76",
+  "prompts": {},
+  "sessions": {
+    "s_29be25dc060527": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "10608e31-7f99-4a05-8562-045e9294db88",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

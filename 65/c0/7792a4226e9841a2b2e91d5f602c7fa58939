@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_3a8188b7480396::t_043c31c59dc550 2559-2561
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "65c07792a4226e9841a2b2e91d5f602c7fa58939",
+  "prompts": {},
+  "sessions": {
+    "s_3a8188b7480396": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0aed2-aa3b-71a9-9374-10adb2d6f58c",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

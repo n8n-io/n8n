@@ -1,0 +1,28 @@
+packages/@n8n/nodes-langchain/nodes/agents/Agent/test/ToolsAgent/ToolsAgentV2.test.ts
+  s_e3165c863402e2::t_704fc6c3764f9f 433-535
+packages/@n8n/nodes-langchain/nodes/vendors/Databricks/DatabricksAiAgent.node.ts
+  s_e3165c863402e2::t_05c4848cfd1821 14
+  s_e3165c863402e2::t_0b61afb9f31b38 125
+  s_e3165c863402e2::t_83e9087591e6c0 123-124
+  s_e3165c863402e2::t_ebde48529b4b41 180
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V2/execute.ts
+  s_e3165c863402e2::t_67af924b189044 323
+  s_e3165c863402e2::t_2f7b382dab0d21 425-431,434-442,463
+  s_e3165c863402e2::t_0ed03a3e0e81b1 432-433
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a7afb05ccab7ae6bd628b1fdb6773d71a3fbc375",
+  "prompts": {},
+  "sessions": {
+    "s_e3165c863402e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b5e1478d-485b-47e5-9f38-ab6fe27c5ade",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

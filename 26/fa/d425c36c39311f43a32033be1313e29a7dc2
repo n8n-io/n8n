@@ -1,0 +1,51 @@
+packages/@n8n/config/src/configs/expression-engine.config.ts
+  s_8144f59967546c::t_19972799905e7f 64-71
+packages/@n8n/config/test/config.test.ts
+  s_8144f59967546c::t_60778b54e00c2c 635
+packages/cli/src/webhooks/__tests__/live-webhooks.test.ts
+  s_8144f59967546c::t_45e0a0d6c1af7e 2,9-10,13,18-25,52-54,60-61,70,622-878
+packages/cli/src/webhooks/__tests__/webhook-execution-context.test.ts
+  s_8144f59967546c::t_295adbf74bdfb6 1-107
+packages/cli/src/webhooks/live-webhooks.ts
+  s_8144f59967546c::t_d596518ab98b6a 2,6-12,50,141-146,149,198,203-235
+packages/cli/src/webhooks/webhook-execution-context.ts
+  s_8144f59967546c::t_ede66adb61497d 11,34-39,58-63,73-87
+packages/cli/src/webhooks/webhook.service.ts
+  s_8144f59967546c::t_b41e58f193ec56 10,19,336-337,339-340,342,358-359,361-362,365-366,368-369,380-381,383-384,420-445
+packages/core/src/execution-engine/node-execution-context/utils/webhook-helper-functions.ts
+  s_8144f59967546c::t_887164deede094 10,54-65,67-78
+packages/nodes-base/nodes/Webhook/description.ts
+  s_8144f59967546c::t_db92e1cf83927d 7,24-26,30-40
+packages/nodes-base/nodes/Webhook/test/description.test.ts
+  s_8144f59967546c::t_8d372e948d2f33 1-104
+packages/testing/playwright/tests/e2e/api/webhook-isolate-skip.spec.ts
+  s_8144f59967546c::t_b8d2ce279dc32c 1-58
+packages/testing/playwright/workflows/webhook-isolate-skip-expression.json
+  s_8144f59967546c::t_34cf2f0abe96b9 1-57
+packages/testing/playwright/workflows/webhook-isolate-skip-static.json
+  s_8144f59967546c::t_b45f19733f4505 1-45
+packages/workflow/src/index.ts
+  s_8144f59967546c::t_2cb64288dea446 17
+packages/workflow/src/interfaces.ts
+  s_8144f59967546c::t_8dc0cf71d6e755 2997-3012,3015
+packages/workflow/src/webhook-description-fields.ts
+  s_8144f59967546c::t_e6454d0daaf0a3 1-150
+packages/workflow/test/webhook-description-fields.test.ts
+  s_8144f59967546c::t_2c4a9cde11d02f 1-253
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "26fad425c36c39311f43a32033be1313e29a7dc2",
+  "prompts": {},
+  "sessions": {
+    "s_8144f59967546c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_8144f59967546c",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+packages/workflow/src/interfaces.ts
+  s_484fcec98303d1::t_3e64654c1ef439 4205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2dda30bc30603ac165e8d7833be48adae379956b",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_484fcec98303d1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "255254a4-a473-4736-ac9f-b36fff2ac8b6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

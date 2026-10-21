@@ -1,0 +1,50 @@
+packages/@n8n/instance-ai/docs/tools.md
+  h_a348dde7c02e89 529,574-597
+packages/@n8n/instance-ai/evaluations/harness/stub-services.ts
+  h_a348dde7c02e89 23,238-285
+packages/@n8n/instance-ai/skills/post-build-flow/SKILL.md
+  h_a348dde7c02e89 64-66,245-257,524-525,533-535
+packages/@n8n/instance-ai/skills/progressive-building/SKILL.md
+  h_a348dde7c02e89 67-68
+packages/@n8n/instance-ai/src/agent/instance-agent.ts
+  h_a348dde7c02e89 210-211
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  h_a348dde7c02e89 19-20,50-62,65-66,237-238,253
+packages/@n8n/instance-ai/src/tools/__tests__/executions.tool.test.ts
+  h_a348dde7c02e89 705-894
+packages/@n8n/instance-ai/src/tools/executions.tool.ts
+  h_a348dde7c02e89 2,10,135-144,155,165,171-172,175-182,234-245,247,249,251,264,306,308-311,314,316-335,340,343-348,352,359-457,493,496,502-506,520-521
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  h_a348dde7c02e89 13,946-951,956,959-966,1151-1156
+packages/@n8n/instance-ai/src/types.ts
+  h_a348dde7c02e89 541-562,613-629,2056-2059
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  h_a348dde7c02e89 118,156,168-170,1481-1485,4425-4428,4434-4438,4454-4461,4482,4511,4525-4536,4539-4542,4553-4799,4805-4816
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  h_a348dde7c02e89 98,176,179-181,408-412,1760,1770-1772,1804-1817,2117-2128,2225-2347,2349-2350
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  h_a348dde7c02e89 725-728,962-963,2814-2815
+packages/testing/playwright/expectations/instance-ai/arms-the-webhook-test-url-receives-a-real-request-and-reads-back-the-execution/0000-1789123258359-unknown-host-POST-_v1_messages-53a84a4b.json
+  h_a348dde7c02e89 1-108
+packages/testing/playwright/expectations/instance-ai/arms-the-webhook-test-url-receives-a-real-request-and-reads-back-the-execution/0001-1789123258360-unknown-host-POST-_v1_messages-1bd787fd.json
+  h_a348dde7c02e89 1-105
+packages/testing/playwright/expectations/instance-ai/arms-the-webhook-test-url-receives-a-real-request-and-reads-back-the-execution/trace.jsonl
+  h_a348dde7c02e89 1-5
+packages/testing/playwright/pages/InstanceAiPage.ts
+  h_a348dde7c02e89 174-191
+packages/testing/playwright/tests/e2e/instance-ai/fixtures.ts
+  h_a348dde7c02e89 7-9
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-test-listener.spec.ts
+  h_a348dde7c02e89 1-104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c54fae493e360ed9facbaff0a86acc172c0d65e8",
+  "prompts": {},
+  "humans": {
+    "h_a348dde7c02e89": {
+      "author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

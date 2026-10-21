@@ -1,0 +1,26 @@
+packages/@n8n/instance-ai/src/tools/__tests__/nodes.tool.test.ts
+  s_988a5e0f59cdb0::t_a3bb9fc9434b2f 735,803,809,815,818
+packages/@n8n/instance-ai/src/tools/nodes.tool.ts
+  s_988a5e0f59cdb0::t_3816445c10f2b5 581
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "35c8078734ba516ae6c773a37c189336742b33cd",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_988a5e0f59cdb0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bf349829-8374-4c71-9ec2-094de61ed6a4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

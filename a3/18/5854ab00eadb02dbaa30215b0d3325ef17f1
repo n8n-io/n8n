@@ -1,0 +1,55 @@
+packages/@n8n/engine/src/status/index.ts
+  s_e8d425475ec83f::t_74a31dc68cfd74 3,5
+packages/@n8n/engine/src/status/batching-status-publisher.ts
+  s_d427a339f82a38::t_e0a2f9019bdbdb 25-26
+  s_d427a339f82a38::t_377b25d1247cb3 45-46,98-100,127,143
+  s_e8d425475ec83f::t_f2b83b546e2bc8 62-63
+  s_d427a339f82a38::t_75480bcd59e7dd 47
+  s_d427a339f82a38::t_d92d795f1458b5 124-126,128-129,137,145,148-149
+  s_d427a339f82a38::t_bf7ef7043e5223 146-147
+  s_e8d425475ec83f::t_a99841bd2208ba 169-178
+  s_e8d425475ec83f::t_914c24ef248d1b 85-95,101,106-107,118-123,130-136,138-142,144,150-154
+  s_e8d425475ec83f::t_aaf2ad332e0aca 9-17,23-24,27-30,40-41,52-53
+packages/@n8n/engine/src/runtime/__tests__/create-engine-runtime.test.ts
+  s_e8d425475ec83f::t_c6c56cc13c75ba 92-96,101,106
+  s_e8d425475ec83f::t_085c310b859488 3,8
+  s_e8d425475ec83f::t_afc2528c8e177b 26-29
+packages/@n8n/engine/src/status/__tests__/batching-status-publisher.test.ts
+  s_d427a339f82a38::t_754633f52fc921 24-32,162-175,223-224,226,229-230,236,238-239,244-245
+  s_e8d425475ec83f::t_4d35a1724121aa 136-149,151-153,158-161,176-196,201-222,246-247
+  s_d427a339f82a38::t_006ec6356f2a91 225,227-228,231-235,237,240-243
+  s_d427a339f82a38::t_ae58c787b5cc56 20,22,51,82-85,102,107-110,126-129,150,154-157,197-200,257-260,270,305
+  s_e8d425475ec83f::t_23afae8893ba33 7
+  s_d427a339f82a38::t_2f7f986e85709b 21
+packages/@n8n/engine/src/status/status-update.types.ts
+  s_d427a339f82a38::t_a9dbc3e48296b1 19,24
+  s_d427a339f82a38::t_e0a2f9019bdbdb 20-22
+packages/@n8n/engine/src/server/routes/workflow-executions.ts
+  s_e8d425475ec83f::t_34afc7209c17eb 14-16,18-19
+packages/@n8n/engine/src/execution/__tests__/step-execution.integration.test.ts
+  s_d427a339f82a38::t_2f7f986e85709b 93,95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a3185854ab00eadb02dbaa30215b0d3325ef17f1",
+  "prompts": {},
+  "sessions": {
+    "s_d427a339f82a38": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e7c13e2-f6b7-4525-ab96-5f78b0f1b6b7",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_e8d425475ec83f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "30c2aa44-be65-4bcf-b95b-35bfc7b679a1",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

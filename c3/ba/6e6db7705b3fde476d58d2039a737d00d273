@@ -1,0 +1,32 @@
+packages/nodes-base/nodes/AgileCrm/test/workflow/requests.workflow.json
+  s_0f7982f67d1b35::t_1dfd66e7298951 1-416
+packages/nodes-base/nodes/AgileCrm/test/workflow/AgileCrm.workflow.test.ts
+  s_2e1fa95fc44f8f::t_56b74a5874689f 68-71
+  s_2e1fa95fc44f8f::t_4c6bd04078b2b5 1
+  s_2e1fa95fc44f8f::t_a9b2ecf0a27826 29-30,32
+  s_2e1fa95fc44f8f::t_722ba8ad0001d2 2-28,31,33-67,72-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c3ba6e6db7705b3fde476d58d2039a737d00d273",
+  "prompts": {},
+  "sessions": {
+    "s_0f7982f67d1b35": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a65b801439482db1f",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

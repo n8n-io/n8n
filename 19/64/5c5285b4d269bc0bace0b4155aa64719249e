@@ -1,0 +1,50 @@
+packages/nodes-base/credentials/test/MicrosoftOAuth2Api.credentials.test.ts
+  s_aa40f315c412bf::t_34c1276ec73d8e 3
+  s_aa40f315c412bf::t_40f43f38bbd926 5-6,8
+packages/cli/src/controllers/oauth/__tests__/oauth2-credential.controller.test.ts
+  s_aa40f315c412bf::t_74a5e7cd929e82 4
+  s_aa40f315c412bf::t_2f429e84ad9f01 281-283,287-301,303-334,160,165,192,199-200,202,205,216,221,250,260,262,265-266,269,271
+  s_aa40f315c412bf::t_01e906561f7657 284-286
+  s_aa40f315c412bf::t_ddba7e770a7262 302
+  s_aa40f315c412bf::t_f8a4bc30992361 335-337,339-340,344-400,408,411-413,476,479-481,531,534-536,586,589-591,642,645-647,698,701-703,753,756-758,812,815-817,869,872-874,925,928-930,1167-1169,161-164,166-173,177-180,182-191,193-198,203,206,208-209,211-212,214-215,217-220,222-229,235-238,240-249,251-256,263,270,272
+packages/cli/src/controllers/oauth/oauth2-credential.controller.ts
+  s_aa40f315c412bf::t_420f8125f302f8 170-171
+  s_aa40f315c412bf::t_e8a99a2b8d42e4 181,183-191
+  s_aa40f315c412bf::t_27aa76b90e2f97 182
+packages/cli/src/oauth/oauth.service.ts
+  s_aa40f315c412bf::t_05736e28cf4bd3 690,693-694,699-704
+  s_aa40f315c412bf::t_955affe1faf837 691,697
+  s_aa40f315c412bf::t_040186030cb275 1229
+  s_aa40f315c412bf::t_04750462d2cbb9 1230-1233
+packages/nodes-base/credentials/MicrosoftOAuth2Api.credentials.ts
+  s_aa40f315c412bf::t_b415964b182ad5 92-93,95-122,124-138
+  s_aa40f315c412bf::t_d95bdc17db1a17 94,123,139
+packages/cli/src/oauth/__tests__/oauth.service.test.ts
+  s_aa40f315c412bf::t_d161096c17e7fc 5113-5119,5125-5126,5128,5130-5134,5136-5146,5148-5152,5155,5177-5179,5182
+  s_aa40f315c412bf::t_31eb820a7bc1e5 5129
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/create-oauth2-client.test.ts
+  s_aa40f315c412bf::t_8f10ea241d2c47 215
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/oauth.ts
+  s_aa40f315c412bf::t_b07bcddae37045 51,54,59-64
+  s_aa40f315c412bf::t_f52781dfda9721 52,57
+packages/nodes-base/credentials/OAuth2Api.credentials.ts
+  s_aa40f315c412bf::t_8e26ac8dd1ec94 102-103
+  s_aa40f315c412bf::t_47d8ce6e490f05 104,106-108
+  s_aa40f315c412bf::t_0c736c52e5e4da 105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "19645c5285b4d269bc0bace0b4155aa64719249e",
+  "prompts": {},
+  "sessions": {
+    "s_aa40f315c412bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3d1db2c7-ef71-408d-a28c-9f53a28738b9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

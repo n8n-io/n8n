@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_9f30e357c1bf9d::t_075714a4883057 1638-1640
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_9f30e357c1bf9d::t_862d61d9a2b646 651-683
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "594a40708ff8dd21f800304f186322d2a0bf2c53",
+  "prompts": {},
+  "sessions": {
+    "s_9f30e357c1bf9d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "86539bcf-af50-43ad-a4ae-f42388f0e524",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

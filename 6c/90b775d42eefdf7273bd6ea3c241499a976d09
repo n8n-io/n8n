@@ -1,0 +1,35 @@
+packages/core/src/execution-engine/post-receive.ts
+  s_2a1c69d003515b::t_4009d5f26d83f5 1-148,150,152-162,164-205
+  s_2a1c69d003515b::t_1ab749c88006e2 149,151,163
+packages/core/src/execution-engine/__tests__/declarative-webhook.test.ts
+  s_2a1c69d003515b::t_e48a9480cf70e2 671,674-678,685-726
+  s_2a1c69d003515b::t_fe219f19355d5e 727
+packages/core/src/execution-engine/routing-node.ts
+  s_2a1c69d003515b::t_f19c90a47faa91 45
+  s_2a1c69d003515b::t_7b990577ee13b9 338-353
+packages/workflow/src/interfaces.ts
+  s_2a1c69d003515b::t_cc9ab9ed1459d7 2926,2929-2931,2933-2934
+packages/nodes-base/nodes/E2eTest/E2eTestDeclarativeWebhookTrigger.node.ts
+  s_2a1c69d003515b::t_025cbe3ae2a977 73,77-81
+  s_2a1c69d003515b::t_dc7c581c22c01b 93-95
+packages/core/src/execution-engine/declarative-webhook.ts
+  s_2a1c69d003515b::t_d6587529d66951 12
+  s_2a1c69d003515b::t_b049483676250f 29-35
+  s_2a1c69d003515b::t_155e0cb1a0bea1 440-499
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "6c90b775d42eefdf7273bd6ea3c241499a976d09",
+  "prompts": {},
+  "sessions": {
+    "s_2a1c69d003515b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d877d31-e0fb-4643-abbc-d84c31b962b3",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

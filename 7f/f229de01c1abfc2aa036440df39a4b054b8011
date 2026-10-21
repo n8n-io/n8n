@@ -1,0 +1,25 @@
+packages/@n8n/db/src/migrations/common/1787816860559-DropInstanceAiRunSnapshotsTable.ts
+  s_ef1105a184535e::t_aa09b693281bef 9-12,19-20
+packages/cli/src/modules/instance-ai/repositories/instance-ai-event-log.repository.ts
+  s_ef1105a184535e::t_2d95ace4ad0e37 155-159
+packages/@n8n/db/src/migrations/common/1784000000051-BackfillInstanceAiEventLog.ts
+  s_ef1105a184535e::t_ff550e6839e02a 41-43
+packages/cli/src/modules/instance-ai/repositories/__tests__/instance-ai-event-log.repository.test.ts
+  s_ef1105a184535e::t_b88383f5199b44 121-122
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "7ff229de01c1abfc2aa036440df39a4b054b8011",
+  "prompts": {},
+  "sessions": {
+    "s_ef1105a184535e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a9d6b5b5-949d-423d-a866-9b30325ee660",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_983eea3c47ac98::t_32a6d503e90897 9779
+  s_983eea3c47ac98::t_ff50dee38d4d6e 9810
+  s_983eea3c47ac98::t_49ec698bc0682a 9771-9772,9776-9777,9781-9782,9807,9822,9833,9844
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/review/PromotionChangeCard.test.ts
+  s_983eea3c47ac98::t_ff50dee38d4d6e 121
+  s_983eea3c47ac98::t_586ff12d851867 86,107
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionReviewView.vue
+  s_983eea3c47ac98::t_8d4c1732cc47bd 70,72,243
+  s_983eea3c47ac98::t_961c3c8ad638d2 73-76
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionReviewView.test.ts
+  s_983eea3c47ac98::t_961c3c8ad638d2 102-111
+  s_983eea3c47ac98::t_c4cbdd879ad437 128
+  s_983eea3c47ac98::t_32a6d503e90897 120
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionReviewBadges.test.ts
+  s_983eea3c47ac98::t_586ff12d851867 82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "db605b35f648c3f7beef774dd5613c5e28211011",
+  "prompts": {},
+  "sessions": {
+    "s_983eea3c47ac98": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6afe657c-702d-4003-8734-85a65b043c95",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

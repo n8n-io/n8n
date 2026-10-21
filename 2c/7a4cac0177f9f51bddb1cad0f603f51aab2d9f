@@ -1,0 +1,14 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useExtensionDirectConnect.ts
+  h_44f8d1c0f2f8c4 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "2c7a4cac0177f9f51bddb1cad0f603f51aab2d9f",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

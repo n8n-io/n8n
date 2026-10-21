@@ -1,0 +1,27 @@
+packages/cli/src/node-execution/__tests__/ephemeral-node-executor.test.ts
+  s_4e7caf6709d24c::t_0b35ebb420e81d 13,517-545
+  s_4e7caf6709d24c::t_ad9a4a59c3951b 546
+packages/cli/src/node-execution/ephemeral-node-executor.ts
+  s_4e7caf6709d24c::t_51a530d1ddbcf0 290
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "ff0d6910cd8f6da5ac854a1b4eb99cfc6cc83d93",
+  "prompts": {},
+  "humans": {
+    "h_23d60aac2fe72e": {
+      "author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_4e7caf6709d24c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f70f8-347a-7932-9186-4dba5897d0de",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

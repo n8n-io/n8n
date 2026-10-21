@@ -1,0 +1,42 @@
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/import-request.ts
+  s_ce38e707b3774d::t_3e548c60b82640 1-30
+packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-variables.integration.test.ts
+  s_ce38e707b3774d::t_34f79517d1d766 22
+  s_ce38e707b3774d::t_6c8039a98fb34d 65-67
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_ce38e707b3774d::t_631767677a81c2 58-59,62-64
+  s_ce38e707b3774d::t_08e77a3615c752 54
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_ce38e707b3774d::t_08e77a3615c752 51
+  s_ce38e707b3774d::t_631767677a81c2 60-68
+packages/cli/src/modules/n8n-packages/__tests__/import-folders.integration.test.ts
+  s_ce38e707b3774d::t_631767677a81c2 36-47
+  s_ce38e707b3774d::t_f12bb7b9808d4f 16
+  s_ce38e707b3774d::t_08e77a3615c752 24
+packages/cli/src/modules/n8n-packages/__tests__/import-subworkflows.integration.test.ts
+  s_ce38e707b3774d::t_631767677a81c2 27
+  s_ce38e707b3774d::t_f12bb7b9808d4f 12
+  s_ce38e707b3774d::t_08e77a3615c752 20
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow-with-tags.integration.test.ts
+  s_ce38e707b3774d::t_34f79517d1d766 17
+  s_ce38e707b3774d::t_6c8039a98fb34d 238-240
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  s_ce38e707b3774d::t_08e77a3615c752 33
+  s_ce38e707b3774d::t_6c8039a98fb34d 67-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d441186728bb557896d89f025df0d1ccfd4706e8",
+  "prompts": {},
+  "sessions": {
+    "s_ce38e707b3774d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26f3d3be-4e23-4ead-99eb-53993886261e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

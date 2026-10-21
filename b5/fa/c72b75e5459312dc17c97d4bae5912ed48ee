@@ -1,0 +1,30 @@
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_da76d9a372587f::t_2c6e8fd37d3865 851-855,857-860,865-872,874-880,970
+  s_da76d9a372587f::t_73b9f7e0ca32a5 813-823,827,829-830,832-840
+  s_da76d9a372587f::t_bd81c1893a7e29 881-884,890-891,969,971
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_da76d9a372587f::t_e440cdcd1c9e10 374,376
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_da76d9a372587f::t_b360cdc3e68db0 578
+  s_da76d9a372587f::t_4e430688533d7e 538
+  s_da76d9a372587f::t_b54603832d1be4 716-718,732-735,748-762
+packages/cli/src/modules/agents/__tests__/workflow-tool-factory.test.ts
+  s_da76d9a372587f::t_0a839e9386e0ff 12
+  s_da76d9a372587f::t_663e8fa26a787c 237-263
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b5fac72b75e5459312dc17c97d4bae5912ed48ee",
+  "prompts": {},
+  "sessions": {
+    "s_da76d9a372587f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "36580568-4139-410e-9a53-a65ce73b9023",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

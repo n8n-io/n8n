@@ -1,0 +1,38 @@
+packages/cli/src/modules/source-control.ee/source-control.service.ee.ts
+  s_36ca26ce1f06fe::t_7d0bdae921ac28 312
+  s_36ca26ce1f06fe::t_6037b1f201b908 311
+packages/cli/src/modules/source-control.ee/__tests__/source-control-status.service.test.ts
+  s_36ca26ce1f06fe::t_7b23359e3b7f33 379
+packages/cli/src/modules/source-control.ee/source-control-git.service.ee.ts
+  s_36ca26ce1f06fe::t_a9a7d2994a6e56 11,357-363,410,456-458,460,465-466,470,474-475,477-479,482-483,526-528
+packages/cli/src/modules/source-control.ee/source-control-status.service.ee.ts
+  s_36ca26ce1f06fe::t_7d0bdae921ac28 244
+  s_36ca26ce1f06fe::t_6037b1f201b908 243
+packages/cli/src/modules/source-control.ee/__tests__/source-control-git.service.test.ts
+  s_36ca26ce1f06fe::t_5e5e6fa638e810 51-54
+  s_36ca26ce1f06fe::t_6037b1f201b908 127,138
+  s_36ca26ce1f06fe::t_e55a2d589e3301 55-68,70-72,74-75,93,95,98-99,110,115,119,121-122,126,128,139-145,147,165-180
+  s_36ca26ce1f06fe::t_871864a60c8867 130,152-161
+  s_36ca26ce1f06fe::t_70cbf26e4bb8d6 135,137,150-151
+packages/cli/src/modules/source-control.ee/__tests__/source-control-git.service.integration.test.ts
+  s_36ca26ce1f06fe::t_5e5e6fa638e810 110,120,133,146
+packages/cli/src/modules/source-control.ee/__tests__/source-control.service.test.ts
+  s_36ca26ce1f06fe::t_6037b1f201b908 1554,1558,1570,1577,1702
+  s_36ca26ce1f06fe::t_5e5e6fa638e810 8,1578
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cee2c07bc1c28f7d0fd69bd5885e3185773bd879",
+  "prompts": {},
+  "sessions": {
+    "s_36ca26ce1f06fe": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ab42-e7b7-75a2-a4ab-eb90d9d8dc3d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

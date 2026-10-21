@@ -1,0 +1,48 @@
+packages/@n8n/backend-network/src/testing.ts
+  s_51cc314dd74007::t_d2560750c481c3 10
+packages/cli/src/commands/base-command.ts
+  s_51cc314dd74007::t_a8b7fb59d8c214 12
+  s_db82e27b87b35e::t_17486ce7d9db18 101-103,106-107
+  s_db82e27b87b35e::t_7b9164e2ac017f 105
+  s_db82e27b87b35e::t_fdc3eec3c6c672 266-271,273-276
+  s_db82e27b87b35e::t_6deefe9dd1a926 272
+packages/cli/src/commands/__tests__/start.test.ts
+  s_51cc314dd74007::t_ee5ca2fec4e30d 4
+  s_51cc314dd74007::t_cfbc504c148372 9-10
+  s_db82e27b87b35e::t_adf7914bd066dd 159,281,368
+  s_db82e27b87b35e::t_c00659c4e01bc2 216,253
+  s_51cc314dd74007::t_da3a652e722198 442-458,471-472,483-489
+  s_db82e27b87b35e::t_643362ad9693e5 459-470
+  s_51cc314dd74007::t_63dd9ceb888ac2 473-482
+packages/cli/src/commands/start.ts
+  s_db82e27b87b35e::t_38bc601e6e15d2 77-78
+packages/cli/src/commands/__tests__/worker.test.ts
+  s_db82e27b87b35e::t_43845159362579 2
+  s_db82e27b87b35e::t_e94702b4bcf5b9 10-11
+  s_db82e27b87b35e::t_bfcc400811c9cd 12
+  s_db82e27b87b35e::t_3a8688a3164cbd 80-114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "45ab9ca194b375d7864bd3af1a9f1537a29a2e78",
+  "prompts": {},
+  "sessions": {
+    "s_51cc314dd74007": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e101b6f-161e-4acc-b93c-8733b20b060d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_db82e27b87b35e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c007baaa-5d25-4b75-8191-c13a6d0b6028",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

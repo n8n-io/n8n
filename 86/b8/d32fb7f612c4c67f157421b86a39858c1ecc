@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewSubmittedDialog.vue
+  s_c2503c0608a3df::t_d3d03f6ef135b5 75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "86b8d32fb7f612c4c67f157421b86a39858c1ecc",
+  "prompts": {},
+  "sessions": {
+    "s_c2503c0608a3df": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7ea4-b00f-7082-ab26-2894ae42cef2",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

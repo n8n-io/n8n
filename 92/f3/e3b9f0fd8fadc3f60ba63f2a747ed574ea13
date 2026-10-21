@@ -1,0 +1,89 @@
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useWorkflowNavigationCommands.ts
+  s_6ef606d7508f55::t_8539af1570a621 164
+  s_6ef606d7508f55::t_841136effd3719 19
+  s_6ef606d7508f55::t_66c37cc1d17b0c 41
+  s_6ef606d7508f55::t_c0a59072ae273f 210
+packages/cli/test/integration/workflows/workflow-node-search.service.test.ts
+  s_6ef606d7508f55::t_eadefdfe281334 226-236
+  s_6ef606d7508f55::t_788ad1db3498f8 246,260
+  s_6ef606d7508f55::t_24bd22b3a0862b 8
+  s_6ef606d7508f55::t_0ab2f4c401de2c 1-7,9-225,237-245,247-259,261-268
+packages/@n8n/db/src/repositories/index.ts
+  s_6ef606d7508f55::t_be97fdc90d3182 68
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useCommandBar.ts
+  s_6ef606d7508f55::t_32be8bc7aa766c 103,113,125,139,149,162,172,187,198
+  s_6ef606d7508f55::t_26da94027df98b 19-22
+  s_6ef606d7508f55::t_d86120436b64a6 93-96
+  s_6ef606d7508f55::t_84b617161cf035 261-268,271
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_6ef606d7508f55::t_71c8b096f8bdbb 1967-1968
+  s_6ef606d7508f55::t_da347f5b07ee3a 1725-1740
+packages/workflow/test/node-search.test.ts
+  s_6ef606d7508f55::t_a6a651d5df7ec6 2-6,8-125
+  s_6ef606d7508f55::t_0fcdcd9fb6dbb5 1,7
+packages/workflow/src/common/node-search.ts
+  s_6ef606d7508f55::t_93068b93e91535 1-106
+packages/@n8n/api-types/src/dto/workflows/search-workflow-nodes.dto.ts
+  s_6ef606d7508f55::t_ebdd6267f4ba0a 1-47
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useWorkflowLocationSuffix.ts
+  s_6ef606d7508f55::t_255fc19f0f607c 1-93
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useGlobalNodeSearchCommands.ts
+  s_6ef606d7508f55::t_4b9b3aebaa96dc 72
+  s_6ef606d7508f55::t_45c0fe44c76665 1-10,12-30,32-71,73-93,98-104,107-150,173-205
+  s_6ef606d7508f55::t_cbb03aae5e59cd 151-172
+  s_6ef606d7508f55::t_3a43ab9ada1f7e 11,31
+  s_6ef606d7508f55::t_557985db9b3a70 94-97,105-106
+packages/@n8n/api-types/src/dto/index.ts
+  s_6ef606d7508f55::t_da506603f0bf87 135-145
+packages/frontend/editor-ui/src/app/api/workflows.ts
+  s_6ef606d7508f55::t_a804bf1bc8f84e 15
+  s_6ef606d7508f55::t_64e4d26529b49c 26-34
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_6ef606d7508f55::t_73803b8740b851 14
+  s_6ef606d7508f55::t_ac17e088b3480d 60-68
+  s_6ef606d7508f55::t_80a54cc6d5407c 34
+  s_6ef606d7508f55::t_98482a0b1eb328 866-875,877-909,913-951
+  s_6ef606d7508f55::t_c194c44637d637 910-912
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_6ef606d7508f55::t_423d91fbd91de3 6558-6559
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  s_6ef606d7508f55::t_8d37278d553066 139-140
+  s_6ef606d7508f55::t_07e558235be1ab 178
+packages/workflow/src/common/index.ts
+  s_6ef606d7508f55::t_7e556d63aa88ce 7
+packages/cli/src/workflows/workflow-node-search.service.ts
+  s_6ef606d7508f55::t_d344590b8ccbdc 1-91,96,98-120
+  s_6ef606d7508f55::t_09be83cdb5c28e 92-95,97
+packages/cli/src/workflows/workflows.controller.ts
+  s_6ef606d7508f55::t_d17d1c781dc292 69
+  s_6ef606d7508f55::t_3096c261a483b8 9,12
+  s_6ef606d7508f55::t_a3f305ce166eb4 100
+  s_6ef606d7508f55::t_ca33518ef3b98e 160-176
+packages/cli/src/workflows/__tests__/workflow-node-search.service.test.ts
+  s_6ef606d7508f55::t_3dd854427e5052 1-250
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useGlobalNodeSearchCommands.test.ts
+  s_6ef606d7508f55::t_832de2679c2e0c 73-80
+  s_6ef606d7508f55::t_d158be3c9b3dc0 94
+  s_6ef606d7508f55::t_95d224d6a5fcb4 84-85
+  s_6ef606d7508f55::t_8532b5c66da131 88-92
+  s_6ef606d7508f55::t_29ffe235d690d9 1-72,81-83,86-87,93,95-307
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useNodeCommands.ts
+  s_6ef606d7508f55::t_2473ea9ad5df12 122-128
+  s_6ef606d7508f55::t_103b88b5596a3e 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "92f3e3b9f0fd8fadc3f60ba63f2a747ed574ea13",
+  "prompts": {},
+  "sessions": {
+    "s_6ef606d7508f55": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "68351134-3419-4e04-a0d5-8e95b9b226b7",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

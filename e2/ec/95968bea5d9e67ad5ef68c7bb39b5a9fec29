@@ -1,0 +1,91 @@
+packages/nodes-base/nodes/Airtable/test/v2/node/record/get.test.ts
+  s_2e1fa95fc44f8f::t_c12975c47557b1 83-93
+  s_2e1fa95fc44f8f::t_d2f16cb57d935e 94-96
+  s_401904c7bcadc9::t_7bebe892c2c234 1,62-65
+packages/nodes-base/nodes/Airtable/test/AirtableTrigger.node.test.ts
+  s_2e1fa95fc44f8f::t_5d88d9cf0f4154 39-48
+packages/nodes-base/nodes/Airtable/AirtableTrigger.node.ts
+  s_31cebdf9d3ffe1::t_8fff9946b61c80 9,245
+packages/nodes-base/nodes/Airtable/test/v2/node/base/getMany.test.ts
+  s_e3d58579307164::t_834fb132d2aae1 1,45,97
+packages/nodes-base/nodes/Airtable/test/v2/node/base/getSchema.test.ts
+  s_401904c7bcadc9::t_d6e32b4933ab45 1,54-61
+packages/nodes-base/nodes/Airtable/test/v2/node/record/create.test.ts
+  s_e3d58579307164::t_4f0a325cdf31b3 1,89,96,151,202
+packages/nodes-base/nodes/Airtable/test/v2/node/record/deleteRecord.test.ts
+  s_401904c7bcadc9::t_13e73ce362ad3c 1,38-41
+packages/nodes-base/nodes/Airtable/test/v2/node/record/search.test.ts
+  s_e3d58579307164::t_4226fbc099809c 1,106,155
+packages/nodes-base/nodes/Airtable/test/v2/node/record/update.test.ts
+  s_401904c7bcadc9::t_baa463e43679e1 1,140-150,152-153,184,218,268,326
+packages/nodes-base/nodes/Airtable/v1/AirtableV1.node.ts
+  s_31cebdf9d3ffe1::t_1fc46e07009a9d 9,11,584-586,589,601,675,710,775,857
+packages/nodes-base/nodes/Airtable/v1/GenericFunctions.ts
+  s_e3d58579307164::t_7c571068723ea9 11-12,14,35,46,51,72,113-117
+packages/nodes-base/nodes/Airtable/v2/actions/base/getMany.operation.ts
+  s_31cebdf9d3ffe1::t_df49cda551379f 7,92
+packages/nodes-base/nodes/Airtable/v2/actions/base/getSchema.operation.ts
+  s_31cebdf9d3ffe1::t_8db90672c3b291 7,46
+packages/nodes-base/nodes/Airtable/v2/actions/record/create.operation.ts
+  s_31cebdf9d3ffe1::t_9da8828c0b140b 8,60
+packages/nodes-base/nodes/Airtable/v2/actions/record/deleteRecord.operation.ts
+  s_401904c7bcadc9::t_97177422534d1d 8,50-54
+packages/nodes-base/nodes/Airtable/v2/actions/record/get.operation.ts
+  s_31cebdf9d3ffe1::t_400d7a42ead2bb 8,75
+packages/nodes-base/nodes/Airtable/v2/actions/record/search.operation.ts
+  s_31cebdf9d3ffe1::t_570c3943fd0a06 7,157
+packages/nodes-base/nodes/Airtable/v2/actions/record/update.operation.ts
+  s_31cebdf9d3ffe1::t_6643555bc0fef4 8,66
+packages/nodes-base/nodes/Airtable/v2/actions/record/upsert.operation.ts
+  s_31cebdf9d3ffe1::t_9b045c4646d889 8,61
+packages/nodes-base/nodes/Airtable/v2/actions/router.ts
+  s_31cebdf9d3ffe1::t_e54a3ab44b9273 27-29
+packages/nodes-base/nodes/Airtable/v2/methods/listSearch.ts
+  s_401904c7bcadc9::t_502abcc7b3babb 7,23,70-76,121
+packages/nodes-base/nodes/Airtable/v2/methods/loadOptions.ts
+  s_31cebdf9d3ffe1::t_c70930c9d71ca2 2,17,78
+packages/nodes-base/nodes/Airtable/v2/methods/resourceMapping.ts
+  s_31cebdf9d3ffe1::t_a81b06aaec8176 9,74
+packages/nodes-base/nodes/Airtable/v2/transport/index.ts
+  s_e3d58579307164::t_d093feb030a593 11-12,14,25,31,36,58,107-111,130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e2ec95968bea5d9e67ad5ef68c7bb39b5a9fec29",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_31cebdf9d3ffe1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a29c3b63139d7fbed",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_401904c7bcadc9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aa6dedfe825ee566c",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_e3d58579307164": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a3c59978e2bb0be9f",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

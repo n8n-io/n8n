@@ -1,0 +1,36 @@
+packages/workflow/src/common/map-connections-by-destination.ts
+  s_bc63a262ac8b3b::t_9d72d3ecaa7a21 4
+  s_bc63a262ac8b3b::t_ade9b8d0a1e0f8 27-36
+packages/workflow/src/workflow.ts
+  s_bc63a262ac8b3b::t_a7a7bcf050f561 165-167
+packages/@n8n/eslint-config/src/rules/no-unsafe-dynamic-key-init.ts
+  s_bc63a262ac8b3b::t_3e81165281f927 149-152,202-203,209,217,221-235,263,265-275,279-281,283-285,287,300-306
+  s_bc63a262ac8b3b::t_9146335afecdfb 27,237,240-253
+  s_bc63a262ac8b3b::t_e543d404323db2 20-26,28-29,121-148,153-161,189
+packages/core/src/execution-engine/node-execution-context/supply-data-context.ts
+  s_bc63a262ac8b3b::t_3f886b6595cd2e 23,344-347
+packages/@n8n/eslint-config/src/rules/no-unsafe-dynamic-key-init.test.ts
+  s_bc63a262ac8b3b::t_626dfa7e47eb69 63-64,74-86,178-203
+  s_bc63a262ac8b3b::t_9146335afecdfb 69-73
+packages/workflow/test/common.test.ts
+  s_bc63a262ac8b3b::t_c8f287039e12ce 112-151
+  s_bc63a262ac8b3b::t_23b3e25faaa6de 1
+packages/core/src/execution-engine/workflow-execute.ts
+  s_bc63a262ac8b3b::t_3f886b6595cd2e 2427-2432
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b78572903f1eb254702fa2c30b8c99ffecf06bba",
+  "prompts": {},
+  "sessions": {
+    "s_bc63a262ac8b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "333c9079-31ea-4739-a3e4-941d76e5eacf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

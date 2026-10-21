@@ -1,0 +1,60 @@
+packages/cli/test/integration/workflows/workflow-sharing.service.test.ts
+  s_75c6052c0a2e5a::t_eeb9a700411eb2 119-140
+packages/cli/src/modules/insights/insights.controller.ts
+  s_75c6052c0a2e5a::t_e087c706afec5e 27,34
+packages/cli/src/public-api/v1/handlers/insights/insights.handler.ts
+  s_75c6052c0a2e5a::t_e51dde58fc0564 70
+packages/cli/test/integration/insights/insights.api.test.ts
+  s_75c6052c0a2e5a::t_82d6b30f644fc5 55-103
+  s_75c6052c0a2e5a::t_35380504b6e3cc 2-9,16
+packages/cli/src/modules/insights/__tests__/insights.service.test.ts
+  s_75c6052c0a2e5a::t_80db9a2316b35f 8
+  s_75c6052c0a2e5a::t_04e6f619cda1c3 207,230,253,275,300,321,343,368,395,418,443,466,489,509,532,555,579,602,625,648,672,695,718,741,765,788,810,833
+  s_75c6052c0a2e5a::t_9086dc3137767f 9,18-22
+  s_75c6052c0a2e5a::t_fe71b3456bdc03 843-915
+  s_75c6052c0a2e5a::t_b35aef5f210ced 43
+  s_75c6052c0a2e5a::t_1cf8eea6e4fd2e 73
+  s_75c6052c0a2e5a::t_8af7d76bc6ebda 23
+packages/cli/src/modules/insights/database/repositories/insights-by-period.repository.ts
+  s_75c6052c0a2e5a::t_f945b9991f5362 330-335,337-339,341
+  s_75c6052c0a2e5a::t_a8f9e322d57807 76-81,84-85,90-93,101-114
+  s_75c6052c0a2e5a::t_96296371d62eca 82-83
+  s_75c6052c0a2e5a::t_7804b689d5e77c 293-299
+  s_75c6052c0a2e5a::t_927f770bbd1d29 2-3
+  s_75c6052c0a2e5a::t_cb3f8647b59af6 340
+  s_75c6052c0a2e5a::t_01671dec34a29f 115-116
+packages/cli/src/modules/insights/__tests__/insights.service.integration.test.ts
+  s_75c6052c0a2e5a::t_ed8f87ca6a5681 324-436
+  s_75c6052c0a2e5a::t_acba68ecdd2652 5
+  s_75c6052c0a2e5a::t_2f451dd2065a4e 21,23
+  s_75c6052c0a2e5a::t_8a94b9ee55adc1 12
+  s_75c6052c0a2e5a::t_9248be40778e5d 43,45,47
+  s_75c6052c0a2e5a::t_ffa1896cf28f3a 211,241,309
+  s_75c6052c0a2e5a::t_b887237b7fcdc6 154-156
+packages/cli/src/workflows/workflow-sharing.service.ts
+  s_75c6052c0a2e5a::t_5839a34daae776 36-44,46-53
+  s_75c6052c0a2e5a::t_1719b02d463af3 45
+packages/cli/src/modules/insights/insights.service.ts
+  s_75c6052c0a2e5a::t_4f3b1379d84b02 88
+  s_75c6052c0a2e5a::t_0f6e40fec0ff21 76-87,89-99,101,106,111-112,117
+  s_75c6052c0a2e5a::t_30b009de283c1f 10-11,16
+packages/cli/test/integration/public-api/insights.test.ts
+  s_75c6052c0a2e5a::t_df6d56864f1a52 2-8,13-14
+  s_75c6052c0a2e5a::t_367c4782aa9cf8 183-239
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "149c4a091a0dcdf51d7a23f46bc8b82e80f30b6d",
+  "prompts": {},
+  "sessions": {
+    "s_75c6052c0a2e5a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5afab556-446e-456d-8c68-e81478bb836b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,36 @@
+packages/@n8n/instance-ai/src/types.ts
+  s_3494f01f496a9c::t_6d9e553ca6d4c9 486-489
+packages/cli/src/credentials-overwrites.ts
+  s_3494f01f496a9c::t_4da7b8995c0ccc 233-252
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_3494f01f496a9c::t_5159358b1f2822 1902,1906-1908,1910
+  s_3494f01f496a9c::t_6cb608e9609405 1904
+  s_3494f01f496a9c::t_58ca55fb243b8c 134
+  s_3494f01f496a9c::t_57b9e3fba625d5 1901,1903,1905,1909,1911-1912
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/resolve-credentials.test.ts
+  s_3494f01f496a9c::t_5e0cb2486dbd04 478-600
+packages/@n8n/instance-ai/src/tools/workflows/resolve-credentials.ts
+  s_3494f01f496a9c::t_676a2d36a7b0bd 404-411
+  s_3494f01f496a9c::t_61bbdd92f9661e 166-194
+  s_3494f01f496a9c::t_b4a8097e0a339e 260,263,271
+  s_3494f01f496a9c::t_107756aafeae5f 304-306,319-322
+  s_3494f01f496a9c::t_338c033f7c62ef 323-324
+packages/cli/src/__tests__/credentials-overwrites.test.ts
+  s_3494f01f496a9c::t_69f9bc88ce1b28 1206-1282
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "16302cc84780e96c4dc6688dc016d3ff0094515b",
+  "prompts": {},
+  "sessions": {
+    "s_3494f01f496a9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e75d83b-5671-46b5-825f-358514b27b6f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

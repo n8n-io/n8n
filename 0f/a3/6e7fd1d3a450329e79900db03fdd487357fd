@@ -1,0 +1,31 @@
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/build-workflow.tool.test.ts
+  s_eeb9c272315e92::t_19637ebbe9f599 1202-1246
+  s_eeb9c272315e92::t_e8dc07fed4db98 11
+packages/@n8n/instance-ai/src/tools/nodes/preferred-chat-model.ts
+  s_eeb9c272315e92::t_cbe2edfdb1a7c5 68
+  s_eeb9c272315e92::t_277586b21d6233 48
+  s_eeb9c272315e92::t_6c06beec243d5c 1-2,7-11
+  s_eeb9c272315e92::t_0f184b2c040d64 85-89,93,104-105
+  s_eeb9c272315e92::t_181b56b9f7e54f 94-97
+packages/@n8n/instance-ai/src/tools/nodes/__tests__/preferred-chat-model.test.ts
+  s_eeb9c272315e92::t_e4f9033d2a2395 110
+  s_eeb9c272315e92::t_fa2f144ca033c7 107-109,111-114
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_eeb9c272315e92::t_1fdcc8a1a2ff09 749-750,754
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "0fa36e7fd1d3a450329e79900db03fdd487357fd",
+  "prompts": {},
+  "sessions": {
+    "s_eeb9c272315e92": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1bcc4bfe-3b5a-4dae-b5a3-e3a88f5ae886",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

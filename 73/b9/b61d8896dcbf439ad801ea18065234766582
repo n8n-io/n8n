@@ -1,0 +1,19 @@
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/ToolsConnectionModal.vue
+  s_b5dc714bfc66f4::t_f8ec1c3bd21247 508-510,561,605-607,609,617,621,631-632,637-638,641-642,644
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "73b9b61d8896dcbf439ad801ea18065234766582",
+  "prompts": {},
+  "sessions": {
+    "s_b5dc714bfc66f4": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0ab2a-8c43-7169-8639-af4b602231ec",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

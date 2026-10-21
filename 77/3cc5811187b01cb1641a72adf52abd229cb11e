@@ -1,0 +1,33 @@
+packages/cli/src/external-hooks.ts
+  s_51fcbed9ecfd3b::t_55935fa7168a98 74
+packages/cli/src/workflows/workflow.service.ts
+  s_51fcbed9ecfd3b::t_9b0a3ad6efd154 35
+  s_51fcbed9ecfd3b::t_01a5c71bd09bf9 987-995
+packages/cli/src/errors/response-errors/workflow-deactivation-bad-request.error.ts
+  s_51fcbed9ecfd3b::t_b2e99126985f5c 1-15
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_51fcbed9ecfd3b::t_a23758986c85db 1271-1273
+  s_51fcbed9ecfd3b::t_bf222abefa36c5 1262-1270,1274-1304
+  s_51fcbed9ecfd3b::t_731637cd4f0846 25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "773cc5811187b01cb1641a72adf52abd229cb11e",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_51fcbed9ecfd3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a14060d-f995-4fc3-8db2-e99f9d94f9b2",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

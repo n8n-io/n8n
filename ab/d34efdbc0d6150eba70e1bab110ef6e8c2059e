@@ -1,0 +1,27 @@
+packages/@n8n/instance-ai/src/skills/__tests__/runtime-skills.test.ts
+  s_09a5e5f505f496::t_653daecf7c4cf6 6
+  s_09a5e5f505f496::t_9a62972b6a411e 69-117
+packages/@n8n/instance-ai/skills/config-evals/references/config-eval-playbook.md
+  s_09a5e5f505f496::t_099125211dca03 1-111
+packages/@n8n/instance-ai/evaluations/data/discovery/config-evals-skill-loading.json
+  ai_agent 14
+  s_09a5e5f505f496::t_7028b2b62595e1 1-13,15-17
+packages/@n8n/instance-ai/skills/config-evals/SKILL.md
+  s_09a5e5f505f496::t_6217fe84c2be71 1-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "abd34efdbc0d6150eba70e1bab110ef6e8c2059e",
+  "prompts": {},
+  "sessions": {
+    "s_09a5e5f505f496": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e84f2b02-e2a2-457e-b181-159419e9f0ab",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

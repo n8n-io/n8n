@@ -1,0 +1,55 @@
+packages/nodes-base/credentials/MicrosoftEntraServicePrincipalApi.credentials.ts
+  s_aecb2bc701cf23::t_87211514d43806 1-13,14-39,43-57,58-68,70-85,97-99,107-173,181-213,214-264
+  s_aecb2bc701cf23::t_d8b685d6606783 40-42
+  s_aecb2bc701cf23::t_cbb6792e85246d 104,106
+  s_aecb2bc701cf23::t_761f744342e9bf 69,86-90,95-96,100-103,105,110
+  s_aecb2bc701cf23::t_3837d3948895a8 92-94
+  s_aecb2bc701cf23::t_b580f22f3a8c64 91
+  s_aecb2bc701cf23::t_1d91b20f3f9f83 175-180
+packages/nodes-base/package.json
+  s_aecb2bc701cf23::t_ed8c07a29fa3c9 250
+packages/nodes-base/credentials/test/MicrosoftEntraServicePrincipalApi.credentials.test.ts
+  s_aecb2bc701cf23::t_00a946ab1c68fb 1-7,9,11-75,90-144,146-188,244-246,248-283,284-291,293-299,316-326,331,338-393
+  s_aecb2bc701cf23::t_98abc091ad2afb 240-243,247
+  s_aecb2bc701cf23::t_fdd2350231f827 78-80,89
+  s_aecb2bc701cf23::t_ec0fae5f5b9cc8 145
+  s_aecb2bc701cf23::t_6683888176b97d 189,195-202,205-212,214-215,216-225,227-228,230-233,235-237,334
+  s_aecb2bc701cf23::t_9eef2751d33a4f 327-330,332-333
+  s_aecb2bc701cf23::t_90afbd4cd47eef 8,10
+  s_aecb2bc701cf23::t_fdb2a58f34125c 292,300-304
+  s_aecb2bc701cf23::t_4d28200fa5c702 190-194,203-204,213,226,229,234
+  s_aecb2bc701cf23::t_5044af995dec6e 307-317
+  s_aecb2bc701cf23::t_501496c26d424b 76-77,81
+  s_aecb2bc701cf23::t_eaf3e1cf636223 83-89
+packages/nodes-base/nodes/Microsoft/OneDrive/GenericFunctions.ts
+  s_c10e563f7c2f73::t_cd5c04035b0389 392-394,398-399,401,403-404
+  s_c10e563f7c2f73::t_3553f01182a6d7 187-200,210,219-233,241,254-259
+  s_c10e563f7c2f73::t_bedcd50f66117e 57-60,66-68,79-185
+  s_c10e563f7c2f73::t_dd1b1cb3961dd4 274,283-295,314,323-333
+  s_c10e563f7c2f73::t_499528239e5a2e 5
+  s_c10e563f7c2f73::t_cb92c4a86ecc61 341-344
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "d284f3f663e344bf18da0a7f61adc8a7eec75d9f",
+  "prompts": {},
+  "sessions": {
+    "s_aecb2bc701cf23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "20a0526b-771f-4d10-a665-5c541b287fa5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    },
+    "s_c10e563f7c2f73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db403f6c-3898-4d9e-af22-6e4e17cbd6c8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

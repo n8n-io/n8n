@@ -1,0 +1,19 @@
+packages/cli/src/workflows/triggers/workflow-trigger-activator.ts
+  s_af57ef0512d15f::t_401952f01f435b 137-163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "30cff0b55625d9d825e1d02d6398b86b40c8329b",
+  "prompts": {},
+  "sessions": {
+    "s_af57ef0512d15f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ef949-e0c1-7a13-974f-c91b2b6eb3b7",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,89 @@
+packages/@n8n/agents/AGENTS.md
+  s_b370a35485f958::t_a6f301b378f6b4 41,66
+packages/@n8n/agents/src/index.ts
+  s_b370a35485f958::t_e74565895999ad 474
+packages/@n8n/agents/src/runtime/loop/runtime-context.ts
+  s_b370a35485f958::t_c2c8e2313d1545 2,267
+packages/@n8n/agents/src/runtime/model/prompt-cache.ts
+  s_b370a35485f958::t_b9e624087e01e0 2,60,162
+packages/@n8n/agents/src/runtime/model/raw-error.ts
+  s_b370a35485f958::t_e35a7e13e93818 1,64
+packages/@n8n/agents/src/runtime/model/raw-usage.ts
+  s_b370a35485f958::t_e3e702b535e8b7 1,86
+packages/@n8n/agents/src/runtime/tools/tool-result-guard.ts
+  s_b370a35485f958::t_cf08851f4f279c 1
+packages/@n8n/agents/src/sdk/agent.ts
+  s_b370a35485f958::t_5afe26a8e06672 2,84,1432-1434
+packages/@n8n/agents/src/sdk/catalog.ts
+  s_b370a35485f958::t_abe44b95fa9ac5 1,293
+packages/@n8n/agents/src/types/utils/json.ts
+  s_b370a35485f958::t_48fd6ebe223a39 1
+packages/@n8n/agents/src/utils/model.ts
+  s_b370a35485f958::t_5b148461cd9ac4 3-20
+packages/@n8n/agents/src/workspace/tools/read-tool-result.ts
+  s_b370a35485f958::t_5d47fa8b3df6e6 1,180,200,333,362,385
+packages/@n8n/ai-utilities/src/agent-config/from-ai-node-parameters.ts
+  s_b370a35485f958::t_e6d6f9e2a8f66a 7
+packages/@n8n/ai-utilities/src/types/json.ts
+  s_b370a35485f958::t_e0d152d5b27a25 1
+packages/@n8n/ai-utilities/src/utils/redact-secrets.ts
+  s_b370a35485f958::t_c12e80f39d2984 1,38,63
+packages/@n8n/ai-utilities/src/utils/text-editor.ts
+  s_b370a35485f958::t_752645f4d639b2 1-2,192
+packages/@n8n/ai-workflow-builder.ee/src/tools/utils/parameter-update.utils.ts
+  s_b370a35485f958::t_0b3118bc2da6e6 1,37,39
+packages/@n8n/instance-ai/evaluations/comparison/fetch-baseline.ts
+  s_b370a35485f958::t_286e77f06ec2e1 23
+packages/@n8n/instance-ai/evaluations/harness/normalize-workflow.ts
+  s_b370a35485f958::t_ccf4cdf756f637 16,89,103
+packages/@n8n/instance-ai/evaluations/run/langsmith-driver.ts
+  s_b370a35485f958::t_2baa79ad08180a 10,24,390-391
+packages/@n8n/instance-ai/evaluations/run/reshape.ts
+  s_b370a35485f958::t_07d4c50ae68966 15,108,119,124,129,136,141,156
+packages/@n8n/instance-ai/src/tools/workflows/detect-wrong-kind-locator.ts
+  s_b370a35485f958::t_eb43c08650d731 1
+packages/@n8n/instance-ai/src/utils/eval-agents.ts
+  s_b370a35485f958::t_2ef1ac58720e05 4,60,109
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_b370a35485f958::t_2de7da2c27791e 9,978-981
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_b370a35485f958::t_a28da98a98c2ad 18,267
+packages/cli/src/modules/instance-ai/eval/openai-responses-envelope.ts
+  s_b370a35485f958::t_6c6001228a625f 1,238,246,265,311,317,336,391,406
+packages/cli/src/modules/instance-ai/eval/provider-shapes.ts
+  s_b370a35485f958::t_322106d05ef14f 23,111,138,143,145,158,177,182,184,198,228,232,254,257-258,263,271,287,328,393,399,411,414,416,424,442-443,448,456,462
+packages/cli/src/modules/instance-ai/eval/structured-output-conformance.ts
+  s_b370a35485f958::t_32f14068797b2b 1-2
+packages/cli/src/modules/instance-ai/eval/thread-restore.service.ts
+  s_b370a35485f958::t_6cd9f9729d67d5 11
+packages/cli/src/modules/instance-ai/instance-ai-model.service.ts
+  s_b370a35485f958::t_752e7af64fb00e 1,126
+packages/cli/src/modules/instance-ai/workflow-templates.service.ts
+  s_b370a35485f958::t_5a809f0a81bf6f 5
+packages/cli/src/modules/mcp/tools/workflow-builder/workflow-operations.ts
+  s_b370a35485f958::t_9fc86f2e0314a9 1,453,583,620
+packages/frontend/editor-ui/src/features/agents/composables/useAgentSkillImport.ts
+  s_b370a35485f958::t_6b687d97849cf0 8
+packages/frontend/editor-ui/src/features/ai/instanceAi/utils/workflow-code-match.ts
+  s_b370a35485f958::t_d4e80ce3ce3853 5
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/composables/useWorkflowSetupApply.ts
+  s_b370a35485f958::t_ed3a8fcf2557cc 4,60,72
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/interactiveSummary.ts
+  s_b370a35485f958::t_40116f3319070f 2,27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "adff5e54d9df66606a13598af7a24243e82c2769",
+  "prompts": {},
+  "sessions": {
+    "s_b370a35485f958": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4448ea0b-13a4-4a91-af25-f141488e5900",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/@n8n/nodes-langchain/utils/agent-execution/createEngineRequests.ts
+  s_e5b6bee615f51e::t_f9159f00652850 175,185-186
+packages/@n8n/nodes-langchain/utils/agent-execution/test/buildSteps.test.ts
+  s_e5b6bee615f51e::t_9074022e994510 825-877
+packages/@n8n/nodes-langchain/utils/agent-execution/test/createEngineRequests.test.ts
+  s_e5b6bee615f51e::t_63eee98560b1fe 634-669
+packages/@n8n/nodes-langchain/utils/agent-execution/buildSteps.ts
+  s_e5b6bee615f51e::t_c882ac851b5c78 150-151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5d222a956db50dfd1f7fe50d4be0c2b0b776f1d9",
+  "prompts": {},
+  "sessions": {
+    "s_e5b6bee615f51e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "823263d3-af6c-425b-9af8-ac755ee06a54",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

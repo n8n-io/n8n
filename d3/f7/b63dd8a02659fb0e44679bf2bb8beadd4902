@@ -1,0 +1,68 @@
+packages/@n8n/nodes-langchain/nodes/vendors/MiniMax/test/transport.test.ts
+  s_d8b5e951456b7b::t_23eeb273015939 5-11,45,64,85,96-121,167-264
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.decide.service.test.ts
+  s_d8b5e951456b7b::t_23eeb273015939 41-45,98,115,135,137,185,196,201-211,227,230,277,290,426,433,439,456-459,496-556
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-eligibility.service.ts
+  s_d8b5e951456b7b::t_23eeb273015939 5,34,56-59,78,84,94-97,101-122,125
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.controller.integration.test.ts
+  s_d8b5e951456b7b::t_e1fe73c0d2fe0e 1601
+  s_d8b5e951456b7b::t_23eeb273015939 1321,1346-1351,1388,1399,1402,1406-1465,1587-1600,1602-1641,1760,1771-1772,1786,1789,1839,2891,2894-2897,2905-2917,2920-2923,2941,2952
+packages/@n8n/nodes-langchain/nodes/vendors/MiniMax/helpers/modelOptions.ts
+  s_d8b5e951456b7b::t_23eeb273015939 1-16
+packages/@n8n/nodes-langchain/nodes/vendors/MiniMax/actions/image/generate.operation.ts
+  s_d8b5e951456b7b::t_23eeb273015939 137
+packages/@n8n/api-types/src/dto/workflow-reviews/get-workflow-review-request-detail.dto.ts
+  s_d8b5e951456b7b::t_23eeb273015939 35-38
+packages/@n8n/db/src/repositories/workflow-review-request-reviewer.repository.ts
+  s_d8b5e951456b7b::t_23eeb273015939 63-75
+packages/@n8n/nodes-langchain/nodes/vendors/MiniMax/transport/index.ts
+  s_d8b5e951456b7b::t_23eeb273015939 10-15,32-33,53,63,96-140,145,159-201
+packages/@n8n/nodes-langchain/nodes/vendors/MiniMax/actions/audio/tts.operation.ts
+  s_d8b5e951456b7b::t_23eeb273015939 229
+packages/@n8n/nodes-langchain/nodes/vendors/MiniMax/actions/video/helpers.ts
+  s_d8b5e951456b7b::t_23eeb273015939 1-112
+packages/@n8n/nodes-langchain/nodes/vendors/MiniMax/actions/video/generate.t2v.operation.ts
+  s_d8b5e951456b7b::t_23eeb273015939 5,8,10-43,50,53-70,84-88,90,101-105,118-143,159-163,192-218,221-222
+packages/@n8n/nodes-langchain/nodes/vendors/MiniMax/actions/versionDescription.ts
+  s_d8b5e951456b7b::t_23eeb273015939 14-15
+packages/@n8n/nodes-langchain/nodes/vendors/MiniMax/helpers/interfaces.ts
+  s_d8b5e951456b7b::t_23eeb273015939 75-91
+packages/@n8n/nodes-langchain/nodes/vendors/MiniMax/test/operations.test.ts
+  s_d8b5e951456b7b::t_23eeb273015939 6,28-42,47,56-63,70-127,129-155,160,178,180,240,275,341-423,439-442,447-451,464-606,624-627,632-637,677
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-activity.integration.test.ts
+  s_d8b5e951456b7b::t_23eeb273015939 18,191-194,203,244,250,751-754,785-788
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-eligibility.service.test.ts
+  s_d8b5e951456b7b::t_23eeb273015939 7,24,30,49,54,65,69-81,83,98,109-111,117,127,143,146-147,150-151,159,162,165,190,197-209,225,238
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-inbox.detail.service.test.ts
+  s_d8b5e951456b7b::t_23eeb273015939 275,285,299
+packages/@n8n/nodes-langchain/nodes/vendors/MiniMax/actions/text/message.operation.ts
+  s_d8b5e951456b7b::t_23eeb273015939 19,27,30-47,237,281
+packages/frontend/editor-ui/src/features/workflow-reviews/views/WorkflowReviewRequestsView.test.ts
+  s_d8b5e951456b7b::t_090b76fd5f3edc 796
+packages/@n8n/nodes-langchain/nodes/llms/LmChatMinimax/LmChatMinimax.node.ts
+  s_d8b5e951456b7b::t_23eeb273015939 17,27-28,71,73-86,88-93
+packages/@n8n/nodes-langchain/nodes/vendors/MiniMax/actions/video/generate.i2v.operation.ts
+  s_d8b5e951456b7b::t_23eeb273015939 5,8,10-53,60,63-80,135-139,141,152-156,170-174,197-201,214,255-259,271-273,289-291,334,346,348,357-361,363-365,368-374,376-389,391-393,395-397,399-401,403-416,419-420
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
+  s_d8b5e951456b7b::t_23eeb273015939 90-91,649,665,670-682,707-708,713-717,734-736,766,770-783,786-790,794-835,837,851,867,876-882,884-893,896-898
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewDetailTabs.test.ts
+  s_d8b5e951456b7b::t_23eeb273015939 330
+packages/@n8n/nodes-langchain/nodes/llms/LmChatMinimax/test/LmChatMinimax.test.ts
+  s_d8b5e951456b7b::t_23eeb273015939 45,69-70,82-104,117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d3f7b63dd8a02659fb0e44679bf2bb8beadd4902",
+  "prompts": {},
+  "sessions": {
+    "s_d8b5e951456b7b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d598e382-1f10-4e94-a256-40ec7275df71",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

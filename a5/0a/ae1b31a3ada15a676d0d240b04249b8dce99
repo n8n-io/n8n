@@ -1,0 +1,26 @@
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_8cd1a0d19700c3::t_16dce98daa91e3 181,221,548
+packages/cli/src/modules/agents/agent-dependency-index.listener.ts
+  s_8cd1a0d19700c3::t_d9b103a68d89b1 41-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "a50aae1b31a3ada15a676d0d240b04249b8dce99",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8cd1a0d19700c3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "aa4d6b3b-305d-40d9-a0aa-5c144e99d387",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

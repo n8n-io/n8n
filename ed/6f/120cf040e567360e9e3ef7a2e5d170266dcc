@@ -1,0 +1,24 @@
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  s_0237a66f4d3f8f::t_cd902ad46ed8b1 18,42,68,93
+  s_0237a66f4d3f8f::t_806484e5907bd8 1-4
+  s_0237a66f4d3f8f::t_5f6a1d52b6e029 282-315
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_0237a66f4d3f8f::t_9fbe85d7e2c267 80
+  s_0237a66f4d3f8f::t_72db1c3cad8ce0 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ed6f120cf040e567360e9e3ef7a2e5d170266dcc",
+  "prompts": {},
+  "sessions": {
+    "s_0237a66f4d3f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "062aabfc-8220-486e-87b3-12e27a4c449a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

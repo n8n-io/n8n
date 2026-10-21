@@ -1,0 +1,19 @@
+packages/workflow/src/workflow-diff.ts
+  s_be34f2a9936255::t_f07c06a0b8de8f 289,291
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d0475cf9d8951548055f63379f08edd9d0db883d",
+  "prompts": {},
+  "sessions": {
+    "s_be34f2a9936255": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a0f2c47-6407-4069-a583-c102c8290868",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

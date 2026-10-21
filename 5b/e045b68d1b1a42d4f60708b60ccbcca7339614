@@ -1,0 +1,22 @@
+packages/cli/src/services/frontend.service.ts
+  s_d2c53940d73f52::t_3a6aa6f444bcbc 4,115,607-608,613
+packages/cli/src/services/__tests__/frontend.service.test.ts
+  s_d2c53940d73f52::t_3a6aa6f444bcbc 245,248,261,263
+  s_d2c53940d73f52::t_1c4b1d5f2258e1 283-299
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "5be045b68d1b1a42d4f60708b60ccbcca7339614",
+  "prompts": {},
+  "sessions": {
+    "s_d2c53940d73f52": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019edb75-2471-7e50-aa17-4c6333e509d1",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Romeo Balta <7095569+romeobalta@users.noreply.github.com>"
+    }
+  }
+}

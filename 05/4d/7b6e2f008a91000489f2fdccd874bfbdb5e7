@@ -1,0 +1,43 @@
+packages/cli/src/modules/otel/__tests__/otel.service.provider.test.ts
+  ai_agent 14,199-208
+packages/cli/src/modules/otel/__tests__/otel-lifecycle-handler.test.ts
+  s_97073c0a361e75::t_ed1bc924cc5116 3,30,116,278-302,521,654-707,747,844,1003,1019,1224
+  s_d601bc3096fe4d::t_e1a098aaecacd6 260-265,270-275,325
+  s_d601bc3096fe4d::t_11d806574f55f7 266-269
+  s_9b756ba1f80666::t_f9ebbca258d21d 708-710,1033-1034
+  s_97073c0a361e75::t_ea41865e21e03d 1318
+packages/cli/src/modules/otel/otel.constants.ts
+  ai_agent 34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "054d7b6e2f008a91000489f2fdccd874bfbdb5e7",
+  "prompts": {},
+  "sessions": {
+    "s_97073c0a361e75": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9cc86e9e-6f47-4840-a137-b63a117493e1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    },
+    "s_9b756ba1f80666": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b44936c5-6a25-4e1d-a9d5-02e0e688c96f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    },
+    "s_d601bc3096fe4d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "48fbda43-86ad-4b54-b85a-036da5f1f528",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

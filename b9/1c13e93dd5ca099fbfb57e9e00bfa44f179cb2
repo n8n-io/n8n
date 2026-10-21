@@ -1,0 +1,34 @@
+packages/@n8n/backend-network/src/http/env-proxy-http-agent.ts
+  s_e7760790520425::t_d644a348cc4313 27
+packages/@n8n/backend-network/src/http/env-proxy-https-agent.ts
+  s_e7760790520425::t_d644a348cc4313 19
+packages/@n8n/backend-network/src/http/__tests__/http-proxy.test.ts
+  s_492d84422f234f::t_be5a2c843188e2 239-254,256,258-270
+  s_492d84422f234f::t_484eb8c0051f26 255,257
+  s_492d84422f234f::t_044ab1e035b17c 63,68
+  s_492d84422f234f::t_eda82a93457639 1,4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b91c13e93dd5ca099fbfb57e9e00bfa44f179cb2",
+  "prompts": {},
+  "sessions": {
+    "s_492d84422f234f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8321b424-f1ea-46b7-85a6-36f95d4b04dc",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_e7760790520425": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7071808-db36-44b0-89d5-36f19af95018",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

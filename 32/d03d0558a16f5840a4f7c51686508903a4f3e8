@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentConfirmationModal.vue
+  s_33b3a5d26d402e::t_29c3339a605212 85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "32d03d0558a16f5840a4f7c51686508903a4f3e8",
+  "prompts": {},
+  "sessions": {
+    "s_33b3a5d26d402e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f657-0b1f-7541-85f7-25c3402a6bb1",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

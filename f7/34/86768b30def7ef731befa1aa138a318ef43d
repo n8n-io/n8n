@@ -1,0 +1,31 @@
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/__tests__/ToolRow.test.ts
+  s_081a931f85efb0::t_efea39263c2243 18,28
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/__tests__/ToolsConnectionModal.test.ts
+  s_081a931f85efb0::t_f214981d3a9508 548-549
+  s_081a931f85efb0::t_efea39263c2243 114-116,145-147,547
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/ToolsConnectionModal.vue
+  s_081a931f85efb0::t_df14559a28aebb 347-349,379,446
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/__tests__/DefaultDetailBody.test.ts
+  s_081a931f85efb0::t_efea39263c2243 16
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/__tests__/ToolCredentialPicker.test.ts
+  s_081a931f85efb0::t_efea39263c2243 51
+  s_081a931f85efb0::t_7b8c41fc18310b 172
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/CreateWorkflowRow.vue
+  s_081a931f85efb0::t_ad0b790f9ee934 21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f73486768b30def7ef731befa1aa138a318ef43d",
+  "prompts": {},
+  "sessions": {
+    "s_081a931f85efb0": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0c98b-a59d-723d-8d08-315178c379bf",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

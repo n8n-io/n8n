@@ -1,0 +1,117 @@
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_2d0acf98679717::t_90eb2546f05447 409-410
+packages/frontend/editor-ui/src/features/agents/agentSessions.store.ts
+  s_0a508b5c9b3535::t_de64415d6cb081 8,152-156
+  s_2d0acf98679717::t_fadb84deb3374e 204
+packages/@n8n/config/src/configs/agents.config.ts
+  s_2d0acf98679717::t_225484cd309097 66-69
+packages/frontend/editor-ui/src/features/agents/composables/useAgentThreadsApi.ts
+  s_0a508b5c9b3535::t_217a10df92d1a9 1,120-130
+  s_e1c3212beddb0e::t_950acab7c0930a 131-132
+packages/frontend/editor-ui/src/features/agents/composables/useAgentSessionLangSmithExport.ts
+  s_0a508b5c9b3535::t_f9fe7025f30093 1-62
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_2d0acf98679717::t_d560296dec1ca2 127-136
+packages/cli/src/modules/agents/__tests__/agent-session-langsmith-export.service.test.ts
+  s_2d0acf98679717::t_33644072e68348 1-380
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewDock.vue
+  s_0a508b5c9b3535::t_31a8b2972dd3ee 9,44-48,55-63,121-133,138
+  s_2d0acf98679717::t_48481c97301ce8 134-137,139
+packages/cli/src/modules/agents/agent-session-langsmith-export.service.ts
+  s_2d0acf98679717::t_27c55f5bfdd638 1-249,252,254-258,260-276,278-578
+  s_2d0acf98679717::t_1b90f917913576 250-251,253,259,277
+packages/cli/src/modules/agents/__tests__/agent-threads.controller.test.ts
+  s_2d0acf98679717::t_7c0a2c3672424a 22,31
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentSessionLangSmithExport.spec.ts
+  s_0a508b5c9b3535::t_1fa513ba602c14 1-136
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelineHeader.vue
+  s_2d0acf98679717::t_5b9d2d9f28a335 10-11
+  s_2d0acf98679717::t_2c9029ece9d50c 2-9,12,88,90-92,94-104
+  s_0a508b5c9b3535::t_88ce59aa722fff 31-32,38,89,93
+packages/@n8n/config/test/config.test.ts
+  s_2d0acf98679717::t_ef7214b5cdb182 686,733-739
+  s_a6d00dbfc2e0e2::t_84ec7ae0d7b4c1 740-741
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionTimelineView.vue
+  s_2d0acf98679717::t_660525cb8f055f 22
+  s_0a508b5c9b3535::t_ec36003aff055c 12,32-33,150-155,221-222
+  s_2d0acf98679717::t_93167b22bbe82c 147-149
+  s_2d0acf98679717::t_41feafa564b10a 34-36,138,225
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_0a508b5c9b3535::t_00bdb2195ca4f6 1448-1454
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionTimelineView.spec.ts
+  s_2d0acf98679717::t_60ae8ab5d40643 1-59,64-109
+  s_2d0acf98679717::t_43980e92ef1f24 60-63
+packages/@n8n/api-types/src/agents/types.ts
+  s_2d0acf98679717::t_836c8db026da04 241-244
+packages/cli/src/modules/agents/agent-threads.controller.ts
+  s_2d0acf98679717::t_ac204e8c58ee98 2,7,11-14,51-62
+  s_da1143ae5b26db::t_4b254b7436b6a2 63-64
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHeaders.test.ts
+  s_2d0acf98679717::t_b8f64ff4c3707a 85-86
+packages/cli/src/modules/agents/agents.module.ts
+  s_2d0acf98679717::t_56de6b9d315e15 2,158,168-169
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPreviewDock.test.ts
+  s_0a508b5c9b3535::t_a42dee3820a1fd 9,11-12,19-26,92-94,172-191
+  s_c3df366cb3c2f4::t_3b35eb352290e5 192
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "91e8349c6e4276eba8b96ad5684bded1d3dc44e5",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_0a508b5c9b3535": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "dac6a5df-228e-4db9-8c65-77ff2204515a",
+        "model": "gpt-5.6-sol-xhigh-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_2d0acf98679717": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7511553b-ef45-430c-a3d3-8f80407b4832",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_a6d00dbfc2e0e2": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "596d6dfd-5526-4b17-bcd1-a08d0fbd5901",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_c3df366cb3c2f4": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "9eb7649b-90db-4208-a433-c705189a2dde",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_da1143ae5b26db": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "f330e381-b077-4ce8-bdf9-dd192f1bd6df",
+        "model": "gpt-5.6-sol-xhigh-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_e1c3212beddb0e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "11aa4881-0aad-4ab9-9168-19df845b0dd6",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

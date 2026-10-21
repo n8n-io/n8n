@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.vue
+  s_3c8860b713ddc9::t_c4c6ccd1eaf51f 283-291
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1ead2f823764cef269b5cb10506686f4d62046ac",
+  "prompts": {},
+  "sessions": {
+    "s_3c8860b713ddc9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cdaa2f6a-d47e-49df-930b-860d7d20015f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

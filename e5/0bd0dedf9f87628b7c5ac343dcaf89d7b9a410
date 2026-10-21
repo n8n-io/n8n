@@ -1,0 +1,53 @@
+packages/nodes-base/nodes/Zulip/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_419da6deed51ba 1-5,8-30
+packages/nodes-base/nodes/Zoom/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_5eac152753db11 1-25
+packages/nodes-base/nodes/Zoom/GenericFunctions.ts
+  s_fc9a9de609f1e0::t_f1005fb5a24673 9-10,12,17,24,31,56
+packages/nodes-base/nodes/Zoom/Zoom.node.ts
+  s_2dd6068abbadea::t_3c96f8f6f7fe64 4,181-187,203,209-215,234,336-342,437
+packages/nodes-base/nodes/Zulip/GenericFunctions.ts
+  s_0f34e61c0d2ecc::t_d0f36359c5d85b 10-11,13,22,26,32,43
+packages/nodes-base/nodes/Zulip/Zulip.node.ts
+  s_2dd6068abbadea::t_c1a583aa41cc52 11,84,100-104,119,152,165,184,191-195,200-204,225,256,267-272,334,342-347,398,420-425,439,449,473-478,484-489
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e50bd0dedf9f87628b7c5ac343dcaf89d7b9a410",
+  "prompts": {},
+  "sessions": {
+    "s_0f34e61c0d2ecc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae6bbfaf0c713f71a",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2dd6068abbadea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a5ca9d3eadcf574b0",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_fc9a9de609f1e0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a723d5d474f9dd559",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/frontend/@n8n/design-system/vite.config.mts
+  s_54f44f88f4a743::t_c2c0c0276d9fbc 43-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "bf0d75171e5a3386606bc1a8171d2c2599bf30b2",
+  "prompts": {},
+  "sessions": {
+    "s_54f44f88f4a743": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f825bd7-be35-4f1b-92f8-f4daddeebcfe",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

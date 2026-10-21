@@ -1,0 +1,37 @@
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_03a0908a4e52a5::t_ad21e7773ea56b 769
+  s_03a0908a4e52a5::t_e8eddaaaf2c399 690-691,696,699-705
+packages/@n8n/instance-ai/src/tools/__tests__/workflows.tool.test.ts
+  s_03a0908a4e52a5::t_67ecfef2f38e18 1799-1827
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/setup-skip-state.test.ts
+  s_03a0908a4e52a5::t_ea3b7dc2bb16ae 210-220,222
+  s_03a0908a4e52a5::t_8a7c6fdb419791 174,182
+  ai_agent 176
+  s_03a0908a4e52a5::t_ad5971a45d0e21 160-162,165,170-173,175,177-181,183-184
+packages/@n8n/instance-ai/src/tools/workflows/setup-skip-state.ts
+  s_03a0908a4e52a5::t_d8a2f8adbe3874 52-53
+  s_03a0908a4e52a5::t_5e756958cf0bdf 40
+  s_03a0908a4e52a5::t_e9eaa85a442c3a 118-119,121-122,127-132,134
+  s_03a0908a4e52a5::t_e7d64668fa98c2 139-149,151,154-159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "050c7dd35a87379972a7131cb52aff51e854e68d",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_03a0908a4e52a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae5a718f-9227-4093-bfce-05c59596700d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

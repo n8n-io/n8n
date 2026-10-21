@@ -1,0 +1,19 @@
+packages/cli/src/public-api/__tests__/swagger-spec.test.ts
+  s_a1ffd067a33fea::t_1ffeb981047e63 48-57,60,65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5d8a3b19b40bee6830f0102c0a81f140a64d0b6d",
+  "prompts": {},
+  "sessions": {
+    "s_a1ffd067a33fea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "57318cd2-38a2-4765-9b9f-5a07cf98cf54",
+        "model": "unknown"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

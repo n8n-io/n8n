@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/worksheet/getAll.operation.ts
+  s_d57dc1bdefde8e::t_34a45cbea79507 54
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/descriptions/common.descriptions.ts
+  s_d57dc1bdefde8e::t_63e750e24da0b2 12
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/table/getAll.operation.ts
+  s_d57dc1bdefde8e::t_249052ff8a5180 54
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/transport/index.ts
+  s_d57dc1bdefde8e::t_80916d6754ac4a 71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "57bd703e3b46c6605efd942ee9068a46d5d4d29c",
+  "prompts": {},
+  "sessions": {
+    "s_d57dc1bdefde8e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7bb02aa9-ecfd-4bd9-ad13-9c30e50de22b",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

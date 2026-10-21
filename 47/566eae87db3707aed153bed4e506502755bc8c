@@ -1,0 +1,19 @@
+packages/@n8n/backend-network/src/http/index.ts
+  s_d726b8dcbbdf2d::t_f3bcf788be998b 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "47566eae87db3707aed153bed4e506502755bc8c",
+  "prompts": {},
+  "sessions": {
+    "s_d726b8dcbbdf2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9967ace-b340-4e00-9c2b-f4527ce3862f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/@n8n/config/src/configs/database.config.ts
+  ai_agent 269-275
+packages/@n8n/config/src/index.ts
+  ai_agent 63
+packages/cli/src/services/pruning/execution-pruning-soft-delete.task.ts
+  ai_agent 1,3,24-31,34
+packages/cli/src/services/pruning/__tests__/execution-pruning-soft-delete.task.test.ts
+  ai_agent 1-2,11-15,19,29-43
+packages/cli/src/services/pruning/__tests__/workflow-history-pruning.task.test.ts
+  ai_agent 1-2,11-15,24-38
+packages/cli/src/services/pruning/workflow-history-pruning.task.ts
+  ai_agent 1,3,24-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "80c3c162103823fa0f55f7c9f4e7cd2a7984554c",
+  "prompts": {}
+}

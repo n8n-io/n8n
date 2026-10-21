@@ -1,0 +1,29 @@
+packages/@n8n/engine/src/execution/__tests__/step-execution.integration.test.ts
+  s_ac769901b0c47e::t_bdedf598ddbe5e 21,94
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 66,173,176-177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2b9636fc1d5145a4091692c51874b1f11f08cc1f",
+  "prompts": {},
+  "sessions": {
+    "s_9a2a7a8eef9b2d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b0a9-aea8-7a51-a10e-19a41029ada1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_ac769901b0c47e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c884-abdf-7210-b478-ed802e59b049",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

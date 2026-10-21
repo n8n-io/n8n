@@ -1,0 +1,39 @@
+packages/frontend/editor-ui/src/features/shared/tags/components/TagsDropdown.innerSelect.test.ts
+  s_f423ff873a72a0::t_46c08f3683e000 1-74
+packages/frontend/@n8n/design-system/src/components/DateRangePicker/DateRangePicker.constants.ts
+  s_f423ff873a72a0::t_f2060291378d9c 1-14
+packages/frontend/@n8n/design-system/src/components/N8nSelect/Select.exposed.test.ts
+  s_f423ff873a72a0::t_46c08f3683e000 1-200
+packages/frontend/@n8n/design-system/src/components/DateRangePicker/DateRangePicker.vue
+  s_7f74a587f3f1f3::t_c8e9b187b9c0fd 23,25
+packages/frontend/@n8n/design-system/src/components/N8nActionDropdown/ActionDropdown.vue
+  s_7f74a587f3f1f3::t_45e8117488a938 5
+packages/frontend/@n8n/design-system/src/components/N8nDatatable/Datatable.vue
+  s_7f74a587f3f1f3::t_2dc9dda28385b1 5
+packages/frontend/@n8n/design-system/src/components/TableHeaderControlsButton/TableHeaderControlsButton.test.ts
+  s_7f74a587f3f1f3::t_17001fb004b66d 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "b6dcfaca59166fc024880fbefa26294a5011932c",
+  "prompts": {},
+  "sessions": {
+    "s_7f74a587f3f1f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "59ea56e4-9924-44d1-a099-c929e348d2cc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_f423ff873a72a0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "de2c137b-263a-410e-bb96-f3b048f5f0a8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

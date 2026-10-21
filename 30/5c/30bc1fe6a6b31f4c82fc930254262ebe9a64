@@ -1,0 +1,30 @@
+docs/generated/postgres-schema/README.md
+  h_434a0dd003c3fd 56,248-249,876-887
+docs/generated/postgres-schema/public.data_table.md
+  h_434a0dd003c3fd 8,42,75-86
+docs/generated/postgres-schema/public.data_table_column.md
+  h_434a0dd003c3fd 9,13
+docs/generated/postgres-schema/public.data_table_row_automation.md
+  h_434a0dd003c3fd 1-99
+docs/generated/postgres-schema/public.workflow_entity.md
+  h_434a0dd003c3fd 12,72,167-178
+docs/generated/sqlite-schema/README.md
+  h_434a0dd003c3fd 56,231-232,863-874
+docs/generated/sqlite-schema/data_table.md
+  h_434a0dd003c3fd 19,48,81-92
+docs/generated/sqlite-schema/data_table_row_automation.md
+  h_434a0dd003c3fd 1-103
+docs/generated/sqlite-schema/workflow_entity.md
+  h_434a0dd003c3fd 23,71,168-179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "305c30bc1fe6a6b31f4c82fc930254262ebe9a64",
+  "prompts": {},
+  "humans": {
+    "h_434a0dd003c3fd": {
+      "author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

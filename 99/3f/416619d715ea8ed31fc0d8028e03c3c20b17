@@ -1,0 +1,35 @@
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_c128925404d6f5::t_73a25b7ce66d22 2453-2456,2550-2551
+packages/cli/src/modules/instance-ai/eval/thread-restore.service.ts
+  s_c128925404d6f5::t_73a25b7ce66d22 8-14,18,26-27,71,74-75,263-271,285-287,298-299,305,311,317-318,355-357,359-368,373,378-380,382-386,388-391,393-396
+  s_c128925404d6f5::t_b891210d681f13 243,248-254,293,306-310,374-377,381,387,392
+  s_c128925404d6f5::t_818f5e880372c6 397
+packages/cli/src/modules/instance-ai/eval/__tests__/thread-restore.service.integration.test.ts
+  s_c128925404d6f5::t_7c4b888cc7f736 222,225-226
+  s_c128925404d6f5::t_73a25b7ce66d22 3,6,13-14,45,48-49,127,130-131
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_c128925404d6f5::t_73a25b7ce66d22 1049-1051,1146-1147
+  s_c128925404d6f5::t_b891210d681f13 1102-1104,1110
+packages/@n8n/instance-ai/evaluations/harness/conversation-seed.ts
+  s_c128925404d6f5::t_73a25b7ce66d22 32-33
+packages/cli/src/modules/instance-ai/eval/__tests__/thread-restore.service.test.ts
+  s_c128925404d6f5::t_b891210d681f13 159-178
+  s_c128925404d6f5::t_73a25b7ce66d22 3-10,21-22,41,44-45,49,52-53,65,114,124-128,135-158,179-208
+  s_c128925404d6f5::t_368a2c06b92dc1 209
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "993f416619d715ea8ed31fc0d8028e03c3c20b17",
+  "prompts": {},
+  "sessions": {
+    "s_c128925404d6f5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6a04e249-8370-4127-a752-60228b3ff214",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

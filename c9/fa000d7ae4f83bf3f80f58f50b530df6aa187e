@@ -1,0 +1,40 @@
+packages/cli/src/public-api/v1/handlers/n8n-packages/__tests__/n8n-packages.handler.test.ts
+  s_8631ec10eb1199::t_e53d77f07b37f7 29
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_8631ec10eb1199::t_e53d77f07b37f7 1
+packages/@n8n/api-types/src/dto/index.ts
+  s_8631ec10eb1199::t_e53d77f07b37f7 488-496
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.schema.ts
+  s_8631ec10eb1199::t_e53d77f07b37f7 1-213
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  s_8631ec10eb1199::t_e53d77f07b37f7 6-16,19-22,26,49,57,80,88,111-113,116-132,139,153,163,174,188,198,209,223,232,244,271,280,295-298,307,320,336-339,347,359,373-376,385,398,411-422,430,442,453-456,465,478,486,503-507,516-529,536-539,550,564,574-577,588,602,612-615,626,640,650-653,664,678,688-689,702,716
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_8631ec10eb1199::t_e53d77f07b37f7 3,6-9,98-192,202-235
+  s_8631ec10eb1199::t_267ac6005ee14a 193-201
+packages/@n8n/api-types/src/dto/packages/import-result.dto.ts
+  s_8631ec10eb1199::t_e53d77f07b37f7 1-127
+packages/cli/src/public-api/v1/controllers/index.ts
+  s_8631ec10eb1199::t_e53d77f07b37f7 18
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_8631ec10eb1199::t_e53d77f07b37f7 25-30,166-168
+packages/@n8n/api-types/src/dto/packages/__tests__/import-result.dto.test.ts
+  s_8631ec10eb1199::t_e53d77f07b37f7 1-313
+packages/cli/src/public-api/v1/controllers/n8n-packages.public.controller.ts
+  s_8631ec10eb1199::t_e53d77f07b37f7 1-135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c9fa000d7ae4f83bf3f80f58f50b530df6aa187e",
+  "prompts": {},
+  "sessions": {
+    "s_8631ec10eb1199": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77132272-9e69-4c36-85e9-f1136efb4942",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

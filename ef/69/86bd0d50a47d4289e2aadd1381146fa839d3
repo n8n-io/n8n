@@ -1,0 +1,19 @@
+.gitignore
+  s_f019419fbecb2c::t_713bad55ac9642 38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ef6986bd0d50a47d4289e2aadd1381146fa839d3",
+  "prompts": {},
+  "sessions": {
+    "s_f019419fbecb2c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a42e06b0-e319-474d-a003-d3f5ee778b5f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

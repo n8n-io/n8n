@@ -1,0 +1,44 @@
+packages/nodes-base/credentials/common/aws/system-credentials-sdk.test.ts
+  s_3d207dda725269::t_93ff75eda191e4 38-45
+  s_3d207dda725269::t_91a2fad5829f87 145-146,154
+  s_3d207dda725269::t_b7d1e5bdced414 116
+  s_3d207dda725269::t_647c678f12efe1 278,283,285
+  s_3d207dda725269::t_692eaa12dc7d50 178
+  s_3d207dda725269::t_728adf884af679 1-37,46-115,117-144,147-153,155-177,179-277,279-282,284,286-287
+packages/nodes-base/credentials/common/aws/system-credentials-utils.test.ts
+  s_3d207dda725269::t_2f17c3b90ba5e0 8-11
+packages/nodes-base/credentials/common/aws/system-credentials-utils.ts
+  s_3d207dda725269::t_02118d34bce592 239
+  s_3d207dda725269::t_99b5df27a2453d 101
+  s_3d207dda725269::t_631eabe613d99f 6-13
+  s_3d207dda725269::t_209d46fead69cd 308
+  s_3d207dda725269::t_990e27cdf3baa2 73
+  s_3d207dda725269::t_153337d5426627 72
+  s_3d207dda725269::t_003ba74ef9a0c2 183
+  s_3d207dda725269::t_0349ef735336d5 240
+  s_3d207dda725269::t_758c0a90c542c4 100
+  s_3d207dda725269::t_ee55849690cc8c 14-15
+  s_3d207dda725269::t_d13040bab501ef 184
+  s_3d207dda725269::t_40684ab6782be3 307
+packages/nodes-base/credentials/common/aws/system-credentials-sdk.ts
+  s_3d207dda725269::t_475d62a02a2b6d 41-43
+  s_3d207dda725269::t_49d1d8615d11f0 35-39
+  s_3d207dda725269::t_456adecb913d79 1-12,20-24,32-34,40,44-61,65,69-79,136
+  s_3d207dda725269::t_e29efe8b0a06df 13-19,25-31,62-64,66-68,80-135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "a3708501e5996c796a092c0ad9a84121e280d8bc",
+  "prompts": {},
+  "sessions": {
+    "s_3d207dda725269": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aaa5a934-174d-46b7-ae75-dd401cfe62e4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,35 @@
+packages/cli/src/public-api/v1/controllers/role-mapping-rules.public.controller.ts
+  s_410439834a2303::t_5b233d88f8d80e 67
+  s_410439834a2303::t_2112bc63c25dc1 27-30
+packages/cli/src/public-api/v1/controllers/tags.public.controller.ts
+  s_410439834a2303::t_fcb206a637b8d5 36
+  s_410439834a2303::t_96e08d7706f006 15-18
+packages/cli/src/public-api/v1/shared/services/pagination.service.ts
+  h_5d40c27a8fdfd1 17-18
+  s_410439834a2303::t_ebb113f516c1b2 3-4,16,19-43
+  s_410439834a2303::t_c9b1f9564e2b94 44
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_410439834a2303::t_eddf464b3ccd1c 41-45
+  s_410439834a2303::t_c1a94a16407edb 329
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "f044fd95e503a90b19f9fb0fe2554f6c8479dc5b",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_410439834a2303": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a25fb459-490e-42bf-991a-a55d814e63f2",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

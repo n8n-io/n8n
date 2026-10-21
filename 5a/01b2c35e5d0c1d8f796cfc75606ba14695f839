@@ -1,0 +1,20 @@
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_6c74a1c31057b2::t_1f4ab576aace72 203-204
+  s_6c74a1c31057b2::t_daabed21a585b8 4544,4547
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "5a01b2c35e5d0c1d8f796cfc75606ba14695f839",
+  "prompts": {},
+  "sessions": {
+    "s_6c74a1c31057b2": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a2ede306-7ba6-415f-9917-1ce64c69ea81",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

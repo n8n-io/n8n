@@ -1,0 +1,192 @@
+packages/nodes-base/nodes/Discord/__schema__/v2.0.0/channel/update.json
+  h_44f8d1c0f2f8c4 1-56
+packages/nodes-base/nodes/Discord/__schema__/v2.0.0/member/ban.json
+  h_44f8d1c0f2f8c4 1-9
+packages/nodes-base/nodes/Discord/__schema__/v2.0.0/member/kick.json
+  h_44f8d1c0f2f8c4 1-9
+packages/nodes-base/nodes/Discord/__schema__/v2.0.0/member/roleRemove.json
+  h_44f8d1c0f2f8c4 1-9
+packages/nodes-base/nodes/Discord/__schema__/v2.0.0/member/timeout.json
+  h_44f8d1c0f2f8c4 1-9
+packages/nodes-base/nodes/Discord/__schema__/v2.0.0/member/unban.json
+  h_44f8d1c0f2f8c4 1-9
+packages/nodes-base/nodes/Discord/__schema__/v2.0.0/webhook/sendLegacy.json
+  h_44f8d1c0f2f8c4 1-142
+packages/nodes-base/nodes/Google/BigQuery/__schema__/v2.0.0/insert.json
+  h_44f8d1c0f2f8c4 1-9
+packages/nodes-base/nodes/Microsoft/Excel/__schema__/v2.0.0/table/addTable.json
+  h_44f8d1c0f2f8c4 1-51
+packages/nodes-base/nodes/Microsoft/Excel/__schema__/v2.0.0/table/append.json
+  h_44f8d1c0f2f8c4 1-9
+packages/nodes-base/nodes/Microsoft/Excel/__schema__/v2.0.0/table/convertToRange.json
+  h_44f8d1c0f2f8c4 1-18
+packages/nodes-base/nodes/Microsoft/Excel/__schema__/v2.0.0/table/deleteTable.json
+  h_44f8d1c0f2f8c4 1-9
+packages/nodes-base/nodes/Microsoft/Excel/__schema__/v2.0.0/table/getColumns.json
+  h_44f8d1c0f2f8c4 1-9
+packages/nodes-base/nodes/Microsoft/Excel/__schema__/v2.0.0/table/getRows.json
+  h_44f8d1c0f2f8c4 1-18
+packages/nodes-base/nodes/Microsoft/Excel/__schema__/v2.0.0/table/lookup.json
+  h_44f8d1c0f2f8c4 1-18
+packages/nodes-base/nodes/Microsoft/Excel/__schema__/v2.0.0/workbook/addWorksheet.json
+  h_44f8d1c0f2f8c4 1-18
+packages/nodes-base/nodes/Microsoft/Excel/__schema__/v2.0.0/workbook/deleteWorkbook.json
+  h_44f8d1c0f2f8c4 1-9
+packages/nodes-base/nodes/Microsoft/Excel/__schema__/v2.0.0/workbook/getAll.json
+  h_44f8d1c0f2f8c4 1-12
+packages/nodes-base/nodes/Microsoft/Excel/__schema__/v2.0.0/worksheet/clear.json
+  h_44f8d1c0f2f8c4 1-9
+packages/nodes-base/nodes/Microsoft/Excel/__schema__/v2.0.0/worksheet/deleteWorksheet.json
+  h_44f8d1c0f2f8c4 1-9
+packages/nodes-base/nodes/Microsoft/Excel/__schema__/v2.0.0/worksheet/getAll.json
+  h_44f8d1c0f2f8c4 1-12
+packages/nodes-base/nodes/Microsoft/Excel/__schema__/v2.0.0/worksheet/readRows.json
+  h_44f8d1c0f2f8c4 1-9
+packages/nodes-base/nodes/Microsoft/Excel/__schema__/v2.1.0/worksheet/upsert.json
+  h_44f8d1c0f2f8c4 1-12
+packages/nodes-base/nodes/Microsoft/OneDrive/__schema__/v1.1.0/file/get.json
+  h_44f8d1c0f2f8c4 1-21
+packages/nodes-base/nodes/Microsoft/OneDrive/__schema__/v1.1.0/file/move.json
+  h_44f8d1c0f2f8c4 1-21
+packages/nodes-base/nodes/Microsoft/OneDrive/__schema__/v1.1.0/file/upload.json
+  h_44f8d1c0f2f8c4 1-12
+packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/calendar/delete.json
+  h_44f8d1c0f2f8c4 1-9
+packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/calendar/update.json
+  h_44f8d1c0f2f8c4 1-79
+packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/contact/update.json
+  h_44f8d1c0f2f8c4 1-197
+packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/servicePrincipal/move.json
+  h_44f8d1c0f2f8c4 1-9
+packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/channel/deleteChannel.json
+  h_44f8d1c0f2f8c4 1-9
+packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/channel/update.json
+  h_44f8d1c0f2f8c4 1-9
+packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/channelMessage/get.json
+  h_44f8d1c0f2f8c4 1-119
+packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/channelMessage/getAllReplies.json
+  h_44f8d1c0f2f8c4 1-27
+packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/channelMessage/reply.json
+  h_44f8d1c0f2f8c4 1-119
+packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/onlineMeeting/create.json
+  h_44f8d1c0f2f8c4 1-21
+packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/onlineMeeting/get.json
+  h_44f8d1c0f2f8c4 1-81
+packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/task/deleteTask.json
+  h_44f8d1c0f2f8c4 1-9
+packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/task/get.json
+  h_44f8d1c0f2f8c4 1-179
+packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/task/update.json
+  h_44f8d1c0f2f8c4 1-9
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/activity/create.json
+  h_44f8d1c0f2f8c4 1-127
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/activity/delete.json
+  h_44f8d1c0f2f8c4 1-9
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/activity/get.json
+  h_44f8d1c0f2f8c4 1-127
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/activity/getAll.json
+  h_44f8d1c0f2f8c4 1-127
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/activity/update.json
+  h_44f8d1c0f2f8c4 1-127
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/deal/create.json
+  h_44f8d1c0f2f8c4 1-164
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/deal/delete.json
+  h_44f8d1c0f2f8c4 1-9
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/deal/duplicate.json
+  h_44f8d1c0f2f8c4 1-319
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/deal/get.json
+  h_44f8d1c0f2f8c4 1-164
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/deal/getAll.json
+  h_44f8d1c0f2f8c4 1-164
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/deal/search.json
+  h_44f8d1c0f2f8c4 1-117
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/deal/update.json
+  h_44f8d1c0f2f8c4 1-164
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/dealProduct/add.json
+  h_44f8d1c0f2f8c4 1-91
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/dealProduct/getAll.json
+  h_44f8d1c0f2f8c4 1-91
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/dealProduct/remove.json
+  h_44f8d1c0f2f8c4 1-9
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/dealProduct/update.json
+  h_44f8d1c0f2f8c4 1-91
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/file/delete.json
+  h_44f8d1c0f2f8c4 1-9
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/file/get.json
+  h_44f8d1c0f2f8c4 1-127
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/file/update.json
+  h_44f8d1c0f2f8c4 1-127
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/lead/create.json
+  h_44f8d1c0f2f8c4 1-100
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/lead/delete.json
+  h_44f8d1c0f2f8c4 1-9
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/lead/get.json
+  h_44f8d1c0f2f8c4 1-100
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/lead/getAll.json
+  h_44f8d1c0f2f8c4 1-100
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/lead/update.json
+  h_44f8d1c0f2f8c4 1-100
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/note/create.json
+  h_44f8d1c0f2f8c4 1-136
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/note/delete.json
+  h_44f8d1c0f2f8c4 1-9
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/note/get.json
+  h_44f8d1c0f2f8c4 1-136
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/note/getAll.json
+  h_44f8d1c0f2f8c4 1-136
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/note/update.json
+  h_44f8d1c0f2f8c4 1-136
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/organization/delete.json
+  h_44f8d1c0f2f8c4 1-9
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/organization/get.json
+  h_44f8d1c0f2f8c4 1-74
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/organization/getAll.json
+  h_44f8d1c0f2f8c4 1-74
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/organization/update.json
+  h_44f8d1c0f2f8c4 1-74
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/person/create.json
+  h_44f8d1c0f2f8c4 1-110
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/person/delete.json
+  h_44f8d1c0f2f8c4 1-9
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/person/get.json
+  h_44f8d1c0f2f8c4 1-110
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/person/getAll.json
+  h_44f8d1c0f2f8c4 1-110
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/person/update.json
+  h_44f8d1c0f2f8c4 1-110
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/product/create.json
+  h_44f8d1c0f2f8c4 1-105
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/product/delete.json
+  h_44f8d1c0f2f8c4 1-9
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/product/get.json
+  h_44f8d1c0f2f8c4 1-105
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/product/getAll.json
+  h_44f8d1c0f2f8c4 1-105
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/product/search.json
+  h_44f8d1c0f2f8c4 1-50
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/product/update.json
+  h_44f8d1c0f2f8c4 1-105
+packages/nodes-base/nodes/Slack/__schema__/v2.3.0/channel/archive.json
+  h_44f8d1c0f2f8c4 1-9
+packages/nodes-base/nodes/Slack/__schema__/v2.3.0/userGroup/create.json
+  h_44f8d1c0f2f8c4 1-82
+packages/nodes-base/nodes/Slack/__schema__/v2.3.0/userGroup/disable.json
+  h_44f8d1c0f2f8c4 1-99
+packages/nodes-base/nodes/Slack/__schema__/v2.3.0/userGroup/enable.json
+  h_44f8d1c0f2f8c4 1-99
+packages/nodes-base/nodes/Slack/__schema__/v2.3.0/userGroup/getAll.json
+  h_44f8d1c0f2f8c4 1-101
+packages/nodes-base/nodes/Slack/__schema__/v2.3.0/userGroup/update.json
+  h_44f8d1c0f2f8c4 1-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "2f543c3fbe736d72bdc3fa815bbf409e7d898de4",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

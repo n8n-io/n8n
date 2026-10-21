@@ -1,0 +1,64 @@
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/__tests__/N8nChatAgentSection.test.ts
+  s_e3560b551eac11::t_f4c230a3b19a59 70-75
+  s_71e25d45a5ee90::t_d615233b59a7c7 9,83
+packages/frontend/editor-ui/src/features/agents/composables/useAgentsN8nChatFlag.ts
+  s_9a6001e67297f0::t_3da763ba2ec00e 5
+  ai_agent 6-9,11,16-19,23,34-46
+  s_9a6001e67297f0::t_3bfdf51b3ea653 10
+  s_71e25d45a5ee90::t_0c8f175148f02e 22,28
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentsN8nChatFlag.test.ts
+  s_71e25d45a5ee90::t_7b1609fe9dd70a 51-52,56-60
+  s_71e25d45a5ee90::t_493acce43d52ac 53-55
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_e3560b551eac11::t_70c6d277173029 2
+  s_e3560b551eac11::t_8a0e61a94aaacb 34,85,268-269,1337,1350,1362-1372
+  s_e3560b551eac11::t_18f22b995308cc 263,273-279
+  s_e3560b551eac11::t_20816cb48c3d70 264-267,270
+  s_e3560b551eac11::t_a76e81cb14f793 271-272
+  s_e3560b551eac11::t_b57bfe2897c60f 280-281
+  s_e3560b551eac11::t_0e8d80b587874c 287
+  s_71e25d45a5ee90::t_3c2f196bf4365d 288
+  s_e3560b551eac11::t_e57dccd7337aab 290-291
+  s_e3560b551eac11::t_10835c6533feac 303
+  s_e3560b551eac11::t_5d182132a48107 304
+  s_e3560b551eac11::t_ba0783fdd791b4 314-315,327,337-338,340
+  s_e3560b551eac11::t_6d634dc45f6ff7 415-417,423-425
+  s_e3560b551eac11::t_b732e9079a571e 504
+  s_e3560b551eac11::t_8d845c9c2b79ef 1334,1336,1338-1349,1351-1361
+  ai_agent 1335
+  s_e3560b551eac11::t_2411cd76711618 1373,1375
+  s_e3560b551eac11::t_74b46c3001a67d 1374
+  s_71e25d45a5ee90::t_d615233b59a7c7 460
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d7e7ea1b17aff19a8c7ef95068604ffdf91c378e",
+  "prompts": {},
+  "sessions": {
+    "s_71e25d45a5ee90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ca6b762-f376-4a31-af78-4066f186c7bb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    },
+    "s_9a6001e67297f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f72ae404-381c-4905-9080-63d9e62dffe6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    },
+    "s_e3560b551eac11": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7b46ea8-2f97-424a-81d9-bb9c3745b1ba",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

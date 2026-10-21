@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Microsoft/Outlook/v2/descriptions/mailbox.description.ts
+  s_622e6646e7b730::t_0cb465c956dcf3 20-21,23
+packages/nodes-base/nodes/Microsoft/ToDo/descriptions/TargetDescription.ts
+  s_622e6646e7b730::t_17e877eb06f957 19
+  s_622e6646e7b730::t_ba2bd32e4a6409 32
+packages/nodes-base/nodes/Microsoft/OneDrive/descriptions/TargetDescription.ts
+  s_622e6646e7b730::t_22006da4a3db6c 74-75,86
+  s_622e6646e7b730::t_de87a41f4e8ff5 47-48,59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "0675cde4c2298222f11208be557ae8b07e266b2a",
+  "prompts": {},
+  "sessions": {
+    "s_622e6646e7b730": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "98c75d55-55d1-42c2-8446-e3014a2c5488",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}

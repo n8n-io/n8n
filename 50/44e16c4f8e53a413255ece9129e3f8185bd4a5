@@ -1,0 +1,16 @@
+packages/cli/src/modules/agents/agent-config.service.ts
+  h_7555c3ee6524cf 67
+packages/frontend/editor-ui/src/features/agents/utils/build-exported-agent-json.ts
+  h_7555c3ee6524cf 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5044e16c4f8e53a413255ece9129e3f8185bd4a5",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

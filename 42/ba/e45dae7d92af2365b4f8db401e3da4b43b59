@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_14bbae78eb49a2::t_3faa0134ba0424 911-924,926-929,931-946
+packages/cli/src/modules/agents/plans/agent-plan-tools.ts
+  s_14bbae78eb49a2::t_3faa0134ba0424 167-168,183-196,198-201,203-218,233
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "42bae45dae7d92af2365b4f8db401e3da4b43b59",
+  "prompts": {},
+  "sessions": {
+    "s_14bbae78eb49a2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c2f9-97aa-73d1-bf6a-7b613bf7132f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

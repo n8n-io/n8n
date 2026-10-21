@@ -1,0 +1,66 @@
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/README.md
+  s_aa0df5beb8f0d6::t_dff4c46d44d202 9-18
+packages/frontend/editor-ui/src/features/workflows/canvas/components/WorkflowCanvas.vue
+  s_aa0df5beb8f0d6::t_ad6b0d77cda0af 308
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/FollowUpBar.vue
+  s_aa0df5beb8f0d6::t_a56866789b5b69 13
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/WorkflowGenerativeUiDev.vue
+  s_aa0df5beb8f0d6::t_124e16fe69da1e 25-26,28-31
+  ai_agent 38-42
+  s_aa0df5beb8f0d6::t_415a531640185c 27
+  s_aa0df5beb8f0d6::t_5124c5aca4d842 7
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/FollowUpBar.test.ts
+  s_aa0df5beb8f0d6::t_9fcd6874338c94 1-63,65-67
+  s_aa0df5beb8f0d6::t_4470f700d8617b 64
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/ViewPicker.test.ts
+  s_aa0df5beb8f0d6::t_84029993f2f75f 51,58
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/ViewPicker.vue
+  s_aa0df5beb8f0d6::t_f731d7a59c60c2 10,15
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/playground/PlaygroundView.vue
+  s_aa0df5beb8f0d6::t_73f6e8c2c3764d 149
+  s_aa0df5beb8f0d6::t_e997f3c6c81fa7 189-190
+  s_aa0df5beb8f0d6::t_cc532db0e5ce99 156
+  s_aa0df5beb8f0d6::t_50297fe90453e8 63
+  s_aa0df5beb8f0d6::t_fe90a9122b40f7 202
+  s_aa0df5beb8f0d6::t_db29306f9eebda 256-258
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/WorkflowGenerativeUiDev.test.ts
+  s_aa0df5beb8f0d6::t_90fcd15e4f9d15 27
+  s_aa0df5beb8f0d6::t_e0e5fe29304e51 1-26,28-96
+packages/frontend/editor-ui/src/features/workflows/canvas/components/WorkflowCanvas.test.ts
+  s_aa0df5beb8f0d6::t_068a682572c2a5 93-110
+  s_aa0df5beb8f0d6::t_ddc8cf5dc4f83c 2
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/GenerativeUiOverlay.vue
+  s_aa0df5beb8f0d6::t_53b83fd04b8d59 81
+  s_aa0df5beb8f0d6::t_d01e52158c8d10 19
+  s_aa0df5beb8f0d6::t_0b549bd1372da5 7
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/workflowGenerativeUi.store.ts
+  s_aa0df5beb8f0d6::t_f65b3f91b3238e 187-188
+  s_aa0df5beb8f0d6::t_9682f18f7c0f38 127
+  s_aa0df5beb8f0d6::t_0e8b8595828138 250
+  s_aa0df5beb8f0d6::t_69cdb2e44daf36 202
+  s_aa0df5beb8f0d6::t_be606f9d7a0e92 112-113
+  s_aa0df5beb8f0d6::t_59d4d993f24d7a 65
+  s_aa0df5beb8f0d6::t_8f8008762347b7 3
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/workflowGenerativeUi.store.test.ts
+  s_aa0df5beb8f0d6::t_cbf970a1588e5f 6
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/GenerativeUiOverlay.test.ts
+  s_aa0df5beb8f0d6::t_fec7c573f0fac1 135-137
+  s_aa0df5beb8f0d6::t_f5b463579fc456 11
+  s_aa0df5beb8f0d6::t_258a7fad9b80a7 113-134,138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6ba50a32ba3e43355c83dfcf4af5fb0b35731b6c",
+  "prompts": {},
+  "sessions": {
+    "s_aa0df5beb8f0d6": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "bfac1941-abcb-45e6-8eb9-c5406de66263",
+        "model": "claude-opus-5-thinking-high"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

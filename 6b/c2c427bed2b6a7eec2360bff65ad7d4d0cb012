@@ -1,0 +1,112 @@
+packages/@n8n/api-types/src/dto/index.ts
+  s_5edca35f219ea5::t_0c48f78d29b0bb 148-149
+packages/cli/src/services/service-account-credential.service.ts
+  s_5edca35f219ea5::t_c5b59e3f0bb19b 1-4,6-56,61-68
+  s_5edca35f219ea5::t_db70d821a00a5c 57-60
+  s_5edca35f219ea5::t_be80b742a3032e 5
+packages/@n8n/api-types/src/dto/service-account-credentials/create-service-account-credential-request.dto.ts
+  s_5edca35f219ea5::t_bada207a7a39f4 1-9
+packages/cli/src/modules/oauth-server/oauth.controller.ts
+  s_5edca35f219ea5::t_39a0c980d589bd 88-144,146-147
+  s_5edca35f219ea5::t_b1df5e328e4940 17
+  s_5edca35f219ea5::t_6d0340794a5252 145
+  s_5edca35f219ea5::t_4230b8e6859e1e 85-87
+  s_5edca35f219ea5::t_909bb0919a8015 148-149
+  s_5edca35f219ea5::t_65822bcd0fd75d 80-84,185,263
+packages/cli/src/modules/oauth-server/oauth-server.module.ts
+  s_5edca35f219ea5::t_dda0bfa827240e 69-114
+  s_5edca35f219ea5::t_0176e4b033813e 26-32
+  s_5edca35f219ea5::t_1acc4331d91641 49-63
+  s_5edca35f219ea5::t_244b818cf68338 115-116
+packages/cli/src/modules/oauth-server/oauth-token.service.ts
+  s_5edca35f219ea5::t_1b1e4b05f61c20 51-63
+  s_5edca35f219ea5::t_bb9d7a239d9f5b 64-66
+packages/cli/src/server.ts
+  s_5edca35f219ea5::t_7a6556e0e5f970 58
+packages/cli/src/modules/oauth-server/SERVICE_ACCOUNT_PROOF.md
+  s_5edca35f219ea5::t_829544b86879ce 1-90
+packages/cli/src/controllers/service-account-credentials.controller.ts
+  s_5edca35f219ea5::t_b634bb93283acb 9
+  s_5edca35f219ea5::t_771ef5505f9ed3 16
+  s_5edca35f219ea5::t_749193c4671408 36-38
+  s_5edca35f219ea5::t_af8561ab0549f9 26-30
+  s_5edca35f219ea5::t_52fef575b83943 1-8,10-15,17-25,31-35,39-76
+  s_5edca35f219ea5::t_2e8dabfc0b0056 77
+packages/cli/src/modules/oauth-server/__tests__/oauth-server.service.test.ts
+  s_5edca35f219ea5::t_2ed205b4ae5116 19
+  s_5edca35f219ea5::t_a1b34ee566b60b 862-863
+  s_5edca35f219ea5::t_77be75e94fe6ee 8
+  s_5edca35f219ea5::t_4c7921cf0ff513 1467-1468
+  s_5edca35f219ea5::t_a0e02633827545 47-48
+  s_5edca35f219ea5::t_0ec43d3fd4db6b 87-88
+  s_5edca35f219ea5::t_70902b4127739f 1417-1418
+  s_5edca35f219ea5::t_0efec9b23246e5 194-195,265-266
+packages/cli/src/modules/oauth-server/service-account-proof.sh
+  s_5edca35f219ea5::t_b50f8e0a18e6fa 1-45,49-133
+  s_5edca35f219ea5::t_02018aeeb389b8 46-48
+packages/cli/src/modules/oauth-server/oauth-server.service.ts
+  s_5edca35f219ea5::t_0b9d719b470619 403
+  s_5edca35f219ea5::t_e2ad20a208911d 417-422
+  s_5edca35f219ea5::t_0aaef35de7d4a6 435,437-452
+  s_5edca35f219ea5::t_32636ad8de4bda 409-415,423-433
+  s_5edca35f219ea5::t_6d0f592f877e3e 400-402
+  s_5edca35f219ea5::t_cb6a6ab2dbdcb7 404-408
+  s_5edca35f219ea5::t_fdeecba31e247e 416
+  s_5edca35f219ea5::t_c1c1a07d6981e4 434
+  s_5edca35f219ea5::t_7ec3cea0d243d5 436
+  s_5edca35f219ea5::t_6f701cb6b444f4 24,40,112-113,398-399
+packages/@n8n/api-types/src/service-account-credentials.ts
+  s_5edca35f219ea5::t_c90f8be1d7aecf 1-13
+packages/cli/src/services/__tests__/public-api-oauth.strategy.test.ts
+  s_5edca35f219ea5::t_8fac17dcd5ef1d 64
+  s_5edca35f219ea5::t_f5f56fb6584d24 1,3-5,7-63,65-96
+  s_5edca35f219ea5::t_d5aea71f297076 2
+  s_5edca35f219ea5::t_3681db43ddf276 6
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_5edca35f219ea5::t_a3b514b6592f29 240
+  s_5edca35f219ea5::t_ab39a1b6db619f 483
+packages/cli/src/services/__tests__/service-account-credential.service.test.ts
+  s_5edca35f219ea5::t_ba79db4dc8030b 17
+  s_5edca35f219ea5::t_dfa91728038d92 1-16,18-103
+packages/@n8n/db/src/repositories/service-account-credential.repository.ts
+  s_5edca35f219ea5::t_22a5e2126f241b 21
+  s_5edca35f219ea5::t_905f63a876319b 8-20,22-45
+  s_5edca35f219ea5::t_c267d08c652639 6
+  s_5edca35f219ea5::t_3b4e2ee8a22b51 3-5
+  s_5edca35f219ea5::t_666b3a9babf14c 7
+  s_5edca35f219ea5::t_65d290747f0b51 46
+  s_765c8dbe62b8fc::t_59461242eba7d5 1-2
+packages/cli/src/services/public-api-oauth.strategy.ts
+  s_5edca35f219ea5::t_3681db43ddf276 5-6
+  s_5edca35f219ea5::t_f29a022ad4bff7 3
+  s_5edca35f219ea5::t_5d2325f9c89d81 1-2,4,7-45,49-86
+  s_5edca35f219ea5::t_e700ce860f599f 46-48
+packages/cli/src/public-api/public-api-protected-resource.ts
+  s_5edca35f219ea5::t_40fae80263ab58 1-43
+packages/@n8n/api-types/src/index.ts
+  s_5edca35f219ea5::t_14a23fdbe2da5d 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "6bc2c427bed2b6a7eec2360bff65ad7d4d0cb012",
+  "prompts": {},
+  "sessions": {
+    "s_5edca35f219ea5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "648c326a-5e28-4b35-9fa4-8e15c7085c47",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_765c8dbe62b8fc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ac829eee4b6450451",
+        "model": "unknown"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_8cd1a0d19700c3::t_9dbfc358f00736 172
+packages/cli/src/modules/agents/agent-dependency-index.listener.ts
+  s_8cd1a0d19700c3::t_7f6f044995ed42 6-30
+packages/cli/src/modules/agents/__tests__/agent-dependency-index.service.test.ts
+  s_8cd1a0d19700c3::t_cdf984a465e4a7 6
+  s_8cd1a0d19700c3::t_327b53011de1db 16
+  s_8cd1a0d19700c3::t_3f5bfb8e6872fb 26
+  s_8cd1a0d19700c3::t_896e30117a05c3 45-62
+packages/cli/src/modules/agents/agents.module.ts
+  s_8cd1a0d19700c3::t_263841b4c01c1c 38-39
+packages/cli/src/modules/agents/agent-dependency-index.service.ts
+  s_8cd1a0d19700c3::t_1e63af07637e62 9
+  s_8cd1a0d19700c3::t_33cd63ebe611bb 36
+  s_8cd1a0d19700c3::t_11ca7541a98ffc 45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "7abdd67d7bc9e1b06139460d3971b250a2ff965a",
+  "prompts": {},
+  "sessions": {
+    "s_8cd1a0d19700c3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "aa4d6b3b-305d-40d9-a0aa-5c144e99d387",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

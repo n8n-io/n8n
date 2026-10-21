@@ -1,0 +1,21 @@
+docs/generated/postgres-schema/public.user.md
+  s_4becfe847c1137::t_2ba6eb970a0a23 11
+docs/generated/sqlite-schema/user.md
+  s_4becfe847c1137::t_ba942678d737f1 22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "717175c9cba29e39ab2bf533607bab2402b7b764",
+  "prompts": {},
+  "sessions": {
+    "s_4becfe847c1137": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "bfb21754-81f6-4f48-9f32-7720fc4b4e6a",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

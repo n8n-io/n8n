@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/_canvasNodeStyles.scss
+  s_91867aabfce3e6::t_2a4181d50c2d6f 75-81,86-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "05a0c4bef762cf9756af775d4f754275b1c65439",
+  "prompts": {},
+  "sessions": {
+    "s_91867aabfce3e6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1156cde0-6aaf-4b55-96bc-80e64e08928f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

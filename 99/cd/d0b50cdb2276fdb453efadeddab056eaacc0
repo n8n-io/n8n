@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewChatPage.vue
+  s_9ff4262de30095::t_39fe82c0f2d3df 105
+  s_9ff4262de30095::t_220c285950add6 2-6,81-104,106,141
+packages/cli/src/modules/agents/tools/demo-meeting-slot.tool.ts
+  s_9ff4262de30095::t_c6882d2ea4da82 34-36,42-43
+  s_9ff4262de30095::t_06ca09c23688b6 1-33,37-41,44
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_9ff4262de30095::t_06ca09c23688b6 1080-1084
+  s_13d2093edecceb::t_8a3e57d7b1370e 170-177,179-184,195-209,211-214,400,407-409,413-416,433-439,444-451,457-468,472-478,547,552-571,575-582,594,600-633,648,676,678-684,791,796,809,817-822,835-839,841-850,853-870,872-873,875-884,891,893,896-911,918-920,928,930-933,935-936,938-946,949-951,953-959,966-968,971-972,975,977-982,997-1025,1040,1050,1085-1089,1093
+  s_13d2093edecceb::t_418cfbc70eca7a 440-443,452-456,469-471,548-551,591-593,595-599,634-635,637-638,643-645,798-800,802-803,826-827,829,832,834,885-890,894-895,913-917,921-925,947,961-962,964-965,973,983-996,1026-1039,1041-1049,1090-1091
+  s_0a1a804042c15b::t_6abaa74bc550f6 1204,1216-1224
+packages/frontend/editor-ui/src/features/agents/components/DemoMeetingSlotCard.vue
+  s_9ff4262de30095::t_220c285950add6 1-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "99cdd0b50cdb2276fdb453efadeddab056eaacc0",
+  "prompts": {}
+}

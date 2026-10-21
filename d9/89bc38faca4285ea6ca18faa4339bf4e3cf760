@@ -1,0 +1,69 @@
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  s_77655ca8fe3a59::t_358fd53ad47445 8-13,110,695-757
+  s_77655ca8fe3a59::t_f393f62234250e 758-759
+packages/@n8n/engine/docs/adr/ADR-2026-09-02-steps-declare-waits.md
+  s_691719f04965a8::t_2267e4e71841cf 91-94
+  s_691719f04965a8::t_c131869faada9e 1-41,47-90,95-116
+  s_691719f04965a8::t_961b70c7b2b79c 42-46
+packages/@n8n/engine/src/execution/step-store.ts
+  s_77655ca8fe3a59::t_0f5e9556ae5333 13-16
+  s_77655ca8fe3a59::t_1c2a27d8ded0c0 1-8,109-115
+packages/@n8n/engine/src/dependencies/external-dependencies.ts
+  s_77655ca8fe3a59::t_fb4f2278d3a257 49-52
+  s_77655ca8fe3a59::t_c8d093896a57c3 1,45-48,53-63
+packages/@n8n/engine/src/execution/__tests__/step-execution.integration.test.ts
+  s_77655ca8fe3a59::t_8245f0254336b3 84,91-98,220-259
+  s_77655ca8fe3a59::t_bc07f837f2d49e 260-261
+packages/@n8n/engine/src/database/entities/workflow-step-execution.entity.ts
+  s_77655ca8fe3a59::t_f6b700aecb9b64 26
+  s_77655ca8fe3a59::t_e476629ce94188 11-16,49-55
+packages/@n8n/engine/src/execution/index.ts
+  s_77655ca8fe3a59::t_f6b700aecb9b64 16
+packages/@n8n/engine/src/database/__tests__/workflow-step-execution.integration.test.ts
+  s_77655ca8fe3a59::t_f8cf71a8d4b0d9 782,795-799
+  s_77655ca8fe3a59::t_ac47e95a4f5f21 375-441
+packages/@n8n/engine/src/execution/__tests__/step-settled-handler.test.ts
+  s_77655ca8fe3a59::t_0c100d36629ed2 93
+packages/@n8n/engine/src/execution/execution.types.ts
+  s_77655ca8fe3a59::t_f6b700aecb9b64 12-13,63,92-97
+  s_77655ca8fe3a59::t_19f83ce102e350 68-86
+  s_77655ca8fe3a59::t_c4f5938570bb21 15-22,64-67,87-91,98-101
+packages/@n8n/engine/src/execution/step-ready-handler.ts
+  s_77655ca8fe3a59::t_0f5e9556ae5333 32,35-38
+  s_77655ca8fe3a59::t_f6b700aecb9b64 118
+  s_77655ca8fe3a59::t_f684464c3ac721 2,17,22,39,87-90,92-97,99,102-109,117,119-120,124,142-146,157-164
+packages/@n8n/engine/src/execution/__tests__/execution-start-handler.test.ts
+  s_77655ca8fe3a59::t_0c100d36629ed2 46
+packages/@n8n/engine/src/database/migrations/1788354900000-AddStepWait.ts
+  s_77655ca8fe3a59::t_59221c694f0564 1-57
+packages/@n8n/engine/src/database/migrations/index.ts
+  s_77655ca8fe3a59::t_7bc32d431cfb0a 3,8
+packages/@n8n/engine/src/database/typeorm-step-store.ts
+  s_77655ca8fe3a59::t_be9a267feb7a72 9,173-182,215-220
+packages/@n8n/engine/src/index.ts
+  s_77655ca8fe3a59::t_051088ddfb175e 90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "d989bc38faca4285ea6ca18faa4339bf4e3cf760",
+  "prompts": {},
+  "sessions": {
+    "s_691719f04965a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "abcde464-1c00-4bc6-9f2b-1b8ad5c76471",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    },
+    "s_77655ca8fe3a59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d2c5a11b-62c7-4839-ab99-8421196be4d4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

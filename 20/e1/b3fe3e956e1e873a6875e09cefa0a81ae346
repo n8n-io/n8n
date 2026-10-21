@@ -1,0 +1,73 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatMoonshot/test/LmChatMoonshot.test.ts
+  s_c3f63bfec03d56::t_1a483c009dbe14 174,194
+packages/@n8n/nodes-langchain/nodes/llms/LmChatVercelAiGateway/LmChatVercelAiGateway.node.ts
+  s_c3f63bfec03d56::t_1ba90792f5cf10 236-241
+  s_c3f63bfec03d56::t_a3b7f371551ff4 242-244
+packages/@n8n/nodes-langchain/nodes/llms/LmChatMinimax/test/LmChatMinimax.test.ts
+  s_c3f63bfec03d56::t_1a483c009dbe14 198,218
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDeepSeek/LmChatDeepSeek.node.ts
+  s_c3f63bfec03d56::t_1ba90792f5cf10 238-243
+  s_c3f63bfec03d56::t_a3b7f371551ff4 244-246
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOpenAi/LmChatOpenAi.node.ts
+  s_c3f63bfec03d56::t_1ba90792f5cf10 782-787
+  s_c3f63bfec03d56::t_a3b7f371551ff4 788-790
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAzureOpenAi/EmbeddingsAzureOpenAi.node.ts
+  s_c3f63bfec03d56::t_a3b7f371551ff4 159-160
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAlibabaCloud/LmChatAlibabaCloud.node.ts
+  s_c3f63bfec03d56::t_1ba90792f5cf10 250-255
+  s_c3f63bfec03d56::t_a3b7f371551ff4 256-258
+packages/@n8n/nodes-langchain/nodes/llms/LMChatLemonade/LmChatLemonade.node.ts
+  s_c3f63bfec03d56::t_1ba90792f5cf10 107-109
+  s_c3f63bfec03d56::t_a3b7f371551ff4 110-112
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/LmChatAzureOpenAi.node.ts
+  s_c3f63bfec03d56::t_1ba90792f5cf10 120-125
+  s_c3f63bfec03d56::t_a3b7f371551ff4 126-128
+packages/@n8n/nodes-langchain/nodes/llms/LMOpenAi/LmOpenAi.node.ts
+  s_c3f63bfec03d56::t_1ba90792f5cf10 268-273
+  s_c3f63bfec03d56::t_a3b7f371551ff4 274-276
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAlibabaCloud/test/LmChatAlibabaCloud.test.ts
+  s_c3f63bfec03d56::t_1a483c009dbe14 175,195
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsNvidia/EmbeddingsNvidia.node.ts
+  s_c3f63bfec03d56::t_1ba90792f5cf10 155-157
+  s_c3f63bfec03d56::t_a3b7f371551ff4 158-160
+packages/@n8n/nodes-langchain/nodes/llms/LmChatXAiGrok/LmChatXAiGrok.node.ts
+  s_c3f63bfec03d56::t_1ba90792f5cf10 278-283
+  s_c3f63bfec03d56::t_a3b7f371551ff4 284-286
+packages/@n8n/nodes-langchain/nodes/llms/LmChatNvidia/LmChatNvidia.node.ts
+  s_c3f63bfec03d56::t_1ba90792f5cf10 252-257
+  s_c3f63bfec03d56::t_a3b7f371551ff4 258-260
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/LmChatAnthropic.node.ts
+  s_c3f63bfec03d56::t_1ba90792f5cf10 674-676
+  s_c3f63bfec03d56::t_a3b7f371551ff4 677-679
+packages/@n8n/nodes-langchain/nodes/llms/LmChatMoonshot/LmChatMoonshot.node.ts
+  s_c3f63bfec03d56::t_1ba90792f5cf10 293-298
+  s_c3f63bfec03d56::t_a3b7f371551ff4 299-301
+packages/@n8n/nodes-langchain/nodes/llms/LmChatMinimax/LmChatMinimax.node.ts
+  s_c3f63bfec03d56::t_1ba90792f5cf10 177-182
+  s_c3f63bfec03d56::t_a3b7f371551ff4 183-185
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsOpenAI/EmbeddingsOpenAi.node.ts
+  s_c3f63bfec03d56::t_1ba90792f5cf10 263-265
+  s_c3f63bfec03d56::t_a3b7f371551ff4 266-268
+packages/@n8n/nodes-langchain/nodes/llms/LmChatOpenRouter/LmChatOpenRouter.node.ts
+  s_c3f63bfec03d56::t_1ba90792f5cf10 399-404
+  s_c3f63bfec03d56::t_a3b7f371551ff4 405-407
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v1/actions/assistant/message.operation.ts
+  s_c3f63bfec03d56::t_1ba90792f5cf10 199-204
+  s_c3f63bfec03d56::t_a3b7f371551ff4 205-207
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "20e1b3fe3e956e1e873a6875e09cefa0a81ae346",
+  "prompts": {},
+  "sessions": {
+    "s_c3f63bfec03d56": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ec50217-81ad-4e71-9979-cd76e8a8e85d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

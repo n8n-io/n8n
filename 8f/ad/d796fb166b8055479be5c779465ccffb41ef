@@ -1,0 +1,21 @@
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-step-executor.test.ts
+  s_13d0f2e1be0144::t_dab22cf99db305 365-385
+packages/cli/src/modules/engine-v2/__tests__/engine-v2.runtime.test.ts
+  s_13d0f2e1be0144::t_dbcdc76152d43f 50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8fadd796fb166b8055479be5c779465ccffb41ef",
+  "prompts": {},
+  "sessions": {
+    "s_13d0f2e1be0144": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46caa7f3-0057-4c97-8c31-ca17c936adc0",
+        "model": "unknown"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

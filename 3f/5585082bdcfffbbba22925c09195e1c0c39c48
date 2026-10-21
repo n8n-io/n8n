@@ -1,0 +1,24 @@
+packages/cli/src/workflows/triggers/__tests__/trigger-execution-context.factory.test.ts
+  s_6358c8cb4cd2a5::t_5e5747a8a631f3 1160-1164
+  s_6358c8cb4cd2a5::t_c4453979c061c3 1190,1195
+  s_6358c8cb4cd2a5::t_22882356df28d9 1209,1213-1219
+  s_6358c8cb4cd2a5::t_373b9195344893 1196
+packages/cli/src/workflows/triggers/trigger-execution-context.factory.ts
+  s_6358c8cb4cd2a5::t_12c7bff9692abd 452-454
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "3f5585082bdcfffbbba22925c09195e1c0c39c48",
+  "prompts": {},
+  "sessions": {
+    "s_6358c8cb4cd2a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1f2839c-15c8-45f2-a3c3-ad2077007168",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

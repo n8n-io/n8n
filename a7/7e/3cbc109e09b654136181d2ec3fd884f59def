@@ -1,0 +1,25 @@
+packages/cli/src/scheduling/poll-trigger-node/poll-trigger-task-handler.ts
+  s_5614fe25678684::t_fde428dc457ab8 149,161,171-178,188,194-196,214-216,218,220,232,236-237,242,244,260,263
+packages/cli/src/scheduling/poll-trigger-node/__tests__/poll-trigger-task-handler.test.ts
+  s_5614fe25678684::t_8d97605048dfa0 6-12,254-257,259,261-262,265,268-271,276-278,357,359,363,366,405,407,415,492-496,498,500,512,516-518,522-529
+  s_5614fe25678684::t_3bb254b3bead39 279-300,395-404,406,408-414,513-515,519-521,645-676,678-691,785-787,801-803
+  s_5614fe25678684::t_23e2283841e140 677
+  s_5614fe25678684::t_a3ed42b5520789 501-511,632-644,764-784,788-800,804-808
+  s_5614fe25678684::t_52b26b7e0b5908 497,499
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a77e3cbc109e09b654136181d2ec3fd884f59def",
+  "prompts": {},
+  "sessions": {
+    "s_5614fe25678684": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0fd0a-cb45-7481-96f9-d72826656d72",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,37 @@
+packages/frontend/editor-ui/src/features/workflows/components/WorkflowPublishModal.vue
+  s_af62986d6ef75e::t_b79b18b95d7787 342-362
+  s_af62986d6ef75e::t_58503802465769 24,30-33,41-43
+  s_af62986d6ef75e::t_13f95feebf798b 79-104,110,119-124,135-136
+  s_af62986d6ef75e::t_aaa8172fdb8173 137-138,341
+packages/frontend/editor-ui/src/features/workflows/components/WorkflowPublishModal.test.ts
+  s_af62986d6ef75e::t_b99c21ba065ca5 13-17,22-23
+  s_af62986d6ef75e::t_d8da8f133ad8f9 99-110
+  s_af62986d6ef75e::t_5c765f3c6a261b 120,122
+  s_af62986d6ef75e::t_11a7006694bc89 340-341
+  s_af62986d6ef75e::t_c17bc1f2385d46 324-339,342-450
+  s_af62986d6ef75e::t_511d8bd66b2bbd 24
+  s_af62986d6ef75e::t_940373558e7d9d 12,123-125,451-453
+packages/frontend/editor-ui/src/features/resolvers/composables/useRunAsHolderName.ts
+  s_af62986d6ef75e::t_bf47477cebea35 1-41
+packages/frontend/editor-ui/src/features/resolvers/components/RunAsCallout.vue
+  s_af62986d6ef75e::t_28d6bf4dad7715 40
+  s_af62986d6ef75e::t_794dc26587e791 2,12
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_af62986d6ef75e::t_210a1e31e5e3e9 5001
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "4e3d132043c524d612ce6fcc9d46ecf401196782",
+  "prompts": {},
+  "sessions": {
+    "s_af62986d6ef75e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "137c8e00-b0af-4ad4-8af5-45842a28f12e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

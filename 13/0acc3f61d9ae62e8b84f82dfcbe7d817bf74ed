@@ -1,0 +1,34 @@
+packages/@n8n/db/src/repositories/workflow-publication-outbox.repository.ts
+  ai_agent 85
+  s_7de970a796cb99::t_b23cd78aafa52e 239,246,250-252
+  s_7de970a796cb99::t_5c8ec439968902 240,247-249,253,255-256
+  s_7de970a796cb99::t_977d4fcc69e09b 3
+  s_7de970a796cb99::t_2844066b4aa2fa 11
+  s_7de970a796cb99::t_0783a222154bed 254
+packages/cli/src/active-workflow-manager.ts
+  s_7de970a796cb99::t_48462b35c7d720 493,502
+  ai_agent 492,494,501,503
+packages/@n8n/db/src/index.ts
+  s_7de970a796cb99::t_fc780f6012515a 16
+packages/@n8n/db/src/utils/is-unique-constraint-error.ts
+  s_7de970a796cb99::t_f00eab4341c7c0 1-26
+packages/cli/src/response-helper.ts
+  s_7de970a796cb99::t_c5b556ef043845 2
+  s_7de970a796cb99::t_dce9540e469f19 95-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "130acc3f61d9ae62e8b84f82dfcbe7d817bf74ed",
+  "prompts": {},
+  "sessions": {
+    "s_7de970a796cb99": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f62a054f-5d45-407f-925f-ca757e8963c9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

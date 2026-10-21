@@ -1,0 +1,21 @@
+packages/@n8n/db/src/migrations/sqlite/1791194345589-AddMetadataToTrustedSource.ts
+  s_5b85161403cb3c::t_390c536a23a2ce 1-11
+packages/@n8n/db/src/migrations/common/1791194345589-AddMetadataToTrustedSource.ts
+  s_5b85161403cb3c::t_390c536a23a2ce 1-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2573d86a50b29a79a364ffdfef72502ebc36d6c2",
+  "prompts": {},
+  "sessions": {
+    "s_5b85161403cb3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "10dcb3c0-c4f9-4155-9b96-4af4ab2eb20d",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

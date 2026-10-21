@@ -1,0 +1,91 @@
+packages/@n8n/db/src/entities/workflow-review-request-workflow.ee.ts
+  s_44a98ba2784a12::t_cf9c8928bb9ea6 15-19,21,29
+  s_44a98ba2784a12::t_dc7bb4fa1c9131 22-26,28
+  s_44a98ba2784a12::t_d5ee5c3cc41445 1-14,30-36,39-42
+  s_44a98ba2784a12::t_f4b16ca0dd573e 37-38
+packages/@n8n/db/src/repositories/workflow-review-request-reviewer.repository.ts
+  s_44a98ba2784a12::t_220caa9d9c1955 1-13,15-51
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_44a98ba2784a12::t_adb6fc9b61d4ab 223,447
+packages/@n8n/db/src/entities/workflow-review-request-author.ee.ts
+  s_44a98ba2784a12::t_b68444cb9bf6bd 1-16
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_44a98ba2784a12::t_adb6fc9b61d4ab 214,429
+packages/@n8n/db/src/repositories/workflow-review-request.repository.ts
+  s_44a98ba2784a12::t_4188d7b926ed77 1-43
+packages/@n8n/db/src/repositories/__tests__/workflow-review-request.repository.test.ts
+  s_44a98ba2784a12::t_b339447663c539 240
+  s_44a98ba2784a12::t_b9ae49e6323bcf 169,179
+  s_44a98ba2784a12::t_07ca4c76f2006f 115-131
+  s_44a98ba2784a12::t_dbad7b03bcd5c5 1-114,132-168,170-178,180-239,241-256
+packages/@n8n/db/src/repositories/workflow-review-request-workflow.repository.ts
+  s_44a98ba2784a12::t_48fb7f90de2ab7 1-18,20-25,27-38
+  s_44a98ba2784a12::t_5416a8bbafa15b 19,26
+packages/@n8n/db/src/migrations/common/1784000000046-CreateWorkflowReviewRequestTables.ts
+  s_44a98ba2784a12::t_38a1eb6de50236 185-186,188-198,201-212
+  s_44a98ba2784a12::t_8bdf8742a356f4 199-200
+  s_44a98ba2784a12::t_092b5bf782d647 160-162,213
+  s_44a98ba2784a12::t_621dcab875ec43 214-221
+  s_44a98ba2784a12::t_f5e27c43d834e8 3-5,7-12,22,24-27,29,31-32,53,56,58-60,62,64-77,79-113,119-138,140-159,222-234,236-240
+  s_44a98ba2784a12::t_6bb83e61c27b55 78
+  s_44a98ba2784a12::t_3aa11e8de406e2 6
+  s_44a98ba2784a12::t_94131d5be5fd4b 139
+  s_44a98ba2784a12::t_fadde7b8641bbc 13-14
+  s_44a98ba2784a12::t_b87406620c207d 20-21
+  s_44a98ba2784a12::t_adb6fc9b61d4ab 1-2,23,61,235,241-242
+  s_44a98ba2784a12::t_fa462d7852550d 15-19
+  s_44a98ba2784a12::t_c1000e9e0f1f2a 163-184,187
+  s_44a98ba2784a12::t_93a13636a02128 28,30
+  s_44a98ba2784a12::t_c3121aa6a3daa9 33
+  s_44a98ba2784a12::t_34deffd9e2f188 34,39-52
+  s_44a98ba2784a12::t_819e473ffcfa61 35-38
+  s_44a98ba2784a12::t_d9f51c1c43fa73 114-118
+  s_44a98ba2784a12::t_449118add4b0fd 57
+packages/@n8n/db/src/entities/index.ts
+  s_44a98ba2784a12::t_168a12b53de900 135,187
+  s_44a98ba2784a12::t_a7256825a068b0 184-186
+  s_44a98ba2784a12::t_d50271daa84973 63-68,70-74
+  s_44a98ba2784a12::t_331cc21e18eef6 128-134
+  s_44a98ba2784a12::t_fab8d07d211479 69
+packages/@n8n/db/src/repositories/index.ts
+  s_44a98ba2784a12::t_38e7a639f36fe5 76
+  s_44a98ba2784a12::t_8a95fae58db6c4 73-75
+packages/@n8n/db/src/entities/workflow-review-request-reviewer.ee.ts
+  s_44a98ba2784a12::t_57f5b278d05673 1-5,14-20
+  s_44a98ba2784a12::t_36c02054dfbef3 6-10,12-13
+packages/@n8n/db/src/repositories/workflow-review-request-author.repository.ts
+  s_44a98ba2784a12::t_811bc0f2717808 1-11,13-57
+packages/cli/test/migration/1784000000046-create-workflow-review-request-tables.test.ts
+  s_44a98ba2784a12::t_fa25b39e56246d 1-120,122-145,154-166,168-169,177-178,180,187-195,197-256,268-284,291-292,294-338,345-346
+  s_44a98ba2784a12::t_787c4bf3d44572 285-290,293
+  s_44a98ba2784a12::t_93bf9e700c03c7 167,171-176,179
+  s_44a98ba2784a12::t_4bc07c608ba80b 257-267
+  s_44a98ba2784a12::t_8030c93ced913e 196
+  s_44a98ba2784a12::t_8f13a1aabaeae0 339-344
+  s_44a98ba2784a12::t_f9339aa83d3a68 121
+  s_44a98ba2784a12::t_465b445e835989 181-183,186
+  s_44a98ba2784a12::t_32d08265cce773 146-153
+packages/@n8n/db/src/entities/workflow-review-request.ee.ts
+  s_44a98ba2784a12::t_243fda83c3ba5d 1-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "367627e16c74c862123c857ddc759853a7032486",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_44a98ba2784a12": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "83e316a4-3906-40bf-bce2-efffe91f33e5",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

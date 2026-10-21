@@ -1,0 +1,47 @@
+packages/frontend/@n8n/frontend-module-sdk/src/registries/modalRegistry.test.ts
+  s_c22d4a88888f71::t_8bc83659c9edf4 143
+  s_c22d4a88888f71::t_5912f9aa254541 113-142,144-159
+  s_c22d4a88888f71::t_37f1dcf7997806 31
+packages/frontend/editor-ui/src/app/components/ModalRoot.test.ts
+  s_c22d4a88888f71::t_1fa9996ae5206c 2
+  s_c22d4a88888f71::t_5c11efcd7f6cb6 62
+  s_c22d4a88888f71::t_9d91dfcc74bc5a 30,32,35-36
+  s_c22d4a88888f71::t_8d3bec898e5b4a 65,67-69
+  s_c22d4a88888f71::t_a8aa70fae83e8e 82
+  s_c22d4a88888f71::t_692f51241ff8d0 27,47,66,75,77,79,83,94,97-98
+  s_c22d4a88888f71::t_968db92d311265 1,3-26,28-29,31,33-34,37-46,48-61,63-64,70-74,76,78,80-81,84-93,95-96,99-103
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ImportCurlModal.vue
+  s_c22d4a88888f71::t_eda40c26b7cc69 26
+  s_c22d4a88888f71::t_14b5413c0d5320 62-63
+packages/frontend/@n8n/frontend-module-sdk/src/registries/modalRegistry.ts
+  s_c22d4a88888f71::t_0e788b96062ec5 48-55
+packages/frontend/editor-ui/src/app/stores/ui.store.ts
+  s_c22d4a88888f71::t_8189e4f8e12eb0 122-137
+  s_c22d4a88888f71::t_14b54cc1fcb0a6 440-446,448-454
+  s_c22d4a88888f71::t_2560d3f6c195d3 798
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_c22d4a88888f71::t_57390b121bc673 191,200,211,258,265,270,276,281,352
+packages/frontend/editor-ui/src/app/stores/ui.store.test.ts
+  s_c22d4a88888f71::t_692f51241ff8d0 82,88,94,96,102,104,106,111,117
+  s_c22d4a88888f71::t_fa16da85bdee58 80-81,83-87,89-93,95,97-101,103,105,107-110,112-116,118-132
+packages/frontend/editor-ui/src/app/components/ModalRoot.vue
+  s_c22d4a88888f71::t_3ab66e98642f75 2,5,22-25,29,33-36
+packages/frontend/editor-ui/src/features/shared/editors/plugins/codemirror/completions/utils.ts
+  s_c22d4a88888f71::t_edb1300013c81c 232-233
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "6fa6a6e8fa66aae9f659ac1f0ce4a97513806892",
+  "prompts": {},
+  "sessions": {
+    "s_c22d4a88888f71": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "78472527-7a0c-4596-a1ed-9463bb1226cd",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

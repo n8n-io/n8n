@@ -1,0 +1,61 @@
+packages/@n8n/expression-runtime/src/runtime/__tests__/context.test.ts
+  s_ff8ba147c9dd94::t_7e7670ba8b2911 4
+packages/@n8n/expression-runtime/src/runtime/__tests__/lazy-proxy.test.ts
+  s_ff8ba147c9dd94::t_045b20b0061745 232
+  s_ff8ba147c9dd94::t_2eeb419e410fab 316
+  s_ff8ba147c9dd94::t_18fd231380231b 23-24
+  s_ff8ba147c9dd94::t_6c43a95e58457f 281
+  s_ff8ba147c9dd94::t_82c6ecaa427f59 273
+  s_ff8ba147c9dd94::t_0c451fc8ad2eb3 304
+  s_ff8ba147c9dd94::t_4d5737ec1b9efb 458
+  s_ff8ba147c9dd94::t_2342be78cc9ff7 366
+  s_ff8ba147c9dd94::t_fee13a7934b767 277
+packages/@n8n/expression-runtime/src/bridge/isolated-vm-bridge.ts
+  s_ff8ba147c9dd94::t_d3faab54cdd66a 465-469
+  s_ff8ba147c9dd94::t_4e4b99e6d04d16 470
+  s_ff8ba147c9dd94::t_505bf55ca60d74 724-727
+  s_ff8ba147c9dd94::t_f53e6d1862aa1d 280
+  s_ff8ba147c9dd94::t_34786b3fa64bda 294-295
+  s_ff8ba147c9dd94::t_891d4bcba11841 364
+  s_ff8ba147c9dd94::t_ab0d28e51728a2 704
+  s_ff8ba147c9dd94::t_09cc2db39314e3 474-475
+  s_ff8ba147c9dd94::t_8c06a60178970f 371-372
+packages/@n8n/expression-runtime/src/runtime/context.ts
+  s_ff8ba147c9dd94::t_39b0533857a9f3 257
+  s_ff8ba147c9dd94::t_2f37e049d74d72 63-64,67,71
+  s_ff8ba147c9dd94::t_7125cef9cd3232 58
+  s_ff8ba147c9dd94::t_8119cda8aae3b6 278
+  s_ff8ba147c9dd94::t_ce4715a53ae567 295-301
+  s_ff8ba147c9dd94::t_81e23adb611dce 329-334
+  s_ff8ba147c9dd94::t_23460bec21eedf 354
+  s_ff8ba147c9dd94::t_74f241b4338a76 209
+  s_ff8ba147c9dd94::t_0de60f3dc0760a 314
+  s_ff8ba147c9dd94::t_38af2daf539bc8 55-57,60
+  s_ff8ba147c9dd94::t_da07448b23ea80 194
+  s_ff8ba147c9dd94::t_f70b514019a42e 345
+  s_ff8ba147c9dd94::t_7def7eb3f9f8ab 214
+packages/@n8n/expression-runtime/src/runtime/lazy-proxy.ts
+  s_ff8ba147c9dd94::t_0341c5a8104a52 136
+  s_ff8ba147c9dd94::t_9518fa7d44d992 252
+  s_ff8ba147c9dd94::t_e8c5762e970a65 109
+  s_ff8ba147c9dd94::t_016661cc61c93c 266-267
+  s_ff8ba147c9dd94::t_5c8ebf08edecde 294
+packages/@n8n/expression-runtime/src/types/evaluator.ts
+  s_ff8ba147c9dd94::t_b8a1df128923d6 140-143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "c37267267835a36df16c27859b281fa12f9922e0",
+  "prompts": {},
+  "sessions": {
+    "s_ff8ba147c9dd94": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "896d44e1-2395-4d86-ad68-fa2789e50b79",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

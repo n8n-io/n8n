@@ -1,0 +1,25 @@
+packages/cli/src/modules/source-control.ee/source-control-import.service.ee.ts
+  s_9b211e1cfaea94::t_3865bf2fd1fb9f 1914-1918,1929,1931-1939
+packages/cli/src/modules/source-control.ee/source-control.service.ee.ts
+  s_9b211e1cfaea94::t_3865bf2fd1fb9f 712
+packages/cli/test/integration/environments/source-control-import.service.test.ts
+  s_9b211e1cfaea94::t_cdae8adf1731ab 2187-2191,2197-2229
+packages/cli/src/modules/source-control.ee/__tests__/source-control-import.service.ee.test.ts
+  s_9b211e1cfaea94::t_fe7ae17611fb92 3260-3262,3919,3927,3940,3952-3968,3983,4010,4042,4059
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "262301e6142492b7cf8c038a2e1538fd10a6bf48",
+  "prompts": {},
+  "sessions": {
+    "s_9b211e1cfaea94": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27755621-7054-4db3-8bde-849980171414",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

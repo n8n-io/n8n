@@ -1,0 +1,24 @@
+packages/nodes-base/nodes/Confluence/methods/listSearch.ts
+  s_ea16ab0e32e89a::t_1a9bcddd9fd6af 155,158
+  s_ea16ab0e32e89a::t_efdeb8efa528e8 157
+packages/nodes-base/nodes/Confluence/test/methods/listSearch.test.ts
+  s_ea16ab0e32e89a::t_c086e47a5edb28 162
+  s_ea16ab0e32e89a::t_189faf368283f4 76
+  s_ea16ab0e32e89a::t_6f6a587370966b 174
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "590ea2477bb450a0464f0dcfde30f8d47fd2e392",
+  "prompts": {},
+  "sessions": {
+    "s_ea16ab0e32e89a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9520c59a-f77e-4d65-859e-651e5c0871d8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

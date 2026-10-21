@@ -1,0 +1,37 @@
+packages/@n8n/scheduler/src/core/reaper/__tests__/reap.property.test.ts
+  s_c7b2cdf75802d2::t_e9fbcc6b65d7c7 57-61
+  s_c7b2cdf75802d2::t_b4bde2123b9974 10-14
+packages/@n8n/db/src/repositories/scheduled-task.repository.ts
+  s_c7b2cdf75802d2::t_f40760cf07a65f 473-491
+  s_c7b2cdf75802d2::t_81dfb05579abbf 563-570,575,578,580-583,589
+  s_c7b2cdf75802d2::t_eadec8a583efde 516-520,523-530
+  s_c7b2cdf75802d2::t_723a9c70607480 496-499,502-511
+  s_c7b2cdf75802d2::t_ff33c3147c20cc 112-113,116,123
+packages/@n8n/scheduler/src/core/reaper/reap.ts
+  s_c7b2cdf75802d2::t_120d13ebb31049 98-103
+  s_c7b2cdf75802d2::t_a117dc6bf1e3e4 133-149,151-166,170,176-195,197
+packages/@n8n/scheduler/src/core/reaper/__tests__/reap.test.ts
+  s_c7b2cdf75802d2::t_c72ef3f56b6a9a 192-212
+packages/cli/test/integration/scheduling/executor-repository.test.ts
+  s_c7b2cdf75802d2::t_9a20cee860ebff 794-809
+  s_c7b2cdf75802d2::t_5a857749bca5a1 814-819
+  s_c7b2cdf75802d2::t_87fd3fcf693ce2 705-720
+  s_c7b2cdf75802d2::t_bccbf32b5f19ff 830,840,847-856,858
+  s_c7b2cdf75802d2::t_453e93a9cf74d0 554-556,558
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9d1e9546a571be312e585e8a0e893ba76b5ce772",
+  "prompts": {},
+  "sessions": {
+    "s_c7b2cdf75802d2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4bef1c6e-4ec2-4644-8a27-07aeb1566707",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/frontend/@n8n/design-system/src/components/N8nCard/Card.vue
+  s_349e8fa3e5ad99::t_c42fff966da547 2,13-18,20-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9840bd05163262bd1b87d6e065f02105a94b9f0d",
+  "prompts": {},
+  "sessions": {
+    "s_349e8fa3e5ad99": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0cea6-62ba-716e-ad19-cdcac685538c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,41 @@
+packages/nodes-base/nodes/MongoDb/MongoDb.node.ts
+  s_516b4b724fd73f::t_4d91e1ac451a1f 17,41-43,45-47,49-54,358-360,362-369,371-374
+  s_516b4b724fd73f::t_ed905ba885358e 48,361,370
+  s_516b4b724fd73f::t_c0bda966ad8cd3 277,311,341
+  s_516b4b724fd73f::t_975b57f44d9cc6 44,947,977
+packages/nodes-base/nodes/MongoDb/test/MongoDB.test.ts
+  s_516b4b724fd73f::t_5629e419843b68 6,134,151,161-180,511-571
+packages/nodes-base/nodes/MongoDb/MongoDbProperties.ts
+  s_516b4b724fd73f::t_0d5657dd06d9a7 219,245,440
+  h_44f8d1c0f2f8c4 215
+  s_516b4b724fd73f::t_6deaad47b5c5a5 231,257
+  s_516b4b724fd73f::t_ed905ba885358e 3-5,227,230,253,256,294,297,454,457
+  s_516b4b724fd73f::t_8d7831b38171f6 216,242
+  s_516b4b724fd73f::t_b94da39956e06b 217-218,220-226,228-229,241,244,246-252,254-255,438-439,441-453,455-456,458
+packages/nodes-base/utils/__tests__/query-parameters.test.ts
+  s_516b4b724fd73f::t_08fe4e3258f005 29-30,34-37,39,41,43-65
+  s_516b4b724fd73f::t_c49d5194042497 38,40,42
+packages/nodes-base/utils/query-parameters.ts
+  s_516b4b724fd73f::t_27a44816262d26 7-8,24,34,41,54,66-69,76,79,81,87-92,94-105,107-122,129,140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b253afb152e782b448031bb05003f5aae6373ed3",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_516b4b724fd73f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a18a41d8-7d23-4bae-9504-e86226a0cbdc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

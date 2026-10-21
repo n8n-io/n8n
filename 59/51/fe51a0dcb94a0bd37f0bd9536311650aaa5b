@@ -1,0 +1,22 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-memory.service.test.ts
+  s_b75353843041f1::t_9086165caf0e3e 516-575
+packages/cli/src/modules/instance-ai/instance-ai-memory.service.ts
+  s_b75353843041f1::t_502f697bc36526 93-102,104-108,112,122,125-131,133-137,140,143-145
+  s_b75353843041f1::t_862ae4153bf0e9 373
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "5951fe51a0dcb94a0bd37f0bd9536311650aaa5b",
+  "prompts": {},
+  "sessions": {
+    "s_b75353843041f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fd7024c5-2228-48df-be88-825fe78fa77b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

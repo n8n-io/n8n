@@ -1,0 +1,25 @@
+packages/cli/src/scheduling/schedule-trigger-node/__tests__/schedule-trigger-job-registrar.deviations.test.ts
+  s_c15aad03ad6100::t_700ba24d112119 281-289
+packages/cli/src/scheduling/schedule-trigger-node/schedule-trigger-job-registrar.ts
+  s_c15aad03ad6100::t_1914273b2078cd 184-192,195
+packages/nodes-base/nodes/Schedule/GenericFunctions.ts
+  s_c15aad03ad6100::t_085985f8a24b0c 58-62,269-270
+packages/nodes-base/nodes/Schedule/test/GenericFunctions.test.ts
+  s_c15aad03ad6100::t_3c62203f47532d 18,26,341-342,349,353-354,363-367,374
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "5ce31cebd1da6a699930aeeda228f70226e636d4",
+  "prompts": {},
+  "sessions": {
+    "s_c15aad03ad6100": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_c15aad03ad6100",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,41 @@
+packages/nodes-base/nodes/Confluence/actions/attachment/index.ts
+  s_dcca7cdf6458b2::t_b86691654f1aee 4,6,26-31,36
+packages/nodes-base/nodes/Confluence/actions/router.ts
+  s_dcca7cdf6458b2::t_76e79ca3c864eb 38-40
+packages/nodes-base/nodes/Confluence/test/actions/router.test.ts
+  s_dcca7cdf6458b2::t_4f86ad76c7d606 5,11,15
+  s_dcca7cdf6458b2::t_7e024b4bd66c5f 76,92,94,99-103
+  s_dcca7cdf6458b2::t_dc338afc34e11f 77-91,93,95-98
+packages/nodes-base/nodes/Confluence/test/transport/index.test.ts
+  s_dcca7cdf6458b2::t_a340430be2465b 1,9-13
+  s_dcca7cdf6458b2::t_5c44677fdf5307 355-418,425-449
+  s_dcca7cdf6458b2::t_f3f255847a6d83 419-424
+packages/nodes-base/nodes/Confluence/actions/attachment/upload.operation.ts
+  s_dcca7cdf6458b2::t_e5ee72999acddc 1-76
+packages/nodes-base/nodes/Confluence/transport/index.ts
+  s_dcca7cdf6458b2::t_510e0199179a88 1
+  s_dcca7cdf6458b2::t_daec9edaa7ecb5 178-222
+packages/nodes-base/nodes/Confluence/test/actions/attachment/upload.operation.test.ts
+  s_dcca7cdf6458b2::t_232237c6232f6b 54-60,62-65
+  s_dcca7cdf6458b2::t_1721ab6b7a93c8 47
+  s_dcca7cdf6458b2::t_43edaee9fc55c6 71-72,78-79,85-86
+  s_dcca7cdf6458b2::t_f31860dc6e06b6 1-46,48-53,61,66-70,73-77,80-84,87-98
+packages/nodes-base/nodes/Confluence/test/Confluence.node.test.ts
+  s_dcca7cdf6458b2::t_2530c095d276eb 28,30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "02402429fecb2ea0b04f71425d2e33a0c6052d05",
+  "prompts": {},
+  "sessions": {
+    "s_dcca7cdf6458b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b8928ad-9279-476e-95e0-ae903c7b4fc5",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_ce38e707b3774d::t_554195cad880b9 320-323,325-330,335,345,350-351,353,364,370,373,375
+  s_ce38e707b3774d::t_a2681217e3fb1e 393
+  s_ce38e707b3774d::t_55367c31de4a16 18,35
+  s_ce38e707b3774d::t_d68a8d2f9b52f0 218-219,226,230-237,247,256,258-261,272-273,278-279,296
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-pruner.test.ts
+  s_ce38e707b3774d::t_69172fa87c6f0b 72-84
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-pruner.ts
+  s_ce38e707b3774d::t_c7cea985babb2a 28-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e609a025c06536e13515e2742dbafc143a2dd02f",
+  "prompts": {},
+  "sessions": {
+    "s_ce38e707b3774d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26f3d3be-4e23-4ead-99eb-53993886261e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

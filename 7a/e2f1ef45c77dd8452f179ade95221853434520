@@ -1,0 +1,26 @@
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_21ac51602d3870::t_9c72c4f5bb7548 77-119
+packages/cli/src/modules/instance-ai/activity-feed.service.ts
+  s_21ac51602d3870::t_72589de0d6487e 4,28-30,72,96,99,107-113,124-125,266-284,288-289
+  s_21ac51602d3870::t_fe599ea0d93e3f 114-123
+packages/cli/src/modules/instance-ai/__tests__/activity-feed.service.test.ts
+  s_21ac51602d3870::t_282f40bbd3dc02 3-9,42,57,252-280,303-310
+  ai_agent 46-52
+  s_21ac51602d3870::t_2a5c8e139cfae1 281-302
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7ae2f1ef45c77dd8452f179ade95221853434520",
+  "prompts": {},
+  "sessions": {
+    "s_21ac51602d3870": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b8ae52ed-e5e0-405f-86d5-38c89e02e5ef",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

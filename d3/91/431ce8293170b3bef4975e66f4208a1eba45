@@ -1,0 +1,29 @@
+packages/cli/src/modules/mcp/__tests__/get-workflow-versions-diff.tool.test.ts
+  s_17cab20ab25728::t_f71b67f5252771 107-117
+  s_17cab20ab25728::t_41a02a182838a6 86-92
+  s_17cab20ab25728::t_a5ae8892ef6f36 131-132
+packages/cli/src/modules/mcp/tools/get-workflow-versions-diff.tool.ts
+  s_17cab20ab25728::t_61d25690cecb91 151
+  s_17cab20ab25728::t_cdd0c2e60d6ea7 243,247-249
+  s_17cab20ab25728::t_0d8203e440a6c5 56-59,62-64
+  s_17cab20ab25728::t_0bcfd3f117b434 166
+  s_17cab20ab25728::t_1877bfb676895a 181
+  s_17cab20ab25728::t_b70b5acd7b8917 87
+  s_17cab20ab25728::t_513ac88a764c45 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d391431ce8293170b3bef4975e66f4208a1eba45",
+  "prompts": {},
+  "sessions": {
+    "s_17cab20ab25728": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "05c25d64-6848-42d3-9fd0-1cc1dd47f0e9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

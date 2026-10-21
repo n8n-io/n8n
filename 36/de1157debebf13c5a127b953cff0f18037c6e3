@@ -1,0 +1,20 @@
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-scoped-reads.integration.test.ts
+  s_8d717fb7cdc18c::t_920082ab4004cc 106-107,126-127,137-138
+  s_8d717fb7cdc18c::t_25615b9129f5db 139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "36de1157debebf13c5a127b953cff0f18037c6e3",
+  "prompts": {},
+  "sessions": {
+    "s_8d717fb7cdc18c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b31327a4-b04e-4d2b-b5bc-034852a82ac9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

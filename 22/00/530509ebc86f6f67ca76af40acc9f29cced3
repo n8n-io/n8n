@@ -1,0 +1,63 @@
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/composables/useN8nChatAgents.test.ts
+  s_71e25d45a5ee90::t_10793cc6e3e074 106-122
+  s_71e25d45a5ee90::t_28cff0af060eb5 7
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_71e25d45a5ee90::t_28c6c26bffc91b 1584-1585,1588-1601,1603-1608
+  s_71e25d45a5ee90::t_479920bc218ce9 10
+  s_71e25d45a5ee90::t_201211340748c6 1586-1587
+  s_71e25d45a5ee90::t_0dce1411299ba4 1602
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/composables/useN8nChatAgents.ts
+  s_71e25d45a5ee90::t_e4c7b170c3feb7 40-41
+  s_71e25d45a5ee90::t_a425c80e45d3a9 7
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/AgentN8nChatView.vue
+  s_71e25d45a5ee90::t_4e1ed1393d177a 88,93
+  s_71e25d45a5ee90::t_5d5ae1b1031570 86-87
+  s_71e25d45a5ee90::t_81e773c6760736 25
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/pendingN8nChatMessage.ts
+  s_71e25d45a5ee90::t_bec885a612d14b 30-40
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/__tests__/AgentN8nChatView.test.ts
+  s_71e25d45a5ee90::t_8a74984c64cc5b 462-484
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_71e25d45a5ee90::t_762cd7ddf49633 21-22
+  s_71e25d45a5ee90::t_c405387b46be3a 557-560,562-579
+  s_71e25d45a5ee90::t_fec40531b990b1 514-515
+  s_71e25d45a5ee90::t_f7addc2c147c0c 512-513,516-537,539-545
+  s_71e25d45a5ee90::t_6786adf1534c62 538
+  s_71e25d45a5ee90::t_f39ee7d0f6ea22 561
+  s_71e25d45a5ee90::t_052f6480cef251 556
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/N8nChatAgentLibraryView.vue
+  s_71e25d45a5ee90::t_7fbeeb261b76c9 86-88,93-95,97-103
+  s_71e25d45a5ee90::t_15ef6182797314 64
+  s_71e25d45a5ee90::t_38f3f5a414bf1c 9
+  s_71e25d45a5ee90::t_78066f61d5236f 76,85,89-92,96
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_71e25d45a5ee90::t_2000fa48a0d454 936,955,959-960
+  s_71e25d45a5ee90::t_9fb359d261c998 697-699
+  s_71e25d45a5ee90::t_671a7d5c8c5eb2 948,956-958
+  s_71e25d45a5ee90::t_d179c609d89dfb 861-868
+  s_71e25d45a5ee90::t_3a8966432b5083 1032-1033
+  s_71e25d45a5ee90::t_3adbc057205177 1003
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_71e25d45a5ee90::t_dba31e5042dda9 99
+  s_71e25d45a5ee90::t_7deb69c3b6f942 646-647,650-654
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/__tests__/N8nChatAgentLibraryView.test.ts
+  s_71e25d45a5ee90::t_f0dc024be723d8 184-194
+packages/frontend/editor-ui/src/features/agents/constants.ts
+  s_71e25d45a5ee90::t_44d5b69dae6864 20-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2200530509ebc86f6f67ca76af40acc9f29cced3",
+  "prompts": {},
+  "sessions": {
+    "s_71e25d45a5ee90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ca6b762-f376-4a31-af78-4066f186c7bb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

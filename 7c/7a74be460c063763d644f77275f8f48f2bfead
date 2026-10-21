@@ -1,0 +1,23 @@
+packages/cli/eslint.config.mjs
+  s_a4556b837ab6e9::t_32ee5d1a9c7876 278-287
+  s_a4556b837ab6e9::t_6592287884ff0f 277
+packages/cli/oxlint.config.mts
+  s_a4556b837ab6e9::t_32ee5d1a9c7876 295-301
+  s_a4556b837ab6e9::t_16d8b0cb7a0577 294
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7c7a74be460c063763d644f77275f8f48f2bfead",
+  "prompts": {},
+  "sessions": {
+    "s_a4556b837ab6e9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5eb18d59-43bb-430f-8f1b-0d965479bf74",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

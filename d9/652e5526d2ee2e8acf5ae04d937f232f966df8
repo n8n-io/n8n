@@ -1,0 +1,21 @@
+packages/cli/src/services/executions-filter-ai.service.ts
+  s_03d816ea3ae9c9::t_94163c5bd14602 1,3-30,32-82
+  s_03d816ea3ae9c9::t_9b71575bc65eb2 2
+  s_03d816ea3ae9c9::t_a521f029817626 31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "d9652e5526d2ee2e8acf5ae04d937f232f966df8",
+  "prompts": {},
+  "sessions": {
+    "s_03d816ea3ae9c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e2def67b-2d23-40ae-98ac-c1b9b0c045e0",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

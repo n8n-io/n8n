@@ -1,0 +1,31 @@
+packages/cli/src/workflows/__tests__/workflow-validation.service.test.ts
+  s_53cef6894d9656::t_c655403724de96 1022,1034-1038
+packages/cli/src/workflows/workflow-validation.service.ts
+  s_53cef6894d9656::t_e325a0970da2a6 184-187
+packages/core/nodes-testing/credentials-helper.ts
+  s_0deaeef79c250f::t_5c87a5f740cc15 96-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d06e7c5a320d64a9d197cc58f587db67711ce45a",
+  "prompts": {},
+  "sessions": {
+    "s_0deaeef79c250f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "48bfae1a-c693-4fd5-9ce6-44328629b7e9",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    },
+    "s_53cef6894d9656": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "80988671-9019-4d49-ace5-76c9b66cd316",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

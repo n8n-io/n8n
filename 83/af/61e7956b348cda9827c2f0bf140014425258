@@ -1,0 +1,21 @@
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/workflow-source-compiler.test.ts
+  s_703d93ed10c287::t_39aa26e4ab2f61 357-397
+packages/@n8n/instance-ai/src/tools/workflows/workflow-source-compiler.ts
+  s_703d93ed10c287::t_4b4fa09c840aae 150-159,162,171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "83af61e7956b348cda9827c2f0bf140014425258",
+  "prompts": {},
+  "sessions": {
+    "s_703d93ed10c287": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2bbd6001-c607-4555-bf92-2a25c394ed42",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

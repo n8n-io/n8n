@@ -1,0 +1,43 @@
+packages/cli/src/public-api/v1/__tests__/scope-parity.test.ts
+  s_71ad2034164515::t_f93a06f6070f15 33
+  s_71ad2034164515::t_ed3ff38de33073 35
+  s_71ad2034164515::t_db14877e3f6f0c 38-39
+  s_71ad2034164515::t_a6736799e80036 38-39
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_71ad2034164515::t_cfa5966bc658a8 3089-3090
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-importer.test.ts
+  s_71ad2034164515::t_0ff5d963901dd3 242
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-gates.test.ts
+  s_71ad2034164515::t_dcc59c34ccc6b2 6-18
+packages/@n8n/api-types/src/dto/packages/import-package-request.openapi.ts
+  s_71ad2034164515::t_1eb52834c590e0 91-92
+  s_71ad2034164515::t_8f18820db64766 91-92
+packages/cli/src/modules/n8n-packages/engine/import-gates.ts
+  s_71ad2034164515::t_e4f4684fd33e3c 19-21
+  s_71ad2034164515::t_0120fd7be5bd72 19-21
+packages/cli/src/public-api/v1/controllers/openapi/n8n-packages.openapi.ts
+  s_71ad2034164515::t_25c9ebc7b1936c 60-62
+  s_71ad2034164515::t_d4b77e9856f7f1 60-62
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackage.generated.yml
+  s_71ad2034164515::t_73a2a0ea3a6d36 16,99
+  s_71ad2034164515::t_76d2025015ba0d 16,99
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_71ad2034164515::t_67f2c01bbf701d 364
+  s_71ad2034164515::t_2b7526208a7e37 364
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7da1ac63dba34636b5a7fc9410648ccec8443d72",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

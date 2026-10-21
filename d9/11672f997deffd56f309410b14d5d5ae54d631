@@ -1,0 +1,38 @@
+packages/@n8n/instance-ai/src/tools/index.ts
+  s_e16ee6ac4c0acf::t_84c6a7b5987ad7 116-119,153-156
+  s_e16ee6ac4c0acf::t_312f574c63a6bf 88-91
+packages/@n8n/instance-ai/src/tools/workflows/validate-skeleton.service.ts
+  s_e16ee6ac4c0acf::t_bda8fa1917112d 1-26,32-269
+  s_e16ee6ac4c0acf::t_231a3fcaef8103 27-31
+  s_e16ee6ac4c0acf::t_62b5b9942f0abf 270-276
+packages/@n8n/instance-ai/src/tools/workflows/plan-workflow-skeleton.tool.ts
+  s_e16ee6ac4c0acf::t_735eb34bb58e97 1-33
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_e16ee6ac4c0acf::t_5061b854360485 17
+  s_e16ee6ac4c0acf::t_f2a1cb89f54707 204-210
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/validate-skeleton.service.test.ts
+  s_e16ee6ac4c0acf::t_467e8c7de67fff 78,81,83
+  s_e16ee6ac4c0acf::t_4108c8d0496596 1-77,80,82,84-432
+  s_e16ee6ac4c0acf::t_acad92262f0ad4 79
+packages/@n8n/instance-ai/src/tools/workflows/workflow-skeleton.schema.ts
+  s_e16ee6ac4c0acf::t_a04be67a48fa6b 74-88,92-93
+  s_e16ee6ac4c0acf::t_b40894e3db3dd2 1-73,89-91
+packages/@n8n/instance-ai/src/tools/tool-ids.ts
+  s_e16ee6ac4c0acf::t_db48723855b186 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "d911672f997deffd56f309410b14d5d5ae54d631",
+  "prompts": {},
+  "sessions": {
+    "s_e16ee6ac4c0acf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "40978899-e064-4f0f-9c3d-1ee8c69f6604",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

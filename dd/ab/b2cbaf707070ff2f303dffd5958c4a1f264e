@@ -1,0 +1,515 @@
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.test.ts
+  s_de7c4c81db18ab::t_080192f63b5c2f 749-752
+  h_5d40c27a8fdfd1 760-761
+  s_de7c4c81db18ab::t_001519f49b2229 747-748,753-759,762
+packages/nodes-base/nodes/Telegram/tests/TelegramTrigger.node.test.ts
+  s_60ce6e746ce9d3::t_b789925bc37b38 7
+packages/cli/src/modules/source-control.ee/__tests__/source-control-helper.ee.test.ts
+  s_934a382079a856::t_d7398e3710c26a 1208-1209,1412-1413
+packages/cli/src/modules/agents/builder/skills/mcp.skill.ts
+  s_770a4f5233186c::t_8ad2b3903b74bc 98
+packages/cli/src/modules/agents/builder/prompts/config-mutation.prompt.ts
+  s_770a4f5233186c::t_a7cff99b8f3cd2 149
+packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
+  s_b1ae3677d6bc36::t_f4ecbbe076e13c 39,43
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue
+  s_b34abcbd386402::t_f65d763798858f 85
+  s_70e4a16a672757::t_bdf6c7bea8e71a 208-211
+packages/cli/test/integration/shared/utils/test-server.ts
+  s_2a235a6e9347be::t_2f37f299fc095c 343-344
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/item/update.operation.ts
+  s_61d0f858e68120::t_cd29dabc499dfb 1-103
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/item/index.ts
+  s_61d0f858e68120::t_079ea6bc595776 1-19
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/item/update.test.ts
+  s_61d0f858e68120::t_6437ac651bddfa 1,3-339,342-369,373-376
+  s_61d0f858e68120::t_02a2be6a89d2d1 2
+  s_61d0f858e68120::t_baf62cffa3183e 340-341
+  s_61d0f858e68120::t_05164dd21ec3a3 371
+  s_61d0f858e68120::t_e50551fac11c76 370,372
+packages/cli/src/modules/n8n-packages/__tests__/import-subworkflows.integration.test.ts
+  s_3969ea2ea64fa2::t_81d291c7d1716f 18
+  s_3969ea2ea64fa2::t_ebf743e72f9827 48
+  s_3969ea2ea64fa2::t_50b31c03f82518 43
+  s_3969ea2ea64fa2::t_2bb8f3b7bf89b5 17
+  s_3969ea2ea64fa2::t_2d2dbf4f09e024 175-198
+packages/cli/test/integration/shared/utils/index.ts
+  s_3969ea2ea64fa2::t_0624b0e61c50a3 113-118
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_3969ea2ea64fa2::t_f2e9238899d78f 245
+  s_3969ea2ea64fa2::t_5c33eeff460699 267-271,279-284,289-293,298-304
+  ai_agent 294-297
+  s_3969ea2ea64fa2::t_1d2ce7c8f5921c 244
+  s_3969ea2ea64fa2::t_f6ca361e09596a 7
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/package-fixtures.ts
+  s_3969ea2ea64fa2::t_d2f0222d335fc4 117-120,127-132,134-143,149-150
+  s_3969ea2ea64fa2::t_81fb5e88a1f381 119
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_c5370144142666::t_44703f6c3dc499 168-169,238-244
+packages/cli/src/modules/n8n-packages/__tests__/import-pipeline.integration.test.ts
+  s_c5370144142666::t_44703f6c3dc499 891-892,896,1693-1698,1747-1748,1828,1855-1860,1897-1900,1932-1935,1971-1973,1976
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_c5370144142666::t_b867f54d5857f6 121
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_c5370144142666::t_44703f6c3dc499 218
+packages/cli/src/modules/n8n-packages/entities/reference.ts
+  s_3969ea2ea64fa2::t_db7ac3a9a2f6a7 1-16
+packages/cli/src/modules/n8n-packages/entities/workflow/references/error-workflow.reference.ts
+  s_3969ea2ea64fa2::t_8b164240bc4a90 3-4,7-9,11-20,23-24,26-27,30-32
+  h_6ef4cecfee65a2 7,20
+packages/cli/src/modules/n8n-packages/entities/workflow/references/index.ts
+  s_3969ea2ea64fa2::t_1821d103f7801c 1-16
+  s_3969ea2ea64fa2::t_19e43e8c0573b1 1-2,11-12,19-36
+packages/cli/src/modules/n8n-packages/entities/workflow/references/__tests__/caller-ids.reference.test.ts
+  s_3969ea2ea64fa2::t_d7c463e7e1d2fd 3,6-11,13-15,18-20,22-27,29-30,32-35
+  s_3969ea2ea64fa2::t_f6ca361e09596a 4
+packages/cli/src/modules/n8n-packages/entities/workflow/references/sub-workflow-node.reference.ts
+  s_3969ea2ea64fa2::t_6a6cf0ac1031ea 8-10,12-14,19-20,24-25,27,51-72
+  h_6ef4cecfee65a2 12-14,16-36
+packages/cli/src/modules/n8n-packages/entities/workflow/references/__tests__/sub-workflow-node.reference.test.ts
+  s_3969ea2ea64fa2::t_8b0cea3c504efb 1,5-9,36-40,124,179-216
+  s_3969ea2ea64fa2::t_f6ca361e09596a 4
+  ai_agent 34-35
+packages/cli/src/modules/n8n-packages/entities/workflow/references/caller-ids.reference.ts
+  s_3969ea2ea64fa2::t_5af7a621827e1f 1-25
+  h_6ef4cecfee65a2 5,7
+packages/cli/src/modules/n8n-packages/entities/workflow/references/__tests__/error-workflow.reference.test.ts
+  s_3969ea2ea64fa2::t_aac1635fa3fb6d 1-3,5-26,30-51
+  s_3969ea2ea64fa2::t_f6ca361e09596a 4
+  ai_agent 27-29
+packages/cli/src/modules/n8n-packages/entities/workflow/sub-workflow-ordering.ts
+  h_6ef4cecfee65a2 4
+packages/cli/src/modules/n8n-packages/entities/workflow/references/__tests__/extract-workflow-requirements.test.ts
+  ai_agent 92-95
+  s_3969ea2ea64fa2::t_4e951d2d2e51ef 4,36,42,59,70,78,86,96-98,102-103,105,119,127,135,146
+packages/cli/src/public-api/v1/handlers/discover/discover.service.ts
+  s_d8ed300529e078::t_e56df345b5beae 111-113,118-120,122-123,126-131,135-136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "ddabb2cbaf707070ff2f303dffd5958c4a1f264e",
+  "prompts": {},
+  "humans": {
+    "h_0d09e42b2cccb8": {
+      "author": "kgrhartlage <kai.grosse.hartlage@gmail.com>"
+    },
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    },
+    "h_6ef4cecfee65a2": {
+      "author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    },
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_12107b09095a6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f36b6843-9b7a-45a5-8d52-4031db7468b2",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_146af3b34ae01d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a4285142-e0a3-4f67-b70c-46770dcbd4f8",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    },
+    "s_1ef72897374beb": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1e495e5d-7657-49d3-9e14-471f81cd06f2",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_278b5dc3633c05": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7b77dc33-92bf-492b-8614-c5fa327f6901",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_278cbb65f99049": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1063cccb-da60-401d-8e97-8afd031e235c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_2a235a6e9347be": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6650-1132-7ff1-ab94-090605cfc9f7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_3969ea2ea64fa2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4880f48c-229a-4f13-a1b3-a8fc31beb14b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    },
+    "s_41e37076417c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "480c8620-d708-419e-ac08-fca1f0d2cb0a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_44a98ba2784a12": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "83e316a4-3906-40bf-bce2-efffe91f33e5",
+        "model": "default"
+      },
+      "human_author": null
+    },
+    "s_4e81021c6567f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "013ede52-1858-4647-bc13-cff498ab7a24",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_563a9e16fe5daf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77cbd763-38ec-4ec6-89cd-4072897b7706",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_5c78c9f770578f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "660c964f-b7b7-47c4-9531-a80c3e8ee8eb",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_60c9025b151770": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "53a03a0f-53be-4095-a000-6d094159abd5",
+        "model": "unknown"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_60ce6e746ce9d3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d84124d3-ce9c-4a73-9716-80eb657f790d",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_61d0f858e68120": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f96b55e5-7c8c-408a-8bcb-ef57ed54ec7b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    },
+    "s_63922c16247082": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "6b337778-08d5-4266-bf43-54422800dd01",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": null
+    },
+    "s_64c8e8b6d24f82": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1345f18b-170b-4cd3-b34e-f41cef04df99",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_659d89565dd06e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e9438224-5514-4a69-9edd-5631763dfabc",
+        "model": "kimi-k2.7-code"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_6638f09b589e97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5e3f01e-f690-4590-9a30-a5e2bd26c393",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_70e4a16a672757": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f79e6-9f5d-7b91-b07b-a2c76974c292",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_744aa7ffad1673": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c708436e-d47a-46c9-8cfa-2a78ec728e0c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_770a4f5233186c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "af98002c-f09b-4489-8374-ebc72894c73f",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_782e56c14c8ff8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "479a1e88-da05-4f1f-88bf-0e188b32ec02",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_813e262a61f3c4": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2b40806b-1b79-457f-8546-5d2b9b1d3ad1",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_83feff7457dd06": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec8a95a5-afe0-452d-847f-10d4068d465c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_8cd0fccda07fbe": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "221c458b-a4ea-4437-89f0-0e9180a35658",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_9006126844c8d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f5b699ae-12d0-405b-9a78-fb4840686602",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    },
+    "s_91f67565918eee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "36f4874d-45bc-43d2-bd2d-9c16d23d9c95",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_934a382079a856": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fafd5ab5-0be6-49da-b91c-294f988595c1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_94fa4ed7d7b038": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d271a69-d48a-40c6-b6a3-5630b148db23",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
+    "s_a2967ec392b10a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2c04c3e1-d5a9-42bf-81c9-c49a5c1432d1",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_a2f2604c6a0758": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2eebeab3-c2f8-45bc-a543-37d531da2598",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    },
+    "s_abf81efdb80d12": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "862ff03d-0d2b-46dc-9c15-ac812b44f63f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_b1ae3677d6bc36": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14856d89-b227-4425-adeb-7f31ce9ea7b6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    },
+    "s_b34abcbd386402": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4dc6fdb7-ff5f-45a8-98bf-0345038d38d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
+    "s_b3f23ab76a494c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6fd0-bfb4-7092-a515-f61e09438476",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_b6381fbb8ddc64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7dd02182-97ab-4180-9c8a-8d5054fdd2f7",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
+    "s_c2503c0608a3df": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7ea4-b00f-7082-ab26-2894ae42cef2",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_c5370144142666": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33b6e07a-8017-4b60-ad00-b9db5880f6e3",
+        "model": "claude-opus-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    },
+    "s_c7f2eb05574ce2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "63ca9479-d174-4a0f-9349-54a47630f906",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
+    "s_d7309962fc8352": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cde34fb2-171c-4c0e-ba62-dcc55361bc75",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_d8236b8b5400e8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "500e2669-64fc-46e2-9484-cf22ebf66e89",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": null
+    },
+    "s_d8ed300529e078": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eecbddea-2084-4432-846e-23aea5392cb3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    },
+    "s_d952e76b1ba7eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "94c73f78-dd8b-454a-9e1e-fb82ff51e953",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_de7c4c81db18ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "82b018ac-f927-4720-b8f9-8aeaeef1b296",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    },
+    "s_e0cc82d125e08a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b603185d-d59b-4c8d-a5fb-062b299cccc7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    },
+    "s_e0d6b46d5a1cd6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9bef762-10a3-4006-8b74-acefd3594aab",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
+    "s_e96dffd2b5f515": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d2c04bcb-39e4-4605-b026-619653c90b3e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_f201eb7bca5bd7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "269f2628-3ad3-4988-9c50-1b2b78345323",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_fbe2845cd4e7aa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "641b7fac-100c-416d-9d4a-2fc7e359856a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

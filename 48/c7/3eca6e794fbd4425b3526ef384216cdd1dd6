@@ -1,0 +1,1989 @@
+packages/@n8n/backend-network/src/http/http.d.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-14
+packages/@n8n/api-types/src/schemas/evaluations.schema.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 6-10,13-20
+docs/generated/postgres-schema/public.workflow_statistics.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-50
+.github/scripts/cla/post-final-status.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-66
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/evaluation-helpers.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 16,38,46
+packages/@n8n/agents/src/runtime/write-todos-tool.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-113
+packages/@n8n/agents/src/storage/base-memory.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-51
+packages/@n8n/computer-use/src/tools/filesystem/edit-file.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,8,13,17,21,26-27,83-117,178-179,197-209
+.github/workflows/test-evals-ai.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 113-116,131-133
+docs/generated/sqlite-schema/workflows_tags.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-83
+docs/generated/sqlite-schema/workflow_statistics.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-65
+packages/@n8n/agents/src/workspace/sandbox/index.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-47
+packages/@n8n/benchmark/Dockerfile
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/get-execution-schema.tool.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2,17-21,26,29
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/runner.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 27,35,48,82,108,123,156,167,187,193,217,230,256,273,279,293,299,316,322,339,352,372,378,392,398,419,425
+packages/@n8n/agents/src/runtime/sub-agent-task-path.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-110
+packages/@n8n/computer-use/src/gateway-client.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1,15-23,27-28,30,34-35,37-38,40-41,45,66,69-70,77-84,86,102-103,112,144,156,167,177,189,199-200,209-210,223,250,261-320
+docs/generated/sqlite-schema/role_mapping_rule.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-77
+docs/generated/postgres-schema/public.project.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-190
+docs/generated/postgres-schema/public.agent_files.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-73
+packages/@n8n/ai-utilities/src/utils/vector-store/MemoryManager/test/MemoryCalculator.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3
+packages/@n8n/backend-common/src/modules/__tests__/module-registry.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,10,27,48-50,61,82-84,102,105,108,117,119,122,133,135,139,149,151,157-158,168,170,176-177,189,194,208-209,212,214,232-233,236,238,255,258,260,278-279,282,284,300,302,304,316,318,324,334,336,340,350-352,354-355,358,360,365
+docs/generated/sqlite-schema/shared_credentials.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-83
+docs/generated/sqlite-schema/trusted_key_source.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-67
+docs/generated/postgres-schema/public.role_mapping_rule.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-72
+packages/@n8n/ai-utilities/src/index.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 17-43,57-62
+.github/scripts/cla/resolve-context.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-76
+packages/@n8n/computer-use/src/tools/filesystem/copy-file.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2,7,12,16,21-22,112-118
+packages/@n8n/client-oauth2/src/index.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 5
+packages/@n8n/computer-use/src/tools/filesystem/copy-file.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 7,37
+packages/@n8n/ai-utilities/src/__tests__/utils/fromai-tool-factory.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 174
+docs/generated/sqlite-schema/user.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-297
+packages/@n8n/agents/src/__tests__/workspace/sandbox/workspace-root.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-157
+packages/@n8n/ai-utilities/src/node-catalog/resource-operation-extractor.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-318
+packages/@n8n/ai-workflow-builder.ee/src/types/discovery-types.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/handlers/test/final-response-handler.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 14-15,23
+.github/workflows/security-trivy-scan-callable.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 39,169,172,175-180
+.github/workflows/ci-detect-new-packages.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 24,33-36,38,40,42-45
+docs/generated/postgres-schema/public.tag_entity.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-56
+packages/@n8n/ai-utilities/src/__tests__/utils/n8n-json-loader.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 5,7,11-12,15,18,32-34,40,56,227
+.github/workflows/test-evals-instance-ai.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 12-32,43-59,67,71,88-90,94-96,104-107,109-131,136,142-143,187-218,228-232,240-308,318-320,323,327-333,336
+.claude/plugins/n8n/skills/human-like-code-review/SKILL.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-150
+docs/generated/postgres-schema/public.agents_observations.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-111
+packages/@n8n/ai-workflow-builder.ee/src/test/workflow-builder-agent.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 8-9,11-13,16-20,23-27,30-33,42-46,50,70,76-78,82-85,89-91,181,319,329,349,360,485,821
+docs/generated/postgres-schema/public.event_destinations.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-44
+.github/workflows/release-promote-github-release.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 45
+packages/@n8n/backend-network/src/http/index.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-34
+packages/@n8n/agents/src/workspace/tools/batch-str-replace-file.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-81
+.github/workflows/ci-cla-check.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-198
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/handlers/tool-dispatch-handler.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 11,25
+docs/generated/sqlite-schema/instance_ai_resources.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-54
+.github/scripts/slack/notify.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-97
+.github/workflows/test-benchmark-nightly.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 108,110,112-120
+packages/@n8n/agents/src/types/sdk/guardrail.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3
+packages/@n8n/ai-utilities/src/__tests__/utils/follow-redirects.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-209
+docs/generated/sqlite-schema/data_table.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-79
+packages/@n8n/config/src/configs/executions.config.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1,59-81,102,136-137
+docs/generated/sqlite-schema/shared_workflow.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-93
+packages/@n8n/config/src/configs/agents.config.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-79
+packages/@n8n/agents/src/workspace/sandbox/create-workspace.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-87
+packages/@n8n/api-types/src/dto/instance-ai/instance-ai-mcp-update-connection-request.dto.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-9
+.github/scripts/attest-image-sbom.test.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-37
+packages/@n8n/agents/src/__tests__/integration/workspace/workspace-agent.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 72-75,109-110,137-138,150,209-210,242-245
+.github/workflows/ci-master.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 23-25,33,37,56,58,60-68
+docs/generated/sqlite-schema/scope.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-55
+packages/@n8n/computer-use/src/tools/screenshot/screenshot.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2,7,9-12,20,27-28,35-36,44-45,52-58,72-78,83-84,92,97,112,121,138,142,153,157,165,170,195,213,233,253,258,265,272,277
+docs/generated/postgres-schema/public.user.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-291
+packages/@n8n/backend-common/package.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,9,15-17,43-46,48-49
+packages/@n8n/ai-utilities/src/__tests__/utils/text-editor.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-198
+packages/@n8n/backend-network/src/ssrf/ssrf-blocked-ip.error.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-25
+packages/@n8n/agents/src/__tests__/workspace/base-filesystem.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 21-22,179,188,197
+.github/workflows/ci-codeowners-validation.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-23
+.tbls.postgres.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-16
+packages/@n8n/agents/src/runtime/delegate-sub-agent-tool.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-627
+packages/@n8n/agents/src/__tests__/workspace/sandbox/n8n-sandbox-filesystem.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-111
+packages/@n8n/backend-common/src/__tests__/cli-parser.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1
+docs/generated/postgres-schema/public.chat_hub_agent_tools.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-68
+docs/generated/sqlite-schema/agents_messages.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-72
+packages/@n8n/agents/src/sdk/guardrails/redactor.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-142
+docs/generated/postgres-schema/public.oauth_user_consents.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-78
+packages/@n8n/client-oauth2/test/code-flow.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 190-200
+.github/pull_request_template.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 4,8-12
+.github/WORKFLOWS.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 184,188-203,368-369,409,470-478,511-512,524,580,658-695,703
+packages/@n8n/api-types/src/__tests__/agent-builder-admin-settings.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-95
+packages/@n8n/config/src/configs/endpoints.config.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 6,82-93,149-155
+packages/@n8n/api-types/src/dto/index.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 32,36-37,49,103,125-129,150,211-218,257-261,263-265
+packages/@n8n/config/src/configs/__tests__/ai.config.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 8
+packages/@n8n/client-oauth2/src/client-oauth2-token.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 75-79,86
+packages/@n8n/ai-utilities/src/utils/n8n-binary-loader.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 20,108,116,159
+codecov.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 20-21,31-32,39-44,57-60,65-70,72-75,77,79-80,83-84,89-91,102-114,118,123,129-138
+packages/@n8n/ai-node-sdk/tsconfig.build.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 6
+packages/@n8n/ai-workflow-builder.ee/evaluations/support/environment.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 10,299
+packages/@n8n/agents/src/__tests__/workspace/sandbox/n8n-sandbox-sandbox.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-264
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/handlers/test/chat-setup-handler.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,5,20,90-91,102,117-118,128,143-144,155,170,182-183,195,205,217-218,235,247-248,276,288-289,316,341-342
+.claude/plugins/n8n/skills/experiments/SKILL.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-23
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-145
+docs/generated/postgres-schema/public.dynamic_credential_resolver.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-83
+packages/@n8n/agents/src/runtime/runtime-helpers.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 5,7,20-22,25-26,29
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/handlers/test/agent-iteration-handler.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 13,19,34,61,75,94,106,135,158-159,171,195,207,233
+packages/@n8n/api-types/src/dto/credential-resolver/list-credential-resolvers-query.dto.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-6
+packages/@n8n/backend-common/src/modules/module-registry.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 6,20,38-40,61-63,130,132
+packages/@n8n/backend-network/tsconfig.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-17
+packages/@n8n/agents/src/__tests__/integration/custom-message-suspend-resume.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 11
+docs/generated/sqlite-schema/folder.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-100
+packages/@n8n/agents/package.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,8-39,48,54-56,60-79,81,85,87-88,106,108-112
+docs/generated/postgres-schema/public.workflow_builder_session.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-101
+docs/generated/sqlite-schema/trusted_key.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-65
+packages/@n8n/computer-use/tsconfig.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 4
+.github/workflows/test-e2e-coverage-nightly.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-265
+.github/workflows/test-e2e-reusable.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 38,50-59,64-67,88,106-107,113-123,126-132,134,140-141,152-153,156,159,161-166
+docs/generated/postgres-schema/public.instance_ai_observational_memory.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-127
+packages/@n8n/agents/src/runtime/model-factory.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1,6-10,14,17-18,46-176,186-189,191-196,198-202,205-210,212-218,220-223,252,265-266
+.claude/plugins/n8n/skills/community-pr-readiness-check/reference/label-flow.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-92
+packages/@n8n/ai-utilities/src/node-catalog/get.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-596
+.github/workflows/test-unit-reusable.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 15,20-36,46-47,49,58-69,85,94,101-102,104,113-129,145,154,161-162,164,174,190,199,210-211,213,223,241,250
+packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/evaluators/connections.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 8
+docs/generated/postgres-schema/public.workflow_publish_history.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-108
+packages/@n8n/api-types/src/dto/project/__tests__/update-project.dto.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 72-89,157-189
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/connect-nodes.tool.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,25-29,35,38,45
+packages/@n8n/backend-common/src/typed-emitter.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-49
+docs/generated/sqlite-schema/mcp_registry_server.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-69
+packages/@n8n/ai-workflow-builder.ee/src/utils/test/subgraph-helpers.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 458
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 69,105,180,299-301,324-349
+packages/@n8n/computer-use/src/tools/filesystem/read-file.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,8,13,17,22-23,35,132,139,143-153,160-200,207-214
+packages/@n8n/agents/src/workspace/sandbox/lazy-daytona.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-12
+docker/images/runners/Dockerfile.distroless
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 15,109
+packages/@n8n/agents/src/__tests__/integration/structured-output.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 23-46,120-128
+packages/@n8n/api-types/src/agents/__tests__/sanitize-agent-json-config.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-556
+docs/generated/sqlite-schema/instance_ai_iteration_logs.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-68
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/evaluators/programmatic.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 13,16,69
+packages/@n8n/api-types/src/dto/api-keys/list-api-keys-query.dto.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-25
+.github/scripts/owners-review-recommendations.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-254
+docs/generated/postgres-schema/public.agents.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-240
+docs/generated/postgres-schema/public.test_case_execution.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-107
+packages/@n8n/agents/src/runtime/provider-credentials.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-43
+packages/@n8n/ai-workflow-builder.ee/evaluations/cli/argument-parser.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 76,453,457
+docs/generated/sqlite-schema/auth_provider_sync_history.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-71
+packages/@n8n/ai-workflow-builder.ee/src/agents/test/responder.agent.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,14,40,59
+packages/@n8n/client-oauth2/tsconfig.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 7
+docs/generated/postgres-schema/public.webhook_entity.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-73
+.github/workflows/release-create-minor-pr.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 23,25-33
+packages/@n8n/agents/src/workspace/types.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 131
+packages/@n8n/ai-workflow-builder.ee/evaluations/support/pin-data-generator.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2,356,399,448
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/update-node-parameters.tool.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 4-6,28-32,36-37,43-44,48,52-53,57-59,66,634
+packages/@n8n/agents/src/sdk/__tests__/agent-telemetry.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-81
+docs/generated/postgres-schema/public.annotation_tag_entity.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-50
+packages/@n8n/agents/src/runtime/__tests__/observation-log-observer.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-315
+packages/@n8n/agents/src/types/sdk/credential-provider.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-2,4
+docs/generated/postgres-schema/public.workflow_history.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-105
+packages/@n8n/ai-workflow-builder.ee/src/subgraphs/test/integration/discovery-subgraph.integration.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 185,190
+packages/@n8n/computer-use/src/gateway-client.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 24,36-46,116,152,316-318,457-484
+packages/@n8n/ai-workflow-builder.ee/src/subgraphs/test/integration/question-quality.integration.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 25,331,334
+packages/@n8n/api-types/src/push/execution.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 7,15-19,32,42-46
+.github/workflows/release-populate-cloud-with-releases.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 52
+.github/workflows/release-merge-tag-to-branch.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 58-64,66-78
+packages/@n8n/computer-use/src/tools/filesystem/fs-utils.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,5-10,13,20,28,37,45,48,151,162-193,199,202,225,237-275
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/evaluators/llm-judge.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 10,15,18,61
+docs/generated/postgres-schema/public.agents_observation_locks.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-81
+packages/@n8n/agents/src/sdk/telemetry.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 156-157,228-233,298,312-318
+packages/@n8n/agents/src/__tests__/integration/memory/memory.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 11,33,57,99
+packages/@n8n/backend-network/src/http/http-request.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-227
+packages/@n8n/ai-workflow-builder.ee/vitest.config.base.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-33
+packages/@n8n/ai-utilities/src/utils/loaders/n8n-pdf-loader.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-86
+docs/generated/postgres-schema/public.dynamic_credential_user_entry.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-96
+packages/@n8n/backend-network/src/ssrf/__tests__/hostname-matcher.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-58
+docs/generated/sqlite-schema/instance_ai_pending_confirmations.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-115
+packages/@n8n/api-types/src/quick-connect.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-6,14
+packages/@n8n/ai-utilities/src/node-catalog/lean-node-type.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-114
+packages/@n8n/ai-utilities/src/node-catalog/node-type-parser.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-149
+packages/@n8n/ai-workflow-builder.ee/src/tools/node-details.tool.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2-7
+docs/generated/postgres-schema/public.shared_workflow.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-85
+packages/@n8n/api-types/src/dto/credentials/credential-connection-status.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-10
+docs/generated/sqlite-schema/role.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-100
+packages/@n8n/agents/src/__tests__/integration/orphaned-tool-messages.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 4,31-32,34-40,43,47,53,57-64,69,74-75,80-81,85-92,96-97,104-105,110,113-115,131-132,139-141,160,168
+packages/@n8n/ai-utilities/src/utils/vector-store/createVectorStoreNode/constants.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 13-16
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/lifecycle.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 6,23-25,32,71,91-92,117-118,557-558,597,622-623,638,652,667,680,691,704-705,720-721,737-738,756-757,773-774,797-798,823,827
+docs/generated/sqlite-schema/user_favorites.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-73
+docs/generated/postgres-schema/public.shared_credentials.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-75
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/tools/test/get-suggested-nodes.tool.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1
+packages/@n8n/api-types/src/dto/ai/ai-session-retrieval-request.dto.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 7
+.github/scripts/stale/clean-stale-branches.test.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-285
+packages/@n8n/backend-network/src/ssrf/hostname-matcher.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-65
+docs/generated/sqlite-schema/instance_ai_messages.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-73
+.github/actions/setup-nodejs/safe-chain.config.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-16
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2,6-12,17-26,44-51,54-56,78-88,90-100,103-114,117-122,126-128,134-145,152-157,162-164,166-167,179,213,224,251-262,275,279,311,327-328
+.github/scripts/update-changelog.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 12
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/remove-node.tool.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2,22-26,31,34,39
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/test-case-generator.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 9-10,29,64,67,69,86,260,262
+packages/@n8n/agents/src/types/telemetry.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 29-30
+packages/@n8n/api-types/src/agents/sanitize-agent-json-config.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-220
+packages/@n8n/agents/src/runtime/__tests__/inmemory-messages.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-132
+packages/@n8n/agents/src/runtime/message-list.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2,5,9-10,14-17,19,107-121,147-225,228-229,231,234-236,239-248
+packages/@n8n/backend-network/src/http/__tests__/outbound-user-agent.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-86
+packages/@n8n/computer-use/src/tools/filesystem/file-type.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-40
+packages/@n8n/agents/src/sdk/__tests__/from-json-config.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-150
+packages/@n8n/agents/src/__tests__/workspace/sandbox/daytona-sandbox.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-594
+packages/@n8n/codemirror-lang-html/test/test-complete.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1,10,15-20
+packages/@n8n/agents/src/__tests__/integration/memory/memory-episodic.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-289
+docs/generated/sqlite-schema/agents_resources.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-77
+packages/@n8n/agents/src/workspace/sandbox/logger.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-16
+package.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,6,14,20,33-34,46,50,54,56-58,75,79,87,93,96,111,116,123,131,135-137,146,150-153,177-191,206
+packages/@n8n/computer-use/src/__mocks__/@inquirer/prompts.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-3
+packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/evaluators/credentials.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2
+docs/generated/postgres-schema/public.mcp_registry_server.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-64
+packages/@n8n/config/src/configs/__tests__/compression.config.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-37
+packages/@n8n/api-types/src/agents/agent-integration.schema.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-100
+.github/workflows/test-evals-discovery.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-123
+packages/@n8n/agents/src/runtime/observation-log-store.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-40
+packages/@n8n/chat-hub/tsconfig.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 4
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/tools/code-builder-search.tool.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2-5,10-14,17-19,21,23-24,26-27
+docs/generated/sqlite-schema/agents_threads.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-122
+docs/generated/sqlite-schema/data_table_column.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-69
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/get-workflow-overview.tool.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2,17-21,26,29
+packages/@n8n/ai-utilities/src/node-catalog/index.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-62
+packages/@n8n/agents/examples/basic-agent.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 6,13,67,79-82,124-125,127-128
+packages/@n8n/ai-utilities/src/__tests__/utils/log-ai-event.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2,7-8,12,16,18,22
+packages/@n8n/ai-utilities/src/utils/vector-store/MemoryManager/test/StoreCleanupService.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2-3,12,35
+packages/@n8n/agents/src/workspace/tools/str-replace-file.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-58
+packages/@n8n/agents/src/skills/prompt.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-62
+.github/scripts/attest-image-sbom.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-89
+docs/generated/sqlite-schema/chat_hub_messages.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-164
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/builder-tools.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 7,14-15,21,28,35,42,49,56,63,70,77,84,91,98,105,112,119,126,133,160
+packages/@n8n/backend-network/src/http/binary-buffer.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-22
+docs/generated/sqlite-schema/token_exchange_jti.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-50
+.github/workflows/release-publish-post-release.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 73,88-89
+packages/@n8n/ai-workflow-builder.ee/src/test/session-manager.service.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 5-6,13-14,16-18,26,28,47-49,52,63,85-87,117,209,240,261,286,300,312,334,355,385,417,442,482,500,524,555,597-598,643-644,650,676-677,703,738-739,769-770,798-799,833-834,868-869,925,929,981-982,1010,1231,1236-1238,1378,1387,1408,1424,1440,1475,1499-1500,1529-1530,1549,1561,1578,1606,1661,1664
+docker/images/n8n/Dockerfile
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1,4-8,12-32
+docs/generated/postgres-schema/public.instance_ai_workflow_snapshots.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-52
+.github/workflows/test-bench-reusable.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 28
+packages/@n8n/agents/src/__tests__/langsmith-telemetry.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-293
+docker/images/runners/Dockerfile
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1,85
+packages/@n8n/agents/src/runtime/__tests__/delegate-sub-agent-tool.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-627
+packages/@n8n/agents/src/runtime/memory-lifecycle.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-79
+docs/generated/postgres-schema/public.test_run.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-143
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/tools/code-builder-get.tool.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2-4,8-12,16-18,21-55
+docs/generated/postgres-schema/public.execution_data.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-64
+packages/@n8n/agents/src/sdk/__tests__/catalog.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-127
+packages/@n8n/ai-workflow-builder.ee/evaluations/support/pin-data-generator.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 13,76
+packages/@n8n/agents/src/runtime/__tests__/observation-log-renderer.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-91
+docs/generated/sqlite-schema/workflow_published_version.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-95
+packages/@n8n/cli/tsconfig.build.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 7
+packages/@n8n/computer-use/src/startup-config-cli.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 4,6-8,12-13,82,85,91,95,100,121,139,146-147
+packages/@n8n/ai-utilities/src/node-catalog/__tests__/helpers.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-22
+packages/@n8n/agents/src/runtime/__tests__/tool-adapter.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-257
+docs/generated/sqlite-schema/agent_execution.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-108
+packages/@n8n/agents/src/sdk/__tests__/inline-sub-agent-tools.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-347
+packages/@n8n/backend-network/src/dns/__tests__/in-memory-dns-cache.service.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-189
+packages/@n8n/agents/src/runtime/episodic-memory-defaults.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-630
+packages/@n8n/agents/src/runtime/deferred-tool-manager.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-247
+packages/@n8n/ai-workflow-builder.ee/evaluations/evaluators/binary-checks/__tests__/index.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 45
+packages/@n8n/agents/src/utils/parse.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-40
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/node-search.tool.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 18-22,30,82
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory-defaults.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-219
+packages/@n8n/ai-workflow-builder.ee/src/prompts/builder/prompt-builder.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 28,36,62,69,358
+packages/@n8n/config/src/configs/auth.config.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 24-33
+packages/@n8n/backend-network/src/http/__tests__/binary-string.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-115
+docs/generated/sqlite-schema/credentials_entity.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-153
+docs/generated/sqlite-schema/insights_by_period.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-64
+packages/@n8n/computer-use/src/gateway-session.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 17,104,106-127
+packages/@n8n/ai-utilities/src/__tests__/utils/loaders/n8n-pdf-loader.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-259
+packages/@n8n/agents/eslint.config.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 4-6,13-37,47-51
+packages/@n8n/ai-workflow-builder.ee/src/prompts/agents/discovery.prompt.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 347-348,358,361,368-369,372-373,378-380
+packages/@n8n/agents/src/workspace/sandbox/types.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-105
+.github/test-metrics/playwright.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2,6-10,12,14,17,19,22,24,27,29,31-34,36-39,42,44,46-49,52,56-60,62-72,74,77,79,81-89,92,96-100,102,104,106-114,117,119,122,124,127,129,131-134,136-139,141-144,146-149,151-154,156-159,161-164,166-169,171-172,176-179,181-184,186-187,189,191-194,197,199,201-204,206-209,211-214,219,221-224,226-229,232,236-239,241-244,246-253,256-259,262,264,266-267,269,271-273,276-279,281-284,287,289,291-297,299,301-312,314,316-319,321-322,324,327,329,331-332,334,336-337,339,341-344,346-349,351-352,354,356-359,361-362,364,367,369,371-374,376-384,387,389,391-392,394,396-399,401-402,404,406-407,409,411-412,414,416-432,434,436-442,444,446-454,457,462,464,466-469,471-474,476-484,487,489,491-494,496-497,499,501-509,512,514,517,519,521-524,526-529,531-532,534,536-539,541-544,546-547,549,551-552,554,556-557,559-564,567,569,571-582,584,586-588,591-592,596-597,599,602,604,607,611-614,616-619,621-624,626-629,632,636-637,639,641-648,652,657,661-665,667,669,671-674,677,681-683,686-689,691-693,697,701-702,704,706-712,714,717,719-723,726-727,729,731-732,734,736-737,741-742,746-747,751-757,762,766-772,774,777,781-787,791-793,797,801-802,806-807,809,812,814-818,822,824,827,829,832,834-839,844-848,861,863,866,868,871,873,876,878,881,886,888,891,893,896,898,901,903,906,908,911,913,921,923,926,928
+docs/generated/postgres-schema/public.credential_dependency.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-65
+docs/generated/sqlite-schema/instance_ai_observational_memory.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-121
+docs/generated/postgres-schema/public.trusted_key_source.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-61
+packages/@n8n/api-types/src/dto/workflows/base-workflow.dto.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 36-65,97-104,120
+packages/@n8n/config/src/configs/sentry.config.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 39-47,58-63
+.github/workflows/sec-publish-fix.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 56-61
+docs/generated/postgres-schema/public.execution_annotations.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-75
+packages/@n8n/ai-workflow-builder.ee/src/tools/connect-nodes.tool.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 333,339-340
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-5070
+packages/@n8n/agents/src/runtime/__tests__/background-task-tracker.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-71
+docs/generated/sqlite-schema/agent_task_run_lock.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-73
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/handlers/test/auto-finalize-handler.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 14-16,25
+cubic.yaml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 102-167
+packages/@n8n/backend-network/README.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-15
+packages/@n8n/backend-network/src/http/__tests__/axios-config.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-56
+docs/generated/postgres-schema/public.user_favorites.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-67
+packages/@n8n/ai-workflow-builder.ee/src/tools/helpers/test/progress.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,16,20
+packages/@n8n/agents/src/runtime/__tests__/scoped-memory-task-runner.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-195
+packages/@n8n/computer-use/src/settings-store.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 12,86-111
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/csv-prompt-loader.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 163
+packages/@n8n/agents/src/__tests__/integration/interim-user-message-during-suspend.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-214
+.github/workflows/sec-publish-fix-1x.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 54-60,62-71
+docs/generated/sqlite-schema/variables.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-69
+packages/@n8n/agents/src/__tests__/workspace/workspace-tools.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1,11-19,23-24,49,66-67,103-104,106,121-238,253-278
+packages/@n8n/api-types/src/dto/workflows/__tests__/create-workflow.dto.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 62-78,110-147,187-266,277-340
+packages/@n8n/ai-utilities/src/node-catalog/__tests__/resource-operation-extractor.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-819
+docs/generated/postgres-schema/public.agent_task_definition.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-70
+packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/evaluators/workflow-similarity.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-2,12-13,16,18,20-21,26,30,72
+packages/@n8n/agents/src/workspace/filesystem/daytona-filesystem.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-178
+packages/@n8n/api-types/src/dto/api-keys/update-api-key-request.dto.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 14-16
+docs/generated/postgres-schema/public.deployment_key.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-58
+docs/generated/sqlite-schema/project_relation.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-102
+docs/generated/sqlite-schema/insights_raw.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-62
+packages/@n8n/api-types/src/dto/workflow-history/workflow-history-lookup.dto.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-9
+packages/@n8n/agents/src/types/sdk/provider.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 24-35
+packages/@n8n/ai-utilities/src/__tests__/memory/windowed-chat-memory.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 14-15,19,23
+packages/@n8n/ai-workflow-builder.ee/evaluations/support/workflow-executor.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 11-12,15,17-18,50,108,113
+docs/generated/sqlite-schema/role_scope.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-74
+packages/@n8n/api-types/src/dto/encryption/list-encryption-keys-query.dto.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 4-15,18-26
+packages/@n8n/api-types/src/dto/security-settings/security-settings.dto.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,6-9,17,23
+packages/@n8n/backend-common/src/index.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 14
+.github/workflows/test-visual-chromatic.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 37
+docs/generated/sqlite-schema/oauth_user_consents.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-84
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/web-fetch.tool.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 4-5,7,9,13,15-16,21-25,28-29,32-42,59-64,76,79,82,87-89,91,96,103,106,118-119,156,173,190,206,216-217,242,273,289,300,310,327,349,376,398,410,416,424-431,433,442,473,491,508,518,522,553,563,585,597,603,611,621,638,649,666,677,700,719,730,758,767-768,794,808,825,835,857
+packages/@n8n/agents/src/types/sdk/memory.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1,3,5-25,47,64-65,69-70,73,75-253,255-267,275-276,279-305,309-318
+docs/generated/postgres-schema/public.token_exchange_jti.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-41
+packages/@n8n/agents/src/__tests__/workspace/workspace.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-2,12-22,92,98,119,131,143-144,147,160,165,175,199,205,226,229,280-281,290
+.github/workflows/release-create-github-releases.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 19-21,41-43,74,81-82,84
+packages/@n8n/agents/src/sdk/tool.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1,5,7,9,14,22-25,31-50,54,63,67-70,73-74,84-90,92-95,100,102,107-108,132-135,145,147,150,152,154,156,160-161,166-167,178-191,193,200,207,214,226,228,234,246,251-259,267,324,327,348-378
+packages/@n8n/backend-network/src/http/outbound-user-agent.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-61
+docs/generated/postgres-schema/public.insights_metadata.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-100
+jest.config.js
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 4,6,13-26,44-51,55,69-78,84-89,97,104,106
+docs/generated/postgres-schema/public.ai_builder_temporary_workflow.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-80
+packages/@n8n/ai-node-sdk/tsconfig.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 7
+packages/@n8n/agents/src/runtime/json-value.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-50
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/webhook.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 18,21-23,29-35,64
+packages/@n8n/backend-network/src/http/__tests__/http-proxy.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-279
+docs/generated/postgres-schema/public.workflow_entity.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-306
+packages/@n8n/ai-utilities/src/utils/workflow-text-editor.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-116
+.github/scripts/post-grind-comment.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-109
+docs/generated/postgres-schema/public.agents_resources.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-68
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-146
+packages/@n8n/backend-network/src/index.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-3
+packages/@n8n/backend-common/src/modules/__tests__/modules.config.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 7
+packages/@n8n/ai-utilities/src/node-catalog/search.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-550
+docs/generated/sqlite-schema/dynamic_credential_user_entry.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-104
+.github/scripts/slack/build-trivy-blocks.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-103
+docs/generated/postgres-schema/public.oauth_access_tokens.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-73
+packages/@n8n/agents/src/runtime/__tests__/stream.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-163
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/code-builder-agent.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 15
+docs/generated/postgres-schema/public.workflow_published_version.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-83
+packages/@n8n/api-types/src/dto/project/update-project.dto.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 11-15,20-29
+docs/generated/postgres-schema/public.instance_ai_observation_locks.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-62
+packages/@n8n/api-types/src/dto/otel/test-otel-connection.dto.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-12
+packages/@n8n/computer-use/src/tools/filesystem/search-files.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1,9-46,50-53,56-57,59-62,65-83,87,91,95-97,99,114-120,124-126
+packages/@n8n/ai-node-sdk/vitest.config.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-3
+docs/generated/sqlite-schema/agents_memory_entry_cursors.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-84
+packages/@n8n/benchmark/tsconfig.build.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 5
+packages/@n8n/agents/src/skills/validator.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-491
+docs/generated/postgres-schema/public.instance_ai_observations.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-80
+packages/@n8n/computer-use/src/tools/filesystem/read-file.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2,5,8-9,14-23,28-29,38,47-48,50-52,55-59,62-105
+packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/evaluators/nodes.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2
+packages/@n8n/ai-utilities/src/web-search/searxng-search.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-68
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 6,11,28,34-35
+packages/@n8n/agents/src/runtime/__tests__/sub-agent-task-path.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-56
+packages/@n8n/codemirror-lang/package.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,34
+packages/@n8n/agents/src/sdk/__tests__/tool-name-collisions.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-52
+docs/generated/sqlite-schema/workflow_builder_session.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-107
+packages/@n8n/ai-utilities/src/utils/vector-store/createVectorStoreNode/createVectorStoreNode.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 13,18-19,22-23,26-27,62,75,79,83-84,242-244,248
+.github/actions/ci-filter/ci-filter.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 77-78,102-110,117-125,175,177,194
+docs/generated/postgres-schema/public.workflows_tags.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-71
+.github/scripts/determine-version-info.test.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 107-118
+packages/@n8n/ai-workflow-builder.ee/src/subgraphs/discovery.subgraph.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 14-18,34,250-251,287-289,291-295,302,313,342-345,400
+packages/@n8n/agents/src/runtime/__tests__/event-bus.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-77
+packages/@n8n/agents/src/__tests__/workspace/sandbox/daytona-auth-manager.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-220
+.github/workflows/test-workflow-scripts-reusable.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 15,25,34
+packages/@n8n/computer-use/src/tools/filesystem/move.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2,7,12,16,21-22,123-129
+packages/@n8n/ai-utilities/src/__tests__/utils/http-proxy-agent.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2,7-13,17,25,253,257
+packages/@n8n/computer-use/src/tools/filesystem/write-file.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 18
+docs/generated/sqlite-schema/settings.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-50
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/rename-node.tool.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2,20-24,29,32,37
+packages/@n8n/computer-use/src/tools/filesystem/get-file-tree.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,8,28,32,40-41
+docs/generated/postgres-schema/public.oauth_authorization_codes.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-101
+.github/workflows/test-e2e-performance-reusable.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 22,24-55
+docs/generated/sqlite-schema/agents_memory_entry_locks.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-82
+packages/@n8n/benchmark/scenarios/binary-data/binary-data.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 32,43-46
+packages/@n8n/benchmark/scenarios/binary-data/binary-data.script.js
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 5,14-15,29
+.devcontainer/devcontainer.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 12
+packages/@n8n/agents/src/__tests__/workspace/workspace-integration.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 48-49
+packages/@n8n/agents/src/runtime/agent-runtime.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2-3,10,13,19-21,25-26,38-57,61-68,72,76,79,88-89,91,99-100,102-103,106-202,209-212,215-218,226-227,234-235,240-242,244-246,255-272,287-293,296-308,317,348-375,400-404,406-410,414-417,429-441,457,460-467,470-471,474,483-484,493,496,498,501,503,509,544-550,553-556,558,564,567-580,582-583,586-594,596-597,608,611-622,626-630,635-640,644-645,648,673-676,679-681,687,690,694-697,699,701,703-704,706-712,716-717,726-734,737-738,750-751,754-755,757,763-795,799-802,812-813,819-961,969-992,994-995,997,1004-1011,1030-1032,1037-1043,1045-1048,1050-1053,1055-1056,1058-1059,1066,1073,1076-1077,1081,1084-1091,1098-1105,1124,1127-1128,1131-1132,1134-1135,1137-1138,1142,1144-1147,1165-1166,1170-1243,1248,1250,1252-1253,1262-1265,1276,1282-1301,1304-1305,1307,1311-1315,1324-1328,1333-1340,1357,1363,1366-1375,1377-1380,1382-1383,1385-1387,1395-1419,1422-1430,1434,1452,1459,1462-1463,1470-1480,1486-1490,1499-1503,1508-1515,1532,1538-1541,1544-1564,1574-1577,1581-1585,1590-1591,1595-1602,1605-1638,1641-1659,1661-1662,1664-1695,1697-1710,1712-1714,1716-1779,1781-1787,1800-1802,1805,1856-1897,1899-1902,1916-1923,1925-1933,1935-1938,1946-1947,1952-1953,1964-1965,1968-1970,1987,2010,2018,2061,2063-2072,2086-2105,2113,2128,2131-2166,2208-2209,2212-2218,2244-2245,2248-2250,2255,2262-2263,2270-2273,2275-2279,2281-2288,2292-2293,2295,2299-2327,2329-2331,2333-2342,2347-2360,2367,2369,2377-2385,2388-2395,2398,2402,2406,2408,2418,2421,2426-2430,2432-2493,2495-2498,2500,2502-2503,2507-2554,2556-2560,2562-2571,2576,2580,2583-2584,2586,2588-2589,2591,2594,2600,2609,2613,2616,2659,2663-2682,2685-2692
+packages/@n8n/agents/src/runtime/background-task-tracker.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-21
+packages/@n8n/api-types/src/agents/index.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-41
+.github/workflows/mutation-health-nightly.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-179
+packages/@n8n/agents/src/__tests__/integration/json-schema-validation.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 75,77-78,80,108,110-111,113
+packages/@n8n/ai-utilities/src/utils/vector-store/createVectorStoreNode/operations/__tests__/loadOperation.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 9-10,17-18,21-22,84-86,91
+packages/@n8n/ai-workflow-builder.ee/eslint.config.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 5-9
+.github/workflows/clean-stale-branches.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-45
+packages/@n8n/backend-common/src/utils/__tests__/parse-flatted.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 6,9,12
+packages/@n8n/ai-utilities/src/node-catalog/suggested-nodes-data.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-259
+packages/@n8n/agents/src/__tests__/integration/batched-tool-execution.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 109
+packages/@n8n/api-types/src/api-keys.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 6-12,22-25,30-45
+docs/generated/postgres-schema/public.workflow_dependency.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-85
+.github/workflows/release-update-pointer-tag.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 56
+.github/workflows/sbom-generation-callable.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 15,39-42,49,52-57,59-67,69-70,75,83,88-90,92,96-103
+docs/generated/sqlite-schema/execution_entity.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-167
+packages/@n8n/agents/src/__tests__/workspace/sandbox/provider.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-43
+docs/generated/sqlite-schema/workflow_dependency.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-88
+.github/scripts/owners-assign-reviewers.test.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-174
+docs/generated/sqlite-schema/agents_memory_entry_sources.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-124
+packages/@n8n/ai-utilities/src/__tests__/utils/tokenizer/token-estimator.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,11-19
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 4,75,92-96,253-263,274,294,304-311,319-327,334-343,362,367-368,392-394,409-456,521-530,532-534,556-562,675-676,696,730,732,746,761,763-764,781,783,804,846,853,890,946,970,974-986,990,1014-1020,1027,1042,1076-1096,1101-1105,1126-1135,1153-1188,1195-1196,1201-1215
+docs/generated/postgres-schema/public.agent_chat_subscriptions.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-67
+.github/scripts/owners.test.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-173
+packages/@n8n/agents/src/__tests__/integration/tool-transform-error-resilience.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-133
+docs/generated/postgres-schema/public.execution_metadata.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-66
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/types.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 48
+.github/workflows/util-claude-task.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 79-81,83-85
+.github/workflows/build-base-image.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 28-32
+packages/@n8n/agents/src/__tests__/integration/state-restore-after-suspension.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 158-159
+packages/@n8n/agents/src/runtime/__tests__/message-list.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-364
+packages/@n8n/computer-use/src/config.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 44-58
+packages/@n8n/backend-common/src/license-state.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 129-132,201-204,245-249,253-264
+packages/@n8n/config/src/configs/__tests__/expression-engine.config.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 8-9,24,30,39,44,46,54,59,61,87,92,97,99,105,110,112
+docs/generated/postgres-schema/public.user_api_keys.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-78
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/tools/get-suggested-nodes.tool.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-5,7,9,11-13,31
+packages/@n8n/api-types/src/agents/agent-files.constants.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-4
+packages/@n8n/backend-network/src/dns/in-memory-dns-cache.service.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-81
+packages/@n8n/client-oauth2/src/code-flow.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 13,41,101
+.github/workflows/util-determine-current-version.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 29-30,37
+docs/generated/sqlite-schema/agents_memory_entries.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-113
+docs/generated/postgres-schema/public.processed_data.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-71
+jest.coverage-excludes.js
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-11
+docs/generated/postgres-schema/public.instance_ai_iteration_logs.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-62
+packages/@n8n/computer-use/src/tools/filesystem/constants.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1
+packages/@n8n/backend-network/src/http/__tests__/http-request.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-810
+docs/generated/postgres-schema/public.instance_ai_mcp_registry_connections.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-98
+docs/generated/postgres-schema/public.chat_hub_tools.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-89
+packages/@n8n/agents/src/skills/__tests__/runtime-skills.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-700
+.github/scripts/slack/notify.test.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-55
+packages/@n8n/ai-utilities/src/utils/vector-store/createVectorStoreNode/operations/__tests__/updateOperation.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 6-8,16-17,20-21,24-27,30-31,65,98-100,105,110
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/get-node-examples.tool.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,21-22,24-26,30,32-34,39
+packages/@n8n/api-types/src/dto/packages/export-workflows-request.dto.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-7
+packages/@n8n/agents/src/sdk/catalog.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3-13,40-41,68,81-111,144,165-172,176-177
+packages/@n8n/backend-common/tsconfig.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 4
+packages/@n8n/backend-network/src/http/axios-config.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-56
+packages/@n8n/computer-use/src/tools/browser/index.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 9,13-15
+docs/generated/postgres-schema/README.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-1321
+packages/@n8n/agents/src/sdk/mcp-client.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 43,64
+packages/@n8n/api-types/src/dto/evaluations/evaluation-config.dto.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-167
+.github/actions/build-n8n-docker/action.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 26,50
+.github/scripts/quality/check-pr-size.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 21,41-43,47,50
+packages/@n8n/api-types/src/agent-builder-interactive.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-130
+.github/scripts/verify-safechain.test.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-57
+packages/@n8n/api-types/src/dto/instance-ai/instance-ai-mcp-create-connection-request.dto.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-8
+packages/@n8n/backend-network/src/dns/__tests__/dns-resolver.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-246
+.github/actions/setup-nodejs/action.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 10,12,20,25-28,36-54,60-74,86-87,89-114,118-122,126-168,171,174-177,179-224,227-253,255-258
+packages/@n8n/agents/src/sdk/cancellation.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-29
+packages/@n8n/ai-utilities/src/utils/fromai-tool-factory.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3-7
+packages/@n8n/ai-utilities/src/ai-node-sdk-version.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3-4
+.devcontainer/Dockerfile
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 14-16,18
+packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/evaluators/trigger.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2
+packages/@n8n/ai-utilities/src/utils/text-editor.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-451
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/prompts/index.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 9,102,109,111,125,127,184-185,188,190,859
+docs/generated/sqlite-schema/oauth_clients.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-101
+packages/@n8n/ai-utilities/src/__tests__/adapters/langchain-chat-model.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 4,6,8-9,13-14,22-23,28-29,32-35,40-42,45-47,63,69-70,207,210,251,279,302
+packages/@n8n/agents/src/runtime/episodic-memory.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-609
+packages/@n8n/ai-workflow-builder.ee/src/tools/utils/ssrf-guard.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-69
+packages/@n8n/agents/src/runtime/stream.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 42-44,47-55,57-63,66,68-69,72-73,76-89,91-94,96,99-103,105-108,111-114,116-120,122-124
+packages/@n8n/config/src/configs/scaling-mode.config.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-2,42,46,49,86,90,101,105,109
+docs/generated/sqlite-schema/project_secrets_provider_access.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-80
+.dockerignore
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 41
+docs/generated/sqlite-schema/secrets_provider_connection.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-65
+packages/@n8n/ai-utilities/src/node-catalog/discriminator-utils.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-206
+packages/@n8n/backend-network/src/http/__tests__/axios-utils.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-520
+.agents/skills/create-pr/SKILL.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 79-80,100-102
+.github/scripts/bump-versions.test.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 22-23,26-30,33-34,38,42-47,365-366,369-373
+packages/@n8n/computer-use/src/config.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 260-265
+.claude/plugins/n8n/skills/community-pr-readiness-check/SKILL.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-255
+.github/workflows/test-db-reusable.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 18,24,27-28,30-33,37,39,42,44,59,62-77
+packages/@n8n/computer-use/src/logger.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-2,19,27,30
+packages/@n8n/agents/src/runtime/__tests__/observation-log-store.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-153
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/evaluators/similarity.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 11-12,15,43
+docs/generated/sqlite-schema/oauth_access_tokens.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-82
+packages/@n8n/config/src/configs/chat-hub.config.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-2,13,20
+packages/@n8n/ai-workflow-builder.ee/src/chains/test/integration/prompt-categorization.integration.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 123
+packages/@n8n/agents/src/__tests__/integration/tool-call-upsert.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-224
+docs/generated/postgres-schema/public.insights_raw.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-57
+.tbls.sqlite.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-16
+packages/@n8n/agents/src/runtime/scoped-memory-task-runner.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-213
+docs/generated/postgres-schema/public.dynamic_credential_entry.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-77
+packages/@n8n/agents/src/workspace/sandbox/provider.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-13
+packages/@n8n/agents/src/utils/json-schema.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-110
+packages/@n8n/agents/src/__tests__/integration/to-model-output.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 66,70-71,110-111,117,143,147-150,202,206-209
+.github/scripts/bump-versions.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 13,15,18,20-21,151,154,157,183-186,263-264,280
+.github/actions/ci-filter/action.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 33-35
+.github/workflows/ci-python.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 54
+docs/generated/sqlite-schema/user_api_keys.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-85
+packages/@n8n/agents/src/types/sdk/observation-log.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-120
+packages/@n8n/agents/docs/agent-runtime-architecture.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 15,21-28,31,79-116,337,396,398,426,443,446
+docs/generated/sqlite-schema/deployment_key.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-64
+packages/@n8n/agents/src/runtime/__tests__/title-generation.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-230
+packages/@n8n/ai-workflow-builder.ee/src/utils/test/state-modifier.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2,13-14,16,19,25,250
+docs/generated/postgres-schema/public.agents_memory_entry_locks.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-75
+packages/@n8n/agents/src/__tests__/workspace/sandbox/create-workspace.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-188
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-77
+docs/generated/postgres-schema/public.agent_task_snapshot.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-69
+packages/@n8n/backend-test-utils/package.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,9,39-40
+docs/generated/postgres-schema/public.invalid_auth_token.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-38
+.github/scripts/owners-assign-reviewers.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-104
+docs/generated/postgres-schema/public.variables.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-61
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/handlers/test/text-editor-handler.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2-3,6-7,9-11,634
+docs/generated/postgres-schema/public.secrets_provider_connection.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-62
+.aikido
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-21
+.github/workflows/util-notify-pr-status.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 30-31
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/test/code-builder-agent-validate-loop.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 14-18,24-28,32-34,38-39,59-62,72-73,121
+docs/generated/sqlite-schema/dynamic_credential_resolver.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-89
+.github/workflows/ci-pr-quality.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 4,40,47-52,57-58,73,75,78,80-82,87-110,117,119,121-144
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/node-details.tool.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,25-29,32,35-36,48,65
+.github/workflows/util-qa-metrics-comment-reusable.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 28
+docs/generated/sqlite-schema/auth_identity.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-81
+.github/workflows/test-linting-reusable.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 15,25
+packages/@n8n/api-types/src/agents/dto.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-135
+packages/@n8n/codemirror-lang-sql/tsconfig.build.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 5
+docs/generated/postgres-schema/public.instance_version_history.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-47
+packages/@n8n/ai-utilities/src/__tests__/utils/failed-attempt-handler/n8nLlmFailedAttemptHandler.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,9,19,27,37,56
+.github/workflows/build-windows.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 58-64
+packages/@n8n/agents/src/skills/tools.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-401
+.github/workflows/release-version-release-notification.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 34,41
+packages/@n8n/agents/src/sdk/guardrails/index.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-10
+packages/@n8n/agents/src/runtime/__tests__/strip-orphaned-tool-messages.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-137
+packages/@n8n/codemirror-lang-html/package.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,6,10
+packages/@n8n/api-types/src/dto/workflows/__tests__/update-workflow.dto.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 53-61,87-114,149-210,221-254
+packages/@n8n/ai-workflow-builder.ee/src/multi-agent-workflow-subgraphs.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 29,93-94,220,244,372,382-383,385
+packages/@n8n/ai-utilities/src/__tests__/utils/workflow-text-editor.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-38
+packages/@n8n/chat-hub/tsconfig.build.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 6
+docs/generated/sqlite-schema/README.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-1311
+packages/@n8n/agents/AGENTS.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 12-14,46-50,61-62,74,114,135,137-140
+docs/generated/postgres-schema/public.execution_entity.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-165
+docs/generated/sqlite-schema/instance_ai_observations.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-84
+packages/@n8n/agents/src/runtime/__tests__/observation-log-reflector.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-396
+docs/generated/sqlite-schema/installed_packages.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-63
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/validate-configuration.tool.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,20-24,28,33
+packages/@n8n/codemirror-lang-sql/test/complete.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 14,24-31
+.github/scripts/cla/update-pr-comment.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-104
+packages/@n8n/computer-use/src/tools/shell/shell-execute.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 4,13-15,18-19,23,25,33-34,39-40,44,51,72,164,175,190
+packages/@n8n/computer-use/src/logger.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 262-268
+CONTRIBUTING.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 138-152
+.claude/plugins/n8n/skills/community-pr-readiness-check/reference/re-review.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-55
+packages/@n8n/ai-utilities/src/__tests__/utils/n8n-llm-tracing.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 6,8,10,13-14,17-18,21-22,25,39-44,48,62,76,236-246,276-285,318,475,567,571,601-731,733-751
+packages/@n8n/agents/src/types/sdk/agent-builder.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1,6,21-22,34
+packages/@n8n/agents/src/runtime/sdk-owned-tool.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-17
+packages/@n8n/config/src/configs/data-table.config.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1,9,11,25,34,36,43
+docs/generated/postgres-schema/public.agent_task_run_lock.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-66
+packages/@n8n/agents/src/__tests__/integration/agent-runtime-conversion.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-587
+.github/workflows/grind-changed-tests.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-66
+packages/@n8n/agents/src/sdk/provider-tools.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,16-39,63,80-87,93-126
+packages/@n8n/agents/tsconfig.build.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 6
+packages/@n8n/agents/src/workspace/sandbox/base-sandbox.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 105-120
+packages/@n8n/computer-use/src/tools/filesystem/move.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 7,37
+packages/@n8n/api-types/src/agent-builder-tool-node-types.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-13
+packages/@n8n/api-types/src/agents/sub-agent.schema.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-54
+.github/workflows/util-ensure-release-candidate-branches.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 24,32,35-36
+docker/images/engine/Dockerfile
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-20
+docs/generated/sqlite-schema/agent_history.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-130
+packages/@n8n/ai-workflow-builder.ee/src/tools/web-fetch.tool.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 12,14,83,109,156-168,194,227
+docs/generated/sqlite-schema/agents_observation_locks.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-88
+.github/workflows/ci-pull-request-review.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 44-49,59
+docs/generated/postgres-schema/public.binary_data.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-59
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/web-fetch-security.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 14-15,19-20,25
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/handlers/test/parse-validate-handler.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 7,12-16,20-22,28,43-46,69-70,75-76,100-101,106-107,128-131,156-159,187-190,218-221,329,352,364,390-391,402-484
+packages/@n8n/api-types/src/agents/model-providers.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-23
+packages/@n8n/chat-hub/package.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,9,15-17,26-29,33-34
+packages/@n8n/config/src/configs/compression.config.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-12
+packages/@n8n/ai-workflow-builder.ee/evaluations/evaluators/pairwise/judge-panel.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,9,11,21
+.github/actionlint.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 7
+docs/generated/postgres-schema/public.agents_observation_cursors.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-77
+docs/generated/postgres-schema/public.instance_ai_observation_cursors.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-58
+docs/generated/sqlite-schema/oauth_authorization_codes.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-102
+docs/generated/sqlite-schema/oauth_refresh_tokens.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-90
+packages/@n8n/backend-network/src/http/__tests__/binary-buffer.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-33
+packages/@n8n/agents/src/__tests__/integration/mcp-connection.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 5-6,151-156,158,165-171,174-175
+packages/@n8n/agents/src/skills/index.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-51
+packages/@n8n/agents/src/types/sdk/mcp.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 37,40-64
+packages/@n8n/ai-workflow-builder.ee/src/tools/utils/test/ssrf-guard.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-65
+packages/@n8n/api-types/src/schemas/eval-collections.schema.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-112
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/test/code-builder-agent-pre-validate.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 10-13,15,19,22-25,31-33,37-38,58-61,73-74,81
+packages/@n8n/ai-workflow-builder.ee/src/tools/utils/test/web-fetch.utils.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2-9,17,19,21-28,31-38,43,64-78,81-83,86-89,92-94,96,98-101,103,105-107,109-110,113-115,117,119-122,124-127,129-130,133-135,138-141,143,146,149-151,153,155
+packages/@n8n/computer-use/src/tools/filesystem/edit-file.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 7,23,28-29,31,38,44
+.github/workflows/ci-owners-review-recommendations.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-52
+packages/@n8n/ai-utilities/src/utils/vector-store/createVectorStoreNode/operations/__tests__/retrieveAsToolOperation.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 11-12,19-20,23-24,90-92,97
+packages/@n8n/agents/src/__tests__/integration/memory/memory-custom-backend.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 11,20-22,95,117,145
+packages/@n8n/backend-network/src/ssrf/ip-range-builder.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-75
+docs/generated/postgres-schema/public.evaluation_collection.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-136
+docs/generated/sqlite-schema/chat_hub_session_tools.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-79
+packages/@n8n/backend-network/src/http/binary-string.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-19
+docs/generated/sqlite-schema/test_case_execution.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-122
+packages/@n8n/ai-utilities/src/utils/n8n-llm-tracing.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 18-19,23-24,27-33,41-63,87-90,93-98,104,167-173,176-181,289-309
+packages/@n8n/api-types/src/agents/provider-capabilities.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-86
+packages/@n8n/api-types/src/schemas/__tests__/agent-run-reducer.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 335,337,340,342-344,347-350,488-511
+packages/@n8n/computer-use/src/tools/filesystem/list-files.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,8,28,32,37-38,176
+docs/generated/sqlite-schema/webhook_entity.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-58
+packages/@n8n/ai-utilities/src/utils/vector-store/MemoryManager/test/MemoryVectorStoreManager.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 5,14,17,20,32,36,39,46-47,89,98,103,115,136,161,165,177,187-188
+packages/@n8n/agents/src/sdk/__tests__/memory-builder-episodic.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-171
+packages/@n8n/agents/src/sdk/__tests__/guardrails.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-165
+packages/@n8n/ai-workflow-builder.ee/src/chains/test/conversation-compact.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 29
+packages/@n8n/agents/src/types/runtime/event.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-34,43-44,48,52,61-68
+docs/generated/postgres-schema/public.instance_ai_checkpoints.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-82
+packages/@n8n/ai-workflow-builder.ee/package.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,8,13-23,65,72-73,85,88,92-96
+docs/generated/postgres-schema/public.oauth_clients.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-96
+packages/@n8n/computer-use/src/tools/filesystem/fs-utils.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,10-12,32-34,92,141-181,201-204,253-268,282-285
+docs/db.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-37
+packages/@n8n/benchmark/scripts/n8n-setups/scaling-single-main/docker-compose.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 42-44,89-91
+packages/@n8n/backend-network/vite.config.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-3
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/test/triage.agent.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,28,35,49,157,282,311,331,360,362,393,395,471,539,594,613,699-700,766,832,834,884,886,912,914,953
+docs/generated/postgres-schema/public.execution_annotation_tags.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-58
+packages/@n8n/api-types/src/dto/packages/__tests__/export-workflows-request.dto.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-27
+packages/@n8n/agents/src/runtime/observation-log-renderer.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-91
+packages/@n8n/api-types/package.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,9,40-42
+docs/generated/sqlite-schema/instance_ai_mcp_registry_connections.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-104
+packages/@n8n/agents/src/__tests__/integration/stream-timing.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 10,34-36,40,46-48
+.github/scripts/owners-review-recommendations.test.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-388
+packages/@n8n/agents/src/sdk/__tests__/message.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-94
+docs/generated/postgres-schema/public.auth_provider_sync_history.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-64
+packages/@n8n/agents/src/runtime/observation-log-reflector.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-366
+packages/@n8n/ai-workflow-builder.ee/src/ai-workflow-builder-agent.service.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 18,50,238,423,425-426
+docs/generated/postgres-schema/public.auth_identity.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-65
+.code-health-baseline.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3-4,9,15,21,27,33,41-43,46,49-51,55-57,61-63,67,73,79,85,91,94-101,105-120,123-125,131,139,144,147-149,153-155,159-161,165-167,171-173,177-179,183-185,188,191-193,197-207,211-213,217-219,222,225-227,231-233,237-239,243-246,249-251,255-257,261-263,267-269,272,275-277,281-283,287-289,293-295,298,301-303,307-309,313-323,327-335,338,341-343,347-349,353-355,359-361,365-367,371-379,381,387-389,393,399,405,411,414-416,419-421,424,427-432,435-437,440,443-445,449-451,455-460,463-468,471-473,477-482,484-490,492-498,500-503,506,508-514,516-522,524-527,530,532-535,538,540-546,548-554,556-559,562,564-570,572-578,580-586,588-594,596-602,604-607,610,612-615,618,620-623,626,628-631,634,636-975,978-1059
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-1036
+packages/@n8n/ai-utilities/tsconfig.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 12-13
+AGENTS.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 38-54,68-74,192,200-202,261-263
+docs/generated/postgres-schema/public.agents_memory_entry_cursors.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-77
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/handlers/parse-validate-handler.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 127-172,245-246
+packages/@n8n/agents/src/types/index.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 39-40,56,65-95,97-98,103-129
+docs/generated/sqlite-schema/agents_observation_cursors.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-84
+packages/@n8n/api-types/src/redaction-enforcement.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-3
+packages/@n8n/agents/src/runtime/lazy-ai.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-12
+.github/scripts/send-build-stats.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 40-45,49,62
+packages/@n8n/ai-utilities/src/node-catalog/__tests__/search-engine.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-1051
+packages/@n8n/agents/src/__tests__/integration/concurrent-tool-execution.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 11-12,103-147,169,196-197,214,243
+packages/@n8n/ai-workflow-builder.ee/vite.config.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-11
+packages/@n8n/computer-use/src/tools/filesystem/search-files.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2-3,8-29,32-34,38-47,55-59,64-65,68,71,79,83-84,87-88,91,93,97-98,101-123,126-185,189-204,207-208,210,215-217,220-221,223,229-231,233-234,236-237,240-241,244-245,247,252,254-263,265-267,269
+.github/scripts/docker/docker-config.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 91
+packages/@n8n/ai-utilities/src/__tests__/adapters/langchain-memory-adapter.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 15-18,22-24
+docs/generated/sqlite-schema/invalid_auth_token.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-48
+packages/@n8n/api-types/src/dto/encryption/encryption-key-response.dto.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-3
+packages/@n8n/api-types/src/dto/evaluations/evaluation-error-code.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-47
+docs/generated/postgres-schema/public.project_secrets_provider_access.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-72
+packages/@n8n/config/src/configs/instance-settings-loader.config.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 122-146
+.github/scripts/github-helpers.test.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-90
+packages/@n8n/agents/tsconfig.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 4
+docs/generated/postgres-schema/public.instance_ai_pending_confirmations.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-110
+.github/scripts/verify-safechain.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-67
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/index.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 41,46-47
+packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/evaluators/agent-prompt.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1
+docs/generated/sqlite-schema/folder_tag.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-67
+docs/generated/sqlite-schema/instance_ai_checkpoints.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-90
+packages/@n8n/computer-use/src/gateway-session.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-2,17,19,23-25,284-285,293,343-390
+docs/generated/sqlite-schema/agent_files.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-77
+packages/@n8n/ai-utilities/src/web-search/index.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-3
+packages/@n8n/agents/src/workspace/sandbox/daytona-sandbox.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-518
+.github/workflows/docker-build-push.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 10,78,424-482,515,517-525
+docs/generated/sqlite-schema/instance_ai_threads.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-205
+docs/generated/sqlite-schema/instance_ai_workflow_snapshots.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-60
+packages/@n8n/agents/src/sdk/guardrails/patterns.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-111
+packages/@n8n/codemirror-lang/tsconfig.build.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 5
+docs/generated/sqlite-schema/event_destinations.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-52
+packages/@n8n/agents/src/workspace/tools/workspace-tools.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 4,15,28-29
+packages/@n8n/chat-hub/vite.config.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-7
+packages/@n8n/config/src/configs/__tests__/ssrf-protection.config.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 8,136
+docs/generated/sqlite-schema/agents.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-244
+docs/generated/sqlite-schema/test_run.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-151
+packages/@n8n/agents/src/__tests__/integration/max-iterations.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-299
+packages/@n8n/agents/src/runtime/mcp-connection.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1,3-7,17-56,59,67,75-77,89-90,93,104,116,125,130,143,159-160,176,198,201,213-216,219-223
+packages/@n8n/agents/src/runtime/observation-log-observer.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-349
+packages/@n8n/ai-workflow-builder.ee/evaluations/evaluators/pairwise/judge-chain.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2,10-12,33,45,76,90
+packages/@n8n/api-types/tsconfig.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 4
+packages/@n8n/agents/src/__tests__/integration/title-generation.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,9,12,16,20,30,39,50,68,79,94,102,109,123,129,146
+docs/generated/postgres-schema/public.credentials_entity.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-152
+packages/@n8n/backend-test-utils/src/db/workflows.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 10-12,22-23,40,49-69,104-105,287-299,350-353
+.github/scripts/package.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 4-9,13,25-29
+docs/generated/sqlite-schema/agent_checkpoints.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-73
+packages/@n8n/ai-utilities/src/__tests__/utils/tokenizer/tiktoken.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1,3-5,9-11,14-15,18-19,23-24,27,47-49,59-61,71-73,83-85,95-97,107-109,119-121,131-133,136,155,159-161,164,176,181-183,186
+packages/@n8n/agents/src/workspace/sandbox/workspace-root.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-81
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/tools/test/code-builder-get.tool.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1,6,355-446
+packages/@n8n/ai-utilities/src/web-search/__tests__/brave-search.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-216
+docs/generated/sqlite-schema/annotation_tag_entity.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-58
+.github/workflows/sec-poutine-reusable.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 23
+docs/generated/sqlite-schema/workflow_publish_history.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-116
+.github/workflows/ci-pull-requests.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 23,26,34,37-38,40,59-72,78-80,88-96,98-100,116,125-130,132,136-138,155,158,162-171,179-181,189-190,192,215,236,238-240,252-254,264,274-276,286-299,322-324,327-328,351-356,362,364,382,391,400,409
+docs/generated/postgres-schema/public.agents_memory_entries.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-110
+packages/@n8n/ai-utilities/src/__tests__/utils/embeddings-input-validation.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 30,62
+packages/@n8n/ai-utilities/vite.config.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-29
+packages/@n8n/ai-utilities/src/__tests__/adapters/langchain-history-adapter.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 14-17
+packages/@n8n/api-types/src/schemas/eval-insights.schema.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-80
+packages/@n8n/agents/src/runtime/__tests__/mcp-connection.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-120
+packages/@n8n/computer-use/src/tools/filesystem/file-type.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-36
+CHANGELOG.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-591
+packages/@n8n/computer-use/src/tools/filesystem/create-directory.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2,7,12,17-18,64
+packages/@n8n/agents/src/runtime/messages.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 71-91,108,115-123,128-159,162-164,194,197-198,206-210,215-225,232-233,240-241,245-301,305-306,316,319-389,392
+docs/generated/postgres-schema/public.data_table_column.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-64
+packages/@n8n/ai-workflow-builder.ee/src/tools/utils/web-fetch.utils.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2-3,5-10,17-18,72,100,104-105,107-116,118-119,122,126-132,134-172,174-178,180-181,183-184,186-190,192-196,198,200-206
+packages/@n8n/agents/src/runtime/memory-store.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-30,32-45,50-71,75,81-87,92,94,96-121,147-171,177-181,184-186,191-196,204-205,214-215,217-228,243-657,674-694
+docs/generated/postgres-schema/schema.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-19049
+packages/@n8n/api-types/src/schemas/__tests__/instance-ai.schema.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 4-8,12-33,83-256
+docs/generated/sqlite-schema/agent_task_snapshot.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-74
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/test/code-builder-agent-tracing.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 12-16,21-24,28-30,34-35,65-66,73-76,111,178-179
+packages/@n8n/agents/src/runtime/tool-adapter.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1,4-5,11,14,73,75,81,83,102-103,110,115-116,118-123,128-136
+packages/@n8n/agents/src/__tests__/integration/helpers.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 12,17,19-24,406-409,418-419,423,425
+packages/@n8n/agents/src/runtime/event-bus.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 4-54,67-68,77-78,88-91,102-112,150-151,156-159
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/get-resource-locator-options.tool.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,21-25,29,33,255,259,283,288
+.gitignore
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 4,8-9,26-27,36-37,43,47-48,74,81
+packages/@n8n/agents/src/runtime/strip-orphaned-tool-messages.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 5,8-11,23
+packages/@n8n/agents/vite.config.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-64
+packages/@n8n/api-types/src/schemas/mcp-registry.schema.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-47
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/test/code-workflow-builder.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 15-17,51-54,79,185-188,234-237
+docs/generated/sqlite-schema/schema.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-13672
+packages/@n8n/agents/src/runtime/__tests__/write-todos-tool.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-105
+packages/@n8n/agents/src/runtime/fix-tool-call.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-46
+packages/@n8n/agents/src/__tests__/memory-config-types.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-25
+packages/@n8n/ai-utilities/src/node-catalog/__tests__/discriminator-utils.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-408
+packages/@n8n/ai-utilities/src/node-catalog/suggested.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-111
+packages/@n8n/computer-use/src/startup-config-cli.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 5-6
+docs/generated/postgres-schema/public.project_relation.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-94
+packages/@n8n/client-oauth2/package.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,9,34-35
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/handlers/test/session-chat-handler.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 4,11-12,16-19,23-25,28,31-35,38-40,43-47,52,99,137,230
+packages/@n8n/config/src/configs/evaluation.config.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 6-7,9-13,17-18,23-24
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-2,7,9,23-25,27-29,43,45,69-109,113,131-133,135,137,141-157
+packages/@n8n/ai-workflow-builder.ee/src/utils/test/tool-executor.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 5,18,30,39-42,63,67,71,372,408,442,472,507
+docs/generated/sqlite-schema/role_mapping_rule_project.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-74
+.github/workflows/util-sync-api-docs.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 132-133,143
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/tools/test/code-builder-search.tool.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1,169,186,205,237,260,381,494,510,554,570,832-840
+packages/@n8n/benchmark/scripts/n8n-setups/postgres/docker-compose.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 35-37
+packages/@n8n/backend-network/src/http/parse-incoming-message.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-120
+packages/@n8n/agents/src/sdk/__tests__/memory-builder-observational.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-193
+docker/images/n8n-base/Dockerfile
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1,3-6,18-22,25
+packages/@n8n/agents/src/workspace/sandbox/run-in-sandbox.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-48
+packages/@n8n/ai-workflow-builder.ee/src/tools/web/templates.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 127
+packages/@n8n/backend-network/src/ssrf/__tests__/ssrf-protection.service.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-700
+packages/@n8n/ai-utilities/src/utils/vector-store/createVectorStoreNode/operations/__tests__/retrieveAsToolExecuteOperation.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 10-11,18-19,22-23,93-95,100
+docs/generated/sqlite-schema/agent_task_definition.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-75
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/get-execution-logs.tool.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2,17-21,26,29
+packages/@n8n/api-types/src/dto/evaluations/__tests__/evaluation-error-code.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-36
+packages/@n8n/client-oauth2/test/client-oauth2.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 201-330
+.github/workflows/prepare-docker-reusable.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 37
+packages/@n8n/agents/src/__tests__/integration/zod-validation-error.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 48,50-51,53
+packages/@n8n/agents/src/sdk/__tests__/telemetry.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-204
+packages/@n8n/computer-use/src/tools/filesystem/get-file-tree.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 4,27
+packages/@n8n/config/src/configs/__tests__/external-hooks.config.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 6-8,15,19
+packages/@n8n/agents/src/sdk/provider-capabilities.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 33-37
+packages/@n8n/ai-utilities/src/web-search/types.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-17
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/evaluators/pairwise.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 9,16,19,77
+docs/generated/sqlite-schema/ai_builder_temporary_workflow.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-88
+packages/@n8n/agents/src/types/sdk/tool.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 4,6,10-34,36-42,44-49,59,61-69,71-76,82-97,113,125-135
+packages/@n8n/computer-use/src/tools/filesystem/delete.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,8,13,17,22,27-28,61,74,87
+packages/@n8n/agents/src/sdk/memory.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-8,10-20,23,25,28-85,87-93,95-152,161,167,173,179,190-196,220-224,231-232,234,239,241,244-259
+packages/@n8n/ai-utilities/src/utils/fromai-helpers.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-42
+packages/@n8n/benchmark/scripts/n8n-setups/scaling-multi-main/docker-compose.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 44-46,93-95
+.claude/plugins/n8n/skills/community-pr-readiness-check/reference/checks.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-140
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/handlers/test/tool-dispatch-handler.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 66,73,127,156,186,214,280,289,297,493,515,567,602,642,690,694,736,740,776,813,849,883,917,951
+packages/@n8n/ai-utilities/src/utils/follow-redirects.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-64
+packages/@n8n/computer-use/vite.config.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-23
+packages/@n8n/agents/src/types/sdk/tool-descriptor.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-21
+packages/@n8n/api-types/src/schemas/data-table.schema.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 8-11
+.github/workflows/release-publish.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 27-28,35,81-83,95-100,133,139-141,222-256
+.github/scripts/github-helpers.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 108-110,120-126,131,275-302,388-525
+.github/workflows/release-set-stable-npm-packages-to-latest.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 28
+docs/generated/postgres-schema/public.folder.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-93
+packages/@n8n/agents/src/sdk/verify.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 48
+packages/@n8n/config/package.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,9,15-17,26,32-38
+.github/workflows/ci-owners-assign-reviewers.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-60
+.github/workflows/release-push-to-channel.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 78,170,174
+.github/workflows/test-evals-ai-reusable.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 40-53,109-112
+packages/@n8n/agents/src/runtime/execution-counter.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-24
+packages/@n8n/backend-common/tsconfig.build.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 6
+docs/generated/postgres-schema/public.instance_ai_run_snapshots.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-72
+packages/@n8n/api-types/src/push/workflow.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 21-41,76
+packages/@n8n/backend-network/src/http/axios-utils.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-335
+docs/generated/postgres-schema/public.role_scope.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-57
+docs/generated/sqlite-schema/processed_data.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-79
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/get-node-context.tool.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2,21-25,30,33
+docs/generated/sqlite-schema/agent_chat_subscriptions.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-76
+packages/@n8n/ai-utilities/src/__tests__/converters/tool.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2,13,31,123,135
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/validate-structure.tool.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,17-21,25,30
+packages/@n8n/backend-common/src/__tests__/typed-emitter.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-72
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/handlers/test/text-editor-tool-handler.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 8,40-43,47-50
+packages/@n8n/backend-network/src/dns/index.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-2
+packages/@n8n/computer-use/src/settings-store.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 4,6-8,40,60,84,93-125
+docs/generated/sqlite-schema/workflow_entity.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-297
+packages/@n8n/api-types/src/agents/agent-task.schema.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-29
+docs/generated/postgres-schema/public.instance_ai_messages.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-67
+.github/workflows/test-dev-server-smoke-reusable.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-49
+docs/generated/sqlite-schema/binary_data.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-64
+docs/generated/sqlite-schema/tag_entity.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-63
+docs/generated/sqlite-schema/chat_hub_tools.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-92
+docs/generated/sqlite-schema/agents_observations.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-114
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-364
+.github/workflows/test-e2e-infrastructure-reusable.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 5-6,19,24-35,39-45
+packages/@n8n/api-types/src/schemas/mcp.schema.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-11
+docs/generated/sqlite-schema/chat_hub_agents.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-145
+packages/@n8n/agents/src/runtime/__tests__/model-factory.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-416
+packages/@n8n/ai-workflow-builder.ee/vitest.config.integration.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-10
+packages/@n8n/ai-workflow-builder.ee/src/test/ai-workflow-builder-agent.service.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 8-9,23-24,26,28,32,34,39-43,45-46,49-53,57,60,71,160,164,168-169,183-185,189-191,195-197,201-205,207-208,212,214,227,546-547,551,559,575,587-599,611,619,632,643,656,667,675,680,713,727,739
+packages/@n8n/client-oauth2/tsconfig.build.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 6
+packages/@n8n/agents/src/runtime/observation-log-defaults.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-553
+docs/generated/postgres-schema/public.role_mapping_rule_project.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-63
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/get-expression-data-mapping.tool.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2,15-19,24,27
+packages/@n8n/api-types/src/schemas/agent-run-reducer.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 338
+packages/@n8n/backend-test-utils/src/test-db.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 33-36,45-46,50-54,63-69,74-112,142-149
+docs/generated/postgres-schema/public.scope.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-44
+.github/workflows/release-schedule-patch-prs.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 18
+packages/@n8n/ai-utilities/src/utils/vector-store/createVectorStoreNode/operations/__tests__/operationHandlers.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 6-7,66-68
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/constants.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 96-100,136-144
+packages/@n8n/agents/src/utils/__tests__/json-schema.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-124
+docs/generated/postgres-schema/public.chat_hub_messages.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-160
+docs/generated/sqlite-schema/insights_metadata.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-107
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/add-node.tool.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3-4,26-28,30-31,35-37,43,46,53
+packages/@n8n/ai-utilities/src/utils/vector-store/createVectorStoreNode/__tests__/utils.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 73-74,91-92,108-109,128-129,149-150,172-173
+docs/generated/postgres-schema/public.evaluation_config.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-125
+docs/generated/sqlite-schema/execution_metadata.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-72
+packages/@n8n/ai-utilities/src/__tests__/suppliers/supplyModel.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1,4,6-8,10-12,14-15,21-22,25-26,31-32,35-38,41-45,47,51-54,58,211-213,229-231,245-247
+packages/@n8n/backend-network/src/ssrf/__tests__/ip-range-builder.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-78
+packages/@n8n/backend-network/eslint.config.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-32
+packages/@n8n/codemirror-lang-sql/package.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,11
+docs/generated/postgres-schema/public.agent_checkpoints.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-65
+packages/@n8n/agents/src/workspace/filesystem/n8n-sandbox-filesystem.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-152
+docs/generated/sqlite-schema/evaluation_config.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-126
+docs/generated/postgres-schema/public.chat_hub_session_tools.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-68
+docs/generated/sqlite-schema/execution_data.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-78
+docs/generated/postgres-schema/public.agents_memory_entry_sources.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-121
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/test/code-workflow-builder-integration.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 10,13-14,16-18,23-24,26-27,29-30,32-33,35-36,38-39,43-44,47-49,53-57,80,83-85,89-92,96-98
+.github/workflows/test-e2e-vm-expressions-nightly.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 32-33,40,42,44-52
+docs/generated/sqlite-schema/chat_hub_sessions.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-171
+packages/@n8n/agents/src/integrations/langsmith.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 4-218,231-237,254,259,261-265,278-280,283-286,290-304,309-315
+docs/generated/postgres-schema/public.workflow_publication_outbox.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-54
+packages/@n8n/ai-workflow-builder.ee/test/test-utils.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2,17-19,31-37,345,381-382,393,493,764-765
+packages/@n8n/api-types/src/dto/instance-ai/__tests__/instance-ai-confirm-request.dto.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 29-30,68,135-139
+packages/@n8n/api-types/src/dto/instance-ai/instance-ai-confirm-request.dto.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3-6,52-58,61,70,78,92,100
+packages/@n8n/backend-network/src/ssrf/ssrf-protection.service.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-314
+packages/@n8n/agents/src/index.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 6,8,19,33-35,38-65,71-72,76-91,96-100,102-104,107-123,132-175,201-204,215-216,219-251,253-348,384-387
+docs/generated/sqlite-schema/evaluation_collection.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-142
+packages/@n8n/config/src/configs/engine.config.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-12
+packages/@n8n/agents/src/__tests__/integration/mcp-runtime.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 4,20,237-240
+packages/@n8n/agents/src/__tests__/integration/delegate-sub-agent.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-91
+packages/@n8n/backend-common/vite.config.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-3
+packages/@n8n/ai-workflow-builder.ee/src/assistant/test/assistant-handler.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 59
+biome.jsonc
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 11,34-40
+packages/@n8n/agents/src/__tests__/integration/multi-tool-calls.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 45,52,91,104-105,126,133
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-165
+packages/@n8n/computer-use/package.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,5-8,12,16,22-24,30,32-33,44,49-50,59-60,62-66
+packages/@n8n/backend-network/src/http/__tests__/parse-incoming-message.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-278
+packages/@n8n/config/src/configs/__tests__/user-management.config.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 8,17,35,53
+.github/workflows/ci-instance-ai-evals.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-58
+packages/@n8n/agents/src/types/sdk/observation.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-6
+packages/@n8n/agents/src/utils/__tests__/parse.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-146
+docs/generated/postgres-schema/public.agent_execution.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-104
+packages/@n8n/ai-workflow-builder.ee/src/workflow-builder-agent.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 37,100-101,162,177,192,291
+packages/@n8n/api-types/src/__tests__/agent-builder-interactive.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-13
+packages/@n8n/ai-utilities/src/utils/vector-store/createVectorStoreNode/operations/__tests__/insertOperation.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 7-8,17-18,44-45,48,52,60-62,65,131-133,138
+docs/generated/postgres-schema/public.instance_ai_resources.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-45
+packages/@n8n/agents/src/__tests__/integration/tool-error-handling.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 57,63-64,70
+.claude/plugins/n8n/skills/db-migrations/SKILL.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-797
+packages/@n8n/ai-utilities/src/node-catalog/types.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-41
+.github/scripts/determine-version-info.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 124-126
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/handlers/chat-setup-handler.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 15-16
+packages/@n8n/backend-network/tsconfig.build.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-11
+packages/@n8n/ai-workflow-builder.ee/evaluations/support/load-nodes.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,6-8,11-12,19
+packages/@n8n/ai-utilities/src/utils/vector-store/createVectorStoreNode/createVectorStoreNode.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 80-81,83-200
+packages/@n8n/config/src/configs/public-api.config.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 16-22
+packages/@n8n/computer-use/src/cli.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 8,15,176,218,220-225,230-238
+packages/@n8n/api-types/src/dto/oidc/config.dto.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 14
+packages/@n8n/api-types/src/schemas/__tests__/eval-insights.schema.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-113
+packages/@n8n/agents/src/__tests__/integration/deferred-tools.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-134
+docs/generated/postgres-schema/public.agents_threads.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-114
+.github/scripts/slack/build-trivy-blocks.test.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-96
+.github/scripts/grind-changed-tests.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-177
+.github/actions/ci-filter/__tests__/ci-filter.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1,3-7,96-103,170-176,194-320
+packages/@n8n/ai-workflow-builder.ee/src/subgraphs/test/integration/plan-mode-discovery.integration.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 21,89,92
+docs/generated/sqlite-schema/dynamic_credential_entry.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-85
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/cli.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 11-12,17-32,35,44,50,55,63,67-68,71,73,76,80-87,103,156-157,181,185-186,204-207
+packages/@n8n/backend-common/src/logging/__tests__/logger.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-7,11-12,17-18,21-29,56,81,108,171,219,245,268,295,307,371-373,375,405-407,409,527,553,582,618,668
+packages/@n8n/api-types/src/schemas/workflow-publish-timeline.schema.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-10
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/runner-langsmith.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 17,26-27,30-31,44,102,107,113,141,145,195,204,238,252,294,302,308,345,351,393,399,446,452,487,496,502,539,542-543,561,599,624,666,685,708
+.github/scripts/cla/check-signatures.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-114
+.github/scripts/cla/manage-label.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-83
+packages/@n8n/backend-network/src/ssrf/index.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-3
+packages/@n8n/backend-network/src/dns/dns-resolver.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-119
+docs/generated/sqlite-schema/chat_hub_agent_tools.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-79
+docs/generated/postgres-schema/public.insights_by_period.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-59
+packages/@n8n/computer-use/src/tools/filesystem/list-files.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 5,32
+packages/@n8n/agents/src/workspace/tools/execute-command.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 30,33
+.github/scripts/owners.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-160
+docs/generated/postgres-schema/public.installed_nodes.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-54
+packages/@n8n/agents/src/__tests__/agent-configuration.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-66
+packages/@n8n/ai-workflow-builder.ee/tsconfig.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 14
+.github/workflows/release-create-experiment.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-82
+packages/@n8n/agents/src/types/sdk/message.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 92,106-110,186-190
+.github/scripts/create-github-release.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 61
+docs/generated/sqlite-schema/instance_ai_observation_locks.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-69
+packages/@n8n/backend-network/package.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-52
+.github/scripts/stale/clean-stale-branches.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-468
+packages/@n8n/api-types/tsconfig.build.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 6
+.github/workflows/release-create-patch-pr.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 11-15,24-28,48,59,68,81,83-93
+docs/generated/postgres-schema/public.agent_history.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-123
+.github/test-metrics/e2e-impact-map.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1
+packages/@n8n/agents/src/utils/zod.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 5-6,10
+packages/@n8n/config/src/configs/cache.config.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1,17,28
+packages/@n8n/agents/src/__tests__/integration/tool-interrupt.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 11-12,40-41,57,63-64,83,92-119,141,158,184-185
+docs/generated/sqlite-schema/execution_annotations.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-81
+.claude/plugins/n8n/skills/community-pr-readiness-check/reference/teams.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-104
+packages/@n8n/agents/src/runtime/title-generation.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1,3-5,8,38-47,52-73,126,135,137,144,146,156-221,236,253,255,257-262,268
+packages/@n8n/agents/src/__tests__/workspace/lifecycle.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 6-7,18,28-29,40-41,52-53,71,81
+.claude/plugins/n8n/skills/experiments/reference.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-105
+packages/@n8n/config/src/configs/database.config.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1,92-104,134-150,165-172
+packages/@n8n/ai-utilities/src/node-catalog/search-engine.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-530
+packages/@n8n/cli/package.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,5,21,80
+packages/@n8n/agents/src/sdk/__tests__/agent-isolated-runtime.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-129
+packages/@n8n/api-types/src/redaction-enforcement-floor.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-5
+packages/@n8n/agents/src/sdk/__tests__/delegate-sub-agent-routing.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-357
+.github/workflows/release-create-pr.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 83
+packages/@n8n/config/src/configs/logging.config.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 40,48-50
+packages/@n8n/ai-utilities/src/web-search/brave-search.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-80
+packages/@n8n/agents/src/__tests__/integration/events-and-abort.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 31-66,175-231,271,274-275,278-279,282,284-285,287-288,291,294-295,297-298,301,306-308
+packages/@n8n/agents/src/skills/types.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-170
+.github/OWNERS
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-232
+docs/generated/postgres-schema/public.agents_messages.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-67
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/remove-connection.tool.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2,20-24,29,32,37
+docs/generated/postgres-schema/public.settings.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-41
+packages/@n8n/agents/src/runtime/__tests__/fix-tool-call.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-206
+docs/generated/sqlite-schema/installed_nodes.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-62
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/handlers/test/validate-tool-handler.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 7,25-26,31-32
+packages/@n8n/api-types/src/schemas/encryption-key.schema.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-18
+packages/@n8n/backend-network/src/http/http-proxy.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-162
+docs/generated/postgres-schema/public.oauth_refresh_tokens.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-85
+packages/@n8n/api-types/src/agents/types.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-195
+packages/@n8n/ai-workflow-builder.ee/src/test/checkpoint-persistence.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 44,129-134,168,199-205
+packages/@n8n/ai-utilities/package.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,8-29,36-65,74,80-82,89-92,109,113-116,120-121
+packages/@n8n/ai-workflow-builder.ee/tsconfig.build.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 6
+packages/@n8n/api-types/src/dto/user/user-update-request.dto.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 21,24
+docs/generated/postgres-schema/public.chat_hub_agents.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-143
+.github/scripts/send-metrics.mjs
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 22-27,29,35-36,45-46
+packages/@n8n/api-types/src/index.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 11,13-14,120,183-189,202,291,300,304,307,309,311-313,326,339-340,384-385,391,393,395,403-404,408-414,430-471,474
+docs/generated/sqlite-schema/instance_version_history.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-47
+packages/@n8n/computer-use/src/tools/mouse-keyboard/mouse-keyboard.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2,16,19-27,31-32,35,41,114-115,118,183,188,193,198,272,298-303,305-309,311
+docs/generated/sqlite-schema/workflow_history.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-110
+docs/generated/postgres-schema/public.role.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-92
+packages/@n8n/computer-use/src/tools/types.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2,7,23-24
+docs/generated/postgres-schema/public.chat_hub_sessions.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-167
+packages/@n8n/config/src/configs/runners.config.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1,55
+packages/@n8n/agents/src/__tests__/integration/provider-tools.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 58-59,105-106,115-116
+packages/@n8n/benchmark/scripts/n8n-setups/sqlite/docker-compose.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 16-18
+packages/@n8n/client-oauth2/src/client-oauth2.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 37
+packages/@n8n/ai-node-sdk/package.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,21,27-29,38-42
+packages/@n8n/config/src/configs/ai.config.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-2,14,17
+docs/generated/sqlite-schema/execution_annotation_tags.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-69
+packages/@n8n/api-types/src/agents/__tests__/agent-skill.dto.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-18
+packages/@n8n/ai-workflow-builder.ee/src/tools/web/test/integration/templates.integration.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 20
+packages/@n8n/benchmark/package.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3,7,9,25,56-57
+packages/@n8n/agents/src/workspace/sandbox/daytona-auth-manager.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-129
+.github/workflows/util-cleanup-abandoned-release-branches.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 34
+packages/@n8n/agents/src/sdk/guardrails/streaming-redactor.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-85
+packages/@n8n/ai-utilities/src/__tests__/utils/n8n-binary-loader.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 6-7,9,13-14,18-23,26-31,34-39,42-47,50-55,58-63,66,69,83-85,87-89,91,97,475
+packages/@n8n/agents/src/skills/registry.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-446
+packages/@n8n/agents/src/sdk/agent.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2-3,5-26,29-37,47,58,60,68-114,121,132,140-143,146-149,160,176-177,182,212,214,228-231,233-271,281,291-293,301,304-305,363-366,381,416,473-495,503,506-513,518-520,523-526,529-531,535-536,538-548,550,553-554,562,565-570,575-576,579,584-604,611-612,614,616,626-627,629-630,632,655,657,659,662,664-665,667,696-702,719,726-729,732,734,737-749,757-758,760,763,766-771,776-779,787,789,797,804-805,809-812,823,825-829,834-859,866,870-871,880-883,886-889,896-910,912,917,922,932-933,936-939,944,950-1165
+packages/@n8n/api-types/src/dto/evaluations/index.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-2
+docs/generated/postgres-schema/public.folder_tag.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-56
+packages/@n8n/agents/src/workspace/sandbox/n8n-sandbox-sandbox.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-174
+packages/@n8n/api-types/src/schemas/credential-resolver.schema.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 3-9
+packages/@n8n/computer-use/tsconfig.build.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 6
+packages/@n8n/client-oauth2/src/types.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 22,26-32,34-39
+docs/generated/sqlite-schema/credential_dependency.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-70
+.github/workflows/docker-build-smoke.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 21,24-27,50-63,71,73-81
+docs/generated/sqlite-schema/project.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-196
+docs/generated/sqlite-schema/workflow_publication_outbox.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-58
+.github/actions/load-n8n-docker/action.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2-3,7-11,14-20,26,29,33,36-50
+docs/generated/sqlite-schema/instance_ai_observation_cursors.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-65
+packages/@n8n/ai-utilities/src/web-search/__tests__/searxng-search.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-193
+packages/@n8n/ai-workflow-builder.ee/src/prompts/chains/parameter-updater/examples/switch-node.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 128-174
+packages/@n8n/ai-utilities/src/node-catalog/__tests__/node-type-parser.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-132
+packages/@n8n/api-types/src/agent-sse.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-111
+packages/@n8n/ai-workflow-builder.ee/src/subgraphs/test/integration/responder-limitations.integration.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 29,33
+docs/generated/postgres-schema/public.instance_ai_threads.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-199
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/handlers/text-editor-handler.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1,6,8-12,14-15,19,23,27,31
+docs/generated/postgres-schema/public.installed_packages.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-55
+packages/@n8n/agents/src/__tests__/workspace/base-sandbox.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-2,45,48,51-53,55,63-65,220,229,238,248
+packages/@n8n/api-types/src/dto/evaluations/__tests__/evaluation-config.dto.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-283
+docs/generated/postgres-schema/public.trusted_key.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-56
+docs/generated/sqlite-schema/instance_ai_run_snapshots.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-80
+packages/@n8n/api-types/src/dto/otel/update-otel-settings.dto.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-16
+packages/@n8n/backend-test-utils/tsconfig.build.json
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 6
+docs/generated/postgres-schema/public.data_table.md
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-72
+packages/@n8n/agents/src/sdk/__tests__/cancellation.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-55
+packages/@n8n/ai-workflow-builder.ee/src/index.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 32,37-38,40-43
+packages/@n8n/api-types/src/agents/__tests__/agent-integration.schema.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-38
+packages/@n8n/agents/src/sdk/__tests__/tool.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-424
+.github/workflows/backport.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 25-26,38,45,55,88-125
+packages/@n8n/agents/src/sdk/eval.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 4,70,139-142
+packages/@n8n/api-types/src/dto/encryption/__tests__/list-encryption-keys-query.dto.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 1-4,8,13-17,29-85,96,104-160
+packages/@n8n/computer-use/src/tools/filesystem/write-file.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 2,7,12,16,21-22,96-97
+packages/@n8n/api-types/src/chat-hub.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 35,101,184-188,214,233,248-249,315
+packages/@n8n/ai-utilities/src/utils/vector-store/createVectorStoreNode/operations/__tests__/retrieveOperation.test.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 6-7,14-15,18-19,48-50,55
+packages/@n8n/ai-workflow-builder.ee/evaluations/support/constants.ts
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 43
+.github/workflows/test-evals-python.yml
+  s_f0c4a529fe8ba9::t_bf2367f700ef80 54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "48c73eca6e794fbd4425b3526ef384216cdd1dd6",
+  "prompts": {},
+  "sessions": {
+    "s_f0c4a529fe8ba9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "312e64de-5dd8-4b50-8492-85ca9ac80b69",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+packages/cli/src/workflows/triggers/__tests__/trigger-execution-context.factory.test.ts
+  s_2d8606fb388d08::t_96f713b4aacf56 938-949
+  s_2d8606fb388d08::t_5a23e284ca23b4 1835
+packages/cli/src/workflows/triggers/engine-v2-active-triggers.ts
+  s_2d8606fb388d08::t_a4661ef740f186 78,86
+packages/cli/src/workflows/triggers/__tests__/engine-v2-active-triggers.test.ts
+  s_2d8606fb388d08::t_bba5e5f787bce7 64-65,67,70,72-73,76,78,80,84,86,88,90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "529310c8115f3465c6e9046674abda9b651a575f",
+  "prompts": {},
+  "sessions": {
+    "s_2d8606fb388d08": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "00eca44f-de71-4ad6-b5ad-a76029409683",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,59 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalCasesCard.vue
+  s_98cf123401c046::t_a4df85f07086a0 63-65
+  s_98cf123401c046::t_1f412934d0e711 92-94,96
+  s_98cf123401c046::t_dd408fac4e1662 9-17,311-316
+  s_98cf123401c046::t_ba78db6345d716 178,192-193
+  s_98cf123401c046::t_3769fc3e2ff888 1-8,18-62,66-73,77-91,95,97-177,179-191,194-265,270-277,279-310,317-325,327,329-397
+  s_98cf123401c046::t_557e126417fb12 266-269,278
+  s_98cf123401c046::t_3bc83df2f8c8f3 74-76
+  s_98cf123401c046::t_58250d1a739de4 326,328
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalCasesCard.test.ts
+  s_98cf123401c046::t_32185f6857a958 1-136,138-277
+  s_98cf123401c046::t_249153b78e196a 137
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalsSection.vue
+  s_98cf123401c046::t_d4c770983116ff 42-44,46-50,53-58,60-68
+  s_98cf123401c046::t_ea7c475ecb60cc 3-5,7,11-18,20-21,30-39,41,45,51-52,59,69-71
+  s_98cf123401c046::t_0608dcd3c0860d 9
+  s_98cf123401c046::t_dd408fac4e1662 40
+  s_98cf123401c046::t_c45612712acae5 76-100
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_98cf123401c046::t_778929f9da7589 267-268,270
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalCaseEditor.test.ts
+  s_98cf123401c046::t_b267839e5be1b5 1-105
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalCaseRow.test.ts
+  s_98cf123401c046::t_e243fba497db1c 1-58
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_98cf123401c046::t_b95622e4282b0d 190-197
+  s_98cf123401c046::t_ea745b9621e395 283-296
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_98cf123401c046::t_1f4677ae81770b 7776-7802
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalCaseEditor.vue
+  s_98cf123401c046::t_363e1fafd05048 111
+  s_98cf123401c046::t_b74974c77570fe 1-67,73-110,112-167
+  s_98cf123401c046::t_dd408fac4e1662 68-72
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalsSection.test.ts
+  s_98cf123401c046::t_d2ca7f6186381d 40-47
+  s_98cf123401c046::t_157b504df22388 1-2,4,8,13-38,54-79,82-90,93,103,110,113-174
+  s_98cf123401c046::t_dbfe7c3e99ed66 39,48
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalCaseRow.vue
+  s_98cf123401c046::t_8fdef74622c9b0 9
+  s_98cf123401c046::t_5ed2774bbd23a0 25-30
+  s_98cf123401c046::t_4ecae7feef8eef 1-8,10-24,31-44,46-50,52-91
+  s_98cf123401c046::t_7a5db047294fe7 45,51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3731f80d31e778032138e629313a67fa7473aa58",
+  "prompts": {},
+  "sessions": {
+    "s_98cf123401c046": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3bd44f34-8e05-442d-aa1b-26697eaed220",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

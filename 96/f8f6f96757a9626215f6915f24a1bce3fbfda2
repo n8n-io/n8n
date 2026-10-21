@@ -1,0 +1,19 @@
+packages/cli/test/integration/public-api/users.ee.test.ts
+  s_e2203a10d11968::t_5145c2f17f21c2 1-6,11-12,23-26,294
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "96f8f6f96757a9626215f6915f24a1bce3fbfda2",
+  "prompts": {},
+  "sessions": {
+    "s_e2203a10d11968": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed3d6309-066a-42ef-9973-7caa9371790f",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

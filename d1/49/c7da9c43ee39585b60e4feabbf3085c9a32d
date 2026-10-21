@@ -1,0 +1,42 @@
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_27dcc65e96f9fe::t_a8a7040fb99bdb 418-427,929
+  s_27dcc65e96f9fe::t_e7d1d0b819afdf 957,978,1011
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_27dcc65e96f9fe::t_bc29537c8f14eb 106-127
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_27dcc65e96f9fe::t_bc29537c8f14eb 92-95
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_27dcc65e96f9fe::t_074f2bcdb66586 30-31,135-145,178-179,854-861,885-886,889-914,916-945
+  s_27dcc65e96f9fe::t_be7151fc2a45de 766,810,816-852
+packages/cli/src/modules/agents/integrations/agent-chat-stream-consumer.ts
+  s_27dcc65e96f9fe::t_e7d1d0b819afdf 19-23,290,299,330-331,375,397-402
+  s_27dcc65e96f9fe::t_a8a7040fb99bdb 4,28-32,43-44,88-89,306,353-355,361,364-369,371
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_27dcc65e96f9fe::t_074f2bcdb66586 1302-1326,1336-1337,1342-1344,1346-1376,1389-1409
+  s_27dcc65e96f9fe::t_be7151fc2a45de 1333-1335,1338-1339,1341,1345,1377-1388
+  s_27dcc65e96f9fe::t_63b0829f12db7e 1327-1332,1340
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_27dcc65e96f9fe::t_bc29537c8f14eb 836
+  s_27dcc65e96f9fe::t_a8a7040fb99bdb 768-770,803,806,815-816,822-835,837-845
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_27dcc65e96f9fe::t_bc29537c8f14eb 471-474,482
+  s_27dcc65e96f9fe::t_074f2bcdb66586 470,475-481,483-486
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_27dcc65e96f9fe::t_bc29537c8f14eb 196-200
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d149c7da9c43ee39585b60e4feabbf3085c9a32d",
+  "prompts": {},
+  "sessions": {
+    "s_27dcc65e96f9fe": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0810c-13ac-7de2-affe-87c09db0fab9",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

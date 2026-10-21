@@ -1,0 +1,133 @@
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_26a52030ea583f::t_9d6ed49c53d9d1 15
+  s_26a52030ea583f::t_aeee93cf0673b5 78
+packages/@n8n/cli/src/commands/package/import.ts
+  s_26a52030ea583f::t_587ab03bdfdf75 37-41
+  s_26a52030ea583f::t_356f2be40001c8 74
+packages/cli/src/modules/n8n-packages/__tests__/import-folders.integration.test.ts
+  ai_agent 79-84,90-96,108-115,129-136,148-153,170-177,190-195,212-216,229-233,246-250
+  s_26a52030ea583f::t_f8e563bdeb8a6a 23,32
+  s_26a52030ea583f::t_9077c5e33d63d4 2,10
+  s_26a52030ea583f::t_e4bbdbf1614ec0 206-207
+  s_26a52030ea583f::t_4ab43b17a98293 325-339
+  s_26a52030ea583f::t_3c277270d09ac6 1,3-9,11-22,24-31,33-78,85-89,97-107,116-128,137-147,154-169,178-189,196-205,208-211,217-228,234-245,251-324,340
+packages/cli/src/modules/n8n-packages/entities/folder/folder-conflict-policy.ts
+  s_26a52030ea583f::t_7894cd4bae934d 1-24
+packages/cli/src/modules/n8n-packages/engine/__tests__/package-layout.test.ts
+  s_26a52030ea583f::t_8a327aa01e0354 1,3-52
+  s_26a52030ea583f::t_9077c5e33d63d4 2
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_26a52030ea583f::t_4c61edd2bb455f 1-67
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  ai_agent 63-69,82-84,131-133,140-145,158-160,169-171,173-175,183-185
+  s_26a52030ea583f::t_50e9789f58d013 156-157,161-167
+  s_26a52030ea583f::t_9077c5e33d63d4 2
+  s_26a52030ea583f::t_890740c377d045 1,3-19,21-23,25-41,46-62,70-81,85-130,134-139,146-155,168,172,176-182,186-207
+  s_26a52030ea583f::t_49e1b963434a0f 20,24
+  s_26a52030ea583f::t_be8db7f7e401fa 42-45
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/importBlockingIssue.yml
+  ai_agent 118
+  s_26a52030ea583f::t_50c1279743f5b6 89-117,119-126
+packages/cli/src/modules/n8n-packages/entities/project/project-import.types.ts
+  s_26a52030ea583f::t_7f807cc0d111f8 1-20
+packages/cli/src/modules/n8n-packages/entities/folder/folder-import.types.ts
+  s_26a52030ea583f::t_ab978fb6c0d22a 1-37
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_26a52030ea583f::t_90f38183a21066 9-11,17-18,42-46,51,57-78,84,103-159
+packages/@n8n/cli/src/client.ts
+  s_26a52030ea583f::t_422de9d3f37e46 19
+packages/cli/src/modules/n8n-packages/engine/scoped-entity-importer.ts
+  s_26a52030ea583f::t_875c7898059a58 1-44,46-153
+  h_6ef4cecfee65a2 45
+packages/cli/src/modules/n8n-packages/entities/project/project-importer.ts
+  s_26a52030ea583f::t_7049e038a22f8d 31
+  s_26a52030ea583f::t_d4d2096e7f7558 78-79
+  s_26a52030ea583f::t_d3ab0fddf63c16 1-30,32-77,80-112
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/package-fixtures.ts
+  s_26a52030ea583f::t_48a701d6203012 7-8
+  s_26a52030ea583f::t_a9429f04d75c28 153-199,207-208,216-217,225-245
+  ai_agent 200-206,209-215,218-224
+packages/cli/src/modules/n8n-packages/engine/import-blocked.error.ts
+  s_26a52030ea583f::t_c88dc16b2a5163 18-19
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_26a52030ea583f::t_38c7996cc87fe9 66
+  s_26a52030ea583f::t_e30f8ee98b0855 200-221
+  s_26a52030ea583f::t_d1e1ee6cc26e92 265,269-270
+  s_26a52030ea583f::t_41908d42dbcac9 61-65
+  ai_agent 47
+  s_26a52030ea583f::t_4f288d4d3fa754 31-39
+  s_26a52030ea583f::t_c4147ce8be6e5d 68-69,83-84
+  s_26a52030ea583f::t_b6bccd3fa650aa 145-161
+packages/cli/src/modules/n8n-packages/__tests__/import-pipeline.integration.test.ts
+  s_26a52030ea583f::t_5af10573079a43 35
+  s_26a52030ea583f::t_ef82a6d4c7640e 61,72,83
+packages/cli/src/modules/n8n-packages/entities/folder/folder-importer.ts
+  ai_agent 143-147
+  h_6ef4cecfee65a2 70
+  s_26a52030ea583f::t_febe68d3b7fb79 4-5,14-20,29,33-35,37,92-96,102-106,111-120,123-124,126-142,148-149,158-164,168-169
+  s_26a52030ea583f::t_5141f05caccde5 1-3,6-13,21-28,30-32,36,38-69,71-91,97-101,107-110,121-122,125,150-157,165-167,170-202
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_26a52030ea583f::t_e43b01e40952aa 149-150
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder-conflict-policy.test.ts
+  s_26a52030ea583f::t_d8a5495b2636b1 1-15
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_26a52030ea583f::t_68a40f5295d58b 1-15,18-45
+  h_6ef4cecfee65a2 16
+  s_26a52030ea583f::t_8e0cf476c3895c 17
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  s_26a52030ea583f::t_80fa718aa1d4e1 15,35,57,78
+packages/cli/src/services/project.service.ee.ts
+  ai_agent 373-378
+  s_26a52030ea583f::t_12398cc25878f0 361,387-396,400
+  s_26a52030ea583f::t_5a022822ffc620 67-73
+  s_26a52030ea583f::t_4f74b46b66fd24 792-796
+packages/cli/src/modules/n8n-packages/engine/import-pipeline.ts
+  s_26a52030ea583f::t_efae6aac551a02 9
+  s_26a52030ea583f::t_e2cbd8267746e9 3-4,8,11-15,21-22,26-27,31-33,35,37,39-40
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-blocked.error.test.ts
+  s_26a52030ea583f::t_9077c5e33d63d4 5
+  s_26a52030ea583f::t_cd2c95e49fc11c 1-4,6-38
+packages/cli/src/modules/n8n-packages/engine/package-layout.ts
+  s_26a52030ea583f::t_225554a7c64800 1-35
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_26a52030ea583f::t_492388a5be4574 134
+  s_26a52030ea583f::t_8f5b827958ecd2 125
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_26a52030ea583f::t_14dbc6fd1adc4e 147-148
+  s_26a52030ea583f::t_8efffa14d34262 358-360
+  s_26a52030ea583f::t_ca30580fc5aa4c 253-310
+  s_26a52030ea583f::t_687b80f80d6546 122-136
+packages/cli/src/services/folder.service.ts
+  s_26a52030ea583f::t_3e72eeeeea3043 41,48-50,61-67
+  s_26a52030ea583f::t_960beb4f5e4515 10
+packages/cli/src/modules/n8n-packages/CLAUDE.md
+  h_6ef4cecfee65a2 21,35
+  s_26a52030ea583f::t_62e38720413d21 22-34
+packages/@n8n/cli/docs/commands/package.md
+  s_26a52030ea583f::t_f4798d3120b78b 49
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  ai_agent 128-133
+  s_26a52030ea583f::t_a846ac316e00d9 1-12,16-23,25-28,30-35,37-60,62-68,70,73,76,78-81,84,90-104,106-107,110,112-127,134-142,145-204
+  s_26a52030ea583f::t_dea6f6d5842f0c 13-15,24,29,36,61,69,71-72,74-75,77,82-83,85-89,105,108-109,111,143-144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "44e2019019321e4fefe6b77435f5855a2b393222",
+  "prompts": {},
+  "humans": {
+    "h_6ef4cecfee65a2": {
+      "author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_26a52030ea583f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "96d9bcff-3469-4b99-a44e-a554a538bf64",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

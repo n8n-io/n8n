@@ -1,0 +1,36 @@
+packages/cli/src/task-runners/task-broker/task-broker-ws-server.ts
+  s_0a856934e0b365::t_78568ce521f325 11
+  s_0a856934e0b365::t_92b92cf1f8aa05 57
+  s_0a856934e0b365::t_2b2f91be33ec58 210-216
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_0a856934e0b365::t_e249959e0cbe0d 16
+  s_0a856934e0b365::t_2131b4396e20d4 3757-3775
+packages/cli/src/task-runners/task-broker/__tests__/task-broker-ws-server.test.ts
+  s_0a856934e0b365::t_622c9e5404a66b 333-363
+  s_0a856934e0b365::t_96792f661af017 7
+  s_0a856934e0b365::t_2709c59c642928 34,40,46,49
+packages/@n8n/telemetry/src/events/platform.ts
+  s_0a856934e0b365::t_4673c673a06377 15-25
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_0a856934e0b365::t_d0a670962fbc6a 1680-1683
+  s_0a856934e0b365::t_8e9bd449e7f495 13
+  s_0a856934e0b365::t_589f0dae4e9d4f 217
+packages/cli/src/events/maps/relay.event-map.ts
+  s_0a856934e0b365::t_1f985aa1528c2f 996-1000
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "de597d3cf1a23648751dc5ac0d13f216a4010826",
+  "prompts": {},
+  "sessions": {
+    "s_0a856934e0b365": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4dc97f5d-c336-472a-913d-3993fc6f126c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

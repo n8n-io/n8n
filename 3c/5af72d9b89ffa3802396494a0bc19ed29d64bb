@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_1719290efbb66c::t_33bcdf479f99e6 672-673
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3c5af72d9b89ffa3802396494a0bc19ed29d64bb",
+  "prompts": {},
+  "sessions": {
+    "s_1719290efbb66c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6a6fdd9c-0ec4-44cf-a9d3-8f73681a0d5a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

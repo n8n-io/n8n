@@ -1,0 +1,21 @@
+packages/@n8n/api-types/src/dto/folders/__tests__/folder-public.dto.test.ts
+  s_812ad7dacb2ab3::t_d47d903657a7c6 193-194,200-201
+packages/@n8n/api-types/src/dto/folders/folder-public.dto.ts
+  s_812ad7dacb2ab3::t_bb3b946c1eae2b 101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0b0ddd690b310846cb91cfdbe9888ba503b1cfb8",
+  "prompts": {},
+  "sessions": {
+    "s_812ad7dacb2ab3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "fc5d38c3-7d7b-416f-9d0d-34e2bdfe3a0a",
+        "model": "grok-4.6"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_550c7bf33f188f::t_2818ae55ab380a 32
+  s_550c7bf33f188f::t_d65236d488c9c2 1356
+packages/frontend/editor-ui/src/experiments/inlineAgents/useInlineAgentsExperiment.ts
+  s_550c7bf33f188f::t_cf473b4e027ebc 24
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.utils.ts
+  s_550c7bf33f188f::t_a2e1a6438ec2be 446-448
+  s_550c7bf33f188f::t_1f0355585c8572 47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "270a532341fe4b4e18eccea1b3d1bb14d625ff7c",
+  "prompts": {},
+  "sessions": {
+    "s_550c7bf33f188f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d3978c2-1e01-4195-bc9f-6de514a8cfd4",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

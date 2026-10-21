@@ -1,0 +1,43 @@
+packages/cli/src/modules/runtime-credentials/runtime-credentials-access.service.ts
+  s_196ae54f33d91e::t_76b4eeec810dff 9
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  s_196ae54f33d91e::t_bb27a917179069 33
+packages/@n8n/backend-common/src/modules/module-registry.ts
+  s_196ae54f33d91e::t_dc3d0d5836e25e 58
+packages/cli/src/modules/runtime-credentials/__tests__/runtime-credentials-access.service.test.ts
+  s_196ae54f33d91e::t_42072e64a4c09e 16-18
+  s_196ae54f33d91e::t_7b2cf6c3971e81 5
+packages/@n8n/backend-common/src/modules/__tests__/module-registry.test.ts
+  s_196ae54f33d91e::t_cdcae891bdd48d 47,79
+packages/cli/src/modules/runtime-credentials/runtime-credentials-context-hook.ts
+  s_196ae54f33d91e::t_5fb338ad98c70e 9-27
+packages/cli/src/modules/runtime-credentials/runtime-credentials.service.ts
+  s_196ae54f33d91e::t_1f4d00c8f5248e 5-26
+packages/cli/src/modules/runtime-credentials/runtime-credentials.module.ts
+  s_196ae54f33d91e::t_e4ddd504b6dd43 8-25
+packages/cli/src/modules/runtime-credentials/__tests__/runtime-credentials.module.test.ts
+  s_196ae54f33d91e::t_d00ca511a0e08a 3-23
+packages/cli/src/modules/runtime-credentials/__tests__/runtime-credentials.service.test.ts
+  s_196ae54f33d91e::t_be153c38b3a3b4 6-18
+packages/cli/src/modules/runtime-credentials/runtime-credentials.config.ts
+  s_196ae54f33d91e::t_bf3ed99ddbe260 4
+packages/cli/src/modules/runtime-credentials/__tests__/runtime-credentials-context-hook.test.ts
+  s_196ae54f33d91e::t_85d97dead3fbe9 6-11
+  s_196ae54f33d91e::t_2f3c692da9015b 31-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "efe01ec0b74daf30b3ed0533e6e47ed263f51c3a",
+  "prompts": {},
+  "sessions": {
+    "s_196ae54f33d91e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c96d684-fc35-456a-a182-1495e556789e",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

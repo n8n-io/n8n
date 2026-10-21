@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/__tests__/agent-checkpoint.repository.test.ts
+  s_657a31a402f36f::t_2db0827559975e 14,20,33
+packages/cli/src/modules/agents/integrations/__tests__/n8n-checkpoint-storage.test.ts
+  s_657a31a402f36f::t_2db0827559975e 7,34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "ba3f645a5ad3dcef945ce00c4d6e5f8008a22ac3",
+  "prompts": {},
+  "sessions": {
+    "s_657a31a402f36f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f13ea-d4c1-7d03-bc30-fcfd579f01c6",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

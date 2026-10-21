@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/app/stores/settings.store.ts
+  s_58712f6c4bd3bb::t_91433747605da4 15
+  s_58712f6c4bd3bb::t_d802c835685489 205-209
+packages/frontend/editor-ui/src/app/stores/settings.store.test.ts
+  s_58712f6c4bd3bb::t_3da6d351031e16 317,320,329,332,341,344,357
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "102b9c262e8175e10b46fd0a8ba51f97e1ae05a1",
+  "prompts": {},
+  "sessions": {
+    "s_58712f6c4bd3bb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9e0ebcf9-8ad0-49c1-9898-4917d282b0be",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

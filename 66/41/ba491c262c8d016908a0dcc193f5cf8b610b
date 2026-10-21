@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/worksheet/append.test.ts
+  s_5f8e628d007fa4::t_f9de4e3774da96 214-245
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "6641ba491c262c8d016908a0dcc193f5cf8b610b",
+  "prompts": {},
+  "sessions": {
+    "s_5f8e628d007fa4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69ec3a5a-6e03-4a43-9b73-176a2eae41a5",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

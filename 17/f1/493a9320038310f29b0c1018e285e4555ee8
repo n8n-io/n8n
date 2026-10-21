@@ -1,0 +1,26 @@
+packages/cli/src/modules/oauth-server/oauth-server.module.ts
+  h_435b1d7d3e52c0 5,15,18-19,23
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/n8n-oauth2-auth.ts
+  h_435b1d7d3e52c0 1-53
+packages/cli/src/services/oauth-token-verifier-proxy.service.ts
+  h_435b1d7d3e52c0 13,65
+packages/cli/src/webhooks/webhook-helpers.ts
+  h_435b1d7d3e52c0 81,517-536
+packages/core/src/execution-engine/node-execution-context/webhook-context.ts
+  h_435b1d7d3e52c0 16,144-151
+packages/workflow/src/interfaces.ts
+  h_435b1d7d3e52c0 150-153,1358,3314-3317
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/McpTrigger.node.ts
+  h_435b1d7d3e52c0 1,8,93-100,158-161,164-168,175-177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "17f1493a9320038310f29b0c1018e285e4555ee8",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

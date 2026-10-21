@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/ConnectionParameter.vue
+  s_ad6f4012c1c60d::t_62b4d0cae0faf9 202-206
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "741d700713c43e635d3aa2a6d341c3eecec467b2",
+  "prompts": {},
+  "sessions": {
+    "s_ad6f4012c1c60d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5b5be60a-219c-4977-8004-ed7c2e1459c6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

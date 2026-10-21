@@ -1,0 +1,29 @@
+packages/cli/src/modules/n8n-packages/entities/credential/credential-importer.ts
+  s_9b984c21a0c7ee::t_aac1533ddd427c 84-87
+packages/cli/src/credentials/credentials.service.ts
+  s_9b984c21a0c7ee::t_f8f3df3b5d25dc 1741-1743,1746,1750
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-importer.test.ts
+  s_9b984c21a0c7ee::t_203f3777bd1b92 231
+  s_9b984c21a0c7ee::t_aa07831ee2d84d 40,44
+  s_9b984c21a0c7ee::t_774cc47e866042 286
+  s_9b984c21a0c7ee::t_d5d78ed480d523 296-355
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_9b984c21a0c7ee::t_a24ef0cf5dc67a 3257
+  s_9b984c21a0c7ee::t_e08b09eb7a8ff3 3251-3256,3258-3270
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "661b751db0888dfbc71b75be9b062fd0049e54ef",
+  "prompts": {},
+  "sessions": {
+    "s_9b984c21a0c7ee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "334b14a8-ea76-4f86-b7a9-21d8ef7a2635",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

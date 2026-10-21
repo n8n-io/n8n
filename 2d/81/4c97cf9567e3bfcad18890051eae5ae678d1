@@ -1,0 +1,31 @@
+packages/@n8n/db/src/connection/db-connection-monitor.ts
+  s_84ad6b93f93d9a::t_35a7829d058023 49
+  s_84ad6b93f93d9a::t_8eaa1bcae3ad96 407-408,417-418,422,424-425
+  s_84ad6b93f93d9a::t_3cbeb5997a4dea 389
+  s_84ad6b93f93d9a::t_767284c4ce27f3 264-267,269-272,277
+  s_84ad6b93f93d9a::t_a55f70c0f960c5 441
+  s_84ad6b93f93d9a::t_2928e6d90ff285 406
+packages/@n8n/db/src/connection/__tests__/db-connection-monitor.recovery.postgres.test.ts
+  s_84ad6b93f93d9a::t_ebd64694650759 421-422
+  s_84ad6b93f93d9a::t_70e2579a9122a6 12
+packages/@n8n/db/src/connection/__tests__/db-connection-monitor.test.ts
+  s_84ad6b93f93d9a::t_d7ddef752e1d3e 937-952
+  s_84ad6b93f93d9a::t_0668f598d62479 994-995
+  s_84ad6b93f93d9a::t_2c39674338da77 1008,1031,1048,1067,1089,1112,1130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2d814c97cf9567e3bfcad18890051eae5ae678d1",
+  "prompts": {},
+  "sessions": {
+    "s_84ad6b93f93d9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c0562195-d21f-42ce-8819-1fd37dac9d4a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

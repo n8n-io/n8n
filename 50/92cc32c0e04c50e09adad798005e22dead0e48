@@ -1,0 +1,287 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentModelSelector.vue
+  s_5e6f76689cfb12::t_4375365bd35ddc 132
+  s_5e6f76689cfb12::t_a6ce8a44d09600 2,16-17,53,69-71,85-106,124-128,203,205-219,226,234,239,245-267,292,327-361,368-370,372,470-482
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryPanel.vue
+  s_5e6f76689cfb12::t_9ccde45461070b 295
+  s_5e6f76689cfb12::t_4ee1f140733bb2 13
+  s_5e6f76689cfb12::t_18424a041a291d 98-101
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentModelSelector.spec.ts
+  s_5e6f76689cfb12::t_beb9c6add7e0b9 175-179
+  s_5e6f76689cfb12::t_354f9fd87714d5 4-5,13-15,17-25,43-49,55-58,65-67,136-145,190,232-389,430-435,437-438,440-441,444-446,448-451,453-466,469,515-516,519
+packages/@n8n/config/src/configs/executions.config.ts
+  s_5e6f76689cfb12::t_cd152539fa2c0b 5,167-177
+packages/@n8n/config/test/config.test.ts
+  s_5e6f76689cfb12::t_53bfa6c6886de7 540
+packages/@n8n/instance-ai/evaluations/data/discovery/workflow-builder-no-credential-ask.json
+  s_5e6f76689cfb12::t_31b13680c63386 27
+packages/@n8n/instance-ai/knowledge-base/reference/workflow-builder-guardrails.md
+  s_5e6f76689cfb12::t_64f82e768f47c1 7-10,121,123-126
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_5e6f76689cfb12::t_ae842fcf862f74 6-10,16,37-38,40-42,64-66,71,140,186-188,197-207,211,221-224,229,440-448,450-452,709-710,716,736-737
+packages/@n8n/instance-ai/src/skills/__tests__/runtime-skills.test.ts
+  s_5e6f76689cfb12::t_983fa81b0bfc0d 27,32-33,262,273,281-284,322-325
+packages/@n8n/instance-ai/src/stream/__tests__/map-chunk.test.ts
+  s_5e6f76689cfb12::t_70c9305085222c 535-559
+packages/@n8n/instance-ai/src/stream/map-chunk.ts
+  s_5e6f76689cfb12::t_788d869de42c41 162-169,202-209
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/build-workflow.tool.test.ts
+  s_5e6f76689cfb12::t_74d0cb93a82b9b 30,203,1090,1120,1156
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/workflow-source-compiler.test.ts
+  s_5e6f76689cfb12::t_ce3cdc78950181 190-197
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/workflow-validation-warnings.test.ts
+  s_5e6f76689cfb12::t_0150d761ddee51 4,6-13,18-26
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_5e6f76689cfb12::t_f45d1b5e1a9450 115,289-290,501,591,645,647
+packages/@n8n/instance-ai/src/tools/workflows/workflow-source-compiler.ts
+  s_5e6f76689cfb12::t_c299098442284e 139-144
+packages/@n8n/instance-ai/src/tools/workflows/workflow-validation-warnings.ts
+  s_5e6f76689cfb12::t_7cec0af8f94273 1-2,7-8,12-17,25,31,34-37
+packages/@n8n/utils/src/json/json-size-exceeds.test.ts
+  s_5e6f76689cfb12::t_2aa2e4c37f6a8f 1-403
+packages/@n8n/utils/src/json/json-size-exceeds.ts
+  s_5e6f76689cfb12::t_a55c4306737e3a 1-337
+packages/@n8n/workflow-sdk/package.json
+  s_5e6f76689cfb12::t_6637708237d5c1 61-62,89-91,106
+packages/@n8n/workflow-sdk/src/ast-interpreter/index.ts
+  s_5e6f76689cfb12::t_1eb53adfa2e90e 43
+packages/@n8n/workflow-sdk/src/cli/index.ts
+  s_5e6f76689cfb12::t_b891140f5d555e 4,6,8-22,27,32-34,37-38
+packages/@n8n/workflow-sdk/src/cli/node-definition-dirs.test.ts
+  s_5e6f76689cfb12::t_42dec847069e90 1-75
+packages/@n8n/workflow-sdk/src/cli/node-definition-dirs.ts
+  s_5e6f76689cfb12::t_ee9343908a3e76 1-88
+packages/@n8n/workflow-sdk/src/cli/validate.ts
+  s_5e6f76689cfb12::t_1c78254f30d1d3 1-291
+packages/@n8n/workflow-sdk/src/codegen/codegen-roundtrip.test.ts
+  s_5e6f76689cfb12::t_16568c66829c04 15,31-35,47-51,72,92,2925-2962
+packages/@n8n/workflow-sdk/src/codegen/emit-instance-ai.test.ts
+  s_5e6f76689cfb12::t_c29c69d48f6359 257-259
+packages/@n8n/workflow-sdk/src/generate-types/generate-zod-schemas.test.ts
+  s_5e6f76689cfb12::t_3946644e4d3de7 17
+packages/@n8n/workflow-sdk/src/index.ts
+  s_5e6f76689cfb12::t_b08bf4dbfd43b9 162-168
+packages/@n8n/workflow-sdk/src/lint/ast-walk.ts
+  s_5e6f76689cfb12::t_1aef106c7f33d8 1-51
+packages/@n8n/workflow-sdk/src/lint/code-node/code-node.test.ts
+  s_5e6f76689cfb12::t_c4277d23e34a30 1-67
+packages/@n8n/workflow-sdk/src/lint/code-node/extract-snippets.test.ts
+  s_5e6f76689cfb12::t_345e4adf2a2391 1-51
+packages/@n8n/workflow-sdk/src/lint/code-node/extract-snippets.ts
+  s_5e6f76689cfb12::t_37cc39252a9779 1-129
+packages/@n8n/workflow-sdk/src/lint/code-node/js.ts
+  s_5e6f76689cfb12::t_2314ce4ec441d9 1-228
+packages/@n8n/workflow-sdk/src/lint/code-node/python.ts
+  s_5e6f76689cfb12::t_735a22bbdcd6f0 1-42
+packages/@n8n/workflow-sdk/src/lint/index.ts
+  s_5e6f76689cfb12::t_6d743a85e4d916 1-26
+packages/@n8n/workflow-sdk/src/lint/lint-workflow-source.test.ts
+  s_5e6f76689cfb12::t_35e0e4416334bd 1-61
+packages/@n8n/workflow-sdk/src/lint/lint-workflow-source.ts
+  s_5e6f76689cfb12::t_6a375acd58315a 1-60
+packages/@n8n/workflow-sdk/src/lint/sdk/workflow-sdk-lint.test.ts
+  s_5e6f76689cfb12::t_c2e9c2055ea791 1-218
+packages/@n8n/workflow-sdk/src/lint/sdk/workflow-sdk-lint.ts
+  s_5e6f76689cfb12::t_53d399668d5e24 1-394
+packages/@n8n/workflow-sdk/src/lint/types.ts
+  s_5e6f76689cfb12::t_86da5f6af14002 1-28
+packages/@n8n/workflow-sdk/src/validation.ts
+  s_5e6f76689cfb12::t_8d9b88dbfeb560 11-18,21-24
+packages/@n8n/workflow-sdk/src/validation/index.ts
+  s_5e6f76689cfb12::t_40d6261ba71a2e 1-6,8-15,22,24-28,30-37,39-47
+packages/@n8n/workflow-sdk/src/validation/informational-validation-codes.test.ts
+  s_5e6f76689cfb12::t_a1ce59beffb66f 1-23
+packages/@n8n/workflow-sdk/src/validation/informational-validation-codes.ts
+  s_5e6f76689cfb12::t_158ccbcb9cbbf5 1-9
+packages/@n8n/workflow-sdk/src/validation/input-index-validation.test.ts
+  s_5e6f76689cfb12::t_7213d2a5b80b65 128-161
+packages/@n8n/workflow-sdk/src/validation/issue-severity.ts
+  s_5e6f76689cfb12::t_5951c5cd5770ed 1-36
+packages/@n8n/workflow-sdk/src/validation/node-parameter-schema/resolve-schema.ts
+  s_5e6f76689cfb12::t_794c0a633c93f7 7
+packages/@n8n/workflow-sdk/src/validation/node-parameter-schema/schema-helpers.ts
+  s_5e6f76689cfb12::t_8373b6a5b54eb6 30
+packages/@n8n/workflow-sdk/src/validation/node-parameter-schema/schema-validation-integration.test.ts
+  s_5e6f76689cfb12::t_0ff2e7f6860bdd 13-14
+packages/@n8n/workflow-sdk/src/validation/node-parameter-schema/test-schema-setup.ts
+  s_5e6f76689cfb12::t_e62c0cb34251e3 15,34,76
+packages/@n8n/workflow-sdk/src/validation/node-port-resolvers/resolve-main-input-count.test.ts
+  s_5e6f76689cfb12::t_625d263310bf2d 3
+packages/@n8n/workflow-sdk/src/validation/validate-workflow-builder.test.ts
+  s_5e6f76689cfb12::t_62ddc53615ebd5 1-80
+packages/@n8n/workflow-sdk/src/validation/validate-workflow-builder.ts
+  s_5e6f76689cfb12::t_1ab305137218a3 1-244
+packages/@n8n/workflow-sdk/src/validation/validate-workflow.test.ts
+  s_5e6f76689cfb12::t_ac5610587a92ca 2,131-242
+packages/@n8n/workflow-sdk/src/validation/validate-workflow.ts
+  s_5e6f76689cfb12::t_e06fba090d7034 1-1367
+packages/@n8n/workflow-sdk/src/workflow-builder-plugins.test.ts
+  s_5e6f76689cfb12::t_37b1e918c3e73d 1086,1105
+packages/@n8n/workflow-sdk/src/workflow-builder.ts
+  s_5e6f76689cfb12::t_cb6db988cda936 750
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/types.ts
+  s_5e6f76689cfb12::t_54af914a320332 65-71
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/validators/disconnected-node-validator.ts
+  s_5e6f76689cfb12::t_56f9bb9f4a972b 218
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/validators/missing-trigger-validator.ts
+  s_5e6f76689cfb12::t_31771bdbd810cb 43
+packages/@n8n/workflow-sdk/test-fixtures/committed-workflows/11.json
+  s_5e6f76689cfb12::t_7b50d59ea2199c 1-29
+packages/@n8n/workflow-sdk/test-fixtures/committed-workflows/12.json
+  s_5e6f76689cfb12::t_a4736ca9ad3a6d 1-49
+packages/@n8n/workflow-sdk/test-fixtures/committed-workflows/13.json
+  s_5e6f76689cfb12::t_32edd313ecd82e 1-30
+packages/@n8n/workflow-sdk/test-fixtures/committed-workflows/manifest.json
+  s_5e6f76689cfb12::t_40880619c1c4f7 112-129
+packages/cli/src/errors/webhook-response-too-large.error.ts
+  s_5e6f76689cfb12::t_3acd2f8010b990 1-13
+packages/cli/src/modules/agents/__tests__/agent-model-catalog.service.test.ts
+  s_5e6f76689cfb12::t_a941eacc51de76 1,3,88-147
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_5e6f76689cfb12::t_4fcd5c882b64d5 30,284
+packages/cli/src/modules/agents/__tests__/agent-sse-stream.test.ts
+  s_5e6f76689cfb12::t_12a261e50136b5 134-168
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_5e6f76689cfb12::t_5ca28ed4dfec16 2,7,65-66,76,85,172-222
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_5e6f76689cfb12::t_67ba6c68bffb9b 18,23-24,118
+packages/cli/src/modules/agents/adapters/__tests__/agents-credential-provider.test.ts
+  s_5e6f76689cfb12::t_cebeade1f33e4c 1-51
+packages/cli/src/modules/agents/adapters/agents-credential-provider.ts
+  s_5e6f76689cfb12::t_5c6ce9ad4a72ec 3-4,7-9,26-28,35-54
+packages/cli/src/modules/agents/agent-model-catalog.service.ts
+  s_5e6f76689cfb12::t_09bda8333a2b84 1-5,95-100,104-126
+packages/cli/src/modules/agents/agent-sse-stream.ts
+  s_5e6f76689cfb12::t_aa4a758f77cf7f 248-271,274-275
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_5e6f76689cfb12::t_fe81a82c8ae98d 6,26,83,86-99,357-371
+packages/cli/src/modules/agents/builder/__tests__/builder-model-live-lookup.service.test.ts
+  s_5e6f76689cfb12::t_f607475d29f0bc 1,8,27,33,35,112-159
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_5e6f76689cfb12::t_8d94491d51ac03 37,209,631-632,654-662
+packages/cli/src/modules/agents/builder/builder-model-live-lookup.service.ts
+  s_5e6f76689cfb12::t_0d9c528b4e6be0 1,8,28,33-36,45-50,66-98
+packages/cli/src/modules/agents/builder/interactive/__tests__/resolve-llm.tool.test.ts
+  s_5e6f76689cfb12::t_e8c93ba28fed85 2,567-834
+packages/cli/src/modules/agents/builder/interactive/resolve-llm.tool.ts
+  s_5e6f76689cfb12::t_46cb97c8a06c71 4,14-16,34-39,132-171,188-191,228-248,251-252,264-301,306,332,365,383-388,390
+packages/cli/src/modules/agents/builder/prompts/llm-selection.prompt.ts
+  s_5e6f76689cfb12::t_95496f3a9c3938 16,19
+packages/cli/src/modules/agents/json-config/__tests__/model-config.test.ts
+  s_5e6f76689cfb12::t_c1542c178485fa 1-66
+packages/cli/src/modules/agents/json-config/__tests__/sanitize-unknown-agent-credentials.test.ts
+  s_5e6f76689cfb12::t_5fa0573fac17a0 1-2,8-60
+packages/cli/src/modules/agents/json-config/model-config.ts
+  s_5e6f76689cfb12::t_bd015e05e602da 1,3,7-25,31-37,39
+packages/cli/src/modules/agents/json-config/sanitize-unknown-agent-credentials.ts
+  s_5e6f76689cfb12::t_345bd163df2e48 1-5,10,16,27-43,68
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_5e6f76689cfb12::t_12499fc5dccff7 29,43,77-84,1976-2063
+packages/cli/src/scaling/__tests__/webhook-response-relay.test.ts
+  s_5e6f76689cfb12::t_6a4c1bf36a0701 1-183
+packages/cli/src/scaling/job-processor.ts
+  s_5e6f76689cfb12::t_03c2d425dae971 60,199-200,221
+packages/cli/src/scaling/scaling.service.ts
+  s_5e6f76689cfb12::t_af311de0751e7e 10-11,34,356-357,360
+packages/cli/src/scaling/webhook-response-relay.ts
+  s_5e6f76689cfb12::t_5daa9db369e0b8 1-135
+packages/cli/src/services/__tests__/ai-gateway.service.test.ts
+  s_5e6f76689cfb12::t_83fa0a2b98bb4b 4,7-8,872-967
+packages/cli/src/services/ai-gateway.service.ts
+  s_5e6f76689cfb12::t_22a359d56dc446 351-401
+packages/cli/src/webhooks/__tests__/webhook-helpers.test.ts
+  s_5e6f76689cfb12::t_26e855e85107a9 293-314,363-382
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_5e6f76689cfb12::t_858e7b0b30d9c5 326-328,336-338
+packages/frontend/@n8n/design-system/src/components/N8nAiModelSelectorDropdown/AiModelSelectorDropdown.types.ts
+  s_5e6f76689cfb12::t_c81f790eaf3de0 5-6
+packages/frontend/@n8n/design-system/src/components/N8nAiModelSelectorDropdown/AiModelSelectorDropdown.vue
+  s_5e6f76689cfb12::t_98bf8084c903c9 15,110,179-181,191-196
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.test.ts
+  s_5e6f76689cfb12::t_0d6259530cb818 326-375,715-785
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.types.ts
+  s_5e6f76689cfb12::t_061d59efb97f79 9-16,53-56,108-109
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.utils.test.ts
+  s_5e6f76689cfb12::t_5834b2afd92a61 14,63-83
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.utils.ts
+  s_5e6f76689cfb12::t_6b47c71a2db95b 10-16,24
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.vue
+  s_5e6f76689cfb12::t_a4ce085dbb9b32 16,58-68,129-140,143-144,282
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenuItem.vue
+  s_5e6f76689cfb12::t_bcced8e821069a 5,20,54,104-107,191-194,196,206,241-244,353,389,450-456,523-526
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenuSearchableContent.vue
+  s_5e6f76689cfb12::t_3ba0f36f8c72e1 12,109,160,166-167,179
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5e6f76689cfb12::t_5e7c540380470a 5061-5063,7266-7272,7341
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_5e6f76689cfb12::t_b462ad0f7e1c1e 14-15
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentInfoPanel.spec.ts
+  s_5e6f76689cfb12::t_d1b8e6b6432bcf 1,11-15,52,82-88,94-98,100,108,113,118-121,125,162-204
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSubAgentsPanel.spec.ts
+  s_5e6f76689cfb12::t_167e20d63f368c 6,119,233-343
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolConfigModal.test.ts
+  s_5e6f76689cfb12::t_e9540be6e627ee 77,84
+packages/frontend/editor-ui/src/features/agents/__tests__/WorkflowToolConfigContent.test.ts
+  s_5e6f76689cfb12::t_8351fbfcdaeaff 1-2,4,6,8,12-23,31-81,87-88,94-101,103-109,112,120,128,136-144,155-196,198-329
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentModelCredentials.test.ts
+  s_5e6f76689cfb12::t_42398cf6519b06 1-160
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentToolRefAdapter.test.ts
+  s_5e6f76689cfb12::t_a37b4fa2d6efdf 344,356,367-383,391-396
+packages/frontend/editor-ui/src/features/agents/components/AgentSubAgentsPanel.vue
+  s_5e6f76689cfb12::t_c3b544397499c7 8,66,70-109,158-163,165,168,171,279-280,290-298,300,302-307,309-313,319-322,401
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigModal.vue
+  s_5e6f76689cfb12::t_e4c86e772c8eee 259,342
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigWorkflowContent.vue
+  s_5e6f76689cfb12::t_e4c828a71e7017 10,39-42,47,56
+packages/frontend/editor-ui/src/features/agents/components/EmbeddingModelSelector.vue
+  s_5e6f76689cfb12::t_0a6c47d6455321 87,92,125
+packages/frontend/editor-ui/src/features/agents/components/WorkflowToolConfigContent.vue
+  s_5e6f76689cfb12::t_b1b743ce1ba5db 8-9,18-28,30,32-33,38,48-50,54-63,71-74,78-80,82-89,95-143,148-193,198,226-229,231-357,359,372,386-443
+packages/frontend/editor-ui/src/features/agents/composables/useAgentModelCredentials.ts
+  s_5e6f76689cfb12::t_d36242c4441ea5 3-5,37-47,93-95,97-106
+packages/frontend/editor-ui/src/features/agents/composables/useAgentToolCatalog.ts
+  s_5e6f76689cfb12::t_f1000e50605a10 144,154
+packages/frontend/editor-ui/src/features/agents/composables/useAgentToolRefAdapter.ts
+  s_5e6f76689cfb12::t_d4a801267ddb5e 158,166
+packages/frontend/editor-ui/src/features/ai/components/CredentialSelectorModal.test.ts
+  s_5e6f76689cfb12::t_582d0f3415b959 18
+packages/frontend/editor-ui/src/features/ndv/agents/components/__tests__/AgentNdvInlineControls.test.ts
+  s_5e6f76689cfb12::t_83cc4f84e37f98 14-15
+packages/nodes-base/nodes/Form/Form.node.ts
+  s_5e6f76689cfb12::t_1b496604611d20 473
+packages/nodes-base/nodes/Form/test/Form.node.test.ts
+  s_5e6f76689cfb12::t_a7cf036a47afa6 15,67-78
+packages/nodes-base/nodes/RabbitMQ/RabbitMQ.node.ts
+  s_5e6f76689cfb12::t_78ef13780c3258 394
+packages/nodes-base/nodes/RabbitMQ/test/RabbitMQ.node.test.ts
+  s_5e6f76689cfb12::t_bb773aca42aeb5 3,15,33,131-149
+packages/nodes-base/nodes/RespondToWebhook/RespondToWebhook.node.ts
+  s_5e6f76689cfb12::t_f0c8dedb118d7e 577
+packages/nodes-base/nodes/RespondToWebhook/test/RespondToWebhook.test.ts
+  s_5e6f76689cfb12::t_098970d6b0afd7 12,85,122,142,163,184,213,236,257,277,303,327,340-376,389,555,580,608,635
+packages/nodes-base/nodes/Wait/Wait.node.ts
+  s_5e6f76689cfb12::t_6dbcc7953fb01c 534
+packages/nodes-base/nodes/Wait/test/Wait.node.test.ts
+  s_5e6f76689cfb12::t_5dc48e7359c317 4-9,111-129
+packages/workflow/src/interfaces.ts
+  s_5e6f76689cfb12::t_378c021533ed68 1246
+pnpm-lock.yaml
+  s_5e6f76689cfb12::t_31d2680add4a34 3981-3983
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_5e6f76689cfb12::t_24b1d0d039ff34 10,86-103,105,132-133,145,216,222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "5092cc32c0e04c50e09adad798005e22dead0e48",
+  "prompts": {},
+  "sessions": {
+    "s_5e6f76689cfb12": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "37c8f369-6a0a-4bbf-b83b-9af7e7ae5798",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

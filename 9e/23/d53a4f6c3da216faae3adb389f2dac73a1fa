@@ -1,0 +1,47 @@
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-mid-run.test.ts
+  s_d30aaf832f6196::t_1228f4c0b6727e 457-483,506
+  s_5b586951f97f35::t_e08fe40c57e4ba 450
+  s_5b586951f97f35::t_04db7480016278 426,447-449,451-454
+  s_5b586951f97f35::t_73ee2c0deb027b 222-223,334-335,383-425,427-446,455-456,484-505
+  s_d30aaf832f6196::t_249f957e5d4b2a 507-508
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_5b586951f97f35::t_274e68794a1f3c 53,225,462-463,626
+  s_5b586951f97f35::t_25c6de3a0c0ead 133,466-467,579-592,607,742
+  s_d30aaf832f6196::t_d88415dfc01511 730,736-739
+  s_d30aaf832f6196::t_5b9b97110ced26 684-688,690-695,700
+  s_5b586951f97f35::t_29ba2613c48f1a 689,696-699
+  s_5b586951f97f35::t_772c82327fd7aa 61-83,128-129,131,415-416,431,572-573,578,671-672,676,701-703,731-735,740-741
+  s_5b586951f97f35::t_1a403e836acd1d 132
+  s_5b586951f97f35::t_222231c26527ec 743
+packages/@n8n/agents/src/types/sdk/memory.ts
+  s_5b586951f97f35::t_3fff2857d931cb 292
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "9e23d53a4f6c3da216faae3adb389f2dac73a1fa",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5b586951f97f35": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ad32431c-0f56-4daf-ada3-eaaac2bebeb5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_d30aaf832f6196": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "dbf04560-4c29-4837-a738-e070b1c866fe",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

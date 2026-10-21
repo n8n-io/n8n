@@ -1,0 +1,14 @@
+packages/cli/src/scheduling/schedule-trigger-node/schedule-trigger-job-registrar.ts
+  h_32d8cd6a0d6aad 424,427
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "021a3841d7ba41f50fec302e481e72e866110066",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

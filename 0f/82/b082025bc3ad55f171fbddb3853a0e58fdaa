@@ -1,0 +1,25 @@
+packages/nodes-base/AGENTS.md
+  s_716c5144ea2746::t_8cf4d360b57176 101-108
+  s_716c5144ea2746::t_82ca3fa62d0c0a 90
+  s_716c5144ea2746::t_78280031ec76e2 145-152
+  s_716c5144ea2746::t_5906d242f5503b 48-66
+  s_716c5144ea2746::t_58e64fa6a09095 122-130
+packages/cli/test/unit/node-credential-references.test.ts
+  s_716c5144ea2746::t_097a88ff6f8c90 12,14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "0f82b082025bc3ad55f171fbddb3853a0e58fdaa",
+  "prompts": {},
+  "sessions": {
+    "s_716c5144ea2746": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e10bd622-3863-483b-8737-b0d99bd0c883",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

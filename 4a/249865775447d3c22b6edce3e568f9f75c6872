@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/builder/__tests__/builder-model-live-lookup.service.test.ts
+  s_a95a5287727af3::t_7fe92f8e89e2ed 14-21,57-220
+  s_a95a5287727af3::t_8dc96ae90f09cb 221-222
+packages/cli/src/modules/agents/builder/builder-model-live-lookup.service.ts
+  s_a95a5287727af3::t_55a5a4170634ae 13-22,55-66,68,94,98-111,122-128,132-173,175-188,191
+  s_a95a5287727af3::t_7f1163015bd6a2 90-92,117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "4a249865775447d3c22b6edce3e568f9f75c6872",
+  "prompts": {},
+  "sessions": {
+    "s_a95a5287727af3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fd734-47be-7c62-a3cf-903358e64654",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+packages/@n8n/api-types/src/dto/index.ts
+  s_812ad7dacb2ab3::t_a848bc414504d5 265-266
+packages/@n8n/api-types/src/dto/folders/__tests__/folder-public.dto.test.ts
+  s_812ad7dacb2ab3::t_e6faff7c903cec 6-7,153-200
+packages/cli/src/public-api/v1/controllers/folders.public.controller.ts
+  s_812ad7dacb2ab3::t_233f8481ef1871 7,24,28,84-91,157-180
+packages/@n8n/api-types/src/dto/folders/folder-public.dto.ts
+  s_812ad7dacb2ab3::t_d3252923928054 12,21,92,98-104
+packages/cli/src/public-api/v1/handlers/folders/folders.handler.ts
+  s_812ad7dacb2ab3::t_3097507df9b39a 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5e554a174f84a1c3d2f1cfce136e46687ee638b6",
+  "prompts": {},
+  "sessions": {
+    "s_812ad7dacb2ab3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "fc5d38c3-7d7b-416f-9d0d-34e2bdfe3a0a",
+        "model": "grok-4.6"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

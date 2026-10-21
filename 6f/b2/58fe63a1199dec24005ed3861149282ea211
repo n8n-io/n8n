@@ -1,0 +1,23 @@
+packages/cli/src/modules/n8n-packages/__tests__/workflow-node-groups.integration.test.ts
+  s_7f97ecf5434c62::t_c088869236d305 14
+  s_7f97ecf5434c62::t_1be496054a6cbe 77-79
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow.exporter.test.ts
+  s_7f97ecf5434c62::t_1f69001c111cd6 241-247
+  s_7f97ecf5434c62::t_4ca692aeae2d6f 262-268
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6fb258fe63a1199dec24005ed3861149282ea211",
+  "prompts": {},
+  "sessions": {
+    "s_7f97ecf5434c62": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b09f0d09-2c34-46b8-b134-d148e4d52979",
+        "model": "claude-fable-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

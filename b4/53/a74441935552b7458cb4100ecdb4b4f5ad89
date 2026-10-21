@@ -1,0 +1,22 @@
+packages/@n8n/api-types/src/push/execution.ts
+  s_8fa5f8db399b81::t_b2068f2332ff48 63-73
+  s_8fa5f8db399b81::t_d7a8b855f7ce21 89
+packages/cli/src/execution-lifecycle/execution-lifecycle-hooks.ts
+  s_8fa5f8db399b81::t_f012a8d8c1cf17 283-284,287-289
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "b453a74441935552b7458cb4100ecdb4b4f5ad89",
+  "prompts": {},
+  "sessions": {
+    "s_8fa5f8db399b81": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1af0f0c-39d9-4644-b626-3fcc1399c403",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

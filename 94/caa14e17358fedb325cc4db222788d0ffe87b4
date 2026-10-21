@@ -1,0 +1,20 @@
+.agents/specs/agent-artifact-experience.md
+  s_5eaebbe993605c::t_072e85b48083e5 1-169,175-183,187-352
+  s_5eaebbe993605c::t_148cb9827b9dda 170-174,184-186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "94caa14e17358fedb325cc4db222788d0ffe87b4",
+  "prompts": {},
+  "sessions": {
+    "s_5eaebbe993605c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4353-00a9-78b3-a770-05fc06ad05f3",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

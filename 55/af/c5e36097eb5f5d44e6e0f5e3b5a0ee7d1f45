@@ -1,0 +1,19 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.node-usage.test.ts
+  s_cc47cd448ab69c::t_eb5e70221a1091 65,136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "55afc5e36097eb5f5d44e6e0f5e3b5a0ee7d1f45",
+  "prompts": {},
+  "sessions": {
+    "s_cc47cd448ab69c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "266c82bd-d88a-4444-80c5-0ea2f9c42cdb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

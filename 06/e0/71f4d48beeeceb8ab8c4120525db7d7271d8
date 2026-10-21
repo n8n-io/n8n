@@ -1,0 +1,44 @@
+packages/frontend/@n8n/frontend-module-sdk/README.md
+  s_54060d8f5569bb::t_297e9e51eac9aa 17-30
+packages/frontend/editor-ui/src/app/App.vue
+  s_54060d8f5569bb::t_1c0cc8098c4be1 27
+  s_54060d8f5569bb::t_75878b1e26ff25 72-75
+  s_54060d8f5569bb::t_4017fe2796abad 39
+  s_54060d8f5569bb::t_10a510faccec18 15
+packages/frontend/editor-ui/src/app/composables/usePushConnection/usePushConnection.test.ts
+  s_54060d8f5569bb::t_d42bb6537c5d91 103,118-120,122
+packages/frontend/@n8n/frontend-module-sdk/src/types/descriptor.ts
+  s_54060d8f5569bb::t_463ebcca3949d6 45-49
+packages/frontend/editor-ui/src/app/composables/useModulePushDispatcher.ts
+  s_54060d8f5569bb::t_34d30a876785c4 1-45
+packages/frontend/@n8n/frontend-module-sdk/src/registries/commandRegistry.test.ts
+  s_54060d8f5569bb::t_e6013703ce9a55 58-77
+packages/frontend/@n8n/frontend-module-sdk/src/registries/commandRegistry.ts
+  s_54060d8f5569bb::t_8f239f4dd9c605 11-14
+packages/frontend/editor-ui/src/app/composables/useModulePushDispatcher.test.ts
+  s_54060d8f5569bb::t_28da80dc4f78f6 1-2,4-52,54-103
+  s_54060d8f5569bb::t_cff29d21607dd4 53
+  s_54060d8f5569bb::t_427bd2f4aa8600 3
+packages/frontend/editor-ui/src/app/composables/usePushConnection/usePushConnection.ts
+  s_54060d8f5569bb::t_08695857b9466b 72-76
+packages/frontend/@n8n/frontend-module-sdk/src/types/push.ts
+  s_54060d8f5569bb::t_9e2f0d43218bfd 24-31
+packages/frontend/editor-ui/src/app/components/WorkflowCanvasHostBody.vue
+  s_54060d8f5569bb::t_b4ffed220d250d 69-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "06e071f4d48beeeceb8ab8c4120525db7d7271d8",
+  "prompts": {},
+  "sessions": {
+    "s_54060d8f5569bb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b074c32c-28ee-4d59-a293-31b8244beb17",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

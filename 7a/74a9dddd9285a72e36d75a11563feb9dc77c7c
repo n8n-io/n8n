@@ -1,0 +1,30 @@
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_2063b158e1d22e::t_08adefaadeddb2 201,2628-2630,2632,2649,6511
+packages/cli/src/modules/instance-ai/__tests__/telemetry-redaction.test.ts
+  s_2063b158e1d22e::t_effd88de497bf5 78-83,87,93
+  s_2063b158e1d22e::t_148818f572cd03 1,44-77,84-86,88-92,94-97
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_2063b158e1d22e::t_7959ca1b26adba 3200-3235
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_2063b158e1d22e::t_78a7007587ced6 169,1411,1507-1510,1512,3487-3501,3508,3552-3566
+packages/cli/src/modules/instance-ai/telemetry-redaction.ts
+  s_2063b158e1d22e::t_46b472f977b40e 2,32-45,54-91
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_2063b158e1d22e::t_eeaad10942b3dd 3343,3377,3685-3735
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7a74a9dddd9285a72e36d75a11563feb9dc77c7c",
+  "prompts": {},
+  "sessions": {
+    "s_2063b158e1d22e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9928491d-e144-48d5-a650-b29f141559bf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

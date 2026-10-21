@@ -1,0 +1,148 @@
+packages/cli/src/node-execution/ephemeral-node-executor.ts
+  s_17c9758bfdf7df::t_404bebf075d5cc 387-422
+packages/frontend/editor-ui/src/features/agents/utils/agentSectionEditor.utils.ts
+  s_17c9758bfdf7df::t_3212bcb562aa33 8
+  s_17c9758bfdf7df::t_26fc8c23485abf 1-2,6-7,9-10,50
+packages/frontend/editor-ui/src/features/agents/__tests__/WorkflowToolConfigContent.test.ts
+  s_17c9758bfdf7df::t_7a9274525289ed 96-104,483-489,499-501,504-506,512-520,527-529,531-535
+  s_17c9758bfdf7df::t_d7d4ff073dfe96 5-7,12,19,28-32,93-95,106-108,110-113,410,412-414,435-439,482,490-498,502-503,507-508,510-511,521-526
+  s_17c9758bfdf7df::t_8656c748799bd4 105,109,509
+  s_17c9758bfdf7df::t_1caa1821ef6986 538-540
+  s_17c9758bfdf7df::t_00ad106d008164 479-480,541-569
+  s_17c9758bfdf7df::t_f7bc43b44407be 450,456-477
+  s_17c9758bfdf7df::t_20a0c32a17910a 440-449,451-455,478,481,570
+packages/frontend/editor-ui/src/features/agents/composables/useAgentToolCatalog.ts
+  s_17c9758bfdf7df::t_bc1ceb9c738e73 133,153,156
+packages/cli/src/node-execution/__tests__/ephemeral-node-executor.test.ts
+  s_17c9758bfdf7df::t_f24cf771d11ed7 1020
+  s_17c9758bfdf7df::t_2854e7285cd0d7 950,996-1019,1021-1023,1027
+  s_17c9758bfdf7df::t_7a9274525289ed 1024-1026
+packages/frontend/editor-ui/src/features/agents/__tests__/agentSectionEditor.utils.test.ts
+  s_17c9758bfdf7df::t_3212bcb562aa33 54-55
+  s_17c9758bfdf7df::t_9a8807a418b592 2,49-53,56-59,61-63
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentModal.test.ts
+  s_17c9758bfdf7df::t_f7bc43b44407be 196-204,211-220
+  s_17c9758bfdf7df::t_6e4b99952146af 1,4-5,191-195,205-210,221-244
+packages/cli/src/modules/agents/tools/workflow-tool-workflow-loader.service.ts
+  s_17c9758bfdf7df::t_5c5892951b5148 52-56
+packages/cli/src/modules/agents/__tests__/workflow-tool-factory.test.ts
+  s_17c9758bfdf7df::t_2854e7285cd0d7 321-341,344-346,356,359,364-368,373-383,396-399
+  s_17c9758bfdf7df::t_7a9274525289ed 342-343,347-355,357-358,360-363,369-372,384-395
+  s_17c9758bfdf7df::t_23a88a6aa33bbc 9,89
+packages/@n8n/expression-runtime/src/runtime/lazy-proxy.ts
+  s_17c9758bfdf7df::t_f7bc43b44407be 317-320
+  s_17c9758bfdf7df::t_437bd45b0c8015 1-2
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigWorkflowContent.vue
+  s_17c9758bfdf7df::t_60a9953c87c9d8 13,68
+packages/@n8n/expression-runtime/src/runtime/__tests__/lazy-proxy.test.ts
+  s_17c9758bfdf7df::t_f7bc43b44407be 71,77,617-637
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigForm.vue
+  s_17c9758bfdf7df::t_60a9953c87c9d8 100,238,303,324
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_17c9758bfdf7df::t_23a88a6aa33bbc 20,59
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_17c9758bfdf7df::t_bc1ceb9c738e73 8256,8258-8264
+  s_17c9758bfdf7df::t_58990dd038ed02 8257
+packages/@n8n/api-types/src/agents/__tests__/agent-json-config.schema.test.ts
+  s_17c9758bfdf7df::t_23a88a6aa33bbc 662-669,676,685,690-695,703
+packages/cli/src/modules/agents/tools/__tests__/infer-input-schema.test.ts
+  s_17c9758bfdf7df::t_87ea55c5d25316 10,167,190
+  s_17c9758bfdf7df::t_5ac61cd50d1cb2 146-147,152,157-158,169-171,177,183
+  s_17c9758bfdf7df::t_bc1ceb9c738e73 3
+  s_17c9758bfdf7df::t_881f8958db7794 159
+packages/frontend/editor-ui/src/features/agents/components/WorkflowToolConfigContent.vue
+  s_17c9758bfdf7df::t_7e4e36e462e35e 160-163,165-167,170,177,184-185
+  s_17c9758bfdf7df::t_f24cf771d11ed7 442
+  s_17c9758bfdf7df::t_ada856a3e2e4e6 445-447,467-469,477-482
+  s_17c9758bfdf7df::t_c531e7e397ef04 451-458,460-464
+  s_17c9758bfdf7df::t_1151d5da6ed8c0 485-486,489
+  s_17c9758bfdf7df::t_a318a7ea34e4a9 2,6,8,22-23,52-54,59-61,63-65,104,113,128,159,164,169,171-176,178-182,186,435-441,443-444,448-450,470-471,473-476,483-484,487-488,490-493,495-497,504,581,583-593,596-599
+  s_17c9758bfdf7df::t_60a9953c87c9d8 29,494
+  s_17c9758bfdf7df::t_f7bc43b44407be 3,49,75,251-253,257
+  s_17c9758bfdf7df::t_5bc2bdf860de3b 434
+packages/cli/src/workflow-execute-additional-data.ts
+  s_17c9758bfdf7df::t_5c5892951b5148 215,236
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_17c9758bfdf7df::t_1caa1821ef6986 400
+  s_17c9758bfdf7df::t_2854e7285cd0d7 424,426-427,429-431
+  s_17c9758bfdf7df::t_404bebf075d5cc 34,44,156,377-378,382,385-387,389-390,405,410,415-423,425,432-450,1044,1093,1103-1104,1107-1108
+  s_17c9758bfdf7df::t_24362bc609082c 388,428
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_17c9758bfdf7df::t_3212bcb562aa33 2587-2588
+  s_17c9758bfdf7df::t_2d520643728982 2591
+  s_17c9758bfdf7df::t_ed284c79d77e5f 2583-2586,2589-2590,2614-2619
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_17c9758bfdf7df::t_3212bcb562aa33 689-690
+  s_17c9758bfdf7df::t_8771e5cb264020 683-688,691-693
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_17c9758bfdf7df::t_404bebf075d5cc 381,383,386,394-397
+  s_f2330d4fd5c040::t_dcebe5a2acb8ed 398-399
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_17c9758bfdf7df::t_404bebf075d5cc 835
+packages/frontend/editor-ui/src/features/agents/components/WorkflowToolInputs.vue
+  s_17c9758bfdf7df::t_9110d8b6cac857 1,4-44,49-79,82-83,89-100,103-107,109-132,138-140,142-154,159-197,199-217,241-245,247-254,259-261,263-267,277-286,289-310,339,345-351
+  s_17c9758bfdf7df::t_58990dd038ed02 3,218-240,287-288,311-338,340-344
+  s_17c9758bfdf7df::t_ada856a3e2e4e6 45-48,133-136,255-258
+  s_17c9758bfdf7df::t_8656c748799bd4 84-88,246,262
+  s_17c9758bfdf7df::t_7a9274525289ed 155-158
+  s_17c9758bfdf7df::t_5c5892951b5148 2,80-81,101-102
+  s_17c9758bfdf7df::t_bc1ceb9c738e73 198
+  s_17c9758bfdf7df::t_a94d94f8632687 268-276
+  s_4a578acd41c6b5::t_c8577720a95f78 108,137,141
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_17c9758bfdf7df::t_30314c1d167be6 1234,1253,1386-1390,1392,1407
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_17c9758bfdf7df::t_dc0272a7ae30a6 85
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-workflow-loader.service.test.ts
+  s_17c9758bfdf7df::t_e1f18679cf3675 71,73,90,119-121,125,138-141
+packages/frontend/editor-ui/src/app/constants/injectionKeys.ts
+  s_17c9758bfdf7df::t_0eee7e736abc6c 37-41
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_17c9758bfdf7df::t_79f619f1ac3a4f 103-106
+packages/frontend/editor-ui/src/features/agents/components/modals/AgentModal.vue
+  s_17c9758bfdf7df::t_cf32e25f7bc631 16-17,66-68,74,90-92,117-120,189
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_17c9758bfdf7df::t_b663e7fc10e5b9 52,763,1752,1800,1806
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ExpressionEditModal.vue
+  s_17c9758bfdf7df::t_4b6d2ead8bb6b5 3,25,40,171-172
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.test.ts
+  s_4a578acd41c6b5::t_90db205b2851ca 1,5,1010-1036
+packages/frontend/editor-ui/src/features/ndv/parameters/components/TextEdit.vue
+  s_17c9758bfdf7df::t_12c01a108d9423 2,5,28,75-76
+packages/workflow/test/workflow-expression.test.ts
+  s_17c9758bfdf7df::t_f4f91e1e8dac8e 2,33-44
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.vue
+  s_17c9758bfdf7df::t_2fe446db284bf9 2-12,17-20,215-216,228-235,1447,1709-1710
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "56c997215b5f4216922884d27120ac930d85730e",
+  "prompts": {},
+  "sessions": {
+    "s_17c9758bfdf7df": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0fc9a-3908-7400-bb29-7f163fd0d787",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_4a578acd41c6b5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10b07-740f-7721-972b-bf08e26de6b0",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_f2330d4fd5c040": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0fc51-1f8b-71d3-916a-1167e9629480",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_2c3a7616769b3f::t_23c14908058e8e 487
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "add18d1b577285294df2079d452c19f3a053d2ea",
+  "prompts": {},
+  "sessions": {
+    "s_2c3a7616769b3f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f702-a61d-74f2-9a4c-95a8370abebb",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

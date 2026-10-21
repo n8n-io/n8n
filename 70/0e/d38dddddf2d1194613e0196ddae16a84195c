@@ -1,0 +1,19 @@
+packages/cli/src/__tests__/active-workflow-manager.test.ts
+  s_d3289ef3c05611::t_521ec6a19f097e 740
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "700ed38dddddf2d1194613e0196ddae16a84195c",
+  "prompts": {},
+  "sessions": {
+    "s_d3289ef3c05611": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "581a741b-9119-4352-ba40-f3d3c14e25bc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

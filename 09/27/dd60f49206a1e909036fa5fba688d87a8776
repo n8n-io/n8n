@@ -1,0 +1,28 @@
+packages/cli/src/workflows/workflow-publication-outbox-consumer.ts
+  s_826e31d61245c3::t_a0e18a8e9e9b97 124-125
+  s_826e31d61245c3::t_55883c8e5579d6 22
+  s_826e31d61245c3::t_4f48c7be146211 41
+  s_826e31d61245c3::t_ba0d61366d2a1d 47-49
+  s_826e31d61245c3::t_7fc7a8d5768f64 60-65,67-79,81-86,88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0927dd60f49206a1e909036fa5fba688d87a8776",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_826e31d61245c3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cebc56ee-ce80-433e-9029-b39af1dea235",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

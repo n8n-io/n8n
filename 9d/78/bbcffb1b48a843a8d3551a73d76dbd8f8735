@@ -1,0 +1,67 @@
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.service.test.ts
+  s_d8b5e951456b7b::t_ff9029d46648e6 21,75,100
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-activity.integration.test.ts
+  s_d8b5e951456b7b::t_3b2590ee8fdd5b 374,507
+  s_d8b5e951456b7b::t_87e35a3f9f42bb 551
+  s_d8b5e951456b7b::t_b2f59169cdbf77 359-373,375-506,508-541
+packages/cli/src/modules/workflow-reviews.ee/workflow-review.mapper.ts
+  s_d8b5e951456b7b::t_f07bd7fc552d5e 34
+  s_d8b5e951456b7b::t_992eb9600a3377 6-7
+  s_d8b5e951456b7b::t_a08dda2239bd4c 1-5,8-9,11-12
+  s_d8b5e951456b7b::t_1f9f6de969d92d 28-33,35-47
+  s_d8b5e951456b7b::t_09c19cd98f8137 61-104,107-109
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-auto-close.service.test.ts
+  s_d8b5e951456b7b::t_fad117f7ce7734 7,20,29
+  s_d8b5e951456b7b::t_fc4d1d074c9035 168-184
+  s_d8b5e951456b7b::t_16101bf0b5d717 6
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-auto-close.integration.test.ts
+  s_d8b5e951456b7b::t_7b85d1d587537e 18,66,73,106-112
+  s_d8b5e951456b7b::t_418adfc80299b7 228-231
+  s_d8b5e951456b7b::t_d16ff2297aa613 266-267,274-277
+  s_d8b5e951456b7b::t_8053fc392468b5 246-251
+  s_d8b5e951456b7b::t_3b2590ee8fdd5b 176
+  s_d8b5e951456b7b::t_2dc359def5ead2 162-168
+  s_d8b5e951456b7b::t_49c160a8a6c145 171-175,177-181
+  s_d8b5e951456b7b::t_6eb3eb0ccda282 81-82
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review.mapper.test.ts
+  s_d8b5e951456b7b::t_18ffd8f6e364b9 1-28
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.update.service.test.ts
+  s_d8b5e951456b7b::t_ff9029d46648e6 16,61,86
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.decide.service.test.ts
+  s_d8b5e951456b7b::t_213c0f964d50f3 45-48
+  s_d8b5e951456b7b::t_ff9029d46648e6 15,61,86
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-auto-close.service.ts
+  s_d8b5e951456b7b::t_8bc431227b7234 167-169
+  s_d8b5e951456b7b::t_51a1d6537e9a7c 28
+  s_d8b5e951456b7b::t_35e766623f889d 1,3-8
+  s_d8b5e951456b7b::t_2bf9ba845bf6b0 68-90
+  s_d8b5e951456b7b::t_b7f735a7d56554 103
+  s_d8b5e951456b7b::t_badb8b33368a72 124-138
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
+  s_d8b5e951456b7b::t_991ca2b4eb694a 79
+  s_d8b5e951456b7b::t_afaf9c261bbca9 422-433
+  s_d8b5e951456b7b::t_cd5d51b94cd4db 27
+  s_d8b5e951456b7b::t_b5c6e18b6e9468 592-602
+  s_d8b5e951456b7b::t_bbac9f31177417 670-676
+  s_d8b5e951456b7b::t_819955b95b4fe2 720-736
+  s_d8b5e951456b7b::t_2580b2283f1bd7 562-565
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.controller.integration.test.ts
+  s_d8b5e951456b7b::t_6eb3eb0ccda282 82-83
+  s_d8b5e951456b7b::t_213c0f964d50f3 1433,1474
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9d78bbcffb1b48a843a8d3551a73d76dbd8f8735",
+  "prompts": {},
+  "sessions": {
+    "s_d8b5e951456b7b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d598e382-1f10-4e94-a256-40ec7275df71",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

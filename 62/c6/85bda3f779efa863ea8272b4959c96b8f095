@@ -1,0 +1,41 @@
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/authentication.ts
+  s_d95f61b1a16d06::t_f6bc2d09af2578 21-22,24-45,47,143-148
+  s_d95f61b1a16d06::t_43cd53034e6fee 23,46
+packages/nodes-base/nodes/Confluence/test/transport/index.test.ts
+  s_d95f61b1a16d06::t_68fe4b095074b1 669-672
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/oauth.ts
+  s_d95f61b1a16d06::t_43cd53034e6fee 343,506
+  s_d95f61b1a16d06::t_bcee77a5d472dc 344-345
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/__tests__/authentication.test.ts
+  s_d95f61b1a16d06::t_129878aad2b11a 199-276
+packages/workflow/src/interfaces.ts
+  s_d95f61b1a16d06::t_bcee77a5d472dc 58-65
+packages/nodes-base/credentials/AtlassianServiceAccountApi.credentials.ts
+  s_d95f61b1a16d06::t_1259c176d2e142 138
+  s_d95f61b1a16d06::t_32918592ea4d9b 77
+  s_d95f61b1a16d06::t_71a88a80a6c889 100-106
+  s_d95f61b1a16d06::t_9b9ce4fb7f883e 21-34
+  s_d95f61b1a16d06::t_20d16d91f9a0a4 99
+packages/nodes-base/credentials/test/AtlassianServiceAccountApi.credentials.test.ts
+  s_d95f61b1a16d06::t_9cdabf88b666f7 96-111
+  s_d95f61b1a16d06::t_a1f4d6c7f92b68 78-80
+packages/nodes-base/nodes/Confluence/transport/index.ts
+  s_d95f61b1a16d06::t_57fad741885793 21-22
+  s_d95f61b1a16d06::t_438ffdd1c6fe03 27-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "62c685bda3f779efa863ea8272b4959c96b8f095",
+  "prompts": {},
+  "sessions": {
+    "s_d95f61b1a16d06": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6afd2199-b68c-4faf-bed0-63aeaebd9d11",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

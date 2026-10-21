@@ -1,0 +1,24 @@
+packages/nodes-base/nodes/Google/Docs/test/GoogleDocs.node.test.ts
+  s_21a9612335633d::t_44b99bbd024499 35,40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "64d0707e1083569ed94b1d7892e72fabea34b3dc",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_21a9612335633d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c18046e-e918-4feb-ad91-38ef03b44adb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

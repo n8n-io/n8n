@@ -1,0 +1,26 @@
+packages/cli/src/public-api/v1/handlers/workflows/spec/schemas/activeVersion.yml
+  s_05feaa3f901d51::t_60d4a95af90a96 36-50
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_05feaa3f901d51::t_54d8fb3df291b1 677-681
+  s_05feaa3f901d51::t_27f4b67e3dbca0 696-698
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_05feaa3f901d51::t_9725ba6cb4a2d5 1366-1368
+packages/@n8n/db/src/repositories/__tests__/workflow.repository.test.ts
+  s_05feaa3f901d51::t_75df5e1762a148 293-295
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "2d17e25973da17e421e7dbb4ad1135e5429753a4",
+  "prompts": {},
+  "sessions": {
+    "s_05feaa3f901d51": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "43c73b15-4e40-4fff-a453-a4f73057e7f1",
+        "model": "default"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

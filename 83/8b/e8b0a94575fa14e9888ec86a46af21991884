@@ -1,0 +1,9 @@
+packages/@n8n/eslint-config/src/rules/no-application-error.ts
+  ai_agent 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "838be8b0a94575fa14e9888ec86a46af21991884",
+  "prompts": {}
+}

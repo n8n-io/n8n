@@ -1,0 +1,14 @@
+packages/cli/src/credentials/__tests__/dynamic-credentials-proxy.test.ts
+  h_435b1d7d3e52c0 92,124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "411b075933139d3755f60bcffac686ac68cf3f31",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

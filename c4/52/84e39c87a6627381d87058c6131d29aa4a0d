@@ -1,0 +1,19 @@
+.boundaries-baseline.json
+  s_768f033e6fe33a::t_168cda337a15f3 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "c45284e39c87a6627381d87058c6131d29aa4a0d",
+  "prompts": {},
+  "sessions": {
+    "s_768f033e6fe33a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da0be38a-3d09-4b8c-91c9-2a290c191b69",
+        "model": "unknown"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

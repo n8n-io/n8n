@@ -1,0 +1,22 @@
+packages/cli/src/modules/instance-ai/event-bus/__tests__/interrupted-run-sweeper.test.ts
+  s_3f4c240f5a4957::t_3dd743285d2844 205-226
+packages/cli/src/modules/instance-ai/event-bus/interrupted-run-sweeper.ts
+  s_3f4c240f5a4957::t_64bbf6f0212d5d 46-48
+  s_3f4c240f5a4957::t_eaddab439d62d2 112-116,119-123,131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "9e28b760382ad5d8595de00b31dc88118690b03b",
+  "prompts": {},
+  "sessions": {
+    "s_3f4c240f5a4957": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0ee24e3b-53fe-4691-8e67-e34f81479930",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

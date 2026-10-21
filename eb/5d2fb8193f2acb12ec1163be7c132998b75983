@@ -1,0 +1,23 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/LmChatAwsBedrock.node.ts
+  s_4a900458a36bfc::t_2e22df1978d3a1 257-258
+  s_4a900458a36bfc::t_f783102ec2032b 214-229
+  s_4a900458a36bfc::t_8b1ba21ab13151 293-303
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/test/LmChatAwsBedrock.test.ts
+  s_4a900458a36bfc::t_7770676cf45c3c 187-257
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "eb5d2fb8193f2acb12ec1163be7c132998b75983",
+  "prompts": {},
+  "sessions": {
+    "s_4a900458a36bfc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "625deb5f-02c0-42b9-967d-cbe99f45601d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

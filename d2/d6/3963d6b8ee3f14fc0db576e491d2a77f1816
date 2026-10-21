@@ -1,0 +1,39 @@
+packages/cli/test/integration/public-api/role-mapping-rules.test.ts
+  s_410439834a2303::t_bb7156412bd472 209-352
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_410439834a2303::t_45411481a24616 95
+packages/@n8n/api-types/src/dto/index.ts
+  s_410439834a2303::t_3f70fce63c1350 203-207
+packages/@n8n/api-types/src/dto/roles/role-mapping-rule-public.dto.ts
+  s_410439834a2303::t_c60cf1f4ac6d06 4,6,15-27
+packages/cli/src/public-api/v1/controllers/role-mapping-rules.public.controller.ts
+  s_410439834a2303::t_7c9928d7358d5a 1-6,17,20,26,29-41,50-64,81-97,112,116-122
+  s_410439834a2303::t_e507153e0ba803 24,28
+  s_410439834a2303::t_2609ecae2537e8 65-80
+packages/@n8n/permissions/src/constants.ee.ts
+  s_410439834a2303::t_b27e5d97cdaeed 115
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_410439834a2303::t_16fd90e14e2887 23
+  s_410439834a2303::t_ca2d33134bbc2c 21-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "d2d63963d6b8ee3f14fc0db576e491d2a77f1816",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_410439834a2303": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a25fb459-490e-42bf-991a-a55d814e63f2",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

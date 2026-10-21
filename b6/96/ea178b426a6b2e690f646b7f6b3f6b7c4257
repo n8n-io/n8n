@@ -1,0 +1,20 @@
+packages/cli/src/webhooks/__tests__/test-webhook-registrations.service.test.ts
+  h_a348dde7c02e89 32-34,43-68
+packages/cli/src/webhooks/__tests__/test-webhooks.test.ts
+  h_a348dde7c02e89 21,105-117
+packages/cli/src/webhooks/test-webhook-registrations.service.ts
+  h_a348dde7c02e89 31-32,56-59,62-64,84-86,88-92
+packages/cli/src/webhooks/test-webhooks.ts
+  h_a348dde7c02e89 21,405-406,419,452-453,538,544
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b696ea178b426a6b2e690f646b7f6b3f6b7c4257",
+  "prompts": {},
+  "humans": {
+    "h_a348dde7c02e89": {
+      "author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

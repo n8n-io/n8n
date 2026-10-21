@@ -1,0 +1,44 @@
+packages/@n8n/agents/src/index.ts
+  s_08237d1656b328::t_1bb0eab51ecfd1 73
+  s_08237d1656b328::t_3950fa7348e47c 85
+packages/@n8n/agents/src/runtime/__tests__/observation-log-observer.test.ts
+  s_08237d1656b328::t_e01493a24c8c8c 4,21-34
+  s_08237d1656b328::t_79d40fe89c70f4 163-218
+packages/@n8n/agents/src/runtime/memory/observation-log-defaults.ts
+  s_08237d1656b328::t_5d803dd24cb878 570,578-588
+  s_08237d1656b328::t_b331fadcece7b7 10,12,15
+  s_08237d1656b328::t_bf455fb5a9020b 317,325-335
+  s_08237d1656b328::t_f74dc362a747b0 293-294
+  s_08237d1656b328::t_d9699dbb2422f6 549-550
+  s_08237d1656b328::t_2fc1f4db8f62ce 336
+  s_08237d1656b328::t_1f9ec37581d731 589
+packages/@n8n/agents/src/runtime/__tests__/observation-log-reflector.test.ts
+  s_08237d1656b328::t_63db2287eb5eea 20-23
+  s_08237d1656b328::t_0ac91267152f9b 146-170
+packages/@n8n/agents/src/types/index.ts
+  s_08237d1656b328::t_c14742ed0ed956 126
+packages/@n8n/agents/src/types/sdk/observation-log.ts
+  s_08237d1656b328::t_1719cf73cc0058 1
+  s_08237d1656b328::t_0afad9b9246754 102-111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "63f3b2091a5f84938d61de7c06454a9d07e3f2d7",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_08237d1656b328": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3bcf71c2-0f7d-4d53-b679-4278e8a609ff",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

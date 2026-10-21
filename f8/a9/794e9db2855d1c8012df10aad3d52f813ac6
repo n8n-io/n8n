@@ -1,0 +1,39 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3f65f7d42b22e7::t_15fdb0f8e53535 7206,7997
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatInputBase.vue
+  s_3f65f7d42b22e7::t_15fdb0f8e53535 309-315
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPreviewDock.test.ts
+  s_3f65f7d42b22e7::t_15fdb0f8e53535 270,361
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiInput.vue
+  s_3f65f7d42b22e7::t_15fdb0f8e53535 954
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiInputMenu.vue
+  s_3f65f7d42b22e7::t_ba7e47cd77bbcb 21-28
+  s_3f65f7d42b22e7::t_1a7c923b78bd8b 172-173
+  s_3f65f7d42b22e7::t_15fdb0f8e53535 39-41
+  s_3f65f7d42b22e7::t_fe357d856c9ee0 83-92,102,104-119,121-127,129-134,136,138-167
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiInputMenu.test.ts
+  s_3f65f7d42b22e7::t_125e3ce90ac49b 2,53,64,67-68,79,81-82,87-88,92-113
+  s_3f65f7d42b22e7::t_107328a5a0601a 1
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewDock.vue
+  s_3f65f7d42b22e7::t_15fdb0f8e53535 269,277
+  s_3f65f7d42b22e7::t_55243977169195 3
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatInputBase.test.ts
+  s_3f65f7d42b22e7::t_125e3ce90ac49b 4,234-247
+  s_3f65f7d42b22e7::t_4f672b5beed4bd 248-249
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f8a9794e9db2855d1c8012df10aad3d52f813ac6",
+  "prompts": {},
+  "sessions": {
+    "s_3f65f7d42b22e7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10c6c-42a4-77b2-b954-d7b1808a57c6",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

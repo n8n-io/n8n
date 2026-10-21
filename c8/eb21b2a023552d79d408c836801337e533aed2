@@ -1,0 +1,116 @@
+packages/@n8n/ai-utilities/AGENTS.md
+  s_3867156de1fad7::t_634798b4e83cd1 9
+packages/@n8n/ai-utilities/src/agent-config/__tests__/model-capabilities.test.ts
+  s_3867156de1fad7::t_a9c4c8d169b21d 4,20
+  s_3867156de1fad7::t_e507880d35f8f9 1-3,5-19,21-22
+packages/@n8n/agents/src/runtime/model/openrouter-prompt-cache.ts
+  s_3867156de1fad7::t_be27eae2041473 40
+  s_3867156de1fad7::t_ee055b6ed8420c 1-39,41-72,76-89,94-114
+  s_3867156de1fad7::t_c30fa0855cd39f 73-75,90-93
+packages/@n8n/ai-utilities/package.json
+  s_3867156de1fad7::t_634798b4e83cd1 25-27,82-85
+  s_3867156de1fad7::t_3d877bd9f9537c 86
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_3867156de1fad7::t_e507880d35f8f9 1439-1443,1445,1456,1484-1488,1498,1580-1584,1588
+packages/@n8n/agents/src/runtime/model/model-factory.ts
+  s_3867156de1fad7::t_ee055b6ed8420c 9,367-369
+  s_3867156de1fad7::t_1b0024f873bc46 3,8
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_3867156de1fad7::t_e507880d35f8f9 687-691,693,730-734,736,754-759,786
+  s_3867156de1fad7::t_c30fa0855cd39f 91-97,774-785,787-790
+  s_3867156de1fad7::t_7faa4e719ef3d3 78-80,98-99,702,745,766
+  s_3867156de1fad7::t_b063a7ac830ea8 81-90
+  s_3867156de1fad7::t_304d5a5995cb80 791
+packages/frontend/editor-ui/package.json
+  s_3867156de1fad7::t_2f9309360a687c 45
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_3867156de1fad7::t_1b0024f873bc46 25,263-267
+  s_c7b991e0487519::t_98ada3c82c4a93 268-269
+packages/@n8n/ai-utilities/src/agent-config/model-capabilities.ts
+  s_3867156de1fad7::t_1b0024f873bc46 1-25
+packages/@n8n/agents/docs/prompt-caching.md
+  s_3867156de1fad7::t_e2f89a340dba7d 95-98,251-253
+  s_3867156de1fad7::t_52bf6046fced4c 4-5,34-35,45-49,94
+  s_3867156de1fad7::t_057854cbf5617a 32,38-44,93,137-138,180-209,240-243,250
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_3867156de1fad7::t_057854cbf5617a 328
+packages/@n8n/ai-utilities/src/agent-config/index.ts
+  s_3867156de1fad7::t_1b0024f873bc46 3-7
+  s_c7b991e0487519::t_1c8e8eb71f01f2 2
+packages/@n8n/agents/src/runtime/loop/runtime-context.ts
+  s_3867156de1fad7::t_b6999319aeca4d 2-6,31,161,168,185-187,191-192,205-212
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_3867156de1fad7::t_1b0024f873bc46 17,353,355
+packages/@n8n/agents/src/runtime/model/prompt-cache.ts
+  s_3867156de1fad7::t_99462fbc14bf4f 3,48-51
+  s_3867156de1fad7::t_1b0024f873bc46 2,4-6
+packages/@n8n/agents/src/runtime/model/__tests__/prompt-cache.test.ts
+  s_3867156de1fad7::t_c30fa0855cd39f 224-226
+  s_3867156de1fad7::t_e507880d35f8f9 220-223
+packages/frontend/editor-ui/src/features/agents/components/AgentAdvancedPanel.vue
+  s_3867156de1fad7::t_b6999319aeca4d 15,52-54,294
+  s_3867156de1fad7::t_634798b4e83cd1 8
+  s_3867156de1fad7::t_0b0a7a6a6dcb9a 14
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_3867156de1fad7::t_634798b4e83cd1 18
+  s_3867156de1fad7::t_b6999319aeca4d 261
+packages/@n8n/agents/src/runtime/__tests__/model-factory.test.ts
+  s_3867156de1fad7::t_a9c4c8d169b21d 2,196,203,589
+packages/cli/src/modules/agents/builder/prompts/config-rules.prompt.ts
+  s_3867156de1fad7::t_057854cbf5617a 55,58
+packages/@n8n/agents/src/runtime/model/__tests__/openrouter.test.ts
+  s_3867156de1fad7::t_c30fa0855cd39f 70-73,76-88,90-97,99-102,104-110,112-117,119-120,122-148,153-172,175-177,188-190,192-194,199-202,208-223,225-229,233-235,243-244
+  s_3867156de1fad7::t_fcf97f99099878 74-75,89,121,224,242
+  s_3867156de1fad7::t_ad0ce0ec0224f2 1-69,98,103,118,149,174,178-180,182-185,187,191,195-198,203-207,230-232,236-241,245-247
+  s_3867156de1fad7::t_be27eae2041473 111
+  s_3867156de1fad7::t_a9c4c8d169b21d 181,186
+  s_3867156de1fad7::t_90519e6d9c9cc1 150-152,173
+packages/@n8n/agents/src/runtime/model/__tests__/openrouter-prompt-cache.test.ts
+  s_3867156de1fad7::t_fcf97f99099878 47
+  s_3867156de1fad7::t_efed3fbde68dc8 1-29,39-46,48-54,64-65,72-92,110,123-138,161,182
+  s_3867156de1fad7::t_c30fa0855cd39f 30-38,55-63,66-71,93-109,111-122,139-160,162-181
+packages/@n8n/agents/src/runtime/model/raw-usage.ts
+  s_3867156de1fad7::t_1b0024f873bc46 1
+packages/@n8n/agents/src/sdk/agent.ts
+  s_3867156de1fad7::t_52bf6046fced4c 524-525
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentAdvancedPanel.test.ts
+  s_3867156de1fad7::t_e507880d35f8f9 490-495,517-522,531-536
+packages/@n8n/agents/src/runtime/model/openrouter.ts
+  s_3867156de1fad7::t_ee055b6ed8420c 1-41,43-66
+  s_3867156de1fad7::t_fcf97f99099878 42
+packages/@n8n/agents/src/runtime/loop/__tests__/runtime-context.test.ts
+  s_3867156de1fad7::t_c30fa0855cd39f 45-54,58-63
+  s_3867156de1fad7::t_90519e6d9c9cc1 1,4-5,42-44,55-57,64-85
+  s_3867156de1fad7::t_3c70ab092a93ca 86-88
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentInfoPanel.spec.ts
+  s_3867156de1fad7::t_c30fa0855cd39f 339-354,356-363
+  s_3867156de1fad7::t_e507880d35f8f9 334-338,355,364
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_3867156de1fad7::t_b6999319aeca4d 1066,1078
+pnpm-lock.yaml
+  s_c7b991e0487519::t_8e4e10b02096b2 6586-6588
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c8eb21b2a023552d79d408c836801337e533aed2",
+  "prompts": {},
+  "sessions": {
+    "s_3867156de1fad7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12fb1-caf3-7693-9d01-bca408146de3",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_c7b991e0487519": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12fb1-4bcd-79a0-8234-f9dfda4094b6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

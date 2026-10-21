@@ -1,0 +1,81 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentApi.test.ts
+  s_7e2dce6e36a356::t_1a9a400820dbce 3,5
+  s_7e2dce6e36a356::t_c83350f3d99207 77-90
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_7e2dce6e36a356::t_090b56767a426c 902-905
+  s_7e2dce6e36a356::t_9e2bae7cd3b20f 770-773
+  s_7e2dce6e36a356::t_ca549692acf2c4 1013-1064
+  s_7e2dce6e36a356::t_ed1715b356a657 832-835
+  s_7e2dce6e36a356::t_2787126941ef45 9-10
+  s_7e2dce6e36a356::t_faad6d21ffb6bf 801-804
+  s_7e2dce6e36a356::t_a9133114b610ad 46,58-59
+  s_7e2dce6e36a356::t_f2fc3ed76f86c8 753-754
+  s_7e2dce6e36a356::t_eb9dee211fc872 763-766
+  s_7e2dce6e36a356::t_2e55a419e86dd5 752,755-762,863,887,910-943
+  s_7e2dce6e36a356::t_b523db46d2a287 885-886,888-901,906-909,944
+  s_7e2dce6e36a356::t_9751d8cfb9e406 945-1010
+  s_7e2dce6e36a356::t_823b2b3180f804 743-751,767-769,774-800,805-831,836-862,864-884,1011-1012
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentThreadsApi.test.ts
+  s_7e2dce6e36a356::t_022d732945f075 75-86
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_7e2dce6e36a356::t_909d3b41c539a3 56
+  s_7e2dce6e36a356::t_9d216d24a79b0a 57-58
+  s_7e2dce6e36a356::t_8ecdbd6b4b0696 11
+  s_7e2dce6e36a356::t_4e58edb9fac170 575-579
+  s_7e2dce6e36a356::t_23d007e047f1ed 446-463
+  s_7e2dce6e36a356::t_403a324a3905a5 343-346,352,354-360
+  s_7e2dce6e36a356::t_7229e1426925aa 529
+  s_7e2dce6e36a356::t_5f80725b44fb56 493-497,499-524
+  s_7e2dce6e36a356::t_d653e1d69f0e4e 567
+  s_7e2dce6e36a356::t_3e8a27b6f750ac 435,437,442,468-470
+  s_7e2dce6e36a356::t_8b80d7f5450bb7 444-445,464-465,467
+  s_7e2dce6e36a356::t_05e09926ddcf27 397,400-405
+  s_7e2dce6e36a356::t_88548ccf08439d 347-351
+  s_7e2dce6e36a356::t_97322dd1a39f23 484,486,488,492,531,534-535
+  s_7e2dce6e36a356::t_5bb3c72434a561 478-483,525-528
+  s_7e2dce6e36a356::t_7d867fb3adaae2 353
+  s_7e2dce6e36a356::t_6a97d7cec99dc9 426-434,436,438-441,443,466,472-474,485,487,489,498
+  s_7e2dce6e36a356::t_83f6f83ec58b52 569
+  s_7e2dce6e36a356::t_3e32eb1e4c3d2f 9
+  s_7e2dce6e36a356::t_42aeb280718204 52-55,59-65
+  s_7e2dce6e36a356::t_5bed7dcef81db5 123,127-128
+  s_7e2dce6e36a356::t_f5f74946c3ac1d 471,475-477,490-491,530,532-533
+packages/frontend/editor-ui/src/features/agents/utils/telegramAccessSettings.ts
+  s_7e2dce6e36a356::t_80a78017bb4297 6
+packages/@n8n/api-types/src/agents/__tests__/agent-integration.schema.test.ts
+  s_7e2dce6e36a356::t_17ccd34748a6de 48-73
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_7e2dce6e36a356::t_1c3410b97aa98f 8186-8187
+packages/frontend/editor-ui/src/features/agents/components/AgentTelegramAccessSettingsForm.vue
+  s_7e2dce6e36a356::t_871e556ee12077 7
+  s_7e2dce6e36a356::t_0462def742b43c 35-37,46
+  s_7e2dce6e36a356::t_37fdee9d8af157 92
+  s_7e2dce6e36a356::t_ef5d3aac6457ff 153-154
+  s_7e2dce6e36a356::t_a4e64aefdaa7e0 120-122
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionIdleTimeoutField.vue
+  s_7e2dce6e36a356::t_079745b655b91d 1-83
+packages/frontend/editor-ui/src/features/agents/composables/useAgentThreadsApi.ts
+  s_7e2dce6e36a356::t_bbbbbdc52719f2 115-118,139,152,165,178
+packages/@n8n/api-types/src/agents/agent-integration.schema.ts
+  s_7e2dce6e36a356::t_3e6239476b6217 75-78,81
+  s_7e2dce6e36a356::t_9cd4b4cfed02b9 33,49,69,79-80,82-83,87-88,102-107,117-121
+  s_7e2dce6e36a356::t_551c1ed951de44 31-32
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_7e2dce6e36a356::t_8712dadaaead0a 495
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "314acbf005f99e917fb0ec46455dbb6d55d72c22",
+  "prompts": {},
+  "sessions": {
+    "s_7e2dce6e36a356": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9b73ae5-be87-4be8-951c-faff19b46011",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+scripts/minimal-instance/run.sh
+  s_500a601df8e54f::t_35ff8a2b3ad5f2 1-3,5-17,19-80
+  s_500a601df8e54f::t_abc8f2be2b5d4f 4,18
+scripts/minimal-instance/test-workflow.json
+  s_500a601df8e54f::t_98c87fdef62f93 1-41
+scripts/minimal-instance/measure.sh
+  s_500a601df8e54f::t_abc8f2be2b5d4f 1-25
+scripts/minimal-instance/README.md
+  s_500a601df8e54f::t_8060d3d0f67dea 1-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "727345e41cde3299e529ab103540691f97063e82",
+  "prompts": {},
+  "sessions": {
+    "s_500a601df8e54f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e6130741-9dd4-44ac-b1bb-607f4caa4fdc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

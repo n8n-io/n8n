@@ -1,0 +1,21 @@
+pnpm-lock.yaml
+  s_02a58cdbdb0c82::t_f1adf30541bf85 13-14,25-26,43-44,46-47,325-326,953,965,983,986,1007,1019,2675,2730,4094,4289,7220-7221,7244-7245,7280-7281,7290-7291,7300-7301,14015-14016,23267,23269-23270,23293,23295-23296,23330,23332,23334,23346,23348,23359,27997,27999,31932,31934-31936
+pnpm-workspace.yaml
+  s_02a58cdbdb0c82::t_21aa518a3395d9 13,17,23-24,130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "1bf790f78759d0c123e989739a9fe906a1412a82",
+  "prompts": {},
+  "sessions": {
+    "s_02a58cdbdb0c82": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c2d75dd4-419d-4a84-b446-c39722fd5028",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

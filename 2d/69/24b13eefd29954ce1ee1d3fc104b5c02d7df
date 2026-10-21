@@ -1,0 +1,190 @@
+packages/cli/src/modules/agents/__tests__/agent-integrations.controller.test.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 285-286,375-376,564,609
+packages/cli/src/modules/agents/agent-task.service.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 17-21,33,71,86-92,106,108,120,122,132,136-139,164-178,193-199,222-227,231-232,236-250,255-260,262-267,269,276-291
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelModal.test.ts
+  s_fab2dbf5ded45d::t_cc60eb54504d6c 60
+packages/cli/src/modules/agents/agents-skills.controller.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 49-52,65-68,80-83
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderTelemetry.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 1,9,15,21
+  s_fab2dbf5ded45d::t_aa19c30a833f89 2
+packages/cli/src/modules/agents/builder/builder-config-telemetry.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 1
+packages/cli/src/modules/mcp/tools/get-workflow-version.tool.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 17,73-74,169
+packages/cli/src/modules/agents/builder/skills/external-services.skill.ts
+  s_fab2dbf5ded45d::t_cff61a3271cbb9 352-354
+packages/cli/src/modules/agents/__tests__/agent-integration-persistence.service.test.ts
+  s_fab2dbf5ded45d::t_2811f3d39d1d39 8,55,68,76,163
+  s_fab2dbf5ded45d::t_0ce9791d79157c 1,3,5,11,22-34,42,127-131,180,202,232-240,258,268,273,276-278,281,285,288-290,293,305,317-371
+  s_fab2dbf5ded45d::t_28ce1b9320c6a0 372
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 54,113,250,279,317,361,366,417,483,488,568,721,765,820-823,895,956,961,969,1004-1006
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 3,6-7,9,32,34-35,44-45,174-227,462,499,581-589,613,631-641,647,649-650,652-655,662-663,665-670,678,683-690,695,700-701,703-707,723,729-733,743,789,942,967,1035,1058-1059,1083-1084,1404,1445,1553
+  s_fab2dbf5ded45d::t_9b898f91b374a7 1419,1474,1487
+  s_fab2dbf5ded45d::t_6d849c4dc5c8fa 1464,1492
+  s_fab2dbf5ded45d::t_e91f3dbc1ea14f 1436-1439,1448-1453
+packages/cli/src/modules/agents/agent-tasks.controller.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 53-58,70-75,86-91
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.vue
+  s_fab2dbf5ded45d::t_0ce9791d79157c 24,386-388
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 10,160,162-166,171-190,192,195-214,217,220-225
+packages/cli/src/modules/agents/__tests__/instance-ai-builder-delegate.adapter.test.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 366,382
+packages/cli/src/modules/mcp/tools/get-workflow-details.tool.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 17-22,145,187
+packages/frontend/editor-ui/src/features/ai/instanceAi/createAgentRoute.test.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 11-18
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 149
+packages/cli/src/modules/agents/agents.controller.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 36-38
+packages/@n8n/api-types/src/agents/agent-interaction.schema.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 40-41
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentsListView.test.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 316-322
+packages/cli/src/modules/agents/agent-integrations.controller.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 188
+  s_fab2dbf5ded45d::t_1f7dbffea8f5f1 77
+packages/frontend/editor-ui/src/features/ai/instanceAi/createAgentRoute.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 3,5-9,15
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelListItem.test.ts
+  s_fab2dbf5ded45d::t_421f7fa9802dc6 34-44
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_fab2dbf5ded45d::t_f1219f428fa1c3 282
+  s_fab2dbf5ded45d::t_0ce9791d79157c 42,248-249,259,265,308
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_fab2dbf5ded45d::t_0ce9791d79157c 645-646,733-734,958,977,980,1000
+packages/cli/src/modules/agents/__tests__/agent-custom-tools.service.test.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 8,16,53,56-61,63,76-82,100,134,200-214
+  s_fab2dbf5ded45d::t_1cee0040f7757e 215
+packages/cli/src/modules/agents/__tests__/agent-skills.service.test.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 9,15,36,52-53,67,91-104,139-144,163,178,189-194,205-210,229,264-272,310-318,342-344,358-364,381,388-447
+packages/cli/src/modules/agents/agent-publish.controller.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 33,55,74-75,96-97
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitiesActions.test.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 176,181,188,195-198
+packages/cli/src/modules/agents/agent-skills.service.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 9,14-18,22,30,52,54,68,70,77,79,93,108-111,120-133,149,161-168,177-190,197-202,209-212,221,223-236
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentTelemetry.test.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 20-21,24,30,33
+packages/cli/src/modules/agents/agent-integration-persistence.service.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 13-18,28-30,73,86-89,93,121-128,145,152-156,162-169,178-198
+  s_fab2dbf5ded45d::t_297899640c65fd 41,111,117
+  s_4bc79cf80826f6::t_c3fa65b3a2131f 199
+packages/cli/src/modules/agents/builder/interactive/__tests__/finish-setup.tool.test.ts
+  s_fab2dbf5ded45d::t_0275fdb2946d7c 187,195,198-206,211
+  s_fab2dbf5ded45d::t_8336d1a4c0f8bc 255-259,266,275,299,302-315,321
+packages/cli/src/modules/agents/agents.service.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 16,33,55-61,66-74,105-107,109-111
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 364-367
+packages/cli/src/modules/mcp/tools/list-credentials.tool.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 121
+packages/frontend/editor-ui/src/features/agents/composables/useAgentTelemetry.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 26-31
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 14,33-35,156,201,237,302,332-342,370,389,408,434,443,458,462,468,475-483,494,506-538,561-563,601,614-697
+  s_fab2dbf5ded45d::t_6b88acea8142da 352
+  s_4bc79cf80826f6::t_0ad6cb3d39ff4e 698
+packages/cli/src/modules/agents/agent-custom-tools.service.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 9,14-18,22,33,46-47,59-66,70,75-91,101-106,109-113,127-141
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 445-451,520-521,564-565,594-599,631-632,760-766,809-815,852-858,897-903,1005-1006,1103-1104,1184-1185,1222-1223,1268-1269,1316-1317,1385,1515-1520,1660-1670,1681-1689,1699-1702,1782,1810
+packages/frontend/editor-ui/src/features/ai/instanceAi/constants.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 7-13
+packages/cli/src/modules/agents/__tests__/agent-tasks.controller.test.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 46,84-87,106-115,125-128
+packages/cli/src/modules/agents/utils/agent-capabilities.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 57-72
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentToolTelemetry.test.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 5
+packages/cli/src/modules/mcp/__tests__/get-workflow-details.tool.test.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 3,97-100,105-108,113-165
+  s_fab2dbf5ded45d::t_f88e73bc8de8f5 166-167
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_fab2dbf5ded45d::t_b8d250ea00a280 49
+  s_fab2dbf5ded45d::t_0ce9791d79157c 12,24-29,43-48,50-60,103,110,180,251,268,290-388,399-403,415,419-423,429-435,441-445,466,470-474,484-516,634,640,644-662,686-687
+packages/cli/src/modules/mcp/__tests__/get-workflow-version.tool.test.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 54,82-84
+packages/cli/src/modules/agents/__tests__/agent-publish.controller.test.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 107-113
+packages/cli/src/modules/agents/__tests__/agent-task.service.test.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 13,27-28,144,165,201,211,213-223,244-254,260,266-276,302-307,325-327,336-341,352-354,365-367,400-408,420-430,433,439-441,448-450,465,467,476,478,484-516
+  s_fab2dbf5ded45d::t_2c082667f12d3f 517-518
+packages/cli/src/modules/agents/agents-config.controller.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 70-72,84-87
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 18-23,50,123-124,222-229,268-276
+packages/frontend/editor-ui/src/features/agents/views/AgentsListView.vue
+  s_fab2dbf5ded45d::t_0ce9791d79157c 27,168-169,171
+packages/cli/src/modules/agents/integrations/__tests__/slack-app-setup.service.test.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 350,442
+  s_fab2dbf5ded45d::t_cff61a3271cbb9 390
+  s_fab2dbf5ded45d::t_fb4a7bfe6774a1 351
+  s_fab2dbf5ded45d::t_448d2b5a12ba4d 443
+packages/frontend/editor-ui/src/features/agents/views/NewAgentView.vue
+  s_fab2dbf5ded45d::t_0ce9791d79157c 10,17-19,42-51
+packages/cli/src/modules/agents/agent-modification-telemetry.service.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 1-192
+packages/cli/src/modules/agents/integrations/slack-app-setup.service.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 261,265
+  s_fab2dbf5ded45d::t_cff61a3271cbb9 262-264
+packages/frontend/editor-ui/src/app/components/layouts/EmptyStateLayout.test.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 169
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentIntegrationStatus.test.ts
+  s_fab2dbf5ded45d::t_421f7fa9802dc6 30-33,35,42,44
+packages/frontend/editor-ui/src/features/agents/__tests__/NewAgentView.test.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 39,63-103
+  s_fab2dbf5ded45d::t_5132eb75a1c459 104
+packages/cli/src/modules/mcp/tools/schemas.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 10-18,23-28,32-49
+  s_fab2dbf5ded45d::t_6d29cc4f1bc8c2 50
+packages/frontend/editor-ui/src/features/agents/composables/useAgentToolTelemetry.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 5,9
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 3926,3929,3950,3958,3961,3963
+packages/@n8n/telemetry/src/events/agents.ts
+  s_fab2dbf5ded45d::t_d9fc7e1b89d30d 147,151-153,290,308
+  s_fab2dbf5ded45d::t_0ce9791d79157c 34-37,79-146,148-150,154-161,236,238-289,291-307,309-338,381,445-446,449
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 4,13,24-25,72,91,111-113,228-238,264-270,283-289,312-313,336,356-374,418-438,455-466,469-495,529-542,545-547,581-587,628-629,651-663,665-667,678-685,687-689,693-702,711-717,734-743,750-1056
+  s_fab2dbf5ded45d::t_317c59b7bea27f 1057
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.test.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 322,333
+packages/cli/src/modules/agents/instance-ai-builder-delegate.adapter.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 115-118
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 536,687,727-739,805,1070,1084,1109,1121,1129,1134-1139,1145,1148,1163-1171,1175,1179-1181,1187-1188,1190,1198-1200,1204-1209,1301-1303,1428,1432,1456,1500
+packages/frontend/editor-ui/src/app/components/layouts/EmptyStateLayout.vue
+  s_fab2dbf5ded45d::t_0ce9791d79157c 16,78-79,81-84
+packages/cli/src/modules/mcp/tools/workflow-builder/mcp-instructions.ts
+  s_fab2dbf5ded45d::t_0ce9791d79157c 107-108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "2d6924b13eefd29954ce1ee1d3fc104b5c02d7df",
+  "prompts": {},
+  "sessions": {
+    "s_4bc79cf80826f6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc821-4348-7fc2-93b6-13c4143d0153",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_fab2dbf5ded45d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc83e-7c50-7f60-b884-4264bd2e1e15",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

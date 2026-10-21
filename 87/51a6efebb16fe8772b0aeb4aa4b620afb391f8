@@ -1,0 +1,21 @@
+packages/cli/src/modules/mcp-registry/mcp-registry-refresh.task.ts
+  s_5317178a6d1ce4::t_434fafcb954b4d 9-37
+packages/cli/src/modules/mcp-registry/__tests__/mcp-registry-refresh.task.test.ts
+  s_5317178a6d1ce4::t_8ee28f9df2d058 10-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8751a6efebb16fe8772b0aeb4aa4b620afb391f8",
+  "prompts": {},
+  "sessions": {
+    "s_5317178a6d1ce4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8b96bef0-e5ad-4052-b5ac-3210f52ea6e2",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

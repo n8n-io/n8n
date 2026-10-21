@@ -1,0 +1,30 @@
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_782619aac31c26::t_e27a295b2a170d 382-387,391,396,406
+  s_782619aac31c26::t_a828201d362f10 425-428
+packages/cli/src/modules/agents/__tests__/agent-chat-execution.service.test.ts
+  s_782619aac31c26::t_db6a55201d3afc 125,130-131,133,136,140,145-148,183-184,188-196
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_782619aac31c26::t_9f89eb8284728c 333
+  s_782619aac31c26::t_ff1f8d2367208d 324,334-340,343,351-352
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_782619aac31c26::t_082e907bbaf2ef 764
+packages/cli/src/modules/agents/agent-chat-execution.service.ts
+  s_782619aac31c26::t_2599591cff91f7 54-57,67-68
+  s_782619aac31c26::t_b9c18dedc1bc34 28-32,53,58,65,72-75,77-83,87-96,102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "69150dd78e6a6118cb3531e23c8886a670b6541e",
+  "prompts": {},
+  "sessions": {
+    "s_782619aac31c26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6889b3f-b5e6-4aa7-a6ff-cca974b94b72",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

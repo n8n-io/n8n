@@ -1,0 +1,19 @@
+packages/cli/src/scheduling/system-tasks/system-task-timer.ts
+  ai_agent 1-95
+packages/cli/src/scheduling/system-tasks/system-task-handler.ts
+  ai_agent 1-37
+packages/cli/src/scheduling/system-tasks/__tests__/dummy.task.ts
+  ai_agent 1-28
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-timer.test.ts
+  ai_agent 1-200
+packages/cli/src/scheduling/system-tasks/system-task-type.ts
+  ai_agent 1-7
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-handler.test.ts
+  ai_agent 1-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6ae70357ea8b9f8ac7fba3b5957f8d0a97bb59e7",
+  "prompts": {}
+}

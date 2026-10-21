@@ -1,0 +1,48 @@
+packages/cli/src/modules/instance-ai/eval/thread-restore.service.ts
+  s_1c45d18cf14868::t_ddc8f93175de44 10
+packages/@n8n/instance-ai/src/tools/workflows/detect-wrong-kind-locator.ts
+  s_1c45d18cf14868::t_55a160553817e5 1
+packages/cli/src/modules/agents/utils/extract-agent-credential-ids.ts
+  s_1c45d18cf14868::t_69e2cfaa219e18 2
+packages/@n8n/ai-utilities/src/agent-config/from-ai-node-parameters.ts
+  s_1c45d18cf14868::t_b8292894a9c2df 7
+packages/cli/src/modules/instance-ai/eval/llm-completion-mock.ts
+  s_1c45d18cf14868::t_21761dfabbfdba 11
+packages/cli/src/modules/instance-ai/workflow-templates.service.ts
+  s_1c45d18cf14868::t_8d81d2aedf55c4 5
+packages/cli/src/modules/agents/workflow-agent-stream.ts
+  s_1c45d18cf14868::t_8a89dd606ff5bb 3
+packages/cli/src/modules/instance-ai/eval/structured-output-conformance.ts
+  s_1c45d18cf14868::t_589bee749f9ade 1-2
+packages/@n8n/agents/src/runtime/tools/tool-result-guard.ts
+  s_1c45d18cf14868::t_0ae0516357a86c 1
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_1c45d18cf14868::t_4832686982b185 13
+packages/@n8n/instance-ai/evaluations/comparison/fetch-baseline.ts
+  s_1c45d18cf14868::t_b650dc9e210438 23
+packages/cli/src/modules/agents/tools/knowledge/search-knowledge.tool.ts
+  s_1c45d18cf14868::t_c6f8c58fc89104 2
+packages/cli/src/modules/agents/json-config/sanitize-unknown-agent-credentials.ts
+  s_1c45d18cf14868::t_842d8e5c1232be 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "82907945f7b11af22bbd50636b96b9b1386cb55b",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1c45d18cf14868": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1f8b129e-d118-4a7d-af9b-a0c6cc1cd1f3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

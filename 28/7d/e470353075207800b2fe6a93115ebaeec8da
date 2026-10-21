@@ -1,0 +1,26 @@
+packages/@n8n/instance-ai/src/tools/workflows/generate-simulation-fixtures.service.ts
+  s_540fd25d19a415::t_03705137b07069 86-87,165,167-169,174-192,262-271,273-274,277,286-288,425
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/generate-simulation-fixtures.service.test.ts
+  s_540fd25d19a415::t_5e3b2506be8db4 572,675,688,700,715,749
+  s_540fd25d19a415::t_cb0145361a36f4 578-630,632-634,642-644,659-661
+packages/@n8n/instance-ai/src/tools/workflows/plan-verification-simulation.ts
+  s_540fd25d19a415::t_5e3b2506be8db4 318,333-336,389,429
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/plan-verification-simulation.test.ts
+  s_540fd25d19a415::t_fbedad05012904 537-559
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "287de470353075207800b2fe6a93115ebaeec8da",
+  "prompts": {},
+  "sessions": {
+    "s_540fd25d19a415": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "61e5f24f-b000-415e-9d80-2ad29a2a5224",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

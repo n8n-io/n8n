@@ -1,0 +1,55 @@
+packages/frontend/editor-ui/src/features/ndv/panel/components/NDVFloatingNodes.vue
+  s_3e26a257015cbe::t_b44c32bf6b0292 120
+  s_3e26a257015cbe::t_2e1b68505480d7 135
+  s_3e26a257015cbe::t_4f1a78f58e2326 108
+  s_3e26a257015cbe::t_6079b6c7de8111 202,212-213
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunData.vue
+  s_3e26a257015cbe::t_9bb693c751e90e 2245
+  s_3e26a257015cbe::t_7f3511f5a2b5ed 1346
+  s_3e26a257015cbe::t_7583fb673aa0f9 2348
+  s_3e26a257015cbe::t_2fc9f1f7c0c60c 2220
+packages/frontend/editor-ui/src/features/ndv/panel/components/OutputPanel.vue
+  s_3e26a257015cbe::t_39ff22fc1e6d04 315
+  s_3e26a257015cbe::t_5e56adae6862b7 25
+  s_3e26a257015cbe::t_df0c252d882b4b 527
+  s_3e26a257015cbe::t_86c6028e8d7436 355
+  s_3e26a257015cbe::t_bc853cfeef55d2 347
+  s_3e26a257015cbe::t_5f43b700d23c35 373-415,433,435-454,456-457
+packages/frontend/editor-ui/src/features/ndv/panel/components/InputPanel.vue
+  s_3e26a257015cbe::t_fd626fd258d85c 5
+  s_3e26a257015cbe::t_9a410a3cf1474e 33
+  s_3e26a257015cbe::t_ee6f007f6009b4 403,408
+  s_3e26a257015cbe::t_21bb4c18202d53 468
+  s_3e26a257015cbe::t_1a94e9752f9796 368
+  s_3e26a257015cbe::t_45e267caa33f2b 596
+  s_3e26a257015cbe::t_752bb8d43c40c2 524
+packages/frontend/editor-ui/src/app/composables/useFloatingUiOffsets.ts
+  s_3e26a257015cbe::t_bc2f624c49ae11 9
+  s_3e26a257015cbe::t_ad56bd82b3a09a 27,32
+packages/frontend/editor-ui/src/features/ndv/panel/components/__snapshots__/InputPanel.test.ts.snap
+  s_7a63fefc4c9a6c::t_4a9be0ad81bf74 6,21,24,217
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "36cfdb3eb86a48cd819e9f9741a0b5d97d670fe5",
+  "prompts": {},
+  "sessions": {
+    "s_3e26a257015cbe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b11b1e68-86fa-4b5d-b274-210ec83a441e",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    },
+    "s_7a63fefc4c9a6c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8cecf88-ea55-4ab6-85ae-2c212c1918a1",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,53 @@
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_f3d2ec4529fb2a::t_15a50bb7be774f 1641-1645,1650,1660
+  s_f3d2ec4529fb2a::t_b2f25ef5db01bb 1696
+packages/@n8n/api-types/src/agents/dto.ts
+  s_f3d2ec4529fb2a::t_f1132fdd46c1b8 18
+  s_f3d2ec4529fb2a::t_d9c65a1d8e7b8c 127
+packages/cli/test/integration/agents/n8n-chat-page.api.test.ts
+  s_f3d2ec4529fb2a::t_30663e6c37819d 210-223
+  s_f3d2ec4529fb2a::t_9600f7f22eff6f 70-75,85
+packages/cli/test/integration/database/repositories/agent-execution-thread-n8n-chat.repository.test.ts
+  s_f3d2ec4529fb2a::t_653ac022b7f19e 84-90
+  s_f3d2ec4529fb2a::t_ef9bc6a646e165 202-204,208-211,220-253
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_f3d2ec4529fb2a::t_684e3b7d0dd94c 988
+  s_f3d2ec4529fb2a::t_47359ac0542ed1 970
+  s_f3d2ec4529fb2a::t_50f39558029e77 920,928
+  s_f3d2ec4529fb2a::t_b7f8b68c42785d 948
+  s_f3d2ec4529fb2a::t_1f74d2a6846f7a 986-987,989
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_f3d2ec4529fb2a::t_d26b5bf461d0a7 749,755
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_f3d2ec4529fb2a::t_1489e449487939 3-9
+  s_f3d2ec4529fb2a::t_561ba0a90b363d 178-180,185,187,190
+  s_f3d2ec4529fb2a::t_c348e033dcedd9 215,235-239
+packages/cli/src/modules/agents/agents.service.ts
+  s_f3d2ec4529fb2a::t_53c1a825062b2f 403
+  s_f3d2ec4529fb2a::t_ae57e4fe122b11 409-411
+packages/@n8n/api-types/src/schemas/thread-title-search.schema.ts
+  s_f3d2ec4529fb2a::t_46c29535a5aabe 1-13
+packages/cli/src/modules/agents/__tests__/agents-list.controller.test.ts
+  s_f3d2ec4529fb2a::t_f5db236c7a0958 148-163
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_f3d2ec4529fb2a::t_f03b9b19e523e2 2172
+  s_f3d2ec4529fb2a::t_624aac08cf2e26 13
+packages/cli/src/modules/agents/agents-list.controller.ts
+  s_f3d2ec4529fb2a::t_c55a4f92c49a5d 67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "35946fc1629e0ddf568c061ec1700d8fecb68e54",
+  "prompts": {},
+  "sessions": {
+    "s_f3d2ec4529fb2a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c28c4414-1c5b-4167-98ad-d5188b3d2601",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

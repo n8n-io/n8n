@@ -1,0 +1,19 @@
+.claude/plugins/n8n/agents/linear-issue-triager.md
+  s_432792becc0275::t_074817e9fc7d73 60-114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "71d09d14671947ffda6545127d33f8adddb8f2be",
+  "prompts": {},
+  "sessions": {
+    "s_432792becc0275": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8f6d63b8-3721-4024-a6dc-be72e43e40d3",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

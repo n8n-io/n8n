@@ -1,0 +1,50 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_dc1bcc8544e6b1::t_f3557cfae8f228 7632-7633
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_dc1bcc8544e6b1::t_d6a784f5a7c385 12-17
+  s_dc1bcc8544e6b1::t_93dbef9caffe87 80-85
+  s_dc1bcc8544e6b1::t_edda050bd2bd91 54
+  s_dc1bcc8544e6b1::t_96eddde17495e2 289-290,293,296,303-305,320,322-325,330
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentConfirmationModal.test.ts
+  s_dc1bcc8544e6b1::t_46b08eef3c3df3 22
+  s_dc1bcc8544e6b1::t_adfcd2f34624cf 47,51-52
+  s_dc1bcc8544e6b1::t_d02335397e9c2f 70
+  s_dc1bcc8544e6b1::t_eaaef0284f021d 68,73-74,76-79
+  s_dc1bcc8544e6b1::t_854260032a328a 23-25
+packages/frontend/editor-ui/src/features/agents/components/AgentConfirmationModal.vue
+  s_dc1bcc8544e6b1::t_dd93f28ed7d6fa 93-94,96-101,116-123
+  s_dc1bcc8544e6b1::t_2e75f3e7ff1f32 3-13,17,19-22,25
+  s_dc1bcc8544e6b1::t_6562c916317625 103-113
+  s_dc1bcc8544e6b1::t_62f08169e04516 166-168
+  s_dc1bcc8544e6b1::t_e3917e2eca5617 169-170
+  s_dc1bcc8544e6b1::t_4733ead0a69c10 47,51-53
+packages/frontend/editor-ui/src/features/agents/composables/useAgentPublish.ts
+  s_dc1bcc8544e6b1::t_2664841b43b03e 104
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPublishButton.test.ts
+  s_dc1bcc8544e6b1::t_726b2a4126fcd8 529
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_dc1bcc8544e6b1::t_4063012494b223 972-974
+  s_dc1bcc8544e6b1::t_f1c99e94b5d306 1003-1022,1026,1042-1047
+  s_dc1bcc8544e6b1::t_42bb3dd9363bc3 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "49023a38346aa7abd085550974666243a4d327b8",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_dc1bcc8544e6b1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b230e043-4120-4803-80d6-26654a74875b",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

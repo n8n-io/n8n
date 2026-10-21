@@ -1,0 +1,52 @@
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/composite-handlers/if-else-handler.ts
+  s_554c5b2110274f::t_3373140e25defb 125-129
+  s_554c5b2110274f::t_27beddca1d0c03 173
+  s_554c5b2110274f::t_f0c0439855e078 195
+  s_554c5b2110274f::t_a45b27b34a3fee 63-72
+packages/@n8n/workflow-sdk/src/workflow-builder.test.ts
+  s_554c5b2110274f::t_a443824a8aed6e 1841-1885
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/composite-handlers/switch-case-handler.ts
+  s_554c5b2110274f::t_fbe3c4f718337c 162
+  s_554c5b2110274f::t_cae19390db10ff 63-72
+  s_554c5b2110274f::t_c566e03681ba54 145
+  s_554c5b2110274f::t_d207cec571ba26 118-122
+packages/@n8n/workflow-sdk/src/workflow-builder/control-flow-builders/switch-case.test.ts
+  s_554c5b2110274f::t_ec05986e93ae72 357
+  s_554c5b2110274f::t_58fb0254d3426a 338-356,358-452
+packages/@n8n/workflow-sdk/src/workflow-builder/control-flow-builders/if-else.test.ts
+  s_554c5b2110274f::t_aa3696bf7b940d 498-516,518-565
+  s_554c5b2110274f::t_5c96607eb57a59 517
+packages/@n8n/workflow-sdk/src/workflow-builder/connection-utils.test.ts
+  s_554c5b2110274f::t_0d84162e80635c 163,174-192
+  s_554c5b2110274f::t_e428c49c7c0375 42
+  s_554c5b2110274f::t_2ca6531e41960a 193
+packages/@n8n/workflow-sdk/src/workflow-builder/node-builders/node-builder.ts
+  s_554c5b2110274f::t_2d5a88fff2ff61 594,596-599
+  s_554c5b2110274f::t_fe61349104481f 406-429
+  s_554c5b2110274f::t_b8d8ef48a66058 576,578-581
+  s_554c5b2110274f::t_b0095e9c840b9d 612,614-617
+  s_554c5b2110274f::t_322f984bf595b2 405
+packages/@n8n/workflow-sdk/src/workflow-builder/connection-utils.ts
+  s_554c5b2110274f::t_7a0cfb0c021859 75-76
+  s_554c5b2110274f::t_b87504124624f3 47,70-74,77-80
+packages/@n8n/workflow-sdk/src/workflow-builder.ts
+  s_554c5b2110274f::t_818592f2c6db36 147-164
+  s_554c5b2110274f::t_6d63b614b0ef5e 165
+  s_554c5b2110274f::t_377a9ebd35a3d0 246,373
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "f5761356955f21f86763b258544d6ad2d1c7912f",
+  "prompts": {},
+  "sessions": {
+    "s_554c5b2110274f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ccac9df1-112b-4981-a822-264dc8e8ab63",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

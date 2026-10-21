@@ -1,0 +1,19 @@
+packages/cli/src/webhooks/__tests__/test-webhooks.test.ts
+  s_c491120e42f4d5::t_3a3238a41ce23f 130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f038f67b4fa8a2e48fc20fe97c15ccfe976c1db8",
+  "prompts": {},
+  "sessions": {
+    "s_c491120e42f4d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7450e635-cf6a-4786-8b7c-b946ae65396a",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

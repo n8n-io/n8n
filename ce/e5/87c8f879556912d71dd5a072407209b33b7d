@@ -1,0 +1,64 @@
+packages/frontend/editor-ui/src/features/ai/chatHub/chat.store.test.ts
+  s_d187a68a363af6::t_4ee38b0fb879a5 428-463
+  s_d187a68a363af6::t_416f0f1cd21294 4
+packages/cli/src/modules/chat-hub/chat-hub.controller.ts
+  s_d187a68a363af6::t_a248b4fd9e6498 69,72-79
+  s_d187a68a363af6::t_b8e1766cf67647 26,39,43
+  s_d187a68a363af6::t_78ef52e38e70bf 46-49,52-53
+packages/frontend/editor-ui/src/features/ai/chatHub/chat.store.ts
+  s_d187a68a363af6::t_36bf27e374ba66 32
+  s_d187a68a363af6::t_95ce7ba620680d 1595
+  s_d187a68a363af6::t_dffa23a093a98a 1127-1132
+packages/@n8n/api-types/src/index.ts
+  s_d187a68a363af6::t_8c16e13dcec4b3 68
+packages/frontend/editor-ui/src/features/ai/chatHub/SettingsChatHubView.test.ts
+  s_d187a68a363af6::t_335d47d73e0bd8 1-111
+packages/cli/src/modules/chat-hub/chat-hub.settings.controller.ts
+  s_d187a68a363af6::t_081e2274a55b70 68-86
+  s_d187a68a363af6::t_78ef52e38e70bf 8-11,14
+  s_d187a68a363af6::t_be649213181dc6 5
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_d187a68a363af6::t_0ef203aa7382fd 3197-3202
+packages/frontend/editor-ui/src/features/ai/chatHub/SettingsChatHubView.vue
+  s_d187a68a363af6::t_32e5c43a8b104f 179-192
+  s_d187a68a363af6::t_cacb86486fb6c7 47-55,57-60,69-70
+  s_d187a68a363af6::t_249e783fb34707 131-168
+  s_d187a68a363af6::t_88be49289bb4ed 56,61-68
+  s_d187a68a363af6::t_5a352301b303ba 16
+  s_d187a68a363af6::t_1379af50eaf8b9 123
+packages/cli/src/modules/chat-hub/__tests__/chat-hub.controller.test.ts
+  s_d187a68a363af6::t_57762d5537ad66 4
+  s_d187a68a363af6::t_e4dd7a006869f4 24
+  s_d187a68a363af6::t_c9b3a613923c96 39
+  s_d187a68a363af6::t_df31a91d05dde7 14-15
+  s_d187a68a363af6::t_63969f9ccb8408 30
+  s_d187a68a363af6::t_782458750225c0 1-3,5-13,17-23,25-29,31-38,40-54
+packages/frontend/editor-ui/src/features/ai/chatHub/chat.api.ts
+  s_d187a68a363af6::t_e3ce2e6dd9e167 333-341
+packages/cli/src/modules/chat-hub/__tests__/chat-hub.settings.controller.test.ts
+  s_d187a68a363af6::t_57762d5537ad66 3
+  s_d187a68a363af6::t_0811e13a264df4 1-2,4-42
+packages/@n8n/api-types/src/chat-hub.ts
+  s_d187a68a363af6::t_7531d1da3a207a 598-601
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cee587c8f879556912d71dd5a072407209b33b7d",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_d187a68a363af6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a657a77-c0d7-401e-b08b-5f7d646d3582",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

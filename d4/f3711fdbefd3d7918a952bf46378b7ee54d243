@@ -1,0 +1,49 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelModal.test.ts
+  s_3ee4700369edb0::t_7caded0a3bdd62 15
+  s_3ee4700369edb0::t_02cb38af93b3e2 145-164,172-181
+  ai_agent 366,1024-1026
+  s_3ee4700369edb0::t_cae1e2377d5a57 12,228,356,993-1000
+  s_3ee4700369edb0::t_5fa01ce441d056 1065-1066,1072
+  s_3ee4700369edb0::t_2446af73d87591 234-238,247-248,303-304,306,310,316,320
+  s_3ee4700369edb0::t_6930d0129d007c 365,367,393-395,402,411-413,482-484,822-824,873-875
+  s_3ee4700369edb0::t_c2f2e0ab97d036 991-992,1001-1023,1027-1064,1067-1071,1073-1105
+  s_3ee4700369edb0::t_98311c8a115e67 359
+packages/frontend/editor-ui/src/features/agents/channels/n8nChat/n8nChatDescriptor.ts
+  s_3ee4700369edb0::t_a6c3a2e2b1bda5 1-15
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelListItem.test.ts
+  s_3ee4700369edb0::t_496d3f3dd311f5 105-117,136-147,152-200
+  s_3ee4700369edb0::t_42576bde375843 118-135,148-151
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelListItem.vue
+  s_3ee4700369edb0::t_80eb6d07897085 117
+  s_3ee4700369edb0::t_bc136e75728da1 4,10,31-42,50,60,66-72
+  s_3ee4700369edb0::t_199fd133a608fa 114-116,118-132,134
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  ai_agent 695-697
+  s_3ee4700369edb0::t_136ff4e9f455c1 735,759,768,773-778,780-790,792-793,795
+  s_3ee4700369edb0::t_66279834adaaf1 629-630
+  s_3ee4700369edb0::t_884d4675561071 110-118,130-133,137
+  s_3ee4700369edb0::t_84a1a506549adc 119-129,471-474,481-491,507,520-521,530,693,769,779,791
+  s_3ee4700369edb0::t_3900ec35bcc593 38-41
+  s_3ee4700369edb0::t_e7308f926fbcb3 2-3,5,14
+  s_3ee4700369edb0::t_9e744fb5f65d6d 621-625
+  s_3ee4700369edb0::t_63e4cf98b3b1a8 309-315
+  s_3ee4700369edb0::t_000f2c1ce3d2e2 494-506,508-519,522-526
+  s_3ee4700369edb0::t_c3d2d98ce5e992 662
+  s_3ee4700369edb0::t_1af7370d9cb342 683,692,694,700
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d4f3711fdbefd3d7918a952bf46378b7ee54d243",
+  "prompts": {},
+  "sessions": {
+    "s_3ee4700369edb0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7da616ef-d7d8-46e7-b647-0d6f7197e3e7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

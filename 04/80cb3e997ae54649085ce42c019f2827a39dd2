@@ -1,0 +1,14 @@
+packages/frontend/editor-ui/src/app/components/SettingsSidebar.vue
+  h_f8b427917eda26 31,33,45,68,71-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0480cb3e997ae54649085ce42c019f2827a39dd2",
+  "prompts": {},
+  "humans": {
+    "h_f8b427917eda26": {
+      "author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,58 @@
+packages/cli/src/modules/breaking-changes/breaking-changes.controller.ts
+  s_e7070c17254167::t_ef5beb452b6b37 9,144-153
+  s_e7070c17254167::t_cfc2806b83f9ca 154-155
+packages/@n8n/api-types/src/dto/index.ts
+  s_e7070c17254167::t_7a1140078cf97f 57
+packages/@n8n/api-types/src/dto/breaking-changes/update-migration-finding-statuses-request.dto.ts
+  s_e7070c17254167::t_7a1140078cf97f 1-9
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRuleDetail.vue
+  s_e7070c17254167::t_38035471e5804f 718-740,784-790
+  s_e7070c17254167::t_05d47858bc480b 27,41,296,299-302,306-314,322-323,332,335-380,464-471,588-590,717,791-792
+packages/cli/src/modules/breaking-changes/triage/migration-finding-triage.service.ts
+  s_e7070c17254167::t_e2c4473375bd23 17
+  s_e7070c17254167::t_22848018e48d7d 38-66
+  s_e7070c17254167::t_e63d25e397ef17 23
+packages/@n8n/api-types/src/dto/breaking-changes/__tests__/update-migration-finding-statuses-request.dto.test.ts
+  s_e7070c17254167::t_7a1140078cf97f 1-20
+  s_3ef284ec4e912a::t_e92c7dab6075f2 21-23
+packages/cli/src/modules/breaking-changes/database/repositories/migration-finding.repository.ts
+  s_e7070c17254167::t_370232ded2f285 200-220
+  s_3ef284ec4e912a::t_06cbcf11b32580 199
+packages/frontend/@n8n/rest-api-client/src/api/breaking-changes.ts
+  s_e7070c17254167::t_77015156089926 91-102
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRuleDetail.test.ts
+  s_e7070c17254167::t_35e71c36b2c18a 21,214-215,357-387,389-485
+  s_3ef284ec4e912a::t_f598f4ae78763e 388
+packages/cli/src/modules/breaking-changes/__tests__/breaking-changes.controller.test.ts
+  s_e7070c17254167::t_88a077225c2d45 336-365
+packages/cli/src/modules/breaking-changes/__tests__/migration-finding.repository.integration.test.ts
+  s_e7070c17254167::t_a7db16017ea63e 654-748
+packages/cli/src/modules/breaking-changes/triage/__tests__/migration-finding-triage.service.test.ts
+  s_e7070c17254167::t_fd92d5e9663ca2 80-115
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3ef284ec4e912a::t_8291e22b973bfa 4648-4649
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6a8d56ad2c7c8ff2830f9c0733831aca80f80dd8",
+  "prompts": {},
+  "sessions": {
+    "s_3ef284ec4e912a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b138e788-474c-4896-a1e4-df3d332d4d7e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_e7070c17254167": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97abfa6c-c4e3-46d3-ba32-ce737be45aa5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

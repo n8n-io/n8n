@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/src/app/layouts/WorkflowLayout.test.ts
+  s_a8c43c1823a871::t_d20be508b403f2 201-231
+  s_a8c43c1823a871::t_eae283441bf7c5 40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "c09fbc2ac38d3b507dec78c437024b03a36138ae",
+  "prompts": {},
+  "sessions": {
+    "s_a8c43c1823a871": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "de499986-b9a0-48fc-8b17-a93110cba7ab",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

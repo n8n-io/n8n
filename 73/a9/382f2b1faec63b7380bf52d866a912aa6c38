@@ -1,0 +1,19 @@
+packages/frontend/@n8n/design-system/src/components/N8nLogo/Logo.test.ts
+  s_aca6a0eaa06f21::t_df22f5323dccec 33-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "73a9382f2b1faec63b7380bf52d866a912aa6c38",
+  "prompts": {},
+  "sessions": {
+    "s_aca6a0eaa06f21": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a11040-228d-76ed-98aa-173520fc68d6",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

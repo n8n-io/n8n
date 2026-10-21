@@ -1,0 +1,21 @@
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_302a0341cc705a::t_ae777d54a5c74a 2501
+packages/@n8n/api-types/src/index.ts
+  s_302a0341cc705a::t_ae777d54a5c74a 418
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8a2befe4ee2c2b8d477311a6e5dc6c5825a9ff44",
+  "prompts": {},
+  "sessions": {
+    "s_302a0341cc705a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d232b129-92fc-4812-a387-ad182690ea21",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

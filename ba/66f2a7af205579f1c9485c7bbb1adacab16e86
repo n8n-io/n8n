@@ -1,0 +1,23 @@
+packages/@n8n/db/src/migrations/common/1784000000051-BackfillInstanceAiEventLog.ts
+  s_a8b11f747ee91e::t_45817e679cae0b 241-254,257-258
+  s_a8b11f747ee91e::t_93de9efb3626d0 413-428,584,586-590
+  s_a8b11f747ee91e::t_b6a9c7ba732bae 516,536,571-581
+  s_a8b11f747ee91e::t_b411c1d6115361 332-344,349,582
+  s_a8b11f747ee91e::t_01a646bd6a592e 583
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "ba66f2a7af205579f1c9485c7bbb1adacab16e86",
+  "prompts": {},
+  "sessions": {
+    "s_a8b11f747ee91e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7c6b651d-6fbc-49c2-a7a6-06d9a1233a37",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

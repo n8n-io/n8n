@@ -1,0 +1,21 @@
+.github/workflows/util-codespace-preview.yml
+  s_a351b3d0681760::t_8df970c02fb37a 60-63,91-93
+.github/WORKFLOWS.md
+  s_a351b3d0681760::t_3926d65f1aa321 263-283
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "30a2abda253b8a7ce383f7a6578b4fb67a98263c",
+  "prompts": {},
+  "sessions": {
+    "s_a351b3d0681760": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dfb3d85a-ea94-4528-9c64-c372a5dc4137",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

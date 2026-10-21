@@ -1,0 +1,201 @@
+packages/frontend/@n8n/design-system/src/components/N8nText/Text.vue
+  s_3a07eaa53870a8::t_71d4ebd14096c0 6
+packages/frontend/@n8n/design-system/src/components/AskAssistantChat/messages/TextMessage.vue
+  s_3a07eaa53870a8::t_71d4ebd14096c0 11
+packages/frontend/@n8n/design-system/src/components/N8nNavigationDropdown/NavigationDropdown.vue
+  s_3a07eaa53870a8::t_24929bb90d4d12 6
+packages/frontend/@n8n/design-system/tsconfig.build.json
+  s_3a07eaa53870a8::t_6ef642a4f175f1 2,6-9,13-15
+  s_3a07eaa53870a8::t_f5495d00bd5b4b 21,23-24
+  s_3a07eaa53870a8::t_959e5901b4e3b0 10-11
+  s_3a07eaa53870a8::t_d8ae92ca34a3c1 12
+  s_3a07eaa53870a8::t_72dc424b329e72 1,3-5,16-20,22,25-26
+packages/frontend/@n8n/design-system/src/components/TableHeaderControlsButton/TableHeaderControlsButton.test.ts
+  s_3a07eaa53870a8::t_69d7403fd34e6d 4
+packages/frontend/@n8n/design-system/src/components/N8nMenuItem/routerUtil.ts
+  s_3a07eaa53870a8::t_24929bb90d4d12 3
+packages/frontend/@n8n/design-system/src/components/N8nActionToggle/ActionToggle.types.ts
+  s_3a07eaa53870a8::t_4b193a71256389 1-17
+packages/frontend/@n8n/design-system/src/components/N8nTree/Tree.vue
+  s_3a07eaa53870a8::t_08440d6562187e 14
+  s_3a07eaa53870a8::t_09a761b7632b28 4
+  s_3a07eaa53870a8::t_369b0e4a84ab86 62
+packages/frontend/@n8n/design-system/src/components/N8nActionDropdown/ActionDropdown.types.ts
+  s_3a07eaa53870a8::t_59af1b32dfba63 1-19
+packages/frontend/@n8n/design-system/src/types/button.ts
+  s_3a07eaa53870a8::t_24929bb90d4d12 4
+packages/frontend/@n8n/design-system/src/components/N8nRadioButtons/RadioButtons.types.ts
+  s_3a07eaa53870a8::t_c54ce510e52069 1-15
+packages/frontend/@n8n/design-system/src/components/N8nDialog/DialogClose.vue
+  s_3a07eaa53870a8::t_24929bb90d4d12 4
+packages/frontend/editor-ui/src/app/constants/parameters.ts
+  s_3a07eaa53870a8::t_242219e93f9f70 2
+packages/frontend/@n8n/design-system/src/v2/components/Tree/Tree.vue
+  s_3a07eaa53870a8::t_342af0ceb829fc 206
+packages/frontend/@n8n/design-system/src/locale/index.ts
+  s_3a07eaa53870a8::t_24929bb90d4d12 1
+packages/frontend/@n8n/design-system/src/types/action-dropdown.ts
+  s_3a07eaa53870a8::t_24929bb90d4d12 1
+packages/frontend/@n8n/design-system/src/components/N8nRadioButtons/RadioButtons.vue
+  s_3a07eaa53870a8::t_a718fd09ddb785 3,5
+  s_3a07eaa53870a8::t_7dc3853e701abb 16
+packages/frontend/@n8n/design-system/src/components/AskAssistantChat/messages/ErrorMessage.vue
+  s_3a07eaa53870a8::t_71d4ebd14096c0 8
+  s_3a07eaa53870a8::t_77ca09b63a3572 30
+packages/frontend/@n8n/design-system/src/components/N8nBadge/Badge.vue
+  s_3a07eaa53870a8::t_24929bb90d4d12 2
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenuItem.vue
+  s_3a07eaa53870a8::t_24929bb90d4d12 13-14
+  s_3a07eaa53870a8::t_9f0590e5c52ea7 21,198,342,378
+packages/frontend/@n8n/design-system/src/v2/components/Tree/Tree.types.ts
+  s_3a07eaa53870a8::t_24929bb90d4d12 4
+packages/frontend/@n8n/design-system/src/components/N8nTree/Tree.types.ts
+  s_3a07eaa53870a8::t_3911b77ab26adb 1-6
+packages/frontend/@n8n/design-system/package.json
+  s_3a07eaa53870a8::t_679f12d3c6f311 33-34
+  s_3a07eaa53870a8::t_0fcb7706655856 71
+  s_3a07eaa53870a8::t_94f1775850960e 21
+  s_3a07eaa53870a8::t_102684f1d0a7e2 84-85
+  s_3a07eaa53870a8::t_488a8d2212441d 5-16,20,22-29
+  s_3a07eaa53870a8::t_df0390bc1f0ca5 125-132
+  s_3a07eaa53870a8::t_342af0ceb829fc 133
+  s_3a07eaa53870a8::t_2eccd7885fa42b 107-108
+  s_3a07eaa53870a8::t_ae1809b4a579d7 17-19
+packages/frontend/@n8n/design-system/src/components/N8nIcon/Icon.vue
+  s_3a07eaa53870a8::t_342af0ceb829fc 145
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.vue
+  s_3a07eaa53870a8::t_a6369a4f0c0e61 8,11
+packages/frontend/@n8n/design-system/src/components/N8nUsersList/UsersList.vue
+  s_3a07eaa53870a8::t_6f80c6651cc3b0 5,10,12
+packages/frontend/@n8n/design-system/src/components/N8nInput/Input.vue
+  s_3a07eaa53870a8::t_342af0ceb829fc 6
+packages/frontend/@n8n/design-system/src/locale/lang/en.ts
+  s_3a07eaa53870a8::t_24929bb90d4d12 2
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenuItems.vue
+  s_3a07eaa53870a8::t_24929bb90d4d12 4
+packages/frontend/@n8n/design-system/src/components/N8nRecycleScroller/RecycleScroller.types.ts
+  s_3a07eaa53870a8::t_26357c12b7dfd8 1-8
+packages/frontend/@n8n/design-system/src/components/N8nUsersList/UsersList.types.ts
+  s_3a07eaa53870a8::t_513f11f4efa421 1-9
+packages/frontend/@n8n/design-system/src/components/AskAssistantChat/messages/CodeDiffMessage.vue
+  s_3a07eaa53870a8::t_71d4ebd14096c0 6
+packages/frontend/@n8n/design-system/vite.config.mts
+  s_3a07eaa53870a8::t_220fb6f707ef79 8,12-20,67-69,79,82,84-90
+  s_3a07eaa53870a8::t_9c920522d3fde6 64-66,71-78,91-95
+packages/frontend/@n8n/design-system/src/components/N8nFormBox/FormBox.vue
+  s_3a07eaa53870a8::t_1a40697273ed58 2
+packages/frontend/@n8n/design-system/src/v2/components/Select/SelectItem.vue
+  s_3a07eaa53870a8::t_24929bb90d4d12 6
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.vue
+  s_3a07eaa53870a8::t_342af0ceb829fc 19-20,256
+packages/frontend/@n8n/design-system/src/components/N8nToggle/Toggle.vue
+  s_3a07eaa53870a8::t_342af0ceb829fc 9
+packages/frontend/@n8n/design-system/src/v2/components/TagsInput/TagsInput.vue
+  s_3a07eaa53870a8::t_342af0ceb829fc 20
+packages/frontend/@n8n/design-system/src/components/N8nMenuItem/MenuItem.vue
+  s_3a07eaa53870a8::t_24929bb90d4d12 4
+packages/frontend/@n8n/design-system/src/v2/components/Tree/TreeNode.vue
+  s_3a07eaa53870a8::t_342af0ceb829fc 93,101
+packages/frontend/@n8n/design-system/src/components/N8nRecycleScroller/RecycleScroller.vue
+  s_3a07eaa53870a8::t_e6c425fdad7f85 5,8
+packages/frontend/@n8n/design-system/src/components/N8nActionDropdown/ActionDropdown.vue
+  s_3a07eaa53870a8::t_bb8b443c6ff791 5,12,18
+packages/frontend/@n8n/design-system/src/v2/components/Tree/TreeNodeDefault.vue
+  s_3a07eaa53870a8::t_24929bb90d4d12 6-7
+packages/frontend/@n8n/design-system/src/types/form.ts
+  s_3a07eaa53870a8::t_24929bb90d4d12 1
+packages/frontend/@n8n/design-system/src/components/N8nFormInput/FormInput.vue
+  s_3a07eaa53870a8::t_342af0ceb829fc 220,245
+packages/frontend/@n8n/design-system/src/plugin.ts
+  s_3a07eaa53870a8::t_f3dc1a98e24103 7-10
+packages/frontend/@n8n/design-system/vite.config.styles.mts
+  s_3a07eaa53870a8::t_c830b75f364050 1-34,39-44,49-50,52-55
+  s_3a07eaa53870a8::t_b00106f1dda18c 45-48,51
+  s_3a07eaa53870a8::t_a2f075cc64a63c 35-38
+packages/frontend/@n8n/design-system/src/types/icon.ts
+  s_3a07eaa53870a8::t_24929bb90d4d12 1
+packages/frontend/@n8n/design-system/src/components/N8nSelect/Select.types.ts
+  s_3a07eaa53870a8::t_342af0ceb829fc 1-11
+  s_3a07eaa53870a8::t_a72f2db921be61 12-26
+packages/frontend/@n8n/design-system/src/components/AskAssistantChat/messages/helpers.ts
+  s_3a07eaa53870a8::t_342af0ceb829fc 7
+packages/frontend/@n8n/design-system/src/components/N8nButton/Button.vue
+  s_3a07eaa53870a8::t_342af0ceb829fc 113
+packages/frontend/@n8n/design-system/src/v2/components/Select/Select.vue
+  s_3a07eaa53870a8::t_24929bb90d4d12 38-40
+packages/frontend/@n8n/design-system/src/v2/components/Pagination/Pagination.types.ts
+  s_3a07eaa53870a8::t_24929bb90d4d12 3
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditorToolbar.vue
+  s_3a07eaa53870a8::t_24929bb90d4d12 5
+packages/frontend/@n8n/design-system/src/components/N8nDataTableServer/N8nDataTableServer.vue
+  s_3a07eaa53870a8::t_24929bb90d4d12 46
+packages/frontend/@n8n/design-system/src/v2/components/Checkbox/Checkbox.vue
+  s_3a07eaa53870a8::t_24929bb90d4d12 7
+packages/frontend/@n8n/design-system/src/components/N8nAiModelSelectorDropdown/AiModelSelectorDropdown.vue
+  s_3a07eaa53870a8::t_996ea0f3f9a899 71-72
+  s_3a07eaa53870a8::t_2b685e435a20cb 73-75
+packages/frontend/@n8n/design-system/src/components/AskAssistantChat/messages/BlockMessage.vue
+  s_3a07eaa53870a8::t_71d4ebd14096c0 7
+packages/frontend/@n8n/design-system/src/components/TableHeaderControlsButton/TableHeaderControlsButton.types.ts
+  s_3a07eaa53870a8::t_88cf1312a1a25b 1-18
+packages/frontend/@n8n/design-system/src/components/N8nSelect/Select.vue
+  s_3a07eaa53870a8::t_287f045ff2ba6d 60
+  s_3a07eaa53870a8::t_5d7c417a2d7062 3
+  s_3a07eaa53870a8::t_6798f563d3f119 106,110-115
+  s_5057968ebca05f::t_42d166f991f679 6
+packages/frontend/@n8n/design-system/src/components/N8nDatatable/Datatable.vue
+  s_3a07eaa53870a8::t_4535f08736daca 11
+  s_3a07eaa53870a8::t_c9b9866dc29e93 16
+packages/frontend/@n8n/design-system/src/components/AskAssistantChat/messages/EventMessage.vue
+  s_3a07eaa53870a8::t_71d4ebd14096c0 8
+packages/frontend/@n8n/design-system/src/components/DateRangePicker/index.ts
+  s_3a07eaa53870a8::t_23d1856995411d 5,10,23-25
+  s_3a07eaa53870a8::t_884e56f1449bac 6-9,11-13,21-22
+  s_3a07eaa53870a8::t_6b98749692f176 14-20
+packages/frontend/@n8n/design-system/src/components/N8nActionToggle/ActionToggle.vue
+  s_3a07eaa53870a8::t_bb8b443c6ff791 9,14
+packages/frontend/@n8n/design-system/src/components/N8nAlertDialog/AlertDialog.vue
+  s_3a07eaa53870a8::t_24929bb90d4d12 4-10
+packages/frontend/@n8n/design-system/src/components/N8nAiActivityStepGroup/AiActivityStepGroup.stories.ts
+  s_3a07eaa53870a8::t_342af0ceb829fc 88-90,110-112
+packages/frontend/@n8n/design-system/src/components/N8nInlineTextEdit/InlineTextEdit.vue
+  s_3a07eaa53870a8::t_8e2926a2186245 28-31
+packages/frontend/@n8n/design-system/src/components/N8nPopover/Popover.vue
+  s_3a07eaa53870a8::t_c8459cb2fbdb5a 57-60,62
+packages/frontend/@n8n/design-system/src/components/TableHeaderControlsButton/TableHeaderControlsButton.vue
+  s_3a07eaa53870a8::t_af12fcff031044 8-11,13
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.types.ts
+  s_3a07eaa53870a8::t_6212bc96100d29 1-8
+packages/frontend/@n8n/design-system/src/components/index.ts
+  s_3a07eaa53870a8::t_69d779f4299f1d 113
+packages/frontend/@n8n/design-system/src/components/N8nDatatable/Datatable.types.ts
+  s_3a07eaa53870a8::t_bec214fbbc8f95 1-9
+packages/frontend/@n8n/design-system/src/v2/components/Pagination/Pagination.vue
+  s_3a07eaa53870a8::t_342af0ceb829fc 21-22
+pnpm-lock.yaml
+  s_3a07eaa53870a8::t_bea3b8d265a3db 5142-5147,5257-5259,5296-5301
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "d9f9c7b473c5c1f025421c5a9f07b07c889df1f0",
+  "prompts": {},
+  "sessions": {
+    "s_3a07eaa53870a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eba7fcd0-9d36-42ec-b03b-8f451af49650",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_5057968ebca05f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f00beca-3a77-4b4f-817d-da80fa392dfe",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

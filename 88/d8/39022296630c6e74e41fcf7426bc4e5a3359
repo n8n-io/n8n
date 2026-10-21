@@ -1,0 +1,40 @@
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_0ed5271cdd014d::t_38b5179613a44e 178,187-189
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_0ed5271cdd014d::t_2b80f89269a0d4 143-145
+  s_0ed5271cdd014d::t_38b5179613a44e 21,971-972,981-987,990,993
+  s_0ed5271cdd014d::t_7d63b1abe1b20b 1041-1043,1049-1052
+  s_0ed5271cdd014d::t_cd77fa566866c7 707-774,791,793,795,900-901,903,905-912,916
+  s_0ed5271cdd014d::t_b3a50186e31c3c 792
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_0ed5271cdd014d::t_0b80df295ee96e 285,308-310,317-318,334-348,350-353,355-372,553
+  s_0ed5271cdd014d::t_2c9977c4603a1c 311-313
+packages/@n8n/db/src/migrations/common/1790241069212-CreateAgentMessageQueue.ts
+  s_c5954c3047b5ed::t_b974208cf43ef2 1-47
+packages/cli/test/migration/1790241069212-create-agent-message-queue.test.ts
+  s_c5954c3047b5ed::t_b974208cf43ef2 1-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "88d839022296630c6e74e41fcf7426bc4e5a3359",
+  "prompts": {},
+  "sessions": {
+    "s_0ed5271cdd014d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d3f3-6fd7-7481-922e-2a901b1c46ca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_c5954c3047b5ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cf61-9581-7951-a01f-21637c8a6267",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,11 @@
+packages/cli/src/modules/agents/plans/agent-plan-work-state.ts
+  ai_agent 55-60
+packages/cli/src/modules/agents/plans/__tests__/agent-plan-work-state.test.ts
+  ai_agent 94-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d0f67bf99c43bfe3481d48ea8b7a4f7b15bb23a7",
+  "prompts": {}
+}

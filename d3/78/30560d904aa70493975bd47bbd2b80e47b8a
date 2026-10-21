@@ -1,0 +1,49 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_da76d9a372587f::t_435748786e98bb 7652,7667,7672,8054
+packages/@n8n/api-types/src/agents/types.ts
+  s_da76d9a372587f::t_2b1d7ce0eff871 8-9,15-18
+  s_da76d9a372587f::t_d391efccc64264 10-14,19
+packages/cli/src/modules/mcp/tools/agents/agent-reference.ts
+  s_da76d9a372587f::t_f6bf3a35537796 133
+  s_da76d9a372587f::t_f201a134d48d7c 2
+  s_da76d9a372587f::t_3e0771d479a285 1
+  s_da76d9a372587f::t_cb5f39dd5f3bc9 132
+packages/frontend/editor-ui/src/features/agents/utils/workflowToolTriggers.ts
+  s_da76d9a372587f::t_0582aeae3699fe 1-13
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_da76d9a372587f::t_a60f8146fda8e5 34
+  s_da76d9a372587f::t_6ae54a765b1426 1327
+packages/frontend/editor-ui/src/features/agents/components/WorkflowToolConfigContent.vue
+  s_da76d9a372587f::t_fc4ea665a29221 380-384
+  s_da76d9a372587f::t_35a5c0e9784a4c 464-468
+  s_da76d9a372587f::t_442ed5d232a655 56
+  s_da76d9a372587f::t_e054de97c060c3 43
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_da76d9a372587f::t_cb092b8a986198 201-203
+  s_da76d9a372587f::t_9720d650e43dd7 21
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_da76d9a372587f::t_e656d7d3316592 7
+  s_da76d9a372587f::t_070cd66cda8f68 197
+packages/frontend/editor-ui/src/features/agents/components/AgentValidationTooltip.vue
+  s_da76d9a372587f::t_d4291d5ea4d5e5 102-104
+  s_da76d9a372587f::t_53d664c00fd52a 8
+packages/frontend/editor-ui/src/features/agents/components/AgentToolsConnectionModalWrapper.vue
+  s_da76d9a372587f::t_95544df9133950 74
+  s_da76d9a372587f::t_1845ac4a7df3ee 736-738
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "d37830560d904aa70493975bd47bbd2b80e47b8a",
+  "prompts": {},
+  "sessions": {
+    "s_da76d9a372587f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "36580568-4139-410e-9a53-a65ce73b9023",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

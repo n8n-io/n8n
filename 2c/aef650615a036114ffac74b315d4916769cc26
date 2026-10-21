@@ -1,0 +1,57 @@
+packages/cli/src/modules/n8n-packages/engine/import-gates.ts
+  s_66be2eb681ad3c::t_f0049da7746f0e 42,54-55,57-59
+  s_66be2eb681ad3c::t_ec7f0d66fb8f52 6
+  s_66be2eb681ad3c::t_b442ab9139e225 43-46,48-53
+  s_46457fdbb606db::t_c5093050b99217 47,56
+packages/cli/src/modules/n8n-packages/entities/tag/__tests__/tag-importer.test.ts
+  s_66be2eb681ad3c::t_020eabf7186922 1-25,27-63,81-89,91-96,98
+  s_46457fdbb606db::t_42f3d9db56e091 97,64,66,69,74-75,79-80
+  s_46457fdbb606db::t_9a61ed96dd8ece 26
+  s_46457fdbb606db::t_77f230f33b4eab 65,67-68,71-73,76,78
+  s_46457fdbb606db::t_a819918e0a08b2 70,77
+  s_46457fdbb606db::t_51e1fceec1604f 90
+packages/cli/src/modules/n8n-packages/entities/tag/tag-importer.ts
+  s_66be2eb681ad3c::t_00286b7a8621b3 1-8,10,12-14,16-38,40-45,48-51,53-62,64,66-68,72-73,75,77-85,87-90,93,95-100,102-106,114,126-135,144-149,154-161,163-173,189-200,205,207,213-215,217-221,234,258,260,262-264,267-268,256
+  ai_agent 107-108,110,112-113,119-120,124-125,174-177,208-210,212,222-223,71,122,182,248-255
+  s_46457fdbb606db::t_a8189e31d6c614 224,201-204,211,225-226,228,238-240,242-247
+  s_46457fdbb606db::t_32b58af39a3a12 235-236,143,179,188,227,229-233,237,241,257
+  s_66be2eb681ad3c::t_81bbc6e53bee51 91,109,121
+  s_66be2eb681ad3c::t_4e4949edff2310 206,216,259,265
+  s_66be2eb681ad3c::t_527cb7f8d78f91 9,76
+  s_66be2eb681ad3c::t_01756140a30a6e 46-47,52,63,65,74,94,101,111,123,261,266
+  s_46457fdbb606db::t_64a3607d4bfe26 39
+  s_46457fdbb606db::t_70a1383b6637b1 69,115-118,137-141,150-153,162,180-181,183,187
+  s_46457fdbb606db::t_640bdc897bd933 70,86,92
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_66be2eb681ad3c::t_73754f164e02b4 48-55
+  s_66be2eb681ad3c::t_dfbd24cc897339 71-72,92-95,97-99,117-124
+  s_66be2eb681ad3c::t_7467b98782c8a3 139-140
+  s_66be2eb681ad3c::t_451594adcb0384 174,187
+  ai_agent 188-193
+  s_66be2eb681ad3c::t_d1619164200906 216-217,222-223
+  s_46457fdbb606db::t_a1738c7e708329 96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2caef650615a036114ffac74b315d4916769cc26",
+  "prompts": {},
+  "sessions": {
+    "s_46457fdbb606db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f3c28356-f7a4-4aa1-baa1-0a7a42ab1b95",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    },
+    "s_66be2eb681ad3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1aa571d-8f2d-424c-9096-7fd9537761e1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

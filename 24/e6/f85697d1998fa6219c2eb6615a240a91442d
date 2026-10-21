@@ -1,0 +1,36 @@
+packages/testing/code-health/src/utils/pnpm-lock-parser.ts
+  s_2d7c6932e0c038::t_c1f724727be32c 102-132,134-162
+  s_2d7c6932e0c038::t_2f8c6651dd1be7 24,133
+packages/testing/code-health/src/rules/single-instance-lockfile.rule.ts
+  s_2d7c6932e0c038::t_a237c419952f67 1-6,8-9,11-63,65-71,73,75-80
+  s_2d7c6932e0c038::t_387287f4d1286c 72,74
+  s_2d7c6932e0c038::t_0c3989a4a0f3fd 7
+  s_2d7c6932e0c038::t_3349b1076b477b 10,64
+packages/testing/code-health/src/index.ts
+  s_2d7c6932e0c038::t_bca77c17bdfe80 10,21,48-52,137
+packages/testing/code-health/src/single-instance/lockfile-splits.test.ts
+  s_2d7c6932e0c038::t_0c3989a4a0f3fd 112-130
+  s_2d7c6932e0c038::t_3349b1076b477b 11,23-25,47-49,67-73,81-86,98-103
+  s_2d7c6932e0c038::t_58ff86df8c285e 1-10,12-22,26-46,50-66,74-80,87-97,104-111
+packages/testing/code-health/src/single-instance/lockfile-splits.ts
+  s_2d7c6932e0c038::t_387287f4d1286c 111
+packages/testing/code-health/src/rules/single-instance-lockfile.rule.test.ts
+  s_2d7c6932e0c038::t_3349b1076b477b 109
+  s_2d7c6932e0c038::t_19258b47c85d53 1-108,110-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "24e6f85697d1998fa6219c2eb6615a240a91442d",
+  "prompts": {},
+  "sessions": {
+    "s_2d7c6932e0c038": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "351b79f5-b6ce-4968-b7f0-30dc498fd9a1",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

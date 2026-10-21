@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/credentials/credentials.api.ts
+  s_fc35d2e3174b62::t_62f27dee94010d 127-130,138-141
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_fc35d2e3174b62::t_e9e084e4d0bf1d 1275-1278
+packages/frontend/editor-ui/src/features/credentials/credentials.api.test.ts
+  s_fc35d2e3174b62::t_fff30b5a02d127 1-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "fd7b46d2d8e62f6f268803a66acf7e4d9fcbade4",
+  "prompts": {},
+  "sessions": {
+    "s_fc35d2e3174b62": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d49ac447-e489-450e-bd9c-ea721d4e5b03",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Guillaume Jacquart <jacquart.guillaume@gmail.com>"
+    }
+  }
+}

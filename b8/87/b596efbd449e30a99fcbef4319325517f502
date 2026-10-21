@@ -1,0 +1,40 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderChatColumn.test.ts
+  s_d910be7a0e4559::t_0f6a7de19dfd40 1-8,10-11,19-40,42-53,55,57-77,79-82,92,94-97
+  s_d910be7a0e4559::t_1b4a20b3d46ddf 12-18,41,54,56,78,83-91,93
+  s_d910be7a0e4559::t_05c6dd6f1e72d0 9
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_d910be7a0e4559::t_6f7c1386eba754 1243
+packages/frontend/editor-ui/src/features/agents/components/AgentChipButton.vue
+  s_d910be7a0e4559::t_a3526d0929a6e2 71,97-99,108,129-131
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_d910be7a0e4559::t_1b4a20b3d46ddf 3,257-330
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_d910be7a0e4559::t_0f6a7de19dfd40 840
+  s_d910be7a0e4559::t_64ee9d7defeec7 334-342
+  s_d910be7a0e4559::t_3b65de54bf8e3f 841-851
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatQuickActions.test.ts
+  s_d910be7a0e4559::t_5fe999e7b25608 89-107
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderChatColumn.vue
+  s_d910be7a0e4559::t_5912676f5ebce9 29
+  s_d910be7a0e4559::t_a3526d0929a6e2 98,109
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_d910be7a0e4559::t_a3526d0929a6e2 123-125,304
+packages/frontend/editor-ui/src/features/agents/components/AgentChatQuickActions.vue
+  s_d910be7a0e4559::t_97e86f82a689a0 24,42-43,60-61,86,95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "b887b596efbd449e30a99fcbef4319325517f502",
+  "prompts": {},
+  "sessions": {
+    "s_d910be7a0e4559": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ef53e-3da0-7242-99ea-fa0a75cdd159",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

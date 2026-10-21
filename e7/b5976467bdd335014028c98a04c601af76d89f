@@ -1,0 +1,31 @@
+packages/cli/src/eventbus/event-message-classes/index.ts
+  s_16453cac85f858::t_cc85b5ec6ab78d 142-143
+packages/cli/src/modules/identity/services/resource-guard.service.ts
+  s_16453cac85f858::t_81e528322151ab 135-142
+  s_16453cac85f858::t_a3d11cf0e4381d 63
+  s_16453cac85f858::t_53a505707d1711 1-62,64-134,143-145
+  s_16453cac85f858::t_0885eb01219500 146-148
+packages/cli/src/events/maps/relay.event-map.ts
+  s_16453cac85f858::t_6c926de9f1eac7 987-1009
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_16453cac85f858::t_0f21952bb9b1b4 140-141
+  s_16453cac85f858::t_71f32badc21409 1215-1232
+packages/cli/src/modules/identity/services/__tests__/resource-guard.service.test.ts
+  s_16453cac85f858::t_90d9df726a082a 1-203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "e7b5976467bdd335014028c98a04c601af76d89f",
+  "prompts": {},
+  "sessions": {
+    "s_16453cac85f858": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "398bf54f-42db-4a1a-8d95-4f932ca49cf1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

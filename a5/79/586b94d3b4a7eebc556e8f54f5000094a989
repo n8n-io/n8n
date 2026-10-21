@@ -1,0 +1,48 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  ai_agent 68-70
+  s_e3560b551eac11::t_88f7975da7b113 330,373-376
+  s_e3560b551eac11::t_be9d0b7fac2c72 331,377
+  s_9a6001e67297f0::t_b1d932b91a1e2b 359,390-391,1504-1506,1510-1512,1516-1518,1699-1723,1726-1742,1743-1820,1822-1824,365-367,369-371
+  s_e3560b551eac11::t_ac989fc9b65c37 372
+  s_e3560b551eac11::t_9a123fb73f6e2e 1507-1508
+  s_e3560b551eac11::t_74b46c3001a67d 1509,1513-1515
+  s_9a6001e67297f0::t_1a7ba868dfe39d 45
+  s_9a6001e67297f0::t_7f1b23eb489a4f 277-280
+  s_9a6001e67297f0::t_70611fe24970c7 329
+  s_e3560b551eac11::t_0ee8acbb1e9f5c 360-364,368
+  s_71e25d45a5ee90::t_3c2f196bf4365d 241-246
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_71e25d45a5ee90::t_3c2f196bf4365d 267
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a579586b94d3b4a7eebc556e8f54f5000094a989",
+  "prompts": {},
+  "sessions": {
+    "s_71e25d45a5ee90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ca6b762-f376-4a31-af78-4066f186c7bb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    },
+    "s_9a6001e67297f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f72ae404-381c-4905-9080-63d9e62dffe6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    },
+    "s_e3560b551eac11": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7b46ea8-2f97-424a-81d9-bb9c3745b1ba",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

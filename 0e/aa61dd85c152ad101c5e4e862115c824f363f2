@@ -1,0 +1,27 @@
+packages/testing/playwright/global-setup.ts
+  s_77e2521f9359d8::t_b4c6892c30d7c0 50,57,60-62
+  s_77e2521f9359d8::t_b190bcb5d68a41 3
+  s_77e2521f9359d8::t_32b057ea671f56 24-26,35-44
+  s_77e2521f9359d8::t_aa851223f6dd1f 45-49,51-56,58-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "0eaa61dd85c152ad101c5e4e862115c824f363f2",
+  "prompts": {},
+  "humans": {
+    "h_a348dde7c02e89": {
+      "author": "r00gm <raul00gm@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_77e2521f9359d8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "002a141a-8e10-481b-9445-fb7a8e4b8876",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

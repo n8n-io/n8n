@@ -1,0 +1,32 @@
+packages/testing/playwright/pages/EvaluationComparePage.ts
+  s_5d6be4e6bc70a6::t_a0b0b5c45410fb 1-10,17-59
+  ai_agent 13-15
+  s_5d6be4e6bc70a6::t_730589531e5cca 11-12,16
+packages/testing/playwright/tests/e2e/ai/eval-collections-compare.spec.ts
+  s_5d6be4e6bc70a6::t_29c8d27713e25b 32-34,37-38
+  s_5d6be4e6bc70a6::t_430912bd6ccb33 62-63
+  s_5d6be4e6bc70a6::t_aef13e64b60ad8 120-138
+  s_5d6be4e6bc70a6::t_9ba7ed8ebc0860 1-31,36,39-61,64-105,111,117-119,139-155,161-192,199-209
+  ai_agent 106-110,112-116,156-160,193-198
+  s_5d6be4e6bc70a6::t_210635e721744d 35
+packages/testing/playwright/pages/n8nPage.ts
+  s_5d6be4e6bc70a6::t_3f91429e2da6c1 25
+  s_5d6be4e6bc70a6::t_ed31f1e0c9b9ce 106
+  s_5d6be4e6bc70a6::t_a77665fc995395 190
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dbfd786a979b10ab3ad93f165da698f006deb86f",
+  "prompts": {},
+  "sessions": {
+    "s_5d6be4e6bc70a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb91e704-f9b6-4b87-ab07-501eb950fe7d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/cli/src/modules/n8n-packages/entities/variable/variable.types.ts
+  s_a2f2604c6a0758::t_a2580fc67b4559 36
+packages/cli/src/modules/n8n-packages/entities/variable/variable-importer.ts
+  ai_agent 7,39,41-42,45-46
+packages/cli/src/modules/n8n-packages/entities/variable/__tests__/variable-importer.test.ts
+  ai_agent 74-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7295a4de738b8022da562c7eaf764a2cdf17aa3f",
+  "prompts": {},
+  "sessions": {
+    "s_a2f2604c6a0758": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2eebeab3-c2f8-45bc-a543-37d531da2598",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

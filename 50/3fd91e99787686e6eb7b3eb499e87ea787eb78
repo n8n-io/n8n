@@ -1,0 +1,27 @@
+packages/@n8n/db/src/repositories/idempotency-key.repository.ts
+  s_209d3652df9edf::t_ff9b81ace2e771 11-15
+  s_209d3652df9edf::t_76584d90a1f94e 49-53,55-65
+  s_209d3652df9edf::t_7b0bd2e1931366 54
+packages/cli/src/public-api/__tests__/idempotency-key.service.test.ts
+  s_209d3652df9edf::t_da5faf5cef5f62 1
+  s_209d3652df9edf::t_442cb35cc3754c 51
+  s_209d3652df9edf::t_8f7b7a7f00d330 52-58
+packages/@n8n/db/src/repositories/index.ts
+  s_209d3652df9edf::t_43e1f5e73777cd 58-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "503fd91e99787686e6eb7b3eb499e87ea787eb78",
+  "prompts": {},
+  "sessions": {
+    "s_209d3652df9edf": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2b430ae3-90b8-4e4f-a650-99bf71711d23",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

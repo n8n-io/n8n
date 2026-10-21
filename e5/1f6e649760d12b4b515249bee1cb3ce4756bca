@@ -1,0 +1,55 @@
+packages/nodes-base/nodes/Kafka/test/v2/consumer/message-parser.test.ts
+  s_79c0473179aa3d::t_7e9d7b4489141b 1-80,89-187
+  s_79c0473179aa3d::t_11b463fe3b3831 81-88
+packages/nodes-base/nodes/Kafka/utils.ts
+  s_79c0473179aa3d::t_10d36200397c10 425
+packages/nodes-base/nodes/Kafka/test/v2/consumer/consumer.test.ts
+  s_79c0473179aa3d::t_8fc0bcf543fcdc 101
+  s_79c0473179aa3d::t_ce6a33bc5e2205 1-57,59-61,70-100,102-161,166-167,169-175,177-178,180-183,221-228,245-252,256-257,259-263,267-269
+  s_79c0473179aa3d::t_ecb15b1228a8f7 229-244
+  s_79c0473179aa3d::t_28965b210cf906 253-255,258,264-266
+  s_79c0473179aa3d::t_1c5b202c699f4a 162-165,168,176,179
+  s_79c0473179aa3d::t_f9c12c64414adc 58,62-69
+  s_79c0473179aa3d::t_62411d95034aaf 184-220
+packages/nodes-base/nodes/Kafka/v2/consumer/consumer.ts
+  s_79c0473179aa3d::t_bc49121233e1ee 14-22
+  s_79c0473179aa3d::t_a2f8dc8e8578cd 63-67,69
+  s_79c0473179aa3d::t_ef924c8b3a159e 7-8
+  s_79c0473179aa3d::t_ceaa2585e518c6 165-167
+  s_79c0473179aa3d::t_04ba864e628ee7 37-42
+  s_79c0473179aa3d::t_5e9ea0265a6aad 133
+  s_79c0473179aa3d::t_351b15c05195a4 6,10-11
+  s_79c0473179aa3d::t_5c67dc156ff908 125,128-131,135-136,138,144,148-164,168-190,195-201
+  s_79c0473179aa3d::t_85df99f0b604ee 12-13
+  s_79c0473179aa3d::t_e1d363f74238a1 127,132,134
+  s_79c0473179aa3d::t_9ca0423bfa4343 1-2,4-5,9,23-36,43-62,68,70-124,126,137,139-143,145-147,191-194,202-204
+  s_79c0473179aa3d::t_51df006e2858fc 3
+packages/nodes-base/nodes/Kafka/test/v2/consumer/lazy-load.test.ts
+  s_79c0473179aa3d::t_4c147430d7fe17 1-25
+packages/nodes-base/nodes/Kafka/v2/consumer/message-parser.ts
+  s_79c0473179aa3d::t_96cd7b1cc1fdf6 41-43,89
+  s_79c0473179aa3d::t_003aba85e37b9a 1-40,44-88,90-91,96,98-119
+  s_79c0473179aa3d::t_dabc191679cc4c 92-95,97
+packages/nodes-base/nodes/Kafka/test/mocks/confluent-kafka.ts
+  s_79c0473179aa3d::t_7cec10d101ad56 24-25
+  s_79c0473179aa3d::t_080957c4d725ed 1-2,7-23,26-95,130-145
+  s_79c0473179aa3d::t_036dd39384976f 96-109,116
+packages/nodes-base/nodes/Kafka/v2/consumer/index.ts
+  s_79c0473179aa3d::t_b9f24f9ecc1163 1-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e51f6e649760d12b4b515249bee1cb3ce4756bca",
+  "prompts": {},
+  "sessions": {
+    "s_79c0473179aa3d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae8df3ca-df5d-48ee-a98f-0afbfab05c51",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

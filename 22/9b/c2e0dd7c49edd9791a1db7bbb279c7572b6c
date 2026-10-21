@@ -1,0 +1,143 @@
+packages/@n8n/mcp-browser/src/index.ts
+  s_6d6420d5a3673f::t_c23868989b1518 39-40,43,65
+  s_6d6420d5a3673f::t_44d60837f5489e 54-55,58,63
+packages/@n8n/instance-ai/evaluations/typesafe-browser/run.ts
+  s_6d6420d5a3673f::t_65dd23acd1d379 39-48,102
+  s_6d6420d5a3673f::t_0b00df0d14cb2d 14
+  s_6d6420d5a3673f::t_6be1670b6e1c6e 26,165,201-206,208-211,213-214
+  s_6d6420d5a3673f::t_d29a6e41734502 162-163,166,207,222
+packages/@n8n/instance-ai/docs/tools.md
+  s_6d6420d5a3673f::t_7b2c1d39455b97 802-804
+packages/cli/src/modules/instance-ai/browser/browser-local-mcp-server.ts
+  s_6d6420d5a3673f::t_ea1df8684a7157 73-78,153-187
+  s_6d6420d5a3673f::t_4c24e02327a683 188
+packages/@n8n/mcp-browser/src/typesafe/types.ts
+  s_6d6420d5a3673f::t_e5010d09b3dbe1 57-93,103-107,113
+  s_6d6420d5a3673f::t_ccdff44808f170 10-16,19,24
+packages/@n8n/mcp-browser/src/typesafe/questions.ts
+  s_6d6420d5a3673f::t_b85bd943faa553 14,89-105,195-198
+  s_6d6420d5a3673f::t_47829f72821486 133-137,139,155-157,166
+  s_6d6420d5a3673f::t_cdce5a875867d0 27-28,37-39
+  s_6d6420d5a3673f::t_37c49590b6a86b 85,212
+  s_6d6420d5a3673f::t_0da08b02e63ba7 211
+  s_6d6420d5a3673f::t_470994164f4313 88,106-125,143-147,160-164,168
+  s_6d6420d5a3673f::t_6673289e2488b5 43,57,131-132,158-159,165,167,169-170,199
+packages/@n8n/instance-ai/skills/browser-use/SKILL.md
+  s_6d6420d5a3673f::t_86344f5a6d914f 83
+  s_6d6420d5a3673f::t_0608d4359ff05a 48-54,97-104
+  s_6d6420d5a3673f::t_95fcda23d8608d 1-47,55-82,84-96,105-132
+packages/@n8n/instance-ai/skills/n8n-docs-assistant/SKILL.md
+  h_44f8d1c0f2f8c4 42,44
+  s_6d6420d5a3673f::t_7b2c1d39455b97 43
+packages/@n8n/mcp-browser/src/typesafe/dom-snapshot.ts
+  s_6d6420d5a3673f::t_bc022f1651915b 63-64,88-107,286-293
+  h_44f8d1c0f2f8c4 42
+  s_6d6420d5a3673f::t_d27c85eeaf3f02 1-33,47-62,65-87,112-194,205-239,246-248,250,252,254-285,294-306
+  s_6d6420d5a3673f::t_098082bcf75d80 34-41,43-46,108-111,249,251,253
+  s_6d6420d5a3673f::t_6a1f7fecb042eb 195-197,199-204,240-245
+  s_6d6420d5a3673f::t_83cb0192ddc415 198
+packages/@n8n/mcp-browser-extension/src/relayConnection.ts
+  s_6d6420d5a3673f::t_c09a10658d68ed 630
+  s_6d6420d5a3673f::t_da9a04d1fcaf67 59-82,565-571,576,582,640
+packages/@n8n/instance-ai/src/tools/filesystem/field-text.ts
+  s_6d6420d5a3673f::t_a3f295575db716 1-50
+packages/@n8n/instance-ai/src/index.ts
+  s_6d6420d5a3673f::t_8839cf32829078 9,104-106,238-240
+packages/@n8n/instance-ai/docs/architecture.md
+  s_6d6420d5a3673f::t_25b636f70c8418 417-418
+packages/@n8n/mcp-browser/src/tools/act.ts
+  s_6d6420d5a3673f::t_c225c36d750805 25,65-66,191,193,197,201-204,207,209-214,216-219,231
+  s_6d6420d5a3673f::t_49c96daa26f53e 53-62,596-598,616-618
+  s_6d6420d5a3673f::t_185f4746332ab0 326,458,480
+  s_6d6420d5a3673f::t_9af317ef23446b 436,546,552-553,555-572,574-591
+  s_6d6420d5a3673f::t_6e195b3034cfed 157
+  s_6d6420d5a3673f::t_7d5e8b9f20abe2 26,67-68,97,285,350,435,437,443-453,464,484-486,488-494
+  s_6d6420d5a3673f::t_9da247b3a04a20 42,69-77,85,87-89,122-132,271,279,284,333,336
+  s_6d6420d5a3673f::t_4f78fcdb662226 43,146-156,248-256,270,278,280,304-307,496-498,500-507,523-532
+  s_6d6420d5a3673f::t_fd93c3507b0e4a 353-358,361,372,536-545
+  s_6d6420d5a3673f::t_f51d50283397b8 367-371,373-375,377-409,411-426,467,474-479,481-482,487,599-605
+  s_6d6420d5a3673f::t_890d6f89ed4679 607,609-612
+  s_6d6420d5a3673f::t_3bc6b63d615e40 29-38,40,166-190,192,195-196,198-200,205-206,208,215,220-230,233,235-238,332
+  s_6d6420d5a3673f::t_31a8dbf22c8163 294-300,342-349,376,410,427-434,438-442,454,468-473,516-518,520
+  s_6d6420d5a3673f::t_4d365236cbea4f 495,521-522,547
+packages/cli/src/modules/instance-ai/__tests__/browser-local-mcp-server.test.ts
+  s_6d6420d5a3673f::t_a8501134fdbca7 35-42,66-134
+packages/@n8n/mcp-browser-extension/src/relayConnection.test.ts
+  s_6d6420d5a3673f::t_7584ea84068762 142,147-148,169,172,178-181,203-204,207,212-215,219-220,226-227,229-233
+  s_6d6420d5a3673f::t_9ac05b2f995d41 150-158,170-171,175-177,185-186,196-197,202,211,228
+  s_6d6420d5a3673f::t_5f3288f7315f82 143-146,149,159-168,173-174,182-184,187-195,198-201,205-206,208-210,216-218,221-225
+packages/cli/src/modules/instance-ai/browser/instance-ai-browser-session.service.ts
+  s_6d6420d5a3673f::t_a5585c3cec6e8a 10,214-216
+  s_6d6420d5a3673f::t_18a10604ab2d10 169,173-176
+  s_6d6420d5a3673f::t_0b355394083c13 177
+packages/@n8n/instance-ai/evaluations/typesafe-browser/grade.ts
+  s_6d6420d5a3673f::t_4a789723767d9a 18,61,72
+packages/@n8n/instance-ai/skills/credential-setup-with-computer-use/SKILL.md
+  s_6d6420d5a3673f::t_2423d76a6c3579 16,28,37,43-47,49,51,55-57,60-69,71-72,79-80
+  s_6d6420d5a3673f::t_3baf383c698d36 29-36
+packages/@n8n/mcp-browser/src/typesafe/snapshot-elements.ts
+  s_6d6420d5a3673f::t_6ae25273668411 17-23,36-39,45-51,62-69,74-76,78-104,107,111-112,114-116,118,122-126,128-129,140,144-159,176-189,194,204,218
+  s_6d6420d5a3673f::t_8a52c089069d4b 52-61,190-193,195-198,200-203
+  s_6d6420d5a3673f::t_1f9273f659fe0b 108,119-121,127,131-137
+  s_6d6420d5a3673f::t_47829f72821486 30-35,199
+  s_6d6420d5a3673f::t_0da08b02e63ba7 24-29,217
+  s_6d6420d5a3673f::t_7bd93a5c746c00 205
+packages/@n8n/mcp-browser/src/types.ts
+  s_6d6420d5a3673f::t_f6e1c5f5f55003 322-325,328-336
+  s_6d6420d5a3673f::t_17076b07f7603b 106-112,250-256
+  s_6d6420d5a3673f::t_e5010d09b3dbe1 6,291,318-321
+packages/@n8n/mcp-browser/src/typesafe/decide.ts
+  s_6d6420d5a3673f::t_ff2b517fee944a 70-94,98-101,104-119
+  s_6d6420d5a3673f::t_cdce5a875867d0 145,148-150
+  s_6d6420d5a3673f::t_b85bd943faa553 14,42,44,166-169,172-174
+  s_6d6420d5a3673f::t_2a2422ce0884cb 95-97
+  h_44f8d1c0f2f8c4 12-13,16,68-69,102-103,120-121,143
+  s_6d6420d5a3673f::t_5f48334290256f 25-38,122,137,155,179-183,188
+packages/@n8n/instance-ai/evaluations/typesafe-browser/fixtures/cases.json
+  s_6d6420d5a3673f::t_1c90387eeb1c79 12-15,34-37,43-45,52-55,61-63,78-81,87-90,93-95,107-110
+  s_6d6420d5a3673f::t_65dd23acd1d379 21-27,64-71
+packages/@n8n/mcp-browser/src/adapters/playwright.ts
+  s_6d6420d5a3673f::t_80e3bc42d7c087 481-485
+  s_6d6420d5a3673f::t_ec9045e8a5a93e 488-490
+  s_6d6420d5a3673f::t_01b0f26776ecd0 474-478
+  s_6d6420d5a3673f::t_17076b07f7603b 435,465-470
+packages/@n8n/mcp-browser/src/typesafe/__tests__/typesafe.test.ts
+  s_6d6420d5a3673f::t_d450a55e25cb8a 354,374,386
+  s_6d6420d5a3673f::t_86344f5a6d914f 6-11,41
+  s_6d6420d5a3673f::t_49edf1245405ea 3,119,241-262,264-272,274,277-312,336-337,340-341,343,345,367,415,450,466,483
+  s_6d6420d5a3673f::t_b309eec68ca371 118,408,446,453-460
+  s_6d6420d5a3673f::t_223c090840d2f0 4,74-85,87-91,93,96-98,107-109,111-112,115-117
+  s_6d6420d5a3673f::t_fd0322c37a26f3 30-34,313-333,335,338-339
+  s_6d6420d5a3673f::t_e76bb6b6f6fe4d 383-385,387-390,393-396,400-407
+  s_6d6420d5a3673f::t_2880d69f538b8e 121-131,133-134,137-138,140,143-150,152-154,157-174
+  s_6d6420d5a3673f::t_098082bcf75d80 94-95,99-106
+  s_6d6420d5a3673f::t_969cca26789d87 12,17
+  s_6d6420d5a3673f::t_81a38f4d4c6388 175-214,216-224,238-240
+  s_6d6420d5a3673f::t_569e4469b407ea 13,215,225-237
+  s_6d6420d5a3673f::t_bddae720b8c02d 421,424-426,431-432,436-445,447-448,451
+  s_6d6420d5a3673f::t_cc537998428d18 375-378
+  s_6d6420d5a3673f::t_7642d1c2cbb68c 409,449,452,461
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-browser-session.service.test.ts
+  s_6d6420d5a3673f::t_f72a4d7870170c 42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "229bc2e0dd7c49edd9791a1db7bbb279c7572b6c",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6d6420d5a3673f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a060fba8-8802-48fb-aef4-f374b0165fd9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

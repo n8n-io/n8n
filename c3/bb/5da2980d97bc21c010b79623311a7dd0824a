@@ -1,0 +1,58 @@
+packages/frontend/editor-ui/src/features/execution/executions/components/global/GlobalExecutionsList.vue
+  s_d82581cb59f8e5::t_733f66724691ab 355
+  s_d82581cb59f8e5::t_26e50b335542f8 356
+packages/frontend/editor-ui/src/features/execution/executions/executions.constants.ts
+  s_d82581cb59f8e5::t_e8d9863ddf169a 6-10
+  s_d82581cb59f8e5::t_8206fb4cf172dd 1-2,4-5
+packages/frontend/editor-ui/src/features/execution/executions/executions.utils.test.ts
+  s_d82581cb59f8e5::t_8ad58bb9a85894 6
+  s_d82581cb59f8e5::t_fb4b33f2635861 1065-1066,1068-1071,1073-1086
+  s_d82581cb59f8e5::t_1a4d0140233143 1072
+  h_2db37d250ed063 22,1067
+packages/frontend/editor-ui/src/features/execution/executions/components/ConcurrentExecutionsHeader.vue
+  s_d82581cb59f8e5::t_539086a7b3208c 58-62
+  s_d82581cb59f8e5::t_ee38a3809db5f2 13-14
+  s_d82581cb59f8e5::t_559ac8934d8b22 4,7-8
+  s_d82581cb59f8e5::t_6a140e83c5bdcd 36,38-42
+  h_2db37d250ed063 37
+  s_d82581cb59f8e5::t_c0f4ad3ce804ec 43
+packages/frontend/editor-ui/src/features/execution/executions/executions.utils.ts
+  s_d82581cb59f8e5::t_0d446f618536bb 50,54-55
+  s_d82581cb59f8e5::t_79e71a791d0074 51-53
+  s_d82581cb59f8e5::t_46ef839c756e20 6,10
+packages/frontend/editor-ui/src/features/execution/executions/components/workflow/WorkflowExecutionsSidebar.vue
+  s_d82581cb59f8e5::t_9c6c812c418469 184
+  s_d82581cb59f8e5::t_34bc1a056d08fd 185
+packages/frontend/editor-ui/src/features/execution/executions/components/ExecutionStopAllText.vue
+  s_d82581cb59f8e5::t_15c64149db6238 18
+  s_d82581cb59f8e5::t_486bc66e638f74 9
+packages/frontend/editor-ui/src/features/execution/executions/components/ConcurrentExecutionsHeader.test.ts
+  s_d82581cb59f8e5::t_184882a6bd6605 72-73,82
+  h_2db37d250ed063 6,51,64,77-78
+  s_d82581cb59f8e5::t_096a7322c526d4 33-34
+  s_d82581cb59f8e5::t_e2c6119c079150 50,74-76,79-81,83
+  s_d82581cb59f8e5::t_8d02aee5040f91 20-23
+  s_d82581cb59f8e5::t_1659d34139a2ee 59-63,65-71
+  s_d82581cb59f8e5::t_3f7d693404f585 84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "c3bb5da2980d97bc21c010b79623311a7dd0824a",
+  "prompts": {},
+  "humans": {
+    "h_2db37d250ed063": {
+      "author": "Nour Alhadi Mahmoud <nouralhadi@Nours-MacBook-Pro.local>"
+    }
+  },
+  "sessions": {
+    "s_d82581cb59f8e5": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "693e2935-3cb0-4987-a71f-4356da1de891",
+        "model": "default"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

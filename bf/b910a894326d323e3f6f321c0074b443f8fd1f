@@ -1,0 +1,48 @@
+packages/cli/test/integration/workflows/workflow-publication-outbox-consumer.test.ts
+  s_7de970a796cb99::t_5e30c746f40cf0 10
+  s_7de970a796cb99::t_f6a39e14e07981 11-13,15
+  s_7de970a796cb99::t_84a456a34c74d5 28,229
+  s_7de970a796cb99::t_de8be62d2eab83 29
+  s_7de970a796cb99::t_0c99cd62911620 30
+packages/cli/src/workflows/publication/published-workflow-trigger-deactivator.ts
+  s_7de970a796cb99::t_66eedebafb14e6 4,22-27
+  s_08c458d16c2474::t_d3c98469066d67 30
+  s_7de970a796cb99::t_de8be62d2eab83 40
+  s_08c458d16c2474::t_6fd25f90f59249 44
+packages/cli/src/workflows/publication/workflow-publication-outbox-consumer.ts
+  s_08c458d16c2474::t_0cd2fbef0aa1a9 4,17-22
+  s_7de970a796cb99::t_0c99cd62911620 12,41
+  ai_agent 50
+  s_7de970a796cb99::t_0a98f314d6521b 140,157-158
+packages/cli/src/workflows/publication/__tests__/workflow-publication-outbox-consumer.test.ts
+  s_7de970a796cb99::t_0c99cd62911620 10,41
+packages/cli/src/workflows/publication/__tests__/published-workflow-trigger-deactivator.test.ts
+  s_7de970a796cb99::t_de8be62d2eab83 6,10,27
+  s_08c458d16c2474::t_485e393f31aa92 9,20,32
+  s_7de970a796cb99::t_6819c02eab6243 21
+  s_08c458d16c2474::t_2d13147841a350 46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bfb910a894326d323e3f6f321c0074b443f8fd1f",
+  "prompts": {},
+  "sessions": {
+    "s_08c458d16c2474": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ed539-5c9b-7bb3-9943-14ebc80f6a6b",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_7de970a796cb99": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f62a054f-5d45-407f-925f-ca757e8963c9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

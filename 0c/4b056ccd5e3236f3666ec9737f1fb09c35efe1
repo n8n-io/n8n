@@ -1,0 +1,56 @@
+docs/generated/postgres-schema/README.md
+  ai_agent 92,1238
+docs/generated/sqlite-schema/README.md
+  ai_agent 92,1224
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting.integration.test.ts
+  s_962d43ccec2776::t_acc60a77ae2678 24-27,702-705,748-750
+  s_962d43ccec2776::t_b49c7c9cf913e2 669-701,706-747,751-755
+  s_962d43ccec2776::t_2193c5d34972da 197
+  s_962d43ccec2776::t_6c957efff7bffc 194-196,198-200,205,207-210,212,236
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting.service.test.ts
+  s_962d43ccec2776::t_cb4be8adcd25a2 343,509-516
+  s_962d43ccec2776::t_384af09c19879b 333-339,344-351
+packages/cli/test/migration/1790262708467-add-report-date-to-instance-monitoring-report.test.ts
+  ai_agent 71-73
+  s_962d43ccec2776::t_b975afed3cbc72 1-70,74-174,176-224
+  s_962d43ccec2776::t_9bf04b407a889a 175
+packages/cli/src/modules/instance-reporting.ee/database/repositories/instance-monitoring-report.repository.ts
+  s_962d43ccec2776::t_23e6bc4da27138 58-59,76-78
+  s_962d43ccec2776::t_dd4b9726b4767b 1,3,51,57,61-75,79,137-138
+docs/generated/sqlite-schema/instance_monitoring_report.md
+  ai_agent 9,25,33,41,58
+docs/generated/postgres-schema/public.instance_monitoring_report.md
+  ai_agent 14,35,52
+packages/cli/src/modules/instance-reporting.ee/database/repositories/__tests__/instance-monitoring-report.repository.integration.test.ts
+  s_962d43ccec2776::t_cb4be8adcd25a2 62,64,66-87
+  s_962d43ccec2776::t_11b19bc1232406 31-37,40,50-61,63,88-95,100,111,121,147,163,169,177,184,191-202,211,217,230,233,235,243,249,252,262,266,268,270,280,295
+  s_962d43ccec2776::t_3d30ac2772f79e 65
+packages/cli/src/modules/instance-reporting.ee/instance-reporting.service.ts
+  s_962d43ccec2776::t_23e6bc4da27138 131,135-142
+  s_962d43ccec2776::t_d65b44dc0fbfa6 128-130,132-134
+packages/@n8n/db/src/migrations/common/1790262708467-AddReportDateToInstanceMonitoringReport.ts
+  s_962d43ccec2776::t_f10b10646394c9 3-5,7-42,44-51,53-61,64-65
+  s_962d43ccec2776::t_bc5cffb611abdf 1-2,6,43,52,66-67
+  s_962d43ccec2776::t_9b43ae0bd6ba21 62-63
+packages/cli/src/modules/instance-reporting.ee/database/entities/instance-monitoring-report.ts
+  s_962d43ccec2776::t_b23f654b12e324 2,32,36,42-43
+  s_962d43ccec2776::t_1c2d513d4800af 33,41
+packages/cli/src/modules/instance-reporting.ee/LOCAL_VERIFICATION.md
+  s_962d43ccec2776::t_9b36d94d399b06 168,182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0c4b056ccd5e3236f3666ec9737f1fb09c35efe1",
+  "prompts": {},
+  "sessions": {
+    "s_962d43ccec2776": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "233f22c3-b9f5-4cc1-9822-ed824c2ef59d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

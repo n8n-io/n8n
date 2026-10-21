@@ -1,0 +1,28 @@
+packages/cli/src/scheduling/schedule-trigger-node/__tests__/schedule-trigger-job-registrar.test.ts
+  s_7219aabe8f128b::t_59593c6276a214 296-300,308,317-372
+  s_7219aabe8f128b::t_e3b4e33c787ddd 301-307,309-316
+packages/cli/src/scheduling/schedule-trigger-node/schedule-trigger-job-registrar.ts
+  s_7219aabe8f128b::t_fc2123e99cefbf 176,185-186,188,190,230
+  h_32d8cd6a0d6aad 187,189,229,231
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "659df3673622d1f29e5df2b04c36fd7a49d87608",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_7219aabe8f128b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0e7e2-310f-7672-9c03-7bb788547509",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

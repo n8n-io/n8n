@@ -1,0 +1,38 @@
+packages/@n8n/permissions/src/roles/__tests__/custom-role-scopes.test.ts
+  s_71ad2034164515::t_710bec87c61fbd 57-64
+  s_71ad2034164515::t_6ebbb4f11cc051 56
+  s_71ad2034164515::t_fc5579906bd0df 56
+packages/cli/test/integration/public-api/n8n-packages-import-agents.test.ts
+  s_71ad2034164515::t_710bec87c61fbd 25
+  s_71ad2034164515::t_87cf04b140c249 92,99
+  s_71ad2034164515::t_a8c45f902b6a1c 92,99
+packages/cli/src/public-api/v1/controllers/openapi/n8n-packages.openapi.ts
+  s_71ad2034164515::t_710bec87c61fbd 26
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/exportPackage.generated.yml
+  s_71ad2034164515::t_07751f2d41a948 29
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  s_71ad2034164515::t_0cfbbdf4d11166 258
+  s_71ad2034164515::t_62db8b2149860d 258
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  s_71ad2034164515::t_470aaffb434a80 1042
+  s_71ad2034164515::t_3b031899712c63 1042
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_71ad2034164515::t_6d9930f33020dc 2720
+  s_71ad2034164515::t_c59bae5f310e4d 2720
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3c2e3b8f1de0b455ff038bc602c7a4e0d53a43b4",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

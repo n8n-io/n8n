@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/__tests__/execution-recorder.test.ts
+  s_c5954c3047b5ed::t_c0e3d548b9ff77 294-328
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e69de727f815dba1ade0b6d94a43eecc7ed7a077",
+  "prompts": {},
+  "sessions": {
+    "s_c5954c3047b5ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cf61-9581-7951-a01f-21637c8a6267",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

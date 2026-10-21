@@ -1,0 +1,19 @@
+packages/cli/src/modules/engine-v2/engine-v2.runtime.ts
+  s_7d582b41f4f5d6::t_b7256e4159aed7 145-149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "aed9042a1211448ef109442c6bed1e620d25b7eb",
+  "prompts": {},
+  "sessions": {
+    "s_7d582b41f4f5d6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "63bff858-2ef6-4f03-8a08-35f7ca19bbb0",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+packages/@n8n/db/src/repositories/activity-event.repository.ts
+  s_31400deb742e98::t_b8d29a9f41c7af 122-144
+packages/cli/test/integration/activity-event.repository.test.ts
+  s_31400deb742e98::t_b8d29a9f41c7af 90-180
+packages/cli/src/modules/instance-ai/__tests__/instance-context.service.test.ts
+  s_31400deb742e98::t_21e68c4d671674 439-445
+  s_31400deb742e98::t_1c69450ca2fdd7 469-470,477-629
+  s_31400deb742e98::t_a442229b78b605 70-71
+  s_31400deb742e98::t_143aa3b6879b4b 354-357,360
+  s_31400deb742e98::t_c25b27f0ee2a62 675,689-692
+packages/cli/src/modules/instance-ai/instance-context.service.ts
+  s_31400deb742e98::t_8d17e2f779e963 418-424
+  s_31400deb742e98::t_4a795509b32856 75-78
+  s_31400deb742e98::t_50311d003dbcac 349,352,355-363,365-379,382-389
+  s_31400deb742e98::t_4ecb1d34c2dd86 117-123
+  s_31400deb742e98::t_ca7374c73b448d 364,392
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "276bfb2bf9c80ff04a53154eab72097a12df231c",
+  "prompts": {},
+  "sessions": {
+    "s_31400deb742e98": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a781e7b0-e3f3-4f5b-9d44-f719cb2c6801",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_92e20c68e51569::t_e2ef4c81519947 7734,7773-7775
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalsSection.test.ts
+  s_92e20c68e51569::t_e2ef4c81519947 26-27
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderMainTabs.ts
+  s_92e20c68e51569::t_e2ef4c81519947 93
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalsSection.vue
+  s_92e20c68e51569::t_e2ef4c81519947 31,34,45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c58ad1568e0f6f2d92f87936b9bdeb374650b6ba",
+  "prompts": {},
+  "sessions": {
+    "s_92e20c68e51569": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5963f094-8ebc-43fb-8bdc-b99959ea383a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

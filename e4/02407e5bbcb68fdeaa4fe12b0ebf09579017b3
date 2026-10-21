@@ -1,0 +1,19 @@
+packages/core/src/execution-engine/__tests__/routing-node.test.ts
+  s_4d4515bb8fac55::t_fd665e3972b59c 2753
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e402407e5bbcb68fdeaa4fe12b0ebf09579017b3",
+  "prompts": {},
+  "sessions": {
+    "s_4d4515bb8fac55": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f14552f87ffereMDSk0BMf7UFE",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

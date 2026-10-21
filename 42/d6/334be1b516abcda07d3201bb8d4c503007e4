@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ResourceMapper/MappingFields.vue
+  s_2c121cd2d81e56::t_b11a6a1d05a15e 273
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ResourceMapper/ResourceMapper.test.ts
+  s_2c121cd2d81e56::t_1c3245b44c1bda 80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "42d6334be1b516abcda07d3201bb8d4c503007e4",
+  "prompts": {},
+  "sessions": {
+    "s_2c121cd2d81e56": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc45e65d-b973-4df7-a1b0-bb06ea7009d5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

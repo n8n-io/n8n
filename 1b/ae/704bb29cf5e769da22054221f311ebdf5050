@@ -1,0 +1,22 @@
+packages/cli/src/controllers/security-settings.controller.ts
+  s_eb9295e8672673::t_a881f878dd75b4 87,95,98-100,110-126
+  s_eb9295e8672673::t_30b0a90a63c3fa 32-33,39,45-47
+  s_eb9295e8672673::t_d8cfe47a26f081 50-53
+  s_eb9295e8672673::t_e3f0522c74650e 80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "1bae704bb29cf5e769da22054221f311ebdf5050",
+  "prompts": {},
+  "sessions": {
+    "s_eb9295e8672673": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5a13f8c-0337-46bf-976e-7e6f21af25ec",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

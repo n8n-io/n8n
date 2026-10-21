@@ -1,0 +1,67 @@
+packages/cli/src/modules/dynamic-credentials.ee/services/__tests__/dynamic-credential.service.test.ts
+  s_f1ec53985243f9::t_2acbf1889c481f 428
+packages/frontend/editor-ui/src/app/composables/useNodeHelpers.test.ts
+  s_6772ebb7c730a0::t_500769797ce7b3 1304,1336
+  s_6772ebb7c730a0::t_66745aeccd2c79 1073
+  s_6772ebb7c730a0::t_ec2c4b927a8f36 1119-1152
+  s_f1ec53985243f9::t_585ec2a49b7bce 1186-1188,1198-1200
+  s_6772ebb7c730a0::t_2060a48edad97f 898
+packages/cli/src/modules/dynamic-credentials.ee/errors/missing-execution-context.error.ts
+  s_f1ec53985243f9::t_2f12fdb4e425ca 8-11
+packages/frontend/editor-ui/src/app/components/WorkflowCard.vue
+  s_f1ec53985243f9::t_91d4ab1db7a434 794-798
+  s_f1ec53985243f9::t_63ec88f45fda0f 645
+  s_f1ec53985243f9::t_5ab5f69f49cafd 631,642-644,646-652
+  s_f1ec53985243f9::t_fb8b5d169848a6 653
+packages/frontend/editor-ui/src/app/composables/useNodeHelpers.ts
+  s_6772ebb7c730a0::t_9d426d6e12a17d 2
+  s_6772ebb7c730a0::t_409e0f594a4c0b 420-430,436-448
+  s_6772ebb7c730a0::t_9a42e12f16cf54 476-478,480-482,484-485
+packages/cli/src/__tests__/credentials-helper.test.ts
+  s_f1ec53985243f9::t_f94706f6c3a57d 1296,1330
+packages/frontend/editor-ui/src/features/credentials/components/CredentialCard.vue
+  s_f1ec53985243f9::t_8e4a77e5aaa0fc 335-340
+  s_f1ec53985243f9::t_22462a3795d086 253-263
+packages/workflow/src/execution-context-establishment-hooks.ts
+  s_6772ebb7c730a0::t_726e2a86601c46 45-49,52-54
+packages/workflow/test/trigger-identity.test.ts
+  s_6772ebb7c730a0::t_f31240ba6a4180 71-80
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_6772ebb7c730a0::t_6aec4be4c754b6 405-422
+packages/frontend/editor-ui/src/features/resolvers/ResolversView.vue
+  s_f1ec53985243f9::t_2186d5376309fa 33
+packages/cli/src/modules/dynamic-credentials.ee/services/dynamic-credential.service.ts
+  s_f1ec53985243f9::t_282638ee6869f1 294
+packages/cli/src/workflows/workflow-validation.service.ts
+  s_f1ec53985243f9::t_81bdd2d310c9a6 386-394,402-405,412,417-422
+  s_f1ec53985243f9::t_7dccbed13f3f06 346-349,355
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_f1ec53985243f9::t_1301925145faa4 1051
+  s_6772ebb7c730a0::t_4ad7d00303e12a 3987-3988
+packages/cli/src/workflows/__tests__/workflow-validation.service.test.ts
+  s_f1ec53985243f9::t_8d05c61d9106c0 898-925
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "08b930ab84172d2e70cf5d04e31e447043113ca0",
+  "prompts": {},
+  "sessions": {
+    "s_6772ebb7c730a0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c7453c5-2df8-4a2e-b79c-e770a1476905",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_f1ec53985243f9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "41b971aa-41b6-456d-854b-ce0a86c09377",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_26ab6076a72cdf::t_cd0b7095b50f25 470-477,483-484
+packages/@n8n/agents/src/sdk/__tests__/inline-sub-agent-tools.test.ts
+  s_26ab6076a72cdf::t_43d573f1b41e83 314-318
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_26ab6076a72cdf::t_a96b03f8bbb521 556
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "d6c25b64e7457e1cae079c7a7e7343264f903492",
+  "prompts": {},
+  "sessions": {
+    "s_26ab6076a72cdf": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "fda3005c-2ac9-47b2-a739-2932e10c066d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

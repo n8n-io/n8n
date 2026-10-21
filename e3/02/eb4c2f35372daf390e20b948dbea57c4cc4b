@@ -1,0 +1,20 @@
+packages/@n8n/instance-ai/src/tools/nodes.tool.ts
+  s_be6d12de03f718::t_4a717b1538fe91 567
+  s_be6d12de03f718::t_248ce5294a8f3a 189-198,201
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "e302eb4c2f35372daf390e20b948dbea57c4cc4b",
+  "prompts": {},
+  "sessions": {
+    "s_be6d12de03f718": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e840698b-e5eb-4103-8068-58943bcae715",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

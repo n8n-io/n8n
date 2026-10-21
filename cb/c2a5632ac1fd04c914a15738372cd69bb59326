@@ -1,0 +1,19 @@
+packages/cli/src/public-api/v1/openapi-gen/data-tables.schemas.ts
+  s_d8ed300529e078::t_07e25dcb842ef5 4-9,11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "cbc2a5632ac1fd04c914a15738372cd69bb59326",
+  "prompts": {},
+  "sessions": {
+    "s_d8ed300529e078": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eecbddea-2084-4432-846e-23aea5392cb3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

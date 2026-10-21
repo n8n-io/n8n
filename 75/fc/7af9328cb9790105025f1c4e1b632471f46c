@@ -1,0 +1,40 @@
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_5898c5107615d4::t_d37d60beac3a7b 366-373
+  s_5898c5107615d4::t_724e715e7b96df 17
+  s_5898c5107615d4::t_ed5b86759d6cbf 222-225
+packages/cli/src/modules/promotions.ee/__tests__/working-copy-updater.test.ts
+  s_5898c5107615d4::t_bc498ebfb8f02c 179-207
+packages/cli/src/modules/promotions.ee/working-copy-updater.ts
+  s_5898c5107615d4::t_fe5f782749983f 291
+  s_5898c5107615d4::t_93ded71ce18cfc 96-112
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_5898c5107615d4::t_7e89d06ea4f7bc 552,554-572,574,579-587
+  s_5898c5107615d4::t_532c561b946270 617
+  s_5898c5107615d4::t_559a0c84dfa962 703
+  s_5898c5107615d4::t_7b7d3228c32579 522,526,528-529
+  s_5898c5107615d4::t_c4750d388f3ace 595
+  s_5898c5107615d4::t_02db84f05f7d9b 644-647
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_5898c5107615d4::t_d72c1208451b77 493-508
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "75fc7af9328cb9790105025f1c4e1b632471f46c",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5898c5107615d4": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "6c30c6ec-02d5-49b8-b347-1837f44b9a81",
+        "model": "grok-4.6"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

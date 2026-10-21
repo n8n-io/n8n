@@ -1,0 +1,49 @@
+packages/cli/src/public-api/v1/handlers/otel/spec/schemas/otel-test-trace.yml
+  s_fa21170c500bbf::t_656df1f11aab20 28-31
+packages/@n8n/api-types/src/dto/index.ts
+  s_fa21170c500bbf::t_e3e9f6d2ca7a40 393
+packages/cli/src/modules/otel/__tests__/otel.service.test.ts
+  s_fa21170c500bbf::t_ce12a1b37761d2 252-267
+packages/@n8n/api-types/src/dto/otel/update-otel-settings.dto.ts
+  s_fa21170c500bbf::t_23f357e0002aaa 33
+  s_fa21170c500bbf::t_d32ce7bf134b5e 14-17,22,24-25,27
+  s_fa21170c500bbf::t_920bb3803b935b 18-21,23,26
+packages/cli/src/modules/otel/otel.config.ts
+  s_fa21170c500bbf::t_28f333678e902e 23
+  s_fa21170c500bbf::t_80289756bb6cbb 22
+  s_fa21170c500bbf::t_8e93f89fa2fccd 1
+packages/cli/src/modules/otel/otel.service.ts
+  s_fa21170c500bbf::t_ceeff04a7c9035 226-228,232,234-235
+  s_fa21170c500bbf::t_487756aea9ff3c 229-231
+packages/cli/src/modules/otel/__tests__/otel.config.test.ts
+  s_fa21170c500bbf::t_f91c95f256159c 1-3,5-24,35,37,40-78
+  s_fa21170c500bbf::t_009eecb25eb53a 4
+  s_fa21170c500bbf::t_8faada20e4d3e3 25-34,36,38-39
+packages/cli/src/modules/otel/README.md
+  s_fa21170c500bbf::t_f43ae93b0f2493 164-165
+  s_fa21170c500bbf::t_bef1977b849105 166-167
+packages/cli/src/public-api/v1/handlers/otel/spec/schemas/otel-settings.yml
+  s_fa21170c500bbf::t_74fc4a5967a8d4 38-41
+packages/@n8n/api-types/src/dto/otel/__tests__/update-otel-settings.dto.test.ts
+  s_fa21170c500bbf::t_41c2c40718c03f 106-108
+  s_fa21170c500bbf::t_cc0a232a431b60 93-94,109-138
+  s_fa21170c500bbf::t_0cbf825a85768c 231-232,246-257
+  s_fa21170c500bbf::t_b93420b690f34d 233-245
+  s_fa21170c500bbf::t_c5689759c4eb7c 95-104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "94e7473c19d1f05a608a498505e3b6015f32a06a",
+  "prompts": {},
+  "sessions": {
+    "s_fa21170c500bbf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a7e062f-7986-4e8e-92a3-0c7d5a16f6d2",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}

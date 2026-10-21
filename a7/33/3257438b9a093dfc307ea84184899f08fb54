@@ -1,0 +1,9 @@
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 11-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a7333257438b9a093dfc307ea84184899f08fb54",
+  "prompts": {}
+}

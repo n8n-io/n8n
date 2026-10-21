@@ -1,0 +1,85 @@
+packages/cli/src/modules/breaking-changes/README.md
+  s_40f0e5997be16b::t_d9ce7d1e366da7 33-34,135-151
+  s_40f0e5997be16b::t_85876857707f7d 152
+packages/cli/src/modules/breaking-changes/query/migration-finding-query.service.ts
+  s_40f0e5997be16b::t_7c2e0d6e18ab88 4-5,110-113,117,123,136,146
+packages/cli/src/modules/breaking-changes/sync/migration-finding-diff.ts
+  s_40f0e5997be16b::t_dde87b7305fb59 42-46,48,72-74
+packages/frontend/editor-ui/src/features/settings/migrationReport/components/FindingStateSelect.test.ts
+  s_40f0e5997be16b::t_e1c6466df1e1eb 1-58
+packages/cli/src/modules/breaking-changes/sync/__tests__/migration-finding-sync.service.test.ts
+  s_40f0e5997be16b::t_ad7ce4313ec25e 216-227
+packages/@n8n/api-types/src/dto/index.ts
+  s_40f0e5997be16b::t_8c309e928574cf 56
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_40f0e5997be16b::t_3ed2240f65d848 4572-4577
+packages/cli/src/modules/breaking-changes/query/__tests__/migration-finding-query.service.test.ts
+  s_40f0e5997be16b::t_5e079655747629 6,28,97,100-103,157,258-260,266-276,289,320,330,337-338,365-366,391-392,398,429-430,450
+packages/cli/src/modules/breaking-changes/database/repositories/migration-finding.repository.ts
+  s_40f0e5997be16b::t_92eb6a2d3b9933 2-6,21-23,27-28,32-34,97-101,105-106,111,114,118-149
+  s_40f0e5997be16b::t_ac3b151a03ca7c 29-31
+  s_40f0e5997be16b::t_88106bfb2bc9dc 1
+packages/@n8n/api-types/src/schemas/breaking-changes.schema.ts
+  s_40f0e5997be16b::t_706c60ac45fa2d 44-50
+  s_40f0e5997be16b::t_5dcb81635faf84 116-126
+packages/@n8n/api-types/src/dto/breaking-changes/update-migration-finding-status-request.dto.ts
+  s_40f0e5997be16b::t_8c309e928574cf 1-6
+packages/@n8n/api-types/src/dto/breaking-changes/__tests__/update-migration-finding-status-request.dto.test.ts
+  s_40f0e5997be16b::t_7d59343b0b0075 1-16
+packages/cli/src/modules/breaking-changes/sync/__tests__/migration-finding-diff.test.ts
+  s_40f0e5997be16b::t_6433b37ceb9627 88-109,117,170-175,180
+  s_40f0e5997be16b::t_f4c8c28a00136a 176-179,181
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRuleDetail.test.ts
+  s_40f0e5997be16b::t_be3b85402c96a6 202-205,299-300,304,323-324
+  s_40f0e5997be16b::t_e3432d225c7677 289-298,301-303,305-322,325-327
+  s_40f0e5997be16b::t_cdf297a54894ca 216-219
+  s_40f0e5997be16b::t_e237e39dcbbb19 2,13,18-34,48,66,85,102-103,190-201,206-215,220-288,328-336,338-346
+packages/@n8n/api-types/src/index.ts
+  s_40f0e5997be16b::t_8c309e928574cf 334-335,340,347
+packages/frontend/@n8n/rest-api-client/src/api/breaking-changes.ts
+  s_40f0e5997be16b::t_dbdbab5cb9c1cb 3,5,37,52-58
+  s_40f0e5997be16b::t_6db8845617eb6a 59-62,64
+  s_40f0e5997be16b::t_dc551d6b03720a 63
+  s_40f0e5997be16b::t_2a8f822d5f26bf 65
+packages/cli/src/modules/breaking-changes/__tests__/breaking-changes.controller.test.ts
+  s_40f0e5997be16b::t_1fd67a63d0ae46 202,207-209
+  s_40f0e5997be16b::t_2b208e7021d47d 4,19,39,57,65,71,203-206,210-221
+  s_40f0e5997be16b::t_e3432d225c7677 7-8,222-233
+  s_40f0e5997be16b::t_6caad13acfd577 234
+packages/cli/src/modules/breaking-changes/__tests__/migration-finding.repository.integration.test.ts
+  s_40f0e5997be16b::t_1fd67a63d0ae46 1,43-47,342-343,346-347,349-350,356,358-359,361,365-368,370,372,380,387-391,396-484,487-518
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRuleDetail.vue
+  s_40f0e5997be16b::t_fc0e186cce56c5 112
+  s_40f0e5997be16b::t_f58ad9eb558c47 7-11,30,37,42-43,51,54,71,109-111
+  s_40f0e5997be16b::t_8f48f43b9dd675 434
+  s_40f0e5997be16b::t_50c16aac86aea3 153,158-159,163-177,179-180,182-189,191,196-198,325,429-431,433,435
+  s_40f0e5997be16b::t_e26ffc897523be 151-152,154-157,160-162,178,181,190,192-195,432
+  s_40f0e5997be16b::t_817a7def0a0ae6 113,436
+packages/cli/src/modules/breaking-changes/breaking-changes.controller.ts
+  s_40f0e5997be16b::t_1fd67a63d0ae46 4,6,10,18,31,74,87-97
+  s_40f0e5997be16b::t_09c7e775223718 98-99
+packages/cli/src/modules/breaking-changes/triage/migration-finding-triage.service.ts
+  s_40f0e5997be16b::t_82a1c6f270bc33 42
+  s_40f0e5997be16b::t_ede4047096d6ca 1-41,43-46
+packages/frontend/editor-ui/src/features/settings/migrationReport/components/FindingStateSelect.vue
+  s_40f0e5997be16b::t_e26ffc897523be 16-17,49,51
+  s_40f0e5997be16b::t_694a016737dae3 1-15,18-48,50,52-72
+packages/cli/src/modules/breaking-changes/triage/__tests__/migration-finding-triage.service.test.ts
+  s_40f0e5997be16b::t_c00ccc7e510b40 1-80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4ed29d7c6ad9eaf02cdc3d9a76dedfa5b3c61174",
+  "prompts": {},
+  "sessions": {
+    "s_40f0e5997be16b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fdc569ed-d579-4702-8543-a504ddfd3482",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
