@@ -61,6 +61,7 @@ import type { AgentTaskRepository } from '@/modules/agents/repositories/agent-ta
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentSecureRuntime } from '@/modules/agents/runtime/agent-secure-runtime';
 import { getAgentConfigHash } from '@/modules/agents/utils/agent-config-hash';
+import type { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { RegisterToolFn } from '@/modules/mcp/mcp.types';
 import { NodeTypes } from '@/node-types';
@@ -230,7 +231,12 @@ describe('McpAgentToolsService', () => {
 		const agentRepository = mock<AgentRepository>();
 		const runtimeCacheService = mock<AgentRuntimeCacheService>();
 		const lifecycleTelemetry = mock<Telemetry>();
-		const modificationTelemetry = new AgentModificationTelemetryService(lifecycleTelemetry);
+		const modificationTelemetry = new AgentModificationTelemetryService(
+			lifecycleTelemetry,
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			mock<EventService>(),
+			// EOF Experiment cleanup
+		);
 		const localCredentialsService = mock<CredentialsService>();
 		const workflowRepository = mock<WorkflowRepository>();
 		const agentTaskRepository = mock<AgentTaskRepository>();
@@ -276,6 +282,7 @@ describe('McpAgentToolsService', () => {
 			transactionRunner,
 			saveCompletion,
 			agentSkillRefs,
+			mock<ChatIntegrationRegistry>(),
 		);
 		agentCustomToolsService.buildCustomTool.mockImplementation(
 			async (agentId, projectId, code, descriptor, context, options) =>

@@ -50,6 +50,9 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [ai_builder_temporary_workflow](ai_builder_temporary_workflow.md) | 4 |  | table |
 | [ai_preference](ai_preference.md) | 8 |  | table |
 | [annotation_tag_entity](annotation_tag_entity.md) | 4 |  | table |
+| [app](app.md) | 9 |  | table |
+| [app_artifact](app_artifact.md) | 8 |  | table |
+| [app_version](app_version.md) | 10 |  | table |
 | [auth_identity](auth_identity.md) | 5 |  | table |
 | [auth_provider_sync_history](auth_provider_sync_history.md) | 11 |  | table |
 | [binary_data](binary_data.md) | 9 |  | table |
@@ -134,7 +137,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [settings](settings.md) | 3 |  | table |
 | [shared_credentials](shared_credentials.md) | 5 |  | table |
 | [shared_workflow](shared_workflow.md) | 5 |  | table |
-| [skill](skill.md) | 7 |  | table |
+| [skill](skill.md) | 8 |  | table |
 | [skill_file](skill_file.md) | 5 |  | table |
 | [skill_version](skill_version.md) | 11 |  | table |
 | [tag_entity](tag_entity.md) | 4 |  | table |
@@ -253,6 +256,12 @@ erDiagram
 "ai_preference" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "ai_preference" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "ai_preference" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"app" }o--o| "app_version" : "FOREIGN KEY (publishedVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"app" }o--o| "app_version" : "FOREIGN KEY (draftVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"app" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"app_version" }o--o| "app_artifact" : "FOREIGN KEY (bundleArtifactId) REFERENCES app_artifact (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"app_version" }o--|| "app_artifact" : "FOREIGN KEY (sourceArtifactId) REFERENCES app_artifact (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
+"app_version" }o--|| "app" : "FOREIGN KEY (appId) REFERENCES app (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "auth_identity" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 "chat_hub_agent_tools" |o--|| "chat_hub_tools" : "FOREIGN KEY (toolId) REFERENCES chat_hub_tools (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "chat_hub_agent_tools" |o--|| "chat_hub_agents" : "FOREIGN KEY (agentId) REFERENCES chat_hub_agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -886,6 +895,39 @@ erDiagram
   datetime_3_ createdAt
   varchar_16_ id PK
   varchar_24_ name
+  datetime_3_ updatedAt
+}
+"app" {
+  datetime_3_ createdAt
+  varchar draftVersionId FK
+  varchar id PK
+  varchar_128_ name
+  varchar_128_ namespace
+  varchar_36_ projectId FK
+  varchar publishedVersionId FK
+  datetime_3_ updatedAt
+  varchar_16_ visibility
+}
+"app_artifact" {
+  varchar appId
+  datetime_3_ createdAt
+  INTEGER id
+  INTEGER sizeBytes
+  TEXT storageKey
+  varchar_2_ storedAt
+  datetime_3_ updatedAt
+  varchar_16_ uploadStatus
+}
+"app_version" {
+  varchar appId FK
+  INTEGER buildAttempts
+  varchar_16_ buildStatus
+  datetime_3_ buildStatusUpdatedAt
+  INTEGER bundleArtifactId FK
+  datetime_3_ createdAt
+  varchar id PK
+  varchar_255_ label
+  INTEGER sourceArtifactId FK
   datetime_3_ updatedAt
 }
 "auth_identity" {
@@ -1691,6 +1733,7 @@ erDiagram
 }
 "skill" {
   varchar_36_ agentId FK
+  boolean availableToAssistant
   datetime_3_ createdAt
   varchar createdById FK
   varchar_36_ id PK

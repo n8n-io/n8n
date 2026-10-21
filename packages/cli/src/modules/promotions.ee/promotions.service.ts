@@ -1,15 +1,17 @@
-import type {
-	ApplyPackageDto,
-	ApplyPackageResultDto,
-	ApplySelectionDto,
-	ContinueApplyPackageDto,
-	ContinueApplySelectionDto,
-	PromotePackageDto,
-	PromotePackageResultDto,
-	PromotionBindingConflict,
-	PromoteRequest,
-	PromotionCheckoutPublicDto,
-	PromotionDirection,
+import {
+	parsePromotionRunDetails,
+	promotionRunTypeSchema,
+	type ApplyPackageDto,
+	type ApplyPackageResultDto,
+	type ApplySelectionDto,
+	type ContinueApplyPackageDto,
+	type ContinueApplySelectionDto,
+	type PromotePackageDto,
+	type PromotePackageResultDto,
+	type PromoteRequest,
+	type PromotionBindingConflict,
+	type PromotionCheckoutPublicDto,
+	type PromotionDirection,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ProjectRepository, SharedWorkflowRepository, type User } from '@n8n/db';
@@ -60,6 +62,8 @@ import {
 import { PromotionBindingPreflightService } from './promotion-binding-preflight.service';
 import { PromotionEnvironmentResolver } from './promotion-environment.resolver';
 import { PromotionProvidersService } from './promotion-providers.service';
+import { PromotionRunRepository } from './database/repositories/promotion-run.repository';
+import { PromotionReviewsService } from './promotion-reviews.service';
 import { PromotionWorkingDirectoryService } from './promotion-working-directory.service';
 import { PromotionsGitService } from './promotions-git.service';
 import {
@@ -124,6 +128,8 @@ export class PromotionsService {
 		private readonly bindingPreflight: PromotionBindingPreflightService,
 		private readonly inventoryReader: PackageDirectoryInventoryReader,
 		private readonly packageImportConfig: PackageImportConfig,
+		private readonly runRepository: PromotionRunRepository,
+		private readonly reviewsService: PromotionReviewsService,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('promotions');
@@ -189,6 +195,7 @@ export class PromotionsService {
 		await mkdir(repositoryFolder, { recursive: true });
 		const stagingFolder = await mkdtemp(path.join(repositoryFolder, `.${PACKAGE_SUBFOLDER}-`));
 
+		let pushed: { commitSha: string; counts: PromotePackageResultDto['counts'] };
 		try {
 			const exportResult = await this.n8nPackagesService.exportPackageToDirectory(
 				{
@@ -233,14 +240,100 @@ export class PromotionsService {
 				onCheckoutRestored: async () =>
 					await this.workingDirectory.writeDescriptor(this.descriptorFor(input)),
 			});
-
-			return {
-				environmentId: input.environmentId,
-				counts: exportResult.counts,
-				git: { commitSha, branchName: targetBranchName ?? branchName },
-			};
+			pushed = { commitSha, counts: exportResult.counts };
 		} finally {
 			await rm(stagingFolder, { recursive: true, force: true });
+		}
+
+		return {
+			environmentId: input.environmentId,
+			counts: pushed.counts,
+			git: { commitSha: pushed.commitSha, branchName: targetBranchName ?? branchName },
+			...(await this.openReview(input, actor, {
+				promotionBranchName: targetBranchName,
+				commitSha: pushed.commitSha,
+				title: request.commitMessage,
+			})),
+		};
+	}
+
+	/** Records the push, then opens a review for a promotion branch. This does not throw. */
+	private async openReview(
+		input: PromotionOperationInput,
+		actor: User,
+		push: { promotionBranchName: string | undefined; commitSha: string; title: string },
+	): Promise<Pick<PromotePackageResultDto, 'review' | 'warnings'>> {
+		const recorded = await this.recordPromoteRun(input, actor, {
+			branchName: push.promotionBranchName ?? checkoutBranchName(input.config),
+			commitSha: push.commitSha,
+		});
+		// A review without a run cannot be rendered: the branch and commit live on the run.
+		if (!recorded.runId) {
+			const opensMergeRequest = input.providerType === 'gitlab' && !!push.promotionBranchName;
+			return {
+				warnings: [
+					{
+						message: opensMergeRequest
+							? 'The push succeeded, but n8n could not record the promotion run, so no merge request was opened.'
+							: 'The push succeeded, but n8n could not record the promotion run.',
+					},
+				],
+			};
+		}
+		if (!push.promotionBranchName) return {};
+		const lines = push.title.split('\n');
+		const titleIndex = lines.findIndex((line) => line.trim() !== '');
+		if (titleIndex === -1) {
+			return {
+				warnings: [
+					{
+						message: 'No merge request was opened.',
+					},
+				],
+			};
+		}
+		const { review, warnings } = await this.reviewsService.openMergeRequest(
+			input,
+			actor,
+			{
+				branchName: push.promotionBranchName,
+				baseBranchName: checkoutBranchName(input.config),
+				commitSha: push.commitSha,
+				title: lines[titleIndex].trim(),
+				body: lines.slice(titleIndex + 1).join('\n'),
+			},
+			recorded.runId,
+		);
+		return {
+			...(review && { review }),
+			...(warnings.length > 0 && { warnings }),
+		};
+	}
+
+	/** Writes the run after the push. A failure becomes a warning. The push stays. */
+	private async recordPromoteRun(
+		input: PromotionOperationInput,
+		actor: User,
+		git: { branchName: string; commitSha: string },
+	): Promise<{ runId?: string }> {
+		try {
+			const type = promotionRunTypeSchema.parse('git');
+			const run = await this.runRepository.insertRun({
+				environmentId: input.environmentId,
+				createdById: actor.id,
+				direction: input.config.direction,
+				type,
+				details: parsePromotionRunDetails(type, {
+					schemaVersion: 1,
+					branchName: git.branchName,
+					commitSha: git.commitSha,
+				}),
+				reviewId: null,
+			});
+			return { runId: run.id };
+		} catch (error) {
+			this.logger.error('Could not record the promotion run', { error });
+			return {};
 		}
 	}
 
@@ -295,6 +388,7 @@ export class PromotionsService {
 		let backedUp = false;
 		let keepPrePushBackup = false;
 
+		let pushed: { commitSha: string; counts: PromotePackageResultDto['counts'] };
 		try {
 			if (packageExisted) {
 				await rm(prePushBackup, { recursive: true, force: true });
@@ -351,12 +445,7 @@ export class PromotionsService {
 				onCheckoutRestored: async () =>
 					await this.workingDirectory.writeDescriptor(this.descriptorFor(input)),
 			});
-
-			return {
-				environmentId: input.environmentId,
-				counts,
-				git: { commitSha, branchName: targetBranchName ?? branchName },
-			};
+			pushed = { commitSha, counts };
 		} catch (error) {
 			if (backedUp) {
 				await rm(packageFolder, { recursive: true, force: true }).catch((restoreError: unknown) => {
@@ -394,6 +483,17 @@ export class PromotionsService {
 				this.logger.warn('Failed to remove the selection staging folder', { stagingFolder, error });
 			});
 		}
+
+		return {
+			environmentId: input.environmentId,
+			counts: pushed.counts,
+			git: { commitSha: pushed.commitSha, branchName: targetBranchName ?? branchName },
+			...(await this.openReview(input, actor, {
+				promotionBranchName: targetBranchName,
+				commitSha: pushed.commitSha,
+				title: request.commitMessage,
+			})),
+		};
 	}
 
 	/**

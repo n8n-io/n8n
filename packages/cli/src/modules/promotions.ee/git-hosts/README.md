@@ -19,8 +19,9 @@ capabilities declare the supported auth methods and fixed transport usernames.
 5. Add tests for validation and Git transport compatibility.
 
 Do not add provider-specific branches to environment, promotion, or apply logic.
-Add merge-request capabilities when that feature lands. This layer does not
-change the editor UI.
+A branched Promote opens a GitLab merge request. `PromotionReviewHostResolver`
+reads the saved base URL, token, and repository path. A plain Git provider
+pushes and does not open a review. This layer does not change the editor UI.
 
 ## Discovery
 

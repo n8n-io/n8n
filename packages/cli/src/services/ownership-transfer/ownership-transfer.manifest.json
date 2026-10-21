@@ -60,6 +60,11 @@
 			"reason": "Dropped via FK cascade today. Revisit: agents created by the deleted user are lost on transfer."
 		},
 		{
+			"name": "App",
+			"path": "packages/modules/apps/backend/src/app.entity.ts",
+			"reason": "Apps stay in their source project. The project FK cascade deletes apps and their versions."
+		},
+		{
 			"name": "AgentExecutionThread",
 			"path": "packages/cli/src/modules/agents/entities/agent-execution-thread.entity.ts",
 			"reason": "Dropped via FK cascade together with its Agent."

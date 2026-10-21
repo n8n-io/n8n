@@ -167,6 +167,7 @@ function onAction(action: 'edit' | 'remove') {
 			:environment-id="environment.id"
 			:base-branch-name="environment.settings.baseBranchName"
 			:create-branch-on-promotion="environment.settings.createBranchOnPromotion"
+			:provider-type="environment.provider.type"
 			@update:open="dialogOpen = $event"
 		/>
 		<ApplyInstanceDialog

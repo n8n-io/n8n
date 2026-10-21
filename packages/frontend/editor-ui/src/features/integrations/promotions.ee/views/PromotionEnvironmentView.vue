@@ -101,6 +101,11 @@ const providerType = computed(() => sharedProvider.value?.type ?? pickedType.val
 const hasHostApi = computed(
 	() => !!providerType.value && isPromotionGitHostType(providerType.value),
 );
+const createBranchLabelKey = computed(() =>
+	hasHostApi.value
+		? 'settings.promotions.environment.form.createBranch.gitlab'
+		: 'settings.promotions.environment.form.createBranch.git',
+);
 const needsRepositorySelection = computed(
 	() => hasHostApi.value && !!form.remoteUrl && !form.repositoryPath,
 );
@@ -445,11 +450,9 @@ onBeforeRouteLeave(() => {
 								data-test-id="promotion-environment-create-branch"
 							>
 								<template #label>
-									{{ i18n.baseText('settings.promotions.environment.form.createBranch') }}
+									{{ i18n.baseText(createBranchLabelKey) }}
 									<N8nText :class="$style.hint" size="small" color="text-light">
-										{{
-											i18n.baseText('settings.promotions.environment.form.createBranch.description')
-										}}
+										{{ i18n.baseText(`${createBranchLabelKey}.description`) }}
 									</N8nText>
 								</template>
 							</N8nCheckbox>

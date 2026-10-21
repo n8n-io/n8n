@@ -50,6 +50,9 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.ai_builder_temporary_workflow](public.ai_builder_temporary_workflow.md) | 4 |  | BASE TABLE |
 | [public.ai_preference](public.ai_preference.md) | 8 |  | BASE TABLE |
 | [public.annotation_tag_entity](public.annotation_tag_entity.md) | 4 |  | BASE TABLE |
+| [public.app](public.app.md) | 9 |  | BASE TABLE |
+| [public.app_artifact](public.app_artifact.md) | 8 |  | BASE TABLE |
+| [public.app_version](public.app_version.md) | 10 |  | BASE TABLE |
 | [public.auth_identity](public.auth_identity.md) | 5 |  | BASE TABLE |
 | [public.auth_provider_sync_history](public.auth_provider_sync_history.md) | 11 |  | BASE TABLE |
 | [public.binary_data](public.binary_data.md) | 9 |  | BASE TABLE |
@@ -134,7 +137,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.settings](public.settings.md) | 3 |  | BASE TABLE |
 | [public.shared_credentials](public.shared_credentials.md) | 5 |  | BASE TABLE |
 | [public.shared_workflow](public.shared_workflow.md) | 5 |  | BASE TABLE |
-| [public.skill](public.skill.md) | 7 |  | BASE TABLE |
+| [public.skill](public.skill.md) | 8 |  | BASE TABLE |
 | [public.skill_file](public.skill_file.md) | 5 |  | BASE TABLE |
 | [public.skill_version](public.skill_version.md) | 11 |  | BASE TABLE |
 | [public.tag_entity](public.tag_entity.md) | 4 |  | BASE TABLE |
@@ -271,6 +274,12 @@ erDiagram
 "public.ai_preference" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.ai_preference" }o--o| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.ai_preference" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.app" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.app" }o--o| "public.app_version" : "FOREIGN KEY (#quot;draftVersionId#quot;) REFERENCES app_version(id) ON DELETE SET NULL"
+"public.app" }o--o| "public.app_version" : "FOREIGN KEY (#quot;publishedVersionId#quot;) REFERENCES app_version(id) ON DELETE SET NULL"
+"public.app_version" }o--|| "public.app" : "FOREIGN KEY (#quot;appId#quot;) REFERENCES app(id) ON DELETE CASCADE"
+"public.app_version" }o--o| "public.app_artifact" : "FOREIGN KEY (#quot;bundleArtifactId#quot;) REFERENCES app_artifact(id) ON DELETE SET NULL"
+"public.app_version" }o--|| "public.app_artifact" : "FOREIGN KEY (#quot;sourceArtifactId#quot;) REFERENCES app_artifact(id) ON DELETE RESTRICT"
 "public.auth_identity" }o--o| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id)"
 "public.chat_hub_agent_tools" }o--|| "public.chat_hub_agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES chat_hub_agents(id) ON DELETE CASCADE"
 "public.chat_hub_agent_tools" }o--|| "public.chat_hub_tools" : "FOREIGN KEY (#quot;toolId#quot;) REFERENCES chat_hub_tools(id) ON DELETE CASCADE"
@@ -900,6 +909,39 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_16_ id
   varchar_24_ name
+  timestamp_3__with_time_zone updatedAt
+}
+"public.app" {
+  timestamp_3__with_time_zone createdAt
+  uuid draftVersionId FK
+  uuid id
+  varchar_128_ name
+  varchar_128_ namespace
+  varchar_36_ projectId FK
+  uuid publishedVersionId FK
+  timestamp_3__with_time_zone updatedAt
+  varchar_16_ visibility
+}
+"public.app_artifact" {
+  uuid appId
+  timestamp_3__with_time_zone createdAt
+  integer id
+  integer sizeBytes
+  text storageKey
+  varchar_2_ storedAt
+  timestamp_3__with_time_zone updatedAt
+  varchar_16_ uploadStatus
+}
+"public.app_version" {
+  uuid appId FK
+  integer buildAttempts
+  varchar_16_ buildStatus
+  timestamp_3__with_time_zone buildStatusUpdatedAt
+  integer bundleArtifactId FK
+  timestamp_3__with_time_zone createdAt
+  uuid id
+  varchar_255_ label
+  integer sourceArtifactId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.auth_identity" {
@@ -1705,6 +1747,7 @@ erDiagram
 }
 "public.skill" {
   varchar_36_ agentId FK
+  boolean availableToAssistant
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   varchar_36_ id
