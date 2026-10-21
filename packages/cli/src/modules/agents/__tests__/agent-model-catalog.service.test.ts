@@ -1,6 +1,7 @@
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
+import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { AgentModelCatalogService } from '../agent-model-catalog.service';
@@ -555,11 +556,11 @@ describe('AgentModelCatalogService', () => {
 		});
 
 		it('falls back to the catalog list when the credential cannot list deployments', async () => {
-			const { service, lookupService } = makeService();
+			const { service, lookupService, logger } = makeService();
 			fetchProviderCatalog.mockResolvedValue(azureCatalog);
 			// A classic credential, or a Foundry credential without a project.
 			lookupService.lookup.mockRejectedValue(
-				new Error('The credential has no Microsoft Foundry project set'),
+				new UserError('The credential has no Microsoft Foundry project set'),
 			);
 
 			const result = await service.getProviderModels(
@@ -571,6 +572,12 @@ describe('AgentModelCatalogService', () => {
 
 			expect(result.verified).toBe(false);
 			expect(result.models.map((m) => m.id)).toEqual(['gpt-4.1']);
+			// An expected picker state is logged quietly, not as a warn.
+			expect(logger.warn).not.toHaveBeenCalled();
+			expect(logger.debug).toHaveBeenCalledWith(
+				'Live model list failed',
+				expect.objectContaining({ provider: 'azure-openai' }),
+			);
 		});
 
 		it('reports an unavailable deployments list without catalog fallback', async () => {

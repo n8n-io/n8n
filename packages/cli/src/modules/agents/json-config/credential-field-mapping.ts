@@ -95,6 +95,7 @@ const PROVIDER_CREDENTIAL_MAPPERS: Record<string, CredMapper> = {
 						oauthClientId: c.clientId,
 						oauthClientSecret: c.clientSecret,
 						oauthAccessTokenUrl: c.accessTokenUrl,
+						oauthTenantId: c.tenantId,
 						oauthScope: c.scope,
 						oauthAuthentication: c.authentication,
 						oauthTokenData: c.oauthTokenData,

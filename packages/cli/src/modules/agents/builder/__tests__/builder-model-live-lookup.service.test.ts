@@ -1,7 +1,13 @@
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
-import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
+import type {
+	CustomFetch,
+	HttpTransport,
+	OutboundHttp,
+	SsrfProtectionService,
+} from '@n8n/backend-network';
+import type { SsrfProtectionConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
-import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import { UserError, type IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -35,7 +41,7 @@ vi.mock('@/workflow-execute-additional-data', () => ({
 const user = mock<User>({ id: 'user-1' });
 const projectId = 'project-1';
 
-function makeService() {
+function makeService({ ssrfEnabled = false }: { ssrfEnabled?: boolean } = {}) {
 	const credentialsService = mock<CredentialsService>();
 	const credentialsHelper = mock<CredentialsHelper>();
 	const transport = mock<HttpTransport>();
@@ -43,14 +49,29 @@ function makeService() {
 	const outboundHttp = mock<OutboundHttp>();
 	outboundHttp.transport.mockReturnValue(transport);
 	const aiGatewayService = mock<AiGatewayService>();
+	const ssrfProtectionService = mock<SsrfProtectionService>();
+	// `enabled` must be an explicit boolean: the auto-mock would return a
+	// truthy Mock function for the property.
+	const ssrfProtectionConfig = mock<SsrfProtectionConfig>({
+		enabled: ssrfEnabled,
+	});
 
 	const service = new BuilderModelLiveLookupService(
 		credentialsService,
 		credentialsHelper,
 		outboundHttp,
 		aiGatewayService,
+		ssrfProtectionService,
+		ssrfProtectionConfig,
 	);
-	return { service, credentialsService, credentialsHelper, aiGatewayService };
+	return {
+		service,
+		credentialsService,
+		credentialsHelper,
+		aiGatewayService,
+		ssrfProtectionService,
+		ssrfProtectionConfig,
+	};
 }
 
 function usable(id: string, type: string) {
@@ -367,7 +388,9 @@ describe('BuilderModelLiveLookupService', () => {
 		});
 
 		it('accepts the Entra ID credential type and mints a Foundry-audience token', async () => {
-			const { service, credentialsService, credentialsHelper } = makeService();
+			const { service, credentialsService, credentialsHelper, ssrfProtectionService } = makeService(
+				{ ssrfEnabled: true },
+			);
 			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
 				usable('cred-1', 'azureEntraCognitiveServicesOAuth2Api'),
 			);
@@ -378,6 +401,7 @@ describe('BuilderModelLiveLookupService', () => {
 				clientId: 'client-id',
 				clientSecret: 'client-secret',
 				accessTokenUrl: 'https://login.example/token',
+				tenantId: '8f2a1b3c-4d5e-6f70-8192-a3b4c5d6e7f8',
 				oauthTokenData: { access_token: 'stored-token' },
 			});
 			createEntraTokenProvider.mockReturnValue(async () => 'minted-token');
@@ -398,17 +422,50 @@ describe('BuilderModelLiveLookupService', () => {
 				policy: 'endpoint-only',
 				models: [{ name: 'my-chat (gpt-4.1)', value: 'my-chat' }],
 			});
-			// The deployments list needs the Foundry audience, not the inference audience.
+			// The deployments list needs the Foundry audience, not the inference
+			// audience, and the token mint runs through the instance's SSRF policy.
 			expect(createEntraTokenProvider).toHaveBeenCalledWith(
-				expect.objectContaining({ oauthClientId: 'client-id' }),
+				expect.objectContaining({
+					oauthClientId: 'client-id',
+					oauthTenantId: '8f2a1b3c-4d5e-6f70-8192-a3b4c5d6e7f8',
+				}),
 				'https://ai.azure.com',
+				ssrfProtectionService,
 			);
 			expect(listAzureOpenAiModels).toHaveBeenCalledWith(
 				expect.objectContaining({ headers: { Authorization: 'Bearer minted-token' } }),
 			);
 		});
 
-		it('throws when the credential has no project set', async () => {
+		it('omits the ssrfBridge when the SSRF guard is disabled', async () => {
+			const { service, credentialsService, credentialsHelper, ssrfProtectionService } =
+				makeService();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
+				usable('cred-1', 'azureOpenAiApi'),
+			);
+			credentialsHelper.getDecrypted.mockResolvedValue({
+				endpointType: 'foundry',
+				foundryEndpoint: 'https://res.services.ai.azure.com/openai/v1',
+				project: 'my-project',
+				clientId: 'client-id',
+				accessTokenUrl: 'https://login.example/token',
+				tenantId: '8f2a1b3c-4d5e-6f70-8192-a3b4c5d6e7f8',
+				oauthTokenData: { access_token: 'stored-token' },
+			});
+			createEntraTokenProvider.mockReturnValue(async () => 'minted-token');
+			listAzureOpenAiModels.mockResolvedValue([{ id: 'my-chat', name: 'my-chat (gpt-4.1)' }]);
+
+			await service.lookup(user, projectId, 'cred-1', 'azureOpenAiApi', 'azure-openai');
+
+			const [mappedCreds, audience, ssrfBridge] = createEntraTokenProvider.mock.calls[0];
+			expect(mappedCreds).toEqual(expect.objectContaining({ oauthClientId: 'client-id' }));
+			expect(audience).toBe('https://ai.azure.com');
+			// No bridge when the SSRF guard is disabled for the instance.
+			expect(ssrfBridge).toBeUndefined();
+			expect(ssrfProtectionService.validateUrl).not.toHaveBeenCalled();
+		});
+
+		it('throws a UserError when the credential has no project set', async () => {
 			const { service, credentialsService, credentialsHelper } = makeService();
 			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
 				usable('cred-1', 'azureOpenAiApi'),
@@ -419,9 +476,11 @@ describe('BuilderModelLiveLookupService', () => {
 				apiKey: 'az-key',
 			});
 
-			await expect(
-				service.lookup(user, projectId, 'cred-1', 'azureOpenAiApi', 'azure-openai'),
-			).rejects.toThrow('no Microsoft Foundry project');
+			const error = await service
+				.lookup(user, projectId, 'cred-1', 'azureOpenAiApi', 'azure-openai')
+				.catch((e: unknown) => e);
+			expect(error).toBeInstanceOf(UserError);
+			expect((error as Error).message).toBe('The credential has no Microsoft Foundry project set');
 			expect(listAzureOpenAiModels).not.toHaveBeenCalled();
 		});
 

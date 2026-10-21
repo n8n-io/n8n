@@ -3,6 +3,52 @@ import { UserError } from 'n8n-workflow';
 import { byName } from '../request';
 import type { ProviderModel } from '../types';
 
+export interface EntraTenantIdIssue {
+	message: string;
+	description?: string;
+}
+
+const MULTI_TENANT_ALIASES = new Set(['common', 'organizations', 'consumers']);
+
+const TENANT_ID_GUID = /^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$/;
+const TENANT_ID_DOMAIN =
+	/^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*$/;
+
+/**
+ * Checks the tenant ID of an Entra app-only credential before a token
+ * request. The token endpoint builds its URL from the tenant, so a saved
+ * multi-tenant alias or a URL-reshaping value must be caught here, not by an
+ * opaque Entra rejection. Returns `undefined` when the tenant is usable.
+ */
+export function findEntraTenantIdIssue(
+	tenantId: string | undefined,
+): EntraTenantIdIssue | undefined {
+	const value = tenantId?.trim() ?? '';
+
+	if (!value) {
+		return {
+			message: 'Tenant ID is missing in the selected Microsoft Foundry (Entra ID) credential',
+		};
+	}
+
+	if (MULTI_TENANT_ALIASES.has(value.toLowerCase())) {
+		return {
+			message: `Tenant ID cannot be "${value}"`,
+			description:
+				'The app signs in as itself, and Entra issues an app-only token for one named tenant only. Use the Directory (tenant) ID of the app registration.',
+		};
+	}
+
+	if (!TENANT_ID_GUID.test(value) && !TENANT_ID_DOMAIN.test(value)) {
+		return {
+			message: 'Tenant ID is not a Directory ID or a domain',
+			description: 'Use the Directory (tenant) ID of the app registration.',
+		};
+	}
+
+	return undefined;
+}
+
 /**
  * Not a {@link ListModelsFn} and not in `MODEL_DISCOVERY_PROVIDERS`: Azure
  * needs a `project` and pre-built auth headers, which don't fit

@@ -1,8 +1,10 @@
 import { AI_GATEWAY_MANAGED_TAG, getAgentModelProviderCredentialTypes } from '@n8n/api-types';
 import { createEntraTokenProvider, isAzureEntraCredential } from '@n8n/agents';
-import { OutboundHttp } from '@n8n/backend-network';
+import { OutboundHttp, SsrfProtectionService, type SsrfBridge } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { SsrfProtectionConfig } from '@n8n/config';
+import { UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsHelper } from '@/credentials-helper';
@@ -64,7 +66,19 @@ export class BuilderModelLiveLookupService {
 		private readonly credentialsHelper: CredentialsHelper,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly aiGatewayService: AiGatewayService,
+		private readonly ssrfProtectionService: SsrfProtectionService,
+		private readonly ssrfProtectionConfig: SsrfProtectionConfig,
 	) {}
+
+	/**
+	 * The bridge that applies the instance's outbound network policy to Entra
+	 * token requests, so a stored `accessTokenUrl` cannot send the client
+	 * secret to a host the instance is not allowed to reach. `undefined` when
+	 * the SSRF guard is disabled.
+	 */
+	private getSsrfBridge(): SsrfBridge | undefined {
+		return this.ssrfProtectionConfig.enabled ? this.ssrfProtectionService : undefined;
+	}
 
 	/**
 	 * Returns `{ name, value }` pairs (value = the provider's model id, exactly
@@ -277,15 +291,15 @@ export class BuilderModelLiveLookupService {
 		// the caller applies when this method throws.
 		const mapped = mapCredentialForProvider('azure-openai', rawData);
 		if (mapped.endpointType !== 'foundry') {
-			throw new Error('Only a Microsoft Foundry credential can list deployments');
+			throw new UserError('Only a Microsoft Foundry credential can list deployments');
 		}
 		const project = typeof rawData.project === 'string' ? rawData.project.trim() : '';
 		if (!project) {
-			throw new Error('The credential has no Microsoft Foundry project set');
+			throw new UserError('The credential has no Microsoft Foundry project set');
 		}
 		const foundryEndpoint = typeof mapped.baseURL === 'string' ? mapped.baseURL : '';
 		if (!foundryEndpoint) {
-			throw new Error('The credential has no Microsoft Foundry endpoint set');
+			throw new UserError('The credential has no Microsoft Foundry endpoint set');
 		}
 
 		// The list call takes the origin of the Foundry endpoint.
@@ -295,13 +309,18 @@ export class BuilderModelLiveLookupService {
 		try {
 			let headers: Record<string, string>;
 			if (isAzureEntraCredential(rawData)) {
-				// The deployments list needs a token for the Foundry audience.
-				const token = await createEntraTokenProvider(mapped, AZURE_AI_FOUNDRY_AUDIENCE)();
+				// The deployments list needs a token for the Foundry audience, minted
+				// through the instance's SSRF policy.
+				const token = await createEntraTokenProvider(
+					mapped,
+					AZURE_AI_FOUNDRY_AUDIENCE,
+					this.getSsrfBridge(),
+				)();
 				headers = { Authorization: `Bearer ${token}` };
 			} else if (typeof rawData.apiKey === 'string' && rawData.apiKey.trim() !== '') {
 				headers = { 'api-key': rawData.apiKey };
 			} else {
-				throw new Error('The credential has neither an API key nor a connected Entra ID');
+				throw new UserError('The credential has neither an API key nor a connected Entra ID');
 			}
 
 			const models = await listAzureOpenAiModels({

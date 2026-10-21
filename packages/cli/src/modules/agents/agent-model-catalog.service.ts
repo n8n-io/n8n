@@ -9,6 +9,7 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { isModelDiscoveryProvider } from '@n8n/ai-utilities/model-discovery';
+import { UserError } from 'n8n-workflow';
 
 import {
 	BuilderModelLiveLookupService,
@@ -214,7 +215,8 @@ export class AgentModelCatalogService {
 	}
 
 	private logLiveLookupFailure(provider: string, error: unknown): void {
-		this.logger.warn('Live model list failed', {
+		const log = error instanceof UserError ? this.logger.debug : this.logger.warn;
+		log('Live model list failed', {
 			provider,
 			error: error instanceof Error ? error.message : String(error),
 		});

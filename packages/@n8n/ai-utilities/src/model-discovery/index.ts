@@ -67,6 +67,8 @@ export {
 	listAzureOpenAiModels,
 	shouldIncludeAzureModel,
 	type AzureOpenAiListModelsOptions,
+	findEntraTenantIdIssue,
+	type EntraTenantIdIssue,
 } from './providers/azure';
 export { listCohereModels } from './providers/cohere';
 export { listDeepSeekModels } from './providers/deepseek';

@@ -950,6 +950,7 @@ describe('createModel', () => {
 			oauthClientId: 'client-id',
 			oauthClientSecret: 'client-secret',
 			oauthAccessTokenUrl: 'https://login.microsoftonline.com/tenant/oauth2/v2.0/token',
+			oauthTenantId: '8f2a1b3c-4d5e-6f70-8192-a3b4c5d6e7f8',
 			oauthScope: 'https://cognitiveservices.azure.com/.default',
 			oauthAuthentication: 'body' as const,
 			oauthTokenData: { access_token: 'stored-token' },
@@ -1012,6 +1013,43 @@ describe('createModel', () => {
 				expect.objectContaining({
 					additionalBodyProperties: { resource: 'https://cognitiveservices.azure.com/' },
 				}),
+			);
+		});
+
+		it.each([
+			['the common multi-tenant alias', 'common', 'Tenant ID cannot be "common"'],
+			['a missing tenant', undefined, 'Tenant ID is missing'],
+			['a URL-reshaping value', '.', 'Tenant ID is not a Directory ID or a domain'],
+		])('rejects minting for %s before the token request', async (_, tenantId, message) => {
+			const provider = createEntraTokenProvider({ ...entraCreds, oauthTenantId: tenantId });
+			await expect(provider()).rejects.toThrow(message);
+			expect(mockClientOAuth2.credentials.getToken).not.toHaveBeenCalled();
+		});
+
+		it('carries the tenant through the Zod schema to the mint', async () => {
+			const model = createModel({
+				id: 'azure-openai/gpt-4o',
+				resourceName: 'my-resource',
+				apiVersion: '2024-02-01',
+				endpointType: 'classic',
+				...entraCreds,
+				oauthTenantId: 'common',
+			}) as unknown as { tokenProvider: () => Promise<string> };
+
+			await expect(model.tokenProvider()).rejects.toThrow('Tenant ID cannot be "common"');
+			expect(mockClientOAuth2.credentials.getToken).not.toHaveBeenCalled();
+		});
+
+		it('passes the caller-provided ssrfBridge to the token client', async () => {
+			const ssrfBridge = {
+				validateUrl: vi.fn(),
+				validateRedirectSync: vi.fn(),
+				createSecureLookup: vi.fn(),
+			};
+			const provider = createEntraTokenProvider(entraCreds, undefined, ssrfBridge);
+			await expect(provider()).resolves.toBe('minted-bearer');
+			expect(vi.mocked(ClientOAuth2)).toHaveBeenLastCalledWith(
+				expect.objectContaining({ ssrfBridge }),
 			);
 		});
 
