@@ -277,39 +277,25 @@ export class ScimService {
 				// SSO role mapping owns the instance role, so SCIM roles are ignored.
 				return;
 			case 'active':
-				if (typeof value === 'boolean') {
-					user.disabled = !value;
-					changes.add('disabled');
-				}
+				if (typeof value === 'boolean') this.setField(user, 'disabled', !value, changes);
 				return;
 			case 'userName':
-				if (typeof value === 'string') {
-					user.email = value.toLowerCase();
-					changes.add('email');
-				}
+				if (typeof value === 'string') this.setField(user, 'email', value.toLowerCase(), changes);
 				return;
 			case 'name.givenName':
-				if (typeof value === 'string') {
-					user.firstName = value;
-					changes.add('firstName');
-				}
+				if (typeof value === 'string') this.setField(user, 'firstName', value, changes);
 				return;
 			case 'name.familyName':
-				if (typeof value === 'string') {
-					user.lastName = value;
-					changes.add('lastName');
-				}
+				if (typeof value === 'string') this.setField(user, 'lastName', value, changes);
 				return;
 			case 'name':
 				if (typeof value === 'object' && value !== null) {
 					const name = value as { givenName?: unknown; familyName?: unknown };
 					if (typeof name.givenName === 'string') {
-						user.firstName = name.givenName;
-						changes.add('firstName');
+						this.setField(user, 'firstName', name.givenName, changes);
 					}
 					if (typeof name.familyName === 'string') {
-						user.lastName = name.familyName;
-						changes.add('lastName');
+						this.setField(user, 'lastName', name.familyName, changes);
 					}
 				}
 				return;
@@ -319,19 +305,30 @@ export class ScimService {
 						(email: { primary?: boolean; value?: unknown }) =>
 							email?.primary && typeof email.value === 'string',
 					) as { value: string } | undefined;
-					if (primary) {
-						user.email = primary.value.toLowerCase();
-						changes.add('email');
-					}
+					if (primary) this.setField(user, 'email', primary.value.toLowerCase(), changes);
 				}
 				return;
 			default:
 				// e.g. Okta sends `emails[type eq "work"].value`
 				if (/^emails\[.*\]\.value$/.test(path) && typeof value === 'string') {
-					user.email = value.toLowerCase();
-					changes.add('email');
+					this.setField(user, 'email', value.toLowerCase(), changes);
 				}
 		}
+	}
+
+	/**
+	 * Set a field and record the change only when the value is different, so
+	 * a PATCH that repeats the stored state writes nothing and emits no event.
+	 */
+	private setField<K extends 'email' | 'firstName' | 'lastName' | 'disabled'>(
+		user: User,
+		field: K,
+		value: User[K],
+		changes: Set<string>,
+	) {
+		if (user[field] === value) return;
+		user[field] = value;
+		changes.add(field);
 	}
 
 	/**

@@ -431,6 +431,41 @@ describe('ScimService', () => {
 			expect(userRepository.save).not.toHaveBeenCalled();
 			expect(eventService.emit).not.toHaveBeenCalled();
 		});
+
+		it('should not persist anything when the values equal the stored state', async () => {
+			const user = createTestUser({ disabled: true });
+			userRepository.findOne.mockResolvedValue(user);
+
+			await service.patchUser(
+				'user-1',
+				patchRequest([
+					{ op: 'replace', path: 'active', value: false },
+					{ op: 'replace', path: 'userName', value: user.email.toUpperCase() },
+					{ op: 'replace', value: { name: { givenName: user.firstName } } },
+				]),
+			);
+
+			expect(userRepository.save).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('should record only the fields that changed', async () => {
+			const user = createTestUser();
+			userRepository.findOne.mockResolvedValue(user);
+
+			await service.patchUser(
+				'user-1',
+				patchRequest([
+					{ op: 'replace', path: 'active', value: true },
+					{ op: 'replace', path: 'name.givenName', value: 'Updated' },
+				]),
+			);
+
+			expect(eventService.emit).toHaveBeenCalledWith('user-updated', {
+				user,
+				fieldsChanged: ['firstName'],
+			});
+		});
 	});
 
 	describe('updateUser', () => {
@@ -562,6 +597,32 @@ describe('ScimService', () => {
 
 			await expect(service.updateUser('owner-1', body)).rejects.toThrow(ScimForbiddenError);
 			expect(userRepository.save).not.toHaveBeenCalled();
+		});
+
+		// The guard blocks a change. Repeating the stored state is not a change.
+		it.each([
+			[
+				'PATCH',
+				async () =>
+					await service.patchUser(
+						'owner-1',
+						patchRequest([{ op: 'replace', path: 'active', value: false }]),
+					),
+			],
+			['PUT', async () => await service.updateUser('owner-1', putBody({ active: false }))],
+		])('should treat a %s with active false on a disabled owner as a no-op', async (_, request) => {
+			const owner = createTestUser({
+				id: 'owner-1',
+				email: 'owner@example.com',
+				role: ownerRole,
+				disabled: true,
+			});
+			userRepository.findOne.mockResolvedValue(owner);
+
+			await request();
+
+			expect(userRepository.save).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
 		it('should reject a DELETE of the owner', async () => {
