@@ -49,6 +49,13 @@ export const workflowSettingsFieldDocs = {
 			'workflow responses for reference, but any value sent when creating or updating a ' +
 			'workflow is ignored.',
 	},
+	engineType: {
+		example: 'v1',
+		description:
+			'The execution engine that runs this workflow. n8n sets it when it creates the ' +
+			'workflow. It is included in workflow responses for reference, but any value sent when ' +
+			'creating or updating a workflow is ignored.',
+	},
 	callerPolicy: {
 		example: 'workflowsFromSameOwner',
 		description:
@@ -250,6 +257,11 @@ export const settingsOpenApi: ZodOpenAPIMetadata = alsoNullable({
 			type: 'string',
 			enum: ['separate', 'combined'],
 			...workflowSettingsFieldDocs.binaryMode,
+		},
+		engineType: {
+			type: 'string',
+			enum: ['v1', 'v2'],
+			...workflowSettingsFieldDocs.engineType,
 		},
 		callerPolicy: {
 			type: 'string',

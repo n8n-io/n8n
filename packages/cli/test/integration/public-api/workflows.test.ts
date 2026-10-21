@@ -2276,7 +2276,7 @@ describe('POST /workflows', () => {
 		expect(id).toBeDefined();
 		expect(name).toBe(payload.name);
 		expect(connections).toEqual(payload.connections);
-		expect(settings).toEqual(payload.settings);
+		expect(settings).toEqual({ ...payload.settings, engineType: 'v1' });
 		expect(active).toBe(false);
 		expect(staticData).toEqual(payload.staticData);
 		expect(nodes).toEqual(payload.nodes);
@@ -2296,8 +2296,24 @@ describe('POST /workflows', () => {
 		expect(sharedWorkflow?.workflow.name).toBe(name);
 		expect(sharedWorkflow?.workflow.createdAt.toISOString()).toBe(createdAt);
 		expect(sharedWorkflow?.workflow.nodes).toEqual(payload.nodes);
-		expect(sharedWorkflow?.workflow.settings).toEqual(payload.settings);
+		expect(sharedWorkflow?.workflow.settings).toEqual({ ...payload.settings, engineType: 'v1' });
 		expect(sharedWorkflow?.role).toEqual('workflow:owner');
+	});
+
+	test('should create a workflow on the default engine and ignore engineType', async () => {
+		const payload = {
+			...mockPostWorkflowPayload(),
+			settings: { executionOrder: 'v1', engineType: 'v2' },
+		};
+
+		const response = await authOwnerAgent.post('/workflows').send(payload);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.settings.engineType).toBe('v1');
+
+		const workflow = await workflowRepository.findOneBy({ id: response.body.id });
+
+		expect(workflow?.settings?.engineType).toBe('v1');
 	});
 
 	test('should create a workflow with a description', async () => {
@@ -3320,8 +3336,32 @@ describe('PUT /workflows/:id', () => {
 		expect(sharedWorkflow?.workflow.activeVersionId).toBeNull();
 	});
 
+	test('should accept the settings that GET returned and keep the stored engine', async () => {
+		const workflow = await createWorkflowWithHistory(
+			{ settings: { executionOrder: 'v1', engineType: 'v2' } },
+			member,
+		);
+		const getResponse = await authMemberAgent.get(`/workflows/${workflow.id}`);
+		expect(getResponse.body.settings.engineType).toBe('v2');
+
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send({
+			name: getResponse.body.name,
+			nodes: getResponse.body.nodes,
+			connections: getResponse.body.connections,
+			settings: getResponse.body.settings,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.settings.engineType).toBe('v2');
+
+		const workflowAfter = await workflowRepository.findOneBy({ id: workflow.id });
+
+		expect(workflowAfter?.settings?.engineType).toBe('v2');
+	});
+
 	test.each([
 		{ key: 'binaryMode', original: 'combined', attempted: 'separate' },
+		{ key: 'engineType', original: 'v2', attempted: 'v1' },
 		{
 			key: 'credentialResolverId',
 			original: 'original-resolver-id',
