@@ -6,6 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { fromExpression, fromParameter, webhookDescriptionFields } from 'n8n-workflow';
 
+import { DEFAULT_TRUSTED_SOURCE_ID } from '../../utils/trusted-source';
 import { getResponseCode, getResponseData } from './utils';
 
 // The Webhook node's "n8n User Auth (OAuth2)" mode. Seeds the triggering user's
@@ -143,6 +144,21 @@ export const requireExecuteAccessProperty = (propertyName = 'authentication'): I
 	displayOptions: { show: { [propertyName]: ['n8nOAuth2'] } },
 	description:
 		'Whether the triggering user must also have permission to execute the workflow in the project it belongs to',
+});
+
+// The issuer whose bearer tokens the n8n User Auth (OAuth2) mode accepts. The host reads the
+// stored value to narrow the trigger's resource, so the node never passes it on itself.
+export const trustedSourceProperty = (propertyName = 'authentication'): INodeProperties => ({
+	displayName: 'Trusted Source Name or ID',
+	name: 'trustedSource',
+	type: 'options',
+	typeOptions: { loadOptionsMethod: 'listTrustedSources' },
+	default: DEFAULT_TRUSTED_SOURCE_ID,
+	displayOptions: { show: { [propertyName]: ['n8nOAuth2'] } },
+	// The resolvers read the raw value without an execution context, so it must be static.
+	noDataExpression: true,
+	// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
+	description: 'The identity provider whose access tokens can trigger this workflow',
 });
 
 export const httpMethodsProperty: INodeProperties = {

@@ -302,9 +302,11 @@ describe('Test Webhook Node', () => {
 				'good-token',
 				`${WEBHOOK_URL}?method=GET`,
 			);
+			// The resolved user is sealed, so the run never re-verifies the token.
 			expect(context.establishTriggerIdentity).toHaveBeenCalledWith(
 				'good-token',
 				`${WEBHOOK_URL}?method=GET`,
+				'user-1',
 			);
 			expect(result.workflowData).toBeDefined();
 			expect(result.workflowData?.[0][0].json.body).toEqual({ hello: 'world' });

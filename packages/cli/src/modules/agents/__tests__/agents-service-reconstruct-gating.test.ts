@@ -30,6 +30,9 @@ import type { AiService } from '@/services/ai.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import type { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
+import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
+
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
 import { AgentPlanService } from '../agent-plan.service';
@@ -53,7 +56,7 @@ import { ChatIntegrationContextQueryExecutor } from '../integrations/integration
 import { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../integrations/n8n-memory';
-import { N8nChatIntegration } from '../integrations/platforms/n8n-chat-integration';
+import { N8nChatIntegration } from '../integrations/platforms/n8n-chat/n8n-chat-integration';
 import type * as FromJsonConfig from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
 import type { AgentFileRepository } from '../repositories/agent-file.repository';
@@ -109,6 +112,7 @@ function makeReconstructionService(
 		agentFileRepository?: AgentFileRepository;
 		agentWorkspaceService?: AgentWorkspaceService;
 		agentKnowledgeMirrorService?: AgentKnowledgeMirrorService;
+		knowledgeAvailabilityService?: KnowledgeAvailabilityService;
 	} = {},
 ): AgentRuntimeReconstructionService {
 	const secureRuntime = mock<AgentSecureRuntime>();
@@ -144,6 +148,7 @@ function makeReconstructionService(
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
 		mock<CredentialsService>(),
+		overrides.knowledgeAvailabilityService ?? makeKnowledgeAvailabilityService(),
 	);
 }
 
@@ -390,6 +395,35 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 		expect(getInjectedToolNames()).toEqual(
 			expect.arrayContaining(['find_file', 'search_text', 'read_file']),
 		);
+	});
+
+	it('keeps the workspace but skips knowledge tools when the knowledge module is inactive', async () => {
+		const agentFileRepository = mock<AgentFileRepository>();
+		const agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>({
+			isEnabled: () => true,
+		});
+		const agentWorkspaceService = mock<AgentWorkspaceService>();
+		const workspace = new Workspace({});
+		agentFileRepository.hasFilesForAgent.mockResolvedValue(true);
+		agentWorkspaceService.getAgentWorkspace.mockResolvedValue({
+			workspace,
+			handle: mock<AgentSandboxRuntime>(),
+		});
+		const service = makeReconstructionService({
+			agentSandboxRuntimeService,
+			agentFileRepository,
+			agentWorkspaceService,
+			knowledgeAvailabilityService: makeKnowledgeAvailabilityService({ isKnowledgeActive: false }),
+		});
+
+		await reconstructWithWorkspace(service);
+
+		expect(builtAgent.workspace).toHaveBeenCalledWith(workspace);
+		// The file repository is never asked while knowledge is off.
+		expect(agentFileRepository.hasFilesForAgent).not.toHaveBeenCalled();
+		for (const toolName of ['find_file', 'search_text', 'read_file']) {
+			expect(getInjectedToolNames()).not.toContain(toolName);
+		}
 	});
 
 	it.each(['runtime', 'workspace'])(

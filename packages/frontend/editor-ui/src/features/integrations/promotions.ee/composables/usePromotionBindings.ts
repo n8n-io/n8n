@@ -127,6 +127,15 @@ export function usePromotionBindings() {
 		return Array.from(projects.values());
 	});
 
+	/** One row for each missing binding of the session. A created binding stays as resolved. */
+	const rows = computed(() =>
+		Array.from(knownBindings.value, ([key, binding]) => ({
+			key,
+			binding,
+			status: statusOf(key, binding.consumers[0].project.id),
+		})),
+	);
+
 	const destructiveChanges = computed(
 		() => preflight.value?.conflicts.filter(isDestructiveChange) ?? [],
 	);
@@ -265,6 +274,7 @@ export function usePromotionBindings() {
 		originalResult,
 		preflight,
 		groups,
+		rows,
 		destructiveChanges,
 		projectDeletions,
 		needsConfirmation,
@@ -279,6 +289,7 @@ export function usePromotionBindings() {
 		error,
 		canContinue,
 		start,
+		reconcile,
 		end,
 		createBinding,
 		continueApply,

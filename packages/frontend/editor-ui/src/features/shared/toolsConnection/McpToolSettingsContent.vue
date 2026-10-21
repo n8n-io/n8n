@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { N8nButton, N8nDialogFooter, N8nIcon } from '@n8n/design-system';
+import { N8nButton, N8nDialogBody, N8nDialogFooter, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { DEFAULT_INSTANCE_AI_PERMISSIONS, type McpToolPermissions } from '@n8n/api-types';
 
@@ -31,6 +31,8 @@ const emit = defineEmits<{
 	reconnect: [];
 	retry: [];
 }>();
+
+const FORM_ID = 'mcp-tool-settings-form';
 
 const i18n = useI18n();
 const isConnectionUnhealthy = computed(() => props.item.status === 'disconnected');
@@ -79,35 +81,38 @@ function handleSave() {
 </script>
 
 <template>
-	<div :class="$style.container">
-		<div :class="$style.body">
-			<McpDetailBody :item="item" />
+	<div :class="$style.layout">
+		<N8nDialogBody>
+			<form :id="FORM_ID" @submit.prevent="handleSave">
+				<McpDetailBody :item="item" />
 
-			<McpConnectionStatusCallout
-				v-if="isConnectionUnhealthy"
-				:class="$style.failureCallout"
-				:failure-reason="item.connectionFailureReason"
-				@reconnect="emit('reconnect')"
-				@retry="emit('retry')"
-			/>
+				<McpConnectionStatusCallout
+					v-if="isConnectionUnhealthy"
+					:class="$style.failureCallout"
+					:failure-reason="item.connectionFailureReason"
+					@reconnect="emit('reconnect')"
+					@retry="emit('retry')"
+				/>
 
-			<McpToolPermissionsEditor
-				v-model="draftPermissions"
-				:class="$style.permissions"
-				:actor="actor"
-				:available-tools="item.availableTools"
-				:server-title="item.title"
-				:status="item.status"
-				:exclude-permissions="supportsApproval ? [] : ['require_approval']"
-			/>
-		</div>
+				<McpToolPermissionsEditor
+					v-model="draftPermissions"
+					:class="$style.permissions"
+					:actor="actor"
+					:available-tools="item.availableTools"
+					:server-title="item.title"
+					:status="item.status"
+					:exclude-permissions="supportsApproval ? [] : ['require_approval']"
+				/>
+			</form>
+		</N8nDialogBody>
 
-		<N8nDialogFooter :class="$style.footer">
+		<N8nDialogFooter>
 			<N8nButton
 				v-if="showRemove"
 				:class="$style.removeButton"
-				variant="outline"
+				variant="destructive"
 				size="small"
+				type="button"
 				data-test-id="tools-connection-settings-remove"
 				@click="emit('disconnect')"
 			>
@@ -117,6 +122,7 @@ function handleSave() {
 			<N8nButton
 				variant="outline"
 				size="small"
+				type="button"
 				:label="i18n.baseText('generic.cancel')"
 				data-test-id="tools-connection-settings-cancel"
 				@click="emit('cancel')"
@@ -124,31 +130,23 @@ function handleSave() {
 			<N8nButton
 				variant="solid"
 				size="small"
+				type="submit"
+				:form="FORM_ID"
 				:label="saveLabel ?? i18n.baseText('generic.save')"
 				:disabled="!hasChanges || arePermissionsDisabled"
 				data-test-id="tools-connection-settings-save"
-				@click="handleSave"
 			/>
 		</N8nDialogFooter>
 	</div>
 </template>
 
 <style lang="scss" module>
-.container {
+.layout {
 	display: flex;
-	flex-direction: column;
-	height: 100%;
-	min-height: 0;
-	overflow: hidden;
-}
-
-.body {
 	flex: 1 1 auto;
-	display: flex;
 	flex-direction: column;
 	min-height: 0;
-	overflow-y: auto;
-	scrollbar-gutter: stable;
+	height: 100%;
 }
 
 .failureCallout {
@@ -157,11 +155,6 @@ function handleSave() {
 
 .permissions {
 	margin-top: var(--spacing--xl);
-}
-.footer {
-	flex-shrink: 0;
-	padding-top: var(--spacing--md);
-	border-top: var(--border);
 }
 
 .removeButton {

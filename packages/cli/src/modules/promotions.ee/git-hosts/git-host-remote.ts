@@ -113,6 +113,11 @@ export function repositoryUrlFromPath(baseUrl: string, repositoryPath: string): 
 	return new URL(`${path}.git`, baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`).href;
 }
 
+export function promotionHostBaseUrl(provider: GitHostProvider): string | null {
+	if (!isPromotionGitHostType(provider.type)) return null;
+	return hostBaseUrl(provider);
+}
+
 function hostBaseUrl(provider: GitHostProvider): string {
 	const config = promotionGitHostConfigSchema.safeParse(provider.config);
 	if (!config.success) {
