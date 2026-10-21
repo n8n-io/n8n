@@ -1,15 +1,15 @@
-packages/cli/src/modules/agents/agent-save-completion.service.ts
-  s_d3c0f6f6f7d41c::t_653107a7d83cd0 13,35
-packages/cli/src/modules/agents/agents.service.ts
-  s_d3c0f6f6f7d41c::t_653107a7d83cd0 333
-packages/cli/src/modules/n8n-packages/entities/agent/agent-import.types.ts
-  s_d3c0f6f6f7d41c::t_653107a7d83cd0 4,16,27,30
-packages/cli/src/modules/agents/agent-modification-telemetry.service.ts
-  s_d3c0f6f6f7d41c::t_653107a7d83cd0 95-96,101
-packages/cli/src/modules/n8n-packages/entities/agent/agent-importer.ts
-  s_d3c0f6f6f7d41c::t_653107a7d83cd0 13,71
 packages/cli/src/modules/agents/agent-config.service.ts
-  s_d3c0f6f6f7d41c::t_653107a7d83cd0 99
+  s_71ad2034164515::t_5f820ee1ef0874 99
+packages/cli/src/modules/agents/agent-modification-telemetry.service.ts
+  s_71ad2034164515::t_7ad46093f9a735 95-96,101
+packages/cli/src/modules/agents/agent-save-completion.service.ts
+  s_71ad2034164515::t_1b5ff222bf3751 13,35
+packages/cli/src/modules/agents/agents.service.ts
+  s_71ad2034164515::t_8ca3c49dfef714 333
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import.types.ts
+  s_71ad2034164515::t_d485d15a0f90ed 4,16,27,30
+packages/cli/src/modules/n8n-packages/entities/agent/agent-importer.ts
+  s_71ad2034164515::t_c30f35792d00ba 13,71
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -17,10 +17,10 @@ packages/cli/src/modules/agents/agent-config.service.ts
   "base_commit_sha": "940a5f02b3ad610bac57c1698c192cce99ad83e7",
   "prompts": {},
   "sessions": {
-    "s_d3c0f6f6f7d41c": {
+    "s_71ad2034164515": {
       "agent_id": {
         "tool": "codex",
-        "id": "01a152e5-4005-7111-8ca3-6a9ab5e71d29",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
         "model": "gpt-6.1-sol"
       },
       "human_author": "Robin Braumann <robin.braumann@n8n.io>"
