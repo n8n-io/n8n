@@ -10,6 +10,9 @@ packages/cli/src/modules/n8n-packages/entities/agent/agent-import.types.ts
   s_71ad2034164515::t_17b2fae2a31b10 4,16,33,36
 packages/cli/src/modules/n8n-packages/entities/agent/agent-importer.ts
   s_71ad2034164515::t_a0679dcebed9d2 13,72
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-planning.integration.test.ts
+  s_71ad2034164515::t_b61ec9d242f785 600
+  s_71ad2034164515::t_e81ea3b90a6998 600
 ---
 {
   "schema_version": "authorship/3.0.0",
