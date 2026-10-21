@@ -25,6 +25,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
 import { DEBOUNCE_TIME, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useAssistantSkillsExperiment } from '@/experiments/assistantSkills/useAssistantSkillsExperiment';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { AGENT_SKILL_MODAL_KEY } from '@/features/agents/constants';
 import { isSkillNameTakenError } from '@/features/agents/utils/agentSkill';
@@ -36,11 +37,7 @@ import type {
 
 import SkillsTable from '../components/SkillsTable.vue';
 import { PREFERENCES_DEFAULT_PAGE_SIZE } from '../context.constants';
-import {
-	canWriteInstanceSkillScope,
-	canWriteProjectSkillScope,
-	isContextSkillsEnabled,
-} from '../context.utils';
+import { canWriteInstanceSkillScope, canWriteProjectSkillScope } from '../context.utils';
 import type { SkillListQuery } from '../skills.api';
 import { useSkillsStore } from '../skills.store';
 import { useSkillScopeDisplay } from '../skills.utils';
@@ -59,6 +56,7 @@ const message = useMessage();
 const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 const skillsStore = useSkillsStore();
+const { isEnabled: assistantSkillsEnabled } = useAssistantSkillsExperiment();
 const telemetry = useTelemetry();
 const { showError, showMessage } = useToast();
 const { scopeDisplay } = useSkillScopeDisplay();
@@ -301,7 +299,7 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>) {
 			skill: detail.skill,
 			skillId: detail.id,
 			readOnly: !detail.canEdit,
-			...(isContextSkillsEnabled() && detail.scope !== 'agent'
+			...(assistantSkillsEnabled.value && detail.scope !== 'agent'
 				? { availableToAssistant: detail.availableToAssistant }
 				: {}),
 			scopeOptions: options,
@@ -468,7 +466,7 @@ onMounted(async () => {
 			:items-length="skillsStore.count"
 			:loading="skillsStore.loading"
 			:show-empty="showEmptyState"
-			:show-assistant-availability="isContextSkillsEnabled()"
+			:show-assistant-availability="assistantSkillsEnabled"
 			@open="openEditModal"
 			@delete="onDelete"
 			@update:options="onOptionsUpdate"

@@ -5,6 +5,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { SkillNameTakenError } from '@/modules/skills/skill-name-taken.error';
 import type { SkillsApiService } from '@/modules/skills/skills-api.service';
+import type { AssistantSkillsRollout } from '@/modules/skills/assistant-skills-rollout';
 import type { Telemetry } from '@/telemetry';
 
 import { SKILL_TOOLS } from '../mcp-scopes';
@@ -47,7 +48,8 @@ describe('McpSkillToolsService', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	const telemetry = mock<Telemetry>();
 	const skillsApi = mock<SkillsApiService>();
-	const service = new McpSkillToolsService(telemetry, skillsApi);
+	const rollout = mock<AssistantSkillsRollout>();
+	const service = new McpSkillToolsService(telemetry, skillsApi, rollout);
 	let tools: Map<string, Handler>;
 
 	const callTool = async (name: string, input: Record<string, unknown>) => {
@@ -56,17 +58,34 @@ describe('McpSkillToolsService', () => {
 		return await handler(input, {});
 	};
 
-	beforeEach(() => {
+	beforeEach(async () => {
 		vi.clearAllMocks();
+		rollout.isEnabled.mockResolvedValue(true);
 		tools = new Map();
 		const registerTool: RegisterToolFn = (tool) => {
 			tools.set(tool.name, tool.handler as unknown as Handler);
 		};
-		service.registerTools(registerTool, user);
+		await service.registerTools(registerTool, user);
 	});
 
 	it('registers exactly the skill tools of the scope map (drift guard)', () => {
 		expect(new Set(tools.keys())).toEqual(SKILL_TOOLS);
+	});
+
+	it('hides Assistant availability from MCP when its flag is off', async () => {
+		rollout.isEnabled.mockResolvedValue(false);
+		const registered: Array<Parameters<RegisterToolFn>[0]> = [];
+		await service.registerTools((tool) => {
+			registered.push(tool);
+			tools.set(tool.name, tool.handler as unknown as Handler);
+		}, user);
+		expect(
+			registered.find((tool) => tool.name === 'update_skill')?.config.inputSchema,
+		).not.toHaveProperty('availableToAssistant');
+		skillsApi.get.mockResolvedValue(detail);
+		expect(
+			(await callTool('get_skill', { skillId: 'skill_a' })).structuredContent,
+		).not.toHaveProperty('availableToAssistant');
 	});
 
 	describe('search_skills', () => {

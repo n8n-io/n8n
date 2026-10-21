@@ -1,6 +1,8 @@
+import { ASSISTANT_SKILLS_FLAG } from '@n8n/api-types';
 import {
 	createTeamProject,
 	getPersonalProject,
+	mockInstance,
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
@@ -18,6 +20,7 @@ import { setSkillsHubFlag } from '@/modules/skills/__tests__/test-utils/skills-h
 import { HubAssistantSkillProvider } from '@/modules/skills/hub-assistant-skill-provider.service';
 import { skillContentHash, type SkillContent } from '@/modules/skills/skill-content-hash';
 import { SkillRepository, type SkillVisibility } from '@/modules/skills/skill.repository';
+import { PostHogClient } from '@/posthog';
 
 import { createOwner, createUser } from '../shared/db/users';
 
@@ -34,6 +37,7 @@ const content = (overrides: Partial<SkillContent> = {}): SkillContent => ({
 });
 
 describe('SkillRepository', () => {
+	const postHog = mockInstance(PostHogClient);
 	let skills: SkillRepository;
 	let assistantSkills: HubAssistantSkillProvider;
 	let owner: User;
@@ -60,6 +64,12 @@ describe('SkillRepository', () => {
 		user = await createUser();
 		project = await createTeamProject('Team');
 		otherProject = await createTeamProject('Other team');
+	});
+
+	beforeEach(() => {
+		postHog.getFeatureFlagForInstance.mockImplementation(
+			async (flag) => flag === ASSISTANT_SKILLS_FLAG,
+		);
 	});
 
 	afterEach(async () => {

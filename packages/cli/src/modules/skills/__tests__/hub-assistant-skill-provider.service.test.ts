@@ -11,12 +11,12 @@ import type { SkillVersion } from '../skill-version.entity';
 import type { ResolvedSkillRow, SkillRepository } from '../skill.repository';
 import { HubAssistantSkillProvider } from '../hub-assistant-skill-provider.service';
 import type { SkillService } from '../skill.service';
-import type { SkillsHubRollout } from '../skills-hub-rollout';
+import type { AssistantSkillsRollout } from '../assistant-skills-rollout';
 
 describe('HubAssistantSkillProvider', () => {
 	const repository = mock<SkillRepository>();
 	const projects = mock<ProjectScopeService>();
-	const rollout = { isEnabled: true } as SkillsHubRollout;
+	const rollout = mock<AssistantSkillsRollout>();
 	const skills = mock<SkillService>();
 	const provider = new HubAssistantSkillProvider(rollout, projects, repository, skills);
 	const context: AssistantSkillContext = { user: mock<User>(), projectId: 'project-1' };
@@ -32,7 +32,7 @@ describe('HubAssistantSkillProvider', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
-		Object.assign(rollout, { isEnabled: true });
+		rollout.isEnabled.mockResolvedValue(true);
 		projects.getProjectIds.mockResolvedValue(['project-1', 'project-2']);
 		repository.findAssistantSkillSummaries.mockResolvedValue([]);
 		row = {
@@ -57,7 +57,7 @@ describe('HubAssistantSkillProvider', () => {
 	});
 
 	it('returns no skills and does not read storage when the flag is off', async () => {
-		Object.assign(rollout, { isEnabled: false });
+		rollout.isEnabled.mockResolvedValue(false);
 		expect(await provider.listSkills(context)).toEqual([]);
 		expect(await provider.readSkill(context, 'skill-1')).toBeNull();
 		expect(repository.findAssistantSkillSummaries).not.toHaveBeenCalled();

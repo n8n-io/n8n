@@ -1,5 +1,6 @@
 import {
 	AGENT_EVALS_FLAG,
+	ASSISTANT_SKILLS_FLAG,
 	CANVAS_NODE_CONTEXT_FLAG,
 	CREDENTIAL_DESCRIPTIONS_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
@@ -194,13 +195,16 @@ export class PostHogClient {
 		}
 		const overridden = this.applyEnvOverrides(data);
 		// The editor and backend must use the same instance result.
-		const credentialDescriptionsEnabled =
-			(await this.getFeatureFlagForInstance(CREDENTIAL_DESCRIPTIONS_FLAG)) === true;
+		const [credentialDescriptions, assistantSkills] = await Promise.all([
+			this.getFeatureFlagForInstance(CREDENTIAL_DESCRIPTIONS_FLAG),
+			this.getFeatureFlagForInstance(ASSISTANT_SKILLS_FLAG),
+		]);
 		return {
 			...overridden,
 			featureFlags: {
 				...overridden.featureFlags,
-				[CREDENTIAL_DESCRIPTIONS_FLAG]: credentialDescriptionsEnabled,
+				[CREDENTIAL_DESCRIPTIONS_FLAG]: credentialDescriptions === true,
+				[ASSISTANT_SKILLS_FLAG]: assistantSkills === true,
 			},
 		};
 	}

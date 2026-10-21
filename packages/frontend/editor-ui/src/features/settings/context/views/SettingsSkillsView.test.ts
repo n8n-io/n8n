@@ -1,4 +1,4 @@
-import { useSettingsStore } from '@n8n/stores/settings.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
@@ -342,11 +342,9 @@ describe('SettingsSkillsView', () => {
 			['agent', true, true, undefined],
 			['instance', false, true, undefined],
 		] as const)(
-			'shows availability in the table and modal behind the Hub flag (%s, %s)',
+			'shows availability in the table and modal behind the Assistant flag (%s, %s)',
 			async (scope, enabled, availableToAssistant, expected) => {
-				mockedStore(useSettingsStore).moduleSettings = {
-					agents: { skillsHubEnabled: enabled },
-				} as never;
+				mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(enabled);
 				skillsStore.skills = [skill({ scope, availableToAssistant })];
 				skillsStore.count = 1;
 				skillsStore.fetchSkill.mockResolvedValue(detail({ scope, availableToAssistant }));
@@ -359,9 +357,7 @@ describe('SettingsSkillsView', () => {
 		);
 
 		it('persists a toggle-only save and reloads the list', async () => {
-			mockedStore(useSettingsStore).moduleSettings = {
-				agents: { skillsHubEnabled: true },
-			} as never;
+			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
 			skillsStore.skills = [skill()];
 			skillsStore.count = 1;
 			skillsStore.fetchSkill.mockResolvedValue(detail());

@@ -25,7 +25,7 @@ import type { Skill } from './skill.entity';
 import { SkillRepository, type SkillTarget } from './skill.repository';
 import { SkillService, toAgentSkill } from './skill.service';
 import { SkillsTelemetry, type SkillTelemetrySource } from './skills-telemetry';
-import { SkillsHubRollout } from './skills-hub-rollout';
+import { AssistantSkillsRollout } from './assistant-skills-rollout';
 
 function scopeOf(skill: Pick<Skill, 'projectId' | 'agentId'>): SkillScope {
 	if (skill.agentId) return 'agent';
@@ -48,7 +48,7 @@ export class SkillsApiService {
 		private readonly userRepository: UserRepository,
 		private readonly skillsTelemetry: SkillsTelemetry,
 		private readonly skillAgents: SkillAgentsProxy,
-		private readonly rollout: SkillsHubRollout,
+		private readonly assistantSkillsRollout: AssistantSkillsRollout,
 	) {}
 
 	async list(user: User, query: ListSkillsQueryDto): Promise<SkillListResponse> {
@@ -122,7 +122,10 @@ export class SkillsApiService {
 		payload: SaveSkillDto,
 		source: SkillTelemetrySource = 'ui',
 	): Promise<SkillSaveResponse> {
-		if (payload.availableToAssistant !== undefined && !this.rollout.isEnabled) {
+		if (
+			payload.availableToAssistant !== undefined &&
+			!(await this.assistantSkillsRollout.isEnabled())
+		) {
 			throw new NotFoundError('Skill not found');
 		}
 		const skill = await this.requireAccess(user, skillId, 'update');

@@ -17,7 +17,7 @@ import type { ResolvedSkillRow, SkillRepository } from '../skill.repository';
 import type { SkillService } from '../skill.service';
 import { SkillsApiService } from '../skills-api.service';
 import type { SkillsTelemetry } from '../skills-telemetry';
-import type { SkillsHubRollout } from '../skills-hub-rollout';
+import type { AssistantSkillsRollout } from '../assistant-skills-rollout';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 vi.mock('@n8n/permissions', async (importOriginal) => ({
@@ -83,7 +83,7 @@ describe('SkillsApiService', () => {
 	const userRepository = mock<UserRepository>();
 	const skillsTelemetry = mock<SkillsTelemetry>();
 	const skillAgents = mock<SkillAgentsProxy>();
-	const rollout = mock<SkillsHubRollout>({ isEnabled: true });
+	const rollout = mock<AssistantSkillsRollout>();
 	const service = new SkillsApiService(
 		skillService,
 		repository,
@@ -99,7 +99,7 @@ describe('SkillsApiService', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
-		Object.assign(rollout, { isEnabled: true });
+		rollout.isEnabled.mockResolvedValue(true);
 		txRunner.run.mockImplementation(async (_ctx, fn) => await fn(TX_CTX));
 		visible = Object.keys(NAMES).map((id) => skill(id));
 		projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
@@ -544,8 +544,8 @@ describe('SkillsApiService', () => {
 			followingAgentIds: ['agent-1'],
 		};
 
-		it('refuses availability changes when the Hub flag is off', async () => {
-			Object.assign(rollout, { isEnabled: false });
+		it('refuses availability changes when the Assistant flag is off', async () => {
+			rollout.isEnabled.mockResolvedValue(false);
 			await expect(
 				service.update(user, 'skill_a', update({ availableToAssistant: true })),
 			).rejects.toThrow(NotFoundError);

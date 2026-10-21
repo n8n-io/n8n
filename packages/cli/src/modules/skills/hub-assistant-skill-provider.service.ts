@@ -9,19 +9,19 @@ import { Service } from '@n8n/di';
 
 import { SkillRepository } from './skill.repository';
 import { SkillService } from './skill.service';
-import { SkillsHubRollout } from './skills-hub-rollout';
+import { AssistantSkillsRollout } from './assistant-skills-rollout';
 
 @Service()
 export class HubAssistantSkillProvider implements AssistantSkillProvider {
 	constructor(
-		private readonly rollout: SkillsHubRollout,
+		private readonly rollout: AssistantSkillsRollout,
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly skillRepository: SkillRepository,
 		private readonly skillService: SkillService,
 	) {}
 
 	async listSkills(context: AssistantSkillContext): Promise<AssistantSkillSummary[]> {
-		if (!this.rollout.isEnabled) return [];
+		if (!(await this.rollout.isEnabled())) return [];
 		return await this.skillRepository.findAssistantSkillSummaries(
 			await this.authorizedProject(context),
 		);
@@ -31,7 +31,7 @@ export class HubAssistantSkillProvider implements AssistantSkillProvider {
 		context: AssistantSkillContext,
 		skillId: string,
 	): Promise<AssistantSkillContent | null> {
-		if (!this.rollout.isEnabled) return null;
+		if (!(await this.rollout.isEnabled())) return null;
 		const projectId = await this.authorizedProject(context);
 		const row = (await this.skillRepository.findLatestSaved([skillId])).get(skillId);
 		if (!row) return null;
