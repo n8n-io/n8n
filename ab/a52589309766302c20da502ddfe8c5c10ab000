@@ -553,6 +553,7 @@ packages/@n8n/cli/docs/commands/package.md
   s_2397c9db9d923f::t_195f0e1001f02c 32-33,40-43,49-53
   s_2397c9db9d923f::t_92f3a2cceb1f8d 44
   s_2397c9db9d923f::t_937612ca6328a6 45-47
+  s_71ad2034164515::t_85cc59724d62ed 39
 packages/@n8n/cli/src/commands/package/export.ts
   s_2397c9db9d923f::t_fb9dd5e142a9ac 81,87
   s_2397c9db9d923f::t_7be1fe92591eba 77,82,84,88,113-114,136-137,146-147
@@ -576,6 +577,20 @@ docs/generated/postgres-schema/README.md
   s_2397c9db9d923f::t_c6ed8dc6682fec 39
 docs/generated/sqlite-schema/README.md
   s_2397c9db9d923f::t_286f31582e8946 39
+packages/frontend/editor-ui/src/features/agents/components/AgentTriggersSection.vue
+  s_71ad2034164515::t_68cc482aa6391c 13
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTriggersSection.test.ts
+  s_71ad2034164515::t_c93767295366b0 214
+  s_71ad2034164515::t_640a7ab7cf9d08 223
+  s_71ad2034164515::t_beb598fe94bb88 233-234
+packages/cli/src/modules/mcp/tools/agents/agent-slack-setup.ts
+  s_71ad2034164515::t_8948990ed4371d 7
+packages/nodes-base/credentials/SlackApi.credentials.ts
+  s_71ad2034164515::t_37df468bb0671d 60,64,66
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_71ad2034164515::t_640a7ab7cf9d08 2713
+packages/frontend/editor-ui/src/features/ai/shared/components/ChannelSetupCard.test.ts
+  s_71ad2034164515::t_6bc768b14886f2 380,383
 ---
 {
   "schema_version": "authorship/3.0.0",
