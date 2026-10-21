@@ -2019,16 +2019,17 @@ describe('ExecutionPersistence', () => {
 			expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
 		});
 
-		it('should not delete the rows when the binary data delete rejects', async () => {
+		it('should not delete the payload or the rows when the binary data delete rejects', async () => {
 			const target = { ...baseTarget, storedAt: 'fs' as const };
 			binaryDataService.deleteMany.mockRejectedValueOnce(new Error('binary store down'));
 
 			await expect(executionPersistence.hardDelete(target)).rejects.toThrow('binary store down');
 
+			expect(jsonStore.delete).not.toHaveBeenCalled();
 			expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
 		});
 
-		it('should delete the rows after both file deletes', async () => {
+		it('should delete binaries, then the payload, then the rows', async () => {
 			const target = { ...baseTarget, storedAt: 'fs' as const };
 
 			await executionPersistence.hardDelete(target);
@@ -2036,7 +2037,8 @@ describe('ExecutionPersistence', () => {
 			const [rows] = executionRepository.deleteByIds.mock.invocationCallOrder;
 			const [binary] = binaryDataService.deleteMany.mock.invocationCallOrder;
 			const [blobs] = jsonStore.delete.mock.invocationCallOrder;
-			expect(rows).toBeGreaterThan(Math.max(binary, blobs));
+			expect(binary).toBeLessThan(blobs);
+			expect(blobs).toBeLessThan(rows);
 		});
 	});
 
@@ -2081,6 +2083,7 @@ describe('ExecutionPersistence', () => {
 
 			await expect(executionPersistence.hardDeleteBy(criteria)).rejects.toThrow('azure down');
 
+			expect(jsonStore.delete).not.toHaveBeenCalled();
 			expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
 		});
 	});

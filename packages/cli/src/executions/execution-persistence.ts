@@ -651,11 +651,12 @@ export class ExecutionPersistence {
 		const targets = Array.isArray(target) ? target : [target];
 		if (targets.length === 0) return;
 
-		// Files first: a failed file delete leaves the rows, so the next run retries them.
-		await Promise.all([
-			this.binaryDataService.deleteMany(targets.map((t) => ({ type: 'execution' as const, ...t }))),
-			this.jsonStore.delete(this.toBlobRefs(targets)),
-		]);
+		// Binaries first. A failure leaves the payload and the rows, so the execution stays openable.
+		await this.binaryDataService.deleteMany(
+			targets.map((t) => ({ type: 'execution' as const, ...t })),
+		);
+		// Payload next. A failure leaves the rows, so the next run retries them.
+		await this.jsonStore.delete(this.toBlobRefs(targets));
 
 		await this.executionRepository.deleteByIds(targets.map((t) => t.executionId));
 	}
@@ -663,8 +664,8 @@ export class ExecutionPersistence {
 	async hardDeleteBy(criteria: ExecutionDeletionCriteria) {
 		const refs = await this.executionRepository.findExecutionsToDelete(criteria);
 
-		// Batches keep each row delete under the SQLite expression-depth limit. Each batch
-		// deletes its files before its rows, so a failed file delete leaves the rows to retry.
+		// Batches keep each row delete under the SQLite expression-depth limit.
+		// Each batch deletes binaries, then the payload, then the rows.
 		for (const batch of chunk(refs, this.executionRepository.hardDeletionBatchSize)) {
 			await this.hardDelete(batch);
 		}
