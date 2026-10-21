@@ -1,4 +1,9 @@
-export { encodeCustomFieldsV2, resolveCustomFieldsV2 } from './customFields';
+export {
+	encodeCustomFieldsV2,
+	resolveCustomFieldsV2,
+	flattenCustomFieldsToRoot,
+	nestRootCustomFields,
+} from './customFields';
 
 export { coerceToBoolean, coerceToNumber, toDateOnly, toRfc3339 } from './typeCoercion';
 
