@@ -96,7 +96,7 @@ it('reverts and reapplies the investigation schema', async () => {
 	const db = Container.get(DataSource);
 	[...postgresMigrations, ...sqliteMigrations].forEach(wrapMigration);
 	const migration = db.migrations.find(
-		({ constructor }) => constructor.name === 'CreateSelfHealingInvestigationTable1792149480858',
+		({ constructor }) => constructor.name === 'CreateSelfHealingInvestigationTable1792578704944',
 	);
 	if (!migration) throw new Error('The investigation migration is not registered.');
 	const runner = db.createQueryRunner();

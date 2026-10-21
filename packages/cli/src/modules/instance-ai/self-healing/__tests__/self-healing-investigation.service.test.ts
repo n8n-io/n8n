@@ -295,6 +295,7 @@ describe('SelfHealingInvestigationService', () => {
 			outcome: 'needs_you',
 			summary: 'Reconnect the credential.',
 			report: 'The credential needs to be reconnected.',
+			candidateFilePath: null,
 		};
 		await startAndFinish();
 		expect(results.complete.mock.calls[0]?.[0]?.output.outcome).toBe('needs_you');

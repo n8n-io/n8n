@@ -196,7 +196,9 @@ describe('compileCandidateWorkflow', () => {
 			const workflow = generatedWorkflow();
 			changeUrl(workflow, placeholder);
 			const request = workflow.nodes.find((node) => node.name === 'Request')!;
-			if (kind === 'changed') request.parameters.options = { timeout: placeholder };
+			if (kind === 'changed') {
+				request.parameters = { ...request.parameters, options: { timeout: placeholder } };
+			}
 			if (kind === 'added') {
 				workflow.nodes.push({
 					...structuredClone(request),
@@ -224,13 +226,16 @@ describe('compileCandidateWorkflow', () => {
 			model: 'existing-model',
 			options: { temperature: 0.7 },
 		};
-		vi.mocked(computeChatModelValidationIssues).mockImplementation(async (_context, node) =>
-			node.name === 'Request' ? { model: ['The selected model is unavailable.'] } : {},
+		vi.mocked(computeChatModelValidationIssues).mockImplementation(
+			async (_context, node): Promise<Record<string, string[]>> =>
+				node.name === 'Request' ? { model: ['The selected model is unavailable.'] } : {},
 		);
 		const workflow = generatedWorkflow();
 		if (kind === 'restored') {
-			workflow.nodes.find((node) => node.name === 'Request')!.parameters.options = {
-				temperature: '<__PLACEHOLDER_VALUE__Temperature__>',
+			const request = workflow.nodes.find((node) => node.name === 'Request')!;
+			request.parameters = {
+				...request.parameters,
+				options: { temperature: '<__PLACEHOLDER_VALUE__Temperature__>' },
 			};
 		}
 		if (changed) {
