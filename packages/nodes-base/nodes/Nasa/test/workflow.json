@@ -1,0 +1,60 @@
+{
+	"name": "NASA Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "b1f0f2a8-4d38-4f63-9d6e-2f3b1c6a7d10",
+			"name": "When clicking 'Execute workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "astronomyPictureOfTheDay",
+				"operation": "get",
+				"additionalFields": {
+					"date": "2024-05-20T00:00:00.000Z"
+				},
+				"download": false
+			},
+			"id": "5c2f4b1e-8a7d-4c39-b6f0-9e1d2a3c4b5f",
+			"name": "NASA",
+			"type": "n8n-nodes-base.nasa",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"credentials": {
+				"nasaApi": {
+					"id": "1",
+					"name": "NASA API"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "NASA",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"NASA": [
+			{
+				"json": {
+					"date": "2024-05-20",
+					"title": "A picture",
+					"media_type": "image",
+					"url": "https://example.com/apod.jpg",
+					"hdurl": "https://example.com/hd/apod.jpg"
+				}
+			}
+		]
+	}
+}
