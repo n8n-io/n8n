@@ -23,7 +23,6 @@ import {
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import {
 	CredentialsRepository,
-	TagRepository,
 	VariablesRepository,
 	WorkflowRepository,
 	type User,
@@ -40,6 +39,7 @@ import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { diffDataTableSchema } from '@/modules/n8n-packages/entities/data-table/data-table-compat';
 import { DataTableSerializer } from '@/modules/n8n-packages/entities/data-table/data-table.serializer';
+import { TagImporter } from '@/modules/n8n-packages/entities/tag/tag-importer';
 import { serializeTag } from '@/modules/n8n-packages/entities/tag/tag.exporter';
 import { formatEntityFile } from '@/modules/n8n-packages/io/entity-file-format';
 import { gitBlobSha, HashingPackageWriter } from '@/modules/n8n-packages/io/hashing-package-writer';
@@ -141,7 +141,7 @@ export class PromotionChangeService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly variablesRepository: VariablesRepository,
 		private readonly credentialsRepository: CredentialsRepository,
-		private readonly tagRepository: TagRepository,
+		private readonly tagImporter: TagImporter,
 		private readonly dataTableService: DataTableService,
 		private readonly dataTableSerializer: DataTableSerializer,
 		private readonly moduleRegistry: ModuleRegistry,
@@ -550,22 +550,15 @@ export class PromotionChangeService {
 
 	/**
 	 * Finds the local tag that Apply uses for each branch tag: the tag with the same ID, else the tag
-	 * with the same name. Names match trimmed and case-sensitive, as in the package import.
-	 * Serializes each tag as the package stores it, so it compares with branch files.
+	 * with the same name. Serializes each tag as the package stores it, so it compares with branch files.
 	 */
 	private async loadLocalTags(
 		branchTags: ReadonlyArray<{ id: string; name: string }>,
 	): Promise<Map<string, LocalTag>> {
-		if (branchTags.length === 0) return new Map();
-		const [byId, byName] = await Promise.all([
-			this.tagRepository.findMany(branchTags.map(({ id }) => id)),
-			this.tagRepository.findManyByName([...new Set(branchTags.map(({ name }) => name.trim()))]),
-		]);
-		const tagsById = new Map(byId.map((tag) => [tag.id, tag]));
-		const tagsByName = new Map(byName.map((tag) => [tag.name, tag]));
+		const local = await this.tagImporter.findLocalTags(branchTags);
 		return new Map(
 			branchTags.flatMap(({ id, name }): Array<[string, LocalTag]> => {
-				const tag = tagsById.get(id) ?? tagsByName.get(name.trim());
+				const tag = local.byId.get(id) ?? local.byName.get(name.trim());
 				if (!tag) return [];
 				const content = formatEntityFile(serializeTag(tag));
 				return [[id, { id: tag.id, name: tag.name, content, blobSha: gitBlobSha(content) }]];

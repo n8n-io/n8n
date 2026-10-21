@@ -52,6 +52,7 @@ import { DataTableRepository } from '@/modules/data-table/data-table.repository'
 import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DataTableSerializer } from '@/modules/n8n-packages/entities/data-table/data-table.serializer';
+import { TagImporter } from '@/modules/n8n-packages/entities/tag/tag-importer';
 import {
 	PACKAGE_ENTITY_LAYOUT,
 	entityFilePath,
@@ -474,7 +475,7 @@ async function listApplyChanges(projectId: string) {
 		Container.get(WorkflowRepository),
 		Container.get(VariablesRepository),
 		Container.get(CredentialsRepository),
-		Container.get(TagRepository),
+		Container.get(TagImporter),
 		Container.get(DataTableService),
 		Container.get(DataTableSerializer),
 		Container.get(ModuleRegistry),
