@@ -314,7 +314,7 @@ export class CredentialsOverwrites {
 		if (newer && target === newer.version) return { ...base, ...withoutVersion(newer) };
 
 		throw new UserError(
-			`The credentials overwrite of "${type}" has no app with version ${target}. Check the overwrites of this instance.`,
+			`This credential uses a managed app (version ${target}) that is no longer available. Reconnect the credential to continue.`,
 		);
 	}
 

@@ -1421,6 +1421,12 @@ describe('CredentialsOverwrites', () => {
 						managed({ ...tokens, [MANAGED_VERSION_KEY]: 5 }),
 					),
 				).toThrow(UserError);
+				expect(() =>
+					instance.applyOverwrite(
+						'notionOAuth2Api',
+						managed({ ...tokens, [MANAGED_VERSION_KEY]: 5 }),
+					),
+				).toThrow('Reconnect the credential to continue.');
 			});
 
 			it('should keep a user-owned client, whatever the stored version is', async () => {
