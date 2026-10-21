@@ -9,10 +9,11 @@ import { ScimTokenService } from './scim-token.service';
  * Deletes the SCIM token of a user whose global role no longer has
  * `scim:manage`.
  *
- * Only a manual role change emits `user-changed-role`. Role mapping and
- * edits to a custom role do not, so `ScimTokenService.verifyApiKey` also
- * checks the scope on each request. This listener only removes a token
- * that can no longer authenticate.
+ * A manual change, SSO role mapping and token exchange each emit their own
+ * event. Without the SSO one, a token kept after a demotion works again when
+ * the IdP promotes the user back. Edits to a custom role emit no event for
+ * each user, so `ScimTokenService.verifyApiKey` also checks the scope on each
+ * request. This listener only removes a token that can no longer authenticate.
  */
 @Service()
 export class ScimTokenRevocationListener {
@@ -24,6 +25,12 @@ export class ScimTokenRevocationListener {
 	) {
 		this.eventService.on('user-changed-role', async ({ targetUserId }) => {
 			await this.revokeIfScopeLost(targetUserId);
+		});
+		this.eventService.on('sso-user-instance-role-updated', async ({ userId }) => {
+			await this.revokeIfScopeLost(userId);
+		});
+		this.eventService.on('token-exchange-role-updated', async ({ userId }) => {
+			await this.revokeIfScopeLost(userId);
 		});
 	}
 
