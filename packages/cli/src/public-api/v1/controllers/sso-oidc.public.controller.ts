@@ -1,4 +1,5 @@
 import { OidcConfigurationPublicDto, UpdateOidcConfigurationPublicDto } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
@@ -20,6 +21,7 @@ import type { Response } from 'express';
 import { ConflictError } from '@n8n/errors';
 import { OIDC_CLIENT_SECRET_REDACTED_VALUE } from '@/modules/sso-oidc/constants';
 import { OidcService } from '@/modules/sso-oidc/oidc.service.ee';
+import { getChangedFields } from '@/utils/changed-fields';
 
 const tags = ['SettingsSsoOidc'];
 
@@ -42,6 +44,7 @@ export class SsoOidcPublicController {
 	constructor(
 		private readonly oidcService: OidcService,
 		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
+		private readonly eventService: EventService,
 	) {}
 
 	@Get('/')
@@ -70,7 +73,7 @@ export class SsoOidcPublicController {
 	@ApiResponse(200, OidcConfigurationPublicDto)
 	@ApiErrorResponse(409)
 	async setOidcConfiguration(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Body body: UpdateOidcConfigurationPublicDto,
 	): Promise<OidcConfigurationPublicDto> {
@@ -80,8 +83,21 @@ export class SsoOidcPublicController {
 			);
 		}
 
+		const previous = this.oidcService.getRedactedConfig();
+		// `updateConfig` swaps the redaction sentinel for the stored secret in place, so decide first.
+		const clientSecretSubmitted = body.clientSecret !== OIDC_CLIENT_SECRET_REDACTED_VALUE;
 		await this.oidcService.updateConfig(body);
 		const config = await this.oidcService.loadConfig();
+
+		const fieldsChanged = getChangedFields(previous, this.oidcService.getRedactedConfig());
+		if (clientSecretSubmitted) fieldsChanged.push('clientSecret');
+		this.eventService.emit('sso-settings-updated', {
+			user: req.user,
+			protocol: 'oidc',
+			loginEnabled: config.loginEnabled,
+			fieldsChanged,
+			publicApi: true,
+		});
 
 		return toOidcConfigurationPublicDto(config);
 	}

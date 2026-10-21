@@ -297,6 +297,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'login-failed-due-to-ldap-disabled': (event) => this.loginFailedDueToLdapDisabled(event),
 			'sso-user-project-access-updated': (event) => this.ssoUserProjectAccessUpdated(event),
 			'sso-user-instance-role-updated': (event) => this.ssoUserInstanceRoleUpdated(event),
+			'sso-settings-updated': (event) => this.ssoSettingsUpdated(event),
 			'workflow-created': (event) => this.workflowCreated(event),
 			'workflow-archived': (event) => this.workflowArchived(event),
 			'workflow-unarchived': (event) => this.workflowUnarchived(event),
@@ -1238,6 +1239,22 @@ export class TelemetryEventRelay extends EventRelay {
 		role,
 	}: RelayEventMap['sso-user-instance-role-updated']) {
 		this.telemetry.track('Sso user instance role update', { user_id: userId, role });
+	}
+
+	private ssoSettingsUpdated({
+		user,
+		protocol,
+		loginEnabled,
+		fieldsChanged,
+		publicApi,
+	}: RelayEventMap['sso-settings-updated']) {
+		this.telemetry.track(TELEMETRY_EVENT.SSO.USER_UPDATED_SSO_SETTINGS, {
+			user_id: user.id,
+			authentication_method: protocol,
+			is_active: loginEnabled,
+			fields_changed: fieldsChanged,
+			public_api: publicApi,
+		});
 	}
 
 	// #endregion

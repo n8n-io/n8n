@@ -17,6 +17,7 @@ import {
 import { SsoAccessDeniedError } from '@/modules/provisioning.ee/errors/sso-access-denied.error';
 import { AuthlessRequest } from '@/requests';
 import { isOidcCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
+import { getChangedFields } from '@/utils/changed-fields';
 import { validateRedirectUrl } from '@/utils/validate-redirect-url';
 
 import {
@@ -53,18 +54,26 @@ export class OidcController {
 	@Post('/config')
 	@Licensed('feat:oidc')
 	@GlobalScope('oidc:manage')
-	async saveConfiguration(
-		_req: AuthenticatedRequest,
-		_res: Response,
-		@Body payload: OidcConfigDto,
-	) {
+	async saveConfiguration(req: AuthenticatedRequest, _res: Response, @Body payload: OidcConfigDto) {
 		if (this.instanceSettingsLoaderConfig.ssoManagedByEnv) {
 			throw new ForbiddenError(
 				'OIDC configuration is managed via environment variables and cannot be modified through the API',
 			);
 		}
+		const previous = this.oidcService.getRedactedConfig();
+		// `updateConfig` swaps the redaction sentinel for the stored secret in place, so decide first.
+		const clientSecretSubmitted = payload.clientSecret !== OIDC_CLIENT_SECRET_REDACTED_VALUE;
 		await this.oidcService.updateConfig(payload);
 		const config = this.oidcService.getRedactedConfig();
+		const fieldsChanged = getChangedFields(previous, config);
+		if (clientSecretSubmitted) fieldsChanged.push('clientSecret');
+		this.eventService.emit('sso-settings-updated', {
+			user: req.user,
+			protocol: 'oidc',
+			loginEnabled: config.loginEnabled,
+			fieldsChanged,
+			publicApi: false,
+		});
 		return config;
 	}
 

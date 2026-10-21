@@ -16,6 +16,7 @@ import { SsoAccessDeniedError } from '@/modules/provisioning.ee/errors/sso-acces
 import { AuthlessRequest } from '@/requests';
 import { sendErrorResponse } from '@/response-helper';
 import { isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers';
+import { getChangedFields } from '@/utils/changed-fields';
 import { validateRedirectUrl } from '@/utils/validate-redirect-url';
 
 import { SamlEmailNotVerifiedError } from './errors/saml-email-not-verified.error';
@@ -70,14 +71,22 @@ export class SamlController {
 	 */
 	@Post('/config', { middlewares: [samlLicensedMiddleware] })
 	@GlobalScope('saml:manage')
-	async configPost(_req: AuthenticatedRequest, _res: Response, @Body payload: SamlPreferences) {
+	async configPost(req: AuthenticatedRequest, _res: Response, @Body payload: SamlPreferences) {
 		if (this.instanceSettingsLoaderConfig.ssoManagedByEnv) {
 			throw new ForbiddenError(
 				'SSO configuration is managed via environment variables and cannot be modified through the API',
 			);
 		}
+		const previous = this.samlService.samlPreferences;
 		const result = await this.samlService.setSamlPreferences(payload);
 		if (!result) return;
+		this.eventService.emit('sso-settings-updated', {
+			user: req.user,
+			protocol: 'saml',
+			loginEnabled: result.loginEnabled ?? false,
+			fieldsChanged: getChangedFields(previous, result),
+			publicApi: false,
+		});
 		return {
 			...result,
 			signingPrivateKey: result.signingPrivateKey ? CREDENTIAL_BLANKING_VALUE : undefined,
@@ -90,7 +99,7 @@ export class SamlController {
 	@Post('/config/toggle', { middlewares: [samlLicensedMiddleware] })
 	@GlobalScope('saml:manage')
 	async toggleEnabledPost(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		res: Response,
 		@Body { loginEnabled }: SamlToggleDto,
 	) {
@@ -99,7 +108,15 @@ export class SamlController {
 				'SSO configuration is managed via environment variables and cannot be modified through the API',
 			);
 		}
+		const wasEnabled = this.samlService.samlPreferences.loginEnabled ?? false;
 		await this.samlService.setSamlPreferences({ loginEnabled });
+		this.eventService.emit('sso-settings-updated', {
+			user: req.user,
+			protocol: 'saml',
+			loginEnabled,
+			fieldsChanged: wasEnabled === loginEnabled ? [] : ['loginEnabled'],
+			publicApi: false,
+		});
 		return res.sendStatus(200);
 	}
 
