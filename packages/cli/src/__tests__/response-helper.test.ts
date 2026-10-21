@@ -32,9 +32,19 @@ describe('sendErrorResponse', () => {
 
 	beforeEach(() => {
 		mockResponse = mock<Response>({
+			headersSent: false,
 			status: vi.fn().mockReturnThis(),
 			json: vi.fn().mockReturnThis(),
 		});
+	});
+
+	it('should destroy the response instead of writing to it when the headers are already sent', () => {
+		const startedResponse = mock<Response>({ headersSent: true });
+
+		sendErrorResponse(startedResponse, new Error('read failed'));
+
+		expect(startedResponse.destroy).toHaveBeenCalled();
+		expect(startedResponse.status).not.toHaveBeenCalled();
 	});
 
 	it('should include meta field for LicenseEulaRequiredError', () => {
@@ -77,6 +87,7 @@ describe('sendErrorResponse', () => {
 	it('should declare a JSON content type on error responses', () => {
 		// Simulate an earlier handler having declared an HTML content type.
 		const res = mock<Response>({
+			headersSent: false,
 			status: vi.fn().mockReturnThis(),
 			json: vi.fn().mockReturnThis(),
 			get: vi.fn().mockReturnValue('text/html; charset=utf-8'),
@@ -100,6 +111,7 @@ describe('sendErrorResponse', () => {
 	describe('form pages', () => {
 		const responseFor = (originalUrl: string) =>
 			mock<Response>({
+				headersSent: false,
 				req: mock<Request>({ originalUrl }),
 				locals: {},
 				status: vi.fn().mockReturnThis(),
@@ -219,6 +231,19 @@ describe('sendSuccessResponse', () => {
 
 			await expect(readWholeBody(server.url)).rejects.toThrow();
 			expect(stream.destroyed).toBe(true);
+		});
+
+		it('should resolve when the client disconnects after the whole file was read', async () => {
+			const stream = await file.openStream();
+			let sending: Promise<void> | undefined;
+			server = await startServer((_req, res) => {
+				stream.once('end', () => res.destroy());
+				sending = sendStreamToResponse(res as unknown as Response, stream);
+			});
+
+			await readWholeBody(server.url).catch(() => {});
+
+			await expect(sending).resolves.toBeUndefined();
 		});
 
 		it('should reject with the file error when the file fails as the client disconnects', async () => {
