@@ -663,7 +663,19 @@ export class OauthService {
 			flowState.managedVersion,
 		);
 
-		return [credential, decryptedDataOriginal, oauthCredentials, state, flowState];
+		// The user can enter their own client between the two requests. Then the exchange runs
+		// with that app, so the managed version must not be stored with its tokens.
+		const stillManaged =
+			this.credentialsHelper.getNewConnectionVersion(credential.type, decryptedDataOriginal) !==
+			undefined;
+
+		return [
+			credential,
+			decryptedDataOriginal,
+			oauthCredentials,
+			state,
+			stillManaged ? flowState : { ...flowState, managedVersion: undefined },
+		];
 	}
 
 	renderCallbackError(res: Response, message: string, reason?: string) {
