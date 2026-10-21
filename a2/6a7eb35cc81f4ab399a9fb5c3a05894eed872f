@@ -1,0 +1,20 @@
+packages/cli/src/public-api/v1/__tests__/openapi-tags.test.ts
+  s_a1ffd067a33fea::t_19245a640dd01c 32-66
+  s_a1ffd067a33fea::t_fa944cff2ad514 86-105,107-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a26a7eb35cc81f4ab399a9fb5c3a05894eed872f",
+  "prompts": {},
+  "sessions": {
+    "s_a1ffd067a33fea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "57318cd2-38a2-4765-9b9f-5a07cf98cf54",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
