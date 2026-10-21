@@ -1,0 +1,19 @@
+packages/@n8n/config/src/configs/expression-engine.config.ts
+  s_3eb19609486bac::t_6290fd1b703b7f 130,132-133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "489ff2b3000aafc230d69d0a2c594b955e2bca6d",
+  "prompts": {},
+  "sessions": {
+    "s_3eb19609486bac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c34ec24e-56a9-4037-a83c-4da265c4d0c8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

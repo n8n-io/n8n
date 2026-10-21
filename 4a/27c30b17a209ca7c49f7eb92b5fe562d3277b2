@@ -1,0 +1,80 @@
+packages/@n8n/agents/src/runtime/memory/episodic-memory.ts
+  s_852389bc7751db::t_3fd8f9f31a1d63 20,293
+  s_852389bc7751db::t_174b55017773c1 24,279-292,294-304,307-310,314-319
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory.test.ts
+  s_852389bc7751db::t_c5fb7e70afd6d4 12-13,362-393
+packages/@n8n/agents/src/types/index.ts
+  s_852389bc7751db::t_29f748c5364eca 109
+  s_852389bc7751db::t_3fd8f9f31a1d63 108
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.test.ts
+  s_852389bc7751db::t_92c2da43b70b06 1198-1223,1487-1552
+  s_852389bc7751db::t_c8e5daf9a1f4fa 1553
+packages/cli/src/modules/agents/__tests__/agent-message-queue.service.test.ts
+  s_852389bc7751db::t_343c2d732df926 177-221
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_852389bc7751db::t_7fc06add31a1f9 3726-3727
+  s_852389bc7751db::t_7fb72442a5ffc3 2,70
+  s_852389bc7751db::t_257005e2ea11a2 199-200,280-281,307,312,2602,2624-2653
+  s_852389bc7751db::t_8ae8338534e176 2654
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_852389bc7751db::t_c28d7a726d385f 1526-1528
+  s_852389bc7751db::t_7fb72442a5ffc3 29
+  s_852389bc7751db::t_15212d81086e06 1525,1529
+packages/cli/src/modules/agents/utils/agent-memory-scope.ts
+  s_852389bc7751db::t_138641a9fe0a8b 24-45
+packages/@n8n/agents/src/types/sdk/memory.ts
+  s_852389bc7751db::t_3fd8f9f31a1d63 96-98
+  s_852389bc7751db::t_29f748c5364eca 139-142,166-167
+  s_852389bc7751db::t_30fe58a5add8b4 88-95,99-101,106
+packages/cli/src/modules/agents/integrations/n8n-memory.ts
+  s_852389bc7751db::t_138641a9fe0a8b 74-75,756-763
+  s_852389bc7751db::t_e711224f996232 80-83,591,593,596,608,633,689,699,701,706,713-723,732-733,804
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_852389bc7751db::t_702d64d3371051 841-844
+packages/cli/src/modules/agents/integrations/__tests__/episodic-scope-resolver.test.ts
+  s_852389bc7751db::t_15212d81086e06 1
+  s_852389bc7751db::t_e971652d061c50 2-84
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_852389bc7751db::t_3fd8f9f31a1d63 4-5,8,52-61,614-621
+  s_852389bc7751db::t_3ff8926cc85e34 622
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_852389bc7751db::t_c28d7a726d385f 334-336
+  s_852389bc7751db::t_15212d81086e06 333,337
+  s_852389bc7751db::t_7fb72442a5ffc3 6
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_852389bc7751db::t_343c2d732df926 3571-3614
+  s_852389bc7751db::t_35f085613844cd 3569-3570
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_852389bc7751db::t_b40c3819e798c6 65
+  s_852389bc7751db::t_5bc77043ccb6fe 943-954,972,1027
+packages/cli/src/modules/agents/integrations/episodic-scope-resolver.ts
+  s_852389bc7751db::t_5bc77043ccb6fe 1-2,4-57
+  s_852389bc7751db::t_15212d81086e06 3
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_852389bc7751db::t_cfb491d3950324 1-6,63
+  s_852389bc7751db::t_b40c3819e798c6 142-143,241-242,363,774,1683-1685,1692
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.integration.test.ts
+  s_852389bc7751db::t_5a0588ecf7b735 378-412
+packages/@n8n/agents/src/index.ts
+  s_852389bc7751db::t_3fd8f9f31a1d63 71
+  s_852389bc7751db::t_29f748c5364eca 72
+  s_852389bc7751db::t_174b55017773c1 396-397
+packages/cli/src/modules/agents/types/agent-queued-message.ts
+  s_852389bc7751db::t_5bc77043ccb6fe 1,50-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4a27c30b17a209ca7c49f7eb92b5fe562d3277b2",
+  "prompts": {},
+  "sessions": {
+    "s_852389bc7751db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b39fb8af-51ee-491e-ab8c-cc0c219fdfa6",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

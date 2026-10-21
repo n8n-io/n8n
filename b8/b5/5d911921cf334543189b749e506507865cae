@@ -1,0 +1,76 @@
+packages/cli/src/modules/agents/integrations/integration-tool-definitions.ts
+  s_e301d8294f60c4::t_b4a977d934ccad 13
+packages/cli/src/modules/agents/integrations/platforms/telegram/telegram-bridge-behavior.ts
+  s_e301d8294f60c4::t_b4a977d934ccad 1-108
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_e301d8294f60c4::t_b4a977d934ccad 56
+packages/cli/src/modules/agents/integrations/platforms/linear/linear-operations.ts
+  s_e301d8294f60c4::t_b4a977d934ccad 1-969
+packages/cli/src/modules/agents/integrations/platforms/telegram/telegram-integration.ts
+  s_e301d8294f60c4::t_b4a977d934ccad 1-371
+packages/cli/src/modules/agents/integrations/platforms/linear/linear-integration.ts
+  s_e301d8294f60c4::t_b4a977d934ccad 1-202
+packages/cli/src/modules/agents/integrations/__tests__/integration-action-executor.test.ts
+  s_e301d8294f60c4::t_b4a977d934ccad 61
+packages/cli/src/modules/agents/__tests__/agents.module.test.ts
+  s_e301d8294f60c4::t_b4a977d934ccad 29-31,33
+packages/cli/eslint.config.mjs
+  s_e301d8294f60c4::t_26a794216a5702 332
+packages/cli/src/modules/agents/integrations/integration-context-query-executor.ts
+  s_e301d8294f60c4::t_b4a977d934ccad 95
+packages/cli/src/modules/agents/integrations/__tests__/discord-integration.test.ts
+  s_e301d8294f60c4::t_b4a977d934ccad 15
+packages/cli/src/modules/agents/integrations/__tests__/discord-gateway-lifecycle.test.ts
+  s_e301d8294f60c4::t_b4a977d934ccad 10
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/integration.test.ts
+  s_e301d8294f60c4::t_b4a977d934ccad 17
+packages/cli/src/modules/agents/integrations/platforms/n8n-chat/n8n-chat-integration.ts
+  s_e301d8294f60c4::t_b4a977d934ccad 1-148
+packages/cli/src/modules/agents/integrations/__tests__/linear-integration.test.ts
+  s_e301d8294f60c4::t_b4a977d934ccad 7
+packages/cli/src/modules/agents/integrations/__tests__/helpers/telegram/replay-test-context.ts
+  s_e301d8294f60c4::t_b4a977d934ccad 19
+packages/cli/src/modules/agents/integrations/platforms/discord/discord-integration.ts
+  s_e301d8294f60c4::t_b4a977d934ccad 1-540
+packages/cli/src/modules/agents/integrations/platforms/linear/linear-tool-definitions.ts
+  s_e301d8294f60c4::t_b4a977d934ccad 1-305
+packages/cli/oxlint.config.mts
+  s_e301d8294f60c4::t_26a794216a5702 322
+scripts/lint-parity/samples.json
+  s_e301d8294f60c4::t_26a794216a5702 183
+packages/cli/src/modules/agents/agents.module.ts
+  s_e301d8294f60c4::t_26a794216a5702 102-107,115-117
+  s_e301d8294f60c4::t_b4a977d934ccad 101
+packages/cli/src/modules/agents/integrations/__tests__/helpers/linear/replay-test-context.ts
+  s_e301d8294f60c4::t_b4a977d934ccad 15
+packages/cli/src/modules/agents/integrations/__tests__/integration-context-query-executor.test.ts
+  s_e301d8294f60c4::t_b4a977d934ccad 11
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_e301d8294f60c4::t_b4a977d934ccad 46
+packages/cli/src/modules/agents/integrations/__tests__/n8n-chat-integration.test.ts
+  s_e301d8294f60c4::t_b4a977d934ccad 14
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_e301d8294f60c4::t_b4a977d934ccad 70
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/bridge-behavior.test.ts
+  s_e301d8294f60c4::t_b4a977d934ccad 11
+packages/cli/src/modules/agents/integrations/platforms/discord/discord-operations.ts
+  s_e301d8294f60c4::t_b4a977d934ccad 1-298
+packages/cli/src/modules/agents/integrations/__tests__/discord-operations.test.ts
+  s_e301d8294f60c4::t_b4a977d934ccad 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b8b55d911921cf334543189b749e506507865cae",
+  "prompts": {},
+  "sessions": {
+    "s_e301d8294f60c4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "254d4248-4a92-4bc9-a4ba-d776e64b364c",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
