@@ -52,7 +52,7 @@ tags:
   - name: Projects
     description: Operations about projects
   - name: Promotions
-    description: Operations about promotion providers, connections, and package operations
+    description: Operations about promotion providers, environments, and package operations
   - name: Role
     description: Operations about roles
   - name: RoleMappingRule

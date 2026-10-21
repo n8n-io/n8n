@@ -1,4 +1,4 @@
-import type { AgentJsonConfig } from '@n8n/api-types';
+import type { AgentJsonConfig, InstanceAiEvalAgentExecutionResult } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { AgentEvalDataset, AgentEvalDatasetRepository, User } from '@n8n/db';
 import type { Mocked } from 'vitest';
@@ -9,7 +9,7 @@ import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { InstanceWriteAccessService } from '@n8n/backend-services';
 
 import type { AgentConfigService } from '../../agents/agent-config.service';
-import type { AgentTestRunService } from '../../agents/agent-test-run.service';
+import type { EvalAgentExecutionService } from '../../instance-ai/eval/agent-execution.service';
 import type { DataTable } from '../../data-table/data-table.entity';
 import type { DataTableService } from '../../data-table/data-table.service';
 import { DataTableNameConflictError } from '../../data-table/errors/data-table-name-conflict.error';
@@ -54,8 +54,8 @@ const { resolveModelMock } = vi.hoisted(() => ({ resolveModelMock: vi.fn() }));
 vi.mock('../../agents/json-config/model-config', () => ({
 	resolveCredentialAwareModelConfig: (...args: unknown[]) => resolveModelMock(...args),
 }));
-vi.mock('../../agents/utils/agent-credential-provider', () => ({
-	createAgentCredentialProvider: vi.fn(() => ({})),
+vi.mock('../../instance-ai/eval/agent-execution.service', () => ({
+	EvalAgentExecutionService: class EvalAgentExecutionService {},
 }));
 
 const user = mock<User>({ id: 'user-1' });
@@ -88,7 +88,7 @@ describe('AgentEvalCaseGenerationService', () => {
 	let datasetRepository: Mocked<AgentEvalDatasetRepository>;
 	let flagGate: Mocked<AgentEvalsFlagGate>;
 	let instanceWriteAccess: Mocked<InstanceWriteAccessService>;
-	let agentTestRunService: Mocked<AgentTestRunService>;
+	let evalAgentExecutionService: Mocked<EvalAgentExecutionService>;
 
 	beforeEach(() => {
 		logger = mock<Logger>();
@@ -100,7 +100,7 @@ describe('AgentEvalCaseGenerationService', () => {
 		flagGate = mock<AgentEvalsFlagGate>();
 		instanceWriteAccess = mock<InstanceWriteAccessService>();
 		instanceWriteAccess.isReadOnly.mockReturnValue(false);
-		agentTestRunService = mock<AgentTestRunService>();
+		evalAgentExecutionService = mock<EvalAgentExecutionService>();
 
 		generateMock.mockReset();
 		resolveModelMock.mockReset();
@@ -122,7 +122,7 @@ describe('AgentEvalCaseGenerationService', () => {
 			datasetRepository,
 			flagGate,
 			instanceWriteAccess,
-			agentTestRunService,
+			evalAgentExecutionService,
 		);
 	});
 
@@ -601,23 +601,21 @@ describe('AgentEvalCaseGenerationService', () => {
 	describe('previewRun', () => {
 		it('drafts one case and runs it against the agent, persisting nothing', async () => {
 			generateMock.mockResolvedValue({ structuredOutput: { cases: makeCases(1) } });
-			agentTestRunService.executeDraftRun.mockResolvedValue({
-				status: 'completed',
-				response: 'The answer is 42.',
-				executionId: 'exec-1',
-				sessionId: 'session-1',
-			});
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(
+				mock<InstanceAiEvalAgentExecutionResult>({
+					success: true,
+					finalText: 'The answer is 42.',
+					finishReason: 'stop',
+				}),
+			);
 
 			const result = await service.previewRun(user, 'project-1', 'agent-1');
 
-			expect(agentTestRunService.executeDraftRun).toHaveBeenCalledWith(
-				expect.objectContaining({
-					agentId: 'agent-1',
-					projectId: 'project-1',
-					user,
-					message: 'input 1',
-					source: 'agent-eval-preview',
-				}),
+			expect(evalAgentExecutionService.executeWithLlmMock).toHaveBeenCalledWith(
+				'agent-1',
+				user,
+				{ projectId: 'project-1' },
+				'input 1',
 			);
 			expect(result).toEqual({
 				status: 'completed',
@@ -634,12 +632,13 @@ describe('AgentEvalCaseGenerationService', () => {
 		describe('judging the run', () => {
 			beforeEach(() => {
 				generateMock.mockResolvedValue({ structuredOutput: { cases: makeCases(1) } });
-				agentTestRunService.executeDraftRun.mockResolvedValue({
-					status: 'completed',
-					response: 'The answer is 42.',
-					executionId: 'exec-1',
-					sessionId: 'session-1',
-				});
+				evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(
+					mock<InstanceAiEvalAgentExecutionResult>({
+						success: true,
+						finalText: 'The answer is 42.',
+						finishReason: 'stop',
+					}),
+				);
 			});
 
 			it('grades the response against the rule the case was drafted with', async () => {
@@ -758,10 +757,13 @@ describe('AgentEvalCaseGenerationService', () => {
 			});
 
 			it('does not judge a run that failed', async () => {
-				agentTestRunService.executeDraftRun.mockResolvedValue({
-					status: 'agent_misconfigured',
-					missing: ['model'],
-				});
+				evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(
+					mock<InstanceAiEvalAgentExecutionResult>({
+						success: false,
+						finalText: '',
+						finishReason: 'stop',
+					}),
+				);
 
 				await expect(service.previewRun(user, 'project-1', 'agent-1')).resolves.toEqual({
 					status: 'failed',
@@ -772,12 +774,13 @@ describe('AgentEvalCaseGenerationService', () => {
 
 		describe('runPreviewCase', () => {
 			it('runs the given case without drafting a new one', async () => {
-				agentTestRunService.executeDraftRun.mockResolvedValue({
-					status: 'completed',
-					response: 'The answer is 42.',
-					executionId: 'exec-1',
-					sessionId: 'session-1',
-				});
+				evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(
+					mock<InstanceAiEvalAgentExecutionResult>({
+						success: true,
+						finalText: 'The answer is 42.',
+						finishReason: 'stop',
+					}),
+				);
 				criteriaRunMock.mockResolvedValue({ pass: true, reasoning: 'Gives a number.' });
 
 				const result = await service.runPreviewCase(user, 'project-1', 'agent-1', {
@@ -787,8 +790,11 @@ describe('AgentEvalCaseGenerationService', () => {
 				});
 
 				expect(generateMock).not.toHaveBeenCalled();
-				expect(agentTestRunService.executeDraftRun).toHaveBeenCalledWith(
-					expect.objectContaining({ message: 'What is the answer?' }),
+				expect(evalAgentExecutionService.executeWithLlmMock).toHaveBeenCalledWith(
+					'agent-1',
+					user,
+					{ projectId: 'project-1' },
+					'What is the answer?',
 				);
 				expect(result).toEqual({
 					status: 'completed',
@@ -803,12 +809,13 @@ describe('AgentEvalCaseGenerationService', () => {
 
 		it('passes revision context through to the one-case draft', async () => {
 			generateMock.mockResolvedValue({ structuredOutput: { cases: makeCases(1) } });
-			agentTestRunService.executeDraftRun.mockResolvedValue({
-				status: 'completed',
-				response: 'answer',
-				executionId: 'exec-1',
-				sessionId: 'session-1',
-			});
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(
+				mock<InstanceAiEvalAgentExecutionResult>({
+					success: true,
+					finalText: 'answer',
+					finishReason: 'stop',
+				}),
+			);
 
 			await service.previewRun(user, 'project-1', 'agent-1', {
 				suggestion: 'Mention the ticket number.',
@@ -827,18 +834,18 @@ describe('AgentEvalCaseGenerationService', () => {
 			await expect(service.previewRun(user, 'project-1', 'agent-1')).rejects.toThrow(
 				/fewer valid cases than requested/,
 			);
-			expect(agentTestRunService.executeDraftRun).not.toHaveBeenCalled();
+			expect(evalAgentExecutionService.executeWithLlmMock).not.toHaveBeenCalled();
 		});
 
 		it('reports failure when the run suspends on a tool approval', async () => {
 			generateMock.mockResolvedValue({ structuredOutput: { cases: makeCases(1) } });
-			agentTestRunService.executeDraftRun.mockResolvedValue({
-				status: 'suspended',
-				suspensions: [],
-				response: '',
-				executionId: 'exec-1',
-				sessionId: 'session-1',
-			});
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(
+				mock<InstanceAiEvalAgentExecutionResult>({
+					success: false,
+					finalText: '',
+					finishReason: 'stop',
+				}),
+			);
 
 			const result = await service.previewRun(user, 'project-1', 'agent-1');
 
@@ -847,10 +854,13 @@ describe('AgentEvalCaseGenerationService', () => {
 
 		it('reports failure when the agent is misconfigured', async () => {
 			generateMock.mockResolvedValue({ structuredOutput: { cases: makeCases(1) } });
-			agentTestRunService.executeDraftRun.mockResolvedValue({
-				status: 'agent_misconfigured',
-				missing: ['model'],
-			});
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(
+				mock<InstanceAiEvalAgentExecutionResult>({
+					success: false,
+					finalText: '',
+					finishReason: 'stop',
+				}),
+			);
 
 			const result = await service.previewRun(user, 'project-1', 'agent-1');
 
@@ -862,13 +872,13 @@ describe('AgentEvalCaseGenerationService', () => {
 		// approved example.
 		it('reports failure when the run completes but hit max iterations', async () => {
 			generateMock.mockResolvedValue({ structuredOutput: { cases: makeCases(1) } });
-			agentTestRunService.executeDraftRun.mockResolvedValue({
-				status: 'completed',
-				maxIterations: true,
-				response: 'partial answer',
-				executionId: 'exec-1',
-				sessionId: 'session-1',
-			});
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(
+				mock<InstanceAiEvalAgentExecutionResult>({
+					success: true,
+					finalText: 'partial answer',
+					finishReason: 'max-iterations',
+				}),
+			);
 
 			const result = await service.previewRun(user, 'project-1', 'agent-1');
 

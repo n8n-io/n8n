@@ -179,8 +179,8 @@ it('submits once with the original source and allows warnings', async () => {
 	expect(continueApplyPromotion).toHaveBeenCalledTimes(1);
 	expect(continueApplyPromotion).toHaveBeenCalledWith(
 		{ baseUrl: '/custom/api/v1' },
-		result.connectionId,
-		{ expectedSource: { configId: result.configId, ...result.git } },
+		result.environmentId,
+		{ expectedSource: { environmentId: result.environmentId, ...result.git } },
 	);
 	expect(continueApplyProjectSelection).not.toHaveBeenCalled();
 	pending.resolve(applied);
@@ -201,9 +201,9 @@ it('asks to review project deletions and confirms them on Continue', async () =>
 	expect(await session.continueApply()).toBe(applied);
 	expect(continueApplyPromotion).toHaveBeenCalledWith(
 		{ baseUrl: '/custom/api/v1' },
-		result.connectionId,
+		result.environmentId,
 		{
-			expectedSource: { configId: result.configId, ...result.git },
+			expectedSource: { environmentId: result.environmentId, ...result.git },
 			confirmDestructiveChanges: true,
 		},
 	);
@@ -222,7 +222,7 @@ it('continues a selection through the project endpoint', async () => {
 		'team-a',
 		{
 			workflowIds: ['wf-a', 'wf-b'],
-			expectedSource: { configId: result.configId, ...result.git },
+			expectedSource: { environmentId: result.environmentId, ...result.git },
 		},
 	);
 	expect(continueApplyPromotion).not.toHaveBeenCalled();

@@ -250,46 +250,37 @@
 		"GET /promotions/providers/{promotionProviderId}/repositories/{repositoryId}/branches": {
 			"status": "gap"
 		},
-		"GET /promotions/connections": {
+		"GET /promotions/environments": {
 			"status": "gap"
 		},
-		"POST /promotions/connections": {
+		"POST /promotions/environments": {
 			"status": "gap"
 		},
-		"GET /promotions/connections/{promotionConnectionId}": {
+		"GET /promotions/environments/{promotionEnvironmentId}": {
 			"status": "gap"
 		},
-		"PUT /promotions/connections/{promotionConnectionId}": {
+		"PUT /promotions/environments/{promotionEnvironmentId}": {
 			"status": "gap"
 		},
-		"DELETE /promotions/connections/{promotionConnectionId}": {
+		"DELETE /promotions/environments/{promotionEnvironmentId}": {
 			"status": "gap"
 		},
-		"PUT /promotions/connections/{promotionConnectionId}/configs/apply": {
+		"POST /promotions/environments/{promotionEnvironmentId}/connect": {
 			"status": "gap"
 		},
-		"PUT /promotions/connections/{promotionConnectionId}/configs/promote": {
+		"POST /promotions/environments/{promotionEnvironmentId}/disconnect": {
 			"status": "gap"
 		},
-		"DELETE /promotions/connections/{promotionConnectionId}/configs/{direction}": {
+		"GET /promotions/environments/{promotionEnvironmentId}/projects": {
 			"status": "gap"
 		},
-		"POST /promotions/connections/{promotionConnectionId}/{direction}/clone": {
+		"POST /promotions/environments/{promotionEnvironmentId}/projects/{projectId}": {
 			"status": "gap"
 		},
-		"POST /promotions/connections/{promotionConnectionId}/{direction}/disconnect": {
+		"DELETE /promotions/environments/{promotionEnvironmentId}/projects/{projectId}": {
 			"status": "gap"
 		},
-		"GET /promotions/connections/{promotionConnectionId}/projects": {
-			"status": "gap"
-		},
-		"POST /promotions/connections/{promotionConnectionId}/projects/{projectId}": {
-			"status": "gap"
-		},
-		"DELETE /promotions/connections/{promotionConnectionId}/projects/{projectId}": {
-			"status": "gap"
-		},
-		"POST /promotions/connections/{promotionConnectionId}/promote": {
+		"POST /promotions/environments/{promotionEnvironmentId}/promote": {
 			"status": "gap"
 		},
 		"POST /promotions/projects/{projectId}/promote": {
@@ -301,10 +292,10 @@
 		"POST /promotions/projects/{projectId}/apply/continue": {
 			"status": "gap"
 		},
-		"POST /promotions/connections/{promotionConnectionId}/apply/continue": {
+		"POST /promotions/environments/{promotionEnvironmentId}/apply/continue": {
 			"status": "gap"
 		},
-		"POST /promotions/connections/{promotionConnectionId}/apply": {
+		"POST /promotions/environments/{promotionEnvironmentId}/apply": {
 			"status": "gap"
 		},
 		"GET /settings/security-policy": {

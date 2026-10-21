@@ -7,8 +7,8 @@ description: >-
   questions — including which OAuth scopes or permissions a provider app needs.
 recommended_tools:
   - n8n-docs
-  - credentials
-  - nodes
+  - workflow_builder_credentials
+  - workflow_builder_nodes
 ---
 
 # n8n Docs Assistant

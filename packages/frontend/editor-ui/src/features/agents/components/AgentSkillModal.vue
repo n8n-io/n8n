@@ -5,6 +5,7 @@ import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
+	AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
 	skillNameKey,
 	type AgentSkillAvailability,
@@ -382,6 +383,34 @@ const validationErrors = computed<Partial<Record<keyof AgentSkill, string>>>(() 
 	return errors;
 });
 
+/** Reference files that block a save: empty, or longer than the limit. */
+const invalidReferencePaths = computed(() =>
+	(skill.value.references ?? [])
+		.filter(
+			(reference) =>
+				!reference.content.trim() ||
+				reference.content.length > AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
+		)
+		.map((reference) => reference.path),
+);
+const visibleInvalidReferencePaths = computed(() =>
+	submitted.value ? invalidReferencePaths.value : [],
+);
+
+/**
+ * A blocked save must show why. Open the file that holds the problem: the first broken
+ * reference, else SKILL.md when its fields are invalid and a reference is open.
+ */
+function showFirstInvalidFile() {
+	const [firstInvalidReference] = invalidReferencePaths.value;
+	if (firstInvalidReference) {
+		selectedPath.value = firstInvalidReference;
+		return;
+	}
+	const { references: _references, ...skillFileErrors } = validationErrors.value;
+	if (Object.keys(skillFileErrors).length > 0) selectedPath.value = SKILL_FILE;
+}
+
 const visibleErrors = computed(() =>
 	submitted.value || openedWithMissingContent.value ? validationErrors.value : {},
 );
@@ -601,7 +630,10 @@ function closeModal() {
 async function onSave() {
 	if (defaultNameLoading.value || isSaving.value) return;
 	submitted.value = true;
-	if (!canSave.value) return;
+	if (!canSave.value) {
+		showFirstInvalidFile();
+		return;
+	}
 
 	const payload = normalizeSkill({
 		name: skill.value.name.trim(),
@@ -767,6 +799,7 @@ function onRemove() {
 						:selected-path="selectedPath"
 						:add-reference-disabled="!canAddReference"
 						:read-only="editorLocked"
+						:invalid-paths="visibleInvalidReferencePaths"
 						@add-reference="onAddReference"
 						@remove-reference="onRemoveReference"
 						@select="selectedPath = $event"

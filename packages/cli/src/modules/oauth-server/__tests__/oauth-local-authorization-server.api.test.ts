@@ -15,6 +15,7 @@ import { DataSource, type Repository } from '@n8n/typeorm';
 import type { JSONWebKeySet } from 'jose';
 import { decodeProtectedHeader } from 'jose';
 import { Cipher } from 'n8n-core';
+import { randomUUID } from 'node:crypto';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import { TrustedSourceEntity } from '@/modules/inbound-auth-core/database/entities/trusted-source.entity';
@@ -23,6 +24,8 @@ import { TrustedSourceDbStore } from '@/modules/inbound-auth-core/trusted-source
 import { createOwner } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
+import { AccessTokenRepository } from '../database/repositories/oauth-access-token.repository';
+import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 import { OAuthServerLocalAuthorizationServer } from '../oauth-local-authorization-server';
 import { OAuthTokenService } from '../oauth-token.service';
 
@@ -50,6 +53,30 @@ const extracted = (token: string): Extracted => ({
 	receivedAt: new Date(),
 	credential: { kind: 'bearer', token },
 });
+
+/** An access token as the server issues it: signed and recorded, so it stays active until revoked. */
+async function mintActiveToken(audience: string): Promise<string> {
+	const tokenService = Container.get(OAuthTokenService);
+	// A registered client is needed only to satisfy the token rows' FK.
+	const clientId = `client-${randomUUID()}`;
+	await Container.get(OAuthClientRepository).save({
+		id: clientId,
+		name: 'Local authorization server tests',
+		redirectUris: ['https://example.com/callback'],
+		grantTypes: ['authorization_code'],
+		tokenEndpointAuthMethod: 'none',
+	});
+	const pair = tokenService.generateTokenPair(owner.id, clientId, audience, ['tool:read']);
+	await tokenService.saveTokenPair(
+		pair.accessToken,
+		pair.refreshToken,
+		clientId,
+		owner.id,
+		['tool:read'],
+		pair.audience,
+	);
+	return pair.accessToken;
+}
 
 /** The system source as IAM-1441 seeds it: not discovered yet. */
 async function seedSystemSource(): Promise<string> {
@@ -98,15 +125,15 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['TrustedSourceEntity']);
+	await testDb.truncate(['TrustedSourceEntity', 'AccessToken', 'RefreshToken', 'OAuthClient']);
 	await Container.get(CacheService).reset();
 	vi.clearAllMocks();
 });
 
 describe('OAuth server as a trusted source', () => {
-	it('binds the local authorization server contract', () => {
-		expect(Container.get(LocalAuthorizationServer)).toBeInstanceOf(
-			OAuthServerLocalAuthorizationServer,
+	it('registers itself as the local authorization server', async () => {
+		await expect(Container.get(LocalAuthorizationServer).getMetadata()).resolves.toEqual(
+			await Container.get(OAuthServerLocalAuthorizationServer).getMetadata(),
 		);
 	});
 
@@ -146,12 +173,7 @@ describe('OAuth server as a trusted source', () => {
 		const id = await seedSystemSource();
 		await discovery.refresh(id);
 
-		const { accessToken } = Container.get(OAuthTokenService).generateTokenPair(
-			owner.id,
-			'client-1',
-			resource,
-			['tool:read'],
-		);
+		const accessToken = await mintActiveToken(resource);
 		expect(decodeProtectedHeader(accessToken)).toMatchObject({
 			kid: expect.any(String),
 			typ: 'at+jwt',
@@ -168,16 +190,21 @@ describe('OAuth server as a trusted source', () => {
 	it('rejects an access token the instance minted for another audience', async () => {
 		const id = await seedSystemSource();
 		await discovery.refresh(id);
-
-		const { accessToken } = Container.get(OAuthTokenService).generateTokenPair(
-			owner.id,
-			'client-1',
-			`${issuer}/other-resource`,
-			['tool:read'],
-		);
+		const accessToken = await mintActiveToken(`${issuer}/other-resource`);
 
 		const result = await Container.get(AuthenticationService).authenticate(extracted(accessToken));
 
 		expect(result).toMatchObject({ ok: false, reason: 'audience-mismatch' });
+	});
+
+	it('rejects an access token the instance revoked, although its signature still verifies', async () => {
+		const id = await seedSystemSource();
+		await discovery.refresh(id);
+		const accessToken = await mintActiveToken(resource);
+		await Container.get(AccessTokenRepository).delete({ token: accessToken });
+
+		const result = await Container.get(AuthenticationService).authenticate(extracted(accessToken));
+
+		expect(result).toEqual({ ok: false, reason: 'revoked' });
 	});
 });

@@ -113,7 +113,7 @@ describe('executeResumableStream', () => {
 					textChunk('Working...'),
 					suspensionChunk({
 						toolCallId: 'tool-call-1',
-						toolName: 'ask-user',
+						toolName: 'workflow_builder_ask_user',
 						suspendPayload: {
 							requestId: 'request-1',
 							message: 'Need approval',
@@ -139,7 +139,7 @@ describe('executeResumableStream', () => {
 				suspension: {
 					toolCallId: 'tool-call-1',
 					requestId: 'request-1',
-					toolName: 'ask-user',
+					toolName: 'workflow_builder_ask_user',
 					suspendPayload: { requestId: 'request-1', message: 'Need approval' },
 				},
 			}),
@@ -340,6 +340,52 @@ describe('executeResumableStream', () => {
 		expect(onActivity).toHaveBeenCalledTimes(2);
 	});
 
+	it('calls onResponseChunk for text, reasoning and tool calls, before publishing', async () => {
+		const eventBus = createEventBus();
+		const order: string[] = [];
+		eventBus.publish.mockImplementation((_threadId: string, event: { type: string }) => {
+			order.push(event.type);
+		});
+		const onResponseChunk = vi.fn(() => {
+			order.push('callback');
+		});
+
+		await executeResumableStream({
+			agent: {},
+			stream: {
+				runId: 'agent-run-1',
+				fullStream: fromChunks([
+					{ type: 'start-step' },
+					{ type: 'reasoning-delta', delta: 'Thinking' },
+					{ type: 'tool-input-start', toolCallId: 'call-1', toolName: 'list_workflows' },
+					{ type: 'tool-call', toolCallId: 'call-2', toolName: 'list_workflows', input: {} },
+					textChunk('Hi'),
+				]),
+			},
+			context: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				eventBus,
+				signal: new AbortController().signal,
+				logger: createLogger(),
+				onResponseChunk,
+			},
+			control: { mode: 'manual' },
+		});
+
+		expect(order).toEqual([
+			'callback',
+			'reasoning-delta',
+			'callback',
+			'tool-input-start',
+			'callback',
+			'tool-call',
+			'callback',
+			'text-delta',
+		]);
+	});
+
 	it('assigns stable response IDs from native start-step chunks', async () => {
 		const eventBus = createEventBus();
 
@@ -487,7 +533,7 @@ describe('executeResumableStream', () => {
 					{
 						type: 'tool-call',
 						toolCallId: 'tool-call-1',
-						toolName: 'create-tasks',
+						toolName: 'workflow_builder_create_tasks',
 						input: {},
 					},
 					{
