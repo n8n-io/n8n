@@ -23,9 +23,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const toast = useToast();
 const rootStore = useRootStore();
-const { projectName, isPersonalProject } = useAgentProjectBreadcrumb(
-	computed(() => props.agent.project.id),
-);
+const { projectName } = useAgentProjectBreadcrumb(computed(() => props.agent.project.id));
 
 const submitting = ref(false);
 
@@ -74,11 +72,9 @@ function onOpenChange(open: boolean): void {
 		<div :class="$style.content">
 			<N8nText>
 				{{
-					isPersonalProject
-						? i18n.baseText('agents.n8nChatPage.makeAvailable.descriptionPersonal')
-						: i18n.baseText('agents.n8nChatPage.makeAvailable.description', {
-								interpolate: { projectName: projectName ?? agent.project.name },
-							})
+					i18n.baseText('agents.n8nChatPage.makeAvailable.description', {
+						interpolate: { projectName: projectName ?? agent.project.name },
+					})
 				}}
 			</N8nText>
 			<N8nCallout theme="info">

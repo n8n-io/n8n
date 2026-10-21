@@ -8594,7 +8594,6 @@
 	"agents.n8nChatPage.makeAvailable.action": "Make available",
 	"agents.n8nChatPage.makeAvailable.title": "Make {name} available here",
 	"agents.n8nChatPage.makeAvailable.description": "Everyone in {projectName} will be able to start a chat with this agent from n8n Chat.",
-	"agents.n8nChatPage.makeAvailable.descriptionPersonal": "You'll be able to start a chat with this agent from n8n Chat.",
 	"agents.n8nChatPage.makeAvailable.publishNotice": "This publishes the agent's current version. Anything you haven't published yet goes live too.",
 	"agents.n8nChatPage.makeAvailable.confirm": "Publish & make available",
 	"agents.n8nChatPage.makeAvailable.error": "Couldn't make this agent available. Try again.",

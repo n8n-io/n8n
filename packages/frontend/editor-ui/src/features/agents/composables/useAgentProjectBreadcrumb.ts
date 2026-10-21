@@ -25,5 +25,5 @@ export function useAgentProjectBreadcrumb(projectId: ComputedRef<string>) {
 		return isIconOrEmoji(project.value?.icon) ? project.value.icon : DEFAULT_PROJECT_ICON;
 	});
 
-	return { projectName, projectIcon, isPersonalProject };
+	return { projectName, projectIcon };
 }
