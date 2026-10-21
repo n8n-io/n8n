@@ -111,7 +111,12 @@ function renderModal({
 	/** Opens the modal as Settings > Context > Skills does: no agent, plus these fields. */
 	settings?: Pick<
 		AgentSkillModalData,
-		'readOnly' | 'scopeOptions' | 'initialScope' | 'scopeLockedReason' | 'getDefaultName'
+		| 'readOnly'
+		| 'scopeOptions'
+		| 'initialScope'
+		| 'scopeLockedReason'
+		| 'getDefaultName'
+		| 'onDownload'
 	>;
 } & Pick<
 	AgentSkillModalData,
@@ -1408,6 +1413,28 @@ describe('AgentSkillModal from Settings', () => {
 		renderModal({ skillId: 's1', skill: SAVED_SKILL, settings: { getDefaultName } });
 
 		expect(getDefaultName).not.toHaveBeenCalled();
+	});
+
+	it('downloads a saved skill from the header', async () => {
+		const onDownload = vi.fn();
+		const { getByTestId } = renderModal({
+			skillId: 's1',
+			skill: SAVED_SKILL,
+			settings: { readOnly: true, onDownload },
+		});
+
+		await userEvent.click(getByTestId('agent-skill-download'));
+
+		expect(onDownload).toHaveBeenCalledOnce();
+	});
+
+	it('offers no download for a new skill or in the agent builder', () => {
+		const { queryByTestId, unmount } = renderModal({ settings: { onDownload: vi.fn() } });
+		expect(queryByTestId('agent-skill-download')).not.toBeInTheDocument();
+		unmount();
+
+		renderModal({ skillId: 's1', skill: SAVED_SKILL });
+		expect(queryByTestId('agent-skill-download')).not.toBeInTheDocument();
 	});
 
 	it('keeps the scope field out of the agent builder', () => {

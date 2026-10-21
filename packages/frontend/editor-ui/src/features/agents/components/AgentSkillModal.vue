@@ -18,6 +18,7 @@ import {
 	N8nButton,
 	N8nCallout,
 	N8nIcon,
+	N8nIconButton,
 	N8nInputLabel,
 	N8nOption,
 	N8nSelect,
@@ -103,6 +104,8 @@ export type AgentSkillModalData = {
 	onUseLatestVersion?: (id: string) => void;
 	onAttach?: (skill: SkillListItem) => Promise<void>;
 	onRemove?: (id: string) => void;
+	/** Settings only: shows a download button while the modal shows a saved skill. */
+	onDownload?: () => Promise<void> | void;
 };
 
 const props = defineProps<{
@@ -897,6 +900,18 @@ function onRemove() {
 					</AgentSkillViewer>
 				</template>
 			</div>
+		</template>
+
+		<template v-if="data.onDownload && step === 'edit'" #headerActions>
+			<N8nIconButton
+				icon="download"
+				variant="ghost"
+				size="small"
+				:title="i18n.baseText('agents.builder.skills.download')"
+				:aria-label="i18n.baseText('agents.builder.skills.download')"
+				data-testid="agent-skill-download"
+				@click="data.onDownload()"
+			/>
 		</template>
 
 		<template v-if="showRemove" #footerLeft>
