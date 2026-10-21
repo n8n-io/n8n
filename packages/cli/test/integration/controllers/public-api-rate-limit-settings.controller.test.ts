@@ -6,6 +6,7 @@ import type { SuperAgentTest } from '../shared/types';
 import { setupTestServer } from '../shared/utils';
 
 const codeDefaults = { ...new PublicApiRateLimitConfig() };
+const { enabled: _enabled, ...limitDefaults } = codeDefaults;
 
 const settings = {
 	...codeDefaults,
@@ -33,7 +34,7 @@ describe('PublicApiRateLimitSettingsController', () => {
 
 		expect(response.body.data).toEqual({
 			...codeDefaults,
-			defaults: codeDefaults,
+			defaults: limitDefaults,
 			envManagedFields: [],
 		});
 	});

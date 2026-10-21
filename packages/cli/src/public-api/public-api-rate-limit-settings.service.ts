@@ -29,6 +29,8 @@ const FIELDS = Object.keys(ENV_VARS) as Array<keyof PublicApiRateLimitSettings>;
 
 const DEFAULTS: PublicApiRateLimitSettings = { ...new PublicApiRateLimitConfig() };
 
+const { enabled: _enabled, ...LIMIT_DEFAULTS } = DEFAULTS;
+
 const LIMIT_FIELDS = [
 	'globalReadLimit',
 	'globalWriteLimit',
@@ -86,7 +88,7 @@ export class PublicApiRateLimitSettingsService {
 	private toResponse(settings: PublicApiRateLimitSettings): PublicApiRateLimitSettingsResponse {
 		return {
 			...settings,
-			defaults: DEFAULTS,
+			defaults: LIMIT_DEFAULTS,
 			envManagedFields: FIELDS.filter((field) => this.isEnvManaged(field)),
 		};
 	}

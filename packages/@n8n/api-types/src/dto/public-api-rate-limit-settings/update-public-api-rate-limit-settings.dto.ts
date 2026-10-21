@@ -22,7 +22,7 @@ export class UpdatePublicApiRateLimitSettingsDto extends Z.class({
 export type PublicApiRateLimitSettings = z.infer<typeof UpdatePublicApiRateLimitSettingsDto.schema>;
 
 export type PublicApiRateLimitSettingsResponse = PublicApiRateLimitSettings & {
-	defaults: PublicApiRateLimitSettings;
+	defaults: Omit<PublicApiRateLimitSettings, 'enabled'>;
 	/** The fields that an environment variable sets. They cannot be changed through the API. */
 	envManagedFields: Array<keyof PublicApiRateLimitSettings>;
 };
