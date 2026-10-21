@@ -162,6 +162,27 @@ describe('ActorRepository', () => {
 		});
 	});
 
+	describe('testDb.truncate', () => {
+		it("clears humans and service accounts for 'User'", async () => {
+			await createMember();
+			await createServiceAccount();
+
+			await testDb.truncate(['User']);
+
+			expect(await actorRepository.count()).toBe(0);
+		});
+
+		it("clears only service accounts for 'ServiceAccount'", async () => {
+			const human = await createMember();
+			await createServiceAccount();
+
+			await testDb.truncate(['ServiceAccount']);
+
+			const actors = await actorRepository.find();
+			expect(actors.map((actor) => actor.id)).toEqual([human.id]);
+		});
+	});
+
 	describe('ServiceAccountRepository', () => {
 		it('does not return users', async () => {
 			await createMember();

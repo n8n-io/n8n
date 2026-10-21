@@ -1,36 +1,27 @@
-import { mock } from 'vitest-mock-extended';
-
 import { Actor, ServiceAccount, User } from '../../entities';
 import { isServiceAccount, isUser } from '../actor-guards';
 
 describe('actor guards', () => {
-	it('treats a ServiceAccount instance as a service account', () => {
+	it('accepts a ServiceAccount instance as a service account only', () => {
 		const actor = new ServiceAccount();
 
 		expect(isServiceAccount(actor)).toBe(true);
 		expect(isUser(actor)).toBe(false);
 	});
 
-	it('treats an object with the service kind as a service account', () => {
-		const actor = mock<Actor>({ kind: 'service' });
-
-		expect(isServiceAccount(actor)).toBe(true);
-		expect(isUser(actor)).toBe(false);
-	});
-
-	it('treats a User instance as a user', () => {
-		expect(isUser(new User())).toBe(true);
-	});
-
-	it('treats an object without a kind as a user', () => {
-		const actor = { id: 'id' } as Actor;
+	it('accepts a User instance as a user only', () => {
+		const actor = new User();
 
 		expect(isUser(actor)).toBe(true);
 		expect(isServiceAccount(actor)).toBe(false);
 	});
 
-	it('treats a bare Actor instance as neither kind', () => {
-		const actor = Object.create(Actor.prototype) as Actor;
+	it.each([
+		['a plain object with the human kind', { id: 'id', kind: 'human' }],
+		['a plain object with the service kind', { id: 'id', kind: 'service' }],
+		['a bare Actor instance', Object.create(Actor.prototype)],
+	])('rejects %s', (_, value) => {
+		const actor = value as Actor;
 
 		expect(isUser(actor)).toBe(false);
 		expect(isServiceAccount(actor)).toBe(false);
