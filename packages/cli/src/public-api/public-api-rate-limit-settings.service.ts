@@ -4,12 +4,15 @@ import {
 	type PublicApiRateLimitSettingsResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig, PublicApiRateLimitConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { jsonParse } from 'n8n-workflow';
+
+import type { UserLike } from '@/types/user-like.types';
 
 export const PUBLIC_API_RATE_LIMIT_SETTINGS_KEY = 'features.publicApiRateLimit';
 
@@ -43,6 +46,7 @@ export class PublicApiRateLimitSettingsService {
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly settingsRepository: SettingsRepository,
+		private readonly eventService: EventService,
 		private readonly logger: Logger,
 	) {}
 
@@ -66,6 +70,7 @@ export class PublicApiRateLimitSettingsService {
 
 	async saveSettings(
 		incoming: PublicApiRateLimitSettings,
+		actor: UserLike,
 	): Promise<PublicApiRateLimitSettingsResponse> {
 		const settings = this.mergeWithEnvAndConfig(incoming);
 
@@ -73,12 +78,23 @@ export class PublicApiRateLimitSettingsService {
 			throw new BadRequestError('Set at least one limit to turn on rate limiting');
 		}
 
+		const previous = await this.resolveSettings();
+
 		await this.settingsRepository.upsertByKey(
 			PUBLIC_API_RATE_LIMIT_SETTINGS_KEY,
 			JSON.stringify(settings),
 			false,
 			{},
 		);
+
+		if (settings.enabled !== previous.enabled) {
+			const { id, email, firstName, lastName, role } = actor;
+			this.eventService.emit('instance-policies-updated', {
+				user: { id, email, firstName, lastName, role },
+				settingName: 'public_api_rate_limit',
+				value: settings.enabled,
+			});
+		}
 
 		return this.toResponse(settings);
 	}

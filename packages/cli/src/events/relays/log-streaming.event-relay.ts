@@ -1382,6 +1382,14 @@ export class LogStreamingEventRelay extends EventRelay {
 					payload: user,
 				});
 				break;
+			case 'public_api_rate_limit':
+				void this.eventBus.sendAuditEvent({
+					eventName: value
+						? 'n8n.audit.public-api-rate-limit.enabled'
+						: 'n8n.audit.public-api-rate-limit.disabled',
+					payload: user,
+				});
+				break;
 			default:
 				assertNever(settingName);
 		}

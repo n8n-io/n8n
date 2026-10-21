@@ -5241,6 +5241,21 @@ describe('TelemetryEventRelay', () => {
 				data_redaction_enforcement_floor: 'all',
 			});
 		});
+
+		it('should track public_api_rate_limit update', () => {
+			const event: RelayEventMap['instance-policies-updated'] = {
+				user: { id: 'user-rate-limit' },
+				settingName: 'public_api_rate_limit',
+				value: true,
+			};
+
+			eventService.emit('instance-policies-updated', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User updated instance policies', {
+				user_id: 'user-rate-limit',
+				public_api_rate_limit: true,
+			});
+		});
 	});
 
 	describe('workflow review events', () => {
