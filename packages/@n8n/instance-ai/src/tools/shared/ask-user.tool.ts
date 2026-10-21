@@ -53,9 +53,8 @@ export function createAskUserTool() {
 		.description(
 			'Ask the user when only a human can decide; the run suspends until they respond. ' +
 				'Questions are single-select, multi-select, or free-text. ' +
-				'Before the first workflow_builder_build_workflow call, use only for choices that change workflow intent or topology ' +
-				'(e.g. destination service) — setup values (recipients, accounts, resources, channels, credentials, ' +
-				'timezone) use placeholders or unresolved newCredential() calls instead. ' +
+				'Ask only about choices that change what you build. Before the first build, do not ask for setup values ' +
+				'(recipients, accounts, resources, channels, credentials, timezone); leave them for setup. ' +
 				'When the request does not yet say what to build (no trigger, no steps, no named workflow or Agent), ' +
 				'ask about the goal: the result the user wants, whether it happens once now or keeps running, and ' +
 				'whether people chat with it. Do not call it a workflow or an Agent yet, and do not ask about triggers or nodes. ' +
