@@ -138,9 +138,12 @@ export class OAuth2CredentialController {
 
 			// Only overwrite supplied data as some providers do for example just return the
 			// refresh_token on the very first request and not on subsequent ones.
-			const { oauthTokenData: tokenData } = decryptedDataOriginal;
 			const oauthTokenData: ICredentialDataDecryptedObject = {
-				...(typeof tokenData === 'object' ? tokenData : {}),
+				...this.oauthService.getCarriedOverTokenData(
+					credential.type,
+					decryptedDataOriginal,
+					flowState.managedVersion,
+				),
 				...tokenResponse,
 			} as ICredentialDataDecryptedObject;
 

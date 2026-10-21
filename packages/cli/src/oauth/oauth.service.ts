@@ -21,7 +21,13 @@ import Csrf from 'csrf';
 import type { Request, Response } from 'express';
 import { Credentials, Cipher } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { jsonParse, OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
+import {
+	jsonParse,
+	MANAGED_VERSION_KEY,
+	OperationalError,
+	UnexpectedError,
+	UserError,
+} from 'n8n-workflow';
 
 import {
 	GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE,
@@ -676,6 +682,27 @@ export class OauthService {
 			state,
 			stillManaged ? flowState : { ...flowState, managedVersion: undefined },
 		];
+	}
+
+	/**
+	 * The stored token data that a new token can build on, for providers that omit fields such as
+	 * `refresh_token` on a repeat grant. The data belongs to one app, so it is kept only when the
+	 * new connection uses that same app. After a change of app or version the connection is fresh.
+	 */
+	getCarriedOverTokenData(
+		credentialType: string,
+		storedData: ICredentialDataDecryptedObject,
+		managedVersion: number | undefined,
+	): Record<string, unknown> {
+		const { oauthTokenData } = storedData;
+		if (!isRecord(oauthTokenData)) return {};
+
+		const storedVersion = this.credentialsHelper.getBoundVersion(credentialType, storedData);
+		if (storedVersion !== managedVersion) return {};
+
+		// The version is set again from the flow state, so an old one must not survive.
+		const { [MANAGED_VERSION_KEY]: _version, ...tokenData } = oauthTokenData;
+		return tokenData;
 	}
 
 	renderCallbackError(res: Response, message: string, reason?: string) {

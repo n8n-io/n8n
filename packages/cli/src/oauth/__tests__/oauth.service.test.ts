@@ -1240,6 +1240,68 @@ describe('OauthService', () => {
 		});
 	});
 
+	describe('getCarriedOverTokenData', () => {
+		const tokens = { access_token: 'old', refresh_token: 'old-refresh' };
+
+		it('should keep the stored tokens when the app does not change', () => {
+			credentialsHelper.getBoundVersion.mockReturnValue(2);
+
+			expect(
+				service.getCarriedOverTokenData('notionOAuth2Api', { oauthTokenData: tokens }, 2),
+			).toEqual(tokens);
+		});
+
+		it('should not carry the stored version over', () => {
+			credentialsHelper.getBoundVersion.mockReturnValue(2);
+
+			expect(
+				service.getCarriedOverTokenData(
+					'notionOAuth2Api',
+					{ oauthTokenData: { ...tokens, n8n_managed_version: 2 } },
+					2,
+				),
+			).toEqual(tokens);
+		});
+
+		it('should start fresh when the managed version changes', () => {
+			credentialsHelper.getBoundVersion.mockReturnValue(1);
+
+			expect(
+				service.getCarriedOverTokenData('notionOAuth2Api', { oauthTokenData: tokens }, 2),
+			).toEqual({});
+		});
+
+		it('should start fresh when a managed credential moves to its own client', () => {
+			credentialsHelper.getBoundVersion.mockReturnValue(2);
+
+			expect(
+				service.getCarriedOverTokenData('notionOAuth2Api', { oauthTokenData: tokens }, undefined),
+			).toEqual({});
+		});
+
+		it('should start fresh when a credential with its own client moves to the managed app', () => {
+			credentialsHelper.getBoundVersion.mockReturnValue(undefined);
+
+			expect(
+				service.getCarriedOverTokenData('notionOAuth2Api', { oauthTokenData: tokens }, 1),
+			).toEqual({});
+		});
+
+		it('should keep the stored tokens of a credential with its own client', () => {
+			credentialsHelper.getBoundVersion.mockReturnValue(undefined);
+
+			expect(
+				service.getCarriedOverTokenData('notionOAuth2Api', { oauthTokenData: tokens }, undefined),
+			).toEqual(tokens);
+		});
+
+		it('should return nothing when the credential has no token data', () => {
+			credentialsHelper.getBoundVersion.mockReturnValue(undefined);
+
+			expect(service.getCarriedOverTokenData('notionOAuth2Api', {}, 1)).toEqual({});
+		});
+	});
+
 	describe('resolveCredential', () => {
 		it('should resolve credential successfully', async () => {
 			const token = new (require('csrf'))();

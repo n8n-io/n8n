@@ -543,12 +543,14 @@ describe('OAuth2CredentialController', () => {
 				});
 			});
 
-			it('should keep the version of the flow when the token response repeats the old tokens', async () => {
+			it('should build on the token data that the service carries over, with the version of the flow', async () => {
 				await mockTokenExchange();
-				const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
+				const mockResolvedCredential = mock<CredentialsEntity>({ id: '1', type: 'genericOAuth2' });
+				const stored = { oauthTokenData: { id_token: 'old-id' } };
+				oauthService.getCarriedOverTokenData.mockReturnValueOnce({ id_token: 'old-id' });
 				oauthService.resolveCredential.mockResolvedValueOnce([
 					mockResolvedCredential,
-					{ oauthTokenData: { ...tokenData, [MANAGED_VERSION_KEY]: 1 } },
+					stored,
 					oauthCredentials,
 					staticState,
 					{ csrfSecret: 'csrf-secret', managedVersion: 2 },
@@ -556,8 +558,17 @@ describe('OAuth2CredentialController', () => {
 
 				await controller.handleCallback(callbackRequest(staticState), res);
 
+				expect(oauthService.getCarriedOverTokenData).toHaveBeenCalledWith(
+					'genericOAuth2',
+					stored,
+					2,
+				);
 				expect(oauthService.encryptAndSaveData).toHaveBeenCalledWith(mockResolvedCredential, {
-					oauthTokenData: { ...tokenData, [MANAGED_VERSION_KEY]: 2 },
+					oauthTokenData: {
+						id_token: 'old-id',
+						...tokenData,
+						[MANAGED_VERSION_KEY]: 2,
+					},
 				});
 			});
 
@@ -1212,6 +1223,11 @@ describe('OAuth2CredentialController', () => {
 			});
 
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
+			oauthService.getCarriedOverTokenData.mockReturnValueOnce({
+				access_token: 'old_token',
+				expires_in: 3600,
+				n8n_expires_at: existingExpiresAt,
+			});
 			oauthService.resolveCredential.mockResolvedValueOnce([
 				mockResolvedCredential,
 				{

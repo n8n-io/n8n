@@ -732,6 +732,14 @@ export class CredentialsHelper extends ICredentialsHelper {
 	}
 
 	/**
+	 * The managed app version that issued the tokens of a credential. `undefined` for a user-owned
+	 * client or a credential with no tokens.
+	 */
+	getBoundVersion(type: string, decryptedData: ICredentialDataDecryptedObject) {
+		return this.credentialsOverwrites.resolveBoundVersion(type, decryptedData);
+	}
+
+	/**
 	 * Applies credential default data and overwrites
 	 *
 	 * @param managedVersion the managed app version to use. By default it is the version of the credential.
