@@ -16,6 +16,7 @@ import { computed, ref } from 'vue';
 import { useAssistantTopUpEligibility } from '@n8n/stores/composables/useAssistantTopUpEligibility';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useInstanceAiStore, useThread } from '../instanceAi.store';
+import { canManageInstanceAi } from '../instanceAiPermissions';
 import AgentActivityTree from './AgentActivityTree.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
 import AttachmentPreview from './AttachmentPreview.vue';
@@ -47,6 +48,7 @@ const errorDetails = computed(() => {
 });
 
 const hasProviderError = computed(() => !!errorDetails.value?.provider);
+const canManageSettings = computed(canManageInstanceAi);
 
 /** The run failed because the user ran out of AI credits — show a tailored state. */
 const isQuotaExhausted = computed(() => errorDetails.value?.code === 'quota_exhausted');
@@ -219,6 +221,9 @@ function formatJson(value: unknown): string {
 				<div :class="$style.runLevelError">
 					<N8nText bold tag="div">{{ errorTitle }}</N8nText>
 					<N8nText v-if="hasProviderError" tag="div">{{ runError }}</N8nText>
+					<N8nText v-if="!canManageSettings" tag="div">
+						{{ i18n.baseText('instanceAi.error.contactAdmin') }}
+					</N8nText>
 					<details v-if="formattedTechnicalDetails">
 						<summary :class="$style.errorDetailsSummary">
 							{{ i18n.baseText('instanceAi.error.technicalDetails') }}
