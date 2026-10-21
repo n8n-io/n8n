@@ -28,7 +28,6 @@ const WHOLE_NUMBER = /^\d+$/;
 const limitField = (key: RateLimitRowKey): LimitField => `${key}Limit`;
 const windowField = (key: RateLimitRowKey): WindowField => `${key}WindowSeconds`;
 
-/** An empty limit, or one that is 0, means no limit. */
 const parseLimit = (limit: string) => (limit.trim() === '' ? 0 : Number(limit.trim()));
 
 export function toDraft(settings: PublicApiRateLimitSettings): RateLimitDraft {
@@ -44,10 +43,7 @@ export function toDraft(settings: PublicApiRateLimitSettings): RateLimitDraft {
 	};
 }
 
-/**
- * Call only with a draft that has no row errors. A row with no limit keeps the window of `base`
- * when its window is invalid, because the API needs a valid window on every row.
- */
+/** Call only with a draft that has no row errors. The API needs a valid window on every row. */
 export function fromDraft(
 	draft: RateLimitDraft,
 	base: PublicApiRateLimitSettings,

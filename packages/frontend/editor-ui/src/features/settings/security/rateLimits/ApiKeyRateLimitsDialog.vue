@@ -102,7 +102,6 @@ const isPrimaryDisabled = computed(
 	() => props.mode === 'enable' && isEmpty.value && !hasErrors.value,
 );
 
-/** The values that the row will have after a reset. Locked fields keep their value. */
 function resetText(key: RateLimitRowKey) {
 	const limit = Number(isLimitLocked(key) ? draft.value[key].limit : defaultDraft.value[key].limit);
 	if (!limit) return i18n.baseText('settings.security.rateLimits.dialog.noLimit');
@@ -114,7 +113,6 @@ function resetText(key: RateLimitRowKey) {
 	});
 }
 
-/** Fields that an environment variable sets keep their value. */
 function resetRow(key: RateLimitRowKey) {
 	if (!isLimitLocked(key)) draft.value[key].limit = defaultDraft.value[key].limit;
 	if (!isWindowLocked(key)) draft.value[key].window = defaultDraft.value[key].window;
