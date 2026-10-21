@@ -23,6 +23,9 @@ export class FakeImapServer {
 	/** When true the server accepts IDLE but never sends the `+` continuation that confirms it. */
 	withholdIdleContinuation = false;
 
+	/** Close the socket without a response to the first CAPABILITY command. */
+	disconnectOnCapability = false;
+
 	/** Messages the mailbox reports on SELECT. */
 	exists = 0;
 
@@ -66,6 +69,11 @@ export class FakeImapServer {
 					const uidVerb = verb === 'UID' ? (subcommand ?? '').toUpperCase() : undefined;
 
 					if (verb === 'CAPABILITY') {
+						if (this.disconnectOnCapability) {
+							socket.destroy();
+							continue;
+						}
+
 						write(
 							this.brokenRev2Search
 								? '* CAPABILITY IMAP4rev1 IMAP4rev2 ENABLE IDLE'

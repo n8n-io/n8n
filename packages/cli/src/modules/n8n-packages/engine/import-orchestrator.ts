@@ -198,6 +198,7 @@ export class ImportOrchestrator {
 				input.context,
 				input.credentialRequest,
 				credentialPlan,
+				input.projectPendingCreation ?? false,
 			);
 			if (variablePlan.creations.length > 0) {
 				await this.variableImporter.assertCanCreate(
