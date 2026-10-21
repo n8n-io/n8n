@@ -56,21 +56,20 @@ vi.mock('@n8n/composables/useToast', () => ({
 vi.mock('@/features/shared/toolsConnection/ToolsConnectionModal.vue', () => ({
 	default: {
 		name: 'ToolsConnectionModal',
-		props: [
-			'items',
-			'emptyMessage',
-			'createAction',
-			'categories',
-			'categoryLabels',
-			'hideEmptyCategories',
-			'connectLabel',
-			'connectAriaLabel',
-			'connectedLabel',
-		],
+		props: {
+			items: Array,
+			emptyMessage: String,
+			createAction: Object,
+			categories: Array,
+			categoryLabels: Object,
+			hideEmptyCategories: Boolean,
+			connectLabel: Function,
+			connectAriaLabel: Function,
+		},
 		emits: ['connect', 'open-detail', 'create'],
 		template: `
 			<div data-testid="agent-skill-picker">
-				<span data-testid="agent-skill-picker-tabs" :data-hide-empty="String(hideEmptyCategories === '' || hideEmptyCategories === true)">{{ categories.join(',') }} {{ categoryLabels?.project }}</span>
+				<span data-testid="agent-skill-picker-tabs" :data-hide-empty="String(hideEmptyCategories)">{{ categories.join(',') }} {{ categoryLabels?.project }}</span>
 				<button data-testid="agent-skill-picker-create" @click="$emit('create', 'all')">
 					{{ createAction.label }}
 				</button>
@@ -85,7 +84,7 @@ vi.mock('@/features/shared/toolsConnection/ToolsConnectionModal.vue', () => ({
 					<button data-testid="agent-skill-picker-row-open" @click="$emit('open-detail', item)">{{ item.title }}</button>
 					<span data-testid="agent-skill-picker-category">{{ item.category }}</span>
 					<span v-if="item.disabled" data-testid="agent-skill-picker-disabled">{{ item.disabledReason }}</span>
-					<button v-else data-testid="agent-skill-picker-toggle" :data-attached="String(item.attached)" :aria-label="item.attached ? undefined : connectAriaLabel?.(item)" @click="!item.attached && $emit('connect', item)">{{ item.attached ? connectedLabel?.(item) : connectLabel?.(item) }}</button>
+					<button v-else data-testid="agent-skill-picker-toggle" :data-attached="String(item.attached)" :aria-label="item.attached ? undefined : connectAriaLabel?.(item)" @click="!item.attached && $emit('connect', item)">{{ item.attached ? '' : connectLabel?.(item) }}</button>
 				</div>
 			</div>
 		`,
@@ -700,7 +699,7 @@ describe('AgentSkillModal', () => {
 			expect(picker).toBeVisible();
 		});
 
-		it('labels the rows Add skill and Added and hides empty tabs', async () => {
+		it('labels the add action and hides empty tabs', async () => {
 			listAttachableSkills.mockResolvedValue([projectSkill, instanceSkill]);
 			const { findAllByTestId, getByTestId } = renderModal({
 				hubSkillsEnabled: true,
@@ -708,13 +707,12 @@ describe('AgentSkillModal', () => {
 				getAttachedSkills: () => [{ id: instanceSkill.id, name: instanceSkill.name }],
 			});
 
-			const [toAdd, added] = await findAllByTestId('agent-skill-picker-toggle');
+			const [toAdd] = await findAllByTestId('agent-skill-picker-toggle');
 			expect(toAdd).toHaveTextContent('agents.builder.skills.picker.add');
 			expect(toAdd).toHaveAttribute(
 				'aria-label',
 				'agents.builder.skills.picker.addAriaLabel Support tone',
 			);
-			expect(added).toHaveTextContent('agents.builder.skills.picker.added');
 			expect(getByTestId('agent-skill-picker-tabs')).toHaveAttribute('data-hide-empty', 'true');
 		});
 

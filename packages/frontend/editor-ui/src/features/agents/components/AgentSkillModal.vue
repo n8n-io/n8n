@@ -741,7 +741,6 @@ function onRemove() {
 							interpolate: { name: item.title },
 						})
 				"
-				:connected-label="() => i18n.baseText('agents.builder.skills.picker.added')"
 				embedded
 				show-connect-actions
 				hide-empty-categories

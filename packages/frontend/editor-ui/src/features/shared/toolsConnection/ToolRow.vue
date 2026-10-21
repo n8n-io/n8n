@@ -135,10 +135,10 @@ function handleRowClick() {
 
 const mainActionRef = ref<HTMLElement | null>(null);
 /** Set when "Add" had focus, so focus can move once the button is gone. */
-const refocusAfterAdd = ref(false);
+let refocusAfterAdd = false;
 
 function handleSkillAdd(event: MouseEvent) {
-	refocusAfterAdd.value =
+	refocusAfterAdd =
 		event.currentTarget instanceof HTMLElement &&
 		event.currentTarget.contains(document.activeElement);
 	emit('connect', props.item);
@@ -152,8 +152,8 @@ function handleSkillAdd(event: MouseEvent) {
 watch(
 	() => props.item.kind === 'skill' && props.item.attached,
 	async (attached) => {
-		if (!attached || !refocusAfterAdd.value) return;
-		refocusAfterAdd.value = false;
+		if (!attached || !refocusAfterAdd) return;
+		refocusAfterAdd = false;
 		await nextTick();
 		mainActionRef.value?.focus();
 	},

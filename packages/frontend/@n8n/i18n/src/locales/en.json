@@ -9127,7 +9127,6 @@
 	"agents.builder.skills.picker.create.description": "Write a new skill for this agent",
 	"agents.builder.skills.picker.add": "Add skill",
 	"agents.builder.skills.picker.addAriaLabel": "Add {name} to this agent",
-	"agents.builder.skills.picker.added": "Added",
 	"agents.builder.skills.picker.manage": "Manage skills",
 	"agents.builder.skills.picker.loading": "Loading skills…",
 	"agents.builder.skills.picker.empty": "No skills to add. Create one, or ask an admin to share one with this project.",
