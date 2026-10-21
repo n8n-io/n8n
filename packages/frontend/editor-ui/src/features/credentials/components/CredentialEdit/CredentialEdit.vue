@@ -35,6 +35,7 @@ import {
 	getTrustedOAuthOrigins,
 	hasOAuthTokenData,
 	isOAuthTokenDataSet,
+	openOAuthPopup,
 	waitForOAuthCallback,
 } from '../../composables/oauthCallback';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -1316,14 +1317,7 @@ async function oAuthCredentialAuthorize() {
 
 	credentialsStore.pendingOAuthRefresh = true;
 
-	// window.open must run within the click's transient user activation:
-	// opening after the save/authorize round trips below gets the popup blocked
-	// on slow connections (Chrome expires activation after ~5s) and in stricter
-	// browsers (Safari) regardless of timing. Open a blank window now and
-	// navigate it once the authorization URL is known.
-	const params =
-		'scrollbars=no,resizable=yes,status=no,titlebar=noe,location=no,toolbar=no,menubar=no,width=500,height=700';
-	const oauthPopup = window.open('about:blank', 'OAuth Authorization', params);
+	const oauthPopup = openOAuthPopup();
 	if (!oauthPopup) {
 		toast.showError(
 			new Error(i18n.baseText('credentialEdit.credentialEdit.showError.oauthPopupBlocked.message')),
