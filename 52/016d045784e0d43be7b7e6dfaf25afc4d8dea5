@@ -41,6 +41,7 @@ packages/cli/src/modules/agents/integrations/platforms/discord/discord-integrati
   s_852389bc7751db::t_bd16bf5e7cbe44 226-227
   s_852389bc7751db::t_c10ac73fd941a4 228-229
   s_852389bc7751db::t_2d7584e5d8ad1e 27
+  s_852389bc7751db::t_8ba2bf92b687c3 29
 packages/cli/src/modules/agents/integrations/platforms/slack/slack-integration.ts
   s_852389bc7751db::t_bd16bf5e7cbe44 206-207
   s_852389bc7751db::t_2d7584e5d8ad1e 23,25
@@ -49,6 +50,7 @@ packages/cli/src/modules/agents/integrations/platforms/telegram/telegram-integra
   s_852389bc7751db::t_2d7584e5d8ad1e 24
   s_852389bc7751db::t_bd16bf5e7cbe44 164-165
   s_852389bc7751db::t_c10ac73fd941a4 166-167
+  s_852389bc7751db::t_8ba2bf92b687c3 26
 packages/cli/src/modules/agents/integrations/thread-shared-episodic-scope.ts
   s_852389bc7751db::t_c10ac73fd941a4 1-29
 packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
@@ -71,6 +73,7 @@ packages/cli/src/modules/agents/integrations/platforms/linear/linear-integration
   s_852389bc7751db::t_c10ac73fd941a4 117-118
   s_852389bc7751db::t_2d7584e5d8ad1e 10
   s_852389bc7751db::t_bd16bf5e7cbe44 115-116
+  s_852389bc7751db::t_8ba2bf92b687c3 12
 packages/cli/src/modules/agents/integrations/__tests__/agent-channel-reconciler.service.test.ts
   s_852389bc7751db::t_f1b459339fdbb7 44-47
 packages/cli/src/modules/agents/integrations/__tests__/helpers/replay-test-helpers.ts
