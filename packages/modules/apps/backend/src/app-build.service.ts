@@ -2,7 +2,6 @@ import type { AppBuildResponse } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { InstanceWriteAccessService } from '@n8n/backend-services';
 import { DbLock, DbLockService } from '@n8n/db';
-import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { raceAbort } from '@n8n/utils/race-abort';
@@ -191,7 +190,6 @@ export class AppBuildService {
 		};
 	}
 
-	@OnShutdown()
 	async shutdown() {
 		this.stopping.abort();
 		await Promise.allSettled(this.active);
