@@ -49,6 +49,7 @@ import type { AgentsService } from '../agents.service';
 import { AgentsBuilderToolsService } from '../builder/agents-builder-tools.service';
 import type { BuilderModelLiveLookupService } from '../builder/builder-model-live-lookup.service';
 import { BUILDER_TOOLS } from '../builder/builder-tool-names';
+import { getBuilderRuntimeSkills } from '../builder/skills';
 import type { Agent, ProjectAgent } from '../entities/agent.entity';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
@@ -3375,11 +3376,11 @@ describe('AgentsBuilderToolsService', () => {
 			expect(result).toEqual({ targetAgentId: 'agent-b', continuation: { step: 1 } });
 		});
 
-		it('matches the copy of the tools that the routing eval shows the model', () => {
+		it('matches the copy of the tools and skills that the routing eval shows the model', () => {
 			// The eval cannot import cli, so it reads this file instead of building the tools.
-			const evalToolsPath = path.resolve(
+			const evalCopyPath = path.resolve(
 				__dirname,
-				'../../../../../@n8n/instance-ai/evaluations/discovery/agent-builder-tools.json',
+				'../../../../../@n8n/instance-ai/evaluations/discovery/agent-builder.json',
 			);
 			const { service, agentsToolsService } = makeService();
 			const sharedTools = new AgentsToolsService(mock());
@@ -3403,12 +3404,13 @@ describe('AgentsBuilderToolsService', () => {
 							? zodToJsonSchema(inputSchema as ZodTypeAny)
 							: inputSchema,
 				}));
-			if (process.env.UPDATE_EVAL_BUILDER_TOOLS) {
-				writeFileSync(evalToolsPath, `${JSON.stringify(tools, null, '\t')}\n`);
+			const evalCopy = { tools, skills: getBuilderRuntimeSkills() };
+			if (process.env.UPDATE_EVAL_AGENT_BUILDER) {
+				writeFileSync(evalCopyPath, `${JSON.stringify(evalCopy, null, '\t')}\n`);
 			}
 
-			expect(tools, 'Run this test with UPDATE_EVAL_BUILDER_TOOLS=1 to update the file').toEqual(
-				jsonParse(readFileSync(evalToolsPath, 'utf8')),
+			expect(evalCopy, 'Run this test with UPDATE_EVAL_AGENT_BUILDER=1 to update the file').toEqual(
+				jsonParse(readFileSync(evalCopyPath, 'utf8')),
 			);
 		});
 	});
