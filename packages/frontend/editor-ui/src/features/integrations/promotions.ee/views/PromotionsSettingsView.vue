@@ -18,7 +18,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { nextTick, onMounted, ref, type ComponentPublicInstance } from 'vue';
+import { nextTick, onMounted, reactive, ref, type ComponentPublicInstance } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
@@ -52,7 +52,7 @@ const { connectErrors, canClone, connect } = usePromotionCheckout();
 const environments = ref<Partial<Record<PromotionDirection, PromotionEnvironment>>>({});
 const isInitialLoading = ref(true);
 const loadError = ref(false);
-const busy = ref<{ id: string; action: 'retry' | 'remove' }>();
+const busy = reactive(new Map<string, 'retry' | 'remove'>());
 const addButtons: Partial<Record<PromotionDirection, Element | ComponentPublicInstance | null>> =
 	{};
 
@@ -82,9 +82,9 @@ onMounted(async () => {
 });
 
 async function retry(environment: PromotionEnvironment) {
-	busy.value = { id: environment.id, action: 'retry' };
+	busy.set(environment.id, 'retry');
 	if (await connect(environment.id)) await load();
-	busy.value = undefined;
+	busy.delete(environment.id);
 }
 
 async function remove(environment: PromotionEnvironment) {
@@ -103,12 +103,12 @@ async function remove(environment: PromotionEnvironment) {
 	if (confirmed !== MODAL_CONFIRM) return;
 
 	const context = rootStore.publicApiContext;
-	busy.value = { id: environment.id, action: 'remove' };
+	busy.set(environment.id, 'remove');
 	try {
 		await deletePromotionEnvironment(context, environment.id);
 	} catch (error) {
 		if (!(error instanceof ResponseError && error.httpStatusCode === 404)) {
-			busy.value = undefined;
+			busy.delete(environment.id);
 			toast.showError(error, i18n.baseText('settings.promotions.environment.toast.error.remove'));
 			return;
 		}
@@ -121,7 +121,7 @@ async function remove(environment: PromotionEnvironment) {
 	connectErrors.delete(environment.id);
 	invalidateInstancePromotionConnection();
 	await load();
-	busy.value = undefined;
+	busy.delete(environment.id);
 	toast.showMessage({
 		title: i18n.baseText('settings.promotions.environment.toast.removed', {
 			interpolate: { name: environment.name },
@@ -177,7 +177,7 @@ async function remove(environment: PromotionEnvironment) {
 							:key="environments[direction].id"
 							:class="$style.column"
 							:environment="environments[direction]"
-							:busy="busy?.id === environments[direction].id ? busy.action : undefined"
+							:busy="busy.get(environments[direction].id)"
 							:connect-error="connectErrors.get(environments[direction].id)"
 							:can-clone="canClone"
 							:data-test-id="`promotion-environment-card-${direction}`"

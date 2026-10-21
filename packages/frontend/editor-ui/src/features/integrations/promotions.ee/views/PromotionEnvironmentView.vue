@@ -189,9 +189,11 @@ function onDialogOpenChange(open: boolean) {
 }
 
 function selectRepository(repository: PromotionRepository) {
+	const isSameRepository =
+		repository.fullPath === form.repositoryPath || repository.remoteUrl === form.remoteUrl;
 	form.remoteUrl = repository.remoteUrl;
 	form.repositoryPath = repository.fullPath;
-	form.branch = repository.defaultBranch ?? '';
+	if (!isSameRepository) form.branch = repository.defaultBranch ?? '';
 }
 
 async function save() {
@@ -333,6 +335,7 @@ onBeforeRouteLeave(() => {
 								:focus-initially="!loaded"
 								:disabled="isSaving"
 								data-test-id="promotion-environment-name-input"
+								@enter="save"
 							/>
 
 							<N8nFormInput
@@ -411,6 +414,7 @@ onBeforeRouteLeave(() => {
 								:show-required-asterisk="false"
 								:disabled="isSaving"
 								data-test-id="promotion-environment-remote-url-input"
+								@enter="save"
 							/>
 
 							<N8nFormInput
@@ -441,6 +445,7 @@ onBeforeRouteLeave(() => {
 								:show-required-asterisk="false"
 								:disabled="isSaving"
 								data-test-id="promotion-environment-branch-input"
+								@enter="save"
 							/>
 
 							<N8nCheckbox

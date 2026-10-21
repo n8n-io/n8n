@@ -32,6 +32,7 @@ test.describe(
 				await gitea.createRepo(repoName);
 				const promotions = n8n.settingsPromotions;
 
+				await n8n.start.fromHome();
 				await promotions.goto();
 				await promotions.getAddEnvironmentButton('apply').click();
 				await promotions.pickProviderType('git');
