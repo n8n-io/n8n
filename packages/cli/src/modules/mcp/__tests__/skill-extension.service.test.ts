@@ -185,6 +185,7 @@ describe('McpSkillExtensionService', () => {
 				count: 1,
 			});
 			expect(result.nextCursor).toBeUndefined();
+			expect(result).toMatchObject({ resultType: 'complete', ttlMs: 0, cacheScope: 'private' });
 		});
 
 		it('pages with an offset cursor', async () => {
@@ -211,6 +212,7 @@ describe('McpSkillExtensionService', () => {
 			});
 
 			expect(result.skill).toEqual(toSkillEntry('skill_a1', releaseNotes));
+			expect(result.resultType).toBe('complete');
 			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.MCP_LISTED_SKILLS, {
 				user_id: 'user-1',
 				method: 'skills/get',

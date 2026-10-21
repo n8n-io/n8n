@@ -152,7 +152,12 @@ export class McpSkillExtensionService {
 			count: skills.length,
 		});
 		const next = skip + data.length;
-		return { skills, ...(next < count ? { nextCursor: String(next) } : {}) };
+		return {
+			skills,
+			ttlMs: 0,
+			cacheScope: 'private',
+			...(next < count ? { nextCursor: String(next) } : {}),
+		};
 	}
 
 	private async readableSkill(user: User, skillId: string): Promise<SkillDetail | null> {
