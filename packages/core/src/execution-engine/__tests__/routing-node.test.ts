@@ -912,6 +912,7 @@ describe('RoutingNode', () => {
 				output: [
 					[
 						{
+							pairedItem: { item: 0 },
 							json: {
 								headers: {},
 								statusCode: 200,
@@ -962,6 +963,7 @@ describe('RoutingNode', () => {
 				output: [
 					[
 						{
+							pairedItem: { item: 0 },
 							json: {
 								headers: {},
 								statusCode: 200,
@@ -1018,6 +1020,7 @@ describe('RoutingNode', () => {
 				output: [
 					[
 						{
+							pairedItem: { item: 0 },
 							json: {
 								headers: {},
 								statusCode: 200,
@@ -1074,6 +1077,7 @@ describe('RoutingNode', () => {
 				output: [
 					[
 						{
+							pairedItem: { item: 0 },
 							json: {
 								headers: {},
 								statusCode: 200,
@@ -1132,6 +1136,7 @@ describe('RoutingNode', () => {
 				output: [
 					[
 						{
+							pairedItem: { item: 0 },
 							json: {
 								headers: {},
 								statusCode: 200,
@@ -1181,6 +1186,7 @@ describe('RoutingNode', () => {
 				output: [
 					[
 						{
+							pairedItem: { item: 0 },
 							json: {
 								headers: {},
 								statusCode: 200,
@@ -1204,6 +1210,7 @@ describe('RoutingNode', () => {
 							},
 						},
 						{
+							pairedItem: { item: 1 },
 							json: {
 								headers: {},
 								statusCode: 200,
@@ -1227,6 +1234,7 @@ describe('RoutingNode', () => {
 							},
 						},
 						{
+							pairedItem: { item: 2 },
 							json: {
 								headers: {},
 								statusCode: 200,
@@ -1250,6 +1258,7 @@ describe('RoutingNode', () => {
 							},
 						},
 						{
+							pairedItem: { item: 3 },
 							json: {
 								headers: {},
 								statusCode: 200,
@@ -1273,6 +1282,7 @@ describe('RoutingNode', () => {
 							},
 						},
 						{
+							pairedItem: { item: 4 },
 							json: {
 								headers: {},
 								statusCode: 200,
@@ -1311,6 +1321,7 @@ describe('RoutingNode', () => {
 				output: [
 					[
 						{
+							pairedItem: { item: 0 },
 							json: {
 								headers: {},
 								statusCode: 200,
@@ -1727,6 +1738,7 @@ describe('RoutingNode', () => {
 				output: [
 					[
 						{
+							pairedItem: { item: 0 },
 							json: {
 								url: '/cSName1',
 								qs: {
@@ -1824,6 +1836,7 @@ describe('RoutingNode', () => {
 				output: [
 					[
 						{
+							pairedItem: { item: 0 },
 							json: {
 								value: {
 									root: [
@@ -1929,12 +1942,14 @@ describe('RoutingNode', () => {
 				output: [
 					[
 						{
+							pairedItem: { item: 0 },
 							json: {
 								name: 'Jim',
 								age: 34,
 							},
 						},
 						{
+							pairedItem: { item: 0 },
 							json: {
 								name: 'James',
 								age: 44,
@@ -2008,6 +2023,7 @@ describe('RoutingNode', () => {
 				output: [
 					[
 						{
+							pairedItem: { item: 0 },
 							json: {
 								name: 'James',
 								age: 44,
@@ -2088,6 +2104,7 @@ describe('RoutingNode', () => {
 				output: [
 					[
 						{
+							pairedItem: { item: 0 },
 							json: {
 								name: 'James',
 								age: 44,
@@ -2162,12 +2179,14 @@ describe('RoutingNode', () => {
 				output: [
 					[
 						{
+							pairedItem: { item: 0 },
 							json: {
 								display1: 'James (44)',
 								display2: 'James is 44',
 							},
 						},
 						{
+							pairedItem: { item: 0 },
 							json: {
 								display1: 'Jim (34)',
 								display2: 'Jim is 34',
@@ -2207,6 +2226,7 @@ describe('RoutingNode', () => {
 				output: [
 					[
 						{
+							pairedItem: { item: 0 },
 							json: {
 								headers: {},
 								statusCode: 200,
@@ -2276,6 +2296,7 @@ describe('RoutingNode', () => {
 				output: [
 					[
 						{
+							pairedItem: { item: 0 },
 							json: {
 								headers: {},
 								statusCode: 200,
@@ -2568,6 +2589,18 @@ describe('RoutingNode', () => {
 			expect(error).toBeInstanceOf(NodeApiError);
 			expect(error).toMatchObject({ context: { itemIndex: 1, runIndex: 0 } });
 			expect(JSON.stringify(error)).not.toContain('secret-token');
+		});
+
+		test('pairs every success and error item with its input item', async () => {
+			const { run } = createRoutingNode({ continueOnFail: true, requestErrorUrl: '/items/second' });
+
+			const result = await run;
+
+			expect(result?.[0]?.map((item) => item.pairedItem)).toEqual([
+				{ item: 0 },
+				{ item: 1 },
+				{ item: 2 },
+			]);
 		});
 
 		test('keeps a node operation error when continue on fail is enabled', async () => {
