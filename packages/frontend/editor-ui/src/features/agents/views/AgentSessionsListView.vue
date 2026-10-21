@@ -6,6 +6,13 @@ export const OPEN_AGENT_PREVIEW_KEY: import('vue').InjectionKey<{
 		import('@n8n/api-types').AgentConfigValidationIssue[]
 	>;
 }> = Symbol('openAgentPreview');
+
+export const AGENT_SESSION_ASSISTANT_KEY: import('vue').InjectionKey<{
+	isAvailable: import('vue').ComputedRef<boolean>;
+	handoff: (
+		params: import('@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff').AgentPreviewHandoffParams,
+	) => Promise<boolean>;
+}> = Symbol('agentSessionAssistant');
 </script>
 
 <script lang="ts" setup>
@@ -98,6 +105,8 @@ const toast = useToast();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
 const sessionsStore = useAgentSessionsStore();
 const agentTelemetry = useAgentTelemetry();
+const sessionAssistant = inject(AGENT_SESSION_ASSISTANT_KEY, undefined);
+const fixingThreadId = ref<string | null>(null);
 const { onDocumentVisible } = useDocumentVisibility();
 let disposed = false;
 let managesStoreLifecycle = false;
@@ -335,6 +344,36 @@ function originPresentation(thread: AgentExecutionThread): OriginPresentation {
 				icon: 'plug',
 				label: rawSource ? rawSource.charAt(0).toUpperCase() + rawSource.slice(1) : '',
 			};
+	}
+}
+
+async function fixWithAssistant(thread: AgentExecutionThread) {
+	if (!sessionAssistant?.isAvailable.value || fixingThreadId.value || thread.status !== 'error')
+		return;
+
+	fixingThreadId.value = thread.id;
+	try {
+		const failure = thread.failureSummary?.latest;
+		await sessionAssistant.handoff({
+			projectId: thread.projectId,
+			agentId: thread.agentId,
+			threadId: thread.id,
+			agentName: thread.agentName,
+			sessionTitle: threadTitleOf(thread),
+			executionId: failure?.executionId,
+			initialDraft: {
+				text: i18n.baseText('agentSessions.fixWithAssistantPrompt', {
+					interpolate: {
+						error: failure?.message || i18n.baseText('agentSessions.status.error'),
+					},
+				}),
+				prefillType: 'handoff_agent_change_request',
+			},
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('instanceAi.handoff.openFailed.title'));
+	} finally {
+		fixingThreadId.value = null;
 	}
 }
 
@@ -622,7 +661,10 @@ const skeletonMetaWidths = ['var(--spacing--2xl)', 'var(--spacing--xl)', 'var(--
 							{{ threadTitleOf(row.thread) }}
 						</N8nText>
 					</div>
-					<div v-if="row.thread.status !== 'running'" :class="$style.listEnd">
+					<div
+						v-if="row.thread.status !== 'running' && row.thread.status !== 'error'"
+						:class="$style.listEnd"
+					>
 						<N8nBadge
 							:leading-icon="originPresentation(row.thread).icon"
 							data-test-id="agent-session-origin-pill"
@@ -642,7 +684,21 @@ const skeletonMetaWidths = ['var(--spacing--2xl)', 'var(--spacing--xl)', 'var(--
 					</div>
 				</RouterLink>
 				<div v-if="row.thread.status !== 'running'" :class="$style.actionGroup">
+					<N8nButton
+						v-if="sessionAssistant?.isAvailable.value && row.thread.status === 'error'"
+						variant="outline"
+						size="small"
+						icon="n8n-assistant"
+						:class="$style.fixWithAIA"
+						:loading="fixingThreadId === row.thread.id"
+						:disabled="fixingThreadId !== null"
+						data-test-id="agent-session-fix-with-assistant"
+						@click="fixWithAssistant(row.thread)"
+					>
+						{{ i18n.baseText('agentSessions.fixWithAssistant') }}
+					</N8nButton>
 					<N8nActionDropdown
+						v-if="row.thread.status !== 'error'"
 						placement="bottom-end"
 						:items="rowActions(row.thread)"
 						activator-icon="ellipsis"
@@ -837,7 +893,8 @@ const skeletonMetaWidths = ['var(--spacing--2xl)', 'var(--spacing--xl)', 'var(--
 	justify-content: flex-end;
 	gap: var(--spacing--4xs);
 	padding-inline: var(--spacing--4xs);
-	width: var(--height--2xl);
+	min-width: var(--height--2xl);
+	flex-shrink: 0;
 }
 
 .emptyState {

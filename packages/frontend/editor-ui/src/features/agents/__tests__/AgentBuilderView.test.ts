@@ -19,6 +19,7 @@ import {
 	forgetAssistantAgentThread,
 	rememberAssistantAgentThread,
 } from '@/features/ai/instanceAi/assistantAgent/assistantAgentThreads';
+import type { AgentPreviewHandoffParams } from '@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff';
 import type {
 	AgentJsonConfig,
 	AgentJsonSkillRef,
@@ -1003,6 +1004,7 @@ function resetViewMocks() {
 // Load the view after the shared mocks exist. Module loading must finish before
 // tests start, so a cold transform cannot outlive a test and mount in the next one.
 const { default: AgentBuilderView } = await import('../views/AgentBuilderView.vue');
+const { AGENT_SESSION_ASSISTANT_KEY } = await import('../views/AgentSessionsListView.vue');
 
 describe('AgentBuilderView — preview routing', () => {
 	beforeEach(() => {
@@ -1634,6 +1636,52 @@ describe('AgentBuilderView — preview routing', () => {
 			},
 		],
 	};
+
+	it('opens the embedded Assistant for a session handoff without navigation', async () => {
+		handoffMock.mockReturnValueOnce(true);
+		localStorage.setItem('N8N_AGENT_AI_PANEL_OPEN:p1:a1', 'false');
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		/** SAFETY: The editor inherits the builder's Vue providers. */
+		const { provides } = editor.vm.$ as typeof editor.vm.$ & {
+			provides: Record<symbol, unknown>;
+		};
+		/** SAFETY: This key identifies the session Assistant capability supplied by the builder. */
+		const sessionAssistant = provides[AGENT_SESSION_ASSISTANT_KEY as symbol] as {
+			handoff: (params: AgentPreviewHandoffParams) => Promise<boolean>;
+		};
+		const params = {
+			projectId: 'p1',
+			agentId: 'a1',
+			threadId: 'failed-session',
+			agentName: 'Agent One',
+			sessionTitle: 'Failed order lookup',
+			executionId: 'failed-execution',
+			initialDraft: {
+				text: 'Fix this error: Service unavailable',
+				prefillType: 'handoff_agent_change_request',
+			},
+		} satisfies AgentPreviewHandoffParams;
+
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
+		expect(await sessionAssistant.handoff(params)).toBe(true);
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+		expect(wrapper.findComponent({ name: 'InstanceAiChatPanel' }).exists()).toBe(true);
+		expect(handoffMock).toHaveBeenCalledExactlyOnceWith(
+			{
+				source: 'agent-preview',
+				agentId: 'a1',
+				threadId: 'failed-session',
+				agentName: 'Agent One',
+				sessionTitle: 'Failed order lookup',
+				executionId: 'failed-execution',
+			},
+			params.initialDraft,
+		);
+		expect(routerPush).not.toHaveBeenCalled();
+	});
 
 	it.each([
 		{ label: 'without execution context', event: undefined },

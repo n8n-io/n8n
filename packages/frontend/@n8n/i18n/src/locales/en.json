@@ -1898,6 +1898,8 @@
 	"agentSessions.filters.reset": "Reset filters",
 	"agentSessions.status.succeeded": "Succeeded",
 	"agentSessions.status.error": "Error",
+	"agentSessions.fixWithAssistant": "Fix with assistant",
+	"agentSessions.fixWithAssistantPrompt": "Fix this error: {error}",
 	"agentSessions.loadMore": "Load more",
 	"agentSessions.delete": "Delete session",
 	"agentSessions.deleteConfirm.headline": "Delete Session?",
