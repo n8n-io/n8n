@@ -451,6 +451,7 @@ const THREAD_ARTIFACT_KIND: Record<InstanceAiThreadArtifact['type'], string> = {
 	workflow: 'Workflow',
 	agent: 'Agent',
 	'data-table': 'Data table',
+	skill: 'Skill',
 };
 
 function formatThreadArtifactLine(

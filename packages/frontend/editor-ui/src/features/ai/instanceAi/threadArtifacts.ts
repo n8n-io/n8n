@@ -16,7 +16,7 @@ export type OpenThreadTab = {
 const MAX_THREAD_ARTIFACTS = 20;
 
 function isThreadArtifactType(type: ResourceEntry['type']): type is ThreadArtifactType {
-	return type === 'workflow' || type === 'agent' || type === 'data-table';
+	return type === 'workflow' || type === 'agent' || type === 'data-table' || type === 'skill';
 }
 
 function toThreadArtifact(

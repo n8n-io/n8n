@@ -117,6 +117,13 @@ function registerAgent(thread: MockThread, id: string, name = `Agent ${id}`, pro
 	thread.resourceNameIndex = nextByName;
 }
 
+function registerSkill(thread: MockThread, id: string, name = `Skill ${id}`) {
+	const entry: ResourceEntry = { type: 'skill', id, name };
+	const nextProduced = new Map(thread.producedArtifacts);
+	nextProduced.set(id, entry);
+	thread.producedArtifacts = nextProduced;
+}
+
 // ---------------------------------------------------------------------------
 // Route mock
 // ---------------------------------------------------------------------------
@@ -1096,6 +1103,116 @@ describe('useCanvasPreview', () => {
 			await nextTick();
 
 			expect(ctx.dataTableRefreshKey.value).toBe(initialKey + 1);
+		});
+	});
+
+	describe('auto-open skill preview', () => {
+		function skillsCall(
+			toolCallId: string,
+			args: Record<string, unknown>,
+			result: Record<string, unknown>,
+		) {
+			return makeMessage({
+				agentTree: makeAgentNode({
+					toolCalls: [makeToolCall({ toolCallId, toolName: 'skills', args, result })],
+				}),
+			});
+		}
+
+		test('opens a skill the assistant created', async () => {
+			const ctx = setup();
+			registerSkill(ctx.thread, 'skill-1', 'Brand voice');
+
+			ctx.thread.messages = [
+				skillsCall(
+					'tc-create-skill',
+					{ action: 'create', scope: 'instance' },
+					{ success: true, skill: { id: 'skill-1', name: 'Brand voice' } },
+				),
+			];
+			await nextTick();
+
+			expect(ctx.activeSkillId.value).toBe('skill-1');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
+		test('opens a skill the assistant saved and reloads it on the next save', async () => {
+			const ctx = setup();
+			registerSkill(ctx.thread, 'skill-1', 'Brand voice');
+			const initialKey = ctx.skillRefreshKey.value;
+
+			ctx.thread.messages = [
+				skillsCall(
+					'tc-update-1',
+					{ action: 'update', skillId: 'skill-1' },
+					{ success: true, saved: { id: 'skill-1', name: 'Brand voice', created: true } },
+				),
+			];
+			await nextTick();
+			expect(ctx.activeSkillId.value).toBe('skill-1');
+			expect(ctx.skillRefreshKey.value).toBe(initialKey + 1);
+
+			ctx.thread.messages = [
+				...ctx.thread.messages,
+				skillsCall(
+					'tc-update-2',
+					{ action: 'update', skillId: 'skill-1' },
+					{ success: true, saved: { id: 'skill-1', name: 'Brand voice', created: true } },
+				),
+			];
+			await nextTick();
+			expect(ctx.skillRefreshKey.value).toBe(initialKey + 2);
+		});
+
+		test.each([
+			['list', { action: 'list' }, { count: 1, skills: [{ id: 'skill-1', name: 'Brand voice' }] }],
+			['get', { action: 'get', skillId: 'skill-1' }, { id: 'skill-1', name: 'Brand voice' }],
+			[
+				'denied create',
+				{ action: 'create' },
+				{ success: false, denied: true, reason: 'User denied the action' },
+			],
+			[
+				'refused update',
+				{ action: 'update', skillId: 'skill-1' },
+				{ success: false, refused: true, reason: 'No permission' },
+			],
+			['delete', { action: 'delete', skillId: 'skill-1' }, { success: true, skillId: 'skill-1' }],
+		])('does not open a skill after a %s call', async (_label, args, result) => {
+			const ctx = setup();
+			registerSkill(ctx.thread, 'skill-1', 'Brand voice');
+
+			ctx.thread.messages = [skillsCall('tc-skill', args, result)];
+			await nextTick();
+
+			expect(ctx.activeSkillId.value).toBeNull();
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+
+		test('does not open a skill while hydrating', async () => {
+			const ctx = setup();
+			ctx.thread.isHydratingThread = true;
+			registerSkill(ctx.thread, 'skill-1', 'Brand voice');
+
+			ctx.thread.messages = [
+				skillsCall(
+					'tc-create-skill',
+					{ action: 'create' },
+					{ success: true, skill: { id: 'skill-1', name: 'Brand voice' } },
+				),
+			];
+			await nextTick();
+
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+
+		test('openSkillPreview shows the skill tab', () => {
+			const ctx = setup();
+			registerSkill(ctx.thread, 'skill-1', 'Brand voice');
+
+			expect(ctx.openSkillPreview('skill-1')).toBe(true);
+			expect(ctx.activeSkillId.value).toBe('skill-1');
+			expect(ctx.openSkillPreview('skill-1')).toBe(false);
 		});
 	});
 

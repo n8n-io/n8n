@@ -490,6 +490,73 @@ export function getLatestDataTableResult(node: InstanceAiAgentNode): DataTableRe
 	return undefined;
 }
 
+/** Name of the n8n Assistant tool that manages skills in the skills hub. */
+export const SKILLS_TOOL_NAME = 'skills';
+
+const SKILL_WRITE_ACTIONS = new Set(['create', 'update']);
+
+/** The Skills Hub deep link that opens one skill. */
+export function skillsHubHref(skillId: string): string {
+	return `/settings/context/skills?skillId=${encodeURIComponent(skillId)}`;
+}
+
+export interface SkillArtifact {
+	skillId: string;
+	name?: string;
+}
+
+export interface SkillArtifactResult extends SkillArtifact {
+	/** Unique per operation — changes even when the same skill is saved again. */
+	toolCallId: string;
+}
+
+/**
+ * The skill that a finished `skills` call created or saved. Only a successful
+ * create or update counts: a list, a get, a delete, a denied or a refused call
+ * does not make the skill an artifact.
+ */
+export function getSkillArtifactFromToolCall(
+	tc: InstanceAiToolCallState,
+): SkillArtifact | undefined {
+	if (tc.toolName !== SKILLS_TOOL_NAME || tc.isLoading) return undefined;
+	const action = tc.args?.action;
+	if (typeof action !== 'string' || !SKILL_WRITE_ACTIONS.has(action)) return undefined;
+	if (!isRecord(tc.result) || tc.result.success !== true) return undefined;
+
+	// create: { success, skill: { id, name, ... } }. update: { success, saved: { id, name? } }.
+	const written = action === 'create' ? tc.result.skill : tc.result.saved;
+	if (!isRecord(written)) return undefined;
+	const skillId =
+		typeof written.id === 'string'
+			? written.id
+			: typeof tc.args?.skillId === 'string'
+				? tc.args.skillId
+				: undefined;
+	if (!skillId) return undefined;
+	const name =
+		typeof written.name === 'string' && written.name.trim() !== '' ? written.name : undefined;
+	return { skillId, ...(name ? { name } : {}) };
+}
+
+/**
+ * Walks an agent tree depth-first (most recent last) and returns the latest
+ * skill that the assistant created or saved with the `skills` tool.
+ */
+export function getLatestSkillArtifactResult(
+	node: InstanceAiAgentNode,
+): SkillArtifactResult | undefined {
+	for (let i = node.children.length - 1; i >= 0; i--) {
+		const childResult = getLatestSkillArtifactResult(node.children[i]);
+		if (childResult) return childResult;
+	}
+	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
+		const tc = node.toolCalls[i];
+		const skill = getSkillArtifactFromToolCall(tc);
+		if (skill) return { ...skill, toolCallId: tc.toolCallId };
+	}
+	return undefined;
+}
+
 function getAgentTarget(node: InstanceAiAgentNode): AgentArtifactTarget | undefined {
 	if (node.targetResource?.type !== 'agent' || typeof node.targetResource.id !== 'string') {
 		return undefined;
