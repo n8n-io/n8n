@@ -13,6 +13,8 @@ import {
 	SharedWorkflowRepository,
 	UserRepository,
 	type ProjectListOptions,
+	type OperationContext,
+	RoleRepository,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import {
@@ -97,6 +99,7 @@ export class ProjectService {
 		private readonly eventService: EventService,
 		private readonly userManagementMailer: UserManagementMailer,
 		private readonly userRepository: UserRepository,
+		private readonly roleRepository: RoleRepository,
 	) {}
 
 	private get workflowService() {
@@ -911,12 +914,21 @@ export class ProjectService {
 		);
 	}
 
-	async getProjectWithScope(user: User, projectId: string, scopes: Scope[]) {
+	async getProjectWithScope(
+		user: User,
+		projectId: string,
+		scopes: Scope[],
+		ctx: OperationContext = {},
+	) {
 		const projectRoles = hasGlobalScope(user, scopes, { mode: 'allOf' })
 			? undefined
-			: await this.roleService.rolesWithScope('project', scopes);
+			: await this.roleService.rolesWithScope(
+					'project',
+					scopes,
+					async () => await this.roleRepository.findAll(ctx),
+				);
 
-		return await this.projectRepository.findOneWithUserRoles(projectId, user.id, projectRoles);
+		return await this.projectRepository.findOneWithUserRoles(projectId, user.id, projectRoles, ctx);
 	}
 
 	async getProjectIdsWithScope(user: User, scopes: Scope[], projectIds?: string[]) {

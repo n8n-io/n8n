@@ -5,6 +5,9 @@ import {
 	type FolderRepository,
 	type Project,
 	type ProjectRepository,
+	type RoleRepository,
+	type Role,
+	type Transaction,
 	type SharedCredentialsRepository,
 	type SharedWorkflowRepository,
 	type ProjectRelationRepository,
@@ -50,6 +53,7 @@ describe('ProjectService', () => {
 	const eventService = mock<EventService>();
 	const userManagementMailer = mock<UserManagementMailer>();
 	const userRepository = mock<UserRepository>();
+	const roleRepository = mock<RoleRepository>();
 	const user = mock<User>({ id: 'actor-user', role: mock({ slug: 'global:owner' }) });
 	const projectService = new ProjectService(
 		sharedWorkflowRepository,
@@ -65,6 +69,7 @@ describe('ProjectService', () => {
 		eventService,
 		userManagementMailer,
 		userRepository,
+		roleRepository,
 	);
 
 	beforeEach(() => {
@@ -75,6 +80,46 @@ describe('ProjectService', () => {
 
 	const instanceUser = (id: string, slug: string, disabled = false) =>
 		mock<User>({ id, disabled, role: mock({ slug }) });
+
+	describe('getProjectWithScope', () => {
+		it('uses the same transaction to load roles and check project membership', async () => {
+			const member = mock<User>({ id: 'member', role: mock({ scopes: [] }) });
+			const ctx = { trx: mock<Transaction>() };
+			const project = mock<Project>({ id: 'project-1' });
+			roleRepository.findAll.mockResolvedValueOnce([PROJECT_ADMIN_ROLE]);
+			roleService.rolesWithScope.mockImplementationOnce(async (_namespace, _scopes, loadRoles) => {
+				expect(await loadRoles?.()).toEqual([PROJECT_ADMIN_ROLE]);
+				return ['project:admin'];
+			});
+			projectRepository.findOneWithUserRoles.mockResolvedValueOnce(project);
+
+			expect(
+				await projectService.getProjectWithScope(member, project.id, ['workflow:create'], ctx),
+			).toBe(project);
+			expect(roleRepository.findAll).toHaveBeenCalledWith(ctx);
+			expect(projectRepository.findOneWithUserRoles).toHaveBeenCalledWith(
+				project.id,
+				member.id,
+				['project:admin'],
+				ctx,
+			);
+		});
+
+		it('uses the transaction for global access without loading project roles', async () => {
+			const owner = mock<User>({ role: mock<Role>({ scopes: [{ slug: 'workflow:create' }] }) });
+			const ctx = { trx: mock<Transaction>() };
+
+			await projectService.getProjectWithScope(owner, 'project-1', ['workflow:create'], ctx);
+
+			expect(roleService.rolesWithScope).not.toHaveBeenCalled();
+			expect(projectRepository.findOneWithUserRoles).toHaveBeenCalledWith(
+				'project-1',
+				owner.id,
+				undefined,
+				ctx,
+			);
+		});
+	});
 
 	describe('getAccessibleProjectsAndCount', () => {
 		const options = { skip: 0, take: 10, search: 'test' };

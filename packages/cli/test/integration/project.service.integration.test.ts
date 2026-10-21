@@ -9,6 +9,7 @@ import {
 } from '@n8n/backend-test-utils';
 import {
 	ProjectRelationRepository,
+	ProjectRelation,
 	ProjectRepository,
 	RoleRepository,
 	SharedWorkflowRepository,
@@ -134,6 +135,30 @@ describe('ProjectService', () => {
 			expect(await repository.findOneWithUserRoles(admin.id, user.id, [])).toBeNull();
 			expect(await repository.findIdsWithUserRoles(user.id, [])).toEqual([]);
 			expect(await repository.findByIdsWithUserRoles([admin.id], user.id, [])).toEqual([]);
+		});
+
+		it('reads project membership changes from the active transaction', async () => {
+			const repository = Container.get(ProjectRepository);
+			const rollback = new Error('Roll back the test transaction');
+
+			await expect(
+				repository.runInTransaction({}, async (manager, ctx) => {
+					await manager.update(
+						ProjectRelation,
+						{ projectId: admin.id, userId: user.id },
+						{ role: { slug: 'project:viewer' } },
+					);
+
+					expect(
+						await projectService.getProjectWithScope(user, admin.id, ['workflow:create'], ctx),
+					).toBeNull();
+					throw rollback;
+				}),
+			).rejects.toThrow(rollback);
+
+			expect(
+				await projectService.getProjectWithScope(user, admin.id, ['workflow:create']),
+			).toMatchObject({ id: admin.id });
 		});
 
 		it('returns only existing IDs and removes duplicates', async () => {

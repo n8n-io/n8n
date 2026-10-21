@@ -144,8 +144,9 @@ export class ProjectRepository extends BaseRepository<Project> {
 		projectId: string,
 		userId: string,
 		roleSlugs: string[] | undefined,
+		ctx: OperationContext = {},
 	): Promise<Project | null> {
-		return await this.findOne({
+		return await this.managerFor(ctx).findOne(Project, {
 			where: {
 				id: projectId,
 				...(roleSlugs !== undefined && {
