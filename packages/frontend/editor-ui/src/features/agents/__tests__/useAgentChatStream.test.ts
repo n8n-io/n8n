@@ -3985,6 +3985,30 @@ describe('useAgentChatStream — queued submissions', () => {
 	});
 	afterEach(() => vi.unstubAllGlobals());
 
+	it('sends a message when the browser does not expose randomUUID', async () => {
+		vi.stubGlobal('crypto', { getRandomValues: crypto.getRandomValues.bind(crypto) });
+		const fetchMock = vi.fn(async (_url: RequestInfo | URL, _init: RequestInit) =>
+			makeSseResponse([{ type: 'message-queued', queueId: 'q-1', sessionId: 'thread-1' }], false),
+		);
+		vi.stubGlobal('fetch', fetchMock);
+		const accepted = vi.fn();
+		const hook = buildHook('thread-1');
+
+		await expect(hook.sendMessage('Hello', undefined, accepted)).resolves.toBe('sent');
+		await flushPromises();
+
+		expect(fetchMock).toHaveBeenCalledOnce();
+		expect(accepted).toHaveBeenCalledWith('q-1');
+		expect(hook.isSubmitting.value).toBe(false);
+		expect(JSON.parse(String(fetchMock.mock.calls[0][1].body))).toEqual({
+			message: 'Hello',
+			sessionId: 'thread-1',
+			messageId: expect.stringMatching(
+				/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+			),
+		});
+	});
+
 	it('passes the queue item id to onAccepted when the message is queued', async () => {
 		vi.stubGlobal(
 			'fetch',
@@ -4002,8 +4026,6 @@ describe('useAgentChatStream — queued submissions', () => {
 	});
 
 	it('keeps the original request UUID and stream when another delivery completes as a duplicate', async () => {
-		const clientId = 'c4b02d7b-2088-41ce-9c6b-faf8c7b83d8a';
-		vi.spyOn(crypto, 'randomUUID').mockReturnValueOnce(clientId);
 		let original: ReturnType<typeof makeControllableSseResponse>;
 		let originalSignal: AbortSignal | null | undefined;
 		const fetchMock = vi.fn(async (_url: RequestInfo | URL, _init: RequestInit) =>
@@ -4030,10 +4052,14 @@ describe('useAgentChatStream — queued submissions', () => {
 		await hook.sendMessage('Hello');
 		await flushPromises();
 		expect(hook.messages.value.find(({ role }) => role === 'user')?.id).toBe('canonical-input');
-		expect(JSON.parse(String(fetchMock.mock.calls[0][1].body))).toEqual({
+		const firstRequest: { message: string; sessionId: string; messageId: string } = JSON.parse(
+			String(fetchMock.mock.calls[0][1].body),
+		);
+		const clientId = firstRequest.messageId;
+		expect(firstRequest).toEqual({
 			message: 'Hello',
 			sessionId: 'thread-1',
-			messageId: clientId,
+			messageId: expect.any(String),
 		});
 		const historyCalls = getChatMessagesMock.mock.calls.length;
 		getChatMessagesMock.mockResolvedValue({

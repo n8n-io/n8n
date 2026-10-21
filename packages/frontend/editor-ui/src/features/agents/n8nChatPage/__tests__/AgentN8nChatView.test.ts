@@ -141,6 +141,23 @@ describe('AgentN8nChatView', () => {
 		getN8nChatAgentMock.mockResolvedValue(agentItem);
 	});
 
+	it('opens a new chat when the browser does not expose randomUUID', async () => {
+		vi.stubGlobal('crypto', { getRandomValues: crypto.getRandomValues.bind(crypto) });
+		try {
+			const wrapper = renderView();
+			await flushPromises();
+
+			const panel = wrapper.findComponent({ name: 'AgentChatPanel' });
+			expect(panel.props('continueSessionId')).toMatch(
+				/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+			);
+			expect(panel.props('newSession')).toBe(true);
+			wrapper.unmount();
+		} finally {
+			vi.unstubAllGlobals();
+		}
+	});
+
 	it('shows the chat history button only once the agent has loaded', async () => {
 		let resolveAgent: (value: AgentN8nChatAgentDetails) => void = () => {};
 		getN8nChatAgentMock.mockReturnValueOnce(

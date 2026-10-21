@@ -84,6 +84,25 @@ describe('useAgentBuilderSession', () => {
 		expect(session.effectiveSessionId.value).toBe('route-session');
 	});
 
+	it('starts a new chat when the browser does not expose randomUUID', () => {
+		vi.stubGlobal('crypto', { getRandomValues: crypto.getRandomValues.bind(crypto) });
+		try {
+			const { session } = createSession();
+
+			session.onNewChat();
+			const firstSessionId = session.effectiveSessionId.value;
+			session.onNewChat();
+
+			expect(firstSessionId).toMatch(
+				/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+			);
+			expect(session.effectiveSessionId.value).not.toBe(firstSessionId);
+			expect(session.currentSessionIsEphemeral.value).toBe(true);
+		} finally {
+			vi.unstubAllGlobals();
+		}
+	});
+
 	it.each([
 		['bound', 'bind', 'bound-session'],
 		['picked', 'pick', 'picked-session'],
