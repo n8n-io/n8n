@@ -289,6 +289,7 @@ export class SelfHealingAgentService {
 					stream?.agentRunId || runId,
 					stream?.usage?.usage ?? [],
 					result.status,
+					'self_healing',
 				);
 				if ('credits' in result.usage) {
 					result.usage.credits = credits ?? null;

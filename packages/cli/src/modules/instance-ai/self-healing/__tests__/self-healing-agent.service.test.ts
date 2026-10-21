@@ -273,6 +273,7 @@ describe('SelfHealingAgentService', () => {
 			'sdk-run',
 			stream.usage?.usage,
 			'completed',
+			'self_healing',
 		);
 		expect(options.sandbox.destroySandbox).toHaveBeenCalledExactlyOnceWith(
 			options.threadId,
@@ -525,6 +526,7 @@ describe('SelfHealingAgentService', () => {
 				'sdk-run',
 				stream.usage?.usage,
 				status,
+				'self_healing',
 			);
 		},
 	);
@@ -616,6 +618,7 @@ describe('SelfHealingAgentService', () => {
 			'sdk-run',
 			stream.usage?.usage,
 			'cancelled',
+			'self_healing',
 		);
 	});
 
@@ -707,6 +710,7 @@ describe('SelfHealingAgentService', () => {
 			options.runId,
 			[],
 			'errored',
+			'self_healing',
 		);
 		expect(options.onComplete).toHaveBeenCalledExactlyOnceWith(result, controller.signal);
 		expect(options.onFinish).toHaveBeenCalledWith(result, 'test/model', undefined);
