@@ -1,5 +1,4 @@
 import type { Mock } from 'vitest';
-import { ManualExecutionCancelledError, UnexpectedError } from 'n8n-workflow';
 
 import {
 	getAgentErrorSeverity,
@@ -43,56 +42,17 @@ describe('InstanceAiErrorReporterService', () => {
 		service.beginRun('r');
 		service.report(error, {
 			component: 'instance-ai-mcp-setup',
-			sanitizeError: true,
 			threadId: 't',
 			runId: 'r',
 		});
 		service.report(error, {
 			component: 'instance-ai-run',
-			sanitizeError: true,
 			threadId: 't',
 			runId: 'r',
 		});
 
 		expect(errorReporter.error).toHaveBeenCalledTimes(1);
 		expect(errorReporter.error.mock.calls[0][1].tags.component).toBe('instance-ai-mcp-setup');
-	});
-
-	it('sanitizes the error payload without copying causes or custom properties', () => {
-		const { service, errorReporter, logger } = createService();
-		const error = Object.assign(
-			new Error('Request failed: https://example.test/path?signature=private-value', {
-				cause: new Error('private-value'),
-			}),
-			{ request: { authorization: 'private-value' } },
-		);
-		service.report(error, { component: 'test', threadId: 't', sanitizeError: true });
-
-		const reported = errorReporter.error.mock.calls[0][0];
-		expect(reported).not.toBe(error);
-		expect(reported.message).toBe('Request failed: https://example.test/path');
-		expect(reported.stack).not.toContain('private-value');
-		expect(reported.stack).toContain('instance-ai-error-reporter.service.test.ts');
-		expect(reported).not.toHaveProperty('cause');
-		expect(reported).not.toHaveProperty('request');
-		expect(logger.error).toHaveBeenCalledWith(
-			expect.any(String),
-			expect.objectContaining({ error: reported }),
-		);
-		expect(error.message).toContain('private-value');
-	});
-
-	it.each([
-		new UnexpectedError('Not reportable', { shouldReport: false }),
-		new ManualExecutionCancelledError('execution'),
-		new Error('Wrapped warning', {
-			cause: Object.assign(new Error('Warning'), { level: 'warning' }),
-		}),
-		Object.assign(new Error('Request failed'), { isAxiosError: true }),
-	])('preserves reporting exclusions for sanitized $message', (error) => {
-		const { service, errorReporter } = createService();
-		service.report(error, { component: 'test', threadId: 't', sanitizeError: true });
-		expect(errorReporter.error).not.toHaveBeenCalled();
 	});
 
 	it('withBoundary reports with its component then rethrows', async () => {
@@ -148,7 +108,6 @@ describe('InstanceAiErrorReporterService', () => {
 		service.beginRun('r');
 		service.report(error, {
 			component: 'instance-ai-run',
-			sanitizeError: true,
 			threadId: 't',
 			runId: 'r',
 		});
@@ -170,7 +129,6 @@ describe('InstanceAiErrorReporterService', () => {
 		service.beginRun('r');
 		service.report(error, {
 			component: 'instance-ai-stream',
-			sanitizeError: true,
 			providerStream: true,
 			threadId: 't',
 			runId: 'r',
@@ -274,7 +232,6 @@ describe('InstanceAiErrorReporterService', () => {
 		service.beginRun('r');
 		service.report(error, {
 			component: 'instance-ai-run',
-			sanitizeError: true,
 			threadId: 't',
 			runId: 'r',
 		});
@@ -283,11 +240,7 @@ describe('InstanceAiErrorReporterService', () => {
 		expect(logger.error).not.toHaveBeenCalled();
 		expect(logger.warn).toHaveBeenCalledWith(
 			'Instance AI warning-level error in instance-ai-run',
-			expect.objectContaining({
-				error: expect.objectContaining({ message: error.message }),
-				threadId: 't',
-				runId: 'r',
-			}),
+			expect.objectContaining({ error, threadId: 't', runId: 'r' }),
 		);
 	});
 

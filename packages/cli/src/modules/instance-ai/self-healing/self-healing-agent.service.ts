@@ -314,7 +314,6 @@ export class SelfHealingAgentService {
 				projectId: baseline.projectId,
 				tracing,
 				providerStream,
-				sanitizeError: true,
 			});
 		}
 

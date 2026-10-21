@@ -670,7 +670,7 @@ describe('SelfHealingAgentService', () => {
 
 			expect(result.status).toBe('errored');
 			expect(errorReporter.error).toHaveBeenCalledExactlyOnceWith(
-				expect.objectContaining({ message: 'Request failed: https://example.test/path' }),
+				failure,
 				expect.objectContaining({
 					tags: expect.objectContaining({
 						component: 'instance-ai-self-healing',

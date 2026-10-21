@@ -1,13 +1,8 @@
 import type { AgentEventData } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
-import { isAxiosError } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
-import { BaseError } from '@n8n/errors';
 import { isQuotaExhaustedError } from '@n8n/instance-ai';
-import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
-import { sanitizeErrorDetail } from '@n8n/utils/redaction/sanitize-error-detail';
 import { ErrorReporter } from 'n8n-core';
-import { ExecutionCancelledError } from 'n8n-workflow';
 
 import {
 	buildInstanceAiObservabilityContext,
@@ -23,8 +18,6 @@ export type InstanceAiErrorReportContext = {
 	 * Set when the error terminated the model provider stream.
 	 */
 	providerStream?: boolean;
-	/** Remove sensitive details from the payload after classification and deduplication. */
-	sanitizeError?: boolean;
 } & InstanceAiObservabilityContext;
 
 type AgentErrorSource = NonNullable<Extract<AgentEventData, { error: unknown }>['source']>;
@@ -92,20 +85,9 @@ export class InstanceAiErrorReporterService {
 			return;
 		}
 
-		let reportedError = error;
-		if (context.sanitizeError) {
-			const sanitized = new Error(sanitizeErrorDetail(getErrorMessage(error), 1000));
-			if (error instanceof Error) {
-				sanitized.name = sanitizeErrorDetail(error.name, 100);
-				sanitized.stack = error.stack && sanitizeErrorDetail(error.stack, 10000);
-			}
-			// Do not copy causes or custom properties into logs or Sentry.
-			reportedError = sanitized;
-		}
-
 		if (context.providerStream && isStreamTransportError(error)) {
 			this.logger.warn(`Instance AI stream transport failure in ${context.component}`, {
-				error: reportedError,
+				error,
 				component: context.component,
 				...observability,
 			});
@@ -114,33 +96,21 @@ export class InstanceAiErrorReporterService {
 
 		if (isSelfDeclaredWarning(error)) {
 			this.logger.warn(`Instance AI warning-level error in ${context.component}`, {
-				error: reportedError,
+				error,
 				component: context.component,
 				...observability,
 			});
 			return;
 		}
 
-		const logDetails = { error: reportedError, component: context.component, ...observability };
+		const logDetails = { error, component: context.component, ...observability };
 		if (context.severity === 'warning') {
 			this.logger.warn(`Instance AI error in ${context.component}`, logDetails);
 		} else {
 			this.logger.error(`Instance AI error in ${context.component}`, logDetails);
 		}
 
-		// Keep the core reporter's exclusions after replacing the original error payload.
-		if (
-			context.sanitizeError &&
-			(error instanceof ExecutionCancelledError ||
-				(error instanceof BaseError && !error.shouldReport) ||
-				// oxlint-disable-next-line typescript/no-deprecated
-				isAxiosError(error) ||
-				(error instanceof Error && isSelfDeclaredWarning(error.cause)))
-		) {
-			return;
-		}
-
-		this.errorReporter.error(reportedError, {
+		this.errorReporter.error(error, {
 			tags: { component: context.component, ...observability },
 			extra: observability,
 			...(context.severity ? { level: context.severity } : {}),
