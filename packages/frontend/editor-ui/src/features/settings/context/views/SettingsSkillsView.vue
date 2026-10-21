@@ -23,6 +23,7 @@ import {
 import type { DropdownMenuItemProps, TableOptions } from '@n8n/design-system';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useLatestFetch } from '@/app/composables/useLatestFetch';
 import { useMessage } from '@/app/composables/useMessage';
 import { DEBOUNCE_TIME, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -70,9 +71,6 @@ const search = ref('');
 const scopeFilter = ref<ScopeFilter>(ALL_SCOPES);
 const loadFailed = ref(false);
 
-// Paging, search and the scope filter run on the server: the count and the page both
-// describe the matching skills, and the page is the only slice the browser holds.
-const isFiltered = computed(() => search.value.trim() !== '' || scopeFilter.value !== ALL_SCOPES);
 // The empty states describe the rows on screen, so they follow the query that loaded
 // them, not the live search input.
 const loadedFiltered = ref(false);
@@ -101,6 +99,8 @@ const scopeFilterItems = computed<Array<DropdownMenuItemProps<ScopeFilter>>>(() 
 	})),
 );
 
+// Paging, search and the scope filter run on the server: the count and the page both
+// describe the matching skills, and the page is the only slice the browser holds.
 function listQuery(page: number, itemsPerPage: number): SkillListQuery {
 	const term = search.value.trim();
 	return {
@@ -152,30 +152,31 @@ function parseScope(value: string): { scope: 'project' | 'instance'; projectId?:
 }
 
 // Only the newest load updates the page state, so a slow earlier search cannot win.
-let latestLoad = 0;
+const { next: nextLoad } = useLatestFetch();
 
 async function load() {
-	const read = ++latestLoad;
+	const isLatest = nextLoad();
 	const { page = 0, itemsPerPage = PREFERENCES_DEFAULT_PAGE_SIZE } = tableOptions.value;
-	const filtered = isFiltered.value;
+	const query = listQuery(page, itemsPerPage);
+	const filtered = query.search !== undefined || query.scope !== undefined;
 	try {
-		await skillsStore.fetchSkills(listQuery(page, itemsPerPage));
-		if (read !== latestLoad) return;
+		await skillsStore.fetchSkills(query);
+		if (!isLatest()) return;
 		// Deleting the last rows of a page can leave the page past the end.
 		const lastPage = Math.max(0, Math.ceil(skillsStore.count / itemsPerPage) - 1);
 		if (page > lastPage) {
 			tableOptions.value = { ...tableOptions.value, page: lastPage };
 			await skillsStore.fetchSkills(listQuery(lastPage, itemsPerPage));
-			if (read !== latestLoad) return;
+			if (!isLatest()) return;
 		}
 		loadFailed.value = false;
 		loadedFiltered.value = filtered;
 	} catch (error) {
-		if (read !== latestLoad) return;
+		if (!isLatest()) return;
 		loadFailed.value = true;
 		showError(error, i18n.baseText('settings.context.skills.error.load'));
 	} finally {
-		if (read === latestLoad) hasLoaded.value = true;
+		if (isLatest()) hasLoaded.value = true;
 	}
 }
 
