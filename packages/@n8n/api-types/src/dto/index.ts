@@ -844,6 +844,7 @@ export {
 	type PromotionReviewResult,
 	type PromotionReviewChangeKind,
 	type PromotionReviewRemote,
+	type PromotionReviewRemoteError,
 	type PromotionReviewState,
 	type PromotionReviewSummary,
 	type PromotionReviewType,
