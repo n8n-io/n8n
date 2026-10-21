@@ -89,6 +89,8 @@ type ErrorReportingOptions = ReportingOptions & {
 	 * otherwise inherit whatever unrelated request is active at capture time.
 	 */
 	shouldIsolate?: boolean;
+	/** Groups the event into the Sentry issue for this key, instead of Sentry's default grouping. */
+	fingerprint?: string[];
 };
 
 /**

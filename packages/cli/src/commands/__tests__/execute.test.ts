@@ -293,6 +293,7 @@ test('reports a native verify mismatch to Sentry without the request scope', asy
 				engineResultType: 'number',
 				workflowId: 'wf-1',
 			},
+			fingerprint: ['native-evaluation-verify-mismatch', '{{ $json.<id> }}'],
 			shouldIsolate: true,
 		},
 	);

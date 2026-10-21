@@ -511,5 +511,14 @@ describe('ErrorReporter', () => {
 				level: 'info',
 			});
 		});
+
+		it('passes the fingerprint to Sentry', () => {
+			sentryErrorReporter.info('message', { fingerprint: ['group', 'key'] });
+
+			expect(captureException).toHaveBeenCalledWith('message', {
+				fingerprint: ['group', 'key'],
+				level: 'info',
+			});
+		});
 	});
 });
