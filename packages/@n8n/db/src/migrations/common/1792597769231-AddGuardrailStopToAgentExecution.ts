@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddGuardrailStopToAgentExecution1792575579033 implements ReversibleMigration {
+export class AddGuardrailStopToAgentExecution1792597769231 implements ReversibleMigration {
 	async up({ escape, runQuery, isPostgres }: MigrationContext) {
 		const agentExecution = escape.tableName('agent_execution');
 		const finishReason = escape.columnName('finishReason');

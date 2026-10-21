@@ -73,7 +73,7 @@ const selectedIndex = ref<number | null>(null);
 const highlightedIndex = ref<number | null>(null);
 const selectedFilters = ref<Set<string>>(new Set());
 const searchQuery = ref('');
-const budgetRaised = ref(false);
+const resolvedBudgetStopExecutionId = ref<string | null>(null);
 const budgetIncreasePending = ref(false);
 let threadDetailRequestId = 0;
 let refreshPending = false;
@@ -103,32 +103,37 @@ const idleRanges = computed(() => computeIdleRanges(items.value));
 const bounds = computed(() => sessionBounds(items.value));
 
 // Only a budget stop in the latest run is still open: a later run got past an
-// older one. Raising the cap here resolves it, but the refreshed history keeps
-// the stop item, so `budgetRaised` keeps the notice closed.
-const budgetStop = computed<{ index: number; code: 'budget.monthly' | 'budget.session' } | null>(
-	() => {
-		if (budgetRaised.value) return null;
-		const lastExecutionId = executions.value.at(-1)?.id;
-		if (!lastExecutionId) return null;
-		for (let index = items.value.length - 1; index >= 0; index--) {
-			const item = items.value[index];
-			if (item.executionId !== lastExecutionId || item.kind !== 'execution-error') continue;
-			if (item.guardrailCode && isBudgetStopCode(item.guardrailCode)) {
-				return { index, code: item.guardrailCode };
-			}
+// older one. Raising the cap here resolves that run's stop, but the refreshed
+// history keeps the stop item, so remember which run was resolved. A newer run
+// that stops at the raised cap gets its own notice.
+const budgetStop = computed<{
+	index: number;
+	executionId: string;
+	code: 'budget.monthly' | 'budget.session';
+} | null>(() => {
+	const lastExecutionId = executions.value.at(-1)?.id;
+	if (!lastExecutionId || lastExecutionId === resolvedBudgetStopExecutionId.value) return null;
+	for (let index = items.value.length - 1; index >= 0; index--) {
+		const item = items.value[index];
+		if (item.executionId !== lastExecutionId || item.kind !== 'execution-error') continue;
+		if (item.guardrailCode && isBudgetStopCode(item.guardrailCode)) {
+			return { index, executionId: lastExecutionId, code: item.guardrailCode };
 		}
-		return null;
-	},
-);
+	}
+	return null;
+});
 
 async function onIncreaseBudget(payload: { field: BudgetAmountField; amount: number }) {
-	if (!props.increaseBudget || budgetIncreasePending.value) return;
+	const stopExecutionId = budgetStop.value?.executionId;
+	if (!props.increaseBudget || !stopExecutionId || budgetIncreasePending.value) return;
 	// The save outlives a thread switch: only close the notice it was raised from.
 	const identity = threadIdentity();
 	budgetIncreasePending.value = true;
 	try {
 		const saved = await props.increaseBudget(payload);
-		if (saved && identity === threadIdentity()) budgetRaised.value = true;
+		if (saved && identity === threadIdentity()) {
+			resolvedBudgetStopExecutionId.value = stopExecutionId;
+		}
 	} finally {
 		budgetIncreasePending.value = false;
 	}
@@ -322,7 +327,7 @@ function loadThreadDetail() {
 	executions.value = [];
 	selectedFilters.value = new Set();
 	searchQuery.value = '';
-	budgetRaised.value = false;
+	resolvedBudgetStopExecutionId.value = null;
 	selectTimelineItem(null);
 	loading.value = true;
 	emit('loaded', null);

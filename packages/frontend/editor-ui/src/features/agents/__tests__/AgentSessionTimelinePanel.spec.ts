@@ -583,5 +583,26 @@ describe('AgentSessionTimelinePanel', () => {
 			expect(increaseBudget).toHaveBeenCalledWith(payload);
 			expect(wrapper.find(budgetCard).exists()).toBe(cardStays);
 		});
+
+		it('shows the card again when a newer run stops at the raised cap', async () => {
+			const increaseBudget = vi.fn().mockResolvedValue(true);
+			const firstStop = budgetStopExecution('budget.session', 'execution-2');
+			const wrapper = await mountWithExecutions([firstStop], { increaseBudget });
+
+			wrapper
+				.getComponent(AgentBudgetNoticeCard)
+				.vm.$emit('increase', { field: 'sessionCostCapUsd', amount: 20 });
+			await flushPromises();
+			expect(wrapper.find(budgetCard).exists()).toBe(false);
+
+			getThreadDetail.mockResolvedValue({
+				...detail,
+				executions: [firstStop, budgetStopExecution('budget.session', 'execution-3')],
+			});
+			emitPush();
+			await flushPromises();
+
+			expect(wrapper.find(budgetCard).exists()).toBe(true);
+		});
 	});
 });
