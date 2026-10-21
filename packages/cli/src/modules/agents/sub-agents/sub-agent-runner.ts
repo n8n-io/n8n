@@ -11,6 +11,7 @@ import {
 	type DelegateSubAgentCancelRequest,
 	type DelegateSubAgentResumeRequest,
 	type GenerateResult,
+	type EpisodicScopeDecision,
 	type JSONObject,
 	type JSONValue,
 	type SerializableAgentState,
@@ -67,6 +68,8 @@ import {
 } from './sub-agent-source-resolver';
 
 export interface SubAgentRunContext {
+	/** The parent turn's episodic scope decision. The child run keeps it. */
+	parentEpisodicScope?: EpisodicScopeDecision;
 	projectId: string;
 	/** Saved n8n agent id of the delegating parent agent, used to link the child session back. */
 	parentAgentId: string;
@@ -398,7 +401,7 @@ export class SubAgentRunner {
 									runtimeSource,
 									sandboxPrincipalHash,
 								),
-								...episodicScopeHostMetadata(resourceId),
+								...episodicScopeHostMetadata(resourceId, context.parentEpisodicScope),
 								[EXECUTION_METADATA_KEY]: executionId,
 							},
 						},

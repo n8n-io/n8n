@@ -395,6 +395,7 @@ export {
 	createRecallMemoryTool,
 	EPISODIC_SCOPE_METADATA_KEY,
 	encodeEpisodicScopeMetadata,
+	readEpisodicScopeDecision,
 	getEpisodicMemoryScope,
 	hashEpisodicMemoryContent,
 	hashEpisodicMemoryEvidence,

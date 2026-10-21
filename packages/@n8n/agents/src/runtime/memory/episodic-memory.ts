@@ -294,10 +294,14 @@ export function encodeEpisodicScopeMetadata(scope: EpisodicScopeDecision): JSONO
 	return { [EPISODIC_SCOPE_METADATA_KEY]: 'disabled' in scope ? { disabled: true } : { ...scope } };
 }
 
-function decodeEpisodicScopeMetadata(
-	persistence: AgentPersistenceOptions,
-): z.infer<typeof episodicScopeMetadataSchema> | undefined {
-	const raw = persistence.hostMetadata?.[EPISODIC_SCOPE_METADATA_KEY];
+/**
+ * The scope decision a host carried in `hostMetadata`, or `undefined` when it
+ * carried none. A host forwards it to child runs of the same turn.
+ */
+export function readEpisodicScopeDecision(
+	hostMetadata: JSONObject | undefined,
+): EpisodicScopeDecision | undefined {
+	const raw = hostMetadata?.[EPISODIC_SCOPE_METADATA_KEY];
 	if (raw === undefined) return undefined;
 	const parsed = episodicScopeMetadataSchema.safeParse(raw);
 	// A malformed value disables memory. It must not fall back to a broader scope.
@@ -313,7 +317,7 @@ export function getEpisodicMemoryScope(
 ): EpisodicMemoryScope | null {
 	if (!persistence?.resourceId) return null;
 	const { resourceId, threadId } = persistence;
-	const metadata = decodeEpisodicScopeMetadata(persistence);
+	const metadata = readEpisodicScopeDecision(persistence.hostMetadata);
 	if (!metadata) return { resourceId, threadId };
 	if ('disabled' in metadata) return null;
 	return { resourceId, threadId, episodic: metadata };
