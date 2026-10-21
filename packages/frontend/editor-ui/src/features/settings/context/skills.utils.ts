@@ -3,6 +3,7 @@ import type { IconName, TableOptions } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { ProjectType } from '@/features/collaboration/projects/projects.types';
 import { splitName } from '@/features/collaboration/projects/projects.utils';
 
 import { SKILLS_DEFAULT_SORT_BY } from './context.constants';
@@ -17,7 +18,8 @@ export function useSkillScopeDisplay() {
 	function projectLabel(
 		projectId: string,
 		projectName: string | null,
-		projectType: SkillListItem['projectType'],
+		// The projects store also knows public projects. Only `personal` changes the label.
+		projectType: SkillListItem['projectType'] | ProjectType,
 	) {
 		if (projectId === projectsStore.personalProject?.id) {
 			return i18n.baseText('settings.context.skills.scope.personalProject');
