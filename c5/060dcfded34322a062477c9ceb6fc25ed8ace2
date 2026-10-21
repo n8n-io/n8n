@@ -1,0 +1,43 @@
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory.test.ts
+  s_4f195ebf29ef5a::t_2083dbb72bf45b 631,639,750-756
+  s_4f195ebf29ef5a::t_463ee368a18bee 616-617,627,630,634-635,641,646,650,657,663,665,669-670,677-678,681-721,740,761,797-854,885,887-888,890,912,915-921,930-933,938,940-944,952-960
+  s_4f195ebf29ef5a::t_237b1f2f49a974 13,458-461,613-615,618-626,628-629,632-633,636-638,640,642-645,647-649,651-656,658-662,664,666-668,671-676,679-680,722-739,741-749,757-760,762-796,964-966
+packages/@n8n/agents/src/runtime/memory/episodic-memory-capture.ts
+  s_4f195ebf29ef5a::t_463ee368a18bee 403
+  s_4f195ebf29ef5a::t_c660d2f57a52d1 344-380,399-402,411,416-417
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.test.ts
+  s_4f195ebf29ef5a::t_463ee368a18bee 1270,1300,1322,1326-1332,1461-1463
+  s_4f195ebf29ef5a::t_755dce04724f7b 1241,1243-1247,1249-1250,1252,1269,1273-1275,1277-1278,1299,1301-1303,1309-1321,1323-1325
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.integration.test.ts
+  s_4f195ebf29ef5a::t_463ee368a18bee 36-43,48,60-94,139-369
+  s_4f195ebf29ef5a::t_271096033eaeda 1-8,14-16,22-23,31-35,370
+packages/@n8n/agents/src/runtime/memory/memory-store.ts
+  s_4f195ebf29ef5a::t_de4fb28e887435 126-128
+  s_4f195ebf29ef5a::t_c81d33588c5d45 129-133,571,785-796
+packages/@n8n/agents/docs/episodic-memory-capture.md
+  s_4f195ebf29ef5a::t_1336f7d80649e1 1-25
+packages/@n8n/agents/src/runtime/memory/episodic-memory.ts
+  s_4f195ebf29ef5a::t_de165bd3d29605 34
+packages/@n8n/agents/src/types/sdk/memory.ts
+  s_4f195ebf29ef5a::t_b3e182d99ae6c7 230-233
+packages/cli/src/modules/agents/integrations/n8n-memory.ts
+  s_4f195ebf29ef5a::t_731e9cae9ea9f1 134-135,665-676,687-693
+packages/cli/src/modules/agents/repositories/agent-memory-entry.repository.ts
+  s_4f195ebf29ef5a::t_361c9ad70bda5a 1-8,10,12,16-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c5060dcfded34322a062477c9ceb6fc25ed8ace2",
+  "prompts": {},
+  "sessions": {
+    "s_4f195ebf29ef5a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15d55-0cb0-7e33-a6fb-2a20b4380e01",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
