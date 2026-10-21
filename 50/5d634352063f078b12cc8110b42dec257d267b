@@ -1,0 +1,291 @@
+packages/@n8n/agents/src/runtime/memory/observation-log-renderer.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 14-20,30-34,56,60,64,69-71,73-94,97-147
+packages/@n8n/agents/src/runtime/__tests__/observation-log-observer.test.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 62-64,66-68,480-488,491-501,514,522-525,528,531-534,538-546,552,554,557-570,572-613,615-617,622-623,626-659,662-739
+docker/get-n8n-compose.yml
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 3-4,6,8-10,17,31,56,64,68
+.github/scripts/db-test-matrix.test.mjs
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 65-66,73-85
+CONTRIBUTING.md
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 87,352-364
+.github/DEVELOPING_V3.md
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 127-129,139-140,143-144,146-151,170-171,179-180
+packages/@n8n/agents/src/index.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 200,269,339
+packages/@n8n/agents/src/runtime/loop/generate-sink.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 12,45-47
+codecov.yml
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 63
+packages/@n8n/agents/src/types/sdk/memory.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 80-83,86,182-183,194,318-322
+.github/workflows/util-probe-npm-oidc-exchange.yml
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 1-140
+.github/scripts/codespace-preview.mjs
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 2,15-23,26-33,36-39,46,53-55,157-159,196-320,335-337,340-341,343-363,365-448,476-480,483,493-494,499-521
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-corrected-current-state-without-treating-stale-values-as-current.json
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 12,84,88,91,94,97,99,103-104,106,108,124,142,160,224,228,231,234,237,239,243-244,246,248,269,272,274,287,301,373,377,380,383,386,388,392-393,396,412,430,433,448,512,516,519,522,525,527,531-532,535,548,553,558,561,563,573,576,638,645,649,652,655,658,660,664-665,667,669,685,757,761,764,767,770,772,776-777,780,801,804,806,819,833,851,855,871-872,935,939,942,945,948,950,954-955,958
+.github/actions/ci-filter/action.yml
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 37
+.github/workflows/ci-pull-requests.yml
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 33,42,82,98,136,146-164,185,188,209,334,336-337,363-386,487
+.github/workflows/test-unit-reusable.yml
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 170-172,207-255,302,307,323,325,356-363,367
+.devcontainer/preview/devcontainer.json
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 36-53
+.github/workflows/test-evals-discovery.yml
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 67
+.github/workflows/ci-pull-request-review.yml
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 3-5,8
+packages/@n8n/agents/src/runtime/__tests__/attachment-validation-error.test.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 1-81
+packages/@n8n/agents/src/runtime/memory/observation-log-defaults.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 5-9,20-21,23-25,28,30,34-36,39,42,44,46,48,50,52,54,56,58,60,62-74,76,78,81-83,86,89-90,92,95-96,98-99,102,104,107,109-110,113,115,117,121,123,125,177,179,181,183-185,187,189,191,193-196,198,200,202,204,206,208,210,212,214,216,219,221,226,228,230,232,235-237,239,241-246,249,252-254,256,259-263,266,269-272,277-281,284,309-320,324,341-356
+.github/actions/ci-filter/ci-filter.mjs
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 98-110,119-120,131,136,147,159,164,167,183,192,195,197,221,225-226,303-306,308
+.github/workflows/ci-terraform.yml
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 1-38
+packages/@n8n/agents/src/sdk/__tests__/catalog.test.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 71,78-79,143,184
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 138-139,339-340
+.agents/skills/reproduce-bug/SKILL.md
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 76-81
+packages/@n8n/agents/src/runtime/tools/tool-adapter.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 120-128,151,168
+packages/@n8n/agents/src/runtime/model/attachment-validation-error.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 1-63
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/keeps-similar-customer-cases-distinct-during-cross-session-recall.json
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 12,84,88,91,94,97,99,103-104,107,123,141,154,167,170,185,190,195,259,263,266,269,272,274,278-279,282,297,302,307,310,312,322,325,339,411,415,418,421,424,426,430-431,433,435,451,469,473,486,489,499,502,512,515,530,535,540,545,609,613,616,619,622,624,628-629,632,646-648,653,658,661,663,673,676,695,698,700,710,713,732,735,737,747,750,764,836,840,843,846,849,851,855-856,858,860,883,886,888,901,915,933,949-950,1013,1017,1020,1023,1026,1028,1032-1033,1035,1037
+.github/scripts/sync-conflict-owners.test.mjs
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 213,218
+packages/@n8n/agents/src/__tests__/integration/memory-episodic.test.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 137-139,314,316
+CHANGELOG.md
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 1-334
+.code-health-baseline.json
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 1506-1517,2175-2289
+.github/scripts/glob.test.mjs
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 1-81
+.agents/skills/create-instance-ai-eval/case-shapes.md
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 4,571-620,681-816
+.github/scripts/quality/check-pr-size.mjs
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 16,59-60,101,105,172
+.github/workflows/util-codespace-preview.yml
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 18-21,124-137
+.agents/skills/public-api/SKILL.md
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 44
+packages/@n8n/agents/src/runtime/loop/run-output-sink.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 73
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 1,76-80,358-694,1239-1249,1284-1292,1294-1297,1299-1364,2552,2557,2562,2571-2572,6078-6157,6203-6209,6211,6215-6219,6224,6861,6880-6881,6886-6931,6966-6969,6975-6978,6981-6985,7372,7399,7410,7525-7579,10046-10125
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/isolates-episodic-memory-between-resources-for-the-same-agent.json
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 12,84,88,91,94,97,99,103-104,107,123,141,159,223,227,230,233,236,238,242-243,246,267,270,272,285,299,304,307,309,322,341,344,346,359,373,445,449,452,455,458,460,464-465,467,469,490,493,495,508,522,540,556,620,624,627,630,633,635,639-640,642,644
+packages/@n8n/agents/src/runtime/loop/stream-sink.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 14,199-202,288,383
+packages/@n8n/agents/src/runtime/memory/episodic-memory-capture.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 409
+.agents/skills/create-agent-builder-eval/SKILL.md
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 1-190
+packages/@n8n/agents/src/sdk/catalog.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 54-55,65-66,214,218
+.github/workflows/ci-owners-assign-reviewers.yml
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 51-52,55,58,61-63
+packages/@n8n/agents/src/runtime/__tests__/observation-log-reflector.test.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 1,18,58-132,134-240
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 9,28,133-134,147-154,187-188,278-279,282-302,378,394,455-457,463,467,479-480,484,491,503-505,510,514,519,531,542,547,556,611,621,635,649-650,661,663-665,673-676,678-681,702-704,708-716,770,785,789-797,799-802,805,811,819,828,832,840,845
+.github/scripts/owners/review-recommendations.mjs
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 285,289-291
+.github/scripts/package.json
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 5,7,9
+.github/scripts/quality/handle-size-override.mjs
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 35-36,58-59,79
+.devcontainer/codespaces/agent-worker.mjs
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 93-94,124,212
+.devcontainer/codespaces/agent-worker.test.mjs
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 27-29,302,351-352
+.github/scripts/owners/required-reviews.mjs
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 11-13,26,32-49,60-100,104-107,111,113,116-121,235,240-241,244,260-266,289-290,292
+.github/scripts/sync-master-to-3x.mjs
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 27-36,63-65,90-91,134-145,159-164,320,332-336,343-345,352-353,377,407-408,410-413,562,603-605
+.github/actions/run-workflow-script/action.yml
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 1-42
+.agents/skills/conventions/SKILL.md
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 48-50
+.github/scripts/workflow-validation.test.mjs
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 1-200
+.github/workflows/ci-instance-ai-evals.yml
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 2,4,22,31,63,118-127,134,144
+.github/WORKFLOWS.md
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 257,265-283,313,317-321,336-368,620-622,628-634,657,694-717,797,805-807,809-813,892-927
+.github/workflows/test-evals-instance-ai.yml
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 453,609,611-616,768
+packages/@n8n/agents/src/sdk/memory.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 52-54
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 9,15,157,175,318,403-405,437,465-475,820-833,918-921,960,972-979,1010,1127
+packages/@n8n/agents/src/__tests__/integration/cassettes/runtime-skills/loads-a-matching-skill-and-follows-its-instructions-with-generate.json
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 54,58,61,64,67,69-70,73-74,77,93,111,127-137,170,174,177,180,183,185-186,189-190,193
+.github/scripts/github-helpers.test.mjs
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 21-28,32-99,111,125,127,145,158,160,209-241
+packages/@n8n/agents/src/sdk/__tests__/memory-builder-observational.test.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 68-70,74,89,102,151-152,154,159-172
+.devcontainer/codespaces/post-start.mjs
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 2,7,71-92,94
+.github/workflows/release-publish.yml
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 71-72,93,99-100
+.devcontainer/codespaces/cloud-session.test.mjs
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 67
+docker/test-get-n8n.sh
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 53-70,104-113,176-215,307-310,318,338,345,347-349,351,356-364
+biome.jsonc
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 21
+.github/workflows/test-e2e-performance-reusable.yml
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 21-22,48,52-53,57
+.github/scripts/db-test-matrix.mjs
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 30-32,102
+packages/@n8n/agents/src/__tests__/integration/cassettes/runtime-skills/loads-and-follows-a-skill-in-stream.json
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 56,61,64,67,70,73-74,78-79,82-83,99,117,133-143,178,183,186,189,192,195-196,200-201,204-205
+AGENTS.md
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 139-143,176,307-308,310-311,329-370
+.github/workflows/encryption-upgrade-test.yml
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 1-155
+packages/@n8n/agents/src/runtime/__tests__/runtime-helpers.test.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 22,28
+packages/@n8n/agents/src/workspace/sandbox/run-in-sandbox.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 12-13,22,27,50,55
+.github/scripts/glob.mjs
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 1-49
+packages/@n8n/agents/src/runtime/memory/memory-store.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 142-143
+.github/actions/ci-filter/__tests__/ci-filter.test.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 16,399-489
+OWNERS
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 30,45,239-243
+.github/workflows/ci-owners-required-reviews.yml
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 11-20,22-26,28-36,40-41,43-48,60-61,64-66,90-101,103,113-116,119-120,122-126,129-138,143-153,162-163,172-175,178,180,183,186-189
+packages/@n8n/agents/src/runtime/__tests__/active-skills.test.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 8-20,103-108,114-142,170-178,193-198,204-318,339-370
+packages/@n8n/agents/src/types/sdk/message.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 136-142
+.github/scripts/github-helpers.mjs
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 3,5-14,60-61,140,157,162,363-375,377,379,385-393,417-436,544,548,550,562-591,593-594,596-604
+packages/@n8n/agents/src/runtime/tools/deferred-tool-manager.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 209
+packages/@n8n/agents/src/runtime/tools/tool-call-executor.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 67,94-95,435-437,567-569,1127
+.github/workflows/test-e2e-infrastructure-reusable.yml
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 29-31,34-36,100
+packages/@n8n/agents/src/runtime/memory/observation-log-observer.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 63-75,89,183,232-235,239-252,282-284,286-292
+.agents/skills/create-agent-builder-eval/local-setup.md
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 1-110
+packages/@n8n/agents/src/runtime/loop/runtime-helpers.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 63,90-100,143-146,156-157
+.devcontainer/preview/preview-signin-hook.cjs
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 3
+packages/@n8n/agents/src/runtime/memory/episodic-memory-defaults.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 19,22
+packages/@n8n/agents/src/runtime/model/message-list.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 26,298-315,429-431
+.devcontainer/codespaces/README.md
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 51-63,82-85,96-102,111,130-135,155-157,159-160,174,181-182
+.github/workflows/ci-owners-review-recommendations.yml
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 42-43,46,49,52-54
+.github/workflows/test-e2e-reusable.yml
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 40-44,190-191,193
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-history.test.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 6-7,44,47,61-102,130-136
+packages/@n8n/agents/src/runtime/skills/active-skills.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 1,14-37,64-68,83-86,94-96,102-113,115-118,120,129-137,140-145,153-163,169-251,297-323
+docker/get-n8n.sh
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 15,19-22,117-121,144,272-273,275,314-315,329-364,376-377,446,448-454,469
+package.json
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 3,7,9,37-38,52,82-83,107
+packages/@n8n/agents/src/skills/tools.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 8,19,318-319
+packages/@n8n/agents/src/runtime/__tests__/observation-log-renderer.test.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 75-239
+.agents/skills/create-instance-ai-eval/SKILL.md
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 4-6,8,11,13-18,143,153,155,158-171,271,823-826,839-840,842,847,853,856,926-928
+.github/scripts/sync-master-to-3x.test.mjs
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 2,9,91-106,155,168-174,176-184,213,217,219-220,451-452,455-470,699,703,705-709,713,715,717,720-725,731,837,853-855,861,864,875,878,881,884-885,887,896-897,899,901-906,965,981,986-987
+.github/test-metrics/e2e-impact-map.json
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 1
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-persist-input.test.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 48-81
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-observational/records-observations-and-emits-memory-task-lifecycle-events-after-generate.json
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 28,32,35,38,41,43,47-48,51,67,76,83,86-87,90,93,95-96,98,102-103,106
+packages/@n8n/agents/src/runtime/__tests__/provider-quirks.test.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 235-241,245
+knip.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 1-215
+.agents/skills/ui-design/SKILL.md
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 16-27
+.github/workflows/test-db-reusable.yml
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 1,15,24-25,46,66-91
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-exact-artifacts-across-threads-when-explicitly-asked-for-prior-context.json
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 12,84,88,91,94,97,99,103-104,107,123,141,159,223,227,230,233,236,238,242-243,246,269,272,274,287,306,309,311,324,338,410,414,417,420,423,425,429-430,433,454,457,459,472,486,504,520,584,588,591,594,597,599,603-604,607
+packages/@n8n/agents/src/types/sdk/observation-log.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 90
+.github/scripts/owners/assign-reviewers.mjs
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 97,101-103
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory.test.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 94,199,237,253,281,321,348,356,416-420,423-430,433-440,443,465,499,520,541-544,577,585,599,608,625,655,659,669,673,726,730,756,761,764-767
+agent-harness.lock.json
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 1-6
+.github/scripts/sync-conflict-owners.mjs
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 257
+docker/images/runners/Dockerfile
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 2
+.github/scripts/codespace-preview.test.mjs
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 7,9,13,17,19-20,33-44,125-137,193-198,237-356
+packages/@n8n/agents/src/__tests__/setup.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 1-7
+.github/workflows/util-sync-master-to-3x.yml
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 12-17,63,81-91,96
+.github/scripts/owners/required-reviews.test.mjs
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 22-23,33-34,53,57,59-60,65-150,152-161,163,168-169,172-196,281,395-398,400,407-441
+docker/images/runners/Dockerfile.distroless
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 16
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-mid-run.test.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 7,40-45,50,61,85-106,203,218-220,222-226,324-368,370-405,407,411,414-418,420-424,466-529,531-532,536-540,542-548,550-560,607,619,623-625,631-635,637-639,649-821,844-845
+packages/@n8n/agents/src/skills/types.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 5-7,65,140-148
+packages/@n8n/agents/src/runtime/model/provider-quirks.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 186-187,199-200
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory-defaults.test.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 62,84
+packages/@n8n/agents/src/runtime/memory/episodic-memory.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 280
+.devcontainer/codespaces/devcontainer.json
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 21-22,26-27
+packages/@n8n/agents/package.json
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 3
+.github/workflows/ci-pr-quality.yml
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 33,36,39-42,66,69,72-75,131-154,172
+.github/workflows/test-get-n8n.yml
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 7-9
+.github/workflows/test-benchmark-nightly.yml
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 54
+packages/@n8n/agents/src/skills/index.ts
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 3
+packages/@n8n/agents/src/__tests__/integration/cassettes/runtime-skills/loaded-skill-drives-a-domain-tool-call.json
+  s_ae7a9eeb9d4112::t_0f9f1e19fe3076 70,74,77,80,83,85-86,89-90,92,94,110,126-129,132,148-158,207,211,214,217,220,222-223,226-227,230,246,262-265,268,284-294,303,307,323,373,377,380,383,386,388-389,392-393,396
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "505d634352063f078b12cc8110b42dec257d267b",
+  "prompts": {},
+  "sessions": {
+    "s_ae7a9eeb9d4112": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e47be114-239a-4367-8c90-9909b2cc93de",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,81 @@
+packages/cli/src/modules/agents/agents.service.ts
+  s_9a6001e67297f0::t_7100271ff7aec9 16
+  s_9a6001e67297f0::t_c8a06a4ee0964d 45
+  s_9a6001e67297f0::t_13377ea59c6069 346-350,354
+  s_9a6001e67297f0::t_423f69e12dd47e 359,395-402,404-405
+  s_9a6001e67297f0::t_1fb12400229eea 360-363
+  s_9a6001e67297f0::t_3f7b62adf34e68 364-367,369-370,392-394
+  s_9a6001e67297f0::t_ef9b1bcec46ff2 406-408,414-422
+  s_9a6001e67297f0::t_94fcc1976c028a 621,625
+  s_9a6001e67297f0::t_8ae647f35dcf5b 623,626
+  s_f3d2ec4529fb2a::t_53c1a825062b2f 403
+  s_f3d2ec4529fb2a::t_ae57e4fe122b11 409-411
+packages/cli/test/integration/agents/n8n-chat-page.api.test.ts
+  s_9a6001e67297f0::t_192ea4f29716fc 1-22,37-40,42,44-54,56,58-59,61-69,76-84,86-110,112-123,126-128,151-158,164-170,180-197
+  s_9a6001e67297f0::t_89a2c4a996f7be 198-213
+  s_f3d2ec4529fb2a::t_30663e6c37819d 214-215,216-229
+  s_f3d2ec4529fb2a::t_9600f7f22eff6f 70-75,85
+packages/cli/src/modules/agents/__tests__/agents-list.controller.test.ts
+  s_f3d2ec4529fb2a::t_f5db236c7a0958 148-163
+packages/cli/test/integration/database/repositories/agent-execution-thread-n8n-chat.repository.test.ts
+  s_f3d2ec4529fb2a::t_653ac022b7f19e 84-90
+  s_f3d2ec4529fb2a::t_ef9bc6a646e165 202-204,208-211,220-253
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_f3d2ec4529fb2a::t_d26b5bf461d0a7 749,755
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_f3d2ec4529fb2a::t_1489e449487939 3-9
+  s_f3d2ec4529fb2a::t_561ba0a90b363d 178-180,185,187,190
+  s_f3d2ec4529fb2a::t_c348e033dcedd9 215,235-239
+packages/@n8n/api-types/src/schemas/thread-title-search.schema.ts
+  s_f3d2ec4529fb2a::t_46c29535a5aabe 1-13
+packages/@n8n/api-types/src/agents/dto.ts
+  s_f3d2ec4529fb2a::t_f1132fdd46c1b8 18
+  s_f3d2ec4529fb2a::t_d9c65a1d8e7b8c 129
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_f3d2ec4529fb2a::t_624aac08cf2e26 13
+  s_f3d2ec4529fb2a::t_f03b9b19e523e2 2172
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_f3d2ec4529fb2a::t_15a50bb7be774f 1637-1641,1646,1661
+  s_f3d2ec4529fb2a::t_b2f25ef5db01bb 1697
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_9a6001e67297f0::t_3fcf401bad1eaf 639
+  s_9a6001e67297f0::t_9cd6426d15f338 678,683-706
+  s_9a6001e67297f0::t_ca22b8187ef73e 733
+  s_9a6001e67297f0::t_4c3468918b2d7e 771
+  s_9a6001e67297f0::t_b9aa578f277d38 784
+  s_9a6001e67297f0::t_3f7b62adf34e68 789-791,793-800,802-804,806-831,833-844,848-851,897-905
+  s_9a6001e67297f0::t_9ac1ba8ae9b9b4 906-919,921-927,929-947
+  s_9a6001e67297f0::t_e5b368757b805b 952-956,958-964,967-969,971-977,979-985,990
+  s_9a6001e67297f0::t_abb55d74029268 957,966,978
+  s_9a6001e67297f0::t_6cb1dc54c9fc8a 965
+  s_f3d2ec4529fb2a::t_50f39558029e77 920,928
+  s_f3d2ec4529fb2a::t_1f74d2a6846f7a 948-950,986-987,989
+  s_f3d2ec4529fb2a::t_47359ac0542ed1 970
+  s_f3d2ec4529fb2a::t_684e3b7d0dd94c 988
+packages/cli/src/modules/agents/agents-list.controller.ts
+  s_f3d2ec4529fb2a::t_c55a4f92c49a5d 67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a6b9b4cf6f5fb010aa339561a635c743522ff2ca",
+  "prompts": {},
+  "sessions": {
+    "s_9a6001e67297f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f72ae404-381c-4905-9080-63d9e62dffe6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    },
+    "s_f3d2ec4529fb2a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c28c4414-1c5b-4167-98ad-d5188b3d2601",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,63 @@
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_fbba0b32ee6f59::t_702b02a6702ea8 5-6,33,67,773-775,797-799,817-853
+packages/cli/src/modules/agents/agent-task-cancellation.service.ts
+  s_fbba0b32ee6f59::t_702b02a6702ea8 1-202
+packages/cli/src/modules/agents/__tests__/agent-task-cancellation.service.test.ts
+  s_fbba0b32ee6f59::t_702b02a6702ea8 1-291
+packages/cli/src/modules/agents/background/sub-agent-background-runner.ts
+  s_fbba0b32ee6f59::t_702b02a6702ea8 43,97
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_fbba0b32ee6f59::t_702b02a6702ea8 42,805
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_fbba0b32ee6f59::t_702b02a6702ea8 3,998,1007,1023-1037
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_fbba0b32ee6f59::t_702b02a6702ea8 11,84,265,294-299,493,504,825,837,850
+packages/cli/src/modules/agents/background/__tests__/background-job-tools.test.ts
+  s_fbba0b32ee6f59::t_702b02a6702ea8 116,123-128,134
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_fbba0b32ee6f59::t_702b02a6702ea8 9,84,104,106,119,318,329-334,392-411,913-936,1364-1410
+packages/cli/src/modules/agents/background/background-job-tools.ts
+  s_fbba0b32ee6f59::t_702b02a6702ea8 16,103
+packages/cli/test/integration/agents/agent-chat-cancellation.api.test.ts
+  s_fbba0b32ee6f59::t_702b02a6702ea8 1-111
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_fbba0b32ee6f59::t_702b02a6702ea8 12,156,222-238,273-279,339,346,402-405,418,701,715-718,731-733,739,741,743-747,868
+packages/quality/testing/playwright/tests/e2e/agents/background-workflow-stop.spec.ts
+  s_fbba0b32ee6f59::t_702b02a6702ea8 206-210,227
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_fbba0b32ee6f59::t_702b02a6702ea8 10,14,17,19,88-91,106-107,109,122,126,143-272
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_fbba0b32ee6f59::t_702b02a6702ea8 11,96,98,115,205-206,433,1713-1741
+  s_081d6f325925c9::t_7f1957771c712f 850-878
+  s_081d6f325925c9::t_27615496b12080 880-882,906-907
+  s_081d6f325925c9::t_a3ae3d823e58c7 883-898,900-905
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_fbba0b32ee6f59::t_702b02a6702ea8 485
+  s_fbba0b32ee6f59::t_4b92a181e9183e 1687-1693,1695-1698,1700-1757,1759-1763
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_fbba0b32ee6f59::t_702b02a6702ea8 10-12,16,18,36,61,74,80,93,98-102,165,180-190,251-331,446
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "03654b62781254dac4a509b0617b1d91f17fb6c2",
+  "prompts": {},
+  "sessions": {
+    "s_081d6f325925c9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a14556-73fa-7410-b968-ee927d435114",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_fbba0b32ee6f59": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10c3a-c169-7050-86b8-0b78c91b308c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

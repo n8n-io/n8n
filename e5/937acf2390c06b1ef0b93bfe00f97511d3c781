@@ -10,12 +10,23 @@ packages/cli/src/modules/git-connections.ee/git-connections.service.ts
   s_f25a1578611a89::t_01652aa7aa6922 164-175
   s_f25a1578611a89::t_dce67ef785e6f6 131-136,140-141,147-148,152,155
   s_f25a1578611a89::t_7c92f38f9eaf46 137,149
+  s_7562978115634d::t_51bcbad1f893a9 81-84,87,100
+  s_7562978115634d::t_705e7100060996 297-303
+  s_7562978115634d::t_3e43ec157a957e 121,127
 packages/cli/src/public-api/v1/controllers/git-connections.public.controller.ts
   s_f25a1578611a89::t_56f966c3b36717 226
   ai_agent 235-239,258-262
   s_f25a1578611a89::t_40e82303a1f109 249
   s_f25a1578611a89::t_a1ee3ba52e042b 253
   s_f25a1578611a89::t_54c9bbe831d199 230
+packages/cli/src/modules/git-connections.ee/git-connections-git.service.ts
+  s_7562978115634d::t_b0d76f9c05e088 175-183
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/createGitConnection.generated.yml
+  ai_agent 26
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/updateGitConnection.generated.yml
+  ai_agent 32
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/cloneGitConnection.generated.yml
+  ai_agent 25
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -23,6 +34,14 @@ packages/cli/src/public-api/v1/controllers/git-connections.public.controller.ts
   "base_commit_sha": "e5937acf2390c06b1ef0b93bfe00f97511d3c781",
   "prompts": {},
   "sessions": {
+    "s_7562978115634d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7789a6a0-eacd-4f54-97a9-3f6d2b2fb4c8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
     "s_f25a1578611a89": {
       "agent_id": {
         "tool": "claude",

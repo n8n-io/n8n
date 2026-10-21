@@ -1,0 +1,19 @@
+packages/@n8n/eslint-plugin-community-nodes/docs/rules/no-deprecated-workflow-functions.md
+  s_9cb461f0de1a6b::t_752a82b19a7d35 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f27737e577170adb4bde9cec1c30d6335beac496",
+  "prompts": {},
+  "sessions": {
+    "s_9cb461f0de1a6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f5dce542-f9b4-4846-8912-8530ad8a315b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

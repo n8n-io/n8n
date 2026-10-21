@@ -1,0 +1,46 @@
+packages/cli/src/workflows/workflow.service.ee.ts
+  s_fad1e25c457ef3::t_c7cdf37142f5f7 162,177,183-187
+  s_fad1e25c457ef3::t_e0f9f805cd62ff 21
+  s_fad1e25c457ef3::t_2974b65d3c04c6 178-181
+  s_fad1e25c457ef3::t_464e15956ff2ff 182
+  s_fad1e25c457ef3::t_afc193c33c66fc 235-239
+  s_fad1e25c457ef3::t_162011eb012f08 48-53
+  s_fad1e25c457ef3::t_ac0867b6a9e9e2 275-277
+  s_fad1e25c457ef3::t_bf8d88d796815b 223
+  s_fad1e25c457ef3::t_768e752132f9d8 331-332,374
+  s_fad1e25c457ef3::t_613c935da42623 304-312,317-321
+  s_fad1e25c457ef3::t_87ade03e11a3a4 203-208,371
+  s_fad1e25c457ef3::t_b552fd23ca0d58 43,341-346,355,360,365-370,372-373
+packages/cli/src/errors/uninspectable-subworkflow-source.error.ts
+  s_fad1e25c457ef3::t_0d1bd97ca55d21 1-7,9-11
+  s_fad1e25c457ef3::t_d32a16a1a24d21 8
+packages/cli/src/workflows/__tests__/workflows.controller.test.ts
+  s_fad1e25c457ef3::t_4ccc4714a78c1a 249
+packages/cli/src/workflows/workflows.controller.ts
+  s_fad1e25c457ef3::t_a694d8975db4b7 40,150,153-155
+packages/cli/test/integration/workflows/workflow.service.ee.test.ts
+  s_fad1e25c457ef3::t_2c2b578d1bb9a1 13,348-436
+packages/cli/test/integration/workflows/workflows.controller.ee.test.ts
+  s_fad1e25c457ef3::t_c993c9a5148b37 2167-2249,2271-2317
+  s_fad1e25c457ef3::t_e5b9e6341634f0 31,2250-2270
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_fad1e25c457ef3::t_b647b04112a5c7 29,1288-1383
+packages/cli/src/public-api/v1/handlers/workflows/workflows.handler.ts
+  s_fad1e25c457ef3::t_af6c921a64a787 12,14,17,50-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4ddb55652bb4bf08b72e2cdd6777bf13004c4475",
+  "prompts": {},
+  "sessions": {
+    "s_fad1e25c457ef3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0cfffd6b-b144-416f-8fb1-ff9a35269718",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

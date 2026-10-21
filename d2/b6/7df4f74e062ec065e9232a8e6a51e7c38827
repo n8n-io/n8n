@@ -1,0 +1,25 @@
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting.integration.test.ts
+  s_1fe02fac790f67::t_99d5835991a2b6 15,18
+  s_1fe02fac790f67::t_e4d539ad5ddd0c 146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d2b67df4f74e062ec065e9232a8e6a51e7c38827",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1fe02fac790f67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef8163a7-05e7-4227-a88d-7d3f560a4289",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

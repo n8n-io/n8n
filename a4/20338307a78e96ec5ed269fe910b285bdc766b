@@ -1,0 +1,21 @@
+packages/@n8n/engine/src/execution/resume-request.service.ts
+  s_9c30e64d236bdf::t_d3dc8d3a2befc4 7-9,51,85-92,97-106
+packages/@n8n/engine/src/runtime/create-engine-runtime.ts
+  s_9c30e64d236bdf::t_b2b0cfd03ed938 133-139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a420338307a78e96ec5ed269fe910b285bdc766b",
+  "prompts": {},
+  "sessions": {
+    "s_9c30e64d236bdf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f103e602-540f-4c9e-a1e6-ff3bee67124c",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

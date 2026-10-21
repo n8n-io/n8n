@@ -8,6 +8,14 @@ packages/cli/src/modules/git-connections.ee/git-connections-git.service.ts
   "base_commit_sha": "7469231277b06dcda7606433c11485b978e82dd7",
   "prompts": {},
   "sessions": {
+    "s_34be5ab5b52ab7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4062f6fb-80e4-4be3-a716-b73f75ce2839",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
     "s_7562978115634d": {
       "agent_id": {
         "tool": "claude",

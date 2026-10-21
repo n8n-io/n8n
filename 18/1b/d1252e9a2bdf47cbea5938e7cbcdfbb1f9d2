@@ -1,0 +1,75 @@
+packages/nodes-base/nodes/Flow/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_cd3ccfb8e75b3a 1-24
+packages/nodes-base/nodes/Formstack/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_26ba377f2eff6d 1-25
+packages/nodes-base/nodes/Freshdesk/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_16394a7effb897 1-24
+packages/nodes-base/nodes/FormIo/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_d095821d77fe11 1-25
+packages/nodes-base/nodes/Figma/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_587ff58e1a826d 1,26-30,37,48,53-67,75,84,93,103
+packages/nodes-base/nodes/Formstack/test/FormstackTrigger.node.test.ts
+  s_2e1fa95fc44f8f::t_20d8ec3900acf6 3,80,108
+packages/nodes-base/nodes/Figma/FigmaTrigger.node.ts
+  s_6f275bb3f32bbd::t_68794246badec2 11,136,156,183
+packages/nodes-base/nodes/Figma/GenericFunctions.ts
+  s_5e0de13e5e682e::t_891d9ab3e2ab14 9-10,12,17,24,27
+packages/nodes-base/nodes/Flow/Flow.node.ts
+  s_2e1fa95fc44f8f::t_791c93e05f9753 9,125,193-198,213-219,262,268
+packages/nodes-base/nodes/Flow/FlowTrigger.node.ts
+  s_2e1fa95fc44f8f::t_2a40cbf8fc2377 9,109,129,175
+packages/nodes-base/nodes/Flow/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_a396649f343520 9,11,16,21,25,38-42,56
+packages/nodes-base/nodes/FormIo/FormIoTrigger.node.ts
+  s_5e0de13e5e682e::t_beabb49c764f51 11,101,113-118,142,185,199
+packages/nodes-base/nodes/FormIo/GenericFunctions.ts
+  s_5e0de13e5e682e::t_382027dcfab5e4 8-9,11,26,35-45
+packages/nodes-base/nodes/Formstack/FormstackTrigger.node.ts
+  s_6f275bb3f32bbd::t_9ebac00c01215f 10,112,130,154
+packages/nodes-base/nodes/Formstack/GenericFunctions.ts
+  s_6f275bb3f32bbd::t_e6b740986a8abf 11-12,14,60,66,71,102,138,164,189
+packages/nodes-base/nodes/Freshdesk/Freshdesk.node.ts
+  s_d9c97134490257::t_88fa7789f1eb84 10,1033,1050,1067,1084,1201-1206,1283,1290-1294,1327,1333-1339,1345-1349,1374-1379,1386,1394,1400-1406,1427
+packages/nodes-base/nodes/Freshdesk/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_dacdf09561c767 8,10,15,20,26,44-51,60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "181bd1252e9a2bdf47cbea5938e7cbcdfbb1f9d2",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_5e0de13e5e682e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aa768470753f420c9",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_6f275bb3f32bbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ad6f88d4af989655d",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_d9c97134490257": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aec478fa6488cfbb7",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

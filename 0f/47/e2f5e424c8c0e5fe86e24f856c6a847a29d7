@@ -1,0 +1,35 @@
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting.integration.test.ts
+  s_a2fc4d6eda4ac0::t_bde9609e9192a2 367
+  s_a2fc4d6eda4ac0::t_d7a05650853162 265,269
+  s_a2fc4d6eda4ac0::t_b3415c69309f3d 1-30,32-41,44,49-70,74-169,178-187,210-228,230-264,266-268,270-273,275-289,292-296,298-317,360-366,368-380,382,386-397
+  s_a2fc4d6eda4ac0::t_16491a40bac687 290-291
+  s_a2fc4d6eda4ac0::t_29b84fbc42f0d7 297
+  s_a2fc4d6eda4ac0::t_1a94a4ec6cc793 172
+  s_a2fc4d6eda4ac0::t_56bb1d6abf0378 381,383-385
+  s_a2fc4d6eda4ac0::t_1e372ed89de726 318-359
+  s_a2fc4d6eda4ac0::t_3d2330a392e55d 190
+  s_a2fc4d6eda4ac0::t_5e60cbc52c9856 274
+  s_a2fc4d6eda4ac0::t_3c09a56d769ba0 42-43,45-48
+  s_a2fc4d6eda4ac0::t_99c04a08aa2771 229
+  s_a2fc4d6eda4ac0::t_af83605dd31b86 71-73
+  s_a2fc4d6eda4ac0::t_599307588864fb 31
+  s_a2fc4d6eda4ac0::t_aacdd71193148d 196-209
+  s_a2fc4d6eda4ac0::t_56af5ce2fbeb8b 170-171,173-177
+  s_a2fc4d6eda4ac0::t_c4e9f55e8cf2de 188-189,191-195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0f47e2f5e424c8c0e5fe86e24f856c6a847a29d7",
+  "prompts": {},
+  "sessions": {
+    "s_a2fc4d6eda4ac0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5c4bbfe-f834-4658-bbbd-c8e0e65c6a80",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

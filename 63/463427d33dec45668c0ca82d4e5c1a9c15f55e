@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_b7849c58d6b99a::t_3791a0beccbe8c 1386-1398
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPlan.test.ts
+  s_b7849c58d6b99a::t_ce24ce5b32dbaf 1,7,144,168,173,216-218,232,244,346,351,366,381-382
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "63463427d33dec45668c0ca82d4e5c1a9c15f55e",
+  "prompts": {},
+  "sessions": {
+    "s_b7849c58d6b99a": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1304c-4b47-7739-adf9-abd90bb0e85e",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

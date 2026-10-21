@@ -1,0 +1,73 @@
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_782619aac31c26::t_551ade8067d9b7 28,98,112,117
+  s_782619aac31c26::t_0e0f2dd0875aea 319-320
+  s_782619aac31c26::t_4a019773502d8b 312-318,321-326
+packages/cli/src/modules/agents/background/__tests__/sub-agent-background-runner.test.ts
+  s_782619aac31c26::t_551ade8067d9b7 10,53-54
+  s_782619aac31c26::t_4a019773502d8b 61,71-99
+packages/cli/src/modules/agents/__tests__/workflow-tool-factory.test.ts
+  s_782619aac31c26::t_3e3f75180b8144 21-27
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_782619aac31c26::t_beeec2657eece7 497,506-507,509-515,519
+  s_782619aac31c26::t_f91d18ef608c07 95-96,172,380-384,452
+  s_782619aac31c26::t_6fc34ba3087965 37-40
+  s_782619aac31c26::t_d6ac997708a0ae 505,508
+packages/cli/src/modules/agents/__tests__/test-utils/session-leases.ts
+  s_782619aac31c26::t_aef86a5776f377 1-15
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_782619aac31c26::t_b227f7d7442ff0 573-574
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
+  s_782619aac31c26::t_2ae33ab1d26877 941-970
+  s_782619aac31c26::t_551ade8067d9b7 32,132,148,155,160
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_782619aac31c26::t_b227f7d7442ff0 18,67,132-138
+packages/cli/src/modules/agents/background/sub-agent-background-runner.ts
+  s_782619aac31c26::t_beeec2657eece7 12,31-35,65,72,93-101,107-110
+  s_782619aac31c26::t_b227f7d7442ff0 102-106
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_782619aac31c26::t_4e9bf5ddb282bf 318
+  s_782619aac31c26::t_f3a8236f6ecec5 37,287-288
+  s_782619aac31c26::t_f91d18ef608c07 131
+  s_782619aac31c26::t_601805e3fecbc4 290,306
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_782619aac31c26::t_4b5b1c4827b078 16
+  s_782619aac31c26::t_551ade8067d9b7 261
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_782619aac31c26::t_551ade8067d9b7 23,167,176,186,191
+  s_782619aac31c26::t_3bbf3ffe5925b6 922,991-992
+  s_782619aac31c26::t_2ae33ab1d26877 475-490
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_782619aac31c26::t_4a019773502d8b 759-788
+  s_782619aac31c26::t_3e3f75180b8144 34-40
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_782619aac31c26::t_2ae33ab1d26877 283,1139-1173
+  s_782619aac31c26::t_551ade8067d9b7 42
+  s_782619aac31c26::t_e07d07d64f38ee 1174-1175
+  s_782619aac31c26::t_a4d82e1632764d 214,219
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_782619aac31c26::t_f3a8236f6ecec5 24,130,192,194-207,274-281,533
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_782619aac31c26::t_551ade8067d9b7 47,285
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_782619aac31c26::t_39aad4e4d10553 1073,1078-1079
+  s_782619aac31c26::t_b227f7d7442ff0 47,1074-1077,1080-1084
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_782619aac31c26::t_551ade8067d9b7 169,183
+  s_782619aac31c26::t_4b5b1c4827b078 150-155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c6533356e06ffaf3168a1b5c5a5d1c68a6426d29",
+  "prompts": {},
+  "sessions": {
+    "s_782619aac31c26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6889b3f-b5e6-4aa7-a6ff-cca974b94b72",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

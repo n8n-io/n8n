@@ -1,0 +1,28 @@
+packages/cli/src/workflows/triggers/trigger-execution-context.factory.ts
+  s_1555c5cedfe9b5::t_0a0b022a68ca74 314-317,319
+  s_95712ab39c43ab::t_b9aa66a0b372d0 474
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3f2144f062d85bd96a99636c70651f19607bd20d",
+  "prompts": {},
+  "sessions": {
+    "s_1555c5cedfe9b5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "594c8e58-ede6-4165-bb68-5fc03be237ad",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_95712ab39c43ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e0dba5b3-d334-4cfb-b270-faa568cd8827",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

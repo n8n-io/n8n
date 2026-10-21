@@ -1,0 +1,14 @@
+packages/cli/src/modules/instance-reporting/README.md
+  h_c63dce324dfc7b 133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "46cd609a8fc8d782e6727596dd01009411d2bd95",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

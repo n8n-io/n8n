@@ -1,0 +1,19 @@
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionChanges.generated.yml
+  s_3d73547284a1cb::t_22c5ef5e063518 61-72,121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f253ac952796760eee0f49ddf1b8d78d33f73fa5",
+  "prompts": {},
+  "sessions": {
+    "s_3d73547284a1cb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9511c8b6-90c3-4eb2-b857-d29132b69b9f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

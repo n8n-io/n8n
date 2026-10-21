@@ -1,0 +1,28 @@
+packages/@n8n/instance-ai/evaluations/langtracer/client.ts
+  s_a2999f6753c62b::t_015a87b33dc917 35-41
+.github/workflows/test-evals-instance-ai.yml
+  s_a2999f6753c62b::t_015a87b33dc917 609,611,614
+packages/@n8n/instance-ai/evaluations/__tests__/langtracer-client.test.ts
+  s_a2999f6753c62b::t_015a87b33dc917 4,21-35
+  s_a2999f6753c62b::t_296973b530fd74 36
+packages/@n8n/instance-ai/evaluations/langtracer/provider.ts
+  s_a2999f6753c62b::t_015a87b33dc917 6,120
+packages/@n8n/instance-ai/evaluations/cli/resolve-langtracer-suite.ts
+  s_a2999f6753c62b::t_015a87b33dc917 1-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "53f450eeb216dcb323f2c3f75ff7b7a3227639c7",
+  "prompts": {},
+  "sessions": {
+    "s_a2999f6753c62b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a080bf-405e-70f0-8af9-fbce616d04c3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

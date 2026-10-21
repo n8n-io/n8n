@@ -1,0 +1,84 @@
+packages/nodes-base/nodes/Slack/test/v1/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_549b662d27ec75 50-52
+  s_2e1fa95fc44f8f::t_0946835ff16fb8 42-49,53-54
+  s_3ab37165c367bb::t_8730df4b891c78 2,38,62,89,103,120-125,138,167
+packages/nodes-base/nodes/Slack/test/v2/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_ac21f10e68915a 74-81,83,85-94,96-97,99-102,383,387,1121,1124,1144,1147,1166,1169,1194,1197
+  s_2e1fa95fc44f8f::t_582518b8a4358c 82
+  s_2e1fa95fc44f8f::t_8c03b2c5834991 84
+  s_2e1fa95fc44f8f::t_b2a5fe6218a173 95
+  s_2e1fa95fc44f8f::t_32cafdf51a6e78 98
+  s_2e1fa95fc44f8f::t_bd3e76a625f204 382
+  s_2e1fa95fc44f8f::t_55396f7a224a47 384-386
+  s_2e1fa95fc44f8f::t_e3fd01546d8612 1120
+  s_2e1fa95fc44f8f::t_c0aa8c427ceb13 1122-1123
+  s_2e1fa95fc44f8f::t_47cef21d1d1c64 1143
+  s_2e1fa95fc44f8f::t_4ddaef87577aec 1145-1146
+  s_2e1fa95fc44f8f::t_c147a715e519cf 1165
+  s_2e1fa95fc44f8f::t_5848e095241228 1167-1168
+  s_2e1fa95fc44f8f::t_b708d1637146f8 1193
+  s_2e1fa95fc44f8f::t_c980560e02dc52 1195-1196
+  s_cf04028fe42bed::t_49e3d79f2f3da4 2,50-52,62-70,115-120,124,137,153-157,174-176,180,199-201,204,223-225,228,243-248,255-257,270,289,314,328,349,365,400,429,459,469,480,483,498,536,579,615,652,686,726,758,797,837,879,931,955,978,1021,1033,1045,1048,1078,1100,1130,1133,1153,1156,1181
+packages/nodes-base/nodes/Slack/SlackTrigger.node.ts
+  s_2e1fa95fc44f8f::t_8e5669e6a436a3 14,269,299
+packages/nodes-base/nodes/Slack/SlackTriggerHelpers.ts
+  s_2e1fa95fc44f8f::t_c444ce490bd1c3 3,12,26
+packages/nodes-base/nodes/Slack/V2/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_1c6eda14bbea79 12-13,15,145,149,153,161,163-166,222,234,323,334,371
+packages/nodes-base/nodes/Slack/V2/SlackHitlWebhook.ts
+  s_2e1fa95fc44f8f::t_01116e87793d59 2,40,69,119
+packages/nodes-base/nodes/Slack/test/v1/SlackV1.node.test.ts
+  s_2e1fa95fc44f8f::t_b75619dad936dc 5,81,102,124,144,165,184,207,232,257,278
+packages/nodes-base/nodes/Slack/test/v2/Slack.node.test.ts
+  s_2e1fa95fc44f8f::t_4d202e60a625c9 11,98,132,177,201,234,315,358,392,417,463,509,549,599,645,689,722,775,820,849,879,908,947,985,1016,1047,1084,1126,1215,1289,1318,1372,1427,1487,1516,1540,1762,1774,1833,1880,1959,1971,1979,2166,2230,2260,2297,2337,2371,2487
+packages/nodes-base/nodes/Slack/test/v2/node/message/sendAndWait.test.ts
+  s_2e1fa95fc44f8f::t_adb55941f69b11 3-8,84
+packages/nodes-base/nodes/Slack/V1/GenericFunctions.ts
+  s_3ab37165c367bb::t_d5c8006e2e0308 10-11,13,38,42,45,52,110,120
+packages/nodes-base/nodes/Slack/V1/SlackV1.node.ts
+  s_ff532e800b4a79::t_7f1e64e3ecb0a6 13,192-197,228,259,299,313,331,348,362,372-378,396,402-408,432,441,459,474,489,499,512,537,554,582,591,609,626,641,922-928,992-998,1009-1015,1026-1032,1046-1052,1062-1068,1074-1080,1100-1106,1124-1130,1140,1146-1152,1194,1207,1243,1249-1255,1263-1269,1277-1283,1294,1300-1306,1313-1319,1335-1341,1357-1363,1382,1400-1406,1429-1435,1475,1493
+packages/nodes-base/nodes/Slack/V2/SlackV2.node.ts
+  s_ff532e800b4a79::t_8df0ae6a32dfe1 20,219,252,286-294,326,360,390,424,461,480,502,524,543,558-564,582,588-594,623,632,661,681,701,711,724,749,771,804,813,836,858,878,946-952,993,1014,1039,1048,1075-1081,1107-1113,1128-1134,1209,1215-1221,1243-1249,1259-1265,1271-1277,1305-1311,1329-1335,1345,1351-1357,1414,1433,1458,1469,1505,1511-1517,1525-1531,1539-1545,1551-1557,1568,1574-1580,1587-1593,1597-1603,1654,1676-1682,1698-1704,1723,1739-1745,1768-1774,1790,1816,1835,1861
+packages/nodes-base/nodes/Slack/test/v2/node/SlackHitlWebhook.test.ts
+  s_ff532e800b4a79::t_6d663ea8b00a2d 3,289,317,385-389,435,444,564
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5c97a01114e7454b7c4dd7f98ec7bd6c9c51eebf",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_3ab37165c367bb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a85f288e7ccf0be5b",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_cf04028fe42bed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ab2a2dabe05dbda63",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_ff532e800b4a79": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a242be8843b813c46",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

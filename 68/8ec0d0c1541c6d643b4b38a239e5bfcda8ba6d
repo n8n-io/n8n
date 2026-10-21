@@ -7,6 +7,11 @@ packages/cli/src/modules/git-connections.ee/git-connections.service.ts
   "git_ai_version": "1.5.2",
   "base_commit_sha": "688ec0d0c1541c6d643b4b38a239e5bfcda8ba6d",
   "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
   "sessions": {
     "s_00622278583879": {
       "agent_id": {

@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/app/layouts/InstanceAiLayout.test.ts
+  s_f1d38c3c7a3230::t_db492d300985fa 1-56
+packages/frontend/editor-ui/src/app/stores/logs.store.ts
+  s_f1d38c3c7a3230::t_db492d300985fa 21
+packages/frontend/editor-ui/src/app/layouts/InstanceAiLayout.vue
+  s_f1d38c3c7a3230::t_db492d300985fa 1-6,8,15,17-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "46094c7c22e3e375c5079b460fc038bf4c24922b",
+  "prompts": {},
+  "sessions": {
+    "s_f1d38c3c7a3230": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "046b7916-96df-4517-8265-9290c2687bf2",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

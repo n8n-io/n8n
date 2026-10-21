@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionConnectionForm.test.ts
+  s_887a77164a6458::t_28d87000760c1d 1-173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "653860fd40b07344d486678e3cbbd7f6934e3355",
+  "prompts": {},
+  "sessions": {
+    "s_887a77164a6458": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b8e3c94b-2a41-4fbf-816e-9fec03fbed10",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

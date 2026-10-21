@@ -1,0 +1,19 @@
+packages/@n8n/mcp-apps/src/apps/workflow-preview/tokens.scss
+  s_eeba291a29fa8c::t_2e8709001c8705 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d663f81c727c8bb873c7e54f8537f51289c9bc7d",
+  "prompts": {},
+  "sessions": {
+    "s_eeba291a29fa8c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0d3e1-6c01-7524-8e4b-fa51d23d8000",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

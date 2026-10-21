@@ -1,0 +1,20 @@
+packages/frontend/@n8n/design-system/src/components/N8nSendStopButton/N8nSendStopButton.test.ts
+  s_dad77dfaba971b::t_ecb3873e936c64 181,212
+  s_dad77dfaba971b::t_5a04b9204efd43 183
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "becde93213d29aac17be436b3c824defbd3e941f",
+  "prompts": {},
+  "sessions": {
+    "s_dad77dfaba971b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0e747-67c0-7380-a14b-c95aee6c0f76",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

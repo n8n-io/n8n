@@ -1,0 +1,21 @@
+packages/@n8n/agents/src/runtime/tools/delegate-sub-agent-runner.ts
+  s_c5954c3047b5ed::t_a9e2493f8f1e4e 1-553
+packages/@n8n/agents/src/runtime/tools/delegate-sub-agent-tool.ts
+  s_c5954c3047b5ed::t_a9e2493f8f1e4e 3,5,26-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0e4f92112be020c8f65e5da11a5ca0508ccdc224",
+  "prompts": {},
+  "sessions": {
+    "s_c5954c3047b5ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cf61-9581-7951-a01f-21637c8a6267",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

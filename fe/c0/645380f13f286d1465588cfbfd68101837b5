@@ -1,0 +1,52 @@
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_c28adc734269e8::t_66b02f45aa9243 207,839,2645-2656
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/build-workflow.tool.test.ts
+  s_c28adc734269e8::t_c708f3ff6ee8e3 438-439,448-452,466-469
+  s_c28adc734269e8::t_10a60d68debf36 437,440-447,453-465
+packages/@n8n/instance-ai/src/tools/data-tables.tool.ts
+  s_c28adc734269e8::t_6f1f42dcbcd997 389-399,772,776-780,824-829,831-833,835,879-881
+  s_c28adc734269e8::t_09515f07bffe3e 384-388,416-420,487-491,538,633,677,722,775,830,878
+packages/cli/src/modules/instance-ai/instance-ai-thread-tabs.service.ts
+  s_c28adc734269e8::t_91a8288b6289a5 10,12-14,29,87-88,109-114,120-134
+packages/@n8n/instance-ai/src/tools/__tests__/workflows.tool.test.ts
+  s_c28adc734269e8::t_3bf20074166644 341-363
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-thread-tabs.service.test.ts
+  s_c28adc734269e8::t_62bd70a0c76bb3 126
+  s_c28adc734269e8::t_bb4afb491a388b 3,6-7,17-24,34-35,110-125,127-134
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_c28adc734269e8::t_f318a3b114d1d3 540-548
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_c28adc734269e8::t_56636d040f4f2e 1613-1617
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_c28adc734269e8::t_155de3d4659328 745-747,752-772
+  s_c28adc734269e8::t_833ab463b67550 748-751
+packages/@n8n/instance-ai/src/types.ts
+  s_c28adc734269e8::t_09515f07bffe3e 1711-1712
+  s_c28adc734269e8::t_a4b931ebf47c11 27,1562-1567,1710,1713-1716
+packages/@n8n/instance-ai/src/index.ts
+  s_c28adc734269e8::t_ff79c205a9e571 673
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_c28adc734269e8::t_8784c6f4d3af88 556,558-561,563-567,2327-2331,2341-2345
+  s_c28adc734269e8::t_cfb7390c386332 14
+  s_c28adc734269e8::t_331557b1a3834b 557,562
+packages/@n8n/instance-ai/src/tools/__tests__/data-tables.tool.test.ts
+  s_c28adc734269e8::t_833ab463b67550 1528-1532
+  s_c28adc734269e8::t_22544d481d7a88 1508-1527,1533-1571,1573,1592-1606
+  s_c28adc734269e8::t_09515f07bffe3e 1572,1574-1591
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fec0645380f13f286d1465588cfbfd68101837b5",
+  "prompts": {},
+  "sessions": {
+    "s_c28adc734269e8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f442a6f2-db66-4370-b6f3-a5c632ce3f5d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

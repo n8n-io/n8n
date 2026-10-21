@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/views/SettingsInstanceAiView.vue
+  s_4b3464edcbd66c::t_32b96783deb215 902
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "518645376d29b41ba93ab60be670b0937353990c",
+  "prompts": {},
+  "sessions": {
+    "s_4b3464edcbd66c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5db4fdf-265c-4952-87ca-2de10256f012",
+        "model": "unknown"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

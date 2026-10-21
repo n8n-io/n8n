@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/displayGroups.ts
+  s_adc3aa5f3ee5fa::t_388bd5546f792c 207-210,213-219
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/hostEventRenderers.test.ts
+  s_adc3aa5f3ee5fa::t_1d336569b6482b 210-235
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "11c01923d4a0896c2842a3956f44bc80bad3eebd",
+  "prompts": {},
+  "sessions": {
+    "s_adc3aa5f3ee5fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ae8fb7d-c339-403a-9aec-205bf00ec318",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

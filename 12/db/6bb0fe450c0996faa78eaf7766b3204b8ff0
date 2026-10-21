@@ -1,0 +1,23 @@
+packages/nodes-base/credentials/CrowdStrikeOAuth2Api.credentials.ts
+  s_2e1fa95fc44f8f::t_dfb7367c89abf3 1-8
+  s_2e1fa95fc44f8f::t_5c102c695e00e9 66
+packages/nodes-base/credentials/MetabaseApi.credentials.ts
+  s_2e1fa95fc44f8f::t_9ff44634d0dfd6 58
+  s_2e1fa95fc44f8f::t_a0ca9500ee33b9 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "12db6bb0fe450c0996faa78eaf7766b3204b8ff0",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+packages/@n8n/ai-workflow-builder.ee/src/validation/auto-fix/__tests__/auto-fix-connections.test.ts
+  ai_agent 605-720
+packages/@n8n/ai-workflow-builder.ee/src/workflow-builder-agent.ts
+  ai_agent 43,206-212
+packages/@n8n/ai-workflow-builder.ee/src/utils/workflow-sanitization.ts
+  ai_agent 1-72
+packages/@n8n/ai-workflow-builder.ee/src/validation/auto-fix/auto-fix-connections.ts
+  ai_agent 2,145-149,183-193,242-244,292-300
+packages/@n8n/ai-workflow-builder.ee/src/utils/test/operations-processor.test.ts
+  ai_agent 1131-1322
+packages/@n8n/ai-workflow-builder.ee/src/utils/test/workflow-sanitization.test.ts
+  ai_agent 1-215
+packages/@n8n/ai-workflow-builder.ee/src/test/workflow-builder-agent.test.ts
+  ai_agent 6,55,125-190
+packages/@n8n/ai-workflow-builder.ee/src/tools/utils/test/connection.utils.test.ts
+  ai_agent 1004-1073
+packages/@n8n/ai-workflow-builder.ee/src/tools/utils/connection.utils.ts
+  ai_agent 8,140-146,204-207
+packages/workflow/src/utils.ts
+  ai_agent 394-411
+packages/@n8n/ai-workflow-builder.ee/src/utils/operations-processor.ts
+  ai_agent 2,66-67,72-73,139-168,180,197-200,202,206-207,264-266
+packages/@n8n/workflow-sdk/src/utils/workflow-json-engine-helpers.ts
+  ai_agent 5,42
+packages/workflow/src/index.ts
+  ai_agent 78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0cc3eec517be00afe3bf5763e4d36bf464b43580",
+  "prompts": {}
+}

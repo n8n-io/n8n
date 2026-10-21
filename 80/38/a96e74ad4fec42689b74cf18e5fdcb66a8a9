@@ -1,0 +1,75 @@
+packages/frontend/editor-ui/src/features/execution/logs/logs.types.ts
+  s_f1d38c3c7a3230::t_1807d1542b921c 9
+  s_f1d38c3c7a3230::t_165dd4d9d91673 10-11
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiWorkflowPreview.vue
+  s_f1d38c3c7a3230::t_1807d1542b921c 8,11,183-189
+  s_f1d38c3c7a3230::t_d5d9071e814c88 216
+  s_f1d38c3c7a3230::t_d19310316b1ca3 57
+  s_f1d38c3c7a3230::t_b27832c1d9ab59 119
+  s_1a30b35e849e33::t_47b9b921b925b5 190
+packages/frontend/editor-ui/src/app/layouts/WorkflowLayout.test.ts
+  s_f1d38c3c7a3230::t_1807d1542b921c 4,6-7,107,194-204
+  s_1a30b35e849e33::t_20d109688613ca 205-206
+packages/frontend/editor-ui/src/features/execution/logs/composables/useLogsPanelLayout.ts
+  s_f1d38c3c7a3230::t_1807d1542b921c 3,12,34-38,40-41,75-79
+  s_f1d38c3c7a3230::t_9b9bf1a0836f29 74,80-81,94,107,111
+  s_f1d38c3c7a3230::t_ff1a77fba5e27c 1-2,4-9
+packages/frontend/editor-ui/src/app/layouts/WorkflowLayout.vue
+  s_f1d38c3c7a3230::t_eeaf850ae61275 9
+  s_f1d38c3c7a3230::t_1807d1542b921c 20-21,30-40
+  s_f1d38c3c7a3230::t_e4698ac3f67107 41
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_f1d38c3c7a3230::t_444d366624e992 447-456
+  s_f1d38c3c7a3230::t_f337ac9a9f2fa0 1470-1471
+packages/frontend/editor-ui/src/app/layouts/InstanceAiLayout.vue
+  s_f1d38c3c7a3230::t_1807d1542b921c 6,10-13
+  s_1a30b35e849e33::t_197fe535582527 14
+packages/frontend/editor-ui/src/app/constants/injectionKeys.ts
+  s_f1d38c3c7a3230::t_1807d1542b921c 7-8,99-113
+packages/frontend/editor-ui/src/app/stores/logs.store.ts
+  s_f1d38c3c7a3230::t_1807d1542b921c 19-22
+packages/frontend/editor-ui/src/features/execution/logs/components/LogsPanel.test.ts
+  s_f1d38c3c7a3230::t_1807d1542b921c 28-32,115,120,191,197-203
+  s_f1d38c3c7a3230::t_72911a21b4ab4a 192-196,204,207-208
+  s_f1d38c3c7a3230::t_052f7a1efebd1d 205-206
+packages/frontend/editor-ui/src/app/constants/localStorage.ts
+  s_f1d38c3c7a3230::t_1807d1542b921c 32-33
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiWorkflowPreviewExecution.ts
+  s_f1d38c3c7a3230::t_24e59bab2039eb 18-19,22-24
+  s_f1d38c3c7a3230::t_2ea9bd6f1eb565 213
+  s_f1d38c3c7a3230::t_3a9b742ea341c7 60,65-121
+  s_f1d38c3c7a3230::t_3f4c17f517af56 241-244
+  s_f1d38c3c7a3230::t_ea040035547f73 3
+  s_1a30b35e849e33::t_b15b6a89dd30f4 25,122
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiWorkflowPreview.test.ts
+  s_f1d38c3c7a3230::t_99fb5813fad416 33-35
+  s_f1d38c3c7a3230::t_592c66a9d3339a 51-54,61-62
+  s_f1d38c3c7a3230::t_c7385aac313a53 501-530,532-534,536-537,539-540,542-562,564-598
+  s_f1d38c3c7a3230::t_11deef0a70ed50 137-138,146-149
+  s_f1d38c3c7a3230::t_d31abb3ef9f3af 183-212,222-223
+  s_1a30b35e849e33::t_1a0876c629ea85 63-64,150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8038a96e74ad4fec42689b74cf18e5fdcb66a8a9",
+  "prompts": {},
+  "sessions": {
+    "s_1a30b35e849e33": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d61e7c6d-d29a-47e2-acc4-9d591602f01a",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_f1d38c3c7a3230": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "046b7916-96df-4517-8265-9290c2687bf2",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

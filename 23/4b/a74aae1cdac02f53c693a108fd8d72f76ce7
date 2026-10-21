@@ -1,0 +1,14 @@
+package.json
+  h_52a137d26d774c 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "234ba74aae1cdac02f53c693a108fd8d72f76ce7",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

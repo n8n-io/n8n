@@ -1,0 +1,22 @@
+packages/cli/package.json
+  s_3049fa1eaf1a16::t_8abc79d7971e38 21
+  s_3049fa1eaf1a16::t_178e730a59a4ef 20
+packages/cli/oxlint.config.mts
+  s_3049fa1eaf1a16::t_8abc79d7971e38 47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1656a3e612db6178da484fa788edf8d293419a37",
+  "prompts": {},
+  "sessions": {
+    "s_3049fa1eaf1a16": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f3752e0b5ffesL59nFg8kYAiWr",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

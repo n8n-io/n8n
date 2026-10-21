@@ -1,0 +1,59 @@
+packages/cli/test/integration/public-api/ldap.test.ts
+  s_5faaac1057ba03::t_ebf7d0908db59a 436,581
+  s_5faaac1057ba03::t_35ec637f333392 513-514
+  s_cb7a0172912e5d::t_13eaf8b50d88d6 402-412
+  s_cb7a0172912e5d::t_95675e4154699c 537
+  s_cb7a0172912e5d::t_6bea9ea3c948ef 9
+  s_cb7a0172912e5d::t_91a0b2e13807f0 516,518-528,532-536,538-548
+  s_cb7a0172912e5d::t_b58bfaccaf06c9 517
+  s_5faaac1057ba03::t_ea87a3d0a8290d 515
+packages/@n8n/api-types/src/dto/index.ts
+  s_5faaac1057ba03::t_74cf58b29abb74 130-136
+packages/@n8n/api-types/src/dto/ldap/ldap-sync-public.dto.ts
+  s_5faaac1057ba03::t_9e6861b6dd50b7 6
+  s_5faaac1057ba03::t_8b1a38fa337efc 61
+  s_5faaac1057ba03::t_f049aa64e70997 62
+  s_5faaac1057ba03::t_47297499ecb7f8 26-29,31,40
+  s_5faaac1057ba03::t_f322a193a70826 1-5,7-25,30,32-39,41-60,63
+packages/@n8n/api-types/src/dto/ldap/ldap-sync-public.openapi.ts
+  s_5faaac1057ba03::t_49a9995a4232e9 1-60
+packages/cli/src/modules/ldap.ee/ldap.service.ee.ts
+  s_5faaac1057ba03::t_c38d2ab7ec5154 380-386
+  s_5faaac1057ba03::t_cda50695b03f54 37
+packages/cli/src/public-api/v1/controllers/ldap.public.controller.ts
+  s_5faaac1057ba03::t_3da87abfa1b528 1-8,10,20,23,27-28,31-34
+  s_5faaac1057ba03::t_876f3c44ce653f 74-143
+packages/@n8n/api-types/src/dto/ldap/__tests__/ldap-configuration.dto.test.ts
+  s_5faaac1057ba03::t_442ff6e19c949d 100,102,108,114,121,126-131,133-151
+  s_5faaac1057ba03::t_2d2b3228da3430 9
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/getLdapSync.generated.yml
+  s_5faaac1057ba03::t_58992f7a87bb8e 1-97
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/runLdapSync.generated.yml
+  s_5faaac1057ba03::t_539373df7044b3 1-30,34-101
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_5faaac1057ba03::t_52ae548fd5002f 163-167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a90389acf80fabb89b09488d29140084d603457d",
+  "prompts": {},
+  "sessions": {
+    "s_5faaac1057ba03": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "74c7eb69-dea4-4acf-a985-01e950ced5f9",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    },
+    "s_cb7a0172912e5d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "295f99a5-c2e1-467f-9ee0-a67bc00ac8e0",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

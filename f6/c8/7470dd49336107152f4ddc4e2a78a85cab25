@@ -1,0 +1,23 @@
+packages/cli/src/workflows/__tests__/workflow.service.ee.test.ts
+  s_7879f29575b19b::t_d664fec5325e26 378-380,382-387,390-396,399-401,403,406-412
+packages/cli/src/workflows/workflow.service.ee.ts
+  s_7879f29575b19b::t_617c5338cf6ad6 305-306,328
+  s_7879f29575b19b::t_d664fec5325e26 219-226,232,277-278,292,319,321,335,345
+  s_7879f29575b19b::t_f7f3704010b5a2 203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "f6c87470dd49336107152f4ddc4e2a78a85cab25",
+  "prompts": {},
+  "sessions": {
+    "s_7879f29575b19b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc151cb7-c8eb-431c-8647-e2cb5393c17d",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

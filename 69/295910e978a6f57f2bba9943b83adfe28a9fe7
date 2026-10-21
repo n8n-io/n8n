@@ -1,0 +1,22 @@
+packages/cli/src/modules/data-table/utils/pair-columns.ts
+  s_b9b5db6e61834a::t_2587d07164c869 58-60
+  s_b9b5db6e61834a::t_1ced3573b6783c 48-51,56-57,64-65
+packages/cli/src/modules/data-table/__tests__/pair-columns.test.ts
+  s_b9b5db6e61834a::t_540e6888fe1f37 72-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "69295910e978a6f57f2bba9943b83adfe28a9fe7",
+  "prompts": {},
+  "sessions": {
+    "s_b9b5db6e61834a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce123bdb-de33-42a6-ba92-d89f319b4a40",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

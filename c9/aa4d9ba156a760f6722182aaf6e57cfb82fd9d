@@ -1,0 +1,42 @@
+packages/frontend/editor-ui/src/features/settings/migrationReport/components/WorkflowFiltersPopover.vue
+  s_1a698183e06d2b::t_a6749cd55d3b22 322
+  s_1a698183e06d2b::t_534b95667c342f 3,10,21,28-30,44-59,94-97,112,114-117,119-133,137-143,145-158,160-164,168-169,171-176,181-183,185-210,319-320,325-337
+  s_1a698183e06d2b::t_b4a800df985751 165-167,177-180
+  s_1a698183e06d2b::t_560184c44c2ab7 111,118
+  s_1a698183e06d2b::t_4d69f29ed21d4e 321,323-324
+  s_1a698183e06d2b::t_38bfb7d99f80ba 98-99,338
+  s_1a698183e06d2b::t_ff5f7a49cae653 144,159,170,184
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRuleDetail.vue
+  s_1a698183e06d2b::t_31e686e7d31921 27-28,35,447,450,459,607-645,647-649,652,654,657-659,706-711,731,848-849,851-852,854,856-869,1165,1169,1171,1179-1180
+  s_1a698183e06d2b::t_fab707bd7ca0cf 651,653
+  s_1a698183e06d2b::t_560184c44c2ab7 850
+  s_1a698183e06d2b::t_82e9f869b3d3db 1181
+  s_1a698183e06d2b::t_8ef1807558576d 1178
+  s_1a698183e06d2b::t_14a2cb8319cf26 682
+packages/frontend/editor-ui/src/features/settings/migrationReport/workflowFilters.ts
+  s_1a698183e06d2b::t_aab6040a027b65 1-2,4-5,11,21,30,74-77
+  s_1a698183e06d2b::t_14a2cb8319cf26 3,65-73,82,85
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_1a698183e06d2b::t_b2ce0946666dc2 4807-4812,4814-4815
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRuleDetail.test.ts
+  s_1a698183e06d2b::t_89ef26e8cea2e4 168-172,746-748,1399-1407,1410,1412-1414,1416-1417,1419-1421,1428-1429,1433,1437-1451,1458-1459,1468-1472,1477-1484,1486,1488-1493,1495,1497-1498,1501,1503,1522,1529-1537,1553,1573
+packages/frontend/editor-ui/src/features/settings/migrationReport/workflowFilters.test.ts
+  s_1a698183e06d2b::t_31ae4a8bc50d04 89-92,95-105
+  s_1a698183e06d2b::t_14a2cb8319cf26 93-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c9aa4d9ba156a760f6722182aaf6e57cfb82fd9d",
+  "prompts": {},
+  "sessions": {
+    "s_1a698183e06d2b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8533aebe-6ecd-429c-ae1b-2c799c82e56b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

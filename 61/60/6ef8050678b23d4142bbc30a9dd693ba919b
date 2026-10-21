@@ -1,0 +1,21 @@
+packages/cli/eslint.config.mjs
+  s_8eefdf986011d3::t_2ca0561ef406dc 361
+packages/cli/oxlint.config.mts
+  s_8eefdf986011d3::t_2ca0561ef406dc 366
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "61606ef8050678b23d4142bbc30a9dd693ba919b",
+  "prompts": {},
+  "sessions": {
+    "s_8eefdf986011d3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "36bc2459-15e2-4d03-af42-6b467c658370",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

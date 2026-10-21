@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_adb5d982725a9c::t_723e7d6f830a9e 28-35
+  s_adb5d982725a9c::t_ad70a08f776a8b 71
+  ai_agent 17-22
+  s_adb5d982725a9c::t_b96720739aee9c 690
+  s_adb5d982725a9c::t_9f6314a08253b6 73
+  s_adb5d982725a9c::t_e720c6ef3e80c9 1103-1143
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_adb5d982725a9c::t_28ef55f6f7e761 265-278
+  s_adb5d982725a9c::t_cb6e837fea1b37 15
+  s_adb5d982725a9c::t_9050cae6a5a0eb 398-410
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "05b6f5c3be100babc5ac5acd5a5aa5901d2696d3",
+  "prompts": {},
+  "sessions": {
+    "s_adb5d982725a9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84758071-25ce-404a-9e8a-c2f810ded075",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

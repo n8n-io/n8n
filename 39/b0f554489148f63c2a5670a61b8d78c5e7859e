@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectNavigation.vue
+  ai_agent 190
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionsSettingsView.vue
+  ai_agent 22,124
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.test.ts
+  ai_agent 105,122,135,152,170,184,216,238,280
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBanners.test.ts
+  ai_agent 19,75,99
+packages/frontend/editor-ui/src/app/views/WorkflowsView.vue
+  ai_agent 672
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBanners.vue
+  ai_agent 15,41,124
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.vue
+  ai_agent 25,42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "39b0f554489148f63c2a5670a61b8d78c5e7859e",
+  "prompts": {}
+}

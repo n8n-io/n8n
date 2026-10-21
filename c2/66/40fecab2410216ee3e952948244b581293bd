@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/app/components/MainSidebarHeader.vue
+  s_599825a29fd509::t_5e70f7a4c79dcc 211,223
+packages/frontend/editor-ui/src/app/css/_global.scss
+  s_599825a29fd509::t_29a32540ee52e2 2
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderHeader.vue
+  s_599825a29fd509::t_a2467434d8bf0c 280,290
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_599825a29fd509::t_7d780b286534f5 3416
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiViewHeader.vue
+  s_599825a29fd509::t_3d96687ce0575f 119
+packages/frontend/editor-ui/src/features/core/folders/components/ProjectBreadcrumb.vue
+  s_599825a29fd509::t_8dd94a2ca6b0e8 94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c26640fecab2410216ee3e952948244b581293bd",
+  "prompts": {},
+  "sessions": {
+    "s_599825a29fd509": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a13f3f-ce73-7400-99c0-026025b3e610",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

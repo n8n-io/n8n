@@ -5,9 +5,14 @@ packages/@n8n/permissions/src/public-api-permissions.ee.ts
 packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
   s_6be64701202322::t_baf35f89ebd62d 68
 packages/@n8n/permissions/src/scope-information.ts
-  s_6be64701202322::t_eb5dcf728cea54 155-156,158
+  s_6be64701202322::t_eb5dcf728cea54 155-156,155-158,158
 packages/cli/src/public-api/v1/controllers/git-connections.public.controller.ts
   s_6be64701202322::t_8832d84a1eb29d 205-206,226-227
+  s_6be64701202322::t_8f82360eb2e2e5 205-206
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/unlinkProjectFromGitConnection.generated.yml
+  ai_agent 5
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/assignProjectToGitConnection.generated.yml
+  ai_agent 6
 ---
 {
   "schema_version": "authorship/3.0.0",

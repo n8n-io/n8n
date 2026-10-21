@@ -1,0 +1,32 @@
+packages/@n8n/agents/src/runtime/__tests__/observation-log-observer.test.ts
+  s_6db4640dd6f2e0::t_b45e30ef7acc4b 583-587
+  s_6db4640dd6f2e0::t_1d50b3a6a87ee9 598
+  s_6db4640dd6f2e0::t_971dc05907d01f 694-696
+  s_6db4640dd6f2e0::t_4e3b00f9b3767f 240-282
+  s_6db4640dd6f2e0::t_2c9ce454f39934 566-582,588-597,599-602
+  s_6db4640dd6f2e0::t_bd2f3acfd7beab 693
+packages/@n8n/agents/src/runtime/memory/observation-log-defaults.ts
+  s_6db4640dd6f2e0::t_f5e778c47afeba 45-46
+  s_6db4640dd6f2e0::t_aef12cac6554aa 95-104
+packages/@n8n/agents/src/runtime/memory/observation-log-observer.ts
+  s_6db4640dd6f2e0::t_0dfb3a82065830 32-33
+  s_6db4640dd6f2e0::t_bc4818b6fe89c6 124-126,128-130,153-156
+  s_6db4640dd6f2e0::t_32e0254341fa55 127
+  s_6db4640dd6f2e0::t_7e64ef80e363fd 157-158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "69913bc03801934fb584829369006dc603b93ae5",
+  "prompts": {},
+  "sessions": {
+    "s_6db4640dd6f2e0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3ca5318d-7ed8-4e67-bea9-97bf0be7a4bc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+packages/cli/test/integration/agents/agent-thread-grant.repository.test.ts
+  s_1cefb609788ecf::t_deeac79dd51e65 104-110
+  s_1cefb609788ecf::t_60ee937ec8a805 111-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "4252457d11e9e513c9d0c38a8c660dc0cf785538",
+  "prompts": {},
+  "sessions": {
+    "s_1cefb609788ecf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c4dbd6da-57f3-4245-8e1e-1592f4538ada",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

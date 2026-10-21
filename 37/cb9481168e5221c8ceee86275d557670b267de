@@ -1,0 +1,29 @@
+packages/@n8n/nodes-langchain/nodes/vendors/Databricks/mlflow/span-collector.ts
+  s_6632fc4b04733b::t_41f73f3a639e23 66-67,70-79,281-282,361,370-377,566-569
+packages/@n8n/utils/src/scrub-secrets.test.ts
+  s_6632fc4b04733b::t_8f03f71918565f 246-247,252-253
+  s_6632fc4b04733b::t_a5677b393461a5 248-251
+packages/@n8n/nodes-langchain/nodes/vendors/Databricks/mlflow/types.ts
+  s_6632fc4b04733b::t_41f73f3a639e23 61,81,83-84
+packages/@n8n/utils/src/scrub-secrets.ts
+  s_6632fc4b04733b::t_dd67f5034fb2a3 68-70
+packages/@n8n/nodes-langchain/nodes/vendors/Databricks/mlflow/__tests__/span-collector.test.ts
+  s_6632fc4b04733b::t_a5677b393461a5 320
+  s_6632fc4b04733b::t_c879fa4a5df6fb 45-49,189,201-204,214-216,222-225,228-254,261,268-279,281-290,314-319,321-324,425-444,511
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "37cb9481168e5221c8ceee86275d557670b267de",
+  "prompts": {},
+  "sessions": {
+    "s_6632fc4b04733b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "74c37032-2669-485c-96f2-b3d6bdef0061",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

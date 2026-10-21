@@ -25,6 +25,14 @@ packages/cli/src/modules/git-connections.ee/git-connections.module.ts
       },
       "human_author": "Irénée <irenee.ajeneza@n8n.io>"
     },
+    "s_a5246f8acb611f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1bd2ec7f-5396-4b40-bed9-4d5dd297a878",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
     "s_aeecfe178a9b3d": {
       "agent_id": {
         "tool": "claude",

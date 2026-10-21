@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_cc8ed127f11954::t_06f83e260238ec 161-164,220-229
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/interactionExtensions.test.ts
+  s_cc8ed127f11954::t_833b4c038f18f1 4-6,113-185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a5b70806515075a89c633a7b4af0fb43ecec1a78",
+  "prompts": {},
+  "sessions": {
+    "s_cc8ed127f11954": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e67b9366-cad9-47d8-b1d5-800864d037c3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

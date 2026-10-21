@@ -1,0 +1,26 @@
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/onlineMeeting/update.operation.ts
+  s_ca8bf455020ed2::t_9e004cbda9a8b8 1,14,52-58,63-65,101-121
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/onlineMeeting/attendees.test.ts
+  s_ca8bf455020ed2::t_9e004cbda9a8b8 428,431-449,452,454,465-488
+  s_ca8bf455020ed2::t_f1f2fd56e33c98 489
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/onlineMeeting/update.validation.test.ts
+  s_ca8bf455020ed2::t_9e004cbda9a8b8 181
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/onlineMeeting/attendees.ts
+  s_ca8bf455020ed2::t_9e004cbda9a8b8 72-74,122-123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "1637fb89db00801c819f33dacb1672ffd82a1c8c",
+  "prompts": {},
+  "sessions": {
+    "s_ca8bf455020ed2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8525bfe1-84e6-407e-ae99-c50abd62b2da",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

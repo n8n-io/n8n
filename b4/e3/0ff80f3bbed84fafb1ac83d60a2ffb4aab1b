@@ -1,0 +1,32 @@
+packages/cli/test/integration/database/repositories/agent.repository.test.ts
+  s_b8eb3cc2dbf3f8::t_3b0dea64b2e895 730-760
+packages/@n8n/api-types/src/agents/__tests__/list-agents-query.dto.test.ts
+  s_b8eb3cc2dbf3f8::t_e87a266e2acbb0 1-22
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_b8eb3cc2dbf3f8::t_eee2961e54518f 101
+packages/@n8n/api-types/src/agents/dto.ts
+  s_b8eb3cc2dbf3f8::t_e87a266e2acbb0 68
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_b8eb3cc2dbf3f8::t_e87a266e2acbb0 189-191
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useRecentResources.ts
+  s_b8eb3cc2dbf3f8::t_eee2961e54518f 15-24,29-35,44-54,64-65,69-71,86-96,132-139,172-214,216,221,225-228,246-267
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useRecentResources.test.ts
+  s_b8eb3cc2dbf3f8::t_fe918990951f1d 18-21,47-48,50-58,68,135-137,417-418,424-519
+  ai_agent 419-423
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b4e30ff80f3bbed84fafb1ac83d60a2ffb4aab1b",
+  "prompts": {},
+  "sessions": {
+    "s_b8eb3cc2dbf3f8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ba76698-3554-4571-b883-3f647863c085",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

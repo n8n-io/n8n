@@ -1,0 +1,22 @@
+packages/@n8n/cli/src/commands/package/package-error.ts
+  s_45b7475d2ad978::t_b213d0b1084b42 77
+packages/@n8n/cli/src/__tests__/package-error.test.ts
+  s_45b7475d2ad978::t_d4be87a1fc1938 28-41,43-45
+  s_45b7475d2ad978::t_0c566256b15c6d 27,42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a8d3787b12097eb87312dccc4f9843b2e4b38465",
+  "prompts": {},
+  "sessions": {
+    "s_45b7475d2ad978": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "755fac6b-0309-48c8-893d-8ccb0afe670b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

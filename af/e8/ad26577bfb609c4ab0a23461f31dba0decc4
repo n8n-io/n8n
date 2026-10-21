@@ -1,0 +1,21 @@
+packages/frontend/@n8n/design-system/src/components/N8nSpinner/Spinner.stories.ts
+  s_7e332158b9fab7::t_643cfb087d4d0d 15
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AgentBuildingIndicator.vue
+  s_7e332158b9fab7::t_af1aebd88b62b9 126-136,155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "afe8ad26577bfb609c4ab0a23461f31dba0decc4",
+  "prompts": {},
+  "sessions": {
+    "s_7e332158b9fab7": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a115ce-b45e-7703-a20a-f72284a1aaa7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

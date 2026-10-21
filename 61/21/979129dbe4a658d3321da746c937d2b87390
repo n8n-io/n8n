@@ -1,0 +1,29 @@
+packages/@n8n/instance-ai/src/types.ts
+  s_5d3787b495fe2d::t_06c73bb0f822e2 212-213,215-217
+packages/@n8n/instance-ai/docs/tools.md
+  s_5d3787b495fe2d::t_4937cd5688896c 646-647,656-661,677,679
+packages/cli/src/modules/instance-ai/instance-ai-step-run.ts
+  s_5d3787b495fe2d::t_06c73bb0f822e2 415-422,446,456
+packages/@n8n/instance-ai/skills/debugging-executions/SKILL.md
+  s_5d3787b495fe2d::t_4937cd5688896c 155-156,170,172-176,178-179
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_5d3787b495fe2d::t_06c73bb0f822e2 2180-2184,2186-2189,2204-2205,2207
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_5d3787b495fe2d::t_67a4838937e866 5710-5729,5828-5832,5838,5906
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6121979129dbe4a658d3321da746c937d2b87390",
+  "prompts": {},
+  "sessions": {
+    "s_5d3787b495fe2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72d0d344-24c8-449f-8b80-cfb23d9085fd",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

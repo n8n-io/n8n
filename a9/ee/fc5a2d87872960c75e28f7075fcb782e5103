@@ -1,0 +1,101 @@
+packages/cli/src/modules/oauth-jwe/__tests__/oauth-jwe-key.service.integration.test.ts
+  s_223d08db0c60dd::t_ba53a3a6b75b78 26
+packages/cli/src/modules/policy-infrastructure/README.md
+  s_223d08db0c60dd::t_5ed6c714d54e5e 196-198
+packages/cli/test/migration/1789986374991-prevent-deployment-key-deletion.test.ts
+  s_223d08db0c60dd::t_cb3c2b3b85e7ca 59-60,62,79-81,83,92-94,96
+  s_223d08db0c60dd::t_a0748562e4808a 1-58,61,63-78,82,84-91,95,97-101
+AGENTS.md
+  s_223d08db0c60dd::t_5ed6c714d54e5e 311-312
+packages/cli/eslint.config.mjs
+  s_223d08db0c60dd::t_9bcf850541b98f 48
+packages/@n8n/oxlint-config/src/configs/base.ts
+  s_223d08db0c60dd::t_65da90e51c8880 206
+packages/@n8n/eslint-config/src/rules/no-unsealed-workflow-entity-write.test.ts
+  s_223d08db0c60dd::t_ff37f5acc84dff 3,5-6,10-12,17-22,24
+  s_223d08db0c60dd::t_41c58793b90282 23
+  s_223d08db0c60dd::t_131fcdbdfdb4c7 14-15
+  s_223d08db0c60dd::t_a90a03bd0fbe54 25-26
+packages/@n8n/db/src/repositories/workflow-content-write-context.ts
+  s_223d08db0c60dd::t_1c6773e05e2bee 3,5-6,8,10-15
+  s_223d08db0c60dd::t_85e64c68db9a58 1-2,4,7,9
+packages/@n8n/db/src/subscribers/workflow-entity-subscriber.ts
+  s_223d08db0c60dd::t_1c6773e05e2bee 6,27
+  s_223d08db0c60dd::t_85e64c68db9a58 1-5,7-9,11-26,31-33
+  s_223d08db0c60dd::t_b91f268e53daba 28-30
+  s_223d08db0c60dd::t_a90a03bd0fbe54 10
+scripts/lint-parity/OXLINT_MIGRATION_BLOCKERS.md
+  s_a11be68cb894a3::t_cadeb63eb28a27 1-152,159-161,163-164,167-177,182-196
+  s_223d08db0c60dd::t_581c5857c0f2f8 153-158
+  s_a11be68cb894a3::t_1f06b51c790b85 178-181
+  s_223d08db0c60dd::t_7bc13525fc59c4 162,165-166
+packages/cli/test/integration/encryption-keys.api.test.ts
+  s_223d08db0c60dd::t_ba53a3a6b75b78 23-24
+packages/@n8n/db/src/migrations/common/1789986374991-PreventDeploymentKeyDeletion.ts
+  s_223d08db0c60dd::t_c1e43d90332637 4-42,44-50,52-57
+  s_223d08db0c60dd::t_176a53785befd3 1-3,43,51,58-59
+packages/cli/src/services/__tests__/deployment-signing-secrets.integration.test.ts
+  s_223d08db0c60dd::t_ba53a3a6b75b78 38
+packages/@n8n/eslint-config/src/plugin.ts
+  s_223d08db0c60dd::t_0baa1cbb5eb3e2 21
+  s_223d08db0c60dd::t_ff37f5acc84dff 22
+packages/@n8n/db/src/repositories/deployment-key.repository.ts
+  s_223d08db0c60dd::t_b7e8be93f92927 3,53,55-80,240-241,252-253,255-256
+  s_223d08db0c60dd::t_20d33005c1a963 7,10-11,32-41,43-45,48,52,120,151-152,171,175,179,187-190,196,235-236
+  s_223d08db0c60dd::t_031dd074914531 2
+  s_223d08db0c60dd::t_a1149b7a7162ea 54
+packages/cli/src/encryption/__tests__/encryption-bootstrap.service.integration.test.ts
+  s_223d08db0c60dd::t_64945e4987550c 96-112
+  s_223d08db0c60dd::t_ba53a3a6b75b78 23
+packages/@n8n/backend-test-utils/src/test-db.ts
+  s_223d08db0c60dd::t_ff37f5acc84dff 242-248,252-255,262
+  s_223d08db0c60dd::t_c88256855d4776 233
+  s_223d08db0c60dd::t_86388cb84eb8e1 231-232,234-241,249-251,256-261,263
+packages/@n8n/db/src/subscribers/__tests__/workflow-entity-subscriber.test.ts
+  s_223d08db0c60dd::t_388166ce2e5144 5
+  s_223d08db0c60dd::t_edd99c82d5e6ca 1,3-4,6-11,13-18,20-24,26-31,39-40,50-51
+  s_223d08db0c60dd::t_338e26a89a5e39 38
+  s_223d08db0c60dd::t_5e97acf7d36bd9 2,12,19,25,32
+  s_223d08db0c60dd::t_1c6773e05e2bee 33-37,41-49
+packages/cli/src/encryption/key-manager.service.ts
+  s_223d08db0c60dd::t_031dd074914531 389-390
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_223d08db0c60dd::t_85e64c68db9a58 22,309-311,327-340,355,376-378
+packages/testing/code-health/src/rules/encryption-boundary.rule.test.ts
+  s_223d08db0c60dd::t_28c3d2d5c1f6ca 132-133,185,194,196-197,218,227,229-230,250
+packages/@n8n/db/src/subscribers/index.ts
+  s_223d08db0c60dd::t_85e64c68db9a58 2,6
+packages/@n8n/eslint-config/src/rules/no-unsealed-workflow-entity-write.ts
+  s_223d08db0c60dd::t_41c58793b90282 47-53,98,107
+  s_223d08db0c60dd::t_131fcdbdfdb4c7 4,9-12,15-17,25-26,31-38,42-43,59,63,69-72
+  s_223d08db0c60dd::t_a90a03bd0fbe54 123-128
+  s_223d08db0c60dd::t_ff37f5acc84dff 1,5-8,13,19,24,27-28,39-41,44-46,77-80,82-83,87-93,97,99-102,106,108-113,115-122,129
+packages/@n8n/db/src/repositories/__tests__/deployment-key.repository.test.ts
+  s_223d08db0c60dd::t_1558df4d25aea2 1,4-9
+docs/generated/sqlite-schema/deployment_key.md
+  s_223d08db0c60dd::t_e8ff9812b91e72 45-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a9eefc5a2d87872960c75e28f7075fcb782e5103",
+  "prompts": {},
+  "sessions": {
+    "s_223d08db0c60dd": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f3d77be9dffePL74xPlWxBGKl7",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    },
+    "s_a11be68cb894a3": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f4be146acffet5Zmz2bnkmMCCu",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

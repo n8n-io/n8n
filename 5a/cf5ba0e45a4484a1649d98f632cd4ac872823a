@@ -1,0 +1,48 @@
+packages/cli/src/modules/agents/agent-message-queue-consumer.service.ts
+  s_db74c72b258827::t_460c5b9099e558 5,23,44,162-166,191,195-197,204-213
+packages/cli/src/modules/agents/types/agent-queued-message.ts
+  s_db74c72b258827::t_dac675ade7e4ec 23-24,44
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_db74c72b258827::t_dac675ade7e4ec 18,79,94-99,106,180-183,359-360
+packages/cli/src/modules/agents/system-agents/system-agent-execution.service.ts
+  s_db74c72b258827::t_02d1e299789518 11
+  s_db74c72b258827::t_3e008fffbbe0e6 2-10,12-302,304-429
+  s_db74c72b258827::t_3b3c687119c8cc 1,303
+packages/cli/src/modules/agents/__tests__/agent-message-queue-consumer.service.test.ts
+  s_db74c72b258827::t_75ebb9741b8878 24,120
+packages/cli/src/modules/agents/system-agents/system-agent-registry.ts
+  s_db74c72b258827::t_92a66eddc3a06e 1-25
+packages/cli/src/modules/agents/system-agents/system-agent.types.ts
+  s_db74c72b258827::t_92a66eddc3a06e 1-3,5-40,42-61,63-82
+  s_db74c72b258827::t_02d1e299789518 4,41,62
+packages/@n8n/db/src/migrations/common/1791238469895-AddInstanceScopeToAgents.ts
+  s_db74c72b258827::t_80f28300588bdc 1-2,10,24-25,32-33
+  s_db74c72b258827::t_69d34860b18c4d 3-9,11-23,26-31
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_db74c72b258827::t_5723b8693603c5 281-313
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_db74c72b258827::t_5723b8693603c5 220-231
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_db74c72b258827::t_75ebb9741b8878 100,247
+packages/cli/src/modules/agents/entities/agent.entity.ts
+  s_db74c72b258827::t_f43d4c2c8f16bc 13,23,26-28
+  s_db74c72b258827::t_fc4878b0010d03 17-22
+packages/@n8n/db/src/migrations/sqlite/1791238469895-AddInstanceScopeToAgents.ts
+  s_db74c72b258827::t_69d34860b18c4d 1-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5acf5ba0e45a4484a1649d98f632cd4ac872823a",
+  "prompts": {},
+  "sessions": {
+    "s_db74c72b258827": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "623f2f12-b478-4119-a5b9-9b84971b2bbe",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,51 @@
+packages/@n8n/instance-ai/src/types.ts
+  s_d5003b5d725a42::t_b7a780d32438c4 172-173
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/verify-built-workflow.tool.test.ts
+  s_d5003b5d725a42::t_8fe1bb07a8c0f5 778-783,785-800
+  s_d5003b5d725a42::t_a67173fbe4da2d 801-825
+  s_d5003b5d725a42::t_ae13f1da66fa60 777,784
+  s_d5003b5d725a42::t_5cadcd1446bac8 63
+  s_d5003b5d725a42::t_d95ea138d60b01 472
+packages/@n8n/instance-ai/docs/tools.md
+  s_d5003b5d725a42::t_2f1aef6a0da742 270-278
+  s_d5003b5d725a42::t_f916be8b97fa7b 279
+  s_d5003b5d725a42::t_8f1d1ce7ee615e 268-269
+packages/@n8n/instance-ai/src/tools/orchestration/verification/scripted-gate-run.ts
+  s_d5003b5d725a42::t_b7a780d32438c4 110,114
+  s_d5003b5d725a42::t_2f1aef6a0da742 130
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_d5003b5d725a42::t_b7a780d32438c4 4680-4681,4696-4698,4737
+packages/@n8n/instance-ai/src/tools/orchestration/verification/__tests__/scripted-gate-run.test.ts
+  s_d5003b5d725a42::t_4d25a05bb3bf42 112-122
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_d5003b5d725a42::t_4d25a05bb3bf42 5085-5103
+packages/@n8n/instance-ai/src/tools/orchestration/verification/analyze-result.ts
+  s_d5003b5d725a42::t_ec31ec33e05f66 3-4,158-173,180-184,186-188,204,211,218-219
+  s_d5003b5d725a42::t_ae13f1da66fa60 174-177,189-198,200-203,205-210,212
+  s_d5003b5d725a42::t_97ea7f05b29913 178-179,185,199,213-217
+  s_d5003b5d725a42::t_780c02d3b992e4 220
+packages/@n8n/instance-ai/src/tools/orchestration/verify-built-workflow.tool.ts
+  s_d5003b5d725a42::t_af52e74c444f0b 14-18,199
+  s_d5003b5d725a42::t_97ea7f05b29913 198,483-488
+packages/@n8n/instance-ai/src/tools/orchestration/verification/__tests__/analyze-result.test.ts
+  s_d5003b5d725a42::t_ae13f1da66fa60 517,519,528,530-535,559,562
+  s_d5003b5d725a42::t_a67173fbe4da2d 525,544-554
+  s_d5003b5d725a42::t_c5720dc5011e86 4,508-516,518,520-524,526-527,529,536-543,555-558,560-561,563-567
+  s_d5003b5d725a42::t_ef3d647dab708c 568
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "1a02664a0befdb22e06f5a144cda82dbbe9c0c31",
+  "prompts": {},
+  "sessions": {
+    "s_d5003b5d725a42": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3bc66e51-1092-4528-9f04-197e684e6367",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

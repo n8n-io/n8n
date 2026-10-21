@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/PreferenceCard.vue
+  s_6858ae05b19668::t_83436fd445a0dc 215
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/PreferenceCard.test.ts
+  s_6858ae05b19668::t_83436fd445a0dc 241-245
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0eb4d66b1e48c8e09bb37d10ed1c368e6dcb864b",
+  "prompts": {},
+  "sessions": {
+    "s_6858ae05b19668": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5c1ec50-d65a-44bc-aa43-3c1eadd5030a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

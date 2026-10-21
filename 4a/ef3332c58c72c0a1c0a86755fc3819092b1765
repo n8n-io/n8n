@@ -1,0 +1,17 @@
+packages/cli/src/__tests__/active-workflow-manager.test.ts
+  ai_agent 5
+packages/cli/src/workflows/triggers/trigger-execution-context.factory.ts
+  ai_agent 60-67,316,319,321-326,328-330,485,498,528
+packages/cli/src/workflows/triggers/__tests__/trigger-execution-context.factory.test.ts
+  ai_agent 1253-1258,1260-1261,1286-1288,1293-1295,1297-1298,1301,1303-1305,1310-1321,1323,1325,1591,1703-1707,1709,1717,1732-1736,1739,1747
+packages/cli/src/scheduling/poll-trigger-node/poll-trigger-task-handler.ts
+  ai_agent 6,63,114-118,138-142,144-149,151-152,223-238,244,247
+packages/cli/src/scheduling/poll-trigger-node/__tests__/poll-trigger-task-handler.test.ts
+  ai_agent 8-9,104,109-111,167,180,195,200-204,221,226-230,236,247,256,275-277,302-304,319,329,342,358-360,379-381,394,424-426,462,484,495,502-503,506-511,522-525,539,543-548,553-556,558-563,567-569,573,581-586,588,590-591,597,602,608-613,620-625,627,629-630,699-748,753,763,784,797,826-828,856-858,878,893,912,923,937,954,969,985,999,1015,1025,1034,1047
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4aef3332c58c72c0a1c0a86755fc3819092b1765",
+  "prompts": {}
+}

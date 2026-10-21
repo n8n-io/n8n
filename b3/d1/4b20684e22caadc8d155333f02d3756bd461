@@ -1,0 +1,28 @@
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_3c534142b2065c::t_adc59949ad6e7c 1192-1194,1196
+  s_3c534142b2065c::t_acd395df27f4f0 1794-1796
+  s_3c534142b2065c::t_46021356e1c4fb 1714
+  s_3c534142b2065c::t_d7e11b2748a283 1322-1332
+  s_3c534142b2065c::t_14221ffa98e816 1453-1468
+  s_3c534142b2065c::t_2f6c59fc62e3b8 1855-1859
+  s_3c534142b2065c::t_35b0c852499c36 1452
+packages/@n8n/instance-ai/src/tools/__tests__/workflows.tool.test.ts
+  s_3c534142b2065c::t_eb6bbbbfba87f0 3476-3511,3513-3547
+  s_3c534142b2065c::t_4dfa0a20f9fc37 3512
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b3d14b20684e22caadc8d155333f02d3756bd461",
+  "prompts": {},
+  "sessions": {
+    "s_3c534142b2065c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cdc79e9e-95fa-4aec-bf3d-916979e7d2a4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

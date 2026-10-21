@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatInputBase.test.ts
+  s_f3d2ec4529fb2a::t_05fa7e97c4a537 214
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiInput.vue
+  s_f3d2ec4529fb2a::t_a87f75487bdf70 785-795,943
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiInput.attachments.test.ts
+  s_f3d2ec4529fb2a::t_05fa7e97c4a537 179-180,29,181-187,189-199
+  s_f3d2ec4529fb2a::t_0f751ccc347a77 6,25-28,188
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatInputBase.vue
+  s_f3d2ec4529fb2a::t_a87f75487bdf70 65-66,196-197
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4f9662fae810338b21ed134ded6a8df6fbac2f28",
+  "prompts": {},
+  "sessions": {
+    "s_f3d2ec4529fb2a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c28c4414-1c5b-4167-98ad-d5188b3d2601",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

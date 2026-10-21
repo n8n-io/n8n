@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/execution/executions/components/global/GlobalExecutionsListItem.vue
+  s_af62986d6ef75e::t_3e907c446ad5d9 125
+packages/frontend/editor-ui/src/features/execution/executions/composables/useExecutionHelpers.ts
+  s_af62986d6ef75e::t_64dfbf195a2fd9 24
+  s_af62986d6ef75e::t_63f8399670be5f 7
+  s_af62986d6ef75e::t_339d6e717d7604 80-86
+  s_af62986d6ef75e::t_54df890675de7b 139
+packages/frontend/editor-ui/src/features/execution/executions/components/workflow/WorkflowExecutionsCard.vue
+  s_af62986d6ef75e::t_5036675b3ace3c 65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8d376c4d86edc967096fded4268a331465e8add0",
+  "prompts": {},
+  "sessions": {
+    "s_af62986d6ef75e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "137c8e00-b0af-4ad4-8af5-45842a28f12e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

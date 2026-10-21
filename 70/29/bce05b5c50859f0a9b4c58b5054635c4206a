@@ -1,0 +1,19 @@
+packages/cli/src/modules/n8n-packages/n8n-packages.excalidraw
+  s_92d10ec3c1bd93::t_75f4832e738189 1-3793
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7029bce05b5c50859f0a9b4c58b5054635c4206a",
+  "prompts": {},
+  "sessions": {
+    "s_92d10ec3c1bd93": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5e37c32b-1c8f-45f6-b79b-eb7625ad32b1",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

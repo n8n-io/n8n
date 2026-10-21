@@ -1,0 +1,19 @@
+packages/@n8n/eslint-config/src/rules/no-unsafe-dynamic-key-init.ts
+  s_bc63a262ac8b3b::t_3e81165281f927 113-114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8c23912e77a088618668c68f89a26644fb2ff55c",
+  "prompts": {},
+  "sessions": {
+    "s_bc63a262ac8b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "333c9079-31ea-4739-a3e4-941d76e5eacf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

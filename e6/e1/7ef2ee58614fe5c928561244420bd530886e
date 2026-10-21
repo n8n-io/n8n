@@ -1,0 +1,21 @@
+packages/core/src/execution-engine/execution-context.service.ts
+  s_af62986d6ef75e::t_9edc944d870a29 172-180
+packages/core/src/execution-engine/__tests__/execution-context.service.test.ts
+  s_af62986d6ef75e::t_93e98a8df20035 485-489
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e6e17ef2ee58614fe5c928561244420bd530886e",
+  "prompts": {},
+  "sessions": {
+    "s_af62986d6ef75e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "137c8e00-b0af-4ad4-8af5-45842a28f12e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

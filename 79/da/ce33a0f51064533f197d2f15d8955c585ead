@@ -1,0 +1,50 @@
+packages/cli/src/modules/agents/integrations/__tests__/chat-integration.service.test.ts
+  s_c6e8ad20979443::t_e1c5e0d87fd857 6
+  s_c6e8ad20979443::t_4bde5f8d89db14 12
+  s_c6e8ad20979443::t_35cfb8e576d260 37-43
+  s_c6e8ad20979443::t_cdaa4eaef682d4 515,517-528,538-548,554-555
+  s_c6e8ad20979443::t_78c5aef46804a2 516
+  s_c6e8ad20979443::t_0f1c25bf6a2ae5 529-537
+  s_c6e8ad20979443::t_c817dd0ffff3d8 549-553,556-561,569,578
+  s_c6e8ad20979443::t_d6d72dbe6b0ab4 562-566,568,570-571,579-589,593,598-601,606,614
+  s_c6e8ad20979443::t_c62a5430cd3720 567,572-577,590-592,594-597,602-605,607-613,615-631
+  s_c6e8ad20979443::t_960bdf47e41730 855-953
+  s_c6e8ad20979443::t_0821e38211aa11 1467-1477
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_c6e8ad20979443::t_e1798c87f8f47e 4
+  s_c6e8ad20979443::t_19a5bff048e27d 5
+  s_c6e8ad20979443::t_6ee7c0a4c520ae 12
+  s_c6e8ad20979443::t_6020afe2232b70 103-109
+  s_c6e8ad20979443::t_a7c822153be179 146
+  s_c6e8ad20979443::t_de89cf60d5de00 147-148
+  s_c6e8ad20979443::t_befe1caa4594d1 310-312
+  s_c6e8ad20979443::t_7ec38373698e80 313-316
+  s_c6e8ad20979443::t_82c3950350df19 317,321-322
+  s_c6e8ad20979443::t_85598adc9ca325 318-320,622
+  s_c6e8ad20979443::t_c42da343a09006 448-451
+  s_c6e8ad20979443::t_d7f90bc9e8d107 452-456
+  s_c6e8ad20979443::t_364dc83fec9b17 603-607,612,616,618
+  s_c6e8ad20979443::t_ef18a02f487b64 608-610
+  s_c6e8ad20979443::t_e90a3267f12d74 614-615,617,619-621,626,630-631
+  s_c6e8ad20979443::t_3bae23b62e5736 623-625,627-629,632-636
+  s_c6e8ad20979443::t_7288421272b157 787-789
+  s_c6e8ad20979443::t_6681491d17a383 790-793
+  s_c6e8ad20979443::t_2c181bc8efc007 822-830
+  s_c6e8ad20979443::t_97b65275acdaa1 1125-1127,1129-1131,1140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "79dace33a0f51064533f197d2f15d8955c585ead",
+  "prompts": {},
+  "sessions": {
+    "s_c6e8ad20979443": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "40d5cce1-49fe-49a2-8778-c2ef1961ddfe",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

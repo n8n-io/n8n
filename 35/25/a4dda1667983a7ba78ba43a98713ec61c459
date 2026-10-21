@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_e3560b551eac11::t_c5039791738e95 416-444
+  s_e3560b551eac11::t_8f9027f0555b09 204,336-370,389-415,445-454
+  s_e3560b551eac11::t_7011297dcdce67 371-388
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_e3560b551eac11::t_7011297dcdce67 176-178,183,783-785
+  s_e3560b551eac11::t_a9cdb0eda09c8a 47,179-181,184,640,650,655
+  s_e3560b551eac11::t_593cc78f4eea39 46,82-85,630-639,641-649,651-654,656-657,660-663,682,749,782,805,905,912-913
+  s_e3560b551eac11::t_c5039791738e95 750,752,766-768
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3525a4dda1667983a7ba78ba43a98713ec61c459",
+  "prompts": {},
+  "sessions": {
+    "s_e3560b551eac11": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7b46ea8-2f97-424a-81d9-bb9c3745b1ba",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

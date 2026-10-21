@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Microsoft/Excel/v2/test/actions/common.descriptions.test.ts
+  s_5a928b23f31e6f::t_014a1a58952221 32-33
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/common.descriptions.ts
+  s_5a928b23f31e6f::t_043efbde1a78b4 29-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c6f214b24324ae097b469448f67af3f58036db45",
+  "prompts": {},
+  "sessions": {
+    "s_5a928b23f31e6f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e5d3ba9-e919-4759-8040-eaeeadf65158",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

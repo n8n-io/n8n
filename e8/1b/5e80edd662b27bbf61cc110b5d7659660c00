@@ -1,0 +1,26 @@
+packages/cli/src/modules/inbound-auth-core/oauth2-bearer.driver.ts
+  s_5b85161403cb3c::t_b6399243fb5491 12,90
+  s_5b85161403cb3c::t_3bdb2e739a901c 44,87
+packages/cli/oxlint.config.mts
+  s_5b85161403cb3c::t_97feb4bf84eec3 58-65,239-241,256-270
+  s_5b85161403cb3c::t_2ae89295202ae2 271-273
+packages/cli/eslint.config.mjs
+  s_5b85161403cb3c::t_97feb4bf84eec3 58-65,253-267
+  s_5b85161403cb3c::t_f2fca4d56cf694 268-270
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e81b5e80edd662b27bbf61cc110b5d7659660c00",
+  "prompts": {},
+  "sessions": {
+    "s_5b85161403cb3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "10dcb3c0-c4f9-4155-9b96-4af4ab2eb20d",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

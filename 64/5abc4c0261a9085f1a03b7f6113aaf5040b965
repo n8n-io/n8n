@@ -1,0 +1,100 @@
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/usePagedN8nChatThreads.test.ts
+  s_f3d2ec4529fb2a::t_533b18707630fb 6-9
+  s_f3d2ec4529fb2a::t_2d34a8eb25a104 27-30,33
+  s_f3d2ec4529fb2a::t_05d6ec6f457848 189,196,200,211-212,229-231
+  s_f3d2ec4529fb2a::t_65bd66ddba7bee 192
+  s_f3d2ec4529fb2a::t_3c174700a8eee6 213-214,216-217,228,232,237
+  s_f3d2ec4529fb2a::t_4b56a6a0240465 215
+  s_f3d2ec4529fb2a::t_57c150b11243ba 219-226
+  s_f3d2ec4529fb2a::t_594e9f19bfde01 227,233
+  s_f3d2ec4529fb2a::t_847d8a6e8794f3 240-262
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/N8nChatThreadHistory.vue
+  s_f3d2ec4529fb2a::t_22063eaa41f324 4,8,10-11
+  s_f3d2ec4529fb2a::t_f3f2b5ce7111d9 34-38,41
+  s_f3d2ec4529fb2a::t_822c32c5278889 88-91
+  s_f3d2ec4529fb2a::t_475a8d6bfeec26 114
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  ai_agent 6,50-85,122-129,132-134,137,140,147,154,166,176,185,193,225,676,681,692,697,706,711,722,724,727,729,744,747,749,752,754,759,763-772,774,784,789,793-802,807,815,817,822,825,827,830,832,834-845,847,852,873,875,878,880,888,890,893,895
+  s_9a6001e67297f0::t_0722a6be8de6af 7
+  s_f3d2ec4529fb2a::t_2a4e8de173221b 22
+  s_9a6001e67297f0::t_adc049c2968504 24,37
+  s_9a6001e67297f0::t_9d3e74d511ba0a 39
+  s_9a6001e67297f0::t_d282cb08dbebef 40
+  s_f3d2ec4529fb2a::t_0c9c936b60439b 130-131
+  s_9a6001e67297f0::t_96b8656302ae21 135,177-184,196,208-211
+  s_9a6001e67297f0::t_30b27a8e2f36f5 136,146,148,152,164-165,167-170,175,186-192,194-195,197-200,207,224
+  s_9a6001e67297f0::t_f87191dabc388f 138-139,141-145,153,155-157,159,161-163
+  s_9a6001e67297f0::t_fefeb1272a3320 149-151,158,160
+  s_9a6001e67297f0::t_ee927f7b854ebb 171
+  s_9a6001e67297f0::t_db46ce8a519e1f 172
+  s_f3d2ec4529fb2a::t_7032958131c044 173-174
+  s_f3d2ec4529fb2a::t_faa399511eeb61 201-206
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/useMergedChatHistory.test.ts
+  s_f3d2ec4529fb2a::t_41b418ddbc90ea 6
+  s_f3d2ec4529fb2a::t_580e247f4319a7 8
+  s_f3d2ec4529fb2a::t_3db85833d8a865 51-60
+  s_f3d2ec4529fb2a::t_3177ecf28208a6 70-72,80-82
+  s_f3d2ec4529fb2a::t_ac7e876cf298bc 73,76
+  s_f3d2ec4529fb2a::t_8c734d6cf69e65 103-107
+  s_f3d2ec4529fb2a::t_f0f0a85e5383b2 117,121-122
+  s_f3d2ec4529fb2a::t_f4d9230b1b8b0f 118-120
+  s_f3d2ec4529fb2a::t_6041dac9d60c49 127-138
+  s_f3d2ec4529fb2a::t_ddf3b9f0df8a19 245-274
+  s_f3d2ec4529fb2a::t_f6710b9bc9a599 275-301
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiThreadList.vue
+  s_f3d2ec4529fb2a::t_0a059d38ea489a 19
+  s_f3d2ec4529fb2a::t_2aabe65935c7b8 72-77,82-94
+  s_f3d2ec4529fb2a::t_278d14a4221deb 79-81,95-100
+  s_f3d2ec4529fb2a::t_c7c9a9a2e7cb98 139-141,151,154-155,157-158
+  s_f3d2ec4529fb2a::t_b090f66bb35fb2 149-150,152-153,156,159
+  s_f3d2ec4529fb2a::t_9f6ec601c65692 195,197
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/__tests__/N8nChatThreadHistory.test.ts
+  s_f3d2ec4529fb2a::t_b4fa006afbb773 2
+  s_f3d2ec4529fb2a::t_f7c55b2531de90 158,160,165,167-171
+  s_f3d2ec4529fb2a::t_2f81ff9a9fa349 159,161-164,166,172-174
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiThreadList.test.ts
+  s_f3d2ec4529fb2a::t_0e6cbace1b3c54 21-29
+  s_f3d2ec4529fb2a::t_45a99501c3eb9a 97
+  s_f3d2ec4529fb2a::t_df24c336fbd7b1 382,399,406-430
+  s_f3d2ec4529fb2a::t_70cf8051e236b7 383-398,400-405,431-449
+  s_f3d2ec4529fb2a::t_851ca67b9295b2 550-564
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/useMergedChatHistory.ts
+  s_f3d2ec4529fb2a::t_0bcda9c696f324 1,10-16,18-20,22,26-27,29-30,33-34,39,62,83,86,89,94-95,98-102,105
+  s_f3d2ec4529fb2a::t_f57aa1fbf96dab 5
+  s_f3d2ec4529fb2a::t_f8fc38b7ebddb9 21,23
+  s_f3d2ec4529fb2a::t_b8c4116cb53770 24-25
+  s_f3d2ec4529fb2a::t_e245f9f96c62e2 28
+  s_f3d2ec4529fb2a::t_9f6ec601c65692 45,50-55
+  s_f3d2ec4529fb2a::t_d652de7b75e59d 74,80,90
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/usePagedN8nChatThreads.ts
+  s_f3d2ec4529fb2a::t_7687b63655ef63 10-11
+  s_f3d2ec4529fb2a::t_5351a29c7fe043 12-14
+  s_f3d2ec4529fb2a::t_af6a742dba1d3d 47
+  s_f3d2ec4529fb2a::t_f40fd518d8a2c9 79,81
+  s_f3d2ec4529fb2a::t_0d09b16b087968 99,106-107
+  s_f3d2ec4529fb2a::t_e67bb93e661b60 108-117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "645abc4c0261a9085f1a03b7f6113aaf5040b965",
+  "prompts": {},
+  "sessions": {
+    "s_9a6001e67297f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f72ae404-381c-4905-9080-63d9e62dffe6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    },
+    "s_f3d2ec4529fb2a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c28c4414-1c5b-4167-98ad-d5188b3d2601",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

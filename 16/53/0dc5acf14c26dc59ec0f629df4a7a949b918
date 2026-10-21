@@ -1,0 +1,19 @@
+packages/testing/playwright/services/workflow-api-helper.ts
+  s_6292f7a6ebb209::t_bcc873e9047772 443-446
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "16530dc5acf14c26dc59ec0f629df4a7a949b918",
+  "prompts": {},
+  "sessions": {
+    "s_6292f7a6ebb209": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79d76b24-efed-47cf-aba8-09fbf6fffd6a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

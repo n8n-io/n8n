@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ThinkingBlock.vue
+  s_6858ae05b19668::t_169143fa61dc1d 75-78
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/ThinkingBlock.test.ts
+  s_6858ae05b19668::t_169143fa61dc1d 91-107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "55aad286d1ddc70fbd2be827a2b0f6292405a3a5",
+  "prompts": {},
+  "sessions": {
+    "s_6858ae05b19668": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5c1ec50-d65a-44bc-aa43-3c1eadd5030a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

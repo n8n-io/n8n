@@ -1,0 +1,42 @@
+packages/cli/test/migration/1789736885838-add-agent-thread-ownership.test.ts
+  s_a52facf53351c5::t_25574f29d28417 146-151,164-169
+packages/@n8n/db/src/migrations/common/1789736885838-AddAgentThreadOwnership.ts
+  s_a52facf53351c5::t_1b66571f0102d9 31,46
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_a52facf53351c5::t_1b66571f0102d9 624
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_a52facf53351c5::t_c8911a28e4504c 1110
+  s_a52facf53351c5::t_89cb0be41d47f9 1087-1109,1111-1118,2139-2168
+  s_a52facf53351c5::t_c4515c83d63651 2169-2170
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_a52facf53351c5::t_171dab61abf37e 571
+packages/cli/src/modules/agents/entities/agent-checkpoint.entity.ts
+  s_a52facf53351c5::t_1b66571f0102d9 24
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_a52facf53351c5::t_25574f29d28417 1176
+packages/cli/src/modules/agents/__tests__/agent-threads.controller.test.ts
+  s_a52facf53351c5::t_b723271eb2e210 1-4,6,41-66
+  s_a52facf53351c5::t_f5423d5807b3e2 67
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_a52facf53351c5::t_f5feba7a72d681 315-351
+docs/generated/postgres-schema/public.agent_checkpoints.md
+  s_a52facf53351c5::t_eafe076657ab56 32
+docs/generated/sqlite-schema/agent_checkpoints.md
+  s_a52facf53351c5::t_91ccf45b02b88c 40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "075704cdf3358aea8e737a81a11d25a665e42c48",
+  "prompts": {},
+  "sessions": {
+    "s_a52facf53351c5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b491-bd1b-7860-8002-0194a946ab94",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

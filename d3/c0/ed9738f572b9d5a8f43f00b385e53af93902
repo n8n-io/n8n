@@ -1,0 +1,52 @@
+packages/cli/src/modules/agents/__tests__/agent-message-queue-consumer.service.test.ts
+  s_f3d2ec4529fb2a::t_dad9d43f8c8b1b 284
+  s_f3d2ec4529fb2a::t_904bd5bdd32678 14
+  s_f3d2ec4529fb2a::t_e4aab536473308 262-283
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_f3d2ec4529fb2a::t_79927249abb29c 24
+  s_f3d2ec4529fb2a::t_4b10124be8ff80 456,704
+packages/cli/src/modules/agents/agent-n8n-chat-unavailable.error.ts
+  s_f3d2ec4529fb2a::t_76bae9ef082306 1-7
+packages/cli/src/modules/agents/agent-sse-stream.ts
+  s_f3d2ec4529fb2a::t_b40d47d30a9425 13
+  s_f3d2ec4529fb2a::t_9d83c647c90a4c 77,84-86,88-90
+  s_f3d2ec4529fb2a::t_d81daa8d3d7f72 12
+  s_f3d2ec4529fb2a::t_f50bf46b46e123 76,78-83,87
+packages/cli/src/modules/agents/agent-message-queue-consumer.service.ts
+  s_f3d2ec4529fb2a::t_f9811e2775018e 17
+  s_f3d2ec4529fb2a::t_febb25f39818ae 169
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_f3d2ec4529fb2a::t_9bfca5a8cd10e3 1231,1234-1236
+  s_f3d2ec4529fb2a::t_70c90c91182f9e 28
+  s_f3d2ec4529fb2a::t_be3cd94a158110 1112
+  s_f3d2ec4529fb2a::t_d6a96a5fbffbda 1232
+  s_f3d2ec4529fb2a::t_6f834382b044ed 1233
+  s_f3d2ec4529fb2a::t_bef9b9e666ba6e 1202-1203
+packages/cli/src/modules/agents/__tests__/agent-sse-stream.test.ts
+  s_f3d2ec4529fb2a::t_ce6f804d5f0d7a 526-539
+  s_f3d2ec4529fb2a::t_28462ec5d481cd 178-181
+  s_f3d2ec4529fb2a::t_2f303bf3db04e5 6-13
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_f3d2ec4529fb2a::t_2bdfb630d0fa8f 244
+  s_f3d2ec4529fb2a::t_2dc01d5ff705bf 55
+  s_f3d2ec4529fb2a::t_9bdb27f11ac97b 217,319,429
+  s_f3d2ec4529fb2a::t_1f41075537d3fc 41
+  s_f3d2ec4529fb2a::t_fdb7364422605a 47
+  s_f3d2ec4529fb2a::t_4084596fdcaf44 246
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d3c0ed9738f572b9d5a8f43f00b385e53af93902",
+  "prompts": {},
+  "sessions": {
+    "s_f3d2ec4529fb2a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c28c4414-1c5b-4167-98ad-d5188b3d2601",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

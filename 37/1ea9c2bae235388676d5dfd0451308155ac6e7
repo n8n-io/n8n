@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/servicePrincipalStrippedOperation.test.ts
+  s_6a7d5f1a01d9ec::t_591926bcfd2ac9 100-102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "371ea9c2bae235388676d5dfd0451308155ac6e7",
+  "prompts": {},
+  "sessions": {
+    "s_6a7d5f1a01d9ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5a07b1d9-b11c-42d1-9e09-61ac14d5005c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

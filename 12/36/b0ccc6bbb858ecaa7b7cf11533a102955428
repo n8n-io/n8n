@@ -1,0 +1,55 @@
+packages/@n8n/engine/src/response-channel/__tests__/execution-response-channel.test.ts
+  s_71c6da2ee47cd3::t_4c8a66733e8771 1-6,8-15,17,19-29,31-34,36,45-49,51-53,56-57,60-64,88-90,101
+  s_4c46dcfe1ba789::t_bb90bdbd5b7cc4 41-44,58-59,65-66,96-99,7,16,18,30,35,38-40,50,54-55,67,72,74,77,80,82-83,85
+  s_1b8554cde45c62::t_16ec079be70cdf 100,68-70,78-79,91,107
+  s_ae088f5e88fc8b::t_685d3531daff92 122,37,71,73,75-76,81,84,86-87,123-132
+  s_719e037cee4d57::t_1fda68e550b269 93-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1236b0ccc6bbb858ecaa7b7cf11533a102955428",
+  "prompts": {},
+  "sessions": {
+    "s_1b8554cde45c62": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "412d6818-efbe-45e8-bbc3-57789facf6a6",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_4c46dcfe1ba789": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1251ab8-7233-47da-89f9-16babffdf579",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_719e037cee4d57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27f603bd-170c-453c-b9f6-0405967390f4",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_71c6da2ee47cd3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34058f20-f9c0-4c61-a303-3490fd47e9b8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_ae088f5e88fc8b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "889b53f9-e9c3-4e3b-b556-d6d34bb1180e",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

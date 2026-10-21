@@ -1,0 +1,25 @@
+packages/cli/eslint.config.mjs
+  s_a4556b837ab6e9::t_0f7785e1b7bc8d 64,86-89
+packages/cli/oxlint.config.mts
+  s_a4556b837ab6e9::t_3c27e5c5f5a009 63,85-88,126-136
+packages/cli/src/modules/oauth-server/__tests__/oauth-token.service.test.ts
+  s_a4556b837ab6e9::t_cd1f42c9edabdd 3,33,59-60,78,101,110-113,369,788,868,973,988,1022-1023
+packages/cli/src/modules/oauth-server/oauth-token.service.ts
+  s_a4556b837ab6e9::t_df2e22a9413cdd 23,54,83,98-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "48439b975a9ab5caeb32b8aaa1d54095816dc38e",
+  "prompts": {},
+  "sessions": {
+    "s_a4556b837ab6e9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5eb18d59-43bb-430f-8f1b-0d965479bf74",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

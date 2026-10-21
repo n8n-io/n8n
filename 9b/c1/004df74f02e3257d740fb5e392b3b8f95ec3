@@ -1,0 +1,124 @@
+packages/nodes-base/nodes/Bannerbear/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_da5d2888e4c66e 1-19
+packages/nodes-base/nodes/BambooHr/test/transport.test.ts
+  s_2e1fa95fc44f8f::t_02169f86295621 1-19
+packages/nodes-base/nodes/Bitwarden/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_4b32f18e739673 1-26
+packages/nodes-base/nodes/BambooHr/v1/actions/employee/update/execute.ts
+  s_2e1fa95fc44f8f::t_2570e90060cb89 4
+  s_5e0de13e5e682e::t_5dbd70a22bf608 19
+packages/nodes-base/nodes/BambooHr/v1/actions/companyReport/get/execute.ts
+  s_ccdfb4b3bb5e9b::t_d13b506b5f2fd7 2,18-19,22-24,30
+packages/nodes-base/nodes/BambooHr/v1/actions/employee/create/execute.ts
+  s_a8d7d542d666a7::t_bbac84910e4d94 4,14
+packages/nodes-base/nodes/BambooHr/v1/actions/employee/get/execute.ts
+  s_a8d7d542d666a7::t_433030840174a2 2,20,27,30-32
+packages/nodes-base/nodes/BambooHr/v1/actions/employee/getAll/execute.ts
+  s_a8d7d542d666a7::t_1113a91c941977 2,12
+packages/nodes-base/nodes/BambooHr/v1/actions/employeeDocument/del/execute.ts
+  s_a8d7d542d666a7::t_c926a5b6edd2a8 2,15
+packages/nodes-base/nodes/BambooHr/v1/actions/employeeDocument/download/execute.ts
+  s_a8d7d542d666a7::t_6b2f21d5a015d2 2,17
+packages/nodes-base/nodes/BambooHr/v1/actions/employeeDocument/getAll/execute.ts
+  s_a8d7d542d666a7::t_d8c50461c7aefd 2,22
+packages/nodes-base/nodes/BambooHr/v1/actions/employeeDocument/update/execute.ts
+  s_a8d7d542d666a7::t_64d5435cce0595 2,18
+packages/nodes-base/nodes/BambooHr/v1/actions/employeeDocument/upload/execute.ts
+  s_22eea66365bbbb::t_59acf0cfaa8e97 1-2,7,37
+packages/nodes-base/nodes/BambooHr/v1/actions/file/del/execute.ts
+  s_a8d7d542d666a7::t_a413a56c0b525c 2,14
+packages/nodes-base/nodes/BambooHr/v1/actions/file/download/execute.ts
+  s_a8d7d542d666a7::t_9fb03a3c98aff1 2,16
+packages/nodes-base/nodes/BambooHr/v1/actions/file/getAll/execute.ts
+  s_a8d7d542d666a7::t_eb86e0cdfa10e2 2,12
+packages/nodes-base/nodes/BambooHr/v1/actions/file/update/execute.ts
+  s_a8d7d542d666a7::t_60129e8007f07b 2,17
+packages/nodes-base/nodes/BambooHr/v1/actions/file/upload/execute.ts
+  s_22eea66365bbbb::t_f59430c70300ee 1-2,7,38
+packages/nodes-base/nodes/BambooHr/v1/methods/credentialTest.ts
+  s_011c996fdfa425::t_e4bff05a5397e0 7,9,22,28
+packages/nodes-base/nodes/BambooHr/v1/methods/loadOptions.ts
+  s_a8d7d542d666a7::t_40d055cf9c2c63 2,13,44,69,92,117,142,169
+packages/nodes-base/nodes/BambooHr/v1/transport/index.ts
+  s_011c996fdfa425::t_7388730a342212 8-9,11,19,22,30,34
+packages/nodes-base/nodes/Bannerbear/Bannerbear.node.ts
+  s_ccdfb4b3bb5e9b::t_e29b91c5f64a56 10,70,90,140,148,168-172,179-183,187
+packages/nodes-base/nodes/Bannerbear/GenericFunctions.ts
+  s_c4b1c3b9a71d1d::t_f15b46c67aff9e 11-12,14,19,27,35
+packages/nodes-base/nodes/Beeminder/Beeminder.node.functions.ts
+  s_a8d7d542d666a7::t_06dac4cc57e06a 7,29,38,57,66,75,91,100,113,123,132,141,164,184,193,202,211,220,236
+packages/nodes-base/nodes/Beeminder/Beeminder.node.ts
+  s_a8d7d542d666a7::t_2779779873ca47 13,1014
+packages/nodes-base/nodes/Beeminder/GenericFunctions.ts
+  s_a8d7d542d666a7::t_3acb5c131ac94a 9-10,12,21,37,41,59
+packages/nodes-base/nodes/Beeminder/test/Beeminder.node.functions.test.ts
+  s_011c996fdfa425::t_fd7e55fb948dd6 3,55,62-69,86,105,122,145,167,190,212,237,259,278,299,316,333,350,367,391,422,444,472,491,508,525,542,561,585,611,633,658
+packages/nodes-base/nodes/Bitwarden/Bitwarden.node.ts
+  s_c4b1c3b9a71d1d::t_efdea7bb3c3a89 3,128,142,155,194,215,255,269,283,296,310,344,373,393,434,448,463,476,490,537,556
+packages/nodes-base/nodes/Bitwarden/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_915bfee617d13b 9-10,12,15,17,20,38,44,52,79,93,112,134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9bc1004df74f02e3257d740fb5e392b3b8f95ec3",
+  "prompts": {},
+  "sessions": {
+    "s_011c996fdfa425": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ab6cdd889fabef339",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_22eea66365bbbb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a16673bfa31c94f40",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_5e0de13e5e682e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aa768470753f420c9",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_a8d7d542d666a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-abbb49b4bb6e8c19c",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_c4b1c3b9a71d1d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ab361632eb2d98716",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_ccdfb4b3bb5e9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aac870c9785713296",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

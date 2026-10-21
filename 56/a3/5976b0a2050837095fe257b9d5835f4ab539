@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionsSettings.api.test.ts
+  s_8f364f7c5743a0::t_76035b152a2add 2-6,25-60
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionsSettings.api.ts
+  s_8f364f7c5743a0::t_23c2ea73f5c7a6 256-281
+  s_8f364f7c5743a0::t_669dedddaba425 4,6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "56a35976b0a2050837095fe257b9d5835f4ab539",
+  "prompts": {},
+  "sessions": {
+    "s_8f364f7c5743a0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f77a805c-fda4-413a-87ea-7588e5f68260",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

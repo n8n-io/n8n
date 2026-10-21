@@ -1,0 +1,22 @@
+packages/@n8n/node-engine-compatibility/src/v1-execution-read.ts
+  s_13d0f2e1be0144::t_8125e5e06f8ebc 38,50
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-execution-read.test.ts
+  s_13d0f2e1be0144::t_7c90aa0abd0fd0 60,67-69,79-96
+  s_13d0f2e1be0144::t_26963bf51d0332 97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c176508a7abbba7dd98b6ab1f5b2402debf30551",
+  "prompts": {},
+  "sessions": {
+    "s_13d0f2e1be0144": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46caa7f3-0057-4c97-8c31-ca17c936adc0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

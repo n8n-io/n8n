@@ -1,0 +1,21 @@
+packages/@n8n/mcp-browser-extension/src/relayConnection.test.ts
+  s_6d6420d5a3673f::t_e7d4880360dca8 142-233
+packages/@n8n/mcp-browser-extension/src/relayConnection.ts
+  s_6d6420d5a3673f::t_df29b1f7137e82 58-81,565-571,576,582,630,640
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "37c2822fd76d7de9892cf41fb3d9c5cc786488f5",
+  "prompts": {},
+  "sessions": {
+    "s_6d6420d5a3673f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a060fba8-8802-48fb-aef4-f374b0165fd9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

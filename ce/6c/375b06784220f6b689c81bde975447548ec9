@@ -1,0 +1,89 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-published-state.ts
+  s_7c3ef9211001a1::t_f3a72b83998252 1,9,12-13
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.serializer.ts
+  s_7c3ef9211001a1::t_504e0f2ce0975f 23
+  s_7c3ef9211001a1::t_1ae963757cafbc 46
+  s_7c3ef9211001a1::t_85a6dad616fc32 87
+  s_7c3ef9211001a1::t_b43cf1aaf3a2ec 6-8
+  s_7c3ef9211001a1::t_8e18260f2f0d20 55-57,63,65-66
+  s_7c3ef9211001a1::t_26a58ba0c4fefe 94-96,113
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_7c3ef9211001a1::t_cfd01292857fba 107,112
+  s_7c3ef9211001a1::t_d7c17391e12504 111
+packages/cli/src/modules/n8n-packages/spec/serialized/__tests__/workflow.schema.test.ts
+  s_7c3ef9211001a1::t_76d1f24e4e4745 20
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_7c3ef9211001a1::t_75b66f26d71594 1102,1110,1113,1116,1124,1127
+packages/cli/src/modules/n8n-packages/spec/serialized/__tests__/workflow-metadata.schema.test.ts
+  s_7c3ef9211001a1::t_c39a6302c89185 1,3,5,7,11,13,17,19,23
+packages/cli/src/modules/n8n-packages/io/manifest-entry.ts
+  s_7c3ef9211001a1::t_19eefc8707ff62 6
+  s_7c3ef9211001a1::t_06da44dbf4ce15 128,132-133
+  s_7c3ef9211001a1::t_a94a52b37b0029 75-76,78-79
+packages/cli/src/modules/n8n-packages/spec/serialized/workflow-metadata.schema.ts
+  s_7c3ef9211001a1::t_db87e05ee97069 4-5,7,11
+packages/cli/src/modules/promotions.ee/base-branch-files.ts
+  s_7c3ef9211001a1::t_f5bfabe9bbd631 72-74
+  s_7c3ef9211001a1::t_ce2782232bddbb 3
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow.integration.test.ts
+  s_7c3ef9211001a1::t_db33b4813b0c28 947,972
+  s_7c3ef9211001a1::t_a7e93e22ba295d 176,180
+  s_7c3ef9211001a1::t_d3fb6ddedd4858 66-69
+  s_7c3ef9211001a1::t_853deb06009b23 946
+  s_7c3ef9211001a1::t_563ba353001c16 131,140-141,144,156
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-import.types.ts
+  s_7c3ef9211001a1::t_a7a8bd1d2b8a4c 21,25
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-published-state.test.ts
+  s_7c3ef9211001a1::t_70ea43ac6cc51b 4-5,9,12-13
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/package-fixtures.ts
+  s_7c3ef9211001a1::t_030b318a15a8c4 263,266,268-269
+  s_7c3ef9211001a1::t_a719c12f79fe4b 434,437
+  s_7c3ef9211001a1::t_13d1a3f3292ce5 24,28,30,32
+  s_7c3ef9211001a1::t_5bc07eea15ba05 17
+  s_7c3ef9211001a1::t_e5bddc4eebf82a 230-231
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.exporter.ts
+  s_7c3ef9211001a1::t_ac93f72d14ca33 92
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow.exporter.test.ts
+  s_7c3ef9211001a1::t_d7c17391e12504 189,191
+packages/cli/src/modules/n8n-packages/__tests__/export-git-blob-parity.integration.test.ts
+  s_7c3ef9211001a1::t_d7c17391e12504 160
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_7c3ef9211001a1::t_910a00a76d7fa1 169-171
+  s_7c3ef9211001a1::t_52dac59eabff48 141,147
+  s_7c3ef9211001a1::t_12831f73b330d6 123,127
+  s_7c3ef9211001a1::t_1d0988a1b74971 17
+  s_7c3ef9211001a1::t_b43a0102e2230e 153,156-157,161-162,166
+  s_7c3ef9211001a1::t_8d4b8cdff901b9 30-32
+packages/cli/src/modules/n8n-packages/spec/serialized/workflow.schema.ts
+  s_7c3ef9211001a1::t_28302e3a9be7e3 60
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_7c3ef9211001a1::t_910a00a76d7fa1 580
+  s_7c3ef9211001a1::t_d7c17391e12504 30
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow.serializer.test.ts
+  s_7c3ef9211001a1::t_3b17c42906b3ba 86-88,90-92,96
+  s_7c3ef9211001a1::t_cdf30f019ca628 108,114,120
+  s_7c3ef9211001a1::t_1aed2223780d52 22
+packages/cli/src/modules/n8n-packages/entities/workflow/auto-included-workflow.exporter.ts
+  s_7c3ef9211001a1::t_0c7cd5ba3eb478 109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ce6c375b06784220f6b689c81bde975447548ec9",
+  "prompts": {},
+  "humans": {
+    "h_ce2c4b90496ac9": {
+      "author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_7c3ef9211001a1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "32fbcf13-2821-4919-a86f-c6e0a1232891",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

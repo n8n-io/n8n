@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRuleDetail.test.ts
+  s_2956cab75a6463::t_eb916267e3769e 45,209-213,442,490,540,560,588-593,595-606,609-610,614-618,620,622-641,643-644,648-656,671-673,675,677-681,738
+packages/frontend/@n8n/design-system/src/components/N8nUserSelect/UserSelect.test.ts
+  s_2956cab75a6463::t_eb916267e3769e 419-444
+packages/frontend/@n8n/design-system/src/components/N8nUserSelect/UserSelect.vue
+  s_2956cab75a6463::t_eb916267e3769e 22-23,34,97-100
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRuleDetail.vue
+  s_2956cab75a6463::t_eb916267e3769e 5,16,42,210-211,214-215,220-223,226-228,230,234,236-237,242-256,327-328,529-552,554,556,563-566,568-584,587-619,631-653,668-712
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_2956cab75a6463::t_eb916267e3769e 4605-4612
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "25b4c72c935a8a9bf5ba287bffef35042caa17a3",
+  "prompts": {},
+  "sessions": {
+    "s_2956cab75a6463": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "23bc5d43-edd4-415c-b854-b3f0f4c7dc7c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

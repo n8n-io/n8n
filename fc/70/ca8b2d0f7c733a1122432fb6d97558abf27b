@@ -1,0 +1,61 @@
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_2befc5b848a61f::t_09faf5eb873c57 1465,1483
+  s_805dfaf49a4974::t_c4d2b6b27fbc3d 711-718,762
+packages/@n8n/api-types/src/index.ts
+  s_805dfaf49a4974::t_4e703c120c5b6e 352
+packages/cli/src/modules/instance-ai/internal-messages.ts
+  s_805dfaf49a4974::t_2c008ab478fa2f 112,187-195
+  s_805dfaf49a4974::t_c4d2b6b27fbc3d 111,181-186,196-197
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_805dfaf49a4974::t_c4d2b6b27fbc3d 198,4039,4143-4144,4148-4150
+  s_805dfaf49a4974::t_c891d5ef944b54 204,4040-4043,4047-4049,4145-4146
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_805dfaf49a4974::t_2c008ab478fa2f 149,2365
+  s_805dfaf49a4974::t_b1f5a01871b26c 93
+packages/cli/src/modules/instance-ai/instance-ai-memory.service.ts
+  s_2befc5b848a61f::t_09faf5eb873c57 19,35,382,387,395,397-401,404-409,411-416
+  s_805dfaf49a4974::t_d8bbe5f0884e64 418-419
+  s_805dfaf49a4974::t_2c008ab478fa2f 383-386,388-394,396,402-403,410,417
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_805dfaf49a4974::t_b1f5a01871b26c 577-581,879-890
+  s_805dfaf49a4974::t_2c008ab478fa2f 78,103,575-576,582-590,877-878
+packages/cli/src/modules/instance-ai/onboarding.ts
+  s_805dfaf49a4974::t_ef490aeaf98cef 44-45
+  s_805dfaf49a4974::t_c891d5ef944b54 14,17,39-43,46,48-52,54-56,58-62
+  s_805dfaf49a4974::t_d439b1084de18e 35
+  s_805dfaf49a4974::t_2c008ab478fa2f 1-6,8-13,15-16,19-26,31,34,63-103,105-113,120-140,143-147,149-168,170-186,196-204,206
+  s_805dfaf49a4974::t_315dcc65b7de41 36-37,187-195,205
+  s_805dfaf49a4974::t_b56728aa213911 38
+  s_805dfaf49a4974::t_3475a54be1dda5 104
+  s_805dfaf49a4974::t_c4d2b6b27fbc3d 7,18,27,30,47,53,57,207
+  s_805dfaf49a4974::t_91512771bdf991 32-33
+  s_805dfaf49a4974::t_e8b144cb32bb0f 141-142
+  s_805dfaf49a4974::t_8e57e1809820b9 148
+  s_805dfaf49a4974::t_624e3a7771f613 169
+  s_805dfaf49a4974::t_b1f5a01871b26c 114-119
+  s_805dfaf49a4974::t_e170a8cc623100 28-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "fc70ca8b2d0f7c733a1122432fb6d97558abf27b",
+  "prompts": {},
+  "sessions": {
+    "s_2befc5b848a61f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd4a7712-be19-4f96-8a57-1fa2c72164a3",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_805dfaf49a4974": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2bca039b-dcd6-4f04-960e-82d23622ba13",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

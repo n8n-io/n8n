@@ -1,0 +1,23 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_14bbae78eb49a2::t_a0089bd53322fc 8078
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  ai_agent 991-996
+packages/frontend/editor-ui/src/features/agents/utils/agent-plan.ts
+  s_14bbae78eb49a2::t_a0089bd53322fc 8,39-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2711a01bb36ab1d5830ec619229a0d888819d13f",
+  "prompts": {},
+  "sessions": {
+    "s_14bbae78eb49a2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c2f9-97aa-73d1-bf6a-7b613bf7132f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

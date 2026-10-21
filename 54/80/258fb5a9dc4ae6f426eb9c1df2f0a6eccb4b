@@ -1,0 +1,17 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5480258fb5a9dc4ae6f426eb9c1df2f0a6eccb4b",
+  "prompts": {},
+  "sessions": {
+    "s_47d9c24d147bdc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11bc9-65a1-7110-9789-34497cba967e",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

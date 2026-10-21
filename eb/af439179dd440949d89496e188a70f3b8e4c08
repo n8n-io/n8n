@@ -1,0 +1,29 @@
+scripts/cloud-session-opencode.mjs
+  s_b59ab74503853f::t_656c1ba0c5756e 44,51-56,199,206,285
+scripts/cloud-session.mjs
+  s_b59ab74503853f::t_656c1ba0c5756e 150-153
+.devcontainer/codespaces/opencode-server.test.mjs
+  s_b59ab74503853f::t_656c1ba0c5756e 35-36,150-152
+  s_b59ab74503853f::t_a733764028922d 153-164
+.devcontainer/codespaces/cloud-session.test.mjs
+  s_b59ab74503853f::t_656c1ba0c5756e 73-81
+.devcontainer/codespaces/opencode-client.test.mjs
+  s_b59ab74503853f::t_a92e39b42b564e 5,11,118-127
+  s_b59ab74503853f::t_a733764028922d 190-214
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ebaf439179dd440949d89496e188a70f3b8e4c08",
+  "prompts": {},
+  "sessions": {
+    "s_b59ab74503853f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08a7c-4c19-7e12-a5b0-ed2c751be352",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

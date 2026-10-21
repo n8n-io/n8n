@@ -1,0 +1,45 @@
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Panel/NodesListPanel.test.ts
+  s_f0db97e87be686::t_22bfcf286f8df6 8-9
+packages/frontend/editor-ui/src/features/ndv/shared/views/NodeDetailsView.test.ts
+  s_326dd039c6d306::t_3ed5a5be9a4fef 315-316
+  s_f0db97e87be686::t_22bfcf286f8df6 17-22,325
+packages/frontend/editor-ui/src/__tests__/mocks.ts
+  s_f0db97e87be686::t_22bfcf286f8df6 24,42-43,344-357
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.utils.test.ts
+  s_f0db97e87be686::t_22bfcf286f8df6 37
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.test.ts
+  s_f0db97e87be686::t_eb901a8bf34ece 346
+  s_f0db97e87be686::t_22bfcf286f8df6 7,9,117,129,146,321-324
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Modes/NodesMode.test.ts
+  s_f0db97e87be686::t_22bfcf286f8df6 21-22
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/ItemTypes/NodeItem.test.ts
+  s_f0db97e87be686::t_22bfcf286f8df6 13-14
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useNodeCommands.test.ts
+  s_f0db97e87be686::t_22bfcf286f8df6 4
+packages/frontend/editor-ui/src/features/shared/nodeCreator/composables/useActions.test.ts
+  s_f0db97e87be686::t_22bfcf286f8df6 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "01feddd7e8ecd61d537c4a0218e40bd056493eba",
+  "prompts": {},
+  "sessions": {
+    "s_326dd039c6d306": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cd049455-bc63-41dc-808b-f75c96f484d1",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": null
+    },
+    "s_f0db97e87be686": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "536eefbb-4485-4caa-88d9-a6f9ff917471",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

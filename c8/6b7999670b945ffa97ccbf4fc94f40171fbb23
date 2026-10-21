@@ -1,0 +1,23 @@
+packages/cli/src/posthog/__tests__/posthog.test.ts
+  s_583f31bceceb3e::t_6694bb93a126d5 563-621
+packages/cli/src/events/__tests__/activity-event-relay.test.ts
+  s_583f31bceceb3e::t_716a9a1b09c04e 12,43-44,77,128-147
+packages/cli/src/posthog/index.ts
+  s_583f31bceceb3e::t_8fb31e2fd6585f 183-189,205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c86b7999670b945ffa97ccbf4fc94f40171fbb23",
+  "prompts": {},
+  "sessions": {
+    "s_583f31bceceb3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9264794a-277b-4041-ba69-ba6dee92fbf7",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

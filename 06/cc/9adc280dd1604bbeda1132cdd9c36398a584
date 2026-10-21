@@ -1,0 +1,23 @@
+packages/@n8n/agents/src/runtime/model/messages.ts
+  s_095bc7988238ae::t_6da7a46d453199 1-2,272,277,291,300,306-316,398,421,431,435,450,490
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime-conversion.test.ts
+  s_095bc7988238ae::t_dedf6b55f247b8 67-86,92-104
+  s_095bc7988238ae::t_2da3bb5f2f82a5 87-91,132-136
+  s_095bc7988238ae::t_b6ee276ef03a06 105-131,137-155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "06cc9adc280dd1604bbeda1132cdd9c36398a584",
+  "prompts": {},
+  "sessions": {
+    "s_095bc7988238ae": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d8fa-4a3c-7561-8701-d0db3ef40e69",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/test/migration/1791358805271-add-timeout-seconds-to-scheduler.test.ts
+  s_57eecec4f9161a::t_8c2d3bd6087301 125-127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5723c00f933d59b3a14aacbd6f3d70f43f0afc74",
+  "prompts": {},
+  "sessions": {
+    "s_57eecec4f9161a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3d706ec8-56bc-4f03-b213-91b7f4441141",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

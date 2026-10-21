@@ -1,0 +1,52 @@
+packages/@n8n/instance-ai/evaluations/routing/cases.ts
+  s_fd6e130ca898c8::t_c04ed9f2549fb7 8-11,18,48-49,77-82,94-98
+packages/@n8n/instance-ai/evaluations/discovery/cli.ts
+  s_fd6e130ca898c8::t_1a233e3eef8552 309
+packages/@n8n/instance-ai/evaluations/README.md
+  s_fd6e130ca898c8::t_e7f1c34677973f 567-601,603,606-612
+  s_fd6e130ca898c8::t_bde7efaf7b17b9 602,604-605
+packages/@n8n/instance-ai/evaluations/harness/stub-services.ts
+  s_fd6e130ca898c8::t_276772ec76e1ae 446-447
+  s_fd6e130ca898c8::t_bc292a49b8fe34 390-391,393-394,399,401
+  s_fd6e130ca898c8::t_cc8e12dc76eda9 123-128
+  s_fd6e130ca898c8::t_0d8a7091c27bd0 14-17
+  s_fd6e130ca898c8::t_8c5c124706396d 429-434
+  s_fd6e130ca898c8::t_1a2768f2b151a3 40,42-44,54-55,57
+  s_fd6e130ca898c8::t_8b07dd961b0f9d 351-358
+  s_fd6e130ca898c8::t_7d5a16852c900b 196-205,208-211,215-216,223-224
+  s_fd6e130ca898c8::t_abe7f1964571d1 84-87,90-94,106-122,129-177
+  s_fd6e130ca898c8::t_58b8fb3489cd05 264-267,270-276,279-282
+  s_fd6e130ca898c8::t_5cb5323342d1ad 178
+packages/@n8n/instance-ai/evaluations/discovery/seeded-turn.ts
+  s_fd6e130ca898c8::t_8aa9442b7d68a0 1-68
+packages/@n8n/instance-ai/evaluations/discovery/runner.ts
+  s_fd6e130ca898c8::t_cc8e12dc76eda9 203-207
+  s_fd6e130ca898c8::t_2efb1315c0ab68 20-21,36,186-190,248,250,255,257
+packages/@n8n/instance-ai/evaluations/routing/__tests__/cases.test.ts
+  s_fd6e130ca898c8::t_714f0a8ee1ea10 78,81-86,90-109,116,119-120
+  s_fd6e130ca898c8::t_cc8e12dc76eda9 87-89
+packages/@n8n/instance-ai/evaluations/discovery/types.ts
+  s_fd6e130ca898c8::t_980c27407877b7 13-14,103-110
+packages/@n8n/instance-ai/evaluations/__tests__/stub-services.test.ts
+  s_fd6e130ca898c8::t_cc8e12dc76eda9 160-166,179-181,193-195,216-218
+  s_fd6e130ca898c8::t_133e7ca4388d8c 153-159,167-178,182-192,196-215,219-230
+packages/@n8n/instance-ai/evaluations/discovery/__tests__/seeded-turn.test.ts
+  s_fd6e130ca898c8::t_4325a707fc7b2e 1-28,34,38-40,46-62,68-69
+  s_fd6e130ca898c8::t_cc8e12dc76eda9 29-33,35-37,41-45,63-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "08b2f744b258ffef003a096f7bd1f0f881154a43",
+  "prompts": {},
+  "sessions": {
+    "s_fd6e130ca898c8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ed1908b-631c-440c-bb45-2628551c070a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,40 @@
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_782619aac31c26::t_1ac1353cb1ee33 774,804-817,823
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_782619aac31c26::t_6844545c267c26 242-248
+  s_782619aac31c26::t_c302c4f8815ea7 87-89,147,204-206,279,285-288,471
+  s_782619aac31c26::t_a766c1d8fa25ff 196
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_782619aac31c26::t_f8f862c354053c 535-577
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_782619aac31c26::t_968444c4632762 1204-1217,1219,1221-1225
+  s_782619aac31c26::t_f8f862c354053c 1218,1220
+  s_782619aac31c26::t_912b2978fff382 1203
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
+  s_782619aac31c26::t_f8f862c354053c 1006-1042
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_782619aac31c26::t_d990809b1a2619 318-323,328,425,432-438
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_782619aac31c26::t_d990809b1a2619 95-98,384,517-524
+  s_782619aac31c26::t_6844545c267c26 388-397
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_782619aac31c26::t_5721348628ae6a 503-506,509,1054
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_782619aac31c26::t_1ac1353cb1ee33 296-298
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "772aa312c1db3747d514074497122aa06de7508c",
+  "prompts": {},
+  "sessions": {
+    "s_782619aac31c26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6889b3f-b5e6-4aa7-a6ff-cca974b94b72",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

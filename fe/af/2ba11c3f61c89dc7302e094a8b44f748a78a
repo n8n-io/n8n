@@ -1,0 +1,19 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_77ace137ff01d7::t_68cfbd08caae6b 3749
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "feaf2ba11c3f61c89dc7302e094a8b44f748a78a",
+  "prompts": {},
+  "sessions": {
+    "s_77ace137ff01d7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a0476d1-9aef-41f8-be6a-f7dc66f344d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

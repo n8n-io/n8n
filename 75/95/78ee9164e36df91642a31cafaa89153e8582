@@ -1,0 +1,39 @@
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/package-fixtures.ts
+  s_2397c9db9d923f::t_2f638b609d26c9 14,325,330
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  s_2397c9db9d923f::t_2f638b609d26c9 97,621-623,642-644,729-733,1260-1262
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table.exporter.test.ts
+  s_2397c9db9d923f::t_2f638b609d26c9 151
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential.exporter.test.ts
+  s_2397c9db9d923f::t_2f638b609d26c9 176
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.exporter.ts
+  s_2397c9db9d923f::t_2f638b609d26c9 14,47,74
+packages/cli/src/modules/n8n-packages/entities/requirement-source.ts
+  s_2397c9db9d923f::t_2f638b609d26c9 20-33
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-result.test.ts
+  s_2397c9db9d923f::t_2f638b609d26c9 3-6,13-16,20,32-42,46,58-60,66-68,80-81
+packages/cli/src/modules/n8n-packages/entities/variable/variable.exporter.ts
+  s_2397c9db9d923f::t_2f638b609d26c9 76,94
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-requirement.exporter.ts
+  s_2397c9db9d923f::t_2f638b609d26c9 9,29-32,39-43,45-51
+packages/cli/src/modules/n8n-packages/entities/__tests__/requirement-source.test.ts
+  s_2397c9db9d923f::t_2f638b609d26c9 1-31
+packages/cli/src/modules/n8n-packages/entities/credential/credential.exporter.ts
+  s_2397c9db9d923f::t_2f638b609d26c9 47,88-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "759578ee9164e36df91642a31cafaa89153e8582",
+  "prompts": {},
+  "sessions": {
+    "s_2397c9db9d923f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11062-0f35-7542-b063-84df367d8ec4",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

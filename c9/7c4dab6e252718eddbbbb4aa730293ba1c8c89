@@ -1,0 +1,95 @@
+packages/nodes-base/nodes/Github/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_365070c6da45c5 132-134,140-150
+  s_2e1fa95fc44f8f::t_de66b23400e081 67-87
+  s_2e1fa95fc44f8f::t_11d0a37ef9572a 88-90
+  s_2e1fa95fc44f8f::t_40b4fea4767acb 151-153
+  s_5fa5d2ccf12525::t_e1ba947ccf8c4e 2,42,59-61,93,154-156,176
+packages/nodes-base/nodes/Github/__tests__/node/Github.node.test.ts
+  s_2e1fa95fc44f8f::t_516748931e4dfe 366-368
+  s_2e1fa95fc44f8f::t_7462fe58fa8384 369-370
+  s_5fa5d2ccf12525::t_1f826cf35f7407 128-130,185,443-445,487-489,531-533,575-577,657,683,709
+packages/nodes-base/nodes/Github/SearchFunctions.ts
+  s_2e1fa95fc44f8f::t_29db8f59e51ccf 150
+  s_2e1fa95fc44f8f::t_e4450b6ba421a6 88
+  s_2e1fa95fc44f8f::t_d3be7a8d6cc9e3 115
+  s_2e1fa95fc44f8f::t_5339f5670d5d5c 6
+  s_2e1fa95fc44f8f::t_50259bcf4f69a9 51
+packages/nodes-base/nodes/Github/Github.node.ts
+  s_2e1fa95fc44f8f::t_e8594e0b467176 2447,2641,2652,2671,2681,2693,2708,2723,2732,2741,2749,2760,2769,2812,2826,2837,2848,2857,2876,2886,2894,2902,2910,2920,2936,2955,2970,2986,2998,3008,3036,3047,3061,3080,3093,3118,3130,3142,3150
+  s_2e1fa95fc44f8f::t_3faca869ca75d6 2565,2602,2616
+  s_2e1fa95fc44f8f::t_83b3d0542c2c3a 2776
+  s_2e1fa95fc44f8f::t_17290b94d61c11 12,14
+  s_2e1fa95fc44f8f::t_81c90c72b6040a 2486
+  s_2e1fa95fc44f8f::t_72bbf827016dcf 2422
+  s_2e1fa95fc44f8f::t_d5b1d46a47b7b4 2783
+  s_2e1fa95fc44f8f::t_398bbe3eb9a71c 3021
+  s_2e1fa95fc44f8f::t_694dba0992103d 2620-2622
+packages/nodes-base/nodes/Github/GithubTrigger.node.ts
+  s_2e1fa95fc44f8f::t_ec0249322a5fde 540
+  s_2e1fa95fc44f8f::t_ba7fa3f0e9ef8b 11
+  s_2e1fa95fc44f8f::t_c6962a35aa7929 614
+  s_2e1fa95fc44f8f::t_11f44b4672fa21 694
+  s_2e1fa95fc44f8f::t_290708cf10f23c 504
+  s_2e1fa95fc44f8f::t_a748ad187db5f1 583
+packages/nodes-base/nodes/Github/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_643e688e8032c4 96
+  s_2e1fa95fc44f8f::t_59d9a49c5ff879 51-53
+  s_2e1fa95fc44f8f::t_1f43a8daddafcf 9-10,12,21,24
+  s_2e1fa95fc44f8f::t_5323dfbd8e7005 79-84
+  s_2e1fa95fc44f8f::t_07b43a94d170e1 42-50
+  s_4b13c6fdeedfcb::t_4b4fef56433393 40
+packages/nodes-base/nodes/Github/__tests__/Github.file.create.test.ts
+  s_a69518ff4a6a1d::t_48b5691b740bf0 91,136,181,246
+packages/nodes-base/nodes/Github/__tests__/Github.pullRequest.test.ts
+  s_5fa5d2ccf12525::t_27b0447322f24e 104-106,295-297,492-494,556-558,620-622,657-659,682,717-719,742,779-781,820-822,865-867,1079-1083,1113-1115
+packages/nodes-base/nodes/Github/__tests__/node/GithubTrigger.node.test.ts
+  s_7b373731fe31a5::t_594edf81d3f05c 150,176,181,203,231,271,486
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c97c4dab6e252718eddbbbb4aa730293ba1c8c89",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_4b13c6fdeedfcb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ac95db28d7dd57bdd",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_5fa5d2ccf12525": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a2e6eead891460daf",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_7b373731fe31a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a566983649db61ea2",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_a69518ff4a6a1d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a35268d1980961846",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

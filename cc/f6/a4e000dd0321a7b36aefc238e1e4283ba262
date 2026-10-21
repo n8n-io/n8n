@@ -1,0 +1,14 @@
+packages/@n8n/engine/src/database/__tests__/workflow-execution.integration.test.ts
+  h_b49cecddc99496 192,218
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ccf6a4e000dd0321a7b36aefc238e1e4283ba262",
+  "prompts": {},
+  "humans": {
+    "h_b49cecddc99496": {
+      "author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

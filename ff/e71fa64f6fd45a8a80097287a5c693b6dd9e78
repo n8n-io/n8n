@@ -1,0 +1,18 @@
+packages/cli/src/public-api/v1/openapi-gen/decorator-routes.ts
+  h_5d40c27a8fdfd1 193
+packages/cli/src/public-api/v1/openapi-gen/generate.ts
+  h_5d40c27a8fdfd1 93-94
+packages/cli/src/public-api/v1/openapi-gen/untyped-nullable.ts
+  h_5d40c27a8fdfd1 19-21,31-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ffe71fa64f6fd45a8a80097287a5c693b6dd9e78",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

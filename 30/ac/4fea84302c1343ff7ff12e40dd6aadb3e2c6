@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/toolLabels.test.ts
+  s_281efd42004ec0::t_bca81785d9e778 13-15,185-190
+  s_281efd42004ec0::t_cc45c6ac142e94 191-192
+packages/frontend/editor-ui/src/features/ai/instanceAi/toolLabels.ts
+  s_281efd42004ec0::t_bca81785d9e778 168-172
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_281efd42004ec0::t_bca81785d9e778 7755-7767
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "30ac4fea84302c1343ff7ff12e40dd6aadb3e2c6",
+  "prompts": {},
+  "sessions": {
+    "s_281efd42004ec0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ceb8-26d9-7362-a99e-66779bbf1d1d",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

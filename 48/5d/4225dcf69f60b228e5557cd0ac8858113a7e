@@ -1,0 +1,21 @@
+packages/@n8n/engine/src/execution/__tests__/resume-request.service.test.ts
+  s_13d0f2e1be0144::t_39c63770094071 106-115
+packages/@n8n/engine/src/execution/resume-request.service.ts
+  s_13d0f2e1be0144::t_7a38e6c5041f95 8,41-42,44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "485d4225dcf69f60b228e5557cd0ac8858113a7e",
+  "prompts": {},
+  "sessions": {
+    "s_13d0f2e1be0144": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46caa7f3-0057-4c97-8c31-ca17c936adc0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

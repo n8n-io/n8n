@@ -1,0 +1,28 @@
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_7ba7506cfa80e9::t_7c2ede1ac2c873 91,94,99-101,108,114-216
+  s_3aaa503f47ada7::t_374720fcbcc590 217
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "4fe09d8035b2178927550d0b0ebc02005399355f",
+  "prompts": {},
+  "sessions": {
+    "s_3aaa503f47ada7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b33a-46e6-7610-aa08-a734250d28b4",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_7ba7506cfa80e9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b405-b23b-7560-9f3c-99249a5d4e8f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

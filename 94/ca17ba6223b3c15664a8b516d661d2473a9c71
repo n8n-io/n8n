@@ -1,0 +1,31 @@
+packages/nodes-base/nodes/HomeAssistant/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_a3ade2102b6766 1-29
+packages/nodes-base/nodes/HomeAssistant/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_31b8d496d2792b 9-10,12,17,20,23,25,32,54,73
+packages/nodes-base/nodes/HomeAssistant/HomeAssistant.node.ts
+  s_7c77f9db616763::t_adf8af216a4593 13-14,121-132,189,194,203,229,242,250-254,279,289,315,321,329,333,350-355,364,368,400
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "94ca17ba6223b3c15664a8b516d661d2473a9c71",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_7c77f9db616763": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ac440d417d200475a",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
