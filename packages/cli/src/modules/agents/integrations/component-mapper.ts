@@ -146,12 +146,12 @@ export class ComponentMapper {
 		// Delegate per-platform normalization to the Integration implementation.
 		const integration = platform ? Container.get(ChatIntegrationRegistry).get(platform) : undefined;
 		const components =
-			integration?.normalizeComponents?.(payload.components, {
+			(await integration?.normalizeComponents?.(payload.components, {
 				runId,
 				toolCallId,
 				wrapResumeValue: (rawValue) =>
 					JSON.stringify(this.wrapValueForSchema(rawValue, resumeSchema)),
-			}) ?? payload.components;
+			})) ?? payload.components;
 
 		const children: unknown[] = [];
 		const buttons: unknown[] = [];
