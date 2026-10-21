@@ -693,7 +693,10 @@ export class Expression {
 	 *
 	 */
 	convertObjectValueToString(value: object): string {
-		if (value instanceof DateTime && value.invalidReason !== null) {
+		// `isDateTime` only checks the `isLuxonDateTime` field, so a plain object can
+		// pass it. Only a real invalid DateTime has a string `invalidReason`: a valid
+		// one gives `null`, and a plain object gives `undefined`.
+		if (DateTime.isDateTime(value) && typeof value.invalidReason === 'string') {
 			throw new UserError('invalid DateTime');
 		}
 

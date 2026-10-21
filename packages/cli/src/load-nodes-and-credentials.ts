@@ -701,15 +701,22 @@ export class LoadNodesAndCredentials {
 		}
 	}
 
+	/** Splits a full node type at its first dot, so the node name keeps any further segments. */
+	private splitNodeType(fullNodeType: string): [packageName: string, nodeType: string] {
+		const separatorIndex = fullNodeType.indexOf('.');
+		if (separatorIndex === -1) return [fullNodeType, ''];
+		return [fullNodeType.slice(0, separatorIndex), fullNodeType.slice(separatorIndex + 1)];
+	}
+
 	recognizesNode(fullNodeType: string): boolean {
-		const [packageName, nodeType] = fullNodeType.split('.');
+		const [packageName, nodeType] = this.splitNodeType(fullNodeType);
 		const { loaders } = this;
 		const loader = loaders[packageName];
 		return !!loader && nodeType in loader.known.nodes;
 	}
 
 	getNode(fullNodeType: string): LoadedClass<INodeType | IVersionedNodeType> {
-		const [packageName, nodeType] = fullNodeType.split('.');
+		const [packageName, nodeType] = this.splitNodeType(fullNodeType);
 		const { loaders } = this;
 		const loader = loaders[packageName];
 		if (!loader) {

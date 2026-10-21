@@ -66,7 +66,6 @@ import {
 } from '../composables/useNodeCredentialOptions';
 import { getAutoSelectedCredential } from '../credentials.utils';
 import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
-import { useCredentialSharing } from '../composables/useCredentialSharing';
 import { getCredentialOwnerShortName } from '../composables/useUnusableWorkflowCredentials';
 import {
 	AI_GATEWAY_MANAGED_TAG,
@@ -280,8 +279,6 @@ const {
 	() => props.credentials,
 );
 
-const { isEnabled: isCredentialSharingEnabled } = useCredentialSharing();
-
 const credentialTypeNames = computed(() => {
 	const returnData: Record<string, string> = {};
 
@@ -312,7 +309,6 @@ function isListed(credentialType: string, credentialId: string): boolean {
  * through an instance-wide scope.
  */
 function getUnlistedSelected(credentialType: string) {
-	if (!isCredentialSharingEnabled.value) return undefined;
 	const id = selected.value[credentialType]?.id;
 	if (!id || isListed(credentialType, id)) return undefined;
 	return workflowDocumentStore?.value.usedCredentials?.[id];
@@ -325,7 +321,7 @@ function getUnusableSelected(credentialType: string) {
 
 /** A credential the workflow references and that exists, usable or not. */
 function isKnownCredentialId(id: string | null | undefined): boolean {
-	if (!isCredentialSharingEnabled.value || !id) return false;
+	if (!id) return false;
 	return workflowDocumentStore?.value.usedCredentials?.[id] !== undefined;
 }
 
@@ -1340,8 +1336,6 @@ function buildUsableRows(
 		key: option.id,
 		option,
 	});
-
-	if (!isCredentialSharingEnabled.value) return visible.map(toRow);
 
 	// Yours either because it travels with you into this project, or because
 	// this is your own space and the credential is not published instance-wide.

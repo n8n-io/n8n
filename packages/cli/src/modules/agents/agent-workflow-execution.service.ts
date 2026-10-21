@@ -36,7 +36,7 @@ import { AgentRunTracingService } from './agent-run-tracing.service';
 import type {
 	AgentRuntimeInstrumentation,
 	PrepareWorkflowAgentForEval,
-} from './agent-runtime-instrumentation';
+} from './evaluation/agent-evaluation.contracts';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import { AgentsSettingsService } from './agents-settings.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';

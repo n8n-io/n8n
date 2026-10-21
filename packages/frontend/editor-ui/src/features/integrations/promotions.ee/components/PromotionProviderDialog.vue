@@ -25,10 +25,10 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import {
 	createPromotionProvider,
 	deletePromotionProvider,
-	fetchPromotionConnections,
+	fetchPromotionEnvironments,
 	fetchPromotionProvider,
 	updatePromotionProvider,
-	type PromotionConnectionSummary,
+	type PromotionEnvironmentSummary,
 	type PromotionProvider,
 } from '../promotionsSettings.api';
 import {
@@ -61,7 +61,7 @@ const form = reactive<ProviderFormState>(emptyProviderForm());
 
 const step = ref<'form' | 'key'>('form');
 const current = ref<PromotionProvider | null>(null);
-const usedBy = ref<PromotionConnectionSummary[]>([]);
+const usedBy = ref<PromotionEnvironmentSummary[]>([]);
 const generatedPublicKey = ref<string | null>(null);
 const isLoading = ref(false);
 const isSubmitting = ref(false);
@@ -115,7 +115,7 @@ const storedPublicKey = computed(() => {
 });
 
 const isInUse = computed(() => usedBy.value.length > 0);
-const usedByNames = computed(() => usedBy.value.map((connection) => connection.name).join(', '));
+const usedByNames = computed(() => [...new Set(usedBy.value.map(({ name }) => name))].join(', '));
 
 const hasUsername = computed(() => form.username.trim().length > 0);
 const hasPassword = computed(() => form.password.length > 0);
@@ -190,12 +190,12 @@ onMounted(async () => {
 
 	isLoading.value = true;
 	try {
-		const [provider, connections] = await Promise.all([
+		const [provider, environments] = await Promise.all([
 			fetchPromotionProvider(rootStore.publicApiContext, props.providerId),
-			fetchPromotionConnections(rootStore.publicApiContext, { providerId: props.providerId }),
+			fetchPromotionEnvironments(rootStore.publicApiContext, { providerId: props.providerId }),
 		]);
 		current.value = provider;
-		usedBy.value = connections;
+		usedBy.value = environments;
 		Object.assign(form, providerFormFrom(provider));
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.promotions.provider.toast.error.load'));

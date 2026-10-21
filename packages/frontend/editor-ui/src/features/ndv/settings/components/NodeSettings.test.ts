@@ -4,7 +4,7 @@ import { setActivePinia } from 'pinia';
 import { defineComponent, h, ref, shallowRef } from 'vue';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { createRunExecutionData, type INodeTypeDescription, type IRunData } from 'n8n-workflow';
-import type { FrontendSettings, NodeTypeAvailabilityScope } from '@n8n/api-types';
+import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
 
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
@@ -118,7 +118,6 @@ interface RenderOptions {
 	canvasOnly?: boolean;
 	props?: Record<string, unknown>;
 	restrictedNodeTypes?: Record<string, NodeTypeAvailabilityScope>;
-	settings?: Partial<FrontendSettings>;
 }
 
 const renderNodeSettings = (options: RenderOptions = {}) => {
@@ -131,7 +130,6 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 		canvasOnly = false,
 		props = {},
 		restrictedNodeTypes = {},
-		settings = {},
 	} = options;
 	const pinia = createTestingPinia({ stubActions: false });
 	setActivePinia(pinia);
@@ -140,7 +138,7 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const settingsStore = useSettingsStore();
-	settingsStore.settings = { ...settingsStore.settings, canvasOnly, ...settings };
+	settingsStore.settings = { ...settingsStore.settings, canvasOnly };
 	workflowsStore.setWorkflowId(workflow.id);
 	const ndvStore = useNDVStore(createWorkflowDocumentId(workflow.id));
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
@@ -514,15 +512,14 @@ describe('NodeSettings', () => {
 			testId: string,
 		) => (await findAllByTestId(testId)).map((element) => element.getAttribute('data-read-only'));
 
-		const renderOnForeignCredential = (granularCredentialSharing: boolean, readOnly = false) =>
+		const renderOnForeignCredential = (readOnly = false) =>
 			renderNodeSettings({
 				props: { readOnly, foreignCredentials: ['alice-cred'] },
-				settings: { granularCredentialSharing },
 				stubs: exposeReadOnlyStubs,
 			});
 
-		it('keeps the parameters locked but the picker usable when credential sharing is on', async () => {
-			const { findAllByTestId, getByText } = renderOnForeignCredential(true);
+		it('keeps the parameters locked but the picker usable', async () => {
+			const { findAllByTestId, getByText } = renderOnForeignCredential();
 
 			expect(new Set(await readOnlyStates(findAllByTestId, 'parameters-stub'))).toEqual(
 				new Set(['true']),
@@ -531,18 +528,8 @@ describe('NodeSettings', () => {
 			expect(getByText(/Switch to a credential you can use/)).toBeInTheDocument();
 		});
 
-		it('locks the picker with the parameters when credential sharing is off', async () => {
-			const { findAllByTestId, queryByText } = renderOnForeignCredential(false);
-
-			expect(new Set(await readOnlyStates(findAllByTestId, 'parameters-stub'))).toEqual(
-				new Set(['true']),
-			);
-			expect(await readOnlyStates(findAllByTestId, 'credentials-stub')).toEqual(['true']);
-			expect(queryByText(/Switch to a credential you can use/)).not.toBeInTheDocument();
-		});
-
-		it('locks the picker on a read-only canvas even when credential sharing is on', async () => {
-			const { findAllByTestId } = renderOnForeignCredential(true, true);
+		it('locks the picker on a read-only canvas', async () => {
+			const { findAllByTestId } = renderOnForeignCredential(true);
 
 			expect(new Set(await readOnlyStates(findAllByTestId, 'parameters-stub'))).toEqual(
 				new Set(['true']),
