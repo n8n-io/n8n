@@ -202,6 +202,7 @@ async function planFor(input: AgentPackageFixture, overrides: Partial<ResolvedIm
 			conflictPolicy: 'keep-existing',
 		},
 		tagRequest: { requirements: [], missingMode: 'create', conflictPolicy: 'skip' },
+		checkRootPlacement: false,
 	});
 }
 
