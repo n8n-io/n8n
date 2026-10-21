@@ -59,8 +59,7 @@ export class ScimSsoService {
 	 */
 	private async turnOffScim(reason: string) {
 		try {
-			if (!(await this.scimSettingsService.isEnabled())) return;
-			await this.scimSettingsService.setEnabled(false);
+			if (!(await this.scimSettingsService.turnOff())) return;
 		} catch (error) {
 			this.logger.error('SCIM: Failed to turn off SCIM provisioning without single sign-on', {
 				error,
