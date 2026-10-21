@@ -733,6 +733,7 @@ packages/cli/src/modules/n8n-packages/__tests__/agent-import-planning.integratio
   s_71ad2034164515::t_dbc54c3fe66d72 695
   s_d3c0f6f6f7d41c::t_6c1c18d4ba74ee 328,384,386,407,649,655,662
   s_b6b595a74c218c::t_6e90e7873eaeab 318-319,377,541-547,549-566,568,570-573
+  s_71ad2034164515::t_c70cfc0fe6b7b5 198
 packages/cli/src/modules/n8n-packages/entities/credential/credential-matcher.ts
   s_71ad2034164515::t_81225120e7d7b1 39-40,51-55,68,173,182-185
   s_71ad2034164515::t_a28f419ffc3911 186-190
