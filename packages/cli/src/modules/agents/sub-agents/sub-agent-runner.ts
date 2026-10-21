@@ -68,7 +68,7 @@ import {
 } from './sub-agent-source-resolver';
 
 export interface SubAgentRunContext {
-	/** The parent turn's episodic scope decision. The child run keeps it. */
+	/** The parent turn's episodic scope decision. A disabled decision stays disabled for the child. */
 	parentEpisodicScope?: EpisodicScopeDecision;
 	projectId: string;
 	/** Saved n8n agent id of the delegating parent agent, used to link the child session back. */

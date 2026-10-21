@@ -3771,6 +3771,57 @@ describe('AgentExecutionOrchestratorService', () => {
 		},
 	);
 
+	it.each([
+		[
+			'turns memory off for a checkpoint without a decision on an integration resource',
+			'integration:slack:U1',
+			undefined,
+			true,
+		],
+		[
+			'keeps the decision a checkpoint already stores',
+			'integration:slack:U1',
+			{ writeScopeId: 'slack:T1:C1', readScopeIds: ['slack:T1:C1'] },
+			false,
+		],
+		['leaves a checkpoint on another resource alone', 'task:task-1', undefined, false],
+	])('on resume, %s', async (_label, resourceId, stored, expectsDisabled) => {
+		const { service, checkpointStorage, runtimeCacheService } = makeService();
+		const memory = { threadId: 'thread-1', resourceId };
+		checkpointStorage.getStatus.mockResolvedValue({
+			status: 'active',
+			checkpoint: makeCheckpoint(
+				{},
+				{ ...memory, ...(stored && { hostMetadata: encodeEpisodicScopeMetadata(stored) }) },
+			),
+		});
+		const runtime = makeRuntime();
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		runtime.agent.resume.mockImplementation(async (_method, _data, options: ResumeOptions) => {
+			await options.onResumeClaimed?.();
+			return {
+				runId: 'run-1',
+				stream: makeReadableStream([{ type: 'finish', finishReason: 'stop' }]),
+			};
+		});
+
+		await collect(
+			service.resumeForChat({
+				agentId,
+				projectId,
+				runId: 'run-1',
+				toolCallId: 'tc-1',
+				resumeData: { approved: true },
+				messageContext: selectedContext,
+			}),
+		);
+
+		const sent = runtime.agent.resume.mock.calls[0][2].hostMetadata;
+		if (expectsDisabled)
+			expect(sent).toMatchObject(encodeEpisodicScopeMetadata({ disabled: true }));
+		else expect(sent).not.toHaveProperty(EPISODIC_SCOPE_METADATA_KEY);
+	});
+
 	it('reconstructs a resumed runtime from the persisted sandbox scope', async () => {
 		const { service, checkpointStorage, runtimeCacheService } = makeService(true);
 		const runtime = makeRuntime();

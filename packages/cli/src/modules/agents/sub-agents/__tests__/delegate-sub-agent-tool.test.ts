@@ -230,6 +230,37 @@ describe('createN8nDelegateSubAgentTool', () => {
 		);
 	});
 
+	it('does not hand a resolved parent scope to the child', async () => {
+		const tool = createN8nDelegateSubAgentTool({
+			parentAgentId,
+			runner,
+			sourcesById: { 'agent-2': source },
+			projectId,
+			credentialProvider,
+			runType: 'production',
+		});
+
+		await tool.handler?.(
+			{ subAgentId: 'agent-2', taskName: 'Research API', goal: 'Find behavior.' },
+			{
+				runId: 'parent-run-1',
+				persistence: {
+					threadId: 'parent-thread-1',
+					resourceId: 'task:task-1',
+					hostMetadata: encodeEpisodicScopeMetadata({
+						writeScopeId: 'slack:T1:C1',
+						readScopeIds: ['slack:T1:C1'],
+					}),
+				},
+			},
+		);
+
+		expect(runner.run).toHaveBeenCalledWith(
+			expect.any(Object),
+			expect.not.objectContaining({ parentEpisodicScope: expect.anything() }),
+		);
+	});
+
 	it('forwards the parent telemetry from the tool context to the foreground runner', async () => {
 		const tool = createN8nDelegateSubAgentTool({
 			parentAgentId,

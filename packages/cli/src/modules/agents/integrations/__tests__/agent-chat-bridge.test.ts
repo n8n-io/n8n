@@ -3658,6 +3658,7 @@ describe('AgentChatBridge — consumeStream', () => {
 					expect.objectContaining({
 						agentId: 'agent-1',
 						credentialId: 'cred-1',
+						threadId: 'thread-1',
 						author: expect.objectContaining({ id: 'u1' }),
 					}),
 				],

@@ -28,6 +28,18 @@ describe('resolveEpisodicScopeDecision', () => {
 		expect(logger.warn).not.toHaveBeenCalled();
 	});
 
+	it('keeps the turn running with memory off when the channel throws', async () => {
+		const resolveEpisodicScope = vi.fn().mockRejectedValue(new Error('lookup failed'));
+
+		await expect(
+			resolveEpisodicScopeDecision({ resolveEpisodicScope }, context, logger),
+		).resolves.toEqual({ disabled: true });
+		expect(logger.warn).toHaveBeenCalledWith(
+			expect.stringContaining('failed to resolve'),
+			expect.objectContaining({ error: 'lookup failed', agentId: 'agent-1' }),
+		);
+	});
+
 	it.each([
 		['has no policy or lacks identity', { resolveEpisodicScope: () => null }],
 		['is unknown', undefined],

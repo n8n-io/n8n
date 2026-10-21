@@ -950,7 +950,7 @@ export class AgentChatBridge {
 					agentId: this.agentId,
 					credentialId: this.integration.credentialId,
 					integrationType: this.integration.type,
-					threadId: session.memory.threadId.id,
+					threadId: this.resolvePlatformThreadId(thread),
 					author,
 					origin: integrationOrigin,
 				},

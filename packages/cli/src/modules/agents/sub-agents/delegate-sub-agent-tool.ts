@@ -67,7 +67,10 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 				};
 			}
 			const parentSandboxScope = decodeAgentSandboxHostMetadata(request.parentHostMetadata);
-			const parentEpisodicScope = readEpisodicScopeDecision(request.parentHostMetadata);
+			// A child never inherits a parent's scope, but it must not re-enable memory the parent turned off.
+			const parentDecision = readEpisodicScopeDecision(request.parentHostMetadata);
+			const parentEpisodicScope =
+				parentDecision && 'disabled' in parentDecision ? parentDecision : undefined;
 
 			const result = await runner.run(
 				{

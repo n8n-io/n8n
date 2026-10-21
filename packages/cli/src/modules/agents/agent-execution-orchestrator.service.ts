@@ -1,4 +1,5 @@
 import {
+	readEpisodicScopeDecision,
 	type Agent as RuntimeAgent,
 	type EpisodicScopeDecision,
 	type SerializableAgentState,
@@ -1377,7 +1378,14 @@ export class AgentExecutionOrchestratorService {
 		return {
 			runId,
 			toolCallId,
-			hostMetadata: encodeIntegrationMessageContext(selectedContext),
+			hostMetadata: {
+				...encodeIntegrationMessageContext(selectedContext),
+				// The resume merge lets this metadata win, so it must not replace a stored decision.
+				// A checkpoint from before channels resolved a scope gets the integration fallback.
+				...(readEpisodicScopeDecision(memoryScope.hostMetadata)
+					? {}
+					: episodicScopeHostMetadata(memoryScope.resourceId)),
+			},
 			...(selectedContext && conversation
 				? {
 						onResumeClaimed: async () =>
@@ -1821,6 +1829,8 @@ export class AgentExecutionOrchestratorService {
 		messageContext: IntegrationMessageContext | null,
 	) {
 		const { agentId, message, memory, identity, abortSignal } = config;
+		// A wake carries no `episodicScope`: the background job record does not store the
+		// originating turn's decision, so a wake on an integration thread runs without episodic memory.
 		return this.streamChatResponse({
 			access,
 			messageContext,

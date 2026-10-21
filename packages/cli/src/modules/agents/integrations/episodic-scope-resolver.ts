@@ -13,12 +13,23 @@ export async function resolveEpisodicScopeDecision(
 	context: EpisodicScopeContext,
 	logger: Logger,
 ): Promise<EpisodicScopeDecision> {
-	const scope = await integration?.resolveEpisodicScope(context);
-	if (scope) return scope;
-	logger.warn('Episodic memory is off for this turn: the channel did not resolve ownership', {
+	const diagnostic = {
 		agentId: context.agentId,
 		integrationType: context.integrationType,
 		threadId: context.threadId,
-	});
+	};
+	try {
+		const scope = await integration?.resolveEpisodicScope(context);
+		if (scope) return scope;
+		logger.warn(
+			'Episodic memory is off for this turn: the channel did not resolve ownership',
+			diagnostic,
+		);
+	} catch (error) {
+		logger.warn('Episodic memory is off for this turn: the channel failed to resolve ownership', {
+			...diagnostic,
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
 	return { disabled: true };
 }

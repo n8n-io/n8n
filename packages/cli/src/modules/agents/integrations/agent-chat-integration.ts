@@ -54,7 +54,7 @@ export interface EpisodicScopeContext {
 	agentId: string;
 	credentialId: string;
 	integrationType: string;
-	/** The conversation the turn belongs to. */
+	/** The platform conversation of the incoming message. */
 	threadId: string;
 	author: AgentMessageAuthor;
 	origin?: AgentMessageIntegrationOrigin;
