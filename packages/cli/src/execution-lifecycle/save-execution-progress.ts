@@ -11,6 +11,7 @@ export async function saveExecutionProgress(
 	nodeName: string,
 	_data: ITaskData,
 	executionData: IRunExecutionData,
+	requireRunning = false,
 ) {
 	const logger = Container.get(Logger);
 	const executionPersistence = Container.get(ExecutionPersistence);
@@ -27,7 +28,11 @@ export async function saveExecutionProgress(
 		const updated = await executionPersistence.updateExistingExecution(
 			executionId,
 			{ data: executionData, status: 'running' },
-			{ requireNotFinished: true, requireNotCanceled: true },
+			// A memory guard stop saves the execution as failed but not finished, and a
+			// save that started before the stop must not write the run data back.
+			requireRunning
+				? { requireNotFinished: true, requireStatus: 'running' }
+				: { requireNotFinished: true, requireNotCanceled: true },
 		);
 
 		if (!updated) {

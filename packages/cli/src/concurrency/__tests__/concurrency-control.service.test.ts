@@ -1005,4 +1005,136 @@ describe('ConcurrencyControlService', () => {
 			);
 		});
 	});
+
+	describe('production hold', () => {
+		const createService = () =>
+			new ConcurrencyControlService(
+				logger,
+				executionRepository,
+				telemetry,
+				eventService,
+				globalConfig,
+				license,
+			);
+
+		/** Resolves with whether the throttled execution was let through. */
+		const isAdmitted = async (promise: Promise<void>) => {
+			let admitted = false;
+			void promise.then(() => {
+				admitted = true;
+			});
+			await new Promise(process.nextTick);
+			return admitted;
+		};
+
+		it.each<ExecutionMode>(['webhook', 'trigger', 'chat'])(
+			'should hold a new %s execution during a hold',
+			async (mode) => {
+				const service = createService();
+				service.startProductionHold();
+
+				const throttled = service.throttle({ mode, executionId: '1' });
+
+				expect(await isAdmitted(throttled)).toBe(false);
+				expect(service.has('1')).toBe(true);
+				expect(service.heldCount).toBe(1);
+			},
+		);
+
+		it.each<ExecutionMode>(['manual', 'integrated', 'error', 'retry', 'cli', 'internal'])(
+			'should not hold a %s execution',
+			async (mode) => {
+				const service = createService();
+				service.startProductionHold();
+
+				expect(await isAdmitted(service.throttle({ mode, executionId: '1' }))).toBe(true);
+			},
+		);
+
+		it('should let held executions start oldest first, and only as many as asked', async () => {
+			const service = createService();
+			service.startProductionHold();
+			const first = service.throttle({ mode: 'webhook', executionId: '1' });
+			const second = service.throttle({ mode: 'webhook', executionId: '2' });
+			service.endProductionHold();
+
+			expect(service.admitHeld(1)).toBe(1);
+
+			expect(await isAdmitted(first)).toBe(true);
+			expect(await isAdmitted(second)).toBe(false);
+		});
+
+		it('should hold an arrival behind held executions after the hold ends', async () => {
+			const service = createService();
+			service.startProductionHold();
+			void service.throttle({ mode: 'webhook', executionId: '1' });
+			service.endProductionHold();
+
+			const arrival = service.throttle({ mode: 'webhook', executionId: '2' });
+
+			expect(await isAdmitted(arrival)).toBe(false);
+			expect(service.heldCount).toBe(2);
+		});
+
+		it('should not let a held execution start when a running execution ends', async () => {
+			const service = createService();
+			await service.throttle({ mode: 'manual', executionId: '1' });
+			service.startProductionHold();
+			const held = service.throttle({ mode: 'webhook', executionId: '2' });
+
+			service.release({ mode: 'manual' });
+
+			expect(await isAdmitted(held)).toBe(false);
+		});
+
+		it('should never resume a held execution that is removed', async () => {
+			const service = createService();
+			service.startProductionHold();
+			const throttled = service.throttle({ mode: 'webhook', executionId: '1' });
+
+			service.remove({ mode: 'webhook', executionId: '1' });
+			service.endProductionHold();
+			service.admitHeld(10);
+
+			expect(await isAdmitted(throttled)).toBe(false);
+			expect(service.has('1')).toBe(false);
+		});
+
+		it('should give back the queue place of a removed held execution', async () => {
+			globalConfig.executions.concurrency.productionLimit = 1;
+			const service = createService();
+			service.startProductionHold();
+			void service.throttle({ mode: 'webhook', executionId: '1' });
+			const queued = service.throttle({ mode: 'webhook', executionId: '2' });
+			await new Promise(process.nextTick);
+
+			service.remove({ mode: 'webhook', executionId: '1' });
+			service.endProductionHold();
+			service.admitHeld(10);
+
+			expect(await isAdmitted(queued)).toBe(true);
+		});
+
+		it('should keep held executions held when disabled for shutdown', async () => {
+			const service = createService();
+			service.startProductionHold();
+			const throttled = service.throttle({ mode: 'webhook', executionId: '1' });
+
+			service.disable();
+
+			expect(await isAdmitted(throttled)).toBe(false);
+		});
+
+		it('should report when the oldest held execution started to wait', () => {
+			vi.useFakeTimers({ now: 1_000 });
+			const service = createService();
+			service.startProductionHold();
+			void service.throttle({ mode: 'webhook', executionId: '1' });
+			vi.setSystemTime(2_000);
+			void service.throttle({ mode: 'webhook', executionId: '2' });
+
+			expect(service.oldestHeldAt).toBe(1_000);
+			vi.useRealTimers();
+		});
+	});
 });

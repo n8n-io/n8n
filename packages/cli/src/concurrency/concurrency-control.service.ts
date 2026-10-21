@@ -23,6 +23,13 @@ export interface CapacityTarget {
 	mode: WorkflowExecuteMode;
 }
 
+interface HeldExecution {
+	executionId: string;
+	mode: WorkflowExecuteMode;
+	heldAt: number;
+	admit: () => void;
+}
+
 @Service()
 export class ConcurrencyControlService {
 	private isEnabled: boolean;
@@ -41,6 +48,12 @@ export class ConcurrencyControlService {
 	// unset and the cap comes from the license tier, we defer to first use
 	// because `License.init()` resolves after the DI graph is built.
 	private evalQueueResolved = false;
+
+	/** Whether new production executions wait because memory is high. Set by the memory guard. */
+	private holding = false;
+
+	/** Production executions that wait because memory is high, oldest first. */
+	private readonly held: HeldExecution[] = [];
 
 	constructor(
 		private readonly logger: Logger,
@@ -156,6 +169,8 @@ export class ConcurrencyControlService {
 	 * Check whether an execution is in any of the queues.
 	 */
 	has(executionId: string) {
+		if (this.held.some((item) => item.executionId === executionId)) return true;
+
 		if (!this.isEnabled) return false;
 
 		for (const queue of this.queues.values()) {
@@ -172,9 +187,16 @@ export class ConcurrencyControlService {
 	 */
 	async throttle({ mode, executionId }: CapacityTarget) {
 		if (mode === 'evaluation') this.ensureEvalQueueResolved();
-		if (!this.isEnabled || this.isUnlimited(mode)) return;
+		if (this.isEnabled && !this.isUnlimited(mode)) {
+			await this.getQueue(mode)?.enqueue(executionId);
+		}
 
-		await this.getQueue(mode)?.enqueue(executionId);
+		// After the queue, so that executions the queue lets through during a hold also wait.
+		if (isProductionMode(mode) && (this.holding || this.held.length > 0)) {
+			await new Promise<void>((admit) => {
+				this.held.push({ executionId, mode, heldAt: Date.now(), admit });
+			});
+		}
 	}
 
 	/**
@@ -192,9 +214,51 @@ export class ConcurrencyControlService {
 	 */
 	remove({ mode, executionId }: CapacityTarget) {
 		if (mode === 'evaluation') this.ensureEvalQueueResolved();
+
+		// Like the concurrency queue, never resume a removed execution.
+		const heldIndex = this.held.findIndex((item) => item.executionId === executionId);
+		if (heldIndex > -1) {
+			this.held.splice(heldIndex, 1);
+			// A held execution already took a place in the concurrency queue.
+			if (this.isEnabled && !this.isUnlimited(mode)) this.getQueue(mode)?.dequeue();
+			return;
+		}
+
 		if (!this.isEnabled || this.isUnlimited(mode)) return;
 
 		this.getQueue(mode)?.remove(executionId);
+	}
+
+	/** Make new production executions wait until the hold ends and `admitHeld()` lets them start. */
+	startProductionHold() {
+		this.holding = true;
+	}
+
+	/** Stop holding new production executions. Executions held so far wait for `admitHeld()`. */
+	endProductionHold() {
+		this.holding = false;
+	}
+
+	/** Let up to `count` held executions start, oldest first. Returns how many started. */
+	admitHeld(count: number) {
+		let started = 0;
+		while (started < count) {
+			const item = this.held.shift();
+			if (!item) break;
+			item.admit();
+			started++;
+		}
+		return started;
+	}
+
+	/** Number of held production executions. */
+	get heldCount() {
+		return this.held.length;
+	}
+
+	/** When the oldest held execution started to wait, or `undefined` if none waits. */
+	get oldestHeldAt(): number | undefined {
+		return this.held[0]?.heldAt;
 	}
 
 	/**
@@ -261,4 +325,8 @@ export class ConcurrencyControlService {
 
 		throw new UnknownExecutionModeError(mode);
 	}
+}
+
+function isProductionMode(mode: WorkflowExecuteMode) {
+	return mode === 'webhook' || mode === 'trigger' || mode === 'chat';
 }

@@ -43,6 +43,7 @@ import { type ExecutionSaveSettings, toSaveSettings } from './to-save-settings';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 
 import { ExternalHooks } from '@/external-hooks';
+import { StoppedExecutions } from '@/memory-guard/stopped-executions';
 import { Push } from '@/push';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { isWorkflowIdValid } from '@/utils';
@@ -222,6 +223,20 @@ function hookFunctionsWorkflowEvents(
 	});
 }
 
+/** Must be the first `workflowExecuteAfter` handler, so that every later handler sees a stop. */
+function hookFunctionsMemoryGuard(hooks: ExecutionLifecycleHooks) {
+	const stoppedExecutions = Container.get(StoppedExecutions);
+	hooks.addHandler('workflowExecuteBefore', function () {
+		stoppedExecutions.onWorkflowExecuteStart(this.executionId);
+	});
+	hooks.addHandler('workflowExecuteResume', function () {
+		stoppedExecutions.onWorkflowExecuteStart(this.executionId);
+	});
+	hooks.addHandler('workflowExecuteAfter', function (fullRunData) {
+		stoppedExecutions.onWorkflowExecuteAfter(this.executionId, fullRunData);
+	});
+}
+
 function hookFunctionsNodeEvents(hooks: ExecutionLifecycleHooks) {
 	const eventService = Container.get(EventService);
 	hooks.addHandler('nodeExecuteBefore', function (nodeName) {
@@ -288,6 +303,7 @@ function hookFunctionsPush(
 	const pushInstance = Container.get(Push);
 	const redactionProxy = Container.get(ExecutionRedactionServiceProxy);
 	const userRepository = Container.get(UserRepository);
+	const stoppedExecutions = Container.get(StoppedExecutions);
 
 	// Lazy user resolution — resolved once, reused across all node events in this execution
 	let resolvedUser: User | null | undefined; // undefined = not yet resolved
@@ -337,6 +353,10 @@ function hookFunctionsPush(
 
 		const itemCountByConnectionType = getItemCountByConnectionType(data?.data);
 		const { data: _, ...taskData } = data;
+		// A node that ignores the stop can return afterwards. Do not serialize its data,
+		// and the input of an AI sub-node can be as large as an output.
+		const isStopped = stoppedExecutions.isStopped(executionId);
+		if (isStopped) delete taskData.inputOverride;
 
 		pushInstance.send(
 			{
@@ -351,6 +371,8 @@ function hookFunctionsPush(
 			},
 			pushRef,
 		);
+
+		if (isStopped) return;
 
 		// Fail-closed redaction: if user cannot be resolved, skip the data push
 		// entirely rather than sending unredacted data to the client.
@@ -387,6 +409,9 @@ function hookFunctionsPush(
 			});
 			return;
 		}
+
+		// The guard can stop the execution while the user or the redaction is awaited.
+		if (stoppedExecutions.isStopped(executionId)) return;
 
 		// We send the node execution data as a WS binary message to the FE. Not
 		// because it's more efficient on the wire: the content is a JSON string
@@ -519,13 +544,16 @@ function hookFunctionsSaveProgress(
 	{ saveSettings }: HooksSetupParameters,
 ) {
 	if (!saveSettings.progress) return;
+	const stoppedExecutions = Container.get(StoppedExecutions);
 	hooks.addHandler('nodeExecuteAfter', async function (nodeName, data, executionData) {
+		if (stoppedExecutions.isStopped(this.executionId)) return;
 		await saveExecutionProgress(
 			this.workflowData.id,
 			this.executionId,
 			nodeName,
 			data,
 			executionData,
+			stoppedExecutions.enabled,
 		);
 	});
 }
@@ -840,6 +868,7 @@ export function getLifecycleHooksForSubExecutions(
 ): ExecutionLifecycleHooks {
 	const hooks = new ExecutionLifecycleHooks(mode, executionId, workflowData);
 	const saveSettings = toSaveSettings(workflowData.settings);
+	hookFunctionsMemoryGuard(hooks);
 	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName);
 	hookFunctionsNodeEvents(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
@@ -1024,6 +1053,7 @@ export function getLifecycleHooksForRegularMain(
 		source,
 		suppressErrorWorkflow,
 	};
+	hookFunctionsMemoryGuard(hooks);
 	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName, source, telemetryMetadata);
 	hookFunctionsNodeEvents(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
