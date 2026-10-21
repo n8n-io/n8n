@@ -58,20 +58,42 @@ export interface RouteResolution {
 	judgeError?: string;
 	/** The questions that the user proxy answered before this route, in order. */
 	questions?: RouteResolution[];
-	/** Eval only: the orchestrator's calls up to this route, with the skill name for `load_skill`. */
+	/** Eval only: the orchestrator's reasoning, text and calls up to this route, with the skill name for `load_skill`. */
 	calls?: string;
 }
 
-const callTrail = (steps: TraceStep[]): string =>
-	steps
-		.flatMap((step) =>
-			step.kind !== 'call'
-				? []
-				: step.toolName === 'load_skill'
-					? [`load_skill(${JSON.stringify(step.args.name ?? step.args.skillId)})`]
-					: [step.toolName],
-		)
-		.join(' > ');
+const callLabel = ({ toolName, args }: { toolName: string; args: Record<string, unknown> }) =>
+	toolName === 'load_skill' ? `load_skill(${JSON.stringify(args.name ?? args.skillId)})` : toolName;
+
+/** The judge never sees this trail, so it can hold the reasoning that the judge input leaves out. */
+function callTrail(events: readonly InstanceAiEvent[], pending?: PendingToolCall): string {
+	const trail: string[] = [];
+	let kind: 'think' | 'say' | undefined;
+	let text = '';
+	const close = () => {
+		if (kind && text.trim()) trail.push(`${kind} ${JSON.stringify(text.trim())}`);
+		kind = undefined;
+		text = '';
+	};
+	let pendingSeen = false;
+	for (const event of events) {
+		if (event.agentId !== ORCHESTRATOR_AGENT_ID) continue;
+		if (event.type === 'reasoning-delta' || event.type === 'text-delta') {
+			const next = event.type === 'reasoning-delta' ? 'think' : 'say';
+			if (next !== kind) close();
+			kind = next;
+			text += event.payload.text;
+			continue;
+		}
+		if (event.type !== 'tool-call') continue;
+		close();
+		trail.push(callLabel(event.payload));
+		if (event.payload.toolCallId === pending?.toolCallId) pendingSeen = true;
+	}
+	close();
+	if (pending && !pendingSeen) trail.push(callLabel(pending));
+	return trail.join(' > ');
+}
 
 /** The user proxy answers at most this many questions in a trial. */
 export const MAX_ANSWERS = 2;
@@ -191,7 +213,7 @@ export function createRouteWatcher(
 					steer: verdict.steer,
 					evidence: `${call.toolName} call`,
 					judgeReason: verdict.reason,
-					calls: callTrail(steps),
+					calls: callTrail(events, call),
 				};
 				const answers = countAnswers(steps);
 				// Only a question card waits for the user. Any other call would run before the answer.
@@ -224,7 +246,7 @@ export function createRouteWatcher(
 				steer: verdict.steer,
 				evidence,
 				judgeReason: verdict.reason,
-				calls: callTrail(steps),
+				calls: callTrail(instanceEvents),
 			});
 		},
 	};

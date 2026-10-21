@@ -205,6 +205,31 @@ describe('createRouteWatcher', () => {
 		).toBe('load_skill("intent-recognition") > agent_builder_build_agent');
 	});
 
+	it('keeps the reasoning and text in the call trail, but not in the judge input', async () => {
+		const judge = judgeReturning(stop('workflow', 'workflow'));
+		const watcher = createRouteWatcher(judge);
+		const events: InstanceAiEvent[] = [
+			{ type: 'reasoning-delta', ...base, payload: { text: 'A chat bot' } },
+			{ type: 'reasoning-delta', ...base, payload: { text: ' fits a workflow.' } },
+			textEvent('I will build a workflow.'),
+			textEvent('Sub-agent text.', 'sub-agent'),
+		];
+
+		await watcher.beforeToolCall(pending('workflow_builder_build_workflow'), events);
+
+		expect(
+			(await watcher.resolve({ instanceEvents: events, streamStatus: 'stopped-on-route' })).calls,
+		).toBe(
+			'think "A chat bot fits a workflow." > say "I will build a workflow." > workflow_builder_build_workflow',
+		);
+		expect(judge).toHaveBeenCalledWith({
+			steps: [
+				{ kind: 'text', text: 'I will build a workflow.' },
+				{ kind: 'call', toolName: 'workflow_builder_build_workflow', args: {} },
+			],
+		});
+	});
+
 	it('lets the run go on when the judge stops without a route', async () => {
 		const watcher = createRouteWatcher(judgeReturning(stop('none')));
 
