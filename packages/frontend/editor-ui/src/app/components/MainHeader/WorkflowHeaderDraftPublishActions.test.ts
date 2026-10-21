@@ -1681,6 +1681,33 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(getByTestId('workflow-review-submit-changes-button')).toBeDisabled();
 		});
 
+		it('disables Submit changes with Publish for a restricted node type', async () => {
+			setWorkflowReviewGates();
+			seedLatestReview();
+			useNodeTypesStore().setNodeTypes([
+				mockNodeTypeDescription({ name: 'n8n-nodes-base.slack', displayName: 'Slack' }),
+			]);
+			workflowDocumentStore.setNodes([
+				triggerNode,
+				{
+					id: 'slack-1',
+					name: 'Slack',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 1,
+					position: [200, 0],
+					parameters: {},
+					disabled: false,
+				},
+			]);
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.slack': 'instance' });
+
+			const { findByTestId, getByTestId } = renderComponent({ props: defaultWorkflowProps });
+			await userEvent.click(await findByTestId('workflow-review-status-pill'));
+
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByTestId('workflow-review-submit-changes-button')).toBeDisabled();
+		});
+
 		// The parity has to hold in the enabled direction too, or the assertions above
 		// would pass just as well against a permanently disabled button.
 		it('enables Submit changes with Publish for a publishable workflow', async () => {
