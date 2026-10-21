@@ -170,6 +170,7 @@ describe('AgentThreadsController deleteThread', () => {
 		const controller = new AgentThreadsController(
 			service,
 			mock<AgentSessionLangSmithExportService>(),
+			mock<AgentExecutionOrchestratorService>(),
 			registry,
 		);
 		return { service, controller };
