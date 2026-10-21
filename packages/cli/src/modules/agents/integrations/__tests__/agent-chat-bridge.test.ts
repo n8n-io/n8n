@@ -3594,7 +3594,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			await handlers.subscribed!(thread, {
 				text: 'hi',
 				author: { userId: 'u1', userName: 'user1' },
-				raw: { team_id: 'T1' },
+				raw: { n8nWorkspaceId: 'T1', channel_type: 'channel' },
 			});
 
 			expect(queue.enqueue).toHaveBeenCalledWith(

@@ -53,7 +53,7 @@ describe('buildIntegrationOrigin', () => {
 		await expect(
 			buildIntegrationOrigin(
 				integrationFor('slack'),
-				{ thread, message: makeMessage({ team_id: 'T1' }) },
+				{ thread, message: makeMessage({ n8nWorkspaceId: 'T1', channel_type: 'channel' }) },
 				logger,
 			),
 		).resolves.toEqual({
@@ -66,8 +66,25 @@ describe('buildIntegrationOrigin', () => {
 	});
 
 	it.each([
-		{ name: 'dm', isDM: true, raw: { team_id: 'T1' }, kind: 'dm' },
-		{ name: 'group', isDM: false, raw: { team_id: 'T1', channel_type: 'mpim' }, kind: 'group' },
+		{ name: 'dm', isDM: true, raw: { n8nWorkspaceId: 'T1', channel_type: 'im' }, kind: 'dm' },
+		{
+			name: 'group',
+			isDM: true,
+			raw: { n8nWorkspaceId: 'T1', channel_type: 'mpim' },
+			kind: 'group',
+		},
+		{
+			name: 'private channel',
+			isDM: false,
+			raw: { n8nWorkspaceId: 'T1', channel_type: 'group' },
+			kind: 'channel',
+		},
+		{
+			name: 'mention',
+			isDM: false,
+			raw: { n8nWorkspaceId: 'T1', type: 'app_mention' },
+			kind: 'channel',
+		},
 	])('classifies a Slack $name conversation', async ({ isDM, raw, kind }) => {
 		const thread = makeThread({ channel: 'G1', threadTs: '' }, { isDM, channelName: 'x' });
 
@@ -85,7 +102,7 @@ describe('buildIntegrationOrigin', () => {
 
 		const origin = await buildIntegrationOrigin(
 			integrationFor('slack'),
-			{ thread, message: makeMessage({ team_id: 'T1' }) },
+			{ thread, message: makeMessage({ n8nWorkspaceId: 'T1', channel_type: 'im' }) },
 			logger,
 		);
 
@@ -99,7 +116,7 @@ describe('buildIntegrationOrigin', () => {
 		await expect(
 			buildIntegrationOrigin(
 				integrationFor('slack'),
-				{ thread, message: makeMessage({ team_id: 'T1' }) },
+				{ thread, message: makeMessage({ n8nWorkspaceId: 'T1', channel_type: 'channel' }) },
 				logger,
 			),
 		).resolves.toEqual({
@@ -110,11 +127,21 @@ describe('buildIntegrationOrigin', () => {
 		});
 	});
 
-	it('drops the origin when a required ID is missing', async () => {
+	it.each([
+		{},
+		{ team_id: 'T_AUTHOR', team: 'T_AUTHOR', channel_type: 'channel' },
+		{ n8nWorkspaceId: 123, channel_type: 'channel' },
+		{ n8nWorkspaceId: 'T1' },
+		{ n8nWorkspaceId: 'T1', channel_type: 'unsupported' },
+	])('drops unresolved Slack origin %j', async (raw) => {
 		const thread = makeThread({ channel: 'C1', threadTs: '' });
 
 		await expect(
-			buildIntegrationOrigin(integrationFor('slack'), { thread, message: makeMessage() }, logger),
+			buildIntegrationOrigin(
+				integrationFor('slack'),
+				{ thread, message: makeMessage(raw) },
+				logger,
+			),
 		).resolves.toBeUndefined();
 	});
 

@@ -10,7 +10,6 @@ import type { ChannelRateLimitGuard } from '../channel-rate-limit.guard';
 import { DiscordIntegration } from '../platforms/discord/discord-integration';
 import { LinearIntegration } from '../platforms/linear/linear-integration';
 import { N8nChatIntegration } from '../platforms/n8n-chat/n8n-chat-integration';
-import { SlackIntegration } from '../platforms/slack/slack-integration';
 import { TeamsIntegration } from '../platforms/teams/teams-integration';
 import { TelegramIntegration } from '../platforms/telegram/telegram-integration';
 import { WhatsAppIntegration } from '../platforms/whatsapp/whatsapp-integration';
@@ -22,9 +21,7 @@ describe('channel episodic memory policy', () => {
 	const instanceSettings = mock<InstanceSettings>();
 	const outboundHttp = mock<OutboundHttp>();
 
-	// No channel defines an ownership policy yet, so episodic memory is off everywhere.
 	it.each([
-		['Slack', () => new SlackIntegration(agentRepository)],
 		[
 			'Telegram',
 			() =>
