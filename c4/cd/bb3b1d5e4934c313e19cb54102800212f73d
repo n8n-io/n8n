@@ -1,0 +1,20 @@
+packages/cli/src/webhooks/waiting-webhooks.ts
+  s_3d68be55b2b8d8::t_d9f33a91ffda31 33
+  s_3d68be55b2b8d8::t_792d893cd1a909 73-74,77-78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c4cdbb3b1d5e4934c313e19cb54102800212f73d",
+  "prompts": {},
+  "sessions": {
+    "s_3d68be55b2b8d8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97a3924d-ec1c-488a-b801-3e4314d24d92",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
