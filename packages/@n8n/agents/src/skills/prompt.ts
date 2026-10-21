@@ -35,23 +35,23 @@ export function renderSkillCatalogPrompt(
 	if (options.includeProtocol === false) return catalog;
 
 	return `Skill loading protocol:
-Skills are optional instruction packs, not execution tools. Use them to get extra guidance only when they are relevant to the user's current request.
+Skills are instruction packs, not execution tools. Load one only when it is relevant to the current request.
 
 Available skills:
 ${catalog}
 
-When deciding whether to load a skill:
-- Match the user's request against the skill name and description.
-- If one skill clearly matches, call load_skill once with \`{ "skillId": "<id>" }\`, then follow the returned instructions.
-- If a loaded skill references a supporting file, call load_skill with \`{ "skillId": "<id>", "filePath": "<relative path>" }\`.${
+How to load skills:
+- Match the request against each skill's name and description. Do not load a skill only because it is listed.
+- Load a skill with \`load_skill({ "skillId": "<id>" })\`, then follow its instructions.
+- When several skills match, load all of them in the same response with parallel load_skill calls. Do not wait for one to return before loading the next.
+- You can make read-only lookups that the request clearly needs in that same response.
+- Load a supporting file with \`load_skill({ "skillId": "<id>", "filePath": "<relative path>" })\`.${
 		hasReferences
 			? `
-- A loaded skill can list references with a description of when each applies. Load a reference with \`{ "skillId": "<reference id>" }\` only when its description matches the current step.`
+- A loaded skill can list references, each with a description of when it applies. Load a reference with \`load_skill({ "skillId": "<reference id>" })\` when its description matches the current step. If you already know it will match, load it together with its parent skill.`
 			: ''
 	}
-- If the relevant skill was already loaded for this request, do not call load_skill again.
-- If no skill clearly matches, do not call load_skill.
-- Do not load a skill just because it is listed here.`;
+- Do not reload a skill that is already loaded for this request.`;
 }
 
 export function appendSkillCatalogToInstructions(
