@@ -29,7 +29,8 @@ import {
 	isEndNodeError,
 } from './execution-level-tracer.types';
 import { OtelSettingsService } from './otel-settings.service';
-import { ATTR } from './otel.constants';
+import { type CustomAttributePrefixes, OtelCustomAttributesConfig } from './otel.config';
+import { ATTR, BUILT_IN_ATTRIBUTE_KEYS } from './otel.constants';
 import { OtelService } from './otel.service';
 import type { TracingContext } from './tracing-context';
 
@@ -57,6 +58,7 @@ export class ExecutionLevelTracer {
 		private readonly otelService: OtelService,
 		private readonly otelSettingsService: OtelSettingsService,
 		private readonly logger: Logger,
+		private readonly customAttributesConfig: OtelCustomAttributesConfig,
 	) {}
 
 	private get tracer() {
@@ -71,18 +73,19 @@ export class ExecutionLevelTracer {
 				identity,
 			);
 			const links = this.buildContinuationLinks(params.linkTo);
-			const projectCustomAttributes = buildCustomAttributes(
-				ATTR.PROJECT_CUSTOM_PREFIX,
-				params.project?.customAttributes,
-			);
+			const projectCustomAttributes = this.buildCustomAttributes({
+				project: params.project?.customAttributes,
+			});
 
 			const attributes = {
+				...this.buildCustomAttributes({
+					project: params.project?.customAttributes,
+					workflow: params.workflow?.customAttributes,
+				}),
 				[ATTR.WORKFLOW_NAME]: params.workflow.name,
 				[ATTR.WORKFLOW_VERSION_ID]: params.workflow.versionId ?? '',
 				[ATTR.WORKFLOW_NODE_COUNT]: params.workflow.nodeCount,
-				...buildCustomAttributes(ATTR.WORKFLOW_CUSTOM_PREFIX, params.workflow?.customAttributes),
 				...(params.project && { [ATTR.PROJECT_ID]: params.project.id }),
-				...projectCustomAttributes,
 				...identity,
 			};
 
@@ -184,13 +187,15 @@ export class ExecutionLevelTracer {
 			{
 				startTime: params.startedAt,
 				attributes: {
+					...this.buildCustomAttributes({
+						project: params.project?.customAttributes,
+						workflow: params.workflow?.customAttributes,
+					}),
 					...(params.workflowName && { [ATTR.WORKFLOW_NAME]: params.workflowName }),
 					...(params.workflowVersionId && {
 						[ATTR.WORKFLOW_VERSION_ID]: params.workflowVersionId,
 					}),
 					...(params.project?.id && { [ATTR.PROJECT_ID]: params.project.id }),
-					...buildCustomAttributes(ATTR.WORKFLOW_CUSTOM_PREFIX, params.workflow?.customAttributes),
-					...buildCustomAttributes(ATTR.PROJECT_CUSTOM_PREFIX, params.project?.customAttributes),
 					...identity,
 				},
 			},
@@ -256,7 +261,11 @@ export class ExecutionLevelTracer {
 			if (!nodeStart) return;
 
 			const { span: activeNodeSpan } = nodeStart;
-			activeNodeSpan.setAttributes(buildNodeEndAttributes(params));
+			activeNodeSpan.setAttributes({
+				[ATTR.NODE_ITEMS_INPUT]: params.inputItemCount,
+				[ATTR.NODE_ITEMS_OUTPUT]: params.outputItemCount,
+				...this.buildCustomAttributes({ node: params.customAttributes }),
+			});
 
 			if (params.error) {
 				activeNodeSpan.setStatus({ code: SpanStatusCode.ERROR });
@@ -368,19 +377,42 @@ export class ExecutionLevelTracer {
 
 		this.activeNodeSpansByExecutionId.delete(executionId);
 	}
+
+	private buildCustomAttributes(
+		attributesByLevel: Partial<Record<CustomAttributeLevel, Record<string, string>>>,
+	): Record<string, string> {
+		const { prefixes } = this.customAttributesConfig;
+		const result: Record<string, string> = {};
+		const dropped: string[] = [];
+
+		for (const level of CUSTOM_ATTRIBUTE_LEVELS_BY_PRECEDENCE) {
+			for (const [key, value] of Object.entries(attributesByLevel[level] ?? {})) {
+				const prefixedKey = `${prefixes[level]}${key}`;
+				if (BUILT_IN_ATTRIBUTE_KEYS.has(prefixedKey)) {
+					dropped.push(prefixedKey);
+				} else {
+					result[prefixedKey] = value;
+				}
+			}
+		}
+
+		if (dropped.length > 0) {
+			this.logger.debug('Dropped custom span attributes that match built-in attributes', {
+				keys: dropped,
+			});
+		}
+
+		return result;
+	}
 }
 
-function buildCustomAttributes(
-	prefix: string,
-	attrs: Record<string, string> | undefined,
-): Record<string, string> {
-	if (!attrs) return {};
-	const result: Record<string, string> = {};
-	for (const [k, v] of Object.entries(attrs)) {
-		result[`${prefix}${k}`] = v;
-	}
-	return result;
-}
+type CustomAttributeLevel = keyof CustomAttributePrefixes;
+
+const CUSTOM_ATTRIBUTE_LEVELS_BY_PRECEDENCE: CustomAttributeLevel[] = [
+	'project',
+	'workflow',
+	'node',
+];
 
 function resolveWorkflowIdentity(params: StartWorkflowParams): ExecutionIdentity {
 	const saved = params.savedIdentity;
@@ -403,15 +435,6 @@ function resolveCrashedWorkflowIdentity(params: EndCrashedWorkflowParams): Execu
 			projectId: params.project?.id,
 		})
 	);
-}
-
-function buildNodeEndAttributes(params: EndNodeParams): Record<string, string | number> {
-	const attrs: Record<string, string | number> = {
-		[ATTR.NODE_ITEMS_INPUT]: params.inputItemCount,
-		[ATTR.NODE_ITEMS_OUTPUT]: params.outputItemCount,
-		...buildCustomAttributes(ATTR.NODE_CUSTOM_PREFIX, params.customAttributes),
-	};
-	return attrs;
 }
 
 function toTracingParentContext(span: Span, identity: ExecutionIdentity): TracingContext {
