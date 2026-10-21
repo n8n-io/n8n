@@ -655,6 +655,41 @@ describe('SystemAgentExecutionService', () => {
 			);
 		});
 
+		it('reports the admitted execution and does not tie the resumed turn to the request', async () => {
+			const { service, checkpointStorage, turnExecutionService, prepared } = setup([textChunk]);
+			checkpointStorage.load.mockResolvedValue({
+				persistence: { threadId: 'thread-1' },
+			} as never);
+			checkpointStorage.findSuspendedForThread.mockResolvedValue(suspendedCheckpoint() as never);
+			turnExecutionService.execute.mockImplementation(async function* (config) {
+				prepared.push(await config.prepare());
+				config.onExecutionStarted?.('exec-resume', 'thread-1', []);
+				yield textChunk;
+				await config.onBeforeFinalize?.({ executionId: 'exec-resume', status: 'completed' });
+			});
+			const onExecutionStarted = vi.fn();
+			const send = vi.fn();
+
+			await service.resumeRun({
+				agentId: AGENT_ID,
+				user,
+				runId: 'run-1',
+				toolCallId: 'tc-1',
+				resumeData: {},
+				send,
+				onExecutionStarted,
+			});
+
+			expect(onExecutionStarted).toHaveBeenCalledWith('exec-resume', 'thread-1', []);
+			// Only an explicit Stop ends the turn, not a closed connection.
+			expect(prepared[0].options.abortSignal).toBeUndefined();
+			expect(send).toHaveBeenLastCalledWith({
+				type: 'done',
+				sessionId: 'thread-1',
+				executionId: 'exec-resume',
+			});
+		});
+
 		it('rejects when the resumed turn fails, so the route can report it', async () => {
 			const { service, checkpointStorage, turnExecutionService } = setup();
 			checkpointStorage.load.mockResolvedValue({
