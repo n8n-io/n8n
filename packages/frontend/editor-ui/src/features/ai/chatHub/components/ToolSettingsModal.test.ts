@@ -53,35 +53,18 @@ function createMockNode(overrides: Partial<INode> = {}): INode {
 	};
 }
 
-const ElDialogStub = {
-	template: `
-		<div role="dialog">
-			<slot name="header" />
-			<slot />
-			<slot name="footer" />
-		</div>
-	`,
-	props: [
-		'modelValue',
-		'beforeClose',
-		'class',
-		'center',
-		'width',
-		'showClose',
-		'closeOnClickModal',
-		'closeOnPressEscape',
-		'style',
-		'appendTo',
-		'lockScroll',
-		'appendToBody',
-		'dataTestId',
-		'modalClass',
-		'zIndex',
-	],
+const DialogStub = {
+	props: ['open'],
+	template: '<div v-if="open" role="dialog"><slot /></div>',
 };
 
+const dialogPartStub = { template: '<div><slot /></div>' };
+
 const sharedStubs = {
-	ElDialog: ElDialogStub,
+	Dialog: DialogStub,
+	DialogHeader: dialogPartStub,
+	DialogTitle: dialogPartStub,
+	DialogFooter: dialogPartStub,
 	NodeIcon: { template: '<div />' },
 };
 

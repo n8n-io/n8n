@@ -2,16 +2,19 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import {
 	N8nButton,
-	N8nHeading,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nDialogHeader,
+	N8nDialogTitle,
 	N8nIconButton,
 	N8nInputNumber,
 	N8nSwitch,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import Modal from '@/app/components/Modal.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { createEventBus } from '@n8n/utils/event-bus';
+import { useUIStore } from '@/app/stores/ui.store';
 import {
 	type ChatHubLLMProvider,
 	type ChatModelDto,
@@ -29,6 +32,8 @@ import CredentialPicker from '@/features/credentials/components/CredentialPicker
 import TagsDropdown from '@/features/shared/tags/components/TagsDropdown.vue';
 import { type ITag } from '@n8n/rest-api-client';
 
+defineOptions({ inheritAttrs: false });
+
 interface IModel extends ITag {
 	isManual?: boolean;
 }
@@ -44,7 +49,6 @@ const props = defineProps<{
 }>();
 
 const settings = ref<ChatProviderSettingsDto | null>(null);
-const modalBus = ref(createEventBus());
 const loadingSettings = ref(false);
 const loadingModels = ref(false);
 const limitModels = ref(false);
@@ -119,6 +123,16 @@ const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
 const chatStore = useChatStore();
 const toast = useToast();
+const uiStore = useUIStore();
+const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
+
+async function closeDialog() {
+	uiStore.closeModal(props.modalName);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
 
 const credentialType = computed(() => {
 	return PROVIDER_CREDENTIAL_TYPE_MAP[props.data.provider];
@@ -145,12 +159,12 @@ async function onConfirm() {
 		props.data.onCancel();
 	}
 
-	modalBus.value.emit('close');
+	void closeDialog();
 }
 
 function onCancel() {
 	props.data.onCancel();
-	modalBus.value.emit('close');
+	void closeDialog();
 }
 
 async function loadSettings() {
@@ -236,193 +250,171 @@ watch(
 </script>
 
 <template>
-	<Modal :name="modalName" :event-bus="modalBus" width="50%" max-width="500px" :center="true">
-		<template #header>
-			<div :class="$style.header">
-				<N8nHeading size="large" color="text-dark">{{
+	<N8nDialog :open="modalOpen" size="medium" @update:open="onDialogOpenUpdate">
+		<N8nDialogHeader>
+			<N8nDialogTitle>
+				{{
 					i18n.baseText('settings.chatHub.providers.modal.edit.title', {
 						interpolate: { provider: providerDisplayNames[props.data.provider] },
 					})
-				}}</N8nHeading>
-			</div>
-		</template>
+				}}
+			</N8nDialogTitle>
+		</N8nDialogHeader>
 
-		<template #content>
-			<div :class="$style.content">
+		<N8nDialogBody :class="$style.body">
+			<label :class="$style.container">
+				<N8nText color="text-dark">
+					{{
+						i18n.baseText('settings.chatHub.providers.modal.edit.enabled.label', {
+							interpolate: { provider: providerDisplayNames[props.data.provider] },
+						})
+					}}
+				</N8nText>
+
+				<N8nTooltip
+					:content="i18n.baseText('settings.chatHub.providers.modal.edit.enabled.tooltip')"
+					:disabled="props.data.disabled"
+					placement="top"
+				>
+					<N8nSwitch
+						data-test-id="chat-provider-enabled-switch"
+						size="large"
+						:model-value="settings?.enabled ?? false"
+						:disabled="props.data.disabled || loadingSettings"
+						@update:model-value="onToggleEnabled"
+					/>
+				</N8nTooltip>
+			</label>
+
+			<template v-if="settings?.enabled">
 				<label :class="$style.container">
 					<N8nText color="text-dark">
+						{{ i18n.baseText('settings.chatHub.providers.modal.edit.credential.label') }}
+					</N8nText>
+
+					<div :class="$style.credentialContainer">
+						<CredentialPicker
+							:class="$style.credentialPicker"
+							:app-name="providerDisplayNames[props.data.provider]"
+							:credential-type="credentialType"
+							:selected-credential-id="settings.credentialId"
+							:hide-create-new="true"
+							:teleported="false"
+							@credential-selected="onCredentialSelect"
+							@credential-deselected="onCredentialDeselect"
+						/>
+						<N8nIconButton
+							v-if="settings.credentialId"
+							type="button"
+							variant="outline"
+							:title="i18n.baseText('settings.chatHub.providers.modal.edit.credential.clearButton')"
+							icon="x"
+							icon-size="large"
+							@click="onCredentialDeselect"
+						/>
+					</div>
+				</label>
+
+				<label v-if="settings.credentialId" :class="$style.container">
+					<N8nText color="text-dark">
 						{{
-							i18n.baseText('settings.chatHub.providers.modal.edit.enabled.label', {
+							i18n.baseText('settings.chatHub.providers.modal.edit.limitModels.label', {
 								interpolate: { provider: providerDisplayNames[props.data.provider] },
 							})
 						}}
 					</N8nText>
 
 					<N8nTooltip
-						:content="i18n.baseText('settings.chatHub.providers.modal.edit.enabled.tooltip')"
+						:content="i18n.baseText('settings.chatHub.providers.modal.edit.limitModels.tooltip')"
 						:disabled="props.data.disabled"
 						placement="top"
 					>
 						<N8nSwitch
-							data-test-id="chat-provider-enabled-switch"
+							data-test-id="chat-provider-limit-models-switch"
 							size="large"
-							:model-value="settings?.enabled ?? false"
+							:model-value="limitModels"
 							:disabled="props.data.disabled || loadingSettings"
-							@update:model-value="onToggleEnabled"
+							@update:model-value="onToggleLimitModels"
 						/>
 					</N8nTooltip>
 				</label>
 
-				<template v-if="settings?.enabled">
-					<label :class="$style.container">
-						<N8nText color="text-dark">
-							{{ i18n.baseText('settings.chatHub.providers.modal.edit.credential.label') }}
-						</N8nText>
+				<label v-if="settings.credentialId && limitModels" :class="$style.container">
+					<N8nText color="text-dark">
+						{{ i18n.baseText('settings.chatHub.providers.modal.edit.allowedModels.label') }}
+					</N8nText>
+					<TagsDropdown
+						v-model="selectedModels"
+						:class="$style.modelPicker"
+						:placeholder="i18n.baseText('settings.chatHub.providers.modal.edit.models.placeholder')"
+						:event-bus="null"
+						:create-enabled="true"
+						:manage-enabled="false"
+						:all-tags="allModels"
+						:is-loading="loadingModels"
+						:tags-by-id="modelsById"
+						:create-tag="addManualModel"
+						:create-tag-i18n-key="'settings.chatHub.providers.modal.edit.models.create'"
+					/>
+				</label>
 
-						<div :class="$style.credentialContainer">
-							<CredentialPicker
-								:class="$style.credentialPicker"
-								:app-name="providerDisplayNames[props.data.provider]"
-								:credential-type="credentialType"
-								:selected-credential-id="settings.credentialId"
-								:hide-create-new="true"
-								@credential-selected="onCredentialSelect"
-								@credential-deselected="onCredentialDeselect"
-							/>
-							<N8nIconButton
-								v-if="settings.credentialId"
-								type="button"
-								variant="outline"
-								:title="
-									i18n.baseText('settings.chatHub.providers.modal.edit.credential.clearButton')
-								"
-								icon="x"
-								icon-size="large"
-								@click="onCredentialDeselect"
-							/>
-						</div>
-					</label>
+				<label v-if="data.provider === 'openai'" :class="$style.container">
+					<N8nText color="text-dark">
+						{{ i18n.baseText('settings.chatHub.providers.modal.edit.responsesApi.label') }}
+					</N8nText>
+					<N8nText color="text-light" size="small">
+						{{ i18n.baseText('settings.chatHub.providers.modal.edit.responsesApi.description') }}
+					</N8nText>
+					<N8nSwitch
+						size="large"
+						:model-value="settings.responsesApiEnabled ?? true"
+						:disabled="props.data.disabled"
+						@update:model-value="
+							(v: boolean) => {
+								settings!.responsesApiEnabled = v;
+							}
+						"
+					/>
+				</label>
 
-					<label v-if="settings.credentialId" :class="$style.container">
-						<N8nText color="text-dark">
-							{{
-								i18n.baseText('settings.chatHub.providers.modal.edit.limitModels.label', {
-									interpolate: { provider: providerDisplayNames[props.data.provider] },
-								})
-							}}
-						</N8nText>
-
-						<N8nTooltip
-							:content="i18n.baseText('settings.chatHub.providers.modal.edit.limitModels.tooltip')"
-							:disabled="props.data.disabled"
-							placement="top"
-						>
-							<N8nSwitch
-								data-test-id="chat-provider-limit-models-switch"
-								size="large"
-								:model-value="limitModels"
-								:disabled="props.data.disabled || loadingSettings"
-								@update:model-value="onToggleLimitModels"
-							/>
-						</N8nTooltip>
-					</label>
-
-					<label v-if="settings.credentialId && limitModels" :class="$style.container">
-						<N8nText color="text-dark">
-							{{ i18n.baseText('settings.chatHub.providers.modal.edit.allowedModels.label') }}
-						</N8nText>
-						<TagsDropdown
-							v-model="selectedModels"
-							:class="$style.modelPicker"
-							:placeholder="
-								i18n.baseText('settings.chatHub.providers.modal.edit.models.placeholder')
-							"
-							:event-bus="null"
-							:create-enabled="true"
-							:manage-enabled="false"
-							:all-tags="allModels"
-							:is-loading="loadingModels"
-							:tags-by-id="modelsById"
-							:create-tag="addManualModel"
-							:create-tag-i18n-key="'settings.chatHub.providers.modal.edit.models.create'"
-						/>
-					</label>
-
-					<label v-if="data.provider === 'openai'" :class="$style.container">
-						<N8nText color="text-dark">
-							{{ i18n.baseText('settings.chatHub.providers.modal.edit.responsesApi.label') }}
-						</N8nText>
-						<N8nText color="text-light" size="small">
-							{{ i18n.baseText('settings.chatHub.providers.modal.edit.responsesApi.description') }}
-						</N8nText>
-						<N8nSwitch
-							size="large"
-							:model-value="settings.responsesApiEnabled ?? true"
-							:disabled="props.data.disabled"
-							@update:model-value="
-								(v: boolean) => {
-									settings!.responsesApiEnabled = v;
-								}
-							"
-						/>
-					</label>
-
-					<label :class="$style.container">
-						<N8nText color="text-dark">
-							{{ i18n.baseText('settings.chatHub.providers.modal.edit.contextWindowLength.label') }}
-						</N8nText>
-						<N8nText color="text-light" size="small">
-							{{
-								i18n.baseText(
-									'settings.chatHub.providers.modal.edit.contextWindowLength.description',
-								)
-							}}
-						</N8nText>
-						<N8nInputNumber
-							:model-value="settings.contextWindowLength ?? DEFAULT_CONTEXT_WINDOW_LENGTH"
-							:min="1"
-							:max="256"
-							size="small"
-							:disabled="props.data.disabled"
-							@update:model-value="onChangeContextWindow"
-						/>
-					</label>
-				</template>
-			</div>
-		</template>
-
-		<template #footer>
-			<div :class="$style.footer">
-				<div :class="$style.footerRight">
-					<N8nButton variant="outline" @click="onCancel">
-						{{ i18n.baseText('settings.chatHub.providers.modal.edit.cancel') }}
-					</N8nButton>
-					<N8nButton variant="solid" @click="onConfirm" :disabled="isConfirmDisabled">
-						{{ i18n.baseText('settings.chatHub.providers.modal.edit.confirm') }}
-					</N8nButton>
-				</div>
-			</div>
-		</template>
-	</Modal>
+				<label :class="$style.container">
+					<N8nText color="text-dark">
+						{{ i18n.baseText('settings.chatHub.providers.modal.edit.contextWindowLength.label') }}
+					</N8nText>
+					<N8nText color="text-light" size="small">
+						{{
+							i18n.baseText('settings.chatHub.providers.modal.edit.contextWindowLength.description')
+						}}
+					</N8nText>
+					<N8nInputNumber
+						:model-value="settings.contextWindowLength ?? DEFAULT_CONTEXT_WINDOW_LENGTH"
+						:min="1"
+						:max="256"
+						size="small"
+						:disabled="props.data.disabled"
+						@update:model-value="onChangeContextWindow"
+					/>
+				</label>
+			</template>
+		</N8nDialogBody>
+		<N8nDialogFooter>
+			<N8nButton variant="outline" @click="onCancel">
+				{{ i18n.baseText('settings.chatHub.providers.modal.edit.cancel') }}
+			</N8nButton>
+			<N8nButton variant="solid" @click="onConfirm" :disabled="isConfirmDisabled">
+				{{ i18n.baseText('settings.chatHub.providers.modal.edit.confirm') }}
+			</N8nButton>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
-.header {
-	display: flex;
-	gap: var(--spacing--2xs);
-	align-items: center;
-}
-.content {
-	display: flex;
-	flex-direction: column;
+.body {
 	gap: var(--spacing--lg);
-	padding: var(--spacing--sm) 0 var(--spacing--md);
 }
 
 .container {
 	display: flex;
-	align-items: flex-start;
-	justify-content: space-between;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 }
@@ -440,16 +432,5 @@ watch(
 
 .modelPicker {
 	width: 100%;
-}
-
-.footer {
-	display: flex;
-	justify-content: flex-end;
-	align-items: center;
-	width: 100%;
-}
-.footerRight {
-	display: flex;
-	gap: var(--spacing--2xs);
 }
 </style>

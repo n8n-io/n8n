@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { waitFor } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
 import type { DatasetCandidateResponse, EvaluationConfigDto } from '@n8n/api-types';
 
 import { createComponentRenderer } from '@/__tests__/render';
+import { ADD_EXECUTION_TO_DATASET_MODAL_KEY } from '@/app/constants';
+import { useUIStore } from '@/app/stores/ui.store';
 import AddExecutionToDatasetModal from './AddExecutionToDatasetModal.vue';
 
 const getDatasetCandidate = vi.fn<() => Promise<DatasetCandidateResponse>>();
@@ -12,17 +14,6 @@ const addExecutionToDataset = vi.fn();
 const showError = vi.fn();
 const showMessage = vi.fn();
 const track = vi.fn();
-
-// Render the modal's slot content directly — bypasses teleport / uiStore open state.
-vi.mock('@/app/components/Modal.vue', () => ({
-	default: {
-		name: 'Modal',
-		template: '<div><slot name="content" /><slot name="footer" :close="closeFn" /></div>',
-		setup() {
-			return { closeFn: () => {} };
-		},
-	},
-}));
 
 vi.mock('../../evaluation.store', () => ({
 	useEvaluationStore: () => ({ getDatasetCandidate, addExecutionToDataset }),
@@ -76,6 +67,7 @@ const defaultProps = {
 describe('AddExecutionToDatasetModal', () => {
 	beforeEach(() => {
 		createTestingPinia({ stubActions: false });
+		useUIStore().openModal(ADD_EXECUTION_TO_DATASET_MODAL_KEY);
 		getDatasetCandidate.mockReset();
 		addExecutionToDataset.mockReset();
 		showError.mockReset();
@@ -86,7 +78,8 @@ describe('AddExecutionToDatasetModal', () => {
 	});
 
 	it('loads the candidate and renders a row per data table column', async () => {
-		const { getByTestId } = renderComponent({ props: defaultProps });
+		const { getByTestId } = within(document.body);
+		renderComponent({ props: defaultProps });
 
 		await waitFor(() => {
 			expect(getByTestId('add-execution-to-dataset-column-question')).toBeInTheDocument();
@@ -109,7 +102,8 @@ describe('AddExecutionToDatasetModal', () => {
 	});
 
 	it('submits the suggested mapping, mapping unmatched columns to null', async () => {
-		const { getByTestId } = renderComponent({ props: defaultProps });
+		const { getByTestId } = within(document.body);
+		renderComponent({ props: defaultProps });
 
 		await waitFor(() => expect(getByTestId('add-execution-to-dataset-submit')).toBeEnabled());
 		await userEvent.click(getByTestId('add-execution-to-dataset-submit'));
@@ -137,7 +131,8 @@ describe('AddExecutionToDatasetModal', () => {
 
 	it('shows an error toast and does not close when adding fails', async () => {
 		addExecutionToDataset.mockRejectedValueOnce(new Error('boom'));
-		const { getByTestId } = renderComponent({ props: defaultProps });
+		const { getByTestId } = within(document.body);
+		renderComponent({ props: defaultProps });
 
 		await waitFor(() => expect(getByTestId('add-execution-to-dataset-submit')).toBeEnabled());
 		await userEvent.click(getByTestId('add-execution-to-dataset-submit'));
@@ -161,9 +156,10 @@ describe('AddExecutionToDatasetModal', () => {
 				}),
 		);
 
-		const { getByTestId, getByText, queryByTestId } = renderComponent({
+		renderComponent({
 			props: { ...defaultProps, data: { ...defaultProps.data, configs: twoConfigs } },
 		});
+		const { getByTestId, getByText, queryByTestId } = within(document.body);
 
 		// onMounted fired the first request (cfg-1); wait for it to be in flight.
 		await waitFor(() => expect(resolvers).toHaveLength(1));
@@ -196,7 +192,8 @@ describe('AddExecutionToDatasetModal', () => {
 
 	it('disables submit and shows a message when the dataset has no columns', async () => {
 		getDatasetCandidate.mockResolvedValue(candidate({ columns: [], suggestedMapping: {} }));
-		const { getByTestId } = renderComponent({ props: defaultProps });
+		const { getByTestId } = within(document.body);
+		renderComponent({ props: defaultProps });
 
 		await waitFor(() =>
 			expect(getByTestId('add-execution-to-dataset-modal')).toHaveTextContent(

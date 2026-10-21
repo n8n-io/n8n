@@ -111,35 +111,19 @@ const MOCK_AGENT_MODEL: ChatModelDto = {
 	groupIcon: null,
 };
 
-const ElDialogStub = {
-	template: `
-		<div role="dialog">
-			<slot name="header" />
-			<slot />
-			<slot name="footer" />
-		</div>
-	`,
-	props: [
-		'modelValue',
-		'beforeClose',
-		'class',
-		'center',
-		'width',
-		'showClose',
-		'closeOnClickModal',
-		'closeOnPressEscape',
-		'style',
-		'appendTo',
-		'lockScroll',
-		'appendToBody',
-		'dataTestId',
-		'modalClass',
-		'zIndex',
-	],
+const DialogStub = {
+	props: ['open'],
+	template: '<div v-if="open" role="dialog"><slot /></div>',
 };
 
+const dialogPartStub = { template: '<div><slot /></div>' };
+
 const sharedStubs = {
-	ElDialog: ElDialogStub,
+	Dialog: DialogStub,
+	DialogHeader: dialogPartStub,
+	DialogTitle: dialogPartStub,
+	DialogFooter: dialogPartStub,
+	DialogDescription: dialogPartStub,
 	ModelSelector: {
 		template: '<div data-test-id="model-selector" />',
 		props: [
@@ -234,10 +218,10 @@ describe('AgentEditorModal', () => {
 		});
 
 		it('should not show delete button', () => {
-			const { queryByText, container } = renderModal();
+			const { queryByText } = renderModal();
 
 			// No delete button (only shown in edit mode)
-			const deleteButton = container.querySelector('.deleteButton');
+			const deleteButton = document.body.querySelector('.deleteButton');
 			expect(deleteButton).toBeNull();
 			// But cancel and save are shown
 			expect(queryByText('chatHub.tools.editor.cancel')).toBeTruthy();
@@ -281,23 +265,25 @@ describe('AgentEditorModal', () => {
 		});
 
 		it('should show delete button', () => {
-			const { container } = renderModal({ agentId: 'agent-1' });
+			renderModal({ agentId: 'agent-1' });
 
-			const deleteButton = container.querySelector('.deleteButton');
+			const deleteButton = document.body.querySelector('.deleteButton');
 			expect(deleteButton).toBeTruthy();
 		});
 
 		it('should populate form from existing agent', async () => {
-			const { container } = renderModal({ agentId: 'agent-1' });
+			renderModal({ agentId: 'agent-1' });
 
 			await waitFor(() => {
-				const nameInput = container.querySelector('#agent-name') as HTMLInputElement;
+				const nameInput = document.body.querySelector('#agent-name') as HTMLInputElement;
 				expect(nameInput?.value).toBe('Test Agent');
 
-				const descInput = container.querySelector('#agent-description') as HTMLTextAreaElement;
+				const descInput = document.body.querySelector('#agent-description') as HTMLTextAreaElement;
 				expect(descInput?.value).toBe('A test agent');
 
-				const promptInput = container.querySelector('#agent-system-prompt') as HTMLTextAreaElement;
+				const promptInput = document.body.querySelector(
+					'#agent-system-prompt',
+				) as HTMLTextAreaElement;
 				expect(promptInput?.value).toBe('You are a helpful assistant');
 			});
 		});
@@ -382,12 +368,12 @@ describe('AgentEditorModal', () => {
 		it('should delete agent after confirmation', async () => {
 			mockConfirm.mockResolvedValue(MODAL_CONFIRM);
 
-			const { container } = renderModal({
+			renderModal({
 				agentId: 'agent-1',
 				credentials: { openai: 'cred-1' },
 			});
 
-			const deleteButton = container.querySelector('.deleteButton') as HTMLElement;
+			const deleteButton = document.body.querySelector('.deleteButton') as HTMLElement;
 			await userEvent.click(deleteButton);
 
 			await waitFor(() => {
@@ -403,9 +389,9 @@ describe('AgentEditorModal', () => {
 		it('should not delete when confirmation is cancelled', async () => {
 			mockConfirm.mockResolvedValue('cancel');
 
-			const { container } = renderModal({ agentId: 'agent-1' });
+			renderModal({ agentId: 'agent-1' });
 
-			const deleteButton = container.querySelector('.deleteButton') as HTMLElement;
+			const deleteButton = document.body.querySelector('.deleteButton') as HTMLElement;
 			await userEvent.click(deleteButton);
 
 			await waitFor(() => {
@@ -419,12 +405,12 @@ describe('AgentEditorModal', () => {
 			const error = new Error('Delete failed');
 			chatStore.deleteCustomAgent = vi.fn().mockRejectedValue(error);
 
-			const { container } = renderModal({
+			renderModal({
 				agentId: 'agent-1',
 				credentials: { openai: 'cred-1' },
 			});
 
-			const deleteButton = container.querySelector('.deleteButton') as HTMLElement;
+			const deleteButton = document.body.querySelector('.deleteButton') as HTMLElement;
 			await userEvent.click(deleteButton);
 
 			await waitFor(() => {
@@ -442,10 +428,10 @@ describe('AgentEditorModal', () => {
 				customAgent: ref(undefined),
 			});
 
-			const { container, queryByText } = renderModal({ agentId: 'agent-1' });
+			const { queryByText } = renderModal({ agentId: 'agent-1' });
 
 			// Spinner should be visible, form fields should not
-			expect(container.querySelector('.loader')).toBeTruthy();
+			expect(document.body.querySelector('.loader')).toBeTruthy();
 			expect(queryByText('chatHub.agent.editor.name.label')).toBeNull();
 		});
 	});
@@ -473,7 +459,10 @@ describe('AgentEditorModal', () => {
 				},
 				global: {
 					stubs: {
-						ElDialog: ElDialogStub,
+						Dialog: DialogStub,
+						DialogHeader: dialogPartStub,
+						DialogTitle: dialogPartStub,
+						DialogFooter: dialogPartStub,
 						ModelSelector: sharedStubs.ModelSelector,
 						N8nIconPicker: sharedStubs.N8nIconPicker,
 						NodeIcon: { template: '<div />' },
@@ -608,7 +597,7 @@ describe('AgentEditorModal', () => {
 		});
 
 		it('should call the upload endpoint once per chunk when multiple files exceed the chunk size', async () => {
-			const { container, getByRole, findByRole } = renderModal({
+			const { getByRole, findByRole } = renderModal({
 				agentId: 'agent-1',
 				credentials: { openai: 'cred-1' },
 			});
@@ -621,7 +610,7 @@ describe('AgentEditorModal', () => {
 				new File(['ab'], 'doc3.pdf', { type: 'application/pdf' }),
 			];
 
-			const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+			const fileInput = document.body.querySelector('input[type="file"]') as HTMLInputElement;
 
 			Object.defineProperty(fileInput, 'files', { value: files, configurable: true });
 

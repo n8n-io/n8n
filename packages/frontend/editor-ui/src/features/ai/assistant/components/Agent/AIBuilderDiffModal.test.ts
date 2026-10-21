@@ -1,31 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { defineComponent, h } from 'vue';
+import { within } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { createEventBus } from '@n8n/utils/event-bus';
+import { AI_BUILDER_DIFF_MODAL_KEY } from '@/app/constants';
+import { useUIStore } from '@/app/stores/ui.store';
 import AIBuilderDiffModal from './AIBuilderDiffModal.vue';
 import type { IWorkflowDb } from '@/Interface';
-
-// Mock Modal component
-vi.mock('@/app/components/Modal.vue', () => ({
-	default: defineComponent({
-		name: 'MockModal',
-		props: [
-			'name',
-			'eventBus',
-			'customClass',
-			'height',
-			'width',
-			'maxWidth',
-			'maxHeight',
-			'closeOnPressEscape',
-		],
-		emits: ['before-close'],
-		setup(_, { slots }) {
-			return () => h('div', { 'data-test-id': 'modal' }, [slots.content?.()]);
-		},
-	}),
-}));
 
 // Mock WorkflowDiffView component
 vi.mock('@/features/workflows/workflowDiff/WorkflowDiffView.vue', () => ({
@@ -135,6 +117,7 @@ describe('AIBuilderDiffModal', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		createTestingPinia({ stubActions: false });
+		useUIStore().openModal(AI_BUILDER_DIFF_MODAL_KEY);
 	});
 
 	const getDefaultProps = () => ({
@@ -149,9 +132,9 @@ describe('AIBuilderDiffModal', () => {
 		},
 	});
 
-	it('renders WorkflowDiffView with correct props', () => {
-		const { getByTestId } = renderComponent(getDefaultProps());
-		const diffView = getByTestId('workflow-diff-view');
+	it('renders WorkflowDiffView with correct props', async () => {
+		renderComponent(getDefaultProps());
+		const diffView = await within(document.body).findByTestId('workflow-diff-view');
 
 		expect(diffView).toBeInTheDocument();
 		expect(diffView.getAttribute('data-source-label')).toBe('Previous version');
@@ -167,20 +150,12 @@ describe('AIBuilderDiffModal', () => {
 	});
 
 	it('tracks telemetry on close', async () => {
-		const { getByTestId } = renderComponent(getDefaultProps());
+		renderComponent(getDefaultProps());
 
-		expect(getByTestId('modal')).toBeInTheDocument();
+		expect(await within(document.body).findByTestId('workflow-diff-view')).toBeInTheDocument();
 
-		// Manually call handleBeforeClose by getting the component instance
-		// Since the Modal mock doesn't emit before-close, we test the function directly
-		// by finding the component and calling its exposed method
-		// In practice, the @before-close handler on Modal calls handleBeforeClose
-		// We verify telemetry was called on mount, then reset and test close tracking
 		trackMock.mockClear();
 
-		// Import the component to test handleBeforeClose directly
-		// Since Modal is mocked and doesn't trigger before-close,
-		// we verify the handler exists by checking telemetry was set up correctly on mount
 		expect(trackMock).not.toHaveBeenCalledWith('Workflow diff view closed', {
 			source: 'ai-builder-review',
 		});
