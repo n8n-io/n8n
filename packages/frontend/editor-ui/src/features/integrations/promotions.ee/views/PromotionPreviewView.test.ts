@@ -97,7 +97,7 @@ describe('PromotionPreviewView', () => {
 		const card = getAllByTestId('promotion-preview-card').find(
 			(element) => element.dataset.resourceKey === 'tag:g1',
 		);
-		expect(card?.scrollIntoView).toHaveBeenCalled();
+		expect(vi.mocked(Element.prototype.scrollIntoView).mock.contexts).toEqual([card]);
 	});
 
 	it('should scroll to the card again when the same item is inspected twice', async () => {
@@ -118,11 +118,25 @@ describe('PromotionPreviewView', () => {
 		expect(getByTestId('promotion-preview-disconnected')).toHaveTextContent("Promote isn't set up");
 	});
 
-	it('should offer a retry when the preview fails to load', async () => {
-		vi.mocked(api.getPromotionPreview).mockRejectedValueOnce(new Error('offline'));
+	it.each([
+		{
+			name: 'the preview',
+			fail: () => vi.mocked(api.getPromotionPreview).mockRejectedValueOnce(new Error('offline')),
+			heading: "Couldn't load the changes",
+		},
+		{
+			name: 'the instance connection',
+			fail: () =>
+				vi
+					.mocked(settingsApi.fetchPromotionEnvironments)
+					.mockRejectedValueOnce(new Error('offline')),
+			heading: "Couldn't check the instance connection",
+		},
+	])('should offer a retry when $name fails to load', async ({ fail, heading }) => {
+		fail();
 
 		const { getByTestId, getByRole } = await render();
-		expect(getByTestId('promotion-preview-error')).toHaveTextContent("Couldn't load the changes");
+		expect(getByTestId('promotion-preview-error')).toHaveTextContent(heading);
 
 		await userEvent.click(getByRole('button', { name: 'Try again' }));
 		await waitFor(() => expect(getByTestId('promotion-preview-tree')).toBeInTheDocument());
