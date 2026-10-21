@@ -334,6 +334,33 @@ describe('MemoryGuardService', () => {
 			expect(activeExecutions.stopExecution).not.toHaveBeenCalled();
 		});
 
+		it('should let no held execution start while the stopped engine still runs', async () => {
+			addExecution('large', { megabytes: 300, engine: new Promise<IRun>(() => {}) });
+			utilization = 0.96;
+			await sample();
+			expect(stoppedIds()).toEqual(['large']);
+
+			const held = concurrencyControl.throttle({ mode: 'webhook', executionId: 'held' });
+			await sample();
+
+			expect(await isAdmitted(held)).toBe(false);
+		});
+
+		it.each([0.9, 0.96])(
+			'should stop holding at %s when a held execution waits too long and nothing can be stopped',
+			async (level) => {
+				addExecution('fetching', { engine: new Promise<IRun>(() => {}) });
+				utilization = level;
+				await sample(2);
+				const held = concurrencyControl.throttle({ mode: 'webhook', executionId: 'held' });
+
+				await vi.advanceTimersByTimeAsync(6_000);
+
+				expect(await isAdmitted(held)).toBe(true);
+				expect(activeExecutions.stopExecution).not.toHaveBeenCalled();
+			},
+		);
+
 		it('should stop the largest execution when a held execution waits too long', async () => {
 			addExecution('large', { megabytes: 300 });
 			utilization = 0.82;

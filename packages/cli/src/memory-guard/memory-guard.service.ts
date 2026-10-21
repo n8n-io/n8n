@@ -183,7 +183,8 @@ export class MemoryGuardService {
 		if (this.isHolding) {
 			this.admitBatch = 1;
 			// With nothing running, no execution can free memory, so let one held execution start.
-			if (!this.hasRunningExecution()) this.admitOneHeld();
+			// A stopped engine still runs after its execution leaves the active list.
+			if (!this.pendingStop && !this.hasRunningExecution()) this.admitOneHeld();
 		} else {
 			this.admitHeldGradually();
 		}
@@ -194,7 +195,7 @@ export class MemoryGuardService {
 		if (!trigger) return;
 
 		const isStopped = this.stop(usage, trigger);
-		if (!isStopped && trigger === 'hold-limit') {
+		if (!isStopped && this.hasHoldLimitPassed()) {
 			this.isHoldSuspended = true;
 			this.endHold();
 			this.logger.warn(
@@ -216,17 +217,15 @@ export class MemoryGuardService {
 	private getStopTrigger(isCritical: boolean): StopTrigger | undefined {
 		if (isCritical) return 'critical';
 		if (this.stopStreak >= SAMPLES_TO_ACT) return 'threshold';
-
-		const { oldestHeldAt } = this.concurrencyControl;
-		if (
-			this.isHolding &&
-			oldestHeldAt !== undefined &&
-			Date.now() - oldestHeldAt >= HOLD_LIMIT_MS
-		) {
-			return 'hold-limit';
-		}
-
+		if (this.hasHoldLimitPassed()) return 'hold-limit';
 		return undefined;
+	}
+
+	private hasHoldLimitPassed() {
+		const { oldestHeldAt } = this.concurrencyControl;
+		return (
+			this.isHolding && oldestHeldAt !== undefined && Date.now() - oldestHeldAt >= HOLD_LIMIT_MS
+		);
 	}
 
 	/** Let held executions start in batches that double, so that memory can rise slowly. */
