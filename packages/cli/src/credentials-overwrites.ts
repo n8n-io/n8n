@@ -132,6 +132,7 @@ export class CredentialsOverwrites {
 			overwriteData,
 			(type) => this.getClientFields(type),
 			(type) => this.credentialTypes.recognizes(type),
+			(type) => this.credentialTypes.getParentTypes(type),
 		);
 
 		for (const problem of parsed.problems) {

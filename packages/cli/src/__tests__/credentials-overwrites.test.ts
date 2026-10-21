@@ -1677,6 +1677,26 @@ describe('CredentialsOverwrites', () => {
 				expect(instance.getOverwrites('notionOAuth2Api')).toEqual(expect.objectContaining(baseApp));
 			});
 
+			it('should compare a versions entry with the base version of a parent type', async () => {
+				const parentBase = { oAuth2Api: { version: 2, ...baseApp }, notionOAuth2Api: baseApp };
+
+				await createInstance({
+					...parentBase,
+					__versions: { notionOAuth2Api: { version: 2, ...newApp } },
+				});
+				expect(logger.warn).toHaveBeenCalledWith(
+					expect.stringContaining('must be greater than the version of the base entry (2)'),
+				);
+
+				logger.warn.mockClear();
+				const instance = await createInstance({
+					...parentBase,
+					__versions: { notionOAuth2Api: { version: 3, ...newApp } },
+				});
+				expect(logger.warn).not.toHaveBeenCalled();
+				expect(instance.getDefaultVersion('notionOAuth2Api')).toBe(3);
+			});
+
 			it('should skip a versions entry that has no base entry', async () => {
 				const instance = await createInstance({
 					__versions: { notionOAuth2Api: { version: 2, ...newApp } },

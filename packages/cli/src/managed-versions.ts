@@ -77,11 +77,13 @@ export function withTokenVersion(
  *
  * @param clientFieldsOf returns the client fields of an OAuth credential type, `undefined` for other types
  * @param isKnownType returns true when this instance knows the credential type. A type can come from a package that is not installed here.
+ * @param parentTypesOf returns the parent types of a credential type, nearest first. A base `version` on a parent applies to a child without its own.
  */
 export function parseOverwritesPayload(
 	payload: Record<string, unknown>,
 	clientFieldsOf: (type: string) => readonly string[] | undefined,
 	isKnownType: (type: string) => boolean,
+	parentTypesOf: (type: string) => readonly string[],
 ): ParsedCredentialsOverwrites {
 	const entries: ICredentialsOverwrite = {};
 	const entryVersions: Record<string, number> = {};
@@ -126,7 +128,10 @@ export function parseOverwritesPayload(
 			clientFields: clientFieldsOf(type),
 			isKnown: isKnownType(type),
 			hasBaseEntry: entries[type] !== undefined,
-			baseVersion: entryVersions[type] ?? IMPLICIT_MANAGED_VERSION,
+			baseVersion:
+				[type, ...parentTypesOf(type)]
+					.map((name) => entryVersions[name])
+					.find((version) => version !== undefined) ?? IMPLICIT_MANAGED_VERSION,
 		});
 
 		if (problem !== undefined) {
