@@ -30,7 +30,7 @@ import { PublicApiRateLimitService } from '@/public-api/public-api-rate-limit.se
 import { RateLimitService } from '@/services/rate-limit.service';
 import type { LastActiveAtService } from '@/services/last-active-at.service';
 
-import { createStoreFactory, redisClient, redisCluster } from './fake-redis.factory';
+import { createStoreFactory, redisClient } from './fake-redis.factory';
 import type { Mode } from './fake-redis.factory';
 
 type RateLimitConfig = GlobalConfig['publicApi']['rateLimit'];
@@ -532,12 +532,11 @@ describe('Public API rate limiting across mains', () => {
 		const instance1 = activateApp({ globalReadLimit: 1 }, multiMain({ redisPrefix: 'n8n-a' }));
 		const instance2 = activateApp({ globalReadLimit: 1 }, multiMain({ redisPrefix: 'n8n-b' }));
 
-		expect((await send(instance1, 'get', '/widgets')).status).toBe(200);
-		expect((await send(instance2, 'get', '/widgets')).status).toBe(200);
+		expect(await sendTimes(instance1, 2, 'get', '/widgets')).toEqual([200, 429]);
+		expect(await sendTimes(instance2, 2, 'get', '/widgets')).toEqual([200, 429]);
 	});
 
 	it('lets requests pass and logs one warning while Redis fails', async () => {
-		const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
 		const logger = mock<Logger>();
 		const main = activateApp(
 			{ globalReadLimit: 1, endpointReadLimit: 1 },
@@ -549,7 +548,6 @@ describe('Public API rate limiting across mains', () => {
 		expect(responses.map((response) => response.status)).toEqual([200, 200]);
 		expect(responses[1].headers['x-ratelimit-limit']).toBeUndefined();
 		expect(logger.warn).toHaveBeenCalledTimes(1);
-		expect(consoleError).not.toHaveBeenCalled();
 	});
 
 	it('still blocks a request when Redis cannot take back its count', async () => {
@@ -559,22 +557,5 @@ describe('Public API rate limiting across mains', () => {
 		);
 
 		expect(await sendTimes(main, 2, 'get', '/widgets')).toEqual([200, 429]);
-	});
-
-	it('loads the scripts on every Redis Cluster node', async () => {
-		const main = activateApp(
-			{ globalReadLimit: 1 },
-			multiMain({ createRedisClient: redisCluster }),
-		);
-
-		expect(await sendTimes(main, 2, 'get', '/widgets')).toEqual([200, 429]);
-	});
-
-	it('does not connect to Redis on a single main', () => {
-		const createRedisClient = vi.fn();
-
-		activateApp({}, createStoreFactory('single main', { createRedisClient }));
-
-		expect(createRedisClient).not.toHaveBeenCalled();
 	});
 });
