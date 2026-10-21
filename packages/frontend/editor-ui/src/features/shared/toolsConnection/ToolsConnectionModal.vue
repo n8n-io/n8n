@@ -70,8 +70,6 @@ const props = withDefaults(
 		connectLabel?: (item: ToolConnectionItem) => string;
 		connectAriaLabel?: (item: ToolConnectionItem) => string;
 		connectedLabel?: (item: ToolConnectionItem) => string;
-		disconnectLabel?: (item: ToolConnectionItem) => string;
-		disconnectAriaLabel?: (item: ToolConnectionItem) => string;
 		categoryLabels?: Partial<Record<ToolCategoryKey, string>>;
 	}>(),
 	{
@@ -529,11 +527,8 @@ function handleOpenChange(value: boolean) {
 									:connect-label="props.connectLabel?.(row.item)"
 									:connect-aria-label="props.connectAriaLabel?.(row.item)"
 									:connected-label="props.connectedLabel?.(row.item)"
-									:disconnect-label="props.disconnectLabel?.(row.item)"
-									:disconnect-aria-label="props.disconnectAriaLabel?.(row.item)"
 									@open-detail="openDetail($event)"
 									@connect="emit('connect', $event)"
-									@disconnect="emit('disconnect', $event)"
 									@select-credential="
 										(item, authType, credentialId) =>
 											emit('select-credential', item, authType, credentialId)

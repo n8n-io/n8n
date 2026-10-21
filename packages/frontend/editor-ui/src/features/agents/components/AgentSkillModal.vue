@@ -487,11 +487,6 @@ function onPickerItemAttach(item: ToolConnectionItem) {
 	void attachLibrarySkill(item.skillId);
 }
 
-function onPickerItemDetach(item: ToolConnectionItem) {
-	if (item.kind !== 'skill' || !item.attached || item.attaching) return;
-	props.data.onRemove?.(item.skillId);
-}
-
 async function onPickerItemPreview(item: ToolConnectionItem) {
 	if (item.kind !== 'skill' || item.disabled) return;
 	previewLoading.value = true;
@@ -747,13 +742,6 @@ function onRemove() {
 						})
 				"
 				:connected-label="() => i18n.baseText('agents.builder.skills.picker.added')"
-				:disconnect-label="() => i18n.baseText('agents.builder.skills.picker.remove')"
-				:disconnect-aria-label="
-					(item) =>
-						i18n.baseText('agents.builder.skills.picker.removeAriaLabel', {
-							interpolate: { name: item.title },
-						})
-				"
 				embedded
 				show-connect-actions
 				hide-empty-categories
@@ -761,7 +749,6 @@ function onRemove() {
 				persistent-scrollbar
 				data-testid="agent-skill-picker"
 				@connect="onPickerItemAttach"
-				@disconnect="onPickerItemDetach"
 				@open-detail="onPickerItemPreview"
 				@create="onPickerCreate"
 			/>

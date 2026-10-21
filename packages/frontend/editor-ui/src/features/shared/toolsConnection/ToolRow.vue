@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, ref } from 'vue';
+import { computed, inject, nextTick, ref, watch } from 'vue';
 import { N8nBadge, N8nButton, N8nIcon, N8nSpinner, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { RestrictedNodePopover } from '@n8n/frontend-module-type-availability-policies';
@@ -19,14 +19,11 @@ const props = defineProps<{
 	connectLabel?: string;
 	connectAriaLabel?: string;
 	connectedLabel?: string;
-	disconnectLabel?: string;
-	disconnectAriaLabel?: string;
 }>();
 
 const emit = defineEmits<{
 	'open-detail': [item: ToolConnectionItem];
 	connect: [item: ToolConnectionItem];
-	disconnect: [item: ToolConnectionItem];
 	'select-credential': [item: ToolConnectionItem, authType: string, credentialId: string];
 	'credential-dropdown-open': [item: ToolConnectionItem];
 	'first-credential-connect': [item: ToolConnectionItem];
@@ -136,26 +133,31 @@ function handleRowClick() {
 	emit('open-detail', props.item);
 }
 
-/**
- * After a pointer click on "Add" the pointer is still on the button. Hold back the
- * hover "Remove" until it leaves, so a second click cannot undo the add by accident.
- * A keyboard add (`detail` 0) leaves the pointer elsewhere, so it does not disarm.
- */
-const removeArmed = ref(true);
+const mainActionRef = ref<HTMLElement | null>(null);
+/** Set when "Add" had focus, so focus can move once the button is gone. */
+const refocusAfterAdd = ref(false);
+
+function handleSkillAdd(event: MouseEvent) {
+	refocusAfterAdd.value =
+		event.currentTarget instanceof HTMLElement &&
+		event.currentTarget.contains(document.activeElement);
+	emit('connect', props.item);
+}
 
 /**
- * While the skill is being added, the click is ignored instead of disabling the
- * button: a disabled button drops keyboard focus in the middle of the add.
+ * "Added" is static text, so the focused "Add" button leaves the page when the
+ * skill is added. Move focus to the row's own button (it opens the skill) so
+ * keyboard users stay on the same row instead of falling back to the page.
  */
-function handleSkillAction(event: MouseEvent) {
-	if (props.item.kind !== 'skill') return;
-	if (!props.item.attached) {
-		if (event.detail > 0) removeArmed.value = false;
-		emit('connect', props.item);
-	} else if (!props.item.attaching) {
-		emit('disconnect', props.item);
-	}
-}
+watch(
+	() => props.item.kind === 'skill' && props.item.attached,
+	async (attached) => {
+		if (!attached || !refocusAfterAdd.value) return;
+		refocusAfterAdd.value = false;
+		await nextTick();
+		mainActionRef.value?.focus();
+	},
+);
 
 function handleConnect() {
 	emit('connect', props.item);
@@ -182,6 +184,7 @@ function handleConnect() {
 	>
 		<component
 			:is="isRowNavigable ? 'button' : 'div'"
+			ref="mainActionRef"
 			:type="isRowNavigable ? 'button' : undefined"
 			:class="[$style.mainAction, { [$style.mainActionStatic]: !isRowNavigable }]"
 			:disabled="isRowNavigable ? isDisabled || item.status === 'connecting' : undefined"
@@ -270,41 +273,24 @@ function handleConnect() {
 				</span>
 				<template #content>{{ item.disabledReason }}</template>
 			</N8nTooltip>
-			<!--
-				One element for both states keeps keyboard focus across an add. An added
-				skill reads "Added" and shows "Remove" on hover or keyboard focus.
-			-->
 			<N8nButton
-				v-else-if="item.kind === 'skill'"
-				:variant="item.attached ? 'ghost' : 'outline'"
+				v-else-if="item.kind === 'skill' && !item.attached"
+				variant="outline"
 				size="small"
-				:class="
-					item.attached &&
-					!item.attaching && [$style.addedActionIdle, removeArmed && $style.addedActionArmed]
-				"
-				:aria-label="item.attached ? (disconnectAriaLabel ?? disconnectLabel) : connectAriaLabel"
-				:data-test-id="
-					item.attached ? 'tools-connection-row-detach' : 'tools-connection-row-attach'
-				"
-				@click="handleSkillAction"
-				@mouseleave="removeArmed = true"
+				:aria-label="connectAriaLabel"
+				data-test-id="tools-connection-row-attach"
+				@click="handleSkillAdd"
 			>
-				<span v-if="item.attached" :class="$style.addedStack">
-					<span :class="$style.addedLabel">
-						<N8nIcon
-							icon="check"
-							:size="14"
-							:class="$style.statusIconConnected"
-							aria-hidden="true"
-						/>
-						{{ connectedLabel ?? i18n.baseText('tools.connection.action.added') }}
-					</span>
-					<span :class="$style.removeLabel" aria-hidden="true">
-						{{ disconnectLabel ?? i18n.baseText('tools.connection.action.remove') }}
-					</span>
-				</span>
-				<template v-else>{{ connectLabel ?? i18n.baseText('generic.add') }}</template>
+				{{ connectLabel ?? i18n.baseText('generic.add') }}
 			</N8nButton>
+			<span
+				v-else-if="item.kind === 'skill'"
+				:class="$style.statusMarker"
+				data-test-id="tools-connection-row-added"
+			>
+				<N8nIcon icon="check" :size="14" :class="$style.statusIconConnected" aria-hidden="true" />
+				{{ connectedLabel ?? i18n.baseText('tools.connection.action.added') }}
+			</span>
 			<N8nButton
 				v-else-if="item.kind === 'service'"
 				variant="outline"
@@ -544,44 +530,6 @@ function handleConnect() {
 	color: var(--color--text--tint-1);
 	font-size: var(--font-size--2xs);
 	white-space: nowrap;
-}
-
-.addedStack {
-	// Both labels share one grid cell, so the button keeps its width when they swap.
-	display: inline-grid;
-
-	> * {
-		grid-area: 1 / 1;
-	}
-}
-
-.addedLabel,
-.removeLabel {
-	display: inline-flex;
-	align-items: center;
-	justify-content: flex-end;
-	gap: var(--spacing--3xs);
-}
-
-.addedLabel {
-	color: var(--color--text--tint-1);
-	font-weight: var(--font-weight--regular);
-}
-
-.removeLabel {
-	visibility: hidden;
-	color: var(--color--danger);
-}
-
-.addedActionIdle:focus-visible,
-.addedActionArmed:hover {
-	.addedLabel {
-		visibility: hidden;
-	}
-
-	.removeLabel {
-		visibility: visible;
-	}
 }
 
 .statusIconConnected,

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { defineComponent } from 'vue';
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
@@ -118,8 +118,6 @@ describe('ToolRow', () => {
 					connectLabel: 'Add skill',
 					connectAriaLabel: 'Add Support tone',
 					connectedLabel: 'Added',
-					disconnectLabel: 'Remove',
-					disconnectAriaLabel: 'Remove Support tone',
 				},
 				pinia: createTestingPinia(),
 			});
@@ -133,77 +131,37 @@ describe('ToolRow', () => {
 			await userEvent.click(add);
 
 			expect(emitted('connect')).toEqual([[skill]]);
-			expect(emitted('disconnect')).toBeUndefined();
 		});
 
-		it('shows an added skill as added and removes it on click', async () => {
-			const added = { ...skill, attached: true };
-			const { getByRole, getByTestId, emitted } = renderSkill(added);
+		it('shows an added skill as static text with no action', () => {
+			const { getByTestId, queryByTestId, getAllByRole } = renderSkill({
+				...skill,
+				attached: true,
+			});
 
-			const action = getByRole('button', { name: 'Remove Support tone' });
-			expect(action).toBe(getByTestId('tools-connection-row-detach'));
-			expect(action).toHaveTextContent('Added');
-			await userEvent.click(action);
-
-			expect(emitted('disconnect')).toEqual([[added]]);
-			expect(emitted('connect')).toBeUndefined();
+			expect(getByTestId('tools-connection-row-added')).toHaveTextContent('Added');
+			expect(queryByTestId('tools-connection-row-attach')).toBeNull();
+			// Only the row itself, which opens the skill, stays a button.
+			expect(getAllByRole('button')).toEqual([getByTestId('tools-connection-row-main')]);
 		});
 
-		it('ignores a remove while the skill is still being added', async () => {
-			const { getByTestId, emitted } = renderSkill({ ...skill, attached: true, attaching: true });
-
-			await userEvent.click(getByTestId('tools-connection-row-detach'));
-
-			expect(emitted('disconnect')).toBeUndefined();
-		});
-
-		// jsdom does not apply :hover or :focus-visible styles, so these tests read the
-		// classes that gate the "Remove" swap: `addedActionArmed` for hover and
-		// `addedActionIdle` for keyboard focus.
-		const armed = /addedActionArmed/;
-		const idle = /addedActionIdle/;
-
-		it('holds back the hover remove after a click on add until the pointer leaves', async () => {
-			const { getByTestId, emitted, rerender } = renderSkill(skill);
-
-			const add = getByTestId('tools-connection-row-attach');
-			await userEvent.click(add);
-			expect(emitted('connect')).toEqual([[skill]]);
-			await rerender({ item: { ...skill, attached: true } });
-
-			// Same element, so focus and the pointer stay on it.
-			const action = getByTestId('tools-connection-row-detach');
-			expect(action).toBe(add);
-			expect(action).toHaveTextContent('Added');
-			expect(action.className).not.toMatch(armed);
-			expect(action.className).toMatch(idle);
-
-			await userEvent.unhover(action);
-			expect(action.className).toMatch(armed);
-			await userEvent.hover(action);
-			expect(action.className).toMatch(armed);
-		});
-
-		it('keeps the hover remove armed after a keyboard add', async () => {
-			const { getByTestId, emitted, rerender } = renderSkill(skill);
+		it('moves focus to the row when a focused add button turns into added', async () => {
+			const { getByTestId, rerender } = renderSkill(skill);
 
 			getByTestId('tools-connection-row-attach').focus();
 			await userEvent.keyboard('{Enter}');
-			expect(emitted('connect')).toEqual([[skill]]);
 			await rerender({ item: { ...skill, attached: true } });
 
-			const action = getByTestId('tools-connection-row-detach');
-			expect(action).toHaveFocus();
-			expect(action.className).toMatch(armed);
-			expect(action.className).toMatch(idle);
+			await waitFor(() => expect(getByTestId('tools-connection-row-main')).toHaveFocus());
 		});
 
-		it('does not offer remove while the skill is still being added', () => {
-			const { getByTestId } = renderSkill({ ...skill, attached: true, attaching: true });
+		it('leaves focus alone when the add button did not have it', async () => {
+			const { getByTestId, rerender } = renderSkill(skill);
 
-			const action = getByTestId('tools-connection-row-detach');
-			expect(action.className).not.toMatch(armed);
-			expect(action.className).not.toMatch(idle);
+			await fireEvent.click(getByTestId('tools-connection-row-attach'));
+			await rerender({ item: { ...skill, attached: true } });
+
+			expect(getByTestId('tools-connection-row-main')).not.toHaveFocus();
 		});
 
 		it('falls back to the shared labels', () => {
@@ -212,7 +170,7 @@ describe('ToolRow', () => {
 			detached.unmount();
 
 			const attached = render({ ...skill, attached: true });
-			expect(attached.getByTestId('tools-connection-row-detach')).toHaveTextContent('Added');
+			expect(attached.getByTestId('tools-connection-row-added')).toHaveTextContent('Added');
 		});
 	});
 

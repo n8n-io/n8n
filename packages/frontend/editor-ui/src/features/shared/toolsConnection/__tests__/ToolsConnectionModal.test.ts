@@ -94,7 +94,6 @@ function renderWith(
 		showSuggestionFooter: boolean;
 		groupSearchResults: boolean;
 		hideEmptyCategories: boolean;
-		disconnectLabel: (item: ToolConnectionItem) => string;
 		createAction: {
 			category?: ToolCategoryKey;
 			label: string;
@@ -112,7 +111,6 @@ function renderWith(
 			showSuggestionFooter: props.showSuggestionFooter,
 			groupSearchResults: props.groupSearchResults,
 			hideEmptyCategories: props.hideEmptyCategories,
-			disconnectLabel: props.disconnectLabel,
 			createAction: props.createAction,
 		},
 		slots: {
@@ -493,22 +491,6 @@ describe('ToolsConnectionModal', () => {
 			await waitFor(() => {
 				expect(getByTestId('tab-global').textContent).toContain('(0)');
 			});
-		});
-
-		it('forwards the remove label and emits disconnect for an added skill', async () => {
-			const added = skill('tone', 'project', true);
-			const { getByTestId, emitted } = renderWith({
-				items: [added],
-				categories: SKILL_CATEGORIES,
-				hideEmptyCategories: true,
-				disconnectLabel: () => 'Remove skill',
-			});
-
-			const action = getByTestId('tools-connection-row-detach');
-			expect(action).toHaveTextContent('Remove skill');
-			await fireEvent.click(action);
-
-			expect(emitted().disconnect).toEqual([[added]]);
 		});
 	});
 
