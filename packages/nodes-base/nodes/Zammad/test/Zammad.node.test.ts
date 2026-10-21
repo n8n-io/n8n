@@ -616,6 +616,52 @@ describe('Zammad Node', () => {
 			});
 		});
 
+		it.each([
+			[true, { customer_id: 'guess:new@example.com' }],
+			[false, { customer: 'new@example.com' }],
+		])(
+			'should set the customer for createCustomerIfNotExists=%s',
+			async (createCustomerIfNotExists, customerFields) => {
+				(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation((paramName) => {
+					switch (paramName) {
+						case 'resource':
+							return 'ticket';
+						case 'operation':
+							return 'create';
+						case 'title':
+							return 'Test Ticket';
+						case 'group':
+							return 'Support';
+						case 'customer':
+							return 'new@example.com';
+						case 'createCustomerIfNotExists':
+							return createCustomerIfNotExists;
+						case 'article':
+							return {
+								articleDetails: { body: 'Test article', type: 'note', visibility: 'public' },
+							};
+						case 'additionalFields':
+							return {};
+						default:
+							return null;
+					}
+				});
+
+				(GenericFunctions.zammadApiRequest as Mock)
+					.mockResolvedValueOnce({ id: 1, title: 'Test Ticket' })
+					.mockResolvedValueOnce([{ id: 1, body: 'Test article' }]);
+
+				await node.execute.call(mockExecuteFunctions as IExecuteFunctions);
+
+				expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith('POST', '/tickets', {
+					article: { body: 'Test article', type: 'note', internal: false },
+					title: 'Test Ticket',
+					group: 'Support',
+					...customerFields,
+				});
+			},
+		);
+
 		it('should include to and cc for email articles', async () => {
 			const mockTicket = { id: 2, title: 'Email Ticket' };
 			const mockArticles = [{ id: 2, body: 'Email body' }];
