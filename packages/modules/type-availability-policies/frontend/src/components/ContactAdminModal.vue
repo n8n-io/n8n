@@ -73,12 +73,12 @@ function mailtoHref(email: string): string {
 		:header="i18n.baseText('typeAvailabilityPolicies.contactAdmin.title')"
 		size="medium"
 		stacked
-		data-test-id="contact-instance-admin-modal"
+		data-test-id="contact-admin-modal"
 	>
 		<N8nDialogBody :class="$style.body">
 			<N8nDialogDescription>{{ description }}</N8nDialogDescription>
 			<N8nLoading v-if="isLoading" :rows="2" variant="p" />
-			<ul v-else-if="owners.length" :class="$style.list" data-test-id="contact-instance-admin-list">
+			<ul v-else-if="owners.length" :class="$style.list" data-test-id="contact-admin-list">
 				<li v-for="owner in owners" :key="owner.id" :class="$style.owner">
 					<N8nAvatar :first-name="owner.firstName" :last-name="owner.lastName" size="small" />
 					<div :class="$style.identity">
@@ -89,13 +89,7 @@ function mailtoHref(email: string): string {
 					</div>
 				</li>
 			</ul>
-			<N8nText
-				v-else
-				tag="p"
-				size="small"
-				color="text-base"
-				data-test-id="contact-instance-admin-empty"
-			>
+			<N8nText v-else tag="p" size="small" color="text-base" data-test-id="contact-admin-empty">
 				{{ i18n.baseText('typeAvailabilityPolicies.contactAdmin.empty') }}
 			</N8nText>
 		</N8nDialogBody>

@@ -17,7 +17,7 @@ import { useFreeAiCredits } from '@/app/composables/useFreeAiCredits';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { AI_GATEWAY_MANAGED_TAG, type CredentialTypeAvailability } from '@n8n/api-types';
 import {
-	ContactInstanceAdminModal,
+	ContactAdminModal,
 	SCOPE_LABEL_KEY,
 	useTypeAvailabilityPoliciesStore,
 } from '@n8n/frontend-module-type-availability-policies';
@@ -757,7 +757,7 @@ defineExpose({
 				/>
 			</template>
 		</N8nAiModelSelectorDropdown>
-		<ContactInstanceAdminModal
+		<ContactAdminModal
 			kind="credential"
 			:node-type-name="contactAdminSubject ?? ''"
 			:open="contactAdminSubject !== null"

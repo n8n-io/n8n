@@ -14,6 +14,7 @@ import { computed, ref, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 
 import type { DetailEntry } from '../../composables/usePromotionResourceDetails';
+import type { Blocker } from '../../promotionOperation';
 import { usePromotionPreviewLabels } from '../../composables/usePromotionPreviewLabels';
 import {
 	describeDataTable,
@@ -28,6 +29,7 @@ import type { ResourceKey, SelectionGraph } from '../../promotionPreview.selecti
 import { isContainer, resourceIcon } from '../../promotionPreview.tree';
 import DataTableChangeDetails from './DataTableChangeDetails.vue';
 import PromotionFieldChanges from './PromotionFieldChanges.vue';
+import PromotionWorkflowLinks from './PromotionWorkflowLinks.vue';
 
 const props = defineProps<{
 	resource: PromotionResource;
@@ -36,6 +38,7 @@ const props = defineProps<{
 	included: boolean;
 	entry?: DetailEntry;
 	inspected: boolean;
+	blockers?: Blocker[];
 }>();
 
 const emit = defineEmits<{
@@ -46,7 +49,11 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const nameOf = (key: string) => props.graph.resources.get(key)?.name ?? key;
-const { changeLabel } = usePromotionPreviewLabels();
+const { changeLabel, blockerMessage } = usePromotionPreviewLabels();
+// A moved folder explains itself in the card body.
+const blocker = computed(() =>
+	props.resource.type === 'folder' ? undefined : blockerMessage(props.resource, props.blockers),
+);
 
 // Cards start open. Inspecting a resource from the tree opens its card again.
 const open = ref(true);
@@ -56,11 +63,23 @@ watch(
 		if (inspected) open.value = true;
 	},
 );
-const statusLabel = computed(() =>
-	i18n.baseText(
-		props.included ? 'promotions.preview.card.included' : 'promotions.preview.card.notIncluded',
-	),
-);
+// A blocker matters more than the inclusion, so it takes the place of the inclusion icon.
+const status = computed(() => {
+	if (blocker.value) {
+		return { label: blocker.value, icon: 'circle-alert' as const, tone: 'blocked' };
+	}
+	return props.included
+		? {
+				label: i18n.baseText('promotions.preview.card.included'),
+				icon: 'circle-check' as const,
+				tone: 'included',
+			}
+		: {
+				label: i18n.baseText('promotions.preview.card.notIncluded'),
+				icon: 'circle-minus' as const,
+				tone: undefined,
+			};
+});
 
 // On a project page, project scope is the default, so only global variables say so.
 const scope = computed(() =>
@@ -69,26 +88,21 @@ const scope = computed(() =>
 		: undefined,
 );
 
-type Footer = { keypath: BaseTextKey; resourceKeys: readonly ResourceKey[] };
+type Footer = { keypath: BaseTextKey; workflows: Array<{ key: ResourceKey; name: string }> };
 
 // Resources that users cannot select name the workflows that use or call them.
 const footer = computed((): Footer | undefined => {
 	const { resource, graph } = props;
 	if (resource.selectable || isContainer(resource)) return undefined;
 	const users = graph.requiredBy.get(resource.key) ?? [];
-	if (users.length > 0) return { keypath: 'promotions.preview.card.usedBy', resourceKeys: users };
+	const named = (keys: readonly ResourceKey[]) => keys.map((key) => ({ key, name: nameOf(key) }));
+	if (users.length > 0)
+		return { keypath: 'promotions.preview.card.usedBy', workflows: named(users) };
 	return {
 		keypath: 'promotions.preview.card.calledBy',
-		resourceKeys: graph.calledBy.get(resource.key) ?? [],
+		workflows: named(graph.calledBy.get(resource.key) ?? []),
 	};
 });
-
-// The list format adds the separators and the "and" of the current language.
-const footerNames = computed(() =>
-	new Intl.ListFormat(i18n.locale, { style: 'long', type: 'conjunction' }).formatToParts(
-		footer.value?.resourceKeys ?? [],
-	),
-);
 
 const detail = computed(() => (props.entry?.status === 'loaded' ? props.entry.detail : undefined));
 const stale = computed(() => !!detail.value && isStaleDetail(detail.value, props.resource));
@@ -115,6 +129,16 @@ const isApplyMove = computed(
 		props.resource.type === 'folder' &&
 		props.resource.previousParentKey !== undefined,
 );
+// Tags belong to the whole instance, so Apply changes them outside this project too.
+const tagNote = computed(() => {
+	const { direction, resource } = props;
+	if (direction !== 'apply' || resource.type !== 'tag' || resource.change !== 'modified') {
+		return undefined;
+	}
+	if (resource.previousId !== undefined) return i18n.baseText('promotions.preview.tag.linked');
+	if (resource.previousName !== undefined) return i18n.baseText('promotions.preview.tag.renamed');
+	return undefined;
+});
 </script>
 
 <template>
@@ -126,22 +150,30 @@ const isApplyMove = computed(
 		>
 			<CollapsibleTrigger :class="$style.header" data-test-id="promotion-preview-card-toggle">
 				<N8nIcon :icon="resourceIcon(resource.type)" size="small" :class="$style.icon" />
-				<N8nText bold size="medium" color="text-dark" :title="resource.name" :class="$style.title">
-					{{ resource.name }}
-				</N8nText>
-				<N8nText v-if="changeLabel(resource)" step="xs" color="text-light">
-					{{ changeLabel(resource) }}
-				</N8nText>
+				<span :class="$style.heading">
+					<N8nText
+						bold
+						size="medium"
+						color="text-dark"
+						:title="resource.name"
+						:class="$style.title"
+					>
+						{{ resource.name }}
+					</N8nText>
+					<N8nText v-if="changeLabel(resource, direction)" step="xs" color="text-light">
+						{{ changeLabel(resource, direction) }}
+					</N8nText>
+				</span>
 				<N8nIcon icon="chevron-down" size="small" :class="$style.chevron" />
-				<N8nTooltip :content="statusLabel" as-child>
+				<N8nTooltip :content="status.label" as-child>
 					<span
 						role="img"
-						:aria-label="statusLabel"
-						:class="[$style.status, { [$style.included]: included }]"
+						:aria-label="status.label"
+						:class="[$style.status, status.tone && $style[status.tone]]"
 						data-test-id="promotion-preview-card-status"
 						:data-included="included"
 					>
-						<N8nIcon :icon="included ? 'circle-check' : 'circle-minus'" size="medium" />
+						<N8nIcon :icon="status.icon" size="medium" />
 					</span>
 				</N8nTooltip>
 			</CollapsibleTrigger>
@@ -209,6 +241,9 @@ const isApplyMove = computed(
 					<N8nText v-if="isApplyMove" step="2xs" color="text-light" :class="$style.padded">
 						{{ i18n.baseText('promotions.preview.folder.moveConflict') }}
 					</N8nText>
+					<N8nText v-if="tagNote" step="2xs" color="text-light" :class="$style.padded">
+						{{ tagNote }}
+					</N8nText>
 				</template>
 
 				<footer v-if="footer" :class="$style.footer">
@@ -216,18 +251,10 @@ const isApplyMove = computed(
 					<N8nText step="2xs" color="text-light" data-test-id="promotion-preview-card-inclusion">
 						<I18nT :keypath="footer.keypath" scope="global">
 							<template #names>
-								<template v-for="(part, index) in footerNames" :key="index">
-									<button
-										v-if="part.type === 'element'"
-										type="button"
-										:class="$style.nameLink"
-										data-test-id="promotion-preview-card-relation"
-										@click="emit('inspect', part.value)"
-									>
-										{{ nameOf(part.value) }}
-									</button>
-									<template v-else>{{ part.value }}</template>
-								</template>
+								<PromotionWorkflowLinks
+									:workflows="footer.workflows"
+									@inspect="emit('inspect', $event)"
+								/>
 							</template>
 						</I18nT>
 					</N8nText>
@@ -293,6 +320,13 @@ const isApplyMove = computed(
 	color: var(--icon-color);
 }
 
+.heading {
+	display: flex;
+	align-items: baseline;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+}
+
 .title {
 	min-width: 0;
 	overflow: hidden;
@@ -331,25 +365,6 @@ const isApplyMove = computed(
 	margin-right: var(--spacing--2xs);
 }
 
-/* N8nLink has no light theme, so the names use the footer text color. */
-.nameLink {
-	padding: 0;
-	border: none;
-	background: none;
-	color: inherit;
-	font: inherit;
-	text-decoration: underline;
-	cursor: pointer;
-
-	&:hover {
-		color: var(--text-color);
-	}
-
-	&:focus-visible {
-		outline: var(--focus--border-width) solid var(--focus--outline-color);
-	}
-}
-
 .status {
 	display: flex;
 	margin-left: auto;
@@ -358,5 +373,9 @@ const isApplyMove = computed(
 
 .included {
 	color: var(--icon-color--success);
+}
+
+.blocked {
+	color: var(--icon-color--warning);
 }
 </style>

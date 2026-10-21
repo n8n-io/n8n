@@ -6,12 +6,12 @@ import type {
 	BridgeMessageContextParams,
 	BridgeResumeExecutionContext,
 	BridgeStatusHandle,
-} from '../agent-chat-integration';
+} from '../../agent-chat-integration';
 import type {
 	IntegrationPlatformMessageContext,
 	TelegramMessageAttachmentContext,
-} from '../integration-tools';
-import { startTypingIndicator } from './typing-indicator';
+} from '../../integration-tools';
+import { startTypingIndicator } from '../typing-indicator';
 
 /** Telegram's typing action expires after ~5s, so keep it alive on an interval. */
 const TELEGRAM_TYPING_REFRESH_MS = 4000;
