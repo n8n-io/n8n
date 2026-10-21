@@ -1,0 +1,96 @@
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_2397c9db9d923f::t_6a593458810dbd 14,79,145,156,205,216-221,234,259,267,278,303,305,344,353,359,379,391,455-474,664,672,675
+  s_2397c9db9d923f::t_5a52191c5e0f88 206-210,400-454
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_2397c9db9d923f::t_52db68c8139dd4 190,196,219,237,253
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_2397c9db9d923f::t_c5aed79099682d 1403,1418,1426
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_2397c9db9d923f::t_c5aed79099682d 10,118,187
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_2397c9db9d923f::t_1ca8607f00f192 294
+  s_2397c9db9d923f::t_c2c9c80946c68e 235,270,558
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/exportPackageRequest.yml
+  s_2397c9db9d923f::t_9f13db44c7c101 4-6,8-16,40-42,52,63-92,100-101
+  s_2397c9db9d923f::t_de37ccc06afa0a 17
+packages/cli/test/integration/public-api/n8n-packages-export-agents.test.ts
+  s_2397c9db9d923f::t_4711a5d92b0cad 112-116
+  s_2397c9db9d923f::t_70ab50c2866ac3 107
+  s_2397c9db9d923f::t_db99a152a26406 1-2,10-13,16-26,28-30,32-33,36-52,55,57-58,65-72,82-84,87-98,108-111,117-118,180-183,198,211-213,217-219,226-228,232-235,240,246,250-251,286-293,331-332
+  s_2397c9db9d923f::t_802baff86dc55d 31,294-297,316,320-321,326-330
+  s_2397c9db9d923f::t_7beb1564829a17 15,34-35,85-86,105
+  s_71ad2034164515::t_1883e06ebce05b 53-54,56,119-132,135-179
+  s_2397c9db9d923f::t_9f07c67712cfd9 253-285
+  s_2397c9db9d923f::t_1ca8607f00f192 14,27
+  s_2397c9db9d923f::t_b4f02d24d14408 3-9,59-64,73-81,99-104,106,133-134,184-197,199-210,214-216,220-225,229-231,236-239,241-245,247-249,252,298-315,317-319,322-325,333-356
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_2397c9db9d923f::t_54097eb6dd2568 30,53,64-66,116,128,134-138,141,149,157-160,178
+  s_2397c9db9d923f::t_1ca8607f00f192 35
+  s_2397c9db9d923f::t_b4f02d24d14408 142-144
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_2397c9db9d923f::t_54097eb6dd2568 199
+packages/@n8n/api-types/src/dto/packages/__tests__/export-package-request.dto.test.ts
+  s_2397c9db9d923f::t_4bdf6aa7ef09f9 4-8,156,165,169
+  s_2397c9db9d923f::t_b4f02d24d14408 17-18,139-144,146-147,150-154,159-160
+  s_2397c9db9d923f::t_24b980013dec4c 12-16
+packages/@n8n/api-types/src/dto/packages/export-package-request.dto.ts
+  s_2397c9db9d923f::t_c5aed79099682d 6,12-19
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_2397c9db9d923f::t_6690e7a2dfd342 10,30,57,68,188,192,196-198
+  s_2397c9db9d923f::t_4711a5d92b0cad 1
+  s_2397c9db9d923f::t_b4f02d24d14408 189-191,193-195
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_2397c9db9d923f::t_52db68c8139dd4 3235,3239,3255,3270,3279
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.export.yml
+  s_2397c9db9d923f::t_9f07c67712cfd9 21-28
+  s_2397c9db9d923f::t_9f13db44c7c101 3,7,11-17,29-31
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_2397c9db9d923f::t_c5aed79099682d 236,246-250,449
+packages/cli/test/integration/public-api/n8n-packages-export.test.ts
+  s_2397c9db9d923f::t_b4f02d24d14408 39-42,44,47-62,168-170,184-186
+  s_2397c9db9d923f::t_27815e6e625f17 1,45,166-167,171-173,175-183
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_2397c9db9d923f::t_6690e7a2dfd342 1,10,42,89,132
+  s_71ad2034164515::t_236e58218c92df 525-535,607
+packages/cli/src/events/maps/relay.event-map.ts
+  s_2397c9db9d923f::t_c5aed79099682d 143,155
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_2397c9db9d923f::t_54097eb6dd2568 250
+packages/@n8n/permissions/src/constants.ee.ts
+  s_2397c9db9d923f::t_c5aed79099682d 107
+packages/@n8n/permissions/src/roles/__tests__/custom-role-scopes.test.ts
+  s_2397c9db9d923f::t_b4f02d24d14408 58-65
+  s_2397c9db9d923f::t_b01427a250b460 2-8,51,53,56-57,66
+packages/cli/src/public-api/v1/handlers/n8n-packages/__tests__/n8n-packages.handler.test.ts
+  s_2397c9db9d923f::t_52db68c8139dd4 42,192,208,218,275-278,307-310,413-416,465-468,555-558,587-590,619-622,651-654
+packages/cli/src/modules/n8n-packages/__tests__/export-agent-selection.integration.test.ts
+  s_71ad2034164515::t_b4ab5e632e7d83 112,124-125,138,140,143-180,182,185,187-190,358-359,361-368,371-378,403,406-413,431-447
+packages/cli/src/modules/n8n-packages/entities/agent/agent-export.types.ts
+  s_71ad2034164515::t_c0a42ccc9fc504 29
+packages/cli/src/modules/n8n-packages/entities/agent/agent-selection.exporter.ts
+  s_71ad2034164515::t_7dbded94453191 5,122-124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "80926d4f8d24206cba488a33716b0ec440220e80",
+  "prompts": {},
+  "sessions": {
+    "s_2397c9db9d923f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11062-0f35-7542-b063-84df367d8ec4",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
