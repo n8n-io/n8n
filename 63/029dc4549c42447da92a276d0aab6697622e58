@@ -1,11 +1,14 @@
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-planning.integration.test.ts
+  s_71ad2034164515::t_94dbe36271e73a 480-495
+  s_71ad2034164515::t_d815cb1bad9270 504
+  s_71ad2034164515::t_f8d4e05bfe111d 498-503
+  s_71ad2034164515::t_e9b5beaa694d20 496-497
 packages/cli/src/modules/n8n-packages/entities/credential/credential-matcher.ts
   s_71ad2034164515::t_d815cb1bad9270 56,86-118
   s_d3c0f6f6f7d41c::t_8c003524e2dfcb 119-120
 packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-matcher.test.ts
-  s_71ad2034164515::t_d815cb1bad9270 83,108-197
   s_d3c0f6f6f7d41c::t_9679b2e9f3372b 198
-packages/cli/src/modules/n8n-packages/__tests__/agent-import-planning.integration.test.ts
-  s_71ad2034164515::t_94dbe36271e73a 480-504
+  s_71ad2034164515::t_d815cb1bad9270 83,108-197
 ---
 {
   "schema_version": "authorship/3.0.0",
