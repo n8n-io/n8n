@@ -468,6 +468,7 @@ onMounted(async () => {
 			:items-length="skillsStore.count"
 			:loading="skillsStore.loading"
 			:show-empty="showEmptyState"
+			:show-assistant-availability="isContextSkillsEnabled()"
 			@open="openEditModal"
 			@delete="onDelete"
 			@update:options="onOptionsUpdate"
