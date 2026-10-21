@@ -92,15 +92,21 @@ export interface IBinaryData {
 	id?: string;
 }
 
+// NODE-5850
 // All properties in this interface except for
 // "includeCredentialsOnRefreshOnBody" will get
 // removed once we add the OAuth2 hooks to the
 // credentials file.
 export interface IOAuth2Options {
+	// Whether to send the client credentials in the refresh request body
 	includeCredentialsOnRefreshOnBody?: boolean;
+	// Whether to return token-expiration errors without attempting a refresh
 	skipTokenRefresh?: boolean;
+	// Which key to use to get the token from stored credentials
 	property?: string;
+	// Type of the token, e.g. "Bearer"
 	tokenType?: string;
+	// Whether to retain the token type prefix in the Authorization header
 	keepBearer?: boolean;
 	tokenExpiredStatusCode?: number | number[];
 	/**
@@ -112,6 +118,11 @@ export interface IOAuth2Options {
 	skipRefreshWhileTokenIsFresh?: boolean;
 	keyToIncludeInAccessTokenHeader?: string;
 }
+
+export type CredentialOAuth2Options = Pick<
+	IOAuth2Options,
+	'property' | 'tokenType' | 'keyToIncludeInAccessTokenHeader'
+>;
 
 export interface IConnection {
 	// The node the connection is to
@@ -284,6 +295,8 @@ export interface IGetDecryptedCredentialsOptions {
 export abstract class ICredentialsHelper {
 	abstract getParentTypes(name: string): string[];
 
+	abstract getOAuth2Options(type: string): CredentialOAuth2Options | undefined;
+
 	/**
 	 * Returns false when the credential type sets `restrictToSupportedNodes: true`
 	 * and `nodeType` is not in its `supportedNodes` list. Returns true otherwise
@@ -448,6 +461,8 @@ export interface ICredentialType {
 	 */
 	iconBasePath?: string;
 	extends?: string[];
+	// TODO: extend with more options from IOAuth2Options
+	oauth2?: CredentialOAuth2Options;
 	properties: INodeProperties[];
 	documentationUrl?: string;
 	methods?: {
@@ -1205,6 +1220,7 @@ export interface FunctionsBase {
 		itemIndex?: number,
 	): Promise<T>;
 	getCredentialsProperties(type: string): INodeProperties[];
+	getOAuth2Options(type: string): CredentialOAuth2Options | undefined;
 	getExecutionId(): string;
 	getNode(): INode;
 	getWorkflow(): IWorkflowMetadata;

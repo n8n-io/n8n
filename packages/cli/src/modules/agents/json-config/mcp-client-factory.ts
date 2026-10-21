@@ -42,6 +42,7 @@ type DerivedAuth = {
 async function deriveAuthHeaders(
 	server: AgentJsonMcpServerConfig,
 	credentialProvider: CredentialProvider,
+	oauthService: OauthService,
 ): Promise<DerivedAuth> {
 	if (server.authentication === 'none' || !server.credential) return { headers: {} };
 
@@ -55,10 +56,15 @@ async function deriveAuthHeaders(
 			throw new OperationalError('Credential not found or not accessible');
 		}
 		const credentialData = resolved as ICredentialDataDecryptedObject;
+		const credentialType = credential?.type ?? server.authentication;
 		return {
-			headers: getMcpAuthHeaders(server.authentication, credentialData),
+			headers: getMcpAuthHeaders(
+				server.authentication,
+				credentialData,
+				oauthService.getOAuth2Options(credentialType),
+			),
 			credentialData,
-			credentialType: credential?.type ?? server.authentication,
+			credentialType,
 		};
 	} catch (error) {
 		return { headers: {}, credentialError: ensureError(error) };
@@ -118,7 +124,7 @@ export async function buildMcpClientForServer(
 	const { toolPermissions } = server;
 	const { McpClient } = await import('@n8n/agents');
 
-	const derivedAuth = await deriveAuthHeaders(server, credentialProvider);
+	const derivedAuth = await deriveAuthHeaders(server, credentialProvider, oauthService);
 	const { credentialData, credentialType } = derivedAuth;
 	let { headers: initialHeaders, credentialError } = derivedAuth;
 	let runtimeUrl = server.url;
@@ -148,6 +154,7 @@ export async function buildMcpClientForServer(
 				connection,
 				credentialType,
 				credentialData,
+				oauth2: oauthService.getOAuth2Options(credentialType),
 			});
 			if (!prepared.ok) throw new OperationalError(prepared.error.message);
 			initialHeaders = prepared.value.headers;

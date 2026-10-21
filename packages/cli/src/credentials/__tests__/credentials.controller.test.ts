@@ -23,6 +23,7 @@ import { mock } from 'vitest-mock-extended';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import * as checkAccess from '@/permissions.ee/check-access';
 import type { CredentialRequest } from '@/requests';
+import type { CredentialTypes } from '@/credential-types';
 
 import { createNewCredentialsPayload, createdCredentialsWithScopes } from './credentials.test-data';
 import type { CredentialDependencyService } from '../credential-dependency.service';
@@ -40,6 +41,7 @@ describe('CredentialsController', () => {
 	const credentialsFinderService = mock<CredentialsFinderService>();
 	const licenseState = mock<LicenseState>();
 	const credentialsOverwrites = mock<ConstructorParameters<typeof CredentialsController>[12]>();
+	const credentialTypes = mock<CredentialTypes>();
 
 	// Mock the credentialsRepository with a working create method
 	const credentialsRepository = mock<CredentialsRepository>();
@@ -103,6 +105,7 @@ describe('CredentialsController', () => {
 		credentialsFinderService,
 		mock(), // connectionStatusProxy
 		credentialsOverwrites,
+		credentialTypes,
 		credentialDescriptions,
 	);
 
@@ -1187,7 +1190,7 @@ describe('CredentialsController', () => {
 				isManaged: false,
 			});
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
-			vi.spyOn(credentialsService, 'isOAuthCredentialType').mockReturnValue(true);
+			credentialTypes.isOAuthCredentialType.mockReturnValue(true);
 			const clearSpy = vi
 				.spyOn(credentialsService, 'clearOauthTokenData')
 				.mockResolvedValue(undefined);
@@ -1235,7 +1238,7 @@ describe('CredentialsController', () => {
 				isManaged: false,
 			});
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
-			vi.spyOn(credentialsService, 'isOAuthCredentialType').mockReturnValue(false);
+			credentialTypes.isOAuthCredentialType.mockReturnValue(false);
 			const clearSpy = vi.spyOn(credentialsService, 'clearOauthTokenData');
 
 			await expect(
