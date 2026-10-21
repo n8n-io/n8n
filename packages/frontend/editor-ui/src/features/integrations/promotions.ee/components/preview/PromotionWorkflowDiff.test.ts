@@ -102,6 +102,14 @@ describe('PromotionWorkflowDiff', () => {
 			target: ['This instance'],
 		},
 		{
+			scenario: 'Apply of a workflow that is new on the branch',
+			direction: 'apply' as const,
+			before: null,
+			after: workflow(),
+			source: ['This instance', 'Not on this instance'],
+			target: ['Branch: main'],
+		},
+		{
 			scenario: 'Apply of a workflow that the branch deleted',
 			direction: 'apply' as const,
 			before: workflow(),

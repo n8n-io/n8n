@@ -18,6 +18,7 @@ vi.mock('@n8n/i18n', () => ({
 
 // Import after mocks
 import { useWorkflowDiffUI } from './useWorkflowDiffUI';
+import { toDiffWorkflow } from './workflowDiff.utils';
 
 describe('useWorkflowDiffUI', () => {
 	function createMockWorkflow(overrides: Partial<IWorkflowDb> = {}): IWorkflowDb {
@@ -57,6 +58,18 @@ describe('useWorkflowDiffUI', () => {
 	}
 
 	describe('settingsDiff', () => {
+		it('does not show an execution order change when legacy settings are omitted', () => {
+			const { settingsDiff } = useWorkflowDiffUI({
+				sourceWorkflow: computed(() => toDiffWorkflow(createMockWorkflow({ settings: undefined }))),
+				targetWorkflow: computed(() => toDiffWorkflow(createMockWorkflow({ settings: {} }))),
+				nodesDiff: ref(new Map()),
+				connectionsDiff: ref(new Map()),
+				selectedDetailId: ref(undefined),
+			});
+
+			expect(settingsDiff.value).toEqual([]);
+		});
+
 		it('should return empty array when both workflows have identical settings', () => {
 			const sourceWorkflow = computed(() =>
 				createMockWorkflow({ settings: { executionOrder: 'v1' } }),

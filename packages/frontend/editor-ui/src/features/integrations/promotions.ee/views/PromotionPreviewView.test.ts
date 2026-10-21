@@ -256,6 +256,24 @@ describe('PromotionPreviewView', () => {
 		await waitFor(() => expect(Element.prototype.scrollIntoView).toHaveBeenCalled());
 	});
 
+	it('should activate a different workflow when the route changes', async () => {
+		answerWorkflowDetails();
+		const { getAllByTestId } = await render('/projects/p1/promotions/promote?resource=workflow:w1');
+		await waitFor(() =>
+			expect(
+				card(getAllByTestId, 'workflow:w1').getByTestId('active-workflow-diff'),
+			).toBeInTheDocument(),
+		);
+
+		await router.push('/projects/p1/promotions/promote?resource=workflow:w3');
+
+		await waitFor(() =>
+			expect(
+				card(getAllByTestId, 'workflow:w3').getByTestId('active-workflow-diff'),
+			).toBeInTheDocument(),
+		);
+	});
+
 	it('should open the card of a direct link', async () => {
 		const { getAllByTestId } = await render('/projects/p1/promotions/promote?resource=tag:g1');
 

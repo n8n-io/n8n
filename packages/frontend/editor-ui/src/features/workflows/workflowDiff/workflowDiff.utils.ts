@@ -40,9 +40,9 @@ export function toDiffWorkflow(input: DiffWorkflowInput): IWorkflowDb {
 			connections: input.connections,
 			nodeGroups: input.nodeGroups,
 			// A workflow without an execution order runs with the legacy `v0` order.
-			settings: input.settings && {
-				...input.settings,
-				executionOrder: input.settings.executionOrder ?? 'v0',
+			settings: {
+				...(input.settings ?? {}),
+				executionOrder: input.settings?.executionOrder ?? 'v0',
 			},
 			tags: input.tags,
 		}),

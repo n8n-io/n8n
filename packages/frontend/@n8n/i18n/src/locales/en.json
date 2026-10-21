@@ -7395,6 +7395,8 @@
 	"workflowDiff.newWorkflow.remote": "The workflow will be created on remote",
 	"workflowDiff.fullscreen.enter": "Expand to fullscreen",
 	"workflowDiff.fullscreen.exit": "Exit fullscreen",
+	"workflowDiff.previousChange": "Previous change",
+	"workflowDiff.nextChange": "Next change",
 	"workflowDiff.label.before": "Before",
 	"workflowDiff.label.after": "After",
 	"workflowDiff.waitingForData": "Waiting for workflow data...",

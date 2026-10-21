@@ -22,6 +22,7 @@ const i18n = useI18n();
 				v-if="showBackButton"
 				variant="outline"
 				icon="arrow-left"
+				:aria-label="i18n.baseText('generic.back')"
 				:class="[$style.backButton, 'mr-xs']"
 				icon-size="large"
 				@click="emit('back')"
@@ -47,6 +48,7 @@ const i18n = useI18n();
 			<N8nIconButton
 				variant="outline"
 				icon="chevron-left"
+				:aria-label="i18n.baseText('workflowDiff.previousChange')"
 				:class="$style.navigationButton"
 				:disabled="disabled"
 				@click="emit('previous')"
@@ -54,6 +56,7 @@ const i18n = useI18n();
 			<N8nIconButton
 				variant="outline"
 				icon="chevron-right"
+				:aria-label="i18n.baseText('workflowDiff.nextChange')"
 				:class="$style.navigationButton"
 				:disabled="disabled"
 				@click="emit('next')"

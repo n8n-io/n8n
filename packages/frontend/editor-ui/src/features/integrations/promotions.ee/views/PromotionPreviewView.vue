@@ -140,6 +140,9 @@ watch(
 	},
 	{ immediate: true },
 );
+watch(inspectedKey, (key) => {
+	if (key && hasDiff(key)) activeWorkflowKey.value = key;
+});
 async function inspect(key: string) {
 	if (hasDiff(key)) activeWorkflowKey.value = key;
 	// The URL does not change for the same item, so scroll to its card again directly.

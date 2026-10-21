@@ -169,7 +169,7 @@ describe('WorkflowDiffContent', () => {
 			});
 
 			expect(screen.getAllByTestId('canvas-trigger-node')).toHaveLength(2);
-			expect(screen.queryAllByRole('button', { name: 'Execute workflow' })).toHaveLength(0);
+			expect(screen.queryAllByTestId('execute-workflow-button-Manual start')).toHaveLength(0);
 		});
 
 		it('should render two canvas panels when both workflows exist', () => {

@@ -168,6 +168,14 @@ describe('WorkflowDiffView', () => {
 		vi.mocked(useWorkflowDiff).mockReturnValue(defaultWorkflowDiffMock());
 	});
 
+	it('names the navigation actions for assistive technology', () => {
+		const { getByRole } = render(WorkflowDiffView, { props: { showBackButton: true } });
+
+		expect(getByRole('button', { name: 'generic.back' })).toBeInTheDocument();
+		expect(getByRole('button', { name: 'workflowDiff.previousChange' })).toBeInTheDocument();
+		expect(getByRole('button', { name: 'workflowDiff.nextChange' })).toBeInTheDocument();
+	});
+
 	describe('tidyUp prop', () => {
 		const createMockWorkflow = (id: string, name: string) => ({
 			id,
