@@ -64,6 +64,10 @@ const skillMethod = z
 		'`manual` is text typed in the skill modal. `upload` is a SKILL.md file or folder parsed in the browser. `ai` is text that n8n Assistant or an MCP client wrote. Filter out `ai` to count the skills people write by hand',
 	);
 
+// Experiment cleanup (127_preferences_empty_state)
+const preferencesEmptyStateVariant = z.enum(['control', 'examples', 'assistant']);
+// EOF Experiment cleanup
+
 export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	USER_VIEWED_PREFERENCES: {
 		name: 'User viewed preferences',
@@ -361,4 +365,19 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			source: skillSource,
 		}),
 	},
+
+	// Experiment cleanup (127_preferences_empty_state)
+	PREFERENCES_EMPTY_STATE_EXPOSED: {
+		name: 'Preferences empty state exposed',
+		description:
+			'A user in the preferences empty state experiment (127) opened the preferences page with no preferences and the n8n Assistant available, including the control variant. Fires once for each visit, with `User viewed preferences`.',
+		properties: z.object({
+			variant: preferencesEmptyStateVariant.describe(
+				'Variant of the 127_preferences_empty_state feature flag the user saw',
+			),
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
+			'$feature/127_preferences_empty_state': preferencesEmptyStateVariant,
+		}),
+	},
+	// EOF Experiment cleanup
 });
