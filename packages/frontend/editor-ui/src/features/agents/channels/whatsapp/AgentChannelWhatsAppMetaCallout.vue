@@ -67,6 +67,20 @@ const interpolate = computed(() => ({
 	margin-bottom: var(--spacing--sm);
 }
 
+/*
+ * The callout sizes its text to the text. Fill the row and the text, so the
+ * action sits at the right edge for short text too.
+ */
+.callout > :first-child {
+	flex: 1;
+	min-width: 0;
+}
+
+.callout > :first-child > :global(.n8n-text) {
+	flex: 1;
+	min-width: 0;
+}
+
 .body {
 	display: flex;
 	flex: 1;
