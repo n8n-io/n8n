@@ -39,7 +39,7 @@ export function usePromotionChangeCount(
 			);
 			if (!isLatest()) return;
 			workflowCount.value = preview.changes.length;
-			changeCount.value = totalChangeCount(buildSelectionGraph(preview));
+			changeCount.value = totalChangeCount(buildSelectionGraph(preview, direction));
 		} catch {
 			if (isLatest()) failed.value = true;
 		}
