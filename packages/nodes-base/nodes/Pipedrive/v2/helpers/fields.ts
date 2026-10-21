@@ -1,3 +1,4 @@
+import { setSafeObjectProperty } from 'n8n-workflow';
 import type { IDataObject } from 'n8n-workflow';
 
 import { coerceToNumber } from './typeCoercion';
@@ -15,7 +16,7 @@ export function addFieldsToBody(body: IDataObject, fields: IDataObject): void {
 				name: string;
 				value: string;
 			}>) {
-				customFieldsObj[customProperty.name] = customProperty.value;
+				setSafeObjectProperty(customFieldsObj, customProperty.name, customProperty.value);
 			}
 			body.custom_fields = customFieldsObj;
 		} else {

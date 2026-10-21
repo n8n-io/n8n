@@ -175,6 +175,8 @@ export function flattenCustomFieldsToRoot(body: IDataObject): void {
  * map them to human-readable names, keeping lead output consistent with other
  * v2 resources.
  */
+const CUSTOM_FIELD_KEY = /^[0-9a-f]{40}$/;
+
 export function nestRootCustomFields(
 	customProperties: ICustomProperties,
 	item: INodeExecutionData,
@@ -183,8 +185,9 @@ export function nestRootCustomFields(
 	const customFields = (json.custom_fields as IDataObject) ?? {};
 
 	for (const key of Object.keys(json)) {
-		// Only 40-char keys defined in the account's lead fields are custom fields.
-		if (customProperties[key] !== undefined) {
+		// /leadFields also lists the default fields (title, owner_id, ...). Only 40-char
+		// hash keys are custom fields, so the default fields stay at the root.
+		if (CUSTOM_FIELD_KEY.test(key) && customProperties[key] !== undefined) {
 			customFields[key] = json[key];
 			delete json[key];
 		}

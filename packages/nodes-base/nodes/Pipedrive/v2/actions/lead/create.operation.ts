@@ -200,7 +200,13 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	// per-item error path below so `continueOnFail` keeps working.
 	let customProperties: ICustomProperties | undefined;
 	let customPropertiesError: Error | undefined;
-	if (!rawKeys) {
+	// Version 2 lead operations did not read the lead fields. Keep it that way unless
+	// a custom field is set, so existing workflows send no extra request.
+	const usesCustomFields = items.some(
+		(_, i) =>
+			(this.getNodeParameter('additionalFields', i, {}) as IDataObject).customFields !== undefined,
+	);
+	if (!rawKeys && (resolveOutput || usesCustomFields)) {
 		try {
 			customProperties = await pipedriveGetCustomProperties.call(this, 'lead');
 		} catch (error) {
@@ -239,6 +245,11 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			if (Object.keys(rest).length) {
 				addFieldsToBody(body, rest as IDataObject);
+				// addFieldsToBody makes visible_to a number for the v2 API. The v1 leads endpoint
+				// takes it as a string.
+				if (body.visible_to !== undefined) {
+					body.visible_to = String(body.visible_to);
+				}
 			}
 
 			if (value) {

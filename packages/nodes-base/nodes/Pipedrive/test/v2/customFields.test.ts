@@ -1,6 +1,10 @@
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
-import { encodeCustomFieldsV2, resolveCustomFieldsV2 } from '../../v2/helpers/customFields';
+import {
+	encodeCustomFieldsV2,
+	nestRootCustomFields,
+	resolveCustomFieldsV2,
+} from '../../v2/helpers/customFields';
 import { addFieldsToBody } from '../../v2/helpers/fields';
 import {
 	coerceToBoolean,
@@ -418,5 +422,58 @@ describe('Pipedrive v2 Type Coercion', () => {
 			// through and Pipedrive surfaces the real validation error.
 			expect(toDateOnly('Jan 15, 2024')).toBe('Jan 15, 2024');
 		});
+	});
+});
+
+describe('addFieldsToBody with unsafe custom field names', () => {
+	it('should not let a custom field named __proto__ change the prototype', () => {
+		const body: IDataObject = {};
+		const unsafeName = '__proto__';
+		const safeName = 'abc123';
+		addFieldsToBody(body, {
+			customFields: {
+				property: [
+					{ name: unsafeName, value: { polluted: true } },
+					{ name: safeName, value: 'kept' },
+				],
+			},
+		});
+
+		const customFields = body.custom_fields as IDataObject;
+		expect(Object.getPrototypeOf(customFields)).toBe(Object.prototype);
+		expect((customFields as { polluted?: boolean }).polluted).toBeUndefined();
+		expect(customFields.abc123).toBe('kept');
+	});
+});
+
+describe('nestRootCustomFields', () => {
+	const hashKey = 'd4a8f5b7c2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7';
+	const leadFields: ICustomProperties = {
+		title: { name: 'Title', key: 'title', field_type: 'varchar' },
+		owner_id: { name: 'Owner', key: 'owner_id', field_type: 'user' },
+		[hashKey]: { name: 'Region', key: hashKey, field_type: 'varchar' },
+	};
+
+	it('should move only custom field keys under custom_fields and keep the default fields', () => {
+		const item: INodeExecutionData = {
+			json: { id: 'lead-1', title: 'Promising Lead', owner_id: 7, [hashKey]: 'EMEA' },
+		};
+
+		nestRootCustomFields(leadFields, item);
+
+		expect(item.json).toEqual({
+			id: 'lead-1',
+			title: 'Promising Lead',
+			owner_id: 7,
+			custom_fields: { [hashKey]: 'EMEA' },
+		});
+	});
+
+	it('should not add custom_fields when the lead has no custom field', () => {
+		const item: INodeExecutionData = { json: { id: 'lead-1', title: 'Promising Lead' } };
+
+		nestRootCustomFields(leadFields, item);
+
+		expect(item.json).toEqual({ id: 'lead-1', title: 'Promising Lead' });
 	});
 });
