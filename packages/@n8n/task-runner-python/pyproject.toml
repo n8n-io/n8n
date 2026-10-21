@@ -12,6 +12,12 @@ dependencies = [
 [project.optional-dependencies]
 sentry = ["sentry-sdk>=2.35.2"]
 
+<<<<<<< HEAD
+=======
+[tool.uv]
+constraint-dependencies = ["urllib3>=2.7.0", "certifi>=2026.10.19"]
+
+>>>>>>> 282fa323 (fix: Update certifi to 2026.10.19 in task runner (#41693))
 [dependency-groups]
 dev = [
     "ruff>=0.12.8",
