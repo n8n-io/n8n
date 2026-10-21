@@ -259,20 +259,18 @@ export const destroyRequestBody = (body: unknown) => {
 /** Converts a plain object into a `FormData` instance, handling arrays and option objects. */
 export const createFormDataObject = (data: Record<string, unknown>) => {
 	const formData = new FormData();
-	const streams: Readable[] = [];
 	const keys = Object.keys(data);
 	keys.forEach((key) => {
 		const formField = data[key];
-		const values: unknown[] = formField instanceof Array ? formField : [formField];
 
-		values.forEach((value) => {
-			pushFormDataValue(formData, key, value);
-			const stream = streamOfFormDataValue(value);
-			if (stream) streams.push(stream);
-		});
+		if (formField instanceof Array) {
+			formField.forEach((item) => {
+				pushFormDataValue(formData, key, item);
+			});
+		} else {
+			pushFormDataValue(formData, key, formField);
+		}
 	});
-	// `FormData.destroy()` drops the appended streams without destroying them.
-	formData.once('close', () => streams.forEach((stream) => stream.destroy()));
 	return formData;
 };
 
