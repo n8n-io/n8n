@@ -1,6 +1,8 @@
 ---
 name: agent-builder
 description: >-
+  An n8n Agent is a standalone AI assistant with its own instructions, tools,
+  and memory. It is not an AI Agent node inside a workflow.
   Load before the first agent_builder_* call.
   Governs how you create, configure, test, and publish n8n Agents yourself with
   the agent_builder_* tools: targeting, prerequisites, initial build, config
