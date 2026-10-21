@@ -443,6 +443,11 @@ export interface AgentChatListItem {
 	project: { id: string; name: string };
 	/** Media types this agent's model accepts as attachments, derived from its published config. */
 	attachments: ProviderAttachmentCapabilities;
+	/**
+	 * `false` for an agent the user owns that is not published to n8n Chat yet.
+	 * Its icon, blurb and attachments then come from the draft config.
+	 */
+	availableInChat: boolean;
 }
 
 export interface AgentChatListResponse {

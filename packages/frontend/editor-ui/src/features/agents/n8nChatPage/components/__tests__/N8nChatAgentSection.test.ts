@@ -46,6 +46,7 @@ function agent(id: string, name: string): AgentChatListItem {
 		name,
 		project: { id: 'p', name: 'P' },
 		attachments: { image: false, pdf: false, audio: false },
+		availableInChat: true,
 	};
 }
 
