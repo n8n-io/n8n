@@ -3,11 +3,12 @@ import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomUUID } from 'node:crypto';
 
-import { setSkillsHubFlag } from '@/modules/agents/__tests__/test-utils/skills-hub-flag';
+import { setSkillsHubFlag } from '@/modules/skills/__tests__/test-utils/skills-hub-flag';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import { SkillRepository } from '@/modules/agents/repositories/skill.repository';
-import { SkillService } from '@/modules/agents/skills/skill.service';
+import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
+import { SkillRepository } from '@/modules/skills/skill.repository';
+import { SkillService } from '@/modules/skills/skill.service';
 
 import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
 import { createMember, createOwner, createUser } from '../shared/db/users';
@@ -17,7 +18,7 @@ import { setupTestServer } from '../shared/utils';
 const body = { name: 'Brand voice', description: 'How we write', instructions: 'Be brief.' };
 
 beforeAll(async () => {
-	await testModules.loadModules(['agents']);
+	await testModules.loadModules(['skills', 'agents']);
 });
 
 describe('SkillsController', () => {
@@ -104,7 +105,7 @@ describe('SkillsController', () => {
 			await histories.save(histories.create({ versionId, agentId: agent.id, author: 'Test' }));
 			await agents.update({ id: agent.id }, { activeVersionId: versionId });
 		}
-		await Container.get(SkillRepository).replaceDependencies(agent.id, [
+		await Container.get(AgentSkillRepository).replaceDependencies(agent.id, [
 			{ skillId, versionId: options.pinnedVersionId },
 		]);
 		return { ...agent, versionId };

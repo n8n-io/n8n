@@ -19,9 +19,10 @@ import { hasGlobalScope } from '@n8n/permissions';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
 
-import type { Skill } from '../entities/skill.entity';
-import { SkillRepository, type SkillTarget } from '../repositories/skill.repository';
-import { getAgentSkillHash } from '../utils/agent-config-hash';
+import { SkillAgentsProxy } from './skill-agents-proxy.service';
+import { getSkillHash } from './skill-hash';
+import type { Skill } from './skill.entity';
+import { SkillRepository, type SkillTarget } from './skill.repository';
 import { SkillService, toAgentSkill } from './skill.service';
 import { SkillsTelemetry, type SkillTelemetrySource } from './skills-telemetry';
 
@@ -45,6 +46,7 @@ export class SkillsApiService {
 		private readonly txRunner: TransactionRunner,
 		private readonly userRepository: UserRepository,
 		private readonly skillsTelemetry: SkillsTelemetry,
+		private readonly skillAgents: SkillAgentsProxy,
 	) {}
 
 	async list(user: User, query: ListSkillsQueryDto): Promise<SkillListResponse> {
@@ -53,11 +55,20 @@ export class SkillsApiService {
 		}
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['projectSkill:list']);
 		const attachableTo = await this.attachTarget(query.attachableTo);
+		// An agent skill has no projectId: it belongs to the project of its agent.
+		const agentIds =
+			projectIds === null ? 'all' : await this.skillAgents.findAgentIdsInProjects(projectIds);
+		const project = query.projectId
+			? {
+					id: query.projectId,
+					agentIds: await this.skillAgents.findAgentIdsInProjects([query.projectId]),
+				}
+			: undefined;
 		const { skills, count } = await this.skillRepository.findVisiblePage(
-			{ projectIds: projectIds ?? 'all' },
+			{ projectIds: projectIds ?? 'all', agentIds },
 			{
 				scope: query.scope,
-				projectId: query.projectId,
+				project,
 				attachableTo,
 				search: query.search,
 				skip: query.skip,
@@ -128,7 +139,7 @@ export class SkillsApiService {
 				// No move, so the skill stays where `requireAccess` read it.
 				await this.skillsTelemetry.updated(user.id, skill, source, saved.version, false);
 			}
-			return { id: skillId, ...saved, skillHash: getAgentSkillHash(saved.skill) };
+			return { id: skillId, ...saved, skillHash: getSkillHash(saved.skill) };
 		}
 
 		// One transaction, so a refused save does not leave the skill moved. The move runs
@@ -152,7 +163,7 @@ export class SkillsApiService {
 				true,
 			);
 		}
-		return { id: skillId, ...saved, skillHash: getAgentSkillHash(saved.skill) };
+		return { id: skillId, ...saved, skillHash: getSkillHash(saved.skill) };
 	}
 
 	async delete(user: User, skillId: string, source: SkillTelemetrySource = 'ui'): Promise<void> {
@@ -178,8 +189,8 @@ export class SkillsApiService {
 			description: latest.version.description,
 			latestVersion: latest.version.version,
 			skill: content,
-			skillHash: getAgentSkillHash(content),
-			usedBy: await this.skillRepository.findUsage(skill.id, agentProjectIds ?? 'all'),
+			skillHash: getSkillHash(content),
+			usedBy: await this.skillAgents.findUsage(skill.id, agentProjectIds ?? 'all'),
 		};
 	}
 
@@ -208,7 +219,7 @@ export class SkillsApiService {
 		agentId: string | undefined,
 	): Promise<{ agentId: string; projectId: string } | undefined> {
 		if (agentId === undefined) return undefined;
-		const agent = (await this.skillRepository.findAgents([agentId])).get(agentId);
+		const agent = (await this.skillAgents.findAgents([agentId])).get(agentId);
 		if (!agent) throw new NotFoundError('Agent not found');
 		return { agentId, projectId: agent.projectId };
 	}
@@ -244,7 +255,7 @@ export class SkillsApiService {
 				if (!agentId) throw new UserError('An agent skill needs an agent id.');
 				if (payload.projectId)
 					throw new UserError('An agent skill takes its project from the agent.');
-				const agent = (await this.skillRepository.findAgents([agentId])).get(agentId);
+				const agent = (await this.skillAgents.findAgents([agentId])).get(agentId);
 				if (!agent) throw new NotFoundError('Agent not found');
 				await this.assertCanCreateIn(user, agent.projectId);
 				return { projectId: null, agentId };
@@ -261,14 +272,14 @@ export class SkillsApiService {
 	private async toListItems(user: User, skills: Skill[]): Promise<SkillListItem[]> {
 		const ids = skills.map((skill) => skill.id);
 		// An agent skill has no projectId: resolve its project through its agent.
-		const agents = await this.skillRepository.findAgents(
+		const agents = await this.skillAgents.findAgents(
 			skills.flatMap((skill) => (skill.agentId ? [skill.agentId] : [])),
 		);
 		const projectOf = (skill: Skill) =>
 			skill.projectId ?? (skill.agentId ? (agents.get(skill.agentId)?.projectId ?? null) : null);
 		const [latest, usage, projects, creators, canEdit, canDelete] = await Promise.all([
 			this.skillRepository.findLatestSummaries(ids),
-			this.skillRepository.countUsingAgents(ids),
+			this.skillAgents.countUsingAgents(ids),
 			this.skillRepository.findProjects(skills.flatMap((skill) => projectOf(skill) ?? [])),
 			this.findCreators(skills),
 			this.skillService.accessCheck(user, 'update'),

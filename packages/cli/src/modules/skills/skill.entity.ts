@@ -5,7 +5,7 @@ import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
 export type { SkillSource };
 
 /**
- * A skill in the skills hub, identified by its id only. One target: `projectId` (a team
+ * A skill, identified by its id only. One target: `projectId` (a team
  * or personal project, used by its agents), `agentId` (only that agent can use it; the
  * project is the agent's), or neither (the instance).
  * The name and content live in `SkillVersion` rows.

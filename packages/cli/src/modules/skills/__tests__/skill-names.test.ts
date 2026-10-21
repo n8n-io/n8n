@@ -2,7 +2,7 @@ import {
 	findIntroducedNameClashes,
 	findNameClashGroups,
 	renameIntroducesClash,
-} from '../skills/skill-names';
+} from '../skill-names';
 
 describe('findIntroducedNameClashes', () => {
 	it('returns an added name that clashes with an existing name', () => {

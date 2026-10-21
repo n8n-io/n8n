@@ -6,8 +6,9 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { Telemetry } from '@/telemetry';
 
-import type { Skill, SkillSource } from '../entities/skill.entity';
-import { SkillRepository } from '../repositories/skill.repository';
+import { SkillAgentsProxy } from './skill-agents-proxy.service';
+import type { Skill, SkillSource } from './skill.entity';
+import { SkillRepository } from './skill.repository';
 
 export type SkillTelemetrySource = SkillSource;
 
@@ -25,8 +26,8 @@ type SkillTelemetryTarget = Pick<Skill, 'id' | 'projectId' | 'agentId'>;
 export type SkillTelemetryRef = SkillTelemetryTarget | string;
 
 /**
- * Skills hub telemetry. Callers emit only once the write commits and only with the hub
- * on. An emit never fails the write: an error is logged and dropped.
+ * Skills telemetry. Callers emit only once the write commits, and only while skills are
+ * on (`SkillsHubRollout.isEnabled`). An emit never fails the write: an error is logged and dropped.
  */
 @Service()
 export class SkillsTelemetry {
@@ -34,6 +35,7 @@ export class SkillsTelemetry {
 		private readonly telemetry: Telemetry,
 		private readonly skillRepository: SkillRepository,
 		private readonly logger: Logger,
+		private readonly skillAgents: SkillAgentsProxy,
 	) {}
 
 	async created(
@@ -108,7 +110,7 @@ export class SkillsTelemetry {
 	private async placeResolver(
 		skills: SkillTelemetryTarget[],
 	): Promise<(skill: SkillTelemetryTarget) => SkillPlace> {
-		const agents = await this.skillRepository.findAgents(
+		const agents = await this.skillAgents.findAgents(
 			skills.flatMap((skill) => (skill.agentId ? [skill.agentId] : [])),
 		);
 		return (skill) => {
