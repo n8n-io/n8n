@@ -79,7 +79,6 @@ import { describeCallAgentFailure } from './call-agent-failure';
 import { BuilderModelLiveLookupService } from './builder-model-live-lookup.service';
 import { BUILDER_TOOLS } from './builder-tool-names';
 import {
-	buildAskCredentialTool,
 	buildAskQuestionsTool,
 	buildConfigureChannelTool,
 	buildFinishSetupTool,
@@ -684,7 +683,6 @@ export class AgentsBuilderToolsService {
 			this.withConfigMutationMarker(unpublishAgentTool, agentId),
 			callAgentTool,
 			this.createLlmTool(credentialProvider, modelLookup, user, projectId),
-			this.createCredentialTool(credentialService, projectId, agentId, track),
 			buildAskQuestionsTool({ track }),
 			this.withConfigMutationMarker(
 				this.withConfigSnapshotOnResume(
@@ -744,15 +742,8 @@ export class AgentsBuilderToolsService {
 			applySetupToConfig: async (writes) =>
 				await this.applyFinishSetupToConfig(agentId, projectId, user, writes),
 			isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
-			listIntegrationCredentialIds: async () => {
-				const agent = await this.agentsService.findById(agentId, projectId);
-				return (agent?.integrations ?? [])
-					.filter(
-						(integration) =>
-							isCredentialAgentIntegration(integration) && !isDraftIntegration(integration),
-					)
-					.map((integration) => integration.credentialId);
-			},
+			listIntegrationCredentialIds: async () =>
+				await this.listChannelCredentialIds(agentId, projectId),
 			listChatIntegrationTypes: async () =>
 				(await this.agentIntegrationPersistenceService.listBuilderChatIntegrations(user)).map(
 					(integration) => integration.type,
@@ -781,28 +772,21 @@ export class AgentsBuilderToolsService {
 		});
 	}
 
-	private createCredentialTool(
-		credentialService: BuilderCredentialService,
-		projectId: string,
-		agentId: string,
-		track: BuilderTrackFn,
-	): BuiltTool {
-		return buildAskCredentialTool({
-			credentialService,
-			projectId,
-			isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
-			listIntegrationCredentialIds: async () => {
-				const agent = await this.agentsService.findById(agentId, projectId);
-				return (agent?.integrations ?? [])
-					.filter(
-						(integration) =>
-							isCredentialAgentIntegration(integration) && !isDraftIntegration(integration),
-					)
-					.map((integration) => integration.credentialId);
-			},
-			isAssistantProxyEnabled: () => this.aiService.isProxyEnabled(),
-			track,
-		});
+	async getCredentialDefaults(agentId: string, projectId: string) {
+		return {
+			channelCredentialIds: await this.listChannelCredentialIds(agentId, projectId),
+			managedCredentialAvailable: this.aiService.isProxyEnabled(),
+		};
+	}
+
+	private async listChannelCredentialIds(agentId: string, projectId: string): Promise<string[]> {
+		const agent = await this.agentsService.findById(agentId, projectId);
+		return (agent?.integrations ?? [])
+			.filter(
+				(integration) =>
+					isCredentialAgentIntegration(integration) && !isDraftIntegration(integration),
+			)
+			.map((integration) => integration.credentialId);
 	}
 
 	private createLlmTool(

@@ -11,7 +11,7 @@ export function resourceLocatorsSkill(): RuntimeSkill {
 		recommendedTools: [
 			'search_nodes',
 			'get_node_types',
-			'agent_builder_ask_credential',
+			'credentials',
 			'get_node_parameter_options',
 			'agent-context',
 			'agent_builder_patch_config',
@@ -19,7 +19,7 @@ export function resourceLocatorsSkill(): RuntimeSkill {
 		allowedTools: [
 			'search_nodes',
 			'get_node_types',
-			'agent_builder_ask_credential',
+			'credentials',
 			'get_node_parameter_options',
 			'agent_builder_ask_questions',
 			'agent-context',
@@ -69,7 +69,7 @@ agent, resolve the credential and any ambiguity immediately instead.
 3. Build the current static \`nodeParameters\` first: \`resource\`,
    \`operation\`, authentication mode, and any parent selectors already known.
    Dynamic lookups often depend on those values.
-4. If the node needs credentials, call \`agent_builder_ask_credential\` before resolving the
+4. If the node needs credentials, call \`credentials(action: "setup", target: "agent")\` before resolving the
    selector. Pass the returned \`credentials\` object to
    \`get_node_parameter_options\`.
 5. Call \`get_node_parameter_options\` with:
@@ -96,7 +96,7 @@ agent, resolve the credential and any ambiguity immediately instead.
 - Never invent resource IDs, credential IDs, node type names, parameter paths,
   or provider tool keys.
 - If \`get_node_parameter_options\` returns \`missing_credentials\`, call
-  \`agent_builder_ask_credential\` for one of the returned credential slots and retry. Do not
+  \`credentials(action: "setup", target: "agent")\` for one of the returned credential slots and retry. Do not
   fall back to \`$fromAI\` for a required stable selector.
 - If the user skips credentials and no exact ID is otherwise available, explain
   that the selector cannot be resolved yet. Ask for the credential or exact ID
@@ -121,7 +121,7 @@ For a Linear "Create Issue" node tool:
 
 1. Use \`resource: "issue"\`, \`operation: "create"\`, and the selected
    authentication mode in \`nodeParameters\`.
-2. Call \`agent_builder_ask_credential\` for the Linear credential slot.
+2. Call \`credentials(action: "setup", target: "agent")\` for the Linear credential slot.
 3. Call \`get_node_parameter_options\` for \`parameterPath: "teamId"\` with
    those \`nodeParameters\` and credentials.
 4. Write the selected team's \`parameterValue\` to \`teamId\`.
@@ -134,7 +134,7 @@ For a Linear "Create Issue" node tool:
   \`$fromAI\`.
 - Runtime content fields still use \`$fromAI\` where the target agent should
   decide them.
-- Node credentials come from \`agent_builder_ask_credential\`; no credential IDs are invented.
+- Node credentials come from \`credentials(action: "setup", target: "agent")\`; no credential IDs are invented.
 - A validation error about dynamic selectors has been fixed by replacing the
   rejected field, not by changing unrelated config.`,
 	};

@@ -10,7 +10,6 @@
 export const WORKFLOW_BUILDER_TOOL_NAMES = {
 	WORKFLOWS: 'workflow_builder_workflows',
 	NODES: 'workflow_builder_nodes',
-	CREDENTIALS: 'workflow_builder_credentials',
 	EXECUTIONS: 'workflow_builder_executions',
 	ASK_USER: 'workflow_builder_ask_user',
 	SEARCH_MODELS: 'workflow_builder_search_models',
@@ -42,10 +41,11 @@ export const AGENT_BUILDER_TOOL_NAMES = {
 	VERIFY_MCP_SERVER: 'agent_builder_verify_mcp_server',
 	SEARCH_NODES: 'agent_builder_search_nodes',
 	GET_NODE_TYPES: 'agent_builder_get_node_types',
-	/** No longer registered. Builders list credentials with `workflow_builder_credentials`. */
+	/** No longer registered. Builders list credentials with the shared `credentials` tool. */
 	LIST_CREDENTIALS: 'agent_builder_list_credentials',
+	/** No longer registered. Builders ask with `credentials` action `setup` and target `agent`. */
 	ASK_CREDENTIAL: 'agent_builder_ask_credential',
-	/** No longer registered. `agent_builder_ask_credential` handles it with `forEpisodicMemory`. */
+	/** No longer registered. Builders ask with `credentials` action `setup` and `allowManaged`. */
 	ASK_EMBEDDING_CREDENTIAL: 'agent_builder_ask_embedding_credential',
 	ASK_QUESTIONS: 'agent_builder_ask_questions',
 	CONFIGURE_CHANNEL: 'agent_builder_configure_channel',
@@ -53,6 +53,7 @@ export const AGENT_BUILDER_TOOL_NAMES = {
 
 /** Orchestrator tools that both builders use. These names have no builder prefix. */
 export const SHARED_BUILDER_TOOL_NAMES = {
+	CREDENTIALS: 'credentials',
 	DATA_TABLES: 'data_tables',
 	SEARCH_NODES: 'search_nodes',
 	GET_NODE_TYPES: 'get_node_types',
@@ -85,7 +86,7 @@ export const REMOVED_BUILDER_TOOL_NAMES = {
 export const LEGACY_BUILDER_TOOL_NAMES: Readonly<Record<string, string>> = {
 	workflows: WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS,
 	nodes: WORKFLOW_BUILDER_TOOL_NAMES.NODES,
-	credentials: WORKFLOW_BUILDER_TOOL_NAMES.CREDENTIALS,
+	workflow_builder_credentials: SHARED_BUILDER_TOOL_NAMES.CREDENTIALS,
 	executions: WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS,
 	'data-tables': SHARED_BUILDER_TOOL_NAMES.DATA_TABLES,
 	'ask-user': WORKFLOW_BUILDER_TOOL_NAMES.ASK_USER,
@@ -117,8 +118,7 @@ export const LEGACY_BUILDER_TOOL_NAMES: Readonly<Record<string, string>> = {
 	agent_builder_get_node_types: SHARED_BUILDER_TOOL_NAMES.GET_NODE_TYPES,
 	list_credentials: AGENT_BUILDER_TOOL_NAMES.LIST_CREDENTIALS,
 	ask_credential: AGENT_BUILDER_TOOL_NAMES.ASK_CREDENTIAL,
-	ask_embedding_credential: AGENT_BUILDER_TOOL_NAMES.ASK_CREDENTIAL,
-	agent_builder_ask_embedding_credential: AGENT_BUILDER_TOOL_NAMES.ASK_CREDENTIAL,
+	ask_embedding_credential: AGENT_BUILDER_TOOL_NAMES.ASK_EMBEDDING_CREDENTIAL,
 	ask_questions: AGENT_BUILDER_TOOL_NAMES.ASK_QUESTIONS,
 	configure_channel: AGENT_BUILDER_TOOL_NAMES.CONFIGURE_CHANNEL,
 };

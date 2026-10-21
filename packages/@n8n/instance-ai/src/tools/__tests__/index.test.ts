@@ -18,8 +18,8 @@ vi.mock('../attachments/parse-file.tool', () => ({
 }));
 
 vi.mock('../credentials.tool', () => ({
-	CREDENTIALS_TOOL_ID: 'workflow_builder_credentials',
-	createCredentialsTool: vi.fn(() => ({ id: 'workflow_builder_credentials' })),
+	CREDENTIALS_TOOL_ID: 'credentials',
+	createCredentialsTool: vi.fn(() => ({ id: 'credentials' })),
 }));
 
 vi.mock('../data-tables.tool', () => ({
@@ -136,7 +136,7 @@ describe('domain tool construction', () => {
 		expect(Object.fromEntries(orchestratorTools)).toMatchObject({
 			workflow_builder_workflows: { id: 'workflow_builder_workflows' },
 			workflow_builder_executions: { id: 'workflow_builder_executions' },
-			workflow_builder_credentials: { id: 'workflow_builder_credentials' },
+			credentials: { id: 'credentials' },
 			data_tables: { id: 'data_tables' },
 			workspace: { id: 'workspace' },
 			research: { id: 'research' },

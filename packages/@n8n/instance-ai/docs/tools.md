@@ -52,7 +52,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `data_tables` | 11 |
 | `workspace` | 8 |
 | `workflow_builder_executions` | 8 |
-| `workflow_builder_credentials` | 6 |
+| `credentials` | 6 |
 | `mcp-servers` | 4 |
 | `conversation-history` | 2 |
 | `workflow_builder_task_control` | 3 |
@@ -803,7 +803,7 @@ Cancel a running execution.
 
 ---
 
-## `workflow_builder_credentials` (6 actions)
+## `credentials` (6 actions)
 
 The instance PostHog flag `120_credential_descriptions` controls description
 fields and selection guidance. Only boolean `true` enables them. When the flag
@@ -811,9 +811,9 @@ is false or missing, `list` and `get` omit `description`, including managed entr
 
 > **Security note**: The agent never handles raw credential secrets. Credential
 > creation and secret configuration is done through the n8n frontend UI (via
-> `workflow_builder_credentials(action="setup")`) or Browser Use credential capture.
+> `credentials(action="setup")`) or Browser Use credential capture.
 
-### `workflow_builder_credentials(action="list")`
+### `credentials(action="list")`
 
 List credentials accessible to the current user. Never exposes secrets.
 
@@ -831,7 +831,7 @@ share one type. Use `get` to read the full text if the preview does not resolve 
 A Gateway credits managed entry has `id: "__AI_GATEWAY_MANAGED__"`,
 `__aiGatewayManaged: true`, and `description: null`.
 
-### `workflow_builder_credentials(action="get")`
+### `credentials(action="get")`
 
 Get credential metadata. Never returns decrypted secrets.
 
@@ -843,7 +843,7 @@ Get credential metadata. Never returns decrypted secrets.
 The description contains the full stored text, or `null` when unset.
 The response never contains credential secret data.
 
-### `workflow_builder_credentials(action="delete")`
+### `credentials(action="delete")`
 
 Permanently delete a credential. **Irreversible** — HITL confirmation required.
 
@@ -854,7 +854,7 @@ Permanently delete a credential. **Irreversible** — HITL confirmation required
 
 **Returns**: `{ success: boolean }`
 
-### `workflow_builder_credentials(action="search-types")`
+### `credentials(action="search-types")`
 
 Search available credential types by name or description.
 
@@ -866,7 +866,7 @@ Search available credential types by name or description.
 **Returns**: `{ results: [...] }`. Gateway-credits-only results have
 `{ type, gatewayCredits: true }`.
 
-### `workflow_builder_credentials(action="setup")`
+### `credentials(action="setup")`
 
 Open the credential picker UI for the user to configure credentials securely.
 The LLM never sees secrets — the user interacts with the n8n frontend directly.
@@ -891,7 +891,7 @@ returned. Generic auth types (bearer/header/query/basic/etc.) stay preselected
 but always require an explicit Continue, since the type alone does not identify
 a service. When `needsBrowserSetup=true`, the orchestrator should load the
 `credential-setup-with-browser-use` skill, use Browser Use `browser_*` tools
-directly, then call `workflow_builder_credentials(action="setup")` again to select the created
+directly, then call `credentials(action="setup")` again to select the created
 credential.
 
 **Setup panel** (`118_instance_ai_setup_overhaul: variant`): when the call belongs
@@ -907,7 +907,7 @@ build snapshot). Standalone setup, `requireUserSelection`, and an entry with
 `preferNew` keep the card: the panel cannot express "replace the bound
 credential".
 
-### `workflow_builder_credentials(action="test")`
+### `credentials(action="test")`
 
 Test whether a credential is valid and can connect to its service.
 

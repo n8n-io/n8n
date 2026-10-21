@@ -156,7 +156,7 @@ export function getToolIcon(rawToolName: string): IconName {
 	)
 		return 'workflow';
 	if (toolName === 'research') return 'search';
-	if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.CREDENTIALS) return 'key-round';
+	if (toolName === SHARED_BUILDER_TOOL_NAMES.CREDENTIALS) return 'key-round';
 	if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.TASK_CONTROL || toolName === 'updateWorkingMemory')
 		return 'brain';
 	if (toolName === 'filesystem') return 'file-text';

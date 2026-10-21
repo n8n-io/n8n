@@ -10,13 +10,13 @@ export function memorySkill(): RuntimeSkill {
 			'Use for explicit memory changes: Episodic/long-term/cross-session memory, observer/reflector worker models, threshold/budget tuning, or disabling memory. Not for ordinary fresh-agent creation, which uses the default memory config in Memory Guidance.',
 		recommendedTools: [
 			'agent_builder_resolve_llm',
-			'agent_builder_ask_credential',
+			'credentials',
 			'agent-context',
 			'agent_builder_patch_config',
 		],
 		allowedTools: [
 			'agent_builder_resolve_llm',
-			'agent_builder_ask_credential',
+			'credentials',
 			'agent_builder_ask_questions',
 			'agent-context',
 			'agent_builder_patch_config',
@@ -42,18 +42,18 @@ Memory (long-term, cross-session recall).
 - Supported observational memory tuning fields: \`enabled\`, \`observerModel\`, \`reflectorModel\`, \`observerThresholdTokens\`, \`reflectorThresholdTokens\`, \`renderTokenBudget\`, \`observationLogTailLimit\`, and \`lockTtlMs\`.
 - Memory worker model fields must use object shape: \`{ "model": "provider/model-name", "credential": "<credentialId>" }\`.
 - Only set \`observerModel\`, \`reflectorModel\`, or \`episodicMemory.reflectorModel\` when the user explicitly asks to use a specific model for memory work.
-- Use only credential IDs returned by \`agent_builder_resolve_llm\` or \`agent_builder_ask_credential\` for memory worker model fields. Do not invent IDs or copy a main-model credential unless one of those tools returned it for that worker model provider.
+- Use only credential IDs returned by \`agent_builder_resolve_llm\` or \`credentials(action: "setup", target: "agent")\` for memory worker model fields. Do not invent IDs or copy a main-model credential unless one of those tools returned it for that worker model provider.
 
 ## Episodic Memory
 
 - Enable \`memory.episodicMemory\` only when the user asks for Episodic Memory, long-term memory, prior conversations, remembered decisions, exact artifacts, or cross-session memory.
-- Before enabling it, call \`agent_builder_ask_credential({ credentialType: "openAiApi", purpose: "OpenAI credential for Episodic Memory embeddings", forEpisodicMemory: true })\`. Without the assistant proxy: ${INITIAL_BUILD_NOTE} Leave Episodic Memory disabled, include an \`openAiApi\` entry in the trailing \`agent_builder_finish_setup\` call, and enable it with the returned credential id — the draft schema requires a credential to enable it.
+- Before enabling it, call \`credentials({ action: "setup", target: "agent", credentials: [{ credentialType: "openAiApi", reason: "OpenAI credential for Episodic Memory embeddings", allowManaged: true }] })\`. Without the assistant proxy: ${INITIAL_BUILD_NOTE} Leave Episodic Memory disabled, include an \`openAiApi\` entry in the trailing \`agent_builder_finish_setup\` call, and enable it with the returned credential id — the draft schema requires a credential to enable it.
 - On success, set \`memory.episodicMemory = { "enabled": true, "credential": "<credentialId>" }\`, using the returned \`credentialId\` value. This can be a real credential id or \`"managed"\` when the assistant proxy is available. Preserve existing \`topK\` or \`maxEntriesPerRun\`.
 - \`memory.episodicMemory.credential\` is only for OpenAI embeddings. It is separate from the optional \`reflectorModel\` worker credential.
 - If credential selection is skipped, do not enable Episodic Memory; explain that it needs an OpenAI credential for embeddings.
 - Do not add instructions saying the agent should remember, store, save, or decide what context matters. The runtime handles memory extraction and indexing.
 - If instructions mention Episodic Memory, phrase it as retrieval/use only, e.g. "Use recalled prior context when relevant to the user's request."
-- Do not invent Episodic Memory credential IDs or reuse the main model credential unless \`agent_builder_ask_credential\` with \`forEpisodicMemory: true\` returned it for this purpose.
+- Do not invent Episodic Memory credential IDs or reuse the main model credential unless \`credentials(action: "setup", target: "agent")\` with \`allowManaged: true\` returned it for this purpose.
 
 ## Gotchas
 
@@ -63,7 +63,7 @@ Memory (long-term, cross-session recall).
 
 ## Verify
 
-- Episodic Memory has an OpenAI credential or \`"managed"\` returned by \`agent_builder_ask_credential\` with \`forEpisodicMemory: true\`.
+- Episodic Memory has an OpenAI credential or \`"managed"\` returned by \`credentials(action: "setup", target: "agent")\` with \`allowManaged: true\`.
 - Existing memory tuning is preserved unless the user asked to change it.`,
 	};
 }
