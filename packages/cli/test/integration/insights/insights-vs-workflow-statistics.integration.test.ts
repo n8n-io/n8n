@@ -20,6 +20,7 @@ import {
 	getCompactedInsightsByWorkflow,
 	initializeInsightsCollection,
 } from '@n8n/backend-module-insights/testing';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { packagedModules } from '@/modules/modules.manifest';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -134,6 +135,7 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		workflowId: string,
 		expectedCount: number,
 		timeout = 10000,
+		name = StatisticsNames.productionSuccess,
 	): Promise<void> {
 		const isPostgres = Container.get(GlobalConfig).database.type === 'postgresdb';
 		const start = Date.now();
@@ -145,10 +147,7 @@ describe('Insights vs Workflow Statistics Integration', () => {
 				);
 			}
 			const stats = await workflowStatisticsRepository.findOne({
-				where: {
-					workflowId,
-					name: StatisticsNames.productionSuccess,
-				},
+				where: { workflowId, name },
 			});
 			if (stats && stats.count >= expectedCount) {
 				return;
@@ -309,5 +308,38 @@ describe('Insights vs Workflow Statistics Integration', () => {
 
 		expect(rootProductionCount).toBe(executionCount);
 		expect(billableCount).toBe(rootProductionCount);
+	}, 60000);
+
+	test('should count runs that failed before start as failures but not as billable', async () => {
+		const blockedCount = 3;
+		const successCount = 5;
+		const check = vi
+			.spyOn(Container.get(CredentialsPermissionChecker), 'check')
+			.mockRejectedValue(new Error('Credential not usable'));
+		for (let i = 0; i < blockedCount; i++) await executeWorkflow(workflow, 'webhook');
+		check.mockRestore();
+
+		const executionIds: string[] = [];
+		for (let i = 0; i < successCount; i++) {
+			executionIds.push(await executeWorkflow(workflow, 'webhook'));
+		}
+
+		await Promise.all(executionIds.map(async (id) => await waitForExecution(id)));
+		await waitForStatistics(workflow.id, blockedCount, 10000, StatisticsNames.productionError);
+		await waitForStatistics(workflow.id, successCount);
+		await waitForCompaction(workflow.id, successCount);
+
+		const productionError = await workflowStatisticsRepository.findOne({
+			where: { workflowId: workflow.id, name: StatisticsNames.productionError },
+		});
+		expect(productionError).toMatchObject({ count: blockedCount, rootCount: 0 });
+
+		const compactedInsights = await getCompactedInsightsByWorkflow(workflow.id);
+		const sum = (type: string) =>
+			compactedInsights
+				.filter((insight) => insight.type === type)
+				.reduce((total, insight) => total + insight.value, 0);
+		expect(sum('failure')).toBe(blockedCount);
+		expect(sum('billable')).toBe(successCount);
 	}, 60000);
 });

@@ -32,6 +32,8 @@ import {
 import { createNodeData, toITaskData } from '../partial-execution-utils/__tests__/helpers';
 import { WorkflowExecute } from '../workflow-execute';
 
+type RunOptions = { mode?: WorkflowExecuteMode; restartExecutionId?: string };
+
 describe('processRunExecutionData', () => {
 	const runHook = vi.fn().mockResolvedValue(undefined);
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({
@@ -93,6 +95,7 @@ describe('processRunExecutionData', () => {
 
 		// ASSERT
 		expect(result.data.resultData.runData).toMatchObject({ node: [{ data: taskDataConnection }] });
+		expect(result.data.resultData.failedBeforeStart).toBeUndefined();
 	});
 
 	test('calls the right hooks in the right order', async () => {
@@ -134,14 +137,20 @@ describe('processRunExecutionData', () => {
 			.addNodes(node)
 			.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
 
-		const runBlocked = async (executionData: IRunExecutionData, workflowToRun = workflow) => {
+		const runBlocked = async (
+			executionData: IRunExecutionData,
+			workflowToRun = workflow,
+			{ mode = executionMode, restartExecutionId }: RunOptions = {},
+		) => {
 			runHook.mockImplementation(async (hookName: string) => {
-				if (hookName === 'workflowExecuteBefore') throw blocked;
+				if (hookName === 'workflowExecuteBefore' || hookName === 'workflowExecuteResume') {
+					throw blocked;
+				}
 			});
 
 			const result = await new WorkflowExecute(
-				additionalData,
-				executionMode,
+				{ ...additionalData, hooks: additionalData.hooks, restartExecutionId },
+				mode,
 				executionData,
 			).processRunExecutionData(workflowToRun);
 
@@ -159,7 +168,48 @@ describe('processRunExecutionData', () => {
 			);
 
 			expect(result.data.resultData.error?.message).toBe(blocked.message);
+			expect(result.data.resultData.failedBeforeStart).toBe(true);
 			expect(hooks).toEqual(['workflowExecuteBefore', 'workflowExecuteAfter']);
+		});
+
+		const withEarlierRunData = () =>
+			createRunExecutionData({
+				startData: { startNodes: [{ name: node.name, sourceData: null }] },
+				resultData: { runData: { earlier: [toITaskData([{ data: { foo: 1 } }])] } },
+				executionData: {
+					nodeExecutionStack: [{ data: { main: [[{ json: { foo: 1 } }]] }, node, source: null }],
+				},
+			});
+
+		test('flags a retry that carries the run data of the original execution', async () => {
+			const { result } = await runBlocked(withEarlierRunData(), workflow, { mode: 'retry' });
+
+			expect(result.data.resultData.failedBeforeStart).toBe(true);
+		});
+
+		test('does not flag a resumed run whose nodes ran before it waited', async () => {
+			const { result, hooks } = await runBlocked(withEarlierRunData(), workflow, {
+				restartExecutionId: 'resumed-execution',
+			});
+
+			expect(hooks[0]).toBe('workflowExecuteResume');
+			expect(result.data.resultData.error?.message).toBe(blocked.message);
+			expect(result.data.resultData.failedBeforeStart).toBeUndefined();
+		});
+
+		test('flags a resumed run when no node ran before it', async () => {
+			const { result } = await runBlocked(
+				createRunExecutionData({
+					startData: { startNodes: [{ name: node.name, sourceData: null }] },
+					executionData: {
+						nodeExecutionStack: [{ data: { main: [[{ json: { foo: 1 } }]] }, node, source: null }],
+					},
+				}),
+				workflow,
+				{ restartExecutionId: 'claimed-execution' },
+			);
+
+			expect(result.data.resultData.failedBeforeStart).toBe(true);
 		});
 
 		// Empty for e.g. a Chat Trigger-only workflow, which used to mask the error with a TypeError.
@@ -169,6 +219,7 @@ describe('processRunExecutionData', () => {
 			);
 
 			expect(result.data.resultData.error?.message).toBe(blocked.message);
+			expect(result.data.resultData.failedBeforeStart).toBe(true);
 			expect(hooks).toEqual(['workflowExecuteBefore', 'workflowExecuteAfter']);
 		});
 
@@ -481,6 +532,7 @@ describe('processRunExecutionData', () => {
 			expect(result.data.resultData.error?.message).toMatch(
 				/^The 'node' node has issues:\n- Parameter "Required Text" is required\.$/,
 			);
+			expect(result.data.resultData.failedBeforeStart).toBe(true);
 			expect(hookNames()).toEqual(['workflowExecuteBefore', 'workflowExecuteAfter']);
 		});
 

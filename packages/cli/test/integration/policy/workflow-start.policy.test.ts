@@ -165,6 +165,7 @@ async function expectBlocked(executionId: string, workflowId: string) {
 	};
 
 	expect(error?.message).toBe(deniedMessage(workflowId));
+	expect(stored?.data.resultData.failedBeforeStart).toBe(true);
 	expect(error?.violations).toEqual([
 		{
 			kind: VIOLATION_KIND,

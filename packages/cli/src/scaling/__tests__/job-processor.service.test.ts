@@ -738,6 +738,54 @@ describe('JobProcessor', () => {
 		);
 	});
 
+	// A plain run, since a deep mock answers every flag with a truthy function.
+	test.each([true as const, undefined])(
+		'should report failedBeforeStart=%s in job-finished',
+		async (flag) => {
+			const executionPersistence = mock<ExecutionPersistence>();
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					mode: 'manual',
+					workflowData: { nodes: [], staticData: {} },
+					data: mock<IRunExecutionData>({ executionData: undefined }),
+				}),
+			);
+			const run: IRun = {
+				mode: 'trigger',
+				status: 'error',
+				startedAt: new Date(),
+				stoppedAt: new Date(),
+				storedAt: 'db',
+				data: createRunExecutionData({
+					resultData: { error: mock<ExecutionError>(), failedBeforeStart: flag },
+					executionData: null,
+				}),
+			};
+
+			const jobProcessor = new JobProcessor(
+				logger,
+				mock<ExecutionRepository>(),
+				executionPersistence,
+				mock(),
+				mock(),
+				mock(),
+				createManualExecutionServiceMock(run),
+				executionsConfig,
+				mock(),
+				mock(),
+			);
+
+			const job = mock<Job>();
+
+			await jobProcessor.processJob(job);
+
+			const finished = job.progress.mock.calls
+				.map(([msg]) => msg as { kind: string; failedBeforeStart?: true })
+				.find((msg) => msg.kind === 'job-finished');
+			expect(finished?.failedBeforeStart).toBe(flag);
+		},
+	);
+
 	it('should pass additional data for partial executions to run', async () => {
 		const executionRepository = mock<ExecutionRepository>();
 		const pinData: IPinData = { pinned: [] };

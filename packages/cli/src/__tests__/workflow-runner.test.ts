@@ -1191,6 +1191,40 @@ describe('enqueueExecution', () => {
 		);
 	});
 
+	it('keeps failedBeforeStart when it rebuilds the run from the job result', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		let workflowExecution: PCancelable<IRun> | undefined;
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockImplementation((_, execution) => {
+			workflowExecution = execution;
+		});
+		vi.spyOn(activeExecutions, 'getResponseMode').mockReturnValue(undefined);
+		const finalize = vi.spyOn(activeExecutions, 'finalizeExecution');
+		vi.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForScalingMain').mockReturnValueOnce(
+			mock<core.ExecutionLifecycleHooks>(),
+		);
+		const data = mock<IWorkflowExecutionDataProcess>({
+			executionMode: 'trigger',
+			workflowData: { nodes: [], staticData: {} },
+			forceFullExecutionData: false,
+		});
+		addJob.mockResolvedValueOnce(mock<Job>({ id: 'job-1', data: { executionId: '1' } }));
+		waitForJob.mockResolvedValueOnce(undefined);
+		popJobResult.mockReturnValueOnce({
+			success: false,
+			status: 'error',
+			startedAt: new Date(),
+			stoppedAt: new Date(),
+			failedBeforeStart: true,
+		} satisfies JobFinishedProps);
+
+		// @ts-expect-error Private method
+		await runner.enqueueExecution('1', 'workflow-xyz', data);
+		await workflowExecution;
+
+		const [, run] = finalize.mock.calls.at(-1)!;
+		expect(run?.data.resultData.failedBeforeStart).toBe(true);
+	});
+
 	it('should fail the execution when the result cannot be read from the DB after the job ended', async () => {
 		const activeExecutions = Container.get(ActiveExecutions);
 		let workflowExecution: PCancelable<IRun> | undefined;
@@ -1749,7 +1783,7 @@ describe('pre-persist context establishment', () => {
 		await expect(runner.run(data)).resolves.toBe('exec-1');
 
 		expect(gateSpy).not.toHaveBeenCalled();
-		expect(failExecution).toHaveBeenCalledWith(data, 'exec-1', unauthorized, undefined);
+		expect(failExecution).toHaveBeenCalledWith(data, 'exec-1', unauthorized, undefined, undefined);
 	});
 
 	it('skips the preExecute gate when claiming an existing execution', async () => {
@@ -1857,6 +1891,49 @@ describe('pre-persist context establishment', () => {
 			await runner.run(data);
 
 			expect(gateSpy).not.toHaveBeenCalled();
+		});
+
+		const finishedRun = () => {
+			const call = lifecycleRunHook.mock.calls.find(([name]) => name === 'workflowExecuteAfter');
+			return (call?.[1] as [IRun])[0];
+		};
+
+		it('flags the failed run as failed before start', async () => {
+			await runner.run(buildRunData(buildExecutionDataWithHeader()));
+
+			expect(finishedRun().data.resultData.failedBeforeStart).toBe(true);
+		});
+
+		const withEarlierRunData = () => {
+			const executionData = buildExecutionDataWithHeader();
+			executionData.resultData.runData = {
+				Earlier: [{ startTime: 0, executionIndex: 0, executionTime: 0, source: [] }],
+			};
+			return executionData;
+		};
+
+		it('flags a retry that carries the run data of the original execution', async () => {
+			await runner.run(buildRunData(withEarlierRunData(), 'retry'));
+
+			expect(finishedRun().data.resultData.failedBeforeStart).toBe(true);
+		});
+
+		it('flags a claimed new execution', async () => {
+			await runner.run(buildRunData(buildExecutionDataWithHeader()), undefined, undefined, {
+				executionId: 'exec-1',
+				expectedStatus: 'new',
+			});
+
+			expect(finishedRun().data.resultData.failedBeforeStart).toBe(true);
+		});
+
+		it('does not flag a resumed run whose nodes ran before it waited', async () => {
+			await runner.run(buildRunData(withEarlierRunData()), undefined, undefined, {
+				executionId: 'exec-1',
+				expectedStatus: 'waiting',
+			});
+
+			expect(finishedRun().data.resultData.failedBeforeStart).toBeUndefined();
 		});
 	});
 });

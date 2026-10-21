@@ -31,6 +31,7 @@ import type {
 import {
 	createRunExecutionData,
 	ExecutionCancelledError,
+	hasExecutionRunNodes,
 	isTerminalExecutionStatus,
 	ManualExecutionCancelledError,
 	TimeoutExecutionCancelledError,
@@ -331,12 +332,17 @@ export class WorkflowRunner {
 		executionId: string,
 		error: ExecutionError & { node?: INode },
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+		existingExecution?: ResumableExecution,
 	): Promise<void> {
 		const runData = this.failedRunFactory.generateFailedExecutionFromError(
 			data.executionMode,
 			error,
 			error.node,
 		);
+		const isResume = existingExecution?.expectedStatus === 'waiting';
+		if (!hasExecutionRunNodes(data.executionData?.resultData?.runData, isResume)) {
+			runData.data.resultData.failedBeforeStart = true;
+		}
 		const lifecycleHooks = getLifecycleHooksForRegularMain(data, executionId);
 		await lifecycleHooks.runHook('workflowExecuteBefore', [undefined, data.executionData]);
 		await lifecycleHooks.runHook('workflowExecuteAfter', [runData]);
@@ -425,7 +431,7 @@ export class WorkflowRunner {
 				);
 			} catch (error) {
 				const executionId = await this.activeExecutions.add(data, existingExecution);
-				await this.failExecution(data, executionId, error, responsePromise);
+				await this.failExecution(data, executionId, error, responsePromise, existingExecution);
 				return executionId;
 			}
 		}
@@ -443,7 +449,13 @@ export class WorkflowRunner {
 		const executionId = await this.activeExecutions.add(data, existingExecution);
 
 		if (establishContextError) {
-			await this.failExecution(data, executionId, establishContextError, responsePromise);
+			await this.failExecution(
+				data,
+				executionId,
+				establishContextError,
+				responsePromise,
+				existingExecution,
+			);
 			return executionId;
 		}
 
@@ -926,6 +938,7 @@ export class WorkflowRunner {
 								lastNodeExecuted: jobResult.lastNodeExecuted,
 								error: jobResult.error,
 								metadata: jobResult.metadata,
+								failedBeforeStart: jobResult.failedBeforeStart,
 							},
 						}),
 						jobId: job.id.toString(),
