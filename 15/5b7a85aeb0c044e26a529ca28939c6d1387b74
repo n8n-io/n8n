@@ -10,6 +10,8 @@ packages/cli/test/integration/database/repositories/agent.repository.test.ts
   s_71ad2034164515::t_0d3912e9b455e3 642-652
 packages/cli/src/modules/agents/repositories/agent.repository.ts
   s_d3c0f6f6f7d41c::t_299f1ce556f407 533-536
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_71ad2034164515::t_5b2e9948357ddc 125
 ---
 {
   "schema_version": "authorship/3.0.0",
