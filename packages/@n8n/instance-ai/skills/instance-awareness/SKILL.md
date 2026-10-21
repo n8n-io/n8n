@@ -9,7 +9,7 @@ recommended_tools:
   - activity
   - workflow_builder_workflows
   - workflow_builder_executions
-  - workflow_builder_credentials
+  - credentials
 ---
 
 # Instance Awareness
@@ -86,7 +86,7 @@ probably no pattern to follow.
 | Did the nightly job run? | the block, then `workflow_builder_executions` |
 | Who changed this, and was it me? | `activity(action="expand")` — entries carry provenance |
 | How do they configure it? | one workflow, rung 2 |
-| Do they have a credential for X? | `workflow_builder_credentials(action="list")` |
+| Do they have a credential for X? | `credentials(action="list")` |
 
 ## Resolving a vague opener
 

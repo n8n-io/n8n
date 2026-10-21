@@ -100,14 +100,14 @@ describe('buildTranscriptFromEvents', () => {
 					RUN_START,
 					evt('tool-call', {
 						payload: {
-							toolName: 'workflow_builder_credentials',
+							toolName: 'credentials',
 							toolCallId: 'tc2',
 							args: { name: 'slack' },
 						},
 					}),
 					evt('tool-result', {
 						payload: {
-							toolName: 'workflow_builder_credentials',
+							toolName: 'credentials',
 							toolCallId: 'tc2',
 							result: { id: 'c1', token: 'secret-token' },
 						},
@@ -445,9 +445,9 @@ describe('buildTranscriptFromEvents', () => {
 			const turns = buildTranscriptFromEvents({
 				events: [
 					RUN_START,
-					evt('tool-call', { payload: { toolName: 'workflow_builder_credentials', args: {} } }),
-					evt('tool-call', { payload: { toolName: 'workflow_builder_credentials', args: {} } }),
-					evt('tool-call', { payload: { toolName: 'workflow_builder_credentials', args: {} } }),
+					evt('tool-call', { payload: { toolName: 'credentials', args: {} } }),
+					evt('tool-call', { payload: { toolName: 'credentials', args: {} } }),
+					evt('tool-call', { payload: { toolName: 'credentials', args: {} } }),
 				],
 			});
 			const calls = turns[0].steps.filter((i) => i.kind === 'tool-call');

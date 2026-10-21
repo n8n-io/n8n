@@ -1435,6 +1435,35 @@ describe('credentials tool', () => {
 	});
 
 	describe('setup action', () => {
+		it('should return the Agent credential map for target agent', async () => {
+			const context = createMockContext({
+				agentBuilderTarget: { agentId: 'agent-1', projectId: 'project-1' },
+			});
+			(context.credentialService.list as Mock).mockResolvedValue([
+				{ id: 'c1', name: 'Notion', type: 'notionApi' },
+			]);
+			const tool = createCredentialsTool(context);
+
+			const result = await executeTool(
+				tool,
+				{
+					action: 'setup' as const,
+					target: 'agent' as const,
+					credentials: [{ credentialType: 'notionApi' }],
+				},
+				suspendCtx(),
+			);
+
+			expect(context.credentialService.list).toHaveBeenCalledWith({
+				type: 'notionApi',
+				projectId: 'project-1',
+			});
+			expect(result).toMatchObject({
+				success: true,
+				credentials: { notionApi: { id: 'c1', name: 'Notion' } },
+			});
+		});
+
 		it('should suspend with credentialRequests on first call', async () => {
 			const existingCreds: CredentialSummary[] = [
 				{ id: 'c1', name: 'Existing Slack', type: 'slackApi' },

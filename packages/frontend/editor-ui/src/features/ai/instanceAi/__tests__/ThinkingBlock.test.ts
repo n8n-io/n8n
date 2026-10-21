@@ -404,7 +404,7 @@ describe('ThinkingBlock', () => {
 	});
 
 	it('should render narration, reasoning, and tool rows inside the rail when expanded', async () => {
-		const tc = makeToolCall({ toolCallId: 'tc-1', toolName: 'workflow_builder_credentials' });
+		const tc = makeToolCall({ toolCallId: 'tc-1', toolName: 'credentials' });
 		const { getByTestId, getAllByText, getByText } = renderComponent({
 			props: {
 				agentNode: makeAgentNode({ status: 'active', toolCalls: [tc] }),

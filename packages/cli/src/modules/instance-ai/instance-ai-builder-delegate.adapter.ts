@@ -6,6 +6,7 @@ import {
 	type InstanceAiBuilderDelegate,
 	type InstanceAiCredentialService,
 } from '@n8n/instance-ai';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import { AgentContextService } from '@/modules/agents/agent-context.service';
 import { AgentDraftService } from '@/modules/agents/agent-draft.service';
@@ -60,6 +61,25 @@ export class InstanceAiBuilderDelegateAdapterService {
 				await this.context.readArtifact(user, projectId, agentId),
 			validateAgent: async (agentId) =>
 				await this.builder.validateAgent(user, projectId, agentId, credentialProviderFor),
+			getCredentialDefaults: async (agentId) =>
+				await this.builder.getCredentialDefaults(user, projectId, agentId),
+			trackCredentialRequest: (agentId, session, { credentialType, outcome }) => {
+				const properties = {
+					agent_id: agentId,
+					user_id: user.id,
+					thread_id: session.threadId,
+					run_id: session.runId,
+					credential_type: credentialType,
+				};
+				if (outcome === 'requested') {
+					this.telemetry.track(TELEMETRY_EVENT.AGENTS.BUILDER_REQUESTED_CREDENTIAL, properties);
+					return;
+				}
+				this.telemetry.track(TELEMETRY_EVENT.AGENTS.USER_PROVIDED_CREDENTIAL, {
+					...properties,
+					outcome,
+				});
+			},
 		};
 	}
 
