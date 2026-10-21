@@ -1,0 +1,22 @@
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_82789c69de1855::t_7af09d4aeb8c60 726,768,783,812,942,985
+packages/cli/test/integration/database/repositories/agent-execution-thread-task-stop.repository.test.ts
+  s_82789c69de1855::t_5709036d71b3ad 264-266
+  s_82789c69de1855::t_7af09d4aeb8c60 127,129,194,233,257,466
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c72d1bce33eb2479a7273d401e7e0abe32591ee0",
+  "prompts": {},
+  "sessions": {
+    "s_82789c69de1855": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a159bb-d082-7922-91e3-bcc90434d8c6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
