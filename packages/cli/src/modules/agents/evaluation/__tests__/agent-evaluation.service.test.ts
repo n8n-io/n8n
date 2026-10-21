@@ -208,7 +208,11 @@ describe('AgentEvaluationService', () => {
 		const refs = [{ type: 'skill' as const, id: 'alpha' }];
 		const { service, saved, skillRefs, reconstruction } = setup({ ...baseConfig, skills: refs });
 		saved.tools = { 't-1': { code: 'export default 1' } } as unknown as typeof saved.tools;
-		skillRefs.bodies.alpha = { name: 'Alpha', description: 'Alpha skill', instructions: 'Old skill' };
+		skillRefs.bodies.alpha = {
+			name: 'Alpha',
+			description: 'Alpha skill',
+			instructions: 'Old skill',
+		};
 		reconstruction.reconstructFromAgentEntity.mockResolvedValue({
 			agent: mock(),
 			toolRegistry: new Map(),

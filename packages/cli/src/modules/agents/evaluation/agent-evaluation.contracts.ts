@@ -2,7 +2,15 @@ import type { Agent, FetchFn, McpToolCallSettledEvent } from '@n8n/agents';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import type { AgentJsonConfig } from '@n8n/api-types';
 
+import type { ProjectAgent } from '../entities/agent.entity';
 import type { ReferencedToolKind } from '../tool-registry';
+import type { AgentRunSource } from '../utils/agent-published-snapshot';
+
+/** The project agent a batch captures its run source from. */
+export type AgentEvaluationAgent = ProjectAgent;
+
+/** A batch's captured agent and skills: every case of the batch runs this content. */
+export type AgentEvaluationRunSource = AgentRunSource;
 
 export interface AgentEvaluationSkippedFeature {
 	feature: string;

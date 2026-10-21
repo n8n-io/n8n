@@ -23,10 +23,12 @@ import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { EvalLlmMockHandler } from 'n8n-core';
 
-import type { AgentEvaluationPreparation } from '@/modules/agents/evaluation/agent-evaluation.contracts';
-import type { ProjectAgent } from '@/modules/agents/entities/agent.entity';
+import type {
+	AgentEvaluationAgent,
+	AgentEvaluationPreparation,
+	AgentEvaluationRunSource,
+} from '@/modules/agents/evaluation/agent-evaluation.contracts';
 import { AgentEvaluationService } from '@/modules/agents/evaluation/agent-evaluation.service';
-import type { AgentRunSource } from '@/modules/agents/utils/agent-published-snapshot';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
@@ -368,7 +370,7 @@ export class EvalAgentExecutionService {
 	) {}
 
 	/** Keep the root agent and resolved skills fixed while a batch is in flight. */
-	async captureRunSource(agent: ProjectAgent): Promise<AgentRunSource> {
+	async captureRunSource(agent: AgentEvaluationAgent): Promise<AgentEvaluationRunSource> {
 		return await Container.get(AgentEvaluationService).captureRunSource(agent);
 	}
 
@@ -381,7 +383,7 @@ export class EvalAgentExecutionService {
 		// per-tool hints keep the tool mocks coherent), but the message the agent
 		// receives is this input verbatim — how a fixed eval case is executed.
 		caseInput?: string,
-		hooks?: { onProgress?: ToolProgressWriter; source?: AgentRunSource },
+		hooks?: { onProgress?: ToolProgressWriter; source?: AgentEvaluationRunSource },
 	): Promise<InstanceAiEvalAgentExecutionResult> {
 		// Workflow-tool sub-executions carry a configureAdditionalData closure
 		// that doesn't survive queue serialization — refuse upfront so tool

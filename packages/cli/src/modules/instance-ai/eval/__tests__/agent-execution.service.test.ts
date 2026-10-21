@@ -16,9 +16,11 @@ import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { AgentEvaluationService } from '@/modules/agents/evaluation/agent-evaluation.service';
-import type { AgentEvaluationPreparation } from '@/modules/agents/evaluation/agent-evaluation.contracts';
-import type { ProjectAgent } from '@/modules/agents/entities/agent.entity';
-import type { AgentRunSource } from '@/modules/agents/utils/agent-published-snapshot';
+import type {
+	AgentEvaluationAgent,
+	AgentEvaluationPreparation,
+	AgentEvaluationRunSource,
+} from '@/modules/agents/evaluation/agent-evaluation.contracts';
 
 import { EvalAgentExecutionService, mcpUrlsMatch } from '../agent-execution.service';
 import { generateAgentScenarioSeed } from '../agent-scenario-seed';
@@ -131,7 +133,7 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 	const request = { projectId: 'proj-1' };
 
 	it('prepares every batch case from the captured run source', async () => {
-		const source = mock<AgentRunSource>();
+		const source = mock<AgentEvaluationRunSource>();
 		buildRuntime.mockResolvedValue({
 			generate: vi.fn().mockResolvedValue(makeGenerateResult()),
 			close: vi.fn(),
@@ -141,8 +143,8 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 	});
 
 	it('captures a run source through the agent evaluation service', async () => {
-		const agent = mock<ProjectAgent>();
-		const source = mock<AgentRunSource>();
+		const agent = mock<AgentEvaluationAgent>();
+		const source = mock<AgentEvaluationRunSource>();
 		agentEvaluation.captureRunSource.mockResolvedValue(source);
 		expect(await buildService().captureRunSource(agent)).toBe(source);
 		expect(agentEvaluation.captureRunSource).toHaveBeenCalledWith(agent);
