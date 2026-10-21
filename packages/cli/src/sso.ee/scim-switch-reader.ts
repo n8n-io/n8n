@@ -1,4 +1,10 @@
+import { LicenseState } from '@n8n/backend-common';
+import { LICENSE_FEATURES } from '@n8n/constants';
+import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+
+/** The settings row of the SCIM provisioning switch. */
+export const SCIM_PROVISIONING_ENABLED_KEY = 'scim.provisioning.enabled';
 
 /**
  * Reads the SCIM provisioning switch for SSO code, for `sso-login-disabled`.
@@ -9,19 +15,26 @@ import { Service } from '@n8n/di';
 export class ScimSwitchReader {
 	private read?: () => Promise<boolean>;
 
+	constructor(
+		private readonly licenseState: LicenseState,
+		private readonly settingsRepository: SettingsRepository,
+	) {}
+
 	register(read: () => Promise<boolean>) {
 		this.read = read;
 	}
 
 	/**
-	 * Without the active SCIM module, for example without `feat:scim`, SCIM
-	 * counts as off. This includes the SSO env loader at startup, which runs
-	 * before the modules start. The SCIM module then turns SCIM off at its own
-	 * start.
+	 * Without `feat:scim` the SCIM module does not start, so SCIM counts as
+	 * off. The SSO env loader runs at startup, before the modules start. For
+	 * it, this reads the saved switch, so that the event tells the state from
+	 * before the start. The SCIM module then turns SCIM off at its own start.
 	 */
 	async isEnabled(): Promise<boolean> {
-		if (!this.read) return false;
+		if (this.read) return await this.read();
+		if (!this.licenseState.isLicensed(LICENSE_FEATURES.SCIM)) return false;
 
-		return await this.read();
+		const row = await this.settingsRepository.findByKey(SCIM_PROVISIONING_ENABLED_KEY);
+		return row?.value === 'true';
 	}
 }
