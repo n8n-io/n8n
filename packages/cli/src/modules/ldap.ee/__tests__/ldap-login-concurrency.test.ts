@@ -52,7 +52,7 @@ describe('LDAP login concurrency (IAM-1526)', () => {
 		writer.writeString('');
 	};
 
-	const createSocket = () => {
+	const createSocket = (connect = true) => {
 		const socket = new EventEmitter() as tls.TLSSocket;
 		sockets.push(socket);
 		socket.end = vi.fn(() => socket);
@@ -105,7 +105,7 @@ describe('LDAP login concurrency (IAM-1526)', () => {
 		});
 
 		// Deliver both connection events after both concurrent logins start to connect.
-		queueMicrotask(() => socket.emit('secureConnect'));
+		if (connect) queueMicrotask(() => socket.emit('secureConnect'));
 		return socket;
 	};
 
@@ -120,7 +120,7 @@ describe('LDAP login concurrency (IAM-1526)', () => {
 	beforeEach(() => {
 		vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
 		sockets = [];
-		vi.spyOn(tls, 'connect').mockImplementation(createSocket);
+		vi.spyOn(tls, 'connect').mockImplementation(() => createSocket());
 		// ldapts imports the Node.js TLS module through its ESM entry point.
 		syncBuiltinESMExports();
 		ldapService = new LdapService(mockLogger(), mock(), mock(), mock(), mock());
@@ -157,4 +157,24 @@ describe('LDAP login concurrency (IAM-1526)', () => {
 
 		await expect(Promise.all(logins)).resolves.toMatchObject(users);
 	});
+
+	it.each(['connection', 'bind'])(
+		'should time out a stalled %s and allow later logins',
+		async (stage) => {
+			vi.mocked(tls.connect).mockImplementation(() => {
+				const socket = createSocket(stage !== 'connection');
+				if (stage === 'bind') socket.write = vi.fn(() => true);
+				return socket;
+			});
+
+			const stalledLogin = login(users[0]);
+			await vi.advanceTimersByTimeAsync(ldapConfig.searchTimeout * 1000);
+
+			await expect(stalledLogin).resolves.toBeUndefined();
+			expect(sockets[0].destroy).toHaveBeenCalled();
+
+			vi.mocked(tls.connect).mockImplementation(() => createSocket());
+			await expect(login(users[1])).resolves.toMatchObject(users[1]);
+		},
+	);
 });

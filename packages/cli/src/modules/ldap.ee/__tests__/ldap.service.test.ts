@@ -720,6 +720,15 @@ describe('LdapService', () => {
 			expect(Client.prototype.unbind).toHaveBeenCalledTimes(1);
 		});
 
+		it('should unbind the client if search fails', async () => {
+			const ldapService = createDefaultLdapService(ldapConfig);
+			Client.prototype.search = vi.fn().mockRejectedValue(new Error('Search failed'));
+			await ldapService.init();
+
+			await expect(ldapService.searchWithAdminBinding('')).rejects.toThrow('Search failed');
+			expect(Client.prototype.unbind).toHaveBeenCalledTimes(1);
+		});
+
 		it('should return expected search entries', async () => {
 			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
@@ -801,6 +810,7 @@ describe('LdapService', () => {
 			await expect(ldapService.validUser(distinguishedName, password)).rejects.toThrowError(
 				'Error validating user against LDAP server',
 			);
+			expect(Client.prototype.unbind).toHaveBeenCalledTimes(1);
 		});
 
 		it('should unbind the client binding', async () => {
@@ -1133,6 +1143,8 @@ describe('LdapService', () => {
 			expect(Client).toHaveBeenCalledTimes(1);
 			expect(Client).toHaveBeenCalledWith({
 				url: `ldap://${ldapConfig.connectionUrl}:${ldapConfig.connectionPort}`,
+				timeout: ldapConfig.searchTimeout * 1000,
+				connectTimeout: ldapConfig.searchTimeout * 1000,
 			});
 		});
 
@@ -1149,6 +1161,8 @@ describe('LdapService', () => {
 			expect(Client).toHaveBeenCalledTimes(1);
 			expect(Client).toHaveBeenCalledWith({
 				url: `ldaps://${ldapConfig.connectionUrl}:${ldapConfig.connectionPort}`,
+				timeout: ldapConfig.searchTimeout * 1000,
+				connectTimeout: ldapConfig.searchTimeout * 1000,
 				tlsOptions: {
 					rejectUnauthorized: false,
 				},
@@ -1168,6 +1182,8 @@ describe('LdapService', () => {
 			expect(Client).toHaveBeenCalledTimes(1);
 			expect(Client).toHaveBeenCalledWith({
 				url: `ldaps://${ldapConfig.connectionUrl}:${ldapConfig.connectionPort}`,
+				timeout: ldapConfig.searchTimeout * 1000,
+				connectTimeout: ldapConfig.searchTimeout * 1000,
 				tlsOptions: {
 					rejectUnauthorized: true,
 				},
@@ -1191,7 +1207,7 @@ describe('LdapService', () => {
 			});
 		});
 
-		it('should not create a new client if one has already been created', async () => {
+		it('should create and unbind a separate client for each connection test', async () => {
 			const ldapService = createDefaultLdapService(ldapConfig);
 
 			await ldapService.init();
@@ -1200,7 +1216,21 @@ describe('LdapService', () => {
 			expect(Client).toHaveBeenCalledTimes(1);
 
 			await ldapService.testConnection();
-			expect(Client).toHaveBeenCalledTimes(1);
+			expect(Client).toHaveBeenCalledTimes(2);
+			expect(Client.prototype.unbind).toHaveBeenCalledTimes(2);
+		});
+
+		it('should unbind the client if StartTLS fails', async () => {
+			const ldapService = createDefaultLdapService({
+				...ldapConfig,
+				connectionSecurity: 'startTls',
+			});
+			Client.prototype.startTLS = vi.fn().mockRejectedValue(new Error('StartTLS failed'));
+			await ldapService.init();
+
+			await expect(ldapService.testConnection()).rejects.toThrow('StartTLS failed');
+			expect(Client.prototype.bind).not.toHaveBeenCalled();
+			expect(Client.prototype.unbind).toHaveBeenCalledTimes(1);
 		});
 	});
 
