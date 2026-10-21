@@ -438,6 +438,35 @@ describe('InMemoryMemory resolved episodic scope', () => {
 		).toEqual([first.id]);
 	});
 
+	it('recalls a fact stored in two read scopes once, keeping the newest', async () => {
+		const memory = new InMemoryMemory();
+		const one = inChannel('1');
+		const two = inChannel('2');
+		const save = async (scope: typeof one, lastSeenAt: Date) =>
+			await memory.episodic.saveEntryWithSources(
+				{ resourceId: scope.resourceId, episodic: scope.episodic, content, lastSeenAt },
+				[
+					{
+						candidateId: `candidate-${scope.threadId}`,
+						threadId: scope.threadId,
+						evidenceText: content,
+					},
+				],
+			);
+		await save(one, new Date('2026-05-01T00:00:00Z'));
+		const newer = await save(two, new Date('2026-05-09T00:00:00Z'));
+
+		const results = await memory.episodic.searchEntries(
+			{
+				...one,
+				episodic: { writeScopeId: 'channel:1', readScopeIds: ['channel:1', 'channel:2'] },
+			},
+			'team chose Postgres',
+		);
+
+		expect(results.map(({ id }) => id)).toEqual([newer?.id]);
+	});
+
 	it('queues pending candidates and takes locks per resolved scope', async () => {
 		const memory = new InMemoryMemory();
 		const one = inChannel('1');

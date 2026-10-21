@@ -4,6 +4,8 @@ import { MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH } from '@n8n/api-types';
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import type { Author } from 'chat';
+import type { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';
+import { AgentChatAttachmentService } from '../../agent-chat-attachment.service';
 import { AgentMessageQueueService } from '../../agent-message-queue.service';
 import type { AgentMessageQueue } from '../../entities/agent-message-queue.entity';
 import type { QueuedIntegrationMessage } from '../../types/agent-queued-message';
@@ -3666,6 +3668,53 @@ describe('AgentChatBridge — consumeStream', () => {
 			const { payload } = await queuedPayload(null);
 
 			expect(payload).toMatchObject({ episodicScope: { disabled: true } });
+		});
+
+		it('hands the queued decision to the orchestrator through the production executor', async () => {
+			const { bot, handlers } = makeBot();
+			const queue = mock<AgentMessageQueueService>();
+			queue.enqueue.mockResolvedValue({ status: 'accepted', item: mock<AgentMessageQueue>() });
+			Container.set(AgentMessageQueueService, queue);
+			Container.set(IntegrationMessageContextService, mock<IntegrationMessageContextService>());
+			Container.set(AgentChatAttachmentService, mock<AgentChatAttachmentService>());
+			const orchestrator = mock<AgentExecutionOrchestratorService>();
+			orchestrator.executeForChatPublished.mockImplementation(
+				() => toStream([finishChunk]) as never,
+			);
+			const bridge = AgentChatBridge.create(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				orchestrator,
+				componentMapper,
+				logger,
+				'project-1',
+				streamingIntegration,
+			);
+			const resolveSpy = vi
+				.spyOn(registry.get('test-streaming')!, 'resolveEpisodicScope')
+				.mockReturnValue(scope);
+			try {
+				await handlers.subscribed!(makeThread('thread-1'), {
+					text: 'hi',
+					author: { userId: 'u1', userName: 'user1' },
+				});
+			} finally {
+				resolveSpy.mockRestore();
+			}
+			const [{ payload, threadId }] = queue.enqueue.mock.calls[0];
+			if (payload.kind !== 'integration') throw new Error('Expected integration input');
+
+			await bridge.consumeQueuedMessage(
+				payload,
+				threadId,
+				{ executionId: 'execution-1', startedAt: new Date(), inputMessageIds: ['message-1'] },
+				new AbortController().signal,
+				streamingIntegration,
+			);
+
+			expect(orchestrator.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({ episodicScope: scope }),
+			);
 		});
 	});
 

@@ -1523,14 +1523,18 @@ describe('N8nMemory', () => {
 
 			it('recalls only from the resolved read scopes', async () => {
 				memoryEntryRepository.find.mockResolvedValue([]);
+				const readScopeIds = ['slack:T1:channel:C1', 'slack:T1:user:U_ALICE'];
 
-				await memory.episodic.searchEntries(scope, 'shared fact');
+				await memory.episodic.searchEntries(
+					{ ...scope, episodic: { writeScopeId: episodic.writeScopeId, readScopeIds } },
+					'shared fact',
+				);
 
 				expect(messageRepository.findRecentThreadIdsByResourceId).not.toHaveBeenCalled();
 				expect(memoryEntryRepository.find).toHaveBeenCalledWith({
 					where: {
 						agentId: 'agent-1',
-						resourceId: In(['slack:T1:channel:C1']),
+						resourceId: In(readScopeIds),
 						status: In(['active']),
 					},
 				});

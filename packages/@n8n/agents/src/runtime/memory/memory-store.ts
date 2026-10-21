@@ -691,9 +691,15 @@ export class InMemoryMemory
 		const scopeIds = opts?.writeScopeOnly
 			? [episodicWriteScopeId(scope)]
 			: episodicReadScopeIds(scope);
-		const scoped = this.episodicMemory
-			.filter((entry) => scopeIds.includes(entry.resourceId))
-			.map(cloneEpisodicMemoryEntry);
+		// The same fact told in two scopes is one memory to the reader.
+		const newestByContent = new Map<string, EpisodicMemoryEntry>();
+		for (const entry of this.episodicMemory) {
+			if (!scopeIds.includes(entry.resourceId)) continue;
+			const key = `${entry.status}\n${entry.contentHash}`;
+			const seen = newestByContent.get(key);
+			if (!seen || entry.lastSeenAt > seen.lastSeenAt) newestByContent.set(key, entry);
+		}
+		const scoped = [...newestByContent.values()].map(cloneEpisodicMemoryEntry);
 		return rankEpisodicMemoryEntries(scoped, query, opts);
 	}
 
