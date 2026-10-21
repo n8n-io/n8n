@@ -109,6 +109,7 @@ describe('LogStreamingEventRelay', () => {
 					credentials: {
 						matched: 1,
 						created: 0,
+						updated: 0,
 						requirements: 1,
 					},
 					dataTables: {
