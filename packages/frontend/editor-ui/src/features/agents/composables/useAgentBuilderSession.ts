@@ -1,5 +1,4 @@
 import { computed, getCurrentScope, onScopeDispose, ref, watch, type Ref } from 'vue';
-import { v4 as uuidv4 } from 'uuid';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { truncate } from '@n8n/utils/string/truncate';
@@ -108,7 +107,7 @@ function useSessionSelection(routeBacked: Readonly<Ref<boolean>>) {
 	}
 
 	function onNewChat() {
-		selectSession(uuidv4(), true);
+		selectSession(crypto.randomUUID(), true);
 	}
 
 	function markSessionCreated(sessionId: string) {

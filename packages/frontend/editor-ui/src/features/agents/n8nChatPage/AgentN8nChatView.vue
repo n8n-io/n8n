@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onScopeDispose, provide, ref, useTemplateRef, watch } from 'vue';
-import { v4 as uuidv4 } from 'uuid';
 import { RouterLink, useRouter } from 'vue-router';
 import type { AgentN8nChatAgentDetails } from '@n8n/api-types';
 import { N8nEmptyState, N8nIcon, N8nSpinner, N8nText } from '@n8n/design-system';
@@ -105,7 +104,7 @@ watch(
 watch(
 	() => [props.agentId, props.agentThreadId] as const,
 	([, threadId]) => {
-		mintedSessionId.value = threadId ? undefined : uuidv4();
+		mintedSessionId.value = threadId ? undefined : crypto.randomUUID();
 	},
 	{ immediate: true },
 );

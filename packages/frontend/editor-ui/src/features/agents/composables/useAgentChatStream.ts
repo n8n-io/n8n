@@ -1,5 +1,4 @@
 import { ref, reactive, computed, watch, onScopeDispose, type Ref } from 'vue';
-import { v4 as uuidv4 } from 'uuid';
 import { useDocumentVisibility } from '@vueuse/core';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { TIME } from '@/app/constants/durations';
@@ -637,7 +636,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	function ensureCurrent(session: StreamSession): ChatMessage {
 		if (session.current) return session.current;
 		const msg = reactive<ChatMessage>({
-			id: uuidv4(),
+			id: crypto.randomUUID(),
 			role: 'assistant',
 			content: '',
 			toolCalls: [],
@@ -671,7 +670,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		if (notices.some(matchesNotice)) return;
 		msg.budgetNotices = [
 			...notices,
-			{ id: uuidv4(), code, ...(agentId !== undefined ? { agentId } : {}) },
+			{ id: crypto.randomUUID(), code, ...(agentId !== undefined ? { agentId } : {}) },
 		];
 		const key = session.executionId ?? msg.id;
 		let forTarget = pendingBudgetNotices.get(session.target);
@@ -682,7 +681,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		const entry = forTarget.get(key) ?? { notices: [], source: msg };
 		if (!entry.notices.some(matchesNotice)) {
 			entry.notices.push({
-				id: uuidv4(),
+				id: crypto.randomUUID(),
 				code,
 				...(agentId !== undefined ? { agentId } : {}),
 			});
@@ -1273,7 +1272,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				} else {
 					messages.value.push(
 						reactive<ChatMessage>({
-							id: uuidv4(),
+							id: crypto.randomUUID(),
 							role: 'assistant',
 							content: event.message,
 							toolCalls: [],
@@ -1631,7 +1630,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			: payload.resumeData;
 
 		if (isCancellation) {
-			optimisticUserMessageId = uuidv4();
+			optimisticUserMessageId = crypto.randomUUID();
 			fatalError.value = null;
 			messages.value.push({
 				id: optimisticUserMessageId,
@@ -1715,7 +1714,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		const submission = ++submissionVersion;
 		const target = targetKey();
 		const userMessage: ChatMessage = {
-			id: uuidv4(),
+			id: crypto.randomUUID(),
 			role: 'user',
 			content: trimmed,
 			status: 'success',

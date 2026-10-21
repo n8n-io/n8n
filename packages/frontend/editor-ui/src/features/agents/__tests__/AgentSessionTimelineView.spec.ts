@@ -1,6 +1,5 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type * as UuidModule from 'uuid';
 import { shallowMount, flushPromises } from '@vue/test-utils';
 import { nextTick, reactive } from 'vue';
 import type { PushMessage } from '@n8n/api-types';
@@ -32,11 +31,6 @@ const privateThread = (id: string): SessionThread => ({
 	canContinueInPreview: true,
 	updatedAt: '2026-01-01T00:00:00.000Z',
 });
-
-vi.mock('uuid', async (importOriginal) => ({
-	...(await importOriginal<typeof UuidModule>()),
-	v4: () => 'thread-b',
-}));
 
 const routeParams = reactive({ projectId: 'p1', agentId: 'a1', threadId: 'thread-a' });
 const routerPush = vi.fn();
@@ -162,6 +156,9 @@ describe('AgentSessionTimelineView', () => {
 		const initialThreads = [privateThread('thread-a'), privateThread('thread-c')];
 		sessionThreads.splice(0, sessionThreads.length, ...initialThreads);
 		previewSessionThreads.splice(0, previewSessionThreads.length, ...initialThreads);
+		vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(
+			'thread-b' as unknown as ReturnType<typeof globalThis.crypto.randomUUID>,
+		);
 	});
 
 	it('uses update permission for preview session deletion', async () => {
