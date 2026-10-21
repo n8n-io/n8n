@@ -739,8 +739,25 @@ function onRemove() {
 					description: i18n.baseText('agents.builder.skills.picker.create.description'),
 					testId: 'agent-skill-picker-create',
 				}"
+				:connect-label="() => i18n.baseText('agents.builder.skills.picker.add')"
+				:connect-aria-label="
+					(item) =>
+						i18n.baseText('agents.builder.skills.picker.addAriaLabel', {
+							interpolate: { name: item.title },
+						})
+				"
+				:connected-label="() => i18n.baseText('agents.builder.skills.picker.added')"
+				:disconnect-label="() => i18n.baseText('agents.builder.skills.picker.remove')"
+				:disconnect-aria-label="
+					(item) =>
+						i18n.baseText('agents.builder.skills.picker.removeAriaLabel', {
+							interpolate: { name: item.title },
+						})
+				"
 				embedded
 				show-connect-actions
+				hide-empty-categories
+				iconless-rows
 				persistent-scrollbar
 				data-testid="agent-skill-picker"
 				@connect="onPickerItemAttach"

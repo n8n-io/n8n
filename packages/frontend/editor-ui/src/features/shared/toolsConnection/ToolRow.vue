@@ -1,14 +1,6 @@
 <script setup lang="ts">
 import { computed, inject, ref } from 'vue';
-import {
-	N8nBadge,
-	N8nButton,
-	N8nIcon,
-	N8nSpinner,
-	N8nSwitch2,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { N8nBadge, N8nButton, N8nIcon, N8nSpinner, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { RestrictedNodePopover } from '@n8n/frontend-module-type-availability-policies';
 import ToolCredentialPicker from './ToolCredentialPicker.vue';
@@ -27,6 +19,8 @@ const props = defineProps<{
 	connectLabel?: string;
 	connectAriaLabel?: string;
 	connectedLabel?: string;
+	disconnectLabel?: string;
+	disconnectAriaLabel?: string;
 }>();
 
 const emit = defineEmits<{
@@ -142,6 +136,22 @@ function handleRowClick() {
 	emit('open-detail', props.item);
 }
 
+/**
+ * The pointer is still on the button right after an add. Hold back the hover
+ * "Remove" until it leaves, so a second click cannot undo the add by accident.
+ */
+const removeArmed = ref(true);
+
+function handleSkillAction() {
+	if (props.item.kind !== 'skill') return;
+	if (!props.item.attached) {
+		removeArmed.value = false;
+		emit('connect', props.item);
+	} else if (!props.item.attaching) {
+		emit('disconnect', props.item);
+	}
+}
+
 function handleConnect() {
 	emit('connect', props.item);
 	if (props.item.credentials?.length) {
@@ -255,18 +265,41 @@ function handleConnect() {
 				</span>
 				<template #content>{{ item.disabledReason }}</template>
 			</N8nTooltip>
-			<N8nSwitch2
+			<!--
+				One element for both states keeps keyboard focus across an add. An added
+				skill reads "Added" and shows "Remove" on hover or keyboard focus.
+			-->
+			<N8nButton
 				v-else-if="item.kind === 'skill'"
-				:model-value="item.attached"
-				:disabled="item.attaching"
-				:label="
-					i18n.baseText(
-						item.attached ? 'tools.connection.action.attached' : 'tools.connection.action.detached',
-					)
+				:variant="item.attached ? 'ghost' : 'outline'"
+				size="small"
+				:class="
+					item.attached &&
+					!item.attaching && [$style.addedActionIdle, removeArmed && $style.addedActionArmed]
 				"
-				data-test-id="tools-connection-row-attach"
-				@update:model-value="$event ? emit('connect', item) : emit('disconnect', item)"
-			/>
+				:aria-label="item.attached ? (disconnectAriaLabel ?? disconnectLabel) : connectAriaLabel"
+				:data-test-id="
+					item.attached ? 'tools-connection-row-detach' : 'tools-connection-row-attach'
+				"
+				@click="handleSkillAction"
+				@mouseleave="removeArmed = true"
+			>
+				<span v-if="item.attached" :class="$style.addedStack">
+					<span :class="$style.addedLabel">
+						<N8nIcon
+							icon="check"
+							:size="14"
+							:class="$style.statusIconConnected"
+							aria-hidden="true"
+						/>
+						{{ connectedLabel ?? i18n.baseText('tools.connection.action.added') }}
+					</span>
+					<span :class="$style.removeLabel" aria-hidden="true">
+						{{ disconnectLabel ?? i18n.baseText('tools.connection.action.remove') }}
+					</span>
+				</span>
+				<template v-else>{{ connectLabel ?? i18n.baseText('generic.add') }}</template>
+			</N8nButton>
 			<N8nButton
 				v-else-if="item.kind === 'service'"
 				variant="outline"
@@ -374,6 +407,11 @@ function handleConnect() {
 	&:hover {
 		background: var(--color--background--light-1);
 	}
+}
+
+.row--skill {
+	// Skill rows have no icon. Start the text on the same edge as the search icon.
+	padding-inline-start: var(--spacing--xs);
 }
 
 .rowDisabled {
@@ -501,6 +539,44 @@ function handleConnect() {
 	color: var(--color--text--tint-1);
 	font-size: var(--font-size--2xs);
 	white-space: nowrap;
+}
+
+.addedStack {
+	// Both labels share one grid cell, so the button keeps its width when they swap.
+	display: inline-grid;
+
+	> * {
+		grid-area: 1 / 1;
+	}
+}
+
+.addedLabel,
+.removeLabel {
+	display: inline-flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: var(--spacing--3xs);
+}
+
+.addedLabel {
+	color: var(--color--text--tint-1);
+	font-weight: var(--font-weight--regular);
+}
+
+.removeLabel {
+	visibility: hidden;
+	color: var(--color--danger);
+}
+
+.addedActionIdle:focus-visible,
+.addedActionArmed:hover {
+	.addedLabel {
+		visibility: hidden;
+	}
+
+	.removeLabel {
+		visibility: visible;
+	}
 }
 
 .statusIconConnected,

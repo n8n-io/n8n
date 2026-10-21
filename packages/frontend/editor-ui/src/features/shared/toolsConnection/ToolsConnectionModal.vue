@@ -39,8 +39,15 @@ const props = withDefaults(
 	defineProps<{
 		open?: boolean;
 		items: ToolConnectionItem[];
-		/** Tabs to render, in order. Declared categories show even while empty. */
+		/** Tabs to render, in order. Declared categories show even while empty, unless `hideEmptyCategories`. */
 		categories: ToolCategoryKey[];
+		/**
+		 * Hide every tab except "All" while it has no items, and hide the tab strip
+		 * when only "All" is left. For pickers whose categories never fill in late.
+		 */
+		hideEmptyCategories?: boolean;
+		/** The rows have no leading icon, so the create row drops its icon slot to match. */
+		iconlessRows?: boolean;
 		title?: string;
 		searchPlaceholder?: string;
 		detailItem?: ToolConnectionItem | null;
@@ -63,6 +70,8 @@ const props = withDefaults(
 		connectLabel?: (item: ToolConnectionItem) => string;
 		connectAriaLabel?: (item: ToolConnectionItem) => string;
 		connectedLabel?: (item: ToolConnectionItem) => string;
+		disconnectLabel?: (item: ToolConnectionItem) => string;
+		disconnectAriaLabel?: (item: ToolConnectionItem) => string;
 		categoryLabels?: Partial<Record<ToolCategoryKey, string>>;
 	}>(),
 	{
@@ -79,6 +88,8 @@ const props = withDefaults(
 		showConnectActions: false,
 		groupSearchResults: false,
 		persistentScrollbar: false,
+		hideEmptyCategories: false,
+		iconlessRows: false,
 	},
 );
 
@@ -259,13 +270,18 @@ const HIDE_WHEN_EMPTY: ToolCategoryKey[] = ['community'];
  * while typing and the counts alone show where the matches are.
  */
 const visibleCategories = computed(() =>
-	props.categories.filter(
-		(category) => !HIDE_WHEN_EMPTY.includes(category) || itemsForCategory(category).length > 0,
-	),
+	props.categories.filter((category) => {
+		const hideWhenEmpty = props.hideEmptyCategories
+			? category !== 'all'
+			: HIDE_WHEN_EMPTY.includes(category);
+		return !hideWhenEmpty || itemsForCategory(category).length > 0;
+	}),
 );
 
-const tabsVisible = computed(
-	() => props.categories.length > 1 && visibleCategories.value.length > 0,
+const tabsVisible = computed(() =>
+	props.hideEmptyCategories
+		? visibleCategories.value.length > 1
+		: props.categories.length > 1 && visibleCategories.value.length > 0,
 );
 
 async function selectCategory(category: ToolCategoryKey) {
@@ -451,7 +467,7 @@ function handleOpenChange(value: boolean) {
 					<button
 						v-if="showCreateAction && createAction"
 						type="button"
-						:class="$style.createRow"
+						:class="[$style.createRow, iconlessRows && $style.createRowIconless]"
 						:disabled="createActionLoading"
 						:aria-busy="createActionLoading"
 						:data-test-id="createAction.testId ?? 'tools-connection-create'"
@@ -508,6 +524,8 @@ function handleOpenChange(value: boolean) {
 									:connect-label="props.connectLabel?.(row.item)"
 									:connect-aria-label="props.connectAriaLabel?.(row.item)"
 									:connected-label="props.connectedLabel?.(row.item)"
+									:disconnect-label="props.disconnectLabel?.(row.item)"
+									:disconnect-aria-label="props.disconnectAriaLabel?.(row.item)"
 									@open-detail="openDetail($event)"
 									@connect="emit('connect', $event)"
 									@disconnect="emit('disconnect', $event)"
@@ -619,6 +637,15 @@ function handleOpenChange(value: boolean) {
 	align-items: center;
 	justify-content: center;
 	color: var(--color--primary);
+}
+
+.createRowIconless {
+	// Iconless rows start their text at this inset, so the plus lines up with it.
+	padding-inline-start: var(--spacing--xs);
+
+	.createIcon {
+		width: auto;
+	}
 }
 
 .createText {

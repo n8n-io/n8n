@@ -101,7 +101,7 @@ const baseService: ServiceConnectionItem = {
 };
 
 describe('ToolRow', () => {
-	it('switches a detached skill on and an attached skill off', async () => {
+	describe('skill rows', () => {
 		const skill: SkillConnectionItem = {
 			id: 'skill:tone',
 			kind: 'skill',
@@ -110,17 +110,72 @@ describe('ToolRow', () => {
 			status: 'none',
 			attached: false,
 		};
-		const detached = render(skill);
-		expect(detached.getByText('Detached')).toBeInTheDocument();
-		await userEvent.click(detached.getByTestId('tools-connection-row-attach'));
-		expect(detached.emitted('connect')).toEqual([[skill]]);
-		detached.unmount();
 
-		const attachedSkill = { ...skill, attached: true };
-		const attached = render(attachedSkill);
-		expect(attached.getByText('Attached')).toBeInTheDocument();
-		await userEvent.click(attached.getByTestId('tools-connection-row-attach'));
-		expect(attached.emitted('disconnect')).toEqual([[attachedSkill]]);
+		function renderSkill(item: SkillConnectionItem) {
+			return renderRow({
+				props: {
+					item,
+					connectLabel: 'Add skill',
+					connectAriaLabel: 'Add Support tone',
+					connectedLabel: 'Added',
+					disconnectLabel: 'Remove',
+					disconnectAriaLabel: 'Remove Support tone',
+				},
+				pinia: createTestingPinia(),
+			});
+		}
+
+		it('adds a skill that is not on the agent', async () => {
+			const { getByRole, emitted } = renderSkill(skill);
+
+			const add = getByRole('button', { name: 'Add Support tone' });
+			expect(add).toHaveTextContent('Add skill');
+			await userEvent.click(add);
+
+			expect(emitted('connect')).toEqual([[skill]]);
+			expect(emitted('disconnect')).toBeUndefined();
+		});
+
+		it('shows an added skill as added and removes it on click', async () => {
+			const added = { ...skill, attached: true };
+			const { getByRole, getByTestId, emitted } = renderSkill(added);
+
+			const action = getByRole('button', { name: 'Remove Support tone' });
+			expect(action).toBe(getByTestId('tools-connection-row-detach'));
+			expect(action).toHaveTextContent('Added');
+			await userEvent.click(action);
+
+			expect(emitted('disconnect')).toEqual([[added]]);
+			expect(emitted('connect')).toBeUndefined();
+		});
+
+		it('ignores a remove while the skill is still being added', async () => {
+			const { getByTestId, emitted } = renderSkill({ ...skill, attached: true, attaching: true });
+
+			await userEvent.click(getByTestId('tools-connection-row-detach'));
+
+			expect(emitted('disconnect')).toBeUndefined();
+		});
+
+		it('keeps focus on the action when the skill becomes added', async () => {
+			const { getByTestId, rerender } = renderSkill(skill);
+
+			const add = getByTestId('tools-connection-row-attach');
+			add.focus();
+			await rerender({ item: { ...skill, attached: true } });
+
+			expect(getByTestId('tools-connection-row-detach')).toBe(add);
+			expect(add).toHaveFocus();
+		});
+
+		it('falls back to the shared labels', () => {
+			const detached = render(skill);
+			expect(detached.getByTestId('tools-connection-row-attach')).toHaveTextContent('Add');
+			detached.unmount();
+
+			const attached = render({ ...skill, attached: true });
+			expect(attached.getByTestId('tools-connection-row-detach')).toHaveTextContent('Added');
+		});
 	});
 
 	it('shows a Connect button for an available mcp-server and emits connect on click', async () => {

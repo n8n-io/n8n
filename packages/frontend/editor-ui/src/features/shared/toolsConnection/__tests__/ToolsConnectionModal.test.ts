@@ -93,6 +93,8 @@ function renderWith(
 		detailMode: 'detail' | 'settings';
 		showSuggestionFooter: boolean;
 		groupSearchResults: boolean;
+		hideEmptyCategories: boolean;
+		disconnectLabel: (item: ToolConnectionItem) => string;
 		createAction: {
 			category?: ToolCategoryKey;
 			label: string;
@@ -109,6 +111,8 @@ function renderWith(
 			detailMode: props.detailMode,
 			showSuggestionFooter: props.showSuggestionFooter,
 			groupSearchResults: props.groupSearchResults,
+			hideEmptyCategories: props.hideEmptyCategories,
+			disconnectLabel: props.disconnectLabel,
 			createAction: props.createAction,
 		},
 		slots: {
@@ -430,6 +434,82 @@ describe('ToolsConnectionModal', () => {
 
 		const populated = renderWith({ categories });
 		expect(populated.queryByTestId('tab-community')).toBeTruthy();
+	});
+
+	describe('with hideEmptyCategories', () => {
+		const SKILL_CATEGORIES: ToolCategoryKey[] = ['all', 'project', 'this-agent', 'global'];
+
+		function skill(id: string, category: ToolCategoryKey, attached = false): ToolConnectionItem {
+			return {
+				id: `skill:${id}`,
+				kind: 'skill',
+				skillId: id,
+				title: id,
+				category,
+				status: 'none',
+				attached,
+			};
+		}
+
+		it('hides empty tabs but keeps the all tab', () => {
+			const { getByTestId, queryByTestId } = renderWith({
+				items: [skill('tone', 'project'), skill('digest', 'this-agent')],
+				categories: SKILL_CATEGORIES,
+				hideEmptyCategories: true,
+			});
+
+			expect(getByTestId('tab-all').textContent).toContain('(2)');
+			expect(getByTestId('tab-project').textContent).toContain('(1)');
+			expect(getByTestId('tab-this-agent').textContent).toContain('(1)');
+			expect(queryByTestId('tab-global')).toBeNull();
+		});
+
+		it('hides the tab strip when only the all tab is left', () => {
+			const empty = renderWith({
+				items: [],
+				categories: SKILL_CATEGORIES,
+				hideEmptyCategories: true,
+			});
+			expect(empty.queryByTestId('tools-connection-tabs')).toBeNull();
+			empty.unmount();
+
+			const oneScope = renderWith({
+				items: [skill('tone', 'global')],
+				categories: SKILL_CATEGORIES,
+				hideEmptyCategories: true,
+			});
+			expect(oneScope.getByTestId('tab-global')).toBeTruthy();
+		});
+
+		it('keeps every tab while a search matches nothing in it', async () => {
+			const { getByTestId, getByPlaceholderText } = renderWith({
+				items: [skill('tone', 'project'), skill('digest', 'global')],
+				categories: SKILL_CATEGORIES,
+				hideEmptyCategories: true,
+			});
+
+			await fireEvent.update(getByPlaceholderText('Search all tools...'), 'tone');
+
+			await waitFor(() => {
+				expect(getByTestId('tab-global').textContent).toContain('(0)');
+			});
+		});
+
+		it('forwards the remove label and emits disconnect for an added skill', async () => {
+			const added = skill('tone', 'project', true);
+			const { getByTestId, emitted } = renderWith({
+				items: [added],
+				categories: SKILL_CATEGORIES,
+				hideEmptyCategories: true,
+				disconnectLabel: () => 'Remove skill',
+			});
+
+			const action = getByTestId('tools-connection-row-detach');
+			expect(action).toHaveTextContent('Remove skill');
+			await fireEvent.click(action);
+
+			expect(emitted().disconnect).toEqual([[added]]);
+		});
 	});
 
 	it('states a count on every tab, zero included', () => {
