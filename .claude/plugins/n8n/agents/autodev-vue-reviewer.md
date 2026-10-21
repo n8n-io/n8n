@@ -12,7 +12,8 @@ Assess:
 - **Pinia**: state read/written through the store (no direct mutation outside actions); `storeToRefs` for reactive extraction; no unused computed/getters left behind when stores change.
 - **Design system & styling**: prefer `@n8n/design-system` components over raw HTML/third-party. **No new direct `element-plus` / `reka-ui` imports in editor-ui** — extend the design system instead. Use CSS variables/design tokens, never hardcoded px spacing/colors.
 - **i18n**: all user-facing text goes through `@n8n/i18n` (`i18n.baseText(...)`), no hardcoded strings.
+- **Copy as rendered**: the NDV runs descriptions and hints through `sanitizeHtml`, which drops unknown tags and collapses `\n`; an angle-bracket placeholder such as `<your-role>` reads as an empty value. Check new copy as rendered, use quoted placeholders and `<br>` or backticks, and look for a guard test like `not.toMatch(/<[^\s>]+>/)`.
 - **Testability & a11y**: `data-testid` is a single value (no spaces); interactive elements are accessible (roles, labels, keyboard).
 - **Component health**: props/emits typed; no `any`; logic that belongs in a composable isn't inlined in the template; performance of large lists/renders.
 
-You do not modify code. Output findings tagged `[BLOCKER]` / `[MAJOR]` / `[MINOR]` with file/line (or the part of the plan) and a concrete fix. Defer pure backend/test concerns to the other review lenses. If the frontend plan/diff is clean, say so explicitly.
+You do not modify code. Output findings tagged `[BLOCKER]` / `[MAJOR]` / `[MINOR]` with file/line (or the part of the plan), the smallest concrete fix, and the test that flips with it. Say whether this PR introduces the issue or it is pre-existing on the base. Defer pure backend/test concerns to the other review lenses. If the frontend plan/diff is clean, say so explicitly.
