@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { hasAgentUnpublishedChanges } from '../utils/agentPublication';
 import AgentFolderDialog, { type AgentFolderAction } from '../components/AgentFolderDialog.vue';
+import { OPEN_AGENT_PREVIEW_KEY } from './AgentSessionsListView.vue';
 import { useAgentPromptInspiration } from '../composables/useAgentPromptInspiration';
 import { useAgentSetupHeaderExperiment } from '@/experiments/agentSetupHeader/useAgentSetupHeaderExperiment';
 import { useAgentBuilderExperimentStore } from '@/experiments/agentBuilder/stores/agentBuilder.store';
@@ -1986,6 +1987,11 @@ const runConfigWrite: AgentConfigWrite = async (write) => {
 	}
 };
 provide(AGENT_CONFIG_WRITE_KEY, runConfigWrite);
+provide(OPEN_AGENT_PREVIEW_KEY, {
+	open: () => onOpenPreview(),
+	isRunnable: computed(() => agent.value?.isRunnable === true),
+	validationIssues: computed(() => configValidation.value?.issues ?? []),
+});
 
 async function flushAutosave(): Promise<AutosaveResult> {
 	return await flushAutosaveLoops();

@@ -16,6 +16,7 @@ import N8nTooltip from '../N8nTooltip/Tooltip.vue';
 interface EmptyStateProps {
 	icon?: IconOrEmoji | EmptyStateIconCardsIcon;
 	heading?: string;
+	hideBorder?: boolean;
 	buttonText?: string;
 	buttonVariant?: ButtonVariant;
 	buttonDisabled?: boolean;
@@ -47,7 +48,11 @@ const resolvedButtonVariant = computed(
 
 <template>
 	<div
-		:class="['n8n-empty-state', $style.container, { [$style.small]: isSmall }]"
+		:class="[
+			'n8n-empty-state',
+			$style.container,
+			{ [$style.small]: isSmall, [$style.hideBorder]: hideBorder },
+		]"
 		data-test-id="empty-state"
 	>
 		<div v-if="icon" :class="$style.icon">
@@ -116,13 +121,17 @@ const resolvedButtonVariant = computed(
 
 <style lang="scss" module>
 .container {
-	border: 2px dashed var(--color--foreground);
+	border: 2px dashed var(--border-color);
 	border-radius: var(--radius--lg);
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	gap: var(--spacing--md);
 	padding: var(--spacing--3xl) var(--spacing--xl);
+
+	&.hideBorder {
+		border-color: transparent;
+	}
 }
 
 .icon {
