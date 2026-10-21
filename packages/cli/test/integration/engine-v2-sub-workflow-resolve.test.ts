@@ -17,6 +17,7 @@ import { createMember } from './shared/db/users';
 import { buildDefaultNodes, initNodeTypes } from './shared/utils';
 
 const TRIGGER_TYPE = 'n8n-nodes-base.executeWorkflowTrigger';
+const CHILD_EXECUTION_ID = '01a03900-0000-7000-8000-000000000001';
 const TRIGGER_NAME = 'When Executed by Another Workflow';
 
 const triggerNode: INode = {
@@ -95,7 +96,7 @@ describe('Engine v2 sub-workflow resolve (integration)', () => {
 		overrides: Partial<ResolveSubWorkflowRequest> = {},
 	): ResolveSubWorkflowRequest => ({
 		workflowId,
-		executionId: '01a03900-0000-7000-8000-000000000001',
+		executionId: CHILD_EXECUTION_ID,
 		parent: { executionId: 'exec-parent', workflowId: parent.id, mode: 'manual' },
 		context: { userId: member.id },
 		items: [{ json: { a: 1 } }],
@@ -116,6 +117,22 @@ describe('Engine v2 sub-workflow resolve (integration)', () => {
 		expect(result.triggerOutputs).toEqual([[{ json: { a: 1 } }]]);
 		expect(result.returnLastRunOnly).toBe(false);
 		expect(result.workflow).toMatchObject({ id: workflow.id });
+	});
+
+	it('runs the trigger under the child execution id, so its expressions see it', async () => {
+		// The source is an expression on `$execution.id`: it passes the items
+		// through only when the id is the one the request named.
+		const probe: INode = {
+			...triggerNode,
+			parameters: {
+				inputSource: `={{ $execution.id === '${CHILD_EXECUTION_ID}' ? 'passthrough' : 'jsonExample' }}`,
+			},
+		};
+		const workflow = await child({ nodes: [probe, setNode] });
+
+		const result = await resolve(request(workflow.id));
+
+		expect(result.triggerOutputs).toEqual([[{ json: { a: 1 } }]]);
 	});
 
 	it('resolves the published version of a child for a production run, not its draft', async () => {
