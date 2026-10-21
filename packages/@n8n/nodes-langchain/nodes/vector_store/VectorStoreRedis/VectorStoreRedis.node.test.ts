@@ -527,16 +527,13 @@ describe('VectorStoreRedis.node', () => {
 			};
 
 			const node = new RedisNode.VectorStoreRedis();
-			await expect((node as any).getVectorStoreClient(context, undefined, {}, 0)).rejects.toEqual(
-				new NodeOperationError(
-					context.getNode(),
-					'Invalid metadata schema: each entry must be an object',
-					{
-						itemIndex: 0,
-						description: 'Expected format: [{"name": "fieldName", "type": "tag|text|numeric|geo"}]',
-					},
-				),
-			);
+			const execution = (node as any).getVectorStoreClient(context, undefined, {}, 0);
+			await expect(execution).rejects.toBeInstanceOf(NodeOperationError);
+			await expect(execution).rejects.toMatchObject({
+				message: 'Invalid metadata schema: each entry must be an object',
+				description: 'Expected format: [{"name": "fieldName", "type": "tag|text|numeric|geo"}]',
+				context: { itemIndex: 0 },
+			});
 		});
 	});
 
