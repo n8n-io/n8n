@@ -1,7 +1,5 @@
-packages/cli/src/modules/agents/integrations/agent-channel-setup-evidence.ts
-  s_71ad2034164515::t_c49e55559dfee5 6,96-98
 packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
-  s_71ad2034164515::t_c49e55559dfee5 1877
+  s_71ad2034164515::t_8da3120a65b162 1877
 ---
 {
   "schema_version": "authorship/3.0.0",
