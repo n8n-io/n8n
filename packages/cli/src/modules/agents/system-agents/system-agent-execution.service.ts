@@ -410,21 +410,27 @@ export class SystemAgentExecutionService {
 		if (signal.aborted) stopSetup();
 		let handle: SystemAgentTurnHandle;
 		try {
-			handle = await this.prepareOrRelease(workspace, hostEvents, controller.signal, thread, async () => {
-				return await provider.prepareTurn({
-					type: 'start',
-					user,
-					thread,
-					resourceId,
-					abortSignal: controller.signal,
-					...(workspace ? { workspace: workspace.lease } : {}),
-					emitHostEvent: hostEvents.emit,
-					executionId: admission.executionId,
-					message: payload.message,
-					attachments,
-					options: payload.options ?? {},
-				});
-			});
+			handle = await this.prepareOrRelease(
+				workspace,
+				hostEvents,
+				controller.signal,
+				thread,
+				async () => {
+					return await provider.prepareTurn({
+						type: 'start',
+						user,
+						thread,
+						resourceId,
+						abortSignal: controller.signal,
+						...(workspace ? { workspace: workspace.lease } : {}),
+						emitHostEvent: hostEvents.emit,
+						executionId: admission.executionId,
+						message: payload.message,
+						attachments,
+						options: payload.options ?? {},
+					});
+				},
+			);
 		} finally {
 			signal.removeEventListener('abort', stopSetup);
 		}

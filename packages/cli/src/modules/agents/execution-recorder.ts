@@ -406,7 +406,8 @@ export class ExecutionRecorder {
 			if (existing?.type === 'host-event') {
 				const replaced = { ...existing, payload: sanitized };
 				this.timeline[index] = replaced;
-				this.emitTimelineSnapshot();
+				// Text or reasoning can still stream here, so keep it in the snapshot.
+				this.emitTimelineSnapshot(this.activeBlock());
 				return replaced;
 			}
 		}
@@ -617,24 +618,7 @@ export class ExecutionRecorder {
 		if (this.timelineSnapshotTimer) return;
 		this.timelineSnapshotTimer = setTimeout(() => {
 			this.timelineSnapshotTimer = undefined;
-			const now = Date.now();
-			if (this.textStartTime !== null && this.textBuffer.length > 0) {
-				this.emitTimelineSnapshot({
-					type: 'text',
-					content: this.textBuffer.join(''),
-					timestamp: this.textStartTime,
-					endTime: now,
-				});
-			} else if (this.reasoningStartTime !== null && this.reasoningBuffer.length > 0) {
-				this.emitTimelineSnapshot({
-					type: 'reasoning',
-					content: this.reasoningBuffer.join(''),
-					timestamp: this.reasoningStartTime,
-					endTime: now,
-				});
-			} else {
-				this.emitTimelineSnapshot();
-			}
+			this.emitTimelineSnapshot(this.activeBlock());
 		}, TIMELINE_BLOCK_MAX_DURATION_MS);
 		this.timelineSnapshotTimer.unref();
 	}
@@ -812,6 +796,28 @@ export class ExecutionRecorder {
 	private appendCompletedEvent(event: TimelineEvent): void {
 		this.timeline.push(event);
 		this.emitTimelineSnapshot();
+	}
+
+	/** The text or reasoning block that still streams, as it would be flushed now. */
+	private activeBlock(): TimelineEvent | undefined {
+		const now = Date.now();
+		if (this.textStartTime !== null && this.textBuffer.length > 0) {
+			return {
+				type: 'text',
+				content: this.textBuffer.join(''),
+				timestamp: this.textStartTime,
+				endTime: now,
+			};
+		}
+		if (this.reasoningStartTime !== null && this.reasoningBuffer.length > 0) {
+			return {
+				type: 'reasoning',
+				content: this.reasoningBuffer.join(''),
+				timestamp: this.reasoningStartTime,
+				endTime: now,
+			};
+		}
+		return undefined;
 	}
 
 	private emitTimelineSnapshot(activeEvent?: TimelineEvent): void {

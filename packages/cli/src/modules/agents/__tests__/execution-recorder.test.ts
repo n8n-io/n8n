@@ -535,6 +535,20 @@ describe('ExecutionRecorder', () => {
 			expect(replaced).toEqual(timeline[0]);
 		});
 
+		it('keeps streaming text in the snapshot of a keyed replacement', () => {
+			const onTimelineSnapshot = vi.fn();
+			const recorder = new ExecutionRecorder(undefined, onTimelineSnapshot);
+
+			recorder.recordHostEvent('test.progress', { done: 0 }, 'build');
+			recorder.record({ type: 'text-delta', id: 't1', delta: 'working' });
+			recorder.recordHostEvent('test.progress', { done: 1 }, 'build');
+
+			expect(onTimelineSnapshot).toHaveBeenLastCalledWith([
+				expect.objectContaining({ type: 'host-event', payload: { done: 1 } }),
+				expect.objectContaining({ type: 'text', content: 'working' }),
+			]);
+		});
+
 		it('appends events without a key, or with another name or key', () => {
 			const recorder = new ExecutionRecorder();
 

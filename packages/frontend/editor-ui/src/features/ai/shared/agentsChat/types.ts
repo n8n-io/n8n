@@ -151,8 +151,6 @@ export interface AgentsChatHostEvent {
 	/** Set by the chat for each event of a message. The server sends no id. */
 	id: string;
 	name: string;
-	/** Set when the event can update. A later event with the same name and key replaces it. */
-	key?: string;
 	payload: unknown;
 	/**
 	 * Set when the provider emits the event with a key, which makes the event
