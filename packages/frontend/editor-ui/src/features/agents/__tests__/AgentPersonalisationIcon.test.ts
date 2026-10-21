@@ -33,12 +33,14 @@ describe('AgentPersonalisationIcon', () => {
 		} as unknown as AgentJsonConfig['personalisation'];
 		const { getByTestId } = renderComponent({ props: { personalisation } });
 		const style = getByTestId('agent-personalisation-icon-tile').style;
+		const { from, to, angle, fromStop, toStop } = DEFAULT_AGENT_PERSONALISATION.gradient;
 
-		expect(style.getPropertyValue('--agent-personalisation-gradient-from')).toBe(
-			DEFAULT_AGENT_PERSONALISATION.gradient.from,
-		);
-		expect(style.getPropertyValue('--agent-personalisation-gradient-to')).toBe(
-			DEFAULT_AGENT_PERSONALISATION.gradient.to,
-		);
+		expect({
+			from: style.getPropertyValue('--agent-personalisation-gradient-from'),
+			to: style.getPropertyValue('--agent-personalisation-gradient-to'),
+			angle: style.getPropertyValue('--agent-personalisation-gradient-angle'),
+			fromStop: style.getPropertyValue('--agent-personalisation-gradient-from-stop'),
+			toStop: style.getPropertyValue('--agent-personalisation-gradient-to-stop'),
+		}).toEqual({ from, to, angle: `${angle}deg`, fromStop: `${fromStop}%`, toStop: `${toStop}%` });
 	});
 });

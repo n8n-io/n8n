@@ -83,7 +83,12 @@ describe('resolveAgentPersonalisation', () => {
 		['reversed stops', { fromStop: 90, toStop: 10 }],
 		['stops that are text', { fromStop: 'a' }],
 		['an angle that is not a number', { angle: 'abc' }],
-		['an explicitly undefined angle', { angle: undefined }],
+		['an angle too large to draw', { angle: 1e308 }],
+		['a negative angle', { angle: -1 }],
+		['an angle of a full turn', { angle: 360 }],
+		['an angle that is not a whole number', { angle: 45.5 }],
+		['a start stop past its range', { fromStop: 46 }],
+		['an end stop before its range', { toStop: 54 }],
 	])('uses the default gradient for %s', (_, broken) => {
 		const value = {
 			icon: 'laugh',
@@ -94,5 +99,22 @@ describe('resolveAgentPersonalisation', () => {
 			icon: 'laugh',
 			gradient: DEFAULT_AGENT_PERSONALISATION.gradient,
 		});
+	});
+
+	it('fills a missing layout field with its default', () => {
+		const { angle: _angle, ...withoutAngle } = gradient;
+
+		const value = { icon: 'laugh', gradient: withoutAngle } as AgentPersonalisation;
+
+		expect(resolveAgentPersonalisation(value).gradient).toEqual({
+			...gradient,
+			angle: DEFAULT_AGENT_PERSONALISATION.gradient.angle,
+		});
+	});
+
+	it('drops keys the gradient does not draw', () => {
+		const value = { icon: 'laugh', gradient: { ...gradient, extra: 1 } } as AgentPersonalisation;
+
+		expect(resolveAgentPersonalisation(value).gradient).toEqual(gradient);
 	});
 });

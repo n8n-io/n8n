@@ -85,7 +85,7 @@ const WebSearchConfigSchema = z.object({
 	credential: z.string().optional(),
 });
 
-export const HexColorSchema = z
+const HexColorSchema = z
 	.string()
 	.regex(/^#[0-9A-Fa-f]{6}$/, 'Color must be a 6-digit hex value (e.g. #FF5500)');
 
@@ -100,7 +100,7 @@ export const DEFAULT_AGENT_PERSONALISATION = {
 	},
 } as const;
 
-const AgentPersonalisationGradientSchema = z
+export const AgentPersonalisationGradientSchema = z
 	.object({
 		from: HexColorSchema,
 		to: HexColorSchema,
