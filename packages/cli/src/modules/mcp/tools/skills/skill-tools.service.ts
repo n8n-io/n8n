@@ -53,7 +53,7 @@ const updateSkillInput = {
 	...skillIdInput,
 	...SaveSkillDto.schema.shape,
 	availableToAssistant: SaveSkillDto.schema.shape.availableToAssistant.describe(
-		'Allow the n8n Assistant to use this skill. Changing only this setting keeps the content version.',
+		'Allow the n8n Assistant to use this instance or project skill. Changing only this setting keeps the content version.',
 	),
 	baseSkillHash: SaveSkillDto.schema.shape.baseSkillHash.describe(
 		'skillHash from get_skill. The update is refused if the skill changed since',

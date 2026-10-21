@@ -114,7 +114,7 @@ describe('SkillsController', () => {
 		expect(detail.availableToAssistant).toBe(false);
 	});
 
-	it('uses the existing edit permission to enable a skill from an agent', async () => {
+	it('requires moving an agent-scoped skill before enabling it for the Assistant', async () => {
 		const agent = await newAgent('Assistant toggle test', project.id);
 		const {
 			body: { data: created },
@@ -130,14 +130,30 @@ describe('SkillsController', () => {
 			.patch(`/skills/${created.id}`)
 			.send({ baseSkillHash: created.skillHash, availableToAssistant: true })
 			.expect(404);
-		await editor
-			.patch(`/skills/${created.id}`)
-			.send({ baseSkillHash: created.skillHash, availableToAssistant: true })
-			.expect(200);
+		for (const caller of [editor, owner]) {
+			await caller
+				.patch(`/skills/${created.id}`)
+				.send({ baseSkillHash: created.skillHash, availableToAssistant: true })
+				.expect(400);
+		}
 		const {
 			body: { data: detail },
 		} = await owner.get(`/skills/${created.id}`).expect(200);
-		expect(detail.availableToAssistant).toBe(true);
+		expect(detail.availableToAssistant).toBe(false);
+		await editor
+			.patch(`/skills/${created.id}`)
+			.send({
+				baseSkillHash: created.skillHash,
+				scope: 'project',
+				projectId: project.id,
+				availableToAssistant: true,
+			})
+			.expect(200);
+		const {
+			body: { data: moved },
+		} = await owner.get(`/skills/${created.id}`).expect(200);
+		expect(moved.scope).toBe('project');
+		expect(moved.availableToAssistant).toBe(true);
 	});
 
 	it('hides the skills API when the skills hub is off', async () => {

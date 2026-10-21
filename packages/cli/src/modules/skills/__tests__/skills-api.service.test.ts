@@ -566,6 +566,58 @@ describe('SkillsApiService', () => {
 			expect(skillsTelemetry.updated).not.toHaveBeenCalled();
 		});
 
+		it('refuses to enable an agent-scoped skill for the Assistant', async () => {
+			visible[0].agentId = 'agent-1';
+
+			await expect(
+				service.update(user, 'skill_a', update({ availableToAssistant: true })),
+			).rejects.toThrow(UserError);
+			expect(repository.setAssistantAvailability).not.toHaveBeenCalled();
+			expect(skillService.save).not.toHaveBeenCalled();
+		});
+
+		it('allows availability after moving a skill out of its agent scope', async () => {
+			visible[0].agentId = 'agent-1';
+			vi.mocked(hasGlobalScope).mockReturnValue(true);
+			skillService.assertCanMove.mockResolvedValue(visible[0]);
+			skillService.save.mockResolvedValue(saved);
+
+			await service.update(
+				user,
+				'skill_a',
+				update({
+					scope: 'instance',
+					availableToAssistant: true,
+					baseSkillHash: 'base',
+				}),
+			);
+
+			expect(repository.setAssistantAvailability).toHaveBeenCalledWith(
+				'skill_a',
+				true,
+				{ projectId: null, agentId: null },
+				TX_CTX,
+			);
+			expect(skillService.changeTarget.mock.invocationCallOrder[0]).toBeLessThan(
+				repository.setAssistantAvailability.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('allows clearing a saved availability flag on an agent-scoped skill', async () => {
+			visible[0].agentId = 'agent-1';
+			visible[0].availableToAssistant = true;
+			skillService.save.mockResolvedValue({ ...saved, created: false, followingAgentIds: [] });
+
+			await service.update(user, 'skill_a', update({ availableToAssistant: false }));
+
+			expect(repository.setAssistantAvailability).toHaveBeenCalledWith(
+				'skill_a',
+				false,
+				visible[0],
+				TX_CTX,
+			);
+		});
+
 		it('refuses availability changes without the existing edit permission', async () => {
 			skillService.canAccess.mockImplementation(async (_user, _skill, op) => op === 'read');
 			await expect(

@@ -93,8 +93,7 @@ describe('SkillRepository', () => {
 			instance,
 		]);
 		const result = await assistantSkills.listSkills({ user: owner, projectId: project.id });
-		expect(result.map(({ id }) => id).sort()).toEqual([instance, scoped, inherited].sort());
-		expect(result.find(({ id }) => id === inherited)?.projectId).toBe(project.id);
+		expect(result.map(({ id }) => id).sort()).toEqual([instance, scoped].sort());
 		expect(result.find(({ id }) => id === scoped)).toEqual({
 			id: scoped,
 			projectId: project.id,
@@ -105,23 +104,29 @@ describe('SkillRepository', () => {
 		});
 	});
 
-	it('keeps ownership metadata when the skill has no resolved project', async () => {
-		const agent = await createAgent('Instance agent', { projectId: null, scope: 'instance' });
-		const id = await createSkill({ agentId: agent.id });
-		await skills.update(id, { availableToAssistant: true });
+	it.each(['project', 'instance'] as const)(
+		'excludes skills scoped to an agent with %s scope even when their flag is set',
+		async (scope) => {
+			const agent = await createAgent('Support', {
+				projectId: scope === 'project' ? project.id : null,
+				scope,
+			});
+			const id = await createSkill({ agentId: agent.id });
+			await skills.update(id, { availableToAssistant: true });
 
-		expect(await skills.findAssistantSkillSummaries(null)).toEqual([
-			expect.objectContaining({ id, agentId: agent.id, projectId: null }),
-		]);
-	});
+			expect(await skills.findAssistantSkillSummaries(null)).toEqual([]);
+			expect(await skills.findAssistantSkillSummaries(project.id)).toEqual([]);
+			expect(
+				await assistantSkills.readSkill({ user: owner, projectId: project.id }, id),
+			).toBeNull();
+		},
+	);
 
-	it('removes an enabled skill from the catalog when its owner is deleted', async () => {
+	it('deletes agent-scoped skills with their owner', async () => {
 		const agent = await createAgent('Support');
 		const id = await createSkill({ agentId: agent.id });
 		await skills.update(id, { availableToAssistant: true });
-		expect(await assistantSkills.listSkills({ user: owner, projectId: project.id })).toEqual([
-			expect.objectContaining({ id, projectId: project.id }),
-		]);
+		expect(await assistantSkills.listSkills({ user: owner, projectId: project.id })).toEqual([]);
 
 		await agents.delete(agent.id);
 
@@ -147,16 +152,18 @@ describe('SkillRepository', () => {
 		expect((await skills.findByIds([id]))[0].availableToAssistant).toBe(false);
 	});
 
-	it('preserves Assistant availability when the skill scope changes', async () => {
+	it('clears Assistant availability only when a skill moves to an agent', async () => {
 		const id = await createSkill();
 		const agent = await createAgent('Private scope');
 		await skills.update(id, { availableToAssistant: true });
-		await skills.updateTarget(id, { projectId: null, agentId: agent.id });
+		await skills.updateTarget(id, { projectId: project.id, agentId: null });
 		expect((await skills.findByIds([id]))[0].availableToAssistant).toBe(true);
+		await skills.updateTarget(id, { projectId: null, agentId: agent.id });
+		expect((await skills.findByIds([id]))[0].availableToAssistant).toBe(false);
+		await skills.updateTarget(id, { projectId: null, agentId: null });
+		expect((await skills.findByIds([id]))[0].availableToAssistant).toBe(false);
 		expect(await assistantSkills.listSkills({ user: owner })).toEqual([]);
-		expect(await assistantSkills.listSkills({ user: owner, projectId: project.id })).toEqual([
-			expect.objectContaining({ id, projectId: project.id }),
-		]);
+		expect(await assistantSkills.listSkills({ user: owner, projectId: project.id })).toEqual([]);
 	});
 
 	let counter = 0;

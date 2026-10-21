@@ -37,19 +37,12 @@ describe('SkillsModule', () => {
 				versionId: 'version-1',
 				version: 1,
 			};
-			repository.findAssistantSkillSummaries.mockResolvedValue([{ ...summary, agentId: null }]);
-			service.accessCheck.mockResolvedValue(() => true);
+			repository.findAssistantSkillSummaries.mockResolvedValue([summary]);
 			Container.set(SkillsHubRollout, rollout);
 			Container.set(AssistantSkillProviderProxy, proxy);
 			Container.set(
 				HubAssistantSkillProvider,
-				new HubAssistantSkillProvider(
-					rollout,
-					mock<ProjectScopeService>(),
-					repository,
-					service,
-					agents,
-				),
+				new HubAssistantSkillProvider(rollout, mock<ProjectScopeService>(), repository, service),
 			);
 
 			await new SkillsModule().init();

@@ -128,6 +128,11 @@ export class SkillsApiService {
 		const skill = await this.requireAccess(user, skillId, 'update');
 		const { scope, projectId, availableToAssistant, ...update } = payload;
 		const target = scope ? await this.targetForCreate(user, { scope, projectId }) : undefined;
+		if (availableToAssistant && (target ?? skill).agentId !== null) {
+			throw new UserError(
+				"The n8n Assistant can't use skills scoped to an agent. Move the skill to a project or the instance first.",
+			);
+		}
 		const moves =
 			target !== undefined &&
 			(target.projectId !== skill.projectId || target.agentId !== skill.agentId);

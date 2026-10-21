@@ -8,7 +8,6 @@ import {
 import { Service } from '@n8n/di';
 
 import { SkillRepository } from './skill.repository';
-import { SkillAgentsProxy } from './skill-agents-proxy.service';
 import { SkillService } from './skill.service';
 import { SkillsHubRollout } from './skills-hub-rollout';
 
@@ -19,24 +18,13 @@ export class HubAssistantSkillProvider implements AssistantSkillProvider {
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly skillRepository: SkillRepository,
 		private readonly skillService: SkillService,
-		private readonly skillAgents: SkillAgentsProxy,
 	) {}
 
 	async listSkills(context: AssistantSkillContext): Promise<AssistantSkillSummary[]> {
 		if (!this.rollout.isEnabled) return [];
-		const projectId = await this.authorizedProject(context);
-		const summaries = await this.skillRepository.findAssistantSkillSummaries(projectId);
-		const agents = await this.skillAgents.findAgents([
-			...new Set(summaries.flatMap(({ agentId }) => (agentId ? [agentId] : []))),
-		]);
-		const canRead = await this.skillService.accessCheck(context.user, 'read');
-		return summaries.flatMap(({ agentId, ...summary }) => {
-			const skillProjectId =
-				summary.projectId ?? (agentId ? (agents.get(agentId)?.projectId ?? null) : null);
-			if (skillProjectId !== null && skillProjectId !== projectId) return [];
-			if (!canRead({ agentId }, skillProjectId)) return [];
-			return [{ ...summary, projectId: skillProjectId }];
-		});
+		return await this.skillRepository.findAssistantSkillSummaries(
+			await this.authorizedProject(context),
+		);
 	}
 
 	async readSkill(
@@ -49,11 +37,12 @@ export class HubAssistantSkillProvider implements AssistantSkillProvider {
 		if (!row) return null;
 		const { skill, version, files } = row;
 		if (
+			skill.agentId !== null ||
 			!skill.availableToAssistant ||
 			!(await this.skillService.canAccess(context.user, skill, 'read'))
 		)
 			return null;
-		const skillProjectId = await this.skillService.projectOf(skill);
+		const skillProjectId = skill.projectId;
 		if (skillProjectId !== null && skillProjectId !== projectId) return null;
 		return {
 			id: skill.id,

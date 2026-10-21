@@ -32,8 +32,6 @@ export type ResolvedSkillRow = {
 	files: SkillFile[];
 };
 
-export type AssistantSkillSummaryRow = AssistantSkillSummary & Pick<Skill, 'agentId'>;
-
 /**
  * Which skills one user may list: instance skills always, plus the skills of these
  * projects and of `agentIds`, the agents in these projects.
@@ -147,11 +145,12 @@ export class SkillRepository extends BaseRepository<Skill> {
 		return { skills, count };
 	}
 
-	/** Enabled candidates. The caller resolves agent projects and checks access. */
-	async findAssistantSkillSummaries(projectId: string | null): Promise<AssistantSkillSummaryRow[]> {
+	/** Enabled instance and project skills in the authorized session scope. */
+	async findAssistantSkillSummaries(projectId: string | null): Promise<AssistantSkillSummary[]> {
 		return await this.createQueryBuilder('skill')
 			.innerJoin(SkillVersion, 'version', 'version.skillId = skill.id')
 			.where('skill.availableToAssistant = :enabled', { enabled: true })
+			.andWhere('skill.agentId IS NULL')
 			.andWhere('(skill.projectId IS NULL OR skill.projectId = :projectId)', { projectId })
 			.andWhere((qb) => {
 				const latest = qb
@@ -163,14 +162,13 @@ export class SkillRepository extends BaseRepository<Skill> {
 				return `version.version = ${latest}`;
 			})
 			.select('skill.id', 'id')
-			.addSelect('skill.agentId', 'agentId')
 			.addSelect('skill.projectId', 'projectId')
 			.addSelect('version.id', 'versionId')
 			.addSelect('version.version', 'version')
 			.addSelect('version.name', 'name')
 			.addSelect('version.description', 'description')
 			.orderBy('skill.id', 'ASC')
-			.getRawMany<AssistantSkillSummaryRow>();
+			.getRawMany<AssistantSkillSummary>();
 	}
 
 	/** Called in the same transaction as the content save and any scope change. */
@@ -396,7 +394,12 @@ export class SkillRepository extends BaseRepository<Skill> {
 		await this.managerFor(ctx).update(
 			Skill,
 			{ id: skillId },
-			{ projectId: target.projectId, agentId: target.agentId, updatedAt: new Date() },
+			{
+				projectId: target.projectId,
+				agentId: target.agentId,
+				...(target.agentId !== null ? { availableToAssistant: false } : {}),
+				updatedAt: new Date(),
+			},
 		);
 	}
 
