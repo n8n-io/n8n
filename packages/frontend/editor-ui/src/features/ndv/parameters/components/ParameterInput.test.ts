@@ -861,6 +861,29 @@ describe('ParameterInput.vue', () => {
 		expect(await findByText(/"Authentication required"/)).toBeInTheDocument();
 	});
 
+	test('should not load remote options in read-only mode', async () => {
+		mockNodeTypesState.getNodeParameterOptions = vi.fn(async () => [{ name: 'ID', value: 'id' }]);
+
+		const { container } = renderComponent({
+			props: {
+				path: 'columns',
+				isReadOnly: true,
+				parameter: createTestNodeProperties({
+					displayName: 'Columns',
+					name: 'columns',
+					type: 'options',
+					typeOptions: { loadOptionsMethod: 'getColumns' },
+				}),
+				modelValue: 'id',
+			},
+		});
+		await flushPromises();
+
+		expect(mockNodeTypesState.getNodeParameterOptions).not.toHaveBeenCalled();
+		const input = container.querySelector('input') as HTMLInputElement;
+		expect(input).toHaveValue('id');
+	});
+
 	test('should render workflow selector without issues when selected workflow is not archived', async () => {
 		const workflowId = faker.string.uuid();
 		const modelValue = {

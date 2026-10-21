@@ -113,15 +113,18 @@ export class DynamicNodeParametersService {
 				.filter((id): id is string => id !== undefined && id !== null);
 
 			if (credentialIds.length > 0) {
+				// Loading a list makes a live call with the secret, so a project or sharing
+				// role that only holds see-rights does not count here.
 				const accessibleIds = await this.credentialsFinderService.findCredentialIdsWithScopeForUser(
 					credentialIds,
 					user,
 					['credential:read'],
+					{ excludeSeeOnlyRoles: true },
 				);
 
 				const forbiddenId = credentialIds.find((id) => !accessibleIds.has(id));
 				if (forbiddenId !== undefined) {
-					throw new ForbiddenError();
+					throw new ForbiddenError('You need permission to use this credential');
 				}
 
 				await this.assertMayUseEndUserCredentials(user, credentialIds);

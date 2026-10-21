@@ -946,7 +946,10 @@ function getOptionsOptionDescription(option: INodePropertyOptions): string {
 }
 
 async function loadRemoteParameterOptions() {
+	// A read-only view shows the stored value; it has no use for live options
+	// and may not be allowed to load them with the node's credential.
 	if (
+		props.isReadOnly ||
 		!node.value ||
 		!hasRemoteMethod.value ||
 		remoteParameterOptionsLoading.value ||
