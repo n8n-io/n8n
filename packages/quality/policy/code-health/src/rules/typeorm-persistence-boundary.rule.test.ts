@@ -182,4 +182,35 @@ describe('TypeormPersistenceBoundaryRule', () => {
 
 		expect(await analyze()).toEqual([]);
 	});
+
+	// IAM-1417: Check the current API key source without the repository baseline.
+	describe('public API key persistence', () => {
+		const repositoryRoot = path.resolve(__dirname, '../../../../../..');
+
+		it('allows TypeORM in ApiKeyRepository', async () => {
+			writePackage();
+			write(
+				'packages/example/src/api-key.repository.ts',
+				fs.readFileSync(
+					path.join(repositoryRoot, 'packages/@n8n/db/src/repositories/api-key.repository.ts'),
+					'utf8',
+				),
+			);
+
+			expect(await analyze()).toEqual([]);
+		});
+
+		it('keeps TypeORM imports out of PublicApiKeyService', async () => {
+			writePackage();
+			write(
+				'packages/example/src/public-api-key.service.ts',
+				fs.readFileSync(
+					path.join(repositoryRoot, 'packages/cli/src/services/public-api-key.service.ts'),
+					'utf8',
+				),
+			);
+
+			expect(await analyze()).toEqual([]);
+		});
+	});
 });
