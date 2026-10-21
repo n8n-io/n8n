@@ -296,6 +296,16 @@ describe('usePushConnection composable', () => {
 			expect(executionFinished).not.toHaveBeenCalled();
 		});
 
+		it('dispatches nothing on reconnect while the tracked execution is waiting', async () => {
+			trackExecution();
+			vi.mocked(makeRestApiRequest).mockResolvedValue(serverExecution('waiting'));
+			pushConnection.initialize();
+
+			await reconnect();
+
+			expect(executionFinished).not.toHaveBeenCalled();
+		});
+
 		it('dispatches executionFinished on reconnect when the tracked execution has finished', async () => {
 			trackExecution();
 			vi.mocked(makeRestApiRequest).mockResolvedValue(serverExecution('success'));

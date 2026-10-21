@@ -1,5 +1,6 @@
 import { ref, watch } from 'vue';
 import type { PushMessage } from '@n8n/api-types';
+import { isTerminalExecutionStatus } from 'n8n-workflow';
 import { pushHandlerRegistry } from '@n8n/frontend-module-sdk';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
@@ -106,7 +107,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 					type: 'warning',
 				});
 			}
-		} else if (execution.status !== 'new' && execution.status !== 'running') {
+		} else if (isTerminalExecutionStatus(execution.status)) {
 			if (execution.data) {
 				useExecutionDataStore(createExecutionDataId(execution.id)).setExecutionRunData(
 					execution.data,
