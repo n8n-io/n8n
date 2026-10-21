@@ -30,6 +30,8 @@ import {
 	type NewEpisodicMemoryEntrySourceForEntry,
 	type NewObservationLogEntry,
 	type ObservationCursor,
+	type ObservationLogBatch,
+	type ObservationLogBatchCommitResult,
 	type ObservationLogEntry,
 	type ObservationLogReadOptions,
 	type ObservationLogReflection,
@@ -319,6 +321,12 @@ export class N8nMemoryImpl
 	}
 
 	// ── Observation log ──────────────────────────────────────────────────
+
+	async commitObservationLogBatch(
+		batch: ObservationLogBatch,
+	): Promise<ObservationLogBatchCommitResult> {
+		return await this.observationRepository.commitObservationLogBatch(this.agentId, batch);
+	}
 
 	async appendObservationLogEntries(
 		rows: NewObservationLogEntry[],
