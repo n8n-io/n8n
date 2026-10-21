@@ -2,11 +2,11 @@ import { UpdatePublicApiRateLimitSettingsDto } from '../update-public-api-rate-l
 
 const validSettings = {
 	enabled: true,
-	globalReadLimit: 1200,
+	globalReadLimit: 100,
 	globalReadWindowSeconds: 60,
-	globalWriteLimit: 300,
+	globalWriteLimit: 50,
 	globalWriteWindowSeconds: 60,
-	endpointReadLimit: 600,
+	endpointReadLimit: 20,
 	endpointReadWindowSeconds: 60,
 	endpointWriteLimit: 0,
 	endpointWriteWindowSeconds: 60,
