@@ -1,14 +1,18 @@
-packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
-  s_71ad2034164515::t_f08bf8bad090f1 314-315
-  s_71ad2034164515::t_f20926c36ac811 185-191
-packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
-  s_71ad2034164515::t_a5318d05478cdc 32,110-114,119,133,167-234
-packages/cli/src/modules/agents/agent-config-preparation.service.ts
-  s_71ad2034164515::t_489b7e4fd2bfc4 106-107,115-120
 packages/cli/test/integration/database/repositories/agent.repository.test.ts
-  s_71ad2034164515::t_0d3912e9b455e3 532-542
+  s_71ad2034164515::t_0d3912e9b455e3 532-540
+  s_71ad2034164515::t_7d20e346205ad9 541-542
+packages/cli/src/modules/agents/agent-config-preparation.service.ts
+  s_71ad2034164515::t_489b7e4fd2bfc4 115-120
+  s_71ad2034164515::t_641cdb41139850 106-107
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_71ad2034164515::t_a5318d05478cdc 32,110-114,119,133,167-179,181-215,217-233
+  s_71ad2034164515::t_cade085c23bdc9 216
+  s_71ad2034164515::t_7502e9cf292f32 180
+  s_71ad2034164515::t_b915a1cc213d82 234
 packages/cli/src/modules/agents/repositories/agent.repository.ts
   s_d3c0f6f6f7d41c::t_299f1ce556f407 533-536
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  s_71ad2034164515::t_7bc339b9943005 185-191,314-315
 ---
 {
   "schema_version": "authorship/3.0.0",
