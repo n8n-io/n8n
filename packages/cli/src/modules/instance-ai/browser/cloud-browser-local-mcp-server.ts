@@ -24,18 +24,35 @@ import type {
 	CloudBrowserSessionProvider,
 } from './cloud-browser-session-provider';
 
-/** Toolkit tools the model never gets in the cloud browser. */
-const HIDDEN_BROWSER_TOOLS = new Set([
-	// The server connects and disconnects the browser itself.
-	'browser_connect',
-	'browser_disconnect',
-	// The session holds the user's sign-ins, so the model must not read or change them.
-	'browser_cookies',
-	'browser_storage',
-	// Runs any script in the page, which can read the same sign-in data.
-	'browser_evaluate',
-	// Takes file paths on the n8n host.
-	'browser_upload',
+/**
+ * Toolkit tools the model gets in the cloud browser. A tool that is not in this list stays
+ * hidden, so a new toolkit tool reaches the cloud browser only after someone adds it here.
+ */
+export const CLOUD_BROWSER_TOOLS: ReadonlySet<string> = new Set([
+	// Navigation
+	'browser_navigate',
+	'browser_back',
+	'browser_forward',
+	'browser_reload',
+	// Page interaction
+	'browser_click',
+	'browser_type',
+	'browser_press',
+	'browser_hover',
+	'browser_drag',
+	'browser_select',
+	'browser_scroll',
+	'browser_dialog',
+	'browser_wait',
+	// Page inspection
+	'browser_snapshot',
+	'browser_screenshot',
+	'browser_content',
+	'browser_console',
+	'browser_network',
+	// Credentials. Each call goes through its own permission gate.
+	'browser_capture_secret',
+	'browser_create_credential',
 ]);
 
 export const START_SESSION_TOOL_NAME = 'browser_start_session';
@@ -53,7 +70,7 @@ const START_SESSION_MCP_TOOL: McpTool = mcpToolSchema.parse({
 		'Open a new cloud browser session and load a URL in it. ' +
 		'Call this once, before you use any other browser tool, or when another browser tool tells you to. ' +
 		'IMPORTANT: this closes the current browser session. All open pages, sign-ins and cookies are lost. ' +
-		'To go to a different URL in the current session, use browser_navigate or browser_tab_open.',
+		'To go to a different URL in the current session, use browser_navigate.',
 	inputSchema: {
 		type: 'object',
 		properties: { url: { type: 'string', description: 'Full URL to open' } },
@@ -406,7 +423,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 	}
 
 	private getAvailableToolsFromToolkit(toolkit: BrowserToolkit): ToolDefinition[] {
-		return toolkit.tools.filter((t) => !HIDDEN_BROWSER_TOOLS.has(t.name));
+		return toolkit.tools.filter((t) => CLOUD_BROWSER_TOOLS.has(t.name));
 	}
 }
 

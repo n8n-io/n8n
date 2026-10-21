@@ -1,11 +1,17 @@
 import type { Logger } from '@n8n/backend-common';
 import { GATEWAY_CONFIRMATION_REQUIRED_PREFIX, type McpToolCallResult } from '@n8n/api-types';
 import type { DomainAccessTracker } from '@n8n/instance-ai';
-import type { AffectedResource, BrowserToolkit, ToolDefinition } from '@n8n/mcp-browser';
+import {
+	createBrowserTools,
+	type AffectedResource,
+	type BrowserToolkit,
+	type ToolDefinition,
+} from '@n8n/mcp-browser';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import {
+	CLOUD_BROWSER_TOOLS,
 	CloudBrowserLocalMcpServer,
 	SESSION_IDLE_TIMEOUT_MS,
 	START_SESSION_TOOL_NAME,
@@ -159,7 +165,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 	}
 
 	describe('tool listing', () => {
-		it('lists browser_start_session first, then the toolkit tools without connect', () => {
+		it('lists browser_start_session first, then only the allowed toolkit tools', () => {
 			const { server } = setup();
 
 			const names = server.getAvailableTools().map((tool) => tool.name);
@@ -170,6 +176,14 @@ describe('CloudBrowserLocalMcpServer', () => {
 				'browser_click',
 				'browser_create_credential',
 			]);
+		});
+
+		it('allows only tools that exist in the real toolkit', () => {
+			const toolkitNames = createBrowserTools({ mode: 'direct_cdp' }).tools.map(
+				(tool) => tool.name,
+			);
+
+			expect(toolkitNames).toEqual(expect.arrayContaining([...CLOUD_BROWSER_TOOLS]));
 		});
 
 		it('returns its tools for the browser category only', () => {
