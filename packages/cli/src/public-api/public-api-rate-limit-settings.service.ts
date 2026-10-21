@@ -115,7 +115,6 @@ export class PublicApiRateLimitSettingsService {
 		return !!value?.trim() || !!process.env[`${envVar}_FILE`];
 	}
 
-	/** An env var wins, then the given value, then the config. */
 	private mergeWithEnvAndConfig(
 		values: Partial<PublicApiRateLimitSettings>,
 	): PublicApiRateLimitSettings {
