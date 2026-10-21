@@ -208,6 +208,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'roleMappingRule:delete',
 	'roleMappingRule:list',
 	'otel:manage',
+	'workflowSettings:manage',
 	'trustedSource:create',
 	'trustedSource:read',
 	'trustedSource:update',
