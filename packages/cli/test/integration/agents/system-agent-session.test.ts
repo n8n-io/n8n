@@ -1,5 +1,5 @@
 import { testDb, testModules } from '@n8n/backend-test-utils';
-import { ProjectRepository, type User } from '@n8n/db';
+import { ProjectRepository, TransactionRunner, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
 import { randomUUID } from 'node:crypto';
@@ -81,14 +81,19 @@ describe('System agent sessions', () => {
 	it('refuses the session id of a child thread of the user', async () => {
 		const parent = await service.createThread({ agentId: AGENT_ID, user: owner, projectId });
 		const childId = randomUUID();
-		await threads.findOrCreate(
-			childId,
-			AGENT_ID,
-			'Test System Agent',
-			projectId,
-			{ accessScope: 'user', ownerId: owner.id },
+		// `findOrCreate` locks the row on Postgres, which needs a transaction.
+		await Container.get(TransactionRunner).run(
 			{},
-			{ parentThreadId: parent.id, parentAgentId: AGENT_ID },
+			async (ctx) =>
+				await threads.findOrCreate(
+					childId,
+					AGENT_ID,
+					'Test System Agent',
+					projectId,
+					{ accessScope: 'user', ownerId: owner.id },
+					ctx,
+					{ parentThreadId: parent.id, parentAgentId: AGENT_ID },
+				),
 		);
 
 		await expect(

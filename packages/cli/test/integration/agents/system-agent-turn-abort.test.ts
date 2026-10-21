@@ -186,7 +186,8 @@ describe('System agent turn abort', () => {
 		expect(probe.turnSignal?.aborted).toBe(true);
 		expect(probe.toolEnd).toBe('aborted');
 		expect(probe.outcome?.status).toBe('cancelled');
-		expect(await latestStatus(thread.id)).toBe('cancelled');
+		// The provider settles before the runtime stores the turn record.
+		await vi.waitFor(async () => expect(await latestStatus(thread.id)).toBe('cancelled'));
 	});
 
 	it('stops an admitted turn when the provider aborts its run signal', async () => {
@@ -198,7 +199,7 @@ describe('System agent turn abort', () => {
 		expect(probe.toolEnd).toBe('aborted');
 		expect(probe.turnSignal?.aborted).toBe(true);
 		expect(probe.outcome?.status).toBe('cancelled');
-		expect(await latestStatus(thread.id)).toBe('cancelled');
+		await vi.waitFor(async () => expect(await latestStatus(thread.id)).toBe('cancelled'));
 	});
 
 	it('stops provider setup when the user cancels before the turn runs', async () => {
