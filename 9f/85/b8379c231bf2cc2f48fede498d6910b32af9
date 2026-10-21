@@ -1,5 +1,8 @@
 packages/cli/src/modules/n8n-packages/entities/workflow/node-type-usage.ts
   s_71ad2034164515::t_808fe49b16e23e 40-41,43
+packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent.exporter.test.ts
+  s_71ad2034164515::t_2579ad96f3140a 4,201
+  s_d3c0f6f6f7d41c::t_d71b450758ab8c 201
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -20,6 +23,14 @@ packages/cli/src/modules/n8n-packages/entities/workflow/node-type-usage.ts
         "tool": "codex",
         "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
         "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_d3c0f6f6f7d41c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a152e5-4005-7111-8ca3-6a9ab5e71d29",
+        "model": "gpt-6.1-sol"
       },
       "human_author": "Robin Braumann <robin.braumann@n8n.io>"
     }

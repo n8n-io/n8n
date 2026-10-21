@@ -1,4 +1,5 @@
 packages/@n8n/cli/src/__tests__/package-error.test.ts
+  s_71ad2034164515::t_cead41102592cb 12,56
   s_d3c0f6f6f7d41c::t_47763629df2cab 12,56
 ---
 {
@@ -7,6 +8,14 @@ packages/@n8n/cli/src/__tests__/package-error.test.ts
   "base_commit_sha": "3b99a4db1748f1c5a8c05f8f0ac7e130705a3137",
   "prompts": {},
   "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
     "s_d3c0f6f6f7d41c": {
       "agent_id": {
         "tool": "codex",
