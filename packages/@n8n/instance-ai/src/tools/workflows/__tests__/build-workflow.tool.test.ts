@@ -2959,6 +2959,51 @@ describe('createBuildWorkflowTool', () => {
 		});
 	});
 
+	it('blocks an edit outside the thread project before compile, approval, and save', async () => {
+		const { context, filePath, trackTelemetry } = makeContext({
+			overrides: {
+				permissions: {
+					createWorkflow: 'always_allow',
+					updateWorkflow: 'require_approval',
+				} as InstanceAiContext['permissions'],
+				assertInThreadProject: vi
+					.fn()
+					.mockRejectedValue(new Error('This conversation has no permission to change resources')),
+			},
+		});
+		const suspend = vi.fn();
+
+		const result = await executeTool<BuildToolOutput>(
+			createBuildWorkflowTool(context),
+			{ filePath, workflowId: 'wf-other' },
+			{ suspend },
+		);
+
+		expect(context.assertInThreadProject).toHaveBeenCalledWith({
+			kind: 'workflow',
+			id: 'wf-other',
+		});
+		expect(result).toMatchObject({
+			success: false,
+			filePath,
+			workflowId: 'wf-other',
+			errors: ['This conversation has no permission to change resources'],
+			remediation: {
+				category: 'blocked',
+				shouldEdit: false,
+				reason: 'workflow_save_permission_blocked',
+			},
+		});
+		expect(suspend).not.toHaveBeenCalled();
+		expect(compileWorkflowSource).not.toHaveBeenCalled();
+		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+		await expect(getWorkflowSourceFileBinding(context, filePath)).resolves.toBeUndefined();
+		expect(trackTelemetry).toHaveBeenCalledWith(
+			'instance_ai_workflow_source_build',
+			expect.objectContaining({ result: 'blocked', stage: 'permission' }),
+		);
+	});
+
 	it.each([false, true])('tracks only enabled triggers (disabled=%s)', async (disabled) => {
 		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
 			success: true,

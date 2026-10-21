@@ -398,6 +398,7 @@ async function handleRun(
 
 	// If approval is required and this is the first call, suspend for confirmation
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id: workflowId });
 		const workflowName = (await getWorkflowName()) ?? input.workflowId;
 		return await suspend({
 			requestId: nanoid(),
@@ -505,6 +506,7 @@ async function handleRunStep(
 	const needsApproval = !allowedByScope && !allowedBySessionGrant;
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
 		const workflowName =
 			(await context.workflowService
 				.get(input.workflowId)

@@ -911,6 +911,27 @@ describe('executions tool', () => {
 
 	// ── run-step ────────────────────────────────────────────────────────────
 
+	it.each([
+		{ action: 'run' as const, workflowId: 'wf-1' },
+		{ action: 'run-step' as const, workflowId: 'wf-1', nodeName: 'Send Slack message' },
+	])('rejects $action outside the thread project before asking for approval', async (input) => {
+		const assertInThreadProject = vi
+			.fn()
+			.mockRejectedValue(new Error('This conversation has no permission to change wf-1'));
+		const suspendFn = vi.fn();
+		const context = createMockContext({ permissions: {}, assertInThreadProject });
+
+		const tool = createExecutionsTool(context);
+		await expect(
+			executeTool(tool, input, createAgentCtx({ suspend: suspendFn }) as never),
+		).rejects.toThrow('no permission');
+
+		expect(assertInThreadProject).toHaveBeenCalledWith({ kind: 'workflow', id: 'wf-1' });
+		expect(suspendFn).not.toHaveBeenCalled();
+		expect(context.executionService.run).not.toHaveBeenCalled();
+		expect(context.executionService.runStep).not.toHaveBeenCalled();
+	});
+
 	describe('run-step action', () => {
 		const stepInput = {
 			action: 'run-step' as const,

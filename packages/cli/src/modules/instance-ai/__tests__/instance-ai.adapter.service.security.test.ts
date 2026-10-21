@@ -34,8 +34,9 @@ import {
 	type InstanceWriteAccessService,
 } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
-import { GLOBAL_MEMBER_ROLE } from '@n8n/db';
+import { GLOBAL_MEMBER_ROLE, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { ForbiddenError } from '@n8n/errors';
 import { LessThan } from '@n8n/typeorm';
 import type {
 	AiBuilderTemporaryWorkflowRepository,
@@ -711,5 +712,194 @@ describe('credentialService.get — credential ownership revalidation', () => {
 			'Credential with ID "cred-other" could not be found.',
 		);
 		expect(credentialsService.getOne).toHaveBeenCalledWith(user, 'cred-other', false);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Bound project: changes stay inside the conversation's project
+// ---------------------------------------------------------------------------
+
+describe('bound project write guard', () => {
+	type Context = ReturnType<typeof service.createContext>;
+	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
+
+	beforeEach(() => {
+		userHasScopesMock.mockResolvedValue(true);
+		vi.spyOn(Container, 'get').mockImplementation(
+			(cls) =>
+				(cls === SharedCredentialsRepository
+					? sharedCredentialsRepository
+					: executionPersistence) as never,
+		);
+	});
+
+	const expectRejectedOutsideProject = async (write: Promise<unknown>) => {
+		await expect(write).rejects.toThrow(ForbiddenError);
+		// The builder only stops retrying a failed save when the message says "permission".
+		await expect(write).rejects.toThrow('permission');
+	};
+
+	it.each([
+		{
+			name: 'archive',
+			write: async (ctx: Context) => await ctx.workflowService.archive('wf-1'),
+			target: workflowService.archive,
+		},
+		{
+			name: 'updateFromWorkflowJSON',
+			write: async (ctx: Context) =>
+				await ctx.workflowService.updateFromWorkflowJSON('wf-1', {
+					name: 'Edited',
+					nodes: [],
+					connections: {},
+				}),
+			target: workflowService.update,
+		},
+		{
+			name: 'run',
+			write: async (ctx: Context) => await ctx.executionService.run('wf-1'),
+			target: workflowRunner.run,
+		},
+		{
+			name: 'tagWorkflow',
+			write: async (ctx: Context) => await ctx.workspaceService!.tagWorkflow('wf-1', ['new-tag']),
+			target: tagService.save,
+		},
+	])('rejects $name on a workflow owned by another project', async ({ write, target }) => {
+		sharedWorkflowRepository.findProjectIds.mockResolvedValue(['other-project']);
+
+		const ctx = service.createContext(user, { projectId: 'bound-project' });
+
+		await expectRejectedOutsideProject(write(ctx));
+		expect(sharedWorkflowRepository.findProjectIds).toHaveBeenCalledWith('wf-1');
+		expect(workflowFinderService.findWorkflowForUser).not.toHaveBeenCalled();
+		expect(target).not.toHaveBeenCalled();
+	});
+
+	it('rejects a data-table row write in another project', async () => {
+		dataTableRepository.findOneBy.mockResolvedValue({
+			id: 'dt-1',
+			name: 'Orders',
+			projectId: 'other-project',
+		} as never);
+
+		const ctx = service.createContext(user, { projectId: 'bound-project' });
+
+		await expectRejectedOutsideProject(ctx.dataTableService.insertRows('dt-1', [{ a: 1 }]));
+		expect(dataTableService.insertRows).not.toHaveBeenCalled();
+	});
+
+	it('rejects deleting a credential owned by another project', async () => {
+		sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue({
+			id: 'other-project',
+		} as never);
+
+		const ctx = service.createContext(user, { projectId: 'bound-project' });
+
+		await expectRejectedOutsideProject(ctx.credentialService.delete('cred-1'));
+		expect(sharedCredentialsRepository.findCredentialOwningProject).toHaveBeenCalledWith('cred-1');
+		expect(credentialsService.delete).not.toHaveBeenCalled();
+	});
+
+	it('rejects creating a folder in another project before checking access', async () => {
+		const ctx = service.createContext(user, { projectId: 'bound-project' });
+
+		await expectRejectedOutsideProject(
+			ctx.workspaceService!.createFolder!('Reports', 'other-project'),
+		);
+		expect(userHasScopesMock).not.toHaveBeenCalled();
+		expect(folderService.createFolder).not.toHaveBeenCalled();
+	});
+
+	it('allows a write to a resource in the bound project', async () => {
+		sharedWorkflowRepository.findProjectIds.mockResolvedValue(['bound-project']);
+		workflowService.archive.mockResolvedValue({ id: 'wf-1' } as never);
+
+		const ctx = service.createContext(user, { projectId: 'bound-project' });
+		await ctx.workflowService.archive('wf-1');
+
+		expect(workflowService.archive).toHaveBeenCalledWith(user, 'wf-1', { skipArchived: true });
+	});
+
+	it('allows a write to a workflow owned by another project and shared into the bound project', async () => {
+		sharedWorkflowRepository.findProjectIds.mockResolvedValue(['other-project', 'bound-project']);
+		workflowService.archive.mockResolvedValue({ id: 'wf-1' } as never);
+
+		const ctx = service.createContext(user, { projectId: 'bound-project' });
+		await ctx.workflowService.archive('wf-1');
+
+		expect(workflowService.archive).toHaveBeenCalledWith(user, 'wf-1', { skipArchived: true });
+	});
+
+	it('does not look up the owning project when the context has no bound project', async () => {
+		workflowService.archive.mockResolvedValue({ id: 'wf-1' } as never);
+
+		const ctx = service.createContext(user);
+		await ctx.workflowService.archive('wf-1');
+		await ctx.credentialService.delete('cred-1');
+
+		expect(sharedWorkflowRepository.findProjectIds).not.toHaveBeenCalled();
+		expect(sharedCredentialsRepository.findCredentialOwningProject).not.toHaveBeenCalled();
+		expect(workflowService.archive).toHaveBeenCalledWith(user, 'wf-1', { skipArchived: true });
+		expect(credentialsService.delete).toHaveBeenCalledWith(user, 'cred-1');
+	});
+
+	describe('assertInThreadProject', () => {
+		type ThreadTarget = Parameters<NonNullable<Context['assertInThreadProject']>>[0];
+
+		const ownResourcesIn = (projectId: string) => {
+			sharedWorkflowRepository.findProjectIds.mockResolvedValue([projectId]);
+			sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue({
+				id: projectId,
+			} as never);
+			dataTableRepository.findOneBy.mockResolvedValue({
+				id: 'dt-1',
+				name: 'Orders',
+				projectId,
+			} as never);
+		};
+
+		const targetsIn = (projectId: string): ThreadTarget[] => [
+			{ kind: 'workflow', id: 'wf-1' },
+			{ kind: 'credential', id: 'cred-1' },
+			{ kind: 'data-table', id: 'dt-1' },
+			{ kind: 'project', id: projectId },
+		];
+
+		it.each(targetsIn('other-project').map((target) => ({ kind: target.kind, target })))(
+			'rejects a $kind target outside the bound project',
+			async ({ target }) => {
+				ownResourcesIn('other-project');
+				const ctx = service.createContext(user, { projectId: 'bound-project' });
+
+				await expectRejectedOutsideProject(ctx.assertInThreadProject!(target));
+			},
+		);
+
+		it('allows targets in the bound project', async () => {
+			ownResourcesIn('bound-project');
+			const ctx = service.createContext(user, { projectId: 'bound-project' });
+
+			for (const target of targetsIn('bound-project')) {
+				await expect(ctx.assertInThreadProject!(target)).resolves.toBeUndefined();
+			}
+			expect(sharedWorkflowRepository.findProjectIds).toHaveBeenCalledWith('wf-1');
+			expect(sharedCredentialsRepository.findCredentialOwningProject).toHaveBeenCalledWith(
+				'cred-1',
+			);
+			expect(dataTableRepository.findOneBy).toHaveBeenCalledWith({ id: 'dt-1' });
+		});
+
+		it('does no lookup when the context has no bound project', async () => {
+			const ctx = service.createContext(user);
+
+			for (const target of targetsIn('other-project')) {
+				await expect(ctx.assertInThreadProject!(target)).resolves.toBeUndefined();
+			}
+			expect(sharedWorkflowRepository.findProjectIds).not.toHaveBeenCalled();
+			expect(sharedCredentialsRepository.findCredentialOwningProject).not.toHaveBeenCalled();
+			expect(dataTableRepository.findOneBy).not.toHaveBeenCalled();
+			expect(dataTableRepository.findBy).not.toHaveBeenCalled();
+		});
 	});
 });

@@ -234,6 +234,50 @@ describe('data_tables tool', () => {
 		},
 	);
 
+	it.each([
+		{ input: { action: 'delete' }, method: 'delete' },
+		{ input: { action: 'add-column', columnName: 'email', type: 'string' }, method: 'addColumn' },
+		{ input: { action: 'delete-column', columnId: 'col-1' }, method: 'deleteColumn' },
+		{
+			input: { action: 'rename-column', columnId: 'col-1', newName: 'mail' },
+			method: 'renameColumn',
+		},
+		{ input: { action: 'insert-rows', rows: [{ email: 'a@b.c' }] }, method: 'insertRows' },
+		{
+			input: { action: 'update-rows', filter: { type: 'and', filters: [] }, data: { a: 1 } },
+			method: 'updateRows',
+		},
+		{
+			input: { action: 'delete-rows', filter: { type: 'and', filters: [] } },
+			method: 'deleteRows',
+		},
+	] as const)(
+		'rejects $input.action outside the thread project before asking for approval',
+		async ({ input, method }) => {
+			const assertInThreadProject = vi
+				.fn()
+				.mockRejectedValue(new Error('This conversation has no permission to change Contacts'));
+			const context = createMockContext({ assertInThreadProject });
+			const suspend = vi.fn();
+
+			await expect(
+				executeTool(
+					createDataTablesTool(context),
+					{ ...input, dataTableId: 'Contacts', projectId: 'proj-2' },
+					suspendCtx(suspend),
+				),
+			).rejects.toThrow('no permission');
+
+			expect(assertInThreadProject).toHaveBeenCalledWith({
+				kind: 'data-table',
+				id: 'Contacts',
+				projectId: 'proj-2',
+			});
+			expect(suspend).not.toHaveBeenCalled();
+			expect(context.dataTableService[method]).not.toHaveBeenCalled();
+		},
+	);
+
 	// ── Tool construction ──────────────────────────────────────────────────
 
 	describe('tool construction', () => {

@@ -744,6 +744,27 @@ describe('credentials tool', () => {
 			expect(result).toEqual({ success: true });
 		});
 
+		it('should reject a credential outside the thread project before asking for approval', async () => {
+			const assertInThreadProject = vi
+				.fn()
+				.mockRejectedValue(new Error('This conversation has no permission to change cred-1'));
+			const context = createMockContext({ assertInThreadProject });
+			const suspendFn = vi.fn();
+
+			const tool = createCredentialsTool(context);
+			await expect(
+				executeTool(
+					tool,
+					{ action: 'delete' as const, credentialId: 'cred-1' },
+					suspendCtx(suspendFn),
+				),
+			).rejects.toThrow('no permission');
+
+			expect(assertInThreadProject).toHaveBeenCalledWith({ kind: 'credential', id: 'cred-1' });
+			expect(suspendFn).not.toHaveBeenCalled();
+			expect(context.credentialService.delete).not.toHaveBeenCalled();
+		});
+
 		it('should suspend for confirmation when permission needs approval', async () => {
 			const context = createMockContext({
 				permissions: { deleteCredential: 'require_approval' },

@@ -233,6 +233,22 @@ export function createPlanTool(context: OrchestrationContext) {
 
 			// First call — persist plan, show to user, suspend for approval
 			if (isFirstCall) {
+				// Reject before the review card when a task edits a workflow this conversation cannot save.
+				try {
+					for (const task of input.tasks) {
+						if (task.kind !== 'build-workflow' || !task.workflowId) continue;
+						await context.domainContext?.assertInThreadProject?.({
+							kind: 'workflow',
+							id: task.workflowId,
+						});
+					}
+				} catch (error) {
+					return {
+						result: `Error: ${error instanceof Error ? error.message : String(error)}`,
+						taskCount: 0,
+					};
+				}
+
 				try {
 					trackPlanningRoute(context, input.tasks, {
 						route: input.planningContext.source === 'planning-skill' ? 'skill' : 'replan',

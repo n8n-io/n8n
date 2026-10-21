@@ -476,6 +476,30 @@ describe('createPlanTool — createPlan validation failures', () => {
 			}),
 		).rejects.toBe(storageError);
 	});
+
+	it('rejects a plan that edits a workflow outside the thread project before review', async () => {
+		const assertInThreadProject = vi
+			.fn()
+			.mockRejectedValue(new Error('This conversation has no permission to change resources'));
+		const context = createMockContext({
+			domainContext: { assertInThreadProject } as unknown as OrchestrationContext['domainContext'],
+		});
+		const suspend = vi.fn();
+
+		const out = await executeTool(
+			createPlanTool(context),
+			{ ...planInput(), tasks: [{ ...validTasks()[0], workflowId: 'wf-other' }] },
+			{ suspend },
+		);
+
+		expect(assertInThreadProject).toHaveBeenCalledWith({ kind: 'workflow', id: 'wf-other' });
+		expect(out).toEqual({
+			result: 'Error: This conversation has no permission to change resources',
+			taskCount: 0,
+		});
+		expect(context.plannedTaskService!.createPlan).not.toHaveBeenCalled();
+		expect(suspend).not.toHaveBeenCalled();
+	});
 });
 
 describe('createPlanTool — task title contract', () => {

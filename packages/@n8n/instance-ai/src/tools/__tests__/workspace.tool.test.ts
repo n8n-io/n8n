@@ -411,4 +411,54 @@ describe('workspace tool', () => {
 			},
 		);
 	});
+
+	it.each([
+		{
+			input: { action: 'tag-workflow', workflowId: 'wf1', tags: ['prod'] },
+			target: { kind: 'workflow', id: 'wf1' },
+			method: 'tagWorkflow',
+		},
+		{
+			input: { action: 'cleanup-test-executions', workflowId: 'wf1' },
+			target: { kind: 'workflow', id: 'wf1' },
+			method: 'cleanupTestExecutions',
+		},
+		{
+			input: { action: 'create-folder', name: 'Reports', projectId: 'p2' },
+			target: { kind: 'project', id: 'p2' },
+			method: 'createFolder',
+		},
+		{
+			input: { action: 'delete-folder', folderId: 'f1', projectId: 'p2' },
+			target: { kind: 'project', id: 'p2' },
+			method: 'deleteFolder',
+		},
+		{
+			input: { action: 'move-workflow-to-folder', workflowId: 'wf1', folderId: 'f1' },
+			target: { kind: 'workflow', id: 'wf1' },
+			method: 'moveWorkflowToFolder',
+		},
+	] as const)(
+		'should reject $input.action outside the thread project before asking for approval',
+		async ({ input, target, method }) => {
+			const assertInThreadProject = vi
+				.fn()
+				.mockRejectedValue(new Error('This conversation has no permission to change it'));
+			const context = createMockContext({ assertInThreadProject });
+			context.workspaceService!.listFolders = vi.fn();
+			context.workspaceService!.createFolder = vi.fn();
+			context.workspaceService!.deleteFolder = vi.fn();
+			context.workspaceService!.moveWorkflowToFolder = vi.fn();
+			const suspend = vi.fn();
+
+			const tool = createWorkspaceTool(context);
+			await expect(
+				executeTool(tool, input, { suspend, resumeData: undefined } as never),
+			).rejects.toThrow('no permission');
+
+			expect(assertInThreadProject).toHaveBeenCalledWith(target);
+			expect(suspend).not.toHaveBeenCalled();
+			expect(context.workspaceService![method]).not.toHaveBeenCalled();
+		},
+	);
 });

@@ -1517,6 +1517,29 @@ describe('workflows tool', () => {
 			expect(result.filePath).toBeUndefined();
 			expect(files.size).toBe(0);
 		});
+
+		it('keeps a workflow outside the thread project inline and unbound', async () => {
+			const files = new Map<string, string>();
+			const context = createWorkspaceContext(files);
+			context.assertInThreadProject = vi
+				.fn()
+				.mockRejectedValue(new Error('This conversation has no permission to change resources'));
+			const tool = createWorkflowsTool(context, 'full');
+
+			const result = await executeTool<{ code?: string; filePath?: string; note?: string }>(
+				tool,
+				{ action: 'get-as-code', workflowId: 'wf1' },
+				{} as never,
+			);
+
+			expect(result.code).toContain(GENERATED);
+			expect(result.filePath).toBeUndefined();
+			expect(result.note).toContain('This conversation has no permission to change resources');
+			expect(files.size).toBe(0);
+			await expect(
+				getWorkflowSourceFileBinding(context, 'src/workflows/test-wf.workflow.ts'),
+			).resolves.toBeUndefined();
+		});
 	});
 
 	describe('get with full: true', () => {
@@ -1671,6 +1694,37 @@ describe('workflows tool', () => {
 			expect(suspend.mock.calls[0][0]).toMatchObject({
 				message: expect.stringContaining('wf1'),
 			});
+		});
+
+		it('checks the thread project before the approval card', async () => {
+			const assertInThreadProject = vi.fn().mockResolvedValue(undefined);
+			const context = createMockContext({ assertInThreadProject });
+			const suspend = vi.fn();
+
+			await executeTool(createWorkflowsTool(context), { action: 'delete', workflowId: 'wf1' }, {
+				suspend,
+				resumeData: undefined,
+			} as never);
+
+			expect(assertInThreadProject).toHaveBeenCalledWith({ kind: 'workflow', id: 'wf1' });
+			expect(suspend).toHaveBeenCalled();
+		});
+
+		it('fails without an approval card for a workflow outside the thread project', async () => {
+			const error = new Error('This conversation has no permission to change resources');
+			const context = createMockContext({
+				assertInThreadProject: vi.fn().mockRejectedValue(error),
+			});
+			const suspend = vi.fn();
+
+			await expect(
+				executeTool(createWorkflowsTool(context), { action: 'delete', workflowId: 'wf1' }, {
+					suspend,
+					resumeData: undefined,
+				} as never),
+			).rejects.toBe(error);
+			expect(suspend).not.toHaveBeenCalled();
+			expect(context.workflowService.archive).not.toHaveBeenCalled();
 		});
 
 		it('should archive when approved via resume', async () => {
@@ -2125,6 +2179,41 @@ describe('workflows tool', () => {
 				publishedWorkflowIds: ['sub-a', 'sub-b', 'wf1'],
 				supportingWorkflowIds: ['sub-a', 'sub-b'],
 			});
+		});
+
+		it('publishes nothing when a supporting workflow is outside the thread project', async () => {
+			const error = new Error('This conversation has no permission to change resources');
+			const assertInThreadProject = vi.fn(async ({ id }: { id: string }) => {
+				if (id === 'sub-b') throw error;
+			});
+			const context = createMockContext({
+				assertInThreadProject,
+				permissions: { publishWorkflow: 'always_allow' },
+			});
+			(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue({
+				name: 'Parent',
+				nodes: [
+					{
+						name: 'Call A',
+						type: 'n8n-nodes-base.executeWorkflow',
+						parameters: { source: 'database', workflowId: 'sub-a' },
+					},
+					{
+						name: 'Call B',
+						type: 'n8n-nodes-base.executeWorkflow',
+						parameters: { source: 'database', workflowId: 'sub-b' },
+					},
+				],
+				connections: {},
+			});
+
+			await expect(
+				executeTool(createWorkflowsTool(context), { action: 'publish', workflowId: 'wf1' }, {
+					suspend: vi.fn(),
+				} as never),
+			).rejects.toBe(error);
+			expect(assertInThreadProject).toHaveBeenCalledWith({ kind: 'workflow', id: 'sub-b' });
+			expect(context.workflowService.publish).not.toHaveBeenCalled();
 		});
 
 		it('should roll back direct Execute Workflow dependencies when the main workflow publish fails', async () => {
