@@ -153,7 +153,7 @@ const agentKnowledgeModification = {
 		.array(z.string())
 		.optional()
 		.describe(
-			'Sorted unique SHA-256 hashes of JSON-encoded [provider, index/collection/table name] pairs in the saved configuration. Sent only when vector stores change. An empty array means no stores remain. Accounts and credentials are not part of the identity.',
+			'Codes that identify the knowledge sources connected to the agent after a change. Each code comes from the provider and source name. The same provider and source name produce the same code, even across different accounts. The list contains each code once. An empty list means no sources remain. This field is sent only when the connected sources change.',
 		),
 };
 
