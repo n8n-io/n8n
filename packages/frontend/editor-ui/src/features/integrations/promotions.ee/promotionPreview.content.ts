@@ -136,8 +136,13 @@ export function describeWorkflowFieldChanges(context: FieldContext): FieldChange
 }
 
 export type DataTableDescription = {
-	/** Column changes of a table that exists on both sides. Only Apply marks data loss. */
+	/** Column changes of a table that exists on both sides. */
 	changes: PromotionDataTableChange[];
+	/**
+	 * True when the card warns about changes that remove data. Promote cannot know the table on the
+	 * instance that applies the branch, so only Apply warns.
+	 */
+	warnsAboutDataLoss: boolean;
 	/** The columns of a table that the operation creates. */
 	addedColumns: SerializedDataTableColumn[];
 };
@@ -147,19 +152,13 @@ export function describeDataTable(
 	resource: PromotionResource,
 	direction: PromotionDirection,
 ): DataTableDescription {
-	// Promote cannot know the table on the instance that applies the branch, so it does not warn.
-	const changes =
-		resource.change === 'modified'
-			? (detail.dataTableChanges ?? []).map((change) =>
-					direction === 'apply' ? change : { ...change, destructive: false },
-				)
-			: [];
+	const changes = resource.change === 'modified' ? (detail.dataTableChanges ?? []) : [];
 	const after = sideState(detail, 'after');
 	const addedColumns =
 		resource.change === 'added' && after.kind === 'content'
 			? [...after.content.columns].sort((a, b) => a.index - b.index)
 			: [];
-	return { changes, addedColumns };
+	return { changes, warnsAboutDataLoss: direction === 'apply', addedColumns };
 }
 
 /** True when the files changed after the preview loaded, so the card can be out of date. */

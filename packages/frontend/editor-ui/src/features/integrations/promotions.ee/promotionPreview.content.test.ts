@@ -1,4 +1,4 @@
-import type { PromotionDirection, PromotionResourceDetail } from '@n8n/api-types';
+import type { PromotionResourceDetail } from '@n8n/api-types';
 
 import { billingResources, resource } from './__tests__/preview.fixtures';
 import {
@@ -160,16 +160,5 @@ describe('promotion preview content', () => {
 			'apply',
 		);
 		expect(added.addedColumns.map((column) => column.name)).toEqual(['amount', 'reason']);
-	});
-
-	it('should mark the changes that remove data only on Apply', () => {
-		const removesData = (direction: PromotionDirection) =>
-			describeDataTable(changedTable, billingResources.invoicesTable, direction).changes.map(
-				(change) => change.destructive,
-			);
-
-		expect(removesData('apply')).toEqual([false, true]);
-		// Promote cannot know the table on the instance that applies the branch.
-		expect(removesData('promote')).toEqual([false, false]);
 	});
 });

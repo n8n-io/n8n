@@ -6,7 +6,7 @@ import { I18nT } from 'vue-i18n';
 
 import type { DataTableDescription } from '../../promotionPreview.content';
 
-defineProps<{ description: DataTableDescription }>();
+const props = defineProps<{ description: DataTableDescription }>();
 
 const i18n = useI18n();
 
@@ -14,6 +14,9 @@ type ChangeText = { keypath: BaseTextKey; names: Record<string, string> };
 
 // The data table UI shows the stored type 'date' as 'datetime'.
 const typeLabel = (type: string) => (type === 'date' ? 'datetime' : type);
+
+const removesData = (change: PromotionDataTableChange) =>
+	props.description.warnsAboutDataLoss && change.destructive;
 
 // The names fill slots, so they can stand out from the sentence.
 function changeText(change: PromotionDataTableChange): ChangeText {
@@ -24,9 +27,8 @@ function changeText(change: PromotionDataTableChange): ChangeText {
 				names: { column: change.column, type: typeLabel(change.type) },
 			};
 		case 'remove-column':
-			// Only Apply marks a removal as destructive. Promote changes the branch, so no values go.
 			return {
-				keypath: change.destructive
+				keypath: removesData(change)
 					? 'promotions.preview.dataTable.removeColumnWithValues'
 					: 'promotions.preview.dataTable.removeColumn',
 				names: { column: change.column },
@@ -62,9 +64,9 @@ function changeText(change: PromotionDataTableChange): ChangeText {
 				data-test-id="promotion-preview-data-table-change"
 			>
 				<N8nIcon
-					:icon="change.destructive ? 'triangle-alert' : 'dot'"
+					:icon="removesData(change) ? 'triangle-alert' : 'dot'"
 					size="small"
-					:class="change.destructive ? $style.destructive : $style.marker"
+					:class="removesData(change) ? $style.destructive : $style.marker"
 				/>
 				<N8nText step="xs" :class="$style.wrap">
 					<I18nT :keypath="changeText(change).keypath" scope="global">
