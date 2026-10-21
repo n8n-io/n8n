@@ -1,6 +1,9 @@
-import type { InstanceAiAgentNode, InstanceAiMessage } from '@n8n/api-types';
+import { ROLE, type InstanceAiAgentNode, type InstanceAiMessage } from '@n8n/api-types';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { createTestingPinia } from '@pinia/testing';
+import { within } from '@testing-library/vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createUser } from '@/__tests__/data/users';
 import { useInstanceAiStore } from '../instanceAi.store';
 import InstanceAiMessageComponent from '../components/InstanceAiMessage.vue';
 import { createThreadComponentRenderer } from './createThreadComponentRenderer';
@@ -208,6 +211,58 @@ describe('InstanceAiMessage', () => {
 		});
 
 		expect(getByText('Something went wrong')).toBeInTheDocument();
+	});
+
+	describe('team-member error recovery', () => {
+		beforeEach(() => {
+			const member = createUser({
+				id: 'member-1',
+				role: ROLE.Member,
+				globalScopes: ['instanceAi:message'],
+			});
+			const usersStore = useUsersStore();
+			usersStore.usersById = { [member.id]: member };
+			usersStore.currentUserId = member.id;
+		});
+
+		it('renders a successful response for a team member without an error callout', () => {
+			const { getByText, queryByRole } = renderComponent({
+				props: { message: makeMessage({ content: 'Your workflow is ready.' }) },
+			});
+
+			expect(getByText('Your workflow is ready.')).toBeVisible();
+			expect(queryByRole('alert')).not.toBeInTheDocument();
+		});
+
+		// KNO-252: Members need a next step when they cannot change the Assistant configuration.
+		it('guides a team member to an administrator when the configured model fails to authenticate', () => {
+			const { getByRole } = renderComponent({
+				props: {
+					message: makeMessage({
+						agentTree: makeAgentTree({
+							status: 'error',
+							error: 'The configured model could not authenticate.',
+							errorDetails: {
+								provider: 'OpenAI',
+								statusCode: 401,
+								technicalDetails: '{"error":{"code":"invalid_api_key"}}',
+							},
+						}),
+					}),
+				},
+			});
+
+			const errorCallout = getByRole('alert');
+			expect(
+				within(errorCallout).getByText('The configured model could not authenticate.'),
+			).toBeVisible();
+			expect(within(errorCallout).getByText('Technical details')).toBeVisible();
+			expect(
+				within(errorCallout).getByText(
+					/\b(?:contact|ask|reach out to)\b.*\b(?:admin(?:istrator)?|owner)\b/i,
+				),
+			).toBeVisible();
+		});
 	});
 
 	it('should NOT show error callout when agentTree error text is missing', () => {
