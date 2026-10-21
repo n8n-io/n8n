@@ -9,18 +9,17 @@ import type { ToolCredentialRef } from '@/features/shared/toolsConnection/types'
 
 type McpEntryAuth = Pick<AgentJsonMcpServerConfig, 'authentication' | 'credential'>;
 
-/** On a registry entry, 'none' means Gateway credits: every registry node requires a credential. */
+/** A registry entry on Gateway credits carries the same marker as Gateway credits models. */
 export function isAiGatewayMcpEntry(
-	server: Pick<AgentJsonMcpServerConfig, 'authentication' | 'metadata'>,
+	server: Pick<AgentJsonMcpServerConfig, 'credential' | 'metadata'>,
 ): boolean {
-	return Boolean(server.metadata?.nodeTypeName) && server.authentication === 'none';
+	return Boolean(server.metadata?.nodeTypeName) && server.credential === AI_GATEWAY_MANAGED_TAG;
 }
 
-/** The entry fields for a picked credential. Gateway credits have no stored credential. */
+/** The entry fields for a picked credential. Gateway credits keep their marker and no auth type. */
 export function toMcpEntryAuth(authType: string, credentialId: string): McpEntryAuth {
-	return credentialId === AI_GATEWAY_MANAGED_TAG
-		? { authentication: 'none', credential: undefined }
-		: { authentication: authType, credential: credentialId };
+	const authentication = credentialId === AI_GATEWAY_MANAGED_TAG ? 'none' : authType;
+	return { authentication, credential: credentialId };
 }
 
 /**

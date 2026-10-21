@@ -26,9 +26,13 @@ describe('toMcpRegistryCredentialRefs', () => {
 			],
 		},
 		{
-			case: "selects Gateway credits for a registry entry with authentication 'none'",
+			case: 'selects Gateway credits for a registry entry with the Gateway credits marker',
 			credentials: [oauth, aiGateway],
-			selected: { authentication: 'none', metadata: { nodeTypeName } },
+			selected: {
+				authentication: 'none',
+				credential: AI_GATEWAY_MANAGED_TAG,
+				metadata: { nodeTypeName },
+			},
 			expected: [
 				{
 					authType: aiGateway.credentialType,

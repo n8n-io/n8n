@@ -94,6 +94,7 @@ describe('useAgentRegistryMcpConfig', () => {
 			mcpServer: {
 				name: 'github',
 				authentication: 'none',
+				credential: AI_GATEWAY_MANAGED_TAG,
 				metadata: { nodeTypeName: '@n8n/mcp-registry.github' },
 			},
 			onConfirm: vi.fn(),

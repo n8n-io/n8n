@@ -759,8 +759,7 @@ function connectedMcpItem(entry: WorkingMcpServerEntry): ToolConnectionItem | nu
 			(server) => server.nodeTypeName === registryNodeTypeName,
 		);
 
-		const status =
-			entry.server.credential || isAiGatewayMcpEntry(entry.server) ? 'connected' : 'disconnected';
+		const status = entry.server.credential ? 'connected' : 'disconnected';
 		const item: McpServerConnectionItem = {
 			id: `mcp:${entry.localId}`,
 			kind: 'mcp-server',

@@ -4,7 +4,7 @@ import type {
 	McpServerConfig,
 	McpConnectionFailedEvent,
 } from '@n8n/agents';
-import type { AgentJsonMcpServerConfig } from '@n8n/api-types';
+import { AI_GATEWAY_MANAGED_TAG, type AgentJsonMcpServerConfig } from '@n8n/api-types';
 import { compileMcpToolPermissions } from '@n8n/ai-utilities/agent-config';
 import type { CustomFetch } from '@n8n/backend-network';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -163,9 +163,9 @@ export async function buildMcpClientForServer(
 	} else if (registryNodeName) {
 		try {
 			const connection = await deps.resolveRegistryConnection?.(registryNodeName);
-			// Every registry node requires a credential, so 'none' means Gateway credits. Only 'none' mints:
+			// Gateway credits entries carry the same marker as Gateway credits models. Mint only for it:
 			// an entry whose own credential is missing must fail, not switch to Gateway credits.
-			if (connection && server.authentication === 'none') {
+			if (connection && server.credential === AI_GATEWAY_MANAGED_TAG) {
 				const minted = await mintAiGatewayCredential(connection, credentialProvider);
 				credentialType = minted.credentialType;
 				credentialData = minted.credentialData;

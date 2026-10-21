@@ -1,5 +1,5 @@
 import type { CredentialProvider } from '@n8n/agents';
-import type { AgentJsonMcpServerConfig } from '@n8n/api-types';
+import { AI_GATEWAY_MANAGED_TAG, type AgentJsonMcpServerConfig } from '@n8n/api-types';
 import type { CustomFetch } from '@n8n/backend-network';
 import { mock } from 'vitest-mock-extended';
 import { OperationalError, UserError } from 'n8n-workflow';
@@ -827,6 +827,7 @@ describe('buildMcpClientForServer — unresolvable credential', () => {
 // ---------------------------------------------------------------------------
 
 describe('buildMcpClientForServer — Gateway credits', () => {
+	const aiGatewayEntry = { authentication: 'none' as const, credential: AI_GATEWAY_MANAGED_TAG };
 	const [pairedServer] = pairAiGatewayServers(
 		[firecrawlMockServer, firecrawlAiGatewayMockServer],
 		() => true,
@@ -856,8 +857,8 @@ describe('buildMcpClientForServer — Gateway credits', () => {
 		proxyFetchMock.mockResolvedValue(makeOk());
 	});
 
-	it('mints Gateway credits for a registry entry with authentication "none", and connects to the AI Gateway', async () => {
-		const { config, credentialProvider } = await build({ authentication: 'none' });
+	it('mints Gateway credits for a registry entry with the Gateway credits marker, and connects to the AI Gateway', async () => {
+		const { config, credentialProvider } = await build(aiGatewayEntry);
 
 		await config.fetch(config.url);
 
@@ -870,7 +871,7 @@ describe('buildMcpClientForServer — Gateway credits', () => {
 	});
 
 	it('mints Gateway credits again after a 401, and retries with the new token', async () => {
-		const { config, credentialProvider } = await build({ authentication: 'none' });
+		const { config, credentialProvider } = await build(aiGatewayEntry);
 		credentialProvider.resolveAiGatewayMcpCredential.mockResolvedValue({ token: 'fresh' });
 		proxyFetchMock.mockResolvedValueOnce(make401());
 
@@ -882,10 +883,17 @@ describe('buildMcpClientForServer — Gateway credits', () => {
 		expect(headersToCaseInsensitiveRecord(retryInit.headers).Authorization).toBe('Bearer fresh');
 	});
 
-	it('does not mint Gateway credits for an OAuth2 entry without a credential', async () => {
-		const { config, credentialProvider } = await build({
-			authentication: 'firecrawlMcpOAuth2Api' as never,
-		});
+	it.each<{ case: string; entry: Partial<AgentJsonMcpServerConfig> }>([
+		{
+			case: 'an OAuth2 entry without a credential',
+			entry: { authentication: 'firecrawlMcpOAuth2Api' as never },
+		},
+		{
+			case: "an entry with authentication 'none' but no marker",
+			entry: { authentication: 'none' },
+		},
+	])('does not mint Gateway credits for $case', async ({ entry }) => {
+		const { config, credentialProvider } = await build(entry);
 
 		await expect(config.fetch(config.url)).rejects.toThrow(
 			'MCP registry connection could not be resolved',

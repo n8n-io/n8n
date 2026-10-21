@@ -1170,7 +1170,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 				status: 'active',
 			};
 
-			it("drafts a Gateway credits entry with authentication 'none' and no credential", async () => {
+			it('drafts a Gateway credits entry with the Gateway credits marker', async () => {
 				fetchMcpRegistryCatalogMock.mockResolvedValue([firecrawl]);
 				render([], vi.fn());
 				await flushPromises();
@@ -1182,9 +1182,9 @@ describe('AgentToolsConnectionModalWrapper', () => {
 				const { mcpServer } = getConfigData() as { mcpServer: AgentJsonMcpServerConfig };
 				expect(mcpServer).toMatchObject({
 					authentication: 'none',
+					credential: AI_GATEWAY_MANAGED_TAG,
 					metadata: { nodeTypeName: firecrawl.nodeTypeName },
 				});
-				expect(mcpServer.credential).toBeUndefined();
 			});
 
 			it('shows a saved Gateway credits entry as connected', async () => {
@@ -1195,13 +1195,14 @@ describe('AgentToolsConnectionModalWrapper', () => {
 						url: 'https://mcp.firecrawl.dev/mcp',
 						transport: 'streamableHttp',
 						authentication: 'none',
+						credential: AI_GATEWAY_MANAGED_TAG,
 						metadata: { nodeTypeName: firecrawl.nodeTypeName },
 					},
 				]);
 				await flushPromises();
 
 				const connected = getItems().find((item) => item.id.startsWith('mcp:'));
-				expect(connected?.status).toBe('connected');
+				expect(connected).toMatchObject({ status: 'connected', freeCredits: true });
 			});
 		});
 

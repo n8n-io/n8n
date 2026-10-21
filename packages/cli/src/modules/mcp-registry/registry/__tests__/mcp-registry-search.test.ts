@@ -1,3 +1,5 @@
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+
 import { pairAiGatewayServers } from '../mcp-registry-ai-gateway';
 import { searchMcpRegistryServers } from '../mcp-registry-search';
 import type { McpRegistryServer } from '../mcp-registry.types';
@@ -140,18 +142,28 @@ describe('searchMcpRegistryServers', () => {
 		const results = searchMcpRegistryServers(servers, ['firecrawl', 'brave']);
 
 		expect(
-			results.map(({ slug, authentication, credentialType }) => ({
+			results.map(({ slug, authentication, credentialType, credential, aiGatewayCredential }) => ({
 				slug,
 				authentication,
 				credentialType,
+				credential,
+				aiGatewayCredential,
 			})),
 		).toEqual([
 			{
 				slug: 'firecrawl',
 				authentication: 'firecrawlMcpOAuth2Api',
 				credentialType: 'firecrawlMcpOAuth2Api',
+				credential: undefined,
+				aiGatewayCredential: AI_GATEWAY_MANAGED_TAG,
 			},
-			{ slug: 'n8n-connect-brave-search', authentication: 'none', credentialType: '' },
+			{
+				slug: 'n8n-connect-brave-search',
+				authentication: 'none',
+				credentialType: '',
+				credential: AI_GATEWAY_MANAGED_TAG,
+				aiGatewayCredential: undefined,
+			},
 		]);
 	});
 });

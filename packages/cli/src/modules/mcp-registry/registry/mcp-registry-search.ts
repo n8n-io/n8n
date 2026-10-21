@@ -4,6 +4,7 @@
  * adapter consume. Kept here (not inlined per call site) so the matching + result
  * mapping live in one place.
  */
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { camelCase } from 'change-case';
 
 import { isAiGatewayMcpServer, type McpRegistryServer } from './mcp-registry.types';
@@ -22,6 +23,10 @@ export interface McpRegistrySearchResult {
 	transport: 'streamableHttp' | 'sse';
 	authentication: string;
 	credentialType: string;
+	/** Set on a Gateway credits server: the entry stores this marker and needs no credential step. */
+	credential?: string;
+	/** Set on a server that also runs on Gateway credits: the marker to store instead of an own credential. */
+	aiGatewayCredential?: string;
 	tools: Array<{ name: string; title?: string }>;
 	metadata: { nodeTypeName: string };
 	/** `url` is an unresolved `$self`-expression, not a literal endpoint. Consumers
@@ -36,7 +41,7 @@ function toSearchResult(server: McpRegistryServer): McpRegistrySearchResult | nu
 	if (!connection) return null;
 	const defaultCredential = connection.credentialBindings[0];
 	if (!defaultCredential) return null;
-	// The agent entry of a gateway-only row stores no credential: 'none' means Gateway credits.
+	// The agent entry of a gateway-only row stores no credential, only the Gateway credits marker.
 	const isAiGatewayOnly = isAiGatewayMcpServer(server);
 	return {
 		slug: server.slug,
@@ -47,6 +52,8 @@ function toSearchResult(server: McpRegistryServer): McpRegistrySearchResult | nu
 		transport: toAgentMcpTransport(connection.transport),
 		authentication: isAiGatewayOnly ? 'none' : defaultCredential.credentialType,
 		credentialType: isAiGatewayOnly ? '' : defaultCredential.credentialType,
+		...(isAiGatewayOnly ? { credential: AI_GATEWAY_MANAGED_TAG } : {}),
+		...(server.aiGateway ? { aiGatewayCredential: AI_GATEWAY_MANAGED_TAG } : {}),
 		tools: server.tools.map((tool) => ({
 			name: tool.name,
 			...(tool.title ? { title: tool.title } : {}),
