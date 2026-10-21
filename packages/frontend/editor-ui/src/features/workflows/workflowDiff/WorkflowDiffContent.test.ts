@@ -5,6 +5,7 @@ import { render, screen } from '@testing-library/vue';
 import type { INodeUi } from '@/Interface';
 import { CanvasRenderDataKey } from '@/app/constants/injectionKeys';
 import {
+	createCanvasNodeElement,
 	createCanvasNodeProps,
 	createCanvasProvide,
 } from '@/features/workflows/canvas/__tests__/utils';
@@ -149,7 +150,7 @@ describe('WorkflowDiffContent', () => {
 
 	describe('panels', () => {
 		it('does not expose workflow execution controls in either diff canvas', () => {
-			const trigger = createCanvasNodeProps({
+			const trigger = createCanvasNodeElement({
 				data: {
 					name: 'Manual start',
 					type: 'n8n-nodes-base.manualTrigger',
