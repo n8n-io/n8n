@@ -62,6 +62,7 @@ import { CallbackStore, type CallbackMetadata } from './callback-store';
 import type { ComponentMapper, ShortenCallback } from './component-mapper';
 import { loadChatSdk } from './esm-loader';
 import { IntegrationMessageContextService } from './integration-message-context.service';
+import { buildIntegrationOrigin } from './integration-origin';
 import type {
 	IntegrationMessageContext,
 	IntegrationPlatformMessageContext,
@@ -929,6 +930,10 @@ export class AgentChatBridge {
 				replyExpectation,
 			});
 			const author = toMessageAuthor(message.author);
+			const integrationOrigin = await buildIntegrationOrigin(
+				{ platform: this.integration.type, thread, message, subject },
+				this.logger,
+			);
 			const textWithNotes = [text, ...attachmentNotes].filter(Boolean).join('\n');
 			const { userId, userName, fullName, isBot, isMe } = message.author;
 			const result = await this.messageQueue.enqueue({
@@ -945,6 +950,7 @@ export class AgentChatBridge {
 						context,
 					),
 					author,
+					integrationOrigin,
 					sender: { userId, userName, fullName, isBot, isMe },
 					attachments: attachments.length ? attachments : undefined,
 					resourceId: session.memory.resourceId,

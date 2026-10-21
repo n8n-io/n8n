@@ -3531,6 +3531,41 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.startTyping).not.toHaveBeenCalled();
 			expect(thread.post).not.toHaveBeenCalled();
 		});
+
+		it('queues the typed platform context of the incoming message', async () => {
+			const { bot, handlers } = makeBot();
+			const queue = mock<AgentMessageQueueService>();
+			queue.enqueue.mockResolvedValue({ status: 'accepted', item: mock<AgentMessageQueue>() });
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				makeAgentExecutor([finishChunk]) as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{ type: 'telegram', credentialId: 'cred-1' } as unknown as AgentIntegrationConfig,
+				undefined,
+				undefined,
+				undefined,
+				queue,
+			);
+			const thread = makeThread('telegram:-100:7', {
+				decodeThreadId: vi.fn().mockReturnValue({ chatId: '-100', messageThreadId: 7 }),
+			} as unknown as FakeThread['adapter']);
+
+			await handlers.subscribed!(thread, {
+				text: 'hi',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(queue.enqueue).toHaveBeenCalledWith(
+				expect.objectContaining({
+					payload: expect.objectContaining({
+						integrationOrigin: { type: 'telegram', chatId: '-100', messageThreadId: '7' },
+					}),
+				}),
+			);
+		});
 	});
 
 	describe('status handle cleanup', () => {
