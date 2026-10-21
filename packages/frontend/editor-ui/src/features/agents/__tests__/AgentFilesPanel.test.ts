@@ -100,7 +100,7 @@ describe('AgentFilesPanel', () => {
 				}
 				expect(track).toHaveBeenCalledExactlyOnceWith(
 					TELEMETRY_EVENT.AGENTS.USER_CLICKED_KNOWLEDGE_UPLOAD,
-					{ agent_id: 'agent-1', session_id: 'session-xyz' },
+					{ agent_id: 'agent-1', push_ref: 'session-xyz' },
 				);
 				const input = wrapper.get('input[type="file"]');
 				Object.defineProperty(input.element, 'files', { value: selection });
@@ -109,7 +109,7 @@ describe('AgentFilesPanel', () => {
 				expect(clickSpy).toHaveBeenCalledOnce();
 				expect(track).toHaveBeenCalledExactlyOnceWith(
 					TELEMETRY_EVENT.AGENTS.USER_CLICKED_KNOWLEDGE_UPLOAD,
-					{ agent_id: 'agent-1', session_id: 'session-xyz' },
+					{ agent_id: 'agent-1', push_ref: 'session-xyz' },
 				);
 				if (selection.length > 0) {
 					expect(wrapper.emitted('upload-files')).toEqual([[selection]]);
