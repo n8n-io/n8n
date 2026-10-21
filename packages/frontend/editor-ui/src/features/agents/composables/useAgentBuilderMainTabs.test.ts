@@ -38,6 +38,25 @@ describe('useAgentBuilderMainTabs', () => {
 		replace.mockClear();
 	});
 
+	it('updates the sessions warning icon when the failure state changes', () => {
+		const hasFailedSession = ref(false);
+		const { mainTabOptions } = useAgentBuilderMainTabs({
+			executionsCount: computed(() => 0),
+			hasFailedSession: computed(() => hasFailedSession.value),
+		});
+
+		expect(mainTabOptions.value.find((tab) => tab.value === 'sessions')?.icon).toBeUndefined();
+
+		hasFailedSession.value = true;
+		expect(mainTabOptions.value.find((tab) => tab.value === 'sessions')?.icon).toBe('circle-alert');
+		expect(mainTabOptions.value.find((tab) => tab.value === 'sessions')?.tooltip).toBe(
+			'mocked-agents.builder.executions.hasFailedSession',
+		);
+
+		hasFailedSession.value = false;
+		expect(mainTabOptions.value.find((tab) => tab.value === 'sessions')?.icon).toBeUndefined();
+	});
+
 	describe('flag gating', () => {
 		it('omits the evals tab entirely when the flag is off', () => {
 			expect(tabValues()).toEqual(['agent', 'knowledge', 'sessions', 'settings']);

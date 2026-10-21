@@ -19,6 +19,9 @@ const AUTO_REFRESH_INTERVAL_MS = 5_000;
 
 export const useAgentSessionsStore = defineStore('agentSessions', () => {
 	const threads = ref<AgentExecutionThread[]>([]);
+	const hasFailedSession = ref(false);
+	let latestFailedSessionRequestId = 0;
+	let failedSessionTarget: string | null = null;
 	const previewThreads = ref<AgentExecutionThread[]>([]);
 	const previewLoading = ref(false);
 	const nextCursor = ref<string | null>(null);
@@ -50,8 +53,28 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 	) {
 		await Promise.all([
 			fetchHistoryThreads(projectId, agentId, options),
+			fetchFailedSessionPresence(projectId, agentId),
 			fetchPreviewThreads(projectId, agentId),
 		]);
+	}
+
+	/** Check presence across all sessions, without the displayed list's filters. */
+	async function fetchFailedSessionPresence(projectId: string, agentId: string) {
+		const target = `${projectId}:${agentId}`;
+		if (failedSessionTarget !== target) hasFailedSession.value = false;
+		failedSessionTarget = target;
+		const requestId = ++latestFailedSessionRequestId;
+		try {
+			const rootStore = useRootStore();
+			const page = await listThreads(rootStore.restApiContext, projectId, agentId, {
+				limit: 1,
+				filters: { ...defaultAgentSessionFilters(), status: 'error' },
+			});
+			if (requestId !== latestFailedSessionRequestId) return;
+			hasFailedSession.value = page.threads.length > 0;
+		} catch {
+			/** Keep the last result. The next refresh retries the request. */
+		}
 	}
 
 	async function fetchPreviewThreads(projectId: string, agentId: string) {
@@ -110,6 +133,7 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		if (currentProjectId !== projectId || currentAgentId !== agentId) return;
 		await Promise.all([
 			refreshHistoryThreads(projectId, agentId),
+			fetchFailedSessionPresence(projectId, agentId),
 			fetchPreviewThreads(projectId, agentId).catch(() => {
 				// The next refresh retries failed Preview requests.
 			}),
@@ -274,6 +298,9 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		previewThreads.value = [];
 		previewLoading.value = false;
 		previewTarget = null;
+		hasFailedSession.value = false;
+		failedSessionTarget = null;
+		latestFailedSessionRequestId++;
 		latestPreviewRequestId++;
 		nextCursor.value = null;
 		loading.value = false;
@@ -285,6 +312,7 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 
 	return {
 		threads,
+		hasFailedSession,
 		previewThreads,
 		previewLoading,
 		nextCursor,

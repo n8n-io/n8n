@@ -10,15 +10,21 @@ import {
 } from '../composables/useAgentThreadsApi';
 import { useAgentSessionsStore } from '../agentSessions.store';
 
-const { listThreads, listPreviewThreads } = vi.hoisted(() => ({
+const { listThreads, listPreviewThreads, listFailedSessions } = vi.hoisted(() => ({
 	listThreads: vi.fn(),
 	listPreviewThreads: vi.fn(),
+	listFailedSessions: vi.fn(),
 }));
 
 vi.mock('../composables/useAgentThreadsApi', async (importOriginal) => ({
 	...(await importOriginal()),
-	listThreads: (...args: Parameters<typeof listThreadsApi>) =>
-		args[3].previewOnly ? listPreviewThreads(...args) : listThreads(...args),
+	listThreads: (...args: Parameters<typeof listThreadsApi>) => {
+		if (args[3].previewOnly) return listPreviewThreads(...args);
+		if (args[3].limit === 1 && args[3].filters?.status === 'error') {
+			return listFailedSessions(...args);
+		}
+		return listThreads(...args);
+	},
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -65,6 +71,40 @@ describe('useAgentSessionsStore', () => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
 		listPreviewThreads.mockReset().mockResolvedValue(page([], null));
+		listFailedSessions.mockReset().mockResolvedValue(page([], null));
+	});
+
+	it('checks failure presence independently of the displayed sessions and filters', async () => {
+		listThreads.mockResolvedValue(page(['successful-session'], null));
+		listFailedSessions.mockResolvedValue(page(['older-failed-session'], null));
+		const store = useAgentSessionsStore();
+		await store.fetchThreads('project-1', 'agent-1', {
+			filters: { ...defaultAgentSessionFilters(), status: 'succeeded', origin: 'slack' },
+		});
+
+		expect(store.hasFailedSession).toBe(true);
+		expect(store.threads.map(({ id }) => id)).toEqual(['successful-session']);
+		expect(listFailedSessions).toHaveBeenCalledWith(expect.anything(), 'project-1', 'agent-1', {
+			limit: 1,
+			filters: { ...defaultAgentSessionFilters(), status: 'error' },
+		});
+
+		listFailedSessions.mockResolvedValue(page([], null));
+		await store.refreshThreads('project-1', 'agent-1');
+		expect(store.hasFailedSession).toBe(false);
+	});
+
+	it('ignores a failure presence response after reset', async () => {
+		listThreads.mockResolvedValue(page([], null));
+		const pending = Promise.withResolvers<ThreadsPage>();
+		listFailedSessions.mockReturnValueOnce(pending.promise);
+		const store = useAgentSessionsStore();
+		const request = store.fetchThreads('project-1', 'agent-1');
+		store.reset();
+		pending.resolve(page(['failed-session'], null));
+		await request;
+
+		expect(store.hasFailedSession).toBe(false);
 	});
 
 	it('clears the current page while replacing it with filtered results', async () => {

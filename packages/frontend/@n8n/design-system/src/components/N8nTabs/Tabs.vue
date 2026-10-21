@@ -634,6 +634,10 @@ function scroll(direction: 'left' | 'right') {
 	flex-shrink: 0;
 }
 
+.icon {
+	color: var(--n8n-tabs--icon-color, currentColor);
+}
+
 .arrowButton {
 	composes: tab;
 	flex: 0 0 var(--spacing--xl);
