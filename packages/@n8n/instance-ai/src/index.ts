@@ -4,6 +4,9 @@ import './source-map-filter';
 import type * as AiaModelDefaultsMod from './agent/aia-model-defaults';
 import type * as ApplyAgentThinkingMod from './agent/apply-agent-thinking';
 import type * as InstanceAgentMod from './agent/instance-agent';
+import type * as SelfHealingAgentMod from './agent/self-healing-agent';
+import type * as SelfHealingMod from './self-healing';
+import type * as WorkspaceFilesMod from './workspace/workspace-files';
 import type * as SystemPromptMod from './agent/system-prompt';
 import type * as DomainAccessMod from './domain-access';
 import type * as McpClientManagerMod from './mcp/mcp-client-manager';
@@ -29,6 +32,20 @@ import type * as WorkSummaryAccumulatorMod from './stream/work-summary-accumulat
 import type * as AgentBuildMetricsMod from './tools/orchestration/agent-build-metrics';
 import type * as AgentPersistenceMod from './tools/orchestration/agent-persistence';
 import type * as AgentContextToolMod from './tools/agent-context.tool';
+import type * as VerificationAnalysisMod from './tools/orchestration/verification/analyze-result';
+import type * as PrepareVerificationRunMod from './tools/orchestration/verification/prepare-run';
+import type * as ResolvedParameterWarningsMod from './tools/orchestration/verification/resolved-parameter-warnings';
+import type * as WorkflowVerificationMod from './tools/orchestration/verification/run-workflow-verification';
+import type * as ToolSimulationPreflightMod from './tools/orchestration/verification/tool-simulation-preflight';
+import type * as VerificationSimulationMod from './tools/workflows/plan-verification-simulation';
+import type * as PrepareWorkflowForSaveMod from './tools/workflows/prepare-workflow-for-save';
+import type * as ResolveCredentialsMod from './tools/workflows/resolve-credentials';
+import type * as SetupWorkflowMod from './tools/workflows/setup-workflow.service';
+import type * as WorkflowSourceCompilerMod from './tools/workflows/workflow-source-compiler';
+import type * as WorkflowSourceGeneratorMod from './tools/workflows/workflow-source-generator';
+import type * as WorkflowNodeDiffMod from './tools/workflows/workflow-node-diff';
+import type * as ChatModelValidationMod from './tools/workflows/chat-model-validation';
+import type * as WorkflowValidationWarningsMod from './tools/workflows/workflow-validation-warnings';
 import type * as SanitizeWebContentMod from './tools/web-research/sanitize-web-content';
 import type * as AgentSnapshotEventMod from './tracing/agent-snapshot-event';
 import type * as LangsmithTracingMod from './tracing/langsmith-tracing';
@@ -101,6 +118,13 @@ const loadAgentBuildMetrics = lazyModule(
 const loadInstanceAgent = lazyModule(
 	() => require('./agent/instance-agent') as typeof InstanceAgentMod,
 );
+const loadSelfHealingAgent = lazyModule<typeof SelfHealingAgentMod>(() =>
+	require('./agent/self-healing-agent'),
+);
+const loadSelfHealing = lazyModule<typeof SelfHealingMod>(() => require('./self-healing'));
+const loadWorkspaceFiles = lazyModule<typeof WorkspaceFilesMod>(() =>
+	require('./workspace/workspace-files'),
+);
 const loadAiaModelDefaults = lazyModule(
 	() => require('./agent/aia-model-defaults') as typeof AiaModelDefaultsMod,
 );
@@ -119,6 +143,48 @@ const loadAgentPersistence = lazyModule(
 );
 const loadAgentContextTool = lazyModule(
 	() => require('./tools/agent-context.tool') as typeof AgentContextToolMod,
+);
+const loadVerificationAnalysis = lazyModule<typeof VerificationAnalysisMod>(() =>
+	require('./tools/orchestration/verification/analyze-result'),
+);
+const loadPrepareVerificationRun = lazyModule<typeof PrepareVerificationRunMod>(() =>
+	require('./tools/orchestration/verification/prepare-run'),
+);
+const loadResolvedParameterWarnings = lazyModule<typeof ResolvedParameterWarningsMod>(() =>
+	require('./tools/orchestration/verification/resolved-parameter-warnings'),
+);
+const loadWorkflowVerification = lazyModule<typeof WorkflowVerificationMod>(() =>
+	require('./tools/orchestration/verification/run-workflow-verification'),
+);
+const loadToolSimulationPreflight = lazyModule<typeof ToolSimulationPreflightMod>(() =>
+	require('./tools/orchestration/verification/tool-simulation-preflight'),
+);
+const loadVerificationSimulation = lazyModule<typeof VerificationSimulationMod>(() =>
+	require('./tools/workflows/plan-verification-simulation'),
+);
+const loadPrepareWorkflowForSave = lazyModule<typeof PrepareWorkflowForSaveMod>(() =>
+	require('./tools/workflows/prepare-workflow-for-save'),
+);
+const loadResolveCredentials = lazyModule<typeof ResolveCredentialsMod>(() =>
+	require('./tools/workflows/resolve-credentials'),
+);
+const loadSetupWorkflow = lazyModule<typeof SetupWorkflowMod>(() =>
+	require('./tools/workflows/setup-workflow.service'),
+);
+const loadWorkflowSourceCompiler = lazyModule<typeof WorkflowSourceCompilerMod>(() =>
+	require('./tools/workflows/workflow-source-compiler'),
+);
+const loadWorkflowSourceGenerator = lazyModule<typeof WorkflowSourceGeneratorMod>(() =>
+	require('./tools/workflows/workflow-source-generator'),
+);
+const loadWorkflowNodeDiff = lazyModule<typeof WorkflowNodeDiffMod>(() =>
+	require('./tools/workflows/workflow-node-diff'),
+);
+const loadChatModelValidation = lazyModule<typeof ChatModelValidationMod>(() =>
+	require('./tools/workflows/chat-model-validation'),
+);
+const loadWorkflowValidationWarnings = lazyModule<typeof WorkflowValidationWarningsMod>(() =>
+	require('./tools/workflows/workflow-validation-warnings'),
 );
 const loadTitleUtils = lazyModule(() => require('./memory/title-utils') as typeof TitleUtilsMod);
 const loadMcpClientManager = lazyModule(
@@ -208,6 +274,7 @@ export {
 	WorkflowNotFoundError,
 	WorkflowEditorLockedError,
 	FolderResolutionError,
+	formatRedactedError,
 } from './errors';
 export {
 	LEGACY_PLANNED_TASK_KINDS,
@@ -617,6 +684,44 @@ export type {
 	WorkflowVerificationObligation,
 	WorkflowVerificationObligationSource,
 } from './workflow-loop';
+export const compileWorkflowSource: typeof WorkflowSourceCompilerMod.compileWorkflowSource =
+	lazyFunction(() => loadWorkflowSourceCompiler().compileWorkflowSource);
+export const generateWorkflowSource: typeof WorkflowSourceGeneratorMod.generateWorkflowSource =
+	lazyFunction(() => loadWorkflowSourceGenerator().generateWorkflowSource);
+export const prepareWorkflowForSave: typeof PrepareWorkflowForSaveMod.prepareWorkflowForSave =
+	lazyFunction(() => loadPrepareWorkflowForSave().prepareWorkflowForSave);
+export const buildCredentialMap: typeof ResolveCredentialsMod.buildCredentialMap = lazyFunction(
+	() => loadResolveCredentials().buildCredentialMap,
+);
+export const resolveCredentials: typeof ResolveCredentialsMod.resolveCredentials = lazyFunction(
+	() => loadResolveCredentials().resolveCredentials,
+);
+export const stripStaleCredentialsFromWorkflow: typeof SetupWorkflowMod.stripStaleCredentialsFromWorkflow =
+	lazyFunction(() => loadSetupWorkflow().stripStaleCredentialsFromWorkflow);
+export type { CredentialResolutionResult } from './tools/workflows/resolve-credentials';
+export const downgradeUnchangedNodeBlockers: typeof WorkflowNodeDiffMod.downgradeUnchangedNodeBlockers =
+	lazyFunction(() => loadWorkflowNodeDiff().downgradeUnchangedNodeBlockers);
+export const computeChangedNodeNames: typeof WorkflowNodeDiffMod.computeChangedNodeNames =
+	lazyFunction(() => loadWorkflowNodeDiff().computeChangedNodeNames);
+export const computeChatModelValidationIssues: typeof ChatModelValidationMod.computeChatModelValidationIssues =
+	lazyFunction(() => loadChatModelValidation().computeChatModelValidationIssues);
+export const partitionWarnings: typeof WorkflowValidationWarningsMod.partitionWarnings =
+	lazyFunction(() => loadWorkflowValidationWarnings().partitionWarnings);
+export const planVerificationSimulation: typeof VerificationSimulationMod.planVerificationSimulation =
+	lazyFunction(() => loadVerificationSimulation().planVerificationSimulation);
+export const prepareVerificationRun: typeof PrepareVerificationRunMod.prepareVerificationRun =
+	lazyFunction(() => loadPrepareVerificationRun().prepareVerificationRun);
+export const collectResolvedParameterWarnings: typeof ResolvedParameterWarningsMod.collectResolvedParameterWarnings =
+	lazyFunction(() => loadResolvedParameterWarnings().collectResolvedParameterWarnings);
+export const checkToolSimulationSupport: typeof ToolSimulationPreflightMod.checkToolSimulationSupport =
+	lazyFunction(() => loadToolSimulationPreflight().checkToolSimulationSupport);
+export const runWorkflowVerification: typeof WorkflowVerificationMod.runWorkflowVerification =
+	lazyFunction(() => loadWorkflowVerification().runWorkflowVerification);
+export const buildNodePreviews: typeof VerificationAnalysisMod.buildNodePreviews = lazyFunction(
+	() => loadVerificationAnalysis().buildNodePreviews,
+);
+export type { VerificationNodePreview } from './tools/orchestration/verification/types';
+export type { ValidationWarning } from './tools/workflows/workflow-validation-warnings';
 export type WorkflowLoopRuntime = WorkflowLoopRuntimeMod.WorkflowLoopRuntime;
 export const WorkflowLoopRuntime: typeof WorkflowLoopRuntimeMod.WorkflowLoopRuntime = lazyClass(
 	() => loadWorkflowLoopRuntime().WorkflowLoopRuntime,
@@ -631,6 +736,7 @@ export type {
 	InstanceAiToolRegistry,
 	InstanceAiWorkflowService,
 	InstanceAiExecutionService,
+	ExecutionNodeError,
 	InstanceAiExecuteNodeService,
 	ExecuteNodeResult,
 	InstanceAiCredentialService,
@@ -689,6 +795,7 @@ export type {
 	WorkflowVersionSummary,
 	WorkflowVersionDetail,
 	ExecutionResult,
+	ExecutionRedaction,
 	StepExecutionResult,
 	StepRunInputMode,
 	ExecutionDebugInfo,
@@ -786,3 +893,37 @@ export type {
 	OversizedAttachmentDetail,
 	OversizedAttachmentReason,
 } from './parsers/validate-attachments';
+
+export const createSelfHealingAgent: typeof SelfHealingAgentMod.createSelfHealingAgent =
+	lazyFunction(() => loadSelfHealingAgent().createSelfHealingAgent);
+export type { CreateSelfHealingAgentOptions } from './agent/self-healing-agent';
+export const getSelfHealingResourceId: typeof SelfHealingMod.getSelfHealingResourceId =
+	lazyFunction(() => loadSelfHealing().getSelfHealingResourceId);
+export const isSelfHealingResourceId: typeof SelfHealingMod.isSelfHealingResourceId = lazyFunction(
+	() => loadSelfHealing().isSelfHealingResourceId,
+);
+export type {
+	SelfHealingOutput,
+	SelfHealingThreadMetadata,
+	SelfHealingCandidateInput,
+	SelfHealingCandidateVerifier,
+} from './self-healing';
+export const readWorkspaceFile: typeof WorkspaceFilesMod.readWorkspaceFile = lazyFunction(
+	() => loadWorkspaceFiles().readWorkspaceFile,
+);
+export const writeWorkspaceFile: typeof WorkspaceFilesMod.writeWorkspaceFile = lazyFunction(
+	() => loadWorkspaceFiles().writeWorkspaceFile,
+);
+export type { WorkspaceFileTarget, WorkspaceFileOptions } from './workspace/workspace-files';
+export declare const SELF_HEALING_PROFILE_VERSION: typeof SelfHealingMod.SELF_HEALING_PROFILE_VERSION;
+defineLazyExport(
+	'SELF_HEALING_PROFILE_VERSION',
+	() => loadSelfHealing().SELF_HEALING_PROFILE_VERSION,
+);
+export declare const SELF_HEALING_RESOURCE_PREFIX: typeof SelfHealingMod.SELF_HEALING_RESOURCE_PREFIX;
+defineLazyExport(
+	'SELF_HEALING_RESOURCE_PREFIX',
+	() => loadSelfHealing().SELF_HEALING_RESOURCE_PREFIX,
+);
+export declare const selfHealingOutputSchema: typeof SelfHealingMod.selfHealingOutputSchema;
+defineLazyExport('selfHealingOutputSchema', () => loadSelfHealing().selfHealingOutputSchema);

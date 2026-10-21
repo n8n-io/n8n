@@ -1,5 +1,5 @@
 import type { SerializableAgentState } from '@n8n/agents';
-import type { AgentMessageAuthor } from '@n8n/api-types';
+import type { AgentMessageAuthor, AgentMessageIntegrationOrigin } from '@n8n/api-types';
 import type { Author } from 'chat';
 import type { BridgeExecutionContext } from '../integrations/agent-chat-integration';
 
@@ -45,6 +45,8 @@ export interface QueuedIntegrationMessage extends QueuedMessageInput {
 	platformThreadId: string;
 	modelMessage: string;
 	author: AgentMessageAuthor;
+	/** Typed platform context. The queue stores it on the message origin. */
+	integrationOrigin?: AgentMessageIntegrationOrigin;
 	sender: Author;
 	messageContext: IntegrationMessageContext;
 	contextConversation: SessionBinding;
@@ -60,7 +62,12 @@ export type AgentQueueDispatch =
 	| { kind: QueuedUserChatMessage['kind']; options?: Record<string, unknown> }
 	| (Omit<
 			QueuedIntegrationMessage,
-			keyof QueuedMessageInput | 'modelMessage' | 'author' | 'platformThreadId' | 'messageContext'
+			| keyof QueuedMessageInput
+			| 'modelMessage'
+			| 'author'
+			| 'integrationOrigin'
+			| 'platformThreadId'
+			| 'messageContext'
 	  > & {
 			messageContext: Omit<
 				IntegrationMessageContext,

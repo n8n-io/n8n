@@ -59,6 +59,7 @@ it('redirects the old review list without selecting an item', async () => {
 
 it.each([
 	['/inbox/reviews/review-1', { type: 'workflow_review', id: 'review-1' }],
+	['/inbox/promotion-reviews/review-1', { type: 'promotion_review', id: 'review-1' }],
 	[
 		'/inbox/assistant-results/result-1?projectId=project&workflowId=workflow',
 		{
@@ -87,10 +88,31 @@ it.each([
 	['Inbox', true],
 	['WorkflowReviewRequestsView', true],
 	['InboxAssistantResult', true],
+	['InboxPromotionReview', true],
 	['Workflow', false],
 	[undefined, false],
 ])('recognizes the Inbox route %s: %s', (name, expected) => {
 	expect(isInboxRoute({ name })).toBe(expected);
+});
+
+it('links a promotion review row to its detail route', () => {
+	const router = createInboxRouter();
+	const location = inboxItemLocation({
+		type: 'promotion_review',
+		id: 'review-1',
+		state: 'open',
+		reviewState: 'open',
+		title: null,
+		webUrl: null,
+		branchName: null,
+		environmentName: null,
+		requester: null,
+		approver: null,
+		remoteError: null,
+		createdAt: '',
+		updatedAt: '',
+	});
+	expect(router.resolve(location).path).toBe('/inbox/promotion-reviews/review-1');
 });
 
 it('keeps the tab only when selecting the same item', async () => {

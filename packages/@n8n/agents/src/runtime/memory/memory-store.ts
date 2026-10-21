@@ -8,6 +8,7 @@ import {
 	uniqueStrings,
 } from './memory-lifecycle';
 import { normalizeObservationLogReflection } from './observation-log-reflector';
+import { observationCursorsMatch, prepareObservationLogBatchCursor } from './observation-log-batch';
 import type { RuntimeSkillStateStore } from '../../skills/types';
 import type {
 	BuiltEpisodicMemoryCaptureStore,
@@ -35,6 +36,8 @@ import type {
 	BuiltObservationLogStore,
 	BuiltObservationLogTaskLockStore,
 	NewObservationLogEntry,
+	ObservationLogBatch,
+	ObservationLogBatchCommitResult,
 	ObservationLogEntry,
 	ObservationLogReadOptions,
 	ObservationLogReflection,
@@ -288,6 +291,34 @@ export class InMemoryMemory
 	}
 
 	// ── Observational memory ─────────────────────────────────────────────
+
+	async commitObservationLogBatch(
+		batch: ObservationLogBatch,
+	): Promise<ObservationLogBatchCommitResult> {
+		const cursor = prepareObservationLogBatchCursor(batch);
+		const storedCursor = this.cursorsByScope.get(batch.observationScopeId) ?? null;
+		if (!cursor || !observationCursorsMatch(storedCursor, batch.expectedCursor)) {
+			return 'stale';
+		}
+
+		const staged: ObservationLogEntry[] = [];
+		for (const entry of batch.entries) {
+			staged.push({
+				id: crypto.randomUUID(),
+				observationScopeId: batch.observationScopeId,
+				marker: entry.marker,
+				text: entry.text,
+				parentId: entry.parentIndex === null ? null : staged[entry.parentIndex].id,
+				tokenCount: entry.tokenCount,
+				createdAt: new Date(entry.createdAt),
+				...activeLifecycleState(),
+			});
+		}
+		const existing = this.observationLogByScope.get(batch.observationScopeId) ?? [];
+		this.observationLogByScope.set(batch.observationScopeId, [...existing, ...staged]);
+		this.cursorsByScope.set(batch.observationScopeId, cursor);
+		return await Promise.resolve('committed');
+	}
 
 	async appendObservationLogEntries(
 		rows: NewObservationLogEntry[],

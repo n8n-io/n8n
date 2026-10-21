@@ -12,7 +12,7 @@ import SkillAgentsCell from './SkillAgentsCell.vue';
 import SkillScopeBadge from './SkillScopeBadge.vue';
 import { PREFERENCES_PAGE_SIZES } from '../context.constants';
 
-type SkillAction = 'edit' | 'delete';
+type SkillAction = 'edit' | 'download' | 'delete';
 
 /** The fields of the action toggle item that this menu uses. */
 type SkillActionItem = {
@@ -33,6 +33,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	open: [skill: SkillListItem];
+	download: [skill: SkillListItem];
 	delete: [skill: SkillListItem];
 	'update:options': [payload: TableOptions];
 }>();
@@ -68,6 +69,10 @@ function actionsFor(skill: SkillListItem): SkillActionItem[] {
 			),
 		},
 		{
+			value: 'download',
+			label: i18n.baseText('settings.context.skills.actions.download'),
+		},
+		{
 			value: 'delete',
 			label: i18n.baseText('settings.context.skills.actions.delete'),
 			disabled: !canDeleteNow(skill),
@@ -79,6 +84,7 @@ function actionsFor(skill: SkillListItem): SkillActionItem[] {
 
 function onAction(skill: SkillListItem, action: SkillAction) {
 	if (action === 'edit') emit('open', skill);
+	else if (action === 'download') emit('download', skill);
 	else emit('delete', skill);
 }
 

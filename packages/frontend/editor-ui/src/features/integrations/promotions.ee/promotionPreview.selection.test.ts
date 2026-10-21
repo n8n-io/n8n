@@ -152,4 +152,24 @@ describe('promotion preview selection', () => {
 
 		expect(applyPreview(clearSelection(), refreshed).state.selected.size).toBe(0);
 	});
+
+	it('should leave a blocked workflow out until its blockers are resolved, and never remove a selected one', () => {
+		const blocked = new Set([kpiReport.key]);
+
+		let { state } = applyPreview(initialSelectionState, graph, blocked);
+		expect(state.selected.has(kpiReport.key)).toBe(false);
+		expect(toggleSelection(state, graph, kpiReport.key, blocked)).toBe(state);
+		// The project counts only the workflows that users can add, so they are all selected and a click clears them.
+		expect(toggleContainer(state, graph, 'project:p1', blocked).selected).toEqual(new Set());
+
+		// The user created the missing credential, and the refreshed check has no blockers.
+		state = applyPreview(state, graph).state;
+		expect(state.selected.has(kpiReport.key)).toBe(true);
+
+		// A later refresh blocks it again. It stays selected until the user clears it.
+		state = applyPreview(state, graph, blocked).state;
+		expect(state.selected.has(kpiReport.key)).toBe(true);
+		state = toggleSelection(state, graph, kpiReport.key, blocked);
+		expect(state.selected.has(kpiReport.key)).toBe(false);
+	});
 });
