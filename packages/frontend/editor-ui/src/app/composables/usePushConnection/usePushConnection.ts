@@ -80,16 +80,15 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 		const executionState = useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId);
 		const executionId = executionState.activeExecutionId;
 		if (typeof executionId === 'string') {
-			await useWorkflowsStore()
-				.getExecution(executionId)
-				.then(
-					(execution) => {
-						if (executionState.activeExecutionId === executionId) {
-							settleTrackedExecution(executionState, execution);
-						}
-					},
-					() => undefined,
-				);
+			let execution: IExecutionResponse | undefined;
+			try {
+				execution = await useWorkflowsStore().getExecution(executionId);
+			} catch {
+				return;
+			}
+			if (executionState.activeExecutionId === executionId) {
+				settleTrackedExecution(executionState, execution);
+			}
 		}
 	}
 
