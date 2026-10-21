@@ -314,7 +314,9 @@ export class SubAgentRunner {
 		const { executionId } = admission;
 		let executionStarted = false;
 		let executionError: unknown;
+		let runId: string | undefined;
 		let agent: BuiltAgent | undefined;
+
 		try {
 			context.abortSignal?.throwIfAborted();
 			if (operation.type !== 'run') await context.beforeResume?.();
@@ -428,16 +430,20 @@ export class SubAgentRunner {
 					},
 				});
 			}
+
+			runId = resultStream.runId;
 			const consumed = await consumeAgentStream(
 				resultStream,
 				recorder,
 				createAttributionTracker(reconstructed.mcpServerAttributions),
 				context.onChunk,
 			);
+
 			executionError = consumed.executionError;
 			const { result } = consumed;
 			const suspended = recorder.suspended;
 			let status: SubAgentRunResult['status'] = 'completed';
+
 			if (result.finishReason === 'paused') status = 'paused';
 			else if (suspended) status = 'suspended';
 			else if (result.finishReason === 'error' || result.error !== undefined) status = 'failed';
@@ -481,6 +487,7 @@ export class SubAgentRunner {
 								? 'resumed'
 								: undefined,
 					},
+					runId,
 				});
 			} finally {
 				await agent?.close().catch((error) => {

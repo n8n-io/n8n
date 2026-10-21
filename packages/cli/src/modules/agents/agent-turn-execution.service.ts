@@ -310,36 +310,32 @@ export class AgentTurnExecutionService {
 		if (recorder.suspended) hitlStatus = 'suspended';
 		else if (turn.type === 'resume' && state.executionStarted) hitlStatus = 'resumed';
 
-		try {
-			await this.finalizeExecution({
-				executionId,
-				executionStarted: state.executionStarted,
-				executionError: state.executionError,
-				onExecutionRecorded: config.onExecutionRecorded,
-				params: {
-					...turn.recording,
-					record: cancelled ? { ...record, finishReason: 'cancelled', error: null } : record,
-					hitlStatus,
-				},
-			});
-		} finally {
-			// Make sure the run's knowledge counts leave memory, also when recording fails.
-			this.sendKnowledgeUsage(turn, state);
-		}
+		await this.finalizeExecution({
+			executionId,
+			executionStarted: state.executionStarted,
+			executionError: state.executionError,
+			onExecutionRecorded: config.onExecutionRecorded,
+			params: {
+				...turn.recording,
+				record: cancelled ? { ...record, finishReason: 'cancelled', error: null } : record,
+				hitlStatus,
+			},
+			runId: state.runId,
+		});
 	}
 
-	private sendKnowledgeUsage(turn: AgentTurnRequest, state: TurnExecutionState) {
-		if (!state.runId) {
+	private sendKnowledgeUsage(runId: string | undefined, params: RecordMessageParams) {
+		if (!runId) {
 			return;
 		}
 
-		const { agentId, telemetry } = turn.recording;
+		const { agentId, telemetry } = params;
 		if (!telemetry) {
-			this.knowledgeUsageTracker.takeRunUsage(state.runId);
+			this.knowledgeUsageTracker.takeRunUsage(runId);
 			return;
 		}
 
-		this.knowledgeUsageTracker.sendRunUsage(state.runId, {
+		this.knowledgeUsageTracker.sendRunUsage(runId, {
 			agentId,
 			runType: telemetry.runType,
 			userId: telemetry.userId,
@@ -391,6 +387,8 @@ export class AgentTurnExecutionService {
 		executionError?: unknown;
 		onExecutionRecorded?: (executionId: string) => void;
 		params: RecordMessageParams;
+		/** Run id of the agent runtime. Absent when the runtime never started. */
+		runId?: string;
 	}): Promise<void> {
 		const { executionId, executionStarted, executionError, onExecutionRecorded, params } = args;
 		let recordedId: string;
@@ -404,6 +402,9 @@ export class AgentTurnExecutionService {
 				executionError,
 				cause,
 			});
+		} finally {
+			// Make sure the run's knowledge counts leave memory, also when recording fails.
+			this.sendKnowledgeUsage(args.runId, params);
 		}
 		onExecutionRecorded?.(recordedId);
 	}

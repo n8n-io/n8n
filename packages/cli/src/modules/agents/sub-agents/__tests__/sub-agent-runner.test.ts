@@ -128,6 +128,7 @@ describe('SubAgentRunner', () => {
 	let runner: SubAgentRunner;
 	let childAgent: Mocked<BuiltAgent>;
 	let agentExecutionService: Mocked<AgentExecutionService>;
+	let knowledgeUsageTracker: Mocked<AgentKnowledgeUsageTracker>;
 	let logger: Mocked<Logger>;
 	let checkpointStorage: Mocked<N8NCheckpointStorage>;
 	let credentialProvider: Mocked<CredentialProvider>;
@@ -150,6 +151,7 @@ describe('SubAgentRunner', () => {
 		);
 		agentExecutionService.finalizeExecution.mockResolvedValue('agent-execution-1');
 		checkpointStorage = mock<N8NCheckpointStorage>();
+		knowledgeUsageTracker = mock<AgentKnowledgeUsageTracker>();
 		logger = mock<Logger>();
 		runner = new SubAgentRunner(
 			sourceResolver,
@@ -160,7 +162,7 @@ describe('SubAgentRunner', () => {
 				mock<AgentMessageQueueService>(),
 				mock<AgentMessageSteeringService>(),
 				toolApprovalService,
-				mock<AgentKnowledgeUsageTracker>(),
+				knowledgeUsageTracker,
 			),
 			checkpointStorage,
 			logger,
@@ -193,6 +195,21 @@ describe('SubAgentRunner', () => {
 		});
 
 		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledTimes(1);
+	});
+
+	it('sends the knowledge use of the child run when it ends', async () => {
+		await runner.run(spawnRequest, {
+			parentAgentId,
+			projectId,
+			credentialProvider,
+			runType: 'production',
+		});
+
+		expect(knowledgeUsageTracker.sendRunUsage).toHaveBeenCalledTimes(1);
+		expect(knowledgeUsageTracker.sendRunUsage).toHaveBeenCalledWith(
+			'child-run-1',
+			expect.objectContaining({ runType: 'production' }),
+		);
 	});
 
 	it('rebuilds the child through the shared reconstruction service and runs it with a fresh prompt', async () => {
