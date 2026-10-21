@@ -266,6 +266,14 @@ describe('MigrationRules', () => {
 					targetVersion: '2.0.0',
 					currentVersion: '1.0.0',
 					workflowResults: [
+						// Listed before the executionsFail rule, so a tie in the impact order fails the test.
+						{
+							...mockWorkflowIssue,
+							ruleId: 'rule-5',
+							ruleTitle: 'Test Rule 5',
+							ruleImpact: 'executionsMightFail' as const,
+							nbAffectedWorkflows: 2,
+						},
 						mockWorkflowIssue,
 						{
 							...mockWorkflowIssue,
@@ -286,13 +294,6 @@ describe('MigrationRules', () => {
 							ruleId: 'rule-4',
 							ruleTitle: 'Test Rule 4',
 							ruleImpact: 'capabilityRemoved' as const,
-							nbAffectedWorkflows: 2,
-						},
-						{
-							...mockWorkflowIssue,
-							ruleId: 'rule-5',
-							ruleTitle: 'Test Rule 5',
-							ruleImpact: 'executionsMightFail' as const,
 							nbAffectedWorkflows: 2,
 						},
 					],
@@ -487,6 +488,13 @@ describe('MigrationRules', () => {
 					currentVersion: '1.0.0',
 					workflowResults: [],
 					instanceResults: [
+						// Listed before the executionsFail rule, so a tie in the impact order fails the test.
+						{
+							...mockInstanceIssue,
+							ruleId: 'rule-6',
+							ruleTitle: 'Instance Rule 5',
+							ruleImpact: 'executionsMightFail' as const,
+						},
 						mockInstanceIssue,
 						{
 							...mockInstanceIssue,
@@ -505,12 +513,6 @@ describe('MigrationRules', () => {
 							ruleId: 'rule-5',
 							ruleTitle: 'Instance Rule 4',
 							ruleImpact: 'upgradeBlocked' as const,
-						},
-						{
-							...mockInstanceIssue,
-							ruleId: 'rule-6',
-							ruleTitle: 'Instance Rule 5',
-							ruleImpact: 'executionsMightFail' as const,
 						},
 					],
 				},
@@ -821,7 +823,7 @@ describe('MigrationRules', () => {
 			{
 				impact: 'executionsMightFail',
 				label: 'Executions might fail',
-				tooltipText: 'keep the current value',
+				tooltipText: 'Read the recommendation',
 			},
 			{
 				impact: 'behaviorChanges',
