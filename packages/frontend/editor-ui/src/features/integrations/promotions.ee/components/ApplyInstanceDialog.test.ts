@@ -1,5 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
-import { waitFor } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { defineComponent, h } from 'vue';
 
@@ -33,6 +33,20 @@ describe('ApplyInstanceDialog', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		createTestingPinia();
+	});
+
+	it('submits the body form from the footer button', async () => {
+		api.applyPromotion.mockResolvedValue(applied);
+		const { findByTestId } = renderComponent();
+
+		const button = await findByTestId('apply-confirm-button');
+		const form = button instanceof HTMLButtonElement ? button.form : null;
+		expect(form).toHaveAttribute('id', 'apply-instance-form');
+		await fireEvent.submit(form!);
+
+		await waitFor(() =>
+			expect(api.applyPromotion).toHaveBeenCalledWith(expect.anything(), 'environment-1'),
+		);
 	});
 
 	it('applies the whole branch and reports success', async () => {

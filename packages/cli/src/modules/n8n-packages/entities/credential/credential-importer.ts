@@ -179,11 +179,20 @@ export class CredentialImporter {
 		context: ImportContext,
 		request: CredentialBindingRequest,
 		resolution: CredentialResolution,
+		projectPendingCreation: boolean,
 	): Promise<void> {
+		const toCreate = credentialsToStub(request.missingMode, resolution);
+		if (toCreate.length === 0) return;
+
+		// The import creates this project and makes the user its admin, so it has no scopes to look up yet.
+		if (!projectPendingCreation) {
+			await this.credentialsService.assertCanCreateInProject(context.user, context.projectId);
+		}
+
 		if (!credentialMissingModeUsesPackageData(request.missingMode)) return;
 
 		const packageData = packageDataBySourceId(request.requirements);
-		for (const { sourceId } of credentialsToStub(request.missingMode, resolution)) {
+		for (const { sourceId } of toCreate) {
 			const data = packageData.get(sourceId);
 			if (data !== undefined) {
 				await this.credentialsService.validateStubCredentialData(
