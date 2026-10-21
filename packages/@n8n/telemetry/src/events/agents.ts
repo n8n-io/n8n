@@ -764,10 +764,11 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 					'unreachable',
 					'not_found',
 					'request_failed',
+					'save_failed',
 				])
 				.optional()
 				.describe(
-					'Only when status is failed. not_found: the user cannot use that credential; request_failed: the request to n8n failed, so Meta was never asked',
+					'Only when status is failed. not_found: the user cannot use that credential; request_failed: the request to n8n failed, so Meta was never asked; save_failed: n8n could not save the new agent, so no check ran',
 				),
 			session_id: sessionId,
 		}),

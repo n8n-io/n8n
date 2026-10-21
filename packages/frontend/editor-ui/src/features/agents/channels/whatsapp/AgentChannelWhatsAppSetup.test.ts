@@ -758,6 +758,19 @@ describe('AgentChannelWhatsAppSetup', () => {
 			);
 		});
 
+		it('tracks a failed save apart from a failed check', async () => {
+			const ensureAgentPersisted = vi.fn().mockRejectedValue(new Error('save failed'));
+
+			renderComponent({ props: props({ modelValue: 'cred-1', ensureAgentPersisted }) });
+
+			await waitFor(() =>
+				expect(trackMock).toHaveBeenCalledWith(
+					EVENT,
+					expect.objectContaining({ status: 'failed', reason: 'save_failed' }),
+				),
+			);
+		});
+
 		it('tracks a failed request to n8n apart from Meta being unreachable', async () => {
 			vi.mocked(checkWhatsAppCredential).mockRejectedValue(new Error('offline'));
 

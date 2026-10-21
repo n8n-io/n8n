@@ -159,7 +159,8 @@ const CHECK_FAILURE_REASON = {
 function trackCredentialCheck(
 	trigger: 'auto' | 'recheck',
 	result: CredentialCheckResult,
-	requestFailed: boolean,
+	// Set when the check never reached Meta. The result then shows `unreachable` anyway.
+	notReached?: 'request_failed' | 'save_failed',
 ) {
 	if (props.mode !== 'setup') return;
 	agentTelemetry.trackCheckedWhatsAppCredential({
@@ -167,7 +168,7 @@ function trackCredentialCheck(
 		trigger,
 		status: result.status,
 		...(result.status === 'failed'
-			? { reason: requestFailed ? 'request_failed' : CHECK_FAILURE_REASON[result.reason] }
+			? { reason: notReached ?? CHECK_FAILURE_REASON[result.reason] }
 			: {}),
 	});
 }
@@ -189,7 +190,7 @@ async function runCredentialCheck(trigger: 'auto' | 'recheck' = 'auto') {
 			if (request !== latestCheck || unmounted) return;
 			checking.value = false;
 			credentialCheck.value = { status: 'failed', reason: 'unreachable' };
-			trackCredentialCheck(trigger, credentialCheck.value, true);
+			trackCredentialCheck(trigger, credentialCheck.value, 'save_failed');
 			toast.showError(error, i18n.baseText('agents.channels.modal.saveChannelError'));
 			return;
 		}
@@ -201,7 +202,7 @@ async function runCredentialCheck(trigger: 'auto' | 'recheck' = 'auto') {
 	let result: CredentialCheckResult;
 	// Shown as unreachable, but kept apart in telemetry: a failed request to n8n says
 	// nothing about whether Meta accepts the credential.
-	let requestFailed = false;
+	let notReached: 'request_failed' | undefined;
 	try {
 		result = await checkWhatsAppCredential(
 			rootStore.restApiContext,
@@ -212,12 +213,12 @@ async function runCredentialCheck(trigger: 'auto' | 'recheck' = 'auto') {
 	} catch (error) {
 		const notFound = error instanceof ResponseError && error.httpStatusCode === 404;
 		result = { status: 'failed', reason: notFound ? 'notFound' : 'unreachable' };
-		requestFailed = !notFound;
+		notReached = notFound ? undefined : 'request_failed';
 	}
 	if (request !== latestCheck) return;
 	credentialCheck.value = result;
 	checking.value = false;
-	trackCredentialCheck(trigger, result, requestFailed);
+	trackCredentialCheck(trigger, result, notReached);
 }
 
 watch(credentialId, () => runCredentialCheck(), { immediate: true });

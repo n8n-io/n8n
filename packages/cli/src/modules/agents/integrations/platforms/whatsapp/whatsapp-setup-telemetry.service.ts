@@ -12,7 +12,7 @@ import { Telemetry } from '@/telemetry';
 export class WhatsAppSetupTelemetryService {
 	constructor(private readonly telemetry: Telemetry) {}
 
-	/** Never throws: Meta has already received its answer when this runs. */
+	/** Never throws: this runs before the answer to Meta, which must get one even if tracking fails. */
 	webhookVerified(agentId: string, phase: 'setup' | 'connected'): void {
 		try {
 			this.telemetry.track(TELEMETRY_EVENT.AGENTS.AGENT_WHATSAPP_WEBHOOK_VERIFIED, {
@@ -20,7 +20,7 @@ export class WhatsAppSetupTelemetryService {
 				phase,
 			});
 		} catch {
-			// A failed report must not change the answer Meta gets.
+			// Swallowed so the caller still sends Meta its answer.
 		}
 	}
 }
