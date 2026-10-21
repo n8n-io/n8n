@@ -8,7 +8,7 @@ import { BadRequestError, NotFoundError } from '@n8n/errors';
 import type { PromotionEnvironment } from './database/entities/promotion-environment.entity';
 import { PromotionEnvironmentProjectRepository } from './database/repositories/promotion-environment-project.repository';
 import { PromotionEnvironmentRepository } from './database/repositories/promotion-environment.repository';
-import { resolvePromotionGitRemote } from './git-hosts/git-host-remote';
+import { promotionHostBaseUrl, resolvePromotionGitRemote } from './git-hosts/git-host-remote';
 import { resolveStoredConfig } from './promotion-config-settings';
 import type { PromotionOperationInput } from './promotions.types';
 
@@ -98,6 +98,7 @@ export class PromotionEnvironmentResolver {
 			providerType: providerType.data,
 			authType: provider.authType,
 			encryptedAuth: provider.auth,
+			hostBaseUrl: promotionHostBaseUrl(provider),
 			remote,
 			config: resolved,
 		});

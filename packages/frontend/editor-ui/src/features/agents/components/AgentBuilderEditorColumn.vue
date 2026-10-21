@@ -114,7 +114,7 @@ const emit = defineEmits<{
 	'preview-task': [instructions: string];
 	'agent-changed': [];
 	'generate-eval-cases': [];
-	'open-preview': [];
+	'open-preview': [source: 'icon'];
 	'publish-agent': [];
 	'setup-task-action': [task: SetupTask];
 }>();
@@ -228,7 +228,7 @@ defineExpose({ onSetupTaskAction });
 								:is-runnable="props.agent?.isRunnable === true"
 								:validation-issues="props.configValidationIssues ?? []"
 								test-id="agent-triggers-preview-chat-button"
-								@open-preview="emit('open-preview')"
+								@open-preview="emit('open-preview', 'icon')"
 							/>
 						</template>
 						<AgentTriggersSection

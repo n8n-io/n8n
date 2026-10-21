@@ -1047,7 +1047,7 @@ onBeforeUnmount(() => {
 					<ElCol :span="14" class="ignore-key-press-canvas">
 						<N8nSelect
 							v-model="executionLogic"
-							placeholder="Select Execution Order"
+							:placeholder="i18n.baseText('workflowSettings.executionLogic.placeholder')"
 							size="medium"
 							filterable
 							:disabled="readOnlyEnv || !workflowPermissions.update"
@@ -1083,7 +1083,7 @@ onBeforeUnmount(() => {
 					<ElCol :span="14" class="ignore-key-press-canvas">
 						<N8nSelect
 							v-model="workflowSettings.errorWorkflow"
-							placeholder="Select Workflow"
+							:placeholder="i18n.baseText('workflowSettings.errorWorkflow.placeholder')"
 							filterable
 							remote
 							:remote-method="debouncedLoadWorkflows"
@@ -1243,7 +1243,7 @@ onBeforeUnmount(() => {
 					<ElCol :span="14" class="ignore-key-press-canvas">
 						<N8nSelect
 							v-model="workflowSettings.timezone"
-							placeholder="Select Timezone"
+							:placeholder="i18n.baseText('workflowSettings.timezone.placeholder')"
 							filterable
 							:disabled="readOnlyEnv || !workflowPermissions.update"
 							:limit-popper-width="true"

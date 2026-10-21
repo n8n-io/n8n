@@ -50,7 +50,7 @@ import { BUILDER_TOOLS } from '../builder/builder-tool-names';
 import type { Agent, ProjectAgent } from '../entities/agent.entity';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
-import { SkillNameTakenError } from '../skills/skill-name-taken.error';
+import { SkillNameTakenError } from '@/modules/skills/skill-name-taken.error';
 import * as checkAccess from '@/permissions.ee/check-access';
 import type { BuilderCredentialService } from '../builder/builder-session';
 import { createAgentSkillRefsService } from './test-utils/stored-agent-config';

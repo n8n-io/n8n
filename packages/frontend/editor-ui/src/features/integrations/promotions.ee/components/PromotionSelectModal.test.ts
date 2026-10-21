@@ -13,8 +13,9 @@ import { createServer, Response, type Request } from 'miragejs';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { render, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { waitFor } from '@testing-library/vue';
+import { defineComponent } from 'vue';
 import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants/modals';
 import type * as PromotionsApi from '../promotions.api';
 
@@ -210,7 +211,7 @@ describe('PromotionSelectModal', () => {
 		);
 		expect(showMessage).toHaveBeenCalledWith({
 			title: 'Changes promoted',
-			message: 'Changes have been pushed to release/main.',
+			message: 'Pushed to release/main.',
 			type: 'success',
 		});
 		expect(emitSpy).toHaveBeenCalledWith('promoted', { projectId: 'project-1' });
@@ -219,10 +220,15 @@ describe('PromotionSelectModal', () => {
 		emitSpy.mockRestore();
 	});
 
-	it('should say a new branch when promote created a promotion branch', async () => {
-		api.promoteProjectSelection.mockResolvedValueOnce(
-			promoteResult('n8n-promotion/2026-01-01T00-00-00-000Z'),
-		);
+	it('should keep the toast open and link the merge request', async () => {
+		api.promoteProjectSelection.mockResolvedValueOnce({
+			...promoteResult('n8n-promotion/2026-01-01T00-00-00-000Z'),
+			review: {
+				reviewId: 'review-1',
+				number: 3,
+				webUrl: 'https://gitlab.example/mr/3',
+			},
+		});
 		const { findAllByTestId, findByTestId } = renderComponent({
 			pinia,
 			props: {
@@ -237,10 +243,51 @@ describe('PromotionSelectModal', () => {
 		await waitFor(() =>
 			expect(showMessage).toHaveBeenCalledWith(
 				expect.objectContaining({
-					message: 'Changes have been pushed to a new branch.',
+					title: 'Changes promoted',
+					type: 'success',
+					duration: 0,
 				}),
 			),
 		);
+		const message = showMessage.mock.calls[0]?.[0].message;
+		const toast = render(defineComponent({ render: () => message }));
+		const link = toast.getByRole('link', { name: 'View merge request' });
+		expect(link).toHaveAttribute('href', 'https://gitlab.example/mr/3');
+		expect(link).toHaveAttribute('target', '_blank');
+		expect(toast.queryByText(/Pushed to/)).not.toBeInTheDocument();
+	});
+
+	it('should use a warning toast when the promote has a warning', async () => {
+		api.promoteProjectSelection.mockResolvedValueOnce({
+			...promoteResult('n8n-promotion/2026-01-01T00-00-00-000Z'),
+			warnings: [{ message: 'No merge request was opened.' }],
+		});
+		const { findAllByTestId, findByTestId } = renderComponent({
+			pinia,
+			props: {
+				modalName: PROMOTION_SELECT_MODAL_KEY,
+				data: { projectId: 'project-1', direction: 'promote' },
+			},
+		});
+
+		await userEvent.click((await findAllByTestId('promotion-change-row'))[0]);
+		await userEvent.click(await findByTestId('promotion-submit'));
+
+		await waitFor(() =>
+			expect(showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					title: 'Changes promoted',
+					type: 'warning',
+					duration: 0,
+				}),
+			),
+		);
+		const message = showMessage.mock.calls[0]?.[0].message;
+		const toast = render(defineComponent({ render: () => message }));
+		expect(
+			toast.getByText('Pushed to n8n-promotion/2026-01-01T00-00-00-000Z.'),
+		).toBeInTheDocument();
+		expect(toast.getByText('No merge request was opened.')).toBeInTheDocument();
 	});
 
 	it('should show an error and keep the selection when promote fails', async () => {

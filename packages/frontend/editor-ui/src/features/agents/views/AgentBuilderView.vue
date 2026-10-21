@@ -33,7 +33,7 @@ import {
 	type PushPayload,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
 import { ResponseError } from '@n8n/rest-api-client';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -76,6 +76,7 @@ import type {
 	AgentSkill,
 } from '../types';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
+import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentConfig } from '../composables/useAgentConfig';
 import { useAgentConfigValidation } from '../composables/useAgentConfigValidation';
@@ -226,6 +227,7 @@ const rootStore = useRootStore();
 const pushConnectionStore = usePushConnectionStore();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
+const { trackClickedTraceDetailsFromTestPanel } = useAgentTelemetry();
 const instanceAiAvailable = useInstanceAiAvailable();
 const instanceAiReady = useInstanceAiReady();
 const sessionsStore = useAgentSessionsStore();
@@ -864,8 +866,15 @@ const setupChecklistContext = computed(() => {
 		},
 	};
 });
-const { tasks: setupTasks, isVisible: areSetupTasksVisible } =
+const { tasks: setupTasks, isVisible: isSetupChecklistVisible } =
 	useAgentSetupTasks(setupChecklistContext);
+const areSetupTasksVisible = computed(
+	() =>
+		isSetupChecklistVisible.value &&
+		!isUnsaved.value &&
+		!props.artifactEditingLocked &&
+		!embeddedAiBuilding.value,
+);
 const builderHeader = useTemplateRef<{ publishAgent: () => Promise<void> | undefined }>(
 	'builderHeader',
 );
@@ -1164,6 +1173,7 @@ function openArtifactPreview(preferredSessionId?: string) {
 
 function viewPreviewTrace() {
 	if (!currentSessionHasMessages.value || !effectiveSessionId.value) return;
+	trackClickedTraceDetailsFromTestPanel({ agentId: agentId.value });
 	void router.push({
 		name: AGENT_SESSION_DETAIL_VIEW,
 		params: {
@@ -1183,10 +1193,10 @@ async function onDeletePreviewSession(sessionId: string) {
 	await deleteSession(sessionId);
 }
 
-async function onOpenPreview(expectedTarget?: {
-	projectId: string;
-	agentId: string;
-}): Promise<boolean> {
+async function onOpenPreview(
+	source?: InferTelemetryProps<typeof TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_PREVIEW>['source'],
+	expectedTarget?: { projectId: string; agentId: string },
+): Promise<boolean> {
 	if (!isBuilt.value) return false;
 
 	try {
@@ -1202,13 +1212,16 @@ async function onOpenPreview(expectedTarget?: {
 	} else {
 		await openPreview();
 	}
-	telemetry.track(TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_PREVIEW, { agent_id: agentId.value });
+	telemetry.track(TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_PREVIEW, {
+		agent_id: agentId.value,
+		...(source ? { source } : {}),
+	});
 	return true;
 }
 
 async function onPreviewTask(instructions: string) {
 	const target = { projectId: projectId.value, agentId: agentId.value };
-	if (!(await onOpenPreview(target))) return;
+	if (!(await onOpenPreview(undefined, target))) return;
 
 	// Reset first so the same objective can be previewed more than once.
 	taskPreviewPrompt.value = undefined;
