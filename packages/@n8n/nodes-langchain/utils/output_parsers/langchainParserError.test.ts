@@ -148,6 +148,20 @@ describe('wrapLangChainParserError', () => {
 			);
 		});
 
+		it('shows the error code when the root cause has no message', () => {
+			// Node 20+ reports a failed connection attempt as an AggregateError without a message
+			const socketError = Object.assign(new AggregateError([], ''), { code: 'ECONNREFUSED' });
+			const original = new Error('Connection error.', { cause: socketError });
+
+			const wrapped = wrapLangChainParserError(original, node, undefined, {
+				enrichNonParserErrors: true,
+			});
+
+			expect((wrapped as NodeOperationError).description).toBe(
+				'Original error: Error. Cause: ECONNREFUSED',
+			);
+		});
+
 		it('removes URL query strings from the root cause', () => {
 			const socketError = new Error('request to https://api.example.com/v1?key=secret123 failed');
 			const original = new Error('Connection error.', { cause: socketError });

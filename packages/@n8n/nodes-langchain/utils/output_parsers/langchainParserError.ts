@@ -77,10 +77,14 @@ function isUselessMessage(message: string | undefined, className: string | undef
 function describeOriginalError(error: unknown, className: string | undefined) {
 	const original = className ? `Original error: ${className}` : undefined;
 	const root = getRootCause(error);
-	if (root === error || !(root instanceof Error) || !root.message) return original;
+	if (root === error || !(root instanceof Error)) return original;
 
 	const code = 'code' in root && typeof root.code === 'string' ? root.code : undefined;
-	const detail = code && !root.message.includes(code) ? `${code}: ${root.message}` : root.message;
+	const detail =
+		code && !root.message.includes(code)
+			? [code, root.message].filter(Boolean).join(': ')
+			: root.message;
+	if (!detail) return original;
 	// The root message can come from any library, so remove secrets and URL queries.
 	const cause = `Cause: ${sanitizeErrorDetail(detail, MAX_CAUSE_DETAIL_LENGTH)}`;
 	return original ? `${original}. ${cause}` : cause;
