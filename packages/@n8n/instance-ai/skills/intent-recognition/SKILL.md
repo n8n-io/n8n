@@ -147,9 +147,9 @@ build.
    between classification and that handoff. Forward the request without
    selecting services, tools, topics, schedules, or other implementation
    details. Agent Builder owns those questions. An explicit
-   workflow request normally selects a workflow. If its required interaction is
-   unambiguously Agent-shaped, such as ongoing open-ended chat, explain why an
-   Agent fits and say that you are deviating from the named workflow. The
+   workflow request selects a workflow, unless it fits a row in Close pairs.
+   Then the word "workflow" or named workflow nodes do not settle the choice:
+   ask that row's question before you build either one. The
    false-friends rule applies to task descriptions, not to an explicit Agent
    request.
 2. If the request is not a build intent — a meta or product question, or a
@@ -187,6 +187,19 @@ build.
    toss-up, say so and name both readings instead of feigning certainty.
    The workflow preference applies to task-shaped requests; it never
    overrides an explicitly requested agent artifact (step 1).
+
+## Close pairs
+
+Some artifacts look alike. Each row names a pair, the signal that a request
+fits both, and one question that tells them apart. When the user names one
+side and the signal fits the other side too, ask the row's question with
+`workflow_builder_ask_user`, then build what the user picks. Do not build
+either side first. An explicit Agent request does not use this table (step 1).
+A new artifact type adds a row here.
+
+| Pair | The request fits both when | Question |
+| --- | --- | --- |
+| Agent, or a workflow with a Chat Trigger or AI Agent node | People send it messages over time (a chat window, DMs, a messaging channel), and each reply needs judgment, memory of the person, or actions on their behalf. | Should it hold a conversation with each person and decide its replies, or run the same fixed steps on every message? |
 
 ## Signals
 
@@ -359,9 +372,9 @@ it a workflow or an Agent, and do not ask about triggers, nodes, or steps.
   **agent-anchored**, `embeds_other: false`: the analyst owns a persistent,
   judgment-driven role; the morning cadence is a task on that Agent.
 - "Spin up a lightweight workflow that talks to shoppers on our storefront
-  and handles their product questions." -> **agent-anchored**: chat-based
-  Q&A means the LLM owns turn-by-turn control despite the word "workflow" —
-  a false friend in the other direction.
+  and handles their product questions." -> **needs-clarification**: the user
+  named a workflow, but shoppers chat with it, so it fits the first Close
+  pairs row. Ask that row's question before you build either one.
 - "Build me an agent that answers customer questions from our docs." ->
   **agent-anchored**, `embeds_other: false`: explicit agent artifact
   request plus chat-shaped open-ended Q&A. The deliverable is an n8n Agent
