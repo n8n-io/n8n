@@ -602,3 +602,106 @@ describe('buildEmptyOutputNote', () => {
 		).toBeUndefined();
 	});
 });
+
+describe('analyzeVerificationResult — redacted runs', () => {
+	const analyze = (runResult: Record<string, unknown>) =>
+		analyzeVerificationResult({
+			result: {
+				executionId: 'exec-1',
+				redaction: { reason: 'workflow_redaction_policy', canReveal: false },
+				...runResult,
+			} as unknown as ExecutionRunResult,
+			buildOutcome: makeBuildOutcome(),
+			simulatedNodes: [],
+			stateBefore: undefined,
+			runId: 'run-1',
+		});
+
+	it('blocks a code repair for a failure whose details n8n hides', () => {
+		const analysis = analyze({
+			status: 'error',
+			error: 'NodeOperationError error (details hidden by n8n)',
+			nodeErrors: [
+				{ nodeName: 'Format', message: 'NodeOperationError error (details hidden by n8n)' },
+			],
+		});
+
+		expect(analysis.success).toBe(false);
+		expect(analysis.remediation).toMatchObject({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'execution_redacted',
+		});
+		expect(analysis.remediation?.guidance).toContain('Format failed');
+		expect(analysis.redactionNote).toBeUndefined();
+	});
+
+	it.each([
+		{
+			redaction: { reason: 'workflow_redaction_policy', canReveal: true },
+			howToSee: 'They can reveal the details in the execution in the editor.',
+		},
+		{
+			redaction: { reason: 'workflow_redaction_policy', canReveal: false },
+			howToSee: 'They cannot reveal them from their account.',
+		},
+		{
+			redaction: { reason: 'credential_inaccessible', canReveal: false },
+			howToSee: 'Only someone who can use that credential, such as its owner, can see them.',
+		},
+		{
+			redaction: { reason: 'dynamic_credentials', canReveal: false },
+			howToSee: 'They cannot reveal them from their account.',
+		},
+	])('tells the user how to see hidden details for $redaction', ({ redaction, howToSee }) => {
+		const analysis = analyze({
+			redaction,
+			status: 'error',
+			error: 'NodeOperationError error (details hidden by n8n)',
+			nodeErrors: [
+				{ nodeName: 'Format', message: 'NodeOperationError error (details hidden by n8n)' },
+			],
+		});
+
+		expect(analysis.remediation?.guidance).toContain(howToSee);
+	});
+
+	it('keeps the routing that the error type and status code still carry', () => {
+		const analysis = analyze({
+			status: 'error',
+			error: 'NodeApiError error (401) (details hidden by n8n)',
+			nodeErrors: [
+				{ nodeName: 'HTTP Request', message: 'NodeApiError error (401) (details hidden by n8n)' },
+			],
+		});
+
+		expect(analysis.remediation).toMatchObject({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason: 'credential_or_setup_failure',
+		});
+	});
+
+	it('notes that the output of a passing run was not inspected', () => {
+		const analysis = analyze({
+			status: 'success',
+			executedNodeNames: ['Trigger', 'Format'],
+		});
+
+		expect(analysis.success).toBe(true);
+		expect(analysis.remediation).toBeUndefined();
+		expect(analysis.redactionNote).toContain('output was not inspected');
+	});
+
+	it('adds nothing for a run that n8n did not redact', () => {
+		const analysis = analyze({
+			redaction: undefined,
+			status: 'error',
+			error: 'Cannot read properties of undefined',
+			nodeErrors: [{ nodeName: 'Format', message: 'Cannot read properties of undefined' }],
+		});
+
+		expect(analysis.remediation).toMatchObject({ reason: 'runtime_failure', shouldEdit: true });
+		expect(analysis.redactionNote).toBeUndefined();
+	});
+});
