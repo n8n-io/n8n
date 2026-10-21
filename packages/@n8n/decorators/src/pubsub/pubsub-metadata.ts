@@ -55,7 +55,9 @@ export type PubSubEventName =
 	| 'cancel-agent-background-job'
 	| 'wake-agent-background-job'
 	| 'agent-tasks-changed'
-	| 'redaction-floor-changed';
+	| 'redaction-floor-changed'
+	| 'reload-type-availability-policies'
+	| 'pubsub-reconnected';
 
 export type PubSubEventFilter =
 	| {

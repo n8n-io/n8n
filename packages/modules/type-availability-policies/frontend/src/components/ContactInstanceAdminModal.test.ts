@@ -17,6 +17,10 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 			props: ['open', 'header', 'description'],
 			template: '<div v-if="open"><h2>{{ header }}</h2><p>{{ description }}</p><slot /></div>',
 		},
+		N8nDialogDescription: {
+			name: 'N8nDialogDescription',
+			template: '<p data-slot="dialog-description"><slot /></p>',
+		},
 	};
 });
 

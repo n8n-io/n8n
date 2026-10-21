@@ -1,5 +1,7 @@
 import {
 	createWriteTodosTool,
+	raceWithAbort,
+	throwIfAborted,
 	CORE_WORKSPACE_TOOL_NAMES,
 	type Agent as RuntimeAgent,
 	type CreateDelegateSubAgentToolOptions,
@@ -38,7 +40,6 @@ import { nanoid } from 'nanoid';
 import { ActiveExecutions } from '@/active-executions';
 import { N8N_VERSION } from '@/constants';
 import { CredentialsFinderService } from '@n8n/backend-services';
-import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { AgentRunTelemetryType } from '@/interfaces';
@@ -153,6 +154,7 @@ export interface ReconstructAgentRuntimeParams extends AgentRuntimeAssets {
 	attributionUserId?: string;
 	/** Runtime seams inherited from the delegating parent run (see {@link AgentRuntimeInstrumentation}). */
 	instrumentation?: AgentRuntimeInstrumentation;
+	abortSignal?: AbortSignal;
 	sandboxPrincipalHash?: AgentSandboxPrincipalHash;
 	/**
 	 * Parent run's live workspace sandbox handle for delegated sub-agent runs.
@@ -309,6 +311,7 @@ export class AgentRuntimeReconstructionService {
 			allowBackgroundTasks = true,
 			allowPlanTools = true,
 			attributionUserId,
+			abortSignal,
 		}: {
 			/** Pass false when the caller cannot resume a suspended run (workflow executions). */
 			supportsHitl?: boolean;
@@ -318,6 +321,7 @@ export class AgentRuntimeReconstructionService {
 			allowBackgroundTasks?: boolean;
 			allowPlanTools?: boolean;
 			attributionUserId?: string;
+			abortSignal?: AbortSignal;
 		} = {},
 	): Promise<ReconstructedAgentRuntime & { userToolAccessSnapshot?: UserToolAccessSnapshot }> {
 		if (!agentEntity.schema) {
@@ -333,16 +337,20 @@ export class AgentRuntimeReconstructionService {
 		let userToolAccessSnapshot: UserToolAccessSnapshot | undefined;
 		let unavailableTools: UnavailableTool[] = [];
 		if (user && config.tools?.length) {
-			const filtered = await this.filterToolsForUser(config.tools, agentEntity.projectId, user);
+			const tools = config.tools;
+			const filtered = await raceWithAbort(
+				async () => await this.filterToolsForUser(tools, agentEntity.projectId, user),
+				abortSignal,
+			);
 			config = { ...config, tools: filtered.tools };
 			userToolAccessSnapshot = filtered.snapshot;
 			unavailableTools = filtered.unavailable;
 		}
 
 		const { toolDescriptors, toolCodeByName } = getAgentRuntimeAssets(agentEntity, skills);
-		const subAgentDelegation = await this.createSubAgentDelegationConfig(
-			config,
-			agentEntity.projectId,
+		const subAgentDelegation = await raceWithAbort(
+			async () => await this.createSubAgentDelegationConfig(config, agentEntity.projectId),
+			abortSignal,
 		);
 
 		const runtime = await this.reconstructRuntime({
@@ -364,6 +372,7 @@ export class AgentRuntimeReconstructionService {
 			user,
 			attributionUserId,
 			instrumentation,
+			abortSignal,
 			sandboxPrincipalHash,
 			unavailableTools,
 			allowBackgroundTasks,
@@ -397,7 +406,7 @@ export class AgentRuntimeReconstructionService {
 	}> {
 		const canExecute = await userHasScopes(user, ['workflow:execute'], false, { projectId });
 		// Load once per pass, and only when a node tool uses credentials.
-		let usableIdsLoad: Promise<Set<string> | undefined> | undefined;
+		let usableIdsLoad: Promise<Set<string>> | undefined;
 		const loadUsableIds = async () =>
 			await (usableIdsLoad ??= this.loadAgentUsableCredentialIds(projectId, user));
 		const filtered: AgentJsonToolConfig[] = [];
@@ -438,13 +447,8 @@ export class AgentRuntimeReconstructionService {
 		};
 	}
 
-	/** Returns the credential IDs agents can use, or `undefined` when no restriction applies. */
-	private async loadAgentUsableCredentialIds(
-		projectId: string,
-		user: User,
-	): Promise<Set<string> | undefined> {
-		if (!isCredSharingEnabled()) return undefined;
-
+	/** Returns the credential IDs agents can use. */
+	private async loadAgentUsableCredentialIds(projectId: string, user: User): Promise<Set<string>> {
 		const usable = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
 			projectId,
 			excludePersonalRoute: true,
@@ -457,7 +461,7 @@ export class AgentRuntimeReconstructionService {
 		projectId: string,
 		user: User,
 		canExecute: boolean,
-		loadUsableIds: () => Promise<Set<string> | undefined>,
+		loadUsableIds: () => Promise<Set<string>>,
 	): Promise<UserToolAccessSnapshot | UnavailableTool | undefined> {
 		const denied = (message: string): UnavailableTool => ({
 			toolName: toolRefName(ref),
@@ -525,7 +529,7 @@ export class AgentRuntimeReconstructionService {
 		if (credentials.some((credential) => credential === null)) return false;
 		if (snapshot.credentialIds.length > 0) {
 			const usableIds = await this.loadAgentUsableCredentialIds(projectId, user);
-			if (usableIds && !snapshot.credentialIds.every((id) => usableIds.has(id))) return false;
+			if (!snapshot.credentialIds.every((id) => usableIds.has(id))) return false;
 		}
 
 		const workflows = await Promise.all(
@@ -556,12 +560,20 @@ export class AgentRuntimeReconstructionService {
 		if (params.user && config.tools?.length) {
 			// Sub-agent runtimes are built per delegation and never cached, so the
 			// grant snapshot is not needed here.
-			const filtered = await this.filterToolsForUser(config.tools, params.projectId, params.user);
+			const user = params.user;
+			const tools = config.tools;
+			const filtered = await raceWithAbort(
+				async () => await this.filterToolsForUser(tools, params.projectId, user),
+				params.abortSignal,
+			);
 			config = { ...config, tools: filtered.tools };
 			unavailableTools = filtered.unavailable;
 		}
 
-		const subAgentDelegation = await this.createSubAgentDelegationConfig(config, params.projectId);
+		const subAgentDelegation = await raceWithAbort(
+			async () => await this.createSubAgentDelegationConfig(config, params.projectId),
+			params.abortSignal,
+		);
 
 		return await this.reconstructRuntime({
 			...params,
@@ -580,7 +592,11 @@ export class AgentRuntimeReconstructionService {
 			options.runtimeProfile === 'top-level' &&
 			(options.allowBackgroundTasks ?? true) &&
 			Container.get(AgentsConfig).backgroundTasksEnabled;
-		const runtime = await this.buildConfiguredRuntime(options, backgroundTasksEnabled, unavailable);
+		const runtime = await this.buildCancellableRuntime(
+			options,
+			backgroundTasksEnabled,
+			unavailable,
+		);
 		if (unavailable.length > 0) {
 			this.logger.warn('Agent runtime built with unavailable tools', {
 				agentId: options.memoryOwnerAgentId,
@@ -588,14 +604,25 @@ export class AgentRuntimeReconstructionService {
 				tools: unavailable,
 			});
 		}
-		await this.injectRuntimeDependencies({
-			...options,
-			agent: runtime.agent,
-			agentId: options.memoryOwnerAgentId,
-			workflowToolExecutionMode: options.workflowToolExecutionMode ?? 'manual',
-			parentAgentIdForDelegation: options.parentAgentIdForDelegation ?? options.memoryOwnerAgentId,
-			backgroundTasksEnabled,
-		});
+		try {
+			await raceWithAbort(
+				async () =>
+					await this.injectRuntimeDependencies({
+						...options,
+						agent: runtime.agent,
+						agentId: options.memoryOwnerAgentId,
+						workflowToolExecutionMode: options.workflowToolExecutionMode ?? 'manual',
+						parentAgentIdForDelegation:
+							options.parentAgentIdForDelegation ?? options.memoryOwnerAgentId,
+						backgroundTasksEnabled,
+					}),
+				options.abortSignal,
+			);
+			throwIfAborted(options.abortSignal);
+		} catch (error) {
+			if (options.abortSignal?.aborted) void this.closeCancelledRuntime(runtime.agent);
+			throw error;
+		}
 		return {
 			agent: runtime.agent,
 			toolRegistry: buildToolRegistry(runtime.resolvedTools),
@@ -604,6 +631,33 @@ export class AgentRuntimeReconstructionService {
 				? { budget: options.config.config.guardrails.budget }
 				: {}),
 		};
+	}
+
+	private async buildCancellableRuntime(
+		options: RuntimeReconstructionOptions,
+		backgroundTasksEnabled: boolean,
+		unavailable: UnavailableTool[],
+	) {
+		return await raceWithAbort(async () => {
+			const runtime = await this.buildConfiguredRuntime(
+				options,
+				backgroundTasksEnabled,
+				unavailable,
+			);
+			if (options.abortSignal?.aborted) await this.closeCancelledRuntime(runtime.agent);
+			throwIfAborted(options.abortSignal);
+			return runtime;
+		}, options.abortSignal);
+	}
+
+	private async closeCancelledRuntime(agent: RuntimeAgent) {
+		try {
+			await agent.close();
+		} catch (error) {
+			this.logger.warn('Failed to close cancelled Agent runtime', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
 	}
 
 	private async buildConfiguredRuntime(
@@ -904,16 +958,20 @@ export class AgentRuntimeReconstructionService {
 	}
 
 	private async injectRuntimeDependencies(params: RuntimeDependencies): Promise<void> {
-		const { agent, agentId, projectId, runtimeProfile, config } = params;
+		const { agent, agentId, projectId, runtimeProfile, config, abortSignal } = params;
+		throwIfAborted(abortSignal);
 		agent.nativeToolDeferral({
 			eagerToolNames: [...CORE_WORKSPACE_TOOL_NAMES, 'load_skill', 'mark_session_failed'],
 		});
 		agent.tool(createGetEnvironmentTool());
 		const parentWorkspaceHandle = await this.attachWorkspaceAndKnowledge(params);
+		throwIfAborted(abortSignal);
 		if (runtimeProfile === 'top-level') {
 			await this.attachIntegrationTools(params);
+			throwIfAborted(abortSignal);
 			await this.attachTopLevelTools(params, parentWorkspaceHandle);
 		}
+		throwIfAborted(abortSignal);
 		// Inline agents have no entity for checkpoint or attachment rows.
 		if (runtimeProfile === 'inline') return;
 		if (!agent.hasCheckpointStorage()) {
@@ -931,11 +989,15 @@ export class AgentRuntimeReconstructionService {
 		if (params.runtimeProfile === 'inline' || !this.agentSandboxRuntimeService.isEnabled())
 			return undefined;
 		const parentWorkspaceHandle = await this.attachWorkspace(params);
+		throwIfAborted(params.abortSignal);
 		const { agent, agentId, projectId } = params;
-		if (await this.agentFileRepository.hasFilesForAgent(agentId)) {
+		const hasFiles = await this.agentFileRepository.hasFilesForAgent(agentId);
+		throwIfAborted(params.abortSignal);
+		if (hasFiles) {
 			const { createKnowledgeRetrievalTools } = await import(
 				'./tools/knowledge/search-knowledge.tool.js'
 			);
+			throwIfAborted(params.abortSignal);
 			agent.tool(
 				createKnowledgeRetrievalTools({
 					projectId,
@@ -975,9 +1037,11 @@ export class AgentRuntimeReconstructionService {
 				agentId,
 				sandboxPrincipalHash,
 			);
+			throwIfAborted(params.abortSignal);
 			agent.workspace(workspace);
 			return handle;
 		} catch (error) {
+			throwIfAborted(params.abortSignal);
 			this.logger.warn('Failed to attach agent workspace', {
 				projectId,
 				agentId,
@@ -1084,6 +1148,7 @@ export class AgentRuntimeReconstructionService {
 			delegation: subAgentDelegation,
 			user,
 			instrumentation,
+			abortSignal: params.abortSignal,
 		};
 		let runBackgroundSubAgent: CreateDelegateSubAgentToolOptions['runBackgroundSubAgent'];
 		if (backgroundTasksEnabled) {
@@ -1097,6 +1162,7 @@ export class AgentRuntimeReconstructionService {
 				...(rootSessionCapUsd !== undefined ? { rootSessionCapUsd } : {}),
 			});
 		}
+		throwIfAborted(params.abortSignal);
 		await this.attachSubAgentDelegationTool({
 			...delegationParams,
 			config,
@@ -1106,9 +1172,11 @@ export class AgentRuntimeReconstructionService {
 			budgetForwarded: params.budgetForwarded,
 			runBackgroundSubAgent,
 		});
+		throwIfAborted(params.abortSignal);
 		if (params.allowPlanTools !== false && Container.get(AgentsConfig).planToolsEnabled) {
 			const { AgentPlanService } = await import('./agent-plan.service.js');
 			const { createAgentPlanTools } = await import('./plans/agent-plan-tools.js');
+			throwIfAborted(params.abortSignal);
 			agent.tool(createAgentPlanTools(Container.get(AgentPlanService)));
 		} else {
 			this.attachWriteTodosTool(agent, agentId);
@@ -1141,6 +1209,7 @@ export class AgentRuntimeReconstructionService {
 		rootSessionCapUsd?: number;
 		budgetForwarded?: boolean;
 		runBackgroundSubAgent?: CreateDelegateSubAgentToolOptions['runBackgroundSubAgent'];
+		abortSignal?: AbortSignal;
 	}): Promise<void> {
 		const {
 			agent,
@@ -1158,11 +1227,14 @@ export class AgentRuntimeReconstructionService {
 			rootSessionCapUsd,
 			budgetForwarded,
 			runBackgroundSubAgent,
+			abortSignal,
 		} = params;
 		const inlineSubAgentModelsByDifficulty = await this.resolveInlineSubAgentModelsByDifficulty(
 			config,
 			credentialProvider,
+			abortSignal,
 		);
+		throwIfAborted(abortSignal);
 		agent.tool(
 			createN8nDelegateSubAgentTool({
 				runner: Container.get(SubAgentRunner),
@@ -1192,6 +1264,7 @@ export class AgentRuntimeReconstructionService {
 	private async resolveInlineSubAgentModelsByDifficulty(
 		config: AgentJsonConfig,
 		credentialProvider: CredentialProvider,
+		abortSignal?: AbortSignal,
 	): Promise<Partial<Record<SubAgentTaskDifficulty, ModelConfig>> | undefined> {
 		const mappings = config.subAgents?.modelsByDifficulty;
 		if (!mappings) return undefined;
@@ -1200,10 +1273,14 @@ export class AgentRuntimeReconstructionService {
 		for (const difficulty of SUB_AGENT_TASK_DIFFICULTIES) {
 			const mapping = mappings[difficulty];
 			if (!mapping) continue;
-			resolved[difficulty] = await resolveCredentialAwareModelConfig(
-				mapping.model,
-				mapping.credential,
-				credentialProvider,
+			resolved[difficulty] = await raceWithAbort(
+				async () =>
+					await resolveCredentialAwareModelConfig(
+						mapping.model,
+						mapping.credential,
+						credentialProvider,
+					),
+				abortSignal,
 			);
 		}
 
@@ -1227,8 +1304,9 @@ export class AgentRuntimeReconstructionService {
 		instrumentation?: AgentRuntimeInstrumentation;
 		parentWorkspaceHandle?: AgentSandboxRuntime;
 		rootSessionCapUsd?: number;
+		abortSignal?: AbortSignal;
 	}): Promise<NonNullable<CreateDelegateSubAgentToolOptions['runBackgroundSubAgent']>> {
-		const { agent, parentAgentId, projectId, delegation, ...runContext } = params;
+		const { agent, parentAgentId, projectId, delegation, abortSignal, ...runContext } = params;
 		const {
 			createBackgroundSubAgentHandler,
 			createCheckBackgroundJobsTool,
@@ -1241,6 +1319,7 @@ export class AgentRuntimeReconstructionService {
 		const { SubAgentBackgroundRunner } = await import(
 			'./background/sub-agent-background-runner.js'
 		);
+		throwIfAborted(abortSignal);
 		const jobService = Container.get(AgentBackgroundJobService);
 
 		agent.tool(createCheckBackgroundJobsTool(jobService));

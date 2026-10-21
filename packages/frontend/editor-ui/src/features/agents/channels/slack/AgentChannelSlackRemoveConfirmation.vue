@@ -3,6 +3,7 @@ import {
 	N8nButton,
 	N8nCheckbox,
 	N8nDialog,
+	N8nDialogBody,
 	N8nDialogFooter,
 	N8nDialogHeader,
 	N8nDialogTitle,
@@ -45,25 +46,27 @@ watch(
 				{{ i18n.baseText('agents.channels.slack.managed.remove.title') }}
 			</N8nDialogTitle>
 		</N8nDialogHeader>
-		<div :class="$style.content">
-			<N8nText size="medium">
-				{{ i18n.baseText('agents.channels.slack.managed.remove.description') }}
-			</N8nText>
-			<N8nCheckbox
-				v-model="deleteExternalResource"
-				:disabled="loading"
-				data-testid="slack-managed-remove-delete-app"
-			>
-				<template #label>
-					<N8nText size="medium">
-						{{ i18n.baseText('agents.channels.slack.managed.remove.deleteApp') }}
-						<N8nText size="medium" :bold="true">
-							{{ i18n.baseText('agents.channels.slack.managed.remove.messagesUnaffected') }}
+		<N8nDialogBody>
+			<div :class="$style.content">
+				<N8nText size="medium">
+					{{ i18n.baseText('agents.channels.slack.managed.remove.description') }}
+				</N8nText>
+				<N8nCheckbox
+					v-model="deleteExternalResource"
+					:disabled="loading"
+					data-testid="slack-managed-remove-delete-app"
+				>
+					<template #label>
+						<N8nText size="medium">
+							{{ i18n.baseText('agents.channels.slack.managed.remove.deleteApp') }}
+							<N8nText size="medium" :bold="true">
+								{{ i18n.baseText('agents.channels.slack.managed.remove.messagesUnaffected') }}
+							</N8nText>
 						</N8nText>
-					</N8nText>
-				</template>
-			</N8nCheckbox>
-		</div>
+					</template>
+				</N8nCheckbox>
+			</div>
+		</N8nDialogBody>
 		<N8nDialogFooter>
 			<div :class="$style.actions">
 				<N8nButton variant="outline" :disabled="loading" @click="emit('cancel')">
@@ -87,7 +90,6 @@ watch(
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
-	margin-top: var(--spacing--md);
 }
 
 .actions {

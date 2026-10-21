@@ -1,3 +1,4 @@
+import type { SerializedCredential } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import {
 	createTeamProject,
@@ -36,11 +37,11 @@ import {
 	credentialRequirementsFromWorkflows,
 	githubCredentialPayload,
 	serializedCredential,
+	serializedFolder,
 	serializedProject,
 	serializedWorkflowWithCredential,
 } from './fixtures/package-fixtures';
 import type { BlockingIssue, ImportPackageRequest } from '../n8n-packages.types';
-import type { SerializedCredential } from '../spec/serialized/credential.schema';
 
 const EXPRESSION = '={{ $vars.githubToken }}';
 const OTHER_EXPRESSION = '={{ $vars.otherToken }}';
@@ -127,12 +128,49 @@ beforeEach(async () => {
 		'SharedCredentials',
 		'User',
 	]);
+	licenseMocker.reset();
 	owner = await createOwner();
 	project = await createTeamProject('Target', owner);
 });
 
 afterAll(async () => {
 	await testDb.terminate();
+});
+
+describe('credential:create project scope', () => {
+	it('rejects create-stub before any write when the project role lacks credential:create', async () => {
+		const member = await createMember();
+		const role = await createCustomRoleWithScopeSlugs(
+			['workflow:import', 'folder:create', 'folder:update'],
+			{ roleType: 'project' },
+		);
+		await linkUserToProject(member, project, role.slug);
+		const workflow = serializedWorkflowWithCredential({
+			id: 'wf-source',
+			name: 'Uses missing credential',
+			credentialId: 'missing-cred',
+			credentialName: 'Missing GitHub',
+		});
+
+		await expect(
+			importPackage({
+				user: member,
+				projectId: project.id,
+				credentialMissingMode: 'create-stub',
+				packageBuffer: await buildEntityPackageBuffer({
+					workflows: [{ target: 'workflows/wf-source', workflow }],
+					// The import writes folders before credentials.
+					folders: [{ target: 'folders/F1', folder: serializedFolder({ id: 'F1' }) }],
+					manifestExtras: {
+						requirements: { credentials: credentialRequirementsFromWorkflows([workflow]) },
+					},
+				}),
+			}),
+		).rejects.toThrow("You don't have the permissions to save the credential in this project.");
+
+		expect(await Container.get(FolderRepository).count()).toBe(0);
+		expect(await Container.get(CredentialsRepository).count()).toBe(0);
+	});
 });
 
 describe('credentialConflictPolicy', () => {
