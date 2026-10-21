@@ -11,6 +11,7 @@ import {
 } from '../public-api-rate-limit-settings.service';
 
 const codeDefaults = { ...new PublicApiRateLimitConfig() };
+const { enabled: _enabled, ...limitDefaults } = codeDefaults;
 
 const stored = {
 	...codeDefaults,
@@ -49,7 +50,7 @@ describe('PublicApiRateLimitSettingsService', () => {
 		it('returns the config values and the code defaults when nothing is stored', async () => {
 			expect(await service.getSettings()).toEqual({
 				...codeDefaults,
-				defaults: codeDefaults,
+				defaults: limitDefaults,
 				envManagedFields: [],
 			});
 		});
@@ -88,7 +89,7 @@ describe('PublicApiRateLimitSettingsService', () => {
 			vi.stubEnv('N8N_PUBLIC_API_RATE_LIMIT_GLOBAL_READ_LIMIT', '7');
 			config.globalReadLimit = 7;
 
-			expect((await service.getSettings()).defaults).toEqual(codeDefaults);
+			expect((await service.getSettings()).defaults).toEqual(limitDefaults);
 		});
 
 		it.each([
