@@ -42,8 +42,10 @@ export const AGENT_BUILDER_TOOL_NAMES = {
 	VERIFY_MCP_SERVER: 'agent_builder_verify_mcp_server',
 	SEARCH_NODES: 'agent_builder_search_nodes',
 	GET_NODE_TYPES: 'agent_builder_get_node_types',
+	/** No longer registered. Builders list credentials with `workflow_builder_credentials`. */
 	LIST_CREDENTIALS: 'agent_builder_list_credentials',
 	ASK_CREDENTIAL: 'agent_builder_ask_credential',
+	/** No longer registered. `agent_builder_ask_credential` handles it with `forEpisodicMemory`. */
 	ASK_EMBEDDING_CREDENTIAL: 'agent_builder_ask_embedding_credential',
 	ASK_QUESTIONS: 'agent_builder_ask_questions',
 	CONFIGURE_CHANNEL: 'agent_builder_configure_channel',
@@ -115,7 +117,8 @@ export const LEGACY_BUILDER_TOOL_NAMES: Readonly<Record<string, string>> = {
 	agent_builder_get_node_types: SHARED_BUILDER_TOOL_NAMES.GET_NODE_TYPES,
 	list_credentials: AGENT_BUILDER_TOOL_NAMES.LIST_CREDENTIALS,
 	ask_credential: AGENT_BUILDER_TOOL_NAMES.ASK_CREDENTIAL,
-	ask_embedding_credential: AGENT_BUILDER_TOOL_NAMES.ASK_EMBEDDING_CREDENTIAL,
+	ask_embedding_credential: AGENT_BUILDER_TOOL_NAMES.ASK_CREDENTIAL,
+	agent_builder_ask_embedding_credential: AGENT_BUILDER_TOOL_NAMES.ASK_CREDENTIAL,
 	ask_questions: AGENT_BUILDER_TOOL_NAMES.ASK_QUESTIONS,
 	configure_channel: AGENT_BUILDER_TOOL_NAMES.CONFIGURE_CHANNEL,
 };

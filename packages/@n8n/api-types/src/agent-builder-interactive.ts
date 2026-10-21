@@ -35,12 +35,19 @@ export const askCredentialInputSchema = z.object({
 		.string()
 		.optional()
 		.describe('Credential key on node.credentials, e.g. "slackApi"'),
+	forEpisodicMemory: z
+		.boolean()
+		.optional()
+		.describe(
+			'Set true only for the OpenAI embedding credential of Episodic Memory. ' +
+				'Returns the n8n managed credential when it is available.',
+		),
 });
 
 export type AskCredentialInput = z.infer<typeof askCredentialInputSchema>;
 
 /**
- * Suspend/resume for `agent_builder_ask_credential` and `agent_builder_ask_embedding_credential` now use
+ * Suspend/resume for `agent_builder_ask_credential` now uses
  * the shared instance-AI-compatible contract (`agents/agent-interaction.schema.ts`)
  * instead of a builder-only shape — see that module for the full suspend
  * payload (`credentialSuspendPayloadSchema`).

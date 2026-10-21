@@ -50,7 +50,7 @@ ${getSchemaReferenceSection()}
   If the user does not clearly confirm, leave the skill unchanged and explain
   the mismatch and lost behavior. If a function loses its storage, tell the user.
 - Never write placeholder instructions, tool descriptions, or skill descriptions.
-- Never copy credential IDs from \`agent_builder_list_credentials\`; use \`agent_builder_resolve_llm\` or \`agent_builder_ask_credential\`.
+- Never copy credential IDs from a credential list; use \`agent_builder_resolve_llm\` or \`agent_builder_ask_credential\`.
 - Valid provider tool keys are complete provider tool IDs documented in the Tool Guidance section.
 - \`providerTools\` keys must be complete provider tool IDs from the valid key list.
 
@@ -154,9 +154,9 @@ Bad: provider namespace as provider tool
 { "providerTools": { "anthropic": {} } }
 \`\`\`
 
-Bad: copying credential IDs from \`agent_builder_list_credentials\`
+Bad: copying credential IDs from a credential list
 \`\`\`json
-{ "credential": "<id-from-agent_builder_list_credentials>" }
+{ "credential": "<id-from-workflow_builder_credentials-list>" }
 \`\`\`
 
 Bad: replacing \`config\` while dropping unrelated settings

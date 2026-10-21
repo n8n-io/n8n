@@ -2,7 +2,6 @@ import type { BuiltTool, CredentialListItem, InterruptibleToolContext } from '@n
 import { Tool } from '@n8n/agents/tool';
 import {
 	ASK_CREDENTIAL_TOOL_NAME,
-	ASK_EMBEDDING_CREDENTIAL_TOOL_NAME,
 	MANAGED_CREDENTIAL_TOKEN,
 	askCredentialInputSchema,
 	credentialResumeSchema,
@@ -19,7 +18,7 @@ import type { BuilderCredentialService } from '../builder-session';
 import type { BuilderTrackFn } from '../builder-config-telemetry';
 import type { CredentialSetupDeps } from './setup-tool.types';
 
-export interface AskEmbeddingCredentialToolDeps extends CredentialSetupDeps {
+export interface AskCredentialToolDeps extends CredentialSetupDeps {
 	isAssistantProxyEnabled: () => boolean;
 }
 
@@ -160,7 +159,7 @@ async function resolveCredentialSelection(
 	});
 }
 
-export function buildAskCredentialTool(deps: CredentialSetupDeps): BuiltTool {
+export function buildAskCredentialTool(deps: AskCredentialToolDeps): BuiltTool {
 	return new Tool(ASK_CREDENTIAL_TOOL_NAME)
 		.legacyNames(...getLegacyBuilderToolNames(ASK_CREDENTIAL_TOOL_NAME))
 		.description(
@@ -175,30 +174,9 @@ export function buildAskCredentialTool(deps: CredentialSetupDeps): BuiltTool {
 				'rendering a card when the agent has a chat channel configured whose credential matches the ' +
 				'requested type (the channel credential is reused so tools act through the same connection), ' +
 				'or when the user has exactly one credential of the requested type — except for generic ' +
-				'auth types (bearer, header, query, basic, digest, custom, OAuth), which always render the card.',
-		)
-		.input(askCredentialInputSchema)
-		.suspend(credentialSuspendPayloadSchema)
-		.resume(credentialResumeSchema)
-		.handler(
-			async (
-				input: AskCredentialInput,
-				ctx: InterruptibleToolContext<CredentialSuspendPayload, CredentialResumeData>,
-			) => {
-				return await resolveCredentialSelection(input, ctx, deps);
-			},
-		)
-		.build();
-}
-
-export function buildAskEmbeddingCredentialTool(deps: AskEmbeddingCredentialToolDeps): BuiltTool {
-	return new Tool(ASK_EMBEDDING_CREDENTIAL_TOOL_NAME)
-		.legacyNames(...getLegacyBuilderToolNames(ASK_EMBEDDING_CREDENTIAL_TOOL_NAME))
-		.description(
-			'Resolve the OpenAI embedding credential for Episodic Memory. Tries to resolve n8n managed credential. Otherwise behaves ' +
-				'like agent_builder_ask_credential: show a credential picker card in the chat UI and suspend until ' +
-				'the user selects a credential. Returns { credentialId, credentialName, credentials } ' +
-				'on success or { skipped: true } if the user skips credential setup.',
+				'auth types (bearer, header, query, basic, digest, custom, OAuth), which always render the card. ' +
+				'For the Episodic Memory embedding credential, pass forEpisodicMemory: true; it returns the ' +
+				'n8n managed credential when available.',
 		)
 		.input(askCredentialInputSchema)
 		.suspend(credentialSuspendPayloadSchema)
@@ -208,7 +186,7 @@ export function buildAskEmbeddingCredentialTool(deps: AskEmbeddingCredentialTool
 				input: AskCredentialInput,
 				ctx: InterruptibleToolContext<CredentialSuspendPayload, CredentialResumeData>,
 			): Promise<AskCredentialToolResult> => {
-				if (deps.isAssistantProxyEnabled()) {
+				if (input.forEpisodicMemory && deps.isAssistantProxyEnabled()) {
 					return withNodeCredentialMap(input, MANAGED_CREDENTIAL_TOKEN, 'Managed by n8n');
 				}
 				return await resolveCredentialSelection(input, ctx, deps);

@@ -1329,7 +1329,7 @@ Delegates agent building to the agents-module builder chat
 turn per call. Registered in `createOrchestrationTools` only when the host
 provides `builderDelegate` (agents module active). The builder's own prompt
 and tools drive the build, including its interactive tools (`ask_questions`,
-`ask_credential`, `ask_embedding_credential`, `configure_channel`, and
+`ask_credential`, `configure_channel`, and
 `call_agent` target-tool approvals) and
 lifecycle tools (`publish_agent`, `unpublish_agent`) on the bound target agent —
 the sub-agent session no longer excludes them. Forward publish/unpublish/

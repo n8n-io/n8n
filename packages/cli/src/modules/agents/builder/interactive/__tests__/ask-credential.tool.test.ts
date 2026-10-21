@@ -4,12 +4,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import {
-	buildAskCredentialTool,
-	buildAskEmbeddingCredentialTool,
-	type AskEmbeddingCredentialToolDeps,
-} from '../ask-credential.tool';
-import type { CredentialSetupDeps } from '../setup-tool.types';
+import { buildAskCredentialTool, type AskCredentialToolDeps } from '../ask-credential.tool';
 
 interface TestCtx {
 	resumeData?: unknown;
@@ -37,16 +32,17 @@ function expectListed(credentialService: BuilderCredentialService, credentialTyp
 
 let track: Mock;
 
-function askCredentialTool(deps: Omit<CredentialSetupDeps, 'track' | 'projectId'>) {
-	const merged: CredentialSetupDeps = { projectId: 'project-1', ...deps, track };
-	return buildAskCredentialTool(merged);
-}
-
-function askEmbeddingCredentialTool(
-	deps: Omit<AskEmbeddingCredentialToolDeps, 'track' | 'projectId'>,
+function askCredentialTool(
+	deps: Omit<AskCredentialToolDeps, 'track' | 'projectId' | 'isAssistantProxyEnabled'> &
+		Partial<Pick<AskCredentialToolDeps, 'isAssistantProxyEnabled'>>,
 ) {
-	const merged: AskEmbeddingCredentialToolDeps = { projectId: 'project-1', ...deps, track };
-	return buildAskEmbeddingCredentialTool(merged);
+	const merged: AskCredentialToolDeps = {
+		projectId: 'project-1',
+		isAssistantProxyEnabled: () => false,
+		...deps,
+		track,
+	};
+	return buildAskCredentialTool(merged);
 }
 
 beforeEach(() => {
@@ -365,17 +361,21 @@ describe('agent_builder_ask_credential tool', () => {
 	});
 });
 
-describe('agent_builder_ask_embedding_credential tool', () => {
+describe('agent_builder_ask_credential tool with forEpisodicMemory', () => {
 	it('returns managed credential when assistant proxy is enabled', async () => {
 		const credentialService = makeCredentialService([]);
-		const tool = askEmbeddingCredentialTool({
+		const tool = askCredentialTool({
 			credentialService,
 			isAssistantProxyEnabled: () => true,
 		});
 		const ctx = makeCtx();
 
 		const result = await tool.handler!(
-			{ purpose: 'Episodic Memory embeddings', credentialType: 'openAiApi' },
+			{
+				purpose: 'Episodic Memory embeddings',
+				credentialType: 'openAiApi',
+				forEpisodicMemory: true,
+			},
 			ctx as never,
 		);
 
@@ -395,14 +395,18 @@ describe('agent_builder_ask_embedding_credential tool', () => {
 			{ id: 'c1', name: 'Personal OpenAI', type: 'openAiApi' },
 			{ id: 'c2', name: 'Team OpenAI', type: 'openAiApi' },
 		]);
-		const tool = askEmbeddingCredentialTool({
+		const tool = askCredentialTool({
 			credentialService,
 			isAssistantProxyEnabled: () => false,
 		});
 		const ctx = makeCtx();
 
 		await tool.handler!(
-			{ purpose: 'Episodic Memory embeddings', credentialType: 'openAiApi' },
+			{
+				purpose: 'Episodic Memory embeddings',
+				credentialType: 'openAiApi',
+				forEpisodicMemory: true,
+			},
 			ctx as never,
 		);
 
@@ -419,14 +423,18 @@ describe('agent_builder_ask_embedding_credential tool', () => {
 		const credentialService = makeCredentialService([
 			{ id: 'c9', name: 'Picked OpenAI', type: 'openAiApi' },
 		]);
-		const tool = askEmbeddingCredentialTool({
+		const tool = askCredentialTool({
 			credentialService,
 			isAssistantProxyEnabled: () => false,
 		});
 		const ctx = makeCtx({ resumeData: { credentials: { openAiApi: 'c9' } } });
 
 		const result = await tool.handler!(
-			{ purpose: 'Episodic Memory embeddings', credentialType: 'openAiApi' },
+			{
+				purpose: 'Episodic Memory embeddings',
+				credentialType: 'openAiApi',
+				forEpisodicMemory: true,
+			},
 			ctx as never,
 		);
 
@@ -439,5 +447,33 @@ describe('agent_builder_ask_embedding_credential tool', () => {
 				openAiApi: { id: 'c9', name: 'Picked OpenAI' },
 			},
 		});
+	});
+
+	it('ignores the managed credential when forEpisodicMemory is not set', async () => {
+		const credentialService = makeCredentialService([
+			{ id: 'c1', name: 'Personal OpenAI', type: 'openAiApi' },
+			{ id: 'c2', name: 'Team OpenAI', type: 'openAiApi' },
+		]);
+		const tool = askCredentialTool({
+			credentialService,
+			isAssistantProxyEnabled: () => true,
+		});
+		const ctx = makeCtx();
+
+		await tool.handler!({ purpose: 'OpenAI node', credentialType: 'openAiApi' }, ctx as never);
+
+		expect(ctx.suspend).toHaveBeenCalled();
+		expectListed(credentialService, 'openAiApi');
+	});
+
+	it('keeps the former embedding tool names as legacy names', () => {
+		const tool = askCredentialTool({ credentialService: makeCredentialService([]) });
+
+		expect(tool.legacyNames).toEqual(
+			expect.arrayContaining([
+				'ask_embedding_credential',
+				'agent_builder_ask_embedding_credential',
+			]),
+		);
 	});
 });
