@@ -325,7 +325,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	USER_DOWNLOADED_SKILL: {
 		name: 'User downloaded skill',
 		description:
-			'A user downloaded one skill from the Skills settings page, from the row menu or from the skill modal. Fires once the browser gets the file.',
+			'A user downloaded one skill from the row menu on the Skills settings page. Fires once the browser gets the file.',
 		properties: z.object({
 			skill_id: skillId,
 			scope: skillScope,
@@ -333,11 +333,6 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			format: z
 				.enum(['markdown', 'zip'])
 				.describe('`markdown` is a lone SKILL.md. `zip` holds SKILL.md and its reference files'),
-			source: z
-				.enum(['row_menu', 'modal'])
-				.describe(
-					'`row_menu` is the menu of a table row. `modal` is the button in the skill modal',
-				),
 		}),
 	},
 	USER_CREATED_SKILL: {

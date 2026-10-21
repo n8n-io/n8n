@@ -3,13 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn } from '@vueuse/core';
 import { saveAs } from 'file-saver';
-import type {
-	AgentSkill,
-	SkillCreateMethod,
-	SkillDetail,
-	SkillListItem,
-	SkillScope,
-} from '@n8n/api-types';
+import type { AgentSkill, SkillCreateMethod, SkillListItem, SkillScope } from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
@@ -309,14 +303,6 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>) {
 			initialScope: currentValue,
 			...scopeLock(detail),
 			existingSkillNames: [],
-			// The saved version, not unsaved edits in the modal.
-			onDownload: async () => {
-				try {
-					await downloadSkill(detail, 'modal');
-				} catch (error) {
-					showError(error, i18n.baseText('settings.context.skills.error.download'));
-				}
-			},
 			onConfirm: async ({ skill, scope }) =>
 				await onSave(
 					detail.id,
@@ -363,22 +349,18 @@ async function onSave(
 	return undefined;
 }
 
-async function downloadSkill(detail: SkillDetail, source: 'row_menu' | 'modal') {
-	const { blob, fileName, format } = await exportAgentSkill(detail.skill);
-	saveAs(blob, fileName);
-	telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_DOWNLOADED_SKILL, {
-		skill_id: detail.id,
-		scope: detail.scope,
-		...(detail.projectId ? { project_id: detail.projectId } : {}),
-		format,
-		source,
-	});
-}
-
 /** The list row has no content, so the download reads the latest version first. */
 async function onDownload(item: Pick<SkillListItem, 'id'>) {
 	try {
-		await downloadSkill(await skillsStore.fetchSkill(item.id), 'row_menu');
+		const detail = await skillsStore.fetchSkill(item.id);
+		const { blob, fileName, format } = await exportAgentSkill(detail.skill);
+		saveAs(blob, fileName);
+		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_DOWNLOADED_SKILL, {
+			skill_id: detail.id,
+			scope: detail.scope,
+			...(detail.projectId ? { project_id: detail.projectId } : {}),
+			format,
+		});
 	} catch (error) {
 		showError(error, i18n.baseText('settings.context.skills.error.download'));
 	}

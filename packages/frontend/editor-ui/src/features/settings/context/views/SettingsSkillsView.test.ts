@@ -521,7 +521,6 @@ describe('SettingsSkillsView', () => {
 				skill_id: 's1',
 				scope: 'instance',
 				format: 'markdown',
-				source: 'row_menu',
 			});
 		});
 
@@ -549,25 +548,6 @@ describe('SettingsSkillsView', () => {
 				scope: 'project',
 				project_id: 'p1',
 				format: 'zip',
-				source: 'row_menu',
-			});
-		});
-
-		it('downloads the saved skill from the modal', async () => {
-			skillsStore.fetchSkill.mockResolvedValue(detail());
-			const { getByText } = renderView();
-			await new Promise(process.nextTick);
-			await userEvent.click(getByText('research-search'));
-			await new Promise(process.nextTick);
-
-			await lastModalData().onDownload?.();
-
-			expect(saveAsMock).toHaveBeenCalledWith(expect.any(Blob), 'SKILL.md');
-			expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_DOWNLOADED_SKILL, {
-				skill_id: 's1',
-				scope: 'instance',
-				format: 'markdown',
-				source: 'modal',
 			});
 		});
 
