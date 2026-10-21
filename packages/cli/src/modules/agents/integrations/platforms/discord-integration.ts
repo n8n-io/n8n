@@ -43,7 +43,7 @@ import {
 	settleDiscordActionMessage,
 } from './discord-operations';
 import { startTypingIndicator } from './typing-indicator';
-import { buildDiscordOriginDraft } from './discord-origin';
+import { buildDiscordOriginDraft } from './discord/discord-origin';
 import type { DecodedThread, OriginInput } from '../integration-origin-support';
 
 /** Discord's typing indicator expires after ~10s, so keep it alive on an interval. */

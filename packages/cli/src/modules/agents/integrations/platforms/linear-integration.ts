@@ -20,7 +20,7 @@ import {
 	LINEAR_ACTION_TOOL_DEFINITIONS,
 	LINEAR_CONTEXT_QUERY_TOOL_DEFINITIONS,
 } from './linear-tool-definitions';
-import { buildLinearOriginDraft } from './linear-origin';
+import { buildLinearOriginDraft } from './linear/linear-origin';
 import type { DecodedThread, OriginInput } from '../integration-origin-support';
 
 /**

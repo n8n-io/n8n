@@ -30,7 +30,7 @@ import {
 	createTelegramBridgeExecutionContext,
 	createTelegramResumeExecutionContext,
 } from './telegram-bridge-behavior';
-import { buildTelegramOriginDraft } from './telegram-origin';
+import { buildTelegramOriginDraft } from './telegram/telegram-origin';
 import type { DecodedThread, OriginInput } from '../integration-origin-support';
 
 /**

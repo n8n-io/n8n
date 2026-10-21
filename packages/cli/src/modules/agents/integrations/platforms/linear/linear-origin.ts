@@ -3,7 +3,7 @@ import {
 	type DecodedThread,
 	type OriginDraft,
 	type OriginInput,
-} from '../integration-origin-support';
+} from '../../integration-origin-support';
 
 export function buildLinearOriginDraft(
 	{ subject }: OriginInput,

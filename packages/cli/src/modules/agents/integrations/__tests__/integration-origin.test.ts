@@ -4,11 +4,11 @@ import type { Logger } from 'n8n-workflow';
 
 import type { AgentChatIntegration } from '../agent-chat-integration';
 import { buildIntegrationOrigin } from '../integration-origin';
-import { buildDiscordOriginDraft } from '../platforms/discord-origin';
-import { buildLinearOriginDraft } from '../platforms/linear-origin';
+import { buildDiscordOriginDraft } from '../platforms/discord/discord-origin';
+import { buildLinearOriginDraft } from '../platforms/linear/linear-origin';
 import { buildSlackOriginDraft } from '../platforms/slack/slack-origin';
 import { buildTeamsOriginDraft } from '../platforms/teams/teams-origin';
-import { buildTelegramOriginDraft } from '../platforms/telegram-origin';
+import { buildTelegramOriginDraft } from '../platforms/telegram/telegram-origin';
 import { buildWhatsAppOriginDraft } from '../platforms/whatsapp/whatsapp-origin';
 
 const logger = mock<Logger>();
