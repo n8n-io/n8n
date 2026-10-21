@@ -81,7 +81,7 @@ export const parseGitLabReviewId = (remoteReviewId: string): MergeRequestRef => 
 	return { projectId: Number(groups.projectId), iid: Number(groups.iid) };
 };
 
-/** Opens and reads GitLab merge requests. GitLab records each write as the token's bot user. */
+/** Opens, reads, and merges GitLab merge requests. GitLab records each write as the token's bot user. */
 @Service()
 export class GitLabMergeRequestClient {
 	private readonly http: HttpRequestClient;
@@ -123,6 +123,37 @@ export class GitLabMergeRequestClient {
 			path: `projects/${projectId}/merge_requests/${iid}`,
 		});
 		return this.parse(body);
+	}
+
+	/** GitLab answers 409 when the head is no longer `sha`. */
+	async approve(access: GitHostAccess, { projectId, iid }: MergeRequestRef, sha: string) {
+		await this.request(access, {
+			method: 'POST',
+			path: `projects/${projectId}/merge_requests/${iid}/approve`,
+			body: { sha },
+		});
+	}
+
+	/** Merges only the head `sha`, then deletes the source branch. */
+	async merge(
+		access: GitHostAccess,
+		{ projectId, iid }: MergeRequestRef,
+		sha: string,
+	): Promise<GitLabMergeRequest> {
+		const { body } = await this.request(access, {
+			method: 'PUT',
+			path: `projects/${projectId}/merge_requests/${iid}/merge`,
+			body: { sha, should_remove_source_branch: true },
+		});
+		return this.parse(body);
+	}
+
+	async createNote(access: GitHostAccess, { projectId, iid }: MergeRequestRef, body: string) {
+		await this.request(access, {
+			method: 'POST',
+			path: `projects/${projectId}/merge_requests/${iid}/notes`,
+			body: { body },
+		});
 	}
 
 	private parse(body: unknown): GitLabMergeRequest {

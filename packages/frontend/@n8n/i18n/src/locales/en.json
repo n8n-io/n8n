@@ -40,6 +40,13 @@
 	"inbox.promotionReview.detail.promoteTo": "Promote to",
 	"inbox.promotionReview.detail.reviewer": "Reviewer",
 	"inbox.promotionReview.detail.requestedBy": "Requested by",
+	"inbox.promotionReview.approve.button": "Approve and merge",
+	"inbox.promotionReview.approve.confirm.title": "Approve and merge this promotion?",
+	"inbox.promotionReview.approve.confirm.description": "n8n approves the merge request on GitLab, merges it, and deletes its branch. You can't undo this.",
+	"inbox.promotionReview.approve.disabled.requester": "You requested this promotion. Another admin must approve it.",
+	"inbox.promotionReview.approve.disabled.changesRequested": "A reviewer requested changes on GitLab.",
+	"inbox.promotionReview.approve.disabled.conflicts": "The merge request has conflicts. Resolve them on GitLab.",
+	"inbox.promotionReview.approve.error.title": "Couldn't approve and merge",
 	"_reusableBaseText": {
 		"cancel": "Cancel",
 		"codeNodeEditor": {

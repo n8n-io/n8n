@@ -1,7 +1,7 @@
 import type { InboxCounts, PromotionReviewState } from '@n8n/api-types';
 import { BaseRepository, type OperationContext, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, In } from '@n8n/typeorm';
+import { DataSource, In, IsNull, LessThan, Or } from '@n8n/typeorm';
 
 import type { InboxSourceQuery } from '../../../inbox/inbox-source.registry';
 import { PromotionReview } from '../entities/promotion-review.entity';
@@ -51,6 +51,31 @@ export class PromotionReviewRepository extends BaseRepository<PromotionReview> {
 			{ state, lastStateChangeAt: at },
 		);
 		return (result.affected ?? 0) > 0;
+	}
+
+	/**
+	 * Claims the approval of an open review for one admin. A claim older than `staleBefore`
+	 * belongs to a request that stopped, so another admin can take it.
+	 */
+	async claimApproval(
+		id: string,
+		approvedById: string,
+		at: Date,
+		staleBefore: Date,
+	): Promise<boolean> {
+		const result = await this.update(
+			{ id, state: 'open', approvedAt: Or(IsNull(), LessThan(staleBefore)) },
+			{ approvedById, approvedAt: at },
+		);
+		return (result.affected ?? 0) > 0;
+	}
+
+	/** Undoes a claim after a failed merge. A terminal row or a newer claim stays. */
+	async releaseApproval(id: string, approvedById: string): Promise<void> {
+		await this.update(
+			{ id, approvedById, state: In(OPEN_STATES) },
+			{ approvedById: null, approvedAt: null },
+		);
 	}
 
 	async findByIdWithRelations(id: string): Promise<PromotionReview | null> {
