@@ -1,5 +1,11 @@
 import { createManyActiveWorkflows, createManyWorkflows, testDb } from '@n8n/backend-test-utils';
-import { StatisticsNames, LicenseMetricsRepository, WorkflowStatisticsRepository } from '@n8n/db';
+import {
+	GLOBAL_MEMBER_ROLE,
+	StatisticsNames,
+	LicenseMetricsRepository,
+	ServiceAccountRepository,
+	WorkflowStatisticsRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { createManyCredentials } from './shared/db/credentials';
@@ -19,7 +25,7 @@ describe('LicenseMetricsRepository', () => {
 
 	beforeEach(async () => {
 		await testDb.truncate([
-			'User',
+			'Actor',
 			'CredentialsEntity',
 			'WorkflowEntity',
 			'ExecutionEntity',
@@ -100,6 +106,19 @@ describe('LicenseMetricsRepository', () => {
 				manualExecutions: 0, // not NaN
 				evaluations: 0,
 			});
+		});
+
+		test('should not count service accounts as users', async () => {
+			await createMember();
+			const serviceAccountRepository = Container.get(ServiceAccountRepository);
+			await serviceAccountRepository.save(
+				serviceAccountRepository.create({ role: GLOBAL_MEMBER_ROLE }),
+			);
+
+			const metrics = await licenseMetricsRepository.getLicenseRenewalMetrics();
+
+			expect(metrics.enabledUsers).toBe(1);
+			expect(metrics.totalUsers).toBe(1);
 		});
 	});
 });

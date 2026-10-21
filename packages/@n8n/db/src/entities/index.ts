@@ -1,3 +1,4 @@
+import { Actor, actorKinds, type ActorKind } from './actor';
 import {
 	ActivityEvent,
 	activityEventCategories,
@@ -78,6 +79,7 @@ import { SharedWorkflow } from './shared-workflow';
 import { TagEntity } from './tag-entity';
 import { TestCaseExecution } from './test-case-execution.ee';
 import { TestRun } from './test-run.ee';
+import { ServiceAccount } from './service-account';
 import { User } from './user';
 import { Variables } from './variables';
 import { WebhookEntity } from './webhook-entity';
@@ -117,6 +119,10 @@ import { WorkflowStatistics } from './workflow-statistics';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
 
 export {
+	Actor,
+	actorKinds,
+	type ActorKind,
+	ServiceAccount,
 	ActivityEvent,
 	activityEventCategories,
 	activityResourceTypes,
@@ -255,7 +261,9 @@ export const entities = {
 	SharedCredentials,
 	SharedWorkflow,
 	TagEntity,
+	Actor,
 	User,
+	ServiceAccount,
 	WorkflowDependency,
 	WorkflowEntity,
 	WorkflowStatistics,
