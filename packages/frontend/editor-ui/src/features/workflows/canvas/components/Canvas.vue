@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import ContextMenu from '@/features/shared/contextMenu/components/ContextMenu.vue';
 import type { ContextMenuTarget } from '@/features/shared/contextMenu/composables/useContextMenu';
 import { useContextMenu } from '@/features/shared/contextMenu/composables/useContextMenu';
 import type { CanvasLayoutEvent, CanvasLayoutResult } from '../composables/useCanvasLayout';
@@ -24,7 +25,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { NODE_CREATOR_SHORTCUT_COACHMARK_KEY } from '@/features/shared/nodeCreator/composables/useNodeCreatorShortcutCoachmark';
-import type { ActionDropdownItem, NodeCreatorOpenSource } from '@/Interface';
+import type { NodeCreatorOpenSource } from '@/Interface';
 import type {
 	CanvasConnection,
 	CanvasEventBusEvents,
@@ -111,11 +112,7 @@ import {
 import { NodeGroupViewKey } from '../composables/useCanvasNodeGroupView';
 import { NodeGroupDescriptionVisibilityKey } from '../composables/useCanvasNodeGroupDescriptionVisibility';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
-import {
-	isFocusHandoffAction,
-	type ContextMenuAction,
-} from '@/features/shared/contextMenu/composables/useContextMenuItems';
-import { N8nContextMenu, type ContextMenuItem, type ContextMenuNode } from '@n8n/design-system';
+import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
@@ -1640,102 +1637,6 @@ const groupNodeFallbackDataById = computed(() =>
  */
 
 const contextMenu = useContextMenu();
-const contextMenuItems = computed(() => toContextMenuNodes(contextMenu.actions.value));
-
-// Vue Flow stops the original contextmenu on the pane, so Reka never sees it.
-// Redispatch it on the canvas trigger, with the same pointer coordinates.
-watch(
-	contextMenu.isOpen,
-	(open) => {
-		if (!open) return;
-
-		void nextTick(() => {
-			const trigger = document.querySelector(
-				`[data-canvas-context-trigger="${CSS.escape(props.id)}"]`,
-			);
-			if (!(trigger instanceof HTMLElement)) return;
-
-			const [clientX, clientY] = contextMenu.position.value;
-			trigger.dispatchEvent(
-				new PointerEvent('contextmenu', {
-					bubbles: true,
-					cancelable: true,
-					button: 2,
-					clientX,
-					clientY,
-				}),
-			);
-		});
-	},
-	{ flush: 'post' },
-);
-
-// When a selected action hands off to another floating layer (e.g. the sticky
-// color popover), stop the menu from restoring focus as it closes.
-let suppressContextMenuRestoreFocus = false;
-
-function onContextMenuSelect(action: ContextMenuAction) {
-	suppressContextMenuRestoreFocus = isFocusHandoffAction(action);
-	// Read the target while the menu is open. Group actions must target the
-	// group that was right-clicked.
-	void onContextMenuAction(
-		action,
-		contextMenu.targetNodeIds.value,
-		contextMenu.targetGroupId.value,
-	);
-}
-
-function onContextMenuCloseAutoFocus(event: Event) {
-	if (suppressContextMenuRestoreFocus) {
-		event.preventDefault();
-	}
-	suppressContextMenuRestoreFocus = false;
-}
-
-function onContextMenuOpenChange(open: boolean) {
-	if (!open) {
-		contextMenu.close();
-	}
-}
-
-/**
- * `divided` starts a new section. The design-system menu draws a separator
- * before each group that follows another node.
- */
-function toContextMenuNodes(
-	menuActions: Array<ActionDropdownItem<ContextMenuAction>>,
-): Array<ContextMenuNode<ContextMenuAction>> {
-	const nodes: Array<ContextMenuNode<ContextMenuAction>> = [];
-	let section: Array<ContextMenuItem<ContextMenuAction>> = [];
-
-	function pushSection() {
-		const first = section[0];
-		if (!first) return;
-		nodes.push({
-			type: 'group',
-			// Groups are not selectable. Reuse the first action id as the section key.
-			id: first.id,
-			children: section,
-		});
-		section = [];
-	}
-
-	for (const action of menuActions) {
-		if (action.divided && section.length > 0) pushSection();
-		section.push({
-			type: 'item',
-			id: action.id,
-			label: action.label,
-			disabled: action.disabled,
-			...(action.icon ? { icon: { type: 'icon', value: action.icon } } : {}),
-			...(action.shortcut ? { shortcut: action.shortcut } : {}),
-			...(action.variant ? { variant: action.variant } : {}),
-		});
-	}
-
-	pushSection();
-	return nodes;
-}
 
 // Carried on the menu target so mutating items disable on canvases that are
 // read-only through props alone (e.g. while the AI builder streams) — the
@@ -2142,189 +2043,176 @@ defineExpose({
 </script>
 
 <template>
-	<N8nContextMenu
-		:items="contextMenuItems"
-		:modal="false"
-		:content-class="$style.contextMenu"
-		@update:open="onContextMenuOpenChange"
-		@select="onContextMenuSelect"
-		@close-auto-focus="onContextMenuCloseAutoFocus"
+	<VueFlow
+		:id="id"
+		:nodes="vueFlowNodes"
+		:edges="connections"
+		:class="classes"
+		:style="selectionBoxStyle"
+		:apply-changes="false"
+		:connection-line-options="{ markerEnd: MarkerType.ArrowClosed }"
+		:connection-radius="60"
+		:pan-on-drag="panningMouseButton"
+		pan-on-scroll
+		snap-to-grid
+		:snap-grid="[GRID_SIZE, GRID_SIZE]"
+		:min-zoom="0"
+		:max-zoom="experimentalNdvStore.isZoomedViewEnabled ? experimentalNdvStore.maxCanvasZoom : 4"
+		:selection-key-code="selectionKeyCode"
+		:zoom-activation-key-code="panningKeyCode"
+		:pan-activation-key-code="panningKeyCode"
+		:disable-keyboard-a11y="true"
+		:delete-key-code="null"
+		data-test-id="canvas"
+		@connect-start="onConnectStart"
+		@connect="onConnect"
+		@connect-end="onConnectEnd"
+		@pane-click="onClickPane"
+		@pane-context-menu="onOpenContextMenu"
+		@move="onPaneMove"
+		@move-end="onPaneMoveEnd"
+		@node-drag-start="onNodeDragStart"
+		@node-drag="onNodeDrag"
+		@node-drag-stop="onNodeDragStop"
+		@node-click="onNodeClick"
+		@selection-drag-start="onSelectionDragStart"
+		@selection-drag="onSelectionDrag"
+		@selection-drag-stop="onSelectionDragStop"
+		@selection-end="onSelectionEnd"
+		@selection-context-menu="onOpenSelectionContextMenu"
+		@dragover="onDragOver"
+		@drop="onDrop"
+		@viewport-change="onViewportChange"
 	>
-		<template #trigger>
-			<div :data-canvas-context-trigger="id" :class="$style.canvasShell">
-				<div :class="$style.canvasShell" @contextmenu.stop>
-					<VueFlow
-						:id="id"
-						:nodes="vueFlowNodes"
-						:edges="connections"
-						:class="classes"
-						:style="selectionBoxStyle"
-						:apply-changes="false"
-						:connection-line-options="{ markerEnd: MarkerType.ArrowClosed }"
-						:connection-radius="60"
-						:pan-on-drag="panningMouseButton"
-						pan-on-scroll
-						snap-to-grid
-						:snap-grid="[GRID_SIZE, GRID_SIZE]"
-						:min-zoom="0"
-						:max-zoom="
-							experimentalNdvStore.isZoomedViewEnabled ? experimentalNdvStore.maxCanvasZoom : 4
-						"
-						:selection-key-code="selectionKeyCode"
-						:zoom-activation-key-code="panningKeyCode"
-						:pan-activation-key-code="panningKeyCode"
-						:disable-keyboard-a11y="true"
-						:delete-key-code="null"
-						data-test-id="canvas"
-						@connect-start="onConnectStart"
-						@connect="onConnect"
-						@connect-end="onConnectEnd"
-						@pane-click="onClickPane"
-						@pane-context-menu="onOpenContextMenu"
-						@move="onPaneMove"
-						@move-end="onPaneMoveEnd"
-						@node-drag-start="onNodeDragStart"
-						@node-drag="onNodeDrag"
-						@node-drag-stop="onNodeDragStop"
-						@node-click="onNodeClick"
-						@selection-drag-start="onSelectionDragStart"
-						@selection-drag="onSelectionDrag"
-						@selection-drag-stop="onSelectionDragStop"
-						@selection-end="onSelectionEnd"
-						@selection-context-menu="onOpenSelectionContextMenu"
-						@dragover="onDragOver"
-						@drop="onDrop"
-						@viewport-change="onViewportChange"
-					>
-						<template #node-canvas-node-group="nodeProps">
-							<CanvasNodeGroupTitleBar
-								v-bind="nodeProps"
-								:data="nodeProps.data ?? groupNodeFallbackDataById[nodeProps.id]"
-								:autofocus-group-id="autofocusGroupTitleId"
-								:read-only="readOnly || suppressInteraction"
-								:can-extract="extractableGroupIds.has(parseCanvasGroupNodeId(nodeProps.id) ?? '')"
-								:has-trigger="groupIdsWithTrigger.has(parseCanvasGroupNodeId(nodeProps.id) ?? '')"
-								@toggle="onCanvasGroupToggle"
-								@update:name="onCanvasGroupNameUpdate"
-								@update:description="onCanvasGroupDescriptionUpdate"
-								@title:focused="onNodeGroupTitleFocused"
-								@ungroup="onCanvasGroupUngroup"
-								@extract="onCanvasGroupExtract"
-								@add-nodes-to-chat="onCanvasGroupAddNodesToChat"
-								@open:contextmenu="onOpenGroupContextMenu"
-							/>
-						</template>
-
-						<template #node-canvas-node="nodeProps">
-							<slot name="node" v-bind="{ nodeProps }">
-								<Node
-									v-bind="nodeProps"
-									:data="nodeDataById[nodeProps.id]"
-									:selected="nodeProps.selected && !fullySelectedGroupMemberIds.has(nodeProps.id)"
-									:read-only="readOnly"
-									:can-execute="canExecute"
-									:event-bus="eventBus"
-									:hovered="nodesHoveredById[nodeProps.id]"
-									:nearby-hovered="nodeProps.id === hoveredTriggerNode.id.value"
-									:highlighted="setupPanelStore.highlightedNodeIds.has(nodeProps.id)"
-									@delete="onDeleteNode"
-									@run="onRunNode"
-									@select="onSelectNode"
-									@toggle="onToggleNodeEnabled"
-									@activate="onSetNodeActivated"
-									@deactivate="onSetNodeDeactivated"
-									@open:contextmenu="onOpenNodeContextMenu"
-									@update="onUpdateNodeParameters"
-									@update:inputs="onUpdateNodeInputs"
-									@update:outputs="onUpdateNodeOutputs"
-									@move="onUpdateNodePosition"
-									@add="onClickNodeAdd"
-									@focus="onFocusNode"
-									@replace:node="onReplaceNode"
-									@add:ai="onAddToAi"
-									@add-nodes-to-chat="onAddNodesToChat([$event], 'node_toolbar')"
-								>
-									<template v-if="$slots.nodeToolbar" #toolbar="toolbarProps">
-										<slot name="nodeToolbar" v-bind="toolbarProps" />
-									</template>
-								</Node>
-							</slot>
-						</template>
-
-						<template #edge-canvas-edge="edgeProps">
-							<slot name="edge" v-bind="{ edgeProps, arrowHeadMarkerId }">
-								<Edge
-									v-bind="edgeProps"
-									:marker-end="`url(#${arrowHeadMarkerId})`"
-									:read-only="readOnly"
-									:hovered="edgesHoveredById[edgeProps.id]"
-									:bring-to-front="edgesBringToFrontById[edgeProps.id]"
-									@add="onClickConnectionAdd"
-									@delete="onDeleteConnection"
-									@update:label:hovered="onUpdateEdgeLabelHovered(edgeProps.id, $event)"
-								/>
-							</slot>
-						</template>
-
-						<template #connection-line="connectionLineProps">
-							<CanvasConnectionLine v-bind="connectionLineProps" />
-						</template>
-
-						<CanvasArrowHeadMarker :id="arrowHeadMarkerId" />
-
-						<slot name="canvas-background" v-bind="{ viewport }">
-							<CanvasBackground :viewport="viewport" :striped="readOnly && stripedBackground" />
-						</slot>
-
-						<!-- A selection that is exactly one group acts through the group's own
-		toolbar; the selection toolbar would only duplicate it and cover it. -->
-						<CanvasSelectionToolbar
-							v-if="showNodeGroups && soleSelectedGroupId === null"
-							:selected-nodes="selectedNodes"
-							:selection-bounds="selectionBoxBounds"
-							:read-only="readOnly || suppressInteraction"
-							@group-created="onNodeGroupCreated"
-							@extract-workflow="emit('extract-workflow', $event)"
-							@add-nodes-to-chat="onAddNodesToChat($event, 'selection_toolbar')"
-						/>
-
-						<Transition name="minimap">
-							<MiniMap
-								v-show="isMinimapVisible"
-								data-test-id="canvas-minimap"
-								aria-label="n8n Minimap"
-								:height="120"
-								:width="200"
-								:position="PanelPosition.BottomLeft"
-								pannable
-								zoomable
-								:node-class-name="minimapNodeClassnameFn"
-								:node-border-radius="16"
-								@mouseenter="onMinimapMouseEnter"
-								@mouseleave="onMinimapMouseLeave"
-							/>
-						</Transition>
-
-						<CanvasControlButtons
-							v-if="!hideControls"
-							data-test-id="canvas-controls"
-							:class="$style.canvasControls"
-							:position="controlsPosition"
-							:show-interactive="false"
-							:zoom="viewport.zoom"
-							:read-only="readOnly"
-							:is-experimental-ndv-active="isExperimentalNdvActive"
-							@zoom-to-fit="onFitView"
-							@zoom-in="onZoomIn"
-							@zoom-out="onZoomOut"
-							@tidy-up="onTidyUp({ source: 'canvas-button' })"
-							@toggle-zoom-mode="onToggleZoomMode"
-						/>
-					</VueFlow>
-				</div>
-			</div>
+		<template #node-canvas-node-group="nodeProps">
+			<CanvasNodeGroupTitleBar
+				v-bind="nodeProps"
+				:data="nodeProps.data ?? groupNodeFallbackDataById[nodeProps.id]"
+				:autofocus-group-id="autofocusGroupTitleId"
+				:read-only="readOnly || suppressInteraction"
+				:can-extract="extractableGroupIds.has(parseCanvasGroupNodeId(nodeProps.id) ?? '')"
+				:has-trigger="groupIdsWithTrigger.has(parseCanvasGroupNodeId(nodeProps.id) ?? '')"
+				@toggle="onCanvasGroupToggle"
+				@update:name="onCanvasGroupNameUpdate"
+				@update:description="onCanvasGroupDescriptionUpdate"
+				@title:focused="onNodeGroupTitleFocused"
+				@ungroup="onCanvasGroupUngroup"
+				@extract="onCanvasGroupExtract"
+				@add-nodes-to-chat="onCanvasGroupAddNodesToChat"
+				@open:contextmenu="onOpenGroupContextMenu"
+			/>
 		</template>
-	</N8nContextMenu>
+
+		<template #node-canvas-node="nodeProps">
+			<slot name="node" v-bind="{ nodeProps }">
+				<Node
+					v-bind="nodeProps"
+					:data="nodeDataById[nodeProps.id]"
+					:selected="nodeProps.selected && !fullySelectedGroupMemberIds.has(nodeProps.id)"
+					:read-only="readOnly"
+					:can-execute="canExecute"
+					:event-bus="eventBus"
+					:hovered="nodesHoveredById[nodeProps.id]"
+					:nearby-hovered="nodeProps.id === hoveredTriggerNode.id.value"
+					:highlighted="setupPanelStore.highlightedNodeIds.has(nodeProps.id)"
+					@delete="onDeleteNode"
+					@run="onRunNode"
+					@select="onSelectNode"
+					@toggle="onToggleNodeEnabled"
+					@activate="onSetNodeActivated"
+					@deactivate="onSetNodeDeactivated"
+					@open:contextmenu="onOpenNodeContextMenu"
+					@update="onUpdateNodeParameters"
+					@update:inputs="onUpdateNodeInputs"
+					@update:outputs="onUpdateNodeOutputs"
+					@move="onUpdateNodePosition"
+					@add="onClickNodeAdd"
+					@focus="onFocusNode"
+					@replace:node="onReplaceNode"
+					@add:ai="onAddToAi"
+					@add-nodes-to-chat="onAddNodesToChat([$event], 'node_toolbar')"
+				>
+					<template v-if="$slots.nodeToolbar" #toolbar="toolbarProps">
+						<slot name="nodeToolbar" v-bind="toolbarProps" />
+					</template>
+				</Node>
+			</slot>
+		</template>
+
+		<template #edge-canvas-edge="edgeProps">
+			<slot name="edge" v-bind="{ edgeProps, arrowHeadMarkerId }">
+				<Edge
+					v-bind="edgeProps"
+					:marker-end="`url(#${arrowHeadMarkerId})`"
+					:read-only="readOnly"
+					:hovered="edgesHoveredById[edgeProps.id]"
+					:bring-to-front="edgesBringToFrontById[edgeProps.id]"
+					@add="onClickConnectionAdd"
+					@delete="onDeleteConnection"
+					@update:label:hovered="onUpdateEdgeLabelHovered(edgeProps.id, $event)"
+				/>
+			</slot>
+		</template>
+
+		<template #connection-line="connectionLineProps">
+			<CanvasConnectionLine v-bind="connectionLineProps" />
+		</template>
+
+		<CanvasArrowHeadMarker :id="arrowHeadMarkerId" />
+
+		<slot name="canvas-background" v-bind="{ viewport }">
+			<CanvasBackground :viewport="viewport" :striped="readOnly && stripedBackground" />
+		</slot>
+
+		<!-- A selection that is exactly one group acts through the group's own
+		toolbar; the selection toolbar would only duplicate it and cover it. -->
+		<CanvasSelectionToolbar
+			v-if="showNodeGroups && soleSelectedGroupId === null"
+			:selected-nodes="selectedNodes"
+			:selection-bounds="selectionBoxBounds"
+			:read-only="readOnly || suppressInteraction"
+			@group-created="onNodeGroupCreated"
+			@extract-workflow="emit('extract-workflow', $event)"
+			@add-nodes-to-chat="onAddNodesToChat($event, 'selection_toolbar')"
+		/>
+
+		<Transition name="minimap">
+			<MiniMap
+				v-show="isMinimapVisible"
+				data-test-id="canvas-minimap"
+				aria-label="n8n Minimap"
+				:height="120"
+				:width="200"
+				:position="PanelPosition.BottomLeft"
+				pannable
+				zoomable
+				:node-class-name="minimapNodeClassnameFn"
+				:node-border-radius="16"
+				@mouseenter="onMinimapMouseEnter"
+				@mouseleave="onMinimapMouseLeave"
+			/>
+		</Transition>
+
+		<CanvasControlButtons
+			v-if="!hideControls"
+			data-test-id="canvas-controls"
+			:class="$style.canvasControls"
+			:position="controlsPosition"
+			:show-interactive="false"
+			:zoom="viewport.zoom"
+			:read-only="readOnly"
+			:is-experimental-ndv-active="isExperimentalNdvActive"
+			@zoom-to-fit="onFitView"
+			@zoom-in="onZoomIn"
+			@zoom-out="onZoomOut"
+			@tidy-up="onTidyUp({ source: 'canvas-button' })"
+			@toggle-zoom-mode="onToggleZoomMode"
+		/>
+
+		<Suspense>
+			<ContextMenu @action="onContextMenuAction" />
+		</Suspense>
+	</VueFlow>
 </template>
 
 <style lang="scss" module>
@@ -2358,16 +2246,6 @@ defineExpose({
 		height: var(--canvas-selection-box--height) !important;
 	}
 	/* stylelint-enable declaration-no-important */
-}
-
-.canvasShell {
-	width: 100%;
-	height: 100%;
-}
-
-// The canvas menu stays under the NDV and dialogs. The design-system panel uses the popover layer.
-.contextMenu[data-state] {
-	z-index: var(--context-menu--z);
 }
 </style>
 
