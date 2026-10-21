@@ -1,0 +1,231 @@
+CHANGELOG.md
+  s_45c9c02db4924e::t_046c063f8b971e 1-150
+package.json
+  s_45c9c02db4924e::t_29aefef22848a7 3
+packages/@n8n/agents/package.json
+  s_45c9c02db4924e::t_5e12b3674d6e7a 3
+packages/@n8n/ai-node-sdk/package.json
+  s_45c9c02db4924e::t_8055e0bc8bc2e4 3
+packages/@n8n/ai-utilities/package.json
+  s_45c9c02db4924e::t_4c80f0ce64df05 3
+packages/@n8n/ai-workflow-builder.ee/package.json
+  s_45c9c02db4924e::t_e4fcf2641d60af 3
+packages/@n8n/api-types/package.json
+  s_45c9c02db4924e::t_3f3b7948a21e62 3
+packages/@n8n/backend-common/package.json
+  s_45c9c02db4924e::t_ed96515fded561 3
+packages/@n8n/backend-network/package.json
+  s_45c9c02db4924e::t_b513ec7de04f3c 3
+packages/@n8n/backend-services/package.json
+  s_45c9c02db4924e::t_bbde1a50e3fdaa 3
+packages/@n8n/backend-test-utils/package.json
+  s_45c9c02db4924e::t_cfc802d38c5611 3
+packages/@n8n/blob-storage/package.json
+  s_45c9c02db4924e::t_e4bb522f7ecf62 3
+packages/@n8n/chat-hub/package.json
+  s_45c9c02db4924e::t_c184bb4f6cc8dd 3
+packages/@n8n/cli/package.json
+  s_45c9c02db4924e::t_d0ce5cfd3ad057 3
+packages/@n8n/client-oauth2/package.json
+  s_45c9c02db4924e::t_2c7d0634623e5e 3
+packages/@n8n/computer-use/package.json
+  s_45c9c02db4924e::t_6a424c4c1694ee 3
+packages/@n8n/config/package.json
+  s_45c9c02db4924e::t_a5c4c7bdbae1a7 3
+packages/@n8n/constants/package.json
+  s_45c9c02db4924e::t_43c880489fff65 3
+packages/@n8n/create-node/package.json
+  s_45c9c02db4924e::t_efb693aeec0b1a 3
+packages/@n8n/db/package.json
+  s_45c9c02db4924e::t_6d271bead33668 3
+packages/@n8n/decorators/package.json
+  s_45c9c02db4924e::t_bd7f92f577258b 3
+packages/@n8n/engine/package.json
+  s_45c9c02db4924e::t_1ccaa05836dddc 3
+packages/@n8n/eslint-plugin-community-nodes/package.json
+  s_45c9c02db4924e::t_562c6323e98fc2 4
+packages/@n8n/expression-runtime/package.json
+  s_45c9c02db4924e::t_773e4df82cd8a0 3
+packages/@n8n/imap/package.json
+  s_45c9c02db4924e::t_cd646159132721 3
+packages/@n8n/inbound-auth/package.json
+  s_45c9c02db4924e::t_952a34d213a16b 3
+packages/@n8n/instance-ai/package.json
+  s_45c9c02db4924e::t_89d32a116ea423 3
+packages/@n8n/mcp-apps/package.json
+  s_45c9c02db4924e::t_957a9c8b6247a1 3
+packages/@n8n/mcp-browser/package.json
+  s_45c9c02db4924e::t_e011195e13cbf5 3
+packages/@n8n/node-cli/package.json
+  s_45c9c02db4924e::t_0511f468faa3d9 3
+packages/@n8n/node-engine-compatibility/package.json
+  s_45c9c02db4924e::t_a0c86498a3e892 3
+packages/@n8n/nodes-langchain/package.json
+  s_45c9c02db4924e::t_259309ee18dd03 3
+packages/@n8n/permissions/package.json
+  s_45c9c02db4924e::t_b9e9de592ac4eb 3
+packages/@n8n/scan-community-package/package.json
+  s_45c9c02db4924e::t_c27bbf1c8c491e 3
+packages/@n8n/scheduler/package.json
+  s_45c9c02db4924e::t_a2e6b217af97d9 3
+packages/@n8n/task-runner/package.json
+  s_45c9c02db4924e::t_93c6077d170c85 3
+packages/@n8n/telemetry/package.json
+  s_45c9c02db4924e::t_18928e6df230f7 3
+packages/@n8n/tournament/package.json
+  s_45c9c02db4924e::t_23819c43a3934a 3
+packages/@n8n/utils/package.json
+  s_45c9c02db4924e::t_d98a3393e12944 4
+packages/@n8n/workflow-sdk/package.json
+  s_45c9c02db4924e::t_e4d9f62c24d468 3
+packages/cli/package.json
+  s_45c9c02db4924e::t_5c83e6205d0de8 3
+packages/cli/src/modules/agents/__tests__/agent-draft.service.test.ts
+  s_45c9c02db4924e::t_09ae9ff389d626 54-76,79-92
+packages/cli/src/modules/agents/__tests__/agent-thread.repository.integration.test.ts
+  s_45c9c02db4924e::t_43581ab8bfa241 43-72
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_45c9c02db4924e::t_dd9b1e1770b09c 55,268,286,299,3308,3311,3320-3321,3323,3326
+packages/cli/src/modules/agents/adapters/agents-credential-provider.ts
+  s_45c9c02db4924e::t_b35e81faa196ed 10
+packages/cli/src/modules/agents/agent-credential-provider.contracts.ts
+  s_45c9c02db4924e::t_6f7731b346e656 1-14
+packages/cli/src/modules/agents/agent-draft.contracts.ts
+  s_45c9c02db4924e::t_4266a0b150a9c3 3,16-17
+packages/cli/src/modules/agents/agent-draft.service.ts
+  s_45c9c02db4924e::t_96aaa050238315 45
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_45c9c02db4924e::t_b11465416d6749 68
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_45c9c02db4924e::t_d1d7e276143ed8 59
+packages/cli/src/modules/agents/builder/__tests__/agents-builder.service.test.ts
+  s_45c9c02db4924e::t_aa7860643ba231 1-184
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_45c9c02db4924e::t_26fc5fb61bc53d 45,554,584,589,593,605-607,613-620,641,645-646,650-656,717,768,782
+packages/cli/src/modules/agents/builder/agents-builder.service.ts
+  s_45c9c02db4924e::t_bd355246376585 1-127
+packages/cli/src/modules/agents/builder/builder-session.ts
+  s_45c9c02db4924e::t_ed561fd320dd97 1-14
+packages/cli/src/modules/agents/builder/interactive/__tests__/ask-credential.tool.test.ts
+  s_45c9c02db4924e::t_21d64dd6a087bb 2,23-24,31
+packages/cli/src/modules/agents/builder/interactive/__tests__/finish-setup.tool.test.ts
+  s_45c9c02db4924e::t_c758563d81627f 2,24-25
+packages/cli/src/modules/agents/builder/interactive/ask-credential.tool.ts
+  s_45c9c02db4924e::t_b2b050c4ff4b35 18,51,63
+packages/cli/src/modules/agents/builder/interactive/finish-setup.tool.ts
+  s_45c9c02db4924e::t_1b4f633a2bd246 14,32
+packages/cli/src/modules/agents/builder/interactive/setup-tool.types.ts
+  s_45c9c02db4924e::t_1f93c052d865c9 1,12
+packages/cli/src/modules/agents/json-config/__tests__/model-config.test.ts
+  s_45c9c02db4924e::t_375e6d6124744d 5-6
+packages/cli/src/modules/agents/json-config/model-config.ts
+  s_45c9c02db4924e::t_a66fb69e17257f 1-2,12
+packages/cli/src/modules/agents/repositories/agent-thread.repository.ts
+  s_45c9c02db4924e::t_e749ae874f4e6f 4,20-27
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_45c9c02db4924e::t_cf48ca4c41e226 59
+packages/cli/src/modules/instance-ai/__tests__/format-agent-session-context.test.ts
+  s_45c9c02db4924e::t_523f7ca360aca7 11
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-builder-delegate.adapter.test.ts
+  s_45c9c02db4924e::t_3e2245659b9d65 2,4,7-10,14-21,25-28,30-34,38-56,59-67,70-75,77-84,87-88,90-91,93,95
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_45c9c02db4924e::t_fdd7907c7238a1 1846-1848,7874-7877,7881,7884,7934,7942,7954,7956-7966,7978-7984
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.agent-context.test.ts
+  s_45c9c02db4924e::t_acfd0da7b07379 11
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_45c9c02db4924e::t_78e010b3c992ed 291
+packages/cli/src/modules/instance-ai/eval/scoped-credential-provider.ts
+  s_45c9c02db4924e::t_6a9df7b525808f 1,3
+packages/cli/src/modules/instance-ai/instance-ai-agent-context.adapter.ts
+  s_45c9c02db4924e::t_a4ba32f0fc5974 7
+packages/cli/src/modules/instance-ai/instance-ai-builder-delegate.adapter.ts
+  s_45c9c02db4924e::t_b355e9eb781d2e 10-13,20-23,34-35,38,40-41,43,48-54,57,59-65,70
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_45c9c02db4924e::t_6bef3c569c40b2 168,175,684,686
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_45c9c02db4924e::t_bde558850c28c3 157-159,280
+packages/cli/src/utils/__tests__/model-stream-stall-options.test.ts
+  s_45c9c02db4924e::t_d2c6b611509917 3
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_45c9c02db4924e::t_6e8021f2566c64 58
+packages/core/package.json
+  s_45c9c02db4924e::t_6ac95f19fb1d03 3
+packages/frontend/@n8n/chat/package.json
+  s_45c9c02db4924e::t_d74f45df77fd27 3
+packages/frontend/@n8n/composables/package.json
+  s_45c9c02db4924e::t_0d64b1e3c8aec4 4
+packages/frontend/@n8n/design-system/package.json
+  s_45c9c02db4924e::t_f3dc9a3eebdd09 4
+packages/frontend/@n8n/design-system/src/components/N8nBadge/Badge.test.ts
+  s_45c9c02db4924e::t_b034c234417a24 52-65
+packages/frontend/@n8n/design-system/src/components/N8nBadge/Badge.vue
+  s_45c9c02db4924e::t_6b5636905d406a 61-65,233
+packages/frontend/@n8n/design-system/src/components/N8nNodeCreatorNode/NodeCreatorNode.vue
+  s_45c9c02db4924e::t_be82cac4f5ace8 52
+packages/frontend/@n8n/design-system/src/components/PreviewBadge/PreviewBadge.stories.ts
+  s_45c9c02db4924e::t_135dd03f8c8fc3 3,12,31,38-40,44
+packages/frontend/@n8n/design-system/src/components/PreviewBadge/PreviewBadge.vue
+  s_45c9c02db4924e::t_ac5fe5f05c2e30 4,8,10,13,20
+packages/frontend/@n8n/frontend-constants/package.json
+  s_45c9c02db4924e::t_3d7d3c4a0ecae3 4
+packages/frontend/@n8n/frontend-module-sdk/package.json
+  s_45c9c02db4924e::t_8392dfd9b4d137 4
+packages/frontend/@n8n/i18n/package.json
+  s_45c9c02db4924e::t_9693d2651e8392 4
+packages/frontend/@n8n/rest-api-client/package.json
+  s_45c9c02db4924e::t_88164cbbb16927 4
+packages/frontend/@n8n/stores/package.json
+  s_45c9c02db4924e::t_ca787b4f8a9ac5 4
+packages/frontend/editor-ui/package.json
+  s_45c9c02db4924e::t_5f87d4a745f45b 3
+packages/frontend/editor-ui/src/features/agents/views/SettingsAgentsView.vue
+  s_45c9c02db4924e::t_80a81d0081cf95 77
+packages/frontend/editor-ui/src/features/ai/instanceAi/onboarding/InstanceAiOnboardingIntro.vue
+  s_45c9c02db4924e::t_c28977c14ad737 43
+packages/frontend/editor-ui/src/features/ai/instanceAi/views/SettingsInstanceAiView.vue
+  s_45c9c02db4924e::t_1da46bd5da55b2 469
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialTypeSelector.vue
+  s_45c9c02db4924e::t_a811f4d12f2125 72
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsContextView.vue
+  s_45c9c02db4924e::t_a48b977b5d14ad 88
+packages/frontend/editor-ui/src/features/settings/security/WorkflowReviewsSection.vue
+  s_45c9c02db4924e::t_1cc51be1ef7657 77
+packages/modules/inbox/frontend/package.json
+  s_45c9c02db4924e::t_3200f308a318ea 3
+packages/modules/insights/backend/package.json
+  s_45c9c02db4924e::t_a1ea3dde6dcb4c 3
+packages/modules/insights/frontend/package.json
+  s_45c9c02db4924e::t_29f02659ce9100 3
+packages/modules/instance-registry/frontend/package.json
+  s_45c9c02db4924e::t_3653c498fe55d2 3
+packages/modules/mcp/frontend/package.json
+  s_45c9c02db4924e::t_da9596fb0aa865 3
+packages/modules/otel/frontend/package.json
+  s_45c9c02db4924e::t_02d7235d9a2404 3
+packages/modules/quick-connect/backend/package.json
+  s_45c9c02db4924e::t_d1bb77ed9497ae 3
+packages/modules/type-availability-policies/frontend/package.json
+  s_45c9c02db4924e::t_ecc014e57504b8 3
+packages/modules/workflow-builder/backend/package.json
+  s_45c9c02db4924e::t_040d23995d7733 3
+packages/nodes-base/package.json
+  s_45c9c02db4924e::t_d9705521f0139d 3
+packages/workflow/package.json
+  s_45c9c02db4924e::t_93b4c79f437e67 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b982a0eb77da514d2060fdcbe542b3ee92f1c706",
+  "prompts": {},
+  "sessions": {
+    "s_45c9c02db4924e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13acd-cd08-74b2-b4f6-17aac3637046",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/cli/src/credentials/credentials.service.ts
+  s_3dfeaa108f1834::t_f0aa7a709b0186 1288,1292
+  s_3dfeaa108f1834::t_227aeb6bf5cc17 1304
+  s_3dfeaa108f1834::t_e96ef1b6cc81c0 1356-1368
+  s_3dfeaa108f1834::t_1b58088dac786c 1392-1393,1397
+packages/cli/src/modules/n8n-packages/entities/credential/credential-importer.ts
+  s_3dfeaa108f1834::t_167bb2c99bfc26 161,163-166,169-170,174
+  s_3dfeaa108f1834::t_5a938a531f8327 167-168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0dc36418704cbbd5a971d7434d46dec39b13dfd2",
+  "prompts": {},
+  "sessions": {
+    "s_3dfeaa108f1834": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "76154e9a-f642-4d08-954b-c9bc5c8372b0",
+        "model": "unknown"
+      },
+      "human_author": null
+    }
+  }
+}

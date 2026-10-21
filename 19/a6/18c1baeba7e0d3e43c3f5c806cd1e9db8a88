@@ -1,0 +1,47 @@
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-identities.integration.test.ts
+  s_d3c0f6f6f7d41c::t_2090556b206cae 66,71,80,109-110,122-125,190-191
+  s_d3c0f6f6f7d41c::t_20e78d24fa55ce 66,71,80,109-110,122-125,190-191
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-planning.integration.test.ts
+  s_71ad2034164515::t_de3ad37a05db3a 234-235,291,455-485
+  s_71ad2034164515::t_d815cb1bad9270 469-485
+  s_71ad2034164515::t_e9b5beaa694d20 234-235,458-459,467-468
+  s_71ad2034164515::t_f8d4e05bfe111d 291,455-457,460-466
+packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent-import-match.service.test.ts
+  s_d3c0f6f6f7d41c::t_21565d2073d399 39-40,46-47
+  s_d3c0f6f6f7d41c::t_5f901dc339845a 39-40,46-47
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import-bindings.ts
+  s_71ad2034164515::t_e0f35bb24e1523 73,96,105,108,204-226,235,245,260-265,268,271
+  s_71ad2034164515::t_48eeb6ada15c5d 96,235,265,268,271
+  s_71ad2034164515::t_13c97519d4471a 73
+  s_71ad2034164515::t_194aefd727a2de 105,108,204-226,245,260-264
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import-match.service.ts
+  s_d3c0f6f6f7d41c::t_90a01da234acfc 12,16,87,89-92,94,97-102,104,107,111-116,118-124,127
+  s_d3c0f6f6f7d41c::t_2a4126627b6ecc 12,16,87,89-92,94,97-102,104,107,111-116,118-124,127
+packages/cli/src/modules/n8n-packages/entities/agent/agent-importer.ts
+  s_71ad2034164515::t_ccf4182cbf609b 75
+  s_71ad2034164515::t_b49e84d391c03f 75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "19a618c1baeba7e0d3e43c3f5c806cd1e9db8a88",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_d3c0f6f6f7d41c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a152e5-4005-7111-8ca3-6a9ab5e71d29",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/quality/testing/playwright/pages/settings-promotions-page.ts
+  s_20bc5da4e9fe52::t_64e5d45a849971 44-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7b6a54dab0dbef7f575fa1129e76546707e1bca8",
+  "prompts": {},
+  "sessions": {
+    "s_20bc5da4e9fe52": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed82ce47-8b0e-4087-9761-908513e3887f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}
