@@ -5,8 +5,14 @@ import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mintActionToken } from '@n8n/engine';
 import { ExecuteWorkflowTrigger } from 'n8n-nodes-base/nodes/ExecuteWorkflow/ExecuteWorkflowTrigger/ExecuteWorkflowTrigger.node';
-import type { IConnections, INode } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
+import type {
+	IConnections,
+	IExecuteFunctions,
+	INode,
+	INodeExecutionData,
+	INodeType,
+} from 'n8n-workflow';
+import { NodeConnectionTypes, UserError } from 'n8n-workflow';
 
 import { EngineControlPlaneServer } from '@/modules/engine-v2/engine-control-plane-server';
 import { EngineSubWorkflowClient } from '@/modules/engine-v2/engine-sub-workflow-client';
@@ -36,6 +42,25 @@ const setNode: INode = {
 	position: [200, 0],
 	parameters: {},
 };
+/** A trigger that emits the execution id its context carries. */
+class ReportsExecutionId implements INodeType {
+	description = {
+		displayName: 'Reports Execution Id',
+		name: 'reportsExecutionId',
+		group: ['trigger'],
+		version: 1,
+		description: 'Emits the execution id',
+		defaults: { name: TRIGGER_NAME },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		return await Promise.resolve([[{ json: { executionId: this.getExecutionId() } }]]);
+	}
+}
+
 const connections: IConnections = {
 	[TRIGGER_NAME]: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
 };
@@ -119,20 +144,24 @@ describe('Engine v2 sub-workflow resolve (integration)', () => {
 		expect(result.workflow).toMatchObject({ id: workflow.id });
 	});
 
-	it('runs the trigger under the child execution id, so its expressions see it', async () => {
-		// The source is an expression on `$execution.id`: it passes the items
-		// through only when the id is the one the request named.
-		const probe: INode = {
-			...triggerNode,
-			parameters: {
-				inputSource: `={{ $execution.id === '${CHILD_EXECUTION_ID}' ? 'passthrough' : 'jsonExample' }}`,
-			},
-		};
-		const workflow = await child({ nodes: [probe, setNode] });
+	it('runs the trigger under the child execution id', async () => {
+		// A stand-in trigger that reports the id it runs under, in the real one's place.
+		await initNodeTypes({
+			...buildDefaultNodes(),
+			[TRIGGER_TYPE]: { type: new ReportsExecutionId(), sourcePath: '' },
+		});
+		try {
+			const workflow = await child({});
 
-		const result = await resolve(request(workflow.id));
+			const result = await resolve(request(workflow.id));
 
-		expect(result.triggerOutputs).toEqual([[{ json: { a: 1 } }]]);
+			expect(result.triggerOutputs).toEqual([[{ json: { executionId: CHILD_EXECUTION_ID } }]]);
+		} finally {
+			await initNodeTypes({
+				...buildDefaultNodes(),
+				[TRIGGER_TYPE]: { type: new ExecuteWorkflowTrigger(), sourcePath: '' },
+			});
+		}
 	});
 
 	it('resolves the published version of a child for a production run, not its draft', async () => {
