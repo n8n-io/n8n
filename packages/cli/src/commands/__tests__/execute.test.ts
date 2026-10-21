@@ -208,7 +208,7 @@ test('should exit with a crash when expression engine init fails', async () => {
 				idleTimeout: 30,
 				lazyAcquire: false,
 				compileCache: false,
-				nativeEvaluation: 'off',
+				nativeEvaluation: false,
 				nativeEvaluationVerifySample: 0.01,
 			},
 			generic: { gracefulShutdownTimeout: 30 },
@@ -237,7 +237,7 @@ test('should exit with a crash when expression engine init fails', async () => {
 		idleTimeoutMs: 30_000, // the config value is in seconds
 		lazyAcquire: false,
 		compileCache: false,
-		nativeEvaluation: 'off',
+		nativeEvaluation: false,
 		nativeEvaluationVerifySample: 0.01,
 		reportNativeVerifyMismatch: expect.any(Function),
 		canReportNativeVerifyMismatch: expect.any(Function),
@@ -255,7 +255,11 @@ test('reports a native verify mismatch to Sentry without the request scope', asy
 		mock<GlobalConfig>({
 			taskRunners: {},
 			nodes: {},
-			expressionEngine: { engine: 'vm', nativeEvaluation: 'verify' },
+			expressionEngine: {
+				engine: 'vm',
+				nativeEvaluation: false,
+				nativeEvaluationVerifySample: 0.01,
+			},
 			generic: { gracefulShutdownTimeout: 30 },
 		}),
 	);
@@ -303,7 +307,11 @@ test('stops native verify reports when Sentry turns off', async () => {
 		mock<GlobalConfig>({
 			taskRunners: {},
 			nodes: {},
-			expressionEngine: { engine: 'vm', nativeEvaluation: 'verify' },
+			expressionEngine: {
+				engine: 'vm',
+				nativeEvaluation: false,
+				nativeEvaluationVerifySample: 0.01,
+			},
 			generic: { gracefulShutdownTimeout: 30 },
 		}),
 	);
@@ -325,13 +333,14 @@ test('stops native verify reports when Sentry turns off', async () => {
 });
 
 test.each([
-	{ nativeEvaluation: 'verify', engine: 'vm', sentryActive: false, warns: true },
-	{ nativeEvaluation: 'verify', engine: 'vm', sentryActive: true, warns: false },
-	{ nativeEvaluation: 'verify', engine: 'legacy', sentryActive: false, warns: false },
-	{ nativeEvaluation: 'on', engine: 'vm', sentryActive: false, warns: false },
+	{ nativeEvaluation: false, sample: 0.01, engine: 'vm', sentryActive: false, warns: true },
+	{ nativeEvaluation: false, sample: 0.01, engine: 'vm', sentryActive: true, warns: false },
+	{ nativeEvaluation: false, sample: 0.01, engine: 'legacy', sentryActive: false, warns: false },
+	{ nativeEvaluation: false, sample: 0, engine: 'vm', sentryActive: false, warns: false },
+	{ nativeEvaluation: true, sample: 0.01, engine: 'vm', sentryActive: false, warns: false },
 ] as const)(
-	'warns at startup when verify mode has no Sentry: $nativeEvaluation on $engine, Sentry active $sentryActive',
-	async ({ nativeEvaluation, engine, sentryActive, warns }) => {
+	'warns at startup when verify mode has no Sentry: native $nativeEvaluation, sample $sample on $engine, Sentry active $sentryActive',
+	async ({ nativeEvaluation, sample, engine, sentryActive, warns }) => {
 		// arrange
 
 		vi.spyOn(Expression, 'initExpressionEngine').mockResolvedValue();
@@ -340,7 +349,7 @@ test.each([
 			mock<GlobalConfig>({
 				taskRunners: {},
 				nodes: {},
-				expressionEngine: { engine, nativeEvaluation },
+				expressionEngine: { engine, nativeEvaluation, nativeEvaluationVerifySample: sample },
 				generic: { gracefulShutdownTimeout: 30 },
 			}),
 		);
@@ -374,7 +383,11 @@ test('passes no verify reporter when Sentry is not active', async () => {
 		mock<GlobalConfig>({
 			taskRunners: {},
 			nodes: {},
-			expressionEngine: { engine: 'vm', nativeEvaluation: 'verify' },
+			expressionEngine: {
+				engine: 'vm',
+				nativeEvaluation: false,
+				nativeEvaluationVerifySample: 0.01,
+			},
 			generic: { gracefulShutdownTimeout: 30 },
 		}),
 	);

@@ -89,32 +89,6 @@ describe('ExpressionEngineConfig', () => {
 		});
 	});
 
-	describe('N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION', () => {
-		test.each([
-			['on', 'on'],
-			['verify', 'verify'],
-			['off', 'off'],
-			['VERIFY', 'verify'],
-			['true', 'on'],
-			['TRUE', 'on'],
-			['1', 'on'],
-			['false', 'off'],
-			['False', 'off'],
-			['0', 'off'],
-		])('parses %s as %s', (value, mode) => {
-			vi.stubEnv('N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION', value);
-			expect(Container.get(ExpressionEngineConfig).nativeEvaluation).toBe(mode);
-		});
-
-		test('falls back to off on invalid value', () => {
-			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-			vi.stubEnv('N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION', 'sometimes');
-			expect(Container.get(ExpressionEngineConfig).nativeEvaluation).toBe('off');
-			expect(consoleWarnSpy).toHaveBeenCalled();
-		});
-	});
-
 	describe('N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION_VERIFY_SAMPLE', () => {
 		test('overrides nativeEvaluationVerifySample', () => {
 			vi.stubEnv('N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION_VERIFY_SAMPLE', '0.5');
@@ -125,13 +99,13 @@ describe('ExpressionEngineConfig', () => {
 			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 			vi.stubEnv('N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION_VERIFY_SAMPLE', value);
-			expect(Container.get(ExpressionEngineConfig).nativeEvaluationVerifySample).toBe(0.01);
+			expect(Container.get(ExpressionEngineConfig).nativeEvaluationVerifySample).toBe(0);
 			expect(consoleWarnSpy).toHaveBeenCalled();
 		});
 
 		test('keeps the default on an empty value', () => {
 			vi.stubEnv('N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION_VERIFY_SAMPLE', '');
-			expect(Container.get(ExpressionEngineConfig).nativeEvaluationVerifySample).toBe(0.01);
+			expect(Container.get(ExpressionEngineConfig).nativeEvaluationVerifySample).toBe(0);
 		});
 	});
 

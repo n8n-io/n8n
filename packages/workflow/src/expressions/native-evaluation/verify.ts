@@ -15,8 +15,6 @@ const MAX_COMPARED_PAIRS = 10_000;
 
 class ComparisonTooLargeError extends Error {}
 
-export const DEFAULT_VERIFY_SAMPLE = 0.01;
-
 /**
  * Whether verify mode can compare the expression: it fits the native subset
  * and reads neither `$now`, `$today` nor `$parameter`.

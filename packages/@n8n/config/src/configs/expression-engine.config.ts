@@ -11,20 +11,6 @@ const expressionEngineSchema = z.enum(['legacy', 'vm', 'quickjs']);
  */
 const frontendExpressionEngineSchema = z.enum(['legacy', 'quickjs']);
 
-// The flag was a boolean before `verify` existed, so boolean values stay valid.
-const BOOLEAN_MODES = new Map([
-	['true', 'on'],
-	['1', 'on'],
-	['false', 'off'],
-	['0', 'off'],
-]);
-
-const nativeEvaluationSchema = z
-	.string()
-	.toLowerCase()
-	.transform((value) => BOOLEAN_MODES.get(value) ?? value)
-	.pipe(z.enum(['off', 'on', 'verify']));
-
 @Config
 export class ExpressionEngineConfig {
 	/**
@@ -130,22 +116,24 @@ export class ExpressionEngineConfig {
 	compileCache: boolean = false;
 
 	/**
-	 * Experimental: evaluate simple expressions directly, without an isolate.
-	 * - `off` (default): the engine evaluates every expression.
-	 * - `on`: n8n evaluates simple expressions directly.
-	 * - `verify`: n8n evaluates a sample both ways, uses the engine's result and
-	 *   reports differences to Sentry. `vm` and `quickjs` only.
+	 * Experimental: fast native evaluation. Simple expressions are evaluated
+	 * directly by n8n instead of the expression engine, so they never need an
+	 * isolate. Every other expression is evaluated by the engine as before.
+	 * Applies to every engine.
 	 */
-	@Env('N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION', nativeEvaluationSchema)
-	nativeEvaluation: 'off' | 'on' | 'verify' = 'off';
+	@Env('N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION')
+	nativeEvaluation: boolean = false;
 
 	/**
-	 * Experimental: share of simple expressions, from 0 to 1, that `verify` mode compares.
-	 * n8n evaluates each compared expression twice, so keep this value low on busy instances.
+	 * Experimental: share of simple expressions, from 0 to 1,
+	 * that n8n also evaluates natively and compares with the engine.
+	 * 0 compares none, 1 compares all.
+	 * Keep it low, compared expressions run twice.
+	 * Ignored while `N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION` is true.
 	 */
 	@Env(
 		'N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION_VERIFY_SAMPLE',
 		z.number({ coerce: true }).min(0).max(1),
 	)
-	nativeEvaluationVerifySample: number = 0.01;
+	nativeEvaluationVerifySample: number = 0;
 }

@@ -263,7 +263,7 @@ describe('Expression - native evaluation verify mode', () => {
 			expect(evaluateNatively).not.toHaveBeenCalled();
 		});
 
-		test('does not compare in on mode', () => {
+		test('does not compare while native evaluation is on', () => {
 			modules.Expression.setNativeEvaluation(true);
 			evaluateNatively.mockReturnValueOnce({ handled: true, value: 'native' });
 
@@ -287,7 +287,7 @@ describe('Expression - native evaluation verify mode', () => {
 				maxCodeCacheSize: 1024,
 				bridgeTimeout: 5000,
 				bridgeMemoryLimit: 128,
-				nativeEvaluation: 'verify',
+				nativeEvaluation: false,
 				nativeEvaluationVerifySample: 1,
 				reportNativeVerifyMismatch: report,
 			});
@@ -296,6 +296,21 @@ describe('Expression - native evaluation verify mode', () => {
 
 			expect(evaluate('={{ $json.name.toUpperCase() }}')).toBe('SECRET-NAME');
 			expect(evaluateNatively).not.toHaveBeenCalled();
+		});
+
+		test('warns that the sample is ignored while native evaluation is on', async () => {
+			await modules.Expression.initExpressionEngine({
+				engine: 'legacy',
+				poolSize: 1,
+				maxCodeCacheSize: 1024,
+				bridgeTimeout: 5000,
+				bridgeMemoryLimit: 128,
+				nativeEvaluation: true,
+				nativeEvaluationVerifySample: 1,
+				reportNativeVerifyMismatch: report,
+			});
+			expect(warn).toHaveBeenCalledTimes(1);
+			expect(warn.mock.calls[0][0]).toContain('native evaluation is on');
 		});
 	}
 });

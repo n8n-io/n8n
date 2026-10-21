@@ -16,7 +16,6 @@ import { isExpression } from './expressions/expression-helpers';
 import { evaluateNatively } from './expressions/native-evaluation';
 import {
 	canVerifyNatively,
-	DEFAULT_VERIFY_SAMPLE,
 	NativeVerifier,
 	type NativeVerifyMismatch,
 } from './expressions/native-evaluation/verify';
@@ -39,8 +38,6 @@ const isExpressionError = (error: unknown): error is ExpressionError =>
 	error instanceof ExpressionError || error instanceof ExpressionExtensionError;
 
 export type { NativeVerifyMismatch } from './expressions/native-evaluation/verify';
-
-export type NativeEvaluationMode = 'off' | 'on' | 'verify';
 
 const isTypeError = (error: unknown): error is TypeError =>
 	error instanceof TypeError || (error instanceof Error && error.name === 'TypeError');
@@ -299,7 +296,7 @@ export class Expression {
 
 	private static useSharedCaller = false;
 
-	private static nativeEvaluation: NativeEvaluationMode = 'off';
+	private static nativeEvaluation = false;
 
 	private static nativeVerifier?: NativeVerifier;
 
@@ -350,32 +347,38 @@ export class Expression {
 		sharedCaller?: boolean;
 		lazyAcquire?: boolean;
 		compileCache?: boolean;
+		/** Experimental: interpret expressions that fit the native subset in-process. Applies to every engine. */
+		nativeEvaluation?: boolean;
 		/**
-		 * Experimental: `on` interprets expressions that fit the native subset in-process,
-		 * on every engine. `verify` also evaluates a sample of them with the vm or quickjs
-		 * engine, returns the engine's result and reports any difference.
+		 * Experimental: share of native-subset expressions, from 0 to 1, to also evaluate
+		 * natively and compare with the vm or quickjs engine, returning the engine's result.
+		 * Only while native evaluation is off.
 		 */
-		nativeEvaluation?: NativeEvaluationMode;
-		/** Share of native-subset expressions, from 0 to 1, that `verify` compares. */
 		nativeEvaluationVerifySample?: number;
 		reportNativeVerifyMismatch?: (mismatch: NativeVerifyMismatch) => void;
 		/** Whether reports can be sent now. `verify` compares nothing while this is false. */
 		canReportNativeVerifyMismatch?: () => boolean;
 	}): Promise<void> {
-		this.nativeEvaluation = options.nativeEvaluation ?? 'off';
+		this.nativeEvaluation = options.nativeEvaluation ?? false;
+		const verifySample = options.nativeEvaluationVerifySample ?? 0;
 		this.nativeVerifier = options.reportNativeVerifyMismatch
 			? new NativeVerifier(
-					options.nativeEvaluationVerifySample ?? DEFAULT_VERIFY_SAMPLE,
+					verifySample,
 					options.reportNativeVerifyMismatch,
 					options.canReportNativeVerifyMismatch,
 				)
 			: undefined;
+		if (verifySample > 0 && this.nativeEvaluation) {
+			LoggerProxy.warn(
+				'Native evaluation verify sample is ignored because native evaluation is on',
+			);
+		}
 		if (options.engine === 'legacy') {
 			// Legacy differs from the isolates on purpose in places, so its
 			// differences would read as native bugs.
-			if (this.nativeEvaluation === 'verify') {
+			if (verifySample > 0 && !this.nativeEvaluation) {
 				LoggerProxy.warn(
-					'Native evaluation verify mode is ignored because it only applies to the vm or quickjs expression engine',
+					'Native evaluation verify sample is ignored because it only applies to the vm or quickjs expression engine',
 				);
 			}
 			return;
@@ -563,24 +566,22 @@ export class Expression {
 
 	/** Toggle native evaluation without restarting the engine. For tests and benchmarks; production sets `N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION`. */
 	static setNativeEvaluation(enabled: boolean): void {
-		this.nativeEvaluation = enabled ? 'on' : 'off';
+		this.nativeEvaluation = enabled;
 	}
 
-	/** Switch to `verify` mode. For tests; production sets `N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION=verify`. */
+	/** For tests; production sets `N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION_VERIFY_SAMPLE`. */
 	static setNativeEvaluationVerify(
 		sample: number,
 		reportMismatch?: (mismatch: NativeVerifyMismatch) => void,
 		canReportMismatch?: () => boolean,
 	): void {
-		this.nativeEvaluation = 'verify';
 		this.nativeVerifier = reportMismatch
 			? new NativeVerifier(sample, reportMismatch, canReportMismatch)
 			: undefined;
 	}
-
 	private static shouldVerifyNative(expression: string): boolean {
 		return (
-			this.nativeEvaluation === 'verify' &&
+			!this.nativeEvaluation &&
 			this.shouldUseVm() &&
 			this.nativeVerifier?.isSampled() === true &&
 			canVerifyNatively(expression)
@@ -822,7 +823,7 @@ export class Expression {
 			} catch (error) {
 				nativeResult = { ok: false, error, errorClass: errorClassOf(error) };
 			}
-		} else if (Expression.nativeEvaluation === 'on') {
+		} else if (Expression.nativeEvaluation) {
 			const native = evaluateNatively(parameterValue, data);
 			if (native.handled) return this.finalizeResolvedValue(native.value, returnObjectAsString);
 		}

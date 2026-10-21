@@ -306,9 +306,11 @@ export abstract class BaseCommand<F = never> {
 	}
 
 	private warnIfVerifyWithoutSentry() {
-		const { nativeEvaluation, engine } = this.globalConfig.expressionEngine;
+		const { nativeEvaluation, nativeEvaluationVerifySample, engine } =
+			this.globalConfig.expressionEngine;
 		if (
-			nativeEvaluation === 'verify' &&
+			!nativeEvaluation &&
+			nativeEvaluationVerifySample > 0 &&
 			engine !== 'legacy' &&
 			!this.errorReporter.isSentryActive()
 		) {
