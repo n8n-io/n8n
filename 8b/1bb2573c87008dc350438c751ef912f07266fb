@@ -67,6 +67,8 @@ packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
 packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
   s_71ad2034164515::t_7f9a3a46ebde6c 99
   s_71ad2034164515::t_b15852ebeb41aa 99
+packages/cli/src/modules/agents/agents.service.ts
+  s_71ad2034164515::t_fc38a38d64fbbb 179,181
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -74,6 +76,14 @@ packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
   "base_commit_sha": "8b1bb2573c87008dc350438c751ef912f07266fb",
   "prompts": {},
   "sessions": {
+    "s_3d603ecb7cc413": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "820e497a-8b5a-46a8-b24e-e243dbaa7c63",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
     "s_71ad2034164515": {
       "agent_id": {
         "tool": "codex",
