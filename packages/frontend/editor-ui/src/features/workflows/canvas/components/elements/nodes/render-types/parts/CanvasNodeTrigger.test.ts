@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
+import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import { createCanvasNodeProvide } from '@/features/workflows/canvas/__tests__/utils';
@@ -137,6 +138,17 @@ describe('CanvasNodeTrigger', () => {
 			await userEvent.click(button);
 
 			expect(runEntireWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('should disable Open chat on a restricted chat trigger and show the scope in a tooltip', async () => {
+			const { getByTestId } = renderRestricted(CHAT_TRIGGER_NODE_TYPE);
+			const button = getByTestId('execute-workflow-button-Trigger');
+
+			expect(button).toBeDisabled();
+
+			await hoverTooltipTrigger(button);
+
+			await waitFor(() => expect(getTooltip()).toHaveTextContent('Restricted on this instance'));
 		});
 
 		it('should show the scope in a tooltip', async () => {

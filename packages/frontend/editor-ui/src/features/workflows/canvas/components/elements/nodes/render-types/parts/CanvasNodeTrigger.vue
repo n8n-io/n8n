@@ -126,6 +126,16 @@ async function handleClickExecute() {
 						:label="i18n.baseText('chat.hide')"
 						@click.capture="closeChat"
 					/>
+					<N8nTooltip v-else-if="isRestricted" :content="restrictionTitle">
+						<N8nButton
+							variant="solid"
+							icon="message-circle"
+							size="large"
+							disabled
+							:data-test-id="testId"
+							:label="i18n.baseText('chat.open')"
+						/>
+					</N8nTooltip>
 					<KeyboardShortcutTooltip
 						v-else
 						:label="i18n.baseText('chat.open')"
@@ -135,7 +145,7 @@ async function handleClickExecute() {
 							variant="solid"
 							icon="message-circle"
 							size="large"
-							:disabled="isExecuting || isRestricted"
+							:disabled="isExecuting"
 							:data-test-id="testId"
 							:label="i18n.baseText('chat.open')"
 							@click.capture="openChat"
