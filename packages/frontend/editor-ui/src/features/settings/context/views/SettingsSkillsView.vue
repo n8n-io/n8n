@@ -115,6 +115,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 			value: INSTANCE_SCOPE,
 			label: i18n.baseText('settings.context.skills.scope.instance'),
 			icon: 'globe',
+			target: { projectId: null, agentId: null },
 		});
 	}
 	const personalProject = projectsStore.personalProject;
@@ -123,6 +124,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 			value: `${PROJECT_SCOPE_PREFIX}${personalProject.id}`,
 			label: i18n.baseText('settings.context.skills.scope.personalProject'),
 			icon: 'user',
+			target: { projectId: personalProject.id, agentId: null },
 		});
 	}
 	for (const project of projectsStore.myProjects) {
@@ -131,6 +133,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 			value: `${PROJECT_SCOPE_PREFIX}${project.id}`,
 			label: project.name ?? project.id,
 			icon: 'layers',
+			target: { projectId: project.id, agentId: null },
 		});
 	}
 	return options;
@@ -259,21 +262,13 @@ function scopeValueOf(skill: Pick<SkillListItem, 'scope' | 'projectId'>): string
 }
 
 /**
- * Why the scope of a saved skill cannot change, if it cannot. The backend refuses a move
- * while an agent uses the skill, and a move needs the delete permission where the skill is,
- * because it takes the skill out of that scope.
+ * Why the scope of a saved skill cannot change, if it cannot. A move needs the delete
+ * permission where the skill is, because it takes the skill out of that scope. A skill in
+ * use can still move: the modal warns about a scope that drops an agent.
  */
 function scopeLock(
-	detail: Pick<SkillListItem, 'usedByAgents' | 'canDelete'>,
+	detail: Pick<SkillListItem, 'canDelete'>,
 ): Pick<AgentSkillModalData, 'scopeLockedReason'> {
-	if (detail.usedByAgents > 0) {
-		return {
-			scopeLockedReason: i18n.baseText('settings.context.skills.modal.scope.inUse', {
-				interpolate: { count: detail.usedByAgents },
-				adjustToNumber: detail.usedByAgents,
-			}),
-		};
-	}
 	if (!detail.canDelete) {
 		return { scopeLockedReason: i18n.baseText('settings.context.skills.modal.scope.noDelete') };
 	}
@@ -302,6 +297,7 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>) {
 			scopeOptions: options,
 			initialScope: currentValue,
 			...scopeLock(detail),
+			usedBy: detail.usedBy,
 			existingSkillNames: [],
 			onConfirm: async ({ skill, scope }) =>
 				await onSave(

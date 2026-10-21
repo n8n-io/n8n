@@ -92,6 +92,11 @@ export type SkillMoveOptions = {
 	nameAfterMove?: string;
 	/** The scope `assertCanMove` checked. The move is refused if the skill left it since. */
 	checkedSource?: SkillTarget;
+	/**
+	 * The projects whose agents a refusal names, as for `deleteSkill`. It only counts the
+	 * agents in other projects.
+	 */
+	agentProjectIds?: string[] | 'all';
 };
 
 /**
@@ -346,17 +351,17 @@ export class SkillService {
 	// ---------------------------------------------------------------- move
 
 	/**
-	 * Moves a skill to a project, one agent or the instance. Refused while an agent other
-	 * than `keepAgentId` uses it, or while any agent uses it when there is no `keepAgentId`.
-	 * The edit lock makes a concurrent attach wait, so the check and the move see the same
-	 * agents.
+	 * Moves a skill to a project, one agent or the instance. Refused when an agent that uses
+	 * the skill cannot add it in the new scope, so a move never takes a skill away from an
+	 * agent. `keepAgentId` is the agent that asks for the move: it does not block it. The edit
+	 * lock makes a concurrent attach wait, so the check and the move see the same agents.
 	 */
 	async changeTarget(
 		skillId: string,
 		target: SkillTarget,
 		keepAgentId: string | undefined,
 		ctx: OperationContext = {},
-		{ nameAfterMove, checkedSource }: SkillMoveOptions = {},
+		{ nameAfterMove, checkedSource, agentProjectIds = 'all' }: SkillMoveOptions = {},
 	): Promise<void> {
 		await this.txRunner.run(ctx, async (txCtx) => {
 			await this.skillRepository.lockForEdit([skillId], txCtx);
@@ -377,13 +382,7 @@ export class SkillService {
 			const others = (await this.skillAgents.findUsingAgentIds(skillId, txCtx)).filter(
 				(id) => id !== keepAgentId,
 			);
-			if (others.length > 0) {
-				throw new ConflictError(
-					keepAgentId
-						? 'Other agents use this skill. Detach it from those agents first, then change where it can be added.'
-						: 'Agents use this skill. Detach it from every agent first, then change where it can be added.',
-				);
-			}
+			await this.assertAgentsKeepAccess(others, target, agentProjectIds, txCtx);
 			// The new scope must not already hold a name like the one the skill has after the move.
 			const name =
 				nameAfterMove ??
@@ -391,6 +390,43 @@ export class SkillService {
 			if (name) await this.assertNameFree(name, target, skillId, txCtx);
 			await this.skillRepository.updateTarget(skillId, target, txCtx);
 		});
+	}
+
+	/**
+	 * Refuses a move that takes the skill away from one of `agentIds`. An agent can add an
+	 * instance skill, a skill of its own project and its own agent skills.
+	 */
+	private async assertAgentsKeepAccess(
+		agentIds: string[],
+		target: SkillTarget,
+		agentProjectIds: string[] | 'all',
+		ctx: OperationContext,
+	): Promise<void> {
+		if (agentIds.length === 0 || (target.projectId === null && target.agentId === null)) return;
+		const agents = await this.skillAgents.findAgents(agentIds, ctx);
+		const losing = agentIds.filter((id) =>
+			target.agentId ? id !== target.agentId : agents.get(id)?.projectId !== target.projectId,
+		);
+		if (losing.length === 0) return;
+		const named: string[] = [];
+		let hidden = 0;
+		for (const id of losing) {
+			const agent = agents.get(id);
+			if (agent && (agentProjectIds === 'all' || agentProjectIds.includes(agent.projectId))) {
+				named.push(`"${agent.name}"`);
+			} else {
+				hidden++;
+			}
+		}
+		if (hidden > 0) {
+			named.push(`${hidden} ${hidden === 1 ? 'agent' : 'agents'} in other projects`);
+		}
+		const one = losing.length === 1;
+		throw new ConflictError(
+			`${named.join(', ')} would lose access to this skill. Choose a scope that includes ${
+				one ? 'that agent' : 'those agents'
+			}, or detach the skill from ${one ? 'it' : 'them'} first.`,
+		);
 	}
 
 	// ---------------------------------------------------------------- permission

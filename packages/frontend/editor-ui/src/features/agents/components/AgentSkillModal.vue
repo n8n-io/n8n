@@ -12,6 +12,7 @@ import {
 	type SkillCreateMethod,
 	type SkillDetail,
 	type SkillListItem,
+	type SkillUsage,
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import {
@@ -39,7 +40,11 @@ import type {
 import { getHubSkill, listAttachableSkills } from '../composables/useAgentApi';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import type { AgentSkill } from '../types';
-import { normalizeAgentSkillForSave } from '../utils/agentSkill';
+import {
+	agentsLosingSkill,
+	normalizeAgentSkillForSave,
+	type SkillMoveTarget,
+} from '../utils/agentSkill';
 import AgentSkillFileNav from './AgentSkillFileNav.vue';
 import AgentSkillUpload from './AgentSkillUpload.vue';
 import AgentSkillViewer from './AgentSkillViewer.vue';
@@ -47,7 +52,13 @@ import AgentModalMultiStep from './modals/AgentModalMultiStep.vue';
 
 const SKILL_FILE = 'SKILL.md';
 
-export type AgentSkillModalScopeOption = { value: string; label: string; icon: IconName };
+export type AgentSkillModalScopeOption = {
+	value: string;
+	label: string;
+	icon: IconName;
+	/** Where the option puts the skill, so the modal can warn when agents would lose it. */
+	target?: SkillMoveTarget;
+};
 
 /** What a failed `onConfirm` returns. The modal stays open and shows `nameError` on the name. */
 export type AgentSkillConfirmFailure = { saved: false; nameError?: string };
@@ -85,6 +96,8 @@ export type AgentSkillModalData = {
 	getDefaultName?: (scope: string) => Promise<string>;
 	/** Locks the scope field and explains why in a tooltip. */
 	scopeLockedReason?: string;
+	/** Settings only: the agents that use the skill, to warn about a scope that drops them. */
+	usedBy?: SkillUsage;
 	/** Shows the skill without edit controls, for a user who can use but not change it. */
 	readOnly?: boolean;
 	/**
@@ -282,12 +295,6 @@ const savedTarget = computed<AgentSkillAvailability | undefined>(() => {
 	if (skillAccess.value.agentId) return 'agent';
 	return skillAccess.value.scope === 'instance' ? 'instance' : 'project';
 });
-const usedByOtherAgents = computed(() => {
-	const usage = skillAccess.value?.usedBy;
-	if (!usage) return false;
-	const isOtherAgent = ({ agentId }: { agentId: string }) => agentId !== props.data.agentId;
-	return usage.hiddenAgents > 0 || usage.drafts.some(isOtherAgent) || usage.pins.some(isOtherAgent);
-});
 const showAvailabilitySelect = computed(() => {
 	if (!props.data.hubSkillsEnabled || step.value === 'preview') return false;
 	if (!isEditing.value) return true;
@@ -317,6 +324,65 @@ const availabilityOptions = computed(() => [
 			]
 		: []),
 ]);
+/**
+ * The warning for a move that takes the skill from agents that use it, or an empty string.
+ * The backend refuses such a move, so Save stays off while the warning shows.
+ */
+function accessLossWarning(
+	target: SkillMoveTarget | undefined,
+	destination: string,
+	usage: SkillUsage | undefined,
+): string {
+	if (!target || !usage) return '';
+	const { names, hidden } = agentsLosingSkill(usage, target, props.data.agentId);
+	const parts: string[] = [];
+	if (names.length > 0) {
+		parts.push(
+			i18n.baseText(
+				target.agentId
+					? 'agents.builder.skills.loseAccess.agentOnly'
+					: 'agents.builder.skills.loseAccess',
+				{
+					interpolate: { agents: names.join(', '), destination },
+					adjustToNumber: names.length,
+				},
+			),
+		);
+	}
+	if (hidden > 0) {
+		parts.push(
+			i18n.baseText('agents.builder.skills.loseAccess.hidden', {
+				interpolate: { count: hidden },
+				adjustToNumber: hidden,
+			}),
+		);
+	}
+	return parts.join(' ');
+}
+const scopeAccessWarning = computed(() => {
+	if (!canChangeScope.value || scope.value === props.data.initialScope) return '';
+	const option = props.data.scopeOptions?.find(({ value }) => value === scope.value);
+	return accessLossWarning(option?.target, option?.label ?? '', props.data.usedBy);
+});
+const availabilityAccessWarning = computed(() => {
+	const agentId = props.data.agentId;
+	if (!showAvailabilitySelect.value || !isEditing.value || !agentId) return '';
+	if (availableTo.value === savedTarget.value) return '';
+	const targets: Record<AgentSkillAvailability, SkillMoveTarget> = {
+		project: { projectId: props.data.projectId ?? null, agentId: null },
+		agent: { projectId: null, agentId },
+		instance: { projectId: null, agentId: null },
+	};
+	const option = availabilityOptions.value.find(({ value }) => value === availableTo.value);
+	return accessLossWarning(
+		targets[availableTo.value],
+		option?.label ?? '',
+		skillAccess.value?.usedBy,
+	);
+});
+const accessWarning = computed(() =>
+	showScope.value ? scopeAccessWarning.value : availabilityAccessWarning.value,
+);
 const removeLabel = computed(() =>
 	props.data.hubSkillsEnabled
 		? i18n.baseText('agents.builder.skills.detach')
@@ -628,7 +694,7 @@ function closeModal() {
 }
 
 async function onSave() {
-	if (defaultNameLoading.value || isSaving.value) return;
+	if (defaultNameLoading.value || isSaving.value || accessWarning.value) return;
 	submitted.value = true;
 	if (!canSave.value) {
 		showFirstInvalidFile();
@@ -815,61 +881,66 @@ function onRemove() {
 						@update:valid="onValidUpdate"
 					>
 						<template v-if="showScope" #fields-start>
-							<N8nInputLabel
-								:label="i18n.baseText('settings.context.skills.modal.scope.label')"
-								:tooltip-text="i18n.baseText('settings.context.skills.modal.scope.tooltip')"
-								size="small"
-								data-testid="agent-skill-scope"
-							>
-								<N8nTooltip
-									:disabled="!data.scopeLockedReason"
-									:content="data.scopeLockedReason"
-									placement="top"
+							<div :class="$style.scopeField">
+								<N8nInputLabel
+									:label="i18n.baseText('settings.context.skills.modal.scope.label')"
+									:tooltip-text="i18n.baseText('settings.context.skills.modal.scope.tooltip')"
+									size="small"
+									data-testid="agent-skill-scope"
 								>
-									<!-- A disabled select drops pointer events, so the tooltip needs its own target. -->
-									<div>
-										<N8nSelect
-											v-model="scope"
-											size="large"
-											:disabled="!canChangeScope || isSaving"
-											:teleported="false"
-											data-testid="agent-skill-scope-select"
-										>
-											<template v-if="selectedScopeIcon" #prefix>
-												<N8nIcon :icon="selectedScopeIcon" />
-											</template>
-											<N8nOption
-												v-for="option in data.scopeOptions"
-												:key="option.value"
-												:value="option.value"
-												:label="option.label"
+									<N8nTooltip
+										:disabled="!data.scopeLockedReason"
+										:content="data.scopeLockedReason"
+										placement="top"
+									>
+										<!-- A disabled select drops pointer events, so the tooltip needs its own target. -->
+										<div>
+											<N8nSelect
+												v-model="scope"
+												size="large"
+												:disabled="!canChangeScope || isSaving"
+												:teleported="false"
+												data-testid="agent-skill-scope-select"
 											>
-												<span :class="$style.availabilityOption">
-													<N8nIcon :icon="option.icon" />
-													<span>{{ option.label }}</span>
-												</span>
-											</N8nOption>
-										</N8nSelect>
-									</div>
-								</N8nTooltip>
-							</N8nInputLabel>
+												<template v-if="selectedScopeIcon" #prefix>
+													<N8nIcon :icon="selectedScopeIcon" />
+												</template>
+												<N8nOption
+													v-for="option in data.scopeOptions"
+													:key="option.value"
+													:value="option.value"
+													:label="option.label"
+												>
+													<span :class="$style.availabilityOption">
+														<N8nIcon :icon="option.icon" />
+														<span>{{ option.label }}</span>
+													</span>
+												</N8nOption>
+											</N8nSelect>
+										</div>
+									</N8nTooltip>
+								</N8nInputLabel>
+								<N8nCallout
+									v-if="scopeAccessWarning"
+									theme="warning"
+									slim
+									data-testid="agent-skill-access-warning"
+								>
+									{{ scopeAccessWarning }}
+								</N8nCallout>
+							</div>
 						</template>
 						<template v-else-if="showAvailabilitySelect" #fields-start>
-							<N8nInputLabel
-								:label="i18n.baseText('agents.builder.skills.availableTo.label')"
-								:tooltip-text="i18n.baseText('agents.builder.skills.availableTo.tooltip')"
-								show-tooltip
-								size="small"
-							>
-								<N8nTooltip
-									:content="i18n.baseText('agents.builder.skills.availableTo.locked')"
-									:disabled="!usedByOtherAgents"
-									placement="top"
+							<div :class="$style.scopeField">
+								<N8nInputLabel
+									:label="i18n.baseText('agents.builder.skills.availableTo.label')"
+									:tooltip-text="i18n.baseText('agents.builder.skills.availableTo.tooltip')"
+									show-tooltip
+									size="small"
 								>
 									<N8nSelect
 										v-model="availableTo"
 										:teleported="false"
-										:disabled="usedByOtherAgents"
 										data-testid="agent-skill-availability-select"
 									>
 										<template #prefix>
@@ -891,8 +962,16 @@ function onRemove() {
 											</span>
 										</N8nOption>
 									</N8nSelect>
-								</N8nTooltip>
-							</N8nInputLabel>
+								</N8nInputLabel>
+								<N8nCallout
+									v-if="availabilityAccessWarning"
+									theme="warning"
+									slim
+									data-testid="agent-skill-access-warning"
+								>
+									{{ availabilityAccessWarning }}
+								</N8nCallout>
+							</div>
 						</template>
 					</AgentSkillViewer>
 				</template>
@@ -943,7 +1022,7 @@ function onRemove() {
 			<N8nButton
 				v-else
 				variant="solid"
-				:disabled="!hasChanges || defaultNameLoading"
+				:disabled="!hasChanges || defaultNameLoading || !!accessWarning"
 				:loading="isSaving"
 				data-testid="agent-skill-create-save"
 				@click="onSave"
@@ -973,6 +1052,12 @@ function onRemove() {
 
 .footerHint {
 	text-align: right;
+}
+
+.scopeField {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
 }
 
 .availabilityOption {
