@@ -13,7 +13,10 @@ export type Mode = 'single main' | 'multi-main';
 
 const loadedScripts = new Map<string, string>();
 
-/** `ioredis-mock` cannot save scripts, so this fake saves them in a map and runs them with `EVAL`. */
+/**
+ * `rate-limit-redis` saves its counting script with `SCRIPT LOAD` and runs it with `EVALSHA`.
+ * `ioredis-mock` supports neither, so this fake keeps the scripts in a map and runs them with `EVAL`.
+ */
 export function redisClient(
 	failsOn: (command: string) => boolean = () => false,
 	scripts: Map<string, string> = loadedScripts,
@@ -42,17 +45,21 @@ export function redisClient(
 }
 
 /**
- * A real cluster can save a script on one node and then look for it on another node.
- * This fake always does that, to test that the factory saves scripts on every node.
+ * In a Redis cluster, each counter lives on one node, and `EVALSHA` runs on that node.
+ * `SCRIPT LOAD` names no counter, so the cluster can send it to a different node.
+ * This fake always sends `SCRIPT LOAD` to the other node. So a test fails unless the
+ * factory saves the script on every node.
  */
 export function redisCluster() {
-	const nodeWithoutCounters = redisClient(undefined, new Map());
-	const nodeWithCounters = redisClient(undefined, new Map());
-	const call = async (command: string, ...args: string[]) =>
-		await (command === 'SCRIPT' ? nodeWithoutCounters : nodeWithCounters).call(command, ...args);
+	const counterNode = redisClient(undefined, new Map());
+	const otherNode = redisClient(undefined, new Map());
+	const call = async (command: string, ...args: string[]) => {
+		if (command === 'SCRIPT') return await otherNode.call(command, ...args);
+		return await counterNode.call(command, ...args);
+	};
 	return mock<Cluster>({
 		isCluster: true,
-		nodes: () => [nodeWithoutCounters, nodeWithCounters],
+		nodes: () => [otherNode, counterNode],
 		call: call as Cluster['call'],
 	}) as unknown as Cluster;
 }
