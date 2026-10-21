@@ -65,15 +65,6 @@ export function withTokenVersion(
 	return { ...tokenData, [MANAGED_VERSION_KEY]: version };
 }
 
-/** Returns a copy of the credential data with the version stored next to the tokens. */
-export function withStoredVersion(
-	data: ICredentialDataDecryptedObject,
-	version: number,
-): ICredentialDataDecryptedObject {
-	const tokenData = isCredentialData(data.oauthTokenData) ? data.oauthTokenData : {};
-	return { ...data, oauthTokenData: withTokenVersion(tokenData, version) };
-}
-
 /**
  * Parses an overwrite payload.
  *

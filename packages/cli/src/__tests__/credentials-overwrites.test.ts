@@ -1487,6 +1487,55 @@ describe('CredentialsOverwrites', () => {
 			});
 		});
 
+		describe('fields of the newer app', () => {
+			it('should list the fields that the newer app sets, without the version', async () => {
+				const instance = await createInstance({
+					notionOAuth2Api: baseApp,
+					__versions: { notionOAuth2Api: { version: 2, ...newApp, scope: 'read' } },
+				});
+
+				expect(instance.getNewerAppProperties('notionOAuth2Api')).toEqual([
+					'clientId',
+					'clientSecret',
+					'scope',
+				]);
+			});
+
+			it('should find the fields of the newer app of a parent type', async () => {
+				const instance = await createInstance({
+					oAuth2Api: baseApp,
+					__versions: { oAuth2Api: { version: 2, ...newApp } },
+				});
+
+				expect(instance.getNewerAppProperties('notionOAuth2Api')).toEqual([
+					'clientId',
+					'clientSecret',
+				]);
+			});
+
+			it('should be empty without a rollout or for a non-OAuth type', async () => {
+				const instance = await createInstance({
+					notionOAuth2Api: baseApp,
+					notionApi: { apiKey: 'k' },
+				});
+
+				expect(instance.getNewerAppProperties('notionOAuth2Api')).toEqual([]);
+				expect(instance.getNewerAppProperties('notionApi')).toEqual([]);
+			});
+		});
+
+		describe('a type without an overwrite', () => {
+			it('should leave the credential data unchanged', async () => {
+				const instance = await createInstance({
+					notionOAuth2Api: baseApp,
+					__versions: { notionOAuth2Api: { version: 2, ...newApp } },
+				});
+				const data = { apiKey: 'own', oauthTokenData: { [MANAGED_VERSION_KEY]: 7 } };
+
+				expect(instance.applyOverwrite('notionApi', data)).toEqual(data);
+			});
+		});
+
 		describe('after a migration', () => {
 			it('should serve the stored version of the base entry and reject any other', async () => {
 				const instance = await createInstance({ notionOAuth2Api: { version: 2, ...newApp } });

@@ -368,6 +368,15 @@ export class CredentialsOverwrites {
 		return this.overwriteData;
 	}
 
+	/**
+	 * Names of the fields that the newer app of a rollout sets. The default app supplies them,
+	 * so the editor must hide them, even when the base entry does not set them.
+	 */
+	getNewerAppProperties(type: string): string[] {
+		const newer = this.nearest(type, this.newerApps);
+		return newer ? Object.keys(withoutVersion(newer)) : [];
+	}
+
 	supportsManagedAuth(type: string): boolean {
 		return this.get(type) !== undefined;
 	}

@@ -1,11 +1,6 @@
 import { MANAGED_VERSION_KEY } from 'n8n-workflow';
 
-import {
-	isManagedVersion,
-	isManagedVersionEntry,
-	readStoredVersion,
-	withStoredVersion,
-} from '@/managed-versions';
+import { isManagedVersion, isManagedVersionEntry, readStoredVersion } from '@/managed-versions';
 
 describe('managed-versions', () => {
 	describe('isManagedVersion', () => {
@@ -52,31 +47,6 @@ describe('managed-versions', () => {
 
 		it('should return undefined when the token data is not an object', () => {
 			expect(readStoredVersion({ oauthTokenData: 'encrypted' })).toBeUndefined();
-		});
-	});
-
-	describe('withStoredVersion', () => {
-		it('should keep the existing tokens and add the version', () => {
-			const data = { clientId: 'a', oauthTokenData: { access_token: 't' } };
-
-			expect(withStoredVersion(data, 2)).toEqual({
-				clientId: 'a',
-				oauthTokenData: { access_token: 't', [MANAGED_VERSION_KEY]: 2 },
-			});
-		});
-
-		it('should replace a previous version', () => {
-			const data = { oauthTokenData: { [MANAGED_VERSION_KEY]: 1 } };
-
-			expect(readStoredVersion(withStoredVersion(data, 2))).toBe(2);
-		});
-
-		it('should not change the input', () => {
-			const data = { oauthTokenData: { access_token: 't' } };
-
-			withStoredVersion(data, 2);
-
-			expect(data).toEqual({ oauthTokenData: { access_token: 't' } });
 		});
 	});
 });
