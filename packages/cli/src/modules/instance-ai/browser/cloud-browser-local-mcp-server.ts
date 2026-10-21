@@ -58,7 +58,7 @@ export const CLOUD_BROWSER_TOOLS: ReadonlySet<string> = new Set([
 export const START_SESSION_TOOL_NAME = 'browser_start_session';
 
 /**
- * A session with no tool call for this long is released, so a job that stalls or waits
+ * A session with no tool call for this long is released, so a task that stalls or waits
  * a long time for the user does not keep a paid browser open. The model can open a new
  * session when it continues.
  */
@@ -85,7 +85,7 @@ const START_SESSION_MCP_TOOL: McpTool = mcpToolSchema.parse({
  */
 type SessionUnavailableReason = 'notStarted' | 'connectionLost' | 'idleTimeout';
 
-const RELEASED_MESSAGE = 'The browser job has ended. No browser tools can run.';
+const RELEASED_MESSAGE = 'The browser task has ended. No browser tools can run.';
 
 const NO_HOST_MESSAGE = 'This browser action only works on websites. Use a website address.';
 
@@ -118,7 +118,7 @@ interface ActiveSession {
 	toolsByName: Map<string, ToolDefinition>;
 }
 
-/** Browser tools on a Browserbase session, for one background job. */
+/** Browser tools on a Browserbase session, for one background task. */
 export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 	private readonly toolList: McpTool[] = [START_SESSION_MCP_TOOL];
 
@@ -132,7 +132,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 	private pendingCalls = 0;
 
 	/**
-	 * Set by `release()` when the job ends. After that, the service no longer tracks this
+	 * Set by `release()` when the task ends. After that, the service no longer tracks this
 	 * server, so it must not open a session that nothing would release.
 	 */
 	private isReleased = false;
@@ -157,7 +157,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 		}
 	}
 
-	/** Replaces the gate, for example when a new run of the job brings new permissions. */
+	/** Replaces the gate, for example when a new run of the task brings new permissions. */
 	setDomainGate(domainGate: BrowserDomainGate): void {
 		this.domainGate = domainGate;
 	}
@@ -206,7 +206,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 	}
 
 	/**
-	 * Ends the job's browser session, if one is open. The server then refuses every later
+	 * Ends the task's browser session, if one is open. The server then refuses every later
 	 * call, including calls that were waiting for this release.
 	 */
 	async release(): Promise<void> {
@@ -330,7 +330,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 		if (session.connection.isConnected) return session;
 
 		const { scope, logger } = this.options;
-		logger.warn('Cloud browser session lost', { jobId: scope.jobId, sessionId: session.id });
+		logger.warn('Cloud browser session lost', { taskId: scope.taskId, sessionId: session.id });
 		this.activeSession = undefined;
 		this.sessionUnavailableReason = 'connectionLost';
 		await this.releaseSession(session.id);
@@ -351,7 +351,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 			throw error;
 		}
 
-		logger.info('Cloud browser session started', { jobId: scope.jobId, sessionId: id });
+		logger.info('Cloud browser session started', { taskId: scope.taskId, sessionId: id });
 		return {
 			id,
 			connection: toolkit.connection,
@@ -377,7 +377,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 			await sessionProvider.releaseSession(scope, sessionId);
 		} catch (error) {
 			logger.warn('Failed to release cloud browser session', {
-				jobId: scope.jobId,
+				taskId: scope.taskId,
 				sessionId,
 				error: ensureError(error).message,
 			});
@@ -404,7 +404,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 	private async releaseIdleSession(): Promise<void> {
 		const { scope, logger } = this.options;
 		logger.info('Releasing idle cloud browser session', {
-			jobId: scope.jobId,
+			taskId: scope.taskId,
 			sessionId: this.activeSession?.id,
 		});
 		await this.withSessionLock(async () => {

@@ -29,10 +29,10 @@ interface GatewayTokenResponse {
 
 /** Who a request made on a user's behalf is for. The gateway bills and attributes it by this. */
 export interface AiGatewayRequestAttribution {
-	/** The Instance AI thread that owns the job. */
+	/** The Instance AI thread that owns the task. */
 	instanceAiThreadId: string;
-	/** An Instance AI background job. The gateway bills these requests to Assistant credits. */
-	instanceAiJobId: string;
+	/** An Instance AI background task. The gateway bills these requests to Assistant credits. */
+	instanceAiTaskId: string;
 }
 
 /** A gateway response with a status that is not 2xx. */
@@ -47,7 +47,7 @@ interface GatewayUrlContext {
 	projectId?: string;
 	agentId?: string;
 	instanceAiThreadId?: string;
-	instanceAiJobId?: string;
+	instanceAiTaskId?: string;
 }
 
 export type AiGatewayAvailability =
@@ -432,10 +432,10 @@ export class AiGatewayService {
 	 *   with project    → `<base>/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw%7Cnr6r2FfB0mVeqZP1/openai/v1`
 	 *   agent           → `<base>/v1/gateway/exec/agent/AG123%7Cnr6r2FfB0mVeqZP1/openai/v1`
 	 *
-	 * Instance AI background jobs work the same way with the literal `instance-ai`,
-	 * which also tells the gateway to bill Assistant credits. The thread and job take
-	 * the workflow segment as `:threadId|:jobId`:
-	 *   instance AI     → `<base>/v1/gateway/exec/instance-ai/THR123%7CJOB123/browserbaseBrowserUse`
+	 * Instance AI background tasks work the same way with the literal `instance-ai`,
+	 * which also tells the gateway to bill Assistant credits. The thread and task take
+	 * the workflow segment as `:threadId|:taskId`:
+	 *   instance AI     → `<base>/v1/gateway/exec/instance-ai/THR123%7CTASK123/browserbaseBrowserUse`
 	 */
 	private buildGatewayUrl(
 		baseUrl: string,
@@ -463,7 +463,7 @@ export class AiGatewayService {
 		if (context.instanceAiThreadId) {
 			return {
 				execId: 'instance-ai',
-				contextIds: [context.instanceAiThreadId, context.instanceAiJobId],
+				contextIds: [context.instanceAiThreadId, context.instanceAiTaskId],
 			};
 		}
 		if (context.workflowId) {

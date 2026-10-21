@@ -839,9 +839,9 @@ describe('AiGatewayService', () => {
 			path: '/v1/sessions',
 			body: { keepAlive: false },
 			userId: USER_ID,
-			attribution: { instanceAiThreadId: 'thread-1', instanceAiJobId: 'job/1' },
+			attribution: { instanceAiThreadId: 'thread-1', instanceAiTaskId: 'task/1' },
 		};
-		const PROVIDER_URL = `${BASE_URL}/v1/gateway/exec/instance-ai/thread-1%7Cjob%2F1/browserbaseBrowserUse/v1/sessions`;
+		const PROVIDER_URL = `${BASE_URL}/v1/gateway/exec/instance-ai/thread-1%7Ctask%2F1/browserbaseBrowserUse/v1/sessions`;
 
 		/** The token request succeeds, then the provider request gets `response`. */
 		function mockTokenThen(response: { statusCode: number; body: unknown }) {

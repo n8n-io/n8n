@@ -16,12 +16,12 @@ import {
 import { CloudBrowserLocalMcpServer } from './cloud-browser-local-mcp-server';
 import type { CloudBrowserSessionProvider } from './cloud-browser-session-provider';
 
-/** Creates the cloud browser for a background job. Each job gets its own server. */
+/** Creates the cloud browser for a background task. Each task gets its own server. */
 @Service()
 export class InstanceAiCloudBrowserService {
 	private readonly logger: Logger;
 
-	private readonly serversByJobId = new Map<
+	private readonly serversByTaskId = new Map<
 		string,
 		{ userId: string; server: CloudBrowserLocalMcpServer }
 	>();
@@ -44,23 +44,23 @@ export class InstanceAiCloudBrowserService {
 	}
 
 	/**
-	 * Returns the job's server, and creates it on first use. `domainGate` holds the sites the user
-	 * approved and the admin's permissions. Each call replaces the gate of the job's server, so
+	 * Returns the task's server, and creates it on first use. `domainGate` holds the sites the user
+	 * approved and the admin's permissions. Each call replaces the gate of the task's server, so
 	 * the newest permissions apply.
 	 */
 	async createServer(
 		userId: string,
 		threadId: string,
-		jobId: string,
+		taskId: string,
 		domainGate: BrowserDomainGate,
 	): Promise<CloudBrowserLocalMcpServer> {
 		const { createBrowserTools } = await import('@n8n/mcp-browser');
 
-		const existing = this.serversByJobId.get(jobId);
+		const existing = this.serversByTaskId.get(taskId);
 		if (existing) {
 			if (existing.userId !== userId) {
-				throw new UnexpectedError('Cloud browser job belongs to another user', {
-					extra: { jobId },
+				throw new UnexpectedError('Cloud browser task belongs to another user', {
+					extra: { taskId },
 				});
 			}
 			existing.server.setDomainGate(domainGate);
@@ -68,15 +68,15 @@ export class InstanceAiCloudBrowserService {
 		}
 
 		const server = new CloudBrowserLocalMcpServer({
-			scope: { userId, threadId, jobId },
-			sessionProvider: this.getSessionProvider(jobId),
+			scope: { userId, threadId, taskId },
+			sessionProvider: this.getSessionProvider(taskId),
 			createToolkit: (connectUrl) =>
 				createBrowserTools({ mode: 'direct_cdp' }, { cdpEndpoint: connectUrl }),
 			toolContext: {
 				// No tool the cloud browser shows reads `dir`. Before you show a tool that reads
 				// or writes files, give each user a folder of their own, as the extension browser does.
 				dir: tmpdir(),
-				// One buffer per job, so a job never sees secrets captured by another.
+				// One buffer per task, so a task never sees secrets captured by another.
 				secretsBuffer: createInMemorySecretsBuffer(),
 				createCredential: async (payload) =>
 					await createBrowserCredential(
@@ -89,48 +89,48 @@ export class InstanceAiCloudBrowserService {
 			domainGate,
 			logger: this.logger,
 		});
-		this.serversByJobId.set(jobId, { userId, server });
+		this.serversByTaskId.set(taskId, { userId, server });
 		return server;
 	}
 
-	findServer(jobId: string): CloudBrowserLocalMcpServer | undefined {
-		return this.serversByJobId.get(jobId)?.server;
+	findServer(taskId: string): CloudBrowserLocalMcpServer | undefined {
+		return this.serversByTaskId.get(taskId)?.server;
 	}
 
-	/** Ends the job's browser and forgets its server. Called when the job ends. */
-	async release(jobId: string): Promise<void> {
-		const entry = this.serversByJobId.get(jobId);
+	/** Ends the task's browser and forgets its server. Called when the task ends. */
+	async release(taskId: string): Promise<void> {
+		const entry = this.serversByTaskId.get(taskId);
 		if (!entry) return;
-		this.serversByJobId.delete(jobId);
+		this.serversByTaskId.delete(taskId);
 		await entry.server.release();
 	}
 
-	/** Ends every job's browser, so no session outlives the instance. */
+	/** Ends every task's browser, so no session outlives the instance. */
 	@OnShutdown()
 	async shutdown(): Promise<void> {
-		const entries = [...this.serversByJobId.values()];
-		this.serversByJobId.clear();
+		const entries = [...this.serversByTaskId.values()];
+		this.serversByTaskId.clear();
 		await Promise.allSettled(entries.map(async ({ server }) => await server.release()));
 	}
 
-	private getSessionProvider(jobId: string): CloudBrowserSessionProvider {
+	private getSessionProvider(taskId: string): CloudBrowserSessionProvider {
 		if (this.aiGatewayBrowserUseService.isGatewayBrowserUseEnabled()) {
 			return this.buildGatewaySessionProvider();
 		}
-		throw new UnexpectedError('Cloud browser use is not enabled', { extra: { jobId } });
+		throw new UnexpectedError('Cloud browser use is not enabled', { extra: { taskId } });
 	}
 
 	private buildGatewaySessionProvider(): CloudBrowserSessionProvider {
 		return {
-			createSession: async ({ userId, threadId, jobId }) =>
+			createSession: async ({ userId, threadId, taskId }) =>
 				await this.aiGatewayBrowserUseService.createSession({
 					userId,
-					attribution: { instanceAiThreadId: threadId, instanceAiJobId: jobId },
+					attribution: { instanceAiThreadId: threadId, instanceAiTaskId: taskId },
 				}),
-			releaseSession: async ({ userId, threadId, jobId }, sessionId) =>
+			releaseSession: async ({ userId, threadId, taskId }, sessionId) =>
 				await this.aiGatewayBrowserUseService.releaseSession({
 					userId,
-					attribution: { instanceAiThreadId: threadId, instanceAiJobId: jobId },
+					attribution: { instanceAiThreadId: threadId, instanceAiTaskId: taskId },
 					sessionId,
 				}),
 		};

@@ -7,7 +7,7 @@ import {
 } from '@/services/ai-gateway-browser-use.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 
-const attribution = { instanceAiThreadId: 'thread-1', instanceAiJobId: 'job-1' };
+const attribution = { instanceAiThreadId: 'thread-1', instanceAiTaskId: 'task-1' };
 
 describe('AiGatewayBrowserUseService', () => {
 	let aiGatewayService: ReturnType<typeof mock<AiGatewayService>>;

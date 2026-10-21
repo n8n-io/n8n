@@ -5,18 +5,18 @@ export interface CloudBrowserSession {
 	connectUrl: string;
 }
 
-/** The user and background job that a session is scoped to. */
+/** The user and background task that a session is scoped to. */
 export interface CloudBrowserSessionScope {
 	userId: string;
-	/** The thread that owns the background job. */
+	/** The thread that owns the background task. */
 	threadId: string;
-	/** The background job that owns the session. */
-	jobId: string;
+	/** The background task that owns the session. */
+	taskId: string;
 }
 
 /**
  * Where cloud browser sessions come from. The instance uses one provider for
- * every job, so the browser tools never know how a session was created or paid for.
+ * every task, so the browser tools never know how a session was created or paid for.
  */
 export interface CloudBrowserSessionProvider {
 	createSession(scope: CloudBrowserSessionScope): Promise<CloudBrowserSession>;

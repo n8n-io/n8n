@@ -20,7 +20,7 @@ import type { BrowserDomainGate } from '../browser/browser.helpers';
 import type { CloudBrowserSessionProvider } from '../browser/cloud-browser-session-provider';
 
 describe('CloudBrowserLocalMcpServer', () => {
-	const scope = { userId: 'user-1', threadId: 'thread-1', jobId: 'job-1' };
+	const scope = { userId: 'user-1', threadId: 'thread-1', taskId: 'task-1' };
 	const noSessionResult = {
 		content: [
 			{
@@ -734,7 +734,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 
 	describe('release', () => {
 		const releasedResult = {
-			content: [{ type: 'text', text: 'The browser job has ended. No browser tools can run.' }],
+			content: [{ type: 'text', text: 'The browser task has ended. No browser tools can run.' }],
 			isError: true,
 		};
 
