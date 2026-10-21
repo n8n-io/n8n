@@ -21,6 +21,7 @@ import { useAgentTelemetry } from '../../composables/useAgentTelemetry';
 import { useAgentPermissions } from '../../composables/useAgentPermissions';
 import { useCreateAgent } from '../../composables/useCreateAgent';
 import AgentPersonalisationIcon from '../../components/AgentPersonalisationIcon.vue';
+import N8nChatMakeAvailableModal from './N8nChatMakeAvailableModal.vue';
 
 /** Non-agent id for the "n8n Assistant" row, which has no agent id of its own. */
 const ASSISTANT_ITEM_ID = '__n8n_assistant__';
@@ -47,7 +48,7 @@ const { canCreate } = useAgentPermissions(() => props.projectId);
 const { createAgent } = useCreateAgent();
 
 const searchQuery = ref('');
-const { agents, count, isLoading } = useN8nChatAgents({
+const { agents, count, isLoading, retry } = useN8nChatAgents({
 	query: searchQuery,
 	page: 1,
 	pageSize: PAGE_SIZE,
@@ -82,6 +83,10 @@ const items = computed<Array<DropdownMenuItemProps<string, PickerItemData>>>(() 
 	];
 });
 
+function isUnavailable(data?: PickerItemData): boolean {
+	return data?.kind === 'agent' && !data.agent.availableInChat;
+}
+
 function itemDescription(data?: PickerItemData): string | undefined {
 	if (!data) return undefined;
 	return data.kind === 'assistant' ? assistantDescription.value : data.agent.description;
@@ -107,8 +112,24 @@ function handleSelect(id: string) {
 	}
 	const agent = agents.value.find((candidate) => candidate.id === id);
 	if (!agent) return;
+	if (!agent.availableInChat) {
+		agentToMakeAvailable.value = agent;
+		return;
+	}
+	selectAgent(agent);
+}
+
+function selectAgent(agent: AgentChatListItem) {
 	emit('update:modelValue', agent);
 	agentTelemetry.trackSelectedN8nChatAgent({ agentId: agent.id, source: 'dropdown' });
+}
+
+const agentToMakeAvailable = ref<AgentChatListItem | null>(null);
+
+function onAgentAvailable(agent: AgentChatListItem) {
+	agentToMakeAvailable.value = null;
+	retry();
+	selectAgent(agent);
 }
 
 function goToLibrary() {
@@ -165,7 +186,13 @@ function handleCreateAgent() {
 						</template>
 
 						<template #item-leading="{ item, ui }">
-							<span :class="[ui.class, $style.itemAvatar]">
+							<span
+								:class="[
+									ui.class,
+									$style.itemAvatar,
+									{ [$style.unavailable]: isUnavailable(item.data) },
+								]"
+							>
 								<N8nAssistantIcon v-if="item.data?.kind === 'assistant'" size="large" />
 								<AgentPersonalisationIcon
 									v-else
@@ -178,7 +205,7 @@ function handleCreateAgent() {
 						</template>
 
 						<template #item-label="{ item }">
-							<div :class="$style.itemLabel">
+							<div :class="[$style.itemLabel, { [$style.unavailable]: isUnavailable(item.data) }]">
 								<N8nText bold>{{ item.label }}</N8nText>
 								<N8nText
 									v-if="itemDescription(item.data)"
@@ -189,6 +216,18 @@ function handleCreateAgent() {
 									{{ itemDescription(item.data) }}
 								</N8nText>
 							</div>
+						</template>
+
+						<template #item-trailing="{ item, ui }">
+							<N8nText
+								v-if="isUnavailable(item.data)"
+								size="small"
+								bold
+								:class="[ui.class, $style.makeAvailable]"
+								:data-test-id="`n8n-chat-agent-picker-make-available-${item.id}`"
+							>
+								{{ i18n.baseText('agents.n8nChatPage.makeAvailable.action') }}
+							</N8nText>
 						</template>
 
 						<template v-if="showFooter" #footer>
@@ -230,6 +269,12 @@ function handleCreateAgent() {
 		>
 			{{ selectedDescription }}
 		</N8nText>
+		<N8nChatMakeAvailableModal
+			v-if="agentToMakeAvailable"
+			:agent="agentToMakeAvailable"
+			@close="agentToMakeAvailable = null"
+			@available="onAgentAvailable"
+		/>
 	</div>
 </template>
 
@@ -287,6 +332,16 @@ function handleCreateAgent() {
 	flex-direction: column;
 	min-width: 0;
 	line-height: var(--line-height--sm);
+}
+
+.unavailable {
+	opacity: 0.5;
+}
+
+.makeAvailable {
+	align-self: flex-start;
+	white-space: nowrap;
+	color: var(--text-color);
 }
 
 .itemDescription {
