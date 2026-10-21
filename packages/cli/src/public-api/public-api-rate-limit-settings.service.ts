@@ -90,12 +90,13 @@ export class PublicApiRateLimitSettingsService {
 	}
 
 	private async resolveSettings(): Promise<PublicApiRateLimitSettings> {
-		return this.applyEnvPriority((await this.readStoredSettings()) ?? {});
+		const stored = await this.readStoredSettings();
+		return this.applyEnvPriority(stored);
 	}
 
-	private async readStoredSettings(): Promise<Partial<PublicApiRateLimitSettings> | undefined> {
+	private async readStoredSettings(): Promise<Partial<PublicApiRateLimitSettings>> {
 		const row = await this.settingsRepository.findByKey(PUBLIC_API_RATE_LIMIT_SETTINGS_KEY);
-		if (!row?.value) return undefined;
+		if (!row?.value) return {};
 
 		try {
 			return UpdatePublicApiRateLimitSettingsDto.schema.partial().parse(jsonParse(row.value));
@@ -103,7 +104,7 @@ export class PublicApiRateLimitSettingsService {
 			this.logger.warn('Stored Public API rate-limit settings are invalid. Using the config.', {
 				error: ensureError(error),
 			});
-			return undefined;
+			return {};
 		}
 	}
 
