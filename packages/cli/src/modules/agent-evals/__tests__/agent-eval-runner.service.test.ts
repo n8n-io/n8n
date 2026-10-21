@@ -18,6 +18,8 @@ import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-co
 import type { License } from '@/license';
 import type { AgentConfigService } from '@/modules/agents/agent-config.service';
 import type { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
+import type { AgentEvaluationRunSource } from '@/modules/agents/evaluation/agent-evaluation.contracts';
+import type { AgentEvaluationService } from '@/modules/agents/evaluation/agent-evaluation.service';
 import type { ProjectAgent } from '@/modules/agents/entities/agent.entity';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
@@ -134,6 +136,7 @@ describe('AgentEvalRunnerService', () => {
 	let agentRepository: MockProxy<AgentRepository>;
 	let dataTableService: MockProxy<DataTableService>;
 	let evalAgentExecutionService: MockProxy<EvalAgentExecutionService>;
+	let agentEvaluation: MockProxy<AgentEvaluationService>;
 	let concurrencyControl: MockProxy<ConcurrencyControlService>;
 	let license: MockProxy<License>;
 	let flagGate: MockProxy<AgentEvalsFlagGate>;
@@ -171,6 +174,7 @@ describe('AgentEvalRunnerService', () => {
 		agentRepository = mock<AgentRepository>();
 		dataTableService = mock<DataTableService>();
 		evalAgentExecutionService = mock<EvalAgentExecutionService>();
+		agentEvaluation = mock<AgentEvaluationService>();
 		concurrencyControl = mock<ConcurrencyControlService>();
 		license = mock<License>();
 		flagGate = mock<AgentEvalsFlagGate>();
@@ -225,6 +229,7 @@ describe('AgentEvalRunnerService', () => {
 			agentsSettingsService,
 			agentConfigService,
 			credentialsService,
+			agentEvaluation,
 		);
 	});
 
@@ -371,8 +376,8 @@ describe('AgentEvalRunnerService', () => {
 			const first = new Promise<void>((resolve) => {
 				releaseFirst = resolve;
 			});
-			const source = { agent: mock<ProjectAgent>({ id: 'agent-1' }), skillRefs: [], skills: {} };
-			evalAgentExecutionService.captureRunSource.mockResolvedValue(source);
+			const source = mock<AgentEvaluationRunSource>();
+			agentEvaluation.captureRunSource.mockResolvedValue(source);
 			evalAgentExecutionService.executeWithLlmMock
 				.mockImplementationOnce(async () => {
 					await first;
@@ -388,7 +393,7 @@ describe('AgentEvalRunnerService', () => {
 			);
 			releaseFirst();
 			await finished;
-			expect(evalAgentExecutionService.captureRunSource).toHaveBeenCalledOnce();
+			expect(agentEvaluation.captureRunSource).toHaveBeenCalledOnce();
 			for (const call of evalAgentExecutionService.executeWithLlmMock.mock.calls) {
 				expect(call[4]?.source).toBe(source);
 			}

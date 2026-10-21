@@ -24,7 +24,6 @@ import { Container, Service } from '@n8n/di';
 import type { EvalLlmMockHandler } from 'n8n-core';
 
 import type {
-	AgentEvaluationAgent,
 	AgentEvaluationPreparation,
 	AgentEvaluationRunSource,
 } from '@/modules/agents/evaluation/agent-evaluation.contracts';
@@ -368,11 +367,6 @@ export class EvalAgentExecutionService {
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly outboundHttp: OutboundHttp,
 	) {}
-
-	/** Keep the root agent and resolved skills fixed while a batch is in flight. */
-	async captureRunSource(agent: AgentEvaluationAgent): Promise<AgentEvaluationRunSource> {
-		return await Container.get(AgentEvaluationService).captureRunSource(agent);
-	}
 
 	async executeWithLlmMock(
 		agentId: string,

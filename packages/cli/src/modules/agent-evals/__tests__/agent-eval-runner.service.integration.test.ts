@@ -75,6 +75,7 @@ const buildRunner = () =>
 		Container.get(AgentsSettingsService),
 		Container.get(AgentConfigService),
 		Container.get(CredentialsService),
+		mock(),
 	);
 
 /** Insert a minimal real agent row so `agent_eval_dataset.agentId`'s FK holds. */
