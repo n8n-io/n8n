@@ -240,13 +240,15 @@ export function createRouteWatcher(
 			if (stopped) return withQuestion(stopped);
 			const evidence = `end of turn (${streamStatus})`;
 			const verdict = await ask({ steps, endStatus: streamStatus });
-			if (!verdict) return withQuestion({ route: 'none', evidence: `${evidence}, judge failed` });
+			const calls = callTrail(instanceEvents);
+			if (!verdict)
+				return withQuestion({ route: 'none', evidence: `${evidence}, judge failed`, calls });
 			return withQuestion({
 				route: verdict.route,
 				steer: verdict.steer,
 				evidence,
 				judgeReason: verdict.reason,
-				calls: callTrail(instanceEvents),
+				calls,
 			});
 		},
 	};

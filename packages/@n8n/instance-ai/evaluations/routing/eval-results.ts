@@ -36,18 +36,18 @@ function noRouteAttribution({ turn }: RoutingTrial): EvalAttribution {
 
 function trialVerdict(expectation: string, trial: RoutingTrial): BuildExpectationResult {
 	const { resolution, passed, turn } = trial;
+	const calls = [...(resolution.questions ?? []), resolution].map((r) => r.calls ?? '').join(' | ');
 	if (resolution.route === 'none') {
 		const detail = turn.runError ?? resolution.judgeError;
 		return {
 			expectation,
 			pass: false,
-			reason: `Not graded: no route from ${resolution.evidence}${detail ? ` (${detail})` : ''}.`,
+			reason: `Not graded: no route from ${resolution.evidence}${detail ? ` (${detail})` : ''}. Calls: ${calls}.`,
 			incomplete: true,
 			attribution: noRouteAttribution(trial),
 		};
 	}
 	const judge = resolution.judgeReason ? ` Judge: ${resolution.judgeReason}` : '';
-	const calls = [...(resolution.questions ?? []), resolution].map((r) => r.calls ?? '').join(' | ');
 	const reason = `Route ${routeLabel(resolution)} from ${resolution.evidence}.${judge} Calls: ${calls}.`;
 	return passed
 		? { expectation, pass: true, reason }

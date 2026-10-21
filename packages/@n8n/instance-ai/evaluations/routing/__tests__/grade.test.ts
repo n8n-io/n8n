@@ -386,15 +386,19 @@ describe('createRouteWatcher', () => {
 		expect(resolution.route).toBe('clarify');
 	});
 
-	it('returns none with the error when the end-of-turn judge fails', async () => {
+	it('returns none with the error and the trail when the end-of-turn judge fails', async () => {
 		const watcher = createRouteWatcher(judgeReturning(new Error('Routing judge failed: 529')));
 
-		const resolution = await watcher.resolve({ instanceEvents: [], streamStatus: 'timed-out' });
+		const resolution = await watcher.resolve({
+			instanceEvents: [textEvent('Checking nodes.'), callEvent('search-nodes')],
+			streamStatus: 'timed-out',
+		});
 
 		expect(resolution).toEqual({
 			route: 'none',
 			evidence: 'end of turn (timed-out), judge failed',
 			judgeError: 'Routing judge failed: 529',
+			calls: 'say "Checking nodes." > search-nodes',
 		});
 	});
 });

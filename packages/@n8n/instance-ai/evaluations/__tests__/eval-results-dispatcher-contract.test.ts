@@ -478,6 +478,7 @@ describe('eval-results.json — dispatcher contract (routing)', () => {
 								route: 'agent',
 								evidence: 'build-agent call',
 								judgeReason: 'It builds an Agent.',
+								calls: 'build-agent',
 							},
 							passed: true,
 							turn: { streamStatus: 'stopped-on-route' },
@@ -488,7 +489,11 @@ describe('eval-results.json — dispatcher contract (routing)', () => {
 							turn: { streamStatus: 'stopped-on-route' },
 						},
 						{
-							resolution: { route: 'none', evidence: 'end of turn (timed-out), judge failed' },
+							resolution: {
+								route: 'none',
+								evidence: 'end of turn (timed-out), judge failed',
+								calls: 'think "Plan the inbox" > load_skill("intent-recognition")',
+							},
 							passed: false,
 							turn: { streamStatus: 'timed-out', runError: 'Run timed out' },
 						},
@@ -515,14 +520,15 @@ describe('eval-results.json — dispatcher contract (routing)', () => {
 				{
 					expectation,
 					pass: true,
-					reason: 'Route agent from build-agent call. Judge: It builds an Agent.',
+					reason:
+						'Route agent from build-agent call. Judge: It builds an Agent. Calls: build-agent.',
 				},
 			],
 			[
 				{
 					expectation,
 					pass: false,
-					reason: 'Route workflow from build-workflow call.',
+					reason: 'Route workflow from build-workflow call. Calls: .',
 					attribution: 'builder_issue',
 				},
 			],
@@ -530,8 +536,9 @@ describe('eval-results.json — dispatcher contract (routing)', () => {
 				{
 					expectation,
 					pass: false,
+					// A timed-out trial keeps its trail, so the steps before the timeout stay readable.
 					reason:
-						'Not graded: no route from end of turn (timed-out), judge failed (Run timed out).',
+						'Not graded: no route from end of turn (timed-out), judge failed (Run timed out). Calls: think "Plan the inbox" > load_skill("intent-recognition").',
 					incomplete: true,
 					attribution: 'timeout',
 				},
