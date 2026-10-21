@@ -1036,7 +1036,10 @@ export function createThreadRuntime(
 		}
 		// Executing a node grants "always allow" per node type + resource + operation,
 		// mirroring the backend thread grant. Without a type, fail closed.
-		if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.NODES && action === 'execute') {
+		if (
+			(toolName === WORKFLOW_BUILDER_TOOL_NAMES.NODES && action === 'execute') ||
+			toolName === SHARED_BUILDER_TOOL_NAMES.EXECUTE_NODE
+		) {
 			const nodeType = typeof args.type === 'string' ? args.type : '';
 			if (!nodeType) return null;
 			const config = isRecord(args.config) ? args.config : undefined;

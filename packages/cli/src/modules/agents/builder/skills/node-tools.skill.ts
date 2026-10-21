@@ -8,20 +8,20 @@ export function nodeToolsSkill(): RuntimeSkill {
 		id: 'agent-builder-node-tools',
 		name: 'Agent Builder Node Tools',
 		description:
-			'Use whenever adding, removing, or updating an n8n node-backed tool, including agent_builder_search_nodes/agent_builder_get_node_types discovery, nodeParameters, node credential slots, $fromAI usage, n8n expressions, and HTTP Request Tool configuration.',
+			'Use whenever adding, removing, or updating an n8n node-backed tool, including search_nodes/get_node_types discovery, nodeParameters, node credential slots, $fromAI usage, n8n expressions, and HTTP Request Tool configuration.',
 		recommendedTools: [
 			'agent-context',
-			'agent_builder_search_nodes',
-			'agent_builder_get_node_types',
+			'search_nodes',
+			'get_node_types',
 			'agent_builder_ask_credential',
 			'agent_builder_patch_config',
 		],
 		allowedTools: [
 			'agent-context',
-			'agent_builder_search_nodes',
-			'agent_builder_get_node_types',
+			'search_nodes',
+			'get_node_types',
 			'agent_builder_ask_credential',
-			'agent_builder_get_resource_locator_options',
+			'get_node_parameter_options',
 			'agent_builder_ask_questions',
 			'agent_builder_patch_config',
 			'agent_builder_write_config',
@@ -64,11 +64,11 @@ conventions. Never add an incomplete tool or use a placeholder URL.
 - If it returns \`kind: "mcp"\`, load \`agent-builder-external-services\`,
   follow its MCP Servers section, and stop this node-tool workflow.
 - If it returns \`kind: "node"\`, use its returned node results and call
-  \`agent_builder_get_node_types\`; do not repeat the same search with \`agent_builder_search_nodes\`.
+  \`get_node_types\`; do not repeat the same search with \`search_nodes\`.
 - Fetch every node definition that the build needs in one
-  \`agent_builder_get_node_types\` call, with all nodes and operations together.
+  \`get_node_types\` call, with all nodes and operations together.
   Do not fetch one service per call.
-- Call \`agent_builder_search_nodes\` directly only when the user explicitly requests an n8n
+- Call \`search_nodes\` (with \`scope: "agent_tool"\`) directly only when the user explicitly requests an n8n
   node, when refining node results, or when a verified MCP server lacks the
   requested capability.
 - Never guess node type names.
@@ -101,7 +101,7 @@ Do not use \`$fromAI\` for stable resource IDs that the target agent cannot know
 at runtime, such as Linear \`teamId\`, project IDs, channel IDs, calendar IDs,
 database IDs, table IDs, or other dynamic "Name or ID" selectors. Resolve those
 with the \`agent-builder-resource-locators\` skill, \`agent_builder_ask_credential\`, and
-\`agent_builder_get_resource_locator_options\`; write the returned \`parameterValue\` into
+\`get_node_parameter_options\`; write the returned \`parameterValue\` into
 \`nodeParameters\`.
 
 - \`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldName', 'What value to provide', 'string') }}\`

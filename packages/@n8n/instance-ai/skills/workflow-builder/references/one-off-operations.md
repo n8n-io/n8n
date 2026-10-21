@@ -10,7 +10,8 @@ description: >-
   for automations the user will run again — that is the normal build +
   post-build-flow path.
 recommended_tools:
-  - workflow_builder_nodes
+  - execute_node
+  - get_node_types
   - workflow_builder_build_workflow
   - workflow_builder_workflows
   - workflow_builder_executions
@@ -54,7 +55,7 @@ skips verification the user would have wanted.
 ## Single-node one-offs: prefer direct node execution
 
 When the entire effect is **one node operation**, skip the workflow: execute
-the node directly with `workflow_builder_nodes(action="execute")`. It runs a single node with
+the node directly with `execute_node`. It runs a single node with
 real credentials through the regular execution engine and returns its real
 output items — no workflow to build, set up, verify, or clean up afterwards.
 
@@ -80,7 +81,7 @@ accessible there, fall back to the one-off workflow flow below.
 
 Call it with the same shape as a workflow-sdk node — `{ type, version,
 config: { parameters, credentials } }` plus `input` items. Read
-`workflow_builder_nodes(action="type-definition")` first, as you would before configuring any
+`get_node_types` first, as you would before configuring any
 node. Approval works exactly like `workflow_builder_executions(action="run")` — the same
 run-approval card, admin policy, and session grants — and for a one-off that
 prompt is the consent gate. The returned output items are

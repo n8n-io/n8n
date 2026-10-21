@@ -16,7 +16,11 @@
 // its own tool calls.
 // ---------------------------------------------------------------------------
 
-import { resolveBuilderToolName } from '@n8n/api-types';
+import {
+	SHARED_BUILDER_TOOL_NAMES,
+	WORKFLOW_BUILDER_TOOL_NAMES,
+	resolveBuilderToolName,
+} from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
 import type { EventOutcome } from '../types';
@@ -29,6 +33,31 @@ import type {
 } from './types';
 
 const SPAWN_PREFIX = 'spawn_sub_agent:';
+
+const SPLIT_NODE_TOOL_NAMES = new Set<string>([
+	SHARED_BUILDER_TOOL_NAMES.SEARCH_NODES,
+	SHARED_BUILDER_TOOL_NAMES.GET_NODE_TYPES,
+	SHARED_BUILDER_TOOL_NAMES.GET_NODE_PARAMETER_OPTIONS,
+	SHARED_BUILDER_TOOL_NAMES.EXECUTE_NODE,
+]);
+
+function mapLegacyNodesActionToTool(action: unknown): string | undefined {
+	switch (action) {
+		case 'search':
+		case 'list':
+		case 'suggested':
+			return SHARED_BUILDER_TOOL_NAMES.SEARCH_NODES;
+		case 'type-definition':
+		case 'describe':
+			return SHARED_BUILDER_TOOL_NAMES.GET_NODE_TYPES;
+		case 'explore-resources':
+			return SHARED_BUILDER_TOOL_NAMES.GET_NODE_PARAMETER_OPTIONS;
+		case 'execute':
+			return SHARED_BUILDER_TOOL_NAMES.EXECUTE_NODE;
+		default:
+			return undefined;
+	}
+}
 
 function collectInvokedTools(outcome: EventOutcome): string[] {
 	const tools = new Set<string>();
@@ -54,8 +83,14 @@ function matches(name: string, invokedTools: string[], spawnedAgents: string[]):
 	if (name.startsWith(SPAWN_PREFIX)) {
 		return spawnedAgents.includes(name);
 	}
+	const resolved = resolveBuilderToolName(name);
+	if (resolved === WORKFLOW_BUILDER_TOOL_NAMES.NODES) {
+		return (
+			invokedTools.includes(resolved) || invokedTools.some((t) => SPLIT_NODE_TOOL_NAMES.has(t))
+		);
+	}
 	// Stored cases can name a tool by its former builder tool name.
-	return invokedTools.includes(resolveBuilderToolName(name));
+	return invokedTools.includes(resolved);
 }
 
 function validateRule(rule: ExpectedToolInvocations): void {
@@ -80,10 +115,30 @@ function toolCallMatchesExpectation(
 	expectation: ForbiddenToolCall,
 ): boolean {
 	if (wasDeclined(toolCall) !== (expectation.declined ?? false)) return false;
-	if (resolveBuilderToolName(toolCall.toolName) !== resolveBuilderToolName(expectation.toolName)) {
+	const actualTool = resolveBuilderToolName(toolCall.toolName);
+	const expectedTool = resolveBuilderToolName(expectation.toolName);
+
+	if (actualTool !== expectedTool) {
+		if (expectedTool === WORKFLOW_BUILDER_TOOL_NAMES.NODES) {
+			const mappedTool = isRecord(expectation.args)
+				? mapLegacyNodesActionToTool(expectation.args.action)
+				: undefined;
+			const toolMatches = mappedTool
+				? actualTool === mappedTool
+				: SPLIT_NODE_TOOL_NAMES.has(actualTool);
+			if (!toolMatches) return false;
+			if (isRecord(expectation.args)) {
+				const { action: _action, ...restArgs } = expectation.args;
+				if (Object.keys(restArgs).length > 0 && !matchesArgPattern(restArgs, toolCall.args)) {
+					return false;
+				}
+			}
+		} else {
+			return false;
+		}
+	} else if (expectation.args && !matchesArgPattern(expectation.args, toolCall.args)) {
 		return false;
 	}
-	if (expectation.args && !matchesArgPattern(expectation.args, toolCall.args)) return false;
 
 	const argsContainAny = expectation.argsContainAny ?? [];
 	if (argsContainAny.length === 0) return true;

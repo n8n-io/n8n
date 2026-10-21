@@ -1,9 +1,25 @@
 import { Logger } from '@n8n/backend-common';
-import { detectAuthenticationParameterValue } from '@n8n/ai-utilities/node-catalog';
+import {
+	collectDynamicNodeParameterPaths,
+	detectAuthenticationParameterValue,
+	findNodeParameterProperty,
+	getDynamicNodeParameterLookup,
+	getRequiredNodeCredentialSlots,
+	hasNodeCredentials,
+	normalizeParameterPath,
+	toDynamicParameterPath,
+	toLoadedOptionParameterValue,
+	toResourceLocatorParameterValue,
+} from '@n8n/ai-utilities/node-catalog';
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { ProjectRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { ExploreResourcesParams, ExploreResourcesResult } from '@n8n/instance-ai';
+import type {
+	ExploreResourcesParams,
+	ExploreResourcesResult,
+	ResolveParameterOptionsParams,
+	ResolveParameterOptionsResult,
+} from '@n8n/instance-ai';
 import type {
 	INodeCredentials,
 	INodeParameters,
@@ -139,6 +155,203 @@ export class NodeResourceExplorerService {
 				error: error instanceof Error ? error.message : String(error),
 			});
 			throw error;
+		}
+	}
+
+	async resolveParameterOptions(
+		user: User,
+		params: ResolveParameterOptionsParams & { projectId?: string },
+	): Promise<ResolveParameterOptionsResult> {
+		let nodeTypeDescription;
+		try {
+			nodeTypeDescription = this.nodeTypes.getByNameAndVersion(params.nodeType, params.version);
+		} catch (error) {
+			return {
+				ok: false,
+				code: 'node_type_not_found',
+				message:
+					error instanceof Error ? error.message : `Node type "${params.nodeType}" not found`,
+			};
+		}
+
+		const property = findNodeParameterProperty(
+			nodeTypeDescription.description.properties,
+			params.parameterPath,
+		);
+		if (!property) {
+			return {
+				ok: false,
+				code: 'parameter_not_found',
+				message: `Parameter "${params.parameterPath}" was not found on ${params.nodeType}.`,
+				dynamicParameters: collectDynamicNodeParameterPaths(
+					nodeTypeDescription.description.properties,
+				),
+			};
+		}
+
+		const lookup = getDynamicNodeParameterLookup(property);
+		if (!lookup) {
+			return {
+				ok: false,
+				code: 'not_dynamic_selector',
+				message: `Parameter "${params.parameterPath}" does not expose a resource locator or load-options lookup.`,
+				dynamicParameters: collectDynamicNodeParameterPaths(
+					nodeTypeDescription.description.properties,
+				),
+			};
+		}
+
+		let credentials: INodeCredentials | undefined;
+		if (params.credentials && Object.keys(params.credentials).length > 0) {
+			credentials = {};
+			for (const [credType, cred] of Object.entries(params.credentials)) {
+				if (cred.id === AI_GATEWAY_MANAGED_TAG) {
+					credentials[credType] = {
+						id: null,
+						name: N8N_CONNECT_DISPLAY_NAME,
+						__aiGatewayManaged: true,
+					};
+				} else {
+					credentials[credType] = { id: cred.id, name: cred.name };
+				}
+			}
+		} else if (params.credentialId && params.credentialType) {
+			try {
+				credentials = await this.resolveExploreCredentials(user, {
+					credentialId: params.credentialId,
+					credentialType: params.credentialType,
+				});
+			} catch (error) {
+				return {
+					ok: false,
+					code: 'lookup_failed',
+					message: error instanceof Error ? error.message : String(error),
+				};
+			}
+		}
+
+		const credentialSlots = getRequiredNodeCredentialSlots(nodeTypeDescription.description);
+		if (
+			credentialSlots.length > 0 &&
+			!lookup.skipCredentialsCheck &&
+			!hasNodeCredentials(credentials)
+		) {
+			return {
+				ok: false,
+				code: 'missing_credentials',
+				message:
+					'This parameter needs node credentials before live options can be fetched. Resolve a credential for one of the returned credential slots, then retry with credentialId + credentialType or credentials.',
+				credentialSlots,
+			};
+		}
+
+		const projectId =
+			params.projectId ??
+			(await this.projectRepository.getPersonalProjectForUserOrFail(user.id)).id;
+		const currentNodeParameters = structuredClone(params.nodeParameters ?? {}) as INodeParameters;
+		const resourceIds = { projectId, credentials };
+		try {
+			await this.dynamicNodeParametersService.refineResourceIds(user, resourceIds);
+		} catch (error) {
+			return {
+				ok: false,
+				code: 'lookup_failed',
+				message: error instanceof Error ? error.message : 'Failed to verify credentials',
+			};
+		}
+
+		if (!currentNodeParameters.authentication && resourceIds.credentials) {
+			for (const credentialType of Object.keys(resourceIds.credentials)) {
+				const authValue = detectAuthenticationParameterValue(
+					nodeTypeDescription.description,
+					credentialType,
+				);
+				if (authValue !== undefined) {
+					currentNodeParameters.authentication = authValue;
+					break;
+				}
+			}
+		}
+
+		const builderHint = property.builderHint?.propertyHint;
+		const additionalData = await getBase({
+			userId: user.id,
+			projectId: resourceIds.projectId,
+			currentNodeParameters,
+		});
+		additionalData.dataTableProjectId = resourceIds.projectId;
+
+		const nodeTypeAndVersion = { name: params.nodeType, version: params.version };
+		const dynamicPath = toDynamicParameterPath(params.parameterPath);
+
+		try {
+			if (lookup.kind === 'resourceLocator') {
+				const result = await this.dynamicNodeParametersService.getResourceLocatorResults(
+					lookup.methodName,
+					dynamicPath,
+					additionalData,
+					nodeTypeAndVersion,
+					currentNodeParameters,
+					resourceIds.credentials,
+					params.filter,
+					params.paginationToken,
+				);
+
+				return {
+					ok: true,
+					kind: lookup.kind,
+					parameterPath: normalizeParameterPath(params.parameterPath),
+					methodName: lookup.methodName,
+					mode: lookup.mode,
+					results: (result.results ?? []).map((option) => ({
+						name: String(option.name),
+						value: option.value,
+						...(option.url ? { url: option.url } : {}),
+						parameterValue: toResourceLocatorParameterValue(option, lookup.mode),
+					})),
+					paginationToken:
+						typeof result.paginationToken === 'string' ? result.paginationToken : undefined,
+					...(builderHint ? { builderHint } : {}),
+				};
+			}
+
+			const options =
+				lookup.kind === 'loadOptionsMethod'
+					? await this.dynamicNodeParametersService.getOptionsViaMethodName(
+							lookup.methodName,
+							dynamicPath,
+							additionalData,
+							nodeTypeAndVersion,
+							currentNodeParameters,
+							resourceIds.credentials,
+						)
+					: await this.dynamicNodeParametersService.getOptionsViaLoadOptions(
+							lookup.loadOptions,
+							additionalData,
+							nodeTypeAndVersion,
+							currentNodeParameters,
+							resourceIds.credentials,
+						);
+
+			return {
+				ok: true,
+				kind: lookup.kind,
+				parameterPath: normalizeParameterPath(params.parameterPath),
+				...(lookup.kind === 'loadOptionsMethod' ? { methodName: lookup.methodName } : {}),
+				results: options.map((option) => ({
+					name: String(option.name),
+					value: option.value,
+					...(option.description ? { description: option.description } : {}),
+					parameterValue: toLoadedOptionParameterValue(option),
+				})),
+				...(builderHint ? { builderHint } : {}),
+			};
+		} catch (error) {
+			return {
+				ok: false,
+				code: 'lookup_failed',
+				message: error instanceof Error ? error.message : 'Failed to fetch parameter options',
+			};
 		}
 	}
 

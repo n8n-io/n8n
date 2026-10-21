@@ -1303,7 +1303,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					informational,
 					reason: 'chat_model_validation_failed',
 					guidance:
-						'Fix the chat-model configuration using workflow_builder_nodes(action="explore-resources") to pick a model the connected credential supports, then call workflow_builder_build_workflow again.',
+						'Fix the chat-model configuration using get_node_parameter_options to pick a model the connected credential supports, then call workflow_builder_build_workflow again.',
 					summary: 'Workflow uses a chat model or parameter the connected credential cannot run.',
 					binding,
 					sourceHash,

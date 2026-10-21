@@ -78,7 +78,6 @@ import { buildAgentPreviewPath } from './agent-builder-preview-path';
 import { describeCallAgentFailure } from './call-agent-failure';
 import { BuilderModelLiveLookupService } from './builder-model-live-lookup.service';
 import { BUILDER_TOOLS } from './builder-tool-names';
-import { buildGetResourceLocatorOptionsTool } from './get-resource-locator-options.tool';
 import {
 	buildAskCredentialTool,
 	buildAskEmbeddingCredentialTool,
@@ -208,7 +207,7 @@ const CLI_AGENT_CONFIG_MESSAGES: AgentConfigValidationMessages = {
 	emptyInstructionsFollowUp: 'saving the config again.',
 	dynamicSelectorFollowUp:
 		'Load skill agent-builder-resource-locators, resolve a credential if missing, then call ' +
-		'agent_builder_get_resource_locator_options and write the returned parameterValue into nodeParameters.',
+		'get_node_parameter_options and write the returned parameterValue into nodeParameters.',
 };
 
 const createSkillInputSchema = z
@@ -462,7 +461,7 @@ export class AgentsBuilderToolsService {
 		private readonly aiService: AiService,
 		private readonly aiGatewayService: AiGatewayService,
 		private readonly outboundHttp: OutboundHttp,
-		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
+		_dynamicNodeParametersService: DynamicNodeParametersService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly freeAiCreditsService: FreeAiCreditsService,
 		private readonly telemetry: Telemetry,
@@ -1125,12 +1124,6 @@ export class AgentsBuilderToolsService {
 			this.withConfigMutationMarker(updateSkillTool, agentId),
 			this.withConfigMutationMarker(createTasksTool, agentId),
 			this.withConfigMutationMarker(updateTaskTool, agentId),
-			buildGetResourceLocatorOptionsTool({
-				dynamicNodeParametersService: this.dynamicNodeParametersService,
-				nodeTypes: this.nodeTypes,
-				user,
-				projectId,
-			}),
 			...this.agentsToolsService.getSharedTools(
 				credentialProvider,
 				'Read-only inspection of available credentials. Use agent_builder_ask_credential to let the user ' +

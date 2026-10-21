@@ -244,7 +244,7 @@ additions keep the immediate ask + verify flow above unchanged.
 
 If verification succeeds but the tools do not cover the requested capability
 for a generic service request, load \`agent-builder-node-tools\`, call
-\`agent_builder_search_nodes\` with the same service queries, and follow that skill. Do not
+\`search_nodes\` (with \`scope: "agent_tool"\`) with the same service queries, and follow that skill. Do not
 add the MCP server merely because its registry entry matched.
 
 Full schema reference:

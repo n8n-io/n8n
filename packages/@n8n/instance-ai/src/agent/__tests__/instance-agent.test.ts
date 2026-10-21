@@ -74,7 +74,10 @@ vi.mock('../../tools', () => ({
 				'workflow_builder_workflows',
 				'research',
 				'n8n-docs',
-				'workflow_builder_nodes',
+				'search_nodes',
+				'get_node_types',
+				'get_node_parameter_options',
+				'execute_node',
 				'workflow_builder_executions',
 				'workflow_builder_build_workflow',
 			];
@@ -94,10 +97,13 @@ vi.mock('../../tools', () => ({
 				],
 				['research', mockBuiltTool(`research-${context.runLabel ?? 'unknown'}`)],
 				['n8n-docs', mockBuiltTool(`n8n-docs-${context.runLabel ?? 'unknown'}`)],
+				['search_nodes', mockBuiltTool(`search_nodes-${context.runLabel ?? 'unknown'}`)],
+				['get_node_types', mockBuiltTool(`get_node_types-${context.runLabel ?? 'unknown'}`)],
 				[
-					'workflow_builder_nodes',
-					mockBuiltTool(`workflow_builder_nodes-${context.runLabel ?? 'unknown'}`),
+					'get_node_parameter_options',
+					mockBuiltTool(`get_node_parameter_options-${context.runLabel ?? 'unknown'}`),
 				],
+				['execute_node', mockBuiltTool(`execute_node-${context.runLabel ?? 'unknown'}`)],
 				[
 					'workflow_builder_executions',
 					mockBuiltTool(`workflow_builder_executions-${context.runLabel ?? 'unknown'}`),
@@ -252,11 +258,11 @@ describe('createInstanceAgent', () => {
 		expect(attachedTools['verify-built-workflow-run-1']).toMatchObject({
 			name: 'verify-built-workflow-run-1',
 		});
-		expect(attachedTools['workflow_builder_nodes-run-1']).toMatchObject({
-			name: 'workflow_builder_nodes-run-1',
+		expect(attachedTools['search_nodes-run-1']).toMatchObject({
+			name: 'search_nodes-run-1',
 		});
-		expect(secondRunAttachedTools['workflow_builder_nodes-run-2']).toMatchObject({
-			name: 'workflow_builder_nodes-run-2',
+		expect(secondRunAttachedTools['search_nodes-run-2']).toMatchObject({
+			name: 'search_nodes-run-2',
 		});
 	});
 
@@ -283,13 +289,13 @@ describe('createInstanceAgent', () => {
 			context: { runLabel: 'profile' },
 			orchestrationContext: {
 				runId: 'profile',
-				disabledToolNames: new Set(['workflow_builder_create_tasks', 'workflow_builder_nodes']),
+				disabledToolNames: new Set(['workflow_builder_create_tasks', 'search_nodes']),
 			},
 			memoryConfig: {},
 			mcpManager: createMcpManagerStub(),
 		} as never);
 		expect(getDeferredTools()).not.toHaveProperty('workflow_builder_create_tasks-profile');
-		expect(getAttachedTools()).not.toHaveProperty('workflow_builder_nodes-profile');
+		expect(getAttachedTools()).not.toHaveProperty('search_nodes-profile');
 		expect(getAttachedTools()).toHaveProperty('workflow_builder_build_workflow-profile');
 	});
 
@@ -340,7 +346,10 @@ describe('createInstanceAgent', () => {
 
 		for (const toolName of [
 			'workflow_builder_build_workflow',
-			'workflow_builder_nodes',
+			'search_nodes',
+			'get_node_types',
+			'get_node_parameter_options',
+			'execute_node',
 			'workflow_builder_executions',
 		]) {
 			const scopedName = `${toolName}-builder-skill-run`;
