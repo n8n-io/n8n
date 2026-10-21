@@ -23,18 +23,25 @@ servers:
       url:
         default: https://example.com
 tags:
-  # GitBook nests each child tag under the tag that its `x-parent` names. Swagger UI ignores
-  # `x-parent` and shows tags in this order. Keep each parent directly above its children, and
-  # keep the children in alphabetical order. A parent tag has no operations.
-  - name: BuildAndRun
-    x-displayName: Build and run
-    description: Build, run, and test workflows, and manage the resources that they use
+  # Child tags (alphabetically sorted)
+  - name: Audit
+    x-parent: InstanceOperations
+    description: Operations about security audit
+  - name: CommunityPackage
+    x-parent: InstanceOperations
+    description: Operations about community packages
   - name: Credential
     x-parent: BuildAndRun
     description: Operations about credentials
+  - name: CredentialTypePolicy
+    x-parent: InstanceSettings
+    description: Preview — breaking changes may still occur without major version bump.
   - name: DataTable
     x-parent: BuildAndRun
     description: Operations about data tables and their rows
+  - name: Discover
+    x-parent: InstanceOperations
+    description: API capability discovery
   - name: Evaluation
     x-parent: BuildAndRun
     description: Operations about evaluation test runs
@@ -44,42 +51,30 @@ tags:
   - name: Folders
     x-parent: BuildAndRun
     description: Operations about folders
-  - name: Tags
-    x-parent: BuildAndRun
-    description: Operations about tags
-  - name: Variables
-    x-parent: BuildAndRun
-    description: Operations about variables
-  - name: Workflow
-    x-parent: BuildAndRun
-    description: Operations about workflows
-  - name: AccessAndOrganization
-    x-displayName: Access and organization
-    description: Manage projects, users, roles, and role-mapping rules
+  - name: Insights
+    x-parent: InstanceOperations
+    description: Operations about insights
+  - name: LogStreaming
+    x-parent: InstanceSettings
+    description: Operations about log streaming destinations
+  - name: N8nPackage
+    x-parent: InstanceOperations
+    description: Beta — breaking changes may still occur without major version bump.
+  - name: NodeTypePolicy
+    x-parent: InstanceSettings
+    description: Preview — breaking changes may still occur without major version bump.
   - name: Projects
     x-parent: AccessAndOrganization
     description: Operations about projects
+  - name: Promotions
+    x-parent: InstanceOperations
+    description: Operations about promotion providers, environments, and package operations
   - name: Role
     x-parent: AccessAndOrganization
     description: Operations about roles
   - name: RoleMappingRule
     x-parent: AccessAndOrganization
     description: Operations about identity-provider role-mapping rules
-  - name: User
-    x-parent: AccessAndOrganization
-    description: Operations about users
-  - name: InstanceSettings
-    x-displayName: Instance settings
-    description: Configure sign-in, security, type policies, log streaming, and telemetry for the instance
-  - name: CredentialTypePolicy
-    x-parent: InstanceSettings
-    description: Preview — breaking changes may still occur without major version bump.
-  - name: LogStreaming
-    x-parent: InstanceSettings
-    description: Operations about log streaming destinations
-  - name: NodeTypePolicy
-    x-parent: InstanceSettings
-    description: Preview — breaking changes may still occur without major version bump.
   - name: SecurityPolicy
     x-parent: InstanceSettings
     description: Operations about the instance security policy settings
@@ -95,30 +90,34 @@ tags:
   - name: SettingsSsoSaml
     x-parent: InstanceSettings
     description: Operations about SAML SSO settings
-  - name: InstanceOperations
-    x-displayName: Instance operations
-    description: Audit, extend, version, promote, and monitor the instance
-  - name: Audit
-    x-parent: InstanceOperations
-    description: Operations about security audit
-  - name: CommunityPackage
-    x-parent: InstanceOperations
-    description: Operations about community packages
-  - name: Discover
-    x-parent: InstanceOperations
-    description: API capability discovery
-  - name: Insights
-    x-parent: InstanceOperations
-    description: Operations about insights
-  - name: N8nPackage
-    x-parent: InstanceOperations
-    description: Beta — breaking changes may still occur without major version bump.
-  - name: Promotions
-    x-parent: InstanceOperations
-    description: Operations about promotion providers, environments, and package operations
   - name: SourceControl
     x-parent: InstanceOperations
     description: Operations about source control
+  - name: Tags
+    x-parent: BuildAndRun
+    description: Operations about tags
+  - name: User
+    x-parent: AccessAndOrganization
+    description: Operations about users
+  - name: Variables
+    x-parent: BuildAndRun
+    description: Operations about variables
+  - name: Workflow
+    x-parent: BuildAndRun
+    description: Operations about workflows
+  # Parent tags (alphabetically sorted)
+  - name: AccessAndOrganization
+    x-displayName: Access and organization
+    description: Manage projects, users, roles, and role-mapping rules
+  - name: BuildAndRun
+    x-displayName: Build and run
+    description: Build, run, and test workflows, and manage the resources that they use
+  - name: InstanceOperations
+    x-displayName: Instance operations
+    description: Audit, extend, version, promote, and monitor the instance
+  - name: InstanceSettings
+    x-displayName: Instance settings
+    description: Configure sign-in, security, type policies, log streaming, and telemetry for the instance
 
 # Paths and components are generated from @PublicApiController routes. See openapi-gen/generate.ts.
 paths: {}

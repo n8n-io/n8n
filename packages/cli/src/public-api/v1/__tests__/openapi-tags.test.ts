@@ -103,11 +103,11 @@ describe('openapi.yml tags', () => {
 		);
 	});
 
-	test('lists each parent tag directly above its children, in alphabetical order', () => {
-		const expectedOrder = Object.entries(EXPECTED_GROUPS).flatMap(([parent, children]) => [
-			parent,
-			...[...children].sort(compareNames),
-		]);
+	test('lists child tags alphabetically followed by parent tags', () => {
+		const expectedOrder = [
+			...childTags.map((tag) => tag.name).sort(compareNames),
+			...Object.keys(EXPECTED_GROUPS).sort(compareNames),
+		];
 		expect(tags.map((tag) => tag.name)).toEqual(expectedOrder);
 	});
 
