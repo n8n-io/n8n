@@ -39,6 +39,7 @@ import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
+import { SkillsHubRollout } from '@/modules/skills/skills-hub-rollout';
 import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
@@ -283,6 +284,16 @@ export class McpService {
 		private readonly executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
 	) {}
 
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	recordDiscoveryConnection(
+		userId: string,
+		clientName?: string,
+		caller?: McpAuthContext['caller'],
+	) {
+		this.eventService.emit('experiment-mcp-client-connected', { userId, clientName, caller });
+	}
+	// EOF Experiment cleanup
+
 	/** Resolves user experience flags and the shared activity gate. */
 	async resolveFeatureFlags(user: User): Promise<McpFeatureFlags> {
 		const { mcpAppsEnabled } = this.globalConfig.endpoints;
@@ -370,6 +381,10 @@ export class McpService {
 		clientInfo?: McpClientInfo,
 		auth?: McpAuthContext,
 	) {
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		const caller = auth?.caller;
+		const telemetryCaller = caller?.authType === 'api_key' ? { authType: caller.authType } : caller;
+		// EOF Experiment cleanup
 		return (tool: ToolDefinition<z.ZodRawShape, ToolHandlerResult>) => {
 			// `ToolHandler` is a union of 1- and 2-arity signatures, so we invoke it
 			// through a generic callable and narrow the result back to a tool result.
@@ -381,6 +396,21 @@ export class McpService {
 				try {
 					const result = await invoke(...handlerArgs);
 					const { status, errorMessage } = getToolCallOutcome(result);
+					// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+					if (
+						(tool.name === 'create_workflow_from_code' || tool.name === 'update_workflow') &&
+						result &&
+						!isInputRequired(result)
+					) {
+						this.eventService.emit('experiment-mcp-workflow-write-completed', {
+							userId: user.id,
+							toolName: tool.name,
+							status,
+							workflowId: getWorkflowId(result.structuredContent),
+							structuredContent: result.structuredContent,
+						});
+					}
+					// EOF Experiment cleanup
 					this.eventService.emit('mcp-tool-called', {
 						user,
 						toolName: tool.name,
@@ -389,7 +419,8 @@ export class McpService {
 							(isInputRequired(result) ? undefined : getWorkflowId(result?.structuredContent)),
 						status,
 						errorMessage,
-						...auth?.caller,
+						// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore ...auth?.caller after removing apiKeyId from McpCallerAuth.
+						...telemetryCaller,
 						clientName: clientInfo?.name,
 					});
 					return result;
@@ -400,7 +431,8 @@ export class McpService {
 						workflowId,
 						status: 'error',
 						errorMessage: error instanceof Error ? error.message : String(error),
-						...auth?.caller,
+						// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore ...auth?.caller after removing apiKeyId from McpCallerAuth.
+						...telemetryCaller,
 						clientName: clientInfo?.name,
 					});
 					throw error;
@@ -832,7 +864,7 @@ export class McpService {
 			);
 		}
 
-		if (areSkillToolsAvailable(this.globalConfig, this.moduleRegistry)) {
+		if (areSkillToolsAvailable(Container.get(SkillsHubRollout))) {
 			const { McpSkillToolsService } = await import('./tools/skills/skill-tools.service.js');
 			Container.get(McpSkillToolsService).registerTools(registerIfAllowed, user);
 			if (featureFlags.skillsExtensionEnabled && (allowedToolNames?.has('get_skill') ?? true)) {

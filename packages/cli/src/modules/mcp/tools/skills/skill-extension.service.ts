@@ -18,9 +18,9 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
-import { SkillRepository } from '@/modules/agents/repositories/skill.repository';
-import { toAgentSkill } from '@/modules/agents/skills/skill.service';
-import { SkillsApiService } from '@/modules/agents/skills/skills-api.service';
+import { SkillRepository } from '@/modules/skills/skill.repository';
+import { toAgentSkill } from '@/modules/skills/skill.service';
+import { SkillsApiService } from '@/modules/skills/skills-api.service';
 import { Telemetry } from '@/telemetry';
 
 export const SKILLS_EXTENSION_ID = 'io.modelcontextprotocol/skills';

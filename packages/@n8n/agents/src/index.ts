@@ -104,6 +104,9 @@ export type {
 	BuiltObservationLogTaskLockStore,
 	MemoryTaskUsageReport,
 	NewObservationLogEntry,
+	ObservationLogBatch,
+	ObservationLogBatchEntry,
+	ObservationLogBatchCommitResult,
 	ObservationLogEntry,
 	ObservationLogMarker,
 	ObservationLogMerge,
@@ -422,6 +425,7 @@ export type {
 	MemoryLifecycleState,
 	MemoryLifecycleStatus,
 } from './runtime/memory/memory-lifecycle';
+export { prepareObservationLogBatchCursor } from './runtime/memory/observation-log-batch';
 export {
 	parseObservationLogMarkdown,
 	renderObserverTranscript,

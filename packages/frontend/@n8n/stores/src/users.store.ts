@@ -362,11 +362,12 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	};
 
 	const updateUserSettings = async (settings: UserSelfSettingsUpdateRequestDto) => {
+		const userId = currentUser.value?.id;
 		const updatedSettings = await usersApi.updateCurrentUserSettings(
 			rootStore.restApiContext,
 			settings,
 		);
-		if (currentUser.value) {
+		if (currentUser.value && currentUser.value.id === userId) {
 			currentUser.value.settings = updatedSettings;
 			addUsers([currentUser.value]);
 		}

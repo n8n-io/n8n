@@ -23,6 +23,7 @@ import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
 import PromotionBanners from '@/features/integrations/promotions.ee/components/PromotionBanners.vue';
+import PromotionPreviewBadges from '@/features/integrations/promotions.ee/components/PromotionPreviewBadges.vue';
 
 import { N8nButton, N8nHeading, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
@@ -470,9 +471,17 @@ const onSelect = (action: string, source: CreateSource) => {
 			<div :class="$style.projectDetails">
 				<ProjectIcon v-if="showProjectIcon" :icon="headerIcon" :border-less="true" size="medium" />
 				<div :class="$style.headerActions">
-					<N8nHeading v-if="projectName" bold tag="h2" size="xlarge" data-test-id="project-name">{{
-						projectName
-					}}</N8nHeading>
+					<div :class="$style.titleRow">
+						<N8nHeading
+							v-if="projectName"
+							bold
+							tag="h2"
+							size="xlarge"
+							data-test-id="project-name"
+							>{{ projectName }}</N8nHeading
+						>
+						<PromotionPreviewBadges />
+					</div>
 					<N8nText v-if="sectionDescription" color="text-light" data-test-id="project-subtitle">
 						{{ sectionDescription }}
 					</N8nText>
@@ -592,6 +601,12 @@ const onSelect = (action: string, source: CreateSource) => {
 	&.favoriteBtnActive {
 		color: var(--color--yellow-500);
 	}
+}
+
+.titleRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .projectDetails:hover .favoriteBtn {

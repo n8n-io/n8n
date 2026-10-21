@@ -10,6 +10,8 @@ import { ExecutionDataJsonStore } from '@/executions/execution-data/execution-da
 import { FavoriteResourceResolverRegistry } from '@n8n/backend-services';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 import { AgentUsageProviderProxy } from '@/modules/workflow-index/agent-usage-provider-proxy.service';
+import { SkillAgentsProxy } from '@/modules/skills/skill-agents-proxy.service';
+import { SkillsHubRollout } from '@/modules/skills/skills-hub-rollout';
 
 import { AgentChannelMediaRetentionTask } from '../agent-channel-media-retention.task';
 import { AgentCheckpointPruningTask } from '../agent-checkpoint-pruning.task';
@@ -35,10 +37,12 @@ import { AgentBudgetSpendRepository } from '../repositories/agent-budget-spend.r
 import { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import { AgentCredentialDependencyRepository } from '../repositories/agent-credential-dependency.repository';
 import { AgentWorkflowDependencyRepository } from '../repositories/agent-workflow-dependency.repository';
-import { SkillsHubRollout } from '../skills/skills-hub-rollout';
 import { SkillsHubStartupCopy } from '../skills/skills-hub-startup-copy';
+import { AgentSkillUsageService } from '../agent-skill-usage.service';
 import { AgentRepository } from '../repositories/agent.repository';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
+import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
+import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 
 /**
  * Stubs every dependency `AgentsModule.init()` resolves via `Container.get`,
@@ -63,6 +67,8 @@ function setUpContainerForInit() {
 
 	Container.set(AgentRepository, mock<AgentRepository>());
 	Container.set(SkillsHubRollout, mock<SkillsHubRollout>());
+	Container.set(SkillAgentsProxy, mock<SkillAgentsProxy>());
+	Container.set(AgentSkillUsageService, mock<AgentSkillUsageService>());
 	Container.set(SkillsHubStartupCopy, mock<SkillsHubStartupCopy>());
 	Container.set(FavoriteResourceResolverRegistry, mock<FavoriteResourceResolverRegistry>());
 	Container.set(AgentCredentialDependencyRepository, mock<AgentCredentialDependencyRepository>());
@@ -129,21 +135,37 @@ describe('AgentsModule', () => {
 
 	describe('settings()', () => {
 		it.each([
-			{ sandboxEnabled: true, proxyEnabled: false },
-			{ sandboxEnabled: false, proxyEnabled: true },
+			{
+				isSandboxEnabled: true,
+				isKnowledgeActive: true,
+				proxyEnabled: false,
+				knowledgeBaseEnabled: true,
+			},
+			{
+				isSandboxEnabled: false,
+				isKnowledgeActive: true,
+				proxyEnabled: true,
+				knowledgeBaseEnabled: false,
+			},
+			{
+				isSandboxEnabled: true,
+				isKnowledgeActive: false,
+				proxyEnabled: true,
+				knowledgeBaseEnabled: false,
+			},
 		])(
-			'keeps knowledge base ($sandboxEnabled) and proxy ($proxyEnabled) availability independent',
-			async ({ sandboxEnabled, proxyEnabled }) => {
+			'reports knowledgeBaseEnabled=$knowledgeBaseEnabled for sandbox=$isSandboxEnabled and knowledge module=$isKnowledgeActive, independent of proxy=$proxyEnabled',
+			async ({ isSandboxEnabled, isKnowledgeActive, proxyEnabled, knowledgeBaseEnabled }) => {
 				Container.set(AgentsConfig, mock<AgentsConfig>({ modules: [] }));
 				Container.set(
-					SandboxSettingsService,
-					mock<SandboxSettingsService>({ isAgentSandboxEnabled: () => sandboxEnabled }),
+					KnowledgeAvailabilityService,
+					makeKnowledgeAvailabilityService({ isSandboxEnabled, isKnowledgeActive }),
 				);
 				Container.set(AiService, mock<AiService>({ isProxyEnabled: () => proxyEnabled }));
 
 				const settings = await module.settings();
 
-				expect(settings.knowledgeBaseEnabled).toBe(sandboxEnabled);
+				expect(settings.knowledgeBaseEnabled).toBe(knowledgeBaseEnabled);
 				expect(settings.proxyEnabled).toBe(proxyEnabled);
 			},
 		);

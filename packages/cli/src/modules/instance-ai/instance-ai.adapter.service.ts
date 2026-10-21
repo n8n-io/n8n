@@ -248,6 +248,7 @@ import type { InstanceContextScope } from './instance-context.service';
 import { InstanceAiMcpRegistryService } from './mcp';
 import { listNodeDiscriminators } from './node-definition-resolver';
 import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research';
+import { toWorkflowJSON } from './workflow-json';
 import { WorkflowTemplatesService } from './workflow-templates.service';
 
 type BuilderTemplatesServiceInstance = InstanceType<typeof BuilderTemplatesService>;
@@ -1088,6 +1089,9 @@ export class InstanceAiAdapterService {
 			executionPersistence,
 			license,
 			telemetry,
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			eventService,
+			// EOF Experiment cleanup
 			collaborationService,
 			policyEnforcementService,
 			workflowDependencyQueryService,
@@ -1822,6 +1826,12 @@ export class InstanceAiAdapterService {
 				}
 
 				if (threadId) {
+					// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+					eventService.emit('experiment-assistant-change-saved', {
+						userId: user.id,
+						at: Date.now(),
+					});
+					// EOF Experiment cleanup
 					telemetry.track('Builder created workflow', {
 						...setupExperimentProperties,
 						user_id: user.id,
@@ -1930,6 +1940,12 @@ export class InstanceAiAdapterService {
 				}
 
 				if (threadId) {
+					// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+					eventService.emit('experiment-assistant-change-saved', {
+						userId: user.id,
+						at: Date.now(),
+					});
+					// EOF Experiment cleanup
 					telemetry.track('Builder modified workflow', {
 						...setupExperimentProperties,
 						user_id: user.id,
@@ -5495,49 +5511,6 @@ function sanitizeCredentialReferencesForSave(nodes: WorkflowJSON['nodes']): Work
 		}
 		return sanitized;
 	});
-}
-
-function toWorkflowJSON(
-	workflow: WorkflowEntity,
-	options?: {
-		redactParameters?: boolean;
-		/** Substitute a history version's graph; id/name/settings stay from the live entity, as history rows only carry a version label. */
-		graph?: Pick<WorkflowEntity, 'nodes' | 'connections' | 'nodeGroups'>;
-	},
-): WorkflowJSON {
-	const redact = options?.redactParameters ?? false;
-	const source = options?.graph ?? workflow;
-	return {
-		id: workflow.id,
-		name: workflow.name,
-		nodes: (source.nodes ?? []).map((n) => ({
-			id: n.id ?? '',
-			name: n.name,
-			type: n.type,
-			typeVersion: n.typeVersion,
-			position: n.position,
-			parameters: redact ? {} : n.parameters,
-			credentials: n.credentials,
-			webhookId: n.webhookId,
-			disabled: n.disabled,
-			notes: n.notes,
-			notesInFlow: n.notesInFlow,
-			executeOnce: n.executeOnce,
-			retryOnFail: n.retryOnFail,
-			maxTries: n.maxTries,
-			waitBetweenTries: n.waitBetweenTries,
-			alwaysOutputData: n.alwaysOutputData,
-			// `continueOnFail` is the pre-`onError` spelling and has no SDK config field, so
-			// read it the way the editor does. An agent save writes these nodes over the saved
-			// ones, and dropping the flag would silently reset the node to `stopWorkflow`.
-			onError: n.onError ?? (n.continueOnFail ? 'continueRegularOutput' : undefined),
-			extendsCredential: n.extendsCredential,
-			customTelemetryTags: n.customTelemetryTags,
-		})),
-		connections: source.connections,
-		settings: workflow.settings as WorkflowJSON['settings'],
-		...(source.nodeGroups ? { nodeGroups: source.nodeGroups } : {}),
-	};
 }
 
 function toWorkflowDetail(

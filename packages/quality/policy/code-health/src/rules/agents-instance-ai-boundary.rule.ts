@@ -21,8 +21,6 @@ const AGENT_ENTRY_POINTS = new Set([
 	'evaluation/agent-evaluation.service',
 	'evaluation/agent-evaluation.contracts',
 	'evaluation/evaluation-config',
-	'skills/skills-api.service',
-	'skills/skill-name-taken.error',
 ]);
 
 function isWithin(directory: string, target: string): boolean {

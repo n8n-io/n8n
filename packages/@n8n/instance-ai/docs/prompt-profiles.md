@@ -5,6 +5,10 @@ exclusions together. Definitions live in `src/prompts/prompt-profiles.ts`.
 The backend resolves the profile before creating the agent. Prompt rendering
 does not read feature flags.
 
+The internal `self-healing-v1` configuration uses `createSelfHealingAgent` directly.
+It is not registered in the chat profile catalog or accepted as a public prompt pin.
+See the [self-healing contract](../../../cli/src/modules/instance-ai/self-healing/README.md).
+
 The initial profiles are `default@1` and `progressive@1`. The general system
 prompt is the same in both. The progressive profile changes the workflow
 skills and removes the planning skill and `workflow_builder_create_tasks` tool.

@@ -22,6 +22,7 @@ export const SCOPE_TYPES: ProjectResource[] = [
 	'folder',
 	'workflow',
 	'agent',
+	'app',
 	'credential',
 	'execution',
 	'externalSecretsProvider',

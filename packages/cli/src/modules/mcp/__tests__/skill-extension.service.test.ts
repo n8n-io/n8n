@@ -7,11 +7,8 @@ import { createHash } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 import { parse as parseYaml } from 'yaml';
 
-import type {
-	ResolvedSkillRow,
-	SkillRepository,
-} from '@/modules/agents/repositories/skill.repository';
-import type { SkillsApiService } from '@/modules/agents/skills/skills-api.service';
+import type { ResolvedSkillRow, SkillRepository } from '@/modules/skills/skill.repository';
+import type { SkillsApiService } from '@/modules/skills/skills-api.service';
 import type { Telemetry } from '@/telemetry';
 
 import {
