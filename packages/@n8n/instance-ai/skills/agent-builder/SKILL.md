@@ -225,8 +225,8 @@ During an initial build:
   config write. Do not rename an Agent whose name already describes the
   starter draft.
 - NEVER suspend mid-build on an interactive tool (`agent_builder_ask_questions`,
-  `agent_builder_ask_credential`, `agent_builder_ask_embedding_credential`,
-  `agent_builder_configure_channel`, `workflow_builder_ask_user`). Build
+  `agent_builder_ask_credential`, `agent_builder_configure_channel`,
+  `workflow_builder_ask_user`). Build
   everything as a draft first. The only allowed suspend is the single trailing
   `agent_builder_finish_setup` call. Exception: when the Agent already has a
   starter draft, one `agent_builder_ask_questions` call is allowed before
@@ -484,9 +484,9 @@ Rules:
 - For "Anthropic via OpenRouter", pass `provider: "openrouter"`. If the user
   names a routed model, pass the routed id without another provider prefix.
 - Use `agent_builder_resolve_llm` only for the main model credential. Never
-  copy main LLM credential ids from `agent_builder_list_credentials`.
-- For Episodic Memory, load `agent-builder-memory` and use
-  `agent_builder_ask_embedding_credential`.
+  copy main LLM credential ids from a `workflow_builder_credentials` list.
+- For Episodic Memory, load `agent-builder-memory` and call
+  `agent_builder_ask_credential` with `forEpisodicMemory: true`.
 - The web-search rules are in the `agent-builder-config` skill.
 
 Verify:
