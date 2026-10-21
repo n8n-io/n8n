@@ -125,6 +125,18 @@ function liveToolCategories(state: ComputerUseState): string[] {
 	];
 }
 
+/** Whether the user's own browser is ready: a connected channel has the browser capability enabled. */
+export function isComputerUseBrowserEnabled(state: ComputerUseState | undefined): boolean {
+	return state !== undefined && liveToolCategories(state).includes('browser');
+}
+
+/** Whether the extension is offered in the + menu but not paired yet. */
+export function isComputerUseBrowserAvailableButDisconnected(
+	state: ComputerUseState | undefined,
+): boolean {
+	return state?.browser.status === 'disconnected';
+}
+
 function getCapabilityList(available: ComputerUseChannel[], form: 'compact' | 'bullet'): string[] {
 	return CAPABILITIES.filter((c) => available.includes(c.channel)).map((c) => c[form]);
 }

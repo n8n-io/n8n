@@ -1,8 +1,12 @@
 import { DateTime } from 'luxon';
 
 import { COMMUNICATION_STYLE_SECTION } from './communication-style.prompt';
-import { getComputerUsePrompt } from './computer-use-prompt';
-import { ORCHESTRATION_TOOL_IDS } from '../tools/tool-ids';
+import {
+	isComputerUseBrowserAvailableButDisconnected,
+	getComputerUsePrompt,
+	isComputerUseBrowserEnabled,
+} from './computer-use-prompt';
+import { ASK_USER_TOOL_ID, ORCHESTRATION_TOOL_IDS } from '../tools/tool-ids';
 import {
 	SCOPE_GROUNDING_GUARDRAIL,
 	SECRET_ASK_GUARDRAIL,
@@ -178,15 +182,24 @@ function getPreferenceSavingSection(): string {
 When the user's own words describe a lasting rule, choice, or thing to avoid for future work, not only for the current task, call \`save_user_preference\` and save it. Do not save a one-off instruction for the current task, and do not save casual chat. Do not tell the user you saved a preference until the tool returns a success. Tell them they can edit or undo it from the card in the chat. If the tool refuses the text as too long, shorten it to the limit the result names and call it once more. On any other refusal, tell the user why nothing was saved and do not call it again in this turn.`;
 }
 
-function getCloudBrowserSection(): string {
+function getCloudBrowserSection(computerUseState?: ComputerUseState): string {
+	// What to tell the model about the user's own browser, next to the cloud browser
+	let browserSelectionGuidance = '';
+	if (isComputerUseBrowserEnabled(computerUseState)) {
+		browserSelectionGuidance = `
+- **Ask which browser to use.** The user's own browser is connected too. Before the first browser task in this conversation, ask with \`${ASK_USER_TOOL_ID}\`: one single-choice question with \`required: true\`, "Which browser should I use?", and exactly these two options: "Your browser: runs in your Chrome, so you can watch it" and "Cloud browser: runs in the background while you keep chatting". Do not ask when the user already said which, when this conversation already has the answer, or when a saved preference names one. The current request wins over a saved preference.`;
+	} else if (isComputerUseBrowserAvailableButDisconnected(computerUseState)) {
+		browserSelectionGuidance = `
+- **The user's own browser is not connected.** Use the cloud browser, and do not ask which browser to use. With the first browser task in this conversation, tell the user in one sentence that the task runs in a cloud browser, and that they can connect their own browser from the + menu if they prefer it.`;
+	}
+
 	return `
 ## Cloud Browser
 
 Use \`${ORCHESTRATION_TOOL_IDS.START_CLOUD_BROWSER_TASK}\` when the user asks you to look something up or do something on a website, and no node, API or web search covers it. Each task runs in the background in its own cloud browser, so you and the user can keep working. It needs no extension and no connection.
 
 The Computer Use section describes the user's own browser, which is a different thing. Where that section says browser automation needs the user to connect their browser, that applies to their browser only, never to the cloud browser.
-- **Prefer the cloud browser** for lookups, comparisons, and tasks on sites that need no sign-in, whether or not the user's browser is connected.
-- **Prefer the user's browser** (browser_* tools) when the task needs their signed-in session or their own accounts, for example OAuth, a service console they are logged in to, or anything they want to watch. Suggest "Connect browser" only for those tasks.
+${browserSelectionGuidance}
 
 - **Write a complete goal.** The browser agent cannot see this conversation. Say which site to use, what to find or do, and what to report back. Add \`startUrl\` when you know the page.
 - **Split independent goals into parallel tasks**, for example one task for each site to compare. Keep steps that depend on each other in one task.
@@ -322,7 +335,7 @@ Don't fabricate provider setup mechanics (credential field names, secret values,
 ${UNTRUSTED_CONTENT_DOCTRINE}
 
 ${getComputerUsePrompt({ state: computerUseState })}
-${cloudBrowserEnabled ? getCloudBrowserSection() : ''}
+${cloudBrowserEnabled ? getCloudBrowserSection(computerUseState) : ''}
 ${getLicenseLimitationsSection(licenseHints)}
 ${getReadOnlySection(branchReadOnly)}
 ${getLimitedModeSection(parameterValuesHidden)}
