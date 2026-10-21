@@ -3,7 +3,7 @@ import type {
 	NodeTypeAvailability,
 	SubWorkflowPolicyCheckResponse,
 } from '@n8n/api-types';
-import { getProject, type Project } from '@n8n/rest-api-client';
+import { getProject, ResponseError, type Project } from '@n8n/rest-api-client';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { defineStore } from 'pinia';
@@ -18,6 +18,9 @@ import {
 	TYPE_AVAILABILITY_POLICIES_MODULE_ID,
 	TYPE_AVAILABILITY_POLICIES_STORE_ID,
 } from './type-availability-policies.constants';
+
+const isRefusal = (error: unknown) =>
+	error instanceof ResponseError && (error.httpStatusCode === 404 || error.httpStatusCode === 403);
 
 const subWorkflowCheckKey = (parentWorkflowId: string, subWorkflowId: string) =>
 	`${parentWorkflowId}:${subWorkflowId}`;
@@ -46,10 +49,11 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 
 		/**
 		 * Keyed by parent and sub-workflow, because the answer depends on whether the parent may
-		 * call the sub-workflow. `null` means there is nothing to show: the call is not allowed,
-		 * or the check failed.
+		 * call the sub-workflow. `null` means the call is refused, so there is nothing to show.
 		 */
 		const subWorkflowChecks = reactive(new Map<string, SubWorkflowPolicyCheckResponse | null>());
+		/** Checks that failed to load. They stay out of the cache, so the next fetch retries. */
+		const failedSubWorkflowChecks = reactive(new Set<string>());
 		const subWorkflowRequests = new Map<string, Promise<void>>();
 		let subWorkflowGeneration = 0;
 
@@ -149,13 +153,24 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 				parentWorkflowId,
 				subWorkflowId,
 			)
-				// A 404 is the normal answer for a call the caller policy refuses.
-				.catch(() => null)
-				.then((check) => {
+				.then(
+					(check) => ({ loaded: true as const, check }),
+					(error: unknown) =>
+						// The endpoint answers 404 for a call the caller policy refuses, and 403 when
+						// the user may not check the parent. Neither changes until the page reloads.
+						isRefusal(error) ? { loaded: true as const, check: null } : { loaded: false as const },
+				)
+				.then((result) => {
 					if (generation !== subWorkflowGeneration) return;
 
-					subWorkflowChecks.set(key, check);
 					subWorkflowRequests.delete(key);
+					if (result.loaded) {
+						subWorkflowChecks.set(key, result.check);
+						failedSubWorkflowChecks.delete(key);
+					} else {
+						subWorkflowChecks.delete(key);
+						failedSubWorkflowChecks.add(key);
+					}
 				});
 			subWorkflowRequests.set(key, request);
 
@@ -169,10 +184,16 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 			return subWorkflowChecks.get(subWorkflowCheckKey(parentWorkflowId, subWorkflowId)) ?? null;
 		}
 
+		/** The check failed to load, so the editor cannot tell whether a call would be refused. */
+		function hasSubWorkflowCheckFailed(parentWorkflowId: string, subWorkflowId: string): boolean {
+			return failedSubWorkflowChecks.has(subWorkflowCheckKey(parentWorkflowId, subWorkflowId));
+		}
+
 		function reset(): void {
 			latestRequest++;
 			subWorkflowGeneration++;
 			subWorkflowChecks.clear();
+			failedSubWorkflowChecks.clear();
 			subWorkflowRequests.clear();
 			restrictedNodeTypes.value = new Map();
 			restrictedCredentialTypes.value = new Map();
@@ -194,6 +215,7 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 			getCredentialTypeAvailability,
 			fetchSubWorkflowCheck,
 			getSubWorkflowCheck,
+			hasSubWorkflowCheckFailed,
 			reset,
 		};
 	},

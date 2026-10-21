@@ -1,5 +1,6 @@
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { createTestingPinia } from '@pinia/testing';
+import { fireEvent } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -60,5 +61,22 @@ describe('RestrictedSubWorkflowCallout', () => {
 		const { queryByTestId } = renderComponent();
 
 		expect(queryByTestId('restricted-sub-workflow-callout')).not.toBeInTheDocument();
+	});
+
+	it('tells the builder when the check failed, and retries it', async () => {
+		vi.mocked(store.getSubWorkflowCheck).mockReturnValue(null);
+		vi.mocked(store.hasSubWorkflowCheckFailed).mockReturnValue(true);
+
+		const { getByTestId, queryByTestId } = renderComponent();
+
+		expect(queryByTestId('restricted-sub-workflow-callout')).not.toBeInTheDocument();
+		expect(getByTestId('sub-workflow-policy-check-failed')).toHaveTextContent(
+			'Could not check if the sub-workflow uses restricted nodes.',
+		);
+
+		vi.mocked(store.fetchSubWorkflowCheck).mockClear();
+		await fireEvent.click(getByTestId('sub-workflow-policy-check-retry'));
+
+		expect(store.fetchSubWorkflowCheck).toHaveBeenCalledWith('parent', 'child', { force: true });
 	});
 });

@@ -49,6 +49,10 @@ describe('getCalledSubWorkflowId', () => {
 		expect(getCalledSubWorkflowId(executeWorkflowNode({ source: 'database' }))).toBe('child');
 	});
 
+	it('reads the plain-string id of an Execute Workflow v1 node', () => {
+		expect(getCalledSubWorkflowId(executeWorkflowNode({ workflowId: 'child' }))).toBe('child');
+	});
+
 	it.each([
 		['an inline sub-workflow', executeWorkflowNode({ source: 'parameter' })],
 		['a sub-workflow from a URL', executeWorkflowNode({ source: 'url' })],
@@ -56,6 +60,7 @@ describe('getCalledSubWorkflowId', () => {
 			'an expression',
 			executeWorkflowNode({ workflowId: { __rl: true, mode: 'id', value: '={{ $json.id }}' } }),
 		],
+		['a v1 expression', executeWorkflowNode({ workflowId: '={{ $json.id }}' })],
 		[
 			'no selected workflow',
 			executeWorkflowNode({ workflowId: { __rl: true, mode: 'list', value: '' } }),

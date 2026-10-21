@@ -1,4 +1,5 @@
 import type { AvailableCredentialTypesResponse, AvailableTypesResponse } from '@n8n/api-types';
+import { ResponseError } from '@n8n/rest-api-client';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
@@ -474,13 +475,39 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 			expect(store.getSubWorkflowCheck('parent', 'child')).toEqual({ draft: [], published: null });
 		});
 
-		it('answers nothing when the request fails, as for a call the caller policy refuses', async () => {
-			mocks.fetchSubWorkflowPolicyCheck.mockRejectedValue(new Error('404'));
+		it.each([404, 403])(
+			'caches a %s as a refused call and does not ask again',
+			async (httpStatusCode) => {
+				mocks.fetchSubWorkflowPolicyCheck.mockRejectedValue(
+					new ResponseError('refused', { httpStatusCode }),
+				);
+				const store = useTypeAvailabilityPoliciesStore();
+
+				await store.fetchSubWorkflowCheck('parent', 'child');
+				await store.fetchSubWorkflowCheck('parent', 'child');
+
+				expect(mocks.fetchSubWorkflowPolicyCheck).toHaveBeenCalledTimes(1);
+				expect(store.getSubWorkflowCheck('parent', 'child')).toBeNull();
+				expect(store.hasSubWorkflowCheckFailed('parent', 'child')).toBe(false);
+			},
+		);
+
+		it('marks a failed check and retries it on the next fetch', async () => {
+			mocks.fetchSubWorkflowPolicyCheck
+				.mockRejectedValueOnce(new ResponseError('failed', { httpStatusCode: 500 }))
+				.mockResolvedValueOnce(CHECK);
 			const store = useTypeAvailabilityPoliciesStore();
 
 			await store.fetchSubWorkflowCheck('parent', 'child');
 
+			expect(store.hasSubWorkflowCheckFailed('parent', 'child')).toBe(true);
 			expect(store.getSubWorkflowCheck('parent', 'child')).toBeNull();
+
+			await store.fetchSubWorkflowCheck('parent', 'child');
+
+			expect(mocks.fetchSubWorkflowPolicyCheck).toHaveBeenCalledTimes(2);
+			expect(store.hasSubWorkflowCheckFailed('parent', 'child')).toBe(false);
+			expect(store.getSubWorkflowCheck('parent', 'child')).toEqual(CHECK);
 		});
 
 		it('makes no request when the module is not active', async () => {

@@ -52,9 +52,12 @@ appears; the module owns their copy and behaviour.
 an Execute Workflow node calls uses a blocked node type. It reads
 `/workflows/:workflowId/sub-workflows/:subWorkflowId/policy-check`, which judges the
 sub-workflow against its own project. The store caches one answer for each parent and
-sub-workflow pair, and callers that render the same call share one request. Only a stored
+sub-workflow pair, and callers that render the same call share one request. A 404 or 403 is
+cached as a refused call. Any other failure stays out of the cache, so the next fetch retries
+it, and `checkFailed` reports it. Only a stored
 sub-workflow selected by id is checked: inline and URL sources, and expressions, are skipped.
-`RestrictedSubWorkflowCallout` is the NDV explanation. It refetches on open, and names the
+`RestrictedSubWorkflowCallout` is the NDV explanation. It refetches on open, offers a retry
+when the check failed, and names the
 sub-workflow's project only when the server returned its name. The shell passes `enabled`, which
 must require `workflow:update` on the parent, because the endpoint refuses other users.
 
