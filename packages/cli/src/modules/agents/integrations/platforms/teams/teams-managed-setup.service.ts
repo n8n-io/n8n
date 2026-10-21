@@ -3,6 +3,8 @@ import type {
 	TeamsManagedSetupState,
 	TeamsManagerCredentialSummary,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import type { ClientOAuth2Options } from '@n8n/client-oauth2';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
@@ -11,6 +13,7 @@ import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { CredentialsFinderService } from '@n8n/backend-services';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { ExternalHooks } from '@/external-hooks';
 import { OauthService, OauthVersion } from '@/oauth/oauth.service';
 import { NamingService } from '@/services/naming.service';
 import { BadRequestError } from '@n8n/errors';
@@ -24,6 +27,7 @@ export const TEAMS_MANAGER_CREDENTIAL_TYPE = 'microsoftTeamsManagerOAuth2Api';
  * organisation consent and `common` would offer it one.
  */
 const ADMIN_CONSENT_URL = 'https://login.microsoftonline.com/organizations/v2.0/adminconsent';
+const ADMIN_CONSENT_SCOPE = 'https://graph.microsoft.com/.default';
 const DEFAULT_MANAGER_CREDENTIAL_NAME = 'Microsoft organization';
 
 /**
@@ -90,6 +94,8 @@ export class TeamsManagedSetupService {
 		private readonly credentialsOverwrites: CredentialsOverwrites,
 		private readonly oauthService: OauthService,
 		private readonly namingService: NamingService,
+		private readonly externalHooks: ExternalHooks,
+		private readonly logger: Logger,
 	) {}
 
 	/**
@@ -122,19 +128,38 @@ export class TeamsManagedSetupService {
 	 * code is redeemed for one resource at a time. An administrator does this once
 	 * per organisation and nobody sees a consent screen afterwards.
 	 */
-	adminConsentUrl(): string | null {
+	async adminConsentUrl(): Promise<string | null> {
 		const overwrite = this.credentialsOverwrites.getOverwrites(TEAMS_MANAGER_CREDENTIAL_TYPE);
 		const clientId = typeof overwrite?.clientId === 'string' ? overwrite.clientId.trim() : '';
 		if (!clientId) return null;
 
-		// No `state`. The grant lands on the tenant, not on anything n8n holds:
-		// the callback reads nothing from the query and only renders a page, so
-		// there is no n8n-side effect for a forged return to reach. Every step
-		// after this still runs on the user's own signed-in credential.
+		// Cloud's `oauth2.authenticate` hook points the redirect at its OAuth proxy
+		// and adds the host to the base64 JSON state, so the state uses the sign-in
+		// format. The token in the state is never checked: the grant lands on the
+		// tenant, not on n8n.
+		const [, state] = await this.oauthService.createCsrfState();
+		const options: ClientOAuth2Options = {
+			clientId,
+			accessTokenUri: '',
+			authorizationUri: ADMIN_CONSENT_URL,
+			redirectUri: `${this.oauthService.getBaseUrl(OauthVersion.V2)}/callback`,
+			scopes: [ADMIN_CONSENT_SCOPE],
+			state,
+		};
+		try {
+			await this.externalHooks.run('oauth2.authenticate', [options]);
+		} catch (error) {
+			this.logger.warn('[Teams] Could not prepare the administrator consent link', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return null;
+		}
+
 		const query = new URLSearchParams({
 			client_id: clientId,
-			scope: 'https://graph.microsoft.com/.default',
-			redirect_uri: `${this.oauthService.getBaseUrl(OauthVersion.V2)}/callback`,
+			scope: ADMIN_CONSENT_SCOPE,
+			redirect_uri: options.redirectUri ?? '',
+			state: options.state ?? '',
 		});
 		return `${ADMIN_CONSENT_URL}?${query.toString()}`;
 	}
@@ -170,7 +195,7 @@ export class TeamsManagedSetupService {
 		return {
 			managedSetupAvailable: true,
 			managerCredentials,
-			adminConsentUrl: this.adminConsentUrl(),
+			adminConsentUrl: await this.adminConsentUrl(),
 		};
 	}
 
