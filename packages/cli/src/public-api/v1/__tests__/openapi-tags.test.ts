@@ -29,8 +29,7 @@ const childNames = new Set(childTags.map((tag) => tag.name));
 
 const compareNames = (a: string, b: string) => (a < b ? -1 : 1);
 
-// The API-166 sidebar taxonomy. Set the expected group here, not in `openapi.yml`,
-// so that a child under the wrong parent fails the test.
+// Our expected grouping of OpenAPI tags in GitBook.
 const EXPECTED_GROUPS: Record<string, string[]> = {
 	BuildAndRun: [
 		'Credential',
