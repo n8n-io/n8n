@@ -36,15 +36,25 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
 }));
 
-const ModalStub = {
+const DialogStub = {
+	props: ['header', 'description'],
 	template: `
-		<div>
-			<slot name="header" />
-			<slot name="title" />
-			<slot name="content" />
-			<slot name="footer" />
+		<div role="dialog">
+			<h2 v-if="header">{{ header }}</h2>
+			<p v-if="description">{{ description }}</p>
+			<slot />
 		</div>
 	`,
+};
+
+const dialogPartStub = { template: '<div><slot /></div>' };
+
+const dialogStubs = {
+	Dialog: DialogStub,
+	DialogHeader: dialogPartStub,
+	DialogTitle: dialogPartStub,
+	DialogFooter: dialogPartStub,
+	DialogDescription: dialogPartStub,
 };
 
 vi.mock('vue-router');
@@ -169,7 +179,7 @@ describe('FromAiParametersModal', () => {
 	});
 
 	it('renders correctly with node data', () => {
-		const { getByTitle } = renderModal({
+		const { getByRole } = renderModal({
 			props: {
 				modalName: FROM_AI_PARAMETERS_MODAL_KEY,
 				data: {
@@ -178,13 +188,13 @@ describe('FromAiParametersModal', () => {
 			},
 			global: {
 				stubs: {
-					Modal: ModalStub,
+					...dialogStubs,
 				},
 			},
 			pinia,
 		});
 
-		expect(getByTitle('Test Test Node')).toBeTruthy();
+		expect(getByRole('heading', { name: 'Test Test Node' })).toBeTruthy();
 	});
 
 	it('shows tool selection for AI tool nodes', async () => {
@@ -197,7 +207,7 @@ describe('FromAiParametersModal', () => {
 			},
 			global: {
 				stubs: {
-					Modal: ModalStub,
+					...dialogStubs,
 				},
 			},
 			pinia,
@@ -217,7 +227,7 @@ describe('FromAiParametersModal', () => {
 			},
 			global: {
 				stubs: {
-					Modal: ModalStub,
+					...dialogStubs,
 				},
 			},
 			pinia,
@@ -244,7 +254,7 @@ describe('FromAiParametersModal', () => {
 			},
 			global: {
 				stubs: {
-					Modal: ModalStub,
+					...dialogStubs,
 				},
 			},
 			pinia,
@@ -272,7 +282,7 @@ describe('FromAiParametersModal', () => {
 			},
 			global: {
 				stubs: {
-					Modal: ModalStub,
+					...dialogStubs,
 				},
 			},
 			pinia,
@@ -293,7 +303,7 @@ describe('FromAiParametersModal', () => {
 			},
 			global: {
 				stubs: {
-					Modal: ModalStub,
+					...dialogStubs,
 				},
 			},
 			pinia,
@@ -330,7 +340,7 @@ describe('FromAiParametersModal', () => {
 			},
 			global: {
 				stubs: {
-					Modal: ModalStub,
+					...dialogStubs,
 				},
 			},
 			pinia,
@@ -366,7 +376,7 @@ describe('FromAiParametersModal', () => {
 				},
 				global: {
 					stubs: {
-						Modal: ModalStub,
+						...dialogStubs,
 					},
 				},
 				pinia,
@@ -395,7 +405,7 @@ describe('FromAiParametersModal', () => {
 				},
 				global: {
 					stubs: {
-						Modal: ModalStub,
+						...dialogStubs,
 					},
 				},
 				pinia,
