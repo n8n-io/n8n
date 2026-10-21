@@ -327,8 +327,8 @@ catalogs:
       specifier: 2.0.0
       version: 2.0.0
     '@modelcontextprotocol/sdk':
-      specifier: 1.32.0
-      version: 1.32.0
+      specifier: 1.31.0
+      version: 1.31.0
     '@modelcontextprotocol/server':
       specifier: 2.3.0
       version: 2.3.0
@@ -1227,7 +1227,7 @@ importers:
         version: 0.205.1(bufferutil@4.0.9)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)(utf-8-validate@5.0.10)
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
-        version: 1.32.0(supports-color@8.1.1)(zod@3.25.76)
+        version: 1.31.0(supports-color@8.1.1)(zod@3.25.76)
       '@n8n/ai-utilities':
         specifier: workspace:*
         version: link:../ai-utilities
@@ -2344,7 +2344,7 @@ importers:
         version: 0.6.21
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
-        version: 1.32.0(supports-color@8.1.1)(zod@3.25.76)
+        version: 1.31.0(supports-color@8.1.1)(zod@3.25.76)
       '@n8n/mcp-browser':
         specifier: workspace:*
         version: link:../mcp-browser
@@ -3393,7 +3393,7 @@ importers:
     dependencies:
       '@modelcontextprotocol/ext-apps':
         specifier: 'catalog:'
-        version: 1.3.2(@modelcontextprotocol/sdk@1.32.0(supports-color@8.1.1)(zod@3.25.76))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@3.25.76)
+        version: 1.3.2(@modelcontextprotocol/sdk@1.31.0(supports-color@8.1.1)(zod@3.25.76))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@3.25.76)
       '@n8n/design-system':
         specifier: workspace:*
         version: link:../../frontend/@n8n/design-system
@@ -3415,7 +3415,7 @@ importers:
         version: 1.2.114
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
-        version: 1.32.0(supports-color@8.1.1)(zod@3.25.76)
+        version: 1.31.0(supports-color@8.1.1)(zod@3.25.76)
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
@@ -3469,7 +3469,7 @@ importers:
         version: 1.0.64
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
-        version: 1.32.0(supports-color@8.1.1)(zod@3.25.76)
+        version: 1.31.0(supports-color@8.1.1)(zod@3.25.76)
       '@mozilla/readability':
         specifier: 'catalog:'
         version: 0.6.0
@@ -3774,7 +3774,7 @@ importers:
         version: 5.3.0(encoding@0.1.13)(supports-color@8.1.1)
       '@google/genai':
         specifier: 1.19.0
-        version: 1.19.0(@modelcontextprotocol/sdk@1.32.0(supports-color@8.1.1)(zod@3.25.76))(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
+        version: 1.19.0(@modelcontextprotocol/sdk@1.31.0(supports-color@8.1.1)(zod@3.25.76))(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
       '@google/generative-ai':
         specifier: 0.24.0
         version: 0.24.0
@@ -3864,7 +3864,7 @@ importers:
         version: 2.7.0(@opentelemetry/api@1.9.1)(@opentelemetry/resources@2.10.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
-        version: 1.32.0(supports-color@8.1.1)(zod@3.25.76)
+        version: 1.31.0(supports-color@8.1.1)(zod@3.25.76)
       '@mozilla/readability':
         specifier: 'catalog:'
         version: 0.6.0
@@ -4807,7 +4807,7 @@ importers:
         version: 2.0.0(@modelcontextprotocol/server@2.3.0)(hono@4.13.11)
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
-        version: 1.32.0(supports-color@8.1.1)(zod@3.25.76)
+        version: 1.31.0(supports-color@8.1.1)(zod@3.25.76)
       '@modelcontextprotocol/server':
         specifier: 'catalog:'
         version: 2.3.0
@@ -11907,8 +11907,8 @@ packages:
       hono:
         optional: true
 
-  '@modelcontextprotocol/sdk@1.32.0':
-    resolution: {integrity: sha512-8BviX/hK4Gd2eL1KdTwm0gfl4d3wdoErW0Jd00h6nomUAtk6IJk5vwQJc6kfWtJTzN5OEV/lgIiJKI8fiDGAlA==}
+  '@modelcontextprotocol/sdk@1.31.0':
+    resolution: {integrity: sha512-UvTMgnNlnIBO/22ob2RcVGDlcvOslQs8T59+FTGdA0L27a39fdGF/EDETNtDVK4DZGpwomlsYpRdA8UXcVL/pw==}
     engines: {node: '>=18'}
     peerDependencies:
       '@cfworker/json-schema': ^4.1.1
@@ -21931,8 +21931,8 @@ packages:
   openapi-sampler@1.7.0:
     resolution: {integrity: sha512-fWq32F5vqGpgRJYIarC/9Y1wC9tKnRDcCOjsDJ7MIcSv2HsE7kNifcXIZ8FVtNStBUWxYrEk/MKqVF0SwZ5gog==}
 
-  openapi-sampler@1.7.6:
-    resolution: {integrity: sha512-MvWOm3vdgX7CZ6CNfu2wOFMGhC/pq03BxYTL/DKCkyPWfR6XIwUJnOV32mQGgCcUm1tY/y1jj7F2yqx1DieIWw==}
+  openapi-sampler@1.7.7:
+    resolution: {integrity: sha512-S8R8myAd5nZdbvRcYRlQnNoiy1mQtNikkukrBFeJ9snXq/+8kwbkic+E/bg+gu4d5TiKGg9iwJGc5Eglh8DCUg==}
 
   openapi-types@12.1.3:
     resolution: {integrity: sha512-N4YtSYJqghVu4iek2ZUvcN/0aqH1kRDuNqzcycDxhOUpg7GdvLa2F3DgS6yBNhInhv2r/6I0Flkn7CqL8+nIcw==}
@@ -28813,12 +28813,12 @@ snapshots:
       - supports-color
     optional: true
 
-  '@google/genai@1.19.0(@modelcontextprotocol/sdk@1.32.0(supports-color@8.1.1)(zod@3.25.76))(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)':
+  '@google/genai@1.19.0(@modelcontextprotocol/sdk@1.31.0(supports-color@8.1.1)(zod@3.25.76))(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)':
     dependencies:
       google-auth-library: 9.15.1(supports-color@8.1.1)
       ws: 8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
     optionalDependencies:
-      '@modelcontextprotocol/sdk': 1.32.0(supports-color@8.1.1)(zod@3.25.76)
+      '@modelcontextprotocol/sdk': 1.31.0(supports-color@8.1.1)(zod@3.25.76)
     transitivePeerDependencies:
       - bufferutil
       - supports-color
@@ -29798,7 +29798,7 @@ snapshots:
     dependencies:
       '@microsoft/agents-a365-runtime': 1.0.0(@opentelemetry/api-logs@0.221.0)(@opentelemetry/api@1.9.1)(supports-color@8.1.1)
       '@microsoft/agents-hosting': 1.6.1(@opentelemetry/api-logs@0.221.0)(@opentelemetry/api@1.9.1)(supports-color@8.1.1)
-      '@modelcontextprotocol/sdk': 1.32.0(supports-color@8.1.1)(zod@3.25.76)
+      '@modelcontextprotocol/sdk': 1.31.0(supports-color@8.1.1)(zod@3.25.76)
       express: 5.2.1(supports-color@8.1.1)
       hono: 4.13.11
     transitivePeerDependencies:
@@ -29945,9 +29945,9 @@ snapshots:
     dependencies:
       zod: 3.25.76
 
-  '@modelcontextprotocol/ext-apps@1.3.2(@modelcontextprotocol/sdk@1.32.0(supports-color@8.1.1)(zod@3.25.76))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@3.25.76)':
+  '@modelcontextprotocol/ext-apps@1.3.2(@modelcontextprotocol/sdk@1.31.0(supports-color@8.1.1)(zod@3.25.76))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@3.25.76)':
     dependencies:
-      '@modelcontextprotocol/sdk': 1.32.0(supports-color@8.1.1)(zod@3.25.76)
+      '@modelcontextprotocol/sdk': 1.31.0(supports-color@8.1.1)(zod@3.25.76)
       zod: 3.25.76
     optionalDependencies:
       react: 18.2.0
@@ -29960,7 +29960,7 @@ snapshots:
     optionalDependencies:
       hono: 4.13.11
 
-  '@modelcontextprotocol/sdk@1.32.0(supports-color@8.1.1)(zod@3.25.76)':
+  '@modelcontextprotocol/sdk@1.31.0(supports-color@8.1.1)(zod@3.25.76)':
     dependencies:
       '@hono/node-server': 1.19.15(hono@4.13.11)
       ajv: 8.20.0
@@ -41407,7 +41407,7 @@ snapshots:
       fast-xml-parser: 5.7.2
       json-pointer: 0.6.2
 
-  openapi-sampler@1.7.6:
+  openapi-sampler@1.7.7:
     dependencies:
       '@types/json-schema': 7.0.15
       fast-xml-parser: 5.7.2
@@ -42633,7 +42633,7 @@ snapshots:
       marked: 4.3.0
       mobx: 6.12.3
       mobx-react: 9.2.0(mobx@6.12.3)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
-      openapi-sampler: 1.7.6
+      openapi-sampler: 1.7.7
       path-browserify: 1.0.1
       perfect-scrollbar: 1.5.5
       polished: 4.2.2
