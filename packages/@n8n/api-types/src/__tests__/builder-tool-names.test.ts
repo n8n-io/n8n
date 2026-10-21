@@ -40,7 +40,7 @@ describe('resolveBuilderToolName', () => {
 	);
 
 	it('maps the retired Agent Builder credential list to list_credentials', () => {
-		expect(resolveBuilderToolName(AGENT_BUILDER_TOOL_NAMES.LIST_CREDENTIALS)).toBe(
+		expect(resolveBuilderToolName('agent_builder_list_credentials')).toBe(
 			SHARED_BUILDER_TOOL_NAMES.LIST_CREDENTIALS,
 		);
 	});
