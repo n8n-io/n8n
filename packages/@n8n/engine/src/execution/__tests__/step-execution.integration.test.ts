@@ -658,7 +658,8 @@ describe('step execution (integration)', () => {
 					};
 				}
 				if (request.node.id === 'call') {
-					return { outputs: [[{ json: { childResult: request.resume?.result } }]] };
+					const result = request.resume?.status === 'completed' ? request.resume.result : null;
+					return { outputs: [[{ json: { childResult: result } }]] };
 				}
 				return { outputs: [[{ json: { ran: request.node.id } }]] };
 			},
