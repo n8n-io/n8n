@@ -718,7 +718,11 @@ describe('SkillsController', () => {
 			const read = await owner.get(`/skills/${id}`).expect(200);
 
 			expect(response.body.message).toContain('"Support bot" would lose access to this skill.');
-			expect(read.body.data).toMatchObject({ scope: 'project', latestVersion: 1 });
+			expect(read.body.data).toMatchObject({
+				scope: 'project',
+				projectId: project.id,
+				latestVersion: 1,
+			});
 		});
 
 		it('needs a project id to move a skill to a project', async () => {

@@ -25,7 +25,9 @@ export type SkillMoveTarget = { projectId: string | null; agentId: string | null
  * The agents that lose a skill when it moves to `target`, by the rule the backend applies:
  * an agent can add an instance skill, a skill of its own project and its own agent skills.
  * The caller does not know the projects of hidden agents, so they lose it unless the
- * target is the instance. `keepAgentId` is the agent that asks for the move.
+ * target is the instance. Every built-in role that can create skills in a project can
+ * also read its agents, so a hidden agent is never in a project the user can pick.
+ * `keepAgentId` is the agent that asks for the move.
  */
 export function agentsLosingSkill(
 	usage: SkillUsage,
