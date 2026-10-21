@@ -1,4 +1,4 @@
-import type { PromotionPreview, PromotionResource } from '@n8n/api-types';
+import type { PromotionDirection, PromotionPreview, PromotionResource } from '@n8n/api-types';
 
 /**
  * Selection rules of the promotion preview pages. Users select resources directly. The
@@ -8,6 +8,7 @@ import type { PromotionPreview, PromotionResource } from '@n8n/api-types';
 export type ResourceKey = string;
 
 export type SelectionGraph = {
+	direction: PromotionDirection;
 	resources: ReadonlyMap<ResourceKey, PromotionResource>;
 	/** Dependencies that the operation carries with the dependent resource. */
 	requires: ReadonlyMap<ResourceKey, readonly ResourceKey[]>;
@@ -21,7 +22,10 @@ export type InclusionReason =
 	| { kind: 'selected' }
 	/** `by` holds the selected resources that need this one. */
 	| { kind: 'required'; by: ResourceKey[] }
-	/** A changed project or folder that holds a selected resource. */
+	/**
+	 * A changed project or folder that the operation writes. `by` holds the selected resources
+	 * in it.
+	 */
 	| { kind: 'container'; by: ResourceKey[] }
 	/** Referenced by a selected resource, but the operation does not include it. */
 	| { kind: 'calledOnly'; by: ResourceKey[] };
@@ -50,6 +54,7 @@ function addTo(map: Map<ResourceKey, ResourceKey[]>, key: ResourceKey, value: Re
 
 export function buildSelectionGraph(
 	preview: Pick<PromotionPreview, 'resources' | 'dependencies'>,
+	direction: PromotionDirection,
 ): SelectionGraph {
 	const resources = new Map(preview.resources.map((resource) => [resource.key, resource]));
 	const requires = new Map<ResourceKey, ResourceKey[]>();
@@ -68,7 +73,7 @@ export function buildSelectionGraph(
 		}
 	}
 
-	return { resources, requires, requiredBy, calls, calledBy };
+	return { direction, resources, requires, requiredBy, calls, calledBy };
 }
 
 function canSelect(graph: SelectionGraph, key: ResourceKey): boolean {
@@ -127,6 +132,16 @@ export function resolveInclusion(
 			if (graph.resources.get(ancestor)?.change !== 'unchanged') addTo(containers, ancestor, key);
 		}
 		for (const reference of graph.calls.get(key) ?? []) addTo(called, reference, key);
+	}
+
+	// Apply imports every folder of the project, also folders without a selected workflow.
+	// It runs only with at least one selected workflow.
+	if (graph.direction === 'apply' && reasons.size > 0) {
+		for (const { key, type, change } of graph.resources.values()) {
+			if (type === 'folder' && change !== 'unchanged' && !containers.has(key)) {
+				containers.set(key, []);
+			}
+		}
 	}
 
 	// Direct selection wins over a derived reason, and inclusion wins over a reference.

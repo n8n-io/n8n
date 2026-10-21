@@ -35,7 +35,9 @@ export function usePromotionPreview(projectId: Ref<string>, direction: Ref<Promo
 	/** True when a refresh failed. The page keeps the last preview and says so. */
 	const refreshFailed = ref(false);
 	const lastRefreshedAt = ref<Date | null>(null);
-	const graph = computed(() => (preview.value ? buildSelectionGraph(preview.value) : null));
+	const graph = computed(() =>
+		preview.value ? buildSelectionGraph(preview.value, direction.value) : null,
+	);
 	const environment = computed(
 		() => environments.value.find((candidate) => candidate.direction === direction.value) ?? null,
 	);

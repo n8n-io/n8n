@@ -32,7 +32,7 @@ describe('promotion preview tree', () => {
 	});
 
 	it('should order the cards like the tree and give unchanged projects and folders no card', () => {
-		const { resources } = buildSelectionGraph(billingPreview());
+		const { resources } = buildSelectionGraph(billingPreview(), 'promote');
 
 		expect(cardOrder(tree, resources)).toEqual([
 			'folder:f1',

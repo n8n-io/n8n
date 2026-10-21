@@ -18,7 +18,9 @@ vi.mock('../promotions.api');
 
 function setup(initial: PromotionPreview) {
 	const preview = shallowRef<PromotionPreview | null>(initial);
-	const graph = computed(() => (preview.value ? buildSelectionGraph(preview.value) : null));
+	const graph = computed(() =>
+		preview.value ? buildSelectionGraph(preview.value, 'promote') : null,
+	);
 	return { preview, ...usePromotionResourceDetails(ref('p1'), ref('promote'), preview, graph) };
 }
 

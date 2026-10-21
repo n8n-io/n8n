@@ -13,7 +13,7 @@ import {
 } from './promotionPreview.selection';
 
 const { reconciliation, reminders, kpiReport, formatCurrency } = billingResources;
-const graph = buildSelectionGraph(billingPreview());
+const graph = buildSelectionGraph(billingPreview(), 'promote');
 const selectedState = (...keys: string[]): SelectionState => ({
 	mode: 'custom',
 	selected: new Set(keys),
@@ -87,6 +87,26 @@ describe('promotion preview selection', () => {
 		);
 	});
 
+	it('should include every changed folder on Apply, also one without a selected workflow', () => {
+		const incoming = buildSelectionGraph(
+			billingPreview({
+				resources: [
+					billingResources.project,
+					{ ...reconciliation, parentKey: 'project:p1' },
+					{ ...billingResources.reports, change: 'added' },
+					kpiReport,
+				],
+				dependencies: [],
+			}),
+			'apply',
+		);
+
+		const inclusion = resolveInclusion(incoming, new Set([reconciliation.key]));
+
+		// Apply creates every new folder of the project, but imports only the selected workflows.
+		expect(inclusion.included).toEqual(new Set([reconciliation.key, billingResources.reports.key]));
+	});
+
 	it('should select or clear every workflow inside a folder from the folder checkbox', () => {
 		let state = selectedState(reconciliation.key);
 		expect(containerCheckState(graph, state.selected, 'folder:f1')).toBe('indeterminate');
@@ -111,6 +131,7 @@ describe('promotion preview selection', () => {
 			billingPreview({
 				resources: billingPreview().resources.filter((r) => r.key !== kpiReport.key),
 			}),
+			'promote',
 		);
 		expect(applyPreview(state, smallerGraph).state.selected).toEqual(
 			new Set([reconciliation.key, reminders.key, formatCurrency.key]),
@@ -122,6 +143,7 @@ describe('promotion preview selection', () => {
 			billingPreview({
 				resources: billingPreview().resources.filter((r) => r.key !== reminders.key),
 			}),
+			'promote',
 		);
 
 		const result = applyPreview(selectedState(reconciliation.key, reminders.key), refreshed);
