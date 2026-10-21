@@ -24,14 +24,16 @@ test.describe(
 	},
 	() => {
 		test('should share the counts of an API key between mains', async ({ createApiForMain }) => {
-			const mains = [await createApiForMain(0), await createApiForMain(1)];
-			const { rawApiKey } = await mains[0].publicApi.createApiKey(`Rate limit ${nanoid()}`, [
+			const [mainOne, mainTwo] = await Promise.all([createApiForMain(0), createApiForMain(1)]);
+
+			const { rawApiKey } = await mainOne.publicApi.createApiKey(`Rate limit ${nanoid()}`, [
 				'workflow:list',
 			]);
 
 			const statuses: number[] = [];
-			for (const main of [mains[0], mains[1], mains[0], mains[1]]) {
-				statuses.push((await main.publicApi.listWorkflowsRaw(rawApiKey)).status());
+			for (const main of [mainOne, mainTwo, mainOne, mainTwo]) {
+				const response = await main.publicApi.listWorkflowsRaw(rawApiKey);
+				statuses.push(response.status());
 			}
 
 			expect(statuses).toEqual([200, 200, 200, 429]);
