@@ -705,6 +705,9 @@ describe('step execution (integration)', () => {
 		expect(callRuns[0].resume).toBeUndefined();
 		expect(callRuns[1].resume?.kind).toBe('child');
 		expect(callRuns[1].inputs).toEqual([{}]);
+		// What `call` emitted on the resume is what `after` read.
+		const afterRun = requests.find(({ node }) => node.id === 'after');
+		expect(afterRun?.inputs).toEqual([[{ json: { childResult } }]]);
 	});
 
 	it('fails the parent step with the child error when an awaited child fails', async () => {
@@ -845,6 +848,7 @@ describe('step execution (integration)', () => {
 			noopLifecycleEventPublisher,
 			noopExecutionResponseSender,
 			{ start: vi.fn() },
+			{ cancelChildren: vi.fn() },
 		);
 
 		const executionId = generateId();

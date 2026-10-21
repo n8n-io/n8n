@@ -12,7 +12,12 @@ import {
 	type StepStatus,
 	type WaitDeclaration,
 } from '../execution.types';
-import { resolveInputReads, StepReadyHandler, type ChildStarter } from '../step-ready-handler';
+import {
+	resolveInputReads,
+	StepReadyHandler,
+	type ChildCanceller,
+	type ChildStarter,
+} from '../step-ready-handler';
 import type { StepRecord, StepStore, StepSummary } from '../step-store';
 
 /** Key for a `loadStepsByKeys` result at iteration 0, as the handler requests them. */
@@ -64,6 +69,7 @@ function makeHandler(
 	responseSender: ExecutionResponseSender = noopExecutionResponseSender,
 	onStepSuspended?: () => void,
 	childStarter: ChildStarter = makeChildStarter(),
+	childCanceller: ChildCanceller = { cancelChildren: vi.fn() },
 ): StepReadyHandler {
 	return new StepReadyHandler(
 		executionStore,
@@ -73,6 +79,7 @@ function makeHandler(
 		lifecycleEventPublisher,
 		responseSender,
 		childStarter,
+		childCanceller,
 		onStepSuspended,
 	);
 }
@@ -943,6 +950,25 @@ describe('StepReadyHandler waits', () => {
 		);
 	});
 
+	it('fails the step when the executor declares a child wait instead of a spawn', async () => {
+		// Only the engine suspends a step on a child, after it started one. A
+		// declaration from outside would wait for a child that nothing starts.
+		const stepStore = makeStepStore();
+		const handler = makeHandler(makeExecutionStore(), stepStore, makeQueue(), {
+			v1StepExecutor: makeExecutor({
+				wait: { childExecutionId: 'exec-child', acceptsResumeRequest: false },
+			}),
+		});
+
+		await handler.handle(event);
+
+		expect(stepStore.suspendStep).not.toHaveBeenCalled();
+		expect(stepStore.failStep).toHaveBeenCalledWith(
+			'step-a',
+			expect.objectContaining({ message: expect.stringContaining('child') as string }),
+		);
+	});
+
 	it('fails the step when the declaration can never resume', async () => {
 		// No deadline and no resume request means nothing would ever end this
 		// wait, so suspending would strand the execution. The declaration comes
@@ -1158,6 +1184,49 @@ describe('StepReadyHandler child executions', () => {
 		expect(stepStore.completeStep).not.toHaveBeenCalled();
 		expect(queue.publish).not.toHaveBeenCalled();
 		expect(executionStore.refreshLiveStatus).toHaveBeenCalledExactlyOnceWith('exec-1');
+	});
+
+	it('cancels the child it started when the parent ended in the meantime', async () => {
+		// Running at the liveness check, cancelled by the time the child exists.
+		const executionStore = makeExecutionStore();
+		const live = await executionStore.loadExecution('exec-1');
+		const ended: ExecutionRecord = { ...live, status: 'cancelled', finishedAt: new Date() };
+		executionStore.loadExecution = vi.fn().mockResolvedValueOnce(live).mockResolvedValueOnce(ended);
+		const childCanceller: ChildCanceller = { cancelChildren: vi.fn() };
+		const handler = makeHandler(
+			executionStore,
+			makeStepStore(),
+			makeQueue(),
+			{ v1StepExecutor: makeExecutor({ spawn }) },
+			undefined,
+			undefined,
+			undefined,
+			makeChildStarter(),
+			childCanceller,
+		);
+
+		await handler.handle(event);
+
+		expect(childCanceller.cancelChildren).toHaveBeenCalledExactlyOnceWith('exec-1');
+	});
+
+	it('leaves the child alone when the parent is still live after the start', async () => {
+		const childCanceller: ChildCanceller = { cancelChildren: vi.fn() };
+		const handler = makeHandler(
+			makeExecutionStore(),
+			makeStepStore(),
+			makeQueue(),
+			{ v1StepExecutor: makeExecutor({ spawn }) },
+			undefined,
+			undefined,
+			undefined,
+			makeChildStarter(),
+			childCanceller,
+		);
+
+		await handler.handle(event);
+
+		expect(childCanceller.cancelChildren).not.toHaveBeenCalled();
 	});
 
 	it('starts no child when another owner took the step over', async () => {
