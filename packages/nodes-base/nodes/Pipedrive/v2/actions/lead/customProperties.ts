@@ -26,10 +26,16 @@ export async function loadLeadCustomProperties(
 ): Promise<LeadCustomProperties> {
 	const resolveOutput = this.getNode().typeVersion >= 2.1;
 	const rawKeys = this.getNodeParameter('rawCustomFieldKeys', 0, false) as boolean;
-	const usesCustomFields = this.getInputData().some(
-		(_, i) =>
-			(this.getNodeParameter(fieldsParameter, i, {}) as IDataObject).customFields !== undefined,
-	);
+	const usesCustomFields = this.getInputData().some((_, i) => {
+		try {
+			const fields = this.getNodeParameter(fieldsParameter, i, {}) as IDataObject | null;
+			return fields?.customFields !== undefined;
+		} catch {
+			// This scan runs before the per-item error handling. An item with a broken
+			// parameter reports its error there, so it is skipped here.
+			return false;
+		}
+	});
 
 	if (rawKeys || !(resolveOutput || usesCustomFields)) {
 		return { resolveOutput };
