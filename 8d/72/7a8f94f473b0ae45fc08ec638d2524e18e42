@@ -1,0 +1,21 @@
+packages/workflow/test/n8n-oauth2-auth.test.ts
+  s_3428465b7508cc::t_f2c645ceb75887 117,120,126-129
+packages/workflow/src/n8n-oauth2-auth.ts
+  s_3428465b7508cc::t_f2c645ceb75887 134-140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8d727a8f94f473b0ae45fc08ec638d2524e18e42",
+  "prompts": {},
+  "sessions": {
+    "s_3428465b7508cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "528f7694-5b48-4311-b2ef-0a0f994fff37",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}
