@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/app/composables/usePushConnection/usePushConnection.test.ts
+  s_ad5b5b66d78dc7::t_d8eb4490475d0d 299-304
+  s_ad5b5b66d78dc7::t_3c15756620e1c6 296-298
+  s_ad5b5b66d78dc7::t_c2c12d64239931 295
+packages/frontend/editor-ui/src/app/composables/usePushConnection/usePushConnection.ts
+  s_ad5b5b66d78dc7::t_cf88148dbfd469 110
+  s_ad5b5b66d78dc7::t_373b89b6a810c8 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c2dd473a1b824198c4d915c7698f55654c4c5fe8",
+  "prompts": {},
+  "sessions": {
+    "s_ad5b5b66d78dc7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "913354b8-ab5e-4f2f-b56b-54544cc823f5",
+        "model": "unknown"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
