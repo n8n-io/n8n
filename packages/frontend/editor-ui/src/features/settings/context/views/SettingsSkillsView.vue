@@ -3,7 +3,13 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn } from '@vueuse/core';
 import { saveAs } from 'file-saver';
-import type { AgentSkill, SkillCreateMethod, SkillListItem, SkillScope } from '@n8n/api-types';
+import {
+	MCP_SKILLS_EXTENSION_FLAG,
+	type AgentSkill,
+	type SkillCreateMethod,
+	type SkillListItem,
+	type SkillScope,
+} from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
@@ -25,6 +31,7 @@ import type { DropdownMenuItemProps, TableOptions } from '@n8n/design-system';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
 import { DEBOUNCE_TIME, MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { AGENT_SKILL_MODAL_KEY } from '@/features/agents/constants';
@@ -57,6 +64,7 @@ const message = useMessage();
 const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 const skillsStore = useSkillsStore();
+const posthogStore = usePostHog();
 const telemetry = useTelemetry();
 const { showError, showMessage } = useToast();
 const { scopeDisplay } = useSkillScopeDisplay();
@@ -69,6 +77,7 @@ const tableOptions = ref<TableOptions>({
 const search = ref('');
 const scopeFilter = ref<ScopeFilter>(ALL_SCOPES);
 const loadFailed = ref(false);
+const mcpSkillsEnabled = computed(() => posthogStore.isFeatureEnabled(MCP_SKILLS_EXTENSION_FLAG));
 
 // Paging, search and the scope filter run on the server: the count and the page both
 // describe the matching skills, and the page is the only slice the browser holds.
@@ -190,14 +199,15 @@ function openCreateModal() {
 	openModal({
 		scopeOptions: options,
 		initialScope: options[0].value,
+		...(mcpSkillsEnabled.value ? { availableToMCP: false } : {}),
 		existingSkillNames: [],
 		getDefaultName: async (scopeValue) =>
 			await skillsStore.fetchNewSkillName({
 				...parseScope(scopeValue),
 				name: i18n.baseText('agents.builder.skills.defaultName'),
 			}),
-		onConfirm: async ({ skill, scope, method }) =>
-			await onCreate(skill, scope ?? options[0].value, method),
+		onConfirm: async ({ skill, scope, method, availableToMCP }) =>
+			await onCreate(skill, scope ?? options[0].value, method, availableToMCP),
 	});
 }
 
@@ -233,6 +243,7 @@ async function onCreate(
 	skill: AgentSkill,
 	scopeValue: string,
 	method?: SkillCreateMethod,
+	availableToMCP?: boolean,
 ): Promise<AgentSkillConfirmFailure | undefined> {
 	let createdId: string;
 	try {
@@ -241,6 +252,7 @@ async function onCreate(
 				...parseScope(scopeValue),
 				skill,
 				...(method ? { method } : {}),
+				availableToMCP,
 			})
 		).id;
 	} catch (error) {
@@ -301,14 +313,18 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>) {
 			readOnly: !detail.canEdit,
 			scopeOptions: options,
 			initialScope: currentValue,
+			...(mcpSkillsEnabled.value && detail.scope !== 'agent'
+				? { availableToMCP: detail.availableToMCP }
+				: {}),
 			...scopeLock(detail),
 			existingSkillNames: [],
-			onConfirm: async ({ skill, scope }) =>
+			onConfirm: async ({ skill, scope, availableToMCP }) =>
 				await onSave(
 					detail.id,
 					skill,
 					detail.skillHash,
 					scope !== currentValue ? scope : undefined,
+					availableToMCP,
 				),
 		});
 	} catch (error) {
@@ -323,6 +339,7 @@ async function onSave(
 	skill: AgentSkill,
 	baseSkillHash: string,
 	newScope?: string,
+	availableToMCP?: boolean,
 ): Promise<AgentSkillConfirmFailure | undefined> {
 	let created: boolean;
 	try {
@@ -334,13 +351,14 @@ async function onSave(
 			references: skill.references ?? [],
 			baseSkillHash,
 			...(newScope ? parseScope(newScope) : {}),
+			availableToMCP,
 		}));
 	} catch (error) {
 		return saveFailed(error);
 	}
 	// A move is a change even when the content stays the same. Only "Nothing to save"
 	// gets a message: a real change shows in the table.
-	if (created || newScope !== undefined) {
+	if (created || newScope !== undefined || availableToMCP !== undefined) {
 		await load();
 		confirmIfHidden(id, 'saved');
 	} else {

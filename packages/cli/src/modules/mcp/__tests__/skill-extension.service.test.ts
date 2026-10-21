@@ -58,7 +58,9 @@ describe('toSkillEntry', () => {
 
 	it('gives frontmatter equal to the frontmatter of the served SKILL.md', async () => {
 		const skillsApi = mock<SkillsApiService>();
-		skillsApi.get.mockResolvedValue(mock<SkillDetail>({ scope: 'instance', skill: releaseNotes }));
+		skillsApi.get.mockResolvedValue(
+			mock<SkillDetail>({ scope: 'instance', availableToMCP: true, skill: releaseNotes }),
+		);
 		const client = await connect(new McpSkillExtensionService(skillsApi, mock(), mock()));
 
 		const read = await client.request('resources/read', { uri: entry.uri });
@@ -110,6 +112,7 @@ async function connect(extension: McpSkillExtensionService) {
 					headers: {
 						'content-type': 'application/json',
 						accept: 'application/json, text/event-stream',
+						'mcp-protocol-version': '2026-07-28',
 						'mcp-method': method,
 						...(method === 'resources/read' ? { 'mcp-name': String(params.uri) } : {}),
 					},
@@ -139,7 +142,8 @@ describe('McpSkillExtensionService', () => {
 	const telemetry = mock<Telemetry>();
 	const service = new McpSkillExtensionService(skillsApi, skillRepository, telemetry);
 
-	const item = (id: string, scope: SkillListItem['scope']) => mock<SkillListItem>({ id, scope });
+	const item = (id: string, scope: SkillListItem['scope'], availableToMCP = true) =>
+		mock<SkillListItem>({ id, scope, availableToMCP });
 	const row = (skill: AgentSkill) =>
 		mock<ResolvedSkillRow>({
 			version: {
@@ -158,10 +162,22 @@ describe('McpSkillExtensionService', () => {
 				id: 'skill_a1',
 				scope: 'instance',
 				projectId: null,
+				availableToMCP: true,
 				skill: releaseNotes,
 			});
 		});
 	});
+
+	const mockSkillNotAvailableToMCP = () =>
+		skillsApi.get.mockResolvedValue(
+			mock<SkillDetail>({
+				id: 'skill_a1',
+				scope: 'instance',
+				projectId: null,
+				availableToMCP: false,
+				skill: releaseNotes,
+			}),
+		);
 
 	describe('skills/list', () => {
 		it('lists the skills the user can read, without agent skills', async () => {
@@ -183,6 +199,20 @@ describe('McpSkillExtensionService', () => {
 			});
 			expect(result.nextCursor).toBeUndefined();
 			expect(result).toMatchObject({ resultType: 'complete', ttlMs: 0, cacheScope: 'private' });
+		});
+
+		it('lists only the skills that are available to MCP', async () => {
+			skillsApi.list.mockResolvedValue({
+				count: 2,
+				data: [item('skill_a1', 'instance'), item('skill_off', 'project', false)],
+			});
+			skillRepository.findLatestSaved.mockResolvedValue(new Map([['skill_a1', row(releaseNotes)]]));
+			const client = await connect(service);
+
+			const { result } = await client.request('skills/list', {});
+
+			expect(skillRepository.findLatestSaved).toHaveBeenCalledWith(['skill_a1']);
+			expect(result.skills).toEqual([toSkillEntry('skill_a1', releaseNotes)]);
 		});
 
 		it('pages with an offset cursor', async () => {
@@ -228,6 +258,18 @@ describe('McpSkillExtensionService', () => {
 
 			expect(error?.code).toBe(-32602);
 		});
+
+		it('refuses a skill that is not available to MCP with invalid params', async () => {
+			mockSkillNotAvailableToMCP();
+			const client = await connect(service);
+
+			const { error } = await client.request('skills/get', {
+				uri: 'skill://skill_a1/release-notes-writer/SKILL.md',
+			});
+
+			expect(error?.code).toBe(-32602);
+			expect(telemetry.track).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('resources/read', () => {
@@ -254,7 +296,13 @@ describe('McpSkillExtensionService', () => {
 				references: [{ path: 'references/my notes #1?.md', content: 'Notes' }],
 			};
 			skillsApi.get.mockResolvedValue(
-				mock<SkillDetail>({ id: 'skill_a1', scope: 'instance', projectId: null, skill }),
+				mock<SkillDetail>({
+					id: 'skill_a1',
+					scope: 'instance',
+					projectId: null,
+					availableToMCP: true,
+					skill,
+				}),
 			);
 			const referenceUri = toSkillEntry('skill_a1', skill).resources[1].uri;
 			const client = await connect(service);
@@ -292,8 +340,25 @@ describe('McpSkillExtensionService', () => {
 			expect(telemetry.track).not.toHaveBeenCalled();
 		});
 
+		it('does not read a skill that is not available to MCP', async () => {
+			mockSkillNotAvailableToMCP();
+			const client = await connect(service);
+
+			const { error } = await client.request('resources/read', {
+				uri: 'skill://skill_a1/release-notes-writer/references/style.md',
+			});
+
+			expect(error).toMatchObject({
+				code: -32602,
+				message: expect.stringContaining('Resource not found'),
+			});
+			expect(telemetry.track).not.toHaveBeenCalled();
+		});
+
 		it('does not read an agent skill', async () => {
-			skillsApi.get.mockResolvedValue(mock<SkillDetail>({ scope: 'agent', skill: releaseNotes }));
+			skillsApi.get.mockResolvedValue(
+				mock<SkillDetail>({ scope: 'agent', availableToMCP: true, skill: releaseNotes }),
+			);
 			const client = await connect(service);
 
 			const { error } = await client.request('resources/read', {

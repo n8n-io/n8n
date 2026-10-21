@@ -234,7 +234,13 @@ export class SkillRepository extends BaseRepository<Skill> {
 
 	/** Inserts the skill with its v1 and returns the id of that version. */
 	async createSkill(
-		skill: { id: string; target: SkillTarget; source: SkillSource; createdById: string | null },
+		skill: {
+			id: string;
+			target: SkillTarget;
+			source: SkillSource;
+			createdById: string | null;
+			availableToMCP?: boolean;
+		},
 		content: SkillContent,
 		ctx: OperationContext = {},
 	): Promise<string> {
@@ -245,6 +251,7 @@ export class SkillRepository extends BaseRepository<Skill> {
 				agentId: skill.target.agentId,
 				source: skill.source,
 				createdById: skill.createdById,
+				availableToMCP: skill.availableToMCP ?? false,
 			});
 			return await insertVersion(manager, skill.id, 1, content, skill.createdById);
 		});
@@ -352,6 +359,14 @@ export class SkillRepository extends BaseRepository<Skill> {
 			{ id: skillId },
 			{ projectId: target.projectId, agentId: target.agentId, updatedAt: new Date() },
 		);
+	}
+
+	async updateAvailableToMCP(
+		skillId: string,
+		availableToMCP: boolean,
+		ctx: OperationContext = {},
+	): Promise<void> {
+		await this.managerFor(ctx).update(Skill, { id: skillId }, { availableToMCP });
 	}
 
 	/** Name and type of each project, keyed by project id. A missing project is absent. */

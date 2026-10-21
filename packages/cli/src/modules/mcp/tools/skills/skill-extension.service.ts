@@ -140,7 +140,9 @@ export class McpSkillExtensionService {
 			user,
 			ListSkillsQueryDto.parse({ skip: String(skip), take: String(SKILLS_MAX_PAGE_SIZE) }),
 		);
-		const ids = data.filter((item) => item.scope !== 'agent').map((item) => item.id);
+		const ids = data
+			.filter((item) => item.scope !== 'agent' && item.availableToMCP)
+			.map((item) => item.id);
 		const rows = await this.skillRepository.findLatestSaved(ids);
 		const skills = ids.flatMap((id) => {
 			const row = rows.get(id);
@@ -163,7 +165,7 @@ export class McpSkillExtensionService {
 	private async readableSkill(user: User, skillId: string): Promise<SkillDetail | null> {
 		try {
 			const detail = await this.skillsApi.get(user, skillId);
-			return detail.scope === 'agent' ? null : detail;
+			return detail.scope === 'agent' || !detail.availableToMCP ? null : detail;
 		} catch (error) {
 			if (error instanceof NotFoundError) return null;
 			throw error;

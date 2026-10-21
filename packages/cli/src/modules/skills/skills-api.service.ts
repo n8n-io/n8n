@@ -100,6 +100,7 @@ export class SkillsApiService {
 			skill: payload.skill,
 			source,
 			createdById: user.id,
+			availableToMCP: payload.availableToMCP,
 		});
 		await this.skillsTelemetry.created(
 			user.id,
@@ -121,7 +122,7 @@ export class SkillsApiService {
 		source: SkillTelemetrySource = 'ui',
 	): Promise<SkillSaveResponse> {
 		const skill = await this.requireAccess(user, skillId, 'update');
-		const { scope, projectId, ...update } = payload;
+		const { scope, projectId, availableToMCP, ...update } = payload;
 		const target = scope ? await this.targetForCreate(user, { scope, projectId }) : undefined;
 		const moves =
 			target !== undefined &&
@@ -129,7 +130,7 @@ export class SkillsApiService {
 
 		const checkedSource = moves ? await this.skillService.assertCanMove(user, skillId) : undefined;
 
-		if (!moves) {
+		if (!moves && availableToMCP === undefined) {
 			const { followingAgentIds: _following, ...saved } = await this.skillService.save(
 				skillId,
 				update,
@@ -146,10 +147,15 @@ export class SkillsApiService {
 		// first and checks the final name in the new scope only: a name that only the old
 		// scope holds does not block it. The save then checks a rename in the new scope too.
 		const { followingAgentIds, ...saved } = await this.txRunner.run({}, async (ctx) => {
-			await this.skillService.changeTarget(skillId, target, undefined, ctx, {
-				nameAfterMove: update.name,
-				checkedSource,
-			});
+			if (moves) {
+				await this.skillService.changeTarget(skillId, target, undefined, ctx, {
+					nameAfterMove: update.name,
+					checkedSource,
+				});
+			}
+			if (availableToMCP !== undefined) {
+				await this.skillRepository.updateAvailableToMCP(skillId, availableToMCP, ctx);
+			}
 			return await this.skillService.save(skillId, update, user.id, ctx);
 		});
 		// `save` leaves the refresh to the caller when it joins a transaction.
@@ -157,10 +163,10 @@ export class SkillsApiService {
 		if (saved.created) {
 			await this.skillsTelemetry.updated(
 				user.id,
-				{ id: skillId, ...target },
+				moves ? { id: skillId, ...target } : skill,
 				source,
 				saved.version,
-				true,
+				moves,
 			);
 		}
 		return { id: skillId, ...saved, skillHash: getSkillHash(saved.skill) };
@@ -304,6 +310,7 @@ export class SkillsApiService {
 				createdBy: skill.createdById ? (creators.get(skill.createdById) ?? null) : null,
 				latestVersion: summary.version,
 				usedByAgents: usage.get(skill.id) ?? 0,
+				availableToMCP: skill.availableToMCP,
 				canEdit: canEdit(skill, projectId),
 				canDelete: canDelete(skill, projectId),
 				createdAt: skill.createdAt.toISOString(),

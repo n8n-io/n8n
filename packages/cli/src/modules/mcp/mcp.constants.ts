@@ -35,7 +35,7 @@ export const MCP_CLIENT_INFO_META_KEY = 'io.modelcontextprotocol/clientInfo';
  */
 export const MCP_DISCOVER_METHOD = 'server/discover';
 
-export const MCP_SKILLS_EXTENSION_FLAG = '128_mcp_skills_extension';
+export { MCP_SKILLS_EXTENSION_FLAG } from '@n8n/api-types';
 
 /**
  * Message constants

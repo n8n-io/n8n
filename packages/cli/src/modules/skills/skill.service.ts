@@ -184,6 +184,7 @@ export class SkillService {
 			source: SkillSource;
 			createdById: string;
 			checkNameTaken?: boolean;
+			availableToMCP?: boolean;
 		},
 		ctx: OperationContext = {},
 	): Promise<string> {
@@ -194,7 +195,13 @@ export class SkillService {
 		}
 		const id = `skill_${generateNanoId()}`;
 		await this.skillRepository.createSkill(
-			{ id, target: input.target, source: input.source, createdById: input.createdById },
+			{
+				id,
+				target: input.target,
+				source: input.source,
+				createdById: input.createdById,
+				availableToMCP: input.availableToMCP,
+			},
 			toSkillContent(skill),
 			ctx,
 		);

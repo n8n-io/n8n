@@ -21,6 +21,7 @@ import {
 	N8nInputLabel,
 	N8nOption,
 	N8nSelect,
+	N8nSwitch,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -77,6 +78,7 @@ export type AgentSkillModalData = {
 	 */
 	scopeOptions?: AgentSkillModalScopeOption[];
 	initialScope?: string;
+	availableToMCP?: boolean;
 	/**
 	 * A default name that no skill in the scope has yet, as new workflows get one. Called
 	 * when the user starts a skill by hand, with the Settings scope value or, in the agent
@@ -96,6 +98,7 @@ export type AgentSkillModalData = {
 		skill: AgentSkill;
 		availableTo?: AgentSkillAvailability;
 		scope?: string;
+		availableToMCP?: boolean;
 		/** Set on create only: whether the user typed the skill or uploaded it. */
 		method?: SkillCreateMethod;
 	}) => AgentSkillConfirmResult | Promise<AgentSkillConfirmResult>;
@@ -157,6 +160,11 @@ const isSaving = ref(false);
 /** A name error from the server, such as a taken name. Typing a new name clears it. */
 const serverNameError = ref('');
 const scope = ref(props.data.initialScope ?? props.data.scopeOptions?.[0]?.value ?? '');
+const availableToMCP = ref(props.data.availableToMCP ?? false);
+const showAvailableToMCP = computed(() => props.data.availableToMCP !== undefined);
+const availableToMCPChanged = computed(
+	() => showAvailableToMCP.value && availableToMCP.value !== props.data.availableToMCP,
+);
 
 /** The last default name the server gave. A name the user typed is never replaced. */
 const serverDefaultName = ref<string | null>(null);
@@ -424,6 +432,7 @@ const hasChanges = computed(
 	() =>
 		!isEditing.value ||
 		!isEqual(skill.value, initialSkill) ||
+		availableToMCPChanged.value ||
 		(showAvailabilitySelect.value && availableTo.value !== savedTarget.value) ||
 		(canChangeScope.value && scope.value !== props.data.initialScope),
 );
@@ -651,6 +660,7 @@ async function onSave() {
 			skill: payload,
 			...(showAvailabilitySelect.value && targetChanged ? { availableTo: availableTo.value } : {}),
 			...(canChangeScope.value ? { scope: scope.value } : {}),
+			...(availableToMCPChanged.value ? { availableToMCP: availableToMCP.value } : {}),
 			...(isEditing.value ? {} : { method: createMethod.value }),
 		});
 	} catch {
@@ -852,6 +862,22 @@ function onRemove() {
 										</N8nSelect>
 									</div>
 								</N8nTooltip>
+							</N8nInputLabel>
+							<N8nInputLabel
+								v-if="showAvailableToMCP"
+								input-name="skill-available-to-mcp"
+								:label="i18n.baseText('settings.context.skills.modal.mcp.label')"
+								:tooltip-text="i18n.baseText('settings.context.skills.modal.mcp.tooltip')"
+								show-tooltip
+								size="small"
+							>
+								<N8nSwitch
+									id="skill-available-to-mcp"
+									v-model="availableToMCP"
+									:aria-label="i18n.baseText('settings.context.skills.modal.mcp.label')"
+									:disabled="editorLocked"
+									data-testid="skill-available-to-mcp"
+								/>
 							</N8nInputLabel>
 						</template>
 						<template v-else-if="showAvailabilitySelect" #fields-start>
