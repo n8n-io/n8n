@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_ae841d0360228f::t_5b9839068ecb2d 351
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentFilesPanel.test.ts
+  s_ae841d0360228f::t_37db9cc0d6a9e6 101-104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "43544e4bc2edd0ddebcbb2450c1c7c447381972c",
+  "prompts": {},
+  "sessions": {
+    "s_ae841d0360228f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1590f-b880-74e1-b9be-d0d8c9eab0b3",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
