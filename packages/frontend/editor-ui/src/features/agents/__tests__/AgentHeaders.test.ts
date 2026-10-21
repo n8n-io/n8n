@@ -139,7 +139,9 @@ const iconStub = {
 
 enableAutoUnmount(afterEach);
 
-function mountHeader(props: { metadata?: SessionTimelineMetadata } = {}) {
+function mountHeader(
+	props: Partial<InstanceType<typeof AgentSessionTimelineHeader>['$props']> = {},
+) {
 	return mount(AgentSessionTimelineHeader, {
 		props: {
 			breadcrumbItems: [],
@@ -334,5 +336,69 @@ describe('AgentSessionTimelineHeader metadata', () => {
 		expect(wrapper.text()).not.toContain('Slack');
 		expect(wrapper.text()).not.toContain('12 seconds');
 		expect(wrapper.find('[data-icon="calendar"]').exists()).toBe(true);
+	});
+});
+
+describe('AgentSessionTimelineHeader menu', () => {
+	it('places session actions after Edit in builder', () => {
+		const wrapper = mountHeader({
+			hasSession: true,
+			canDeleteSession: true,
+			showLangsmithExport: true,
+		});
+		const menu = wrapper.getComponent('[data-testid="agent-session-timeline-more-menu"]');
+		expect(menu.props('items')).toEqual([
+			expect.objectContaining({ id: 'copy-link', disabled: false }),
+			expect.objectContaining({ id: 'export-session', disabled: false }),
+			expect.objectContaining({
+				id: 'delete-session',
+				disabled: false,
+				divided: true,
+				destructive: true,
+			}),
+		]);
+		const buttons = wrapper.findAll('button');
+		expect(buttons.at(-2)?.attributes('data-testid')).toBe('agent-session-timeline-edit');
+		expect(buttons.at(-1)?.attributes('data-testid')).toBe('agent-session-timeline-more-btn');
+	});
+
+	it('emits the enabled menu actions', () => {
+		const wrapper = mountHeader({
+			hasSession: true,
+			canDeleteSession: true,
+			showLangsmithExport: true,
+		});
+		const menu = wrapper.getComponent('[data-testid="agent-session-timeline-more-menu"]');
+		for (const action of ['copy-link', 'export-session', 'delete-session'])
+			menu.vm.$emit('select', action);
+		expect(wrapper.emitted('copy-link')).toEqual([[]]);
+		expect(wrapper.emitted('langsmith-export')).toEqual([[]]);
+		expect(wrapper.emitted('delete-session')).toEqual([[]]);
+	});
+
+	it('omits unavailable export and delete actions', () => {
+		const wrapper = mountHeader({ hasSession: true });
+		const menu = wrapper.getComponent('[data-testid="agent-session-timeline-more-menu"]');
+		expect(menu.props('items')).toEqual([expect.objectContaining({ id: 'copy-link' })]);
+		menu.vm.$emit('select', 'export-session');
+		menu.vm.$emit('select', 'delete-session');
+		expect(wrapper.emitted('langsmith-export')).toBeUndefined();
+		expect(wrapper.emitted('delete-session')).toBeUndefined();
+	});
+
+	it.each([
+		{ hasSession: false, langsmithExportLoading: false, isDeletingSession: false },
+		{ hasSession: true, langsmithExportLoading: true, isDeletingSession: true },
+	])('blocks unavailable or pending actions: %j', (state) => {
+		const wrapper = mountHeader({ canDeleteSession: true, showLangsmithExport: true, ...state });
+		const menu = wrapper.getComponent('[data-testid="agent-session-timeline-more-menu"]');
+		expect(menu.props('items').slice(1)).toEqual([
+			expect.objectContaining({ id: 'export-session', disabled: true }),
+			expect.objectContaining({ id: 'delete-session', disabled: true }),
+		]);
+		menu.vm.$emit('select', 'export-session');
+		menu.vm.$emit('select', 'delete-session');
+		expect(wrapper.emitted('langsmith-export')).toBeUndefined();
+		expect(wrapper.emitted('delete-session')).toBeUndefined();
 	});
 });

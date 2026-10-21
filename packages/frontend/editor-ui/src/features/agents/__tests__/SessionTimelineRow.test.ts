@@ -2,6 +2,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import type { TimelineItem } from '../session-timeline.types';
+import SessionTimelineRow from '../components/SessionTimelineRow.vue';
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({ resolve: () => ({ href: '/wf/1' }) }),
@@ -59,7 +60,6 @@ function item(partial: Partial<TimelineItem>): TimelineItem {
 }
 
 async function renderComponent(it: TimelineItem) {
-	const { default: SessionTimelineRow } = await import('../components/SessionTimelineRow.vue');
 	return mount(SessionTimelineRow, {
 		props: { item: it, selected: false },
 		global: { stubs: STUBS },

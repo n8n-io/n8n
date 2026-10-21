@@ -52,6 +52,15 @@ not show “New session” before the Preview session starts. Truncate long titl
 inside the shared button. Keep the header actions visible.
 Use the `x` icon for the Preview close action, as the Assistant does.
 
+## Session trace actions
+
+Put the session actions menu after `Edit in builder` in the trace header.
+Use the same copy-link, LangSmith export, and delete labels as Preview.
+Show export only when debug export is enabled. Show delete only when the user
+can update the Agent. Confirm session deletion and return to the session list.
+Disable session actions until the current session loads. Disable export and
+delete while their request runs.
+
 ## Fix with Assistant
 
 In the standalone Agents UI, open or reuse the Assistant in the left panel.
