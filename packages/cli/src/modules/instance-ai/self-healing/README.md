@@ -13,6 +13,9 @@ Wait/resume and existing crash recovery use the same hook and saved source metad
 The trigger respects workflow and instance settings for saving failed executions.
 Normal execution pruning still applies. It creates no snapshots or retention exceptions.
 Workers relay only the workflow and execution IDs through the existing pubsub channel.
+Worker and webhook processes wait for relay publication before the hook returns.
+Main processes start admission in the background after the execution save finishes.
+Admission does not delay execution completion and can be lost during shutdown.
 Main processes call the investigation service. Each workflow can have one unfinished investigation
 or open result. Different workflows can have investigations at the same time, subject to the
 existing Assistant concurrency limits. The database claim prevents duplicate investigations.
@@ -147,13 +150,19 @@ New configurations start disabled. The form selects the creator as the initial r
 Enabling a configuration records the user whose access authorizes subsequent investigations.
 
 Pause stops new investigations and prevents results from being saved while paused.
-Running agents can finish. If the configuration resumes before completion, their results can be saved.
+After an explicit pause commits, the service requests cancellation of its unfinished investigations.
+The Assistant runtime routes cancellation to local runs and runs on other main processes.
+Re-enabling permits future investigations. It does not resume canceled agents.
 Saved results remain available to assigned reviewers while the configuration is paused.
 
 A result can reference one independent suggestion. Reports without changes have no suggestion.
 Removal deletes linked suggestions and the configuration in one transaction. Foreign keys
 cascade deletion to suggestion activity, selections, reviewers, investigations, and results.
-Running agents can finish, but their results are not saved.
+Removal collects unfinished thread IDs before deletion and requests cancellation after commit.
+Cancellation is best-effort. A failed request does not fail a committed pause or removal.
+A rolled-back pause or removal does not request cancellation.
+Cancellation can arrive late, so result acceptance still checks the configuration and abort signal.
+If cancellation misses a run and the configuration resumes before completion, its result can be saved.
 Late completion skips missing configurations and investigations.
 Already applied workflow changes remain saved.
 Admission and result acceptance coordinate with pause and removal through a short configuration

@@ -23,7 +23,13 @@ export class SelfHealingTriggerService {
 	async onWorkflowExecuteAfter(ctx: WorkflowExecuteAfterContext): Promise<void> {
 		if (!this.shouldHandleFailure(ctx)) return;
 
-		await this.handleFailure({ workflowId: ctx.workflow.id, executionId: ctx.executionId });
+		const failure = { workflowId: ctx.workflow.id, executionId: ctx.executionId };
+		if (this.instanceSettings.instanceType === 'main') {
+			// Admission is best-effort and must not delay execution completion.
+			void this.handleFailure(failure);
+		} else {
+			await this.handleFailure(failure);
+		}
 	}
 
 	@OnPubSubEvent('self-healing-failure', { instanceType: 'main' })

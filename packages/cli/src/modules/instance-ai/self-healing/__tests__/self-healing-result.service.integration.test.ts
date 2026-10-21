@@ -93,6 +93,7 @@ beforeEach(() => {
 	Container.get(GlobalConfig).workflows.useWorkflowPublicationService = true;
 	Container.get(GlobalConfig).instanceAi.workflowSuggestionsEnabled = true;
 	runtime.startSelfHealingRun.mockReset();
+	runtime.routeCancelRun.mockReset();
 	validation.validateTriggerNodeIds.mockReturnValue({ isValid: true });
 	validation.validateForActivation.mockResolvedValue({ isValid: true });
 	validation.validateDynamicCredentials.mockResolvedValue({ isValid: true });
@@ -1546,7 +1547,7 @@ describe('configuration lifecycle', () => {
 		).toMatchObject({ enabled: true, enabledById: user.id });
 	});
 
-	it('accepts an investigation if the configuration resumes before completion', async () => {
+	it('can accept late output after re-enabling if cancellation misses the run', async () => {
 		const { user, project, original, investigation, completion } = await prepareInvestigation();
 		const configurations = Container.get(SelfHealingConfigurationService);
 		await configurations.setEnabled(user, project.id, investigation.configurationId, false);
@@ -1558,6 +1559,28 @@ describe('configuration lifecycle', () => {
 		expect(await investigations.getUnfinishedForWorkflow(original.id)).toBeNull();
 		expect(await suggestions.getPendingForWorkflow(original.id)).not.toBeNull();
 		expect(await results.count()).toBe(1);
+	});
+
+	it('rejects canceled output after re-enabling the configuration', async () => {
+		const { user, project, original, investigation, completion } = await prepareInvestigation();
+		const configurations = Container.get(SelfHealingConfigurationService);
+		const abort = new AbortController();
+		runtime.routeCancelRun.mockImplementationOnce(async () => abort.abort());
+
+		await configurations.setEnabled(user, project.id, investigation.configurationId, false);
+		await configurations.setEnabled(user, project.id, investigation.configurationId, true);
+
+		expect(runtime.routeCancelRun).toHaveBeenCalledExactlyOnceWith(investigation.threadId);
+		await expect(
+			service.complete({
+				investigationId: investigation.id,
+				...completion,
+				signal: abort.signal,
+			}),
+		).rejects.toThrow();
+		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
+		expect(await suggestions.getPendingForWorkflow(original.id)).toBeNull();
+		expect(await results.count()).toBe(0);
 	});
 
 	it.each(['pause', 'remove'] as const)(
@@ -1595,7 +1618,7 @@ describe('configuration lifecycle', () => {
 			investigation.configurationId,
 		);
 		expect(await investigations.findInvestigation(investigation.id)).toBeNull();
-		expect(runtime.routeCancelRun).not.toHaveBeenCalled();
+		expect(runtime.routeCancelRun).toHaveBeenCalledExactlyOnceWith(investigation.threadId);
 		expect(await service.complete({ investigationId: investigation.id, ...completion })).toBeNull();
 		expect(await investigations.getUnfinishedForWorkflow(original.id)).toBeNull();
 		expect(await suggestions.getPendingForWorkflow(original.id)).toBeNull();
@@ -1616,6 +1639,7 @@ describe('configuration lifecycle', () => {
 		expect(await service.listForInbox(user, { state: 'open', limit: 10 })).toEqual([]);
 		await testServer.authAgentFor(user).get(url).expect(404);
 		await testServer.authAgentFor(user).post(`${url}/apply`).expect(404);
+		expect(runtime.routeCancelRun).not.toHaveBeenCalled();
 	});
 
 	it('keeps independent suggestions when their result is deleted', async () => {

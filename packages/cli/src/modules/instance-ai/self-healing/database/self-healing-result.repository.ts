@@ -15,6 +15,10 @@ import { DataSource, IsNull } from '@n8n/typeorm';
 import { SelfHealingConfigurationReviewer } from './self-healing-configuration-reviewer.entity';
 import { SelfHealingResult } from './self-healing-result.entity';
 
+const inboxState = `CASE WHEN result.dismissedAt IS NULL
+	AND (result.suggestionId IS NULL OR suggestion.state = 'pending')
+	THEN 'open' ELSE 'closed' END`;
+
 export type CreateSelfHealingResult = Pick<
 	SelfHealingResult,
 	| 'configurationId'
@@ -58,12 +62,6 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 		super(SelfHealingResult, dataSource.manager, transactionRunner);
 	}
 
-	private inboxState() {
-		return `CASE WHEN result.dismissedAt IS NULL
-			AND (result.suggestionId IS NULL OR suggestion.state = 'pending')
-			THEN 'open' ELSE 'closed' END`;
-	}
-
 	private inboxQuery({ user, ...roles }: SelfHealingInboxAccess) {
 		const accessible = this.sharedWorkflows.buildSharedWorkflowIdsSubquery(user, roles);
 		return this.createQueryBuilder('result')
@@ -91,7 +89,7 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 			.select('result.id')
 			.leftJoin('result.suggestion', 'suggestion')
 			.where({ workflowId, projectId })
-			.andWhere(`(${this.inboxState()}) = :state`, { state: 'open' })
+			.andWhere(`(${inboxState}) = :state`, { state: 'open' })
 			.getOne();
 	}
 
@@ -112,7 +110,7 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 				'result.completedAt',
 				'workflow.name',
 			])
-			.andWhere(`(${this.inboxState()}) = :state`, { state })
+			.andWhere(`(${inboxState}) = :state`, { state })
 			.orderBy('result.updatedAt', 'DESC')
 			.addOrderBy('result.id', 'ASC');
 
@@ -143,9 +141,9 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 
 	async countForInbox(access: SelfHealingInboxAccess): Promise<InboxCounts> {
 		const counts = await this.inboxQuery(access)
-			.select(this.inboxState(), 'state')
+			.select(inboxState, 'state')
 			.addSelect('COUNT(*)', 'count')
-			.groupBy(this.inboxState())
+			.groupBy(inboxState)
 			.getRawMany<{ state: InboxState; count: number | string }>();
 		return {
 			open: Number(counts.find((row) => row.state === 'open')?.count ?? 0),
