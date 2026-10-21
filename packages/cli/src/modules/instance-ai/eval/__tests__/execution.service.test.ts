@@ -40,6 +40,9 @@ vi.mock('../pin-data-generator', () => ({
 vi.mock('../mock-handler', () => ({
 	createLlmMockHandler: vi.fn(),
 }));
+vi.mock('../node-run-mock', () => ({
+	createNodeRunMockHandler: vi.fn(),
+}));
 vi.mock('../workflow-analysis', () => ({
 	partitionAiRoots: vi.fn(),
 	buildVendorLlmRouting: vi.fn().mockReturnValue({
@@ -49,6 +52,7 @@ vi.mock('../workflow-analysis', () => ({
 	generateMockHints: vi.fn(),
 	identifyNodesForHints: vi.fn(),
 	identifyNodesForPinData: vi.fn(),
+	identifyNodesForRunMock: vi.fn(),
 	isDataTableRead: vi.fn().mockReturnValue(false),
 	emitsDataTableRows: vi.fn().mockReturnValue(false),
 	detectBinaryDependencies: vi.fn(),
@@ -118,6 +122,7 @@ vi.mock('../web-search-mock', () => ({ createWebSearchMock: vi.fn() }));
 import { EvalExecutionService } from '../execution.service';
 import { createMcpMockFetch } from '../mcp-mock-fetch';
 import { createLlmMockHandler } from '../mock-handler';
+import { createNodeRunMockHandler } from '../node-run-mock';
 import { createWebSearchMock } from '../web-search-mock';
 import { generatePinData } from '../pin-data-generator';
 import {
@@ -126,6 +131,7 @@ import {
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
+	identifyNodesForRunMock,
 	isDataTableRead,
 	partitionAiRoots,
 } from '../workflow-analysis';
@@ -139,6 +145,8 @@ const generateMockHintsMock = vi.mocked(generateMockHints);
 const detectBinaryDependenciesMock = vi.mocked(detectBinaryDependencies);
 const identifyNodesForHintsMock = vi.mocked(identifyNodesForHints);
 const identifyNodesForPinDataMock = vi.mocked(identifyNodesForPinData);
+const identifyNodesForRunMockMock = vi.mocked(identifyNodesForRunMock);
+const createNodeRunMockHandlerMock = vi.mocked(createNodeRunMockHandler);
 const emitsDataTableRowsMock = vi.mocked(emitsDataTableRows);
 const partitionAiRootsMock = vi.mocked(partitionAiRoots);
 const createLlmMockHandlerMock = vi.mocked(createLlmMockHandler);
@@ -287,6 +295,8 @@ describe('EvalExecutionService', () => {
 		// between tests — re-set every impl we depend on here.
 		identifyNodesForHintsMock.mockReturnValue([]);
 		identifyNodesForPinDataMock.mockReturnValue([]);
+		identifyNodesForRunMockMock.mockReturnValue([]);
+		createNodeRunMockHandlerMock.mockReturnValue(vi.fn());
 		partitionAiRootsMock.mockReturnValue({ unpinNodes: [], pinNodes: [], autoPinned: [] });
 		generateMockHintsMock.mockResolvedValue(makeEmptyHints());
 		generatePinDataMock.mockResolvedValue({});
@@ -890,6 +900,52 @@ describe('EvalExecutionService', () => {
 			expect(ad.evalLlmMockHandler).toEqual(expect.any(Function));
 		});
 
+		it('answers for nodes the HTTP mock cannot reach at run time and records each run', async () => {
+			const sendEmail = {
+				id: 'node-2',
+				name: 'Send Email',
+				type: 'n8n-nodes-base.emailSend',
+				typeVersion: 2.1,
+				position: [0, 0],
+				parameters: {},
+			} as INode;
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({ nodes: [makeStartNode(), sendEmail] }) as never,
+			);
+			identifyNodesForRunMockMock.mockReturnValue([sendEmail]);
+			const nodeOutput = [[{ json: { accepted: ['ana@example.com'] }, pairedItem: { item: 0 } }]];
+			createNodeRunMockHandlerMock.mockImplementation((options) => async (context) => {
+				options.onRun?.(context.getNode(), { items: [] }, nodeOutput[0]);
+				return nodeOutput;
+			});
+			let nodeMockOutputs: unknown[] = [];
+			workflowRunner.run.mockImplementation(async (data) => {
+				const ad: { evalNodeMockHandler?: (context: unknown) => Promise<unknown> } = {};
+				await data.configureAdditionalData?.(ad as never);
+				nodeMockOutputs = [
+					await ad.evalNodeMockHandler?.({ getNode: () => sendEmail }),
+					await ad.evalNodeMockHandler?.({ getNode: () => makeStartNode() }),
+				];
+				return DB_EXECUTION_ID;
+			});
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(nodeMockOutputs).toEqual([nodeOutput, undefined]);
+			expect(createNodeRunMockHandlerMock).toHaveBeenCalledWith(
+				expect.objectContaining({ nodeNames: new Set(['Send Email']) }),
+			);
+			expect(result.nodeResults['Send Email']).toMatchObject({
+				executionMode: 'mocked',
+				interceptedRequests: [
+					expect.objectContaining({
+						nodeType: 'n8n-nodes-base.emailSend',
+						mockResponse: nodeOutput[0],
+					}),
+				],
+			});
+		});
+
 		it('returns a partial-failure result when the run resolves with undefined', async () => {
 			activeExecutions.getPostExecutePromise.mockResolvedValue(undefined);
 
@@ -1447,6 +1503,28 @@ describe('EvalExecutionService', () => {
 				account: '100000000',
 				note: '__evalMockValue',
 			});
+		});
+
+		it('keeps the placeholders of run-mocked nodes, which send no real request', async () => {
+			const sendEmail = {
+				id: 'node-2',
+				name: 'Send Email',
+				type: 'n8n-nodes-base.emailSend',
+				typeVersion: 2.1,
+				position: [200, 0],
+				parameters: { fromEmail: placeholderValue('Sender address') },
+			} as INode;
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({ nodes: [makeStartNode(), sendEmail] }) as never,
+			);
+			identifyNodesForRunMockMock.mockReturnValue([sendEmail]);
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+			const runArg = workflowRunner.run.mock.calls[0][0];
+			const sendNode = runArg.workflowData.nodes.find((node) => node.name === 'Send Email');
+
+			expect(sendNode?.parameters).toEqual({ fromEmail: placeholderValue('Sender address') });
+			expect(result.nodeResults['Send Email']?.configIssues).toBeUndefined();
 		});
 
 		it('synthesizes validator-shaped values for selected resource placeholders', async () => {

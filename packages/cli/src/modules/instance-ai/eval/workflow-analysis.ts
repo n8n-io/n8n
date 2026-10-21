@@ -35,7 +35,7 @@ function findAiSubNodeNames(workflow: IWorkflowBase): Set<string> {
 	return subNodes;
 }
 
-/** Node types that bypass the HTTP mock handler (non-HTTP protocols or non-helper HTTP). */
+/** Node types that bypass the HTTP mock handler (non-HTTP protocols or non-helper HTTP). The run-time node mock answers for them. */
 const BYPASS_NODE_TYPES = new Set([
 	'n8n-nodes-base.redis',
 	'n8n-nodes-base.mongoDb',
@@ -133,7 +133,7 @@ export function emitsDataTableRows(node: INode): boolean {
 	return DATA_TABLE_ROW_EMITTING_OPERATIONS.has(params?.operation ?? 'insert');
 }
 
-/** Returns nodes that need pin data — AI roots (unless in `exclusionSet`), bypass-protocol nodes, and Data Table reads (unless in `liveReads`). */
+/** Returns nodes that need pin data — AI roots (unless in `exclusionSet`) and Data Table reads (unless in `liveReads`). */
 export function identifyNodesForPinData(
 	workflow: IWorkflowBase,
 	exclusionSet?: Set<string>,
@@ -144,10 +144,14 @@ export function identifyNodesForPinData(
 	return workflow.nodes.filter((node) => {
 		if (node.disabled) return false;
 		if (aiRootNodes.has(node.name) && !exclusionSet?.has(node.name)) return true;
-		if (BYPASS_NODE_TYPES.has(node.type)) return true;
 		if (isDataTableRead(node)) return !liveReads?.has(node.name);
 		return false;
 	});
+}
+
+/** Returns the nodes the HTTP mock cannot reach, which the run-time node mock answers for. */
+export function identifyNodesForRunMock(workflow: IWorkflowBase): INode[] {
+	return workflow.nodes.filter((node) => !node.disabled && BYPASS_NODE_TYPES.has(node.type));
 }
 
 // ---------------------------------------------------------------------------
