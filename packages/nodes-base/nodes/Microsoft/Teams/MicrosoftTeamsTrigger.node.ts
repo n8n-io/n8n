@@ -480,16 +480,24 @@ export class MicrosoftTeamsTrigger implements INodeType {
 			return { noWebhookResponse: true };
 		}
 
-		if (!verifyWebhook.call(this)) {
+		const accepted = verifyWebhook.call(this);
+		if (accepted.length === 0) {
 			res.status(401).send('Unauthorized').end();
 			return { noWebhookResponse: true };
 		}
 
-		// `verifyWebhook` proved a non-empty array with the expected client state.
-		// Only records become workflow items.
+		// `verifyWebhook` proved a non-empty array and dropped the items without the expected
+		// clientState; the lifecycle handler lists and reconciles for them. Only records become
+		// workflow items.
 		const notifications: unknown[] = req.body.value;
-		const lifecycleNotifications = notifications.filter(isLifecycleNotification);
-		const changeNotifications = notifications.filter(
+		const rejected = notifications.length - accepted.length;
+		if (rejected > 0) {
+			logTrigger.call(this, 'debug', 'rejected notifications with an unknown clientState', {
+				rejected,
+			});
+		}
+		const lifecycleNotifications = accepted.filter(isLifecycleNotification);
+		const changeNotifications = accepted.filter(
 			(item) => isRecord(item) && !isLifecycleNotification(item),
 		) as WebhookNotification[];
 		const workflowData = changeNotifications.map((event) => [
@@ -507,7 +515,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 		// A test run would list by the production URL and write production ids into the
 		// test static data.
 		if (this.getMode() !== 'manual') {
-			await handleLifecycleNotifications.call(this, lifecycleNotifications);
+			await handleLifecycleNotifications.call(this, lifecycleNotifications, rejected);
 		}
 
 		// A lifecycle-only batch must leave `workflowData` undefined: any value starts an execution.

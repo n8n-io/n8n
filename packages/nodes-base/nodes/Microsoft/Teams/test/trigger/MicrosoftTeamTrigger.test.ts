@@ -990,31 +990,50 @@ describe('Microsoft Teams Trigger Node', () => {
 			]);
 		});
 
-		it('should return 401 when clientState does not match stored secret', async () => {
-			const mockRequest = {
-				body: {
-					value: [{ clientState: 'wrong-secret-aa' }],
-				},
-				query: {},
-			};
-			const mockResponse = {
-				status: vi.fn().mockReturnThis(),
-				send: vi.fn().mockReturnThis(),
-				end: vi.fn().mockReturnThis(),
-			};
+		it.each([
+			['one item', [{ clientState: 'wrong-secret-aa' }]],
+			['every item', [{ clientState: 'wrong-secret-aa' }, { clientState: 'wrong-secret-bb' }]],
+		])(
+			'should return 401 when the clientState of %s does not match the stored secret',
+			async (_label, value) => {
+				const mockRequest = { body: { value }, query: {} };
+				const mockResponse = {
+					status: vi.fn().mockReturnThis(),
+					send: vi.fn().mockReturnThis(),
+					end: vi.fn().mockReturnThis(),
+				};
 
-			mockWebhookFunctions.getRequestObject.mockReturnValue(mockRequest);
-			mockWebhookFunctions.getResponseObject.mockReturnValue(mockResponse);
-			mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({
-				webhookSecret: 'expected-secret',
+				mockWebhookFunctions.getRequestObject.mockReturnValue(mockRequest);
+				mockWebhookFunctions.getResponseObject.mockReturnValue(mockResponse);
+				mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({
+					webhookSecret: 'expected-secret',
+				});
+
+				const result = await new MicrosoftTeamsTrigger().webhook.call(mockWebhookFunctions);
+
+				expect(mockResponse.status).toHaveBeenCalledWith(401);
+				expect(mockResponse.send).toHaveBeenCalledWith('Unauthorized');
+				expect(result.noWebhookResponse).toBe(true);
+				expect(result.workflowData).toBeUndefined();
+			},
+		);
+
+		it('processes the valid items of a mixed batch and drops the one with a wrong clientState', async () => {
+			const { ctx, res } = arrange({
+				value: [
+					{ clientState: 'secret', resourceData: { id: '1' } },
+					{ clientState: 'wrong', resourceData: { id: '2' } },
+				],
 			});
 
-			const result = await new MicrosoftTeamsTrigger().webhook.call(mockWebhookFunctions);
+			const result = await new MicrosoftTeamsTrigger().webhook.call(ctx);
 
-			expect(mockResponse.status).toHaveBeenCalledWith(401);
-			expect(mockResponse.send).toHaveBeenCalledWith('Unauthorized');
-			expect(result.noWebhookResponse).toBe(true);
-			expect(result.workflowData).toBeUndefined();
+			expect(res.status).not.toHaveBeenCalled();
+			expect(result).toEqual({ workflowData: [[{ json: { id: '1' } }]] });
+			expect(ctx.logger.debug).toHaveBeenCalledWith(
+				'Microsoft Teams Trigger: rejected notifications with an unknown clientState',
+				expect.objectContaining({ workflowId: 'wf1', rejected: 1 }),
+			);
 		});
 
 		it('should reject notifications when no secret is stored', async () => {
@@ -1297,6 +1316,49 @@ describe('Microsoft Teams Trigger Node', () => {
 			expect(microsoftApiRequest.call).not.toHaveBeenCalled();
 			expect(microsoftApiRequestAllItems.call).not.toHaveBeenCalled();
 			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('does no lifecycle Graph work for a rejected lifecycle item next to a valid change item', async () => {
+			const change = { subscriptionId: 'sub1', clientState: 'secret', resourceData: { id: 'm1' } };
+			const { ctx, res } = arrange({
+				value: [change, { ...lifecycleItem('reauthorizationRequired'), clientState: 'wrong' }],
+			});
+
+			const result = await webhook(ctx);
+
+			expect(microsoftApiRequest.call).not.toHaveBeenCalled();
+			expect(microsoftApiRequestAllItems.call).not.toHaveBeenCalled();
+			expect(res.status).not.toHaveBeenCalled();
+			expect(result).toEqual({ workflowData: [[{ json: change.resourceData }]] });
+		});
+
+		it('handles a valid lifecycle item next to a rejected change item', async () => {
+			const { ctx, res, staticData } = arrange({
+				value: [
+					{ subscriptionId: 'sub1', clientState: 'wrong', resourceData: { id: 'm1' } },
+					lifecycleItem('reauthorizationRequired'),
+				],
+			});
+			const sub1 = { id: 'sub1', resource: '/me/chats', notificationUrl: 'https://webhook.url' };
+			(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
+				{ ...sub1, expirationDateTime: new Date(NOW + 60 * 60 * 1000).toISOString() },
+			]);
+			(microsoftApiRequest.call as Mock).mockResolvedValue({
+				...sub1,
+				expirationDateTime: expectedExpiry,
+			});
+
+			const result = await webhook(ctx);
+
+			expect(calls('PATCH').map((call) => call[2])).toEqual(['/v1.0/subscriptions/sub1']);
+			expect(res.status).toHaveBeenCalledTimes(1);
+			expect(res.status).toHaveBeenCalledWith(202);
+			// The request rejected an item, so the batch is not a plain renewal.
+			expect(microsoftApiRequestAllItems.call).toHaveBeenCalledTimes(1);
+			expect(calls('DELETE')).toHaveLength(0);
+			expect(calls('POST')).toHaveLength(0);
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(staticData).toEqual({ subscriptionIds: ['sub1'], webhookSecret: 'secret' });
 		});
 
 		it('acks and ignores lifecycle items during a manual test run', async () => {

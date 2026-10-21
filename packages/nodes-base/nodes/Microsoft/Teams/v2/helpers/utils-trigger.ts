@@ -445,7 +445,8 @@ export async function handleLifecycleNotifications(
 	});
 }
 
-export function verifyWebhook(this: IWebhookFunctions): boolean {
+/** The accepted items of the request body; `[]` for a missing, empty or non-array body. */
+export function verifyWebhook(this: IWebhookFunctions): unknown[] {
 	const req = this.getRequestObject();
 	const webhookData = this.getWorkflowStaticData('node');
 	const expectedSecret = getStoredSecret(webhookData);
@@ -454,10 +455,13 @@ export function verifyWebhook(this: IWebhookFunctions): boolean {
 	const notifications = body?.value;
 
 	if (!Array.isArray(notifications) || notifications.length === 0) {
-		return false;
+		return [];
 	}
 
-	return (notifications as unknown[]).every((notification) => {
+	// Graph batches several subscriptions into one POST, so an item from another
+	// subscription must not drop the valid ones. Without a stored secret no item is
+	// accepted.
+	return (notifications as unknown[]).filter((notification) => {
 		const actualClientState =
 			typeof notification === 'object' && notification !== null
 				? (notification as { clientState?: unknown }).clientState

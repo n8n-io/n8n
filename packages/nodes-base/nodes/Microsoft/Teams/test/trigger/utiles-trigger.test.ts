@@ -237,17 +237,17 @@ describe('Microsoft Teams Helpers Functions', () => {
 			};
 		});
 
-		it('should return false when no secret is stored', () => {
+		it('returns an empty array when no secret is stored', () => {
 			(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue({
 				body: { value: [{ clientState: 'anything' }] },
 			});
 			(mockWebhookFunctions.getWorkflowStaticData as Mock).mockReturnValue({});
 
 			const result = verifyWebhook.call(mockWebhookFunctions as IWebhookFunctions);
-			expect(result).toBe(false);
+			expect(result).toEqual([]);
 		});
 
-		it('should return false when the stored secret is empty', () => {
+		it('returns an empty array when the stored secret is empty', () => {
 			(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue({
 				body: { value: [{ clientState: '' }] },
 			});
@@ -256,10 +256,10 @@ describe('Microsoft Teams Helpers Functions', () => {
 			});
 
 			const result = verifyWebhook.call(mockWebhookFunctions as IWebhookFunctions);
-			expect(result).toBe(false);
+			expect(result).toEqual([]);
 		});
 
-		it('should return true when clientState matches the stored secret', () => {
+		it('returns the item whose clientState matches', () => {
 			(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue({
 				body: {
 					value: [{ clientState: 'expected-secret' }],
@@ -270,10 +270,10 @@ describe('Microsoft Teams Helpers Functions', () => {
 			});
 
 			const result = verifyWebhook.call(mockWebhookFunctions as IWebhookFunctions);
-			expect(result).toBe(true);
+			expect(result).toEqual([{ clientState: 'expected-secret' }]);
 		});
 
-		it('should return false when clientState does not match the stored secret', () => {
+		it('returns an empty array when clientState does not match the stored secret', () => {
 			(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue({
 				body: { value: [{ clientState: 'wrong-secret-aa' }] },
 			});
@@ -282,10 +282,10 @@ describe('Microsoft Teams Helpers Functions', () => {
 			});
 
 			const result = verifyWebhook.call(mockWebhookFunctions as IWebhookFunctions);
-			expect(result).toBe(false);
+			expect(result).toEqual([]);
 		});
 
-		it('should return false when clientState is missing from the notification', () => {
+		it('returns an empty array when clientState is missing from the notification', () => {
 			(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue({
 				body: { value: [{}] },
 			});
@@ -294,16 +294,31 @@ describe('Microsoft Teams Helpers Functions', () => {
 			});
 
 			const result = verifyWebhook.call(mockWebhookFunctions as IWebhookFunctions);
-			expect(result).toBe(false);
+			expect(result).toEqual([]);
 		});
 
-		it('should return true when all notifications in a batch have matching clientState', () => {
+		it('returns every item when all notifications in a batch have matching clientState', () => {
+			const value = [
+				{ clientState: 'expected-secret' },
+				{ clientState: 'expected-secret' },
+				{ clientState: 'expected-secret' },
+			];
+			(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue({ body: { value } });
+			(mockWebhookFunctions.getWorkflowStaticData as Mock).mockReturnValue({
+				webhookSecret: 'expected-secret',
+			});
+
+			const result = verifyWebhook.call(mockWebhookFunctions as IWebhookFunctions);
+			expect(result).toEqual(value);
+		});
+
+		it('returns only the items whose clientState matches', () => {
 			(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue({
 				body: {
 					value: [
-						{ clientState: 'expected-secret' },
-						{ clientState: 'expected-secret' },
-						{ clientState: 'expected-secret' },
+						{ clientState: 'expected-secret', id: 1 },
+						{ clientState: 'wrong-secret', id: 2 },
+						{ clientState: 'expected-secret', id: 3 },
 					],
 				},
 			});
@@ -312,16 +327,19 @@ describe('Microsoft Teams Helpers Functions', () => {
 			});
 
 			const result = verifyWebhook.call(mockWebhookFunctions as IWebhookFunctions);
-			expect(result).toBe(true);
+			expect(result).toEqual([
+				{ clientState: 'expected-secret', id: 1 },
+				{ clientState: 'expected-secret', id: 3 },
+			]);
 		});
 
-		it('should return false when any notification in a batch has mismatched clientState', () => {
+		it('drops the item without a clientState', () => {
 			(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue({
 				body: {
 					value: [
-						{ clientState: 'expected-secret' },
-						{ clientState: 'wrong-secret' },
-						{ clientState: 'expected-secret' },
+						{ clientState: 'expected-secret', id: 1 },
+						{ id: 2 },
+						{ clientState: 'expected-secret', id: 3 },
 					],
 				},
 			});
@@ -330,22 +348,22 @@ describe('Microsoft Teams Helpers Functions', () => {
 			});
 
 			const result = verifyWebhook.call(mockWebhookFunctions as IWebhookFunctions);
-			expect(result).toBe(false);
+			expect(result).toEqual([
+				{ clientState: 'expected-secret', id: 1 },
+				{ clientState: 'expected-secret', id: 3 },
+			]);
 		});
 
-		it('should return false when any notification in a batch is missing clientState', () => {
-			(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue({
-				body: {
-					value: [{ clientState: 'expected-secret' }, {}, { clientState: 'expected-secret' }],
-				},
-			});
-			(mockWebhookFunctions.getWorkflowStaticData as Mock).mockReturnValue({
-				webhookSecret: 'expected-secret',
-			});
+		it.each([[undefined], [[]], ['x']])(
+			'returns an empty array for a missing, empty or non-array value (%j)',
+			(value) => {
+				(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue({ body: { value } });
+				(mockWebhookFunctions.getWorkflowStaticData as Mock).mockReturnValue({});
 
-			const result = verifyWebhook.call(mockWebhookFunctions as IWebhookFunctions);
-			expect(result).toBe(false);
-		});
+				const result = verifyWebhook.call(mockWebhookFunctions as IWebhookFunctions);
+				expect(result).toEqual([]);
+			},
+		);
 	});
 
 	describe('getResourcePath', () => {
