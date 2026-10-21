@@ -38,9 +38,8 @@ export { ExecutionStartHandler } from './execution-start-handler';
 export { ExecutionQueryService } from './execution-query.service';
 export { OrchestrationWorker } from './orchestration-worker';
 export { StepSettledHandler } from './step-settled-handler';
-export type { ChildCanceller } from './step-settled-handler';
 export { StepReadyHandler } from './step-ready-handler';
-export type { ChildStarter } from './step-ready-handler';
+export type { ChildCanceller, ChildStarter } from './step-ready-handler';
 export { StepWorker } from './step-worker';
 export {
 	WaitSweeper,
