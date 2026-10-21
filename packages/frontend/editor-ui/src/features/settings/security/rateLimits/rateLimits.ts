@@ -30,7 +30,7 @@ const windowField = (key: RateLimitRowKey): WindowField => `${key}WindowSeconds`
 
 const parseLimit = (limit: string) => (limit.trim() === '' ? 0 : Number(limit.trim()));
 
-export function toDraft(settings: PublicApiRateLimitSettings): RateLimitDraft {
+export function toDraft(settings: Omit<PublicApiRateLimitSettings, 'enabled'>): RateLimitDraft {
 	const row = (key: RateLimitRowKey) => {
 		const limit = settings[limitField(key)];
 		return { limit: limit === 0 ? '' : String(limit), window: String(settings[windowField(key)]) };

@@ -26,7 +26,6 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 }));
 
 const defaults = {
-	enabled: false,
 	globalReadLimit: 1200,
 	globalReadWindowSeconds: 60,
 	globalWriteLimit: 600,
@@ -40,6 +39,7 @@ const defaults = {
 const response = (
 	overrides: Partial<PublicApiRateLimitSettingsResponse> = {},
 ): PublicApiRateLimitSettingsResponse => ({
+	enabled: false,
 	...defaults,
 	defaults,
 	envManagedFields: [],

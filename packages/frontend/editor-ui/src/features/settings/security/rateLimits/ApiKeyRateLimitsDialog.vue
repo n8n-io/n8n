@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import type { PublicApiRateLimitSettings } from '@n8n/api-types';
+import type {
+	PublicApiRateLimitSettings,
+	PublicApiRateLimitSettingsResponse,
+} from '@n8n/api-types';
 import {
 	N8nButton,
 	N8nDialog,
@@ -28,7 +31,7 @@ const props = defineProps<{
 	open: boolean;
 	mode: 'enable' | 'edit';
 	settings: PublicApiRateLimitSettings;
-	defaults: PublicApiRateLimitSettings;
+	defaults: PublicApiRateLimitSettingsResponse['defaults'];
 	envManagedFields: Array<keyof PublicApiRateLimitSettings>;
 	saving: boolean;
 }>();
