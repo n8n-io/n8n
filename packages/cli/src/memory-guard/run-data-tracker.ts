@@ -148,9 +148,10 @@ export class RunDataTracker {
 		// from this node, recursively. A run starts after its source, so one pass is enough.
 		const finished = new Set([nodeName]);
 		for (const [index, run] of runningNodes) {
-			if (run.source === undefined || !finished.has(run.source)) continue;
-			runningNodes.delete(index);
-			finished.add(run.name);
+			if (run.source !== undefined && finished.has(run.source)) {
+				runningNodes.delete(index);
+				finished.add(run.name);
+			}
 		}
 	}
 
@@ -183,11 +184,11 @@ export class RunDataTracker {
 		execution: TrackedExecution,
 		executionId: string,
 		nodeName: string,
-		estimate: () => number,
+		estimateBytes: () => number,
 	) {
 		let bytes: number;
 		try {
-			bytes = estimate();
+			bytes = estimateBytes();
 		} catch {
 			// Never fail the execution. Reading the thrown value can throw too.
 			this.logger.debug('Failed to estimate node output size', { executionId, nodeName });

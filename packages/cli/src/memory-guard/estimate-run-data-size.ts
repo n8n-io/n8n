@@ -283,16 +283,20 @@ function valueSize(value: unknown, state: WalkState): number {
 }
 
 function objectSize(value: object, state: WalkState): number {
+	// A view keeps its whole buffer in memory, and several views can share one buffer.
+	if (ArrayBuffer.isView(value)) return valueSize(viewBuffer(value), state);
+
 	// Read binary buffers by length. Walking their keys would visit every byte.
-	if (ArrayBuffer.isView(value) || types.isAnyArrayBuffer(value)) return value.byteLength;
+	if (types.isAnyArrayBuffer(value)) return value.byteLength;
 
 	if (Array.isArray(value)) {
 		const elements: readonly unknown[] = value;
-		const slots = Math.round(elements.length * presentShare(elements));
-		const elementsBytes = sampleSum(elements.length, state, (index) =>
-			valueSize(dataValue(elements, index), state),
+		const indices = hasHoles(elements) ? Object.keys(elements) : undefined;
+		const count = indices?.length ?? elements.length;
+		const elementsBytes = sampleSum(count, state, (index) =>
+			valueSize(dataValue(elements, indices ? indices[index] : index), state),
 		);
-		return ARRAY_HEADER + slots * SLOT + elementsBytes;
+		return ARRAY_HEADER + count * SLOT + elementsBytes;
 	}
 
 	const keys = Object.keys(value);
@@ -349,17 +353,25 @@ function markShared(counted: CountedObject, state: WalkState) {
 }
 
 /**
- * Share of the sampled indices that hold an element. A key like `byId.1234567890`
- * can make an array with a huge length and almost no elements, and V8 then stores
- * only the elements.
+ * Whether a sampled index holds no element. A key like `byId.1234567890` can make an
+ * array with a huge length and almost no elements, and V8 then stores only the elements.
  */
-function presentShare(elements: readonly unknown[]): number {
+function hasHoles(elements: readonly unknown[]): boolean {
 	const measured = Math.min(elements.length, ARRAY_SAMPLE_SIZE);
-	if (measured === 0) return 1;
-
-	let present = 0;
 	for (let i = 0; i < measured; i++) {
-		if (Object.hasOwn(elements, sampleIndex(i, elements.length, measured))) present++;
+		if (!Object.hasOwn(elements, sampleIndex(i, elements.length, measured))) return true;
 	}
-	return present / measured;
+	return false;
+}
+
+// Built-in getters, because a getter on the view itself is node code.
+const typedArrayBuffer = Object.getOwnPropertyDescriptor(
+	Object.getPrototypeOf(Uint8Array.prototype),
+	'buffer',
+)?.get;
+const dataViewBuffer = Object.getOwnPropertyDescriptor(DataView.prototype, 'buffer')?.get;
+
+function viewBuffer(view: ArrayBufferView): unknown {
+	const getBuffer = types.isDataView(view) ? dataViewBuffer : typedArrayBuffer;
+	return getBuffer?.call(view);
 }

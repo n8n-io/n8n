@@ -259,17 +259,57 @@ describe('estimateItemsSize', () => {
 			expect(dataBytes([{ json: { record, list } }])).toBeGreaterThan(0);
 		});
 
-		it('should count the slots of a sparse array by its elements, not its length', () => {
+		it('should count a sparse array by its elements, not its length', () => {
 			const byId: unknown[] = [];
 			byId[1_234_567_890] = 'x';
 
-			expect(dataBytes([{ json: { byId } }])).toBe(objectBytes(1) + arrayBytes(0));
+			expect(dataBytes([{ json: { byId } }])).toBe(objectBytes(1) + arrayBytes(1) + stringBytes(1));
+		});
+
+		it('should count a sparse array the same wherever its elements are', () => {
+			const atStart: unknown[] = [];
+			atStart[0] = 'x';
+			atStart[1_000_000_000] = 'y';
+			const afterStart: unknown[] = [];
+			afterStart[1] = 'x';
+			afterStart[1_000_000_000] = 'y';
+
+			const expected = objectBytes(1) + arrayBytes(2) + 2 * stringBytes(1);
+			expect(dataBytes([{ json: { list: atStart } }])).toBe(expected);
+			expect(dataBytes([{ json: { list: afterStart } }])).toBe(expected);
 		});
 
 		it('should read a buffer by its length instead of walking its bytes', () => {
 			const buffer = Buffer.alloc(10 * 1024 * 1024);
 
 			expect(dataBytes([{ json: { buffer } }])).toBe(objectBytes(1) + buffer.byteLength);
+		});
+
+		it('should count the whole buffer behind a small view', () => {
+			const buffer = new ArrayBuffer(1024 * 1024);
+			const view = new Uint8Array(buffer, 0, 8);
+
+			expect(dataBytes([{ json: { view } }])).toBe(objectBytes(1) + buffer.byteLength);
+		});
+
+		it('should count a buffer once when several views share it', () => {
+			const buffer = new ArrayBuffer(1024 * 1024);
+			const views = [new Uint8Array(buffer), new DataView(buffer), new Float64Array(buffer)];
+
+			expect(dataBytes([{ json: { views } }])).toBe(
+				objectBytes(1) + arrayBytes(3) + buffer.byteLength,
+			);
+		});
+
+		it('should not run a getter that replaces the buffer of a view', () => {
+			const view = new Uint8Array(new ArrayBuffer(16));
+			Object.defineProperty(view, 'buffer', {
+				get() {
+					throw new Error('A getter is node code, so the estimator must not run it');
+				},
+			});
+
+			expect(dataBytes([{ json: { view } }])).toBe(objectBytes(1) + 16);
 		});
 
 		it('should handle circular references', () => {
