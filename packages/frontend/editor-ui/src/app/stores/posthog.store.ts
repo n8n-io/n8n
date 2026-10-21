@@ -10,6 +10,9 @@ import {
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	MCP_DISCOVERY_EXPERIMENT,
 	// EOF Experiment cleanup
+	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT,
+	// EOF Experiment cleanup
 	EXPERIMENTS_TO_TRACK,
 	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
 	SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT, // Experiment cleanup (119_surface_assistant_on_workflow_error)
@@ -39,6 +42,10 @@ export const usePostHog = defineStore('posthog', () => {
 
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	const mcpDiscoveryEligible = ref(false);
+	// EOF Experiment cleanup
+	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	// Sales and Marketing respondents only. Stays false until the survey answer is known.
+	const taxonomyInspirationEligible = ref(false);
 	// EOF Experiment cleanup
 	const featureFlags: Ref<FeatureFlags | null> = ref(null);
 	const featureFlagPayloads: Ref<FeatureFlagPayloads | null> = ref(null);
@@ -70,6 +77,9 @@ export const usePostHog = defineStore('posthog', () => {
 		featureFlags.value = null;
 		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		mcpDiscoveryEligible.value = false;
+		// EOF Experiment cleanup
+		// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+		taxonomyInspirationEligible.value = false;
 		// EOF Experiment cleanup
 		featureFlagPayloads.value = null;
 		trackedDemoExp.value = {};
@@ -188,6 +198,14 @@ export const usePostHog = defineStore('posthog', () => {
 		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		if (name === MCP_DISCOVERY_EXPERIMENT.name && !mcpDiscoveryEligible.value) return;
 		// EOF Experiment cleanup
+		// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+		if (
+			name === INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.name &&
+			!taxonomyInspirationEligible.value
+		) {
+			return;
+		}
+		// EOF Experiment cleanup
 		// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore const variant = featFlags[name].
 		const variant = name === MCP_DISCOVERY_EXPERIMENT.name ? getVariant(name) : featFlags[name];
 		if (!variant || trackedDemoExp.value[name] === variant) {
@@ -206,6 +224,17 @@ export const usePostHog = defineStore('posthog', () => {
 	const setMcpDiscoveryEligible = (eligible: boolean) => {
 		mcpDiscoveryEligible.value = eligible;
 		if (eligible) trackExperiment(featureFlags.value ?? {}, MCP_DISCOVERY_EXPERIMENT.name);
+	};
+	// EOF Experiment cleanup
+	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	const setTaxonomyInspirationEligible = (eligible: boolean) => {
+		taxonomyInspirationEligible.value = eligible;
+		if (eligible) {
+			trackExperiment(
+				featureFlags.value ?? {},
+				INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.name,
+			);
+		}
 	};
 	// EOF Experiment cleanup
 
@@ -359,6 +388,9 @@ export const usePostHog = defineStore('posthog', () => {
 		init,
 		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		setMcpDiscoveryEligible,
+		// EOF Experiment cleanup
+		// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+		setTaxonomyInspirationEligible,
 		// EOF Experiment cleanup
 		isFeatureEnabled,
 		isVariantEnabled,

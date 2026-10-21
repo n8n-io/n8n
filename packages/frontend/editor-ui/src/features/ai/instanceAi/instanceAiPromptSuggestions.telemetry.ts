@@ -28,6 +28,7 @@ export type InstanceAiPromptSuggestionSelectedContext = InstanceAiPromptSuggesti
 	suggestionId: string;
 	suggestionKind: 'prompt' | 'quick_example';
 	position: number;
+	suggestionTitle?: string;
 };
 
 export type InstanceAiPromptSuggestionSubmittedContext =
@@ -99,6 +100,7 @@ export function createInstanceAiPromptSuggestionsTelemetry(
 				suggestion_id: context.suggestionId,
 				suggestion_kind: context.suggestionKind,
 				position: context.position,
+				...(context.suggestionTitle ? { suggestion_title: context.suggestionTitle } : {}),
 			});
 		},
 

@@ -58,6 +58,7 @@ export type SuggestionSelectionPayload = SuggestionPromptPayload & {
 	telemetryPayload?: ITelemetryTrackProperties;
 	/** Required so a new catalog cannot emit suggestions that report as user-typed. */
 	prefillType: InstanceAiPrefillType;
+	suggestionTitle?: string;
 	/**
 	 * Catalog this row belongs to. A host-triggered submit (agent templates)
 	 * is not the home-screen catalog mounted on this input.
@@ -866,6 +867,7 @@ function trackSuggestionSelected(payload: SuggestionSelectionPayload) {
 		suggestionId: payload.suggestionId,
 		suggestionKind: payload.suggestionKind,
 		position: payload.position,
+		suggestionTitle: payload.suggestionTitle,
 	});
 }
 
