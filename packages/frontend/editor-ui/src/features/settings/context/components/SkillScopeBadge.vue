@@ -27,6 +27,13 @@ const display = computed(() => scopeDisplay(props.skill));
 <style lang="scss" module>
 .badge {
 	max-width: 100%;
+
+	// Geist sits high in its line box, so the inherited line height leaves the label above the
+	// icon. Padding keeps descenders clear of the label's ellipsis clip.
+	> :global(.n8n-text) {
+		line-height: 1;
+		padding-block: var(--spacing--5xs);
+	}
 }
 
 .icon {
