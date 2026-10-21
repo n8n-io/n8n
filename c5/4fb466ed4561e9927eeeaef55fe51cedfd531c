@@ -1,0 +1,55 @@
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-integration.ts
+  s_e301d8294f60c4::t_617d20dd6af217 43-44,200-201
+  s_e301d8294f60c4::t_94cef2a17c2047 202-203
+packages/cli/src/modules/agents/integrations/platforms/n8n-chat-integration.ts
+  s_e301d8294f60c4::t_617d20dd6af217 71-75
+packages/cli/src/modules/agents/integrations/platforms/telegram-integration.ts
+  s_e301d8294f60c4::t_617d20dd6af217 33-34,158-159
+  s_e301d8294f60c4::t_d9acf174dca749 160-161
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_e301d8294f60c4::t_617d20dd6af217 927-930,932
+packages/cli/src/modules/agents/integrations/__tests__/agent-channel-reconciler.service.test.ts
+  s_e301d8294f60c4::t_617d20dd6af217 40-43
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_e301d8294f60c4::t_617d20dd6af217 244-247,260-263,282-285,302-305,3611-3614,4112-4115
+  s_e301d8294f60c4::t_230d4a7255ab39 3562,3568-3574,3579,3585-3591
+packages/cli/src/modules/agents/integrations/integration-origin.ts
+  s_e301d8294f60c4::t_617d20dd6af217 9-10,17,22-24
+packages/cli/src/modules/agents/integrations/platforms/linear-integration.ts
+  s_e301d8294f60c4::t_617d20dd6af217 23-24,109-110
+  s_e301d8294f60c4::t_4af8be29d9599b 111-112
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_e301d8294f60c4::t_617d20dd6af217 31,397-407
+  s_e301d8294f60c4::t_5af8a5fd6b2b2d 408
+packages/cli/src/modules/agents/integrations/platforms/discord-integration.ts
+  s_e301d8294f60c4::t_617d20dd6af217 46-47,220-221
+  s_e301d8294f60c4::t_387bc0a6ba4586 222-223
+packages/cli/src/modules/agents/integrations/__tests__/integration-action-executor.test.ts
+  s_e301d8294f60c4::t_617d20dd6af217 106-109
+packages/cli/src/modules/agents/integrations/platforms/whatsapp/whatsapp-integration.ts
+  s_e301d8294f60c4::t_617d20dd6af217 45-46,275-276
+  s_e301d8294f60c4::t_0635a899cf1e65 277-278
+packages/cli/src/modules/agents/integrations/__tests__/integration-origin.test.ts
+  s_e301d8294f60c4::t_45671e1760e9de 5,7-12,16-30,55-56,75-76,87-88,101-102,117,127-128,133-137,147-148,159,169-170,187,190,193,204-208
+packages/cli/src/modules/agents/integrations/__tests__/chat-integration.service.test.ts
+  s_e301d8294f60c4::t_617d20dd6af217 86-89
+packages/cli/src/modules/agents/integrations/platforms/teams/teams-integration.ts
+  s_e301d8294f60c4::t_617d20dd6af217 40-41,334-335
+  s_e301d8294f60c4::t_85ddc3f55fe060 336-337
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c54fb466ed4561e9927eeeaef55fe51cedfd531c",
+  "prompts": {},
+  "sessions": {
+    "s_e301d8294f60c4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "254d4248-4a92-4bc9-a4ba-d776e64b364c",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
