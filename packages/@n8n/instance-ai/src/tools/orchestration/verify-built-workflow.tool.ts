@@ -195,6 +195,8 @@ const verifyBuiltWorkflowOutputSchema = z.object({
 	coverageNote: z.string().optional(),
 	/** Real nodes that returned only `{}` items. */
 	emptyOutputNote: z.string().optional(),
+	/** Set when n8n redacted the run's output for the user, so it was not inspected. */
+	redactionNote: z.string().optional(),
 	/**
 	 * Present only while the published version is older than the verified
 	 * draft. The claim carries the same fact as `liveState`; this is the
@@ -463,6 +465,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 					simulatedNames,
 					result.binaryOutputNodeNames,
 				),
+				redactionNote: analysis.redactionNote,
 				liveStateNote: formatLiveStateNote(claim),
 				...(resolvedInput.includeData ? { data: result.data } : {}),
 				error: analysis.errorMessage,
