@@ -41,6 +41,8 @@ import { SkillsHubStartupCopy } from '../skills/skills-hub-startup-copy';
 import { AgentSkillUsageService } from '../agent-skill-usage.service';
 import { AgentRepository } from '../repositories/agent.repository';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
+import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
+import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 
 /**
  * Stubs every dependency `AgentsModule.init()` resolves via `Container.get`,
@@ -133,21 +135,37 @@ describe('AgentsModule', () => {
 
 	describe('settings()', () => {
 		it.each([
-			{ sandboxEnabled: true, proxyEnabled: false },
-			{ sandboxEnabled: false, proxyEnabled: true },
+			{
+				isSandboxEnabled: true,
+				isKnowledgeActive: true,
+				proxyEnabled: false,
+				knowledgeBaseEnabled: true,
+			},
+			{
+				isSandboxEnabled: false,
+				isKnowledgeActive: true,
+				proxyEnabled: true,
+				knowledgeBaseEnabled: false,
+			},
+			{
+				isSandboxEnabled: true,
+				isKnowledgeActive: false,
+				proxyEnabled: true,
+				knowledgeBaseEnabled: false,
+			},
 		])(
-			'keeps knowledge base ($sandboxEnabled) and proxy ($proxyEnabled) availability independent',
-			async ({ sandboxEnabled, proxyEnabled }) => {
+			'reports knowledgeBaseEnabled=$knowledgeBaseEnabled for sandbox=$isSandboxEnabled and knowledge module=$isKnowledgeActive, independent of proxy=$proxyEnabled',
+			async ({ isSandboxEnabled, isKnowledgeActive, proxyEnabled, knowledgeBaseEnabled }) => {
 				Container.set(AgentsConfig, mock<AgentsConfig>({ modules: [] }));
 				Container.set(
-					SandboxSettingsService,
-					mock<SandboxSettingsService>({ isAgentSandboxEnabled: () => sandboxEnabled }),
+					KnowledgeAvailabilityService,
+					makeKnowledgeAvailabilityService({ isSandboxEnabled, isKnowledgeActive }),
 				);
 				Container.set(AiService, mock<AiService>({ isProxyEnabled: () => proxyEnabled }));
 
 				const settings = await module.settings();
 
-				expect(settings.knowledgeBaseEnabled).toBe(sandboxEnabled);
+				expect(settings.knowledgeBaseEnabled).toBe(knowledgeBaseEnabled);
 				expect(settings.proxyEnabled).toBe(proxyEnabled);
 			},
 		);
