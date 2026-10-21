@@ -202,9 +202,9 @@ execute. `published` is `null` when the sub-workflow has no published version.
   can read.
 - **Failed checks:** when a check fails to run, the endpoint returns 500. The real start fails
   closed, so the preview must not report "no violations".
-- **Limits:** the endpoint does not read the parent. Inline sub-workflows (`source=parameter`)
-  are out of scope: they run under the parent's project, and their node types are not read
-  (see Known limits).
+- **Limits:** the endpoint reads the parent's project for the caller policy, but not the parent
+  workflow's nodes. Inline sub-workflows (`source=parameter`) are out of scope: they run under
+  the parent's project, and their node types are not read (see Known limits).
 
 ## The store
 

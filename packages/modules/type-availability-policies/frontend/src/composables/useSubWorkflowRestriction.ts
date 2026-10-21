@@ -16,7 +16,11 @@ export function getCalledSubWorkflowId(node: CallingNode): string | null {
 	if (node.type !== EXECUTE_WORKFLOW_NODE_TYPE) return null;
 	if ((node.parameters.source ?? 'database') !== 'database') return null;
 
-	const id = getSubworkflowId(node);
+	// Execute Workflow v1 stores the id as a plain string, later versions as a resource locator.
+	const id =
+		typeof node.parameters.workflowId === 'string'
+			? node.parameters.workflowId
+			: getSubworkflowId(node);
 	if (typeof id !== 'string' || id === '' || id.startsWith('=')) return null;
 
 	return id;
@@ -65,7 +69,8 @@ function toRestriction(
 /**
  * Whether the sub-workflow an Execute Workflow node calls uses a node type that blocks the call.
  * Loads the answer for the node and keeps it current when the node or the parent changes. Pass
- * `refresh` from a surface that must not show a cached answer.
+ * `refresh` from a surface that must not show a cached answer. `checkFailed` is true when the
+ * answer could not load: the real start fails closed then, so it is not "no restriction".
  */
 export function useSubWorkflowRestriction({
 	parentWorkflowId,
@@ -111,7 +116,21 @@ export function useSubWorkflowRestriction({
 
 	const isRestricted = computed(() => restriction.value !== null);
 
-	return { restriction, isRestricted };
+	const checkFailed = computed(
+		() =>
+			target.value !== null &&
+			store.hasSubWorkflowCheckFailed(target.value.parentId, target.value.subWorkflowId),
+	);
+
+	async function retry(): Promise<void> {
+		if (!target.value) return;
+
+		await store.fetchSubWorkflowCheck(target.value.parentId, target.value.subWorkflowId, {
+			force: true,
+		});
+	}
+
+	return { restriction, isRestricted, checkFailed, retry };
 }
 
 const IMPACT_KEY = {
