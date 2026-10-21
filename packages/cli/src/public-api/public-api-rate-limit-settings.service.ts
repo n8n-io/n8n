@@ -34,10 +34,6 @@ const LIMIT_FIELDS = [
 	'endpointWriteLimit',
 ] as const;
 
-/**
- * Keeps the Public API rate-limit settings in the settings table. An environment variable takes
- * priority over a stored value, and locks its field.
- */
 @Service()
 export class PublicApiRateLimitSettingsService {
 	private loaded: PublicApiRateLimitSettings | undefined;
@@ -69,9 +65,7 @@ export class PublicApiRateLimitSettingsService {
 	async saveSettings(
 		incoming: PublicApiRateLimitSettings,
 	): Promise<PublicApiRateLimitSettingsResponse> {
-		const settings = this.buildSettings((field) =>
-			this.isEnvManaged(field) ? this.config[field] : incoming[field],
-		);
+		const settings = this.applyEnvPriority(incoming);
 
 		if (settings.enabled && LIMIT_FIELDS.every((field) => settings[field] === 0)) {
 			throw new BadRequestError('Set at least one limit to turn on rate limiting');
@@ -96,10 +90,7 @@ export class PublicApiRateLimitSettingsService {
 	}
 
 	private async resolveSettings(): Promise<PublicApiRateLimitSettings> {
-		const stored = await this.readStoredSettings();
-		return this.buildSettings((field) =>
-			this.isEnvManaged(field) ? this.config[field] : (stored?.[field] ?? this.config[field]),
-		);
+		return this.applyEnvPriority((await this.readStoredSettings()) ?? {});
 	}
 
 	private async readStoredSettings(): Promise<Partial<PublicApiRateLimitSettings> | undefined> {
@@ -116,16 +107,20 @@ export class PublicApiRateLimitSettingsService {
 		}
 	}
 
-	/** Mirrors how `@n8n/config` reads env vars: `_FILE` counts, a blank or quoted blank does not. */
+	/** Mirrors `@n8n/config`: `_FILE` counts, a blank or quoted blank does not. */
 	private isEnvManaged(field: keyof PublicApiRateLimitSettings): boolean {
 		const envVar = ENV_VARS[field];
 		const value = process.env[envVar]?.trim().replace(/^(['"])(.*)\1$/, '$2');
 		return !!value?.trim() || !!process.env[`${envVar}_FILE`];
 	}
 
-	private buildSettings(
-		pick: <K extends keyof PublicApiRateLimitSettings>(field: K) => PublicApiRateLimitSettings[K],
+	/** An env var value wins. A missing value falls back to the config. */
+	private applyEnvPriority(
+		values: Partial<PublicApiRateLimitSettings>,
 	): PublicApiRateLimitSettings {
+		const pick = <K extends keyof PublicApiRateLimitSettings>(field: K) =>
+			this.isEnvManaged(field) ? this.config[field] : (values[field] ?? this.config[field]);
+
 		return {
 			enabled: pick('enabled'),
 			globalReadLimit: pick('globalReadLimit'),
