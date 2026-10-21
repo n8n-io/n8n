@@ -699,36 +699,6 @@ describe('data_tables tool', () => {
 			expect(context.dataTableService.create).not.toHaveBeenCalled();
 		});
 
-		it('should include project name in message when projectId is provided', async () => {
-			const context = createMockContext({
-				permissions: {},
-				workspaceService: {
-					getProject: vi.fn().mockResolvedValue({ id: 'proj-1', name: 'My Project', type: 'team' }),
-					listProjects: vi.fn(),
-					tagWorkflow: vi.fn(),
-					listTags: vi.fn(),
-					createTag: vi.fn(),
-					cleanupTestExecutions: vi.fn(),
-				},
-			});
-			const suspendFn = vi.fn();
-
-			const tool = createDataTablesTool(context);
-			await executeTool(
-				tool,
-				{ ...createInput, projectId: 'proj-1' } as never,
-				suspendCtx(suspendFn),
-			);
-
-			expect(suspendFn).toHaveBeenCalled();
-			expect(suspendFn.mock.calls[0][0]).toEqual(
-				expect.objectContaining({
-					message: 'Create the table with 1 column: "email" in project "My Project"',
-					resourceName: 'Contacts',
-				}),
-			);
-		});
-
 		it('should execute immediately when permission is always_allow', async () => {
 			const table = { id: 'dt-new', name: 'Contacts' };
 			const context = createMockContext({ permissions: { createDataTable: 'always_allow' } });

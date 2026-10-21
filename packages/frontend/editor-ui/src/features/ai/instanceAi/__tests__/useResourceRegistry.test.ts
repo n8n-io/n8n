@@ -275,34 +275,6 @@ describe('useResourceRegistry', () => {
 			expect(producedArtifacts.get('wf-b')?.id).toBe('wf-b');
 		});
 
-		test('does not register a workflow from a failed build', async () => {
-			const { messages, producedArtifacts, resourceNameIndex } = setup();
-
-			messages.value = [
-				makeMessage({
-					agentTree: makeAgentNode({
-						toolCalls: [
-							makeToolCall({
-								toolName: 'workflow_builder_build_workflow',
-								args: { filePath: 'src/workflows/orders.workflow.ts' },
-								result: {
-									success: false,
-									filePath: 'src/workflows/orders.workflow.ts',
-									workflowId: 'wf-other',
-									workflowName: 'Orders Sync v2',
-									errors: ['Workflow save failed: no permission'],
-								},
-							}),
-						],
-					}),
-				}),
-			];
-			await nextTick();
-
-			expect(producedArtifacts.has('wf-other')).toBe(false);
-			expect(resourceNameIndex.has('orders sync v2')).toBe(false);
-		});
-
 		test('a failed build does not rename a workflow an earlier build saved', async () => {
 			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
 

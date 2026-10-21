@@ -603,21 +603,14 @@ export class InstanceAiAdapterService {
 			this.createProjectScopeHelpers(user, projectId);
 		const assertInThreadProject: InstanceAiContext['assertInThreadProject'] = async (target) => {
 			if (projectId === undefined) return;
-			switch (target.kind) {
-				case 'workflow':
-					return await assertWorkflowInBoundProject(target.id);
-				case 'credential':
-					return await assertCredentialInBoundProject(target.id);
-				case 'project':
-					return assertInBoundProject(target.id);
-				case 'data-table': {
-					const table = await dataTableService.resolveTableReference?.(target.id, {
-						projectId: target.projectId,
-					});
-					// Without a resolver the owner is unknown, so the check rejects.
-					return assertInBoundProject(table?.projectId);
-				}
-			}
+			if (target.kind === 'workflow') return await assertWorkflowInBoundProject(target.id);
+			if (target.kind === 'credential') return await assertCredentialInBoundProject(target.id);
+			if (target.kind === 'project') return assertInBoundProject(target.id);
+			const table = await dataTableService.resolveTableReference?.(target.id, {
+				projectId: target.projectId,
+			});
+			// Without a resolver the owner is unknown, so the check rejects.
+			assertInBoundProject(table?.projectId);
 		};
 		return {
 			userId: user.id,

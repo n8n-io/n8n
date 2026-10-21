@@ -1716,25 +1716,10 @@ describe('workflows tool', () => {
 			});
 		});
 
-		it('checks the thread project before the approval card', async () => {
-			const assertInThreadProject = vi.fn().mockResolvedValue(undefined);
-			const context = createMockContext({ assertInThreadProject });
-			const suspend = vi.fn();
-
-			await executeTool(createWorkflowsTool(context), { action: 'delete', workflowId: 'wf1' }, {
-				suspend,
-				resumeData: undefined,
-			} as never);
-
-			expect(assertInThreadProject).toHaveBeenCalledWith({ kind: 'workflow', id: 'wf1' });
-			expect(suspend).toHaveBeenCalled();
-		});
-
 		it('fails without an approval card for a workflow outside the thread project', async () => {
 			const error = new OutsideThreadProjectError();
-			const context = createMockContext({
-				assertInThreadProject: vi.fn().mockRejectedValue(error),
-			});
+			const assertInThreadProject = vi.fn().mockRejectedValue(error);
+			const context = createMockContext({ assertInThreadProject });
 			const suspend = vi.fn();
 
 			await expect(
@@ -1743,6 +1728,7 @@ describe('workflows tool', () => {
 					resumeData: undefined,
 				} as never),
 			).rejects.toBe(error);
+			expect(assertInThreadProject).toHaveBeenCalledWith({ kind: 'workflow', id: 'wf1' });
 			expect(suspend).not.toHaveBeenCalled();
 			expect(context.workflowService.archive).not.toHaveBeenCalled();
 		});

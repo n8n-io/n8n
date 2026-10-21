@@ -12,6 +12,7 @@ import {
 } from '@n8n/api-types';
 import type { InstanceAiApprovalDetails } from '@n8n/api-types';
 import { Tool } from '@n8n/agents';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { isRecord } from '@n8n/utils/is-record';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
@@ -860,7 +861,7 @@ async function handleGetAsCode(
 		try {
 			await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
 		} catch (error) {
-			readOnlyReason = error instanceof Error ? error.message : String(error);
+			readOnlyReason = getErrorMessage(error);
 		}
 		if (readOnlyReason) {
 			return {

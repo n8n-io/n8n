@@ -108,7 +108,7 @@ const filterDescribe =
 	'case-sensitive. Values without `%` are wrapped as `%value%`.';
 
 const projectIdDescribe =
-	'Project ID. Scopes list/create (defaults to personal); for id-based actions, disambiguates when `dataTableId` is a name found in multiple accessible projects. Ignored when `dataTableId` is a UUID.';
+	"Project ID. Scopes list (defaults to this conversation's project); for id-based actions, disambiguates when `dataTableId` is a name found in multiple accessible projects. Ignored when `dataTableId` is a UUID.";
 
 const dataTableNameDescribe =
 	'Data table name for the approval card. Pass whenever known so users see a name instead of an ID.';
@@ -539,15 +539,9 @@ async function handleCreate(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		let message = `Create the table with ${input.columns.length} ${input.columns.length === 1 ? 'column' : 'columns'}: ${input.columns.map((column) => `"${column.name}"`).join(', ')}`;
-		if (input.projectId) {
-			const project = await context.workspaceService?.getProject?.(input.projectId);
-			const projectLabel = project?.name ?? input.projectId;
-			message += ` in project "${projectLabel}"`;
-		}
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message,
+			message: `Create the table with ${input.columns.length} ${input.columns.length === 1 ? 'column' : 'columns'}: ${input.columns.map((column) => `"${column.name}"`).join(', ')}`,
 			resourceName: input.name,
 			severity: 'info' as const,
 		});

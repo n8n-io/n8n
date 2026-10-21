@@ -69,6 +69,15 @@ function createMockContext(
 	} as unknown as InstanceAiContext;
 }
 
+function contextWithFolderActions(overrides: Parameters<typeof createMockContext>[0] = {}) {
+	const context = createMockContext(overrides);
+	context.workspaceService!.listFolders = vi.fn();
+	context.workspaceService!.createFolder = vi.fn();
+	context.workspaceService!.deleteFolder = vi.fn();
+	context.workspaceService!.moveWorkflowToFolder = vi.fn();
+	return context;
+}
+
 describe('workspace tool', () => {
 	describe('when workspaceService is missing', () => {
 		it('should return an error tool', async () => {
@@ -218,12 +227,9 @@ describe('workspace tool', () => {
 
 	describe('folder actions', () => {
 		it('should accept folder actions when listFolders is present', async () => {
-			const context = createMockContext();
+			const context = contextWithFolderActions();
 			const folders = [{ id: 'f1', name: 'Test Folder', parentFolderId: null }];
-			context.workspaceService!.listFolders = vi.fn().mockResolvedValue(folders);
-			context.workspaceService!.createFolder = vi.fn();
-			context.workspaceService!.deleteFolder = vi.fn();
-			context.workspaceService!.moveWorkflowToFolder = vi.fn();
+			(context.workspaceService!.listFolders as Mock).mockResolvedValue(folders);
 
 			const tool = createWorkspaceTool(context);
 			const result = await executeTool(
@@ -237,19 +243,6 @@ describe('workspace tool', () => {
 	});
 
 	describe('create-folder', () => {
-		function contextWithFolderActions(
-			overrides: Partial<Omit<InstanceAiContext, 'permissions'>> & {
-				permissions?: Partial<InstanceAiPermissions>;
-			} = {},
-		) {
-			const context = createMockContext(overrides);
-			context.workspaceService!.listFolders = vi.fn();
-			context.workspaceService!.createFolder = vi.fn();
-			context.workspaceService!.deleteFolder = vi.fn();
-			context.workspaceService!.moveWorkflowToFolder = vi.fn();
-			return context;
-		}
-
 		it('rejects a folder name containing a slash, before asking for confirmation', async () => {
 			const context = contextWithFolderActions();
 			const tool = createWorkspaceTool(context);
@@ -318,12 +311,7 @@ describe('workspace tool', () => {
 
 	describe('delete-folder', () => {
 		it('should suspend with destructive severity for confirmation', async () => {
-			const context = createMockContext();
-			context.workspaceService!.listFolders = vi.fn();
-			context.workspaceService!.createFolder = vi.fn();
-			context.workspaceService!.deleteFolder = vi.fn();
-			context.workspaceService!.moveWorkflowToFolder = vi.fn();
-
+			const context = contextWithFolderActions();
 			const suspend = vi.fn();
 			const tool = createWorkspaceTool(context);
 
@@ -346,12 +334,7 @@ describe('workspace tool', () => {
 		});
 
 		it('should execute deletion when approved', async () => {
-			const context = createMockContext();
-			const deleteFolder = vi.fn().mockResolvedValue(undefined);
-			context.workspaceService!.listFolders = vi.fn();
-			context.workspaceService!.createFolder = vi.fn();
-			context.workspaceService!.deleteFolder = deleteFolder;
-			context.workspaceService!.moveWorkflowToFolder = vi.fn();
+			const context = contextWithFolderActions();
 
 			const tool = createWorkspaceTool(context);
 			const result = await executeTool(
@@ -360,7 +343,7 @@ describe('workspace tool', () => {
 				{ resumeData: { approved: true } } as never,
 			);
 
-			expect(deleteFolder).toHaveBeenCalledWith('f1', 'p1', undefined);
+			expect(context.workspaceService!.deleteFolder).toHaveBeenCalledWith('f1', 'p1', undefined);
 			expect(result).toEqual({ success: true });
 		});
 	});
@@ -443,11 +426,7 @@ describe('workspace tool', () => {
 		'should reject $input.action outside the thread project before asking for approval',
 		async ({ input, target, method }) => {
 			const assertInThreadProject = vi.fn().mockRejectedValue(new OutsideThreadProjectError());
-			const context = createMockContext({ assertInThreadProject });
-			context.workspaceService!.listFolders = vi.fn();
-			context.workspaceService!.createFolder = vi.fn();
-			context.workspaceService!.deleteFolder = vi.fn();
-			context.workspaceService!.moveWorkflowToFolder = vi.fn();
+			const context = contextWithFolderActions({ assertInThreadProject });
 			const suspend = vi.fn();
 
 			const tool = createWorkspaceTool(context);

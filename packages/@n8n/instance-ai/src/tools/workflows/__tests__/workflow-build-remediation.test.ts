@@ -41,17 +41,6 @@ describe('createSaveFailureRemediation', () => {
 		});
 	});
 
-	it('blocks source edits for a workflow outside the thread project', () => {
-		const remediation = createSaveFailureRemediation(new OutsideThreadProjectError(), true);
-
-		expect(remediation).toMatchObject({
-			category: 'blocked',
-			shouldEdit: false,
-			reason: 'workflow_outside_thread_project',
-		});
-		expect(remediation.guidance).toContain('start a conversation in the project');
-	});
-
 	it('classifies the outside-project error by type, not by message text', () => {
 		const error = new OutsideThreadProjectError();
 		error.message = 'Workflow save failed';

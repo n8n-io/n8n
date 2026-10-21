@@ -486,17 +486,15 @@ describe('createPlanTool — createPlan validation failures', () => {
 		});
 		const suspend = vi.fn();
 
-		const out = await executeTool(
-			createPlanTool(context),
-			{ ...planInput(), tasks: [{ ...validTasks()[0], workflowId: 'wf-other' }] },
-			{ suspend },
-		);
+		await expect(
+			executeTool(
+				createPlanTool(context),
+				{ ...planInput(), tasks: [{ ...validTasks()[0], workflowId: 'wf-other' }] },
+				{ suspend },
+			),
+		).rejects.toBe(error);
 
 		expect(assertInThreadProject).toHaveBeenCalledWith({ kind: 'workflow', id: 'wf-other' });
-		expect(out).toEqual({
-			result: `Error: ${error.message}`,
-			taskCount: 0,
-		});
 		expect(context.plannedTaskService!.createPlan).not.toHaveBeenCalled();
 		expect(suspend).not.toHaveBeenCalled();
 	});
