@@ -80,16 +80,21 @@ export function withStoredVersion(
  * A type entry is a plain object. For OAuth types it can state a `version` (default 1).
  * `__versions` holds at most one newer app for each OAuth type, with a greater version.
  * Throws a `UserError` for any invalid payload, so the caller keeps its previous config.
+ * A `__versions` entry for a type that this instance does not know is skipped and listed in
+ * `unrecognizedTypes`. The type can come from a package that is not installed here.
  *
  * @param clientFieldsOf returns the client fields of an OAuth credential type, `undefined` for other types
+ * @param isKnownType returns true when this instance knows the credential type
  */
 export function parseOverwritesPayload(
 	payload: Record<string, unknown>,
 	clientFieldsOf: (type: string) => readonly string[] | undefined,
+	isKnownType: (type: string) => boolean,
 ): ParsedCredentialsOverwrites {
 	const entries: ICredentialsOverwrite = {};
 	const entryVersions: Record<string, number> = {};
 	const versions: Record<string, ManagedVersionEntry> = {};
+	const unrecognizedTypes: string[] = [];
 
 	for (const [type, value] of Object.entries(payload)) {
 		if (type === VERSIONS_PAYLOAD_KEY) continue;
@@ -113,13 +118,18 @@ export function parseOverwritesPayload(
 	}
 
 	const versionsPayload = payload[VERSIONS_PAYLOAD_KEY];
-	if (versionsPayload === undefined) return { entries, entryVersions, versions };
+	if (versionsPayload === undefined) return { entries, entryVersions, versions, unrecognizedTypes };
 
 	if (!isRecord(versionsPayload)) {
 		throw new UserError(`"${VERSIONS_PAYLOAD_KEY}" must be an object keyed by credential type.`);
 	}
 
 	for (const [type, value] of Object.entries(versionsPayload)) {
+		if (!isKnownType(type)) {
+			unrecognizedTypes.push(type);
+			continue;
+		}
+
 		const clientFields = clientFieldsOf(type);
 		if (!clientFields) {
 			throw new UserError(
@@ -163,5 +173,5 @@ export function parseOverwritesPayload(
 		versions[type] = value;
 	}
 
-	return { entries, entryVersions, versions };
+	return { entries, entryVersions, versions, unrecognizedTypes };
 }

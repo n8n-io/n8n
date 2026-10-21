@@ -128,7 +128,15 @@ export class CredentialsOverwrites {
 	 * OAuth type. See `parseOverwritesPayload` for the format.
 	 */
 	setPlainData(overwriteData: Record<string, unknown>) {
-		const parsed = parseOverwritesPayload(overwriteData, (type) => this.getClientFields(type));
+		const parsed = parseOverwritesPayload(
+			overwriteData,
+			(type) => this.getClientFields(type),
+			(type) => this.credentialTypes.recognizes(type),
+		);
+
+		for (const type of parsed.unrecognizedTypes) {
+			this.logger.warn(`Unknown credential type ${type} in the versions of Credential overwrites`);
+		}
 
 		// If data gets reinitialized reset the resolved types cache
 		this.resolvedTypes.length = 0;

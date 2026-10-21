@@ -47,6 +47,8 @@ export interface ParsedCredentialsOverwrites {
 	/** Version of the base entry, for types that state one. A missing type means version 1. */
 	entryVersions: Record<string, number>;
 	versions: Record<string, ManagedVersionEntry>;
+	/** Types of `__versions` entries that this instance does not know. The parser skips them. */
+	unrecognizedTypes: string[];
 }
 
 // ----------------------------------

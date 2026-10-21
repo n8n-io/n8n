@@ -1633,6 +1633,24 @@ describe('CredentialsOverwrites', () => {
 				).toThrow('Versions are supported only for OAuth credential types');
 			});
 
+			it('should skip a versions entry of a type that this instance does not know', async () => {
+				credentialTypes.recognizes.mockImplementation((type) => type !== 'communityOAuth2Api');
+
+				const instance = await createInstance({
+					...base,
+					communityOAuth2Api: { clientId: 'c', clientSecret: 's' },
+					__versions: {
+						notionOAuth2Api: { version: 2, ...newApp },
+						communityOAuth2Api: { version: 2, clientId: 'c2', clientSecret: 's2' },
+					},
+				});
+
+				expect(logger.warn).toHaveBeenCalledWith(
+					'Unknown credential type communityOAuth2Api in the versions of Credential overwrites',
+				);
+				expect(instance.getOverwrites('notionOAuth2Api')).toMatchObject(newApp);
+			});
+
 			it('should keep the previous overwrites when a payload is invalid', async () => {
 				const instance = await createInstance(base);
 
