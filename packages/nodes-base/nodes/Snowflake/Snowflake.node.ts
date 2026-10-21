@@ -16,7 +16,6 @@ import {
 	escapeSnowflakeIdentifier,
 	escapeSnowflakeObjectIdentifier,
 	execute,
-	getConnectionOptions,
 	prepareQueryResults,
 	type SnowflakeCredential,
 } from './GenericFunctions';
@@ -265,10 +264,7 @@ export class Snowflake implements INodeType {
 		}
 
 		const nodeVersion = this.getNode().typeVersion;
-		const connectionOptions = getConnectionOptions(snowflakeCredential, nodeVersion);
-		const connection = snowflake.createConnection(connectionOptions);
-
-		await connect(connection);
+		const connection = await connect(snowflakeCredential, this.getNode());
 
 		// Destroy on failure too, otherwise the leaked session keeps its table locks.
 		try {
@@ -310,7 +306,7 @@ export class Snowflake implements INodeType {
 						}
 					}
 
-					const responseData = await execute(connection, query, binds, this.getNode());
+					const responseData = await execute(connection, query, binds, this.getNode(), i);
 					const executionData = await prepareQueryResults.call(
 						this,
 						responseData as IDataObject[] | undefined,
@@ -373,7 +369,7 @@ export class Snowflake implements INodeType {
 					return rowBinds;
 				});
 				for (let i = 0; i < binds.length; i++) {
-					await execute(connection, query, binds[i] as snowflake.Binds, this.getNode());
+					await execute(connection, query, binds[i] as snowflake.Binds, this.getNode(), i);
 				}
 				data.forEach((d, i) => {
 					const executionData = this.helpers.constructExecutionMetaData(
@@ -386,7 +382,7 @@ export class Snowflake implements INodeType {
 
 			return [returnData];
 		} finally {
-			await destroy(connection);
+			await destroy(connection, this.getNode());
 		}
 	}
 }
