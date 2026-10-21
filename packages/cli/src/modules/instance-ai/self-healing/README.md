@@ -146,7 +146,8 @@ Each project can have one all-workflows configuration and multiple selected-work
 Explicit workflow selections cannot overlap, including when configurations are paused.
 Moving a workflow to another project removes its explicit selections. The destination project's
 configuration applies to later failures. Moving between folders in the same project keeps selections.
-New configurations start disabled. The form selects the creator as the initial reviewer.
+New configurations created in Project Settings start enabled.
+The form selects the creator as the initial reviewer.
 Enabling a configuration records the user whose access authorizes subsequent investigations.
 
 Pause stops new investigations and prevents results from being saved while paused.
