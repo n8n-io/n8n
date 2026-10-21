@@ -42,7 +42,8 @@ const READ_ONLY_ACTIONS: Readonly<Record<string, ReadonlySet<unknown>>> = {
 		'suggested',
 		'explore-resources',
 	]),
-	[DOMAIN_TOOL_IDS.CREDENTIALS]: new Set(['list', 'get', 'search-types']),
+	[DOMAIN_TOOL_IDS.LIST_CREDENTIALS]: new Set([undefined]),
+	[DOMAIN_TOOL_IDS.SEARCH_CREDENTIAL_TYPES]: new Set([undefined]),
 	[DOMAIN_TOOL_IDS.N8N_DOCS]: new Set(['lookup', 'search', 'read']),
 	[DOMAIN_TOOL_IDS.RESEARCH]: new Set(['web-search', 'fetch-url']),
 };

@@ -64,7 +64,7 @@ const pickResourceDecisionSchema = z.object({
 });
 
 /**
- * Response to a standalone credential-setup card (`credentials(action='setup')`
+ * Response to a standalone credential-setup card (`setup_credentials`
  * suspending — TRUST-349). This action is always part of `confirmationDecisionSchema`
  * and always listed in the tool descriptions, same as `approve_or_reject` —
  * it isn't conditionally offered. What's gated is whether the *event* ever
@@ -82,7 +82,7 @@ const pickResourceDecisionSchema = z.object({
  * no build attached (e.g. "connect my Slack account now, before I build
  * anything") — confirmed live against a real instance, all three outcomes:
  *
- * Live-captured suspend (`credentials(action='setup')` call args):
+ * Live-captured suspend (`setup_credentials` call args):
  * ```json
  * { "action": "setup", "credentials": [{ "credentialType": "slackApi", "reason": "...", "suggestedName": "Slack account" }] }
  * ```

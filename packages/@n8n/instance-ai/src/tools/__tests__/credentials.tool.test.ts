@@ -5,7 +5,13 @@ import type { Mock } from 'vitest';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext, CredentialSummary, CredentialDetail } from '../../types';
-import { createCredentialsTool, type CredentialAction } from '../credentials.tool';
+import {
+	createDeleteCredentialTool,
+	createListCredentialsTool,
+	createSearchCredentialTypesTool,
+	createSetupCredentialsTool,
+	createTestCredentialTool,
+} from '../credentials.tool';
 import { prepareWorkflowSetup } from '../workflows/prepare-workflow-setup';
 import type { SetupRequest } from '../workflows/setup-workflow.schema';
 import { analyzeWorkflow } from '../workflows/setup-workflow.service';
@@ -102,7 +108,7 @@ function arrayItems(schema: JsonSchema): JsonSchema {
 
 // ── Tests ────────────────────────────────────────────────────────────────────
 
-describe('credentials tool', () => {
+describe('credential tools', () => {
 	it.each([false, undefined])(
 		'omits descriptions and selection guidance when the flag is %s',
 		async (credentialDescriptionsEnabled) => {
@@ -115,44 +121,24 @@ describe('credentials tool', () => {
 			};
 			vi.mocked(context.credentialService.list).mockResolvedValue([credential]);
 			vi.mocked(context.credentialService.get).mockResolvedValue(credential);
-			const tool = createCredentialsTool(context);
+			const tool = createListCredentialsTool(context);
 
-			const listed = await executeTool(tool, { action: 'list' }, noSuspendCtx());
-			const fetched = await executeTool(tool, { action: 'get', credentialId: '1' }, noSuspendCtx());
+			const listed = await executeTool(tool, {}, noSuspendCtx());
+			const fetched = await executeTool(tool, { ids: ['1'] }, noSuspendCtx());
 
 			expect(listed).toMatchObject({ credentials: [{ id: '1', name: 'Reporting account' }] });
 			expect(JSON.stringify(listed)).not.toContain('description');
-			expect(fetched).toMatchObject({ id: '1', name: 'Reporting account' });
-			expect(fetched).not.toHaveProperty('description');
+			expect(fetched).toMatchObject({ credentials: [{ id: '1', name: 'Reporting account' }] });
+			expect(JSON.stringify(fetched)).not.toContain('description');
 			expect(context.credentialService.get).toHaveBeenCalledWith('1');
 			expect(getDescription(tool)).not.toContain('read their descriptions');
 			expect(credential.description).toBe('Read-only reporting account');
 		},
 	);
 
-	describe('action filtering', () => {
-		const builderCredentialActions = [
-			'list',
-			'get',
-			'search-types',
-			'test',
-		] as const satisfies readonly CredentialAction[];
-
-		it('should support setup by default', () => {
-			const tool = createCredentialsTool(createMockContext());
-			const schema = getInputSchema(tool);
-
-			expect(
-				schema.safeParse({
-					action: 'setup',
-					credentials: [{ credentialType: 'slackApi', reason: 'Send Slack messages' }],
-				}).success,
-			).toBe(true);
-			expect(getDescription(tool)).toContain('set up new credentials');
-		});
-
+	describe('setup schema', () => {
 		it('should describe credentialType with existing "gmailOAuth2" credential type and not "gmailOAuth2Api"', () => {
-			const tool = createCredentialsTool(createMockContext());
+			const tool = createSetupCredentialsTool(createMockContext());
 			const credentialType = property(
 				arrayItems(property(inputJsonSchema(tool), 'credentials')),
 				'credentialType',
@@ -163,10 +149,9 @@ describe('credentials tool', () => {
 		});
 
 		it('should require requireUserSelection to be a boolean when provided', () => {
-			const tool = createCredentialsTool(createMockContext());
+			const tool = createSetupCredentialsTool(createMockContext());
 			const schema = getInputSchema(tool);
 			const setupInput = {
-				action: 'setup',
 				credentials: [{ credentialType: 'slackApi', reason: 'Send Slack messages' }],
 			};
 
@@ -175,65 +160,14 @@ describe('credentials tool', () => {
 			expect(schema.safeParse({ ...setupInput, requireUserSelection: 'true' }).success).toBe(false);
 		});
 
-		it('should describe only explicitly allowed actions', () => {
-			const tool = createCredentialsTool(createMockContext(), {
-				allowedActions: builderCredentialActions,
-				descriptionPrefix: 'Inspect credentials during build',
-				descriptionSuffix: 'Setup is handled after workflow verification.',
-			});
+		it('should resume persisted calls of the former credentials tool', () => {
+			const tool = createSetupCredentialsTool(createMockContext());
 
-			expect(getDescription(tool)).toContain('Inspect credentials during build');
-			expect(getDescription(tool)).not.toContain('delete');
-			expect(getDescription(tool)).not.toContain('set up new credentials');
-		});
-
-		it.each([
-			[{ action: 'list' }],
-			[{ action: 'get', credentialId: 'cred-1' }],
-			[{ action: 'search-types', query: 'slack' }],
-			[{ action: 'test', credentialId: 'cred-1' }],
-		])('should support explicitly allowed action %p', (input) => {
-			const tool = createCredentialsTool(createMockContext(), {
-				allowedActions: builderCredentialActions,
-			});
-			const schema = getInputSchema(tool);
-
-			expect(schema.safeParse(input).success).toBe(true);
-		});
-
-		it.each([
-			[
-				{
-					action: 'setup',
-					credentials: [{ credentialType: 'slackApi', reason: 'Send Slack messages' }],
-				},
-			],
-			[{ action: 'delete', credentialId: 'cred-1' }],
-		])('should reject action %p when it is not explicitly allowed', (input) => {
-			const tool = createCredentialsTool(createMockContext(), {
-				allowedActions: builderCredentialActions,
-			});
-			const schema = getInputSchema(tool);
-
-			expect(schema.safeParse(input).success).toBe(false);
-		});
-
-		it('should reject builder-disallowed setup at the schema boundary', () => {
-			const tool = createCredentialsTool(createMockContext(), {
-				allowedActions: builderCredentialActions,
-			});
-			const schema = getInputSchema(tool);
-
-			expect(
-				schema.safeParse({
-					action: 'setup',
-					credentials: [{ credentialType: 'slackApi', reason: 'Send Slack messages' }],
-				}).success,
-			).toBe(false);
+			expect(tool.legacyNames).toEqual(
+				expect.arrayContaining(['credentials', 'workflow_builder_credentials']),
+			);
 		});
 	});
-
-	// ── list ────────────────────────────────────────────────────────────────
 
 	describe('list action', () => {
 		it.each([
@@ -262,11 +196,7 @@ describe('credentials tool', () => {
 				{ id: '1', name: 'Postgres account', type: 'postgres', description },
 			]);
 
-			const result = await executeTool(
-				createCredentialsTool(context),
-				{ action: 'list' },
-				noSuspendCtx(),
-			);
+			const result = await executeTool(createListCredentialsTool(context), {}, noSuspendCtx());
 
 			expect(result.credentials).toEqual([
 				{ id: '1', name: 'Postgres account', type: 'postgres', description: expected },
@@ -282,8 +212,8 @@ describe('credentials tool', () => {
 			const context = createMockContext();
 			(context.credentialService.list as Mock).mockResolvedValue(credentials);
 
-			const tool = createCredentialsTool(context);
-			const result = await executeTool(tool, { action: 'list' as const }, noSuspendCtx());
+			const tool = createListCredentialsTool(context);
+			const result = await executeTool(tool, {}, noSuspendCtx());
 
 			expect(context.credentialService.list).toHaveBeenCalledWith({ type: undefined });
 			expect(result).toEqual({
@@ -304,8 +234,8 @@ describe('credentials tool', () => {
 			const context = createMockContext();
 			(context.credentialService.list as Mock).mockResolvedValue(credentials);
 
-			const tool = createCredentialsTool(context);
-			await executeTool(tool, { action: 'list' as const, type: 'slackApi' }, noSuspendCtx());
+			const tool = createListCredentialsTool(context);
+			await executeTool(tool, { type: 'slackApi' }, noSuspendCtx());
 
 			expect(context.credentialService.list).toHaveBeenCalledWith({ type: 'slackApi' });
 		});
@@ -319,12 +249,8 @@ describe('credentials tool', () => {
 			const context = createMockContext();
 			(context.credentialService.list as Mock).mockResolvedValue(credentials);
 
-			const tool = createCredentialsTool(context);
-			const result = await executeTool(
-				tool,
-				{ action: 'list' as const, offset: 3, limit: 2 },
-				noSuspendCtx(),
-			);
+			const tool = createListCredentialsTool(context);
+			const result = await executeTool(tool, { offset: 3, limit: 2 }, noSuspendCtx());
 
 			expect(result).toEqual({
 				credentials: [
@@ -346,8 +272,8 @@ describe('credentials tool', () => {
 			const context = createMockContext();
 			(context.credentialService.list as Mock).mockResolvedValue(credentials);
 
-			const tool = createCredentialsTool(context);
-			const result = await executeTool(tool, { action: 'list' as const }, noSuspendCtx());
+			const tool = createListCredentialsTool(context);
+			const result = await executeTool(tool, {}, noSuspendCtx());
 
 			expect((result as { credentials: unknown[] }).credentials).toHaveLength(50);
 			expect((result as { total: number }).total).toBe(60);
@@ -362,12 +288,8 @@ describe('credentials tool', () => {
 			const context = createMockContext();
 			(context.credentialService.list as Mock).mockResolvedValue(credentials);
 
-			const tool = createCredentialsTool(context);
-			const result = await executeTool(
-				tool,
-				{ action: 'list' as const, name: 'slack' },
-				noSuspendCtx(),
-			);
+			const tool = createListCredentialsTool(context);
+			const result = await executeTool(tool, { name: 'slack' }, noSuspendCtx());
 
 			expect(result).toEqual({
 				credentials: [
@@ -388,12 +310,8 @@ describe('credentials tool', () => {
 			const context = createMockContext();
 			(context.credentialService.list as Mock).mockResolvedValue(credentials);
 
-			const tool = createCredentialsTool(context);
-			const result = await executeTool(
-				tool,
-				{ action: 'list' as const, name: 'production' },
-				noSuspendCtx(),
-			);
+			const tool = createListCredentialsTool(context);
+			const result = await executeTool(tool, { name: 'production' }, noSuspendCtx());
 
 			expect(result).toEqual({
 				credentials: [
@@ -413,8 +331,8 @@ describe('credentials tool', () => {
 			const context = createMockContext();
 			(context.credentialService.list as Mock).mockResolvedValue(credentials);
 
-			const tool = createCredentialsTool(context);
-			const result = await executeTool(tool, { action: 'list' as const }, noSuspendCtx());
+			const tool = createListCredentialsTool(context);
+			const result = await executeTool(tool, {}, noSuspendCtx());
 
 			expect(result.total).toBe(60);
 			expect(result.hasMore).toBe(true);
@@ -433,12 +351,8 @@ describe('credentials tool', () => {
 			const context = createMockContext();
 			(context.credentialService.list as Mock).mockResolvedValue(credentials);
 
-			const tool = createCredentialsTool(context);
-			const result = await executeTool(
-				tool,
-				{ action: 'list' as const, type: 'slackApi' },
-				noSuspendCtx(),
-			);
+			const tool = createListCredentialsTool(context);
+			const result = await executeTool(tool, { type: 'slackApi' }, noSuspendCtx());
 
 			expect(result.hasMore).toBe(true);
 			expect(result.hint).toBeUndefined();
@@ -451,8 +365,8 @@ describe('credentials tool', () => {
 			const context = createMockContext();
 			(context.credentialService.list as Mock).mockResolvedValue(credentials);
 
-			const tool = createCredentialsTool(context);
-			const result = await executeTool(tool, { action: 'list' as const }, noSuspendCtx());
+			const tool = createListCredentialsTool(context);
+			const result = await executeTool(tool, {}, noSuspendCtx());
 
 			expect((result as { credentials: unknown[] }).credentials).toEqual([
 				{ id: '1', name: 'Slack Token', type: 'slackApi', description: null },
@@ -480,13 +394,9 @@ describe('credentials tool', () => {
 
 		it('prepends a synthetic managed entry when the type is gateway-supported', async () => {
 			const context = makeContextWithGateway(true);
-			const tool = createCredentialsTool(context);
+			const tool = createListCredentialsTool(context);
 
-			const result = await executeTool(
-				tool,
-				{ action: 'list' as const, type: 'openAiApi' },
-				noSuspendCtx(),
-			);
+			const result = await executeTool(tool, { type: 'openAiApi' }, noSuspendCtx());
 
 			expect((result as { credentials: unknown[] }).credentials).toEqual([
 				expect.objectContaining({
@@ -501,13 +411,9 @@ describe('credentials tool', () => {
 
 		it('omits the managed entry when the type is not gateway-supported', async () => {
 			const context = makeContextWithGateway(false);
-			const tool = createCredentialsTool(context);
+			const tool = createListCredentialsTool(context);
 
-			const result = await executeTool(
-				tool,
-				{ action: 'list' as const, type: 'cohereApi' },
-				noSuspendCtx(),
-			);
+			const result = await executeTool(tool, { type: 'cohereApi' }, noSuspendCtx());
 
 			expect((result as { credentials: unknown[] }).credentials).toEqual([
 				{ id: 'c1', name: 'My OpenAI', type: 'openAiApi', description: null },
@@ -516,13 +422,9 @@ describe('credentials tool', () => {
 
 		it('omits the managed entry when isAiGatewayCredentialType is not implemented', async () => {
 			const context = makeContextWithGateway(undefined);
-			const tool = createCredentialsTool(context);
+			const tool = createListCredentialsTool(context);
 
-			const result = await executeTool(
-				tool,
-				{ action: 'list' as const, type: 'openAiApi' },
-				noSuspendCtx(),
-			);
+			const result = await executeTool(tool, { type: 'openAiApi' }, noSuspendCtx());
 
 			const creds = (result as { credentials: Array<{ id: unknown }> }).credentials;
 			expect(creds.every((c) => c.id !== null)).toBe(true);
@@ -530,9 +432,9 @@ describe('credentials tool', () => {
 
 		it('omits the managed entry when no type filter is provided', async () => {
 			const context = makeContextWithGateway(true);
-			const tool = createCredentialsTool(context);
+			const tool = createListCredentialsTool(context);
 
-			const result = await executeTool(tool, { action: 'list' as const }, noSuspendCtx());
+			const result = await executeTool(tool, {}, noSuspendCtx());
 
 			const creds = (result as { credentials: Array<{ id: unknown }> }).credentials;
 			expect(creds.every((c) => c.id !== null)).toBe(true);
@@ -564,13 +466,9 @@ describe('credentials tool', () => {
 
 		it('hints at stored LLM credentials when a filtered LLM-type lookup finds none', async () => {
 			const context = makeContextWithStored([gemini, slack]);
-			const tool = createCredentialsTool(context);
+			const tool = createListCredentialsTool(context);
 
-			const result = await executeTool(
-				tool,
-				{ action: 'list' as const, type: 'openAiApi' },
-				noSuspendCtx(),
-			);
+			const result = await executeTool(tool, { type: 'openAiApi' }, noSuspendCtx());
 
 			expect(result.credentials).toEqual([]);
 			expect(result.hint).toContain('"Google Gemini account" (googlePalmApi, id: g1)');
@@ -584,13 +482,9 @@ describe('credentials tool', () => {
 				description: null,
 			};
 			const context = makeContextWithStored([openAi, gemini]);
-			const tool = createCredentialsTool(context);
+			const tool = createListCredentialsTool(context);
 
-			const result = await executeTool(
-				tool,
-				{ action: 'list' as const, type: 'openAiApi' },
-				noSuspendCtx(),
-			);
+			const result = await executeTool(tool, { type: 'openAiApi' }, noSuspendCtx());
 
 			expect(result.hint).toBeUndefined();
 			expect(context.credentialService.list).toHaveBeenCalledTimes(1);
@@ -598,13 +492,9 @@ describe('credentials tool', () => {
 
 		it('does not hint or re-list for an empty non-LLM type lookup', async () => {
 			const context = makeContextWithStored([gemini]);
-			const tool = createCredentialsTool(context);
+			const tool = createListCredentialsTool(context);
 
-			const result = await executeTool(
-				tool,
-				{ action: 'list' as const, type: 'notionApi' },
-				noSuspendCtx(),
-			);
+			const result = await executeTool(tool, { type: 'notionApi' }, noSuspendCtx());
 
 			expect(result.hint).toBeUndefined();
 			expect(context.credentialService.list).toHaveBeenCalledTimes(1);
@@ -615,13 +505,9 @@ describe('credentials tool', () => {
 			(
 				context.credentialService as unknown as { isAiGatewayCredentialType: Mock }
 			).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
-			const tool = createCredentialsTool(context);
+			const tool = createListCredentialsTool(context);
 
-			const result = await executeTool(
-				tool,
-				{ action: 'list' as const, type: 'openAiApi' },
-				noSuspendCtx(),
-			);
+			const result = await executeTool(tool, { type: 'openAiApi' }, noSuspendCtx());
 
 			expect(result.credentials).toEqual([
 				expect.objectContaining({
@@ -639,13 +525,9 @@ describe('credentials tool', () => {
 				if (!options?.type) throw new Error('boom');
 				return [];
 			});
-			const tool = createCredentialsTool(context);
+			const tool = createListCredentialsTool(context);
 
-			const result = await executeTool(
-				tool,
-				{ action: 'list' as const, type: 'openAiApi' },
-				noSuspendCtx(),
-			);
+			const result = await executeTool(tool, { type: 'openAiApi' }, noSuspendCtx());
 
 			expect(result).toEqual({ credentials: [], total: 0, hasMore: false });
 		});
@@ -653,7 +535,7 @@ describe('credentials tool', () => {
 
 	// ── get ─────────────────────────────────────────────────────────────────
 
-	describe('get action', () => {
+	describe('list action — ids', () => {
 		it.each([null, undefined, 'x'.repeat(512)])(
 			'returns the full description %j without secret data',
 			async (description) => {
@@ -668,21 +550,25 @@ describe('credentials tool', () => {
 				vi.mocked(context.credentialService.get).mockResolvedValue(credential);
 
 				const result = await executeTool(
-					createCredentialsTool(context),
-					{ action: 'get', credentialId: '1' },
+					createListCredentialsTool(context),
+					{ ids: ['1'] },
 					noSuspendCtx(),
 				);
 
 				expect(result).toEqual({
-					id: '1',
-					name: 'Postgres account',
-					type: 'postgres',
-					description: description ?? null,
+					credentials: [
+						{
+							id: '1',
+							name: 'Postgres account',
+							type: 'postgres',
+							description: description ?? null,
+						},
+					],
 				});
 			},
 		);
 
-		it('should call credentialService.get with the credential ID', async () => {
+		it('should return node access and report ids that do not resolve', async () => {
 			const detail: CredentialDetail = {
 				id: '42',
 				name: 'My Notion Key',
@@ -691,17 +577,19 @@ describe('credentials tool', () => {
 				description: null,
 			};
 			const context = createMockContext();
-			(context.credentialService.get as Mock).mockResolvedValue(detail);
+			(context.credentialService.get as Mock).mockImplementation(async (id: string) => {
+				if (id === '42') return detail;
+				throw new Error('Credential not found');
+			});
 
-			const tool = createCredentialsTool(context);
 			const result = await executeTool(
-				tool,
-				{ action: 'get' as const, credentialId: '42' },
+				createListCredentialsTool(context),
+				{ ids: ['42', 'missing'], type: 'slackApi' },
 				noSuspendCtx(),
 			);
 
-			expect(context.credentialService.get).toHaveBeenCalledWith('42');
-			expect(result).toEqual(detail);
+			expect(context.credentialService.list).not.toHaveBeenCalled();
+			expect(result).toEqual({ credentials: [detail], notFound: ['missing'] });
 		});
 	});
 
@@ -713,12 +601,8 @@ describe('credentials tool', () => {
 				permissions: { deleteCredential: 'blocked' },
 			});
 
-			const tool = createCredentialsTool(context);
-			const result = await executeTool(
-				tool,
-				{ action: 'delete' as const, credentialId: '1' },
-				noSuspendCtx(),
-			);
+			const tool = createDeleteCredentialTool(context);
+			const result = await executeTool(tool, { credentialId: '1' }, noSuspendCtx());
 
 			expect(result).toEqual({
 				success: false,
@@ -733,12 +617,8 @@ describe('credentials tool', () => {
 				permissions: { deleteCredential: 'always_allow' },
 			});
 
-			const tool = createCredentialsTool(context);
-			const result = await executeTool(
-				tool,
-				{ action: 'delete' as const, credentialId: '1' },
-				noSuspendCtx(),
-			);
+			const tool = createDeleteCredentialTool(context);
+			const result = await executeTool(tool, { credentialId: '1' }, noSuspendCtx());
 
 			expect(context.credentialService.delete).toHaveBeenCalledWith('1');
 			expect(result).toEqual({ success: true });
@@ -750,10 +630,10 @@ describe('credentials tool', () => {
 			});
 			const suspendFn = vi.fn();
 
-			const tool = createCredentialsTool(context);
+			const tool = createDeleteCredentialTool(context);
 			await executeTool(
 				tool,
-				{ action: 'delete' as const, credentialId: '1', credentialName: 'My Cred' },
+				{ credentialId: '1', credentialName: 'My Cred' },
 				suspendCtx(suspendFn),
 			);
 
@@ -774,12 +654,8 @@ describe('credentials tool', () => {
 			});
 			const suspendFn = vi.fn();
 
-			const tool = createCredentialsTool(context);
-			await executeTool(
-				tool,
-				{ action: 'delete' as const, credentialId: 'cred-99' },
-				suspendCtx(suspendFn),
-			);
+			const tool = createDeleteCredentialTool(context);
+			await executeTool(tool, { credentialId: 'cred-99' }, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalledTimes(1);
 			expect(suspendFn.mock.calls[0][0]).toEqual(
@@ -793,12 +669,8 @@ describe('credentials tool', () => {
 			const context = createMockContext({ permissions: {} });
 			const suspendFn = vi.fn();
 
-			const tool = createCredentialsTool(context);
-			await executeTool(
-				tool,
-				{ action: 'delete' as const, credentialId: '1' },
-				suspendCtx(suspendFn),
-			);
+			const tool = createDeleteCredentialTool(context);
+			await executeTool(tool, { credentialId: '1' }, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
 			expect(context.credentialService.delete).not.toHaveBeenCalled();
@@ -809,12 +681,8 @@ describe('credentials tool', () => {
 				permissions: { deleteCredential: 'require_approval' },
 			});
 
-			const tool = createCredentialsTool(context);
-			const result = await executeTool(
-				tool,
-				{ action: 'delete' as const, credentialId: '1' },
-				resumeCtx({ approved: true }),
-			);
+			const tool = createDeleteCredentialTool(context);
+			const result = await executeTool(tool, { credentialId: '1' }, resumeCtx({ approved: true }));
 
 			expect(context.credentialService.delete).toHaveBeenCalledWith('1');
 			expect(result).toEqual({ success: true });
@@ -825,12 +693,8 @@ describe('credentials tool', () => {
 				permissions: { deleteCredential: 'require_approval' },
 			});
 
-			const tool = createCredentialsTool(context);
-			const result = await executeTool(
-				tool,
-				{ action: 'delete' as const, credentialId: '1' },
-				resumeCtx({ approved: false }),
-			);
+			const tool = createDeleteCredentialTool(context);
+			const result = await executeTool(tool, { credentialId: '1' }, resumeCtx({ approved: false }));
 
 			expect(result).toEqual({
 				success: false,
@@ -852,12 +716,8 @@ describe('credentials tool', () => {
 			const context = createMockContext();
 			(context.credentialService.searchCredentialTypes as Mock).mockResolvedValue(searchResults);
 
-			const tool = createCredentialsTool(context);
-			const result = await executeTool(
-				tool,
-				{ action: 'search-types' as const, query: 'slack' },
-				noSuspendCtx(),
-			);
+			const tool = createSearchCredentialTypesTool(context);
+			const result = await executeTool(tool, { query: 'slack' }, noSuspendCtx());
 
 			expect(context.credentialService.searchCredentialTypes).toHaveBeenCalledWith('slack');
 			expect(result).toEqual({ results: searchResults });
@@ -878,12 +738,8 @@ describe('credentials tool', () => {
 			const context = createMockContext();
 			(context.credentialService.searchCredentialTypes as Mock).mockResolvedValue(searchResults);
 
-			const tool = createCredentialsTool(context);
-			const result = await executeTool(
-				tool,
-				{ action: 'search-types' as const, query: 'auth' },
-				noSuspendCtx(),
-			);
+			const tool = createSearchCredentialTypesTool(context);
+			const result = await executeTool(tool, { query: 'auth' }, noSuspendCtx());
 
 			expect((result as { results: unknown[] }).results).toEqual([
 				{ type: 'slackApi', displayName: 'Slack API' },
@@ -894,12 +750,8 @@ describe('credentials tool', () => {
 			const context = createMockContext();
 			context.credentialService.searchCredentialTypes = undefined;
 
-			const tool = createCredentialsTool(context);
-			const result = await executeTool(
-				tool,
-				{ action: 'search-types' as const, query: 'slack' },
-				noSuspendCtx(),
-			);
+			const tool = createSearchCredentialTypesTool(context);
+			const result = await executeTool(tool, { query: 'slack' }, noSuspendCtx());
 
 			expect(result).toEqual({ results: [] });
 		});
@@ -910,12 +762,8 @@ describe('credentials tool', () => {
 				.fn()
 				.mockResolvedValue(['openAiApi', 'anthropicApi']);
 
-			const tool = createCredentialsTool(context);
-			const result = await executeTool(
-				tool,
-				{ action: 'search-types' as const, gatewayCreditsOnly: true },
-				noSuspendCtx(),
-			);
+			const tool = createSearchCredentialTypesTool(context);
+			const result = await executeTool(tool, { gatewayCreditsOnly: true }, noSuspendCtx());
 
 			expect(context.credentialService.listAiGatewayCredentialTypes).toHaveBeenCalled();
 			expect(context.credentialService.searchCredentialTypes).not.toHaveBeenCalled();
@@ -931,12 +779,8 @@ describe('credentials tool', () => {
 			const context = createMockContext();
 			context.credentialService.listAiGatewayCredentialTypes = undefined;
 
-			const tool = createCredentialsTool(context);
-			const result = await executeTool(
-				tool,
-				{ action: 'search-types' as const, gatewayCreditsOnly: true },
-				noSuspendCtx(),
-			);
+			const tool = createSearchCredentialTypesTool(context);
+			const result = await executeTool(tool, { gatewayCreditsOnly: true }, noSuspendCtx());
 
 			expect(result).toEqual({ results: [] });
 		});
@@ -944,8 +788,8 @@ describe('credentials tool', () => {
 		it('should error when query is omitted without gatewayCreditsOnly', async () => {
 			const context = createMockContext();
 
-			const tool = createCredentialsTool(context);
-			const result = await executeTool(tool, { action: 'search-types' as const }, noSuspendCtx());
+			const tool = createSearchCredentialTypesTool(context);
+			const result = await executeTool(tool, {}, noSuspendCtx());
 
 			expect(context.credentialService.searchCredentialTypes).not.toHaveBeenCalled();
 			expect(result).toMatchObject({ results: [], error: expect.stringContaining('query') });
@@ -977,10 +821,9 @@ describe('credentials tool', () => {
 		}
 
 		it('should accept an optional workflowId on setup', () => {
-			const schema = getInputSchema(createCredentialsTool(createMockContext()));
+			const schema = getInputSchema(createSetupCredentialsTool(createMockContext()));
 			expect(
 				schema.safeParse({
-					action: 'setup',
 					credentials: [{ credentialType: 'slackApi' }],
 					workflowId: 'wf-1',
 				}).success,
@@ -988,11 +831,11 @@ describe('credentials tool', () => {
 		});
 
 		it('exposes early setup fields only when the panel is enabled', () => {
-			const control = inputJsonSchema(createCredentialsTool(createMockContext()));
+			const control = inputJsonSchema(createSetupCredentialsTool(createMockContext()));
 			const { context } = panelContext();
-			const panel = inputJsonSchema(createCredentialsTool(context));
+			const panel = inputJsonSchema(createSetupCredentialsTool(context));
 			const withFolders = inputJsonSchema(
-				createCredentialsTool({
+				createSetupCredentialsTool({
 					...context,
 					folderExplorationEnabled: true,
 				}),
@@ -1025,13 +868,12 @@ describe('credentials tool', () => {
 				};
 				vi.mocked(prepareWorkflowSetup).mockResolvedValue(prepared);
 				const input = {
-					action: 'setup',
 					filePath: prepared.filePath,
 					workflowName: 'Daily update',
 					folderPath: 'Notifications',
 					credentials,
 				};
-				const tool = createCredentialsTool(context);
+				const tool = createSetupCredentialsTool(context);
 
 				expect(getInputSchema(tool).safeParse(input).success).toBe(true);
 				const result = await executeTool(tool, input, suspendCtx(suspend));
@@ -1049,9 +891,8 @@ describe('credentials tool', () => {
 			vi.mocked(prepareWorkflowSetup).mockRejectedValue(new Error('Could not persist setup'));
 
 			const result = await executeTool(
-				createCredentialsTool(context),
+				createSetupCredentialsTool(context),
 				{
-					action: 'setup',
 					filePath: 'src/workflows/main.ts',
 					workflowName: 'Daily update',
 					credentials: [{ credentialType: 'slackApi' }],
@@ -1072,9 +913,8 @@ describe('credentials tool', () => {
 			context.credentialService.credentialTypeExists = vi.fn().mockResolvedValue(false);
 
 			const result = await executeTool(
-				createCredentialsTool(context),
+				createSetupCredentialsTool(context),
 				{
-					action: 'setup',
 					filePath: 'src/workflows/main.ts',
 					workflowName: 'Daily update',
 					credentials: [{ credentialType: 'slackApiTypo' }],
@@ -1100,9 +940,8 @@ describe('credentials tool', () => {
 				credentials?: Array<{ credentialType: string; existingCredentials: unknown[] }>;
 				message: string;
 			}>(
-				createCredentialsTool(context),
+				createSetupCredentialsTool(context),
 				{
-					action: 'setup' as const,
 					workflowId: 'wf-1',
 					credentials: [{ credentialType: 'slackApi', reason: 'to post alerts' }],
 				},
@@ -1139,8 +978,8 @@ describe('credentials tool', () => {
 			const suspendFn = vi.fn();
 
 			await executeTool(
-				createCredentialsTool(context),
-				{ action: 'setup' as const, credentials: [{ credentialType: 'slackApi' }] },
+				createSetupCredentialsTool(context),
+				{ credentials: [{ credentialType: 'slackApi' }] },
 				suspendCtx(suspendFn),
 			);
 
@@ -1155,8 +994,8 @@ describe('credentials tool', () => {
 			const suspendFn = vi.fn();
 
 			await executeTool(
-				createCredentialsTool(context),
-				{ action: 'setup' as const, credentials: [{ credentialType: 'slackApi' }] },
+				createSetupCredentialsTool(context),
+				{ credentials: [{ credentialType: 'slackApi' }] },
 				suspendCtx(suspendFn),
 			);
 
@@ -1169,9 +1008,8 @@ describe('credentials tool', () => {
 			const suspendFn = vi.fn();
 
 			await executeTool(
-				createCredentialsTool(context),
+				createSetupCredentialsTool(context),
 				{
-					action: 'setup' as const,
 					workflowId: 'wf-1',
 					credentials: [{ credentialType: 'slackApi' }],
 					requireUserSelection: true,
@@ -1210,9 +1048,8 @@ describe('credentials tool', () => {
 			};
 
 			await executeTool(
-				createCredentialsTool(context),
+				createSetupCredentialsTool(context),
 				{
-					action: 'setup' as const,
 					workflowId: 'wf-1',
 					credentials: [{ credentialType: 'httpTemplatedCustomAuth', setupHint }],
 				},
@@ -1233,9 +1070,8 @@ describe('credentials tool', () => {
 			vi.mocked(analyzeWorkflow).mockRejectedValue(new Error('workflow gone'));
 
 			const result = await executeTool<{ announced?: boolean }>(
-				createCredentialsTool(context),
+				createSetupCredentialsTool(context),
 				{
-					action: 'setup' as const,
 					workflowId: 'wf-1',
 					credentials: [{ credentialType: 'slackApi' }],
 				},
@@ -1257,9 +1093,8 @@ describe('credentials tool', () => {
 			vi.mocked(analyzeWorkflow).mockRejectedValue(new Error('workflow gone'));
 
 			const result = await executeTool<{ announced?: boolean }>(
-				createCredentialsTool(context),
+				createSetupCredentialsTool(context),
 				{
-					action: 'setup' as const,
 					workflowId: 'wf-1',
 					credentials: [{ credentialType: 'httpTemplatedCustomAuth' }],
 				},
@@ -1295,9 +1130,8 @@ describe('credentials tool', () => {
 			const suspendFn = vi.fn();
 
 			await executeTool(
-				createCredentialsTool(context),
+				createSetupCredentialsTool(context),
 				{
-					action: 'setup' as const,
 					workflowId: 'wf-1',
 					credentials: [{ credentialType: 'slackApi', preferNew: true }],
 				},
@@ -1319,9 +1153,8 @@ describe('credentials tool', () => {
 			const { context, emitter } = panelContext();
 			const suspend = vi.fn();
 			const result = await executeTool(
-				createCredentialsTool(context),
+				createSetupCredentialsTool(context),
 				{
-					action: 'setup',
 					workflowId: 'wf-1',
 					credentials: [{ credentialType: 'slackApi', preferNew: true }],
 				},
@@ -1342,9 +1175,8 @@ describe('credentials tool', () => {
 			const suspendFn = vi.fn();
 
 			const result = await executeTool<{ announced?: boolean }>(
-				createCredentialsTool(context),
+				createSetupCredentialsTool(context),
 				{
-					action: 'setup' as const,
 					workflowId: 'wf-1',
 					credentials: [{ credentialType: 'slackApi' }],
 				},
@@ -1364,9 +1196,8 @@ describe('credentials tool', () => {
 			const suspendFn = vi.fn();
 
 			await executeTool(
-				createCredentialsTool(context),
+				createSetupCredentialsTool(context),
 				{
-					action: 'setup' as const,
 					workflowId: 'wf-1',
 					credentials: [{ credentialType: 'slackApi' }],
 					credentialFlow: { stage: 'finalize' },
@@ -1383,9 +1214,8 @@ describe('credentials tool', () => {
 			context.credentialService.credentialTypeExists = vi.fn().mockResolvedValue(false);
 
 			const result = await executeTool<{ error?: string }>(
-				createCredentialsTool(context),
+				createSetupCredentialsTool(context),
 				{
-					action: 'setup' as const,
 					workflowId: 'wf-1',
 					credentials: [{ credentialType: 'slackApiTypo' }],
 				},
@@ -1401,9 +1231,8 @@ describe('credentials tool', () => {
 			const suspendFn = vi.fn();
 
 			await executeTool(
-				createCredentialsTool(context),
+				createSetupCredentialsTool(context),
 				{
-					action: 'setup' as const,
 					workflowId: 'wf-1',
 					credentials: [{ credentialType: 'slackApi' }],
 				},
@@ -1422,12 +1251,11 @@ describe('credentials tool', () => {
 			(context.credentialService.list as Mock).mockResolvedValue([
 				{ id: 'c1', name: 'Notion', type: 'notionApi' },
 			]);
-			const tool = createCredentialsTool(context);
+			const tool = createSetupCredentialsTool(context);
 
 			const result = await executeTool(
 				tool,
 				{
-					action: 'setup' as const,
 					target: 'agent' as const,
 					credentials: [{ credentialType: 'notionApi' }],
 				},
@@ -1452,11 +1280,10 @@ describe('credentials tool', () => {
 			(context.credentialService.list as Mock).mockResolvedValue(existingCreds);
 
 			const suspendFn = vi.fn();
-			const tool = createCredentialsTool(context);
+			const tool = createSetupCredentialsTool(context);
 			await executeTool(
 				tool,
 				{
-					action: 'setup' as const,
 					credentials: [{ credentialType: 'slackApi', reason: 'For sending messages' }],
 				},
 				suspendCtx(suspendFn),
@@ -1484,12 +1311,11 @@ describe('credentials tool', () => {
 		it('should propagate requireUserSelection when explicitly enabled', async () => {
 			const context = createMockContext();
 			const suspendFn = vi.fn();
-			const tool = createCredentialsTool(context);
+			const tool = createSetupCredentialsTool(context);
 
 			await executeTool(
 				tool,
 				{
-					action: 'setup' as const,
 					credentials: [{ credentialType: 'openRouterApi', reason: 'Set up a new account' }],
 					requireUserSelection: true,
 				},
@@ -1504,12 +1330,11 @@ describe('credentials tool', () => {
 		it('should omit requireUserSelection when explicitly disabled', async () => {
 			const context = createMockContext();
 			const suspendFn = vi.fn();
-			const tool = createCredentialsTool(context);
+			const tool = createSetupCredentialsTool(context);
 
 			await executeTool(
 				tool,
 				{
-					action: 'setup' as const,
 					credentials: [{ credentialType: 'slackApi', reason: 'Set up Slack' }],
 					requireUserSelection: false,
 				},
@@ -1524,11 +1349,10 @@ describe('credentials tool', () => {
 			(context.credentialService.list as Mock).mockResolvedValue([]);
 
 			const suspendFn = vi.fn();
-			const tool = createCredentialsTool(context);
+			const tool = createSetupCredentialsTool(context);
 			await executeTool(
 				tool,
 				{
-					action: 'setup' as const,
 					credentials: [
 						{
 							credentialType: 'slackApi',
@@ -1573,11 +1397,10 @@ describe('credentials tool', () => {
 			};
 
 			const suspendFn = vi.fn();
-			const tool = createCredentialsTool(context);
+			const tool = createSetupCredentialsTool(context);
 			await executeTool(
 				tool,
 				{
-					action: 'setup' as const,
 					credentials: [
 						{
 							credentialType: 'httpTemplatedCustomAuth',
@@ -1613,11 +1436,10 @@ describe('credentials tool', () => {
 			]);
 
 			const suspendFn = vi.fn();
-			const tool = createCredentialsTool(context);
+			const tool = createSetupCredentialsTool(context);
 			await executeTool(
 				tool,
 				{
-					action: 'setup' as const,
 					credentials: [
 						{
 							credentialType: 'httpTemplatedCustomAuth',
@@ -1647,11 +1469,10 @@ describe('credentials tool', () => {
 			(context.credentialService.list as Mock).mockResolvedValue([]);
 
 			const suspendFn = vi.fn();
-			const tool = createCredentialsTool(context);
+			const tool = createSetupCredentialsTool(context);
 			const result = await executeTool(
 				tool,
 				{
-					action: 'setup' as const,
 					credentials: [
 						{
 							credentialType: 'httpTemplatedCustomAuth',
@@ -1682,11 +1503,10 @@ describe('credentials tool', () => {
 			(context.credentialService.list as Mock).mockResolvedValue([]);
 
 			const suspendFn = vi.fn();
-			const tool = createCredentialsTool(context);
+			const tool = createSetupCredentialsTool(context);
 			const result = await executeTool(
 				tool,
 				{
-					action: 'setup' as const,
 					credentials: [
 						{
 							credentialType: 'httpTemplatedCustomAuth',
@@ -1709,11 +1529,10 @@ describe('credentials tool', () => {
 			(context.credentialService.list as Mock).mockResolvedValue([]);
 
 			const suspendFn = vi.fn();
-			const tool = createCredentialsTool(context);
+			const tool = createSetupCredentialsTool(context);
 			const result = await executeTool(
 				tool,
 				{
-					action: 'setup' as const,
 					credentials: [
 						{
 							credentialType: 'httpTemplatedCustomAuth',
@@ -1739,11 +1558,10 @@ describe('credentials tool', () => {
 			(context.credentialService.list as Mock).mockResolvedValue([]);
 
 			const suspendFn = vi.fn();
-			const tool = createCredentialsTool(context);
+			const tool = createSetupCredentialsTool(context);
 			const result = await executeTool(
 				tool,
 				{
-					action: 'setup' as const,
 					credentials: [
 						{
 							credentialType: 'httpTemplatedCustomAuth',
@@ -1771,11 +1589,10 @@ describe('credentials tool', () => {
 			(context.credentialService.list as Mock).mockResolvedValue([]);
 
 			const suspendFn = vi.fn();
-			const tool = createCredentialsTool(context);
+			const tool = createSetupCredentialsTool(context);
 			const result = await executeTool(
 				tool,
 				{
-					action: 'setup' as const,
 					credentials: [
 						{
 							credentialType: 'httpHeaderAuth',
@@ -1798,11 +1615,10 @@ describe('credentials tool', () => {
 			(context.credentialService.list as Mock).mockResolvedValue([]);
 
 			const suspendFn = vi.fn();
-			const tool = createCredentialsTool(context);
+			const tool = createSetupCredentialsTool(context);
 			await executeTool(
 				tool,
 				{
-					action: 'setup' as const,
 					credentials: [{ credentialType: 'slackApi' }, { credentialType: 'notionApi' }],
 				},
 				suspendCtx(suspendFn),
@@ -1821,11 +1637,10 @@ describe('credentials tool', () => {
 			(context.credentialService.list as Mock).mockResolvedValue([]);
 
 			const suspendFn = vi.fn();
-			const tool = createCredentialsTool(context);
+			const tool = createSetupCredentialsTool(context);
 			await executeTool(
 				tool,
 				{
-					action: 'setup' as const,
 					credentials: [{ credentialType: 'slackApi' }],
 				},
 				suspendCtx(suspendFn),
@@ -1839,10 +1654,9 @@ describe('credentials tool', () => {
 			const context = createMockContext({ projectId: 'proj-1' });
 			(context.credentialService.list as Mock).mockResolvedValue([]);
 
-			const tool = createCredentialsTool(context);
+			const tool = createSetupCredentialsTool(context);
 			await tool.handler!(
 				{
-					action: 'setup' as const,
 					credentials: [{ credentialType: 'slackApi' }],
 				},
 				suspendCtx(vi.fn()),
@@ -1858,10 +1672,9 @@ describe('credentials tool', () => {
 			const context = createMockContext();
 			(context.credentialService.list as Mock).mockResolvedValue([]);
 
-			const tool = createCredentialsTool(context);
+			const tool = createSetupCredentialsTool(context);
 			await tool.handler!(
 				{
-					action: 'setup' as const,
 					credentials: [{ credentialType: 'slackApi' }],
 				},
 				suspendCtx(vi.fn()),
@@ -1875,11 +1688,10 @@ describe('credentials tool', () => {
 			(context.credentialService.list as Mock).mockResolvedValue([]);
 
 			const suspendFn = vi.fn();
-			const tool = createCredentialsTool(context);
+			const tool = createSetupCredentialsTool(context);
 			await executeTool(
 				tool,
 				{
-					action: 'setup' as const,
 					credentials: [{ credentialType: 'slackApi' }],
 					credentialFlow: { stage: 'finalize' },
 				},
@@ -1898,11 +1710,10 @@ describe('credentials tool', () => {
 		it('should return credentials when user approves with selections', async () => {
 			const context = createMockContext();
 
-			const tool = createCredentialsTool(context);
+			const tool = createSetupCredentialsTool(context);
 			const result = await executeTool(
 				tool,
 				{
-					action: 'setup' as const,
 					credentials: [{ credentialType: 'slackApi' }],
 				},
 				resumeCtx({ approved: true, credentials: { slackApi: 'cred-123' } }),
@@ -1922,11 +1733,10 @@ describe('credentials tool', () => {
 		it('should tell the agent no authorization is needed once every selection passed', async () => {
 			const context = createMockContext();
 
-			const tool = createCredentialsTool(context);
+			const tool = createSetupCredentialsTool(context);
 			const result = await executeTool(
 				tool,
 				{
-					action: 'setup' as const,
 					credentials: [{ credentialType: 'slackApi' }],
 				},
 				resumeCtx({ approved: true, credentials: { slackApi: 'cred-123' } }),
@@ -1942,11 +1752,10 @@ describe('credentials tool', () => {
 				message: 'Invalid API Key',
 			});
 
-			const tool = createCredentialsTool(context);
+			const tool = createSetupCredentialsTool(context);
 			const result = await executeTool(
 				tool,
 				{
-					action: 'setup' as const,
 					credentials: [{ credentialType: 'jsonToVideoApi' }],
 				},
 				resumeCtx({ approved: true, credentials: { jsonToVideoApi: 'cred-1' } }),
@@ -1979,11 +1788,10 @@ describe('credentials tool', () => {
 			(context.credentialService.isTestable as Mock).mockResolvedValue(false);
 			(context.credentialService.getCredentialFillState as Mock).mockResolvedValue('blank');
 
-			const tool = createCredentialsTool(context);
+			const tool = createSetupCredentialsTool(context);
 			const result = await executeTool(
 				tool,
 				{
-					action: 'setup' as const,
 					credentials: [{ credentialType: 'httpHeaderAuth' }],
 				},
 				resumeCtx({ approved: true, credentials: { httpHeaderAuth: 'cred-empty' } }),
@@ -2010,11 +1818,10 @@ describe('credentials tool', () => {
 			(context.credentialService.isTestable as Mock).mockResolvedValue(false);
 			(context.credentialService.getCredentialFillState as Mock).mockResolvedValue('filled');
 
-			const tool = createCredentialsTool(context);
+			const tool = createSetupCredentialsTool(context);
 			const result = await executeTool(
 				tool,
 				{
-					action: 'setup' as const,
 					credentials: [{ credentialType: 'httpHeaderAuth' }],
 				},
 				resumeCtx({ approved: true, credentials: { httpHeaderAuth: 'cred-other-service' } }),
@@ -2040,11 +1847,10 @@ describe('credentials tool', () => {
 			const context = createMockContext();
 			(context.credentialService.isTestable as Mock).mockRejectedValue(new Error('lookup failed'));
 
-			const tool = createCredentialsTool(context);
+			const tool = createSetupCredentialsTool(context);
 			const result = await executeTool(
 				tool,
 				{
-					action: 'setup' as const,
 					credentials: [{ credentialType: 'slackApi' }],
 				},
 				resumeCtx({ approved: true, credentials: { slackApi: 'cred-1' } }),
@@ -2064,11 +1870,10 @@ describe('credentials tool', () => {
 				new Error('decrypt failed'),
 			);
 
-			const tool = createCredentialsTool(context);
+			const tool = createSetupCredentialsTool(context);
 			const result = await executeTool(
 				tool,
 				{
-					action: 'setup' as const,
 					credentials: [{ credentialType: 'httpHeaderAuth' }],
 				},
 				resumeCtx({ approved: true, credentials: { httpHeaderAuth: 'cred-1' } }),
@@ -2093,11 +1898,10 @@ describe('credentials tool', () => {
 			delete (context.credentialService as { getCredentialFillState?: unknown })
 				.getCredentialFillState;
 
-			const tool = createCredentialsTool(context);
+			const tool = createSetupCredentialsTool(context);
 			const result = await executeTool(
 				tool,
 				{
-					action: 'setup' as const,
 					credentials: [{ credentialType: 'httpHeaderAuth' }],
 				},
 				resumeCtx({ approved: true, credentials: { httpHeaderAuth: 'cred-1' } }),
@@ -2115,11 +1919,10 @@ describe('credentials tool', () => {
 			const context = createMockContext();
 			(context.credentialService.test as Mock).mockRejectedValue(new Error('socket hang up'));
 
-			const tool = createCredentialsTool(context);
+			const tool = createSetupCredentialsTool(context);
 			const result = await executeTool(
 				tool,
 				{
-					action: 'setup' as const,
 					credentials: [{ credentialType: 'slackApi' }],
 				},
 				resumeCtx({ approved: true, credentials: { slackApi: 'cred-1' } }),
@@ -2146,11 +1949,10 @@ describe('credentials tool', () => {
 				.mockResolvedValueOnce(false);
 			(context.credentialService.getCredentialFillState as Mock).mockResolvedValue('filled');
 
-			const tool = createCredentialsTool(context);
+			const tool = createSetupCredentialsTool(context);
 			const result = await executeTool(
 				tool,
 				{
-					action: 'setup' as const,
 					credentials: [{ credentialType: 'slackApi' }, { credentialType: 'httpHeaderAuth' }],
 				},
 				resumeCtx({
@@ -2171,11 +1973,10 @@ describe('credentials tool', () => {
 		it('should not claim credentials are ready when approved with no selections', async () => {
 			const context = createMockContext();
 
-			const tool = createCredentialsTool(context);
+			const tool = createSetupCredentialsTool(context);
 			const result = await executeTool(
 				tool,
 				{
-					action: 'setup' as const,
 					credentials: [{ credentialType: 'slackApi' }],
 				},
 				resumeCtx({ approved: true, credentials: {} }),
@@ -2191,11 +1992,10 @@ describe('credentials tool', () => {
 		it('should return deferred when user does not approve (skips)', async () => {
 			const context = createMockContext();
 
-			const tool = createCredentialsTool(context);
+			const tool = createSetupCredentialsTool(context);
 			const result = await executeTool(
 				tool,
 				{
-					action: 'setup' as const,
 					credentials: [{ credentialType: 'slackApi' }],
 				},
 				resumeCtx({ approved: false }),
@@ -2217,11 +2017,10 @@ describe('credentials tool', () => {
 				{ name: 'apiKey', displayName: 'API Key', type: 'string', required: true },
 			]);
 
-			const tool = createCredentialsTool(context);
+			const tool = createSetupCredentialsTool(context);
 			const result = await executeTool(
 				tool,
 				{
-					action: 'setup' as const,
 					credentials: [{ credentialType: 'slackApi' }],
 				},
 				resumeCtx({ approved: true, autoSetup: { credentialType: 'slackApi' } }),
@@ -2247,11 +2046,10 @@ describe('credentials tool', () => {
 				markCreateFailed: vi.fn(),
 			};
 
-			const tool = createCredentialsTool(context);
+			const tool = createSetupCredentialsTool(context);
 			await executeTool(
 				tool,
 				{
-					action: 'setup' as const,
 					credentials: [{ credentialType: 'slackApi' }],
 				},
 				resumeCtx({
@@ -2268,11 +2066,10 @@ describe('credentials tool', () => {
 			context.credentialService.getDocumentationUrl = undefined;
 			context.credentialService.getCredentialFields = undefined;
 
-			const tool = createCredentialsTool(context);
+			const tool = createSetupCredentialsTool(context);
 			const result = await executeTool(
 				tool,
 				{
-					action: 'setup' as const,
 					credentials: [{ credentialType: 'slackApi' }],
 				},
 				resumeCtx({ approved: true, autoSetup: { credentialType: 'slackApi' } }),
@@ -2287,20 +2084,15 @@ describe('credentials tool', () => {
 			});
 		});
 
-		it('should return missing_credentials error when credentials is undefined', async () => {
+		it('should reject a call without credentials', async () => {
 			const context = createMockContext();
 			const suspendFn = vi.fn();
 
-			const tool = createCredentialsTool(context);
-			const result = await tool.handler!(
-				{ action: 'setup', credentialFlow: { stage: 'finalize' } },
-				suspendCtx(suspendFn),
-			);
+			const tool = createSetupCredentialsTool(context);
+			await expect(
+				tool.handler!({ credentialFlow: { stage: 'finalize' } }, suspendCtx(suspendFn)),
+			).rejects.toThrow();
 
-			expect(result).toEqual({
-				error: 'missing_credentials',
-				message: expect.stringContaining('credentials'),
-			});
 			expect(suspendFn).not.toHaveBeenCalled();
 			expect(context.credentialService.list).not.toHaveBeenCalled();
 		});
@@ -2309,11 +2101,8 @@ describe('credentials tool', () => {
 			const context = createMockContext();
 			const suspendFn = vi.fn();
 
-			const tool = createCredentialsTool(context);
-			const result = await tool.handler!(
-				{ action: 'setup', credentials: [] },
-				suspendCtx(suspendFn),
-			);
+			const tool = createSetupCredentialsTool(context);
+			const result = await tool.handler!({ credentials: [] }, suspendCtx(suspendFn));
 
 			expect(result).toEqual({
 				error: 'missing_credentials',
@@ -2327,11 +2116,10 @@ describe('credentials tool', () => {
 			(context.credentialService.list as Mock).mockResolvedValue([]);
 
 			const suspendFn = vi.fn();
-			const tool = createCredentialsTool(context);
+			const tool = createSetupCredentialsTool(context);
 			await executeTool(
 				tool,
 				{
-					action: 'setup' as const,
 					credentials: [{ credentialType: 'slackApi' }],
 				},
 				suspendCtx(suspendFn),
@@ -2370,11 +2158,10 @@ describe('credentials tool', () => {
 				);
 
 				const suspendFn = vi.fn();
-				const tool = createCredentialsTool(context);
+				const tool = createSetupCredentialsTool(context);
 				const result = await executeTool(
 					tool,
 					{
-						action: 'setup' as const,
 						credentials: [{ credentialType: 'gmailOAuth2Api', reason: 'Send email' }],
 					},
 					suspendCtx(suspendFn),
@@ -2399,11 +2186,10 @@ describe('credentials tool', () => {
 			it('should omit suggestions when no near-match is found', async () => {
 				const context = createValidatingContext([]);
 
-				const tool = createCredentialsTool(context);
+				const tool = createSetupCredentialsTool(context);
 				const result = await executeTool(
 					tool,
 					{
-						action: 'setup' as const,
 						credentials: [{ credentialType: 'noSuchThingApi' }],
 					},
 					suspendCtx(),
@@ -2419,9 +2205,8 @@ describe('credentials tool', () => {
 				const context = createValidatingContext(['slackApi']);
 
 				const result = await executeTool(
-					createCredentialsTool(context),
+					createSetupCredentialsTool(context),
 					{
-						action: 'setup' as const,
 						credentials: [{ credentialType: 'slackApi' }, { credentialType: 'gmailOAuth2Api' }],
 					},
 					suspendCtx(),
@@ -2437,9 +2222,8 @@ describe('credentials tool', () => {
 
 				const suspendFn = vi.fn();
 				await executeTool(
-					createCredentialsTool(context),
+					createSetupCredentialsTool(context),
 					{
-						action: 'setup' as const,
 						credentials: [{ credentialType: 'slackApi', reason: 'Send messages' }],
 					},
 					suspendCtx(suspendFn),
@@ -2453,9 +2237,8 @@ describe('credentials tool', () => {
 
 				const suspendFn = vi.fn();
 				await executeTool(
-					createCredentialsTool(context),
+					createSetupCredentialsTool(context),
 					{
-						action: 'setup' as const,
 						credentials: [{ credentialType: 'httpTemplatedCustomAuth', reason: 'Custom API' }],
 					},
 					suspendCtx(suspendFn),
@@ -2473,9 +2256,8 @@ describe('credentials tool', () => {
 
 				const suspendFn = vi.fn();
 				await executeTool(
-					createCredentialsTool(context),
+					createSetupCredentialsTool(context),
 					{
-						action: 'setup' as const,
 						credentials: [{ credentialType: 'slackApi' }],
 					},
 					suspendCtx(suspendFn),
@@ -2496,12 +2278,8 @@ describe('credentials tool', () => {
 				message: 'Connection successful',
 			});
 
-			const tool = createCredentialsTool(context);
-			const result = await executeTool(
-				tool,
-				{ action: 'test' as const, credentialId: '42' },
-				noSuspendCtx(),
-			);
+			const tool = createTestCredentialTool(context);
+			const result = await executeTool(tool, { credentialId: '42' }, noSuspendCtx());
 
 			expect(context.credentialService.test).toHaveBeenCalledWith('42');
 			expect(result).toEqual({ success: true, message: 'Connection successful' });
@@ -2511,12 +2289,8 @@ describe('credentials tool', () => {
 			const context = createMockContext();
 			(context.credentialService.test as Mock).mockRejectedValue(new Error('Connection refused'));
 
-			const tool = createCredentialsTool(context);
-			const result = await executeTool(
-				tool,
-				{ action: 'test' as const, credentialId: '42' },
-				noSuspendCtx(),
-			);
+			const tool = createTestCredentialTool(context);
+			const result = await executeTool(tool, { credentialId: '42' }, noSuspendCtx());
 
 			expect(result).toEqual({
 				success: false,
@@ -2528,12 +2302,8 @@ describe('credentials tool', () => {
 			const context = createMockContext();
 			(context.credentialService.test as Mock).mockRejectedValue('string error');
 
-			const tool = createCredentialsTool(context);
-			const result = await executeTool(
-				tool,
-				{ action: 'test' as const, credentialId: '42' },
-				noSuspendCtx(),
-			);
+			const tool = createTestCredentialTool(context);
+			const result = await executeTool(tool, { credentialId: '42' }, noSuspendCtx());
 
 			expect(result).toEqual({
 				success: false,

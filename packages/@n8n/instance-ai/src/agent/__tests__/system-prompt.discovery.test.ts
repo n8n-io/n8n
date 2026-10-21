@@ -10,7 +10,7 @@
  * not churn them but intent-shifting edits fail loudly.
  */
 
-import { createCredentialsTool } from '../../tools/credentials.tool';
+import { createSetupCredentialsTool } from '../../tools/credentials.tool';
 import type { ComputerUseState } from '../../types';
 import { getSystemPrompt } from '../system-prompt';
 
@@ -24,7 +24,7 @@ const browserCapableOptions: { computerUseState: ComputerUseState } = {
 describe('getSystemPrompt — browser/computer-use discoverability', () => {
 	describe('credentials tool → Computer Use credential setup skill', () => {
 		it('routes needsBrowserSetup=true credential responses to the Computer Use skill', () => {
-			const tool = createCredentialsTool({} as never);
+			const tool = createSetupCredentialsTool({} as never);
 
 			expect(tool.description).toContain('needsBrowserSetup=true');
 			expect(tool.description).toContain('credential-setup-with-computer-use');
@@ -32,7 +32,7 @@ describe('getSystemPrompt — browser/computer-use discoverability', () => {
 		});
 
 		it('routes browser credential setup through Computer Use tools', () => {
-			const tool = createCredentialsTool({} as never);
+			const tool = createSetupCredentialsTool({} as never);
 
 			expect(tool.description).toMatch(/use Computer Use `browser_\*` tools directly/);
 		});

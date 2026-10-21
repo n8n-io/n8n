@@ -112,7 +112,26 @@ function getOrchestratorDomainToolFactories(
 	const tools: Array<[string, DomainToolFactory]> = [
 		[DOMAIN_TOOL_IDS.WORKFLOWS, () => loadWorkflowsTool().createWorkflowsTool(context)],
 		[DOMAIN_TOOL_IDS.EXECUTIONS, () => loadExecutionsTool().createExecutionsTool(context)],
-		[DOMAIN_TOOL_IDS.CREDENTIALS, () => loadCredentialsTool().createCredentialsTool(context)],
+		[
+			DOMAIN_TOOL_IDS.LIST_CREDENTIALS,
+			() => loadCredentialsTool().createListCredentialsTool(context),
+		],
+		[
+			DOMAIN_TOOL_IDS.SEARCH_CREDENTIAL_TYPES,
+			() => loadCredentialsTool().createSearchCredentialTypesTool(context),
+		],
+		[
+			DOMAIN_TOOL_IDS.SETUP_CREDENTIALS,
+			() => loadCredentialsTool().createSetupCredentialsTool(context),
+		],
+		[
+			DOMAIN_TOOL_IDS.TEST_CREDENTIAL,
+			() => loadCredentialsTool().createTestCredentialTool(context),
+		],
+		[
+			DOMAIN_TOOL_IDS.DELETE_CREDENTIAL,
+			() => loadCredentialsTool().createDeleteCredentialTool(context),
+		],
 		[DOMAIN_TOOL_IDS.DATA_TABLES, () => loadDataTablesTool().createDataTablesTool(context)],
 		[DOMAIN_TOOL_IDS.WORKSPACE, () => loadWorkspaceTool().createWorkspaceTool(context)],
 		[DOMAIN_TOOL_IDS.RESEARCH, () => loadResearchTool().createResearchTool(context)],
