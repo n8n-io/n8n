@@ -67,7 +67,7 @@ import type {
 	IntegrationMessageContext,
 	IntegrationPlatformMessageContext,
 } from './integration-tools';
-import { downloadDiscordAttachment } from './platforms/discord-operations';
+import { downloadDiscordAttachment } from './platforms/discord/discord-operations';
 import { SLACK_STREAMING_OPTIONS } from './platforms/slack/slack-bridge-behavior';
 
 import { type InternalThread, toInternalThreadId } from './types';

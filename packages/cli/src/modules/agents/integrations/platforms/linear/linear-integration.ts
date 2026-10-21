@@ -7,21 +7,21 @@ import {
 	type AgentChatIntegrationContext,
 	type PlatformActionParams,
 	type PlatformContextQueryParams,
-} from '../agent-chat-integration';
-import { loadLinearAdapter } from '../esm-loader';
+} from '../../agent-chat-integration';
+import { loadLinearAdapter } from '../../esm-loader';
 import {
 	resolveIntegrationActionDefinitions,
 	resolveIntegrationContextQueryDefinitions,
-} from '../integration-tool-definitions';
-import { connectionUnavailable } from '../integration-helpers';
-import type { IntegrationActionResult } from '../integration-tools';
+} from '../../integration-tool-definitions';
+import { connectionUnavailable } from '../../integration-helpers';
+import type { IntegrationActionResult } from '../../integration-tools';
 import { executeLinearAction, executeLinearContextQuery } from './linear-operations';
 import {
 	LINEAR_ACTION_TOOL_DEFINITIONS,
 	LINEAR_CONTEXT_QUERY_TOOL_DEFINITIONS,
 } from './linear-tool-definitions';
-import { buildLinearOriginDraft } from './linear/linear-origin';
-import type { DecodedThread, OriginInput } from '../integration-origin-support';
+import { buildLinearOriginDraft } from './linear-origin';
+import type { DecodedThread, OriginInput } from '../../integration-origin-support';
 
 /**
  * Linear platform integration.

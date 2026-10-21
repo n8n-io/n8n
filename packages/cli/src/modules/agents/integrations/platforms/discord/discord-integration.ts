@@ -10,7 +10,7 @@ import { InstanceSettings } from 'n8n-core';
 
 import { BadRequestError, ConflictError } from '@n8n/errors';
 
-import { AgentRepository } from '../../repositories/agent.repository';
+import { AgentRepository } from '../../../repositories/agent.repository';
 import {
 	AgentChatIntegration,
 	type AgentChannelPreconditionContext,
@@ -24,27 +24,27 @@ import {
 	type SettleActionMessageParams,
 	type WebhookRequestContext,
 	type WebhookRequestResolution,
-} from '../agent-chat-integration';
-import type { ChatInstance } from '../chat-integration.service';
-import { createAdapterLogger } from '../adapter-logger';
-import { requireCredentialField } from '../credential-fields';
-import { expandSelectsToButtons, type SuspendComponent } from '../component-mapper';
-import { assertCredentialNotClaimed } from '../credential-claim';
-import { loadDiscordAdapter } from '../esm-loader';
-import type { ReplyExpectation } from '../integration-tools';
+} from '../../agent-chat-integration';
+import type { ChatInstance } from '../../chat-integration.service';
+import { createAdapterLogger } from '../../adapter-logger';
+import { requireCredentialField } from '../../credential-fields';
+import { expandSelectsToButtons, type SuspendComponent } from '../../component-mapper';
+import { assertCredentialNotClaimed } from '../../credential-claim';
+import { loadDiscordAdapter } from '../../esm-loader';
+import type { ReplyExpectation } from '../../integration-tools';
 import {
 	resolveIntegrationActionDefinitions,
 	resolveIntegrationContextQueryDefinitions,
-} from '../integration-tool-definitions';
+} from '../../integration-tool-definitions';
 import { DiscordGateway, type DiscordConnection } from './discord-gateway';
 import {
 	executeDiscordContextQuery,
 	fetchDiscordApplicationMetadata,
 	settleDiscordActionMessage,
 } from './discord-operations';
-import { startTypingIndicator } from './typing-indicator';
-import { buildDiscordOriginDraft } from './discord/discord-origin';
-import type { DecodedThread, OriginInput } from '../integration-origin-support';
+import { startTypingIndicator } from '../typing-indicator';
+import { buildDiscordOriginDraft } from './discord-origin';
+import type { DecodedThread, OriginInput } from '../../integration-origin-support';
 
 /** Discord's typing indicator expires after ~10s, so keep it alive on an interval. */
 const DISCORD_TYPING_REFRESH_MS = 8000;
