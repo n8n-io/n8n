@@ -255,7 +255,7 @@ function onOpenAutoFocus(event: Event) {
 	display: flex;
 	flex-direction: column;
 	margin: calc(var(--spacing--lg) * -1) calc(var(--spacing--lg) * -1) 0;
-	padding: var(--spacing--md) var(--spacing--lg);
+	padding: var(--spacing--md) var(--spacing--lg) 0;
 }
 
 .titleError {

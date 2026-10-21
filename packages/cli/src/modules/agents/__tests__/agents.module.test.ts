@@ -7,13 +7,11 @@ import { mock } from 'vitest-mock-extended';
 
 import { AiService } from '@/services/ai.service';
 import { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
-import {
-	AssistantSkillProviderProxy,
-	FavoriteResourceResolverRegistry,
-} from '@n8n/backend-services';
-import { HubAssistantSkillProvider } from '../skills/hub-assistant-skill-provider.service';
+import { FavoriteResourceResolverRegistry } from '@n8n/backend-services';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 import { AgentUsageProviderProxy } from '@/modules/workflow-index/agent-usage-provider-proxy.service';
+import { SkillAgentsProxy } from '@/modules/skills/skill-agents-proxy.service';
+import { SkillsHubRollout } from '@/modules/skills/skills-hub-rollout';
 
 import { AgentChannelMediaRetentionTask } from '../agent-channel-media-retention.task';
 import { AgentCheckpointPruningTask } from '../agent-checkpoint-pruning.task';
@@ -39,8 +37,8 @@ import { AgentBudgetSpendRepository } from '../repositories/agent-budget-spend.r
 import { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import { AgentCredentialDependencyRepository } from '../repositories/agent-credential-dependency.repository';
 import { AgentWorkflowDependencyRepository } from '../repositories/agent-workflow-dependency.repository';
-import { SkillsHubRollout } from '../skills/skills-hub-rollout';
 import { SkillsHubStartupCopy } from '../skills/skills-hub-startup-copy';
+import { AgentSkillUsageService } from '../agent-skill-usage.service';
 import { AgentRepository } from '../repositories/agent.repository';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 
@@ -66,7 +64,9 @@ function setUpContainerForInit() {
 	Container.set(AgentSecureRuntime, mock<AgentSecureRuntime>());
 
 	Container.set(AgentRepository, mock<AgentRepository>());
-	Container.set(SkillsHubRollout, mock<SkillsHubRollout>({ isEnabled: false }));
+	Container.set(SkillsHubRollout, mock<SkillsHubRollout>());
+	Container.set(SkillAgentsProxy, mock<SkillAgentsProxy>());
+	Container.set(AgentSkillUsageService, mock<AgentSkillUsageService>());
 	Container.set(SkillsHubStartupCopy, mock<SkillsHubStartupCopy>());
 	Container.set(FavoriteResourceResolverRegistry, mock<FavoriteResourceResolverRegistry>());
 	Container.set(AgentCredentialDependencyRepository, mock<AgentCredentialDependencyRepository>());
@@ -154,21 +154,6 @@ describe('AgentsModule', () => {
 	});
 
 	describe('init()', () => {
-		it.each([false, true])(
-			'registers the Assistant provider only with the Hub flag (%s)',
-			async (enabled) => {
-				setUpContainerForInit();
-				Container.set(SkillsHubRollout, mock<SkillsHubRollout>({ isEnabled: enabled }));
-				const proxy = mock<AssistantSkillProviderProxy>();
-				const provider = mock<HubAssistantSkillProvider>();
-				Container.set(AssistantSkillProviderProxy, proxy);
-				Container.set(HubAssistantSkillProvider, provider);
-				await module.init();
-				if (enabled) expect(proxy.registerProvider).toHaveBeenCalledWith(provider);
-				else expect(proxy.registerProvider).not.toHaveBeenCalled();
-			},
-		);
-
 		it('registers WhatsApp in the chat integration registry, alongside every other platform', async () => {
 			const {
 				registry,
