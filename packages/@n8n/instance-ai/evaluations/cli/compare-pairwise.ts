@@ -679,7 +679,7 @@ function summarizeToolCallArgs(toolName: string, args: unknown): string {
 	const str = (v: unknown): string => (typeof v === 'string' ? scrubSecretsInText(v) : '');
 	const trunc = (s: string, n = 160): string => (s.length > n ? s.slice(0, n) + '…' : s);
 	// Stored runs can carry former builder tool names.
-	switch (resolveBuilderToolName(toolName)) {
+	switch (resolveBuilderToolName(toolName, isRecord(args) ? args.action : undefined)) {
 		case 'workspace_execute_command':
 			return trunc(str(a.command));
 		case 'workspace_str_replace_file':
@@ -707,12 +707,13 @@ function summarizeToolCallArgs(toolName: string, args: unknown): string {
 			return trunc(`${str(a.name)} ${str(a.filePath)}`);
 		case ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW:
 			return trunc(str(a.workflowId) || str(a.workItemId));
-		case DOMAIN_TOOL_IDS.SETUP_CREDENTIALS:
+		case DOMAIN_TOOL_IDS.SETUP_CREDENTIALS: {
+			// `redactSecrets` replaces the `credentials` key, so read the types from the raw args.
+			const requests = isRecord(args) && Array.isArray(args.credentials) ? args.credentials : [];
 			return trunc(
-				Array.isArray(a.credentials)
-					? a.credentials.map((c: unknown) => (isRecord(c) ? str(c.credentialType) : '')).join(', ')
-					: '',
+				requests.map((c: unknown) => (isRecord(c) ? str(c.credentialType) : '')).join(', '),
 			);
+		}
 		case DOMAIN_TOOL_IDS.DATA_TABLES:
 		case DOMAIN_TOOL_IDS.NODES:
 		case DOMAIN_TOOL_IDS.WORKFLOWS:

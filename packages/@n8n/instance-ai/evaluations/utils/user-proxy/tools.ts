@@ -84,7 +84,7 @@ const pickResourceDecisionSchema = z.object({
  *
  * Live-captured suspend (`setup_credentials` call args):
  * ```json
- * { "action": "setup", "credentials": [{ "credentialType": "slackApi", "reason": "...", "suggestedName": "Slack account" }] }
+ * { "credentials": [{ "credentialType": "slackApi", "reason": "...", "suggestedName": "Slack account" }] }
  * ```
  *
  *  - `manual` → `{kind:'credentialSelection', credentials:{[type]: id}}` — the

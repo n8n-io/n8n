@@ -394,7 +394,7 @@ function plannerReview(result: WorkflowTestCaseResult): StageReview {
 
 function summarizeToolCalls(result: WorkflowTestCaseResult): string[] {
 	const toolNames = (result.buildTrace?.toolCalls ?? []).map((call) =>
-		resolveBuilderToolName(call.toolName),
+		resolveBuilderToolName(call.toolName, call.args.action),
 	);
 	const count = (toolName: string): number => toolNames.filter((name) => name === toolName).length;
 	const submitCalls = toolNames.filter(
@@ -1317,7 +1317,7 @@ function renderWorkflowSummary(result: WorkflowTestCaseResult): string {
 	if (result.buildTrace) {
 		const callsNamed = (...toolNames: string[]) =>
 			result.buildTrace?.toolCalls.filter((call) =>
-				toolNames.includes(resolveBuilderToolName(call.toolName)),
+				toolNames.includes(resolveBuilderToolName(call.toolName, call.args.action)),
 			) ?? [];
 		const nodeResearchCalls = callsNamed(
 			DOMAIN_TOOL_IDS.NODES,

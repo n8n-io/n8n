@@ -1,4 +1,8 @@
-import { MANAGED_CREDENTIAL_TOKEN, shouldAutoResolveCredential } from '@n8n/api-types';
+import {
+	MANAGED_CREDENTIAL_TOKEN,
+	shouldAutoResolveCredential,
+	type InstanceAiCredentialSetupHint,
+} from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
 import type {
@@ -23,6 +27,8 @@ export interface AgentCredentialRequest {
 	credentialType: string;
 	reason?: string;
 	suggestedName?: string;
+	preferNew?: boolean;
+	setupHint?: InstanceAiCredentialSetupHint;
 	allowManaged?: boolean;
 }
 
@@ -37,6 +43,9 @@ interface CredentialChoice extends CredentialCandidate {
 }
 
 const MANAGED_CREDENTIAL_NAME = 'Managed by n8n';
+
+/** n8n supplies a managed credential only for Episodic Memory embeddings. */
+const MANAGED_CREDENTIAL_TYPES = new Set(['openAiApi']);
 
 const NO_DEFAULTS: AgentCredentialDefaults = {
 	channelCredentialIds: [],
@@ -95,6 +104,8 @@ export async function setupAgentCredentials(
 					reason: request.reason ?? `Required for ${request.credentialType}`,
 					existingCredentials: candidatesFor(request),
 					...(request.suggestedName ? { suggestedName: request.suggestedName } : {}),
+					...(request.preferNew ? { preferNew: true } : {}),
+					...(request.setupHint ? { setupHint: request.setupHint } : {}),
 				})),
 				credentialFlow: { stage: 'generic' },
 				projectId: target.projectId,
@@ -134,7 +145,8 @@ async function listCandidates(
  * Picks a credential when the choice is clear, in this order: the n8n managed
  * credential, the Agent's chat channel credential, then the only credential of
  * the type. A sole credential of a generic auth type does not identify a
- * service, so it always needs the user's pick.
+ * service, so it always needs the user's pick. `preferNew` always needs the
+ * user's pick.
  */
 function chooseWithoutCard(
 	request: AgentCredentialRequest,
@@ -142,7 +154,13 @@ function chooseWithoutCard(
 	defaults: AgentCredentialDefaults,
 ): CredentialChoice | undefined {
 	const { credentialType } = request;
-	if (request.allowManaged && defaults.managedCredentialAvailable) {
+	if (request.preferNew) return undefined;
+
+	if (
+		request.allowManaged &&
+		defaults.managedCredentialAvailable &&
+		MANAGED_CREDENTIAL_TYPES.has(credentialType)
+	) {
 		return {
 			credentialType,
 			id: MANAGED_CREDENTIAL_TOKEN,

@@ -225,12 +225,12 @@ search terms for that service.
 
 Follow these steps for the selected MCP result:
 
-1. Credential: call \`setup_credentials(target: "agent")\` with a short \`reason\`, using
-   \`selectedResult.credentialType\` as \`credentialType\`. Never invent
-   credential IDs.
+1. Credential: call
+   \`setup_credentials({ target: "agent", credentials: [{ credentialType: selectedResult.credentialType, reason: "<short reason>" }] })\`.
+   Never invent credential IDs.
 2. Verify: call \`agent_builder_verify_mcp_server\` with the selected result's \`name\`, \`url\`,
    \`transport\`, \`authentication\`, and optional \`metadata\`, plus the returned
-   \`credentialId\` as \`credential\` when authentication is required.
+   \`credentials[selectedResult.credentialType].id\` as \`credential\` when authentication is required.
 3. Capability check: confirm the verified tool names and descriptions cover the
    capability the user requested.
 4. Write config: call \`agent-context({ type: "config" })\`, then \`agent_builder_patch_config\` to add the entry to
@@ -284,14 +284,13 @@ ${mcpServerSchemaText}
 
 ### Credential flow
 
-- For \`bearerAuth\`, call \`setup_credentials(target: "agent")\` with
-  \`credentialType: "httpBearerAuth"\`.
-- For \`headerAuth\`, call \`setup_credentials(target: "agent")\` with
-  \`credentialType: "httpHeaderAuth"\`.
-- For \`multipleHeadersAuth\`, call \`setup_credentials(target: "agent")\` with
-  \`credentialType: "httpMultipleHeadersAuth"\`.
-- For \`mcpOAuth2Api\`, call \`setup_credentials(target: "agent")\` with
-  \`credentialType: "mcpOAuth2Api"\`.
+Call \`setup_credentials({ target: "agent", credentials: [{ credentialType, reason }] })\`
+with the \`credentialType\` for the authentication:
+
+- For \`bearerAuth\`, use \`credentialType: "httpBearerAuth"\`.
+- For \`headerAuth\`, use \`credentialType: "httpHeaderAuth"\`.
+- For \`multipleHeadersAuth\`, use \`credentialType: "httpMultipleHeadersAuth"\`.
+- For \`mcpOAuth2Api\`, use \`credentialType: "mcpOAuth2Api"\`.
 
 ### Testing the connection
 

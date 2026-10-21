@@ -8407,6 +8407,7 @@
 	"instanceAi.tools.search_mcp_servers": "Searching MCP servers",
 	"instanceAi.tools.agent_builder_verify_mcp_server": "Verifying MCP server",
 	"instanceAi.tools.agent_builder_ask_questions": "Asking questions",
+	"instanceAi.tools.agent_builder_list_credentials": "Inspecting credentials",
 	"instanceAi.tools.agent_builder_ask_credential": "Requesting credential",
 	"instanceAi.tools.agent_builder_ask_embedding_credential": "Requesting embedding credential",
 	"instanceAi.tools.agent_builder_configure_channel": "Configuring channel",
