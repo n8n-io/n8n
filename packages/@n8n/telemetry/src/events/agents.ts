@@ -190,6 +190,12 @@ const agentPublish = {
 	...agentCapabilityProfile,
 	trigger: agentPublishTrigger,
 	version_id: z.string().describe('AgentHistory versionId that became active'),
+	knowledge_file_count: z
+		.number()
+		.describe('Knowledge files of the agent at publish time. Files have no versions.'),
+	knowledge_total_bytes: z
+		.number()
+		.describe('Sum of the original sizes of the knowledge files at publish time'),
 };
 
 export const AGENTS_TELEMETRY = defineTelemetryEvents({
@@ -312,6 +318,31 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 					'Metrics by run source. Turn metrics sum to the top-level totals. session_count and num_skills_sum count each session once per source, so they can overlap across sources.',
 				),
 			...agentConfigurationTelemetry,
+		}),
+	},
+	AGENT_KNOWLEDGE_SNAPSHOT: {
+		name: 'Agent knowledge snapshot',
+		description:
+			'Daily count of the published agents of the instance and the knowledge they use. One event per instance, sent by one main instance only. An instance without published agents sends no event. A vector store counts only when it is in the published version of the agent. Knowledge files have no versions, so the file counts are the current files of each published agent. Includes agents published before this event existed. Each event carries totals, not increments: do not sum snapshots over time; take the latest one for each instance in a window.',
+		properties: z.object({
+			published_agent_count: z.number(),
+			published_with_files_count: z
+				.number()
+				.describe('Published agents with at least one knowledge file'),
+			published_with_vector_stores_count: z
+				.number()
+				.describe('Published agents with at least one vector store in the published version'),
+			published_with_both_count: z
+				.number()
+				.describe('Published agents with knowledge files and vector stores'),
+			knowledge_file_count: z.number().describe('Knowledge files of all published agents'),
+			knowledge_total_bytes: z
+				.number()
+				.describe('Sum of the original sizes of the knowledge files of all published agents'),
+			vector_store_count: z.number().describe('Vector stores in all published versions'),
+			vector_store_providers: z
+				.record(z.string(), z.number())
+				.describe('Vector stores for each provider, for example { pinecone: 3, qdrant: 1 }'),
 		}),
 	},
 	BUILDER_CREATED_AGENT: {

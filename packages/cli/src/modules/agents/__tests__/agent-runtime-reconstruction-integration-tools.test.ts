@@ -367,6 +367,9 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			definitionService,
 			new AgentPolicyService(new PolicyEnforcementService()),
 			skillRefs,
+			mock<AgentFileRepository>({
+				getKnowledgeTotals: async () => ({ fileCount: 0, totalBytes: 0 }),
+			}),
 		);
 		agentTestChatService = new AgentTestChatService(n8nMemory, mock<AgentChatAttachmentService>());
 		agentsService = new AgentsService(

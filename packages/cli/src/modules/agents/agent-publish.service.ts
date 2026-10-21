@@ -47,6 +47,10 @@ import { AgentTask } from './entities/agent-task.entity';
 import type { Agent, ProjectAgent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { toAgentDocument } from './json-config/agent-document';
+import {
+	AgentFileRepository,
+	type AgentKnowledgeTotals,
+} from './repositories/agent-file.repository';
 import { AgentHistoryRepository } from './repositories/agent-history.repository';
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
@@ -128,6 +132,7 @@ export class AgentPublishService {
 		private readonly definitionService: AgentDefinitionService,
 		private readonly agentPolicyService: AgentPolicyService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly agentFileRepository: AgentFileRepository,
 	) {}
 
 	/** `pushRef`: push connection of the tab that made the change; excluded from the `agentUpdated` broadcast. */
@@ -173,13 +178,16 @@ export class AgentPublishService {
 			published,
 		);
 
+		// Read before the commit, so a failed read cannot fail a publication that already happened.
+		const knowledgeTotals = await this.agentFileRepository.getKnowledgeTotals(agent.id);
+
 		await this.commitPublication(agent, expectedRevision, user, tasks, targetHistory);
 		this.eventService.emit('agent-saved', { agentId });
 		this.agentUpdateBroadcaster.notify({ projectId, agentId, source: emitter.by }, pushRef);
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 
-		this.trackPublished(agent, projectId, user, emitter, targetHistory, published);
+		this.trackPublished(agent, projectId, user, emitter, targetHistory, published, knowledgeTotals);
 		await emitSetupCompleted?.();
 
 		await this.startPublishedServices(agent);
@@ -317,6 +325,7 @@ export class AgentPublishService {
 		emitter: AgentPublishEmitter,
 		targetHistory: AgentHistory | undefined,
 		published: AgentJsonConfig | null,
+		knowledgeTotals: AgentKnowledgeTotals,
 	): void {
 		const properties = {
 			agent_id: agent.id,
@@ -329,6 +338,8 @@ export class AgentPublishService {
 			// agent.versionId, so it is never null on this path.
 			version_id: agent.activeVersionId!,
 			...buildAgentCapabilityTelemetryProperties(published, agent.integrations),
+			knowledge_file_count: knowledgeTotals.fileCount,
+			knowledge_total_bytes: knowledgeTotals.totalBytes,
 		} as const;
 
 		switch (emitter.by) {
