@@ -10154,6 +10154,7 @@
 	"agents.builder.preview.viewSession": "View session trace",
 	"agents.builder.preview.close.ariaLabel": "Hide test",
 	"agents.builder.executions.count": "{count} session | {count} sessions",
+	"agents.builder.executions.hasFailedSession": "There are failed sessions",
 	"agents.builder.settings.description": "Configure memory, sub-agent routing, and advanced runtime settings.",
 	"agents.builder.raw.description": "Agent JSON configuration",
 	"agents.builder.agentEvals.empty.title": "No test cases yet",
