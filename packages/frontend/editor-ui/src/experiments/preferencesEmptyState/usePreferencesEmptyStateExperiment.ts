@@ -5,7 +5,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { PREFERENCES_EMPTY_STATE_EXPERIMENT } from '@/app/constants/experiments';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { getExperimentTelemetryPayload } from '@/experiments/utils';
-import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
+import { useInstanceAiReady } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 
 const PREFERENCES_EMPTY_STATE_VARIANTS = [
 	PREFERENCES_EMPTY_STATE_EXPERIMENT.control,
@@ -22,10 +22,10 @@ function isPreferencesEmptyStateVariant(value: unknown): value is PreferencesEmp
 export function usePreferencesEmptyStateExperiment() {
 	const posthogStore = usePostHog();
 	const telemetry = useTelemetry();
-	const instanceAiAvailable = useInstanceAiAvailable();
+	const instanceAiReady = useInstanceAiReady();
 
 	const variant = computed<PreferencesEmptyStateVariant | undefined>(() => {
-		if (!instanceAiAvailable.value) return undefined;
+		if (!instanceAiReady.value) return undefined;
 		const assigned = posthogStore.getVariant(PREFERENCES_EMPTY_STATE_EXPERIMENT.name);
 		return isPreferencesEmptyStateVariant(assigned) ? assigned : undefined;
 	});

@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { reactive } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
@@ -12,7 +12,18 @@ import { usePreferencesEmptyStateExperiment } from './usePreferencesEmptyStateEx
 const getVariant = vi.fn();
 const trackExposure = vi.fn();
 const track = vi.fn();
-const instanceAiAvailable = ref(true);
+const instanceAiModule = reactive({ active: true, enabled: true, setupCompleted: true });
+const settingsStore = {
+	isModuleActive: (name: string) => name === 'instance-ai' && instanceAiModule.active,
+	get moduleSettings() {
+		return {
+			'instance-ai': {
+				enabled: instanceAiModule.enabled,
+				setupCompleted: instanceAiModule.setupCompleted,
+			},
+		};
+	},
+};
 
 vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: vi.fn(() => ({ getVariant, trackExposure })),
@@ -22,8 +33,13 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track }),
 }));
 
-vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAvailability', () => ({
-	useInstanceAiAvailable: () => instanceAiAvailable,
+vi.mock('@n8n/stores/settings.store', () => ({
+	useSettingsStore: () => settingsStore,
+}));
+
+vi.mock('@/features/ai/instanceAi/instanceAiPermissions', () => ({
+	canManageInstanceAi: () => true,
+	canMessageInstanceAi: () => true,
 }));
 
 describe('usePreferencesEmptyStateExperiment', () => {
@@ -31,7 +47,9 @@ describe('usePreferencesEmptyStateExperiment', () => {
 		getVariant.mockReset();
 		trackExposure.mockReset();
 		track.mockReset();
-		instanceAiAvailable.value = true;
+		instanceAiModule.active = true;
+		instanceAiModule.enabled = true;
+		instanceAiModule.setupCompleted = true;
 	});
 
 	it.each(['control', 'examples', 'assistant'])('returns the %s variant', (assigned) => {
@@ -49,9 +67,21 @@ describe('usePreferencesEmptyStateExperiment', () => {
 
 	it('returns no variant when the n8n Assistant is not available', () => {
 		getVariant.mockReturnValue('examples');
-		instanceAiAvailable.value = false;
+		instanceAiModule.enabled = false;
 
 		expect(usePreferencesEmptyStateExperiment().variant.value).toBeUndefined();
+	});
+
+	it('returns no variant and tracks no exposure when the n8n Assistant setup is not finished', () => {
+		getVariant.mockReturnValue('assistant');
+		instanceAiModule.setupCompleted = false;
+
+		const experiment = usePreferencesEmptyStateExperiment();
+		experiment.trackExposure();
+
+		expect(experiment.variant.value).toBeUndefined();
+		expect(trackExposure).not.toHaveBeenCalled();
+		expect(track).not.toHaveBeenCalled();
 	});
 
 	it('tracks the exposure with the experiment payload', () => {
