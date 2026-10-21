@@ -3546,6 +3546,7 @@
 	"settings.context.skills.back": "Back to Context",
 	"settings.context.skills.count": "{count} skill | {count} skills",
 	"settings.context.skills.search.placeholder": "Search skills by name...",
+	"settings.context.skills.search.noResults": "No skills match your search or filter",
 	"settings.context.skills.filter.label": "Filter by scope",
 	"settings.context.skills.filter.all": "All scopes",
 	"settings.context.skills.filter.instance": "Global",

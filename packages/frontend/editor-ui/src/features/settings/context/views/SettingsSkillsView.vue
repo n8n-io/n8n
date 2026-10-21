@@ -73,11 +73,18 @@ const loadFailed = ref(false);
 // Paging, search and the scope filter run on the server: the count and the page both
 // describe the matching skills, and the page is the only slice the browser holds.
 const isFiltered = computed(() => search.value.trim() !== '' || scopeFilter.value !== ALL_SCOPES);
-// A failed load also reports zero rows, so the empty state must not stand in for it. A
-// filter that matches nothing shows an empty table, not "No skills yet".
-const showEmptyState = computed(
-	() => !skillsStore.loading && !loadFailed.value && !isFiltered.value && skillsStore.count === 0,
-);
+// The empty states describe the rows on screen, so they follow the query that loaded
+// them, not the live search input.
+const loadedFiltered = ref(false);
+const hasLoaded = ref(false);
+// Each search reloads the list. Only the first load shows the loading rows, so a search
+// keeps the previous rows until the new ones arrive.
+const showLoading = computed(() => skillsStore.loading && !hasLoaded.value);
+// A failed load also reports zero rows, so neither empty state must stand in for it.
+const emptyState = computed<'none' | 'noSkills' | 'noResults'>(() => {
+	if (!hasLoaded.value || loadFailed.value || skillsStore.count > 0) return 'none';
+	return loadedFiltered.value ? 'noResults' : 'noSkills';
+});
 
 const scopeFilterItems = computed<Array<DropdownMenuItemProps<ScopeFilter>>>(() =>
 	(
@@ -144,20 +151,31 @@ function parseScope(value: string): { scope: 'project' | 'instance'; projectId?:
 	return { scope: 'instance' };
 }
 
+// Only the newest load updates the page state, so a slow earlier search cannot win.
+let latestLoad = 0;
+
 async function load() {
+	const read = ++latestLoad;
 	const { page = 0, itemsPerPage = PREFERENCES_DEFAULT_PAGE_SIZE } = tableOptions.value;
+	const filtered = isFiltered.value;
 	try {
 		await skillsStore.fetchSkills(listQuery(page, itemsPerPage));
-		loadFailed.value = false;
+		if (read !== latestLoad) return;
 		// Deleting the last rows of a page can leave the page past the end.
 		const lastPage = Math.max(0, Math.ceil(skillsStore.count / itemsPerPage) - 1);
 		if (page > lastPage) {
 			tableOptions.value = { ...tableOptions.value, page: lastPage };
 			await skillsStore.fetchSkills(listQuery(lastPage, itemsPerPage));
+			if (read !== latestLoad) return;
 		}
+		loadFailed.value = false;
+		loadedFiltered.value = filtered;
 	} catch (error) {
+		if (read !== latestLoad) return;
 		loadFailed.value = true;
 		showError(error, i18n.baseText('settings.context.skills.error.load'));
+	} finally {
+		if (read === latestLoad) hasLoaded.value = true;
 	}
 }
 
@@ -476,15 +494,24 @@ onMounted(async () => {
 			v-model:table-options="tableOptions"
 			:skills="skillsStore.skills"
 			:items-length="skillsStore.count"
-			:loading="skillsStore.loading"
-			:show-empty="showEmptyState"
+			:loading="showLoading"
+			:show-empty="emptyState !== 'none'"
 			@open="openEditModal"
 			@download="onDownload"
 			@delete="onDelete"
 			@update:options="onOptionsUpdate"
 		>
 			<template #empty>
-				<div :class="$style.empty" data-test-id="skills-empty-state">
+				<div
+					v-if="emptyState === 'noResults'"
+					:class="$style.empty"
+					data-test-id="skills-no-results"
+				>
+					<N8nText color="text-light">
+						{{ i18n.baseText('settings.context.skills.search.noResults') }}
+					</N8nText>
+				</div>
+				<div v-else :class="$style.empty" data-test-id="skills-empty-state">
 					<N8nHeading tag="h2" size="medium" bold>
 						{{ i18n.baseText('settings.context.skills.empty.title') }}
 					</N8nHeading>
