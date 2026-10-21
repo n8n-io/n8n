@@ -20,6 +20,7 @@ import { z } from 'zod';
 
 import { approvalSummarySchema, formatApprovalMessage } from './approval-copy';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
+import { isOutsideThreadProjectError } from '../errors/outside-thread-project.error';
 import { WorkflowSnapshotChangedError } from '../errors/workflow-snapshot-changed.error';
 import type { FolderResolutionFailure, InstanceAiContext, SetupItemsEmitter } from '../types';
 import {
@@ -861,6 +862,7 @@ async function handleGetAsCode(
 		try {
 			await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
 		} catch (error) {
+			if (!isOutsideThreadProjectError(error)) throw error;
 			readOnlyReason = getErrorMessage(error);
 		}
 		if (readOnlyReason) {

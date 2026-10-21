@@ -1560,6 +1560,20 @@ describe('workflows tool', () => {
 				getWorkflowSourceFileBinding(context, 'src/workflows/test-wf.workflow.ts'),
 			).resolves.toBeUndefined();
 		});
+
+		it('reports a failed project lookup as an error, not as read-only', async () => {
+			const context = createWorkspaceContext(new Map());
+			context.assertInThreadProject = vi.fn().mockRejectedValue(new Error('lookup failed'));
+
+			const result = await executeTool<{ error?: string; note?: string }>(
+				createWorkflowsTool(context, 'full'),
+				{ action: 'get-as-code', workflowId: 'wf1' },
+				{} as never,
+			);
+
+			expect(result.error).toBe('lookup failed');
+			expect(result.note).toBeUndefined();
+		});
 	});
 
 	describe('get with full: true', () => {

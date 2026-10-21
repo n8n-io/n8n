@@ -141,9 +141,10 @@ describe('Instance AI writes outside the bound project (integration)', () => {
 		expect(workflowRunner.run).not.toHaveBeenCalled();
 	});
 
-	it('rejects deleting a data table from another project', async () => {
+	it('rejects changing a data table from another project', async () => {
 		const dataTable = await createDataTable(otherProject);
 
+		await expectPermissionError(context.dataTableService.insertRows(dataTable.id, [{}]));
 		await expectPermissionError(context.dataTableService.delete(dataTable.id));
 
 		expect(await Container.get(DataTableRepository).existsBy({ id: dataTable.id })).toBe(true);
