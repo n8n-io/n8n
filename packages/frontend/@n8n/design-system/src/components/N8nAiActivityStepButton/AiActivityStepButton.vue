@@ -119,8 +119,12 @@ function handleClick(event: MouseEvent) {
 
 .shimmer {
 	--animation--shimmer--duration: 1.5s;
-	--animation--shimmer--background: color-mix(in oklch, var(--text-color), transparent 10%);
-	--animation--shimmer--foreground: var(--text-color--subtler);
+	--animation--shimmer--foreground: color-mix(
+		in oklch,
+		var(--ai-activity-step--color, var(--text-color--subtler)),
+		transparent 50%
+	);
+	--animation--shimmer--background: var(--ai-activity-step--color, var(--text-color--subtler));
 	@include motion.shimmer;
 }
 </style>

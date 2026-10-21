@@ -1,5 +1,6 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { enableAutoUnmount, mount, type VueWrapper } from '@vue/test-utils';
 
 import AgentSessionTimelineHeader from '../components/AgentSessionTimelineHeader.vue';

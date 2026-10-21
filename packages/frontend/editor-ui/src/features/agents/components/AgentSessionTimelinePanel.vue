@@ -7,6 +7,9 @@ import type {
 	AgentExecution,
 	ThreadDetail,
 } from '@/features/agents/composables/useAgentThreadsApi';
+import AgentBudgetNoticeCard from "@/features/agents/components/AgentBudgetNoticeCard.vue";
+import { isBudgetStopCode, type BudgetAmountField } from "@/features/agents/utils/budget-config";
+import { useAgentTelemetry } from "@/features/agents/composables/useAgentTelemetry";
 import SessionEventFilter from '@/features/agents/components/SessionEventFilter.vue';
 import SessionTimelineTable from '@/features/agents/components/SessionTimelineTable.vue';
 import SessionTimelineChart from '@/features/agents/components/SessionTimelineChart.vue';
@@ -33,12 +36,15 @@ import { N8nIcon, N8nInput, type BadgeVariant } from '@n8n/design-system';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useDocumentVisibility } from '@vueuse/core';
 import { useKeybindings } from '@/app/composables/useKeybindings';
+import { useStubAgentSessionStore } from '../stubAgentSession.store';
+import AgentSessionMockControls from './AgentSessionMockControls.vue';
 
 const props = defineProps<{
 	projectId: string;
 	agentId: string;
 	agentName?: string;
 	threadId: string;
+	increaseBudget?: (payload: { field: BudgetAmountField; amount: number }) => Promise<boolean>;
 	personalisation?: AgentJsonConfig['personalisation'] | null;
 }>();
 
@@ -51,14 +57,17 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const toast = useToast();
+const agentTelemetry = useAgentTelemetry();
 const sessionsStore = useAgentSessionsStore();
 const pushStore = usePushConnectionStore();
 const documentVisibility = useDocumentVisibility();
+const stubStore = useStubAgentSessionStore();
 
 const projectId = computed(() => props.projectId);
 
 const executions = ref<AgentExecution[]>([]);
 const loading = ref(true);
+const showLoading = computed(() => loading.value && !stubStore.active);
 const selectedIndex = ref<number | null>(null);
 const highlightedIndex = ref<number | null>(null);
 const timelineTableRef = useTemplateRef('timelineTable');
@@ -78,8 +87,8 @@ const { allJobs } = useAgentBackgroundJobs({
 
 const baseItems = computed<TimelineItem[]>(() =>
 	[
-		...flattenExecutionsToTimelineItems(executions.value),
-		...backgroundTasksToTimelineItems(allJobs.value),
+		...flattenExecutionsToTimelineItems(stubStore.active ? stubStore.executions : executions.value),
+		...backgroundTasksToTimelineItems(stubStore.active ? stubStore.jobs : allJobs.value),
 	].sort((a, b) => a.timestamp - b.timestamp),
 );
 
@@ -111,6 +120,42 @@ const items = computed<TimelineItem[]>(() =>
 		return name ? { ...item, subAgentName: name } : item;
 	}),
 );
+const resolvedBudgetStopExecutionId = ref<string | null>(null);
+const budgetIncreasePending = ref(false);
+const budgetStop = computed<{
+	index: number;
+	executionId: string;
+	code: 'budget.monthly' | 'budget.session';
+} | null>(() => {
+	const lastExecutionId = executions.value.at(-1)?.id;
+	if (!lastExecutionId || lastExecutionId === resolvedBudgetStopExecutionId.value) return null;
+	for (let index = items.value.length - 1; index >= 0; index--) {
+		const item = items.value[index];
+		if (item.executionId !== lastExecutionId || item.kind !== 'execution-error') continue;
+		if (item.guardrailCode && isBudgetStopCode(item.guardrailCode)) {
+			return { index, executionId: lastExecutionId, code: item.guardrailCode };
+		}
+	}
+	return null;
+});
+
+async function onIncreaseBudget(payload: { field: BudgetAmountField; amount: number }) {
+	const stopExecutionId = budgetStop.value?.executionId;
+	if (!props.increaseBudget || !stopExecutionId || budgetIncreasePending.value) return;
+	// The save outlives a thread switch: only close the notice it was raised from.
+	const identity = threadIdentity();
+	budgetIncreasePending.value = true;
+	try {
+		const saved = await props.increaseBudget(payload);
+		if (saved && identity === threadIdentity()) {
+			resolvedBudgetStopExecutionId.value = stopExecutionId;
+		}
+	} finally {
+		budgetIncreasePending.value = false;
+	}
+}
+
+
 const bounds = computed(() => sessionBounds(items.value));
 
 function labelForKey(key: string): string {
@@ -213,8 +258,14 @@ function selectTimelineItem(index: number | null) {
 	highlightedIndex.value = index;
 }
 
+function onTimelineItemSelect(index: number | null) {
+ selectTimelineItem(index);
+ const item = index === null ? undefined : items.value[index];
+ if (item) agentTelemetry.trackClickedTraceItem({ agentId: props.agentId, itemType: item.kind });
+}
+
 function onChartSelect(index: number): void {
-	selectTimelineItem(index);
+	onTimelineItemSelect(index);
 	void nextTick(() => timelineTableRef.value?.scrollSelectedIntoView());
 }
 
@@ -223,6 +274,7 @@ function timelineItemKey(item: TimelineItem): string {
 }
 
 function loadThreadDetail() {
+ resolvedBudgetStopExecutionId.value = null;
 	executions.value = [];
 	selectedFilters.value = new Set();
 	searchQuery.value = '';
@@ -342,7 +394,8 @@ useKeybindings({
 
 <template>
 	<div :class="$style.panel">
-		<div v-if="!loading" :class="$style.subHeader">
+		<AgentSessionMockControls />
+		<div v-if="!showLoading" :class="$style.subHeader">
 			<N8nInput
 				ref="searchInput"
 				v-model="searchQuery"
@@ -363,7 +416,7 @@ useKeybindings({
 			/>
 		</div>
 		<SessionTimelineChart
-			v-if="!loading"
+			v-if="!showLoading"
 			:items="items"
 			:session-start="bounds.start"
 			:session-end="bounds.end"
@@ -372,12 +425,13 @@ useKeybindings({
 			@select="onChartSelect"
 		/>
 		<div :class="$style.section">
-			<div v-if="loading" :class="$style.loading">
+			<div v-if="showLoading" :class="$style.loading">
 				{{ i18n.baseText('generic.loadingEllipsis') }}
 			</div>
+ <AgentBudgetNoticeCard v-if="budgetStop" :code="budgetStop.code" :can-increase="props.increaseBudget !== undefined" :pending="budgetIncreasePending" @increase="onIncreaseBudget" />
 
 			<SessionTimelineTable
-				v-if="!loading"
+				v-if="!showLoading"
 				ref="timelineTable"
 				:project-id="props.projectId"
 				:agent-id="props.agentId"
@@ -388,7 +442,7 @@ useKeybindings({
 				:selected-index="highlightedIndex"
 				:visible-kinds="selectedFilters"
 				:search-query="searchQuery"
-				@select="selectTimelineItem"
+				@select="onTimelineItemSelect"
 			/>
 		</div>
 	</div>
