@@ -427,7 +427,7 @@ export interface AgentChatMessagesResponse {
 /**
  * One agent as the n8n chat page lists it.
  *
- * Deliberately narrow. Its audience holds `agent:execute` alone — a
+ * Deliberately narrow. Its audience can hold `agent:execute` alone — a
  * `project:chatUser` can start a production chat but has no `agent:read` — so
  * the published instructions, tools and skills must not travel with the list.
  * The page needs a label, an avatar, the owning project, and a user-facing

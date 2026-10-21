@@ -235,7 +235,12 @@ export class AgentRepository extends BaseRepository<Agent> {
 			n8nChatType: N8N_CHAT_INTEGRATION_TYPE,
 		});
 
-		this.applyFilters(query, { ...options.filter, availableInChat: undefined });
+		// `true` is the default page view: drop it so owned drafts stay in the list.
+		// `false` still narrows the list to the agents not in n8n Chat yet.
+		this.applyFilters(query, {
+			...options.filter,
+			availableInChat: options.filter?.availableInChat === false ? false : undefined,
+		});
 		this.applySorting(query, options.sortBy, usageCounts);
 		query.skip(options.skip).take(options.take);
 
