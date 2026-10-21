@@ -7,7 +7,7 @@ import {
 	type User,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { hasGlobalScope } from '@n8n/permissions';
+import { hasGlobalScope, RESOURCES } from '@n8n/permissions';
 import type { CredentialSharingRole, ProjectRole, Scope } from '@n8n/permissions';
 import { RoleService } from '../services/role.service';
 
@@ -21,6 +21,12 @@ const VISIBILITY_SCOPES: ReadonlySet<Scope> = new Set(['credential:read', 'crede
  * The scopes that answer "may this user use this credential".
  */
 export const CREDENTIAL_USABILITY_SCOPES: Scope[] = ['credential:read'];
+
+// Every credential scope that is more than seeing. A project or sharing role that
+// holds none of these is see-only and cannot drive a credential's secret.
+const CREDENTIAL_USE_SCOPES: Scope[] = RESOURCES.credential
+	.map((op) => `credential:${op}` as const)
+	.filter((scope) => !VISIBILITY_SCOPES.has(scope));
 
 /** A credential a user may not use, with enough to name it in an error. */
 export type UnusableCredential = {
@@ -51,12 +57,17 @@ export class CredentialsFinderService {
 		userId: string,
 		scopes: Scope[],
 		ctx: OperationContext = {},
+		excludeSeeOnlyRoles = false,
 	): Promise<CredentialAccessRoles> {
 		const loadRoles = async () =>
 			await this.credentialAccessRepository.findRolesForAccessCheck(ctx);
+		const rolesWithScope = async (namespace: 'project' | 'credential') =>
+			excludeSeeOnlyRoles
+				? await this.roleService.rolesWithScope(namespace, scopes, loadRoles, CREDENTIAL_USE_SCOPES)
+				: await this.roleService.rolesWithScope(namespace, scopes, loadRoles);
 		const [projectRoles, credentialRoles] = await Promise.all([
-			this.roleService.rolesWithScope('project', scopes, loadRoles),
-			this.roleService.rolesWithScope('credential', scopes, loadRoles),
+			rolesWithScope('project'),
+			rolesWithScope('credential'),
 		]);
 		return { userId, projectRoles, credentialRoles };
 	}
@@ -182,7 +193,11 @@ export class CredentialsFinderService {
 		credentialsId: string,
 		user: User,
 		scopes: Scope[],
-		options: { includeInstanceCredentials?: boolean; visibilityOnly?: boolean } = {},
+		options: {
+			includeInstanceCredentials?: boolean;
+			visibilityOnly?: boolean;
+			excludeSeeOnlyRoles?: boolean;
+		} = {},
 	): Promise<CredentialsEntity | null> {
 		if (options.includeInstanceCredentials && hasGlobalScope(user, 'credential:manageInstance')) {
 			const instanceCredential =
@@ -192,7 +207,7 @@ export class CredentialsFinderService {
 
 		const access = this.hasGlobalOverride(user, scopes, options.visibilityOnly)
 			? null
-			: await this.resolveAccessRoles(user.id, scopes);
+			: await this.resolveAccessRoles(user.id, scopes, {}, options.excludeSeeOnlyRoles);
 		const credential = await this.credentialAccessRepository.findProjectCredentialForUser(
 			credentialsId,
 			access,
@@ -335,13 +350,17 @@ export class CredentialsFinderService {
 		credentialIds: string[],
 		user: User,
 		scopes: Scope[],
-		options: { visibilityOnly?: boolean; ignoreGlobalOverride?: boolean } = {},
+		options: {
+			visibilityOnly?: boolean;
+			ignoreGlobalOverride?: boolean;
+			excludeSeeOnlyRoles?: boolean;
+		} = {},
 	): Promise<Set<string>> {
 		if (credentialIds.length === 0) return new Set();
 
 		const access =
 			options.ignoreGlobalOverride || !this.hasGlobalOverride(user, scopes, options.visibilityOnly)
-				? await this.resolveAccessRoles(user.id, scopes)
+				? await this.resolveAccessRoles(user.id, scopes, {}, options.excludeSeeOnlyRoles)
 				: null;
 
 		const result = await this.credentialAccessRepository.findProjectCredentialIdsForUser(

@@ -70,6 +70,7 @@ export class RoleCacheService {
 		namespace: 'global' | 'project' | 'credential' | 'workflow' | 'secretsProviderConnection',
 		requiredScopes: Scope[],
 		loadRoles?: RoleLoader,
+		anyOf?: Scope[],
 	): Promise<string[]> {
 		if (requiredScopes.length === 0) return [];
 
@@ -83,7 +84,9 @@ export class RoleCacheService {
 			// TODO: actively report this case to sentry or similar system
 			this.logger.error('Role scope map is undefined, falling back to static roles');
 			// Fallback to static roles if dynamic data is not available
-			return staticRolesWithScope(namespace, requiredScopes);
+			return anyOf
+				? staticRolesWithScope(namespace, requiredScopes, anyOf)
+				: staticRolesWithScope(namespace, requiredScopes);
 		}
 
 		// Filter roles by namespace and scopes
@@ -92,7 +95,9 @@ export class RoleCacheService {
 		for (const [roleSlug, roleInfo] of Object.entries(roleScopeMap[namespace] ?? {})) {
 			// Check if role has ALL required scopes
 			const hasAllScopes = requiredScopes.every((scope) => roleInfo.scopes.includes(scope));
-			if (hasAllScopes) {
+			const hasAnyExtra =
+				anyOf === undefined || anyOf.some((scope) => roleInfo.scopes.includes(scope));
+			if (hasAllScopes && hasAnyExtra) {
 				matchingRoles.push(roleSlug);
 			}
 		}

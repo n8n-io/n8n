@@ -96,6 +96,21 @@ describe('RoleCacheService', () => {
 			expect(result).not.toContain('project:editor'); // Missing 'project:delete'
 			expect(result).not.toContain('project:viewer'); // Missing 'project:update' and 'project:delete'
 		});
+
+		it('should keep only roles that also hold one of the extra scopes', async () => {
+			cacheService.get.mockResolvedValue(mockRoleScopeMap);
+
+			const result = await roleCacheService.getRolesWithAllScopes(
+				'project',
+				['project:read'],
+				undefined,
+				['project:update', 'project:delete'],
+			);
+
+			expect(result).toContain('project:admin');
+			expect(result).toContain('project:editor');
+			expect(result).not.toContain('project:viewer'); // Holds nothing beyond 'project:read'
+		});
 	});
 
 	describe('cache behavior', () => {
@@ -124,6 +139,17 @@ describe('RoleCacheService', () => {
 			expect(logger.error).toHaveBeenCalledWith(
 				'Role scope map is undefined, falling back to static roles',
 			);
+		});
+
+		it('should pass the extra scopes to the static fallback', async () => {
+			cacheService.get.mockResolvedValue(undefined);
+			staticRolesMock.mockReturnValue([]);
+
+			await roleCacheService.getRolesWithAllScopes('project', ['project:read'], undefined, [
+				'project:update',
+			]);
+
+			expect(staticRolesMock).toHaveBeenCalledWith('project', ['project:read'], ['project:update']);
 		});
 	});
 

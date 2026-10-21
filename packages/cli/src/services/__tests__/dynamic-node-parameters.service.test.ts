@@ -757,6 +757,7 @@ describe('DynamicNodeParametersService', () => {
 				['cred-1'],
 				user,
 				['credential:read'],
+				{ excludeSeeOnlyRoles: true },
 			);
 		});
 
@@ -773,6 +774,7 @@ describe('DynamicNodeParametersService', () => {
 				expect.any(Array),
 				user,
 				['credential:read'],
+				{ excludeSeeOnlyRoles: true },
 			);
 		});
 

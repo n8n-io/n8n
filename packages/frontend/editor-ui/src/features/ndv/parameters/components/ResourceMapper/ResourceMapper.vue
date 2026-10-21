@@ -239,7 +239,9 @@ onMounted(async () => {
 			matchingColumns: nodeValues.matchingColumns,
 		};
 	}
-	if (!hasSchema) {
+	if (props.isReadOnly) {
+		// A read-only view renders the saved schema as-is. Nothing to fetch or reconcile.
+	} else if (!hasSchema) {
 		// Only fetch a schema if it's not already set
 		await initFetching();
 	} else if (
