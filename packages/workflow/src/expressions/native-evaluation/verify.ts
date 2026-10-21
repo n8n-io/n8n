@@ -1,4 +1,4 @@
-import isEqual from 'lodash/isEqual';
+import isEqualWith from 'lodash/isEqualWith';
 
 import { getCompiled } from './compiler';
 import { readsClockOrParameter, skeletonOf } from './skeleton';
@@ -9,6 +9,11 @@ import * as LoggerProxy from '../../logger-proxy';
 // Each mismatch shape is reported once per process, up to this many, so a
 // common mismatch cannot spend the Sentry quota.
 const MAX_REPORTED_SHAPES = 1000;
+
+// The comparison runs outside the engine timeout.
+const MAX_COMPARED_PAIRS = 10_000;
+
+class ComparisonTooLargeError extends Error {}
 
 export const DEFAULT_VERIFY_SAMPLE = 0.01;
 
@@ -73,7 +78,7 @@ export class NativeVerifier {
 		data: IWorkflowDataProxyData,
 	): void {
 		try {
-			if (!sameResult(native, engine) && !hitEngineLimit(engine)) {
+			if (compareResults(native, engine) === 'different' && !hitEngineLimit(engine)) {
 				const skeleton = nativeSkeleton(expression);
 				if (skeleton === null) return;
 
@@ -101,15 +106,40 @@ export class NativeVerifier {
 	}
 }
 
-function sameResult(a: ExpressionEvaluationOutcome, b: ExpressionEvaluationOutcome): boolean {
-	if (a.ok && b.ok) return isEqual(a.value, b.value);
-	if (a.ok || b.ok) return false;
-	return (
+type Comparison = 'same' | 'different' | 'too_large';
+
+function compareResults(
+	a: ExpressionEvaluationOutcome,
+	b: ExpressionEvaluationOutcome,
+): Comparison {
+	if (a.ok && b.ok) return compareValues(a.value, b.value);
+	if (a.ok || b.ok) return 'different';
+	const sameError =
 		a.error instanceof Error &&
 		b.error instanceof Error &&
 		a.error.constructor === b.error.constructor &&
-		a.error.message === b.error.message
-	);
+		a.error.message === b.error.message;
+	return sameError ? 'same' : 'different';
+}
+
+// TODO(native-evaluation verify, CET-447): share the bounded comparison with the QuickJS shadow.
+function compareValues(a: unknown, b: unknown, maxComparedPairs = MAX_COMPARED_PAIRS): Comparison {
+	let remaining = maxComparedPairs;
+	try {
+		const equal = isEqualWith(a, b, () => {
+			remaining--;
+			if (remaining < 0) {
+				throw new ComparisonTooLargeError();
+			}
+			return undefined;
+		});
+		return equal ? 'same' : 'different';
+	} catch (error) {
+		if (error instanceof ComparisonTooLargeError) {
+			return 'too_large';
+		}
+		throw error;
+	}
 }
 
 function hitEngineLimit(result: ExpressionEvaluationOutcome): boolean {

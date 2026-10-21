@@ -220,6 +220,15 @@ describe('Expression - native evaluation verify mode', () => {
 			}
 		});
 
+		test('does not compare values too large to compare', () => {
+			const list = Array.from({ length: 20_000 }, () => 0);
+			evaluateNatively.mockReturnValueOnce({ handled: true, value: [...list.slice(1), 1] });
+
+			expect(evaluate('={{ $json.list }}', { list })).toEqual(list);
+			expect(evaluateNatively).toHaveBeenCalled();
+			expect(report).not.toHaveBeenCalled();
+		});
+
 		test('does not report a match', () => {
 			expect(evaluate('={{ $json.name.slice(0, 6) }}')).toBe('secret');
 			expect(evaluateNatively).toHaveBeenCalled();
