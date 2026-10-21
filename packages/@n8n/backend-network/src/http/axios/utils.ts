@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 import axios from 'axios';
 import crypto from 'crypto';
@@ -12,6 +13,7 @@ import {
 	type IgnoreStatusErrorConfig,
 } from 'n8n-workflow';
 import net from 'node:net';
+import { Readable } from 'node:stream';
 
 import { hasProxyEnvironmentVariables } from '../../proxy/proxy-resolution';
 import type { SsrfBridge } from '../../ssrf';
@@ -229,6 +231,30 @@ const pushFormDataValue = (form: FormData, key: string, value: any) => {
 	}
 };
 /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+
+const streamOfFormDataValue = (value: unknown) => {
+	if (value instanceof Readable) return value;
+	if (isRecord(value) && 'options' in value && value.value instanceof Readable) return value.value;
+	return undefined;
+};
+
+/**
+ * Destroys the streams in a request body: a stream, a `FormData`, or form fields that hold
+ * streams. A request that fails leaves an unread file stream open until garbage collection.
+ */
+export const destroyRequestBody = (body: unknown) => {
+	if (body instanceof Readable) {
+		body.destroy();
+	} else if (isFormDataInstance(body)) {
+		// `isFormDataInstance` matches on `getHeaders` and `append` only.
+		if (typeof body.destroy === 'function') body.destroy();
+	} else if (isRecord(body) && !ArrayBuffer.isView(body)) {
+		for (const field of Object.values(body)) {
+			const values: unknown[] = Array.isArray(field) ? field : [field];
+			values.forEach((value) => streamOfFormDataValue(value)?.destroy());
+		}
+	}
+};
 
 /** Converts a plain object into a `FormData` instance, handling arrays and option objects. */
 export const createFormDataObject = (data: Record<string, unknown>) => {
