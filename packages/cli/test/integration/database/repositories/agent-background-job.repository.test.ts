@@ -26,7 +26,7 @@ import {
 	REPLACED_PAUSE_GROUP_NOTICE,
 } from '@/modules/agents/background/background-job-messages';
 import type { AgentBackgroundJob } from '@/modules/agents/entities/agent-background-job.entity';
-import type { Agent } from '@/modules/agents/entities/agent.entity';
+import type { ProjectAgent } from '@/modules/agents/entities/agent.entity';
 import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
 import type { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
 import { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
@@ -60,7 +60,7 @@ describe('AgentBackgroundJobRepository', () => {
 			integrations: [],
 			tools: {},
 			skills: {},
-		} as Partial<Agent>);
+		} as Partial<ProjectAgent>);
 		await agentRepository.save(agent);
 		agentId = agent.id;
 	});
@@ -96,7 +96,7 @@ describe('AgentBackgroundJobRepository', () => {
 		const agent = await agentRepository.findOneByOrFail({ id: agentId });
 		await Container.get(AgentExecutionThreadRepository).insert({
 			id: parentThreadId,
-			projectId: agent.projectId,
+			projectId: agent.projectId as string,
 			agentId,
 			agentName: agent.name,
 		});
@@ -636,7 +636,7 @@ describe('AgentBackgroundJobRepository', () => {
 		const agent = await agentRepository.findOneByOrFail({ id: agentId });
 		await threads.insert({
 			id: childThreadId,
-			projectId: agent.projectId,
+			projectId: agent.projectId as string,
 			agentId,
 			agentName: agent.name,
 		});

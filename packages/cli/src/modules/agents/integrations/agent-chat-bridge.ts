@@ -67,6 +67,7 @@ import type {
 	IntegrationPlatformMessageContext,
 } from './integration-tools';
 import { downloadDiscordAttachment } from './platforms/discord-operations';
+import { SLACK_STREAMING_OPTIONS } from './platforms/slack/slack-bridge-behavior';
 
 import { type InternalThread, toInternalThreadId } from './types';
 
@@ -1046,6 +1047,7 @@ export class AgentChatBridge {
 			isDM: thread.isDM,
 			adapter: thread.adapter,
 			stateAdapter: this.chat.getState(),
+			...SLACK_STREAMING_OPTIONS,
 			currentMessage: new Message({
 				id: payload.messageContext.messageId ?? '',
 				threadId: thread.id,

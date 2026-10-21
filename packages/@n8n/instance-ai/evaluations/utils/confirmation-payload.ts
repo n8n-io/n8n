@@ -28,7 +28,7 @@ export interface InfrastructureResponseOptions {
  * web search, resource decisions, standalone credential requests. The eval
  * grants all access, has no credentials, and picks the most-permissive option
  * for resource gates. Returns `undefined` for events that need caller-specific
- * handling: setup wizards, ask-user questions, plan reviews.
+ * handling: setup wizards, workflow_builder_ask_user questions, plan reviews.
  */
 export function tryInfrastructureResponse(
 	event: CapturedEvent,
