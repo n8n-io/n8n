@@ -31,7 +31,7 @@ const steps = [
 	{
 		id: 'nodes-search',
 		label: 'Search nodes',
-		toolName: 'workflow_builder_nodes',
+		toolName: 'n8n_nodes',
 		args: { action: 'search', query: 'Slack trigger', limit: 5 },
 		result: {
 			nodes: [
@@ -244,7 +244,7 @@ const Template: StoryFn = (args) => ({
 export const NodeSearch = Template.bind({});
 NodeSearch.args = {
 	label: 'Search nodes',
-	toolName: 'workflow_builder_nodes',
+	toolName: 'n8n_nodes',
 	toolArgs: { action: 'search', query: 'Slack trigger', limit: 5 },
 	result: {
 		nodes: [

@@ -10,11 +10,11 @@ description: >-
   for automations the user will run again — that is the normal build +
   post-build-flow path.
 recommended_tools:
-  - workflow_builder_nodes
+  - n8n_nodes
   - workflow_builder_build_workflow
   - workflow_builder_workflows
   - workflow_builder_executions
-  - workflow_builder_ask_user
+  - ask_user
   - workflow_builder_verify_built_workflow
 ---
 
@@ -54,7 +54,7 @@ skips verification the user would have wanted.
 ## Single-node one-offs: prefer direct node execution
 
 When the entire effect is **one node operation**, skip the workflow: execute
-the node directly with `workflow_builder_nodes(action="execute")`. It runs a single node with
+the node directly with `n8n_nodes(action="execute")`. It runs a single node with
 real credentials through the regular execution engine and returns its real
 output items — no workflow to build, set up, verify, or clean up afterwards.
 
@@ -69,7 +69,7 @@ Direct execution is sufficient when ALL of these hold:
 - The node runs standalone on `main` input alone — no required sub-node
   connections (e.g. an AI Agent needs a language model attached; such nodes
   need a workflow).
-- A usable credential already exists (`workflow_builder_credentials(action="list")`); the
+- A usable credential already exists (`n8n_credentials(action="list")`); the
   action takes resolved `{ id, name }` references. If credentials must be
   created first, route that through the credentials setup as usual.
 - The run fits the 60s cap and the input volume is modest.
@@ -80,7 +80,7 @@ accessible there, fall back to the one-off workflow flow below.
 
 Call it with the same shape as a workflow-sdk node — `{ type, version,
 config: { parameters, credentials } }` plus `input` items. Read
-`workflow_builder_nodes(action="type-definition")` first, as you would before configuring any
+`n8n_nodes(action="type-definition")` first, as you would before configuring any
 node. Approval works exactly like `workflow_builder_executions(action="run")` — the same
 run-approval card, admin policy, and session grants — and for a one-off that
 prompt is the consent gate. The returned output items are

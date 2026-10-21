@@ -1,5 +1,5 @@
 /**
- * Consolidated workflow_builder_nodes tool — list, search, describe, type-definition, suggested,
+ * Consolidated n8n_nodes tool — list, search, describe, type-definition, suggested,
  * explore-resources, execute.
  */
 import { Tool, type ToolContext } from '@n8n/agents';
@@ -67,7 +67,7 @@ const searchAction = z.object({
 		.literal('search')
 		.describe(
 			'Search node types by name or AI connection type. Use for service-specific discovery — short service names like "Gmail" or "Slack", not full task phrases. ' +
-				'When the task fits a service covered by n8n Connect (web search, scraping, document parsing — no API key needed), surface that option too; list the covered set with `workflow_builder_nodes(action="list", gatewayCreditsOnly=true)`.',
+				'When the task fits a service covered by n8n Connect (web search, scraping, document parsing — no API key needed), surface that option too; list the covered set with `n8n_nodes(action="list", gatewayCreditsOnly=true)`.',
 		),
 	query: z
 		.string()
@@ -113,20 +113,23 @@ const typeDefinitionAction = z.object({
 	nodeTypes: z.array(nodeRequestSchema).min(1).max(5).describe(NODE_TYPES_ARRAY_DESCRIPTION),
 });
 
+// Eval branch only: hide the chat-bot recipe, a workflow pattern for chat requests.
+const exposedCategories = categoryList.filter((category) => category !== 'chatbot');
+
 const suggestedAction = z.object({
 	action: z
 		.literal('suggested')
 		.describe(
-			'Get curated node recommendations by category. Call first when the workflow fits a known category. ' +
+			'Get curated node recommendations by category. Call first when the request fits a known category. ' +
 				'The curated list is a starting point, not the full set: also add any n8n Connect covered services ' +
 				'relevant to the category (they run on Gateway credits, no API key needed). Check coverage with ' +
-				'`workflow_builder_nodes(action="list", gatewayCreditsOnly=true)` or `workflow_builder_credentials(action="search-types", gatewayCreditsOnly=true)`.',
+				'`n8n_nodes(action="list", gatewayCreditsOnly=true)` or `n8n_credentials(action="search-types", gatewayCreditsOnly=true)`.',
 		),
 	categories: z
 		.array(z.string())
 		.min(1)
 		.max(3)
-		.describe(`Workflow technique categories: ${categoryList.join(', ')}`),
+		.describe(`Technique categories: ${exposedCategories.join(', ')}`),
 });
 
 const exploreResourcesAction = z.object({
@@ -348,7 +351,7 @@ async function handleDescribe(
 
 /**
  * Resolve TypeScript type definitions for a validated list of node requests.
- * Used by the consolidated `workflow_builder_nodes` tool's `type-definition` action.
+ * Used by the consolidated `n8n_nodes` tool's `type-definition` action.
  */
 async function resolveNodeTypeDefinitions(
 	context: InstanceAiContext,
@@ -441,7 +444,7 @@ async function handleSuggested(
 	const unknownCategories: string[] = [];
 
 	for (const cat of input.categories) {
-		const data = suggestedNodesData[cat];
+		const data = exposedCategories.includes(cat) ? suggestedNodesData[cat] : undefined;
 		if (data) {
 			const suggestedNodes = await Promise.all(
 				data.nodes.map(async (node) => await enrichWithSetupPreference(context, node)),
@@ -697,7 +700,7 @@ export function createNodesTool(
 	return new Tool(DOMAIN_TOOL_IDS.NODES)
 		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.NODES))
 		.description(
-			'Work with n8n node types. Use `suggested` for known workflow categories, `search` for service-specific discovery, `type-definition` before configuring nodes, `explore-resources` for live credential-backed lists, and `execute` to run one node standalone (requires user approval, real side effects).',
+			'Work with n8n node types. Use `suggested` for known categories, `search` for service-specific discovery, `type-definition` before configuring nodes, `explore-resources` for live credential-backed lists, and `execute` to run one node standalone (requires user approval, real side effects).',
 		)
 		.input(fullInputSchema)
 		.suspend(suspendSchema)

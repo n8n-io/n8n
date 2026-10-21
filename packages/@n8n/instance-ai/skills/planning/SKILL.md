@@ -13,12 +13,12 @@ description: >-
 recommended_tools:
   - workflow_builder_create_tasks
   - workflow_builder_workflows
-  - workflow_builder_nodes
-  - workflow_builder_credentials
+  - n8n_nodes
+  - n8n_credentials
   - data_tables
   - parse-file
   - research
-  - workflow_builder_ask_user
+  - ask_user
 ---
 
 # Planning
@@ -77,7 +77,7 @@ Skip only for trivial mechanical edits you have already reviewed in this thread.
 1. Decide whether the request is plan-worthy by coordination need, not by
    whether a workflow is new.
 2. Discover what materially affects the plan with normal tools:
-   `workflow_builder_nodes(action="suggested")`, `workflow_builder_credentials(action="list")`,
+   `n8n_nodes(action="suggested")`, `n8n_credentials(action="list")`,
    `data_tables(action="list")`, `parse-file`, `workflow_builder_workflows`, and `research`
    when relevant.
 
@@ -169,7 +169,7 @@ Skip only for trivial mechanical edits you have already reviewed in this thread.
 - If no matching credential exists, plan normally. The builder will mock or
   leave it unresolved and route setup after verification.
 - If multiple matching credentials exist and the user did not name one, ask once
-  with `workflow_builder_ask_user` because the choice cannot be discovered.
+  with `ask_user` because the choice cannot be discovered.
 - Use credential-backed resource investigation only when it changes the plan,
   for example validating a named Slack channel that affects the architecture. Do
   not turn resource lookup into a credential-choice question unless the

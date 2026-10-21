@@ -6,7 +6,7 @@ description: >-
   Load after direct builds, when verificationReadiness requires action, or on
   orchestrator verify/setup follow-up turns.
 recommended_tools:
-  - workflow_builder_ask_user
+  - ask_user
   - workflow_builder_verify_built_workflow
   - workflow_builder_workflows
   - workflow_builder_build_workflow
@@ -113,7 +113,7 @@ input was used.
 Pick in this order:
 
 1. **A dedicated credential type** (`slackApi`, `notionApi`, …) whenever one
-   exists — search with `workflow_builder_credentials(action="search-types")`.
+   exists — search with `n8n_credentials(action="search-types")`.
 2. **Simplified Custom Auth** (`httpTemplatedCustomAuth`) for any service
    without a dedicated type whose auth is expressible as header/query/body
    values — which covers API keys and bearer tokens (`Authorization: Bearer
@@ -449,7 +449,7 @@ For a repair on a published workflow:
    or click a Setup button; the user does not need to navigate anywhere.
 5. When `workflow_builder_workflows(action="setup")` returns `deferred: true`, or reports
    `skippedByUser`, or applies only part of the card, respect the user's
-   decision — do not retry with `workflow_builder_credentials(action="setup")`, another
+   decision — do not retry with `n8n_credentials(action="setup")`, another
    `workflow_builder_workflows(action="setup")` call, or any other setup tool. `partial: true`
    with `nodesStillNeedingSetup` is not permission to re-open the card in the
    same turn: report what remains as described in
@@ -494,7 +494,7 @@ then publish and assign only after the user approves.
 
 After successfully publishing a direct new primary workflow,
 ask once whether the user wants to build an error workflow for that workflow.
-Use `workflow_builder_ask_user` with a yes/no choice or a concise visible question. Do **not**
+Use `ask_user` with a yes/no choice or a concise visible question. Do **not**
 create an error workflow before the user opts in.
 
 The opt-in must explicitly mention an error workflow and the target workflow
@@ -658,7 +658,7 @@ unverified success claim.
 
 ## Credentials before build
 
-Call `workflow_builder_credentials(action="list")` first to know what's available. Build the
+Call `n8n_credentials(action="list")` first to know what's available. Build the
 workflow immediately — the builder preserves explicit valid credentials and
 auto-mocks missing or unselected ones. Do not ask whether to build now and set up
 credentials later; building first and routing setup after verification is the
@@ -676,9 +676,9 @@ credential is being used. Route credential setup only when the build outcome
 reports mocked credentials or `setupRequirement.status === "required"`.
 
 **Ask once when a service has multiple credentials of the same type.** If
-`workflow_builder_credentials(action="list")` shows more than one entry of the type a requested
+`n8n_credentials(action="list")` shows more than one entry of the type a requested
 integration needs (e.g. two `openAiApi` accounts, three Google Calendar
-accounts), use `workflow_builder_ask_user` with a single-select to let the user pick one before
+accounts), use `ask_user` with a single-select to let the user pick one before
 building, and use the chosen credential name in the workflow code. Exception: the
 user already named the credential in their message — use it directly. With a
 single candidate, auto-apply and do not ask.
@@ -688,7 +688,7 @@ new credential of a type, never pick an existing one for them and never ask them
 to choose among existing ones — not even when exactly one exists (the build would
 otherwise attach it silently and skip setup entirely). Pass the credential type in
 `preferNewCredentials` on both `workflow_builder_build_workflow` and `workflow_builder_workflows(action="setup")`
-(or `preferNew: true` on the `workflow_builder_credentials(action="setup")` entry). Setup then
+(or `preferNew: true` on the `n8n_credentials(action="setup")` entry). Setup then
 opens on credential creation while still listing the existing credentials, so the
 user can change their mind — say so in one short sentence rather than
 re-litigating the choice. If they had skipped that card earlier, pass
@@ -696,12 +696,12 @@ re-litigating the choice. If they had skipped that card earlier, pass
 `reopenSkipped` decides whether the card comes back at all.
 
 **Ask which auth type to use when a service supports more than one.**
-`workflow_builder_credentials(action="setup")` opens a picker locked to a single `credentialType`
+`n8n_credentials(action="setup")` opens a picker locked to a single `credentialType`
 — the user cannot switch auth types from there. So when
-`workflow_builder_credentials(action="search-types")` returns more than one auth option for a
+`n8n_credentials(action="search-types")` returns more than one auth option for a
 service (e.g. `notionApi` and `notionOAuth2Api`, or `slackApi` and
-`slackOAuth2Api`), use `workflow_builder_ask_user` with a single-select to let the user pick the
-auth type before calling `workflow_builder_credentials(action="setup")`. List OAuth2 first and
+`slackOAuth2Api`), use `ask_user` with a single-select to let the user pick the
+auth type before calling `n8n_credentials(action="setup")`. List OAuth2 first and
 present it as the recommended option. Exception: the user has clearly indicated
 an auth type (e.g. "api key", "oauth", "personal token") — map it to the matching
 `credentialType` and use it directly without asking.

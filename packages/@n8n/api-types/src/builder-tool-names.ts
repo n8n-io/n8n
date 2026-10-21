@@ -9,11 +9,11 @@
 /** Tools that the Instance AI orchestrator uses to build workflows. */
 export const WORKFLOW_BUILDER_TOOL_NAMES = {
 	WORKFLOWS: 'workflow_builder_workflows',
-	NODES: 'workflow_builder_nodes',
-	CREDENTIALS: 'workflow_builder_credentials',
+	NODES: 'n8n_nodes',
+	CREDENTIALS: 'n8n_credentials',
 	EXECUTIONS: 'workflow_builder_executions',
-	ASK_USER: 'workflow_builder_ask_user',
-	SEARCH_MODELS: 'workflow_builder_search_models',
+	ASK_USER: 'ask_user',
+	SEARCH_MODELS: 'search_models',
 	BUILD_WORKFLOW: 'workflow_builder_build_workflow',
 	VERIFY_BUILT_WORKFLOW: 'workflow_builder_verify_built_workflow',
 	REPORT_VERIFICATION_VERDICT: 'workflow_builder_report_verification_verdict',

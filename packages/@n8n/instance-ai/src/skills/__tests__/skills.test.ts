@@ -321,7 +321,7 @@ describe('Instance AI skills', () => {
 		expect(skill?.name).toBe('credential-setup-with-computer-use');
 		for (const tool of [
 			'research',
-			'workflow_builder_ask_user',
+			'ask_user',
 			'browser_connect',
 			'browser_snapshot',
 			'browser_capture_secret',
@@ -349,7 +349,7 @@ describe('Instance AI skills', () => {
 
 		expect(skill).toMatchObject({
 			name: 'n8n-docs-assistant',
-			recommendedTools: ['n8n-docs', 'workflow_builder_credentials', 'workflow_builder_nodes'],
+			recommendedTools: ['n8n-docs', 'n8n_credentials', 'n8n_nodes'],
 		});
 		// `n8n-docs` is always loaded, so the catalog must not ask the model to load it.
 		expect(skill?.description).not.toContain('load_tool');
@@ -382,9 +382,9 @@ describe('Instance AI skills', () => {
 			'execute_command',
 			'workflow_builder_build_workflow',
 			'workflow_builder_workflows',
-			'workflow_builder_nodes',
+			'n8n_nodes',
 			'data_tables',
-			'workflow_builder_credentials',
+			'n8n_credentials',
 			'workflow_builder_verify_built_workflow',
 			'workflow_builder_executions',
 		]);
@@ -405,8 +405,8 @@ describe('Instance AI skills', () => {
 			'node --import tsx node_modules/@n8n/workflow-sdk/dist/cli/index.js validate',
 		);
 		expect(loaded?.instructions).toContain('workspace source file');
-		expect(loaded?.instructions).toContain('workflow_builder_nodes(action="suggested")');
-		expect(loaded?.instructions).toContain('workflow_builder_nodes(action="search")');
+		expect(loaded?.instructions).toContain('n8n_nodes(action="suggested")');
+		expect(loaded?.instructions).toContain('n8n_nodes(action="search")');
 		expect(loaded?.instructions).toContain("newCredential('Credential Name', 'credential-id')");
 		expect(loaded?.instructions).toContain('Verification');
 		expect(loaded?.instructions).toContain('Build/save success is not workflow-quality evidence');
@@ -432,9 +432,7 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain('## Trigger URL Sharing');
 		expect(loaded?.instructions).toContain('{formBaseUrl}/{path}');
 		expect(loaded?.instructions).toContain('**Open chat** button');
-		expect(loaded?.instructions).toContain(
-			'batch\n`workflow_builder_nodes(action="type-definition")`',
-		);
+		expect(loaded?.instructions).toContain('batch\n`n8n_nodes(action="type-definition")`');
 		expect(loaded?.instructions).toContain('together with the `load_skill` call');
 		expect(loaded?.instructions).toContain('Do not create a plan\njust for verification');
 		expect(loaded?.instructions).toContain(
@@ -465,12 +463,12 @@ describe('Instance AI skills', () => {
 		expect(skill?.recommendedTools).toEqual([
 			'workflow_builder_create_tasks',
 			'workflow_builder_workflows',
-			'workflow_builder_nodes',
-			'workflow_builder_credentials',
+			'n8n_nodes',
+			'n8n_credentials',
 			'data_tables',
 			'parse-file',
 			'research',
-			'workflow_builder_ask_user',
+			'ask_user',
 		]);
 		expect(skill?.description).toContain(
 			'If workflow_builder_create_tasks is not visible, load it via load_tool',

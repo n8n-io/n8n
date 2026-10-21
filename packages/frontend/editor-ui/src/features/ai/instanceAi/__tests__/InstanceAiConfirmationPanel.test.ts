@@ -46,7 +46,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 				'instanceAi.tools.workflow_builder_build_workflow.imperativeWithResource': 'edit',
 				'instanceAi.tools.data_tables.add-column.imperative': 'add column',
 				'instanceAi.tools.data_tables.add-column.imperativeWithResource': 'add a column to',
-				'instanceAi.tools.workflow_builder_nodes.execute.imperativeWithResource': 'execute the',
+				'instanceAi.tools.n8n_nodes.execute.imperativeWithResource': 'execute the',
 			};
 			if (key === 'agents.chat.approval.description') {
 				return `The agent wants to run the ${opts?.interpolate?.toolName ?? ''} tool.`;
@@ -397,7 +397,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 					resourceName: 'Google Sheets node',
 				},
 				{ action: 'execute', type: 'n8n-nodes-base.googleSheets' },
-				'workflow_builder_nodes',
+				'n8n_nodes',
 			);
 			const { getByText } = renderComponent({ props: { kind: 'floating' } });
 

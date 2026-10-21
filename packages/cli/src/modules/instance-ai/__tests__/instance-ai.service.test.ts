@@ -6107,7 +6107,7 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 			}),
 		).toBeUndefined();
 		expect(
-			service.getWorkflowSetupSuspensionWorkflowId('workflow_builder_credentials', {
+			service.getWorkflowSetupSuspensionWorkflowId('n8n_credentials', {
 				workflowId: 'wf-1',
 				setupRequests: [],
 			}),

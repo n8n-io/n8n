@@ -133,7 +133,7 @@ describe('llm-step-display', () => {
 		const blocks = parseMessageBlocks([
 			{
 				type: 'tool-result',
-				toolName: 'workflow_builder_nodes',
+				toolName: 'n8n_nodes',
 				output: { results: [], totalResults: 0 },
 				toolCallId: 'tc-1',
 			},
@@ -142,7 +142,7 @@ describe('llm-step-display', () => {
 		expect(blocks[0]?.role).toBe('tool');
 		expect(blocks[0]?.segments?.[0]).toMatchObject({
 			type: 'tool-result',
-			name: 'workflow_builder_nodes',
+			name: 'n8n_nodes',
 			payload: { results: [], totalResults: 0 },
 			metadata: { toolCallId: 'tc-1' },
 		});
@@ -154,7 +154,7 @@ describe('llm-step-display', () => {
 			toolCalls: [
 				{
 					toolCallId: 'tc-1',
-					toolName: 'workflow_builder_nodes',
+					toolName: 'n8n_nodes',
 					input: { action: 'search', nodeTypes: ['trigger'] },
 				},
 			],
@@ -167,7 +167,7 @@ describe('llm-step-display', () => {
 						content: [
 							{
 								type: 'tool-call',
-								toolName: 'workflow_builder_nodes',
+								toolName: 'n8n_nodes',
 								toolCallId: 'tc-1',
 								input: { action: 'search', nodeTypes: ['trigger'] },
 								providerMetadata: { anthropic: { cacheCreationInputTokens: 0 } },
@@ -182,7 +182,7 @@ describe('llm-step-display', () => {
 		expect(blocks[0]?.metadata).toBeUndefined();
 		expect(blocks[0]?.segments?.[0]).toMatchObject({
 			type: 'tool-call',
-			name: 'workflow_builder_nodes',
+			name: 'n8n_nodes',
 		});
 	});
 
@@ -191,7 +191,7 @@ describe('llm-step-display', () => {
 			toolResults: [
 				{
 					toolCallId: 'tc-1',
-					toolName: 'workflow_builder_nodes',
+					toolName: 'n8n_nodes',
 					output: { results: [], totalResults: 0 },
 				},
 			],
@@ -202,7 +202,7 @@ describe('llm-step-display', () => {
 						content: [
 							{
 								type: 'tool-call',
-								toolName: 'workflow_builder_nodes',
+								toolName: 'n8n_nodes',
 								input: { action: 'search' },
 							},
 						],
@@ -214,12 +214,12 @@ describe('llm-step-display', () => {
 		expect(blocks[0]?.role).toBe('tool');
 		expect(blocks[0]?.segments?.[0]).toMatchObject({
 			type: 'tool-result',
-			name: 'workflow_builder_nodes',
+			name: 'n8n_nodes',
 		});
 		expect(blocks[1]?.role).toBe('assistant');
 		expect(blocks[1]?.segments?.[0]).toMatchObject({
 			type: 'tool-call',
-			name: 'workflow_builder_nodes',
+			name: 'n8n_nodes',
 			payload: { action: 'search' },
 		});
 	});

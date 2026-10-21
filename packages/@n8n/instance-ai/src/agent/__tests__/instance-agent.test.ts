@@ -74,7 +74,7 @@ vi.mock('../../tools', () => ({
 				'workflow_builder_workflows',
 				'research',
 				'n8n-docs',
-				'workflow_builder_nodes',
+				'n8n_nodes',
 				'workflow_builder_executions',
 				'workflow_builder_build_workflow',
 			];
@@ -94,10 +94,7 @@ vi.mock('../../tools', () => ({
 				],
 				['research', mockBuiltTool(`research-${context.runLabel ?? 'unknown'}`)],
 				['n8n-docs', mockBuiltTool(`n8n-docs-${context.runLabel ?? 'unknown'}`)],
-				[
-					'workflow_builder_nodes',
-					mockBuiltTool(`workflow_builder_nodes-${context.runLabel ?? 'unknown'}`),
-				],
+				['n8n_nodes', mockBuiltTool(`n8n_nodes-${context.runLabel ?? 'unknown'}`)],
 				[
 					'workflow_builder_executions',
 					mockBuiltTool(`workflow_builder_executions-${context.runLabel ?? 'unknown'}`),
@@ -252,11 +249,11 @@ describe('createInstanceAgent', () => {
 		expect(attachedTools['verify-built-workflow-run-1']).toMatchObject({
 			name: 'verify-built-workflow-run-1',
 		});
-		expect(attachedTools['workflow_builder_nodes-run-1']).toMatchObject({
-			name: 'workflow_builder_nodes-run-1',
+		expect(attachedTools['n8n_nodes-run-1']).toMatchObject({
+			name: 'n8n_nodes-run-1',
 		});
-		expect(secondRunAttachedTools['workflow_builder_nodes-run-2']).toMatchObject({
-			name: 'workflow_builder_nodes-run-2',
+		expect(secondRunAttachedTools['n8n_nodes-run-2']).toMatchObject({
+			name: 'n8n_nodes-run-2',
 		});
 	});
 
@@ -283,13 +280,13 @@ describe('createInstanceAgent', () => {
 			context: { runLabel: 'profile' },
 			orchestrationContext: {
 				runId: 'profile',
-				disabledToolNames: new Set(['workflow_builder_create_tasks', 'workflow_builder_nodes']),
+				disabledToolNames: new Set(['workflow_builder_create_tasks', 'n8n_nodes']),
 			},
 			memoryConfig: {},
 			mcpManager: createMcpManagerStub(),
 		} as never);
 		expect(getDeferredTools()).not.toHaveProperty('workflow_builder_create_tasks-profile');
-		expect(getAttachedTools()).not.toHaveProperty('workflow_builder_nodes-profile');
+		expect(getAttachedTools()).not.toHaveProperty('n8n_nodes-profile');
 		expect(getAttachedTools()).toHaveProperty('workflow_builder_build_workflow-profile');
 	});
 
@@ -340,7 +337,7 @@ describe('createInstanceAgent', () => {
 
 		for (const toolName of [
 			'workflow_builder_build_workflow',
-			'workflow_builder_nodes',
+			'n8n_nodes',
 			'workflow_builder_executions',
 		]) {
 			const scopedName = `${toolName}-builder-skill-run`;

@@ -103,12 +103,21 @@ function clip(text: string): string {
 		: text;
 }
 
+const BASELINE_TOOL_NAMES: Record<string, string> = {
+	ask_user: 'workflow_builder_ask_user',
+	n8n_nodes: 'workflow_builder_nodes',
+	n8n_credentials: 'workflow_builder_credentials',
+	search_models: 'workflow_builder_search_models',
+};
+
 export function renderJudgePrompt({ steps, endStatus }: JudgeInput): string {
 	let callNumber = 0;
 	const lines = steps.map((step) => {
 		if (step.kind === 'text') return `Assistant text: ${clip(step.text)}`;
 		if (step.kind === 'answer') return `User answer: ${clip(JSON.stringify(step.result))}`;
-		return `Tool call ${String(++callNumber)}: ${step.toolName} ${clip(JSON.stringify(step.args))}`;
+		// Eval branch only: show the judge the baseline names, so only the Assistant's behavior changes.
+		const toolName = BASELINE_TOOL_NAMES[step.toolName] ?? step.toolName;
+		return `Tool call ${String(++callNumber)}: ${toolName} ${clip(JSON.stringify(step.args))}`;
 	});
 	const footer = endStatus
 		? `The turn has ended (status: ${endStatus}). Stop and pick the route.`

@@ -18,8 +18,8 @@ vi.mock('../attachments/parse-file.tool', () => ({
 }));
 
 vi.mock('../credentials.tool', () => ({
-	CREDENTIALS_TOOL_ID: 'workflow_builder_credentials',
-	createCredentialsTool: vi.fn(() => ({ id: 'workflow_builder_credentials' })),
+	CREDENTIALS_TOOL_ID: 'n8n_credentials',
+	createCredentialsTool: vi.fn(() => ({ id: 'n8n_credentials' })),
 }));
 
 vi.mock('../data-tables.tool', () => ({
@@ -39,12 +39,12 @@ vi.mock('../executions.tool', () => ({
 
 vi.mock('../nodes.tool', () => ({
 	createNodesTool: vi.fn((_context: unknown, scope?: string) => ({
-		id: scope ? `workflow_builder_nodes-${scope}` : 'workflow_builder_nodes',
+		id: scope ? `n8n_nodes-${scope}` : 'n8n_nodes',
 	})),
 }));
 
 vi.mock('../search-models.tool', () => ({
-	createSearchModelsTool: vi.fn(() => ({ id: 'workflow_builder_search_models' })),
+	createSearchModelsTool: vi.fn(() => ({ id: 'search_models' })),
 }));
 
 vi.mock('../n8n-docs.tool', () => ({
@@ -88,8 +88,8 @@ vi.mock('../research.tool', () => ({
 }));
 
 vi.mock('../shared/ask-user.tool', () => ({
-	ASK_USER_TOOL_ID: 'workflow_builder_ask_user',
-	createAskUserTool: vi.fn(() => ({ id: 'workflow_builder_ask_user' })),
+	ASK_USER_TOOL_ID: 'ask_user',
+	createAskUserTool: vi.fn(() => ({ id: 'ask_user' })),
 }));
 
 vi.mock('../task-control.tool', () => ({
@@ -143,14 +143,14 @@ describe('domain tool construction', () => {
 		expect(Object.fromEntries(orchestratorTools)).toMatchObject({
 			workflow_builder_workflows: { id: 'workflow_builder_workflows' },
 			workflow_builder_executions: { id: 'workflow_builder_executions' },
-			workflow_builder_credentials: { id: 'workflow_builder_credentials' },
+			n8n_credentials: { id: 'n8n_credentials' },
 			data_tables: { id: 'data_tables' },
 			workspace: { id: 'workspace' },
 			research: { id: 'research' },
 			'n8n-docs': { id: 'n8n-docs' },
-			workflow_builder_nodes: { id: 'workflow_builder_nodes' },
-			workflow_builder_search_models: { id: 'workflow_builder_search_models' },
-			workflow_builder_ask_user: { id: 'workflow_builder_ask_user' },
+			n8n_nodes: { id: 'n8n_nodes' },
+			search_models: { id: 'search_models' },
+			ask_user: { id: 'ask_user' },
 			workflow_builder_build_workflow: { id: 'workflow_builder_build_workflow' },
 		});
 		expect(orchestratorTools.has('templates')).toBe(false);
@@ -167,10 +167,8 @@ describe('domain tool construction', () => {
 	});
 
 	it('never defers model catalog search behind search_tools', () => {
-		expect(getActiveOrchestratorDomainToolNames(makeContext())).toContain(
-			'workflow_builder_search_models',
-		);
-		expect(ALWAYS_LOADED_TOOL_NAMES.has('workflow_builder_search_models')).toBe(true);
+		expect(getActiveOrchestratorDomainToolNames(makeContext())).toContain('search_models');
+		expect(ALWAYS_LOADED_TOOL_NAMES.has('search_models')).toBe(true);
 	});
 
 	it('does not include local MCP server tools in orchestrator domain tools', () => {

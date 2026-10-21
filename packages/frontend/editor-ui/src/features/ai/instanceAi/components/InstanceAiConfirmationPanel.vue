@@ -151,10 +151,10 @@ const approvalTitleKeys = new Map<string, BaseTextKey>(
 			'instanceAi.tools.workflow_builder_workflows.update-version.imperativeWithResource',
 			'instanceAi.tools.workflow_builder_workflows.restore-version.imperative',
 			'instanceAi.tools.workflow_builder_workflows.restore-version.imperativeWithResource',
-			'instanceAi.tools.workflow_builder_nodes.execute.imperativeWithResource',
+			'instanceAi.tools.n8n_nodes.execute.imperativeWithResource',
 			'instanceAi.tools.workflow_builder_executions.run.imperative',
 			'instanceAi.tools.workflow_builder_executions.run.imperativeWithResource',
-			'instanceAi.tools.workflow_builder_credentials.delete.imperative',
+			'instanceAi.tools.n8n_credentials.delete.imperative',
 			'instanceAi.tools.data_tables.create.imperative',
 			'instanceAi.tools.data_tables.create.imperativeWithResource',
 			'instanceAi.tools.data_tables.delete.imperative',
@@ -576,7 +576,7 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 					:require-user-selection="chunk.item.toolCall.confirmation.requireUserSelection"
 				/>
 
-				<!-- Text input (workflow_builder_ask_user) -->
+				<!-- Text input (ask_user) -->
 				<div
 					v-else-if="chunk.item.toolCall.confirmation.inputType === 'text'"
 					:key="'text-' + chunk.item.toolCall.confirmation.requestId"

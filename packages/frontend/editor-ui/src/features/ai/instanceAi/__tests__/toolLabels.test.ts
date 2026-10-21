@@ -16,7 +16,7 @@ vi.mock('@n8n/i18n', () => ({
 				'instanceAi.tools.agent_builder_get_node_types': 'Reading node schema',
 				'instanceAi.tools.agent_builder_list_credentials': 'Inspecting credentials',
 				'instanceAi.tools.list_workflows': 'Listing workflows',
-				'instanceAi.tools.workflow_builder_nodes': 'Search nodes',
+				'instanceAi.tools.n8n_nodes': 'Search nodes',
 				'instanceAi.tools.workflow_builder_executions': 'Run workflow',
 				'instanceAi.tools.activity': 'Activity',
 				'instanceAi.tools.activity.list': 'Checking recent activity',
@@ -86,7 +86,7 @@ describe('getToolIcon', () => {
 	test('returns workflow for workflow-related tools', () => {
 		expect(getToolIcon('workflow_builder_workflows')).toBe('workflow');
 		expect(getToolIcon('workflow_builder_executions')).toBe('workflow');
-		expect(getToolIcon('workflow_builder_nodes')).toBe('workflow');
+		expect(getToolIcon('n8n_nodes')).toBe('workflow');
 		expect(getToolIcon('templates')).toBe('workflow');
 		expect(getToolIcon('agent_builder_search_nodes')).toBe('workflow');
 		expect(getToolIcon('agent_builder_get_node_types')).toBe('workflow');
@@ -108,7 +108,7 @@ describe('getToolIcon', () => {
 	});
 
 	test('returns key-round for credential tools', () => {
-		expect(getToolIcon('workflow_builder_credentials')).toBe('key-round');
+		expect(getToolIcon('n8n_credentials')).toBe('key-round');
 	});
 
 	test('returns file-text for filesystem tools', () => {
@@ -146,7 +146,7 @@ describe('getToolIcon', () => {
 	});
 
 	test('keeps the wrench icon for prefixed builder tools without a dedicated mapping', () => {
-		expect(getToolIcon('workflow_builder_ask_user')).toBe('wrench');
+		expect(getToolIcon('ask_user')).toBe('wrench');
 		expect(getToolIcon('workflow_builder_create_tasks')).toBe('wrench');
 		expect(getToolIcon('workflow_builder_build_workflow')).toBe('workflow');
 	});
@@ -174,7 +174,7 @@ describe('useToolLabel', () => {
 		expect(getToolLabel('agent_builder_build_agent', { operation: 'creating' })).toBe(
 			'Working with agent',
 		);
-		expect(getToolLabel('workflow_builder_nodes')).toBe('Search nodes');
+		expect(getToolLabel('n8n_nodes')).toBe('Search nodes');
 		expect(getToolLabel('workspace_execute_command')).toBe('Running command');
 		expect(getToolLabel('list_skills')).toBe('Checking available skills');
 		expect(getToolLabel('load_skill', { name: 'data-table-manager' })).toBe(
@@ -241,7 +241,7 @@ describe('useToolLabel', () => {
 
 	test('getToolLabel drops the builder prefix when no label exists', () => {
 		const { getToolLabel } = useToolLabel();
-		expect(getToolLabel('workflow_builder_search_models')).toBe('Search models');
+		expect(getToolLabel('search_models')).toBe('Search models');
 		expect(getToolLabel('finish_setup')).toBe('Finish setup');
 	});
 

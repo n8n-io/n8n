@@ -872,7 +872,7 @@ export interface InstanceAiActivityEntry {
 
 /**
  * An entry in full, plus the rest of what the log knows about the same resource. Deliberately not
- * the live record: `workflow_builder_workflows` and `workflow_builder_credentials` already fetch those, and the entry carries the ids
+ * the live record: `workflow_builder_workflows` and `n8n_credentials` already fetch those, and the entry carries the ids
  * to call them with.
  */
 export interface InstanceAiActivityExpansion {
@@ -1588,7 +1588,7 @@ export interface InstanceAiContext {
 	/** Optional — present when the host allows MCP registry discovery for this
 	 *  user. Presence gates the `mcp-servers` tool. */
 	mcpService?: InstanceAiMcpService;
-	/** Optional — presence gates the `execute` action on the `workflow_builder_nodes` tool. */
+	/** Optional — presence gates the `execute` action on the `n8n_nodes` tool. */
 	executeNodeService?: InstanceAiExecuteNodeService;
 	/** Optional — wired by the host when the run has a bound project. Presence
 	 *  gates the `conversation-history` tool (orchestrator only). */
@@ -1667,7 +1667,7 @@ export interface InstanceAiContext {
 	runId?: string;
 	/**
 	 * Run-scoped outcome tracking for browser-assisted credential setup. The
-	 * workflow_builder_credentials tool marks an attempt pending when it hands off to the LLM
+	 * n8n_credentials tool marks an attempt pending when it hands off to the LLM
 	 * with `needsBrowserSetup`; the browser tool wrapper reports each
 	 * `browser_create_credential` outcome. The host resolves the terminal
 	 * success/failure telemetry when the run finishes.
