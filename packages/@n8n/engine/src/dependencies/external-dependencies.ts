@@ -103,11 +103,13 @@ export type StepExecutionResult =
 	| {
 			wait: WaitDeclaration;
 			outputs?: never;
+			detached?: never;
 			spawn?: never;
 	  }
 	| {
 			spawn: SpawnDeclaration;
 			outputs?: never;
+			detached?: never;
 			wait?: never;
 	  };
 

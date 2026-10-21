@@ -1338,6 +1338,29 @@ describe('StepReadyHandler child executions', () => {
 		});
 	});
 
+	it('cancels the detached children it started when the parent ended in the meantime', async () => {
+		const executionStore = makeExecutionStore();
+		const live = await executionStore.loadExecution('exec-1');
+		const ended: ExecutionRecord = { ...live, status: 'cancelled', finishedAt: new Date() };
+		executionStore.loadExecution = vi.fn().mockResolvedValueOnce(live).mockResolvedValueOnce(ended);
+		const childCanceller: ChildCanceller = { cancelChildren: vi.fn() };
+		const handler = makeHandler(
+			executionStore,
+			makeStepStore(),
+			makeQueue(),
+			{ v1StepExecutor: makeExecutor({ outputs: [[]], detached: [spawn] }) },
+			undefined,
+			undefined,
+			undefined,
+			makeChildStarter(),
+			childCanceller,
+		);
+
+		await handler.handle(event);
+
+		expect(childCanceller.cancelChildren).toHaveBeenCalledExactlyOnceWith('exec-1');
+	});
+
 	it('starts no detached child when another owner took the step over', async () => {
 		const stepStore = makeStepStore({}, { completeStep: vi.fn().mockResolvedValue(false) });
 		const childStarter = makeChildStarter();
