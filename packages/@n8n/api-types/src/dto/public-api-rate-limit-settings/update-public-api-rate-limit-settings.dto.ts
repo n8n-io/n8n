@@ -23,6 +23,5 @@ export type PublicApiRateLimitSettings = z.infer<typeof UpdatePublicApiRateLimit
 
 export type PublicApiRateLimitSettingsResponse = PublicApiRateLimitSettings & {
 	defaults: Omit<PublicApiRateLimitSettings, 'enabled'>;
-	/** The fields that an environment variable sets. They cannot be changed through the API. */
 	envManagedFields: Array<keyof PublicApiRateLimitSettings>;
 };
