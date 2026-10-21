@@ -109,7 +109,7 @@ describe('buildIntegrationOrigin', () => {
 
 	it('records the Linear issue ID and the subject snapshot when available', async () => {
 		const thread = makeThread({ issueId: 'issue-uuid' });
-		const subject = { type: 'issue', id: 'ENG-1', title: 'Fix it' };
+		const subject = { type: 'issue', id: 'ENG-1', title: 'Fix it', projectId: 'project-1' };
 
 		await expect(
 			buildIntegrationOrigin(
@@ -121,6 +121,7 @@ describe('buildIntegrationOrigin', () => {
 			issueId: 'issue-uuid',
 			identifier: 'ENG-1',
 			title: 'Fix it',
+			projectId: 'project-1',
 		});
 		await expect(
 			buildIntegrationOrigin({ platform: 'linear', thread, message: makeMessage() }, logger),

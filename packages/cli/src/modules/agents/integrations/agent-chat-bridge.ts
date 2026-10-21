@@ -913,13 +913,22 @@ export class AgentChatBridge {
 			}) ?? 'required';
 		let accepted = false;
 		try {
-			const [context, subject] = await Promise.all([
+			const subjectPromise = this.messageContextBridge.resolveSubject(message);
+			const [context, subject, integrationOrigin] = await Promise.all([
 				this.resolveBridgeExecutionContext(thread, message, platformAgentContext, {
 					isNewMention,
 					inSubscribedThread,
 					replyExpectation,
 				}),
-				this.messageContextBridge.resolveSubject(message),
+				subjectPromise,
+				// The origin lookup overlaps the other fetches so it adds little delay.
+				subjectPromise.then(
+					async (subject) =>
+						await buildIntegrationOrigin(
+							{ platform: this.integration.type, thread, message, subject },
+							this.logger,
+						),
+				),
 			]);
 			const messageContext = this.messageContextBridge.capture(thread, {
 				messageId: message.id,
@@ -930,10 +939,6 @@ export class AgentChatBridge {
 				replyExpectation,
 			});
 			const author = toMessageAuthor(message.author);
-			const integrationOrigin = await buildIntegrationOrigin(
-				{ platform: this.integration.type, thread, message, subject },
-				this.logger,
-			);
 			const textWithNotes = [text, ...attachmentNotes].filter(Boolean).join('\n');
 			const { userId, userName, fullName, isBot, isMe } = message.author;
 			const result = await this.messageQueue.enqueue({

@@ -14,5 +14,6 @@ export function buildLinearOriginDraft(
 		issueId: text(decoded.issueId),
 		identifier: subject?.id,
 		title: subject?.title,
+		projectId: subject?.projectId,
 	};
 }

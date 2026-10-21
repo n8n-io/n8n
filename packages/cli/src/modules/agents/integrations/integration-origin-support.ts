@@ -4,7 +4,7 @@ import type { Message, Thread } from 'chat';
 import type { IntegrationMessageSubject } from './integration-tool-types';
 
 /** A slow name lookup must not delay the message. */
-const CHANNEL_NAME_TIMEOUT_MS = 1500;
+const CHANNEL_NAME_TIMEOUT_MS = 500;
 
 export interface OriginInput {
 	/** The integration type, such as `slack`. */
