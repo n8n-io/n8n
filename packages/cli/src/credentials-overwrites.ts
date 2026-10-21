@@ -121,8 +121,8 @@ export class CredentialsOverwrites {
 	}
 
 	/**
-	 * Sets the overwrites from a payload. Throws a `UserError` when the payload is invalid,
-	 * and then keeps the previous overwrites.
+	 * Sets the overwrites from a payload. A part that does not follow the format is skipped and
+	 * logged, so loading never fails on the content.
 	 *
 	 * A type entry is a plain object. During a rollout, `__versions` adds a newer app for an
 	 * OAuth type. See `parseOverwritesPayload` for the format.
@@ -134,8 +134,8 @@ export class CredentialsOverwrites {
 			(type) => this.credentialTypes.recognizes(type),
 		);
 
-		for (const type of parsed.unrecognizedTypes) {
-			this.logger.warn(`Unknown credential type ${type} in the versions of Credential overwrites`);
+		for (const problem of parsed.problems) {
+			this.logger.warn(problem);
 		}
 
 		// If data gets reinitialized reset the resolved types cache

@@ -1583,54 +1583,87 @@ describe('CredentialsOverwrites', () => {
 			});
 		});
 
-		describe('validation', () => {
+		describe('a payload that does not follow the format', () => {
 			const base = { notionOAuth2Api: baseApp };
+			const newerThan = (version: unknown) => ({
+				...base,
+				__versions: { notionOAuth2Api: { version, ...newApp } },
+			});
 
 			it.each([
-				['an array', { ...base, __versions: { notionOAuth2Api: [{ version: 2, ...newApp }] } }],
 				[
-					'a version that equals the base version',
-					{ ...base, __versions: { notionOAuth2Api: { version: 1, ...newApp } } },
+					'an array',
+					{ ...base, __versions: { notionOAuth2Api: [{ version: 2, ...newApp }] } },
+					'one object',
 				],
+				['a version that equals the base version', newerThan(1), 'must be greater'],
 				[
 					'a version below the base version',
 					{
 						notionOAuth2Api: { version: 3, ...baseApp },
 						__versions: { notionOAuth2Api: { version: 2, ...newApp } },
 					},
+					'must be greater',
 				],
+				['a version that is not an integer', newerThan(1.5), 'integer "version"'],
 				[
-					'a version that is not an integer',
-					{ ...base, __versions: { notionOAuth2Api: { version: 1.5, ...newApp } } },
+					'a missing version',
+					{ ...base, __versions: { notionOAuth2Api: newApp } },
+					'integer "version"',
 				],
-				['a missing version', { ...base, __versions: { notionOAuth2Api: newApp } }],
 				[
 					'a missing client field',
 					{ ...base, __versions: { notionOAuth2Api: { version: 2, clientId: 'x' } } },
+					'must set "clientSecret"',
 				],
-				['no base entry', { __versions: { notionOAuth2Api: { version: 2, ...newApp } } }],
 				[
-					'a non-OAuth type',
-					{ notionApi: { apiKey: 'k' }, __versions: { notionApi: { version: 2, apiKey: 'k2' } } },
+					'a versions key that is not an object',
+					{ ...base, __versions: 'two' },
+					'must be an object',
 				],
-				['a versions key that is not an object', { ...base, __versions: 'two' }],
-				['a base version that is invalid', { notionOAuth2Api: { version: 0, ...baseApp } }],
-				['an entry that is not an object', { notionOAuth2Api: [baseApp] }],
-			])('should reject %s', async (_name, payload) => {
-				const instance = await createInstance(base);
+			])('should skip %s and load the rest', async (_name, payload, reason) => {
+				const instance = await createInstance(payload);
 
-				expect(() => instance.setPlainData(payload)).toThrow(UserError);
+				expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining(reason));
+				expect(instance.getOverwrites('notionOAuth2Api')).toEqual(expect.objectContaining(baseApp));
 			});
 
-			it('should say that versions are for OAuth types only', async () => {
-				const instance = await createInstance(base);
+			it('should skip a versions entry that has no base entry', async () => {
+				const instance = await createInstance({
+					__versions: { notionOAuth2Api: { version: 2, ...newApp } },
+				});
 
-				expect(() =>
-					instance.setPlainData({
-						notionApi: { apiKey: 'k' },
-						__versions: { notionApi: { version: 2, apiKey: 'k2' } },
-					}),
-				).toThrow('Versions are supported only for OAuth credential types');
+				expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('needs a base entry'));
+				expect(instance.getOverwrites('notionOAuth2Api')).toEqual({});
+			});
+
+			it('should skip the versions of a non-OAuth type', async () => {
+				const instance = await createInstance({
+					notionApi: { apiKey: 'k' },
+					__versions: { notionApi: { version: 2, apiKey: 'k2' } },
+				});
+
+				expect(logger.warn).toHaveBeenCalledWith(
+					expect.stringContaining('versions are supported only for OAuth credential types'),
+				);
+				expect(instance.getOverwrites('notionApi')).toEqual({ apiKey: 'k' });
+			});
+
+			it('should ignore an invalid base version and keep the base entry', async () => {
+				const instance = await createInstance({ notionOAuth2Api: { version: 0, ...baseApp } });
+
+				expect(logger.warn).toHaveBeenCalledWith(
+					expect.stringContaining('must be an integer of at least 1'),
+				);
+				expect(instance.getOverwrites('notionOAuth2Api')).toEqual(baseApp);
+				expect(instance.getDefaultVersion('notionOAuth2Api')).toBe(1);
+			});
+
+			it('should skip an entry that is not an object', async () => {
+				const instance = await createInstance({ notionOAuth2Api: [baseApp] });
+
+				expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('must be an object'));
+				expect(instance.getOverwrites('notionOAuth2Api')).toEqual({});
 			});
 
 			it('should skip a versions entry of a type that this instance does not know', async () => {
@@ -1646,20 +1679,15 @@ describe('CredentialsOverwrites', () => {
 				});
 
 				expect(logger.warn).toHaveBeenCalledWith(
-					'Unknown credential type communityOAuth2Api in the versions of Credential overwrites',
+					expect.stringContaining('this instance does not know the credential type'),
 				);
 				expect(instance.getOverwrites('notionOAuth2Api')).toMatchObject(newApp);
 			});
 
-			it('should keep the previous overwrites when a payload is invalid', async () => {
+			it('should replace the overwrites with the valid part of a later payload', async () => {
 				const instance = await createInstance(base);
 
-				expect(() =>
-					instance.setPlainData({
-						...base,
-						__versions: { notionOAuth2Api: { version: 1, ...newApp } },
-					}),
-				).toThrow(UserError);
+				instance.setPlainData(newerThan(1));
 
 				expect(instance.getAll()).toEqual(base);
 				expect(instance.getOverwrites('notionOAuth2Api')).toEqual(baseApp);
