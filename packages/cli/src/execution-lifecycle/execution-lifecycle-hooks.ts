@@ -344,6 +344,9 @@ function hookFunctionsPush(
 	});
 	hooks.addHandler('nodeExecuteAfter', async function (nodeName, data, executionData) {
 		const { executionId } = this;
+		// The editor clears node state when the execution finishes.
+		if (stoppedExecutions.isStopped(executionId)) return;
+
 		// Push data to session which started workflow after each rendered node
 		logger.debug(`Executing hook on node "${nodeName}" (hookFunctionsPush)`, {
 			executionId,
@@ -353,10 +356,6 @@ function hookFunctionsPush(
 
 		const itemCountByConnectionType = getItemCountByConnectionType(data?.data);
 		const { data: _, ...taskData } = data;
-		// A node that ignores the stop can return afterwards. Do not serialize its data,
-		// and the input of an AI sub-node can be as large as an output.
-		const isStopped = stoppedExecutions.isStopped(executionId);
-		if (isStopped) delete taskData.inputOverride;
 
 		pushInstance.send(
 			{
@@ -371,8 +370,6 @@ function hookFunctionsPush(
 			},
 			pushRef,
 		);
-
-		if (isStopped) return;
 
 		// Fail-closed redaction: if user cannot be resolved, skip the data push
 		// entirely rather than sending unredacted data to the client.

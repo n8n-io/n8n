@@ -710,14 +710,10 @@ describe('Execution Lifecycle Hooks', () => {
 				workflowData.settings = {};
 			});
 
-			it('should not push the output of a node that returns after the stop', async () => {
+			it('should push nothing for a node that returns after the stop', async () => {
 				await lifecycleHooks.runHook('nodeExecuteAfter', [nodeName, taskData, runExecutionData]);
 
-				expect(push.send).not.toHaveBeenCalledWith(
-					expect.objectContaining({ type: 'nodeExecuteAfterData' }),
-					pushRef,
-					true,
-				);
+				expect(push.send).not.toHaveBeenCalled();
 			});
 
 			it('should leave a run that was not stopped unchanged', async () => {
@@ -778,29 +774,6 @@ describe('Execution Lifecycle Hooks', () => {
 					expect(stoppedExecutions.isFinishing(executionId)).toBe(false);
 				},
 			);
-
-			it('should not push the input of an AI sub-node that returns after the stop', async () => {
-				const subNodeTaskData: ITaskData = {
-					...taskData,
-					inputOverride: { ai_languageModel: [[{ json: { prompt: 'large input' } }]] },
-				};
-
-				await lifecycleHooks.runHook('nodeExecuteAfter', [
-					nodeName,
-					subNodeTaskData,
-					runExecutionData,
-				]);
-
-				expect(push.send).toHaveBeenCalledWith(
-					expect.objectContaining({
-						type: 'nodeExecuteAfter',
-						data: expect.objectContaining({
-							data: expect.not.objectContaining({ inputOverride: expect.anything() }),
-						}),
-					}),
-					pushRef,
-				);
-			});
 		});
 
 		it('should include execution source and telemetry metadata in workflow-post-execute events', async () => {
