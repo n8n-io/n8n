@@ -1,7 +1,10 @@
 import type { AgentSseEvent } from '@n8n/api-types';
 
 import { ExecutionRecorder } from '../../execution-recorder';
-import { SystemAgentHostEventChannel } from '../system-agent-host-events';
+import {
+	MAX_HOST_EVENT_PAYLOAD_BYTES,
+	SystemAgentHostEventChannel,
+} from '../system-agent-host-events';
 
 describe('SystemAgentHostEventChannel', () => {
 	it('buffers events until the recorder is attached, then sends and records them in order', () => {
@@ -117,6 +120,24 @@ describe('SystemAgentHostEventChannel', () => {
 			'A host event key must have 1 to 128 characters',
 		);
 		expect(() => channel.emit('test.progress', null, { key: 'k'.repeat(128) })).not.toThrow();
+	});
+
+	it('refuses a payload larger than 64 KiB of JSON', () => {
+		const send = vi.fn();
+		const channel = new SystemAgentHostEventChannel(send);
+		channel.attach(new ExecutionRecorder());
+		// The JSON string adds two quote characters.
+		const atLimit = 'x'.repeat(MAX_HOST_EVENT_PAYLOAD_BYTES - 2);
+
+		expect(() => channel.emit('test.blob', atLimit)).not.toThrow();
+		expect(() => channel.emit('test.blob', `${atLimit}x`)).toThrow(
+			'A host event payload must not be larger than 64 KiB',
+		);
+		// The cap counts UTF-8 bytes, not characters.
+		expect(() =>
+			channel.emit('test.blob', { text: 'é'.repeat(MAX_HOST_EVENT_PAYLOAD_BYTES / 2) }),
+		).toThrow('A host event payload must not be larger than 64 KiB');
+		expect(send).toHaveBeenCalledTimes(1);
 	});
 
 	it('refuses an empty or too long name', () => {

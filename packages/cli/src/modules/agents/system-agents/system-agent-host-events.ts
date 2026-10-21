@@ -25,6 +25,9 @@ export type SystemAgentHostEventEmitter = (
 
 const MAX_HOST_EVENT_ID_LENGTH = 128;
 
+/** Status events are small. The cap bounds the stored timeline, the stream and exports. */
+export const MAX_HOST_EVENT_PAYLOAD_BYTES = 64 * 1024;
+
 function isValidId(value: unknown): value is string {
 	return typeof value === 'string' && value.length > 0 && value.length <= MAX_HOST_EVENT_ID_LENGTH;
 }
@@ -62,6 +65,9 @@ export class SystemAgentHostEventChannel {
 		const { key } = options;
 		if (key !== undefined && !isValidId(key)) {
 			throw new UnexpectedError('A host event key must have 1 to 128 characters');
+		}
+		if (Buffer.byteLength(JSON.stringify(payload), 'utf8') > MAX_HOST_EVENT_PAYLOAD_BYTES) {
+			throw new UnexpectedError('A host event payload must not be larger than 64 KiB');
 		}
 		if (this.closed) {
 			this.onDropped?.(name);

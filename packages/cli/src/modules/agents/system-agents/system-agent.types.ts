@@ -36,7 +36,8 @@ interface SystemAgentTurnBase<TLease> {
 	 * shows it again after a reload. Pass a `key` to update an earlier event
 	 * with the same name. The provider can keep the callback for its tools
 	 * and hooks. `onSettled` can emit only when the turn has an execution
-	 * record. Events after `onSettled` returns are dropped.
+	 * record. Events after `onSettled` returns are dropped. It throws when
+	 * the payload is larger than 64 KiB as JSON.
 	 */
 	emitHostEvent: SystemAgentHostEventEmitter;
 }
