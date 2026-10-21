@@ -11618,9 +11618,9 @@
 		"key": "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
 		"subcategory": "*",
 		"properties": {
-			"displayName": "Azure AI Foundry Chat Model",
+			"displayName": "Microsoft Foundry Chat Model",
 			"defaults": {
-				"name": "Azure AI Foundry Chat Model"
+				"name": "Microsoft Foundry Chat Model"
 			},
 			"description": "For advanced usage with an AI chain",
 			"name": "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
@@ -11640,7 +11640,14 @@
 						}
 					]
 				},
-				"alias": ["Azure OpenAI Chat Model", "Azure OpenAI", "Azure AI Foundry", "Foundry"]
+				"alias": [
+					"Azure",
+					"Azure OpenAI",
+					"Azure OpenAI Chat Model",
+					"Azure AI Foundry",
+					"Foundry",
+					"AOAI"
+				]
 			}
 		},
 		"type": "node"

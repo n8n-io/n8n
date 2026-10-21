@@ -5,6 +5,8 @@ Oxlint version: 1.78.0
 
 This file is the working backlog for the ESLint to Oxlint migration. It focuses on rules that block an Oxlint-only lint command for many packages. `oxlint-gap.json` is the machine-readable source of truth for shared-layer parity.
 
+Oxlint configs are the executable policy for migrated packages. ESLint policy twins may remain temporarily for parity review, but migration tooling must also support packages that have removed them.
+
 ## Completion criteria
 
 A blocker is complete when all of these conditions are true:

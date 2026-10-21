@@ -33,7 +33,6 @@ export class EmbeddingsDatabricks implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Embeddings Databricks',
 		name: 'embeddingsDatabricks',
-		hidden: true,
 		icon: {
 			light: 'file:../../shared/icons/databricks.svg',
 			dark: 'file:../../shared/icons/databricks.dark.svg',
@@ -161,6 +160,8 @@ export class EmbeddingsDatabricks implements INodeType {
 		const embeddings = new OpenAIEmbeddings({
 			// Placeholder only - the fetch wrapper overwrites the Authorization header
 			apiKey: 'databricks-oauth',
+			// The gateway ignores the SDK's default base64 encoding and returns floats
+			encodingFormat: 'float',
 			model: modelName,
 			...options,
 			timeout,

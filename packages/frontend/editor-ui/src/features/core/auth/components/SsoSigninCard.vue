@@ -170,7 +170,7 @@ const onSubmit = (values: unknown) => {
 								{{ i18n.baseText('auth.signin.ssoRequired') }}
 							</N8nText>
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								size="small"
 								:class="$style.calloutAction"
 								:label="i18n.baseText('sso.login.button')"

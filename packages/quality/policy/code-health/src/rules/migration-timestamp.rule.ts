@@ -79,31 +79,39 @@ export class MigrationTimestampRule extends BaseRule<CodeHealthContext> {
 				? new Set(addedFiles.map((p) => path.normalize(p)))
 				: undefined;
 
-		// Dedupe to ordering slots: a `common/<ts>-<name>.ts` paired with a
-		// `postgresdb|sqlite/<ts>-<name>.ts` override is one logical migration
-		// (same TypeORM class name, only one runs per dialect) and occupies a
-		// single slot. Two files at the same timestamp with *different*
-		// suffixes remain distinct slots and still trip ordering.
-		const slotByKey = new Map<string, { timestamp: number; slotKey: string }>();
+		// Dialect overrides with the same filename share one ordering slot.
+		const slotByKey = new Map<
+			string,
+			{ timestamp: number; slotKey: string; isExisting: boolean }
+		>();
+		const slotsPerTimestamp = new Map<number, number>();
 		for (const m of parsed) {
-			if (!slotByKey.has(m.slotKey)) {
-				slotByKey.set(m.slotKey, { timestamp: m.timestamp, slotKey: m.slotKey });
+			const isExisting = !addedFilesSet?.has(path.normalize(m.relativePath));
+			const slot = slotByKey.get(m.slotKey);
+			if (slot) {
+				// Keep the slot as existing if any dialect file predates the PR.
+				slot.isExisting ||= isExisting;
+			} else {
+				slotByKey.set(m.slotKey, { timestamp: m.timestamp, slotKey: m.slotKey, isExisting });
+				slotsPerTimestamp.set(m.timestamp, (slotsPerTimestamp.get(m.timestamp) ?? 0) + 1);
 			}
 		}
-		const slotsDesc = Array.from(slotByKey.values()).sort((a, b) => {
-			if (b.timestamp !== a.timestamp) return b.timestamp - a.timestamp;
-			return a.slotKey.localeCompare(b.slotKey);
-		});
-		const globalMaxSlot = slotsDesc[0];
-		const secondMaxSlot = slotsDesc[1];
-		const globalMax = globalMaxSlot?.timestamp ?? 0;
+		const existingSlotsDesc = Array.from(slotByKey.values())
+			.filter((slot) => slot.isExisting)
+			.sort((a, b) => {
+				if (b.timestamp !== a.timestamp) return b.timestamp - a.timestamp;
+				return a.slotKey.localeCompare(b.slotKey);
+			});
+		const existingMaxSlot = existingSlotsDesc[0];
+		const secondMaxSlot = existingSlotsDesc[1];
+		const existingMax = existingMaxSlot?.timestamp ?? 0;
 		const secondMax = secondMaxSlot?.timestamp ?? 0;
 
 		const violations: Violation[] = [];
 		for (const migration of parsed) {
 			const { filePath, relativePath, fileName, timestamp, slotKey } = migration;
-			const isHeadSlot = globalMaxSlot?.slotKey === slotKey;
-			const floor = isHeadSlot ? secondMax : globalMax;
+			const isHeadSlot = existingMaxSlot?.slotKey === slotKey;
+			const floor = isHeadSlot ? secondMax : existingMax;
 			const ceiling = Math.max(now, floor + ceilingBuffer);
 
 			const isAdded = addedFilesSet?.has(path.normalize(relativePath)) ?? false;
@@ -116,6 +124,19 @@ export class MigrationTimestampRule extends BaseRule<CodeHealthContext> {
 						1,
 						`${fileName} (${timestamp}) is at or below the highest existing migration timestamp (${floor}). New migrations must be strictly ordered — pick a timestamp greater than ${floor}.`,
 						`Rename the file using a timestamp greater than ${floor} (e.g. ${floor + 1}).`,
+					),
+				);
+				continue;
+			}
+
+			if (isAdded && (slotsPerTimestamp.get(timestamp) ?? 0) > 1) {
+				violations.push(
+					this.createViolation(
+						filePath,
+						1,
+						1,
+						`${fileName} shares its timestamp (${timestamp}) with a different migration. New migrations must use distinct timestamps.`,
+						`Rename the file using an unused timestamp between ${floor + 1} and ${ceiling}.`,
 					),
 				);
 				continue;

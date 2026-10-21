@@ -19,6 +19,7 @@ import {
 import { TestError } from '../Types';
 import { CredentialApiHelper } from './credential-api-helper';
 import { AgentApiHelper } from './agent-api-helper';
+import { CommunityPackagesApiHelper } from './community-packages-api-helper';
 import { DynamicCredentialApiHelper } from './dynamic-credential-api-helper';
 import { ExternalSecretsApiHelper } from './external-secrets-api-helper';
 import { InstanceAiApiHelper } from './instance-ai-api-helper';
@@ -102,6 +103,7 @@ export class ApiHelpers {
 	nodeTypePolicies: TypePolicyApiHelper<'node'>;
 	credentialTypePolicies: TypePolicyApiHelper<'credential'>;
 	nodeParameters: NodeParameterApiHelper;
+	communityPackages: CommunityPackagesApiHelper;
 
 	publicApi: PublicApiHelper;
 
@@ -131,6 +133,7 @@ export class ApiHelpers {
 		this.nodeTypePolicies = new TypePolicyApiHelper(this, 'node');
 		this.credentialTypePolicies = new TypePolicyApiHelper(this, 'credential');
 		this.nodeParameters = new NodeParameterApiHelper(this);
+		this.communityPackages = new CommunityPackagesApiHelper(this);
 
 		this.publicApi = new PublicApiHelper(this);
 	}

@@ -225,6 +225,194 @@ describe('useNodeSettingsParameters', () => {
 		});
 	});
 
+	describe('updateNodeParameter value shapes', () => {
+		const show = (operation: string) => ({ show: { operation: [operation] } });
+		const channelLocator = (operation: string): INodeProperties => ({
+			displayName: 'Channel',
+			name: 'channelId',
+			type: 'resourceLocator',
+			default: { mode: 'id', value: '' },
+			modes: [{ displayName: 'ID', name: 'id', type: 'string' }],
+			displayOptions: show(operation),
+		});
+
+		const nodeType: INodeTypeDescription = {
+			version: 1,
+			name: 'testChat',
+			displayName: 'Test Chat',
+			description: '',
+			group: ['output'],
+			defaults: { name: 'Test Chat' },
+			inputs: [],
+			outputs: [],
+			properties: [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					noDataExpression: true,
+					options: [
+						{ name: 'Archive', value: 'archive' },
+						{ name: 'Create', value: 'create' },
+						{ name: 'Get', value: 'get' },
+					],
+					default: 'create',
+				},
+				channelLocator('get'),
+				channelLocator('archive'),
+				{
+					displayName: 'Channel',
+					name: 'channelId',
+					type: 'string',
+					default: '',
+					displayOptions: show('create'),
+				},
+				{
+					displayName: 'User',
+					name: 'userId',
+					type: 'options',
+					options: [{ name: 'Ann', value: 'U1' }],
+					default: '',
+					displayOptions: show('get'),
+				},
+				{
+					displayName: 'User',
+					name: 'userId',
+					type: 'string',
+					default: '',
+					displayOptions: show('create'),
+				},
+				{
+					displayName: 'Limit',
+					name: 'limit',
+					type: 'number',
+					default: 50,
+					displayOptions: show('get'),
+				},
+				{
+					displayName: 'Limit',
+					name: 'limit',
+					type: 'string',
+					default: '',
+					displayOptions: show('create'),
+				},
+				{ displayName: 'Many', name: 'many', type: 'boolean', default: false },
+				{
+					displayName: 'Method',
+					name: 'method',
+					type: 'options',
+					options: [
+						{ name: 'GET', value: 'GET' },
+						{ name: 'PUT', value: 'PUT' },
+					],
+					default: 'GET',
+					displayOptions: { show: { many: [false] } },
+				},
+				{
+					displayName: 'Methods',
+					name: 'method',
+					type: 'multiOptions',
+					options: [
+						{ name: 'GET', value: 'GET' },
+						{ name: 'PUT', value: 'PUT' },
+					],
+					default: ['GET'],
+					displayOptions: { show: { many: [true] } },
+				},
+			],
+		};
+
+		const picked = { __rl: true, mode: 'id', value: 'C0123' };
+
+		let docStore: MockedStore<typeof useWorkflowDocumentStore>;
+		let node: INodeUi;
+
+		const change = (name: string, value: unknown) => {
+			const { updateNodeParameter } = useNodeSettingsParameters();
+			updateNodeParameter(
+				ref<INodeParameters>({}),
+				{ name: `parameters.${name}`, value: value as NodeParameterValue },
+				value as NodeParameterValue,
+				node,
+				false,
+			);
+			const calls = vi.mocked(docStore.setNodeParameters).mock.calls;
+			node = { ...node, parameters: calls[calls.length - 1][0].value as INodeParameters };
+		};
+
+		beforeEach(() => {
+			setActivePinia(createTestingPinia());
+
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeType);
+
+			docStore = mockedStore(useWorkflowDocumentStore, createWorkflowDocumentId(''));
+
+			vi.spyOn(nodeSettingsUtils, 'updateDynamicConnections').mockReturnValue(null);
+			vi.spyOn(nodeHelpers, 'useNodeHelpers').mockReturnValue({
+				...nodeHelpers.useNodeHelpers(),
+				updateNodeParameterIssuesByName: vi.fn(),
+				updateNodeCredentialIssuesByName: vi.fn(),
+			});
+
+			node = {
+				id: 'chat-node',
+				name: 'Post to team',
+				type: 'testChat',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: { operation: 'get' },
+			};
+		});
+
+		afterEach(() => {
+			vi.resetAllMocks();
+		});
+
+		it('does not carry a resource locator into a same-named string parameter', () => {
+			change('channelId', picked);
+			change('operation', 'create');
+
+			expect(node.parameters.channelId).toBe('');
+		});
+
+		it('does not carry a string into a same-named resource locator when the operation is its default', () => {
+			node = { ...node, parameters: { channelId: 'general' } };
+
+			change('operation', 'get');
+
+			expect(node.parameters.channelId).toEqual({ __rl: true, mode: 'id', value: '' });
+		});
+
+		it('does not carry a single option into a same-named multi-select', () => {
+			change('method', 'PUT');
+			change('many', true);
+
+			expect(node.parameters.method).toEqual(['GET']);
+		});
+
+		it('carries values between declarations of the same shape', () => {
+			change('channelId', picked);
+			change('operation', 'archive');
+
+			expect(node.parameters.channelId).toEqual(picked);
+		});
+
+		it('carries values between number and string parameters', () => {
+			change('limit', 10);
+			change('operation', 'create');
+
+			expect(node.parameters.limit).toBe(10);
+		});
+
+		it('carries values between string and options parameters', () => {
+			change('userId', 'U1');
+			change('operation', 'create');
+
+			expect(node.parameters.userId).toBe('U1');
+		});
+	});
+
 	describe('shouldDisplayNodeParameter', () => {
 		const displayParameterSpy = vi.fn();
 		function mockNodeHelpers({ isCustomApiCallSelected = false } = {}) {

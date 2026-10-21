@@ -32,6 +32,8 @@ export const FINISH_REASONS = [
 	'tool-calls',
 	'error',
 	'other',
+	'paused',
+	'cancelled',
 ] as const;
 
 export type FinishReason = (typeof FINISH_REASONS)[number];
@@ -55,7 +57,22 @@ export type TokenUsage<T extends Record<string, unknown> = Record<string, unknow
 	outputTokenDetails?: {
 		reasoning?: number;
 	};
+	/**
+	 * The same usage split by the prompt size of each model call. Some providers
+	 * charge more for a call with a long prompt, so a sum over many calls is not
+	 * enough to price it. Present only when every summed call is in the split.
+	 */
+	byPromptSize?: PromptSizeUsage[];
 	additionalMetadata?: T;
+};
+
+/** Token counts of the model calls whose prompt size falls in one bucket. */
+export type PromptSizeUsage = {
+	/** Lower bound of the bucket: every call had a prompt of more than this many tokens. */
+	promptTokensOver: number;
+	/** Largest prompt among the calls, in tokens, cache reads and writes included. */
+	maxPromptTokens: number;
+	usage: Omit<TokenUsage, 'byPromptSize' | 'cost' | 'additionalMetadata'>;
 };
 
 /**
@@ -222,6 +239,10 @@ export interface AgentInputBoundary {
 }
 
 export interface ExecutionOptions {
+	/** Expose local and provider tools to the model. Defaults to true. */
+	toolsEnabled?: boolean;
+	/** Request a cooperative pause before the next model step. */
+	shouldPause?: () => Promise<boolean>;
 	/** Commit additional input between model calls. Stream consumers must acknowledge input-boundary chunks. */
 	onInputBoundary?: (boundary: AgentInputBoundary) => Promise<AgentDbMessage[]>;
 	maxIterations?: number;
@@ -275,8 +296,6 @@ export interface ExecutionOptions {
 	approvalContext?: ToolApprovalContext;
 	onStepStart?: (event: GenerateTextStepStartEvent) => void | Promise<void>;
 	onStepEnd?: (event: GenerateTextStepEndEvent) => void | Promise<void>;
-	/** @deprecated Use `onStepEnd` instead. */
-	onStepFinish?: (event: GenerateTextStepEndEvent) => void | Promise<void>;
 	/**
 	 * Durable-log RFC (resilience phase), opt-in: persist a `running`-status
 	 * checkpoint at every step boundary (after a tool batch settles, before the
@@ -289,6 +308,11 @@ export interface ExecutionOptions {
 
 export interface PersistedExecutionOptions {
 	maxIterations?: number;
+}
+
+export interface NativeToolDeferralConfig {
+	/** Local tools that stay available without provider tool search. */
+	eagerToolNames: readonly string[];
 }
 
 export interface AnthropicPromptCachingConfig {
@@ -322,7 +346,7 @@ export interface OpenAIPromptCachingConfig {
 export interface PromptCachingConfig {
 	/** Master switch. Defaults to `true` when this config is set. */
 	enabled?: boolean;
-	/** Anthropic-specific config, or `false` to disable for Anthropic models. */
+	/** Claude cache settings, including OpenRouter and Vertex. Set `false` to disable. */
 	anthropic?: false | AnthropicPromptCachingConfig;
 	/** OpenAI-specific config, or `false` to disable for OpenAI models. */
 	openai?: false | OpenAIPromptCachingConfig;
@@ -432,6 +456,11 @@ export interface BuiltAgent {
 		method: 'stream',
 		data: unknown,
 		options: ResumeOptions & ExecutionOptions,
+	): Promise<StreamResult>;
+
+	/** Resume a user pause without repeating completed tools. */
+	resumePaused(
+		options: Omit<ResumeOptions, 'toolCallId'> & ExecutionOptions,
 	): Promise<StreamResult>;
 
 	/** Approve a tool that uses requireApproval or needsApprovalFn */

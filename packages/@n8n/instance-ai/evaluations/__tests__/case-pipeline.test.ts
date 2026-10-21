@@ -1,3 +1,6 @@
+import type { InstanceAiEvalLlmUsage } from '@n8n/api-types';
+
+import { EvalUsageMeter, recordEvalUsage } from '../../src/utils/eval-usage';
 import type { CliArgs } from '../cli/args';
 import type { BuildResult } from '../harness/build-workflow';
 import { cleanupBuild } from '../harness/cleanup';
@@ -113,7 +116,20 @@ function makeDeps(
 		buildExpectationsByKey: new Map(),
 		agentContextByKey: new Map(),
 		runDebugByThreadId: new Map(),
+		harnessUsageByKey: new Map(),
 		...overrides,
+	};
+}
+
+function usageOf(agent: string, calls: number): InstanceAiEvalLlmUsage {
+	return {
+		agent,
+		model: 'anthropic/claude-sonnet-4-6',
+		calls,
+		uncachedInputTokens: 100 * calls,
+		cacheReadTokens: 0,
+		cacheWriteTokens: 0,
+		outputTokens: 10 * calls,
 	};
 }
 
@@ -123,6 +139,34 @@ beforeEach(() => {
 });
 
 describe('createCasePipeline', () => {
+	it('counts the model usage of each row and of its build under the case and iteration', async () => {
+		const lane = makeLane();
+		// The scenario run reports the server's mock usage, the build the simulated user's.
+		vi.mocked(lane.tracedExecute).mockImplementation(async () => {
+			recordEvalUsage([usageOf('eval-mock-responder', 2)]);
+			return await Promise.resolve({ success: true, score: 1, reasoning: 'works' } as never);
+		});
+		const orchestrator = makeOrchestrator({ build: okBuild(), lane, buildDurationMs: 42 });
+		vi.mocked(orchestrator.getOrBuild).mockImplementation(async () => {
+			recordEvalUsage([usageOf('eval-user-proxy', 1)]);
+			return await Promise.resolve({ build: okBuild(), lane, buildDurationMs: 42 });
+		});
+		const harnessUsageByKey = new Map<string, EvalUsageMeter>();
+		const pipeline = createCasePipeline(makeDeps(orchestrator, { harnessUsageByKey }));
+
+		await Promise.all([
+			pipeline.runRow({ ...rowInputs('happy-path'), _iteration: 0 }),
+			pipeline.runRow({ ...rowInputs('happy-path'), _iteration: 1 }),
+		]);
+
+		for (const key of ['0:case-a', '1:case-a']) {
+			expect(harnessUsageByKey.get(key)?.entries()).toEqual([
+				usageOf('eval-user-proxy', 1),
+				usageOf('eval-mock-responder', 2),
+			]);
+		}
+	});
+
 	it('runs a workflow scenario row and eagerly cleans up after the last row', async () => {
 		const lane = makeLane();
 		vi.mocked(lane.tracedExecute).mockResolvedValue({
@@ -185,6 +229,52 @@ describe('createCasePipeline', () => {
 		});
 		expect(String(output.reasoning)).toContain('premise is missing');
 		// The scenario must never run: its result would describe absent history.
+		expect(vi.mocked(lane.tracedExecute)).not.toHaveBeenCalled();
+	});
+
+	// Unlike a missing premise, a run that did not start clean still counts, so a leak
+	// shows in the pass rate. The attribution keeps it out of the builder's numbers.
+	it("fails a build that read another build's workflow as framework_issue, and counts it", async () => {
+		const lane = makeLane();
+		const cached: CachedBuild = {
+			build: { ...okBuild(), foreignWorkflowReads: ['other-wf'] },
+			lane,
+			buildDurationMs: 42,
+		};
+		const pipeline = createCasePipeline(makeDeps(makeOrchestrator(cached)));
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(output).toMatchObject({
+			passed: false,
+			failureCategory: 'framework_issue',
+			attribution: 'framework_issue',
+		});
+		expect(output.incomplete).toBeFalsy();
+		expect(String(output.reasoning)).toContain('another build');
+		expect(vi.mocked(lane.tracedExecute)).not.toHaveBeenCalled();
+	});
+
+	// A timeout outranks the fault, as on every other timed-out build.
+	it("keeps a timed-out build that read another build's workflow out of the pass rate", async () => {
+		const lane = makeLane();
+		const timeout = { kind: 'turn' as const, turn: 2, elapsedMs: 900_400 };
+		const cached: CachedBuild = {
+			build: okBuild({ timeout, foreignWorkflowReads: ['other-wf'] }),
+			lane,
+			buildDurationMs: 42,
+		};
+		const pipeline = createCasePipeline(makeDeps(makeOrchestrator(cached)));
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(output).toMatchObject({
+			passed: false,
+			incomplete: true,
+			attribution: 'timeout',
+			failureCategory: 'build_timeout',
+			buildTimeout: timeout,
+		});
 		expect(vi.mocked(lane.tracedExecute)).not.toHaveBeenCalled();
 	});
 

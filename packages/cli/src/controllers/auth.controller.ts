@@ -226,6 +226,7 @@ export class AuthController {
 			payload.token,
 		);
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
 
 		if (!isWithinUsersLimit) {

@@ -26,7 +26,7 @@ import type { CredentialRequest } from '@/requests';
 
 import { createNewCredentialsPayload, createdCredentialsWithScopes } from './credentials.test-data';
 import type { CredentialDependencyService } from '../credential-dependency.service';
-import type { CredentialsFinderService } from '../credentials-finder.service';
+import type { CredentialsFinderService } from '@n8n/backend-services';
 import { CredentialsController } from '../credentials.controller';
 import { CredentialsService } from '../credentials.service';
 import * as validation from '../validation';
@@ -1162,7 +1162,7 @@ describe('CredentialsController', () => {
 				isResolvable: true,
 			});
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(privateCredential);
-			const deleteSpy = vi.spyOn(credentialsService, 'delete').mockResolvedValue(undefined);
+			const deleteSpy = vi.spyOn(credentialsService, 'delete').mockResolvedValue(true);
 
 			const deleteReq = {
 				user: { id: 'u1' },

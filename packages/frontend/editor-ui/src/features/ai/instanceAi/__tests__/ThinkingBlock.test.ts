@@ -56,6 +56,35 @@ describe('ThinkingBlock', () => {
 		createTestingPinia({ stubActions: false });
 	});
 
+	it.each(['completed', 'cancelled', 'error'] as const)(
+		'keeps a stale loading tool static when its agent is %s',
+		async (status) => {
+			const tc = makeToolCall({ isLoading: true });
+			const { getByTestId, findByText } = renderComponent({
+				props: {
+					agentNode: makeAgentNode({ status, toolCalls: [tc] }),
+					entries: [toolEntry(tc.toolCallId)],
+					active: false,
+				},
+			});
+			await fireEvent.click(getByTestId('thinking-block-header'));
+			expect((await findByText('Searching nodes')).className).not.toContain('shimmer');
+		},
+	);
+
+	it('animates a loading tool owned by a live agent', async () => {
+		const tc = makeToolCall({ isLoading: true });
+		const { getByTestId, findByText } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ status: 'active', toolCalls: [tc] }),
+				entries: [toolEntry(tc.toolCallId)],
+				active: true,
+			},
+		});
+		await fireEvent.click(getByTestId('thinking-block-header'));
+		expect((await findByText('Searching nodes')).className).toContain('shimmer');
+	});
+
 	it('should show duration from tool-call timestamps when settled', () => {
 		const tc = makeToolCall({
 			startedAt: '2026-01-01T00:00:00Z',
@@ -86,6 +115,46 @@ describe('ThinkingBlock', () => {
 		});
 
 		expect(getByTestId('thinking-block-header')).toHaveTextContent('Thought for 1m 5s');
+	});
+
+	it('should not count the time until an interrupted tool call was swept', () => {
+		const tc = makeToolCall({
+			startedAt: '2026-01-01T00:00:00Z',
+			completedAt: '2026-01-02T22:06:23Z',
+			interrupted: true,
+		});
+		const { getByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ toolCalls: [tc] }),
+				entries: [toolEntry('tc-1')],
+				active: false,
+			},
+		});
+
+		expect(getByTestId('thinking-block-header')).toHaveTextContent('Finished thinking');
+	});
+
+	it('should end the duration at the last completed call when a later call was interrupted', () => {
+		const done = makeToolCall({
+			toolCallId: 'tc-1',
+			startedAt: '2026-01-01T00:00:00Z',
+			completedAt: '2026-01-01T00:00:12Z',
+		});
+		const swept = makeToolCall({
+			toolCallId: 'tc-2',
+			startedAt: '2026-01-01T00:00:13Z',
+			completedAt: '2026-01-02T22:06:23Z',
+			interrupted: true,
+		});
+		const { getByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ toolCalls: [done, swept] }),
+				entries: [toolEntry('tc-1'), toolEntry('tc-2')],
+				active: false,
+			},
+		});
+
+		expect(getByTestId('thinking-block-header')).toHaveTextContent('Thought for 12s');
 	});
 
 	it('should fall back to a static title when no timestamps exist', () => {
@@ -335,7 +404,7 @@ describe('ThinkingBlock', () => {
 	});
 
 	it('should render narration, reasoning, and tool rows inside the rail when expanded', async () => {
-		const tc = makeToolCall({ toolCallId: 'tc-1', toolName: 'credentials' });
+		const tc = makeToolCall({ toolCallId: 'tc-1', toolName: 'workflow_builder_credentials' });
 		const { getByTestId, getAllByText, getByText } = renderComponent({
 			props: {
 				agentNode: makeAgentNode({ status: 'active', toolCalls: [tc] }),

@@ -18,6 +18,7 @@ import {
 	type BridgeResumeExecutionContext,
 	type PlatformAgentContext,
 	type PlatformContextQueryParams,
+	type UnauthenticatedWebhookContext,
 	type UnauthenticatedWebhookResponse,
 } from '../../agent-chat-integration';
 import type { ChatInstance } from '../../chat-integration.service';
@@ -39,6 +40,8 @@ import {
 } from './slack-bridge-behavior';
 import { SlackManagedSetupService } from './slack-managed-setup.service';
 import { executeSlackContextQuery, subscribeSlackThread } from './slack-operations';
+import { buildSlackOriginDraft } from './slack-origin';
+import type { DecodedThread, OriginInput } from '../../integration-origin-support';
 
 /**
  * Slack platform integration.
@@ -194,6 +197,10 @@ export class SlackIntegration extends AgentChatIntegration {
 		});
 	}
 
+	async buildOriginDraft(input: OriginInput, decoded: DecodedThread) {
+		return await buildSlackOriginDraft(input, decoded);
+	}
+
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {
 		const botToken = this.extractBotToken(ctx.credential);
 		const signingSecret = this.extractSigningSecret(ctx.credential);
@@ -201,6 +208,8 @@ export class SlackIntegration extends AgentChatIntegration {
 		return createSlackAdapter({
 			botToken,
 			signingSecret,
+			// Post-and-edit delivers short updates without a native stream buffer.
+			nativeStreaming: false,
 			agentView: this.usesAgentMessagingExperience(ctx.integration),
 		});
 	}
@@ -211,7 +220,10 @@ export class SlackIntegration extends AgentChatIntegration {
 	 * bot token + signing secret in n8n. Slack's docs:
 	 * https://api.slack.com/events/url_verification
 	 */
-	handleUnauthenticatedWebhook(body: unknown): UnauthenticatedWebhookResponse | undefined {
+	handleUnauthenticatedWebhook(
+		context: UnauthenticatedWebhookContext,
+	): UnauthenticatedWebhookResponse | undefined {
+		const { body } = context;
 		if (!body || typeof body !== 'object') return undefined;
 		const evt = body as { type?: unknown; challenge?: unknown };
 		if (evt.type === 'url_verification' && typeof evt.challenge === 'string') {

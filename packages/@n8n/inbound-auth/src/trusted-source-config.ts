@@ -16,7 +16,6 @@ export const JwtAlgorithmSchema = z.enum([
 	'PS256',
 	'PS384',
 	'PS512',
-	'EdDSA',
 ]);
 export type JwtAlgorithm = z.infer<typeof JwtAlgorithmSchema>;
 
@@ -39,7 +38,7 @@ export const ManagedBySchema = z.enum(['system', 'admin']);
 export type ManagedBy = z.infer<typeof ManagedBySchema>;
 
 // An admin-supplied endpoint is fetched server-side, so it must be https.
-const HttpsUrl = z
+export const HttpsUrl = z
 	.string()
 	.url()
 	.refine((url) => url.startsWith('https://'), { message: 'must be an https URL' });
@@ -68,6 +67,7 @@ export const Oauth2AuthenticationSchema = z.object({
 	verification: z
 		.discriminatedUnion('mode', [z.object({ mode: z.literal('jwt') })])
 		.default({ mode: 'jwt' }),
+	allowedTokenTypes: z.array(z.string().min(1)).min(1).default(['at+jwt', 'application/at+jwt']),
 	algorithms: z
 		.array(JwtAlgorithmSchema)
 		.min(1)
@@ -75,12 +75,12 @@ export const Oauth2AuthenticationSchema = z.object({
 	// Upper bounds keep both windows from disabling `exp`/`nbf` checks. Relaxing later is additive.
 	maxTokenLifetimeSeconds: z.number().int().positive().max(86400).default(86400),
 	clockSkewSeconds: z.number().int().nonnegative().max(300).default(60),
-	// The client secret is not part of the document: see `TrustedSourceSecretsSchema`.
 	client: z
 		.discriminatedUnion('kind', [
 			z.object({
 				kind: z.literal('registered'),
 				clientId: z.string().min(1),
+				clientSecret: z.string().min(1).optional(),
 				scopes: z.array(z.string()).optional(),
 			}),
 			z.object({ kind: z.literal('virtual') }),
@@ -150,6 +150,7 @@ export const TrustedSourceConfigV1Schema = z.object({
 });
 export type TrustedSourceConfigV1 = z.infer<typeof TrustedSourceConfigV1Schema>;
 export type TrustedSourceConfigV1Input = z.input<typeof TrustedSourceConfigV1Schema>;
+export type TrustedSourceConfigInput = z.input<typeof TrustedSourceConfigSchema>;
 
 const ownerRoleIssue = (path: Array<string | number>): z.IssueData => ({
 	code: z.ZodIssueCode.custom,
@@ -180,6 +181,14 @@ export const TrustedSourceConfigSchema = z
 				code: z.ZodIssueCode.custom,
 				message: 'manual discovery with jwks-uri keys requires jwksUri or metadataUrl',
 				path: ['authentication', 'discovery'],
+			});
+		}
+		// Without a lookup, provisioning would create a second user for an email that exists.
+		if (identity.provision.human === 'jit' && identity.linkByEmail === 'off') {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'jit provisioning requires email linking',
+				path: ['identity', 'linkByEmail'],
 			});
 		}
 		if (identity.provision.human === 'jit' && identity.roleMapping.mode === 'off') {
@@ -255,19 +264,6 @@ export const trustedSourceConfigSchemaFor = (managedBy: ManagedBy) =>
 			}
 		}
 	});
-
-/**
- * Secret material of a trusted source. Stored apart from the config document in its own encrypted
- * column, so the document stays safe to return to an admin UI unchanged. Strict: a secret payload
- * with an unknown key is a bug, not a forward-compatible read.
- */
-export const TrustedSourceSecretsSchema = z
-	.object({
-		version: z.literal(1),
-		clientSecret: z.string().min(1).optional(),
-	})
-	.strict();
-export type TrustedSourceSecrets = z.infer<typeof TrustedSourceSecretsSchema>;
 
 type ConfigMigration = (config: TrustedSourceConfig) => TrustedSourceConfig;
 

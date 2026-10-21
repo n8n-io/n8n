@@ -19,7 +19,7 @@ export const ICON_PICKER_BLOCKLIST: ReadonlySet<string> = new Set([
 	'share', // "Shared with me" section
 	'user', // Personal project link
 	'message-circle', // Chat hub navigation link
-	'cloud', // Cloud admin panel link
+	'cloud', // Cloud console link
 	'lightbulb', // Resource center
 	'package-open', // Templates link
 	'chart-column-decreasing', // Insights analytics page

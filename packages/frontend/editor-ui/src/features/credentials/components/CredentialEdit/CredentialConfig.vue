@@ -55,6 +55,8 @@ import CredentialTypeSelector from './CredentialTypeSelector.vue';
 import { useQuickConnect } from '../../quickConnect/composables/useQuickConnect';
 import QuickConnectButton from '../../quickConnect/components/QuickConnectButton.vue';
 import QuickConnectBanner from '../../quickConnect/components/QuickConnectBanner.vue';
+import { useGatewayCreditsPromotion } from '../../gatewayCreditsPromotion/useGatewayCreditsPromotion';
+import GatewayCreditsPromotion from '../../gatewayCreditsPromotion/GatewayCreditsPromotion.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import type { ProjectType } from '@/features/collaboration/projects/projects.types';
@@ -65,6 +67,8 @@ type Props = {
 	credentialProperties: INodeProperties[];
 	credentialData: ICredentialDataDecryptedObject;
 	credentialId?: string;
+	n8nProjectId?: string;
+	isInstanceCredential?: boolean;
 	credentialPermissions: PermissionsRecord['credential'];
 	parentTypes?: string[];
 	showValidationWarning?: boolean;
@@ -129,6 +133,9 @@ const chatPanelStore = useChatPanelStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const { getQuickConnectOption } = useQuickConnect();
+const { promotionText } = useGatewayCreditsPromotion({
+	credentialType: () => props.credentialType.name,
+});
 
 onBeforeMount(async () => {
 	uiStore.activeCredentialType = props.credentialType.name;
@@ -461,6 +468,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					:text="quickConnectBannerText"
 					:disclaimer="quickConnectOption?.disclaimer"
 				/>
+				<GatewayCreditsPromotion v-if="promotionText" :text="promotionText" />
 				<QuickConnectButton
 					:service-name="serviceName"
 					:credential-type-name="credentialType.name"
@@ -470,6 +478,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 			</template>
 
 			<template v-else>
+				<GatewayCreditsPromotion v-if="promotionText" :text="promotionText" />
 				<N8nCallout
 					v-if="
 						!isInstanceAiCredentialHelpAvailable &&
@@ -577,7 +586,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 								@click="$emit('oauth')"
 							/>
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								size="small"
 								:class="$style.disconnectButton"
 								:label="i18n.baseText('credentialEdit.credentialConfig.disconnect')"
@@ -665,14 +674,14 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					<template v-if="canConnect" #button>
 						<div :class="$style.bannerActions">
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								size="small"
 								:label="i18n.baseText('credentialEdit.credentialConfig.switchAccount')"
 								data-test-id="oauth-switch-account-button"
 								@click="$emit('oauth')"
 							/>
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								size="small"
 								:class="$style.disconnectButton"
 								:label="i18n.baseText('credentialEdit.credentialConfig.disconnect')"
@@ -776,6 +785,10 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				/>
 				<CredentialInputs
 					v-else-if="credentialType && canWrite"
+					:credential-type="credentialType.name"
+					:credential-id="credentialId"
+					:n8n-project-id="n8nProjectId"
+					:is-instance-credential="isInstanceCredential"
 					:credential-data="credentialData"
 					:credential-properties="credentialProperties"
 					:documentation-url="documentationUrl"

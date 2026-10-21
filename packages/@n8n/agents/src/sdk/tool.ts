@@ -241,6 +241,8 @@ export class Tool<
 
 	private outputTrustValue?: BuiltTool['outputTrust'];
 
+	private endsTurnFn?: (output: OutputType<TOutput>) => boolean;
+
 	private providerOptionsValue?: Record<string, JSONObject>;
 
 	private handleCancellationValue?: boolean;
@@ -251,8 +253,19 @@ export class Tool<
 
 	private systemInstructionText?: string;
 
+	private legacyNamesValue?: string[];
+
 	constructor(name: string) {
 		this.name = name;
+	}
+
+	/**
+	 * Declare former names of this tool. Suspended calls and message history
+	 * persisted under a former name still resolve to this tool.
+	 */
+	legacyNames(...names: string[]): this {
+		this.legacyNamesValue = [...(this.legacyNamesValue ?? []), ...names];
+		return this;
 	}
 
 	/** Set the tool description. Required before building. */
@@ -334,6 +347,12 @@ export class Tool<
 		return this;
 	}
 
+	/** End the run, without another model call, when `fn` returns true for an output. */
+	endsTurnWhen(fn: (output: OutputType<TOutput>) => boolean): this {
+		this.endsTurnFn = fn;
+		return this;
+	}
+
 	/** Treat every model-facing result and error from this tool as external reference data. */
 	untrustedOutput(): this {
 		this.outputTrustValue = 'untrusted';
@@ -401,6 +420,9 @@ export class Tool<
 		if (hasResume && !hasSuspend) {
 			throw new Error(`Tool "${this.name}" has .resume() but missing .suspend()`);
 		}
+		if (this.endsTurnFn && this.toModelOutputFn) {
+			throw new Error(`Tool "${this.name}" cannot combine .endsTurnWhen() with .toModelOutput()`);
+		}
 
 		const hasApproval =
 			(this.requireApprovalValue ?? false) || this.needsApprovalFnValue !== undefined;
@@ -412,6 +434,7 @@ export class Tool<
 
 		const built: BuiltTool = {
 			name: this.name,
+			...(this.legacyNamesValue?.length ? { legacyNames: this.legacyNamesValue } : {}),
 			description: this.desc,
 			systemInstruction: this.systemInstructionText,
 			suspendSchema: this.suspendSchemaValue,
@@ -420,6 +443,7 @@ export class Tool<
 			toMessage: this.toMessageFn as (output: unknown) => AgentMessage | undefined,
 			toModelOutput: this.toModelOutputFn as ((output: unknown) => unknown) | undefined,
 			outputTrust: this.outputTrustValue,
+			endsTurn: this.endsTurnFn as ((output: unknown) => boolean) | undefined,
 			handler: this.handlerFn as (
 				input: unknown,
 				ctx: ToolContext | InterruptibleToolContext,

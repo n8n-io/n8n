@@ -1,12 +1,11 @@
 import type { BuiltTool } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
-import type { EventService } from '@n8n/backend-services';
+import { type EventService, type CredentialsFinderService } from '@n8n/backend-services';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { CredentialTypes } from '@/credential-types';
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
@@ -920,6 +919,35 @@ describe('InstanceAiMcpRegistryService', () => {
 			expect(connectionRepository.create).toHaveBeenCalledWith(
 				expect.objectContaining({ toolPermissions: defaults }),
 			);
+		});
+
+		it('uses submitted tool permissions for a new connection', async () => {
+			const {
+				service,
+				connectionRepository,
+				mcpRegistryService,
+				credentialsFinderService,
+				instanceAiSettingsService,
+			} = createService();
+			const toolPermissions = {
+				categories: { read: 'always_allow' as const, write: 'blocked' as const },
+				tools: { delete: 'require_approval' as const },
+			};
+			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+			connectionRepository.create.mockImplementation((entity) => entity as never);
+			connectionRepository.save.mockImplementation(async (entity) => entity as never);
+
+			await service.createConnection(user, {
+				serverSlug: 'linear',
+				credentialId: 'cred-1',
+				toolPermissions,
+			});
+
+			expect(connectionRepository.create).toHaveBeenCalledWith(
+				expect.objectContaining({ toolPermissions }),
+			);
+			expect(instanceAiSettingsService.getMcpToolPermissions).not.toHaveBeenCalled();
 		});
 
 		it('creates a connection and returns it with the resolved credential and server', async () => {

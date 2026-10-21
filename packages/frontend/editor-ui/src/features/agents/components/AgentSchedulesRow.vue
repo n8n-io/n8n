@@ -3,12 +3,14 @@ import type { AgentConfigValidationIssue, AgentJsonTaskConfig, AgentTaskDto } fr
 import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, onMounted, ref, toRef, watch } from 'vue';
+import { useToast } from '@n8n/composables/useToast';
+import { computed, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import { getAgentTasks } from '../composables/useAgentApi';
+import { deleteAgentTask, getAgentTasks } from '../composables/useAgentApi';
 import { AGENT_TASK_MODAL_KEY } from '../constants';
 import { describeSchedule, getNextScheduleOccurrence } from '../utils/scheduleBuilder';
 import AgentChipButton from './AgentChipButton.vue';
+import AgentItemContextMenu from './AgentItemContextMenu.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -41,9 +43,20 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
+const toast = useToast();
 
 const taskBodies = ref<AgentTaskDto[]>([]);
 const taskErrorMessage = ref('');
+const removingTaskId = ref<string | null>(null);
+let active = true;
+
+onBeforeUnmount(() => {
+	active = false;
+});
+
+function isCurrentAgent(projectId: string, agentId: string) {
+	return active && props.projectId === projectId && props.agentId === agentId;
+}
 
 type TaskRow = AgentTaskDto & {
 	enabled: boolean;
@@ -90,6 +103,7 @@ const taskRows = computed<TaskRow[]>(() => {
 });
 
 async function reloadTasks() {
+	const { projectId, agentId } = props;
 	taskErrorMessage.value = '';
 	if (props.agentUnsaved) {
 		taskBodies.value = [];
@@ -97,12 +111,10 @@ async function reloadTasks() {
 	}
 
 	try {
-		taskBodies.value = await getAgentTasks(
-			rootStore.restApiContext,
-			props.projectId,
-			props.agentId,
-		);
+		const tasks = await getAgentTasks(rootStore.restApiContext, projectId, agentId);
+		if (isCurrentAgent(projectId, agentId)) taskBodies.value = tasks;
 	} catch (error) {
+		if (!isCurrentAgent(projectId, agentId)) return;
 		taskErrorMessage.value =
 			error instanceof Error && error.message
 				? error.message
@@ -110,7 +122,36 @@ async function reloadTasks() {
 	}
 }
 
+function onTasksChanged() {
+	void reloadTasks();
+	emit('tasks-changed');
+}
+
+function toggleTask(task: TaskRow, enabled: boolean) {
+	if (props.disabled || removingTaskId.value) return;
+	emit('toggle-task', { id: task.id, enabled });
+}
+
+async function removeTask(task: TaskRow) {
+	if (props.disabled || removingTaskId.value) return;
+	const { projectId, agentId } = props;
+	removingTaskId.value = task.id;
+	try {
+		await deleteAgentTask(rootStore.restApiContext, projectId, agentId, task.id);
+		if (!isCurrentAgent(projectId, agentId)) return;
+		taskBodies.value = taskBodies.value.filter(({ id }) => id !== task.id);
+		onTasksChanged();
+	} catch (error) {
+		if (isCurrentAgent(projectId, agentId)) {
+			toast.showError(error, i18n.baseText('agents.builder.tasks.removeError'));
+		}
+	} finally {
+		removingTaskId.value = null;
+	}
+}
+
 function openTaskModal(task: TaskRow | null) {
+	const { projectId, agentId } = props;
 	uiStore.openModalWithData({
 		name: AGENT_TASK_MODAL_KEY,
 		data: {
@@ -126,11 +167,9 @@ function openTaskModal(task: TaskRow | null) {
 						enabled: task.enabled,
 					}
 				: undefined,
-			onToggle: (payload: { id: string; enabled: boolean }) => emit('toggle-task', payload),
 			onPreview: (instructions: string) => emit('preview-task', instructions),
 			onSaved: () => {
-				void reloadTasks();
-				emit('tasks-changed');
+				if (isCurrentAgent(projectId, agentId)) onTasksChanged();
 			},
 		},
 	});
@@ -170,19 +209,27 @@ watch(
 
 		<div :class="$style.chips">
 			<div v-for="(task, taskIndex) in taskRows" :key="task.id" :class="$style.chipGroup">
-				<N8nTooltip :content="taskScheduleTooltip(task)" placement="top" as-child>
-					<AgentChipButton
-						icon="clipboard-list"
-						:invalid="task.invalid"
-						:invalid-reasons="task.invalidReasons"
-						:disabled="props.disabled"
-						:class="$style.scheduleChip"
-						data-testid="agent-capabilities-task-row"
-						@click="openTaskModal(task)"
-					>
-						{{ task.name }}
-					</AgentChipButton>
-				</N8nTooltip>
+				<AgentItemContextMenu
+					:disabled="props.disabled || removingTaskId !== null"
+					:enabled="task.enabled"
+					@update:enabled="toggleTask(task, $event)"
+					@remove="removeTask(task)"
+				>
+					<N8nTooltip :content="taskScheduleTooltip(task)" placement="top" as-child>
+						<AgentChipButton
+							icon="clipboard-list"
+							:deactivated="!task.enabled"
+							:invalid="task.invalid"
+							:invalid-reasons="task.invalidReasons"
+							:disabled="props.disabled || removingTaskId === task.id"
+							:class="$style.scheduleChip"
+							data-testid="agent-capabilities-task-row"
+							@click="openTaskModal(task)"
+						>
+							{{ task.name }}
+						</AgentChipButton>
+					</N8nTooltip>
+				</AgentItemContextMenu>
 
 				<N8nTooltip
 					v-if="taskIndex === taskRows.length - 1"
@@ -231,6 +278,7 @@ watch(
 }
 
 .rowLabel {
+	opacity: var(--agent-row-label-opacity, 1);
 	--n8n--row-label-width: max(7%, calc(var(--spacing--3xl) + var(--spacing--sm)));
 	flex: 0 0 var(--n8n--row-label-width);
 	line-height: var(--line-height--sm);

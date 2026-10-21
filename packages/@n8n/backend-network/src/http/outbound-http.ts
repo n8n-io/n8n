@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { SsrfProtectionConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { UnexpectedError } from 'n8n-workflow';
 import type {
 	IHttpRequestOptions,
 	IN8nHttpFullResponse,
@@ -15,11 +16,12 @@ import type { Dispatcher } from 'undici';
 
 import { passthroughEgressFilter, SsrfProtectionService } from '../ssrf';
 import { httpRequest } from './axios/request';
+import { getUrlFromProxyConfig, resolveProxyOption } from './axios/utils';
 import { withClientDefaults } from './client-default-headers';
-import { HttpRequestClientOptions } from './client-options';
+import type { HttpConnectionPoolOptions, HttpRequestClientOptions } from './client-options';
 import { markHttpRequestError } from './client-request-error';
 import { executeLegacyRequest, type LegacyRequestCallbacks } from './legacy-request';
-import type { NodeAgentOptions, ProxyOption, SsrfOption } from './node-agents';
+import type { NodeAgentOptions, NodeAgents, ProxyOption, SsrfOption } from './node-agents';
 import { buildNodeAgents } from './node-agents';
 import {
 	createDispatcherTransport,
@@ -114,12 +116,20 @@ export interface HttpRequestClient {
 	 * `callbacks.onFetched` runs once after data is successfully fetched (used by
 	 * the execution engine to fire its `nodeFetchedData` hook).
 	 *
-	 * Ignores the default `baseUrl` and `headers` defined on `HttpRequestClientOptions`.
+	 * Ignores the default `baseUrl` and `headers` defined on `HttpRequestClientOptions`,
+	 * and does not use the `connectionPool`.
 	 *
 	 * @deprecated Use {@link request} with `IHttpRequestOptions`. This exists only
 	 * to back the deprecated `request` helpers.
 	 */
+	// oxlint-disable-next-line typescript/no-deprecated
 	requestLegacy(options: IRequestOptions, callbacks?: LegacyRequestCallbacks): Promise<unknown>;
+
+	/**
+	 * Closes the connections of the client's `connectionPool`, including requests in flight.
+	 * Does nothing for a client without a pool.
+	 */
+	close(): void;
 }
 
 /**
@@ -188,6 +198,9 @@ export class OutboundHttp {
 		const applyDefaults = (requestOptions: IHttpRequestOptions): IHttpRequestOptions =>
 			withClientDefaults(requestOptions, options?.baseURL, options?.headers, options?.timeout);
 
+		const pool = options?.connectionPool;
+		const poolAgents = pool && buildPoolAgents(pool, ssrf);
+
 		function request<T = IN8nHttpResponse | Readable>(
 			requestOptions: IHttpRequestOptions & { returnFullResponse: true },
 		): Promise<TypedHttpFullResponse<T>>;
@@ -198,8 +211,9 @@ export class OutboundHttp {
 			requestOptions: IHttpRequestOptions,
 		): Promise<T | TypedHttpFullResponse<T>>;
 		async function request(requestOptions: IHttpRequestOptions): Promise<unknown> {
+			const withPool = pool ? withConnectionPool(requestOptions, pool) : requestOptions;
 			try {
-				return await httpRequest(applyDefaults(requestOptions), ssrfBridge);
+				return await httpRequest(applyDefaults(withPool), ssrfBridge, poolAgents);
 			} catch (error) {
 				// Tag so callers can recognize a client-rejected error transport-agnostically.
 				throw markHttpRequestError(error);
@@ -210,10 +224,15 @@ export class OutboundHttp {
 			request,
 			requestLegacy: async (requestOptions, callbacks) => {
 				try {
+					// oxlint-disable-next-line typescript/no-deprecated
 					return await executeLegacyRequest(requestOptions, ssrfBridge, this.logger, callbacks);
 				} catch (error) {
 					throw markHttpRequestError(error);
 				}
+			},
+			close: () => {
+				poolAgents?.httpAgent.destroy();
+				poolAgents?.httpsAgent.destroy();
 			},
 		};
 	}
@@ -272,4 +291,39 @@ export class OutboundHttp {
 function lazy<T>(factory: () => T): () => T {
 	let cached: { value: T } | undefined;
 	return () => (cached ??= { value: factory() }).value;
+}
+
+const POOL_SETTINGS = ['proxy', 'agentOptions', 'skipSslCertificateValidation'] as const;
+
+function buildPoolAgents(pool: HttpConnectionPoolOptions, ssrf: SsrfOption): NodeAgents {
+	// Node derives SNI from each request's host, so one pool serves any host.
+	if (pool.agentOptions?.servername) {
+		throw new UnexpectedError(
+			'`connectionPool.agentOptions.servername` is not supported: the pool serves every host of the client. Remove it.',
+		);
+	}
+	return buildNodeAgents(resolveProxyOption(getUrlFromProxyConfig(pool.proxy)), ssrf, {
+		keepAlive: true,
+		...pool.agentOptions,
+		...(pool.skipSslCertificateValidation === true && { rejectUnauthorized: false }),
+	});
+}
+
+/** Copies the pool's settings onto the request so the SSRF proxy check and redirects see them. */
+function withConnectionPool(
+	requestOptions: IHttpRequestOptions,
+	pool: HttpConnectionPoolOptions,
+): IHttpRequestOptions {
+	const conflicting = POOL_SETTINGS.filter((key) => requestOptions[key] !== undefined);
+	if (conflicting.length > 0) {
+		throw new UnexpectedError(
+			`A client with a \`connectionPool\` does not accept \`${conflicting.join('`, `')}\` on a request. Set them on \`connectionPool\` instead.`,
+		);
+	}
+	return {
+		...requestOptions,
+		proxy: pool.proxy,
+		agentOptions: pool.agentOptions,
+		skipSslCertificateValidation: pool.skipSslCertificateValidation,
+	};
 }

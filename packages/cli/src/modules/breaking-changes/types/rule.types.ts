@@ -90,3 +90,14 @@ export type IBreakingChangeRule =
 	| IBreakingChangeInstanceRule
 	| IBreakingChangeWorkflowRule
 	| IBreakingChangeBatchWorkflowRule;
+
+/** The rule kinds that produce per-workflow findings. */
+export type WorkflowLevelRule = IBreakingChangeWorkflowRule | IBreakingChangeBatchWorkflowRule;
+
+export function isWorkflowLevelRule(rule: IBreakingChangeRule): rule is WorkflowLevelRule {
+	return 'detectWorkflow' in rule || 'collectWorkflowData' in rule;
+}
+
+export function isInstanceRule(rule: IBreakingChangeRule): rule is IBreakingChangeInstanceRule {
+	return 'detect' in rule;
+}

@@ -1,4 +1,12 @@
-import type { SharedWorkflow, User, WorkflowEntity, ListQuery } from '@n8n/db';
+import { RoleService } from '@n8n/backend-services';
+import type {
+	SharedWorkflow,
+	User,
+	WorkflowEntity,
+	ListQuery,
+	PublishHistoryScope,
+	OperationContext,
+} from '@n8n/db';
 import {
 	SharedWorkflowRepository,
 	FolderRepository,
@@ -7,12 +15,11 @@ import {
 	chunkIds,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { hasGlobalScope, type Scope } from '@n8n/permissions';
+import { hasGlobalScope, type AuthPrincipal, type Scope } from '@n8n/permissions';
 import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 import { In, IsNull } from '@n8n/typeorm';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { RoleService } from '@n8n/backend-services';
 
 export type FindWorkflowsForUserOptions = {
 	filters?: {
@@ -28,6 +35,7 @@ export type FindWorkflowsForUserOptions = {
 	includeTags?: boolean;
 	includeProjects?: boolean;
 	includeActiveVersion?: boolean;
+	includeParentFolder?: boolean;
 };
 
 @Service()
@@ -48,17 +56,18 @@ export class WorkflowFinderService {
 			includeTags?: boolean;
 			includeParentFolder?: boolean;
 			includeActiveVersion?: boolean;
-			em?: EntityManager;
-		} = {},
+			publishHistory?: PublishHistoryScope;
+		} & ({ em?: EntityManager; ctx?: never } | { ctx?: OperationContext; em?: never }) = {},
 	) {
-		const where = await this.buildSingleWorkflowReadWhere(user, scopes, options.em);
+		const where = await this.buildSingleWorkflowReadWhere(user, scopes, options.em ?? options.ctx);
 
 		const sharedWorkflow = await this.sharedWorkflowRepository.findWorkflowWithOptions(workflowId, {
 			where,
 			includeTags: options.includeTags,
 			includeParentFolder: options.includeParentFolder,
 			includeActiveVersion: options.includeActiveVersion,
-			em: options.em,
+			publishHistory: options.publishHistory,
+			...(options.em ? { em: options.em } : { ctx: options.ctx }),
 		});
 
 		if (!sharedWorkflow) {
@@ -99,10 +108,10 @@ export class WorkflowFinderService {
 	private async buildSingleWorkflowReadWhere(
 		user: User,
 		scopes: Scope[],
-		em?: EntityManager,
+		context?: EntityManager | OperationContext,
 	): Promise<FindOptionsWhere<SharedWorkflow>> {
 		if (hasGlobalScope(user, scopes, { mode: 'allOf' })) return {};
-		const loadRoles = em ? async () => await this.roleRepository.findAll(em) : undefined;
+		const loadRoles = context ? async () => await this.roleRepository.findAll(context) : undefined;
 		const rolesWithScope = async (namespace: 'project' | 'workflow') =>
 			loadRoles
 				? await this.roleService.rolesWithScope(namespace, scopes, loadRoles)
@@ -124,7 +133,12 @@ export class WorkflowFinderService {
 		};
 	}
 
-	private async findAllWhere(user: User, scopes: Scope[], folderId?: string, projectId?: string) {
+	private async findAllWhere(
+		user: AuthPrincipal & Pick<User, 'id'>,
+		scopes: Scope[],
+		folderId?: string,
+		projectId?: string,
+	) {
 		let where: FindOptionsWhere<SharedWorkflow> = {};
 
 		if (folderId) {
@@ -172,7 +186,7 @@ export class WorkflowFinderService {
 
 	async findWorkflowIdsWithScopeForUser(
 		workflowIds: string[],
-		user: User,
+		user: AuthPrincipal & Pick<User, 'id'>,
 		scopes: Scope[],
 	): Promise<Set<string>> {
 		if (workflowIds.length === 0) return new Set();
@@ -272,10 +286,15 @@ export class WorkflowFinderService {
 		return byFolder;
 	}
 
-	async findOwnedWorkflowRemovalCandidates(projectId: string, workflowIds: string[]) {
+	async findOwnedWorkflowRemovalCandidates(
+		projectId: string,
+		workflowIds: string[],
+		options: { includeArchived?: boolean } = {},
+	) {
 		return await this.sharedWorkflowRepository.findOwnedWorkflowRemovalCandidates(
 			projectId,
 			workflowIds,
+			options,
 		);
 	}
 
@@ -438,6 +457,7 @@ export class WorkflowFinderService {
 			includeTags = false,
 			includeProjects = false,
 			includeActiveVersion = false,
+			includeParentFolder = false,
 		} = options;
 		const { name, active, tagNames, folderId, projectId } = filters;
 
@@ -450,6 +470,7 @@ export class WorkflowFinderService {
 			? [folderId, ...(await this.folderRepository.getAllFolderIdsInHierarchy(folderId, projectId))]
 			: undefined;
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		const select: NonNullable<ListQuery.Options['select']> = {
 			id: true,
 			name: true,
@@ -472,6 +493,7 @@ export class WorkflowFinderService {
 			...(includeActiveVersion && { activeVersion: true }),
 			...(includePinnedData && { pinData: true }),
 			...(includeTags && { tags: true }),
+			...(includeParentFolder && { parentFolder: true }),
 		};
 
 		const { workflows, count } = await this.workflowRepository.getManyAndCountWithSharingSubquery(

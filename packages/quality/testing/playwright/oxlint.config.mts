@@ -12,6 +12,7 @@ export default defineConfig({
 		'coverage/**/*',
 		'scripts/**/*',
 		'janitor.config.mjs',
+		'fixtures/community-packages/packages/**/*.js',
 	],
 	rules: {
 		'playwright/missing-playwright-await': 'error',
@@ -172,6 +173,7 @@ export default defineConfig({
 		{
 			files: [
 				'fixtures/langsmith.ts',
+				'fixtures/cli.ts',
 				'fixtures/quarantine.ts',
 				'tests/cli-workflows/workflow-tests.spec.ts',
 				'tests/e2e/chat-hub/fixtures.ts',

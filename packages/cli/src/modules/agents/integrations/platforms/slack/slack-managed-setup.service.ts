@@ -17,11 +17,10 @@ import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { CredentialsFinderService, CacheService } from '@n8n/backend-services';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
-import { CacheService } from '@n8n/backend-services';
 
 import { SlackMethodsService } from './slack-methods.service';
 import {
@@ -33,7 +32,7 @@ import {
 	SLACK_CREDENTIAL_TYPE,
 	type SlackAppSetupSession,
 } from './slack-setup.types';
-import type { Agent } from '../../../entities/agent.entity';
+import type { ProjectAgent } from '../../../entities/agent.entity';
 import { AgentRepository } from '../../../repositories/agent.repository';
 import type { AgentIntegrationRemovalContext } from '../../agent-chat-integration';
 import { stringProperty } from '../../integration-helpers';
@@ -186,7 +185,7 @@ export class SlackManagedSetupService {
 		const integrations = agent?.integrations ?? [];
 		const usableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
 			options.user,
-			{ projectId: options.projectId },
+			{ projectId: options.projectId, excludePersonalRoute: true },
 		);
 		const managerCredentials: SlackManagerCredentialSummary[] = [];
 
@@ -377,7 +376,11 @@ export class SlackManagedSetupService {
 	 * that n8n built for another Agent, or a credential from any other Slack app,
 	 * returns false.
 	 */
-	async isAppConfiguredForAgent(credentialId: string, agent: Agent, user: User): Promise<boolean> {
+	async isAppConfiguredForAgent(
+		credentialId: string,
+		agent: ProjectAgent,
+		user: User,
+	): Promise<boolean> {
 		const credential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
 			user,
@@ -396,7 +399,7 @@ export class SlackManagedSetupService {
 	 */
 	private async managedAppSendsEventsTo(
 		data: ICredentialDataDecryptedObject,
-		agent: Agent,
+		agent: ProjectAgent,
 		user: User,
 	): Promise<boolean> {
 		const managedAppId = stringProperty(data, 'managedAppId');
@@ -542,7 +545,7 @@ export class SlackManagedSetupService {
 	): Promise<ManagerCredentialContext> {
 		const usableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
 			user,
-			{ projectId },
+			{ projectId, excludePersonalRoute: true },
 		);
 		if (
 			!usableCredentials.some(
@@ -651,7 +654,7 @@ export class SlackManagedSetupService {
 
 	private async getOrCreateManagedAppSession(
 		options: InstallManagedSlackAppOptions,
-		agent: Agent,
+		agent: ProjectAgent,
 		manager: ManagerCredentialContext,
 		workspaceName: string,
 	): Promise<{ session: ManagedSlackAppSession; created: boolean }> {
@@ -773,7 +776,7 @@ export class SlackManagedSetupService {
 		return records;
 	}
 
-	private async getInstallWorkspace(options: InstallManagedSlackAppOptions, agent: Agent) {
+	private async getInstallWorkspace(options: InstallManagedSlackAppOptions, agent: ProjectAgent) {
 		const manager = await this.getManagerCredentialContext(
 			options.managerCredentialId,
 			options.projectId,
@@ -793,7 +796,7 @@ export class SlackManagedSetupService {
 
 	private async connectManagedInstallation(
 		options: InstallManagedSlackAppOptions,
-		agent: Agent,
+		agent: ProjectAgent,
 		session: ManagedSlackAppSession,
 		response: Record<string, unknown>,
 	): Promise<InstallSlackManagedAppResponse> {
@@ -865,7 +868,7 @@ export class SlackManagedSetupService {
 
 	private async createManagedAppSession(
 		options: InstallManagedSlackAppOptions,
-		agent: Agent,
+		agent: ProjectAgent,
 		manager: ManagerCredentialContext,
 		workspaceName: string,
 		key: string,

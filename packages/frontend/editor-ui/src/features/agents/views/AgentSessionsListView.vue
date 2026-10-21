@@ -6,6 +6,10 @@ import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
+import {
+	useAgentTelemetry,
+	type AgentSessionFilterName,
+} from '@/features/agents/composables/useAgentTelemetry';
 import type {
 	AgentExecutionThread,
 	AgentSessionFilters,
@@ -30,6 +34,13 @@ import { ElSkeletonItem } from 'element-plus';
 type TraceTarget = { agentId: string; threadId: string };
 type OriginPresentation = { icon: IconName; label: string };
 
+const sessionFilterFields: Array<[keyof AgentSessionFilters, AgentSessionFilterName]> = [
+	['status', 'status'],
+	['origin', 'origin'],
+	['startDate', 'start_date'],
+	['endDate', 'end_date'],
+];
+
 const props = withDefaults(
 	defineProps<{
 		embedded?: boolean;
@@ -52,6 +63,7 @@ const router = useRouter();
 const toast = useToast();
 const message = useMessage();
 const sessionsStore = useAgentSessionsStore();
+const agentTelemetry = useAgentTelemetry();
 let disposed = false;
 let managesStoreLifecycle = false;
 
@@ -151,12 +163,18 @@ function originPresentation(thread: AgentExecutionThread): OriginPresentation {
 			return { icon: 'flask-conical', label: i18n.baseText('agentSessions.origin.mcp') };
 		case 'workflow':
 			return { icon: 'workflow', label: i18n.baseText('agentSessions.origin.workflow') };
+		case 'n8n_chat_production':
+			return { icon: 'message-square', label: i18n.baseText('agentSessions.origin.n8nChat') };
 		case 'slack':
 		case 'telegram':
 		case 'linear':
 		case 'discord':
 		case 'teams':
 			return { icon: source, label: source.charAt(0).toUpperCase() + source.slice(1) };
+		case 'whatsapp':
+			// The generic capitalize-first-letter above would produce "Whatsapp",
+			// misspelling the brand name — WhatsApp has an internal capital.
+			return { icon: source, label: 'WhatsApp' };
 		case 'chat':
 		case 'n8n_chat':
 		case undefined:
@@ -251,6 +269,14 @@ function onAutoRefreshChange(enabled: boolean) {
 }
 
 async function onFiltersChange(value: AgentSessionFilters) {
+	const filterNames = sessionFilterFields
+		.filter(
+			([field]) => JSON.stringify(sessionsStore.filters[field]) !== JSON.stringify(value[field]),
+		)
+		.map(([, name]) => name);
+	if (filterNames.length > 0) {
+		agentTelemetry.trackAppliedSessionFilter({ agentId: agentId.value, filterNames });
+	}
 	try {
 		await sessionsStore.setFilters(projectId.value, agentId.value, value);
 	} catch (error) {

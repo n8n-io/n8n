@@ -24,6 +24,7 @@ export const DEFAULT_OBSERVATION_LOG_TAIL_LIMIT = 20;
 export const DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS = 60_000;
 export const DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET = 67_500;
 export const DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS = 30_000;
+export const DEFAULT_OBSERVATION_LOG_OBSERVER_MAX_RETRIES = 3;
 
 export const DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT = `You observe a conversation between a user and an agent. Extract only durable facts that the agent needs to continue correctly. The agent can receive your observations after the transcript is removed.
 
@@ -40,6 +41,8 @@ A valid response has exactly one of these forms:
 * IMPORTANT (14:31) Another top-level observation
 
 Use only one indentation level. A child attaches to the preceding top-level bullet in this response. Never omit the \`*\` prefix.
+
+Every line is one observation with its own marker. To add details to an observation, write each detail as a marked child, or put the details on the same line separated by semicolons. Never write a plain sub-list, a numbered list, or any line without a marker.
 
 2. Exactly this marker when there is nothing durable to record:
 
@@ -89,6 +92,16 @@ GOOD:
 * CRITICAL (14:30) User approved the data migration. Deployment requires separate approval.
   * IMPORTANT (14:31) Agent plans to start the migration; completion is not verified.
 
+Details go on marked lines
+
+BAD:
+* CRITICAL (15:09) User's invoice rules:
+  * Count only invoices with status paid or pending.
+    - Status void means cancelled.
+
+GOOD:
+* CRITICAL (15:09) User's invoice rules: count only invoices with status paid or pending; status void means cancelled.
+
 Keep verification evidence together
 
 Transcript:
@@ -126,6 +139,11 @@ When durable facts exist, return only observation bullets whose lines start with
 
 export interface CreateObservationLogObserveFnOptions {
 	observerPrompt?: string;
+	/**
+	 * Retries for a transient model failure before the call fails.
+	 * Defaults to {@link DEFAULT_OBSERVATION_LOG_OBSERVER_MAX_RETRIES}.
+	 */
+	maxRetries?: number;
 	/** Called with normalized token usage after each observer LLM call. */
 	onUsage?: (report: MemoryTaskUsageReport) => void | Promise<void>;
 }
@@ -150,15 +168,16 @@ export function createObservationLogObserveFn(
 	options: CreateObservationLogObserveFnOptions = {},
 ): ObservationLogObserveFn {
 	return async (input) => {
-		const { text, usage, providerMetadata } = await loadAi().generateText({
-			model: createModel(model),
+		const { text, usage, finalStep } = await loadAi().generateText({
+			model: createModel(model, undefined, input.telemetry),
 			instructions: options.observerPrompt ?? DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT,
 			prompt: buildObservationLogObserverPrompt(input),
+			maxRetries: options.maxRetries ?? DEFAULT_OBSERVATION_LOG_OBSERVER_MAX_RETRIES,
 			...buildAiSdkTelemetry(input.telemetry, { functionSuffix: 'memory-observer' }),
 		});
 		incrementTokenCountFromUsage(input.executionCounter, usage);
 
-		const tokenUsage = toTokenUsage(usage, providerMetadata);
+		const tokenUsage = toTokenUsage(usage, finalStep.providerMetadata);
 		const modelId = getModelIdString(model);
 		if (options.onUsage && tokenUsage) {
 			await options.onUsage({
@@ -317,15 +336,15 @@ export function createObservationLogReflectFn(
 				parentId: entry.parentId ? (referenceById.get(entry.parentId) ?? null) : null,
 			})),
 		);
-		const { text, usage, providerMetadata } = await loadAi().generateText({
-			model: createModel(model),
+		const { text, usage, finalStep } = await loadAi().generateText({
+			model: createModel(model, undefined, input.telemetry),
 			instructions: options.reflectorPrompt ?? DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT,
 			prompt: buildObservationLogReflectorPrompt({ ...input, renderedObservationLog }),
 			...buildAiSdkTelemetry(input.telemetry, { functionSuffix: 'memory-reflector' }),
 		});
 		incrementTokenCountFromUsage(input.executionCounter, usage);
 
-		const tokenUsage = toTokenUsage(usage, providerMetadata);
+		const tokenUsage = toTokenUsage(usage, finalStep.providerMetadata);
 		const modelId = getModelIdString(model);
 		if (options.onUsage && tokenUsage) {
 			await options.onUsage({

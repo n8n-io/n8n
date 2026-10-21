@@ -34,6 +34,7 @@ const SET_NAME = 'Edit Fields';
 const startExecution = vi.fn();
 const getExecution = vi.fn();
 const searchExecutions = vi.fn();
+const cancelExecution = vi.fn();
 
 let builder: User;
 
@@ -92,6 +93,7 @@ beforeAll(async () => {
 		startExecution,
 		getExecution,
 		searchExecutions,
+		cancelExecution,
 	});
 });
 

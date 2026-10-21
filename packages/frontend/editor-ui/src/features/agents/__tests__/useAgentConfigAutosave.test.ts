@@ -300,4 +300,71 @@ describe('useAgentConfigAutosave', () => {
 		expect(save).toHaveBeenCalledTimes(2);
 		expect(autosave.saveStatus.value).toBe('idle');
 	});
+
+	it('flushAutosave resolves undefined when the flushed snapshot persists', async () => {
+		vi.useFakeTimers();
+		const save = vi.fn().mockResolvedValue(undefined);
+		const autosave = useAgentConfigAutosave<{ value: string }>({ save, debounceMs: 500 });
+
+		autosave.scheduleAutosave({ value: 'latest' });
+
+		await expect(autosave.flushAutosave()).resolves.toBeUndefined();
+	});
+
+	it.each(['skipped', 'stale', 'outdated'] as const)(
+		'flushAutosave resolves "%s" when the save declines to persist',
+		async (result) => {
+			vi.useFakeTimers();
+			const save = vi.fn().mockResolvedValue(result);
+			const autosave = useAgentConfigAutosave<{ value: string }>({ save, debounceMs: 500 });
+
+			autosave.scheduleAutosave({ value: 'latest' });
+
+			await expect(autosave.flushAutosave()).resolves.toBe(result);
+		},
+	);
+
+	it('flushAutosave without a queued snapshot resolves with the in-flight save outcome', async () => {
+		vi.useFakeTimers();
+		let settleSave: (result: 'stale') => void = () => {};
+		const save = vi.fn(() => new Promise<'stale'>((resolve) => void (settleSave = resolve)));
+		const autosave = useAgentConfigAutosave<{ value: string }>({ save, debounceMs: 500 });
+
+		autosave.scheduleAutosave({ value: 'latest' });
+		await vi.advanceTimersByTimeAsync(500);
+
+		const flushPromise = autosave.flushAutosave();
+		settleSave('stale');
+
+		await expect(flushPromise).resolves.toBe('stale');
+	});
+
+	it('reset() drops a settled outcome so the next flush does not inherit it', async () => {
+		vi.useFakeTimers();
+		const save = vi.fn().mockResolvedValue('stale' as const);
+		const autosave = useAgentConfigAutosave<{ value: string }>({ save, debounceMs: 500 });
+
+		autosave.scheduleAutosave({ value: 'a' });
+		await expect(autosave.flushAutosave()).resolves.toBe('stale');
+
+		autosave.reset();
+
+		await expect(autosave.flushAutosave()).resolves.toBeUndefined();
+		expect(save).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not report a save that resolves after reset() as the next flush outcome', async () => {
+		vi.useFakeTimers();
+		let resolveSave: (result: 'skipped') => void = () => {};
+		const save = vi.fn(() => new Promise<'skipped'>((resolve) => void (resolveSave = resolve)));
+		const autosave = useAgentConfigAutosave<{ value: string }>({ save, debounceMs: 500 });
+
+		autosave.scheduleAutosave({ value: 'a' });
+		await vi.advanceTimersByTimeAsync(500);
+		autosave.reset();
+		resolveSave('skipped');
+		await autosave.settleAutosave();
+
+		await expect(autosave.flushAutosave()).resolves.toBeUndefined();
+	});
 });

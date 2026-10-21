@@ -21,6 +21,7 @@ const EXTRACTED_MODULES = [
 	{ group: '@/features/instanceRegistry', package: '@n8n/frontend-module-instance-registry' },
 	{ group: '@/features/settings/otel', package: '@n8n/frontend-module-otel' },
 	{ group: '@/features/execution/insights', package: '@n8n/frontend-module-insights' },
+	{ group: '@/features/ai/mcpAccess', package: '@n8n/frontend-module-mcp' },
 ];
 
 // One representative path per block in `eslint.config.mjs` that sets the rule, plus

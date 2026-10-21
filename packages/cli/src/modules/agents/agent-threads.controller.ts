@@ -7,13 +7,16 @@ import { NotFoundError } from '@n8n/errors';
 
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentSessionLangSmithExportService } from './agent-session-langsmith-export.service';
+import { SystemAgentRegistry } from './system-agents/system-agent-registry';
 import { canContinueThreadInPreview } from './utils/agent-thread-access';
+import { parseThreadListLimit } from './utils/parse-thread-list-limit';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentThreadsController {
 	constructor(
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly langsmithExportService: AgentSessionLangSmithExportService,
+		private readonly systemAgents: SystemAgentRegistry,
 	) {}
 
 	@Get('/:agentId/threads')
@@ -24,7 +27,7 @@ export class AgentThreadsController {
 		@Query query: ListAgentSessionsQueryDto,
 	) {
 		const { cursor, limit: requestedLimit, ...filters } = query;
-		const limit = Math.min(Math.max(Number(requestedLimit) || 20, 1), 100);
+		const limit = parseThreadListLimit(requestedLimit);
 
 		return await this.agentExecutionService.getThreads(
 			req.params.projectId,
@@ -58,7 +61,12 @@ export class AgentThreadsController {
 		} = result.thread;
 		const source = result.executions.find((execution) => execution.source !== null)?.source;
 		const access: AgentSessionPreviewAccess = {
-			canContinueInPreview: canContinueThreadInPreview(result.thread, req.user.id, source),
+			canContinueInPreview: canContinueThreadInPreview(
+				result.thread,
+				req.user.id,
+				source,
+				this.systemAgents.has(result.thread.agentId),
+			),
 		};
 		return { ...result, thread: { ...thread, ...access, source: source ?? null } };
 	}

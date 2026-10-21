@@ -7,6 +7,7 @@ import {
 } from '@/features/agents/utils/agentPreviewUrl';
 import { computed, inject, onMounted, onUpdated, ref, useCssModule } from 'vue';
 import { useThread } from '../instanceAi.store';
+import { INSTANCE_AI_EMBED_SUBJECT_KEY, isEmbedSubject } from '../embed/instanceAiEmbed.types';
 
 const props = defineProps<{
 	content: string;
@@ -46,6 +47,11 @@ const openAgentChatPreview = inject<((id: string, projectId: string) => boolean)
 	'openAgentChatPreview',
 	undefined,
 );
+const embedSubject = inject(INSTANCE_AI_EMBED_SUBJECT_KEY, undefined);
+
+function isCurrentSubject(type: string, id: string): boolean {
+	return isEmbedSubject(embedSubject?.value, type, id);
+}
 
 /** Icon SVG paths for each resource type — matches the n8n design system icons. */
 const ICON_SVGS: Record<string, string> = {
@@ -172,7 +178,7 @@ function decorateResourceNames(content: string): string {
 
 	// Build entries sorted longest-name-first to avoid partial-match conflicts
 	const entries = [...registry.values()]
-		.filter((entry) => entry.name.length >= 3)
+		.filter((entry) => entry.name.length >= 3 && !isCurrentSubject(entry.type, entry.id))
 		.sort((a, b) => b.name.length - a.name.length);
 
 	let result = content;
@@ -223,6 +229,7 @@ const INTERNAL_ROUTE_PATTERNS: Array<{ pattern: RegExp; type: string }> = [
 	{ pattern: /^\/projects\/[^/]+\/datatables(?:\/|$)/, type: 'data-table' },
 	{ pattern: /^\/projects\/[^/]+\/agents(?:\/|$)/, type: 'agent' },
 ];
+const AGENT_ROUTE_PATTERN = /^\/projects\/[^/]+\/agents\/([^/]+)\/?$/;
 const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i;
 
 function getSameOriginUrl(href: string): URL | undefined {
@@ -319,6 +326,10 @@ function enhanceResourceLinks(): void {
 		if (resourceMatch) {
 			const [, type, encodedId] = resourceMatch;
 			const id = decodeResourceId(encodedId);
+			if (isCurrentSubject(type, id)) {
+				link.replaceWith(...link.childNodes);
+				continue;
+			}
 
 			// Look up registry entry to find projectId for project-scoped routes.
 			// Search the name index because it contains both produced and listed
@@ -350,6 +361,12 @@ function enhanceResourceLinks(): void {
 		}
 		const internalUrl = getSameOriginUrl(href);
 		if (!internalUrl) continue;
+
+		const agentId = AGENT_ROUTE_PATTERN.exec(internalUrl.pathname)?.[1];
+		if (agentId && isCurrentSubject('agent', decodeResourceId(agentId))) {
+			link.replaceWith(...link.childNodes);
+			continue;
+		}
 
 		for (const { pattern, type } of INTERNAL_ROUTE_PATTERNS) {
 			if (pattern.test(internalUrl.pathname)) {

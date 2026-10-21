@@ -1,6 +1,9 @@
-import type { NodeTypeAvailability } from '@n8n/api-types';
-import type { InjectionKey, Ref } from 'vue';
-import type { McpToolPermissions } from '@n8n/api-types';
+import type {
+	AgentPersonalisation,
+	McpToolPermissions,
+	NodeTypeAvailability,
+} from '@n8n/api-types';
+import type { Component, InjectionKey, Ref } from 'vue';
 
 export type ConnectionItemKind =
 	| 'node'
@@ -8,11 +11,24 @@ export type ConnectionItemKind =
 	| 'mcp-server'
 	| 'agent'
 	| 'data-store'
-	| 'service';
+	| 'service'
+	| 'skill';
 
 export type ToolIconSource =
 	| { type: 'file'; src: string }
-	| { type: 'icon'; name: string; color?: string };
+	| { type: 'icon'; name: string; color?: string }
+	| { type: 'avatar'; personalisation: AgentPersonalisation };
+
+/** The subset of `ToolIconSource` that `N8nNodeIcon` can render; avatar sources need their own tile. */
+export type NodeIconSource = Extract<ToolIconSource, { type: 'file' } | { type: 'icon' }>;
+
+/**
+ * Renderer for `{ type: 'avatar' }` icon sources. The consumer that passes
+ * avatar items injects the component at its mount site.
+ */
+export const TOOL_ICON_AVATAR_RENDERER_KEY = Symbol(
+	'tool-icon-avatar-renderer',
+) as InjectionKey<Component | null>;
 
 export interface ToolCredentialRef {
 	authType: string;
@@ -91,7 +107,9 @@ export interface PublisherInfo {
 	url?: string;
 }
 
-export type McpToolSettings = McpToolPermissions;
+export type McpToolSettings = McpToolPermissions & {
+	connectionTimeoutMs?: number;
+};
 
 export type ToolConnectionSettings = McpToolSettings;
 
@@ -120,13 +138,21 @@ export interface ServiceConnectionItem extends BaseConnectionItem {
 	serviceId: string;
 }
 
+export interface SkillConnectionItem extends BaseConnectionItem {
+	kind: 'skill';
+	skillId: string;
+	attached: boolean;
+	attaching?: boolean;
+}
+
 export type ToolConnectionItem =
 	| NodeConnectionItem
 	| WorkflowConnectionItem
 	| McpServerConnectionItem
 	| AgentConnectionItem
 	| DataStoreConnectionItem
-	| ServiceConnectionItem;
+	| ServiceConnectionItem
+	| SkillConnectionItem;
 
 /**
  * One tab in the modal. Consumers declare the subset they support. `data` has
@@ -144,6 +170,9 @@ export type ToolCategoryKey =
 	| 'community'
 	| 'workflows'
 	| 'agents'
+	| 'project'
+	| 'this-agent'
+	| 'global'
 	| 'data';
 
 /** Used when an item carries no explicit `category`. */
@@ -154,6 +183,7 @@ export const CATEGORY_BY_KIND: Record<ConnectionItemKind, ToolCategoryKey> = {
 	service: 'built-in',
 	agent: 'agents',
 	'data-store': 'data',
+	skill: 'project',
 };
 
 /**

@@ -1,4 +1,5 @@
 import { mockInstance } from '@n8n/backend-test-utils';
+import type { GlobalConfig } from '@n8n/config';
 import type { Settings } from '@n8n/db';
 import { SettingsRepository } from '@n8n/db';
 
@@ -12,10 +13,41 @@ describe('AiUsageService', () => {
 	const settingsRepository = mockInstance(SettingsRepository);
 	const cacheService = mockInstance(CacheService);
 
-	const aiUsageService = new AiUsageService(settingsRepository, cacheService);
+	const globalConfig = { ai: { allowSendingParameterValues: true } } as GlobalConfig;
+
+	const aiUsageService = new AiUsageService(settingsRepository, cacheService, globalConfig);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		globalConfig.ai.allowSendingParameterValues = true;
+	});
+
+	describe('isParameterValueSharingAllowed()', () => {
+		it('should return false without reading the stored value when the env var is false', async () => {
+			globalConfig.ai.allowSendingParameterValues = false;
+
+			const result = await aiUsageService.isParameterValueSharingAllowed();
+
+			expect(result).toBe(false);
+			expect(cacheService.get).not.toHaveBeenCalled();
+			expect(settingsRepository.findByKey).not.toHaveBeenCalled();
+		});
+
+		it('should return false when the env var is true and the stored value is false', async () => {
+			cacheService.get.mockResolvedValue('false');
+
+			const result = await aiUsageService.isParameterValueSharingAllowed();
+
+			expect(result).toBe(false);
+		});
+
+		it('should return true when the env var and the stored value are both true', async () => {
+			cacheService.get.mockResolvedValue('true');
+
+			const result = await aiUsageService.isParameterValueSharingAllowed();
+
+			expect(result).toBe(true);
+		});
 	});
 
 	describe('getAiUsageSettings()', () => {

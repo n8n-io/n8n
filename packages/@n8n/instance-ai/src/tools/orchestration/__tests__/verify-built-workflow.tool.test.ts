@@ -23,7 +23,12 @@ import type {
 } from '../../../workflow-loop/workflow-loop-state';
 import { WorkflowTaskCoordinator } from '../../../workflow-loop/workflow-task-service';
 import { CREDENTIALLESS_AI_ROOT_SIMULATION_REASON } from '../../workflows/plan-verification-simulation';
+import { emitWorkflowVerificationMetric } from '../verification/verification-metric';
 import { createVerifyBuiltWorkflowTool } from '../verify-built-workflow.tool';
+
+vi.mock('../verification/verification-metric', () => ({
+	emitWorkflowVerificationMetric: vi.fn(async () => await Promise.resolve()),
+}));
 
 type VerifyBuiltWorkflowOutput = {
 	success: boolean;
@@ -60,6 +65,7 @@ type VerifyBuiltWorkflowOutput = {
 	nodesNotReached?: string[];
 	nodeErrors?: Array<{ nodeName: string; message?: string }>;
 	coverageNote?: string;
+	emptyOutputNote?: string;
 	liveStateNote?: string;
 	claim?: VerificationClaim;
 	data?: Record<string, unknown>;
@@ -130,7 +136,7 @@ function createContext(overrides: Partial<OrchestrationContext> = {}): Orchestra
 	} as OrchestrationContext;
 }
 
-describe('verify-built-workflow tool — remediation guard', () => {
+describe('workflow_builder_verify_built_workflow tool — remediation guard', () => {
 	it('routes mocked-credential verification failures to setup and records terminal verdict', async () => {
 		const context = createContext();
 		vi.mocked(context.workflowTaskService!.getBuildOutcome).mockResolvedValue({
@@ -302,11 +308,11 @@ describe('verify-built-workflow tool — remediation guard', () => {
 		expect(context.workflowTaskService!.reportVerificationVerdict).toHaveBeenCalled();
 		expect(trackTelemetry).toHaveBeenCalled();
 		expect(context.logger.warn).toHaveBeenCalledWith(
-			'verify-built-workflow: failed to persist terminal verdict',
+			'workflow_builder_verify_built_workflow: failed to persist terminal verdict',
 			expect.objectContaining({ error: 'storage unavailable' }),
 		);
 		expect(context.logger.warn).toHaveBeenCalledWith(
-			'verify-built-workflow: failed to emit remediation telemetry',
+			'workflow_builder_verify_built_workflow: failed to emit remediation telemetry',
 			expect.objectContaining({ error: 'telemetry unavailable' }),
 		);
 	});
@@ -468,6 +474,7 @@ type ExecutionRunResult = {
 	status: 'success' | 'error' | 'waiting' | 'running' | 'unknown';
 	data?: Record<string, unknown>;
 	executedNodeNames?: string[];
+	binaryOutputNodeNames?: string[];
 	lastNodeExecuted?: string;
 	nodeErrors?: Array<{ nodeName: string; message?: string }>;
 	workflowVersionId?: string | null;
@@ -677,7 +684,25 @@ async function runTool(
 	return await executeTool<VerifyBuiltWorkflowOutput>(tool, input);
 }
 
-describe('verify-built-workflow tool', () => {
+describe('workflow_builder_verify_built_workflow tool', () => {
+	it('finalizes verification when cancellation arrives after it starts', async () => {
+		const controller = new AbortController();
+		const ctx = createContext({ abortSignal: controller.signal });
+		vi.mocked(ctx.workflowTaskService!.startVerification).mockImplementationOnce(async () => {
+			controller.abort(new Error('Verification canceled.'));
+			return undefined;
+		});
+		const tool = createVerifyBuiltWorkflowTool(ctx);
+
+		await expect(executeTool(tool, { workItemId: 'wi_1', workflowId: 'wf_1' })).rejects.toThrow(
+			'Verification canceled.',
+		);
+		expect(ctx.domainContext?.executionService.run).not.toHaveBeenCalled();
+		expect(ctx.workflowTaskService!.updateBuildOutcome).toHaveBeenCalledWith('wi_1', {
+			verification: expect.objectContaining({ status: 'error', success: false, attempted: true }),
+		});
+	});
+
 	it('persists a success verification record onto the build outcome', async () => {
 		const { ctx, updateBuildOutcome } = makeContext(makeBuildOutcome(), {
 			executionId: 'exec-1',
@@ -704,6 +729,16 @@ describe('verify-built-workflow tool', () => {
 		});
 		expect(update.verification?.evidence?.nodesExecuted).toEqual(['Form Trigger', 'Insert Row']);
 		expect(typeof update.verification?.verifiedAt).toBe('string');
+		expect(emitWorkflowVerificationMetric).toHaveBeenCalledWith(
+			undefined,
+			expect.objectContaining({
+				source: 'verify',
+				workflowId: 'wf-1',
+				workItemId: 'wi-1',
+				executionId: 'exec-1',
+				claim: expect.objectContaining({ level: expect.any(String) }),
+			}),
+		);
 	});
 
 	it('increments the verify attempt count on the build outcome each run', async () => {
@@ -732,7 +767,7 @@ describe('verify-built-workflow tool', () => {
 			shouldEdit: false,
 			reason: 'verify_budget_exhausted',
 		});
-		expect(result.error).toContain('executions(action="run")');
+		expect(result.error).toContain('workflow_builder_executions(action="run")');
 		expect(ctx.domainContext.executionService.run).not.toHaveBeenCalled();
 		expect(updateBuildOutcome).not.toHaveBeenCalled();
 	});
@@ -770,6 +805,55 @@ describe('verify-built-workflow tool', () => {
 			}),
 		]);
 		expect(result.nodePreviews?.[1].preview.length).toBeLessThanOrEqual(43);
+	});
+
+	it('flags a real node that returns only empty items', async () => {
+		const { ctx } = makeContext(
+			makeBuildOutcome(),
+			{
+				executionId: 'exec-empty',
+				status: 'success',
+				data: {
+					Trigger: wrapExecutionOutput([{}]),
+					'Tag Record': wrapExecutionOutput([{}]),
+				},
+			},
+			{
+				workflowConnections: {
+					Trigger: { main: [[{ node: 'Tag Record', type: 'main', index: 0 }]] },
+				},
+			},
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		expect(result.emptyOutputNote).toContain('Node(s) Tag Record returned only empty items');
+	});
+
+	it('does not flag a node that outputs a file', async () => {
+		const { ctx } = makeContext(
+			makeBuildOutcome(),
+			{
+				executionId: 'exec-file',
+				status: 'success',
+				data: {
+					Trigger: wrapExecutionOutput([{}]),
+					'Convert to File': wrapExecutionOutput([{}]),
+				},
+				binaryOutputNodeNames: ['Convert to File'],
+			},
+			{
+				workflowConnections: {
+					Trigger: { main: [[{ node: 'Convert to File', type: 'main', index: 0 }]] },
+				},
+			},
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		expect(result.emptyOutputNote).toBeUndefined();
 	});
 
 	it('returns full execution data when includeData is true', async () => {
@@ -1082,7 +1166,7 @@ describe('verify-built-workflow tool', () => {
 	});
 });
 
-describe('verify-built-workflow tool — node simulation plan', () => {
+describe('workflow_builder_verify_built_workflow tool — node simulation plan', () => {
 	const simulateVerdict = (nodeName: string, reason = 'Sends a message') => ({
 		nodeName,
 		verdict: 'simulate' as const,
@@ -1600,7 +1684,7 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 	});
 });
 
-describe('verify-built-workflow tool — stale mocked-credential plan', () => {
+describe('workflow_builder_verify_built_workflow tool — stale mocked-credential plan', () => {
 	const mockedCredentialVerdict = {
 		nodeName: 'Notion',
 		verdict: 'simulate' as const,
@@ -1694,13 +1778,13 @@ describe('verify-built-workflow tool — stale mocked-credential plan', () => {
 		const run = vi.mocked(ctx.domainContext.executionService.run);
 		expect(run).not.toHaveBeenCalled();
 		expect(ctx.logger.warn).toHaveBeenCalledWith(
-			'verify-built-workflow: could not reconcile mocked-credential plan',
+			'workflow_builder_verify_built_workflow: could not reconcile mocked-credential plan',
 			expect.objectContaining({ workItemId: 'wi-1' }),
 		);
 	});
 });
 
-describe('verify-built-workflow tool — trigger selection', () => {
+describe('workflow_builder_verify_built_workflow tool — trigger selection', () => {
 	type TriggerInput = { workItemId: string; workflowId: string; triggerNodeName?: string };
 
 	const triggerNodes = [
@@ -1971,7 +2055,7 @@ describe('verify-built-workflow tool — trigger selection', () => {
 	});
 });
 
-describe('verify-built-workflow tool — attached tools', () => {
+describe('workflow_builder_verify_built_workflow tool — attached tools', () => {
 	const verdict = (nodeName: string, simulated = false) => ({
 		nodeName,
 		verdict: simulated ? ('simulate' as const) : ('execute' as const),
@@ -2263,7 +2347,7 @@ describe('verify-built-workflow tool — attached tools', () => {
 	});
 });
 
-describe('verify-built-workflow tool — publish state', () => {
+describe('workflow_builder_verify_built_workflow tool — publish state', () => {
 	it('warns that the fix is not live when the published version is an older one', async () => {
 		const { ctx, getOutcome } = makeContext(
 			makeBuildOutcome(),

@@ -23,7 +23,7 @@ export function requireTenantId(node: INode, tenantId: string | undefined): stri
 	if (!value) {
 		throw new NodeOperationError(
 			node,
-			'Tenant ID is missing in the selected Azure Entra credential',
+			'Tenant ID is missing in the selected Microsoft Foundry (Entra ID) credential',
 		);
 	}
 

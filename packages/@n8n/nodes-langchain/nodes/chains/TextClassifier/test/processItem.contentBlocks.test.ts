@@ -55,7 +55,6 @@ describe('processItem with content-block model output', () => {
 		const output = await processItem(
 			ctx,
 			0,
-			{ json: {} },
 			llm,
 			parser,
 			categories,
@@ -63,6 +62,6 @@ describe('processItem with content-block model output', () => {
 			undefined,
 		);
 
-		expect(output).toEqual({ Billing: true, Technical: false });
+		expect(output).toEqual({ matched: ['Billing'], fallback: false });
 	});
 });

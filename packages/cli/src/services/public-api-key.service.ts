@@ -24,7 +24,7 @@ import { randomUUID } from 'crypto';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { UserManagementMailer } from '@/user-management/email';
 
-import { JwtService } from './jwt.service';
+import { JwtService } from '@n8n/backend-services';
 
 export const API_KEY_AUDIENCE: ApiKeyAudience = 'public-api';
 export const API_KEY_ISSUER = 'n8n';
@@ -257,6 +257,7 @@ export class PublicApiKeyService {
 	}
 
 	async deleteAllApiKeysForUser(user: User, tx?: EntityManager) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.apiKeyRepository.manager, tx, async (em) => {
 			const userApiKeys = await em.find(ApiKey, {
 				where: { userId: user.id, audience: API_KEY_AUDIENCE },
@@ -338,13 +339,14 @@ export class PublicApiKeyService {
 		const nowInSeconds = Math.floor(Date.now() / 1000);
 
 		return this.jwtService.sign(
-			{ sub: user.id, iss: API_KEY_ISSUER, aud: API_KEY_AUDIENCE, jti: randomUUID() },
+			'publicApiKey',
+			{ sub: user.id, iss: API_KEY_ISSUER, jti: randomUUID() },
 			{ ...(expiresAt && { expiresIn: expiresAt - nowInSeconds }) },
 		);
 	}
 
 	getApiKeyExpiration = (apiKey: string) => {
-		const decoded = this.jwtService.decode(apiKey);
+		const decoded = this.jwtService.decodeUnverified(apiKey);
 		return decoded?.exp ?? null;
 	};
 

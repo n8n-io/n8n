@@ -48,6 +48,26 @@ export interface AgentTemplate {
 /** Distinct from the home-screen suggestion catalog (`v1`). */
 export const AGENT_TEMPLATE_SUGGESTIONS_VERSION = 'agent-templates-v1';
 
+/**
+ * A first message carried from the Agents list empty state into a new builder.
+ * `prompt` is text the user typed. `template` names a starter to apply.
+ */
+export type AgentStarter =
+	| { kind: 'template'; templateId: string }
+	| { kind: 'prompt'; text: string };
+
+export function isAgentStarter(value: unknown): value is AgentStarter {
+	if (typeof value !== 'object' || value === null) return false;
+	const starter = value as AgentStarter;
+	if (starter.kind === 'prompt') {
+		return typeof starter.text === 'string' && starter.text.trim() !== '';
+	}
+	if (starter.kind === 'template') {
+		return typeof starter.templateId === 'string' && starter.templateId !== '';
+	}
+	return false;
+}
+
 export const AGENT_TEMPLATES: readonly AgentTemplate[] = [
 	{
 		id: 'morning-news-brief',

@@ -90,6 +90,62 @@ describe('useNodeTypesStore', () => {
 		});
 	});
 
+	describe('visibleNodeTypes module gating', () => {
+		const DATA_TABLE = 'n8n-nodes-base.dataTable';
+		const MESSAGE_AN_AGENT = 'n8n-nodes-base.messageAnAgent';
+
+		let activeModules: string[];
+
+		beforeEach(() => {
+			setActivePinia(createTestingPinia({ stubActions: false }));
+			store = useNodeTypesStore();
+			store.setNodeTypes([
+				makeNodeType({ name: 'n8n-nodes-test.plain', outputs: ['main'] }),
+				makeNodeType({ name: DATA_TABLE, outputs: ['main'] }),
+				makeNodeType({ name: MESSAGE_AN_AGENT, outputs: ['main'] }),
+			]);
+
+			activeModules = ['data-table', 'agents'];
+			const settingsStore = useSettingsStore();
+			vi.spyOn(settingsStore, 'isModuleActive').mockImplementation((name) =>
+				activeModules.includes(name),
+			);
+			vi.spyOn(settingsStore, 'isAgentsEnabled', 'get').mockImplementation(() =>
+				activeModules.includes('agents'),
+			);
+		});
+
+		const visibleNames = () => store.visibleNodeTypes.map((nodeType) => nodeType.name);
+
+		it('should list module-gated nodes while their modules are enabled', () => {
+			expect(visibleNames()).toEqual(
+				expect.arrayContaining(['n8n-nodes-test.plain', DATA_TABLE, MESSAGE_AN_AGENT]),
+			);
+		});
+
+		it('should hide the Data table node while the data-table module is inactive', () => {
+			activeModules = ['agents'];
+
+			expect(visibleNames()).not.toContain(DATA_TABLE);
+			expect(visibleNames()).toContain(MESSAGE_AN_AGENT);
+			expect(store.isNodeTypeModuleDisabled(DATA_TABLE)).toBe(true);
+		});
+
+		it('should hide the Message an Agent node while agents are disabled', () => {
+			activeModules = ['data-table'];
+
+			expect(visibleNames()).not.toContain(MESSAGE_AN_AGENT);
+			expect(visibleNames()).toContain(DATA_TABLE);
+			expect(store.isNodeTypeModuleDisabled(MESSAGE_AN_AGENT)).toBe(true);
+		});
+
+		it('should never treat a node type without a module as disabled', () => {
+			activeModules = [];
+
+			expect(store.isNodeTypeModuleDisabled('n8n-nodes-test.plain')).toBe(false);
+		});
+	});
+
 	describe('isModelNode', () => {
 		it('should return true for a node that outputs AiLanguageModel', () => {
 			const nodeType = makeNodeType({

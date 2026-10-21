@@ -1,13 +1,13 @@
+import {
+	type SerializedDataTable,
+	type SerializedDataTableColumn,
+	serializedDataTableSchema,
+} from '@n8n/api-types';
 import { Service } from '@n8n/di';
 
 import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
 import type { DataTable } from '@/modules/data-table/data-table.entity';
 
-import {
-	serializedDataTableSchema,
-	type SerializedDataTableColumn,
-	type SerializedDataTable,
-} from '../../spec/serialized/data-table.schema';
 import { definePackageSerializationPayload } from '../package-serialization.types';
 
 type DataTablePackageKeyHandling = {
@@ -21,7 +21,7 @@ type DataTablePackageKeyHandling = {
 };
 
 type DataTableColumnPackageKeyHandling = {
-	id: 'exclude';
+	id: 'copy';
 	createdAt: 'exclude';
 	updatedAt: 'exclude';
 	dataTableId: 'exclude';
@@ -50,6 +50,7 @@ export class DataTableSerializer {
 			.sort((a, b) => a.index - b.index)
 			.map((column) =>
 				serializeColumnPayload({
+					id: column.id,
 					name: column.name,
 					type: column.type,
 					index: column.index,

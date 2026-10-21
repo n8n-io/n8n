@@ -76,6 +76,7 @@ import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiStatusBar from './InstanceAiStatusBar.vue';
 import InstanceAiConfirmationPanel from './InstanceAiConfirmationPanel.vue';
 import WorkflowBuilderUnavailableNotice from './WorkflowBuilderUnavailableNotice.vue';
+import LimitedModeNotice from './LimitedModeNotice.vue';
 import AgentSection from './AgentSection.vue';
 import { collectActiveBuilderAgents, messageHasVisibleContent } from '../builderAgents';
 import AiThinkingBlock from '../../shared/components/AiThinkingBlock.vue';
@@ -123,13 +124,17 @@ const openWorkflowPreview = inject<((workflowId: string) => boolean) | undefined
 	'openWorkflowPreview',
 	undefined,
 );
-const { showCreditWarning, quotaLocked } = storeToRefs(store);
+const { isLowCredits, isOutOfCredits } = storeToRefs(store);
 const rootStore = useRootStore();
 const i18n = useI18n();
 const toast = useToast();
 const telemetry = useTelemetry();
 const { goToUpgrade } = usePageRedirectionHelper();
-const creditBanner = useCreditWarningBanner(showCreditWarning);
+const creditBanner = useCreditWarningBanner(isLowCredits);
+const outOfCreditsMessage = computed(() => {
+	if (!isOutOfCredits.value) return undefined;
+	return i18n.baseText('instanceAi.error.outOfCredits.title');
+});
 
 const pendingComposerContext = ref<InstanceAiHandoffContext | null>(null);
 const pendingComposerDraft = ref<PendingComposerDraft | null>(null);
@@ -296,7 +301,12 @@ const awaitingOnboardingGreeting = computed(
 
 const composerContextChip = computed(() => {
 	const agentAttachment = currentAgentAttachment.value;
-	if (agentAttachment && pendingComposerContext.value?.source !== 'agent-preview') {
+	const isNewAgent =
+		agentAttachment !== null &&
+		pendingAgentAttachment.value?.id === agentAttachment.id &&
+		pendingAgentAttachment.value.pending === true;
+	// A brand-new agent is already the focus of the builder — no composer chip.
+	if (agentAttachment && !isNewAgent && pendingComposerContext.value?.source !== 'agent-preview') {
 		// Prefer the host's live subject name when it refers to the same agent as
 		// the stashed attachment, so a rename in the builder updates the chip
 		// without re-stashing. Falls back to the stashed snapshot otherwise.
@@ -308,9 +318,6 @@ const composerContextChip = computed(() => {
 			type: 'agent-artifact' as const,
 			agentId: agentAttachment.id,
 			projectId: agentAttachment.projectId,
-			isNewAgent:
-				pendingAgentAttachment.value?.id === agentAttachment.id &&
-				pendingAgentAttachment.value.pending === true,
 			key: `pending-agent:${agentAttachment.id}`,
 			label: liveSubjectName ?? agentAttachment.name ?? i18n.baseText('agents.new.defaultName'),
 			icon: 'robot',
@@ -373,6 +380,10 @@ const composerContextChip = computed(() => {
 
 	return null;
 });
+
+// The new-agent placeholder no longer rides the context chip (a pending agent
+// shows none), so it is passed to the input as an explicit placeholder key.
+const isPendingAgentComposer = computed(() => pendingAgentAttachment.value?.pending === true);
 
 const workflowHandoffGreeting = computed(() => {
 	const attachment = thread.pendingWorkflowAttachment;
@@ -820,7 +831,7 @@ function dismissPendingComposerContext(key: string): boolean {
 async function dismissComposerContextChip() {
 	if (!composerContextChip.value) return;
 
-	if (pendingAgentAttachment.value && pendingComposerContext.value?.source !== 'agent-preview') {
+	if (composerContextChip.value.type === 'agent-artifact' && pendingAgentAttachment.value) {
 		clearPendingAgentAttachment(thread.id);
 		pendingAgentAttachment.value = null;
 		return;
@@ -995,11 +1006,13 @@ defineExpose({
 					<div :class="$style.inputContainer">
 						<div :class="$style.inputConstraint">
 							<WorkflowBuilderUnavailableNotice v-if="!settingsStore.isWorkflowBuilderAvailable" />
+							<LimitedModeNotice />
 							<CreditWarningBanner
-								v-if="creditBanner.visible.value"
+								v-if="isOutOfCredits || creditBanner.visible.value"
 								:credits-remaining="store.creditsRemaining"
 								:credits-quota="store.creditsQuota"
-								:amounts-hidden="quotaLocked"
+								:message="outOfCreditsMessage"
+								:dismissible="!isOutOfCredits"
 								@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 								@dismiss="creditBanner.dismiss()"
 							/>
@@ -1016,6 +1029,7 @@ defineExpose({
 										ref="chatInputRef"
 										key="chat-input"
 										:is-streaming="thread.isStreaming"
+										:is-out-of-credits="isOutOfCredits"
 										:is-submitting="
 											thread.isSendingMessage ||
 											isPlanChangeInFlight ||
@@ -1028,6 +1042,9 @@ defineExpose({
 										:current-thread-id="thread.id"
 										:amend-context="thread.amendContext"
 										:context-chip="composerContextChip"
+										:placeholder-key="
+											isPendingAgentComposer ? 'instanceAi.input.newAgentPlaceholder' : undefined
+										"
 										:contextual-suggestion="thread.contextualSuggestion"
 										:mentions-enabled="props.mentionsEnabled"
 										:mention-project-id="thread.projectId"
@@ -1074,14 +1091,15 @@ defineExpose({
 	// Allow flex item to shrink below content size so reka-ui viewport scrolls
 	min-height: 0;
 
-	:global([data-orientation='vertical'][data-orientation='vertical']) {
+	// Only the scrollbar, a direct child: menus inside the chat are vertical too.
+	> :global([data-orientation='vertical'][data-orientation='vertical']) {
 		background: transparent;
 		padding: 0;
 		// Sit above the sticky input dock (z-index: 3) so its gradient doesn't cover the scrollbar
 		z-index: 4;
 	}
 
-	:global([data-orientation='vertical'][data-orientation='vertical'] > *) {
+	> :global([data-orientation='vertical'][data-orientation='vertical'] > *) {
 		background: light-dark(var(--color--neutral-400), var(--color--neutral-600));
 
 		&:hover {

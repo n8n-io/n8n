@@ -1,16 +1,17 @@
 import { render } from '@testing-library/vue';
+import { mount } from '@vue/test-utils';
+
+import N8nBadge from '../N8nBadge';
 
 import PreviewBadge from './PreviewBadge.vue';
 
 describe('PreviewBadge', () => {
-	it('renders small preview badge correctly', () => {
-		const { container } = render(PreviewBadge, { props: { size: 'small' } });
-		expect(container).toMatchSnapshot();
-	});
-
-	it('renders medium preview badge correctly', () => {
-		const { container } = render(PreviewBadge, { props: { size: 'medium' } });
-		expect(container).toMatchSnapshot();
+	it('uses the outline variant and forwards its size', () => {
+		const wrapper = mount(PreviewBadge, { props: { size: 'small' } });
+		expect(wrapper.getComponent(N8nBadge).props()).toMatchObject({
+			variant: 'outline',
+			size: 'small',
+		});
 	});
 
 	it('renders custom text instead of the default label', () => {

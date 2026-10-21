@@ -10,15 +10,20 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentChatExecutionService } from './agent-chat-execution.service';
+import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentMessageQueueService, type ClaimedAgentMessage } from './agent-message-queue.service';
 import { AgentQueuedPreviewStreamService } from './agent-queued-preview-stream.service';
-import { emitChunkEvents } from './agent-sse-stream';
+import { emitChunkEvents, toChatErrorEvent } from './agent-sse-stream';
 import { AgentTestRunService } from './agent-test-run.service';
 import type { AgentExecutionThread } from './entities/agent-execution-thread.entity';
 import type { AgentChatBridge } from './integrations/agent-chat-bridge';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
+import { canUseSystemAgent } from './system-agents/system-agent-access';
+import { SystemAgentExecutionService } from './system-agents/system-agent-execution.service';
+import { SystemAgentRegistry } from './system-agents/system-agent-registry';
+import { chatSurfaceForKind, type AgentChatSurface } from './utils/agent-thread-access';
 
 @Service()
 export class AgentMessageQueueConsumer {
@@ -37,7 +42,10 @@ export class AgentMessageQueueConsumer {
 		private readonly credentialsService: CredentialsService,
 		private readonly chatExecutionService: AgentChatExecutionService,
 		private readonly integrations: ChatIntegrationService,
+		private readonly orchestrator: AgentExecutionOrchestratorService,
 		private readonly logger: Logger,
+		private readonly systemAgents: SystemAgentRegistry,
+		private readonly systemAgentExecution: SystemAgentExecutionService,
 	) {}
 
 	start(): void {
@@ -82,7 +90,7 @@ export class AgentMessageQueueConsumer {
 			.finally(() => this.activeThreads.delete(threadId));
 	}
 
-	/** Run messages in FIFO order until the session is empty, blocked, or unavailable on this main. */
+	/** Run messages in queue order until the session is empty, blocked, or unavailable on this main. */
 	private async drain(threadId: string): Promise<void> {
 		while (!this.stopped) {
 			if (!(await this.consumeNext(threadId))) return;
@@ -92,31 +100,68 @@ export class AgentMessageQueueConsumer {
 	/** Claim and process one message. A bridge lease prevents teardown until the attempt finishes. */
 	private async consumeNext(threadId: string): Promise<boolean> {
 		let lease: ReturnType<ChatIntegrationService['acquireQueueBridge']>;
+		const controller = new AbortController();
 		try {
-			const claim = await this.queue.claimNext(threadId, async (item, thread, ctx) => {
-				if (this.stopped) return false;
-				if (item.payload.kind === 'preview') return true;
-				const source = item.message.origin?.source;
-				if (!source) throw new UnexpectedError('Queued integration input has no source');
-				const connection = await this.repository.findPublishedConnection(
-					thread.agentId,
-					thread.projectId,
-					source,
-					item.payload.credentialId,
-					ctx,
-				);
-				if (this.stopped) return false;
-				// Removed connections fail the item. A missing or closing bridge leaves it pending.
-				if (!connection) return true;
-				lease = this.integrations.acquireQueueBridge(
-					thread.agentId,
-					source,
-					item.payload.credentialId,
-				);
-				return lease !== undefined;
+			const claim = await this.chatExecutionService.withTurnLock(threadId, async (signal) => {
+				signal.throwIfAborted();
+
+				const claimed = await this.queue.claimNext(threadId, async (item, thread, ctx) => {
+					if (this.stopped) return false;
+					if (item.payload.kind !== 'integration') return true;
+
+					const source = item.message.origin?.source;
+					if (!source) throw new UnexpectedError('Queued integration input has no source');
+
+					const connection = await this.repository.findPublishedConnection(
+						thread.agentId,
+						thread.projectId,
+						source,
+						item.payload.credentialId,
+						ctx,
+					);
+
+					if (this.stopped) return false;
+
+					// Removed connections fail the item. A missing or closing bridge leaves it pending.
+					if (!connection) return true;
+
+					lease = this.integrations.acquireQueueBridge(
+						thread.agentId,
+						source,
+						item.payload.credentialId,
+					);
+
+					return lease !== undefined;
+				});
+
+				if (!claimed) return null;
+
+				if (signal.aborted) {
+					// Finalize the claimed execution without starting it after the lock expires.
+					controller.abort(new OperationalError('Agent execution startup lock was lost'));
+				} else if (claimed.payload.kind !== 'integration' && claimed.thread.ownerId) {
+					this.chatExecutionService.register(
+						{
+							projectId: claimed.thread.projectId,
+							agentId: claimed.thread.agentId,
+							threadId,
+							userId: claimed.thread.ownerId,
+							executionId: claimed.admission.executionId,
+							surface: chatSurfaceForKind(claimed.payload.kind),
+						},
+						controller,
+					);
+				}
+				return claimed;
 			});
+
 			if (!claim) return false;
-			await this.consume(claim, lease?.bridge);
+
+			await this.chatExecutionService.settle(
+				claim.admission.executionId,
+				async () => await this.consume(claim, controller, lease?.bridge),
+			);
+
 			return true;
 		} finally {
 			lease?.release();
@@ -124,28 +169,22 @@ export class AgentMessageQueueConsumer {
 	}
 
 	/** Execute a claimed message, deliver its output, and settle its queue item. */
-	private async consume(claim: ClaimedAgentMessage, bridge?: AgentChatBridge): Promise<void> {
+	private async consume(
+		claim: ClaimedAgentMessage,
+		controller: AbortController,
+		bridge?: AgentChatBridge,
+	): Promise<void> {
 		const { item, thread, admission, payload } = claim;
-		const controller = new AbortController();
 		const signal = AbortSignal.any([
 			controller.signal,
 			this.executionService.getAbortSignal(admission.executionId),
 		]);
-		const sender =
-			payload.kind === 'preview' ? this.previewStreams.createSender(item.id) : undefined;
+		const surface = payload.kind === 'integration' ? undefined : chatSurfaceForKind(payload.kind);
+		const sender = surface && this.previewStreams.createSender(item.id);
+
 		try {
-			if (payload.kind === 'preview' && sender) {
-				const user = await this.getPreviewOwner(thread);
-				this.chatExecutionService.register(
-					{
-						projectId: thread.projectId,
-						agentId: thread.agentId,
-						threadId: thread.id,
-						userId: user.id,
-						executionId: admission.executionId,
-					},
-					controller,
-				);
+			if (surface && sender) {
+				const user = await this.getThreadOwner(thread, surface);
 				sender.send({
 					type: 'execution-started',
 					executionId: admission.executionId,
@@ -153,19 +192,31 @@ export class AgentMessageQueueConsumer {
 					inputMessageIds: admission.inputMessageIds,
 					message: payload.message,
 				});
-				await this.chatExecutionService.settle(
-					admission.executionId,
-					async () => await this.consumePreview(claim, user, signal, sender.send),
-				);
+				signal.throwIfAborted();
+
+				if (payload.kind === 'system') {
+					await this.systemAgentExecution.consume(claim, user, signal, sender.send);
+				} else if (payload.kind === 'n8n_chat') {
+					await this.consumeN8nChat(claim, user, signal, sender.send);
+				} else {
+					await this.consumePreview(claim, user, signal, sender.send);
+				}
 			} else {
+				signal.throwIfAborted();
 				await this.consumeIntegration(claim, signal, bridge);
 			}
 		} catch (error) {
-			await this.queue.recordFailure(claim, error, controller.signal);
-			sender?.send({
-				type: 'error',
-				message: error instanceof Error ? error.message : 'Chat failed',
-			});
+			const { isAbortError } = await import('@n8n/agents');
+			const requestedStop =
+				controller.signal.aborted && isAbortError(controller.signal.reason) && isAbortError(error);
+			await this.queue.recordFailure(claim, error, requestedStop ? controller.signal : undefined);
+
+			if (requestedStop) {
+				sender?.send({ type: 'done', sessionId: thread.id, executionId: admission.executionId });
+				return;
+			}
+
+			sender?.send(toChatErrorEvent(error, 'Chat failed'));
 			this.logger.warn('Queued agent message failed', {
 				queueId: item.id,
 				executionId: admission.executionId,
@@ -177,17 +228,33 @@ export class AgentMessageQueueConsumer {
 		}
 	}
 
-	private async getPreviewOwner(thread: AgentExecutionThread): Promise<User> {
+	/**
+	 * Load the thread owner and check that they can still run the agent. A
+	 * system agent uses the runtime floor and its provider checks instead of
+	 * the project `agent:execute` scope.
+	 */
+	private async getThreadOwner(
+		thread: AgentExecutionThread,
+		surface: AgentChatSurface,
+	): Promise<User> {
 		if (!thread.ownerId) throw new UserError('You can no longer execute this agent');
 		const user = await this.userRepository.findByIdWithRole(thread.ownerId);
-		if (
-			!user ||
-			user.disabled ||
-			!(await userHasScopes(user, ['agent:execute'], false, { projectId: thread.projectId }))
-		) {
+		if (!user || user.disabled || !(await this.canExecute(user, thread, surface))) {
 			throw new UserError('You can no longer execute this agent');
 		}
 		return user;
+	}
+
+	private async canExecute(
+		user: User,
+		thread: AgentExecutionThread,
+		surface: AgentChatSurface,
+	): Promise<boolean> {
+		if (surface !== 'system') {
+			return await userHasScopes(user, ['agent:execute'], false, { projectId: thread.projectId });
+		}
+		const provider = this.systemAgents.get(thread.agentId);
+		return provider !== undefined && (await canUseSystemAgent(provider, user, thread.projectId));
 	}
 
 	private async consumePreview(
@@ -199,6 +266,7 @@ export class AgentMessageQueueConsumer {
 		const { thread, admission, payload } = claim;
 		if (payload.kind !== 'preview') return;
 		signal.throwIfAborted();
+
 		const prepared = await this.testRunService.prepareDraftRun({
 			agentId: thread.agentId,
 			projectId: thread.projectId,
@@ -213,6 +281,7 @@ export class AgentMessageQueueConsumer {
 				thread.agentId,
 			),
 		});
+
 		if (prepared.status !== 'ready') {
 			const message =
 				prepared.status === 'agent_misconfigured'
@@ -228,6 +297,7 @@ export class AgentMessageQueueConsumer {
 			});
 			return;
 		}
+
 		const result = await this.testRunService.executePreparedDraftRun({
 			agentId: thread.agentId,
 			projectId: thread.projectId,
@@ -242,9 +312,37 @@ export class AgentMessageQueueConsumer {
 			abortSignal: signal,
 			errorMode: 'forward',
 			onChunk: (chunk) => emitChunkEvents(chunk, send),
+			onBudgetNotice: (notice) => send({ type: 'budget-notice', ...notice }),
 		});
+
 		if (result.status === 'completed')
 			send({ type: 'done', sessionId: thread.id, executionId: admission.executionId });
+	}
+
+	private async consumeN8nChat(
+		claim: ClaimedAgentMessage,
+		user: User,
+		signal: AbortSignal,
+		send: (event: AgentSseEvent) => void,
+	): Promise<void> {
+		const { thread, admission, payload } = claim;
+		const stream = this.orchestrator.executeForN8nChatPublished({
+			agentId: thread.agentId,
+			projectId: thread.projectId,
+			user,
+			message: payload.message,
+			memory: { threadId: thread.id, resourceId: payload.resourceId },
+			attachments: payload.attachments,
+			sessionMode: 'existing',
+			admittedExecution: admission,
+			abortSignal: signal,
+		});
+		let completed = true;
+		for await (const chunk of stream) {
+			emitChunkEvents(chunk, send);
+			if (chunk.type === 'tool-call-suspended' || chunk.type === 'error') completed = false;
+		}
+		if (completed) send({ type: 'done', sessionId: thread.id, executionId: admission.executionId });
 	}
 
 	private async consumeIntegration(

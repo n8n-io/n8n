@@ -1,5 +1,9 @@
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import {
+	EventService,
+	InstanceWriteAccessService,
+	WorkflowPublishedDataService,
+} from '@n8n/backend-services';
 import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type {
 	Project,
@@ -49,14 +53,13 @@ import { FailedRunFactory } from '@/executions/failed-run-factory';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { IWorkflowErrorData } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
-import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
 import { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+
 import type { WorkflowRequest } from '@/workflows/workflow.request';
 
 @Service()
@@ -90,6 +93,7 @@ export class WorkflowExecutionService {
 		mode: WorkflowExecuteMode,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 		deduplicationKey?: string,
+		callerAwaitsOutcome: IWorkflowExecutionDataProcess['callerAwaitsOutcome'] = 'none',
 	) {
 		const nodeExecutionStack: IExecuteData[] = [
 			{
@@ -121,6 +125,7 @@ export class WorkflowExecutionService {
 			deduplicationKey,
 			projectId,
 			projectName,
+			callerAwaitsOutcome,
 		};
 
 		return await this.workflowRunner.run(runData, true, undefined, undefined, responsePromise);
@@ -139,6 +144,7 @@ export class WorkflowExecutionService {
 		cursor: PollCursor,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 		fence?: PollLeaseFence,
+		callerAwaitsOutcome: IWorkflowExecutionDataProcess['callerAwaitsOutcome'] = 'none',
 	): Promise<string | undefined> {
 		const nodeExecutionStack: IExecuteData[] = [
 			{
@@ -168,6 +174,7 @@ export class WorkflowExecutionService {
 			workflowData,
 			projectId,
 			projectName,
+			callerAwaitsOutcome,
 		};
 
 		// Mask the trigger items before the payload is committed, so the persisted row

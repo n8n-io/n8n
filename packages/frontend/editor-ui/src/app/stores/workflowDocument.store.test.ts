@@ -28,13 +28,17 @@ import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 
-const { getNodeTypeMock } = vi.hoisted(() => ({
+const { getNodeTypeMock, isTriggerNodeMock } = vi.hoisted(() => ({
 	getNodeTypeMock: vi.fn().mockReturnValue(null),
+	// The publish gate asks which nodes start a run. Anything named like a trigger
+	// counts, which keeps these tests readable without a node-type registry.
+	isTriggerNodeMock: vi.fn((type: string) => type.toLowerCase().includes('trigger')),
 }));
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getNodeType: getNodeTypeMock,
+		isTriggerNode: isTriggerNodeMock,
 		communityNodeType: vi.fn().mockReturnValue(null),
 		getAllNodeTypes: vi.fn().mockReturnValue({
 			nodeTypes: {},
@@ -205,8 +209,8 @@ describe('workflowDocument.store orchestration', () => {
 		});
 	});
 
-	describe('hasNodeValidationIssues', () => {
-		it('should return true when a node has issues and connected', () => {
+	describe('nodeValidationIssues', () => {
+		it('should report a node that has issues and is connected', () => {
 			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
 
 			workflowDocumentStore.setNodes([
@@ -218,11 +222,10 @@ describe('workflowDocument.store orchestration', () => {
 				Node1: { main: [[{ node: 'Node2', type: NodeConnectionTypes.Main, index: 0 }]] },
 			});
 
-			const hasIssues = workflowDocumentStore.hasNodeValidationIssues;
-			expect(hasIssues).toBe(true);
+			expect(workflowDocumentStore.nodeValidationIssues.length).toBeGreaterThan(0);
 		});
 
-		it('should return false when node has issues but it is not connected', () => {
+		it('should report nothing when the node with issues is not connected', () => {
 			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
 
 			workflowDocumentStore.setNodes([
@@ -230,11 +233,10 @@ describe('workflowDocument.store orchestration', () => {
 				createNode({ name: 'Node2' }),
 			]);
 
-			const hasIssues = workflowDocumentStore.hasNodeValidationIssues;
-			expect(hasIssues).toBe(false);
+			expect(workflowDocumentStore.nodeValidationIssues).toEqual([]);
 		});
 
-		it('should return false when no nodes have issues', () => {
+		it('should report nothing when no nodes have issues', () => {
 			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
 
 			workflowDocumentStore.setNodes([
@@ -245,17 +247,50 @@ describe('workflowDocument.store orchestration', () => {
 				Node1: { main: [[{ node: 'Node2', type: NodeConnectionTypes.Main, index: 0 }]] },
 			});
 
-			const hasIssues = workflowDocumentStore.hasNodeValidationIssues;
-			expect(hasIssues).toBe(false);
+			expect(workflowDocumentStore.nodeValidationIssues).toEqual([]);
 		});
 
-		it('should return false when there are no nodes', () => {
+		it('should report nothing when there are no nodes', () => {
 			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
 
 			workflowDocumentStore.setNodes([]);
 
-			const hasIssues = workflowDocumentStore.hasNodeValidationIssues;
-			expect(hasIssues).toBe(false);
+			expect(workflowDocumentStore.nodeValidationIssues).toEqual([]);
+		});
+	});
+
+	describe('hasPublishBlockingIssues', () => {
+		it('should block when a trigger reaches the node with issues', () => {
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+
+			workflowDocumentStore.setNodes([
+				createNode({ name: 'My trigger', type: 'n8n-nodes-base.scheduleTrigger' }),
+				createNode({ name: 'Node1', issues: { parameters: { field: ['Error message'] } } }),
+			]);
+			workflowDocumentStore.setConnections({
+				'My trigger': { main: [[{ node: 'Node1', type: NodeConnectionTypes.Main, index: 0 }]] },
+			});
+
+			expect(workflowDocumentStore.hasPublishBlockingIssues).toBe(true);
+		});
+
+		it('should not block when the node with issues sits on an island', () => {
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+
+			// Node1 and Node2 are wired to each other, so connectedness would call
+			// Node1 live. No trigger reaches them, so no run can involve them.
+			workflowDocumentStore.setNodes([
+				createNode({ name: 'My trigger', type: 'n8n-nodes-base.scheduleTrigger' }),
+				createNode({ name: 'Reached' }),
+				createNode({ name: 'Node1', issues: { parameters: { field: ['Error message'] } } }),
+				createNode({ name: 'Node2' }),
+			]);
+			workflowDocumentStore.setConnections({
+				'My trigger': { main: [[{ node: 'Reached', type: NodeConnectionTypes.Main, index: 0 }]] },
+				Node1: { main: [[{ node: 'Node2', type: NodeConnectionTypes.Main, index: 0 }]] },
+			});
+
+			expect(workflowDocumentStore.hasPublishBlockingIssues).toBe(false);
 		});
 	});
 

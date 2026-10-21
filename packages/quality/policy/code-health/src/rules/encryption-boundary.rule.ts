@@ -21,18 +21,21 @@ const DEFAULT_TRIGGER_DEPENDENCIES = ['n8n-core', '@n8n/db'];
 /** The rules `encryptionBoundaryConfig` enables, without the plugin prefix. */
 const DEFAULT_GUARDED_RULES = ['no-encryption-guardrail-disable'];
 
-const BOUNDARY_CONFIG_PATH = 'packages/@n8n/eslint-config/src/configs/encryption-boundary.ts';
+const BOUNDARY_CONFIG_PATHS =
+	'packages/@n8n/eslint-config/src/configs/encryption-boundary.ts or packages/@n8n/oxlint-config/src/configs/encryption-boundary.ts';
 
 const CONFIG_FILENAMES = [
 	'eslint.config.mjs',
 	'eslint.config.js',
 	'eslint.config.cjs',
 	'eslint.config.ts',
+	'oxlint.config.mts',
+	'oxlint.config.ts',
 ];
 
 /** `backendConfig` composes the boundary, and `nodesConfig` composes `backendConfig`. */
 const BOUNDARY_IMPORT =
-	/import\s*\{([^}]*)\}\s*from\s+['"]@n8n\/eslint-config\/(?:backend|nodes)['"]/;
+	/import\s*\{([^}]*)\}\s*from\s+['"]@n8n\/(?:eslint|oxlint)-config\/(?:backend|nodes)['"]/;
 const BOUNDARY_EXPORTS = /^(backendConfig|nodesConfig)(?:\s+as\s+(\w+))?$/;
 
 /** A guarded rule configured to anything weaker than "error" in an ESLint config. */
@@ -86,7 +89,7 @@ export class EncryptionBoundaryRule extends BaseRule<CodeHealthContext> {
 	readonly id = 'encryption-boundary';
 	readonly name = 'Encryption Boundary Coverage';
 	readonly description =
-		'Packages that depend on n8n-core or @n8n/db must compose the encryption-boundary ESLint config, keep its rules at "error", and contain no ESLint directive that silences them.';
+		'Packages that depend on n8n-core or @n8n/db must compose the encryption-boundary lint config, keep its rules at "error", and contain no lint directive that silences them.';
 	readonly severity = 'error' as const;
 
 	async analyze(context: CodeHealthContext): Promise<Violation[]> {
@@ -132,8 +135,8 @@ export class EncryptionBoundaryRule extends BaseRule<CodeHealthContext> {
 					packageJsonPath,
 					1,
 					1,
-					`${packageName} depends on ${trigger} but has no ESLint config, so the encryption boundary is not linted there.`,
-					'Add an eslint.config.mjs that extends `backendConfig` from @n8n/eslint-config/backend (or `nodesConfig`).',
+					`${packageName} depends on ${trigger} but has no supported lint config, so the encryption boundary is not linted there.`,
+					'Add an eslint.config.mjs or oxlint.config.mts that extends the matching `backendConfig` (or `nodesConfig`).',
 				),
 			];
 		}
@@ -147,8 +150,8 @@ export class EncryptionBoundaryRule extends BaseRule<CodeHealthContext> {
 					configPath,
 					1,
 					1,
-					`${packageName} depends on ${trigger} but its ESLint config does not compose the encryption boundary.`,
-					"Extend `backendConfig` from '@n8n/eslint-config/backend' (or `nodesConfig`) and add it to the exported config.",
+					`${packageName} depends on ${trigger} but its lint config does not compose the encryption boundary.`,
+					'Extend `backendConfig` (or `nodesConfig`) from the matching shared lint package and add it to the exported config.',
 				),
 			);
 		}
@@ -161,8 +164,8 @@ export class EncryptionBoundaryRule extends BaseRule<CodeHealthContext> {
 					configPath,
 					index + 1,
 					match.index + 1,
-					`The ESLint config sets \`n8n-local-rules/${match[1]}\` to ${match[2]}; the encryption guardrails must stay at "error".`,
-					`Remove the override. Widen the boundary in ${BOUNDARY_CONFIG_PATH} instead.`,
+					`The lint config sets \`n8n-local-rules/${match[1]}\` to ${match[2]}; the encryption guardrails must stay at "error".`,
+					`Remove the override. Widen the boundary in ${BOUNDARY_CONFIG_PATHS} instead.`,
 				),
 			);
 		});
@@ -220,7 +223,7 @@ export class EncryptionBoundaryRule extends BaseRule<CodeHealthContext> {
 				lineNumber,
 				column,
 				`An inline \`${form}\` configuration comment reconfigures the encryption guardrail \`${rule}\`.`,
-				`Remove the comment. Widen the boundary in ${BOUNDARY_CONFIG_PATH} instead.`,
+				`Remove the comment. Widen the boundary in ${BOUNDARY_CONFIG_PATHS} instead.`,
 			);
 		}
 
@@ -251,7 +254,7 @@ export class EncryptionBoundaryRule extends BaseRule<CodeHealthContext> {
 			lineNumber,
 			column,
 			`\`${form}\` names the encryption guardrail \`${rule}\`.`,
-			`Remove the directive. Widen the boundary in ${BOUNDARY_CONFIG_PATH} instead.`,
+			`Remove the directive. Widen the boundary in ${BOUNDARY_CONFIG_PATHS} instead.`,
 		);
 	}
 }

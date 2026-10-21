@@ -15,9 +15,8 @@ import { Container } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { CredentialsFinderService, RoleService } from '@n8n/backend-services';
 import { NotFoundError } from '@n8n/errors';
-import { RoleService } from '@n8n/backend-services';
 
 const INSTANCE_CREDENTIAL_MANAGEMENT_SCOPES = new Set<Scope>([
 	'credential:read',

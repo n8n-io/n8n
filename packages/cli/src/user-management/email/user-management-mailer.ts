@@ -55,7 +55,9 @@ type TemplateName =
 	| 'api-key-revoked'
 	| 'mcp-client-revoked'
 	| 'email-change-requested'
-	| 'email-change-completed';
+	| 'email-change-completed'
+	| 'agent-budget-alert'
+	| 'migration-findings';
 
 @Service()
 export class UserManagementMailer {
@@ -179,6 +181,61 @@ export class UserManagementMailer {
 				revokedBy: formatRevokedBy(revoker),
 				revokedAt: formatRevokedAt(new Date()),
 				mcpSettingsUrl: `${baseUrl}/settings/mcp`,
+			}),
+		});
+	}
+
+	async agentBudgetAlert(data: {
+		email: string;
+		firstName?: string | null;
+		agentName: string;
+		agentUrl: string;
+		alertThresholdPercent: number;
+	}): Promise<SendEmailResult> {
+		if (!this.mailer) return { emailSent: false };
+
+		const template = await this.getTemplate('agent-budget-alert');
+		return await this.mailer.sendMail({
+			emailRecipients: data.email,
+			subject: 'Your agent reached its monthly budget alert',
+			body: template({
+				...this.basePayload,
+				firstName: data.firstName || 'there',
+				agentName: data.agentName,
+				agentUrl: data.agentUrl,
+				percent: data.alertThresholdPercent,
+			}),
+		});
+	}
+
+	/** Asks the owner of the listed workflows to resolve one migration finding on them. */
+	async migrationFindings(data: {
+		email: string;
+		firstName?: string | null;
+		notifierName: string;
+		ruleTitle: string;
+		targetVersion: string;
+		workflows: Array<{ id: string; name: string }>;
+		reportUrl: string;
+	}): Promise<SendEmailResult> {
+		if (!this.mailer) return { emailSent: false };
+
+		const baseUrl = this.urlService.getInstanceBaseUrl();
+		const template = await this.getTemplate('migration-findings');
+		return await this.mailer.sendMail({
+			emailRecipients: data.email,
+			subject: `Your workflows need changes before the upgrade to n8n ${data.targetVersion}`,
+			body: template({
+				...this.basePayload,
+				firstName: data.firstName || 'there',
+				notifierName: data.notifierName,
+				ruleTitle: data.ruleTitle,
+				targetVersion: data.targetVersion,
+				workflows: data.workflows.map((workflow) => ({
+					name: workflow.name,
+					url: `${baseUrl}/workflow/${workflow.id}`,
+				})),
+				reportUrl: data.reportUrl,
 			}),
 		});
 	}

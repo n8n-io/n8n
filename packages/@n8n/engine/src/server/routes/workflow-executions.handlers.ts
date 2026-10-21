@@ -3,9 +3,9 @@ import { z } from 'zod';
 
 import {
 	ExecutionNotFoundError,
+	type CancelExecutionResult,
 	type CancelExecutionService,
 	type ExecutionQueryService,
-	type ExecutionStatus,
 	type ExecutionView,
 	type ExecutionWithStepsView,
 	type StepView,
@@ -152,9 +152,9 @@ export function createCancelExecutionHandler(
 		const id = parseExecutionId(req, res);
 		if (id === null) return;
 
-		let status: ExecutionStatus;
+		let result: CancelExecutionResult;
 		try {
-			({ status } = await cancelExecution.cancel(id));
+			result = await cancelExecution.cancel(id);
 		} catch (error) {
 			if (error instanceof ExecutionNotFoundError) {
 				fail(res, 404, { error: 'not_found' });
@@ -164,16 +164,20 @@ export function createCancelExecutionHandler(
 		}
 
 		// A repeated cancel answers like the first, so a retried request is safe.
-		if (status !== 'cancelled') {
+		if (result.status !== 'cancelled' || result.finishedAt === null) {
 			fail(res, 409, {
 				error: 'not_cancellable',
-				reason: `The execution has already ${status}`,
-				details: { status },
+				reason: `The execution has already ${result.status}`,
+				details: { status: result.status },
 			});
 			return;
 		}
 
-		const body: CancelExecutionResponse = { executionId: id, status };
+		const body: CancelExecutionResponse = {
+			executionId: id,
+			status: result.status,
+			finishedAt: result.finishedAt.toISOString(),
+		};
 		res.status(200).json(body);
 	};
 }

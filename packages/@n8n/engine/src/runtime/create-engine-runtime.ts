@@ -123,7 +123,12 @@ export function createEngineRuntime({
 
 	const { app } = createEngineServer({
 		startExecution: new StartExecutionService(admittance, executionStore, orchestrationQueue),
-		cancelExecution: new CancelExecutionService(executionStore, stepStore, lifecycleEventPublisher),
+		cancelExecution: new CancelExecutionService(
+			executionStore,
+			stepStore,
+			lifecycleEventPublisher,
+			responseSender,
+		),
 		executionQuery: new ExecutionQueryService(executionViewStore),
 		identityVerifier,
 		logger,

@@ -694,7 +694,7 @@ onMounted(async () => {
 				</N8nText>
 				<div :class="$style.headerButtons">
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						native-type="button"
 						:disabled="!isDirty"
 						class="mr-2xs"
@@ -856,7 +856,7 @@ onMounted(async () => {
 						i18n.baseText('projects.settings.danger.message')
 					}}</small>
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						size="large"
 						native-type="button"
 						data-test-id="project-settings-delete-button"
@@ -971,6 +971,15 @@ onMounted(async () => {
 .userSelect {
 	max-width: var(--project-field--width);
 	width: 100%;
+}
+
+/* N8nSelect still resolves its sizes to the legacy element-plus heights (large = 42px),
+   so it never lines up with N8nInput. Pin the picker to the token N8nInput "large" uses,
+   which is the height of every other input on this page. */
+.userSelect :global(.el-select .el-input__inner) {
+	height: var(--height--lg);
+	min-height: var(--height--lg);
+	line-height: var(--height--lg);
 }
 
 /* Ensure textarea uses regular UI font, not monospace */

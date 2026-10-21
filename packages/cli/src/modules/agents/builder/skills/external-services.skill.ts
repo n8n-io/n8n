@@ -15,19 +15,19 @@ export function externalServicesSkill(): RuntimeSkill {
 			'Use when connecting the target agent to an external product: deciding whether Slack, Discord, Linear, Telegram, or another platform is a chat integration/trigger versus a callable service, and adding, removing, or updating chat integrations or MCP servers.',
 		recommendedTools: [
 			'agent-context',
-			'configure_channel',
-			'ask_credential',
-			'verify_mcp_server',
-			'patch_config',
+			'agent_builder_configure_channel',
+			'agent_builder_ask_credential',
+			'agent_builder_verify_mcp_server',
+			'agent_builder_patch_config',
 		],
 		allowedTools: [
 			'agent-context',
-			'configure_channel',
-			'ask_credential',
-			'verify_mcp_server',
-			'ask_questions',
-			'patch_config',
-			'write_config',
+			'agent_builder_configure_channel',
+			'agent_builder_ask_credential',
+			'agent_builder_verify_mcp_server',
+			'agent_builder_ask_questions',
+			'agent_builder_patch_config',
+			'agent_builder_write_config',
 			'report_required_artifact',
 			'load_skill',
 		],
@@ -126,46 +126,49 @@ The \`integrations\` array controls how the target agent is triggered.
 - Call \`agent-context({ type: "integrations" })\` first.
 - Read the returned \`capabilities\`, \`useIntegrationWhen\`, and
   \`useNodeToolWhen\` fields before deciding to add an integration.
-- Pick one returned \`type\` and pass it to \`configure_channel\` as
-  \`integrationType\`. ALWAYS use \`configure_channel\` for chat-channel
-  credentials — never \`ask_credential\` or a raw config write. The setup UI it
+- Pick one returned \`type\` and pass it to \`agent_builder_configure_channel\` as
+  \`integrationType\`. ALWAYS use \`agent_builder_configure_channel\` for chat-channel
+  credentials — never \`agent_builder_ask_credential\` or a raw config write. The setup UI it
   shows creates and persists the channel configuration without publishing the
-  agent; do not follow up with \`patch_config\`/\`write_config\` to write the
+  agent; do not follow up with \`agent_builder_patch_config\`/\`agent_builder_write_config\` to write the
   credential.
-- ${INITIAL_BUILD_NOTE} Instead of \`configure_channel\`: after
-  \`agent-context({ type: "integrations" })\` returns the matching type, \`agent-context({ type: "config" })\` then
-  \`patch_config\` adding \`{ "type": "<integrationType>", "credentialId": "" }\`
-  to \`/integrations/-\` (include a minimal valid draft \`settings\` object for
-  telegram) so the channel appears in the agent panel as needing setup. Pass
-  the same \`integrationType\` in the trailing \`finish_setup\` call's
+- ${INITIAL_BUILD_NOTE} Instead of \`agent_builder_configure_channel\`: after
+  \`agent-context({ type: "integrations" })\` returns the matching type, add
+  \`{ "type": "<integrationType>", "credentialId": "" }\` to \`integrations\`
+  in your single initial config write (include a minimal valid draft
+  \`settings\` object for telegram) so the channel appears in the agent panel
+  as needing setup. If the config is already written, \`agent_builder_patch_config\` (with
+  the \`configHash\` from your latest config read or write) adding it to
+  \`/integrations/-\` instead. Pass
+  the same \`integrationType\` in the trailing \`agent_builder_finish_setup\` call's
   \`channels\` array — its card configures or skips the channel itself. Do not
-  call \`configure_channel\` again after \`finish_setup\` handles the card. If
+  call \`agent_builder_configure_channel\` again after \`agent_builder_finish_setup\` handles the card. If
   skipped, list it in the closing setup checklist pointing at the channel
   chip in the agent panel.
 - Preserve existing chat integrations unless the user asked to remove them.
 - To remove an existing chat integration, call \`agent-context({ type: "config" })\` and inspect
   \`config.integrations\`.
 - If exactly one existing integration matches the requested platform, remove
-  that entry with \`patch_config\` by index (or replace \`/integrations\` with a
+  that entry with \`agent_builder_patch_config\` by index (or replace \`/integrations\` with a
   filtered array when clearer).
 - If multiple existing integrations match the requested platform, ask which one
   to remove before editing \`integrations\`.
 - Removing a chat integration means deleting its entry from
-  \`integrations[]\`. Do not call \`configure_channel\` to remove a channel.
+  \`integrations[]\`. Do not call \`agent_builder_configure_channel\` to remove a channel.
 
 ### Gotchas
 
 - Chat integration types must come from \`agent-context({ type: "integrations" })\`. A channel
   absent from its result is unsupported for agents — never invent a type, never
   draft or configure it, and never substitute a workflow node (e.g. a
-  WhatsApp/Twilio node) to fake an unsupported chat channel. Instead, explain
+  Twilio node) to fake an unsupported chat channel. Instead, explain
   the channel is unsupported, offer the supported alternatives the tool
   returned with their \`capabilities\`, and ask which to use (or whether the
   user wants a workflow path after the limitation is stated).
 - Do not add a chat integration just because the agent needs CRUD or notifications
   for that product. Resolve the callable capability through \`agent-context\`
   unless the product itself is the chat/trigger context.
-- For recurring or scheduled runs, create a task (\`create_tasks\`) for the
+- For recurring or scheduled runs, create a task (\`agent_builder_create_tasks\`) for the
   cadence. Keep a requested chat integration, and use its generated action
   tools when the task sends through that same platform.
 - Omitting \`integrations\` from a config write preserves the current channels.
@@ -200,12 +203,12 @@ search terms for that service.
   - If \`results[]\` contains one entry, use it as \`selectedResult\`.
   - If the request uniquely identifies one entry by \`name\` or \`title\`, use
     that entry as \`selectedResult\`.
-  - If multiple candidates remain, call \`ask_questions\` with the candidate
+  - If multiple candidates remain, call \`agent_builder_ask_questions\` with the candidate
     titles and descriptions; never choose by array order. During an initial
-    build, do not call \`ask_questions\` for this: pick the best candidate by
+    build, do not call \`agent_builder_ask_questions\` for this: pick the best candidate by
     title/description relevance yourself, and list the pick as an assumption
     in your summary. Use the chosen entry as \`selectedResult\`. If
-    \`ask_questions\` returns \`{ answered: false }\`, stop MCP setup without
+    \`agent_builder_ask_questions\` returns \`{ answered: false }\`, stop MCP setup without
     selecting a server, asking for credentials, verifying a connection, or
     mutating config. Do not re-present the question.
 - Use \`name\`, \`url\`, \`transport\`, \`authentication\`, \`credentialType\`,
@@ -213,33 +216,35 @@ search terms for that service.
 
 Follow these steps for the selected MCP result:
 
-1. Credential: call \`ask_credential\` with a short \`purpose\`, using
+1. Credential: call \`agent_builder_ask_credential\` with a short \`purpose\`, using
    \`selectedResult.credentialType\` as \`credentialType\`. Never invent
    credential IDs.
-2. Verify: call \`verify_mcp_server\` with the selected result's \`name\`, \`url\`,
+2. Verify: call \`agent_builder_verify_mcp_server\` with the selected result's \`name\`, \`url\`,
    \`transport\`, \`authentication\`, and optional \`metadata\`, plus the returned
    \`credentialId\` as \`credential\` when authentication is required.
 3. Capability check: confirm the verified tool names and descriptions cover the
    capability the user requested.
-4. Write config: call \`agent-context({ type: "config" })\`, then \`patch_config\` to add the entry to
+4. Write config: call \`agent-context({ type: "config" })\`, then \`agent_builder_patch_config\` to add the entry to
    \`mcpServers[]\` using the patch pattern below. When the entry already
    exists and verify returned \`credentialApplied: true\`, skip this step — the
    credential is already persisted.
 
 ${INITIAL_BUILD_NOTE} For MCP that means: pick the best candidate as an
-assumption (above), then \`agent-context({ type: "config" })\` and \`patch_config\` a draft
-\`/mcpServers/-\` entry using \`name\`, \`url\`, \`transport\`,
+assumption (above), then add a draft \`mcpServers\` entry to your single
+initial config write (or \`agent_builder_patch_config\` it to \`/mcpServers/-\`, with the
+\`configHash\` from your latest config read or write, if the config is
+already written) using \`name\`, \`url\`, \`transport\`,
 \`authentication\`, and \`metadata.nodeTypeName\` from \`selectedResult\` with
-\`credential\` omitted, and skip \`verify_mcp_server\` — there is nothing to
-authenticate yet. Include the credential in the trailing \`finish_setup\` call;
+\`credential\` omitted, and skip \`agent_builder_verify_mcp_server\` — there is nothing to
+authenticate yet. Include the credential in the trailing \`agent_builder_finish_setup\` call;
 verify with the returned credential id — on success the tool writes the
 credential into the matching entry itself (\`credentialApplied: true\`); no
-\`agent-context({ type: "config" })\`/\`patch_config\` follow-up for the credential. Existing-agent
+\`agent-context({ type: "config" })\`/\`agent_builder_patch_config\` follow-up for the credential. Existing-agent
 additions keep the immediate ask + verify flow above unchanged.
 
 If verification succeeds but the tools do not cover the requested capability
 for a generic service request, load \`agent-builder-node-tools\`, call
-\`search_nodes\` with the same service queries, and follow that skill. Do not
+\`agent_builder_search_nodes\` with the same service queries, and follow that skill. Do not
 add the MCP server merely because its registry entry matched.
 
 Full schema reference:
@@ -248,39 +253,49 @@ ${mcpServerSchemaText}
 
 ### Tool exposure and approval
 
-- Expose every available MCP tool by default: omit \`toolFilter\` unless the user
-  explicitly asks to restrict which tools are exposed. Do not infer an allowlist
-  from the requested capability.
-- For an explicit filter or selected approval list, use only exact, unprefixed
-  \`name\` values from \`selectedResult.tools\` or a successful
-  \`verify_mcp_server\` result.
-- Never prepend the server name. Never invent MCP tool names. \`toolFilter.tools\`
-  and \`approval.tools\` match original MCP names; the SDK adds the server prefix
-  only when exposing tools to the model.
+- Omit \`toolPermissions\` unless the user explicitly asks to require approval,
+  block a tool or category, or restrict which tools are exposed. Omission
+  allows all MCP tools without approval.
+- Treat requests to expose or allow only named tools as an allowlist. Set both
+  \`toolPermissions.categories.read\` and
+  \`toolPermissions.categories.write\` to \`"blocked"\`, then add each selected
+  tool to \`toolPermissions.tools\` as an \`"always_allow"\` override.
+- For other permission controls, set both
+  \`toolPermissions.categories.read\` and
+  \`toolPermissions.categories.write\`. Use \`"always_allow"\` for categories
+  the user did not restrict.
+- Use \`"require_approval"\` when the user asks to approve a category or tool
+  before execution. Use \`"blocked"\` when the user asks to hide or disable it.
+- Use category policies for broad read/write rules. Add \`toolPermissions.tools\`
+  overrides only for exceptions to those category rules.
+- For an exact tool override, use only an unprefixed \`name\` from
+  \`selectedResult.tools\` or a successful
+  \`agent_builder_verify_mcp_server\` result. Never
+  prepend the server name and never invent MCP tool names.
 
 ### Credential flow
 
-- For \`bearerAuth\`, call \`ask_credential\` with
+- For \`bearerAuth\`, call \`agent_builder_ask_credential\` with
   \`credentialType: "httpBearerAuth"\`.
-- For \`headerAuth\`, call \`ask_credential\` with
+- For \`headerAuth\`, call \`agent_builder_ask_credential\` with
   \`credentialType: "httpHeaderAuth"\`.
-- For \`multipleHeadersAuth\`, call \`ask_credential\` with
+- For \`multipleHeadersAuth\`, call \`agent_builder_ask_credential\` with
   \`credentialType: "httpMultipleHeadersAuth"\`.
-- For \`mcpOAuth2Api\`, call \`ask_credential\` with
+- For \`mcpOAuth2Api\`, call \`agent_builder_ask_credential\` with
   \`credentialType: "mcpOAuth2Api"\`.
 
 ### Testing the connection
 
-Before writing to config, call \`verify_mcp_server\` with server \`name\`,
+Before writing to config, call \`agent_builder_verify_mcp_server\` with server \`name\`,
 \`url\`, \`transport\`, optional registry \`metadata\`, and (if applicable) the
-credential id from \`ask_credential\`.
+credential id from \`agent_builder_ask_credential\`.
 
 - Success returns \`{ ok: true, tools: [{ name, description }] }\`, and when a
   matching \`mcpServers\` entry exists, also \`credentialApplied: true,
   configMutated: true, agentId\` — the credential is written automatically; do
-  not follow with \`agent-context({ type: "config" })\`/\`patch_config\` for the credential.
+  not follow with \`agent-context({ type: "config" })\`/\`agent_builder_patch_config\` for the credential.
 - When verify succeeds but \`credentialApplied: false\` and the entry already
-  exists, fall back to \`agent-context({ type: "config" })\` then \`patch_config\` for the credential.
+  exists, fall back to \`agent-context({ type: "config" })\` then \`agent_builder_patch_config\` for the credential.
 - For an explicitly requested filter or selected approval list, copy exact names
   from the returned tool list following Tool exposure and approval above.
 - Failure returns \`{ ok: false, error: "..." }\`.
@@ -294,13 +309,14 @@ invent a credential ID or a placeholder URL to fill the gap, and never abort
 the server addition — always persist what is known and let the user finish
 setup later:
 
-- Credential skipped (\`ask_credential\` returned \`{ skipped: true }\`): omit
+- Credential skipped (\`agent_builder_ask_credential\` returned \`{ skipped: true }\`): omit
   only the \`credential\` field.
 - URL skipped: persist \`url: ""\`.
-- Either case: skip \`verify_mcp_server\` (there is nothing to authenticate or
-  connect to), then \`agent-context({ type: "config" })\` and \`patch_config\` the entry, preserving
+- Either case: skip \`agent_builder_verify_mcp_server\` (there is nothing to authenticate or
+  connect to), then \`agent-context({ type: "config" })\` and \`agent_builder_patch_config\` the entry, preserving
   every other known field — \`name\`, \`transport\`, \`authentication\`, an
-  already-selected credential, and registry \`metadata\`.
+  already-selected credential, registry \`metadata\`, and any explicitly
+  configured \`toolPermissions\`.
 
 ### Selecting credentials
 
@@ -311,11 +327,11 @@ For custom MCP servers, if credential type is unknown, ask the user which
 credential type to use (OAuth2, Bearer Token, Header Auth, Multiple Headers
 Auth, or None) via \`${ASK_QUESTIONS_TOOL_NAME}\`. Then map to:
 
-- \`bearerAuth\` -> \`ask_credential\` with \`credentialType: "httpBearerAuth"\`
-- \`headerAuth\` -> \`ask_credential\` with \`credentialType: "httpHeaderAuth"\`
-- \`multipleHeadersAuth\` -> \`ask_credential\` with
+- \`bearerAuth\` -> \`agent_builder_ask_credential\` with \`credentialType: "httpBearerAuth"\`
+- \`headerAuth\` -> \`agent_builder_ask_credential\` with \`credentialType: "httpHeaderAuth"\`
+- \`multipleHeadersAuth\` -> \`agent_builder_ask_credential\` with
   \`credentialType: "httpMultipleHeadersAuth"\`
-- \`mcpOAuth2Api\` -> \`ask_credential\` with \`credentialType: "mcpOAuth2Api"\`
+- \`mcpOAuth2Api\` -> \`agent_builder_ask_credential\` with \`credentialType: "mcpOAuth2Api"\`
 
 ### Patch pattern
 
@@ -333,11 +349,13 @@ Auth, or None) via \`${ASK_QUESTIONS_TOOL_NAME}\`. Then map to:
   entry so the UI can render the correct server form.
 - A registry match proves server availability, not support for the requested
   capability; use the verified live tool list for that decision.
+- Describe an MCP server only by its name, or by text the user or the registry
+  gave. If you cannot identify it, do not state what it does.
 
 ## Verify
 
-- Configured chat integrations were set up through \`configure_channel\` or the
-  initial-build \`finish_setup\` channel card, not \`ask_credential\` or a manual
+- Configured chat integrations were set up through \`agent_builder_configure_channel\` or the
+  initial-build \`agent_builder_finish_setup\` channel card, not \`agent_builder_ask_credential\` or a manual
   config write.
 - The chosen integration matches \`useIntegrationWhen\`; otherwise resolve the
   callable capability through \`agent-context\` and use MCP, node, or

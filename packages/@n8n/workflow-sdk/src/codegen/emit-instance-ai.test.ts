@@ -252,6 +252,8 @@ describe('emit-instance-ai', () => {
 			'hasProperty',
 			'isPlainObject',
 			// Validation
+			'connectRequiredSubnodeInputs',
+			'describeAddedSubnodeConnection',
 			'containsExpression',
 			'isSensitiveHeader',
 			'isCredentialFieldName',
@@ -298,6 +300,9 @@ describe('emit-instance-ai', () => {
 			'dropInvalidWorkflowJsonGroups',
 			'toEngineConnections',
 			'toGroupValidationNodes',
+			// Canvas geometry for host-side node placement
+			'getWorkflowNodeDimensions',
+			'resolveNodePorts',
 			// Plugin registration
 			'registerDefaultPlugins',
 			// Generate-types module (build-time type generation, never appears in workflows)

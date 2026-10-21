@@ -118,7 +118,7 @@ export class OpenAiAssistant implements INodeType {
 				name: 'model',
 				type: 'options',
 				description:
-					'The model which will be used to power the assistant. <a href="https://beta.openai.com/docs/models/overview">Learn more</a>. The Retrieval tool requires gpt-3.5-turbo-1106 and gpt-4-1106-preview models.',
+					'The model which will be used to power the assistant. <a href="https://developers.openai.com/api/docs/models">Learn more</a>. The Retrieval tool requires gpt-3.5-turbo-1106 and gpt-4-1106-preview models.',
 				required: true,
 				displayOptions: {
 					show: {
@@ -183,7 +183,7 @@ export class OpenAiAssistant implements INodeType {
 					},
 				},
 				description:
-					'The assistant to use. <a href="https://beta.openai.com/docs/assistants/overview">Learn more</a>.',
+					'The assistant to use. <a href="https://developers.openai.com/api/docs/assistants/migration">Learn more</a>.',
 				typeOptions: {
 					loadOptions: {
 						routing: {

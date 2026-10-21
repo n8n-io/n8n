@@ -15,17 +15,25 @@ import * as Helpers from './helpers';
 import type { IDataObject } from '../src';
 import { createRunExecutionData } from '../src';
 import { Expression } from '../src/expression';
-import { CALLABLE_METHODS } from '../src/expressions/native-evaluation';
+import { CALLABLE_METHODS, ITERATOR_METHODS } from '../src/expressions/native-evaluation';
+import { EXTENSION_METHODS } from '../src/expressions/native-evaluation/grammar';
 import { Workflow } from '../src/workflow';
 
-// Three pre-existing, flag-independent quickjs bridge behaviours are kept out
+// Four pre-existing, flag-independent quickjs bridge behaviours are kept out
 // of the comparison: a string is truncated at its first NUL character on the
 // way across, a lone surrogate (which indexing an astral character yields)
-// comes back as U+FFFD replacement characters, and undefined inside an array
-// result comes back as null (vm keeps undefined; native sides with vm). Data
-// strings stay NUL-free and inside the Basic Multilingual Plane; the array
-// case is skipped below.
+// comes back as U+FFFD replacement characters, undefined inside an array
+// result comes back as null, and -0 inside an object or array result comes
+// back as 0 (vm keeps both; native sides with vm). Data strings stay NUL-free
+// and inside the Basic Multilingual Plane; the other two cases are skipped
+// below. quickjs and V8 also use different shortest-digit
+// algorithms for Number.prototype.toString with a radix other than 10, which
+// the spec permits; expressions that pass a radix are skipped under quickjs.
 const noNul = (s: string) => !s.includes('\0');
+const hasNestedNegativeZero = (value: unknown): boolean =>
+	typeof value === 'object' &&
+	value !== null &&
+	Object.values(value).some((v) => Object.is(v, -0) || hasNestedNegativeZero(v));
 const bmpString = (maxLength: number) =>
 	fc
 		.string({ unit: 'binary', maxLength })
@@ -43,10 +51,18 @@ const primitive = fc.oneof(
 	fc.constant(null),
 );
 
+// Array elements include nested arrays and objects: the methods that
+// stringify elements (join, toSorted) must hand those to the engine.
+const element = fc.oneof(
+	{ weight: 4, arbitrary: primitive },
+	fc.array(primitive, { maxLength: 2 }),
+	fc.record({ x: primitive }),
+);
+
 const jsonValue = fc.oneof(
 	{ weight: 3, arbitrary: primitive },
-	fc.array(primitive, { maxLength: 4 }),
-	fc.record({ x: primitive, y: fc.array(primitive, { maxLength: 3 }) }),
+	fc.array(element, { maxLength: 4 }),
+	fc.record({ x: primitive, y: fc.array(element, { maxLength: 3 }) }),
 );
 
 const data = fc.record({ a: jsonValue, b: jsonValue, c: jsonValue, d: jsonValue });
@@ -76,11 +92,54 @@ const path = fc
 	)
 	.map(([key, rest]) => `$json.${key}${rest}`);
 
+const arrayLiteral = fc.array(literal, { maxLength: 3 }).map((items) => `[${items.join(', ')}]`);
+
+// Callback bodies read the parameter (`p`), a root path or a literal; one
+// level only, since a callback inside a callback is declined anyway.
+const paramPath = fc
+	.oneof(
+		fc.constant(''),
+		fc.tuple(hop, fc.constantFrom(...INNER_KEYS, 'length')).map(([h, k]) => `${h}${k}`),
+		fc
+			.tuple(hop, fc.integer({ min: 0, max: 2 }))
+			.map(([h, i]) => (h === '.' ? `[${i}]` : `?.[${i}]`)),
+	)
+	.map((rest) => `p${rest}`);
+const body = fc.oneof(
+	{ weight: 3, arbitrary: paramPath },
+	literal,
+	path,
+	fc
+		.tuple(
+			paramPath,
+			fc.constantFrom('===', '!==', '<', '>', '+', '&&', '??'),
+			fc.oneof(literal, path, paramPath),
+		)
+		.map(([l, op, r]) => `(${l} ${op} ${r})`),
+	fc
+		.tuple(
+			paramPath,
+			hop,
+			fc.constantFrom(...CALLABLE_METHODS),
+			fc.array(literal, { maxLength: 1 }),
+		)
+		.map(([recv, h, method, args]) => `(${recv})${h}${method}(${args.join(', ')})`),
+);
+
 const { expr } = fc.letrec<{ expr: string }>((tie) => ({
 	expr: fc.oneof(
 		{ depthSize: 'small', withCrossShrink: true },
 		{ weight: 4, arbitrary: path },
 		{ weight: 2, arbitrary: literal },
+		arrayLiteral,
+		fc
+			.tuple(
+				fc.oneof({ weight: 3, arbitrary: path }, arrayLiteral, tie('expr')),
+				hop,
+				fc.constantFrom(...ITERATOR_METHODS),
+				body,
+			)
+			.map(([recv, h, method, b]) => `(${recv})${h}${method}(p => ${b})`),
 		fc.tuple(fc.constantFrom('!', '-', '+'), tie('expr')).map(([op, e]) => `${op}(${e})`),
 		fc
 			.tuple(
@@ -97,7 +156,7 @@ const { expr } = fc.letrec<{ expr: string }>((tie) => ({
 			.tuple(
 				fc.oneof({ weight: 3, arbitrary: path }, tie('expr')),
 				hop,
-				fc.constantFrom(...CALLABLE_METHODS),
+				fc.constantFrom(...CALLABLE_METHODS, ...EXTENSION_METHODS),
 				fc.array(fc.oneof(literal, path), { maxLength: 2 }),
 			)
 			.map(([recv, h, method, args]) => `(${recv})${h}${method}(${args.join(', ')})`),
@@ -180,17 +239,23 @@ describe('Expression - fast native evaluation fuzz parity', () => {
 		}
 	};
 
-	test('native and engine agree on value or error', () => {
+	// 300 runs through two engine evaluations each take a few seconds on an
+	// isolate engine, and longer when the three engine projects share a
+	// machine; the default 5 s test timeout is not a budget for that.
+	test('native and engine agree on value or error', { timeout: 30_000 }, () => {
 		fc.assert(
 			fc.property(expression, data, (expr, json) => {
 				const viaEngine = outcome(expr, json, false);
 				const viaNative = outcome(expr, json, true);
 
+				const quickjs = Expression.getActiveImplementation() === 'quickjs';
 				const holesAsNull =
-					Expression.getActiveImplementation() === 'quickjs' &&
+					quickjs &&
 					Array.isArray(viaNative.value) &&
 					viaNative.value.some((element) => element === undefined);
-				if (holesAsNull) return;
+				const nestedNegativeZero = quickjs && hasNestedNegativeZero(viaNative.value);
+				const radixToString = quickjs && /\.toString\([^)]/.test(expr);
+				if (holesAsNull || nestedNegativeZero || radixToString) return;
 
 				if (viaEngine.error) {
 					expect(viaNative.error).toBeInstanceOf(viaEngine.error.constructor);

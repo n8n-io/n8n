@@ -8,6 +8,7 @@ import {
 	uniqueStrings,
 } from './memory-lifecycle';
 import { normalizeObservationLogReflection } from './observation-log-reflector';
+import { observationCursorsMatch, prepareObservationLogBatchCursor } from './observation-log-batch';
 import type { RuntimeSkillStateStore } from '../../skills/types';
 import type {
 	BuiltEpisodicMemoryCaptureStore,
@@ -35,6 +36,8 @@ import type {
 	BuiltObservationLogStore,
 	BuiltObservationLogTaskLockStore,
 	NewObservationLogEntry,
+	ObservationLogBatch,
+	ObservationLogBatchCommitResult,
 	ObservationLogEntry,
 	ObservationLogReadOptions,
 	ObservationLogReflection,
@@ -123,6 +126,14 @@ export class InMemoryMemory
 	private episodicMemoryLocksByResource = new Map<string, EpisodicMemoryTaskLockHandle>();
 
 	readonly episodic: BuiltEpisodicMemoryCaptureStore['episodic'] = {
+		getEntriesByContentHashes: async (scope, contentHashes) => {
+			const hashes = new Set(contentHashes);
+			return await Promise.resolve(
+				this.episodicMemory
+					.filter((entry) => entry.resourceId === scope.resourceId && hashes.has(entry.contentHash))
+					.map(cloneEpisodicMemoryEntry),
+			);
+		},
 		saveEntryWithSources: async (entry, sources) =>
 			await this.saveEpisodicMemoryEntryWithSources(entry, sources),
 		searchEntries: async (scope, query, opts) =>
@@ -280,6 +291,34 @@ export class InMemoryMemory
 	}
 
 	// ── Observational memory ─────────────────────────────────────────────
+
+	async commitObservationLogBatch(
+		batch: ObservationLogBatch,
+	): Promise<ObservationLogBatchCommitResult> {
+		const cursor = prepareObservationLogBatchCursor(batch);
+		const storedCursor = this.cursorsByScope.get(batch.observationScopeId) ?? null;
+		if (!cursor || !observationCursorsMatch(storedCursor, batch.expectedCursor)) {
+			return 'stale';
+		}
+
+		const staged: ObservationLogEntry[] = [];
+		for (const entry of batch.entries) {
+			staged.push({
+				id: crypto.randomUUID(),
+				observationScopeId: batch.observationScopeId,
+				marker: entry.marker,
+				text: entry.text,
+				parentId: entry.parentIndex === null ? null : staged[entry.parentIndex].id,
+				tokenCount: entry.tokenCount,
+				createdAt: new Date(entry.createdAt),
+				...activeLifecycleState(),
+			});
+		}
+		const existing = this.observationLogByScope.get(batch.observationScopeId) ?? [];
+		this.observationLogByScope.set(batch.observationScopeId, [...existing, ...staged]);
+		this.cursorsByScope.set(batch.observationScopeId, cursor);
+		return await Promise.resolve('committed');
+	}
 
 	async appendObservationLogEntries(
 		rows: NewObservationLogEntry[],
@@ -560,9 +599,7 @@ export class InMemoryMemory
 					existing.resourceId === entry.resourceId && existing.contentHash === contentHash,
 			);
 			if (duplicate) {
-				markLifecycleActive(duplicate);
-				duplicate.lastSeenAt = entry.lastSeenAt ?? now;
-				duplicate.updatedAt = now;
+				refreshEpisodicMemoryEntry(duplicate, entry, now);
 				saved.push(cloneEpisodicMemoryEntry(duplicate));
 				continue;
 			}
@@ -774,6 +811,18 @@ export async function saveMessagesToThread(
 		messages,
 		...(hostMetadata && { hostMetadata }),
 	});
+}
+
+function refreshEpisodicMemoryEntry(
+	entry: EpisodicMemoryEntry,
+	update: NewEpisodicMemoryEntry,
+	now: Date,
+): void {
+	markLifecycleActive(entry);
+	entry.lastSeenAt = update.lastSeenAt ?? now;
+	entry.updatedAt = now;
+	if (update.embedding !== undefined) entry.embedding = [...update.embedding];
+	if (update.embeddingModel !== undefined) entry.embeddingModel = update.embeddingModel;
 }
 
 function cloneEpisodicMemoryEntry(entry: EpisodicMemoryEntry): EpisodicMemoryEntry {

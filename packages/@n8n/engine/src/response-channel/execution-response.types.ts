@@ -32,6 +32,8 @@ export type UndeliverableMessage = Extract<ExecutionResponse, { type: 'undeliver
  * `lastStep` is the step whose settling ended the run. Its `outputs` are set
  * only when the caller expects `runEnd`. They are also `null` when that step
  * was skipped or failed, so a consumer that needs the data has to look further.
+ * `lastStep` is `null` itself for a cancelled run, which ended on request
+ * rather than on a settlement.
  */
 export type EndedMessage = Extract<ExecutionResponse, { type: 'ended' }>;
 

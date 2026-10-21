@@ -4,9 +4,6 @@ tags:
 summary: Delete a workflow
 description: Delete a workflow.
 x-required-scope: workflow:delete
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string
@@ -31,6 +28,8 @@ responses:
               nullable: true
             active:
               type: boolean
+              description: Deprecated. Check whether `activeVersionId` is not null instead.
+              deprecated: true
             activeVersionId:
               type: string
               nullable: true
@@ -268,6 +267,10 @@ responses:
                     - `non-manual`: Redact production (non-manually triggered) executions only.
                     - `manual-only`: Redact manually triggered executions only.
                     - `all`: Redact all executions, manual and production.
+                redactCallerExecutions:
+                  type: boolean
+                  example: true
+                  description: Controls whether a workflow that calls this workflow as a sub-workflow has its executions redacted on the same channels as this workflow. The calling execution keeps a copy of the output of this workflow. Defaults to true. Turn it off only when the output of this workflow is not sensitive. Redaction that this workflow received from its own sub-workflows always passes to the caller.
                 availableInMCP:
                   type: boolean
                   example: false

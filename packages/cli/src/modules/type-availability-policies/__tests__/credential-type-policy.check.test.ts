@@ -219,6 +219,18 @@ describe('CredentialTypePolicyCheck', () => {
 			);
 			expect(result.violations.map((violation) => violation.subject)).toEqual([SLACK_API]);
 		});
+
+		it('accepts a node stored without parameters', async () => {
+			const { parameters, ...withoutParameters } = node(SLACK_NODE, { [SLACK_API]: 'cred-1' });
+
+			const result = await check.onWorkflowSave({
+				workflow: workflow([withoutParameters as INode]),
+				storedWorkflow: null,
+				projectId: 'project-1',
+			});
+
+			expect(result.violations.map((violation) => violation.subject)).toEqual([SLACK_API]);
+		});
 	});
 
 	describe('a credential type named by parameter', () => {
@@ -342,6 +354,116 @@ describe('CredentialTypePolicyCheck', () => {
 				'credential-types',
 				'project-1',
 				[SLACK_API],
+			);
+		});
+	});
+
+	describe('a credential-only node', () => {
+		const VIRUS_TOTAL_API = 'virusTotalApi';
+		const SYSDIG_API = 'sysdigApi';
+
+		/** How the editor stores the VirusTotal node: HTTP Request extending the credential type. */
+		const credentialOnly = (credentialType: string, name = `${credentialType} node`): INode => ({
+			...node(HTTP_REQUEST, {}, name),
+			extendsCredential: credentialType,
+		});
+
+		const saveNew = async (nodes: INode[]) =>
+			await check.onWorkflowSave({
+				workflow: workflow(nodes, null),
+				storedWorkflow: null,
+				projectId: 'project-1',
+			});
+
+		beforeEach(() => {
+			denying([VIRUS_TOTAL_API]);
+		});
+
+		it('reports the extended type when no credential is selected and HTTP Request is not installed', async () => {
+			nodeTypes.getByNameAndVersion.mockImplementation(() => {
+				throw new Error('not installed');
+			});
+
+			// The parameter names the type too, but resolving it needs the missing description.
+			const result = await saveNew([
+				{
+					...credentialOnly(VIRUS_TOTAL_API),
+					parameters: {
+						authentication: 'predefinedCredentialType',
+						nodeCredentialType: VIRUS_TOTAL_API,
+					},
+				},
+			]);
+
+			expect(nodeTypes.getByNameAndVersion).toHaveBeenCalledWith(HTTP_REQUEST, 1);
+			expect(result.violations).toHaveLength(1);
+			expect(result.violations[0]).toMatchObject({
+				subject: VIRUS_TOTAL_API,
+				subjectType: 'credentialType',
+			});
+			expect(service.evaluateComposedTypesFor).toHaveBeenCalledWith(
+				'credential-types',
+				'project-1',
+				[VIRUS_TOTAL_API],
+			);
+		});
+
+		it('reports one violation when the extended type is also named by parameter and selected', async () => {
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: {
+					credentials: [],
+					properties: [{ name: 'nodeCredentialType', type: 'credentialsSelect' }],
+				},
+			} as never);
+
+			const result = await saveNew([
+				{
+					...credentialOnly(VIRUS_TOTAL_API),
+					parameters: {
+						authentication: 'predefinedCredentialType',
+						nodeCredentialType: VIRUS_TOTAL_API,
+					},
+					credentials: { [VIRUS_TOTAL_API]: { id: 'cred-1', name: 'VirusTotal account' } },
+				},
+			]);
+
+			expect(result.violations).toHaveLength(1);
+			expect(service.evaluateComposedTypesFor).toHaveBeenCalledWith(
+				'credential-types',
+				'project-1',
+				[VIRUS_TOTAL_API],
+			);
+		});
+
+		it('grandfathers an extended type the stored workflow already carried', async () => {
+			const nodes = [credentialOnly(VIRUS_TOTAL_API)];
+
+			const result = await check.onWorkflowSave({
+				workflow: workflow(nodes),
+				storedWorkflow: workflow(nodes),
+				projectId: 'project-1',
+			});
+
+			expect(result.violations).toEqual([]);
+			expect(service.evaluateComposedTypesFor).not.toHaveBeenCalled();
+		});
+
+		it('leaves plain HTTP Request alone', async () => {
+			const result = await saveNew([node(HTTP_REQUEST)]);
+
+			expect(result.violations).toEqual([]);
+			expect(service.evaluateComposedTypesFor).not.toHaveBeenCalled();
+		});
+
+		it('reports only the blocked type when two credential-only nodes share the HTTP Request base', async () => {
+			const result = await saveNew([credentialOnly(VIRUS_TOTAL_API), credentialOnly(SYSDIG_API)]);
+
+			expect(result.violations).toHaveLength(1);
+			expect(result.violations[0].subject).toBe(VIRUS_TOTAL_API);
+			expect(service.evaluateComposedTypesFor).toHaveBeenCalledWith(
+				'credential-types',
+				'project-1',
+				[VIRUS_TOTAL_API, SYSDIG_API],
 			);
 		});
 	});
@@ -504,6 +626,31 @@ describe('CredentialTypePolicyCheck', () => {
 		});
 	});
 
+	describe('onCredentialTransfer', () => {
+		it('judges the credential type against the target project', async () => {
+			const result = await check.onCredentialTransfer({
+				credential: { id: 'cred-1', type: SLACK_API },
+				targetProjectId: 'target-project',
+			});
+
+			expect(result.violations.map((violation) => violation.subject)).toEqual([SLACK_API]);
+			expect(service.evaluateComposedTypesFor).toHaveBeenCalledWith(
+				'credential-types',
+				'target-project',
+				[SLACK_API],
+			);
+		});
+
+		it('allows an available type', async () => {
+			const result = await check.onCredentialTransfer({
+				credential: { id: 'cred-1', type: HTTP_BASIC },
+				targetProjectId: 'target-project',
+			});
+
+			expect(result.violations).toEqual([]);
+		});
+	});
+
 	describe('onCredentialDecrypt', () => {
 		it('vetoes the decryption when the credential type is denied', async () => {
 			const result = await check.onCredentialDecrypt(decryptOf(SLACK_API));
@@ -516,6 +663,8 @@ describe('CredentialTypePolicyCheck', () => {
 				subjectType: 'credentialType',
 				scope: 'instance',
 				matchedRuleId: 'rule-7',
+				projectId: 'project-1',
+				optInAvailable: false,
 			});
 			expect(service.evaluateComposedTypesFor).toHaveBeenCalledWith(
 				'credential-types',
@@ -581,11 +730,13 @@ describe('CredentialTypePolicyCheck', () => {
 			expect(result.violations[0]).toStrictEqual({
 				kind: 'credential-type-unavailable',
 				checkId: 'credential-type-availability',
-				message: `Credential type "${SLACK_API}" is blocked by this project's policy`,
+				message: `Credential type "${SLACK_API}" is blocked by a project policy`,
 				subject: SLACK_API,
 				subjectType: 'credentialType',
 				scope: 'project',
 				matchedRuleId: 'rule-3',
+				projectId: 'project-1',
+				optInAvailable: false,
 			});
 		});
 
@@ -604,7 +755,53 @@ describe('CredentialTypePolicyCheck', () => {
 				subject: SLACK_API,
 				subjectType: 'credentialType',
 				scope: 'instance',
+				projectId: 'project-1',
+				optInAvailable: false,
 			});
+		});
+
+		it('carries the projectId from the context on a project-scope denial', async () => {
+			denying([SLACK_API], { scope: 'project' });
+
+			const result = await check.onWorkflowStart({
+				workflow: workflow([node(SLACK_NODE, { [SLACK_API]: 'cred-1' })]),
+				projectId: 'project-1',
+			});
+
+			expect(result.violations[0].projectId).toBe('project-1');
+		});
+
+		it('also carries the projectId on an instance-scope denial', async () => {
+			const result = await check.onWorkflowStart({
+				workflow: workflow([node(SLACK_NODE, { [SLACK_API]: 'cred-1' })]),
+				projectId: 'project-1',
+			});
+
+			expect(result.violations[0].scope).toBe('instance');
+			expect(result.violations[0].projectId).toBe('project-1');
+		});
+
+		it('reports optInAvailable true when the verdict allows it and a project applies', async () => {
+			denying([SLACK_API], { optInAvailable: true });
+
+			const result = await check.onWorkflowStart({
+				workflow: workflow([node(SLACK_NODE, { [SLACK_API]: 'cred-1' })]),
+				projectId: 'project-1',
+			});
+
+			expect(result.violations[0].optInAvailable).toBe(true);
+		});
+
+		it('drops projectId and forces optInAvailable false with no project, even when the verdict allows opt-in', async () => {
+			denying([SLACK_API], { optInAvailable: true });
+
+			const result = await check.onCredentialDecrypt({
+				...decryptOf(SLACK_API),
+				projectId: null,
+			});
+
+			expect(Object.keys(result.violations[0])).not.toContain('projectId');
+			expect(result.violations[0].optInAvailable).toBe(false);
 		});
 	});
 

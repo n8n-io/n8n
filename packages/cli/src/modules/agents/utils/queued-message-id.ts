@@ -10,11 +10,11 @@ export function queuedMessageId(
 	threadId: string,
 	payload: AgentQueuedMessage,
 ): string | undefined {
-	if (payload.kind === 'preview') {
+	if (payload.kind !== 'integration') {
 		if (!payload.messageId) return undefined;
 		return uuidv5(
 			JSON.stringify([
-				'preview',
+				payload.kind,
 				agentId,
 				payload.userId,
 				threadId,

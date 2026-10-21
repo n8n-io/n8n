@@ -163,6 +163,15 @@ export type AgentSseEvent =
 			guardrail?: { code: string };
 	  }
 	| {
+			/**
+			 * Preview chat only. Monthly spend crossed the alert line.
+			 * The run continues. Also emitted when a delegate subagent hits an alert or cap.
+			 */
+			type: 'budget-notice';
+			code: AgentBudgetNoticeCode;
+			agentId?: string;
+	  }
+	| {
 			type: 'error';
 			message: string;
 			/**
@@ -173,3 +182,15 @@ export type AgentSseEvent =
 			missing?: string[];
 	  }
 	| { type: 'done'; sessionId?: string; executionId?: string };
+
+export type AgentBudgetNoticeCode = 'budget.alert' | 'budget.session' | 'budget.monthly';
+
+/** A budget alert or stop. `agentId` is the budget owner; absent for the run's own agent. */
+export interface AgentBudgetNotice {
+	code: AgentBudgetNoticeCode;
+	agentId?: string; // Only populated for delegated sub-agents.
+}
+
+export function isAgentBudgetNoticeCode(code: string): code is AgentBudgetNoticeCode {
+	return code === 'budget.alert' || code === 'budget.session' || code === 'budget.monthly';
+}

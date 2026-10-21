@@ -17,6 +17,7 @@ export const ENFORCEMENT_POINTS = [
 	'workflowStart',
 	'workflowTransfer',
 	'credentialSave',
+	'credentialTransfer',
 	'credentialDecrypt',
 	'contentImport',
 ] as const;
@@ -37,7 +38,15 @@ export type PolicedWorkflow = {
 	readonly id: string | null;
 	readonly name: string;
 	readonly nodes: readonly INode[];
+	/**
+	 * What holds the nodes. Absent means a workflow. An agent is policed through the same
+	 * points, with one node for each node tool, so every check covers agents unchanged.
+	 */
+	readonly artifactKind?: PolicedArtifactKind;
 };
+
+/** Something made of nodes that the workflow points police. */
+export type PolicedArtifactKind = 'workflow' | 'agent';
 
 /**
  * The node asking to decrypt a credential.
@@ -76,7 +85,7 @@ export type WorkflowStartContext = {
 export type WorkflowTransferContext = {
 	readonly workflow: PolicedWorkflow;
 	/** The project the workflow is moving *into* — that's whose policy applies. */
-	readonly targetProjectId: string | null;
+	readonly targetProjectId: string;
 };
 
 /**
@@ -103,6 +112,11 @@ export type CredentialSaveContext = {
 	readonly storedCredential: PolicedCredential | null;
 	/** The owning project; `null` for an instance-scoped credential. */
 	readonly projectId: string | null;
+};
+
+export type CredentialTransferContext = {
+	readonly credential: PolicedCredential & { readonly id: string };
+	readonly targetProjectId: string;
 };
 
 export type CredentialDecryptContext = {
@@ -217,6 +231,10 @@ export interface RegisteredPolicyCheck {
 		signal: AbortSignal,
 	): Promise<PolicyCheckResult>;
 	onCredentialSave?(ctx: CredentialSaveContext, signal: AbortSignal): Promise<PolicyCheckResult>;
+	onCredentialTransfer?(
+		ctx: CredentialTransferContext,
+		signal: AbortSignal,
+	): Promise<PolicyCheckResult>;
 	onCredentialDecrypt?(
 		ctx: CredentialDecryptContext,
 		signal: AbortSignal,
@@ -242,6 +260,7 @@ export const ENFORCEMENT_POINT_METHODS: {
 	workflowStart: 'onWorkflowStart',
 	workflowTransfer: 'onWorkflowTransfer',
 	credentialSave: 'onCredentialSave',
+	credentialTransfer: 'onCredentialTransfer',
 	credentialDecrypt: 'onCredentialDecrypt',
 	contentImport: 'onContentImport',
 };

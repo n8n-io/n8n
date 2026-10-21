@@ -1,3 +1,14 @@
+import {
+	type SerializedCredential,
+	serializedCredentialSchema,
+	type SerializedDataTable,
+	serializedDataTableSchema,
+	type SerializedProject,
+	serializedProjectSchema,
+	type SerializedVariable,
+	serializedVariableSchema,
+	serializedWorkflowSchema,
+} from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { jsonParse, UserError } from 'n8n-workflow';
 import type { z } from 'zod';
@@ -7,19 +18,6 @@ import {
 	WorkflowSerializer,
 	type WorkflowPackageContent,
 } from '../../entities/workflow/workflow.serializer';
-import {
-	serializedCredentialSchema,
-	type SerializedCredential,
-} from '../../spec/serialized/credential.schema';
-import {
-	serializedProjectSchema,
-	type SerializedProject,
-} from '../../spec/serialized/project.schema';
-import {
-	serializedVariableSchema,
-	type SerializedVariable,
-} from '../../spec/serialized/variable.schema';
-import { serializedWorkflowSchema } from '../../spec/serialized/workflow.schema';
 import { PACKAGE_ENTITY_LAYOUT } from '../manifest-entry';
 import type { PackageReader } from '../package-reader';
 
@@ -53,20 +51,27 @@ export interface InventoryVariable {
 	variable: SerializedVariable;
 }
 
+export interface InventoryDataTable {
+	path: string;
+	dataTable: SerializedDataTable;
+}
+
 export interface PackageDirectoryInventory {
 	projects: InventoryProject[];
 	workflows: InventoryWorkflow[];
 	credentials: InventoryCredential[];
 	variables: InventoryVariable[];
+	dataTables: InventoryDataTable[];
 }
 
-type EntityKind = 'projects' | 'workflows' | 'credentials' | 'variables';
+type EntityKind = 'projects' | 'workflows' | 'credentials' | 'variables' | 'dataTables';
 
 const KIND_BY_FILE_NAME: Record<string, EntityKind> = {
 	[PACKAGE_ENTITY_LAYOUT.projects.fileName]: 'projects',
 	[PACKAGE_ENTITY_LAYOUT.workflows.fileName]: 'workflows',
 	[PACKAGE_ENTITY_LAYOUT.credentials.fileName]: 'credentials',
 	[PACKAGE_ENTITY_LAYOUT.variables.fileName]: 'variables',
+	[PACKAGE_ENTITY_LAYOUT.dataTables.fileName]: 'dataTables',
 };
 
 const LABELS: Record<EntityKind, string> = {
@@ -74,6 +79,7 @@ const LABELS: Record<EntityKind, string> = {
 	workflows: 'workflow',
 	credentials: 'credential',
 	variables: 'variable',
+	dataTables: 'data table',
 };
 
 interface EntityFile {
@@ -86,10 +92,10 @@ interface EntityFile {
 }
 
 /**
- * Reads the projects, workflows, credentials and variables of a package from
- * its entity files. The directory layout decides which project a file belongs
- * to; the file content supplies every id and name. `manifest.json` and other
- * files are ignored.
+ * Reads the projects, workflows, credentials, variables and data tables of a
+ * package from its entity files. The directory layout decides which project a
+ * file belongs to; the file content supplies every id and name.
+ * `manifest.json` and other files are ignored.
  */
 @Service()
 export class PackageDirectoryInventoryReader {
@@ -117,6 +123,7 @@ export class PackageDirectoryInventoryReader {
 			workflows: await this.readWorkflows(source, files, projectIdOf),
 			credentials: await this.readCredentials(source, files, projectIdOf),
 			variables: await this.readVariables(source, files, projectIdOf),
+			dataTables: await this.readDataTables(source, files, projectIdOf),
 		};
 	}
 
@@ -210,6 +217,30 @@ export class PackageDirectoryInventoryReader {
 		return variables;
 	}
 
+	private async readDataTables(
+		source: PackageFileSource,
+		files: EntityFile[],
+		projectIdOf: (file: EntityFile) => string | null,
+	): Promise<InventoryDataTable[]> {
+		const dataTables: InventoryDataTable[] = [];
+		const seenIds = new Set<string>();
+		const seenColumnIds = new Set<string>();
+
+		for (const file of files.filter((f) => f.kind === 'dataTables')) {
+			if (!isCollectionLocation(file.segments, 'dataTables')) throw unsupportedLocation(file);
+			// Nothing reads the owner, but a project directory still needs its project file.
+			projectIdOf(file);
+			const dataTable = await this.readEntity(source, file, serializedDataTableSchema);
+			assertUnseen(seenIds, dataTable.id, 'data table id');
+			for (const { id } of dataTable.columns) {
+				if (id) assertUnseen(seenColumnIds, id, 'data table column id');
+			}
+			dataTables.push({ path: file.path, dataTable });
+		}
+
+		return dataTables;
+	}
+
 	private async readEntity<TSchema extends z.ZodTypeAny>(
 		source: PackageFileSource,
 		file: EntityFile,
@@ -271,7 +302,12 @@ function unsupportedLocation(file: EntityFile): UserError {
 	);
 }
 
-function assertUnseen(seen: Set<string>, key: string, label: string, displayKey = key): void {
+export function assertUnseen(
+	seen: Set<string>,
+	key: string,
+	label: string,
+	displayKey = key,
+): void {
 	if (seen.has(key)) throw new UserError(`Package contains a duplicate ${label}: ${displayKey}`);
 	seen.add(key);
 }

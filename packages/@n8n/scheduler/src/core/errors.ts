@@ -60,6 +60,49 @@ export class DuplicateTaskHandlerError extends Error {
 }
 
 /**
+ * The abort reason of a handler's signal when its claim is lost: the lease
+ * could not be renewed, so another instance may run the same occurrence.
+ */
+export class LeaseLostError extends Error {
+	constructor() {
+		super('The claim on this occurrence was lost');
+		this.name = 'LeaseLostError';
+	}
+}
+
+/** Raised when a job is provisioned with a run option outside the range the scheduler enforces. */
+export class InvalidRunOptionError extends Error {
+	constructor(
+		message: string,
+		readonly option: 'timeoutSeconds' | 'concurrencyLimit',
+		readonly value: number,
+		readonly max: number,
+	) {
+		super(message);
+		this.name = 'InvalidRunOptionError';
+	}
+}
+
+/**
+ * The abort reason of a handler's signal when its run reaches the timeout of
+ * its occurrence. The executor stops renewing the lease at the same time.
+ */
+export class TaskTimeoutError extends Error {
+	constructor(readonly timeoutSeconds: number) {
+		super('The run of this occurrence reached its timeout');
+		this.name = 'TaskTimeoutError';
+	}
+}
+
+/** Raised when a lease heartbeat is given a lease duration that is not a positive integer. */
+export class InvalidLeaseDurationError extends Error {
+	constructor(readonly leaseDurationMs: number) {
+		super('The lease duration must be a positive integer of milliseconds');
+		this.name = 'InvalidLeaseDurationError';
+	}
+}
+
+/**
  * Raised when a stored row is missing a column its `kind` guarantees should be
  * set (a corrupt or hand-edited row), while assembling its `Schedule` from the
  * flat columns (see `resolveSchedule`).

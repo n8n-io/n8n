@@ -8,13 +8,20 @@
  */
 
 import dagre from '@dagrejs/dagre';
+import {
+	jsonParse,
+	NodeConnectionTypes,
+	NodeHelpers,
+	Workflow,
+	type INodeParameters,
+	type INodeTypes,
+} from 'n8n-workflow';
 
 import {
 	GRID_SIZE,
 	DEFAULT_NODE_SIZE,
 	CONFIGURATION_NODE_SIZE,
 	CONFIGURATION_NODE_RADIUS,
-	CONFIGURABLE_NODE_SIZE,
 	AGENT_NODE_SIZE,
 	NODE_MIN_INPUT_ITEMS_COUNT,
 	NODE_X_SPACING,
@@ -31,7 +38,6 @@ import {
 	DEFAULT_STICKY_SIZE,
 	STICKY_PADDING,
 	STICKY_HEADER_HEIGHT,
-	MAX_STICKY_SEPARATION_STEPS,
 } from './constants';
 import {
 	collapseNodeGroups,
@@ -40,7 +46,13 @@ import {
 	type CollapsedGroup,
 } from './group-layout-utils';
 import { parseVersion } from './string-utils';
-import { isAnchoredStickyNote, type GraphNode } from '../types/base';
+import { parseWorkflowJSON } from './workflow-import';
+import {
+	isAnchoredStickyNote,
+	type GraphNode,
+	type NodePorts,
+	type WorkflowJSON,
+} from '../types/base';
 import type { ResolvedNodeGroup } from './plugins/types';
 
 // ===========================================================================
@@ -195,9 +207,119 @@ function getMainInputCount(nodeName: string, nodes: ReadonlyMap<string, GraphNod
 	return Math.max(1, maxIndex);
 }
 
-function calculateNodeHeight(mainInputCount: number, mainOutputCount: number): number {
-	const maxVerticalHandles = Math.max(mainInputCount, mainOutputCount, 1);
-	return DEFAULT_NODE_SIZE[1] + Math.max(0, maxVerticalHandles - 2) * GRID_SIZE * 2;
+/** Mirrors `calculateNodeSize` in editor-ui `nodeViewUtils.ts`. */
+function canvasNodeSize(ports: NodePorts): { width: number; height: number } {
+	const maxVerticalHandles = Math.max(ports.mainInputs, ports.mainOutputs, 1);
+	const height = DEFAULT_NODE_SIZE[1] + Math.max(0, maxVerticalHandles - 2) * GRID_SIZE * 2;
+	if (ports.configurable) {
+		const portCount = Math.max(NODE_MIN_INPUT_ITEMS_COUNT, ports.nonMainInputs);
+		return {
+			// A configuration node gets one more grid step, so that its centred output aligns to the grid
+			width:
+				CONFIGURATION_NODE_RADIUS * 2 +
+				GRID_SIZE * ((ports.configuration ? 1 : 0) + (portCount - 1) * 3),
+			height: ports.configuration ? CONFIGURATION_NODE_SIZE[1] : height,
+		};
+	}
+	if (ports.configuration) {
+		return { width: CONFIGURATION_NODE_SIZE[0], height: CONFIGURATION_NODE_SIZE[1] };
+	}
+	return { width: DEFAULT_NODE_SIZE[0], height };
+}
+
+/** Ports read from the wires, for a node whose type is not known. A port without a wire is not seen. */
+function wiredPorts(
+	nodeName: string,
+	aiParentNames: ReadonlySet<string>,
+	aiConfigNames: ReadonlySet<string>,
+	nodes: ReadonlyMap<string, GraphNode>,
+): NodePorts {
+	const aiInputTypes = new Set<string>();
+	if (aiParentNames.has(nodeName)) {
+		for (const graphNode of nodes.values()) {
+			for (const [connType, outputMap] of graphNode.connections) {
+				if (!isAiConnectionType(connType)) continue;
+				for (const targets of outputMap.values()) {
+					for (const target of targets) {
+						if (target.node === nodeName) {
+							aiInputTypes.add(connType);
+						}
+					}
+				}
+			}
+		}
+	}
+	return {
+		mainInputs: getMainInputCount(nodeName, nodes),
+		mainOutputs: getMainOutputCount(nodeName, nodes),
+		nonMainInputs: aiInputTypes.size,
+		configuration: aiConfigNames.has(nodeName),
+		configurable: aiParentNames.has(nodeName),
+	};
+}
+
+/**
+ * Each node's ports, read from its node type as the canvas reads them. Some node types
+ * declare their ports as an expression over the node parameters, so this evaluates the
+ * expression with the parameter defaults filled in. A node of an unknown type is left out.
+ * Pass the result to `toJSON({ nodePorts })` and `getWorkflowNodeDimensions`.
+ */
+export async function resolveNodePorts(
+	json: WorkflowJSON,
+	nodeTypes: INodeTypes,
+): Promise<Map<string, NodePorts>> {
+	const descriptionOf = (node: { type: string; typeVersion: number }) => {
+		try {
+			return nodeTypes.getByNameAndVersion(node.type, node.typeVersion)?.description;
+		} catch {
+			// The server's node types throw on an unknown type.
+			return undefined;
+		}
+	};
+	// The workflow fills in the parameter defaults that the port expressions read.
+	const workflow = new Workflow({
+		nodes: json.nodes.flatMap(({ id, name, type, typeVersion, parameters, onError }) =>
+			name !== undefined && descriptionOf({ type, typeVersion })
+				? [
+						{
+							id,
+							name,
+							type,
+							typeVersion,
+							position: [0, 0] satisfies [number, number],
+							parameters: jsonParse<INodeParameters>(JSON.stringify(parameters ?? {})),
+							onError,
+						},
+					]
+				: [],
+		),
+		connections: {},
+		active: false,
+		nodeTypes,
+	});
+	// The VM expression engine evaluates an expression only while the workflow holds an isolate.
+	return await workflow.expression.withIsolate(async () => {
+		const ports = new Map<string, NodePorts>();
+		for (const node of Object.values(workflow.nodes)) {
+			const description = descriptionOf(node);
+			if (!description) continue;
+			const inputs = NodeHelpers.getConnectionTypes(
+				NodeHelpers.getNodeInputs(workflow, node, description),
+			);
+			const outputs = NodeHelpers.getConnectionTypes(
+				NodeHelpers.getNodeOutputs(workflow, node, description),
+			);
+			const nonMainInputs = inputs.filter((type) => type !== NodeConnectionTypes.Main).length;
+			ports.set(node.name, {
+				mainInputs: inputs.length - nonMainInputs,
+				mainOutputs: outputs.filter((type) => type === NodeConnectionTypes.Main).length,
+				nonMainInputs,
+				configuration: outputs.some((type) => type !== NodeConnectionTypes.Main),
+				configurable: nonMainInputs > 0,
+			});
+		}
+		return ports;
+	});
 }
 
 /** Whether a sticky carries its own width, rather than relying on the default. */
@@ -229,6 +351,7 @@ export function getNodeDimensions(
 	aiParentNames: ReadonlySet<string>,
 	aiConfigNames: ReadonlySet<string>,
 	nodes: ReadonlyMap<string, GraphNode>,
+	knownPorts?: ReadonlyMap<string, NodePorts>,
 ): { width: number; height: number } {
 	const graphNode = nodes.get(nodeName);
 	if (graphNode?.instance.type === STICKY_NODE_TYPE) {
@@ -242,35 +365,29 @@ export function getNodeDimensions(
 		return { width: AGENT_NODE_SIZE[0], height: AGENT_NODE_SIZE[1] };
 	}
 
-	if (aiConfigNames.has(nodeName)) {
-		return { width: CONFIGURATION_NODE_SIZE[0], height: CONFIGURATION_NODE_SIZE[1] };
-	}
+	return canvasNodeSize(
+		knownPorts?.get(nodeName) ?? wiredPorts(nodeName, aiParentNames, aiConfigNames, nodes),
+	);
+}
 
-	if (aiParentNames.has(nodeName)) {
-		const aiInputTypes = new Set<string>();
-		for (const graphNode of nodes.values()) {
-			for (const [connType, outputMap] of graphNode.connections) {
-				if (!isAiConnectionType(connType)) continue;
-				for (const targets of outputMap.values()) {
-					for (const target of targets) {
-						if (target.node === nodeName) {
-							aiInputTypes.add(connType);
-						}
-					}
-				}
-			}
-		}
-		const portCount = Math.max(NODE_MIN_INPUT_ITEMS_COUNT, aiInputTypes.size);
-		const width = CONFIGURATION_NODE_RADIUS * 2 + GRID_SIZE * (portCount - 1) * 3;
-		return { width, height: CONFIGURABLE_NODE_SIZE[1] };
-	}
-
-	const mainInputCount = getMainInputCount(nodeName, nodes);
-	const mainOutputCount = getMainOutputCount(nodeName, nodes);
-	return {
-		width: DEFAULT_NODE_SIZE[0],
-		height: calculateNodeHeight(mainInputCount, mainOutputCount),
-	};
+/**
+ * The canvas size of each node in a workflow JSON, by node name. Give the ports from
+ * `resolveNodePorts` to size each node by its declared ports, as the canvas does; without
+ * them, the size comes from the wired ports only.
+ */
+export function getWorkflowNodeDimensions(
+	json: WorkflowJSON,
+	knownPorts?: ReadonlyMap<string, NodePorts>,
+): Map<string, { width: number; height: number }> {
+	const { nodes } = parseWorkflowJSON(json);
+	const aiParentNames = getAiParentNames(nodes);
+	const aiConfigNames = getAiConfigNames(nodes);
+	return new Map(
+		[...nodes.keys()].map((name) => [
+			name,
+			getNodeDimensions(name, aiParentNames, aiConfigNames, nodes, knownPorts),
+		]),
+	);
 }
 
 // ---------------------------------------------------------------------------
@@ -350,13 +467,20 @@ function createParentGraph(
 	aiParentNames: ReadonlySet<string>,
 	aiConfigNames: ReadonlySet<string>,
 	nodes: ReadonlyMap<string, GraphNode>,
+	knownPorts: ReadonlyMap<string, NodePorts> | undefined,
 ): dagre.graphlib.Graph {
 	const parentGraph = new dagre.graphlib.Graph();
 	parentGraph.setGraph({});
 	parentGraph.setDefaultEdgeLabel(() => ({}));
 
 	for (const name of nonStickyNames) {
-		const { width, height } = getNodeDimensions(name, aiParentNames, aiConfigNames, nodes);
+		const { width, height } = getNodeDimensions(
+			name,
+			aiParentNames,
+			aiConfigNames,
+			nodes,
+			knownPorts,
+		);
 		const explicitPosition = nodes.get(name)?.instance.config?.position;
 		parentGraph.setNode(name, {
 			width,
@@ -402,7 +526,9 @@ function createSubGraph(nodeIds: string[], parent: dagre.graphlib.Graph): dagre.
 	parent
 		.nodes()
 		.filter((id) => nodeIdSet.has(id))
-		.forEach((id) => subGraph.setNode(id, parent.node(id)));
+		// Dagre mutates node labels during layout. Copy them so a subgraph layout
+		// cannot change the graph that will be laid out later.
+		.forEach((id) => subGraph.setNode(id, { ...parent.node(id) }));
 
 	parent
 		.edges()
@@ -410,6 +536,88 @@ function createSubGraph(nodeIds: string[], parent: dagre.graphlib.Graph): dagre.
 		.forEach((edge) => subGraph.setEdge(edge.v, edge.w, parent.edge(edge)));
 
 	return subGraph;
+}
+
+/** Check that a group contains every node in each AI subtree it touches. */
+function hasCompleteAiSubtree(
+	nodeIds: readonly string[],
+	parentGraph: dagre.graphlib.Graph,
+	aiParentNames: ReadonlySet<string>,
+	aiConfigNames: ReadonlySet<string>,
+): boolean {
+	const memberIds = new Set(nodeIds);
+	const aiParents = [...aiParentNames].filter((parentId) => {
+		if (memberIds.has(parentId)) return true;
+
+		return getAllConnectedAiConfigNodes(parentGraph, parentId, aiConfigNames).some((id) =>
+			memberIds.has(id),
+		);
+	});
+
+	for (const aiParentId of aiParents) {
+		const aiSubtree = new Set([
+			aiParentId,
+			...getAllConnectedAiConfigNodes(parentGraph, aiParentId, aiConfigNames),
+		]);
+		if ([...aiSubtree].some((id) => !memberIds.has(id))) return false;
+	}
+
+	return nodeIds.every(
+		(id) =>
+			!aiConfigNames.has(id) ||
+			aiParents.some((parentId) => {
+				const aiSubtree = new Set([
+					parentId,
+					...getAllConnectedAiConfigNodes(parentGraph, parentId, aiConfigNames),
+				]);
+				return aiSubtree.has(id);
+			}),
+	);
+}
+
+/** Layout group members with the existing AI interior layout when needed. */
+function layoutGroupMembers(
+	nodeIds: string[],
+	parentGraph: dagre.graphlib.Graph,
+	aiParentNames: ReadonlySet<string>,
+	aiConfigNames: ReadonlySet<string>,
+	nodes: ReadonlyMap<string, GraphNode>,
+): dagre.graphlib.Graph {
+	const subgraph = createSubGraph(nodeIds, parentGraph);
+	const containsAiNode = nodeIds.some((id) => aiParentNames.has(id) || aiConfigNames.has(id));
+	if (!containsAiNode) {
+		dagre.layout(subgraph, { disableOptimalOrderHeuristic: true });
+		return subgraph;
+	}
+
+	const subgraphs = layoutSubgraphs(subgraph, aiParentNames, aiConfigNames);
+	const boxes = boxesFromSubgraphs(
+		subgraphs,
+		arrangeSubgraphs(subgraphs),
+		new Map<string, CollapsedGroup>(),
+		nodes,
+		new Map<string, string>(),
+	);
+	alignAiSubgraphs(subgraphs, boxes);
+
+	const laidOut = new dagre.graphlib.Graph();
+	laidOut.setGraph(subgraph.graph());
+	laidOut.setDefaultEdgeLabel(() => ({}));
+	for (const nodeId of nodeIds) {
+		const box = boxes[nodeId];
+		if (!box) continue;
+		laidOut.setNode(nodeId, {
+			x: box.x + box.width / 2,
+			y: box.y + box.height / 2,
+			width: box.width,
+			height: box.height,
+		});
+	}
+	for (const edge of subgraph.edges()) {
+		laidOut.setEdge(edge.v, edge.w, subgraph.edge(edge));
+	}
+
+	return laidOut;
 }
 
 function createVerticalGraph(items: Array<{ id: string; box: BoundingBox }>): dagre.graphlib.Graph {
@@ -540,6 +748,8 @@ function boxesFromSubgraphs(
 	subgraphs: readonly LayoutSubgraph[],
 	compositeGraph: dagre.graphlib.Graph | undefined,
 	groupByGraphId: ReadonlyMap<string, CollapsedGroup>,
+	nodes: ReadonlyMap<string, GraphNode>,
+	keyByNodeId: ReadonlyMap<string, string>,
 ): Record<string, BoundingBox> {
 	const boundingBoxByNodeId: Record<string, BoundingBox> = {};
 
@@ -567,7 +777,11 @@ function boxesFromSubgraphs(
 			if (group) {
 				placeGroupMembers(group, box, boundingBoxByNodeId, {
 					boundingBoxFromGraph,
+					compositeBoundingBox,
+					keyByNodeId,
+					nodes,
 					snapToGrid,
+					wrappingBoxFor,
 				});
 				continue;
 			}
@@ -702,7 +916,8 @@ function wrappingBoxFor(anchorBoxes: BoundingBox[]): BoundingBox | undefined {
 /** Push a box down until it clears every box already placed. */
 function separateFrom(placed: BoundingBox[], box: BoundingBox): BoundingBox {
 	let separated = box;
-	for (let step = 0; step < MAX_STICKY_SEPARATION_STEPS; step++) {
+	// Each move clears one box and only increases y, so each box needs at most one step.
+	for (let step = 0; step < placed.length; step++) {
 		const collision = placed.find((placedBox) => boxesOverlap(placedBox, separated));
 		if (!collision) break;
 		separated = {
@@ -727,6 +942,7 @@ function separateFrom(placed: BoundingBox[], box: BoundingBox): BoundingBox {
 export function resolveStickyGeometry(
 	nodes: ReadonlyMap<string, GraphNode>,
 	positions: ReadonlyMap<string, [number, number]>,
+	knownPorts?: ReadonlyMap<string, NodePorts>,
 ): Map<string, StickyGeometry> {
 	const geometryByName = new Map<string, StickyGeometry>();
 
@@ -747,9 +963,15 @@ export function resolveStickyGeometry(
 	const boxOfNode = (name: string): BoundingBox | undefined => {
 		const graphNode = nodes.get(name);
 		if (!graphNode) return undefined;
-		const position = graphNode.instance.config?.position ?? positions.get(name);
-		if (!position) return undefined;
-		const { width, height } = getNodeDimensions(name, aiParentNames, aiConfigNames, nodes);
+		const position = graphNode.instance.config?.position ??
+			positions.get(name) ?? [START_X, DEFAULT_Y];
+		const { width, height } = getNodeDimensions(
+			name,
+			aiParentNames,
+			aiConfigNames,
+			nodes,
+			knownPorts,
+		);
 		return { x: position[0], y: position[1], width, height };
 	};
 
@@ -800,6 +1022,12 @@ export function resolveStickyGeometry(
 	};
 
 	const placed = resolved.filter((sticky) => sticky.pinned).map(({ box }) => box);
+	for (const [name, graphNode] of nodes) {
+		if (graphNode.instance.type === STICKY_NODE_TYPE) continue;
+		const box = boxOfNode(name);
+		if (box) placed.push(box);
+	}
+
 	for (const { name, box, sizedByAnchors, pinned } of resolved) {
 		if (pinned) {
 			record(name, box, sizedByAnchors);
@@ -834,10 +1062,14 @@ export function resolveStickyGeometry(
  * its neighbours sit on, and sized wrong.
  *
  * Only sets positions for nodes without explicit config.position.
+ *
+ * Give the ports from `resolveNodePorts` to size each node by its declared ports, as the
+ * canvas does.
  */
 export function calculateNodePositionsDagre(
 	nodes: ReadonlyMap<string, GraphNode>,
 	nodeGroups?: readonly ResolvedNodeGroup[],
+	knownPorts?: ReadonlyMap<string, NodePorts>,
 ): Map<string, [number, number]> {
 	const positions = new Map<string, [number, number]>();
 
@@ -868,7 +1100,15 @@ export function calculateNodePositionsDagre(
 
 	if (!needsLayout) return positions;
 
-	const parentGraph = createParentGraph(nonStickyNames, aiParentNames, aiConfigNames, nodes);
+	const sizeOf = (name: string) =>
+		getNodeDimensions(name, aiParentNames, aiConfigNames, nodes, knownPorts);
+	const parentGraph = createParentGraph(
+		nonStickyNames,
+		aiParentNames,
+		aiConfigNames,
+		nodes,
+		knownPorts,
+	);
 	addConnectionEdges(parentGraph, nonStickyNames, nodes);
 
 	// Fold groups away before splitting into components, so a group that bridges
@@ -880,16 +1120,20 @@ export function calculateNodePositionsDagre(
 	}
 
 	// Members the layout is not free to move: stickies get placed relative to their
-	// anchors, AI clusters have their own sub-layout, and an explicit position is
-	// the author's to keep.
-	const ungroupableKeys = new Set([...stickyNames, ...aiParentNames, ...aiConfigNames]);
+	// anchors, and an explicit position is the author's to keep. Complete AI
+	// subtrees are handled as a group interior; partial subtrees are rejected below.
+	const ungroupableKeys = new Set(stickyNames);
 	for (const [key, graphNode] of nodes) {
 		if (graphNode.instance.config?.position) ungroupableKeys.add(key);
 	}
 
 	const collapsedGroups = nodeGroups?.length
-		? collapseNodeGroups(parentGraph, nodeGroups, keyByNodeId, ungroupableKeys, {
+		? collapseNodeGroups(parentGraph, nodeGroups, nodes, keyByNodeId, ungroupableKeys, {
 				createSubGraph,
+				canCollapseMembers: (memberKeys, graph) =>
+					hasCompleteAiSubtree(memberKeys, graph, aiParentNames, aiConfigNames),
+				layoutSubGraph: (memberKeys, graph) =>
+					layoutGroupMembers(memberKeys, graph, aiParentNames, aiConfigNames, nodes),
 			})
 		: [];
 	const groupByGraphId = new Map(collapsedGroups.map((group) => [group.graphId, group]));
@@ -898,7 +1142,13 @@ export function calculateNodePositionsDagre(
 
 	const compositeGraph = arrangeSubgraphs(subgraphs);
 
-	const boundingBoxByNodeId = boxesFromSubgraphs(subgraphs, compositeGraph, groupByGraphId);
+	const boundingBoxByNodeId = boxesFromSubgraphs(
+		subgraphs,
+		compositeGraph,
+		groupByGraphId,
+		nodes,
+		keyByNodeId,
+	);
 
 	alignAiSubgraphs(subgraphs, boundingBoxByNodeId);
 
@@ -915,7 +1165,7 @@ export function calculateNodePositionsDagre(
 		const positionsBefore = new Map<string, BoundingBox>();
 		for (const [name, graphNode] of nodes) {
 			const pos = graphNode.instance.config?.position;
-			const { width, height } = getNodeDimensions(name, aiParentNames, aiConfigNames, nodes);
+			const { width, height } = sizeOf(name);
 			positionsBefore.set(name, {
 				x: pos ? pos[0] : 0,
 				y: pos ? pos[1] : 0,
@@ -928,7 +1178,7 @@ export function calculateNodePositionsDagre(
 		for (const [name, graphNode] of nodes) {
 			const explicitPosition = graphNode.instance.config?.position;
 			if (explicitPosition) {
-				const { width, height } = getNodeDimensions(name, aiParentNames, aiConfigNames, nodes);
+				const { width, height } = sizeOf(name);
 				positionsAfter.set(name, {
 					x: explicitPosition[0],
 					y: explicitPosition[1],

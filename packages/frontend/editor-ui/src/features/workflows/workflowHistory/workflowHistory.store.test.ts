@@ -144,7 +144,7 @@ describe('Workflow history store', () => {
 	});
 
 	describe('getPublishTimeline', () => {
-		it('should call the API with the rest context and workflow id and return its result', async () => {
+		it('should call the API with the rest context, workflow id and page, and return its result', async () => {
 			const workflowHistoryStore = useWorkflowHistoryStore();
 			const rootStore = useRootStore();
 			const workflowId = 'workflow-123';
@@ -163,9 +163,15 @@ describe('Workflow history store', () => {
 
 			vi.mocked(whApi.getPublishTimeline).mockResolvedValue(events);
 
-			const result = await workflowHistoryStore.getPublishTimeline(workflowId);
+			const result = await workflowHistoryStore.getPublishTimeline(workflowId, {
+				take: 100,
+				skip: 0,
+			});
 
-			expect(whApi.getPublishTimeline).toHaveBeenCalledWith(rootStore.restApiContext, workflowId);
+			expect(whApi.getPublishTimeline).toHaveBeenCalledWith(rootStore.restApiContext, workflowId, {
+				take: 100,
+				skip: 0,
+			});
 			expect(result).toBe(events);
 		});
 
@@ -173,8 +179,32 @@ describe('Workflow history store', () => {
 			const workflowHistoryStore = useWorkflowHistoryStore();
 			vi.mocked(whApi.getPublishTimeline).mockRejectedValue(new Error('API Error'));
 
-			await expect(workflowHistoryStore.getPublishTimeline('workflow-123')).rejects.toThrow(
-				'API Error',
+			await expect(
+				workflowHistoryStore.getPublishTimeline('workflow-123', { take: 100, skip: 0 }),
+			).rejects.toThrow('API Error');
+		});
+	});
+
+	describe('restoreWorkflow', () => {
+		it('sends the version it restores, so the server can keep its nodes', async () => {
+			const workflowHistoryStore = useWorkflowHistoryStore();
+			const workflowsStore = useWorkflowsStore();
+			const nodes = [{ id: 'node-1', name: 'Call' }];
+			vi.mocked(whApi.getWorkflowVersion).mockResolvedValue({
+				nodes,
+				connections: {},
+				nodeGroups: [],
+			} as unknown as Awaited<ReturnType<typeof whApi.getWorkflowVersion>>);
+			const updateWorkflow = vi
+				.spyOn(workflowsStore, 'updateWorkflow')
+				.mockResolvedValue({} as Awaited<ReturnType<typeof workflowsStore.updateWorkflow>>);
+
+			await workflowHistoryStore.restoreWorkflow('workflow-123', 'version-456');
+
+			expect(updateWorkflow).toHaveBeenCalledWith(
+				'workflow-123',
+				expect.objectContaining({ nodes, restoredFromVersionId: 'version-456' }),
+				true,
 			);
 		});
 	});

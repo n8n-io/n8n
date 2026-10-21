@@ -325,7 +325,7 @@ defineExpose({
 					{{ i18n.baseText('generic.learnMore') }} <N8nIcon icon="arrow-up-right" />
 				</N8nButton>
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					size="xsmall"
 					:data-test-id="`${emptyStateType}-button`"
 					@click="emptyStateConfig.buttonAction"
@@ -344,7 +344,6 @@ defineExpose({
 						:placeholder="i18n.baseText('projects.settings.externalSecrets.search.placeholder')"
 						clearable
 						data-test-id="secrets-providers-search"
-						size="small"
 					>
 						<template #prefix>
 							<N8nIcon icon="search" />
@@ -354,7 +353,7 @@ defineExpose({
 				<N8nButton
 					v-if="hasProjectExternalSecretsCreatePermission"
 					variant="outline"
-					size="small"
+					size="large"
 					data-test-id="external-secrets-add-button"
 					@click="onAddSecretsStore"
 				>

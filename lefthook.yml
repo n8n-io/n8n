@@ -7,18 +7,18 @@ output:
 post-merge:
   commands:
     check-pnpm:
-      run: sh .githooks/check-pnpm.sh
+      run: node .githooks/check-pnpm.mjs
 
 post-rewrite:
   commands:
     check-pnpm:
-      run: sh .githooks/check-pnpm.sh
+      run: node .githooks/check-pnpm.mjs
 
 post-checkout:
   commands:
     check-pnpm:
-      # $3 is 1 for a branch checkout, 0 for a file checkout — skip the latter
-      run: '[ "{3}" = "0" ] || sh .githooks/check-pnpm.sh'
+      # $3 is 1 for a branch checkout, 0 for a file checkout — the script skips the latter
+      run: node .githooks/check-pnpm.mjs {3}
 
 pre-commit:
   commands:

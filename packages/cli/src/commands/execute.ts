@@ -52,6 +52,7 @@ export class Execute extends BaseCommand<z.infer<typeof flagsSchema>> {
 			return;
 		}
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (flags.file) {
 			throw new UserError(
 				'The --file flag is no longer supported. Please first import the workflow and then execute it using the --id flag.',
@@ -89,7 +90,7 @@ export class Execute extends BaseCommand<z.infer<typeof flagsSchema>> {
 		);
 		const runData: IWorkflowExecutionDataProcess = {
 			executionMode: 'cli',
-			startNodes: [{ name: startingNode.name, sourceData: null }],
+			triggerToStartFrom: { name: startingNode.name },
 			workflowData,
 			userId: user.id,
 		};

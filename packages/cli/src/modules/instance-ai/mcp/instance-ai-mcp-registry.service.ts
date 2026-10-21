@@ -4,23 +4,23 @@ import type {
 	InstanceAiMcpConnectionFailureReason,
 	InstanceAiMcpConnectionToolResponse,
 	InstanceAiMcpConnectionToolsResponse,
+	InstanceAiMcpCreateConnectionRequestDto,
 	InstanceAiMcpUpdateConnectionRequestDto,
 } from '@n8n/api-types';
 import { isObjectLiteral, Logger } from '@n8n/backend-common';
 import type { CustomFetch } from '@n8n/backend-network';
 import { OutboundHttp } from '@n8n/backend-network';
-import { EventService } from '@n8n/backend-services';
+import { EventService, CredentialsFinderService } from '@n8n/backend-services';
 import { isUniqueConstraintError, type CredentialsEntity, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { McpServerConfig } from '@n8n/instance-ai';
-import { isRecord } from '@n8n/utils/is-record';
 import type { ICredentialDataDecryptedObject, LiteralMcpRegistryConnection } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import { CredentialTypes } from '@/credential-types';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
+import { createMcpAuthFetch } from '@/modules/mcp-registry/mcp-auth-fetch';
 import {
 	isSupportedMcpRegistryCredentialType,
 	prepareMcpRegistryConnection,
@@ -31,7 +31,6 @@ import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry
 import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { OauthService } from '@/oauth/oauth.service';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
-import { createAuthFetch, getBearerTokenRevision } from '@/utils/auth-fetch';
 
 import type { InstanceAiMcpRegistryConnection } from '../entities/instance-ai-mcp-registry-connection.entity';
 import { InstanceAiSettingsService } from '../instance-ai-settings.service';
@@ -107,7 +106,7 @@ export class InstanceAiMcpRegistryService {
 
 	async createConnection(
 		user: User,
-		input: { serverSlug: string; credentialId: string },
+		input: InstanceAiMcpCreateConnectionRequestDto,
 	): Promise<{
 		connection: InstanceAiMcpRegistryConnection;
 		credential: CredentialsEntity;
@@ -156,7 +155,8 @@ export class InstanceAiMcpRegistryService {
 			userId: user.id,
 			serverSlug: input.serverSlug,
 			credentialId: input.credentialId,
-			toolPermissions: this.instanceAiSettingsService.getMcpToolPermissions(),
+			toolPermissions:
+				input.toolPermissions ?? this.instanceAiSettingsService.getMcpToolPermissions(),
 		});
 
 		try {
@@ -468,32 +468,14 @@ export class InstanceAiMcpRegistryService {
 		}
 
 		const projectId = credentialWithData.credential.shared?.[0]?.projectId ?? null;
-		const storedTokenData = credentialWithData.data.oauthTokenData;
-		const oauthTokenData = isRecord(storedTokenData) ? { ...storedTokenData } : undefined;
-		return createAuthFetch({
+		return createMcpAuthFetch({
+			authentication: credentialType,
 			baseFetch,
+			credentialData: credentialWithData.data,
+			credentialId: config.credentialId,
 			initialHeaders: prepared.value.headers,
-			onUnauthorized: async (currentHeaders) => {
-				if (!projectId) return null;
-				const result = await this.oauthService.refreshOAuth2CredentialById(
-					config.credentialId,
-					projectId,
-					getBearerTokenRevision(currentHeaders, oauthTokenData?.n8n_expires_at),
-				);
-				if (result && oauthTokenData) {
-					if (result.expiresAt === undefined) {
-						delete oauthTokenData.n8n_expires_at;
-					} else {
-						oauthTokenData.n8n_expires_at = String(result.expiresAt);
-					}
-					if (result.expiresInSeconds === undefined) {
-						delete oauthTokenData.expires_in;
-					} else {
-						oauthTokenData.expires_in = result.expiresInSeconds;
-					}
-				}
-				return result?.headers ?? null;
-			},
+			oauthService: this.oauthService,
+			projectId,
 			allowedDomains: {
 				mode: 'domains',
 				domains: prepared.value.allowedDomains,

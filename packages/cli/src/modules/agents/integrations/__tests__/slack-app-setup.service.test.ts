@@ -6,12 +6,14 @@ import { mock } from 'vitest-mock-extended';
 import type { Cipher } from 'n8n-core';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import {
+	type CredentialsFinderService,
+	type CacheService,
+	type UrlService,
+} from '@n8n/backend-services';
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
 import { BadRequestError } from '@n8n/errors';
-import type { CacheService } from '@n8n/backend-services';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { UrlService } from '@n8n/backend-services';
 
 import type { AgentIntegrationManagementService } from '../../agent-integration-management.service';
 import type { AgentRepository } from '../../repositories/agent.repository';
@@ -751,6 +753,10 @@ describe('Slack setup services', () => {
 				},
 			],
 		});
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+			projectId: 'project-1',
+			excludePersonalRoute: true,
+		});
 	});
 
 	it('refreshes the manager token during icon setup and auto-installs the bot credential', async () => {
@@ -1220,6 +1226,10 @@ describe('Slack setup services', () => {
 		expect(fetchParams(requestMock, 0).get('app_id')).toBe('A123');
 		expect(fetchParams(requestMock, 0).get('token')).toBe('xoxp-manager');
 		expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledTimes(2);
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+			projectId: 'project-1',
+			excludePersonalRoute: true,
+		});
 	});
 
 	it('updates the live manifest', async () => {

@@ -8,7 +8,8 @@ import { buildRequestBodyJsonSchema, getDecoratorGeneratedOperations } from '../
 
 /**
  * The build writes a request body schema into the spec. `/discover` builds the same schema at
- * runtime, through `buildRequestBodyJsonSchema`. Nothing else checks that the two agree.
+ * runtime, through `buildRequestBodyJsonSchema`, for a route whose media type is `discoverable`
+ * (JSON; not multipart). Nothing else checks that the two agree.
  */
 const V1_DIR = path.resolve(__dirname, '../..');
 
@@ -21,7 +22,7 @@ const SPEC_FILE_BY_HANDLER = new Map(
 	]),
 );
 
-function schemaInSpecFile(handlerName: string): unknown {
+function schemaInSpecFile(handlerName: string, mediaType: string): unknown {
 	const specFile = SPEC_FILE_BY_HANDLER.get(handlerName);
 	if (!specFile) throw new Error(`The build generated no spec file for ${handlerName}`);
 
@@ -29,13 +30,19 @@ function schemaInSpecFile(handlerName: string): unknown {
 		requestBody?: { content?: Record<string, { schema?: unknown }> };
 	};
 
-	return spec.requestBody?.content?.['application/json']?.schema;
+	return spec.requestBody?.content?.[mediaType]?.schema;
 }
 
 describe('buildRequestBodyJsonSchema', () => {
-	const routesWithBody = resolvePublicApiRoutes().filter((route) => route.requestBodyDto);
+	const discoverableRoutesWithBody = resolvePublicApiRoutes().filter(
+		(route) => route.requestBodyDto && route.requestBodyHandler?.discoverable,
+	);
 
-	it.each(routesWithBody)('$handlerName matches its committed spec file', (route) => {
-		expect(buildRequestBodyJsonSchema(route)).toEqual(schemaInSpecFile(route.handlerName));
+	it.each(discoverableRoutesWithBody)('$handlerName matches its committed spec file', (route) => {
+		assert(route.requestBodyMedia, 'expected a route with a body to have a resolved media type');
+
+		expect(buildRequestBodyJsonSchema(route)).toEqual(
+			schemaInSpecFile(route.handlerName, route.requestBodyMedia.mediaType),
+		);
 	});
 });

@@ -1,5 +1,8 @@
 import getPort from 'get-port';
 import { createHash } from 'node:crypto';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { StartedNetwork, StartedTestContainer, StoppedTestContainer } from 'testcontainers';
 import { Network } from 'testcontainers';
 
@@ -80,7 +83,26 @@ export interface N8NStack {
 	 * which cannot reach the host-mapped ports in `baseUrl`/`mainUrls`.
 	 */
 	internalMainUrls: string[];
+	/**
+	 * Direct host-mapped URL of every n8n process (mains, workers, webhook procs),
+	 * for per-process diagnostics such as `/metrics` and `/rest/e2e/internals`.
+	 */
+	processUrls: N8NProcessUrl[];
 	startupDiagnostics: N8NStartupDiagnostics;
+}
+
+export interface N8NProcessUrl {
+	role: 'main' | 'worker' | 'webhook';
+	/** Container name, e.g. `<project>-n8n-worker-1`. */
+	name: string;
+	url: string;
+}
+
+function n8nProcessRole(containerName: string): N8NProcessUrl['role'] | undefined {
+	if (containerName.endsWith('-n8n') || containerName.includes('-n8n-main-')) return 'main';
+	if (containerName.includes('-n8n-worker-')) return 'worker';
+	if (containerName.includes('-n8n-webhook-')) return 'webhook';
+	return undefined;
 }
 
 function shouldServiceStart(name: ServiceName, service: Service, ctx: StartContext): boolean {
@@ -348,6 +370,14 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			return meta?.n8nFilesToMount ?? [];
 		});
 
+		// The main and the engine container share one binary data store, so a
+		// file one plane stores is read by the other. Deleted with the stack.
+		let binaryDataHostDir: string | undefined;
+		if (engine === 'container') {
+			binaryDataHostDir = mkdtempSync(join(tmpdir(), `${uniqueProjectName}-binary-data-`));
+			resources.trackPath(binaryDataHostDir);
+		}
+
 		// Earliest log line the readiness gate below may accept
 		const n8nStartedAtSeconds = Math.floor(Date.now() / 1000);
 		const n8nStartupStart = performance.now();
@@ -381,6 +411,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 				startupDeadline,
 				image,
 				userHomeHostDir,
+				binaryDataHostDir,
 				user,
 				startupTimeoutMs,
 			});
@@ -463,6 +494,15 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			}
 		}
 		log(`Direct main URLs: ${mainUrls.join(', ')}`);
+
+		const processUrls: N8NProcessUrl[] = [];
+		for (const container of containers) {
+			const name = container.getName().replace(/^\//, '');
+			const role = n8nProcessRole(name);
+			if (role) {
+				processUrls.push({ role, name, url: `http://localhost:${container.getMappedPort(5678)}` });
+			}
+		}
 
 		// Run verification hooks (e.g. keycloak connectivity check)
 		const n8nContainers = containers.filter((c) => {
@@ -607,6 +647,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 						startupDeadline: replacementDeadline,
 						image: options.image,
 						userHomeHostDir,
+						// The kept engine container still writes here.
+						binaryDataHostDir,
 						user,
 						startupTimeoutMs,
 					});
@@ -617,6 +659,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			},
 			mainUrls,
 			internalMainUrls,
+			processUrls,
 			startupDiagnostics: n8nResult.diagnostics,
 		};
 	} catch (error) {

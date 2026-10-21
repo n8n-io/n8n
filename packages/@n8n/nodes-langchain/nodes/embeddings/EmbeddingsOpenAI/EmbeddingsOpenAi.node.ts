@@ -26,7 +26,7 @@ const modelParameter: INodeProperties = {
 	name: 'model',
 	type: 'options',
 	description:
-		'The model which will generate the embeddings. <a href="https://platform.openai.com/docs/models/overview">Learn more</a>.',
+		'The model which will generate the embeddings. <a href="https://developers.openai.com/api/docs/models">Learn more</a>.',
 	typeOptions: {
 		loadOptions: {
 			routing: {

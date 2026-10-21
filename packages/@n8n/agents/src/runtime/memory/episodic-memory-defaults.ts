@@ -78,7 +78,7 @@ export function createEpisodicMemoryReflectFn(
 		incrementTokenCountFromUsage(input.executionCounter, response.usage);
 		return {
 			reflection: response.output,
-			usage: toTokenUsage(response.usage, response.providerMetadata),
+			usage: toTokenUsage(response.usage, response.finalStep.providerMetadata),
 			model: getModelIdString(model),
 		};
 	};

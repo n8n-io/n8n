@@ -182,7 +182,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		hasPermission(['rbac'], { rbac: { scope: 'credential:manageInstance' } }),
 	);
 
-	async function fetch(): Promise<void> {
+	async function fetch(): Promise<boolean> {
 		isLoading.value = true;
 		try {
 			const promises: [
@@ -206,11 +206,13 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 				instanceModelCredentials.value = imc;
 			}
 			clearDraft();
+			return true;
 		} catch {
 			toast.showError(
 				new Error(i18n.baseText('settings.n8nAgent.toast.loadError')),
 				i18n.baseText('settings.n8nAgent.toast.errorTitle'),
 			);
+			return false;
 		} finally {
 			isLoading.value = false;
 		}

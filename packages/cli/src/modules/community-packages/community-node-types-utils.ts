@@ -1,3 +1,4 @@
+import type { GatewayCreditsPromotion } from '@n8n/api-types';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { paginatedRequest, type StrapiFilters } from '@/utils/strapi-utils';
@@ -21,6 +22,7 @@ export type StrapiCommunityNodeType = {
 	nodeDescription: INodeTypeDescription;
 	nodeVersions?: Array<{ npmVersion: string; checksum: string }>;
 	aiNodeSdkVersion?: number;
+	gatewayCreditsPromotion?: GatewayCreditsPromotion | null;
 };
 
 /**
@@ -58,7 +60,7 @@ export async function getCommunityNodeTypes(
 	environment: 'staging' | 'production',
 	qs: { filters?: StrapiFilters; fields?: string[] } = {},
 	maxAiNodeSdk: number,
-	maxN8nNodesApiVersion: number,
+	maxN8nNodesApiVersion: string,
 ): Promise<StrapiCommunityNodeType[]> {
 	const url = getUrl(environment);
 	const params = {
@@ -76,7 +78,7 @@ export async function getCommunityNodeTypes(
 export async function getCommunityNodesMetadata(
 	environment: 'staging' | 'production',
 	maxAiNodeSdk: number,
-	maxN8nNodesApiVersion: number,
+	maxN8nNodesApiVersion: string,
 ): Promise<CommunityNodesMetadata[]> {
 	const url = getUrl(environment);
 	const params = {

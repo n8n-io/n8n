@@ -155,8 +155,43 @@ export const upsertDataTableRowFieldDocs = {
 	data: { description: 'Column values for the row' },
 	returnData: {
 		description:
-			'Set to true to return the upserted row(s) matched by the filter. Set to false to return ' +
-			'true on success.',
+			'Set to true to return the upserted row(s): the matching rows if updated, or the new ' +
+			'row if one was inserted. Set to false to return true on success.',
 	},
 	dryRun: { description: 'Set to true to preview the change without saving it.' },
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const updateDataTableRowFieldDocs = {
+	filter: { description: 'Filter conditions to match rows for update.' },
+	data: { description: 'Column values to update' },
+	returnData: {
+		description:
+			'Set to true to return the updated row(s). Set to false to return true on success.',
+	},
+	dryRun: { description: 'Set to true to preview the change without saving it.' },
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const deleteDataTableRowsQueryDocs = {
+	filter: {
+		type: 'string',
+		format: 'jsonString',
+		param: {
+			description:
+				'JSON string of filter conditions. Required to prevent accidental deletion of all data.',
+			example:
+				'{"type":"and","filters":[{"columnName":"status","condition":"eq","value":"archived"}]}',
+		},
+	},
+	returnData: {
+		param: { description: 'If true, return the deleted rows. If false, return true on success.' },
+	},
+	dryRun: {
+		param: {
+			description: 'If true, preview which rows would be deleted without actually deleting them.',
+		},
+	},
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const clearDataTableRowsFieldDocs = {
+	deletedCount: { description: 'The number of rows that were deleted' },
 } as const satisfies Record<string, ZodOpenAPIMetadata>;

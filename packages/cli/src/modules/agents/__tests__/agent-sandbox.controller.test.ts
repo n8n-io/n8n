@@ -3,9 +3,10 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
+import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
+
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import { AgentSandboxController } from '../agent-sandbox.controller';
-import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 
 describe('AgentSandboxController', () => {
 	it('accepts knowledge sandbox warmup before files exist', async () => {
@@ -13,7 +14,7 @@ describe('AgentSandboxController', () => {
 		const controller = new AgentSandboxController(
 			agentKnowledgeService,
 			mock<Logger>(),
-			mock<AgentSandboxRuntimeService>({ isEnabled: () => true }),
+			makeKnowledgeAvailabilityService(),
 		);
 		const req = { user: { id: 'user-1' } } as AuthenticatedRequest<{ projectId: string }>;
 		const res = mock<Response>();
@@ -29,12 +30,15 @@ describe('AgentSandboxController', () => {
 		expect(agentKnowledgeService.warmKnowledgeSandbox).toHaveBeenCalledWith('agent-1', 'project-1');
 	});
 
-	it('rejects warmup when the knowledge base is disabled', async () => {
+	it.each([
+		{ reason: 'the sandbox is disabled', availability: { isSandboxEnabled: false } },
+		{ reason: 'the knowledge module is inactive', availability: { isKnowledgeActive: false } },
+	])('rejects warmup when $reason', async ({ availability }) => {
 		const agentKnowledgeService = mock<AgentKnowledgeService>();
 		const controller = new AgentSandboxController(
 			agentKnowledgeService,
 			mock<Logger>(),
-			mock<AgentSandboxRuntimeService>({ isEnabled: () => false }),
+			makeKnowledgeAvailabilityService(availability),
 		);
 
 		await expect(
