@@ -14,9 +14,11 @@ import {
 	CredentialsRepository,
 	FolderRepository,
 	SharedWorkflowRepository,
+	TagRepository,
 	type User,
 	VariablesRepository,
 	WorkflowRepository,
+	WorkflowTagMappingRepository,
 } from '@n8n/db';
 import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -41,7 +43,9 @@ import {
 	executeWorkflowNode,
 } from '@/modules/n8n-packages/__tests__/utils/test-builders';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
+import { TagService } from '@/services/tag.service';
 import { saveCredential } from '@test-integration/db/credentials';
+import { createTag } from '@test-integration/db/tags';
 import { createMember, createOwner } from '@test-integration/db/users';
 import { createFolder } from '@test-integration/db/folders';
 import { createVariable } from '@test-integration/db/variables';
@@ -77,6 +81,8 @@ beforeEach(async () => {
 	await Container.get(PromotionEnvironmentRepository).delete({});
 	await Container.get(PromotionProviderRepository).delete({});
 	await testDb.truncate([
+		'WorkflowTagMapping',
+		'TagEntity',
 		'WorkflowEntity',
 		'SharedWorkflow',
 		'Folder',
@@ -1041,6 +1047,68 @@ describe('resources in the preview', () => {
 			}),
 		]);
 	}, 30_000);
+
+	it.each([
+		{
+			drift: 'a renamed local tag',
+			changeLocalTag: async (tagId: string) =>
+				await Container.get(TagRepository).update(tagId, { name: 'released' }),
+			expected: { previousName: 'released' },
+			local: { name: 'released' },
+		},
+		{
+			drift: 'a renamed local tag that no local workflow uses',
+			changeLocalTag: async (tagId: string) => {
+				await Container.get(TagRepository).update(tagId, { name: 'released' });
+				await Container.get(WorkflowTagMappingRepository).delete({ tagId });
+			},
+			expected: { previousName: 'released' },
+			local: { name: 'released' },
+		},
+		{
+			drift: 'a local tag with the same name and another id',
+			changeLocalTag: async (tagId: string) =>
+				await Container.get(TagService).reconcileTagId(tagId, 'localTagId'),
+			expected: { previousId: 'localTagId' },
+			local: { id: 'localTagId', name: 'release' },
+		},
+	])(
+		'lists and details the tag change that Apply makes for $drift',
+		async ({ changeLocalTag, expected, local }) => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Releases', owner);
+			const workflow = await createWorkflow({ name: 'Ship', nodes: [], connections: {} }, project);
+			const tag = await createTag({ name: 'release' }, workflow);
+			const environments = await createInstanceEnvironments(['promote', 'apply']);
+			await promoteBaseline(environments.promote.id, owner);
+			await changeLocalTag(tag.id);
+
+			const agent = server.authAgentFor(owner);
+			const endpoint = `/promotions/${project.id}/changes/apply`;
+			const summary = (await agent.get(endpoint).expect(200)).body.data;
+			const key = `tag:${tag.id}`;
+			const resource = summary.resources.find(
+				(candidate: { key: string }) => candidate.key === key,
+			);
+			const { body } = await agent
+				.post(`${endpoint}/details`)
+				.send({ commitSha: summary.commitSha, keys: [key] })
+				.expect(200);
+
+			expect(resource).toEqual(
+				expect.objectContaining({ name: 'release', change: 'modified', ...expected }),
+			);
+			// The card shows the local tag, with the revision of the summary, so it is not stale.
+			expect(body.data.details).toEqual([
+				expect.objectContaining({
+					before: expect.objectContaining(local),
+					after: expect.objectContaining({ id: tag.id, name: 'release' }),
+					revision: resource.revision,
+				}),
+			]);
+		},
+		30_000,
+	);
 
 	it('returns both sides of a changed workflow from the reviewed commit and reports later local changes', async () => {
 		const owner = await createOwner();

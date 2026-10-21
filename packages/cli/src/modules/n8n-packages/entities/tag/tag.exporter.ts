@@ -25,6 +25,11 @@ const serializePayload = definePackageSerializationPayload<
 	TagPackageKeyHandling
 >();
 
+/** The content of a tag file in the package. */
+export function serializeTag({ id, name }: { id: string; name: string }): SerializedTag {
+	return serializedTagSchema.parse(serializePayload({ id, name }));
+}
+
 export interface TagExportRequest {
 	usages: WorkflowTagUsage[];
 	writer: PackageWriter;
@@ -58,9 +63,14 @@ export class TagExporter {
 		const entries: ManifestEntry[] = [];
 
 		for (const { id, name } of requirements) {
-			const serializedTag = serializedTagSchema.parse(serializePayload({ id, name }));
 			entries.push(
-				await writeManifestEntry(request.writer, 'tags', tagsDir, { id, name }, serializedTag),
+				await writeManifestEntry(
+					request.writer,
+					'tags',
+					tagsDir,
+					{ id, name },
+					serializeTag({ id, name }),
+				),
 			);
 		}
 

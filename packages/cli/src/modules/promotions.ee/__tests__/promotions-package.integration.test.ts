@@ -52,6 +52,7 @@ import { DataTableRepository } from '@/modules/data-table/data-table.repository'
 import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DataTableSerializer } from '@/modules/n8n-packages/entities/data-table/data-table.serializer';
+import { TagImporter } from '@/modules/n8n-packages/entities/tag/tag-importer';
 import {
 	PACKAGE_ENTITY_LAYOUT,
 	entityFilePath,
@@ -70,6 +71,7 @@ import {
 } from '@/modules/n8n-packages/n8n-packages.types';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 import { ProjectService } from '@/services/project.service.ee';
+import { TagService } from '@/services/tag.service';
 import { createFolder } from '@test-integration/db/folders';
 import { createOwnerWithApiKey } from '@test-integration/db/users';
 import { createProjectVariable, createVariable } from '@test-integration/db/variables';
@@ -463,6 +465,27 @@ async function setupProjectWithWorkflows(projectName: string, workflowNames: str
 		workflows.push(await createWorkflow({ name, nodes: [], connections: {} }, project));
 	}
 	return { project, workflows };
+}
+
+/** The Apply preview, read through the test's `service` and its working directory. */
+async function listApplyChanges(projectId: string) {
+	const changeService = new PromotionChangeService(
+		service,
+		packagesService,
+		Container.get(WorkflowRepository),
+		Container.get(VariablesRepository),
+		Container.get(CredentialsRepository),
+		Container.get(TagImporter),
+		Container.get(DataTableService),
+		Container.get(DataTableSerializer),
+		Container.get(ModuleRegistry),
+		mockLogger(),
+	);
+	const { changes } = await changeService.getChanges(owner, projectId, 'apply', {
+		sort: 'name',
+		order: 'asc',
+	});
+	return changes;
 }
 
 function dataTableNode(table: { id: string; name: string }): INode {
@@ -1631,6 +1654,47 @@ describe('Apply a project selection', () => {
 		});
 		expect(await snapshotApplyState()).toEqual(before);
 	});
+
+	it.each([
+		{
+			drift: 'a different name',
+			changeLocalTag: async (tagId: string) =>
+				await Container.get(TagRepository).update(tagId, { name: 'released' }),
+		},
+		{
+			drift: 'a different id',
+			changeLocalTag: async (tagId: string) =>
+				await Container.get(TagService).reconcileTagId(tagId, 'localTagId'),
+		},
+	])(
+		'keeps the tag of a selected workflow when the local tag has $drift',
+		async ({ changeLocalTag }) => {
+			const remote = await createRemote();
+			const environments = await createInstanceEnvironments(remote.bareDir);
+			await service.clone(environments.promote.id);
+			await service.clone(environments.apply.id);
+			const { project, workflows } = await setupProjectWithWorkflows('Orders', ['Tagged']);
+			const tag = await createTag({ name: 'release' }, workflows[0]);
+			await service.promote(environments.promote.id, owner, {
+				canExportVariableValues: true,
+				commitMessage: 'Export tagged workflow',
+			});
+			await changeLocalTag(tag.id);
+
+			const result = await service.applyProjectSelection(project.id, owner, {
+				workflowIds: [workflows[0].id],
+			});
+
+			assert(result.status === 'applied', JSON.stringify(result));
+			expect(
+				await Container.get(WorkflowTagMappingRepository).findBy({ workflowId: workflows[0].id }),
+			).toEqual([expect.objectContaining({ tagId: tag.id })]);
+			expect(await Container.get(TagRepository).find({ select: ['id', 'name'] })).toEqual([
+				expect.objectContaining({ id: tag.id, name: 'release' }),
+			]);
+			expect(await listApplyChanges(project.id)).toEqual([]);
+		},
+	);
 });
 
 describe('Check Apply blockers', () => {
@@ -2142,23 +2206,7 @@ describe('Apply data table changes', () => {
 			).toEqual(['email', 'note']);
 			const { data } = await dataTableService.getManyRowsAndCount(orders.id, project.id, {});
 			expect(data).toEqual([expect.objectContaining({ email: 'a@example.com', note: 'keep me' })]);
-			const changeService = new PromotionChangeService(
-				service,
-				packagesService,
-				Container.get(WorkflowRepository),
-				Container.get(VariablesRepository),
-				Container.get(CredentialsRepository),
-				Container.get(TagRepository),
-				dataTableService,
-				Container.get(DataTableSerializer),
-				Container.get(ModuleRegistry),
-				mockLogger(),
-			);
-			const { changes } = await changeService.getChanges(owner, project.id, 'apply', {
-				sort: 'name',
-				order: 'asc',
-			});
-			expect(changes).toEqual([]);
+			expect(await listApplyChanges(project.id)).toEqual([]);
 		},
 	);
 });

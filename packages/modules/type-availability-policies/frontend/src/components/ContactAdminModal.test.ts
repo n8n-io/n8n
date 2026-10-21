@@ -6,7 +6,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { describe, it, expect, vi } from 'vitest';
 
-import ContactInstanceAdminModal from './ContactInstanceAdminModal.vue';
+import ContactAdminModal from './ContactAdminModal.vue';
 
 vi.mock('@n8n/design-system', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@n8n/design-system')>();
@@ -36,7 +36,7 @@ const owner = {
 
 const member = { ...owner, id: 'member-1', fullName: 'Bob Builder', role: ROLE.Member } as IUser;
 
-const renderComponent = createComponentRenderer(ContactInstanceAdminModal, {
+const renderComponent = createComponentRenderer(ContactAdminModal, {
 	props: { open: true, nodeTypeName: 'Slack' },
 });
 
@@ -48,12 +48,12 @@ function setup(allUsers: IUser[], fetchUsers = vi.fn().mockResolvedValue(undefin
 	return usersStore;
 }
 
-describe('ContactInstanceAdminModal', () => {
+describe('ContactAdminModal', () => {
 	it('lists the owners with a mailto link and builds the copy from the node type name', async () => {
 		const usersStore = setup([owner, member]);
 		const { findByTestId, getByText } = renderComponent();
 
-		const list = await findByTestId('contact-instance-admin-list');
+		const list = await findByTestId('contact-admin-list');
 
 		expect(usersStore.fetchUsers).toHaveBeenCalledWith({ filter: { isOwner: true } });
 		expect(list).toHaveTextContent('Ada Lovelace');
@@ -71,7 +71,7 @@ describe('ContactInstanceAdminModal', () => {
 			props: { open: true, nodeTypeName: 'Anthropic credentials', kind: 'credential' },
 		});
 
-		await findByTestId('contact-instance-admin-list');
+		await findByTestId('contact-admin-list');
 
 		expect(getByText('ada@example.com').closest('a')).toHaveAttribute(
 			'href',
@@ -94,16 +94,16 @@ describe('ContactInstanceAdminModal', () => {
 
 		lookups[0]();
 		await waitAllPromises();
-		expect(queryByTestId('contact-instance-admin-list')).not.toBeInTheDocument();
+		expect(queryByTestId('contact-admin-list')).not.toBeInTheDocument();
 
 		lookups[1]();
-		expect(await findByTestId('contact-instance-admin-list')).toBeInTheDocument();
+		expect(await findByTestId('contact-admin-list')).toBeInTheDocument();
 	});
 
 	it('falls back to a generic hint when the owner lookup yields nothing', async () => {
 		setup([], vi.fn().mockRejectedValue(new Error('forbidden')));
 		const { findByTestId } = renderComponent();
 
-		expect(await findByTestId('contact-instance-admin-empty')).toBeInTheDocument();
+		expect(await findByTestId('contact-admin-empty')).toBeInTheDocument();
 	});
 });
