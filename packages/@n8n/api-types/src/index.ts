@@ -269,8 +269,10 @@ export {
 	type Role,
 	type User,
 	type UsersList,
+	type UsersListStatusCounts,
 	type UserProject,
 	usersListSchema,
+	usersListStatusCountsSchema,
 	userBaseSchema,
 	userDetailSchema,
 } from './schemas/user.schema';
@@ -1013,3 +1015,13 @@ export {
 	scimListResponseSchema,
 	scimErrorSchema,
 } from './schemas/scim.schema';
+export {
+	scimAuthFailureReasonSchema,
+	scimAuthFailureSchema,
+	type ScimAuthFailureReason,
+	type ScimAuthFailure,
+	type ScimConnectionStatus,
+	type ScimTokenCreator,
+	type ScimTokenDetails,
+	type ScimConfigResponse,
+} from './schemas/scim-config.schema';

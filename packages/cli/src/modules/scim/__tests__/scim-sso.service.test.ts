@@ -135,6 +135,15 @@ describe('ScimSsoService', () => {
 			},
 		);
 
+		it('keeps the other SCIM settings', async () => {
+			scimSettingsService.turnOff.mockResolvedValue(true);
+
+			await emitSsoOff('saml');
+
+			expect(scimSettingsService.setLastAuthFailure).not.toHaveBeenCalled();
+			expect(scimSettingsService.clearLastAuthFailure).not.toHaveBeenCalled();
+		});
+
 		// The cache can say off while an enable that committed a moment before
 		// says on. Only the saved switch decides.
 		it('does not read the cached switch', async () => {

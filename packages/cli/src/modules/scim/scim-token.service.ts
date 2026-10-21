@@ -1,10 +1,11 @@
+import type { ScimAuthFailureReason, ScimTokenDetails } from '@n8n/api-types';
 import { type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { createHash, randomBytes, timingSafeEqual } from 'crypto';
 
 import { UrlService } from '@n8n/backend-services';
 
-import { ScimTokenRepository } from './database/scim-token.repository';
+import { ScimTokenRepository, type StoredScimToken } from './database/scim-token.repository';
 
 /** Makes the token easy to recognize, for example for a secret scanner. */
 const TOKEN_PREFIX = 'n8n_scim_';
@@ -27,6 +28,17 @@ const hashesMatch = (a: string, b: string) => {
 	return left.length === right.length && timingSafeEqual(left, right);
 };
 
+export type ScimTokenCheck =
+	| { valid: true; token: StoredScimToken }
+	| { valid: false; reason: Exclude<ScimAuthFailureReason, 'missing_header'> };
+
+export interface ScimTokenInfo {
+	hasToken: boolean;
+	lastFour: string | null;
+	/** Null when the instance has no token. */
+	details: ScimTokenDetails | null;
+}
+
 /**
  * Manages the one SCIM token of the instance. Every user with `scim:manage`
  * sees, rotates and revokes the same token.
@@ -42,33 +54,62 @@ export class ScimTokenService {
 
 	/**
 	 * Whether the instance has a SCIM token and, if so, its last four
-	 * characters for display.
+	 * characters, its creator and when it was created and last used.
 	 */
-	async getTokenInfo(
-		ctx: OperationContext = {},
-	): Promise<{ hasToken: boolean; lastFour: string | null }> {
-		const token = await this.scimTokenRepository.findInstanceToken(ctx);
+	async getTokenInfo(ctx: OperationContext = {}): Promise<ScimTokenInfo> {
+		const token = await this.scimTokenRepository.findInstanceTokenWithCreator(ctx);
+
+		if (!token) return { hasToken: false, lastFour: null, details: null };
+
+		const { createdBy } = token;
 
 		return {
-			hasToken: !!token,
-			lastFour: token ? token.tokenHint : null,
+			hasToken: true,
+			lastFour: token.tokenHint,
+			details: {
+				createdAt: token.createdAt.toISOString(),
+				createdBy: createdBy
+					? { id: createdBy.id, firstName: createdBy.firstName, lastName: createdBy.lastName }
+					: null,
+				lastUsedAt: token.lastUsedAt?.toISOString() ?? null,
+			},
 		};
 	}
 
+	/** Whether the instance has a SCIM token. A revoke leaves none. */
+	async hasToken(ctx: OperationContext = {}): Promise<boolean> {
+		return (await this.scimTokenRepository.findInstanceToken(ctx)) !== null;
+	}
+
 	/**
-	 * Verify a SCIM token. The hash of the token must match the hash of the
+	 * Check a SCIM token. The hash of the token must match the hash of the
 	 * stored instance token. Its creator does not matter.
+	 *
+	 * A token that matches one of the last replaced tokens is
+	 * `superseded_token`: this instance issued it, and an admin rotated or
+	 * revoked it. Any other token is `invalid_token`.
 	 */
-	async verifyApiKey(apiKey: string, ctx: OperationContext = {}): Promise<boolean> {
-		// A value in another format cannot be the token, so skip the read.
-		if (!TOKEN_FORMAT.test(apiKey)) return false;
+	async verifyToken(apiKey: string, ctx: OperationContext = {}): Promise<ScimTokenCheck> {
+		// A value in another format cannot be a token, so skip the read.
+		if (!TOKEN_FORMAT.test(apiKey)) return { valid: false, reason: 'invalid_token' };
 
 		// A database failure is not the caller's fault, so let it propagate.
 		// Reporting a database outage as an invalid token would tell the IdP to
 		// treat its credential as revoked.
-		const current = await this.scimTokenRepository.findInstanceToken(ctx);
+		const { current, previousTokenHashes } = await this.scimTokenRepository.findTokenState(ctx);
+		const tokenHash = hashScimToken(apiKey);
 
-		return !!current && hashesMatch(current.tokenHash, hashScimToken(apiKey));
+		if (current && hashesMatch(current.tokenHash, tokenHash)) {
+			return { valid: true, token: current };
+		}
+
+		// Only stored hashes prove that this instance issued the token. A check
+		// of the format alone would let any client cause `superseded_token`.
+		if (previousTokenHashes.some((previous) => hashesMatch(previous, tokenHash))) {
+			return { valid: false, reason: 'superseded_token' };
+		}
+
+		return { valid: false, reason: 'invalid_token' };
 	}
 
 	/**

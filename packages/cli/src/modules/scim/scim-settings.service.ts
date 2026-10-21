@@ -1,11 +1,33 @@
+import { scimAuthFailureSchema, type ScimAuthFailure } from '@n8n/api-types';
 import { SettingsRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { jsonParse } from 'n8n-workflow';
+import { z } from 'zod';
 
 import { CacheService } from '@n8n/backend-services';
 
 import { SCIM_PROVISIONING_ENABLED_KEY } from '@/sso.ee/scim-switch-reader';
 
 const ENABLED_KEY = SCIM_PROVISIONING_ENABLED_KEY;
+const LAST_AUTH_FAILURE_KEY = 'scim.provisioning.lastAuthFailure';
+
+/** A reset keeps only its time in the failure row. */
+const authFailureResetSchema = z.object({ resetAt: z.string().datetime() });
+
+/**
+ * Reads the failure row. A part that does not parse counts as missing, so
+ * that it cannot break the settings page.
+ */
+function parseAuthFailureRow(value: string) {
+	const json = jsonParse<unknown>(value, { fallbackValue: null });
+	const failure = scimAuthFailureSchema.safeParse(json);
+	const reset = authFailureResetSchema.safeParse(json);
+
+	return {
+		failure: failure.success ? failure.data : null,
+		resetAt: reset.success ? reset.data.resetAt : undefined,
+	};
+}
 
 export interface ScimSettingsChange {
 	enabled: boolean;
@@ -74,6 +96,55 @@ export class ScimSettingsService {
 	}
 
 	/**
+	 * The last SCIM request that failed the bearer check, or null. It is also
+	 * null when the row holds only the time of the last reset.
+	 */
+	async getLastAuthFailure(): Promise<ScimAuthFailure | null> {
+		const row = await this.settingsRepository.findByKey(LAST_AUTH_FAILURE_KEY);
+		return row ? parseAuthFailureRow(row.value).failure : null;
+	}
+
+	/**
+	 * Stores the failure and tells if it did. The row stays locked from the
+	 * read to the write, so that a reset cannot come between them. The write
+	 * skips these failures:
+	 * - A failure from before the last reset. A slow write can come after the
+	 *   reset.
+	 * - A failure without a token of this instance while a `superseded_token`
+	 *   failure is stored. Any client can cause such a failure.
+	 */
+	async setLastAuthFailure(failure: ScimAuthFailure): Promise<boolean> {
+		return await this.transactionRunner.run({}, async (ctx) => {
+			const stored = parseAuthFailureRow((await this.lockLastAuthFailure(ctx)).value);
+
+			if (stored.resetAt && Date.parse(failure.at) <= Date.parse(stored.resetAt)) return false;
+			if (stored.failure?.reason === 'superseded_token' && failure.reason !== 'superseded_token') {
+				return false;
+			}
+
+			// Keep the reset time, so that an older failure is still skipped.
+			const value = JSON.stringify({ ...failure, resetAt: stored.resetAt });
+			await this.settingsRepository.upsertByKey(LAST_AUTH_FAILURE_KEY, value, false, ctx);
+			return true;
+		});
+	}
+
+	/**
+	 * Removes the stored failure and stores the time of the reset instead.
+	 * Thus a slow write of an older failure cannot store it again. The reset
+	 * reads the time under the lock, so the reset that commits last stores
+	 * the latest time.
+	 */
+	async clearLastAuthFailure(): Promise<void> {
+		await this.transactionRunner.run({}, async (ctx) => {
+			await this.lockLastAuthFailure(ctx);
+
+			const value = JSON.stringify({ resetAt: new Date().toISOString() });
+			await this.settingsRepository.upsertByKey(LAST_AUTH_FAILURE_KEY, value, false, ctx);
+		});
+	}
+
+	/**
 	 * Turns the switch off and tells if it was on. It reads the saved switch
 	 * under the lock that `update` takes, not the cache. Thus it also turns
 	 * off an enable that committed while the cache still held the old value.
@@ -119,5 +190,15 @@ export class ScimSettingsService {
 	/** A lock needs a row, so a missing switch is created as off. */
 	private async lockSwitch(ctx: OperationContext) {
 		return await this.settingsRepository.getOrCreateWithWriteLock(ENABLED_KEY, 'false', true, ctx);
+	}
+
+	/** A lock needs a row, so a missing failure row is created empty. */
+	private async lockLastAuthFailure(ctx: OperationContext) {
+		return await this.settingsRepository.getOrCreateWithWriteLock(
+			LAST_AUTH_FAILURE_KEY,
+			'{}',
+			false,
+			ctx,
+		);
 	}
 }

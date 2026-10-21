@@ -88,6 +88,171 @@ describe('ScimSettingsService', () => {
 			expect(cacheService.set).toHaveBeenCalledWith('scim.provisioning.enabled', String(enabled));
 		});
 	});
+	describe('last auth failure', () => {
+		const KEY = 'scim.provisioning.lastAuthFailure';
+		const at = (minute: number) => new Date(Date.UTC(2026, 9, 19, 12, minute)).toISOString();
+		const failure = { at: at(0), reason: 'superseded_token' } as const;
+
+		/** The value of the failure row, or undefined while the row is missing. */
+		let row: string | undefined;
+
+		beforeEach(() => {
+			vi.useFakeTimers({ toFake: ['Date'] });
+			row = undefined;
+			settingsRepository.findByKey.mockImplementation(async () =>
+				row === undefined ? null : mock<Settings>({ key: KEY, value: row }),
+			);
+			settingsRepository.getOrCreateWithWriteLock.mockImplementation(async (key, defaultValue) => {
+				row ??= defaultValue;
+				return mock<Settings>({ key, value: row });
+			});
+			settingsRepository.upsertByKey.mockImplementation(async (_key, value) => {
+				row = value;
+			});
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		const resetAt = async (minute: number) => {
+			vi.setSystemTime(new Date(at(minute)));
+			await service.clearLastAuthFailure();
+		};
+
+		it('returns null when no failure is stored', async () => {
+			await expect(service.getLastAuthFailure()).resolves.toBeNull();
+			expect(settingsRepository.findByKey).toHaveBeenCalledWith(KEY);
+		});
+
+		it('returns the stored failure', async () => {
+			row = JSON.stringify(failure);
+
+			await expect(service.getLastAuthFailure()).resolves.toEqual(failure);
+		});
+
+		it.each([
+			['a value that is not JSON', 'not json'],
+			['an unknown reason', JSON.stringify({ ...failure, reason: 'scim_disabled' })],
+			['a value without a time', JSON.stringify({ reason: 'invalid_token' })],
+			['a reset time only', JSON.stringify({ resetAt: at(0) })],
+		])('returns null for %s', async (_, value) => {
+			row = value;
+
+			await expect(service.getLastAuthFailure()).resolves.toBeNull();
+		});
+
+		it('stores the failure in a locked row that does not load on startup', async () => {
+			await expect(service.setLastAuthFailure(failure)).resolves.toBe(true);
+
+			expect(settingsRepository.getOrCreateWithWriteLock).toHaveBeenCalledExactlyOnceWith(
+				KEY,
+				'{}',
+				false,
+				trxCtx,
+			);
+			expect(settingsRepository.upsertByKey).toHaveBeenCalledExactlyOnceWith(
+				KEY,
+				JSON.stringify(failure),
+				false,
+				trxCtx,
+			);
+			const lockOrder = settingsRepository.getOrCreateWithWriteLock.mock.invocationCallOrder[0];
+			const saveOrder = settingsRepository.upsertByKey.mock.invocationCallOrder[0];
+			expect(lockOrder).toBeLessThan(saveOrder);
+			await expect(service.getLastAuthFailure()).resolves.toEqual(failure);
+		});
+
+		it('replaces the stored failure with the time of the reset, under the lock', async () => {
+			row = JSON.stringify(failure);
+
+			await resetAt(5);
+
+			expect(settingsRepository.getOrCreateWithWriteLock).toHaveBeenCalledWith(
+				KEY,
+				'{}',
+				false,
+				trxCtx,
+			);
+			expect(row).toBe(JSON.stringify({ resetAt: at(5) }));
+			await expect(service.getLastAuthFailure()).resolves.toBeNull();
+		});
+
+		// A write that started before the reset can commit after it.
+		it.each([
+			['before', 4],
+			['at the time of', 5],
+		])('skips a failure from %s the last reset', async (_, minute) => {
+			await resetAt(5);
+
+			await expect(
+				service.setLastAuthFailure({ at: at(minute), reason: 'superseded_token' }),
+			).resolves.toBe(false);
+
+			await expect(service.getLastAuthFailure()).resolves.toBeNull();
+		});
+
+		it('stores a failure from after the last reset, and still skips an older one', async () => {
+			await resetAt(5);
+
+			await expect(
+				service.setLastAuthFailure({ at: at(6), reason: 'invalid_token' }),
+			).resolves.toBe(true);
+			await expect(
+				service.setLastAuthFailure({ at: at(4), reason: 'superseded_token' }),
+			).resolves.toBe(false);
+
+			await expect(service.getLastAuthFailure()).resolves.toEqual({
+				at: at(6),
+				reason: 'invalid_token',
+			});
+		});
+
+		// Any client can cause `missing_header` and `invalid_token`.
+		it.each(['missing_header', 'invalid_token'] as const)(
+			'does not replace a stored old-token failure with %s',
+			async (reason) => {
+				await service.setLastAuthFailure(failure);
+
+				await expect(service.setLastAuthFailure({ at: at(1), reason })).resolves.toBe(false);
+
+				await expect(service.getLastAuthFailure()).resolves.toEqual(failure);
+			},
+		);
+
+		it('replaces a failure without a valid token with an old-token failure', async () => {
+			await service.setLastAuthFailure({ at: at(0), reason: 'invalid_token' });
+
+			await expect(
+				service.setLastAuthFailure({ at: at(1), reason: 'superseded_token' }),
+			).resolves.toBe(true);
+
+			await expect(service.getLastAuthFailure()).resolves.toEqual({
+				at: at(1),
+				reason: 'superseded_token',
+			});
+		});
+
+		it('replaces a stored old-token failure with a newer one', async () => {
+			await service.setLastAuthFailure(failure);
+
+			await service.setLastAuthFailure({ at: at(1), reason: 'superseded_token' });
+
+			await expect(service.getLastAuthFailure()).resolves.toEqual({
+				at: at(1),
+				reason: 'superseded_token',
+			});
+		});
+
+		it('stores a failure without a valid token after a reset removes an old-token failure', async () => {
+			await service.setLastAuthFailure(failure);
+			await resetAt(5);
+
+			await expect(
+				service.setLastAuthFailure({ at: at(6), reason: 'missing_header' }),
+			).resolves.toBe(true);
+		});
+	});
 
 	describe('update', () => {
 		const ENABLED_KEY = 'scim.provisioning.enabled';

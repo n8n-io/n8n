@@ -105,6 +105,10 @@ export class User extends WithTimestamps implements IUser, AuthPrincipal {
 	@Column({ type: Boolean, default: false })
 	disabled: boolean;
 
+	/** True when SCIM provisioning created, updated or deactivated the user. */
+	@Column({ type: Boolean, default: false })
+	isScimManaged: boolean;
+
 	@BeforeInsert()
 	@BeforeUpdate()
 	preUpsertHook(): void {

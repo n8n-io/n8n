@@ -142,6 +142,11 @@ export class ScimService {
 		};
 	}
 
+	/** Number of SCIM-managed users, and how many of them are deactivated. */
+	async getProvisioningCounts(): Promise<{ provisioned: number; deactivated: number }> {
+		return await this.scimUserRepository.countProvisioned({});
+	}
+
 	/**
 	 * Get a single user by ID
 	 */
@@ -255,11 +260,7 @@ export class ScimService {
 		}
 
 		this.assertOwnerUnchanged(user, before);
-
-		if (changes.size > 0) {
-			await this.saveUser(user);
-			this.eventService.emit('user-updated', { user, fieldsChanged: [...changes] });
-		}
+		await this.persist(user, changes);
 
 		const patched = await this.getUserById(user.id);
 		if (!patched) throw new ScimResourceNotFoundError(user.id);
@@ -359,11 +360,7 @@ export class ScimService {
 		}
 
 		this.assertOwnerUnchanged(user, before);
-
-		if (changes.size > 0) {
-			await this.saveUser(user);
-			this.eventService.emit('user-updated', { user, fieldsChanged: [...changes] });
-		}
+		await this.persist(user, changes);
 
 		const updated = await this.getUserById(user.id);
 		if (!updated) throw new ScimResourceNotFoundError(user.id);
@@ -384,6 +381,7 @@ export class ScimService {
 		}
 
 		user.disabled = true;
+		this.setManaged(user);
 		await this.userRepository.save(user);
 		this.eventService.emit('user-updated', { user, fieldsChanged: ['disabled'] });
 		this.logger.info('SCIM: User deprovisioned', { userId: user.id });
@@ -397,6 +395,41 @@ export class ScimService {
 
 	private isOwner(user: User): boolean {
 		return user.role?.slug === GLOBAL_OWNER_ROLE_SLUG;
+	}
+
+	/**
+	 * Write a PATCH or PUT that passed all checks. The SCIM-managed marker is
+	 * stored only with this write, so a rejected request leaves no marker.
+	 */
+	private async persist(user: User, changes: Set<string>): Promise<void> {
+		if (changes.size === 0) {
+			// No field changed, so the marker is the only write.
+			await this.markManaged(user);
+			return;
+		}
+
+		await this.saveUser(user);
+		this.eventService.emit('user-updated', { user, fieldsChanged: [...changes] });
+	}
+
+	/**
+	 * The identity provider manages each user that it writes, also a user
+	 * that SCIM did not create: it can find any user with a `userName`
+	 * filter. The marker is not a changed field, so it emits no event.
+	 *
+	 * The owner is never marked: the owner guard keeps the email and the
+	 * active state of the owner out of SCIM control.
+	 */
+	private setManaged(user: User): void {
+		if (!this.isOwner(user)) user.isScimManaged = true;
+	}
+
+	/** Store the marker alone, for a write that changes no field. */
+	private async markManaged(user: User): Promise<void> {
+		if (this.isOwner(user) || user.isScimManaged) return;
+
+		await this.scimUserRepository.markManaged(user.id, {});
+		user.isScimManaged = true;
 	}
 
 	private snapshot(user: User): OwnerGuardSnapshot {
@@ -423,13 +456,15 @@ export class ScimService {
 
 	/**
 	 * Persist user changes, translating unique-constraint violations on
-	 * email into a SCIM uniqueness conflict.
+	 * email into a SCIM uniqueness conflict. The marker goes into the same
+	 * statement as the changed fields.
 	 */
 	private async saveUser(user: User): Promise<void> {
 		const conflictingUser = await this.userRepository.findOne({ where: { email: user.email } });
 		if (conflictingUser && conflictingUser.id !== user.id) {
 			throw new ScimConflictError('User with this userName already exists');
 		}
+		this.setManaged(user);
 		await this.userRepository.save(user);
 	}
 
