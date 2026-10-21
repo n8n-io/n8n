@@ -21,7 +21,7 @@ export default mergeConfig(
 		// The test harness in `core/nodes-testing` uses legacy decorators. That
 		// file is outside this package, so the tsconfig setting does not apply to it.
 		oxc: {
-			decorator: { legacy: true },
+			decorator: { legacy: true, emitDecoratorMetadata: true },
 		},
 	}),
 );
