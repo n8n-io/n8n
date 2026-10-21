@@ -28,6 +28,7 @@ import type {
 	IntegrationPlatformMessageContext,
 	ReplyExpectation,
 } from './integration-tools';
+import type { DecodedThread, OriginDraft, OriginInput } from './integration-origin-support';
 
 /**
  * The platform refused an attachment download for a reason the user can fix.
@@ -392,6 +393,18 @@ export abstract class AgentChatIntegration {
 
 	/** Build the Chat SDK adapter for this platform. */
 	abstract createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown>;
+
+	/**
+	 * Builds the typed origin fields of an inbound message from the decoded adapter
+	 * thread ID and the message. Every channel must decide what it records. Return
+	 * `undefined` when the channel has no platform context to store. The result is
+	 * validated against `AgentMessageIntegrationOriginSchema`, so a new channel also
+	 * needs a variant there.
+	 */
+	abstract buildOriginDraft(
+		input: OriginInput,
+		decoded: DecodedThread,
+	): Promise<OriginDraft | undefined> | OriginDraft | undefined;
 
 	/** Validate platform settings before credentials or persistence are touched. */
 	validateConfig?(integration: AgentIntegrationConfig): void;

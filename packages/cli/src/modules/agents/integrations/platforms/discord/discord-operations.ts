@@ -1,7 +1,7 @@
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { z } from 'zod';
 
-import { connectionUnavailable, unsupportedQuery } from '../integration-helpers';
+import { connectionUnavailable, unsupportedQuery } from '../../integration-helpers';
 
 const PLATFORM = 'discord';
 

@@ -143,8 +143,8 @@ Agents support, each with `capabilities`, `useIntegrationWhen`, and
 `useNodeToolWhen`. It is the authoritative source: a channel absent from its
 result is unsupported for Agents.
 
-When the user asks for a channel that is not supported (for example WhatsApp
-or Microsoft Teams):
+When the user asks for a channel that is not supported (for example Instagram
+or Facebook Messenger):
 
 - Do not add it to `integrations`, do not draft it, and do not call
   `agent_builder_configure_channel` or `agent_builder_finish_setup` with it.

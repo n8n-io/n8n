@@ -116,7 +116,7 @@
     "autoprefixer": "catalog:frontend",
     "axios": "catalog:",
     "bowser": "2.11.0",
-    "browserslist": "4.28.1",
+    "browserslist": "4.28.7",
     "browserslist-to-esbuild": "^2.1.1",
     "change-case": "catalog:",
     "chart.js": "^4.4.0",
