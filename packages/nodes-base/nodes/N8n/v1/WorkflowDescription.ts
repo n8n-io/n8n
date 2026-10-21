@@ -5,8 +5,8 @@ import {
 	parseAndSetBodyJson,
 	prepareWorkflowCreateBody,
 	prepareWorkflowUpdateBody,
-} from './GenericFunctions';
-import { workflowIdLocator } from './WorkflowLocator';
+} from '../shared/GenericFunctions';
+import { workflowIdLocator } from '../shared/WorkflowLocator';
 
 export const workflowOperations: INodeProperties[] = [
 	{

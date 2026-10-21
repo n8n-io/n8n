@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { parseAndSetBodyJson } from './GenericFunctions';
+import { parseAndSetBodyJson } from '../shared/GenericFunctions';
 
 export const credentialOperations: INodeProperties[] = [
 	{
