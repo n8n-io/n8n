@@ -3,8 +3,8 @@ import { User } from '@n8n/db';
 import { ConflictError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
-import { SkillNameTakenError } from '@/modules/agents/skills/skill-name-taken.error';
-import type { SkillsApiService } from '@/modules/agents/skills/skills-api.service';
+import { SkillNameTakenError } from '@/modules/skills/skill-name-taken.error';
+import type { SkillsApiService } from '@/modules/skills/skills-api.service';
 import type { Telemetry } from '@/telemetry';
 
 import { SKILL_TOOLS } from '../mcp-scopes';

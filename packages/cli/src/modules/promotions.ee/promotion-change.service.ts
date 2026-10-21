@@ -9,6 +9,16 @@ import type {
 	PromotionResourceDetailsRequestDto,
 	PromotionResourceType,
 	PromotionVariableScope,
+	SerializedWorkflow,
+} from '@n8n/api-types';
+import {
+	serializedCredentialSchema,
+	serializedDataTableSchema,
+	serializedFolderSchema,
+	serializedProjectSchema,
+	serializedTagSchema,
+	serializedVariableSchema,
+	serializedWorkflowSchema,
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import {
@@ -22,9 +32,9 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
-import { isRecord } from '@n8n/utils/is-record';
 import { jsonParse } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
+import type { z } from 'zod';
 
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { DataTableService } from '@/modules/data-table/data-table.service';
@@ -54,8 +64,6 @@ import type {
 	PackageRequirementConsumer,
 	PackageRequirements,
 } from '@/modules/n8n-packages/spec/requirements.schema';
-import { serializedDataTableSchema } from '@/modules/n8n-packages/spec/serialized/data-table.schema';
-import type { SerializedWorkflow } from '@/modules/n8n-packages/spec/serialized/workflow.schema';
 
 import { parsePackageFiles, type PackageFile } from './base-branch-files';
 import { PACKAGE_SUBFOLDER } from './constants';
@@ -571,15 +579,22 @@ function toChanges(
 ): PromotionChanges {
 	return {
 		commitSha: branch.commitSha,
-		source: { configId: branch.configId, branchName: branch.branchName },
+		source: { environmentId: branch.environmentId, branchName: branch.branchName },
 		changes: applyQuery(rows, query),
 	};
 }
 
-function parseContent(content: string | null): Record<string, unknown> | null {
+/**
+ * Reads one side of a resource. `null` when the side has no file, or when its file does not
+ * match the package format.
+ */
+function parseContent<Schema extends z.ZodTypeAny>(
+	schema: Schema,
+	content: string | null,
+): z.output<Schema> | null {
 	if (content === null) return null;
-	const parsed = parseBranchJson(content);
-	return isRecord(parsed) ? parsed : null;
+	const parsed = schema.safeParse(parseBranchJson(content));
+	return parsed.success ? parsed.data : null;
 }
 
 function toDetail({
@@ -595,29 +610,38 @@ function toDetail({
 	after: DetailSide;
 	hideVariableValues: boolean;
 }): PromotionResourceDetail {
-	const beforeContent = parseContent(before.content);
-	const afterContent = parseContent(after.content);
-	const detail: PromotionResourceDetail = {
+	const parseSides = <Schema extends z.ZodTypeAny>(schema: Schema) => ({
 		key,
-		type,
-		before: beforeContent,
-		after: afterContent,
+		before: parseContent(schema, before.content),
+		after: parseContent(schema, after.content),
 		revision: { before: before.blobSha, after: after.blobSha },
-	};
-	if (hideVariableValues) {
-		for (const content of [beforeContent, afterContent]) {
-			if (content) delete content.value;
+	});
+	switch (type) {
+		case 'project':
+			return { type, ...parseSides(serializedProjectSchema) };
+		case 'folder':
+			return { type, ...parseSides(serializedFolderSchema) };
+		case 'workflow':
+			return { type, ...parseSides(serializedWorkflowSchema) };
+		case 'credential':
+			return { type, ...parseSides(serializedCredentialSchema) };
+		case 'tag':
+			return { type, ...parseSides(serializedTagSchema) };
+		case 'variable': {
+			const detail = { type, ...parseSides(serializedVariableSchema) };
+			if (!hideVariableValues) return detail;
+			for (const content of [detail.before, detail.after]) {
+				if (content) delete content.value;
+			}
+			return { ...detail, valueHidden: true };
 		}
-		detail.valueHidden = true;
-	}
-	if (type === 'dataTable') {
-		const incoming = serializedDataTableSchema.safeParse(afterContent);
-		const current = serializedDataTableSchema.safeParse(beforeContent);
-		if (incoming.success && current.success) {
-			detail.dataTableChanges = diffDataTableSchema(incoming.data, current.data);
+		case 'dataTable': {
+			const detail = { type, ...parseSides(serializedDataTableSchema) };
+			const { before: current, after: incoming } = detail;
+			if (!current || !incoming) return detail;
+			return { ...detail, dataTableChanges: diffDataTableSchema(incoming, current) };
 		}
 	}
-	return detail;
 }
 
 async function readBranchArchiveState(

@@ -12,12 +12,12 @@ import {
 } from '@n8n/typeorm';
 import { v7 as uuidv7 } from 'uuid';
 
-import { PromotionConfig } from './promotion-config.entity';
+import { PromotionEnvironment } from './promotion-environment.entity';
 import { PromotionReview } from './promotion-review.entity';
 
 /**
  * One successful Promote or Apply. Direction is a copy, so the row can still
- * say Promote or Apply after the config is deleted. Git data lives in `details`.
+ * say Promote or Apply after the environment is deleted. Git data lives in `details`.
  * `reviewId` stays NULL when the push has no review.
  */
 @Entity('promotion_run')
@@ -31,10 +31,10 @@ export class PromotionRun extends WithCreatedAt {
 	}
 
 	@Index()
-	@Column({ type: 'varchar', length: 36, nullable: true })
-	configId: string | null;
+	@Column({ type: 'uuid', nullable: true })
+	environmentId: string | null;
 
-	/** Copied from the config when the run is written. A later config edit does not change it. */
+	/** Copied from the environment when the run is written. */
 	@Column({ type: 'varchar', length: 16 })
 	direction: PromotionDirection;
 
@@ -54,9 +54,9 @@ export class PromotionRun extends WithCreatedAt {
 	@Column({ type: 'uuid', nullable: true })
 	reviewId: string | null;
 
-	@ManyToOne(() => PromotionConfig, { onDelete: 'SET NULL', nullable: true })
-	@JoinColumn({ name: 'configId' })
-	config: Relation<PromotionConfig> | null;
+	@ManyToOne(() => PromotionEnvironment, { onDelete: 'SET NULL', nullable: true })
+	@JoinColumn({ name: 'environmentId' })
+	environment: Relation<PromotionEnvironment> | null;
 
 	@ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
 	@JoinColumn({ name: 'createdById' })
