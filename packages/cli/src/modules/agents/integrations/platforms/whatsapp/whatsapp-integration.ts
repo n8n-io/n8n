@@ -24,9 +24,7 @@ import {
 	type BridgeResumeExecutionContext,
 	type UnauthenticatedWebhookContext,
 	type UnauthenticatedWebhookResponse,
-	type EpisodicScopeContext,
 } from '../../agent-chat-integration';
-import { resolveThreadSharedEpisodicScope } from '../../thread-shared-episodic-scope';
 import {
 	channelRateLimitMessage,
 	type RecipientScopedRateLimitError,
@@ -278,8 +276,9 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		return buildWhatsAppOriginDraft(decoded);
 	}
 
-	async resolveEpisodicScope(context: EpisodicScopeContext) {
-		return await resolveThreadSharedEpisodicScope(context);
+	/** Episodic memory stays off until this channel defines its ownership policy. */
+	resolveEpisodicScope() {
+		return null;
 	}
 
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {

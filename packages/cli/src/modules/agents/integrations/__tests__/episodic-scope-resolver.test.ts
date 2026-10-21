@@ -9,9 +9,7 @@ const context: EpisodicScopeContext = {
 	credentialId: 'credential-1',
 	integrationType: 'slack',
 	threadId: 'thread-1',
-	resourceId: 'integration:slack:U1',
 	author: { id: 'U1', name: 'Alice' },
-	loadParticipatedThreadIds: async () => [],
 };
 
 describe('resolveEpisodicScopeDecision', () => {

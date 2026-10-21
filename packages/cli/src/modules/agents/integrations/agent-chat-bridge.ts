@@ -35,7 +35,6 @@ import type {
 	ExecuteForChatPublishedConfig,
 } from '../agent-execution-orchestrator.service';
 import { hashAgentSandboxPrincipal } from '../agent-sandbox-principal';
-import { AgentMessageRepository } from '../repositories/agent-message.repository';
 import { AgentResourceRepository } from '../repositories/agent-resource.repository';
 import { integrationMemoryResourceId } from '../utils/agent-memory-scope';
 import type { AgentSessionMode } from '../utils/agent-thread-access';
@@ -950,15 +949,8 @@ export class AgentChatBridge {
 					credentialId: this.integration.credentialId,
 					integrationType: this.integration.type,
 					threadId: session.memory.threadId.id,
-					resourceId: session.memory.resourceId,
 					author,
 					origin: integrationOrigin,
-					loadParticipatedThreadIds: async (limit) =>
-						await Container.get(AgentMessageRepository).findRecentThreadIdsByResourceId(
-							this.agentId,
-							session.memory.resourceId,
-							limit,
-						),
 				},
 				this.logger,
 			);

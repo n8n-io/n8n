@@ -56,12 +56,8 @@ export interface EpisodicScopeContext {
 	integrationType: string;
 	/** The conversation the turn belongs to. */
 	threadId: string;
-	/** The memory resource of the author. It is not an ownership scope. */
-	resourceId: string;
 	author: AgentMessageAuthor;
 	origin?: AgentMessageIntegrationOrigin;
-	/** Threads the author recently posted in. Reads the database only when called. */
-	loadParticipatedThreadIds: (limit: number) => Promise<string[]>;
 }
 
 /** Per-connection context handed to AgentChatIntegration hooks. */

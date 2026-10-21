@@ -20,9 +20,7 @@ import {
 	type PlatformContextQueryParams,
 	type UnauthenticatedWebhookContext,
 	type UnauthenticatedWebhookResponse,
-	type EpisodicScopeContext,
 } from '../../agent-chat-integration';
-import { resolveThreadSharedEpisodicScope } from '../../thread-shared-episodic-scope';
 import type { ChatInstance } from '../../chat-integration.service';
 import { assertCredentialNotClaimed } from '../../credential-claim';
 import { loadSlackAdapter } from '../../esm-loader';
@@ -203,8 +201,9 @@ export class SlackIntegration extends AgentChatIntegration {
 		return await buildSlackOriginDraft(input, decoded);
 	}
 
-	async resolveEpisodicScope(context: EpisodicScopeContext) {
-		return await resolveThreadSharedEpisodicScope(context);
+	/** Episodic memory stays off until this channel defines its ownership policy. */
+	resolveEpisodicScope() {
+		return null;
 	}
 
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {

@@ -14,7 +14,6 @@ import {
 	AgentResourceRepository,
 	type ChatSessionGeneration,
 } from '../../repositories/agent-resource.repository';
-import { AgentMessageRepository } from '../../repositories/agent-message.repository';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { AgentChatBridge } from '../agent-chat-bridge';
 import {
@@ -399,9 +398,6 @@ describe('AgentChatBridge — consumeStream', () => {
 		registry.register(new RestrictedTestIntegration());
 		registry.register(new SlackIntegration(mock<AgentRepository>()));
 		Container.set(ChatIntegrationRegistry, registry);
-		Container.set(AgentMessageRepository, {
-			findRecentThreadIdsByResourceId: vi.fn().mockResolvedValue([]),
-		} as never);
 		mockSessionGenerations();
 	});
 
@@ -3748,9 +3744,6 @@ describe('AgentChatBridge — Slack thread history', () => {
 		const registry = new ChatIntegrationRegistry();
 		registry.register(new SlackIntegration(mock<AgentRepository>()));
 		Container.set(ChatIntegrationRegistry, registry);
-		Container.set(AgentMessageRepository, {
-			findRecentThreadIdsByResourceId: vi.fn().mockResolvedValue([]),
-		} as never);
 		mockSessionGenerations();
 	});
 

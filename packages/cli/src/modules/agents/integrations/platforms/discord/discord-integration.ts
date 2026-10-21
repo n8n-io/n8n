@@ -24,9 +24,7 @@ import {
 	type SettleActionMessageParams,
 	type WebhookRequestContext,
 	type WebhookRequestResolution,
-	type EpisodicScopeContext,
 } from '../../agent-chat-integration';
-import { resolveThreadSharedEpisodicScope } from '../../thread-shared-episodic-scope';
 import type { ChatInstance } from '../../chat-integration.service';
 import { createAdapterLogger } from '../../adapter-logger';
 import { requireCredentialField } from '../../credential-fields';
@@ -223,8 +221,9 @@ export class DiscordIntegration extends AgentChatIntegration {
 		return await buildDiscordOriginDraft(input, decoded);
 	}
 
-	async resolveEpisodicScope(context: EpisodicScopeContext) {
-		return await resolveThreadSharedEpisodicScope(context);
+	/** Episodic memory stays off until this channel defines its ownership policy. */
+	resolveEpisodicScope() {
+		return null;
 	}
 
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {

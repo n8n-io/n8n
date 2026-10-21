@@ -7,9 +7,7 @@ import {
 	type AgentChatIntegrationContext,
 	type PlatformActionParams,
 	type PlatformContextQueryParams,
-	type EpisodicScopeContext,
 } from '../../agent-chat-integration';
-import { resolveThreadSharedEpisodicScope } from '../../thread-shared-episodic-scope';
 import { loadLinearAdapter } from '../../esm-loader';
 import {
 	resolveIntegrationActionDefinitions,
@@ -112,8 +110,9 @@ export class LinearIntegration extends AgentChatIntegration {
 		return buildLinearOriginDraft(input, decoded);
 	}
 
-	async resolveEpisodicScope(context: EpisodicScopeContext) {
-		return await resolveThreadSharedEpisodicScope(context);
+	/** Episodic memory stays off until this channel defines its ownership policy. */
+	resolveEpisodicScope() {
+		return null;
 	}
 
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {
