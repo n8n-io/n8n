@@ -106,6 +106,8 @@ export interface ImportOrchestrationInput {
 	importSource?: PackageImportSource;
 	/** Destination workflow IDs to remove, even under `merge`. */
 	explicitDeleteWorkflowIds?: string[];
+	/** Treat the project root as a workflow location (project packages, which set the layout). */
+	checkRootPlacement: boolean;
 }
 
 /**
@@ -196,6 +198,7 @@ export class ImportOrchestrator {
 				input.context,
 				input.credentialRequest,
 				credentialPlan,
+				input.projectPendingCreation ?? false,
 			);
 			if (variablePlan.creations.length > 0) {
 				await this.variableImporter.assertCanCreate(
@@ -296,7 +299,9 @@ export class ImportOrchestrator {
 		const credentialPlan = await this.credentialImporter.plan(context, credentialRequest);
 		const dataTablePlan = await this.dataTableImporter.plan(context, dataTableRequest);
 		const variablePlan = await this.variableImporter.plan(context, variableRequest);
-		const workflowPlan = await this.workflowImporter.plan(context, workflows, options);
+		const workflowPlan = await this.workflowImporter.plan(context, workflows, options, {
+			checkRootPlacement: input.checkRootPlacement,
+		});
 		// Tags plan after workflows: only tags referenced by non-skipped workflows gate or create.
 		const tagPlan = await this.tagImporter.plan(
 			context,

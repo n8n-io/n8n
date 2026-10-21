@@ -10,7 +10,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { createTransport } from 'nodemailer';
 import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 import { prepareBinariesDataList } from '../../../utils/binary';
-import { toMailString } from '../utils';
+import { toMailAddressString, toMailString } from '../utils';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Send Email',
@@ -151,16 +151,16 @@ export class EmailSendV1 implements INodeType {
 			try {
 				item = items[itemIndex];
 
-				const fromEmail = toMailString(this.getNodeParameter('fromEmail', itemIndex));
-				const toEmail = toMailString(this.getNodeParameter('toEmail', itemIndex));
-				const ccEmail = toMailString(this.getNodeParameter('ccEmail', itemIndex));
-				const bccEmail = toMailString(this.getNodeParameter('bccEmail', itemIndex));
+				const fromEmail = toMailAddressString(this.getNodeParameter('fromEmail', itemIndex));
+				const toEmail = toMailAddressString(this.getNodeParameter('toEmail', itemIndex));
+				const ccEmail = toMailAddressString(this.getNodeParameter('ccEmail', itemIndex));
+				const bccEmail = toMailAddressString(this.getNodeParameter('bccEmail', itemIndex));
 				const subject = toMailString(this.getNodeParameter('subject', itemIndex));
 				const text = toMailString(this.getNodeParameter('text', itemIndex, ''));
 				const html = toMailString(this.getNodeParameter('html', itemIndex, ''));
 				const attachmentPropertyString = this.getNodeParameter('attachments', itemIndex) as string;
 				const options = this.getNodeParameter('options', itemIndex, {});
-				const replyTo = toMailString(options.replyTo);
+				const replyTo = toMailAddressString(options.replyTo);
 
 				const credentials = await this.getCredentials('smtp');
 

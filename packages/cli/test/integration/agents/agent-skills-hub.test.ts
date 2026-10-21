@@ -16,7 +16,8 @@ import { TransactionRunner, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
-import { setSkillsHubFlag } from '@/modules/agents/__tests__/test-utils/skills-hub-flag';
+import { setSkillsHubFlag } from '@/modules/skills/__tests__/test-utils/skills-hub-flag';
+import { registerSkillAgentsProvider } from '@/modules/agents/register-skill-agents-provider';
 import { AgentPublishService } from '@/modules/agents/agent-publish.service';
 import { AgentRuntimeCacheService } from '@/modules/agents/agent-runtime-cache.service';
 import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
@@ -26,10 +27,15 @@ import { AgentUpdateBroadcaster } from '@/modules/agents/agent-update-broadcaste
 import { AgentValidationService } from '@/modules/agents/agent-validation.service';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
-import type { Agent } from '@/modules/agents/entities/agent.entity';
+import {
+	type Agent,
+	isProjectAgent,
+	type ProjectAgent,
+} from '@/modules/agents/entities/agent.entity';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import { SkillRepository } from '@/modules/agents/repositories/skill.repository';
-import { SkillService, toAgentSkill } from '@/modules/agents/skills/skill.service';
+import { SkillRepository } from '@/modules/skills/skill.repository';
+import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
+import { SkillService, toAgentSkill } from '@/modules/skills/skill.service';
 import {
 	markAgentDraftDirty,
 	saveAgentDraftFenced,
@@ -65,8 +71,9 @@ describe('Agent skills in the skills hub', () => {
 		mockInstance(AgentTaskService).requestReconcile.mockResolvedValue(undefined);
 		const validation = mockInstance(AgentValidationService);
 		validation.validateAgentEntityConfiguration.mockResolvedValue({ status: 'valid', issues: [] });
-		await testModules.loadModules(['agents']);
+		await testModules.loadModules(['skills', 'agents']);
 		await testDb.init();
+		registerSkillAgentsProvider();
 		await Container.get(AgentsSettingsService).setEnabled(true);
 		owner = await createOwner();
 		editor = await createMember();
@@ -121,11 +128,13 @@ describe('Agent skills in the skills hub', () => {
 		});
 	}
 
-	async function reload(agent: Agent) {
-		return await agentRepository.findOneByOrFail({ id: agent.id });
+	async function reload(agent: Agent): Promise<ProjectAgent> {
+		const found = await agentRepository.findOneByOrFail({ id: agent.id });
+		if (!isProjectAgent(found)) throw new Error(`Agent "${agent.id}" is not a project agent`);
+		return found;
 	}
 
-	async function publish(agent: Agent) {
+	async function publish(agent: ProjectAgent) {
 		await publishService.publishAgent(agent.id, agent.projectId, owner, {
 			by: 'user',
 			trigger: 'explicit',
@@ -217,9 +226,9 @@ describe('Agent skills in the skills hub', () => {
 		await publishService.revertToPublishedAgent(agent.id, project.id, owner, 'user');
 
 		const refs = await skillRefs.refsForDraft(agent, {});
-		const pinned = (await Container.get(SkillRepository).findPinned(agent.activeVersionId!)).get(
-			skill,
-		);
+		const pinned = (
+			await Container.get(AgentSkillRepository).findPinned(agent.activeVersionId!)
+		).get(skill);
 		expect(refs).toEqual([{ type: 'skill', id: skill, versionId: pinned?.version.id }]);
 		const draft = await skillRefs.readDraft(agent, {});
 		expect(await instructionsOf(draft.skills)).toEqual({ [skill]: 'Published text.' });

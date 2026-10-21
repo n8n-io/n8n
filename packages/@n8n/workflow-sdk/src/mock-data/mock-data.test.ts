@@ -867,7 +867,9 @@ describe('ai-root shapes', () => {
 	});
 
 	it('classifies the assistant and vendor LLM nodes as AI roots', async () => {
-		const { isAiRootNodeType, describeAiRootShape } = await import('./ai-root-shapes.js');
+		const { isAiRootNodeType, describeAiRootShape, buildAiRootPlaceholder } = await import(
+			'./ai-root-shapes.js'
+		);
 
 		// Mirrors the editor's canonical AI_ROOT_NODE_TYPES list
 		// (evaluation.ee/evaluation.constants.ts).
@@ -888,6 +890,13 @@ describe('ai-root shapes', () => {
 		expect(describeAiRootShape('@n8n/n8n-nodes-langchain.anthropic')).toContain(
 			'vendor API response',
 		);
+
+		// The Databricks AI Agent runs the shared Agent, so it keeps the `output` envelope.
+		expect(isAiRootNodeType('@n8n/n8n-nodes-langchain.databricksAiAgent')).toBe(true);
+		expect(describeAiRootShape('@n8n/n8n-nodes-langchain.databricksAiAgent')).toContain('"output"');
+		expect(buildAiRootPlaceholder('@n8n/n8n-nodes-langchain.databricksAiAgent', 'x')).toEqual({
+			output: 'x',
+		});
 	});
 });
 

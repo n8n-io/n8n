@@ -36,11 +36,11 @@ const i18n = useI18n();
 		:data-test-id="incomplete ? 'assistant-setup-incomplete' : 'assistant-setup-intro'"
 	>
 		<div :class="[$style.content, incomplete && $style.wide]">
-			<N8nIcon icon="sparkles" :size="32" :class="$style.heroIcon" />
+			<N8nIcon icon="n8n-assistant" :size="32" :class="$style.heroIcon" />
 			<N8nHeading tag="h1" size="2xlarge" bold :class="$style.title">
 				{{ i18n.baseText('instanceAi.onboarding.title') }}
 			</N8nHeading>
-			<N8nPreviewBadge v-if="!incomplete" :class="$style.preview" size="medium" />
+			<N8nPreviewBadge v-if="!incomplete" :class="$style.preview" size="xsmall" />
 
 			<N8nText v-if="incomplete" tag="p" color="text-base" size="large" :class="$style.lede">
 				{{ i18n.baseText('instanceAi.onboarding.incomplete.lede') }}
@@ -48,15 +48,15 @@ const i18n = useI18n();
 
 			<div v-if="!incomplete" :class="$style.benefits">
 				<div :class="$style.benefit">
-					<N8nIcon icon="workflow" size="small" />
+					<N8nIcon icon="workflow" size="large" />
 					<N8nText size="large">{{ i18n.baseText('instanceAi.onboarding.benefit.build') }}</N8nText>
 				</div>
 				<div :class="$style.benefit">
-					<N8nIcon icon="flask-conical" size="small" />
+					<N8nIcon icon="flask-conical" size="large" />
 					<N8nText size="large">{{ i18n.baseText('instanceAi.onboarding.benefit.debug') }}</N8nText>
 				</div>
 				<div :class="$style.benefit">
-					<N8nIcon icon="circle-help" size="small" />
+					<N8nIcon icon="circle-help" size="large" />
 					<N8nText size="large">{{ i18n.baseText('instanceAi.onboarding.benefit.help') }}</N8nText>
 				</div>
 			</div>

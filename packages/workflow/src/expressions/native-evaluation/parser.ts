@@ -338,12 +338,13 @@ function parseChain(node: namedTypes.ChainExpression, parse: ParseChild): Simple
  * Once a chunk holds an extension call, extendTransform rewrites every
  * optional chain in it through its own polyfill, and that reprint drops the
  * parentheses around a `??` operand mixed with `&&` or `||`: the engines
- * then throw "invalid syntax" where this interpreter would evaluate. A
- * chunk with both an optional chain and an extension call is theirs. The
- * rewrite matches by method name alone, so a node-ref call like
- * `$input.first()` counts too.
+ * then throw "invalid syntax" where this interpreter would evaluate. An
+ * extension call in any chunk sends every chunk through the rewrite, so an
+ * expression with both an optional chain and an extension call is theirs,
+ * even when the two are in different chunks. The rewrite matches by method
+ * name alone, so a node-ref call like `$input.first()` counts too.
  */
-export function usesPolyfilledChain(root: SimpleNode): boolean {
+export function usesPolyfilledChain(roots: SimpleNode[]): boolean {
 	let chain = false;
 	let extension = false;
 	const visit = (node: SimpleNode): void => {
@@ -383,7 +384,7 @@ export function usesPolyfilledChain(root: SimpleNode): boolean {
 				return;
 		}
 	};
-	visit(root);
+	roots.forEach(visit);
 	return chain && extension;
 }
 

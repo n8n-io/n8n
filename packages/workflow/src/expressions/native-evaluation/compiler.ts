@@ -32,8 +32,7 @@ function compileChunk(chunk: ParsedCode): SimpleNode | null {
 	if (statement.type !== 'ExpressionStatement') return null;
 
 	try {
-		const node = parseSimple(statement.expression);
-		return node !== null && usesPolyfilledChain(node) ? null : node;
+		return parseSimple(statement.expression);
 	} catch {
 		return null;
 	}
@@ -49,6 +48,7 @@ function compile(expression: string): CompiledExpression | null {
 	}
 
 	const chunks: CompiledChunk[] = [];
+	const nodes: SimpleNode[] = [];
 	for (const chunk of parsed) {
 		if (chunk.type === 'text') {
 			chunks.push(chunk);
@@ -59,7 +59,10 @@ function compile(expression: string): CompiledExpression | null {
 		if (node === null) return null;
 
 		chunks.push({ type: 'code', node });
+		nodes.push(node);
 	}
+
+	if (usesPolyfilledChain(nodes)) return null;
 
 	// Mirrors the branch condition in ExpressionBuilder.getExpressionCode.
 	const isWholeValue = chunks.length === 2 && chunks[0].type === 'text' && chunks[0].text === '';

@@ -94,6 +94,7 @@ export type OauthFlowState = {
 
 const OAUTH_FLOW_CACHE_PREFIX = 'oauth:flow:';
 const OAUTH_REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds; // This might be added to a OAuth Config (there is currently none)
+const OFFLINE_ACCESS_SCOPE = 'offline_access';
 
 export interface OAuth2CredentialRefreshResult {
 	headers: Record<string, string>;
@@ -114,6 +115,21 @@ export function shouldSkipAuthOnOAuthCallback() {
 export const skipAuthOnOAuthCallback = shouldSkipAuthOnOAuthCallback();
 
 export { OauthVersion, type OAuth1CredentialData, type CreateCsrfStateData, type CsrfState };
+
+/**
+ * `offline_access` asks the authorization server for a refresh token. It grants no
+ * access to the resource, so a protected resource document (RFC 9728) has no reason
+ * to list it, and most do not. Taking the resource scopes verbatim therefore drops it
+ * even where the authorization server offers it, and the credential is then issued
+ * without a refresh token. `shouldRefreshMcpOAuth2Token` returns false without one, so
+ * the connection stops working at the first token expiry with nothing to recover it.
+ */
+function withOfflineAccess(resourceScopes: string[], authServerScopes?: string[]): string[] {
+	const offered = authServerScopes?.includes(OFFLINE_ACCESS_SCOPE) ?? false;
+	return offered && !resourceScopes.includes(OFFLINE_ACCESS_SCOPE)
+		? [...resourceScopes, OFFLINE_ACCESS_SCOPE]
+		: resourceScopes;
+}
 
 /** The user who started the flow. An externally started dynamic-credential flow has none. */
 const csrfUserId = (csrfData: CreateCsrfStateData) =>
@@ -1208,7 +1224,7 @@ export class OauthService {
 		// authorization server's scopes_supported (RFC 8414). Some servers only
 		// advertise the required scopes on the protected resource document.
 		const effectiveScopes = discoveredResourceScopes?.length
-			? discoveredResourceScopes
+			? withOfflineAccess(discoveredResourceScopes, scopes_supported)
 			: scopes_supported;
 		const scope = effectiveScopes?.length ? effectiveScopes.join(' ') : undefined;
 		if (scope) {
@@ -1480,7 +1496,7 @@ export class OauthService {
 	/**
 	 * Fetches a `.well-known` discovery document and returns its parsed JSON body.
 	 * Only a 200 is accepted (RFC 8414 / RFC 9728 / OpenID Connect discovery endpoints respond with 200).
-	 * Any other status, or a transport/SSRF failure, throws,
+	 * Any other status, a non-object body, or a transport/SSRF failure throws,
 	 * so the discovery loops can uniformly catch and fall through to the next candidate URL.
 	 */
 	private async fetchDiscoveryDocument(url: string): Promise<unknown> {
@@ -1492,6 +1508,9 @@ export class OauthService {
 		});
 		if (response.statusCode !== 200) {
 			throw new OperationalError(`Request failed with status code ${response.statusCode}`);
+		}
+		if (!isRecord(response.body)) {
+			throw new OperationalError('Discovery response must be a JSON object');
 		}
 		return response.body;
 	}

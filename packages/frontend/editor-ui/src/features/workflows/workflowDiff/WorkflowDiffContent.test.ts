@@ -115,6 +115,15 @@ describe('WorkflowDiffContent', () => {
 			expect(screen.getByTestId('synced-canvas-bottom')).toBeInTheDocument();
 		});
 
+		it('adds the prefix to the canvas ids', () => {
+			render(WorkflowDiffContent, {
+				props: { ...defaultProps, canvasIdPrefix: 'wf-1' },
+			});
+
+			expect(screen.getByTestId('synced-canvas-wf-1-top')).toBeInTheDocument();
+			expect(screen.getByTestId('synced-canvas-wf-1-bottom')).toBeInTheDocument();
+		});
+
 		it('should display source label', () => {
 			render(WorkflowDiffContent, {
 				props: { ...defaultProps, sourceLabel: 'Remote' },

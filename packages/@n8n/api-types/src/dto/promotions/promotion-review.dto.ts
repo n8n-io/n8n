@@ -58,7 +58,7 @@ export const promotionReviewSummarySchema = z.object({
 	state: promotionReviewStateSchema,
 	/** Host reference for the review type. GitLab stores `<projectId>!<iid>`. NULL when the review lives in n8n. */
 	remoteReviewId: z.string().nullable(),
-	connection: z.object({ id: n8nIdSchema, name: z.string() }).nullable(),
+	environment: z.object({ id: n8nIdSchema, name: z.string() }).nullable(),
 	createdBy: reviewUserSchema.nullable(),
 	approvedBy: reviewUserSchema.nullable(),
 	createdAt: z.string().datetime(),
@@ -139,10 +139,10 @@ export class PromotionReviewWorkflowDiffDto extends Z.class(
 	promotionReviewWorkflowDiffSchema.shape,
 ) {}
 
-/** The merge request a Promote opened, as returned with the promote result. */
-export const promotionMergeRequestResultSchema = z.object({
+/** The review a Promote opened, returned with the promote result. */
+export const promotionReviewResultSchema = z.object({
 	reviewId: n8nIdSchema,
-	iid: z.number().int(),
+	['number']: z.number().int(),
 	webUrl: z.string(),
 });
-export type PromotionMergeRequestResult = z.infer<typeof promotionMergeRequestResultSchema>;
+export type PromotionReviewResult = z.infer<typeof promotionReviewResultSchema>;
