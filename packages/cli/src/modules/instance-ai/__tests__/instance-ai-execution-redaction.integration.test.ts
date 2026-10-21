@@ -166,7 +166,7 @@ describe('Instance AI execution redaction (integration)', () => {
 		it('gets a redacted result', async () => {
 			const result = await executionsFor(bob).getResult(executionId);
 
-			expect(result.redaction).toEqual({ reason: 'credential_inaccessible' });
+			expect(result.redaction).toEqual({ reason: 'credential_inaccessible', canReveal: false });
 			expect(result.data).toBeUndefined();
 			expect(JSON.stringify(result)).not.toContain('tok_secret');
 			expect(result.nodeErrors).toEqual([
@@ -177,14 +177,14 @@ describe('Instance AI execution redaction (integration)', () => {
 		it('gets redacted node output', async () => {
 			const output = await executionsFor(bob).getNodeOutput(executionId, 'Trigger');
 
-			expect(output.redaction).toEqual({ reason: 'credential_inaccessible' });
+			expect(output.redaction).toEqual({ reason: 'credential_inaccessible', canReveal: false });
 			expect(JSON.stringify(output)).not.toContain('tok_secret');
 		});
 
 		it('gets redacted debug info', async () => {
 			const debug = await executionsFor(bob).getDebugInfo(executionId);
 
-			expect(debug.redaction).toEqual({ reason: 'credential_inaccessible' });
+			expect(debug.redaction).toEqual({ reason: 'credential_inaccessible', canReveal: false });
 			expect(debug.failedNode).toMatchObject({
 				name: 'Action Network',
 				error: 'NodeOperationError error (details hidden by n8n)',
@@ -302,7 +302,10 @@ describe('Instance AI execution redaction (integration)', () => {
 			const output = await executionsFor(alice).getNodeOutput(policyExecutionId, 'Trigger');
 
 			for (const response of [result, debug, output]) {
-				expect(response.redaction).toEqual({ reason: 'workflow_redaction_policy' });
+				expect(response.redaction).toEqual({
+					reason: 'workflow_redaction_policy',
+					canReveal: true,
+				});
 				expect(JSON.stringify(response)).not.toContain('tok_secret');
 			}
 			expect(debug.failedNode?.error).toBe('NodeOperationError error (details hidden by n8n)');

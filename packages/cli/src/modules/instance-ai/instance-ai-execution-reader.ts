@@ -1,6 +1,7 @@
 import { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
 import type { IExecutionResponse, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { ExecutionRedaction } from '@n8n/instance-ai';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 
@@ -31,8 +32,13 @@ export async function loadExecutionForViewer(
 	return execution;
 }
 
-/** Why the viewer gets redacted data, or `undefined` when the data is complete. */
-export function getExecutionRedactionReason(execution: IExecutionResponse): string | undefined {
+/**
+ * Why the viewer gets redacted data and whether they can reveal it, or
+ * `undefined` when the data is complete.
+ */
+export function getExecutionRedaction(
+	execution: IExecutionResponse,
+): ExecutionRedaction | undefined {
 	const info = execution.data?.redactionInfo;
-	return info?.isRedacted ? info.reason : undefined;
+	return info?.isRedacted ? { reason: info.reason, canReveal: info.canReveal } : undefined;
 }

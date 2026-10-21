@@ -28,7 +28,7 @@ import {
 
 import type { NodeTypes } from '@/node-types';
 
-import { getExecutionRedactionReason } from './instance-ai-execution-reader';
+import { getExecutionRedaction } from './instance-ai-execution-reader';
 
 /**
  * Maximum characters for a single resolved parameter leaf. Resolved parameter
@@ -238,7 +238,7 @@ export async function extractResolvedNodeParameters(
 
 	// Redacted items resolve every expression to nothing, which would read as a
 	// real bug in the node.
-	if (getExecutionRedactionReason(execution)) {
+	if (getExecutionRedaction(execution)) {
 		return {
 			nodeName,
 			runIndex: options?.runIndex ?? 0,

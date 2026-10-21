@@ -608,7 +608,7 @@ describe('analyzeVerificationResult — redacted runs', () => {
 		analyzeVerificationResult({
 			result: {
 				executionId: 'exec-1',
-				redaction: { reason: 'workflow_redaction_policy' },
+				redaction: { reason: 'workflow_redaction_policy', canReveal: false },
 				...runResult,
 			} as unknown as ExecutionRunResult,
 			buildOutcome: makeBuildOutcome(),
@@ -634,6 +634,36 @@ describe('analyzeVerificationResult — redacted runs', () => {
 		});
 		expect(analysis.remediation?.guidance).toContain('Format failed');
 		expect(analysis.redactionNote).toBeUndefined();
+	});
+
+	it.each([
+		{
+			redaction: { reason: 'workflow_redaction_policy', canReveal: true },
+			howToSee: 'They can reveal the details in the execution in the editor.',
+		},
+		{
+			redaction: { reason: 'workflow_redaction_policy', canReveal: false },
+			howToSee: 'They cannot reveal them from their account.',
+		},
+		{
+			redaction: { reason: 'credential_inaccessible', canReveal: false },
+			howToSee: 'Only someone who can use that credential, such as its owner, can see them.',
+		},
+		{
+			redaction: { reason: 'dynamic_credentials', canReveal: false },
+			howToSee: 'They cannot reveal them from their account.',
+		},
+	])('tells the user how to see hidden details for $redaction', ({ redaction, howToSee }) => {
+		const analysis = analyze({
+			redaction,
+			status: 'error',
+			error: 'NodeOperationError error (details hidden by n8n)',
+			nodeErrors: [
+				{ nodeName: 'Format', message: 'NodeOperationError error (details hidden by n8n)' },
+			],
+		});
+
+		expect(analysis.remediation?.guidance).toContain(howToSee);
 	});
 
 	it('keeps the routing that the error type and status code still carry', () => {

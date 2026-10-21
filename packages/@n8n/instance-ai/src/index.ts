@@ -690,6 +690,7 @@ export type {
 	WorkflowVersionSummary,
 	WorkflowVersionDetail,
 	ExecutionResult,
+	ExecutionRedaction,
 	StepExecutionResult,
 	StepRunInputMode,
 	ExecutionDebugInfo,

@@ -173,7 +173,7 @@ describe('runScriptedGateVerification — merge consistency', () => {
 			.fn()
 			.mockResolvedValueOnce({
 				...approvePassResult,
-				redaction: { reason: 'workflow_redaction_policy' },
+				redaction: { reason: 'workflow_redaction_policy', canReveal: false },
 			})
 			.mockResolvedValueOnce(declinePassResult);
 

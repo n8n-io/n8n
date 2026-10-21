@@ -222,10 +222,7 @@ import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { isAgentsAccessEnabled } from './agents-access';
 import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
 import { waitForInstanceAiExecution } from './instance-ai-execution-wait';
-import {
-	getExecutionRedactionReason,
-	loadExecutionForViewer,
-} from './instance-ai-execution-reader';
+import { getExecutionRedaction, loadExecutionForViewer } from './instance-ai-execution-reader';
 import {
 	FOLDER_SCAN_LIMIT,
 	FOLDER_SCAN_PROJECT_LIMIT,
@@ -2478,7 +2475,7 @@ export class InstanceAiAdapterService {
 					const stored = await loadExecutionForViewer(options.reuseExecutionId, user);
 					// Replaying the empty items of a redacted run would hand the target
 					// invented input, and the new run would carry the data on unredacted.
-					if (stored && getExecutionRedactionReason(stored)) {
+					if (stored && getExecutionRedaction(stored)) {
 						throw new UserError(
 							`n8n redacted the data of execution ${options.reuseExecutionId} for this user, so it cannot be replayed. Omit reuseExecutionId to run the chain, or pass mockInput.`,
 						);
@@ -4890,7 +4887,7 @@ export async function extractExecutionOutcome(
 	subNodeTarget?: string,
 ): Promise<{ result: ExecutionResult; telemetryError?: string }> {
 	const executionId = execution.id;
-	const redactionReason = getExecutionRedactionReason(execution);
+	const redaction = getExecutionRedaction(execution);
 	const status =
 		execution.status === 'error' || execution.status === 'crashed'
 			? 'error'
@@ -4913,7 +4910,7 @@ export async function extractExecutionOutcome(
 	const binaryOutputNodeNames: string[] = [];
 	// Redacted items are empty objects. Reported as output, they would read as
 	// nodes that returned nothing.
-	if (includeOutputData && runData && !redactionReason) {
+	if (includeOutputData && runData && !redaction) {
 		const workflow = buildExecutionWorkflow(execution.workflowData, nodeTypes);
 		await workflow?.expression.acquireIsolate();
 		try {
@@ -4980,7 +4977,7 @@ export async function extractExecutionOutcome(
 				subNodeTarget,
 			),
 			workflowVersionId: execution.workflowVersionId,
-			...(redactionReason ? { redaction: { reason: redactionReason } } : {}),
+			...(redaction ? { redaction } : {}),
 			error: errorMessage,
 			startedAt: execution.startedAt?.toISOString(),
 			finishedAt: execution.stoppedAt?.toISOString(),
@@ -5214,14 +5211,14 @@ export async function extractNodeOutput(
 	}
 
 	// Redacted items are empty objects, so there is nothing to page through.
-	const redactionReason = getExecutionRedactionReason(execution);
-	if (redactionReason) {
+	const redaction = getExecutionRedaction(execution);
+	if (redaction) {
 		return {
 			nodeName,
 			outputs: [],
 			totalItems: 0,
 			returned: { from: 0, to: 0 },
-			redaction: { reason: redactionReason },
+			redaction,
 		};
 	}
 

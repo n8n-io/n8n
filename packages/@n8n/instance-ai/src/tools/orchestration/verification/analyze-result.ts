@@ -538,6 +538,11 @@ function blockRedactedRepair(
 ): RemediationMetadata | undefined {
 	if (!redaction || remediation?.shouldEdit !== true) return remediation;
 	const failedNodes = nodeErrors.map((nodeError) => nodeError.nodeName);
+	const howToSee = redaction.canReveal
+		? 'They can reveal the details in the execution in the editor.'
+		: redaction.reason === 'credential_inaccessible'
+			? 'Only someone who can use that credential, such as its owner, can see them.'
+			: 'They cannot reveal them from their account.';
 	return createRemediation({
 		category: 'blocked',
 		shouldEdit: false,
@@ -548,7 +553,7 @@ function blockRedactedRepair(
 			(failedNodes.length > 0
 				? `Tell the user that ${failedNodes.join(', ')} failed and `
 				: 'Tell the user ') +
-			'that n8n hides the details. They can see them in the execution in the editor if their role lets them reveal redacted data.',
+			`that n8n hides the details. ${howToSee}`,
 	});
 }
 

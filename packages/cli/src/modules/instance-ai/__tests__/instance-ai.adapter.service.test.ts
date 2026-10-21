@@ -557,7 +557,7 @@ describe('redacted executions', () => {
 	it('reports the redaction and no output items on the result', async () => {
 		const result = await extractExecutionResult(makeRedactedExecution(), true);
 
-		expect(result.redaction).toEqual({ reason: 'workflow_redaction_policy' });
+		expect(result.redaction).toEqual({ reason: 'workflow_redaction_policy', canReveal: false });
 		expect(result.data).toBeUndefined();
 		expect(result.executedNodeNames).toEqual(['Trigger', 'HTTP']);
 		expect(result.error).toBe('NodeApiError error (401) (details hidden by n8n)');
@@ -574,7 +574,7 @@ describe('redacted executions', () => {
 			outputs: [],
 			totalItems: 0,
 			returned: { from: 0, to: 0 },
-			redaction: { reason: 'workflow_redaction_policy' },
+			redaction: { reason: 'workflow_redaction_policy', canReveal: false },
 		});
 	});
 
@@ -585,7 +585,7 @@ describe('redacted executions', () => {
 			mock<NodeTypes>(),
 		);
 
-		expect(result.redaction).toEqual({ reason: 'workflow_redaction_policy' });
+		expect(result.redaction).toEqual({ reason: 'workflow_redaction_policy', canReveal: false });
 		expect(result.failedNode).toEqual({
 			name: 'HTTP',
 			type: 'unknown',

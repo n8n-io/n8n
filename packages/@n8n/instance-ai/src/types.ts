@@ -209,6 +209,11 @@ export interface ExecutionResult {
 
 export interface ExecutionRedaction {
 	reason: string;
+	/**
+	 * Whether the user can reveal the data in the editor. Always false for
+	 * `credential_inaccessible` and `dynamic_credentials`.
+	 */
+	canReveal: boolean;
 }
 
 /** How a step run produced the target node's input. */
