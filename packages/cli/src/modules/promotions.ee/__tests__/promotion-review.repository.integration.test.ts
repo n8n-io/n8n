@@ -6,6 +6,7 @@ import { v7 as uuidv7 } from 'uuid';
 
 import { createMember, createOwner } from '@test-integration/db/users';
 
+import type { InboxSourceBoundary } from '../../inbox/inbox-source.registry';
 import { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
 import { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
 import { PromotionReviewRepository } from '../database/repositories/promotion-review.repository';
@@ -179,54 +180,78 @@ describe('PromotionReviewRepository', () => {
 		expect(found?.runs[0]?.createdBy).toBeNull();
 	});
 
-	it('lists newest first and filters by tab', async () => {
-		const { review: first } = await insertReview();
+	it('lists by latest activity, filters by Inbox state, and counts both states', async () => {
+		const { review: open } = await insertReview();
 		const { review: merged } = await insertReview();
 		const { review: closed } = await insertReview();
-		// Three inserts can share a millisecond, so pin the creation order.
-		for (const [index, review] of [first, merged, closed].entries()) {
-			await reviewRepository.update({ id: review.id }, { createdAt: new Date(1_000_000 * index) });
-		}
+		await reviewRepository.update({ id: open.id }, { createdAt: new Date('2026-01-01') });
 		await reviewRepository.update(
 			{ id: merged.id },
-			{ state: 'merged', lastStateChangeAt: new Date() },
+			{
+				state: 'merged',
+				createdAt: new Date('2026-01-02'),
+				lastStateChangeAt: new Date('2026-01-05'),
+			},
 		);
 		await reviewRepository.update(
 			{ id: closed.id },
-			{ state: 'closed', lastStateChangeAt: new Date() },
+			{
+				state: 'closed',
+				createdAt: new Date('2026-01-03'),
+				lastStateChangeAt: new Date('2026-01-04'),
+			},
 		);
 
-		const all = await reviewRepository.listReviews({ offset: 0, limit: 10 });
-		expect(all.count).toBe(3);
-		expect(all.data.map((r) => r.id)).toEqual([closed.id, merged.id, first.id]);
+		const openRows = await reviewRepository.findForInbox({ state: 'open', limit: 10 });
+		const closedRows = await reviewRepository.findForInbox({ state: 'closed', limit: 10 });
 
-		const open = await reviewRepository.listReviews({ tab: 'open', offset: 0, limit: 10 });
-		expect(open.data.map((r) => r.id)).toEqual([first.id]);
-		expect(open.data[0]?.createdBy?.id).toBe(owner.id);
-
-		const done = await reviewRepository.listReviews({ tab: 'closed', offset: 0, limit: 10 });
-		expect(done.count).toBe(2);
-		expect(done.data.map((r) => r.id)).toEqual([closed.id, merged.id]);
-
-		const page = await reviewRepository.listReviews({ offset: 1, limit: 1 });
-		expect(page.count).toBe(3);
-		expect(page.data.map((r) => r.id)).toEqual([merged.id]);
+		expect(openRows.map((r) => r.id)).toEqual([open.id]);
+		expect(openRows[0]?.environment?.id).toBe(environmentId);
+		expect(closedRows.map((r) => r.id)).toEqual([merged.id, closed.id]);
+		expect(await reviewRepository.countForInbox()).toEqual({ open: 1, closed: 2 });
 	});
 
-	it('pages stably when reviews share a creation time', async () => {
-		const olderReviewId = '018f6b2e-7c3a-7000-8000-000000000001';
-		const newerReviewId = '018f6b2e-7c3a-7000-8000-000000000002';
-		const { review: older } = await insertReview({ id: olderReviewId });
-		const { review: newer } = await insertReview({ id: newerReviewId });
-		const createdAt = new Date('2026-01-01T00:00:00.000Z');
-		await reviewRepository.update({ id: older.id }, { createdAt });
-		await reviewRepository.update({ id: newer.id }, { createdAt });
+	it('pages from each Inbox boundary when reviews share a timestamp', async () => {
+		const firstReviewId = '018f6b2e-7c3a-7000-8000-000000000001';
+		const secondReviewId = '018f6b2e-7c3a-7000-8000-000000000002';
+		await insertReview({ id: firstReviewId });
+		await insertReview({ id: secondReviewId });
+		const updatedAt = new Date('2026-01-01T00:00:00.000Z');
+		await reviewRepository.update({ id: firstReviewId }, { createdAt: updatedAt });
+		await reviewRepository.update({ id: secondReviewId }, { createdAt: updatedAt });
+		const page = async (boundary?: InboxSourceBoundary) =>
+			(await reviewRepository.findForInbox({ state: 'open', limit: 10, boundary })).map(
+				(r) => r.id,
+			);
 
-		const first = await reviewRepository.listReviews({ offset: 0, limit: 1 });
-		const second = await reviewRepository.listReviews({ offset: 1, limit: 1 });
+		expect(await page()).toEqual([firstReviewId, secondReviewId]);
+		expect(await page({ mode: 'afterItem', updatedAt, id: firstReviewId })).toEqual([
+			secondReviewId,
+		]);
+		expect(await page({ mode: 'beforeOrAtTime', updatedAt })).toEqual([
+			firstReviewId,
+			secondReviewId,
+		]);
+		expect(await page({ mode: 'beforeTime', updatedAt })).toEqual([]);
+	});
 
-		expect(first.data.map((r) => r.id)).toEqual([newerReviewId]);
-		expect(second.data.map((r) => r.id)).toEqual([olderReviewId]);
+	it('records a host state only while the review is open', async () => {
+		const { review: open } = await insertReview();
+		const { review: merged } = await insertReview();
+		await reviewRepository.update({ id: merged.id }, { state: 'merged' });
+		const at = new Date('2026-10-16T10:00:00.000Z');
+
+		await expect(reviewRepository.recordHostState(open.id, 'closed', at)).resolves.toBe(true);
+		await expect(reviewRepository.recordHostState(merged.id, 'open', at)).resolves.toBe(false);
+
+		expect(await reviewRepository.findOneBy({ id: open.id })).toMatchObject({
+			state: 'closed',
+			lastStateChangeAt: at,
+		});
+		expect(await reviewRepository.findOneBy({ id: merged.id })).toMatchObject({
+			state: 'merged',
+			lastStateChangeAt: null,
+		});
 	});
 
 	it('rejects a second review with the same remote id on one environment', async () => {
@@ -273,7 +298,6 @@ describe('PromotionReviewRepository', () => {
 			createdById: owner.id,
 		});
 
-		const listed = await reviewRepository.listReviews({ offset: 0, limit: 10 });
-		expect(listed.count).toBe(2);
+		expect(await reviewRepository.countForInbox()).toEqual({ open: 2, closed: 0 });
 	});
 });

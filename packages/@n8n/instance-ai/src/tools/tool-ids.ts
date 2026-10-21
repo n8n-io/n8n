@@ -24,6 +24,7 @@ export const DOMAIN_TOOL_IDS = {
 	CONVERSATION_HISTORY: 'conversation-history',
 	ACTIVITY: 'activity',
 	SAVE_USER_PREFERENCE: 'save_user_preference',
+	SKILLS: 'skills',
 } as const;
 
 /** Trace-only chain-typed child run emitted by `workflow_builder_build_workflow` with the
@@ -107,6 +108,7 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	// every agent build. Registered only when the host provides a builder delegate
 	// (Agents module active), so an instance without it pays nothing.
 	...AGENT_BUILDER_ORCHESTRATOR_TOOL_NAMES,
+	DOMAIN_TOOL_IDS.SKILLS,
 ]);
 
 export const CHECKPOINT_FOLLOW_UP_TOOL_NAMES = new Set<string>([

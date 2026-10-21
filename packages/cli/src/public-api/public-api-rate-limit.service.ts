@@ -1,12 +1,13 @@
-import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { Method, RateLimitAccessName } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { RequestHandler, Response } from 'express';
-import { MemoryStore } from 'express-rate-limit';
-import type { AugmentedRequest, RateLimitInfo } from 'express-rate-limit';
+import type { AugmentedRequest, RateLimitInfo, Store } from 'express-rate-limit';
 
 import { RateLimitService } from '@/services/rate-limit.service';
+
+import { PublicApiRateLimitSettingsService } from './public-api-rate-limit-settings.service';
+import { PublicApiRateLimitStoreFactory } from './public-api-rate-limit-store.factory';
 
 type RequestLimit = { maxRequests: number; windowSeconds: number };
 
@@ -14,7 +15,7 @@ type AccessRequestLimits = { perEndpoint: RequestLimit; allEndpoints: RequestLim
 
 type CountingLimiter = {
 	middleware: RequestHandler;
-	store: MemoryStore;
+	store: Store;
 	requestPropertyName: string;
 };
 
@@ -47,22 +48,31 @@ export class PublicApiRateLimitService {
 	>();
 
 	constructor(
-		private readonly globalConfig: GlobalConfig,
+		private readonly rateLimitSettingsService: PublicApiRateLimitSettingsService,
 		private readonly rateLimitService: RateLimitService,
+		private readonly storeFactory: PublicApiRateLimitStoreFactory,
 	) {}
 
 	private get config() {
-		return this.globalConfig.publicApi.rateLimit;
+		return this.rateLimitSettingsService.settings;
 	}
 
-	/** Call once for each route, when the route is registered. */
-	createRouteLimiters(method: Method, accessFromDecorator?: RateLimitAccessName): RequestHandler[] {
+	/**
+	 * Call once for each route, when the route is registered.
+	 * @param path The route template with the API version, for example `/v1/workflows/:id`.
+	 */
+	createRouteLimiters(
+		method: Method,
+		path: string,
+		accessFromDecorator?: RateLimitAccessName,
+	): RequestHandler[] {
 		if (!this.config.enabled) return [];
 
 		const access = resolveAccess(method, accessFromDecorator);
+		const endpoint = `${method.toUpperCase()} ${path}`;
 
 		const limiters = [
-			this.createPerEndpointLimiter(access),
+			this.createPerEndpointLimiter(access, endpoint),
 			this.getAllEndpointsLimiter(access),
 		].filter((limiter) => limiter !== undefined);
 		if (limiters.length === 0) return [];
@@ -111,15 +121,23 @@ export class PublicApiRateLimitService {
 		};
 	}
 
-	private createPerEndpointLimiter(access: RateLimitAccessName) {
-		return this.createRateLimiter(this.getLimitsFromConfig(access).perEndpoint, ENDPOINT_LIMIT);
+	private createPerEndpointLimiter(access: RateLimitAccessName, endpoint: string) {
+		return this.createRateLimiter(
+			this.getLimitsFromConfig(access).perEndpoint,
+			ENDPOINT_LIMIT,
+			`endpoint:${access}:${endpoint}`,
+		);
 	}
 
 	private getAllEndpointsLimiter(access: RateLimitAccessName) {
 		if (!this.allEndpointsLimiterCache.has(access)) {
 			this.allEndpointsLimiterCache.set(
 				access,
-				this.createRateLimiter(this.getLimitsFromConfig(access).allEndpoints, ALL_ENDPOINTS_LIMIT),
+				this.createRateLimiter(
+					this.getLimitsFromConfig(access).allEndpoints,
+					ALL_ENDPOINTS_LIMIT,
+					`all:${access}`,
+				),
 			);
 		}
 		return this.allEndpointsLimiterCache.get(access);
@@ -155,11 +173,12 @@ export class PublicApiRateLimitService {
 	private createRateLimiter(
 		{ maxRequests, windowSeconds }: RequestLimit,
 		requestPropertyName: string,
+		storeName: string,
 	): CountingLimiter | undefined {
 		if (maxRequests === 0) return undefined;
 
 		const limits = { limit: maxRequests, windowMs: windowSeconds * Time.seconds.toMilliseconds };
-		const store = new MemoryStore();
+		const store = this.storeFactory.create(storeName);
 		const middleware = this.rateLimitService.createApiKeyRateLimitMiddleware(limits, {
 			requestPropertyName,
 			store,

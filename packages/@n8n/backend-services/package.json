@@ -67,7 +67,7 @@
     "@types/lodash": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "eslint": "catalog:",
-    "ioredis-mock": "^8.8.1",
+    "ioredis-mock": "catalog:",
     "lodash": "catalog:",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",

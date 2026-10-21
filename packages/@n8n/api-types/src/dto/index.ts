@@ -1,5 +1,9 @@
 export { GetNodeTypesByIdentifierRequestDto } from './node-types/get-node-types-by-identifier.dto';
 
+export { CreateAppDto } from './app/create-app.dto';
+export { UpdateAppDto } from './app/update-app.dto';
+export { ListAppsQueryDto } from './app/list-apps-query.dto';
+
 export { AiAskRequestDto } from './ai/ai-ask-request.dto';
 export { AiChatRequestDto } from './ai/ai-chat-request.dto';
 export {
@@ -689,6 +693,11 @@ export {
 	OtelTestTraceRequestPublicDto,
 	OtelTestTraceResultPublicDto,
 } from './otel/otel-test-trace-public.dto';
+export {
+	UpdatePublicApiRateLimitSettingsDto,
+	type PublicApiRateLimitSettings,
+	type PublicApiRateLimitSettingsResponse,
+} from './public-api-rate-limit-settings/update-public-api-rate-limit-settings.dto';
 
 export {
 	PromotionChangesDto,
@@ -793,6 +802,7 @@ export {
 	type PromotionEnvironmentSummary,
 } from './promotions/promotion-environment.dto';
 export {
+	ApplyCheckQueryDto,
 	ApplyPackageDto,
 	ApplyPackageResultDto,
 	ApplySelectionDto,
@@ -805,6 +815,9 @@ export {
 	promotePackageCountsSchema,
 	promotePackageResultSchema,
 	promotionGitResultSchema,
+	promotionPromoteWarningSchema,
+	type PromotionPromoteWarning,
+	type ApplyCheckResult,
 } from './promotions/promotion-operations.dto';
 export {
 	parsePromotionRunDetails,
@@ -820,7 +833,7 @@ export {
 	PromotionReviewDetailDto,
 	PromotionReviewListPublicDto,
 	PromotionReviewWorkflowDiffDto,
-	promotionMergeRequestResultSchema,
+	promotionReviewResultSchema,
 	promotionReviewChangeKindSchema,
 	promotionReviewDetailSchema,
 	promotionReviewListPublicSchema,
@@ -833,9 +846,10 @@ export {
 	promotionReviewTypeSchema,
 	promotionReviewWorkflowChangeSchema,
 	promotionReviewWorkflowDiffSchema,
-	type PromotionMergeRequestResult,
+	type PromotionReviewResult,
 	type PromotionReviewChangeKind,
 	type PromotionReviewRemote,
+	type PromotionReviewRemoteError,
 	type PromotionReviewState,
 	type PromotionReviewSummary,
 	type PromotionReviewType,

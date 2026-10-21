@@ -118,11 +118,10 @@ vi.mock('@n8n/frontend-module-type-availability-policies', async (importOriginal
 			return scope ? { name, available: false, scope } : { name, available: true };
 		},
 	}),
-	ContactInstanceAdminModal: {
-		name: 'ContactInstanceAdminModal',
+	ContactAdminModal: {
+		name: 'ContactAdminModal',
 		props: ['open', 'nodeTypeName', 'kind'],
-		template:
-			'<div v-if="open" data-testid="contact-instance-admin-modal">{{ nodeTypeName }}</div>',
+		template: '<div v-if="open" data-testid="contact-admin-modal">{{ nodeTypeName }}</div>',
 	},
 }));
 
@@ -431,12 +430,12 @@ describe('AgentModelSelector', () => {
 		const marker = wrapper.findComponent({ name: 'ModelSelectorRestrictedMarker' });
 
 		expect(marker.props()).toEqual({ name: 'OpenAI credentials', scope: 'project' });
-		expect(wrapper.findComponent({ name: 'ContactInstanceAdminModal' }).props('open')).toBe(false);
+		expect(wrapper.findComponent({ name: 'ContactAdminModal' }).props('open')).toBe(false);
 
 		await marker.find('button').trigger('click');
 
 		expect(closeMenu).toHaveBeenCalledOnce();
-		expect(wrapper.findComponent({ name: 'ContactInstanceAdminModal' }).props()).toEqual({
+		expect(wrapper.findComponent({ name: 'ContactAdminModal' }).props()).toEqual({
 			open: true,
 			kind: 'credential',
 			nodeTypeName: 'OpenAI credentials',

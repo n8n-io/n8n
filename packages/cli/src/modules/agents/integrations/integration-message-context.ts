@@ -107,6 +107,7 @@ function isIntegrationMessageSubject(value: unknown): value is IntegrationMessag
 		(subject.description === undefined || typeof subject.description === 'string') &&
 		(subject.url === undefined || typeof subject.url === 'string') &&
 		(subject.status === undefined || typeof subject.status === 'string') &&
+		(subject.projectId === undefined || typeof subject.projectId === 'string') &&
 		(subject.labels === undefined ||
 			(Array.isArray(subject.labels) &&
 				subject.labels.every((label) => typeof label === 'string'))) &&
