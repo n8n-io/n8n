@@ -1,0 +1,53 @@
+packages/cli/src/abstract-server.ts
+  s_51905c85750cff::t_44534b479fa614 124
+pnpm-workspace.yaml
+  s_51905c85750cff::t_9c916e20ef0201 335-338
+packages/cli/src/modules/log-streaming.ee/destinations/message-event-bus-destination-sentry.ee.ts
+  s_51905c85750cff::t_b6b87264fcf25b 53-54
+packages/core/src/errors/error-reporter.ts
+  s_51905c85750cff::t_6dd6640193d74f 6
+  s_51905c85750cff::t_e494a5d52e99f1 307-309
+  s_51905c85750cff::t_0fa620ddfe62ec 82-101
+  s_51905c85750cff::t_99728a33fa0abe 56
+  s_51905c85750cff::t_2bc3fe80e72baf 246
+  s_51905c85750cff::t_983566f35e6a6f 263-266
+  s_51905c85750cff::t_9ec617579859fe 293-294,297
+packages/@n8n/task-runner/src/config/sentry-config.ts
+  ai_agent 10-13
+packages/core/src/errors/__tests__/error-reporter.test.ts
+  s_51905c85750cff::t_c8bf2225eb8151 47-50
+  s_51905c85750cff::t_b711ba65c12673 418-437,439,443-481
+  s_51905c85750cff::t_fe87fac6c548cc 4-5
+  s_51905c85750cff::t_7838fd2bff7728 438,440-442
+packages/core/src/observability/tracing/span-sampling.ts
+  s_51905c85750cff::t_c8a4277bbff4e7 63
+  s_51905c85750cff::t_a41f0a400ab9e3 81
+  s_51905c85750cff::t_30424e395ca89f 7
+packages/@n8n/config/src/configs/sentry.config.ts
+  s_51905c85750cff::t_116e5160d33873 30-33
+packages/core/src/observability/tracing/__tests__/span-sampling.test.ts
+  s_51905c85750cff::t_c33bd2f952f91d 72-74,108,129,207,238
+  s_51905c85750cff::t_497236e280a86d 15,23
+packages/cli/src/modules/log-streaming.ee/destinations/__tests__/message-event-bus-destination-sentry.ee.test.ts
+  s_51905c85750cff::t_4ca8b3dce409aa 1,5-6,35-44
+packages/cli/src/task-runners/task-broker/task-broker-server.ts
+  s_51905c85750cff::t_0a23eef725b80d 171
+pnpm-lock.yaml
+  ai_agent 881-882,884-885,887-888,890-891,948,2817,3887,4335,4974,5449,5452,5455,5458,11894,12639-12644,12657-12662,12675-12680,12693-12698,12711-12716,12729-12734,12747-12752,12767-12773,12788-12794,12809-12815,12830-12836,12851-12857,12872-12878,12893-12899,12914-12920,12933-12938,12956-12961,12974-12979,12992-12997,13014-13016,14103-14117,14174-14177,14182-14185,14190-14191,14198-14200,14202-14204,14206-14208,14212-14214,14224-14230,19269-19272,22019-22022,23449-23453,29325,30059,30959-30961,30968-30970,30977-30979,30986-30988,30995-30997,31004-31006,31013-31015,31022-31024,31031-31033,31040-31042,31049-31051,31058-31060,31067-31069,31076-31078,31085-31087,31094-31096,31110-31112,31119-31121,31128-31130,31141-31142,31926-31938,31985-31986,31991,31993,31995,31999,32009,32011-32012,32015-32017,32019,32022-32031,32033,32036-32037,32039,32041-32043,32045-32047,32059,32061-32068,38200-38205,41509-41532,41823,41827-41831,41856,41863-41873,43310
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bab9ad46af0ba83566511d082a1264251679594d",
+  "prompts": {},
+  "sessions": {
+    "s_51905c85750cff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "011d2e03-ed32-4a10-9e34-0553b00a0c1c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}
