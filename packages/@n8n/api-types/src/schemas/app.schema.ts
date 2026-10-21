@@ -43,6 +43,21 @@ export const appVersionSchema = z.object({
 });
 export type AppVersionResponse = z.infer<typeof appVersionSchema>;
 
+export const appBuildResponseSchema = z.object({
+	versionId: z.string().uuid(),
+	status: appBuildStatusSchema,
+	attempts: z.number().int().nonnegative(),
+	statusUpdatedAt: z.string().datetime().nullable(),
+	diagnostics: z
+		.object({
+			stage: z.enum(['source', 'sandbox', 'install', 'build', 'validate', 'store']),
+			message: z.string(),
+			log: z.string(),
+		})
+		.optional(),
+});
+export type AppBuildResponse = z.infer<typeof appBuildResponseSchema>;
+
 export const appListSchema = z.object({
 	data: z.array(appSchema),
 	count: z.number().int().nonnegative(),

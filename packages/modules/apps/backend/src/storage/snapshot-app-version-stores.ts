@@ -10,9 +10,11 @@ import {
 	type NewSourceVersion,
 } from './app-version-stores';
 import { AppArtifactService } from '../app-artifact.service';
+import type { AppBuildAttempt } from '../app-build.types';
 import { appStorageLockSubKey } from '../app-storage-lock';
 import { AppVersionRepository } from '../app-version.repository';
 import { AppRepository } from '../app.repository';
+import { AppsConfig } from '../apps.config';
 
 @Service()
 export class SnapshotAppSourceVersionStore extends AppSourceVersionStore {
@@ -94,11 +96,17 @@ export class SnapshotAppBuildResultStore extends AppBuildResultStore {
 		private readonly artifacts: AppArtifactService,
 		private readonly versions: AppVersionRepository,
 		private readonly locks: DbLockService,
+		private readonly config: AppsConfig,
 	) {
 		super();
 	}
 
-	async recordSuccess(appId: string, versionId: string, files: AppFiles): Promise<void> {
+	async recordSuccess(
+		appId: string,
+		versionId: string,
+		files: AppFiles,
+		attempt: AppBuildAttempt,
+	): Promise<void> {
 		const artifact = await this.artifacts.upload(appId, await this.archives.pack(files, true));
 		try {
 			await this.locks.withLockContext(
@@ -108,7 +116,12 @@ export class SnapshotAppBuildResultStore extends AppBuildResultStore {
 					if (!version || version.appId !== appId)
 						throw new NotFoundError('App version not found.');
 					await this.artifacts.completeUpload(artifact, ctx);
-					if (!(await this.versions.attachBundle(versionId, artifact.id, ctx))) {
+					if (Date.now() >= attempt.startedAt.getTime() + this.config.buildTimeoutMs) {
+						throw new ConflictError('The app build timed out. Retry the build.');
+					}
+					if (
+						!(await this.versions.attachBundle(versionId, artifact.id, attempt.attemptNumber, ctx))
+					) {
 						throw new ConflictError(
 							'This app version cannot accept a bundle. Check its build status.',
 						);

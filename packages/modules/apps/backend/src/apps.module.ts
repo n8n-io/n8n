@@ -8,6 +8,7 @@ export class AppsModule implements ModuleInterface {
 	async init() {
 		await import('./apps.controller.js');
 		await import('./apps-list.controller.js');
+		await import('./app-build.controller.js');
 		const { AppBlobStore } = await import('./storage/app-blob-store.js');
 		await Container.get(AppBlobStore).init();
 		const { AppSourceVersionStore, AppBuildResultStore } = await import(
@@ -23,7 +24,8 @@ export class AppsModule implements ModuleInterface {
 
 	async systemTasks() {
 		const { AppStorageCleanupTask } = await import('./app-storage-cleanup.task.js');
-		return [AppStorageCleanupTask];
+		const { AppBuildReconciliationTask } = await import('./app-build-reconciliation.task.js');
+		return [AppStorageCleanupTask, AppBuildReconciliationTask];
 	}
 
 	async entities() {

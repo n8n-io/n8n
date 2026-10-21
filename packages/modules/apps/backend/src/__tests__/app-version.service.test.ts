@@ -13,6 +13,7 @@ import { AppSourceVersionStore, AppBuildResultStore } from '../storage/app-versi
 const appId = '11111111-1111-4111-8111-111111111111';
 const versionId = '22222222-2222-4222-8222-222222222222';
 const files = new Map([['index.html', Buffer.from('<html/>')]]);
+const attempt = { attemptNumber: 1, startedAt: new Date() };
 
 function createService() {
 	const apps = mock<AppRepository>();
@@ -106,38 +107,37 @@ describe('AppVersionService', () => {
 		expect(sourceVersions.createVersion).not.toHaveBeenCalled();
 	});
 
-	it.each(['succeeded', 'failed'] as const)(
+	it.each(['queued', 'succeeded', 'failed'] as const)(
 		'rejects a bundle for a %s version',
 		async (buildStatus) => {
 			const { service, versions, buildResults, version } = createService();
 			versions.findVersionById.mockResolvedValue({ ...version, buildStatus });
 
-			await expect(service.attachBundle('project', appId, versionId, files)).rejects.toThrow(
-				ConflictError,
-			);
+			await expect(
+				service.attachBundle('project', appId, versionId, files, attempt),
+			).rejects.toThrow(ConflictError);
 
 			expect(buildResults.recordSuccess).not.toHaveBeenCalled();
 		},
 	);
 
-	it.each(['queued', 'running'] as const)(
-		'returns the completed build for a %s version',
-		async (buildStatus) => {
-			const { service, versions, buildResults, version } = createService();
-			const completed = mock<AppVersion>({
-				...version,
-				buildStatus: 'succeeded',
-				bundleArtifactId: 2,
-			});
-			versions.findVersionById.mockResolvedValue({ ...version, buildStatus });
-			buildResults.recordSuccess.mockImplementation(async () => {
-				versions.findVersionById.mockResolvedValue(completed);
-			});
+	it('returns the completed build for a running version', async () => {
+		const { service, versions, buildResults, version } = createService();
+		const completed = mock<AppVersion>({
+			...version,
+			buildStatus: 'succeeded',
+			bundleArtifactId: 2,
+		});
+		versions.findVersionById.mockResolvedValue({ ...version, buildStatus: 'running' });
+		buildResults.recordSuccess.mockImplementation(async () => {
+			versions.findVersionById.mockResolvedValue(completed);
+		});
 
-			expect(await service.attachBundle('project', appId, versionId, files)).toEqual(completed);
-			expect(buildResults.recordSuccess).toHaveBeenCalledWith(appId, versionId, files);
-		},
-	);
+		expect(await service.attachBundle('project', appId, versionId, files, attempt)).toEqual(
+			completed,
+		);
+		expect(buildResults.recordSuccess).toHaveBeenCalledWith(appId, versionId, files, attempt);
+	});
 
 	it('restores files and the label into a new version', async () => {
 		const { service, sourceVersions } = createService();

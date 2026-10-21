@@ -1,10 +1,12 @@
 import { CreateAppDto, ListAppsQueryDto, UpdateAppDto } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { ProjectScopeService } from '@n8n/backend-services';
 import { DbLock, DbLockService, type User } from '@n8n/db';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { appStorageLockSubKey } from '../app-storage-lock';
+import { AppWorkspaceService } from '../app-workspace.service';
 import type { App } from '../app.entity';
 import { AppRepository } from '../app.repository';
 import { AppsService } from '../apps.service';
@@ -13,9 +15,11 @@ function createService() {
 	const appRepository = mock<AppRepository>();
 	const projectScopeService = mock<ProjectScopeService>();
 	const locks = mock<DbLockService>();
+	const workspaces = mock<AppWorkspaceService>();
+	const logger = mock<Logger>();
 	locks.withLockContext.mockImplementation(async (_key, fn) => await fn({}));
-	const service = new AppsService(appRepository, projectScopeService, locks);
-	return { service, appRepository, projectScopeService, locks };
+	const service = new AppsService(appRepository, projectScopeService, locks, workspaces, logger);
+	return { service, appRepository, projectScopeService, locks, workspaces, logger };
 }
 
 describe('AppsService', () => {
@@ -136,7 +140,7 @@ describe('AppsService', () => {
 	it.each(['getApp', 'updateApp', 'deleteApp'] as const)(
 		'returns not found for a malformed app ID in %s',
 		async (method) => {
-			const { service, appRepository } = createService();
+			const { service, appRepository, workspaces } = createService();
 
 			await expect(service[method]('project-1', 'app-1', { name: 'Updated app' })).rejects.toThrow(
 				NotFoundError,
@@ -144,23 +148,42 @@ describe('AppsService', () => {
 			expect(appRepository.findInProject).not.toHaveBeenCalled();
 			expect(appRepository.updateApp).not.toHaveBeenCalled();
 			expect(appRepository.deleteInProject).not.toHaveBeenCalled();
+			expect(workspaces.delete).not.toHaveBeenCalled();
 		},
 	);
 
 	it.each([1, 0])('handles app deletion when %i rows match', async (affected) => {
-		const { service, appRepository, locks } = createService();
+		const { service, appRepository, locks, workspaces } = createService();
 		const appId = '11111111-1111-4111-8111-111111111111';
 		appRepository.deleteInProject.mockResolvedValue(affected === 1);
+		locks.withLockContext.mockImplementation(async (_key, fn) => {
+			const result = await fn({});
+			expect(workspaces.delete).not.toHaveBeenCalled();
+			return result;
+		});
 
 		const deletion = service.deleteApp('project-1', appId);
 		if (affected) {
 			await expect(deletion).resolves.toBeUndefined();
+			expect(workspaces.delete).toHaveBeenCalledExactlyOnceWith(appId);
 		} else {
 			await expect(deletion).rejects.toThrow(NotFoundError);
+			expect(workspaces.delete).not.toHaveBeenCalled();
 		}
 		expect(appRepository.deleteInProject).toHaveBeenCalledWith('project-1', appId, {});
 		expect(locks.withLockContext).toHaveBeenCalledWith(DbLock.APPS_STORAGE, expect.any(Function), {
 			subKey: appStorageLockSubKey(appId),
 		});
+	});
+
+	it('completes app deletion when sandbox teardown fails', async () => {
+		const { service, appRepository, workspaces, logger } = createService();
+		const appId = '11111111-1111-4111-8111-111111111111';
+		const error = new Error('Provider unavailable.');
+		appRepository.deleteInProject.mockResolvedValue(true);
+		workspaces.delete.mockRejectedValue(error);
+
+		await expect(service.deleteApp('project-1', appId)).resolves.toBeUndefined();
+		expect(logger.warn).toHaveBeenCalledWith('Could not delete app sandbox.', { appId, error });
 	});
 });

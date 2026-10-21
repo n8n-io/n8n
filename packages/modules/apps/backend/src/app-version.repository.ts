@@ -7,8 +7,9 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
-import { DataSource, In, IsNull } from '@n8n/typeorm';
+import { DataSource, In, IsNull, LessThan } from '@n8n/typeorm';
 
+import type { AppBuildAttempt } from './app-build.types';
 import { AppVersion } from './app-version.entity';
 
 @Service()
@@ -62,6 +63,7 @@ export class AppVersionRepository extends BaseRepository<AppVersion> {
 	async attachBundle(
 		versionId: string,
 		artifactId: number,
+		attemptNumber: number,
 		ctx: OperationContext,
 	): Promise<boolean> {
 		const result = await this.managerFor(ctx).update(
@@ -69,11 +71,80 @@ export class AppVersionRepository extends BaseRepository<AppVersion> {
 			{
 				id: versionId,
 				bundleArtifactId: IsNull(),
-				buildStatus: In(['queued', 'running']),
+				buildStatus: 'running',
+				buildAttempts: attemptNumber,
 			},
-			{ bundleArtifactId: artifactId, buildStatus: 'succeeded' },
+			{ bundleArtifactId: artifactId, buildStatus: 'succeeded', buildStatusUpdatedAt: new Date() },
 		);
 		return result.affected === 1;
+	}
+
+	async claimBuild(
+		appId: string,
+		versionId: string,
+		expected: 'queued' | 'failed' | number,
+		ctx: OperationContext,
+	): Promise<AppBuildAttempt | null> {
+		const manager = this.managerFor(ctx);
+		const status = typeof expected === 'number' ? 'running' : expected;
+		const version = await manager.findOneBy(AppVersion, {
+			id: versionId,
+			appId,
+			buildStatus: status,
+		});
+		if (!version || version.bundleArtifactId !== null) return null;
+		if (typeof expected === 'number' && version.buildAttempts !== expected) return null;
+		const attempt = {
+			attemptNumber: version.buildAttempts + 1,
+			startedAt: new Date(),
+		};
+		const result = await manager.update(
+			AppVersion,
+			{
+				id: versionId,
+				appId,
+				buildStatus: status,
+				buildAttempts: version.buildAttempts,
+			},
+			{
+				buildStatus: 'running',
+				buildAttempts: attempt.attemptNumber,
+				buildStatusUpdatedAt: attempt.startedAt,
+			},
+		);
+		return result.affected === 1 ? attempt : null;
+	}
+
+	async failBuild(
+		versionId: string,
+		attemptNumber: number,
+		ctx: OperationContext,
+	): Promise<AppVersion | null> {
+		const manager = this.managerFor(ctx);
+		const result = await manager.update(
+			AppVersion,
+			{
+				id: versionId,
+				buildStatus: 'running',
+				buildAttempts: attemptNumber,
+			},
+			{ buildStatus: 'failed', buildStatusUpdatedAt: new Date() },
+		);
+		return result.affected === 1 ? await manager.findOneBy(AppVersion, { id: versionId }) : null;
+	}
+
+	async failInterruptedBuilds(queuedBefore: Date, runningBefore: Date): Promise<void> {
+		const manager = this.managerFor({});
+		await manager.update(
+			AppVersion,
+			{ buildStatus: 'queued', createdAt: LessThan(queuedBefore) },
+			{ buildStatus: 'failed', buildStatusUpdatedAt: new Date() },
+		);
+		await manager.update(
+			AppVersion,
+			{ buildStatus: 'running', buildStatusUpdatedAt: LessThan(runningBefore) },
+			{ buildStatus: 'failed', buildStatusUpdatedAt: new Date() },
+		);
 	}
 
 	async setLabel(

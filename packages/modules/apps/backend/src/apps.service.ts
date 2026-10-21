@@ -6,12 +6,14 @@ import {
 	type AppListResponse,
 	type ListAppsQueryDto,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { ProjectScopeService } from '@n8n/backend-services';
 import { DbLock, DbLockService, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import { appStorageLockSubKey } from './app-storage-lock';
+import { AppWorkspaceService } from './app-workspace.service';
 import type { App } from './app.entity';
 import { AppRepository } from './app.repository';
 
@@ -35,6 +37,8 @@ export class AppsService {
 		private readonly appRepository: AppRepository,
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly locks: DbLockService,
+		private readonly workspaces: AppWorkspaceService,
+		private readonly logger: Logger,
 	) {}
 
 	async createApp(projectId: string, dto: CreateAppDto): Promise<AppResponse> {
@@ -80,6 +84,11 @@ export class AppsService {
 		);
 		if (!deleted) {
 			throw new NotFoundError('App not found');
+		}
+		try {
+			await this.workspaces.delete(appId);
+		} catch (error) {
+			this.logger.warn('Could not delete app sandbox.', { appId, error });
 		}
 	}
 

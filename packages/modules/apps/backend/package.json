@@ -35,6 +35,7 @@
     "test:dev": "vitest --silent=false"
   },
   "dependencies": {
+    "@n8n/agents": "workspace:*",
     "@n8n/api-types": "workspace:*",
     "@n8n/backend-common": "workspace:*",
     "@n8n/backend-services": "workspace:*",
@@ -45,6 +46,7 @@
     "@n8n/di": "workspace:*",
     "@n8n/errors": "workspace:*",
     "@n8n/typeorm": "workspace:*",
+    "@n8n/utils": "workspace:*",
     "n8n-core": "workspace:*",
     "tar": "catalog:",
     "uuid": "catalog:"
