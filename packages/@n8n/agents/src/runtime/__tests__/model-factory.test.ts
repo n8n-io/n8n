@@ -1,9 +1,11 @@
 import { createGoogleVertex } from '@ai-sdk/google-vertex';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import type { LanguageModel } from 'ai';
+import { ClientOAuth2 } from '@n8n/client-oauth2';
 
 import {
 	createEmbeddingModel,
+	createEntraTokenProvider,
 	createModel,
 	supportsSplitSystemMessages,
 } from '../model/model-factory';
@@ -991,6 +993,26 @@ describe('createModel', () => {
 			const token = await model.tokenProvider();
 			expect(token).toBe('minted-bearer');
 			expect(mockClientOAuth2.credentials.getToken).toHaveBeenCalledTimes(1);
+		});
+
+		it('sends the requested audience in the token request resource claim', async () => {
+			// The Foundry deployments list needs its own audience, so the caller
+			// passes it explicitly; without it the inference audience is requested.
+			const provider = createEntraTokenProvider(entraCreds, 'https://ai.azure.com');
+			await expect(provider()).resolves.toBe('minted-bearer');
+			expect(vi.mocked(ClientOAuth2)).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					additionalBodyProperties: { resource: 'https://ai.azure.com' },
+				}),
+			);
+
+			const defaultAudienceProvider = createEntraTokenProvider(entraCreds);
+			await expect(defaultAudienceProvider()).resolves.toBe('minted-bearer');
+			expect(vi.mocked(ClientOAuth2)).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					additionalBodyProperties: { resource: 'https://cognitiveservices.azure.com/' },
+				}),
+			);
 		});
 
 		it('wraps fetch with a Bearer header for Foundry Entra', async () => {

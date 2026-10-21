@@ -322,7 +322,7 @@ export type {
 	VectorFilter,
 } from './types';
 
-export { createModel } from './runtime/model/model-factory';
+export { createModel, createEntraTokenProvider } from './runtime/model/model-factory';
 export type { FetchFn, EmbeddingProviderOptions } from './runtime/model/model-factory';
 export {
 	hasAzureApiKey,
