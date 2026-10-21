@@ -54,7 +54,7 @@ const AGENT_FILTER_LIMIT = 250;
 
 /** Empty means no filter, so the filters dropdown counts only the set ones. */
 type SkillFilters = {
-	/** A scope kind, or `project:<id>` for one project and its agents. */
+	/** A scope kind. */
 	scope: string;
 	agentId: string;
 	createdById: string;
@@ -74,7 +74,7 @@ const skillsStore = useSkillsStore();
 const rootStore = useRootStore();
 const telemetry = useTelemetry();
 const { showError, showMessage } = useToast();
-const { scopeDisplay, projectLabel } = useSkillScopeDisplay();
+const { scopeDisplay } = useSkillScopeDisplay();
 
 const tableOptions = ref<TableOptions>({
 	page: 0,
@@ -98,20 +98,15 @@ const showEmptyState = computed(
 	() => !skillsStore.loading && !loadFailed.value && !isFiltered.value && skillsStore.count === 0,
 );
 
-/** The scope kinds, then each project the user can see, which also covers its agent skills. */
-const scopeFilterOptions = computed(() => [
-	...(
+const scopeFilterOptions = computed(() =>
+	(
 		[
 			['instance', 'settings.context.skills.filter.instance'],
 			['project', 'settings.context.skills.filter.project'],
 			['agent', 'settings.context.skills.filter.agent'],
 		] as const
 	).map(([value, key]) => ({ value, label: i18n.baseText(key) })),
-	...projectsStore.availableProjects.map((project) => ({
-		value: `${PROJECT_SCOPE_PREFIX}${project.id}`,
-		label: projectLabel(project.id, project.name, project.type),
-	})),
-]);
+);
 
 /** The name of a creator, or the email when the name is unknown. */
 function creatorLabel(creator: SkillUserDto): string {
@@ -119,10 +114,7 @@ function creatorLabel(creator: SkillUserDto): string {
 	return name || creator.email || creator.id;
 }
 
-function scopeQuery(scope: string): Pick<SkillListQuery, 'scope' | 'projectId'> {
-	if (scope.startsWith(PROJECT_SCOPE_PREFIX)) {
-		return { projectId: scope.slice(PROJECT_SCOPE_PREFIX.length) };
-	}
+function scopeQuery(scope: string): Pick<SkillListQuery, 'scope'> {
 	return scope === 'instance' || scope === 'project' || scope === 'agent' ? { scope } : {};
 }
 
@@ -231,11 +223,6 @@ async function resetFilters() {
 /** Options for the filters. Each one is optional, so a failed read leaves its list empty. */
 async function loadFilterOptions() {
 	await Promise.all([
-		(async () => {
-			await projectsStore.getMyProjects();
-			// Admins may filter by any project, not only the ones they are members of.
-			if (projectsStore.globalProjectPermissions.list) await projectsStore.getAllProjects();
-		})().catch(() => undefined),
 		listAgentsPageGlobal(rootStore.restApiContext, {
 			take: AGENT_FILTER_LIMIT,
 			sortBy: 'name:asc',
@@ -470,7 +457,11 @@ async function goBack() {
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.context.skills.title'));
-	await Promise.all([load(), loadFilterOptions()]);
+	await Promise.all([
+		load(),
+		projectsStore.getMyProjects().catch(() => undefined),
+		loadFilterOptions(),
+	]);
 	// Once for the visit, not once for each page. A failed load reports nothing, so a zero
 	// here is an empty list and never a broken one.
 	if (!loadFailed.value) {

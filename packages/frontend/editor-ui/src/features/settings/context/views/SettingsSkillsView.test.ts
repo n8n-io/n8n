@@ -252,35 +252,19 @@ describe('SettingsSkillsView', () => {
 		expect(view.getByTestId('resources-list-filters-count')).toHaveTextContent('1');
 	});
 
-	it('filters by one project the user can see', async () => {
+	it('offers only the scope kinds in the scope filter, not single projects', async () => {
 		setPermissions({ projects: [{ id: 'team-1', name: 'Marketing', type: 'team', scopes: [] }] });
-		mockedStore(useProjectsStore).availableProjects = mockedStore(useProjectsStore)
-			.myProjects as never;
 		const view = renderView();
 		await new Promise(process.nextTick);
 
-		await pickFilter(view, 'skills-filter-scope', 'Marketing');
+		await userEvent.click(view.getByTestId('resources-list-filters-trigger'));
+		const items = await getDropdownItems(await view.findByTestId('skills-filter-scope'));
 
-		await waitFor(() =>
-			expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith(
-				expect.objectContaining({ projectId: 'team-1' }),
-			),
-		);
-		expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith(
-			expect.not.objectContaining({ scope: expect.anything() }),
-		);
-	});
-
-	it('loads every project for the project filter when the user may list them all', async () => {
-		mockedStore(useUsersStore).currentUser = mock<IUser>({
-			id: 'user-1',
-			globalScopes: ['project:list'],
-		});
-
-		renderView();
-		await new Promise(process.nextTick);
-
-		expect(mockedStore(useProjectsStore).getAllProjects).toHaveBeenCalled();
+		expect([...items].map((item) => item.textContent?.trim())).toEqual([
+			'Global',
+			'Projects',
+			'Agents',
+		]);
 	});
 
 	it('combines the agent and creator filters with the search, from the first page', async () => {
