@@ -1,6 +1,6 @@
 import { mock } from 'vitest-mock-extended';
 import type { INode, IWebhookFunctions } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import {
 	fetchAllTeams,
@@ -8,6 +8,7 @@ import {
 	createSubscription,
 	createSubscriptions,
 	deleteSubscription,
+	deleteSubscriptions,
 	generateClientState,
 	getResourcePath,
 	handleLifecycleNotifications,
@@ -820,6 +821,72 @@ describe('Microsoft Teams Helpers Functions', () => {
 				);
 				expect(ctx.logger.warn).not.toHaveBeenCalled();
 				expect(ctx.logger.debug).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('deleteSubscriptions', () => {
+			it('deletes each id once, in order, and treats 404 as done', async () => {
+				const { ctx } = arrange();
+				let releaseFirst: (value: unknown) => void = () => {};
+				(microsoftApiRequest.call as Mock).mockImplementation(
+					async (_ctx: unknown, _method: string, path: string) => {
+						if (path === '/v1.0/subscriptions/sub1') {
+							return await new Promise((resolve) => {
+								releaseFirst = resolve;
+							});
+						}
+						throw new NodeApiError(ctx.getNode(), { message: 'Not found', httpCode: '404' });
+					},
+				);
+
+				const pending = deleteSubscriptions.call(ctx, ['sub1', 'sub1', 'sub2']);
+				await new Promise((resolve) => setImmediate(resolve));
+				expect(calls('DELETE').map((call) => call[2])).toEqual(['/v1.0/subscriptions/sub1']);
+				releaseFirst({});
+
+				await expect(pending).resolves.toEqual([]);
+				expect(calls('DELETE').map((call) => call[2])).toEqual([
+					'/v1.0/subscriptions/sub1',
+					'/v1.0/subscriptions/sub2',
+				]);
+				expect(ctx.logger.warn).not.toHaveBeenCalled();
+			});
+
+			it.each([
+				[
+					'a 403',
+					(node: INode) => new NodeApiError(node, { message: 'Forbidden', httpCode: '403' }),
+				],
+				['a NodeOperationError', (node: INode) => new NodeOperationError(node, 'Refused')],
+			])('warns and reports a failure when the request throws %s', async (_label, makeError) => {
+				const { ctx } = arrange();
+				const error = makeError(ctx.getNode());
+				(microsoftApiRequest.call as Mock).mockRejectedValue(error);
+
+				const result = await deleteSubscriptions.call(ctx, ['sub1']);
+
+				expect(result).toHaveLength(1);
+				expect(result[0]).toMatchObject({ step: 'delete', id: 'sub1' });
+				expect(result[0].error).toBe(error);
+				expect(ctx.logger.warn).toHaveBeenCalledTimes(1);
+				expect(ctx.logger.warn).toHaveBeenCalledWith(
+					'Microsoft Teams Trigger: failed to remove subscription',
+					expect.objectContaining({ subscriptionId: 'sub1', error: expect.any(String) }),
+				);
+			});
+
+			it('warns and reports nothing for an id that fails validation', async () => {
+				const { ctx } = arrange();
+
+				const result = await deleteSubscriptions.call(ctx, ['sub1/../x']);
+
+				expect(result).toEqual([]);
+				expect(microsoftApiRequest.call).not.toHaveBeenCalled();
+				expect(ctx.logger.warn).toHaveBeenCalledTimes(1);
+				expect(ctx.logger.warn).toHaveBeenCalledWith(
+					'Microsoft Teams Trigger: failed to remove subscription',
+					expect.objectContaining({ subscriptionId: 'sub1/../x', error: 'The ID is not valid' }),
+				);
 			});
 		});
 

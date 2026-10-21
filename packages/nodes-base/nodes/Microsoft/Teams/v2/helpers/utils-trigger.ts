@@ -61,6 +61,50 @@ export function getStoredSecret(webhookData: IDataObject): string | undefined {
 	return typeof secret === 'string' && secret.length > 0 ? secret : undefined;
 }
 
+/** The stored subscription ids, strings only. */
+export function getStoredIds(webhookData: IDataObject): string[] {
+	const rawIds: unknown[] = Array.isArray(webhookData.subscriptionIds)
+		? webhookData.subscriptionIds
+		: [];
+	return rawIds.filter((id): id is string => typeof id === 'string');
+}
+
+/**
+ * Deletes every id once, one after the other. Never throws: a 404 counts as done, and
+ * every other refusal is warned and reported, so the caller decides what it means.
+ */
+export async function deleteSubscriptions(
+	this: IHookFunctions | IWebhookFunctions,
+	ids: Iterable<string>,
+): Promise<SubscriptionFailure[]> {
+	const failures: SubscriptionFailure[] = [];
+	for (const id of new Set(ids)) {
+		let path: string;
+		try {
+			path = buildTeamsPath.call(this, ['/v1.0/subscriptions/', { id }]);
+		} catch (error) {
+			// No Graph call can ever succeed for this id, so it is not reported.
+			logTrigger.call(this, 'warn', 'failed to remove subscription', {
+				subscriptionId: id,
+				error: ensureError(error).message,
+			});
+			continue;
+		}
+		try {
+			await microsoftApiRequest.call(this, 'DELETE', path);
+		} catch (error) {
+			if (error instanceof NodeApiError && error.httpCode === '404') continue;
+			const failure = ensureError(error);
+			logTrigger.call(this, 'warn', 'failed to remove subscription', {
+				subscriptionId: id,
+				error: failure.message,
+			});
+			failures.push({ step: 'delete', id, error: failure });
+		}
+	}
+	return failures;
+}
+
 /** Deletes one subscription. A `404` counts as done, for example after it expired. */
 export async function deleteSubscription(
 	this: IHookFunctions | IWebhookFunctions,
