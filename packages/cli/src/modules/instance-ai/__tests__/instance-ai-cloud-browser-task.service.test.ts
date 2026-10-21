@@ -11,6 +11,7 @@ import { mock } from 'vitest-mock-extended';
 import type { BrowserDomainGate } from '../browser/browser.helpers';
 import type { CloudBrowserLocalMcpServer } from '../browser/cloud-browser-local-mcp-server';
 import type { InstanceAiCloudBrowserService } from '../browser/instance-ai-cloud-browser.service';
+import type { InstanceAiCreditService } from '../instance-ai-credit.service';
 import {
 	InstanceAiCloudBrowserTaskService,
 	type CloudBrowserRunOptions,
@@ -28,6 +29,11 @@ describe('InstanceAiCloudBrowserTaskService', () => {
 		{ name: 'password', displayName: 'Password', type: 'string', required: true },
 	];
 
+	const usage = [{ model: 'claude-sonnet-4-5' }] as Awaited<
+		ReturnType<typeof runCloudBrowserAgent>
+	>['usage'];
+	const task = { title: 'Find the price', goal: 'Find the price of the Pro plan' };
+
 	function setup() {
 		const backgroundTaskManager = mock<BackgroundTaskManager>();
 		backgroundTaskManager.spawn.mockReturnValue({ status: 'started' } as ReturnType<
@@ -40,8 +46,9 @@ describe('InstanceAiCloudBrowserTaskService', () => {
 			summary: 'Created the credential',
 			status: 'completed',
 			agentRunId: 'agent-run-1',
-			usage: [],
+			usage,
 		} as Awaited<ReturnType<typeof runCloudBrowserAgent>>);
+		const creditService = mock<InstanceAiCreditService>();
 
 		const service = new InstanceAiCloudBrowserTaskService(
 			mock<InstanceAiCloudBrowserTaskServiceOptions>({
@@ -49,6 +56,7 @@ describe('InstanceAiCloudBrowserTaskService', () => {
 				logger: mock<Logger>(),
 				backgroundTaskManager,
 				cloudBrowserService,
+				creditService,
 				agentMemory: { patchThread: vi.fn(async () => {}) },
 			}),
 		);
@@ -72,7 +80,7 @@ describe('InstanceAiCloudBrowserTaskService', () => {
 				{},
 			);
 
-		return { service, backgroundTaskManager, run, runSpawnedTask };
+		return { service, backgroundTaskManager, creditService, run, runSpawnedTask };
 	}
 
 	describe('startTask', () => {
@@ -139,6 +147,58 @@ describe('InstanceAiCloudBrowserTaskService', () => {
 				message: expect.stringContaining('not available'),
 			});
 			expect(backgroundTaskManager.spawn).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('billing', () => {
+		it("charges the agent's usage once when the task ends", async () => {
+			const { service, creditService, run, runSpawnedTask } = setup();
+
+			await service.startTask(task, run);
+			await runSpawnedTask();
+
+			expect(creditService.claimRunUsage).toHaveBeenCalledTimes(1);
+			expect(creditService.claimRunUsage).toHaveBeenCalledWith(
+				run.user,
+				'thread-1',
+				'agent-run-1',
+				usage,
+				'completed',
+			);
+		});
+
+		it('charges a stopped task with its status', async () => {
+			const { service, creditService, run, runSpawnedTask } = setup();
+			vi.mocked(runCloudBrowserAgent).mockResolvedValue({
+				outcome: 'cancelled',
+				summary: 'The task was stopped.',
+				status: 'cancelled',
+				agentRunId: 'agent-run-1',
+				usage,
+			} as Awaited<ReturnType<typeof runCloudBrowserAgent>>);
+
+			await service.startTask(task, run);
+			await runSpawnedTask();
+
+			expect(creditService.claimRunUsage).toHaveBeenCalledWith(
+				run.user,
+				'thread-1',
+				'agent-run-1',
+				usage,
+				'cancelled',
+			);
+		});
+
+		it('finishes the task when the charge fails', async () => {
+			const { service, creditService, run, runSpawnedTask } = setup();
+			creditService.claimRunUsage.mockRejectedValue(new Error('Quota is negative'));
+
+			await service.startTask(task, run);
+
+			await expect(runSpawnedTask()).resolves.toEqual({
+				text: 'Created the credential',
+				outcome: { outcome: 'succeeded' },
+			});
 		});
 	});
 });

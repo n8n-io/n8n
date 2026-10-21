@@ -7,6 +7,7 @@ import {
 	runCloudBrowserAgent,
 	type BackgroundTaskManager,
 	type CloudBrowserAgentBrief,
+	type CloudBrowserAgentResult,
 	type CloudBrowserCredentialToCreate,
 	type CloudBrowserTaskInput,
 	type CloudBrowserTaskRecord,
@@ -25,6 +26,7 @@ import { nanoid } from 'nanoid';
 
 import type { BrowserDomainGate } from './browser.helpers';
 import type { InstanceAiCloudBrowserService } from './instance-ai-cloud-browser.service';
+import type { InstanceAiCreditService } from '../instance-ai-credit.service';
 import type { SuspendedThreadPersistenceService } from '../suspended-thread-persistence.service';
 import {
 	AUTO_FOLLOW_UP_MESSAGE,
@@ -37,6 +39,8 @@ export interface InstanceAiCloudBrowserTaskServiceOptions {
 	eventBus: InstanceAiEventBus;
 	backgroundTaskManager: BackgroundTaskManager;
 	cloudBrowserService: InstanceAiCloudBrowserService;
+	/** Charges the agent's model usage to the user's AI Assistant credits. */
+	creditService: Pick<InstanceAiCreditService, 'claimRunUsage'>;
 	/** Keeps the thread's task records, so a result that ends mid-run waits for the next run. */
 	agentMemory: PatchableThreadMemory;
 	/** Holds a card's resolver until the answer endpoint resolves it. */
@@ -209,6 +213,32 @@ export class InstanceAiCloudBrowserTaskService {
 	}
 
 	/**
+	 * Charges the agent's usage once. The agent resumes in this process after each card, so its
+	 * usage covers the whole task, also when the task is stopped. Billing never fails the task.
+	 */
+	private async claimUsage(
+		run: CloudBrowserRunOptions,
+		taskId: string,
+		result: Pick<CloudBrowserAgentResult, 'agentRunId' | 'usage' | 'status'>,
+	): Promise<void> {
+		try {
+			await this.options.creditService.claimRunUsage(
+				run.user,
+				run.threadId,
+				result.agentRunId || taskId,
+				result.usage,
+				result.status,
+			);
+		} catch (error) {
+			this.options.logger.error('Failed to charge the cloud browser task usage', {
+				threadId: run.threadId,
+				taskId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	/**
 	 * The task's background work: its own browser server, the agent, and the record of how it
 	 * ended. The server is released when the agent ends, however it ends.
 	 */
@@ -247,6 +277,7 @@ export class InstanceAiCloudBrowserTaskService {
 					streamOptions: run.modelStreamStallOptions,
 					tracing: run.tracing,
 				});
+				await this.claimUsage(run, taskId, result);
 				await this.taskStore.markFinished(threadId, taskId, result);
 				return { text: result.summary, outcome: { outcome: result.outcome } };
 			} finally {

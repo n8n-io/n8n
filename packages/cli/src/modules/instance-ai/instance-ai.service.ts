@@ -971,6 +971,7 @@ export class InstanceAiService {
 			eventBus: this.eventBus,
 			backgroundTaskManager: this.backgroundTasks,
 			cloudBrowserService: this.cloudBrowserService,
+			creditService: this.creditService,
 			agentMemory: this.agentMemory,
 			runState: this.runState,
 			suspendedThreads: this.suspendedThreads,
