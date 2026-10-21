@@ -530,25 +530,23 @@ test.describe(
 			// Test search for partial name match
 			await n8n.dataTableDetails.search('Alice');
 			await expect(n8n.dataTableDetails.getDataRows()).toHaveCount(1);
-			const aliceValue = await n8n.dataTableDetails.getCellValue(0, nameColumn, 'string');
-			expect(aliceValue).toContain('Alice Johnson');
+			await expect(n8n.dataTableDetails.getCell(0, nameColumn)).toContainText('Alice Johnson');
 
 			// Test search for last name
 			await n8n.dataTableDetails.search('Smith');
 			await expect(n8n.dataTableDetails.getDataRows()).toHaveCount(1);
-			const bobValue = await n8n.dataTableDetails.getCellValue(0, nameColumn, 'string');
-			expect(bobValue).toContain('Bob Smith');
+			await expect(n8n.dataTableDetails.getCell(0, nameColumn)).toContainText('Bob Smith');
 
 			// Test search across all columns (search by age)
 			await n8n.dataTableDetails.search('30');
 			await expect(n8n.dataTableDetails.getDataRows()).toHaveCount(1);
-			const bobAgeValue = await n8n.dataTableDetails.getCellValue(0, ageColumn, 'number');
-			expect(bobAgeValue).toContain('30');
+			await expect(n8n.dataTableDetails.getCell(0, ageColumn)).toContainText('30');
 
 			// Test search with multiple results
 			await n8n.dataTableDetails.search('a');
-			const multipleResultsCount = await n8n.dataTableDetails.getDataRows().count();
-			expect(multipleResultsCount).toBeGreaterThan(1);
+			await expect
+				.poll(async () => await n8n.dataTableDetails.getDataRows().count())
+				.toBeGreaterThan(1);
 
 			// Clear search and verify all rows are shown
 			await n8n.dataTableDetails.clearSearch();
@@ -557,8 +555,7 @@ test.describe(
 			// Test case-insensitive search
 			await n8n.dataTableDetails.search('ALICE');
 			await expect(n8n.dataTableDetails.getDataRows()).toHaveCount(1);
-			const aliceCaseValue = await n8n.dataTableDetails.getCellValue(0, nameColumn, 'string');
-			expect(aliceCaseValue).toContain('Alice Johnson');
+			await expect(n8n.dataTableDetails.getCell(0, nameColumn)).toContainText('Alice Johnson');
 
 			// Clear search for next test
 			await n8n.dataTableDetails.clearSearch();
@@ -568,8 +565,7 @@ test.describe(
 			await n8n.dataTableDetails.setNumberFilter(COLUMN_NAMES.age, '29', 'greaterThan');
 			await n8n.dataTableDetails.search('Adams');
 			await expect(n8n.dataTableDetails.getDataRows()).toHaveCount(1);
-			const adamValue = await n8n.dataTableDetails.getCellValue(0, nameColumn, 'string');
-			expect(adamValue).toContain('Eve Adams');
+			await expect(n8n.dataTableDetails.getCell(0, nameColumn)).toContainText('Eve Adams');
 		});
 	},
 );
