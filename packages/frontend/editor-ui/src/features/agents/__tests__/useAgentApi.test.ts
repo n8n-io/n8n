@@ -5,6 +5,7 @@ import { getFullApiResponse, makeRestApiRequest, request } from '@n8n/rest-api-c
 import {
 	cancelAgentChatExecution,
 	cancelAgentChatRun,
+	createAgent,
 	deleteN8nChatThread,
 	getAgentBackgroundJobs,
 	getAgentBudgetSpend,
@@ -486,6 +487,28 @@ describe('useAgentApi', () => {
 			vi.mocked(request).mockResolvedValueOnce({ data: [], nextCursor: 123 });
 
 			await expect(listN8nChatThreads(restApiContext, { limit: 20 })).rejects.toThrow();
+		});
+	});
+
+	describe('createAgent', () => {
+		it('posts the initial config and reserved agent id', async () => {
+			const config: AgentJsonConfig = {
+				name: 'Support Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Triage tickets.',
+			};
+
+			await createAgent(restApiContext, 'project-1', 'Support Agent', {
+				id: 'agent-2',
+				config,
+			});
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'POST',
+				'/projects/project-1/agents/v2',
+				{ name: 'Support Agent', id: 'agent-2', config },
+			);
 		});
 	});
 

@@ -13,8 +13,9 @@ import { createServer, Response, type Request } from 'miragejs';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { render, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { waitFor } from '@testing-library/vue';
+import { defineComponent } from 'vue';
 import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants/modals';
 import type * as PromotionsApi from '../promotions.api';
 
@@ -67,13 +68,12 @@ const mockChanges = [
 /** The endpoint wraps the rows with the source and commit they were read from. */
 const changesBody = (
 	changes: unknown[],
-	source = { configId: 'config-1', branchName: 'main' },
+	source = { environmentId: 'config-1', branchName: 'main' },
 ) => ({ commitSha: 'a'.repeat(40), source, changes });
 
 const promoteResult = (branchName = 'main'): PromotePackageResultDto =>
 	({
-		connectionId: 'connection-1',
-		configId: 'config-promote',
+		environmentId: 'config-promote',
 		counts: {
 			workflows: 2,
 			folders: 0,
@@ -211,7 +211,7 @@ describe('PromotionSelectModal', () => {
 		);
 		expect(showMessage).toHaveBeenCalledWith({
 			title: 'Changes promoted',
-			message: 'Changes have been pushed to release/main.',
+			message: 'Pushed to release/main.',
 			type: 'success',
 		});
 		expect(emitSpy).toHaveBeenCalledWith('promoted', { projectId: 'project-1' });
@@ -220,10 +220,15 @@ describe('PromotionSelectModal', () => {
 		emitSpy.mockRestore();
 	});
 
-	it('should say a new branch when promote created a promotion branch', async () => {
-		api.promoteProjectSelection.mockResolvedValueOnce(
-			promoteResult('n8n-promotion/2026-01-01T00-00-00-000Z'),
-		);
+	it('should keep the toast open and link the merge request', async () => {
+		api.promoteProjectSelection.mockResolvedValueOnce({
+			...promoteResult('n8n-promotion/2026-01-01T00-00-00-000Z'),
+			review: {
+				reviewId: 'review-1',
+				number: 3,
+				webUrl: 'https://gitlab.example/mr/3',
+			},
+		});
 		const { findAllByTestId, findByTestId } = renderComponent({
 			pinia,
 			props: {
@@ -238,10 +243,51 @@ describe('PromotionSelectModal', () => {
 		await waitFor(() =>
 			expect(showMessage).toHaveBeenCalledWith(
 				expect.objectContaining({
-					message: 'Changes have been pushed to a new branch.',
+					title: 'Changes promoted',
+					type: 'success',
+					duration: 0,
 				}),
 			),
 		);
+		const message = showMessage.mock.calls[0]?.[0].message;
+		const toast = render(defineComponent({ render: () => message }));
+		const link = toast.getByRole('link', { name: 'View merge request' });
+		expect(link).toHaveAttribute('href', 'https://gitlab.example/mr/3');
+		expect(link).toHaveAttribute('target', '_blank');
+		expect(toast.queryByText(/Pushed to/)).not.toBeInTheDocument();
+	});
+
+	it('should use a warning toast when the promote has a warning', async () => {
+		api.promoteProjectSelection.mockResolvedValueOnce({
+			...promoteResult('n8n-promotion/2026-01-01T00-00-00-000Z'),
+			warnings: [{ message: 'No merge request was opened.' }],
+		});
+		const { findAllByTestId, findByTestId } = renderComponent({
+			pinia,
+			props: {
+				modalName: PROMOTION_SELECT_MODAL_KEY,
+				data: { projectId: 'project-1', direction: 'promote' },
+			},
+		});
+
+		await userEvent.click((await findAllByTestId('promotion-change-row'))[0]);
+		await userEvent.click(await findByTestId('promotion-submit'));
+
+		await waitFor(() =>
+			expect(showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					title: 'Changes promoted',
+					type: 'warning',
+					duration: 0,
+				}),
+			),
+		);
+		const message = showMessage.mock.calls[0]?.[0].message;
+		const toast = render(defineComponent({ render: () => message }));
+		expect(
+			toast.getByText('Pushed to n8n-promotion/2026-01-01T00-00-00-000Z.'),
+		).toBeInTheDocument();
+		expect(toast.getByText('No merge request was opened.')).toBeInTheDocument();
 	});
 
 	it('should show an error and keep the selection when promote fails', async () => {
@@ -431,8 +477,7 @@ describe('PromotionSelectModal', () => {
 		const publishing = { published: 2, unpublished: 0, unchanged: 0, blocked: 0, failed: 0 };
 		const applyPackage = vi.fn((_schema: unknown, request: Request) => ({
 			receivedBody: JSON.parse(request.requestBody),
-			connectionId: 'connection-1',
-			configId: 'config-1',
+			environmentId: 'config-1',
 			status: 'applied',
 			counts: { workflows: { created: 1, updated: 1, archived: 0, deleted: 0, publishing } },
 			warnings: [],
@@ -482,7 +527,10 @@ describe('PromotionSelectModal', () => {
 		it('should pin the source the preview resolved for the project', async () => {
 			// A project with its own connection previews against that connection's config.
 			server.get('/rest/promotions/project-1/changes/apply', () => ({
-				data: changesBody(mockChanges, { configId: 'config-project', branchName: 'production' }),
+				data: changesBody(mockChanges, {
+					environmentId: 'config-project',
+					branchName: 'production',
+				}),
 			}));
 			mockedStore(useProjectsStore).fetchProject.mockResolvedValue(
 				createTestProject({ id: 'project-1' }),
@@ -495,7 +543,7 @@ describe('PromotionSelectModal', () => {
 
 			await waitFor(() => expect(applyPackage).toHaveBeenCalledTimes(1));
 			expect(applyPackage.mock.results[0].value.receivedBody.expectedSource).toEqual({
-				configId: 'config-project',
+				environmentId: 'config-project',
 				branchName: 'production',
 				commitSha: 'a'.repeat(40),
 			});
@@ -531,7 +579,11 @@ describe('PromotionSelectModal', () => {
 			// Only the selected workflows travel, pinned to the reviewed commit.
 			expect(applyPackage.mock.results[0].value.receivedBody).toEqual({
 				workflowIds: ['wf-001', 'wf-002'],
-				expectedSource: { configId: 'config-1', branchName: 'main', commitSha: 'a'.repeat(40) },
+				expectedSource: {
+					environmentId: 'config-1',
+					branchName: 'main',
+					commitSha: 'a'.repeat(40),
+				},
 			});
 			await waitFor(() =>
 				expect(showMessage).toHaveBeenCalledWith(
@@ -551,8 +603,7 @@ describe('PromotionSelectModal', () => {
 
 		it('should warn when applied workflows could not be published', async () => {
 			server.post('/api/v1/promotions/projects/project-1/apply', () => ({
-				connectionId: 'connection-1',
-				configId: 'config-1',
+				environmentId: 'config-1',
 				status: 'applied',
 				counts: {
 					workflows: {
@@ -694,8 +745,7 @@ describe('PromotionSelectModal', () => {
 			'should warn and keep the modal open when apply pauses with $result.status',
 			async ({ result, message }) => {
 				server.post('/api/v1/promotions/projects/project-1/apply', () => ({
-					connectionId: 'connection-1',
-					configId: 'config-1',
+					environmentId: 'config-1',
 					git: { commitSha: 'a'.repeat(40), branchName: 'main' },
 					...result,
 				}));

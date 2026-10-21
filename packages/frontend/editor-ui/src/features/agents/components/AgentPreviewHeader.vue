@@ -4,6 +4,7 @@ import type { PathItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
+import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import AgentSessionHistoryDropdown from './AgentSessionHistoryDropdown.vue';
 
 interface SessionOption {
@@ -16,6 +17,7 @@ interface SessionOption {
 
 const props = withDefaults(
 	defineProps<{
+		agentId: string;
 		agentName: string;
 		agentHref: string;
 		sessionTitle: string;
@@ -36,6 +38,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const agentTelemetry = useAgentTelemetry();
 
 const breadcrumbItems = computed<PathItem[]>(function getBreadcrumbItems() {
 	return [
@@ -49,6 +52,11 @@ const breadcrumbItems = computed<PathItem[]>(function getBreadcrumbItems() {
 
 function goToSessionTrace() {
 	emit('view-trace');
+}
+
+function createNewSession() {
+	agentTelemetry.trackClickedNewTestChat({ agentId: props.agentId, source: 'standalone' });
+	emit('new-session');
 }
 </script>
 
@@ -108,7 +116,7 @@ function goToSessionTrace() {
 				icon="message-circle-plus"
 				:label="i18n.baseText('agents.builder.chat.newChat.label')"
 				data-testid="agent-preview-new-chat-btn"
-				@click="emit('new-session')"
+				@click="createNewSession"
 			/>
 		</div>
 	</header>

@@ -142,6 +142,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const isAgentsEnabled = computed(
 		() => isModuleActive('agents') && moduleSettings.value.agents?.enabled !== false,
 	);
+	const isAppsEnabled = computed(() => isModuleActive('apps'));
 
 	/**
 	 * Checks whether an agents-module sub-feature token (listed in
@@ -538,6 +539,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		activeModules,
 		isModuleActive,
 		isAgentsEnabled,
+		isAppsEnabled,
 		isAgentModuleActive,
 		isDataTableFeatureEnabled,
 		isChatFeatureEnabled,

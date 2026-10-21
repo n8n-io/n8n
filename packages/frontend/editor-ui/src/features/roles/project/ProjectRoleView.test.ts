@@ -698,6 +698,24 @@ describe('ProjectRoleView', () => {
 		});
 	});
 
+	describe('App scopes', () => {
+		it('hides App scopes when the module is inactive', async () => {
+			const { getByTestId, queryByTestId } = renderComponent();
+			await waitFor(() => expect(getByTestId('scope-checkbox-workflow:read')).toBeInTheDocument());
+
+			expect(queryByTestId('scope-checkbox-app:read')).not.toBeInTheDocument();
+			expect(queryByTestId('scope-checkbox-app:create')).not.toBeInTheDocument();
+		});
+
+		it('shows App scopes when the module is active', async () => {
+			settingsStore.isAppsEnabled = true;
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() => expect(getByTestId('scope-checkbox-app:read')).toBeInTheDocument());
+			expect(getByTestId('scope-checkbox-app:create')).toBeInTheDocument();
+		});
+	});
+
 	describe('Skill scopes', () => {
 		it('hides the Skills scopes while the skills hub is off', () => {
 			const { queryByText } = renderComponent();

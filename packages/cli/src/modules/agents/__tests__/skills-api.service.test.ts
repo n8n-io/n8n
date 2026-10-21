@@ -392,6 +392,19 @@ describe('SkillsApiService', () => {
 			);
 		});
 
+		it('reports a create from another source than the settings page as written with AI', async () => {
+			vi.mocked(hasGlobalScope).mockReturnValue(true);
+
+			await service.create(user, payload({ method: 'upload' }), 'mcp');
+
+			expect(skillsTelemetry.created).toHaveBeenCalledWith(
+				user.id,
+				[{ id: 'skill_new', projectId: null, agentId: null }],
+				'mcp',
+				'ai',
+			);
+		});
+
 		it('reports a create without a method as manual', async () => {
 			vi.mocked(hasGlobalScope).mockReturnValue(true);
 
@@ -427,6 +440,16 @@ describe('SkillsApiService', () => {
 				createdById: user.id,
 			});
 			expect(detail.id).toBe('skill_new');
+		});
+
+		it('stores the source the caller passed', async () => {
+			vi.mocked(hasGlobalScope).mockReturnValue(true);
+
+			await service.create(user, payload({}), 'assistant');
+
+			expect(skillService.create).toHaveBeenCalledWith(
+				expect.objectContaining({ source: 'assistant' }),
+			);
 		});
 
 		it('refuses an agent skill for an agent that does not exist', async () => {
@@ -524,6 +547,25 @@ describe('SkillsApiService', () => {
 				...response,
 				skillHash: getAgentSkillHash(saved.skill),
 			});
+		});
+
+		it('reports the update with the source the caller passed', async () => {
+			skillService.save.mockResolvedValue(saved);
+
+			await service.update(
+				user,
+				'skill_a',
+				update({ instructions: 'New.', baseSkillHash: 'base' }),
+				'assistant',
+			);
+
+			expect(skillsTelemetry.updated).toHaveBeenCalledWith(
+				user.id,
+				visible[0],
+				'assistant',
+				3,
+				false,
+			);
 		});
 
 		it('refuses a user who may not edit the skill', async () => {
@@ -625,7 +667,13 @@ describe('SkillsApiService', () => {
 
 			expect(skillService.canAccess).toHaveBeenCalledWith(user, visible[0], 'delete');
 			expect(skillService.deleteSkill).toHaveBeenCalledWith('skill_a', ['project-1']);
-			expect(skillsTelemetry.deleted).toHaveBeenCalledWith(user.id, visible[0]);
+			expect(skillsTelemetry.deleted).toHaveBeenCalledWith(user.id, visible[0], 'ui');
+		});
+
+		it('reports the delete with the source the caller passed', async () => {
+			await service.delete(user, 'skill_a', 'mcp');
+
+			expect(skillsTelemetry.deleted).toHaveBeenCalledWith(user.id, visible[0], 'mcp');
 		});
 
 		it('names the agents of the projects the user may read in a conflict', async () => {

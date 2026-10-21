@@ -28,22 +28,19 @@ export class AuthStrategyRegistry {
 		this.strategies.push(strategy);
 	}
 
+	/**
+	 * Asks each strategy in order. `false`: a strategy recognised the token and refused it.
+	 * `null`: every strategy abstained, so no strategy here owns the token.
+	 */
 	async buildContextFromToken(
 		token: string,
 		options?: AuthStrategyOptions,
-	): Promise<TokenGrant | null> {
+	): Promise<TokenGrant | false | null> {
 		for (const strategy of this.strategies) {
 			const result = await strategy.buildTokenGrant(token, options);
-			if (result === false) {
-				// this strategy was responsible, but the token validation failed
-				return null;
-			}
-			if (result !== null) {
-				return result; // true = success, false = fail fast
-			}
-			// null = this strategy abstained, continue to next
+			if (result !== null) return result;
 		}
-		return null; // all strategies abstained = unauthenticated
+		return null;
 	}
 
 	async authenticate(req: AuthenticatedRequest): Promise<boolean> {

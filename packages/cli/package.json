@@ -1,7 +1,11 @@
 {
   "name": "n8n",
+<<<<<<< HEAD
   "version": "2.44.0",
   "private": true,
+=======
+  "version": "2.45.0",
+>>>>>>> 1ebe2cf55975b220aa63df91fe8e7f6d9659c94f
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -159,6 +163,7 @@
     "@n8n/ai-workflow-builder": "workspace:*",
     "@n8n/api-types": "workspace:*",
     "@n8n/backend-common": "workspace:*",
+    "@n8n/backend-module-apps": "workspace:*",
     "@n8n/backend-module-insights": "workspace:*",
     "@n8n/backend-module-quick-connect": "workspace:*",
     "@n8n/backend-module-workflow-builder": "workspace:*",

@@ -23,8 +23,11 @@ import { InboundAuthCoreModule } from '../inbound-auth-core.module';
 import { PublicApiOAuthStrategy } from '../public-api-oauth.strategy';
 import { PublicApiProtectedResource } from '../public-api-protected-resource';
 import { InboundResourceAdmission } from '../resource-admission';
+import { TrustedSourceDbDirectory } from '../trusted-source-directory.service';
 import { TrustedSourceDiscoveryTask } from '../trusted-source-discovery.task';
 import { TrustedSourceDbGate } from '../trusted-source.gate';
+import { LocalAuthorizationServerProxy } from '../local-authorization-server.proxy';
+import { TrustedSourceDiscoveryService } from '../trusted-source-discovery.service';
 import { TrustedSourceDbStore } from '../trusted-source.store';
 
 // A mocked module's factory runs on its first import, so the first `init()` that imports the
@@ -97,6 +100,18 @@ describe('InboundAuthCoreModule', () => {
 
 			await expect(server.getMetadata()).rejects.toThrow(OperationalError);
 			await expect(server.getJwks()).rejects.toThrow(OperationalError);
+			await expect(server.isAccessTokenActive('token')).resolves.toBe(false);
+		});
+
+		it('discovers the system trusted source once the OAuth2 server registers itself', async () => {
+			const discovery = mock<TrustedSourceDiscoveryService>();
+			Container.set(TrustedSourceDiscoveryService, discovery);
+
+			await Container.get(LocalAuthorizationServerProxy).registerProvider(
+				mock<LocalAuthorizationServer>(),
+			);
+
+			expect(discovery.refresh).toHaveBeenCalledWith('n8n-internal');
 		});
 
 		it('binds the OAuth2 AuthenticationService', () => {
@@ -154,6 +169,14 @@ describe('InboundAuthCoreModule', () => {
 		expect(entry).toBeDefined();
 		expect(entry?.instanceTypes).toEqual(['main', 'webhook', 'worker']);
 		expect(entry?.licenseFlag).toBeUndefined();
+	});
+
+	it('hands the trusted source directory to nodes as its module context', async () => {
+		const directory = mock<TrustedSourceDbDirectory>();
+		Container.set(TrustedSourceDbDirectory, directory);
+		const module: ModuleInterface = new InboundAuthCoreModule();
+
+		expect(await module.context?.()).toEqual({ trustedSourceDirectory: directory });
 	});
 
 	it('exposes the discovery task as its only system task', async () => {

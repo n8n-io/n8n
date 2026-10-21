@@ -42,6 +42,11 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 
 const i18n = useI18n();
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+const discoverySettings = capabilityRegistry.tryUse(capabilities.mcpDiscoverySettings);
+const discoveryOverrides = computed(() => discoverySettings?.overrides());
+const connectHintDismissed = ref(false);
+// EOF Experiment cleanup
 const toast = useToast();
 const documentTitle = useDocumentTitle({
 	releaseChannel: useSettingsStore().settings.releaseChannel,
@@ -289,10 +294,15 @@ onBeforeUnmount(() => {
 
 <template>
 	<N8nSettingsLayout :class="$style.layout">
+		<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users): keep the header; use the description fallback and remove docs-leading-text. Keep the translated docs-label. -->
 		<N8nSettingsPageHeader
 			:title="i18n.baseText('settings.mcp.page.title')"
-			:description="i18n.baseText('settings.mcp.page.description')"
+			:description="
+				discoveryOverrides?.description ?? i18n.baseText('settings.mcp.page.description')
+			"
+			:docs-leading-text="discoveryOverrides?.docsLeadingText"
 			:docs-url="MCP_DOCS_PAGE_URL"
+			:docs-label="i18n.baseText('settings.mcp.page.docsLabel')"
 			data-test-id="mcp-settings-header"
 		/>
 
@@ -330,19 +340,30 @@ onBeforeUnmount(() => {
 							/>
 						</template>
 					</N8nSettingsRow>
+					<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users): keep the row and button; use title/description fallbacks, unwrap connectHint, and restore variant="outline". -->
 					<N8nSettingsRow
-						:title="i18n.baseText('settings.mcp.yourClient.title')"
-						:description="i18n.baseText('settings.mcp.yourClient.description')"
+						:title="
+							discoveryOverrides?.clientTitle ?? i18n.baseText('settings.mcp.yourClient.title')
+						"
+						:description="
+							discoveryOverrides?.clientDescription ??
+							i18n.baseText('settings.mcp.yourClient.description')
+						"
 					>
 						<template #action>
-							<N8nButton
-								variant="outline"
-								size="medium"
-								icon="mcp"
-								:label="i18n.baseText('settings.mcp.yourClient.connect')"
-								data-test-id="mcp-connect-client-button"
-								@click="onConnectClient"
-							/>
+							<component
+								:is="discoverySettings?.connectHint ?? 'span'"
+								v-model:dismissed="connectHintDismissed"
+							>
+								<N8nButton
+									:variant="discoveryOverrides?.connectVariant ?? 'outline'"
+									size="medium"
+									icon="mcp"
+									:label="i18n.baseText('settings.mcp.yourClient.connect')"
+									data-test-id="mcp-connect-client-button"
+									@click="onConnectClient"
+								/>
+							</component>
 						</template>
 					</N8nSettingsRow>
 				</N8nSettingsRowGroup>

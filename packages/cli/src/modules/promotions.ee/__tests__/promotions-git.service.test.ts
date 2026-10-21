@@ -153,7 +153,7 @@ describe('PromotionsGitService (git operations)', () => {
 	const remoteUrl = 'https://github.com/o/r.git';
 	// Use HTTP(S) credentials to avoid temporary SSH key files in unit tests.
 	const credentials = { authType: 'token' as const, username: 'u', password: 'p' };
-	const configId = 'cfg1';
+	const environmentId = 'cfg1';
 
 	let rootFolder: string;
 	let paths: {
@@ -204,7 +204,7 @@ describe('PromotionsGitService (git operations)', () => {
 
 	describe('clone', () => {
 		const call = async () =>
-			await gitService.clone({ remoteUrl, credentials, paths, branchName: 'main', configId });
+			await gitService.clone({ remoteUrl, credentials, paths, branchName: 'main', environmentId });
 
 		beforeEach(() => {
 			// Mirror filesystem side effects needed by rename assertions.
@@ -248,7 +248,7 @@ describe('PromotionsGitService (git operations)', () => {
 				credentials: tokenCredentials,
 				paths,
 				branchName: 'main',
-				configId,
+				environmentId,
 			});
 
 			const options = JSON.stringify(simpleGitMock.mock.calls);
@@ -338,7 +338,7 @@ describe('PromotionsGitService (git operations)', () => {
 				credentials,
 				paths,
 				branchName: 'main',
-				configId,
+				environmentId,
 				author: { name: 'Ada Lovelace', email: 'ada@example.com' },
 				commitMessage: 'sync',
 				force: false,
@@ -487,7 +487,7 @@ describe('PromotionsGitService (git operations)', () => {
 
 			expect(logger.warn.mock.calls).toContainEqual([
 				'Failed to restore the Git revision after a failed promotion',
-				{ configId, branchName: 'main' },
+				{ environmentId, branchName: 'main' },
 			]);
 		});
 
@@ -526,7 +526,7 @@ describe('PromotionsGitService (git operations)', () => {
 			credentials,
 			paths,
 			branchName: 'main',
-			configId,
+			environmentId,
 			pathspecs: ['n8n/manifest.json', 'n8n/projects/'],
 		});
 
@@ -597,7 +597,7 @@ describe('PromotionsGitService (git operations)', () => {
 			await gitService.readFilesAtCommit({
 				paths,
 				branchName: 'main',
-				configId,
+				environmentId,
 				commitSha,
 				filePaths,
 				...over,
@@ -632,7 +632,7 @@ describe('PromotionsGitService (git operations)', () => {
 				credentials,
 				paths,
 				branchName: 'main',
-				configId,
+				environmentId,
 				pathspecs: ['n8n/'],
 			});
 			await vi.waitFor(() => expect(mockGit.fetch).toHaveBeenCalledTimes(1));
@@ -673,7 +673,7 @@ describe('PromotionsGitService (git operations)', () => {
 				credentials,
 				paths,
 				branchName: 'main',
-				configId,
+				environmentId,
 			});
 
 		it('fetches and resets to the configured remote base branch', async () => {
@@ -704,7 +704,7 @@ describe('PromotionsGitService (git operations)', () => {
 				credentials,
 				paths,
 				branchName: 'main',
-				configId,
+				environmentId,
 			});
 
 		beforeEach(() => {

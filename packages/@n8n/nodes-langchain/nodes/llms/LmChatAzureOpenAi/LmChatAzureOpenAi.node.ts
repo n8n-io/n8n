@@ -40,7 +40,7 @@ export class LmChatAzureOpenAi implements INodeType {
 		displayName: 'Microsoft Foundry Chat Model',
 
 		name: 'lmChatAzureOpenAi',
-		icon: 'file:azure.svg',
+		icon: 'file:foundry.svg',
 		group: ['transform'],
 		version: [1, 1.1],
 		defaultVersion: 1.1,

@@ -62,13 +62,17 @@ vi.mock('@/app/utils/rbac/permissions', () => ({
 	hasPermission: vi.fn().mockReturnValue(true),
 }));
 
-const { computerUseExperimentMock, contextPreferencesEnabledMock, routerPushMock } = vi.hoisted(
-	() => ({
-		computerUseExperimentMock: vi.fn(),
-		contextPreferencesEnabledMock: vi.fn(() => true),
-		routerPushMock: vi.fn(),
-	}),
-);
+const {
+	computerUseExperimentMock,
+	contextPreferencesEnabledMock,
+	contextSkillsEnabledMock,
+	routerPushMock,
+} = vi.hoisted(() => ({
+	computerUseExperimentMock: vi.fn(),
+	contextPreferencesEnabledMock: vi.fn(() => true),
+	contextSkillsEnabledMock: vi.fn(() => true),
+	routerPushMock: vi.fn(),
+}));
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -81,6 +85,7 @@ vi.mock('@/experiments/instanceAiComputerUse', () => ({
 
 vi.mock('@/features/settings/context/context.utils', () => ({
 	isContextPreferencesEnabled: () => contextPreferencesEnabledMock(),
+	isContextSkillsEnabled: () => contextSkillsEnabledMock(),
 }));
 
 const renderComponent = createComponentRenderer(SettingsInstanceAiView);
@@ -772,6 +777,22 @@ describe('SettingsInstanceAiView', () => {
 
 			expect(queryByTestId('n8n-agent-permission-group-preferences')).toBeNull();
 			expect(getByTestId('n8n-agent-permission-group-workflows')).toBeVisible();
+		});
+
+		it('shows the Skills group while the skills hub is on', () => {
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('n8n-agent-permission-group-skills').textContent).toContain(
+				'settings.n8nAgent.permissions.group.default',
+			);
+		});
+
+		it('hides the Skills group while the skills hub is off', () => {
+			contextSkillsEnabledMock.mockReturnValueOnce(false);
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('n8n-agent-permission-group-skills')).toBeNull();
 		});
 
 		it('summarises the untouched Preferences group as the default', () => {
