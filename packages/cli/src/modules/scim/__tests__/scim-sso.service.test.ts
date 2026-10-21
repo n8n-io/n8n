@@ -71,11 +71,11 @@ describe('ScimSsoService', () => {
 		it.each(['saml', 'oidc'] as const)(
 			'turns SCIM off when %s sign-in turns off, and refreshes the settings',
 			async (protocol) => {
-				scimSettingsService.isEnabled.mockResolvedValue(true);
+				scimSettingsService.turnOff.mockResolvedValue(true);
 
 				await emitSsoOff(protocol);
 
-				expect(scimSettingsService.setEnabled).toHaveBeenCalledExactlyOnceWith(false);
+				expect(scimSettingsService.turnOff).toHaveBeenCalledTimes(1);
 				expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('scim');
 				expect(logger.info).toHaveBeenCalledWith(
 					`SCIM provisioning turned off, because ${protocol.toUpperCase()} single sign-on turned off. The SCIM token and the SCIM settings are kept.`,
@@ -83,19 +83,30 @@ describe('ScimSsoService', () => {
 			},
 		);
 
-		it('does nothing when SCIM is already off', async () => {
+		// The cache can say off while an enable that committed a moment before
+		// says on. Only the saved switch decides.
+		it('does not read the cached switch', async () => {
 			scimSettingsService.isEnabled.mockResolvedValue(false);
+			scimSettingsService.turnOff.mockResolvedValue(true);
 
 			await emitSsoOff('saml');
 
-			expect(scimSettingsService.setEnabled).not.toHaveBeenCalled();
+			expect(scimSettingsService.isEnabled).not.toHaveBeenCalled();
+			expect(scimSettingsService.turnOff).toHaveBeenCalledTimes(1);
+			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('scim');
+		});
+
+		it('does not refresh the settings when SCIM was already off', async () => {
+			scimSettingsService.turnOff.mockResolvedValue(false);
+
+			await emitSsoOff('saml');
+
 			expect(moduleRegistry.refreshModuleSettings).not.toHaveBeenCalled();
 			expect(logger.info).not.toHaveBeenCalled();
 		});
 
 		it('logs a failure and does not throw', async () => {
-			scimSettingsService.isEnabled.mockResolvedValue(true);
-			scimSettingsService.setEnabled.mockRejectedValue(new Error('db down'));
+			scimSettingsService.turnOff.mockRejectedValue(new Error('db down'));
 
 			await emitSsoOff('oidc');
 
@@ -107,12 +118,12 @@ describe('ScimSsoService', () => {
 		});
 
 		it('keeps SCIM off when the settings refresh fails', async () => {
-			scimSettingsService.isEnabled.mockResolvedValue(true);
+			scimSettingsService.turnOff.mockResolvedValue(true);
 			moduleRegistry.refreshModuleSettings.mockRejectedValue(new Error('db down'));
 
 			await emitSsoOff('saml');
 
-			expect(scimSettingsService.setEnabled).toHaveBeenCalledWith(false);
+			expect(scimSettingsService.turnOff).toHaveBeenCalledTimes(1);
 			expect(logger.warn).toHaveBeenCalledWith(
 				'SCIM: Failed to refresh the module settings',
 				expect.anything(),
@@ -129,11 +140,11 @@ describe('ScimSsoService', () => {
 	describe('at startup', () => {
 		it('turns SCIM off when SCIM is on and single sign-on is off', async () => {
 			ssoOn(false);
-			scimSettingsService.isEnabled.mockResolvedValue(true);
+			scimSettingsService.turnOff.mockResolvedValue(true);
 
 			await service.init();
 
-			expect(scimSettingsService.setEnabled).toHaveBeenCalledExactlyOnceWith(false);
+			expect(scimSettingsService.turnOff).toHaveBeenCalledTimes(1);
 			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('scim');
 			expect(logger.info).toHaveBeenCalledWith(
 				'SCIM provisioning turned off, because single sign-on is off at startup. The SCIM token and the SCIM settings are kept.',
@@ -142,25 +153,25 @@ describe('ScimSsoService', () => {
 
 		it('keeps SCIM on when single sign-on is on', async () => {
 			ssoOn(true);
-			scimSettingsService.isEnabled.mockResolvedValue(true);
 
 			await service.init();
 
-			expect(scimSettingsService.setEnabled).not.toHaveBeenCalled();
+			expect(scimSettingsService.turnOff).not.toHaveBeenCalled();
 		});
 
-		it('writes nothing when SCIM is off', async () => {
+		it('does not refresh the settings when SCIM is off', async () => {
 			ssoOn(false);
-			scimSettingsService.isEnabled.mockResolvedValue(false);
+			scimSettingsService.turnOff.mockResolvedValue(false);
 
 			await service.init();
 
-			expect(scimSettingsService.setEnabled).not.toHaveBeenCalled();
+			expect(moduleRegistry.refreshModuleSettings).not.toHaveBeenCalled();
+			expect(logger.info).not.toHaveBeenCalled();
 		});
 
 		it('does not fail the startup when the check fails', async () => {
 			ssoOn(false);
-			scimSettingsService.isEnabled.mockRejectedValue(new Error('db down'));
+			scimSettingsService.turnOff.mockRejectedValue(new Error('db down'));
 
 			await expect(service.init()).resolves.toBeUndefined();
 			expect(logger.error).toHaveBeenCalled();

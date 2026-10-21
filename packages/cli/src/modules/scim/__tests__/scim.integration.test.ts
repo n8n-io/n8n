@@ -1,5 +1,5 @@
 import { ModuleRegistry } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { CacheService, EventService } from '@n8n/backend-services';
 import { testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { SettingsRepository, UserRepository, type User } from '@n8n/db';
@@ -472,6 +472,20 @@ describe('SCIM and single sign-on', () => {
 		);
 		const response = await testServer.authAgentFor(admin).get('/scim/config').expect(200);
 		expect(response.body.data).toMatchObject({ enabled: false, hasToken: true });
+	});
+
+	// An enable can commit while the cache still says off. The cascade reads
+	// the saved switch, so SCIM still ends off.
+	it('turns SCIM off when the cache says off and the saved switch says on', async () => {
+		await Container.get(CacheService).set('scim.provisioning.enabled', 'false');
+
+		await toggleSamlLogin(false);
+
+		await vi.waitFor(async () =>
+			expect(
+				await Container.get(SettingsRepository).findByKey('scim.provisioning.enabled'),
+			).toMatchObject({ value: 'false' }),
+		);
 	});
 
 	it('keeps SCIM off when SAML turns on again, and the old token works once an admin enables SCIM', async () => {

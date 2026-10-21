@@ -101,12 +101,26 @@ describe('ScimTokenController', () => {
 	});
 
 	describe('PATCH /config', () => {
+		/** The switch before the request, as the settings service reads it in its transaction. */
+		const savedSettings = (wasEnabled: boolean) =>
+			scimSettingsService.update.mockImplementation(async ({ enabled }) => ({
+				wasEnabled,
+				enabled,
+			}));
+
+		beforeEach(() => {
+			savedSettings(true);
+		});
+
 		it.each([true, false])('persists enabled=%s and echoes it back', async (enabled) => {
 			const res = makeRes();
 
 			await controller.updateConfig(req, res, { enabled });
 
-			expect(scimSettingsService.setEnabled).toHaveBeenCalledWith(enabled);
+			expect(scimSettingsService.update).toHaveBeenCalledExactlyOnceWith({
+				enabled,
+				assertCanEnable: expect.any(Function),
+			});
 			// Without this the settings snapshot keeps serving the previous value.
 			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('scim');
 			expect(res.status).toHaveBeenCalledWith(200);
@@ -123,7 +137,26 @@ describe('ScimTokenController', () => {
 			expect(res.json).toHaveBeenCalledWith({
 				message: 'Turn on SAML or OIDC single sign-on before you enable SCIM provisioning.',
 			});
-			expect(scimSettingsService.setEnabled).not.toHaveBeenCalled();
+			expect(scimSettingsService.update).not.toHaveBeenCalled();
+			expect(moduleRegistry.refreshModuleSettings).not.toHaveBeenCalled();
+		});
+
+		// The SSO-off cascade takes the same lock as the save, so the check
+		// under the lock sees single sign-on that turned off after the first check.
+		it('returns 400 and saves nothing when single sign-on turns off before the save', async () => {
+			scimSettingsService.update.mockImplementation(async ({ assertCanEnable }) => {
+				scimSsoService.isSsoEnabled.mockReturnValue(false);
+				assertCanEnable?.();
+				return { wasEnabled: false, enabled: true };
+			});
+			const res = makeRes();
+
+			await controller.updateConfig(req, res, { enabled: true });
+
+			expect(res.status).toHaveBeenCalledWith(400);
+			expect(res.json).toHaveBeenCalledWith({
+				message: 'Turn on SAML or OIDC single sign-on before you enable SCIM provisioning.',
+			});
 			expect(moduleRegistry.refreshModuleSettings).not.toHaveBeenCalled();
 		});
 
@@ -133,20 +166,24 @@ describe('ScimTokenController', () => {
 
 			await controller.updateConfig(req, res, { enabled: false });
 
-			expect(scimSettingsService.setEnabled).toHaveBeenCalledWith(false);
+			expect(scimSettingsService.update).toHaveBeenCalledWith(
+				expect.objectContaining({ enabled: false }),
+			);
 			expect(res.status).toHaveBeenCalledWith(200);
 		});
 
 		// Single sign-on on never turns SCIM on. The admin enables it again, and
 		// the stored token works with no change.
 		it('turns SCIM on again after single sign-on is back on', async () => {
-			scimSettingsService.isEnabled.mockResolvedValue(false);
+			savedSettings(false);
 			const res = makeRes();
 
 			await controller.updateConfig(req, res, { enabled: true });
 
 			expect(scimSsoService.isSsoEnabled).toHaveBeenCalled();
-			expect(scimSettingsService.setEnabled).toHaveBeenCalledWith(true);
+			expect(scimSettingsService.update).toHaveBeenCalledWith(
+				expect.objectContaining({ enabled: true }),
+			);
 			expect(scimTokenService.rotateToken).not.toHaveBeenCalled();
 			expect(scimTokenService.revokeToken).not.toHaveBeenCalled();
 			expect(res.status).toHaveBeenCalledWith(200);

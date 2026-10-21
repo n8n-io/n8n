@@ -7,7 +7,7 @@ import type { Response } from 'express';
 import { ScimSettingsService } from './scim-settings.service';
 import { ScimSsoService } from './scim-sso.service';
 import { ScimTokenService } from './scim-token.service';
-import { ScimTokenConflictError } from './scim.errors';
+import { ScimSsoRequiredError, ScimTokenConflictError } from './scim.errors';
 
 /**
  * REST Controller for SCIM configuration and token management.
@@ -67,20 +67,29 @@ export class ScimTokenController {
 	@Patch('/config')
 	@GlobalScope('scim:manage')
 	async updateConfig(_req: AuthenticatedRequest, res: Response, @Body body: ScimConfigPatchDto) {
-		if (body.enabled && !this.scimSsoService.isSsoEnabled()) {
-			return res.status(400).json({
-				message: 'Turn on SAML or OIDC single sign-on before you enable SCIM provisioning.',
-			});
-		}
+		const { enabled } = body;
 
 		try {
-			await this.scimSettingsService.setEnabled(body.enabled);
+			if (enabled) this.assertSsoEnabled();
+
+			const saved = await this.scimSettingsService.update({
+				enabled,
+				// Single sign-on can turn off after the check above. The SSO-off
+				// cascade takes the lock that this check runs under. Thus this
+				// check sees single sign-on off, or the cascade sees this enable.
+				assertCanEnable: () => this.assertSsoEnabled(),
+			});
+
 			// `/rest/module-settings` serves a cached snapshot, so refresh it or
 			// clients keep reading the previous value.
 			await this.moduleRegistry.refreshModuleSettings('scim');
 
-			return res.status(200).json({ data: { enabled: body.enabled } });
+			return res.status(200).json({ data: { enabled: saved.enabled } });
 		} catch (error) {
+			if (error instanceof ScimSsoRequiredError) {
+				return res.status(400).json({ message: error.message });
+			}
+
 			this.logger.error('Error updating SCIM config', { error });
 			return res.status(500).json({ message: 'Internal server error' });
 		}
@@ -127,6 +136,11 @@ export class ScimTokenController {
 			this.logger.error('Error deleting SCIM token', { error });
 			return res.status(500).json({ message: 'Internal server error' });
 		}
+	}
+
+	/** SCIM users can sign in only through the identity provider. */
+	private assertSsoEnabled() {
+		if (!this.scimSsoService.isSsoEnabled()) throw new ScimSsoRequiredError();
 	}
 
 	/**
