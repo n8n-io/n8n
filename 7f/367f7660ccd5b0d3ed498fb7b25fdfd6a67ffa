@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionEnvironmentCard.vue
+  s_20bc5da4e9fe52::t_46fe4d160d6485 59-63,76,95
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionGitHostSelect.vue
+  s_20bc5da4e9fe52::t_46fe4d160d6485 86
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_20bc5da4e9fe52::t_46fe4d160d6485 4171-4172,4175,4189,4199
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionProviderDialog.vue
+  s_20bc5da4e9fe52::t_46fe4d160d6485 312,327,413,432
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionEnvironmentView.vue
+  s_20bc5da4e9fe52::t_46fe4d160d6485 377
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7f367f7660ccd5b0d3ed498fb7b25fdfd6a67ffa",
+  "prompts": {},
+  "sessions": {
+    "s_20bc5da4e9fe52": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed82ce47-8b0e-4087-9761-908513e3887f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}
