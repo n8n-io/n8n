@@ -404,6 +404,64 @@ describe('ResourceMapper.vue', () => {
 		expect(fetchFieldsSpy).not.toHaveBeenCalled();
 	});
 
+	describe('reading the saved value', () => {
+		const parameter = createTestNodeProperties({
+			name: 'columns',
+			typeOptions: { resourceMapper: { mode: 'add' } as ResourceMapperTypeOptions },
+		});
+		const savedValue = (firstName: string) => ({
+			mappingMode: 'defineBelow',
+			value: { 'First name': firstName },
+			schema: UPDATED_SCHEMA,
+		});
+
+		it('reads a top-level mapper', async () => {
+			const { getByDisplayValue } = renderComponent({
+				props: {
+					parameter,
+					path: 'parameters.columns',
+					node: createTestNode({ parameters: { columns: savedValue('Ana') } }),
+				},
+			});
+			await waitAllPromises();
+
+			expect(getByDisplayValue('Ana')).toBeInTheDocument();
+		});
+
+		it('reads a top-level mapper when the path has no parameters prefix', async () => {
+			const { getByDisplayValue } = renderComponent({
+				props: {
+					parameter,
+					path: 'columns',
+					node: createTestNode({ parameters: { columns: savedValue('Ana') } }),
+				},
+			});
+			await waitAllPromises();
+
+			expect(getByDisplayValue('Ana')).toBeInTheDocument();
+		});
+
+		it('reads a mapper inside a fixedCollection entry', async () => {
+			const { getByDisplayValue, queryByDisplayValue } = renderComponent({
+				props: {
+					parameter,
+					path: 'parameters.entries.entry[1].columns',
+					node: createTestNode({
+						parameters: {
+							entries: {
+								entry: [{ columns: savedValue('Bob') }, { columns: savedValue('Ana') }],
+							},
+						},
+					}),
+				},
+			});
+			await waitAllPromises();
+
+			expect(getByDisplayValue('Ana')).toBeInTheDocument();
+			expect(queryByDisplayValue('Bob')).not.toBeInTheDocument();
+		});
+	});
+
 	it('reconciles an incomplete cached schema by default when refreshIncompleteSchemaOnOpen is set', async () => {
 		// A cached schema that is structurally incomplete (missing the
 		// loader-populated `readOnly`), as produced by an AI builder rather than

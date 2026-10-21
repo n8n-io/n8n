@@ -47,8 +47,8 @@ import { ResponseError } from '@n8n/rest-api-client';
 // Hoisted: the vue-router mock factory runs before module-level consts initialize
 const { mockRouterPush, mockRouterResolve } = vi.hoisted(() => ({
 	mockRouterPush: vi.fn(),
-	mockRouterResolve: vi.fn(({ params }: { params: { reviewRequestId: string } }) => ({
-		href: `/reviews/${params.reviewRequestId}`,
+	mockRouterResolve: vi.fn(({ params }: { params: { reviewId: string } }) => ({
+		href: `/inbox/reviews/${params.reviewId}`,
 	})),
 }));
 
@@ -712,7 +712,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(mockShowToast).toHaveBeenCalledWith({
 				type: 'success',
 				title: 'Latest changes submitted to the existing review',
-				message: '<a href="/reviews/req-1">Open review</a>',
+				message: '<a href="/inbox/reviews/req-1">Open review</a>',
 				onClick: expect.any(Function),
 			});
 			const toastConfig = mockShowToast.mock.calls.at(-1)?.[0];
@@ -725,7 +725,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(preventDefault).toHaveBeenCalledOnce();
 			expect(mockRouterPush).toHaveBeenCalledWith({
 				name: WORKFLOW_REVIEW_REQUESTS_VIEW,
-				params: { reviewRequestId: 'req-1' },
+				params: { reviewId: 'req-1' },
 			});
 		});
 
@@ -819,7 +819,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(mockShowToast).toHaveBeenCalledWith({
 				type: 'success',
 				title: 'Workflow version submitted for review',
-				message: '<a href="/reviews/review-1">Open review</a>',
+				message: '<a href="/inbox/reviews/review-1">Open review</a>',
 				onClick: expect.any(Function),
 			});
 		});
@@ -845,7 +845,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				expect(mockShowToast).toHaveBeenCalledWith({
 					type: 'success',
 					title: 'Workflow version submitted for review',
-					message: '<a href="/reviews/review-1">Open review</a>',
+					message: '<a href="/inbox/reviews/review-1">Open review</a>',
 					onClick: expect.any(Function),
 				});
 			});
@@ -1108,11 +1108,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			},
 		};
 
-		const useCredential = (credential: IUsedCredential, { flagEnabled = true } = {}) => {
-			settingsStore.settings = {
-				...settingsStore.settings,
-				granularCredentialSharing: flagEnabled,
-			};
+		const useCredential = (credential: IUsedCredential) => {
 			workflowDocumentStore.setUsedCredentials([credential]);
 			workflowDocumentStore.setNodes([
 				{
@@ -1216,14 +1212,6 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 		it('should keep publish enabled when the user can use the credential', () => {
 			useCredential({ ...foreignCredential, currentUserCanUse: true });
-
-			const { getByTestId } = renderComponent();
-
-			expect(getByTestId('workflow-open-publish-modal-button')).not.toBeDisabled();
-		});
-
-		it('should keep publish enabled while the feature flag is off', () => {
-			useCredential(foreignCredential, { flagEnabled: false });
 
 			const { getByTestId } = renderComponent();
 
@@ -1630,7 +1618,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			expect(mockRouterPush).toHaveBeenCalledWith({
 				name: WORKFLOW_REVIEW_REQUESTS_VIEW,
-				params: { reviewRequestId: 'req-1' },
+				params: { reviewId: 'req-1' },
 				query: undefined,
 			});
 		});

@@ -36,7 +36,7 @@ import {
 } from './leader-channel-relay.service';
 import { channelIntegrationRecorder } from './recording/channel-integration-recorder';
 import { recordAdapterCalls } from './recording/recording-adapter';
-import type { Agent } from '../entities/agent.entity';
+import { isProjectAgent, type ProjectAgent } from '../entities/agent.entity';
 import { AgentChangePublisher } from '../agent-change-publisher.service';
 import {
 	agentChannelKey,
@@ -46,6 +46,7 @@ import {
 } from '../utils/agent-channel';
 import { AgentRepository } from '../repositories/agent.repository';
 import { AgentChannelStatusReporter } from './agent-channel-status-reporter';
+import { SLACK_STREAMING_OPTIONS } from './platforms/slack/slack-bridge-behavior';
 
 // ---------------------------------------------------------------------------
 // Chat SDK local interfaces
@@ -143,6 +144,7 @@ async function getAgentExecutionOrchestratorService() {
  * Hence a little above the SDK's 500ms default rather than at it.
  */
 function streamingOptionsFor(type: AgentIntegrationConfig['type']) {
+	if (type === 'slack') return SLACK_STREAMING_OPTIONS;
 	if (type !== 'teams') return {};
 	return { fallbackStreamingPlaceholderText: '…', streamingUpdateIntervalMs: 750 };
 }
@@ -594,7 +596,7 @@ export class ChatIntegrationService {
 	 * single bad credential doesn't block the others.
 	 */
 	async syncToConfig(
-		agent: Agent,
+		agent: ProjectAgent,
 		previous: AgentIntegrationConfig[],
 		next: AgentIntegrationConfig[],
 	): Promise<void> {
@@ -746,6 +748,7 @@ export class ChatIntegrationService {
 		const ingressOwnedByLeader = this.shouldRouteToLeader(integration.type, true);
 		if (
 			!agent ||
+			!isProjectAgent(agent) ||
 			!persistedIntegration ||
 			(agent.activeVersionId !== null && !ingressOwnedByLeader)
 		) {
@@ -827,7 +830,7 @@ export class ChatIntegrationService {
 	 * Which channels to start, and when to retry one that failed, is
 	 * {@link AgentChannelReconciler}'s decision.
 	 */
-	async startChannel(agent: Agent, integration: AgentIntegrationConfig): Promise<void> {
+	async startChannel(agent: ProjectAgent, integration: AgentIntegrationConfig): Promise<void> {
 		const skipExternalHooks = !this.instanceSettings.isLeader;
 		await this.connect(
 			agent.id,
@@ -876,7 +879,7 @@ export class ChatIntegrationService {
 		if (this.connections.has(key)) return;
 
 		const agent = await this.agentRepository.findOne({ where: { id: agentId } });
-		if (!agent) {
+		if (!agent || !isProjectAgent(agent)) {
 			this.logger.warn(
 				`[ChatIntegrationService] Cannot connect ${type} — agent ${agentId} not found`,
 			);
@@ -1324,7 +1327,7 @@ export class ChatIntegrationService {
 
 	private async initializeOutboundConnection(
 		key: string,
-		agent: Agent,
+		agent: ProjectAgent,
 		integration: AgentIntegrationConfig,
 	): Promise<ChatInstance | undefined> {
 		const agentId = agent.id;
@@ -1363,7 +1366,7 @@ export class ChatIntegrationService {
 		// has to rebuild — same as a local connect does. Duplicate requests are
 		// deduped by `runLeaderOperation`, not by inspecting the runtime.
 		const agent = await this.agentRepository.findOne({ where: { id: agentId } });
-		if (!agent) {
+		if (!agent || !isProjectAgent(agent)) {
 			throw new UnexpectedError(`Agent ${agentId} not found on the leader instance`);
 		}
 

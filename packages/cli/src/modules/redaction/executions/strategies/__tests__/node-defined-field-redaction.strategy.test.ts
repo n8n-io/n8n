@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { IRedactedFieldMarker } from 'n8n-workflow';
 
-import type { RedactableExecution } from '@/executions/execution-redaction';
+import type { RedactableExecution } from '@n8n/backend-services';
 import { NodeTypes } from '@/node-types';
 
 import type { RedactionContext } from '../../execution-redaction.interfaces';
@@ -15,6 +15,7 @@ const makeContext = (overrides: Partial<RedactionContext> = {}): RedactionContex
 	enforceDynCredRedaction: false,
 	enforceCredentialUsabilityRedaction: false,
 	inaccessibleCredentialIds: [],
+	redactedBySubWorkflow: false,
 	memo: new Map(),
 	...overrides,
 });

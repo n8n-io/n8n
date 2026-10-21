@@ -76,7 +76,7 @@ export { default as N8nCollapsiblePanel } from './N8nCollapsiblePanel';
 export { default as N8nColorPicker } from './N8nColorPicker';
 export { default as N8nCopyInput } from './N8nCopyInput';
 export { default as N8nDatatable } from './N8nDatatable';
-export { default as N8nEmptyState } from './N8nEmptyState';
+export { default as N8nEmptyState, N8nEmptyStateIconCards } from './N8nEmptyState';
 export type { EmptyStateCardIcon, EmptyStateIconCards } from './N8nEmptyState';
 export { default as N8nExternalLink } from './N8nExternalLink';
 export { default as N8nFloatingWindow } from './N8nFloatingWindow';
@@ -136,6 +136,7 @@ export type { SettingsSaveBarProps } from './N8nSettingsSaveBar';
 export { default as N8nSettingsSection } from './N8nSettingsSection';
 export type { SettingsSectionProps } from './N8nSettingsSection';
 export { default as N8nPreviewBadge } from './PreviewBadge/PreviewBadge.vue';
+export { default as N8nNewBadge } from './NewBadge/NewBadge.vue';
 export { default as N8nPopover } from './N8nPopover';
 export { default as N8nPopoverReka } from './N8nPopover'; // Alias for backwards compatibility
 export {
@@ -156,11 +157,7 @@ export type {
 export { default as N8nPulse } from './N8nPulse';
 export { default as N8nSendStopButton } from './N8nSendStopButton';
 export { default as N8nSegmentControl } from './N8nSegmentControl';
-export type {
-	SegmentControlProps,
-	SegmentControlSize,
-	SegmentOption,
-} from './N8nSegmentControl';
+export type { SegmentControlProps, SegmentControlSize, SegmentOption } from './N8nSegmentControl';
 export { default as N8nRoute } from './N8nRoute';
 export { default as N8nRecycleScroller } from './N8nRecycleScroller';
 export { default as N8nResizeWrapper } from './N8nResizeWrapper';
@@ -173,6 +170,8 @@ export { default as N8nSticky } from './N8nSticky';
 export { default as N8nResizeableSticky } from './N8nResizeableSticky';
 export { default as N8nSuggestedActions } from './N8nSuggestedActions';
 export { default as N8nSwitch } from './N8nSwitch';
+export { default as N8nSlider } from './N8nSlider';
+export type * from './N8nSlider/Slider.types';
 export { default as N8nTabs } from './N8nTabs';
 export { default as N8nTag } from './N8nTag';
 export { default as N8nTags } from './N8nTags';

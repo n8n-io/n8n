@@ -47,6 +47,9 @@ export function toImapFlowOptions(options: ImapConnectionOptions): ImapFlowOptio
 		secure: options.secure,
 		// Matches what the trigger has always done; a plain connection stays plain.
 		doSTARTTLS: false,
+		// Some servers (e.g. STRATO) accept IMAP4rev2 and then answer every SEARCH as empty.
+		// ENABLE can't be undone, and we need nothing from rev2.
+		disableIMAP4rev2: true,
 		auth: { user: options.user, pass: options.password },
 		connectionTimeout: authTimeout,
 		greetingTimeout: authTimeout,

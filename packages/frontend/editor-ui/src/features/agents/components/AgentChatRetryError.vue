@@ -20,7 +20,7 @@ const i18n = useI18n();
 		<template v-if="retryMessageId" #trailingContent>
 			<N8nButton
 				size="small"
-				variant="subtle"
+				variant="outline"
 				:class="$style.retryButton"
 				:disabled="retryDisabled"
 				data-testid="agent-chat-retry"

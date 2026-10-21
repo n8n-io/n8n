@@ -21,6 +21,9 @@ import type { AgentMessageEntity } from '../entities/agent-message.entity';
 import type { AgentChatBridge } from '../integrations/agent-chat-bridge';
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { AgentMessageQueueRepository } from '../repositories/agent-message-queue.repository';
+import type { SystemAgentExecutionService } from '../system-agents/system-agent-execution.service';
+import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
+import type { SystemAgentProvider } from '../system-agents/system-agent.types';
 import type { AgentQueueDispatch, QueuedIntegrationMessage } from '../types/agent-queued-message';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
@@ -36,6 +39,8 @@ describe('AgentMessageQueueConsumer', () => {
 	const integrations = mock<ChatIntegrationService>();
 	const orchestrator = mock<AgentExecutionOrchestratorService>();
 	const sender = { send: vi.fn(), close: vi.fn(async () => {}) };
+	const systemAgentExecution = mock<SystemAgentExecutionService>();
+	let systemAgents: SystemAgentRegistry;
 	let consumer: AgentMessageQueueConsumer;
 
 	function claim(threadId: string, integration = false): ClaimedAgentMessage {
@@ -90,10 +95,14 @@ describe('AgentMessageQueueConsumer', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		vi.mocked(userHasScopes).mockResolvedValue(true);
+		systemAgents = new SystemAgentRegistry();
 		users.findByIdWithRole.mockResolvedValue(mock<User>({ id: 'user', disabled: false }));
 		repository.findThreadIds.mockResolvedValue([]);
 		executions.getAbortSignal.mockImplementation(() => new AbortController().signal);
 		streams.createSender.mockReturnValue(sender);
+		chatExecutions.withTurnLock.mockImplementation(
+			async (_threadId, action) => await action(new AbortController().signal),
+		);
 		chatExecutions.settle.mockImplementation(async (_id, finalize) => await finalize());
 		testRuns.prepareDraftRun.mockResolvedValue({
 			status: 'ready',
@@ -117,11 +126,122 @@ describe('AgentMessageQueueConsumer', () => {
 			integrations,
 			orchestrator,
 			mockLogger(),
+			systemAgents,
+			systemAgentExecution,
 		);
 	});
 
 	afterEach(() => consumer.stop());
 
+	it('registers the claimed execution under the lock and releases it before preparation', async () => {
+		const item = claim('session');
+		let locked = false;
+		chatExecutions.withTurnLock.mockImplementation(async (_threadId, action) => {
+			locked = true;
+			try {
+				return await action(new AbortController().signal);
+			} finally {
+				locked = false;
+			}
+		});
+		repository.findThreadIds.mockResolvedValue(['session']);
+		queue.claimNext
+			.mockImplementationOnce(async () => {
+				expect(locked).toBe(true);
+				return item;
+			})
+			.mockResolvedValue(null);
+		chatExecutions.register.mockImplementation(() => {
+			expect(locked).toBe(true);
+			expect(users.findByIdWithRole).not.toHaveBeenCalled();
+		});
+		users.findByIdWithRole.mockImplementation(async () => {
+			expect(locked).toBe(false);
+			return mock<User>({ id: 'user', disabled: false });
+		});
+		consumer.start();
+		await vi.waitFor(() =>
+			expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
+		);
+		expect(chatExecutions.register).toHaveBeenCalledOnce();
+		expect(testRuns.executePreparedDraftRun).toHaveBeenCalledOnce();
+		expect(queue.recordFailure).not.toHaveBeenCalled();
+	});
+
+	it('accepts Stop while the thread owner is loading', async () => {
+		const item = claim('session');
+		const owner = createDeferredPromise<User>();
+		users.findByIdWithRole.mockReturnValue(owner.promise);
+		repository.findThreadIds.mockResolvedValue(['session']);
+		queue.claimNext.mockResolvedValueOnce(item).mockResolvedValue(null);
+		consumer.start();
+		try {
+			await vi.waitFor(() => expect(users.findByIdWithRole).toHaveBeenCalledOnce());
+			const controller = chatExecutions.register.mock.calls[0][1];
+			controller.abort(new DOMException('Response stopped', 'AbortError'));
+		} finally {
+			owner.resolve(mock<User>({ id: 'user', disabled: false }));
+		}
+		await vi.waitFor(() =>
+			expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
+		);
+		expect(testRuns.prepareDraftRun).not.toHaveBeenCalled();
+		expect(testRuns.executePreparedDraftRun).not.toHaveBeenCalled();
+		expect(queue.recordFailure).toHaveBeenCalledWith(
+			item,
+			expect.objectContaining({ name: 'AbortError' }),
+			expect.objectContaining({ aborted: true }),
+		);
+		expect(sender.send).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+	});
+
+	it('finalizes a claimed execution when the startup lock is lost', async () => {
+		const item = claim('session');
+		const lease = new AbortController();
+		chatExecutions.withTurnLock.mockImplementation(
+			async (_threadId, action) => await action(lease.signal),
+		);
+		repository.findThreadIds.mockResolvedValue(['session']);
+		queue.claimNext
+			.mockImplementationOnce(async () => {
+				lease.abort();
+				return item;
+			})
+			.mockResolvedValue(null);
+		consumer.start();
+		await vi.waitFor(() =>
+			expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
+		);
+		expect(chatExecutions.register).not.toHaveBeenCalled();
+		expect(testRuns.executePreparedDraftRun).not.toHaveBeenCalled();
+		expect(queue.recordFailure).toHaveBeenCalledWith(
+			item,
+			expect.objectContaining({ message: 'Agent execution startup lock was lost' }),
+			undefined,
+		);
+		expect(sender.send).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+	});
+
+	it('keeps ownership loss separate from a user Stop', async () => {
+		const item = claim('session');
+		const lease = new AbortController();
+		const failure = new DOMException('Execution ownership lost', 'AbortError');
+		executions.getAbortSignal.mockReturnValue(lease.signal);
+		repository.findThreadIds.mockResolvedValue(['session']);
+		queue.claimNext.mockResolvedValueOnce(item).mockResolvedValue(null);
+		testRuns.executePreparedDraftRun.mockImplementation(async () => {
+			lease.abort(failure);
+			throw failure;
+		});
+		consumer.start();
+		await vi.waitFor(() =>
+			expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
+		);
+		const userSignal = chatExecutions.register.mock.calls[0][1].signal;
+		expect(userSignal.aborted).toBe(false);
+		expect(queue.recordFailure).toHaveBeenCalledWith(item, failure, undefined);
+		expect(sender.send).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+	});
 	it('runs independent sessions without waiting and reuses each claimed execution', async () => {
 		const first = claim('first');
 		first.payload.message = 'edited first message';
@@ -244,7 +364,7 @@ describe('AgentMessageQueueConsumer', () => {
 			yield {
 				type: 'tool-call-suspended',
 				toolCallId: 'call-1',
-				toolName: 'ask_questions',
+				toolName: 'agent_builder_ask_questions',
 				runId: 'run-1',
 				suspendPayload: { type: 'questions', questions: [] },
 			};
@@ -274,7 +394,7 @@ describe('AgentMessageQueueConsumer', () => {
 		await vi.waitFor(() =>
 			expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
 		);
-		expect(queue.recordFailure).toHaveBeenCalledWith(item, thrown, expect.any(AbortSignal));
+		expect(queue.recordFailure).toHaveBeenCalledWith(item, thrown, undefined);
 		expect(sender.send).toHaveBeenCalledWith({
 			type: 'error',
 			message: thrown.message,
@@ -324,15 +444,56 @@ describe('AgentMessageQueueConsumer', () => {
 						? 'This agent is not ready to run yet.'
 						: 'You can no longer execute this agent',
 			}),
-			expect.any(AbortSignal),
+			failure === 'invalid draft' ? expect.any(AbortSignal) : undefined,
 		);
 		expect(testRuns.executePreparedDraftRun).not.toHaveBeenCalled();
 		if (failure !== 'invalid draft') {
-			expect(chatExecutions.register).not.toHaveBeenCalled();
 			expect(testRuns.prepareDraftRun).not.toHaveBeenCalled();
 		}
-		if (failure === 'missing owner') expect(users.findByIdWithRole).not.toHaveBeenCalled();
+		if (failure === 'missing owner') {
+			expect(users.findByIdWithRole).not.toHaveBeenCalled();
+			expect(chatExecutions.register).not.toHaveBeenCalled();
+		} else {
+			expect(chatExecutions.register).toHaveBeenCalledOnce();
+		}
+		expect(chatExecutions.settle).toHaveBeenCalledWith(
+			item.admission.executionId,
+			expect.any(Function),
+		);
 		expect(sender.send).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+	});
+
+	it('ends delivery without an error when Stop follows queue acceptance', async () => {
+		const item = claim('session');
+		repository.findThreadIds.mockResolvedValue(['session']);
+		queue.claimNext.mockResolvedValueOnce(item).mockResolvedValue(null);
+		chatExecutions.register.mockImplementation((_context, controller) => {
+			controller.abort(new DOMException('Response stopped', 'AbortError'));
+		});
+		consumer.start();
+		await vi.waitFor(() =>
+			expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
+		);
+		expect(queue.recordFailure).toHaveBeenCalledWith(
+			item,
+			expect.objectContaining({ name: 'AbortError' }),
+			expect.objectContaining({ aborted: true }),
+		);
+		expect(testRuns.executePreparedDraftRun).not.toHaveBeenCalled();
+		expect(sender.send).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+		expect(sender.send).toHaveBeenNthCalledWith(1, {
+			type: 'execution-started',
+			inputMessageIds: item.admission.inputMessageIds,
+			executionId: item.admission.executionId,
+			sessionId: item.thread.id,
+			message: item.payload.message,
+		});
+		expect(sender.send).toHaveBeenCalledWith({
+			type: 'done',
+			sessionId: 'session',
+			executionId: item.admission.executionId,
+		});
+		expect(sender.close).toHaveBeenCalledOnce();
 	});
 
 	it('leaves integration work pending until its bridge is available and stops admission during shutdown', async () => {
@@ -437,7 +598,144 @@ describe('AgentMessageQueueConsumer', () => {
 		expect(queue.recordFailure).toHaveBeenCalledWith(
 			item,
 			expect.objectContaining({ message: 'The message integration is no longer configured' }),
-			expect.any(AbortSignal),
+			undefined,
 		);
+	});
+	describe('system agents', () => {
+		function registerSystemAgent(authorized = true) {
+			const provider = {
+				agentId: 'agent',
+				name: 'System Agent',
+				authorize: vi.fn(async () => authorized),
+				prepareTurn: vi.fn(),
+			} satisfies SystemAgentProvider;
+			systemAgents.register(provider);
+			return provider;
+		}
+
+		function systemClaim(threadId: string): ClaimedAgentMessage {
+			const item = claim(threadId);
+			return {
+				...item,
+				payload: { kind: 'system', message: 'input', resourceId: 'system-chat:user' },
+				item: mock<AgentMessageQueue>({ ...item.item, payload: { kind: 'system' } }),
+			};
+		}
+
+		async function consumeOne(item: ClaimedAgentMessage) {
+			repository.findThreadIds.mockResolvedValue([item.thread.id]);
+			queue.claimNext.mockResolvedValueOnce(item).mockResolvedValue(null);
+			consumer.start();
+			await vi.waitFor(() =>
+				expect(queue.settle).toHaveBeenCalledWith(item.thread.id, item.admission.executionId),
+			);
+		}
+
+		it('routes a system message to the system-agent runtime after the floor check', async () => {
+			const provider = registerSystemAgent();
+			const item = systemClaim('session');
+			systemAgentExecution.consume.mockImplementation(async (_claim, _user, _signal, send) => {
+				send({ type: 'done', sessionId: 'session', executionId: item.admission.executionId });
+			});
+
+			await consumeOne(item);
+
+			expect(systemAgentExecution.consume).toHaveBeenCalledWith(
+				item,
+				expect.objectContaining({ id: 'user' }),
+				expect.any(AbortSignal),
+				sender.send,
+			);
+			expect(chatExecutions.register).toHaveBeenCalledWith(
+				expect.objectContaining({ userId: 'user', surface: 'system' }),
+				expect.any(AbortController),
+			);
+			// The runtime floor (`project:read`) and the provider decide access,
+			// not the project `agent:execute` scope.
+			expect(userHasScopes).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'user' }),
+				['project:read'],
+				false,
+				{ projectId: 'project' },
+			);
+			expect(userHasScopes).not.toHaveBeenCalledWith(
+				expect.anything(),
+				['agent:execute'],
+				expect.anything(),
+				expect.anything(),
+			);
+			expect(provider.authorize).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'user' }),
+				'project',
+			);
+			expect(testRuns.prepareDraftRun).not.toHaveBeenCalled();
+			expect(chatExecutions.register).toHaveBeenCalledWith(
+				expect.objectContaining({ userId: 'user', threadId: 'session' }),
+				expect.any(AbortController),
+			);
+			expect(sender.send).toHaveBeenCalledWith(expect.objectContaining({ type: 'done' }));
+			expect(queue.recordFailure).not.toHaveBeenCalled();
+		});
+
+		/** A refused system turn fails the item, streams an error and never runs. */
+		function expectRefused(item: ReturnType<typeof systemClaim>) {
+			expect(queue.recordFailure).toHaveBeenCalledWith(
+				item,
+				expect.objectContaining({ message: 'You can no longer execute this agent' }),
+				undefined,
+			);
+			// The claim registers the stop target before the owner check runs.
+			expect(chatExecutions.register).toHaveBeenCalledOnce();
+			expect(chatExecutions.register).toHaveBeenCalledWith(
+				expect.objectContaining({ surface: 'system' }),
+				expect.any(AbortController),
+			);
+			expect(systemAgentExecution.consume).not.toHaveBeenCalled();
+			expect(sender.send).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+		}
+
+		it('records a failure when the provider no longer authorizes the owner', async () => {
+			registerSystemAgent(false);
+			const item = systemClaim('session');
+
+			await consumeOne(item);
+
+			expectRefused(item);
+		});
+
+		it('records a failure when the owner can no longer read the working project', async () => {
+			const provider = registerSystemAgent();
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+			const item = systemClaim('session');
+
+			await consumeOne(item);
+
+			expectRefused(item);
+			expect(provider.authorize).not.toHaveBeenCalled();
+		});
+
+		it('records a failure for a system message without a registered provider', async () => {
+			const item = systemClaim('session');
+
+			await consumeOne(item);
+
+			expectRefused(item);
+		});
+
+		it('keeps the agent:execute check for Preview messages of a system agent id', async () => {
+			registerSystemAgent();
+			const item = claim('session');
+
+			await consumeOne(item);
+
+			expect(userHasScopes).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'user' }),
+				['agent:execute'],
+				false,
+				{ projectId: 'project' },
+			);
+			expect(systemAgentExecution.consume).not.toHaveBeenCalled();
+			expect(testRuns.prepareDraftRun).toHaveBeenCalled();
+		});
 	});
 });

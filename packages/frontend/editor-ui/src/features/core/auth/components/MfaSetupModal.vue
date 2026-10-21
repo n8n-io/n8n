@@ -450,7 +450,7 @@ onBeforeUnmount(() => clearTimeout(copyFeedbackTimer));
 								@click="onDownloadClick"
 							>
 								<template #icon>
-									<N8nIcon icon="download" />
+									<N8nIcon icon="arrow-circle-down" />
 								</template>
 								{{ i18n.baseText('mfa.setup.step2.button.download') }}
 							</N8nButton>

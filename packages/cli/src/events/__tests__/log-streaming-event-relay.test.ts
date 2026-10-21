@@ -72,6 +72,7 @@ describe('LogStreamingEventRelay', () => {
 					workflowIdPolicy: 'new',
 					credentialMatchingMode: 'id-only',
 					credentialMissingMode: 'must-preexist',
+					credentialConflictPolicy: 'keep-existing',
 					workflowPublishingPolicy: 'preserve-published-state',
 					missingNodeTypeMode: 'fail',
 					projectConflictPolicy: 'merge',
@@ -153,6 +154,7 @@ describe('LogStreamingEventRelay', () => {
 						workflowIdPolicy: 'new',
 						credentialMatchingMode: 'id-only',
 						credentialMissingMode: 'must-preexist',
+						credentialConflictPolicy: 'keep-existing',
 						workflowPublishingPolicy: 'preserve-published-state',
 						missingNodeTypeMode: 'fail',
 						projectConflictPolicy: 'merge',
@@ -1730,6 +1732,35 @@ describe('LogStreamingEventRelay', () => {
 					userEmail: 'user@example.com',
 					authenticationMethod: 'email',
 					reason: 'Invalid password',
+				},
+			});
+		});
+
+		it('should log on `user-login-email-conflict` event', () => {
+			const event: RelayEventMap['user-login-email-conflict'] = {
+				user: {
+					id: 'user404',
+					email: 'linked@example.com',
+					firstName: 'Linked',
+					lastName: 'User',
+					role: { slug: 'global:member' },
+				},
+				authenticationMethod: 'saml',
+				assertedEmail: 'asserted@example.com',
+			};
+
+			eventService.emit('user-login-email-conflict', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.user.login.emailConflict',
+				payload: {
+					userId: 'user404',
+					_email: 'linked@example.com',
+					_firstName: 'Linked',
+					_lastName: 'User',
+					globalRole: 'global:member',
+					authenticationMethod: 'saml',
+					_assertedEmail: 'asserted@example.com',
 				},
 			});
 		});

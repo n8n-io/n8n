@@ -5,6 +5,7 @@ import type { CredentialsFinderService } from '@n8n/backend-services';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
 import type { OauthService } from '@/oauth/oauth.service';
+import type { NamingService } from '@/services/naming.service';
 import { BadRequestError } from '@n8n/errors';
 
 import {
@@ -31,6 +32,7 @@ describe('TeamsManagedSetupService', () => {
 	let credentialsFinderService: ReturnType<typeof mock<CredentialsFinderService>>;
 	let credentialsOverwrites: ReturnType<typeof mock<CredentialsOverwrites>>;
 	let oauthService: ReturnType<typeof mock<OauthService>>;
+	let namingService: ReturnType<typeof mock<NamingService>>;
 	let service: TeamsManagedSetupService;
 
 	const withOverwrites = (overwrites: Record<string, unknown> | undefined) => {
@@ -55,11 +57,13 @@ describe('TeamsManagedSetupService', () => {
 		credentialsOverwrites = mock<CredentialsOverwrites>();
 		oauthService = mock<OauthService>();
 		oauthService.getBaseUrl.mockReturnValue('https://n8n.example.com/rest/oauth2-credential');
+		namingService = mock<NamingService>();
 		service = new TeamsManagedSetupService(
 			credentialsService,
 			credentialsFinderService,
 			credentialsOverwrites,
 			oauthService,
+			namingService,
 		);
 		withOverwrites({ clientId: 'client-id', clientSecret: 'client-secret' });
 	});
@@ -97,6 +101,19 @@ describe('TeamsManagedSetupService', () => {
 				adminConsentUrl: null,
 			});
 			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('lists only sign-ins the project itself holds, never a personal one', async () => {
+			withManagerCredential({
+				oauthTokenData: { access_token: 'token', refresh_token: 'refresh-1', scope: ALL_SCOPES },
+			});
+
+			await service.getSetupState(scope);
+
+			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(
+				scope.user,
+				expect.objectContaining({ excludePersonalRoute: true }),
+			);
 		});
 
 		it('lists a connected sign-in with its organisation', async () => {
@@ -248,19 +265,22 @@ describe('TeamsManagedSetupService', () => {
 	});
 
 	describe('createManagerCredential', () => {
-		it('creates an empty credential of the manager type in the agent project', async () => {
+		it('creates an empty, uniquely named credential of the manager type in the agent project', async () => {
+			namingService.getUniqueCredentialName.mockResolvedValue('Microsoft organization 2');
 			credentialsService.createUnmanagedCredential.mockResolvedValue(
-				mock({ id: 'cred-new', name: 'Microsoft organization' }) as never,
+				mock({ id: 'cred-new', name: 'Microsoft organization 2' }) as never,
 			);
 
 			await expect(service.createManagerCredential(scope)).resolves.toEqual({
 				id: 'cred-new',
-				name: 'Microsoft organization',
+				name: 'Microsoft organization 2',
 				type: 'microsoftTeamsManagerOAuth2Api',
 				isResolvable: false,
 			});
+			expect(namingService.getUniqueCredentialName).toHaveBeenCalledWith('Microsoft organization');
 			expect(credentialsService.createUnmanagedCredential).toHaveBeenCalledWith(
 				expect.objectContaining({
+					name: 'Microsoft organization 2',
 					type: 'microsoftTeamsManagerOAuth2Api',
 					data: {},
 					projectId: PROJECT_ID,
