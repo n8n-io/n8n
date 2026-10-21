@@ -17,20 +17,26 @@ describe('WorkableTrigger', () => {
 		const res = { status: vi.fn().mockReturnThis(), send: vi.fn().mockReturnThis(), end: vi.fn() };
 		const logger = { warn: vi.fn() };
 		const getBodyData = vi.fn(() => body);
+		const getCredentials = vi.fn().mockResolvedValue({ accessToken });
 		const result = await trigger.webhook.call({
-			getCredentials: vi.fn().mockResolvedValue({ accessToken }),
-			getRequestObject: () => ({ header: () => signature, rawBody: requestBody }),
+			getCredentials,
+			getRequestObject: () => ({
+				header: (name: string) =>
+					name.toLowerCase() === 'x-workable-signature' ? signature : undefined,
+				rawBody: requestBody,
+			}),
 			getResponseObject: () => res,
 			getBodyData,
 			helpers: { returnJsonArray: (data: unknown) => [{ json: data }] },
 			logger,
 		} as unknown as IWebhookFunctions);
-		return { result, res, logger, getBodyData };
+		return { result, res, logger, getBodyData, getCredentials };
 	};
 
 	it('should return workflow data when the signature is valid', async () => {
-		const { result, res, logger } = await callWebhook(validSignature);
+		const { result, res, logger, getCredentials } = await callWebhook(validSignature);
 
+		expect(getCredentials).toHaveBeenCalledWith('workableApi');
 		expect(res.status).not.toHaveBeenCalled();
 		expect(logger.warn).not.toHaveBeenCalled();
 		expect(result).toEqual({ workflowData: [[{ json: body }]] });
