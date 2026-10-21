@@ -8,10 +8,7 @@ describe('parseJudgeResponse', () => {
 		['```json\n{"pass": false}\n```', false],
 		['{"pass": "true"}', true],
 		['{"pass": "false"}', false],
-		['{"pass": "TRUE"}', true],
-		['{"pass": "FALSE"}', false],
 		['{"pass": "TrUe"}', true],
-		['{"pass": "FaLsE"}', false],
 		['{"score": 0.9}', true],
 		['{"score": 0.7}', true],
 		['{"score": 0.5}', false],
@@ -22,15 +19,15 @@ describe('parseJudgeResponse', () => {
 		['{}', false],
 		['{"reasoning": "No verdict."}', false],
 		['{"pass": "yes"}', false],
-		['{"pass": "yes", "score": 0.9}', true],
-		['{"pass": "yes", "score": 0.5}', false],
+		['{"pass": "yes", "score": 0.9}', false],
 		['{"pass": 1}', false],
-		['{"pass": 0, "score": 0.9}', true],
-		['{"pass": null}', false],
-		['{"pass": null, "score": 0.9}', true],
+		['{"pass": 0, "score": 0.9}', false],
+		['{"pass": null, "score": 0.9}', false],
 		['{"pass": {}}', false],
-		['{"pass": [], "score": 0.9}', true],
-	])('parses the JSON verdict in %s as %s', (text, expectedPass) => {
+		['{"pass": [], "score": 0.9}', false],
+		['{"score": "0.9"}', false],
+		['{"score": [0.9]}', false],
+	])('parses the JSON verdict in %j as %s', (text, expectedPass) => {
 		const result = parseJudgeResponse(text);
 
 		expect(result.pass).toBe(expectedPass);
@@ -43,6 +40,7 @@ describe('parseJudgeResponse', () => {
 		['{"pass": false,', false],
 		['{"pass":false,', false],
 		['{"PASS": TRUE,', true],
+		['{"pass": true, "pass": false,', false],
 		['The response does not pass the rule.', false],
 		['This should not pass because it shares the address.', false],
 		['This response should pass the test', false],

@@ -4,7 +4,8 @@ import type { EvalScore } from '../types';
 
 /**
  * Parse an LLM judge response into an EvalScore (pass/fail).
- * Handles JSON wrapped in markdown fences, plain JSON, or raw text.
+ * Handles JSON wrapped in markdown fences, plain JSON, or malformed JSON.
+ * The judge prompts require a JSON verdict, so a reply without one fails.
  */
 export function parseJudgeResponse(text: string): EvalScore {
 	const stripped = extractJsonCandidate(text);
@@ -17,9 +18,12 @@ export function parseJudgeResponse(text: string): EvalScore {
 			pass = parsedPass;
 		} else if (parsedPass === 'true' || parsedPass === 'false') {
 			pass = parsedPass === 'true';
+		} else if (parsedPass !== undefined) {
+			// An invalid pass value is not a verdict. Do not fall back to the score.
+			pass = false;
 		} else {
-			// Use the legacy score only when there is no valid pass value.
-			pass = parsed.score !== undefined ? parsed.score >= 0.7 : false;
+			// Support the legacy { score: 0.8 } format.
+			pass = typeof parsed.score === 'number' && parsed.score >= 0.7;
 		}
 		return {
 			pass,
@@ -30,9 +34,7 @@ export function parseJudgeResponse(text: string): EvalScore {
 		const lowerText = stripped.toLowerCase();
 		const hasPassTrue = lowerText.includes('"pass": true') || lowerText.includes('"pass":true');
 		const hasPassFalse = lowerText.includes('"pass": false') || lowerText.includes('"pass":false');
-		if (hasPassTrue) return { pass: true, reasoning: stripped };
-		if (hasPassFalse) return { pass: false, reasoning: stripped };
-		// Fail closed when there is no explicit verdict.
-		return { pass: false, reasoning: stripped };
+		// Fail closed when there is no explicit verdict or the verdicts conflict.
+		return { pass: hasPassTrue && !hasPassFalse, reasoning: stripped };
 	}
 }
