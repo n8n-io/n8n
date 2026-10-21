@@ -146,9 +146,8 @@ export class AgentTurnExecutionService {
 			config.backgroundJobSignal,
 			config.admittedExecution?.startedAt,
 		);
-		config.onRecorderCreated?.(recorder);
-
 		try {
+			config.onRecorderCreated?.(recorder);
 			turn = await config.prepare();
 			const preparedTurn = turn;
 			if (config.chatSurface !== undefined) {

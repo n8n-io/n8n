@@ -69,7 +69,8 @@ export class SystemAgentHostEventChannel {
 		}
 		const event: PendingHostEvent = { name, payload, ...(key !== undefined ? { key } : {}) };
 		if (!this.recorder) {
-			this.buffer(event);
+			// Copy now: the provider can change the payload before the turn records it.
+			this.buffer({ ...event, payload: structuredClone(payload) });
 			return;
 		}
 		this.deliver(this.recorder, event);

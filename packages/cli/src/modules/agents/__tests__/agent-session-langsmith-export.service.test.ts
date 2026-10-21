@@ -569,6 +569,35 @@ describe('AgentSessionLangSmithExportService', () => {
 		});
 	});
 
+	it('exports host events with their name, payload and key', async () => {
+		const { service, agentExecutionService, threadRepository } = setup();
+		agentExecutionService.getThreadDetail.mockResolvedValue({
+			thread: makeThread(),
+			executions: [
+				makeExecution({
+					timeline: [
+						{
+							type: 'host-event',
+							name: 'test.progress',
+							key: 'build',
+							payload: { done: 1 },
+							timestamp: Date.parse('2026-08-14T09:00:00.500Z'),
+						},
+					],
+				}),
+			],
+		});
+		threadRepository.findByParentThreadId.mockResolvedValue([]);
+
+		await service.exportSession(input);
+
+		const hostEventRun = submittedRuns().find(({ name }) => name === 'Host event: test.progress');
+		expect(hostEventRun).toMatchObject({
+			outputs: { payload: { done: 1 } },
+			extra: { metadata: expect.objectContaining({ key: 'build' }) },
+		});
+	});
+
 	it('rejects before loading data when the AI proxy is disabled', async () => {
 		const { service, agentExecutionService } = setup({ proxyEnabled: false });
 

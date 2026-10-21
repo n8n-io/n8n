@@ -27,6 +27,22 @@ describe('SystemAgentHostEventChannel', () => {
 		).toEqual(['test.first', 'test.second', 'test.third']);
 	});
 
+	it('keeps a buffered payload as it was when emitted', () => {
+		const send = vi.fn<(event: AgentSseEvent) => void>();
+		const channel = new SystemAgentHostEventChannel(send);
+		const payload = { step: 1 };
+		channel.emit('test.progress', payload);
+		payload.step = 2;
+
+		channel.attach(new ExecutionRecorder());
+
+		expect(send).toHaveBeenCalledWith({
+			type: 'host-event',
+			name: 'test.progress',
+			payload: { step: 1 },
+		});
+	});
+
 	it('sends the sanitized payload that it records', () => {
 		const send = vi.fn();
 		const channel = new SystemAgentHostEventChannel(send);
