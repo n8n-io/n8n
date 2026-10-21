@@ -59,7 +59,9 @@ export function useWhatsAppMetaStatus(
 
 	function scheduleNext(current: number, credential: string) {
 		if (!poll || current !== run) return;
-		timer = setTimeout(() => void tick(current, credential), META_STATUS_POLL_MS);
+		timer = setTimeout(() => {
+			void tick(current, credential);
+		}, META_STATUS_POLL_MS);
 	}
 
 	async function tick(current: number, credential: string) {
