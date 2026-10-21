@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import type { AgentChatListItem } from '@n8n/api-types';
 import {
+	N8nAssistantIcon,
 	N8nButton,
 	N8nDropdownMenu,
 	N8nIcon,
@@ -173,7 +174,7 @@ function handleCreateAgent() {
 								:disabled="disabled"
 								data-test-id="n8n-chat-agent-picker-trigger"
 							>
-								<N8nIcon v-if="!modelValue" icon="n8n-assistant" :size="18" />
+								<N8nAssistantIcon v-if="!modelValue" size="large" />
 								<AgentPersonalisationIcon
 									v-else
 									:personalisation="modelValue.personalisation"
@@ -192,7 +193,7 @@ function handleCreateAgent() {
 									{ [$style.unavailable]: isUnavailable(item.data) },
 								]"
 							>
-								<N8nIcon v-if="item.data?.kind === 'assistant'" icon="n8n-assistant" :size="18" />
+								<N8nAssistantIcon v-if="item.data?.kind === 'assistant'" size="large" />
 								<AgentPersonalisationIcon
 									v-else
 									:personalisation="
