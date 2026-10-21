@@ -39,6 +39,8 @@ describe('parseJudgeResponse', () => {
 		['{"pass":true,', true],
 		['{"pass": false,', false],
 		['{"pass":false,', false],
+		['```json\n{"pass": true,', true],
+		['```json\n{"pass": false,', false],
 		['{"PASS": TRUE,', true],
 		['{"pass": true, "pass": false,', false],
 		['The response does not pass the rule.', false],
@@ -61,9 +63,9 @@ describe('parseJudgeResponse', () => {
 		'```json\n{"pass": false}\n```',
 		'{"pass": "FALSE"}',
 		'{"score": 0.5}',
-		'{"pass": "yes", "score": 0.9}',
 		'{"pass": true,',
 		'{"pass":false,',
+		'```json\n{"pass": true,',
 	])('reads a verdict in %j, so the result is not inconclusive', (text) => {
 		expect(parseJudgeResponse(text)).not.toHaveProperty('inconclusive');
 	});
@@ -72,6 +74,11 @@ describe('parseJudgeResponse', () => {
 		'{}',
 		'{"reasoning": "No verdict."}',
 		'{"pass": "yes"}',
+		'{"pass": "yes", "score": 0.9}',
+		'{"pass": 0, "score": 0.9}',
+		'Use "pass": true only when the rule is met.',
+		'{"pass": true, "pass": false,',
+		'{"score": [0.9]}',
 		'{"pass": "partially", "reasoning": "Mentions the number but not the date."}',
 		'{"pass": 1}',
 		'{"pass": null}',

@@ -44,10 +44,18 @@ export function parseJudgeResponse(text: string): EvalScore {
 	}
 
 	// Malformed JSON can still carry an explicit verdict, e.g. a truncated reply.
-	// Conflicting verdicts are not a verdict.
+	// Only a reply that starts as JSON counts: a quoted fragment in prose is not a
+	// verdict. Conflicting verdicts are not a verdict either.
 	const lowerText = stripped.toLowerCase();
 	const hasPassTrue = lowerText.includes('"pass": true') || lowerText.includes('"pass":true');
 	const hasPassFalse = lowerText.includes('"pass": false') || lowerText.includes('"pass":false');
-	if (hasPassTrue !== hasPassFalse) return { pass: hasPassTrue, reasoning: stripped };
+	// A json fence that never closed (truncation) is still JSON-shaped.
+	const startsAsJson = stripped
+		.replace(/^```(?:json)?\s*/i, '')
+		.trimStart()
+		.startsWith('{');
+	if (startsAsJson && hasPassTrue !== hasPassFalse) {
+		return { pass: hasPassTrue, reasoning: stripped };
+	}
 	return { pass: false, reasoning: stripped, inconclusive: true };
 }
