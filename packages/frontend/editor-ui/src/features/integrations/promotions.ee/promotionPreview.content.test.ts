@@ -1,4 +1,4 @@
-import type { PromotionResourceDetail } from '@n8n/api-types';
+import type { PromotionDirection, PromotionResourceDetail } from '@n8n/api-types';
 
 import { billingResources, resource } from './__tests__/preview.fixtures';
 import {
@@ -125,21 +125,20 @@ describe('promotion preview content', () => {
 		]);
 	});
 
+	const changedTable: Extract<PromotionResourceDetail, { type: 'dataTable' }> = {
+		key: 'dataTable:t1',
+		type: 'dataTable',
+		before: null,
+		after: null,
+		revision: { before: 'b', after: 'a' },
+		dataTableChanges: [
+			{ kind: 'rename-column', from: 'amount', to: 'total', destructive: false },
+			{ kind: 'remove-column', column: 'notes', type: 'string', destructive: true },
+		],
+	};
+
 	it('should list the column changes of a changed table and the columns of a new table', () => {
-		const modified = describeDataTable(
-			{
-				key: 'dataTable:t1',
-				type: 'dataTable',
-				before: null,
-				after: null,
-				revision: { before: 'b', after: 'a' },
-				dataTableChanges: [
-					{ kind: 'rename-column', from: 'amount', to: 'total', destructive: false },
-					{ kind: 'remove-column', column: 'notes', type: 'string', destructive: true },
-				],
-			},
-			billingResources.invoicesTable,
-		);
+		const modified = describeDataTable(changedTable, billingResources.invoicesTable, 'apply');
 		expect(modified.changes).toHaveLength(2);
 
 		const added = describeDataTable(
@@ -158,7 +157,19 @@ describe('promotion preview content', () => {
 				revision: { before: null, after: 'a' },
 			},
 			resource({ key: 'dataTable:t2', name: 'Refunds', change: 'added' }),
+			'apply',
 		);
 		expect(added.addedColumns.map((column) => column.name)).toEqual(['amount', 'reason']);
+	});
+
+	it('should mark the changes that remove data only on Apply', () => {
+		const removesData = (direction: PromotionDirection) =>
+			describeDataTable(changedTable, billingResources.invoicesTable, direction).changes.map(
+				(change) => change.destructive,
+			);
+
+		expect(removesData('apply')).toEqual([false, true]);
+		// Promote cannot know the table on the instance that applies the branch.
+		expect(removesData('promote')).toEqual([false, false]);
 	});
 });

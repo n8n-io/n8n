@@ -136,7 +136,7 @@ export function describeWorkflowFieldChanges(context: FieldContext): FieldChange
 }
 
 export type DataTableDescription = {
-	/** Column changes of a table that exists on both sides. */
+	/** Column changes of a table that exists on both sides. Only Apply marks data loss. */
 	changes: PromotionDataTableChange[];
 	/** The columns of a table that the operation creates. */
 	addedColumns: SerializedDataTableColumn[];
@@ -145,8 +145,15 @@ export type DataTableDescription = {
 export function describeDataTable(
 	detail: Extract<PromotionResourceDetail, { type: 'dataTable' }>,
 	resource: PromotionResource,
+	direction: PromotionDirection,
 ): DataTableDescription {
-	const changes = resource.change === 'modified' ? (detail.dataTableChanges ?? []) : [];
+	// Promote cannot know the table on the instance that applies the branch, so it does not warn.
+	const changes =
+		resource.change === 'modified'
+			? (detail.dataTableChanges ?? []).map((change) =>
+					direction === 'apply' ? change : { ...change, destructive: false },
+				)
+			: [];
 	const after = sideState(detail, 'after');
 	const addedColumns =
 		resource.change === 'added' && after.kind === 'content'

@@ -98,7 +98,9 @@ const fieldChanges = computed(() => {
 	return detail.value ? describeFieldChanges(detail.value, context) : [];
 });
 const dataTable = computed(() =>
-	detail.value?.type === 'dataTable' ? describeDataTable(detail.value, props.resource) : undefined,
+	detail.value?.type === 'dataTable'
+		? describeDataTable(detail.value, props.resource, props.direction)
+		: undefined,
 );
 const absentSides = computed((): DetailSide[] => {
 	const current = detail.value;
