@@ -31,6 +31,7 @@ import type { SystemAgentProvider, SystemAgentTurnHandle } from '../system-agent
 const AGENT_ID = 'test-assistant';
 const RAW_ERROR = 'Gateway quota exceeded for key abc';
 const FORMATTED_ERROR = 'You ran out of Gateway credits.';
+const QUOTA_CODE = 'quota_exhausted';
 
 const user = mock<User>({ id: 'user-1' });
 const thread = {
@@ -151,8 +152,10 @@ function setup(
 	};
 	const liveErrors = () =>
 		events.flatMap((event) => (event.type === 'error' ? [event.message] : []));
+	const liveErrorCodes = () =>
+		events.flatMap((event) => (event.type === 'error' ? [event.errorCode] : []));
 
-	return { service, send, storedError, liveErrors };
+	return { service, send, storedError, liveErrors, liveErrorCodes };
 }
 
 const errorChunks: StreamChunk[] = [
@@ -171,24 +174,26 @@ describe('System agent error formatting', () => {
 			expect(storedError()).toBe(RAW_ERROR);
 		});
 
-		it('sends and stores the formatted text when the handle has a formatter', async () => {
-			const formatError = vi.fn(() => FORMATTED_ERROR);
-			const { service, send, storedError, liveErrors } = setup(
+		it('sends the formatted text and code, and stores the text, with one formatter call', async () => {
+			const formatError = vi.fn(async () => ({ message: FORMATTED_ERROR, code: QUOTA_CODE }));
+			const { service, send, storedError, liveErrors, liveErrorCodes } = setup(
 				{ chunks: errorChunks },
 				formatError,
 			);
 
 			await service.consume(claim(), user, new AbortController().signal, send);
 
+			expect(formatError).toHaveBeenCalledTimes(1);
 			expect(formatError).toHaveBeenCalledWith(expect.objectContaining({ message: RAW_ERROR }));
 			expect(liveErrors()).toEqual([FORMATTED_ERROR]);
+			expect(liveErrorCodes()).toEqual([QUOTA_CODE]);
 			expect(storedError()).toBe(FORMATTED_ERROR);
 		});
 
 		it('sends and stores the raw error when the formatter returns undefined', async () => {
 			const { service, send, storedError, liveErrors } = setup(
 				{ chunks: errorChunks },
-				() => undefined,
+				async () => undefined,
 			);
 
 			await service.consume(claim(), user, new AbortController().signal, send);
@@ -198,9 +203,12 @@ describe('System agent error formatting', () => {
 		});
 
 		it('sends and stores the raw error when the formatter throws', async () => {
-			const { service, send, storedError, liveErrors } = setup({ chunks: errorChunks }, () => {
-				throw new Error('formatter broke');
-			});
+			const { service, send, storedError, liveErrors } = setup(
+				{ chunks: errorChunks },
+				async () => {
+					throw new Error('formatter broke');
+				},
+			);
 
 			await service.consume(claim(), user, new AbortController().signal, send);
 
@@ -219,17 +227,16 @@ describe('System agent error formatting', () => {
 			expect(storedError()).toBe(RAW_ERROR);
 		});
 
-		it('stores the formatted text and rethrows it for the live error event', async () => {
-			const { service, send, storedError } = setup(
-				{ throws: new Error(RAW_ERROR) },
-				() => FORMATTED_ERROR,
-			);
+		it('stores the formatted text and rethrows it with its code for the live error event', async () => {
+			const formatError = vi.fn(async () => ({ message: FORMATTED_ERROR, code: QUOTA_CODE }));
+			const { service, send, storedError } = setup({ throws: new Error(RAW_ERROR) }, formatError);
 
-			// The queue consumer sends the message of this error as the live `error` event.
+			// The queue consumer sends this error as the live `error` event.
 			await expect(
 				service.consume(claim(), user, new AbortController().signal, send),
-			).rejects.toThrow(FORMATTED_ERROR);
+			).rejects.toMatchObject({ message: FORMATTED_ERROR, errorCode: QUOTA_CODE });
 			expect(storedError()).toBe(FORMATTED_ERROR);
+			expect(formatError).toHaveBeenCalledTimes(1);
 		});
 	});
 });
