@@ -320,7 +320,10 @@ describe('Test Summarize Node, aggregateAndSplitData', () => {
 			{ Sku: 'B', Qty: '', _itemIndex: 3 },
 		];
 
-		const aggregations: Aggregations = [{ aggregation: 'average', field: 'Qty' }];
+		const aggregations: Aggregations = [
+			{ aggregation: 'average', field: 'Qty' },
+			{ aggregation: 'sum', field: 'Qty' },
+		];
 
 		const result = aggregateAndSplitData({
 			splitKeys: ['Sku'],
@@ -330,9 +333,10 @@ describe('Test Summarize Node, aggregateAndSplitData', () => {
 			getValue: fieldValueGetter(),
 		});
 
+		// Sum keeps returning 0, the identity for a sum, for a group with no numeric values.
 		expect(flattenAggregationResultToArray(result)).toEqual([
-			{ returnData: { Sku: 'A', average_Qty: 3 }, pairedItems: [0, 1] },
-			{ returnData: { Sku: 'B', average_Qty: null }, pairedItems: [2, 3] },
+			{ returnData: { Sku: 'A', average_Qty: 3, sum_Qty: 6 }, pairedItems: [0, 1] },
+			{ returnData: { Sku: 'B', average_Qty: null, sum_Qty: 0 }, pairedItems: [2, 3] },
 		]);
 	});
 });
