@@ -1388,7 +1388,12 @@ describe('configuration lifecycle', () => {
 				runId: lifecycle.runId,
 				status: 'completed',
 				finishReason: 'stop',
-				output: { outcome: 'could_not_fix', summary: 'No fix found.', report: 'No fix found.' },
+				output: {
+					outcome: 'could_not_fix',
+					summary: 'No fix found.',
+					report: 'No fix found.',
+					candidateFilePath: null,
+				},
 				usage: { credits: null, turns: null, durationSeconds: null },
 			};
 			await lifecycle.onComplete(run, new AbortController().signal);

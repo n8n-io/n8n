@@ -114,6 +114,7 @@ packages/cli/src/collaboration/                         @n8n-io/catalysts
 packages/cli/src/binary-data/                           @n8n-io/catalysts
 packages/cli/src/posthog/                               @n8n-io/growth
 packages/cli/src/modules/data-table/                    @n8n-io/knowledge
+packages/cli/src/modules/knowledge/                     @n8n-io/knowledge
 
 packages/cli/src/evaluation.ee/                         @n8n-io/ai-trust
 packages/cli/src/chat/                                  @n8n-io/ai-agents
