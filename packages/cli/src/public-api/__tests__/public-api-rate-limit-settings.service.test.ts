@@ -32,7 +32,6 @@ describe('PublicApiRateLimitSettingsService', () => {
 		);
 
 	beforeEach(() => {
-		vi.unstubAllEnvs();
 		settingsRepository.findByKey.mockResolvedValue(null);
 		config = { ...codeDefaults };
 		service = new PublicApiRateLimitSettingsService(
@@ -42,7 +41,7 @@ describe('PublicApiRateLimitSettingsService', () => {
 		);
 	});
 
-	afterAll(() => {
+	afterEach(() => {
 		vi.unstubAllEnvs();
 	});
 
