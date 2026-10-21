@@ -8,6 +8,10 @@ import type { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { resolveCredentialAwareModelConfig } from '@/modules/agents/json-config/model-config';
 import { createAgentCredentialProvider } from '@/modules/agents/utils/agent-credential-provider';
 
+/** Shown to the user in place of a verdict when the judge's reply has none. */
+export const INCONCLUSIVE_REASONING =
+	'The checker did not give a clear pass or fail, so this check was not graded. Run it again.';
+
 type JudgeDependencies = {
 	agentConfigService: AgentConfigService;
 	credentialsService: CredentialsService;
@@ -39,6 +43,8 @@ type JudgeSubject = {
  *
  * A failure to resolve the model or to call it is returned as `status: 'error'`
  * and never thrown. Grading is best-effort on top of a case that already ran.
+ * A reply with no readable verdict is an `error` too: reporting it as a fail
+ * would blame the agent for the judge's reply and trigger a fix suggestion.
  */
 export async function judgeAgentAnswer(
 	{ agentConfigService, credentialsService, logger }: JudgeDependencies,
@@ -77,6 +83,14 @@ export async function judgeAgentAnswer(
 					.correctness()
 					.model(modelConfig)
 					.run({ input, output, expected: expectedOutput ?? undefined });
+
+		if (score.inconclusive) {
+			// The reply can quote the agent's answer, so it stays out of the log.
+			logger.warn('[AgentEvalJudge] The judge gave no readable verdict', {
+				agentId: ctx.agentId,
+			});
+			return { status: 'error', outcome: null, reasoning: INCONCLUSIVE_REASONING };
+		}
 
 		return {
 			status: 'completed',
