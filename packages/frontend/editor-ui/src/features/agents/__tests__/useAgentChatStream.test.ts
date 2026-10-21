@@ -1995,6 +1995,50 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		]);
 	});
 
+	it('replaces a keyed host event from an earlier step of the turn', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{ type: 'host-event', name: 'test.progress', key: 'build', payload: { done: 0 } },
+			{ type: 'text-delta', id: 't-1', delta: 'Step one' },
+			{ type: 'finish-step' },
+			{ type: 'start-step' },
+			{ type: 'text-delta', id: 't-2', delta: 'Step two' },
+			{ type: 'host-event', name: 'test.progress', key: 'build', payload: { done: 1 } },
+			{ type: 'finish-step' },
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('run');
+		await flushPromises();
+		await nextTick();
+
+		const assistant = hook.messages.value.filter((message) => message.role === 'assistant');
+		expect(assistant.map(({ content }) => content)).toEqual(['Step one', 'Step two']);
+		expect(assistant[0].hostEvents).toEqual([
+			expect.objectContaining({ name: 'test.progress', key: 'build', payload: { done: 1 } }),
+		]);
+		expect(assistant[1].hostEvents).toBeUndefined();
+	});
+
+	it('keeps a message with only host events when the turn reports an error', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'host-event', name: 'test.notice', payload: 1 },
+			{ type: 'error', message: 'boom' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('run');
+		await flushPromises();
+		await nextTick();
+
+		expect(hook.messages.value.flatMap((message) => message.hostEvents ?? [])).toEqual([
+			expect.objectContaining({ name: 'test.notice', payload: 1 }),
+		]);
+	});
+
 	it('clears prior warnings on the next send', async () => {
 		const withWarning: AgentSseEvent[] = [
 			{ type: 'warning', message: 'boom', source: 'mcp', server: 'dead' },

@@ -887,12 +887,35 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		}
 	}
 
+	/**
+	 * Replace the payload of the keyed host event that a message of this turn
+	 * already has. Returns false when the turn has no such event.
+	 */
+	function replaceKeyedHostEvent(
+		session: StreamSession,
+		event: Extract<AgentSseEvent, { type: 'host-event' }>,
+	): boolean {
+		for (const msg of session.minted) {
+			const index =
+				msg.hostEvents?.findIndex(
+					(existing) => existing.name === event.name && existing.key === event.key,
+				) ?? -1;
+			if (index === -1 || !msg.hostEvents) continue;
+			msg.hostEvents = msg.hostEvents.map((existing, i) =>
+				i === index ? { ...existing, payload: event.payload } : existing,
+			);
+			return true;
+		}
+		return false;
+	}
+
 	function dropOrphanMintedBubbles(session: StreamSession): void {
 		for (const msg of session.minted) {
 			if (
 				!msg.content &&
 				(msg.toolCalls?.length ?? 0) === 0 &&
-				getMessageThinkingSegments(msg).length === 0
+				getMessageThinkingSegments(msg).length === 0 &&
+				!msg.hostEvents?.length
 			) {
 				messages.value = messages.value.filter((m) => m !== msg);
 				session.minted.delete(msg);
@@ -1225,30 +1248,19 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			case 'host-event': {
 				// Keep the event on the turn. The host renders it by name; the chat
 				// renders nothing for it by itself. A keyed event replaces the
-				// earlier event with the same name and key, in its position.
+				// earlier event with the same name and key, in its position, also
+				// when that event is on an earlier step of the turn.
+				if (event.key !== undefined && replaceKeyedHostEvent(session, event)) break;
 				const msg = ensureCurrent(session);
-				const hostEvents = msg.hostEvents ?? [];
-				const index =
-					event.key === undefined
-						? -1
-						: hostEvents.findIndex(
-								(existing) => existing.name === event.name && existing.key === event.key,
-							);
-				if (index === -1) {
-					msg.hostEvents = [
-						...hostEvents,
-						{
-							id: crypto.randomUUID(),
-							name: event.name,
-							...(event.key !== undefined ? { key: event.key } : {}),
-							payload: event.payload,
-						},
-					];
-				} else {
-					msg.hostEvents = hostEvents.map((existing, i) =>
-						i === index ? { ...existing, payload: event.payload } : existing,
-					);
-				}
+				msg.hostEvents = [
+					...(msg.hostEvents ?? []),
+					{
+						id: crypto.randomUUID(),
+						name: event.name,
+						...(event.key !== undefined ? { key: event.key } : {}),
+						payload: event.payload,
+					},
+				];
 				break;
 			}
 			case 'message':
