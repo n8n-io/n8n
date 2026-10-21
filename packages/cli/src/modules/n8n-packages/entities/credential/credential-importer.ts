@@ -2,11 +2,9 @@ import type { SerializedCredential } from '@n8n/api-types';
 import { CredentialsFinderService } from '@n8n/backend-services';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ForbiddenError } from '@n8n/errors';
 import { UnexpectedError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { credentialDiffers, isUpdateCandidate } from './credential-conflict-policy';
 import { CredentialMatcherFactory } from './credential-matcher-factory';
@@ -166,15 +164,8 @@ export class CredentialImporter {
 		if (toCreate.length === 0) return;
 
 		// The import creates this project and makes the user its admin, so it has no scopes to look up yet.
-		if (
-			!projectPendingCreation &&
-			!(await userHasScopes(context.user, ['credential:create'], false, {
-				projectId: context.projectId,
-			}))
-		) {
-			throw new ForbiddenError(
-				"You don't have the permissions to save the credential in this project.",
-			);
+		if (!projectPendingCreation) {
+			await this.credentialsService.assertCanCreateInProject(context.user, context.projectId);
 		}
 
 		if (!credentialMissingModeUsesPackageData(request.missingMode)) return;
