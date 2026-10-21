@@ -79,14 +79,19 @@ watch(
 // Determine if we're in controlled mode
 const isControlled = computed(() => props.visible !== undefined);
 
-const handleOpenChange = (open: boolean) => {
-	isOpen.value = open;
-	// Consumers use these events to lazy-load the tooltip content
+// Emit on every open state change, from user interaction or from the `visible` prop.
+// Consumers use these events to lazy-load the tooltip content.
+watch(isOpen, (open, wasOpen) => {
+	if (open === wasOpen) return;
 	if (open) {
 		emit('before-show');
 	} else {
 		emit('hide');
 	}
+});
+
+const handleOpenChange = (open: boolean) => {
+	isOpen.value = open;
 };
 </script>
 
