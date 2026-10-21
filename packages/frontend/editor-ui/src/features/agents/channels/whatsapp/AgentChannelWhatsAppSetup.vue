@@ -42,7 +42,6 @@ const props = withDefaults(
 		credentialsLoading?: boolean;
 		loading?: boolean;
 		connected?: boolean;
-		isPublished?: boolean;
 		errorMessage?: string;
 		errorIsConflict?: boolean;
 		savedSettings?: AgentWhatsAppIntegrationSettings;
@@ -57,7 +56,6 @@ const props = withDefaults(
 		credentialsLoading: false,
 		loading: false,
 		connected: false,
-		isPublished: true,
 		errorMessage: '',
 		errorIsConflict: false,
 		savedSettings: undefined,

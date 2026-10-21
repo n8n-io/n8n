@@ -134,7 +134,6 @@ const subtitle = computed(() => {
 
 .locked {
 	opacity: 0.45;
-	pointer-events: none;
 }
 
 .avatar {

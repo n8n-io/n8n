@@ -844,7 +844,7 @@ describe('AgentChannelWhatsAppSetup', () => {
 
 		it('shows no toast after saving in edit mode', async () => {
 			const { getByTestId } = renderHost({
-				props: { viewProps: props({ mode: 'edit', connected: true, isPublished: false }) },
+				props: { viewProps: props({ mode: 'edit', connected: true }) },
 			});
 			await flushPromises();
 
