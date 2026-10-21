@@ -1167,6 +1167,67 @@ describe('CredentialsHelper', () => {
 			expect(parsedUpdatedData.oauthTokenData.token_type).toBe('Bearer');
 		});
 
+		describe('managed app version of the first token', () => {
+			const nodeCredentials: INodeCredentialsDetails = { id: 'cred-1', name: 'Managed' };
+			const newToken = { oauthTokenData: { access_token: 'token' } };
+
+			const save = async (storedData: Record<string, unknown>, overwriteVersion?: number) => {
+				const credentialsOverwrites = mock<CredentialsOverwrites>();
+				credentialsOverwrites.getNewConnectionVersion.mockReturnValue(overwriteVersion);
+				const helper = new CredentialsHelper(
+					new CredentialTypes(mockNodesAndCredentials),
+					credentialsOverwrites,
+					credentialsRepository,
+					dynamicCredentialProxy,
+					secretsProviderRepository,
+					licenseState,
+					externalSecretsConfig,
+					mock<AiGatewayService>(),
+					policyEnforcementService,
+				);
+				credentialsRepository.update.mockClear();
+				credentialsRepository.findOneByOrFail.mockResolvedValue({
+					id: 'cred-1',
+					name: 'Managed',
+					type: 'oAuth2Api',
+					data: cipher.encryptWithInstanceKey(storedData),
+					usageScope: 'project',
+				} as CredentialsEntity);
+
+				await helper.updateCredentialsOauthTokenData(
+					nodeCredentials,
+					'oAuth2Api',
+					newToken,
+					{} as IWorkflowExecuteAdditionalData,
+				);
+
+				const saved = credentialsRepository.update.mock.calls[0][1].data as string;
+				return { saved: JSON.parse(cipher.decryptWithInstanceKey(saved)), credentialsOverwrites };
+			};
+
+			test('stores the default app version with the first token of a managed credential', async () => {
+				const { saved } = await save({ clientId: '', clientSecret: '' }, 2);
+
+				expect(saved.oauthTokenData).toEqual({ access_token: 'token', n8n_managed_version: 2 });
+			});
+
+			test('does not store a version for a credential with its own client', async () => {
+				const { saved } = await save({ clientId: 'own', clientSecret: 'own' }, undefined);
+
+				expect(saved.oauthTokenData).toEqual({ access_token: 'token' });
+			});
+
+			test('does not add a version when the credential already holds a token', async () => {
+				const { saved, credentialsOverwrites } = await save(
+					{ clientId: '', clientSecret: '', oauthTokenData: { access_token: 'old' } },
+					2,
+				);
+
+				expect(saved.oauthTokenData).toEqual({ access_token: 'token' });
+				expect(credentialsOverwrites.getNewConnectionVersion).not.toHaveBeenCalled();
+			});
+		});
+
 		describe('dynamic credential resolution', () => {
 			const nodeCredentials: INodeCredentialsDetails = {
 				id: 'cred-789',

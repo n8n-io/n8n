@@ -8,7 +8,7 @@ import type {
 	INode,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { MANAGED_VERSION_KEY, OperationalError, UserError } from 'n8n-workflow';
 import nock from 'nock';
 import { Readable } from 'stream';
 import { mockDeep } from 'vitest-mock-extended';
@@ -103,6 +103,40 @@ describe('refreshOAuth2Token', () => {
 				oauthTokenData: expect.objectContaining({
 					access_token: 'new-token',
 					refresh_token: 'new-refresh-token',
+				}),
+			}),
+			mockAdditionalData,
+		);
+	});
+
+	test('should keep the managed app version of the stored token on refresh', async () => {
+		const oauthTokenData = {
+			access_token: 'old-token',
+			refresh_token: 'old-refresh-token',
+			[MANAGED_VERSION_KEY]: 2,
+		};
+		mockThis.getCredentials.mockResolvedValue({
+			...mockCredentialData,
+			clientSecret: undefined,
+			grantType: 'pkce',
+			oauthTokenData,
+		});
+		nock(baseUrl).post('/token').reply(200, {
+			access_token: 'new-token',
+			refresh_token: 'new-refresh-token',
+		});
+
+		await refreshOAuth2Token.call(mockThis, 'test-credentials-type', mockNode, mockAdditionalData);
+
+		expect(
+			mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+		).toHaveBeenCalledWith(
+			mockNode.credentials!['test-credentials-type'],
+			'test-credentials-type',
+			expect.objectContaining({
+				oauthTokenData: expect.objectContaining({
+					access_token: 'new-token',
+					[MANAGED_VERSION_KEY]: 2,
 				}),
 			}),
 			mockAdditionalData,

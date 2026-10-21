@@ -7,6 +7,7 @@ import {
 	SecretsProviderConnectionRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import { Credentials, FULL_ACCESS_NODE_TYPES, getAdditionalKeys } from 'n8n-core';
 import type {
 	CredentialInformation,
@@ -29,6 +30,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	ICredentialsHelper,
+	MANAGED_VERSION_KEY,
 	NodeHelpers,
 	OPEN_AI_API_CREDENTIAL_TYPE,
 	Workflow,
@@ -42,6 +44,7 @@ import {
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { hasTokenData } from '@/managed-versions';
 import { DCR_MANAGED_CREDENTIAL_FIELDS, OAUTH_PINNED_FIELDS } from '@/oauth/dcr-managed-fields';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
@@ -930,7 +933,12 @@ export class CredentialsHelper extends ICredentialsHelper {
 			return;
 		}
 
-		await credentials.updateData({ oauthTokenData: data.oauthTokenData });
+		const oauthTokenData = await this.withFirstConnectionVersion(
+			type,
+			credentials,
+			data.oauthTokenData,
+		);
+		await credentials.updateData({ oauthTokenData });
 		const { data: newData } = credentials.getDataToSave();
 		if (newData === undefined) {
 			throw new UnexpectedError('Credential data is missing after re-encryption');
@@ -959,6 +967,25 @@ export class CredentialsHelper extends ICredentialsHelper {
 			// A later refresh in the same execution must compare against what is stored now.
 			this.storedDataByDecrypted.set(data, newData);
 		}
+	}
+
+	/**
+	 * A token that n8n fetches itself (client credentials) has no callback that stores the
+	 * managed app version. The first token of a managed credential gets the version of the
+	 * default app, which the execution used to fetch it. A refresh keeps the stored version.
+	 */
+	private async withFirstConnectionVersion(
+		type: string,
+		credentials: Credentials,
+		tokenData: ICredentialDataDecryptedObject['oauthTokenData'],
+	) {
+		if (!isRecord(tokenData) || tokenData[MANAGED_VERSION_KEY] !== undefined) return tokenData;
+
+		const storedData = await credentials.getData();
+		if (hasTokenData(storedData)) return tokenData;
+
+		const version = this.credentialsOverwrites.getNewConnectionVersion(type, storedData);
+		return version === undefined ? tokenData : { ...tokenData, [MANAGED_VERSION_KEY]: version };
 	}
 }
 
