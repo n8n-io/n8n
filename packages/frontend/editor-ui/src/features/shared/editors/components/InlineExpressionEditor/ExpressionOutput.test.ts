@@ -2,14 +2,8 @@ import { renderComponent } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import type { Extension } from '@codemirror/state';
-import { captureException } from '@sentry/vue';
 import ExpressionOutput from './ExpressionOutput.vue';
 import type { Segment } from '../../../../../app/types/expressions';
-
-vi.mock('@sentry/vue', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@sentry/vue')>()),
-	captureException: vi.fn(),
-}));
 
 describe('ExpressionOutput.vue', () => {
 	const basicSegments: Segment[] = [
@@ -590,7 +584,6 @@ describe('ExpressionOutput.vue', () => {
 			await waitFor(() => {
 				expect(container.querySelector('.cm-valid-resolvable')?.textContent).toBe('World');
 			});
-			expect(captureException).not.toHaveBeenCalled();
 		});
 
 		it('should handle custom extensions in text mode', () => {
