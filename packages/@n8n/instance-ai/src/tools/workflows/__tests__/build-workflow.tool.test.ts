@@ -7,6 +7,7 @@ import {
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import { FolderResolutionError } from '../../../errors/folder-resolution.error';
+import { OutsideThreadProjectError } from '../../../errors/outside-thread-project.error';
 import { WorkflowNotFoundError } from '../../../errors/workflow-not-found.error';
 import { WorkflowSaveConflictError } from '../../../errors/workflow-save-conflict.error';
 import { loadInstanceAiSkills } from '../../../skills/skills';
@@ -2966,9 +2967,7 @@ describe('createBuildWorkflowTool', () => {
 					createWorkflow: 'always_allow',
 					updateWorkflow: 'require_approval',
 				} as InstanceAiContext['permissions'],
-				assertInThreadProject: vi
-					.fn()
-					.mockRejectedValue(new Error('This conversation has no permission to change resources')),
+				assertInThreadProject: vi.fn().mockRejectedValue(new OutsideThreadProjectError()),
 			},
 		});
 		const suspend = vi.fn();
@@ -2987,11 +2986,11 @@ describe('createBuildWorkflowTool', () => {
 			success: false,
 			filePath,
 			workflowId: 'wf-other',
-			errors: ['This conversation has no permission to change resources'],
+			errors: [new OutsideThreadProjectError().message],
 			remediation: {
 				category: 'blocked',
 				shouldEdit: false,
-				reason: 'workflow_save_permission_blocked',
+				reason: 'workflow_outside_thread_project',
 			},
 		});
 		expect(suspend).not.toHaveBeenCalled();

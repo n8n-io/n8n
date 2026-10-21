@@ -12,8 +12,8 @@ import {
 import type { Project, User } from '@n8n/db';
 import { CredentialsRepository, SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { ForbiddenError } from '@n8n/errors';
 import type { InstanceAiContext } from '@n8n/instance-ai';
+import { OutsideThreadProjectError } from '@n8n/instance-ai/errors';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { mock } from 'vitest-mock-extended';
 
@@ -47,8 +47,7 @@ describe('Instance AI writes outside the bound project (integration)', () => {
 		await Container.get(WorkflowRepository).findOneByOrFail({ id });
 
 	const expectPermissionError = async (write: Promise<unknown>) => {
-		await expect(write).rejects.toThrow(ForbiddenError);
-		await expect(write).rejects.toThrow(/permission/i);
+		await expect(write).rejects.toThrow(OutsideThreadProjectError);
 	};
 
 	beforeAll(async () => {

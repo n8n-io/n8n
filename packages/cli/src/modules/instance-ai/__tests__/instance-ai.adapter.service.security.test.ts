@@ -1,8 +1,11 @@
 // Mock the barrel import so these adapter tests only exercise local formatting helpers.
 vi.mock('@n8n/instance-ai', async () => {
-	const { WorkflowNotFoundError } = await import('@n8n/instance-ai/errors');
+	const { WorkflowNotFoundError, OutsideThreadProjectError } = await import(
+		'@n8n/instance-ai/errors'
+	);
 	return {
 		WorkflowNotFoundError,
+		OutsideThreadProjectError,
 		wrapUntrustedData(content: string, source: string, label?: string): string {
 			const esc = (s: string) =>
 				s
@@ -36,7 +39,7 @@ import {
 import type { GlobalConfig } from '@n8n/config';
 import { GLOBAL_MEMBER_ROLE, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { ForbiddenError } from '@n8n/errors';
+import { OutsideThreadProjectError } from '@n8n/instance-ai/errors';
 import { LessThan } from '@n8n/typeorm';
 import type {
 	AiBuilderTemporaryWorkflowRepository,
@@ -734,9 +737,7 @@ describe('bound project write guard', () => {
 	});
 
 	const expectRejectedOutsideProject = async (write: Promise<unknown>) => {
-		await expect(write).rejects.toThrow(ForbiddenError);
-		// The builder only stops retrying a failed save when the message says "permission".
-		await expect(write).rejects.toThrow('permission');
+		await expect(write).rejects.toThrow(OutsideThreadProjectError);
 	};
 
 	it.each([

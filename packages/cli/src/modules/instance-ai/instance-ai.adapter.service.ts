@@ -115,6 +115,7 @@ import {
 	WorkflowNotFoundError,
 	FolderResolutionError,
 	WorkflowEditorLockedError,
+	OutsideThreadProjectError,
 } from '@n8n/instance-ai';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { LessThan } from '@n8n/typeorm';
@@ -162,7 +163,7 @@ import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { ConflictError, ForbiddenError, LockedError, NotFoundError } from '@n8n/errors';
+import { ConflictError, LockedError, NotFoundError } from '@n8n/errors';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
 import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -373,11 +374,6 @@ function toTelemetryReason(
 			return reason;
 	}
 }
-
-// The user sees this text too, so it addresses them, not the agent. It must contain
-// "permission": the builder classifies save failures by message text, and retries any other.
-const OUTSIDE_BOUND_PROJECT_MESSAGE =
-	'This conversation only has permission to make changes in its own project. To change this, start a conversation in the project that owns it.';
 
 // Credential types are loaded once at boot, so the derived host index is
 // process-global and safe to memoize across users.
@@ -1083,7 +1079,7 @@ export class InstanceAiAdapterService {
 		/** A bound conversation may read across projects but writes only to its own project. */
 		const assertInBoundProject = (projectId: string | undefined) => {
 			if (boundProjectId !== undefined && projectId !== boundProjectId) {
-				throw new ForbiddenError(OUTSIDE_BOUND_PROJECT_MESSAGE);
+				throw new OutsideThreadProjectError();
 			}
 		};
 
@@ -1093,7 +1089,7 @@ export class InstanceAiAdapterService {
 			// A missing workflow falls through to the caller's not-found path.
 			const projectIds = await this.sharedWorkflowRepository.findProjectIds(workflowId);
 			if (projectIds.length > 0 && !projectIds.includes(boundProjectId)) {
-				throw new ForbiddenError(OUTSIDE_BOUND_PROJECT_MESSAGE);
+				throw new OutsideThreadProjectError();
 			}
 		};
 
