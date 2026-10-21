@@ -4786,6 +4786,8 @@
 	"settings.migrationReport.documentationLink": "documentation",
 	"settings.migrationReport.progress.label": "{compatibleCount} of {totalCount} compatible",
 	"settings.migrationReport.refreshButton": "Refresh",
+	"settings.migrationReport.exportButton": "Export CSV",
+	"settings.migrationReport.export.error.title": "Could not export the report",
 	"settings.migrationReport.scopeNote": "This report only includes the workflows you can edit.",
 	"settings.migrationReport.lastUpdated": "Last updated {time}",
 	"settings.migrationReport.neverUpdated": "Never updated",
