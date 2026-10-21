@@ -425,6 +425,9 @@ catalogs:
     '@types/express':
       specifier: ^5.0.1
       version: 5.0.1
+    '@types/ioredis-mock':
+      specifier: 8.2.2
+      version: 8.2.2
     '@types/jsdom':
       specifier: ^21.1.7
       version: 21.1.7
@@ -602,6 +605,9 @@ catalogs:
     iconv-lite:
       specifier: 0.6.3
       version: 0.6.3
+    ioredis-mock:
+      specifier: ^8.8.1
+      version: 8.8.1
     isolated-vm:
       specifier: ^7.0.1
       version: 7.0.1
@@ -704,6 +710,9 @@ catalogs:
     proxy-from-env:
       specifier: ^1.1.0
       version: 1.1.0
+    rate-limit-redis:
+      specifier: 4.3.1
+      version: 4.3.1
     reflect-metadata:
       specifier: 0.2.2
       version: 0.2.2
@@ -1927,7 +1936,7 @@ importers:
         specifier: 'catalog:'
         version: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
       ioredis-mock:
-        specifier: ^8.8.1
+        specifier: 'catalog:'
         version: 8.8.1(@types/ioredis-mock@8.2.2(supports-color@8.1.1))(ioredis@5.3.2(supports-color@8.1.1))
       lodash:
         specifier: 4.18.1
@@ -5168,6 +5177,9 @@ importers:
       psl:
         specifier: 1.15.0
         version: 1.15.0
+      rate-limit-redis:
+        specifier: 'catalog:'
+        version: 4.3.1(express-rate-limit@8.2.2(express@5.1.0(supports-color@8.1.1)))
       raw-body:
         specifier: 3.0.0
         version: 3.0.0
@@ -5277,6 +5289,9 @@ importers:
       '@types/formidable':
         specifier: ^3.4.5
         version: 3.4.5
+      '@types/ioredis-mock':
+        specifier: 'catalog:'
+        version: 8.2.2(supports-color@8.1.1)
       '@types/json-diff':
         specifier: ^1.0.3
         version: 1.0.3
@@ -5367,6 +5382,9 @@ importers:
       form-data:
         specifier: 4.0.6
         version: 4.0.6
+      ioredis-mock:
+        specifier: 'catalog:'
+        version: 8.8.1(@types/ioredis-mock@8.2.2(supports-color@8.1.1))(ioredis@5.3.2(supports-color@8.1.1))
       minifaker:
         specifier: 1.34.1
         version: 1.34.1(patch_hash=bc707e2c34a2464da2c9c93ead33e80fd9883a00434ef64907ddc45208a08b33)
@@ -22815,6 +22833,12 @@ packages:
   range-parser@1.2.1:
     resolution: {integrity: sha512-Hrgsx+orqoygnmhFbKaHE6c296J+HTAQXoxEF6gNupROmmGJRoyzfG3ccAveqCBrwr/2yxQ5BVd/GTl5agOwSg==}
     engines: {node: '>= 0.6'}
+
+  rate-limit-redis@4.3.1:
+    resolution: {integrity: sha512-+a1zU8+D7L8siDK9jb14refQXz60vq427VuiplgnaLk9B2LnvGe/APLTfhwb4uNIL7eWVknh8GnRp/unCj+lMA==}
+    engines: {node: '>= 16'}
+    peerDependencies:
+      express-rate-limit: 8.2.2
 
   raw-body@3.0.0:
     resolution: {integrity: sha512-RmkhL8CAyCRPXCE28MMH0z2PNWQBNk2Q09ZdxM9IOOXwxwZbN+qbWaatPkdkWIKL2ZVDImrN/pK5HTRz2PcS4g==}
@@ -42488,6 +42512,10 @@ snapshots:
       safe-buffer: 5.2.1
 
   range-parser@1.2.1: {}
+
+  rate-limit-redis@4.3.1(express-rate-limit@8.2.2(express@5.1.0(supports-color@8.1.1))):
+    dependencies:
+      express-rate-limit: 8.2.2(express@5.1.0(supports-color@8.1.1))
 
   raw-body@3.0.0:
     dependencies:
