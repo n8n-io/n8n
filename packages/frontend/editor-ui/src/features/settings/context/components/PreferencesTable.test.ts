@@ -86,9 +86,26 @@ describe('PreferencesTable', () => {
 
 		const badges = getAllByTestId('preference-scope-badge');
 		expect(badges[0]).toHaveTextContent('Just you · All projects');
+		expect(badges[0].querySelector('[data-icon="user"]')).not.toBeNull();
 		expect(badges[1]).toHaveTextContent('Global');
 		expect(badges[1].querySelector('[data-icon="globe"]')).not.toBeNull();
 		expect(badges[2]).toHaveTextContent('Darwin');
+	});
+
+	it('renders every scope badge with the same style', () => {
+		const { getAllByTestId } = render([
+			preference({ id: 'a', userId: 'user-1' }),
+			preference({ id: 'b', userId: null }),
+			preference({
+				id: 'c',
+				userId: null,
+				projectId: 'personal-1',
+				project: { id: 'personal-1', name: 'Me <me@n8n.io>', type: 'personal', icon: null },
+			}),
+		]);
+
+		const classes = getAllByTestId('preference-scope-badge').map((badge) => badge.className);
+		expect(new Set(classes).size).toBe(1);
 	});
 
 	it('names the owner of rows that reach another user, as an admin sees them', () => {
