@@ -217,13 +217,22 @@ describe('compileCandidateWorkflow', () => {
 		},
 	);
 
-	it.each([false, true])('checks model configuration with changed=%s', async (changed) => {
+	it.each(['unchanged', 'changed', 'restored'])('checks %s model settings', async (kind) => {
+		const changed = kind === 'changed';
 		baseline.original.nodes[0].type = '@n8n/n8n-nodes-langchain.lmChatOpenAi';
-		baseline.original.nodes[0].parameters = { model: 'existing-model' };
+		baseline.original.nodes[0].parameters = {
+			model: 'existing-model',
+			options: { temperature: 0.7 },
+		};
 		vi.mocked(computeChatModelValidationIssues).mockImplementation(async (_context, node) =>
 			node.name === 'Request' ? { model: ['The selected model is unavailable.'] } : {},
 		);
 		const workflow = generatedWorkflow();
+		if (kind === 'restored') {
+			workflow.nodes.find((node) => node.name === 'Request')!.parameters.options = {
+				temperature: '<__PLACEHOLDER_VALUE__Temperature__>',
+			};
+		}
 		if (changed) {
 			workflow.nodes.find((node) => node.name === 'Request')!.parameters = {
 				model: 'unavailable-model',

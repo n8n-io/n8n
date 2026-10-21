@@ -111,6 +111,7 @@ export async function compileCandidateWorkflow({
 			preparationContext,
 			await buildCredentialMap(context.credentialService),
 		);
+		await prepareWorkflowForSave(compiled.workflow, baseline.workflowId, preparationContext);
 		const modelWarnings: ValidationWarning[] = [];
 		for (const node of compiled.workflow.nodes) {
 			if (!node.name || node.disabled) continue;
@@ -134,7 +135,6 @@ export async function compileCandidateWorkflow({
 			};
 		}
 		await stripStaleCredentialsFromWorkflow(preparationContext, compiled.workflow);
-		await prepareWorkflowForSave(compiled.workflow, baseline.workflowId, preparationContext);
 
 		const changedNodes = new Set(computeChangedNodeNames(compiled.workflow, original));
 		for (const node of compiled.workflow.nodes) {
