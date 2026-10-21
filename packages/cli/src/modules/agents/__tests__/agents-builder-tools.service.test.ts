@@ -1,3 +1,5 @@
+import { readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import type { Mocked } from 'vitest';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
@@ -20,7 +22,7 @@ import {
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test';
-import { NodeConnectionTypes, UserError } from 'n8n-workflow';
+import { jsonParse, NodeConnectionTypes, UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 import type { ZodTypeAny } from 'zod';
 
@@ -42,7 +44,7 @@ import type { AgentPublishService } from '../agent-publish.service';
 import type { AgentSkillsService } from '../agent-skills.service';
 import type { AgentTaskService } from '../agent-task.service';
 import type { AgentTestRunService } from '../agent-test-run.service';
-import type { AgentsToolsService } from '../agents-tools.service';
+import { AgentsToolsService } from '../agents-tools.service';
 import type { AgentsService } from '../agents.service';
 import { AgentsBuilderToolsService } from '../builder/agents-builder-tools.service';
 import type { BuilderModelLiveLookupService } from '../builder/builder-model-live-lookup.service';
@@ -148,6 +150,7 @@ function makeService() {
 
 	return {
 		service,
+		agentsToolsService,
 		collaborationService,
 		agentsService: purposeServices,
 		secureRuntime,
@@ -3370,6 +3373,43 @@ describe('AgentsBuilderToolsService', () => {
 
 			expect(resolve).toHaveBeenLastCalledWith(undefined);
 			expect(result).toEqual({ targetAgentId: 'agent-b', continuation: { step: 1 } });
+		});
+
+		it('matches the copy of the tools that the routing eval shows the model', () => {
+			// The eval cannot import cli, so it reads this file instead of building the tools.
+			const evalToolsPath = path.resolve(
+				__dirname,
+				'../../../../../@n8n/instance-ai/evaluations/discovery/agent-builder-tools.json',
+			);
+			const { service, agentsToolsService } = makeService();
+			const sharedTools = new AgentsToolsService(mock());
+			agentsToolsService.getSharedTools.mockImplementation((...args) =>
+				sharedTools.getSharedTools(...args),
+			);
+
+			const tools = service
+				.getToolsForResolvedTarget(
+					async () => agentId,
+					projectId,
+					() => credentialProvider,
+					credentialService,
+					user,
+				)
+				.map(({ name, description, inputSchema }) => ({
+					name,
+					description,
+					inputSchema:
+						inputSchema && 'safeParse' in inputSchema
+							? zodToJsonSchema(inputSchema as ZodTypeAny)
+							: inputSchema,
+				}));
+			if (process.env.UPDATE_EVAL_BUILDER_TOOLS) {
+				writeFileSync(evalToolsPath, `${JSON.stringify(tools, null, '\t')}\n`);
+			}
+
+			expect(tools, 'Run this test with UPDATE_EVAL_BUILDER_TOOLS=1 to update the file').toEqual(
+				jsonParse(readFileSync(evalToolsPath, 'utf8')),
+			);
 		});
 	});
 });

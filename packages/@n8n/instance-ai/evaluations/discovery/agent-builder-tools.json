@@ -1,0 +1,827 @@
+[
+	{
+		"name": "agent_builder_write_config",
+		"description": "Create or update the agent configuration. Pass the config as an object, not as a JSON string. Send only the top-level fields you set or change: every top-level field you omit (including model and credential) keeps its stored value, and a field you send replaces the stored field whole. A fresh agent with no stored config needs name, model, and instructions. Requires baseConfigHash: the configHash from the latest agent-context with type \"config\" result, or from the latest builder result that returned one (agent_builder_write_config, agent_builder_patch_config, agent_builder_create_skills, agent_builder_create_tasks, agent_builder_finish_setup, agent_builder_configure_channel, agent_builder_verify_mcp_server with credentialApplied: true, or a stale failure), whichever came last. Returns { ok: true, configMutated: true, agentId, configHash } on success. The result also carries `config` when the saved config differs from what you sent (for example applied defaults or kept omitted fields); treat that `config` as the current state. On failure returns { ok: false, stage, errors } and nothing is saved, so on a parse, patch, or schema error fix the payload and retry with the same baseConfigHash. On stage: \"stale\", the result carries the current config and configHash: re-apply your change to it and retry once. Failure errors carry path, message, expected, and received fields.",
+		"inputSchema": {
+			"type": "object",
+			"properties": {
+				"config": {
+					"type": "object",
+					"additionalProperties": {},
+					"description": "Agent configuration object with the top-level fields to set"
+				},
+				"baseConfigHash": {
+					"type": ["string", "null"],
+					"description": "Latest configHash from agent-context with type \"config\" or from the latest builder result that returned one; null only if no config exists"
+				}
+			},
+			"required": ["config", "baseConfigHash"],
+			"additionalProperties": false,
+			"$schema": "http://json-schema.org/draft-07/schema#"
+		}
+	},
+	{
+		"name": "agent_builder_patch_config",
+		"description": "Apply RFC 6902 JSON Patch operations to the current agent configuration. Pass the patch operations as an array of objects, not as a JSON string. Requires baseConfigHash: the configHash from the latest agent-context with type \"config\" result, or from the latest builder result that returned one (agent_builder_write_config, agent_builder_patch_config, agent_builder_create_skills, agent_builder_create_tasks, agent_builder_finish_setup, agent_builder_configure_channel, agent_builder_verify_mcp_server with credentialApplied: true, or a stale failure), whichever came last. Supported ops: add, remove, replace, move, copy, test. Returns { ok: true, configMutated: true, agentId, configHash } on success. The result also carries `config` when the saved config differs from what you sent (for example applied defaults or kept omitted fields); treat that `config` as the current state. On failure returns { ok: false, stage, errors } and nothing is saved, so on a parse, patch, or schema error fix the payload and retry with the same baseConfigHash. On stage: \"stale\", the result carries the current config and configHash: re-apply your change to it and retry once. stage is \"locked\", \"parse\", \"stale\", \"patch\", or \"schema\". On stage: \"locked\", stop and tell the user to close their editing session in the n8n builder.",
+		"inputSchema": {
+			"type": "object",
+			"properties": {
+				"operations": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"op": {
+								"type": "string",
+								"enum": ["add", "remove", "replace", "move", "copy", "test"]
+							},
+							"path": {
+								"type": "string",
+								"description": "JSON Pointer, e.g. \"/instructions\" or \"/tools/-\""
+							},
+							"from": {
+								"type": "string",
+								"description": "Source JSON Pointer for move and copy"
+							},
+							"value": {
+								"description": "New value for add, replace, and test"
+							}
+						},
+						"required": ["op", "path"],
+						"additionalProperties": false
+					},
+					"description": "RFC 6902 JSON Patch operations"
+				},
+				"baseConfigHash": {
+					"type": ["string", "null"],
+					"description": "Latest configHash from agent-context with type \"config\" or from the latest builder result that returned one; null only if no config exists"
+				}
+			},
+			"required": ["operations", "baseConfigHash"],
+			"additionalProperties": false,
+			"$schema": "http://json-schema.org/draft-07/schema#"
+		}
+	},
+	{
+		"name": "agent_builder_publish_agent",
+		"description": "Publish this target agent so it becomes live: integrations sync and scheduled tasks start running. Idempotent when the draft is already the active published version. Pass optional `versionId` to activate an existing history row instead of publishing the current draft. Call only when the user asks to publish, activate, or make the agent live/usable — never tell them to click Publish in the editor. Returns { ok: true, configMutated: true, agentId, activeVersionId, versionId } or { ok: false, errors }.",
+		"inputSchema": {
+			"type": "object",
+			"properties": {
+				"versionId": {
+					"type": "string",
+					"minLength": 1,
+					"description": "Optional history version ID to activate. Omit to publish the current draft."
+				}
+			},
+			"additionalProperties": false,
+			"$schema": "http://json-schema.org/draft-07/schema#"
+		}
+	},
+	{
+		"name": "agent_builder_unpublish_agent",
+		"description": "Unpublish this target agent: clears the live version while preserving the draft, disconnects chat integrations, and stops scheduled tasks. Call when the user asks to unpublish or take the agent offline. Returns { ok: true, configMutated: true, agentId, activeVersionId: null } or { ok: false, errors }.",
+		"inputSchema": {
+			"type": "object",
+			"properties": {},
+			"additionalProperties": false,
+			"$schema": "http://json-schema.org/draft-07/schema#"
+		}
+	},
+	{
+		"name": "agent_builder_call_agent",
+		"description": "Tests the draft agent through built-in Preview chat. It does not test configured channel integrations, including their triggers, platform context, message delivery, or replies. Omit sessionId to start a new conversation. To continue one, pass the exact sessionId from an earlier agent_builder_call_agent result; never make one up. If the sessionId is not found, the test starts a new conversation and the result has a sessionNote. The draft uses its real configured tools and credentials, so external side effects are possible. Standard tool approvals pause this test until the user approves or rejects them in chat. Unsupported interactive requests return approval_required with a Preview path.",
+		"inputSchema": {
+			"type": "object",
+			"properties": {
+				"message": {
+					"type": "string",
+					"minLength": 1,
+					"description": "Message to send to the target agent"
+				},
+				"sessionId": {
+					"type": "string",
+					"description": "Exact sessionId from an earlier agent_builder_call_agent result. Omit it to start a new conversation."
+				}
+			},
+			"required": ["message"],
+			"additionalProperties": false,
+			"$schema": "http://json-schema.org/draft-07/schema#"
+		}
+	},
+	{
+		"name": "agent_builder_resolve_llm",
+		"description": "Resolve the agent main LLM without showing a picker. A fresh agent may already have a model and credential persisted by the system at creation (a sensible default was auto-selected). Before calling this tool on a fresh agent, call agent-context with type \"config\" first: if model and credential are already set, keep them, mention the choice in your summary as changeable, and do not call agent_builder_resolve_llm. Only when model is empty call agent_builder_resolve_llm once, silently, before the first config write to detect existing credentials — with provider/model when the user named them, otherwise without arguments. Also call it whenever the user names or changes a provider or model. If provider is given, resolves only that provider; if model is omitted, uses the provider default model. Every model it returns — the default included — is checked against the list the chosen credential can actually reach, so reason \"unknown_model\" (carrying availableModels) can come back even when you passed no model: retry with a value from availableModels, never the id that just failed. availableModels is capped: when availableModelsTruncated is true, it is a sample of totalAvailableModels — ask the user with agent_builder_ask_questions instead of treating it as the full list. For \"Anthropic via OpenRouter\", pass provider=\"openrouter\" and omit model unless the user named a concrete OpenRouter model id. Returns ok=false when credentials are missing, unsupported, or ambiguous — during an initial build, do not ask; keep building with model \"\" and include the model choice in the trailing agent_builder_finish_setup call, then call agent_builder_resolve_llm again with the answer. For a model change on an existing agent, ask immediately and keep the current model and credential until the new one resolves. When no matching credential exists and the user is eligible for free OpenAI credits, the tool claims them automatically and resolves to an OpenAI model the new key can reach (normally gpt-5-mini) — the result carries claimedFreeOpenAiCredits: true; tell the user free OpenAI credits were set up. When the provider has no own credential but Gateway credits (the managed option) serve it, the tool resolves to the managed credential — the result credentialName is \"Gateway credits\"; persist it like any credential and tell the user the model runs on Gateway credits. When the user explicitly asks to use Gateway credits, pass useGatewayCredits: true (with provider when named): the tool resolves Gateway credits for that provider without a picker even if the user has their own credential for it, and returns ok=false with reason \"gateway_credits_unsupported_provider\", \"ambiguous_gateway_credits_provider\" (with providers), or \"gateway_credits_unavailable\" (Gateway credits serve no provider on this instance) when it cannot. When multiple providers each have one credential, the tool auto-picks the recommended provider — the result carries autoPicked: true and otherProviders; state the pick as changeable, do not ask to confirm it. When the user picks between multiple credentials of one provider, pass the picked credentialId from the earlier ambiguous result.",
+		"inputSchema": {
+			"type": "object",
+			"properties": {
+				"provider": {
+					"type": "string",
+					"description": "Requested provider, e.g. \"anthropic\", \"openai\", or \"openrouter\"."
+				},
+				"model": {
+					"type": "string",
+					"description": "Requested model without the selected provider prefix. For OpenRouter use the routed id, e.g. \"anthropic/claude-sonnet-5\"."
+				},
+				"credentialId": {
+					"type": "string",
+					"description": "Credential id picked by the user from an earlier ambiguous agent_builder_resolve_llm result."
+				},
+				"useGatewayCredits": {
+					"type": "boolean",
+					"description": "Set true when the user explicitly asked to use Gateway credits for the main model. Resolves Gateway credits for the requested provider even if the user already has their own credential for it, and never asks. Pass `provider` when the user named one."
+				}
+			},
+			"additionalProperties": false,
+			"$schema": "http://json-schema.org/draft-07/schema#"
+		}
+	},
+	{
+		"name": "agent_builder_ask_credential",
+		"description": "Show a credential picker card in the chat UI and suspend until the user selects a credential. Call ONCE per credential slot. For an addition to an existing agent, call it before the agent_builder_write_config / agent_builder_patch_config that introduces the tool. Never call this during an initial build — follow the Initial Build rules in the agent-builder skill; use it for additions to an existing agent and follow-up setup turns. Returns { credentialId, credentialName, credentials } on success or { skipped: true } if the user skips credential setup so the tool can be added without credentials. For node tools, copy the returned `credentials` object into `node.credentials`. Auto-resolves without rendering a card when the agent has a chat channel configured whose credential matches the requested type (the channel credential is reused so tools act through the same connection), or when the user has exactly one credential of the requested type — except for generic auth types (bearer, header, query, basic, digest, custom, OAuth), which always render the card.",
+		"inputSchema": {
+			"type": "object",
+			"properties": {
+				"purpose": {
+					"type": "string",
+					"description": "One short sentence describing what this credential is used for"
+				},
+				"nodeType": {
+					"type": "string",
+					"description": "The n8n node type requiring this credential, e.g. \"n8n-nodes-base.slack\""
+				},
+				"credentialType": {
+					"type": "string",
+					"description": "The credential type name to request, e.g. \"slackApi\""
+				},
+				"credentialSlot": {
+					"type": "string",
+					"description": "Credential key on node.credentials, e.g. \"slackApi\""
+				}
+			},
+			"required": ["purpose", "credentialType"],
+			"additionalProperties": false,
+			"$schema": "http://json-schema.org/draft-07/schema#"
+		}
+	},
+	{
+		"name": "agent_builder_ask_embedding_credential",
+		"description": "Resolve the OpenAI embedding credential for Episodic Memory. Tries to resolve n8n managed credential. Otherwise behaves like agent_builder_ask_credential: show a credential picker card in the chat UI and suspend until the user selects a credential. Returns { credentialId, credentialName, credentials } on success or { skipped: true } if the user skips credential setup.",
+		"inputSchema": {
+			"type": "object",
+			"properties": {
+				"purpose": {
+					"type": "string",
+					"description": "One short sentence describing what this credential is used for"
+				},
+				"nodeType": {
+					"type": "string",
+					"description": "The n8n node type requiring this credential, e.g. \"n8n-nodes-base.slack\""
+				},
+				"credentialType": {
+					"type": "string",
+					"description": "The credential type name to request, e.g. \"slackApi\""
+				},
+				"credentialSlot": {
+					"type": "string",
+					"description": "Credential key on node.credentials, e.g. \"slackApi\""
+				}
+			},
+			"required": ["purpose", "credentialType"],
+			"additionalProperties": false,
+			"$schema": "http://json-schema.org/draft-07/schema#"
+		}
+	},
+	{
+		"name": "agent_builder_ask_questions",
+		"description": "Ask the user one or more questions in a single batched card; the run suspends until they respond. ALWAYS use this instead of calling it multiple times when you have more than one question — batch them into one call. Questions are single-select, multi-select, or free-text. A question is asked at most once — a dismissal or empty answer means \"proceed without this\": assume a sensible default and never re-present it. Returns { answered: false } on dismissal, or { answered: true, answers } otherwise.",
+		"inputSchema": {
+			"type": "object",
+			"properties": {
+				"questions": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string",
+								"description": "Unique question identifier; defaults to q1, q2, ..."
+							},
+							"question": {
+								"type": "string",
+								"description": "The question text to display to the user"
+							},
+							"type": {
+								"type": "string",
+								"enum": ["single", "multi", "text"],
+								"description": "single = pick one option, multi = pick many, text = free-form input"
+							},
+							"options": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								},
+								"description": "Suggested answers (required for single/multi, ignored for text)"
+							}
+						},
+						"required": ["question", "type"],
+						"additionalProperties": false
+					},
+					"minItems": 1,
+					"description": "All questions to ask the user, batched into a single card"
+				},
+				"introMessage": {
+					"type": "string",
+					"description": "Brief intro text shown above the questions"
+				}
+			},
+			"required": ["questions"],
+			"additionalProperties": false,
+			"$schema": "http://json-schema.org/draft-07/schema#"
+		}
+	},
+	{
+		"name": "agent_builder_configure_channel",
+		"description": "Configure one available chat channel for the target agent. First call agent-context with type \"integrations\" and pass a returned `type` as `integrationType`; do not infer channel names. Shows setup UI in chat where the user creates a new channel credential or skips. The setup UI persists the channel configuration and does not publish the agent, so use this for channel credentials instead of the credentials tool or config writes. Returns { configured: boolean } (plus configMutated/agentId refresh metadata when configured); false means the user skipped, so continue without the channel and do not re-prompt.",
+		"inputSchema": {
+			"type": "object",
+			"properties": {
+				"integrationType": {
+					"type": "string",
+					"description": "Chat platform type from agent-context integrations"
+				}
+			},
+			"required": ["integrationType"],
+			"additionalProperties": false,
+			"$schema": "http://json-schema.org/draft-07/schema#"
+		}
+	},
+	{
+		"name": "agent_builder_finish_setup",
+		"description": "Collect everything still needed to finish the initial build in ONE guided flow: open questions (including the model choice), credential slots, and chat-channel setup. Call it at most once, only in the trailing step of an initial build when only pending setup remains, and never together with another interactive tool. It shows setup cards back-to-back without returning control between them: questions, then credentials, then one card per requested channel. Channel cards always run last after every credential phase, including when earlier setup was skipped or dismissed. Pass `channels` with a returned `type` from agent-context integrations, one entry per channel to configure; do not infer channel names. Each channel card persists the configuration or skips it, so channel outcomes are `\"configured\"` or `\"skipped\"`. Do not call agent_builder_configure_channel again for a channel handled by this flow. When a question answers a value that already has a place in the config (a recipient, a channel id, a sheet id), give it `configPath`: the answer is written there as a string. Write that config field empty beforehand, never skip the tool. Returns { completed, answers, credentials, channels, appliedToConfig, configHash } (plus configMutated/agentId refresh metadata when completed). The tool already wrote each resolved credential into every empty node-tool slot of its type, and each configPath answer; `appliedToConfig` lists them. Do not patch those again. Resolve only what is left: the model answer with agent_builder_resolve_llm, MCP servers with agent_builder_verify_mcp_server, and any entry in `configApplyErrors`. Auto-resolves credential slots that match an existing single credential or configured channel credential.",
+		"inputSchema": {
+			"type": "object",
+			"properties": {
+				"questions": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string"
+							},
+							"question": {
+								"type": "string"
+							},
+							"type": {
+								"type": "string",
+								"enum": ["single", "multi", "text"]
+							},
+							"options": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								}
+							},
+							"configPath": {
+								"type": "string",
+								"pattern": "^\\/",
+								"description": "JSON Pointer into the agent config, e.g. \"/tools/2/node/nodeParameters/sendTo\". The answer is written there as a string when the flow completes."
+							}
+						},
+						"required": ["id", "question", "type"],
+						"additionalProperties": false
+					}
+				},
+				"credentialRequests": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"credentialType": {
+								"type": "string",
+								"minLength": 1
+							},
+							"purpose": {
+								"type": "string",
+								"minLength": 1
+							},
+							"credentialSlot": {
+								"type": "string"
+							}
+						},
+						"required": ["credentialType", "purpose"],
+						"additionalProperties": false
+					}
+				},
+				"channels": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"integrationType": {
+								"type": "string",
+								"minLength": 1
+							}
+						},
+						"required": ["integrationType"],
+						"additionalProperties": false
+					}
+				}
+			},
+			"additionalProperties": false,
+			"$schema": "http://json-schema.org/draft-07/schema#"
+		}
+	},
+	{
+		"name": "agent_builder_verify_mcp_server",
+		"description": "Test connectivity to an MCP server before adding it to the agent config. Establishes a temporary connection, lists the available tools, then closes the connection. Returns { ok: true, tools: [{ name, description, category }] } on success, or { ok: false, error: string } on failure. Tool names are the original MCP names without the model-facing server prefix. When a credential is provided and a matching mcpServers entry already exists, a successful verify also writes the credential into that entry ({ credentialApplied: true, configMutated: true, agentId, config, configHash }) — no agent-context/agent_builder_patch_config follow-up. Treat the returned config as the current state and use its configHash as baseConfigHash for your next config write. Call this after agent_builder_ask_credential when authentication is not \"none\".",
+		"inputSchema": {
+			"type": "object",
+			"properties": {
+				"name": {
+					"type": "string",
+					"minLength": 1,
+					"maxLength": 64,
+					"description": "The user-facing server name; it is normalized for model-facing tool names"
+				},
+				"url": {
+					"type": "string",
+					"minLength": 1,
+					"description": "The MCP server endpoint URL"
+				},
+				"transport": {
+					"type": "string",
+					"enum": ["sse", "streamableHttp"],
+					"default": "streamableHttp",
+					"description": "Transport type. Defaults to streamableHttp"
+				},
+				"authentication": {
+					"anyOf": [
+						{
+							"type": "string",
+							"enum": ["none", "bearerAuth", "headerAuth", "multipleHeadersAuth", "mcpOAuth2Api"]
+						},
+						{
+							"type": "string",
+							"pattern": "^(?:oAuth2Api|.*OAuth2(?:Api)?)$"
+						}
+					],
+					"default": "none",
+					"description": "Authentication scheme"
+				},
+				"credential": {
+					"type": "string",
+					"description": "Credential id returned by agent_builder_ask_credential. Required when authentication is not \"none\""
+				},
+				"metadata": {
+					"type": "object",
+					"properties": {
+						"nodeTypeName": {
+							"type": "string"
+						}
+					},
+					"additionalProperties": false
+				},
+				"connectionTimeoutMs": {
+					"type": "integer",
+					"minimum": 1,
+					"maximum": 120000,
+					"description": "Timeout in milliseconds for the whole verification (connect + list tools). Defaults to 10000ms"
+				}
+			},
+			"required": ["name", "url"],
+			"additionalProperties": false,
+			"$schema": "http://json-schema.org/draft-07/schema#"
+		}
+	},
+	{
+		"name": "agent_builder_build_custom_tool",
+		"description": "Compile and store a custom tool. Pass the complete TypeScript source using `export default new Tool(...)` builder chain. The code is validated in a sandbox and saved against the agent. The returned `id` equals the tool name declared in the code (e.g. `new Tool(\"my_tool\")` → id `\"my_tool\"`). This does NOT register the tool in the agent config — follow up with agent_builder_patch_config (or agent_builder_write_config) to add `{ type: \"custom\", id: \"<tool name>\" }` to `tools`.Returns { ok: true, id, name } or { ok: false, errors }.",
+		"inputSchema": {
+			"type": "object",
+			"properties": {
+				"code": {
+					"type": "string",
+					"description": "Complete TypeScript source using export default new Tool(...)"
+				}
+			},
+			"required": ["code"],
+			"additionalProperties": false,
+			"$schema": "http://json-schema.org/draft-07/schema#"
+		}
+	},
+	{
+		"name": "agent_builder_create_skills",
+		"description": "Create and store one or more agent skills (reusable, load-on-demand capabilities) in a single call. Pass every skill you currently know how to write in one `skills` array — do not spread multiple fully-specified skills across separate calls; each skill's instructions field carries its own structured template. The whole batch is all-or-nothing: an invalid or duplicate-named skill rejects every skill in the call. It also attaches a `{ type: \"skill\", id }` ref per skill to the agent config (config.skills), so do not patch them in yourself; the agent config must already exist. Returns { ok: true, configMutated: true, agentId, configHash, skills: [{ id, name }, ...] } (same order as input, bodies are not echoed back) or { ok: false, errors }. Use the returned configHash as baseConfigHash for your next config write.",
+		"inputSchema": {
+			"type": "object",
+			"properties": {
+				"skills": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"name": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 128,
+								"description": "Human-readable skill name. It must be unique in the project: no other skill of this project may have a name like it (case, spaces, hyphens and underscores do not count)."
+							},
+							"description": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 512,
+								"description": "The description is the routing contract — the only text the agent sees when deciding whether to load this skill, so it must be specific: state what the skill does AND the concrete situations or keywords that should trigger it (e.g. \"Use when the user asks to …\"), plus when NOT to use it where helpful. A vague description means the skill never loads."
+							},
+							"instructions": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 65536,
+								"description": "The body is loaded only after the skill triggers, so it must be a self-contained, actionable operating manual. Follow this exact Markdown structure, filling each applicable section with concrete, specific content — no placeholders or angle-bracket text. Do NOT put \"when to use\" triggers here; those belong in the description:\n\n## Overview\n<1-2 sentences: what the agent should do when this skill is loaded, and the outcome it produces.>\n\n## Inputs\n<What the agent needs before starting — required inputs, tools, credentials, or context — and how to obtain them. Write \"None\" if there are no prerequisites.>\n\n## Steps\n1. <First action — specific and actionable.>\n2. <Next action.>\n\n## Rules\n- <A constraint or guideline the agent must always follow.>\n\n## Example\n<A concrete, representative example: the input and the expected output or result.>\n\n## Gotchas\n<Common mistakes or edge cases, and how to handle them.>"
+							},
+							"references": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string",
+											"minLength": 1,
+											"maxLength": 512
+										},
+										"content": {
+											"type": "string",
+											"minLength": 1,
+											"maxLength": 65536
+										}
+									},
+									"required": ["path", "content"],
+									"additionalProperties": false
+								},
+								"maxItems": 20,
+								"description": "Markdown-only supporting files under references/... paths. References are not automatically loaded; instructions must say exactly when to load each reference by path."
+							}
+						},
+						"required": ["name", "description", "instructions"],
+						"additionalProperties": false
+					},
+					"minItems": 1,
+					"maxItems": 20,
+					"description": "Every skill to create, in the order they should be created."
+				}
+			},
+			"required": ["skills"],
+			"additionalProperties": false,
+			"$schema": "http://json-schema.org/draft-07/schema#"
+		}
+	},
+	{
+		"name": "agent_builder_update_skill",
+		"description": "Update selected fields of an existing target-agent skill in place, preserving its id and agent config reference. Requires baseSkillHash from the immediately preceding agent-context with type \"skill\" result. To change part of the body, pass instructionEdits with oldText/newText pairs instead of rewriting instructions. Pass null for references to remove all references; an empty array is invalid. The skill is shared: the update saves its next version, and every agent draft that follows the latest version runs that version. Published versions keep the version they pinned. Returns { ok: true, id, name, configMutated: true, agentId } or { ok: false, errors }. A failed edit saves nothing: fix oldText so it matches exactly one place and retry with the same baseSkillHash. On a stale skill error, call agent-context with type \"skill\" and retry once with its fresh skillHash.",
+		"inputSchema": {
+			"type": "object",
+			"properties": {
+				"skillId": {
+					"type": "string",
+					"minLength": 1,
+					"description": "Persisted target-agent skill id to update."
+				},
+				"baseSkillHash": {
+					"type": "string",
+					"minLength": 1,
+					"description": "skillHash from the immediately preceding agent-context with type \"skill\" result for this skill."
+				},
+				"updates": {
+					"type": "object",
+					"properties": {
+						"name": {
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 128
+						},
+						"description": {
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 512
+						},
+						"instructions": {
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 65536,
+							"description": "Complete replacement body. Use only for a rewrite of most of the body."
+						},
+						"instructionEdits": {
+							"type": "array",
+							"items": {
+								"type": "object",
+								"properties": {
+									"oldText": {
+										"type": "string",
+										"minLength": 1,
+										"description": "Exact text from the current instructions. It must match exactly one place."
+									},
+									"newText": {
+										"type": "string",
+										"description": "Replacement text. Use an empty string to delete."
+									}
+								},
+								"required": ["oldText", "newText"],
+								"additionalProperties": false
+							},
+							"minItems": 1,
+							"maxItems": 20,
+							"description": "Targeted replacements in the current instructions, applied in order. Prefer this to `instructions` for a partial change. Do not pass both."
+						},
+						"references": {
+							"anyOf": [
+								{
+									"type": "array",
+									"items": {
+										"type": "object",
+										"properties": {
+											"path": {
+												"type": "string",
+												"minLength": 1,
+												"maxLength": 512
+											},
+											"content": {
+												"type": "string",
+												"minLength": 1,
+												"maxLength": 65536
+											}
+										},
+										"required": ["path", "content"],
+										"additionalProperties": false
+									},
+									"maxItems": 20
+								},
+								{
+									"type": "null"
+								}
+							]
+						}
+					},
+					"additionalProperties": false,
+					"description": "Only the fields to change. Pass null for references to remove them; an empty array is invalid."
+				}
+			},
+			"required": ["skillId", "baseSkillHash", "updates"],
+			"additionalProperties": false,
+			"$schema": "http://json-schema.org/draft-07/schema#"
+		}
+	},
+	{
+		"name": "agent_builder_create_tasks",
+		"description": "Create one or more recurring scheduled tasks for the target agent (name + objective + cron schedule per task) in a single call. Pass every task you currently know how to write in one `tasks` array — do not spread multiple fully-specified tasks across separate calls; each task's objective field carries its own structured template. The whole batch is all-or-nothing: an invalid cron or objective rejects every task in the call. This adds a `{ type: \"task\", id, enabled }` ref per task to the agent config (config.tasks) and each task starts running once the agent is (re)published via `agent_builder_publish_agent`. Returns { ok: true, configMutated: true, agentId, configHash, tasks: [{ id, name, enabled }, ...] } (same order as input, objectives and crons are not echoed back) or { ok: false, errors }. Use the returned configHash as baseConfigHash for your next config write.",
+		"inputSchema": {
+			"type": "object",
+			"properties": {
+				"tasks": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"name": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 128,
+								"description": "Short, human-readable task name."
+							},
+							"objective": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 10000,
+								"description": "The objective is the run-specific user message for each unattended run. Agent Instructions still apply and configured Skills remain available, so do not repeat universal rules or copy reusable procedures into the objective. The schedule is separate metadata in cronExpression and must never be repeated in the objective. It must be self-contained from the current builder chat and follow this exact Markdown structure, with every section filled in with concrete, specific content — no placeholders or angle-bracket text:\n\n## Objective\n<One sentence: the run-specific outcome to achieve and why it matters. Do not repeat the agent's overall purpose.>\n\n## Context\n<Run-specific inputs, data sources, and data lookback window, such as \"items created since the previous run\". Do not state when the task runs; its cadence belongs only in cronExpression.>\n\n## Steps\n1. <First task-specific action or configured skill/capability to use.>\n2. <Next task-specific action. Do not copy reusable procedures from Agent Instructions or Skills.>\n\n## Output\n<The exact format of the result AND where to deliver it (e.g. \"email a summary to ops@example.com\", \"post to Slack #alerts\", \"append a row to the tracking sheet\"). The run is unattended, so the agent must actively deliver the result somewhere.>\n\n## Constraints\n<Task-specific scope limits, what to avoid, and what to do when there is nothing to act on, such as \"if there are no new items, do nothing\".>\n\n## Success criteria\n<A verifiable definition of done for a single run.>"
+							},
+							"cronExpression": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 128,
+								"description": "A 5-field cron expression for when the task runs, e.g. \"0 9 * * 1-5\" = weekdays at 09:00."
+							},
+							"timezone": {
+								"anyOf": [
+									{
+										"type": "string",
+										"minLength": 1,
+										"maxLength": 50,
+										"pattern": "^[A-Za-z0-9_/+-]+$",
+										"description": "IANA timezone the cron is evaluated in, for example \"Europe/London\". Omit to use the instance timezone."
+									},
+									{
+										"type": "null"
+									}
+								],
+								"description": "IANA timezone the cron runs in, e.g. \"Europe/London\". Set it when the user names a timezone or a location; omit it to use the instance timezone."
+							}
+						},
+						"required": ["name", "objective", "cronExpression"],
+						"additionalProperties": false
+					},
+					"minItems": 1,
+					"maxItems": 20,
+					"description": "Every task to create, in the order they should be created."
+				}
+			},
+			"required": ["tasks"],
+			"additionalProperties": false,
+			"$schema": "http://json-schema.org/draft-07/schema#"
+		}
+	},
+	{
+		"name": "agent_builder_update_task",
+		"description": "Update selected body fields of an existing target-agent scheduled task in place, preserving its id and config reference. Returns { ok: true, id, name, configMutated: true, agentId } or { ok: false, errors }.",
+		"inputSchema": {
+			"type": "object",
+			"properties": {
+				"taskId": {
+					"type": "string",
+					"minLength": 1,
+					"description": "Persisted target-agent task id to update."
+				},
+				"updates": {
+					"type": "object",
+					"properties": {
+						"name": {
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 128
+						},
+						"objective": {
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 10000,
+							"description": "The objective is the run-specific user message for each unattended run. Agent Instructions still apply and configured Skills remain available, so do not repeat universal rules or copy reusable procedures into the objective. The schedule is separate metadata in cronExpression and must never be repeated in the objective. It must be self-contained from the current builder chat and follow this exact Markdown structure, with every section filled in with concrete, specific content — no placeholders or angle-bracket text:\n\n## Objective\n<One sentence: the run-specific outcome to achieve and why it matters. Do not repeat the agent's overall purpose.>\n\n## Context\n<Run-specific inputs, data sources, and data lookback window, such as \"items created since the previous run\". Do not state when the task runs; its cadence belongs only in cronExpression.>\n\n## Steps\n1. <First task-specific action or configured skill/capability to use.>\n2. <Next task-specific action. Do not copy reusable procedures from Agent Instructions or Skills.>\n\n## Output\n<The exact format of the result AND where to deliver it (e.g. \"email a summary to ops@example.com\", \"post to Slack #alerts\", \"append a row to the tracking sheet\"). The run is unattended, so the agent must actively deliver the result somewhere.>\n\n## Constraints\n<Task-specific scope limits, what to avoid, and what to do when there is nothing to act on, such as \"if there are no new items, do nothing\".>\n\n## Success criteria\n<A verifiable definition of done for a single run.>"
+						},
+						"cronExpression": {
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 128,
+							"description": "Standard five-field cron expression, for example \"0 9 * * *\""
+						},
+						"timezone": {
+							"anyOf": [
+								{
+									"type": "string",
+									"minLength": 1,
+									"maxLength": 50,
+									"pattern": "^[A-Za-z0-9_/+-]+$",
+									"description": "IANA timezone the cron is evaluated in, for example \"Europe/London\". Omit to use the instance timezone."
+								},
+								{
+									"type": "null"
+								}
+							],
+							"description": "IANA zone the cron runs in. Pass null to move the task back to the instance timezone."
+						}
+					},
+					"additionalProperties": false,
+					"description": "Only the task fields to change."
+				}
+			},
+			"required": ["taskId", "updates"],
+			"additionalProperties": false,
+			"$schema": "http://json-schema.org/draft-07/schema#"
+		}
+	},
+	{
+		"name": "agent_builder_get_resource_locator_options",
+		"description": "Fetch live options for a node parameter that is configured through a resourceLocator, loadOptionsMethod, or loadOptions routing. Use this for stable IDs such as Linear teamId, Slack channel, calendar, project, board, model, database, or table selectors before writing nodeParameters. Call agent_builder_ask_credential first when the node needs credentials, then pass the returned credentials map. The response includes parameterValue for each result; write that exact value into nodeParameters instead of using $fromAI for stable resource IDs.",
+		"inputSchema": {
+			"type": "object",
+			"properties": {
+				"nodeType": {
+					"type": "string",
+					"description": "Tool node type identifier from agent_builder_search_nodes"
+				},
+				"nodeTypeVersion": {
+					"type": "number",
+					"description": "Tool node type version from agent_builder_search_nodes"
+				},
+				"parameterPath": {
+					"type": "string",
+					"description": "Parameter path to resolve, e.g. \"teamId\", \"calendarId\", or \"additionalFields.teamId\""
+				},
+				"nodeParameters": {
+					"type": "object",
+					"additionalProperties": {},
+					"description": "Current static nodeParameters for the node, including resource/operation/mode selections and any dependency fields already resolved."
+				},
+				"credentials": {
+					"type": "object",
+					"additionalProperties": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string"
+							},
+							"name": {
+								"type": "string"
+							}
+						},
+						"required": ["id", "name"],
+						"additionalProperties": false
+					},
+					"description": "Node credentials map returned by agent_builder_ask_credential. Do not copy from agent_builder_list_credentials."
+				},
+				"filter": {
+					"type": "string",
+					"description": "Optional search string to narrow the returned options"
+				},
+				"paginationToken": {
+					"type": "string",
+					"description": "Optional pagination token from a previous lookup"
+				}
+			},
+			"required": ["nodeType", "nodeTypeVersion", "parameterPath"],
+			"additionalProperties": false,
+			"$schema": "http://json-schema.org/draft-07/schema#"
+		}
+	},
+	{
+		"name": "agent_builder_search_nodes",
+		"description": "Search for n8n nodes by name or service. Use this to find nodes that can be executed. Returns tool node IDs, display names, versions, and descriptions. After finding a node, call agent_builder_get_node_types to get its parameter schema. Also consider n8n Connect covered services relevant to the task (they run on Gateway credits, no API key needed) — e.g. web search, scraping, or document parsing services.",
+		"inputSchema": {
+			"type": "object",
+			"properties": {
+				"queries": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"minItems": 1,
+					"description": "Search queries (e.g., [\"gmail\", \"slack\", \"http\"])"
+				}
+			},
+			"required": ["queries"],
+			"additionalProperties": false,
+			"$schema": "http://json-schema.org/draft-07/schema#"
+		}
+	},
+	{
+		"name": "agent_builder_get_node_types",
+		"description": "Get detailed parameter schema for specific n8n nodes. Use the node IDs from node discovery results (agent_builder_search_nodes or agent-context integrations with kind \"node\"). Returns parameter definitions needed to configure a node for execution. Use the tool node IDs from discovery, usually ending in Tool. You can optionally filter by resource/operation/mode.",
+		"inputSchema": {
+			"type": "object",
+			"properties": {
+				"nodeIds": {
+					"type": "array",
+					"items": {
+						"anyOf": [
+							{
+								"type": "string"
+							},
+							{
+								"type": "object",
+								"properties": {
+									"nodeId": {
+										"type": "string"
+									},
+									"version": {
+										"type": "number",
+										"description": "Tool node type version from agent_builder_search_nodes or agent-context integration results with kind \"node\""
+									},
+									"resource": {
+										"type": "string"
+									},
+									"operation": {
+										"type": "string"
+									},
+									"mode": {
+										"type": "string"
+									}
+								},
+								"required": ["nodeId"],
+								"additionalProperties": false
+							}
+						]
+					},
+					"minItems": 1,
+					"description": "Tool node IDs from agent_builder_search_nodes or agent-context integration results with kind \"node\"; e.g., [\"n8n-nodes-base.gmailTool\"]"
+				}
+			},
+			"required": ["nodeIds"],
+			"additionalProperties": false,
+			"$schema": "http://json-schema.org/draft-07/schema#"
+		}
+	},
+	{
+		"name": "agent_builder_list_credentials",
+		"description": "List the credentials available to the user. Returns an array of credential names and types. Accepts an optional `types` filter to return only credentials matching the given types. Read-only inspection of available credentials. Use agent_builder_ask_credential to let the user pick the credential to wire into a node tool — never copy ids from this list directly into the config.",
+		"inputSchema": {
+			"type": "object",
+			"properties": {
+				"types": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"description": "Optional credential types to filter by (e.g., [\"gmailOAuth2\", \"httpHeaderAuth\"]). When omitted, returns all credentials. Use the credential types declared in the node schema from agent_builder_get_node_types to narrow the results."
+				}
+			},
+			"additionalProperties": false,
+			"$schema": "http://json-schema.org/draft-07/schema#"
+		}
+	}
+]

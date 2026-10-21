@@ -11,9 +11,10 @@
 // NOT stubbed — when the orchestrator loads a skill or reaches for a
 // Computer Use browser tool, the tool-call event fires before any downstream
 // failure, so the discovery check still sees the dispatch intent. The Agent
-// Builder tools are the exception: they accept any input and report success,
-// and `agent_builder_select_agent` runs against a stub builder delegate. Only
-// the routing to them is graded, not the Agent build itself. The wall-clock
+// Builder tools are the exception: they have the production names, descriptions,
+// and input schemas, but they report success without doing work, and
+// `agent_builder_select_agent` runs against a stub builder delegate. Only the
+// routing to them is graded, not the Agent build itself. The wall-clock
 // timeout bounds the trial, not the run: at the budget the trial stops and fails,
 // and the abandoned stream is left to unwind on its own. Scenarios or --max-steps
 // can additionally opt into an iteration cap.
@@ -25,6 +26,9 @@
 // and skip the check. A routing case can seed the stub instance and the thread
 // (see ./seeded-turn.ts).
 // ---------------------------------------------------------------------------
+
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 
 import { Tool, type BuiltTool, type GuardrailsOptions } from '@n8n/agents';
 import { AGENT_BUILDER_TOOL_NAMES, type InstanceAiEvent, type TaskList } from '@n8n/api-types';
@@ -409,15 +413,32 @@ async function stopAtAgentBuild(
 	return await Promise.resolve(agentSelected && STUB_BUILDER_TOOL_NAMES.includes(call.toolName));
 }
 
-/** Builder tools that accept any input and report success, so routing is all that is graded. */
+const builderToolsFileSchema = z.array(
+	z.object({
+		name: z.string(),
+		description: z.string(),
+		inputSchema: z.custom<NonNullable<BuiltTool['inputSchema']>>(isRecord),
+	}),
+);
+
+/**
+ * Builder tools that report success, so routing is all that is graded. The names, descriptions,
+ * and input schemas come from agent-builder-tools.json, a copy of what the agents module in
+ * packages/cli builds. A test in agents-builder-tools.service.test.ts keeps the copy current.
+ */
 function createStubBuilderTools(): BuiltTool[] {
-	return STUB_BUILDER_TOOL_NAMES.map((name) =>
-		new Tool(name)
-			.description(`Discovery stub for ${name}.`)
-			.input(z.object({}).passthrough())
-			.handler(async () => await Promise.resolve({ ok: true }))
-			.build(),
+	const tools = builderToolsFileSchema.parse(
+		JSON.parse(readFileSync(path.join(__dirname, 'agent-builder-tools.json'), 'utf8')),
 	);
+	return STUB_BUILDER_TOOL_NAMES.map((name) => {
+		const tool = tools.find((candidate) => candidate.name === name);
+		if (!tool) throw new Error(`agent-builder-tools.json has no "${name}" tool`);
+		return new Tool(name)
+			.description(tool.description)
+			.input(tool.inputSchema)
+			.handler(async () => await Promise.resolve({ ok: true }))
+			.build();
+	});
 }
 
 function createStubBuilderDelegate(): InstanceAiBuilderDelegate {
