@@ -1,0 +1,31 @@
+packages/cli/src/modules/n8n-packages/__tests__/export-agent-selection.integration.test.ts
+  s_2397c9db9d923f::t_60e098b9492446 163-165,168-169
+  s_2397c9db9d923f::t_882d9f35e407d6 158-161,166-167,170-173,282
+  s_2397c9db9d923f::t_527d6892bf4636 178
+  s_2397c9db9d923f::t_24b980013dec4c 174-177
+  s_71ad2034164515::t_dd2e6dd431a0e2 9,67-82,88-94,116,141,144-156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b519fe90771dc10648c633759c2f781ed6183261",
+  "prompts": {},
+  "sessions": {
+    "s_2397c9db9d923f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11062-0f35-7542-b063-84df367d8ec4",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
