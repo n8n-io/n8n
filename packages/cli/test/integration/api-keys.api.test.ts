@@ -78,9 +78,7 @@ describe('Owner shell', () => {
 		expect(newApiKeyResponse.statusCode).toBe(200);
 		expect(newApiKey).toBeDefined();
 
-		const newStoredApiKey = await Container.get(ApiKeyRepository).findOneByOrFail({
-			userId: ownerShell.id,
-		});
+		const [newStoredApiKey] = await Container.get(ApiKeyRepository).findByUserId(ownerShell.id);
 
 		expect(newStoredApiKey).toEqual({
 			id: expect.any(String),
@@ -119,9 +117,7 @@ describe('Owner shell', () => {
 		expect(newApiKeyResponse.statusCode).toBe(200);
 		expect(newApiKey).toBeDefined();
 
-		const newStoredApiKey = await Container.get(ApiKeyRepository).findOneByOrFail({
-			userId: ownerShell.id,
-		});
+		const [newStoredApiKey] = await Container.get(ApiKeyRepository).findByUserId(ownerShell.id);
 
 		expect(newStoredApiKey).toEqual({
 			id: expect.any(String),
@@ -152,9 +148,7 @@ describe('Owner shell', () => {
 		expect(newApiKeyResponse.statusCode).toBe(200);
 		expect(newApiKey).toBeDefined();
 
-		const newStoredApiKey = await Container.get(ApiKeyRepository).findOneByOrFail({
-			userId: ownerShell.id,
-		});
+		const [newStoredApiKey] = await Container.get(ApiKeyRepository).findByUserId(ownerShell.id);
 
 		expect(newStoredApiKey).toEqual({
 			id: expect.any(String),
@@ -185,9 +179,7 @@ describe('Owner shell', () => {
 			.patch(`/api-keys/${newApiKey.id}`)
 			.send({ label: 'updated label', scopes: ['user:create'] });
 
-		const newStoredApiKey = await Container.get(ApiKeyRepository).findOneByOrFail({
-			userId: ownerShell.id,
-		});
+		const [newStoredApiKey] = await Container.get(ApiKeyRepository).findByUserId(ownerShell.id);
 
 		expect(newStoredApiKey).toEqual({
 			id: expect.any(String),
@@ -215,9 +207,7 @@ describe('Owner shell', () => {
 			.patch(`/api-keys/${newApiKey.id}`)
 			.send({ label: 'updated label', scopes: ['user:create', 'workflow:create'] });
 
-		const newStoredApiKey = await Container.get(ApiKeyRepository).findOneByOrFail({
-			userId: ownerShell.id,
-		});
+		const [newStoredApiKey] = await Container.get(ApiKeyRepository).findByUserId(ownerShell.id);
 
 		expect(newStoredApiKey).toEqual({
 			id: expect.any(String),
@@ -274,9 +264,7 @@ describe('Owner shell', () => {
 		expect(rotatedApiKey.scopes).toEqual(['user:create']);
 		expect(rotatedApiKey.rawApiKey).not.toBe(newApiKey.rawApiKey);
 
-		const storedApiKey = await Container.get(ApiKeyRepository).findOneByOrFail({
-			id: newApiKey.id,
-		});
+		const storedApiKey = await Container.get(ApiKeyRepository).findByIdOrFail(newApiKey.id);
 		// The stored token is the new one — the previous secret no longer authenticates.
 		expect(storedApiKey.apiKey).toBe(rotatedApiKey.rawApiKey);
 		expect(storedApiKey.apiKey).not.toBe(newApiKey.rawApiKey);
@@ -292,9 +280,7 @@ describe('Owner shell', () => {
 
 		await testServer.authAgentFor(ownerShell).post(`/api-keys/${expiredKey.id}/rotate`).expect(400);
 
-		const storedApiKey = await Container.get(ApiKeyRepository).findOneByOrFail({
-			id: expiredKey.id,
-		});
+		const storedApiKey = await Container.get(ApiKeyRepository).findByIdOrFail(expiredKey.id);
 		// The token is left untouched.
 		expect(storedApiKey.apiKey).toBe(expiredKey.apiKey);
 	});
@@ -408,9 +394,7 @@ describe('Member', () => {
 		expect(newApiKeyResponse.body.data.apiKey).toBeDefined();
 		expect(newApiKeyResponse.body.data.apiKey).not.toBeNull();
 
-		const newStoredApiKey = await Container.get(ApiKeyRepository).findOneByOrFail({
-			userId: member.id,
-		});
+		const [newStoredApiKey] = await Container.get(ApiKeyRepository).findByUserId(member.id);
 
 		expect(newStoredApiKey).toEqual({
 			id: expect.any(String),
@@ -441,9 +425,7 @@ describe('Member', () => {
 		expect(newApiKeyResponse.statusCode).toBe(200);
 		expect(newApiKey).toBeDefined();
 
-		const newStoredApiKey = await Container.get(ApiKeyRepository).findOneByOrFail({
-			userId: member.id,
-		});
+		const [newStoredApiKey] = await Container.get(ApiKeyRepository).findByUserId(member.id);
 
 		expect(newStoredApiKey).toEqual({
 			id: expect.any(String),
@@ -474,9 +456,7 @@ describe('Member', () => {
 		expect(newApiKeyResponse.statusCode).toBe(200);
 		expect(newApiKey).toBeDefined();
 
-		const newStoredApiKey = await Container.get(ApiKeyRepository).findOneByOrFail({
-			userId: member.id,
-		});
+		const [newStoredApiKey] = await Container.get(ApiKeyRepository).findByUserId(member.id);
 
 		expect(newStoredApiKey).toEqual({
 			id: expect.any(String),
@@ -797,7 +777,7 @@ describe('Cross-user behavior (admin scope)', () => {
 			.expect(404);
 
 		// Owner's key still exists.
-		const ownerKeys = await Container.get(ApiKeyRepository).findBy({ userId: ownerWithKey.id });
+		const ownerKeys = await Container.get(ApiKeyRepository).findByUserId(ownerWithKey.id);
 		expect(ownerKeys).toHaveLength(1);
 	});
 
@@ -810,7 +790,7 @@ describe('Cross-user behavior (admin scope)', () => {
 			.delete(`/api-keys/${memberWithKey.apiKeys[0].id}`)
 			.expect(200);
 
-		const memberKeys = await Container.get(ApiKeyRepository).findBy({ userId: memberWithKey.id });
+		const memberKeys = await Container.get(ApiKeyRepository).findByUserId(memberWithKey.id);
 		expect(memberKeys).toHaveLength(0);
 	});
 

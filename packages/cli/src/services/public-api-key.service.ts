@@ -38,17 +38,13 @@ export class PublicApiKeyService {
 		{ label, expiresAt, scopes }: CreateApiKeyRequestDto,
 	) {
 		const apiKey = this.generateApiKey(user, expiresAt);
-		await this.apiKeyRepository.insert(
-			this.apiKeyRepository.create({
-				userId: user.id,
-				apiKey,
-				label,
-				scopes,
-				audience: API_KEY_AUDIENCE,
-			}),
-		);
-
-		return await this.apiKeyRepository.findOneByOrFail({ apiKey });
+		return await this.apiKeyRepository.createKey({
+			userId: user.id,
+			apiKey,
+			label,
+			scopes,
+			audience: API_KEY_AUDIENCE,
+		});
 	}
 
 	async getRedactedApiKeys(
@@ -107,18 +103,15 @@ export class PublicApiKeyService {
 	// for the existence of another user's keys.
 	async deleteApiKey(caller: User, apiKeyId: string) {
 		const canDeleteAny = hasGlobalScope(caller, 'apiKey:manage');
-		const apiKey = await this.apiKeyRepository.findOne({
-			where: {
-				id: apiKeyId,
-				audience: API_KEY_AUDIENCE,
-				...(canDeleteAny ? {} : { userId: caller.id }),
-			},
-			relations: { user: true },
-		});
+		const apiKey = await this.apiKeyRepository.findWithOwner(
+			apiKeyId,
+			API_KEY_AUDIENCE,
+			canDeleteAny ? undefined : caller.id,
+		);
 		if (!apiKey) throw new NotFoundError('API key not found');
 
-		const result = await this.apiKeyRepository.delete({ id: apiKey.id });
-		if (!result.affected) throw new NotFoundError('API key not found');
+		const { deleted } = await this.apiKeyRepository.deleteById(apiKey.id);
+		if (!deleted) throw new NotFoundError('API key not found');
 
 		const isOwn = apiKey.userId === caller.id;
 
@@ -137,7 +130,7 @@ export class PublicApiKeyService {
 
 	async deleteAllApiKeysForUser(user: User, ctx: OperationContext = {}) {
 		return await this.txRunner.run(ctx, async (ctx) => {
-			return await this.apiKeyRepository.deleteAllPublicKeysForUser(user.id, ctx);
+			await this.apiKeyRepository.deleteAllForUser(user.id, API_KEY_AUDIENCE, ctx);
 		});
 	}
 
@@ -146,16 +139,14 @@ export class PublicApiKeyService {
 		apiKeyId: string,
 		{ label, scopes }: UpdateApiKeyRequestDto,
 	) {
-		await this.apiKeyRepository.update({ id: apiKeyId, userId: user.id }, { label, scopes });
+		await this.apiKeyRepository.updateOwnedKey(apiKeyId, user.id, { label, scopes });
 	}
 
 	// Owner-only: re-issues the secret in place, keeping the same id, label, scopes
 	// and expiry. Replacing the stored token invalidates the previous one, since
 	// auth matches on the token string.
 	async rotateApiKey(user: User, apiKeyId: string) {
-		const apiKey = await this.apiKeyRepository.findOne({
-			where: { id: apiKeyId, userId: user.id, audience: API_KEY_AUDIENCE },
-		});
+		const apiKey = await this.apiKeyRepository.findOwnedById(apiKeyId, user.id, API_KEY_AUDIENCE);
 		if (!apiKey) throw new NotFoundError('API key not found');
 
 		const expiresAt = this.getApiKeyExpiration(apiKey.apiKey);
@@ -164,10 +155,10 @@ export class PublicApiKeyService {
 		}
 
 		const newApiKey = this.generateApiKey(user, expiresAt);
-		await this.apiKeyRepository.update(
-			{ id: apiKey.id, userId: user.id },
-			{ apiKey: newApiKey, lastUsedAt: null },
-		);
+		await this.apiKeyRepository.updateOwnedKey(apiKey.id, user.id, {
+			apiKey: newApiKey,
+			lastUsedAt: null,
+		});
 
 		apiKey.apiKey = newApiKey;
 		apiKey.lastUsedAt = null;
@@ -228,19 +219,18 @@ export class PublicApiKeyService {
 	}
 
 	async apiKeyHasValidScopes(apiKey: string, endpointScope: ApiKeyScope) {
-		const apiKeyData = await this.apiKeyRepository.findOne({
-			where: { apiKey, audience: API_KEY_AUDIENCE },
-			select: { scopes: true },
-		});
-		if (!apiKeyData) return false;
-
-		return apiKeyData.scopes.includes(endpointScope);
+		const scopes = await this.apiKeyRepository.findScopesByKey(apiKey, API_KEY_AUDIENCE);
+		return scopes?.includes(endpointScope) ?? false;
 	}
 
 	async removeOwnerOnlyScopesFromApiKeys(user: User, ctx: OperationContext = {}) {
 		return await this.txRunner.run(ctx, async (ctx) => {
 			const ownerOnlyScopes = getOwnerOnlyApiKeyScopes();
-			const userApiKeys = await this.apiKeyRepository.findPublicKeysForUser(user.id, ctx);
+			const userApiKeys = await this.apiKeyRepository.findAllForUser(
+				user.id,
+				API_KEY_AUDIENCE,
+				ctx,
+			);
 			const keysWithOwnerScopes = userApiKeys.filter((apiKey) =>
 				apiKey.scopes.some((scope) => ownerOnlyScopes.includes(scope)),
 			);

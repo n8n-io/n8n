@@ -19,18 +19,115 @@ interface ApiKeyListFilter {
 	ownerIds?: string[];
 }
 
-@Service()
-export class ApiKeyRepository extends BaseRepository<ApiKey> {
+export type NewApiKey = Pick<ApiKey, 'userId' | 'apiKey' | 'label' | 'scopes' | 'audience'>;
+
+export type ApiKeyChanges = Partial<Pick<ApiKey, 'label' | 'scopes' | 'apiKey' | 'lastUsedAt'>>;
+
+// Private to this file. Only the table touches the TypeORM manager.
+class ApiKeyTable extends BaseRepository<ApiKey> {
 	constructor(dataSource: DataSource, txRunner: TransactionRunner) {
 		super(ApiKey, dataSource.manager, txRunner);
+	}
+
+	override managerFor(ctx: OperationContext) {
+		return super.managerFor(ctx);
+	}
+}
+
+@Service()
+export class ApiKeyRepository {
+	private readonly table: ApiKeyTable;
+
+	constructor(dataSource: DataSource, txRunner: TransactionRunner) {
+		this.table = new ApiKeyTable(dataSource, txRunner);
+	}
+
+	/** Inserts an entity instance so the `@BeforeInsert` id generator runs. */
+	async createKey(key: NewApiKey, ctx: OperationContext = {}): Promise<ApiKey> {
+		const manager = this.table.managerFor(ctx);
+		await manager.insert(ApiKey, this.table.create(key));
+		return await manager.findOneByOrFail(ApiKey, { apiKey: key.apiKey });
+	}
+
+	async findByIdOrFail(id: string, ctx: OperationContext = {}): Promise<ApiKey> {
+		return await this.table.managerFor(ctx).findOneByOrFail(ApiKey, { id });
+	}
+
+	async findByUserId(userId: string, ctx: OperationContext = {}): Promise<ApiKey[]> {
+		return await this.table.managerFor(ctx).findBy(ApiKey, { userId });
+	}
+
+	async findByUserAndAudience(
+		userId: string,
+		audience: ApiKeyAudience,
+		ctx: OperationContext = {},
+	): Promise<ApiKey | null> {
+		return await this.table.managerFor(ctx).findOneBy(ApiKey, { userId, audience });
+	}
+
+	async findAllForUser(
+		userId: string,
+		audience: ApiKeyAudience,
+		ctx: OperationContext = {},
+	): Promise<ApiKey[]> {
+		return await this.table.managerFor(ctx).findBy(ApiKey, { userId, audience });
+	}
+
+	/** The key with its owner loaded. `ownerId` narrows the lookup to that user's keys. */
+	async findWithOwner(
+		id: string,
+		audience: ApiKeyAudience,
+		ownerId?: string,
+		ctx: OperationContext = {},
+	): Promise<ApiKey | null> {
+		return await this.table.managerFor(ctx).findOne(ApiKey, {
+			where: { id, audience, ...(ownerId ? { userId: ownerId } : {}) },
+			relations: { user: true },
+		});
+	}
+
+	async findOwnedById(
+		id: string,
+		userId: string,
+		audience: ApiKeyAudience,
+		ctx: OperationContext = {},
+	): Promise<ApiKey | null> {
+		return await this.table.managerFor(ctx).findOneBy(ApiKey, { id, userId, audience });
+	}
+
+	/** The key with its owner and the owner's role loaded, for authentication. */
+	async findByKeyWithUser(
+		apiKey: string,
+		audience: ApiKeyAudience,
+		ctx: OperationContext = {},
+	): Promise<ApiKey | null> {
+		return await this.table.managerFor(ctx).findOne(ApiKey, {
+			where: { apiKey, audience },
+			relations: { user: { role: true } },
+		});
+	}
+
+	async findScopesByKey(
+		apiKey: string,
+		audience: ApiKeyAudience,
+		ctx: OperationContext = {},
+	): Promise<ApiKeyScope[] | null> {
+		const key = await this.table.managerFor(ctx).findOne(ApiKey, {
+			where: { apiKey, audience },
+			select: { scopes: true },
+		});
+		return key?.scopes ?? null;
 	}
 
 	async findPageWithOwners(
 		filter: ApiKeyListFilter,
 		sortBy: string | undefined,
 		page: { take?: number; skip?: number },
+		ctx: OperationContext = {},
 	) {
-		const qb = this.createQueryBuilder('apiKey')
+		const qb = this.table
+			.managerFor(ctx)
+			.createQueryBuilder(ApiKey, 'apiKey')
 			.leftJoinAndSelect('apiKey.user', 'user')
 			.setFindOptions({ where: this.listWhere(filter) });
 		this.applyListSort(qb, sortBy);
@@ -47,24 +144,34 @@ export class ApiKeyRepository extends BaseRepository<ApiKey> {
 			includeOthers,
 			pageCount,
 		}: { canSeeAll: boolean; includeOthers: boolean; pageCount?: number },
+		ctx: OperationContext = {},
 	) {
+		const manager = this.table.managerFor(ctx);
 		const mineWhere = this.listWhere({ ...filter, userId });
 		if (!canSeeAll) {
-			const count = pageCount ?? (await this.countBy(mineWhere));
+			const count = pageCount ?? (await manager.countBy(ApiKey, mineWhere));
 			return { mine: count, all: count };
 		}
 		return {
-			mine: pageCount !== undefined && !includeOthers ? pageCount : await this.countBy(mineWhere),
+			mine:
+				pageCount !== undefined && !includeOthers
+					? pageCount
+					: await manager.countBy(ApiKey, mineWhere),
 			all:
 				pageCount !== undefined && includeOthers
 					? pageCount
-					: await this.countBy(this.listWhere(filter)),
+					: await manager.countBy(ApiKey, this.listWhere(filter)),
 		};
 	}
 
-	async findOwnerSummaries(audience: ApiKeyAudience): Promise<ApiKeyOwnerSummary[]> {
+	async findOwnerSummaries(
+		audience: ApiKeyAudience,
+		ctx: OperationContext = {},
+	): Promise<ApiKeyOwnerSummary[]> {
 		// Lowercase aliases keep raw result keys stable on both databases.
-		const rows = await this.createQueryBuilder('apiKey')
+		const rows = await this.table
+			.managerFor(ctx)
+			.createQueryBuilder(ApiKey, 'apiKey')
 			.innerJoin('apiKey.user', 'user')
 			.where('apiKey.audience = :audience', { audience })
 			.select('user.id', 'id')
@@ -93,20 +200,34 @@ export class ApiKeyRepository extends BaseRepository<ApiKey> {
 		}));
 	}
 
-	async findPublicKeysForUser(userId: string, ctx: OperationContext) {
-		return await this.managerFor(ctx).find(ApiKey, {
-			where: { userId, audience: 'public-api' },
-		});
+	async updateOwnedKey(
+		id: string,
+		userId: string,
+		changes: ApiKeyChanges,
+		ctx: OperationContext = {},
+	): Promise<void> {
+		await this.table.managerFor(ctx).update(ApiKey, { id, userId }, changes);
 	}
 
-	async deleteAllPublicKeysForUser(userId: string, ctx: OperationContext) {
-		const manager = this.managerFor(ctx);
-		const keys = await this.findPublicKeysForUser(userId, ctx);
-		return await Promise.all(keys.map(async (key) => await manager.delete(ApiKey, { id: key.id })));
+	async updateLastUsedAt(id: string, lastUsedAt: Date, ctx: OperationContext = {}) {
+		await this.table.managerFor(ctx).update(ApiKey, { id }, { lastUsedAt });
 	}
 
-	async updateScopes(id: string, scopes: ApiKeyScope[], ctx: OperationContext) {
-		return await this.managerFor(ctx).update(ApiKey, id, { scopes });
+	async updateScopes(id: string, scopes: ApiKeyScope[], ctx: OperationContext = {}) {
+		await this.table.managerFor(ctx).update(ApiKey, id, { scopes });
+	}
+
+	async deleteById(id: string, ctx: OperationContext = {}): Promise<{ deleted: number }> {
+		const result = await this.table.managerFor(ctx).delete(ApiKey, { id });
+		return { deleted: result.affected ?? 0 };
+	}
+
+	async deleteAllForUser(
+		userId: string,
+		audience: ApiKeyAudience,
+		ctx: OperationContext = {},
+	): Promise<void> {
+		await this.table.managerFor(ctx).delete(ApiKey, { userId, audience });
 	}
 
 	private listWhere(filter: ApiKeyListFilter): FindOptionsWhere<ApiKey> {

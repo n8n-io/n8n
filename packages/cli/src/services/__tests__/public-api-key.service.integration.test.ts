@@ -87,7 +87,7 @@ describe('PublicApiKeyService', () => {
 
 			// Assert
 
-			const apiKeyOnDb = await apiKeyRepository.findOneByOrFail({ id: apiKeyId });
+			const apiKeyOnDb = await apiKeyRepository.findByIdOrFail(apiKeyId);
 
 			expect(ownerOnlyScopes.some((ownerScope) => apiKeyOnDb.scopes.includes(ownerScope))).toBe(
 				false,
@@ -102,7 +102,7 @@ describe('PublicApiKeyService', () => {
 
 			await publicApiKeyService.removeOwnerOnlyScopesFromApiKeys(adminUser);
 
-			const apiKeyOnDb = await apiKeyRepository.findOneByOrFail({ id: apiKeyId });
+			const apiKeyOnDb = await apiKeyRepository.findByIdOrFail(apiKeyId);
 			expect(apiKeyOnDb.scopes).toEqual(MEMBER_API_KEY_SCOPES);
 		});
 	});
@@ -115,13 +115,12 @@ describe('PublicApiKeyService', () => {
 				const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 					user.id,
 				);
-				const deleteKeys = apiKeyRepository.deleteAllPublicKeysForUser.bind(apiKeyRepository);
+				const deleteKeys = apiKeyRepository.deleteAllForUser.bind(apiKeyRepository);
 				const deletion = vi
-					.spyOn(apiKeyRepository, 'deleteAllPublicKeysForUser')
-					.mockImplementationOnce(async (userId, ctx) => {
-						const result = await deleteKeys(userId, ctx);
+					.spyOn(apiKeyRepository, 'deleteAllForUser')
+					.mockImplementationOnce(async (userId, audience, ctx) => {
+						await deleteKeys(userId, audience, ctx);
 						if (fail) throw new Error('Role change failed');
-						return result;
 					});
 
 				try {
@@ -141,7 +140,7 @@ describe('PublicApiKeyService', () => {
 					});
 					expect(storedUser?.role.slug).toBe(fail ? 'global:member' : 'global:chatUser');
 					expect(projectRelation.role.slug).toBe(fail ? 'project:personalOwner' : 'project:viewer');
-					expect(await apiKeyRepository.countBy({ userId: user.id })).toBe(fail ? 1 : 0);
+					expect(await apiKeyRepository.findByUserId(user.id)).toHaveLength(fail ? 1 : 0);
 				} finally {
 					deletion.mockRestore();
 				}
