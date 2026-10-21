@@ -324,12 +324,9 @@ export class WorkflowCreationService {
 		const savedWorkflow = await this.workflowRepository.runInTransaction(
 			{ policyCleared: cleared },
 			async (transactionManager, ctx) => {
-				project = await this.projectService.getProjectWithScope(
-					user,
-					effectiveProjectId,
-					['workflow:create'],
-					transactionManager,
-				);
+				project = await this.projectService.getProjectWithScope(user, effectiveProjectId, [
+					'workflow:create',
+				]);
 
 				if (project === null) {
 					const message = "You don't have the permissions to save the workflow in this project.";

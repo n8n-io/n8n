@@ -19,7 +19,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { LicenseMocker } from '@test-integration/license';
 
-import { createCustomRoleWithScopeSlugs } from './shared/db/roles';
+import { cleanupRolesAndScopes, createCustomRoleWithScopeSlugs } from './shared/db/roles';
 import { createOwner, createUser } from './shared/db/users';
 
 import { License } from '@/license';
@@ -52,6 +52,7 @@ describe('ProjectService', () => {
 	});
 
 	afterAll(async () => {
+		await cleanupRolesAndScopes();
 		await testDb.terminate();
 	});
 
