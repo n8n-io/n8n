@@ -419,7 +419,8 @@
 			"status": "gap"
 		},
 		"POST /projects/{projectId}/users": {
-			"status": "gap"
+			"status": "covered",
+			"nodeOperation": "project:addUser"
 		},
 		"DELETE /projects/{projectId}/users/{userId}": {
 			"status": "gap"

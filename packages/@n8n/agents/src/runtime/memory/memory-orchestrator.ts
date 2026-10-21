@@ -126,8 +126,7 @@ function hasObservationLogObserverMemory(
 	return (
 		hasObservationLogStore(memory) &&
 		hasFunctionProperty(memory, 'getMessagesForObservationScope') &&
-		hasFunctionProperty(memory, 'getCursor') &&
-		hasFunctionProperty(memory, 'setCursor')
+		hasFunctionProperty(memory, 'getCursor')
 	);
 }
 
