@@ -748,7 +748,9 @@ describe('WorkflowSettingsVue', () => {
 				const { getByTestId, getByRole } = createComponent({ pinia });
 				await flushPromises();
 
-				await userEvent.click(getByTestId('workflow-settings-engine-type-switch'));
+				const engineTypeSwitch = getByTestId('workflow-settings-engine-type-switch');
+				await userEvent.click(engineTypeSwitch);
+				expect(engineTypeSwitch).toHaveAttribute('aria-checked', String(expected === 'v2'));
 				await userEvent.click(getByRole('button', { name: 'Save' }));
 
 				expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(

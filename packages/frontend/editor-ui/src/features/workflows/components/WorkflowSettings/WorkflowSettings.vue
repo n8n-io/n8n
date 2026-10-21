@@ -828,8 +828,8 @@ const toggleTimeout = () => {
 	workflowSettings.value.executionTimeout = workflowSettings.value.executionTimeout === -1 ? 0 : -1;
 };
 
-const toggleEngineType = (useEngineV2: boolean) => {
-	workflowSettings.value.engineType = useEngineV2 ? 'v2' : 'v1';
+const toggleEngineType = (value: string | number | boolean) => {
+	workflowSettings.value.engineType = value === true ? 'v2' : 'v1';
 };
 
 const toggleAvailableInMCP = () => {
@@ -1061,6 +1061,7 @@ onBeforeUnmount(() => {
 						<div>
 							<ElSwitch
 								:disabled="isWorkflowSettingsReadOnly"
+								:label="i18n.baseText('workflowSettings.engineType')"
 								:model-value="workflowSettings.engineType === 'v2'"
 								data-test-id="workflow-settings-engine-type-switch"
 								@update:model-value="toggleEngineType"
