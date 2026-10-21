@@ -105,6 +105,22 @@ describe('N8nMemoryImpl', () => {
 			expect(await memory.getObservationLog(input)).toEqual(rows);
 		});
 
+		it('advances a cursor-only batch without changing active observations', async () => {
+			await memory.commitObservationLogBatch(batch());
+			const input = batch(await memory.getCursor('thread-1'));
+			const rows = await memory.getActiveObservationLog(input);
+			input.entries = [];
+			input.nextCursor.lastObservedMessageId = 'm3';
+			input.nextCursor.lastObservedAt = new Date(3);
+
+			expect(await memory.commitObservationLogBatch(input)).toBe('committed');
+			expect(await memory.getCursor('thread-1')).toEqual({
+				...input.nextCursor,
+				updatedAt: new Date(now.getTime() + 1),
+			});
+			expect(await memory.getObservationLog(input)).toEqual(rows);
+		});
+
 		it.each([false, true])(
 			'accepts only one competing writer with an existing cursor: %s',
 			async (existing) => {
@@ -178,7 +194,7 @@ describe('N8nMemoryImpl', () => {
 					input.nextCursor.lastObservedMessageId = null as unknown as string;
 				const generateId = vi.spyOn(AgentObservationEntity.prototype, 'generateId');
 				if (failure === 'observation-unique')
-					generateId.mockImplementation(function () {
+					generateId.mockImplementation(function (this: AgentObservationEntity) {
 						this.id = 'batch-entry';
 					});
 				try {
