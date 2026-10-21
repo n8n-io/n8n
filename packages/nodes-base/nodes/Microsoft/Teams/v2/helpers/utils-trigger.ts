@@ -220,6 +220,93 @@ export async function listOwnSubscriptions(
 	return subscriptions.filter((subscription) => subscription.notificationUrl === webhookUrl);
 }
 
+/**
+ * Applies the ownership rule to one own listing: one stored live subscription per
+ * required resource stays, every other own subscription goes, and the uncovered
+ * resources are created with the stored secret. Reads and writes `subscriptionIds`
+ * itself, so the trust decision and the write share one source. Never throws.
+ */
+export async function reconcileSubscriptions(
+	this: IHookFunctions | IWebhookFunctions,
+	input: {
+		webhookUrl: string;
+		clientState: string;
+		requiredResources: string[];
+		/** The own listing, with the usable PATCH answers of this request merged in. */
+		subscriptions: SubscriptionResponse[];
+		/** Ids a PATCH in this request succeeded for: live, and preferred as keepers. */
+		renewed?: ReadonlySet<string>;
+		/** Ids Graph reported removed. */
+		gone?: ReadonlySet<string>;
+	},
+): Promise<{ ids: string[]; failures: SubscriptionFailure[] }> {
+	const { webhookUrl, clientState, subscriptions, renewed = new Set(), gone = new Set() } = input;
+	const webhookData = this.getWorkflowStaticData('node');
+	const storedIds = getStoredIds(webhookData);
+	const required = [...new Set(input.requiredResources)];
+
+	// Liveness is decided once: the awaited deletes below must not move the line.
+	const live = new Set(
+		subscriptions
+			.filter((sub) => !gone.has(sub.id) && (renewed.has(sub.id) || isLiveSubscription(sub)))
+			.map((sub) => sub.id),
+	);
+	// Trust needs the own listing and the stored id, so an orphan with another secret never
+	// becomes a keeper. Renewed first, then the later expiry, then the id: two mains pick
+	// the same one.
+	const candidates = subscriptions
+		.filter(
+			(sub) => storedIds.includes(sub.id) && live.has(sub.id) && required.includes(sub.resource),
+		)
+		.sort(
+			(a, b) =>
+				Number(renewed.has(b.id)) - Number(renewed.has(a.id)) ||
+				(Date.parse(b.expirationDateTime) || 0) - (Date.parse(a.expirationDateTime) || 0) ||
+				(a.id < b.id ? -1 : 1),
+		);
+	const keepers = new Map<string, string>();
+	for (const sub of candidates) {
+		if (!keepers.has(sub.resource)) keepers.set(sub.resource, sub.id);
+	}
+	const keeperIds = new Set(keepers.values());
+
+	const listedIds = new Set(subscriptions.map((sub) => sub.id));
+	const storedAbsent = storedIds.filter((id) => !listedIds.has(id) && !gone.has(id));
+	// Every other own subscription goes first: Graph refuses a second `/teams/{id}/channels`
+	// subscription, and the two must never deliver together.
+	const deleteFailures = await deleteSubscriptions.call(this, [
+		...subscriptions.map((sub) => sub.id).filter((id) => !keeperIds.has(id)),
+		...storedAbsent,
+	]);
+	const { ids: created, failures: createFailures } = await createSubscriptions.call(
+		this,
+		webhookUrl,
+		required.filter((resource) => !keepers.has(resource)),
+		clientState,
+	);
+
+	// A stored id that is not listed and that Graph refused to remove stays, so the next
+	// activation retries the delete; the by-URL listing cannot find it.
+	const retained = storedAbsent.filter((id) =>
+		deleteFailures.some((failure) => failure.step === 'delete' && failure.id === id),
+	);
+	const ids = [
+		...new Set([
+			...required.flatMap((resource) => keepers.get(resource) ?? []),
+			...retained,
+			...created,
+		]),
+	];
+	// Every save is a DB write and widens the last-write-wins window, so save on change only.
+	const raw: unknown[] | undefined = Array.isArray(webhookData.subscriptionIds)
+		? webhookData.subscriptionIds
+		: undefined;
+	const unchanged =
+		raw !== undefined && raw.length === ids.length && ids.every((id) => raw.includes(id));
+	if (!unchanged) webhookData.subscriptionIds = ids;
+	return { ids, failures: [...deleteFailures, ...createFailures] };
+}
+
 // Anything with a `lifecycleEvent` is a lifecycle item and never a workflow item; the
 // handler checks the id before it uses it.
 export function isLifecycleNotification(item: unknown): item is LifecycleNotification {

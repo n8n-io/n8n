@@ -1,5 +1,6 @@
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { isRecord } from '@n8n/utils/is-record';
+import { sleep } from '@n8n/utils/sleep';
 import type {
 	INodeType,
 	INodeTypeDescription,
@@ -11,10 +12,9 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
-import type { WebhookNotification } from './v2/helpers/types';
+import type { SubscriptionResponse, WebhookNotification } from './v2/helpers/types';
 import {
 	createSubscriptions,
-	deleteSubscription,
 	deleteSubscriptions,
 	generateClientState,
 	getResourcePath,
@@ -22,9 +22,9 @@ import {
 	getStoredSecret,
 	handleLifecycleNotifications,
 	isLifecycleNotification,
-	isLiveSubscription,
 	listOwnSubscriptions,
 	logTrigger,
+	reconcileSubscriptions,
 	verifyWebhook,
 } from './v2/helpers/utils-trigger';
 import { listSearch } from './v2/methods';
@@ -359,89 +359,51 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				const event = this.getNodeParameter('event', 0) as string;
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
+				// `create()` owns the "Invalid Notification URL" error.
+				if (!webhookUrl?.startsWith('https://')) return false;
 
+				// An activation that cannot see Graph must not claim success and must not create
+				// blind. The error reaches core, which removes everything own through `delete()`,
+				// shows it and retries on init.
+				let subscriptions: SubscriptionResponse[];
 				try {
-					const matchingSubscriptions = await listOwnSubscriptions.call(this, webhookUrl);
-					const hasSecret = getStoredSecret(webhookData) !== undefined;
-
-					// Without the secret the webhook cannot verify any of these subscriptions, for
-					// example after the static data was lost, so none of them counts. With it, the
-					// ones about to expire do not count. Partition once, before the awaited deletes.
-					const validSubscriptions = hasSecret
-						? matchingSubscriptions.filter((subscription) => isLiveSubscription(subscription))
-						: [];
-					const validIds = new Set(validSubscriptions.map((subscription) => subscription.id));
-					const failedRemovalIds: string[] = [];
-					// What does not count is removed, so `create()` adds no duplicate next to it.
-					for (const { id } of matchingSubscriptions) {
-						if (validIds.has(id)) continue;
-						try {
-							await deleteSubscription.call(this, id);
-						} catch (error) {
-							failedRemovalIds.push(id);
-							this.logger.warn('Microsoft Teams Trigger: failed to remove a stale subscription', {
-								workflowId: this.getWorkflow().id,
-								nodeName: this.getNode().name,
-								subscriptionId: id,
-								error: ensureError(error).message,
-							});
-						}
-					}
-					if (!hasSecret) {
-						delete webhookData.subscriptionIds;
-						if (failedRemovalIds.length > 0) {
-							webhookData.staleSubscriptionIds = failedRemovalIds;
-						} else {
-							delete webhookData.staleSubscriptionIds;
-						}
-						return false;
-					}
-
-					const resourcePaths = await getResourcePath.call(this, event);
-					const requiredResources = Array.isArray(resourcePaths) ? resourcePaths : [resourcePaths];
-
-					const subscribedResources = validSubscriptions.map((sub) => sub.resource);
-					const allResourcesSubscribed = requiredResources.every((resource) =>
-						subscribedResources.includes(resource),
-					);
-
-					if (allResourcesSubscribed) {
-						webhookData.subscriptionIds = validSubscriptions.map((sub) => sub.id);
-						if (failedRemovalIds.length > 0) {
-							webhookData.staleSubscriptionIds = failedRemovalIds;
-						} else {
-							delete webhookData.staleSubscriptionIds;
-						}
-						return true;
-					}
-
-					// create() mints a fresh clientState, so a leftover subscription on this
-					// URL would keep delivering with a secret we can no longer verify.
-					for (const { id } of validSubscriptions) {
-						try {
-							await deleteSubscription.call(this, id);
-						} catch (error) {
-							failedRemovalIds.push(id);
-							this.logger.warn('Microsoft Teams Trigger: failed to remove a stale subscription', {
-								workflowId: this.getWorkflow().id,
-								nodeName: this.getNode().name,
-								subscriptionId: id,
-								error: ensureError(error).message,
-							});
-						}
-					}
-					if (failedRemovalIds.length > 0) {
-						webhookData.staleSubscriptionIds = failedRemovalIds;
-					} else {
-						delete webhookData.staleSubscriptionIds;
-					}
-
-					delete webhookData.subscriptionIds;
-					delete webhookData.webhookSecret;
-					return false;
+					subscriptions = await listOwnSubscriptions.call(this, webhookUrl);
 				} catch (error) {
+					if (!(error instanceof NodeApiError && error.httpCode === '429')) throw error;
+					// ponytail: one fixed wait with jitter for the documented list budget (25 per
+					// 20 s per app per tenant, 40 per 20 s per app across tenants); the transport
+					// does not expose Retry-After.
+					await sleep(20_000 + Math.floor(Math.random() * 10_000));
+					subscriptions = await listOwnSubscriptions.call(this, webhookUrl);
+				}
+
+				const storedIds = getStoredIds(webhookData);
+				const clientState = getStoredSecret(webhookData);
+				if (clientState === undefined) {
+					// Without the secret nothing own can be verified and no stored id can be
+					// trusted, so `create()` starts clean.
+					await deleteSubscriptions.call(this, [
+						...subscriptions.map((subscription) => subscription.id),
+						...storedIds,
+					]);
+					delete webhookData.subscriptionIds;
 					return false;
 				}
+
+				const resourcePaths = await getResourcePath.call(this, event);
+				const requiredResources = Array.isArray(resourcePaths) ? resourcePaths : [resourcePaths];
+				const { failures } = await reconcileSubscriptions.call(this, {
+					webhookUrl,
+					clientState,
+					requiredResources,
+					subscriptions,
+				});
+				// A resource without a live subscription is a dark trigger, so the activation
+				// fails with the Graph error. A failed removal only warns: the next listing finds
+				// that subscription again.
+				const createFailure = failures.find((failure) => failure.step === 'create');
+				if (createFailure) throw createFailure.error;
+				return true;
 			},
 
 			// Runs only after `checkExists` swept every own subscription and returned false,

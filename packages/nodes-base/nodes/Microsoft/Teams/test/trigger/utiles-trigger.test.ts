@@ -15,6 +15,7 @@ import {
 	isLifecycleNotification,
 	isLiveSubscription,
 	listOwnSubscriptions,
+	reconcileSubscriptions,
 	verifyWebhook,
 } from '../../v2/helpers/utils-trigger';
 import {
@@ -888,6 +889,158 @@ describe('Microsoft Teams Helpers Functions', () => {
 					expect.objectContaining({ subscriptionId: 'sub1/../x', error: 'The ID is not valid' }),
 				);
 			});
+		});
+
+		describe('reconcileSubscriptions', () => {
+			const TEAM1 = '/teams/team1/channels';
+			const TEAM2 = '/teams/team2/channels';
+			const reconcile = async (
+				ctx: any,
+				input: Partial<Parameters<typeof reconcileSubscriptions>[0]> = {},
+			) =>
+				await reconcileSubscriptions.call(ctx, {
+					webhookUrl,
+					clientState: 'secret',
+					requiredResources: ['/me/chats'],
+					subscriptions: [],
+					...input,
+				});
+			const deleted = () => calls('DELETE').map((call) => call[2]);
+			const created = () => calls('POST').map((call) => call[3].resource);
+
+			it('keeps the later-expiring id and breaks a tie by id', async () => {
+				const { ctx, staticData } = arrange({
+					staticData: { subscriptionIds: ['c', 'b', 'a'], webhookSecret: 'secret' },
+				});
+
+				const result = await reconcile(ctx, {
+					subscriptions: [
+						subscription('c', '/me/chats', minutes(90)),
+						subscription('a', '/me/chats', minutes(60)),
+						subscription('b', '/me/chats', minutes(90)),
+					],
+				});
+
+				expect(deleted()).toEqual(['/v1.0/subscriptions/c', '/v1.0/subscriptions/a']);
+				expect(created()).toEqual([]);
+				expect(result).toEqual({ ids: ['b'], failures: [] });
+				expect(staticData.subscriptionIds).toEqual(['b']);
+			});
+
+			it('keeps one keeper per resource', async () => {
+				const { ctx } = arrange({
+					staticData: { subscriptionIds: ['a1', 'a2', 'b1', 'b2'], webhookSecret: 'secret' },
+				});
+
+				const result = await reconcile(ctx, {
+					requiredResources: [TEAM1, TEAM2],
+					subscriptions: [
+						subscription('a1', TEAM1, minutes(60)),
+						subscription('a2', TEAM1, minutes(90)),
+						subscription('b1', TEAM2, minutes(60)),
+						subscription('b2', TEAM2, minutes(90)),
+					],
+					renewed: new Set(['b1']),
+				});
+
+				expect(deleted()).toEqual(['/v1.0/subscriptions/a1', '/v1.0/subscriptions/b2']);
+				expect(created()).toEqual([]);
+				expect(result.ids).toEqual(['a2', 'b1']);
+			});
+
+			it('keeps a renewed listed subscription whose listed expiry has passed', async () => {
+				const { ctx } = arrange();
+
+				const result = await reconcile(ctx, {
+					subscriptions: [subscription('sub1', '/me/chats', -minutes(1))],
+					renewed: new Set(['sub1']),
+				});
+
+				expect(microsoftApiRequest.call).not.toHaveBeenCalled();
+				expect(result).toEqual({ ids: ['sub1'], failures: [] });
+			});
+
+			it('deletes an unlisted renewed id whose PATCH answer was unusable and re-creates its resource', async () => {
+				const { ctx, staticData } = arrange();
+
+				const result = await reconcile(ctx, { renewed: new Set(['sub1']) });
+
+				expect(deleted()).toEqual(['/v1.0/subscriptions/sub1']);
+				expect(created()).toEqual(['/me/chats']);
+				expect(result.ids).toEqual(['new-chats']);
+				expect(staticData.subscriptionIds).toEqual(['new-chats']);
+			});
+
+			it('exempts gone ids from the stored-absent delete', async () => {
+				const { ctx } = arrange();
+
+				const result = await reconcile(ctx, { gone: new Set(['sub1']) });
+
+				expect(deleted()).toEqual([]);
+				expect(created()).toEqual(['/me/chats']);
+				expect(result.ids).toEqual(['new-chats']);
+			});
+
+			it('creates one subscription when a resource is required twice', async () => {
+				const { ctx } = arrange({ staticData: { webhookSecret: 'secret' } });
+
+				const result = await reconcile(ctx, { requiredResources: ['/me/chats', '/me/chats'] });
+
+				expect(created()).toEqual(['/me/chats']);
+				expect(result.ids).toEqual(['new-chats']);
+			});
+
+			it('finishes the deletes before the first create', async () => {
+				const { ctx } = arrange({
+					staticData: { subscriptionIds: ['old'], webhookSecret: 'secret' },
+				});
+				let releaseDelete: (value: unknown) => void = () => {};
+				(microsoftApiRequest.call as Mock).mockImplementation(
+					async (_ctx: unknown, method: string) => {
+						if (method === 'DELETE') {
+							return await new Promise((resolve) => {
+								releaseDelete = resolve;
+							});
+						}
+						return { id: 'new-chats' };
+					},
+				);
+
+				const pending = reconcile(ctx);
+				await new Promise((resolve) => setImmediate(resolve));
+				expect(deleted()).toEqual(['/v1.0/subscriptions/old']);
+				expect(created()).toEqual([]);
+				releaseDelete({});
+
+				await expect(pending).resolves.toEqual({ ids: ['new-chats'], failures: [] });
+				expect(created()).toEqual(['/me/chats']);
+			});
+
+			it.each([
+				{ raw: ['b', 'a'], required: [TEAM1, TEAM2], written: false, ids: ['b', 'a'] },
+				{ raw: ['a', 7], required: [TEAM1], written: true, ids: ['a'] },
+				{ raw: 'garbage', required: [TEAM1], written: true, ids: ['new-team1'] },
+				{ raw: ['a', 'a'], required: [TEAM1], written: true, ids: ['a'] },
+				{ raw: ['a', 'a'], required: [TEAM1, TEAM2], written: true, ids: ['a', 'new-team2'] },
+			])(
+				'writes the ids only when the membership changed (stored $raw, written: $written)',
+				async ({ raw, required, written, ids }) => {
+					const { ctx, staticData } = arrange({
+						staticData: { subscriptionIds: raw, webhookSecret: 'secret' },
+					});
+
+					await reconcile(ctx, {
+						requiredResources: required,
+						subscriptions: [
+							subscription('a', TEAM1, minutes(60)),
+							subscription('b', TEAM2, minutes(60)),
+						],
+					});
+
+					expect(staticData.subscriptionIds).toEqual(ids);
+					expect(staticData.subscriptionIds !== raw).toBe(written);
+				},
+			);
 		});
 
 		describe('handleLifecycleNotifications', () => {
