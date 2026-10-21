@@ -122,6 +122,7 @@ function input(sources: PreparedAgent[], projectId = project.id): ImportOrchestr
 			conflictPolicy: 'keep-existing',
 		},
 		tagRequest: { requirements: [], missingMode: 'create', conflictPolicy: 'skip' },
+		checkRootPlacement: false,
 	};
 }
 
