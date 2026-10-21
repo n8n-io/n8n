@@ -147,6 +147,26 @@ export interface BuildFromJsonOptions {
 	 * them on their own cache key.
 	 */
 	previewChat?: boolean;
+	/** Called once for each vector store search, before it runs, with the run id of the agent runtime. */
+	onVectorStoreSearch?: (runId: string | undefined) => void;
+}
+
+function countVectorStoreSearches(
+	searchTool: BuiltTool,
+	onVectorStoreSearch: (runId: string | undefined) => void,
+): BuiltTool {
+	const searchHandler = searchTool.handler;
+	if (!searchHandler) {
+		return searchTool;
+	}
+
+	return {
+		...searchTool,
+		async handler(input, ctx) {
+			onVectorStoreSearch(ctx.runId);
+			return await searchHandler.call(searchTool, input, ctx);
+		},
+	};
 }
 
 /**
@@ -214,7 +234,12 @@ export async function buildFromJson(
 			// selected yet — skip them rather than failing the whole agent build.
 			if (!vectorStoreConfig.credential || !vectorStoreConfig.embedding.credential) continue;
 			const vectorStore = await buildVectorStore(vectorStoreConfig, options.credentialProvider);
-			agent.vectorStore(vectorStore, { description: vectorStoreConfig.useWhen });
+			const searchTool = vectorStore.asTool({ description: vectorStoreConfig.useWhen }).build();
+			agent.tool(
+				options.onVectorStoreSearch
+					? countVectorStoreSearches(searchTool, options.onVectorStoreSearch)
+					: searchTool,
+			);
 		}
 	}
 
