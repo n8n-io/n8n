@@ -8,7 +8,7 @@ import {
 import type { Mock } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
 
-import { createExecuteContext, setParams } from '../v2/node/helpers';
+import { createExecuteContext, graphError, setParams } from '../v2/node/helpers';
 import { createSubscription } from '../../v2/helpers/utils-trigger';
 import { SERVICE_PRINCIPAL_AUTH } from '../../v2/transport';
 import { SUBSCRIPTION_LIMIT_FORBIDDEN } from '../../v2/transport/forbiddenHints';
@@ -27,12 +27,6 @@ const node: INode = {
 	position: [0, 0],
 	parameters: {},
 };
-
-const graphError = (statusCode: number, code: string, message: string) =>
-	Object.assign(new Error(`${statusCode} - ${JSON.stringify({ error: { code, message } })}`), {
-		statusCode,
-		error: { error: { code, message } },
-	});
 
 describe('Microsoft Teams Trigger - createSubscription error surfacing', () => {
 	let ctx: MockProxy<IExecuteFunctions>;
@@ -88,6 +82,15 @@ describe('Microsoft Teams Trigger - createSubscription error surfacing', () => {
 			expect(error).toBeInstanceOf(NodeApiError);
 			expect(error.message).toBe(OTHER_TEXT);
 			expect(error.description).toBeUndefined();
+		});
+
+		it('keeps the 429 status code on a throttled request', async () => {
+			requestOAuth2.mockRejectedValue(graphError(429, 'TooManyRequests', 'Too many requests.'));
+
+			const error = await createAndCatch();
+
+			expect(error).toBeInstanceOf(NodeApiError);
+			expect(error.httpCode).toBe('429');
 		});
 	});
 

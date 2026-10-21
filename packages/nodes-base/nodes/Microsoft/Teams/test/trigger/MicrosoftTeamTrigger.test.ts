@@ -1,10 +1,20 @@
-import { mock } from 'vitest-mock-extended';
+import { mock, mockDeep } from 'vitest-mock-extended';
+import type {
+	IDataObject,
+	IHookFunctions,
+	INode,
+	IWebhookFunctions,
+	NodeParameterValueType,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import { MicrosoftTeamsTrigger } from '../../MicrosoftTeamsTrigger.node';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../v2/transport';
-import type { Mock } from 'vitest';
+import type { Mock, MockInstance } from 'vitest';
 import type * as _transport from '../../v2/transport';
+
+type WebhookRequest = ReturnType<IWebhookFunctions['getRequestObject']>;
+type WebhookResponse = ReturnType<IWebhookFunctions['getResponseObject']>;
 
 // Preserve the real transport exports (the node description references
 // SERVICE_PRINCIPAL_AUTH/SP_HIDE at construction, and getResourcePath uses the real
@@ -30,17 +40,21 @@ describe('Microsoft Teams Trigger Node', () => {
 		vi.clearAllMocks();
 	});
 
+	// The hook methods want an `IHookFunctions` and `webhook()` an `IWebhookFunctions`; one
+	// deep mock serves both kinds of case.
 	const hookCtx = (staticData: Record<string, unknown>, params: Record<string, unknown> = {}) => {
-		const ctx: any = mock({ logger: { warn: vi.fn(), debug: vi.fn() } });
-		ctx.getWorkflow.mockReturnValue({ id: 'wf1' });
-		ctx.getNode.mockReturnValue({ name: 'Microsoft Teams Trigger' });
+		const ctx = mockDeep<IHookFunctions & IWebhookFunctions>();
+		ctx.getWorkflow.mockReturnValue({ id: 'wf1', active: true });
+		ctx.getNode.mockReturnValue(mock<INode>({ name: 'Microsoft Teams Trigger' }));
 		ctx.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
-		ctx.getWorkflowStaticData.mockReturnValue(staticData);
-		ctx.getNodeParameter.mockImplementation((name: string, fallback?: unknown) =>
-			name in params ? params[name] : fallback,
+		ctx.getWorkflowStaticData.mockReturnValue(staticData as IDataObject);
+		ctx.getNodeParameter.mockImplementation(
+			(name: string, fallback?: unknown) =>
+				(name in params ? params[name] : fallback) as NodeParameterValueType,
 		);
 		return ctx;
 	};
+	type TriggerContext = ReturnType<typeof hookCtx>;
 
 	const arrange = ({
 		value,
@@ -59,8 +73,11 @@ describe('Microsoft Teams Trigger Node', () => {
 			end: vi.fn(),
 		};
 		const ctx = hookCtx(staticData, params);
-		ctx.getRequestObject.mockReturnValue({ body: { value }, query: {} });
-		ctx.getResponseObject.mockReturnValue(res);
+		ctx.getRequestObject.mockReturnValue({
+			body: { value },
+			query: {},
+		} as unknown as WebhookRequest);
+		ctx.getResponseObject.mockReturnValue(res as unknown as WebhookResponse);
 		ctx.getMode.mockReturnValue(mode);
 		return { ctx, res, staticData };
 	};
@@ -71,7 +88,7 @@ describe('Microsoft Teams Trigger Node', () => {
 	describe('webhookMethods', () => {
 		describe('checkExists', () => {
 			const HOUR = 3600000;
-			const checkExists = async (ctx: any) =>
+			const checkExists = async (ctx: TriggerContext) =>
 				await new MicrosoftTeamsTrigger().webhookMethods.default.checkExists.call(ctx);
 			const own = (id: string, resource: string, expiresInMs: number) => ({
 				id,
@@ -81,7 +98,7 @@ describe('Microsoft Teams Trigger Node', () => {
 			});
 			const graphCalls = () =>
 				(microsoftApiRequest.call as Mock).mock.calls.map((call) => call.slice(1, 3));
-			const forbidden = (ctx: any) =>
+			const forbidden = (ctx: TriggerContext) =>
 				new NodeApiError(ctx.getNode(), { message: 'Forbidden', httpCode: '403' });
 
 			it('adopts the stored live subscription without rewriting the static data', async () => {
@@ -363,6 +380,17 @@ describe('Microsoft Teams Trigger Node', () => {
 				expect(staticData).toEqual({ webhookSecret: 'secret', subscriptionIds: ['new'] });
 			});
 
+			it('returns false without a Graph call when the webhook URL is not https', async () => {
+				const ctx = hookCtx({ webhookSecret: 'secret' }, { event: 'newChat' });
+				ctx.getNodeWebhookUrl.mockReturnValue('http://webhook.url');
+
+				const result = await checkExists(ctx);
+
+				expect(result).toBe(false);
+				expect(microsoftApiRequestAllItems.call).not.toHaveBeenCalled();
+				expect(microsoftApiRequest.call).not.toHaveBeenCalled();
+			});
+
 			it('throws when the listing fails', async () => {
 				const ctx = hookCtx({ webhookSecret: 'secret' }, { event: 'newChat' });
 				(microsoftApiRequestAllItems.call as Mock).mockRejectedValue(
@@ -375,7 +403,7 @@ describe('Microsoft Teams Trigger Node', () => {
 			});
 
 			describe('when the listing is throttled', () => {
-				const tooManyRequests = (ctx: any) =>
+				const tooManyRequests = (ctx: TriggerContext) =>
 					new NodeApiError(ctx.getNode(), { message: 'Too many requests', httpCode: '429' });
 				// A counter instead of a once-queue: a case that fails early must not leak its
 				// answers into the next one.
@@ -385,12 +413,16 @@ describe('Microsoft Teams Trigger Node', () => {
 						async () => await answers[index++](),
 					);
 				};
+				let randomSpy: MockInstance;
 
 				beforeEach(() => {
 					vi.useFakeTimers({ toFake: ['setTimeout'] });
+					// Pins the jitter: the wait is 20 s plus half of the 10 s spread.
+					randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5);
 				});
 
 				afterEach(() => {
+					randomSpy.mockRestore();
 					vi.useRealTimers();
 				});
 
@@ -413,11 +445,11 @@ describe('Microsoft Teams Trigger Node', () => {
 						settled = true;
 					};
 					void pending.then(mark, mark);
-					await vi.advanceTimersByTimeAsync(19_999);
+					await vi.advanceTimersByTimeAsync(24_999);
 					expect(microsoftApiRequestAllItems.call).toHaveBeenCalledTimes(1);
 					expect(settled).toBe(false);
 
-					await vi.advanceTimersByTimeAsync(30_000 - 19_999);
+					await vi.advanceTimersByTimeAsync(1);
 
 					await expect(pending).resolves.toBe(true);
 					expect(microsoftApiRequestAllItems.call).toHaveBeenCalledTimes(2);
@@ -437,8 +469,8 @@ describe('Microsoft Teams Trigger Node', () => {
 					]);
 
 					const assertion = expect(checkExists(ctx)).rejects.toBe(secondError);
-					await vi.advanceTimersByTimeAsync(19_999);
-					await vi.advanceTimersByTimeAsync(30_000 - 19_999);
+					await vi.advanceTimersByTimeAsync(24_999);
+					await vi.advanceTimersByTimeAsync(1);
 
 					await assertion;
 					expect(microsoftApiRequestAllItems.call).toHaveBeenCalledTimes(2);
@@ -605,12 +637,12 @@ describe('Microsoft Teams Trigger Node', () => {
 					{ event: 'newChannel', watchAllTeams: true },
 				);
 				const error = forbidden(ctx);
+				const secondError = forbidden(ctx);
 				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([]);
 				(microsoftApiRequest.call as Mock).mockImplementation(
 					async (_ctx: unknown, method: string, _path: string, body?: Record<string, unknown>) => {
 						if (method === 'GET') return { value: [{ id: 'team1' }, { id: 'team2' }] };
-						if (body?.resource === '/teams/team1/channels') throw error;
-						return { id: 'new' };
+						throw body?.resource === '/teams/team1/channels' ? error : secondError;
 					},
 				);
 
@@ -619,6 +651,10 @@ describe('Microsoft Teams Trigger Node', () => {
 					'/teams/team1/channels',
 					'/teams/team2/channels',
 				]);
+				expect(ctx.logger.warn).toHaveBeenCalledWith(
+					'Microsoft Teams Trigger: failed to create subscription',
+					expect.objectContaining({ resource: '/teams/team2/channels' }),
+				);
 			});
 
 			it('throws the create error when a removal failed as well', async () => {
@@ -645,7 +681,7 @@ describe('Microsoft Teams Trigger Node', () => {
 		});
 
 		describe('create', () => {
-			const create = async (ctx: any) =>
+			const create = async (ctx: TriggerContext) =>
 				await new MicrosoftTeamsTrigger().webhookMethods.default.create.call(ctx);
 
 			it('should create a subscription successfully', async () => {
@@ -701,13 +737,18 @@ describe('Microsoft Teams Trigger Node', () => {
 				const staticData: Record<string, unknown> = {};
 				const ctx = hookCtx(staticData, { event: 'newChannel', watchAllTeams: true });
 				const error = new NodeApiError(ctx.getNode(), { message: 'Forbidden', httpCode: '403' });
-				let releaseTeam2: (value: unknown) => void = () => {};
+				const secondError = new NodeApiError(ctx.getNode(), {
+					message: 'Forbidden',
+					httpCode: '403',
+				});
+				// team2 fails at once and team1 fails last, so settle order differs from resource order.
+				let failTeam1: (error: Error) => void = () => {};
 				(microsoftApiRequest.call as Mock).mockImplementation(
 					async (_ctx: unknown, method: string, _path: string, body?: Record<string, unknown>) => {
 						if (method === 'GET') return { value: [{ id: 'team1' }, { id: 'team2' }] };
-						if (body?.resource === '/teams/team1/channels') throw error;
-						return await new Promise((resolve) => {
-							releaseTeam2 = resolve;
+						if (body?.resource === '/teams/team2/channels') throw secondError;
+						return await new Promise((_resolve, reject) => {
+							failTeam1 = reject;
 						});
 					},
 				);
@@ -721,24 +762,27 @@ describe('Microsoft Teams Trigger Node', () => {
 				await new Promise((resolve) => setImmediate(resolve));
 				expect(settled).toBe(false);
 
-				releaseTeam2({ id: 'b' });
+				failTeam1(error);
 
 				await expect(pending).rejects.toBe(error);
 				expect(calls('POST').map((call) => call[3].resource)).toEqual([
 					'/teams/team1/channels',
 					'/teams/team2/channels',
 				]);
-				expect(ctx.logger.warn).toHaveBeenCalledTimes(1);
 				expect(ctx.logger.warn).toHaveBeenCalledWith(
 					'Microsoft Teams Trigger: failed to create subscription',
 					expect.objectContaining({ resource: '/teams/team1/channels', error: expect.any(String) }),
+				);
+				expect(ctx.logger.warn).toHaveBeenCalledWith(
+					'Microsoft Teams Trigger: failed to create subscription',
+					expect.objectContaining({ resource: '/teams/team2/channels' }),
 				);
 				expect(staticData).toEqual({});
 			});
 		});
 
 		describe('delete', () => {
-			const remove = async (ctx: any) =>
+			const remove = async (ctx: TriggerContext) =>
 				await new MicrosoftTeamsTrigger().webhookMethods.default.delete.call(ctx);
 			const deleted = () => calls('DELETE').map((call) => call[2]);
 
@@ -1074,7 +1118,8 @@ describe('Microsoft Teams Trigger Node', () => {
 			lifecycleEvent,
 		});
 
-		const webhook = async (ctx: any) => await new MicrosoftTeamsTrigger().webhook.call(ctx);
+		const webhook = async (ctx: TriggerContext) =>
+			await new MicrosoftTeamsTrigger().webhook.call(ctx);
 
 		beforeEach(() => {
 			vi.useFakeTimers({ toFake: ['Date'], now: NOW });

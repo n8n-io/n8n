@@ -8,7 +8,7 @@ import {
 import type { Mock } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
 
-import { createExecuteContext, setParams } from '../helpers';
+import { createExecuteContext, graphError, setParams } from '../helpers';
 import { versionDescription } from '../../../../v2/actions/versionDescription';
 import { MicrosoftTeamsV2 } from '../../../../v2/MicrosoftTeamsV2.node';
 import { microsoftApiRequest, SERVICE_PRINCIPAL_AUTH } from '../../../../v2/transport';
@@ -41,12 +41,6 @@ const node: INode = {
 	position: [0, 0],
 	parameters: {},
 };
-
-const graphError = (statusCode: number, code: string, message: string) =>
-	Object.assign(new Error(`${statusCode} - ${JSON.stringify({ error: { code, message } })}`), {
-		statusCode,
-		error: { error: { code, message } },
-	});
 
 describe('Microsoft Teams V2 - activityNotification:send error surfacing', () => {
 	let teams: MicrosoftTeamsV2;

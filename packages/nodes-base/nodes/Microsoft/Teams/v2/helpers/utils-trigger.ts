@@ -63,21 +63,21 @@ export function getStoredSecret(webhookData: IDataObject): string | undefined {
 
 /** The stored subscription ids, strings only. */
 export function getStoredIds(webhookData: IDataObject): string[] {
-	const rawIds: unknown[] = Array.isArray(webhookData.subscriptionIds)
-		? webhookData.subscriptionIds
+	return Array.isArray(webhookData.subscriptionIds)
+		? webhookData.subscriptionIds.filter((id): id is string => typeof id === 'string')
 		: [];
-	return rawIds.filter((id): id is string => typeof id === 'string');
 }
 
 /**
- * Deletes every id once, one after the other. Never throws: a 404 counts as done, and
- * every other refusal is warned and reported, so the caller decides what it means.
+ * Deletes every id once, one after the other. Never throws: a 404 counts as done, an id
+ * that fails validation is warned only, and every other refusal is warned and reported,
+ * so the caller decides what it means.
  */
 export async function deleteSubscriptions(
 	this: IHookFunctions | IWebhookFunctions,
 	ids: Iterable<string>,
-): Promise<SubscriptionFailure[]> {
-	const failures: SubscriptionFailure[] = [];
+): Promise<Array<Extract<SubscriptionFailure, { step: 'delete' }>>> {
+	const failures: Array<Extract<SubscriptionFailure, { step: 'delete' }>> = [];
 	for (const id of new Set(ids)) {
 		let path: string;
 		try {
@@ -271,9 +271,8 @@ export async function reconcileSubscriptions(
 
 	// A stored id that is not listed and that Graph refused to remove stays, so the next
 	// activation retries the delete; the by-URL listing cannot find it.
-	const retained = storedAbsent.filter((id) =>
-		deleteFailures.some((failure) => failure.step === 'delete' && failure.id === id),
-	);
+	const failedIds = new Set(deleteFailures.map((failure) => failure.id));
+	const retained = storedAbsent.filter((id) => failedIds.has(id));
 	const ids = [
 		...new Set([
 			...required.flatMap((resource) => keepers.get(resource) ?? []),
@@ -311,7 +310,8 @@ export function isSubscriptionResponse(value: unknown): value is SubscriptionRes
 /**
  * Runs after `webhook()` sent the 202. Never throws: a throw skips the static-data
  * save and core would answer an ended response. Renews the stored ids the batch names;
- * a batch with anything else lists once and reconciles.
+ * a batch with a removal, an unknown id, a failed renewal or a rejected item lists once
+ * and reconciles.
  */
 export async function handleLifecycleNotifications(
 	this: IWebhookFunctions,
@@ -409,17 +409,15 @@ export async function handleLifecycleNotifications(
 		rejectedCount === 0 && gone.size === 0 && [...toRenew].every((id) => renewed.has(id));
 	if (renewOnly) return;
 
-	const affectedIds = [...gone, ...toRenew].slice(0, 20).map((id) => id.slice(0, 64));
 	let subscriptions: SubscriptionResponse[];
 	let requiredResources: string[];
 	try {
 		subscriptions = await listOwnSubscriptions.call(this, webhookUrl);
-		const resourcePaths = await getResourcePath.call(
-			this,
-			this.getNodeParameter('event') as string,
-		);
-		requiredResources = Array.isArray(resourcePaths) ? resourcePaths : [resourcePaths];
+		requiredResources = [
+			await getResourcePath.call(this, this.getNodeParameter('event') as string),
+		].flat();
 	} catch (error) {
+		const affectedIds = [...gone, ...toRenew].slice(0, 20).map((id) => id.slice(0, 64));
 		logTrigger.call(
 			this,
 			'warn',

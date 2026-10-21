@@ -1,5 +1,5 @@
-import { mock } from 'vitest-mock-extended';
-import type { INode, IWebhookFunctions } from 'n8n-workflow';
+import { mock, mockDeep } from 'vitest-mock-extended';
+import type { IDataObject, INode, IWebhookFunctions, NodeParameterValueType } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import {
@@ -659,6 +659,8 @@ describe('Microsoft Teams Helpers Functions', () => {
 		it.each([
 			[answer, true],
 			[{ ...answer, notificationUrl: undefined }, false],
+			[{ ...answer, resource: undefined }, false],
+			[{ ...answer, expirationDateTime: undefined }, false],
 			['sub1', false],
 		])('returns %s for %j', (value, expected) => {
 			expect(isSubscriptionResponse(value)).toBe(expected);
@@ -726,13 +728,14 @@ describe('Microsoft Teams Helpers Functions', () => {
 			params?: Record<string, unknown>;
 			subscriptions?: unknown[];
 		} = {}) => {
-			const ctx: any = mock({ logger: { warn: vi.fn(), debug: vi.fn() } });
-			ctx.getWorkflowStaticData.mockReturnValue(staticData);
-			ctx.getNode.mockReturnValue({ name: 'Microsoft Teams Trigger' });
-			ctx.getWorkflow.mockReturnValue({ id: 'wf1' });
+			const ctx = mockDeep<IWebhookFunctions>();
+			ctx.getWorkflowStaticData.mockReturnValue(staticData as IDataObject);
+			ctx.getNode.mockReturnValue(mock<INode>({ name: 'Microsoft Teams Trigger' }));
+			ctx.getWorkflow.mockReturnValue({ id: 'wf1', active: true });
 			ctx.getNodeWebhookUrl.mockReturnValue(webhookUrl);
-			ctx.getNodeParameter.mockImplementation((name: string, fallback?: unknown) =>
-				name in params ? params[name] : fallback,
+			ctx.getNodeParameter.mockImplementation(
+				(name: string, fallback?: unknown) =>
+					(name in params ? params[name] : fallback) as NodeParameterValueType,
 			);
 			(microsoftApiRequestAllItems.call as Mock).mockResolvedValue(subscriptions);
 			(microsoftApiRequest.call as Mock).mockImplementation(
@@ -804,7 +807,12 @@ describe('Microsoft Teams Helpers Functions', () => {
 				expect(ctx.logger.warn).toHaveBeenCalledTimes(1);
 				expect(ctx.logger.warn).toHaveBeenCalledWith(
 					'Microsoft Teams Trigger: failed to create subscription',
-					expect.objectContaining({ workflowId: 'wf1', resource: '/a', error: 'create failed' }),
+					expect.objectContaining({
+						workflowId: 'wf1',
+						nodeName: 'Microsoft Teams Trigger',
+						resource: '/a',
+						error: 'create failed',
+					}),
 				);
 			});
 
@@ -895,7 +903,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 			const TEAM1 = '/teams/team1/channels';
 			const TEAM2 = '/teams/team2/channels';
 			const reconcile = async (
-				ctx: any,
+				ctx: ReturnType<typeof arrange>['ctx'],
 				input: Partial<Parameters<typeof reconcileSubscriptions>[0]> = {},
 			) =>
 				await reconcileSubscriptions.call(ctx, {
@@ -1406,7 +1414,10 @@ describe('Microsoft Teams Helpers Functions', () => {
 
 			it.each([
 				['an empty answer', {}],
-				['an answer with another notificationUrl', { ...validAnswer, notificationUrl: 'https://other.url' }],
+				[
+					'an answer with another notificationUrl',
+					{ ...validAnswer, notificationUrl: 'https://other.url' },
+				],
 				['an answer without notificationUrl', { ...validAnswer, notificationUrl: undefined }],
 				['an answer for another id', { ...validAnswer, id: 'other' }],
 			])(

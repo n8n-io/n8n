@@ -12,7 +12,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
-import type { SubscriptionResponse, WebhookNotification } from './v2/helpers/types';
+import type { WebhookNotification } from './v2/helpers/types';
 import {
 	createSubscriptions,
 	deleteSubscriptions,
@@ -365,17 +365,16 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				// An activation that cannot see Graph must not claim success and must not create
 				// blind. The error reaches core, which removes everything own through `delete()`,
 				// shows it and retries on init.
-				let subscriptions: SubscriptionResponse[];
-				try {
-					subscriptions = await listOwnSubscriptions.call(this, webhookUrl);
-				} catch (error) {
-					if (!(error instanceof NodeApiError && error.httpCode === '429')) throw error;
-					// ponytail: one fixed wait with jitter for the documented list budget (25 per
-					// 20 s per app per tenant, 40 per 20 s per app across tenants); the transport
-					// does not expose Retry-After.
-					await sleep(20_000 + Math.floor(Math.random() * 10_000));
-					subscriptions = await listOwnSubscriptions.call(this, webhookUrl);
-				}
+				const subscriptions = await listOwnSubscriptions
+					.call(this, webhookUrl)
+					.catch(async (error: unknown) => {
+						if (!(error instanceof NodeApiError && error.httpCode === '429')) throw error;
+						// ponytail: one fixed wait with jitter for the documented list budget (25 per
+						// 20 s per app per tenant, 40 per 20 s per app across tenants); the transport
+						// does not expose Retry-After.
+						await sleep(20_000 + Math.floor(Math.random() * 10_000));
+						return await listOwnSubscriptions.call(this, webhookUrl);
+					});
 
 				const storedIds = getStoredIds(webhookData);
 				const clientState = getStoredSecret(webhookData);
@@ -390,8 +389,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 					return false;
 				}
 
-				const resourcePaths = await getResourcePath.call(this, event);
-				const requiredResources = Array.isArray(resourcePaths) ? resourcePaths : [resourcePaths];
+				const requiredResources = [await getResourcePath.call(this, event)].flat();
 				const { failures } = await reconcileSubscriptions.call(this, {
 					webhookUrl,
 					clientState,
@@ -399,15 +397,16 @@ export class MicrosoftTeamsTrigger implements INodeType {
 					subscriptions,
 				});
 				// A resource without a live subscription is a dark trigger, so the activation
-				// fails with the Graph error. A failed removal only warns: the next listing finds
-				// that subscription again.
+				// fails with the Graph error. A failed removal only warns: the next activation
+				// retries it, from the listing or from the stored ids.
 				const createFailure = failures.find((failure) => failure.step === 'create');
 				if (createFailure) throw createFailure.error;
 				return true;
 			},
 
-			// Runs only after `checkExists` swept every own subscription and returned false,
-			// so a fresh secret never strands a live subscription.
+			// Runs only after `checkExists` returned false: after the no-secret sweep, or on an
+			// invalid URL, which the guard below rejects before any create. So a fresh secret
+			// never strands a trusted subscription.
 			async create(this: IHookFunctions): Promise<boolean> {
 				const event = this.getNodeParameter('event', 0) as string;
 				const webhookUrl = this.getNodeWebhookUrl('default');
@@ -421,8 +420,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				}
 
 				const clientState = generateClientState();
-				const resourcePaths = await getResourcePath.call(this, event);
-				const requiredResources = Array.isArray(resourcePaths) ? resourcePaths : [resourcePaths];
+				const requiredResources = [await getResourcePath.call(this, event)].flat();
 				const { ids, failures } = await createSubscriptions.call(
 					this,
 					webhookUrl,
@@ -487,7 +485,8 @@ export class MicrosoftTeamsTrigger implements INodeType {
 		}
 
 		// `verifyWebhook` proved a non-empty array and dropped the items without the expected
-		// clientState; the lifecycle handler lists and reconciles for them. Only records become
+		// clientState. When the batch also carries an accepted lifecycle item, the handler
+		// lists and reconciles for the dropped ones (not in a manual run). Only records become
 		// workflow items.
 		const notifications: unknown[] = req.body.value;
 		const rejected = notifications.length - accepted.length;
