@@ -443,7 +443,6 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 
 <style lang="scss" module>
 .panel {
-	padding: var(--spacing--xl);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
@@ -524,11 +523,5 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 
 .characterCount {
 	text-align: right;
-}
-
-@media (max-width: 480px) {
-	.panel {
-		padding: var(--spacing--md);
-	}
 }
 </style>
