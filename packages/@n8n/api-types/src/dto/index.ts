@@ -693,6 +693,11 @@ export {
 	OtelTestTraceRequestPublicDto,
 	OtelTestTraceResultPublicDto,
 } from './otel/otel-test-trace-public.dto';
+export {
+	UpdatePublicApiRateLimitSettingsDto,
+	type PublicApiRateLimitSettings,
+	type PublicApiRateLimitSettingsResponse,
+} from './public-api-rate-limit-settings/update-public-api-rate-limit-settings.dto';
 
 export {
 	PromotionChangesDto,
