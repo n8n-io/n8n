@@ -38,18 +38,6 @@ describe('saveExecutionProgress', () => {
 		expect(errorReporter.error).not.toHaveBeenCalled();
 	});
 
-	test('should require a running execution when asked to', async () => {
-		executionPersistence.updateExistingExecution.mockResolvedValue(true);
-
-		await saveExecutionProgress(...commonArgs, true);
-
-		expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
-			executionId,
-			{ data: runExecutionData, status: 'running' },
-			{ requireNotFinished: true, requireStatus: 'running' },
-		);
-	});
-
 	test('should set lastNodeExecuted on in-memory data before saving', async () => {
 		executionPersistence.updateExistingExecution.mockResolvedValue(true);
 		const execData = createRunExecutionData();

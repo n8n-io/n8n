@@ -387,21 +387,6 @@ describe('MemoryGuardService', () => {
 			expect(await isAdmitted(held)).toBe(false);
 		});
 
-		it.each([0.9, 0.96])(
-			'should stop holding at %s when a held execution waits too long and nothing can be stopped',
-			async (level) => {
-				addExecution('fetching', { engine: new Promise<IRun>(() => {}) });
-				utilization = level;
-				await sample(2);
-				const held = concurrencyControl.throttle({ mode: 'webhook', executionId: 'held' });
-
-				await vi.advanceTimersByTimeAsync(HOLD_LIMIT_MS + 1_000);
-
-				expect(await isAdmitted(held)).toBe(true);
-				expect(activeExecutions.stopExecution).not.toHaveBeenCalled();
-			},
-		);
-
 		it('should stop the largest execution when a held execution waits too long', async () => {
 			addExecution('large', { megabytes: 300 });
 			utilization = 0.82;
@@ -450,26 +435,30 @@ describe('MemoryGuardService', () => {
 			expect(guardLogger.warn).toHaveBeenCalledWith(expect.stringContaining('freed no memory'));
 		});
 
-		it('should stop holding until memory falls when a held execution waits too long and nothing can be stopped', async () => {
-			addExecution('fetching');
-			utilization = 0.82;
-			await sample(2);
-			const held = concurrencyControl.throttle({ mode: 'webhook', executionId: 'held' });
+		it.each([0.82, 0.9, 0.96])(
+			'should stop holding at %s until memory falls when a held execution waits too long and nothing can be stopped',
+			async (level) => {
+				addExecution('fetching');
+				utilization = level;
+				await sample(2);
+				const held = concurrencyControl.throttle({ mode: 'webhook', executionId: 'held' });
 
-			await vi.advanceTimersByTimeAsync(HOLD_LIMIT_MS + 300);
-			expect(await isAdmitted(held)).toBe(true);
+				await vi.advanceTimersByTimeAsync(HOLD_LIMIT_MS + 300);
+				expect(await isAdmitted(held)).toBe(true);
+				expect(activeExecutions.stopExecution).not.toHaveBeenCalled();
 
-			const arrival = concurrencyControl.throttle({ mode: 'webhook', executionId: 'arrival' });
-			await sample(2);
-			expect(await isAdmitted(arrival)).toBe(true);
+				const arrival = concurrencyControl.throttle({ mode: 'webhook', executionId: 'arrival' });
+				await sample(2);
+				expect(await isAdmitted(arrival)).toBe(true);
 
-			utilization = 0.7;
-			await sample();
-			utilization = 0.82;
-			await sample(2);
-			const later = concurrencyControl.throttle({ mode: 'webhook', executionId: 'later' });
-			expect(await isAdmitted(later)).toBe(false);
-		});
+				utilization = 0.7;
+				await sample();
+				utilization = 0.82;
+				await sample(2);
+				const later = concurrencyControl.throttle({ mode: 'webhook', executionId: 'later' });
+				expect(await isAdmitted(later)).toBe(false);
+			},
+		);
 
 		it('should still stop a growing execution while the hold is suspended', async () => {
 			addExecution('fetching');
