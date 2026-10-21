@@ -1,11 +1,10 @@
-import { isRecord } from '@n8n/utils/is-record';
-
 import {
 	text,
 	type DecodedThread,
 	type OriginDraft,
 	type OriginInput,
 } from '../../integration-origin-support';
+import { conversationTypeOf } from './teams-activity';
 
 /**
  * The adapter leaves the conversation type out of the thread ID for an ordinary
@@ -18,11 +17,6 @@ export function buildTeamsOriginDraft(
 	return {
 		type: 'teams',
 		conversationId: text(decoded.conversationId),
-		conversationType: conversationTypeOf(message.raw) ?? text(decoded.conversationType),
+		conversationType: text(conversationTypeOf(message.raw)) ?? text(decoded.conversationType),
 	};
-}
-
-function conversationTypeOf(activity: unknown): string | undefined {
-	if (!isRecord(activity) || !isRecord(activity.conversation)) return undefined;
-	return text(activity.conversation.conversationType);
 }

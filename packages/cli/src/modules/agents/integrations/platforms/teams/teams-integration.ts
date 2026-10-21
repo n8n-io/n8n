@@ -33,6 +33,7 @@ import { INTEGRATION_ERROR_CODES } from '../../integration-error-codes';
 import { connectionUnavailable } from '../../integration-helpers';
 import type { IntegrationAction, ReplyExpectation } from '../../integration-tool-types';
 import { startTypingIndicator } from '../typing-indicator';
+import { conversationTypeOf } from './teams-activity';
 import { TeamsCleanupService } from './teams-cleanup.service';
 import { READ_PERMISSIONS } from './teams-manifest.service';
 import { fetchTeamsMessageFiles, graphHttpOf } from './teams-message-files';
@@ -70,12 +71,6 @@ const JOINED_THREAD_REPLY_NOTE = [
 	'If it is aimed at someone else, call do_not_respond once. That ends your turn.',
 	'</reply_guidance>',
 ].join('\n');
-
-function conversationTypeOf(activity: unknown): unknown {
-	return isRecord(activity) && isRecord(activity.conversation)
-		? activity.conversation.conversationType
-		: undefined;
-}
 
 /**
  * The adapter reports every inbound author as a person, so the activity is
