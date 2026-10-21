@@ -2,8 +2,8 @@ packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
   s_71ad2034164515::t_960ea906bb7c38 101
   s_71ad2034164515::t_b07b9b1a46e588 101
 packages/@n8n/cli/src/commands/package/import.ts
-  s_71ad2034164515::t_6095e105868474 48
-  s_71ad2034164515::t_75b20a11e8d77e 48
+  s_71ad2034164515::t_6095e105868474 37,48
+  s_71ad2034164515::t_75b20a11e8d77e 37,48
 ---
 {
   "schema_version": "authorship/3.0.0",
