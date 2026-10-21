@@ -795,10 +795,15 @@ export function createSearchNodesTool(context: InstanceAiContext) {
 				: undefined;
 
 			if (input.gatewayCreditsOnly && !input.connectionType) {
-				const nodes = await context.nodeService.listAvailable({
-					query: queryList[0],
-					gatewayCreditsOnly: true,
-				});
+				const queriesOrUndefined = queryList.length > 0 ? queryList : [undefined];
+				const batches = await Promise.all(
+					queriesOrUndefined.map(
+						async (query) =>
+							await context.nodeService.listAvailable({ query, gatewayCreditsOnly: true }),
+					),
+				);
+				const nodesByName = new Map(batches.flat().map((n) => [n.name, n]));
+				const nodes = [...nodesByName.values()];
 				const filtered =
 					input.scope === 'agent_tool' ? nodes.filter((n) => isAgentToolNodeType(n.name)) : nodes;
 				return {
@@ -823,8 +828,17 @@ export function createSearchNodesTool(context: InstanceAiContext) {
 			if (input.connectionType) {
 				const queriesOrUndefined = queryList.length > 0 ? queryList : [undefined];
 				for (const q of queriesOrUndefined) {
-					for (const item of engine.searchByConnectionType(input.connectionType, input.limit, q)) {
-						if (nodeFilter && !nodeFilter(item.name)) continue;
+					const filterResults = Boolean(nodeFilter) || Boolean(input.gatewayCreditsOnly);
+					const candidates = engine
+						.searchByConnectionType(
+							input.connectionType,
+							filterResults ? nodeTypes.length : input.limit,
+							q,
+						)
+						.filter((item) => !nodeFilter || nodeFilter(item.name))
+						.filter((item) => !input.gatewayCreditsOnly || item.aiGateway)
+						.slice(0, input.limit);
+					for (const item of candidates) {
 						if (!matchedByName.has(item.name)) matchedByName.set(item.name, item);
 					}
 				}
@@ -979,6 +993,12 @@ export function createGetNodeParameterOptionsTool(context: InstanceAiContext) {
 				const firstCredEntry = input.credentials ? Object.entries(input.credentials)[0] : undefined;
 				const credentialType = input.credentialType ?? firstCredEntry?.[0];
 				const credentialId = input.credentialId ?? firstCredEntry?.[1]?.id;
+				if (!input.methodType) {
+					return {
+						results: [],
+						error: 'methodType is required when querying by methodName.',
+					};
+				}
 				if (!credentialType || !credentialId) {
 					return {
 						results: [],
@@ -991,7 +1011,7 @@ export function createGetNodeParameterOptionsTool(context: InstanceAiContext) {
 					nodeType: input.nodeType,
 					version,
 					methodName: input.methodName,
-					methodType: input.methodType ?? 'listSearch',
+					methodType: input.methodType,
 					credentialType,
 					credentialId,
 					filter: input.filter,

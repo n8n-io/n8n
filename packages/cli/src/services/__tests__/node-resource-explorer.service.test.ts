@@ -1,5 +1,6 @@
 import type { Mocked } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import type { ProjectRepository, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import type { INodeTypeDescription } from 'n8n-workflow';
@@ -821,6 +822,219 @@ describe('NodeResourceExplorerService', () => {
 				{ modelName: 'models/gemini-2.5-flash' },
 				expect.anything(),
 			);
+		});
+	});
+
+	describe('resolveParameterOptions', () => {
+		const channelLocator = {
+			displayName: 'Channel',
+			name: 'channel',
+			type: 'resourceLocator',
+			default: { mode: 'list', value: '' },
+			modes: [
+				{ name: 'list', type: 'list', typeOptions: { searchListMethod: 'getChannels' } },
+				{ name: 'id', type: 'string' },
+			],
+		};
+		const teamOptions = {
+			displayName: 'Team',
+			name: 'team',
+			type: 'options',
+			default: '',
+			typeOptions: { loadOptionsMethod: 'getTeams' },
+		};
+		const plainText = { displayName: 'Text', name: 'text', type: 'string', default: '' };
+
+		const resolveParams = {
+			nodeType: 'n8n-nodes-base.slack',
+			version: 2.3,
+			parameterPath: 'channel',
+			credentials: { slackApi: { id: 'cred-1', name: 'My Slack' } },
+		};
+
+		function mockSlackNode(withCredentials = true) {
+			mockNodeDescription({
+				name: 'n8n-nodes-base.slack',
+				properties: [channelLocator, teamOptions, plainText] as never,
+				...(withCredentials ? { credentials: [{ name: 'slackApi', required: true }] } : {}),
+			});
+		}
+
+		test('returns node_type_not_found when the node type cannot be loaded', async () => {
+			nodeTypes.getByNameAndVersion.mockImplementation(() => {
+				throw new Error('Unknown node type');
+			});
+
+			const result = await service.resolveParameterOptions(user, resolveParams);
+
+			expect(result).toEqual({
+				ok: false,
+				code: 'node_type_not_found',
+				message: 'Unknown node type',
+			});
+		});
+
+		test('returns parameter_not_found with the dynamic parameters when the path is unknown', async () => {
+			mockSlackNode();
+
+			const result = await service.resolveParameterOptions(user, {
+				...resolveParams,
+				parameterPath: 'missing',
+			});
+
+			expect(result).toMatchObject({ ok: false, code: 'parameter_not_found' });
+			expect(result).toHaveProperty('dynamicParameters');
+			const { dynamicParameters } = result as { dynamicParameters: unknown[] };
+			expect(dynamicParameters.length).toBeGreaterThan(0);
+			expect(JSON.stringify(dynamicParameters)).toContain('channel');
+			expect(JSON.stringify(dynamicParameters)).not.toContain('"text"');
+		});
+
+		test('returns not_dynamic_selector when the parameter has no lookup', async () => {
+			mockSlackNode();
+
+			const result = await service.resolveParameterOptions(user, {
+				...resolveParams,
+				parameterPath: 'text',
+			});
+
+			expect(result).toMatchObject({ ok: false, code: 'not_dynamic_selector' });
+			expect(result).toHaveProperty('dynamicParameters');
+			expect(dynamicNodeParametersService.getResourceLocatorResults).not.toHaveBeenCalled();
+		});
+
+		test('returns missing_credentials with credential slots when none are passed', async () => {
+			mockSlackNode();
+
+			const result = await service.resolveParameterOptions(user, {
+				...resolveParams,
+				credentials: undefined,
+			});
+
+			expect(result).toMatchObject({
+				ok: false,
+				code: 'missing_credentials',
+				credentialSlots: [{ credentialType: 'slackApi', credentialSlot: 'slackApi' }],
+			});
+			expect(dynamicNodeParametersService.getResourceLocatorResults).not.toHaveBeenCalled();
+		});
+
+		test('lists resource locator results with locator parameter values in the given project', async () => {
+			mockSlackNode();
+			dynamicNodeParametersService.getResourceLocatorResults.mockResolvedValue({
+				results: [
+					{ name: 'general', value: 'C1', url: 'https://slack.test/C1' },
+					{ name: 'random', value: 'C2' },
+				],
+				paginationToken: 'next',
+			} as never);
+
+			const result = await service.resolveParameterOptions(user, {
+				...resolveParams,
+				projectId: 'proj-given',
+				filter: 'gen',
+			});
+
+			expect(projectRepository.getPersonalProjectForUserOrFail).not.toHaveBeenCalled();
+			expect(dynamicNodeParametersService.refineResourceIds).toHaveBeenCalledWith(user, {
+				projectId: 'proj-given',
+				credentials: { slackApi: { id: 'cred-1', name: 'My Slack' } },
+			});
+			expect(dynamicNodeParametersService.getResourceLocatorResults).toHaveBeenCalledWith(
+				'getChannels',
+				'parameters.channel',
+				expect.anything(),
+				{ name: 'n8n-nodes-base.slack', version: 2.3 },
+				{},
+				{ slackApi: { id: 'cred-1', name: 'My Slack' } },
+				'gen',
+				undefined,
+			);
+			expect(result).toMatchObject({
+				ok: true,
+				kind: 'resourceLocator',
+				methodName: 'getChannels',
+				mode: 'list',
+				paginationToken: 'next',
+				results: [
+					{
+						name: 'general',
+						value: 'C1',
+						url: 'https://slack.test/C1',
+						parameterValue: { __rl: true, mode: 'list', value: 'C1' },
+					},
+					{
+						name: 'random',
+						value: 'C2',
+						parameterValue: { __rl: true, mode: 'list', value: 'C2' },
+					},
+				],
+			});
+		});
+
+		test('lists load options method results', async () => {
+			mockSlackNode();
+			dynamicNodeParametersService.getOptionsViaMethodName.mockResolvedValue([
+				{ name: 'Core', value: 'T1', description: 'Core team' },
+				{ name: 'Ops', value: 'T2' },
+			] as never);
+
+			const result = await service.resolveParameterOptions(user, {
+				...resolveParams,
+				parameterPath: 'team',
+			});
+
+			expect(projectRepository.getPersonalProjectForUserOrFail).toHaveBeenCalledWith('user-1');
+			expect(dynamicNodeParametersService.getOptionsViaMethodName).toHaveBeenCalledWith(
+				'getTeams',
+				'parameters.team',
+				expect.anything(),
+				{ name: 'n8n-nodes-base.slack', version: 2.3 },
+				{},
+				{ slackApi: { id: 'cred-1', name: 'My Slack' } },
+			);
+			expect(result).toEqual({
+				ok: true,
+				kind: 'loadOptionsMethod',
+				parameterPath: 'team',
+				methodName: 'getTeams',
+				results: [
+					{ name: 'Core', value: 'T1', description: 'Core team', parameterValue: 'T1' },
+					{ name: 'Ops', value: 'T2', parameterValue: 'T2' },
+				],
+			});
+		});
+
+		test('passes a gateway-managed credential for the managed tag', async () => {
+			mockSlackNode();
+			dynamicNodeParametersService.getResourceLocatorResults.mockResolvedValue({
+				results: [],
+			} as never);
+
+			await service.resolveParameterOptions(user, {
+				...resolveParams,
+				credentials: { slackApi: { id: AI_GATEWAY_MANAGED_TAG, name: 'ignored' } },
+			});
+
+			expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
+			expect(dynamicNodeParametersService.getResourceLocatorResults.mock.calls[0]?.[5]).toEqual({
+				slackApi: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
+			});
+		});
+
+		test('returns lookup_failed when the dynamic lookup fails', async () => {
+			mockSlackNode();
+			dynamicNodeParametersService.getResourceLocatorResults.mockRejectedValue(
+				new Error('Slack API rate-limited'),
+			);
+
+			const result = await service.resolveParameterOptions(user, resolveParams);
+
+			expect(result).toEqual({
+				ok: false,
+				code: 'lookup_failed',
+				message: 'Slack API rate-limited',
+			});
 		});
 	});
 });

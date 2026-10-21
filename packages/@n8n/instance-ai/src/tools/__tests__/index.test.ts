@@ -160,6 +160,7 @@ describe('domain tool construction', () => {
 			workflow_builder_ask_user: { id: 'workflow_builder_ask_user' },
 			workflow_builder_build_workflow: { id: 'workflow_builder_build_workflow' },
 		});
+		expect(orchestratorTools.has('workflow_builder_nodes')).toBe(false);
 		expect(orchestratorTools.has('templates')).toBe(false);
 		expect(orchestratorTools.has('evals')).toBe(false);
 

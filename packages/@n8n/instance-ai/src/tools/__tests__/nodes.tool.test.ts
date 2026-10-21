@@ -1341,6 +1341,94 @@ describe('nodes tool', () => {
 				});
 				expect(gwResult.nodes).toHaveLength(1);
 				expect(gwResult.results).toHaveLength(1);
+				expect(context.nodeService.listAvailable).toHaveBeenCalledWith({
+					query: undefined,
+					gatewayCreditsOnly: true,
+				});
+			});
+
+			it('sends every batched query to the Gateway credits lookup and merges the results', async () => {
+				const context = createMockContext();
+				(context.nodeService.listAvailable as Mock).mockImplementation(
+					async ({ query }: { query?: string }) =>
+						await Promise.resolve([
+							{ name: `n8n-nodes-base.${query}`, displayName: query, description: '' },
+							{ name: 'n8n-nodes-base.shared', displayName: 'Shared', description: '' },
+						]),
+				);
+				const tool = createSearchNodesTool(context);
+
+				const result = await executeTool(tool, {
+					queries: ['gmail', 'slack'],
+					gatewayCreditsOnly: true,
+				});
+
+				expect(context.nodeService.listAvailable).toHaveBeenCalledWith({
+					query: 'gmail',
+					gatewayCreditsOnly: true,
+				});
+				expect(context.nodeService.listAvailable).toHaveBeenCalledWith({
+					query: 'slack',
+					gatewayCreditsOnly: true,
+				});
+				expect((result.nodes as Array<{ name: string }>).map((n) => n.name)).toEqual([
+					'n8n-nodes-base.gmail',
+					'n8n-nodes-base.shared',
+					'n8n-nodes-base.slack',
+				]);
+			});
+
+			describe('with connectionType', () => {
+				const toolNode = (name: string, extra: Partial<SearchableNodeType> = {}) => ({
+					name,
+					displayName: name,
+					description: '',
+					version: 1,
+					inputs: [],
+					outputs: ['ai_tool'],
+					...extra,
+				});
+
+				it('applies gatewayCreditsOnly to the results', async () => {
+					const context = createMockContext();
+					(context.nodeService.listSearchable as Mock).mockResolvedValue([
+						toolNode('n8n-nodes-base.plainTool'),
+						toolNode('n8n-nodes-base.firecrawlTool', {
+							aiGateway: { supported: true, minVersion: 1 },
+						}),
+					]);
+					const tool = createSearchNodesTool(context);
+
+					const result = await executeTool(tool, {
+						connectionType: 'ai_tool',
+						gatewayCreditsOnly: true,
+					});
+
+					expect(context.nodeService.listAvailable).not.toHaveBeenCalled();
+					expect((result.results as Array<{ name: string }>).map((r) => r.name)).toEqual([
+						'n8n-nodes-base.firecrawlTool',
+					]);
+				});
+
+				it('applies the agent_tool scope before the limit', async () => {
+					const context = createMockContext();
+					(context.nodeService.listSearchable as Mock).mockResolvedValue([
+						toolNode('@n8n/n8n-nodes-langchain.toolCalculator'),
+						toolNode('@n8n/n8n-nodes-langchain.toolThink'),
+						toolNode('n8n-nodes-base.slackTool'),
+					]);
+					const tool = createSearchNodesTool(context);
+
+					const result = await executeTool(tool, {
+						connectionType: 'ai_tool',
+						scope: 'agent_tool',
+						limit: 1,
+					});
+
+					expect((result.results as Array<{ name: string }>).map((r) => r.name)).toEqual([
+						'n8n-nodes-base.slackTool',
+					]);
+				});
 			});
 		});
 
@@ -1370,6 +1458,19 @@ describe('nodes tool', () => {
 				const blockedDefs = blockedToolResult.definitions as Array<{ error?: string }>;
 				expect(blockedDefs[0]?.error).toContain('sendAndWait');
 				expect(blockedDefs[0]?.error).toContain('requireApproval: true');
+
+				const nodeTypesResult = await executeTool(tool, {
+					nodeTypes: [{ nodeType: 'n8n-nodes-base.gmail', version: '2.1' }],
+				});
+				const nodeTypesDefs = nodeTypesResult.definitions as Array<Record<string, unknown>>;
+				expect(nodeTypesDefs[0]).toMatchObject({
+					nodeType: 'n8n-nodes-base.gmail',
+					content: 'interface SlackParams {}',
+				});
+				expect(context.nodeService.getNodeTypeDefinition).toHaveBeenLastCalledWith(
+					'n8n-nodes-base.gmail',
+					{ version: '2.1' },
+				);
 			});
 		});
 
@@ -1410,6 +1511,22 @@ describe('nodes tool', () => {
 					}),
 				);
 				expect(result).toMatchObject({ ok: true, parameterPath: 'channelId' });
+			});
+
+			it('requires methodType when querying by methodName', async () => {
+				const context = createMockContext();
+				const tool = createGetNodeParameterOptionsTool(context);
+
+				const result = await executeTool(tool, {
+					nodeType: 'n8n-nodes-base.slack',
+					version: 2.2,
+					methodName: 'getChannels',
+					credentialType: 'slackApi',
+					credentialId: 'cred-1',
+				});
+
+				expect(result.error).toContain('methodType');
+				expect(context.nodeService.exploreResources).not.toHaveBeenCalled();
 			});
 		});
 

@@ -107,6 +107,21 @@ describe('runExpectedToolsInvokedCheck', () => {
 
 			expect(result.pass).toBe(true);
 		});
+
+		it('matches a workflow_builder_nodes call expectation to the split tool for its action', () => {
+			const scenario = (action: string): DiscoveryTestCase => ({
+				id: 'test',
+				userMessage: '',
+				expectedToolInvocations: {
+					allOfToolCalls: [{ toolName: 'workflow_builder_nodes', args: { action } }],
+				},
+			});
+			const outcome = makeOutcome({ toolCalls: [{ toolName: 'search_nodes' }] });
+
+			expect(runExpectedToolsInvokedCheck(scenario('search'), outcome).pass).toBe(true);
+			expect(runExpectedToolsInvokedCheck(scenario('execute'), outcome).pass).toBe(false);
+			expect(runExpectedToolsInvokedCheck(scenario('bogus'), outcome).pass).toBe(false);
+		});
 	});
 
 	describe('anyOf — negative cases', () => {
