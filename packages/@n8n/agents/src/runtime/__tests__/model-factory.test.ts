@@ -1,4 +1,5 @@
 import { createGoogleVertex } from '@ai-sdk/google-vertex';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import type { LanguageModel } from 'ai';
 
 import {
@@ -192,14 +193,14 @@ vi.mock('@ai-sdk/azure', () => ({
 }));
 
 vi.mock('@openrouter/ai-sdk-provider', () => ({
-	createOpenRouter: (opts?: ProviderOpts) => (model: string) => ({
+	createOpenRouter: vi.fn((opts?: ProviderOpts) => (model: string) => ({
 		provider: 'openrouter',
 		modelId: model,
 		apiKey: opts?.apiKey,
 		baseURL: opts?.baseURL,
 		fetch: opts?.fetch,
 		specificationVersion: 'v3',
-	}),
+	})),
 }));
 
 // Entra OAuth2 token mint: stubbed so the model-factory's tokenProvider
@@ -517,6 +518,21 @@ describe('createModel', () => {
 		expect(model.modelId).toBe('ft:gpt-4o:my-org:custom:abc123');
 	});
 
+	it('passes a gateway model ID after the provider through unchanged', () => {
+		const model = createModel('openai/@OpenAI/gpt-5-mini') as unknown as Record<string, unknown>;
+		expect(model.provider).toBe('openai');
+		expect(model.modelId).toBe('@OpenAI/gpt-5-mini');
+	});
+
+	it('passes credential headers to the OpenAI provider', () => {
+		const model = createModel({
+			id: 'openai/gpt-5-mini',
+			apiKey: 'key',
+			headers: { 'x-custom-header': 'value' },
+		}) as unknown as Record<string, unknown>;
+		expect(model.headers).toEqual({ 'x-custom-header': 'value' });
+	});
+
 	it('should not pass fetch when no proxy env vars are set', () => {
 		const model = createModel('anthropic/claude-sonnet-4-5') as unknown as Record<string, unknown>;
 		expect(model.fetch).toBeUndefined();
@@ -585,7 +601,7 @@ describe('createModel', () => {
 			}) as unknown as Record<string, unknown>;
 			expect(model.provider).toBe('openrouter');
 			expect(model.modelId).toBe('openai/gpt-4o');
-			expect(model.apiKey).toBe('or-test');
+			expect(createOpenRouter).toHaveBeenCalledWith(expect.objectContaining({ apiKey: 'or-test' }));
 		});
 
 		it('should create model for nvidia with SDK defaults for usage and structured outputs', () => {
@@ -873,6 +889,19 @@ describe('createModel', () => {
 			expect(model.useDeploymentBasedUrls).toBeUndefined();
 		});
 
+		it('should use the deployment name on a Foundry endpoint when provided', () => {
+			// A Foundry deployment can be named differently from the model it
+			// serves, so the user's deployment name must reach the request path.
+			const model = createModel({
+				id: 'azure-openai/gpt-4.1-nano',
+				apiKey: 'az-key',
+				endpointType: 'foundry',
+				baseURL: 'https://my-resource.services.ai.azure.com/openai/v1',
+				deploymentName: 'my-chat-model',
+			}) as unknown as Record<string, unknown>;
+			expect(model.modelId).toBe('my-chat-model');
+		});
+
 		it('should treat a foundry endpoint without resourceName as valid', () => {
 			expect(() =>
 				createModel({
@@ -991,6 +1020,19 @@ describe('createModel', () => {
 			expect(capturedHeaders?.get('Authorization')).toBe('Bearer minted-bearer');
 			expect(capturedHeaders?.get('x-foo')).toBe('bar');
 			expect(mockClientOAuth2.credentials.getToken).toHaveBeenCalledTimes(1);
+		});
+
+		it('uses the deployment name on the Foundry Entra path when provided', () => {
+			// The deployment name can differ from the model it serves; it reaches
+			// the OpenAI-compatible path as the model id.
+			const model = createModel({
+				id: 'azure-openai/gpt-4.1-nano',
+				endpointType: 'foundry',
+				baseURL: 'https://my-resource.services.ai.azure.com/openai/v1',
+				deploymentName: 'my-chat-model',
+				...entraCreds,
+			}) as unknown as Record<string, unknown>;
+			expect(model.modelId).toBe('my-chat-model');
 		});
 
 		it('rejects credentials that supply both apiKey and Entra', () => {

@@ -5,7 +5,9 @@ import { concurrencyLimitSchema } from '../schemas';
 
 @Config
 export class InstanceAiConfig {
-	/** Enable workflow suggestion runtime integrations at startup. */
+	/**
+	 * Enable workflow suggestions, self-healing investigations, and result review.
+	 */
 	@Env('N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED')
 	workflowSuggestionsEnabled: boolean = false;
 
@@ -49,6 +51,14 @@ export class InstanceAiConfig {
 	/** Token threshold for Observer to trigger compression of message history. */
 	@Env('N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS')
 	observerMessageTokens: number = 30_000;
+
+	/**
+	 * Model for the background tasks that summarize n8n Assistant conversations into memory, in the same `provider/model` format as `N8N_INSTANCE_AI_MODEL`, for example `anthropic/claude-haiku-4-5`.
+	 * It uses the same provider and credentials as the main model, so set a model that provider offers.
+	 * When unset, or when the main model can't switch models, n8n uses the main model.
+	 */
+	@Env('N8N_INSTANCE_AI_MEMORY_MODEL')
+	memoryModel: string = '';
 
 	/** Token threshold for Reflector to condense observations. */
 	@Env('N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS')

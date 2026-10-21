@@ -1,3 +1,5 @@
+import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { computed, ref } from 'vue';
 
@@ -69,6 +71,7 @@ function makeActions(
 describe('useAgentCapabilitiesActions', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		setActivePinia(createTestingPinia());
 	});
 
 	it('forwards the selected picker mode to the tools modal', () => {

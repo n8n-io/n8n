@@ -111,7 +111,7 @@ export function useCredentialNavigationCommands(options: {
 				icon: {
 					component: N8nIcon,
 					props: {
-						icon: 'lock',
+						icon: 'plus',
 						color: 'text-light',
 					},
 				},

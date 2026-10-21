@@ -4,6 +4,8 @@ tags:
 summary: Create a project
 description: Create a team project on your instance.
 x-required-scope: project:create
+parameters:
+  - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
 requestBody:
   required: true
   content:
@@ -160,3 +162,5 @@ responses:
     description: A project with this ID exists already. The request does not change the existing project or its members.
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '422':
+    $ref: ../../../../shared/spec/responses/unprocessableEntity.yml
