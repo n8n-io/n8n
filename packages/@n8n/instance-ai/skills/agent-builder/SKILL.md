@@ -390,9 +390,9 @@ overall goal.
   initial build when only pending setup remains. It shows the setup cards one
   after the other: questions, then credentials, then channels. Never call it
   together with another interactive tool.
-- `setup_credentials(target: "agent")`: use once per required node-tool, MCP-server,
-  or fallback web-search credential slot. Pass several types in one
-  `credentials` array to show them on one card. The result `credentials` maps
+- `setup_credentials(target: "agent")`: make one call for all required
+  node-tool, MCP-server, and fallback web-search credential slots. Pass every
+  type in one `credentials` array to show them on one card. The result `credentials` maps
   each type to `{ id, name }`. Never call it during an initial
   build. For an addition to an existing Agent, call it before the related config
   mutation. For MCP servers, call it before verification. NEVER use it for a
@@ -487,9 +487,10 @@ Rules:
   names a routed model, pass the routed id without another provider prefix.
 - Use `agent_builder_resolve_llm` only for the main model credential. Never
   copy main LLM credential ids from a `credentials` list.
-- For Episodic Memory, load `agent-builder-memory` and call
-  `setup_credentials(target: "agent")` with `allowManaged: true` on the
-  `openAiApi` entry.
+- For Episodic Memory, load `agent-builder-memory`. Outside an initial build,
+  call `setup_credentials(target: "agent")` with `allowManaged: true` on the
+  `openAiApi` entry. During an initial build, leave Episodic Memory disabled and
+  add the credential to the `agent_builder_finish_setup` `credentialRequests`.
 - The web-search rules are in the `agent-builder-config` skill.
 
 Verify:
@@ -663,7 +664,8 @@ include the credential in the trailing `agent_builder_finish_setup` call.
    Never choose by array order. If the user dismisses the question, stop.
 4. `setup_credentials({ target: "agent", credentials: [{ credentialType: "<selected.credentialType>", reason: "Connect Notion MCP" }] })`.
 5. Call `agent_builder_verify_mcp_server` with the connection fields from the
-   selected entry and the returned `credentialId` as `credential`.
+   selected entry and the returned `credentials["<selected.credentialType>"].id`
+   as `credential`.
 6. Confirm the verified tools cover the requested capability.
 7. `agent-context({ type: "config" })`.
 8. `agent_builder_patch_config(...)` adding a new `/mcpServers/-` entry,
