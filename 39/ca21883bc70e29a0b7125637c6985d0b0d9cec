@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_1be06eba3ffd38::t_70f98e2430c30f 3988-4011,4055-4059,4062
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionTimelineView.spec.ts
+  s_1be06eba3ffd38::t_70f98e2430c30f 3,36-40
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_1be06eba3ffd38::t_70f98e2430c30f 2,640,674,685,1276,1634,1718
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentBuilderSession.test.ts
+  s_1be06eba3ffd38::t_70f98e2430c30f 87-105
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/AgentN8nChatView.vue
+  s_1be06eba3ffd38::t_70f98e2430c30f 3,108
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/__tests__/AgentN8nChatView.test.ts
+  s_1be06eba3ffd38::t_70f98e2430c30f 144-160
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderSession.ts
+  s_1be06eba3ffd38::t_70f98e2430c30f 2,111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "39ca21883bc70e29a0b7125637c6985d0b0d9cec",
+  "prompts": {},
+  "sessions": {
+    "s_1be06eba3ffd38": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15a1c-19a7-7aa1-8c68-b589ebbf365b",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
