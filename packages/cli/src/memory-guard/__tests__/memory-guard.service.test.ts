@@ -208,6 +208,21 @@ describe('MemoryGuardService', () => {
 			expect(await isAdmitted(second)).toBe(false);
 		});
 
+		it('should wait before it lets another held execution start while nothing shows as running', async () => {
+			utilization = 0.82;
+			await sample(2);
+			const first = concurrencyControl.throttle({ mode: 'webhook', executionId: '1' });
+			const second = concurrencyControl.throttle({ mode: 'webhook', executionId: '2' });
+			await sample();
+			expect(await isAdmitted(first)).toBe(true);
+
+			await sample();
+			expect(await isAdmitted(second)).toBe(false);
+
+			await vi.advanceTimersByTimeAsync(1_000);
+			expect(await isAdmitted(second)).toBe(true);
+		});
+
 		it('should end the hold below the resume level and let held executions start in growing batches', async () => {
 			addExecution('running', { mode: 'manual' });
 			utilization = 0.82;

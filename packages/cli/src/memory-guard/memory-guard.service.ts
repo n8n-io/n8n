@@ -40,6 +40,12 @@ const SAMPLES_TO_ACT = 2;
 /** Longest wait of a held execution before the guard stops the largest execution. */
 const HOLD_LIMIT_MS = 5_000;
 
+/**
+ * Least time between two held executions that start because nothing runs. An execution
+ * shows as running only after a database write, which can take longer than one sample.
+ */
+const STARVATION_ADMIT_INTERVAL_MS = 1_000;
+
 /** Longest wait for the running node of a stopped execution to return. */
 const RELEASE_TIMEOUT_MS = 5_000;
 
@@ -87,6 +93,8 @@ export class MemoryGuardService {
 
 	/** How many held executions to let start at the next sample after a hold. Doubles each time. */
 	private admitBatch = 1;
+
+	private lastStarvationAdmitAt = 0;
 
 	private pendingStop: Promise<void> | undefined;
 
@@ -175,7 +183,7 @@ export class MemoryGuardService {
 		if (this.isHolding) {
 			this.admitBatch = 1;
 			// With nothing running, no execution can free memory, so let one held execution start.
-			if (!this.hasRunningExecution()) this.concurrencyControl.admitHeld(1);
+			if (!this.hasRunningExecution()) this.admitOneHeld();
 		} else {
 			this.admitHeldGradually();
 		}
@@ -197,6 +205,12 @@ export class MemoryGuardService {
 
 	private hasRunningExecution() {
 		return this.activeExecutions.getActiveExecutions().some((e) => e.status === 'running');
+	}
+
+	private admitOneHeld() {
+		const now = Date.now();
+		if (now - this.lastStarvationAdmitAt < STARVATION_ADMIT_INTERVAL_MS) return;
+		if (this.concurrencyControl.admitHeld(1) > 0) this.lastStarvationAdmitAt = now;
 	}
 
 	private getStopTrigger(isCritical: boolean): StopTrigger | undefined {
