@@ -84,7 +84,8 @@ vi.mock('@/features/shared/toolsConnection/ToolsConnectionModal.vue', () => ({
 					<button data-testid="agent-skill-picker-row-open" @click="$emit('open-detail', item)">{{ item.title }}</button>
 					<span data-testid="agent-skill-picker-category">{{ item.category }}</span>
 					<span v-if="item.disabled" data-testid="agent-skill-picker-disabled">{{ item.disabledReason }}</span>
-					<button v-else data-testid="agent-skill-picker-toggle" :data-attached="String(item.attached)" :aria-label="item.attached ? undefined : connectAriaLabel?.(item)" @click="!item.attached && $emit('connect', item)">{{ item.attached ? '' : connectLabel?.(item) }}</button>
+					<span v-else-if="item.attached" data-testid="agent-skill-picker-added" />
+					<button v-else data-testid="agent-skill-picker-add" :aria-label="connectAriaLabel?.(item)" @click="$emit('connect', item)">{{ connectLabel?.(item) }}</button>
 				</div>
 			</div>
 		`,
@@ -692,7 +693,7 @@ describe('AgentSkillModal', () => {
 			expect(queryByTestId('agent-skill-upload')).not.toBeInTheDocument();
 			expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
 
-			await fireEvent.click(getAllByTestId('agent-skill-picker-toggle')[2]);
+			await fireEvent.click(getAllByTestId('agent-skill-picker-add')[2]);
 
 			expect(onAttach).toHaveBeenCalledWith(instanceSkill);
 			expect(uiStore.closeModal).not.toHaveBeenCalled();
@@ -707,7 +708,7 @@ describe('AgentSkillModal', () => {
 				getAttachedSkills: () => [{ id: instanceSkill.id, name: instanceSkill.name }],
 			});
 
-			const [toAdd] = await findAllByTestId('agent-skill-picker-toggle');
+			const [toAdd] = await findAllByTestId('agent-skill-picker-add');
 			expect(toAdd).toHaveTextContent('agents.builder.skills.picker.add');
 			expect(toAdd).toHaveAttribute(
 				'aria-label',
@@ -737,25 +738,16 @@ describe('AgentSkillModal', () => {
 			);
 			const { findByTestId } = renderModal({ hubSkillsEnabled: true, onAttach });
 
-			const toggle = await findByTestId('agent-skill-picker-toggle');
-			await fireEvent.click(toggle);
+			await fireEvent.click(await findByTestId('agent-skill-picker-add'));
 
-			expect(await findByTestId('agent-skill-picker-toggle')).toHaveAttribute(
-				'data-attached',
-				'true',
-			);
+			expect(await findByTestId('agent-skill-picker-added')).toBeInTheDocument();
 			finishAttach();
-			await waitFor(async () =>
-				expect(await findByTestId('agent-skill-picker-toggle')).toHaveAttribute(
-					'data-attached',
-					'false',
-				),
-			);
+			expect(await findByTestId('agent-skill-picker-add')).toBeInTheDocument();
 		});
 
 		it('shows an attached skill as added and refuses names that are hard to tell apart', async () => {
 			listAttachableSkills.mockResolvedValue([projectSkill, similarSkill]);
-			const { findAllByTestId, getByTestId } = renderModal({
+			const { findAllByTestId, getByTestId, queryByTestId } = renderModal({
 				hubSkillsEnabled: true,
 				getAttachedSkills: () => [
 					{ id: 'tone', name: 'Support tone' },
@@ -768,7 +760,8 @@ describe('AgentSkillModal', () => {
 			expect(getByTestId('agent-skill-picker-disabled')).toHaveTextContent(
 				'agents.builder.skills.picker.similarName',
 			);
-			expect(getByTestId('agent-skill-picker-toggle')).toHaveAttribute('data-attached', 'true');
+			expect(getByTestId('agent-skill-picker-added')).toBeInTheDocument();
+			expect(queryByTestId('agent-skill-picker-add')).not.toBeInTheDocument();
 		});
 
 		it('shows an empty message when no skill can be attached', async () => {
