@@ -1219,12 +1219,24 @@ describe('Microsoft Teams Trigger Node', () => {
 				],
 				staticData: { subscriptionIds: ['sub1', 'sub2'], webhookSecret: 'secret' },
 			});
+			const listed = (id: string, expiresInMinutes: number) => ({
+				id,
+				resource: '/me/chats',
+				notificationUrl: 'https://webhook.url',
+				expirationDateTime: new Date(NOW + expiresInMinutes * 60 * 1000).toISOString(),
+			});
+			// sub1 outlives the renewed sub2, so only renewed-first can keep sub2.
+			(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
+				listed('sub1', 4319),
+				listed('sub2', 60),
+			]);
 			(microsoftApiRequest.call as Mock).mockImplementation(
-				async (_ctx: unknown, _method: string, path: string) => {
+				async (_ctx: unknown, method: string, path: string) => {
+					if (method !== 'PATCH') return {};
 					if (path === '/v1.0/subscriptions/sub1') {
 						throw new NodeApiError(ctx.getNode(), { message: 'Forbidden', httpCode: '403' });
 					}
-					return {};
+					return listed('sub2', 4318);
 				},
 			);
 
@@ -1247,9 +1259,11 @@ describe('Microsoft Teams Trigger Node', () => {
 				'/v1.0/subscriptions/sub2',
 				{ expirationDateTime: expectedExpiry },
 			);
-			expect(microsoftApiRequestAllItems.call).not.toHaveBeenCalled();
+			expect(microsoftApiRequestAllItems.call).toHaveBeenCalledTimes(1);
+			expect(calls('DELETE').map((call) => call[2])).toEqual(['/v1.0/subscriptions/sub1']);
+			expect(calls('POST')).toHaveLength(0);
 			expect(res.status).toHaveBeenCalledWith(202);
-			expect(staticData).toEqual({ subscriptionIds: ['sub1', 'sub2'], webhookSecret: 'secret' });
+			expect(staticData).toEqual({ subscriptionIds: ['sub2'], webhookSecret: 'secret' });
 			expect(JSON.stringify(ctx.logger.warn.mock.calls)).not.toContain('secret');
 		});
 

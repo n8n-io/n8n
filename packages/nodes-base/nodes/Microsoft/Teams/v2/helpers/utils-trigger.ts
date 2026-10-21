@@ -105,22 +105,6 @@ export async function deleteSubscriptions(
 	return failures;
 }
 
-/** Deletes one subscription. A `404` counts as done, for example after it expired. */
-export async function deleteSubscription(
-	this: IHookFunctions | IWebhookFunctions,
-	subscriptionId: string,
-): Promise<void> {
-	try {
-		await microsoftApiRequest.call(
-			this,
-			'DELETE',
-			buildTeamsPath.call(this, ['/v1.0/subscriptions/', { id: subscriptionId }]),
-		);
-	} catch (error) {
-		if (!(error instanceof NodeApiError && error.httpCode === '404')) throw error;
-	}
-}
-
 export async function fetchAllTeams(
 	this: IHookFunctions | IWebhookFunctions,
 ): Promise<TeamResponse[]> {
@@ -313,38 +297,43 @@ export function isLifecycleNotification(item: unknown): item is LifecycleNotific
 	return isRecord(item) && typeof item.lifecycleEvent === 'string';
 }
 
+/** A PATCH answer that can stand in for a listing entry. */
+export function isSubscriptionResponse(value: unknown): value is SubscriptionResponse {
+	return (
+		isRecord(value) &&
+		typeof value.id === 'string' &&
+		typeof value.resource === 'string' &&
+		typeof value.expirationDateTime === 'string' &&
+		typeof value.notificationUrl === 'string'
+	);
+}
+
 /**
  * Runs after `webhook()` sent the 202. Never throws: a throw skips the static-data
- * save and core would answer an ended response. Lists the subscriptions at most once
- * per request.
+ * save and core would answer an ended response. Renews the stored ids the batch names;
+ * a batch with anything else lists once and reconciles.
  */
 export async function handleLifecycleNotifications(
 	this: IWebhookFunctions,
 	items: LifecycleNotification[],
+	rejectedCount = 0,
 ): Promise<void> {
 	const webhookData = this.getWorkflowStaticData('node');
-	const meta = { workflowId: this.getWorkflow().id, nodeName: this.getNode().name };
-	const log = (level: 'debug' | 'warn', message: string, fields: Record<string, unknown>) =>
-		this.logger[level](`Microsoft Teams Trigger: ${message}`, { ...meta, ...fields });
 
 	// Do not make Graph calls if this helper is invoked without a stored secret.
 	const clientState = getStoredSecret(webhookData);
 	if (clientState === undefined) {
-		log('warn', 'skipped lifecycle notifications: no stored secret, republish the workflow', {});
+		logTrigger.call(
+			this,
+			'warn',
+			'skipped lifecycle notifications: no stored secret, republish the workflow',
+		);
 		return;
 	}
 	const webhookUrl = this.getNodeWebhookUrl('default');
 	// Type narrowing only: the subscriptions were created with this URL.
 	if (webhookUrl === undefined) return;
-	const rawIds: unknown[] = Array.isArray(webhookData.subscriptionIds)
-		? webhookData.subscriptionIds
-		: [];
-	const storedIds = rawIds.filter((id): id is string => typeof id === 'string');
-
-	// One listing per request; a rejected listing is never fetched again.
-	let ownList: Promise<SubscriptionResponse[]> | undefined;
-	const ownSubscriptions = async () =>
-		await (ownList ??= listOwnSubscriptions.call(this, webhookUrl));
+	const storedIds = getStoredIds(webhookData);
 
 	// Classify first, so the order inside the batch does not change the outcome. Logged
 	// request values are capped: the sender holds the secret, but the body is still input.
@@ -352,7 +341,7 @@ export async function handleLifecycleNotifications(
 	const toRenew = new Set<string>();
 	for (const { subscriptionId, lifecycleEvent } of items) {
 		if (typeof subscriptionId !== 'string') {
-			log('debug', 'ignored lifecycle event without a subscription id', {
+			logTrigger.call(this, 'debug', 'ignored lifecycle event without a subscription id', {
 				lifecycleEvent: lifecycleEvent.slice(0, 64),
 			});
 		} else if (lifecycleEvent === 'subscriptionRemoved') {
@@ -360,55 +349,53 @@ export async function handleLifecycleNotifications(
 		} else if (lifecycleEvent === 'reauthorizationRequired') {
 			toRenew.add(subscriptionId);
 		} else {
-			log('debug', 'ignored lifecycle event', {
+			logTrigger.call(this, 'debug', 'ignored lifecycle event', {
 				subscriptionId: subscriptionId.slice(0, 64),
 				lifecycleEvent: lifecycleEvent.slice(0, 64),
 			});
 		}
 	}
 
-	const unresolved = new Set<string>();
 	const renewed = new Set<string>();
-	let needsReconcile = gone.size > 0;
-
+	const renewedEntries = new Map<string, SubscriptionResponse>();
 	for (const subscriptionId of toRenew) {
 		if (gone.has(subscriptionId)) continue;
-
-		let isOwn: boolean;
-		try {
-			isOwn =
-				storedIds.includes(subscriptionId) ||
-				(await ownSubscriptions()).some((subscription) => subscription.id === subscriptionId);
-		} catch {
-			// Route to the reconcile, which awaits the same rejected listing and warns once.
-			unresolved.add(subscriptionId);
-			needsReconcile = true;
-			continue;
-		}
-		if (!isOwn) {
-			log('debug', 'skipped renewal: unknown subscription', {
+		// An own id that is not stored is an orphan; the reconcile below removes it.
+		if (!storedIds.includes(subscriptionId)) {
+			logTrigger.call(this, 'debug', 'skipped renewal: unknown subscription', {
 				subscriptionId: subscriptionId.slice(0, 64),
 			});
-			needsReconcile = true;
 			continue;
 		}
 
 		try {
-			await microsoftApiRequest.call(
+			const answer: unknown = await microsoftApiRequest.call(
 				this,
 				'PATCH',
 				buildTeamsPath.call(this, ['/v1.0/subscriptions/', { id: subscriptionId }]),
 				{ expirationDateTime: newSubscriptionExpiry() },
 			);
 			renewed.add(subscriptionId);
-			log('debug', 'renewed subscription', { subscriptionId });
+			logTrigger.call(this, 'debug', 'renewed subscription', { subscriptionId });
+			// The answer stands in for a listing entry that can lag. A stored id at an old
+			// webhook URL must not become a keeper for the current URL through its answer.
+			if (
+				isSubscriptionResponse(answer) &&
+				answer.id === subscriptionId &&
+				answer.notificationUrl === webhookUrl
+			) {
+				renewedEntries.set(subscriptionId, answer);
+			} else {
+				logTrigger.call(this, 'debug', 'renewed subscription without a usable answer', {
+					subscriptionId,
+				});
+			}
 		} catch (error) {
 			if (error instanceof NodeApiError && error.httpCode === '404') {
 				gone.add(subscriptionId);
-				needsReconcile = true;
-				log('debug', 'subscription gone, will re-create', { subscriptionId });
+				logTrigger.call(this, 'debug', 'subscription gone, will re-create', { subscriptionId });
 			} else {
-				log('warn', 'failed to renew subscription', {
+				logTrigger.call(this, 'warn', 'failed to renew subscription', {
 					subscriptionId,
 					error: ensureError(error).message,
 				});
@@ -416,72 +403,46 @@ export async function handleLifecycleNotifications(
 		}
 	}
 
-	if (!needsReconcile) {
-		// Store the ids that the listing proved to be own, so `delete()` removes them on unpublish.
-		const discovered = [...renewed].filter((id) => !storedIds.includes(id));
-		if (discovered.length > 0) webhookData.subscriptionIds = [...storedIds, ...discovered];
-		return;
-	}
+	// A plain renewal lists nothing: Graph allows 25 `GET /subscriptions` per 20 s per app
+	// per tenant and 40 per 20 s per app across tenants.
+	const renewOnly =
+		rejectedCount === 0 && gone.size === 0 && [...toRenew].every((id) => renewed.has(id));
+	if (renewOnly) return;
 
-	const affectedIds = [...gone, ...unresolved].slice(0, 20).map((id) => id.slice(0, 64));
+	const affectedIds = [...gone, ...toRenew].slice(0, 20).map((id) => id.slice(0, 64));
 	let subscriptions: SubscriptionResponse[];
 	let requiredResources: string[];
 	try {
-		subscriptions = await ownSubscriptions();
+		subscriptions = await listOwnSubscriptions.call(this, webhookUrl);
 		const resourcePaths = await getResourcePath.call(
 			this,
 			this.getNodeParameter('event') as string,
 		);
 		requiredResources = Array.isArray(resourcePaths) ? resourcePaths : [resourcePaths];
 	} catch (error) {
-		log('warn', 'failed to list subscriptions or resolve resources, skipped re-create', {
-			subscriptionIds: affectedIds,
-			error: ensureError(error).message,
-		});
+		logTrigger.call(
+			this,
+			'warn',
+			'failed to list subscriptions or resolve resources, skipped re-create',
+			{ subscriptionIds: affectedIds, error: ensureError(error).message },
+		);
 		return;
 	}
 
-	// Partition once: an id renewed in this request stays live even when its listed expiry
-	// passed meanwhile, and the awaited deletes below must not move the line.
-	const live = subscriptions.filter(
-		(subscription) =>
-			!gone.has(subscription.id) &&
-			(renewed.has(subscription.id) || isLiveSubscription(subscription)),
-	);
-	const liveIds = new Set(live.map((subscription) => subscription.id));
-	// Every other own subscription is removed before its replacement is created, so the two
-	// never deliver together and Graph does not reject the replacement as a duplicate. One
-	// that Graph already removed answers 404, which counts as done.
-	for (const { id } of subscriptions) {
-		if (liveIds.has(id)) continue;
-		try {
-			await deleteSubscription.call(this, id);
-		} catch (error) {
-			log('debug', 'failed to remove a stale subscription', {
-				subscriptionId: id,
-				error: ensureError(error).message,
-			});
-		}
-	}
-	const liveResources = new Set(live.map((subscription) => subscription.resource));
-	const created: string[] = [];
-	for (const resource of requiredResources.filter((path) => !liveResources.has(path))) {
-		try {
-			const subscription = await createSubscription.call(this, webhookUrl, resource, clientState);
-			created.push(subscription.id);
-			log('debug', 're-created subscription', { resource, subscriptionId: subscription.id });
-		} catch (error) {
-			log('warn', 'failed to re-create subscription', {
-				resource,
-				subscriptionIds: affectedIds,
-				error: ensureError(error).message,
-			});
-		}
-	}
-	const nextIds = [...live.map((subscription) => subscription.id), ...created];
-	// Every save is a DB write and widens the last-write-wins window, so save on change only.
-	const unchanged = nextIds.length === rawIds.length && nextIds.every((id) => rawIds.includes(id));
-	if (!unchanged) webhookData.subscriptionIds = nextIds;
+	// An orphan whose own challenge fails verification never reaches this handler, so a
+	// batch with an anomaly (a removal, an unknown id, a failed renewal, a rejected item)
+	// must prune for it. The helpers log the failures.
+	await reconcileSubscriptions.call(this, {
+		webhookUrl,
+		clientState,
+		requiredResources,
+		subscriptions: [
+			...subscriptions.filter((subscription) => !renewedEntries.has(subscription.id)),
+			...renewedEntries.values(),
+		],
+		renewed,
+		gone,
+	});
 }
 
 export function verifyWebhook(this: IWebhookFunctions): boolean {
