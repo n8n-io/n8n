@@ -1,9 +1,6 @@
-import type { CredentialProvider } from '@n8n/agents';
+import type { AgentCredentialProvider } from '@/modules/agents/agent-credential-provider.contracts';
 
-import type { AiGatewayModelCredentialResolver } from '@/modules/agents/json-config/model-config';
-
-export type AgentCredentialProvider = CredentialProvider &
-	Partial<AiGatewayModelCredentialResolver>;
+export type { AgentCredentialProvider } from '@/modules/agents/agent-credential-provider.contracts';
 
 /**
  * An eval run pins a thread to the credentials its case declared. The Agent

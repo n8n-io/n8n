@@ -38,37 +38,43 @@ describe.skipIf(!fixturePath)('GitLab provider live compatibility', () => {
 		});
 		expect(provider.status, JSON.stringify(provider.body)).toBe(201);
 		expect(JSON.stringify(provider.body)).not.toContain(fixture.accessToken);
-		const connection = await agent.post('/promotions/connections').send({
-			name: 'GitLab verification',
-			scope: 'instance',
-			providerId: provider.body.provider.id,
-			target: { schemaVersion: 1, remoteUrl: `${fixture.baseUrl}/${fixture.projectPath}.git` },
-			configs: {
-				apply: { settings: { schemaVersion: 1, branchName: 'main' } },
-				promote: {
-					settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: false },
-				},
-			},
+		const createEnvironment = async (direction: object) =>
+			await agent.post('/promotions/environments').send({
+				name: 'GitLab verification',
+				scope: 'instance',
+				providerId: provider.body.provider.id,
+				remote: { schemaVersion: 1, remoteUrl: `${fixture.baseUrl}/${fixture.projectPath}.git` },
+				...direction,
+			});
+		const apply = await createEnvironment({
+			direction: 'apply',
+			settings: { schemaVersion: 1, branchName: 'main' },
 		});
-		expect(connection.status, JSON.stringify(connection.body)).toBe(201);
+		expect(apply.status, JSON.stringify(apply.body)).toBe(201);
+		const promote = await createEnvironment({
+			direction: 'promote',
+			settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: false },
+		});
+		expect(promote.status, JSON.stringify(promote.body)).toBe(201);
 		const project = await createTeamProject('GitLab verification', owner);
 		await createWorkflow({ name: 'GitLab verification', nodes: [], connections: {} }, project);
-		const root = `/promotions/connections/${connection.body.id}`;
+		const applyRoot = `/promotions/environments/${apply.body.id}`;
+		const promoteRoot = `/promotions/environments/${promote.body.id}`;
 		try {
-			for (const direction of ['promote', 'apply']) {
-				const clone = await agent.post(`${root}/${direction}/clone`);
+			for (const root of [promoteRoot, applyRoot]) {
+				const clone = await agent.post(`${root}/connect`);
 				expect(clone.status, JSON.stringify(clone.body)).toBe(200);
 				expect(clone.body.hasCheckout).toBe(true);
 			}
 			const promoted = await agent
-				.post(`${root}/promote`)
+				.post(`${promoteRoot}/promote`)
 				.send({ commitMessage: 'Verify GitLab provider compatibility' });
 			expect(promoted.status, JSON.stringify(promoted.body)).toBe(200);
 			expect(promoted.body.counts.workflows).toBeGreaterThan(0);
 			expect(promoted.body.git.branchName).toBe('main');
-			const applied = await agent.post(`${root}/apply`).send({
+			const applied = await agent.post(`${applyRoot}/apply`).send({
 				expectedSource: {
-					configId: connection.body.configs.apply.id,
+					environmentId: apply.body.id,
 					branchName: 'main',
 					commitSha: promoted.body.git.commitSha,
 				},
@@ -79,7 +85,8 @@ describe.skipIf(!fixturePath)('GitLab provider live compatibility', () => {
 				git: { commitSha: promoted.body.git.commitSha },
 			});
 		} finally {
-			await agent.delete(root);
+			await agent.delete(applyRoot);
+			await agent.delete(promoteRoot);
 			await agent.delete(`/promotions/providers/${provider.body.provider.id}`);
 		}
 	}, 60_000);

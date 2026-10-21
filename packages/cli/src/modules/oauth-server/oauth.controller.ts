@@ -13,7 +13,7 @@ import {
 	StaticRouterMetadata,
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { AuthenticationService } from '@n8n/inbound-auth';
+import { AuthenticationService, type SurfaceId } from '@n8n/inbound-auth';
 import { isRecord } from '@n8n/utils/is-record';
 import type { Response, Request, RequestHandler, Router } from 'express';
 
@@ -31,6 +31,15 @@ const globalConfig = Container.get(GlobalConfig);
 const oauthServerConfig = Container.get(OAuthServerConfig);
 const logger = Container.get(Logger);
 const urlService = Container.get(UrlService);
+
+/**
+ * Surfaces that authenticate through the inbound-auth pipeline advertise the trusted sources
+ * accepted there. The trigger surface joins with its own ticket.
+ */
+const PIPELINE_SURFACES: ReadonlySet<SurfaceId> = new Set<SurfaceId>([
+	'public-api',
+	'instance-mcp',
+]);
 
 /**
  * Pre-check guard for the unauthenticated DCR endpoint. Short-circuits with
@@ -340,18 +349,17 @@ export class OAuthController {
 	private async buildProtectedResourceMetadata(
 		resource: ProtectedResource,
 	): Promise<Record<string, unknown>> {
-		const authorizationServers =
-			resource.surface === 'public-api'
-				? (
-						await this.authenticationService.advertise({
-							surface: resource.surface,
-							resource: {
-								url: resource.getResourceUrl(),
-								acceptedAudiences: resource.getAudiences(),
-							},
-						})
-					).authorizationServers
-				: [this.urlService.getInstanceBaseUrl()];
+		const authorizationServers = PIPELINE_SURFACES.has(resource.surface)
+			? (
+					await this.authenticationService.advertise({
+						surface: resource.surface,
+						resource: {
+							url: resource.getResourceUrl(),
+							acceptedAudiences: resource.getAudiences(),
+						},
+					})
+				).authorizationServers
+			: [this.urlService.getInstanceBaseUrl()];
 
 		const metadata: Record<string, unknown> = {
 			resource: resource.getResourceUrl(),

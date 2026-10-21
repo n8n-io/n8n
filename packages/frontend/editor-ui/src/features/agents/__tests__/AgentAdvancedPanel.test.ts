@@ -487,8 +487,12 @@ describe('AgentAdvancedPanel', () => {
 		expect(wrapper.emitted('update:config')).toBeUndefined();
 	});
 
-	it('shows the Anthropic ttl dropdown, defaulting to 1h, with no on/off toggle', async () => {
-		const config = makeConfig();
+	it.each([
+		'anthropic/claude-sonnet-4-5',
+		'openrouter/anthropic/claude-sonnet-4.5',
+		'google-vertex/claude-sonnet-4-5',
+	])('shows a default 1h cache duration for %s', async (model) => {
+		const config = makeConfig({ model });
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config },
 			global: { stubs: globalStubs },
@@ -510,8 +514,12 @@ describe('AgentAdvancedPanel', () => {
 		expect(wrapper.find('[data-testid="agent-prompt-caching-ttl-select"]').exists()).toBe(false);
 	});
 
-	it('hides the prompt-caching row entirely for providers that do not support it', () => {
-		const config = makeConfig({ model: 'google/gemini-pro' });
+	it.each([
+		'google/gemini-pro',
+		'openrouter/google/gemini-2.5-pro',
+		'google-vertex/gemini-2.5-pro',
+	])('hides the cache duration for %s', (model) => {
+		const config = makeConfig({ model });
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config },
 			global: { stubs: globalStubs },
@@ -520,8 +528,12 @@ describe('AgentAdvancedPanel', () => {
 		expect(wrapper.find('[data-testid="agent-prompt-caching-ttl-select"]').exists()).toBe(false);
 	});
 
-	it('emits { enabled: true, anthropic: { ttl } } when the ttl dropdown changes', () => {
-		const config = makeConfig();
+	it.each([
+		'anthropic/claude-sonnet-4-5',
+		'openrouter/anthropic/claude-sonnet-4.5',
+		'google-vertex/claude-sonnet-4-5',
+	])('saves the selected cache duration for %s', (model) => {
+		const config = makeConfig({ model });
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config },
 			global: { stubs: globalStubs },

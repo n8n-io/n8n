@@ -20,6 +20,9 @@ import type { AgentChatAttachment } from './entities/agent-chat-attachment.entit
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import { resolveInboundMimeType } from './utils/inbound-attachments';
 
+/** The SSE stream of one chat request, with the helpers that the chat routes use. */
+export type AgentChatStream = ReturnType<AgentChatRelayService['createChatStream']>;
+
 /**
  * Request plumbing shared by the Agents chat controllers: SSE delivery of a
  * queued message, inbound attachment storage and attachment downloads.
@@ -32,25 +35,31 @@ export class AgentChatRelayService {
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
 	) {}
 
-	createChatExecution(res: FlushableResponse) {
+	createChatStream(res: FlushableResponse) {
 		const delivery = initSseStream(res);
-		const requestController = new AbortController();
-		const abandon = () => requestController.abort();
-		delivery.abortSignal.addEventListener('abort', abandon, { once: true });
-		if (delivery.abortSignal.aborted) abandon();
 		return {
 			send: delivery.send,
-			abortSignal: requestController.signal,
 			onExecutionStarted: (id: string, sessionId: string, inputMessageIds: string[]) => {
-				delivery.abortSignal.removeEventListener('abort', abandon);
 				delivery.send({ type: 'execution-started', executionId: id, sessionId, inputMessageIds });
 			},
 			onChunk: delivery.onChunk,
-			close: () => {
-				delivery.abortSignal.removeEventListener('abort', abandon);
-				delivery.close();
-			},
+			close: delivery.close,
 		};
+	}
+
+	/** Stream a resume to the client. A thrown error becomes an error event, and the stream always closes. */
+	async relayResume(
+		res: FlushableResponse,
+		resume: (stream: AgentChatStream) => Promise<void>,
+	): Promise<void> {
+		const stream = this.createChatStream(res);
+		try {
+			await resume(stream);
+		} catch (error) {
+			stream.send(toChatErrorEvent(error, 'Resume failed'));
+		} finally {
+			stream.close();
+		}
 	}
 
 	/** Decode, sniff, and persist inbound chat attachments; returns refs for the user turn. */
