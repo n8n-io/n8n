@@ -1,0 +1,27 @@
+packages/@n8n/instance-ai/src/agent/communication-style.prompt.ts
+  s_4d7f501095fc5f::t_eebc51275e8433 14,19-21,76,81-83
+packages/@n8n/instance-ai/src/agent/shared-prompts.ts
+  s_4d7f501095fc5f::t_4e502a1f0f84b0 20
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_4d7f501095fc5f::t_ddb953d94094c4 60,62,88,91,111,113,143,159,162,190-191,220,222
+packages/@n8n/instance-ai/skills/agent-builder/SKILL.md
+  s_4d7f501095fc5f::t_d74a56b18717af 8,30-31,40,49,100-104,134
+packages/@n8n/instance-ai/src/skills/skills.ts
+  s_4d7f501095fc5f::t_b51971c5216a7e 1-5,15-27,45-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2f119c770ede86adbbf7e2dbd49eeadff62004e3",
+  "prompts": {},
+  "sessions": {
+    "s_4d7f501095fc5f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d703c91c-a325-400f-ae25-49dc34889db7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

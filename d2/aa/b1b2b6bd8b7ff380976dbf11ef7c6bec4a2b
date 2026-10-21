@@ -1,0 +1,82 @@
+docs/generated/postgres-schema/public.app_artifact.md
+  ai_agent 1-72
+docs/generated/postgres-schema/public.agent_version_skill_dependency.md
+  ai_agent 61
+docs/generated/sqlite-schema/agents.md
+  ai_agent 339
+docs/generated/sqlite-schema/app_version.md
+  ai_agent 1-97
+docs/generated/sqlite-schema/project.md
+  ai_agent 23,53,175-185,281
+packages/cli/src/public-api/v1/shared/spec/schemas/promotePackageResultDto.generated.yml
+  ai_agent 45-70
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  ai_agent 41-45
+docs/generated/postgres-schema/public.user.md
+  ai_agent 430
+docs/generated/sqlite-schema/agent_version_skill_dependency.md
+  ai_agent 70
+packages/cli/src/public-api/v1/shared/spec/schemas/importBlockingIssue.generated.yml
+  ai_agent 94-95,105
+docs/generated/postgres-schema/public.app.md
+  ai_agent 1-92
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionEnvironmentCard.vue
+  s_20bc5da4e9fe52::t_82a0139a053d67 170
+docs/generated/sqlite-schema/README.md
+  ai_agent 53-55,140,259-264,900-932,1736
+docs/generated/postgres-schema/public.binary_data.md
+  ai_agent 21
+docs/generated/sqlite-schema/skill.md
+  ai_agent 9,19,60
+docs/generated/postgres-schema/public.agent_skill_dependency.md
+  ai_agent 65
+docs/generated/postgres-schema/public.agents.md
+  ai_agent 337
+docs/generated/postgres-schema/public.skill.md
+  ai_agent 8,25,53
+docs/generated/postgres-schema/public.skill_version.md
+  ai_agent 107
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionEnvironmentView.vue
+  s_20bc5da4e9fe52::t_82a0139a053d67 453,455
+  s_20bc5da4e9fe52::t_11d242f43d8c4b 104-108
+docs/generated/sqlite-schema/app.md
+  ai_agent 1-97
+docs/generated/sqlite-schema/skill_version.md
+  ai_agent 110
+docs/generated/sqlite-schema/user.md
+  ai_agent 436
+docs/generated/postgres-schema/README.md
+  ai_agent 53-55,140,277-282,914-946,1750
+docs/generated/postgres-schema/public.app_version.md
+  ai_agent 1-92
+packages/@n8n/expression-runtime/src/bridge/quickjs-bridge.ts
+  ai_agent 5,33-36,39,50-83,482-484,500,505-516,548,573-574,578,587,597-600,612,623,1190-1191,1234,1238,1292-1297,1300-1302,1304-1305,1326,1346-1348,1361-1368,1373-1467,1497
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 2-4,3089-3098,3211,3274,3308-3309,3741-3743,3757-3758,3760,3762,4095,4097,4101,4184-4187,5222,5224,5289,6077,6110-6112,6520-6521,8141-8152,9799-9801,9898-9900
+docs/generated/postgres-schema/public.project.md
+  ai_agent 12,47,169-179,275
+docs/generated/sqlite-schema/binary_data.md
+  ai_agent 9,32
+pnpm-lock.yaml
+  ai_agent 1076,4834-4836,4989,7045-7105,35352
+docs/generated/sqlite-schema/agent_skill_dependency.md
+  ai_agent 75
+docs/generated/sqlite-schema/app_artifact.md
+  ai_agent 1-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d2aab1b2b6bd8b7ff380976dbf11ef7c6bec4a2b",
+  "prompts": {},
+  "sessions": {
+    "s_20bc5da4e9fe52": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed82ce47-8b0e-4087-9761-908513e3887f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

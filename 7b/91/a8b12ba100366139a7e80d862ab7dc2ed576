@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/settings/security/rateLimits/ApiKeyRateLimitsDialog.vue
+  s_925dcfedebf0c9::t_434bd21abb6956 162-176,181-183,185-198
+  s_925dcfedebf0c9::t_4ca6376a5bd97f 161,177,180,318-319,324-325,329-334
+packages/frontend/editor-ui/src/features/settings/security/rateLimits/ApiKeyRateLimitsSection.vue
+  s_925dcfedebf0c9::t_4ca6376a5bd97f 193-194
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7b91a8b12ba100366139a7e80d862ab7dc2ed576",
+  "prompts": {},
+  "sessions": {
+    "s_925dcfedebf0c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e954afe-0aa2-4cb1-89bb-81545b98a90a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}
