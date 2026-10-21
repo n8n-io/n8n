@@ -1,6 +1,7 @@
 import { MemoryStore } from 'express-rate-limit';
 import type { Options } from 'express-rate-limit';
 import RedisMock from 'ioredis-mock';
+import { RedisStore } from 'rate-limit-redis';
 
 import { createStoreFactory, redisCluster } from './fake-redis.factory';
 
@@ -24,6 +25,7 @@ describe('PublicApiRateLimitStoreFactory', () => {
 		);
 		store.init?.({ windowMs: 60_000 } as Options);
 
+		expect(store).toBeInstanceOf(RedisStore);
 		expect((await store.increment('key-1')).totalHits).toBe(1);
 		expect((await store.increment('key-1')).totalHits).toBe(2);
 	});
