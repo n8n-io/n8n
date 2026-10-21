@@ -332,6 +332,7 @@ vi.mock('@/features/agents/n8nChatPage/components/N8nChatAgentPicker.vue', () =>
 				name: 'Support Agent',
 				project: { id: 'project-1', name: 'Project' },
 				attachments: { image: true, pdf: false, audio: false },
+				availableInChat: true,
 			},
 		}),
 		template: `

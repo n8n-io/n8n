@@ -5,6 +5,7 @@ import type { MockInstance } from 'vitest';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { SYSTEM_RESOLVER_ID, type FrontendSettings } from '@n8n/api-types';
+import { i18n, i18nInstance } from '@n8n/i18n';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import { getDropdownItems, mockedStore, type MockedStore } from '@/__tests__/utils';
@@ -217,6 +218,28 @@ describe('WorkflowSettingsVue', () => {
 		const { getByTestId } = createComponent({ pinia });
 		await flushPromises();
 		expect(getByTestId('workflow-settings-dialog')).toBeVisible();
+	});
+
+	it.each([
+		['workflow-settings-execution-order', 'workflowSettings.executionLogic.placeholder'],
+		['workflow-settings-error-workflow', 'workflowSettings.errorWorkflow.placeholder'],
+		['workflow-settings-timezone', 'workflowSettings.timezone.placeholder'],
+	])('should localize the placeholder of %s', async (testId, key) => {
+		const originalLocale = i18nInstance.global.locale.value;
+		i18nInstance.global.setLocaleMessage('test-locale', { [key]: 'Translated placeholder' });
+		i18nInstance.global.locale.value = 'test-locale';
+		i18n.clearCache();
+
+		try {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = false;
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(getByTestId(testId).outerHTML).toContain('Translated placeholder');
+		} finally {
+			i18nInstance.global.locale.value = originalLocale;
+			i18n.clearCache();
+		}
 	});
 
 	it('should not render workflow caller policy when sharing is not enabled', async () => {

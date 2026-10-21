@@ -280,14 +280,43 @@ export class InstanceAiController {
 		if (ownership === 'other_user') {
 			throw new ForbiddenError('Not authorized for this thread');
 		}
-		// When the thread didn't exist at connect time, another user could create
-		// and own it before events start flowing. We re-check once on the first
-		// event and close the stream if ownership changed. Events are buffered
-		// until the check resolves to prevent leaking data during the async gap.
+		// A thread created after subscription can have a different owner.
+		// Verify ownership before sending events or a bootstrap frame.
 		let ownershipVerified = ownership === 'owned';
-		let ownershipCheckInFlight = false;
+		let ownershipCheck: Promise<boolean> | undefined;
 		const pendingEvents: StoredEvent[] = [];
 		const userId = req.user.id;
+		let closed = false;
+
+		const verifyOwnership = async () => {
+			ownershipCheck ??= this.memoryService
+				.checkThreadOwnership(userId, threadId)
+				.then((currentOwnership) => {
+					if (closed) return false;
+
+					ownershipVerified = currentOwnership === 'owned';
+					if (!ownershipVerified) {
+						pendingEvents.length = 0;
+						closed = true;
+						res.end();
+						return false;
+					}
+
+					// Drain before live delivery can observe the verified owner.
+					for (const stored of pendingEvents) this.writeSseEvent(res, stored);
+					pendingEvents.length = 0;
+
+					return true;
+				})
+				.catch(() => {
+					pendingEvents.length = 0;
+					closed = true;
+					res.end();
+					return false;
+				});
+
+			return await ownershipCheck;
+		};
 
 		// 1. Subscribe to live events before the async bootstrap below.
 		//    hasSubscribers() must be true across the awaits that follow: in
@@ -299,36 +328,15 @@ export class InstanceAiController {
 		let bootstrapping = true;
 
 		const deliver = (stored: StoredEvent) => {
+			if (closed) return;
+
 			if (ownershipVerified) {
 				this.writeSseEvent(res, stored);
 				return;
 			}
 
-			// When the thread was not_found at connect time, re-validate ownership
-			// on the first event. Buffer all events until the check resolves to
-			// avoid leaking data during the async gap.
 			pendingEvents.push(stored);
-
-			if (ownershipCheckInFlight) return;
-			ownershipCheckInFlight = true;
-
-			void this.memoryService
-				.checkThreadOwnership(userId, threadId)
-				.then((currentOwnership) => {
-					if (currentOwnership === 'other_user') {
-						res.end();
-						return;
-					}
-					ownershipVerified = true;
-					for (const buffered of pendingEvents) {
-						this.writeSseEvent(res, buffered);
-					}
-					pendingEvents.length = 0;
-				})
-				.catch(() => {
-					pendingEvents.length = 0;
-					res.end();
-				});
+			void verifyOwnership();
 		};
 
 		const unsubscribe = this.eventBus.subscribe(threadId, (stored) => {
@@ -339,7 +347,6 @@ export class InstanceAiController {
 		// Cleanup is registered before the async bootstrap so a client disconnect
 		// (or an error response) during the awaits below doesn't leak the
 		// subscription.
-		let closed = false;
 		let keepAlive: NodeJS.Timeout | undefined = undefined;
 		const cleanup = () => {
 			closed = true;
@@ -416,6 +423,7 @@ export class InstanceAiController {
 			runEvents: InstanceAiEvent[],
 		) => {
 			if (runEvents.length === 0) return;
+			if (!ownershipVerified && !(await verifyOwnership())) return;
 
 			const agentTree = buildAgentTreeFromEvents(runEvents);
 			// The fold records that a confirmation was requested, not that it was

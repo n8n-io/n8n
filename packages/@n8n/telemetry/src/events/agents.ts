@@ -347,6 +347,23 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			'A user saved a tracked configuration or resource change to an existing Agent. Emitted after the change commits. Incomplete Agents also count. No-op and cosmetic-only saves emit nothing. Creation emits User created agent instead. The profile describes the saved configuration. Version 2 removes the configured-state gate and creation inference.',
 		properties: z.object({
 			...agentWrite,
+			changed_settings: z
+				.array(
+					z.enum([
+						'monthly_budget',
+						'budget_alert',
+						'session_cost_cap',
+						'custom_model_routing',
+						'memory_model',
+						'cache_duration',
+						'tool_concurrency',
+						'max_iterations',
+					]),
+				)
+				.optional()
+				.describe(
+					'Names of tracked settings changed by the committed user write, in the listed order. New emissions include an empty array when none changed. Compares stored fields, including added or removed overrides. Model settings compare model IDs, not credentials. Budget settings compare amounts and the alert threshold, not the shared enabled flag. Never includes setting values.',
+				),
 			event_version: z.literal('2'),
 		}),
 	},
@@ -763,6 +780,28 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 		description: 'The user opened the agent preview panel in the builder.',
 		properties: z.object({
 			agent_id: z.string(),
+			source: z
+				.enum(['icon', 'primary'])
+				.optional()
+				.describe('The button that opened the preview. Omit this for non-button openings.'),
+		}),
+	},
+	USER_REVERTED_CHANGES_ON_AGENT: {
+		name: 'User reverted changes on agent',
+		description:
+			'The user successfully reverted draft changes to the published version or a selected version in the Agent Builder.',
+		properties: z.object({
+			agent_id: z.string(),
+			session_id: sessionId,
+		}),
+	},
+	USER_CLICKED_TRACE_DETAILS_FROM_TEST_PANEL: {
+		name: 'User clicked trace details from test panel',
+		description:
+			'The user activated the enabled Trace details control in the agent preview. Fires before navigation, not after trace loading.',
+		properties: z.object({
+			agent_id: z.string(),
+			session_id: sessionId,
 		}),
 	},
 	USER_SAVED_AGENT_SKILL: {

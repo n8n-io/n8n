@@ -183,6 +183,20 @@ export function useAgentTelemetry() {
 		});
 	}
 
+	function trackRevertedChangesOnAgent(params: { agentId: string }) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_REVERTED_CHANGES_ON_AGENT, {
+			agent_id: params.agentId,
+			...common(),
+		});
+	}
+
+	function trackClickedTraceDetailsFromTestPanel(params: { agentId: string }) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_DETAILS_FROM_TEST_PANEL, {
+			agent_id: params.agentId,
+			...common(),
+		});
+	}
+
 	function trackImportedSkill(params: {
 		agentId: string;
 		source: 'skill_file' | 'folder';
@@ -347,6 +361,8 @@ export function useAgentTelemetry() {
 		trackOpenedToolFromList,
 		trackOpenedSkillFromList,
 		trackOpenedAddSkillModal,
+		trackRevertedChangesOnAgent,
+		trackClickedTraceDetailsFromTestPanel,
 		trackImportedSkill,
 		trackDuplicatedAgent,
 		trackDismissedAgentPublishedModal,

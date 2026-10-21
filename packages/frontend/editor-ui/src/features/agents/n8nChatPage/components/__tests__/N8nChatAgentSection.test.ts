@@ -8,6 +8,7 @@ import type { AgentChatListItem } from '@n8n/api-types';
 import { AGENT_N8N_CHAT_LIBRARY_VIEW, AGENT_N8N_CHAT_VIEW } from '../../../constants';
 import SkeletonAgentCard from '@/features/ai/chatHub/components/SkeletonAgentCard.vue';
 import N8nChatAgentCard from '../N8nChatAgentCard.vue';
+import N8nChatAgentGrid from '../N8nChatAgentGrid.vue';
 import N8nChatAgentSection from '../N8nChatAgentSection.vue';
 
 const listN8nChatAgentsMock = vi.fn();
@@ -46,6 +47,7 @@ function agent(id: string, name: string): AgentChatListItem {
 		name,
 		project: { id: 'p', name: 'P' },
 		attachments: { image: false, pdf: false, audio: false },
+		availableInChat: true,
 	};
 }
 
@@ -118,6 +120,19 @@ describe('N8nChatAgentSection', () => {
 
 		const viewAll = wrapper.get('[data-test-id="n8n-chat-agent-section-view-all"]');
 		expect(viewAll.attributes('href')).toBe('/assistant/agents');
+	});
+
+	it('reloads the list after an agent is made available', async () => {
+		listN8nChatAgentsMock.mockResolvedValue({ count: 1, data: [agent('a1', 'One')] });
+
+		const wrapper = renderSection();
+		await flushPromises();
+		listN8nChatAgentsMock.mockClear();
+
+		wrapper.findComponent(N8nChatAgentGrid).vm.$emit('agent-made-available');
+		await flushPromises();
+
+		expect(listN8nChatAgentsMock).toHaveBeenCalledOnce();
 	});
 
 	it('renders nothing once loading ends with no agents', async () => {

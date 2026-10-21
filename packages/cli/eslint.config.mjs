@@ -70,6 +70,30 @@ const engineV2ModuleOnlyImport = {
 		'Only src/modules/engine-v2/** may import @n8n/engine at runtime. Use a type import, or reach the engine through EngineDataPlaneProxyService.',
 };
 
+// The skills module serves agents, MCP and n8n Assistant, so it does not depend on them.
+// The agents module registers what the skills module needs on `SkillAgentsProxy`.
+const skillsModuleBoundary = {
+	group: [
+		'@/modules/agents/**',
+		'@/modules/instance-ai/**',
+		'@/modules/mcp/**',
+		// Any depth, so files in subfolders of the skills module are covered too.
+		'../**/agents/**',
+		'../**/instance-ai/**',
+		'../**/mcp/**',
+	],
+	message:
+		'The skills module must not import the modules that use skills. Ask for what you need through SkillAgentsProxy.',
+};
+
+// `no-restricted-imports` does not check `import()` in ESLint (oxlint's rule does), so this
+// selector applies the same boundary to dynamic imports.
+const skillsModuleDynamicImportBoundary = {
+	selector:
+		'ImportExpression[source.value=/^(@\\/modules\\/|\\.\\.\\/(.*\\/)?)(agents|instance-ai|mcp)\\//]',
+	message: skillsModuleBoundary.message,
+};
+
 const METRICS_DATABASE_IMPORT_MESSAGE =
 	'Use DatabaseMetricQueryService for metrics database reads.';
 const METRICS_CLI_IMPORT_MESSAGE =
@@ -189,6 +213,26 @@ export default defineConfig(
 		},
 	},
 	{
+		files: ['./src/modules/skills/**/*.ts'],
+		ignores: ['./src/modules/skills/**/__tests__/**/*.ts'],
+		rules: {
+			// Repeats the package restrictions: a later block replaces the rule's options
+			// wholesale rather than merging them.
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{
+					paths: [
+						POLICY_INTERNAL_RESTRICTION,
+						engineV2ModuleOnlyImport,
+						jsonwebtokenSigningRestriction,
+					],
+					patterns: [jsonwebtokenSubpathRestriction, skillsModuleBoundary],
+				},
+			],
+			'no-restricted-syntax': ['error', skillsModuleDynamicImportBoundary],
+		},
+	},
+	{
 		// engine-v2 owns `@n8n/engine`, so the block above skips it wholesale — which
 		// would drop the JWT restriction too. Reinstate it here, without the engine
 		// restriction these files are exempt from.
@@ -285,7 +329,7 @@ export default defineConfig(
 			'./src/modules/agents/agent-task.service.ts',
 			'./src/modules/agents/integrations/agent-channel-reconciler.service.ts',
 			'./src/modules/agents/integrations/leader-channel-relay.service.ts',
-			'./src/modules/agents/integrations/platforms/discord-integration.ts',
+			'./src/modules/agents/integrations/platforms/discord/discord-integration.ts',
 			'./src/modules/token-exchange/services/trusted-key.service.ts',
 			'./src/services/pruning/workflow-history-compaction.service.ts',
 		],

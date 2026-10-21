@@ -40,6 +40,7 @@
 		{ "path": "../@n8n/inbound-auth/tsconfig.build.json" },
 		{ "path": "../@n8n/backend-common/tsconfig.build.json" },
 		{ "path": "../@n8n/backend-services/tsconfig.build.json" },
+		{ "path": "../modules/apps/backend/tsconfig.build.json" },
 		{ "path": "../modules/insights/backend/tsconfig.build.json" },
 		{ "path": "../modules/quick-connect/backend/tsconfig.build.json" },
 		{ "path": "../modules/workflow-builder/backend/tsconfig.build.json" },
