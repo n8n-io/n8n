@@ -16,7 +16,11 @@ import {
 	useInstancePromotionConnection,
 } from '../composables/useInstancePromotionConnection';
 import type * as PromotionsApi from '../promotionsSettings.api';
-import type { PromotionConnection, PromotionProvider } from '../promotionsSettings.api';
+import type {
+	PromotionConnection,
+	PromotionEnvironment,
+	PromotionProvider,
+} from '../promotionsSettings.api';
 import PromotionsSettingsView from './PromotionsSettingsView.vue';
 
 const api = vi.hoisted(() => ({
@@ -27,14 +31,12 @@ const api = vi.hoisted(() => ({
 	createPromotionProvider: vi.fn<typeof PromotionsApi.createPromotionProvider>(),
 	updatePromotionProvider: vi.fn<typeof PromotionsApi.updatePromotionProvider>(),
 	deletePromotionProvider: vi.fn<typeof PromotionsApi.deletePromotionProvider>(),
-	fetchPromotionConnection: vi.fn<typeof PromotionsApi.fetchPromotionConnection>(),
-	fetchPromotionConnections: vi.fn<typeof PromotionsApi.fetchPromotionConnections>(),
-	createPromotionConnection: vi.fn<typeof PromotionsApi.createPromotionConnection>(),
-	updatePromotionConnection: vi.fn<typeof PromotionsApi.updatePromotionConnection>(),
-	upsertPromotionApplyConfig: vi.fn<typeof PromotionsApi.upsertPromotionApplyConfig>(),
-	upsertPromotionPromoteConfig: vi.fn<typeof PromotionsApi.upsertPromotionPromoteConfig>(),
-	deletePromotionConfig: vi.fn<typeof PromotionsApi.deletePromotionConfig>(),
-	clonePromotionCheckout: vi.fn<typeof PromotionsApi.clonePromotionCheckout>(),
+	fetchPromotionEnvironment: vi.fn<typeof PromotionsApi.fetchPromotionEnvironment>(),
+	fetchPromotionEnvironments: vi.fn<typeof PromotionsApi.fetchPromotionEnvironments>(),
+	createPromotionEnvironment: vi.fn<typeof PromotionsApi.createPromotionEnvironment>(),
+	updatePromotionEnvironment: vi.fn<typeof PromotionsApi.updatePromotionEnvironment>(),
+	deletePromotionEnvironment: vi.fn<typeof PromotionsApi.deletePromotionEnvironment>(),
+	connectPromotionCheckout: vi.fn<typeof PromotionsApi.connectPromotionCheckout>(),
 	disconnectPromotionCheckout: vi.fn<typeof PromotionsApi.disconnectPromotionCheckout>(),
 }));
 
@@ -74,33 +76,86 @@ const summaryOf = (provider: PromotionProvider) => {
 	return summary;
 };
 
-const instanceConnection = (overrides: Partial<PromotionConnection> = {}): PromotionConnection =>
-	({
-		id: 'connection-1',
-		name: 'Production',
-		scope: 'instance',
-		target: { schemaVersion: 1, remoteUrl: 'git@github.com:acme/workflows.git' },
-		provider: summaryOf(sshProvider()),
-		configs: {},
-		...timestamps,
-		...overrides,
-	}) as PromotionConnection;
-
-const applyConfig = (branchName: string, name = 'Apply') => ({
-	id: 'config-apply',
-	name,
+const applyConfig = (branchName: string) => ({
+	id: 'environment-apply',
+	direction: 'apply' as const,
 	settings: { schemaVersion: 1 as const, branchName },
-	checkout: { hasCheckout: false, matchesConfig: false },
+	checkout: { hasCheckout: false, matchesEnvironment: false },
 	...timestamps,
 });
 
 const promoteConfig = (baseBranchName: string, createBranchOnPromotion = false) => ({
-	id: 'config-promote',
-	name: 'Promote',
+	id: 'environment-promote',
+	direction: 'promote' as const,
 	settings: { schemaVersion: 1 as const, baseBranchName, createBranchOnPromotion },
-	checkout: { hasCheckout: false, matchesConfig: false },
+	checkout: { hasCheckout: false, matchesEnvironment: false },
 	...timestamps,
 });
+
+type ConnectionDraft = Partial<Pick<PromotionConnection, 'name' | 'remote' | 'provider'>> & {
+	configs?: {
+		apply?: ReturnType<typeof applyConfig>;
+		promote?: ReturnType<typeof promoteConfig>;
+	};
+};
+
+/** The page shows one connection; each direction is an environment with the same shared fields. */
+const instanceConnection = ({
+	configs = { apply: applyConfig('main') },
+	...shared
+}: ConnectionDraft = {}): PromotionConnection => {
+	const fields = {
+		name: 'Production',
+		remote: { schemaVersion: 1 as const, remoteUrl: 'git@github.com:acme/workflows.git' },
+		provider: summaryOf(sshProvider()),
+		...shared,
+	};
+	return {
+		...fields,
+		configs: {
+			...(configs.apply && { apply: { ...fields, scope: 'instance' as const, ...configs.apply } }),
+			...(configs.promote && {
+				promote: { ...fields, scope: 'instance' as const, ...configs.promote },
+			}),
+		},
+	};
+};
+
+const withShared = (
+	connection: PromotionConnection,
+	fields: Partial<Pick<PromotionConnection, 'name' | 'remote' | 'provider'>>,
+): PromotionConnection => ({
+	...connection,
+	...fields,
+	configs: {
+		...(connection.configs.apply && { apply: { ...connection.configs.apply, ...fields } }),
+		...(connection.configs.promote && { promote: { ...connection.configs.promote, ...fields } }),
+	},
+});
+
+const environmentsOf = (connection: PromotionConnection) =>
+	[connection.configs.apply, connection.configs.promote].filter(
+		(environment) => environment !== undefined,
+	);
+const environmentOf = (connection: PromotionConnection, id: string) =>
+	environmentsOf(connection).find((environment) => environment.id === id) as PromotionEnvironment;
+const applyOf = (connection: PromotionConnection) => environmentOf(connection, 'environment-apply');
+const promoteOf = (connection: PromotionConnection) =>
+	environmentOf(connection, 'environment-promote');
+
+/** Serves the saved environments from the list and detail routes. */
+const mockSaved = (connection: PromotionConnection) => {
+	api.fetchPromotionEnvironments.mockResolvedValue(environmentsOf(connection));
+	api.fetchPromotionEnvironment.mockImplementation(async (_context, id) =>
+		environmentOf(connection, id),
+	);
+};
+
+/** Answers every environment update with that environment in the given connection. */
+const mockUpdates = (connection: PromotionConnection) =>
+	api.updatePromotionEnvironment.mockImplementation(async (_context, id) =>
+		environmentOf(connection, id),
+	);
 
 const gitlabProvider = (overrides: Partial<PromotionProvider> = {}) =>
 	sshProvider({
@@ -124,18 +179,18 @@ const otherRepository = {
 	fullPath: 'team/other',
 	remoteUrl: 'https://gitlab.example.com/team/other.git',
 };
-const requestTargetOf = (repo: PromotionRepository) => ({
+const requestRemoteOf = (repo: PromotionRepository) => ({
 	schemaVersion: 1 as const,
 	remoteUrl: repo.remoteUrl,
 });
-const targetOf = (repo: PromotionRepository) => ({
-	...requestTargetOf(repo),
+const remoteOf = (repo: PromotionRepository) => ({
+	...requestRemoteOf(repo),
 	repositoryPath: repo.fullPath,
 });
-const gitlabConnection = (overrides: Partial<PromotionConnection> = {}) =>
+const gitlabConnection = (overrides: ConnectionDraft = {}) =>
 	instanceConnection({
 		provider: summaryOf(gitlabProvider()),
-		target: targetOf(repository),
+		remote: remoteOf(repository),
 		configs: { apply: applyConfig('main') },
 		...overrides,
 	});
@@ -143,8 +198,7 @@ const mockGitlabConnection = (saved = gitlabConnection()) => {
 	api.fetchPromotionProviders.mockResolvedValue([saved.provider]);
 	api.fetchPromotionProvider.mockResolvedValue(gitlabProvider());
 	api.updatePromotionProvider.mockResolvedValue(gitlabProvider());
-	api.fetchPromotionConnections.mockResolvedValue([saved]);
-	api.fetchPromotionConnection.mockResolvedValue(saved);
+	mockSaved(saved);
 	return saved;
 };
 
@@ -175,6 +229,14 @@ const selectProvider = async (name: string) => {
 const fillConnectionBasics = async (name: string, remoteUrl: string) => {
 	await userEvent.type(screen.getByTestId('promotion-connection-name-input'), name);
 	await userEvent.type(screen.getByTestId('promotion-connection-remote-url-input'), remoteUrl);
+};
+
+const enableApply = async (branchName: string) => {
+	await userEvent.click(screen.getByTestId('promotion-connection-apply-toggle'));
+	await userEvent.type(
+		await screen.findByTestId('promotion-connection-apply-branch-input'),
+		branchName,
+	);
 };
 
 const save = async () => {
@@ -229,10 +291,9 @@ describe('PromotionsSettingsView', () => {
 		createTestingPinia();
 		api.fetchPromotionProviders.mockResolvedValue([]);
 		api.fetchPromotionProvider.mockResolvedValue(sshProvider());
-		api.fetchPromotionConnection.mockResolvedValue(instanceConnection());
-		api.fetchPromotionConnections.mockResolvedValue([]);
+		api.fetchPromotionEnvironments.mockResolvedValue([]);
 		api.deletePromotionProvider.mockResolvedValue(undefined);
-		api.deletePromotionConfig.mockResolvedValue(undefined);
+		api.deletePromotionEnvironment.mockResolvedValue(undefined);
 		api.fetchPromotionRepositories.mockResolvedValue({
 			data: [repository, otherRepository],
 			nextCursor: null,
@@ -253,7 +314,7 @@ describe('PromotionsSettingsView', () => {
 			const created = gitlabConnection({
 				configs: { apply: applyConfig('main'), promote: promoteConfig('release/test', true) },
 			});
-			const pending = createDeferredPromise<PromotionConnection>();
+			const pending = createDeferredPromise<PromotionEnvironment>();
 			api.createPromotionProvider.mockResolvedValue({
 				provider: gitlabProvider(),
 				publicKey: null,
@@ -262,7 +323,9 @@ describe('PromotionsSettingsView', () => {
 				.mockResolvedValueOnce([])
 				.mockRejectedValueOnce(new Error('The provider refresh failed.'))
 				.mockResolvedValue([summaryOf(gitlabProvider())]);
-			api.createPromotionConnection.mockReturnValueOnce(pending.promise);
+			api.createPromotionEnvironment
+				.mockReturnValueOnce(pending.promise)
+				.mockResolvedValueOnce(promoteOf(created));
 			await renderReadyView();
 			await userEvent.type(screen.getByTestId('promotion-connection-name-input'), 'Production');
 			await userEvent.click(screen.getByTestId('promotion-connection-add-provider'));
@@ -289,31 +352,34 @@ describe('PromotionsSettingsView', () => {
 			expect(selectedValue('promote-branch')).toHaveAccessibleName(/^Promote base branch/);
 			await userEvent.click(screen.getByTestId('promotion-connection-create-branch-toggle'));
 			await save();
-			expect(api.createPromotionConnection).toHaveBeenCalledWith(expect.anything(), {
+			const shared = {
 				name: 'Production',
 				scope: 'instance',
 				providerId: 'provider-gitlab',
-				target: requestTargetOf(repository),
-				configs: {
-					apply: { settings: { schemaVersion: 1, branchName: 'main' } },
-					promote: {
-						settings: {
-							schemaVersion: 1,
-							baseBranchName: 'release/test',
-							createBranchOnPromotion: true,
-						},
-					},
-				},
+				remote: requestRemoteOf(repository),
+			};
+			expect(api.createPromotionEnvironment).toHaveBeenCalledWith(expect.anything(), {
+				...shared,
+				direction: 'apply',
+				settings: { schemaVersion: 1, branchName: 'main' },
 			});
-			api.fetchPromotionConnections.mockResolvedValue([created]);
-			api.fetchPromotionConnection.mockResolvedValue(created);
+			mockSaved(created);
 			api.fetchPromotionProvider.mockResolvedValue(gitlabProvider());
 			api.updatePromotionProvider.mockResolvedValue(gitlabProvider());
 			await editGitlabProvider({ name: 'GitLab renamed' });
-			pending.resolve(created);
+			pending.resolve(applyOf(created));
 			await flushPromises();
+			expect(api.createPromotionEnvironment).toHaveBeenLastCalledWith(expect.anything(), {
+				...shared,
+				direction: 'promote',
+				settings: {
+					schemaVersion: 1,
+					baseBranchName: 'release/test',
+					createBranchOnPromotion: true,
+				},
+			});
 			expect(mockShowMessage).toHaveBeenCalledWith({
-				title: 'Connection created',
+				title: 'Promotion settings saved',
 				type: 'success',
 			});
 			expect(
@@ -325,17 +391,15 @@ describe('PromotionsSettingsView', () => {
 			expect(cachedConnection.hasPromoteConfig.value).toBe(true);
 		});
 
-		it('clears dependent branches, supports discard, and converts a saved URL target to a path', async () => {
+		it('clears dependent branches, supports discard, and converts a saved URL remote to a path', async () => {
 			const saved = mockGitlabConnection(
 				gitlabConnection({
-					target: { schemaVersion: 1, remoteUrl: repository.remoteUrl },
+					remote: { schemaVersion: 1, remoteUrl: repository.remoteUrl },
 					configs: { apply: applyConfig('main'), promote: promoteConfig('release/test', true) },
 				}),
 			);
 			api.fetchPromotionProviders.mockResolvedValue([saved.provider, summaryOf(sshProvider())]);
-			api.updatePromotionConnection
-				.mockResolvedValueOnce({ ...saved, target: targetOf(repository) })
-				.mockResolvedValue({ ...saved, target: targetOf(otherRepository) });
+			mockUpdates(withShared(saved, { remote: remoteOf(repository) }));
 			await renderReadyView();
 			const hint = screen.getByText('Select a repository again to load its branches', {
 				selector: '[role="status"]',
@@ -345,9 +409,12 @@ describe('PromotionsSettingsView', () => {
 			expect(selectedValue('apply-branch')).toHaveValue('main');
 			expect(selectedValue('promote-branch')).toHaveValue('release/test');
 			await save();
-			expect(api.updatePromotionConnection).toHaveBeenCalledWith(expect.anything(), saved.id, {
-				target: requestTargetOf(repository),
-			});
+			for (const id of ['environment-apply', 'environment-promote']) {
+				expect(api.updatePromotionEnvironment).toHaveBeenCalledWith(expect.anything(), id, {
+					remote: requestRemoteOf(repository),
+				});
+			}
+			mockUpdates(withShared(saved, { remote: remoteOf(otherRepository) }));
 			await selectRepository();
 			expect(selectedValue('apply-branch')).toHaveValue('');
 			expect(selectedValue('promote-branch')).toHaveValue('');
@@ -362,11 +429,12 @@ describe('PromotionsSettingsView', () => {
 			await selectRepository();
 			await selectBranches('main', 'release/test');
 			await save();
-			expect(api.updatePromotionConnection).toHaveBeenCalledWith(expect.anything(), saved.id, {
-				target: requestTargetOf(otherRepository),
-			});
-			expect(api.upsertPromotionApplyConfig).not.toHaveBeenCalled();
-			expect(api.upsertPromotionPromoteConfig).not.toHaveBeenCalled();
+			for (const id of ['environment-apply', 'environment-promote']) {
+				expect(api.updatePromotionEnvironment).toHaveBeenCalledWith(expect.anything(), id, {
+					remote: requestRemoteOf(otherRepository),
+				});
+			}
+			expect(api.updatePromotionEnvironment).toHaveBeenCalledTimes(4);
 			await selectProvider('Production key');
 			expect(screen.getByTestId('promotion-connection-remote-url-input')).toHaveValue('');
 			expect(screen.getByTestId('promotion-connection-apply-branch-input')).toHaveValue('');
@@ -388,44 +456,13 @@ describe('PromotionsSettingsView', () => {
 			await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
 			await flushPromises();
 			await userEvent.type(screen.getByTestId('promotion-connection-name-input'), ' renamed');
-			api.updatePromotionConnection.mockResolvedValue({ ...saved, name: 'Production renamed' });
+			mockUpdates(withShared(saved, { name: 'Production renamed' }));
 			await save();
-			expect(api.updatePromotionConnection).toHaveBeenCalledWith(expect.anything(), saved.id, {
-				name: 'Production renamed',
-			});
-		});
-
-		it('blocks dependent writes after target failure and retries only unsaved writes', async () => {
-			const saved = mockGitlabConnection(
-				gitlabConnection({
-					configs: { apply: applyConfig('main'), promote: promoteConfig('main') },
-				}),
+			expect(api.updatePromotionEnvironment).toHaveBeenCalledWith(
+				expect.anything(),
+				'environment-apply',
+				{ name: 'Production renamed' },
 			);
-			api.updatePromotionConnection
-				.mockRejectedValueOnce(new Error('Target update failed.'))
-				.mockResolvedValue({ ...saved, target: targetOf(otherRepository) });
-			api.upsertPromotionApplyConfig.mockResolvedValue(applyConfig('release/test'));
-			api.upsertPromotionPromoteConfig
-				.mockRejectedValueOnce(new Error('Settings update failed.'))
-				.mockResolvedValue(promoteConfig('release/test'));
-			await renderReadyView();
-			await selectRepository();
-			await selectBranches('release/test', 'release/test');
-			await save();
-			const failure = await screen.findByTestId('promotion-connection-partial-save');
-			expect(failure).toHaveTextContent('Apply settings');
-			expect(failure).toHaveTextContent('Promote settings');
-			expect(api.upsertPromotionApplyConfig).not.toHaveBeenCalled();
-			expect(api.upsertPromotionPromoteConfig).not.toHaveBeenCalled();
-			await save();
-			await waitFor(() => expect(api.upsertPromotionPromoteConfig).toHaveBeenCalledTimes(1));
-			await save();
-			await waitFor(() =>
-				expect(screen.queryByTestId('promotion-connection-partial-save')).not.toBeInTheDocument(),
-			);
-			expect(api.updatePromotionConnection).toHaveBeenCalledTimes(2);
-			expect(api.upsertPromotionApplyConfig).toHaveBeenCalledTimes(1);
-			expect(api.upsertPromotionPromoteConfig).toHaveBeenCalledTimes(2);
 		});
 
 		it('keeps the saved repository and its branches after a host edit', async () => {
@@ -434,9 +471,9 @@ describe('PromotionsSettingsView', () => {
 				...repository,
 				remoteUrl: 'https://other.example.com/team/workflows.git',
 			};
-			api.fetchPromotionConnection
-				.mockResolvedValueOnce(saved)
-				.mockResolvedValue({ ...saved, target: targetOf(movedRepository) });
+			api.fetchPromotionEnvironment
+				.mockResolvedValueOnce(applyOf(saved))
+				.mockResolvedValue(applyOf(withShared(saved, { remote: remoteOf(movedRepository) })));
 			await renderReadyView();
 			await userEvent.type(screen.getByTestId('promotion-connection-name-input'), ' draft');
 			api.fetchPromotionRepositories.mockResolvedValue({
@@ -447,12 +484,14 @@ describe('PromotionsSettingsView', () => {
 			await waitFor(() => expect(selectedValue('repository')).toHaveValue(repository.fullPath));
 			expect(selectedValue('apply-branch')).toBeEnabled();
 			expect(selectedValue('apply-branch')).toHaveValue('main');
-			api.updatePromotionConnection.mockResolvedValue({ ...saved, name: 'Production draft' });
+			mockUpdates(withShared(saved, { name: 'Production draft' }));
 			await save();
 			await waitFor(() =>
-				expect(api.updatePromotionConnection).toHaveBeenCalledWith(expect.anything(), saved.id, {
-					name: 'Production draft',
-				}),
+				expect(api.updatePromotionEnvironment).toHaveBeenCalledWith(
+					expect.anything(),
+					'environment-apply',
+					{ name: 'Production draft' },
+				),
 			);
 		});
 
@@ -477,9 +516,9 @@ describe('PromotionsSettingsView', () => {
 					...providerB,
 					config: { schemaVersion: 1, baseUrl: 'https://new.example.com' },
 				});
-			api.fetchPromotionConnection
-				.mockResolvedValueOnce(saved)
-				.mockResolvedValue({ ...saved, target: targetOf(movedRepository) });
+			api.fetchPromotionEnvironment
+				.mockResolvedValueOnce(applyOf(saved))
+				.mockResolvedValue(applyOf(withShared(saved, { remote: remoteOf(movedRepository) })));
 			await renderReadyView();
 			await selectProvider('GitLab B');
 			await selectRepository(repository);
@@ -501,7 +540,9 @@ describe('PromotionsSettingsView', () => {
 			'clears a repository picked from the old host after a host edit on a %s connection',
 			async (state) => {
 				const saved = mockGitlabConnection();
-				api.fetchPromotionConnections.mockResolvedValue(state === 'saved' ? [saved] : []);
+				api.fetchPromotionEnvironments.mockResolvedValue(
+					state === 'saved' ? environmentsOf(saved) : [],
+				);
 				await renderReadyView();
 				if (state === 'new') {
 					await selectProvider('GitLab');
@@ -556,12 +597,15 @@ describe('PromotionsSettingsView', () => {
 					name: 'GitLab B',
 				});
 				api.fetchPromotionProviders.mockResolvedValue([saved.provider, summaryOf(providerB)]);
-				api.fetchPromotionConnection.mockResolvedValueOnce(saved).mockResolvedValue({
-					...saved,
-					target: { schemaVersion: 1, remoteUrl: saved.target.remoteUrl },
-				});
-				const pending = createDeferredPromise<PromotionConnection>();
-				api.updatePromotionConnection.mockReturnValueOnce(pending.promise);
+				api.fetchPromotionEnvironment.mockResolvedValueOnce(applyOf(saved)).mockResolvedValue(
+					applyOf(
+						withShared(saved, {
+							remote: { schemaVersion: 1, remoteUrl: saved.remote.remoteUrl },
+						}),
+					),
+				);
+				const pending = createDeferredPromise<PromotionEnvironment>();
+				api.updatePromotionEnvironment.mockReturnValueOnce(pending.promise);
 				await renderReadyView();
 				if (editedProvider === 'original') await selectProvider('GitLab B');
 				await selectRepository();
@@ -570,7 +614,7 @@ describe('PromotionsSettingsView', () => {
 				await editGitlabProvider({ baseUrl: 'https://other.example.com', token: 'test-token' });
 				const failure = new Error('The provider changed during the update.');
 				pending.reject(failure);
-				await waitFor(() => expect(api.fetchPromotionConnection).toHaveBeenCalledTimes(3));
+				await waitFor(() => expect(api.fetchPromotionEnvironment).toHaveBeenCalledTimes(3));
 				expect(mockShowError).toHaveBeenCalledWith(failure, "Couldn't save the connection");
 				if (editedProvider === 'original') {
 					expect(selectedValue('provider')).toHaveValue('GitLab B');
@@ -578,7 +622,7 @@ describe('PromotionsSettingsView', () => {
 				}
 				await discard();
 				expect(selectedValue('apply-branch')).toBeDisabled();
-				expect(api.upsertPromotionApplyConfig).not.toHaveBeenCalled();
+				expect(api.updatePromotionEnvironment).toHaveBeenCalledTimes(1);
 			},
 		);
 
@@ -586,21 +630,18 @@ describe('PromotionsSettingsView', () => {
 			'ignores an older refresh %s after a successful save',
 			async (outcome) => {
 				const saved = mockGitlabConnection();
-				const pending = createDeferredPromise<PromotionConnection>();
-				api.fetchPromotionConnection
-					.mockResolvedValueOnce(saved)
+				const pending = createDeferredPromise<PromotionEnvironment>();
+				api.fetchPromotionEnvironment
+					.mockResolvedValueOnce(applyOf(saved))
 					.mockReturnValueOnce(pending.promise);
-				api.updatePromotionConnection.mockResolvedValue({
-					...saved,
-					target: targetOf(otherRepository),
-				});
+				mockUpdates(withShared(saved, { remote: remoteOf(otherRepository) }));
 				await renderReadyView();
 				await editGitlabProvider({ name: 'GitLab renamed' });
 				await selectRepository();
 				await selectBranches();
 				await save();
 				await flushPromises();
-				if (outcome === 'success') pending.resolve(saved);
+				if (outcome === 'success') pending.resolve(applyOf(saved));
 				else pending.reject(new Error('The older refresh failed.'));
 				await flushPromises();
 				await userEvent.type(screen.getByTestId('promotion-connection-name-input'), ' draft');
@@ -645,12 +686,16 @@ describe('PromotionsSettingsView', () => {
 					globalScopes: ['gitConnection:clone', 'gitConnection:pull'],
 				});
 				const saved = mockGitlabConnection();
-				const updated = { ...saved, target: targetOf(otherRepository) };
-				api.fetchPromotionConnection.mockResolvedValueOnce(saved).mockResolvedValue(updated);
-				api.updatePromotionConnection.mockResolvedValue(updated);
+				const updated = withShared(saved, { remote: remoteOf(otherRepository) });
+				api.fetchPromotionEnvironment
+					.mockResolvedValueOnce(applyOf(saved))
+					.mockResolvedValue(applyOf(updated));
+				mockUpdates(updated);
 				const pending =
-					createDeferredPromise<Awaited<ReturnType<typeof PromotionsApi.clonePromotionCheckout>>>();
-				api.clonePromotionCheckout.mockReturnValueOnce(pending.promise);
+					createDeferredPromise<
+						Awaited<ReturnType<typeof PromotionsApi.connectPromotionCheckout>>
+					>();
+				api.connectPromotionCheckout.mockReturnValueOnce(pending.promise);
 				await renderReadyView();
 				await userEvent.click(screen.getByTestId('promotion-checkout-connect'));
 				if (state === 'replaced') {
@@ -660,8 +705,7 @@ describe('PromotionsSettingsView', () => {
 					await flushPromises();
 				}
 				pending.resolve({
-					connectionId: saved.id,
-					configId: 'config-apply',
+					environmentId: 'environment-apply',
 					direction: 'apply',
 					branchName: 'main',
 					hasCheckout: true,
@@ -670,7 +714,7 @@ describe('PromotionsSettingsView', () => {
 				if (state === 'replaced')
 					expect(screen.getByTestId('apply-instance-button')).toBeDisabled();
 				else expect(screen.getByTestId('apply-instance-button')).toBeEnabled();
-				expect(api.fetchPromotionConnection).toHaveBeenCalledTimes(state === 'replaced' ? 2 : 1);
+				expect(api.fetchPromotionEnvironment).toHaveBeenCalledTimes(state === 'replaced' ? 2 : 1);
 			},
 		);
 	});
@@ -804,7 +848,7 @@ describe('PromotionsSettingsView', () => {
 
 		it('shows the stored key and prevents deletion of a provider in use', async () => {
 			api.fetchPromotionProviders.mockResolvedValue([summaryOf(sshProvider())]);
-			api.fetchPromotionConnections.mockResolvedValue([instanceConnection()]);
+			mockSaved(instanceConnection());
 			await renderReadyView();
 
 			await openProviderDialog(await screen.findByTestId('promotion-provider-row'));
@@ -859,10 +903,10 @@ describe('PromotionsSettingsView', () => {
 		});
 
 		it('shows an error when the server refuses deletion', async () => {
-			// Simulate a connection added after the dialog loaded.
+			// Simulate an environment added after the dialog loaded.
 			api.fetchPromotionProviders.mockResolvedValue([summaryOf(sshProvider())]);
 			mockConfirm.mockResolvedValue(MODAL_CONFIRM);
-			const conflict = new Error('This provider is used by a connection');
+			const conflict = new Error('This provider is used by a promotion environment');
 			api.deletePromotionProvider.mockRejectedValueOnce(conflict);
 			await renderReadyView();
 
@@ -881,9 +925,9 @@ describe('PromotionsSettingsView', () => {
 		});
 
 		it('shows a load error when connection detail cannot be loaded', async () => {
-			api.fetchPromotionConnections.mockResolvedValue([instanceConnection()]);
-			api.fetchPromotionConnection.mockRejectedValueOnce(
-				new Error('Unable to load connection detail'),
+			api.fetchPromotionEnvironments.mockResolvedValue(environmentsOf(instanceConnection()));
+			api.fetchPromotionEnvironment.mockRejectedValueOnce(
+				new Error('Unable to load environment detail'),
 			);
 			renderView();
 
@@ -894,7 +938,7 @@ describe('PromotionsSettingsView', () => {
 			api.fetchPromotionProviders
 				.mockRejectedValueOnce(new Error('Unable to load providers'))
 				.mockResolvedValue([summaryOf(sshProvider())]);
-			api.fetchPromotionConnections.mockResolvedValue([instanceConnection()]);
+			mockSaved(instanceConnection());
 			renderView();
 
 			await userEvent.click(
@@ -911,15 +955,16 @@ describe('PromotionsSettingsView', () => {
 		it('does not load connection detail when no instance connection exists', async () => {
 			await renderReadyView();
 
-			expect(api.fetchPromotionConnection).not.toHaveBeenCalled();
+			expect(api.fetchPromotionEnvironment).not.toHaveBeenCalled();
 		});
 
-		it('creates a connection with Apply and Promote settings', async () => {
-			api.createPromotionConnection.mockResolvedValue(
-				instanceConnection({
-					configs: { apply: applyConfig('main'), promote: promoteConfig('develop') },
-				}),
-			);
+		it('creates one environment for each enabled direction', async () => {
+			const created = instanceConnection({
+				configs: { apply: applyConfig('main'), promote: promoteConfig('develop') },
+			});
+			api.createPromotionEnvironment
+				.mockResolvedValueOnce(applyOf(created))
+				.mockResolvedValueOnce(promoteOf(created));
 			api.fetchPromotionProviders.mockResolvedValue([summaryOf(sshProvider())]);
 			await renderReadyView();
 
@@ -937,42 +982,60 @@ describe('PromotionsSettingsView', () => {
 			);
 			await save();
 
-			await waitFor(() => expect(api.createPromotionConnection).toHaveBeenCalledTimes(1));
-			expect(api.createPromotionConnection).toHaveBeenCalledWith(expect.anything(), {
+			await waitFor(() => expect(api.createPromotionEnvironment).toHaveBeenCalledTimes(2));
+			const shared = {
 				name: 'Production',
 				scope: 'instance',
 				providerId: 'provider-ssh',
-				target: { schemaVersion: 1, remoteUrl: 'git@github.com:acme/workflows.git' },
-				configs: {
-					apply: { name: undefined, settings: { schemaVersion: 1, branchName: 'main' } },
-					promote: {
-						name: undefined,
-						settings: {
-							schemaVersion: 1,
-							baseBranchName: 'develop',
-							createBranchOnPromotion: false,
-						},
-					},
-				},
+				remote: { schemaVersion: 1, remoteUrl: 'git@github.com:acme/workflows.git' },
+			};
+			expect(api.createPromotionEnvironment).toHaveBeenCalledWith(expect.anything(), {
+				...shared,
+				direction: 'apply',
+				settings: { schemaVersion: 1, branchName: 'main' },
+			});
+			expect(api.createPromotionEnvironment).toHaveBeenCalledWith(expect.anything(), {
+				...shared,
+				direction: 'promote',
+				settings: { schemaVersion: 1, baseBranchName: 'develop', createBranchOnPromotion: false },
 			});
 		});
 
+		it('blocks the first save when no direction is enabled', async () => {
+			api.fetchPromotionProviders.mockResolvedValue([summaryOf(sshProvider())]);
+			await renderReadyView();
+
+			await selectProvider('Production key');
+			await fillConnectionBasics('Production', 'git@github.com:acme/workflows.git');
+			const saveButton = within(screen.getByTestId('promotion-connection-save-bar')).getByRole(
+				'button',
+				{ name: /save settings/i },
+			);
+
+			expect(saveButton).toBeDisabled();
+			await enableApply('main');
+			expect(saveButton).toBeEnabled();
+		});
+
 		it('accepts an SSH URL without a username', async () => {
-			api.createPromotionConnection.mockResolvedValue(
-				instanceConnection({
-					target: { schemaVersion: 1, remoteUrl: 'github.com:acme/workflows.git' },
-				}),
+			api.createPromotionEnvironment.mockResolvedValue(
+				applyOf(
+					instanceConnection({
+						remote: { schemaVersion: 1, remoteUrl: 'github.com:acme/workflows.git' },
+					}),
+				),
 			);
 			api.fetchPromotionProviders.mockResolvedValue([summaryOf(sshProvider())]);
 			await renderReadyView();
 
 			await selectProvider('Production key');
 			await fillConnectionBasics('Production', 'github.com:acme/workflows.git');
+			await enableApply('main');
 			await save();
 
-			await waitFor(() => expect(api.createPromotionConnection).toHaveBeenCalled());
-			expect(api.createPromotionConnection.mock.calls[0][1]).toMatchObject({
-				target: { schemaVersion: 1, remoteUrl: 'github.com:acme/workflows.git' },
+			await waitFor(() => expect(api.createPromotionEnvironment).toHaveBeenCalled());
+			expect(api.createPromotionEnvironment.mock.calls[0][1]).toMatchObject({
+				remote: { schemaVersion: 1, remoteUrl: 'github.com:acme/workflows.git' },
 			});
 		});
 
@@ -981,11 +1044,12 @@ describe('PromotionsSettingsView', () => {
 			const refusal = new Error(
 				'SSH key providers require an ssh:// or [user@]host:path remote URL',
 			);
-			api.createPromotionConnection.mockRejectedValueOnce(refusal);
+			api.createPromotionEnvironment.mockRejectedValueOnce(refusal);
 			await renderReadyView();
 
 			await selectProvider('Production key');
 			await fillConnectionBasics('Production', 'https://github.com/acme/workflows.git');
+			await enableApply('main');
 			await save();
 
 			await waitFor(() => expect(mockShowError).toHaveBeenCalledWith(refusal, expect.any(String)));
@@ -1000,11 +1064,17 @@ describe('PromotionsSettingsView', () => {
 			const saved = instanceConnection({
 				configs: { apply: applyConfig('main'), promote: promoteConfig('develop', true) },
 			});
-			api.fetchPromotionConnections.mockResolvedValue([saved]);
-			api.fetchPromotionConnection.mockResolvedValue(saved);
+			mockSaved(saved);
 			await renderReadyView();
 
-			expect(api.fetchPromotionConnection).toHaveBeenCalledWith(expect.anything(), 'connection-1');
+			expect(api.fetchPromotionEnvironment).toHaveBeenCalledWith(
+				expect.anything(),
+				'environment-apply',
+			);
+			expect(api.fetchPromotionEnvironment).toHaveBeenCalledWith(
+				expect.anything(),
+				'environment-promote',
+			);
 			expect(screen.getByTestId('promotion-connection-name-input')).toHaveValue('Production');
 			expect(screen.getByTestId('promotion-connection-remote-url-input')).toHaveValue(
 				'git@github.com:acme/workflows.git',
@@ -1024,110 +1094,72 @@ describe('PromotionsSettingsView', () => {
 		it('updates the connection when another provider is selected', async () => {
 			const provider = summaryOf(sshProvider({ id: 'provider-2', name: 'Mirror' }));
 			api.fetchPromotionProviders.mockResolvedValue([summaryOf(sshProvider()), provider]);
-			api.updatePromotionConnection.mockResolvedValue(
-				instanceConnection({
-					provider,
-					configs: { apply: applyConfig('main') },
-				}),
-			);
-			const saved = instanceConnection({ configs: { apply: applyConfig('main') } });
-			api.fetchPromotionConnections.mockResolvedValue([saved]);
-			api.fetchPromotionConnection.mockResolvedValue(saved);
+			mockUpdates(instanceConnection({ provider }));
+			mockSaved(instanceConnection());
 			await renderReadyView();
 
 			await selectProvider('Mirror');
 			await save();
 
 			await waitFor(() =>
-				expect(api.updatePromotionConnection).toHaveBeenCalledWith(
+				expect(api.updatePromotionEnvironment).toHaveBeenCalledWith(
 					expect.anything(),
-					'connection-1',
-					{
-						providerId: 'provider-2',
-					},
+					'environment-apply',
+					{ providerId: 'provider-2' },
 				),
 			);
 			expect(api.updatePromotionProvider).not.toHaveBeenCalled();
 		});
 
-		it('retries failed settings without repeating successful updates', async () => {
-			api.updatePromotionConnection.mockResolvedValue(
-				instanceConnection({
-					name: 'Renamed',
-					configs: { promote: promoteConfig('main') },
-				}),
-			);
-			api.upsertPromotionPromoteConfig.mockResolvedValue(promoteConfig('main-next'));
+		it('retries only the environment whose write failed', async () => {
 			api.fetchPromotionProviders.mockResolvedValue([summaryOf(sshProvider())]);
-			const saved = instanceConnection({ configs: { promote: promoteConfig('main', false) } });
-			api.fetchPromotionConnections.mockResolvedValue([saved]);
-			api.fetchPromotionConnection.mockResolvedValue(saved);
-			api.upsertPromotionPromoteConfig.mockRejectedValueOnce(new Error('git is unreachable'));
+			const saved = instanceConnection({
+				configs: { apply: applyConfig('main'), promote: promoteConfig('main') },
+			});
+			const renamed = withShared(saved, { name: 'Renamed' });
+			mockSaved(saved);
+			api.updatePromotionEnvironment
+				.mockRejectedValueOnce(new Error('git is unreachable'))
+				.mockResolvedValueOnce(promoteOf(renamed))
+				.mockResolvedValueOnce(applyOf(renamed));
 			await renderReadyView();
 
 			await userEvent.clear(screen.getByTestId('promotion-connection-name-input'));
 			await userEvent.type(screen.getByTestId('promotion-connection-name-input'), 'Renamed');
-			await userEvent.type(
-				await screen.findByTestId('promotion-connection-promote-branch-input'),
-				'-next',
-			);
 			await save();
 
 			const notice = await screen.findByTestId('promotion-connection-partial-save');
-			expect(notice).toHaveTextContent('Promote settings');
+			expect(notice).toHaveTextContent('Apply settings');
+			expect(notice).not.toHaveTextContent('Promote settings');
 			expect(mockShowError).toHaveBeenCalled();
 			expect(mockShowMessage).not.toHaveBeenCalled();
-			expect(api.updatePromotionConnection).toHaveBeenCalledTimes(1);
 
 			await save();
 
-			await waitFor(() => expect(api.upsertPromotionPromoteConfig).toHaveBeenCalledTimes(2));
-			expect(api.updatePromotionConnection).toHaveBeenCalledTimes(1);
-			expect(screen.queryByTestId('promotion-connection-partial-save')).toBeNull();
-			expect(mockShowMessage).toHaveBeenCalled();
-		});
-
-		it('saves independent branches after a name failure and retries only the name', async () => {
-			const saved = instanceConnection({ configs: { apply: applyConfig('main') } });
-			api.fetchPromotionProviders.mockResolvedValue([saved.provider]);
-			api.fetchPromotionConnections.mockResolvedValue([saved]);
-			api.fetchPromotionConnection.mockResolvedValue(saved);
-			api.updatePromotionConnection
-				.mockRejectedValueOnce(new Error('Name update failed.'))
-				.mockResolvedValue({
-					...saved,
-					name: 'Production renamed',
-					configs: { apply: applyConfig('main-next') },
-				});
-			api.upsertPromotionApplyConfig.mockResolvedValue(applyConfig('main-next'));
-			await renderReadyView();
-			await userEvent.type(screen.getByTestId('promotion-connection-name-input'), ' renamed');
-			await userEvent.type(screen.getByTestId('promotion-connection-apply-branch-input'), '-next');
-			await save();
-			await screen.findByTestId('promotion-connection-partial-save');
-			await save();
 			await waitFor(() =>
 				expect(screen.queryByTestId('promotion-connection-partial-save')).not.toBeInTheDocument(),
 			);
-			expect(api.updatePromotionConnection).toHaveBeenCalledTimes(2);
-			expect(api.upsertPromotionApplyConfig).toHaveBeenCalledTimes(1);
+			expect(api.updatePromotionEnvironment).toHaveBeenCalledTimes(3);
+			expect(api.updatePromotionEnvironment).toHaveBeenLastCalledWith(
+				expect.anything(),
+				'environment-apply',
+				{ name: 'Renamed' },
+			);
+			expect(mockShowMessage).toHaveBeenCalled();
 		});
 
 		it('deletes Apply settings when Apply is turned off', async () => {
 			api.fetchPromotionProviders.mockResolvedValue([summaryOf(sshProvider())]);
-			const saved = instanceConnection({ configs: { apply: applyConfig('main') } });
-			api.fetchPromotionConnections.mockResolvedValue([saved]);
-			api.fetchPromotionConnection.mockResolvedValue(saved);
+			mockSaved(instanceConnection());
 			await renderReadyView();
 
 			await userEvent.click(screen.getByTestId('promotion-connection-apply-toggle'));
 			await save();
 
 			await waitFor(() =>
-				expect(api.deletePromotionConfig).toHaveBeenCalledWith(
+				expect(api.deletePromotionEnvironment).toHaveBeenCalledWith(
 					expect.anything(),
-					'connection-1',
-					'apply',
+					'environment-apply',
 				),
 			);
 		});

@@ -1,3 +1,4 @@
+import type { SerializedCredential } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import {
 	createTeamProject,
@@ -40,7 +41,6 @@ import {
 	serializedWorkflowWithCredential,
 } from './fixtures/package-fixtures';
 import type { BlockingIssue, ImportPackageRequest } from '../n8n-packages.types';
-import type { SerializedCredential } from '../spec/serialized/credential.schema';
 
 const EXPRESSION = '={{ $vars.githubToken }}';
 const OTHER_EXPRESSION = '={{ $vars.otherToken }}';

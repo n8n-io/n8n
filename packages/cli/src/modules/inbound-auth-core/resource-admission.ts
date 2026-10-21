@@ -10,6 +10,7 @@ import {
 	type Extracted,
 	type Inbound,
 	type ProtectedResource,
+	type Refusal,
 	type RefusalReason,
 	type Refused,
 } from '@n8n/inbound-auth';
@@ -51,17 +52,21 @@ export class InboundResourceAdmission extends ResourceAdmission {
 		return { ok: true, context };
 	}
 
-	async challenge({ advertised, reason }: Refused): Promise<string> {
+	async challenge({ advertised, reason }: Refusal): Promise<string> {
 		const { challenges } = await this.authenticationService.advertise(advertised);
+		const challenge = challenges[0] ?? 'Bearer';
+		// RFC 6750 §3.1: a request that lacks any authentication information
+		// SHOULD NOT get an error code.
+		if (reason === undefined || reason === 'no-credential') return challenge;
 		const error = reason === 'insufficient_scope' ? 'insufficient_scope' : 'invalid_token';
-		return `${challenges[0] ?? 'Bearer'}, error="${error}", error_description="${reason}"`;
+		return `${challenge}, error="${error}", error_description="${reason}"`;
 	}
 
 	/**
 	 * The one log line for a refusal the surface decides itself, before or after the pipeline.
 	 * Carries no token, no external subject and no email.
 	 */
-	private refuse(inbound: Inbound, reason: RefusalReason, context?: SecurityContext): Refused {
+	refuse(inbound: Inbound, reason: RefusalReason, context?: SecurityContext): Refused {
 		this.logger.warn('Inbound authentication denied', {
 			surface: inbound.surface,
 			resource: inbound.resource.url,

@@ -23,7 +23,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useAgentProjectId } from '../composables/useAgentProjectId';
 import { useUsersStore } from '@n8n/stores/users.store';
 import shared from '../styles/agent-panel.module.scss';
-import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+import { AI_GATEWAY_MANAGED_TAG, getModelPromptCachingCapability } from '@n8n/api-types';
 import { useAgentModelCredentials } from '../composables/useAgentModelCredentials';
 import { useModelCatalog } from '../composables/useModelCatalog';
 import {
@@ -259,7 +259,7 @@ function onModelChange(selection: AgentModelSelection, source: 'user' | 'auto' =
 		'config' in webSearchChanges ? webSearchChanges.config : props.config?.config;
 	const promptCachingChanges = normalizePromptCachingForModelChange(
 		webSearchConfig,
-		capabilities?.promptCaching ?? false,
+		getModelPromptCachingCapability(model),
 	);
 	const normalizedConfig =
 		'config' in promptCachingChanges ? promptCachingChanges.config : webSearchConfig;

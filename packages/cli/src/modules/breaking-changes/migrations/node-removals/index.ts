@@ -1,3 +1,4 @@
+import { agentToolsV1ToV2 } from './agent-tools-v1-to-v2.migration';
 import { aiTransformToCode } from './ai-transform-to-code.migration';
 import {
 	binaryInputLoaderToDefaultDataLoader,
@@ -21,6 +22,7 @@ import { writeBinaryFileToReadWriteFile } from './write-binary-file-to-read-writ
 import type { Migration } from '../node-migration';
 
 export const nodeRemovalMigrations: Migration[] = [
+	agentToolsV1ToV2,
 	aiTransformToCode,
 	binaryInputLoaderToDefaultDataLoader,
 	cronToScheduleTrigger,

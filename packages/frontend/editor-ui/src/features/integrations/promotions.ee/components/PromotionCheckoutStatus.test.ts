@@ -10,7 +10,7 @@ const renderComponent = createComponentRenderer(PromotionCheckoutStatus, {
 describe('PromotionCheckoutStatus', () => {
 	it('offers Connect when no checkout exists', () => {
 		const { getByTestId, queryByTestId } = renderComponent({
-			props: { checkout: { hasCheckout: false, matchesConfig: false } },
+			props: { checkout: { hasCheckout: false, matchesEnvironment: false } },
 		});
 
 		expect(getByTestId('promotion-checkout-connect')).toBeEnabled();
@@ -33,7 +33,7 @@ describe('PromotionCheckoutStatus', () => {
 
 	it('offers only Disconnect when connected', () => {
 		const { getByTestId, queryByTestId } = renderComponent({
-			props: { checkout: { hasCheckout: true, matchesConfig: true } },
+			props: { checkout: { hasCheckout: true, matchesEnvironment: true } },
 		});
 
 		expect(getByTestId('promotion-checkout-status')).toHaveTextContent('Connected to main');
@@ -43,7 +43,7 @@ describe('PromotionCheckoutStatus', () => {
 
 	it('offers Connect and Disconnect when the checkout is stale', () => {
 		const { getByTestId } = renderComponent({
-			props: { checkout: { hasCheckout: true, matchesConfig: false } },
+			props: { checkout: { hasCheckout: true, matchesEnvironment: false } },
 		});
 
 		expect(getByTestId('promotion-checkout-connect')).toBeInTheDocument();
@@ -53,7 +53,7 @@ describe('PromotionCheckoutStatus', () => {
 	it('keeps the stale status visible when Connect is disabled', () => {
 		const { getByTestId } = renderComponent({
 			props: {
-				checkout: { hasCheckout: true, matchesConfig: false },
+				checkout: { hasCheckout: true, matchesEnvironment: false },
 				disabledReason: 'Save your changes before you connect.',
 			},
 		});
@@ -67,7 +67,7 @@ describe('PromotionCheckoutStatus', () => {
 
 	it('shows the spinner on Connect while connecting', () => {
 		const { getByTestId } = renderComponent({
-			props: { checkout: { hasCheckout: true, matchesConfig: false }, busy: 'connect' },
+			props: { checkout: { hasCheckout: true, matchesEnvironment: false }, busy: 'connect' },
 		});
 
 		expect(getByTestId('promotion-checkout-connect')).toHaveAttribute('aria-busy', 'true');
@@ -77,7 +77,7 @@ describe('PromotionCheckoutStatus', () => {
 
 	it('shows the spinner on Disconnect while disconnecting', () => {
 		const { getByTestId } = renderComponent({
-			props: { checkout: { hasCheckout: true, matchesConfig: true }, busy: 'disconnect' },
+			props: { checkout: { hasCheckout: true, matchesEnvironment: true }, busy: 'disconnect' },
 		});
 
 		expect(getByTestId('promotion-checkout-disconnect')).toHaveAttribute('aria-busy', 'true');
@@ -85,7 +85,7 @@ describe('PromotionCheckoutStatus', () => {
 
 	it('emits connect and disconnect on click', async () => {
 		const { getByTestId, emitted } = renderComponent({
-			props: { checkout: { hasCheckout: true, matchesConfig: false } },
+			props: { checkout: { hasCheckout: true, matchesEnvironment: false } },
 		});
 
 		await userEvent.click(getByTestId('promotion-checkout-connect'));

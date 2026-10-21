@@ -3,9 +3,18 @@ import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-avai
 import { useAgentEvalsStore } from '../agentEvals.store';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
 import type { AgentResource } from '../types';
+
+const track = vi.fn();
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track }),
+}));
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ pushRef: 'session-xyz' }),
+}));
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
@@ -56,8 +65,9 @@ vi.mock('@n8n/design-system', () => ({
 	N8nTabs: {
 		name: 'N8nTabs',
 		template:
-			'<nav data-testid="agent-header-tabs"><button v-for="option in options" :key="option.value">{{ option.label }}</button></nav>',
+			'<nav data-testid="agent-header-tabs"><button v-for="option in options" :key="option.value" :data-tab="option.value" @click="$emit(\'update:modelValue\', option.value)">{{ option.label }}</button></nav>',
 		props: ['modelValue', 'options'],
+		emits: ['update:modelValue'],
 	},
 	N8nToggle: {
 		name: 'N8nToggle',
@@ -102,7 +112,7 @@ vi.mock('../components/AgentFilesPanel.vue', () => ({
 	default: {
 		name: 'AgentFilesPanel',
 		template: '<div data-testid="agent-files-panel" />',
-		props: ['files', 'disabled', 'loading', 'uploading', 'deletingFileId'],
+		props: ['agentId', 'files', 'disabled', 'loading', 'uploading', 'deletingFileId'],
 		emits: ['upload-files', 'delete-file'],
 	},
 }));
@@ -225,6 +235,36 @@ async function mountColumn(
 describe('AgentBuilderEditorColumn', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	it.each([
+		['agent', 'build'],
+		['sessions', 'sessions'],
+		['knowledge', 'knowledge'],
+		['settings', 'settings'],
+	] as const)('tracks repeated %s tab activation as %s', async (tab, name) => {
+		const wrapper = await mountColumn({ activeMainTab: tab });
+		expect(track).not.toHaveBeenCalled();
+
+		await wrapper.get(`[data-tab="${tab}"]`).trigger('click');
+		await wrapper.get(`[data-tab="${tab}"]`).trigger('click');
+
+		expect(track).toHaveBeenCalledTimes(2);
+		expect(track).toHaveBeenLastCalledWith(TELEMETRY_EVENT.AGENTS.USER_CLICKED_AGENTS_TAB, {
+			agent_id: 'agent-1',
+			session_id: 'session-xyz',
+			name,
+		});
+		expect(wrapper.emitted('update:activeMainTab')).toEqual([[tab], [tab]]);
+	});
+
+	it('keeps initialization, programmatic tab changes, and Evals telemetry silent', async () => {
+		const wrapper = await mountColumn({ activeMainTab: 'knowledge' });
+		await wrapper.setProps({ activeMainTab: 'settings' });
+		wrapper.getComponent({ name: 'N8nTabs' }).vm.$emit('update:modelValue', 'evals');
+
+		expect(track).not.toHaveBeenCalled();
+		expect(wrapper.emitted('update:activeMainTab')).toEqual([['evals']]);
 	});
 
 	it('renders Build, Knowledge, Sessions, and Settings tabs without Raw', async () => {
@@ -364,6 +404,9 @@ describe('AgentBuilderEditorColumn', () => {
 
 		expect(agentWrapper.findComponent({ name: 'AgentFilesPanel' }).exists()).toBe(false);
 		expect(knowledgeWrapper.findComponent({ name: 'AgentFilesPanel' }).exists()).toBe(true);
+		expect(knowledgeWrapper.findComponent({ name: 'AgentFilesPanel' }).props('agentId')).toBe(
+			'agent-1',
+		);
 		expect(
 			knowledgeWrapper
 				.findAllComponents({ name: 'AgentPanel' })
@@ -418,13 +461,16 @@ describe('AgentBuilderEditorColumn', () => {
 		]);
 	});
 
-	it('opens preview chat from the Triggers card', async function opensPreviewChat() {
-		const wrapper = await mountColumn({ agent: { isRunnable: true } as AgentResource });
+	it.each([true, false])(
+		'handles preview clicks from the Triggers card when runnable is %s',
+		async (isRunnable) => {
+			const wrapper = await mountColumn({ agent: { isRunnable } as AgentResource });
 
-		await wrapper.get('[data-testid="agent-triggers-preview-chat-button"]').trigger('click');
+			await wrapper.get('[data-testid="agent-triggers-preview-chat-button"]').trigger('click');
 
-		expect(wrapper.emitted('open-preview')).toEqual([[]]);
-	});
+			expect(wrapper.emitted('open-preview')).toEqual(isRunnable ? [['icon']] : undefined);
+		},
+	);
 
 	it('renders the episodic memory row on the Agent tab', async function rendersMemoryOnAgentTab() {
 		const wrapper = await mountColumn();

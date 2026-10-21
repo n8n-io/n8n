@@ -20,14 +20,12 @@ export interface AgentBuilderTelemetryDeps {
 	agent: Ref<AgentResource | null>;
 	/** Local (unsaved) config — the fingerprint source for emitted events. */
 	localConfig: Ref<AgentJsonConfig | null>;
-	connectedTriggers: Ref<string[]>;
 }
 
 interface EditSnapshot {
 	agentId: string;
 	status: AgentTelemetryStatus;
 	config: AgentJsonConfig | null;
-	connectedTriggers: string[];
 }
 
 /**
@@ -70,7 +68,6 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 			agentId: deps.agentId.value,
 			status: deriveAgentStatus(deps.agent.value),
 			config: deps.localConfig.value,
-			connectedTriggers: deps.connectedTriggers.value,
 		};
 	}
 

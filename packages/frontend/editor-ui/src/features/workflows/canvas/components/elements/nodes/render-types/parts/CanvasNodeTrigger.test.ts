@@ -6,7 +6,6 @@ import { waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import CanvasNodeTrigger from './CanvasNodeTrigger.vue';
 
 const runEntireWorkflow = vi.hoisted(() => vi.fn());
@@ -26,10 +25,9 @@ vi.mock('vue-router', async (importOriginal) => ({
 
 const renderComponent = createComponentRenderer(CanvasNodeTrigger);
 
-const renderWithCredentials = (currentUserCanUse: boolean, sharingEnabled = true) => {
+const renderWithCredentials = (currentUserCanUse: boolean) => {
 	const pinia = createTestingPinia({ stubActions: false });
 	setActivePinia(pinia);
-	useSettingsStore().settings.granularCredentialSharing = sharingEnabled;
 
 	const documentStore = {
 		documentId: 'workflow-1',
@@ -99,12 +97,6 @@ describe('CanvasNodeTrigger', () => {
 			await userEvent.click(button);
 
 			expect(runEntireWorkflow).toHaveBeenCalledWith('node', 'Schedule Trigger');
-		});
-
-		it('should keep the button enabled when credential sharing is off', () => {
-			const { getByTestId } = renderWithCredentials(false, false);
-
-			expect(getByTestId('execute-workflow-button-Schedule Trigger')).toBeEnabled();
 		});
 	});
 });

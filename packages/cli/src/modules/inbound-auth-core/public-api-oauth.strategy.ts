@@ -1,7 +1,13 @@
 import type { AuthenticatedRequest, TokenGrant } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { extractBearer, inboundFrom, inboundRequestOf, ResourceAdmission } from '@n8n/inbound-auth';
+import {
+	extractBearer,
+	inboundFrom,
+	inboundRequestOf,
+	isUrlIssuer,
+	ResourceAdmission,
+} from '@n8n/inbound-auth';
 import {
 	getApiKeyScopesForRole,
 	isApiKeyScope,
@@ -36,8 +42,7 @@ export class PublicApiOAuthStrategy implements AuthStrategy {
 	}
 
 	private isOAuthIssuer(token: string): boolean {
-		const iss: unknown = this.jwtService.decodeUnverified<{ iss?: unknown } | null>(token)?.iss;
-		return typeof iss === 'string' && URL.canParse(iss) && /^https?:$/.test(new URL(iss).protocol);
+		return isUrlIssuer(this.jwtService.decodeUnverified<{ iss?: unknown } | null>(token)?.iss);
 	}
 
 	async authenticate(req: AuthenticatedRequest): Promise<boolean | null> {
