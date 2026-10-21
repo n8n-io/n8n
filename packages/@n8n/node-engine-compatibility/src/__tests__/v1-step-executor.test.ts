@@ -575,6 +575,8 @@ describe('sub-workflows', () => {
 		expect(result.spawn?.executionId).toMatch(UUID_V7);
 		expect(resolveSubWorkflow).toHaveBeenCalledExactlyOnceWith({
 			workflowId: 'child',
+			// The same id the child then runs under.
+			executionId: result.spawn?.executionId,
 			parent: {
 				executionId: 'exec-1',
 				workflowId: 'wf-1',

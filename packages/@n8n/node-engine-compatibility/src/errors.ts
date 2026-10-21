@@ -102,7 +102,6 @@ export class UnsupportedWaitError extends UserError {
 	}
 }
 
-/** The node asked to wait until a value that is not a date, so no deadline can be declared. */
 export class InlineSubWorkflowError extends UserError {
 	constructor(nodeName: string) {
 		super(
@@ -125,6 +124,7 @@ export class SubWorkflowsNotSupportedError extends UserError {
 	}
 }
 
+/** The node asked to wait until a value that is not a date, so no deadline can be declared. */
 export class InvalidWaitDateError extends UserError {
 	constructor(nodeName: string) {
 		super(`Node "${nodeName}" asked to wait until a date that is not valid`);

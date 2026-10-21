@@ -20,6 +20,8 @@ function isNodeExecutionData(value: unknown): value is INodeExecutionData {
 export const resolveSubWorkflowRequestSchema = z.object({
 	/** The sub-workflow, by id. The inline, file and URL sources are not served. */
 	workflowId: z.string().min(1),
+	/** The child execution's id, minted by the caller, so the trigger runs under it. */
+	executionId: z.string().uuid(),
 	parent: z.object({
 		/** An engine execution id. No control plane execution row exists for it. */
 		executionId: z.string().min(1),

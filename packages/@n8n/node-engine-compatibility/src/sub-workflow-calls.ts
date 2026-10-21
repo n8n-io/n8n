@@ -33,6 +33,11 @@ interface CallOptions {
  * child the engine starts: awaited, which suspends the step, or detached,
  * which rides on the outputs. On a child resume the node runs again, and the
  * same call is answered from the child's result instead.
+ *
+ * Only a node that runs through `DurableWaitExecuteContext` reaches this: the
+ * Execute Sub-workflow node and its kind, whose work before the call has no
+ * side effect. An AI Agent tool calls through a supply-data context, which
+ * keeps the host's unimplemented `executeWorkflow`, so it never replays here.
  */
 export class SubWorkflowCalls {
 	/** The child the step waits for, once an awaited call was made. */
@@ -56,9 +61,11 @@ export class SubWorkflowCalls {
 		if (this.resume) return this.answerFromChild(this.resume, options);
 
 		// A second call would start a second child the engine cannot wait for.
-		// The first one is dropped too, so no child starts for a run that fails.
+		// The first one is dropped too, so no child starts for a run that fails,
+		// whichever way the node reports the failure.
 		if (this.called) {
 			this.awaited = undefined;
+			this.detached.length = 0;
 			throw new RepeatedSubWorkflowCallError(this.node.name);
 		}
 		this.called = true;
@@ -66,9 +73,13 @@ export class SubWorkflowCalls {
 		if (workflowInfo.id === undefined) throw new InlineSubWorkflowError(this.node.name);
 		if (!this.resolve) throw new SubWorkflowsNotSupportedError(this.node.name);
 
+		// Minted here, before the child is resolved, so its trigger runs under it
+		// and a fire-and-forget node reports the id as v1 does.
+		const executionId = uuidv7();
 		const { id, name, type, typeVersion } = this.node;
 		const resolved = await this.resolve({
 			workflowId: workflowInfo.id,
+			executionId,
 			parent: {
 				executionId: this.stepContext.executionId,
 				workflowId: this.stepContext.workflowId,
@@ -81,8 +92,7 @@ export class SubWorkflowCalls {
 			},
 			items,
 		});
-		// Minted here, so a fire-and-forget node reports the id as v1 does.
-		const spawn: SpawnDeclaration = { executionId: uuidv7(), ...resolved };
+		const spawn: SpawnDeclaration = { executionId, ...resolved };
 
 		if (options.doNotWaitToFinish) {
 			this.detached.push(spawn);
@@ -105,10 +115,17 @@ export class SubWorkflowCalls {
 }
 
 /**
- * The child's result as v1 hands it to the node: every terminal step's items,
- * concatenated per output slot in the order the child reported them. The
- * last-run-only option keeps the last pass of each terminal node, as the
- * trigger's legacy "Items to Return" setting does for its last node.
+ * The child's result as the node receives it: every terminal step's items,
+ * concatenated per output slot in the order the child reported them.
+ *
+ * An item's own paired-item mark points into the child, at the input of the
+ * node that produced it, and nothing here can follow it back to the child's
+ * trigger. The marks are dropped, so the node pairs each item with its own
+ * input by index instead.
+ *
+ * The last-run-only option keeps the last pass of each terminal node. v1 keeps
+ * the last pass of the one node that ran last, so the two differ for a child
+ * with several terminal branches, as the whole result does.
  */
 export function toSubWorkflowOutput(
 	result: ChildResult,
@@ -118,10 +135,14 @@ export function toSubWorkflowOutput(
 	const slots: INodeExecutionData[][] = [];
 	for (const step of steps) {
 		fromStepInputs(step.outputs).forEach((items, slot) => {
-			(slots[slot] ??= []).push(...items);
+			(slots[slot] ??= []).push(...items.map(withoutPairedItem));
 		});
 	}
 	return slots.length === 0 ? [[]] : slots.map((slot) => slot ?? []);
+}
+
+function withoutPairedItem({ pairedItem, ...item }: INodeExecutionData): INodeExecutionData {
+	return item;
 }
 
 function lastPassPerNode(result: ChildResult): ChildResult {
