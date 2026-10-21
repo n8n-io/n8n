@@ -3,6 +3,7 @@ import type { EventService } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { ExecutionRepository, User, WorkflowEntity, WorkflowRepository } from '@n8n/db';
+import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type {
 	IRun,
@@ -794,6 +795,39 @@ describe('MemoryGuardService', () => {
 			}
 
 			expect(stoppedIds()).toEqual(['1', '2', '3']);
+			expect(deactivateWorkflowAsSystem).not.toHaveBeenCalled();
+		});
+
+		it('should not count stops after a held execution waits too long', async () => {
+			activeExecutions.stopExecution.mockImplementation((id) => {
+				executions.delete(id);
+				utilization = 0.5;
+			});
+			for (const id of ['1', '2', '3']) {
+				addExecution(id, { megabytes: 300, workflowId: 'repeat' });
+				utilization = 0.82;
+				await sample(2);
+				void concurrencyControl.throttle({ mode: 'webhook', executionId: `held-${id}` });
+				await vi.advanceTimersByTimeAsync(HOLD_LIMIT_MS + 300);
+				await sample(2);
+			}
+
+			expect(stoppedIds()).toEqual(['1', '2', '3']);
+			expect(deactivateWorkflowAsSystem).not.toHaveBeenCalled();
+		});
+
+		it('should start the count again after a successful execution of the workflow', async () => {
+			await stopOnce('1');
+			await stopOnce('2');
+			guard.onExecutionEnd(
+				mock<WorkflowExecuteAfterContext>({
+					workflow: { id: 'repeat' },
+					runData: { status: 'success' },
+				}),
+			);
+
+			await stopOnce('3');
+
 			expect(deactivateWorkflowAsSystem).not.toHaveBeenCalled();
 		});
 	});

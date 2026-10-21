@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { type WorkflowEntity, WorkflowRepository } from '@n8n/db';
-import { OnShutdown } from '@n8n/decorators';
+import { OnLifecycleEvent, OnShutdown, type WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { formatBytes } from '@n8n/utils/number/bytes';
@@ -353,7 +353,8 @@ export class MemoryGuardService {
 	) {
 		await settleWithin(engines, RELEASE_TIMEOUT_MS);
 		const { after, freedMemory } = await this.measureAfterStop(before, target.estimatedBytes);
-		if (freedMemory) await this.countStop(target);
+		// A hold-limit stop shows that a held execution waited, not that this workflow uses much memory.
+		if (freedMemory && trigger !== 'hold-limit') await this.countStop(target);
 
 		this.logger.warn(
 			`Stopped execution ${target.rootId} of workflow ${target.workflow.id} at ${formatBytes(before.usedBytes)} of ${formatBytes(before.limitBytes)} (${trigger}). It held an estimated ${formatBytes(target.estimatedBytes)} of run data. Memory after the stop: ${formatBytes(after.usedBytes)}`,
@@ -437,6 +438,12 @@ export class MemoryGuardService {
 			depth++;
 		}
 		return { rootId, depth };
+	}
+
+	/** A successful execution shows that the workflow can run, so its count of stops starts again. */
+	@OnLifecycleEvent('workflowExecuteAfter')
+	onExecutionEnd({ workflow, runData }: WorkflowExecuteAfterContext) {
+		if (runData.status === 'success' && workflow.id) this.stopsByWorkflow.delete(workflow.id);
 	}
 
 	/** Count a stop that freed memory. Returns whether the workflow was deactivated. */
