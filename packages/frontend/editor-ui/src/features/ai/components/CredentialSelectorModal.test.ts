@@ -1,4 +1,5 @@
 import { shallowMount } from '@vue/test-utils';
+import { createTestingPinia } from '@pinia/testing';
 import { describe, expect, it, vi } from 'vitest';
 
 import CredentialSelectorModal from './CredentialSelectorModal.vue';
@@ -25,12 +26,9 @@ describe('CredentialSelectorModal', () => {
 				},
 			},
 			global: {
+				renderStubDefaultSlot: true,
+				plugins: [createTestingPinia()],
 				stubs: {
-					Modal: {
-						name: 'Modal',
-						props: ['appendToBody'],
-						template: '<div><slot name="content" /></div>',
-					},
 					CredentialPicker: {
 						name: 'CredentialPicker',
 						props: ['credentialModalAppendToBody'],
@@ -40,7 +38,7 @@ describe('CredentialSelectorModal', () => {
 			},
 		});
 
-		expect(wrapper.findComponent({ name: 'Modal' }).props('appendToBody')).toBe(true);
+		expect(wrapper.findComponent({ name: 'Dialog' }).props('stacked')).toBe(true);
 		expect(
 			wrapper.findComponent({ name: 'CredentialPicker' }).props('credentialModalAppendToBody'),
 		).toBe(true);
