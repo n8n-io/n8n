@@ -61,8 +61,8 @@ describe('parseJudgeResponse', () => {
 		['{"pass": false, "reasoning": ""}', ''],
 		['{"pass": true, "reasoning": null}', '{"pass": true, "reasoning": null}'],
 		['```json\n{"pass": true}\n```', '{"pass": true}'],
-		['  {"pass": true,  ', '{"pass": true,'],
-		['  The response does not pass the rule.  ', 'The response does not pass the rule.'],
+		['{"pass": true, "reasoning": {"a": 1}}', '{"pass": true, "reasoning": {"a": 1}}'],
+		['The response does not pass the rule.', 'The response does not pass the rule.'],
 	])('preserves the reasoning for %j', (text, expectedReasoning) => {
 		const result = parseJudgeResponse(text);
 

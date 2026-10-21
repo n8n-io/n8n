@@ -11,7 +11,7 @@ export function parseJudgeResponse(text: string): EvalScore {
 	const stripped = extractJsonCandidate(text);
 
 	try {
-		const parsed = JSON.parse(stripped) as { pass?: unknown; score?: number; reasoning?: string };
+		const parsed = JSON.parse(stripped) as { pass?: unknown; score?: unknown; reasoning?: unknown };
 		const parsedPass = typeof parsed.pass === 'string' ? parsed.pass.toLowerCase() : parsed.pass;
 		let pass: boolean;
 		if (typeof parsedPass === 'boolean') {
@@ -27,7 +27,7 @@ export function parseJudgeResponse(text: string): EvalScore {
 		}
 		return {
 			pass,
-			reasoning: parsed.reasoning ?? stripped,
+			reasoning: typeof parsed.reasoning === 'string' ? parsed.reasoning : stripped,
 		};
 	} catch {
 		// Fallback: detect pass/fail from plain text or malformed JSON
