@@ -56,6 +56,43 @@ describe('parseJudgeResponse', () => {
 	});
 
 	it.each([
+		'{"pass": true}',
+		'{"pass": false}',
+		'```json\n{"pass": false}\n```',
+		'{"pass": "FALSE"}',
+		'{"score": 0.5}',
+		'{"pass": "yes", "score": 0.9}',
+		'{"pass": true,',
+		'{"pass":false,',
+	])('reads a verdict in %j, so the result is not inconclusive', (text) => {
+		expect(parseJudgeResponse(text)).not.toHaveProperty('inconclusive');
+	});
+
+	it.each([
+		'{}',
+		'{"reasoning": "No verdict."}',
+		'{"pass": "yes"}',
+		'{"pass": "partially", "reasoning": "Mentions the number but not the date."}',
+		'{"pass": 1}',
+		'{"pass": null}',
+		'{"score": "0.9"}',
+		'The response does not pass the rule.',
+		'This response should pass the test',
+		'PASS',
+		'FAIL: The response does not meet the rule.',
+		"I'm sorry, but I can't help with evaluating this content.",
+		'{"pass": tr',
+		'null',
+		'0.9',
+		'',
+	])('marks %j as inconclusive and fails it closed', (text) => {
+		const result = parseJudgeResponse(text);
+
+		expect(result.inconclusive).toBe(true);
+		expect(result.pass).toBe(false);
+	});
+
+	it.each([
 		['{"pass": "false", "reasoning": "The rule was not met."}', 'The rule was not met.'],
 		['```json\n{"pass": true, "reasoning": "The rule was met."}\n```', 'The rule was met.'],
 		['{"pass": false, "reasoning": ""}', ''],
