@@ -11,7 +11,6 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import type { ImportContext } from '../../../n8n-packages.types';
 import { CredentialImporter } from '../credential-importer';
 import { CredentialMatcherFactory } from '../credential-matcher-factory';
-import type { SerializedCredential } from '../../../spec/serialized/credential.schema';
 import type {
 	CredentialBindingRequest,
 	CredentialImportPlan,
