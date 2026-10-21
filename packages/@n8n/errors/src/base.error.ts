@@ -42,6 +42,12 @@ export abstract class BaseError extends Error {
 	) {
 		super(message, rest);
 
+		Object.defineProperty(this, 'name', {
+			value: this.constructor.name,
+			writable: true,
+			enumerable: true,
+			configurable: true,
+		});
 		this.level = level;
 		this.shouldReport = shouldReport ?? (level === 'error' || level === 'fatal');
 		this.description = description;
