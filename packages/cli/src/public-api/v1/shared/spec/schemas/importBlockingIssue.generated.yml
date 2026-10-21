@@ -4,6 +4,128 @@ oneOf:
       type:
         type: string
         enum:
+          - agent-conflict
+      kind:
+        type: string
+        enum:
+          - existing
+          - id
+          - task-id
+      sourceAgentId:
+        type: string
+      projectId:
+        type: string
+      sourceTaskId:
+        type: string
+      targetIds:
+        type: array
+        items:
+          type: string
+    required:
+      - type
+      - kind
+      - sourceAgentId
+      - projectId
+      - targetIds
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
+          - agent-invalid
+      sourceAgentId:
+        type: string
+      path:
+        type: string
+      message:
+        type: string
+    required:
+      - type
+      - sourceAgentId
+      - path
+      - message
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
+          - agent-dependency-unresolved
+      sourceAgentId:
+        type: string
+      projectId:
+        type: string
+      dependencyType:
+        type: string
+        enum:
+          - agent
+          - workflow
+          - credential
+      referenceId:
+        type: string
+      path:
+        type: string
+      reason:
+        type: string
+        enum:
+          - missing
+          - inaccessible
+          - ambiguous
+          - unsupported
+    required:
+      - type
+      - sourceAgentId
+      - projectId
+      - dependencyType
+      - referenceId
+      - path
+      - reason
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
+          - agent-policy-violation
+      sourceAgentId:
+        type: string
+      name:
+        type: string
+      violations:
+        type: array
+        items:
+          type: object
+          properties:
+            kind:
+              type: string
+            checkId:
+              type: string
+            message:
+              type: string
+            subject:
+              type: string
+            subjectType:
+              type: string
+            scope:
+              type: string
+            matchedRuleId:
+              type: string
+            projectId:
+              type: string
+            optInAvailable:
+              type: boolean
+          required:
+            - kind
+            - checkId
+            - message
+    required:
+      - type
+      - sourceAgentId
+      - name
+      - violations
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
           - workflow-conflict
       sourceWorkflowId:
         type: string
