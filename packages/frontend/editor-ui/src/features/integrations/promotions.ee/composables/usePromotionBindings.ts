@@ -88,7 +88,7 @@ export function usePromotionBindings() {
 	const error = shallowRef<PromotionBindingsError | null>(null);
 	let session = 0;
 	let expectedSource: ContinueApplyPackageDto['expectedSource'] | undefined;
-	let connectionId: string | undefined;
+	let environmentId: string | undefined;
 	let continueTarget: ContinueTarget | undefined;
 
 	function statusOf(key: string, projectId: string): BindingStatus {
@@ -176,9 +176,9 @@ export function usePromotionBindings() {
 	function start(result: BlockedApplyResult, target: ContinueTarget) {
 		session++;
 		originalResult.value = result;
-		connectionId = result.connectionId;
+		environmentId = result.environmentId;
 		continueTarget = target;
-		expectedSource = { configId: result.configId, ...result.git };
+		expectedSource = { environmentId: result.environmentId, ...result.git };
 		knownBindings.value = new Map();
 		createdBindings.value = new Map();
 		isSubmitting.value = false;
@@ -227,7 +227,7 @@ export function usePromotionBindings() {
 	}
 
 	async function continueApply() {
-		if (!canContinue.value || !connectionId || !expectedSource || !continueTarget) return;
+		if (!canContinue.value || !environmentId || !expectedSource || !continueTarget) return;
 		const currentSession = session;
 		isSubmitting.value = true;
 		error.value = null;
@@ -244,7 +244,7 @@ export function usePromotionBindings() {
 								confirmDestructiveChanges,
 							},
 						)
-					: await continueApplyPromotion(rootStore.publicApiContext, connectionId, {
+					: await continueApplyPromotion(rootStore.publicApiContext, environmentId, {
 							expectedSource: { ...expectedSource },
 							confirmDestructiveChanges,
 						});

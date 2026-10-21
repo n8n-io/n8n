@@ -53,6 +53,8 @@ export default {
 	'sticky.markdownHint':
 		'You can style with <a href="https://docs.n8n.io/workflows/components/sticky-notes/" target="_blank">Markdown</a>',
 	'tags.showMore': (count: number) => `+${count} more`,
+	'tabs.scrollLeft': 'Show previous tabs',
+	'tabs.scrollRight': 'Show next tabs',
 	'datatable.pageSize': 'Page size',
 	'pagination.previousPage': 'Previous page',
 	'pagination.nextPage': 'Next page',

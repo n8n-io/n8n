@@ -125,6 +125,8 @@ const MODELS_DEV_FIXTURE = {
 };
 
 const SENSITIVE_RESPONSE_HEADERS = [
+	'openai-organization',
+	'openai-project',
 	'anthropic-organization-id',
 	'anthropic-workspace-id',
 	'set-cookie',

@@ -68,6 +68,7 @@ describe('SlackIntegration', () => {
 		expect(createSlackAdapter).toHaveBeenCalledWith({
 			botToken: 'xoxb-token',
 			signingSecret: 'signing-secret',
+			nativeStreaming: false,
 			agentView: false,
 		});
 	});
@@ -84,6 +85,7 @@ describe('SlackIntegration', () => {
 		expect(createSlackAdapter).toHaveBeenCalledWith({
 			botToken: 'xoxb-token',
 			signingSecret: 'signing-secret',
+			nativeStreaming: false,
 			agentView: true,
 		});
 	});
@@ -211,24 +213,59 @@ describe('SlackIntegration', () => {
 		});
 	});
 
-	it('sets a thinking status and buffers resume responses for Slack actions', async () => {
-		const thread = {
+	it('falls back to typing when the resumed Slack conversation has no thread timestamp', async () => {
+		const thread = mock<Thread<unknown, unknown>>({
+			id: 'slack:D123:',
+			adapter: mock<Thread['adapter']>({
+				decodeThreadId: vi.fn().mockReturnValue({ channel: 'D123', threadTs: '' }),
+			}),
 			startTyping: vi.fn().mockResolvedValue(undefined),
-		};
+		});
 
 		const context = await integration.createResumeExecutionContext({
 			chat: {
 				getAdapter: vi.fn().mockReturnValue(undefined),
 			} as unknown as ChatInstance,
-			thread: thread as never,
+			thread,
 			logger: { warn: vi.fn() } as never,
 			agentId: 'agent-1',
 		});
 
-		expect(context.forceBuffered).toBe(true);
+		expect(context.forceBuffered).toBe(false);
 		expect(context.statusHandle).toBeUndefined();
 		expect(thread.startTyping).toHaveBeenCalledWith('Thinking...');
 	});
+
+	it.each(['C123', 'D123', 'G123'])(
+		'derives a resumable status handle from the Slack thread ID (%s)',
+		async (channel) => {
+			const threadTs = '1779466577.518139';
+			const decodeThreadId = vi.fn().mockReturnValue({ channel, threadTs });
+			const thread = mock<Thread<unknown, unknown>>({
+				id: `slack:${channel}:${threadTs}`,
+				adapter: mock<Thread['adapter']>({ decodeThreadId }),
+			});
+			const setAssistantStatus = vi.fn().mockResolvedValue(undefined);
+
+			const context = await integration.createResumeExecutionContext({
+				chat: mock<ChatInstance>({ getAdapter: () => ({ setAssistantStatus }) }),
+				thread,
+				logger: { warn: vi.fn() } as never,
+				agentId: 'agent-1',
+			});
+
+			expect(decodeThreadId).toHaveBeenCalledWith(thread.id);
+			expect(context.forceBuffered).toBe(false);
+			expect(context.statusHandle?.keepDuringResponse).toBe(true);
+			expect(context.statusHandle?.resumeAfterResponse).toBeTypeOf('function');
+			await context.statusHandle?.resumeAfterResponse?.();
+			expect(setAssistantStatus).toHaveBeenLastCalledWith(channel, threadTs, 'Thinking...', [
+				'Thinking...',
+			]);
+			await context.statusHandle?.clearBeforeResponse();
+			expect(setAssistantStatus).toHaveBeenLastCalledWith(channel, threadTs, '');
+		},
+	);
 
 	describe('getReplyExpectation', () => {
 		const platformAgentContext = { agentUserId: 'U_BOT' };

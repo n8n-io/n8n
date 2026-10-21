@@ -247,6 +247,11 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 			newOAuthTokenData.resource = token.data.resource;
 		}
 
+		// Salesforce requires the instance URL even when the refresh response returns an empty value.
+		if (!newOAuthTokenData.instance_url && token.data.instance_url) {
+			newOAuthTokenData.instance_url = token.data.instance_url;
+		}
+
 		const refreshedTokenData = await decryptOAuth2TokenDataIfConfigured(
 			additionalData,
 			newOAuthTokenData,

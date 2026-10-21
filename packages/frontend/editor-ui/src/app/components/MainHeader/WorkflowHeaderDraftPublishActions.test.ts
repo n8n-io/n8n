@@ -1108,11 +1108,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			},
 		};
 
-		const useCredential = (credential: IUsedCredential, { flagEnabled = true } = {}) => {
-			settingsStore.settings = {
-				...settingsStore.settings,
-				granularCredentialSharing: flagEnabled,
-			};
+		const useCredential = (credential: IUsedCredential) => {
 			workflowDocumentStore.setUsedCredentials([credential]);
 			workflowDocumentStore.setNodes([
 				{
@@ -1216,14 +1212,6 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 		it('should keep publish enabled when the user can use the credential', () => {
 			useCredential({ ...foreignCredential, currentUserCanUse: true });
-
-			const { getByTestId } = renderComponent();
-
-			expect(getByTestId('workflow-open-publish-modal-button')).not.toBeDisabled();
-		});
-
-		it('should keep publish enabled while the feature flag is off', () => {
-			useCredential(foreignCredential, { flagEnabled: false });
 
 			const { getByTestId } = renderComponent();
 

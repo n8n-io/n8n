@@ -1,11 +1,17 @@
 import { defineFrontendModule } from '@n8n/frontend-module-sdk';
+import { RouterView } from 'vue-router';
 
 import { VIEWS } from '@/app/constants';
 import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 import { PROMOTIONS_MODALS } from './modals';
-import { PROMOTIONS_SETTINGS_VIEW } from './promotions.constants';
+import {
+	PROMOTIONS_ENVIRONMENT_ADD_VIEW,
+	PROMOTIONS_ENVIRONMENT_EDIT_VIEW,
+	PROMOTIONS_SETTINGS_VIEW,
+} from './promotions.constants';
 
 const SettingsView = async () => await import('./views/PromotionsSettingsView.vue');
+const EnvironmentView = async () => await import('./views/PromotionEnvironmentView.vue');
 
 const SETTINGS_SCOPES = [
 	'gitConnection:list',
@@ -23,8 +29,7 @@ export const PromotionsModule = defineFrontendModule({
 	routes: [
 		{
 			path: 'promotions',
-			name: PROMOTIONS_SETTINGS_VIEW,
-			component: SettingsView,
+			component: RouterView,
 			meta: {
 				layout: 'settings',
 				middleware: ['authenticated', 'rbac', 'custom'],
@@ -38,6 +43,21 @@ export const PromotionsModule = defineFrontendModule({
 			},
 			// Check the rollout flag here because module routes skip custom middleware.
 			beforeEnter: () => usePromotionsEnabled().isEnabled.value || { name: VIEWS.HOMEPAGE },
+			children: [
+				{ path: '', name: PROMOTIONS_SETTINGS_VIEW, component: SettingsView },
+				{
+					path: 'add/:direction(apply|promote)',
+					name: PROMOTIONS_ENVIRONMENT_ADD_VIEW,
+					component: EnvironmentView,
+					props: true,
+				},
+				{
+					path: 'edit/:environmentId',
+					name: PROMOTIONS_ENVIRONMENT_EDIT_VIEW,
+					component: EnvironmentView,
+					props: true,
+				},
+			],
 		},
 	],
 	modals: PROMOTIONS_MODALS,
