@@ -10,8 +10,8 @@ import {
 } from '../entities/agent-background-job.entity';
 import { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
 import { AgentExecution } from '../entities/agent-execution.entity';
-
 import { AgentExecutionThreadRepository } from './agent-execution-thread.repository';
+
 type NewAgentBackgroundJobBase = {
 	sourceExecutionId?: string;
 	id: string;

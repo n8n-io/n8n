@@ -9,7 +9,7 @@ import { OperationalError, UserError } from 'n8n-workflow';
 import type { ExecuteAgentWorkflowContext, IRunExecutionData } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
+import type { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { AgentsSettingsService } from '../agents-settings.service';
 import { SkillService } from '../skills/skill.service';
