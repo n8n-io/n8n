@@ -252,7 +252,6 @@ describe.skipIf(!enabled)('production n8n Chat with a real model', () => {
 				projectId: project.id,
 				schema: storedAgentConfig(schema),
 				tools,
-				skills: {},
 				integrations: [chatIntegration],
 				versionId: randomUUID(),
 			}),
@@ -263,7 +262,6 @@ describe.skipIf(!enabled)('production n8n Chat with a real model', () => {
 			agentId: agent.id,
 			schema: storedAgentConfig({ ...schema, integrations: [chatIntegration] }),
 			tools,
-			skills: {},
 			publishedBy: owner,
 		});
 		await repository.update({ id: agent.id }, { activeVersionId: versionId });

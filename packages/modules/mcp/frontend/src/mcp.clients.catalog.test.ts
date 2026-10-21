@@ -11,7 +11,7 @@ describe('getMcpClientCatalog', () => {
 		expect(catalog.map((group) => group.clients.map((client) => client.id))).toEqual([
 			['claude-code', 'codex', 'gemini-cli'],
 			['claude-ai', 'chatgpt', 'mistral-vibe'],
-			['antigravity', 'cursor', 'vscode', 'windsurf'],
+			['antigravity', 'cursor', 'devin', 'vscode'],
 		]);
 	});
 
@@ -23,6 +23,13 @@ describe('getMcpClientCatalog', () => {
 		expect(clients.find((client) => client.id === 'gemini-cli')?.installCommand).toContain(
 			'gemini mcp add',
 		);
+	});
+
+	it('should give Devin a streamable HTTP server entry', () => {
+		const devin = clients.find((client) => client.id === 'devin');
+		expect(JSON.parse(devin!.configSnippet!)).toEqual({
+			mcpServers: { n8n: { url: SERVER_URL, transport: 'http' } },
+		});
 	});
 
 	it('should embed the server URL in every install command and config snippet', () => {

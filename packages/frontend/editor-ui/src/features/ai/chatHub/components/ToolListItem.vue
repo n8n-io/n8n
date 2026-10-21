@@ -18,6 +18,8 @@ const props = defineProps<{
 	installing?: boolean;
 	/** Non-admin cannot install; button is disabled with contact-admin tooltip. */
 	installDisabled?: boolean;
+	/** The user's role cannot use this tool type, so only removal is possible. */
+	roleBlocked?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -62,7 +64,10 @@ const restriction = computed(() => getNodeItemRestriction(props.nodeType.name));
 		ref="rowRef"
 		:class="[
 			$style.item,
-			{ [$style.configured]: mode === 'configured', [$style.restricted]: !!restriction },
+			{
+				[$style.configured]: mode === 'configured',
+				[$style.restricted]: !!restriction || roleBlocked,
+			},
 		]"
 	>
 		<div :class="$style.iconWrapper">
@@ -101,8 +106,23 @@ const restriction = computed(() => getNodeItemRestriction(props.nodeType.name));
 				:anchor="rowRef"
 			/>
 
+			<N8nTooltip
+				v-if="roleBlocked"
+				:content="i18n.baseText('chatHub.toolsManager.roleBlocked')"
+				placement="top"
+			>
+				<span
+					:class="$style.marker"
+					tabindex="0"
+					role="img"
+					:aria-label="i18n.baseText('chatHub.toolsManager.roleBlocked')"
+				>
+					<N8nIcon icon="lock" size="small" data-test-id="chat-tool-role-blocked-icon" />
+				</span>
+			</N8nTooltip>
+
 			<template v-if="mode === 'configured'">
-				<N8nTooltip :content="i18n.baseText('chatHub.toolsManager.configure')">
+				<N8nTooltip v-if="!roleBlocked" :content="i18n.baseText('chatHub.toolsManager.configure')">
 					<N8nIconButton
 						icon="settings"
 						variant="ghost"
@@ -123,6 +143,7 @@ const restriction = computed(() => getNodeItemRestriction(props.nodeType.name));
 				</N8nTooltip>
 
 				<N8nTooltip
+					v-if="!roleBlocked"
 					:content="
 						enabled
 							? i18n.baseText('chatHub.toolsManager.disableTool')
@@ -145,7 +166,7 @@ const restriction = computed(() => getNodeItemRestriction(props.nodeType.name));
 				>
 					<span>
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							size="small"
 							icon="plus"
 							:loading="installing"
@@ -158,7 +179,7 @@ const restriction = computed(() => getNodeItemRestriction(props.nodeType.name));
 				</N8nTooltip>
 				<N8nButton
 					v-else
-					variant="subtle"
+					variant="outline"
 					size="small"
 					icon="plus"
 					:loading="installing"
@@ -200,6 +221,20 @@ const restriction = computed(() => getNodeItemRestriction(props.nodeType.name));
 	.iconWrapper,
 	.content {
 		opacity: 0.45;
+	}
+}
+
+// Matches the lock marker of the availability policy popover.
+.marker {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing--3xs);
+	color: var(--color--text--tint-1);
+
+	&:focus-visible {
+		outline: var(--focus--border-width) solid var(--focus--border-color);
+		outline-offset: 2px;
 	}
 }
 

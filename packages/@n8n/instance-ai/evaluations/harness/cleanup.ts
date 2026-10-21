@@ -10,7 +10,7 @@ import { findAgentArtifactRef } from './agent-execution';
 import type { BuildResult } from './build-workflow';
 import type { EvalLogger } from './logger';
 import { classifyScenarioExecutionError } from './transient-error';
-import { SONNET_MODEL } from '../../src/utils/eval-agents';
+import { JUDGE_MODEL } from '../../src/utils/eval-agents';
 import { runBinaryChecks } from '../binaryChecks/index';
 import type { BinaryCheckContext, CheckOutcome } from '../binaryChecks/types';
 import { N8nApiError } from '../clients/n8n-client';
@@ -284,13 +284,13 @@ export async function runWorkflowChecks(args: {
 	workflow: WorkflowResponse | undefined;
 	prompt: string;
 	agentText: string | undefined;
-	/** Per-live-turn failed build-workflow attempt counts; feeds the efficiency check. */
+	/** Per-live-turn failed workflow_builder_build_workflow attempt counts; feeds the efficiency check. */
 	failedBuildsPerTurn?: number[];
 	logger: EvalLogger;
 }): Promise<CheckOutcome[] | undefined> {
 	if (!args.workflow) return undefined;
 
-	const modelId = hasAnthropicKey() ? SONNET_MODEL : undefined;
+	const modelId = hasAnthropicKey() ? JUDGE_MODEL : undefined;
 	const ctx: BinaryCheckContext = {
 		prompt: args.prompt,
 		...(modelId ? { modelId } : {}),

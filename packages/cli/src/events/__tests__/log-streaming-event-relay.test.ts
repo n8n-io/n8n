@@ -72,6 +72,7 @@ describe('LogStreamingEventRelay', () => {
 					workflowIdPolicy: 'new',
 					credentialMatchingMode: 'id-only',
 					credentialMissingMode: 'must-preexist',
+					credentialConflictPolicy: 'keep-existing',
 					workflowPublishingPolicy: 'preserve-published-state',
 					missingNodeTypeMode: 'fail',
 					projectConflictPolicy: 'merge',
@@ -108,6 +109,7 @@ describe('LogStreamingEventRelay', () => {
 					credentials: {
 						matched: 1,
 						created: 0,
+						updated: 0,
 						requirements: 1,
 					},
 					dataTables: {
@@ -153,6 +155,7 @@ describe('LogStreamingEventRelay', () => {
 						workflowIdPolicy: 'new',
 						credentialMatchingMode: 'id-only',
 						credentialMissingMode: 'must-preexist',
+						credentialConflictPolicy: 'keep-existing',
 						workflowPublishingPolicy: 'preserve-published-state',
 						missingNodeTypeMode: 'fail',
 						projectConflictPolicy: 'merge',
@@ -1733,6 +1736,35 @@ describe('LogStreamingEventRelay', () => {
 				},
 			});
 		});
+
+		it('should log on `user-login-email-conflict` event', () => {
+			const event: RelayEventMap['user-login-email-conflict'] = {
+				user: {
+					id: 'user404',
+					email: 'linked@example.com',
+					firstName: 'Linked',
+					lastName: 'User',
+					role: { slug: 'global:member' },
+				},
+				authenticationMethod: 'saml',
+				assertedEmail: 'asserted@example.com',
+			};
+
+			eventService.emit('user-login-email-conflict', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.user.login.emailConflict',
+				payload: {
+					userId: 'user404',
+					_email: 'linked@example.com',
+					_firstName: 'Linked',
+					_lastName: 'User',
+					globalRole: 'global:member',
+					authenticationMethod: 'saml',
+					_assertedEmail: 'asserted@example.com',
+				},
+			});
+		});
 	});
 
 	describe('community package events', () => {
@@ -3032,6 +3064,60 @@ describe('LogStreamingEventRelay', () => {
 				},
 			});
 		});
+
+		it('should log `public-api-rate-limit.enabled` when public_api_rate_limit is turned on', () => {
+			const event: RelayEventMap['instance-policies-updated'] = {
+				user: {
+					id: 'user707',
+					email: 'admin10@example.com',
+					firstName: 'Tenth',
+					lastName: 'Admin',
+					role: { slug: 'global:owner' },
+				},
+				settingName: 'public_api_rate_limit',
+				value: true,
+			};
+
+			eventService.emit('instance-policies-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.public-api-rate-limit.enabled',
+				payload: {
+					userId: 'user707',
+					_email: 'admin10@example.com',
+					_firstName: 'Tenth',
+					_lastName: 'Admin',
+					globalRole: 'global:owner',
+				},
+			});
+		});
+
+		it('should log `public-api-rate-limit.disabled` when public_api_rate_limit is turned off', () => {
+			const event: RelayEventMap['instance-policies-updated'] = {
+				user: {
+					id: 'user707',
+					email: 'admin10@example.com',
+					firstName: 'Tenth',
+					lastName: 'Admin',
+					role: { slug: 'global:owner' },
+				},
+				settingName: 'public_api_rate_limit',
+				value: false,
+			};
+
+			eventService.emit('instance-policies-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.public-api-rate-limit.disabled',
+				payload: {
+					userId: 'user707',
+					_email: 'admin10@example.com',
+					_firstName: 'Tenth',
+					_lastName: 'Admin',
+					globalRole: 'global:owner',
+				},
+			});
+		});
 	});
 
 	describe('policy enforcement events', () => {
@@ -3541,6 +3627,40 @@ describe('LogStreamingEventRelay', () => {
 			expect(eventBus.send).toHaveBeenCalledWith(
 				expect.objectContaining({ eventName: 'n8n.instanceReporting.failed' }),
 			);
+		});
+	});
+	describe('trusted source events', () => {
+		it.each([
+			['trusted-source-created', 'n8n.audit.trusted-source.created'],
+			['trusted-source-updated', 'n8n.audit.trusted-source.updated'],
+			['trusted-source-deleted', 'n8n.audit.trusted-source.deleted'],
+		] as const)('should log on `%s` event with redacted user', (eventName, auditEventName) => {
+			const event = {
+				user: {
+					id: 'user-1',
+					email: 'owner@n8n.io',
+					firstName: 'Own',
+					lastName: 'Er',
+					role: { slug: 'global:owner' },
+				},
+				sourceId: 'source-1',
+				issuer: 'https://idp.example.com',
+			};
+
+			eventService.emit(eventName, event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: auditEventName,
+				payload: {
+					userId: 'user-1',
+					_email: 'owner@n8n.io',
+					_firstName: 'Own',
+					_lastName: 'Er',
+					globalRole: 'global:owner',
+					sourceId: 'source-1',
+					issuer: 'https://idp.example.com',
+				},
+			});
 		});
 	});
 });

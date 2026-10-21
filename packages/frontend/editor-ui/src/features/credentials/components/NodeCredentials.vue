@@ -65,7 +65,6 @@ import {
 } from '../composables/useNodeCredentialOptions';
 import { getAutoSelectedCredential } from '../credentials.utils';
 import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
-import { useCredentialSharing } from '../composables/useCredentialSharing';
 import { getCredentialOwnerShortName } from '../composables/useUnusableWorkflowCredentials';
 import {
 	AI_GATEWAY_MANAGED_TAG,
@@ -112,6 +111,8 @@ type Props = {
 	standalone?: boolean;
 	/** Project ID to scope new credential creation to the correct project. */
 	projectId?: string;
+	/** Agents do not support personal credentials yet, so the usable-credentials fetch omits them. */
+	forAgent?: boolean;
 	/** Pre-fill the credential name when creating a new credential. */
 	suggestedCredentialName?: string;
 	/** Hide the "Ask n8n AI" assistant button inside the credential editor.
@@ -270,8 +271,6 @@ const {
 	() => props.credentials,
 );
 
-const { isEnabled: isCredentialSharingEnabled } = useCredentialSharing();
-
 const credentialTypeNames = computed(() => {
 	const returnData: Record<string, string> = {};
 
@@ -302,7 +301,6 @@ function isListed(credentialType: string, credentialId: string): boolean {
  * through an instance-wide scope.
  */
 function getUnlistedSelected(credentialType: string) {
-	if (!isCredentialSharingEnabled.value) return undefined;
 	const id = selected.value[credentialType]?.id;
 	if (!id || isListed(credentialType, id)) return undefined;
 	return workflowDocumentStore?.value.usedCredentials?.[id];
@@ -315,7 +313,7 @@ function getUnusableSelected(credentialType: string) {
 
 /** A credential the workflow references and that exists, usable or not. */
 function isKnownCredentialId(id: string | null | undefined): boolean {
-	if (!isCredentialSharingEnabled.value || !id) return false;
+	if (!id) return false;
 	return workflowDocumentStore?.value.usedCredentials?.[id] !== undefined;
 }
 
@@ -349,6 +347,11 @@ const leftBehind = ref<Record<string, UsedCredential>>({});
  * Resolve a picked credential from the rows the dropdown is showing before
  * consulting the store. A host-supplied `credentials` list can hold ids the
  * flat map has not (yet) loaded — the store lookup alone would be `undefined`.
+ *
+ * Always allow the usable-slice fallback so private Connect still resolves after
+ * an unrelated credential list replaces the flat map. Ghost reselection after
+ * delete is prevented in the store listener by limiting candidates to the
+ * currently displayed host rows when `props.credentials` is set.
  */
 function findDisplayedCredential(
 	credentialType: string,
@@ -359,6 +362,7 @@ function findDisplayedCredential(
 	);
 	return (
 		typeEntry?.options.find((option) => option.id === credentialId) ??
+		credentialsStore.getUsableCredentialById(credentialId) ??
 		credentialsStore.getCredentialById(credentialId)
 	);
 }
@@ -557,16 +561,17 @@ watch(
 );
 
 function getCredentialFetchScope(): CredentialFetchScope | undefined {
-	if (props.workflowId) return { workflowId: props.workflowId };
+	const forAgent = props.forAgent ? { forAgent: true } : {};
+	if (props.workflowId) return { workflowId: props.workflowId, ...forAgent };
 	const workflowId = workflowDocumentStore?.value.workflowId;
 	if (workflowId && !workflowsStore.isNewWorkflow) {
-		return { workflowId };
+		return { workflowId, ...forAgent };
 	}
 
 	const projectId =
 		props.projectId ?? projectsStore.currentProject?.id ?? projectsStore.personalProject?.id;
 
-	return projectId ? { projectId } : undefined;
+	return projectId ? { projectId, ...forAgent } : undefined;
 }
 
 onMounted(() => {
@@ -606,7 +611,17 @@ onMounted(() => {
 
 			const current = selected.value[credentialType];
 			let credentialsOfType: ICredentialsResponse[] = [];
-			if (props.showAll) {
+			if (props.credentials) {
+				// Host-supplied lists are authoritative for delete/create reselection.
+				// Use the currently displayed rows (already filtered for deleted override
+				// ids) so a usable-slice "ghost" id that is not in the host list cannot
+				// be applied — while findDisplayedCredential still falls back to the
+				// usable slice for private Connect after the flat map is cleared.
+				const typeEntry = credentialTypesNodeDescriptionDisplayed.value.find(
+					({ type }) => type.name === credentialType,
+				);
+				credentialsOfType = typeEntry?.options ?? [];
+			} else if (props.showAll) {
 				if (props.node) {
 					credentialsOfType = [...(credentialsStore.allUsableCredentialsForNode(props.node) || [])];
 				}
@@ -1150,8 +1165,8 @@ function onSelectVisibleChange(credentialType: string, isVisible: boolean) {
 	}
 }
 
-function matches(needle: string, haystack: string) {
-	return haystack.toLocaleLowerCase().includes(needle.toLocaleLowerCase());
+function matches(needle: string, haystack: string | undefined) {
+	return (haystack ?? '').toLocaleLowerCase().includes(needle.toLocaleLowerCase());
 }
 
 /**
@@ -1313,8 +1328,6 @@ function buildUsableRows(
 		key: option.id,
 		option,
 	});
-
-	if (!isCredentialSharingEnabled.value) return visible.map(toRow);
 
 	// Yours either because it travels with you into this project, or because
 	// this is your own space and the credential is not published instance-wide.

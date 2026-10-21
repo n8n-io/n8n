@@ -12,6 +12,7 @@ import type {
 	IntegrationMessageContext,
 } from '../../../integration-tools';
 import { SlackIntegration } from '../../../platforms/slack/slack-integration';
+import { SLACK_STREAMING_OPTIONS } from '../../../platforms/slack/slack-bridge-behavior';
 import {
 	createReplayContextSetup,
 	type MemoryMessageContextStore,
@@ -118,10 +119,8 @@ function collectStreamChunkText(body: Record<string, unknown>): string {
  * The Slack adapter calls the Web API through `@slack/web-api` (axios), so a
  * `fetch` stub can't see it — intercept at the HTTP layer with nock instead.
  *
- * Agent replies are sent through Slack's assistant streaming API
- * (`chat.startStream` → `appendStream` → `stopStream`), not `chat.postMessage`.
- * We reconstruct the streamed text and record it as a synthetic `chat.postMessage`
- * so assertions can treat the agent reply as a single outbound post.
+ * Record normal posts and edits. Also reconstruct native streams as a single
+ * post for scenarios that enable native streaming.
  */
 function installSlackApiNock(botUserId: string) {
 	const apiCalls: SlackApiCall[] = [];
@@ -201,6 +200,7 @@ export async function createSlackReplayContext(
 
 	const adapter = createSlackAdapter({
 		botToken: SLACK_BOT_TOKEN,
+		nativeStreaming: false,
 		// Provided so the adapter skips the `auth.test` identity lookup on connect.
 		botUserId: fixtures.botUserId,
 		// Replay fixtures carry sanitized signatures, so bypass signature checks.
@@ -210,6 +210,7 @@ export async function createSlackReplayContext(
 	});
 	const chat = new Chat({
 		userName: 'n8n-agent-agent-1',
+		...SLACK_STREAMING_OPTIONS,
 		adapters: { slack: adapter } as unknown as Record<string, never>,
 		state: createMemoryState(),
 		concurrency: 'concurrent',

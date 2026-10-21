@@ -1,0 +1,69 @@
+{
+  "name": "@n8n/backend-module-apps",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    },
+    "./module": {
+      "types": "./dist/apps.module.d.ts",
+      "import": "./dist/apps.module.js",
+      "require": "./dist/apps.module.js"
+    }
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "dev": "pnpm watch",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "lint": "oxlint --type-aware . --quiet",
+    "lint:fix": "oxlint --type-aware . --fix",
+    "watch": "tsc -p tsconfig.build.json --watch",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:dev": "vitest --silent=false"
+  },
+  "dependencies": {
+    "@n8n/api-types": "workspace:*",
+    "@n8n/backend-common": "workspace:*",
+    "@n8n/backend-services": "workspace:*",
+    "@n8n/blob-storage": "workspace:*",
+    "@n8n/config": "workspace:*",
+    "@n8n/db": "workspace:*",
+    "@n8n/decorators": "workspace:*",
+    "@n8n/di": "workspace:*",
+    "@n8n/errors": "workspace:*",
+    "@n8n/typeorm": "workspace:*",
+    "n8n-core": "workspace:*",
+    "tar": "catalog:",
+    "uuid": "catalog:"
+  },
+  "peerDependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@n8n/oxlint-config": "workspace:*",
+    "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
+    "@types/express": "catalog:",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
+    "typescript": "catalog:typescript",
+    "vite": "catalog:",
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:",
+    "zod": "catalog:"
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
+}

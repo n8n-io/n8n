@@ -219,6 +219,18 @@ describe('CredentialTypePolicyCheck', () => {
 			);
 			expect(result.violations.map((violation) => violation.subject)).toEqual([SLACK_API]);
 		});
+
+		it('accepts a node stored without parameters', async () => {
+			const { parameters, ...withoutParameters } = node(SLACK_NODE, { [SLACK_API]: 'cred-1' });
+
+			const result = await check.onWorkflowSave({
+				workflow: workflow([withoutParameters as INode]),
+				storedWorkflow: null,
+				projectId: 'project-1',
+			});
+
+			expect(result.violations.map((violation) => violation.subject)).toEqual([SLACK_API]);
+		});
 	});
 
 	describe('a credential type named by parameter', () => {
@@ -651,6 +663,8 @@ describe('CredentialTypePolicyCheck', () => {
 				subjectType: 'credentialType',
 				scope: 'instance',
 				matchedRuleId: 'rule-7',
+				projectId: 'project-1',
+				optInAvailable: false,
 			});
 			expect(service.evaluateComposedTypesFor).toHaveBeenCalledWith(
 				'credential-types',
@@ -716,11 +730,13 @@ describe('CredentialTypePolicyCheck', () => {
 			expect(result.violations[0]).toStrictEqual({
 				kind: 'credential-type-unavailable',
 				checkId: 'credential-type-availability',
-				message: `Credential type "${SLACK_API}" is blocked by this project's policy`,
+				message: `Credential type "${SLACK_API}" is blocked by a project policy`,
 				subject: SLACK_API,
 				subjectType: 'credentialType',
 				scope: 'project',
 				matchedRuleId: 'rule-3',
+				projectId: 'project-1',
+				optInAvailable: false,
 			});
 		});
 
@@ -739,7 +755,53 @@ describe('CredentialTypePolicyCheck', () => {
 				subject: SLACK_API,
 				subjectType: 'credentialType',
 				scope: 'instance',
+				projectId: 'project-1',
+				optInAvailable: false,
 			});
+		});
+
+		it('carries the projectId from the context on a project-scope denial', async () => {
+			denying([SLACK_API], { scope: 'project' });
+
+			const result = await check.onWorkflowStart({
+				workflow: workflow([node(SLACK_NODE, { [SLACK_API]: 'cred-1' })]),
+				projectId: 'project-1',
+			});
+
+			expect(result.violations[0].projectId).toBe('project-1');
+		});
+
+		it('also carries the projectId on an instance-scope denial', async () => {
+			const result = await check.onWorkflowStart({
+				workflow: workflow([node(SLACK_NODE, { [SLACK_API]: 'cred-1' })]),
+				projectId: 'project-1',
+			});
+
+			expect(result.violations[0].scope).toBe('instance');
+			expect(result.violations[0].projectId).toBe('project-1');
+		});
+
+		it('reports optInAvailable true when the verdict allows it and a project applies', async () => {
+			denying([SLACK_API], { optInAvailable: true });
+
+			const result = await check.onWorkflowStart({
+				workflow: workflow([node(SLACK_NODE, { [SLACK_API]: 'cred-1' })]),
+				projectId: 'project-1',
+			});
+
+			expect(result.violations[0].optInAvailable).toBe(true);
+		});
+
+		it('drops projectId and forces optInAvailable false with no project, even when the verdict allows opt-in', async () => {
+			denying([SLACK_API], { optInAvailable: true });
+
+			const result = await check.onCredentialDecrypt({
+				...decryptOf(SLACK_API),
+				projectId: null,
+			});
+
+			expect(Object.keys(result.violations[0])).not.toContain('projectId');
+			expect(result.violations[0].optInAvailable).toBe(false);
 		});
 	});
 

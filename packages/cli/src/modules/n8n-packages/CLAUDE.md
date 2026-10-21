@@ -11,10 +11,14 @@ carry it through all four layers below.** A property that stops at the module
 is invisible to public-API and CLI users — and an out-of-date OpenAPI spec or
 CLI flag is a silent bug, not a compile error.
 
+One exception: a policy that only promotions needs can stop at
+`ImportSelectionRequest`, for example `dataTableSchemaConflictPolicy` and
+`tagConflictPolicy`. The public selection import keeps the fixed default.
+
 ```mermaid
 flowchart LR
   M["1. Module<br/>(this package)"] --> D["2. DTO<br/>@n8n/api-types"]
-  D --> A["3. Public API<br/>handler + OpenAPI spec"]
+  D --> A["3. Public API<br/>controller"]
   A --> C["4. CLI<br/>@n8n/cli"]
 ```
 
@@ -52,11 +56,10 @@ flowchart LR
    - Add the field to `ImportPackageRequestDto` (zod), **and** add its name to
      `IMPORT_PACKAGE_REQUEST_FORM_FIELDS` (multipart text fields).
    - Update `__tests__/import-package-request.dto.test.ts`.
-3. **Public API** — `packages/cli/src/public-api/v1/handlers/n8n-packages/`
-   - `n8n-packages.handler.ts` — pass `payload.data.<field>` into the service.
-   - `spec/paths/n8n-packages.import.yml` — add the property to the inline
-     `multipart/form-data` request schema (type/enum/description; update
-     `required` if needed). **Easy to forget — the spec is hand-written.**
+3. **Public API** — `packages/cli/src/public-api/v1/controllers/n8n-packages.public.controller.ts`
+   - `importPackage` passes the request fields into the service.
+   - The multipart request schema comes from `ImportPackageRequestDto` (step 2),
+     so do not edit a YAML file. Run `pnpm build` to regenerate the spec.
 4. **CLI** — `packages/@n8n/cli/`
    - `src/client.ts` — add to `ImportPackageFields`.
    - `src/commands/package/import.ts` — add a `Flags.string({...})` (with a
@@ -69,11 +72,11 @@ flowchart LR
    `n8n-packages.service.ts` `exportPackage` (+ `io/` writer or
    `entities/*/` exporter as needed).
 2. **DTO** — `@n8n/api-types/src/dto/packages/export-package-request.dto.ts`
-   (`ExportPackageRequestDto`, zod).
-3. **Public API** — `n8n-packages.handler.ts` `exportPackage` reads from
-   `payload.data`; update the **separate** schema file
-   `spec/schemas/exportPackageRequest.yml` (export's request schema is a
-   `$ref`, unlike import's inline schema).
+   (`ExportPackageRequestDto`, zod). Add the field's OpenAPI wording to
+   `export-package-request.openapi.ts`.
+3. **Public API** — `packages/cli/src/public-api/v1/controllers/n8n-packages.public.controller.ts`
+   `exportPackage` reads from `body`. The request schema comes from
+   `ExportPackageRequestDto`, so do not edit a YAML file.
 4. **CLI** — `src/client.ts` `exportPackage(...)`,
    `src/commands/package/export.ts` flag, and the docs/README.
 

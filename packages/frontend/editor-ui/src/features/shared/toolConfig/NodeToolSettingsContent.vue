@@ -59,8 +59,11 @@ const props = defineProps<{
 	existingToolNames?: string[];
 	hideAskAssistant?: boolean;
 	projectId?: string;
+	forAgent?: boolean;
 	/** Resource/operation option values to hide from the form (e.g. operations the hosting runtime cannot execute). */
 	hiddenOperations?: readonly string[];
+	/** Parameter names owned by the hosting surface instead of the node form. */
+	hiddenParameters?: readonly string[];
 	parameterIssues?: Record<string, string[]>;
 	fromAiDisabledParameters?: string[];
 	/** Keeps standalone Agent tool parameters resolvable through the scoped NDV store. */
@@ -97,10 +100,20 @@ const nodeTypeDescription = computed(() => {
 		return null;
 	}
 	const description = nodeTypesStore.getNodeType(props.initialNode.type);
-	if (!description || !props.hiddenOperations?.length) {
-		return description;
-	}
-	return omitOperationOptions(description, props.hiddenOperations);
+	if (!description) return null;
+
+	const withFilteredOperations = props.hiddenOperations?.length
+		? omitOperationOptions(description, props.hiddenOperations)
+		: description;
+	if (!props.hiddenParameters?.length) return withFilteredOperations;
+
+	const hiddenParameters = new Set(props.hiddenParameters);
+	return {
+		...withFilteredOperations,
+		properties: withFilteredOperations.properties.filter(
+			(parameter) => !hiddenParameters.has(parameter.name),
+		),
+	};
 });
 
 type ToolSettingsTab = 'params' | 'settings';
@@ -203,8 +216,23 @@ const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>
 	};
 });
 
+// Agents cannot use personal credentials yet. A saved selection that the
+// agent-scoped fetch no longer returns must block saving.
+const agentCredentialsLoaded = ref(false);
+const hasUnavailableAgentCredential = computed(() => {
+	if (!props.forAgent || !agentCredentialsLoaded.value) return false;
+	return Object.values(node.value?.credentials ?? {}).some(
+		(credential) => credential.id && !credentialsStore.getUsableCredentialById(credential.id),
+	);
+});
+
 const isValid = computed(() => {
-	return node.value?.name && !hasParameterIssues.value && !hasCredentialIssues.value;
+	return (
+		node.value?.name &&
+		!hasParameterIssues.value &&
+		!hasCredentialIssues.value &&
+		!hasUnavailableAgentCredential.value
+	);
 });
 
 // Provide expression resolve context for dynamic parameter loading
@@ -451,8 +479,12 @@ onMounted(async () => {
 	if (projectId) {
 		await Promise.all([
 			credentialsStore.fetchCredentialTypes(false),
-			credentialsStore.fetchUsableCredentials({ projectId }),
+			credentialsStore.fetchUsableCredentials({
+				projectId,
+				...(props.forAgent ? { forAgent: true } : {}),
+			}),
 		]);
+		agentCredentialsLoaded.value = true;
 	}
 });
 
@@ -500,6 +532,7 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 						:readonly="props.readOnly"
 						:show-all="true"
 						:project-id="credentialProjectId"
+						:for-agent="props.forAgent"
 						:hide-issues="false"
 						:hide-ask-assistant="props.hideAskAssistant"
 						:skip-credentials-fetch="true"

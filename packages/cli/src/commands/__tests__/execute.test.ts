@@ -11,7 +11,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
-import type { IRun } from 'n8n-workflow';
+import type { INode, IRun } from 'n8n-workflow';
 import { Expression } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -209,10 +209,12 @@ test('should exit with a crash when expression engine init fails', async () => {
 				lazyAcquire: false,
 				compileCache: false,
 				nativeEvaluation: false,
+				nativeEvaluationVerifySample: 0.01,
 			},
 			generic: { gracefulShutdownTimeout: 30 },
 		}),
 	);
+	errorReporter.isSentryActive.mockReturnValue(true);
 
 	class ExpressionCommand extends BaseCommand {
 		override needsExpressionEngine = true;
@@ -236,9 +238,225 @@ test('should exit with a crash when expression engine init fails', async () => {
 		lazyAcquire: false,
 		compileCache: false,
 		nativeEvaluation: false,
+		nativeEvaluationVerifySample: 0.01,
+		reportNativeVerifyMismatch: expect.any(Function),
+		canReportNativeVerifyMismatch: expect.any(Function),
 		observability: expressionObservability,
 	});
 	expect(exitSpy).toHaveBeenCalledWith(expect.stringContaining('isolated-vm'), expect.any(Error));
+});
+
+test('reports a native verify mismatch to Sentry without the request scope', async () => {
+	// arrange
+
+	const initSpy = vi.spyOn(Expression, 'initExpressionEngine').mockResolvedValue();
+	Container.set(
+		GlobalConfig,
+		mock<GlobalConfig>({
+			taskRunners: {},
+			nodes: {},
+			expressionEngine: {
+				engine: 'vm',
+				nativeEvaluation: false,
+				nativeEvaluationVerifySample: 0.01,
+			},
+			generic: { gracefulShutdownTimeout: 30 },
+		}),
+	);
+	errorReporter.isSentryActive.mockReturnValue(true);
+
+	class ExpressionCommand extends BaseCommand {
+		override needsExpressionEngine = true;
+	}
+	await new ExpressionCommand().init();
+
+	// act
+
+	const [{ reportNativeVerifyMismatch }] = initSpy.mock.calls[0];
+	reportNativeVerifyMismatch?.({
+		skeleton: '{{ $json.<id> }}',
+		engine: 'vm',
+		nativeResultType: 'string',
+		engineResultType: 'number',
+		workflowId: 'wf-1',
+	});
+
+	// assert
+
+	expect(errorReporter.info).toHaveBeenCalledWith(
+		'Native evaluation result differs from the expression engine',
+		{
+			tags: { expressionEngine: 'vm' },
+			extra: {
+				skeleton: '{{ $json.<id> }}',
+				nativeResultType: 'string',
+				engineResultType: 'number',
+				workflowId: 'wf-1',
+			},
+			fingerprint: ['native-evaluation-verify-mismatch', '{{ $json.<id> }}'],
+			shouldIsolate: true,
+		},
+	);
+});
+
+test('stops native verify reports when Sentry turns off', async () => {
+	// arrange
+
+	const initSpy = vi.spyOn(Expression, 'initExpressionEngine').mockResolvedValue();
+	Container.set(
+		GlobalConfig,
+		mock<GlobalConfig>({
+			taskRunners: {},
+			nodes: {},
+			expressionEngine: {
+				engine: 'vm',
+				nativeEvaluation: false,
+				nativeEvaluationVerifySample: 0.01,
+			},
+			generic: { gracefulShutdownTimeout: 30 },
+		}),
+	);
+	errorReporter.isSentryActive.mockReturnValue(true);
+
+	class ExpressionCommand extends BaseCommand {
+		override needsExpressionEngine = true;
+	}
+	await new ExpressionCommand().init();
+	const [{ canReportNativeVerifyMismatch }] = initSpy.mock.calls[0];
+
+	// act
+
+	errorReporter.isSentryActive.mockReturnValue(false);
+
+	// assert
+
+	expect(canReportNativeVerifyMismatch?.()).toBe(false);
+});
+
+const verifyLog = {
+	active: 'Native evaluation verify mode is active',
+	nativeEnabled: 'Native evaluation verify mode does nothing because native evaluation is enabled',
+	legacy: 'Native evaluation verify mode does nothing because the expression engine is legacy',
+	noSentry: 'Native evaluation verify mode does nothing because Sentry is not active',
+};
+
+test.each([
+	{
+		nativeEvaluation: false,
+		sample: 0.01,
+		engine: 'vm',
+		sentryActive: true,
+		warn: undefined,
+		info: verifyLog.active,
+	},
+	{
+		nativeEvaluation: false,
+		sample: 0.01,
+		engine: 'quickjs',
+		sentryActive: true,
+		warn: undefined,
+		info: verifyLog.active,
+	},
+	{
+		nativeEvaluation: false,
+		sample: 0.01,
+		engine: 'vm',
+		sentryActive: false,
+		warn: verifyLog.noSentry,
+		info: undefined,
+	},
+	{
+		nativeEvaluation: false,
+		sample: 0.01,
+		engine: 'legacy',
+		sentryActive: true,
+		warn: verifyLog.legacy,
+		info: undefined,
+	},
+	{
+		nativeEvaluation: true,
+		sample: 0.01,
+		engine: 'vm',
+		sentryActive: true,
+		warn: verifyLog.nativeEnabled,
+		info: undefined,
+	},
+	{
+		nativeEvaluation: false,
+		sample: 0,
+		engine: 'vm',
+		sentryActive: true,
+		warn: undefined,
+		info: undefined,
+	},
+] as const)(
+	'logs verify mode status at startup: native $nativeEvaluation, sample $sample on $engine, Sentry active $sentryActive',
+	async ({ nativeEvaluation, sample, engine, sentryActive, warn, info }) => {
+		// arrange
+
+		vi.spyOn(Expression, 'initExpressionEngine').mockResolvedValue();
+		Container.set(
+			GlobalConfig,
+			mock<GlobalConfig>({
+				taskRunners: {},
+				nodes: {},
+				expressionEngine: { engine, nativeEvaluation, nativeEvaluationVerifySample: sample },
+				generic: { gracefulShutdownTimeout: 30 },
+			}),
+		);
+		errorReporter.isSentryActive.mockReturnValue(sentryActive);
+
+		class ExpressionCommand extends BaseCommand {
+			override needsExpressionEngine = true;
+		}
+
+		// act
+
+		await new ExpressionCommand().init();
+
+		// assert
+
+		const verifyWarnings = logger.warn.mock.calls.filter(([message]) =>
+			message.startsWith('Native evaluation verify mode'),
+		);
+		const verifyInfos = logger.info.mock.calls.filter(([message]) =>
+			message.startsWith('Native evaluation verify mode'),
+		);
+		expect(verifyWarnings).toEqual(warn ? [[warn]] : []);
+		expect(verifyInfos).toEqual(info ? [[info, { sample, engine }]] : []);
+	},
+);
+
+test('passes no verify reporter when Sentry is not active', async () => {
+	// arrange
+
+	const initSpy = vi.spyOn(Expression, 'initExpressionEngine').mockResolvedValue();
+	Container.set(
+		GlobalConfig,
+		mock<GlobalConfig>({
+			taskRunners: {},
+			nodes: {},
+			expressionEngine: {
+				engine: 'vm',
+				nativeEvaluation: false,
+				nativeEvaluationVerifySample: 0.01,
+			},
+			generic: { gracefulShutdownTimeout: 30 },
+		}),
+	);
+	errorReporter.isSentryActive.mockReturnValue(false);
+
+	class ExpressionCommand extends BaseCommand {
+		override needsExpressionEngine = true;
+	}
+
+	// act
+
+	await new ExpressionCommand().init();
+
+	// assert
+
+	expect(initSpy.mock.calls[0][0].reportNativeVerifyMismatch).toBeUndefined();
 });
 
 test('exitWithCrash logs the crash message to the console', async () => {
@@ -274,3 +492,44 @@ test('exitWithCrash logs the crash message to the console', async () => {
 test('execute needs the expression engine', () => {
 	expect(new Execute().needsExpressionEngine).toBe(true);
 });
+
+test.each([true, false])(
+	'starts from the selected trigger when pinned data is %s',
+	async (pinned) => {
+		const startingNode = mock<INode>({
+			name: 'Execute Workflow Trigger',
+			type: 'n8n-nodes-base.executeWorkflowTrigger',
+		});
+		const workflow = mock<WorkflowEntity>({
+			id: '123',
+			nodes: [
+				mock<INode>({ name: 'Manual Trigger', type: 'n8n-nodes-base.manualTrigger' }),
+				startingNode,
+			],
+			pinData: pinned ? { [startingNode.name]: [{ json: {} }] } : undefined,
+		});
+		workflowRepository.findOneBy.mockResolvedValue(workflow);
+		ownershipService.getInstanceOwner.mockResolvedValue(mock<User>({ id: 'owner-id' }));
+		ownershipService.getWorkflowProjectCached.mockResolvedValue(
+			mock<Project>({ id: 'project-id', name: 'Project' }),
+		);
+		workflowRunner.run.mockResolvedValue('execution-id');
+		activeExecutions.getPostExecutePromise.mockResolvedValue(
+			mock<IRun>({ data: { resultData: { error: undefined } } }),
+		);
+		workflowRunner.run.mockClear();
+
+		const cmd = new Execute();
+		// @ts-expect-error Protected property
+		cmd.flags = { id: workflow.id };
+
+		await cmd.run();
+
+		expect(workflowRunner.run).toHaveBeenCalledExactlyOnceWith({
+			executionMode: 'cli',
+			triggerToStartFrom: { name: startingNode.name },
+			workflowData: workflow,
+			userId: 'owner-id',
+		});
+	},
+);

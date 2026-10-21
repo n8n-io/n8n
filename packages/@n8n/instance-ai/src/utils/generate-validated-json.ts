@@ -19,6 +19,8 @@ export type ValidatedJsonResult<T> =
 	| {
 			ok: false;
 			reason: 'generation_failed' | 'invalid_json' | 'schema_mismatch';
+			/** The model or agent error, for `generation_failed`. */
+			message?: string;
 			issues?: z.ZodIssue[];
 	  };
 
@@ -31,13 +33,25 @@ export interface GenerateValidatedJsonOptions<T> {
 	fallbackModelConfig?: ModelConfig;
 }
 
+/** Tracing must never block a model call: when it fails, the call runs without spans. */
+async function helperTelemetry(agentName: string) {
+	try {
+		const { getCurrentHelperTelemetry } = await import('../tracing/langsmith-tracing.js');
+		return getCurrentHelperTelemetry(agentName);
+	} catch {
+		return undefined;
+	}
+}
+
 export async function generateValidatedJson<T>(
 	agentName: string,
 	options: GenerateValidatedJsonOptions<T>,
 ): Promise<ValidatedJsonResult<T>> {
+	const telemetry = await helperTelemetry(agentName);
 	let text: string;
 	try {
 		const llm = createEvalAgent(agentName, {
+			telemetry,
 			model: options.model,
 			instructions: options.instructions,
 			fallbackModelConfig: options.fallbackModelConfig,
@@ -46,8 +60,9 @@ export async function generateValidatedJson<T>(
 			{ role: 'user' as const, content: [{ type: 'text' as const, text: options.userText }] },
 		]);
 		text = extractText(result);
-	} catch {
-		return { ok: false, reason: 'generation_failed' };
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		return { ok: false, reason: 'generation_failed', message };
 	}
 
 	let parsed: unknown;

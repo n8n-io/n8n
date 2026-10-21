@@ -43,12 +43,11 @@ For built-in providers, the setup service recognizes `ANTHROPIC_API_KEY`,
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `N8N_INSTANCE_AI_THINKING_ENABLED` | boolean | `true` | Extended thinking / reasoning. When `false`, reasoning is not enabled on the model. |
+| `N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED` | boolean | `false` | Enable workflow suggestions, internal self-healing investigations, and result review routes. Restart n8n after changing this setting. Investigations require a backend caller. This does not add automatic triggers. |
 | `N8N_INSTANCE_AI_NODE_CONTEXT_ENABLED` | boolean | `false` | Force-enable canvas node context. `false` falls back to the PostHog flag. |
-| `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED` | boolean | `false` | Force-enable folder exploration (folder attribution and folder scoping on `workflows(action="list")`). `false` falls back to the PostHog flag. |
+| `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED` | boolean | `false` | Force-enable folder exploration (folder attribution and folder scoping on `workflow_builder_workflows(action="list")`). `false` falls back to the PostHog flag. |
 | `N8N_INSTANCE_AI_BROWSER_USE_ENABLED` | boolean | `true` | Computer Use browser tooling, used for credential setup. |
 | `N8N_INSTANCE_AI_PROMPT_VERSION` | string | `''` | Pin every run on this instance to one published prompt profile, e.g. `concise@1`. Empty keeps the backend experiment assignment. An unknown version fails the Instance AI run, not the instance. See [prompt profiles](./prompt-profiles.md). |
-| `N8N_INSTANCE_AI_ACTIVATION_CAPPED` | boolean | `false` | Activation capping. |
-| `N8N_INSTANCE_AI_ACTIVATION_LOCK_MESSAGE_THRESHOLD` | number | `1` | Assistant messages that must be sent, in addition to instance activation, before an activation lock applies. |
 
 The PostHog flag `118_instance_ai_setup_overhaul` selects the setup flow.
 `variant` enables the async panel. `control` or an unavailable assignment uses
@@ -116,8 +115,8 @@ without search results. `research(action="fetch-url")` still works.
 | `N8N_INSTANCE_AI_SANDBOX_LINK_SDK` | boolean | `false` | Local-dev only. When `1` or `true`, pack `@n8n/utils`, `@n8n/errors`, `n8n-workflow`, and `@n8n/workflow-sdk` from the host monorepo into each sandbox after `npm install`. Build all four packages first. Start a new AI thread after changing this because existing sandboxes keep their initialized `node_modules`. |
 
 When sandbox is enabled, Instance AI writes workflow source files in the runtime
-workspace and `build-workflow` runs TypeScript sources through the sandbox
-`tsx` build runner before saving. The model still calls only `build-workflow`;
+workspace and `workflow_builder_build_workflow` runs TypeScript sources through the sandbox
+`tsx` build runner before saving. The model still calls only `workflow_builder_build_workflow`;
 there is no no-sandbox TypeScript build fallback.
 
 Sandbox workspaces persist per thread. The same remote sandbox is reused across
@@ -179,6 +178,13 @@ these values from the managed service instead.
 The `instance-ai` module is in the default module set. It does not need to be
 listed in `N8N_ENABLED_MODULES`. `N8N_AI_ENABLED` controls older global AI
 features and does not gate Instance AI.
+
+The `agents` module is also in the default module set. When it is active and
+the Settings > Agents switch is on, the Assistant gets the `build-agent` and
+`agent-context` tools, the `agent-builder` and `intent-recognition` skills, and
+Agent preview handoff. When an admin turns the switch off, the Assistant loses
+all of these at once. A run that is building an Agent fails at its next step.
+To remove the module, add `agents` to `N8N_DISABLED_MODULES`.
 
 Chat and the main UI are gated by `InstanceAiSettingsService.isInstanceAiEnabled()`.
 Member-facing entry points are additionally gated by `isSetupCompleted()`, which
@@ -327,3 +333,25 @@ search:
     - html
     - json   # required for Instance AI
 ```
+
+## Verification helper and provider request traces
+
+When product tracing is enabled, the workflow destructiveness classifier and
+simulation-fixture generator reuse the current product trace and provider.
+Their spans carry `evalRole=helper` and the helper name in `agent_role`. Their
+prompt and output recording is disabled. Calls outside an active product trace
+keep their existing behavior.
+
+Product model calls also emit `model.provider.request` spans per HTTP attempt.
+These report provider/model identity, HTTP status and time to response headers.
+They preserve the configured transport and parent span. They contain no request
+URL, headers, body, response body, token usage, or exception text. HTTP success
+does not mean a stream completed: the parent generation span reports stream
+errors, tokens and timing. Generation spans own usage, so request spans must not
+be summed into generation/token totals. Prebuilt external LanguageModel objects
+bypass the SDK transport and must supply their own request tracing.
+
+The agents SDK option `BuiltTelemetry.traceModelRequests` is opt-in. Instance AI
+enables it for product calls; external harnesses with their own fetch tracing
+leave it unset to avoid duplicate attempt spans. The existing trace enablement,
+redaction and provider lifetime rules still apply.

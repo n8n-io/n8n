@@ -1,5 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
-import { waitFor } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { defineComponent, h } from 'vue';
 
@@ -26,13 +26,27 @@ vi.mock('@n8n/composables/useToast', () => ({
 }));
 
 const renderComponent = createComponentRenderer(ApplyInstanceDialog, {
-	props: { open: true, connectionId: 'connection-1', branchName: 'main' },
+	props: { open: true, environmentId: 'environment-1', branchName: 'main' },
 });
 
 describe('ApplyInstanceDialog', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		createTestingPinia();
+	});
+
+	it('submits the body form from the footer button', async () => {
+		api.applyPromotion.mockResolvedValue(applied);
+		const { findByTestId } = renderComponent();
+
+		const button = await findByTestId('apply-confirm-button');
+		const form = button instanceof HTMLButtonElement ? button.form : null;
+		expect(form).toHaveAttribute('id', 'apply-instance-form');
+		await fireEvent.submit(form!);
+
+		await waitFor(() =>
+			expect(api.applyPromotion).toHaveBeenCalledWith(expect.anything(), 'environment-1'),
+		);
 	});
 
 	it('applies the whole branch and reports success', async () => {
@@ -54,7 +68,7 @@ describe('ApplyInstanceDialog', () => {
 
 		// The whole-branch apply carries no expectedSource, so the branch tip is applied.
 		await waitFor(() =>
-			expect(api.applyPromotion).toHaveBeenCalledWith(expect.anything(), 'connection-1'),
+			expect(api.applyPromotion).toHaveBeenCalledWith(expect.anything(), 'environment-1'),
 		);
 		// Project counts are reported too, because an instance apply can delete projects.
 		expect(mockShowMessage).toHaveBeenCalledWith(
@@ -186,8 +200,7 @@ describe('ApplyInstanceDialog', () => {
 	it('warns and closes when the source changed', async () => {
 		api.applyPromotion.mockResolvedValue({
 			status: 'source-changed',
-			connectionId: 'connection-1',
-			configId: 'config-apply',
+			environmentId: 'environment-1',
 			git: { branchName: 'main', commitSha: 'b'.repeat(40) },
 		});
 		const { findByTestId, emitted } = renderComponent();

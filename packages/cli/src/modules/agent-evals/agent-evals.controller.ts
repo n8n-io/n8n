@@ -255,7 +255,7 @@ export class AgentEvalsController {
 	): Promise<AgentEvalRunDetail> {
 		await this.flagGate.assertEnabled(req.user);
 		const { agentId, projectId, runId } = req.params;
-		return await this.service.getRunDetail(agentId, projectId, runId, query);
+		return await this.service.getRunDetail(req.user, agentId, projectId, runId, query);
 	}
 
 	/** Counts only — cheap enough for the UI to poll while a run is in flight. */

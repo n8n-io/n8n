@@ -88,6 +88,7 @@ describe('buildSchemaContexts', () => {
 			resource: 'row',
 			operation: 'get',
 			hasOutputParser: false,
+			parameters: workflow.nodes[0].parameters,
 		});
 		expect(contexts[0].schema).toEqual({ type: 'object', properties: { id: {} } });
 	});
@@ -747,6 +748,38 @@ describe('ai-root shapes', () => {
 		);
 	});
 
+	it('describes the classifier by what its options ask for', async () => {
+		const { describeAiRootShape } = await import('./ai-root-shapes.js');
+		const classifier = '@n8n/n8n-nodes-langchain.textClassifier';
+
+		const on = describeAiRootShape(classifier, { classifierReportsConfidence: true });
+		const off = describeAiRootShape(classifier, { classifierReportsConfidence: false });
+
+		expect(on).not.toBe(off);
+		expect(off).toBe(describeAiRootShape(classifier));
+		expect(on).toContain('`classification` object');
+		expect(off).toContain('no classification wrapper key');
+	});
+
+	it('carries the classifier option into the rendered prompt section', async () => {
+		const { buildSchemaContexts } = await import('./context.js');
+		const { buildNodeSchemaSection } = await import('./prompt.js');
+		const node = (options: Record<string, unknown>) => ({
+			id: 'classifier-1',
+			name: 'Classifier',
+			type: '@n8n/n8n-nodes-langchain.textClassifier',
+			typeVersion: 1.1,
+			position: [0, 0] as [number, number],
+			parameters: { options },
+		});
+
+		const [on] = buildSchemaContexts([node({ includeConfidenceScores: true })]);
+		const [off] = buildSchemaContexts([node({})]);
+
+		expect(buildNodeSchemaSection(on).join('\n')).toContain('`classification` object');
+		expect(buildNodeSchemaSection(off).join('\n')).toContain('no classification wrapper key');
+	});
+
 	it('derives the structured envelope key from a with-parser schema', async () => {
 		const { findEnvelopeKey } = await import('./ai-root-shapes.js');
 
@@ -834,7 +867,9 @@ describe('ai-root shapes', () => {
 	});
 
 	it('classifies the assistant and vendor LLM nodes as AI roots', async () => {
-		const { isAiRootNodeType, describeAiRootShape } = await import('./ai-root-shapes.js');
+		const { isAiRootNodeType, describeAiRootShape, buildAiRootPlaceholder } = await import(
+			'./ai-root-shapes.js'
+		);
 
 		// Mirrors the editor's canonical AI_ROOT_NODE_TYPES list
 		// (evaluation.ee/evaluation.constants.ts).
@@ -855,6 +890,13 @@ describe('ai-root shapes', () => {
 		expect(describeAiRootShape('@n8n/n8n-nodes-langchain.anthropic')).toContain(
 			'vendor API response',
 		);
+
+		// The Databricks AI Agent runs the shared Agent, so it keeps the `output` envelope.
+		expect(isAiRootNodeType('@n8n/n8n-nodes-langchain.databricksAiAgent')).toBe(true);
+		expect(describeAiRootShape('@n8n/n8n-nodes-langchain.databricksAiAgent')).toContain('"output"');
+		expect(buildAiRootPlaceholder('@n8n/n8n-nodes-langchain.databricksAiAgent', 'x')).toEqual({
+			output: 'x',
+		});
 	});
 });
 

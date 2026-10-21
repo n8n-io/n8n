@@ -163,12 +163,8 @@ function onAgentDuplicate(agentId: string) {
 						agent.id,
 						newName,
 					);
-					// A duplicate is born configured, so the backend creation events
-					// never fire for it (its first edit reports a modification).
-					// Track the duplicate directly, mirroring "User duplicated
-					// workflow" — the source agent id distinguishes it from an
-					// organic creation. Routed through the safe wrapper so a
-					// telemetry failure can't misreport a successful duplicate.
+					// Keep the source Agent context alongside the backend creation event.
+					// The safe wrapper prevents telemetry errors from failing duplication.
 					agentTelemetry.trackDuplicatedAgent({
 						sourceAgentId: agent.id,
 						agentId: duplicated.id,

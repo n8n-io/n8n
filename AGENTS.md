@@ -14,6 +14,11 @@ frontend, and extensible node-based workflow engine.
 - Write all technical text (code comments, PR descriptions, issue and ticket
   descriptions, docs) in ASD-STE100 Simplified Technical English: use short
   sentences, the active voice, and one instruction for each sentence
+- **JSDoc on `@Env(...)` config properties is public documentation.** The
+  docs team exports these comments into the environment variable reference on
+  docs.n8n.io. Write them for a self-hosting operator and follow the
+  `n8n:env-var-docs` skill, which applies the n8n docs style guide and
+  overrides the ASD-STE100 rule above for these comments
 - **Secrets on the command line:** if a developer opted into anonymous dev
   metrics (`scripts/dev-metrics`), pnpm command arguments are recorded. Arguments
   of secret-carrying words (`config`, `login`, `publish`, `token`) — whether a

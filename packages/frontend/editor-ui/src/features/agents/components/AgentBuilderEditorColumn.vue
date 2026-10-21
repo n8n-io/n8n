@@ -5,6 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import type { AgentConfigValidationIssue, AgentFileDto } from '@n8n/api-types';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
+import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import type { SetupTask } from './AgentSetupTasks/agentSetupTasks.registry';
 import type {
 	AgentJsonConfig,
@@ -20,6 +21,7 @@ import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
 import AgentBudgetPanel from './AgentBudgetPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
 import AgentTriggersSection from './AgentTriggersSection.vue';
+import { provideAgentPersonalisation } from '../channels/agentPersonalisation';
 import AgentIdentityHeader from './AgentIdentityHeader.vue';
 import AgentInfoPanel from './AgentInfoPanel.vue';
 import AgentFilesPanel from './AgentFilesPanel.vue';
@@ -68,6 +70,9 @@ const props = defineProps<{
 }>();
 
 const childrenDisabled = computed(() => !props.canEditAgent);
+provideAgentPersonalisation(
+	() => props.localConfig?.personalisation ?? props.agent?.schema?.personalisation,
+);
 const isKnowledgeAdvancedExpanded = ref(false);
 
 const settingsStore = useSettingsStore();
@@ -96,7 +101,6 @@ const emit = defineEmits<{
 	'add-skill': [];
 	'remove-tool': [index: number];
 	'remove-skill': [id: string];
-	'toggle-skill': [payload: { id: string; enabled: boolean }];
 	'upload-files': [files: File[]];
 	'delete-file': [file: AgentFileDto];
 	'add-vector-store': [];
@@ -110,15 +114,26 @@ const emit = defineEmits<{
 	'preview-task': [instructions: string];
 	'agent-changed': [];
 	'generate-eval-cases': [];
-	'open-preview': [];
+	'open-preview': [source: 'icon'];
 	'publish-agent': [];
 	'setup-task-action': [task: SetupTask];
 }>();
 
 const i18n = useI18n();
+const agentTelemetry = useAgentTelemetry();
 
 const agentInfoPanel = ref<InstanceType<typeof AgentInfoPanel>>();
 const agentTriggersSection = ref<InstanceType<typeof AgentTriggersSection>>();
+
+function onMainTabSelect(tab: AgentBuilderMainTab) {
+	if (tab !== 'evals') {
+		agentTelemetry.trackClickedAgentsTab({
+			agentId: props.agentId,
+			name: tab === 'agent' ? 'build' : tab,
+		});
+	}
+	emit('update:activeMainTab', tab);
+}
 
 function onSetupTaskAction(task: SetupTask) {
 	if (task.id === 'publish-agent') {
@@ -171,7 +186,7 @@ defineExpose({ onSetupTaskAction });
 						:options="mainTabOptions"
 						:class="$style.mainTabs"
 						data-testid="agent-header-tabs"
-						@update:model-value="emit('update:activeMainTab', $event)"
+						@update:model-value="onMainTabSelect"
 					/>
 				</div>
 			</div>
@@ -192,15 +207,14 @@ defineExpose({ onSetupTaskAction });
 						data-testid="agent-skills-panel"
 					>
 						<AgentSkillsSection
-							supports-activation
 							:skills="appliedSkills"
 							:disabled="childrenDisabled"
 							:show-label="false"
 							:validation-issues="configValidationIssues ?? []"
+							:outdated-skill-ids="agent?.outdatedSkillIds ?? []"
 							@open-skill="emit('open-skill', $event)"
 							@add-skill="emit('add-skill')"
 							@remove-skill="emit('remove-skill', $event)"
-							@toggle-skill="emit('toggle-skill', $event)"
 						/>
 					</AgentPanel>
 
@@ -214,7 +228,7 @@ defineExpose({ onSetupTaskAction });
 								:is-runnable="props.agent?.isRunnable === true"
 								:validation-issues="props.configValidationIssues ?? []"
 								test-id="agent-triggers-preview-chat-button"
-								@open-preview="emit('open-preview')"
+								@open-preview="emit('open-preview', 'icon')"
 							/>
 						</template>
 						<AgentTriggersSection
@@ -233,7 +247,6 @@ defineExpose({ onSetupTaskAction });
 							:saved-description="savedDescription"
 							:save-description="saveDescription"
 							:task-refs="localConfig?.tasks ?? []"
-							:personalisation="localConfig?.personalisation ?? agent?.schema?.personalisation"
 							:reload-key="tasksReloadKey"
 							@update:connected-triggers="emit('update:connected-triggers', $event)"
 							@trigger-added="emit('trigger-added', $event)"
@@ -287,6 +300,7 @@ defineExpose({ onSetupTaskAction });
 						:description="i18n.baseText('agents.builder.files.titleTooltip')"
 					>
 						<AgentFilesPanel
+							:agent-id="agentId"
 							:files="agentFiles"
 							:disabled="childrenDisabled"
 							:loading="agentFilesLoading"

@@ -203,6 +203,11 @@ describe('useCredentialNavigationCommands', () => {
 			});
 		});
 
+		// AI-2833: All resource creation actions must use the plus icon.
+		it('uses the plus icon for credential creation', () => {
+			expect(findCreateCommand()).toMatchObject({ icon: { props: { icon: 'plus' } } });
+		});
+
 		it('hides the create command in a read-only environment', () => {
 			sourceControlStore.preferences.branchReadOnly = true;
 

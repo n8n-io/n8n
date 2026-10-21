@@ -3,7 +3,7 @@ import type { EventService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import { DEFAULT_MISFIRE_GRACE_SECONDS, ScheduledJobMisfirePolicy } from '@n8n/constants';
 import type { ScheduledJobRepository } from '@n8n/db';
-import type { SystemTask, SystemTaskSchedule } from '@n8n/decorators';
+import type { SchedulerOptions, SystemTask, SystemTaskSchedule } from '@n8n/decorators';
 import type { ProvisionSummary } from '@n8n/scheduler';
 import type { ErrorReporter } from 'n8n-core';
 import { inc } from 'semver';
@@ -12,7 +12,11 @@ import { mock } from 'vitest-mock-extended';
 import { N8N_VERSION } from '@/constants';
 
 import type { DurableJobProvisioner } from '../../durable-job-provisioner';
-import { SystemTaskJobRegistrar, systemTaskProvisionRequest } from '../system-task-job-registrar';
+import {
+	SystemTaskJobRegistrar,
+	systemTaskProvisionRequest,
+	durableSystemTask,
+} from '../system-task-job-registrar';
 import { SystemTaskScheduledJobOwner } from '../system-task-scheduled-job-owner';
 
 const NOW = new Date('2026-01-05T09:00:00.000Z');
@@ -24,19 +28,40 @@ const emptySummary: ProvisionSummary = {
 	removed: [],
 };
 
-const task = (over: Partial<SystemTask> = {}): SystemTask => ({
+type TaskOverrides = { schedule?: SystemTaskSchedule; scheduler?: Partial<SchedulerOptions> };
+
+const task = ({ schedule, scheduler }: TaskOverrides = {}): SystemTask => ({
 	name: 'prune-executions',
-	schedule: { kind: 'interval', intervalSeconds: 60 },
-	effects: 'idempotent',
-	placement: { scope: 'cluster', durable: true },
+	schedule: schedule ?? { kind: 'interval', intervalSeconds: 60 },
+	target: { scope: 'cluster', scheduler: { retryOnFailure: true, ...scheduler } },
 	run: async () => {},
-	...over,
+});
+
+describe('durableSystemTask', () => {
+	it('resolves the schedule and the run options of a scheduler task', () => {
+		expect(durableSystemTask(task())).toEqual({
+			task: expect.objectContaining({ name: 'prune-executions' }),
+			schedule: { kind: 'interval', intervalSeconds: 60 },
+			runOptions: expect.objectContaining({ maxAttempts: 3 }),
+		});
+	});
+
+	it('rejects a task that does not run on the scheduler', () => {
+		const leaderOnly = { ...task(), target: { scope: 'cluster', leaderTimer: {} } } as const;
+
+		expect(() => durableSystemTask(leaderOnly)).toThrow(
+			expect.objectContaining({
+				message: 'A system task does not run on the durable scheduler',
+				extra: { name: 'prune-executions' },
+			}),
+		);
+	});
 });
 
 describe('systemTaskProvisionRequest', () => {
 	const owner = new SystemTaskScheduledJobOwner(mock<ScheduledJobRepository>());
-	const request = (over: Partial<SystemTask> = {}, defaultTimezone = 'UTC') =>
-		systemTaskProvisionRequest(task(over), owner, defaultTimezone, NOW);
+	const request = (over: TaskOverrides = {}, defaultTimezone = 'UTC') =>
+		systemTaskProvisionRequest(durableSystemTask(task(over)), owner, defaultTimezone, NOW);
 
 	it('owns the job by task name, with no member', () => {
 		expect(request().owner).toEqual({
@@ -99,16 +124,16 @@ describe('systemTaskProvisionRequest', () => {
 		expect(desired[0]?.schedule).toEqual({ kind: 'interval', intervalSeconds: 90 });
 	});
 
-	it('coalesces and retries idempotent work', () => {
-		expect(request({ effects: 'idempotent' })).toMatchObject({
+	it('catches up, keeps the default grace and retries when the task states only its retry', () => {
+		expect(request()).toMatchObject({
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: DEFAULT_MISFIRE_GRACE_SECONDS,
 			maxAttempts: 3,
 		});
 	});
 
-	it('skips and never retries non-idempotent work, even where the task asks for retries', () => {
-		expect(request({ effects: 'non-idempotent', maxAttempts: 5 })).toMatchObject({
+	it('stores no catch-up and a single attempt when the task asks for them', () => {
+		expect(request({ scheduler: { retryOnFailure: false, catchUp: false } })).toMatchObject({
 			misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 			maxAttempts: 1,
 		});
@@ -118,8 +143,11 @@ describe('systemTaskProvisionRequest', () => {
 		expect(request().concurrencyLimit).toBe(1);
 	});
 
-	it.each([null, 4])('honours a declared concurrency limit of %s', (concurrencyLimit) => {
-		expect(request({ concurrencyLimit }).concurrencyLimit).toBe(concurrencyLimit);
+	it.each([
+		['unlimited', null],
+		[4, 4],
+	] as const)('honours a declared concurrency limit of %s', (concurrencyLimit, stored) => {
+		expect(request({ scheduler: { concurrencyLimit } }).concurrencyLimit).toBe(stored);
 	});
 
 	it('leaves the timeout to the instance setting when the task declares none', () => {
@@ -127,20 +155,13 @@ describe('systemTaskProvisionRequest', () => {
 	});
 
 	it("honours a task's own timeout", () => {
-		expect(request({ timeoutSeconds: 600 }).timeoutSeconds).toBe(600);
+		expect(request({ scheduler: { timeoutSeconds: 600 } }).timeoutSeconds).toBe(600);
 	});
 
-	it("honours a task's own policy, grace and attempts", () => {
-		expect(
-			request({
-				misfirePolicy: ScheduledJobMisfirePolicy.Skip,
-				misfireGraceSeconds: 300,
-				maxAttempts: 7,
-			}),
-		).toMatchObject({
+	it("honours a task's own catch-up and missed delay", () => {
+		expect(request({ scheduler: { catchUp: false, missedAfterSeconds: 300 } })).toMatchObject({
 			misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 			misfireGraceSeconds: 300,
-			maxAttempts: 7,
 		});
 	});
 });
@@ -191,7 +212,7 @@ describe('SystemTaskJobRegistrar', () => {
 		it('provisions the one job of a task, owned by the task and seeded at now', async () => {
 			const { registrar, durableJobProvisioner } = setup();
 
-			await registrar.provision(task());
+			await registrar.provision(durableSystemTask(task()));
 
 			expect(durableJobProvisioner.provision).toHaveBeenCalledExactlyOnceWith({
 				owner: { ownerType: 'system-task', ownerId: 'prune-executions', ownerMemberId: null },
@@ -216,7 +237,7 @@ describe('SystemTaskJobRegistrar', () => {
 			const { registrar, durableJobProvisioner, errorReporter, logger } = setup();
 			durableJobProvisioner.provision.mockRejectedValueOnce(error);
 
-			await expect(registrar.provision(task())).resolves.toBeUndefined();
+			await expect(registrar.provision(durableSystemTask(task()))).resolves.toBeUndefined();
 
 			expect(errorReporter.error).toHaveBeenCalledExactlyOnceWith(error, {
 				extra: { systemTask: 'prune-executions' },
@@ -232,11 +253,11 @@ describe('SystemTaskJobRegistrar', () => {
 		it('emits a scheduling failure for a task it cannot provision, and nothing for one it can', async () => {
 			const { registrar, durableJobProvisioner, eventService } = setup();
 
-			await registrar.provision(task());
+			await registrar.provision(durableSystemTask(task()));
 			expect(eventService.emit).not.toHaveBeenCalled();
 
 			durableJobProvisioner.provision.mockRejectedValueOnce(new Error('connection lost'));
-			await registrar.provision(task());
+			await registrar.provision(durableSystemTask(task()));
 
 			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('system-task-scheduling-failed', {
 				name: 'prune-executions',
@@ -253,7 +274,7 @@ describe('SystemTaskJobRegistrar', () => {
 				removed: [],
 			});
 
-			await registrar.provision(task());
+			await registrar.provision(durableSystemTask(task()));
 
 			expect(logger.debug).toHaveBeenCalledWith('Provisioned the durable job of a system task', {
 				name: 'prune-executions',

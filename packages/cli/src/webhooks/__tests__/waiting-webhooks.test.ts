@@ -79,6 +79,66 @@ describe('WaitingWebhooks', () => {
 		await expect(promise).rejects.toThrowError(NotFoundError);
 	});
 
+	describe('getWebhookMethods', () => {
+		it('returns the configured method for a waiting webhook', async () => {
+			executionPersistence.findSingleExecution.mockResolvedValue(
+				mock<IExecutionResponse>({
+					data: {
+						resultData: { lastNodeExecuted: 'Wait' },
+					},
+					workflowData: {
+						id: 'workflow-id',
+						name: 'Workflow',
+						nodes: [
+							{
+								name: 'Wait',
+								type: 'n8n-nodes-base.wait',
+								typeVersion: 1,
+								position: [0, 0],
+								parameters: { resume: 'webhook', httpMethod: 'POST' },
+							},
+						],
+						connections: {},
+						staticData: {},
+					},
+				}),
+			);
+			mockWebhookService.getNodeWebhooks.mockReturnValue([
+				{
+					httpMethod: 'POST',
+					webhookDescription: { restartWebhook: true },
+				},
+				{
+					httpMethod: 'GET',
+					webhookDescription: { restartWebhook: true, nodeType: 'form' },
+				},
+			] as any);
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+
+			await expect(waitingWebhooks.getWebhookMethods('execution-id')).resolves.toEqual(['POST']);
+		});
+	});
+
+	it('should throw ConflictError if the execution to resume was parked at a node boundary', async () => {
+		executionPersistence.findSingleExecution.mockResolvedValue(
+			mock<IExecutionResponse>({
+				status: 'waiting',
+				data: {
+					waitReason: 'suspended',
+					resumeToken: undefined,
+					resultData: { lastNodeExecuted: undefined, error: undefined },
+				},
+			}),
+		);
+
+		const promise = waitingWebhooks.executeWebhook(
+			mock<WaitingWebhookRequest>(),
+			mock<express.Response>(),
+		);
+
+		await expect(promise).rejects.toThrowError(ConflictError);
+	});
+
 	it('should throw ConflictError if the execution to resume is already running', async () => {
 		/**
 		 * Arrange

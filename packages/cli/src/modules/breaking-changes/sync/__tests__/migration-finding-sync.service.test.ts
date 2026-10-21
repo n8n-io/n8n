@@ -122,7 +122,7 @@ describe('MigrationFindingSyncService', () => {
 		workflowRepository.findExistingIds.mockImplementation(async (ids) => ids);
 		ruleRegistry.getRules.mockReturnValue(rules('rule-a', 'rule-b'));
 		findingRepository.listForWorkflows.mockResolvedValue([]);
-		findingRepository.listWorkflowIdsWithOpenFindings.mockResolvedValue([]);
+		findingRepository.listWorkflowIdsWithUnresolvedFindings.mockResolvedValue([]);
 		ownerSuggestionService.suggestOwners.mockResolvedValue([]);
 		breakingChangeService.detect.mockResolvedValue(detectionResult([]));
 
@@ -472,14 +472,17 @@ describe('MigrationFindingSyncService', () => {
 	describe('suggested owners', () => {
 		it('stores a suggestion for each workflow in the batch with an open finding and clears the rest', async () => {
 			givenWorkflows(3);
-			findingRepository.listWorkflowIdsWithOpenFindings.mockResolvedValue(['wf-0000', 'wf-0002']);
+			findingRepository.listWorkflowIdsWithUnresolvedFindings.mockResolvedValue([
+				'wf-0000',
+				'wf-0002',
+			]);
 			ownerSuggestionService.suggestOwners.mockResolvedValue([
 				{ workflowId: 'wf-0000', userId: 'user-1' },
 			]);
 
 			await service.sync(TARGET_VERSION);
 
-			expect(findingRepository.listWorkflowIdsWithOpenFindings).toHaveBeenCalledWith(
+			expect(findingRepository.listWorkflowIdsWithUnresolvedFindings).toHaveBeenCalledWith(
 				TARGET_VERSION,
 				['wf-0000', 'wf-0001', 'wf-0002'],
 				expect.anything(),
@@ -690,14 +693,14 @@ describe('MigrationFindingSyncService', () => {
 		});
 
 		it('refreshes the suggested owner of that workflow', async () => {
-			findingRepository.listWorkflowIdsWithOpenFindings.mockResolvedValue([WORKFLOW_ID]);
+			findingRepository.listWorkflowIdsWithUnresolvedFindings.mockResolvedValue([WORKFLOW_ID]);
 			ownerSuggestionService.suggestOwners.mockResolvedValue([
 				{ workflowId: WORKFLOW_ID, userId: 'user-1' },
 			]);
 
 			await service.syncWorkflow(WORKFLOW_ID);
 
-			expect(findingRepository.listWorkflowIdsWithOpenFindings).toHaveBeenCalledWith(
+			expect(findingRepository.listWorkflowIdsWithUnresolvedFindings).toHaveBeenCalledWith(
 				REPORT_VERSION,
 				[WORKFLOW_ID],
 				expect.anything(),

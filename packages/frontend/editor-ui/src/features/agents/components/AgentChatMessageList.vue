@@ -14,7 +14,11 @@ import {
 import { getMessageInteractives, isRecord } from '@/features/ai/shared/agentsChat/messageMappers';
 import {
 	AGENTS_CHAT_INTERACTION_EXTENSIONS,
+	appendHostEventSources,
+	findHostEventRenderer,
 	findToolResultRenderer,
+	getHostEventItems,
+	type AgentsChatHostEventItems,
 	type AgentsChatToolResultRenderer,
 } from '@/features/ai/shared/agentsChat/interactionRegistry';
 import {
@@ -30,6 +34,7 @@ import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.v
 import AiThinkingBlock from '@/features/ai/shared/components/AiThinkingBlock.vue';
 import AgentChatMemoryUsed from './AgentChatMemoryUsed.vue';
 import AgentChatBackgroundJobSignal from './AgentChatBackgroundJobSignal.vue';
+import AgentChatHostEvents from './AgentChatHostEvents.vue';
 import AgentChatMessageActions from './AgentChatMessageActions.vue';
 import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
 import AgentChatToolSteps from './AgentChatToolSteps.vue';
@@ -43,7 +48,12 @@ import { looksLikeAgentChangeRequest } from '../utils/agent-change-request';
 import { buildAgentPlanDisplayGroups } from '../utils/agent-plan';
 import { isRetryableChatError } from '../utils/errors';
 import { isSameLocalDay, useChatDividerTimestamp } from '../utils/relative-time';
-import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
+import {
+	CHAT_MESSAGE_ROLE,
+	CHAT_MESSAGE_STATUS,
+	HOST_EVENT_PLACEMENT,
+	TOOL_CALL_STATE,
+} from '../constants';
 
 const props = defineProps<{
 	messages: ChatMessage[];
@@ -171,7 +181,55 @@ const interactionExtensions = inject(AGENTS_CHAT_INTERACTION_EXTENSIONS, undefin
 
 const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
 
-const displayGroups = computed(() => buildAgentPlanDisplayGroups(props.messages));
+/** True when the bubble of `message` shows something besides host events. */
+function hasBubbleContent(message: ChatMessage): boolean {
+	return !!(
+		message.content.trim() ||
+		message.renderParts?.length ||
+		message.toolCalls?.length ||
+		message.thinkingSegments?.length ||
+		message.thinking ||
+		message.interactive ||
+		message.interactives?.length ||
+		message.attachments?.length ||
+		message.budgetNotices?.length
+	);
+}
+
+/**
+ * Keeps only the host events that an extension renders: on assistant messages,
+ * and `transient` events only while the turn runs or waits for the user. A
+ * message that then shows nothing is dropped, so no empty bubble shows. A
+ * streaming message stays for the typing indicator.
+ */
+const visibleMessages = computed(() => {
+	if (!props.messages.some((message) => message.hostEvents?.length)) return props.messages;
+	const extensions = interactionExtensions?.value ?? [];
+	return props.messages.flatMap((message) => {
+		if (!message.hostEvents?.length) return [message];
+		const live =
+			message.status === CHAT_MESSAGE_STATUS.STREAMING ||
+			message.status === CHAT_MESSAGE_STATUS.AWAITING_USER;
+		const hostEvents =
+			message.role === CHAT_MESSAGE_ROLE.ASSISTANT
+				? message.hostEvents.filter((event) => {
+						const renderer = findHostEventRenderer(event, extensions);
+						if (!renderer) return false;
+						return renderer.placement !== HOST_EVENT_PLACEMENT.TRANSIENT || live;
+					})
+				: [];
+		if (hostEvents.length === message.hostEvents.length) return [message];
+		const keep =
+			hostEvents.length > 0 ||
+			hasBubbleContent(message) ||
+			!!message.backgroundJobSignal ||
+			message.status === CHAT_MESSAGE_STATUS.STREAMING;
+		return keep ? [{ ...message, hostEvents: hostEvents.length ? hostEvents : undefined }] : [];
+	});
+});
+
+const displayGroups = computed(() => buildAgentPlanDisplayGroups(visibleMessages.value));
+
 interface GroupToolCalls {
 	/** Calls that render as default tool steps. */
 	steps: ToolCall[];
@@ -215,6 +273,51 @@ const retryErrorMessageId = computed(() => {
 	const message = props.messages.at(-1);
 	return props.retryMessageId && isRetryableChatError(message) ? message?.id : undefined;
 });
+
+const EMPTY_HOST_EVENT_ITEMS: AgentsChatHostEventItems = { start: [], end: [] };
+
+/** Host event components of each assistant group. `transient` events show only before text. */
+const hostEventItems = computed(() => {
+	const itemsByGroupId = new Map<string, AgentsChatHostEventItems>();
+	const extensions = interactionExtensions?.value ?? [];
+	for (const group of displayGroups.value) {
+		switch (group.kind) {
+			case DISPLAY_GROUP_KIND.TOOL_RUN: {
+				if (!group.hostEvents) break;
+				const showTransient = !group.finalMessage?.content.trim();
+				itemsByGroupId.set(
+					group.id,
+					getHostEventItems(group.hostEvents, extensions, showTransient),
+				);
+				break;
+			}
+			case DISPLAY_GROUP_KIND.MESSAGE: {
+				const { message } = group;
+				if (!message.hostEvents) break;
+				const sources = appendHostEventSources([], message);
+				const showTransient = !message.content.trim();
+				itemsByGroupId.set(group.id, getHostEventItems(sources, extensions, showTransient));
+				break;
+			}
+			case DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL:
+				// Signal groups have no host events.
+				break;
+			default: {
+				// A new group kind fails the type check here. Add a case for it.
+				const unhandled: never = group;
+				if (import.meta.env.DEV) {
+					console.warn('[AgentChatMessageList] Host events skip a display group kind', unhandled);
+				}
+			}
+		}
+	}
+	return itemsByGroupId;
+});
+
+function getGroupHostEventItems(groupId: string): AgentsChatHostEventItems {
+	return hostEventItems.value.get(groupId) ?? EMPTY_HOST_EVENT_ITEMS;
+}
+
 const streamingGroupId = computed(() =>
 	props.messages.at(-1)?.status === CHAT_MESSAGE_STATUS.STREAMING
 		? displayGroups.value.at(-1)?.id
@@ -233,7 +336,8 @@ const dividerLabels = computed(() => {
 	const labels = new Map<string, string>();
 	let previousUserCreatedAt: number | undefined;
 	for (const group of displayGroups.value) {
-		if (group.kind !== DISPLAY_GROUP_KIND.MESSAGE || group.message.role !== 'user') continue;
+		if (group.kind !== DISPLAY_GROUP_KIND.MESSAGE || group.message.role !== CHAT_MESSAGE_ROLE.USER)
+			continue;
 		const createdAt = group.message.createdAt;
 		if (createdAt === undefined) continue;
 		// A new local day always earns a divider, even inside the window: without
@@ -271,7 +375,7 @@ const changeRequestGroupId = computed(() =>
 		? displayGroups.value.findLast(
 				(group) =>
 					group.kind === DISPLAY_GROUP_KIND.MESSAGE &&
-					group.message.role === 'user' &&
+					group.message.role === CHAT_MESSAGE_ROLE.USER &&
 					looksLikeAgentChangeRequest(group.message.content),
 			)?.id
 		: undefined,
@@ -294,7 +398,7 @@ function getAssistantGroupContent(group: DisplayGroup): string {
 		return group.finalMessage?.content ?? '';
 	}
 
-	return group.message.role === 'assistant' ? group.message.content : '';
+	return group.message.role === CHAT_MESSAGE_ROLE.ASSISTANT ? group.message.content : '';
 }
 
 function getAssistantRunContent(groupId: string): string {
@@ -311,6 +415,12 @@ function getAssistantRunContent(groupId: string): string {
 	}
 
 	return lines.join('\n\n');
+}
+
+function canIncreaseForNotice(notice: NonNullable<ChatMessage['budgetNotices']>[number]) {
+	return (
+		props.canIncreaseBudget && (notice.agentId === undefined || notice.agentId === props.agentId)
+	);
 }
 
 interface RecallMemoryOutputEntry {
@@ -367,7 +477,7 @@ function isCompletedAssistantGroup(group: DisplayGroup): boolean {
 	}
 
 	return (
-		group.message.role === 'assistant' &&
+		group.message.role === CHAT_MESSAGE_ROLE.ASSISTANT &&
 		group.message.status !== CHAT_MESSAGE_STATUS.STREAMING &&
 		group.message.status !== CHAT_MESSAGE_STATUS.AWAITING_USER
 	);
@@ -486,7 +596,7 @@ watch(
 	(newLen, oldLen) => {
 		if ((oldLen ?? 0) < newLen) {
 			const last = props.messages[newLen - 1];
-			if (last?.role === 'user') {
+			if (last?.role === CHAT_MESSAGE_ROLE.USER) {
 				scrollToBottom();
 				return;
 			}
@@ -498,18 +608,23 @@ watch(
 
 watch(() => props.messagingState, autoScrollIfSticky, { flush: 'post' });
 
-// Content within the last message grew (streaming text, tool calls, thinking).
-// Only follow the stream down if the user is still near the bottom — otherwise
-// we yank them away from whatever they scrolled up to read.
+// Content within the last message grew (streaming text, tool calls, thinking,
+// host events). Only follow the stream down if the user is still near the
+// bottom — otherwise we yank them away from whatever they scrolled up to read.
 watch(
-	() => {
-		const last = props.messages[props.messages.length - 1];
-		if (!last) return '';
-		const thinking = getMessageThinkingSegments(last)
-			.map((segment) => segment.content)
-			.join('');
-		return `${last.content}|${last.toolCalls?.length ?? 0}|${getMessageInteractives(last).length}|${thinking}`;
-	},
+	[
+		() => {
+			const last = props.messages[props.messages.length - 1];
+			if (!last) return '';
+			const thinking = getMessageThinkingSegments(last)
+				.map((segment) => segment.content)
+				.join('');
+			return `${last.content}|${last.toolCalls?.length ?? 0}|${getMessageInteractives(last).length}|${thinking}`;
+		},
+		// A new host event, or a keyed update of one, sets a new `hostEvents`
+		// array, so the reference changes even when the text does not.
+		() => props.messages.at(-1)?.hostEvents,
+	],
 	autoScrollIfSticky,
 	{ flush: 'post' },
 );
@@ -536,6 +651,7 @@ watch(
 				:class="[$style.message, $style.assistant]"
 			>
 				<div :class="$style.content">
+					<AgentChatHostEvents :items="getGroupHostEventItems(group.id).start" />
 					<AgentChatToolSteps
 						v-if="getGroupToolCalls(group.id).steps.length"
 						:tool-calls="getGroupToolCalls(group.id).steps"
@@ -599,10 +715,11 @@ watch(
 						v-for="notice in group.budgetNotices"
 						:key="notice.id"
 						:code="notice.code"
-						:can-increase="canIncreaseBudget"
+						:can-increase="canIncreaseForNotice(notice)"
 						:pending="budgetIncreasePending"
 						@increase="emit('increase-budget', $event)"
 					/>
+					<AgentChatHostEvents :items="getGroupHostEventItems(group.id).end" />
 					<AiThinkingBlock
 						v-if="group.thinkingSegments.length"
 						:segments="group.thinkingSegments"
@@ -657,9 +774,13 @@ watch(
 			</div>
 			<div
 				v-else
-				:class="[$style.message, group.message.role === 'user' ? $style.user : $style.assistant]"
+				:class="[
+					$style.message,
+					group.message.role === CHAT_MESSAGE_ROLE.USER ? $style.user : $style.assistant,
+				]"
 			>
 				<div :class="$style.content">
+					<AgentChatHostEvents :items="getGroupHostEventItems(group.id).start" />
 					<AgentChatToolSteps
 						v-if="getGroupToolCalls(group.id).steps.length"
 						:tool-calls="getGroupToolCalls(group.id).steps"
@@ -699,7 +820,7 @@ watch(
 						:agent-id="agentId"
 					/>
 					<N8nText
-						v-if="group.message.role === 'user' && group.message.author"
+						v-if="group.message.role === CHAT_MESSAGE_ROLE.USER && group.message.author"
 						size="xsmall"
 						color="text-light"
 						:class="$style.author"
@@ -708,7 +829,7 @@ watch(
 						{{ group.message.author.name }}
 					</N8nText>
 					<div
-						v-if="group.message.role === 'user' && group.message.content"
+						v-if="group.message.role === CHAT_MESSAGE_ROLE.USER && group.message.content"
 						:class="[$style.chatMessage, $style.chatMessageUser]"
 					>
 						{{ group.message.content }}
@@ -746,11 +867,12 @@ watch(
 							v-for="notice in group.message.budgetNotices ?? []"
 							:key="notice.id"
 							:code="notice.code"
-							:can-increase="canIncreaseBudget"
+							:can-increase="canIncreaseForNotice(notice)"
 							:pending="budgetIncreasePending"
 							@increase="emit('increase-budget', $event)"
 						/>
 					</template>
+					<AgentChatHostEvents :items="getGroupHostEventItems(group.id).end" />
 					<N8nCallout
 						v-if="group.id === changeRequestGroupId"
 						theme="info"
@@ -775,7 +897,7 @@ watch(
 						<template #trailingContent>
 							<N8nButton
 								size="small"
-								variant="subtle"
+								variant="outline"
 								:class="$style.changeRequestAction"
 								data-testid="agent-preview-change-request-link"
 								@click="onEditWithAssistant(group.message.content)"
@@ -831,7 +953,7 @@ watch(
 					</div>
 					<AgentTypingIndicator
 						v-if="
-							group.message.role === 'assistant' &&
+							group.message.role === CHAT_MESSAGE_ROLE.ASSISTANT &&
 							group.message.status === CHAT_MESSAGE_STATUS.STREAMING &&
 							!group.message.content &&
 							!group.message.toolCalls?.length &&
@@ -983,8 +1105,8 @@ watch(
 }
 
 .markdownContent {
+	--n8n-markdown--base-font-size: var(--font-size--sm);
 	color: var(--text-color);
-	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
 
 	> *:last-child > *:last-child {

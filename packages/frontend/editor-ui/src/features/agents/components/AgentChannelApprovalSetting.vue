@@ -95,7 +95,7 @@ function handleToggle(value: boolean) {
 		<div :class="$style.toggleRow">
 			<div :class="$style.toggleText">
 				<label :for="toggleId">
-					<N8nText size="small" :bold="true">
+					<N8nText step="sm" bold>
 						{{ i18n.baseText('agents.channels.approval.label') }}
 					</N8nText>
 				</label>

@@ -51,6 +51,7 @@ import { useTrialIntroModalStore } from '@/experiments/trialIntroModal/stores/tr
 import EmptyStateLayout from '@/app/components/layouts/EmptyStateLayout.vue';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useEmptyStateDetection } from '@/features/workflows/readyToRun/composables/useEmptyStateDetection';
+import { useAgentListStore } from '@/features/agents/agentList.store';
 import { InsightsSummary, useInsightsStore } from '@n8n/frontend-module-insights';
 import { useWorkflowsEmptyState } from '@/features/workflows/composables/useWorkflowsEmptyState';
 import type {
@@ -96,6 +97,7 @@ import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import { createEventBus } from '@n8n/utils/event-bus';
 import debounce from 'lodash/debounce';
+import isEqual from 'lodash/isEqual';
 import { type IUser, PROJECT_ROOT } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
@@ -171,6 +173,7 @@ const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
 const personalizedTemplatesV3Store = usePersonalizedTemplatesV3Store();
 const readyToRunStore = useReadyToRunStore();
+const agentListStore = useAgentListStore();
 const trialIntroModalStore = useTrialIntroModalStore();
 
 const documentTitle = useDocumentTitle();
@@ -794,6 +797,7 @@ const fetchEmptyStateData = async () => {
 			credentialsStore.fetchAllCredentials(),
 			variablesEnabled ? environmentsStore.fetchAllVariables() : Promise.resolve(),
 			dataTablesEnabled ? dataTableStore.fetchDataTables('', 1, 1) : Promise.resolve(),
+			settingsStore.isAgentsEnabled ? agentListStore.fetchTotalCount() : Promise.resolve(),
 		]);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflows.list.error.fetching.emptyStateData'));
@@ -1069,6 +1073,7 @@ const saveFiltersOnQueryString = () => {
 };
 
 const setFiltersFromQueryString = async () => {
+	const { fullPath } = route;
 	const newQuery: LocationQueryRaw = { ...route.query };
 	const { tags, status, search, homeProject, sort, showArchived } = route.query ?? {};
 
@@ -1139,7 +1144,13 @@ const setFiltersFromQueryString = async () => {
 		filters.value.showArchived = false;
 	}
 
-	void router.replace({ query: newQuery });
+	// The route changed while the stores loaded. Do not write this query onto the new route.
+	if (route.fullPath !== fullPath) return;
+
+	// A replace cancels any pending navigation, e.g. a tab click made while this view loads.
+	if (!isEqual(newQuery, route.query)) {
+		void router.replace({ query: newQuery });
+	}
 };
 
 // Misc methods
@@ -2268,7 +2279,7 @@ const onNameSubmit = async (name: string) => {
 				<template #trailingContent>
 					<div :class="$style['callout-trailing-content']">
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							data-test-id="easy-ai-button"
 							size="small"
 							@click="createAIStarterWorkflows('callout')"
@@ -2306,7 +2317,7 @@ const onNameSubmit = async (name: string) => {
 				<template #trailingContent>
 					<div :class="$style['callout-trailing-content']">
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							data-test-id="easy-ai-button"
 							size="small"
 							@click="handleCreateReadyToRunWorkflows('callout')"

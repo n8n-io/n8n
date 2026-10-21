@@ -37,24 +37,23 @@ describe('observeSystemTaskRun', () => {
 			throw error;
 		};
 
-	it.each([
-		{ mode: 'durable' as const, durable: true },
-		{ mode: 'leader_timer' as const, durable: false },
-		{ mode: 'instance_timer' as const, durable: false },
-	])('tells a $mode run whether it is durable', async ({ mode, durable }) => {
-		const run = vi.fn(resolves);
-		const signal = new AbortController().signal;
+	it.each(['durable', 'leader_timer', 'instance_timer'] as const)(
+		'passes the signal to a %s run',
+		async (mode) => {
+			const run = vi.fn(resolves);
+			const signal = new AbortController().signal;
 
-		await observeSystemTaskRun(
-			mock<EventService>(),
-			setupTracing().tracing,
-			taskThat(run),
-			mode,
-			signal,
-		);
+			await observeSystemTaskRun(
+				mock<EventService>(),
+				setupTracing().tracing,
+				taskThat(run),
+				mode,
+				signal,
+			);
 
-		expect(run).toHaveBeenCalledExactlyOnceWith(signal, { durable });
-	});
+			expect(run).toHaveBeenCalledExactlyOnceWith(signal);
+		},
+	);
 
 	it('settles a run that throws synchronously as a failure, rather than rejecting', async () => {
 		const eventService = mock<EventService>();
