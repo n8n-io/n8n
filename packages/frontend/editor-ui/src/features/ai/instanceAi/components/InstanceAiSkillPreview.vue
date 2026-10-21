@@ -70,7 +70,9 @@ function openInSkillsHub() {
 <template>
 	<div :class="$style.content" :aria-busy="isLoading" data-test-id="instance-ai-skill-preview">
 		<div v-if="fetchError" :class="$style.centerState">
-			<N8nText color="text-light">{{ i18n.baseText('instanceAi.skillPreview.fetchError') }}</N8nText>
+			<N8nText color="text-light">{{
+				i18n.baseText('instanceAi.skillPreview.fetchError')
+			}}</N8nText>
 		</div>
 
 		<div
