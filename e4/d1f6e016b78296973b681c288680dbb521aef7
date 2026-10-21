@@ -1,0 +1,68 @@
+packages/cli/src/public-api/v1/shared/spec/schemas/workflowPublishPublicDto.generated.yml
+  s_6d366e0a6a655d::t_27cabff6809aea 201-207
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_6d366e0a6a655d::t_1b99d156aee9f3 1846,4252,4256,4272,4278-4334
+  s_6d366e0a6a655d::t_027d14694c27d7 4335-4336
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflow.generated.yml
+  s_6d366e0a6a655d::t_cc5065021d7e0d 229-235
+packages/@n8n/api-types/src/dto/workflows/base-workflow-public.dto.ts
+  s_6d366e0a6a655d::t_70cf7fd9654a36 85-86,117-122
+packages/@n8n/api-types/src/dto/workflows/__tests__/create-workflow-public.dto.test.ts
+  s_6d366e0a6a655d::t_70cf7fd9654a36 104-118
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_6d366e0a6a655d::t_bc4afcc6ce1ce9 1090,1093-1095,1100
+  s_6d366e0a6a655d::t_f7b72310519572 1,19,1088-1089,1091-1092,1096-1099,1101-1129,1131
+  s_6d366e0a6a655d::t_fa9c99b146b4bc 39
+  s_6d366e0a6a655d::t_b56b80cbc2db5f 1130,1132-1133
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_6d366e0a6a655d::t_00601009f71115 2279,2299,2303-2318,3339-3361,3364
+packages/cli/test/integration/public-api/endpoints-with-scopes-enabled.test.ts
+  s_6d366e0a6a655d::t_00601009f71115 1471
+packages/@n8n/api-types/src/dto/workflows/workflow-public.openapi.ts
+  s_6d366e0a6a655d::t_38a41906978237 265
+  s_6d366e0a6a655d::t_70cf7fd9654a36 52-58,261-264
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/deleteWorkflow.generated.yml
+  s_6d366e0a6a655d::t_90b88ae6ae4e21 220-226
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflows.generated.yml
+  s_6d366e0a6a655d::t_477fee74f7d42f 256-262
+packages/cli/src/public-api/v1/shared/spec/schemas/workflowPublicDto.generated.yml
+  s_6d366e0a6a655d::t_d240a6f8a5632b 201-207
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/createWorkflow.generated.yml
+  s_6d366e0a6a655d::t_67161e6d325ed4 187-191,782-788
+packages/cli/src/workflows/__tests__/workflow-creation.service.test.ts
+  s_6d366e0a6a655d::t_51d8fe0db48271 2-3,34,66-67,110-113,139,1188-1261
+  s_6d366e0a6a655d::t_1a58e898c17c34 1262
+packages/@n8n/config/src/configs/engine.config.ts
+  s_6d366e0a6a655d::t_5de441d3f4ce31 16-19,33-34,38-41
+  s_6d366e0a6a655d::t_abfebde5dd97c7 35-37
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_6d366e0a6a655d::t_fa414946675644 1712-1714,1717
+  s_6d366e0a6a655d::t_04811227f10389 215
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/updateWorkflow.generated.yml
+  s_6d366e0a6a655d::t_f30472f962d6c6 202-206,794-800
+packages/cli/src/workflows/workflow-engine-defaults.ts
+  s_6d366e0a6a655d::t_470d18d570f80b 1-29
+packages/cli/src/workflows/workflow-creation.service.ts
+  s_6d366e0a6a655d::t_9a71bb4533202e 39,81,358
+  s_6d366e0a6a655d::t_ed435fcc4a7ff2 359
+packages/@n8n/config/src/index.ts
+  s_6d366e0a6a655d::t_abfebde5dd97c7 85
+packages/@n8n/config/src/configs/__tests__/engine.config.test.ts
+  s_6d366e0a6a655d::t_5de441d3f4ce31 78-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e4d1f6e016b78296973b681c288680dbb521aef7",
+  "prompts": {},
+  "sessions": {
+    "s_6d366e0a6a655d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f1995b1b-59a7-47ce-a047-63123475d1f2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
