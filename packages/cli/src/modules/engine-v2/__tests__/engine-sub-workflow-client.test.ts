@@ -12,6 +12,7 @@ import type {
 
 const request: ResolveSubWorkflowRequest = {
 	workflowId: 'wf-child',
+	executionId: '01a03900-0000-7000-8000-000000000001',
 	parent: { executionId: 'exec-1', workflowId: 'wf-parent', mode: 'manual' },
 	context: { userId: 'user-1' },
 	items: [{ json: { a: 1 } }],
@@ -87,6 +88,12 @@ describe('EngineSubWorkflowClient', () => {
 		respondWith(404, {});
 
 		await expect(client.resolve(request, signal)).rejects.toThrow(/404/);
+	});
+
+	it('reports a rejected token as operational, since the planes disagree and not the caller', async () => {
+		respondWith(401, { code: 401, message: 'Unauthorized' });
+
+		await expect(client.resolve(request, signal)).rejects.toThrow(OperationalError);
 	});
 
 	it('reports a server failure as operational', async () => {

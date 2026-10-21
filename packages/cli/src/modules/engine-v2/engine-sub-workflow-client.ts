@@ -31,7 +31,8 @@ export class EngineSubWorkflowClient {
 
 	/**
 	 * A refusal (4xx) is the caller's to fix, so it reaches the node with the
-	 * control plane's message. Anything else is the platform's, and operational.
+	 * control plane's message. A 401 is the planes disagreeing on the secret or
+	 * the scope, and anything else is the platform's: both are operational.
 	 */
 	async resolve(
 		request: ResolveSubWorkflowRequest,
@@ -56,7 +57,8 @@ export class EngineSubWorkflowClient {
 			const message =
 				messageOf(response.body) ??
 				`Control plane refused to resolve sub-workflow "${request.workflowId}" with ${response.statusCode}`;
-			throw response.statusCode < 500 ? new UserError(message) : new OperationalError(message);
+			const callerCanFix = response.statusCode < 500 && response.statusCode !== 401;
+			throw callerCanFix ? new UserError(message) : new OperationalError(message);
 		}
 
 		if (!isResolveSubWorkflowResponse(response.body)) {
