@@ -1,5 +1,6 @@
 packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
-  s_71ad2034164515::t_cade085c23bdc9 7,181,205-209,222
+  s_71ad2034164515::t_cade085c23bdc9 205-209
+  s_71ad2034164515::t_b1b655b2c87414 7,181,222
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -11,7 +12,7 @@ packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
       "agent_id": {
         "tool": "codex",
         "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
-        "model": "gpt-6.1-sol"
+        "model": "gpt-6-astra"
       },
       "human_author": "Robin Braumann <robin.braumann@n8n.io>"
     }
