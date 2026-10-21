@@ -46,11 +46,15 @@
 									"type": "object",
 									"properties": {
 										"type": {
-											"type": "string"
+											"enum": ["output_text", "refusal"]
 										},
 										"text": {
 											"type": "string",
-											"description": "The model's answer as a plain STRING, even when the prompt asks for JSON"
+											"description": "Only on `output_text`. The model's answer as a plain STRING, even when the prompt asks for JSON"
+										},
+										"refusal": {
+											"type": "string",
+											"description": "Only on `refusal`: why the model did not answer"
 										},
 										"annotations": {
 											"type": "array"

@@ -78,7 +78,7 @@ const properties: INodeProperties[] = [
 		description: 'Whether to simplify the response or not',
 		builderHint: {
 			propertyHint:
-				"True returns one item for each input item. The `$json` of that item is the Responses API `output` array, not an object. Find the entry with `type: 'message'` and read its `content[0].text`. A reasoning model puts a `reasoning` entry first, so do not read `[0]`. The text is a string, also when the prompt asks for JSON, and the model can wrap it in a ```json code fence. Remove the fence before `JSON.parse`. False returns the full response, with the same array in `$json.output`.",
+				"True returns one item for each input item. The `$json` of that item is the Responses API `output` array, not an object. Find the entry with `type: 'message'`. In its `content`, find the entry with `type: 'output_text'` and read its `text`. If the model refuses, that entry has `type: 'refusal'` and a `refusal` string, with no `text`. A reasoning model puts a `reasoning` entry first, so do not read `[0]`. The text is a string, also when the prompt asks for JSON, and the model can wrap it in a ```json code fence. Remove the fence before `JSON.parse`. False returns the full response, with the same array in `$json.output`.",
 		},
 	},
 	{
