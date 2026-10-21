@@ -1,0 +1,25 @@
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory.test.ts
+  s_852389bc7751db::t_5fb49293725e17 431
+  s_852389bc7751db::t_13f94a9ffece89 396-430,432-488
+packages/@n8n/agents/src/runtime/memory/memory-store.ts
+  s_852389bc7751db::t_13f94a9ffece89 133-136
+  s_852389bc7751db::t_aeab47f1480590 157,542,544-545,563-564,603,605,615,691-693,695,727-729,871-879
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_852389bc7751db::t_09f4888c15fe29 3193-3195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eb227f3287b45e945742290787d528e659782041",
+  "prompts": {},
+  "sessions": {
+    "s_852389bc7751db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b39fb8af-51ee-491e-ab8c-cc0c219fdfa6",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

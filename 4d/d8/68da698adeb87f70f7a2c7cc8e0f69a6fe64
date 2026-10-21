@@ -1,13 +1,18 @@
 packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
   s_71ad2034164515::t_1e6639e5a7d433 40,91,93,381
+  s_71ad2034164515::t_ab72b22e57baa4 40,91,93,381
 packages/cli/src/modules/n8n-packages/__tests__/blocking-issue-schema-contract.test.ts
   s_71ad2034164515::t_1e6639e5a7d433 5
+  s_d3c0f6f6f7d41c::t_7e1776e64bff74 5
 packages/cli/src/modules/n8n-packages/entities/__tests__/import-conflict-policy.test.ts
   s_71ad2034164515::t_1e6639e5a7d433 3-17
+  s_d3c0f6f6f7d41c::t_9bdc450af10dfa 3-17
 packages/cli/src/modules/n8n-packages/CLAUDE.md
   s_71ad2034164515::t_1e6639e5a7d433 47
+  s_71ad2034164515::t_b12abf5156fdd1 47
 packages/cli/src/modules/n8n-packages/entities/agent/agent-import.types.ts
   s_71ad2034164515::t_1e6639e5a7d433 1,30
+  s_71ad2034164515::t_10464920e6e4b1 1,30
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -20,6 +25,14 @@ packages/cli/src/modules/n8n-packages/entities/agent/agent-import.types.ts
         "tool": "codex",
         "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
         "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_d3c0f6f6f7d41c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a152e5-4005-7111-8ca3-6a9ab5e71d29",
+        "model": "gpt-6.1-sol"
       },
       "human_author": "Robin Braumann <robin.braumann@n8n.io>"
     }
