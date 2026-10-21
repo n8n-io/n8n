@@ -12,11 +12,11 @@ import {
 
 const settings: PublicApiRateLimitSettings = {
 	enabled: true,
-	globalReadLimit: 1200,
+	globalReadLimit: 100,
 	globalReadWindowSeconds: 60,
-	globalWriteLimit: 300,
+	globalWriteLimit: 50,
 	globalWriteWindowSeconds: 60,
-	endpointReadLimit: 600,
+	endpointReadLimit: 20,
 	endpointReadWindowSeconds: 60,
 	endpointWriteLimit: 0,
 	endpointWriteWindowSeconds: 60,
@@ -78,13 +78,13 @@ describe('rateLimits', () => {
 
 	describe('exceedsAllEndpointsLimit', () => {
 		it.each([
-			{ endpoint: { limit: '1500', window: '60' }, exceeds: true },
-			{ endpoint: { limit: '1500', window: '30' }, exceeds: true },
-			{ endpoint: { limit: '1000', window: '30' }, exceeds: false },
-			{ endpoint: { limit: '1500', window: '120' }, exceeds: false },
-			{ endpoint: { limit: '1200', window: '60' }, exceeds: false },
+			{ endpoint: { limit: '150', window: '60' }, exceeds: true },
+			{ endpoint: { limit: '150', window: '30' }, exceeds: true },
+			{ endpoint: { limit: '80', window: '30' }, exceeds: false },
+			{ endpoint: { limit: '150', window: '120' }, exceeds: false },
+			{ endpoint: { limit: '100', window: '60' }, exceeds: false },
 		])(
-			'is $exceeds for $endpoint.limit per $endpoint.window s against 1,200 per 60 s',
+			'is $exceeds for $endpoint.limit per $endpoint.window s against 100 per 60 s',
 			({ endpoint, exceeds }) => {
 				const draft = toDraft(settings);
 				draft.endpointRead = endpoint;

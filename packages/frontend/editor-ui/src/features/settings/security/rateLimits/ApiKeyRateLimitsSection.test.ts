@@ -29,11 +29,11 @@ const defaults = {
 	enabled: false,
 	globalReadLimit: 1200,
 	globalReadWindowSeconds: 60,
-	globalWriteLimit: 300,
+	globalWriteLimit: 600,
 	globalWriteWindowSeconds: 60,
-	endpointReadLimit: 600,
+	endpointReadLimit: 1000,
 	endpointReadWindowSeconds: 60,
-	endpointWriteLimit: 200,
+	endpointWriteLimit: 500,
 	endpointWriteWindowSeconds: 60,
 };
 
@@ -84,10 +84,10 @@ describe('ApiKeyRateLimitsSection', () => {
 		const { getByTestId } = await renderLoaded({ enabled: true, endpointWriteLimit: 0 });
 
 		expect(getByTestId('rate-limits-summary-allEndpoints')).toHaveTextContent(
-			'1,200 reads · 300 writes / 60 seconds',
+			'1,200 reads · 600 writes / 60 seconds',
 		);
 		expect(getByTestId('rate-limits-summary-individualEndpoints')).toHaveTextContent(
-			'600 reads / 60 seconds · no limit on writes',
+			'1,000 reads / 60 seconds · no limit on writes',
 		);
 	});
 
