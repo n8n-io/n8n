@@ -508,6 +508,29 @@ describe('MigrationRules', () => {
 				'Instance Rule 3',
 			]);
 		});
+
+		it('should show an executionsFail instance issue as "Executions might fail"', async () => {
+			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(
+				createMockReport({
+					report: {
+						generatedAt: new Date('2024-01-01'),
+						targetVersion: '2.0.0',
+						currentVersion: '1.0.0',
+						workflowResults: [],
+						instanceResults: [{ ...mockInstanceIssue, ruleImpact: 'executionsFail' as const }],
+					},
+				}),
+			);
+
+			renderComponent();
+
+			await userEvent.click(screen.getByText('Instance issues'));
+
+			await waitFor(() => {
+				expect(screen.getByText('Executions might fail')).toBeInTheDocument();
+			});
+			expect(screen.queryByText('Executions will fail')).not.toBeInTheDocument();
+		});
 	});
 
 	describe('as a user who cannot edit every workflow', () => {
@@ -820,6 +843,28 @@ describe('MigrationRules', () => {
 				await waitFor(() => expect(getTooltip()).toHaveTextContent(tooltipText));
 			},
 		);
+
+		it('should show the executionsFail instance tooltip on hover', async () => {
+			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(
+				createMockReport({
+					report: {
+						generatedAt: new Date('2024-01-01'),
+						targetVersion: '2.0.0',
+						currentVersion: '1.0.0',
+						workflowResults: [],
+						instanceResults: [{ ...mockInstanceIssue, ruleImpact: 'executionsFail' as const }],
+					},
+				}),
+			);
+
+			renderComponent();
+
+			await userEvent.click(screen.getByText('Instance issues'));
+
+			const labelElement = await screen.findByText('Executions might fail');
+			await hoverTooltipTrigger(labelElement);
+			await waitFor(() => expect(getTooltip()).toHaveTextContent('might fail after the update'));
+		});
 	});
 
 	describe('error handling and edge cases', () => {

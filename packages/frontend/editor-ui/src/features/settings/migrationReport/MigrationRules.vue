@@ -372,7 +372,7 @@ const sortedInstanceResults = computed(() => {
 									placement="top"
 									:enterable="false"
 								>
-									<ImpactTag :impact="issue.ruleImpact" />
+									<ImpactTag :impact="issue.ruleImpact" scope="instance" />
 								</N8nTooltip>
 							</div>
 							<N8nText tag="p" color="text-base">
