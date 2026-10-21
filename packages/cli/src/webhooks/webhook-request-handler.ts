@@ -107,8 +107,6 @@ class WebhookRequestHandler {
 				);
 			}
 
-			// A stream that failed after the first chunk has already destroyed the response.
-			if (res.headersSent) return;
 			return ResponseHelper.sendErrorResponse(res, error);
 		}
 	}
