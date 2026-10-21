@@ -7905,9 +7905,15 @@ importers:
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
         version: 6.0.8(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
       eslint:
         specifier: 'catalog:'
         version: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
+      jsdom:
+        specifier: 'catalog:'
+        version: 23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
       stylelint:
         specifier: 'catalog:'
         version: 16.23.0(supports-color@8.1.1)(typescript@6.0.2)
