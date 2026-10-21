@@ -4,14 +4,21 @@ interface SubmitInput {
 }
 
 // Hoisted so the module mock factories below can resolve them.
-const { submitQueue, promptCapture, mockAgent } = vi.hoisted(() => {
+const { submitQueue, submitCapture, promptCapture, mockAgent } = vi.hoisted(() => {
 	const submitQueue: SubmitInput[] = [];
-	const submitCapture: { handler?: (input: SubmitInput) => Promise<string> } = {};
+	const submitCapture: {
+		handler?: (input: SubmitInput) => Promise<string>;
+		endsTurn?: (output: unknown) => boolean;
+	} = {};
 	const promptCapture: { prompts: string[]; replies: string[] } = { prompts: [], replies: [] };
 
 	const mockAgent = {
-		tool: vi.fn(function (this: unknown, builtTool: { _handler?: unknown }) {
+		tool: vi.fn(function (
+			this: unknown,
+			builtTool: { _handler?: unknown; _endsTurn?: (output: unknown) => boolean },
+		) {
 			submitCapture.handler = builtTool._handler as (input: SubmitInput) => Promise<string>;
+			submitCapture.endsTurn = builtTool._endsTurn;
 			return this;
 		}),
 		// One generate call submits every queued step, as a model retries in one turn.
@@ -30,12 +37,16 @@ const { submitQueue, promptCapture, mockAgent } = vi.hoisted(() => {
 });
 
 function toolBuilderMock() {
-	const built: { _handler?: unknown } = {};
+	const built: { _handler?: unknown; _endsTurn?: (output: unknown) => boolean } = {};
 	return {
 		description: vi.fn().mockReturnThis(),
 		input: vi.fn().mockReturnThis(),
 		handler: vi.fn(function (this: unknown, h: unknown) {
 			built._handler = h;
+			return this;
+		}),
+		endsTurnWhen: vi.fn(function (this: unknown, fn: (output: unknown) => boolean) {
+			built._endsTurn = fn;
 			return this;
 		}),
 		build: vi.fn(() => built),
@@ -142,6 +153,15 @@ describe('createNodeRunMockHandler', () => {
 
 		expect(promptCapture.replies[0]).toMatch(/^Invalid:/);
 		expect(output).toEqual([[{ json: {}, pairedItem: { item: 1 } }]]);
+	});
+
+	it('ends the model loop once the output is accepted, but not after a rejection', async () => {
+		const handler = createNodeRunMockHandler({ nodeNames: new Set(['Send Email']) });
+		submitQueue.push({ items: [{ inputIndex: 0, json: {} }] });
+		await handler(contextFor(sendEmail, twoRecipients));
+
+		expect(submitCapture.endsTurn?.('Accepted.')).toBe(true);
+		expect(submitCapture.endsTurn?.('Invalid: inputIndex 5 is out of range 0-1.')).toBe(false);
 	});
 
 	it('fails the node with the service error that the scenario asks for', async () => {

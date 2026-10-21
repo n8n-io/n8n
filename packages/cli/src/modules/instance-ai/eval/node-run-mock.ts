@@ -158,6 +158,8 @@ async function generateOutput(
 				captured = input;
 				return 'Accepted.';
 			})
+			// One model call per run: the model would otherwise answer again after "Accepted.".
+			.endsTurnWhen((output) => output === 'Accepted.')
 			.build(),
 	);
 
