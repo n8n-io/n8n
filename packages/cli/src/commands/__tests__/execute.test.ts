@@ -333,15 +333,65 @@ test('stops native verify reports when Sentry turns off', async () => {
 	expect(canReportNativeVerifyMismatch?.()).toBe(false);
 });
 
+const verifyLog = {
+	active: 'Native evaluation verify mode is active',
+	nativeEnabled: 'Native evaluation verify mode does nothing because native evaluation is enabled',
+	legacy: 'Native evaluation verify mode does nothing because the expression engine is legacy',
+	noSentry: 'Native evaluation verify mode does nothing because Sentry is not active',
+};
+
 test.each([
-	{ nativeEvaluation: false, sample: 0.01, engine: 'vm', sentryActive: false, warns: true },
-	{ nativeEvaluation: false, sample: 0.01, engine: 'vm', sentryActive: true, warns: false },
-	{ nativeEvaluation: false, sample: 0.01, engine: 'legacy', sentryActive: false, warns: false },
-	{ nativeEvaluation: false, sample: 0, engine: 'vm', sentryActive: false, warns: false },
-	{ nativeEvaluation: true, sample: 0.01, engine: 'vm', sentryActive: false, warns: false },
+	{
+		nativeEvaluation: false,
+		sample: 0.01,
+		engine: 'vm',
+		sentryActive: true,
+		warn: undefined,
+		info: verifyLog.active,
+	},
+	{
+		nativeEvaluation: false,
+		sample: 0.01,
+		engine: 'quickjs',
+		sentryActive: true,
+		warn: undefined,
+		info: verifyLog.active,
+	},
+	{
+		nativeEvaluation: false,
+		sample: 0.01,
+		engine: 'vm',
+		sentryActive: false,
+		warn: verifyLog.noSentry,
+		info: undefined,
+	},
+	{
+		nativeEvaluation: false,
+		sample: 0.01,
+		engine: 'legacy',
+		sentryActive: true,
+		warn: verifyLog.legacy,
+		info: undefined,
+	},
+	{
+		nativeEvaluation: true,
+		sample: 0.01,
+		engine: 'vm',
+		sentryActive: true,
+		warn: verifyLog.nativeEnabled,
+		info: undefined,
+	},
+	{
+		nativeEvaluation: false,
+		sample: 0,
+		engine: 'vm',
+		sentryActive: true,
+		warn: undefined,
+		info: undefined,
+	},
 ] as const)(
-	'warns at startup when verify mode has no Sentry: native $nativeEvaluation, sample $sample on $engine, Sentry active $sentryActive',
-	async ({ nativeEvaluation, sample, engine, sentryActive, warns }) => {
+	'logs verify mode status at startup: native $nativeEvaluation, sample $sample on $engine, Sentry active $sentryActive',
+	async ({ nativeEvaluation, sample, engine, sentryActive, warn, info }) => {
 		// arrange
 
 		vi.spyOn(Expression, 'initExpressionEngine').mockResolvedValue();
@@ -366,12 +416,14 @@ test.each([
 
 		// assert
 
-		const warning = 'Native evaluation verify mode does nothing because Sentry is not active';
-		if (warns) {
-			expect(logger.warn).toHaveBeenCalledWith(warning);
-		} else {
-			expect(logger.warn).not.toHaveBeenCalledWith(warning);
-		}
+		const verifyWarnings = logger.warn.mock.calls.filter(([message]) =>
+			message.startsWith('Native evaluation verify mode'),
+		);
+		const verifyInfos = logger.info.mock.calls.filter(([message]) =>
+			message.startsWith('Native evaluation verify mode'),
+		);
+		expect(verifyWarnings).toEqual(warn ? [[warn]] : []);
+		expect(verifyInfos).toEqual(info ? [[info, { sample, engine }]] : []);
 	},
 );
 

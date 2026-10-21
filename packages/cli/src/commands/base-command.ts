@@ -273,7 +273,7 @@ export abstract class BaseCommand<F = never> {
 				nativeEvaluationVerifySample,
 			} = this.globalConfig.expressionEngine;
 			const observability = Container.get(ExpressionObservabilityProvider);
-			this.warnIfVerifyWithoutSentry();
+			this.logNativeVerifyModeStatus();
 			try {
 				await Expression.initExpressionEngine({
 					engine,
@@ -305,16 +305,26 @@ export abstract class BaseCommand<F = never> {
 		}
 	}
 
-	private warnIfVerifyWithoutSentry() {
+	private logNativeVerifyModeStatus() {
 		const { nativeEvaluation, nativeEvaluationVerifySample, engine } =
 			this.globalConfig.expressionEngine;
-		if (
-			!nativeEvaluation &&
-			nativeEvaluationVerifySample > 0 &&
-			engine !== 'legacy' &&
-			!this.errorReporter.isSentryActive()
-		) {
-			this.logger.warn('Native evaluation verify mode does nothing because Sentry is not active');
+		if (nativeEvaluationVerifySample > 0) {
+			if (nativeEvaluation) {
+				this.logger.warn(
+					'Native evaluation verify mode does nothing because native evaluation is enabled',
+				);
+			} else if (engine === 'legacy') {
+				this.logger.warn(
+					'Native evaluation verify mode does nothing because the expression engine is legacy',
+				);
+			} else if (!this.errorReporter.isSentryActive()) {
+				this.logger.warn('Native evaluation verify mode does nothing because Sentry is not active');
+			} else {
+				this.logger.info('Native evaluation verify mode is active', {
+					sample: nativeEvaluationVerifySample,
+					engine,
+				});
+			}
 		}
 	}
 
