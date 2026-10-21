@@ -1,7 +1,7 @@
 import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
 
 import type { InstanceAiContext } from '../../types';
-import { setupAgentCredentials } from '../agent-credential-setup';
+import { setupAgentCredentials, type AgentCredentialRequest } from '../agent-credential-setup';
 import type { CredentialToolContext, CredentialsResumeData } from '../credential-card';
 
 vi.mock('../credential-verification', async (importOriginal) => ({
@@ -75,6 +75,44 @@ describe('setupAgentCredentials', () => {
 			success: true,
 			verified: true,
 			credentials: { openAiApi: { id: MANAGED_CREDENTIAL_TOKEN } },
+		});
+	});
+
+	it('does not select the managed credential for a type n8n cannot supply', async () => {
+		const { context } = createContext(
+			{ slackApi: [] },
+			{ channelCredentialIds: [], managedCredentialAvailable: true },
+		);
+		const { ctx, suspend } = createToolContext();
+
+		await setupAgentCredentials(context, [{ credentialType: 'slackApi', allowManaged: true }], ctx);
+
+		expect(suspend).toHaveBeenCalledTimes(1);
+	});
+
+	it('shows the card with nothing selected when the request sets preferNew', async () => {
+		const { context } = createContext(
+			{ slackApi: [{ id: 'cred-1', name: 'Channel Slack' }] },
+			{ channelCredentialIds: ['cred-1'], managedCredentialAvailable: false },
+		);
+		const { ctx, suspend } = createToolContext();
+
+		await setupAgentCredentials(context, [{ credentialType: 'slackApi', preferNew: true }], ctx);
+
+		expect(suspend.mock.calls[0][0]).toMatchObject({
+			credentialRequests: [{ credentialType: 'slackApi', preferNew: true }],
+		});
+	});
+
+	it('passes the setup hint to the card', async () => {
+		const { context } = createContext({});
+		const { ctx, suspend } = createToolContext();
+		const setupHint = { recipe: 'header' } as unknown as AgentCredentialRequest['setupHint'];
+
+		await setupAgentCredentials(context, [{ credentialType: 'httpCustomAuth', setupHint }], ctx);
+
+		expect(suspend.mock.calls[0][0]).toMatchObject({
+			credentialRequests: [{ credentialType: 'httpCustomAuth', setupHint }],
 		});
 	});
 

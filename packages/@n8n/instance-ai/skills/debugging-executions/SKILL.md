@@ -39,7 +39,7 @@ Check what you can see on the n8n side first. These checks are read-only, so
 run them unprompted:
 
 - **Auth errors (401, 403, "unauthorized", "invalid key").** Confirm that the
-  credential exists (`list_credentials` or `get`),
+  credential exists (`list_credentials`, with `ids` for a specific credential),
   that the node uses it (the node's `credentials` in
   `workflow_builder_workflows(action="get")`; resolved parameters show only the
   auth type, not which credential is bound), and what
