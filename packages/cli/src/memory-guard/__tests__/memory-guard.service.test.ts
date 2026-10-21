@@ -67,6 +67,7 @@ describe('MemoryGuardService', () => {
 	const logger = mock<Logger>();
 	const guardLogger = mock<Logger>();
 	logger.scoped.mockReturnValue(guardLogger);
+	const eventService = mock<EventService>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const executionRecoveryService = mock<ExecutionRecoveryService>();
 	const mailer = mock<UserManagementMailer>();
@@ -189,6 +190,7 @@ describe('MemoryGuardService', () => {
 			productionHold,
 			tracker,
 			memoryStoppedExecutions,
+			eventService,
 			workflowRepository,
 			executionRecoveryService,
 			mailer,
@@ -704,6 +706,47 @@ describe('MemoryGuardService', () => {
 		});
 	});
 
+	describe('events', () => {
+		it('should report when a hold starts and ends', async () => {
+			utilization = 0.82;
+			await sample(2);
+			expect(eventService.emit).toHaveBeenCalledWith('memory-guard-hold-started', {
+				memoryUsedBytes: 820 * MB,
+				memoryLimitBytes: 1_000 * MB,
+			});
+
+			utilization = 0.7;
+			await sample();
+			expect(eventService.emit).toHaveBeenCalledWith('memory-guard-hold-ended', {
+				heldMs: expect.any(Number),
+			});
+		});
+
+		it('should report the stop with node types and whether it freed memory', async () => {
+			addExecution('large', { megabytes: 300 });
+			utilization = 0.96;
+			readMemoryUsageOnce(0.96);
+			readMemoryUsageOnce(0.6);
+
+			await sample();
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(eventService.emit).toHaveBeenCalledWith('memory-guard-execution-stopped', {
+				executionId: 'large',
+				workflowId: 'workflow-large',
+				mode: 'webhook',
+				trigger: 'critical',
+				runningNodeType: 'n8n-nodes-base.httpRequest',
+				largestDataNodeType: 'n8n-nodes-base.code',
+				estimatedBytes: 300 * MB,
+				memoryUsedBytes: 960 * MB,
+				memoryLimitBytes: 1_000 * MB,
+				freedMemory: true,
+				workflowDeactivated: false,
+			});
+		});
+	});
+
 	describe('deactivation', () => {
 		const stopOnce = async (
 			id: string,
@@ -754,6 +797,10 @@ describe('MemoryGuardService', () => {
 				type: 'workflowAutoDeactivated',
 				data: { workflowId: 'repeat' },
 			});
+			expect(eventService.emit).toHaveBeenLastCalledWith(
+				'memory-guard-execution-stopped',
+				expect.objectContaining({ workflowDeactivated: true }),
+			);
 		});
 
 		it.each([

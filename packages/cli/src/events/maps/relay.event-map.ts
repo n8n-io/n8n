@@ -1128,6 +1128,29 @@ export type RelayEventMap = {
 		mode: 'internal' | 'external';
 	};
 
+	'memory-guard-hold-started': {
+		memoryUsedBytes: number;
+		memoryLimitBytes: number;
+	};
+
+	'memory-guard-hold-ended': {
+		heldMs: number;
+	};
+
+	'memory-guard-execution-stopped': {
+		executionId: string;
+		workflowId: string;
+		mode: WorkflowExecuteMode;
+		trigger: 'threshold' | 'critical' | 'hold-limit';
+		runningNodeType: string | undefined;
+		largestDataNodeType: string | undefined;
+		estimatedBytes: number;
+		memoryUsedBytes: number;
+		memoryLimitBytes: number;
+		freedMemory: boolean;
+		workflowDeactivated: boolean;
+	};
+
 	// #endregion
 
 	// #region queue
