@@ -62,7 +62,7 @@ function useExample(card: PreferenceExampleCard) {
 			</li>
 		</ul>
 		<N8nButton
-			variant="ghost"
+			variant="solid"
 			data-test-id="preferences-empty-state-write-own"
 			@click="emit('write-own')"
 		>

@@ -4065,7 +4065,7 @@
 	"experiments.preferencesEmptyState.assistant.message": "Look at my workflows and agents. Find up to 3 things I do the same way each time, such as the nodes and credentials I use, how I name things, or how I set up agents. Save each one as a preference just for me. Don't change my workflows or agents. If I have no workflows or agents yet, ask me 3 short questions about how I like to build, then save my answers as preferences.",
 	"experiments.preferencesEmptyState.writeOwn": "Write your own",
 	"experiments.preferencesEmptyState.examples.title": "Start with an example",
-	"experiments.preferencesEmptyState.examples.description": "Preferences tell the n8n Assistant how you build workflows and agents. Pick an example, change it to fit, and save.",
+	"experiments.preferencesEmptyState.examples.description": "Preferences tell the n8n Assistant and MCP clients how you build workflows and agents. Pick an example, change it to fit, and save.",
 	"experiments.preferencesEmptyState.examples.scope": "Just you",
 	"experiments.preferencesEmptyState.examples.use": "Use example",
 	"experiments.preferencesEmptyState.examples.modalDescription": "Change the example so it fits how you work.",
