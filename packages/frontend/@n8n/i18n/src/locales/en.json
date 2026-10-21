@@ -4070,7 +4070,7 @@
 	"experiments.preferencesEmptyState.examples.use": "Use example",
 	"experiments.preferencesEmptyState.examples.modalDescription": "Change the example so it fits how you work.",
 	"experiments.preferencesEmptyState.examples.workflows.category": "Workflows",
-	"experiments.preferencesEmptyState.examples.workflows.content": "When I publish a workflow, add an error workflow that sends me the workflow name and the execution link. Reuse my existing error workflow if I have one.",
+	"experiments.preferencesEmptyState.examples.workflows.content": "For every newly created workflow, add an error workflow that sends me the workflow name and the execution link in Slack.",
 	"experiments.preferencesEmptyState.examples.agents.category": "Agents",
 	"experiments.preferencesEmptyState.examples.agents.content": "Give each agent short instructions that state its task, the tools it can use, and the format of its answers.",
 	"experiments.preferencesEmptyState.examples.credentials.category": "Credentials",
