@@ -270,6 +270,34 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 		]);
 	});
 
+	test('completes the publication of a version whose only long node id is on a disabled trigger', async () => {
+		const owner = await createOwner();
+
+		const enabled = scheduleNode('enabled');
+		const disabled = {
+			...scheduleNode('disabled'),
+			id: 'n'.repeat(NODE_ID_MAX_LENGTH + 1),
+			disabled: true,
+		};
+		const workflow = await createWorkflowWithHistory(
+			{ active: true, nodes: [enabled, disabled] },
+			owner,
+		);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
+		const record = await outboxRepository.claimNextPendingRecord();
+
+		await consumer.processRecord(record!, abortSignal);
+
+		const row = await outboxRepository.findOneBy({ id: record!.id });
+		expect(row?.status).toBe('completed');
+		expect(activeWorkflowTriggers.get(workflow.id)?.has(enabled.id)).toBe(true);
+		expect(await triggerStatusRepository.findByWorkflowId(workflow.id)).toEqual([
+			expect.objectContaining({ nodeId: enabled.id, status: 'activated' }),
+		]);
+	});
+
 	test('fails a stored version with a trigger node id that is too long, and keeps the old triggers', async () => {
 		const owner = await createOwner();
 

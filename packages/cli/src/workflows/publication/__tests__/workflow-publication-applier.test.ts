@@ -1569,8 +1569,11 @@ describe('WorkflowPublicationApplier', () => {
 			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
 		});
 
-		test('publishes a version where only a non-trigger node has a long id', async () => {
-			workflowHistoryRepository.findOneBy.mockResolvedValue(versionWith([setNode(longId)]));
+		test.each([
+			['a non-trigger node', setNode(longId)],
+			['a disabled trigger', triggerNode(longId, { disabled: true })],
+		])('publishes a version where only %s has a long id', async (_, node) => {
+			workflowHistoryRepository.findOneBy.mockResolvedValue(versionWith([node]));
 
 			const result = await applier.apply(makeRecord(), abort);
 
