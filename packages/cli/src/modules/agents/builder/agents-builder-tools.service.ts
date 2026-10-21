@@ -56,7 +56,6 @@ import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { AiService } from '@/services/ai.service';
-import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { FreeAiCreditsService } from '@/services/free-ai-credits.service';
 import { Telemetry } from '@/telemetry';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
@@ -489,7 +488,6 @@ export class AgentsBuilderToolsService {
 		private readonly aiService: AiService,
 		private readonly aiGatewayService: AiGatewayService,
 		private readonly outboundHttp: OutboundHttp,
-		_dynamicNodeParametersService: DynamicNodeParametersService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly freeAiCreditsService: FreeAiCreditsService,
 		private readonly telemetry: Telemetry,
