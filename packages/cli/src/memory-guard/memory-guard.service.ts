@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { WorkflowRepository } from '@n8n/db';
+import { type WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -445,23 +445,32 @@ export class MemoryGuardService {
 		if (!PRODUCTION_MODES.includes(mode) || !isWorkflowIdValid(workflow.id)) return false;
 
 		const stops = (this.stopsByWorkflow.get(workflow.id) ?? 0) + 1;
-		if (stops < STOPS_TO_DEACTIVATE) {
-			this.stopsByWorkflow.set(workflow.id, stops);
-			return false;
-		}
+		this.stopsByWorkflow.set(workflow.id, stops);
+		if (stops < STOPS_TO_DEACTIVATE) return false;
 
-		this.stopsByWorkflow.delete(workflow.id);
 		return await this.deactivate(workflow.id);
 	}
 
+	/** Never throws. After a failure, the count stays, so the next counted stop tries again. */
 	private async deactivate(workflowId: string) {
-		const workflow = await this.workflowRepository.findOne({ where: { id: workflowId } });
-		if (!workflow || workflow.activeVersionId === null) return false;
-
 		try {
+			const workflow = await this.workflowRepository.findOne({ where: { id: workflowId } });
+			if (!workflow || workflow.activeVersionId === null) {
+				this.stopsByWorkflow.delete(workflowId);
+				return false;
+			}
+
 			// Lazy import, like crash recovery, because the workflow service depends on much
 			const { WorkflowService } = await import('@/workflows/workflow.service.js');
 			await Container.get(WorkflowService).deactivateWorkflowAsSystem(workflowId);
+			this.stopsByWorkflow.delete(workflowId);
+			this.logger.warn(
+				`Deactivated workflow ${workflowId}, because n8n stopped ${STOPS_TO_DEACTIVATE} of its executions to keep the instance from running out of memory`,
+				{ workflowId },
+			);
+			// Not awaited, so that a slow mail server does not delay the next stop.
+			void this.notifyDeactivated(workflow);
+			return true;
 		} catch (error) {
 			this.logger.error(`Failed to deactivate workflow ${workflowId}`, {
 				workflowId,
@@ -469,11 +478,21 @@ export class MemoryGuardService {
 			});
 			return false;
 		}
+	}
 
-		this.logger.warn(
-			`Deactivated workflow ${workflowId}, because n8n stopped ${STOPS_TO_DEACTIVATE} of its executions to keep the instance from running out of memory`,
-			{ workflowId },
-		);
+	private async notifyDeactivated(workflow: WorkflowEntity) {
+		const workflowId = workflow.id;
+		try {
+			await this.workflowPushNotifier.notify(workflowId, {
+				type: 'workflowAutoDeactivated',
+				data: { workflowId },
+			});
+		} catch (error) {
+			this.logger.error(`Failed to push the deactivation of workflow ${workflowId}`, {
+				workflowId,
+				error: ensureError(error),
+			});
+		}
 
 		try {
 			const recipient = await this.executionRecoveryService.getAutodeactivationRecipient(workflow);
@@ -482,18 +501,12 @@ export class MemoryGuardService {
 				workflow,
 				reason: 'memory-pressure',
 			});
-			await this.workflowPushNotifier.notify(workflowId, {
-				type: 'workflowAutoDeactivated',
-				data: { workflowId },
-			});
 		} catch (error) {
-			this.logger.error(`Failed to notify about the deactivation of workflow ${workflowId}`, {
+			this.logger.error(`Failed to email about the deactivation of workflow ${workflowId}`, {
 				workflowId,
 				error: ensureError(error),
 			});
 		}
-
-		return true;
 	}
 }
 

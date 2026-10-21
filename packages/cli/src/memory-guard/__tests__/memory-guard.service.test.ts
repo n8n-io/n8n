@@ -732,6 +732,50 @@ describe('MemoryGuardService', () => {
 			});
 		});
 
+		it.each([
+			[
+				'the deactivation fails',
+				() => deactivateWorkflowAsSystem.mockRejectedValueOnce(new Error()),
+			],
+			[
+				'the workflow lookup fails',
+				() => workflowRepository.findOne.mockRejectedValueOnce(new Error()),
+			],
+		])('should try again at the next stop when %s', async (_, fail) => {
+			fail();
+			await stopOnce('1');
+			await stopOnce('2');
+			await stopOnce('3');
+			expect(stopLogs()).toHaveLength(3);
+			expect(mailer.notifyWorkflowAutodeactivated).not.toHaveBeenCalled();
+
+			await stopOnce('4');
+
+			expect(deactivateWorkflowAsSystem).toHaveBeenCalledWith('repeat');
+			expect(mailer.notifyWorkflowAutodeactivated).toHaveBeenCalled();
+		});
+
+		it('should push the deactivation when the email fails', async () => {
+			mailer.notifyWorkflowAutodeactivated.mockRejectedValueOnce(new Error());
+
+			await stopOnce('1');
+			await stopOnce('2');
+			await stopOnce('3');
+
+			expect(workflowPushNotifier.notify).toHaveBeenCalled();
+		});
+
+		it('should finish the stop without waiting for the email', async () => {
+			mailer.notifyWorkflowAutodeactivated.mockReturnValueOnce(new Promise(() => {}));
+
+			await stopOnce('1');
+			await stopOnce('2');
+			await stopOnce('3');
+			await stopOnce('4');
+
+			expect(stoppedIds()).toEqual(['1', '2', '3', '4']);
+		});
+
 		it('should not count stops of manual executions', async () => {
 			await stopOnce('1', { mode: 'manual' });
 			await stopOnce('2', { mode: 'manual' });
