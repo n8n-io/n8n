@@ -942,6 +942,25 @@ describe('StepReadyHandler waits', () => {
 		);
 	});
 
+	it('fails the step when the executor declares a child wait instead of a spawn', async () => {
+		// Only the engine suspends a step on a child, after it started one. A
+		// declaration from outside would wait for a child that nothing starts.
+		const stepStore = makeStepStore();
+		const handler = makeHandler(makeExecutionStore(), stepStore, makeQueue(), {
+			v1StepExecutor: makeExecutor({
+				wait: { childExecutionId: 'exec-child', acceptsResumeRequest: false },
+			}),
+		});
+
+		await handler.handle(event);
+
+		expect(stepStore.suspendStep).not.toHaveBeenCalled();
+		expect(stepStore.failStep).toHaveBeenCalledWith(
+			'step-a',
+			expect.objectContaining({ message: expect.stringContaining('child') as string }),
+		);
+	});
+
 	it('fails the step when the declaration can never resume', async () => {
 		// No deadline and no resume request means nothing would ever end this
 		// wait, so suspending would strand the execution. The declaration comes

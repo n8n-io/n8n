@@ -230,6 +230,10 @@ export class StepSettledHandler {
 	 * Only the branch that won `finishExecution` gets here, so the parent is
 	 * resumed once. Resume first, announce second, as the wait sweep does: the
 	 * row is `queued` before any worker can hear of it.
+	 *
+	 * TODO(CET-342): a crash between the finish and the resume leaves a parent
+	 * step waiting on a child that has ended. The rows say so, and a redelivery
+	 * cannot repeat a finish it lost, so reconciliation re-issues the resume.
 	 */
 	private async resumeAwaitingParent(execution: ExecutionRecord): Promise<void> {
 		const { parent } = execution;

@@ -654,7 +654,7 @@ describe('StepSettledHandler child executions', () => {
 		expect(executionStore.refreshLiveStatus).toHaveBeenCalledWith('exec-parent');
 	});
 
-	it('orders the result by graph position, then by pass, and leaves out terminal steps that did not complete', async () => {
+	it('orders the result by the graph, then by pass, and leaves out terminal steps that did not complete', async () => {
 		// trigger -> a -> {b, c}: both b and c are terminal, b before c in the graph.
 		const forked: WorkflowGraph = {
 			nodes: [
@@ -675,10 +675,12 @@ describe('StepSettledHandler child executions', () => {
 				countSettledSteps: vi.fn().mockResolvedValue(5),
 				loadAllSteps: vi
 					.fn()
+					// Out of graph order, and with a pass of `b` that did not complete.
 					.mockResolvedValue([
 						row('c', 'completed', [[{ json: { c: 1 } }]], 1),
-						row('b', 'skipped', null),
+						row('b', 'skipped', null, 1),
 						row('c', 'completed', [[{ json: { c: 0 } }]], 0),
+						row('b', 'completed', [[{ json: { b: 0 } }]], 0),
 						row('a', 'completed', [[{ json: { a: 1 } }]]),
 						row('trigger', 'completed', [[]]),
 					]),
@@ -694,11 +696,32 @@ describe('StepSettledHandler child executions', () => {
 			'step-call',
 			expect.objectContaining({
 				result: [
+					{ nodeId: 'b', iteration: 0, outputs: [[{ json: { b: 0 } }]] },
 					{ nodeId: 'c', iteration: 0, outputs: [[{ json: { c: 0 } }]] },
 					{ nodeId: 'c', iteration: 1, outputs: [[{ json: { c: 1 } }]] },
 				],
 			}),
 		);
+	});
+
+	it('announces no resume when the parent step no longer waits', async () => {
+		// The parent was cancelled, and its waiting step with it.
+		const stepStore = makeStepStore(
+			{ id: 'step-m', nodeId: 'm' },
+			{
+				countSettledSteps: vi.fn().mockResolvedValue(5),
+				resumeStep: vi.fn().mockResolvedValue(false),
+			},
+		);
+		const { handler, stepQueue, executionStore } = makeHandler(stepStore, {
+			executionStore: makeExecutionStore({ parent }),
+		});
+
+		await handler.handle({ ...event, stepId: 'step-m' });
+
+		expect(stepStore.resumeStep).toHaveBeenCalledOnce();
+		expect(stepQueue.publish).not.toHaveBeenCalled();
+		expect(executionStore.refreshLiveStatus).not.toHaveBeenCalledWith('exec-parent');
 	});
 
 	it('resumes nothing for a parent that does not await the child', async () => {

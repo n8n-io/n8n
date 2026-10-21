@@ -704,6 +704,9 @@ describe('step execution (integration)', () => {
 		expect(callRuns[0].resume).toBeUndefined();
 		expect(callRuns[1].resume?.kind).toBe('child');
 		expect(callRuns[1].inputs).toEqual([{}]);
+		// What `call` emitted on the resume is what `after` read.
+		const afterRun = requests.find(({ node }) => node.id === 'after');
+		expect(afterRun?.inputs).toEqual([[{ json: { childResult } }]]);
 	});
 
 	it('is idempotent across duplicate step:ready deliveries', async () => {

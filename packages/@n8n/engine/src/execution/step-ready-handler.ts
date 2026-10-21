@@ -493,6 +493,14 @@ function resumedOutputs(step: StepRecord, cause: ResumeCause): StepSlots {
  * step as failed, which a wait nothing can end would never do on its own.
  */
 function validateWaitDeclaration(stepId: string, wait: WaitDeclaration): void {
+	// The engine writes this one itself, once it has a child to start. From an
+	// executor it would wait for a child that nothing starts.
+	if ('childExecutionId' in wait) {
+		throw new UnexpectedError(
+			`step ${stepId} declares a wait on a child, which only a spawn can start`,
+		);
+	}
+
 	if (!hasResumeCondition(wait)) {
 		throw new UnexpectedError(
 			`step ${stepId} declares a wait that can never resume: it names neither a deadline nor a resume request`,
