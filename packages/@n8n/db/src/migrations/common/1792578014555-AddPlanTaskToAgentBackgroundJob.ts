@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddPlanTaskToAgentBackgroundJob1792483572963 implements ReversibleMigration {
+export class AddPlanTaskToAgentBackgroundJob1792578014555 implements ReversibleMigration {
 	async up({
 		schemaBuilder: { addColumns, column, addForeignKey, createIndex },
 	}: MigrationContext) {

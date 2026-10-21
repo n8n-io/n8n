@@ -92,16 +92,15 @@ describe('ProjectTabs', () => {
 		expect(getByText('Variables')).toBeInTheDocument();
 	});
 
-	it('should render preview tabs with the preview tag component', () => {
-		const { container, getByText } = renderComponent({
+	it('should render a preview badge for preview tabs', () => {
+		const { getByText } = renderComponent({
 			props: {
 				additionalTabs: [{ label: 'Agents', value: 'agents', preview: true }],
 			},
 		});
 
 		expect(getByText('Agents')).toBeInTheDocument();
-		expect(getByText('Preview')).toBeInTheDocument();
-		expect(container.querySelector('.preview')).toBeInTheDocument();
+		expect(getByText('Preview').closest('.n8n-badge')).toBeInTheDocument();
 	});
 
 	const getTabValuesInOrder = (container: ParentNode) =>
