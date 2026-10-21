@@ -83,6 +83,10 @@ class FakeIntegration extends AgentChatIntegration {
 		return this.leaderOnly && ingressEnabled;
 	}
 
+	buildOriginDraft() {
+		return undefined;
+	}
+
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		throw new Error('createAdapter should not be invoked from these tests');
 	}

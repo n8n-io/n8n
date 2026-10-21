@@ -18,9 +18,6 @@ export const PROMOTE_SELECTION_COMMIT_MESSAGE = 'Promote a selection of project 
  */
 export const PACKAGE_SUBFOLDER = 'n8n';
 
-/** Config name used when a config write leaves `name` out. */
-export const DIRECTION_LABELS = { apply: 'Apply', promote: 'Promote' } as const;
-
 // Timeouts that bound how long a stalled Git operation can hang. Transport-level
 // limits (SSH, HTTP) fire first based on real network inactivity; the process
 // stall timeout is a transport-agnostic backstop.

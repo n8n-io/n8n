@@ -3539,13 +3539,6 @@ describe('NodeCredentials', () => {
 			};
 		}
 
-		beforeEach(() => {
-			settingsStore.settings = {
-				...settingsStore.settings,
-				granularCredentialSharing: true,
-			} as unknown as FrontendSettings;
-		});
-
 		it('names the project the credentials are shared with, and puts yours first', async () => {
 			inTeamProject('Sales Ops');
 			seedBothRoutes();
@@ -3651,25 +3644,6 @@ describe('NodeCredentials', () => {
 				'Available in this project',
 			);
 		});
-
-		it('renders no headings at all while the feature flag is off', async () => {
-			settingsStore.settings = {
-				...settingsStore.settings,
-				granularCredentialSharing: false,
-			} as unknown as FrontendSettings;
-			inTeamProject();
-			seedBothRoutes();
-			renderComponent();
-
-			await userEvent.click(screen.getByTestId('node-credentials-select'));
-
-			expect(
-				await screen.findByTestId('node-credentials-select-item-personal-cred'),
-			).toBeInTheDocument();
-			expect(screen.getByTestId('node-credentials-select-item-project-cred')).toBeInTheDocument();
-			expect(screen.queryByTestId(YOURS_HEADER)).not.toBeInTheDocument();
-			expect(screen.queryByTestId(SHARED_HEADER)).not.toBeInTheDocument();
-		});
 	});
 
 	describe('a current credential the user cannot use', () => {
@@ -3696,11 +3670,7 @@ describe('NodeCredentials', () => {
 			},
 		});
 
-		function setUp({ flag = true, usable = true, canUse = false } = {}) {
-			settingsStore.settings = {
-				...settingsStore.settings,
-				granularCredentialSharing: flag,
-			} as unknown as FrontendSettings;
+		function setUp({ usable = true, canUse = false } = {}) {
 			projectsStore.currentProject = {
 				id: 'marketing',
 				name: 'Marketing',
@@ -3903,21 +3873,6 @@ describe('NodeCredentials', () => {
 			const option = screen.getByTestId('node-credentials-select-item-alice-cred');
 			expect(option).not.toHaveClass('is-disabled');
 			expect(option).toHaveTextContent("Alice Chen's · not shared with Marketing");
-		});
-
-		it('changes nothing while the feature flag is off', async () => {
-			setUp({ flag: false });
-
-			expect(screen.queryByTestId('node-credentials-unusable-warning')).not.toBeInTheDocument();
-
-			await userEvent.click(screen.getByTestId('node-credentials-select'));
-
-			expect(
-				await screen.findByTestId('node-credentials-select-item-team-cred'),
-			).toBeInTheDocument();
-			expect(
-				screen.queryByTestId('node-credentials-select-item-alice-cred'),
-			).not.toBeInTheDocument();
 		});
 	});
 });

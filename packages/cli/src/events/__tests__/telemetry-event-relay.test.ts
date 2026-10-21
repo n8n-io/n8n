@@ -3781,6 +3781,46 @@ describe('TelemetryEventRelay', () => {
 			});
 		});
 
+		it('should track on `user-mfa-enabled` event', () => {
+			const event: RelayEventMap['user-mfa-enabled'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+			};
+
+			eventService.emit('user-mfa-enabled', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AUTH.USER_ENABLED_MFA, {
+				user_id: 'user123',
+			});
+		});
+
+		it.each(['mfaCode', 'recoveryCode'] as const)(
+			'should track on `user-mfa-disabled` event with %s',
+			(disableMethod) => {
+				const event: RelayEventMap['user-mfa-disabled'] = {
+					user: {
+						id: 'user123',
+						email: 'user@example.com',
+						firstName: 'John',
+						lastName: 'Doe',
+						role: { slug: GLOBAL_OWNER_ROLE.slug },
+					},
+					disableMethod,
+				};
+
+				eventService.emit('user-mfa-disabled', event);
+
+				expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AUTH.USER_DISABLED_MFA, {
+					user_id: 'user123',
+				});
+			},
+		);
+
 		it('should track on `user-submitted-personalization-survey` event', () => {
 			const event: RelayEventMap['user-submitted-personalization-survey'] = {
 				userId: 'user123',
@@ -3901,6 +3941,46 @@ describe('TelemetryEventRelay', () => {
 					}),
 				}),
 			);
+		});
+
+		it('should report the managed database and Redis vendors, never the host names', async () => {
+			const original = { database: globalConfig.database, queue: globalConfig.queue };
+			const originalMode = globalConfig.executions.mode;
+			Object.assign(globalConfig, {
+				database: {
+					type: 'postgresdb',
+					postgresdb: { host: 'db.abc.eu-west-1.rds.amazonaws.com' },
+				},
+				queue: { bull: { redis: { host: 'n8n.abc.cache.amazonaws.com', clusterNodes: '' } } },
+			});
+			globalConfig.executions.mode = 'queue';
+			dbConnection.getManagedPostgresMarkers.mockResolvedValue({
+				aurora: false,
+				rds: true,
+				azure: false,
+				cloudSql: false,
+			});
+			try {
+				eventService.emit('server-started');
+				await flushPromises();
+			} finally {
+				Object.assign(globalConfig, original);
+				globalConfig.executions.mode = originalMode;
+			}
+
+			expect(telemetry.identify).toHaveBeenCalledWith(
+				expect.objectContaining({ db_vendor: 'rds', redis_vendor: 'elasticache' }),
+			);
+			expect(JSON.stringify(telemetry.identify.mock.calls)).not.toContain('amazonaws.com');
+		});
+
+		it('should leave out both vendors on SQLite without queue mode', async () => {
+			eventService.emit('server-started');
+			await flushPromises();
+
+			const [info] = telemetry.identify.mock.calls[0];
+			expect(info?.db_vendor).toBeUndefined();
+			expect(info?.redis_vendor).toBeUndefined();
 		});
 
 		it('should leave out the Kubernetes kind outside Kubernetes', async () => {

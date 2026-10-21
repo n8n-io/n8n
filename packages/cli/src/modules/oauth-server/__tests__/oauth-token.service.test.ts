@@ -127,7 +127,7 @@ describe('OAuthTokenService', () => {
 			expect(decoded.sub).toBe(userId);
 			expect(decoded.aud).toBe(TEST_RESOURCE_URL);
 			expect(decoded.client_id).toBe(clientId);
-			expect(decoded.meta.isOAuth).toBe(true);
+			expect(decoded.meta).toBeUndefined();
 			expect(decoded.jti).toBeDefined();
 			expect(decoded.iat).toBeDefined();
 			expect(decoded.exp).toBeDefined();
@@ -1024,7 +1024,6 @@ describe('OAuthTokenService', () => {
 				iat: now,
 				exp: now + OAUTH_ACCESS_TOKEN_TTL_SECONDS,
 				scope: '',
-				meta: { isOAuth: true },
 			};
 		};
 

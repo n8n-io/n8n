@@ -83,7 +83,7 @@ export class RateLimitService {
 		limits: Required<RateLimiterLimits>,
 		{ requestPropertyName, store }: { requestPropertyName: string; store: Store },
 	): RequestHandler {
-		return expressRateLimit({
+		const limiter = expressRateLimit({
 			limit: limits.limit,
 			windowMs: limits.windowMs,
 			legacyHeaders: false,
@@ -91,10 +91,10 @@ export class RateLimitService {
 			requestPropertyName,
 			store,
 			handler: (_req, _res, next) => next(),
-			passOnStoreError: true,
 			skip: (req: AuthenticatedRequest): boolean => req.tokenGrant?.apiKeyId === undefined,
 			keyGenerator: (req: AuthenticatedRequest) => `apiKey:${req.tokenGrant?.apiKeyId}`,
 		});
+		return async (req, res, next) => await limiter(req, res, () => next());
 	}
 
 	private extractBodyIdentifier(body: unknown, fieldName: string, fieldSchema: ZodTypeAny): string {

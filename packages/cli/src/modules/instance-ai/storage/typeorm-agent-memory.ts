@@ -7,6 +7,8 @@ import {
 	type MemoryDescriptor,
 	type NewObservationLogEntry,
 	type ObservationCursor,
+	type ObservationLogBatch,
+	type ObservationLogBatchCommitResult,
 	type ObservationLogEntry,
 	type ObservationLogReadOptions,
 	type ObservationLogReflection,
@@ -564,6 +566,12 @@ export class TypeORMAgentMemory
 				metadata: { scope: params.scope },
 			}),
 		);
+	}
+
+	async commitObservationLogBatch(
+		batch: ObservationLogBatch,
+	): Promise<ObservationLogBatchCommitResult> {
+		return await this.observationLog.commitObservationLogBatch(batch);
 	}
 
 	async appendObservationLogEntries(
