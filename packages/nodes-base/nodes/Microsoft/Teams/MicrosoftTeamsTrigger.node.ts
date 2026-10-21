@@ -473,16 +473,24 @@ export class MicrosoftTeamsTrigger implements INodeType {
 			return { noWebhookResponse: true };
 		}
 
-		if (!verifyWebhook.call(this)) {
+		const accepted = verifyWebhook.call(this);
+		if (accepted.length === 0) {
 			res.status(401).send('Unauthorized').end();
 			return { noWebhookResponse: true };
 		}
 
-		// `verifyWebhook` proved a non-empty array. Without a stored secret it accepts any
-		// item shape, so only records become workflow items.
+		// `verifyWebhook` proved a non-empty array and dropped the items with another
+		// clientState; the lifecycle handler lists and reconciles for them. Without a stored
+		// secret it accepts any item shape, so only records become workflow items.
 		const notifications: unknown[] = req.body.value;
-		const lifecycleNotifications = notifications.filter(isLifecycleNotification);
-		const changeNotifications = notifications.filter(
+		const rejected = notifications.length - accepted.length;
+		if (rejected > 0) {
+			logTrigger.call(this, 'debug', 'rejected notifications with an unknown clientState', {
+				rejected,
+			});
+		}
+		const lifecycleNotifications = accepted.filter(isLifecycleNotification);
+		const changeNotifications = accepted.filter(
 			(item) => isRecord(item) && !isLifecycleNotification(item),
 		) as WebhookNotification[];
 		const workflowData = changeNotifications.map((event) => [
@@ -500,7 +508,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 		// A test run would list by the production URL and write production ids into the
 		// test static data.
 		if (this.getMode() !== 'manual') {
-			await handleLifecycleNotifications.call(this, lifecycleNotifications);
+			await handleLifecycleNotifications.call(this, lifecycleNotifications, rejected);
 		}
 
 		// A lifecycle-only batch must leave `workflowData` undefined: any value starts an execution.
