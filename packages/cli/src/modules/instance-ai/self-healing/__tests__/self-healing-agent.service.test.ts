@@ -267,6 +267,16 @@ describe('SelfHealingAgentService', () => {
 		expect(memory.saveThreadWithProject.mock.invocationCallOrder[0]).toBeLessThan(
 			events.publish.mock.invocationCallOrder[0],
 		);
+		expect(createInstanceAiTraceContext).toHaveBeenCalledWith(
+			expect.objectContaining({
+				metadata: expect.objectContaining({
+					self_healing: true,
+					self_healing_workflow_id: baseline.workflowId,
+					self_healing_execution_id: input.executionId,
+					self_healing_project_id: baseline.projectId,
+				}),
+			}),
+		);
 		expect(credits.claimRunUsage).toHaveBeenCalledExactlyOnceWith(
 			user,
 			options.threadId,
