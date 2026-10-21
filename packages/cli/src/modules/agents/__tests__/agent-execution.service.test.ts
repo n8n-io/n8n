@@ -26,6 +26,7 @@ import type { AgentMessageRepository } from '../repositories/agent-message.repos
 import type { AgentMessageQueueRepository } from '../repositories/agent-message-queue.repository';
 import { MARK_SESSION_FAILED_TOOL_NAME } from '../tools/mark-session-failed.tool';
 import { MAX_ITERATIONS_STOPPED_MESSAGE } from '../utils/fatal-session-outcome';
+import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
 
 const previewAccess = { accessScope: 'user' as const, ownerId: 'user-1' };
 
@@ -148,6 +149,7 @@ describe('AgentExecutionService', () => {
 			txRunner,
 			queueRepository,
 			messageRepository,
+			new SystemAgentRegistry(),
 		);
 	});
 
@@ -783,6 +785,7 @@ describe('AgentExecutionService', () => {
 				txRunner,
 				queueRepository,
 				messageRepository,
+				new SystemAgentRegistry(),
 			);
 
 			const record = makeMessageRecord({
@@ -880,6 +883,7 @@ describe('AgentExecutionService', () => {
 					txRunner,
 					queueRepository,
 					messageRepository,
+					new SystemAgentRegistry(),
 				);
 
 				const record = makeMessageRecord({
@@ -1494,6 +1498,7 @@ describe('AgentExecutionService', () => {
 				txRunner,
 				queueRepository,
 				messageRepository,
+				new SystemAgentRegistry(),
 			);
 			const partial = [{ type: 'text', content: 'Partial', timestamp: 1, endTime: 2 }] as const;
 			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
