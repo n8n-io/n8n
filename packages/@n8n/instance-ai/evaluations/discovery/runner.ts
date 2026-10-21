@@ -27,7 +27,12 @@
 // ---------------------------------------------------------------------------
 
 import { Tool, type BuiltTool, type GuardrailsOptions } from '@n8n/agents';
-import { AGENT_BUILDER_TOOL_NAMES, type InstanceAiEvent, type TaskList } from '@n8n/api-types';
+import {
+	AGENT_BUILDER_TOOL_NAMES,
+	SHARED_BUILDER_TOOL_NAMES,
+	type InstanceAiEvent,
+	type TaskList,
+} from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -393,6 +398,13 @@ const STUB_BUILDER_TOOL_NAMES: readonly string[] = AGENT_BUILDER_ORCHESTRATOR_TO
 	(name) => name !== AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT,
 );
 
+const AGENT_BUILD_STOP_TOOL_NAMES: readonly string[] = [
+	...STUB_BUILDER_TOOL_NAMES,
+	SHARED_BUILDER_TOOL_NAMES.SEARCH_NODES,
+	SHARED_BUILDER_TOOL_NAMES.GET_NODE_TYPES,
+	SHARED_BUILDER_TOOL_NAMES.GET_NODE_PARAMETER_OPTIONS,
+];
+
 /**
  * Ends the trial at the first builder call after `agent_builder_select_agent`. The route is
  * settled by then, and the stubs report success, so the model otherwise builds until the budget.
@@ -406,7 +418,9 @@ async function stopAtAgentBuild(
 			event.type === 'tool-call' &&
 			event.payload.toolName === AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT,
 	);
-	return await Promise.resolve(agentSelected && STUB_BUILDER_TOOL_NAMES.includes(call.toolName));
+	return await Promise.resolve(
+		agentSelected && AGENT_BUILD_STOP_TOOL_NAMES.includes(call.toolName),
+	);
 }
 
 /** Builder tools that accept any input and report success, so routing is all that is graded. */

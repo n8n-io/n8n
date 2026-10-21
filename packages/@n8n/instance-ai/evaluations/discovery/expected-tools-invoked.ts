@@ -120,12 +120,11 @@ function toolCallMatchesExpectation(
 
 	if (actualTool !== expectedTool) {
 		if (expectedTool === WORKFLOW_BUILDER_TOOL_NAMES.NODES) {
-			const mappedTool = isRecord(expectation.args)
-				? mapLegacyNodesActionToTool(expectation.args.action)
-				: undefined;
-			const toolMatches = mappedTool
-				? actualTool === mappedTool
-				: SPLIT_NODE_TOOL_NAMES.has(actualTool);
+			const legacyAction = isRecord(expectation.args) ? expectation.args.action : undefined;
+			const toolMatches =
+				legacyAction === undefined
+					? SPLIT_NODE_TOOL_NAMES.has(actualTool)
+					: actualTool === mapLegacyNodesActionToTool(legacyAction);
 			if (!toolMatches) return false;
 			if (isRecord(expectation.args)) {
 				const { action: _action, ...restArgs } = expectation.args;

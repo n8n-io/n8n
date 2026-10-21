@@ -3059,6 +3059,97 @@ describe('createThreadRuntime - session always-allow', () => {
 		expect(runtime.resolvedConfirmationIds.has('req-wf-2')).toBe(false);
 	});
 
+	describe('execute_node grants', () => {
+		const sheetsArgs = { type: 'n8n-nodes-base.googleSheets' };
+
+		it('auto-approves a later execute_node call for the same node type', async () => {
+			const runtime = registry.getOrCreateRuntime(activeThreadId);
+			runtime.addAlwaysAllowKey('execute_node', sheetsArgs);
+			expect(runtime.sessionAlwaysAllowKeys.size).toBe(1);
+
+			pushPendingApproval(runtime, {
+				messageId: 'msg-exec-same',
+				requestId: 'req-exec-same',
+				toolName: 'execute_node',
+				args: { type: 'n8n-nodes-base.googleSheets' },
+			});
+
+			await vi.waitFor(() => {
+				expect(runtime.resolvedConfirmationIds.get('req-exec-same')).toBe('approved');
+			});
+			expect(mockPostConfirmation).toHaveBeenCalledWith(expect.anything(), 'req-exec-same', {
+				kind: 'approval',
+				approved: true,
+			});
+		});
+
+		it('does not auto-approve execute_node for a different node type', async () => {
+			const runtime = registry.getOrCreateRuntime(activeThreadId);
+			runtime.addAlwaysAllowKey('execute_node', sheetsArgs);
+
+			pushPendingApproval(runtime, {
+				messageId: 'msg-exec-other',
+				requestId: 'req-exec-other',
+				toolName: 'execute_node',
+				args: { type: 'n8n-nodes-base.slack' },
+			});
+
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			expect(runtime.resolvedConfirmationIds.has('req-exec-other')).toBe(false);
+			expect(mockPostConfirmation).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			['missing', {}],
+			['empty', { type: '' }],
+		])('does not auto-approve execute_node with a %s type', async (_label, args) => {
+			const runtime = registry.getOrCreateRuntime(activeThreadId);
+			runtime.addAlwaysAllowKey('execute_node', sheetsArgs);
+
+			pushPendingApproval(runtime, {
+				messageId: 'msg-exec-notype',
+				requestId: 'req-exec-notype',
+				toolName: 'execute_node',
+				args,
+			});
+
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			expect(runtime.resolvedConfirmationIds.has('req-exec-notype')).toBe(false);
+			expect(mockPostConfirmation).not.toHaveBeenCalled();
+		});
+
+		it('does not store an execute_node grant without a node type', () => {
+			const runtime = registry.getOrCreateRuntime(activeThreadId);
+			runtime.addAlwaysAllowKey('execute_node', {});
+			expect(runtime.sessionAlwaysAllowKeys.size).toBe(0);
+			expect(runtime.canAlwaysAllow('execute_node', { type: '' })).toBe(false);
+		});
+
+		it('still scopes legacy workflow_builder_nodes execute grants by node type', async () => {
+			const runtime = registry.getOrCreateRuntime(activeThreadId);
+			runtime.addAlwaysAllowKey('workflow_builder_nodes', { action: 'execute', ...sheetsArgs });
+
+			pushPendingApproval(runtime, {
+				messageId: 'msg-legacy-same',
+				requestId: 'req-legacy-same',
+				toolName: 'workflow_builder_nodes',
+				args: { action: 'execute', type: 'n8n-nodes-base.googleSheets' },
+			});
+			await vi.waitFor(() => {
+				expect(runtime.resolvedConfirmationIds.get('req-legacy-same')).toBe('approved');
+			});
+
+			pushPendingApproval(runtime, {
+				messageId: 'msg-legacy-other',
+				requestId: 'req-legacy-other',
+				toolName: 'workflow_builder_nodes',
+				args: { action: 'execute', type: 'n8n-nodes-base.slack' },
+			});
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			expect(runtime.resolvedConfirmationIds.has('req-legacy-other')).toBe(false);
+		});
+	});
+
 	it('clears keys on resetState', () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
 		runtime.addAlwaysAllowKey('workflow_builder_workflows', { action: 'run' });

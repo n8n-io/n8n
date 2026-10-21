@@ -58,7 +58,7 @@ describe('chat-model-validation', () => {
 			'invalid_model',
 			'The model "gpt-6" was not found',
 		);
-		expect(guidance).toContain('explore-resources');
+		expect(guidance).toContain('get_node_parameter_options');
 		expect(guidance).toContain('Do not guess another model ID');
 		expect(guidance).not.toMatch(/gpt-5/);
 	});
@@ -222,7 +222,7 @@ describe('chat-model-validation', () => {
 			{ id: '__AI_GATEWAY_MANAGED__', name: 'Gateway credits' },
 		);
 
-		expect(issues.model?.[0]).toContain('explore-resources');
+		expect(issues.model?.[0]).toContain('get_node_parameter_options');
 		expect(issues.model?.[0]).toContain('Gateway credits');
 	});
 
