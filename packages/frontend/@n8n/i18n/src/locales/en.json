@@ -4072,7 +4072,7 @@
 	"experiments.preferencesEmptyState.examples.workflows.category": "Workflows",
 	"experiments.preferencesEmptyState.examples.workflows.content": "For every newly created workflow, add an error workflow that sends me the workflow name and the execution link in Slack.",
 	"experiments.preferencesEmptyState.examples.agents.category": "Agents",
-	"experiments.preferencesEmptyState.examples.agents.content": "Give each agent short instructions that state its task, the tools it can use, and the format of its answers.",
+	"experiments.preferencesEmptyState.examples.agents.content": "Make each agent ask for my approval before it sends a message or changes data in another app.",
 	"experiments.preferencesEmptyState.examples.credentials.category": "Credentials",
 	"experiments.preferencesEmptyState.examples.credentials.content": "If I have more than one credential for a service, ask me which one to use. Don't pick one for me.",
 	"experiments.preferencesEmptyState.examples.answers.category": "Answers",

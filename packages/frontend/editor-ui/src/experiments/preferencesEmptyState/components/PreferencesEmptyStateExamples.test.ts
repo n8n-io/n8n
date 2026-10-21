@@ -31,7 +31,7 @@ describe('PreferencesEmptyStateExamples', () => {
 				{
 					id: 'agents',
 					content:
-						'Give each agent short instructions that state its task, the tools it can use, and the format of its answers.',
+						'Make each agent ask for my approval before it sends a message or changes data in another app.',
 				},
 			],
 		]);
