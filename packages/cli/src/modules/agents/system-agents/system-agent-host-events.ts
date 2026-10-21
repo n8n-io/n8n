@@ -1,5 +1,6 @@
 import type { JSONValue } from '@n8n/agents';
 import type { AgentSseEvent } from '@n8n/api-types';
+import { jsonSizeExceeds } from '@n8n/utils/json/json-size-exceeds';
 import { UnexpectedError } from 'n8n-workflow';
 
 import type { ExecutionRecorder } from '../execution-recorder';
@@ -66,7 +67,8 @@ export class SystemAgentHostEventChannel {
 		if (key !== undefined && !isValidId(key)) {
 			throw new UnexpectedError('A host event key must have 1 to 128 characters');
 		}
-		if (Buffer.byteLength(JSON.stringify(payload), 'utf8') > MAX_HOST_EVENT_PAYLOAD_BYTES) {
+		// Measures without serializing, and stops at the cap, so a huge payload costs little.
+		if (jsonSizeExceeds(payload, MAX_HOST_EVENT_PAYLOAD_BYTES)) {
 			throw new UnexpectedError('A host event payload must not be larger than 64 KiB');
 		}
 		if (this.closed) {
