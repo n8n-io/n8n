@@ -374,7 +374,7 @@ To keep the orchestrator's context lean, tools are stratified into two tiers:
 - **Core tools** (always-loaded when registered, as selected by
   `ALWAYS_LOADED_TOOL_NAMES` in `tools/tool-ids.ts`): `workflow_builder_ask_user`, `workflow_builder_workflows`,
   `workflow_builder_executions`, `workflow_builder_credentials`, `data_tables`, `workflow_builder_nodes`, `workflow_builder_build_workflow`,
-  `research`, and `n8n-docs`. `workflow_builder_verify_built_workflow`, `parse-file`, `agents`,
+  `workflow_builder_search_models`, `research`, and `n8n-docs`. `workflow_builder_verify_built_workflow`, `parse-file`, `agents`,
   `agent_builder_build_agent`, and `mcp-servers` are also direct when their required runtime
   context or feature is available.
 - **Deferred tools** (behind ToolSearchProcessor): everything else, including

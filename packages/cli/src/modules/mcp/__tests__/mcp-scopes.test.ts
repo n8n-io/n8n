@@ -7,6 +7,7 @@ import {
 	FolderFinderService,
 	ExecutionRedactionServiceProxy,
 	WorkflowPublishedDataService,
+	AiPreferenceService,
 } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { EndpointsConfig, ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
@@ -40,7 +41,8 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { ExecutionService } from '@/executions/execution.service';
-import { SkillsApiService } from '@/modules/agents/skills/skills-api.service';
+import { SkillsApiService } from '@/modules/skills/skills-api.service';
+import { SkillsHubRollout } from '@/modules/skills/skills-hub-rollout';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { InstanceContextService } from '@/modules/instance-ai/instance-context.service';
 import {
@@ -53,7 +55,6 @@ import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
-import { AiPreferenceService } from '@/services/ai-preference.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -172,14 +173,12 @@ describe('McpService scope enforcement', () => {
 		foldersLicensed = true,
 		instanceAiActive = false,
 		agentsActive = false,
-		skillsHubEnabled = false,
 		postHogClient = mockInstance(PostHogClient),
 	}: {
 		builderEnabled?: boolean;
 		foldersLicensed?: boolean;
 		instanceAiActive?: boolean;
 		agentsActive?: boolean;
-		skillsHubEnabled?: boolean;
 		postHogClient?: PostHogClient;
 	} = {}) =>
 		new McpService(
@@ -201,7 +200,6 @@ describe('McpService scope enforcement', () => {
 				},
 				tags: { disabled: false },
 				diagnostics: { enabled: false, frontendConfig: '' },
-				agents: { skillsHubEnabled },
 			}),
 			mockInstance(Telemetry),
 			mockInstance(WorkflowRunner),
@@ -250,6 +248,7 @@ describe('McpService scope enforcement', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockInstance(SkillsHubRollout, { isEnabled: false });
 	});
 
 	it('every tool registered by getServer is covered by the scope map (drift guard)', async () => {
@@ -286,10 +285,10 @@ describe('McpService scope enforcement', () => {
 		'registers the skill tools only when the skills hub is on: %s',
 		async (skillsHubEnabled) => {
 			mockInstance(SkillsApiService);
+			mockInstance(SkillsHubRollout, { isEnabled: skillsHubEnabled });
 			const server = await buildService({
 				builderEnabled: false,
 				agentsActive: true,
-				skillsHubEnabled,
 			}).getServer(user, mcpFeatureFlags());
 			const registered = getRegisteredToolNames(server);
 

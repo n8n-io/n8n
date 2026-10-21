@@ -1735,6 +1735,35 @@ describe('LogStreamingEventRelay', () => {
 				},
 			});
 		});
+
+		it('should log on `user-login-email-conflict` event', () => {
+			const event: RelayEventMap['user-login-email-conflict'] = {
+				user: {
+					id: 'user404',
+					email: 'linked@example.com',
+					firstName: 'Linked',
+					lastName: 'User',
+					role: { slug: 'global:member' },
+				},
+				authenticationMethod: 'saml',
+				assertedEmail: 'asserted@example.com',
+			};
+
+			eventService.emit('user-login-email-conflict', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.user.login.emailConflict',
+				payload: {
+					userId: 'user404',
+					_email: 'linked@example.com',
+					_firstName: 'Linked',
+					_lastName: 'User',
+					globalRole: 'global:member',
+					authenticationMethod: 'saml',
+					_assertedEmail: 'asserted@example.com',
+				},
+			});
+		});
 	});
 
 	describe('community package events', () => {

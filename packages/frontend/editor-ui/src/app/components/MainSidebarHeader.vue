@@ -1,6 +1,11 @@
 <script lang="ts" setup>
 import { onClickOutside, type VueInstance } from '@vueuse/core';
 import { ref, type Ref } from 'vue';
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import { useClaudeCreateMenu } from '@/experiments/surfaceMcpToClaudeTrialUsers/useClaudeCreateMenu';
+import claudeStyles from '@/experiments/surfaceMcpToClaudeTrialUsers/createMenu.module.scss';
+import ClaudeLogo from '@/experiments/surfaceMcpToClaudeTrialUsers/ClaudeLogo.vue';
+// EOF Experiment cleanup
 import { I18nT } from 'vue-i18n';
 import { RouterLink } from 'vue-router';
 import {
@@ -57,6 +62,12 @@ const {
 	upgradeLabel,
 	hasPermissionToCreateProjects,
 } = useGlobalEntityCreation();
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+const { claudeMenu, claudeAppendSlotName, selectItem, trackOpen } = useClaudeCreateMenu(
+	menu,
+	handleMenuSelect,
+);
+// EOF Experiment cleanup
 </script>
 
 <template>
@@ -93,13 +104,15 @@ const {
 				</N8nTooltip>
 			</N8nLogo>
 		</RouterLink>
+		<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users): keep the dropdown; restore :menu="menu" and @select="handleMenuSelect". Remove submenu-class and the button @click="trackOpen". -->
 		<N8nNavigationDropdown
 			v-if="!hideCreate"
 			ref="createBtn"
 			data-test-id="universal-add"
-			:menu="menu"
+			:menu="claudeMenu"
+			:submenu-class="claudeStyles.claudeMenu"
 			:teleport="true"
-			@select="handleMenuSelect"
+			@select="selectItem"
 		>
 			<N8nIconButton
 				class="n8n-button--highlight"
@@ -108,7 +121,13 @@ const {
 				icon="plus"
 				icon-size="large"
 				aria-label="Add new item"
+				@click="trackOpen"
 			/>
+			<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
+			<template #[claudeAppendSlotName]
+				><ClaudeLogo :class="claudeStyles.claudeMenuIcon"
+			/></template>
+			<!-- EOF Experiment cleanup -->
 			<template #[createWorkflowsAppendSlotName]>
 				<N8nTooltip
 					v-if="sourceControlStore.preferences.branchReadOnly"

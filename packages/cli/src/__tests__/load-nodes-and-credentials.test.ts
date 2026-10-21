@@ -6,7 +6,12 @@ import { Logger } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
 import watcher from '@parcel/watcher';
 import fs from 'fs/promises';
-import { CUSTOM_NODES_PACKAGE_NAME, CustomDirectoryLoader, DirectoryLoader } from 'n8n-core';
+import {
+	CUSTOM_NODES_PACKAGE_NAME,
+	CustomDirectoryLoader,
+	DirectoryLoader,
+	UnrecognizedNodeTypeError,
+} from 'n8n-core';
 import type {
 	ICredentialType,
 	INodeProperties,
@@ -204,6 +209,46 @@ describe('LoadNodesAndCredentials', () => {
 			);
 			expect(result).toBe('dist/nodes/Test/Test.node.js');
 		});
+	});
+
+	describe('recognizesNode and getNode', () => {
+		let instance: LoadNodesAndCredentials;
+		const loadedNode = { sourcePath: 'Test.node.js', type: mock<INodeType>() };
+
+		beforeEach(() => {
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+			instance.loaders.package1 = mock<DirectoryLoader>({
+				known: {
+					nodes: { testNode: { className: 'TestNode', sourcePath: 'Test.node.js' } },
+					credentials: {},
+				},
+				getNode: vi.fn((nodeType: string) => {
+					if (nodeType === 'testNode') return loadedNode;
+					throw new UnrecognizedNodeTypeError('package1', nodeType);
+				}),
+			});
+		});
+
+		it('should resolve a node type made of a package name and a node name', () => {
+			expect(instance.recognizesNode('package1.testNode')).toBe(true);
+			expect(instance.getNode('package1.testNode')).toBe(loadedNode);
+		});
+
+		it.each(['package1', 'package1.', 'package1.unknownNode', 'unknownPackage.testNode'])(
+			'should not resolve the unknown node type %s',
+			(type) => {
+				expect(instance.recognizesNode(type)).toBe(false);
+				expect(() => instance.getNode(type)).toThrow(UnrecognizedNodeTypeError);
+			},
+		);
+
+		it.each(['package1.testNode.v2', 'package1.testNode.Tool', 'package1.testNode.'])(
+			'should treat every segment after the package name as the node name in %s',
+			(type) => {
+				expect(instance.recognizesNode(type)).toBe(false);
+				expect(() => instance.getNode(type)).toThrow(UnrecognizedNodeTypeError);
+			},
+		);
 	});
 
 	describe('resolveSchema', () => {

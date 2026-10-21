@@ -6,14 +6,18 @@ import { mock } from 'vitest-mock-extended';
 import { RestrictedNodeTypesProviderProxy } from '@n8n/backend-services';
 
 import { NodeTypePolicyRestrictedTypesProvider } from '../restricted-node-types.provider';
+import { TypeAvailabilityPolicySnapshot } from '../type-availability-policy-snapshot';
 // Importing the module runs the @BackendModule decorator, registering its metadata.
 import { TypeAvailabilityPoliciesModule } from '../type-availability-policies.module';
 
 describe('TypeAvailabilityPoliciesModule', () => {
 	const provider = mock<NodeTypePolicyRestrictedTypesProvider>();
+	const snapshot = mock<TypeAvailabilityPolicySnapshot>();
 
 	beforeEach(() => {
+		vi.clearAllMocks();
 		Container.set(NodeTypePolicyRestrictedTypesProvider, provider);
+		Container.set(TypeAvailabilityPolicySnapshot, snapshot);
 	});
 
 	it('registers itself under the correct module name', () => {
@@ -90,6 +94,14 @@ describe('TypeAvailabilityPoliciesModule', () => {
 		await expect(
 			Container.get(RestrictedNodeTypesProviderProxy).findRestrictedWorkflowIds(),
 		).resolves.toEqual(restricted);
+	}, 30_000);
+
+	it('loads the policy snapshot on init, before the process takes work', async () => {
+		const module = new TypeAvailabilityPoliciesModule();
+
+		await module.init();
+
+		expect(snapshot.start).toHaveBeenCalledTimes(1);
 	}, 30_000);
 
 	it('exposes its entities so the datasource picks them up', async () => {

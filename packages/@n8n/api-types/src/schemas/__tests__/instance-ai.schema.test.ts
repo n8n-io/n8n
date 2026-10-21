@@ -398,6 +398,9 @@ describe('applyBranchReadOnlyOverrides', () => {
 		expect(result.deleteCredential).toBe('require_approval');
 		expect(result.restoreWorkflowVersion).toBe('require_approval');
 		expect(result.mutateDataTableRows).toBe('require_approval');
+		expect(result.createSkill).toBe('require_approval');
+		expect(result.updateSkill).toBe('require_approval');
+		expect(result.deleteSkill).toBe('require_approval');
 
 		// These should all be blocked
 		expect(result.createWorkflow).toBe('blocked');
