@@ -6144,19 +6144,21 @@ describe('createExecutionAdapter run()', () => {
 			parameters: {},
 			position: [0, 0],
 		};
-		const { adapter, mockWorkflowRunner, mockExecutionPersistence } = createRunAdapterForTests(
-			{ id: 'wf-1', settings: { errorWorkflow: 'error-wf-1' }, nodes: [scheduleNode] },
-			{
-				execution: makeExecution({
-					status: 'error',
-					runData: {
-						'Schedule Trigger': [
-							{ ...makeTaskData([]), redactedError: { type: undefined } } as unknown as ITaskData,
-						],
-					},
-				}),
-			},
-		);
+		const { adapter, mockWorkflowRunner, mockExecutionPersistence, mockTelemetry } =
+			createRunAdapterForTests(
+				{ id: 'wf-1', settings: { errorWorkflow: 'error-wf-1' }, nodes: [scheduleNode] },
+				{
+					execution: makeExecution({
+						status: 'error',
+						runData: {
+							'Schedule Trigger': [
+								{ ...makeTaskData([]), redactedError: { type: undefined } } as unknown as ITaskData,
+							],
+						},
+					}),
+					threadId: 'thread-1',
+				},
+			);
 		const checker = mock<CredentialsPermissionChecker>();
 		checker.check.mockRejectedValue(
 			Object.assign(
@@ -6182,6 +6184,14 @@ describe('createExecutionAdapter run()', () => {
 			'Node "Schedule Trigger" uses the credential "Bot", which you cannot use. Ask its owner to share this credential with you.';
 		expect(result.error).toBe(reason);
 		expect(result.nodeErrors).toEqual([{ nodeName: 'Schedule Trigger', message: reason }]);
+		// Redaction strips the saved reason, so telemetry gets it from the check.
+		expect(mockTelemetry.track).toHaveBeenCalledWith(
+			'Builder executed workflow',
+			expect.objectContaining({
+				status: 'error',
+				error: 'Node "Schedule Trigger" uses the credential "Bot", which you cannot use',
+			}),
+		);
 	});
 
 	it('wraps manual metadata into executionData when offloading to workers so the worker can run it', async () => {

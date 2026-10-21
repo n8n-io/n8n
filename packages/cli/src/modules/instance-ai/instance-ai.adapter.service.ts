@@ -2134,8 +2134,9 @@ export class InstanceAiAdapterService {
 				if (!(error instanceof UserError)) return undefined;
 				const node: unknown = Reflect.get(error, 'node');
 				return {
-					message: [error.message, error.description].filter(Boolean).join('. '),
-					nodeName: isNodeLike(node) ? node.name : undefined,
+					message: error.message,
+					...(error.description ? { description: error.description } : {}),
+					...(isNodeLike(node) ? { nodeName: node.name } : {}),
 				};
 			}
 		};
@@ -2399,9 +2400,10 @@ export class InstanceAiAdapterService {
 						return result;
 					}
 
-					const outcome = await readOutcome(executionId);
-					const result = withCredentialRefusal(outcome.result, credentialRefusal);
-					const { telemetryError } = outcome;
+					const { result, telemetryError } = withCredentialRefusal(
+						await readOutcome(executionId),
+						credentialRefusal,
+					);
 					await pruneVerificationPins(result.executedNodeNames);
 					trackBuilderExecutedWorkflow(result.status, telemetryError);
 					// Saved workflow pins fed this run (they ride every instance-ai run) —
@@ -2743,14 +2745,15 @@ export class InstanceAiAdapterService {
 						});
 					}
 
-					const outcome = await readOutcome(
-						executionId,
-						// A tool ran through the virtual Tool Executor. Report the run
-						// under the node the caller named, which is the one they can open.
-						plan.rootNodeNames ? nodeName : undefined,
+					const { result, telemetryError } = withCredentialRefusal(
+						await readOutcome(
+							executionId,
+							// A tool ran through the virtual Tool Executor. Report the run
+							// under the node the caller named, which is the one they can open.
+							plan.rootNodeNames ? nodeName : undefined,
+						),
+						credentialRefusal,
 					);
-					const result = withCredentialRefusal(outcome.result, credentialRefusal);
-					const { telemetryError } = outcome;
 					trackStepRun(result.status, telemetryError);
 					return describe(result);
 				} catch (error) {
@@ -4789,7 +4792,7 @@ export async function extractExecutionResult(
 }
 
 /** Why `WorkflowRunner.run` refuses to run a workflow for a user. */
-type CredentialRefusal = { message: string; nodeName?: string };
+type CredentialRefusal = { message: string; description?: string; nodeName?: string };
 
 function isNodeLike(value: unknown): value is { name: string } {
 	return (
@@ -4798,22 +4801,27 @@ function isNodeLike(value: unknown): value is { name: string } {
 }
 
 /**
- * Put the refusal reason on a refused run's result. A run that failed for
- * another reason keeps its own error.
+ * Put the refusal reason on a refused run's result, since redaction can reduce
+ * the saved error to its type. Telemetry gets the message without the
+ * description, as for other errors. A run that failed for another reason keeps
+ * its own error.
  */
 function withCredentialRefusal<T extends ExecutionResult>(
-	result: T,
+	outcome: { result: T; telemetryError?: string },
 	refusal: CredentialRefusal | undefined,
-): T {
-	if (!refusal || result.status !== 'error') return result;
+): { result: T; telemetryError?: string } {
+	const { result } = outcome;
+	if (!refusal || result.status !== 'error') return outcome;
+	const message = [refusal.message, refusal.description].filter(Boolean).join('. ');
 	return {
-		...result,
-		error: refusal.message,
-		nodeErrors: result.nodeErrors?.map((nodeError) =>
-			nodeError.nodeName === refusal.nodeName
-				? { ...nodeError, message: refusal.message }
-				: nodeError,
-		),
+		result: {
+			...result,
+			error: message,
+			nodeErrors: result.nodeErrors?.map((nodeError) =>
+				nodeError.nodeName === refusal.nodeName ? { ...nodeError, message } : nodeError,
+			),
+		},
+		telemetryError: refusal.message,
 	};
 }
 
