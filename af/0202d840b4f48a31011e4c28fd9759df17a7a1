@@ -27,6 +27,13 @@ packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
   s_58620fba057bad::t_4d22957a15f9c6 659
 packages/cli/src/modules/agents/model-stream-stall-options.ts
   s_58620fba057bad::t_d7c0ef23295e5a 1-36
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_7efeb91309a84b::t_285e2d9a1f6d4d 483,487-488,491,502-503
+  s_7efeb91309a84b::t_5ad5fde7c71d1b 509-510,530
+  s_7efeb91309a84b::t_acb2daf9314849 324
+  s_7efeb91309a84b::t_2f24e47ed7cb18 426
+  s_7efeb91309a84b::t_44483cd6d6bb10 341
+  s_7efeb91309a84b::t_7a7c3228027132 531
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -50,6 +57,14 @@ packages/cli/src/modules/agents/model-stream-stall-options.ts
       },
       "human_author": "Robin Braumann <robin.braumann@n8n.io>"
     },
+    "s_7efeb91309a84b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1406a-07ce-72be-863b-39297447152b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
     "s_d3c0f6f6f7d41c": {
       "agent_id": {
         "tool": "codex",
@@ -57,6 +72,14 @@ packages/cli/src/modules/agents/model-stream-stall-options.ts
         "model": "gpt-6.1-sol"
       },
       "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_fb9114fd633a36": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1408a-667f-72be-863b-392a9eeeb1f7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
     }
   }
 }

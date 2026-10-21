@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_366815d9eb262b::t_3f7687bb491ab0 513
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "68afdd3a246a895bc00e7ddd96485417c7ef2acb",
+  "prompts": {},
+  "sessions": {
+    "s_366815d9eb262b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a13fe9-fa34-72be-863b-390bc6bf9245",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_59065b7ee9af77": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a13ffb-b622-72be-863b-390c4b0a08d0",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
