@@ -986,6 +986,31 @@ describe('SystemAgentExecutionService', () => {
 			expect(turnExecutionService.execute).not.toHaveBeenCalled();
 		});
 
+		it('stops the turn setup and releases the lease as cancelled after a stop during the acquisition', async () => {
+			const { source, lease } = workspaceSource();
+			const claimController = new AbortController();
+			source.acquire.mockImplementation(async () => {
+				claimController.abort();
+				return lease;
+			});
+			const { service, provider, turnExecutionService } = setup([], undefined, source);
+			const failure = new Error('setup stopped');
+			provider.prepareTurn.mockImplementation(async (turn) => {
+				expect(turn.abortSignal.aborted).toBe(true);
+				throw failure;
+			});
+
+			await expect(
+				service.consume(claimFor(), user, claimController.signal, vi.fn()),
+			).rejects.toThrow('setup stopped');
+			expect(provider.prepareTurn).toHaveBeenCalledTimes(1);
+			expect(source.release).toHaveBeenCalledWith(workspaceScope, lease, {
+				status: 'cancelled',
+				error: failure,
+			});
+			expect(turnExecutionService.execute).not.toHaveBeenCalled();
+		});
+
 		it('fails the turn before it is prepared when the acquisition fails', async () => {
 			const { source } = workspaceSource();
 			source.acquire.mockRejectedValue(new Error('no sandbox provider'));

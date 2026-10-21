@@ -111,8 +111,10 @@ export interface SystemAgentWorkspaceSource<TLease = unknown> {
 	 */
 	acquire(scope: SystemAgentWorkspaceScope): Promise<TLease | undefined>;
 	/**
-	 * The turn settled. The source can let the sandbox sleep or drop cached
-	 * handles. A failure is logged and does not change the turn result.
+	 * The turn settled. The source can drop cached handles. Keep this fast:
+	 * the client gets the `done` event and the queue starts the next turn only
+	 * after it returns. Start slow work, such as a sandbox stop, in the
+	 * background. A failure is logged and does not change the turn result.
 	 */
 	release?(
 		scope: SystemAgentWorkspaceScope,

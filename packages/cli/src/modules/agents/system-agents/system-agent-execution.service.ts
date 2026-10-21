@@ -402,6 +402,8 @@ export class SystemAgentExecutionService {
 		// The runtime then links the claim signal itself, so the link ends with setup.
 		const stopSetup = () => controller.abort(signal.reason);
 		signal.addEventListener('abort', stopSetup, { once: true });
+		// A Stop while the workspace was acquired fired before the listener existed.
+		if (signal.aborted) stopSetup();
 		let handle: SystemAgentTurnHandle;
 		try {
 			handle = await this.prepareOrRelease(workspace, controller.signal, thread, async () => {
