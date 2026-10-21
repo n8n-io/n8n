@@ -53,19 +53,19 @@ export class PublicApiRateLimitSettingsService {
 		return this.loaded ?? this.config;
 	}
 
-	/** Call once at startup, before the Public API routes are registered. */
 	async load() {
 		this.loaded = await this.resolveSettings();
 	}
 
 	async getSettings(): Promise<PublicApiRateLimitSettingsResponse> {
-		return this.toResponse(await this.resolveSettings());
+		const settings = await this.resolveSettings();
+		return this.toResponse(settings);
 	}
 
 	async saveSettings(
 		incoming: PublicApiRateLimitSettings,
 	): Promise<PublicApiRateLimitSettingsResponse> {
-		const settings = this.applyEnvPriority(incoming);
+		const settings = this.mergeWithEnvAndConfig(incoming);
 
 		if (settings.enabled && LIMIT_FIELDS.every((field) => settings[field] === 0)) {
 			throw new BadRequestError('Set at least one limit to turn on rate limiting');
@@ -91,7 +91,7 @@ export class PublicApiRateLimitSettingsService {
 
 	private async resolveSettings(): Promise<PublicApiRateLimitSettings> {
 		const stored = await this.readStoredSettings();
-		return this.applyEnvPriority(stored);
+		return this.mergeWithEnvAndConfig(stored);
 	}
 
 	private async readStoredSettings(): Promise<Partial<PublicApiRateLimitSettings>> {
@@ -115,8 +115,8 @@ export class PublicApiRateLimitSettingsService {
 		return !!value?.trim() || !!process.env[`${envVar}_FILE`];
 	}
 
-	/** An env var value wins. A missing value falls back to the config. */
-	private applyEnvPriority(
+	/** An env var wins, then the given value, then the config. */
+	private mergeWithEnvAndConfig(
 		values: Partial<PublicApiRateLimitSettings>,
 	): PublicApiRateLimitSettings {
 		const pick = <K extends keyof PublicApiRateLimitSettings>(field: K) =>
