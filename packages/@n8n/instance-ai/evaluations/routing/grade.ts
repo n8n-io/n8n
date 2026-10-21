@@ -62,8 +62,12 @@ export interface RouteResolution {
 	calls?: string;
 }
 
-const callLabel = ({ toolName, args }: { toolName: string; args: Record<string, unknown> }) =>
-	toolName === 'load_skill' ? `load_skill(${JSON.stringify(args.name ?? args.skillId)})` : toolName;
+const callLabel = ({ toolName, args }: { toolName: string; args: Record<string, unknown> }) => {
+	if (toolName === 'load_skill') return `load_skill(${JSON.stringify(args.name ?? args.skillId)})`;
+	// A question card keeps its text, so a report shows what the user was asked.
+	if (toolName === ASK_USER_TOOL_ID) return `${toolName}(${JSON.stringify(args)})`;
+	return toolName;
+};
 
 /** The judge never sees this trail, so it can hold the reasoning that the judge input leaves out. */
 function callTrail(events: readonly InstanceAiEvent[], pending?: PendingToolCall): string {

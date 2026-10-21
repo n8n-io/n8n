@@ -386,6 +386,19 @@ describe('createRouteWatcher', () => {
 		expect(resolution.route).toBe('clarify');
 	});
 
+	it('keeps the text of a question card in the trail', async () => {
+		const watcher = createRouteWatcher(judgeReturning(stop('clarify', 'both')));
+		const args = { questions: [{ id: 'kind', question: 'Agent or workflow?', type: 'single' }] };
+
+		await watcher.beforeToolCall(pending('workflow_builder_ask_user', args), []);
+		const resolution = await watcher.resolve({
+			instanceEvents: [],
+			streamStatus: 'stopped-on-route',
+		});
+
+		expect(resolution.calls).toBe(`workflow_builder_ask_user(${JSON.stringify(args)})`);
+	});
+
 	it('returns none with the error and the trail when the end-of-turn judge fails', async () => {
 		const watcher = createRouteWatcher(judgeReturning(new Error('Routing judge failed: 529')));
 
