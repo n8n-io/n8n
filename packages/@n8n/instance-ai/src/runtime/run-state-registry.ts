@@ -129,6 +129,7 @@ export interface RunStateTimeoutDetails {
 
 export interface StartRunOptions<TUser> {
 	threadId: string;
+	runId?: string;
 	user: TUser;
 	messageGroupId?: string;
 }
@@ -175,7 +176,7 @@ export class RunStateRegistry<TUser = unknown> {
 	constructor(private readonly getUserId: (user: TUser) => string) {}
 
 	startRun(options: StartRunOptions<TUser>): StartedRunState {
-		const runId = `run_${nanoid()}`;
+		const runId = options.runId ?? `run_${nanoid()}`;
 		const abortController = new AbortController();
 		const messageGroupId = options.messageGroupId ?? `mg_${nanoid()}`;
 		const now = Date.now();

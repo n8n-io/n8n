@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const migrationName = 'AddTaskStopToAgentExecutionThreads1792578014554';
+const migrationName = 'AddTaskStopToAgentExecutionThreads1792584485670';
 
 describe('AddTaskStopToAgentExecutionThreads migration', () => {
 	const threadId = randomUUID();

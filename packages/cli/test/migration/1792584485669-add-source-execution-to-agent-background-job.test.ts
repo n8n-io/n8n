@@ -10,12 +10,11 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const migrationName = 'AddPlanTaskToAgentBackgroundJob1792578014555';
+const migrationName = 'AddSourceExecutionToAgentBackgroundJob1792584485669';
 
-describe('Agent background job plan task migration', () => {
+describe('Agent background job source migration', () => {
 	const threadId = randomUUID();
-	const planId = randomUUID();
-	const planTaskId = randomUUID();
+	const executionId = randomUUID();
 	const jobId = randomUUID();
 
 	async function withContext<T>(fn: (context: TestMigrationContext) => Promise<T>): Promise<T> {
@@ -63,7 +62,7 @@ describe('Agent background job plan task migration', () => {
 				agentId,
 				agentName: 'Stop test agent',
 			});
-			await insert(context, 'agent_plan', { id: planId, threadId, formatVersion: '1', data: '{}' });
+			await insert(context, 'agent_execution', { id: executionId, threadId, status: 'success' });
 			await insert(context, 'agent_background_job', {
 				id: jobId,
 				parentAgentId: agentId,
@@ -80,41 +79,36 @@ describe('Agent background job plan task migration', () => {
 
 	afterAll(async () => await Container.get(DbConnection).close());
 
-	it('preserves jobs and supports plan deletion, rollback, and reapplication', async () => {
+	it('preserves jobs and supports source deletion, rollback, and reapplication', async () => {
 		await runSingleMigration(migrationName);
 		await withContext(async ({ escape, runQuery, queryRunner, tablePrefix }) => {
 			const table = await queryRunner.getTable(`${tablePrefix}agent_background_job`);
-			expect(table?.findColumnByName('planId')).toMatchObject({ isNullable: true });
-			expect(table?.findColumnByName('planTaskId')).toMatchObject({ isNullable: true });
+			expect(table?.findColumnByName('sourceExecutionId')).toMatchObject({ isNullable: true });
 			expect(
-				table?.indices.some((index) => index.columnNames.join(',') === 'planId,planTaskId'),
+				table?.foreignKeys.filter((key) => key.columnNames.includes('sourceExecutionId')),
+			).toHaveLength(1);
+			expect(
+				table?.indices.some((index) => index.columnNames.join(',') === 'sourceExecutionId'),
 			).toBe(true);
-			expect(table?.foreignKeys.filter((key) => key.columnNames.includes('planId'))).toHaveLength(
-				1,
-			);
-			expect(table?.findColumnByName('detached')).toBeUndefined();
-			expect(
-				(await queryRunner.getTable(`${tablePrefix}agent_message_queue`))?.findColumnByName('held'),
-			).toBeUndefined();
 			await runQuery(
-				`UPDATE ${escape.tableName('agent_background_job')} SET ${escape.columnName('planId')} = :planId, ${escape.columnName('planTaskId')} = :planTaskId WHERE ${escape.columnName('id')} = :jobId`,
-				{ planId, planTaskId, jobId },
+				`UPDATE ${escape.tableName('agent_background_job')} SET ${escape.columnName('sourceExecutionId')} = :executionId WHERE ${escape.columnName('id')} = :jobId`,
+				{ executionId, jobId },
 			);
 			await runQuery(
-				`DELETE FROM ${escape.tableName('agent_plan')} WHERE ${escape.columnName('id')} = :planId`,
-				{ planId },
+				`DELETE FROM ${escape.tableName('agent_execution')} WHERE ${escape.columnName('id')} = :executionId`,
+				{ executionId },
 			);
 			expect(
 				await runQuery(
-					`SELECT ${escape.columnName('planId')}, ${escape.columnName('result')} FROM ${escape.tableName('agent_background_job')}`,
+					`SELECT ${escape.columnName('sourceExecutionId')}, ${escape.columnName('result')} FROM ${escape.tableName('agent_background_job')}`,
 				),
-			).toEqual([{ planId: null, result: '{"completed":true}' }]);
+			).toEqual([{ sourceExecutionId: null, result: '{"completed":true}' }]);
 		});
 		await undoLastSingleMigration();
 		await withContext(async ({ escape, runQuery, queryRunner, tablePrefix }) => {
 			expect(
 				(await queryRunner.getTable(`${tablePrefix}agent_background_job`))?.findColumnByName(
-					'planId',
+					'sourceExecutionId',
 				),
 			).toBeUndefined();
 			expect(
@@ -126,9 +120,9 @@ describe('Agent background job plan task migration', () => {
 		await runSingleMigration(migrationName);
 		await withContext(async ({ queryRunner, tablePrefix }) => {
 			const table = await queryRunner.getTable(`${tablePrefix}agent_background_job`);
-			expect(table?.foreignKeys.filter((key) => key.columnNames.includes('planId'))).toHaveLength(
-				1,
-			);
+			expect(
+				table?.foreignKeys.filter((key) => key.columnNames.includes('sourceExecutionId')),
+			).toHaveLength(1);
 		});
 	});
 });
