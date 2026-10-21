@@ -95,15 +95,12 @@ describe('PublicApiRateLimitSettingsService', () => {
 		it.each([
 			{ case: 'invalid JSON', value: '{not json' },
 			{ case: 'an invalid value', value: JSON.stringify({ ...stored, globalReadLimit: -1 }) },
-		])(
-			'logs a warning and uses the config values when the stored row has $case',
-			async ({ value }) => {
-				storeRow(value);
+		])('logs a warning and uses the defaults when the stored row has $case', async ({ value }) => {
+			storeRow(value);
 
-				expect(await service.getSettings()).toMatchObject(codeDefaults);
-				expect(logger.warn).toHaveBeenCalledTimes(1);
-			},
-		);
+			expect(await service.getSettings()).toMatchObject(codeDefaults);
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	describe('saveSettings', () => {

@@ -105,7 +105,7 @@ export class PublicApiRateLimitSettingsService {
 		try {
 			return UpdatePublicApiRateLimitSettingsDto.schema.partial().parse(jsonParse(row.value));
 		} catch (error) {
-			this.logger.warn('Stored Public API rate-limit settings are invalid. Using the config.', {
+			this.logger.warn('Stored Public API rate-limit settings are invalid. Using the defaults.', {
 				error: ensureError(error),
 			});
 			return {};
