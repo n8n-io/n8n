@@ -1,7 +1,9 @@
 packages/cli/src/modules/agents/entities/agent-task.entity.ts
   s_d3c0f6f6f7d41c::t_43c468b6170f53 17
+  s_d3c0f6f6f7d41c::t_be30782a2477e5 17
 packages/cli/src/modules/agents/entities/agent.entity.ts
   s_d3c0f6f6f7d41c::t_8e838072691985 30
+  s_d3c0f6f6f7d41c::t_be30782a2477e5 30
 ---
 {
   "schema_version": "authorship/3.0.0",

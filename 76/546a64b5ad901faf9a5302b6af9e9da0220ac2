@@ -1,8 +1,10 @@
 packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
-  s_71ad2034164515::t_8d23d3b7c05e40 365-369,371,376
+  s_71ad2034164515::t_8d23d3b7c05e40 365-369,365-366,371,376
   s_71ad2034164515::t_4c3dcee9f58ef0 31,370,372-375,377-385
+  s_71ad2034164515::t_7304faf43067d8 31,367-385
 packages/cli/src/modules/agents/agent-save-completion.service.ts
   s_71ad2034164515::t_b6fae8ff899375 30-45
+  s_71ad2034164515::t_d24cfd5e1b98d6 30-45
 ---
 {
   "schema_version": "authorship/3.0.0",

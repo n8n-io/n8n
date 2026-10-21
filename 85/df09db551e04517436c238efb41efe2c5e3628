@@ -1,7 +1,9 @@
 packages/@n8n/api-types/src/dto/packages/__tests__/import-result.dto.test.ts
   s_71ad2034164515::t_9490353a07797d 1,103-132
+  s_71ad2034164515::t_d87c959380acbc 1,103-132
 packages/@n8n/api-types/src/dto/packages/import-blocking-issue.schema.ts
   s_71ad2034164515::t_e799c17e16555c 451-459
+  s_71ad2034164515::t_2fa8c781ea2047 451-459
 ---
 {
   "schema_version": "authorship/3.0.0",

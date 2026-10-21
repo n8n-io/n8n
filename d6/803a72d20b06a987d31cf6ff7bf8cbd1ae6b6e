@@ -1,17 +1,22 @@
 packages/cli/src/modules/agents/agent-config-preparation.service.ts
   s_71ad2034164515::t_489b7e4fd2bfc4 115-120
   s_71ad2034164515::t_f0ef8656436409 106-107
+  s_71ad2034164515::t_1b4264d50df875 106-107
 packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
-  s_71ad2034164515::t_a5318d05478cdc 32,110-114,119,133,167-179,181-215,217-233
-  s_71ad2034164515::t_7502e9cf292f32 180
-  s_71ad2034164515::t_cade085c23bdc9 216
+  s_71ad2034164515::t_a5318d05478cdc 32,110-114,110-112,114,119,133,167-179,167-178,180-214,181-215,216-233,217-233
+  s_71ad2034164515::t_7502e9cf292f32 179,180
+  s_71ad2034164515::t_cade085c23bdc9 215,216
   s_71ad2034164515::t_1fda5e49a4d088 234
+  s_71ad2034164515::t_5908d2558b726d 113
+  s_71ad2034164515::t_1821336eb36d86 234
 packages/cli/src/modules/agents/repositories/agent.repository.ts
   s_d3c0f6f6f7d41c::t_299f1ce556f407 533-536
 packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
   s_71ad2034164515::t_1fb087684f5a85 185-191,314-315
+  s_71ad2034164515::t_ab1dc8a489a1b6 185-191,314-315
 packages/cli/test/integration/database/repositories/agent.repository.test.ts
   s_71ad2034164515::t_eb5d7cbe7c9f1a 532-542
+  s_71ad2034164515::t_578486b01cf970 532-542
 ---
 {
   "schema_version": "authorship/3.0.0",

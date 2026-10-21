@@ -702,6 +702,8 @@ docs/generated/sqlite-schema/agents_observations.md
   s_2397c9db9d923f::t_7a327d24aa0b9c 90
 docs/generated/sqlite-schema/project.md
   s_2397c9db9d923f::t_c2f8595ceb597e 160
+packages/cli/src/modules/agents/__tests__/instance-ai-agent-context.adapter.test.ts
+  s_58620fba057bad::t_e952e34ac75da2 387
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -729,6 +731,14 @@ docs/generated/sqlite-schema/project.md
       "agent_id": {
         "tool": "codex",
         "id": "01a11bc9-65a1-7110-9789-34497cba967e",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_58620fba057bad": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13f8e-afeb-7511-82e8-d8246a12076c",
         "model": "gpt-6-astra"
       },
       "human_author": "Robin Braumann <robin.braumann@n8n.io>"
@@ -762,6 +772,14 @@ docs/generated/sqlite-schema/project.md
         "tool": "codex",
         "id": "01a118f9-89a0-7922-9bda-d308ff402c58",
         "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_d3c0f6f6f7d41c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a152e5-4005-7111-8ca3-6a9ab5e71d29",
+        "model": "gpt-6.1-sol"
       },
       "human_author": "Robin Braumann <robin.braumann@n8n.io>"
     }
