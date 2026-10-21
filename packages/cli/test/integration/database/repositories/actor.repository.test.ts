@@ -63,6 +63,14 @@ describe('ActorRepository', () => {
 		expect(loaded?.kind).toBe('service');
 	});
 
+	it('rejects a plain object on save', async () => {
+		const plainObject = { role: GLOBAL_MEMBER_ROLE } as unknown as ServiceAccount;
+
+		await expect(actorRepository.save(plainObject)).rejects.toThrow(
+			'ActorRepository.save accepts only User or ServiceAccount instances',
+		);
+	});
+
 	describe('UserRepository', () => {
 		it('does not return service accounts', async () => {
 			const human = await createMember();

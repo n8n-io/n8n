@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { v7 as uuidv7 } from 'uuid';
 
-const MIGRATION_NAME = 'AddKindToUserTable1792575888081';
+const MIGRATION_NAME = 'AddKindToUserTable1792587656930';
 
 type UserRow = { id: string; kind?: string };
 type ForeignKeyRow = { table: string; column: string; onDelete: string };
@@ -31,6 +31,14 @@ describe('AddKindToUserTable Migration', () => {
 		await setup.queryRunner.release();
 
 		await initDbUpToMigration(MIGRATION_NAME);
+
+		context = createTestMigrationContext(dataSource);
+		await insertUser(existingUserId);
+		foreignKeysBefore = await listForeignKeysToUser();
+		// Release the connection: on SQLite the migration waits for its write lock.
+		await context.queryRunner.release();
+
+		await runSingleMigration(MIGRATION_NAME);
 	});
 
 	beforeEach(() => {
@@ -100,14 +108,6 @@ describe('AddKindToUserTable Migration', () => {
 	}
 
 	it('gives every existing user the human kind and keeps its id', async () => {
-		await insertUser(existingUserId);
-		foreignKeysBefore = await listForeignKeysToUser();
-		// Release the connection: on SQLite the migration waits for its write lock.
-		await context.queryRunner.release();
-
-		await runSingleMigration(MIGRATION_NAME);
-
-		context = createTestMigrationContext(dataSource);
 		// An earlier migration seeds the instance owner, so more than one row exists.
 		const rows = await selectUsers();
 		expect(rows.map((row) => row.id)).toContain(existingUserId);
@@ -129,8 +129,10 @@ describe('AddKindToUserTable Migration', () => {
 		await expect(insertUser(uuidv7(), 'robot')).rejects.toThrow();
 	});
 
+	// Runs last: it reverts the migration.
 	it('down removes service accounts with their linked rows and drops the column', async () => {
-		const serviceAccountId = (await selectUsers()).find((row) => row.kind === 'service')!.id;
+		const serviceAccountId = uuidv7();
+		await insertUser(serviceAccountId, 'service');
 		const projectId = uuidv7();
 		await context.runQuery(
 			`INSERT INTO ${table('project')} (id, name, type) VALUES (:id, :name, :type)`,

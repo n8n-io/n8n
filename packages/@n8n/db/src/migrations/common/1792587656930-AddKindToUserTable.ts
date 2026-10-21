@@ -6,19 +6,26 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
  * with a raw `ALTER TABLE`: the DSL recreates the table on SQLite, and the
  * recreate fires the CASCADE rules of those keys.
  */
-export class AddKindToUserTable1792575888081 implements ReversibleMigration {
+export class AddKindToUserTable1792587656930 implements ReversibleMigration {
 	async up({ escape, runQuery, isPostgres, tablePrefix }: MigrationContext) {
 		const table = escape.tableName('user');
 		const kind = escape.columnName('kind');
-
-		await runQuery(
-			`ALTER TABLE ${table} ADD COLUMN ${kind} VARCHAR(16) NOT NULL DEFAULT 'human' ` +
-				`CONSTRAINT "CHK_${tablePrefix}user_kind" CHECK (${kind} IN ('human', 'service'))`,
-		);
+		const checkName = escape.columnName(`CHK_${tablePrefix}user_kind`);
+		const check = `CHECK (${kind} IN ('human', 'service'))`;
 
 		if (isPostgres) {
+			// `NOT VALID` skips the scan of existing rows. They all get the default.
+			await runQuery(
+				`ALTER TABLE ${table} ADD COLUMN ${kind} VARCHAR(16) NOT NULL DEFAULT 'human'`,
+			);
+			await runQuery(`ALTER TABLE ${table} ADD CONSTRAINT ${checkName} ${check} NOT VALID`);
 			await runQuery(`COMMENT ON COLUMN ${table}.${kind} IS 'Kind of account: human or service'`);
+			return;
 		}
+
+		await runQuery(
+			`ALTER TABLE ${table} ADD COLUMN ${kind} VARCHAR(16) NOT NULL DEFAULT 'human' CONSTRAINT ${checkName} ${check}`,
+		);
 	}
 
 	/**
