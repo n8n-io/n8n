@@ -696,8 +696,16 @@ export class Zammad implements INodeType {
 							article: {},
 							title: this.getNodeParameter('title', i) as string,
 							group: this.getNodeParameter('group', i) as string,
-							customer: this.getNodeParameter('customer', i) as string,
 						};
+
+						const customer = this.getNodeParameter('customer', i) as string;
+						// The "guess:" prefix makes Zammad find the customer by email or create the customer.
+						// Without it, Zammad rejects emails that do not belong to an existing user.
+						if (this.getNodeParameter('createCustomerIfNotExists', i, false) as boolean) {
+							body.customer_id = `guess:${customer}`;
+						} else {
+							body.customer = customer;
+						}
 
 						const { customFieldsUi, ...additionalFields } = this.getNodeParameter(
 							'additionalFields',
