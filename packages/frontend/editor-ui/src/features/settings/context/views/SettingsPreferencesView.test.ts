@@ -344,23 +344,34 @@ describe('SettingsPreferencesView', () => {
 		},
 	);
 
+	it('shows only the assistant empty state, with no toolbar or table, in the assistant variant', async () => {
+		contextStore.preferences = [];
+		contextStore.count = 0;
+		emptyStateVariant.value = 'assistant';
+
+		const { findByTestId, queryByTestId, queryByText } = renderView();
+
+		expect(await findByTestId('preferences-empty-state-assistant')).toBeInTheDocument();
+		expect(queryByTestId('preferences-create-button')).not.toBeInTheDocument();
+		expect(queryByText(/^Last updated/)).not.toBeInTheDocument();
+	});
+
 	it.each([
-		{ variant: undefined, count: 0, style: 'solid' },
-		{ variant: 'control' as const, count: 0, style: 'solid' },
-		{ variant: 'examples' as const, count: 0, style: 'solid' },
-		{ variant: 'assistant' as const, count: 0, style: 'outline' },
-		{ variant: 'assistant' as const, count: 1, style: 'solid' },
+		{ variant: 'assistant' as const, count: 1 },
+		{ variant: 'control' as const, count: 0 },
+		{ variant: 'examples' as const, count: 0 },
 	])(
-		'shows the $style toolbar create button for the $variant variant with $count preferences',
-		async ({ variant, count, style }) => {
+		'shows the toolbar and table for the $variant variant with $count preferences',
+		async ({ variant, count }) => {
 			contextStore.preferences = count > 0 ? [preference()] : [];
 			contextStore.count = count;
 			emptyStateVariant.value = variant;
 
-			const { getByTestId } = renderView();
+			const { getByTestId, getByText } = renderView();
 			await new Promise(process.nextTick);
 
-			expect(getByTestId('preferences-create-button').className).toContain(style);
+			expect(getByTestId('preferences-create-button')).toBeInTheDocument();
+			expect(getByText(/^Last updated/)).toBeInTheDocument();
 		},
 	);
 

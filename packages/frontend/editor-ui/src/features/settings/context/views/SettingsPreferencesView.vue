@@ -215,7 +215,11 @@ onMounted(async () => {
 			:show-docs-link="false"
 		/>
 
-		<div :class="$style.tableArea">
+		<PreferencesEmptyStateAssistant
+			v-if="showEmptyState && emptyStateVariant === PREFERENCES_EMPTY_STATE_EXPERIMENT.assistant"
+			@write-own="openCreateModal"
+		/>
+		<div v-else :class="$style.tableArea">
 			<div :class="$style.toolbar">
 				<N8nText v-if="selectedCount > 0" color="text-light" size="small">
 					{{
@@ -233,11 +237,6 @@ onMounted(async () => {
 					@click="onDeleteSelected"
 				/>
 				<N8nButton
-					:variant="
-						showEmptyState && emptyStateVariant === PREFERENCES_EMPTY_STATE_EXPERIMENT.assistant
-							? 'outline'
-							: 'solid'
-					"
 					:label="i18n.baseText('settings.context.preferences.actions.create')"
 					data-test-id="preferences-create-button"
 					@click="openCreateModal"
@@ -258,10 +257,6 @@ onMounted(async () => {
 				<template #empty>
 					<PreferencesEmptyStateExamples
 						v-if="emptyStateVariant === PREFERENCES_EMPTY_STATE_EXPERIMENT.examples"
-						@write-own="openCreateModal"
-					/>
-					<PreferencesEmptyStateAssistant
-						v-else-if="emptyStateVariant === PREFERENCES_EMPTY_STATE_EXPERIMENT.assistant"
 						@write-own="openCreateModal"
 					/>
 					<div v-else :class="$style.empty" data-test-id="preferences-empty-state">
