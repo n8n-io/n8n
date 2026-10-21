@@ -4,6 +4,9 @@ import { Container } from '@n8n/di';
 import { createOwnerWithApiKey } from '../shared/db/users';
 import * as utils from '../shared/utils/';
 
+// The env vars make the settings service use these config values over the code defaults.
+vi.stubEnv('N8N_PUBLIC_API_RATE_LIMIT_ENABLED', 'true');
+vi.stubEnv('N8N_PUBLIC_API_RATE_LIMIT_GLOBAL_READ_LIMIT', '2');
 Object.assign(Container.get(GlobalConfig).publicApi.rateLimit, {
 	enabled: true,
 	globalReadLimit: 2,
