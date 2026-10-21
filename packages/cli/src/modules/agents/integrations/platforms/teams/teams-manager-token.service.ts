@@ -8,7 +8,7 @@ import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { BadRequestError } from '@n8n/errors';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError, UserError } from 'n8n-workflow';
 
 import { TEAMS_MANAGER_CREDENTIAL_TYPE } from './teams-managed-setup.service';
 import { withTeamsFailure } from './teams-setup-telemetry.service';
@@ -130,7 +130,7 @@ export class TeamsManagerTokenService {
 			);
 		}
 
-		const client = this.clientCredentials();
+		const client = this.clientCredentials(rawData);
 		const response = await this.outboundHttp
 			// Fixed public vendor host, not user-controllable.
 			.requests({ useDefaultSsrfPolicy: 'unsafe' })
@@ -240,8 +240,21 @@ export class TeamsManagerTokenService {
 		return isRecord(tokenData) ? tokenData : {};
 	}
 
-	private clientCredentials(): { clientId: string; clientSecret: string } {
-		const overwrite = this.credentialsOverwrites.getOverwrites(TEAMS_MANAGER_CREDENTIAL_TYPE);
+	/** The client of the app that issued the stored refresh token: the version stored on the credential. */
+	private clientCredentials(rawData: ICredentialDataDecryptedObject): {
+		clientId: string;
+		clientSecret: string;
+	} {
+		let overwrite: ICredentialDataDecryptedObject | undefined;
+		try {
+			overwrite = this.credentialsOverwrites.getOverwrites(
+				TEAMS_MANAGER_CREDENTIAL_TYPE,
+				this.credentialsOverwrites.resolveBoundVersion(TEAMS_MANAGER_CREDENTIAL_TYPE, rawData),
+			);
+		} catch (error) {
+			// A stored version that matches no app. The overwrites of this instance no longer list it.
+			if (!(error instanceof UserError)) throw error;
+		}
 		const clientId = typeof overwrite?.clientId === 'string' ? overwrite.clientId.trim() : '';
 		const clientSecret =
 			typeof overwrite?.clientSecret === 'string' ? overwrite.clientSecret.trim() : '';

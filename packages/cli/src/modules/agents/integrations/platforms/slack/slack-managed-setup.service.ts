@@ -13,6 +13,7 @@ import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { Cipher } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -916,12 +917,26 @@ export class SlackManagedSetupService {
 		}
 	}
 
+	private getConnectedAppOverwrite(rawData: ICredentialDataDecryptedObject) {
+		try {
+			return this.credentialsOverwrites.getOverwrites(
+				SLACK_MANAGER_CREDENTIAL_TYPE,
+				this.credentialsOverwrites.resolveBoundVersion(SLACK_MANAGER_CREDENTIAL_TYPE, rawData),
+			);
+		} catch (error) {
+			if (error instanceof UserError) return undefined;
+			throw error;
+		}
+	}
+
 	private async refreshManagerAccessToken(
 		manager: ManagerCredentialContext,
 	): Promise<string | undefined> {
 		const authedUser = childRecord(manager.oauthTokenData, 'authed_user');
 		const refreshToken = stringProperty(authedUser, 'refresh_token');
-		const overwrite = this.credentialsOverwrites.getOverwrites(SLACK_MANAGER_CREDENTIAL_TYPE);
+		// The refresh token belongs to the app that issued it, so the secret comes from the
+		// version stored on the credential. A version without an app means no refresh.
+		const overwrite = this.getConnectedAppOverwrite(manager.rawData);
 		if (
 			!refreshToken ||
 			typeof overwrite?.clientId !== 'string' ||

@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
 import type { CredentialsEntity, CredentialsRepository } from '@n8n/db';
+import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -263,6 +264,47 @@ describe('TeamsManagerTokenService', () => {
 
 	it('asks the user to sign in again when there is no refresh token', async () => {
 		credentialsService.decrypt.mockResolvedValue({} as never);
+
+		await expect(service.acquire(credential, GRAPH_RESOURCE)).rejects.toThrow(BadRequestError);
+		expect(request).not.toHaveBeenCalled();
+	});
+
+	it('redeems with the client of the app version stored on the sign-in', async () => {
+		credentialsService.decrypt.mockResolvedValue({
+			oauthTokenData: { refresh_token: 'refresh-1', n8n_managed_version: 2 },
+		} as never);
+		credentialsOverwrites.resolveBoundVersion.mockReturnValue(2);
+		respondWith(200, { access_token: 'graph-token', refresh_token: 'refresh-2' });
+
+		await service.acquire(credential, GRAPH_RESOURCE);
+
+		expect(credentialsOverwrites.resolveBoundVersion).toHaveBeenCalledWith(
+			'microsoftTeamsManagerOAuth2Api',
+			expect.objectContaining({
+				oauthTokenData: expect.objectContaining({ n8n_managed_version: 2 }),
+			}),
+		);
+		expect(credentialsOverwrites.getOverwrites).toHaveBeenCalledWith(
+			'microsoftTeamsManagerOAuth2Api',
+			2,
+		);
+		expect(credentialsService.update).toHaveBeenCalledWith(
+			'cred-1',
+			expect.anything(),
+			{ kind: 'system', reason: 'integration' },
+			expect.objectContaining({
+				oauthTokenData: expect.objectContaining({
+					refresh_token: 'refresh-2',
+					n8n_managed_version: 2,
+				}),
+			}),
+		);
+	});
+
+	it('refuses when the stored app version is no longer in the overwrites', async () => {
+		credentialsOverwrites.getOverwrites.mockImplementation(() => {
+			throw new UserError('no app with version 2');
+		});
 
 		await expect(service.acquire(credential, GRAPH_RESOURCE)).rejects.toThrow(BadRequestError);
 		expect(request).not.toHaveBeenCalled();

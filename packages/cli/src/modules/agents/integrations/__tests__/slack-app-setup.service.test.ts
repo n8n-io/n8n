@@ -766,6 +766,7 @@ describe('Slack setup services', () => {
 			userScope: 'app_configurations:read app_configurations:write managed_apps:install',
 		});
 		credentialsOverwrites.usesManagedAuth.mockReturnValue(true);
+		credentialsOverwrites.resolveBoundVersion.mockReturnValue(2);
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
 			{ id: 'manager', type: 'slackManagerOAuth2Api' },
 			{ id: 'bot-credential', type: 'slackApi' },
@@ -778,6 +779,7 @@ describe('Slack setup services', () => {
 		credentialsFinderService.findCredentialForUser.mockResolvedValue(managerCredential);
 		credentialsService.decrypt.mockResolvedValue({
 			oauthTokenData: {
+				n8n_managed_version: 2,
 				authed_user: {
 					access_token: 'xoxp-manager',
 					refresh_token: 'xoxe-manager',
@@ -850,6 +852,8 @@ describe('Slack setup services', () => {
 		expect(iconRequest.body.get('token')).toBe('xoxp-manager');
 		expect(iconRequest.body.get('file')).toBeInstanceOf(Blob);
 		expect(fetchParams(requestMock, 2).get('grant_type')).toBe('refresh_token');
+		// The refresh uses the app that the stored version names, and keeps that version.
+		expect(credentialsOverwrites.getOverwrites).toHaveBeenCalledWith('slackManagerOAuth2Api', 2);
 		const retriedIconRequest = requestMock.mock.calls[3]?.[0] as {
 			url: string;
 			body: FormData;
@@ -864,6 +868,7 @@ describe('Slack setup services', () => {
 			{ kind: 'system', reason: 'integration' },
 			expect.objectContaining({
 				oauthTokenData: expect.objectContaining({
+					n8n_managed_version: 2,
 					authed_user: expect.objectContaining({
 						id: 'U123',
 						access_token: 'xoxp-refreshed',
