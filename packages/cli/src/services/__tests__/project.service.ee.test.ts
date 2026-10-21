@@ -5,7 +5,6 @@ import {
 	type FolderRepository,
 	type Project,
 	type ProjectRepository,
-	type RoleRepository,
 	type SharedCredentialsRepository,
 	type SharedWorkflowRepository,
 	type ProjectRelationRepository,
@@ -51,7 +50,6 @@ describe('ProjectService', () => {
 	const eventService = mock<EventService>();
 	const userManagementMailer = mock<UserManagementMailer>();
 	const userRepository = mock<UserRepository>();
-	const roleRepository = mock<RoleRepository>();
 	const user = mock<User>({ id: 'actor-user', role: mock({ slug: 'global:owner' }) });
 	const projectService = new ProjectService(
 		sharedWorkflowRepository,
@@ -67,7 +65,6 @@ describe('ProjectService', () => {
 		eventService,
 		userManagementMailer,
 		userRepository,
-		roleRepository,
 	);
 
 	beforeEach(() => {
@@ -826,7 +823,7 @@ describe('ProjectService', () => {
 				configurable: true,
 				get: async () => mockProxy,
 			});
-			manager.findOne.mockResolvedValueOnce(project);
+			projectRepository.findOneWithUserRoles.mockResolvedValueOnce(project);
 			projectRepository.remove.mockResolvedValueOnce(project);
 			sharedWorkflowRepository.find.mockResolvedValueOnce([]);
 			sharedCredentialsRepository.find.mockResolvedValueOnce([]);
@@ -867,7 +864,7 @@ describe('ProjectService', () => {
 				configurable: true,
 				get: async () => mockProxy,
 			});
-			manager.findOne.mockResolvedValueOnce(project);
+			projectRepository.findOneWithUserRoles.mockResolvedValueOnce(project);
 			projectRepository.remove.mockResolvedValueOnce(project);
 			sharedWorkflowRepository.find.mockResolvedValueOnce([]);
 			sharedCredentialsRepository.find.mockResolvedValueOnce([]);
@@ -900,7 +897,7 @@ describe('ProjectService', () => {
 				configurable: true,
 				get: async () => agentChatAttachmentService,
 			});
-			manager.findOne.mockResolvedValueOnce(project);
+			projectRepository.findOneWithUserRoles.mockResolvedValueOnce(project);
 			projectRepository.remove.mockResolvedValueOnce(project);
 			sharedWorkflowRepository.find.mockResolvedValueOnce([]);
 			sharedCredentialsRepository.find.mockResolvedValueOnce([]);
@@ -979,7 +976,7 @@ describe('ProjectService', () => {
 				});
 				ownershipTransferService.enforceTransferPolicy.mockResolvedValue(undefined);
 				// reset first: `vi.clearAllMocks()` leaves any unconsumed `...Once` queues behind
-				manager.findOne.mockReset();
+				projectRepository.findOneWithUserRoles.mockReset();
 				sharedWorkflowRepository.find.mockReset();
 				sharedCredentialsRepository.find.mockReset();
 				projectRelationRepository.findBy.mockReset();
@@ -992,7 +989,7 @@ describe('ProjectService', () => {
 
 			it('rejects a migration into a personal project before anything is migrated', async () => {
 				// ARRANGE — source team project, target personal project
-				manager.findOne
+				projectRepository.findOneWithUserRoles
 					.mockResolvedValueOnce(project)
 					.mockResolvedValueOnce(mock<Project>({ id: 'personal-1', type: 'personal' }));
 
@@ -1013,7 +1010,7 @@ describe('ProjectService', () => {
 
 			it('migrates end-user credentials into a team project', async () => {
 				// ARRANGE — source and target are both team projects
-				manager.findOne
+				projectRepository.findOneWithUserRoles
 					.mockResolvedValueOnce(project)
 					.mockResolvedValueOnce(mock<Project>({ id: 'team-2', type: 'team' }));
 
@@ -1039,7 +1036,7 @@ describe('ProjectService', () => {
 			});
 
 			it('checks the target project policy before anything is migrated', async () => {
-				manager.findOne
+				projectRepository.findOneWithUserRoles
 					.mockResolvedValueOnce(project)
 					.mockResolvedValueOnce(mock<Project>({ id: 'team-2', type: 'team' }));
 
@@ -1058,7 +1055,7 @@ describe('ProjectService', () => {
 			});
 
 			it('rejects the migration and moves nothing when the policy check throws', async () => {
-				manager.findOne
+				projectRepository.findOneWithUserRoles
 					.mockResolvedValueOnce(project)
 					.mockResolvedValueOnce(mock<Project>({ id: 'team-2', type: 'team' }));
 				const violation = new Error('blocked by policy');
@@ -1075,7 +1072,7 @@ describe('ProjectService', () => {
 			});
 
 			it('skips the policy check when the project is deleted without a target', async () => {
-				manager.findOne.mockResolvedValueOnce(project);
+				projectRepository.findOneWithUserRoles.mockResolvedValueOnce(project);
 				sharedCredentialsRepository.find.mockResolvedValue([]);
 
 				await projectService.deleteProject(migratingUser, project.id);
@@ -1102,7 +1099,7 @@ describe('ProjectService', () => {
 				configurable: true,
 				get: async () => agentChatAttachmentService,
 			});
-			manager.findOne.mockResolvedValueOnce(project);
+			projectRepository.findOneWithUserRoles.mockResolvedValueOnce(project);
 			projectRepository.remove.mockResolvedValueOnce(project);
 			sharedWorkflowRepository.find.mockResolvedValueOnce([]);
 			sharedCredentialsRepository.find.mockResolvedValueOnce([]);
@@ -1128,11 +1125,11 @@ describe('ProjectService', () => {
 			const result = await projectService.findExistingProjectIds([]);
 
 			expect(result.size).toBe(0);
-			expect(projectRepository.find).not.toHaveBeenCalled();
+			expect(projectRepository.findExistingIds).not.toHaveBeenCalled();
 		});
 
 		it('returns the ids that exist in the database, unscoped by access', async () => {
-			projectRepository.find.mockResolvedValueOnce([mock<Project>({ id: 'proj-1' })]);
+			projectRepository.findExistingIds.mockResolvedValueOnce(['proj-1']);
 
 			const result = await projectService.findExistingProjectIds(['proj-1', 'proj-missing']);
 
