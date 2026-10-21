@@ -617,11 +617,13 @@ describe('Zammad Node', () => {
 		});
 
 		it.each([
-			[true, { customer_id: 'guess:new@example.com' }],
-			[false, { customer: 'new@example.com' }],
+			[true, 'new@example.com', { customer_id: 'guess:new@example.com' }],
+			[false, 'new@example.com', { customer: 'new@example.com' }],
+			[true, 'guess:new@example.com', { customer_id: 'guess:new@example.com' }],
+			[true, '42', { customer: '42' }],
 		])(
-			'should set the customer for createCustomerIfNotExists=%s',
-			async (createCustomerIfNotExists, customerFields) => {
+			'should set the customer for createCustomerIfNotExists=%s and customer %s',
+			async (createCustomerIfNotExists, customerInput, customerFields) => {
 				(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation((paramName) => {
 					switch (paramName) {
 						case 'resource':
@@ -633,7 +635,7 @@ describe('Zammad Node', () => {
 						case 'group':
 							return 'Support';
 						case 'customer':
-							return 'new@example.com';
+							return customerInput;
 						case 'createCustomerIfNotExists':
 							return createCustomerIfNotExists;
 						case 'article':

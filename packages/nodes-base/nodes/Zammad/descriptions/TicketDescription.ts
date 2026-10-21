@@ -108,7 +108,7 @@ export const ticketDescription: INodeProperties[] = [
 		displayName: 'Create Customer if They Do Not Exist',
 		name: 'createCustomerIfNotExists',
 		description:
-			'Whether Zammad finds the customer by email address and creates the customer if no user has this email address. The API user needs the ticket.agent permission.',
+			'Whether Zammad finds the customer by email address and creates the customer if no user has this email address. Works only with an email address. The API user needs the ticket.agent permission.',
 		type: 'boolean',
 		default: false,
 		displayOptions: {
