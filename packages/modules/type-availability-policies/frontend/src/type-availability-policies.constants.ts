@@ -1,5 +1,6 @@
 import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
+import type { Scope } from '@n8n/permissions';
 
 /** Must stay the same as the backend module id: `settings.activeModules` is keyed by it. */
 export const TYPE_AVAILABILITY_POLICIES_MODULE_ID = 'type-availability-policies';
@@ -29,6 +30,11 @@ export const RESTRICTED_TYPE_COPY: Record<
 		title: 'typeAvailabilityPolicies.restrictedCredentialType.title',
 		mailSubject: 'typeAvailabilityPolicies.contactAdmin.credentialType.mailSubject',
 	},
+};
+
+export const POLICY_MANAGE_SCOPE: Record<RestrictedTypeKind, Scope> = {
+	node: 'nodeTypePolicy:manage',
+	credential: 'credentialTypePolicy:manage',
 };
 
 export type ContactAudience = NodeTypeAvailabilityScope;

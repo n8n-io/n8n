@@ -10,13 +10,15 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { PROJECT_ADMIN_ROLE_SLUG } from '@n8n/permissions';
+import { staticRolesWithScope } from '@n8n/permissions';
 import type { IUserResponse } from '@n8n/rest-api-client';
+import { useRolesStore } from '@n8n/stores/roles.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { computed, ref, watch } from 'vue';
 
 import {
 	CONTACT_DIALOG_COPY,
+	POLICY_MANAGE_SCOPE,
 	RESTRICTED_TYPE_COPY,
 	type ContactAudience,
 	type RestrictedTypeKind,
@@ -37,6 +39,7 @@ const open = defineModel<boolean>('open', { default: false });
 
 const i18n = useI18n();
 const usersStore = useUsersStore();
+const rolesStore = useRolesStore();
 const policiesStore = useTypeAvailabilityPoliciesStore();
 
 const isLoading = ref(false);
@@ -64,6 +67,17 @@ function displayName({ firstName, lastName, email }: Admin): string {
 	return [firstName, lastName].filter(Boolean).join(' ') || email;
 }
 
+const managerRoles = computed(() => {
+	const scope = POLICY_MANAGE_SCOPE[kind];
+	const namespace = audience === 'project' ? 'project' : 'global';
+	return new Set([
+		...staticRolesWithScope(namespace, scope),
+		...rolesStore.roles[namespace]
+			.filter((role) => role.scopes.includes(scope))
+			.map((role) => role.slug),
+	]);
+});
+
 const instanceAdmins = computed<Admin[]>(() =>
 	usersStore.allUsers
 		.filter((user) => user.role === ROLE.Owner && !user.isPendingUser)
@@ -73,7 +87,7 @@ const instanceAdmins = computed<Admin[]>(() =>
 const projectAdmins = computed<Admin[]>(() => {
 	const project = policiesStore.policyProject;
 	const explicitAdmins = (project?.relations ?? [])
-		.filter((relation) => relation.role === PROJECT_ADMIN_ROLE_SLUG)
+		.filter((relation) => managerRoles.value.has(relation.role))
 		.filter(hasEmail);
 	return explicitAdmins.length ? explicitAdmins : (project?.implicitMembers ?? []).filter(hasEmail);
 });

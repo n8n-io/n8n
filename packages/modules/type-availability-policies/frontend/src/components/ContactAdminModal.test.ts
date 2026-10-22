@@ -1,6 +1,7 @@
 import { ROLE } from '@n8n/api-types';
 import { createComponentRenderer, mockedStore, waitAllPromises } from '@n8n/frontend-test-utils';
 import type { IUser } from '@n8n/rest-api-client/api/users';
+import { useRolesStore } from '@n8n/stores/roles.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -36,6 +37,19 @@ const owner = {
 } as unknown as IUser;
 
 const member = { ...owner, id: 'member-1', fullName: 'Bob Builder', role: ROLE.Member } as IUser;
+function mockCustomRole(slug: string, roleType: 'global' | 'project') {
+	mockedStore(useRolesStore).roles[roleType] = [
+		{
+			slug,
+			displayName: slug,
+			description: null,
+			systemRole: false,
+			roleType,
+			licensed: true,
+			scopes: ['nodeTypePolicy:manage'],
+		},
+	];
+}
 
 const renderComponent = createComponentRenderer(ContactAdminModal, {
 	props: { open: true, nodeTypeName: 'Slack' },
@@ -124,9 +138,21 @@ describe('ContactAdminModal', () => {
 			role: 'project:editor',
 		};
 
-		it('lists only the project admins with a mailto link', async () => {
+		it('lists only the project members whose role can manage node type policies', async () => {
 			const usersStore = setup([owner]);
-			mockPolicyProject({ type: 'team', relations: [projectAdmin, projectEditor] });
+			mockCustomRole('project:policyManager', 'project');
+			const policyManager = {
+				...projectEditor,
+				id: 'policy-manager-1',
+				firstName: 'Mary',
+				lastName: 'Jackson',
+				email: 'mary@example.com',
+				role: 'project:policyManager',
+			};
+			mockPolicyProject({
+				type: 'team',
+				relations: [projectAdmin, projectEditor, policyManager],
+			});
 			const { findByTestId, getByText } = renderComponent({
 				props: { open: true, nodeTypeName: 'Slack', audience: 'project' },
 			});
@@ -136,6 +162,7 @@ describe('ContactAdminModal', () => {
 			expect(usersStore.fetchUsers).not.toHaveBeenCalled();
 			expect(getByText('Project admins')).toBeInTheDocument();
 			expect(list).toHaveTextContent('Grace Hopper');
+			expect(list).toHaveTextContent('Mary Jackson');
 			expect(list).not.toHaveTextContent('Alan Turing');
 			expect(list).not.toHaveTextContent('Ada Lovelace');
 			expect(getByText('grace@example.com').closest('a')).toHaveAttribute(
