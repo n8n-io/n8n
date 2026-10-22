@@ -13,6 +13,10 @@ const engineModeSchema = z.enum(['in-process', 'remote']);
 
 export type EngineMode = z.infer<typeof engineModeSchema>;
 
+const engineDefaultTypeSchema = z.enum(['v1', 'v2']);
+
+export type EngineDefaultType = z.infer<typeof engineDefaultTypeSchema>;
+
 @Config
 export class EngineConfig {
 	/**
@@ -26,6 +30,16 @@ export class EngineConfig {
 	 */
 	@Env('N8N_ENGINE_MODE', engineModeSchema)
 	mode: EngineMode = 'in-process';
+
+	/**
+	 * Execution engine for new workflows that don't set one, either `v1` or `v2`. When
+	 * `N8N_ENABLED_MODULES` doesn't include `engine-v2`, new workflows use `v1` instead.
+	 *
+	 * This is in development and not ready for use.
+	 */
+	@Env('N8N_ENGINE_DEFAULT_TYPE', engineDefaultTypeSchema)
+	defaultType: EngineDefaultType = 'v1';
+
 	/** Port the engine HTTP server listens on. */
 	@Env('N8N_ENGINE_PORT')
 	port: number = 3000;
