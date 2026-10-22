@@ -1,10 +1,11 @@
 /**
- * Minimal-valid binary fixtures for the eval mock layer.
+ * Binary fixtures for the eval mock layer.
  *
- * Each fixture is the smallest byte sequence that `fileTypeFromBuffer`
- * recognizes as its declared MIME, so downstream node logic that derives
- * `fileExtension` / `fileType` from mime-sniffing behaves identically to a
- * real HTTP download.
+ * Each fixture is a byte sequence that `fileTypeFromBuffer` recognizes as its
+ * declared MIME, so downstream node logic that derives `fileExtension` /
+ * `fileType` from mime-sniffing behaves identically to a real HTTP download.
+ * Most are the smallest such sequence; `image/png` is the exception, a computed
+ * 512×512 canvas (`evalCanvasPng`) that strict decoders and image tools accept.
  *
  * Used by:
  *  - packages/cli/src/modules/instance-ai/eval/mock-handler.ts — synthesize

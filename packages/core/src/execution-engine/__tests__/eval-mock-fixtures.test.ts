@@ -36,6 +36,7 @@ function expectDecodablePng(png: Buffer): number {
 		if (type === 'IDAT') idat.push(data);
 		offset = dataEnd + 4;
 		if (type === 'IEND') {
+			expect(length, 'IEND chunk has no data').toBe(0);
 			sawIend = true;
 			break;
 		}
