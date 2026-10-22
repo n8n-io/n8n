@@ -375,7 +375,7 @@ function allNodes(): Array<DropdownMenuItemProps<string>> {
 
 function useArrivingSubmenu(load: SubmenuLoad) {
 	const items = ref<Array<DropdownMenuItemProps<string>>>(idleItems(load));
-	const timers: ReturnType<typeof setTimeout>[] = [];
+	const timers: Array<ReturnType<typeof setTimeout>> = [];
 	let playing = false;
 
 	function clearTimers(): void {
