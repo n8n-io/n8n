@@ -10,7 +10,6 @@ import { StepNotFoundError, type StepRecord, type StepStore } from './step-store
 
 export type ResumeRejection = 'invalid_token' | 'not_found' | 'not_waiting' | 'ambiguous';
 
-/** One error type for every refusal. `code` says why, and the route maps it to a status. */
 export class ResumeRejectedError extends Error {
 	constructor(readonly code: ResumeRejection) {
 		super(`Resume request rejected: ${code}`);
@@ -26,9 +25,8 @@ export interface ResumeTarget {
 
 /**
  * How long `locate` holds a request for an execution that still runs but has
- * no step that accepts a request yet. The gap between a step that returns a
- * declaration and its `waiting` row is well under a second. A longer wait is
- * upstream work that no fixed budget covers.
+ * no step that accepts a request yet. The default covers the write of the
+ * `waiting` row, not upstream work.
  */
 export interface ResumeHold {
 	attempts: number;
@@ -73,8 +71,7 @@ export class ResumeRequestService {
 	 * does. `null` is an answer, not a refusal: the execution's status says why.
 	 *
 	 * A request can arrive before the step records its wait. While the
-	 * execution is live, this holds the request for a short time instead of
-	 * refusing it.
+	 * execution is live, this holds the request for a short time.
 	 *
 	 * @throws {ResumeRejectedError} `invalid_token`, `not_found`, or `ambiguous`
 	 * when two steps accept a request at once.
@@ -85,11 +82,9 @@ export class ResumeRequestService {
 		}
 
 		for (let attempt = 0; ; attempt++) {
-			// Liveness comes from the execution and not from the step rows. Between a
-			// predecessor that settles and the row of its successor, no step is queued
-			// or running, but the execution can still reach its wait. An execution that
-			// ended can still hold a waiting row until its pending steps are cancelled,
-			// so the row alone does not make a target.
+			// Liveness comes from the execution and not from the step rows. An execution
+			// that ended can still hold a waiting row, so the row alone does not make a
+			// target.
 			const status = await this.loadStatus(executionId);
 			const [step] = await this.loadOnlyWait(executionId);
 			if (step && isLive(status)) {
@@ -107,7 +102,7 @@ export class ResumeRequestService {
 
 	/**
 	 * Ends the wait of `stepId` with `outputs`, and announces the step. The
-	 * worker that claims it emits the outputs. No node code runs here.
+	 * worker that claims it emits the outputs.
 	 *
 	 * @throws {ResumeRejectedError} `invalid_token`, `not_waiting` when the step
 	 * does not wait for a request (any more) or its execution ended, or
@@ -125,8 +120,6 @@ export class ResumeRequestService {
 		// The same rule as `locate`: an execution-bound token cannot pick one of two waits.
 		await this.loadOnlyWait(step.executionId);
 
-		// A compare-and-set, so a doubled request or a sweep that fires at the same
-		// time ends the wait once.
 		const resumed = await this.stepStore.resumeStep(step.id, { kind: 'request', outputs });
 		if (!resumed) throw new ResumeRejectedError('not_waiting');
 
@@ -152,7 +145,7 @@ export class ResumeRequestService {
 		return waits;
 	}
 
-	/** Logs a request that was held, on either exit, so a refusal after a hold is traceable. */
+	/** Logs a held request on either exit, so a `null` after a hold is traceable. */
 	private logHold(
 		executionId: string,
 		attempt: number,

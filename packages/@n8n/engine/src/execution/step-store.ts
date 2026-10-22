@@ -135,9 +135,6 @@ export interface StepStore {
 	 *
 	 * Whether a given resume is allowed against a given wait is checked by
 	 * whoever accepts it, not here.
-	 *
-	 * TODO(CAT-2928): nothing calls this yet. The resolve endpoint that accepts
-	 * a resume request is the caller.
 	 */
 	resumeStep(id: string, resumeCause: ResumeCause): Promise<boolean>;
 
@@ -241,7 +238,6 @@ export interface StepStore {
 	 */
 	loadAllSteps(executionId: string): Promise<StepRecord[]>;
 
-	/** The execution's steps in the `waiting` status, with their declarations. */
 	loadWaitingSteps(executionId: string): Promise<StepRecord[]>;
 
 	/**

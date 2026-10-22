@@ -32,12 +32,11 @@ const REJECTION_STATUS: Record<ResumeRejection, number> = {
 	ambiguous: 409,
 };
 
-/** An engine without a resume secret cannot verify a token, so it says so. */
 const notConfigured: RequestHandler = (_req, res) => {
 	fail(res, 501, { error: 'unimplemented', reason: 'This engine accepts no resume requests.' });
 };
 
-/** `true` once the refusal is sent. Anything else is not a refusal and propagates. */
+/** `true` once the refusal is sent. Returns `false` for any other error, and the caller rethrows it. */
 function sendRejection(res: Response, error: unknown): boolean {
 	if (!(error instanceof ResumeRejectedError)) return false;
 	fail(res, REJECTION_STATUS[error.code], { error: error.code });
