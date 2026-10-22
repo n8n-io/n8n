@@ -126,8 +126,7 @@ function hasObservationLogObserverMemory(
 	return (
 		hasObservationLogStore(memory) &&
 		hasFunctionProperty(memory, 'getMessagesForObservationScope') &&
-		hasFunctionProperty(memory, 'getCursor') &&
-		hasFunctionProperty(memory, 'setCursor')
+		hasFunctionProperty(memory, 'getCursor')
 	);
 }
 
@@ -839,7 +838,10 @@ export class MemoryOrchestrator {
 		task: () => Promise<void>,
 	): void {
 		const id = crypto.randomUUID();
-		const keys = [`resource:${scope.resourceId}`, `thread:${scope.threadId}`];
+		const keys = [
+			`resource:${scope.episodic?.writeScopeId ?? scope.resourceId}`,
+			`thread:${scope.threadId}`,
+		];
 		const previous: Array<Promise<unknown>> = [];
 		for (const key of keys) {
 			const running = this.episodicMemoryTasks.get(key);

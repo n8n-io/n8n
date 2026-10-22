@@ -342,6 +342,84 @@ describe('refreshOAuth2Token', () => {
 		);
 	});
 
+	// Salesforce needs the stored instance URL after each token refresh.
+	test.each([
+		{
+			response: 'omits instance_url',
+			tokenData: { access_token: 'new-token' },
+			expectedInstanceUrl: 'https://example.my.salesforce.com',
+		},
+		{
+			response: 'returns an empty instance_url',
+			tokenData: { access_token: 'new-token', instance_url: '' },
+			expectedInstanceUrl: 'https://example.my.salesforce.com',
+		},
+		{
+			response: 'returns a null instance_url',
+			tokenData: { access_token: 'new-token', instance_url: null },
+			expectedInstanceUrl: 'https://example.my.salesforce.com',
+		},
+		{
+			response: 'returns a new instance_url',
+			tokenData: {
+				access_token: 'new-token',
+				instance_url: 'https://new-instance.my.salesforce.com',
+			},
+			expectedInstanceUrl: 'https://new-instance.my.salesforce.com',
+		},
+	])(
+		'should use the correct Salesforce instance URL when refresh $response',
+		async ({ tokenData, expectedInstanceUrl }) => {
+			const instanceUrl = 'https://example.my.salesforce.com';
+			const credentials = {
+				...mockCredentialData,
+				grantType: 'pkce',
+				authentication: 'header',
+				scope: 'full refresh_token',
+				oauthTokenData: {
+					...mockCredentialData.oauthTokenData,
+					instance_url: instanceUrl,
+				},
+			};
+			mockNode.credentials = {
+				salesforceOAuth2Api: { id: 'salesforce-credential-id', name: 'Salesforce' },
+			};
+			mockThis.getCredentials.mockResolvedValue(credentials);
+			mockAdditionalData.credentialsHelper.getDecrypted.mockResolvedValue(credentials);
+			const tokenScope = nock(baseUrl)
+				.post('/token', {
+					grant_type: 'refresh_token',
+					refresh_token: 'old-refresh-token',
+				})
+				.basicAuth({ user: 'test-client-id', pass: 'test-client-secret' })
+				.reply(200, tokenData);
+
+			const result = await refreshOAuth2Token.call(
+				mockThis,
+				'salesforceOAuth2Api',
+				mockNode,
+				mockAdditionalData,
+			);
+
+			expect(tokenScope.isDone()).toBe(true);
+			expect(result.instance_url).toBe(expectedInstanceUrl);
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).toHaveBeenCalledExactlyOnceWith(
+				mockNode.credentials.salesforceOAuth2Api,
+				'salesforceOAuth2Api',
+				expect.objectContaining({
+					oauthTokenData: expect.objectContaining({
+						access_token: 'new-token',
+						refresh_token: 'old-refresh-token',
+						instance_url: expectedInstanceUrl,
+					}),
+				}),
+				mockAdditionalData,
+			);
+		},
+	);
+
 	test('should throw an error if the OAuth2 token is not connected', async () => {
 		mockThis.getCredentials.mockResolvedValue({
 			...mockCredentialData,

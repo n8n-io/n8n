@@ -52,9 +52,16 @@ export function emitPackageImportedEvent(
 		0,
 	);
 
-	const matchedCredentialIds = credentialResults.flatMap(({ matched, bindings }) =>
-		matched.map((sourceId) => bindings.get(sourceId)!),
+	// One destination credential can be written from several scopes, so count it once.
+	const updatedCredentialIds = new Set(
+		credentialResults.flatMap(({ updated, bindings }) =>
+			updated.map((sourceId) => bindings.get(sourceId)!),
+		),
 	);
+	// An updated credential matched first, but the import rewrote it, so `updated` wins.
+	const matchedCredentialIds = credentialResults
+		.flatMap(({ matched, bindings }) => matched.map((sourceId) => bindings.get(sourceId)!))
+		.filter((credentialId) => !updatedCredentialIds.has(credentialId));
 	const createdCredentialIds = credentialResults.flatMap(
 		({ stubbed, seeded, incomplete, bindings }) =>
 			[...stubbed, ...seeded, ...incomplete].map((sourceId) => bindings.get(sourceId)!),
@@ -135,7 +142,7 @@ export function emitPackageImportedEvent(
 		credentialIds: {
 			matched: matchedCredentialIds,
 			created: createdCredentialIds,
-			updated: [],
+			updated: [...updatedCredentialIds],
 		},
 		counts: {
 			workflows: {
@@ -153,6 +160,7 @@ export function emitPackageImportedEvent(
 			credentials: {
 				matched: matchedCredentialIds.length,
 				created: createdCredentialIds.length,
+				updated: updatedCredentialIds.size,
 				requirements: credentialRequirements,
 			},
 			dataTables: {

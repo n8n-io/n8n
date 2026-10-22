@@ -254,9 +254,3 @@ function resolveCountRoute(row: RoleRow): RouteLocationRaw {
 	color: var(--color--primary);
 }
 </style>
-
-<style scoped>
-:deep(.pageSizeSelector) {
-	display: none;
-}
-</style>

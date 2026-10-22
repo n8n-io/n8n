@@ -17,7 +17,6 @@ import {
 	instanceAiBuildModeSchema,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type InstanceAiAttachment,
-	type ComputerUseChannel,
 	type InstanceAiBuildMode,
 	type InstanceAiHandoffContext,
 	type InstanceAiAgentAttachment,
@@ -41,7 +40,15 @@ import {
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
-import { EventService, InstanceWriteAccessService, UrlService } from '@n8n/backend-services';
+import {
+	EventService,
+	InstanceWriteAccessService,
+	UrlService,
+	AI_PREFERENCES_CLEARED_BLOCK,
+	AiPreferenceService,
+	buildAppliedPreferencesPayload,
+	renderAiPreferencesBlock,
+} from '@n8n/backend-services';
 import {
 	GlobalConfig,
 	SsrfProtectionConfig,
@@ -53,6 +60,7 @@ import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import {
 	CONCISE_PROMPT_VERSION,
+	SELF_HEALING_PROFILE_VERSION,
 	MAX_STEPS,
 	assertInstanceAiPromptVersion,
 	createInstanceAgent,
@@ -161,12 +169,6 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
-import {
-	AI_PREFERENCES_CLEARED_BLOCK,
-	AiPreferenceService,
-	buildAppliedPreferencesPayload,
-	renderAiPreferencesBlock,
-} from '@/services/ai-preference.service';
 import { AiUsageService } from '@/services/ai-usage.service';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
@@ -182,9 +184,8 @@ import {
 	toContextInjection,
 	shouldTraceContextInjection,
 } from './instance-context.service';
-import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
+import { resolveBrowserUseState } from './browser/browser-use-availability';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
-import { enabledToolCategories, resolveComputerUseState } from './computer-use-availability';
 import { dropRejectedAttachmentsFromHistory } from './drop-rejected-attachments';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { DurableEventLog } from './event-bus/durable-event-log';
@@ -196,7 +197,6 @@ import {
 	getAgentErrorSeverity,
 	InstanceAiErrorReporterService,
 } from './instance-ai-error-reporter.service';
-import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelService } from './instance-ai-model.service';
 import { InstanceAiRunLimitError } from './instance-ai-run-limit.error';
@@ -259,6 +259,12 @@ import { InstanceAiObservationRepository } from './repositories/instance-ai-obse
 import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
 import { InstanceAiThreadGrantRepository } from './repositories/instance-ai-thread-grant.repository';
 import { InstanceAiSandboxService } from './sandbox';
+import {
+	SelfHealingAgentService,
+	type SelfHealingRunInput,
+	type SelfHealingRunLifecycle,
+	type SelfHealingRunResult,
+} from './self-healing/self-healing-agent.service';
 import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
 import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
 import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
@@ -746,6 +752,8 @@ export class InstanceAiService {
 
 	private readonly runState = new RunStateRegistry<User>((user) => user.id);
 
+	private readonly finalizingSelfHealingRuns = new Set<string>();
+
 	private readonly backgroundTasks: BackgroundTaskManager;
 
 	private readonly memoryTaskRegistry = new MemoryTaskRegistry();
@@ -844,7 +852,6 @@ export class InstanceAiService {
 		private readonly eventLog: DurableEventLog,
 		private readonly interruptedRunSweeper: InterruptedRunSweeper,
 		private readonly settingsService: InstanceAiSettingsService,
-		private readonly gatewayService: InstanceAiGatewayService,
 		private readonly browserSessionService: InstanceAiBrowserSessionService,
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly agentMemory: TypeORMAgentMemory,
@@ -878,6 +885,7 @@ export class InstanceAiService {
 		private readonly aiPreferenceService: AiPreferenceService,
 		private readonly aiUsageService: AiUsageService,
 		private readonly threadTabsService: InstanceAiThreadTabsService,
+		private readonly selfHealingAgent: SelfHealingAgentService,
 		private readonly skillsService: InstanceAiSkillsService,
 	) {
 		this.logger = logger.scoped('instance-ai');
@@ -953,7 +961,7 @@ export class InstanceAiService {
 			settingsService: this.settingsService,
 			aiService: this.aiService,
 			resolveTracingConfig: async (threadId, userId) => {
-				const ownerId = userId ?? (await this.agentMemory.getThread(threadId))?.resourceId;
+				const ownerId = userId ?? (await this.memoryService.getThreadActorId(threadId));
 				if (!ownerId) return { userId: 'system' };
 				const { tracingProxyConfig } = await this.createProxyRunConfig({ id: ownerId });
 				return { userId: ownerId, proxyConfig: tracingProxyConfig };
@@ -1512,6 +1520,81 @@ export class InstanceAiService {
 		}
 	}
 
+	/** Run one internal investigation under the normal host lifecycle. */
+	async startSelfHealingRun(
+		input: SelfHealingRunInput,
+		lifecycle: SelfHealingRunLifecycle,
+	): Promise<SelfHealingRunResult> {
+		this.selfHealingAgent.assertEnabled();
+		this.assertRunAdmissible(input.user);
+		const { threadId } = lifecycle;
+		this.liveness.clearThreadState(threadId);
+		const { runId, abortController, messageGroupId } = this.runState.startRun({
+			threadId,
+			runId: lifecycle.runId,
+			user: input.user,
+		});
+
+		const execution = this.selfHealingAgent
+			.execute(input, {
+				threadId,
+				runId,
+				messageGroupId,
+				signal: abortController.signal,
+				sandbox: this.sandboxService,
+				tracing: this.tracing,
+				createProxyRunConfig: async () => await this.createProxyRunConfig(input.user),
+				assertCreditsAvailable: async () => await this.assertAssistantCreditsAvailable(input.user),
+				onActivity: () => this.runState.touchActiveRun(threadId),
+				onFinalizing: () => {
+					this.finalizingSelfHealingRuns.add(runId);
+				},
+				onComplete: lifecycle.onComplete,
+				getAbortReason: () => {
+					if (this.liveness.consumeRunTimeout(runId).timedOut)
+						return INSTANCE_AI_RUN_TIMEOUT_REASON;
+					if (quotaExhaustedFromSignal(abortController.signal)) return 'quota_exhausted';
+
+					return getAbortReason(abortController.signal);
+				},
+				onFinish: (result, modelId, stream) => {
+					const status = result.status === 'suspended' ? 'errored' : result.status;
+
+					// Shutdown already published the final cancellation event.
+					if (abortController.signal.reason !== 'service_shutdown') {
+						this.publishRunFinish(
+							threadId,
+							runId,
+							status,
+							result.reason ?? result.finishReason,
+							undefined,
+							input.user.id,
+							{
+								modelId,
+								promptVersion: SELF_HEALING_PROFILE_VERSION,
+							},
+						);
+					}
+
+					this.emitRunMetrics(threadId, status, {
+						modelId,
+						workSummary: stream?.workSummary,
+						usage: stream?.usage,
+					});
+				},
+			})
+			.finally(() => {
+				this.finalizingSelfHealingRuns.delete(runId);
+				this.runState.clearActiveRun(threadId);
+				this.liveness.clearThreadState(threadId);
+			});
+
+		// The investigation caller awaits this promise and reports failures.
+		this.trackInFlightExecution(execution);
+
+		return await execution;
+	}
+
 	startRun(
 		user: User,
 		threadId: string,
@@ -1522,7 +1605,7 @@ export class InstanceAiService {
 		pushRef?: string,
 		mode?: InstanceAiBuildMode,
 		promptVersion?: string,
-		computerUseChannels?: ComputerUseChannel[],
+		browserUseAvailable?: boolean,
 		threadArtifacts?: InstanceAiThreadArtifactsContext,
 		observerThresholdTokens?: number,
 	): string {
@@ -1547,8 +1630,8 @@ export class InstanceAiService {
 		}
 
 		// Same reason: a resumed or background run has no request of its own to ask
-		// which + menu entries the client renders.
-		this.runState.setComputerUseChannels(threadId, computerUseChannels);
+		// whether the client renders the Browser Use + menu entry.
+		this.runState.setBrowserUseAvailable(threadId, browserUseAvailable);
 
 		// A new user message resets selection. Explicit eval modes take precedence;
 		// otherwise environment creation selects and stores the backend assignment.
@@ -1610,8 +1693,8 @@ export class InstanceAiService {
 	}
 
 	/**
-	 * Stop every live run and background task for this user. A cached proxy
-	 * token would otherwise let those loops continue after the balance hits zero.
+	 * Stop runs that can still use credits. A cached proxy token would otherwise
+	 * let those loops continue after the balance hits zero.
 	 */
 	private stopRunsForQuotaExhaustion(user: User): void {
 		const threadIds = new Set(this.runState.listLiveThreadIdsForUser(user.id));
@@ -1621,6 +1704,9 @@ export class InstanceAiService {
 			}
 		}
 		for (const threadId of threadIds) {
+			const runId = this.runState.getActiveRunId(threadId);
+			if (runId && this.finalizingSelfHealingRuns.has(runId)) continue;
+
 			try {
 				this.cancelRun(threadId, 'quota_exhausted');
 			} catch (error) {
@@ -1995,8 +2081,6 @@ export class InstanceAiService {
 		await this.liveness.sweepTimedOutWork(now);
 	}
 
-	// ── Gateway lifecycle (delegated to LocalGatewayRegistry) ───────────────
-
 	// ── Test-only trace replay API ───────────────────────────────────────────
 
 	loadTraceEvents(slug: string, events: unknown[]): void {
@@ -2098,6 +2182,9 @@ export class InstanceAiService {
 		const { activeRuns, suspendedRuns, pendingThreadIds } = this.runState.shutdown();
 		const threadsWithPendingHitl = new Set(pendingThreadIds);
 		for (const run of activeRuns) {
+			// Already cancelled runs report their own completion during the shutdown drain.
+			if (run.abortController.signal.aborted) continue;
+
 			// Runs holding an inline HITL confirmation (`workflow_builder_create_tasks`,
 			// sub-agent `workflow_builder_ask_user`) sit in `activeRuns` because the orchestrator
 			// is alive — it's just awaiting the in-process Promise. Their
@@ -2133,11 +2220,11 @@ export class InstanceAiService {
 				undefined,
 				{ promptVersion: run.promptVersion },
 			);
+			run.abortController.abort('service_shutdown');
 			await this.tracing.finalizeRunTracing(run.runId, run.tracing, {
 				status: 'cancelled',
 				reason: 'service_shutdown',
 			});
-			run.abortController.abort();
 		}
 		for (const run of suspendedRuns) {
 			// Suspended runs are recoverable from the checkpoint store + pending
@@ -2177,7 +2264,6 @@ export class InstanceAiService {
 			});
 		}
 
-		this.gatewayService.disconnectAll();
 		await this.browserSessionService.shutdown();
 		this.sandboxService.stopSandboxExpiryTimers();
 
@@ -2212,9 +2298,25 @@ export class InstanceAiService {
 	 * directly — they make tracking unmissable by binding the spawn and the
 	 * tracking together in one method.
 	 */
-	private trackInFlightExecution(promise: Promise<unknown>): void {
-		const tracked = promise.finally(() => {
+	private trackInFlightExecution(
+		promise: Promise<unknown>,
+		failureContext?: { threadId: string; runId: string },
+	): void {
+		const clear = () => {
 			this.inFlightExecutions.delete(tracked);
+		};
+		const tracked = promise.then(clear, (error: unknown) => {
+			try {
+				// Awaited callers report their own failures. Detached runs need this boundary.
+				if (failureContext) {
+					this.logger.error('Unexpected Instance AI execution failure', {
+						...failureContext,
+						error,
+					});
+				}
+			} finally {
+				clear();
+			}
 		});
 		this.inFlightExecutions.add(tracked);
 	}
@@ -2225,14 +2327,16 @@ export class InstanceAiService {
 	 * wrapper rather than invoking `executeRun` directly.
 	 */
 	private startExecuteRun(...args: Parameters<InstanceAiService['executeRun']>): void {
-		this.trackInFlightExecution(this.executeRun(...args));
+		const [, threadId, runId] = args;
+		this.trackInFlightExecution(this.executeRun(...args), { threadId, runId });
 	}
 
 	/** Same shutdown-drain contract as `startExecuteRun`, for the resume path. */
 	private startProcessResumedStream(
 		...args: Parameters<InstanceAiService['processResumedStream']>
 	): void {
-		this.trackInFlightExecution(this.processResumedStream(...args));
+		const { threadId, runId } = args[2];
+		this.trackInFlightExecution(this.processResumedStream(...args), { threadId, runId });
 	}
 
 	/**
@@ -2607,6 +2711,11 @@ export class InstanceAiService {
 		experimentGates?: InstanceAiFeatureFlags,
 	) {
 		const memory = this.agentMemory;
+		const thread = await memory.getThread(threadId);
+		if (thread && thread.resourceId !== user.id) {
+			throw new ForbiddenError('Not authorized for this thread');
+		}
+
 		const boundProjectId = await memory.getThreadProjectId(threadId);
 		if (!boundProjectId) {
 			throw new UnexpectedError(
@@ -2615,13 +2724,8 @@ export class InstanceAiService {
 		}
 
 		const adminSettings = await this.settingsService.getAdminSettings();
-		const localGatewayDisabledGlobally = adminSettings.localGatewayDisabled;
 		const browserUseEnabledGlobally = adminSettings.browserUseEnabled;
 		const mcpConnectionsAvailable = this.areMcpConnectionsAvailable();
-		const localGatewayDisabledForUser = await this.settingsService.isLocalGatewayDisabledForUser(
-			user.id,
-		);
-		const userGateway = this.gatewayService.findGateway(user.id);
 
 		// Stop before this run resolves a model. A cached proxy token stays valid
 		// after the balance hits zero, so a later token request would not 403.
@@ -2681,7 +2785,6 @@ export class InstanceAiService {
 		const allowSendingParameterValues = await this.aiUsageService.isParameterValueSharingAllowed();
 		// The frontend writes the exit to thread metadata when the agent calls `leave-onboarding` or
 		// starts a build, so a thread that left gets the tool no more.
-		const thread = await memory.getThread(threadId);
 		const onboardingThread =
 			thread?.metadata?.source === 'onboarding' && !thread.metadata.onboardingLeft;
 		const context = this.adapterService.createContext(user, {
@@ -2708,23 +2811,11 @@ export class InstanceAiService {
 			allowSendingParameterValues,
 		});
 
-		// Merge both local gateway and direct browser-use into a single
-		// composite server, since context has a single `localMcpServer`.
-		// Perhaps a better solution would be to have multiple local MCP
-		// servers? But that requires more changes where `localMcpServer`
-		// is currently used
-
-		// When Browser Use is disabled instance-wide, hide the gateway's browser tools
-		// too so they are neither advertised to nor callable by the agent.
-		this.gatewayService.applyToolPolicy(user.id);
-		const gatewayMcpServer =
-			!localGatewayDisabledForUser && userGateway?.isConnected ? userGateway : undefined;
 		const browserMcpServer = browserUseEnabledGlobally
 			? this.browserSessionService.findMcpServer(user.id)
 			: undefined;
-		const localMcpServer = composeLocalMcpServers(gatewayMcpServer, browserMcpServer);
-		if (localMcpServer) {
-			context.localMcpServer = localMcpServer;
+		if (browserMcpServer) {
+			context.localMcpServer = browserMcpServer;
 		}
 
 		context.permissions = this.settingsService.getPermissions();
@@ -2819,17 +2910,12 @@ export class InstanceAiService {
 			createCredentialPermissionMode: context.permissions?.createCredential,
 		});
 
-		// The client reports which + menu entries it renders, because only it can see
-		// its own rollout and the device. The admin switches are still applied here,
-		// so the report can only narrow.
-		context.computerUseState = resolveComputerUseState({
-			localGatewayDisabledGlobally,
-			localGatewayDisabledForUser,
+		// The client reports whether it renders the Browser Use + menu entry, because
+		// only it can see the device. The admin switch is still applied here, so the
+		// report can only narrow.
+		context.browserUseState = resolveBrowserUseState({
+			reportedByClient: this.runState.getBrowserUseAvailable(threadId) ?? false,
 			browserUseEnabledGlobally,
-			clientChannels: this.runState.getComputerUseChannels(threadId),
-			localComputerToolCategories: gatewayMcpServer
-				? enabledToolCategories(gatewayMcpServer.getStatus().toolCategories)
-				: undefined,
 			browserConnected: browserMcpServer !== undefined,
 		});
 
@@ -6998,7 +7084,7 @@ export class InstanceAiService {
 				status: effectiveStatus,
 				...(status === 'cancelled'
 					? { reason: reason ?? 'user_cancelled' }
-					: status === 'errored' && reason
+					: reason
 						? { reason }
 						: {}),
 				...(hasArchived ? { archivedWorkflowIds } : {}),

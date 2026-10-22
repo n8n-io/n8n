@@ -120,8 +120,6 @@ export const INSTANCE_AI_SPLIT_EMPTY_STATE_EXPERIMENT = createExperiment(
 	'089_instance_ai_split_empty_state',
 );
 
-export const INSTANCE_AI_COMPUTER_USE_EXPERIMENT = createExperiment('091_instance_ai_computer_use');
-
 export const EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT = createExperiment(
 	'095_expose_all_workflows_to_mcp',
 );
@@ -161,6 +159,9 @@ export const MCP_JSON_NUDGE_EXPERIMENT = createExperiment('113_mcp_nudge_modal_o
 
 export const CREDENTIAL_DESCRIPTIONS_EXPERIMENT = createExperiment(CREDENTIAL_DESCRIPTIONS_FLAG);
 
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+export const MCP_DISCOVERY_EXPERIMENT = createExperiment('123_surface_mcp_to_claude_trial_users');
+// EOF Experiment cleanup
 export const SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT = createExperiment(
 	'119_surface_assistant_on_workflow_error',
 );
@@ -187,7 +188,16 @@ export const QUICKJS_EXPRESSION_SHADOW_EXPERIMENT = createExperiment(
 	'126_quickjs_expression_shadow',
 );
 
+export const PREFERENCES_EMPTY_STATE_EXPERIMENT = createExperiment('127_preferences_empty_state', {
+	control: 'control',
+	examples: 'examples',
+	assistant: 'assistant',
+});
+
 export const EXPERIMENTS_TO_TRACK = [
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	MCP_DISCOVERY_EXPERIMENT.name,
+	// EOF Experiment cleanup
 	INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name,
 	AI_ASSISTANT_AT_MENTIONS_EXPERIMENT.name,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_EXPERIMENT.name,
@@ -219,9 +229,9 @@ export const EXPERIMENTS_TO_TRACK = [
 	EVALUATIONS_WIZARD_SIDEPANEL_EXPERIMENT.name,
 	INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT.name,
 	INSTANCE_AI_SPLIT_EMPTY_STATE_EXPERIMENT.name,
-	INSTANCE_AI_COMPUTER_USE_EXPERIMENT.name,
 	EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT.name,
 	TRIAL_INTRO_MODAL_EXPERIMENT.name,
+	PREFERENCES_EMPTY_STATE_EXPERIMENT.name,
 	INLINE_AGENTS_EXPERIMENT.name,
 	INSTANCE_AI_FREE_NUDGE_EXPERIMENT.name,
 	OPEN_WORKFLOW_IN_ASSISTANT_EXPERIMENT.name,
