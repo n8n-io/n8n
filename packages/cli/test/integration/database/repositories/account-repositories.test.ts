@@ -11,20 +11,22 @@ import {
 	PersonRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
+import { DataSource, type Repository } from '@n8n/typeorm';
 
 import { createMember } from '../../shared/db/users';
 
 describe('UserRepository (both kinds)', () => {
 	let userRepository: UserRepository;
-	let personRepository: PersonRepository;
-	let serviceAccountRepository: ServiceAccountRepository;
+	// TypeORM repositories of the child entities. They show the `kind` filter on each query.
+	let personTable: Repository<Person>;
+	let serviceAccountTable: Repository<ServiceAccount>;
 
 	beforeAll(async () => {
 		await testDb.init();
 		userRepository = Container.get(UserRepository);
-		personRepository = Container.get(PersonRepository);
-		serviceAccountRepository = Container.get(ServiceAccountRepository);
+		const dataSource = Container.get(DataSource);
+		personTable = dataSource.getRepository(Person);
+		serviceAccountTable = dataSource.getRepository(ServiceAccount);
 	});
 
 	beforeEach(async () => {
@@ -36,9 +38,7 @@ describe('UserRepository (both kinds)', () => {
 	});
 
 	async function createServiceAccount() {
-		return await serviceAccountRepository.save(
-			serviceAccountRepository.create({ role: GLOBAL_MEMBER_ROLE }),
-		);
+		return await serviceAccountTable.save(serviceAccountTable.create({ role: GLOBAL_MEMBER_ROLE }));
 	}
 
 	it('stores each account with its kind and loads it as its child entity', async () => {
@@ -88,9 +88,7 @@ describe('UserRepository (both kinds)', () => {
 
 	it('sets the kind on a newly saved account', async () => {
 		const serviceAccount = await createServiceAccount();
-		const person = await personRepository.save(
-			personRepository.create({ role: GLOBAL_MEMBER_ROLE }),
-		);
+		const person = await personTable.save(personTable.create({ role: GLOBAL_MEMBER_ROLE }));
 
 		expect(serviceAccount.kind).toBe('service');
 		expect(person.kind).toBe('person');
@@ -133,36 +131,47 @@ describe('UserRepository (both kinds)', () => {
 		expect(declaredOnChild.map(({ propertyName }) => propertyName)).toEqual([]);
 	});
 
-	describe('PersonRepository', () => {
+	describe('Person entity', () => {
 		it('saves a plain object twice without a NOT NULL error', async () => {
 			const person = await createMember();
 			const partial: Partial<Person> = { id: person.id, firstName: 'Ada' };
 
-			await personRepository.save(partial);
+			await personTable.save(partial);
 			partial.firstName = 'Grace';
 
-			await expect(personRepository.save(partial)).resolves.toBeDefined();
+			await expect(personTable.save(partial)).resolves.toBeDefined();
 		});
 
 		it('does not return service accounts', async () => {
 			const person = await createMember();
 			const serviceAccount = await createServiceAccount();
 
-			const users = await personRepository.find();
-			const fromQueryBuilder = await personRepository.createQueryBuilder('user').getMany();
+			const users = await personTable.find();
+			const fromQueryBuilder = await personTable.createQueryBuilder('user').getMany();
 
 			expect(users.map((user) => user.id)).toEqual([person.id]);
 			expect(fromQueryBuilder.map((user) => user.id)).toEqual([person.id]);
-			expect(await personRepository.findOneBy({ id: serviceAccount.id })).toBeNull();
-			expect(await personRepository.count()).toBe(1);
+			expect(await personTable.findOneBy({ id: serviceAccount.id })).toBeNull();
+			expect(await personTable.count()).toBe(1);
 		});
 
 		it('does not delete service accounts', async () => {
 			const serviceAccount = await createServiceAccount();
 
-			await personRepository.delete({});
+			await personTable.delete({});
 
-			expect(await serviceAccountRepository.existsBy({ id: serviceAccount.id })).toBe(true);
+			expect(await serviceAccountTable.existsBy({ id: serviceAccount.id })).toBe(true);
+		});
+	});
+
+	describe('PersonRepository', () => {
+		it('finds a person by id, but not a service account', async () => {
+			const personRepository = Container.get(PersonRepository);
+			const person = await createMember();
+			const serviceAccount = await createServiceAccount();
+
+			expect(await personRepository.findById(person.id)).toBeInstanceOf(Person);
+			expect(await personRepository.findById(serviceAccount.id)).toBeNull();
 		});
 	});
 
@@ -187,14 +196,27 @@ describe('UserRepository (both kinds)', () => {
 		});
 	});
 
-	describe('ServiceAccountRepository', () => {
-		it('does not return users', async () => {
+	describe('ServiceAccount entity', () => {
+		it('does not return people', async () => {
 			await createMember();
 			const serviceAccount = await createServiceAccount();
 
-			const serviceAccounts = await serviceAccountRepository.find();
+			const serviceAccounts = await serviceAccountTable.find();
 
 			expect(serviceAccounts.map((account) => account.id)).toEqual([serviceAccount.id]);
+		});
+	});
+
+	describe('ServiceAccountRepository', () => {
+		it('finds a service account by id, but not a person', async () => {
+			const serviceAccountRepository = Container.get(ServiceAccountRepository);
+			const person = await createMember();
+			const serviceAccount = await createServiceAccount();
+
+			expect(await serviceAccountRepository.findById(serviceAccount.id)).toBeInstanceOf(
+				ServiceAccount,
+			);
+			expect(await serviceAccountRepository.findById(person.id)).toBeNull();
 		});
 	});
 });

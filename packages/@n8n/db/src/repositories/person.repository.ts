@@ -3,15 +3,28 @@ import { DataSource } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
 import { Person } from '../entities';
-import { TransactionRunner } from '../services/transaction';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
 
-/**
- * Loads, updates and deletes the accounts of people only: each filters on `kind = 'person'`.
- * `save` writes the kind of the instance's class, so it does not filter.
- */
-@Service()
-export class PersonRepository extends BaseRepository<Person> {
+class PersonTable extends BaseRepository<Person> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
 		super(Person, dataSource.manager, transactionRunner);
+	}
+
+	override managerFor(ctx: OperationContext) {
+		return super.managerFor(ctx);
+	}
+}
+
+/** Loads the accounts of people only. Each query filters on `kind = 'person'`. */
+@Service()
+export class PersonRepository {
+	private readonly table: PersonTable;
+
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		this.table = new PersonTable(dataSource, transactionRunner);
+	}
+
+	async findById(id: string, ctx: OperationContext = {}): Promise<Person | null> {
+		return await this.table.managerFor(ctx).findOneBy(Person, { id });
 	}
 }
