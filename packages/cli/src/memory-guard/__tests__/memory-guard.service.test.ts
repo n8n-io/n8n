@@ -258,7 +258,7 @@ describe('MemoryGuardService', () => {
 			await sample();
 			expect(productionHold.heldCount).toBe(3);
 			expect(guardLogger.info).toHaveBeenCalledWith(
-				expect.stringContaining('letting held executions start'),
+				expect.stringContaining('held executions now start in batches'),
 			);
 
 			await sample();
@@ -435,7 +435,9 @@ describe('MemoryGuardService', () => {
 			await vi.advanceTimersByTimeAsync(3_000);
 
 			expect(stoppedIds()).toEqual(['large']);
-			expect(guardLogger.warn).toHaveBeenCalledWith(expect.stringContaining('freed no memory'));
+			expect(guardLogger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('freed less memory than expected'),
+			);
 		});
 
 		it.each([0.82, 0.9, 0.96])(
@@ -533,7 +535,9 @@ describe('MemoryGuardService', () => {
 			expect(stopLogs()).toEqual([
 				'Stopped execution large of workflow workflow-large at 960MB of 1000MB (critical). It held an estimated 300MB of run data. Memory after the stop: 600MB',
 			]);
-			expect(guardLogger.warn).not.toHaveBeenCalledWith(expect.stringContaining('freed no memory'));
+			expect(guardLogger.warn).not.toHaveBeenCalledWith(
+				expect.stringContaining('freed less memory than expected'),
+			);
 		});
 
 		it('should measure memory again while the stopped execution saves its result', async () => {
@@ -546,7 +550,9 @@ describe('MemoryGuardService', () => {
 			await vi.advanceTimersByTimeAsync(1_000);
 
 			expect(stopLogs()).toEqual([expect.stringContaining('Memory after the stop: 600MB')]);
-			expect(guardLogger.warn).not.toHaveBeenCalledWith(expect.stringContaining('freed no memory'));
+			expect(guardLogger.warn).not.toHaveBeenCalledWith(
+				expect.stringContaining('freed less memory than expected'),
+			);
 		});
 
 		it('should count a stop as freeing memory when memory drops by half its estimate', async () => {
@@ -559,7 +565,9 @@ describe('MemoryGuardService', () => {
 			await vi.advanceTimersByTimeAsync(3_000);
 
 			expect(stopLogs()).toEqual([expect.stringContaining('Memory after the stop: 950MB')]);
-			expect(guardLogger.warn).not.toHaveBeenCalledWith(expect.stringContaining('freed no memory'));
+			expect(guardLogger.warn).not.toHaveBeenCalledWith(
+				expect.stringContaining('freed less memory than expected'),
+			);
 		});
 
 		it('should keep holding and stop only at the critical level after a stop frees no memory', async () => {
@@ -571,7 +579,9 @@ describe('MemoryGuardService', () => {
 			utilization = 0.9;
 			await vi.advanceTimersByTimeAsync(3_000);
 			expect(stoppedIds()).toEqual(['first']);
-			expect(guardLogger.warn).toHaveBeenCalledWith(expect.stringContaining('freed no memory'));
+			expect(guardLogger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('freed less memory than expected'),
+			);
 
 			const arrival = concurrencyControl.throttle({ mode: 'webhook', executionId: 'arrival' });
 			await sample(3);
@@ -595,7 +605,9 @@ describe('MemoryGuardService', () => {
 
 			utilization = 0.7;
 			await sample();
-			expect(guardLogger.info).toHaveBeenCalledWith(expect.stringContaining('acts again'));
+			expect(guardLogger.info).toHaveBeenCalledWith(
+				expect.stringContaining('again stops executions at 85%'),
+			);
 
 			utilization = 0.9;
 			await sample(2);

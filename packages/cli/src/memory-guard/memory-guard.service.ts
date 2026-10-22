@@ -147,7 +147,9 @@ export class MemoryGuardService {
 
 		if (this.isStandingDown && utilization < RESUME_LEVEL) {
 			this.isStandingDown = false;
-			this.logger.info('Memory recovered, the memory guard acts again');
+			this.logger.info(
+				`Memory fell below ${percent(RESUME_LEVEL)}, so the memory guard again stops executions at ${percent(STOP_LEVEL)}`,
+			);
 		}
 
 		if (this.isHoldSuspended && utilization < RESUME_LEVEL) this.isHoldSuspended = false;
@@ -157,7 +159,9 @@ export class MemoryGuardService {
 			this.startHold(usage);
 		} else if (this.isHolding && utilization < RESUME_LEVEL) {
 			const heldMs = this.endHold();
-			this.logger.info(`Memory recovered after ${heldMs}ms, letting held executions start`);
+			this.logger.info(
+				`Memory fell below ${percent(RESUME_LEVEL)} after a hold of ${heldMs}ms, so held executions now start in batches`,
+			);
 		}
 
 		if (this.isHolding) {
@@ -173,7 +177,8 @@ export class MemoryGuardService {
 
 		if (this.isStandingDown) {
 			if (isCritical) this.stop(usage, 'critical');
-			else if (this.hasHoldLimitPassed()) this.suspendHold('The last stop freed no memory');
+			else if (this.hasHoldLimitPassed())
+				this.suspendHold('The last stop freed less memory than expected');
 			return;
 		}
 
@@ -189,7 +194,9 @@ export class MemoryGuardService {
 	private suspendHold(reason: string) {
 		this.isHoldSuspended = true;
 		this.endHold();
-		this.logger.warn(`${reason}, so the memory guard stops holding until memory falls`);
+		this.logger.warn(
+			`${reason}, so the memory guard ends the hold and starts no new hold until memory falls below ${percent(RESUME_LEVEL)}`,
+		);
 	}
 
 	private hasRunningExecution() {
@@ -301,7 +308,10 @@ export class MemoryGuardService {
 		this.stopStreak = 0;
 		this.pendingStop = this.finishStop(target, engines, usage, trigger)
 			.catch((error: unknown) => {
-				this.logger.error('Failed to finish a memory guard stop', { error: ensureError(error) });
+				this.logger.error(
+					'The memory guard stopped an execution, but could not check how much memory the stop freed',
+					{ error: ensureError(error) },
+				);
 			})
 			.finally(() => {
 				this.pendingStop = undefined;
@@ -333,7 +343,7 @@ export class MemoryGuardService {
 		if (!freedMemory) {
 			this.isStandingDown = true;
 			this.logger.warn(
-				'The stop freed no memory, so the memory guard stops only at the critical level until memory falls',
+				`The stop freed less memory than expected, so the memory guard now stops executions only at ${percent(CRITICAL_LEVEL)} or more, until memory falls below ${percent(RESUME_LEVEL)}`,
 			);
 		}
 	}
@@ -402,4 +412,8 @@ export class MemoryGuardService {
 		}
 		return { rootId, depth };
 	}
+}
+
+function percent(level: number) {
+	return `${Math.round(level * 100)}%`;
 }
