@@ -1,3 +1,18 @@
+## [2.45.2](https://github.com/n8n-io/n8n/compare/n8n@2.45.1...n8n@2.45.2) (2026-10-22)
+
+
+### Bug Fixes
+
+* **core:** Read type availability policies from memory at enforcement points ([#41621](https://github.com/n8n-io/n8n/issues/41621)) ([6433596](https://github.com/n8n-io/n8n/commit/643359677f024c4197ffc7e88da04b5eb3734ec7))
+* **Postgres Node:** Prevent global pgtypes overwrite ([#41666](https://github.com/n8n-io/n8n/issues/41666)) ([eff4a45](https://github.com/n8n-io/n8n/commit/eff4a4590afeb695487be2aa13f252c51646771d))
+* Update logos in credential oauth confirmation screen and instance emails ([#41637](https://github.com/n8n-io/n8n/issues/41637)) ([b460189](https://github.com/n8n-io/n8n/commit/b4601890f5bea1dce4ba643db19f7dea1b95910a))
+
+
+### Features
+
+* **core:** Export the migration report as CSV ([#41670](https://github.com/n8n-io/n8n/issues/41670)) ([97791d7](https://github.com/n8n-io/n8n/commit/97791d778aaa35b6f4fd12a9bcbdb654e22f3f93))
+
+
 ## [2.45.1](https://github.com/n8n-io/n8n/compare/n8n@2.45.0...n8n@2.45.1) (2026-10-21)
 
 
