@@ -630,13 +630,9 @@ describe('credential tools', () => {
 			const context = createMockContext({ assertInThreadProject });
 			const suspendFn = vi.fn();
 
-			const tool = createCredentialsTool(context);
+			const tool = createDeleteCredentialTool(context);
 			await expect(
-				executeTool(
-					tool,
-					{ action: 'delete' as const, credentialId: 'cred-1' },
-					suspendCtx(suspendFn),
-				),
+				executeTool(tool, { credentialId: 'cred-1' }, suspendCtx(suspendFn)),
 			).rejects.toThrow(OutsideThreadProjectError);
 
 			expect(assertInThreadProject).toHaveBeenCalledWith({ kind: 'credential', id: 'cred-1' });
