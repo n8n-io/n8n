@@ -6,7 +6,7 @@ import { RestrictedNodePopover } from '@n8n/frontend-module-type-availability-po
 import { ElSwitch } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
-import { computed, ref } from 'vue';
+import { computed, ref, useId } from 'vue';
 
 const props = defineProps<{
 	nodeType: INodeTypeDescription;
@@ -30,6 +30,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const installReasonId = useId();
 
 const description = computed(() => {
 	if (props.configuredNode && props.configuredNode.name !== props.nodeType.displayName) {
@@ -96,6 +97,15 @@ const restriction = computed(() => getNodeItemRestriction(props.nodeType.name));
 			<N8nText :class="$style.description" size="small" color="text-light">
 				{{ description }}
 			</N8nText>
+			<N8nText
+				v-if="
+					mode === 'available' && !restriction && communityPreview && installDisabled && !installing
+				"
+				:id="installReasonId"
+				size="small"
+				color="text-light"
+				>{{ i18n.baseText('communityNodeInfo.contact.admin') }}</N8nText
+			>
 		</div>
 
 		<div :class="$style.actions">
@@ -172,6 +182,7 @@ const restriction = computed(() => getNodeItemRestriction(props.nodeType.name));
 						:loading="installing"
 						:disabled="true"
 						focusable-when-disabled
+						:aria-describedby="installReasonId"
 						data-test-id="chat-tool-install-button"
 					>
 						{{ actionLabel }}

@@ -326,7 +326,11 @@ describe('InstanceAiDataTablePreview', () => {
 				'.ag-row[row-id="1"] .ag-cell[col-id="stock-column"] input[type="checkbox"]',
 			),
 		).toBeEnabled();
-		expect(getByTestId('data-table-add-column-trigger-button')).toBeDisabled();
+		expect(getByTestId('data-table-add-column-trigger-button')).toHaveAttribute(
+			'aria-disabled',
+			'true',
+		);
+		expect(getByTestId('data-table-add-column-trigger-button')).not.toBeDisabled();
 		expect(header.querySelector('button[aria-haspopup="menu"]')).not.toBeVisible();
 		expect(gridApi.getGridOption('suppressMovableColumns')).toBe(true);
 	});

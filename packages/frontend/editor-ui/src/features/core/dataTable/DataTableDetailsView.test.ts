@@ -198,7 +198,11 @@ describe('DataTableDetailsView', () => {
 			expect(table).toHaveAttribute('data-schema-read-only', 'true');
 			expect(getByTestId('breadcrumbs-stub')).toHaveAttribute('data-schema-read-only', 'true');
 			expect(getByTestId('data-table-header-add-row-button')).toBeEnabled();
-			expect(getByTestId('data-table-add-column-trigger-button')).toBeDisabled();
+			expect(getByTestId('data-table-add-column-trigger-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
+			expect(getByTestId('data-table-add-column-trigger-button')).not.toBeDisabled();
 		});
 
 		it('should keep the table structure editable on a regular instance', async () => {

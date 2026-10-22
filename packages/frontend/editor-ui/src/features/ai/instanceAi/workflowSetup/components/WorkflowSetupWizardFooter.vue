@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, useId } from 'vue';
 import { N8nButton, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import ConfirmationFooter from '../../components/ConfirmationFooter.vue';
@@ -7,6 +7,7 @@ import { useWorkflowSetupContext } from '../composables/useWorkflowSetupContext'
 
 const ctx = useWorkflowSetupContext();
 const i18n = useI18n();
+const primaryActionReasonId = useId();
 
 const totalSteps = computed(() => ctx.sections.value.length);
 const showArrows = computed(() => totalSteps.value > 1);
@@ -121,10 +122,20 @@ function onPrimaryAction() {
 					:label="primaryActionLabel"
 					:disabled="isActiveSectionUnhandled"
 					:focusable-when-disabled="!!primaryActionTooltip"
+					:aria-describedby="primaryActionTooltip ? primaryActionReasonId : undefined"
 					:data-test-id="primaryActionTestId"
 					@click="onPrimaryAction"
 				/>
 			</N8nTooltip>
+			<N8nText
+				v-if="primaryActionTooltip"
+				:id="primaryActionReasonId"
+				tag="p"
+				size="small"
+				color="text-light"
+				:class="$style.reason"
+				>{{ primaryActionTooltip }}</N8nText
+			>
 		</div>
 	</ConfirmationFooter>
 </template>
@@ -145,5 +156,10 @@ function onPrimaryAction() {
 	justify-content: flex-end;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
+
+.reason {
+	flex-basis: 100%;
+	text-align: right;
 }
 </style>

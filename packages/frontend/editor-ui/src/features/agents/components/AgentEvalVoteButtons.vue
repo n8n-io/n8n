@@ -8,7 +8,7 @@ import { useI18n } from '@n8n/i18n';
 
 import type { AgentEvalVote } from '../agentEvals.types';
 
-const props = defineProps<{
+defineProps<{
 	vote: AgentEvalVote | null;
 	disabled?: boolean;
 	/** Shown instead of the vote label when the buttons are disabled. */

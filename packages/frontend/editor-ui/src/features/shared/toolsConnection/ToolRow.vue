@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, ref } from 'vue';
+import { computed, inject, ref, useId } from 'vue';
 import {
 	N8nBadge,
 	N8nButton,
@@ -40,6 +40,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const installReasonId = useId();
 const credentialAdapter = inject(TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY, null);
 const creditsLabelKey = inject(TOOL_CONNECTION_CREDITS_LABEL_KEY, null);
 
@@ -231,6 +232,14 @@ function handleConnect() {
 					>
 						{{ item.description }}
 					</N8nText>
+					<N8nText
+						v-if="installBlocked && !item.installing"
+						:id="installReasonId"
+						tag="span"
+						size="small"
+						color="text-light"
+						>{{ i18n.baseText('tools.connection.install.contactAdmin') }}</N8nText
+					>
 				</span>
 			</template>
 		</component>
@@ -313,6 +322,7 @@ function handleConnect() {
 						size="small"
 						disabled
 						focusable-when-disabled
+						:aria-describedby="installReasonId"
 						data-test-id="tools-connection-row-install"
 					/>
 				</N8nTooltip>

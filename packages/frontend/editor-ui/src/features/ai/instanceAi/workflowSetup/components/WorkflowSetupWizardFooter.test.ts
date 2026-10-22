@@ -77,6 +77,14 @@ describe('WorkflowSetupWizardFooter', () => {
 			'true',
 		);
 		const tooltip = getByTestId('primary-action-tooltip');
+		expect(getByTestId('instance-ai-workflow-setup-apply')).toHaveAccessibleDescription(
+			'To continue, complete the required fields above or skip setup for now',
+		);
+		expect(
+			document.getElementById(
+				getByTestId('instance-ai-workflow-setup-apply').getAttribute('aria-describedby')!,
+			),
+		).toBeVisible();
 		expect(tooltip.getAttribute('data-tooltip-disabled')).toBe('false');
 		expect(tooltip.getAttribute('data-tooltip-content')).toBe(
 			'To continue, complete the required fields above or skip setup for now',

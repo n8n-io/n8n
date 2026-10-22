@@ -513,6 +513,10 @@ onMounted(() => {
 	justify-content: end;
 	opacity: 0;
 	transition: opacity 0.2s ease;
+
+	&:focus-within {
+		opacity: 1;
+	}
 }
 
 :deep(.datatable) {

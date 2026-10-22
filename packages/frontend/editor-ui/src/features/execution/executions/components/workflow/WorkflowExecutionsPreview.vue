@@ -410,7 +410,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 
 			<div :class="$style.actions">
 				<RouterLink
-					v-slot="{ navigate }"
+					v-slot="{ href, navigate }"
 					custom
 					:to="{
 						name: VIEWS.EXECUTION_DEBUG,
@@ -432,16 +432,16 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 							size="medium"
 							variant="outline"
 							:class="$style.debugLink"
+							:href="workflowPermissions.update && !pinBlockedByRedaction ? href : undefined"
 							:disabled="!workflowPermissions.update || pinBlockedByRedaction"
 							:focusable-when-disabled="pinBlockedByRedaction"
+							data-test-id="execution-debug-button"
 							@click="
-								executionDebugging.handleDebugLinkClick();
+								executionDebugging.handleDebugLinkClick($event);
 								navigate($event);
 							"
 						>
-							<span data-test-id="execution-debug-button">
-								{{ debugButtonData.text }}
-							</span>
+							{{ debugButtonData.text }}
 						</N8nButton>
 					</N8nTooltip>
 				</RouterLink>

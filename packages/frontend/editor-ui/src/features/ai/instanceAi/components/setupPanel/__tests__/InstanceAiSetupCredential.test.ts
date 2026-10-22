@@ -1179,6 +1179,24 @@ describe('InstanceAiSetupCredential', () => {
 		expect(view.emitted('askForHelp')).toBeUndefined();
 	});
 
+	it('keeps the help explanation focusable while a connection is pending', async () => {
+		const request = Promise.withResolvers<ICredentialsResponse>();
+		mockedStore(useCredentialsStore).createNewCredential.mockReturnValueOnce(request.promise);
+		const view = renderComponent({ props: { helpDisabled: true } });
+		await flushPromises();
+		await fireEvent.update(view.getByLabelText('API key'), 'test-key');
+		await userEvent.click(view.getByRole('button', { name: 'Save' }));
+		const help = view.getByRole('button', { name: 'Help me find my API key' });
+		expect(help).toHaveAttribute('aria-disabled', 'true');
+		expect(help).not.toBeDisabled();
+		help.focus();
+		expect(help).toHaveFocus();
+		await userEvent.keyboard('{Enter} ');
+		expect(view.emitted('askForHelp')).toBeUndefined();
+		request.resolve(savedCredential);
+		await flushPromises();
+	});
+
 	it.each([false, true])(
 		'lets users return to their existing credential through the menu, credits: %s',
 		async (useCredits) => {

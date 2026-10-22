@@ -183,7 +183,7 @@ async function handleClickExecute() {
 	}
 
 	/* Override N8nButton's .disabled { opacity: 0.5 } which has higher specificity */
-	& button[disabled] {
+	& button[aria-disabled='true'] {
 		opacity: 0;
 	}
 
@@ -193,7 +193,7 @@ async function handleClickExecute() {
 		pointer-events: all;
 	}
 
-	&.interactive.hovered button[disabled] {
+	&.interactive.hovered button[aria-disabled='true'] {
 		opacity: 0.5;
 	}
 

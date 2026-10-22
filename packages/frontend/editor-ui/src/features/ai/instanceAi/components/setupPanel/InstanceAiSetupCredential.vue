@@ -778,7 +778,7 @@ onScopeDispose(() => {
 						size="small"
 						:class="$style.help"
 						:disabled="helpDisabled || busy"
-						:focusable-when-disabled="helpDisabled && !busy"
+						:focusable-when-disabled="helpDisabled"
 						@click="askForHelp"
 					>
 						<N8nIcon icon="sparkles" size="small" />

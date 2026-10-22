@@ -143,7 +143,7 @@ async function onClick() {
 
 <template>
 	<N8nTooltip
-		as-child
+		:as-child="!!disabledHint || (!disabled && !isExecuting)"
 		:placement="tooltipPlacement ?? 'right'"
 		:disabled="!tooltipText && !slots.persistentTooltipContent"
 		:visible="slots.persistentTooltipContent ? true : undefined"

@@ -84,6 +84,16 @@ describe('RunDataPinButton.vue', () => {
 		expect(emitted().togglePinData).not.toBeDefined();
 	});
 
+	it('keeps the tooltip trigger around a natively disabled pin button', async () => {
+		const { getByRole, emitted } = renderComponent({ props: { disabled: true } });
+		const button = getByRole('button');
+		expect(button).toBeDisabled();
+		await userEvent.hover(button.parentElement!);
+		await waitFor(() => expect(getTooltip()).toHaveTextContent('Pin data'));
+		await userEvent.click(button);
+		expect(emitted('togglePinData')).toBeUndefined();
+	});
+
 	it('shows pin data discoverability tooltip immediately (not on hover)', async () => {
 		const { getByRole } = renderComponent({
 			props: {

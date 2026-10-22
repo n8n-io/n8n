@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import ChatFile from '@n8n/chat/components/ChatFile.vue';
-import { N8nIconButton, N8nChatInput, N8nTooltip } from '@n8n/design-system';
+import { N8nIconButton, N8nChatInput, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useTemplateRef } from 'vue';
+import { useId, useTemplateRef } from 'vue';
 import type { MessagingState } from '@/features/ai/chatHub/chat.types';
 
 const props = defineProps<{
@@ -27,6 +27,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const attachReasonId = useId();
 
 const inputRef = useTemplateRef<InstanceType<typeof N8nChatInput>>('inputRef');
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef');
@@ -93,6 +94,7 @@ defineExpose({
 							variant="ghost"
 							:disabled="messagingState !== 'idle' || !canUploadFiles"
 							:focusable-when-disabled="!canUploadFiles"
+							:aria-describedby="!canUploadFiles ? attachReasonId : undefined"
 							:aria-label="i18n.baseText('chatHub.chat.prompt.button.attach')"
 							icon="paperclip"
 							icon-size="large"
@@ -115,6 +117,14 @@ defineExpose({
 					</N8nTooltip>
 				</template>
 			</N8nChatInput>
+			<N8nText
+				v-if="!canUploadFiles"
+				:id="attachReasonId"
+				tag="p"
+				size="small"
+				color="text-light"
+				>{{ i18n.baseText('chatHub.chat.prompt.button.attach.disabled') }}</N8nText
+			>
 		</div>
 	</form>
 </template>

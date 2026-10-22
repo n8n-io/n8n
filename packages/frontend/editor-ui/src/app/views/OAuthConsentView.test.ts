@@ -256,8 +256,10 @@ describe('OAuthConsentView', () => {
 
 		const allowButton = getByTestId('consent-allow-button');
 		expect(allowButton).toHaveAttribute('aria-disabled', 'true');
+		expect(allowButton).not.toBeDisabled();
 
 		await userEvent.click(getByLabelText('I recognize and trust this URL'));
+		expect(allowButton).not.toHaveAttribute('aria-disabled');
 
 		expect(allowButton).not.toBeDisabled();
 	});

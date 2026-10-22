@@ -622,6 +622,7 @@ defineExpose({
 			:items="workflowMenuItems"
 			data-test-id="workflow-menu"
 			content-test-id="workflow-menu"
+			extra-popper-class="ignore-key-press-canvas"
 			placement="bottom-start"
 			max-height="var(--reka-dropdown-menu-content-available-height)"
 			:sub-menu-max-height="384"
