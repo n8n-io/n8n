@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import { AssistantSkillProviderProxy, type ProjectScopeService } from '@n8n/backend-services';
+import { AssistantSkillProviderProxy } from '@n8n/backend-services';
 import { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -9,7 +9,6 @@ import { PostHogClient } from '@/posthog';
 
 import { HubAssistantSkillProvider } from '../hub-assistant-skill-provider.service';
 import { SkillAgentsProxy, type SkillAgentsProvider } from '../skill-agents-proxy.service';
-import type { SkillRepository } from '../skill.repository';
 import type { SkillService } from '../skill.service';
 import { SkillsHubRollout } from '../skills-hub-rollout';
 import { SkillsModule } from '../skills.module';
@@ -35,7 +34,6 @@ describe('SkillsModule', () => {
 			const postHog = mock<PostHogClient>();
 			postHog.getFeatureFlagForInstance.mockResolvedValue(assistantEnabled);
 			const assistantRollout = new AssistantSkillsRollout(rollout, postHog);
-			const repository = mock<SkillRepository>();
 			const service = mock<SkillService>();
 			const proxy = new AssistantSkillProviderProxy();
 			const context = { user: mock<User>() };
@@ -47,26 +45,31 @@ describe('SkillsModule', () => {
 				versionId: 'version-1',
 				version: 1,
 			};
-			repository.findAssistantSkillSummaries.mockResolvedValue([summary]);
+			const content = { ...summary, instructions: 'Be brief.', frontmatter: null, files: [] };
+			service.listForAssistant.mockResolvedValue([summary]);
+			service.readForAssistant.mockResolvedValue(content);
 			Container.set(SkillsHubRollout, rollout);
 			Container.set(AssistantSkillProviderProxy, proxy);
 			Container.set(
 				HubAssistantSkillProvider,
-				new HubAssistantSkillProvider(
-					assistantRollout,
-					mock<ProjectScopeService>(),
-					repository,
-					service,
-				),
+				new HubAssistantSkillProvider(assistantRollout, service),
 			);
 
 			await new SkillsModule().init();
 			expect(await proxy.listSkills(context)).toEqual([]);
-			expect(repository.findAssistantSkillSummaries).not.toHaveBeenCalled();
+			expect(await proxy.readSkill(context, summary.id)).toBeNull();
+			expect(service.listForAssistant).not.toHaveBeenCalled();
+			expect(service.readForAssistant).not.toHaveBeenCalled();
 
 			agents.registerProvider(mock<SkillAgentsProvider>());
 			expect(await proxy.listSkills(context)).toEqual(expected ? [summary] : []);
-			expect(repository.findAssistantSkillSummaries).toHaveBeenCalledTimes(expected ? 1 : 0);
+			expect(await proxy.readSkill(context, summary.id)).toEqual(expected ? content : null);
+			expect(service.listForAssistant).toHaveBeenCalledTimes(expected ? 1 : 0);
+			expect(service.readForAssistant).toHaveBeenCalledTimes(expected ? 1 : 0);
+			if (expected) {
+				expect(service.listForAssistant).toHaveBeenCalledWith(context);
+				expect(service.readForAssistant).toHaveBeenCalledWith(context, summary.id);
+			}
 		},
 	);
 });
