@@ -6,6 +6,7 @@ export type SetupTaskState = 'unknown' | 'todo' | 'complete';
 export interface SetupContext {
 	config: {
 		loaded: boolean;
+		isRunnable: boolean;
 		model: string;
 		instructions: string;
 		toolCount: number;
@@ -70,14 +71,6 @@ function getPublishAgentState(context: SetupContext): SetupTaskState {
 	return context.publication.activeVersionId ? 'complete' : 'todo';
 }
 
-function canTestAgent(context: SetupContext): boolean {
-	return (
-		context.config.model.trim().length > 0 &&
-		context.config.instructions.trim().length > 0 &&
-		context.config.toolCount > 0
-	);
-}
-
 function isTestAgentComplete(context: SetupContext): boolean {
 	return context.sessions.loaded && context.sessions.count > 0;
 }
@@ -126,7 +119,7 @@ export const setupTaskDefinitions = {
 			target: { kind: 'agent' },
 			path: 'preview',
 		},
-		getVisible: canTestAgent,
+		getVisible: (context) => context.config.isRunnable,
 		getState: getTestAgentState,
 	},
 	'add-channel': {
