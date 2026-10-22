@@ -5,6 +5,7 @@ packages/@n8n/cli/src/__tests__/promotion-environment-operations.test.ts
 packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromoteInstanceDialog.test.ts
   s_bbc52937c57305::t_018802c222873e 53-54,56-57,64,115,117
   s_ea937ea2ac308b::t_2625acb8da8148 67
+  s_83ad41e81d6da7::t_2ce529db5353e5 60,93,95
 packages/cli/src/modules/promotions.ee/promotion-commit-message.ts
   s_bbc52937c57305::t_b98ff5618874ae 1-60
 packages/cli/src/modules/promotions.ee/promotions.service.ts
@@ -20,14 +21,19 @@ packages/@n8n/cli/src/client.ts
   s_bbc52937c57305::t_018802c222873e 420
 packages/@n8n/cli/docs/commands/promotions.md
   s_bbc52937c57305::t_7730deae693a95 204
+  s_83ad41e81d6da7::t_86c8112452992e 198
 packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promotePackage.generated.yml
   s_bbc52937c57305::t_70d01439b7eae9 26
 packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromoteInstanceDialog.vue
   s_bbc52937c57305::t_018802c222873e 16,89,93,136
+  s_83ad41e81d6da7::t_278715d55ba8ac 94
 packages/@n8n/cli/src/commands/promotion-environment/promote.ts
   s_bbc52937c57305::t_018802c222873e 20
+  s_83ad41e81d6da7::t_86c8112452992e 10
 packages/cli/src/modules/promotions.ee/__tests__/promotion-commit-message.test.ts
   s_bbc52937c57305::t_ebe976e46c36d8 1-92
+packages/@n8n/cli/skills/n8n-cli/SKILL.md
+  s_83ad41e81d6da7::t_86c8112452992e 216
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -35,6 +41,14 @@ packages/cli/src/modules/promotions.ee/__tests__/promotion-commit-message.test.t
   "base_commit_sha": "9125b4d8803bf7d4e9ad637c06a40090f93d6aae",
   "prompts": {},
   "sessions": {
+    "s_83ad41e81d6da7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "913713bc-1b9d-4c34-92a5-a61511800f74",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
     "s_bbc52937c57305": {
       "agent_id": {
         "tool": "claude",
