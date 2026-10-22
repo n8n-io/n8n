@@ -172,6 +172,7 @@ export class AgentSkillsService {
 				bodies,
 				context.user.id,
 				availableTo,
+				telemetrySourceOf(context),
 				ctx,
 			);
 			const nextRefs: AgentJsonSkillConfig[] = [
