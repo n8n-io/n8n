@@ -52,6 +52,7 @@ import type {
 	WorkflowRepository,
 } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
+import { OperationalError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -286,6 +287,14 @@ describe('exploreResources — eval-seeded credential', () => {
 		expect(dynamicNodeParametersService.getOptionsViaLoadOptionsByPath).not.toHaveBeenCalled();
 	};
 
+	beforeEach(() => {
+		credentialsFinderService.findCredentialForUser.mockResolvedValue({
+			id: 'cred-123',
+			name: 'Seeded Sheets',
+			type: 'googleSheetsOAuth2Api',
+		} as never);
+	});
+
 	// An eval seeds a placeholder token, so a live lookup fails with a real provider
 	// auth error and the agent tells the user a "connected" credential is broken.
 	it('answers "not available" without a provider call for a credential the harness treats as connected', async () => {
@@ -293,9 +302,28 @@ describe('exploreResources — eval-seeded credential', () => {
 			shouldBypassCredentialTest: (credentialId) => credentialId === 'cred-123',
 		});
 
+		const lookup = ctx.nodeService.exploreResources!(baseParams);
+		await expect(lookup).rejects.toThrow('Resource exploration is not available.');
+		await expect(lookup).rejects.toBeInstanceOf(OperationalError);
+		expectNoProviderCall();
+	});
+
+	it('still rejects a bypassed credential the user cannot access', async () => {
+		credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+		const ctx = service.createContext(user, { shouldBypassCredentialTest: () => true });
+
 		await expect(ctx.nodeService.exploreResources!(baseParams)).rejects.toThrow(
-			'Resource exploration is not available.',
+			'Credential cred-123 not found or not accessible',
 		);
+		expectNoProviderCall();
+	});
+
+	it('still rejects a bypassed credential of another type', async () => {
+		const ctx = service.createContext(user, { shouldBypassCredentialTest: () => true });
+
+		await expect(
+			ctx.nodeService.exploreResources!({ ...baseParams, credentialType: 'slackApi' }),
+		).rejects.toThrow('Credential cred-123 not found or not accessible');
 		expectNoProviderCall();
 	});
 

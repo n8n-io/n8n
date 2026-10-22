@@ -149,6 +149,7 @@ import {
 	WEBHOOK_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	TimeoutExecutionCancelledError,
+	OperationalError,
 	UnexpectedError,
 	UserError,
 	isTriggerNodeType,
@@ -4329,9 +4330,11 @@ export class InstanceAiAdapterService {
 				// error and the agent tells the user the credential is broken. Answer as production
 				// does when exploration is unavailable, which gives no hint that this is an eval.
 				// Read per call: the harness registers bypasses mid-run. A seed marked broken is
-				// not on the list, so its lookup still fails for real.
+				// not on the list, so its lookup still fails for real. The access and type check
+				// still runs first, so a credential the user cannot use is rejected as usual.
 				if (shouldBypassCredentialTest?.(params.credentialId) === true) {
-					throw new Error(RESOURCE_EXPLORATION_UNAVAILABLE);
+					await this.nodeResourceExplorerService.assertExploreCredentialAccess(user, params);
+					throw new OperationalError(RESOURCE_EXPLORATION_UNAVAILABLE);
 				}
 				return await this.nodeResourceExplorerService.exploreResources(user, params);
 			},
