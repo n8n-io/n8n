@@ -258,6 +258,22 @@ const isRedactionSettingVisible = computed(() => settingsStore.isModuleActive('r
 
 const isEngineTypeSettingVisible = computed(() => settingsStore.isModuleActive('engine-v2'));
 
+const engineTypeOptions = computed(() => [
+	{ key: 'v1', value: i18n.baseText('workflowSettings.engineType.v1') },
+	{ key: 'v2', value: i18n.baseText('workflowSettings.engineType.v2') },
+]);
+
+// The backend runs a workflow without `engineType` on v1. Show that as v1, but write the
+// value only when the user selects an option.
+const engineType = computed({
+	get(): 'v1' | 'v2' {
+		return workflowSettings.value.engineType ?? 'v1';
+	},
+	set(value: 'v1' | 'v2') {
+		workflowSettings.value.engineType = value;
+	},
+});
+
 const isProductionRedactionLockedByFloor = computed(
 	() => instanceRedactionFloor.value === 'production' || instanceRedactionFloor.value === 'all',
 );
@@ -828,10 +844,6 @@ const toggleTimeout = () => {
 	workflowSettings.value.executionTimeout = workflowSettings.value.executionTimeout === -1 ? 0 : -1;
 };
 
-const toggleEngineType = (value: string | number | boolean) => {
-	workflowSettings.value.engineType = value === true ? 'v2' : 'v1';
-};
-
 const toggleAvailableInMCP = () => {
 	workflowSettings.value.availableInMCP = !workflowSettings.value.availableInMCP;
 };
@@ -1057,16 +1069,21 @@ onBeforeUnmount(() => {
 							<N8nIcon icon="circle-help" />
 						</N8nTooltip>
 					</ElCol>
-					<ElCol :span="14">
-						<div>
-							<ElSwitch
-								:disabled="isWorkflowSettingsReadOnly"
-								:label="i18n.baseText('workflowSettings.engineType')"
-								:model-value="workflowSettings.engineType === 'v2'"
-								data-test-id="workflow-settings-engine-type-switch"
-								@update:model-value="toggleEngineType"
-							></ElSwitch>
-						</div>
+					<ElCol :span="14" class="ignore-key-press-canvas">
+						<N8nSelect
+							v-model="engineType"
+							size="medium"
+							:disabled="isWorkflowSettingsReadOnly"
+							:limit-popper-width="true"
+							data-test-id="workflow-settings-engine-type-select"
+						>
+							<N8nOption
+								v-for="option in engineTypeOptions"
+								:key="option.key"
+								:label="option.value"
+								:value="option.key"
+							/>
+						</N8nSelect>
 					</ElCol>
 				</ElRow>
 				<ElRow>

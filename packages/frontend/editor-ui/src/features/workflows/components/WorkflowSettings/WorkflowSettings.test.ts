@@ -720,20 +720,36 @@ describe('WorkflowSettingsVue', () => {
 			expect(queryByTestId('workflow-settings-engine-type')).not.toBeInTheDocument();
 		});
 
+		it('should offer v1 and v2 (Beta) as engine type options', async () => {
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-engine-type-select'),
+			);
+
+			expect(dropdownItems).toHaveLength(2);
+			expect(dropdownItems[0]).toHaveTextContent('v1');
+			expect(dropdownItems[1]).toHaveTextContent('v2 (Beta)');
+		});
+
 		it.each([
-			['v2', 'true'],
-			['v1', 'false'],
-			[undefined, 'false'],
-		] as const)('should show the switch state for engineType %s', async (engineType, checked) => {
+			['v2', 'v2 (Beta)'],
+			['v1', 'v1'],
+			[undefined, 'v1'],
+		] as const)('should select the option for engineType %s', async (engineType, label) => {
 			workflowDocumentStore.setSettings(engineType ? { engineType } : {});
 
 			const { getByTestId } = createComponent({ pinia });
 			await flushPromises();
 
-			expect(getByTestId('workflow-settings-engine-type-switch')).toHaveAttribute(
-				'aria-checked',
-				checked,
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-engine-type-select'),
 			);
+			const selectedItem = Array.from(dropdownItems).find((item) =>
+				item.classList.contains('selected'),
+			);
+			expect(selectedItem).toHaveTextContent(label);
 		});
 
 		it.each([
@@ -741,16 +757,17 @@ describe('WorkflowSettingsVue', () => {
 			['v1', 'v2'],
 			['v2', 'v1'],
 		] as const)(
-			'should save engineType %s as %s after the switch changes',
+			'should save engineType %s as %s after the option is selected',
 			async (engineType, expected) => {
 				workflowDocumentStore.setSettings(engineType ? { engineType } : {});
 
 				const { getByTestId, getByRole } = createComponent({ pinia });
 				await flushPromises();
 
-				const engineTypeSwitch = getByTestId('workflow-settings-engine-type-switch');
-				await userEvent.click(engineTypeSwitch);
-				expect(engineTypeSwitch).toHaveAttribute('aria-checked', String(expected === 'v2'));
+				const dropdownItems = await getDropdownItems(
+					getByTestId('workflow-settings-engine-type-select'),
+				);
+				await userEvent.click(dropdownItems[expected === 'v2' ? 1 : 0]);
 				await userEvent.click(getByRole('button', { name: 'Save' }));
 
 				expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
@@ -762,7 +779,7 @@ describe('WorkflowSettingsVue', () => {
 			},
 		);
 
-		it('should not add engineType to the saved settings when the switch is untouched', async () => {
+		it('should not add engineType to the saved settings when the select is untouched', async () => {
 			const { getByRole } = createComponent({ pinia });
 			await flushPromises();
 
@@ -790,16 +807,18 @@ describe('WorkflowSettingsVue', () => {
 			);
 		});
 
-		it('should disable the switch if env is read-only', async () => {
+		it('should disable the select if env is read-only', async () => {
 			sourceControlStore.preferences.branchReadOnly = true;
 
 			const { getByTestId } = createComponent({ pinia });
 			await flushPromises();
 
-			expect(getByTestId('workflow-settings-engine-type-switch')).toBeDisabled();
+			expect(
+				within(getByTestId('workflow-settings-engine-type-select')).getByRole('combobox'),
+			).toBeDisabled();
 		});
 
-		it('should disable the switch if user has no permission to update workflow', async () => {
+		it('should disable the select if user has no permission to update workflow', async () => {
 			const readOnlyWorkflow = createTestWorkflow({
 				id: '1',
 				name: 'Test Workflow',
@@ -812,7 +831,9 @@ describe('WorkflowSettingsVue', () => {
 			const { getByTestId } = createComponent({ pinia });
 			await flushPromises();
 
-			expect(getByTestId('workflow-settings-engine-type-switch')).toBeDisabled();
+			expect(
+				within(getByTestId('workflow-settings-engine-type-select')).getByRole('combobox'),
+			).toBeDisabled();
 		});
 	});
 
