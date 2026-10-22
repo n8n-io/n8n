@@ -167,6 +167,7 @@ export class AgentPublishController {
 			query.skip,
 		);
 	}
+
 	@Get('/:agentId/versions/:versionId')
 	@ProjectScope('agent:read')
 	async getVersion(
