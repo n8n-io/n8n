@@ -110,7 +110,7 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 		ctx: OperationContext,
 	): Promise<boolean> {
 		const investigations = await this.managerFor(ctx).find(SelfHealingInvestigation, {
-			select: { baseline: true },
+			select: ['baseline'],
 			where: {
 				result: {
 					workflowId,
