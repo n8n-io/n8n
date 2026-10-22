@@ -192,6 +192,7 @@ onBeforeUnmount(() => {
 				<PromotionReviewDetail
 					v-else-if="selectedPromotionItem && !store.disabledSources.includes('promotion_review')"
 					:item="selectedPromotionItem"
+					:on-item-change="onItemChange"
 				/>
 				<template v-else>
 					<div :class="$style.columnTitle" />

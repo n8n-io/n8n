@@ -1,9 +1,16 @@
 <script setup lang="ts">
 import type { InboxPromotionReviewItem, PromotionReviewState } from '@n8n/api-types';
+import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nAvatar,
 	N8nBadge,
+	N8nButton,
 	N8nCallout,
+	N8nDialog,
+	N8nDialogDescription,
+	N8nDialogFooter,
+	N8nDialogHeader,
+	N8nDialogTitle,
 	N8nExternalLink,
 	N8nHeading,
 	N8nTabs,
@@ -12,12 +19,21 @@ import {
 } from '@n8n/design-system';
 import { componentRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
-import { computed } from 'vue';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { computed, ref, useId } from 'vue';
 
-import { formatUserDisplayName } from '../reviews/workflowReviews.utils';
+import type { InboxItemChange } from '../inbox.constants';
+import { formatUserDisplayName, toError } from '../reviews/workflowReviews.utils';
+import { approvePromotionReview } from './promotionReviews.api';
 
-defineProps<{ item: InboxPromotionReviewItem }>();
+const props = defineProps<{
+	item: InboxPromotionReviewItem;
+	onItemChange: (change: InboxItemChange) => void;
+}>();
 const i18n = useI18n();
+const { showError } = useToast();
+const rootStore = useRootStore();
+const disabledReasonId = useId();
 
 const stateBadge: Record<PromotionReviewState, BadgeVariant> = {
 	open: 'info',
@@ -32,6 +48,56 @@ const PromotionChanges = computed(() => componentRegistry.get('promotion-changes
 const tabOptions = computed(() => [
 	{ label: i18n.baseText('inbox.promotionReview.detail.tabs.changes'), value: 'changes' as const },
 ]);
+
+/** What the admin confirms. A later change of the selected row does not change it. */
+const pendingApproval = ref<{ id: string; headCommitSha: string } | null>(null);
+const approving = ref(false);
+
+const disabledReason = computed(() => {
+	const { item } = props;
+	if (item.reviewState === 'changes_requested') {
+		return i18n.baseText('inbox.promotionReview.approve.disabled.changesRequested');
+	}
+	if (item.hasConflicts) return i18n.baseText('inbox.promotionReview.approve.disabled.conflicts');
+	if (item.remoteError) {
+		return i18n.baseText(`inbox.promotionReview.remoteError.${item.remoteError}`);
+	}
+	if (!item.headCommitSha) {
+		return i18n.baseText('inbox.promotionReview.approve.disabled.noHeadCommit');
+	}
+	return null;
+});
+
+function openApproval() {
+	const { id, headCommitSha } = props.item;
+	if (headCommitSha) pendingApproval.value = { id, headCommitSha };
+}
+
+// A close cannot stop GitLab, so the dialog stays open until the request ends.
+function closeApproval() {
+	if (!approving.value) pendingApproval.value = null;
+}
+
+async function onApprove() {
+	if (!pendingApproval.value || approving.value) return;
+	const { id, headCommitSha } = pendingApproval.value;
+	// The Inbox can reconcile this result after the viewer selects another item.
+	const onItemChange = props.onItemChange;
+	approving.value = true;
+	try {
+		const { state, updatedAt } = await approvePromotionReview(rootStore.restApiContext, id, {
+			headCommitSha,
+		});
+		onItemChange({ type: 'promotion_review', id, state, updatedAt });
+	} catch (error: unknown) {
+		showError(toError(error), i18n.baseText('inbox.promotionReview.approve.error.title'));
+		// Reload the list, so the next attempt uses the current state from GitLab.
+		onItemChange({ type: 'promotion_review', id });
+	} finally {
+		approving.value = false;
+		pendingApproval.value = null;
+	}
+}
 </script>
 
 <template>
@@ -44,15 +110,39 @@ const tabOptions = computed(() => [
 				<N8nBadge :variant="stateBadge[item.reviewState]" size="xxsmall">
 					{{ i18n.baseText(`inbox.promotionReview.state.${item.reviewState}`) }}
 				</N8nBadge>
-				<N8nExternalLink
-					v-if="item.webUrl"
-					:class="$style.gitlabLink"
-					:href="item.webUrl"
-					size="small"
-				>
-					{{ i18n.baseText('inbox.promotionReview.detail.openInGitLab') }}
-				</N8nExternalLink>
+				<div :class="$style.actions">
+					<N8nExternalLink
+						v-if="item.webUrl"
+						:class="$style.gitlabLink"
+						:href="item.webUrl"
+						size="small"
+					>
+						{{ i18n.baseText('inbox.promotionReview.detail.openInGitLab') }}
+					</N8nExternalLink>
+					<N8nButton
+						v-if="item.state === 'open'"
+						size="small"
+						:disabled="!!disabledReason"
+						:loading="approving"
+						:aria-describedby="disabledReason ? disabledReasonId : undefined"
+						data-test-id="inbox-promotion-review-approve"
+						@click="openApproval"
+					>
+						{{ i18n.baseText('inbox.promotionReview.approve.button') }}
+					</N8nButton>
+				</div>
 			</div>
+			<!-- Visible text, not a tooltip: a disabled button cannot take keyboard focus. -->
+			<N8nText
+				v-if="item.state === 'open' && disabledReason"
+				:id="disabledReasonId"
+				:class="$style.disabledReason"
+				size="small"
+				color="text-light"
+				data-test-id="inbox-promotion-review-approve-reason"
+			>
+				{{ disabledReason }}
+			</N8nText>
 			<div :class="$style.meta">
 				<span v-if="item.environmentName" :class="$style.metaItem">
 					<N8nText size="small" color="text-light">
@@ -100,6 +190,36 @@ const tabOptions = computed(() => [
 			/>
 		</div>
 		<component :is="PromotionChanges" :class="$style.changes" :review-id="item.id" />
+		<N8nDialog
+			:open="!!pendingApproval"
+			size="small"
+			:show-close-button="false"
+			:close-on-overlay-click="!approving"
+			:close-on-escape="!approving"
+			@update:open="closeApproval"
+		>
+			<N8nDialogHeader>
+				<N8nDialogTitle>
+					{{ i18n.baseText('inbox.promotionReview.approve.confirm.title') }}
+				</N8nDialogTitle>
+				<N8nDialogDescription>
+					{{ i18n.baseText('inbox.promotionReview.approve.confirm.description') }}
+				</N8nDialogDescription>
+			</N8nDialogHeader>
+			<N8nDialogFooter>
+				<N8nButton
+					variant="outline"
+					:label="i18n.baseText('generic.cancel')"
+					:disabled="approving"
+					@click="closeApproval"
+				/>
+				<N8nButton
+					:label="i18n.baseText('inbox.promotionReview.approve.button')"
+					:loading="approving"
+					@click="onApprove"
+				/>
+			</N8nDialogFooter>
+		</N8nDialog>
 	</section>
 </template>
 
@@ -143,8 +263,18 @@ const tabOptions = computed(() => [
 	min-height: var(--spacing--xl);
 }
 
-.gitlabLink {
+.actions {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--xs);
 	margin-left: auto;
+}
+
+.disabledReason {
+	align-self: flex-end;
+}
+
+.gitlabLink {
 	/* A standalone external link takes the font size around it. The text next to it is smaller. */
 	font-size: var(--font-size--sm);
 	white-space: nowrap;

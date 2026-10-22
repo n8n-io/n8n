@@ -1,5 +1,7 @@
 import {
+	ApprovePromotionReviewDto,
 	PromotionReviewDetailsRequestDto,
+	type InboxPromotionReviewItem,
 	type PromotionResourceDetails,
 	type PromotionReviewChanges,
 } from '@n8n/api-types';
@@ -9,10 +11,26 @@ import { Body, Get, GlobalScope, Licensed, Param, Post, RestController } from '@
 import type { Response } from 'express';
 
 import { PromotionReviewChangesService } from './promotion-review-changes.service';
+import { PromotionReviewInboxService } from './promotion-review-inbox.service';
 
 @RestController('/promotions/reviews')
 export class PromotionReviewsController {
-	constructor(private readonly changes: PromotionReviewChangesService) {}
+	constructor(
+		private readonly reviews: PromotionReviewInboxService,
+		private readonly changes: PromotionReviewChangesService,
+	) {}
+
+	@Post('/:reviewId/approve')
+	@GlobalScope('gitConnection:approveReviews')
+	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	async approve(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('reviewId') reviewId: string,
+		@Body body: ApprovePromotionReviewDto,
+	): Promise<InboxPromotionReviewItem> {
+		return await this.reviews.approve(req.user, reviewId, body);
+	}
 
 	@Get('/:reviewId/changes')
 	@GlobalScope('gitConnection:readReviews')

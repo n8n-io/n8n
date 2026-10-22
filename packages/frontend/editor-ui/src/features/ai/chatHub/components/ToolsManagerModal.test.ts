@@ -17,6 +17,7 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import type { ChatHubToolDto } from '@n8n/api-types';
 import { createToolSettingsStub } from '../__tests__/toolSettingsStub';
 import { hasRole } from '@/app/utils/rbac/checks/hasRole';
+import { useUsersStore } from '@n8n/stores/users.store';
 
 vi.mock('virtual:node-popularity-data', () => ({
 	default: [
@@ -74,6 +75,11 @@ vi.mock('@n8n/composables/useToast', () => ({
 
 vi.mock('@/app/utils/rbac/checks/hasRole', () => ({
 	hasRole: vi.fn().mockReturnValue(false),
+}));
+
+const mockInstallNode = vi.fn();
+vi.mock('@/features/settings/communityNodes/composables/useInstallNode', () => ({
+	useInstallNode: () => ({ installNode: mockInstallNode, loading: { value: false } }),
 }));
 
 vi.mock('uuid', () => ({
@@ -682,6 +688,67 @@ describe('ToolsManagerModal', () => {
 			expect(availableItems[0].textContent).toContain('Tool A');
 			expect(availableItems[1].textContent).toContain('Tool B');
 			expect(container.querySelector('[data-test-id="node-restricted-icon"]')).toBeNull();
+		});
+	});
+
+	describe('community tool install', () => {
+		const PREVIEW_TOOL: INodeTypeDescription = {
+			...TOOL_NODE_TYPE_A,
+			displayName: 'Firecrawl',
+			name: 'n8n-nodes-firecrawl-preview.firecrawlTool',
+		};
+		const INSTALLED_TOOL: INodeTypeDescription = {
+			...PREVIEW_TOOL,
+			name: 'n8n-nodes-firecrawl.firecrawlTool',
+		};
+
+		beforeEach(() => {
+			mockRestrictedNodeTypes();
+			mockedStore(useUsersStore).isAdminOrOwner = true;
+			nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
+				[NodeConnectionTypes.AiTool]: [PREVIEW_TOOL.name],
+			};
+			nodeTypesStore.getNodeType = vi.fn().mockImplementation((name: string) => {
+				if (name === PREVIEW_TOOL.name) return PREVIEW_TOOL;
+				if (name === INSTALLED_TOOL.name) return INSTALLED_TOOL;
+				return null;
+			});
+			nodeTypesStore.communityNodeType = vi
+				.fn()
+				.mockReturnValue({ packageName: 'n8n-nodes-firecrawl' } as never);
+			nodeTypesStore.fetchCommunityNodePreviews = vi.fn().mockResolvedValue(undefined);
+		});
+
+		async function installPreviewTool() {
+			const { getByTestId, queryByTestId } = renderComponent({ props: defaultProps() });
+			await userEvent.click(getByTestId('chat-tool-install-button'));
+			await flushPromises();
+			return { queryByTestId };
+		}
+
+		it('opens the settings view for an installed tool that no policy restricts', async () => {
+			mockInstallNode.mockResolvedValue({ success: true, restricted: false });
+
+			const { queryByTestId } = await installPreviewTool();
+
+			expect(mockInstallNode).toHaveBeenCalledWith(
+				expect.objectContaining({
+					packageName: 'n8n-nodes-firecrawl',
+					selectedNodeType: PREVIEW_TOOL.name,
+				}),
+			);
+			await waitFor(() => {
+				expect(queryByTestId('tool-settings-content')).toBeTruthy();
+			});
+		});
+
+		it('adds nothing and shows no second warning when the install reports the tool as restricted', async () => {
+			mockInstallNode.mockResolvedValue({ success: true, restricted: true });
+
+			const { queryByTestId } = await installPreviewTool();
+
+			expect(queryByTestId('tool-settings-content')).toBeNull();
+			expect(mockShowMessage).not.toHaveBeenCalled();
 		});
 	});
 });

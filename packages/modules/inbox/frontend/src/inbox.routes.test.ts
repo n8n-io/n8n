@@ -110,6 +110,9 @@ it('links a promotion review row to its detail route', () => {
 		requester: null,
 		approver: null,
 		remoteError: null,
+		headCommitSha: null,
+		runCommitSha: null,
+		hasConflicts: false,
 		createdAt: '',
 		updatedAt: '',
 	});
