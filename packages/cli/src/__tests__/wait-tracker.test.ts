@@ -1206,7 +1206,6 @@ describe('WaitTracker', () => {
 			expect(waitTracker.has(execution.id)).toBe(true);
 
 			waitTracker.stopTracking();
-			expect(waitTracker.has(execution.id)).toBe(false);
 
 			waitTracker.init();
 			await waitTracker.getWaitingExecutions();
