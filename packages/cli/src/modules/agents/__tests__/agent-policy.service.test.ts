@@ -6,7 +6,7 @@ import type { PolicyEnforcementBackend } from '@/policy/policy-enforcement-backe
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 
-import { AgentPolicyService, deniedNodeTypes, restrictionReason } from '../agent-policy.service';
+import { AgentPolicyService, deniedNodeTypes } from '../agent-policy.service';
 
 vi.mock('@/node-execution/resolve-tool-node-type', () => ({
 	resolveToolNodeType: (nodeType: string) => nodeType,
@@ -180,18 +180,5 @@ describe('deniedNodeTypes', () => {
 		['no subject', { ...violation, subject: undefined }],
 	])('ignores a violation with %s', (_label, ignored) => {
 		expect(deniedNodeTypes({ violations: [ignored] }).size).toBe(0);
-	});
-});
-
-describe('restrictionReason', () => {
-	it.each([
-		['instance', 'restricted_by_instance'],
-		['project', 'restricted_by_project'],
-	])('maps the %s scope to its reason', (scope, expected) => {
-		expect(restrictionReason({ ...violation, scope })).toBe(expected);
-	});
-
-	it.each([undefined, 'workspace'])('reports no reason for the scope %p', (scope) => {
-		expect(restrictionReason({ ...violation, scope })).toBeUndefined();
 	});
 });

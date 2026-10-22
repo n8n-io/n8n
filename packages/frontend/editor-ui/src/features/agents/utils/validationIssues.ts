@@ -1,8 +1,4 @@
-import type {
-	AgentConfigValidationIssue,
-	AgentJsonConfig,
-	NodeTypeAvailabilityScope,
-} from '@n8n/api-types';
+import type { AgentConfigValidationIssue, AgentJsonConfig } from '@n8n/api-types';
 
 /**
  * A workflow blocking the publish: its tool is attached, but the workflow has
@@ -15,21 +11,9 @@ export type UnpublishedWorkflowTool = {
 	workflowId?: string;
 };
 
-const RESTRICTION_SCOPES: Record<string, NodeTypeAvailabilityScope> = {
-	restricted_by_instance: 'instance',
-	restricted_by_project: 'project',
-};
-
 /** A policy denies the node type this capability runs as, so it cannot publish or preview. */
 export function isRestrictedIssue(issue: AgentConfigValidationIssue): boolean {
 	return issue.code === 'restricted_node_type';
-}
-
-/** The level that denied the type, for the restriction popover. Absent when the policy names none. */
-export function restrictionScope(
-	issue: AgentConfigValidationIssue,
-): NodeTypeAvailabilityScope | undefined {
-	return issue.reason ? RESTRICTION_SCOPES[issue.reason] : undefined;
 }
 
 /**

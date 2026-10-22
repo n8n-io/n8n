@@ -29,7 +29,7 @@ import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
 import { AGENT_SUB_AGENTS_MODAL_KEY } from '../constants';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 import { inlineAgentToolTypes } from '../utils/inlineAgentToolTypes';
-import { isRestrictedIssue, isWarningIssue, restrictionScope } from '../utils/validationIssues';
+import { isRestrictedIssue, isWarningIssue } from '../utils/validationIssues';
 import type {
 	ToolMenuItem,
 	ToolOpenTarget,
@@ -241,9 +241,9 @@ function reportedRestriction(issue: AgentConfigValidationIssue): ChipRestriction
 	}
 	return {
 		restricted: true,
-		scope: restrictionScope(issue),
+		scope: issue.restriction?.scope,
 		message: '',
-		subject: issue.subject ?? '',
+		subject: issue.restriction?.nodeType ?? '',
 	};
 }
 

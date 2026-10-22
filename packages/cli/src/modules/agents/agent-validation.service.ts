@@ -10,9 +10,11 @@ import {
 	getWorkflowToolIncompatibilityReason,
 	isDraftAgentConfig,
 	isDraftIntegration,
+	nodeTypeAvailabilityScopeSchema,
 	type AgentConfigValidationIssue,
 	type AgentConfigValidationIssueCode,
 	type AgentConfigValidationResponse,
+	type AgentConfigValidationRestriction,
 	type AgentConfigValidationWarning,
 	type AgentIntegrationConfig,
 	type AgentTaskConfig,
@@ -22,6 +24,7 @@ import {
 	type AgentSkill,
 } from '@n8n/api-types';
 import { WorkflowRepository, type WorkflowEntity } from '@n8n/db';
+import type { PolicyViolation } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import {
 	isMcpOAuth2Authentication,
@@ -37,7 +40,7 @@ import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { AgentDefinitionService } from './agent-definition.service';
-import { AgentPolicyService, deniedNodeTypes, restrictionReason } from './agent-policy.service';
+import { AgentPolicyService, deniedNodeTypes } from './agent-policy.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
 import {
 	getAgentDefinitionContent,
@@ -80,15 +83,24 @@ function issue(
 	path: string,
 	capability: AgentConfigValidationIssue['capability'],
 	reason?: string,
-	subject?: string,
+	restriction?: AgentConfigValidationRestriction,
 ): AgentConfigValidationIssue {
 	return {
 		code,
 		path,
 		capability,
 		...(reason === undefined ? {} : { reason }),
-		...(subject === undefined ? {} : { subject }),
+		...(restriction === undefined ? {} : { restriction }),
 	};
+}
+
+/** A scope the API does not know is dropped rather than passed on as an open string. */
+function toRestriction(
+	nodeType: string,
+	violation: PolicyViolation,
+): AgentConfigValidationRestriction {
+	const scope = nodeTypeAvailabilityScopeSchema.safeParse(violation.scope);
+	return scope.success ? { nodeType, scope: scope.data } : { nodeType };
 }
 
 function agentIssue(
@@ -661,7 +673,7 @@ export class AgentValidationService {
 		const firstDenied = (nodes: readonly { type: string }[]) => {
 			for (const node of nodes) {
 				const violation = denied.get(node.type);
-				if (violation) return violation;
+				if (violation) return toRestriction(node.type, violation);
 			}
 			return undefined;
 		};
@@ -673,13 +685,13 @@ export class AgentValidationService {
 			if (tool.type !== 'node') continue;
 
 			const own = toPolicedNodes([tool]);
-			const ownViolation = firstDenied(own);
+			const ownRestriction = firstDenied(own);
 			// An inline agent's own tools run under the tool that embeds them, so the parent carries
 			// the issue: a violation names a type, never the entry that holds it. It reads as its own
 			// reason, because the tool itself stays usable and editable — the fix is to open it and
 			// drop the embedded tool.
-			const violation = ownViolation ?? firstDenied(withInlineAgentToolNodes(own));
-			if (!violation) continue;
+			const restriction = ownRestriction ?? firstDenied(withInlineAgentToolNodes(own));
+			if (!restriction) continue;
 
 			toolIndexes.add(index);
 			issues.push(
@@ -687,16 +699,16 @@ export class AgentValidationService {
 					'restricted_node_type',
 					`tools.${index}.node.nodeType`,
 					{ kind: 'tool', id: tool.name, index, toolType: 'node' },
-					ownViolation ? restrictionReason(ownViolation) : 'restricted_by_inline_tool',
-					violation.subject,
+					ownRestriction ? undefined : 'restricted_by_inline_tool',
+					restriction,
 				),
 			);
 		}
 
 		const servers = config.mcpServers ?? [];
 		for (let index = 0; index < servers.length; index++) {
-			const violation = firstDenied(toPolicedNodes([], [servers[index]]));
-			if (!violation) continue;
+			const restriction = firstDenied(toPolicedNodes([], [servers[index]]));
+			if (!restriction) continue;
 
 			mcpIndexes.add(index);
 			issues.push(
@@ -704,8 +716,8 @@ export class AgentValidationService {
 					'restricted_node_type',
 					`mcpServers.${index}`,
 					{ kind: 'mcpServer', id: servers[index].name, index },
-					restrictionReason(violation),
-					violation.subject,
+					undefined,
+					restriction,
 				),
 			);
 		}

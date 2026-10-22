@@ -30,9 +30,9 @@ const STUBS = {
 
 const restrictedIssue: AgentConfigValidationIssue = {
 	code: 'restricted_node_type',
-	reason: 'restricted_by_instance',
 	path: 'tools.0.node.nodeType',
 	capability: { kind: 'tool', toolType: 'node', id: 'Post message', index: 0 },
+	restriction: { nodeType: 'n8n-nodes-base.slackTool', scope: 'instance' },
 };
 
 async function renderComponent(
@@ -85,9 +85,9 @@ describe('AgentPreviewButton', () => {
 			validationIssues: [
 				{
 					code: 'restricted_node_type',
-					reason: 'restricted_by_project',
 					path: 'mcpServers.0',
 					capability: { kind: 'mcpServer', id: 'Docs', index: 0 },
+					restriction: { nodeType: '@n8n/n8n-nodes-langchain.mcpClientTool', scope: 'project' },
 				},
 			],
 		});

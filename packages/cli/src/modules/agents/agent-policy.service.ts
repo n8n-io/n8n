@@ -94,10 +94,3 @@ export function deniedNodeTypes(decision: PolicyDecision): Map<string, PolicyVio
 
 	return denied;
 }
-
-/** The scope-qualified reason for a `restricted_node_type` issue, absent when the scope is unknown. */
-export function restrictionReason(violation: PolicyViolation): string | undefined {
-	if (violation.scope === 'instance') return 'restricted_by_instance';
-	if (violation.scope === 'project') return 'restricted_by_project';
-	return undefined;
-}

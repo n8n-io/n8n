@@ -1534,34 +1534,42 @@ describe('AgentCapabilitiesSection — restricted node types', () => {
 			.join(' ');
 	}
 
-	const restrictedToolIssue = (index: number, reason: string) => ({
+	const restrictedToolIssue = (index: number, scope: 'instance' | 'project') => ({
 		code: 'restricted_node_type' as const,
-		reason,
 		path: `tools.${index}.node.nodeType`,
 		capability: { kind: 'tool' as const, index, toolType: 'node' as const, id: 'Slack' },
+		restriction: { nodeType: 'n8n-nodes-base.slackTool', scope },
 	});
 
-	it.each([
-		['restricted_by_instance', 'instance'],
-		['restricted_by_project', 'project'],
-	])('locks a tool chip and shows the %s scope', async (reason, scope) => {
-		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
-		const wrapper = mountSection([slackTool('send_message')], {}, null, [], [], {
-			validationIssues: [restrictedToolIssue(0, reason)],
-		});
-		await flushPromises();
-
-		expect(wrapper.find('[data-test-id="node-restricted-icon"]').exists()).toBe(true);
-		expect(lockText(wrapper)).toContain(
-			`typeAvailabilityPolicies.restrictedNode.agentTool.${scope}`,
-		);
-		expect(lockText(wrapper)).toContain('Slack');
+	const inlineRestrictedToolIssue = (index: number) => ({
+		code: 'restricted_node_type' as const,
+		reason: 'restricted_by_inline_tool',
+		path: `tools.${index}.node.nodeType`,
+		capability: { kind: 'tool' as const, index, toolType: 'node' as const, id: 'Slack' },
+		restriction: { nodeType: 'n8n-nodes-base.slackTool' },
 	});
+
+	it.each(['instance', 'project'] as const)(
+		'locks a tool chip and shows the %s scope',
+		async (scope) => {
+			getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+			const wrapper = mountSection([slackTool('send_message')], {}, null, [], [], {
+				validationIssues: [restrictedToolIssue(0, scope)],
+			});
+			await flushPromises();
+
+			expect(wrapper.find('[data-test-id="node-restricted-icon"]').exists()).toBe(true);
+			expect(lockText(wrapper)).toContain(
+				`typeAvailabilityPolicies.restrictedNode.agentTool.${scope}`,
+			);
+			expect(lockText(wrapper)).toContain('Slack');
+		},
+	);
 
 	it('dims the restricted chip', async () => {
 		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
 		const wrapper = mountSection([slackTool('send_message')], {}, null, [], [], {
-			validationIssues: [restrictedToolIssue(0, 'restricted_by_instance')],
+			validationIssues: [restrictedToolIssue(0, 'instance')],
 		});
 		await flushPromises();
 
@@ -1572,7 +1580,7 @@ describe('AgentCapabilitiesSection — restricted node types', () => {
 	it('shows the lock alone, without the error icon of an invalid chip', async () => {
 		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
 		const wrapper = mountSection([slackTool('send_message')], {}, null, [], [], {
-			validationIssues: [restrictedToolIssue(0, 'restricted_by_instance')],
+			validationIssues: [restrictedToolIssue(0, 'instance')],
 		});
 		await flushPromises();
 
@@ -1599,10 +1607,7 @@ describe('AgentCapabilitiesSection — restricted node types', () => {
 			[],
 			[],
 			{
-				validationIssues: [
-					restrictedToolIssue(0, 'restricted_by_instance'),
-					restrictedToolIssue(1, 'restricted_by_instance'),
-				],
+				validationIssues: [restrictedToolIssue(0, 'instance'), restrictedToolIssue(1, 'instance')],
 			},
 		);
 		await flushPromises();
@@ -1620,10 +1625,7 @@ describe('AgentCapabilitiesSection — restricted node types', () => {
 			[],
 			[],
 			{
-				validationIssues: [
-					restrictedToolIssue(0, 'restricted_by_instance'),
-					restrictedToolIssue(1, 'restricted_by_instance'),
-				],
+				validationIssues: [restrictedToolIssue(0, 'instance'), restrictedToolIssue(1, 'instance')],
 			},
 			document.body,
 		);
@@ -1643,7 +1645,7 @@ describe('AgentCapabilitiesSection — restricted node types', () => {
 	it('does not open the tool when the lock itself is clicked', async () => {
 		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
 		const wrapper = mountSection([slackTool('send_message')], {}, null, [], [], {
-			validationIssues: [restrictedToolIssue(0, 'restricted_by_instance')],
+			validationIssues: [restrictedToolIssue(0, 'instance')],
 		});
 		await flushPromises();
 
@@ -1671,7 +1673,7 @@ describe('AgentCapabilitiesSection — restricted node types', () => {
 		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
 		storeRestrictions.set('n8n-nodes-base.slackTool', { scope: 'project' });
 		const wrapper = mountSection([slackTool('send_message')], {}, null, [], [], {
-			validationIssues: [restrictedToolIssue(0, 'restricted_by_instance')],
+			validationIssues: [restrictedToolIssue(0, 'instance')],
 		});
 		await flushPromises();
 
@@ -1683,7 +1685,7 @@ describe('AgentCapabilitiesSection — restricted node types', () => {
 	it('labels an inline restriction with plain text, not the node popover', async () => {
 		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
 		const wrapper = mountSection([slackTool('ask_billing_agent')], {}, null, [], [], {
-			validationIssues: [restrictedToolIssue(0, 'restricted_by_inline_tool')],
+			validationIssues: [inlineRestrictedToolIssue(0)],
 		});
 		await flushPromises();
 
@@ -1702,7 +1704,7 @@ describe('AgentCapabilitiesSection — restricted node types', () => {
 			null,
 			[],
 			[],
-			{ validationIssues: [restrictedToolIssue(0, 'restricted_by_inline_tool')] },
+			{ validationIssues: [inlineRestrictedToolIssue(0)] },
 		);
 		await flushPromises();
 
@@ -1768,10 +1770,9 @@ describe('AgentCapabilitiesSection — restricted node types', () => {
 			validationIssues: [
 				{
 					code: 'restricted_node_type',
-					reason: 'restricted_by_instance',
 					path: 'mcpServers.0',
 					capability: { kind: 'mcpServer', id: 'GitHub', index: 0 },
-					subject: '@n8n/n8n-nodes-langchain.mcpClientTool',
+					restriction: { nodeType: '@n8n/n8n-nodes-langchain.mcpClientTool', scope: 'instance' },
 				},
 			],
 		});
@@ -1796,9 +1797,9 @@ describe('AgentCapabilitiesSection — restricted node types', () => {
 			validationIssues: [
 				{
 					code: 'restricted_node_type',
-					reason: 'restricted_by_project',
 					path: 'mcpServers.0',
 					capability: { kind: 'mcpServer', id: 'Docs', index: 0 },
+					restriction: { nodeType: '@n8n/n8n-nodes-langchain.mcpClientTool', scope: 'project' },
 				},
 			],
 		});

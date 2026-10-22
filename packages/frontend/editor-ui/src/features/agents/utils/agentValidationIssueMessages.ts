@@ -40,8 +40,6 @@ const REASON_SPECIFIC_KEYS: Record<string, BaseTextKey> = {
 	no_supported_trigger:
 		'agents.builder.validation.issue.tool.workflow.noSupportedTrigger' as BaseTextKey,
 	not_published: 'agents.builder.validation.issue.tool.workflow.notPublished' as BaseTextKey,
-	restricted_by_instance: 'agents.builder.validation.issue.restrictedByInstance' as BaseTextKey,
-	restricted_by_project: 'agents.builder.validation.issue.restrictedByProject' as BaseTextKey,
 	restricted_by_inline_tool:
 		'agents.builder.validation.issue.restrictedByInlineTool' as BaseTextKey,
 };

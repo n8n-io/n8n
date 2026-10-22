@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { nodeTypeAvailabilityScopeSchema } from '../node-type-availability';
+
 /**
  * Capability areas an agent configuration issue can be attributed to. Mirrors
  * the sections rendered by `AgentCapabilitiesSection` plus `agent`, the core
@@ -44,6 +46,21 @@ export type AgentConfigValidationCapabilityRef = z.infer<
 	typeof agentConfigValidationCapabilityRefSchema
 >;
 
+export const agentConfigValidationRestrictionSchema = z.object({
+	/**
+	 * The denied node type, which is not always the type the entry itself runs as. An MCP
+	 * server is denied as the MCP client while its own registry type stays allowed, and a tool
+	 * can be denied by what its inline agent holds. Frontends resolve it to a display name;
+	 * never show it raw.
+	 */
+	nodeType: z.string(),
+	/** The level that denied the type. Absent when the policy names none. */
+	scope: nodeTypeAvailabilityScopeSchema.optional(),
+});
+export type AgentConfigValidationRestriction = z.infer<
+	typeof agentConfigValidationRestrictionSchema
+>;
+
 export const agentConfigValidationIssueSchema = z.object({
 	code: agentConfigValidationIssueCodeSchema,
 	/** Config dot-path, or a legacy `skill:<id>` token for backward compatibility. */
@@ -52,22 +69,15 @@ export const agentConfigValidationIssueSchema = z.object({
 	/**
 	 * Stable, machine-readable sub-reason for `incompatible_reference` issues
 	 * (e.g. `'incompatible_nodes'`, `'no_supported_trigger'`, `'not_published'`
-	 * for workflow tools), and for `restricted_node_type` the level that denied
-	 * the type (`'restricted_by_instance'`, `'restricted_by_project'`), absent
-	 * when the level is unknown. `'restricted_by_inline_tool'` instead means the
-	 * entry itself is allowed and embeds an agent that holds a denied type.
+	 * for workflow tools). For `restricted_node_type`, `'restricted_by_inline_tool'`
+	 * means the entry itself is allowed and embeds an agent that holds a denied type.
 	 * Values are qualified by their code because frontends resolve this field
-	 * before the code.
+	 * before the code. Absent when the code itself is specific enough.
 	 * Frontends map this to a reason-specific i18n key; never display it raw.
 	 */
 	reason: z.string().optional(),
-	/**
-	 * What a policy named, for `restricted_node_type`: the denied node type, which is not always
-	 * the type the entry itself runs as. An MCP server is denied as the MCP client while its own
-	 * registry type stays allowed, and a tool can be denied by what its inline agent holds.
-	 * Frontends resolve it to a display name; never show it raw.
-	 */
-	subject: z.string().optional(),
+	/** Present only on `restricted_node_type` issues. */
+	restriction: agentConfigValidationRestrictionSchema.optional(),
 });
 export type AgentConfigValidationIssue = z.infer<typeof agentConfigValidationIssueSchema>;
 

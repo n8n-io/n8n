@@ -314,23 +314,23 @@ describe('AgentValidationTooltip — restricted node types', () => {
 		code: 'restricted_node_type',
 		path: 'tools.1.node.nodeType',
 		capability: { kind: 'tool', toolType: 'node', id: 'query_database', index: 1 },
+		restriction: { nodeType: 'n8n-nodes-base.postgresTool', scope: 'instance' },
 		...(reason === undefined ? {} : { reason }),
 	});
 
-	const mcpIssue = (reason: string): AgentConfigValidationIssue => ({
+	const mcpIssue: AgentConfigValidationIssue = {
 		code: 'restricted_node_type',
 		path: 'mcpServers.0',
 		capability: { kind: 'mcpServer', id: 'Docs', index: 0 },
-		reason,
-	});
+		restriction: { nodeType: '@n8n/n8n-nodes-langchain.mcpClientTool', scope: 'project' },
+	};
 
+	// The chip names the scope, so the tooltip copy stays the same whatever level denied the type.
 	it.each([
-		['publish', 'restricted_by_instance', 'agents.publish.issue.restrictedByInstance'],
-		['publish', 'restricted_by_project', 'agents.publish.issue.restrictedByProject'],
-		['preview', 'restricted_by_instance', 'agents.builder.preview.issue.restrictedByInstance'],
-		['preview', 'restricted_by_project', 'agents.builder.preview.issue.restrictedByProject'],
-	] as const)('names the %s reason for a tool denied at %s level', (action, reason, key) => {
-		const wrapper = mountTooltip({ action, issues: [toolIssue(reason)] });
+		['publish', 'agents.publish.issue.restrictedNodeType'],
+		['preview', 'agents.builder.preview.issue.restrictedNodeType'],
+	] as const)('names a restricted tool in the %s copy', (action, key) => {
+		const wrapper = mountTooltip({ action, issues: [toolIssue()] });
 
 		expect(wrapper.get('[data-testid="stub-tooltip-content"]').text()).toContain(key);
 	});
@@ -338,24 +338,11 @@ describe('AgentValidationTooltip — restricted node types', () => {
 	it.each([
 		['publish', 'agents.publish.issue.restrictedNodeType'],
 		['preview', 'agents.builder.preview.issue.restrictedNodeType'],
-	] as const)('falls back to the scope-less %s copy when no scope is reported', (action, key) => {
-		const wrapper = mountTooltip({ action, issues: [toolIssue()] });
+	] as const)('names a restricted MCP server in the %s copy', (action, key) => {
+		const wrapper = mountTooltip({ action, issues: [mcpIssue] });
 
 		expect(wrapper.get('[data-testid="stub-tooltip-content"]').text()).toContain(key);
 	});
-
-	it.each(['publish', 'preview'] as const)(
-		'names a restricted MCP server in the %s copy',
-		(action) => {
-			const wrapper = mountTooltip({ action, issues: [mcpIssue('restricted_by_instance')] });
-			const key =
-				action === 'publish'
-					? 'agents.publish.issue.restrictedByInstance'
-					: 'agents.builder.preview.issue.restrictedByInstance';
-
-			expect(wrapper.get('[data-testid="stub-tooltip-content"]').text()).toContain(key);
-		},
-	);
 
 	it.each([
 		['publish', 'agents.publish.issue.restrictedByInlineTool'],
@@ -372,11 +359,11 @@ describe('AgentValidationTooltip — restricted node types', () => {
 	it('keeps the restriction in the preview list, which excludes only channel and task issues', () => {
 		const wrapper = mountTooltip({
 			action: 'preview',
-			issues: [toolIssue('restricted_by_project')],
+			issues: [toolIssue()],
 		});
 
 		expect(wrapper.get('[data-testid="stub-tooltip-content"]').text()).toContain(
-			'agents.builder.preview.issue.restrictedByProject',
+			'agents.builder.preview.issue.restrictedNodeType',
 		);
 	});
 });
