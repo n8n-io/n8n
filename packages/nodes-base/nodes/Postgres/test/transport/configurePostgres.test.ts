@@ -169,10 +169,19 @@ describe('configurePostgres SSL options', () => {
 			},
 		);
 
-		it('should verify the database hostname without a custom certificate', async () => {
+		it('should keep the existing SSL options without a custom certificate', async () => {
 			({ db } = await configurePostgres.call(context, { ...sshCredentials, ssl: 'require' }));
 
-			expect(db.$pool.options.ssl).toEqual({ servername: 'db.example.com' });
+			expect(db.$pool.options.ssl).toBe(true);
+		});
+
+		it('should keep the existing SSL options when certificate validation is ignored', async () => {
+			({ db } = await configurePostgres.call(context, {
+				...sshCredentials,
+				allowUnauthorizedCerts: true,
+			}));
+
+			expect(db.$pool.options.ssl).toEqual({ rejectUnauthorized: false });
 		});
 
 		it('should retain the certificate validation setting', async () => {

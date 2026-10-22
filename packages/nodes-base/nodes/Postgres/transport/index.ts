@@ -198,7 +198,11 @@ export async function configurePostgres(
 				);
 			});
 
-			if (dbConfig.ssl) {
+			// Only for custom certificates, so existing SSH + SSL setups keep verifying against the tunnel address
+			if (
+				dbConfig.ssl &&
+				(credentials.caCertificate || credentials.clientCertificate || credentials.clientPrivateKey)
+			) {
 				const ssl = {
 					...(typeof dbConfig.ssl === 'object' ? dbConfig.ssl : {}),
 					servername: credentials.host,
