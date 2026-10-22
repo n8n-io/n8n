@@ -397,6 +397,18 @@ describe('PromotionPreviewView', () => {
 		});
 	});
 
+	it('should keep the typed commit message after a failed promote', async () => {
+		vi.mocked(api.promoteProjectSelection).mockRejectedValueOnce(new Error('offline'));
+
+		const { getByTestId, queryByTestId } = await render();
+		await promote(getByTestId, 'Route leads by region');
+		await waitFor(() => expect(queryByTestId('promote-selection-dialog')).not.toBeInTheDocument());
+
+		await userEvent.click(getByTestId('promotion-preview-submit'));
+
+		expect(getByTestId('promote-commit-message')).toHaveValue('Route leads by region');
+	});
+
 	it('should not promote when the promote dialog is canceled', async () => {
 		const { getByTestId, queryByTestId } = await render();
 		await userEvent.click(getByTestId('promotion-preview-submit'));

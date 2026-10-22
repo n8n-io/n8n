@@ -219,6 +219,8 @@ const submitLabel = computed(() => {
 
 // Promote asks for the optional commit message first. Apply confirms inside the operation.
 const promoteDialogOpen = ref(false);
+// Lives here, not in the dialog, so the typed message survives a failed promote.
+const promoteCommitMessage = ref('');
 
 async function onSubmit() {
 	if (props.direction === 'promote') {
@@ -497,6 +499,7 @@ const treeResizer = useResizablePanel({
 		<PromoteSelectionDialog
 			v-if="promoteDialogOpen && promoteEnvironment"
 			v-model:open="promoteDialogOpen"
+			v-model:commit-message="promoteCommitMessage"
 			:change-count="includedChanges"
 			:base-branch-name="promoteEnvironment.settings.baseBranchName"
 			:create-branch-on-promotion="promoteEnvironment.settings.createBranchOnPromotion"

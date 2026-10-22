@@ -27,7 +27,7 @@ export function buildInstancePromotionCommitMessage({
 
 /**
  * The commit message of a selection promote that has no message from the caller.
- * The first line becomes the merge request title, and the lists its description.
+ * The first line becomes the merge request title. The lists become its description.
  */
 export function buildSelectionPromotionCommitMessage({
 	projectName,

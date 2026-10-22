@@ -10,7 +10,7 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, nextTick, ref, useTemplateRef } from 'vue';
+import { computed, nextTick, useTemplateRef } from 'vue';
 
 import PromotionCommitMessageField from './PromotionCommitMessageField.vue';
 
@@ -28,9 +28,10 @@ const emit = defineEmits<{
 	confirm: [commitMessage: string | undefined];
 }>();
 
-const i18n = useI18n();
+// Owned by the parent, so the typed message survives a failed promote.
+const commitMessage = defineModel<string>('commitMessage', { default: '' });
 
-const commitMessage = ref('');
+const i18n = useI18n();
 const messageField = useTemplateRef('messageField');
 
 const title = computed(() =>
