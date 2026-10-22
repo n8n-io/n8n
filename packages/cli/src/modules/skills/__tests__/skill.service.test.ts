@@ -563,13 +563,103 @@ describe('SkillService', () => {
 			);
 		});
 
-		it('refuses to move a skill that another agent uses', async () => {
-			skillAgents.findUsingAgentIds.mockResolvedValue(['agent-1', 'agent-2']);
+		describe('agents that use the skill', () => {
+			const AGENTS = new Map([
+				['agent-1', { name: 'Support bot', projectId: 'p1' }],
+				['agent-2', { name: 'Sales bot', projectId: 'p1' }],
+				['agent-3', { name: 'Ops bot', projectId: 'p2' }],
+			]);
 
-			await expect(
-				service.changeTarget('skill_a', { projectId: null, agentId: null }, 'agent-1'),
-			).rejects.toThrow('Other agents use this skill.');
-			expect(skills.updateTarget).not.toHaveBeenCalled();
+			beforeEach(() => {
+				skillAgents.findAgents.mockImplementation(
+					async (ids) =>
+						new Map(
+							ids.flatMap((id) => {
+								const agent = AGENTS.get(id);
+								return agent ? [[id, agent] as const] : [];
+							}),
+						),
+				);
+			});
+
+			it('moves a skill to the instance, which every agent can add', async () => {
+				skillAgents.findUsingAgentIds.mockResolvedValue(['agent-1', 'agent-3']);
+
+				await service.changeTarget('skill_a', { projectId: null, agentId: null }, undefined);
+
+				expect(skills.updateTarget).toHaveBeenCalledWith(
+					'skill_a',
+					{ projectId: null, agentId: null },
+					TX_CTX,
+				);
+			});
+
+			it('moves a skill to the project of every agent that uses it', async () => {
+				skillAgents.findUsingAgentIds.mockResolvedValue(['agent-1', 'agent-2']);
+
+				await service.changeTarget('skill_a', { projectId: 'p1', agentId: null }, undefined);
+
+				expect(skillAgents.findAgents).toHaveBeenCalledWith(['agent-1', 'agent-2'], TX_CTX);
+				expect(skills.updateTarget).toHaveBeenCalledWith(
+					'skill_a',
+					{ projectId: 'p1', agentId: null },
+					TX_CTX,
+				);
+			});
+
+			it('refuses a move that takes the skill away from agents, and names them', async () => {
+				skillAgents.findUsingAgentIds.mockResolvedValue(['agent-1', 'agent-2', 'agent-3']);
+
+				await expectError(
+					service.changeTarget('skill_a', { projectId: 'p2', agentId: null }, undefined),
+					ConflictError,
+					'"Support bot", "Sales bot" would lose access to this skill. Choose a scope that includes those agents, or detach the skill from them first.',
+				);
+				expect(skills.updateTarget).not.toHaveBeenCalled();
+			});
+
+			it('only counts the agents in projects the user may not read', async () => {
+				skillAgents.findUsingAgentIds.mockResolvedValue(['agent-1', 'agent-3']);
+
+				await expectError(
+					service.changeTarget(
+						'skill_a',
+						{ projectId: 'p9', agentId: null },
+						undefined,
+						{},
+						{ agentProjectIds: ['p2'] },
+					),
+					ConflictError,
+					'"Ops bot", 1 agent in other projects would lose access to this skill. Choose a scope that includes those agents, or detach the skill from them first.',
+				);
+			});
+
+			it('lets the agent that asks for the move narrow the skill to itself', async () => {
+				skillAgents.findUsingAgentIds.mockResolvedValue(['agent-1']);
+
+				await service.changeTarget('skill_a', { projectId: null, agentId: 'agent-1' }, 'agent-1');
+
+				expect(skills.updateTarget).toHaveBeenCalled();
+			});
+
+			it('refuses to narrow the skill to one agent while another agent uses it', async () => {
+				skillAgents.findUsingAgentIds.mockResolvedValue(['agent-1', 'agent-2']);
+
+				await expectError(
+					service.changeTarget('skill_a', { projectId: null, agentId: 'agent-1' }, 'agent-1'),
+					ConflictError,
+					'"Sales bot" would lose access to this skill. Choose a scope that includes that agent, or detach the skill from it first.',
+				);
+				expect(skills.updateTarget).not.toHaveBeenCalled();
+			});
+
+			it('does not let the agent that asks for the move block it', async () => {
+				skillAgents.findUsingAgentIds.mockResolvedValue(['agent-1', 'agent-3']);
+
+				await service.changeTarget('skill_a', { projectId: 'p2', agentId: null }, 'agent-1');
+
+				expect(skills.updateTarget).toHaveBeenCalled();
+			});
 		});
 
 		it('refuses to move a skill into a scope that holds a name like it', async () => {
@@ -608,15 +698,6 @@ describe('SkillService', () => {
 				TX_CTX,
 			);
 			expect(skills.updateTarget).toHaveBeenCalled();
-		});
-
-		it('refuses to move a skill that any agent uses when no agent is kept', async () => {
-			skillAgents.findUsingAgentIds.mockResolvedValue(['agent-1']);
-
-			await expect(
-				service.changeTarget('skill_a', { projectId: null, agentId: null }, undefined),
-			).rejects.toThrow('Agents use this skill.');
-			expect(skills.updateTarget).not.toHaveBeenCalled();
 		});
 
 		it('refuses the move when the skill left the scope that the permission check saw', async () => {

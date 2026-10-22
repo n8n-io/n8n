@@ -190,8 +190,11 @@ Each rule states what happens if the user does not fix it before the update. Set
 | --- | --- | --- |
 | `upgradeBlocked` | The instance does not start, or the update cannot proceed. | A removed storage or deployment mode that the new version refuses to boot with. |
 | `executionsFail` | Affected executions error. | A removed node or expression helper. |
-| `behaviorChanges` | Executions keep running, but the result changes. | A changed default or fixed semantics. |
+| `executionsMightFail` | A default changes. Affected executions can error, depending on the workload, and the admin can keep the current value through configuration. | A lowered default limit or timeout. |
+| `behaviorChanges` | Executions keep running, but the result changes. | A changed default that gives a different result, or fixed semantics. |
 | `capabilityRemoved` | No runtime impact. A removed capability is no longer available. | A removed UI option or CLI flag. |
+
+A changed default whose runs keep going with a different result is `behaviorChanges`. A changed default that can make runs error is `executionsMightFail`.
 
 Pick the impact from the effect on the user, not from how many workflows a rule touches. The migration report sorts rules by impact, from `upgradeBlocked` down to `capabilityRemoved`.
 

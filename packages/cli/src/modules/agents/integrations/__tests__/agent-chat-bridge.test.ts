@@ -4,6 +4,8 @@ import { MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH } from '@n8n/api-types';
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import type { Author } from 'chat';
+import type { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';
+import { AgentChatAttachmentService } from '../../agent-chat-attachment.service';
 import { AgentMessageQueueService } from '../../agent-message-queue.service';
 import type { AgentMessageQueue } from '../../entities/agent-message-queue.entity';
 import type { QueuedIntegrationMessage } from '../../types/agent-queued-message';
@@ -241,6 +243,14 @@ class BufferingTestIntegration extends AgentChatIntegration {
 	readonly displayLabel = 'Test Buffered';
 	readonly displayIcon = 'circle';
 	readonly disableStreaming = true;
+	buildOriginDraft() {
+		return undefined;
+	}
+
+	resolveEpisodicScope() {
+		return null;
+	}
+
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		return {};
 	}
@@ -253,6 +263,14 @@ class StreamingTestIntegration extends AgentChatIntegration {
 	readonly description = '';
 	readonly displayLabel = 'Test Streaming';
 	readonly displayIcon = 'circle';
+	buildOriginDraft() {
+		return undefined;
+	}
+
+	resolveEpisodicScope() {
+		return null;
+	}
+
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		return {};
 	}
@@ -271,6 +289,14 @@ class FormattedBufferedTestIntegration extends AgentChatIntegration {
 			`chat:${thread.adapter?.botUserId ?? 'bot'}-${thread.id}`,
 		toSdk: (threadId: string) => threadId.split('-').slice(1).join('-'),
 	};
+	buildOriginDraft() {
+		return undefined;
+	}
+
+	resolveEpisodicScope() {
+		return null;
+	}
+
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		return {};
 	}
@@ -287,6 +313,14 @@ class RestrictedTestIntegration extends AgentChatIntegration {
 	isUserAllowed(author: Author): boolean {
 		return author.userId === 'allowed-user';
 	}
+	buildOriginDraft() {
+		return undefined;
+	}
+
+	resolveEpisodicScope() {
+		return null;
+	}
+
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		return {};
 	}
@@ -3531,6 +3565,158 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.startTyping).not.toHaveBeenCalled();
 			expect(thread.post).not.toHaveBeenCalled();
 		});
+
+		it('queues the typed platform context of the incoming message', async () => {
+			const { bot, handlers } = makeBot();
+			const queue = mock<AgentMessageQueueService>();
+			queue.enqueue.mockResolvedValue({ status: 'accepted', item: mock<AgentMessageQueue>() });
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				makeAgentExecutor([finishChunk]) as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{ type: 'slack', credentialId: 'cred-1' } as unknown as AgentIntegrationConfig,
+				undefined,
+				undefined,
+				undefined,
+				queue,
+			);
+			const thread = {
+				...makeThread('slack:C1:1.2', {
+					decodeThreadId: vi.fn().mockReturnValue({ channel: 'C1', threadTs: '1.2' }),
+				} as unknown as FakeThread['adapter']),
+				isDM: false,
+				channel: { fetchMetadata: vi.fn().mockResolvedValue({ name: 'general' }) },
+			};
+
+			await handlers.subscribed!(thread, {
+				text: 'hi',
+				author: { userId: 'u1', userName: 'user1' },
+				raw: { n8nWorkspaceId: 'T1', channel_type: 'channel' },
+			});
+
+			expect(queue.enqueue).toHaveBeenCalledWith(
+				expect.objectContaining({
+					payload: expect.objectContaining({
+						integrationOrigin: {
+							type: 'slack',
+							workspaceId: 'T1',
+							conversationKind: 'channel',
+							channelId: 'C1',
+							channelName: 'general',
+						},
+					}),
+				}),
+			);
+		});
+	});
+
+	describe('episodic memory scope', () => {
+		const scope = { writeScopeId: 'test:channel-1', readScopeIds: ['test:channel-1'] };
+
+		async function queuedPayload(resolved: typeof scope | null) {
+			const { bot, handlers } = makeBot();
+			const queue = mock<AgentMessageQueueService>();
+			queue.enqueue.mockResolvedValue({ status: 'accepted', item: mock<AgentMessageQueue>() });
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				makeAgentExecutor([finishChunk]) as never,
+				componentMapper,
+				logger,
+				'project-1',
+				streamingIntegration,
+				undefined,
+				undefined,
+				undefined,
+				queue,
+			);
+			const resolveSpy = vi
+				.spyOn(registry.get('test-streaming')!, 'resolveEpisodicScope')
+				.mockReturnValue(resolved);
+			let calls: unknown[][] = [];
+			try {
+				await handlers.subscribed!(makeThread('thread-1'), {
+					text: 'hi',
+					author: { userId: 'u1', userName: 'user1' },
+				});
+			} finally {
+				calls = [...resolveSpy.mock.calls];
+				resolveSpy.mockRestore();
+			}
+			return { payload: queue.enqueue.mock.calls[0][0].payload, calls };
+		}
+
+		it('queues the scope the channel resolves for the incoming turn', async () => {
+			const { payload, calls } = await queuedPayload(scope);
+
+			expect(payload).toMatchObject({ episodicScope: scope });
+			expect(calls).toEqual([
+				[
+					expect.objectContaining({
+						agentId: 'agent-1',
+						credentialId: 'cred-1',
+						threadId: 'thread-1',
+						author: expect.objectContaining({ id: 'u1' }),
+					}),
+				],
+			]);
+		});
+
+		it('queues a disabled decision when the channel resolves no scope', async () => {
+			const { payload } = await queuedPayload(null);
+
+			expect(payload).toMatchObject({ episodicScope: { disabled: true } });
+		});
+
+		it('hands the queued decision to the orchestrator through the production executor', async () => {
+			const { bot, handlers } = makeBot();
+			const queue = mock<AgentMessageQueueService>();
+			queue.enqueue.mockResolvedValue({ status: 'accepted', item: mock<AgentMessageQueue>() });
+			Container.set(AgentMessageQueueService, queue);
+			Container.set(IntegrationMessageContextService, mock<IntegrationMessageContextService>());
+			Container.set(AgentChatAttachmentService, mock<AgentChatAttachmentService>());
+			const orchestrator = mock<AgentExecutionOrchestratorService>();
+			orchestrator.executeForChatPublished.mockImplementation(
+				() => toStream([finishChunk]) as never,
+			);
+			const bridge = AgentChatBridge.create(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				orchestrator,
+				componentMapper,
+				logger,
+				'project-1',
+				streamingIntegration,
+			);
+			const resolveSpy = vi
+				.spyOn(registry.get('test-streaming')!, 'resolveEpisodicScope')
+				.mockReturnValue(scope);
+			try {
+				await handlers.subscribed!(makeThread('thread-1'), {
+					text: 'hi',
+					author: { userId: 'u1', userName: 'user1' },
+				});
+			} finally {
+				resolveSpy.mockRestore();
+			}
+			const [{ payload, threadId }] = queue.enqueue.mock.calls[0];
+			if (payload.kind !== 'integration') throw new Error('Expected integration input');
+
+			await bridge.consumeQueuedMessage(
+				payload,
+				threadId,
+				{ executionId: 'execution-1', startedAt: new Date(), inputMessageIds: ['message-1'] },
+				new AbortController().signal,
+				streamingIntegration,
+			);
+
+			expect(orchestrator.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({ episodicScope: scope }),
+			);
+		});
 	});
 
 	describe('status handle cleanup', () => {
@@ -3546,6 +3732,14 @@ describe('AgentChatBridge — consumeStream', () => {
 				readonly displayLabel = 'Test Status Handle';
 				readonly displayIcon = 'circle';
 				readonly disableStreaming = true;
+				buildOriginDraft() {
+					return undefined;
+				}
+
+				resolveEpisodicScope() {
+					return null;
+				}
+
 				async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 					return {};
 				}
@@ -4043,6 +4237,14 @@ class ListeningTestIntegration extends AgentChatIntegration {
 	getReplyExpectation({ message }: { message: { isMention?: boolean } }): 'required' | 'optional' {
 		return message.isMention ? 'required' : 'optional';
 	}
+	buildOriginDraft() {
+		return undefined;
+	}
+
+	resolveEpisodicScope() {
+		return null;
+	}
+
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		return {};
 	}

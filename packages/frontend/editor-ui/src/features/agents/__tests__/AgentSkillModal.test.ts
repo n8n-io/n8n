@@ -6,7 +6,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
-import { configure, fireEvent, waitFor } from '@testing-library/vue';
+import { configure, fireEvent, screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
@@ -111,7 +111,7 @@ function renderModal({
 	/** Opens the modal as Settings > Context > Skills does: no agent, plus these fields. */
 	settings?: Pick<
 		AgentSkillModalData,
-		'readOnly' | 'scopeOptions' | 'initialScope' | 'scopeLockedReason' | 'getDefaultName'
+		'readOnly' | 'scopeOptions' | 'initialScope' | 'scopeLockedReason' | 'getDefaultName' | 'usedBy'
 	>;
 } & Pick<
 	AgentSkillModalData,
@@ -1110,7 +1110,11 @@ describe('AgentSkillModal', () => {
 				instructions: 'Be kind',
 			};
 
-			async function renderEdit(detail: SkillDetail, onConfirm = vi.fn()) {
+			async function renderEdit(
+				detail: SkillDetail,
+				onConfirm = vi.fn(),
+				extra: Pick<AgentSkillModalData, 'canCreateInstanceSkills'> = {},
+			) {
 				getHubSkill.mockResolvedValue(detail);
 				const result = renderModal({
 					hubSkillsEnabled: true,
@@ -1118,6 +1122,7 @@ describe('AgentSkillModal', () => {
 					skill: tone,
 					onConfirm,
 					onRemove: vi.fn(),
+					...extra,
 				});
 				await result.findByTestId('agent-skill-availability-select');
 				return result;
@@ -1176,6 +1181,15 @@ describe('AgentSkillModal', () => {
 				);
 			});
 
+			async function pickTarget(
+				result: Awaited<ReturnType<typeof renderEdit>>,
+				label: string,
+			): Promise<void> {
+				const select = result.getByTestId('agent-skill-availability-select');
+				await fireEvent.click(select.querySelector('.select-trigger')!);
+				await fireEvent.click(await result.findByText(label));
+			}
+
 			it.each([
 				[
 					'a draft of another agent',
@@ -1184,6 +1198,7 @@ describe('AgentSkillModal', () => {
 						pins: [],
 						hiddenAgents: 0,
 					},
+					'agents.builder.skills.loseAccess.agentOnly',
 				],
 				[
 					'a pin of another agent',
@@ -1192,17 +1207,73 @@ describe('AgentSkillModal', () => {
 						pins: [{ agentId: 'a2', agentName: 'Other', projectId: 'p1', version: null }],
 						hiddenAgents: 0,
 					},
+					'agents.builder.skills.loseAccess.agentOnly',
 				],
-				['an agent the user cannot see', { drafts: [], pins: [], hiddenAgents: 1 }],
-			])('locks the target when %s uses the skill', async (_case, usedBy) => {
-				const { getByTestId } = await renderEdit({
-					...makeDetail({ id: 'tone', name: 'Support tone', scope: 'project' }),
-					usedBy,
-				});
+				[
+					'an agent the user cannot see',
+					{ drafts: [], pins: [], hiddenAgents: 1 },
+					'agents.builder.skills.loseAccess.hidden',
+				],
+			])('warns and blocks save when the target drops %s', async (_case, usedBy, message) => {
+				const onConfirm = vi.fn();
+				const result = await renderEdit(
+					{ ...makeDetail({ id: 'tone', name: 'Support tone', scope: 'project' }), usedBy },
+					onConfirm,
+				);
 
-				expect(
-					getByTestId('agent-skill-availability-select').querySelector('.is-disabled, [disabled]'),
-				).not.toBeNull();
+				await pickTarget(result, 'agents.builder.skills.availableTo.agent');
+
+				expect(result.getByTestId('agent-skill-access-warning')).toHaveTextContent(message);
+				expect(result.getByTestId('agent-skill-create-save')).toBeDisabled();
+				await fireEvent.click(result.getByTestId('agent-skill-create-save'));
+				expect(onConfirm).not.toHaveBeenCalled();
+			});
+
+			it('lets the user widen a skill that other agents use to the instance', async () => {
+				const onConfirm = vi.fn();
+				const result = await renderEdit(
+					{
+						...makeDetail({ id: 'tone', name: 'Support tone', scope: 'project' }),
+						usedBy: {
+							drafts: [{ agentId: 'a2', agentName: 'Other', projectId: 'p1' }],
+							pins: [],
+							hiddenAgents: 1,
+						},
+					},
+					onConfirm,
+					{ canCreateInstanceSkills: true },
+				);
+
+				await pickTarget(result, 'agents.builder.skills.availableTo.instance');
+
+				expect(result.queryByTestId('agent-skill-access-warning')).not.toBeInTheDocument();
+				await fireEvent.click(result.getByTestId('agent-skill-create-save'));
+				expect(onConfirm).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'tone', availableTo: 'instance' }),
+				);
+			});
+
+			it('lets the user narrow an agent skill to the project of every agent that uses it', async () => {
+				const onConfirm = vi.fn();
+				const result = await renderEdit(
+					{
+						...makeDetail({ id: 'tone', name: 'Support tone', scope: 'agent', agentId: 'a1' }),
+						usedBy: {
+							drafts: [{ agentId: 'a1', agentName: 'This agent', projectId: 'p1' }],
+							pins: [{ agentId: 'a2', agentName: 'Other', projectId: 'p1', version: 1 }],
+							hiddenAgents: 0,
+						},
+					},
+					onConfirm,
+				);
+
+				await pickTarget(result, 'agents.builder.skills.availableTo.project');
+
+				expect(result.queryByTestId('agent-skill-access-warning')).not.toBeInTheDocument();
+				await fireEvent.click(result.getByTestId('agent-skill-create-save'));
+				expect(onConfirm).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'tone', availableTo: 'project' }),
+				);
 			});
 		});
 
@@ -1331,6 +1402,82 @@ describe('AgentSkillModal from Settings', () => {
 
 		expect(getByTestId('agent-skill-scope')).toBeInTheDocument();
 		expect(getByTestId('agent-skill-scope-select').querySelector('input')).toBeDisabled();
+	});
+
+	describe('moving a saved skill from Settings', () => {
+		const settings = {
+			scopeOptions: [
+				{
+					value: 'project:p1',
+					label: 'Marketing',
+					icon: 'layers' as const,
+					target: { projectId: 'p1', agentId: null },
+				},
+				{
+					value: 'project:p2',
+					label: 'Personal project',
+					icon: 'user' as const,
+					target: { projectId: 'p2', agentId: null },
+				},
+				{
+					value: 'instance',
+					label: 'Global',
+					icon: 'globe' as const,
+					target: { projectId: null, agentId: null },
+				},
+			],
+			initialScope: 'project:p1',
+			usedBy: {
+				drafts: [{ agentId: 'a1', agentName: 'FirstClassDarwin', projectId: 'p1' }],
+				pins: [],
+				hiddenAgents: 0,
+			},
+		};
+
+		async function pickScope(label: string) {
+			await userEvent.click(screen.getByTestId('agent-skill-scope-select'));
+			const option = await waitFor(() => {
+				const match = [...document.querySelectorAll('.el-select-dropdown__item')].find((item) =>
+					item.textContent?.includes(label),
+				);
+				if (!match) throw new Error(`Expected the ${label} option`);
+				return match;
+			});
+			await userEvent.click(option);
+		}
+
+		it('warns and blocks save when the new scope drops an agent', async () => {
+			const onConfirm = vi.fn();
+			const { getByTestId } = renderModal({
+				skillId: 's1',
+				skill: SAVED_SKILL,
+				onConfirm,
+				settings,
+			});
+
+			await pickScope('Personal project');
+
+			expect(getByTestId('agent-skill-access-warning')).toHaveTextContent(
+				'agents.builder.skills.loseAccess',
+			);
+			expect(getByTestId('agent-skill-create-save')).toBeDisabled();
+		});
+
+		it('lets the user widen a skill in use to the instance', async () => {
+			const onConfirm = vi.fn();
+			const { getByTestId, queryByTestId } = renderModal({
+				skillId: 's1',
+				skill: SAVED_SKILL,
+				onConfirm,
+				settings,
+			});
+
+			await pickScope('Global');
+
+			expect(queryByTestId('agent-skill-access-warning')).not.toBeInTheDocument();
+			await fireEvent.click(getByTestId('agent-skill-create-save'));
+			expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ scope: 'instance' }));
+		});
 	});
 
 	it('asks the server for a free default name when a skill is started by hand', async () => {

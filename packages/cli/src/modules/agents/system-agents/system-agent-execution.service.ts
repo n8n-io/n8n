@@ -11,9 +11,10 @@ import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentChatExecutionService } from '../agent-chat-execution.service';
 import { AgentConversationStateService } from '../agent-conversation-state.service';
 import { AgentExecutionService, type StartExecutionParams } from '../agent-execution.service';
+import { AgentFormattedTurnError } from '../agent-formatted-turn.error';
 import type { ClaimedAgentMessage } from '../agent-message-queue.service';
 import { AgentMessageQueueService } from '../agent-message-queue.service';
-import { emitChunkEvents } from '../agent-sse-stream';
+import { chatErrorCode, emitChunkEvents } from '../agent-sse-stream';
 import { AgentTurnExecutionService, type AgentTurnRequest } from '../agent-turn-execution.service';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
@@ -22,6 +23,7 @@ import { AgentExecutionThreadRepository } from '../repositories/agent-execution-
 import { AgentRepository } from '../repositories/agent.repository';
 import type { StoredAttachmentRef } from '../types/agent-chat-attachment';
 import type { AgentExecutionAdmission } from '../types/agent-queued-message';
+import type { FormattedTurnError } from '../types/agent-turn-outcome';
 import { systemChatMemoryResourceId } from '../utils/agent-memory-scope';
 import { buildInboundUserMessage } from '../utils/inbound-attachments';
 import { SYSTEM_CHAT_SOURCE } from '../utils/agent-thread-access';
@@ -32,6 +34,7 @@ import type {
 	SystemAgentTurnHandle,
 	SystemAgentTurnOptions,
 	SystemAgentTurnOutcome,
+	SystemAgentWorkspaceScope,
 } from './system-agent.types';
 
 type SuspendedToolCall = Extract<
@@ -74,6 +77,13 @@ interface ResumeHandle {
 	runId: string;
 	toolCallId: string;
 	done: Promise<void>;
+}
+
+/** The workspace lease of one turn, bound to the source that gave it. */
+interface TurnWorkspace {
+	lease: unknown;
+	/** Report the turn outcome to the source. It never throws. */
+	release(outcome: SystemAgentTurnOutcome): Promise<void>;
 }
 
 /** The SDK run options of a handle, without its abort signal. `runTurn` links that signal. */
@@ -279,6 +289,22 @@ export class SystemAgentExecutionService {
 			user.id,
 		);
 		if (!deleted) throw new NotFoundError('Session not found');
+		await this.destroyThreadWorkspace(agentId, thread.id, user.id);
+	}
+
+	/**
+	 * Delete the sandbox of a deleted thread through the workspace source of
+	 * the provider. A host that deletes threads on its own path calls this too.
+	 * A failure is logged: the thread is already gone.
+	 */
+	async destroyThreadWorkspace(agentId: string, threadId: string, userId?: string): Promise<void> {
+		const source = this.registry.get(agentId)?.workspace;
+		if (!source?.destroy) return;
+		try {
+			await source.destroy({ agentId, threadId, ...(userId ? { userId } : {}) });
+		} catch (error) {
+			this.logger.warn('System agent workspace destroy failed', { agentId, threadId, error });
+		}
 	}
 
 	async getStatus(thread: AgentExecutionThread): Promise<{
@@ -372,29 +398,34 @@ export class SystemAgentExecutionService {
 		signal.throwIfAborted();
 		const { resourceId } = payload;
 		const attachments = payload.attachments ?? [];
+		const workspace = await this.acquireWorkspace(provider, thread, user);
 		const controller = new AbortController();
 		// Until the runtime takes the turn, the claim signal (Stop, lost ownership) stops provider setup.
 		// The runtime then links the claim signal itself, so the link ends with setup.
 		const stopSetup = () => controller.abort(signal.reason);
 		signal.addEventListener('abort', stopSetup, { once: true });
+		// A Stop while the workspace was acquired fired before the listener existed.
+		if (signal.aborted) stopSetup();
 		let handle: SystemAgentTurnHandle;
 		try {
-			handle = await provider.prepareTurn({
-				type: 'start',
-				user,
-				thread,
-				resourceId,
-				abortSignal: controller.signal,
-				executionId: admission.executionId,
-				message: payload.message,
-				attachments,
-				options: payload.options ?? {},
+			handle = await this.prepareOrRelease(workspace, controller.signal, thread, async () => {
+				return await provider.prepareTurn({
+					type: 'start',
+					user,
+					thread,
+					resourceId,
+					abortSignal: controller.signal,
+					...(workspace ? { workspace: workspace.lease } : {}),
+					executionId: admission.executionId,
+					message: payload.message,
+					attachments,
+					options: payload.options ?? {},
+				});
 			});
 		} finally {
 			signal.removeEventListener('abort', stopSetup);
 		}
 		const text = handle.input ?? payload.message;
-		this.attachFileStore(handle, thread);
 		const input =
 			attachments.length > 0 && typeof text === 'string'
 				? buildInboundUserMessage(text, attachments)
@@ -402,6 +433,7 @@ export class SystemAgentExecutionService {
 		await this.runTurn({
 			thread,
 			handle,
+			workspace,
 			send,
 			controller,
 			admission,
@@ -453,19 +485,27 @@ export class SystemAgentExecutionService {
 		if (checkpoint.persistence?.resourceId !== resourceId) {
 			throw new NotFoundError('Session not found');
 		}
+		const checkpointHostMetadata = checkpoint.persistence.hostMetadata ?? {};
 		const controller = new AbortController();
-		const handle = await provider.prepareTurn({
-			type: 'resume',
-			user: params.user,
+		const workspace = await this.acquireWorkspace(provider, thread, params.user);
+		const handle = await this.prepareOrRelease(
+			workspace,
+			controller.signal,
 			thread,
-			resourceId,
-			abortSignal: controller.signal,
-			runId,
-			toolCallId: pending.toolCallId,
-			checkpointHostMetadata: checkpoint.persistence.hostMetadata ?? {},
-			resumeData: params.resumeData,
-		});
-		this.attachFileStore(handle, thread);
+			async () =>
+				await provider.prepareTurn({
+					type: 'resume',
+					user: params.user,
+					thread,
+					resourceId,
+					abortSignal: controller.signal,
+					...(workspace ? { workspace: workspace.lease } : {}),
+					runId,
+					toolCallId: pending.toolCallId,
+					checkpointHostMetadata,
+					resumeData: params.resumeData,
+				}),
+		);
 		const recording: StartExecutionParams = {
 			threadId: thread.id,
 			agentId: thread.agentId,
@@ -480,6 +520,7 @@ export class SystemAgentExecutionService {
 		const done = this.runTurn({
 			thread,
 			handle,
+			workspace,
 			send: params.send ?? (() => {}),
 			controller,
 			onExecutionStarted: params.onExecutionStarted,
@@ -620,6 +661,63 @@ export class SystemAgentExecutionService {
 	}
 
 	/**
+	 * Get the workspace lease for one turn from the source of the provider.
+	 * Returns `undefined` when the provider has no source or the source gives
+	 * no lease. A failed acquisition fails the turn before it is prepared.
+	 */
+	private async acquireWorkspace(
+		provider: SystemAgentProvider,
+		thread: AgentExecutionThread,
+		user: User,
+	): Promise<TurnWorkspace | undefined> {
+		const source = provider.workspace;
+		if (!source) return undefined;
+		const scope: SystemAgentWorkspaceScope = {
+			agentId: thread.agentId,
+			threadId: thread.id,
+			projectId: thread.projectId,
+			user,
+		};
+		const lease = await source.acquire(scope);
+		if (lease === undefined) return undefined;
+		return {
+			lease,
+			release: async (outcome) => {
+				if (!source.release) return;
+				try {
+					await source.release(scope, lease, outcome);
+				} catch (error) {
+					this.logger.warn('System agent workspace release failed', {
+						threadId: thread.id,
+						error,
+					});
+				}
+			},
+		};
+	}
+
+	/**
+	 * Prepare a turn and attach its file store. When this fails, release the
+	 * lease before the error goes up, so that the source does not keep a lease
+	 * for a turn that never ran.
+	 */
+	private async prepareOrRelease(
+		workspace: TurnWorkspace | undefined,
+		signal: AbortSignal,
+		thread: AgentExecutionThread,
+		prepare: () => Promise<SystemAgentTurnHandle>,
+	): Promise<SystemAgentTurnHandle> {
+		try {
+			const handle = await prepare();
+			this.attachFileStore(handle, thread);
+			return handle;
+		} catch (error) {
+			await workspace?.release({ status: signal.aborted ? 'cancelled' : 'errored', error });
+			throw error;
+		}
+	}
+
+	/**
 	 * Run a prepared turn under `controller`, the controller the provider got
 	 * the signal of. A cancel aborts it, and the abort signal in the run
 	 * options of the handle stops the turn at any time.
@@ -627,6 +725,7 @@ export class SystemAgentExecutionService {
 	private async runTurn({
 		thread,
 		handle,
+		workspace,
 		send,
 		controller,
 		admission,
@@ -635,6 +734,7 @@ export class SystemAgentExecutionService {
 	}: {
 		thread: AgentExecutionThread;
 		handle: SystemAgentTurnHandle;
+		workspace?: TurnWorkspace;
 		send: (event: AgentSseEvent) => void;
 		controller: AbortController;
 		/** Set when the queue admitted the turn. A resume admits its own turn. */
@@ -644,6 +744,7 @@ export class SystemAgentExecutionService {
 	}): Promise<void> {
 		let executionId = admission?.executionId;
 		let failure: unknown;
+		const formatError = this.turnErrorFormatter(handle, thread);
 		/** Holds the outcome once the turn settled. */
 		const settled: { outcome?: SystemAgentTurnOutcome } = {};
 		const settle = async (outcome: SystemAgentTurnOutcome) => {
@@ -676,13 +777,28 @@ export class SystemAgentExecutionService {
 				},
 				onBeforeFinalize: settle,
 				prepare,
+				formatError,
 			});
 			for await (const chunk of stream) {
-				emitChunkEvents(chunk, send);
+				// The turn service stores the formatted error but yields the raw chunk.
+				const formatted = chunk.type === 'error' ? await formatError(chunk.error) : undefined;
+				if (formatted) {
+					send({
+						type: 'error',
+						message: formatted.message,
+						...(formatted.code ? { errorCode: formatted.code } : {}),
+					});
+				} else {
+					emitChunkEvents(chunk, send);
+				}
 				handle.onChunk?.(chunk);
 			}
 		} catch (caught) {
 			failure = caught;
+			const formatted = await formatError(caught);
+			// The queue consumer and the resume relay send the thrown error to the client.
+			// Carry the formatted text and code, so that the live view matches the stored error.
+			if (formatted) throw new AgentFormattedTurnError(formatted, caught);
 			throw caught;
 		} finally {
 			providerSignal?.removeEventListener('abort', stopTurn);
@@ -695,10 +811,54 @@ export class SystemAgentExecutionService {
 					...(failure !== undefined ? { error: failure } : {}),
 				});
 			}
+			if (settled.outcome) await workspace?.release(settled.outcome);
 			// Like Preview, only a completed turn sends `done`. An error has its own event.
 			if (settled.outcome?.status === 'completed') {
 				send({ type: 'done', sessionId: thread.id, executionId: executionId ?? '' });
 			}
+		}
+	}
+
+	/**
+	 * The error formatter of one turn. It calls the provider hook once per
+	 * error: the turn service stores the result, and the live event reuses it.
+	 */
+	private turnErrorFormatter(
+		handle: SystemAgentTurnHandle,
+		thread: AgentExecutionThread,
+	): (error: unknown) => Promise<FormattedTurnError | undefined> {
+		const results = new Map<unknown, Promise<FormattedTurnError | undefined>>();
+		return async (error) => {
+			let result = results.get(error);
+			if (!result) {
+				result = this.formatTurnError(handle, thread, error);
+				results.set(error, result);
+			}
+			return await result;
+		};
+	}
+
+	/**
+	 * The user-facing form of a turn error from the provider hook. Returns
+	 * `undefined` to keep the raw error: when there is no hook, when the hook
+	 * gives no text, when the hook throws, or when the error already has a
+	 * client error code.
+	 */
+	private async formatTurnError(
+		handle: SystemAgentTurnHandle,
+		thread: AgentExecutionThread,
+		error: unknown,
+	): Promise<FormattedTurnError | undefined> {
+		if (!handle.formatError || chatErrorCode(error) !== undefined) return undefined;
+		try {
+			const formatted = await handle.formatError(error);
+			return formatted?.message ? formatted : undefined;
+		} catch (formatError) {
+			this.logger.warn('System agent error formatter failed', {
+				threadId: thread.id,
+				error: formatError,
+			});
+			return undefined;
 		}
 	}
 }

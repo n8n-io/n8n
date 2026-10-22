@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method -- async mock stubs and unbound-method references are acceptable test idioms */
 import type { AgentJsonSkillConfig, AgentSkill } from '@n8n/api-types';
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, ProjectScopeService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { GLOBAL_MEMBER_ROLE, type TransactionRunner, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -82,6 +82,7 @@ describe('AgentSkillsService', () => {
 	let modificationTelemetry: Mocked<AgentModificationTelemetryService>;
 	let agentUpdateBroadcaster: Mocked<AgentUpdateBroadcaster>;
 	let skillsTelemetry: Mocked<SkillsTelemetry>;
+	let projectScopeService: Mocked<ProjectScopeService>;
 
 	function givenAgent(overrides: AgentFixtureOverrides = {}) {
 		const agent = makeAgent(overrides);
@@ -105,6 +106,8 @@ describe('AgentSkillsService', () => {
 		transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 		vi.mocked(userHasScopes).mockResolvedValue(true);
 		skillsTelemetry = mock<SkillsTelemetry>();
+		projectScopeService = mock<ProjectScopeService>();
+		projectScopeService.getProjectIds.mockResolvedValue([projectId]);
 		service = new AgentSkillsService(
 			mockLogger(),
 			agentRepository,
@@ -117,6 +120,7 @@ describe('AgentSkillsService', () => {
 			skillService,
 			transactionRunner,
 			skillsTelemetry,
+			projectScopeService,
 		);
 	});
 
@@ -151,6 +155,7 @@ describe('AgentSkillsService', () => {
 				[skill, second],
 				'user-1',
 				'project',
+				'agent',
 				{},
 			);
 			expect(userHasScopes).toHaveBeenCalledWith(user, ['projectSkill:create'], false, {
@@ -192,6 +197,24 @@ describe('AgentSkillsService', () => {
 			expect(skillsTelemetry.created).toHaveBeenCalledWith('user-1', ['skill_new1'], source, 'ai');
 		});
 
+		it.each([
+			['builder', 'agent'],
+			['mcp', 'mcp'],
+		] as const)('stores a skill that %s wrote with the %s source', async (modifiedBy, source) => {
+			givenAgent({ schema: baseConfig });
+
+			await service.createAndAttachSkills(agentId, projectId, [skill], { user, modifiedBy });
+
+			expect(skillRefs.createSkills).toHaveBeenCalledWith(
+				expect.anything(),
+				[skill],
+				'user-1',
+				'project',
+				source,
+				{},
+			);
+		});
+
 		it('reports nothing with the skills hub off', async () => {
 			Object.assign(skillRefs, { usesSkillsHub: false });
 			givenAgent({ schema: baseConfig });
@@ -217,6 +240,7 @@ describe('AgentSkillsService', () => {
 				[{ ...skill, allowedTools: ['search'] }],
 				'user-1',
 				'project',
+				'agent',
 				{},
 			);
 		});
@@ -237,6 +261,7 @@ describe('AgentSkillsService', () => {
 				[skill],
 				'user-1',
 				'project',
+				'agent',
 				{},
 			);
 		});
@@ -296,6 +321,7 @@ describe('AgentSkillsService', () => {
 				expect.anything(),
 				[skill],
 				'user-1',
+				'agent',
 				'agent',
 				{},
 			);
@@ -421,7 +447,8 @@ describe('AgentSkillsService', () => {
 				'skill_a',
 				'agent',
 				{},
-				{ checkedSource: { projectId, agentId: null } },
+				// A refused move names only the agents in projects the user may read.
+				{ checkedSource: { projectId, agentId: null }, agentProjectIds: [projectId] },
 			);
 			expect(skillService.save).not.toHaveBeenCalled();
 		});
