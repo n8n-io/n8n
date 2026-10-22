@@ -72,6 +72,7 @@ import type { InstanceAiContext, SearchableNodeDescription } from '../../types';
 import type { BuilderTemplatesBundle } from '../builder-templates-service';
 import type { SandboxWorkspace } from '../sandbox-fs';
 import {
+	isSandboxWorkspaceInitialized,
 	setupSandboxWorkspace,
 	type formatNodeCatalogLine as formatNodeCatalogLineFunction,
 } from '../sandbox-setup';
@@ -977,6 +978,36 @@ describe('setupSandboxWorkspace', () => {
 		expect(output).toBe(`…${expectedTail}`);
 	});
 });
+
+describe('isSandboxWorkspaceInitialized', () => {
+	function workspaceWithFiles(files: Map<string, string>) {
+		const readFileViaSandbox: ReadFileViaSandboxMock =
+			vi.fn<(...args: [SandboxWorkspace, string]) => Promise<string | null>>();
+		readFileViaSandbox.mockResolvedValue(null);
+		loadSetupSandboxWorkspaceWithFsMocks(vi.fn(), readFileViaSandbox);
+		const readFile = vi.fn(async (path: string) => {
+			const content = files.get(path);
+			if (content === undefined) return await Promise.reject(new Error(`ENOENT: ${path}`));
+			return await Promise.resolve(content);
+		});
+		return createLocalWorkspace(vi.fn(), undefined, readFile);
+	}
+
+	it('returns true when the setup marker exists', async () => {
+		const workspace = workspaceWithFiles(
+			new Map([['/sandbox/.sandbox-initialized', '2024-01-01T00:00:00.000Z']]),
+		);
+
+		await expect(isSandboxWorkspaceInitialized(workspace)).resolves.toBe(true);
+	});
+
+	it('returns false when the setup marker is missing', async () => {
+		const workspace = workspaceWithFiles(new Map());
+
+		await expect(isSandboxWorkspaceInitialized(workspace)).resolves.toBe(false);
+	});
+});
+
 describe('formatNodeCatalogLine', () => {
 	let formatNodeCatalogLine: FormatNodeCatalogLine;
 

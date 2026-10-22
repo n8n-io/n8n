@@ -154,16 +154,6 @@ export interface WorkspaceSandbox {
 	_start?(): Promise<void>;
 	_stop?(): Promise<void>;
 	_destroy?(): Promise<void>;
-	/**
-	 * Number of successful starts. A change means the provider may now point at a
-	 * new remote sandbox, so files written by an earlier setup may be gone.
-	 */
-	readonly startCount?: number;
-	/**
-	 * Check the remote sandbox and drop a stale "running" status if the provider
-	 * removed it, so the next operation creates it again.
-	 */
-	refreshStatus?(): Promise<void>;
 }
 
 export type SpawnProcessOptions = CommandOptions;

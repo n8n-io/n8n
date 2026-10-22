@@ -6,6 +6,7 @@ import type { User } from '@n8n/db';
 import {
 	createSandbox,
 	createWorkspace,
+	isSandboxWorkspaceInitialized,
 	setupSandboxWorkspace,
 	traceSandboxOperation,
 	withSandboxLifecycleTrace,
@@ -40,8 +41,6 @@ export type RuntimeSandboxEntry = {
 	/** Prebaked bundles already verified in this sandbox, shared across runs. */
 	verifiedBundles: VerifiedWorkspaceBundles;
 	setupComplete: boolean;
-	/** Sandbox `startCount` that the completed setup ran against. */
-	setupStartCount?: number;
 	setupPromise: Promise<void> | undefined;
 	expiresAt: number;
 	cleanupTimer?: ReturnType<typeof setTimeout>;
@@ -423,26 +422,24 @@ export class InstanceAiSandboxService {
 		context: InstanceAiContext,
 	): Promise<void> {
 		if (entry.setupComplete) {
-			// The provider can remove the remote sandbox while this entry is cached
-			// (idle reaping, runner restart). A recreated sandbox starts empty, so a
-			// new start means setup must run again.
-			await entry.sandbox.refreshStatus?.();
-			await entry.sandbox._start?.();
-			if (entry.setupStartCount === entry.sandbox.startCount) return;
+			// The n8n sandbox service can remove a sandbox while this entry is cached
+			// (idle reaping, runner restart), and the provider recreates it empty. The
+			// marker inside the sandbox is the only reliable record of setup.
+			if (
+				entry.sandbox.provider !== 'n8n-sandbox' ||
+				(await isSandboxWorkspaceInitialized(entry.workspace))
+			) {
+				return;
+			}
 			entry.setupComplete = false;
 			entry.verifiedBundles.clear();
 		}
-
-		const startCount = entry.sandbox.startCount;
 
 		entry.setupPromise ??= setupSandboxWorkspace(entry.workspace, context, {
 			verifiedBundles: entry.verifiedBundles,
 		})
 			.then(() => {
-				// A recreate during setup leaves it incomplete for the next acquisition.
-				if (entry.sandbox.startCount !== startCount) return;
 				entry.setupComplete = true;
-				entry.setupStartCount = startCount;
 			})
 			.finally(() => {
 				entry.setupPromise = undefined;

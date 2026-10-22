@@ -350,7 +350,6 @@ describe('recovery when the remote sandbox is gone', () => {
 		expect(mockCreateSandbox).toHaveBeenCalledTimes(1);
 		expect(mockCreateSandbox).toHaveBeenCalledWith({ id });
 		expect(mockExec).toHaveBeenCalledTimes(2);
-		expect(sandbox.startCount).toBe(2);
 	});
 
 	it('does not recreate on a 404 while the sandbox still exists', async () => {
@@ -362,7 +361,6 @@ describe('recovery when the remote sandbox is gone', () => {
 
 		expect(mockGetSandbox).toHaveBeenCalledWith(id);
 		expect(mockCreateSandbox).not.toHaveBeenCalled();
-		expect(sandbox.startCount).toBe(1);
 	});
 
 	it('does not probe or recreate on errors other than 404', async () => {
@@ -400,32 +398,17 @@ describe('recovery when the remote sandbox is gone', () => {
 		expect(mockCreateSandbox).toHaveBeenCalledTimes(1);
 	});
 
-	it('refreshStatus() marks a removed sandbox for restart', async () => {
-		const sandbox = await startedSandbox();
-		mockGetSandbox.mockRejectedValueOnce(notFound());
-
-		await sandbox.refreshStatus();
-		expect(sandbox.status).toBe('pending');
-
+	it('keeps the original error when the probe does not answer in time', async () => {
+		mockCreateSandbox.mockResolvedValue(makeSandboxRecord({ id }));
+		const sandbox = new N8nSandboxServiceSandbox({ ...makeDefaultOptions(), id, timeout: 10 });
 		await sandbox.ensureRunning();
-		expect(mockCreateSandbox).toHaveBeenCalledWith({ id });
-		expect(sandbox.startCount).toBe(2);
-	});
+		mockCreateSandbox.mockClear();
+		const error = notFound();
+		mockExec.mockRejectedValueOnce(error);
+		mockGetSandbox.mockReturnValueOnce(new Promise(() => {}));
 
-	it('refreshStatus() keeps a live sandbox running', async () => {
-		const sandbox = await startedSandbox();
+		await expect(sandbox.executeCommand('ls')).rejects.toBe(error);
 
-		await sandbox.refreshStatus();
-
-		expect(sandbox.status).toBe('running');
-	});
-
-	it('refreshStatus() keeps the status when the probe fails for another reason', async () => {
-		const sandbox = await startedSandbox();
-		mockGetSandbox.mockRejectedValueOnce(new SandboxServiceError('unavailable', 503));
-
-		await sandbox.refreshStatus();
-
-		expect(sandbox.status).toBe('running');
+		expect(mockCreateSandbox).not.toHaveBeenCalled();
 	});
 });

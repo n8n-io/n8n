@@ -168,11 +168,6 @@ export class N8nSandboxServiceSandbox extends BaseSandbox {
 		}
 	}
 
-	override async refreshStatus(): Promise<void> {
-		if (this.status !== 'running' || !this.sandboxId) return;
-		if (await this.isRemoteGone()) this.markNeedsStart();
-	}
-
 	getClient(): SandboxClient {
 		return this.client;
 	}
@@ -180,7 +175,7 @@ export class N8nSandboxServiceSandbox extends BaseSandbox {
 	private async isRemoteGone(): Promise<boolean> {
 		if (!this.sandboxId) return false;
 		try {
-			await this.client.getSandbox(this.sandboxId);
+			await this.withLifecycleTimeout(this.client.getSandbox(this.sandboxId));
 			return false;
 		} catch (error) {
 			return isNotFound(error);
