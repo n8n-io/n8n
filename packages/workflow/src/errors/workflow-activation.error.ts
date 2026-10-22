@@ -47,12 +47,19 @@ export class WorkflowActivationError extends ExecutionBaseError {
 					? cause.description
 					: cause.message;
 		}
-		this.setLevel(level);
+		this.setLevel(level, cause);
 	}
 
-	private setLevel(level?: ErrorLevel) {
+	private setLevel(level?: ErrorLevel, cause?: Error) {
 		if (level) {
 			this.level = level;
+			return;
+		}
+
+		// Keep a lower level that the node already gave its error, for example a
+		// credential that needs to be reconnected, so the wrapper does not escalate it.
+		if (cause && 'level' in cause && (cause.level === 'warning' || cause.level === 'info')) {
+			this.level = cause.level;
 			return;
 		}
 
