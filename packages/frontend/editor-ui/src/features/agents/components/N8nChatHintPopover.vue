@@ -26,10 +26,14 @@ const dismissed = useStorage(N8N_CHAT_HINT_DISMISSED_STORAGE_KEYS[props.hint]);
 
 const open = computed(() => props.active && dismissed.value !== 'true');
 
+// Track one view for each mount. The chip hint closes and opens again with the channel modal.
+let viewTracked = false;
 watch(
 	open,
 	(isOpen) => {
-		if (isOpen) agentTelemetry.trackViewedN8nChatHint({ hint: props.hint, agentId: props.agentId });
+		if (!isOpen || viewTracked) return;
+		viewTracked = true;
+		agentTelemetry.trackViewedN8nChatHint({ hint: props.hint, agentId: props.agentId });
 	},
 	{ immediate: true },
 );

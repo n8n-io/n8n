@@ -267,7 +267,11 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			mcp_server_count: z.number().describe('MCP servers with a URL set'),
 			vector_store_count: z.number(),
 			task_count: z.number(),
-			trigger_count: z.number().describe('Configured chat integrations; draft channels excluded'),
+			trigger_count: z
+				.number()
+				.describe(
+					'Configured chat integrations; draft channels and n8n Chat excluded, because new agents get n8n Chat by default',
+				),
 			status: agentStatus,
 		}),
 	},

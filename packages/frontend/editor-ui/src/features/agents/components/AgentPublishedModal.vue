@@ -68,7 +68,10 @@ function onOpenChange(open: boolean) {
 	>
 		<div :class="$style.content">
 			<N8nText>{{ i18n.baseText('agents.publish.modal.description.readyToUse') }}</N8nText>
-			<N8nText v-if="props.data.n8nChatLive" data-testid="agent-published-modal-n8n-chat">
+			<N8nText
+				v-if="props.data.n8nChatLive && projectName"
+				data-testid="agent-published-modal-n8n-chat"
+			>
 				{{
 					i18n.baseText('agents.publish.modal.description.liveInN8nChat', {
 						interpolate: { projectName },

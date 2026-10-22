@@ -61,6 +61,15 @@ describe('N8nChatHintPopover', () => {
 		});
 	});
 
+	it('tracks the view once when the hint opens again', async () => {
+		const { rerender } = renderComponent({ props: { ...baseProps, active: true } });
+
+		await rerender({ ...baseProps, active: false });
+		await rerender({ ...baseProps, active: true });
+
+		expect(trackViewedN8nChatHint).toHaveBeenCalledTimes(1);
+	});
+
 	it('stays closed and tracks nothing when inactive', () => {
 		const { queryByTestId } = renderComponent({ props: { ...baseProps, active: false } });
 
