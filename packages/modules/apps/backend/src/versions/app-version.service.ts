@@ -5,16 +5,16 @@ import { Service } from '@n8n/di';
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 import { v7 as uuidv7 } from 'uuid';
 
-import { AppRetentionService } from './app-retention.service';
-import type { AppBuildAttempt } from './app-build.types';
+import { AppRetentionService } from '../storage/app-retention.service';
+import type { AppBuildAttempt } from '../build/app-build.types';
 import type { AppVersion } from './app-version.entity';
 import { AppVersionRepository } from './app-version.repository';
-import { AppRepository } from './app.repository';
+import { AppRepository } from '../app.repository';
 import {
 	AppSourceVersionStore,
 	AppBuildResultStore,
 	type AppFiles,
-} from './storage/app-version-stores';
+} from '../storage/app-version-stores';
 
 @Service()
 export class AppVersionService {

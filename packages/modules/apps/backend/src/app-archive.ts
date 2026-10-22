@@ -4,8 +4,8 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 
-import type { AppFiles } from './app-version-stores';
-import { AppsConfig } from '../apps.config';
+import type { AppFiles } from './storage/app-version-stores';
+import { AppsConfig } from './apps.config';
 
 const CHUNK_SIZE = 64 * 1024;
 

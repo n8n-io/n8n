@@ -2,10 +2,10 @@ import type { AppBuildResponse } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
 
-import { AppBuildService } from './app-build.service';
-import { createAppScaffold } from './app-scaffold';
+import { AppBuildService } from '../build/app-build.service';
+import { createAppScaffold } from '../scaffold/app-scaffold';
 import { AppVersionService } from './app-version.service';
-import type { AppFiles } from './storage/app-version-stores';
+import type { AppFiles } from '../storage/app-version-stores';
 
 @Service()
 export class AppChangeService {

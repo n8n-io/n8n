@@ -1,8 +1,8 @@
 import { clusterTarget, intervalFromSeconds, SystemTask } from '@n8n/decorators';
 import type { SystemTaskSchedule } from '@n8n/decorators';
 
-import { AppVersionRepository } from './app-version.repository';
-import { AppsConfig } from './apps.config';
+import { AppVersionRepository } from '../versions/app-version.repository';
+import { AppsConfig } from '../apps.config';
 
 @SystemTask()
 export class AppBuildReconciliationTask implements SystemTask {

@@ -10,12 +10,12 @@ import { BadRequestError } from '@n8n/errors';
 import { raceAbort } from '@n8n/utils/race-abort';
 
 import { APP_BUILD_SCRIPT } from './app-build-script';
-import { APP_DEPENDENCY_KEY } from './app-scaffold';
+import { APP_DEPENDENCY_KEY } from '../scaffold/app-scaffold';
 import { AppSandboxSettings } from './app-sandbox-settings';
 import { AppBuildError, type AppBuildAttempt, type AppBuildStage } from './app-build.types';
-import { AppsConfig } from './apps.config';
-import { AppArchive } from './storage/app-archive';
-import type { AppFiles } from './storage/app-version-stores';
+import { AppsConfig } from '../apps.config';
+import { AppArchive } from '../app-archive';
+import type { AppFiles } from '../storage/app-version-stores';
 
 const FAILURE_MESSAGES = {
 	sandbox: 'Sandbox setup failed. Check the sandbox configuration and build log.',

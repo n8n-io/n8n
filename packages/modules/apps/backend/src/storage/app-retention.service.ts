@@ -2,10 +2,10 @@ import { DbLock, DbLockService } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { appStorageLockSubKey } from './app-storage-lock';
-import { AppVersionRepository } from './app-version.repository';
-import { AppRepository } from './app.repository';
-import { AppsConfig } from './apps.config';
-import { AppSourceVersionStore, AppBuildResultStore } from './storage/app-version-stores';
+import { AppVersionRepository } from '../versions/app-version.repository';
+import { AppRepository } from '../app.repository';
+import { AppsConfig } from '../apps.config';
+import { AppSourceVersionStore, AppBuildResultStore } from './app-version-stores';
 
 @Service()
 export class AppRetentionService {

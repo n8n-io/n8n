@@ -12,9 +12,9 @@ import { DbLock, DbLockService, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 
-import { appStorageLockSubKey } from './app-storage-lock';
-import { AppVersionRepository } from './app-version.repository';
-import { AppWorkspaceService } from './app-workspace.service';
+import { appStorageLockSubKey } from './storage/app-storage-lock';
+import { AppVersionRepository } from './versions/app-version.repository';
+import { AppWorkspaceService } from './build/app-workspace.service';
 import type { App } from './app.entity';
 import { AppRepository } from './app.repository';
 

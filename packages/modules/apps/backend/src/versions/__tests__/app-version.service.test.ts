@@ -2,13 +2,13 @@ import { Logger } from '@n8n/backend-common';
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
-import { AppRetentionService } from '../app-retention.service';
+import { AppRetentionService } from '../../storage/app-retention.service';
 import type { AppVersion } from '../app-version.entity';
 import { AppVersionRepository } from '../app-version.repository';
 import { AppVersionService } from '../app-version.service';
-import type { App } from '../app.entity';
-import { AppRepository } from '../app.repository';
-import { AppSourceVersionStore, AppBuildResultStore } from '../storage/app-version-stores';
+import type { App } from '../../app.entity';
+import { AppRepository } from '../../app.repository';
+import { AppSourceVersionStore, AppBuildResultStore } from '../../storage/app-version-stores';
 
 const appId = '11111111-1111-4111-8111-111111111111';
 const versionId = '22222222-2222-4222-8222-222222222222';

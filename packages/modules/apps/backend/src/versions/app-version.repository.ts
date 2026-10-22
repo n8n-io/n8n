@@ -9,7 +9,7 @@ import { Service } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
 import { DataSource, In, IsNull, LessThan } from '@n8n/typeorm';
 
-import type { AppBuildAttempt } from './app-build.types';
+import type { AppBuildAttempt } from '../build/app-build.types';
 import { AppVersion } from './app-version.entity';
 
 @Service()

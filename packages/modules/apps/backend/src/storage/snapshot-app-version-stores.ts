@@ -2,17 +2,17 @@ import { DbLock, DbLockService, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, NotFoundError } from '@n8n/errors';
 
-import { AppArchive } from './app-archive';
+import { AppArchive } from '../app-archive';
 import {
 	AppSourceVersionStore,
 	AppBuildResultStore,
 	type AppFiles,
 	type NewSourceVersion,
 } from './app-version-stores';
-import { AppArtifactService } from '../app-artifact.service';
-import type { AppBuildAttempt } from '../app-build.types';
-import { appStorageLockSubKey } from '../app-storage-lock';
-import { AppVersionRepository } from '../app-version.repository';
+import { AppArtifactService } from './app-artifact.service';
+import type { AppBuildAttempt } from '../build/app-build.types';
+import { appStorageLockSubKey } from './app-storage-lock';
+import { AppVersionRepository } from '../versions/app-version.repository';
 import { AppRepository } from '../app.repository';
 import { AppsConfig } from '../apps.config';
 

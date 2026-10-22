@@ -7,13 +7,13 @@ import { raceAbort } from '@n8n/utils/race-abort';
 import { setTimeout as delay } from 'node:timers/promises';
 
 import { AppBuildError, type AppBuildStage } from './app-build.types';
-import { checkBuildSource } from './app-scaffold';
-import { appStorageLockSubKey } from './app-storage-lock';
-import type { AppVersion } from './app-version.entity';
-import { AppVersionRepository } from './app-version.repository';
-import { AppVersionService } from './app-version.service';
+import { checkBuildSource } from '../scaffold/app-scaffold';
+import { appStorageLockSubKey } from '../storage/app-storage-lock';
+import type { AppVersion } from '../versions/app-version.entity';
+import { AppVersionRepository } from '../versions/app-version.repository';
+import { AppVersionService } from '../versions/app-version.service';
 import { AppWorkspaceService } from './app-workspace.service';
-import { AppsConfig } from './apps.config';
+import { AppsConfig } from '../apps.config';
 
 @Service()
 export class AppBuildService {

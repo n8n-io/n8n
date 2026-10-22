@@ -6,8 +6,8 @@ import { BadRequestError, ConflictError, NotFoundError, UnexpectedError } from '
 import type { AppArtifact, AppArtifactRef } from './app-artifact.entity';
 import { AppArtifactRepository } from './app-artifact.repository';
 import { appStorageLockSubKey } from './app-storage-lock';
-import { AppsConfig } from './apps.config';
-import { AppBlobStore } from './storage/app-blob-store';
+import { AppsConfig } from '../apps.config';
+import { AppBlobStore } from './app-blob-store';
 
 const UPLOAD_LIFETIME_MS = 30 * 60 * 1000; // 30 minutes
 

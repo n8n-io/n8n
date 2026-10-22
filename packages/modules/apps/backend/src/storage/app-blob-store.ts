@@ -15,9 +15,9 @@ import { Container, Service } from '@n8n/di';
 import { FsByteStoreService, StorageConfig } from 'n8n-core';
 import { v7 as uuidv7 } from 'uuid';
 
-import type { AppArtifactRef } from '../app-artifact.entity';
-import { AppArtifactRepository } from '../app-artifact.repository';
-import { appStorageLockSubKey } from '../app-storage-lock';
+import type { AppArtifactRef } from './app-artifact.entity';
+import { AppArtifactRepository } from './app-artifact.repository';
+import { appStorageLockSubKey } from './app-storage-lock';
 
 export type AppBlob = { storedAt: ExecutionDataStorageLocation; storageKey: string };
 

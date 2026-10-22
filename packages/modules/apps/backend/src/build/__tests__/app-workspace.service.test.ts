@@ -12,8 +12,8 @@ import { mock } from 'vitest-mock-extended';
 import { AppWorkspaceService } from '../app-workspace.service';
 import { AppSandboxSettings } from '../app-sandbox-settings';
 import { AppBuildError } from '../app-build.types';
-import { AppsConfig } from '../apps.config';
-import { AppArchive } from '../storage/app-archive';
+import { AppsConfig } from '../../apps.config';
+import { AppArchive } from '../../app-archive';
 
 const appId = '11111111-1111-4111-8111-111111111111';
 

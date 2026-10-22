@@ -1,9 +1,9 @@
 import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
-import { AppBuildService } from '../app-build.service';
+import { AppBuildService } from '../../build/app-build.service';
 import { AppChangeService } from '../app-change.service';
-import { createAppScaffold } from '../app-scaffold';
+import { createAppScaffold } from '../../scaffold/app-scaffold';
 import type { AppVersion } from '../app-version.entity';
 import { AppVersionService } from '../app-version.service';
 

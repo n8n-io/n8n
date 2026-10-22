@@ -5,13 +5,13 @@ import { mock } from 'vitest-mock-extended';
 
 import { AppBuildService } from '../app-build.service';
 import { AppBuildError } from '../app-build.types';
-import { createAppScaffold } from '../app-scaffold';
-import { appStorageLockSubKey } from '../app-storage-lock';
-import type { AppVersion } from '../app-version.entity';
-import { AppVersionRepository } from '../app-version.repository';
-import { AppVersionService } from '../app-version.service';
+import { createAppScaffold } from '../../scaffold/app-scaffold';
+import { appStorageLockSubKey } from '../../storage/app-storage-lock';
+import type { AppVersion } from '../../versions/app-version.entity';
+import { AppVersionRepository } from '../../versions/app-version.repository';
+import { AppVersionService } from '../../versions/app-version.service';
 import { AppWorkspaceService } from '../app-workspace.service';
-import { AppsConfig } from '../apps.config';
+import { AppsConfig } from '../../apps.config';
 
 function setup() {
 	const versions = mock<AppVersionRepository>();

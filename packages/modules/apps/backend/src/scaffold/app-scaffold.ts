@@ -1,10 +1,10 @@
 import { createHash } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 
-import manifest from './scaffold/scaffold-package.json';
-import lockfile from './scaffold/scaffold-lock.json';
-import type { AppFiles } from './storage/app-version-stores';
-import { AppBuildError } from './app-build.types';
+import manifest from './scaffold-package.json';
+import lockfile from './scaffold-lock.json';
+import type { AppFiles } from '../storage/app-version-stores';
+import { AppBuildError } from '../build/app-build.types';
 
 const packageJson = JSON.stringify(manifest, null, 2) + '\n';
 const packageLock = JSON.stringify(lockfile, null, 2) + '\n';

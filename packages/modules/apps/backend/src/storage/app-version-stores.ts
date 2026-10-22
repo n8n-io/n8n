@@ -1,5 +1,5 @@
 import type { OperationContext } from '@n8n/db';
-import type { AppBuildAttempt } from '../app-build.types';
+import type { AppBuildAttempt } from '../build/app-build.types';
 
 export type AppFiles = ReadonlyMap<string, Buffer>;
 

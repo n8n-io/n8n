@@ -1,8 +1,8 @@
 import { mock } from 'vitest-mock-extended';
 
 import { AppBuildReconciliationTask } from '../app-build-reconciliation.task';
-import { AppVersionRepository } from '../app-version.repository';
-import { AppsConfig } from '../apps.config';
+import { AppVersionRepository } from '../../versions/app-version.repository';
+import { AppsConfig } from '../../apps.config';
 
 afterEach(() => vi.restoreAllMocks());
 

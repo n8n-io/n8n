@@ -5,17 +5,17 @@ import { mock } from 'vitest-mock-extended';
 import type { AppArtifact } from '../app-artifact.entity';
 import { AppArtifactService } from '../app-artifact.service';
 import { appStorageLockSubKey } from '../app-storage-lock';
-import type { AppVersion } from '../app-version.entity';
-import { AppVersionRepository } from '../app-version.repository';
-import type { App } from '../app.entity';
-import { AppRepository } from '../app.repository';
-import { AppArchive } from '../storage/app-archive';
-import { AppsConfig } from '../apps.config';
-import type { NewSourceVersion } from '../storage/app-version-stores';
+import type { AppVersion } from '../../versions/app-version.entity';
+import { AppVersionRepository } from '../../versions/app-version.repository';
+import type { App } from '../../app.entity';
+import { AppRepository } from '../../app.repository';
+import { AppArchive } from '../../app-archive';
+import { AppsConfig } from '../../apps.config';
+import type { NewSourceVersion } from '../app-version-stores';
 import {
 	SnapshotAppSourceVersionStore,
 	SnapshotAppBuildResultStore,
-} from '../storage/snapshot-app-version-stores';
+} from '../snapshot-app-version-stores';
 
 const version: NewSourceVersion = {
 	id: 'version',
