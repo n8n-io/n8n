@@ -15,26 +15,22 @@ export const GEN_AI_OPERATION = {
 	INVOKE_AGENT: 'invoke_agent',
 } as const;
 
-export const GEN_AI_PROVIDER = {
+const GEN_AI_PROVIDER = {
 	ANTHROPIC: 'anthropic',
 	AWS_BEDROCK: 'aws.bedrock',
-	AZURE_AI_INFERENCE: 'azure.ai.inference',
 	AZURE_AI_OPENAI: 'azure.ai.openai',
 	COHERE: 'cohere',
 	DEEPSEEK: 'deepseek',
 	GCP_GEMINI: 'gcp.gemini',
-	GCP_GEN_AI: 'gcp.gen_ai',
 	GCP_VERTEX_AI: 'gcp.vertex_ai',
 	GROQ: 'groq',
-	IBM_WATSONX_AI: 'ibm.watsonx.ai',
 	MISTRAL: 'mistral',
 	MOONSHOT_AI: 'moonshot_ai',
 	OPENAI: 'openai',
-	PERPLEXITY: 'perplexity',
 	X_AI: 'x_ai',
 } as const;
 
-export const N8N_GEN_AI_PROVIDER = {
+const N8N_GEN_AI_PROVIDER = {
 	ALIBABA_CLOUD: 'alibaba_cloud',
 	DATABRICKS: 'databricks',
 	LEMONADE: 'lemonade',
@@ -47,11 +43,9 @@ export const N8N_GEN_AI_PROVIDER = {
 
 type ValueOf<T> = T[keyof T];
 
-export type GenAiOperationName = ValueOf<typeof GEN_AI_OPERATION>;
+type GenAiOperationName = ValueOf<typeof GEN_AI_OPERATION>;
 
-export type GenAiProviderName =
-	| ValueOf<typeof GEN_AI_PROVIDER>
-	| ValueOf<typeof N8N_GEN_AI_PROVIDER>;
+type GenAiProviderName = ValueOf<typeof GEN_AI_PROVIDER> | ValueOf<typeof N8N_GEN_AI_PROVIDER>;
 
 export type GenAiSpanAttributes = {
 	[GEN_AI_ATTR.OPERATION_NAME]?: GenAiOperationName;
@@ -105,37 +99,6 @@ const GEN_AI_PROVIDER_BY_NODE_TYPE: Readonly<Record<string, GenAiProviderName>> 
 	[`${LANGCHAIN_NODE_PREFIX}lmChatVercelAiGateway`]: N8N_GEN_AI_PROVIDER.VERCEL_AI_GATEWAY,
 };
 
-const GEN_AI_PROVIDER_BY_AGENTS_PROVIDER: Readonly<Record<string, GenAiProviderName>> = {
-	anthropic: GEN_AI_PROVIDER.ANTHROPIC,
-	'aws-bedrock': GEN_AI_PROVIDER.AWS_BEDROCK,
-	'azure-openai': GEN_AI_PROVIDER.AZURE_AI_OPENAI,
-	cohere: GEN_AI_PROVIDER.COHERE,
-	deepseek: GEN_AI_PROVIDER.DEEPSEEK,
-	google: GEN_AI_PROVIDER.GCP_GEMINI,
-	'google-vertex': GEN_AI_PROVIDER.GCP_VERTEX_AI,
-	'google-vertex-anthropic': GEN_AI_PROVIDER.GCP_VERTEX_AI,
-	groq: GEN_AI_PROVIDER.GROQ,
-	mistral: GEN_AI_PROVIDER.MISTRAL,
-	moonshotai: GEN_AI_PROVIDER.MOONSHOT_AI,
-	openai: GEN_AI_PROVIDER.OPENAI,
-	xai: GEN_AI_PROVIDER.X_AI,
-	alibaba: N8N_GEN_AI_PROVIDER.ALIBABA_CLOUD,
-	minimax: N8N_GEN_AI_PROVIDER.MINIMAX,
-	nvidia: N8N_GEN_AI_PROVIDER.NVIDIA,
-	openrouter: N8N_GEN_AI_PROVIDER.OPENROUTER,
-	vercel: N8N_GEN_AI_PROVIDER.VERCEL_AI_GATEWAY,
-};
-
-export function getGenAiProviderNameForNodeType(nodeType: string): GenAiProviderName | undefined {
-	return GEN_AI_PROVIDER_BY_NODE_TYPE[nodeType];
-}
-
-export function getGenAiProviderNameForAgentsProvider(
-	provider: string,
-): GenAiProviderName | undefined {
-	return GEN_AI_PROVIDER_BY_AGENTS_PROVIDER[provider];
-}
-
 export function isGenAiAttributeKey(key: string): key is GenAiAttributeKey {
 	return GEN_AI_ATTRIBUTE_KEYS.has(key);
 }
@@ -156,7 +119,7 @@ function isTokenCount(value: unknown): value is number {
 	return typeof value === 'number' && Number.isInteger(value) && value >= 0;
 }
 
-export type ChatGenAiInput = {
+type ChatGenAiInput = {
 	nodeType: string;
 	requestModel?: string;
 	responseModel?: string;
@@ -166,7 +129,7 @@ export type ChatGenAiInput = {
 export function buildChatGenAiAttributes(input: ChatGenAiInput): GenAiSpanAttributes {
 	const attributes: GenAiSpanAttributes = {
 		[GEN_AI_ATTR.OPERATION_NAME]: GEN_AI_OPERATION.CHAT,
-		[GEN_AI_ATTR.PROVIDER_NAME]: getGenAiProviderNameForNodeType(input.nodeType),
+		[GEN_AI_ATTR.PROVIDER_NAME]: GEN_AI_PROVIDER_BY_NODE_TYPE[input.nodeType],
 		[GEN_AI_ATTR.REQUEST_MODEL]: input.requestModel,
 		[GEN_AI_ATTR.RESPONSE_MODEL]: input.responseModel,
 	};

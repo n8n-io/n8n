@@ -236,7 +236,7 @@ export class OtelLifecycleHandler {
 			outputItemCount: countOutputItems(ctx.taskData.data),
 			error: ctx.taskData.error ?? undefined,
 			customAttributes: this.buildNodeCustomAttributes(ctx),
-			genAiAttributes: this.buildNodeGenAiAttributes(ctx, node),
+			genAiAttributes: this.tryBuildGenAiAttributes(ctx, node),
 		});
 	}
 
@@ -320,12 +320,17 @@ export class OtelLifecycleHandler {
 		);
 	}
 
-	private buildNodeGenAiAttributes(
+	private tryBuildGenAiAttributes(
 		ctx: NodeExecuteAfterContext,
 		node: INode,
 	): GenAiSpanAttributes | undefined {
 		try {
-			return buildNodeGenAiAttributes(node, ctx.taskData, ctx.executionData.resultData.runData);
+			return buildNodeGenAiAttributes(
+				node,
+				ctx.taskData,
+				ctx.executionData.resultData.runData,
+				ctx.workflow.connections,
+			);
 		} catch (error) {
 			this.logger.warn('Failed to build GenAI attributes for OTEL span', {
 				executionId: ctx.executionId,

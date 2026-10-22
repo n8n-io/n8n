@@ -1219,11 +1219,23 @@ describe('OtelLifecycleHandler', () => {
 					...tracing,
 				});
 
+			const languageModelOf = (agentName: string) => ({
+				ai_languageModel: [[{ node: agentName, type: 'ai_languageModel', index: 0 }]],
+			});
+
 			const endAgent = (runData: Record<string, unknown[]>) => {
 				const agentTask = task(10, []);
 				handler.onNodeEnd({
 					type: 'nodeExecuteAfter',
-					workflow: { id: 'wf-1', name: 'Test', nodes: [agentNode], connections: {} },
+					workflow: {
+						id: 'wf-1',
+						name: 'Test',
+						nodes: [agentNode],
+						connections: {
+							'OpenAI Chat Model': languageModelOf('AI Agent'),
+							'Other Chat Model': languageModelOf('Other Agent'),
+						},
+					},
 					nodeName: 'AI Agent',
 					executionId: 'exec-1',
 					taskData: agentTask,
