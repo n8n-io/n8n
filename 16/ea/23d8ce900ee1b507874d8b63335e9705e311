@@ -1,0 +1,19 @@
+packages/@n8n/errors/src/base.error.ts
+  s_9fedf97d290a42::t_84734227f6b627 45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "16ea23d8ce900ee1b507874d8b63335e9705e311",
+  "prompts": {},
+  "sessions": {
+    "s_9fedf97d290a42": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d78a49da-3a41-4d28-9373-fa55f2015a75",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

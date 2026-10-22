@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/system-agents/system-agent-host-events.ts
+  s_47d1e4fb33b500::t_e7c905c4807384 28-30,69-70
+packages/cli/src/modules/agents/system-agents/system-agent.types.ts
+  ai_agent 35-36
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-host-events.test.ts
+  s_47d1e4fb33b500::t_1f7e227a477ff3 4-7,125-140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0c3b10663f8517a0315a926a0479c8677c6d1131",
+  "prompts": {},
+  "sessions": {
+    "s_47d1e4fb33b500": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e1f43985-5854-4ccc-ae33-ef01e0398c58",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

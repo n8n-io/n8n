@@ -1,0 +1,57 @@
+packages/cli/src/error-reporting/__tests__/error-reporting-boot.test.ts
+  s_71fde24149b9db::t_c1231f5e388227 1-130
+packages/core/src/errors/error-reporter.ts
+  s_71fde24149b9db::t_2176f760b212c0 227,253,270-273,300-302
+packages/core/src/observability/tracing/__tests__/span-sampling.test.ts
+  s_71fde24149b9db::t_491b9f3d27a085 1-2,307-311
+  s_6f92bccd0f2ba2::t_d76078b2939ac8 62-70,83-85,87,91,96
+packages/core/src/instance-settings/__tests__/instance-type.test.ts
+  s_71fde24149b9db::t_c8332bed8accf6 1-16
+packages/core/src/errors/__tests__/error-reporter.otel.test.ts
+  s_71fde24149b9db::t_728b1c02e73178 1-38
+packages/core/src/instance-settings/instance-type.ts
+  s_71fde24149b9db::t_c8332bed8accf6 1-7
+pnpm-lock.yaml
+  ai_agent 2827,3897,4345,4987,5469-5474,5477,5480,5483,5486,12004,12825-12830,12843-12848,12861-12866,12879-12884,12897-12902,12915-12920,12933-12938,12953-12959,12974-12980,12995-13001,13016-13022,13037-13043,13058-13064,13079-13085,13100-13106,13119-13124,13142-13147,13160-13165,13178-13183,13197-13199,14185-14199,14256-14259,14264-14267,14272-14273,14280-14282,14284-14286,14288-14290,14294-14296,14306-14312,19351-19354,22133-22136,23583-23587,30163,30179,31139-31141,31148-31150,31157-31159,31166-31168,31175-31177,31184-31186,31193-31195,31202-31204,31211-31213,31220-31222,31229-31231,31238-31240,31247-31249,31256-31258,31265-31267,31274-31276,31290-31292,31299-31301,31308-31310,31319-31320,32097-32108,32155-32156,32161,32163,32165,32169,32179,32181-32182,32185-32187,32189,32192-32201,32203,32206-32207,32209,32211-32212
+packages/core/src/observability/tracing/span-sampling.ts
+  s_6f92bccd0f2ba2::t_d76078b2939ac8 14-18,72,78-79,143
+  s_71fde24149b9db::t_df24b76486760c 1-2,60,62-63
+packages/cli/src/error-reporting/error-reporting-boot.ts
+  s_71fde24149b9db::t_fa151e2e41610d 50-55
+  s_71fde24149b9db::t_d142aab598f82f 1-49,56-57
+packages/core/src/instance-settings/instance-settings.ts
+  s_71fde24149b9db::t_c8332bed8accf6 14,101
+packages/core/package.json
+  s_71fde24149b9db::t_df24b76486760c 77-78
+packages/core/src/instance-settings/index.ts
+  s_71fde24149b9db::t_c8332bed8accf6 2
+packages/core/src/errors/__tests__/error-reporter.test.ts
+  s_71fde24149b9db::t_fa151e2e41610d 512
+  s_71fde24149b9db::t_728b1c02e73178 507-511,513-516
+packages/cli/bin/n8n
+  s_71fde24149b9db::t_cd2ae20275e550 65-66,70-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ceacfc4c3102792c2b38e13956f391858f42f540",
+  "prompts": {},
+  "sessions": {
+    "s_6f92bccd0f2ba2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c393f7e9-f81d-4f76-8bc6-154a73a9a38a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    },
+    "s_71fde24149b9db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f71bd56d-a432-4323-a999-6a6b83977c41",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

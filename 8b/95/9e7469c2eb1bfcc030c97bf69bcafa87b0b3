@@ -1,0 +1,20 @@
+packages/cli/src/services/__tests__/dynamic-node-parameters.service.test.ts
+  s_ffade853fd5bfb::t_cad07a3597c856 668
+  s_ffade853fd5bfb::t_84220ba7e263d9 661-667,669-705
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8b959e7469c2eb1bfcc030c97bf69bcafa87b0b3",
+  "prompts": {},
+  "sessions": {
+    "s_ffade853fd5bfb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f20fdff-6f39-4123-83e9-02b5e9c84dee",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
