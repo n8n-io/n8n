@@ -38,12 +38,14 @@ export class AgentDefinitionService {
 		ctx: OperationContext,
 	): Promise<AgentHistory> {
 		if (!agent.versionId) throw new ConflictError('Agent has no saved version');
+
 		const existing = await this.historyRepository.findByVersionAndAgentId(
 			agent.versionId,
 			agent.id,
 			ctx,
 		);
 		if (existing) return existing;
+
 		const snapshot = await this.agentSkillRefs.versionSnapshot(agent, ctx);
 		const history = await this.historyRepository.saveVersion(
 			{
@@ -65,6 +67,7 @@ export class AgentDefinitionService {
 		);
 		await this.agentSkillRefs.pinVersion(history.versionId, snapshot, ctx);
 		const tasks = await this.taskRepository.findByAgentId(agent.id, ctx);
+
 		await this.taskSnapshotRepository.saveForVersion(
 			tasks.map((task) => ({
 				...getAgentTaskBody(task),
@@ -74,6 +77,7 @@ export class AgentDefinitionService {
 			})),
 			ctx,
 		);
+
 		return history;
 	}
 
