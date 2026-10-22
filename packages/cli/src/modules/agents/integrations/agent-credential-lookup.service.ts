@@ -2,6 +2,7 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 
 /**
  * Resolves a credential through the agent's project rather than a signed-in
@@ -32,7 +33,10 @@ export class AgentCredentialLookupService {
 			excludePersonalRoute: true,
 		});
 		if (!usable.some((item) => item.id === credentialId)) return null;
-		return await this.decryptForProject(projectId, credentialId, expectedType);
+		return await this.decryptForProject(projectId, credentialId, expectedType, {
+			kind: 'user',
+			user,
+		});
 	}
 
 	/**
@@ -43,7 +47,12 @@ export class AgentCredentialLookupService {
 	 * authorised another way. Anything reached by a signed-in caller should use
 	 * `decryptForUser`.
 	 */
-	async decryptForProject(projectId: string, credentialId: string, expectedType: string) {
+	async decryptForProject(
+		projectId: string,
+		credentialId: string,
+		expectedType: string,
+		actor: PolicyActor = { kind: 'system', reason: 'integration' },
+	) {
 		const projectCredentials =
 			await this.credentialsService.findAllCredentialIdsForProject(projectId);
 		// Global credentials are only consulted on a miss: the query reads every
@@ -55,6 +64,6 @@ export class AgentCredentialLookupService {
 			);
 
 		if (!credential || credential.type !== expectedType) return null;
-		return await this.credentialsService.decrypt(credential, true);
+		return await this.credentialsService.decryptForUse(credential, actor, projectId);
 	}
 }

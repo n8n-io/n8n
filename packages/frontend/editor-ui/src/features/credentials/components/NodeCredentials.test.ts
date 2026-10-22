@@ -271,6 +271,54 @@ describe('NodeCredentials', () => {
 		expect(screen.queryByText('OpenAi account')).toBeInTheDocument();
 	});
 
+	it.each([false, true])(
+		'offers end-user credentials with forAgent set to %s',
+		async (forAgent) => {
+			credentialsStore.state.credentials = {
+				fixed: createCredential({ id: 'fixed' }),
+				'end-user': createCredential({
+					id: 'end-user',
+					name: 'End-user account',
+					isResolvable: true,
+				}),
+			};
+			renderComponent({ props: { node: openAiNodeNoCreds, forAgent, skipAutoSelect: true } });
+
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+			expect(screen.queryByText('OpenAi account')).toBeInTheDocument();
+			expect(screen.queryByText('End-user account') !== null).toBe(!forAgent);
+		},
+	);
+
+	it.each([false, true])(
+		'auto-selects a fixed credential with an end-user credential present: %s',
+		(hasFixed) => {
+			credentialsStore.state.credentials = {
+				...(hasFixed ? { fixed: createCredential({ id: 'fixed' }) } : {}),
+				'end-user': createCredential({
+					id: 'end-user',
+					name: 'End-user account',
+					isResolvable: true,
+				}),
+			};
+			const { emitted } = renderComponent({
+				props: { node: { ...httpNode, credentials: {} }, forAgent: true },
+			});
+			if (hasFixed) {
+				expect(emitted('credentialSelected')).toEqual([
+					[
+						{
+							name: httpNode.name,
+							properties: { credentials: { openAiApi: { id: 'fixed', name: 'OpenAi account' } } },
+						},
+					],
+				]);
+			} else {
+				expect(emitted('credentialSelected')).toBeUndefined();
+			}
+		},
+	);
+
 	it('should not offer a credential the scoped fetch left out of the usable slice', async () => {
 		// An unscoped fetchAllCredentials from anywhere in the app can fill the flat
 		// map with credentials from other projects while the NDV is open (IAM-1241).

@@ -95,6 +95,7 @@ function createCredential(overrides: {
 	name: string;
 	type: string;
 	usageScope?: 'project' | 'instance';
+	isResolvable?: boolean;
 }) {
 	return {
 		...overrides,
@@ -135,6 +136,51 @@ describe('useNodeCredentialOptions', () => {
 			}),
 		};
 	});
+
+	it.each([false, true])(
+		'filters end-user credentials when excludeResolvable is %s',
+		(excludeResolvable) => {
+			credentialsStore.usableCredentials['end-user'] = createCredential({
+				id: 'end-user',
+				name: 'End-user Slack',
+				type: 'slackApi',
+				isResolvable: true,
+			});
+			const { credentialTypesNodeDescriptionDisplayed } = useNodeCredentialOptions(
+				slackNode,
+				slackNodeType,
+				'slackApi',
+				false,
+				undefined,
+				excludeResolvable,
+			);
+			expect(credentialTypesNodeDescriptionDisplayed.value[0].options.map(({ id }) => id)).toEqual(
+				excludeResolvable ? ['token-cred'] : ['end-user', 'token-cred'],
+			);
+		},
+	);
+
+	it.each([false, true])(
+		'checks saved end-user selections with a host list: %s',
+		(withOverride) => {
+			const endUser = createCredential({
+				id: 'end-user',
+				name: 'End-user Slack',
+				type: 'slackApi',
+				isResolvable: true,
+			});
+			credentialsStore.usableCredentials['end-user'] = endUser;
+			const { isCredentialExisting } = useNodeCredentialOptions(
+				{ ...slackNode, credentials: { slackApi: { id: endUser.id, name: endUser.name } } },
+				slackNodeType,
+				'slackApi',
+				false,
+				withOverride ? [endUser] : undefined,
+				true,
+			);
+			expect(isCredentialExisting({ name: 'slackApi', required: true })).toBe(false);
+		},
+	);
 
 	it('shows only override credential type options for setup cards', () => {
 		const { credentialTypesNodeDescriptionDisplayed } = setupOptions('slackApi');

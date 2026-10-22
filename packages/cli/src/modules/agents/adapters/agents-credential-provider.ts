@@ -150,10 +150,14 @@ export class AgentsCredentialProvider
 		// this fetches intersection of project and global credentials the user has access to
 		// credentials available to project but not user are not listed
 		// used to limit available credentials to the user's access when calling agent builder
-		return await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(this.user, {
-			projectId: this.projectId,
-			excludePersonalRoute: true,
-		});
+		const credentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
+			this.user,
+			{
+				projectId: this.projectId,
+				excludePersonalRoute: true,
+			},
+		);
+		return credentials.filter((credential) => !credential.isResolvable);
 	}
 
 	private async getAllProjectAndGlobalCredentials(): Promise<CredentialsEntity[]> {
@@ -168,7 +172,7 @@ export class AgentsCredentialProvider
 
 		const addCreds = (creds: CredentialsEntity[]) => {
 			for (const cred of creds) {
-				if (!allCredsSet.has(cred.id)) {
+				if (!cred.isResolvable && !allCredsSet.has(cred.id)) {
 					allCredsSet.add(cred.id);
 					allCreds.push(cred);
 				}

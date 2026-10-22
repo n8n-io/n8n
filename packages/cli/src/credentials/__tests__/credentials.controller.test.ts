@@ -137,6 +137,30 @@ describe('CredentialsController', () => {
 		credentialsRepository.create.mockImplementation((data) => data as CredentialsEntity);
 	});
 
+	describe('getProjectCredentials', () => {
+		it.each(['true', 'false', undefined] as const)(
+			'filters end-user credentials when forAgent is %s',
+			async (forAgent) => {
+				const fixed = mock<
+					Awaited<ReturnType<CredentialsService['getCredentialsAUserCanUseInAWorkflow']>>[number]
+				>({ id: 'fixed', isResolvable: false });
+				const endUser = { ...fixed, id: 'end-user', isResolvable: true };
+				vi.spyOn(credentialsService, 'getCredentialsAUserCanUseInAWorkflow').mockResolvedValue([
+					fixed,
+					endUser,
+				]);
+				const request = mock<CredentialRequest.ForWorkflow>({
+					user: req.user,
+					query: { projectId: 'project-1', forAgent },
+				});
+
+				await expect(credentialsController.getProjectCredentials(request)).resolves.toEqual(
+					forAgent === 'true' ? [fixed] : [fixed, endUser],
+				);
+			},
+		);
+	});
+
 	describe('createCredentials', () => {
 		it('should create new credentials and emit "credentials-created"', async () => {
 			const newCredentialsPayload = createNewCredentialsPayload();
