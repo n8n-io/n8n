@@ -1,7 +1,7 @@
 import type { InboxCounts, PromotionReviewState } from '@n8n/api-types';
 import { BaseRepository, type OperationContext, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, In, IsNull, LessThan, Or } from '@n8n/typeorm';
+import { DataSource, In, IsNull, LessThan, Not, Or } from '@n8n/typeorm';
 
 import type { InboxSourceQuery } from '../../../inbox/inbox-source.registry';
 import { PromotionReview } from '../entities/promotion-review.entity';
@@ -11,6 +11,9 @@ export type NewPromotionReview = Pick<
 	PromotionReview,
 	'id' | 'environmentId' | 'type' | 'remoteReviewId' | 'createdById'
 >;
+
+/** One admin's approval in progress. The time tells it apart from a later claim by the same admin. */
+export type ApprovalClaim = Readonly<{ reviewId: string; approvedById: string; approvedAt: Date }>;
 
 /** Still on the host. The open tab shows both. */
 const OPEN_STATES: PromotionReviewState[] = ['open', 'changes_requested'];
@@ -58,25 +61,23 @@ export class PromotionReviewRepository extends BaseRepository<PromotionReview> {
 	 * belongs to a request that stopped, so another admin can take it.
 	 */
 	async claimApproval(
-		id: string,
-		approvedById: string,
-		at: Date,
+		{ reviewId, approvedById, approvedAt }: ApprovalClaim,
 		staleBefore: Date,
 	): Promise<boolean> {
 		const result = await this.update(
-			{ id, state: 'open', approvedAt: Or(IsNull(), LessThan(staleBefore)) },
-			{ approvedById, approvedAt: at },
+			{ id: reviewId, state: 'open', approvedAt: Or(IsNull(), LessThan(staleBefore)) },
+			{ approvedById, approvedAt },
 		);
 		return (result.affected ?? 0) > 0;
 	}
 
 	/**
-	 * Undoes one claim after a failed merge. A terminal row keeps its approver, and a newer
-	 * claim stays, also when the same admin took it after this claim expired.
+	 * Undoes a claim when the host surely did not merge. A sync can close the review in the
+	 * meantime, so only a merged review keeps its approver. A newer claim stays.
 	 */
-	async releaseApproval(id: string, approvedById: string, approvedAt: Date): Promise<void> {
+	async releaseApproval({ reviewId, approvedById, approvedAt }: ApprovalClaim): Promise<void> {
 		await this.update(
-			{ id, approvedById, approvedAt, state: In(OPEN_STATES) },
+			{ id: reviewId, approvedById, approvedAt, state: Not('merged') },
 			{ approvedById: null, approvedAt: null },
 		);
 	}

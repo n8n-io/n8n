@@ -10,21 +10,31 @@ import { LicenseState, Logger, isEnvFeatureEnabled } from '@n8n/backend-common';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import {
+	BadRequestError,
+	ConflictError,
+	ForbiddenError,
+	NotFoundError,
+	ServiceUnavailableError,
+	TooManyRequestsError,
+} from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 import { singleFlight } from '@n8n/utils/promise/single-flight';
 
 import type { InboxSourceQuery } from '../inbox/inbox-source.registry';
 import type { PromotionReview } from './database/entities/promotion-review.entity';
 import type { PromotionRun } from './database/entities/promotion-run.entity';
-import { PromotionReviewRepository } from './database/repositories/promotion-review.repository';
+import {
+	PromotionReviewRepository,
+	type ApprovalClaim,
+} from './database/repositories/promotion-review.repository';
 import { PromotionRunRepository } from './database/repositories/promotion-run.repository';
 import type { GitHostAccess } from './git-hosts/git-host.types';
 import {
 	GitLabMergeRequestClient,
 	parseGitLabReviewId,
 } from './git-hosts/gitlab-merge-request.client';
-import type { GitLabMergeRequest } from './git-hosts/gitlab-merge-request.types';
+import type { GitLabMergeRequest, MergeRequestRef } from './git-hosts/gitlab-merge-request.types';
 import { PromotionReviewHostResolver } from './promotion-review-host.resolver';
 import { approvalNote } from './promotion-review.utils';
 
@@ -41,6 +51,9 @@ const APPROVAL_CLAIM_TTL_MS = 2 * 60_000;
 
 const CHANGED_ON_HOST =
 	'The merge request changed on GitLab. Reload the Inbox and review the changes again.';
+
+const UNCONFIRMED_MERGE =
+	'GitLab did not confirm the merge. Check the merge request on GitLab, then try again in two minutes.';
 
 /**
  * Promotion Reviews as an Inbox source, and their approval. The first page of each tab and
@@ -137,33 +150,25 @@ export class PromotionReviewInboxService {
 		}
 		if (mergeRequest.sha !== headCommitSha) throw new ConflictError(CHANGED_ON_HOST);
 
-		const claimedAt = new Date();
-		const staleBefore = new Date(claimedAt.getTime() - APPROVAL_CLAIM_TTL_MS);
-		if (!(await this.reviewRepository.claimApproval(review.id, user.id, claimedAt, staleBefore))) {
+		const claim: ApprovalClaim = {
+			reviewId: review.id,
+			approvedById: user.id,
+			approvedAt: new Date(),
+		};
+		const staleBefore = new Date(claim.approvedAt.getTime() - APPROVAL_CLAIM_TTL_MS);
+		if (!(await this.reviewRepository.claimApproval(claim, staleBefore))) {
 			throw new ConflictError('Another owner or admin is approving this promotion review.');
 		}
 
-		let merged: GitLabMergeRequest;
-		try {
-			await this.mergeRequests.approve(access, ref, headCommitSha).catch((error: unknown) => {
-				// GitLab refuses a second approval, and an approval by the author. The merge decides.
-				if (!(error instanceof BadRequestError)) throw error;
-				// The message can quote the GitLab response, so log only the error class.
-				this.logger.info('GitLab did not accept the approval', {
-					reviewId,
-					error: error.constructor.name,
-				});
-			});
-			merged = await this.mergeRequests.merge(access, ref, headCommitSha);
-		} catch (error) {
-			await this.reviewRepository.releaseApproval(review.id, user.id, claimedAt);
-			throw error instanceof ConflictError ? new ConflictError(CHANGED_ON_HOST) : error;
-		}
-
+		const merged = await this.mergeClaimed(claim, access, ref, headCommitSha);
 		await this.applyHostState(review, merged);
 		// A sync can record the merge first. Then the guarded write changes nothing.
 		review.state = toReviewState(merged);
-		Object.assign(review, { approvedById: user.id, approvedBy: user, approvedAt: claimedAt });
+		Object.assign(review, {
+			approvedById: user.id,
+			approvedBy: user,
+			approvedAt: claim.approvedAt,
+		});
 		// The merge is done, so a failed note must not fail the approval.
 		await this.mergeRequests.createNote(access, ref, approvalNote(user)).catch((error: unknown) => {
 			this.logger.warn('Could not post the approval note on GitLab', {
@@ -172,6 +177,42 @@ export class PromotionReviewInboxService {
 			});
 		});
 		return toItem(review, run, { mergeRequest: merged, remoteError: null });
+	}
+
+	/**
+	 * Approves and merges on the host under a claim. The claim is released only when the host
+	 * surely did not merge. A lost merge answer keeps it, so the next sync records the merge
+	 * with this approver.
+	 */
+	private async mergeClaimed(
+		claim: ApprovalClaim,
+		access: GitHostAccess,
+		ref: MergeRequestRef,
+		sha: string,
+	): Promise<GitLabMergeRequest> {
+		let merging = false;
+		try {
+			await this.mergeRequests.approve(access, ref, sha).catch((error: unknown) => {
+				// The GitLab approval is best effort. A real problem also fails the merge, which reports it.
+				if (!(error instanceof BadRequestError)) throw error;
+				// Log only the error type. Its message can contain text from GitLab's response.
+				this.logger.info('GitLab did not accept the approval', {
+					reviewId: claim.reviewId,
+					error: error.constructor.name,
+				});
+			});
+			merging = true;
+			return await this.mergeRequests.merge(access, ref, sha);
+		} catch (error) {
+			// Only the merge call can fail after GitLab merged, for example on a timeout.
+			if (merging && !isRefusal(error)) {
+				const current = await this.mergeRequests.getMergeRequest(access, ref).catch(() => null);
+				if (current?.state === 'merged') return current;
+				throw new ServiceUnavailableError(UNCONFIRMED_MERGE);
+			}
+			await this.reviewRepository.releaseApproval(claim);
+			throw error instanceof ConflictError ? new ConflictError(CHANGED_ON_HOST) : error;
+		}
 	}
 
 	private async syncOpenReviews(): Promise<Map<string, RemoteView>> {
@@ -272,6 +313,13 @@ const remoteErrorOf = (error: unknown): PromotionReviewRemoteError => {
 	return 'unreachable';
 };
 
+/** GitLab answered and did not merge. A timeout or a 5xx answer leaves the outcome unknown. */
+const isRefusal = (error: unknown) =>
+	error instanceof BadRequestError ||
+	error instanceof ConflictError ||
+	error instanceof NotFoundError ||
+	error instanceof TooManyRequestsError;
+
 const toReviewState = ({
 	state,
 	detailed_merge_status,
@@ -307,7 +355,8 @@ const toItem = (
 		branchName: details?.branchName ?? null,
 		environmentName: run?.environment?.name ?? null,
 		requester: toReviewUser(review.createdBy),
-		approver: toReviewUser(review.approvedBy),
+		// On other states, approvedBy is a claim in progress or one that a stopped request left.
+		approver: review.state === 'merged' ? toReviewUser(review.approvedBy) : null,
 		remoteError,
 		headCommitSha: mergeRequest?.sha ?? null,
 		runCommitSha: details?.commitSha ?? null,

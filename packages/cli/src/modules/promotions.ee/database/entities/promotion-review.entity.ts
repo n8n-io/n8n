@@ -63,8 +63,9 @@ export class PromotionReview extends WithCreatedAt {
 	createdById: string | null;
 
 	/**
-	 * The one n8n user who approved in n8n. Set when the approval is claimed, and
-	 * cleared when the merge fails. Not copied from the host.
+	 * The n8n user who claimed the approval. It names the approver only on a merged review.
+	 * On other states it is a claim in progress, or one that a stopped request left.
+	 * Not copied from the host.
 	 */
 	@Column({ type: 'uuid', nullable: true })
 	approvedById: string | null;

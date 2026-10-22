@@ -65,35 +65,51 @@ function gitlab(answers: Record<number, GitLabAnswer>, { delayMs = 0 } = {}) {
 	return calls;
 }
 
+type GitLabWrites = {
+	approve?: number[];
+	/** `reset` drops the connection, so n8n never sees the answer. */
+	merge?: Array<number | 'reset'>;
+	mergeDelayMs?: number;
+	beforeMerge?: () => Promise<void>;
+};
+
 /**
- * Answers the approve, merge, and note calls for one merge request with the next status
+ * Answers the approve, merge, and note calls for one merge request with the next answer
  * in each list, and returns the calls with their bodies, in call order.
  */
 function gitlabWrites(
 	iid: number,
-	{ approve = [201], merge = [200], mergeDelayMs = 0, beforeMerge = async () => {} } = {},
+	{
+		approve = [201],
+		merge = [200],
+		mergeDelayMs = 0,
+		beforeMerge = async () => {},
+	}: GitLabWrites = {},
 ) {
 	const calls: Array<[string, unknown]> = [];
 	const path = `/api/v4/projects/${projectId}/merge_requests/${iid}`;
-	const answer = (statuses: number[], ok: object): [number, object] => {
-		// The last status repeats.
-		const [status] = statuses.length > 1 ? statuses.splice(0, 1) : statuses;
-		return status < 300 ? [status, ok] : [status, { message: `${status} refused` }];
-	};
+	// The last answer repeats.
+	const next = <T>(answers: T[]) => (answers.length > 1 ? answers.splice(0, 1) : answers)[0];
+	const answer = (status: number, ok: object): [number, object] =>
+		status < 300 ? [status, ok] : [status, { message: `${status} refused` }];
 	nock(baseUrl)
 		.persist()
 		.matchHeader('PRIVATE-TOKEN', token)
 		.post(`${path}/approve`)
 		.reply((_uri, body) => {
 			calls.push(['approve', body]);
-			return answer(approve, {});
+			return answer(next(approve), {});
 		})
 		.put(`${path}/merge`)
 		.delay(mergeDelayMs)
 		.reply((_uri, body, respond) => {
 			calls.push(['merge', body]);
+			const status = next(merge);
 			void beforeMerge().then(() =>
-				respond(null, answer(merge, mergeRequest(iid, { state: 'merged' }))),
+				status === 'reset'
+					? // nock drops the reply when it gets an error.
+						respond(Object.assign(new Error('socket hang up'), { code: 'ECONNRESET' }), [200])
+					: respond(null, answer(status, mergeRequest(iid, { state: 'merged' }))),
 			);
 		})
 		.post(`${path}/notes`)
@@ -523,6 +539,51 @@ describe('Promotion reviews in the Inbox', () => {
 			const response = await approve(await createAdmin(), reviewId);
 
 			expect(response.body.data).toMatchObject({ state: 'closed', reviewState: 'merged' });
+		});
+
+		it('finishes the approval when GitLab merged but its answer was lost', async () => {
+			const reviewId = await insertReview(1);
+			const answers: Record<number, GitLabAnswer> = { 1: { state: 'opened' } };
+			gitlab(answers);
+			const writes = gitlabWrites(1, {
+				merge: ['reset'],
+				beforeMerge: async () => {
+					answers[1] = { state: 'merged' };
+				},
+			});
+			const admin = await createAdmin();
+
+			const response = await approve(admin, reviewId);
+
+			expect(response.status, JSON.stringify(response.body)).toBe(200);
+			expect(response.body.data).toMatchObject({
+				reviewState: 'merged',
+				approver: expect.objectContaining({ id: admin.id }),
+			});
+			expect(writes.at(-1)?.[0]).toBe('note');
+		});
+
+		it('keeps the claim, and shows no approver, when GitLab does not confirm the merge', async () => {
+			const reviewId = await insertReview(1);
+			const answers: Record<number, GitLabAnswer> = { 1: { state: 'opened' } };
+			gitlab(answers);
+			gitlabWrites(1, {
+				merge: ['reset'],
+				beforeMerge: async () => {
+					answers[1] = 503;
+				},
+			});
+			const admin = await createAdmin();
+
+			const response = await approve(admin, reviewId);
+
+			expect(response.status).toBe(503);
+			expect(response.body.message).toContain('GitLab did not confirm the merge');
+			expect(await approvedById(reviewId)).toBe(admin.id);
+			answers[1] = { state: 'opened' };
+			expect((await approve(await createAdmin(), reviewId)).status).toBe(409);
+			const [row] = (await inbox(admin, { state: 'open', category: 'waiting' })).body.data.data;
+			expect(row).toMatchObject({ id: reviewId, approver: null });
 		});
 
 		it('lets an admin take a claim older than two minutes', async () => {

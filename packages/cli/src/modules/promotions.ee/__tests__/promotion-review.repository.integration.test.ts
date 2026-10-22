@@ -254,28 +254,51 @@ describe('PromotionReviewRepository', () => {
 		});
 	});
 
-	it('releases only the approval claim that failed', async () => {
-		const { review } = await insertReview();
-		const expired = new Date(Date.now() - 3 * 60_000);
-		const renewed = new Date();
-		const staleBefore = new Date(renewed.getTime() - 2 * 60_000);
-		await expect(
-			reviewRepository.claimApproval(review.id, owner.id, expired, staleBefore),
-		).resolves.toBe(true);
-		await expect(
-			reviewRepository.claimApproval(review.id, owner.id, renewed, staleBefore),
-		).resolves.toBe(true);
-
-		await reviewRepository.releaseApproval(review.id, owner.id, expired);
-		expect(await reviewRepository.findOneBy({ id: review.id })).toMatchObject({
+	describe('approval claims', () => {
+		const staleBefore = () => new Date(Date.now() - 2 * 60_000);
+		const claimOf = (reviewId: string, approvedAt = new Date()) => ({
+			reviewId,
 			approvedById: owner.id,
-			approvedAt: renewed,
+			approvedAt,
+		});
+		const approval = async (id: string) => {
+			const { approvedById, approvedAt } = await reviewRepository.findOneByOrFail({ id });
+			return { approvedById, approvedAt };
+		};
+
+		it('releases a claim only when its timestamp matches', async () => {
+			const { review } = await insertReview();
+			const expired = claimOf(review.id, new Date(Date.now() - 3 * 60_000));
+			const renewed = claimOf(review.id);
+			await expect(reviewRepository.claimApproval(expired, staleBefore())).resolves.toBe(true);
+			await expect(reviewRepository.claimApproval(renewed, staleBefore())).resolves.toBe(true);
+
+			await reviewRepository.releaseApproval(expired);
+
+			expect(await approval(review.id)).toEqual({
+				approvedById: owner.id,
+				approvedAt: renewed.approvedAt,
+			});
 		});
 
-		await reviewRepository.releaseApproval(review.id, owner.id, renewed);
-		expect(await reviewRepository.findOneBy({ id: review.id })).toMatchObject({
-			approvedById: null,
-			approvedAt: null,
+		it('releases a claim on a closed review, but keeps the approver of a merged review', async () => {
+			const { review: closed } = await insertReview();
+			const { review: merged } = await insertReview();
+			const closedClaim = claimOf(closed.id);
+			const mergedClaim = claimOf(merged.id);
+			await reviewRepository.claimApproval(closedClaim, staleBefore());
+			await reviewRepository.claimApproval(mergedClaim, staleBefore());
+			await reviewRepository.update({ id: closed.id }, { state: 'closed' });
+			await reviewRepository.update({ id: merged.id }, { state: 'merged' });
+
+			await reviewRepository.releaseApproval(closedClaim);
+			await reviewRepository.releaseApproval(mergedClaim);
+
+			expect(await approval(closed.id)).toEqual({ approvedById: null, approvedAt: null });
+			expect(await approval(merged.id)).toEqual({
+				approvedById: owner.id,
+				approvedAt: mergedClaim.approvedAt,
+			});
 		});
 	});
 
