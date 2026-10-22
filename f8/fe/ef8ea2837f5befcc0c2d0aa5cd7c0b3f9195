@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionsSettingsView.test.ts
+  s_578cbea78a6e04::t_1a7d61469223be 116-117
+  s_578cbea78a6e04::t_b3ba3650ee6aae 12,102,105-106,114-115
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionsSettingsView.vue
+  s_578cbea78a6e04::t_ad59bef781ab30 59,83-90,93,97,107,250
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f8feef8ea2837f5befcc0c2d0aa5cd7c0b3f9195",
+  "prompts": {},
+  "sessions": {
+    "s_578cbea78a6e04": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7d44a76c-2809-4177-8766-9f543c07b0c3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}
