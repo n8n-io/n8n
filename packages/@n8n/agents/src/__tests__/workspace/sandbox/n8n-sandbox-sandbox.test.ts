@@ -411,4 +411,15 @@ describe('recovery when the remote sandbox is gone', () => {
 
 		expect(mockCreateSandbox).not.toHaveBeenCalled();
 	});
+
+	it('limits the probe to 10 seconds when the command timeout is longer', async () => {
+		const sandbox = await startedSandbox();
+		const timeoutSpy = vi.spyOn(AbortSignal, 'timeout');
+		mockExec.mockRejectedValueOnce(notFound());
+
+		await expect(sandbox.executeCommand('ls')).rejects.toThrow('sandbox not found');
+
+		expect(timeoutSpy).toHaveBeenCalledWith(10_000);
+		timeoutSpy.mockRestore();
+	});
 });

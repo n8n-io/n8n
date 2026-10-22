@@ -42,6 +42,9 @@ export class N8nSandboxServiceSandbox extends BaseSandbox {
 
 	private readonly timeout: number;
 
+	/** Deadline for the existence check after a 404, so a hung service fails fast. */
+	private static readonly PROBE_TIMEOUT_MS = 10_000;
+
 	private static readonly HOME_DIR = '/home/user';
 
 	private static readonly WORKSPACE_DIR = `${N8nSandboxServiceSandbox.HOME_DIR}/workspace`;
@@ -175,7 +178,8 @@ export class N8nSandboxServiceSandbox extends BaseSandbox {
 	private async isRemoteGone(): Promise<boolean> {
 		if (!this.sandboxId) return false;
 		try {
-			await this.withLifecycleTimeout(this.client.getSandbox(this.sandboxId));
+			const timeoutMs = Math.min(this.timeout, N8nSandboxServiceSandbox.PROBE_TIMEOUT_MS);
+			await raceWithAbort(this.client.getSandbox(this.sandboxId), AbortSignal.timeout(timeoutMs));
 			return false;
 		} catch (error) {
 			return isNotFound(error);
