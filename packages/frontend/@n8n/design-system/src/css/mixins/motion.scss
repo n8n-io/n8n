@@ -287,6 +287,30 @@ $blur-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	}
 }
 
+/** Expand a small glow around a status indicator. */
+@mixin pulse {
+	animation: pulse var(--animation--pulse--duration, var(--duration--slowest)) ease-out infinite;
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+@keyframes pulse {
+	0% {
+		box-shadow: 0 0 0 0 var(--animation--pulse--color, var(--color--purple-alpha-400));
+	}
+	58.33% {
+		box-shadow: 0 0 0 var(--spacing--2xs) transparent;
+	}
+	66.6% {
+		box-shadow: 0 0 0 var(--spacing--xs) transparent;
+	}
+	66.7% {
+		box-shadow: 0 0 0 0 transparent;
+	}
+}
+
 // Pulse glow - expanding glow effect for loading states (used by N8nPulse)
 @mixin pulse-glow {
 	animation: pulseGlow var(--animation--pulse-glow--duration, 6s) infinite

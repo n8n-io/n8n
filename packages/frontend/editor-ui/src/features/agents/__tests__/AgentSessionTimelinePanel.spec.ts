@@ -1,8 +1,8 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { PushMessage } from '@n8n/api-types';
+import type { AgentBackgroundJobDto, AgentChatResumeDto, PushMessage } from '@n8n/api-types';
 import { enableAutoUnmount, mount, flushPromises } from '@vue/test-utils';
-import { reactive } from 'vue';
+import { reactive, ref } from 'vue';
 import { createPinia } from 'pinia';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import AgentSessionTimelinePanel from '../components/AgentSessionTimelinePanel.vue';
@@ -13,6 +13,20 @@ import type { FilterOption } from '../session-timeline.types';
 const getThreadDetail = vi.fn();
 const showError = vi.fn();
 const track = vi.fn();
+const backgroundJobs = ref<AgentBackgroundJobDto[]>([]);
+const respondToApproval = vi.fn<(payload: AgentChatResumeDto) => Promise<void>>();
+const approvalJob: AgentBackgroundJobDto = {
+	id: 'job-1',
+	title: 'Send update',
+	kind: 'subagent',
+	status: 'suspended',
+	startedAt: '2026-08-03T12:00:00.000Z',
+	approval: {
+		runId: 'run-1',
+		toolCallId: 'gate-1',
+		suspendPayload: { type: 'approval', toolName: 'send_message', args: { message: 'Ready' } },
+	},
+};
 const pushHandlers = new Set<(event: PushMessage) => void>();
 const pushStore = reactive({
 	isConnected: false,
@@ -44,7 +58,7 @@ vi.mock('@/app/stores/pushConnection.store', () => ({
 }));
 
 vi.mock('@/features/agents/composables/useAgentBackgroundJobs', () => ({
-	useAgentBackgroundJobs: () => ({ allJobs: { value: [] } }),
+	useAgentBackgroundJobs: () => ({ allJobs: backgroundJobs, respondToApproval }),
 }));
 
 vi.mock('@/app/stores/nodeTypes.store', function () {
@@ -192,9 +206,65 @@ function emitPush(message: PushMessage = update) {
 describe('AgentSessionTimelinePanel', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		backgroundJobs.value = [];
+		respondToApproval.mockReset().mockResolvedValue(undefined);
 		pushHandlers.clear();
 		pushStore.isConnected = false;
 		getThreadDetail.mockResolvedValue(detail);
+	});
+
+	it('submits inline approvals once while a response is pending', async () => {
+		backgroundJobs.value = [approvalJob];
+		let resolveResponse: (() => void) | undefined;
+		respondToApproval.mockImplementation(
+			() =>
+				new Promise<void>((resolve) => {
+					resolveResponse = resolve;
+				}),
+		);
+		const wrapper = mountPanel({}, { renderTimelineTable: true });
+		await flushPromises();
+		const choice = wrapper.get('[data-test-id="approval-card-allow-once"]');
+		await choice.trigger('click');
+		await choice.trigger('click');
+		expect(respondToApproval).toHaveBeenCalledExactlyOnceWith({
+			runId: 'run-1',
+			toolCallId: 'gate-1',
+			resumeData: { approved: true },
+		});
+		resolveResponse?.();
+		await flushPromises();
+	});
+
+	it('shows a submission error and permits a retry', async () => {
+		backgroundJobs.value = [approvalJob];
+		const error = new Error('Request failed');
+		respondToApproval.mockRejectedValueOnce(error);
+		const wrapper = mountPanel({}, { renderTimelineTable: true });
+		await flushPromises();
+		await wrapper.get('[data-test-id="approval-card-deny"]').trigger('click');
+		await flushPromises();
+		expect(showError).toHaveBeenCalledWith(error, expect.any(String));
+		await wrapper.get('[data-test-id="approval-card-deny"]').trigger('click');
+		expect(respondToApproval).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not show an old approval error after the session changes', async () => {
+		backgroundJobs.value = [approvalJob];
+		let rejectResponse: ((error: Error) => void) | undefined;
+		respondToApproval.mockImplementation(
+			() =>
+				new Promise<void>((_resolve, reject) => {
+					rejectResponse = reject;
+				}),
+		);
+		const wrapper = mountPanel({}, { renderTimelineTable: true });
+		await flushPromises();
+		await wrapper.get('[data-test-id="approval-card-allow-once"]').trigger('click');
+		await wrapper.setProps({ threadId: 'other-thread' });
+		rejectResponse?.(new Error('Request failed'));
+		await flushPromises();
+		expect(showError).not.toHaveBeenCalled();
 	});
 
 	it('loads the thread detail on mount for its props', async () => {

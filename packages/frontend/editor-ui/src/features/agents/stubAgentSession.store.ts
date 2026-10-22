@@ -2,8 +2,11 @@ import { useLocalStorage } from '@vueuse/core';
 import { defineStore } from 'pinia';
 import { computed, ref, watch, onScopeDispose } from 'vue';
 import { AGENT_EVAL_RUN_POLL_INTERVAL } from '@/app/constants/durations';
-import type { AgentBackgroundJobDto } from '@n8n/api-types';
+import type { AgentBackgroundJobDto, AgentChatResumeDto } from '@n8n/api-types';
+import { z } from 'zod';
 import type { AgentExecution, AgentExecutionStatus } from './composables/useAgentThreadsApi';
+
+const stubApprovalResponseSchema = z.object({ approved: z.boolean() });
 
 export const useStubAgentSessionStore = defineStore('stubAgentSession', () => {
 	const storedActive = useLocalStorage('N8N_AGENT_STUB_SESSION_STORE', false);
@@ -34,6 +37,7 @@ export const useStubAgentSessionStore = defineStore('stubAgentSession', () => {
 	];
 	const jobStateIndex = ref(0);
 	const backgroundJobStateIndexes = ref([0, 0, 0]);
+	const resolvedJobStatuses = ref(new Map<string, 'completed' | 'cancelled'>());
 	const backgroundJobIntervals = [
 		AGENT_EVAL_RUN_POLL_INTERVAL,
 		AGENT_EVAL_RUN_POLL_INTERVAL * 1.5,
@@ -168,7 +172,34 @@ export const useStubAgentSessionStore = defineStore('stubAgentSession', () => {
 				source: 'chat',
 			};
 			if (scenario.value === 'background') {
-				execution.timeline = execution.timeline?.filter((event) => event.type === 'text') ?? [];
+				execution.timeline = [
+					...(execution.timeline?.filter((event) => event.type !== 'text') ?? []),
+					{
+						type: 'tool-call',
+						kind: 'node',
+						name: 'http_request',
+						toolCallId: `background-node-${status}`,
+						input: {},
+						output: {},
+						startTime: timestamp + 11600,
+						endTime: timestamp + 12000,
+						success: true,
+						nodeType: 'n8n-nodes-base.httpRequest',
+						nodeTypeVersion: 4,
+						nodeDisplayName: 'HTTP Request',
+					},
+					{
+						type: 'tool-call',
+						kind: 'skill',
+						name: 'load_skill',
+						toolCallId: `background-skill-${status}`,
+						input: { skillId: 'weekly-review' },
+						output: {},
+						startTime: timestamp + 12100,
+						endTime: timestamp + 12500,
+						success: true,
+					},
+				];
 			}
 			return execution;
 		}),
@@ -188,26 +219,61 @@ export const useStubAgentSessionStore = defineStore('stubAgentSession', () => {
 					scenario.value === 'background'
 						? (backgroundJobStateIndexes.value[index] ?? 0)
 						: jobStateIndex.value;
-				const status = jobStates[stateIndex] ?? 'running';
+				const id = `stub-job-${executionStatus}-${kind}-${index}`;
+				const status = resolvedJobStatuses.value.get(id) ?? jobStates[stateIndex] ?? 'running';
 				const job: AgentBackgroundJobDto = {
-					id: `stub-job-${executionStatus}-${kind}-${index}`,
+					id,
 					title: index === 0 ? 'Review project updates' : 'Collect weekly metrics',
 					kind,
 					status,
-					startedAt: new Date(timestamp + 3000 + index * 2000).toISOString(),
+					startedAt: new Date(
+						timestamp + (scenario.value === 'background' ? 15000 : 3000) + index * 2000,
+					).toISOString(),
 				};
 				if (status === 'suspended') {
 					job.approval = {
 						runId: `background-job-${job.id}`,
-						toolCallId: `stub-approval-${executionStatus}-${kind}`,
+						toolCallId: `stub-approval-${executionStatus}-${kind}-${index}`,
+						suspendPayload: {
+							type: 'approval',
+							toolName: 'send_project_update',
+							displayName: 'Send project update',
+							args: {
+								channel: '#project-updates',
+								message: 'The project is on schedule. Two tasks need review.',
+							},
+						},
 					};
 				}
 				if (status === 'completed' || status === 'failed' || status === 'cancelled')
-					job.settledAt = new Date(timestamp + 11000).toISOString();
+					job.settledAt = new Date(
+						timestamp + (scenario.value === 'background' ? 25000 : 11000),
+					).toISOString();
 				return job;
 			});
 		});
 	});
+	/** Resolve mock approvals locally. Do not send mock run IDs to the API. */
+	function respondToApproval(payload: AgentChatResumeDto) {
+		if (!active.value) return;
+		const response = stubApprovalResponseSchema.safeParse(payload.resumeData);
+		if (!response.success) return;
+		const index = jobs.value.findIndex(
+			(job) =>
+				job.status === 'suspended' &&
+				job.approval?.runId === payload.runId &&
+				job.approval.toolCallId === payload.toolCallId,
+		);
+		const job = jobs.value[index];
+		if (!job) return;
+		const status = response.data.approved ? 'completed' : 'cancelled';
+		if (scenario.value === 'background') {
+			backgroundJobStateIndexes.value[index] = jobStates.indexOf(status);
+		} else {
+			resolvedJobStatuses.value.set(job.id, status);
+		}
+	}
+
 	const timers: Array<ReturnType<typeof setInterval>> = [];
 
 	function stopCycle() {
@@ -226,6 +292,7 @@ export const useStubAgentSessionStore = defineStore('stubAgentSession', () => {
 		[active, scenario, showJobs],
 		() => {
 			stopCycle();
+			resolvedJobStatuses.value.clear();
 			if (active.value && scenario.value === 'background' && showJobs.value) {
 				for (const [index, interval] of backgroundJobIntervals.entries()) {
 					timers.push(
@@ -251,6 +318,7 @@ export const useStubAgentSessionStore = defineStore('stubAgentSession', () => {
 			: [...enabledKinds.value, kind];
 	}
 	function cycleJobs() {
+		resolvedJobStatuses.value.clear();
 		if (scenario.value === 'background') {
 			for (const index of backgroundJobStateIndexes.value.keys()) cycleBackgroundJob(index);
 			return;
@@ -268,5 +336,6 @@ export const useStubAgentSessionStore = defineStore('stubAgentSession', () => {
 		jobs,
 		toggleKind,
 		cycleJobs,
+		respondToApproval,
 	};
 });

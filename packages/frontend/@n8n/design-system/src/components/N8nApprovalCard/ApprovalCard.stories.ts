@@ -17,6 +17,21 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
+export const Inline: Story = {
+	args: { autoFocus: false },
+};
+
+export const KeyboardNavigation: Story = {
+	args: {
+		description:
+			'Use Arrow Up and Arrow Down to highlight a choice. Use Enter or Space to select it.',
+	},
+	play({ canvasElement }) {
+		const listbox = canvasElement.querySelector('[role="listbox"]');
+		if (listbox instanceof HTMLElement) listbox.focus({ preventScroll: true });
+	},
+};
+
 export const Disabled: Story = {
 	args: { disabled: true },
 };
