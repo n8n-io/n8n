@@ -1,6 +1,6 @@
 import type { UpdateCredentialPublicDto } from '@n8n/api-types';
 import type { CredentialsEntity } from '@n8n/db';
-import { validate } from 'jsonschema';
+import { validate, type Schema } from 'jsonschema';
 import {
 	type DisplayCondition,
 	type INodeProperties,
@@ -11,6 +11,8 @@ import type { CredentialsHelper } from '@/credentials-helper';
 import { BadRequestError } from '@n8n/errors';
 
 import type { IDependency, IJsonSchema } from '../../../types';
+
+const EXPRESSION_SCHEMA: Schema = { type: 'string', pattern: '^=' };
 
 function isNodePropertyOptions(options: unknown): options is INodePropertyOptions[] {
 	return (
@@ -70,6 +72,12 @@ export function validateCredentialData(
 	if (options?.partialData) {
 		schema.required = [];
 		delete schema.allOf;
+	}
+
+	for (const [name, fieldSchema] of Object.entries(schema.properties)) {
+		if (fieldSchema.type === 'number' || fieldSchema.type === 'boolean' || fieldSchema.enum) {
+			schema.properties[name] = { anyOf: [fieldSchema, EXPRESSION_SCHEMA] };
+		}
 	}
 
 	const { valid, errors } = validate(data, schema, { nestedErrors: true });
