@@ -88,9 +88,8 @@ export class EngineRequestNotSupportedError extends UserError {
 }
 
 /**
- * A wait that engine v2 cannot end yet, so the step fails instead of waiting
- * forever. Engine v2 has no sub-workflow steps and no step-bound resume
- * requests yet.
+ * A wait that engine v2 cannot end yet. Engine v2 has no sub-workflow steps
+ * and no step-bound resume requests.
  */
 export class UnsupportedWaitError extends UserError {
 	constructor(nodeName: string, waitsFor: 'a sub-execution' | 'an approval') {
@@ -102,7 +101,6 @@ export class UnsupportedWaitError extends UserError {
 	}
 }
 
-/** A wait with no deadline that refuses resume requests. Nothing can end it. */
 export class UnendingWaitError extends UserError {
 	constructor(nodeName: string) {
 		super(

@@ -52,10 +52,6 @@ import {
  * and a disabled node does not run: it passes its first input through. So the
  * step emits that input at the deadline, not what the node returned before it
  * paused.
- *
- * A wait with no deadline declares no deadline, so only a resume request ends
- * it. A wait for a sub-execution fails the step, because engine v2 has no
- * sub-workflow steps yet.
  */
 function toStepResult(
 	context: DurableWaitExecuteContext,
@@ -101,9 +97,9 @@ export class V1StepExecutor implements IStepExecutor {
 		const stepData = await this.deps.loadStepData(request.context);
 
 		const node = toV1Node(request.node, stepConfig);
-		// The response to a send-and-wait message needs a step-bound resume request,
-		// which engine v2 does not have yet. Fail before the node sends the message.
-		// The Chat node waits for a chat reply in every version and operation.
+		// Send-and-wait needs a step-bound resume request, which engine v2 does not
+		// have yet. Fail before the node sends the message. The Chat node waits in
+		// every version and operation.
 		if (node.parameters.operation === SEND_AND_WAIT_OPERATION || node.type === CHAT_NODE_TYPE) {
 			throw new UnsupportedWaitError(node.name, 'an approval');
 		}
