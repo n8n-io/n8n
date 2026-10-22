@@ -104,7 +104,7 @@ describe('useSettingsItems', () => {
 		isPublicApiEnabled.value = true;
 		isQueueModeEnabled.value = true;
 		moduleSettings.value = { 'encryption-key-manager': { rotationEnabled: true } };
-		activeModules.value = ['promotions'];
+		activeModules.value = ['promotions', 'instance-ai'];
 		promotionsFlag.value = 'true';
 		vi.mocked(hasPermission).mockReturnValue(true);
 		settingsSidebarItems.value = realModuleItems();
@@ -295,28 +295,50 @@ describe('useSettingsItems', () => {
 	describe('the AI usage item', () => {
 		const idsOf = () => useSettingsItems().settingsItems.value.map(({ id }) => id);
 
-		it('is listed when the Assistant settings page is not', () => {
+		it('is listed while the instance-ai module is disabled and the AI assistant is on', () => {
 			isAiAssistantEnabled.value = true;
+			activeModules.value = [];
 
 			expect(idsOf()).toContain('settings-ai');
 		});
 
-		it('gives way to the Assistant settings page, which carries the same controls', () => {
+		it('gives way to the Assistant page while the instance-ai module runs', () => {
 			isAiAssistantEnabled.value = true;
+			activeModules.value = ['instance-ai'];
+
+			expect(idsOf()).not.toContain('settings-ai');
+		});
+
+		it('is hidden when the module runs, even if its sidebar item is unavailable', () => {
+			isAiAssistantEnabled.value = true;
+			activeModules.value = ['instance-ai'];
 			settingsSidebarItems.value = [
-				{ id: 'settings-instance-ai', available: true, order: 20, section: 'ai' },
+				{ id: 'settings-instance-ai', available: false, order: 20, section: 'ai' },
 			];
 
 			expect(idsOf()).not.toContain('settings-ai');
 		});
 
-		it('stays listed while the Assistant settings page is unavailable', () => {
+		it('is hidden when the AI assistant is off, whatever the module does', () => {
+			isAiAssistantEnabled.value = false;
+			activeModules.value = [];
+
+			expect(idsOf()).not.toContain('settings-ai');
+		});
+
+		it('sits second last in AI, directly before Chat', () => {
 			isAiAssistantEnabled.value = true;
+			activeModules.value = [];
 			settingsSidebarItems.value = [
-				{ id: 'settings-instance-ai', available: false, order: 20, section: 'ai' },
+				{ id: 'settings-mcp', available: true, order: 10, section: 'ai' },
+				{ id: 'settings-agents', available: true, order: 30, section: 'ai' },
+				{ id: 'settings-chat-hub', available: true, order: 70, section: 'ai' },
 			];
 
-			expect(idsOf()).toContain('settings-ai');
+			const ids = idsOf();
+
+			expect(ids.indexOf('settings-ai')).toBe(ids.indexOf('settings-context') + 1);
+			expect(ids.indexOf('settings-chat-hub')).toBe(ids.indexOf('settings-ai') + 1);
 		});
 	});
 

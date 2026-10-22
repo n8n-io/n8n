@@ -16,8 +16,11 @@ import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotions
 
 type ShellSettingsItem = IMenuSettingItem & { order: number };
 
-/** Registered by the instance AI module for its Assistant settings page. */
-const ASSISTANT_SETTINGS_ITEM_ID = 'settings-instance-ai';
+/**
+ * The module whose Assistant settings page carries the AI usage controls. It runs by
+ * default; only `N8N_DISABLED_MODULES` turns it off.
+ */
+const INSTANCE_AI_MODULE = 'instance-ai';
 
 /**
  * Links without a `section` form the `general` group: it has no heading and is listed first.
@@ -54,12 +57,6 @@ export function useSettingsItems() {
 	const { isEnabled: isPromotionsEnabled } = usePromotionsEnabled();
 	const { balance } = useAiGateway();
 	const { openTopUp } = useAiGatewayTopUp();
-
-	const hasAssistantSettingsPage = computed(() =>
-		uiStore.settingsSidebarItems.some(
-			(item) => item.id === ASSISTANT_SETTINGS_ITEM_ID && item.available,
-		),
-	);
 
 	const settingsItems = computed<IMenuSettingItem[]>(() => {
 		// `order` is the row inside the section, in steps of ten so a module can slot in between.
@@ -110,21 +107,22 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.AUTHENTICATION_SETTINGS } },
 			},
 			// AI (modules add MCP at 10, Assistant at 20, Agents at 30 and Chat at 70).
-			// Features come first, then the cross-cutting AI usage controls. Chat is last
-			// because it is on its way out.
+			// Features come first. Chat is last because it is on its way out.
 			{
-				// The Assistant page carries the AI usage controls in its "Data sent to the
-				// model" section, so the standalone page is only listed when that page is not.
+				// The AI usage controls live in the "Data sent to the model" section of the
+				// Assistant page. This standalone page is a fallback for one case only: the
+				// instance-ai module is disabled while the licensed AI Assistant and Builder
+				// still run and still honour the switch. It sits second last, before Chat.
 				id: 'settings-ai',
-				order: 50,
+				order: 60,
 				section: 'ai',
 				icon: 'sparkles',
 				label: i18n.baseText('settings.ai'),
 				position: 'top',
 				available:
 					settingsStore.isAiAssistantEnabled &&
-					canUserAccessRouteByName(VIEWS.AI_SETTINGS) &&
-					!hasAssistantSettingsPage.value,
+					!settingsStore.isModuleActive(INSTANCE_AI_MODULE) &&
+					canUserAccessRouteByName(VIEWS.AI_SETTINGS),
 				route: { to: { name: VIEWS.AI_SETTINGS } },
 			},
 			{
