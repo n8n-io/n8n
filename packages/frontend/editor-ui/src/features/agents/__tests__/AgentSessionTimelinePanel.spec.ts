@@ -55,6 +55,11 @@ vi.mock('@/features/agents/composables/useSubAgentNames', () => ({
 	useSubAgentNames: () => ({ subAgentNameById: { value: new Map() } }),
 }));
 
+// The budget card asks Pinia-backed stores for the top-up flow; stub it out.
+vi.mock('@/app/composables/useAiGatewayTopUp', () => ({
+	useAiGatewayTopUp: () => ({ openTopUp: vi.fn() }),
+}));
+
 const stubs = {
 	SessionTimelineChart: {
 		name: 'SessionTimelineChart',
@@ -546,7 +551,8 @@ describe('AgentSessionTimelinePanel', () => {
 		});
 
 		it('does not render the card for a stop without budget copy', async () => {
-			const wrapper = await mountWithExecutions([budgetStopExecution('budget.credits')]);
+			// budget.freeCredits stops have no timeline card copy; budget.credits does.
+			const wrapper = await mountWithExecutions([budgetStopExecution('budget.freeCredits')]);
 
 			expect(wrapper.find(budgetCard).exists()).toBe(false);
 		});
