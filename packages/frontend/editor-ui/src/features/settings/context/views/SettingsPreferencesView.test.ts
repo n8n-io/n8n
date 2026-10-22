@@ -473,6 +473,65 @@ describe('SettingsPreferencesView', () => {
 		});
 	});
 
+	describe('search', () => {
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('searches on the server and shows an empty table, not the empty state, for no matches', async () => {
+			vi.useFakeTimers({ shouldAdvanceTime: true });
+			emptyStateVariant.value = 'assistant';
+			// A first load with rows, so the toolbar renders in every empty state variant.
+			contextStore.preferences = [preference()];
+			contextStore.count = 1;
+			const { getByTestId, queryByTestId } = renderView();
+			await new Promise(process.nextTick);
+
+			contextStore.fetchPreferences.mockImplementation(async () => {
+				contextStore.preferences = [];
+				contextStore.count = 0;
+				return { count: 0, data: [] };
+			});
+			await userEvent.type(getByTestId('preferences-search'), 'short');
+			await vi.runAllTimersAsync();
+
+			expect(contextStore.fetchPreferences).toHaveBeenLastCalledWith({
+				skip: 0,
+				take: 50,
+				sortBy: 'updatedAt:desc',
+				search: 'short',
+			});
+			expect(queryByTestId('preferences-empty-state')).not.toBeInTheDocument();
+			expect(queryByTestId('preferences-empty-state-assistant')).not.toBeInTheDocument();
+			expect(getByTestId('preferences-search')).toBeInTheDocument();
+		});
+
+		it('starts a new search on the first page with an empty selection', async () => {
+			vi.useFakeTimers({ shouldAdvanceTime: true });
+			contextStore.preferences = [preference({ id: 'a' }), preference({ id: 'b' })];
+			contextStore.count = 60; // two pages at the default size of 50
+
+			const { getByTestId, getAllByRole, queryByTestId } = renderView();
+			await new Promise(process.nextTick);
+
+			await userEvent.click(getByTestId('pagination-next'));
+			await new Promise(process.nextTick);
+			await userEvent.click(getAllByRole('checkbox')[0]);
+			expect(getByTestId('preferences-delete-selected-button')).toBeInTheDocument();
+
+			await userEvent.type(getByTestId('preferences-search'), 'short');
+			await vi.runAllTimersAsync();
+
+			expect(contextStore.fetchPreferences).toHaveBeenLastCalledWith({
+				skip: 0,
+				take: 50,
+				sortBy: 'updatedAt:desc',
+				search: 'short',
+			});
+			expect(queryByTestId('preferences-delete-selected-button')).not.toBeInTheDocument();
+		});
+	});
+
 	it('returns to the Context landing page', async () => {
 		contextStore.preferences = [];
 		contextStore.count = 0;

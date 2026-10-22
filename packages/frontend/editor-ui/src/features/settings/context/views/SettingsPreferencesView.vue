@@ -1,13 +1,17 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { useDebounceFn } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
 	N8nButton,
 	N8nHeading,
+	N8nIcon,
+	N8nInput,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nText,
@@ -16,7 +20,7 @@ import type { TableOptions } from '@n8n/design-system';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
-import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { DEBOUNCE_TIME, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { PREFERENCES_EMPTY_STATE_EXPERIMENT } from '@/app/constants/experiments';
 import PreferencesEmptyStateAssistant from '@/experiments/preferencesEmptyState/components/PreferencesEmptyStateAssistant.vue';
 import PreferencesEmptyStateExamples from '@/experiments/preferencesEmptyState/components/PreferencesEmptyStateExamples.vue';
@@ -47,24 +51,31 @@ const tableOptions = ref<TableOptions>({
 	sortBy: PREFERENCES_DEFAULT_SORT_BY,
 });
 const selection = ref<string[]>([]);
+const search = ref('');
 const loadFailed = ref(false);
 
 const dialogTarget = ref<Preference | 'new' | null>(null);
 
-// A failed load also reports zero rows, so the empty state must not stand in for it.
+// The search runs on the server: the count and the page both describe the matching rows.
+const isFiltered = computed(() => search.value.trim() !== '');
+// A failed load also reports zero rows, so the empty state must not stand in for it. A
+// search that matches nothing shows an empty table, not "No preferences yet".
 const showEmptyState = computed(
-	() => !contextStore.loading && !loadFailed.value && contextStore.count === 0,
+	() => !contextStore.loading && !loadFailed.value && !isFiltered.value && contextStore.count === 0,
 );
 const selectedCount = computed(() => selection.value.length);
 
 async function load() {
 	const { page = 0, itemsPerPage = PREFERENCES_DEFAULT_PAGE_SIZE } = tableOptions.value;
 	const sortBy = toPreferenceSortOption(tableOptions.value.sortBy);
+	const term = search.value.trim();
+	const filter = term ? { search: term } : {};
 	try {
 		await contextStore.fetchPreferences({
 			skip: page * itemsPerPage,
 			take: itemsPerPage,
 			sortBy,
+			...filter,
 		});
 		loadFailed.value = false;
 
@@ -76,6 +87,7 @@ async function load() {
 				skip: lastPage * itemsPerPage,
 				take: itemsPerPage,
 				sortBy,
+				...filter,
 			});
 		}
 	} catch (error) {
@@ -83,6 +95,18 @@ async function load() {
 		showError(error, i18n.baseText('settings.context.preferences.error.load'));
 	}
 }
+
+/**
+ * A new search starts at the first page with an empty selection, so a bulk delete never
+ * reaches rows that the search hides.
+ */
+async function onSearch() {
+	selection.value = [];
+	tableOptions.value = { ...tableOptions.value, page: 0 };
+	await load();
+}
+
+const onSearchDebounced = useDebounceFn(onSearch, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 
 async function onOptionsUpdate(options: TableOptions) {
 	const [previous] = tableOptions.value.sortBy;
@@ -219,8 +243,21 @@ onMounted(async () => {
 			v-if="showEmptyState && emptyStateVariant === PREFERENCES_EMPTY_STATE_EXPERIMENT.assistant"
 			@write-own="openCreateModal"
 		/>
-		<div v-else :class="$style.tableArea">
+		<template v-else>
 			<div :class="$style.toolbar">
+				<N8nInput
+					v-model="search"
+					:class="$style.search"
+					:placeholder="i18n.baseText('settings.context.preferences.search.placeholder')"
+					clearable
+					data-test-id="preferences-search"
+					@update:model-value="onSearchDebounced"
+				>
+					<template #prefix>
+						<N8nIcon icon="search" />
+					</template>
+				</N8nInput>
+				<span :class="$style.spacer" />
 				<N8nText v-if="selectedCount > 0" color="text-light" size="small">
 					{{
 						i18n.baseText('settings.context.preferences.selected', {
@@ -274,7 +311,7 @@ onMounted(async () => {
 					</div>
 				</template>
 			</PreferencesTable>
-		</div>
+		</template>
 
 		<PreferenceModal
 			:open="dialogTarget !== null"
@@ -286,16 +323,29 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" module>
-/* Collapse the layout's own top inset; the settings shell already pads the page top. */
+/* The same frame as the Skills page: the settings shell insets the page, and the header
+   is pulled to the table's left edge. */
 .layout {
-	padding-top: 0;
+	padding: 0;
+
+	header {
+		margin-inline: 0 auto;
+	}
 }
 
-/* Toolbar and table read as one block below the centered page header, as on the API page. */
-.tableArea {
+.toolbar {
 	display: flex;
-	flex-direction: column;
+	align-items: center;
+	gap: var(--spacing--xs);
 	width: 100%;
+}
+
+.spacer {
+	flex: 1;
+}
+
+.search {
+	max-width: 20rem;
 }
 
 .empty {
@@ -305,13 +355,5 @@ onMounted(async () => {
 	gap: var(--spacing--xs);
 	padding: var(--spacing--2xl) var(--spacing--md);
 	text-align: center;
-}
-
-.toolbar {
-	display: flex;
-	align-items: center;
-	justify-content: flex-end;
-	gap: var(--spacing--xs);
-	margin-bottom: var(--spacing--sm);
 }
 </style>
