@@ -46,20 +46,25 @@ export function useAgentVersionHistory() {
 			isInitialLoad.value = true;
 			fetchedCount = 0;
 		}
+
 		hasLoadError.value = false;
 		const token = ++requestToken;
 		isLoading.value = true;
+
 		try {
 			const data = await listAgentVersions(rootStore.restApiContext, projectId, agentId, {
 				take: PAGE_SIZE,
 				skip: 0,
 			});
+
 			if (token !== requestToken) return;
+
 			items.value = data;
 			fetchedCount = data.length;
 			hasMore.value = data.length === PAGE_SIZE;
 		} catch (error) {
 			if (token !== requestToken) return;
+
 			hasLoadError.value = true;
 			showError(error, locale.baseText('agents.versionHistory.error.load'));
 		} finally {
@@ -74,12 +79,15 @@ export function useAgentVersionHistory() {
 		if (isLoading.value || !hasMore.value) return;
 		const token = ++requestToken;
 		isLoading.value = true;
+
 		try {
 			const data = await listAgentVersions(rootStore.restApiContext, projectId, agentId, {
 				take: PAGE_SIZE,
 				skip: fetchedCount,
 			});
+
 			if (token !== requestToken) return;
+
 			items.value = [
 				...new Map([...items.value, ...data].map((item) => [item.versionId, item])).values(),
 			];
@@ -88,6 +96,7 @@ export function useAgentVersionHistory() {
 			hasMore.value = data.length === PAGE_SIZE;
 		} catch (error) {
 			if (token !== requestToken) return;
+
 			hasLoadError.value = true;
 			showError(error, locale.baseText('agents.versionHistory.error.load'));
 		} finally {
@@ -120,13 +129,16 @@ export function useAgentVersionHistory() {
 				agentId,
 				versionId,
 			);
+
 			trackRevertedChangesOnAgent({ agentId });
 			showMessage({
 				title: locale.baseText('agents.versionHistory.revert.toast.title'),
 				type: 'success',
 			});
+
 			if (!agentKey.value || agentKey.value === `${projectId}/${agentId}`)
 				await refresh(projectId, agentId);
+
 			return updated;
 		} catch (error) {
 			showError(error, locale.baseText('agents.versionHistory.revert.error'));
@@ -151,8 +163,10 @@ export function useAgentVersionHistory() {
 				versionId,
 				() => !agentKey.value || agentKey.value === `${projectId}/${agentId}`,
 			);
+
 			if (updated && (!agentKey.value || agentKey.value === `${projectId}/${agentId}`))
 				await refresh(projectId, agentId);
+
 			return updated;
 		} finally {
 			acting.value = false;
@@ -161,8 +175,10 @@ export function useAgentVersionHistory() {
 
 	async function editVersion(projectId: string, agentId: string, versionId: string): Promise<void> {
 		if (acting.value) return;
+
 		const version = items.value.find((item) => item.versionId === versionId);
 		if (!version) return;
+
 		acting.value = true;
 		try {
 			await openVersionMetadata({
@@ -179,11 +195,14 @@ export function useAgentVersionHistory() {
 							versionId,
 							metadata,
 						);
+
 						if (!agentKey.value || agentKey.value === `${projectId}/${agentId}`)
 							await refresh(projectId, agentId);
+
 						return true;
 					} catch (error) {
 						showError(error, locale.baseText('agents.versionHistory.metadata.error'));
+
 						return false;
 					}
 				},
