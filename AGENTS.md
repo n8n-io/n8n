@@ -254,7 +254,8 @@ baseline. A new business-logic import fails CI.
   at the operation entry point, and reuse the one you were handed everywhere
   below it (a context that already carries a transaction is joined, not nested).
   The `Transaction` handle is opaque and never exposes a driver type to
-  business logic. See `oauth-token.service.ts` for a worked service example.
+  business logic. See `oauth-token.service.ts` for a worked service example
+  (its repositories predate the composition rule below; do not copy their shape).
 - **Repositories compose, they don't extend.** A repository is the boundary
   that keeps TypeORM out of business logic. If it extended `BaseRepository`,
   every service that injects it would also get `find`, `save`, `delete`,
@@ -267,15 +268,18 @@ baseline. A new business-logic import fails CI.
   calls the table internally; there is no generic `find`/`save`/`delete`
   unless you write it for one operation. See
   `packages/cli/src/modules/inbound-auth-core/database/repositories/trusted-source.repository.ts`
-  for a worked example.
+  for a worked example. The existing `extends BaseRepository` / `extends
+  Repository` repositories are legacy. Do not copy them, and do not convert them
+  in unrelated PRs. This rule is not yet lint-enforced.
 - **Anti-patterns reviewers reject** — they hide the dependency instead of
   removing it:
   - String-matching TypeORM errors, e.g. `error.name === 'QueryFailedError'`.
   - Relabeling the import from `@n8n/typeorm` to `@n8n/db` to silence the rule
     (`@n8n/db` re-exports several operators/types, but this relabels the
     dependency rather than removing it).
-  - Pushing `.manager` / `createQueryBuilder` into business logic to avoid an
-    operator import — trades a visible leak for an invisible one.
+  - Pushing `.manager` / `createQueryBuilder` / `repo.managerFor(ctx)` into
+    business logic to avoid an operator import — trades a visible leak for an
+    invisible one.
   - A repository that `extends BaseRepository` / `extends Repository`, or that
     exposes its table (public property, getter, or a `find(options)`
     passthrough) — the inherited TypeORM surface must stay private to the table.

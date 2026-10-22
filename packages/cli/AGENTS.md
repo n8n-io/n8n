@@ -43,7 +43,9 @@ field, and write every data access as a named use-case method that calls
 `this.table.managerFor(ctx)` internally. The table is never exported or
 registered with DI. See the root AGENTS.md section for the rules and
 `src/modules/inbound-auth-core/database/repositories/trusted-source.repository.ts`
-for a worked example.
+for a worked example. Most repositories in this package still extend
+`BaseRepository` or `Repository`. They are legacy: do not copy them, and do not
+convert them in unrelated PRs.
 
 Need an operator query (`In`, `IsNull`, `FindOptionsWhere`, …)? Add a
 use-case-named repository method (plain parameters, domain-shaped return) rather

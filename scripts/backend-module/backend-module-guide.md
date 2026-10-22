@@ -293,11 +293,11 @@ export class MyFeatureRepository {
 Rules:
 
 - Only the repository is `@Service()`. The table class is not exported.
-- Every public method takes plain parameters, returns domain shapes, and takes `ctx: OperationContext` last. Pass the entity class explicitly to the manager call (`findOneBy(MyFeatureEntity, …)`), because the repository is not a TypeORM repository for that entity.
+- Every public method takes plain parameters, returns domain shapes, and takes `ctx: OperationContext` last. Do not give `ctx` a default: a forgotten `ctx` inside a transaction must be a compile error, not a second connection. Pass the entity class explicitly to the manager call (`findOneBy(MyFeatureEntity, …)`), because the repository is not a TypeORM repository for that entity.
 - No generic `find`/`save`/`delete` passthrough and no getter for the table.
 - A non-transactional caller passes `{}` as `ctx`. Inside `TransactionRunner.run`, thread the `ctx` you received.
 
-See `packages/cli/src/modules/inbound-auth-core/database/repositories/trusted-source.repository.ts` for a real example.
+See `packages/cli/src/modules/inbound-auth-core/database/repositories/trusted-source.repository.ts` for a real example. Most existing repositories in `packages/cli` still extend `BaseRepository` or `Repository`. They are legacy: do not copy them.
 
 ## Entities
 
@@ -366,6 +366,8 @@ Occasionally, a module may need to define a module-specific CLI command. To do s
 Place tests with the module that owns them. A packaged module keeps its tests under `packages/modules/{featureName}/backend/src`. Keep tests in CLI only when they verify CLI wiring or use CLI-owned fixtures.
 
 Use `@n8n/backend-test-utils` for shared database and module helpers. Pass packaged module import thunks to `testModules.loadModules`. Use `tscDecoratorTransform` from `@n8n/vitest-config/tsc-decorator-transform` when a package owns TypeORM entities.
+
+A composition repository has no `find`, `save`, or `delete`, so tests cannot seed or assert through `Container.get(MyFeatureRepository)` the way older tests do. Seed and assert through the repository's use-case methods, or through `Container.get(DataSource).getRepository(MyFeatureEntity)` as `packages/cli/src/encryption/__tests__/encryption-bootstrap.service.integration.test.ts` does. Do not add a `find()` passthrough for tests. `testDb.truncate` works unchanged.
 
 ## Future work
 

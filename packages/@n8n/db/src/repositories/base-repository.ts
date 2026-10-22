@@ -31,6 +31,10 @@ export abstract class BaseRepository<Entity extends ObjectLiteral> extends Repos
 	 * The manager a query should run against: the context's active transaction if present,
 	 * otherwise this repository's default manager. `ctx` is always required — thread the one
 	 * received from `TransactionRunner.run`; a non-transactional caller passes the root `{}`.
+	 *
+	 * Public, because `.manager` and {@link runInTransaction} already expose the manager. The
+	 * boundary is not this modifier: it is that the table is a private field of its repository
+	 * and business logic never holds a `BaseRepository`.
 	 */
 	managerFor(ctx: OperationContext): EntityManager {
 		const { trx } = ctx;
