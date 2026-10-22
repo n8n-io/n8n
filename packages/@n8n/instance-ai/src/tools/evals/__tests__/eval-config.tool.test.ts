@@ -1,6 +1,7 @@
 import type { Mock } from 'vitest';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
+import { OutsideThreadProjectError } from '../../../errors/outside-thread-project.error';
 import type {
 	EvaluationConfigDetail,
 	EvaluationConfigSummary,
@@ -294,6 +295,28 @@ describe('eval-config tool', () => {
 			expect(result).toEqual({ success: true });
 		});
 	});
+
+	it.each([
+		{ input: createInput, method: 'create' },
+		{ input: { ...createInput, action: 'update', configId: 'cfg-1' }, method: 'update' },
+		{ input: { action: 'delete', workflowId: 'wf-1', configId: 'cfg-1' }, method: 'delete' },
+	] as const)(
+		'should reject $input.action outside the thread project before asking for approval',
+		async ({ input, method }) => {
+			const service = createMockEvalConfigService();
+			const assertInThreadProject = vi.fn().mockRejectedValue(new OutsideThreadProjectError());
+			const suspend = vi.fn();
+			const tool = createEvalConfigTool({ ...createMockContext(service), assertInThreadProject });
+
+			await expect(executeTool(tool, input, suspendCtx(suspend))).rejects.toThrow(
+				OutsideThreadProjectError,
+			);
+
+			expect(assertInThreadProject).toHaveBeenCalledWith({ kind: 'workflow', id: 'wf-1' });
+			expect(suspend).not.toHaveBeenCalled();
+			expect(service[method]).not.toHaveBeenCalled();
+		},
+	);
 
 	describe('when config-based evals are unavailable', () => {
 		it('should report unavailable instead of calling a service', async () => {

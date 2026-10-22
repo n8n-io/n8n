@@ -386,8 +386,7 @@ describe('Expression - fast native evaluation parity', () => {
 
 	// Values no node should produce (the engine does not enforce that yet) and
 	// inherited members on the root. Native either matches the configured
-	// engine or hands the expression to it; the one remaining divergence is
-	// the DateTime copy under legacy, pinned so a change is visible.
+	// engine or hands the expression to it.
 	describe('non-JSON values and inherited members', () => {
 		const exotic = {
 			json: {
@@ -424,22 +423,47 @@ describe('Expression - fast native evaluation parity', () => {
 			}
 		});
 
-		test('a whole-value DateTime read is a copy natively; legacy returns the instance', () => {
-			const legacy = isLegacy();
-			const native = evaluateExotic('={{ $json.item.dt }}', true);
-			const viaEngine = evaluateExotic('={{ $json.item.dt }}', false);
-			expect(native).not.toBeInstanceOf(DateTime);
-			expect(viaEngine instanceof DateTime).toBe(legacy);
-			// Both copies carry the instant; their cloned Luxon internals (locale
-			// and zone caches) depend on the host environment, so compare only
-			// what the expression author can observe.
-			expect((native as { ts: number }).ts).toBe((viaEngine as { ts: number }).ts);
-			// Member reads keep working on both paths.
-			expect(evaluateExotic('={{ $json.item.dt.year }}', true)).toBe(2026);
+		test('a whole-value DateTime read hands off to the engine', () => {
+			expect(nativeOutcome('={{ $json.item.my_object }}').handled).toBe(true);
+			const data = { $json: exotic.json } as never;
+			expect(evaluateNatively('{{ $json.item.dt }}', data)).toEqual({ handled: false });
+		});
+
+		// The vm and quickjs serialiser drops an own `__proto__` key; legacy
+		// keeps it. Native hands the copy to the engine, whichever it is.
+		test('an own __proto__ key on a whole-value read hands off to the engine', () => {
+			const payload = { json: { item: JSON.parse('{"__proto__":1,"safe":2}') as object } };
+			const data = runDataFor([payload as never]);
+			const run = (native: boolean) =>
+				evaluate('={{ $json.item }}', native, data, [payload as never]) as object;
+			expect(evaluateNatively('{{ $json.item }}', { $json: payload.json } as never)).toEqual({
+				handled: false,
+			});
+			expect(run(true)).toStrictEqual(run(false));
+			expect(Object.keys(run(true)).includes('__proto__')).toBe(isLegacy());
 		});
 	});
 
 	describe('structural guards', () => {
+		test('a whole-value read of shared, cyclic, long sparse or non-plain array data hands off to the engine', () => {
+			const shared: Record<string, unknown> = { leaf: 1 };
+			let fanOut = shared;
+			for (let level = 0; level < 30; level++) fanOut = { a: fanOut, b: fanOut };
+			const cyclic: Record<string, unknown> = {};
+			cyclic.a = cyclic;
+			cyclic.b = cyclic;
+			const sparse: unknown[] = [];
+			sparse[MAX_RESULT_LENGTH] = 1;
+			class SubArray extends Array<number> {}
+			const subclassed = SubArray.from([1]);
+
+			for (const item of [fanOut, cyclic, sparse, subclassed]) {
+				expect(evaluateNatively('{{ $json.item }}', { $json: { item } } as never)).toEqual({
+					handled: false,
+				});
+			}
+		});
+
 		// Direct calls: the data shapes here cannot come out of a node, so the
 		// engines have nothing to agree with.
 		const nativeOn = (expr: string, data: Record<string, unknown>) => {
@@ -549,9 +573,10 @@ describe('Expression - fast native evaluation parity', () => {
 			expect(nativeOn('{{ $json.rows.flat() }}', { $json: { rows: [big, big] } })).toEqual({
 				handled: false,
 			});
-			expect(nativeOn('{{ $json.rows.flat(0) }}', { $json: { rows: [big, big] } }).handled).toBe(
-				true,
-			);
+			expect(nativeOn('{{ $json.rows.flat(0).length }}', { $json: { rows: [big, big] } })).toEqual({
+				handled: true,
+				value: 2,
+			});
 		});
 
 		// A single replacement with context tokens can expand to many times the

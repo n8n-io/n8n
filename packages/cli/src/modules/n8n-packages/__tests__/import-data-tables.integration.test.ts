@@ -1,3 +1,4 @@
+import type { SerializedDataTable } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { createTeamProject, linkUserToProject, testDb, testModules } from '@n8n/backend-test-utils';
@@ -26,7 +27,6 @@ import { N8nPackagesService } from '../n8n-packages.service';
 import { importPackageRequest } from './fixtures/import-request';
 import type { ImportPackageRequest } from '../n8n-packages.types';
 import type { PackageDataTableRequirement } from '../spec/requirements.schema';
-import type { SerializedDataTable } from '../spec/serialized/data-table.schema';
 import {
 	buildEntityPackageBuffer,
 	dataTableRequirement,

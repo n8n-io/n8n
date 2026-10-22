@@ -1,4 +1,4 @@
-import { isEnvFeatureEnabled } from '@n8n/backend-common';
+import { isEnvFeatureEnabled, Logger } from '@n8n/backend-common';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -10,24 +10,10 @@ import {
 	ResourceAdmission,
 	TrustedSourceGate,
 	TrustedSourceStore,
-	type AuthorizationServerMetadata,
-	type Jwk,
 } from '@n8n/inbound-auth';
 import { InstanceSettings } from 'n8n-core';
-import { OperationalError } from 'n8n-workflow';
 
 import { AuthStrategyRegistry, ProtectedResourceRegistry } from '@n8n/backend-services/auth';
-
-// Discovery of the local source must fail, not succeed with made-up documents.
-class UnregisteredLocalAuthorizationServer extends LocalAuthorizationServer {
-	async getMetadata(): Promise<AuthorizationServerMetadata> {
-		throw new OperationalError('No local authorization server is registered');
-	}
-
-	async getJwks(): Promise<{ keys: Jwk[] }> {
-		throw new OperationalError('No local authorization server is registered');
-	}
-}
 
 /**
  * Owns the `trusted_source` and `trusted_source_identity` tables and binds the inbound-auth
@@ -39,8 +25,10 @@ class UnregisteredLocalAuthorizationServer extends LocalAuthorizationServer {
 export class InboundAuthCoreModule implements ModuleInterface {
 	async init() {
 		// A binding that already exists wins: the defaults only fill the gap.
+		const { LocalAuthorizationServerProxy } = await import('./local-authorization-server.proxy.js');
+		const localServer = Container.get(LocalAuthorizationServerProxy);
 		if (!Container.has(LocalAuthorizationServer)) {
-			Container.set(LocalAuthorizationServer, new UnregisteredLocalAuthorizationServer());
+			Container.set(LocalAuthorizationServer, localServer);
 		}
 
 		const { TrustedSourceDbStore } = await import('./trusted-source.store.js');
@@ -56,6 +44,24 @@ export class InboundAuthCoreModule implements ModuleInterface {
 		if (Container.get(InstanceSettings).instanceType === 'main') {
 			const { SystemTrustedSourceSeeder } = await import('./system-trusted-source.seeder.js');
 			await Container.get(SystemTrustedSourceSeeder).seed();
+
+			// The seeded source stays `unchecked` until discovery reads the local server, and the
+			// gate refuses such a source. Discover it as soon as the server is bound, or a fresh
+			// main rejects its own tokens until the first run of the discovery task.
+			// Failure-tolerant: the task retries, and boot must go on.
+			const { SYSTEM_TRUSTED_SOURCE_ID } = await import('./constants.js');
+			await localServer.onProviderRegistered(async () => {
+				try {
+					const { TrustedSourceDiscoveryService } = await import(
+						'./trusted-source-discovery.service.js'
+					);
+					await Container.get(TrustedSourceDiscoveryService).refresh(SYSTEM_TRUSTED_SOURCE_ID);
+				} catch (error) {
+					Container.get(Logger).warn('Could not discover the system trusted source at boot', {
+						error,
+					});
+				}
+			});
 
 			// Ships dark. Set `N8N_ENV_FEAT_TRUSTED_SOURCES_API_ENABLED=true` on a main instance to register
 			// the `/trusted-sources` management routes; the license gates only create and update.
@@ -87,6 +93,12 @@ export class InboundAuthCoreModule implements ModuleInterface {
 			Container.get(ProtectedResourceRegistry).register(Container.get(PublicApiProtectedResource));
 			Container.get(AuthStrategyRegistry).register(Container.get(PublicApiOAuthStrategy));
 		}
+	}
+
+	/** Lets trigger nodes fill their `trustedSource` dropdown through `ILoadOptionsFunctions`. */
+	async context() {
+		const { TrustedSourceDbDirectory } = await import('./trusted-source-directory.service.js');
+		return { trustedSourceDirectory: Container.get(TrustedSourceDbDirectory) };
 	}
 
 	// Ungated: the runner skips a cluster-scoped task on webhook and worker instances itself.

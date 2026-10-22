@@ -53,7 +53,10 @@ void (async () => {
 })();
 void (async () => {
 	try {
-		await credentialsStore.fetchAllCredentials();
+		await Promise.all([
+			credentialsStore.fetchAllCredentials(),
+			credentialsStore.fetchCredentialTypes(false),
+		]);
 	} catch (error) {
 		console.warn('Failed to preload credentials for the tools card', error);
 	}

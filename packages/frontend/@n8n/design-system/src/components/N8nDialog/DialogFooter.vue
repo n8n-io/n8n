@@ -1,9 +1,9 @@
 <script setup lang="ts">
-// N8nDialogFooter - Styled container for action buttons
+defineOptions({ name: 'DialogFooter' });
 </script>
 
 <template>
-	<footer :class="$style.footer">
+	<footer :class="$style.footer" data-slot="dialog-footer">
 		<slot />
 	</footer>
 </template>
@@ -11,10 +11,9 @@
 <style module>
 .footer {
 	display: flex;
+	flex-shrink: 0;
 	justify-content: flex-end;
 	gap: var(--spacing--2xs);
-}
-* + .footer {
-	margin-top: var(--spacing--md);
+	padding: var(--n8n-dialog-region--padding, var(--spacing--md));
 }
 </style>

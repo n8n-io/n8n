@@ -5,6 +5,9 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { FrontendSettings } from '@n8n/api-types';
 import {
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	MCP_DISCOVERY_EXPERIMENT,
+	// EOF Experiment cleanup
 	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
 	SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT, // Experiment cleanup (119_surface_assistant_on_workflow_error)
 } from '@/app/constants';
@@ -479,6 +482,101 @@ describe('Posthog store', () => {
 				expect(window.posthog?.capture).toHaveBeenCalledTimes(2);
 			});
 		});
+
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		describe('MCP discovery eligibility', () => {
+			const key = MCP_DISCOVERY_EXPERIMENT.name;
+			const participationEvent = TELEMETRY_EVENT.PLATFORM.USER_IS_PART_OF_EXPERIMENT;
+
+			beforeEach(() => vi.useFakeTimers());
+			afterEach(() => vi.useRealTimers());
+
+			it('makes the live flag available but does not track it before eligibility', () => {
+				const posthog = usePostHog();
+				posthog.init({ [key]: 'variant' });
+				posthog.trackExposure(key);
+				vi.advanceTimersByTime(2000);
+				expect(posthog.getVariant(key)).toBe('variant');
+				expect(useTelemetry().track).not.toHaveBeenCalledWith(
+					participationEvent,
+					expect.objectContaining({ name: key }),
+				);
+				expect(window.posthog?.capture).not.toHaveBeenCalled();
+			});
+
+			it.each(['control', 'variant'] as const)(
+				'tracks eligible %s immediately after init, once',
+				(variant) => {
+					const posthog = usePostHog();
+					posthog.init({ [key]: variant });
+					vi.advanceTimersByTime(100);
+					posthog.setMcpDiscoveryEligible(true);
+					posthog.setMcpDiscoveryEligible(true);
+					vi.advanceTimersByTime(2000);
+					expect(useTelemetry().track).toHaveBeenCalledExactlyOnceWith(participationEvent, {
+						name: key,
+						variant,
+					});
+				},
+			);
+
+			it('uses the live override for both participation and native exposure', () => {
+				const posthog = usePostHog();
+				posthog.init({ [key]: 'variant' });
+				posthog.overrides[key] = { value: 'control' };
+				posthog.setMcpDiscoveryEligible(true);
+				posthog.trackExposure(key);
+				posthog.trackExposure(key);
+				expect(posthog.getVariant(key)).toBe('control');
+				expect(useTelemetry().track).toHaveBeenCalledExactlyOnceWith(participationEvent, {
+					name: key,
+					variant: 'control',
+				});
+				expect(window.posthog?.capture).toHaveBeenCalledExactlyOnceWith('$feature_flag_called', {
+					$feature_flag: key,
+					$feature_flag_response: 'control',
+				});
+			});
+
+			it('records a new live variant after eligibility without overwriting it', () => {
+				const posthog = usePostHog();
+				posthog.init({ [key]: 'control' });
+				posthog.setMcpDiscoveryEligible(true);
+				posthog.overrides[key] = { value: 'variant' };
+				posthog.setMcpDiscoveryEligible(true);
+				expect(useTelemetry().track).toHaveBeenCalledTimes(2);
+				expect(useTelemetry().track).toHaveBeenLastCalledWith(participationEvent, {
+					name: key,
+					variant: 'variant',
+				});
+			});
+
+			it('stops tracking when eligibility is cleared without changing the flag', () => {
+				const posthog = usePostHog();
+				posthog.init({ [key]: 'variant' });
+				posthog.setMcpDiscoveryEligible(true);
+				posthog.setMcpDiscoveryEligible(false);
+				posthog.trackExposure(key);
+				expect(posthog.getVariant(key)).toBe('variant');
+				expect(window.posthog?.capture).not.toHaveBeenCalled();
+			});
+
+			it('clears eligibility and tracking deduplication on reset', () => {
+				const posthog = usePostHog();
+				posthog.init({ [key]: 'variant' });
+				posthog.setMcpDiscoveryEligible(true);
+				posthog.trackExposure(key);
+				posthog.reset();
+				posthog.init({ [key]: 'variant' });
+				posthog.trackExposure(key);
+				expect(window.posthog?.capture).toHaveBeenCalledTimes(1);
+				posthog.setMcpDiscoveryEligible(true);
+				posthog.trackExposure(key);
+				expect(useTelemetry().track).toHaveBeenCalledTimes(2);
+				expect(window.posthog?.capture).toHaveBeenCalledTimes(2);
+			});
+		});
+		// EOF Experiment cleanup
 
 		// Experiment cleanup (119_surface_assistant_on_workflow_error)
 		describe('cloud-only experiment tracking', () => {

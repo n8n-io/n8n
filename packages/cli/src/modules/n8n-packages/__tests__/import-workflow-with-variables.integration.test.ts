@@ -159,6 +159,7 @@ describe('variable error consumers', () => {
 				folderConflictPolicy: 'merge',
 				overwriteDeletionPolicy: 'archive',
 			},
+			checkRootPlacement: false,
 		};
 
 		const blockedPlan = await orchestrator.plan(input);

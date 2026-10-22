@@ -153,6 +153,8 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 			return unsupportedAction();
 		} catch (error) {
+			const described = integrationDef?.describeActionError?.(params.action, error);
+			if (described) return integrationError(described.code, described.message);
 			return caughtIntegrationError(error, {
 				connectionId: params.descriptor.integrationConnectionId,
 				platform: params.descriptor.integration.type,
@@ -275,7 +277,12 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		params: IntegrationActionParams,
 	): Promise<IntegrationActionResult> {
 		const input = sendDmInputSchema.parse(params.input);
-		const thread = await chat.openDM(input.userId);
+		// The Chat SDK guesses the adapter from the user ID's shape and knows one
+		// shape per platform, so a Teams Entra object ID would not reach Teams.
+		const adapter = chat.getAdapter(params.descriptor.integration.type);
+		const thread = supportsOpenDM(adapter)
+			? chat.thread(await adapter.openDM(input.userId))
+			: await chat.openDM(input.userId);
 		const sent = await thread.post(await this.toPostable(params.descriptor, input.message, params));
 		// Re-anchor at the sent message ts on platforms where a top-level DM
 		// starts its own thread; otherwise keep the openDM thread.
@@ -337,7 +344,12 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		params: IntegrationActionParams,
 	): Promise<IntegrationActionResult> {
 		const input = sendChannelMessageInputSchema.parse(params.input);
-		const channelId = normalizePlatformId(params.descriptor.integration.type, input.channelId);
+		const platform = params.descriptor.integration.type;
+		const channelId =
+			this.integrationRegistry
+				.get(platform)
+				?.normalizeChannelId(input.channelId, chat.getAdapter(platform)) ??
+			normalizePlatformId(platform, input.channelId);
 		const channel = chat.channel(channelId);
 		const sent = await channel.post(
 			await this.toPostable(params.descriptor, input.message, params),
@@ -435,6 +447,10 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 function supportsMessageEditing(adapter: unknown): adapter is Pick<Adapter, 'editMessage'> {
 	return isRecord(adapter) && typeof adapter.editMessage === 'function';
+}
+
+function supportsOpenDM(adapter: unknown): adapter is Required<Pick<Adapter, 'openDM'>> {
+	return isRecord(adapter) && typeof adapter.openDM === 'function';
 }
 
 function supportsAddReaction(adapter: unknown): adapter is Pick<Adapter, 'addReaction'> {

@@ -24,6 +24,7 @@ export const AgentModelSchema = z.string().min(1).regex(
 	 * [a-z0-9-]+: Provider name (e.g. "anthropic")
 	 * (?:[a-z0-9._:@-]+\/)*: Zero or more sub-providers (e.g. "openrouter/amazon/nova-micro-v1")
 	 * [a-z0-9._:@-]+: Model name (e.g. "claude-fable-5@default")
+	 * `@` allows gateway model IDs after the provider (e.g. "openai/@OpenAI/gpt-5-mini")
 	 */
 	AGENT_MODEL_STRING_REGEX,
 	'Model must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5" or "openrouter/amazon/nova-micro-v1")',
@@ -257,7 +258,9 @@ export const McpServerConfigSchema = z
 		credential: z
 			.string()
 			.optional()
-			.describe('Credential id from ask_credential. Required when authentication is not "none"'),
+			.describe(
+				'Credential id from agent_builder_ask_credential. Required when authentication is not "none"',
+			),
 		metadata: z
 			.object({
 				nodeTypeName: z

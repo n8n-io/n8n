@@ -5,16 +5,23 @@ import type { WorkflowSuggestionProposalDetail } from './workflow-suggestions';
 export const selfHealingResultOutcomeSchema = z.enum(['fix_ready', 'needs_you', 'could_not_fix']);
 export type SelfHealingResultOutcome = z.infer<typeof selfHealingResultOutcomeSchema>;
 
-export const selfHealingResultUsageSchema = z
+const selfHealingResultTimingSchema = z
 	.object({
-		credits: z.number().finite().nonnegative().nullable(),
 		turns: z.number().int().nonnegative().nullable(),
 		durationSeconds: z.number().finite().nonnegative().nullable(),
+	})
+	.strict();
+
+export const selfHealingResultUsageSchema = z.union([
+	selfHealingResultTimingSchema.extend({
+		credits: z.number().finite().nonnegative().nullable(),
+	}),
+	selfHealingResultTimingSchema.extend({
 		promptTokens: z.number().int().nonnegative().nullable(),
 		completionTokens: z.number().int().nonnegative().nullable(),
 		totalTokens: z.number().int().nonnegative().nullable(),
-	})
-	.strict();
+	}),
+]);
 export type SelfHealingResultUsage = z.infer<typeof selfHealingResultUsageSchema>;
 
 export const selfHealingResultContentSchema = z

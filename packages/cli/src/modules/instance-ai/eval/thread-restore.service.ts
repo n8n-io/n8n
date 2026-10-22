@@ -31,7 +31,7 @@ import {
 import { randomUUID } from 'node:crypto';
 
 import { BadRequestError } from '@n8n/errors';
-import { AgentsService } from '@/modules/agents/agents.service';
+import { AgentDraftService } from '@/modules/agents/agent-draft.service';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { hasViolations, PolicyViolationError } from '@/policy/policy-violation.error';
@@ -291,7 +291,7 @@ export class EvalThreadRestoreService {
 		allowedCredentialIds?: Set<string>,
 	): Promise<string[]> {
 		if (agents.length === 0) return [];
-		const agentsService = this.agentsService();
+		const agentsService = this.agentDrafts();
 		const created: string[] = [];
 		try {
 			for (const agent of agents) {
@@ -312,16 +312,15 @@ export class EvalThreadRestoreService {
 				);
 				// `create` refuses a colliding id rather than overwriting, so a seed can
 				// never clobber an agent that already exists.
-				await agentsService.create(projectId, schema.name, {
-					actor: { kind: 'user', user },
+				await agentsService.createDraft(user, projectId, schema.name, {
 					id: agent.id,
 					schema,
-					...(agent.skills ? { skills: agent.skills, skillCreator: user } : {}),
+					...(agent.skills ? { skills: agent.skills } : {}),
 				});
 				created.push(agent.id);
 			}
 		} catch (error) {
-			await this.deleteAgents(created, projectId);
+			await this.deleteAgents(created, projectId, user);
 			throw error;
 		}
 		return created;
@@ -379,10 +378,10 @@ export class EvalThreadRestoreService {
 
 	/** Best-effort delete (rollback of a failed restore). Resolved per id so a
 	 *  rollback can never throw over the failure that triggered it. */
-	async deleteAgents(agentIds: string[], projectId: string): Promise<void> {
+	async deleteAgents(agentIds: string[], projectId: string, user: User): Promise<void> {
 		for (const id of agentIds) {
 			try {
-				await this.agentsService().delete(id, projectId);
+				await this.agentDrafts().deleteDraft(user, projectId, id);
 			} catch {
 				// best-effort
 			}
@@ -391,11 +390,11 @@ export class EvalThreadRestoreService {
 
 	/** Lazy: constructor-injecting this would break every seeded restore — workflows
 	 *  and data tables included — on an instance where the agents module is off. */
-	private agentsService(): AgentsService {
+	private agentDrafts(): AgentDraftService {
 		if (!Container.get(ModuleRegistry).isActive('agents')) {
 			throw new BadRequestError('Seeding an agent requires the agents module to be enabled');
 		}
-		return Container.get(AgentsService);
+		return Container.get(AgentDraftService);
 	}
 
 	/** Recreate the seed workflows; returns the ids actually created (newly), and

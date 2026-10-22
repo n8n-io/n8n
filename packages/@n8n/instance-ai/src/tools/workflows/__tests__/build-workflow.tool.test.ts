@@ -7,12 +7,10 @@ import {
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import { FolderResolutionError } from '../../../errors/folder-resolution.error';
+import { OutsideThreadProjectError } from '../../../errors/outside-thread-project.error';
 import { WorkflowNotFoundError } from '../../../errors/workflow-not-found.error';
 import { WorkflowSaveConflictError } from '../../../errors/workflow-save-conflict.error';
-import {
-	loadInstanceAiRuntimeSkillSource,
-	loadInstanceAiRuntimeSkillSourceForBuildMode,
-} from '../../../skills/runtime-skills';
+import { loadInstanceAiSkills } from '../../../skills/skills';
 import type { ThreadRecord } from '../../../storage/thread-patch';
 import { emitTraceOnlyChildRun } from '../../../tracing/langsmith-tracing';
 import type { InstanceAiContext } from '../../../types';
@@ -46,6 +44,11 @@ vi.mock('../../../tracing/langsmith-tracing', async () => {
 		emitTraceOnlyChildRun: vi.fn(actual.emitTraceOnlyChildRun as typeof emitTraceOnlyChildRun),
 	};
 });
+
+// Metric spans would change the trace child-run counts that these tests assert.
+vi.mock('../../../tracing/builder-metric-event', () => ({
+	emitBuilderMetric: vi.fn(async () => await Promise.resolve()),
+}));
 
 vi.mock('../workflow-validation-warnings', async () => {
 	const actual = await vi.importActual<typeof import('../workflow-validation-warnings')>(
@@ -299,7 +302,7 @@ describe('createBuildWorkflowTool', () => {
 	describe('publish state', () => {
 		it('warns that a save to a published workflow is not live', async () => {
 			// No verification runs here. Without this, a trigger-only workflow or a
-			// repair that skips verify-built-workflow has no deterministic signal
+			// repair that skips workflow_builder_verify_built_workflow has no deterministic signal
 			// that the fix is sitting in a draft.
 			const { context, filePath } = makeContext({});
 			vi.mocked(context.workflowService.updateFromWorkflowJSON).mockResolvedValue({
@@ -616,19 +619,11 @@ describe('createBuildWorkflowTool', () => {
 			},
 		});
 		expect(result.postBuildFlow?.guidance).toContain(
-			'Follow the post-build instructions in `instructions` now',
+			'Load the post-build-flow skill with load_skill now and follow it',
 		);
-		expect(result.postBuildFlow?.instructions).toContain('# Post-Build Flow');
-		// The language reminder in the skill intro must ride along in the inline copy.
-		expect(result.postBuildFlow?.instructions).toContain(
-			"stays in the user's conversation language",
+		expect(result.postBuildFlow?.instructions).toBe(
+			'Load the post-build-flow skill with load_skill.',
 		);
-		expect(result.postBuildFlow?.instructions).not.toContain('recommended_tools');
-		// Tag-turn-only sections are stripped from the inline copy.
-		expect(result.postBuildFlow?.instructions).not.toContain('## Verification follow-up');
-		expect(result.postBuildFlow?.instructions).not.toContain('## Setup follow-up');
-		expect(result.postBuildFlow?.instructions).not.toContain('## Credentials before build');
-		expect(result.postBuildFlow?.instructions).toContain('## After build-workflow succeeds');
 		expect(result.postBuildFlow?.guidance).toContain(
 			'then mocked/no-mock live-test when latest verification used mocks or simulations',
 		);
@@ -636,7 +631,7 @@ describe('createBuildWorkflowTool', () => {
 			'never offer publishing as an alternative to the live test',
 		);
 		expect(result.postBuildFlow?.guidance).toContain(
-			'A user-run execution counts only after `executions(action="list")`',
+			'A user-run execution counts only after `workflow_builder_executions(action="list")`',
 		);
 		expect(result.postBuildFlow?.guidance).toContain(
 			'Do not replace the error-workflow opt-in with a generic add-anything',
@@ -655,40 +650,11 @@ describe('createBuildWorkflowTool', () => {
 		});
 	});
 
-	it('uses the selected post-build instructions without sharing them across modes', async () => {
-		const source = loadInstanceAiRuntimeSkillSource();
-		const policy = await source.loadSkill('progressive-building');
-		if (!policy) throw new Error('Expected the progressive policy');
-		for (const mode of ['default', 'progressive', 'default'] as const) {
-			const { context, filePath } = makeContext({
-				source: 'workflow source',
-				overrides: {
-					runtimeSkillCatalog: await loadInstanceAiRuntimeSkillSourceForBuildMode(mode),
-				},
-			});
-
-			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
-				filePath,
-				name: 'Request tracker',
-			});
-
-			expect(result.success).toBe(true);
-			expect(result.postBuildFlow?.skillId).toBe('post-build-flow');
-			expect(result.postBuildFlow?.instructions).toContain('# Post-Build Flow');
-			expect(result.postBuildFlow?.instructions?.includes(policy.instructions)).toBe(
-				mode === 'progressive',
-			);
-			expect(result.postBuildFlow?.instructions).not.toContain('## Verification follow-up');
-			expect(result.postBuildFlow?.instructions).not.toContain('## Setup follow-up');
-		}
-	});
-
 	it.each([
 		['reusable', 'post-build-flow'],
 		['one-off', 'one-off-operations'],
 	] as const)('activates the selected skill for a %s build', async (executionIntent, skillId) => {
-		const source = await loadInstanceAiRuntimeSkillSourceForBuildMode('progressive');
-		const loadSkill = vi.fn(source.loadSkill);
+		const loadSkill = vi.fn(loadInstanceAiSkills().loadSkill);
 		const { context, filePath } = makeContext({ source: 'workflow source' });
 		const result = await executeTool<BuildToolOutput>(
 			createBuildWorkflowTool(context),
@@ -700,51 +666,40 @@ describe('createBuildWorkflowTool', () => {
 		expect(result.postBuildFlow?.instructions).toBe(
 			`Follow the active ${skillId} skill instructions.`,
 		);
-		// The guidance must point at the activated skill, not at an inline copy.
 		expect(result.postBuildFlow?.guidance).toContain(
 			`Follow the active ${skillId} skill instructions now`,
 		);
-		expect(result.postBuildFlow?.guidance).not.toContain('in `instructions` now');
 	});
 
-	it.each(['default', 'progressive'] as const)(
-		'hands one-off builds to the one-off-operations skill in %s mode',
-		async (mode) => {
-			const source = 'workflow source from workspace';
-			const { context, filePath } = makeContext({
-				source,
-				overrides: {
-					runtimeSkillCatalog: await loadInstanceAiRuntimeSkillSourceForBuildMode(mode),
-				},
-			});
+	it('hands one-off builds to the one-off-operations skill', async () => {
+		const source = 'workflow source from workspace';
+		const { context, filePath } = makeContext({ source });
 
-			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
-				filePath,
-				name: 'One-off attendee export',
-				executionIntent: 'one-off',
-			});
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			name: 'One-off attendee export',
+			executionIntent: 'one-off',
+		});
 
-			expect(result).toMatchObject({
-				success: true,
-				// One-off intent rides on executionIntent, NOT on a new readiness
-				// status — the readiness union is persisted and old readers hard-fail
-				// on unknown variants (rollback safety).
-				verificationReadiness: { status: 'ready' },
-				executionIntent: 'one-off',
-				postBuildFlow: {
-					required: true,
-					skillId: 'one-off-operations',
-					reason: 'direct-one-off-build-succeeded',
-				},
-			});
-			expect(result.postBuildFlow?.guidance).toContain('Simulated verification is NOT required');
-			expect(result.postBuildFlow?.instructions).toContain('# One-Off Operations');
-			expect(result.postBuildFlow?.instructions).not.toContain('recommended_tools');
-			// The verify-biased post-build-flow body must NOT ride along on a one-off build.
-			expect(result.postBuildFlow?.instructions).not.toContain('# Post-Build Flow');
-			expect(result.postBuildFlow?.instructions).not.toContain('# Progressive building');
-		},
-	);
+		expect(result).toMatchObject({
+			success: true,
+			// One-off intent rides on executionIntent, NOT on a new readiness
+			// status — the readiness union is persisted and old readers hard-fail
+			// on unknown variants (rollback safety).
+			verificationReadiness: { status: 'ready' },
+			executionIntent: 'one-off',
+			postBuildFlow: {
+				required: true,
+				skillId: 'one-off-operations',
+				reason: 'direct-one-off-build-succeeded',
+				instructions: 'Load the one-off-operations skill with load_skill.',
+			},
+		});
+		expect(result.postBuildFlow?.guidance).toContain('Simulated verification is NOT required');
+		expect(result.postBuildFlow?.guidance).toContain(
+			'Load the one-off-operations skill with load_skill now and follow it',
+		);
+	});
 
 	it('drops invalid node groups before saving and reports the drop', async () => {
 		const source = 'workflow source from workspace';
@@ -2919,7 +2874,7 @@ describe('createBuildWorkflowTool', () => {
 		});
 		expect(result.errors?.[0]).toContain('Failed to bind source file');
 		expect(result.remediation?.guidance).toContain(
-			'Call build-workflow again with the same filePath and omit workflowId',
+			'Call workflow_builder_build_workflow again with the same filePath and omit workflowId',
 		);
 		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
 		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
@@ -3003,6 +2958,49 @@ describe('createBuildWorkflowTool', () => {
 				reason: 'workflow_save_permission_blocked',
 			},
 		});
+	});
+
+	it('blocks an edit outside the thread project before compile, approval, and save', async () => {
+		const { context, filePath, trackTelemetry } = makeContext({
+			overrides: {
+				permissions: {
+					createWorkflow: 'always_allow',
+					updateWorkflow: 'require_approval',
+				} as InstanceAiContext['permissions'],
+				assertInThreadProject: vi.fn().mockRejectedValue(new OutsideThreadProjectError()),
+			},
+		});
+		const suspend = vi.fn();
+
+		const result = await executeTool<BuildToolOutput>(
+			createBuildWorkflowTool(context),
+			{ filePath, workflowId: 'wf-other' },
+			{ suspend },
+		);
+
+		expect(context.assertInThreadProject).toHaveBeenCalledWith({
+			kind: 'workflow',
+			id: 'wf-other',
+		});
+		expect(result).toMatchObject({
+			success: false,
+			filePath,
+			workflowId: 'wf-other',
+			errors: [new OutsideThreadProjectError().message],
+			remediation: {
+				category: 'blocked',
+				shouldEdit: false,
+				reason: 'workflow_outside_thread_project',
+			},
+		});
+		expect(suspend).not.toHaveBeenCalled();
+		expect(compileWorkflowSource).not.toHaveBeenCalled();
+		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+		await expect(getWorkflowSourceFileBinding(context, filePath)).resolves.toBeUndefined();
+		expect(trackTelemetry).toHaveBeenCalledWith(
+			'instance_ai_workflow_source_build',
+			expect.objectContaining({ result: 'blocked', stage: 'permission' }),
+		);
 	});
 
 	it.each([false, true])('tracks only enabled triggers (disabled=%s)', async (disabled) => {

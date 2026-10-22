@@ -1,11 +1,7 @@
 oneOf:
   - type: object
     properties:
-      connectionId:
-        type: string
-        minLength: 1
-        maxLength: 36
-      configId:
+      environmentId:
         type: string
         minLength: 1
         maxLength: 36
@@ -261,19 +257,14 @@ oneOf:
             - scope
             - consumers
     required:
-      - connectionId
-      - configId
+      - environmentId
       - git
       - status
       - counts
       - warnings
   - type: object
     properties:
-      connectionId:
-        type: string
-        minLength: 1
-        maxLength: 36
-      configId:
+      environmentId:
         type: string
         minLength: 1
         maxLength: 36
@@ -1381,18 +1372,13 @@ oneOf:
           - conflicts
           - warnings
     required:
-      - connectionId
-      - configId
+      - environmentId
       - git
       - status
       - preflight
   - type: object
     properties:
-      connectionId:
-        type: string
-        minLength: 1
-        maxLength: 36
-      configId:
+      environmentId:
         type: string
         minLength: 1
         maxLength: 36
@@ -1411,8 +1397,7 @@ oneOf:
         enum:
           - source-changed
     required:
-      - connectionId
-      - configId
+      - environmentId
       - git
       - status
 type: object

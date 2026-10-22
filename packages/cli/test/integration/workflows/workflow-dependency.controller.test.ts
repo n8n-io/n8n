@@ -529,7 +529,7 @@ describe('POST /workflow-dependencies/details', () => {
 			role: 'credential:owner',
 		});
 
-		// One accessible credential, one existing but inaccessible credential,
+		// One usable credential, one existing credential the member cannot use,
 		// and one index entry left behind by a deleted credential
 		await seedDep(memberWorkflow.id, 'credentialId', memberCred.id);
 		await seedDep(memberWorkflow.id, 'credentialId', ownerCred.id);
@@ -545,9 +545,14 @@ describe('POST /workflow-dependencies/details', () => {
 
 		expect(resp.statusCode).toBe(200);
 		const result = resp.body.data[memberWorkflow.id];
-		expect(result.dependencies).toHaveLength(1);
-		expect(result.dependencies[0]).toMatchObject({ id: memberCred.id, type: 'credentialId' });
-		expect(result.inaccessibleCount).toBe(1);
+		expect(result.dependencies).toHaveLength(2);
+		expect(result.dependencies).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ id: memberCred.id, type: 'credentialId' }),
+				expect.objectContaining({ id: ownerCred.id, type: 'credentialId', unavailable: true }),
+			]),
+		);
+		expect(result.inaccessibleCount).toBe(0);
 	});
 
 	it('should drop workflow call dependencies referencing deleted workflows', async () => {
@@ -603,9 +608,11 @@ describe('POST /workflow-dependencies/details', () => {
 		expect(resp.statusCode).toBe(200);
 		expect(resp.body.data).toHaveProperty(sharedWorkflow.id);
 		// Member can access the shared workflow but not the owner's credential,
-		// so the credential shows up as inaccessible rather than a resolved dependency
-		expect(resp.body.data[sharedWorkflow.id].dependencies).toHaveLength(0);
-		expect(resp.body.data[sharedWorkflow.id].inaccessibleCount).toBe(1);
+		// so the credential is listed by name as unavailable, not hidden in the count
+		expect(resp.body.data[sharedWorkflow.id].dependencies).toEqual([
+			{ id: cred.id, name: cred.name, type: 'credentialId', unavailable: true },
+		]);
+		expect(resp.body.data[sharedWorkflow.id].inaccessibleCount).toBe(0);
 	});
 
 	it('should require resourceType in the request body', async () => {

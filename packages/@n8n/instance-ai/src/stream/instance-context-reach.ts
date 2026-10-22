@@ -1,4 +1,8 @@
-import type { InstanceContextReach, InstanceContextSurface } from '@n8n/api-types';
+import {
+	resolveBuilderToolName,
+	type InstanceContextReach,
+	type InstanceContextSurface,
+} from '@n8n/api-types';
 
 import type { ToolCallSummary } from './work-summary-accumulator';
 import { DOMAIN_TOOL_IDS } from '../tools/tool-ids';
@@ -17,17 +21,17 @@ const SURFACE_BY_CALL: Record<string, Record<string, InstanceContextSurface>> = 
 };
 
 function surfaceFor(call: ToolCallSummary): InstanceContextSurface | undefined {
+	// Stored summaries can carry a former tool name.
+	const toolName = resolveBuilderToolName(call.toolName);
 	// A node-type filter uses the same index as the node-usage action.
-	if (call.toolName === DOMAIN_TOOL_IDS.WORKFLOWS && call.filteredByNodeTypes === true) {
+	if (toolName === DOMAIN_TOOL_IDS.WORKFLOWS && call.filteredByNodeTypes === true) {
 		return 'node-usage';
 	}
 
 	if (call.action === undefined) return undefined;
 
 	// Model input must not select inherited object properties.
-	const byAction = Object.hasOwn(SURFACE_BY_CALL, call.toolName)
-		? SURFACE_BY_CALL[call.toolName]
-		: undefined;
+	const byAction = Object.hasOwn(SURFACE_BY_CALL, toolName) ? SURFACE_BY_CALL[toolName] : undefined;
 	if (byAction === undefined || !Object.hasOwn(byAction, call.action)) return undefined;
 
 	return byAction[call.action];

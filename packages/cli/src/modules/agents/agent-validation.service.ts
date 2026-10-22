@@ -51,7 +51,7 @@ import { AgentRepository } from './repositories/agent.repository';
 import { findWorkflowToolWorkflows } from './tools/workflow-tool-workflow-resolver';
 import { extractAgentWorkflowRefs } from './utils/extract-agent-workflow-refs';
 import { findHttpRequestToolUrlFromAiViolations } from './utils/node-tool-validation';
-import { findNameClashGroups } from './skills/skill-names';
+import { findNameClashGroups } from '@/modules/skills/skill-names';
 
 type AgentValidationScope = 'runtime' | 'publish';
 

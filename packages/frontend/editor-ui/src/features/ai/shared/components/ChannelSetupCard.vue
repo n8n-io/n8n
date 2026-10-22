@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 /**
- * Shared channel-setup body + orchestration for the `configure_channel`
+ * Shared channel-setup body + orchestration for the `agent_builder_configure_channel`
  * builder tool, rendered by the AI assistant (`InstanceAiChannelSetup.vue`).
  * Kept as its own component — rather than inlined into that consumer —
  * because it owns non-trivial body + composable wiring
@@ -28,8 +28,14 @@ import {
 	getAgentChannelPlatform,
 	isRegisteredAgentChannelPlatform,
 } from '@/features/agents/channels/registry';
-import type { AgentChannelRuntime, AgentChannelViewExpose } from '@/features/agents/channels/types';
+import { provideAgentPersonalisation } from '@/features/agents/channels/agentPersonalisation';
+import type {
+	AgentChannelRestart,
+	AgentChannelRuntime,
+	AgentChannelViewExpose,
+} from '@/features/agents/channels/types';
 import { getAgent } from '@/features/agents/composables/useAgentApi';
+import { useAgentChannelRemoval } from '@/features/agents/composables/useAgentChannelRemoval';
 import { useAgentChannelSetup } from '@/features/agents/composables/useAgentChannelSetup';
 import { useAgentIntegrationStatus } from '@/features/agents/composables/useAgentIntegrationStatus';
 import { useAgentIntegrationsCatalog } from '@/features/agents/composables/useAgentIntegrationsCatalog';
@@ -73,6 +79,8 @@ const {
 const submitted = ref(false);
 const connectionInFlight = ref(false);
 const agent = ref<AgentResource | null>(null);
+// This card is not under the builder, so it provides the agent's look itself.
+provideAgentPersonalisation(() => agent.value?.schema?.personalisation);
 const catalogLoading = ref(false);
 const catalogLoadFailed = ref(false);
 
@@ -201,6 +209,33 @@ async function skipSetup() {
 	} finally {
 		connectionInFlight.value = false;
 	}
+}
+
+const viewSession = ref(0);
+
+const { requestDisconnect } = useAgentChannelRemoval({
+	projectId: () => props.projectId,
+	agentId: () => props.agentId,
+	isPublished: () => Boolean(agent.value?.activeVersionId),
+	disabled: () => isBlocked() || channelActionInFlight.value,
+	status: { disconnect, fetchStatus, loadingMap },
+	runtimeFor: () => currentRuntime.value,
+	onRemoved: (_, { restartWith }) => {
+		notifyAgentUpdated();
+		if (!restartWith) return;
+		currentRuntime.value.reset?.(restartWith);
+		selectedCredentials.value[props.integrationType] = restartWith.credentialId;
+		savedHere.value = false;
+		viewSession.value += 1;
+	},
+});
+
+function restartSetup(restart: AgentChannelRestart) {
+	void requestDisconnect(
+		props.integrationType,
+		connectedCredentials.value[props.integrationType] || currentChannelCredentialId.value,
+		restart,
+	);
 }
 
 /**
@@ -345,6 +380,7 @@ watch(
 			<component
 				v-else
 				:is="currentPlatform.setupComponent"
+				:key="viewSession"
 				ref="channelViewRef"
 				v-model="selectedCredentials[integrationType]"
 				mode="setup"
@@ -358,6 +394,7 @@ watch(
 				:connected-description="connectedDescription"
 				:error-message="errorMessage"
 				:error-is-conflict="errorIsConflict[integrationType]"
+				:saved-credential-id="connectedCredentials[integrationType] ?? ''"
 				:saved-settings="integrationSettings[integrationType]"
 				:is-published="Boolean(agent?.activeVersionId)"
 				:agent-name="agent?.name ?? agentId"
@@ -372,6 +409,7 @@ watch(
 				@connected="handlePlatformConnected"
 				@persist="writeChannelConfig"
 				@done="finishSetup"
+				@restart="restartSetup"
 			/>
 		</div>
 

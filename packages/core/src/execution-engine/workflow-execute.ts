@@ -1913,6 +1913,10 @@ export class WorkflowExecute {
 		}
 
 		if (nodeSuccessData && executionData.node.onError === 'continueErrorOutput') {
+			// Pair output items before the split. After the split there are two output
+			// arrays and `assignPairedItems` can no longer match items by count, so
+			// items the node did not pair itself would lose their lineage.
+			this.assignPairedItems(nodeSuccessData, executionData);
 			this.handleNodeErrorOutput(workflow, executionData, nodeSuccessData, runIndex);
 		}
 

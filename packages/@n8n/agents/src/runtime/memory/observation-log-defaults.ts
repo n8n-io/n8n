@@ -169,7 +169,7 @@ export function createObservationLogObserveFn(
 ): ObservationLogObserveFn {
 	return async (input) => {
 		const { text, usage, finalStep } = await loadAi().generateText({
-			model: createModel(model),
+			model: createModel(model, undefined, input.telemetry),
 			instructions: options.observerPrompt ?? DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT,
 			prompt: buildObservationLogObserverPrompt(input),
 			maxRetries: options.maxRetries ?? DEFAULT_OBSERVATION_LOG_OBSERVER_MAX_RETRIES,
@@ -337,7 +337,7 @@ export function createObservationLogReflectFn(
 			})),
 		);
 		const { text, usage, finalStep } = await loadAi().generateText({
-			model: createModel(model),
+			model: createModel(model, undefined, input.telemetry),
 			instructions: options.reflectorPrompt ?? DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT,
 			prompt: buildObservationLogReflectorPrompt({ ...input, renderedObservationLog }),
 			...buildAiSdkTelemetry(input.telemetry, { functionSuffix: 'memory-reflector' }),

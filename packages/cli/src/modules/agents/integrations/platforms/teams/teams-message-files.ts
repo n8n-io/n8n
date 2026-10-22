@@ -83,7 +83,7 @@ export function graphMessagePaths(activity: unknown): GraphMessagePaths | undefi
 	};
 }
 
-function statusOf(error: unknown): unknown {
+export function statusOf(error: unknown): unknown {
 	return isRecord(error) && isRecord(error.response) ? error.response.status : undefined;
 }
 

@@ -1,7 +1,9 @@
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore a type-only EventService import; keep the import.
+import { EventService } from '@n8n/backend-services';
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
-import type { EventService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
+import { BadRequestError } from '@n8n/errors';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { OperationalError, UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -13,8 +15,11 @@ import { AgentIntegrationPersistenceService } from '../agent-integration-persist
 import { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import type { AgentSetupCompletionService } from '../agent-setup-completion.service';
-import type { Agent } from '../entities/agent.entity';
-import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
+import type { ProjectAgent } from '../entities/agent.entity';
+import type {
+	AgentChatIntegration,
+	ChatIntegrationRegistry,
+} from '../integrations/agent-chat-integration';
 import type { AgentRepository } from '../repositories/agent.repository';
 import { createAgentSkillRefsService, storedAgentConfig } from './test-utils/stored-agent-config';
 
@@ -69,7 +74,7 @@ function setup(options: SetupOptions = {}) {
 		activeVersionId: options.activeVersionId === undefined ? 'version-1' : options.activeVersionId,
 		setupCompletedAt: null,
 		updatedAt: new Date('2025-01-01T00:00:00Z'),
-	} as Agent;
+	} as ProjectAgent;
 
 	agentRepository.findById.mockImplementation(async () => ({
 		...row,
@@ -99,7 +104,8 @@ function setup(options: SetupOptions = {}) {
 			runtimeCacheService,
 			chatIntegrationRegistry,
 			eventService,
-			new AgentModificationTelemetryService(telemetry),
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users): remove only the mock<EventService>() argument.
+			new AgentModificationTelemetryService(telemetry, mock<EventService>()),
 			credentialsService,
 			setupCompletionService,
 			createAgentSkillRefsService(),
@@ -269,6 +275,75 @@ describe('AgentIntegrationPersistenceService', () => {
 					settings: { accessMode: 'private', allowedUsers: ['@alice'] },
 				},
 				{ type: 'linear', credentialId: 'linear-1' },
+			]);
+		});
+
+		describe('platform with one connection per agent', () => {
+			const teams = (credentialId: string): AgentIntegrationConfig => ({
+				type: 'teams',
+				credentialId,
+			});
+
+			function setupTeams(integrations: AgentIntegrationConfig[]) {
+				const context = setup({ integrations });
+				context.chatIntegrationRegistry.get.mockReturnValue(
+					mock<AgentChatIntegration>({ singleConnectionPerAgent: true }),
+				);
+				return context;
+			}
+
+			it('rejects a second credential that does not replace the first', async () => {
+				const { service, agent, row } = setupTeams([teams('teams-1')]);
+
+				await expect(
+					service.applyIntegrationDelta(agent, { add: teams('teams-2') }, byUser),
+				).rejects.toThrow(BadRequestError);
+				expect(row.integrations).toEqual([teams('teams-1')]);
+			});
+
+			it('accepts a second credential that replaces the first', async () => {
+				const { service, agent, row } = setupTeams([teams('teams-1')]);
+
+				await service.applyIntegrationDelta(
+					agent,
+					{ add: teams('teams-2'), remove: teams('teams-1') },
+					byUser,
+				);
+
+				expect(row.integrations).toEqual([teams('teams-2')]);
+			});
+
+			it('accepts the same credential again', async () => {
+				const { service, agent, row } = setupTeams([teams('teams-1')]);
+
+				await service.applyIntegrationDelta(agent, { add: teams('teams-1') }, byUser);
+
+				expect(row.integrations).toEqual([teams('teams-1')]);
+			});
+
+			it('lets an agent that holds two remove one', async () => {
+				const { service, agent, row } = setupTeams([teams('teams-1'), teams('teams-2')]);
+
+				await service.applyIntegrationDelta(agent, { remove: teams('teams-2') }, byUser);
+
+				expect(row.integrations).toEqual([teams('teams-1')]);
+			});
+		});
+
+		it('keeps a second credential beside the first on a platform that allows it', async () => {
+			const { service, agent, row } = setup({
+				integrations: [{ type: 'discord', credentialId: 'discord-1' }],
+			});
+
+			await service.applyIntegrationDelta(
+				agent,
+				{ add: { type: 'discord', credentialId: 'discord-2' } },
+				byUser,
+			);
+
+			expect(row.integrations).toEqual([
+				{ type: 'discord', credentialId: 'discord-1' },
+				{ type: 'discord', credentialId: 'discord-2' },
 			]);
 		});
 
@@ -700,7 +775,7 @@ describe('AgentIntegrationPersistenceService', () => {
 	});
 
 	describe('modification telemetry', () => {
-		it('reports the first channel on a blank agent as a creation', async () => {
+		it('reports the first channel on a saved draft as a modification', async () => {
 			const { service, agent, telemetry } = setup({ schema: blankConfig });
 
 			await service.applyIntegrationDelta(
@@ -710,18 +785,19 @@ describe('AgentIntegrationPersistenceService', () => {
 			);
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT,
+				TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
 				expect.objectContaining({
 					agent_id: agentId,
 					project_id: projectId,
 					user_id: user.id,
 					changed_parts: ['triggers'],
+					changed_settings: [],
 					trigger_count: 1,
 					event_version: '2',
 				}),
 			);
 			expect(telemetry.track).not.toHaveBeenCalledWith(
-				TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
+				TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT,
 				expect.anything(),
 			);
 		});
@@ -743,7 +819,7 @@ describe('AgentIntegrationPersistenceService', () => {
 					agent_id: agentId,
 					changed_parts: ['triggers'],
 					trigger_count: 2,
-					event_version: '1',
+					event_version: '2',
 				}),
 			);
 			expect(telemetry.track).not.toHaveBeenCalledWith(

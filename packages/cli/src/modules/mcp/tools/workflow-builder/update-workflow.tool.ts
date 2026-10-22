@@ -27,11 +27,8 @@ import {
 	removeDefaultValues,
 	resolveNodeWebhookIds,
 } from '@/workflow-helpers';
-import {
-	isExpressionErrorWorkflowId,
-	staticErrorWorkflowId,
-	type ErrorWorkflowValidationService,
-} from '@/workflows/error-workflow-validation.service';
+import { isExpressionErrorWorkflowId, staticErrorWorkflowId } from '@/workflows/error-workflow-id';
+import type { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
 import { assertExecutionTimeoutWithinMax } from '@/workflows/execution-timeout-validation';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';

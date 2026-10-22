@@ -1,13 +1,7 @@
 <script setup lang="ts">
 /**
- * Post-setup suggestion to test the agent that was just built — the preview
- * variant. Instead of a generic "want to test this?" offer, it runs one real
- * case and reports whether that first check passed, with the example message
- * and what the judge found. The case comes from the builder's own test run
- * only when that run already has a rule and a verdict (`initialCase`);
- * otherwise the panel drafts, runs and judges one case of its own. Behind the
- * `101_agent_evals` flag, alongside the original
- * `InstanceAiTestAgentPanel`.
+ * Runs and judges the first check with mocked tools before offering a full suite.
+ * The preview is not persisted until the user saves the checks.
  */
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { AgentEvalDraftCase, AgentEvalVerdict } from '@n8n/api-types';
@@ -36,18 +30,6 @@ import InstanceAiTestAgentExamplesPanel, {
 
 const props = defineProps<{
 	target: { agentId: string; projectId: string };
-	/**
-	 * A real input/output pair from the agent builder's own "Testing agent"
-	 * step, when one exists. Reused only when it also carries the rule it was
-	 * checked against and the judge's verdict: without both there is no first
-	 * check to report, so the panel drafts, runs and judges a case of its own.
-	 */
-	initialCase?: {
-		message: string;
-		response: string;
-		whatToCheck?: string | null;
-		verdict?: AgentEvalVerdict | null;
-	} | null;
 }>();
 
 const emit = defineEmits<{
@@ -69,26 +51,13 @@ const {
 } = useApplyAgentEvalSuggestions(() => props.target);
 
 type Phase = 'generating-preview' | 'awaiting-confirmation' | 'generating-suite' | 'suite-ready';
-// The builder's own test run, when it is a complete first check. Read once: the
-// card must not change under the user if a newer builder run lands later.
-const reusedCase =
-	props.initialCase?.whatToCheck && props.initialCase.verdict
-		? {
-				message: props.initialCase.message,
-				response: props.initialCase.response,
-				whatToCheck: props.initialCase.whatToCheck,
-				verdict: props.initialCase.verdict,
-			}
-		: null;
-// Skips straight to the result when the builder already ran a judged test —
-// there is nothing to generate or wait on.
-const phase = ref<Phase>(reusedCase ? 'awaiting-confirmation' : 'generating-preview');
+const phase = ref<Phase>('generating-preview');
 // The drafted test message and the agent's real answer to it — set directly
 // from `previewRun`'s response, which already ran the agent and returned the
 // final text. No run id, no polling: unlike the suite below, this never
 // touches a Data Table, dataset, or eval-run row at all.
-const previewRequest = ref<string | null>(null);
-const previewAnswer = ref<string | null>(null);
+const previewInput = ref('');
+const previewOutput = ref('');
 // Generated with `save: false` — a preview, not yet persisted. Nothing backs
 // these rows until "Check your agent" commits them, so dismissing or
 // refreshing mid-preview leaves no orphaned dataset behind.
@@ -112,24 +81,11 @@ const startingSuiteRun = ref(false);
 // retry, since the rows would otherwise sit "waiting" for a run that isn't there.
 const suiteRunFailed = ref(false);
 const stoppingSuiteRun = ref(false);
-// Cleared once a suggestion is applied, so the display follows the rerun instead of
-// sticking with the builder's original test.
-const useInitialCase = ref(Boolean(reusedCase));
-// The generated preview case's scenario tag. Null when reusing the builder's
-// own test result (`initialCase`), which was never scenario-generated.
 const previewScenario = ref<string | null>(null);
-// The rule the preview case was checked against, and the judge's call on it.
-const previewWhatToCheck = ref(reusedCase?.whatToCheck ?? '');
-const previewVerdict = ref<AgentEvalVerdict | null>(reusedCase?.verdict ?? null);
+const previewWhatToCheck = ref('');
+const previewVerdict = ref<AgentEvalVerdict | null>(null);
 // Whether the full example conversation is shown under "What we found".
 const conversationExpanded = ref(false);
-
-const previewInput = computed(() =>
-	useInitialCase.value ? (reusedCase?.message ?? '') : (previewRequest.value ?? ''),
-);
-const previewOutput = computed(() =>
-	useInitialCase.value ? (reusedCase?.response ?? '') : (previewAnswer.value ?? ''),
-);
 
 // Nothing failed when the judge passed the answer, or when the case had no rule to
 // grade it against (`skipped`) — the card still shows, as a pass. A judge error is
@@ -230,8 +186,8 @@ async function runGeneratedPreview() {
 		previewScenario.value = result.scenario || null;
 		previewWhatToCheck.value = result.whatToCheck;
 		previewVerdict.value = result.verdict;
-		previewRequest.value = result.input;
-		previewAnswer.value = result.response;
+		previewInput.value = result.input;
+		previewOutput.value = result.response;
 		conversationExpanded.value = false;
 		phase.value = 'awaiting-confirmation';
 	} catch (error) {
@@ -239,12 +195,7 @@ async function runGeneratedPreview() {
 	}
 }
 
-function generatePreviewCase() {
-	if (reusedCase) return;
-	return runGeneratedPreview();
-}
-
-onMounted(generatePreviewCase);
+onMounted(runGeneratedPreview);
 onBeforeUnmount(() => {
 	isMounted = false;
 	store.stopPollingRun();
@@ -489,9 +440,8 @@ async function onApplySuggestion() {
 		);
 		return;
 	}
-	useInitialCase.value = false;
-	previewRequest.value = preview.input;
-	previewAnswer.value = preview.response;
+	previewInput.value = preview.input;
+	previewOutput.value = preview.response;
 	previewVerdict.value = preview.verdict;
 	conversationExpanded.value = false;
 }
@@ -585,7 +535,7 @@ function onDontCreateEvals() {
 					<EvalInitialSample
 						v-if="conversationExpanded"
 						:preview-input="previewInput"
-						:preview-output="previewOutput ?? ''"
+						:preview-output="previewOutput"
 						hide-banner
 					/>
 				</div>
@@ -657,7 +607,7 @@ function onDontCreateEvals() {
 		<template v-else-if="phase === 'suite-ready'">
 			<InstanceAiTestAgentExamplesPanel
 				:preview-input="previewInput"
-				:preview-output="previewOutput ?? ''"
+				:preview-output="previewOutput"
 				:preview-scenario="previewScenario"
 				:preview-status="previewStatus"
 				:preview-reasoning="previewReasoning"

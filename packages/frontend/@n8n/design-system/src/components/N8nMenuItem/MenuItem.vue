@@ -3,7 +3,6 @@ import { useResizeObserver } from '@vueuse/core';
 import type { ComponentPublicInstance } from 'vue';
 import { computed, ref } from 'vue';
 
-import { useI18n } from '../../composables/useI18n';
 import type { IMenuItem } from '../../types';
 import N8nBadge from '../N8nBadge';
 import N8nIcon from '../N8nIcon';
@@ -12,8 +11,7 @@ import N8nRoute from '../N8nRoute';
 import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip';
 import PreviewBadge from '../PreviewBadge/PreviewBadge.vue';
-
-const { t } = useI18n();
+import NewBadge from '../NewBadge/NewBadge.vue';
 
 const props = defineProps<{
 	item: IMenuItem;
@@ -180,14 +178,7 @@ const tooltipPlacement = computed(() => {
 						</N8nText>
 					</div>
 					<PreviewBadge v-if="!compact && item.preview" />
-					<N8nBadge
-						v-if="!compact && item.new"
-						size="xxsmall"
-						variant="filled"
-						:class="$style.newBadge"
-					>
-						{{ t('menuItem.new') }}
-					</N8nBadge>
+					<NewBadge v-if="!compact && item.new" :class="$style.newBadge" />
 					<N8nBadge v-if="!compact && item.creditsTag" size="xxsmall" variant="success">
 						{{ item.creditsTag }}
 					</N8nBadge>

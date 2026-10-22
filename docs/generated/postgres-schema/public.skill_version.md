@@ -104,6 +104,7 @@ erDiagram
 }
 "public.skill" {
   varchar_36_ agentId FK
+  boolean availableToAssistant
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   varchar_36_ id

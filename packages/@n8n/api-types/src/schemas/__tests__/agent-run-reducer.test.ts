@@ -467,6 +467,115 @@ describe('agent-run-reducer', () => {
 			expect(state.toolCallsById['tc-1'].isLoading).toBe(false);
 		});
 
+		it.each(['tool-call', 'tool-input-start'] as const)(
+			'ignores a late %s after cancellation',
+			(type) => {
+				const state = stateWithRun('run-1', 'root');
+				reduceEvent(state, makeRunFinish('run-1', 'root', 'cancelled'));
+				reduceEvent(state, { ...makeToolCall('run-1', 'root', 'late', 'read-agent'), type });
+				expect(toAgentTree(state).toolCalls).toEqual([]);
+				expect(state.status).toBe('cancelled');
+			},
+		);
+
+		it('settles nested children and ignores late child activity after cancellation', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeAgentSpawned('run-1', 'child', 'root'));
+			reduceEvent(state, makeAgentSpawned('run-1', 'nested', 'child'));
+			reduceEvent(state, makeToolCall('run-1', 'nested', 'tc-1', 'read-agent'));
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'cancelled'));
+			reduceEvent(state, makeToolCall('run-1', 'nested', 'late', 'read-agent'));
+			reduceEvent(state, makeTextDelta('run-1', 'nested', 'late text'));
+			reduceEvent(state, makeAgentSpawned('run-1', 'late-child', 'root'));
+			reduceEvent(state, makeAgentCompleted('run-1', 'nested', 'late result'));
+			expect(state.agentsById.child.status).toBe('cancelled');
+			expect(state.agentsById.nested.status).toBe('cancelled');
+			expect(state.agentsById.nested.textContent).toBe('');
+			expect(state.agentsById['late-child']).toBeUndefined();
+			expect(state.toolCallsById['tc-1'].isLoading).toBe(false);
+			expect(state.toolCallsById.late).toBeUndefined();
+		});
+
+		it('ignores late tools from an ended child while its sibling continues', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeAgentSpawned('run-1', 'child', 'root'));
+			reduceEvent(state, makeAgentSpawned('run-1', 'sibling', 'root'));
+			reduceEvent(state, makeAgentCompleted('run-1', 'child', 'done'));
+			reduceEvent(state, makeToolCall('run-1', 'child', 'late', 'read-agent'));
+			reduceEvent(state, makeToolCall('run-1', 'sibling', 'live', 'read-agent'));
+			expect(state.toolCallsById.late).toBeUndefined();
+			expect(state.toolCallsById.live.isLoading).toBe(true);
+		});
+
+		it('keeps a new turn active when cancelled-turn events arrive later', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeAgentSpawned('run-1', 'child', 'root'));
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'cancelled'));
+			reduceEvent(state, makeRunStart('run-2', 'root-2'));
+			reduceEvent(state, makeToolCall('run-2', 'root-2', 'live', 'read-agent'));
+			reduceEvent(state, makeToolCall('run-1', 'root', 'late', 'read-agent'));
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'cancelled'));
+			expect(state.status).toBe('active');
+			expect(toAgentTree(state).status).toBe('active');
+			expect(state.toolCallsById.live.isLoading).toBe(true);
+			expect(state.toolCallsById.late).toBeUndefined();
+		});
+
+		it('restores cancellation guards while a follow-up is active', () => {
+			const original = stateWithRun('run-1', 'root');
+			reduceEvent(original, makeAgentSpawned('run-1', 'child', 'root'));
+			reduceEvent(original, makeRunFinish('run-1', 'root', 'cancelled'));
+			reduceEvent(original, makeRunStart('run-2', 'root'));
+			const state = stateFromAgentTree(deepCopy(toAgentTree(original)))!;
+			reduceEvent(state, makeToolCall('run-1', 'root', 'late', 'read-agent'));
+			reduceEvent(state, makeToolCall('run-2', 'root', 'live', 'read-agent'));
+			expect(state.toolCallsById.late).toBeUndefined();
+			expect(state.toolCallsById.live.isLoading).toBe(true);
+			expect(state.status).toBe('active');
+		});
+
+		it('reactivates a reused builder for a new run and ignores the old run', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeAgentSpawned('run-1', 'builder', 'root'));
+			reduceEvent(state, makeAgentCompleted('run-1', 'builder', 'done'));
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'completed'));
+			reduceEvent(state, makeRunStart('run-2', 'root-2'));
+			reduceEvent(state, makeAgentSpawned('run-2', 'builder', 'root-2'));
+			reduceEvent(state, makeToolCall('run-1', 'builder', 'late', 'read-agent'));
+			reduceEvent(state, makeToolCall('run-2', 'builder', 'live', 'read-agent'));
+			expect(state.agentsById.builder.status).toBe('active');
+			expect(state.toolCallsById.late).toBeUndefined();
+			expect(state.toolCallsById.live.isLoading).toBe(true);
+		});
+
+		it('settles an older run without changing a newer turn in the same group', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeAgentSpawned('run-1', 'child', 'root'));
+			reduceEvent(state, makeToolCall('run-1', 'child', 'old', 'read-agent'));
+			reduceEvent(state, makeRunStart('run-2', 'root-2'));
+			reduceEvent(state, makeToolCall('run-2', 'root-2', 'live', 'read-agent'));
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'cancelled'));
+			expect(toAgentTree(state).status).toBe('active');
+			expect(state.agentsById.child.status).toBe('cancelled');
+			expect(state.toolCallsById.old.isLoading).toBe(false);
+			expect(state.toolCallsById.live.isLoading).toBe(true);
+		});
+
+		it('settles stale cancelled snapshots and preserves the guard after a new turn', () => {
+			const original = stateWithRun('run-1', 'root');
+			reduceEvent(original, makeAgentSpawned('run-1', 'child', 'root'));
+			reduceEvent(original, makeToolCall('run-1', 'child', 'old', 'read-agent'));
+			const tree = toAgentTree(original);
+			tree.status = 'cancelled';
+			const state = stateFromAgentTree(tree)!;
+			expect(state.agentsById.child.status).toBe('cancelled');
+			expect(state.toolCallsById.old.isLoading).toBe(false);
+			reduceEvent(state, makeRunStart('run-2', 'root-2'));
+			reduceEvent(state, makeToolCall('run-1', 'root', 'late', 'read-agent'));
+			expect(state.toolCallsById.late).toBeUndefined();
+			expect(state.status).toBe('active');
+		});
+
 		it('run-finish(error) clears isLoading on all tool calls', () => {
 			const state = stateWithRun('run-1', 'root');
 			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'some-tool'));
@@ -519,13 +628,19 @@ describe('agent-run-reducer', () => {
 		it("follow-up run under a new agentId routes that run's tool calls and confirmations to the tree", () => {
 			// First run establishes the group's root agent and some content.
 			const state = stateWithRun('run-1', 'orchestrator-run-1');
-			reduceEvent(state, makeToolCall('run-1', 'orchestrator-run-1', 'tc-build', 'build-workflow'));
+			reduceEvent(
+				state,
+				makeToolCall('run-1', 'orchestrator-run-1', 'tc-build', 'workflow_builder_build_workflow'),
+			);
 			reduceEvent(state, makeRunFinish('run-1', 'orchestrator-run-1', 'completed'));
 
 			// An auto-continue/resume run is merged into the same group but streams
 			// under its own per-run agentId (differs from the original root).
 			reduceEvent(state, makeRunStart('run-2', 'orchestrator-run-2'));
-			reduceEvent(state, makeToolCall('run-2', 'orchestrator-run-2', 'tc-setup', 'workflows'));
+			reduceEvent(
+				state,
+				makeToolCall('run-2', 'orchestrator-run-2', 'tc-setup', 'workflow_builder_workflows'),
+			);
 			reduceEvent(state, makeConfirmationRequest('run-2', 'orchestrator-run-2', 'tc-setup'));
 
 			// The resume run's tool call must land in the tree (not dropped as an
@@ -685,12 +800,12 @@ describe('agent-run-reducer', () => {
 	describe('tool execution', () => {
 		it('tool-call adds to toolCallsById and timeline', () => {
 			const state = stateWithRun('run-1', 'root');
-			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'task-control'));
+			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'workflow_builder_task_control'));
 
 			const tc = state.toolCallsById['tc-1'];
 			expect(tc).toBeDefined();
 			expect(tc.toolCallId).toBe('tc-1');
-			expect(tc.toolName).toBe('task-control');
+			expect(tc.toolName).toBe('workflow_builder_task_control');
 			expect(tc.isLoading).toBe(true);
 			expect(tc.renderHint).toBe('tasks');
 
@@ -701,9 +816,21 @@ describe('agent-run-reducer', () => {
 			});
 		});
 
+		it('stores the current name and render hint for a legacy builder tool name', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-legacy', 'build-workflow'));
+
+			const tc = state.toolCallsById['tc-legacy'];
+			expect(tc.toolName).toBe('workflow_builder_build_workflow');
+			expect(tc.renderHint).toBe('builder');
+		});
+
 		it('applies rich render hints to background agent tools', () => {
 			const state = stateWithRun('run-1', 'root');
-			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-builder', 'build-workflow'));
+			reduceEvent(
+				state,
+				makeToolCall('run-1', 'root', 'tc-builder', 'workflow_builder_build_workflow'),
+			);
 			reduceEvent(
 				state,
 				makeToolCall('run-1', 'root', 'tc-legacy-builder', 'build-workflow-with-agent'),
@@ -731,7 +858,7 @@ describe('agent-run-reducer', () => {
 				runId: 'run-1',
 				agentId: 'root',
 				responseId: 'resp-1',
-				payload: { toolCallId: 'tc-1', toolName: 'build-workflow' },
+				payload: { toolCallId: 'tc-1', toolName: 'workflow_builder_build_workflow' },
 			});
 
 			const tc = state.toolCallsById['tc-1'];
@@ -752,13 +879,17 @@ describe('agent-run-reducer', () => {
 				type: 'tool-input-start',
 				runId: 'run-1',
 				agentId: 'root',
-				payload: { toolCallId: 'tc-1', toolName: 'build-workflow' },
+				payload: { toolCallId: 'tc-1', toolName: 'workflow_builder_build_workflow' },
 			});
 			reduceEvent(state, {
 				type: 'tool-call',
 				runId: 'run-1',
 				agentId: 'root',
-				payload: { toolCallId: 'tc-1', toolName: 'build-workflow', args: { filePath: 'a.ts' } },
+				payload: {
+					toolCallId: 'tc-1',
+					toolName: 'workflow_builder_build_workflow',
+					args: { filePath: 'a.ts' },
+				},
 			});
 
 			expect(state.toolCallsById['tc-1'].args).toEqual({ filePath: 'a.ts' });
@@ -873,7 +1004,7 @@ describe('agent-run-reducer', () => {
 				payload: {
 					parentId: 'root',
 					role: 'evaluation setup',
-					tools: ['workflows'],
+					tools: ['workflow_builder_workflows'],
 					kind: 'eval-setup',
 				},
 			});
@@ -1074,7 +1205,7 @@ describe('agent-run-reducer', () => {
 
 		it('confirmation-request passes through credential destination metadata when present', () => {
 			const state = stateWithRun('run-1', 'root');
-			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'workflows'));
+			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'workflow_builder_workflows'));
 			reduceEvent(state, {
 				type: 'confirmation-request',
 				runId: 'run-1',
@@ -1082,7 +1213,7 @@ describe('agent-run-reducer', () => {
 				payload: {
 					requestId: 'req-destination',
 					toolCallId: 'tc-1',
-					toolName: 'workflows',
+					toolName: 'workflow_builder_workflows',
 					args: { action: 'setup' },
 					severity: 'warning',
 					message: 'Review where this credential will be used',
@@ -1203,7 +1334,10 @@ describe('agent-run-reducer', () => {
 			reduceEvent(state, makeSetupItems('run-1', 'root', 'wf-1', 'slackApi'));
 			reduceEvent(state, makeRunFinish('run-1', 'root', 'completed'));
 			reduceEvent(state, makeRunStart('run-2', 'follow-up-root'));
-			reduceEvent(state, makeToolCall('run-2', 'follow-up-root', 'build-2', 'build-workflow'));
+			reduceEvent(
+				state,
+				makeToolCall('run-2', 'follow-up-root', 'build-2', 'workflow_builder_build_workflow'),
+			);
 			reduceEvent(state, makeSetupItems('run-2', 'follow-up-root', 'wf-2', 'notionApi'));
 
 			const root = toAgentTree(state);
@@ -1559,7 +1693,7 @@ describe('agent-run-reducer', () => {
 			const state = stateWithRun('run-1', 'root');
 			reduceEvent(state, makeTextDelta('run-1', 'root', 'hello'));
 			reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root', 'builder', ['build']));
-			reduceEvent(state, makeToolCall('run-1', 'sub-1', 'tc-1', 'build-workflow'));
+			reduceEvent(state, makeToolCall('run-1', 'sub-1', 'tc-1', 'workflow_builder_build_workflow'));
 			reduceEvent(state, makeToolResult('run-1', 'sub-1', 'tc-1', 'ok'));
 			reduceEvent(state, makeAgentCompleted('run-1', 'sub-1', 'built'));
 			reduceEvent(state, makeRunFinish('run-1', 'root', 'completed'));
@@ -1830,7 +1964,7 @@ describe('agent-run-reducer', () => {
 			const state = stateWithRun('run-1', 'root');
 			reduceEvent(state, makeTextDelta('run-1', 'root', 'hello'));
 			reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root', 'builder', ['build']));
-			reduceEvent(state, makeToolCall('run-1', 'sub-1', 'tc-1', 'build-workflow'));
+			reduceEvent(state, makeToolCall('run-1', 'sub-1', 'tc-1', 'workflow_builder_build_workflow'));
 			reduceEvent(state, makeToolResult('run-1', 'sub-1', 'tc-1', 'ok'));
 			reduceEvent(state, makeAgentCompleted('run-1', 'sub-1', 'built'));
 			reduceEvent(state, makeRunFinish('run-1', 'root', 'completed'));

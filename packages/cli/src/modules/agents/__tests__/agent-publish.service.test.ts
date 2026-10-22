@@ -1,6 +1,7 @@
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore a type-only EventService import; keep the import.
+import { EventService } from '@n8n/backend-services';
 import type { ToolDescriptor } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
-import type { EventService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { User, TransactionRunner, OperationContext, Transaction } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -26,7 +27,7 @@ import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { AgentHistory } from '../entities/agent-history.entity';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
-import type { Agent } from '../entities/agent.entity';
+import type { Agent, ProjectAgent } from '../entities/agent.entity';
 import { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
@@ -54,7 +55,7 @@ const schema: AgentJsonConfig = {
 	instructions: 'Help users',
 };
 
-function makeAgent(overrides: AgentFixtureOverrides = {}): Agent {
+function makeAgent(overrides: AgentFixtureOverrides = {}): ProjectAgent {
 	return {
 		id: agentId,
 		projectId,
@@ -69,7 +70,7 @@ function makeAgent(overrides: AgentFixtureOverrides = {}): Agent {
 		setupCompletedAt: null,
 		revision: 0,
 		...overrides,
-	} as unknown as Agent;
+	} as unknown as ProjectAgent;
 }
 
 function makeHistory(overrides: AgentHistoryFixtureOverrides = {}): AgentHistory {
@@ -160,7 +161,8 @@ function makeService() {
 		new AgentSaveCompletionService(
 			eventService,
 			agentUpdateBroadcaster,
-			new AgentModificationTelemetryService(telemetry),
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users): remove only the mock<EventService>() argument.
+			new AgentModificationTelemetryService(telemetry, mock<EventService>()),
 		),
 		new AgentDefinitionService(
 			agentTaskRepository,
@@ -907,32 +909,52 @@ describe('AgentPublishService', () => {
 		);
 	});
 
-	it('reports a revert as a modification of the parts the restored schema changed', async () => {
-		const { service, agentRepository, agentHistoryRepository, taskSnapshotRepository, telemetry } =
-			makeService();
-		const agent = makeAgent({
-			activeVersionId: 'current-active',
-			activeVersion: makeHistory({ versionId: 'current-active' }),
-			schema: { ...schema, instructions: 'Draft instructions' },
-		});
-		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-		agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(
-			makeHistory({ versionId: 'older-version', schema: { ...schema, name: 'Older Agent' } }),
-		);
-		taskSnapshotRepository.findByVersionId.mockResolvedValue([]);
+	it.each(['published', 'selected'] as const)(
+		'reports settings restored by a %s-version revert',
+		async (target) => {
+			const {
+				service,
+				agentRepository,
+				agentHistoryRepository,
+				taskSnapshotRepository,
+				telemetry,
+			} = makeService();
+			const restoredSchema: AgentJsonConfig = {
+				...schema,
+				name: 'Older Agent',
+				config: { toolCallConcurrency: 2 },
+			};
+			const agent = makeAgent({
+				activeVersionId: 'current-active',
+				activeVersion: makeHistory({ versionId: 'current-active', schema: restoredSchema }),
+				schema: { ...schema, instructions: 'Draft instructions', config: { maxIterations: 20 } },
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(
+				makeHistory({ versionId: 'older-version', schema: restoredSchema }),
+			);
+			taskSnapshotRepository.findByVersionId.mockResolvedValue([]);
 
-		await service.revertToVersion(agentId, projectId, 'older-version', user, 'user');
+			if (target === 'published') {
+				await service.revertToPublishedAgent(agentId, projectId, user, 'user');
+			} else {
+				await service.revertToVersion(agentId, projectId, 'older-version', user, 'user');
+			}
 
-		expect(telemetry.track).toHaveBeenCalledWith(
-			TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
-			expect.objectContaining({
-				agent_id: agentId,
-				user_id: user.id,
-				changed_parts: ['instructions', 'name'],
-				has_published_version: true,
-			}),
-		);
-	});
+			expect(agent.schema).toEqual(restoredSchema);
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
+				expect.objectContaining({
+					agent_id: agentId,
+					user_id: user.id,
+					changed_parts: ['instructions', 'name', 'config'],
+					changed_settings: ['tool_concurrency', 'max_iterations'],
+					event_version: '2',
+					has_published_version: true,
+				}),
+			);
+		},
+	);
 
 	it('reports sidecar body-only reverts when schema references are unchanged', async () => {
 		const {
@@ -984,6 +1006,7 @@ describe('AgentPublishService', () => {
 			expect.objectContaining({
 				agent_id: agentId,
 				changed_parts: ['tools', 'skills', 'tasks'],
+				changed_settings: [],
 				has_published_version: true,
 			}),
 		);

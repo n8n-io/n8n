@@ -5,6 +5,7 @@ import type {
 } from '../../types';
 
 const OBSERVATION_LOG_STORE_METHODS = [
+	'commitObservationLogBatch',
 	'appendObservationLogEntries',
 	'getActiveObservationLog',
 	'getObservationLog',

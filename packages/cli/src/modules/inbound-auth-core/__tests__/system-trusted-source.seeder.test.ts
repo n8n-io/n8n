@@ -3,10 +3,8 @@ import type { UrlService } from '@n8n/backend-services';
 import { trustedSourceConfigSchemaFor } from '@n8n/inbound-auth';
 import { mock } from 'vitest-mock-extended';
 
-import {
-	SYSTEM_TRUSTED_SOURCE_CONFIG,
-	SystemTrustedSourceSeeder,
-} from '../system-trusted-source.seeder';
+import { SYSTEM_TRUSTED_SOURCE_CONFIG } from '../constants';
+import { SystemTrustedSourceSeeder } from '../system-trusted-source.seeder';
 import type { SeedSystemSourceOutcome, TrustedSourceDbStore } from '../trusted-source.store';
 
 const BASE_URL = 'https://n8n.example';

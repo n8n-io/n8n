@@ -230,7 +230,7 @@ const workflowMenuItems = computed<WorkflowMenuItem[]>(() => {
 		nameAndMetadata.push({
 			id: WORKFLOW_MENU_ACTIONS.DEPENDENCIES,
 			label: locale.baseText('menuActions.dependencies'),
-			icon: { type: 'icon', value: 'link' },
+			icon: { type: 'icon', value: 'graph' },
 			children: dependencyMenuChildren.value,
 		});
 	}
@@ -241,7 +241,7 @@ const workflowMenuItems = computed<WorkflowMenuItem[]>(() => {
 		organization.push({
 			id: WORKFLOW_MENU_ACTIONS.CHANGE_OWNER,
 			label: locale.baseText('workflows.item.changeOwner'),
-			icon: { type: 'icon', value: 'corner-up-right' },
+			icon: { type: 'icon', value: 'corner-down-right' },
 			disabled: props.isNewWorkflow,
 		});
 	}
@@ -267,7 +267,7 @@ const workflowMenuItems = computed<WorkflowMenuItem[]>(() => {
 		{
 			id: WORKFLOW_MENU_ACTIONS.DOWNLOAD,
 			label: locale.baseText('menuActions.exportJson'),
-			icon: { type: 'icon', value: 'download' },
+			icon: { type: 'icon', value: 'arrow-block-up' },
 		},
 	];
 
@@ -275,7 +275,7 @@ const workflowMenuItems = computed<WorkflowMenuItem[]>(() => {
 		importExport.push({
 			id: WORKFLOW_MENU_ACTIONS.IMPORT,
 			label: locale.baseText('menuActions.import'),
-			icon: { type: 'icon', value: 'upload' },
+			icon: { type: 'icon', value: 'arrow-block-down' },
 			disabled: onExecutionsTab.value,
 			children: [
 				{
@@ -287,7 +287,7 @@ const workflowMenuItems = computed<WorkflowMenuItem[]>(() => {
 				{
 					id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE,
 					label: locale.baseText('menuActions.importFromFile'),
-					icon: { type: 'icon', value: 'file-input' },
+					icon: { type: 'icon', value: 'file' },
 					disabled: onExecutionsTab.value,
 				},
 			],

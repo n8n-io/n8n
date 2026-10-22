@@ -33,6 +33,7 @@ export const FINISH_REASONS = [
 	'error',
 	'other',
 	'paused',
+	'cancelled',
 ] as const;
 
 export type FinishReason = (typeof FINISH_REASONS)[number];
@@ -56,7 +57,22 @@ export type TokenUsage<T extends Record<string, unknown> = Record<string, unknow
 	outputTokenDetails?: {
 		reasoning?: number;
 	};
+	/**
+	 * The same usage split by the prompt size of each model call. Some providers
+	 * charge more for a call with a long prompt, so a sum over many calls is not
+	 * enough to price it. Present only when every summed call is in the split.
+	 */
+	byPromptSize?: PromptSizeUsage[];
 	additionalMetadata?: T;
+};
+
+/** Token counts of the model calls whose prompt size falls in one bucket. */
+export type PromptSizeUsage = {
+	/** Lower bound of the bucket: every call had a prompt of more than this many tokens. */
+	promptTokensOver: number;
+	/** Largest prompt among the calls, in tokens, cache reads and writes included. */
+	maxPromptTokens: number;
+	usage: Omit<TokenUsage, 'byPromptSize' | 'cost' | 'additionalMetadata'>;
 };
 
 /**
@@ -294,6 +310,11 @@ export interface PersistedExecutionOptions {
 	maxIterations?: number;
 }
 
+export interface NativeToolDeferralConfig {
+	/** Local tools that stay available without provider tool search. */
+	eagerToolNames: readonly string[];
+}
+
 export interface AnthropicPromptCachingConfig {
 	/**
 	 * Cache breakpoint residency. Default `'1h'`: agent workloads pause (HITL,
@@ -325,7 +346,7 @@ export interface OpenAIPromptCachingConfig {
 export interface PromptCachingConfig {
 	/** Master switch. Defaults to `true` when this config is set. */
 	enabled?: boolean;
-	/** Anthropic-specific config, or `false` to disable for Anthropic models. */
+	/** Claude cache settings, including OpenRouter and Vertex. Set `false` to disable. */
 	anthropic?: false | AnthropicPromptCachingConfig;
 	/** OpenAI-specific config, or `false` to disable for OpenAI models. */
 	openai?: false | OpenAIPromptCachingConfig;

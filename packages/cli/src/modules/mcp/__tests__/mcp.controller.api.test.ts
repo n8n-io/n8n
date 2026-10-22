@@ -4,7 +4,11 @@ import { setupTestServer } from '@test-integration/utils';
 
 import { McpSettingsService } from '../mcp.settings.service';
 
-const testServer = setupTestServer({ modules: ['oauth-server', 'mcp'], endpointGroups: ['mcp'] });
+const testServer = setupTestServer({
+	// Production order: the MCP middleware and metadata need the inbound-auth contracts.
+	modules: ['inbound-auth-core', 'oauth-server', 'mcp'],
+	endpointGroups: ['mcp'],
+});
 
 let mcpSettingsService: McpSettingsService;
 

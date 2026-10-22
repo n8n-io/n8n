@@ -11,9 +11,7 @@ import { UserError } from 'n8n-workflow';
 
 import {
 	type AgentMutationTelemetryContext,
-	type AgentMutationSnapshot,
 	buildAgentMutationEvent,
-	captureAgentMutation,
 } from './agent-modification-telemetry.service';
 import { AgentSaveCompletionService } from './agent-save-completion.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
@@ -67,21 +65,13 @@ export class AgentCustomToolsService {
 		}
 
 		const skillRefs = await this.agentSkillRefs.refsForDraft(entity, {});
-		const previous = captureAgentMutation(entity, skillRefs);
 
 		entity.tools = {
 			...entity.tools,
 			[toolId]: nextEntry,
 		};
 
-		await this.saveToolChanges(
-			entity,
-			skillRefs,
-			projectId,
-			context,
-			previous,
-			options.recordTelemetry,
-		);
+		await this.saveToolChanges(entity, skillRefs, projectId, context, options.recordTelemetry);
 
 		this.logger.debug('Built custom tool', { agentId, projectId, toolId });
 
@@ -106,7 +96,6 @@ export class AgentCustomToolsService {
 		if (!entity.tools?.[toolId]) return;
 
 		const skillRefs = await this.agentSkillRefs.refsForDraft(entity, {});
-		const previous = captureAgentMutation(entity, skillRefs);
 
 		const tools = { ...entity.tools };
 		delete tools[toolId];
@@ -118,7 +107,7 @@ export class AgentCustomToolsService {
 			);
 		}
 
-		await this.saveToolChanges(entity, skillRefs, projectId, context, previous);
+		await this.saveToolChanges(entity, skillRefs, projectId, context);
 
 		this.logger.debug('Deleted custom tool', { agentId, projectId, toolId });
 	}
@@ -167,13 +156,12 @@ export class AgentCustomToolsService {
 		skillRefs: AgentSkillRefs,
 		projectId: string,
 		context: AgentMutationTelemetryContext,
-		previous: AgentMutationSnapshot,
 		recordTelemetry = true,
 	): Promise<void> {
 		markAgentDraftDirty(entity);
 		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
 		await this.saveCompletion.bodySaved(
-			buildAgentMutationEvent(saved, skillRefs, projectId, context, previous, { tools: true }),
+			buildAgentMutationEvent(saved, skillRefs, projectId, context, ['tools']),
 			context.pushRef,
 			recordTelemetry,
 		);
