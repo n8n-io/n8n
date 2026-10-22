@@ -130,6 +130,7 @@ export class AgentConfigService {
 		this.removeUnreferencedResources(entity, validatedConfig, clearOmitted);
 		if (
 			entity.versionId !== null &&
+			options.baseConfigHash !== null &&
 			isSameAgentConfig(
 				{ tools: previous.tools, skills: previous.skills },
 				{ tools: entity.tools, skills: entity.skills },
