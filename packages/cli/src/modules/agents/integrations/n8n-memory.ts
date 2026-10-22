@@ -28,6 +28,8 @@ import {
 	type NewEpisodicMemoryEntrySourceForEntry,
 	type NewObservationLogEntry,
 	type ObservationCursor,
+	type ObservationLogBatch,
+	type ObservationLogBatchCommitResult,
 	type ObservationLogEntry,
 	type ObservationLogReadOptions,
 	type ObservationLogReflection,
@@ -38,6 +40,7 @@ import {
 	type RetrievedEpisodicMemoryEntry,
 	type Thread,
 } from '@n8n/agents';
+import type { AgentMessageAuthor } from '@n8n/api-types';
 import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { EntityManager, FindOperator, FindOptionsWhere } from '@n8n/typeorm';
@@ -51,7 +54,7 @@ import { AgentMemoryEntryCandidateEntity } from '../entities/agent-memory-entry-
 import { AgentMemoryEntryLockEntity } from '../entities/agent-memory-entry-lock.entity';
 import { AgentMemoryEntrySourceEntity } from '../entities/agent-memory-entry-source.entity';
 import { AgentMemoryEntryEntity } from '../entities/agent-memory-entry.entity';
-import type { AgentMessageEntity } from '../entities/agent-message.entity';
+import type { AgentMessageEntity, AgentMessageOrigin } from '../entities/agent-message.entity';
 import { AgentObservationCursorEntity } from '../entities/agent-observation-cursor.entity';
 import { AgentObservationLockEntity } from '../entities/agent-observation-lock.entity';
 import { AgentObservationEntity } from '../entities/agent-observation.entity';
@@ -107,6 +110,11 @@ export class N8nMemory {
 		);
 	}
 }
+
+export type EpisodicMemorySourceWithMessageContext = EpisodicMemoryEntrySource & {
+	author?: AgentMessageAuthor;
+	origin?: AgentMessageOrigin;
+};
 
 export class N8nMemoryImpl
 	implements
@@ -319,6 +327,12 @@ export class N8nMemoryImpl
 	}
 
 	// ── Observation log ──────────────────────────────────────────────────
+
+	async commitObservationLogBatch(
+		batch: ObservationLogBatch,
+	): Promise<ObservationLogBatchCommitResult> {
+		return await this.observationRepository.commitObservationLogBatch(this.agentId, batch);
+	}
 
 	async appendObservationLogEntries(
 		rows: NewObservationLogEntry[],
@@ -752,6 +766,28 @@ export class N8nMemoryImpl
 			order: { createdAt: 'ASC', id: 'ASC' },
 		});
 		return entities.map((entity) => this.toEpisodicMemoryEntrySource(entity));
+	}
+
+	/**
+	 * Memory sources with the author and origin of the message each one quoted.
+	 * Observation-backed sources, and sources whose message is gone, carry neither.
+	 */
+	async getEntrySourcesWithMessageContext(
+		entryIds: string[],
+	): Promise<EpisodicMemorySourceWithMessageContext[]> {
+		const sources = await this.getEpisodicMemoryEntrySources(entryIds);
+		const sourceMessages = await this.memoryEntryCandidateRepository.findSourceMessages(
+			this.agentId,
+			sources.flatMap(({ candidateId }) => candidateId ?? []),
+		);
+		return sources.map((source) => {
+			const message = source.candidateId ? sourceMessages.get(source.candidateId) : undefined;
+			return {
+				...source,
+				...(message?.author ? { author: message.author } : {}),
+				...(message?.origin ? { origin: message.origin } : {}),
+			};
+		});
 	}
 
 	private async applyEpisodicMemoryReflection(

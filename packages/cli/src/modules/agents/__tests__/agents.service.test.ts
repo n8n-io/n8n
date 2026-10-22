@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
 
-import { DEFAULT_AGENT_PERSONALISATION } from '@n8n/api-types';
+import { DEFAULT_AGENT_PERSONALISATION, N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Telemetry } from '@/telemetry';
 import { AgentConfigPreparationService } from '../agent-config-preparation.service';
@@ -88,6 +88,7 @@ function makeService() {
 	const agentExecutionService = mock<AgentExecutionService>();
 	const credentialsService = mock<CredentialsService>();
 	const projectScopeService = mock<ProjectScopeService>();
+	projectScopeService.getMemberProjectIds.mockResolvedValue([]);
 	const agentsSettingsService = mock<AgentsSettingsService>();
 	const agentPolicyService = mock<AgentPolicyService>();
 	const workflowRepository = mock<WorkflowRepository>();
@@ -928,6 +929,7 @@ describe('AgentsService', () => {
 						instructions: 'published instructions',
 						personalisation: { icon: 'bot', gradient: { from: '#000000', to: '#FFFFFF' } },
 						description: 'Answers billing questions.',
+						integrations: [{ type: N8N_CHAT_INTEGRATION_TYPE }],
 					},
 				},
 			} as never);
@@ -938,7 +940,7 @@ describe('AgentsService', () => {
 				makeService();
 			agentsSettingsService.getEnabled.mockResolvedValue(false);
 			projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
-			agentRepository.findByProjectIdsPaginated.mockResolvedValue({
+			agentRepository.findN8nChatListPaginated.mockResolvedValue({
 				count: 1,
 				data: [makeReachableAgent()],
 			});
@@ -950,23 +952,30 @@ describe('AgentsService', () => {
 			} as never);
 
 			expect(result).toEqual({ count: 0, data: [] });
-			expect(agentRepository.findByProjectIdsPaginated).not.toHaveBeenCalled();
+			expect(agentRepository.findN8nChatListPaginated).not.toHaveBeenCalled();
 		});
 
 		it('scopes to agent:execute, the scope the production chat route requires', async () => {
 			const { service, agentRepository, projectRelationRepository, projectScopeService } =
 				makeService();
 			projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
-			agentRepository.findByProjectIdsPaginated.mockResolvedValue({ count: 0, data: [] });
+			projectScopeService.getMemberProjectIds.mockResolvedValue(['project-owned']);
+			agentRepository.findN8nChatListPaginated.mockResolvedValue({ count: 0, data: [] });
 			const options = { skip: 0, take: 10, filter: { availableInChat: true } } as never;
 
 			await service.findChatReachableByUserPaginated(user, options);
 
 			expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(user, ['agent:execute']);
-			expect(agentRepository.findByProjectIdsPaginated).toHaveBeenCalledWith(
+			// Membership only: a global role must not list every project's drafts.
+			expect(projectScopeService.getMemberProjectIds).toHaveBeenCalledWith(user, [
+				'agent:update',
+				'agent:publish',
+			]);
+			expect(agentRepository.findN8nChatListPaginated).toHaveBeenCalledWith(
 				['project-1'],
+				['project-owned'],
 				options,
-				{ withProject: true, usageCounts: undefined },
+				undefined,
 			);
 			expect(projectRelationRepository.findAllByUser).not.toHaveBeenCalled();
 		});
@@ -975,7 +984,7 @@ describe('AgentsService', () => {
 			const { service, agentRepository, agentExecutionService, projectScopeService } =
 				makeService();
 			projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
-			agentRepository.findByProjectIdsPaginated.mockResolvedValue({ count: 0, data: [] });
+			agentRepository.findN8nChatListPaginated.mockResolvedValue({ count: 0, data: [] });
 			const counts = new Map([['agent-1', 3]]);
 			agentExecutionService.countN8nChatThreadsByAgent.mockResolvedValue(counts);
 			const options = {
@@ -990,17 +999,18 @@ describe('AgentsService', () => {
 			expect(agentExecutionService.countN8nChatThreadsByAgent).toHaveBeenCalledWith('user-1', [
 				'project-1',
 			]);
-			expect(agentRepository.findByProjectIdsPaginated).toHaveBeenCalledWith(
+			expect(agentRepository.findN8nChatListPaginated).toHaveBeenCalledWith(
 				['project-1'],
+				[],
 				options,
-				{ withProject: true, usageCounts: counts },
+				counts,
 			);
 		});
 
 		it('answers with the narrow chat item, never the agent config', async () => {
 			const { service, agentRepository, projectScopeService } = makeService();
 			projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
-			agentRepository.findByProjectIdsPaginated.mockResolvedValue({
+			agentRepository.findN8nChatListPaginated.mockResolvedValue({
 				count: 1,
 				data: [makeReachableAgent()],
 			});
@@ -1024,6 +1034,7 @@ describe('AgentsService', () => {
 						description: 'Answers billing questions.',
 						project: { id: 'project-1', name: 'Support Team' },
 						attachments: { image: false, pdf: false, audio: false },
+						availableInChat: true,
 					},
 				],
 			});
@@ -1039,7 +1050,7 @@ describe('AgentsService', () => {
 		it('omits personalisation when the published config has none', async () => {
 			const { service, agentRepository, projectScopeService } = makeService();
 			projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
-			agentRepository.findByProjectIdsPaginated.mockResolvedValue({
+			agentRepository.findN8nChatListPaginated.mockResolvedValue({
 				count: 1,
 				data: [
 					makeAgent({
@@ -1065,14 +1076,52 @@ describe('AgentsService', () => {
 		it('passes a null project scope through, so a global role sees every project', async () => {
 			const { service, agentRepository, projectScopeService } = makeService();
 			projectScopeService.getProjectIds.mockResolvedValue(null);
-			agentRepository.findByProjectIdsPaginated.mockResolvedValue({ count: 0, data: [] });
+			agentRepository.findN8nChatListPaginated.mockResolvedValue({ count: 0, data: [] });
 			const options = { skip: 0, take: 10, filter: { availableInChat: true } } as never;
 
 			await service.findChatReachableByUserPaginated(user, options);
 
-			expect(agentRepository.findByProjectIdsPaginated).toHaveBeenCalledWith(null, options, {
-				withProject: true,
-				usageCounts: undefined,
+			expect(agentRepository.findN8nChatListPaginated).toHaveBeenCalledWith(
+				null,
+				[],
+				options,
+				undefined,
+			);
+		});
+
+		it('lists an owned agent not in n8n Chat from its draft config', async () => {
+			const { service, agentRepository, projectScopeService } = makeService();
+			projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
+			projectScopeService.getMemberProjectIds.mockResolvedValue(['project-1']);
+			agentRepository.findN8nChatListPaginated.mockResolvedValue({
+				count: 1,
+				data: [
+					makeAgent({
+						id: 'agent-3',
+						name: 'Draft',
+						projectId: 'project-1',
+						project: { id: 'project-1', name: 'Support Team' },
+						schema: {
+							name: 'Draft',
+							model: 'm',
+							instructions: 'i',
+							description: 'Draft blurb.',
+						},
+						activeVersion: { schema: { name: 'Draft', model: 'm', instructions: 'i' } },
+					} as never),
+				],
+			});
+
+			const result = await service.findChatReachableByUserPaginated(user, {
+				skip: 0,
+				take: 10,
+				filter: { availableInChat: true },
+			} as never);
+
+			expect(result.data[0]).toMatchObject({
+				id: 'agent-3',
+				description: 'Draft blurb.',
+				availableInChat: false,
 			});
 		});
 	});
@@ -1093,6 +1142,7 @@ describe('AgentsService', () => {
 						instructions: 'published instructions',
 						personalisation: { icon: 'bot', gradient: { from: '#000000', to: '#FFFFFF' } },
 						description: 'Answers billing questions.',
+						integrations: [{ type: N8N_CHAT_INTEGRATION_TYPE }],
 						...schemaOverrides,
 					},
 				},
@@ -1134,6 +1184,7 @@ describe('AgentsService', () => {
 				description: 'Answers billing questions.',
 				project: { id: 'project-1', name: 'Support Team' },
 				attachments: { image: true, pdf: true, audio: false },
+				availableInChat: true,
 				subAgents: [],
 			});
 			expect(result).not.toHaveProperty('schema');

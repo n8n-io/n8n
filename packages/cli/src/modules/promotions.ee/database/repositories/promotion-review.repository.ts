@@ -1,8 +1,9 @@
-import type { PromotionReviewState, PromotionReviewTab } from '@n8n/api-types';
+import type { InboxCounts, PromotionReviewState } from '@n8n/api-types';
 import { BaseRepository, type OperationContext, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, In, type FindOptionsWhere } from '@n8n/typeorm';
+import { DataSource, In } from '@n8n/typeorm';
 
+import type { InboxSourceQuery } from '../../../inbox/inbox-source.registry';
 import { PromotionReview } from '../entities/promotion-review.entity';
 
 /** The caller supplies the id, so the review link can exist before the row does. */
@@ -15,12 +16,8 @@ export type NewPromotionReview = Pick<
 const OPEN_STATES: PromotionReviewState[] = ['open', 'changes_requested'];
 const TERMINAL_STATES: PromotionReviewState[] = ['merged', 'closed'];
 
-// Do not load runs for inbox rows. The summary does not use them.
-const LIST_RELATIONS = {
-	environment: true,
-	createdBy: true,
-	approvedBy: true,
-} as const;
+// The Inbox orders every source by its latest activity. A review has no updatedAt column.
+const activityAt = 'COALESCE(review.lastStateChangeAt, review.createdAt)';
 
 /** The newest run carries the branch and the commit. Loaded only for one review. */
 const DETAIL_RELATIONS = {
@@ -43,27 +40,51 @@ export class PromotionReviewRepository extends BaseRepository<PromotionReview> {
 		return await this.managerFor(ctx).save(PromotionReview, this.create(review));
 	}
 
+	async findOpenReviews(): Promise<PromotionReview[]> {
+		return await this.find({ where: { state: In(OPEN_STATES) }, relations: { environment: true } });
+	}
+
+	/** Writes a host state only while the row is open, so a terminal row never changes. */
+	async recordHostState(id: string, state: PromotionReviewState, at: Date): Promise<boolean> {
+		const result = await this.update(
+			{ id, state: In(OPEN_STATES) },
+			{ state, lastStateChangeAt: at },
+		);
+		return (result.affected ?? 0) > 0;
+	}
+
 	async findByIdWithRelations(id: string): Promise<PromotionReview | null> {
 		return await this.findOne({ where: { id }, relations: DETAIL_RELATIONS });
 	}
 
-	/**
-	 * Newest first, because the inbox sorts every review kind by creation time.
-	 * `id` breaks ties. Reviews can share `createdAt`, and offset pages need a
-	 * stable order.
-	 */
-	async listReviews(options: { tab?: PromotionReviewTab; offset: number; limit: number }) {
-		const where: FindOptionsWhere<PromotionReview> = {};
-		if (options.tab === 'open') where.state = In(OPEN_STATES);
-		if (options.tab === 'closed') where.state = In(TERMINAL_STATES);
+	async findForInbox({ state, limit, boundary }: InboxSourceQuery): Promise<PromotionReview[]> {
+		const query = this.createQueryBuilder('review')
+			.leftJoinAndSelect('review.environment', 'environment')
+			.leftJoinAndSelect('review.createdBy', 'createdBy')
+			.leftJoinAndSelect('review.approvedBy', 'approvedBy')
+			.where('review.state IN (:...states)', {
+				states: state === 'open' ? OPEN_STATES : TERMINAL_STATES,
+			})
+			.orderBy(activityAt, 'DESC')
+			.addOrderBy('review.id', 'ASC')
+			.limit(limit);
+		if (boundary?.mode === 'afterItem') {
+			query.andWhere(`(${activityAt} < :at OR (${activityAt} = :at AND review.id > :id))`, {
+				at: boundary.updatedAt,
+				id: boundary.id,
+			});
+		} else if (boundary) {
+			const operator = boundary.mode === 'beforeOrAtTime' ? '<=' : '<';
+			query.andWhere(`${activityAt} ${operator} :at`, { at: boundary.updatedAt });
+		}
+		return await query.getMany();
+	}
 
-		const [data, count] = await this.findAndCount({
-			where,
-			relations: LIST_RELATIONS,
-			order: { createdAt: 'DESC', id: 'DESC' },
-			skip: options.offset,
-			take: options.limit,
-		});
-		return { count, data };
+	async countForInbox(): Promise<InboxCounts> {
+		const [open, closed] = await Promise.all([
+			this.countBy({ state: In(OPEN_STATES) }),
+			this.countBy({ state: In(TERMINAL_STATES) }),
+		]);
+		return { open, closed };
 	}
 }

@@ -264,7 +264,6 @@ export const InstanceAiModule = defineFrontendModule({
 			label: i18n.baseText('settings.n8nAgent'),
 			position: 'top',
 			route: { to: { name: INSTANCE_AI_SETTINGS_VIEW } },
-			preview: true,
 			get available() {
 				return hasInstanceAiSettingsContent();
 			},

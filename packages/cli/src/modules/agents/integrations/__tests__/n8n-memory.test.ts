@@ -1495,6 +1495,50 @@ describe('N8nMemory', () => {
 			expect(sources[0].memoryEntryId).toBe('memory-1');
 		});
 
+		it('attaches the author and origin of the quoted message to candidate sources', async () => {
+			const origin = {
+				source: 'slack',
+				integration: {
+					type: 'slack' as const,
+					workspaceId: 'T1',
+					conversationKind: 'channel' as const,
+					channelId: 'C1',
+				},
+			};
+			memoryEntrySourceRepository.find.mockResolvedValue([
+				makeMemoryEntrySourceEntity({
+					id: 'source-quoted',
+					memoryEntryId: 'memory-1',
+					observationId: null,
+					candidateId: 'candidate-1',
+				}),
+				makeMemoryEntrySourceEntity({
+					id: 'source-orphan',
+					memoryEntryId: 'memory-1',
+					observationId: null,
+					candidateId: 'candidate-2',
+				}),
+				makeMemoryEntrySourceEntity({ id: 'source-observed', memoryEntryId: 'memory-1' }),
+			]);
+			memoryEntryCandidateRepository.findSourceMessages.mockResolvedValue(
+				new Map([['candidate-1', { author: { id: 'U1', name: 'Alice' }, origin }]]),
+			);
+
+			const sources = await memory.getEntrySourcesWithMessageContext(['memory-1']);
+
+			expect(memoryEntryCandidateRepository.findSourceMessages).toHaveBeenCalledWith('agent-1', [
+				'candidate-1',
+				'candidate-2',
+			]);
+			expect(sources[0]).toMatchObject({
+				id: 'source-quoted',
+				author: { id: 'U1', name: 'Alice' },
+				origin,
+			});
+			expect(sources[1]).not.toHaveProperty('origin');
+			expect(sources[2]).not.toHaveProperty('origin');
+		});
+
 		it('applies episodic reflection inside the thread scope and copies source links to replacements', async () => {
 			// The lookup is scoped to the thread, so an id recalled from another thread is not active here.
 			transactionMemoryEntryFind.mockResolvedValue([

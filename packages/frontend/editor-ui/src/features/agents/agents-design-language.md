@@ -33,6 +33,16 @@ column.
 
 Reduce the editor column side padding when the column is narrow.
 
+## Builder side panel widths
+
+Start the Assistant and Preview panels at 30% of the builder container width.
+Limit this default to 320–720 pixels. Use 480 pixels before measurement.
+Keep saved Assistant widths and user resize choices. Double-click a resize
+handle to reset its panel to the current default.
+Reserve 480 pixels for the editor. When both panels are open, share the
+remaining width in proportion to each panel's requested extra width above
+320 pixels. Do not save automatic layout adjustments as user resize choices.
+
 ## Preview history
 
 Use the shared `ChatHistoryDropdownTrigger` in the Preview dock and the Assistant.

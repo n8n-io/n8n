@@ -274,6 +274,54 @@ describe('WorkflowDependencyRepository', () => {
 			});
 		});
 
+		it('should replace rows an older indexer version wrote for a version above the current version counter', async () => {
+			//
+			// ARRANGE
+			//
+			const workflow = await createWorkflow({ versionId: 'v1', nodes: [] });
+			// An import can move the version counter below the version older rows recorded.
+			await Container.get(WorkflowRepository).update(workflow.id, { versionCounter: 3 });
+
+			await workflowDependencyRepository.insert({
+				workflowId: workflow.id,
+				workflowVersionId: 5,
+				publishedVersionId: null,
+				dependencyType: 'credentialId',
+				dependencyKey: 'cred-old',
+				dependencyInfo: null,
+				indexVersionId: WORKFLOW_DEPENDENCY_INDEX_VERSION - 1,
+			});
+
+			const currentDeps = new WorkflowDependencies(workflow.id, 3);
+			currentDeps.add({
+				dependencyType: 'credentialId',
+				dependencyKey: 'cred-current',
+				dependencyInfo: null,
+			});
+
+			//
+			// ACT
+			//
+			const result = await workflowDependencyRepository.updateDependenciesForWorkflow(
+				workflow.id,
+				currentDeps,
+			);
+
+			//
+			// ASSERT
+			//
+			expect(result).toBe(true);
+			const savedDependencies = await workflowDependencyRepository.find({
+				where: { workflowId: workflow.id },
+			});
+			expect(savedDependencies).toHaveLength(1);
+			expect(savedDependencies[0]).toMatchObject({
+				dependencyKey: 'cred-current',
+				workflowVersionId: 3,
+				indexVersionId: WORKFLOW_DEPENDENCY_INDEX_VERSION,
+			});
+		});
+
 		it('should prevent races between concurrent updates', async () => {
 			//
 			// ARRANGE
