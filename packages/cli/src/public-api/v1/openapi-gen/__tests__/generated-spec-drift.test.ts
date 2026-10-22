@@ -42,7 +42,7 @@ describe('Apply response documentation', () => {
 			expect(route?.responseDto).toBe(ApplyPackageResultDto);
 			expect(route?.accessScope).toEqual({ scope: 'gitConnection:pull', globalOnly: true });
 			expect(route?.apiKeyScope).toBe('gitConnection:pull');
-			expect(route?.licenseFeature).toBe('feat:gitConnections');
+			expect(route?.licenseFeature).toBe('feat:promotions');
 			const artifacts = getGeneratedArtifacts();
 			const outputPath = `handlers/promotions/spec/paths/${handler}.generated.yml`;
 			const operation = parse(
@@ -90,7 +90,7 @@ describe('Discovery response documentation', () => {
 		expect(route?.responseDto).toBe(responseDto);
 		expect(route?.accessScope).toEqual({ scope: 'gitConnection:discover', globalOnly: true });
 		expect(route?.apiKeyScope).toBe('gitConnection:discover');
-		expect(route?.licenseFeature).toBe('feat:gitConnections');
+		expect(route?.licenseFeature).toBe('feat:promotions');
 		const outputPath = `handlers/promotions/spec/paths/${handler}.generated.yml`;
 		const operation = parse(
 			getGeneratedArtifacts().find((artifact) => artifact.outputPath === outputPath)!.content,

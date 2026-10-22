@@ -17,7 +17,7 @@ const fixtureSchema = z.object({
 describe.skipIf(!fixturePath)('GitLab provider live compatibility', () => {
 	const server = setupTestServer({
 		endpointGroups: ['publicApi'],
-		enabledFeatures: ['feat:gitConnections'],
+		enabledFeatures: ['feat:promotions'],
 		modules: ['promotions'],
 	});
 	let owner: User;

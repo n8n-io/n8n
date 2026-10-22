@@ -103,7 +103,7 @@ beforeAll(async () => await testModules.loadModules(['agents']));
 const testServer = setupTestServer({
 	endpointGroups: ['publicApi'],
 	modules: ['n8n-packages', 'promotions', 'data-table'],
-	enabledFeatures: ['feat:gitConnections'],
+	enabledFeatures: ['feat:promotions'],
 });
 const licenseMocker = testServer.license;
 
@@ -134,7 +134,7 @@ beforeAll(async () => {
 
 	licenseMocker.mockLicenseState(Container.get(LicenseState));
 	licenseMocker.setDefaults({
-		features: ['feat:projectRole:admin', 'feat:folders', 'feat:gitConnections'],
+		features: ['feat:projectRole:admin', 'feat:folders', 'feat:promotions'],
 		quotas: { 'quota:maxTeamProjects': 100 },
 	});
 });

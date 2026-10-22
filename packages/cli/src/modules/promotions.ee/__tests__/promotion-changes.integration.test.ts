@@ -70,7 +70,7 @@ beforeAll(async () => await testModules.loadModules(['agents']));
 const server = setupTestServer({
 	endpointGroups: ['promotions'],
 	modules: ['promotions', 'n8n-packages', 'data-table'],
-	enabledFeatures: ['feat:gitConnections', 'feat:projectRole:admin'],
+	enabledFeatures: ['feat:promotions', 'feat:projectRole:admin'],
 });
 
 let remoteFolder: string;
@@ -770,7 +770,7 @@ it('checks authentication, the scopes of each direction, and the promotions lice
 	await server.authAgentFor(member).get(applyEndpoint).expect(403);
 	await server.authAgentFor(member).get(blockersEndpoint).expect(403);
 	await server.authAgentFor(owner).get(`/promotions/${project.id}/changes/sideways`).expect(404);
-	server.license.disable('feat:gitConnections');
+	server.license.disable('feat:promotions');
 	await server.authAgentFor(owner).get(endpoint).expect(403);
 	await server.authAgentFor(owner).get(blockersEndpoint).expect(403);
 });

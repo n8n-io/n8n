@@ -85,7 +85,7 @@ export class PromotionsPublicController {
 	// -- Providers -----------------------------------------------------------
 
 	@Post('/providers')
-	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	@ApiKeyScope('gitConnection:create')
 	@GlobalScope('gitConnection:create')
 	@ApiSummary('Create a promotion provider')
@@ -104,7 +104,7 @@ export class PromotionsPublicController {
 	}
 
 	@Get('/providers')
-	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	@ApiKeyScope('gitConnection:list')
 	@GlobalScope('gitConnection:list')
 	@ApiSummary('List promotion providers')
@@ -129,7 +129,7 @@ export class PromotionsPublicController {
 	}
 
 	@Get('/providers/:promotionProviderId')
-	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	@ApiKeyScope('gitConnection:read')
 	@GlobalScope('gitConnection:read')
 	@ApiSummary('Retrieve a promotion provider')
@@ -148,7 +148,7 @@ export class PromotionsPublicController {
 	}
 
 	@Put('/providers/:promotionProviderId')
-	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	@ApiKeyScope('gitConnection:update')
 	@GlobalScope('gitConnection:update')
 	@ApiSummary('Update a promotion provider')
@@ -171,7 +171,7 @@ export class PromotionsPublicController {
 	}
 
 	@Delete('/providers/:promotionProviderId')
-	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	@ApiKeyScope('gitConnection:delete')
 	@GlobalScope('gitConnection:delete')
 	@ApiSummary('Delete a promotion provider')
@@ -191,7 +191,7 @@ export class PromotionsPublicController {
 	}
 
 	@Get('/providers/:promotionProviderId/repositories')
-	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	@ApiKeyScope('gitConnection:discover')
 	@GlobalScope('gitConnection:discover')
 	@ApiSummary('List repositories of a promotion provider')
@@ -222,7 +222,7 @@ export class PromotionsPublicController {
 	}
 
 	@Get('/providers/:promotionProviderId/repositories/:repositoryId/branches')
-	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	@ApiKeyScope('gitConnection:discover')
 	@GlobalScope('gitConnection:discover')
 	@ApiSummary('List branches of a promotion repository')
@@ -257,7 +257,7 @@ export class PromotionsPublicController {
 	// -- Environments --------------------------------------------------------
 
 	@Post('/environments')
-	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	@ApiKeyScope('gitConnection:create')
 	@GlobalScope('gitConnection:create')
 	@ApiSummary('Create a promotion environment')
@@ -278,7 +278,7 @@ export class PromotionsPublicController {
 	}
 
 	@Get('/environments')
-	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	@ApiKeyScope('gitConnection:list')
 	@GlobalScope('gitConnection:list')
 	@ApiSummary('List promotion environments')
@@ -307,7 +307,7 @@ export class PromotionsPublicController {
 	}
 
 	@Get('/environments/:promotionEnvironmentId')
-	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	@ApiKeyScope('gitConnection:read')
 	@GlobalScope('gitConnection:read')
 	@ApiSummary('Retrieve a promotion environment')
@@ -328,7 +328,7 @@ export class PromotionsPublicController {
 	}
 
 	@Put('/environments/:promotionEnvironmentId')
-	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	@ApiKeyScope('gitConnection:update')
 	@GlobalScope('gitConnection:update')
 	@ApiSummary('Update a promotion environment')
@@ -351,7 +351,7 @@ export class PromotionsPublicController {
 	}
 
 	@Delete('/environments/:promotionEnvironmentId')
-	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	@ApiKeyScope('gitConnection:delete')
 	@GlobalScope('gitConnection:delete')
 	@ApiSummary('Delete a promotion environment')
@@ -374,7 +374,7 @@ export class PromotionsPublicController {
 	// -- Local checkouts -----------------------------------------------------
 
 	@Post('/environments/:promotionEnvironmentId/connect')
-	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	@ApiKeyScope('gitConnection:clone')
 	@GlobalScope('gitConnection:clone')
 	@ApiSummary('Connect an environment')
@@ -396,7 +396,7 @@ export class PromotionsPublicController {
 	}
 
 	@Post('/environments/:promotionEnvironmentId/disconnect')
-	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	@ApiKeyScope('gitConnection:clone')
 	@GlobalScope('gitConnection:clone')
 	@ApiSummary("Remove an environment's local checkout")
@@ -419,7 +419,7 @@ export class PromotionsPublicController {
 	// -- Project links -------------------------------------------------------
 
 	@Get('/environments/:promotionEnvironmentId/projects')
-	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	@ApiKeyScope('gitConnection:read')
 	@GlobalScope('gitConnection:read')
 	@ApiSummary('List projects linked to a promotion environment')
@@ -437,7 +437,7 @@ export class PromotionsPublicController {
 	}
 
 	@Post('/environments/:promotionEnvironmentId/projects/:projectId')
-	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	@ApiKeyScope('gitConnection:manageProjects')
 	@GlobalScope('gitConnection:manageProjects')
 	@ApiSummary('Link a project to a promotion environment')
@@ -466,7 +466,7 @@ export class PromotionsPublicController {
 	}
 
 	@Delete('/environments/:promotionEnvironmentId/projects/:projectId')
-	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	@ApiKeyScope('gitConnection:manageProjects')
 	@GlobalScope('gitConnection:manageProjects')
 	@ApiSummary('Unlink a project from a promotion environment')
@@ -493,7 +493,7 @@ export class PromotionsPublicController {
 	// -- Package operations --------------------------------------------------
 
 	@Post('/environments/:promotionEnvironmentId/promote')
-	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	@ApiKeyScope('gitConnection:push')
 	@GlobalScope('gitConnection:push')
 	@ApiSummary('Promote all team projects')
@@ -519,7 +519,7 @@ export class PromotionsPublicController {
 	}
 
 	@Post('/environments/:promotionEnvironmentId/apply')
-	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	@ApiKeyScope('gitConnection:pull')
 	@GlobalScope('gitConnection:pull')
 	@ApiSummary('Apply a package to the instance')
@@ -548,7 +548,7 @@ export class PromotionsPublicController {
 	}
 
 	@Post('/environments/:promotionEnvironmentId/apply/continue')
-	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	@ApiKeyScope('gitConnection:pull')
 	@GlobalScope('gitConnection:pull')
 	@ApiSummary('Continue Apply after binding setup')
@@ -578,7 +578,7 @@ export class PromotionsPublicController {
 	// -- Change preview ------------------------------------------------------
 
 	@Get('/projects/:projectId/changes/:direction')
-	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	@ApiKeyScope({ anyOf: ['gitConnection:push', 'gitConnection:pull'] })
 	@ApiSummary('List the changes of a project in one direction')
 	@ApiDescription(
@@ -615,7 +615,7 @@ export class PromotionsPublicController {
 	// -- Selective promote ---------------------------------------------------
 
 	@Post('/projects/:projectId/promote')
-	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	@ApiKeyScope('gitConnection:push')
 	@GlobalScope('gitConnection:push')
 	@ApiSummary("Promote a selection of a project's workflows")
@@ -643,7 +643,7 @@ export class PromotionsPublicController {
 	// -- Selective apply -----------------------------------------------------
 
 	@Post('/projects/:projectId/apply')
-	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	@ApiKeyScope('gitConnection:pull')
 	@GlobalScope('gitConnection:pull')
 	@ApiSummary("Apply a selection of a project's workflows")
@@ -667,7 +667,7 @@ export class PromotionsPublicController {
 	}
 
 	@Post('/projects/:projectId/apply/continue')
-	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	@ApiKeyScope('gitConnection:pull')
 	@GlobalScope('gitConnection:pull')
 	@ApiSummary('Continue applying a selection after binding setup')

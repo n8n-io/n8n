@@ -33,7 +33,7 @@ import { setupTestServer } from '@test-integration/utils';
 describe('Promotions in Public API', () => {
 	const testServer = setupTestServer({
 		endpointGroups: ['publicApi'],
-		enabledFeatures: ['feat:gitConnections'],
+		enabledFeatures: ['feat:promotions'],
 		modules: ['promotions'],
 	});
 	let owner: User;
@@ -1425,7 +1425,7 @@ describe('Promotions in Public API', () => {
 
 		it.each(routes)('requires an active, licensed promotions module for %s', async (route) => {
 			const agent = testServer.publicApiAgentFor(owner);
-			testServer.license.disable('feat:gitConnections');
+			testServer.license.disable('feat:promotions');
 			expect((await agent.get(`/promotions/providers/not-needed/${route}`)).status).toBe(403);
 			testServer.license.reset();
 			const active = vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockReturnValue(false);
@@ -1742,7 +1742,7 @@ describe('Promotions in Public API', () => {
 	});
 
 	it('rejects every request when the feature is not licensed', async () => {
-		testServer.license.disable('feat:gitConnections');
+		testServer.license.disable('feat:promotions');
 		const response = await testServer.publicApiAgentFor(owner).get('/promotions/environments');
 		expect(response.status).toBe(403);
 	});
@@ -2334,12 +2334,12 @@ describe('Promotions in Public API', () => {
 
 		it('requires a licensed and active module', async () => {
 			const agent = testServer.publicApiAgentFor(owner);
-			testServer.license.disable('feat:gitConnections');
+			testServer.license.disable('feat:promotions');
 			expect(
 				(await agent.post('/promotions/projects/proj1/promote').send({ workflowIds: ['w1'] }))
 					.status,
 			).toBe(403);
-			testServer.license.enable('feat:gitConnections');
+			testServer.license.enable('feat:promotions');
 			const active = vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockReturnValue(false);
 			try {
 				const project = await createTeamProject('Team project', owner);
@@ -2449,11 +2449,11 @@ describe('Promotions in Public API', () => {
 			'%s requires a licensed and active module',
 			async (route) => {
 				const agent = testServer.publicApiAgentFor(owner);
-				testServer.license.disable('feat:gitConnections');
+				testServer.license.disable('feat:promotions');
 				expect(
 					(await agent.post(`/promotions/projects/proj1/${route}`).send(selectionBody)).status,
 				).toBe(403);
-				testServer.license.enable('feat:gitConnections');
+				testServer.license.enable('feat:promotions');
 				const active = vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockReturnValue(false);
 				try {
 					expect(
@@ -2603,12 +2603,12 @@ describe('Promotions in Public API', () => {
 			'%s requires a licensed and active module',
 			async (route) => {
 				const agent = testServer.publicApiAgentFor(owner);
-				testServer.license.disable('feat:gitConnections');
+				testServer.license.disable('feat:promotions');
 				expect(
 					(await agent.post(`/promotions/environments/${unknownId}/${route}`).send(continueBody))
 						.status,
 				).toBe(403);
-				testServer.license.enable('feat:gitConnections');
+				testServer.license.enable('feat:promotions');
 				const active = vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockReturnValue(false);
 				try {
 					expect(

@@ -56,7 +56,7 @@ function gitlab(answers: Record<number, GitLabAnswer>, { delayMs = 0 } = {}) {
 describe('Promotion reviews in the Inbox', () => {
 	const testServer = setupTestServer({
 		endpointGroups: ['publicApi'],
-		enabledFeatures: ['feat:gitConnections'],
+		enabledFeatures: ['feat:promotions'],
 		modules: ['inbox', 'promotions'],
 	});
 	let owner: User;
