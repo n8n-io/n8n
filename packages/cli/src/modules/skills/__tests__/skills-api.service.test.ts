@@ -549,7 +549,7 @@ describe('SkillsApiService', () => {
 			await expect(
 				service.update(user, 'skill_a', update({ availableToAssistant: true })),
 			).rejects.toThrow(NotFoundError);
-			expect(repository.setAssistantAvailability).not.toHaveBeenCalled();
+			expect(skillService.setAssistantAvailability).not.toHaveBeenCalled();
 		});
 
 		it('saves the update for a user who may edit the skill', async () => {

@@ -212,6 +212,28 @@ export class SkillService {
 		return id;
 	}
 
+	async setAssistantAvailability(
+		skillId: string,
+		available: boolean,
+		checkedTarget: SkillTarget,
+		ctx: OperationContext = {},
+	): Promise<void> {
+		await this.txRunner.run(ctx, async (txCtx) => {
+			await this.skillRepository.lockForEdit([skillId], txCtx);
+			const [skill] = await this.skillRepository.findByIds([skillId], txCtx);
+			if (!skill) throw new NotFoundError('Skill not found');
+			if (skill.projectId !== checkedTarget.projectId || skill.agentId !== checkedTarget.agentId) {
+				throw new ConflictError('The skill scope changed. Reload the skill and try again.');
+			}
+			if (available && skill.agentId !== null) {
+				throw new UserError(
+					"The n8n Assistant can't use skills scoped to an agent. Move the skill to a project or the instance first.",
+				);
+			}
+			await this.skillRepository.setAssistantAvailability(skillId, available, txCtx);
+		});
+	}
+
 	/**
 	 * Save: merges the update onto the latest version and stores the result as the next
 	 * version, unless the content did not change. Every agent that follows the skill then

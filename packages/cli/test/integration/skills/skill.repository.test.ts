@@ -20,6 +20,7 @@ import { setSkillsHubFlag } from '@/modules/skills/__tests__/test-utils/skills-h
 import { HubAssistantSkillProvider } from '@/modules/skills/hub-assistant-skill-provider.service';
 import { skillContentHash, type SkillContent } from '@/modules/skills/skill-content-hash';
 import { SkillRepository, type SkillVisibility } from '@/modules/skills/skill.repository';
+import { SkillService } from '@/modules/skills/skill.service';
 import { PostHogClient } from '@/posthog';
 
 import { createOwner, createUser } from '../shared/db/users';
@@ -134,7 +135,7 @@ describe('SkillRepository', () => {
 			txRunner.run(
 				{},
 				async (ctx) =>
-					await skills.setAssistantAvailability(
+					await Container.get(SkillService).setAssistantAvailability(
 						id,
 						true,
 						{ projectId: otherProject.id, agentId: null },
