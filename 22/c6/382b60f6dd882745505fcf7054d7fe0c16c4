@@ -1,0 +1,38 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalTryRow.vue
+  s_88c9d7f821237a::t_11cb2f219300b0 67-68,99-102,138-144
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiTestAgentPreviewPanel.vue
+  s_88c9d7f821237a::t_c7c78f7e9c05c6 16,99-105,487
+packages/frontend/editor-ui/src/features/agents/utils/__tests__/agent-eval-review.test.ts
+  s_88c9d7f821237a::t_feb0a8bd3d16e9 11,248-264
+  s_88c9d7f821237a::t_922cbadce83a12 265-266
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalTryRow.test.ts
+  s_88c9d7f821237a::t_29ba5c991969db 235-267
+packages/frontend/editor-ui/src/features/agents/utils/agent-eval-review.ts
+  s_88c9d7f821237a::t_42168c20f33cb9 133-143
+  s_88c9d7f821237a::t_af97c2fbcc239c 132
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalChecksPanel.test.ts
+  s_88c9d7f821237a::t_8bae1ac544a531 48,70,358-370
+  s_88c9d7f821237a::t_2a354fe6231ac8 371-375
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalChecksPanel.vue
+  s_88c9d7f821237a::t_51edc4c6bf573e 24,92-93,112,524
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiTestAgentPreviewPanel.test.ts
+  s_88c9d7f821237a::t_3c349e60348dd5 1319,1323
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_88c9d7f821237a::t_00af93090c3069 8032,9420
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "22c6382b60f6dd882745505fcf7054d7fe0c16c4",
+  "prompts": {},
+  "sessions": {
+    "s_88c9d7f821237a": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a15f40-80ed-74de-a3b5-a9bd631bdfd1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
