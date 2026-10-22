@@ -636,9 +636,9 @@ export class EvalExecutionService {
 		// recorded issues into errors and flips success:false, so recording
 		// pre-patch state failed runs the harness had already made executable.
 		// Genuinely unresolved misconfigurations are still recorded and still fail.
-		// Run-mocked nodes send no real request, so they keep the builder's placeholders for the mock to read.
-		this.patchParameterIssuesForEval(workflow, [...pinDataNodeNames, ...runMockNodeNames]);
-		this.checkNodeConfig(workflow, nodeResults, pinDataNodeNames);
+		this.patchParameterIssuesForEval(workflow, pinDataNodeNames);
+		// Run-mocked nodes send no real request, so their filled fields are not config issues, as for pinned nodes.
+		this.checkNodeConfig(workflow, nodeResults, [...pinDataNodeNames, ...runMockNodeNames]);
 
 		// The engine drops a refused execution before the runner can await it, so report the refusal first.
 		const blockingIssues = this.issuesBlockingRun(workflow, startNode, pinDataNodeNames);
@@ -903,7 +903,7 @@ export class EvalExecutionService {
 		pinDataNodeNames: string[],
 	): void {
 		for (const node of Object.values(workflow.nodes)) {
-			if (node.disabled) continue;
+			if (node.disabled || pinDataNodeNames.includes(node.name)) continue;
 			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 			if (!nodeType) continue;
 
@@ -911,7 +911,6 @@ export class EvalExecutionService {
 				nodeType.description.properties,
 				node,
 				nodeType.description,
-				pinDataNodeNames,
 			);
 
 			const parameterIssues = { ...(issues?.parameters ?? {}) };

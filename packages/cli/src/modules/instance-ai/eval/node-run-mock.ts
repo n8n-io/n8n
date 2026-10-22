@@ -15,7 +15,7 @@ import { NodeOperationError, OperationalError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { buildDateAnchors } from './date-anchors';
-import { redactSecretKeys, truncateForLlm } from './request-sanitizer';
+import { redactSecretKeys, redactSecretValuePatterns, truncateForLlm } from './request-sanitizer';
 
 const NODE_MOCK_PROMPT = `You produce the output of ONE run of an n8n node in a workflow evaluation. The node talks to a service the evaluation cannot reach: a database, an SMTP server, a message queue or a file server.
 
@@ -92,7 +92,7 @@ export function createNodeRunMockHandler(options: NodeRunMockOptions): EvalNodeM
 				throw new OperationalError('The eval run has ended, so this mocked node run was cancelled');
 			}
 			try {
-				submitted = await generateOutput(node, request, inputItems.length, options);
+				submitted = await generateOutput(node, request, options);
 			} catch (error) {
 				failure = error instanceof Error ? error.message : String(error);
 			}
@@ -137,9 +137,9 @@ function resolveParameters(
 async function generateOutput(
 	node: INode,
 	request: NodeRunRequest,
-	inputCount: number,
 	options: NodeRunMockOptions,
 ): Promise<SubmitOutput | undefined> {
+	const shownItems = itemsForPrompt(request.items);
 	let captured: SubmitOutput | undefined;
 	const agent = createEvalAgent('eval-node-mock', {
 		instructions: NODE_MOCK_PROMPT,
@@ -150,7 +150,7 @@ async function generateOutput(
 			.input(submitOutputSchema)
 			.handler(async (input: SubmitOutput) => {
 				// A run with no input items (e.g. "always output data") still pairs with item 0.
-				const maxIndex = Math.max(inputCount - 1, 0);
+				const maxIndex = Math.max(shownItems.length - 1, 0);
 				const bad = input.items.find((item) => item.inputIndex < 0 || item.inputIndex > maxIndex);
 				if (bad) {
 					return `Invalid: inputIndex ${bad.inputIndex} is out of range 0-${maxIndex}. Call submit_output again.`;
@@ -164,15 +164,29 @@ async function generateOutput(
 	);
 
 	const timeout = AbortSignal.timeout(LLM_CALL_TIMEOUT_MS);
-	await agent.generate(buildUserPrompt(node, request, options), {
+	await agent.generate(buildUserPrompt(node, request.items.length, shownItems, options), {
 		abortSignal: options.signal ? AbortSignal.any([options.signal, timeout]) : timeout,
 	});
 	return captured;
 }
 
+/** Whole items, in order, while they fit: every inputIndex the model can use names an item it saw. */
+function itemsForPrompt(items: NodeRunRequest['items']): string[] {
+	const shown: string[] = [];
+	let size = 0;
+	for (const item of items) {
+		const line = redactSecretValuePatterns(JSON.stringify(redactSecretKeys(item)));
+		if (shown.length > 0 && size + line.length > MAX_ITEMS_CHARS) break;
+		shown.push(truncateForLlm(line, MAX_ITEMS_CHARS));
+		size += line.length;
+	}
+	return shown;
+}
+
 function buildUserPrompt(
 	node: INode,
-	request: NodeRunRequest,
+	inputCount: number,
+	shownItems: string[],
 	options: NodeRunMockOptions,
 ): string {
 	const parameters = node.parameters ?? {};
@@ -188,9 +202,14 @@ function buildUserPrompt(
 		'## Node',
 		`${node.name} (${node.type}, version ${node.typeVersion})`,
 		'',
-		`## Input items (${request.items.length})`,
-		truncateForLlm(JSON.stringify(redactSecretKeys(request.items)), MAX_ITEMS_CHARS),
+		`## Input items (${inputCount})`,
+		...shownItems.map((item, index) => `${index}: ${item}`),
 	];
+	if (shownItems.length < inputCount) {
+		sections.push(
+			`Only items 0-${shownItems.length - 1} fit in this message. Output items for these only.`,
+		);
+	}
 	if (schema) sections.push('', '## Output schema', JSON.stringify(schema));
 	if (options.scenarioHints) sections.push('', '## Scenario', options.scenarioHints);
 	const nodeHint = options.nodeHints?.[node.name];

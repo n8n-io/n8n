@@ -155,6 +155,38 @@ describe('createNodeRunMockHandler', () => {
 		expect(output).toEqual([[{ json: {}, pairedItem: { item: 1 } }]]);
 	});
 
+	it('scrubs secret-shaped values in the input items before the model sees them', async () => {
+		const handler = createNodeRunMockHandler({ nodeNames: new Set(['Send Email']) });
+		submitQueue.push({ items: [{ inputIndex: 0, json: {} }] });
+
+		await handler(
+			contextFor(sendEmail, [
+				{ json: { email: 'ana@example.com', note: 'use xoxb-1234567890-abcdef please' } },
+			]),
+		);
+
+		expect(promptCapture.prompts[0]).not.toContain('xoxb-');
+	});
+
+	it('shows only whole input items that fit, and accepts only the indexes it showed', async () => {
+		const handler = createNodeRunMockHandler({ nodeNames: new Set(['Send Email']) });
+		const bigItems = [0, 1, 2].map((i) => ({
+			json: { email: `user${i}@example.com`, body: 'x'.repeat(10_000) },
+		}));
+		submitQueue.push(
+			{ items: [{ inputIndex: 2, json: {} }] },
+			{ items: [{ inputIndex: 1, json: {} }] },
+		);
+
+		const output = await handler(contextFor(sendEmail, bigItems));
+
+		const prompt = promptCapture.prompts[0];
+		expect(prompt).toContain('user1@example.com');
+		expect(prompt).not.toContain('user2@example.com');
+		expect(promptCapture.replies[0]).toMatch(/^Invalid:/);
+		expect(output).toEqual([[{ json: {}, pairedItem: { item: 1 } }]]);
+	});
+
 	it('ends the model loop once the output is accepted, but not after a rejection', async () => {
 		const handler = createNodeRunMockHandler({ nodeNames: new Set(['Send Email']) });
 		submitQueue.push({ items: [{ inputIndex: 0, json: {} }] });

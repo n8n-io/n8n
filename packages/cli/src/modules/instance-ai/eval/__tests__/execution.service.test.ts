@@ -1505,17 +1505,34 @@ describe('EvalExecutionService', () => {
 			});
 		});
 
-		it('keeps the placeholders of run-mocked nodes, which send no real request', async () => {
+		it('fills empty required fields of run-mocked nodes but records no config issue, like pinned nodes', async () => {
 			const sendEmail = {
 				id: 'node-2',
 				name: 'Send Email',
 				type: 'n8n-nodes-base.emailSend',
 				typeVersion: 2.1,
 				position: [200, 0],
-				parameters: { fromEmail: placeholderValue('Sender address') },
+				parameters: { fromEmail: placeholderValue('Sender address'), toEmail: '' },
 			} as INode;
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(
 				makeWorkflowEntity({ nodes: [makeStartNode(), sendEmail] }) as never,
+			);
+			nodeTypes.getByNameAndVersion.mockImplementation(
+				(nodeType) =>
+					({
+						description: {
+							properties:
+								nodeType === 'n8n-nodes-base.emailSend'
+									? ['fromEmail', 'toEmail'].map((name) => ({
+											name,
+											type: 'string',
+											required: true,
+											default: '',
+											displayName: name,
+										}))
+									: [],
+						} as unknown as INodeTypeDescription,
+					}) as never,
 			);
 			identifyNodesForRunMockMock.mockReturnValue([sendEmail]);
 
@@ -1523,7 +1540,8 @@ describe('EvalExecutionService', () => {
 			const runArg = workflowRunner.run.mock.calls[0][0];
 			const sendNode = runArg.workflowData.nodes.find((node) => node.name === 'Send Email');
 
-			expect(sendNode?.parameters).toEqual({ fromEmail: placeholderValue('Sender address') });
+			// The engine refuses to run a node with an empty required field, mocked or not.
+			expect(sendNode?.parameters.toEmail).not.toBe('');
 			expect(result.nodeResults['Send Email']?.configIssues).toBeUndefined();
 		});
 
