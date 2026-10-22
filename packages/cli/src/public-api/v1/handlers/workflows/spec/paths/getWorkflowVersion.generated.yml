@@ -106,12 +106,6 @@ responses:
                           required:
                             - key
                             - value
-                  createdAt:
-                    type: string
-                    format: date-time
-                  updatedAt:
-                    type: string
-                    format: date-time
             connections:
               type: object
               description: Connections between nodes, keyed by source node name
