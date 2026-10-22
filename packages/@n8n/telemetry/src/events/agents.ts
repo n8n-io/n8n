@@ -288,6 +288,16 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			file_search_count: z.number().describe('Calls that searched text inside knowledge files'),
 			file_read_count: z.number().describe('Calls that read part of a knowledge file'),
 			vector_store_search_count: z.number().describe('Searches in any vector store of the agent'),
+			file_content_chars: z
+				.number()
+				.describe(
+					'Characters that the knowledge file tools sent to the model in the run: the sum of the JSON length of each result or error. Measured before the agent runtime shortens a very large tool result (over 50,000 tokens), so such a result counts more than the model gets',
+				),
+			vector_store_content_chars: z
+				.number()
+				.describe(
+					'Characters that vector store searches sent to the model in the run, measured like file_content_chars',
+				),
 		}),
 	},
 	AGENT_EXECUTION_COUNT: {

@@ -13,6 +13,8 @@ export interface KnowledgeRunUsage {
 	file_search_count: number;
 	file_read_count: number;
 	vector_store_search_count: number;
+	file_content_chars: number;
+	vector_store_content_chars: number;
 }
 
 const usageKeyByCall: Record<KnowledgeToolCall, keyof KnowledgeRunUsage> = {
@@ -20,6 +22,13 @@ const usageKeyByCall: Record<KnowledgeToolCall, keyof KnowledgeRunUsage> = {
 	file_search: 'file_search_count',
 	file_read: 'file_read_count',
 	vector_store_search: 'vector_store_search_count',
+};
+
+const contentKeyByCall: Record<KnowledgeToolCall, keyof KnowledgeRunUsage> = {
+	file_find: 'file_content_chars',
+	file_search: 'file_content_chars',
+	file_read: 'file_content_chars',
+	vector_store_search: 'vector_store_content_chars',
 };
 
 /** A run that never ends, for example after a crash, is dropped after this time. */
@@ -54,7 +63,7 @@ export class AgentKnowledgeUsageTracker {
 		});
 	}
 
-	recordToolCall(runId: string | undefined, call: KnowledgeToolCall): void {
+	recordToolCall(runId: string | undefined, call: KnowledgeToolCall, contentChars: number): void {
 		if (!runId) {
 			return;
 		}
@@ -64,6 +73,7 @@ export class AgentKnowledgeUsageTracker {
 
 		const run = this.runs.get(runId) ?? { usage: emptyUsage(), lastCallAt: now };
 		run.usage[usageKeyByCall[call]]++;
+		run.usage[contentKeyByCall[call]] += contentChars;
 		run.lastCallAt = now;
 
 		this.runs.set(runId, run);
@@ -91,5 +101,7 @@ function emptyUsage(): KnowledgeRunUsage {
 		file_search_count: 0,
 		file_read_count: 0,
 		vector_store_search_count: 0,
+		file_content_chars: 0,
+		vector_store_content_chars: 0,
 	};
 }
