@@ -255,6 +255,7 @@ export class PromotionsService {
 				promotionBranchName: targetBranchName,
 				commitSha: pushed.commitSha,
 				title: request.commitMessage,
+				projectIds,
 			})),
 		};
 	}
@@ -263,11 +264,18 @@ export class PromotionsService {
 	private async openReview(
 		input: PromotionOperationInput,
 		actor: User,
-		push: { promotionBranchName: string | undefined; commitSha: string; title: string },
+		push: {
+			promotionBranchName: string | undefined;
+			commitSha: string;
+			title: string;
+			projectIds: string[];
+		},
 	): Promise<Pick<PromotePackageResultDto, 'review' | 'warnings'>> {
 		const recorded = await this.recordPromoteRun(input, actor, {
 			branchName: push.promotionBranchName ?? checkoutBranchName(input.config),
 			commitSha: push.commitSha,
+			// Only a promotion branch has a review, and the review gate reads the project list.
+			...(push.promotionBranchName && { projectIds: push.projectIds }),
 		});
 		// A review without a run cannot be rendered: the branch and commit live on the run.
 		if (!recorded.runId) {
@@ -316,7 +324,7 @@ export class PromotionsService {
 	private async recordPromoteRun(
 		input: PromotionOperationInput,
 		actor: User,
-		git: { branchName: string; commitSha: string },
+		git: { branchName: string; commitSha: string; projectIds?: string[] },
 	): Promise<{ runId?: string }> {
 		try {
 			const type = promotionRunTypeSchema.parse('git');
@@ -329,6 +337,7 @@ export class PromotionsService {
 					schemaVersion: 1,
 					branchName: git.branchName,
 					commitSha: git.commitSha,
+					...(git.projectIds && { projectIds: git.projectIds }),
 				}),
 				reviewId: null,
 			});
@@ -494,6 +503,7 @@ export class PromotionsService {
 				promotionBranchName: targetBranchName,
 				commitSha: pushed.commitSha,
 				title: request.commitMessage,
+				projectIds: [selection.projectId],
 			})),
 		};
 	}

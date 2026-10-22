@@ -459,6 +459,11 @@ describe('PromotionsService', () => {
 					webUrl: 'https://gitlab/mr/3',
 				});
 				expect(result.warnings).toBeUndefined();
+				expect(runRepository.insertRun).toHaveBeenCalledWith(
+					expect.objectContaining({
+						details: expect.objectContaining({ projectIds: ['project-a', 'project-b'] }),
+					}),
+				);
 			});
 
 			it('does not open a review for a direct push to the base branch', async () => {

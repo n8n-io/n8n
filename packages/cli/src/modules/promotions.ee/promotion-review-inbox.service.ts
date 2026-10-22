@@ -25,6 +25,11 @@ import {
 import type { GitLabMergeRequest } from './git-hosts/gitlab-merge-request.types';
 import { PromotionReviewHostResolver } from './promotion-review-host.resolver';
 
+/** One live look at a review on the host. A failed read says why, and never a state. */
+export type LiveReviewState =
+	| { ok: true; state: PromotionReviewState }
+	| { ok: false; remoteError: PromotionReviewRemoteError };
+
 type RemoteView = Readonly<{
 	mergeRequest: GitLabMergeRequest | null;
 	remoteError: PromotionReviewRemoteError | null;
@@ -37,6 +42,8 @@ type RemoteView = Readonly<{
 @Service()
 export class PromotionReviewInboxService {
 	private readonly syncOnce = singleFlight(async () => await this.syncOpenReviews());
+
+	private readonly liveReads = new Map<string, Promise<LiveReviewState>>();
 
 	constructor(
 		private readonly licenseState: LicenseState,
@@ -92,6 +99,34 @@ export class PromotionReviewInboxService {
 		return await this.reviewRepository.countForInbox();
 	}
 
+	/**
+	 * One live look at a review on the host. A merged or closed review is recorded the same way
+	 * as in the Inbox sync, so the next caller finds the new state without a host call. Callers
+	 * that ask for the same review at the same time share one host call.
+	 */
+	async refreshState(
+		review: PromotionReview,
+		{ timeoutMs }: { timeoutMs: number },
+	): Promise<LiveReviewState> {
+		const inFlight = this.liveReads.get(review.id);
+		if (inFlight) return await inFlight;
+		const read = this.readLive(review, timeoutMs).finally(() => this.liveReads.delete(review.id));
+		this.liveReads.set(review.id, read);
+		return await read;
+	}
+
+	private async readLive(review: PromotionReview, timeoutMs: number): Promise<LiveReviewState> {
+		const run = (await this.newestRuns([review])).get(review.id);
+		const { mergeRequest, remoteError } = await this.readOne(review, run, timeoutMs);
+		if (!mergeRequest) return { ok: false, remoteError: remoteError ?? 'unreachable' };
+		try {
+			await this.applyHostState(review, mergeRequest);
+		} catch {
+			// The host answer is right for this call. The Inbox sync records the state later.
+		}
+		return { ok: true, state: toReviewState(mergeRequest) };
+	}
+
 	private async syncOpenReviews(): Promise<Map<string, RemoteView>> {
 		const reviews = await this.reviewRepository.findOpenReviews();
 		const views = await this.readRemote(reviews, await this.newestRuns(reviews));
@@ -126,6 +161,7 @@ export class PromotionReviewInboxService {
 	private async readOne(
 		{ type, environment, remoteReviewId }: PromotionReview,
 		run: PromotionRun | undefined,
+		timeoutMs?: number,
 	): Promise<RemoteView> {
 		if (!environment || !remoteReviewId) return failed('no_connection');
 		try {
@@ -134,6 +170,7 @@ export class PromotionReviewInboxService {
 			const mergeRequest = await this.mergeRequests.getMergeRequest(
 				access,
 				parseGitLabReviewId(remoteReviewId),
+				{ timeoutMs },
 			);
 			// The stored ids are not unique across hosts. Only the branch n8n pushed proves it is ours.
 			if (mergeRequest.source_branch !== branchOf(run)) return failed('not_found');

@@ -103,6 +103,17 @@ describe('GitLabMergeRequestClient', () => {
 		});
 	});
 
+	it('reads a merge request with the default timeout, or with a shorter one', async () => {
+		respond(200, mergeRequest);
+		respond(200, mergeRequest);
+
+		await client.getMergeRequest(access, { projectId: 7, iid: 3 });
+		expect(lastRequest()).toMatchObject({ method: 'GET', timeout: 15_000 });
+
+		await client.getMergeRequest(access, { projectId: 7, iid: 3 }, { timeoutMs: 3_000 });
+		expect(lastRequest()).toMatchObject({ timeout: 3_000 });
+	});
+
 	it('shortens a title to the GitLab limit', async () => {
 		respond(201, mergeRequest);
 

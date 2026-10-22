@@ -16,6 +16,8 @@ export const promotionGitRunDetailsSchema = z
 		schemaVersion: z.literal(1),
 		branchName: z.string().min(1).max(255),
 		commitSha: z.string().min(1).max(64),
+		/** Projects the run exported. Absent means the run covers every project of its environment. */
+		projectIds: z.array(z.string().min(1)).optional(),
 	})
 	.strict();
 export type PromotionGitRunDetails = z.infer<typeof promotionGitRunDetailsSchema>;

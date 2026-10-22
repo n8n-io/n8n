@@ -86,6 +86,7 @@ import { PromotionBindingPreflightService } from '../promotion-binding-preflight
 import { PromotionChangeService } from '../promotion-change.service';
 import { PromotionEnvironmentResolver } from '../promotion-environment.resolver';
 import { PromotionProvidersService } from '../promotion-providers.service';
+import { PromotionReviewGateService } from '../promotion-review-gate.service';
 import { PromotionReviewsService } from '../promotion-reviews.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import { PromotionsGitService } from '../promotions-git.service';
@@ -479,6 +480,8 @@ async function listApplyChanges(projectId: string) {
 		Container.get(DataTableService),
 		Container.get(DataTableSerializer),
 		Container.get(ModuleRegistry),
+		Container.get(PromotionEnvironmentResolver),
+		Container.get(PromotionReviewGateService),
 		mockLogger(),
 	);
 	const { changes } = await changeService.getChanges(owner, projectId, 'apply', {
