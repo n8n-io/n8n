@@ -18,10 +18,12 @@ import type { ChecklistItem, ChecklistResult } from '../types';
 
 const checklistResultSchema = z.object({
 	results: z.array(
+		// `reasoning` before `pass`: the model writes keys in schema order, and a verdict
+		// written first can disagree with the reasoning that follows it.
 		z.object({
 			id: z.number(),
-			pass: z.boolean(),
 			reasoning: z.string(),
+			pass: z.boolean(),
 			failureCategory: z.string().nullable().optional(),
 			rootCause: z.string().nullable().optional(),
 		}),
@@ -206,12 +208,12 @@ async function runNativeOpenAiVerifier(
 								type: 'object',
 								properties: {
 									id: { type: 'number' },
-									pass: { type: 'boolean' },
 									reasoning: { type: 'string' },
+									pass: { type: 'boolean' },
 									failureCategory: { type: ['string', 'null'] },
 									rootCause: { type: ['string', 'null'] },
 								},
-								required: ['id', 'pass', 'reasoning', 'failureCategory', 'rootCause'],
+								required: ['id', 'reasoning', 'pass', 'failureCategory', 'rootCause'],
 								additionalProperties: false,
 							},
 						},

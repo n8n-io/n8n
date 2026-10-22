@@ -1,3 +1,5 @@
+import { REASONING_FIRST_RULE } from '../utils/llm-judge';
+
 export const BUILD_EXPECTATIONS_VERIFY_PROMPT = `You are an expert evaluator for n8n's AI workflow builder. A user (simulated) had a multi-turn conversation with the builder agent, which produced a workflow. Your job is to judge a set of author-written expectations about HOW that conversation went and what it produced.
 
 These expectations are NOT about whether the workflow executes correctly — they are about the conversation itself and the resulting workflow. Examples: "the agent asked which Slack channel before building", "the agent requested credential setup for Gmail", "the change requested in the follow-up turn is reflected in the final workflow".
@@ -32,13 +34,13 @@ A workflow containing an AI Agent node is still a workflow — building one is N
 
 ## Output format
 
-Return an object with a \`results\` array — exactly one entry per expectation, using the 0-based \`index\` from the numbered list:
+Return an object with a \`results\` array — exactly one entry per expectation, using the 0-based \`index\` from the numbered list. ${REASONING_FIRST_RULE} Put \`reason\` before \`pass\`, and set \`pass\` so it agrees with \`reason\`:
 
 \`\`\`json
 {
   "results": [
-    { "index": 0, "pass": true, "reason": "In turn 1 the agent asked which Slack channel to post to before creating any nodes." },
-    { "index": 1, "pass": false, "reason": "The follow-up asked to sort descending, but the final workflow has no Sort node." }
+    { "index": 0, "reason": "In turn 1 the agent asked which Slack channel to post to before creating any nodes.", "pass": true },
+    { "index": 1, "reason": "The follow-up asked to sort descending, but the final workflow has no Sort node.", "pass": false }
   ]
 }
 \`\`\`
