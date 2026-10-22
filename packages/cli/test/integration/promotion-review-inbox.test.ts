@@ -105,12 +105,14 @@ function gitlabWrites(
 		.reply((_uri, body, respond) => {
 			calls.push(['merge', body]);
 			const status = next(merge);
-			void beforeMerge().then(() =>
-				status === 'reset'
-					? // nock drops the reply when it gets an error.
-						respond(Object.assign(new Error('socket hang up'), { code: 'ECONNRESET' }), [200])
-					: respond(null, answer(status, mergeRequest(iid, { state: 'merged' }))),
-			);
+			void beforeMerge()
+				.then(() =>
+					status === 'reset'
+						? // nock drops the reply when it gets an error.
+							respond(Object.assign(new Error('socket hang up'), { code: 'ECONNRESET' }), [200])
+						: respond(null, answer(status, mergeRequest(iid, { state: 'merged' }))),
+				)
+				.catch((error: unknown) => respond(error as Error, [500]));
 		})
 		.post(`${path}/notes`)
 		.reply((_uri, body) => {
