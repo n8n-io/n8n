@@ -17,10 +17,10 @@ import {
 	N8nText,
 	type BadgeVariant,
 } from '@n8n/design-system';
-import { componentRegistry } from '@n8n/frontend-module-sdk';
+import { componentRegistry, type PromotionChangesState } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, ref, useId } from 'vue';
+import { computed, ref, useId, watch } from 'vue';
 
 import type { InboxItemChange } from '../inbox.constants';
 import { formatUserDisplayName, toError } from '../reviews/workflowReviews.utils';
@@ -49,6 +49,14 @@ const tabOptions = computed(() => [
 	{ label: i18n.baseText('inbox.promotionReview.detail.tabs.changes'), value: 'changes' as const },
 ]);
 
+// Approve sends the head of the changes that the reviewer saw. A list refresh can report a newer
+// head, which the reviewer did not see.
+const changes = ref<PromotionChangesState>({ status: 'loading' });
+watch(
+	() => props.item.id,
+	() => (changes.value = { status: 'loading' }),
+);
+
 /** What the admin confirms. A later change of the selected row does not change it. */
 const pendingApproval = ref<{ id: string; headCommitSha: string } | null>(null);
 const approving = ref(false);
@@ -65,12 +73,20 @@ const disabledReason = computed(() => {
 	if (!item.headCommitSha) {
 		return i18n.baseText('inbox.promotionReview.approve.disabled.noHeadCommit');
 	}
+	if (changes.value.status === 'unavailable') {
+		return i18n.baseText('inbox.promotionReview.approve.disabled.changesUnavailable');
+	}
+	if (changes.value.status === 'ready' && changes.value.headCommitSha !== item.headCommitSha) {
+		return i18n.baseText('inbox.promotionReview.approve.disabled.newCommits');
+	}
 	return null;
 });
+// While the changes load, there is nothing to explain yet.
+const approveDisabled = computed(() => !!disabledReason.value || changes.value.status !== 'ready');
 
 function openApproval() {
-	const { id, headCommitSha } = props.item;
-	if (headCommitSha) pendingApproval.value = { id, headCommitSha };
+	if (changes.value.status !== 'ready') return;
+	pendingApproval.value = { id: props.item.id, headCommitSha: changes.value.headCommitSha };
 }
 
 // A close cannot stop GitLab, so the dialog stays open until the request ends.
@@ -122,7 +138,7 @@ async function onApprove() {
 					<N8nButton
 						v-if="item.state === 'open'"
 						size="small"
-						:disabled="!!disabledReason"
+						:disabled="approveDisabled"
 						:loading="approving"
 						:aria-describedby="disabledReason ? disabledReasonId : undefined"
 						data-test-id="inbox-promotion-review-approve"
@@ -189,7 +205,12 @@ async function onApprove() {
 				data-test-id="inbox-promotion-review-tab-bar"
 			/>
 		</div>
-		<component :is="PromotionChanges" :class="$style.changes" :review-id="item.id" />
+		<component
+			:is="PromotionChanges"
+			:class="$style.changes"
+			:review-id="item.id"
+			@state="changes = $event"
+		/>
 		<N8nDialog
 			:open="!!pendingApproval"
 			size="small"

@@ -58,7 +58,10 @@ it('lists what the review changes, read-only, and reads each card at the commits
 		missingKeys: [],
 	});
 
-	const { getAllByTestId, queryAllByRole } = await render();
+	const { getAllByTestId, queryAllByRole, emitted } = await render();
+
+	// Approve in the inbox sends this head.
+	expect(emitted().state.at(-1)).toEqual([{ status: 'ready', headCommitSha }]);
 
 	expect(api.getPromotionReviewDetails).toHaveBeenCalledWith(expect.anything(), 'review-1', {
 		baselineCommitSha,
@@ -96,8 +99,10 @@ it('explains that the changes cannot be listed when a manifest cannot be read', 
 		reviewChanges({ resources: [], dependencies: [], warnings: ['headManifestUnreadable'] }),
 	);
 
-	const { getByTestId, queryByTestId } = await render();
+	const { getByTestId, queryByTestId, emitted } = await render();
 
+	// The admin saw no changes, so the inbox does not offer approve.
+	expect(emitted().state.at(-1)).toEqual([{ status: 'unavailable' }]);
 	expect(getByTestId('promotion-review-warning')).toHaveTextContent(
 		"The package manifest in this review can't be read, so n8n can't list the changes.",
 	);

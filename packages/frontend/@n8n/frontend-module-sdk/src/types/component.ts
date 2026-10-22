@@ -42,3 +42,12 @@ export type SlotWorkflowDiffProps = {
 export type SlotPromotionChangesProps = {
 	reviewId: string;
 };
+
+/**
+ * What the `promotion-changes` slot shows, emitted as `state`. Approve sends the head commit of
+ * the changes that the reviewer saw, so it waits for `ready`.
+ */
+export type PromotionChangesState =
+	| { status: 'loading' }
+	| { status: 'ready'; headCommitSha: string }
+	| { status: 'unavailable' };

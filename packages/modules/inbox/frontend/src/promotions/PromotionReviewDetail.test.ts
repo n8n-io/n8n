@@ -1,5 +1,5 @@
 import type { InboxPromotionReviewItem } from '@n8n/api-types';
-import { componentRegistry } from '@n8n/frontend-module-sdk';
+import { componentRegistry, type PromotionChangesState } from '@n8n/frontend-module-sdk';
 import { useToast } from '@n8n/composables/useToast';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { defineComponent } from 'vue';
@@ -43,10 +43,24 @@ const renderComponent = createComponentRenderer(PromotionReviewDetail);
 const showError = vi.fn();
 const onItemChange = vi.fn();
 
+/** What the Changes tab reports. The editor renders it, so the test uses a stub. */
+let shownChanges: PromotionChangesState;
+const ChangesStub = defineComponent({
+	props: { reviewId: { type: String, required: true } },
+	emits: ['state'],
+	mounted() {
+		this.$emit('state', shownChanges);
+	},
+	template: '<div data-test-id="promotion-changes-stub">{{ reviewId }}</div>',
+});
+
 beforeEach(() => {
 	vi.clearAllMocks();
 	createTestingPinia();
 	vi.mocked(useToast).mockReturnValue({ showError } as unknown as ReturnType<typeof useToast>);
+	shownChanges = { status: 'ready', headCommitSha };
+	componentRegistry.register('promotion-changes', ChangesStub);
+	onTestFinished(() => componentRegistry.unregister('promotion-changes'));
 });
 
 async function approveInDialog({ getByRole, getByTestId }: ReturnType<typeof renderComponent>) {
@@ -176,17 +190,35 @@ it('shows the error, reloads the list, and enables approve again when the approv
 });
 
 it('shows the changes of the review from the shell', () => {
-	componentRegistry.register(
-		'promotion-changes',
-		defineComponent({
-			props: { reviewId: { type: String, required: true } },
-			template: '<div data-test-id="promotion-changes-stub">{{ reviewId }}</div>',
-		}),
-	);
-	onTestFinished(() => componentRegistry.unregister('promotion-changes'));
-
 	const { getByRole, getByTestId } = renderComponent({ props: { item: item(), onItemChange } });
 
 	expect(getByRole('tab', { name: 'Changes' })).toBeInTheDocument();
 	expect(getByTestId('promotion-changes-stub')).toHaveTextContent('rev-1');
+});
+
+it.each([
+	['the changes still load', { status: 'loading' } as const, null],
+	[
+		'the changes could not be shown',
+		{ status: 'unavailable' } as const,
+		"n8n couldn't show the changes of this review. Review and merge it on GitLab.",
+	],
+	[
+		'GitLab reports newer commits than the changes show',
+		{ status: 'ready', headCommitSha: 'b'.repeat(40) } as const,
+		'The merge request has new commits since the changes loaded. Reload the Inbox to review them.',
+	],
+])('only approves changes that the admin saw: disabled when %s', async (_case, state, reason) => {
+	shownChanges = state;
+
+	const { getByTestId, findByTestId, queryByTestId } = renderComponent({
+		props: { item: item(), onItemChange },
+	});
+
+	if (reason) {
+		expect(await findByTestId('inbox-promotion-review-approve-reason')).toHaveTextContent(reason);
+	} else {
+		expect(queryByTestId('inbox-promotion-review-approve-reason')).not.toBeInTheDocument();
+	}
+	expect(getByTestId('inbox-promotion-review-approve')).toBeDisabled();
 });

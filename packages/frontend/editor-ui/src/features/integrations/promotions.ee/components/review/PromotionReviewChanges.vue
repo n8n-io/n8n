@@ -7,7 +7,7 @@ import {
 	N8nResizeWrapper,
 	useResizablePanel,
 } from '@n8n/design-system';
-import type { SlotPromotionChangesProps } from '@n8n/frontend-module-sdk';
+import type { PromotionChangesState, SlotPromotionChangesProps } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, provide, ref, shallowRef, watch } from 'vue';
@@ -28,6 +28,7 @@ import PromotionChangeCards from '../preview/PromotionChangeCards.vue';
 import PromotionResourceTree from '../preview/PromotionResourceTree.vue';
 
 const props = defineProps<SlotPromotionChangesProps>();
+const emit = defineEmits<{ state: [state: PromotionChangesState] }>();
 
 const i18n = useI18n();
 const rootStore = useRootStore();
@@ -52,15 +53,24 @@ async function load() {
 	const current = ++generation;
 	state.value = 'loading';
 	changes.value = null;
+	emit('state', { status: 'loading' });
 	try {
 		const result = await getPromotionReviewChanges(rootStore.restApiContext, props.reviewId);
 		if (current !== generation) return;
 		changes.value = result;
 		state.value = 'ready';
+		// Approve sends the head that the reviewer saw. A warning means there was nothing to see.
+		emit(
+			'state',
+			result.warnings.length > 0
+				? { status: 'unavailable' }
+				: { status: 'ready', headCommitSha: result.headCommitSha },
+		);
 	} catch (error) {
 		if (current !== generation) return;
 		errorMessage.value = error instanceof Error ? error.message : undefined;
 		state.value = 'error';
+		emit('state', { status: 'unavailable' });
 	}
 }
 
