@@ -530,6 +530,85 @@ describe('SettingsPreferencesView', () => {
 			});
 			expect(queryByTestId('preferences-delete-selected-button')).not.toBeInTheDocument();
 		});
+
+		it('keeps the toolbar while a cleared search with no matches reloads', async () => {
+			vi.useFakeTimers({ shouldAdvanceTime: true });
+			emptyStateVariant.value = 'assistant';
+			contextStore.preferences = [preference()];
+			contextStore.count = 1;
+			const { getByTestId, queryByTestId } = renderView();
+			await new Promise(process.nextTick);
+
+			contextStore.fetchPreferences.mockImplementation(async () => {
+				contextStore.preferences = [];
+				contextStore.count = 0;
+				return { count: 0, data: [] };
+			});
+			await userEvent.type(getByTestId('preferences-search'), 'zzz');
+			await vi.runAllTimersAsync();
+
+			// The unfiltered reload has not run yet: the zero still describes the search.
+			await userEvent.clear(getByTestId('preferences-search'));
+			expect(queryByTestId('preferences-empty-state-assistant')).not.toBeInTheDocument();
+			expect(getByTestId('preferences-search')).toBeInTheDocument();
+
+			contextStore.fetchPreferences.mockImplementation(async () => {
+				contextStore.preferences = [preference()];
+				contextStore.count = 1;
+				return { count: 1, data: contextStore.preferences };
+			});
+			await vi.runAllTimersAsync();
+
+			expect(contextStore.fetchPreferences).toHaveBeenLastCalledWith({
+				skip: 0,
+				take: 50,
+				sortBy: 'updatedAt:desc',
+			});
+			expect(queryByTestId('preferences-empty-state-assistant')).not.toBeInTheDocument();
+			expect(getByTestId('preferences-search')).toBeInTheDocument();
+		});
+
+		it('ignores an older load that finishes after a new search', async () => {
+			vi.useFakeTimers({ shouldAdvanceTime: true });
+			contextStore.preferences = [preference()];
+			contextStore.count = 60; // two pages at the default size of 50
+
+			const { getByTestId } = renderView();
+			await new Promise(process.nextTick);
+			await userEvent.click(getByTestId('pagination-next'));
+			await new Promise(process.nextTick);
+
+			// The reload of page 2 stays pending until the search has finished.
+			let finishOlderLoad: () => void = () => {};
+			contextStore.fetchPreferences.mockImplementationOnce(
+				async () =>
+					await new Promise((resolve) => {
+						finishOlderLoad = () => resolve({ count: 1, data: [] });
+					}),
+			);
+			await userEvent.click(getByTestId('preference-modal-stub-saved'));
+
+			contextStore.fetchPreferences.mockImplementation(async () => {
+				contextStore.preferences = [preference()];
+				contextStore.count = 1;
+				return { count: 1, data: contextStore.preferences };
+			});
+			await userEvent.type(getByTestId('preferences-search'), 'short');
+			await vi.runAllTimersAsync();
+			const callsAfterSearch = contextStore.fetchPreferences.mock.calls.length;
+
+			// Page 2 no longer exists, but the older load must not fetch again with its old filter.
+			finishOlderLoad();
+			await vi.runAllTimersAsync();
+
+			expect(contextStore.fetchPreferences).toHaveBeenCalledTimes(callsAfterSearch);
+			expect(contextStore.fetchPreferences).toHaveBeenLastCalledWith({
+				skip: 0,
+				take: 50,
+				sortBy: 'updatedAt:desc',
+				search: 'short',
+			});
+		});
 	});
 
 	it('returns to the Context landing page', async () => {

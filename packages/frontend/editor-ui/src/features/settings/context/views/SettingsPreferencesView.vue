@@ -52,12 +52,17 @@ const tableOptions = ref<TableOptions>({
 });
 const selection = ref<string[]>([]);
 const search = ref('');
+// The term of the last load that finished. It differs from `search` while a load is pending.
+const appliedSearch = ref('');
 const loadFailed = ref(false);
+let latestLoad = 0;
 
 const dialogTarget = ref<Preference | 'new' | null>(null);
 
 // The search runs on the server: the count and the page both describe the matching rows.
-const isFiltered = computed(() => search.value.trim() !== '');
+// The applied term counts too, so clearing a search with no matches does not show the
+// empty state before the unfiltered reload arrives.
+const isFiltered = computed(() => search.value.trim() !== '' || appliedSearch.value !== '');
 // A failed load also reports zero rows, so the empty state must not stand in for it. A
 // search that matches nothing shows an empty table, not "No preferences yet".
 const showEmptyState = computed(
@@ -66,6 +71,7 @@ const showEmptyState = computed(
 const selectedCount = computed(() => selection.value.length);
 
 async function load() {
+	const run = ++latestLoad;
 	const { page = 0, itemsPerPage = PREFERENCES_DEFAULT_PAGE_SIZE } = tableOptions.value;
 	const sortBy = toPreferenceSortOption(tableOptions.value.sortBy);
 	const term = search.value.trim();
@@ -77,7 +83,10 @@ async function load() {
 			sortBy,
 			...filter,
 		});
+		// A newer load owns the page now. Its filter and page replace this one.
+		if (run !== latestLoad) return;
 		loadFailed.value = false;
+		appliedSearch.value = term;
 
 		// Deleting the last rows of a page can leave the page past the end.
 		const lastPage = Math.max(0, Math.ceil(contextStore.count / itemsPerPage) - 1);
@@ -91,6 +100,7 @@ async function load() {
 			});
 		}
 	} catch (error) {
+		if (run !== latestLoad) return;
 		loadFailed.value = true;
 		showError(error, i18n.baseText('settings.context.preferences.error.load'));
 	}
