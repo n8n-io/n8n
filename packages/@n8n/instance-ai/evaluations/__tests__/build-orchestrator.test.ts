@@ -1,6 +1,8 @@
 import { verifyBuildExpectations } from '../build-expectations/verifier';
 import type { CliArgs } from '../cli/args';
+import { buildWorkflowViaMcp } from '../cli/mcp-builder';
 import type { N8nClient } from '../clients/n8n-client';
+import { fetchAgentScenarioContext } from '../harness/agent-execution';
 import { resolveArtifactContext } from '../harness/artifacts/artifact-context';
 import {
 	leakHaystackFor,
@@ -17,6 +19,7 @@ import {
 	type LaneState,
 } from '../run/build-orchestrator';
 import { LaneAllocator } from '../run/lane-allocator';
+import type { LaneUserPool } from '../run/lane-users';
 import type { WorkflowTestCase } from '../types';
 
 // Characterization tests for the build phase extracted in TRUST-261: cache
@@ -55,6 +58,18 @@ vi.mock('../harness/credential-setup-checks', async (importOriginal) => ({
 
 vi.mock('../harness/artifacts/artifact-context', () => ({
 	resolveArtifactContext: vi.fn().mockResolvedValue('RESOLVED ARTIFACTS'),
+}));
+
+vi.mock('../cli/mcp-builder', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../cli/mcp-builder')>()),
+	buildWorkflowViaMcp: vi.fn(),
+	stageLaneMcpConfig: vi.fn().mockReturnValue('/tmp/mcp-config.json'),
+	unlinkStagedMcpConfig: vi.fn(),
+}));
+
+vi.mock('../run/lane-users', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../run/lane-users')>()),
+	provisionCaseBuildUser: vi.fn().mockResolvedValue('mcp-api-key'),
 }));
 
 vi.mock('../build-expectations/verifier', async (importOriginal) => {
@@ -758,6 +773,40 @@ describe('createBuildOrchestrator', () => {
 		await expect(deps.buildExpectationsByKey.get('0:case-a')).resolves.toEqual([
 			{ expectation: 'sends a digest', pass: true, reason: 'ok' },
 		]);
+	});
+});
+
+describe('MCP builds', () => {
+	it('grades an Agent from create_agent as the build, with no workflow', async () => {
+		const transcript = [{ userMessage: 'build a clinic chatbot', steps: [] }];
+		vi.mocked(buildWorkflowViaMcp).mockResolvedValue({
+			workflowId: null,
+			agent: { id: 'agent-1', projectId: 'project-1' },
+			cost: 0.5,
+			turns: 3,
+			durationMs: 1000,
+			logFile: null,
+			transcript,
+		});
+		const lane = makeLane(1, vi.fn());
+		lane.runner.buildUserPool = {} as LaneUserPool;
+		const deps = makeDeps([lane], {
+			args: { buildViaMcp: true, timeoutMs: 900_000, keepWorkflows: false } as CliArgs,
+		});
+		const orchestrator = createBuildOrchestrator(deps);
+
+		const { build } = await orchestrator.getOrBuild(0, 'case-a');
+
+		expect(build.success).toBe(true);
+		expect(build.workflowId).toBeUndefined();
+		expect(build.artifactRefs).toEqual([{ type: 'agent', id: 'agent-1', projectId: 'project-1' }]);
+		expect(build.transcript).toBe(transcript);
+		expect(vi.mocked(fetchAgentScenarioContext)).toHaveBeenCalledWith(
+			lane.runner.client,
+			{ type: 'agent', id: 'agent-1', projectId: 'project-1' },
+			expect.anything(),
+		);
+		expect(deps.agentContextByKey.has('0:case-a')).toBe(true);
 	});
 });
 

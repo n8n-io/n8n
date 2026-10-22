@@ -13,6 +13,7 @@ import type {
 	InstanceAiRunDebugResponse,
 } from '@n8n/api-types';
 import { sleep } from '@n8n/utils/sleep';
+import { randomUUID } from 'node:crypto';
 
 import type { LaneAllocator } from './lane-allocator';
 import { provisionCaseBuildUser, type LaneUserPool } from './lane-users';
@@ -58,7 +59,12 @@ import {
 	type PrebuiltManifest,
 } from '../harness/prebuilt-workflows';
 import type { executeScenario } from '../harness/scenario-execution';
-import type { ScenarioSeedContext } from '../harness/seed-tables';
+import {
+	buildSeededTablesNote,
+	dedupeScenarioSeedTables,
+	uniquifySeedTableNames,
+	type ScenarioSeedContext,
+} from '../harness/seed-tables';
 import {
 	extractErrorMessage,
 	findProviderOutage,
@@ -68,13 +74,15 @@ import {
 	providerRetryBackoffMs,
 } from '../harness/transient-error';
 import type {
+	ArtifactRef,
 	BuildExpectationResult,
 	ExecutionScenario,
 	TestCaseCredential,
 	TranscriptTurn,
 	WorkflowTestCase,
 } from '../types';
-import { conversationUserTurnsAsText } from '../utils/conversation-text';
+import { agentTurnsAsText, conversationUserTurnsAsText } from '../utils/conversation-text';
+import { UserProxyLlm } from '../utils/user-proxy';
 
 /** Attempts (initial + retries) for a build hitting transient network errors. */
 export const MAX_BUILD_ATTEMPTS = 3;
@@ -194,7 +202,9 @@ function mcpBuildSettingsFromArgs(args: CliArgs): McpBuildSettings {
 async function buildWorkflowViaMcpOnLane(config: {
 	lane: Lane;
 	conversation: WorkflowTestCase['conversation'];
+	messageBudget?: number;
 	credentials?: TestCaseCredential[];
+	executionScenarios?: ExecutionScenario[];
 	slug: string;
 	iteration: number;
 	args: CliArgs;
@@ -203,30 +213,55 @@ async function buildWorkflowViaMcpOnLane(config: {
 	/** Run-wide spend collector; every attempt is recorded, success or not. */
 	buildSpend: McpBuildSpend[];
 }): Promise<BuildResult> {
-	const { lane, conversation, credentials, slug, iteration, args, logDir, logger, buildSpend } =
-		config;
-	const failure = (error: string): BuildResult => ({
+	const {
+		lane,
+		conversation = [],
+		messageBudget,
+		credentials,
+		executionScenarios,
+		slug,
+		iteration,
+		args,
+		logDir,
+		logger,
+		buildSpend,
+	} = config;
+	const failure = (error: string, transcript?: TranscriptTurn[]): BuildResult => ({
 		success: false,
 		error,
 		workflowJsons: [],
 		createdWorkflowIds: [],
 		createdDataTableIds: [],
+		...(transcript ? { transcript } : {}),
 	});
 	if (!lane.buildUserPool) {
 		return failure(`Lane ${lane.baseUrl} has no build user pool — cannot build via MCP`);
 	}
 
 	let mcpApiKey: string;
+	const memberClient = new N8nClient(lane.baseUrl);
 	try {
 		mcpApiKey = await provisionCaseBuildUser({
 			pool: lane.buildUserPool,
-			memberClient: new N8nClient(lane.baseUrl),
+			memberClient,
 			credentials,
 			onCredentialCreated: (id) => lane.createdCredentialIds.add(id),
 			logger,
 		});
 	} catch (error) {
 		return failure(`MCP build user/credential setup failed: ${extractErrorMessage(error)}`);
+	}
+
+	let tableSeed: McpScenarioTableSeed | undefined;
+	try {
+		tableSeed = await seedMcpScenarioTables({
+			ownerClient: lane.client,
+			memberClient,
+			executionScenarios,
+			logger,
+		});
+	} catch (error) {
+		return failure(`MCP scenario data table setup failed: ${extractErrorMessage(error)}`);
 	}
 
 	const mcpConfigPath = stageLaneMcpConfig({
@@ -238,13 +273,16 @@ async function buildWorkflowViaMcpOnLane(config: {
 	let result: McpBuildResult;
 	try {
 		result = await buildWorkflowViaMcp({
-			conversation: conversation ?? [],
+			conversation,
 			slug,
 			iteration,
 			mcpConfigPath,
 			settings: mcpBuildSettingsFromArgs(args),
 			logDir,
 			log: (message) => logger.info(message),
+			// Same simulated user as the Instance AI arm, so both arms get the same follow-ups.
+			createDriver: () => new UserProxyLlm({ conversation, messageBudget, logger }),
+			openingMessageSuffix: tableSeed?.note,
 		});
 	} finally {
 		unlinkStagedMcpConfig(mcpConfigPath);
@@ -263,11 +301,80 @@ async function buildWorkflowViaMcpOnLane(config: {
 		lane.workflowIdsToDelete.add(result.workflowId);
 	}
 
+	// The Agent lives in the build user's project, so build-user cleanup deletes it.
+	const artifactRefs: ArtifactRef[] = result.agent ? [{ type: 'agent', ...result.agent }] : [];
+	const seedFields: Pick<BuildResult, 'seedThreadId' | 'seededScenarioTableIdsByName'> = tableSeed
+		? { seedThreadId: tableSeed.threadId, seededScenarioTableIdsByName: tableSeed.tableIdsByName }
+		: {};
+
 	if (!result.workflowId) {
-		return failure(`MCP build produced no workflow (${result.failureReason ?? 'unknown'})`);
+		if (artifactRefs.length > 0) {
+			return {
+				success: true,
+				workflowJsons: [],
+				createdWorkflowIds: [],
+				createdDataTableIds: [],
+				artifactRefs,
+				...seedFields,
+				transcript: result.transcript,
+			};
+		}
+		return failure(
+			`MCP build produced no workflow (${result.failureReason ?? 'unknown'})`,
+			result.transcript,
+		);
 	}
 
-	return await fetchPrebuiltBuild(lane.client, result.workflowId, logger);
+	const fetched = await fetchPrebuiltBuild(lane.client, result.workflowId, logger);
+	return {
+		...fetched,
+		...(artifactRefs.length > 0 ? { artifactRefs } : {}),
+		...seedFields,
+		transcript: result.transcript,
+	};
+}
+
+interface McpScenarioTableSeed {
+	threadId: string;
+	tableIdsByName: Record<string, string>;
+	note: string;
+}
+
+/**
+ * Create the case's scenario data tables empty in the build user's personal
+ * project before `claude` starts, so the build binds the real tables, as on the
+ * Instance AI arm. The server creates and reseeds tables only through a thread,
+ * so the owner opens an empty thread bound to that project. Deleting the build
+ * user deletes the tables.
+ */
+async function seedMcpScenarioTables(opts: {
+	ownerClient: N8nClient;
+	memberClient: N8nClient;
+	executionScenarios?: ExecutionScenario[];
+	logger: EvalLogger;
+}): Promise<McpScenarioTableSeed | undefined> {
+	const declared = dedupeScenarioSeedTables(opts.executionScenarios ?? [], opts.logger);
+	if (declared.length === 0) return undefined;
+	const projectId = await opts.memberClient.getPersonalProjectId();
+	const threadId = randomUUID();
+	await opts.ownerClient.ensureThread(threadId, projectId);
+	const schemasOnly = uniquifySeedTableNames(declared).map((table) => ({
+		...table,
+		rows: undefined,
+	}));
+	const { dataTableIds } = await opts.ownerClient.restoreThread(threadId, [], [], schemasOnly, [], {
+		uniquifyNames: false,
+	});
+	if (dataTableIds.length !== declared.length) {
+		throw new Error(
+			`Created ${String(dataTableIds.length)} data table(s) but the case declares ${String(declared.length)}`,
+		);
+	}
+	const tableIdsByName: Record<string, string> = {};
+	declared.forEach((table, index) => {
+		tableIdsByName[table.name] = dataTableIds[index];
+	});
+	return { threadId, tableIdsByName, note: buildSeededTablesNote(schemasOnly) };
 }
 
 // Direct fetch (not N8nClient) so a hung lane can't stall the probe.
@@ -387,10 +494,13 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 	const orphanedBuilds: Array<{ build: BuildResult; client: N8nClient }> = [];
 	const buildDurations = new Map<string, number>();
 
-	function stashTranscript(build: BuildResult): void {
+	/** A build without a thread (MCP) is keyed by its `iteration:fileSlug` build
+	 *  key, which can't collide with a thread id. */
+	function stashTranscript(build: BuildResult, buildKey?: string): void {
 		scrubLocalSecretsFromBuild(build);
-		if (build.threadId && build.transcript) {
-			transcriptByThreadId.set(build.threadId, build.transcript);
+		const key = build.threadId ?? buildKey;
+		if (key && build.transcript) {
+			transcriptByThreadId.set(key, build.transcript);
 		}
 	}
 
@@ -455,6 +565,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		client: N8nClient,
 		build: BuildResult,
 		isPrebuilt: boolean,
+		mcpBuild = false,
 	): void {
 		// `scrubLocalSecrets` (in stashTranscript, which always runs first) has
 		// already redacted a local run's transcript and kept the pre-scrub text
@@ -523,6 +634,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 			transcript: build.transcript,
 			buildSucceeded: build.success,
 			isPrebuilt,
+			mcpBuild,
 			logger,
 		});
 		// Attributed here, where we still know WHY the build ended: a build that
@@ -554,12 +666,11 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		};
 		// Recorded as incomplete rather than dropped, so the case keeps its unit
 		// count and the report says why they weren't graded.
-		if (unjudged.length > 0) {
-			buildExpectationsByKey.set(key, withInjected(attribute(unjudged)));
-			return;
-		}
+		const unjudgedVerdicts = attribute(unjudged);
 		if (expectations.length === 0) {
-			if (injected) buildExpectationsByKey.set(key, withInjected([]));
+			if (unjudged.length > 0 || injected) {
+				buildExpectationsByKey.set(key, withInjected(unjudgedVerdicts));
+			}
 			return;
 		}
 		buildExpectationsByKey.set(
@@ -615,7 +726,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 							`judge error: ${error instanceof Error ? error.message : String(error)}`,
 						),
 					)
-					.then(attribute),
+					.then((verdicts) => [...attribute(verdicts), ...unjudgedVerdicts]),
 			),
 		);
 	}
@@ -644,7 +755,9 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 					build = await buildWorkflowViaMcpOnLane({
 						lane: lane.runner,
 						conversation: entry.conversation,
+						messageBudget: entry.messageBudget,
 						credentials: entry.credentials,
+						executionScenarios: entry.executionScenarios,
 						slug: fileSlug,
 						iteration,
 						args,
@@ -667,20 +780,21 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 				// Cleanup registration happens inside buildWorkflowViaMcpOnLane (as soon
 				// as `claude` reports the id), so even a failed fetch-back is covered.
 				buildDurations.set(key, buildDurationMs);
-				stashTranscript(build);
-				// isPrebuilt=true: MCP builds have no build transcript, so only
-				// outcome expectations are judged (against the workflow), like prebuilt.
+				stashTranscript(build, key);
+				stashAgentContext(key, lane.runner.client, build);
+				// isPrebuilt=true skips the premise check only: the `claude` transcript
+				// still lets process expectations be judged.
 				// Ordered before stashBuildExpectations so runDebugByThreadId already has
 				// this build's promise stashed by the time that call reads it.
 				stashRunDebug(lane.runner.client, build);
 				// No premise check on this path (isPrebuilt), so memory is not read.
 				stashThreadMemory(lane.runner.client, build, false);
-				stashBuildExpectations(key, fileSlug, lane.runner.client, build, true);
+				stashBuildExpectations(key, fileSlug, lane.runner.client, build, true, true);
 				if (build.success && !build.workflowChecks) {
 					build.workflowChecks = await runWorkflowChecks({
 						workflow: build.workflowJsons[0],
 						prompt: conversationUserTurnsAsText(entry.conversation ?? [], entry.seed),
-						agentText: undefined,
+						agentText: build.transcript ? agentTurnsAsText(build.transcript) : undefined,
 						logger,
 					});
 				}
