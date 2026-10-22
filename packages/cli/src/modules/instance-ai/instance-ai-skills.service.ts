@@ -8,6 +8,8 @@ import { Service } from '@n8n/di';
 import { loadInstanceAiPromptSkills, type PromptProfile } from '@n8n/instance-ai';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { loadHubRunSkills, type HubRunSkills } from './instance-ai-hub-skills';
+
 import type { InstanceAiFeatureFlags } from './instance-ai.adapter.service';
 
 /** Folder ids under `@n8n/instance-ai/skills` that n8n refers to by id. */
@@ -33,7 +35,7 @@ export interface InstanceAiSkillScope {
 	agentBuildingEnabled: boolean;
 }
 
-export interface InstanceAiRunSkills {
+export interface InstanceAiRunSkills extends HubRunSkills {
 	/** The active skills, which the run can load. */
 	source: RuntimeSkillSource;
 	/** Tools that the prompt profile turns off. */
@@ -76,14 +78,19 @@ export class InstanceAiSkillsService {
 	}
 
 	/** The active skills, and the tools that the prompt profile turns off. */
-	async loadSkills(scope: InstanceAiSkillScope): Promise<InstanceAiRunSkills> {
+	async loadSkills(
+		scope: InstanceAiSkillScope,
+		context?: AssistantSkillContext,
+	): Promise<InstanceAiRunSkills> {
 		const { source, disabledTools } = await loadInstanceAiPromptSkills(scope.profile);
 		const inactive = inactiveSkillIds(scope);
 
-		return {
-			source: inactive.length > 0 ? filterRuntimeSkillSource(source, inactive) : source,
-			disabledTools,
-		};
+		const builtIns = inactive.length > 0 ? filterRuntimeSkillSource(source, inactive) : source;
+		const skills = context
+			? await loadHubRunSkills(builtIns, this.hubSkills, context)
+			: { source: builtIns };
+
+		return { ...skills, disabledTools };
 	}
 
 	/** One active skill, or `null` when the skill is not active. */

@@ -24,6 +24,7 @@ export interface AssistantSkillContent extends AssistantSkillSummary {
 
 /** Both operations enforce current availability, user permissions, and session scope. */
 export interface AssistantSkillProvider {
+	isEnabled(): Promise<boolean>;
 	listSkills(context: AssistantSkillContext): Promise<AssistantSkillSummary[]>;
 	/** Reads the latest saved version. */
 	readSkill(context: AssistantSkillContext, skillId: string): Promise<AssistantSkillContent | null>;
@@ -33,6 +34,10 @@ export interface AssistantSkillProvider {
 @Service()
 export class AssistantSkillProviderProxy implements AssistantSkillProvider {
 	private provider: AssistantSkillProvider | undefined;
+
+	async isEnabled(): Promise<boolean> {
+		return (await this.provider?.isEnabled()) ?? false;
+	}
 
 	registerProvider(provider: AssistantSkillProvider): void {
 		this.provider = provider;

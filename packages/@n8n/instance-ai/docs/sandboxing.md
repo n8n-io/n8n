@@ -134,9 +134,22 @@ writes the bundle again and writes the manifest last. A matching manifest is
 trusted, and setup reads no other bundle file. Each cached sandbox entry keeps
 the result, so later runs do not read the manifest again.
 
-Skills are not stored in the sandbox. `load_skill` serves the skill
-text from memory. Skills refer to the knowledge base with paths relative to the
-workspace root, such as `knowledge-base/index.json`.
+Built-in skills are not stored in the sandbox. `load_skill` serves their
+text from memory. The Assistant also discovers eligible Hub skills when the Hub
+is available and the instance PostHog flag `130_attach_skills_to_assistant` is
+`true`. The Hub still requires `N8N_AGENTS_SKILLS_HUB_ENABLED=true` and its modules.
+`AssistantSkillsRollout` supplies the shared gate. The provider reads skills through
+`SkillService`. A disabled or unresolved gate adds no Hub catalog entries, prompts,
+or workspace preparation. It validates their saved
+content before publishing the catalog. The catalog contains metadata only.
+`load_skill` and the workspace use the same content for the turn. Hub files live
+under `.n8n/skills/hub/<stable-id>/SKILL.md`. Names do not affect these paths.
+The lazy workspace replaces this dedicated directory before exposing it.
+Attachments are unsupported. The Assistant receives an explicit reason when
+a skill is excluded. A Hub failure leaves built-in skills available.
+
+Built-in skills refer to the knowledge base with paths relative to the workspace
+root, such as `knowledge-base/index.json`.
 
 With `N8N_LOG_LEVEL=debug`, these messages show the bundle file traffic:
 

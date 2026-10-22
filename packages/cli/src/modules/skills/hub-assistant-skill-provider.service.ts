@@ -16,6 +16,10 @@ export class HubAssistantSkillProvider implements AssistantSkillProvider {
 		private readonly skillService: SkillService,
 	) {}
 
+	async isEnabled(): Promise<boolean> {
+		return await this.rollout.isEnabled();
+	}
+
 	async listSkills(context: AssistantSkillContext): Promise<AssistantSkillSummary[]> {
 		if (!(await this.rollout.isEnabled())) return [];
 		return await this.skillService.listForAssistant(context);

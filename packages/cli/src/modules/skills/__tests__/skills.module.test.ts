@@ -56,12 +56,14 @@ describe('SkillsModule', () => {
 			);
 
 			await new SkillsModule().init();
+			expect(await proxy.isEnabled()).toBe(false);
 			expect(await proxy.listSkills(context)).toEqual([]);
 			expect(await proxy.readSkill(context, summary.id)).toBeNull();
 			expect(service.listForAssistant).not.toHaveBeenCalled();
 			expect(service.readForAssistant).not.toHaveBeenCalled();
 
 			agents.registerProvider(mock<SkillAgentsProvider>());
+			expect(await proxy.isEnabled()).toBe(expected);
 			expect(await proxy.listSkills(context)).toEqual(expected ? [summary] : []);
 			expect(await proxy.readSkill(context, summary.id)).toEqual(expected ? content : null);
 			expect(service.listForAssistant).toHaveBeenCalledTimes(expected ? 1 : 0);
