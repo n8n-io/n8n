@@ -46,7 +46,8 @@ function integrationSource(
 	const source: AgentMemoryEntrySourceDto = { kind };
 	if (message.author?.name) source.userName = message.author.name;
 	if (integration?.type === 'slack') {
-		if (integration.channelName) source.place = `#${integration.channelName}`;
+		// The Slack adapter may return the name with its own `#`.
+		if (integration.channelName) source.place = `#${integration.channelName.replace(/^#+/, '')}`;
 		if (integration.conversationKind === 'dm') source.isDirectMessage = true;
 	}
 	if (integration?.type === 'linear' && integration.identifier) {

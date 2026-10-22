@@ -26,6 +26,28 @@ describe('buildMemoryEntrySource', () => {
 		expect(source).toEqual({ kind: 'slack', userName: 'Sin', place: '#finance-ops' });
 	});
 
+	it('shows a single # when the stored Slack channel name already has one', () => {
+		const source = buildMemoryEntrySource(
+			'integration:slack:U1',
+			{
+				origin: {
+					source: 'slack',
+					integration: {
+						type: 'slack',
+						workspaceId: 'W1',
+						conversationKind: 'channel',
+						channelId: 'C1',
+						channelName: '#secret-agents',
+					},
+				},
+			},
+			names,
+			'viewer',
+		);
+
+		expect(source).toEqual({ kind: 'slack', place: '#secret-agents' });
+	});
+
 	it('marks a Slack direct message', () => {
 		const source = buildMemoryEntrySource(
 			'integration:slack:U1',
