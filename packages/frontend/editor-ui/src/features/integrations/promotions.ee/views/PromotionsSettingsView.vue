@@ -83,8 +83,11 @@ async function load() {
 async function loadProtection() {
 	try {
 		await sourceControlStore.getPreferences();
-	} finally {
 		protectionBusy.value = false;
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.promotions.protected.toast.error.load'), {
+			message: i18n.baseText('settings.promotions.protected.toast.error.description'),
+		});
 	}
 }
 
@@ -102,7 +105,9 @@ async function setProtected(branchReadOnly: boolean) {
 			type: 'success',
 		});
 	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.promotions.protected.toast.error.save'));
+		toast.showError(error, i18n.baseText('settings.promotions.protected.toast.error.save'), {
+			message: i18n.baseText('settings.promotions.protected.toast.error.description'),
+		});
 	} finally {
 		protectionBusy.value = false;
 	}
