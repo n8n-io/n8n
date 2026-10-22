@@ -80,7 +80,7 @@ describe('AgentMemoryEntryRepository list and delete', () => {
 		await expect(entryRepository.countActiveByAgent(agentId)).resolves.toBe(3);
 	});
 
-	it('marks an entry deleted and hides it from the list and the count', async () => {
+	it('deletes an entry by dropping it and hides it from the list and the count', async () => {
 		const id = await insertEntry('a', '2026-10-01T10:00:00.000Z');
 
 		await expect(entryRepository.markDeleted(agentId, id)).resolves.toBe(true);
@@ -88,7 +88,7 @@ describe('AgentMemoryEntryRepository list and delete', () => {
 		await expect(entryRepository.listActiveByAgent(agentId, 10)).resolves.toEqual([]);
 		await expect(entryRepository.countActiveByAgent(agentId)).resolves.toBe(0);
 		expect(await entryRepository.findOneByOrFail({ id })).toMatchObject({
-			status: 'deleted',
+			status: 'dropped',
 			content: 'a',
 		});
 	});

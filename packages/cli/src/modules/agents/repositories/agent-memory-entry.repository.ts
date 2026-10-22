@@ -50,11 +50,14 @@ export class AgentMemoryEntryRepository extends BaseRepository<AgentMemoryEntryE
 		return await this.count({ where: { agentId, status: 'active' } });
 	}
 
-	/** Returns false when the agent has no active entry with this id. */
+	/**
+	 * Stores the delete as `dropped`: recall skips it and the row keeps its text and sources.
+	 * Returns false when the agent has no active entry with this id.
+	 */
 	async markDeleted(agentId: string, entryId: string): Promise<boolean> {
 		const result = await this.update(
 			{ id: entryId, agentId, status: 'active' },
-			{ status: 'deleted' },
+			{ status: 'dropped' },
 		);
 		return (result.affected ?? 0) > 0;
 	}

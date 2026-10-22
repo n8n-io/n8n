@@ -1,4 +1,4 @@
-export type MemoryLifecycleStatus = 'active' | 'superseded' | 'dropped' | 'deleted';
+export type MemoryLifecycleStatus = 'active' | 'superseded' | 'dropped';
 
 export interface MemoryLifecycleState {
 	status: MemoryLifecycleStatus;

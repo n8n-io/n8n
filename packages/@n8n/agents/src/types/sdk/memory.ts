@@ -82,7 +82,7 @@ export interface BuiltMemory {
 	describe(): MemoryDescriptor;
 }
 
-export type EpisodicMemoryStatus = 'active' | 'superseded' | 'dropped' | 'deleted';
+export type EpisodicMemoryStatus = 'active' | 'superseded' | 'dropped';
 
 /**
  * The host's decision on who owns a turn's episodic memories. Memories are
