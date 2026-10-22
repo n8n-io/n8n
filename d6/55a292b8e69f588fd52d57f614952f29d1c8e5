@@ -398,6 +398,7 @@ packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/p
   s_7f7a4dee511a6b::t_6f38b7e9d2e857 278-279,297-300
   s_7f7a4dee511a6b::t_3d26a087768260 68-103
   s_91f6d770b324e5::t_e2c1936c6729e8 28,192,240,259,264,266-268,275,285,294-296
+  s_16760d2fc03aa0::t_4155cfa4848c40 222
 packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionChangeCards.vue
   s_983eea3c47ac98::t_94cf370560a4ca 1,3-5,15-20,22,26-27,30-31,34-37,40-41,55-62,64-84,86-87,93,95-107
   s_7f7a4dee511a6b::t_d37c68c5a68fb2 28
@@ -670,6 +671,14 @@ packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/A
         "tool": "claude",
         "id": "2d68ad11-e5a3-42cc-a4cf-9389fb57dfde",
         "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_16760d2fc03aa0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a163b7-54a8-78d1-a0b2-e75fd8d1055f",
+        "model": "gpt-6-astra"
       },
       "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     },
