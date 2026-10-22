@@ -613,7 +613,7 @@ describe('SettingsInstanceAiView', () => {
 			expect(getByTestId('n8n-agent-data-sharing-values-row')).toBeVisible();
 			expect(getByTestId('n8n-agent-data-sharing-docs-link')).toHaveAttribute(
 				'href',
-				'https://docs.n8n.io/manage-cloud/ai-assistant',
+				'https://docs.n8n.io/manage-cloud/ai-assistant/#ai-usage-settings',
 			);
 		});
 

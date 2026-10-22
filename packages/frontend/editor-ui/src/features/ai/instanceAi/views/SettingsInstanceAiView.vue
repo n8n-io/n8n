@@ -7,8 +7,8 @@ import {
 	N8nDropdownMenu,
 	N8nEmptyState,
 	N8nEnterpriseReadinessBadge,
+	N8nExternalLink,
 	N8nIcon,
-	N8nLink,
 	N8nLoading,
 	N8nOption,
 	N8nSelect,
@@ -73,7 +73,7 @@ const {
 const { isFeatureEnabled: isComputerUseExperimentEnabled } = useInstanceAiComputerUseExperiment();
 
 const DOCS_URL = 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant';
-const DATA_SHARING_DOCS_URL = 'https://docs.n8n.io/manage-cloud/ai-assistant';
+const DATA_SHARING_DOCS_URL = 'https://docs.n8n.io/manage-cloud/ai-assistant/#ai-usage-settings';
 
 const isAdmin = computed(() => store.canManage);
 const isEnabled = computed(
@@ -815,14 +815,18 @@ async function handleDataSharingToggle(value: boolean) {
 				<template #description>
 					<N8nText size="small" color="text-base">
 						{{ i18n.baseText('settings.n8nAgent.dataSharing.description') }}
-						<N8nLink
-							:to="DATA_SHARING_DOCS_URL"
-							size="small"
-							new-window
-							data-test-id="n8n-agent-data-sharing-docs-link"
-						>
-							{{ i18n.baseText('settings.n8nAgent.dataSharing.docsLabel') }}
-						</N8nLink>
+						<!-- Same docs phrase as N8nSettingsPageHeader: lead-in, inline external link, icon. -->
+						<span :class="$style.docsPhrase">
+							{{ i18n.baseText('settings.n8nAgent.dataSharing.docsLeadingText') }}
+							<N8nExternalLink
+								inline
+								size="xsmall"
+								:href="DATA_SHARING_DOCS_URL"
+								data-test-id="n8n-agent-data-sharing-docs-link"
+							>
+								{{ i18n.baseText('settings.n8nAgent.dataSharing.docsLabel') }}
+							</N8nExternalLink>
+						</span>
 					</N8nText>
 				</template>
 				<N8nSettingsRowGroup>
@@ -922,6 +926,11 @@ async function handleDataSharingToggle(value: boolean) {
 .dim {
 	opacity: 0.5;
 	pointer-events: none;
+}
+
+/* Keeps "lead-in + link + icon" on one line, as the page header does. */
+.docsPhrase {
+	white-space: nowrap;
 }
 
 .permissionList {
