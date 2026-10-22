@@ -844,6 +844,10 @@ describe('AgentPublishService', () => {
 			TELEMETRY_EVENT.AGENTS.USER_PUBLISHED_AGENT,
 			expect.not.objectContaining({ knowledge_file_count: expect.anything() }),
 		);
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.USER_PUBLISHED_AGENT,
+			expect.not.objectContaining({ knowledge_total_bytes: expect.anything() }),
+		);
 	});
 
 	it('reverts draft fields and task bodies from the active published snapshot', async () => {
