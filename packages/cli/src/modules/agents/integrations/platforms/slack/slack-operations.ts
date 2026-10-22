@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import { isRecord } from '@n8n/utils/is-record';
 
+import {
+	readSlackSearchCursor,
+	selectSlackSearchPage,
+	SLACK_SEARCH_PAGE_SIZE,
+} from './slack-search-pagination';
+
 import type { ChatInstance } from '../../chat-integration.service';
 import { stringValue, unsupportedQuery } from '../../integration-helpers';
 import type { IntegrationContextQuery } from '../../integration-tools';
@@ -11,8 +17,8 @@ const getUserSchema = z.object({ userId: z.string().min(1) });
 const getChannelInfoSchema = z.object({ channelId: z.string().min(1) });
 const searchUsersSchema = z
 	.object({
-		query: z.string().min(1).optional(),
-		email: z.string().min(1).optional(),
+		query: z.string().trim().min(1).optional(),
+		email: z.string().trim().min(1).optional(),
 		limit: z.number().int().min(1).max(50).default(10),
 		cursor: z.string().min(1).optional(),
 		includeBots: z.boolean().default(false),
@@ -71,6 +77,7 @@ interface SlackConversationsListResponse {
 }
 
 interface SlackUsersApi {
+	info?(options: Record<string, unknown>): Promise<SlackUserLookupResponse>;
 	list?(options: Record<string, unknown>): Promise<SlackUsersListResponse>;
 	lookupByEmail?(options: Record<string, unknown>): Promise<SlackUserLookupResponse>;
 }
@@ -111,7 +118,9 @@ export async function executeSlackContextQuery(params: {
 	chat: ChatInstance;
 	query: IntegrationContextQuery;
 	input: Record<string, unknown>;
+	abortSignal?: AbortSignal;
 }): Promise<unknown> {
+	params.abortSignal?.throwIfAborted();
 	if (params.query === 'get_user') {
 		const input = getUserSchema.parse(params.input);
 		const user = await params.chat.getUser(input.userId);
@@ -126,116 +135,138 @@ export async function executeSlackContextQuery(params: {
 	}
 
 	if (params.query === 'search_users') {
-		return await searchSlackUsers(params.chat, searchUsersSchema.parse(params.input));
+		return await searchSlackUsers(
+			params.chat,
+			searchUsersSchema.parse(params.input),
+			params.abortSignal,
+		);
 	}
 
 	if (params.query === 'search_channels') {
-		return await searchSlackChannels(params.chat, searchChannelsSchema.parse(params.input));
+		return await searchSlackChannels(
+			params.chat,
+			searchChannelsSchema.parse(params.input),
+			params.abortSignal,
+		);
 	}
 
 	return unsupportedQuery(PLATFORM, params.query);
 }
 
-async function searchSlackUsers(chat: ChatInstance, input: SearchUsersInput): Promise<unknown> {
+async function searchSlackUsers(
+	chat: ChatInstance,
+	input: SearchUsersInput,
+	abortSignal?: AbortSignal,
+): Promise<unknown> {
 	const adapter = getSlackAdapter(chat);
 	const usersApi = adapter?.client?.users;
-	if (!adapter || !usersApi?.list) {
-		return unsupportedQuery(PLATFORM, 'search_users');
+	if (!adapter || !usersApi) return unsupportedQuery(PLATFORM, 'search_users');
+
+	const userId = input.query?.replace(/^<@([^>]+)>$/, '$1');
+	if (
+		!input.email &&
+		!input.cursor &&
+		userId &&
+		/^[UW][A-Z0-9]{8,}$/.test(userId) &&
+		usersApi.info
+	) {
+		const options = await withSlackToken(adapter, { user: userId });
+		abortSignal?.throwIfAborted();
+		const response = await usersApi.info(options);
+		return userLookupResult(response.user, input);
 	}
 
-	const usersById = new Map<string, SlackUserSearchResult>();
-	const searchTerm = normalizeSearchTerm(input.query ?? input.email ?? '');
-	const email = input.email?.trim();
-
-	// Only try users.lookupByEmail on the first page (cursor=undefined). Email
-	// lookup is a single-result direct API; paging never replays it.
+	const parsedEmail = z.string().email().safeParse(input.query);
+	const email = input.email ?? (parsedEmail.success ? parsedEmail.data : undefined);
 	if (!input.cursor && email && usersApi.lookupByEmail) {
 		try {
-			const response = await usersApi.lookupByEmail(await withSlackToken(adapter, { email }));
-			const user = normalizeSlackUser(response.user);
-			if (
-				user &&
-				shouldIncludeUser(response.user, input) &&
-				matchesUserSearch(response.user, searchTerm, email)
-			) {
-				usersById.set(user.userId, user);
+			const options = await withSlackToken(adapter, { email });
+			abortSignal?.throwIfAborted();
+			const response = await usersApi.lookupByEmail(options);
+			return userLookupResult(response.user, input);
+		} catch (error) {
+			abortSignal?.throwIfAborted();
+			const code = isRecord(error) && isRecord(error.data) ? error.data.error : undefined;
+			if (code === 'users_not_found' && !input.includeDeleted) {
+				return { ok: true, users: [], resultCount: 0 };
 			}
-		} catch {
-			// Fall back to users.list, which can still match workspaces/scopes
-			// that do not support users.lookupByEmail for this token.
+			// The directory can contain deactivated users that email lookup excludes.
+			if (code !== 'missing_scope' && code !== 'users_not_found') throw error;
 		}
 	}
+	if (!usersApi.list) return unsupportedQuery(PLATFORM, 'search_users');
 
-	let cursor: string | undefined = input.cursor;
-	while (usersById.size < input.limit) {
-		const remainingLimit = input.limit - usersById.size;
-		const response = await usersApi.list(
-			await withSlackToken(adapter, {
-				limit: remainingLimit,
-				...(cursor ? { cursor } : {}),
-			}),
-		);
-		for (const rawUser of response.members ?? []) {
-			if (!shouldIncludeUser(rawUser, input) || !matchesUserSearch(rawUser, searchTerm, email)) {
-				continue;
-			}
-			const user = normalizeSlackUser(rawUser);
-			if (user) usersById.set(user.userId, user);
-		}
-		cursor = response.response_metadata?.next_cursor || undefined;
-		if (!cursor) break;
+	const position = readSlackSearchCursor('users', input.cursor);
+	const options = await withSlackToken(adapter, {
+		limit: SLACK_SEARCH_PAGE_SIZE,
+		...(position.cursor ? { cursor: position.cursor } : {}),
+	});
+	abortSignal?.throwIfAborted();
+	const response = await usersApi.list(options);
+	abortSignal?.throwIfAborted();
+	const searchTerm = normalizeSearchTerm(input.query ?? email ?? '');
+	const matches = new Map<string, SlackUserSearchResult>();
+	for (const rawUser of response.members ?? []) {
+		if (!shouldIncludeUser(rawUser, input) || !matchesUserSearch(rawUser, searchTerm, email))
+			continue;
+		const user = normalizeSlackUser(rawUser);
+		if (user) matches.set(user.userId, user);
 	}
+	const { results: users, nextCursor } = selectSlackSearchPage({
+		kind: 'users',
+		matches: [...matches.values()],
+		limit: input.limit,
+		position,
+		nextCursor: response.response_metadata?.next_cursor || undefined,
+	});
+	return { ok: true, users, resultCount: users.length, ...(nextCursor ? { nextCursor } : {}) };
+}
 
-	const users = [...usersById.values()].slice(0, input.limit);
-	return {
-		ok: true,
-		users,
-		resultCount: users.length,
-		...(cursor ? { nextCursor: cursor } : {}),
-	};
+function userLookupResult(rawUser: SlackUser | undefined, input: SearchUsersInput) {
+	const user = shouldIncludeUser(rawUser, input) ? normalizeSlackUser(rawUser) : undefined;
+	const users = user ? [user] : [];
+	return { ok: true, users, resultCount: users.length };
 }
 
 async function searchSlackChannels(
 	chat: ChatInstance,
 	input: SearchChannelsInput,
+	abortSignal?: AbortSignal,
 ): Promise<unknown> {
 	const adapter = getSlackAdapter(chat);
 	const conversationsApi = adapter?.client?.conversations;
-	if (!adapter || !conversationsApi?.list) {
-		return unsupportedQuery(PLATFORM, 'search_channels');
-	}
+	if (!adapter || !conversationsApi?.list) return unsupportedQuery(PLATFORM, 'search_channels');
 
-	const channelsById = new Map<string, SlackChannelSearchResult>();
+	const position = readSlackSearchCursor('channels', input.cursor);
+	const options = await withSlackToken(adapter, {
+		exclude_archived: !input.includeArchived,
+		limit: SLACK_SEARCH_PAGE_SIZE,
+		types: 'public_channel,private_channel',
+		...(position.cursor ? { cursor: position.cursor } : {}),
+	});
+	abortSignal?.throwIfAborted();
+	const response = await conversationsApi.list(options);
+	abortSignal?.throwIfAborted();
 	const searchTerm = normalizeChannelSearchTerm(input.query);
-	let cursor: string | undefined = input.cursor;
-
-	while (channelsById.size < input.limit) {
-		const remainingLimit = input.limit - channelsById.size;
-		const response = await conversationsApi.list(
-			await withSlackToken(adapter, {
-				exclude_archived: !input.includeArchived,
-				limit: remainingLimit,
-				types: 'public_channel,private_channel',
-				...(cursor ? { cursor } : {}),
-			}),
-		);
-
-		for (const rawChannel of response.channels ?? []) {
-			if (!input.includeArchived && rawChannel.is_archived === true) continue;
-			if (!matchesChannelSearch(rawChannel, searchTerm)) continue;
-			const channel = normalizeSlackChannel(rawChannel);
-			if (channel) channelsById.set(channel.channelId, channel);
-		}
-		cursor = response.response_metadata?.next_cursor || undefined;
-		if (!cursor) break;
+	const matches = new Map<string, SlackChannelSearchResult>();
+	for (const rawChannel of response.channels ?? []) {
+		if (!input.includeArchived && rawChannel.is_archived === true) continue;
+		if (!matchesChannelSearch(rawChannel, searchTerm)) continue;
+		const channel = normalizeSlackChannel(rawChannel);
+		if (channel) matches.set(channel.channelId, channel);
 	}
-
-	const channels = [...channelsById.values()].slice(0, input.limit);
+	const { results: channels, nextCursor } = selectSlackSearchPage({
+		kind: 'channels',
+		matches: [...matches.values()],
+		limit: input.limit,
+		position,
+		nextCursor: response.response_metadata?.next_cursor || undefined,
+	});
 	return {
 		ok: true,
 		channels,
 		resultCount: channels.length,
-		...(cursor ? { nextCursor: cursor } : {}),
+		...(nextCursor ? { nextCursor } : {}),
 	};
 }
 

@@ -305,6 +305,7 @@ export class TeamsIntegration extends AgentChatIntegration {
 			chat: params.chat,
 			query: params.query,
 			input: params.input,
+			abortSignal: params.abortSignal,
 		});
 	}
 
