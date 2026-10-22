@@ -258,14 +258,6 @@ export class EnterpriseCredentialsService {
 		// 3. checks
 		await this.assertCanTransfer(user, credential, destinationProject);
 
-		await this.policyEnforcementService.enforceCredentialTransfer(
-			{
-				credential: { id: credential.id, type: credential.type },
-				targetProjectId: destinationProject.id,
-			},
-			{ kind: 'user', user },
-		);
-
 		// 4. projects losing access — the move drops all their sharings
 		const affectedProjectIds = [...new Set(credential.shared.map((s) => s.projectId))];
 
