@@ -263,7 +263,7 @@ export interface AgentMemoryEntrySourceDto {
 	userName?: string;
 	/** The requesting user wrote the source message. Only set for n8n chat, preview and build. */
 	isViewer?: boolean;
-	/** Slack channel name or Linear issue identifier. */
+	/** Slack channel name with the leading `#` (e.g. `#general`), or Linear issue identifier (e.g. `ENG-123`). */
 	place?: string;
 	isDirectMessage?: boolean;
 }

@@ -98,6 +98,15 @@ describe('AgentMemoryEntriesPanel', () => {
 		expect(wrapper.find('[data-testid="agent-memory-entries-empty"]').exists()).toBe(true);
 	});
 
+	it('hides the empty state when loading fails', async () => {
+		listAgentMemoryEntries.mockRejectedValue(new Error('nope'));
+
+		const wrapper = await mountPanel();
+
+		expect(wrapper.find('[data-testid="agent-memory-entries-empty"]').exists()).toBe(false);
+		expect(showError).toHaveBeenCalled();
+	});
+
 	it('opens the full list and loads more pages', async () => {
 		listAgentMemoryEntries
 			.mockResolvedValueOnce(page([makeEntry('e1')], { total: 14 }))
@@ -125,6 +134,9 @@ describe('AgentMemoryEntriesPanel', () => {
 
 	it('removes an entry after the delete is confirmed', async () => {
 		openAgentConfirmationModal.mockResolvedValue(MODAL_CONFIRM);
+		listAgentMemoryEntries
+			.mockResolvedValueOnce(page([makeEntry('e1'), makeEntry('e2')]))
+			.mockResolvedValueOnce(page([makeEntry('e2')]));
 		const wrapper = await mountPanel();
 
 		await wrapper.findAll('[data-testid="agent-memory-entry-delete"]')[0].trigger('click');
@@ -133,6 +145,28 @@ describe('AgentMemoryEntriesPanel', () => {
 		expect(deleteAgentMemoryEntry).toHaveBeenCalledWith({}, 'project-1', 'agent-1', 'e1');
 		expect(wrapper.findAll('[data-testid="agent-memory-entry"]')).toHaveLength(1);
 		expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+	});
+
+	it('refetches the inline page after a delete to backfill it', async () => {
+		openAgentConfirmationModal.mockResolvedValue(MODAL_CONFIRM);
+		const firstPage = Array.from({ length: 10 }, (_, i) => makeEntry(`e${i + 1}`));
+		const nextPage = Array.from({ length: 10 }, (_, i) => makeEntry(`e${i + 2}`));
+		listAgentMemoryEntries
+			.mockResolvedValueOnce(page(firstPage, { total: 11 }))
+			.mockResolvedValueOnce(page(nextPage, { total: 10 }));
+		const wrapper = await mountPanel();
+
+		await wrapper.findAll('[data-testid="agent-memory-entry-delete"]')[0].trigger('click');
+		await flushPromises();
+
+		expect(listAgentMemoryEntries).toHaveBeenCalledTimes(2);
+		expect(listAgentMemoryEntries).toHaveBeenLastCalledWith({}, 'project-1', 'agent-1', {
+			limit: 10,
+			cursor: undefined,
+		});
+		const rows = wrapper.findAll('[data-testid="agent-memory-entry"]');
+		expect(rows).toHaveLength(10);
+		expect(rows[9].text()).toContain('Fact e11');
 	});
 
 	it('keeps the entry when the delete is cancelled', async () => {

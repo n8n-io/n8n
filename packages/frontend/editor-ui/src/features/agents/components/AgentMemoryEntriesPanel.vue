@@ -34,6 +34,7 @@ const entries = ref<AgentMemoryEntryDto[]>([]);
 const total = ref(0);
 const nextCursor = ref<string | null>(null);
 const loading = ref(false);
+const loadFailed = ref(false);
 const deletingId = ref<string | null>(null);
 const showAll = ref(false);
 
@@ -64,11 +65,13 @@ async function loadEntries({ append }: { append: boolean }) {
 			cursor: append ? (nextCursor.value ?? undefined) : undefined,
 		});
 		if (isStale(projectId, agentId)) return;
+		loadFailed.value = false;
 		entries.value = append ? [...entries.value, ...page.items] : page.items;
 		total.value = page.total;
 		nextCursor.value = page.nextCursor;
 	} catch (error) {
 		if (!isStale(projectId, agentId)) {
+			loadFailed.value = true;
 			showError(error, i18n.baseText('agents.builder.memory.entries.loadError' as BaseTextKey));
 		}
 	} finally {
@@ -106,6 +109,8 @@ async function onDelete(entry: AgentMemoryEntryDto) {
 			title: i18n.baseText('agents.builder.memory.entries.deleted' as BaseTextKey),
 			type: 'success',
 		});
+		// Backfill the inline page. "View all" keeps its loaded pages.
+		if (!showAll.value) await loadEntries({ append: false });
 	} catch (error) {
 		showError(error, i18n.baseText('agents.builder.memory.entries.deleteError' as BaseTextKey));
 	} finally {
@@ -215,7 +220,7 @@ watch(
 		</template>
 
 		<N8nText
-			v-if="!loading && entries.length === 0"
+			v-if="!loading && !loadFailed && entries.length === 0"
 			color="text-light"
 			data-testid="agent-memory-entries-empty"
 		>
