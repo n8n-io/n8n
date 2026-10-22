@@ -1,3 +1,11 @@
+## [2.44.6](https://github.com/n8n-io/n8n/compare/n8n@2.44.5...n8n@2.44.6) (2026-10-22)
+
+
+### Bug Fixes
+
+* **Postgres Node:** Prevent global pgtypes overwrite ([#41667](https://github.com/n8n-io/n8n/issues/41667)) ([654315e](https://github.com/n8n-io/n8n/commit/654315ee2b751212f09026d112d86b262687b181))
+
+
 ## [2.44.5](https://github.com/n8n-io/n8n/compare/n8n@2.44.4...n8n@2.44.5) (2026-10-21)
 
 
