@@ -9505,6 +9505,7 @@
 	"agents.channels.slack.managed.workspace.placeholder": "Select a workspace",
 	"agents.channels.slack.managed.settings.name": "Agent name",
 	"agents.channels.slack.settings.label": "Conversations",
+	"agents.channels.slack.settings.permissions": "Permissions",
 	"agents.channels.slack.settings.onlyRespondWhenMentioned": "Only respond when {'@'}mentioned",
 	"agents.channels.slack.settings.onlyRespondWhenMentionedHint": "Includes threads and group direct messages. Always replies to one-to-one direct messages.",
 	"agents.channels.slack.managed.settings.nameDescription": "The name displayed for this agent in Slack",

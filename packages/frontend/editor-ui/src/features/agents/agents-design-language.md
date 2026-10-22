@@ -115,10 +115,11 @@ wrap. Use the same row for reply controls, approvals, and managed app behavior.
 Keep changes local until Save. Cancel and Close discard them. Show the same
 behavior controls for managed and manual connections.
 
-Group related conversation controls in a labeled Settings Row Group, as Slack
-and WhatsApp do. Keep the credential selector outside the group. Use inset
-dividers between rows. Keep each control on the right and its full description
-on the left. Keep the approval action selector inside its setting row.
+Group related controls in labeled Settings Row Groups, as Slack and WhatsApp do.
+Put reply controls in Conversations and approval controls in Permissions. Keep
+the credential selector outside these groups. Use inset dividers between rows.
+Keep each control on the right and its full description on the left. Keep the
+approval action selector inside its setting row.
 
 ### Form spacing
 

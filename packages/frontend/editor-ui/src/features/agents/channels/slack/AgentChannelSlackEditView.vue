@@ -78,7 +78,7 @@ defineExpose({ currentSettings, validationError, loading, beforeSave });
 			@create="emit('create')"
 			@edit="emit('edit')"
 		/>
-		<section :class="$style.conversations" aria-labelledby="slack-conversations-heading">
+		<section :class="$style.section" aria-labelledby="slack-conversations-heading">
 			<N8nText id="slack-conversations-heading" tag="h3" size="medium" bold>
 				{{ i18n.baseText('agents.channels.slack.settings.label') }}
 			</N8nText>
@@ -100,7 +100,18 @@ defineExpose({ currentSettings, validationError, loading, beforeSave });
 						/>
 					</AgentFormSettingRow>
 				</N8nSettingsRow>
-				<N8nSettingsRow v-if="$slots.additionalSettings" layout="custom">
+			</N8nSettingsRowGroup>
+		</section>
+		<section
+			v-if="$slots.additionalSettings"
+			:class="$style.section"
+			aria-labelledby="slack-permissions-heading"
+		>
+			<N8nText id="slack-permissions-heading" tag="h3" size="medium" bold>
+				{{ i18n.baseText('agents.channels.slack.settings.permissions') }}
+			</N8nText>
+			<N8nSettingsRowGroup :class="$style.settingsGroup" data-testid="slack-permission-settings">
+				<N8nSettingsRow layout="custom">
 					<slot name="additionalSettings" />
 				</N8nSettingsRow>
 			</N8nSettingsRowGroup>
@@ -128,7 +139,7 @@ defineExpose({ currentSettings, validationError, loading, beforeSave });
 	}
 }
 
-.conversations {
+.section {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
