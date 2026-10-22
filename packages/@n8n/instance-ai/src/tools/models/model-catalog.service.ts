@@ -11,7 +11,7 @@ const SOURCE = 'https://models.dev/api.json';
 
 const GUIDANCE =
 	'Preliminary catalog candidates only. Credential access has not been checked. ' +
-	'When a provider credential or Gateway credits is available, use nodes(action="explore-resources") with that credential instead. ' +
+	'When a provider credential or Gateway credits is available, use workflow_builder_nodes(action="explore-resources") with that credential instead. ' +
 	'Catalog absence does not prove that a model is invalid. Catalog prices do not prove free-tier access. ' +
 	'Do not replace a working or requested model based on this list.';
 

@@ -36,10 +36,26 @@ type BlockingIssue =
 	| {
 			type: 'credential-policy-violation';
 			sourceId: string;
+			targetId?: string;
 			name?: string;
 			credentialType: string;
 			usedBy: RequirementConsumer[];
 			violations: Array<{ message: string }>;
+	  }
+	| {
+			type: 'credential-conflict';
+			kind: 'differs' | 'divergent';
+			targetId: string;
+			sourceIds: string[];
+			name: string;
+			usedBy: RequirementConsumer[];
+	  }
+	| {
+			type: 'credential-update-forbidden';
+			targetId: string;
+			sourceIds: string[];
+			name: string;
+			usedBy: RequirementConsumer[];
 	  }
 	| { type: 'variable-unresolved'; name: string; usedBy: RequirementConsumer[] }
 	| { type: 'variable-conflict'; name: string; projectId?: string; usedBy: RequirementConsumer[] }
@@ -152,7 +168,23 @@ function formatIssue(issue: unknown): string {
 		const reasons = Array.isArray(it.violations)
 			? it.violations.map(({ message }) => message).join('; ')
 			: '';
+		if (it.targetId) {
+			return `update of credential ${it.targetId} (${it.credentialType}) from package credential "${it.name ?? it.sourceId}" (${it.sourceId}) refused by policy: ${reasons}, used by ${usedBy}`;
+		}
 		return `credential "${it.name ?? it.sourceId}" (${it.sourceId}, ${it.credentialType}) refused by policy: ${reasons}, used by ${usedBy}`;
+	}
+	if (it.type === 'credential-conflict') {
+		const usedBy = formatConsumers(it.usedBy);
+		const sources = Array.isArray(it.sourceIds) ? it.sourceIds.join(', ') : '';
+		if (it.kind === 'divergent') {
+			return `credential "${it.name}" (${it.targetId}) receives different values from package credentials ${sources}, used by ${usedBy}`;
+		}
+		return `credential "${it.name}" (${it.targetId}) differs from package credential ${sources}, used by ${usedBy}`;
+	}
+	if (it.type === 'credential-update-forbidden') {
+		const usedBy = formatConsumers(it.usedBy);
+		const sources = Array.isArray(it.sourceIds) ? it.sourceIds.join(', ') : '';
+		return `credential "${it.name}" (${it.targetId}) matches package credential ${sources}, but you lack permission to update it. Use keep-existing or ask its owner. Used by ${usedBy}`;
 	}
 	if (it.type === 'variable-unresolved') {
 		const usedBy = formatConsumers(it.usedBy);

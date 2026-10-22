@@ -7,6 +7,8 @@ import BotIdle from './custom/bot-idle.svg';
 import BotPass from './custom/bot-pass.svg';
 import BotWaiting from './custom/bot-waiting.svg';
 import BotWarning from './custom/bot-warning.svg';
+import CheckCircleFilled from './custom/brand/check-circle--solid-16.svg';
+import CircleDashedFilled from './custom/brand/circle-dashed--solid-16.svg';
 import Continue from './custom/continue.svg';
 import Discord from './custom/discord.svg';
 import EmptyOutput from './custom/empty-output.svg';
@@ -14,9 +16,13 @@ import Entra from './custom/entra.svg';
 import FilledSquare from './custom/filled-square.svg';
 import Form from './custom/form.svg';
 import GripLinesVertical from './custom/grip-lines-vertical.svg';
+import GroupFilled from './custom/brand/group--solid-16.svg';
+import HourglassFilled from './custom/brand/hourglass--solid-16.svg';
 import Linear from './custom/linear.svg';
 import Lovable from './custom/lovable.svg';
 import Mcp from './custom/mcp.svg';
+import Meta from './custom/meta.svg';
+import Microsoft from './custom/microsoft.svg';
 import NodeDirty from './custom/node-dirty.svg';
 import NodeEllipsis from './custom/brand/dots-horizontal--solid-16.svg';
 import NodeExecutionError from './custom/node-execution-error.svg';
@@ -31,12 +37,16 @@ import NodeUngroup from './custom/brand/blocks--solid-16.svg';
 import NodeTrash from './custom/brand/trash--solid-16.svg';
 import NodeValidationError from './custom/brand/exclamation-triangle--solid-16.svg';
 import PopOut from './custom/brand/arrow-square-out--outline-16.svg';
+import QuestionCircleFilled from './custom/brand/question-circle--solid-16.svg';
 import Resolver from './custom/resolver.svg';
 import Retry from './custom/retry.svg';
 import RunOnce from './custom/run-once.svg';
 import Schema from './custom/brand/list-tree--outline-16.svg';
 import Slack from './custom/slack.svg';
+import SlashCircleFilled from './custom/brand/slash-circle--solid-16.svg';
+import SparklesFilled from './custom/brand/sparkle-rays--solid-16.svg';
 import Spinner from './custom/spinner.svg';
+import SpinnerFilled from './custom/brand/spinner--solid-16.svg';
 import StarFilled from './custom/brand/star--solid-16.svg';
 import StatusCanceled from './custom/status-canceled.svg';
 import StatusCompleted from './custom/status-completed.svg';
@@ -53,9 +63,14 @@ import Triangle from './custom/triangle.svg';
 import VectorSquare from './custom/vector-square.svg';
 import Webhook from './custom/webhook.svg';
 import WhatsApp from './custom/whatsapp.svg';
+import WorkflowFilled12 from './custom/brand/workflow--solid-12.svg';
+import XCircleFilled from './custom/brand/x-circle--solid-16.svg';
 import { nodeIconNames, type NodeIconName } from './node-icon-names';
 import {
 	Archive as BrandArchive,
+	ArrowBlockDown as BrandArrowBlockDown,
+	ArrowBlockUp as BrandArrowBlockUp,
+	ArrowCircleDown as BrandArrowCircleDown,
 	ArrowDown as BrandArrowDown,
 	ArrowLeft as BrandArrowLeft,
 	ArrowRight as BrandArrowRight,
@@ -106,6 +121,7 @@ import {
 	ClipboardList as BrandClipboardList,
 	Clock as BrandClock,
 	Cloud as BrandCloud,
+	CloudArrowUp as BrandCloudArrowUp,
 	Code as BrandCode,
 	Cog as BrandCog,
 	Copy as BrandCopy,
@@ -139,6 +155,8 @@ import {
 	GitBranch as BrandGitBranch,
 	Globe as BrandGlobe,
 	GraduationCap as BrandGraduationCap,
+	Graph as BrandGraph,
+	Graph12 as BrandGraph12,
 	Grid2x2 as BrandGrid2x2,
 	GripVertical as BrandGripVertical,
 	Group as BrandGroup,
@@ -148,11 +166,13 @@ import {
 	History as BrandHistory,
 	Hourglass as BrandHourglass,
 	House as BrandHouse,
+	Inbox as BrandInbox,
 	Info as BrandInfo,
 	Italic as BrandItalic,
 	KeyRound as BrandKeyRound,
 	Layers as BrandLayers,
 	LayoutTemplate as BrandLayoutTemplate,
+	Ldap as BrandLdap,
 	Lightbulb as BrandLightbulb,
 	Link as BrandLink,
 	List as BrandList,
@@ -218,8 +238,10 @@ import {
 	Tags as BrandTags,
 	Telescope as BrandTelescope,
 	Terminal as BrandTerminal,
+	TextAa as BrandTextAa,
 	ThumbsDown as BrandThumbsDown,
 	ThumbsUp as BrandThumbsUp,
+	Toggles as BrandToggles,
 	Trash2 as BrandTrash2,
 	TriangleAlert as BrandTriangleAlert,
 	Underline as BrandUnderline,
@@ -266,13 +288,13 @@ import IconLucideFileOutput from '~icons/lucide/file-output';
 import IconLucideFingerprint from '~icons/lucide/fingerprint';
 import IconLucideFlame from '~icons/lucide/flame';
 import IconLucideGem from '~icons/lucide/gem';
+import IconLucideGitlab from '~icons/lucide/gitlab';
 import IconLucideHandCoins from '~icons/lucide/hand-coins';
 import IconLucideHandshake from '~icons/lucide/handshake';
 import IconLucideHeading1 from '~icons/lucide/heading-1';
 import IconLucideHeading2 from '~icons/lucide/heading-2';
 import IconLucideHeading3 from '~icons/lucide/heading-3';
 import IconLucideImage from '~icons/lucide/image';
-import IconLucideInbox from '~icons/lucide/inbox';
 import IconLucideLanguages from '~icons/lucide/languages';
 import IconLucideLaptop from '~icons/lucide/laptop';
 import IconLucideLifeBuoy from '~icons/lucide/life-buoy';
@@ -455,7 +477,7 @@ export const deprecatedIconSet = {
 	home: BrandHouse,
 	hourglass: BrandHourglass,
 	image: IconLucideImage,
-	inbox: IconLucideInbox,
+	inbox: BrandInbox,
 	info: BrandInfo,
 	'info-circle': BrandInfo,
 	key: BrandKeyRound,
@@ -556,6 +578,17 @@ export const updatedIconSet = {
 	'status-new': StatusNew,
 	'status-unknown': StatusUnknown,
 	'status-warning': StatusWarning,
+	'check-circle-filled': CheckCircleFilled,
+	'circle-dashed-filled': CircleDashedFilled,
+	'hourglass-filled': HourglassFilled,
+	'question-circle-filled': QuestionCircleFilled,
+	'slash-circle-filled': SlashCircleFilled,
+	'spinner-filled': SpinnerFilled,
+	'x-circle-filled': XCircleFilled,
+	'group-filled': GroupFilled,
+	'sparkles-filled': SparklesFilled,
+	'workflow-filled': NodeExtract,
+	'workflow-filled-12': WorkflowFilled12,
 	'star-filled': StarFilled,
 	'vector-square': VectorSquare,
 	'continue-on-error': Continue,
@@ -575,6 +608,8 @@ export const updatedIconSet = {
 	teams: Teams,
 	azure: Azure,
 	entra: Entra,
+	meta: Meta,
+	microsoft: Microsoft,
 	spinner: Spinner,
 	'node-dirty': NodeDirty,
 	'node-ellipsis': NodeEllipsis,
@@ -601,6 +636,7 @@ export const updatedIconSet = {
 	'chevron-right-12': BrandChevronRight12,
 	'ellipsis-12': BrandEllipsis12,
 	'ellipsis-vertical-12': BrandEllipsisVertical12,
+	'graph-12': BrandGraph12,
 	'robot-12': BrandRobot12,
 	'n8n-assistant': BrandN8nAssistant,
 	briefcase: BrandBriefcase,
@@ -614,6 +650,9 @@ export const updatedIconSet = {
 	'align-right': IconLucideAlignRight,
 	archive: BrandArchive,
 	'archive-restore': IconLucideArchiveRestore,
+	'arrow-block-down': BrandArrowBlockDown,
+	'arrow-block-up': BrandArrowBlockUp,
+	'arrow-circle-down': BrandArrowCircleDown,
 	'arrow-down': BrandArrowDown,
 	'arrow-left': BrandArrowLeft,
 	'arrow-left-right': IconLucideArrowLeftRight,
@@ -667,6 +706,7 @@ export const updatedIconSet = {
 	'clipboard-list': BrandClipboardList,
 	clock: BrandClock,
 	cloud: BrandCloud,
+	'cloud-arrow-up': BrandCloudArrowUp,
 	'cloud-download': IconLucideCloudDownload,
 	code: BrandCode,
 	cog: BrandCog,
@@ -705,8 +745,10 @@ export const updatedIconSet = {
 	gem: IconLucideGem,
 	gift: BrandGift,
 	'git-branch': BrandGitBranch,
+	gitlab: IconLucideGitlab,
 	globe: BrandGlobe,
 	'graduation-cap': BrandGraduationCap,
+	graph: BrandGraph,
 	'grid-2x2': BrandGrid2x2,
 	'grip-vertical': BrandGripVertical,
 	group: BrandGroup,
@@ -722,7 +764,7 @@ export const updatedIconSet = {
 	hourglass: BrandHourglass,
 	house: BrandHouse,
 	image: IconLucideImage,
-	inbox: IconLucideInbox,
+	inbox: BrandInbox,
 	info: BrandInfo,
 	italic: BrandItalic,
 	'key-round': BrandKeyRound,
@@ -730,6 +772,7 @@ export const updatedIconSet = {
 	laptop: IconLucideLaptop,
 	layers: BrandLayers,
 	'layout-template': BrandLayoutTemplate,
+	ldap: BrandLdap,
 	'life-buoy': IconLucideLifeBuoy,
 	lightbulb: BrandLightbulb,
 	link: BrandLink,
@@ -815,6 +858,7 @@ export const updatedIconSet = {
 	tags: BrandTags,
 	telescope: BrandTelescope,
 	terminal: BrandTerminal,
+	'text-aa': BrandTextAa,
 	'thumbs-down': BrandThumbsDown,
 	'thumbs-up': BrandThumbsUp,
 	timer: IconLucideTimer,
@@ -825,6 +869,7 @@ export const updatedIconSet = {
 	'triangle-alert': BrandTriangleAlert,
 	type: IconLucideType,
 	'toggle-right': IconLucideToggleRight,
+	toggles: BrandToggles,
 	'undo-2': BrandUndo2,
 	ungroup: IconLucideUngroup,
 	unlink: BrandUnlink,

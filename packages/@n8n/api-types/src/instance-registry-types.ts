@@ -15,6 +15,10 @@ const InstanceRegistrationSchemaV1 = z
 		lastSeen: z.number(),
 		/** Worker pool label. Present (possibly empty) on worker registrations; absent on main/webhook. */
 		poolName: z.string().optional(),
+		/** Memory limit in bytes. `null` means no limit. Absent on registrations from older versions. */
+		memoryLimit: z.number().nullable().optional(),
+		/** CPU limit in CPUs. `null` means no limit. Absent on registrations from older versions. */
+		cpuLimit: z.number().nullable().optional(),
 	})
 	.passthrough();
 

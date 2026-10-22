@@ -1,5 +1,11 @@
 import type { LicenseState } from '@n8n/backend-common';
-import { type EventService, type RoleService } from '@n8n/backend-services';
+import type {
+	EventService,
+	RoleService,
+	WorkflowMutationHooksProxy,
+	WorkflowPublishGuardProxy,
+	RestrictedNodeTypesProviderProxy,
+} from '@n8n/backend-services';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type {
 	Transaction,
@@ -55,11 +61,10 @@ import type { WorkflowHookContextService } from '@/workflow-hook-context.service
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
-import type { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
-import type { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
+
 import type { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import type { NodeGroupRulesFlagGate } from '@/workflows/node-group-rules-flag-gate';
-import type { RestrictedNodeTypesProviderProxy } from '@/workflows/restricted-node-types-provider-proxy.service';
+
 import { WorkflowService } from '@/workflows/workflow.service';
 import { ALL_RULES_RELAXED, NO_RULES_RELAXED } from './node-group-rules.test-data';
 
@@ -1435,6 +1440,144 @@ describe('WorkflowService', () => {
 					}),
 					expect.anything(),
 				);
+			});
+		});
+
+		describe('redactCallerExecutions', () => {
+			beforeEach(async () => {
+				// Use the real default removal, which drops `redactCallerExecutions: true`.
+				const actual = await vi.importActual<typeof WorkflowHelpers>('@/workflow-helpers');
+				vi.mocked(WorkflowHelpers.removeDefaultValues).mockImplementation(
+					actual.removeDefaultValues,
+				);
+			});
+
+			// `mock()` does not keep `false` values in nested objects, so set the stored
+			// settings on the mock after it is made.
+			function setupStoredCallerRedaction(redactCallerExecutions?: boolean) {
+				const existingWorkflow = setupExistingWorkflow();
+				existingWorkflow.settings =
+					redactCallerExecutions === undefined ? {} : { redactCallerExecutions };
+			}
+
+			const savedSettings = () => workflowRepositoryMock.updateContent.mock.calls[0][1].settings;
+
+			test('requires disableRedaction to turn the setting off', async () => {
+				setupStoredCallerRedaction(undefined);
+				userHasScopesMock.mockResolvedValue(true);
+
+				const user = mock<User>();
+				await workflowService.update(
+					user,
+					createUpdateData({ redactCallerExecutions: false }),
+					'workflow-1',
+					{ forceSave: true },
+				);
+
+				expect(userHasScopesMock).toHaveBeenCalledWith(user, ['workflow:disableRedaction'], false, {
+					projectId: 'project-1',
+				});
+				expect(savedSettings()).toEqual(expect.objectContaining({ redactCallerExecutions: false }));
+			});
+
+			test('strips the setting when the user cannot turn it off', async () => {
+				setupStoredCallerRedaction(undefined);
+				userHasScopesMock.mockResolvedValue(false);
+
+				await workflowService.update(
+					mock<User>(),
+					createUpdateData({ redactCallerExecutions: false }),
+					'workflow-1',
+					{ forceSave: true },
+				);
+
+				expect(savedSettings()).not.toHaveProperty('redactCallerExecutions');
+			});
+
+			test('requires enableRedaction to turn the setting back on', async () => {
+				setupStoredCallerRedaction(false);
+				userHasScopesMock.mockResolvedValue(false);
+
+				const user = mock<User>();
+				await workflowService.update(
+					user,
+					createUpdateData({ redactCallerExecutions: true }),
+					'workflow-1',
+					{ forceSave: true },
+				);
+
+				expect(userHasScopesMock).toHaveBeenCalledWith(user, ['workflow:enableRedaction'], false, {
+					projectId: 'project-1',
+				});
+				expect(savedSettings()).toEqual(expect.objectContaining({ redactCallerExecutions: false }));
+			});
+
+			test('requires enableRedaction for a non-boolean value that turns the setting on', async () => {
+				setupStoredCallerRedaction(false);
+				userHasScopesMock.mockImplementation(
+					async (_user, scopes) =>
+						Array.isArray(scopes) &&
+						scopes.includes('workflow:disableRedaction') &&
+						!scopes.includes('workflow:enableRedaction'),
+				);
+
+				const user = mock<User>();
+				await workflowService.update(
+					user,
+					createUpdateData({ redactCallerExecutions: null }),
+					'workflow-1',
+					{ forceSave: true },
+				);
+
+				expect(userHasScopesMock).toHaveBeenCalledWith(user, ['workflow:enableRedaction'], false, {
+					projectId: 'project-1',
+				});
+				expect(savedSettings()).toEqual(expect.objectContaining({ redactCallerExecutions: false }));
+			});
+
+			test('clears the stored value for a non-boolean value that turns the setting on', async () => {
+				setupStoredCallerRedaction(false);
+				userHasScopesMock.mockResolvedValue(true);
+
+				await workflowService.update(
+					mock<User>(),
+					createUpdateData({ redactCallerExecutions: null }),
+					'workflow-1',
+					{ forceSave: true },
+				);
+
+				expect(savedSettings()).not.toHaveProperty('redactCallerExecutions');
+			});
+
+			test('does not check scopes or change settings when the effective value does not change', async () => {
+				// Not set means on, so sending `true` changes nothing.
+				setupStoredCallerRedaction(undefined);
+
+				const prepared = await workflowService.prepareUpdate(
+					mock<User>(),
+					createUpdateData({ redactCallerExecutions: true }),
+					'workflow-1',
+					{ forceSave: true },
+				);
+
+				expect(userHasScopesMock).not.toHaveBeenCalled();
+				expect(prepared.changes.settings).not.toHaveProperty('redactCallerExecutions');
+				expect(prepared.settingsChanged).toBe(false);
+			});
+
+			test('strips a change when the instance lacks the data-redaction license', async () => {
+				setupStoredCallerRedaction(undefined);
+				licenseStateMock.isDataRedactionLicensed.mockReturnValue(false);
+				userHasScopesMock.mockResolvedValue(true);
+
+				await workflowService.update(
+					mock<User>(),
+					createUpdateData({ redactCallerExecutions: false }),
+					'workflow-1',
+					{ forceSave: true },
+				);
+
+				expect(savedSettings()).not.toHaveProperty('redactCallerExecutions');
 			});
 		});
 	});

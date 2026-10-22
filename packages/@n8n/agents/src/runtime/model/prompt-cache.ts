@@ -1,10 +1,13 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
-import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
+import {
+	getModelPromptCachingCapability,
+	getProviderPrefix,
+	isGoogleVertexAnthropicModel,
+} from '@n8n/ai-utilities/agent-config';
 import { isRecord } from '@n8n/utils/is-record';
 import type { ModelMessage, SystemModelMessage, ToolSet } from 'ai';
 import { createHash } from 'crypto';
 
-import { isGoogleVertexAnthropicModel } from './google-vertex';
 import type { PromptCachingConfig } from '../../types/sdk/agent';
 import type { JSONObject } from '../../types/utils/json';
 
@@ -42,7 +45,10 @@ export function getEffectiveAnthropicCacheTtl(
 	config: PromptCachingConfig | undefined,
 	modelId: string,
 ): '5m' | '1h' | undefined {
-	if (!isAnthropicMessagesProvider(modelId) || !isEnabledForProvider(config, 'anthropic')) {
+	if (
+		getModelPromptCachingCapability(modelId) !== 'ttl' ||
+		!isEnabledForProvider(config, 'anthropic')
+	) {
 		return undefined;
 	}
 	return getAnthropicCacheTtl(config);
@@ -94,10 +100,14 @@ function buildAnthropicCacheControl(config: PromptCachingConfig | undefined): Pr
 	};
 }
 
-/** True when `providerOptions` carries an Anthropic `cacheControl` marker. */
-function hasAnthropicCacheControl(providerOptions: ProviderOptions | undefined): boolean {
+/** True when `providerOptions` carries an Anthropic cache marker. */
+export function hasAnthropicCacheControl(providerOptions: ProviderOptions | undefined): boolean {
 	const anthropic = providerOptions?.anthropic;
-	return isRecord(anthropic) && isRecord(anthropic.cacheControl);
+	return isRecord(anthropic) && isRecord(anthropic.cacheControl ?? anthropic.cache_control);
+}
+
+export function isAnthropicToolDeferred(tool: ToolSet[string]): boolean {
+	return tool.providerOptions?.anthropic?.deferLoading === true;
 }
 
 /**
@@ -256,7 +266,11 @@ export function applyRuntimeCacheBreakpoints(params: {
 		const staticTool = aiTools[staticToolCacheName];
 		// A caller marker on the static tool already anchors this breakpoint (and
 		// is counted in `used`); re-marking would evict the caller's cacheControl.
-		if (staticTool && !hasAnthropicCacheControl(staticTool.providerOptions)) {
+		if (
+			staticTool &&
+			!isAnthropicToolDeferred(staticTool) &&
+			!hasAnthropicCacheControl(staticTool.providerOptions)
+		) {
 			nextTools = {
 				...aiTools,
 				[staticToolCacheName]: {

@@ -4,6 +4,7 @@ import { ref } from 'vue';
 
 import {
 	describeAgentToolRestriction,
+	describeRestrictedNodeTypes,
 	getCredentialTypeRestriction,
 	getNodeTypeRestriction,
 	isNodeTypeRestricted,
@@ -121,5 +122,53 @@ describe('useNodeTypeRestriction', () => {
 		expect(describeAgentToolRestriction('Slack')).toBe(
 			"Slack is restricted. The agent can't use it.",
 		);
+	});
+
+	describe('describeRestrictedNodeTypes', () => {
+		it.each([
+			['instance' as const, ' on this instance'],
+			['project' as const, ' in this project'],
+			[undefined, ''],
+		])('describes a single restriction with scope %s', (scope, where) => {
+			expect(describeRestrictedNodeTypes([{ displayName: 'Slack', scope }])).toBe(
+				`An administrator blocked 'Slack'${where}. Contact an instance admin or replace the node to continue.`,
+			);
+		});
+
+		it('groups several restrictions by scope in a fixed order', () => {
+			const text = describeRestrictedNodeTypes([
+				{ displayName: 'Custom Node' },
+				{ displayName: 'Jira', scope: 'project' },
+				{ displayName: 'Slack', scope: 'instance' },
+				{ displayName: 'HTTP Request', scope: 'instance' },
+			]);
+
+			expect(text).toBe(
+				[
+					'An administrator blocked these nodes:',
+					"Restricted on this instance: 'Slack', 'HTTP Request'.",
+					"Restricted in this project: 'Jira'.",
+					"Restricted: 'Custom Node'.",
+					'Contact an instance admin or replace these nodes to continue.',
+				].join('\n'),
+			);
+		});
+
+		it('skips a scope group with no entries', () => {
+			const text = describeRestrictedNodeTypes([
+				{ displayName: 'Slack', scope: 'instance' },
+				{ displayName: 'Jira', scope: 'instance' },
+				{ displayName: 'Custom Node' },
+			]);
+
+			expect(text).toBe(
+				[
+					'An administrator blocked these nodes:',
+					"Restricted on this instance: 'Slack', 'Jira'.",
+					"Restricted: 'Custom Node'.",
+					'Contact an instance admin or replace these nodes to continue.',
+				].join('\n'),
+			);
+		});
 	});
 });

@@ -1,6 +1,11 @@
 import type { Scope } from '../../types.ee';
 
 export const GLOBAL_OWNER_SCOPES: Scope[] = [
+	'app:create',
+	'app:read',
+	'app:update',
+	'app:delete',
+	'app:list',
 	'agent:create',
 	'agent:read',
 	'agent:export',
@@ -71,10 +76,12 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'gitConnection:update',
 	'gitConnection:delete',
 	'gitConnection:list',
+	'gitConnection:discover',
 	'gitConnection:clone',
 	'gitConnection:push',
 	'gitConnection:manageProjects',
 	'gitConnection:pull',
+	'gitConnection:readReviews',
 	'tag:create',
 	'tag:read',
 	'tag:update',

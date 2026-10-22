@@ -161,7 +161,7 @@ export async function generateTitleFromMessage(
 export async function generateTitleAndEmojiFromMessage(
 	model: LanguageModel,
 	userMessage: string,
-	opts?: { instructions?: string; executionCounter?: AgentExecutionCounter },
+	opts?: GenerateTitleFromMessageOptions,
 ): Promise<{ title: string | null; emoji?: string; usage?: TokenUsage } | null> {
 	const trimmed = userMessage.trim();
 	if (!trimmed) return null;
@@ -180,6 +180,7 @@ ${trimmed}
 		model,
 		instructions: opts?.instructions ?? DEFAULT_TITLE_AND_EMOJI_INSTRUCTIONS,
 		messages: [{ role: 'user', content: wrappedMessage }],
+		...buildAiSdkTelemetry(opts?.telemetry, { fallbackFunctionId: 'title-generation' }),
 	});
 	incrementTokenCountFromUsage(opts?.executionCounter, result.usage);
 	const usage = toTokenUsage(result.usage, result.finalStep.providerMetadata);
@@ -231,6 +232,7 @@ export async function generateThreadTitle(opts: {
 	agentModel: ModelConfig;
 	/** Proxy/SSRF-aware `fetch` for the title model call (see {@link AgentRuntimeConfig.modelFetch}). */
 	modelFetch?: FetchFn;
+	telemetry?: BuiltTelemetry;
 	/** Messages from the current turn, used to find the first user message. */
 	turnDelta: AgentDbMessage[];
 	executionCounter?: AgentExecutionCounter;
@@ -256,9 +258,10 @@ export async function generateThreadTitle(opts: {
 		if (!userText) return;
 
 		const titleModelId = opts.titleConfig.model ?? opts.agentModel;
-		const titleModel = createModel(titleModelId, opts.modelFetch);
+		const titleModel = createModel(titleModelId, opts.modelFetch, opts.telemetry);
 		const generated = await generateTitleAndEmojiFromMessage(titleModel, userText, {
 			instructions: opts.titleConfig.instructions,
+			telemetry: opts.telemetry,
 			executionCounter: opts.executionCounter,
 		});
 		if (!generated) return;

@@ -4,6 +4,7 @@ import type {
 	AgentMessageAuthor,
 	AgentChatMessagesResponse,
 	BudgetGuardrailConfig,
+	AgentBudgetNotice,
 } from '@n8n/api-types';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -64,7 +65,7 @@ import type {
 } from './integrations/integration-tool-types';
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
-import { modelStreamStallOptions } from './model-stream-stall-options';
+import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentBackgroundJobRepository } from './repositories/agent-background-job.repository';
 import { AgentBackgroundJobService } from './background/agent-background-job.service';
@@ -126,7 +127,7 @@ export interface ExecuteForChatConfig extends ChatExecutionInput, ChatExecutionC
 	 */
 	previewChat?: boolean;
 	/** Preview chat sends the approaching-budget card. The run continues. */
-	onBudgetNotice?: () => void;
+	onBudgetNotice?: (notice: AgentBudgetNotice) => void;
 	abortSignal?: AbortSignal;
 }
 
@@ -186,7 +187,7 @@ export interface ResumeForChatConfig extends ChatExecutionCallbacks {
 	/** The chat surface this resume runs under. Undefined for integrations. */
 	chatSurface?: AgentChatSurface;
 	/** Preview chat sends the approaching-budget card. The run continues. */
-	onBudgetNotice?: () => void;
+	onBudgetNotice?: (notice: AgentBudgetNotice) => void;
 	/** Allows an automatic preview resume to overlap its predecessor's finalization. */
 	automaticPreviewContinuation?: boolean;
 	abortSignal?: AbortSignal;
@@ -250,7 +251,7 @@ export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecut
 	/** The chat surface this turn runs under. Undefined for integrations and tasks. */
 	chatSurface?: AgentChatSurface;
 	/** Preview chat sends the approaching-budget card. The run continues. */
-	onBudgetNotice?: () => void;
+	onBudgetNotice?: (notice: AgentBudgetNotice) => void;
 	abortSignal?: AbortSignal;
 	sandboxPrincipalHash: AgentSandboxPrincipalHash;
 	/** Hide the internal wake instruction from the execution transcript. */
@@ -1119,7 +1120,6 @@ export class AgentExecutionOrchestratorService {
 			backgroundJobSignal: config.backgroundJobSignal,
 			onExecutionRecorded: config.onExecutionRecorded,
 			chatSurface: config.chatSurface,
-			isWakeRun: config.isWakeRun,
 			onExecutionStarted: config.onExecutionStarted,
 			onSettled: config.isWakeRun
 				? undefined

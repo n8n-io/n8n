@@ -85,6 +85,7 @@ async function prepare(
 	};
 	let analyzedRequests: Awaited<ReturnType<typeof analyzeWorkflow>> | undefined;
 	if (workflowId) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id: workflowId });
 		// Validate access before publishing a workflow-scoped announcement.
 		const saved = await context.workflowService.get(workflowId);
 		if (!binding?.setupPending) {
@@ -167,6 +168,6 @@ async function prepare(
 		workflowId: binding.workflowId,
 		filePath,
 		message:
-			'The setup panel is ready. Continue writing the workflow source and call build-workflow with this filePath. Do not wait for connections or repeat folderPath on the build. The user can connect while you work. Their selections will be applied to the generated nodes. If the plan changes before building, call setup again with the complete remaining requirements.',
+			'The setup panel is ready. Continue writing the workflow source and call workflow_builder_build_workflow with this filePath. Do not wait for connections or repeat folderPath on the build. The user can connect while you work. Their selections will be applied to the generated nodes. If the plan changes before building, call setup again with the complete remaining requirements.',
 	};
 }

@@ -13,7 +13,12 @@ import {
 	parseWaitSuspendPayload,
 } from './n8nChatInteraction';
 
-import { CHAT_MESSAGE_STATUS, INTERACTION_EXTENSION_TOOL_NAME, TOOL_CALL_STATE } from './constants';
+import {
+	CHAT_MESSAGE_ROLE,
+	CHAT_MESSAGE_STATUS,
+	INTERACTION_EXTENSION_TOOL_NAME,
+	TOOL_CALL_STATE,
+} from './constants';
 import type { ToolCallState } from './constants';
 import { isDelegateSubAgentTool, isFailedDelegateOutput } from './delegateTool';
 import type { AgentsChatInteractionExtension } from './interactionRegistry';
@@ -252,7 +257,11 @@ export function convertDbMessages(
 		if (!msg.role || !Array.isArray(msg.content)) continue;
 
 		const role: ChatMessage['role'] | null =
-			msg.role === 'user' ? 'user' : msg.role === 'assistant' ? 'assistant' : null;
+			msg.role === CHAT_MESSAGE_ROLE.USER
+				? 'user'
+				: msg.role === CHAT_MESSAGE_ROLE.ASSISTANT
+					? 'assistant'
+					: null;
 		if (role === null) continue;
 
 		let text = '';
@@ -355,7 +364,7 @@ export function convertDbMessages(
 			...(attachments.length > 0 && { attachments }),
 			...(status && { status }),
 			...(msg.executionId ? { executionId: msg.executionId } : {}),
-			...(role === 'assistant' && msg.backgroundTaskSignal
+			...(role === CHAT_MESSAGE_ROLE.ASSISTANT && msg.backgroundTaskSignal
 				? { backgroundJobSignal: msg.backgroundTaskSignal }
 				: {}),
 			...(Number.isFinite(createdAt) && { createdAt }),
