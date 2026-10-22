@@ -93,6 +93,9 @@ const current = computed(() => props.segments[props.segments.length - 1] ?? '');
 }
 
 .separator.breadcrumbAncestor {
-	color: var(--breadcrumbs--color--separator, var(--text-color--subtler));
+	color: var(
+		--breadcrumbs--color--separator,
+		var(--breadcrumbs--color--ancestor, var(--text-color--subtler))
+	);
 }
 </style>
