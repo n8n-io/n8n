@@ -26,3 +26,11 @@ describe.each([
 		}
 	});
 });
+
+describe('expectations judge prompt', () => {
+	it('judges a negative expectation by what it states', () => {
+		expect(BUILD_EXPECTATIONS_VERIFY_PROMPT).toContain(
+			'For "The agent did not X", the expectation holds when X did not happen and fails when X happened.',
+		);
+	});
+});
