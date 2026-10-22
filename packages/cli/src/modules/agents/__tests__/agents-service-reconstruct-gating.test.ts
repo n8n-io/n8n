@@ -816,9 +816,9 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 						credential: 'vertex-cred',
 					},
 					high: {
-						model: 'azure-openai/gpt-4.1',
+						model: 'azure-openai/My-Chat',
+						modelCatalogId: 'gpt-4.1',
 						credential: 'high-cred',
-						modelDeploymentName: 'My-Chat',
 					},
 				},
 			},

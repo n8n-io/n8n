@@ -136,8 +136,8 @@ describe('AgentMemoryModelSetting', () => {
 		await wrapper.vm.$nextTick();
 		const changes = wrapper.emitted('update:config')?.[0]?.[0] as Partial<AgentJsonConfig>;
 		const worker = {
-			model: 'azure-openai/gpt-4.1',
-			modelDeploymentName: 'My-Chat',
+			model: 'azure-openai/My-Chat',
+			modelCatalogId: 'gpt-4.1',
 			credential: 'azure-credential',
 		};
 		expect(changes.memory).toMatchObject({

@@ -94,7 +94,12 @@ export class AgentModelCatalogService {
 		} catch (error) {
 			return await this.unavailableModels(provider, credentialId, error);
 		}
-		return await this.modelsFromLookup(provider, credentialId, lookup);
+		return {
+			...(await this.modelsFromLookup(provider, credentialId, lookup)),
+			...(lookup.deploymentNameRequired !== undefined
+				? { deploymentNameRequired: lookup.deploymentNameRequired }
+				: {}),
+		};
 	}
 
 	private async unverifiedCatalog(provider: string): Promise<AgentProviderModelsResponse> {

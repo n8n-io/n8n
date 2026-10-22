@@ -24,6 +24,7 @@ export interface AgentModelsForProvider {
 	models: AgentModelOption[];
 	/** The list could not be retrieved, as opposed to being genuinely empty. */
 	unavailable?: boolean;
+	deploymentNameRequired?: boolean;
 }
 
 export type AgentModelsByProvider = Partial<Record<AgentModelProvider, AgentModelsForProvider>>;

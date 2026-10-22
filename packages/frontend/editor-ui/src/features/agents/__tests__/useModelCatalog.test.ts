@@ -141,6 +141,7 @@ describe('useModelCatalog', () => {
 		mocks.getProviderModels.mockResolvedValue({
 			provider: 'azure-openai',
 			verified: true,
+			deploymentNameRequired: false,
 			models: [
 				{
 					...model('My-Chat', 'My-Chat (gpt-4.1)'),
@@ -162,6 +163,7 @@ describe('useModelCatalog', () => {
 		getModelsForPicker(credentials);
 		await flushAsync();
 		const pickerModels = getModelsForPicker(credentials);
+		expect(pickerModels['azure-openai']?.deploymentNameRequired).toBe(false);
 		expect(pickerModels['azure-openai']?.models).toMatchObject([
 			{
 				model: 'My-Chat',
@@ -180,14 +182,13 @@ describe('useModelCatalog', () => {
 		expect(
 			resolveModelSelection({ provider: 'azure-openai', model: 'My-Chat' }, pickerModels),
 		).toEqual({
-			model: 'azure-openai/gpt-4.1',
-			modelDeploymentName: 'My-Chat',
+			model: 'azure-openai/My-Chat',
+			modelCatalogId: 'gpt-4.1',
 		});
 		expect(
 			resolveModelSelection({ provider: 'azure-openai', model: 'Unknown-Chat' }, pickerModels),
 		).toEqual({
 			model: 'azure-openai/Unknown-Chat',
-			modelDeploymentName: 'Unknown-Chat',
 		});
 	});
 

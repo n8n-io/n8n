@@ -47,6 +47,7 @@ function makeCatalog(): ProviderCatalog {
 
 const modelCatalog = ref<ProviderCatalog>(makeCatalog());
 const azureModels = ref<AgentModelOption[]>([]);
+const deploymentNameRequired = ref<boolean | undefined>(undefined);
 
 // Mutable holder so tests can vary the composable's (localStorage-backed) selection state.
 const { credsHolder } = vi.hoisted(() => ({
@@ -146,7 +147,10 @@ vi.mock('../composables/useModelCatalog', () => ({
 		catalog: modelCatalog,
 		ensureLoaded: ensureLoadedMock,
 		getModelsForPicker: () => ({
-			'azure-openai': { models: azureModels.value },
+			'azure-openai': {
+				models: azureModels.value,
+				deploymentNameRequired: deploymentNameRequired.value,
+			},
 			anthropic: {
 				models: [
 					{
@@ -229,6 +233,7 @@ describe('AgentInfoPanel', () => {
 		vi.clearAllMocks();
 		modelCatalog.value = makeCatalog();
 		azureModels.value = [];
+		deploymentNameRequired.value = undefined;
 		credsHolder.value = { anthropic: 'credential-1' };
 		defaultModelHolder.value = null;
 		credentialsByIdHolder.value = {};
@@ -682,6 +687,7 @@ describe('AgentInfoPanel', () => {
 				data.oauthTokenData = { access_token: 'stored' };
 			}
 			credentialDataHolder.value[id] = { data };
+			deploymentNameRequired.value = endpointType === 'classic';
 			credsHolder.value['azure-openai'] = id;
 		}
 
@@ -694,54 +700,28 @@ describe('AgentInfoPanel', () => {
 			});
 		}
 
-		// The `azureEndpointType` watcher resolves `getCredentialData` asynchronously,
-		// so flush a tick before asserting field visibility.
 		async function flushAsync(wrapper: ReturnType<typeof mountPanel>) {
 			await wrapper.vm.$nextTick();
 			await wrapper.vm.$nextTick();
 		}
 
-		it('shows the deployment-name field for a classic API-key credential', async () => {
-			seedAzureCredential('azure-key-1', 'classic', 'azureOpenAiApi');
-			const wrapper = mountAzurePanel('azure-key-1');
-			await flushAsync(wrapper);
+		it.each([
+			['classic', 'azureOpenAiApi', true],
+			['classic', 'azureEntraCognitiveServicesOAuth2Api', true],
+			['foundry', 'azureOpenAiApi', false],
+			['foundry', 'azureEntraCognitiveServicesOAuth2Api', false],
+		] as const)(
+			'sets deployment input visibility for %s with %s',
+			async (endpointType, type, visible) => {
+				seedAzureCredential('azure-credential', endpointType, type);
+				const wrapper = mountAzurePanel('azure-credential');
+				await flushAsync(wrapper);
+				expect(wrapper.find('[data-testid="agent-deployment-name-field"]').exists()).toBe(visible);
+			},
+		);
 
-			expect(wrapper.find('[data-testid="agent-deployment-name-field"]').exists()).toBe(true);
-		});
-
-		it('shows the deployment-name field for a classic Entra credential', async () => {
-			seedAzureCredential('azure-entra-1', 'classic', 'azureEntraCognitiveServicesOAuth2Api');
-			const wrapper = mountAzurePanel('azure-entra-1');
-			await flushAsync(wrapper);
-
-			// Entra and API-key both carry `endpointType`, so they drive identical
-			// deployment-name logic.
-			expect(wrapper.find('[data-testid="agent-deployment-name-field"]').exists()).toBe(true);
-		});
-
-		it('shows the deployment-name field for a foundry API-key credential', async () => {
-			seedAzureCredential('azure-foundry-1', 'foundry', 'azureOpenAiApi');
-			const wrapper = mountAzurePanel('azure-foundry-1');
-			await flushAsync(wrapper);
-
-			expect(wrapper.find('[data-testid="agent-deployment-name-field"]').exists()).toBe(true);
-		});
-
-		it('shows the deployment-name field for a foundry Entra credential', async () => {
-			seedAzureCredential(
-				'azure-foundry-entra-1',
-				'foundry',
-				'azureEntraCognitiveServicesOAuth2Api',
-			);
-			const wrapper = mountAzurePanel('azure-foundry-entra-1');
-			await flushAsync(wrapper);
-
-			expect(wrapper.find('[data-testid="agent-deployment-name-field"]').exists()).toBe(true);
-		});
-
-		it('shows the deployment-name field when endpointType is unknown (no read access)', async () => {
-			// A shared credential without read access returns no decrypted data, so the
-			// watcher keeps 'unknown' — the field stays visible as a safe default.
+		it('hides the field for a shared Foundry credential without read access', async () => {
+			deploymentNameRequired.value = false;
 			credentialsByIdHolder.value['azure-shared-1'] = {
 				id: 'azure-shared-1',
 				name: 'Shared Azure',
@@ -752,7 +732,7 @@ describe('AgentInfoPanel', () => {
 			const wrapper = mountAzurePanel('azure-shared-1');
 			await flushAsync(wrapper);
 
-			expect(wrapper.find('[data-testid="agent-deployment-name-field"]').exists()).toBe(true);
+			expect(wrapper.find('[data-testid="agent-deployment-name-field"]').exists()).toBe(false);
 		});
 
 		it('hides the deployment-name field for the n8n Connect managed tag', async () => {
@@ -857,8 +837,9 @@ describe('AgentInfoPanel', () => {
 				await wrapper.vm.$nextTick();
 				const changes = wrapper.emitted('update:config')?.at(-1)?.[0] as Partial<AgentJsonConfig>;
 				expect(changes).toMatchObject({
-					model: 'azure-openai/gpt-4.1',
-					modelDeploymentName: 'My-Chat',
+					model: 'azure-openai/My-Chat',
+					modelCatalogId: 'gpt-4.1',
+					modelDeploymentName: '',
 					credential: 'azure-shared-1',
 				});
 				await wrapper.setProps({ config: { ...config, ...changes } });

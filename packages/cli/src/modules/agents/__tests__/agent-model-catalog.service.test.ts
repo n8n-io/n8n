@@ -530,6 +530,7 @@ describe('AgentModelCatalogService', () => {
 			lookupService.lookup.mockResolvedValue({
 				status: 'success',
 				policy: 'endpoint-only',
+				deploymentNameRequired: false,
 				models: [
 					{ name: 'my-chat (gpt-4.1)', value: 'my-chat', catalogModelId: 'gpt-4.1' },
 					{
@@ -551,6 +552,7 @@ describe('AgentModelCatalogService', () => {
 			expect(result).toEqual({
 				provider: 'azure-openai',
 				verified: true,
+				deploymentNameRequired: false,
 				models: [
 					{
 						id: 'my-chat',
@@ -580,13 +582,15 @@ describe('AgentModelCatalogService', () => {
 			);
 		});
 
-		it('falls back to the catalog list when the credential cannot list deployments', async () => {
+		it('keeps the catalog and separate deployment input for classic credentials', async () => {
 			const { service, lookupService, logger } = makeService();
 			fetchProviderCatalog.mockResolvedValue(azureCatalog);
-			// A classic credential, or a Foundry credential without a project.
-			lookupService.lookup.mockRejectedValue(
-				new UserError('The credential has no Microsoft Foundry project set'),
-			);
+			lookupService.lookup.mockResolvedValue({
+				status: 'unavailable',
+				policy: 'curated',
+				deploymentNameRequired: true,
+				error: new UserError('Only a Microsoft Foundry credential can list deployments'),
+			});
 
 			const result = await service.getProviderModels(
 				user,
@@ -596,6 +600,7 @@ describe('AgentModelCatalogService', () => {
 			);
 
 			expect(result.verified).toBe(false);
+			expect(result.deploymentNameRequired).toBe(true);
 			expect(result.models.map((m) => m.id)).toEqual(['gpt-4.1']);
 			// An expected picker state is logged quietly, not as a warn.
 			expect(logger.warn).not.toHaveBeenCalled();
@@ -610,6 +615,7 @@ describe('AgentModelCatalogService', () => {
 			lookupService.lookup.mockResolvedValue({
 				status: 'unavailable',
 				policy: 'endpoint-only',
+				deploymentNameRequired: false,
 				error: new Error('Project "missing" was not found'),
 			});
 
@@ -623,6 +629,7 @@ describe('AgentModelCatalogService', () => {
 			expect(result).toEqual({
 				provider: 'azure-openai',
 				verified: true,
+				deploymentNameRequired: false,
 				unavailable: true,
 				models: [],
 			});

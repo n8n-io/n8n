@@ -9,7 +9,6 @@ import {
 	SUB_AGENT_MAX_CHILDREN_MIN,
 } from '@n8n/api-types';
 
-import type AgentModelSelector from '../components/AgentModelSelector.vue';
 import type { AgentJsonConfig } from '../types';
 import type { AgentModelSelection } from '../model-providers';
 
@@ -594,15 +593,18 @@ describe('AgentSubAgentsPanel', () => {
 		await flushPromises();
 		const changes = wrapper.emitted('update:config')?.[0]?.[0] as Partial<AgentJsonConfig>;
 		expect(changes.subAgents?.modelsByDifficulty?.high).toEqual({
-			model: 'azure-openai/gpt-4.1',
-			modelDeploymentName: 'My-Chat',
+			model: 'azure-openai/My-Chat',
+			modelCatalogId: 'gpt-4.1',
 			credential: 'azure-credential',
 		});
 		await wrapper.setProps({ config: { ...defaultConfig, ...changes } });
-		const selector = wrapper.getComponent<InstanceType<typeof AgentModelSelector>>(
-			'[data-testid="agent-sub-agents-difficulty-high-model"]',
-		);
-		expect(selector.props('selectedModel')).toMatchObject({
+		const selector = wrapper
+			.findAllComponents({ name: 'AgentModelSelector' })
+			.find(
+				(component) =>
+					component.attributes('data-testid') === 'agent-sub-agents-difficulty-high-model',
+			);
+		expect(selector?.props('selectedModel')).toMatchObject({
 			model: 'My-Chat',
 			name: 'My-Chat (gpt-4.1)',
 		});
@@ -621,10 +623,13 @@ describe('AgentSubAgentsPanel', () => {
 				},
 			},
 		});
-		const selector = wrapper.getComponent<InstanceType<typeof AgentModelSelector>>(
-			'[data-testid="agent-sub-agents-difficulty-high-model"]',
-		);
-		expect(selector.props('selectedModel')).toMatchObject({
+		const selector = wrapper
+			.findAllComponents({ name: 'AgentModelSelector' })
+			.find(
+				(component) =>
+					component.attributes('data-testid') === 'agent-sub-agents-difficulty-high-model',
+			);
+		expect(selector?.props('selectedModel')).toMatchObject({
 			model: 'gpt-4o',
 			name: 'GPT-4o',
 		});

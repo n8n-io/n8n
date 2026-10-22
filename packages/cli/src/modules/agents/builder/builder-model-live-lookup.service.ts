@@ -19,13 +19,14 @@ import { decryptAgentCredential } from '../utils/decrypt-agent-credential';
 
 export type ModelCatalogPolicy = 'curated' | 'endpoint-only' | 'managed';
 
-export type LiveModelLookupResult =
+export type LiveModelLookupResult = (
 	| {
 			status: 'success';
 			models: ModelChoice[];
 			policy: ModelCatalogPolicy;
 	  }
-	| { status: 'unavailable'; error: unknown; policy: ModelCatalogPolicy };
+	| { status: 'unavailable'; error: unknown; policy: ModelCatalogPolicy }
+) & { deploymentNameRequired?: boolean };
 
 interface ModelLookupOptions {
 	useEvalModelCatalog?: boolean;
@@ -293,54 +294,53 @@ export class BuilderModelLiveLookupService {
 	private async discoverAzureFoundryDeployments(
 		rawData: Record<string, unknown>,
 	): Promise<LiveModelLookupResult> {
-		// The deployments-list endpoint only exists on the Foundry data plane: a
-		// Classic (kind: OpenAI) resource has no services.ai.azure.com host, and
-		// the list needs a project. Both keep the static-catalog fallback, which
-		// the caller applies when this method throws.
 		const mapped = mapCredentialForProvider('azure-openai', rawData);
 		if (mapped.endpointType !== 'foundry') {
-			throw new UserError('Only a Microsoft Foundry credential can list deployments');
+			return {
+				status: 'unavailable',
+				error: new UserError('Only a Microsoft Foundry credential can list deployments'),
+				policy: 'curated',
+				deploymentNameRequired: true,
+			};
 		}
-		const project = typeof rawData.project === 'string' ? rawData.project.trim() : '';
-		if (!project) {
-			throw new UserError('The credential has no Microsoft Foundry project set');
-		}
-		const foundryEndpoint = typeof mapped.baseURL === 'string' ? mapped.baseURL : '';
-		if (!foundryEndpoint) {
-			throw new UserError('The credential has no Microsoft Foundry endpoint set');
-		}
-
-		// The list call takes the origin of the Foundry endpoint.
-		const baseURL = new URL(foundryEndpoint).origin;
-		const { listAzureOpenAiModels } = await import('@n8n/ai-utilities/model-discovery');
 
 		try {
+			const project = typeof rawData.project === 'string' ? rawData.project.trim() : '';
+			if (!project) {
+				throw new UserError(
+					'Set a project in the Microsoft Foundry credential to list deployments',
+				);
+			}
+			const foundryEndpoint = typeof mapped.baseURL === 'string' ? mapped.baseURL : '';
+			if (!foundryEndpoint) {
+				throw new UserError('The credential has no Microsoft Foundry endpoint set');
+			}
+			const { listAzureOpenAiModels } = await import('@n8n/ai-utilities/model-discovery');
 			const headers = await this.getFoundryHeaders(rawData, mapped);
 			const models = await listAzureOpenAiModels({
-				baseURL,
+				baseURL: new URL(foundryEndpoint).origin,
 				project,
 				headers,
 				fetch: createAiProxyFetch(this.outboundHttp),
 			});
-			// A project with no chat-capable deployments reads as a broken or
-			// drifted call, mirroring the generic path's empty-list guard.
-			if (models.length === 0) {
-				throw new Error('The Azure project returned no deployments');
-			}
 
 			return {
 				status: 'success',
-				// The live deployment list is authoritative: deployment names are
-				// not catalog model ids, so the static catalog must not prune them.
 				models: models.filter(supportsFoundryChatCompletions).map((model) => ({
 					name: model.name,
 					value: model.id,
 					...(model.modelName ? { catalogModelId: model.modelName } : {}),
 				})),
 				policy: 'endpoint-only',
+				deploymentNameRequired: false,
 			};
 		} catch (error) {
-			return { status: 'unavailable', error, policy: 'endpoint-only' };
+			return {
+				status: 'unavailable',
+				error,
+				policy: 'endpoint-only',
+				deploymentNameRequired: false,
+			};
 		}
 	}
 

@@ -1335,8 +1335,8 @@ describe('buildFromJson()', () => {
 						credential: 'observer-key',
 					},
 					reflectorModel: {
-						model: 'azure-openai/gpt-4.1',
-						modelDeploymentName: 'My-Chat',
+						model: 'azure-openai/My-Chat',
+						modelCatalogId: 'gpt-4.1',
 						credential: 'reflector-key',
 					},
 				},

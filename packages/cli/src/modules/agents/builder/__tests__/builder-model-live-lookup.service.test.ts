@@ -383,6 +383,7 @@ describe('BuilderModelLiveLookupService', () => {
 			expect(result).toEqual({
 				status: 'success',
 				policy: 'endpoint-only',
+				deploymentNameRequired: false,
 				models: [
 					{ name: 'my-chat (gpt-4.1)', value: 'my-chat', catalogModelId: 'gpt-4.1' },
 					{
@@ -436,6 +437,7 @@ describe('BuilderModelLiveLookupService', () => {
 			expect(result).toEqual({
 				status: 'success',
 				policy: 'endpoint-only',
+				deploymentNameRequired: false,
 				models: [{ name: 'my-chat (gpt-4.1)', value: 'my-chat' }],
 			});
 			// The deployments list needs the Foundry audience, not the inference
@@ -481,7 +483,7 @@ describe('BuilderModelLiveLookupService', () => {
 			expect(ssrfProtectionService.validateUrl).not.toHaveBeenCalled();
 		});
 
-		it('throws a UserError when the credential has no project set', async () => {
+		it('reports a missing project without offering catalog models', async () => {
 			const { service, credentialsService, credentialsHelper } = makeService();
 			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
 				usable('cred-1', 'azureOpenAiApi'),
@@ -492,15 +494,20 @@ describe('BuilderModelLiveLookupService', () => {
 				apiKey: 'az-key',
 			});
 
-			const error = await service
-				.lookup(user, projectId, 'cred-1', 'azureOpenAiApi', 'azure-openai')
-				.catch((e: unknown) => e);
-			expect(error).toBeInstanceOf(UserError);
-			expect((error as Error).message).toBe('The credential has no Microsoft Foundry project set');
+			await expect(
+				service.lookup(user, projectId, 'cred-1', 'azureOpenAiApi', 'azure-openai'),
+			).resolves.toEqual({
+				status: 'unavailable',
+				policy: 'endpoint-only',
+				deploymentNameRequired: false,
+				error: expect.objectContaining({
+					message: 'Set a project in the Microsoft Foundry credential to list deployments',
+				}),
+			});
 			expect(listAzureOpenAiModels).not.toHaveBeenCalled();
 		});
 
-		it('throws for a classic (non-Foundry) credential', async () => {
+		it('keeps the catalog and the separate deployment input for a classic credential', async () => {
 			const { service, credentialsService, credentialsHelper } = makeService();
 			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
 				usable('cred-1', 'azureOpenAiApi'),
@@ -514,7 +521,11 @@ describe('BuilderModelLiveLookupService', () => {
 
 			await expect(
 				service.lookup(user, projectId, 'cred-1', 'azureOpenAiApi', 'azure-openai'),
-			).rejects.toThrow('Only a Microsoft Foundry credential');
+			).resolves.toMatchObject({
+				status: 'unavailable',
+				policy: 'curated',
+				deploymentNameRequired: true,
+			});
 			expect(listAzureOpenAiModels).not.toHaveBeenCalled();
 		});
 
@@ -552,7 +563,12 @@ describe('BuilderModelLiveLookupService', () => {
 				'azure-openai',
 			);
 
-			expect(result).toEqual({ status: 'unavailable', policy: 'endpoint-only', error });
+			expect(result).toEqual({
+				status: 'unavailable',
+				policy: 'endpoint-only',
+				deploymentNameRequired: false,
+				error,
+			});
 		});
 
 		it('returns an empty verified list when only Claude deployments are available', async () => {
@@ -576,10 +592,15 @@ describe('BuilderModelLiveLookupService', () => {
 			]);
 			await expect(
 				service.lookup(user, projectId, 'cred-1', 'azureOpenAiApi', 'azure-openai'),
-			).resolves.toEqual({ status: 'success', policy: 'endpoint-only', models: [] });
+			).resolves.toEqual({
+				status: 'success',
+				policy: 'endpoint-only',
+				deploymentNameRequired: false,
+				models: [],
+			});
 		});
 
-		it('preserves endpoint-only policy when the project lists no deployments', async () => {
+		it('returns an empty verified list for a project with no deployments', async () => {
 			const { service, credentialsService, credentialsHelper } = makeService();
 			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
 				usable('cred-1', 'azureOpenAiApi'),
@@ -601,9 +622,10 @@ describe('BuilderModelLiveLookupService', () => {
 			);
 
 			expect(result).toEqual({
-				status: 'unavailable',
+				status: 'success',
 				policy: 'endpoint-only',
-				error: expect.objectContaining({ message: 'The Azure project returned no deployments' }),
+				deploymentNameRequired: false,
+				models: [],
 			});
 		});
 	});

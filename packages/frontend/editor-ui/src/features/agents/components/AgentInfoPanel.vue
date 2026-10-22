@@ -148,31 +148,8 @@ const selectedAgent = computed<AgentModelOption | null>(() => {
 	};
 });
 
-// Shared credentials can hide endpointType. Keep the deployment field visible
-// and let backend validation enforce the credential's requirements.
-const azureEndpointType = ref<'classic' | 'foundry' | 'unknown'>('unknown');
-
-watch(
-	[configProvider, () => props.config?.credential],
-	async ([provider, credentialId]) => {
-		azureEndpointType.value = 'unknown';
-		if (provider !== 'azure-openai' || !credentialId || credentialId === AI_GATEWAY_MANAGED_TAG) {
-			return;
-		}
-		try {
-			const credential = await credentialsStore.getCredentialData({ id: credentialId });
-			// Ignore stale responses from rapid credential switches.
-			if (props.config?.credential !== credentialId) return;
-			const data = credential && typeof credential.data === 'object' ? credential.data : undefined;
-			if (data?.endpointType === 'classic' || data?.endpointType === 'foundry') {
-				azureEndpointType.value = data.endpointType;
-			}
-		} catch {
-			// No read access to the credential data (e.g. shared credential) —
-			// keep 'unknown' so the field stays visible.
-		}
-	},
-	{ immediate: true },
+const deploymentNameRequired = computed(
+	() => filteredAgents.value['azure-openai']?.deploymentNameRequired === true,
 );
 
 const showDeploymentName = computed(() => {
@@ -181,9 +158,7 @@ const showDeploymentName = computed(() => {
 	const credentialId = props.config?.credential;
 	if (!credentialId || credentialId === AI_GATEWAY_MANAGED_TAG) return false;
 	if (!credentialsStore.getCredentialById(credentialId)) return false;
-	// Visible for classic, foundry, and unknown endpoint types alike: a
-	// deployment name is optional on Foundry but can override the model id.
-	return true;
+	return deploymentNameRequired.value;
 });
 
 const deploymentName = ref(props.config?.modelDeploymentName ?? '');
@@ -233,14 +208,11 @@ function onDeploymentNameInput(value: string) {
 	scheduleDeploymentNameEmit(value);
 }
 
-function deploymentNameForSelection(
-	selection: AgentModelSelection,
-	resolvedDeploymentName?: string,
-): { modelDeploymentName?: string } {
+function deploymentNameForSelection(selection: AgentModelSelection): {
+	modelDeploymentName?: string;
+} {
 	if (selection.provider !== 'azure-openai') return {};
-	if (resolvedDeploymentName) return { modelDeploymentName: resolvedDeploymentName };
-	if (azureEndpointType.value === 'foundry') return { modelDeploymentName: '' };
-	return { modelDeploymentName: selection.model };
+	return { modelDeploymentName: deploymentNameRequired.value ? selection.model : '' };
 }
 
 function settingsForModel(model: string, provider: AgentModelProvider) {
@@ -276,7 +248,7 @@ function onModelChange(selection: AgentModelSelection, source: 'user' | 'auto' =
 	// can change it; any explicit user pick clears the hint.
 	defaultModelHint.value = source === 'auto';
 	cancelDeploymentNameEmit();
-	const deploymentNameChange = deploymentNameForSelection(selection, resolved.modelDeploymentName);
+	const deploymentNameChange = deploymentNameForSelection(selection);
 	if (deploymentNameChange.modelDeploymentName !== undefined) {
 		deploymentName.value = deploymentNameChange.modelDeploymentName;
 	}
@@ -284,8 +256,14 @@ function onModelChange(selection: AgentModelSelection, source: 'user' | 'auto' =
 		'update:config',
 		{
 			model: resolved.model,
+			modelCatalogId: resolved.modelCatalogId ?? '',
 			credential: credentialId,
-			...settingsForModel(resolved.model, selection.provider),
+			...settingsForModel(
+				resolved.modelCatalogId
+					? `${selection.provider}/${resolved.modelCatalogId}`
+					: resolved.model,
+				selection.provider,
+			),
 			...deploymentNameChange,
 		},
 		// A pending agent must not be persisted just because a default model was

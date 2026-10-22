@@ -9,6 +9,33 @@ const { getCachedCatalog } = vi.hoisted(() => ({ getCachedCatalog: vi.fn() }));
 vi.mock('@n8n/agents/catalog', () => ({ getCachedCatalog }));
 
 describe('resolveCredentialAwareModelConfig', () => {
+	it.each([undefined, 'gpt-4.1'])(
+		'keeps the exact Foundry deployment with catalog identity %s',
+		async (modelCatalogId) => {
+			const credentialProvider = mock<CredentialProvider>();
+			credentialProvider.resolve.mockResolvedValue({
+				endpointType: 'foundry',
+				foundryEndpoint: 'https://example.services.ai.azure.com/openai/v1',
+				apiKey: 'test-key',
+			});
+			await expect(
+				resolveCredentialAwareModelConfig(
+					'azure-openai/My-Chat',
+					'foundry',
+					credentialProvider,
+					undefined,
+					modelCatalogId,
+				),
+			).resolves.toEqual({
+				id: `azure-openai/${modelCatalogId ?? 'My-Chat'}`,
+				apiKey: 'test-key',
+				baseURL: 'https://example.services.ai.azure.com/openai/v1',
+				endpointType: 'foundry',
+				...(modelCatalogId ? { deploymentName: 'My-Chat' } : {}),
+			});
+		},
+	);
+
 	it.each([
 		{
 			model: 'google-vertex/gemini-2.5-pro',

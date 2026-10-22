@@ -14,7 +14,8 @@ const minimalConfig = {
 describe('AgentJsonConfigSchema — Azure deployments', () => {
 	it('retains deployment names on the agent, memory workers, and difficulty models', () => {
 		const worker = {
-			model: 'azure-openai/gpt-4.1',
+			model: 'azure-openai/My-Chat',
+			modelCatalogId: 'gpt-4.1',
 			credential: 'azure-credential',
 			modelDeploymentName: 'My-Chat',
 		};

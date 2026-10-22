@@ -50,16 +50,15 @@ export function sanitizeModelId(provider: string, modelId: string): string {
 export function resolveModelSelection(
 	selection: AgentModelSelection,
 	models: AgentModelsByProvider,
-): { model: string; modelDeploymentName?: string } {
+): { model: string; modelCatalogId?: string } {
 	const selected = models[selection.provider]?.models.find(
 		(model) => model.model === selection.model,
 	);
-	const catalogModelId = selected?.catalogModelId;
-	const modelId = sanitizeModelId(selection.provider, catalogModelId ?? selection.model);
+	const modelId = sanitizeModelId(selection.provider, selection.model);
 	return {
 		model: `${selection.provider}/${modelId}`,
-		...(selection.provider === 'azure-openai' && selected?.deploymentName
-			? { modelDeploymentName: selected.deploymentName }
+		...(selection.provider === 'azure-openai' && selected?.catalogModelId
+			? { modelCatalogId: selected.catalogModelId }
 			: {}),
 	};
 }

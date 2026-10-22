@@ -93,5 +93,7 @@ export interface AgentProviderModelsResponse {
 	 * empty. Lets the picker say "couldn't load" instead of "no models available".
 	 */
 	unavailable?: boolean;
+	/** Classic Azure needs a separate deployment name. Foundry selects it from the list. */
+	deploymentNameRequired?: boolean;
 	models: AgentCatalogModel[];
 }

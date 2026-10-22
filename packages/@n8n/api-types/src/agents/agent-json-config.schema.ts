@@ -40,6 +40,8 @@ const MemoryWorkerModelSchema = z.object({
 	model: AgentModelSchema,
 	credential: CredentialIdSchema,
 	modelDeploymentName: z.string().trim().optional(),
+	/** Underlying model ID for metadata. `model` holds the selected Foundry deployment. */
+	modelCatalogId: z.string().trim().optional(),
 });
 
 const ObservationalMemoryConfigSchema = z.object({
@@ -148,6 +150,8 @@ const SubAgentDifficultyModelConfigSchema = z
 		model: AgentModelSchema,
 		credential: z.string().trim(),
 		modelDeploymentName: z.string().trim().optional(),
+		/** Underlying model ID for metadata. `model` holds the selected Foundry deployment. */
+		modelCatalogId: z.string().trim().optional(),
 	})
 	.strict();
 
@@ -469,14 +473,12 @@ export const AgentJsonConfigBaseSchema = z.object({
 	model: DraftAgentModelSchema,
 	credential: z.string().optional(),
 	/**
-	 * Azure OpenAI deployments are user-named in Azure and surfaced in the URL
-	 * path on both endpoint types. The catalog model id (e.g. `gpt-4o`) is not
-	 * the deployment id, so the agent flow must capture the user's deployment
-	 * name separately. Only meaningful for the `azure-openai` provider — on
-	 * classic it is required, on Foundry it is optional and overrides the model
-	 * id. An empty string is a deliberate clear of a previously stored value.
+	 * Classic Azure requires a separate deployment name. Existing Foundry configs
+	 * can keep this optional override. An empty string clears the stored value.
 	 */
 	modelDeploymentName: z.string().trim().optional(),
+	/** Underlying model ID for metadata. `model` holds the selected Foundry deployment. */
+	modelCatalogId: z.string().trim().optional(),
 	instructions: z.string(),
 	personalisation: AgentPersonalisationConfigSchema.optional(),
 	memory: MemoryConfigSchema.optional(),
@@ -613,7 +615,7 @@ export interface AgentBudgetSpend {
 	spentUsd: number;
 }
 export type AgentModelCredentialConfig = Required<Pick<AgentJsonConfig, 'model' | 'credential'>> &
-	Pick<AgentJsonConfig, 'modelDeploymentName'>;
+	Pick<AgentJsonConfig, 'modelDeploymentName' | 'modelCatalogId'>;
 export type RunnableAgentJsonConfig = z.infer<typeof RunnableAgentJsonConfigSchema>;
 export type AgentJsonToolConfig = z.infer<typeof AgentJsonToolConfigSchema>;
 export type AgentJsonWorkflowToolConfig = Extract<AgentJsonToolConfig, { type: 'workflow' }>;

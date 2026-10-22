@@ -432,6 +432,21 @@ describe('AgentAdvancedPanel', () => {
 		expect(wrapper.emitted('update:config')).toBeUndefined();
 	});
 
+	it('uses the underlying Foundry model metadata for reasoning settings', () => {
+		modelCatalog.value['azure-openai'] = {
+			id: 'azure-openai',
+			name: 'Microsoft Foundry',
+			models: { 'gpt-4.1': { id: 'gpt-4.1', name: 'GPT-4.1', toolCall: true, reasoning: false } },
+		};
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config: makeConfig({ model: 'azure-openai/My-Chat', modelCatalogId: 'gpt-4.1' }) },
+			global: { stubs: globalStubs },
+		});
+		expect(
+			wrapper.find('[data-testid="agent-reasoning-toggle"]').attributes('disabled'),
+		).toBeDefined();
+	});
+
 	it('keeps reasoning enabled when the catalog model omits support metadata', async () => {
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: {
