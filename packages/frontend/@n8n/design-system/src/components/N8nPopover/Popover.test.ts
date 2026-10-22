@@ -118,7 +118,17 @@ describe('N8nPopover', () => {
 		it('renders the footer outside the scroll area and caps the whole card', () => {
 			const wrapper = render(N8nPopover, {
 				props: { maxHeight: '200px' },
-				global: { stubs: defaultStubs },
+				global: {
+					stubs: {
+						...defaultStubs,
+						// The default stub drops the style prop; this one forwards it so the cap is visible.
+						PopoverContent: {
+							template:
+								'<mock-popover-content v-bind="$attrs" :style="style"><slot /></mock-popover-content>',
+							props: ['open', 'side', 'sideOffset', 'class', 'style'],
+						},
+					},
+				},
 				slots: {
 					trigger: '<button />',
 					content: '<content />',
@@ -127,6 +137,7 @@ describe('N8nPopover', () => {
 			});
 
 			const footer = wrapper.getByTestId('popover-footer');
+			const card = wrapper.container.querySelector('mock-popover-content')!;
 			const viewport = wrapper.container.querySelector('[data-reka-scroll-area-viewport]')!;
 
 			expect(footer).toContainHTML('<footer-content></footer-content>');
@@ -136,6 +147,7 @@ describe('N8nPopover', () => {
 				Node.DOCUMENT_POSITION_FOLLOWING,
 			);
 			expect(viewport).not.toHaveStyle({ maxHeight: '200px' });
+			expect(card).toHaveStyle({ maxHeight: '200px' });
 		});
 
 		it('renders no footer container without the slot', () => {
