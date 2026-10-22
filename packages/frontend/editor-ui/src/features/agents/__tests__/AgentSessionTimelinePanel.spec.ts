@@ -206,7 +206,7 @@ describe('AgentSessionTimelinePanel', () => {
 			expect(wrapper.find('[data-test-id="detail-stub"]').exists()).toBe(false);
 			expect(track).toHaveBeenCalledExactlyOnceWith(
 				TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_ITEM,
-				{ agent_id: 'a1', session_id: 'session-xyz', item_type: 'agent' },
+				{ agent_id: 'a1', push_ref: 'session-xyz', item_type: 'agent' },
 			);
 		},
 	);
@@ -324,11 +324,11 @@ describe('AgentSessionTimelinePanel', () => {
 			expect(track.mock.calls).toEqual([
 				[
 					TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_ITEM,
-					{ agent_id: 'a1', session_id: 'session-xyz', item_type: 'user' },
+					{ agent_id: 'a1', push_ref: 'session-xyz', item_type: 'user' },
 				],
 				[
 					TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_ITEM,
-					{ agent_id: 'a1', session_id: 'session-xyz', item_type: 'agent' },
+					{ agent_id: 'a1', push_ref: 'session-xyz', item_type: 'agent' },
 				],
 			]);
 
@@ -502,7 +502,7 @@ describe('AgentSessionTimelinePanel', () => {
 		expect(wrapper.find('[data-test-id="table-stub"]').attributes('data-selected-index')).toBe('2');
 		expect(track).toHaveBeenCalledExactlyOnceWith(TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_ITEM, {
 			agent_id: 'a1',
-			session_id: 'session-xyz',
+			push_ref: 'session-xyz',
 			item_type: 'agent',
 		});
 	});
