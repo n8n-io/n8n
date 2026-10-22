@@ -745,7 +745,6 @@ describe('GlobalConfig', () => {
 			tracingEnabled: true,
 			tracingRecordInputs: true,
 			tracingRecordOutputs: true,
-			skillsHubEnabled: true,
 			modules: [],
 			backgroundTasksEnabled: false,
 			sandboxEnabled: false,

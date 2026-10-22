@@ -67,13 +67,6 @@ export class AgentsConfig {
 	tracingRecordOutputs: boolean = true;
 
 	/**
-	 * Agents keep their skills in the skills hub. The migration `MigrateAgentSkillsToHub`
-	 * copies the inline skills there, so this is no longer an environment variable. Tests
-	 * still turn it off to cover the inline code, which a later release removes.
-	 */
-	skillsHubEnabled: boolean = true;
-
-	/**
 	 * Comma-separated list of agent sub-feature modules to enable. Each entry
 	 * gates a specific frontend/runtime capability inside the agents module.
 	 * Add supported module tokens to `AGENTS_MODULE_NAMES`.

@@ -347,7 +347,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	USER_CREATED_SKILL: {
 		name: 'User created skill',
 		description:
-			'A skill was created from the settings page, the agent builder, n8n Assistant or an MCP client. Fires once the create commits. A copy that the server makes on its own, such as the startup copy or an agent duplicate, reports nothing.',
+			'A skill was created from the settings page, the agent builder, n8n Assistant or an MCP client. Fires once the create commits. A copy that the server makes on its own, such as the data migration or an agent duplicate, reports nothing.',
 		properties: z.object({
 			user_id: userId,
 			skill_id: skillId,

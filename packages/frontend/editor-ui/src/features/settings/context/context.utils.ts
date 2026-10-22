@@ -162,7 +162,7 @@ export function canWriteInstanceSkillScope(): boolean {
 }
 
 /**
- * The backend reads `AgentsConfig.skillsHubEnabled` once at startup and reports it here.
+ * The backend reports `SkillsHubRollout.isEnabled` here.
  * The skills routes answer 404 while it is off, so the editor follows the same value.
  */
 export function isContextSkillsEnabled(): boolean {
