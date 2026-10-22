@@ -7,6 +7,10 @@ import { Readable } from 'node:stream';
 
 import { MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import { NotFoundError } from '@n8n/errors';
+
+import type { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
+import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 
 import type { AgentKnowledgeFileStore } from '../agent-knowledge-file-store';
 import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
@@ -141,6 +145,20 @@ describe('AgentKnowledgeService', () => {
 	let logger: Mocked<Logger>;
 	let service: AgentKnowledgeService;
 
+	function makeService(
+		knowledgeAvailabilityService: KnowledgeAvailabilityService = makeKnowledgeAvailabilityService(),
+	) {
+		return new AgentKnowledgeService(
+			agentRepository,
+			agentFileRepository as unknown as AgentFileRepository,
+			agentSandboxRuntimeService,
+			agentKnowledgeMirrorService,
+			agentKnowledgeFileStore,
+			logger,
+			knowledgeAvailabilityService,
+		);
+	}
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 		agentRepository = mock<AgentRepository>();
@@ -157,14 +175,7 @@ describe('AgentKnowledgeService', () => {
 		});
 		agentKnowledgeFileStore.delete.mockResolvedValue(undefined);
 		logger = mock<Logger>();
-		service = new AgentKnowledgeService(
-			agentRepository,
-			agentFileRepository as unknown as AgentFileRepository,
-			agentSandboxRuntimeService,
-			agentKnowledgeMirrorService,
-			agentKnowledgeFileStore,
-			logger,
-		);
+		service = makeService();
 		loadMock.mockResolvedValue([{ pageContent: 'extracted pdf text' }]);
 	});
 
@@ -476,5 +487,56 @@ describe('AgentKnowledgeService', () => {
 			agentId,
 		);
 		expect(agentSandboxRuntimeService.destroyKnowledgeSandbox).not.toHaveBeenCalled();
+	});
+
+	describe('with the knowledge module inactive', () => {
+		beforeEach(() => {
+			service = makeService(makeKnowledgeAvailabilityService({ isKnowledgeActive: false }));
+			agentRepository.findByIdAndProjectId.mockResolvedValue({
+				id: agentId,
+				projectId,
+				activeVersionId: null,
+			} as never);
+		});
+
+		it.each([
+			[
+				'uploadFiles',
+				async () => await service.uploadFiles(agentId, projectId, [makeMulterFile()]),
+			],
+			['listFiles', async () => await service.listFiles(agentId, projectId)],
+			['warmKnowledgeSandbox', async () => await service.warmKnowledgeSandbox(agentId, projectId)],
+			['deleteFile', async () => await service.deleteFile(agentId, projectId, 'file-1')],
+		])('rejects %s before touching the repository', async (_name, call) => {
+			await agentFileRepository.save(makeAgentFile({ id: 'file-1' }));
+
+			await expect(call()).rejects.toThrow(NotFoundError);
+
+			expect(await agentFileRepository.findByAgentId(agentId)).toHaveLength(1);
+			expect(agentKnowledgeFileStore.write).not.toHaveBeenCalled();
+			expect(agentKnowledgeFileStore.delete).not.toHaveBeenCalled();
+			expect(agentSandboxRuntimeService.warmKnowledgeSandbox).not.toHaveBeenCalled();
+		});
+
+		it('still deletes all files and their blobs on agent deletion', async () => {
+			const file = makeAgentFile({ id: 'file-1' });
+			await agentFileRepository.save(file);
+
+			await service.deleteAllFilesForAgent(projectId, agentId);
+
+			expect(await agentFileRepository.findByAgentId(agentId)).toHaveLength(0);
+			expect(agentKnowledgeFileStore.delete).toHaveBeenCalledWith([
+				{ storedAt: file.storedAt, storageKey: file.storageKey },
+			]);
+		});
+
+		it('still destroys the sandbox, which needs no module entity', async () => {
+			await service.destroyKnowledgeSandbox(projectId, agentId);
+
+			expect(agentSandboxRuntimeService.destroyKnowledgeSandbox).toHaveBeenCalledWith(
+				projectId,
+				agentId,
+			);
+		});
 	});
 });

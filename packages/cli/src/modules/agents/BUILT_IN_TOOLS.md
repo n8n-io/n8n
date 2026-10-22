@@ -81,7 +81,7 @@ Source: [`packages/@n8n/agents/src/workspace/tools/`](../../../../@n8n/agents/sr
 ### Knowledge retrieval tools
 
 - Purpose: `find_file` finds uploaded knowledge files by filename pattern. `search_text` searches the file contents with a regex. `read_file` reads one file.
-- Attach condition: The sandbox is on, the agent is not an inline agent, and the agent has knowledge files.
+- Attach condition: The sandbox is on, the `knowledge` module is active (`KnowledgeAvailabilityService` in the knowledge module answers this), the agent is not an inline agent, and the agent has knowledge files.
 - Source: [`tools/knowledge/search-knowledge.tool.ts`](./tools/knowledge/search-knowledge.tool.ts).
 
 ## Tools attached to top-level agents only

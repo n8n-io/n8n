@@ -16,21 +16,21 @@ export class PublicApiRateLimitConfig {
 
 	/** Write requests for one API key across all endpoints. */
 	@Env('N8N_PUBLIC_API_RATE_LIMIT_GLOBAL_WRITE_LIMIT', nonnegativeIntSchema)
-	globalWriteLimit: number = 300;
+	globalWriteLimit: number = 600;
 
 	@Env('N8N_PUBLIC_API_RATE_LIMIT_GLOBAL_WRITE_WINDOW_SECONDS', positiveIntSchema)
 	globalWriteWindowSeconds: number = 60;
 
 	/** Read requests for one API key on one endpoint. */
 	@Env('N8N_PUBLIC_API_RATE_LIMIT_ENDPOINT_READ_LIMIT', nonnegativeIntSchema)
-	endpointReadLimit: number = 600;
+	endpointReadLimit: number = 1_000;
 
 	@Env('N8N_PUBLIC_API_RATE_LIMIT_ENDPOINT_READ_WINDOW_SECONDS', positiveIntSchema)
 	endpointReadWindowSeconds: number = 60;
 
 	/** Write requests for one API key on one endpoint. */
 	@Env('N8N_PUBLIC_API_RATE_LIMIT_ENDPOINT_WRITE_LIMIT', nonnegativeIntSchema)
-	endpointWriteLimit: number = 200;
+	endpointWriteLimit: number = 500;
 
 	@Env('N8N_PUBLIC_API_RATE_LIMIT_ENDPOINT_WRITE_WINDOW_SECONDS', positiveIntSchema)
 	endpointWriteWindowSeconds: number = 60;

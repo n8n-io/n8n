@@ -105,7 +105,7 @@ describe('useAgentMcpDiscovery', () => {
 
 		await expect(discovery.fetchCatalog()).resolves.toEqual([server]);
 		await discovery.preloadCredentials();
-		await discovery.discoverRegistry('github', 'credential-1');
+		await discovery.discoverRegistry({ slug: 'github', credentialId: 'credential-1' });
 
 		expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(false);
 		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({

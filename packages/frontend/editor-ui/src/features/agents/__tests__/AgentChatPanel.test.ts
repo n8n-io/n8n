@@ -348,6 +348,7 @@ vi.mock('../composables/useAgentTelemetry', () => ({
 	useAgentTelemetry: () => ({
 		trackSubmittedMessage: trackSubmittedMessageMock,
 		trackSentMessageToN8nChatAgent: trackSentMessageToN8nChatAgentMock,
+		trackClickedNewTestChat: vi.fn(),
 	}),
 }));
 
@@ -437,6 +438,45 @@ describe('AgentChatPanel', () => {
 			},
 		});
 	}
+
+	it('submits a message when Web Crypto is unavailable', async () => {
+		const actual = await vi.importActual<typeof import('../composables/agentTelemetry.utils')>(
+			'../composables/agentTelemetry.utils',
+		);
+		vi.mocked(buildAgentConfigFingerprint).mockImplementationOnce(
+			actual.buildAgentConfigFingerprint,
+		);
+		vi.stubGlobal('crypto', { getRandomValues: crypto.getRandomValues.bind(crypto) });
+		try {
+			sendMessageMock.mockResolvedValueOnce('sent');
+			const wrapper = mountPanel();
+			const input = wrapper.findComponent({ name: 'ChatInputBase' });
+			input.vm.$emit('update:modelValue', 'Hello');
+			await nextTick();
+			input.vm.$emit('submit');
+			await flushPromises();
+
+			expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith(
+				'Hello',
+				undefined,
+				expect.any(Function),
+				undefined,
+			);
+			sendMessageMock.mock.lastCall?.[2]?.();
+			await nextTick();
+			expect(input.props('modelValue')).toBe('');
+			expect(trackSubmittedMessageMock).toHaveBeenCalledWith({
+				agentId: 'a1',
+				status: 'draft',
+				agentConfig: expect.objectContaining({
+					instructions: 'Help.',
+					config_version: expect.stringMatching(/^[0-9a-f]{16}$/),
+				}),
+			});
+		} finally {
+			vi.unstubAllGlobals();
+		}
+	});
 
 	describe('resend after an error', () => {
 		const failedMessages = (attachments?: ChatMessage['attachments']): ChatMessage[] => [

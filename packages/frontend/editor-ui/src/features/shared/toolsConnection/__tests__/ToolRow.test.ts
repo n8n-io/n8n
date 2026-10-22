@@ -163,6 +163,33 @@ describe('ToolRow', () => {
 		expect(getByTestId('tool-credential-picker')).toBeTruthy();
 	});
 
+	it('shows the credential picker for a Gateway credits server when the user has no credential', () => {
+		const { getByTestId, queryByTestId } = renderRow({
+			props: {
+				item: {
+					...baseMcp,
+					credentials: [
+						{ authType: 'n8nConnectFirecrawlMcpAiGatewayApi', aiGateway: true },
+						{ authType: 'firecrawlMcpOAuth2Api' },
+					],
+				},
+			},
+			pinia: createTestingPinia(),
+			global: {
+				provide: {
+					[TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY as symbol]: {
+						getCredentialsByType: () => [],
+						openNewCredential: vi.fn(),
+						openExistingCredential: vi.fn(),
+					},
+				},
+			},
+		});
+
+		expect(getByTestId('tool-credential-picker')).toBeTruthy();
+		expect(queryByTestId('tools-connection-row-connect')).toBeNull();
+	});
+
 	it('shows a static connected marker when the item does not use credentials', () => {
 		const item = { ...connectedMcp, credentials: undefined };
 		const { getByTestId, queryByTestId } = renderWithAdapter(item);

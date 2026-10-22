@@ -27,8 +27,8 @@ Postgres and SQLite both receive the table.
    share one namespace. Two users may send the same key.
 2. The row stores the fingerprint and the status (`processing` or
    `completed`). It also stores the response status and the response body.
-   Those two columns stay empty while the handler runs. The stored response
-   includes a 4xx or a 5xx. We redact sensitive values in the response body
+   Those two columns stay empty while the handler runs. The stored response is
+   a successful response. We redact sensitive values in the response body
    before we store it. We then encrypt that body. The column holds
    ciphertext. Replay decrypts the stored body and returns it. The first
    response and the replay are that same body. The replay rules are in

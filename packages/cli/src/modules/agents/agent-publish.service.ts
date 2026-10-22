@@ -34,6 +34,7 @@ import { AgentCustomToolsService } from './agent-custom-tools.service';
 import { buildAgentCapabilityTelemetryProperties } from './agent-telemetry';
 import {
 	diffAgentConfigParts,
+	diffAgentConfigSettings,
 	type AgentActor,
 	type AgentMutationTelemetryContext,
 } from './agent-modification-telemetry.service';
@@ -488,6 +489,7 @@ export class AgentPublishService {
 						(!this.agentSkillRefs.usesSkillsHub && !isEqual(previousSkills, agent.skills ?? {})),
 					tasks: tasksChanged,
 				}),
+				changedSettings: diffAgentConfigSettings(previousSchema, nextSchema),
 			},
 			context.pushRef,
 			null,

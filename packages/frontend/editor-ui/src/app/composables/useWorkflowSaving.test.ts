@@ -1762,6 +1762,39 @@ describe('useWorkflowSaving', () => {
 			}
 		});
 
+		it('should not retry autosave when the backend rejects deprecated nodes', async () => {
+			const { workflow } = prepareHydratedWorkflow('w-deprecated-nodes');
+			mockedStore(useSettingsStore).isAutosaveEnabled = true;
+
+			const violation = {
+				kind: 'node-type-deprecated',
+				checkId: 'deprecated-nodes',
+				message:
+					'Cannot use a "n8n-nodes-base.function" node ("Function"): this node type is deprecated.',
+				subject: 'n8n-nodes-base.function',
+				subjectType: 'nodeType',
+			};
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockRejectedValue(
+				Object.assign(new Error(violation.message), {
+					httpStatusCode: 400,
+					meta: { violations: [violation] },
+				}),
+			);
+
+			const saveStore = useWorkflowSaveStore();
+			const { saveCurrentWorkflow } = useWorkflowSaving({ router, ownsAutoSave: true });
+
+			expect(await saveCurrentWorkflow({ id: workflow.id }, true, false, true)).toBe(false);
+			expect(saveStore.retryCount).toBe(0);
+			expect(saveStore.isRetrying).toBe(false);
+			expect(showPolicyViolationToastSpy).toHaveBeenCalledWith(
+				[violation],
+				expect.any(String),
+				'save',
+				expect.anything(),
+			);
+		});
+
 		it('should not schedule autosave when network is offline', () => {
 			prepareHydratedWorkflow('w-offline');
 			const saveStore = useWorkflowSaveStore();

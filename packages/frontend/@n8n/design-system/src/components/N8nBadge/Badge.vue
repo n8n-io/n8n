@@ -98,7 +98,7 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 
 	border-radius: var(--n8n-badge--radius);
 	gap: var(--n8n-badge--gap);
-	background-color: var(--n8n-badge--background);
+	background: var(--n8n-badge--background);
 	border: 1px solid var(--n8n-badge--border-color);
 	height: var(--n8n-badge--height);
 	padding-inline: var(--n8n-badge--padding-inline-start) var(--n8n-badge--padding-inline-end);
@@ -178,7 +178,8 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 
 .primary {
 	--n8n-badge--background: var(--background--brand);
-	--n8n-badge--text-color: var(--color--neutral-white);
+	--n8n-badge--text-color: var(--color--neutral-black);
+	box-shadow: var(--shadow--xs);
 }
 
 .secondary {

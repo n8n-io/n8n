@@ -51,6 +51,17 @@ runs:
           console.log(process.version, 'pointer compression: on');
         "
 
+    - name: Check native bindings
+      if: steps.cache-check.outputs.cache-hit != 'true' && inputs.build-variant == 'pc'
+      shell: bash
+      run: |
+        docker run --rm --entrypoint node \
+          -v "$GITHUB_WORKSPACE/.github/scripts/docker/kafka-native-smoke-check.mjs:/tmp/kafka-check.mjs:ro" \
+          n8nio/n8n:local /tmp/kafka-check.mjs
+        docker run --rm --entrypoint node \
+          -v "$GITHUB_WORKSPACE/.github/scripts/docker/edit-image-native-smoke-check.mjs:/tmp/edit-image-check.mjs:ro" \
+          n8nio/n8n:local /tmp/edit-image-check.mjs
+
     - name: Report tarball sizes
       if: steps.cache-check.outputs.cache-hit != 'true'
       shell: bash

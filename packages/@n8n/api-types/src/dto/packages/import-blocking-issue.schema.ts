@@ -108,7 +108,7 @@ const workflowFolderConflictIssueSchema = z
 			.string()
 			.nullable()
 			.openapi(workflowFolderConflictFieldDocs.existingParentFolderId),
-		targetFolderId: z.string().openapi(workflowFolderConflictFieldDocs.targetFolderId),
+		targetFolderId: z.string().nullable().openapi(workflowFolderConflictFieldDocs.targetFolderId),
 		name: z.string(),
 	})
 	.openapi(workflowFolderConflictIssueOpenApi);
@@ -386,6 +386,7 @@ const credentialPolicyViolationIssueSchema = z
 	.object({
 		type: z.literal('credential-policy-violation'),
 		sourceId: z.string().openapi(credentialPolicyViolationFieldDocs.sourceId),
+		targetId: z.string().optional().openapi(credentialPolicyViolationFieldDocs.targetId),
 		name: z.string().optional(),
 		credentialType: z.string(),
 		usedBy: z
