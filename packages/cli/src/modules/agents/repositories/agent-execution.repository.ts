@@ -21,7 +21,13 @@ type AgentExecutionFinalizationValues = Pick<
 	Partial<
 		Pick<
 			AgentExecution,
-			'model' | 'promptTokens' | 'completionTokens' | 'totalTokens' | 'hitlStatus'
+			| 'model'
+			| 'promptTokens'
+			| 'completionTokens'
+			| 'totalTokens'
+			| 'hitlStatus'
+			| 'finishReason'
+			| 'guardrailCode'
 		>
 	>;
 

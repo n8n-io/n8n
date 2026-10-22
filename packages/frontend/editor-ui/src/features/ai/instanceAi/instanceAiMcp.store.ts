@@ -10,6 +10,7 @@ import type {
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { i18n } from '@n8n/i18n';
+import { isMcpAiGatewayAuthentication } from 'n8n-workflow';
 import {
 	listenForCredentialChanges,
 	useCredentialsStore,
@@ -94,7 +95,16 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 		isLoadingCatalog.value = true;
 		try {
 			const servers = await fetchMcpRegistryCatalog(rootStore.restApiContext);
-			catalog.value = servers.filter((server) => !server.isTemplated);
+			// Instance AI connects with a stored credential only, so it never offers Gateway credits.
+			catalog.value = servers
+				.filter((server) => !server.isTemplated)
+				.map((server) => ({
+					...server,
+					credentials: server.credentials.filter(
+						({ credentialType }) => !isMcpAiGatewayAuthentication(credentialType),
+					),
+				}))
+				.filter((server) => server.credentials.length > 0);
 		} catch (error) {
 			catalogLoad = null;
 			toast.showError(error, i18n.baseText('instanceAi.mcp.error.fetchCatalog'));
