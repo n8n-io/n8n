@@ -203,8 +203,8 @@ export class WorkflowPackageImporter {
 				context,
 				imported: content,
 				credentialRequest: plannedCredentialRequest,
-				dataTableRequest,
-				variableRequest,
+				dataTableRequest: plan.input.dataTableRequest,
+				variableRequest: plan.input.variableRequest,
 				tagRequest,
 			},
 		];

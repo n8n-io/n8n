@@ -182,6 +182,14 @@ it('seeds bundled credential expressions after planning and excludes skipped Age
 				usedBy: [{ kind: 'agent', id: 'research_source' }],
 			},
 		],
+		dataTables: [
+			{
+				id: 'skipped-table',
+				name: 'Skipped table',
+				usedBy: [{ kind: 'agent', id: 'research_source' }],
+			},
+		],
+		variables: [{ name: 'SKIPPED_VARIABLE', usedBy: [{ kind: 'agent', id: 'research_source' }] }],
 	};
 	fixture.files['credentials/model/credential.json'] = credential;
 	await agents.save({ id: 'research_source', name: 'Existing', projectId: project.id });
@@ -209,6 +217,7 @@ it('seeds bundled credential expressions after planning and excludes skipped Age
 		stubbed: [],
 		seeded: [credential.id],
 		incomplete: [],
+		updated: [],
 	});
 	const stored = await Container.get(CredentialsRepository).findOneByOrFail({
 		id: result.bindings.credentials[credential.id],
@@ -218,6 +227,8 @@ it('seeds bundled credential expressions after planning and excludes skipped Age
 	).toEqual(credential.data);
 	expect(await Container.get(CredentialsRepository).count()).toBe(1);
 	expect(scopes[0].credentialRequest.requirements?.map(({ id }) => id)).toEqual([credential.id]);
+	expect(scopes[0].dataTableRequest.requirements).toEqual([]);
+	expect(scopes[0].variableRequest.requirements).toEqual([]);
 });
 
 it('plans cycles, typed bindings and task IDs without changing definitions or destination records', async () => {
@@ -624,7 +635,7 @@ it.each(['skills', 'self-reference'] as const)(
 );
 
 it.each(['create', 'update', 'publish', 'unpublish'] as const)(
-	'requires the %s action scope in addition to read and workflow import',
+	'requires the Agent %s action scope for project roles and API keys',
 	async (action) => {
 		const member = await createMember();
 		const required = `agent:${action}`;
