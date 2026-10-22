@@ -117,7 +117,7 @@ const initialNode = computed<INode | null>(() =>
 				: null,
 );
 
-const { isRestricted, restrictionScope } = useNodeTypeRestriction(() => initialNode.value?.type);
+const { isRestricted, restriction } = useNodeTypeRestriction(() => initialNode.value?.type);
 const restrictedToolName = computed(() =>
 	initialNode.value
 		? (nodeTypesStore.getNodeType(initialNode.value.type)?.displayName ?? initialNode.value.type)
@@ -337,7 +337,7 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 		<RestrictedToolCallout
 			v-if="isRestricted"
 			:node-type-name="restrictedToolName"
-			:scope="restrictionScope"
+			:restriction="restriction"
 		/>
 		<N8nText
 			v-if="submitCount && !canSave"
