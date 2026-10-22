@@ -1,10 +1,10 @@
 import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
-import { diag, trace } from '@opentelemetry/api';
+import { W3CTraceContextPropagator } from '@opentelemetry/core';
 import { OTLPTraceExporter as OTLPGrpcTraceExporter } from '@opentelemetry/exporter-trace-otlp-grpc';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import { BasicTracerProvider } from '@opentelemetry/sdk-trace-base';
-import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
+import { TraceIdRatioBasedSampler } from '@opentelemetry/sdk-trace-node';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
@@ -13,8 +13,8 @@ import type { OtelConfig } from '../otel.config';
 import { ATTR, OTEL_TEST_SPAN_NAME } from '../otel.constants';
 import { OtelService } from '../otel.service';
 
-const shutdown = vi.fn();
-const providerGetTracer = vi.fn();
+import type { OtelSdk } from '@/observability/otel-sdk';
+import { TRACING_OFF } from '@/observability/swappable-pipeline';
 
 // The connectivity-check fetch, obtained via outboundHttp.transport().asCustomFetch().
 // checkEndpointReachability ignores the response and only catches network errors.
@@ -141,15 +141,6 @@ vi.mock('@opentelemetry/sdk-trace-node', () => ({
 	TraceIdRatioBasedSampler: vi.fn().mockImplementation(function () {
 		return {};
 	}),
-	NodeTracerProvider: vi.fn().mockImplementation(function () {
-		return { shutdown, getTracer: providerGetTracer };
-	}),
-}));
-
-vi.mock('@opentelemetry/api', async () => ({
-	...(await vi.importActual<typeof import('@opentelemetry/api')>('@opentelemetry/api')),
-	DiagLogLevel: { WARN: 'WARN' },
-	diag: { setLogger: vi.fn() },
 }));
 
 const enabledSettings: OtelConfig = {
@@ -184,6 +175,7 @@ describe('OtelService', () => {
 	let otelSettingsService: ReturnType<typeof mock<OtelSettingsService>>;
 	let instanceSettings: ReturnType<typeof mock<InstanceSettings>>;
 	let logger: ReturnType<typeof mock<Logger>>;
+	let otelSdk: ReturnType<typeof mock<OtelSdk>>;
 	let service: OtelService;
 
 	beforeEach(() => {
@@ -196,25 +188,50 @@ describe('OtelService', () => {
 		waitForReady.mockImplementation((_deadline: number, callback: (error?: Error) => void) =>
 			callback(),
 		);
-		service = new OtelService(otelSettingsService, instanceSettings, logger, outboundHttp);
+		otelSdk = mock<OtelSdk>({ isRunning: true });
+		otelSdk.apply.mockResolvedValue([]);
+		service = new OtelService(otelSettingsService, instanceSettings, logger, outboundHttp, otelSdk);
 	});
 	afterEach(() => vi.restoreAllMocks());
 
 	describe('init', () => {
-		it('does not start a tracer provider when enabled is false', async () => {
+		it('applies the no-op parts and builds no exporter when OTel is off', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue(disabledSettings);
 
 			await service.init();
 
-			expect(NodeTracerProvider).not.toHaveBeenCalled();
+			expect(otelSdk.apply).toHaveBeenCalledWith(TRACING_OFF);
+			expect(OTLPTraceExporter).not.toHaveBeenCalled();
 		});
 
-		it('starts a tracer provider when enabled is true', async () => {
-			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
+		it('applies an export pipeline with the saved sample rate when OTel is on', async () => {
+			otelSettingsService.loadSettings.mockResolvedValue({
+				...enabledSettings,
+				tracesSampleRate: 0.25,
+			});
 
 			await service.init();
 
-			expect(NodeTracerProvider).toHaveBeenCalledTimes(1);
+			expect(TraceIdRatioBasedSampler).toHaveBeenCalledWith(0.25);
+			expect(otelSdk.apply).toHaveBeenCalledWith(
+				expect.objectContaining({
+					spanProcessors: [expect.anything(), expect.anything()],
+					propagator: expect.any(W3CTraceContextPropagator),
+				}),
+			);
+		});
+
+		it('applies no outbound propagator when outbound trace headers are off', async () => {
+			otelSettingsService.loadSettings.mockResolvedValue({
+				...enabledSettings,
+				injectOutbound: false,
+			});
+
+			await service.init();
+
+			expect(otelSdk.apply).toHaveBeenCalledWith(
+				expect.objectContaining({ propagator: TRACING_OFF.propagator }),
+			);
 		});
 
 		it('builds the HTTP exporter with the traces path and no gRPC exporter', async () => {
@@ -234,6 +251,26 @@ describe('OtelService', () => {
 			expect(OTLPGrpcTraceExporter).not.toHaveBeenCalled();
 		});
 
+		it('builds no exporter and sends no probe when the OpenTelemetry setup does not run', async () => {
+			const stoppedSdk = mock<OtelSdk>({ isRunning: false });
+			service = new OtelService(
+				otelSettingsService,
+				instanceSettings,
+				logger,
+				outboundHttp,
+				stoppedSdk,
+			);
+			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
+
+			await service.init();
+			await flushPromises();
+
+			expect(otelSettingsService.loadSettings).toHaveBeenCalledTimes(1);
+			expect(OTLPTraceExporter).not.toHaveBeenCalled();
+			expect(fetchMock).not.toHaveBeenCalled();
+			expect(stoppedSdk.apply).not.toHaveBeenCalled();
+		});
+
 		it('logs connectivity failure and still finishes startup', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
 			fetchMock.mockRejectedValue(new Error('connect ECONNREFUSED'));
@@ -241,7 +278,7 @@ describe('OtelService', () => {
 			await service.init();
 			await flushPromises();
 
-			expect(NodeTracerProvider).toHaveBeenCalledTimes(1);
+			expect(otelSdk.apply).toHaveBeenCalledTimes(1);
 			expect(logger.error).toHaveBeenCalledWith(
 				'Failed to connect to OpenTelemetry OTLP endpoint during startup',
 				expect.objectContaining({ endpoint: 'http://localhost:4318/v1/traces' }),
@@ -259,7 +296,7 @@ describe('OtelService', () => {
 				expect.objectContaining({ url: 'http://collector.example.com:4317' }),
 			);
 			expect(OTLPTraceExporter).not.toHaveBeenCalled();
-			expect(NodeTracerProvider).toHaveBeenCalledTimes(1);
+			expect(otelSdk.apply).toHaveBeenCalledTimes(1);
 		});
 
 		it('lowercases only the endpoint scheme before it reaches the exporter', async () => {
@@ -408,7 +445,7 @@ describe('OtelService', () => {
 			await service.init();
 			await flushPromises();
 
-			expect(NodeTracerProvider).toHaveBeenCalledTimes(1);
+			expect(otelSdk.apply).toHaveBeenCalledTimes(1);
 			expect(logger.error).toHaveBeenCalledTimes(1);
 			expect(logger.error).toHaveBeenCalledWith(
 				'Failed to connect to OpenTelemetry OTLP endpoint during startup',
@@ -427,7 +464,7 @@ describe('OtelService', () => {
 			await flushPromises();
 
 			expect(newClient).not.toHaveBeenCalled();
-			expect(NodeTracerProvider).toHaveBeenCalledTimes(1);
+			expect(otelSdk.apply).toHaveBeenCalledTimes(1);
 			expect(logger.error).toHaveBeenCalledWith(
 				'Failed to connect to OpenTelemetry OTLP endpoint during startup',
 				expect.objectContaining({ endpoint: 'not a valid endpoint' }),
@@ -435,35 +472,32 @@ describe('OtelService', () => {
 		});
 	});
 
-	describe('restart', () => {
-		it('shuts down the existing tracer provider then reloads settings and starts a new one', async () => {
+	describe('applySavedSettings', () => {
+		it('reloads the settings and applies them again', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
-
 			await service.init();
 			vi.clearAllMocks();
 			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
 
-			await service.restart();
+			await service.applySavedSettings();
 
-			expect(shutdown).toHaveBeenCalledTimes(1);
 			expect(otelSettingsService.loadSettings).toHaveBeenCalledTimes(1);
-			expect(NodeTracerProvider).toHaveBeenCalledTimes(1);
+			expect(otelSdk.apply).toHaveBeenCalledTimes(1);
+			expect(otelSdk.apply).not.toHaveBeenCalledWith(TRACING_OFF);
 		});
 
-		it('does not start a tracer provider after restart when reloaded settings have enabled=false', async () => {
+		it('applies the no-op parts when a save turns OTel off', async () => {
 			otelSettingsService.loadSettings.mockResolvedValueOnce(enabledSettings);
 			otelSettingsService.loadSettings.mockResolvedValueOnce(disabledSettings);
-
 			await service.init();
-			vi.clearAllMocks();
 
-			await service.restart();
+			await service.applySavedSettings();
 
-			expect(NodeTracerProvider).not.toHaveBeenCalled();
+			expect(otelSdk.apply).toHaveBeenLastCalledWith(TRACING_OFF);
 		});
 	});
 
-	describe('tracer provider startup failure', () => {
+	describe('exporter build failure', () => {
 		const exporterFailure = () => {
 			vi.mocked(OTLPTraceExporter).mockImplementationOnce(function () {
 				throw new Error('exporter unavailable');
@@ -476,7 +510,7 @@ describe('OtelService', () => {
 
 			await expect(service.init()).resolves.not.toThrow();
 
-			expect(NodeTracerProvider).not.toHaveBeenCalled();
+			expect(otelSdk.apply).toHaveBeenCalledWith(TRACING_OFF);
 			expect(fetchMock).not.toHaveBeenCalled();
 			expect(logger.error).toHaveBeenCalledTimes(1);
 			expect(logger.error).toHaveBeenCalledWith(
@@ -485,124 +519,48 @@ describe('OtelService', () => {
 			);
 		});
 
-		it('shuts the provider down when registering it with the global API throws', async () => {
-			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
-			vi.spyOn(trace, 'setGlobalTracerProvider').mockImplementationOnce(() => {
-				throw new Error('provider registration failed');
-			});
-
-			await expect(service.init()).resolves.not.toThrow();
-
-			expect(logger.error).toHaveBeenCalledWith(
-				'Failed to start OpenTelemetry tracing, so tracing stays off',
-				{ error: 'provider registration failed' },
-			);
-			expect(shutdown).toHaveBeenCalledTimes(1);
-		});
-
-		it('leaves the service in a non-exporting state when a restart fails', async () => {
+		it('leaves tracing off when a later save cannot build the exporter', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
 			await service.init();
-			vi.clearAllMocks();
 			exporterFailure();
 
-			await expect(service.restart()).resolves.not.toThrow();
+			await expect(service.applySavedSettings()).resolves.not.toThrow();
 
-			expect(NodeTracerProvider).not.toHaveBeenCalled();
-			expect(shutdown).toHaveBeenCalledTimes(1);
-
-			shutdown.mockClear();
-			await service.shutdown();
-
-			expect(shutdown).not.toHaveBeenCalled();
+			expect(otelSdk.apply).toHaveBeenLastCalledWith(TRACING_OFF);
 		});
 	});
 
 	describe('shutdown', () => {
-		it('shuts the running provider down', async () => {
+		it('shuts down the OTel setup, which flushes the running exporter', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
 			await service.init();
 
 			await service.shutdown();
 
-			expect(shutdown).toHaveBeenCalledTimes(1);
+			expect(otelSdk.shutdown).toHaveBeenCalledTimes(1);
 		});
 
 		it('does not throw when called before init', async () => {
 			await expect(service.shutdown()).resolves.not.toThrow();
 		});
 
-		it('does not throw when the provider shutdown rejects (e.g. exporter flush failure)', async () => {
+		it('logs one warning when the exporter flush fails', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
 			await service.init();
-			shutdown.mockRejectedValueOnce(new Error('connect ECONNREFUSED 127.0.0.1:9'));
+			otelSdk.shutdown.mockRejectedValueOnce(new Error('connect ECONNREFUSED 127.0.0.1:9'));
 
-			await expect(service.shutdown()).resolves.not.toThrow();
-		});
-	});
+			await service.shutdown();
 
-	describe('getTracer', () => {
-		it('hands out a no-op tracer before a provider has started', () => {
-			const span = service.getTracer('n8n-workflow').startSpan('workflow.execute');
-
-			expect(span.isRecording()).toBe(false);
-		});
-
-		it("hands out the running provider's tracer", async () => {
-			const tracer = { startSpan: vi.fn() };
-			providerGetTracer.mockReturnValue(tracer);
-			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
-			await service.init();
-
-			expect(service.getTracer('n8n-workflow')).toBe(tracer);
-			expect(providerGetTracer).toHaveBeenCalledWith('n8n-workflow');
-		});
-	});
-
-	describe('diagnostics logger', () => {
-		beforeEach(() => {
-			(
-				OtelService as unknown as { isDiagnosticsLoggerConfigured: boolean }
-			).isDiagnosticsLoggerConfigured = false;
-		});
-
-		it('forwards all log levels to the n8n logger', async () => {
-			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
-			await service.init();
-
-			const capturedLogger = vi.mocked(diag.setLogger).mock.calls[0]?.[0];
-			expect(capturedLogger).toBeDefined();
-
-			capturedLogger.error('e');
-			capturedLogger.warn('w');
-			capturedLogger.info('i');
-			capturedLogger.debug('d');
-			capturedLogger.verbose('v');
-
-			expect(logger.error).toHaveBeenCalledWith(
-				'OpenTelemetry diagnostics error',
-				expect.anything(),
-			);
+			expect(logger.warn).toHaveBeenCalledTimes(1);
 			expect(logger.warn).toHaveBeenCalledWith(
-				'OpenTelemetry diagnostics warning',
-				expect.anything(),
+				'Failed to cleanly shut down the previous OpenTelemetry exporter (its flush may have failed)',
+				{ error: 'connect ECONNREFUSED 127.0.0.1:9' },
 			);
-			expect(logger.info).toHaveBeenCalledWith('OpenTelemetry diagnostics info', expect.anything());
-			expect(logger.debug).toHaveBeenCalledTimes(2);
-		});
-
-		it('only configures the diag logger once across multiple init calls', async () => {
-			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
-
-			await service.init();
-			await service.restart();
-
-			expect(diag.setLogger).toHaveBeenCalledTimes(1);
 		});
 	});
 
 	describe('connectivity failure deduplication', () => {
-		it('does not log a second failure within the same start cycle', async () => {
+		it('does not log a second failure for the same exporter', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
 			let rejectFn!: () => void;
 			fetchMock.mockImplementation(
@@ -620,7 +578,7 @@ describe('OtelService', () => {
 			expect(logger.error).toHaveBeenCalledTimes(1);
 		});
 
-		it('discards a probe of the previous start and still logs the current failure', async () => {
+		it('discards a probe of the previous exporter and still logs the current failure', async () => {
 			const rejectProbes: Array<(error: Error) => void> = [];
 			fetchMock.mockImplementation(
 				async () => await new Promise<never>((_, reject) => rejectProbes.push(reject)),
@@ -632,7 +590,7 @@ describe('OtelService', () => {
 				...enabledSettings,
 				exporterEndpoint: 'http://new-collector:4318',
 			});
-			await service.restart();
+			await service.applySavedSettings();
 
 			rejectProbes[0](new Error('ECONNREFUSED on the old endpoint'));
 			await flushPromises();
@@ -816,11 +774,11 @@ describe('OtelService', () => {
 			expect(mockExporterShutdown).toHaveBeenCalledTimes(1);
 		});
 
-		it('does not register the test provider globally', async () => {
+		it('sends through a throwaway provider and leaves the running setup alone', async () => {
 			await service.sendTestTrace(connection);
 
 			expect(BasicTracerProvider).toHaveBeenCalledTimes(1);
-			expect(NodeTracerProvider).not.toHaveBeenCalled();
+			expect(otelSdk.apply).not.toHaveBeenCalled();
 		});
 
 		describe('over gRPC', () => {

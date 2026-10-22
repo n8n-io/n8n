@@ -4,16 +4,13 @@
 import type { Logger } from '@n8n/backend-common';
 import { ExpressionEngineConfig, type GlobalConfig } from '@n8n/config';
 import { EXPRESSION_METRICS } from '@n8n/expression-runtime';
-import type { Tracer } from '@opentelemetry/api';
+import { trace, type Tracer } from '@opentelemetry/api';
 import promClient from 'prom-client';
 import { mock } from 'vitest-mock-extended';
 
 import { ExpressionObservabilityProvider } from '../expression-observability.provider';
 
-import type { OtelService } from '@/modules/otel/otel.service';
-
 const scopedLogger = mock<Logger>();
-const otelService = mock<OtelService>();
 const startSpanMock = vi.fn().mockReturnValue({
 	setStatus: vi.fn(),
 	setAttribute: vi.fn(),
@@ -41,7 +38,7 @@ function buildGlobalConfig(prefix = 'n8n_'): GlobalConfig {
 describe('ExpressionObservabilityProvider', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		otelService.getTracer.mockReturnValue({ startSpan: startSpanMock } as unknown as Tracer);
+		vi.spyOn(trace, 'getTracer').mockReturnValue({ startSpan: startSpanMock } as unknown as Tracer);
 		promClient.register.clear();
 	});
 
@@ -51,7 +48,6 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig({ observabilityEnabled: false }),
 				buildLogger(),
 				buildGlobalConfig(),
-				otelService,
 			);
 
 			expect(() => {
@@ -68,7 +64,6 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig({ engine: 'legacy' }),
 				buildLogger(),
 				buildGlobalConfig(),
-				otelService,
 			);
 
 			provider.metrics.counter(EXPRESSION_METRICS.poolAcquired.name, 1);
@@ -84,7 +79,6 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig(),
 				buildLogger(),
 				buildGlobalConfig(),
-				otelService,
 			);
 			provider.metrics.counter(EXPRESSION_METRICS.poolAcquired.name, 2);
 
@@ -99,7 +93,6 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig(),
 				buildLogger(),
 				buildGlobalConfig(),
-				otelService,
 			);
 			provider.metrics.gauge(EXPRESSION_METRICS.codeCacheSize.name, 42);
 
@@ -112,7 +105,6 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig(),
 				buildLogger(),
 				buildGlobalConfig(),
-				otelService,
 			);
 			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 3, {
 				status: 'success',
@@ -131,7 +123,6 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig(),
 				buildLogger(),
 				buildGlobalConfig(),
-				otelService,
 			);
 
 			promClient.register.clear();
@@ -156,7 +147,6 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig(),
 				buildLogger(),
 				buildGlobalConfig(),
-				otelService,
 			);
 
 			promClient.register.clear();
@@ -175,7 +165,6 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig({ slowEvaluationThresholdMs: 50, tracesSampleRate: 0 }),
 				buildLogger(),
 				buildGlobalConfig(),
-				otelService,
 			);
 			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 0.01, {
 				status: 'success',
@@ -189,7 +178,6 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig({ slowEvaluationThresholdMs: 50 }),
 				buildLogger(),
 				buildGlobalConfig(),
-				otelService,
 			);
 			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 0.1, {
 				status: 'success',
@@ -211,7 +199,6 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig({ slowEvaluationThresholdMs: 50 }),
 				buildLogger(),
 				buildGlobalConfig(),
-				otelService,
 			);
 			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 0.005, {
 				status: 'error',
@@ -233,7 +220,6 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig({ tracesEnabled: false, slowEvaluationThresholdMs: 10 }),
 				buildLogger(),
 				buildGlobalConfig(),
-				otelService,
 			);
 			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 0.5, {
 				status: 'error',
@@ -249,7 +235,6 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig(),
 				buildLogger(),
 				buildGlobalConfig(),
-				otelService,
 			);
 			expect(() => {
 				provider.metrics.counter('test.unknown', 1);
@@ -264,7 +249,6 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig(),
 				buildLogger(),
 				buildGlobalConfig(),
-				otelService,
 			);
 
 			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 0.01, {
@@ -294,7 +278,6 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig(),
 				buildLogger(),
 				buildGlobalConfig(),
-				otelService,
 			);
 			provider.logs.info('hello', { k: 'v' });
 			provider.logs.warn('warn', { k: 'v' });
