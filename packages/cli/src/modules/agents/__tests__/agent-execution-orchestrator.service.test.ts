@@ -879,15 +879,17 @@ describe('AgentExecutionOrchestratorService', () => {
 		runtimeCacheService.getRuntime.mockResolvedValue(makeRuntime());
 		executionService.finalizeExecution.mockRejectedValue(new Error('database unavailable'));
 
-		await collect(
-			service.executeForChat({
-				agentId,
-				projectId,
-				user,
-				message: 'Hello',
-				memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
-			}),
-		).catch(() => {});
+		await expect(
+			collect(
+				service.executeForChat({
+					agentId,
+					projectId,
+					user,
+					message: 'Hello',
+					memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+				}),
+			),
+		).rejects.toThrow();
 
 		expect(knowledgeUsageTracker.sendRunUsage).toHaveBeenCalledWith(
 			'runtime-run-1',
