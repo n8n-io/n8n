@@ -1,3 +1,9 @@
+// Copied from the OTel GenAI registry instead of importing them from
+// `@opentelemetry/semantic-conventions/incubating`, because OTel asks instrumentation
+// libraries to copy unstable definitions:
+// https://opentelemetry.io/docs/specs/semconv/non-normative/code-generation/#stability-and-versioning
+// https://github.com/open-telemetry/opentelemetry-js/tree/main/semantic-conventions#unstable-semconv
+// Source: https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/registry/attributes/gen-ai.md
 export const GEN_AI_ATTR = {
 	OPERATION_NAME: 'gen_ai.operation.name',
 	PROVIDER_NAME: 'gen_ai.provider.name',
