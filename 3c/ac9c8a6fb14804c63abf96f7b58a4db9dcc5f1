@@ -1,8 +1,8 @@
 packages/cli/src/modules/n8n-packages/__tests__/agent-import-planning.integration.test.ts
-  s_71ad2034164515::t_d815cb1bad9270 480-504
+  s_71ad2034164515::t_f8d4e05bfe111d 1-5,7-22,64-70,77-88,94-98,94-96,98,100-103,112-123,142,144-159,177-183,185-186,189-202,204-214,220-221,225-228,241-257,242-252,254-257,279-291,296-298,301-306,308-313,318-319,323-324,326,329-338,433-439,462-468,471-477,498-504,505-523,527-531,533-568,533,535-538,539-568,570-592,570-577,579-592,600-605,600,602-603,605
+  s_71ad2034164515::t_1d3341a3a590db 480-497
   s_71ad2034164515::t_5bd410237198e8 163,173-174,273
   s_71ad2034164515::t_e9b5beaa694d20 6,23-30,33,35-60,35-40,42-60,62-63,71-76,89-93,99,104,124-140,187-188,215-219,222-224,229-230,234-240,299,307,320-322,328,392-395,418,432,440,456-461,456-460,469-470,478-479,532,569,593-599,636-637
-  s_71ad2034164515::t_f8d4e05bfe111d 1-5,7-22,64-70,77-88,94-98,94-96,98,100-103,112-123,142,144-159,177-183,185-186,189-202,204-214,220-221,225-228,241-257,242-252,254-257,279-291,296-298,301-306,308-313,318-319,323-324,326,329-338,433-439,462-468,471-477,505-523,527-531,533-568,533,535-538,539-568,570-592,570-577,579-592,600-605,600,602-603,605
   s_71ad2034164515::t_c8da59be2e4a21 31-32,143,160-162,175-176,231-233,258-262,258-259,261-262,275-277,292-295,292-293,295,396-400,406-407,449-451,455,606-615,619-622,627,635
   s_71ad2034164515::t_48eeb6ada15c5d 263-272,274,278,401-405,408-417,419-431,441-448,452-454,616-618,623-626,628-634
   s_71ad2034164515::t_0564b70635005f 350,352-353
@@ -13,14 +13,12 @@ packages/cli/src/modules/n8n-packages/__tests__/agent-import-planning.integratio
   s_71ad2034164515::t_aa2389e0df0dc7 300,314-317,325,356,524-526
   s_71ad2034164515::t_dbc54c3fe66d72 600
 packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-matcher.test.ts
-  s_71ad2034164515::t_d815cb1bad9270 83,108-197
-  s_71ad2034164515::t_40c070e909dc53 198
+  s_d3c0f6f6f7d41c::t_a2d35da7999ba6 83,108-198
   s_71ad2034164515::t_2479f4ce85a405 9,70,74,202,206,226,247,268,283,287,308,323,327,344,348,367,371,395,399,669,673
   s_71ad2034164515::t_e8bbeebce55f72 87-101
   s_71ad2034164515::t_4183549ca23e18 102-107
 packages/cli/src/modules/n8n-packages/entities/credential/credential-matcher.ts
-  s_71ad2034164515::t_d815cb1bad9270 56,86-118
-  s_71ad2034164515::t_2fa337d65181ba 119-120
+  s_d3c0f6f6f7d41c::t_93ba01edcff428 56,86-120
   s_71ad2034164515::t_81225120e7d7b1 39-40,51-55,68,173,182-185
   s_71ad2034164515::t_a28f419ffc3911 186-190
 packages/cli/src/modules/n8n-packages/entities/data-table/data-table-importer.ts
@@ -865,8 +863,8 @@ packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
   s_71ad2034164515::t_640a7ab7cf9d08 2713
   s_71ad2034164515::t_9b42f16b955373 2287,2288,2294,2295-2296
 packages/cli/src/modules/agents/integrations/chat-integration.service.ts
-  s_71ad2034164515::t_58d3f38d988c1d 369
   s_71ad2034164515::t_fadc955dbbba58 370
+  s_71ad2034164515::t_58d3f38d988c1d 369
   s_71ad2034164515::t_bd15ab634aa39c 267
 ---
 {
@@ -903,7 +901,7 @@ packages/cli/src/modules/agents/integrations/chat-integration.service.ts
       "agent_id": {
         "tool": "codex",
         "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
-        "model": "gpt-6.1-sol"
+        "model": "gpt-6-astra"
       },
       "human_author": "Robin Braumann <robin.braumann@n8n.io>"
     },
@@ -936,6 +934,14 @@ packages/cli/src/modules/agents/integrations/chat-integration.service.ts
         "tool": "codex",
         "id": "01a11f7e-7db4-7830-bf57-7ad3a6bfde21",
         "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_d3c0f6f6f7d41c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a152e5-4005-7111-8ca3-6a9ab5e71d29",
+        "model": "gpt-6.1-sol"
       },
       "human_author": "Robin Braumann <robin.braumann@n8n.io>"
     }

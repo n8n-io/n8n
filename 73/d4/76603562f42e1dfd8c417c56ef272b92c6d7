@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/src/features/agents/AGENTS.md
+  s_1be06eba3ffd38::t_5c3db182b20a49 25-31
+  s_1be06eba3ffd38::t_2e67bf7660622e 13-24,32-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "73d476603562f42e1dfd8c417c56ef272b92c6d7",
+  "prompts": {},
+  "sessions": {
+    "s_1be06eba3ffd38": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15a1c-19a7-7aa1-8c68-b589ebbf365b",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
