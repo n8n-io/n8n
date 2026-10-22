@@ -1,3 +1,4 @@
+import { LicenseState } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { OperationalError, UserError } from 'n8n-workflow';
 import { z } from 'zod';
@@ -33,10 +34,13 @@ export type AiGatewayBrowserSession = z.infer<typeof createdSessionSchema>;
  */
 @Service()
 export class AiGatewayBrowserUseService {
-	constructor(private readonly aiGatewayService: AiGatewayService) {}
+	constructor(
+		private readonly aiGatewayService: AiGatewayService,
+		private readonly licenseState: LicenseState,
+	) {}
 
 	isGatewayBrowserUseEnabled(): boolean {
-		return this.aiGatewayService.isEnabled();
+		return this.aiGatewayService.isEnabled() && this.licenseState.isAiGatewayCloudUbbLicensed();
 	}
 
 	async createSession({
