@@ -9,6 +9,7 @@ import { retry, mockedStore } from '@/__tests__/utils';
 import { useCredentialsStore } from '../../credentials.store';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
 	createWorkflowDocumentId,
@@ -1637,6 +1638,38 @@ describe('CredentialEdit', () => {
 				),
 			);
 			expect(createCredential).toHaveBeenCalledTimes(1);
+		});
+
+		test('lets the bindings flow save a new credential on a protected instance', async () => {
+			const credentialType: ICredentialType = {
+				name: 'testApi',
+				displayName: 'Test API',
+				properties: [],
+			};
+			const createCredential = vi.fn().mockResolvedValue('source-id');
+			const { credentialsStore, pinia } = setupNewCredential(credentialType, {
+				createCredential,
+				destination: {
+					kind: 'pending',
+					id: 'source-project',
+					name: 'Source project',
+					permissions: { create: true },
+				},
+			});
+			mockedStore(useSourceControlStore).preferences.branchReadOnly = true;
+			credentialsStore.getCredentialData.mockResolvedValue(
+				createCredentialResponse({ id: 'source-id', type: 'testApi' }),
+			);
+			const { findByRole } = renderComponent({
+				props: { activeId: 'testApi', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' },
+				pinia,
+			});
+			const save = await findByRole('button', { name: 'Save' });
+			expect(save).toBeEnabled();
+			await userEvent.click(save);
+			await waitFor(() =>
+				expect(createCredential).toHaveBeenCalledWith(expect.anything(), 'source-project'),
+			);
 		});
 
 		describe('descriptions', () => {

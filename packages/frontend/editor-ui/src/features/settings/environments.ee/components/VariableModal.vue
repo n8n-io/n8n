@@ -191,7 +191,8 @@ const isProtectedInstance = computed(() => sourceControlStore.preferences.branch
 const isKeyLocked = computed(() => props.mode === 'edit' && isProtectedInstance.value);
 
 const canCreate = computed(() => {
-	if (props.mode === 'new' && isProtectedInstance.value) return false;
+	if (props.mode === 'new' && isProtectedInstance.value && !props.allowOnProtectedInstance)
+		return false;
 	if (!props.onCreate) return true;
 	const destination = props.destination;
 	if (!destination)

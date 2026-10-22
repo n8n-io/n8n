@@ -25,5 +25,6 @@ export type VariableModalOptions = {
 	fixedKey?: boolean;
 	destination?: ResourceEditorDestination;
 	onCreate?: (variable: CreateEnvironmentVariable) => Promise<EnvironmentVariable>;
+	allowOnProtectedInstance?: boolean;
 	appendToBody?: boolean;
 };
