@@ -3,6 +3,7 @@ import {
 	ResponseError,
 	STREAM_SEPARATOR,
 	request,
+	requestResponse,
 	setUnauthorizedHandler,
 	streamRequest,
 } from './utils';
@@ -61,6 +62,62 @@ describe('request', () => {
 		await expect(request(baseConfig)).rejects.toThrow(MfaRequiredError);
 
 		expect(handler).not.toHaveBeenCalled();
+	});
+});
+
+describe('requestResponse', () => {
+	afterEach(() => {
+		setUnauthorizedHandler(() => {});
+	});
+
+	const baseConfig = {
+		method: 'GET' as const,
+		baseURL: 'https://api.example.com',
+		endpoint: '/export',
+	};
+
+	it('returns the whole response and passes the response type to axios', async () => {
+		const blob = new Blob(['a,b\r\n']);
+		const response = { data: blob, headers: { 'content-disposition': 'attachment' }, status: 200 };
+		axiosRequest.mockResolvedValueOnce(response);
+
+		const result = await requestResponse({ ...baseConfig, responseType: 'blob' });
+
+		expect(result).toBe(response);
+		expect(axiosRequest).toHaveBeenCalledWith(expect.objectContaining({ responseType: 'blob' }));
+	});
+
+	/** A JSON error body as a Blob. jsdom's Blob has no `text()`, which every browser has. */
+	function jsonBlob(body: object): Blob {
+		const text = JSON.stringify(body);
+		const blob = new Blob([text]);
+		Object.defineProperty(blob, 'text', { value: async () => text });
+		return blob;
+	}
+
+	it('reads a blob error body, so an MFA-required 401 on a blob request is still recognised', async () => {
+		axiosRequest.mockRejectedValueOnce({
+			response: { status: 401, data: jsonBlob({ message: 'Unauthorized', mfaRequired: true }) },
+		});
+		const handler = vi.fn();
+		setUnauthorizedHandler(handler);
+
+		await expect(requestResponse({ ...baseConfig, responseType: 'blob' })).rejects.toThrow(
+			MfaRequiredError,
+		);
+
+		expect(handler).not.toHaveBeenCalled();
+	});
+
+	it('throws the server message from a blob error body', async () => {
+		axiosRequest.mockRejectedValueOnce({
+			response: { status: 403, data: jsonBlob({ message: 'Forbidden' }) },
+		});
+
+		await expect(requestResponse({ ...baseConfig, responseType: 'blob' })).rejects.toMatchObject({
+			message: 'Forbidden',
+			httpStatusCode: 403,
+		});
 	});
 });
 

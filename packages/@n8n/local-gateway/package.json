@@ -35,7 +35,7 @@
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "concurrently": "^8.2.0",
-    "electron-builder": "^26.9.0",
+    "electron-builder": "^26.15.0",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
     "rimraf": "catalog:",

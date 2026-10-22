@@ -103,6 +103,19 @@ describe('TeamsManagedSetupService', () => {
 			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
 		});
 
+		it('lists only sign-ins the project itself holds, never a personal one', async () => {
+			withManagerCredential({
+				oauthTokenData: { access_token: 'token', refresh_token: 'refresh-1', scope: ALL_SCOPES },
+			});
+
+			await service.getSetupState(scope);
+
+			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(
+				scope.user,
+				expect.objectContaining({ excludePersonalRoute: true }),
+			);
+		});
+
 		it('lists a connected sign-in with its organisation', async () => {
 			withManagerCredential({
 				organizationName: 'Acme Corp',

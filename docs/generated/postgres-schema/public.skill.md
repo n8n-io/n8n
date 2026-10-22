@@ -5,6 +5,7 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | agentId | varchar(36) |  | true |  | [public.agents](public.agents.md) | Set when only this agent can use the skill. projectId is then NULL: the agent holds the project |
+| availableToAssistant | boolean | false | false |  |  | Whether a user has enabled this skill for the n8n Assistant. Scope and permissions still apply. |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | createdById | uuid |  | true |  | [public.user](public.user.md) | Author. NULL after the author is deleted |
 | id | varchar(36) |  | false | [public.agent_skill_dependency](public.agent_skill_dependency.md) [public.agent_version_skill_dependency](public.agent_version_skill_dependency.md) [public.skill_version](public.skill_version.md) |  | skill_\<nanoid\>, the same format agents use |
@@ -21,6 +22,7 @@
 | FK_4de4501583cd1fcd6f5ea85f547 | FOREIGN KEY | FOREIGN KEY ("createdById") REFERENCES "user"(id) ON DELETE SET NULL |
 | FK_7d4fb6af107e507d9a86293cf9d | FOREIGN KEY | FOREIGN KEY ("agentId") REFERENCES agents(id) ON DELETE CASCADE |
 | PK_a0d33334424e64fb78dc3ce7196 | PRIMARY KEY | PRIMARY KEY (id) |
+| skill_availableToAssistant_not_null | n | NOT NULL "availableToAssistant" |
 | skill_createdAt_not_null | n | NOT NULL "createdAt" |
 | skill_id_not_null | n | NOT NULL id |
 | skill_source_not_null | n | NOT NULL source |
@@ -48,6 +50,7 @@ erDiagram
 
 "public.skill" {
   varchar_36_ agentId FK
+  boolean availableToAssistant
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   varchar_36_ id

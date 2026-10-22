@@ -43,7 +43,7 @@ import { BACKGROUND_SUB_AGENT_METADATA_KEY } from '../background/sub-agent-backg
 import type { IntegrationMessageContext } from '../integrations/integration-tool-types';
 import { AgentTurnExecutionService } from '../agent-turn-execution.service';
 import { AgentToolApprovalService } from '../agent-tool-approval.service';
-import type { AgentRuntimeInstrumentation } from '../agent-runtime-instrumentation';
+import type { AgentRuntimeInstrumentation } from '../evaluation/agent-evaluation.contracts';
 import {
 	decodeAgentSandboxHostMetadata,
 	encodeAgentSandboxHostMetadata,
@@ -56,7 +56,7 @@ import type { ExecutionRecorder, MessageRecord } from '../execution-recorder';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { buildProviderToolsForModel } from '../json-config/from-json-config';
 import { withBudgetGuardrail } from '../budget-guardrail';
-import { modelStreamStallOptions } from '../model-stream-stall-options';
+import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 import type { WorkflowToolExecutionMode } from '../tools/workflow-tool-factory';
 import { streamAgentChunks } from '../utils/agent-stream';
 import { createAttributionTracker } from '../utils/mcp-attribution';

@@ -1,6 +1,6 @@
 import type {
-	PromotionConnectionScope,
-	PromotionConnectionTarget,
+	PromotionEnvironmentRemote,
+	PromotionEnvironmentScope,
 	PromotionProviderAuthType,
 	PromotionProviderType,
 	promotionGitApplySettingsSchema,
@@ -50,18 +50,19 @@ export type ResolvedPromotionConfig =
 
 /**
  * Everything one operation needs, read in a single load so a concurrent edit
- * cannot pair old credentials with a new target. `encryptedAuth` is decrypted at
+ * cannot pair old credentials with a new remote. `encryptedAuth` is decrypted at
  * the Git boundary, never held beyond it.
  */
 export type PromotionOperationInput = Readonly<{
-	connectionId: string;
-	connectionScope: PromotionConnectionScope;
-	configId: string;
+	environmentId: string;
+	scope: PromotionEnvironmentScope;
 	providerId: string;
 	providerType: PromotionProviderType;
 	authType: PromotionProviderAuthType;
 	encryptedAuth: string;
-	target: PromotionConnectionTarget;
+	/** The Git host base URL from the same read as `encryptedAuth`. Null for plain Git. */
+	hostBaseUrl: string | null;
+	remote: PromotionEnvironmentRemote;
 	config: ResolvedPromotionConfig;
 }>;
 
@@ -71,7 +72,7 @@ export type PromotionOperationInput = Readonly<{
  * repository path, so the listing and the contents never describe two commits.
  */
 export type BranchPackage = Readonly<{
-	configId: string;
+	environmentId: string;
 	branchName: string;
 	commitSha: string | null;
 	files: PackageFile[];
@@ -85,8 +86,7 @@ export type BranchPackage = Readonly<{
  */
 export type PromotionCacheDescriptor = {
 	schemaVersion: 1;
-	configId: string;
-	connectionId: string;
+	environmentId: string;
 	remoteUrl: string;
 	checkoutBranchName: string;
 };

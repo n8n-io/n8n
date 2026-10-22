@@ -1,7 +1,6 @@
 import { isRecord } from '@n8n/utils/is-record';
+import { containsExpression } from '@n8n/utils/string/contains-expression';
 import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
-
-import { containsExpression } from '@/utils';
 
 /**
  * How to merge an incoming array into the existing value.

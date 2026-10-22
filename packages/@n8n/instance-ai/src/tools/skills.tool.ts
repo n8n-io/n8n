@@ -38,7 +38,7 @@ const projectIdField = z
 	.string()
 	.optional()
 	.describe(
-		'A project ID. list: only skills of this project. create and update: required when scope is project',
+		'A project ID. list: only skills of this project. create and update: required when scope is project, absent otherwise',
 	);
 
 const scopeField = z
@@ -161,6 +161,8 @@ function details(detail: SkillDetail) {
 	};
 }
 
+const BLOCKED_RESULT = { success: false, denied: true, reason: 'Action blocked by admin' };
+
 async function withApproval<T>(
 	context: InstanceAiContext,
 	ctx: ConfirmationToolContext,
@@ -169,9 +171,7 @@ async function withApproval<T>(
 	run: () => Promise<T>,
 ) {
 	const permission = permissionFor(context, action);
-	if (permission === 'blocked') {
-		return { success: false, denied: true, reason: 'Action blocked by admin' };
-	}
+	if (permission === 'blocked') return BLOCKED_RESULT;
 
 	const { resumeData } = ctx;
 	const sessionGrantAllowed = action !== 'delete';
@@ -198,29 +198,47 @@ function usedByMessage(detail: SkillDetail): string {
 	return `${detail.usedByAgents} agents use it.`;
 }
 
-async function createMessage(
+function scopeRefusal(scope: 'project' | 'instance' | undefined, projectId: string | undefined) {
+	let reason: string | undefined;
+	if (projectId && !scope) reason = 'Pass scope together with projectId.';
+	if (scope === 'project' && !projectId) reason = 'A project skill needs a projectId.';
+	if (scope === 'instance' && projectId) reason = 'An instance skill has no projectId.';
+	return reason ? { success: false, refused: true, reason } : undefined;
+}
+
+async function audience(
 	context: InstanceAiContext,
-	input: Extract<FullInput, { action: 'create' }>,
+	scope: 'project' | 'instance',
+	projectId: string | undefined,
 ): Promise<string> {
-	if (input.scope === 'instance') return 'Create the skill for every project on this instance';
-	if (!input.projectId) return 'Create the skill in the project';
-	const project = await context.workspaceService?.getProject?.(input.projectId);
-	return `Create the skill in the project "${project?.name ?? input.projectId}"`;
+	if (scope === 'instance' || !projectId) return 'for every project on this instance';
+	const project = await context.workspaceService?.getProject?.(projectId);
+	return `in the project "${project?.name ?? projectId}"`;
+}
+
+function movesSkill(
+	current: SkillDetail,
+	scope: 'project' | 'instance',
+	projectId: string | undefined,
+): boolean {
+	return scope !== current.scope || (projectId ?? null) !== current.projectId;
 }
 
 async function handleCreate(
 	context: InstanceAiContext,
+	service: InstanceAiSkillService,
 	input: Extract<FullInput, { action: 'create' }>,
 	ctx: ConfirmationToolContext,
 ) {
-	const service = requireSkillService(context);
+	const refusal = scopeRefusal(input.scope, input.projectId);
+	if (refusal) return refusal;
 	return await withApproval(
 		context,
 		ctx,
 		'create',
 		async () => ({
 			requestId: nanoid(),
-			message: await createMessage(context, input),
+			message: `Create the skill ${await audience(context, input.scope, input.projectId)}`,
 			resourceName: input.skill.name,
 			severity: 'info',
 		}),
@@ -230,20 +248,34 @@ async function handleCreate(
 
 async function handleUpdate(
 	context: InstanceAiContext,
+	service: InstanceAiSkillService,
 	input: Extract<FullInput, { action: 'update' }>,
 	ctx: ConfirmationToolContext,
 ) {
-	const service = requireSkillService(context);
+	const refusal = scopeRefusal(input.scope, input.projectId);
+	if (refusal) return refusal;
+	if (permissionFor(context, 'update') === 'blocked') return BLOCKED_RESULT;
 	const { action: _action, skillId, ...update } = input;
+	const current = await service.get(skillId);
+	if (!current.canEdit) {
+		return {
+			success: false,
+			refused: true,
+			reason: 'You do not have permission to edit this skill.',
+		};
+	}
 	return await withApproval(
 		context,
 		ctx,
 		'update',
 		async () => {
-			const current = await service.get(skillId);
+			const move =
+				input.scope && movesSkill(current, input.scope, input.projectId)
+					? ` Move it, so it is available ${await audience(context, input.scope, input.projectId)}.`
+					: '';
 			return {
 				requestId: nanoid(),
-				message: `Save a new version of the skill. ${usedByMessage(current)}`,
+				message: `Save a new version of the skill.${move} ${usedByMessage(current)}`,
 				resourceName: current.name,
 				severity: 'warning',
 			};
@@ -257,11 +289,19 @@ async function handleUpdate(
 
 async function handleDelete(
 	context: InstanceAiContext,
+	service: InstanceAiSkillService,
 	input: Extract<FullInput, { action: 'delete' }>,
 	ctx: ConfirmationToolContext,
 ) {
-	const service = requireSkillService(context);
+	if (permissionFor(context, 'delete') === 'blocked') return BLOCKED_RESULT;
 	const current = await service.get(input.skillId);
+	if (!current.canDelete) {
+		return {
+			success: false,
+			refused: true,
+			reason: 'You do not have permission to delete this skill.',
+		};
+	}
 	if (current.usedByAgents > 0) {
 		return {
 			success: false,
@@ -295,6 +335,7 @@ export function createSkillsTool(context: InstanceAiContext) {
 				'This tool does not attach a skill to an agent.',
 		)
 		.input(inputSchema)
+		.untrustedOutput()
 		.suspend(confirmationSuspendSchema)
 		.resume(instanceAiApprovalResumeSchema)
 		.handler(async (input: FullInput, ctx: ConfirmationToolContext) => {
@@ -314,11 +355,11 @@ export function createSkillsTool(context: InstanceAiContext) {
 				case 'get':
 					return details(await service.get(input.skillId));
 				case 'create':
-					return await handleCreate(context, input, ctx);
+					return await handleCreate(context, service, input, ctx);
 				case 'update':
-					return await handleUpdate(context, input, ctx);
+					return await handleUpdate(context, service, input, ctx);
 				case 'delete':
-					return await handleDelete(context, input, ctx);
+					return await handleDelete(context, service, input, ctx);
 			}
 		})
 		.build();
