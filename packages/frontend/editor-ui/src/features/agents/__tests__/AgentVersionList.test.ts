@@ -12,6 +12,7 @@ vi.mock('@/app/composables/useIntersectionObserver', () => ({
 }));
 
 vi.mock('@n8n/design-system', () => ({
+	N8nButton: { template: '<button @click="$emit(\'click\')"><slot /></button>', emits: ['click'] },
 	N8nLoading: { name: 'N8nLoading', template: '<div />', props: ['loading', 'rows', 'animated'] },
 	N8nText: { name: 'N8nText', template: '<span><slot /></span>', props: ['size', 'color'] },
 }));
@@ -74,5 +75,20 @@ describe('AgentVersionList — per-row action routing', () => {
 
 		expect(inactive?.props('actions')).toEqual(defaultActions);
 		expect(active?.props('actions')).toEqual(activeActions);
+	});
+	it('disables restore for the current saved draft', async () => {
+		const wrapper = mountList();
+		await wrapper.setProps({ items: [makeItem({ isCurrent: true })] });
+		expect(wrapper.findComponent({ name: 'AgentVersionListItem' }).props('actions')).toMatchObject([
+			{ value: 'revert', disabled: true },
+			{ value: 'publish', disabled: false },
+		]);
+	});
+	it('offers retry instead of an empty history after a failed initial load', async () => {
+		const wrapper = mountList();
+		await wrapper.setProps({ items: [], hasLoadError: true });
+		expect(wrapper.find('[role="alert"]').exists()).toBe(true);
+		await wrapper.find('button').trigger('click');
+		expect(wrapper.emitted('retry')).toHaveLength(1);
 	});
 });

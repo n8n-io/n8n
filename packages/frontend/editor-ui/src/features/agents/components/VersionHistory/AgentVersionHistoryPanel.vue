@@ -15,6 +15,7 @@ import type { AgentVersionAction } from './AgentVersionListItem.vue';
 const props = defineProps<{
 	projectId: string;
 	agentId: string;
+	currentVersionId?: string | null;
 	// Whether the draft has diverged from the published version.
 	hasUnpublishedChanges?: boolean;
 	// Used only for the unpublish confirmation modal copy.
@@ -38,6 +39,7 @@ const {
 	isLoading,
 	isInitialLoad,
 	hasMore,
+	hasLoadError,
 	refresh,
 	fetchMore,
 	revertToVersion,
@@ -57,14 +59,14 @@ const actions = computed<Array<UserAction<IUser>>>(() => {
 		result.push({
 			label: i18n.baseText('agents.versionHistory.item.actions.revert'),
 			value: 'revert',
-			disabled: props.editingLocked,
+			disabled: Boolean(props.editingLocked),
 		});
 	}
 	if (canPublish.value) {
 		result.push({
 			label: i18n.baseText('agents.versionHistory.item.actions.publish'),
 			value: 'publish',
-			disabled: props.editingLocked,
+			disabled: Boolean(props.editingLocked),
 		});
 	}
 	return result;
@@ -80,14 +82,14 @@ const activeActions = computed<Array<UserAction<IUser>>>(() => {
 		result.push({
 			label: i18n.baseText('agents.versionHistory.item.actions.revert'),
 			value: 'revert',
-			disabled: !props.hasUnpublishedChanges,
+			disabled: Boolean(props.editingLocked) || !props.hasUnpublishedChanges,
 		});
 	}
 	if (canUnpublish.value) {
 		result.push({
 			label: i18n.baseText('agents.versionHistory.item.actions.unpublish'),
 			value: 'unpublish',
-			disabled: false,
+			disabled: Boolean(props.editingLocked),
 		});
 	}
 	return result;
@@ -98,13 +100,17 @@ onMounted(() => {
 });
 
 watch(
-	() => [props.projectId, props.agentId],
+	() => [props.projectId, props.agentId, props.currentVersionId],
 	() => {
 		void refresh(props.projectId, props.agentId);
 	},
 );
 
 async function onAction({ action, versionId }: { action: AgentVersionAction; versionId: string }) {
+	if (props.editingLocked) return;
+	if (action === 'revert' && !canUpdate.value) return;
+	if (action === 'publish' && !canPublish.value) return;
+	if (action === 'unpublish' && !canUnpublish.value) return;
 	// Acquire the write lock before any mutating version action — the lock
 	// is lazy (acquired on first edit, released on inactivity), matching
 	// the workflow collaboration pattern.
@@ -166,10 +172,12 @@ defineExpose({
 			:actions="actions"
 			:active-actions="activeActions"
 			:has-more="hasMore"
+			:has-load-error="hasLoadError"
 			:is-initial-load="isInitialLoad"
 			:is-loading="isLoading"
 			@action="onAction"
 			@load-more="onLoadMore"
+			@retry="refresh(projectId, agentId)"
 		/>
 	</aside>
 </template>
@@ -178,8 +186,11 @@ defineExpose({
 .panel {
 	display: flex;
 	flex-direction: column;
-	width: 330px;
-	min-width: 330px;
+	/* The design tokens have no sidebar width. Keep this panel inside narrow viewports. */
+	--agent-history-width: 22rem;
+	width: min(var(--agent-history-width), 100vw);
+	max-width: 100%;
+	flex-shrink: 0;
 	height: 100%;
 	background-color: var(--background--surface);
 	border-left: var(--border);

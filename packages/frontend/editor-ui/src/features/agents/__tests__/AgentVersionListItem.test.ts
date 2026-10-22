@@ -14,6 +14,7 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 vi.mock('@n8n/design-system', () => ({
+	N8nTooltip: { template: '<span :title="content"><slot /></span>', props: ['content'] },
 	N8nActionToggle: {
 		name: 'N8nActionToggle',
 		template:
@@ -68,7 +69,9 @@ describe('AgentVersionListItem', () => {
 			},
 		});
 
-		expect(wrapper.text()).toContain('agents.versionHistory.item.publishedBadge');
+		expect(wrapper.find('[role="img"]').attributes('aria-label')).toBe(
+			'agents.versionHistory.item.publishedBadge',
+		);
 	});
 
 	it('does not render the published badge when the version is inactive', () => {
@@ -79,7 +82,9 @@ describe('AgentVersionListItem', () => {
 			},
 		});
 
-		expect(wrapper.text()).not.toContain('agents.versionHistory.item.publishedBadge');
+		expect(wrapper.find('[role="img"]').attributes('aria-label')).toBe(
+			'agents.versionHistory.item.savedVersion',
+		);
 	});
 
 	it('emits an action event with the versionId when the action toggle fires', async () => {
@@ -106,5 +111,28 @@ describe('AgentVersionListItem', () => {
 		});
 
 		expect(wrapper.find('[data-testid="stub-action-toggle"]').exists()).toBe(false);
+	});
+	it('shows the saved name and description while marking the current draft', () => {
+		const wrapper = mount(AgentVersionListItem, {
+			props: {
+				item: makeItem({
+					name: 'Release notes',
+					description: 'Adds a support schedule.',
+					isCurrent: true,
+				}),
+				actions,
+			},
+		});
+		expect(wrapper.text()).toContain('Release notes');
+		expect(wrapper.text()).toContain('Adds a support schedule.');
+		expect(wrapper.find('[role="img"]').attributes('aria-label')).toBe(
+			'agents.versionHistory.item.currentDraft',
+		);
+	});
+	it('uses the workflow current-changes label for an unnamed current draft', () => {
+		const wrapper = mount(AgentVersionListItem, {
+			props: { item: makeItem({ isCurrent: true }), actions },
+		});
+		expect(wrapper.text()).toContain('workflowHistory.item.currentChanges');
 	});
 });
