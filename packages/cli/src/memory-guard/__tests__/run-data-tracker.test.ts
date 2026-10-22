@@ -11,8 +11,13 @@ import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 
-import { estimateItemsSize } from '../estimate-run-data-size';
+import { estimateItemsSize, estimateTaskDataSize } from '../estimate-run-data-size';
 import { RunDataTracker } from '../run-data-tracker';
+
+vi.mock('../estimate-run-data-size', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../estimate-run-data-size')>();
+	return { ...actual, estimateTaskDataSize: vi.fn(actual.estimateTaskDataSize) };
+});
 
 const toItems = (count: number): INodeExecutionData[] =>
 	Array.from({ length: count }, (_, i) => ({ json: { id: i, name: `item-${i}` } }));
@@ -273,6 +278,52 @@ describe('RunDataTracker', () => {
 
 		// The second run holds the same objects, so only its item wrappers are new.
 		expect(tracker.getEstimate('1')?.totalBytes).toBe(sizeOf(earlier) + wrappersOf(earlier));
+	});
+
+	describe('when an execution starts with many runs', () => {
+		const runsOf = (count: number, itemCount: number) =>
+			Array.from({ length: count }, () => taskDataOf(toItems(itemCount)));
+
+		beforeEach(() => {
+			vi.mocked(estimateTaskDataSize).mockClear();
+		});
+
+		it('should measure 25 runs and give the others the average of their node', () => {
+			start('1', { Node: runsOf(100, 3) });
+
+			expect(estimateTaskDataSize).toHaveBeenCalledTimes(25);
+			expect(tracker.getEstimate('1')?.totalBytes).toBe(100 * sizeOf(toItems(3)));
+		});
+
+		it('should measure a run of every node before a second run of any node', () => {
+			start('1', { Loop: runsOf(1000, 1), Large: runsOf(2, 50) });
+
+			expect(estimateTaskDataSize).toHaveBeenCalledTimes(25);
+			expect(tracker.getEstimate('1')?.bytesByNode).toEqual(
+				new Map([
+					['Loop', 1000 * sizeOf(toItems(1))],
+					['Large', 2 * sizeOf(toItems(50))],
+				]),
+			);
+		});
+
+		it('should give a node without a measured run the average of all measured runs', () => {
+			const runData = Object.fromEntries(
+				Array.from({ length: 30 }, (_, i) => [`Node ${i}`, runsOf(1, 2)]),
+			);
+
+			start('1', runData);
+
+			expect(estimateTaskDataSize).toHaveBeenCalledTimes(25);
+			expect(tracker.getEstimate('1')?.bytesByNode.get('Node 29')).toBe(sizeOf(toItems(2)));
+			expect(tracker.getEstimate('1')?.totalBytes).toBe(30 * sizeOf(toItems(2)));
+		});
+
+		it('should count nothing for a node without runs', () => {
+			start('1', { Empty: [] });
+
+			expect(tracker.getEstimate('1')?.totalBytes).toBe(0);
+		});
 	});
 
 	it('should drop an execution that is no longer active when another starts', () => {

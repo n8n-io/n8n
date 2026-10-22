@@ -15,6 +15,12 @@ import { ActiveExecutions } from '@/active-executions';
 
 import { estimateInputSize, estimateTaskDataSize } from './estimate-run-data-size';
 
+/**
+ * Max runs measured when an execution starts with run data, to limit how long the walk
+ * blocks the event loop. The estimator limits the walk of each output, not of each run.
+ */
+const MEASURED_RUNS_BUDGET = 25;
+
 interface RunningNode {
 	name: string;
 	/** The node that the run comes from. For a tool, this is its agent. */
@@ -171,11 +177,44 @@ export class RunDataTracker {
 		};
 		this.executions.set(executionId, execution);
 
-		for (const [nodeName, runs] of Object.entries(runData)) {
-			for (const taskData of runs) {
-				this.addEstimate(execution, executionId, nodeName, () =>
-					estimateTaskDataSize(taskData, runData, execution.seen),
-				);
+		const nodes = Object.entries(runData);
+		const sampleCounts = spreadBudget(
+			nodes.map(([, runs]) => runs.length),
+			MEASURED_RUNS_BUDGET,
+		);
+
+		let ownBytes = 0;
+		let ownRuns = 0;
+		for (const [i, [nodeName, runs]] of nodes.entries()) {
+			const sampled = sampleCounts[i];
+			if (sampled === 0) continue;
+
+			const sampledRuns = Array.from(
+				{ length: sampled },
+				(_, j) => runs[sampleIndex(j, runs.length, sampled)],
+			);
+			const nodeOwnBytes = sampledRuns.reduce(
+				(sum, taskData) =>
+					sum +
+					this.addEstimate(execution, executionId, nodeName, () =>
+						estimateTaskDataSize(taskData, runData, execution.seen),
+					),
+				0,
+			);
+			ownBytes += nodeOwnBytes;
+			ownRuns += sampled;
+
+			this.addBytes(
+				execution,
+				nodeName,
+				Math.round((nodeOwnBytes / sampled) * (runs.length - sampled)),
+			);
+		}
+
+		// Nodes beyond the budget get the average of all measured runs.
+		for (const [i, [nodeName, runs]] of nodes.entries()) {
+			if (sampleCounts[i] === 0 && runs.length > 0) {
+				this.addBytes(execution, nodeName, Math.round((ownBytes / ownRuns) * runs.length));
 			}
 		}
 	}
@@ -185,16 +224,21 @@ export class RunDataTracker {
 		executionId: string,
 		nodeName: string,
 		estimateBytes: () => number,
-	) {
+	): number {
 		let bytes: number;
 		try {
 			bytes = estimateBytes();
 		} catch {
 			// Never fail the execution. Reading the thrown value can throw too.
 			this.logger.debug('Failed to estimate node output size', { executionId, nodeName });
-			return;
+			return 0;
 		}
 
+		this.addBytes(execution, nodeName, bytes);
+		return bytes;
+	}
+
+	private addBytes(execution: TrackedExecution, nodeName: string, bytes: number) {
 		if (bytes === 0) return;
 
 		execution.totalBytes += bytes;
@@ -226,6 +270,33 @@ export class RunDataTracker {
 		);
 	}
 }
+
+/** Give each node one measured run in turn, until the budget is spent. */
+function spreadBudget(runCounts: number[], budget: number): number[] {
+	const sampleCounts = runCounts.map(() => 0);
+	let left = budget;
+	let added = true;
+	while (left > 0 && added) {
+		added = false;
+		for (const [i, runCount] of runCounts.entries()) {
+			if (left === 0) break;
+			if (sampleCounts[i] < runCount) {
+				sampleCounts[i]++;
+				left--;
+				added = true;
+			}
+		}
+	}
+	return sampleCounts;
+}
+
+/** One sample in each equal part of the runs, offset so it does not follow a repeating pattern. */
+function sampleIndex(j: number, count: number, sampled: number) {
+	const placeInPart = ((j + 1) * GOLDEN_RATIO) % 1;
+	return Math.floor(((j + placeInPart) * count) / sampled);
+}
+
+const GOLDEN_RATIO = (1 + Math.sqrt(5)) / 2;
 
 /** The engine passes an AI sub-node's full task data, with its input, to the start event. */
 function hasInputOverride(taskData: ITaskStartedData): taskData is ITaskData {
