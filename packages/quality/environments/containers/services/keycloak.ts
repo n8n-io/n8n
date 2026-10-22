@@ -505,6 +505,7 @@ export class KeycloakHelper {
 				}),
 				'client lookup',
 			);
+			if (!client) throw new Error(`Keycloak client ${KEYCLOAK_TEST_CLIENT_ID} not found`);
 
 			for (const name of names) {
 				const created = await send('POST', `${realmAdminPath}/client-scopes`, {

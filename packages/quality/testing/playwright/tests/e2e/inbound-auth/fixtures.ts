@@ -27,7 +27,6 @@ const INTERNAL_SOURCE_ID = 'n8n-internal';
 
 /** One trusted source as a spec sees it. Specs never branch on `kind`. */
 export interface SourceUnderTest {
-	kind: SourceKind;
 	/** The value a trigger stores in its `trustedSource` parameter. */
 	id: string;
 	/** The issuer that resource metadata must list. */
@@ -126,7 +125,9 @@ export const test = base.extend<InboundAuthFixtures, InboundAuthWorkerFixtures>(
 				const publicApiScope: ApiKeyScope = 'workflow:list';
 				await keycloak.addDefaultClientScopes([mcpScope, publicApiScope]);
 				const created = await owner.trustedSources.create(keycloakSourceInput(keycloak));
-				const internalSource = await owner.trustedSources.get(INTERNAL_SOURCE_ID);
+				// n8n checks the built-in source once at boot, in the background, and the gate refuses
+				// it until a check passes.
+				const internalSource = await owner.trustedSources.waitUntilHealthy(INTERNAL_SOURCE_ID);
 				const keycloakSource = await owner.trustedSources.waitUntilHealthy(created.id);
 
 				// n8n never links the owner by email, so the Keycloak user needs a member to link to.
@@ -171,7 +172,6 @@ export const test = base.extend<InboundAuthFixtures, InboundAuthWorkerFixtures>(
 
 		await use({
 			'n8n-internal': {
-				kind: 'n8n-internal',
 				id: internalSource.id,
 				issuer: internalSource.issuer,
 				authorizationEndpoint: `${internalSource.issuer.replace(/\/$/, '')}/mcp-oauth/authorize`,
@@ -188,7 +188,6 @@ export const test = base.extend<InboundAuthFixtures, InboundAuthWorkerFixtures>(
 				expectBinding: async () => {},
 			},
 			keycloak: {
-				kind: 'keycloak',
 				id: keycloakSource.id,
 				issuer: keycloakSource.issuer,
 				authorizationEndpoint: keycloak.authorizationEndpoint,
@@ -507,7 +506,8 @@ export async function expectTriggerRefusals(
 /**
  * Runs the redirect login of a Form or Chat trigger as the source's visitor.
  * Returns the value of the one-hop cookie that carries the token to the clean
- * trigger URL.
+ * trigger URL. For Form, the value is the access token. For Chat, it is JSON
+ * with the token and its expiry.
  */
 export async function loginThroughTrigger(
 	source: SourceUnderTest,
@@ -518,7 +518,7 @@ export async function loginThroughTrigger(
 
 	const start = await visitor.webhooks.trigger(trigger.path, { maxRedirects: 0 });
 	expect(start.status()).toBe(302);
-	const authorizationUrl = new URL(start.headers().location);
+	const authorizationUrl = new URL(start.headers().location, trigger.resource);
 	expect(`${authorizationUrl.origin}${authorizationUrl.pathname}`).toBe(
 		source.authorizationEndpoint,
 	);
