@@ -132,9 +132,9 @@ COPY --from=python-runner-builder /usr/local/bin/uv /usr/local/bin/uv
 # Bring node over from node-alpine
 COPY --from=node-alpine /usr/local/bin/node /usr/local/bin/node
 
-# libstdc++ is required by Node
+# libstdc++ and libatomic are required by Node
 # libc6-compat is required by task-runner-launcher
-RUN apk add --no-cache ca-certificates tini libstdc++ libc6-compat && \
+RUN apk add --no-cache ca-certificates tini libstdc++ libatomic libc6-compat && \
     apk upgrade --no-cache && \
     pip install --no-cache-dir "pip>=26.0" && \
     apk del apk-tools
