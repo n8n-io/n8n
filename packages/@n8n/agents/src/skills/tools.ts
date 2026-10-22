@@ -237,7 +237,8 @@ async function loadSkill(
 			skillId: skillEntry.id,
 			name: skillEntry.name,
 			hash: skillEntry.hash,
-			content: 'The skill instructions are active. Follow them for this task.',
+			// Keep the loaded snapshot visible in chat. The model receives refreshed instructions.
+			content: cap(skill.instructions),
 			...(references.length > 0
 				? {
 						references: references.map((entry) => ({

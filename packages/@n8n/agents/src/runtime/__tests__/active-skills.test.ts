@@ -1,4 +1,5 @@
 import { createRuntimeSkillSource, filterRuntimeSkillSource } from '../../skills/registry';
+import { createSkillLoadTool } from '../../skills/tools';
 import type { RuntimeSkillSource } from '../../skills/types';
 import { InMemoryMemory } from '../memory/memory-store';
 import { AgentMessageList } from '../model/message-list';
@@ -109,6 +110,52 @@ describe('active skills', () => {
 		await expect(memory.skillState.load({ ...scope, agentName: 'assistant' })).resolves.toEqual([
 			'builder',
 		]);
+	});
+
+	it('keeps the saved skill snapshot when the model receives a newer version', async () => {
+		const list = new AgentMessageList();
+		const active = new ActiveSkills(source, 'assistant');
+		await active.restore(list);
+		const output = await createSkillLoadTool(source).handler?.(
+			{ skillId: 'builder' },
+			{ loadSkill: active.load.bind(active) },
+		);
+		expect(output).toMatchObject({ success: true, content: 'Build one workflow.' });
+		list.addHistory([
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'load_skill',
+						toolCallId: 'builder-load',
+						input: { skillId: 'builder' },
+						state: 'resolved',
+						output,
+					},
+				],
+			},
+		]);
+		const saved = structuredClone(list.serialize());
+		const restored = AgentMessageList.deserialize(saved);
+		const updatedSource = createRuntimeSkillSource([
+			{
+				id: 'builder',
+				name: 'builder',
+				description: 'Build workflows.',
+				instructions: 'Check the workflow before building.',
+			},
+		]);
+		const nextTurn = new ActiveSkills(updatedSource, 'assistant');
+		await nextTurn.restore(restored);
+
+		const modelMessages = JSON.stringify(
+			nextTurn.modelMessages(restored.forLlm('').messages, restored),
+		);
+		expect(modelMessages).not.toContain('Build one workflow.');
+		expect(modelMessages.match(/Check the workflow before building\./g)).toHaveLength(1);
+		expect(nextTurn.instructions()).toBeUndefined();
+		expect(restored.serialize()).toEqual(saved);
 	});
 
 	it('restores a reference loaded by its owner file path', async () => {
