@@ -943,7 +943,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			return;
 		}
 
-		const oauthTokenData = await this.withFirstConnectionVersion(
+		const oauthTokenData = await this.withManagedVersionIfFirstToken(
 			type,
 			credentials,
 			data.oauthTokenData,
@@ -980,11 +980,15 @@ export class CredentialsHelper extends ICredentialsHelper {
 	}
 
 	/**
+	 * Returns the token data with the managed app version added when this is the first token of a
+	 * managed credential. In any other case it returns the data unchanged. It reads the stored
+	 * credential to decide.
+	 *
 	 * A token that n8n fetches itself (client credentials) has no callback that stores the
-	 * managed app version. The first token of a managed credential gets the version of the
-	 * default app, which the execution used to fetch it. A refresh keeps the stored version.
+	 * version. The first token gets the version of the default app, which the execution used to
+	 * fetch it. A refresh keeps the stored version.
 	 */
-	private async withFirstConnectionVersion(
+	private async withManagedVersionIfFirstToken(
 		type: string,
 		credentials: Credentials,
 		tokenData: ICredentialDataDecryptedObject['oauthTokenData'],
