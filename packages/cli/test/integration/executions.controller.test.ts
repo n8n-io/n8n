@@ -15,10 +15,12 @@ import type { INode } from 'n8n-workflow';
 import { MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import { ExecutionService } from '@/executions/execution.service';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { WaitTracker } from '@/wait-tracker';
 
 import {
+	createErrorExecution,
 	createExecution,
 	createSuccessfulExecution,
 	createWaitingExecution,
@@ -573,6 +575,42 @@ describe('POST /executions/stop', () => {
 		await testServer.authAgentFor(owner).post(`/executions/${execution.id}/stop`).expect(200);
 	});
 });
+describe('POST /executions/:id/retry', () => {
+	const baseScopes = ['workflow:read', 'workflow:list', 'workflow:execute'];
+
+	const retryAs = async (scopes: string[]) => {
+		const teamProject = await createTeamProject();
+		const role = await createCustomRoleWithScopeSlugs(scopes, { roleType: 'project' });
+		await linkUserToProject(member, teamProject, role.slug);
+		const workflow = await createWorkflow({}, teamProject);
+		const execution = await createErrorExecution(workflow);
+
+		return await testServer.authAgentFor(member).post(`/executions/${execution.id}/retry`);
+	};
+
+	test('a custom project role without execution:read cannot retry an execution', async () => {
+		const retry = vi.spyOn(Container.get(ExecutionService), 'retry');
+
+		const response = await retryAs(baseScopes);
+
+		expect(response.statusCode).toBe(404);
+		expect(retry).not.toHaveBeenCalled();
+		retry.mockRestore();
+	});
+
+	test('a custom project role with execution:read can retry an execution', async () => {
+		const retry = vi
+			.spyOn(Container.get(ExecutionService), 'retry')
+			.mockResolvedValue({ id: '2' } as Awaited<ReturnType<ExecutionService['retry']>>);
+
+		const response = await retryAs([...baseScopes, 'execution:read']);
+
+		expect(response.statusCode).toBe(200);
+		expect(retry).toHaveBeenCalledTimes(1);
+		retry.mockRestore();
+	});
+});
+
 describe('POST /executions/stopMany', () => {
 	test('should not stop an execution we do not have access to', async () => {
 		await saveWaitingExecution({ belongingTo: owner });

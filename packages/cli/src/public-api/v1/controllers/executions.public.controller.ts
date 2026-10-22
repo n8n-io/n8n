@@ -401,9 +401,10 @@ export class ExecutionsPublicController {
 		@Param('executionId', executionIdParamSchema) executionId: string,
 		@Body body: RetryExecutionPublicDto,
 	): Promise<RetriedExecutionPublicDto> {
+		// A retry returns the data of the execution it continues, so it also needs `execution:read`.
 		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
 			req.user,
-			['workflow:execute'],
+			['workflow:execute', 'execution:read'],
 		);
 
 		if (!sharedWorkflowsIds.length) {

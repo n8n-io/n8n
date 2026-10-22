@@ -31,6 +31,7 @@ import {
 	createManyExecutions,
 	createSuccessfulExecution,
 } from '../shared/db/executions';
+import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
@@ -508,6 +509,44 @@ describe('POST /executions/:id/retry', () => {
 		});
 
 		executionServiceSpy.mockRestore();
+	});
+
+	describe('with a custom project role', () => {
+		const baseScopes = ['workflow:read', 'workflow:list', 'workflow:execute'];
+
+		const retryAs = async (scopes: string[]) => {
+			testServer.license.enable('feat:sharing');
+			const member = await createMemberWithApiKey();
+			const teamProject = await createTeamProject();
+			const role = await createCustomRoleWithScopeSlugs(scopes, { roleType: 'project' });
+			await linkUserToProject(member, teamProject, role.slug);
+			const workflow = await createWorkflow({}, teamProject);
+			const execution = await createErrorExecution(workflow);
+
+			return await testServer.publicApiAgentFor(member).post(`/executions/${execution.id}/retry`);
+		};
+
+		test('should return 404 when the role has no execution:read', async () => {
+			const retry = vi.spyOn(Container.get(ExecutionService), 'retry');
+
+			const response = await retryAs(baseScopes);
+
+			expect(response.statusCode).toBe(404);
+			expect(retry).not.toHaveBeenCalled();
+			retry.mockRestore();
+		});
+
+		test('should retry when the role has execution:read', async () => {
+			const retry = vi
+				.spyOn(Container.get(ExecutionService), 'retry')
+				.mockResolvedValue(retryServiceResponse());
+
+			const response = await retryAs([...baseScopes, 'execution:read']);
+
+			expect(response.statusCode).toBe(200);
+			expect(retry).toHaveBeenCalledTimes(1);
+			retry.mockRestore();
+		});
 	});
 
 	test('should return 404 when execution is not found', async () => {

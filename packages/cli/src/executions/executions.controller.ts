@@ -27,8 +27,10 @@ export class ExecutionsController {
 		private readonly executionListService: ExecutionListService,
 	) {}
 
-	private async getAccessibleWorkflowIds(user: User, scope: Scope) {
-		return await this.workflowSharingService.getSharedWorkflowIds(user, { scopes: [scope] });
+	private async getAccessibleWorkflowIds(user: User, scopes: Scope | Scope[]) {
+		return await this.workflowSharingService.getSharedWorkflowIds(user, {
+			scopes: Array.isArray(scopes) ? scopes : [scopes],
+		});
 	}
 
 	@Get('/', { middlewares: [parseRangeQuery] })
@@ -112,7 +114,11 @@ export class ExecutionsController {
 
 	@Post('/:id/retry')
 	async retry(req: ExecutionRequest.Retry) {
-		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:execute');
+		// A retry returns the data of the execution it continues, so it also needs `execution:read`.
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, [
+			'workflow:execute',
+			'execution:read',
+		]);
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
