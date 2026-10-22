@@ -2079,6 +2079,7 @@ export interface INodePropertyTypeOptions {
 	sqlDialect?: SQLDialect; // Supported by: sqlEditor
 	loadOptionsDependsOn?: string[]; // Supported by: options
 	loadOptionsMethod?: string; // Supported by: options
+	loadOptionsFromConnectedNodes?: NodeConnectionType; // Supported by: options. Stores canvas node IDs.
 	loadOptions?: ILoadOptions; // Supported by: options
 	maxValue?: number; // Supported by: number
 	minValue?: number; // Supported by: number

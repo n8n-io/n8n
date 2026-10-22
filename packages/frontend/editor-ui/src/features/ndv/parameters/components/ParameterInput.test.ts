@@ -25,6 +25,7 @@ import {
 } from '@/__tests__/mocks';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import {
+	NodeConnectionTypes,
 	type INode,
 	type INodeParameterResourceLocator,
 	type INodeProperties,
@@ -267,6 +268,52 @@ describe('ParameterInput.vue', () => {
 		await userEvent.click(options[1]);
 
 		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 'append' })]);
+	});
+
+	test('lists directly connected tool nodes and stores stable IDs across renames', async () => {
+		const sources = reactive([
+			{ id: 'weather-id', name: 'Weather' },
+			{ id: 'disabled-id', name: 'Disabled Tool', disabled: true },
+		]);
+		const getParentNodes = vi.fn(() => sources.map(({ name }) => name));
+		const { container, baseElement, emitted } = renderComponent({
+			props: {
+				path: 'parameters.toolAvailability.rules[0].sourceNodeId',
+				parameter: {
+					displayName: 'Tool',
+					name: 'sourceNodeId',
+					type: 'options',
+					default: '',
+					noDataExpression: true,
+					typeOptions: { loadOptionsFromConnectedNodes: NodeConnectionTypes.AiTool },
+				},
+				modelValue: 'weather-id',
+			},
+			global: {
+				provide: {
+					[WorkflowDocumentStoreKey as symbol]: shallowRef({
+						getParentNodes,
+						getNodeByName: (name: string) => sources.find((source) => source.name === name),
+					}),
+				},
+			},
+		});
+
+		expect(getParentNodes).toHaveBeenCalledWith(
+			mockNdvState.activeNode?.name,
+			NodeConnectionTypes.AiTool,
+			1,
+		);
+		await waitFor(() => expect(container.querySelector('input')).toHaveValue('Weather'));
+		sources[0].name = 'Forecast';
+		await waitFor(() => expect(container.querySelector('input')).toHaveValue('Forecast'));
+		await userEvent.click(container.querySelector('.select-trigger') as HTMLElement);
+		const options = baseElement.querySelectorAll('.list-option');
+		expect(options).toHaveLength(2);
+		expect(options[0]).toHaveTextContent('Forecast');
+		expect(options[1]).toHaveTextContent('Disabled Tool');
+		await userEvent.click(options[1]);
+		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 'disabled-id' })]);
 	});
 
 	test('should clamp long multi-option descriptions without truncating their content', async () => {

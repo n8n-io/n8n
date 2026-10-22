@@ -153,6 +153,135 @@ describe('Agent V3 Integration', () => {
 		testHarness.setupTest(testData, { credentials });
 	});
 
+	describe.each([3, 3.1])('Tool Availability in Agent %s', (version) => {
+		type ModelRequest = {
+			tools?: Array<{ function: { name: string } }>;
+			messages: Array<{ role: string; content: string }>;
+		};
+
+		describe('Unavailable tool', () => {
+			const requests: ModelRequest[] = [];
+			const workflowData = testHarness.readWorkflowJSON('workflows/agent-v3-with-tool.json');
+			const agent = workflowData.nodes.find(({ id }) => id === 'agent-id')!;
+			agent.typeVersion = version;
+			agent.parameters.toolAvailability = {
+				rules: [{ sourceNodeId: 'calculator-id', available: false }],
+			};
+			workflowData.nodes.push({
+				...workflowData.nodes.find(({ id }) => id === 'calculator-id')!,
+				id: 'always-available-id',
+				name: 'AlwaysAvailable',
+			});
+			workflowData.connections.AlwaysAvailable = {
+				ai_tool: [[{ node: 'AI Agent', type: 'ai_tool', index: 0 }]],
+			};
+
+			testHarness.setupTest(
+				{
+					description: 'omits an unavailable tool from the model request',
+					input: { workflowData },
+					output: { nodeData: { 'AI Agent': [[{ json: { output: 'Done' } }]] } },
+					nock: {
+						baseUrl,
+						mocks: [
+							{
+								method: 'post',
+								path: '/v1/chat/completions',
+								statusCode: 200,
+								requestBody: (body: ModelRequest) => {
+									requests.push(body);
+									return true;
+								},
+								responseBody: chatCompletionResponse('Done'),
+							},
+						],
+					},
+				},
+				{
+					credentials,
+					customAssertions: () => {
+						expect(requests).toHaveLength(1);
+						expect(requests[0].tools?.map(({ function: fn }) => fn.name)).toEqual([
+							'AlwaysAvailable',
+						]);
+					},
+				},
+			);
+		});
+
+		describe('Per-item expression', () => {
+			const requests: ModelRequest[] = [];
+			const workflowData = testHarness.readWorkflowJSON('workflows/agent-v3-with-tool.json');
+			const agent = workflowData.nodes.find(({ id }) => id === 'agent-id')!;
+			agent.typeVersion = version;
+			agent.parameters.text = '={{ $json.prompt }}';
+			agent.parameters.options = { batching: { batchSize: 2 } };
+			agent.parameters.toolAvailability = {
+				rules: [{ sourceNodeId: 'calculator-id', available: '={{ $json.allowTool }}' }],
+			};
+			workflowData.nodes.push({
+				id: 'input-id',
+				name: 'Input Data',
+				type: 'n8n-nodes-testing.testData',
+				typeVersion: 1,
+				position: [100, 0],
+				parameters: {
+					data: JSON.stringify([
+						{ prompt: 'first item', allowTool: true },
+						{ prompt: 'second item', allowTool: false },
+					]),
+				},
+			});
+			workflowData.connections["When clicking 'Execute workflow'"] = {
+				main: [[{ node: 'Input Data', type: 'main', index: 0 }]],
+			};
+			workflowData.connections['Input Data'] = {
+				main: [[{ node: 'AI Agent', type: 'main', index: 0 }]],
+			};
+
+			testHarness.setupTest(
+				{
+					description: 'resolves tool availability for each input item in the model request',
+					input: { workflowData },
+					output: {
+						nodeData: {
+							'AI Agent': [[{ json: { output: 'Done' } }, { json: { output: 'Done' } }]],
+						},
+					},
+					nock: {
+						baseUrl,
+						mocks: Array.from({ length: 2 }, () => ({
+							method: 'post' as const,
+							path: '/v1/chat/completions',
+							statusCode: 200,
+							requestBody: (body: ModelRequest) => {
+								requests.push(body);
+								return true;
+							},
+							responseBody: chatCompletionResponse('Done'),
+						})),
+					},
+				},
+				{
+					credentials,
+					customAssertions: () => {
+						expect(requests).toHaveLength(2);
+						const first = requests.find(({ messages }) =>
+							messages.some(({ content }) => content === 'first item'),
+						);
+						const second = requests.find(({ messages }) =>
+							messages.some(({ content }) => content === 'second item'),
+						);
+						expect(first).toBeDefined();
+						expect(second).toBeDefined();
+						expect(first?.tools?.map(({ function: fn }) => fn.name)).toEqual(['Calculator']);
+						expect(second?.tools ?? []).toEqual([]);
+					},
+				},
+			);
+		});
+	});
+
 	describe('Custom System Message', () => {
 		const testData: WorkflowTestData = {
 			description: 'should pass system message to model',
