@@ -33,4 +33,22 @@ describe('Agent version initialization', () => {
 		expect(agents.lockForVersionCapture).toHaveBeenCalledWith('one', ctx);
 		expect(agents.findMissingVersionIds).toHaveBeenCalledTimes(3);
 	});
+	it('leaves failed skill copies for the next startup and continues through later agents', async () => {
+		const agents = mock<AgentRepository>();
+		const definitions = mock<AgentDefinitionService>();
+		const tx = mock<TransactionRunner>();
+		tx.run.mockImplementation(async (ctx, fn) => await fn(ctx));
+		agents.findMissingVersionIds
+			.mockResolvedValueOnce(['failed'])
+			.mockResolvedValueOnce(['ready'])
+			.mockResolvedValue([]);
+		const ready = { id: 'ready', versionId: 'current-ready' } as Agent;
+		agents.lockForVersionCapture.mockResolvedValue(ready);
+
+		await new AgentVersionInitializer(agents, definitions, tx).run(['failed']);
+
+		expect(agents.lockForVersionCapture).toHaveBeenCalledExactlyOnceWith('ready', {});
+		expect(agents.findMissingVersionIds).toHaveBeenNthCalledWith(2, 100, 'failed');
+		expect(definitions.captureVersion).toHaveBeenCalledExactlyOnceWith(ready, 'Unknown', {});
+	});
 });
