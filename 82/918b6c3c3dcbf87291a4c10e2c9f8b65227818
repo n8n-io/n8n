@@ -1,0 +1,65 @@
+packages/@n8n/permissions/src/utilities/static-roles-with-scope.ee.ts
+  s_ffade853fd5bfb::t_575e3ddb983a52 13-17,27
+  s_ffade853fd5bfb::t_f087e668c81c16 23-26
+packages/cli/test/integration/controllers/dynamic-node-parameters.controller.test.ts
+  s_ffade853fd5bfb::t_74e541d4f2777f 1-7,20-21,29-33,372-429,431-432,434,436-451,453-458,460,462-529
+  s_ffade853fd5bfb::t_dc4907a594949c 430,433,435,452,459,461
+packages/@n8n/permissions/src/utilities/__tests__/roles-with-scope.test.ts
+  s_ffade853fd5bfb::t_dbb8f443665e0e 28-46
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ResourceMapper/ResourceMapper.vue
+  s_ffade853fd5bfb::t_d7d77278162f87 242-244
+packages/cli/src/services/__tests__/node-resource-explorer.service.test.ts
+  s_ffade853fd5bfb::t_dbb8f443665e0e 162-180
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_ffade853fd5bfb::t_b098dfd6e01f10 1357,2419,5277
+packages/@n8n/backend-services/src/services/role.service.ts
+  s_ffade853fd5bfb::t_6fe82746826e56 466-468
+  s_ffade853fd5bfb::t_2bb730f8d2d2e4 461
+packages/cli/src/services/dynamic-node-parameters.service.ts
+  s_ffade853fd5bfb::t_b098dfd6e01f10 116-117,122,127
+packages/@n8n/backend-services/src/services/__tests__/role-cache.service.test.ts
+  s_ffade853fd5bfb::t_dbb8f443665e0e 99-113,143-153
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ResourceMapper/ResourceMapper.test.ts
+  s_ffade853fd5bfb::t_469595c3467838 97-101
+  s_ffade853fd5bfb::t_d7d77278162f87 114,125,127-141
+  s_ffade853fd5bfb::t_f1c3685f44fdfb 142
+  s_ffade853fd5bfb::t_c9926a660fd53f 88-96,102-113,115-116,118,126
+packages/@n8n/backend-services/src/credentials/credentials-finder.service.ts
+  s_ffade853fd5bfb::t_6fe82746826e56 25-30,60,64-67,69-70,196-200,210,353-357,363
+  s_ffade853fd5bfb::t_4705861255bde1 10
+packages/cli/test/integration/credentials/credentials.api.ee.test.ts
+  s_ffade853fd5bfb::t_76aa013bfdd53a 1859-1861,1863
+  s_ffade853fd5bfb::t_74e541d4f2777f 17,1798-1858,1862
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.vue
+  s_ffade853fd5bfb::t_d7d77278162f87 948-949,951
+packages/cli/src/services/node-resource-explorer.service.ts
+  s_ffade853fd5bfb::t_b098dfd6e01f10 169
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.test.ts
+  s_ffade853fd5bfb::t_ca3a2ae953163a 840-862
+packages/@n8n/backend-services/src/credentials/__tests__/credentials-finder.service.test.ts
+  s_ffade853fd5bfb::t_469595c3467838 649-656,695-697,706-713
+  s_ffade853fd5bfb::t_dbb8f443665e0e 640-648,657-694,698-705,714-721
+packages/cli/src/services/__tests__/dynamic-node-parameters.service.test.ts
+  s_ffade853fd5bfb::t_420078f57b9deb 760,777
+packages/@n8n/backend-services/src/services/role-cache.service.ts
+  s_ffade853fd5bfb::t_f087e668c81c16 87-89
+  s_ffade853fd5bfb::t_0ac4bfbf5b6752 73,98-100
+packages/cli/src/credentials/credentials.service.ts
+  s_ffade853fd5bfb::t_b098dfd6e01f10 1535-1536,1543,1560,1593
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "82918b6c3c3dcbf87291a4c10e2c9f8b65227818",
+  "prompts": {},
+  "sessions": {
+    "s_ffade853fd5bfb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f20fdff-6f39-4123-83e9-02b5e9c84dee",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
