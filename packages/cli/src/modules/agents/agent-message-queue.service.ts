@@ -382,6 +382,7 @@ export class AgentMessageQueueService {
 
 			steeringChanged = await this.steering.releaseInactive(thread, ctx);
 			if (await this.isBlocked(thread, ctx)) return null;
+			if (await this.threadRepository.blocksQueue(threadId, ctx)) return null;
 			const active = await this.repository.findActive(threadId, ctx);
 			if (active?.executionId)
 				await this.repository.removeActive(threadId, active.executionId, ctx);

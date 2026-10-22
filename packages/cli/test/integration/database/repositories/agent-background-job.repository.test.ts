@@ -404,6 +404,8 @@ describe('AgentBackgroundJobRepository', () => {
 		const jobs = await repository.findGroupCandidates(agentId, 'thread-1');
 		expect(jobs).toHaveLength(1);
 		expect({ ...jobs[0] }).toEqual({
+			planId: null,
+			planTaskId: null,
 			id,
 			kind: 'subagent',
 			title: 'Research',

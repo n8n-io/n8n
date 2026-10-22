@@ -86,6 +86,10 @@ export const EXECUTION_METADATA_KEY = 'n8nExecutionId';
 
 export function checkpointExecutionId(state: SerializableAgentState): string | undefined {
 	if (state.persistence?.delegated) return undefined;
-	const id = state.persistence?.hostMetadata?.[EXECUTION_METADATA_KEY];
+	return executionIdFromMetadata(state.persistence?.hostMetadata);
+}
+
+export function executionIdFromMetadata(metadata?: Record<string, unknown>): string | undefined {
+	const id = metadata?.[EXECUTION_METADATA_KEY];
 	return typeof id === 'string' ? id : undefined;
 }

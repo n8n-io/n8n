@@ -1,3 +1,4 @@
+import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { TransactionRunner } from '@n8n/db';
@@ -114,7 +115,13 @@ describe('AgentPlanService', () => {
 			},
 			{},
 		);
-		const fresh = new AgentPlanService(new AgentPlanRepository(dataSource, transactionRunner));
+		const fresh = new AgentPlanService(
+			new AgentPlanRepository(
+				dataSource,
+				transactionRunner,
+				Container.get(AgentExecutionThreadRepository),
+			),
+		);
 		expect(await fresh.findActivePlan(threadId, {})).toEqual(updated);
 		expect(updated.readiness.ready).toEqual([second.id]);
 		expect(updated.data.items[0].startedAt).toEqual(updated.data.items[0].endedAt);

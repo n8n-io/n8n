@@ -8,6 +8,7 @@ import type { AgentMessageQueueService } from '../agent-message-queue.service';
 import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { AgentToolApprovalService } from '../agent-tool-approval.service';
 import { AgentTurnExecutionService, type AgentTurnRequest } from '../agent-turn-execution.service';
+import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import type { AgentTurnFinalizeOutcome } from '../types/agent-turn-outcome';
 
 it('ends a preview turn stopped during preparation without recording an error', async () => {
@@ -17,6 +18,7 @@ it('ends a preview turn stopped during preparation without recording an error', 
 		async (_threadId, action) => await action(new AbortController().signal),
 	);
 	const service = new AgentTurnExecutionService(
+		mock<AgentExecutionThreadRepository>(),
 		mock<Logger>(),
 		executions,
 		chatExecutions,
@@ -80,6 +82,7 @@ describe('onBeforeFinalize', () => {
 		executions.finalizeExecution.mockResolvedValue('exec-1');
 		executions.getAbortSignal.mockReturnValue(new AbortController().signal);
 		const service = new AgentTurnExecutionService(
+			mock<AgentExecutionThreadRepository>(),
 			mock<Logger>(),
 			executions,
 			mock<AgentChatExecutionService>(),

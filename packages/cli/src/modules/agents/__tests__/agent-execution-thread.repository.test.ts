@@ -2,6 +2,7 @@
 import { mock } from 'vitest-mock-extended';
 
 import type { TransactionRunner } from '@n8n/db';
+import { AgentsConfig } from '@n8n/config';
 import { mockEntityManager } from '@test/mocking';
 
 import { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
@@ -21,6 +22,7 @@ describe('AgentExecutionThreadRepository', () => {
 		repository = new AgentExecutionThreadRepository(
 			mockDataSource as never,
 			mock<TransactionRunner>(),
+			new AgentsConfig(),
 		);
 	});
 

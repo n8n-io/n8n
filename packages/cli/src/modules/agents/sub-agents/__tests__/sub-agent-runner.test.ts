@@ -1,4 +1,3 @@
-import type { AgentMessageSteeringService } from '../../agent-message-steering.service';
 import {
 	INLINE_SUB_AGENT_ID,
 	type BuiltAgent,
@@ -21,6 +20,8 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import type { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
+import type { AgentMessageSteeringService } from '../../agent-message-steering.service';
 import type { AgentExecutionService } from '../../agent-execution.service';
 import type { AgentMessageQueueService } from '../../agent-message-queue.service';
 import type { AgentChatExecutionService } from '../../agent-chat-execution.service';
@@ -130,6 +131,7 @@ describe('SubAgentRunner', () => {
 	let logger: Mocked<Logger>;
 	let checkpointStorage: Mocked<N8NCheckpointStorage>;
 	let credentialProvider: Mocked<CredentialProvider>;
+	let cancellations: Mocked<AgentExecutionThreadRepository>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -150,9 +152,12 @@ describe('SubAgentRunner', () => {
 		agentExecutionService.finalizeExecution.mockResolvedValue('agent-execution-1');
 		checkpointStorage = mock<N8NCheckpointStorage>();
 		logger = mock<Logger>();
+		cancellations = mock<AgentExecutionThreadRepository>();
 		runner = new SubAgentRunner(
+			cancellations,
 			sourceResolver,
 			new AgentTurnExecutionService(
+				cancellations,
 				logger,
 				agentExecutionService,
 				mock<AgentChatExecutionService>(),
@@ -191,6 +196,30 @@ describe('SubAgentRunner', () => {
 		});
 
 		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledTimes(1);
+	});
+
+	it('stops child model and tool calls after an ancestor stops and retains the pause checkpoint path', async () => {
+		const shouldPause = vi.fn().mockResolvedValue(false);
+		await runner.run(spawnRequest, {
+			parentAgentId,
+			projectId,
+			credentialProvider,
+			runType: 'production',
+			shouldPause,
+		});
+		const options = childAgent.stream.mock.calls[0][1];
+		const hook = options?.guardrails?.hooks?.[0];
+		cancellations.hasPausedAncestor.mockResolvedValue(false);
+		expect(await hook?.before?.(mock())).toBeUndefined();
+
+		cancellations.hasPausedAncestor.mockResolvedValue(true);
+		const stopped = { action: 'stop', code: 'tasks-stopped', canceled: true };
+		expect(await hook?.before?.(mock())).toEqual(stopped);
+		expect(await hook?.beforeTool?.(mock())).toEqual(stopped);
+		expect(cancellations.isCancelled).not.toHaveBeenCalled();
+		expect(await options?.shouldPause?.()).toBe(true);
+		expect(shouldPause).toHaveBeenCalled();
+		expect(cancellations.hasPausedAncestor).toHaveBeenCalled();
 	});
 
 	it('rebuilds the child through the shared reconstruction service and runs it with a fresh prompt', async () => {
@@ -795,7 +824,8 @@ describe('SubAgentRunner', () => {
 		});
 
 		const options = childAgent.stream.mock.calls[0]?.[1];
-		expect(options?.guardrails?.hooks).toEqual([]);
+		expect(options?.guardrails?.hooks).toHaveLength(1);
+		expect(options?.guardrails?.hooks[0].after).toBeUndefined();
 		expect(options?.guardrails?.onNotice).toBeDefined();
 	});
 
@@ -903,7 +933,7 @@ describe('SubAgentRunner', () => {
 			expect.objectContaining({
 				runId: 'child-run-1',
 				hostMetadata: { n8nExecutionId: 'agent-execution-1' },
-				shouldPause,
+				shouldPause: expect.any(Function),
 			}),
 		);
 		expect(result).toMatchObject({

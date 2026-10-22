@@ -1,4 +1,3 @@
-import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { Agent as RuntimeAgent, ExecutionOptions, RunOptions, StreamChunk } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
@@ -10,6 +9,8 @@ import { OperationalError, UserError } from 'n8n-workflow';
 import type { ExecuteAgentWorkflowContext, IRunExecutionData } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import type { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
+import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { AgentsSettingsService } from '../agents-settings.service';
 import { SkillService } from '@/modules/skills/skill.service';
 import { AgentSkillUsageService } from '../agent-skill-usage.service';
@@ -166,6 +167,7 @@ function makeService() {
 		logger,
 		agentRepository,
 		new AgentTurnExecutionService(
+			mock<AgentExecutionThreadRepository>(),
 			mockLogger(),
 			executionService,
 			mock<AgentChatExecutionService>(),
