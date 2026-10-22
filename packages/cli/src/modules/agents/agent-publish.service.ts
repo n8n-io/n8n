@@ -695,7 +695,10 @@ export class AgentPublishService {
 				versionId: uuid(),
 			};
 		}
-		const versionId = agent.versionId ?? uuid();
+		const saved = agent.versionId
+			? await this.agentHistoryRepository.findByVersionAndAgentId(agent.versionId, agent.id, ctx)
+			: null;
+		const versionId = saved ? uuid() : (agent.versionId ?? uuid());
 		const activeVersion = await this.saveDraftHistory(ctx, agent, user, versionId);
 		await this.snapshotConfiguredTasks(ctx, versionId, agent.schema, tasks);
 		return { activeVersionId: versionId, activeVersion, versionId };

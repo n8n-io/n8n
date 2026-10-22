@@ -7,7 +7,7 @@ import type {
 } from '@n8n/api-types';
 import type { OperationContext, User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { deepCopy, UnexpectedError, UserError } from 'n8n-workflow';
+import { deepCopy, UnexpectedError } from 'n8n-workflow';
 
 import { SkillRepository } from '@/modules/skills/skill.repository';
 import {
@@ -25,11 +25,10 @@ import { withoutLegacySkillRefs, type AgentSkillRefs } from './json-config/agent
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSkillRepository } from './repositories/agent-skill.repository';
 import { getAgentSkillHash } from './utils/agent-config-hash';
-import { getMissingSkillIds } from './utils/agent-missing-skill-ids';
 import { generateAgentResourceId } from './utils/agent-resource-id';
 
-/** The `agent_history` skill columns of one publish, and the hub versions to pin. */
-export type PublishSnapshot = {
+/** The saved skill bodies and the hub versions to pin. */
+export type VersionSnapshot = {
 	schema: StoredAgentConfig | null;
 	skills: Record<string, AgentSkill> | null;
 	/** Hub skill version id for each skill ref, in draft order. Empty with the hub off. */
@@ -382,28 +381,18 @@ export class AgentSkillRefsService {
 	}
 
 	/**
-	 * What a publish writes to `agent_history`. Both settings write the legacy columns in
-	 * full: the skill refs in `schema.skills` and their bodies in `skills`. With the skills
-	 * hub on, the bodies are the versions the draft runs, so a published agent keeps
-	 * running after the flag is turned off. `pins` are the hub versions to pin once the
-	 * `agent_history` row exists (see `pinVersion`); empty with the hub off. Call it in
-	 * the publish transaction: it takes the publish lock on the skills.
+	 * Capture draft refs and available bodies. Publication validates completeness separately.
+	 * Keep the legacy columns so saved versions work with the skills hub off.
+	 * Pin the resolved hub versions after the history row exists.
 	 */
 	async versionSnapshot(
 		agent: Pick<Agent, 'id' | 'schema' | 'skills'>,
 		ctx: OperationContext,
-		requireComplete = true,
-	): Promise<PublishSnapshot> {
+	): Promise<VersionSnapshot> {
 		if (!agent.schema) return { schema: null, skills: null, pins: new Map() };
 		if (!this.usesSkillsHub) {
 			const skillRefs = readLegacyRefs(agent.schema);
 			const skills = pickBodies(agent.skills ?? {}, skillRefs);
-			const missing = getMissingSkillIds(skillRefs, skills);
-			if (requireComplete && missing.length > 0) {
-				throw new UserError(
-					`Cannot publish agent with missing skill bodies: ${missing.join(', ')}`,
-				);
-			}
 			return { schema: agent.schema, skills: deepCopy(skills), pins: new Map() };
 		}
 		const refs = await this.refsForDraft(agent, ctx);
@@ -421,10 +410,6 @@ export class AgentSkillRefsService {
 			toServiceRefs(refs),
 			ctx,
 		);
-		const missing = refs.filter((ref) => !versionByRef.has(ref.id)).map((ref) => ref.id);
-		if (requireComplete && missing.length > 0) {
-			throw new UserError(`Cannot publish agent with missing skills: ${missing.join(', ')}`);
-		}
 		const schema = {
 			...withoutLegacySkillRefs(agent.schema),
 			skills: refs.map(({ id }) => ({ type: 'skill', id })),
@@ -439,7 +424,7 @@ export class AgentSkillRefsService {
 	/** Publish, after the `agent_history` row exists: pin the versions of `versionSnapshot`. */
 	async pinVersion(
 		agentVersionId: string,
-		snapshot: PublishSnapshot,
+		snapshot: VersionSnapshot,
 		ctx: OperationContext,
 	): Promise<void> {
 		if (snapshot.pins.size === 0) return;

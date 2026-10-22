@@ -17,7 +17,11 @@ export class AgentsModule implements ModuleInterface {
 		const { registerSkillAgentsProvider } = await import('./register-skill-agents-provider.js');
 		registerSkillAgentsProvider();
 		const { SkillsHubStartupCopy } = await import('./skills/skills-hub-startup-copy.js');
-		await Container.get(SkillsHubStartupCopy).runOnStartup();
+		const failedSkillCopies = await Container.get(SkillsHubStartupCopy).runOnStartup();
+		if (Container.get(InstanceSettings).instanceType === 'main') {
+			const { AgentVersionInitializer } = await import('./agent-version-initializer.js');
+			await Container.get(AgentVersionInitializer).run(failedSkillCopies);
+		}
 
 		// Imported for its `@OnLifecycleEvent` registration, which happens at
 		// class-decoration time — nothing else references this service.

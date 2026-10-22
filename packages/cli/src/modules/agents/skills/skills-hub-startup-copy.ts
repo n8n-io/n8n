@@ -111,13 +111,17 @@ export class SkillsHubStartupCopy {
 	) {}
 
 	/** Called when the agents module starts, after the skills module read the rollout flag. */
-	async runOnStartup(): Promise<void> {
-		if (this.instanceSettings.instanceType !== 'main') return;
+	async runOnStartup(): Promise<string[]> {
+		if (this.instanceSettings.instanceType !== 'main') return [];
 		// Without the skills module there are no hub tables to copy into or compare with.
-		if (!this.moduleRegistry.isActive('skills')) return;
-		if (this.rollout.isEnabled) await this.copyAll();
+		if (!this.moduleRegistry.isActive('skills')) return [];
+		if (this.rollout.isEnabled) {
+			await this.copyAll();
+			return (await this.readProgress())?.retryAgentIds ?? [];
+		}
 		// One warning per instance is enough: only the leader logs it.
-		else if (this.instanceSettings.isLeader) await this.warnAboutHubOnlySkills();
+		if (this.instanceSettings.isLeader) await this.warnAboutHubOnlySkills();
+		return [];
 	}
 
 	async copyAll(): Promise<CopyCounts> {

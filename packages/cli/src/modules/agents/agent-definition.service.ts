@@ -44,7 +44,7 @@ export class AgentDefinitionService {
 			ctx,
 		);
 		if (existing) return existing;
-		const snapshot = await this.agentSkillRefs.versionSnapshot(agent, ctx, false);
+		const snapshot = await this.agentSkillRefs.versionSnapshot(agent, ctx);
 		const history = await this.historyRepository.saveVersion(
 			{
 				versionId: agent.versionId,

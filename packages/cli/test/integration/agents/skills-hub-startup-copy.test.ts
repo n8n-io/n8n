@@ -10,6 +10,10 @@ import { randomUUID } from 'node:crypto';
 
 import { setSkillsHubFlag } from '@/modules/skills/__tests__/test-utils/skills-hub-flag';
 import { registerSkillAgentsProvider } from '@/modules/agents/register-skill-agents-provider';
+import { AgentPublishService } from '@/modules/agents/agent-publish.service';
+import { AgentValidationService } from '@/modules/agents/agent-validation.service';
+import { createOwner } from '../shared/db/users';
+import { AgentVersionInitializer } from '@/modules/agents/agent-version-initializer';
 import { AgentRuntimeCacheService } from '@/modules/agents/agent-runtime-cache.service';
 import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
 import { AgentUpdateBroadcaster } from '@/modules/agents/agent-update-broadcaster';
@@ -97,6 +101,48 @@ describe('SkillsHubStartupCopy', () => {
 			}),
 		);
 	}
+
+	it('captures an incomplete legacy draft once and rejects publication of that version', async () => {
+		setSkillsHubFlag(false);
+		const agent = await legacyAgent([{ type: 'skill', id: 'missing' }], {});
+		const initializer = Container.get(AgentVersionInitializer);
+		await initializer.run(await copy.runOnStartup());
+		const version = await histories.findOneByOrFail({ agentId: agent.id });
+		expect(version).toMatchObject({
+			versionId: agent.versionId,
+			schema: agent.schema,
+			skills: {},
+			publishedById: null,
+		});
+		await initializer.run();
+		expect(await histories.countBy({ agentId: agent.id })).toBe(1);
+
+		const validation = vi.spyOn(
+			Container.get(AgentValidationService),
+			'validateAgentHistoryConfiguration',
+		);
+		try {
+			await expect(
+				Container.get(AgentPublishService).publishAgent(
+					agent.id,
+					project.id,
+					await createOwner(),
+					{ by: 'user', trigger: 'explicit' },
+					version.versionId,
+				),
+			).rejects.toThrow('Agent configuration has errors that must be resolved before publishing');
+			const result = await validation.mock.results[0].value;
+			expect(result).toMatchObject({
+				status: 'invalid',
+				issues: expect.arrayContaining([
+					expect.objectContaining({ code: 'missing_reference', path: 'skill:missing' }),
+				]),
+			});
+			expect((await agents.findById(agent.id))?.activeVersionId).toBeNull();
+		} finally {
+			validation.mockRestore();
+		}
+	});
 
 	let publishedAt = new Date('2026-01-01T00:00:00.000Z');
 
@@ -1035,6 +1081,33 @@ describe('SkillsHubStartupCopy', () => {
 			// The run that failed for `broken` still recorded `fine` as copied.
 			expect(await skillRefs.refsForDraft(fine, {})).toEqual([]);
 			expect((await progress())?.retryAgentIds).toEqual([]);
+		});
+
+		it('defers the first snapshot until the draft skill copy succeeds', async () => {
+			const broken = await legacyAgent([{ type: 'skill', id: 'broken' }], {
+				broken: body('Broken', 'Keep these instructions.'),
+			});
+			const fine = await legacyAgent([{ type: 'skill', id: 'fine' }], { fine: body('Fine') });
+			const replace = agentSkills.replaceDependencies.bind(agentSkills);
+			const failure = vi
+				.spyOn(agentSkills, 'replaceDependencies')
+				.mockImplementation(async (agentId, refs, ctx) => {
+					if (agentId === broken.id) throw new Error('Write failed');
+					return await replace(agentId, refs, ctx);
+				});
+			const initializer = Container.get(AgentVersionInitializer);
+			const failedIds = await copy.runOnStartup();
+			expect(failedIds).toEqual([broken.id]);
+			await initializer.run(failedIds);
+			expect(await histories.findOneBy({ agentId: broken.id })).toBeNull();
+			expect(await histories.findOneBy({ agentId: fine.id })).not.toBeNull();
+
+			failure.mockRestore();
+			await initializer.run(await copy.runOnStartup());
+			const version = await histories.findOneByOrFail({ agentId: broken.id });
+			expect(instructionsOf((await skillRefs.readVersion(version, {})).skills)).toEqual({
+				broken: 'Keep these instructions.',
+			});
 		});
 
 		it('adds a version that an older main publishes later to the same skill', async () => {

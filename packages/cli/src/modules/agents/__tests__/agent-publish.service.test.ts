@@ -759,6 +759,22 @@ describe('AgentPublishService', () => {
 		);
 	});
 
+	it('keeps the startup snapshot when publishing the current draft', async () => {
+		const { service, agentRepository, agentHistoryRepository } = makeService();
+		const agent = makeAgent({ versionId: 'startup-version' });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(
+			makeHistory({ versionId: 'startup-version' }),
+		);
+
+		await service.publishAgent(agentId, projectId, user, byUser);
+
+		expect(agentHistoryRepository.saveVersion).toHaveBeenCalledWith(
+			expect.objectContaining({ versionId: expect.not.stringContaining('startup-version') }),
+			expect.anything(),
+		);
+	});
+
 	it('switches to an existing history row when publishing a specific version', async () => {
 		const { service, agentRepository, agentHistoryRepository, ctx } = makeService();
 		const agent = makeAgent({
