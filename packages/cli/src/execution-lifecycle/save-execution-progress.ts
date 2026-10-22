@@ -28,8 +28,10 @@ export async function saveExecutionProgress(
 		const updated = await executionPersistence.updateExistingExecution(
 			executionId,
 			{ data: executionData, status: 'running' },
-			// A memory guard stop saves the execution as failed but not finished, and a
-			// save that started before the stop must not write the run data back.
+			// If the memory guard stops the execution while this save runs, n8n saves the
+			// execution as failed, with no run data. This save must not then write the run
+			// data back. `requireNotCanceled` cannot catch this, because the status is
+			// `error`, so require `running` instead.
 			requireRunning
 				? { requireNotFinished: true, requireStatus: 'running' }
 				: { requireNotFinished: true, requireNotCanceled: true },
