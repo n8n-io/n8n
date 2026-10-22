@@ -1627,6 +1627,77 @@ describe('Assistant availability', () => {
 		initialScope: 'instance',
 	};
 
+	const agentSettings = {
+		scopeOptions: [
+			{ value: 'agent', label: 'This agent only', icon: 'bot' as const },
+			{ value: 'project:p1', label: 'Marketing', icon: 'layers' as const },
+			{ value: 'instance', label: 'Global', icon: 'globe' as const },
+		],
+		initialScope: 'agent',
+		availableToAssistant: false,
+	};
+
+	async function selectScope(label: string) {
+		await userEvent.click(screen.getByTestId('agent-skill-scope-select'));
+		const option = await waitFor(() => {
+			const match = [...document.querySelectorAll('.el-select-dropdown__item')].find(
+				(item) => item.textContent?.trim() === label,
+			);
+			if (!match) throw new Error(`Expected the ${label} option`);
+			return match;
+		});
+		await userEvent.click(option);
+	}
+
+	it.each([
+		['Marketing', 'project:p1'],
+		['Global', 'instance'],
+	])('shows the toggle before saving a move to %s', async (label, scope) => {
+		const onConfirm = vi.fn();
+		const { getByTestId, queryByTestId } = renderModal({
+			skill: savedSkill,
+			skillId: 'skill-1',
+			onConfirm,
+			settings: agentSettings,
+		});
+		expect(queryByTestId('skill-assistant-availability')).not.toBeInTheDocument();
+		await selectScope(label);
+		expect(getByTestId('skill-assistant-availability')).toBeInTheDocument();
+		expect(onConfirm).not.toHaveBeenCalled();
+		await userEvent.click(getByTestId('skill-assistant-availability'));
+		await userEvent.click(getByTestId('agent-skill-create-save'));
+		await waitFor(() =>
+			expect(onConfirm).toHaveBeenCalledWith(
+				expect.objectContaining({ scope, availableToAssistant: true, skill: savedSkill }),
+			),
+		);
+	});
+
+	it('hides the toggle when returning to agent scope and keeps its draft value', async () => {
+		const { getByTestId, queryByTestId } = renderModal({
+			skill: savedSkill,
+			skillId: 'skill-1',
+			settings: agentSettings,
+		});
+		await selectScope('Global');
+		await userEvent.click(getByTestId('skill-assistant-availability'));
+		await selectScope('This agent only');
+		expect(queryByTestId('skill-assistant-availability')).not.toBeInTheDocument();
+		expect(getByTestId('agent-skill-create-save')).toBeDisabled();
+		await selectScope('Marketing');
+		expect(getByTestId('skill-assistant-availability')).toHaveAttribute('aria-checked', 'true');
+	});
+
+	it('keeps the toggle hidden after a scope change when the feature is disabled', async () => {
+		const { queryByTestId } = renderModal({
+			skill: savedSkill,
+			skillId: 'skill-1',
+			settings: { ...agentSettings, availableToAssistant: undefined },
+		});
+		await selectScope('Global');
+		expect(queryByTestId('skill-assistant-availability')).not.toBeInTheDocument();
+	});
+
 	it('saves a toggle-only change with the existing form', async () => {
 		const onConfirm = vi.fn();
 		const { getByTestId } = renderModal({
