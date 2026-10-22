@@ -1,10 +1,10 @@
 import { MANAGED_VERSION_KEY } from 'n8n-workflow';
 
 import {
+	hasClientFields,
 	hasInvalidStoredVersion,
 	isManagedVersion,
 	isManagedVersionEntry,
-	nearestValue,
 	readStoredVersion,
 } from '@/managed-versions';
 
@@ -79,17 +79,20 @@ describe('managed-versions', () => {
 		});
 	});
 
-	describe('nearestValue', () => {
-		it('should return the value of the type before the value of a parent', () => {
-			expect(nearestValue('child', ['parent'], { child: 1, parent: 2 })).toBe(1);
+	describe('hasClientFields', () => {
+		const fields = ['clientId', 'clientSecret'];
+
+		it('should be true when every client field is set', () => {
+			expect(hasClientFields({ clientId: 'a', clientSecret: 'b', scope: 'x' }, fields)).toBe(true);
 		});
 
-		it('should return the value of the nearest parent that has one', () => {
-			expect(nearestValue('child', ['near', 'far'], { far: 3 })).toBe(3);
-		});
-
-		it('should ignore names that the object only inherits', () => {
-			expect(nearestValue('toString', [], {})).toBeUndefined();
+		it.each([
+			['a missing field', { clientId: 'a' }],
+			['an empty field', { clientId: 'a', clientSecret: '' }],
+			['a null field', { clientId: 'a', clientSecret: null }],
+			['no client fields', { scope: 'x' }],
+		])('should be false for %s', (_name, entry) => {
+			expect(hasClientFields(entry, fields)).toBe(false);
 		});
 	});
 });
