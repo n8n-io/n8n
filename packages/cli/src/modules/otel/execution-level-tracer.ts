@@ -405,13 +405,13 @@ function resolveCrashedWorkflowIdentity(params: EndCrashedWorkflowParams): Execu
 	);
 }
 
-function buildNodeEndAttributes(params: EndNodeParams): Record<string, string | number> {
-	const attrs: Record<string, string | number> = {
+function buildNodeEndAttributes(params: EndNodeParams): Attributes {
+	return {
 		[ATTR.NODE_ITEMS_INPUT]: params.inputItemCount,
 		[ATTR.NODE_ITEMS_OUTPUT]: params.outputItemCount,
 		...buildCustomAttributes(ATTR.NODE_CUSTOM_PREFIX, params.customAttributes),
+		...params.genAiAttributes,
 	};
-	return attrs;
 }
 
 function toTracingParentContext(span: Span, identity: ExecutionIdentity): TracingContext {

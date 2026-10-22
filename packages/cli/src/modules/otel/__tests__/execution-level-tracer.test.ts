@@ -651,7 +651,7 @@ describe('ExecutionLevelTracer', () => {
 			expect(spans[0].name).toBe('workflow.execute');
 		});
 
-		it('should add custom attributes from tracing metadata', () => {
+		it('should add prefixed custom attributes and unprefixed GenAI attributes', () => {
 			tracer.startWorkflow({
 				executionId: 'exec-7',
 				tracingContext: inboundTracingContext,
@@ -668,6 +668,7 @@ describe('ExecutionLevelTracer', () => {
 				inputItemCount: 1,
 				outputItemCount: 1,
 				customAttributes: { 'llm.model': 'gpt-4o', 'llm.tokens': '500' },
+				genAiAttributes: { 'gen_ai.operation.name': 'chat', 'gen_ai.usage.input_tokens': 5 },
 			});
 			tracer.endWorkflow({
 				executionId: 'exec-7',
@@ -679,6 +680,8 @@ describe('ExecutionLevelTracer', () => {
 			const nodeSpan = otel.getFinishedSpans().find((s) => s.name === 'node.execute')!;
 			expect(nodeSpan.attributes['n8n.node.custom.llm.model']).toBe('gpt-4o');
 			expect(nodeSpan.attributes['n8n.node.custom.llm.tokens']).toBe('500');
+			expect(nodeSpan.attributes['gen_ai.operation.name']).toBe('chat');
+			expect(nodeSpan.attributes['gen_ai.usage.input_tokens']).toBe(5);
 		});
 
 		it('should not apply workflow custom attributes to node spans', () => {
