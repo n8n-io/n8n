@@ -424,8 +424,9 @@ describe('MemoryGuardService', () => {
 			expect(stoppedIds()).toEqual(['first', 'second']);
 		});
 
-		it('should count a stop that frees no memory below the hold level as freeing nothing', async () => {
-			addExecution('large', { megabytes: 300 });
+		it('should keep stopping at the stop level when a stop below it frees no memory', async () => {
+			addExecution('first', { megabytes: 300 });
+			addExecution('second', { megabytes: 200 });
 			utilization = 0.82;
 			await sample(2);
 			void concurrencyControl.throttle({ mode: 'webhook', executionId: 'held' });
@@ -433,11 +434,14 @@ describe('MemoryGuardService', () => {
 
 			await vi.advanceTimersByTimeAsync(HOLD_LIMIT_MS + 300);
 			await vi.advanceTimersByTimeAsync(3_000);
-
-			expect(stoppedIds()).toEqual(['large']);
-			expect(guardLogger.warn).toHaveBeenCalledWith(
+			expect(stoppedIds()).toEqual(['first']);
+			expect(guardLogger.warn).not.toHaveBeenCalledWith(
 				expect.stringContaining('freed less memory than expected'),
 			);
+
+			utilization = 0.9;
+			await sample(2);
+			expect(stoppedIds()).toEqual(['first', 'second']);
 		});
 
 		it.each([0.82, 0.9, 0.96])(
@@ -528,14 +532,32 @@ describe('MemoryGuardService', () => {
 			addExecution('large', { megabytes: 300 });
 			utilization = 0.96;
 			readMemoryUsageOnce(0.96);
+			readMemoryUsageOnce(0.95);
 			readMemoryUsageOnce(0.6);
 
 			await sample();
 
 			expect(stopLogs()).toEqual([
-				'Stopped execution large of workflow workflow-large at 960MB of 1000MB (critical). It held an estimated 300MB of run data. Memory after the stop: 600MB',
+				'Stopped execution large of workflow workflow-large at 950MB of 1000MB (critical). It held an estimated 300MB of run data. Memory after the stop: 600MB',
 			]);
 			expect(guardLogger.warn).not.toHaveBeenCalledWith(
+				expect.stringContaining('freed less memory than expected'),
+			);
+		});
+
+		it('should not count memory that a garbage collection frees before the stop', async () => {
+			addExecution('large', { megabytes: 200 });
+			utilization = 0.99;
+			readMemoryUsageOnce(0.99);
+			readMemoryUsageOnce(0.9);
+			readMemoryUsageOnce(0.88);
+
+			await sample();
+			utilization = 0.88;
+			await vi.advanceTimersByTimeAsync(3_000);
+
+			expect(stoppedIds()).toEqual(['large']);
+			expect(guardLogger.warn).toHaveBeenCalledWith(
 				expect.stringContaining('freed less memory than expected'),
 			);
 		});
@@ -558,6 +580,7 @@ describe('MemoryGuardService', () => {
 		it('should count a stop as freeing memory when memory drops by half its estimate', async () => {
 			addExecution('small', { megabytes: 20 });
 			utilization = 0.96;
+			readMemoryUsageOnce(0.96);
 			readMemoryUsageOnce(0.96);
 			readMemoryUsageOnce(0.95);
 
@@ -627,6 +650,7 @@ describe('MemoryGuardService', () => {
 				activeExecutions.getExecutionOrFail.mockClear();
 			});
 			let isResultHeld: boolean | undefined;
+			readMemoryUsageOnce(0.96);
 			readMemoryUsageOnce(0.96);
 			vi.mocked(readMemoryUsage).mockImplementationOnce(() => {
 				isResultHeld = result.deref() !== undefined;

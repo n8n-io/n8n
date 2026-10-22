@@ -176,16 +176,16 @@ export class MemoryGuardService {
 		if (this.pendingStop) return;
 
 		if (this.isStandingDown) {
-			if (isCritical) this.stop(usage, 'critical');
+			if (isCritical) this.stop('critical');
 			else if (this.hasHoldLimitPassed())
 				this.suspendHold('The last stop freed less memory than expected');
 			return;
 		}
 
-		const trigger = this.getStopTrigger(isCritical);
-		if (!trigger) return;
+		const stop = this.getStop(isCritical);
+		if (!stop) return;
 
-		const isStopped = this.stop(usage, trigger);
+		const isStopped = this.stop(stop.trigger, stop.usageAfterGc);
 		if (!isStopped && this.hasHoldLimitPassed()) {
 			this.suspendHold('No execution can be stopped to end the hold');
 		}
@@ -209,25 +209,27 @@ export class MemoryGuardService {
 		if (this.productionHold.admit(1) > 0) this.lastStarvationAdmitAt = now;
 	}
 
-	private getStopTrigger(isCritical: boolean): StopTrigger | undefined {
-		if (isCritical) return 'critical';
-		// Without a stop target, a collection on every sample only pauses the event loop.
-		const canStop = this.stopStreak >= SAMPLES_TO_ACT && this.findStopTarget() !== undefined;
-		if (canStop && this.isAboveStopLevelAfterGc()) return 'threshold';
-		if (this.hasHoldLimitPassed()) return 'hold-limit';
-		return undefined;
-	}
-
 	/**
 	 * Freed memory shows only after a garbage collection, so collect before a threshold stop.
 	 * If memory falls below the stop level, the streak starts again, to limit collections.
 	 */
-	private isAboveStopLevelAfterGc() {
-		if (!this.forceGc) return true;
-		this.forceGc();
-		if (readMemoryUsage(this.containerLimit).utilization >= STOP_LEVEL) return true;
-		this.stopStreak = 0;
-		return false;
+	private getStop(
+		isCritical: boolean,
+	): { trigger: StopTrigger; usageAfterGc?: MemoryUsage } | undefined {
+		if (isCritical) return { trigger: 'critical' };
+		// Without a stop target, a collection on every sample only pauses the event loop.
+		if (this.stopStreak >= SAMPLES_TO_ACT && this.findStopTarget()) {
+			const usageAfterGc = this.readUsageAfterGc();
+			if (usageAfterGc.utilization >= STOP_LEVEL) return { trigger: 'threshold', usageAfterGc };
+			this.stopStreak = 0;
+		}
+		if (this.hasHoldLimitPassed()) return { trigger: 'hold-limit' };
+		return undefined;
+	}
+
+	private readUsageAfterGc() {
+		this.forceGc?.();
+		return readMemoryUsage(this.containerLimit);
 	}
 
 	private hasHoldLimitPassed() {
@@ -277,9 +279,12 @@ export class MemoryGuardService {
 	}
 
 	/** Stop the execution tree that holds the most run data. Returns whether it stopped one. */
-	private stop(usage: MemoryUsage, trigger: StopTrigger) {
+	private stop(trigger: StopTrigger, usageAfterGc?: MemoryUsage) {
 		const target = this.findStopTarget();
 		if (!target) return false;
+
+		// The check after the stop also collects first, so only the stop counts as freed memory.
+		const usage = usageAfterGc ?? this.readUsageAfterGc();
 
 		const engines: Array<Promise<void>> = [];
 		for (const executionId of target.memberIds) {
@@ -323,8 +328,9 @@ export class MemoryGuardService {
 
 	/**
 	 * Wait until the stopped engines end, then check whether the stop freed memory. If it
-	 * did not, executions do not hold the memory, so the guard stops only at the critical
-	 * level until memory falls.
+	 * did not and memory is still at the stop level, executions do not hold the memory, so
+	 * the guard stops only at the critical level until memory falls. Below the stop level,
+	 * other work can allocate during the stop, and the guard must still stop at the stop level.
 	 */
 	private async finishStop(
 		target: StopTarget,
@@ -340,7 +346,7 @@ export class MemoryGuardService {
 			{ executionId: target.rootId, workflowId: target.workflow.id },
 		);
 
-		if (!freedMemory) {
+		if (!freedMemory && after.utilization >= STOP_LEVEL) {
 			this.isStandingDown = true;
 			this.logger.warn(
 				`The stop freed less memory than expected, so the memory guard now stops executions only at ${percent(CRITICAL_LEVEL)} or more, until memory falls below ${percent(RESUME_LEVEL)}`,
