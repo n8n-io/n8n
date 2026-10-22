@@ -2,6 +2,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import type { MockedStore } from '@/__tests__/utils';
 import { mockedStore } from '@/__tests__/utils';
 import ProjectTabs from './ProjectTabs.vue';
+import { within } from '@testing-library/vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { useProjectsStore } from '../projects.store';
 import type { Project } from '../projects.types';
@@ -92,15 +93,16 @@ describe('ProjectTabs', () => {
 		expect(getByText('Variables')).toBeInTheDocument();
 	});
 
-	it('should render preview tabs with a preview badge', () => {
-		const { getByText } = renderComponent({
+	it('should render the preview badge only on preview tabs', () => {
+		const { getByTestId, getByText } = renderComponent({
 			props: {
 				additionalTabs: [{ label: 'Agents', value: 'agents', preview: true }],
 			},
 		});
 
 		expect(getByText('Agents')).toBeInTheDocument();
-		expect(getByText('Preview').closest('.n8n-badge')).toBeVisible();
+		expect(within(getByTestId('tab-agents')).getByText('Preview')).toBeInTheDocument();
+		expect(within(getByTestId('tab-WorkflowsView')).queryByText('Preview')).not.toBeInTheDocument();
 	});
 
 	const getTabValuesInOrder = (container: ParentNode) =>
