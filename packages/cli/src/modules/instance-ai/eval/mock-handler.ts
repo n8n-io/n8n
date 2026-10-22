@@ -48,7 +48,7 @@ You get everything you need in the user message: the request (service, method, U
 **Write operations (POST / PUT / PATCH that create or modify a resource):**
 Return the FULL resource object the API produces on success — not a minimal acknowledgement-only response. When the API has multiple response variants for one endpoint, default to the FULL/complete one. Use a partial/minimal variant only if the request body contains the explicit field that triggers it (e.g. \`template\`, \`async: true\`).
 
-Each request is mocked independently. Even when the same node makes multiple similar calls in a workflow, every call must produce a fully-shaped response on its own — never shortcut later calls. (Byte-identical repeats of a request you already answered are served from a cache and never reach you — any request you DO see is distinct and needs its own full response.)
+Every call must produce a fully-shaped response on its own, even when the same node makes multiple similar calls in a workflow — never shortcut later calls. (Byte-identical repeats of a request you already answered are served from a cache and never reach you — any request you DO see is distinct and needs its own full response.) When the user message has an "Earlier writes in this execution" section, the service already holds those changes: a read of the same data must show them.
 
 Response SHAPE comes from your knowledge of the real API; DATA VALUES come from the node config. Use names/IDs from the config exactly (case-sensitive).
 
@@ -145,6 +145,109 @@ interface MockResponseSpec {
 }
 
 // ---------------------------------------------------------------------------
+// Earlier writes ledger
+// ---------------------------------------------------------------------------
+
+const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+/** The latest same-service writes shown to the mock; older ones are counted, not listed. */
+const MAX_LEDGER_ENTRIES = 8;
+const LEDGER_BODY_MAX = 600;
+const LEDGER_TOTAL_MAX = 4000;
+
+/** One write the mock served successfully in this execution. Body and query are redacted snapshots. */
+export interface WriteLedgerEntry {
+	hostname: string;
+	method: string;
+	endpoint: string;
+	nodeName: string;
+	body?: unknown;
+	qs?: unknown;
+}
+
+interface MockRequest {
+	url: string;
+	method?: string;
+	body?: unknown;
+	qs?: Record<string, unknown>;
+	headers?: Record<string, unknown>;
+}
+
+function isWriteMethod(method: string | undefined): boolean {
+	return WRITE_METHODS.has((method ?? 'GET').toUpperCase());
+}
+
+function clip(text: string, max: number): string {
+	return text.length <= max ? text : `${text.slice(0, max)}…`;
+}
+
+function serializeForLedger(value: unknown): string {
+	try {
+		return JSON.stringify(value) ?? '';
+	} catch {
+		return '(not serializable)';
+	}
+}
+
+/** Record a write the node received a success for: a failed write changed nothing. */
+function recordWrite(
+	ledger: WriteLedgerEntry[],
+	request: MockRequest,
+	nodeName: string,
+	response: EvalMockHttpResponse,
+): void {
+	if (!request.url || !isWriteMethod(request.method)) return;
+	if (response.statusCode >= 400 || isMockErrorSentinel(response)) return;
+	const hostname = extractHostname(request.url);
+	if (!hostname) return;
+	ledger.push({
+		hostname,
+		method: (request.method ?? 'GET').toUpperCase(),
+		endpoint: extractEndpoint(request.url),
+		nodeName,
+		// Redact now: the snapshot must not change when node code mutates the body later.
+		body:
+			request.body === undefined
+				? undefined
+				: redactSecretKeys(redactBinaryBody(request.body, getContentType(request.headers))),
+		qs: request.qs && Object.keys(request.qs).length > 0 ? redactSecretKeys(request.qs) : undefined,
+	});
+}
+
+/**
+ * The earlier writes to `hostname` in this execution, oldest first, for the
+ * mock prompt — so a read after an append returns the appended row instead of
+ * an invented one. Undefined when there are none.
+ */
+export function formatWriteLedger(
+	entries: WriteLedgerEntry[],
+	hostname: string | undefined,
+): string | undefined {
+	if (!hostname) return undefined;
+	const sameHost = entries.filter((entry) => entry.hostname === hostname);
+	if (sameHost.length === 0) return undefined;
+
+	const firstShown = Math.max(0, sameHost.length - MAX_LEDGER_ENTRIES);
+	const lines = sameHost.slice(firstShown).map((entry, index) => {
+		let line = `- [${firstShown + index + 1}] ${entry.method} ${entry.endpoint} ("${entry.nodeName}")`;
+		if (entry.qs !== undefined) {
+			line += ` query: ${clip(serializeForLedger(entry.qs), LEDGER_BODY_MAX)}`;
+		}
+		if (entry.body !== undefined) {
+			line += ` body: ${clip(serializeForLedger(entry.body), LEDGER_BODY_MAX)}`;
+		}
+		return clip(line, LEDGER_TOTAL_MAX);
+	});
+	// Over the total budget, drop the oldest: the newest writes matter most.
+	while (lines.length > 1 && lines.join('\n').length > LEDGER_TOTAL_MAX) {
+		lines.shift();
+	}
+
+	const omitted = sameHost.length - lines.length;
+	if (omitted > 0) lines.unshift(`(${omitted} earlier writes to this service not shown)`);
+	return lines.join('\n');
+}
+
+// ---------------------------------------------------------------------------
 // Handler factory
 // ---------------------------------------------------------------------------
 
@@ -160,6 +263,9 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 	// rejected-and-never-resubmitted `submit_response`, e.g. the date-filter
 	// soft rejection) so known-suspect data is served at most once.
 	const responseCache = new Map<string, Promise<EvalMockHttpResponse>>();
+	// Successful writes of this execution (one handler per execution), shown to
+	// later requests to the same service so a read returns what was written.
+	const writeLedger: WriteLedgerEntry[] = [];
 
 	return async (requestOptions, node) => {
 		// Thrown past the catch-all below: a node that ignores HTTP errors must not keep looping.
@@ -177,14 +283,22 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 				nodeConfigCache.set(node.name, extractNodeConfig(node));
 			}
 
-			const cacheKey = buildMockCacheKey(requestOptions, node.name);
+			const hostname = requestOptions.url ? extractHostname(requestOptions.url) : undefined;
+			// A cached read predates any later write to the same service, so the
+			// count of those writes is part of a read's identity.
+			const ledgerVersion = isWriteMethod(requestOptions.method)
+				? undefined
+				: writeLedger.filter((entry) => entry.hostname === hostname).length;
+			const cacheKey = buildMockCacheKey(requestOptions, node.name, ledgerVersion);
 			const cached = cacheKey ? responseCache.get(cacheKey) : undefined;
 			if (cached) {
 				Container.get(Logger).debug(
 					`[EvalMock] Serving cached mock for ${requestOptions.method ?? 'GET'} ${extractEndpoint(requestOptions.url)} ("${node.name}")`,
 				);
 				await sleep(CACHED_REPLY_DELAY_MS);
-				return cloneMockResponse(await cached);
+				const response = cloneMockResponse(await cached);
+				recordWrite(writeLedger, requestOptions, node.name, response);
+				return response;
 			}
 
 			const pending = generateMockResponse(requestOptions, node, {
@@ -192,6 +306,7 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 				globalContext: options?.globalContext,
 				nodeHint: options?.nodeHints?.[node.name],
 				pinnedOutputs: options?.pinnedOutputs,
+				priorWrites: formatWriteLedger(writeLedger, hostname),
 				nodeConfig: nodeConfigCache.get(node.name) ?? '',
 				maxRetries: options?.maxRetries ?? DEFAULT_MAX_RETRIES,
 			});
@@ -211,7 +326,9 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 			// Clone on EVERY serve (not just cache hits): the first caller shares
 			// the object with the cached promise, so an in-place body mutation by
 			// node code would otherwise leak into every later hit.
-			return cloneMockResponse(await pending);
+			const response = cloneMockResponse(await pending);
+			recordWrite(writeLedger, requestOptions, node.name, response);
+			return response;
 		} catch (error) {
 			return buildPipelineErrorResponse(error, requestOptions, node.name);
 		}
@@ -266,19 +383,16 @@ function buildPipelineErrorResponse(
 
 /**
  * Stable identity for a mock request: node + method + URL + query + redacted
- * body. Binary bodies are reduced to structural metadata first so Buffers
+ * body, plus, for a read, the count of earlier writes to the same service.
+ * Binary bodies are reduced to structural metadata first so Buffers
  * don't blow up the key. Returns undefined (no caching) when the body can't
  * be serialized.
  */
 function buildMockCacheKey(
-	request: {
-		url: string;
-		method?: string;
-		body?: unknown;
-		qs?: Record<string, unknown>;
-		headers?: Record<string, unknown>;
-	},
+	request: MockRequest,
 	nodeName: string,
+	/** For reads: how many same-service writes came before, so a read after a write regenerates. */
+	ledgerVersion?: number,
 ): string | undefined {
 	try {
 		const bodyKey =
@@ -286,7 +400,10 @@ function buildMockCacheKey(
 				? ''
 				: JSON.stringify(redactBinaryBody(request.body, getContentType(request.headers)));
 		const qsKey = request.qs ? JSON.stringify(request.qs) : '';
-		return [nodeName, request.method ?? 'GET', request.url, qsKey, bodyKey].join('\u0000');
+		const ledgerKey = ledgerVersion === undefined ? '' : String(ledgerVersion);
+		return [nodeName, request.method ?? 'GET', request.url, qsKey, bodyKey, ledgerKey].join(
+			'\u0000',
+		);
 	} catch {
 		return undefined;
 	}
@@ -309,6 +426,8 @@ interface MockResponseContext {
 	globalContext?: string;
 	nodeHint?: string;
 	pinnedOutputs?: string;
+	/** `formatWriteLedger` output for this request's service. */
+	priorWrites?: string;
 	nodeConfig: string;
 	maxRetries: number;
 }
@@ -401,6 +520,14 @@ async function generateMockResponse(
 			'These nodes already have fixed outputs in this execution. Your response MUST stay consistent with them — reuse the same entities, IDs, statuses, and timestamps wherever the scenario implies they refer to the same data (e.g. "stored record matches current status").',
 		);
 		sections.push(context.pinnedOutputs);
+	}
+
+	if (context.priorWrites) {
+		sections.push('', '## Earlier writes in this execution');
+		sections.push(
+			'The service accepted these requests earlier in this run, in this order. When THIS request reads data they changed, return that data as it is after them: appended rows are present with the values written, updated cells carry the new values, deleted records are gone. Do not invent other values for those records.',
+		);
+		sections.push(context.priorWrites);
 	}
 
 	// Anchors go last — the model's API knowledge carries training-era dates, so these

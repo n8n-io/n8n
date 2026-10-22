@@ -117,6 +117,7 @@ import {
 	createLlmMockHandler,
 	extractDateFilterConstraints,
 	findDateFilterViolations,
+	formatWriteLedger,
 } from '../mock-handler';
 import { extractNodeConfig } from '../node-config';
 
@@ -589,6 +590,166 @@ describe('createLlmMockHandler', () => {
 		await handler(baseRequest, { name: 'Gmail', type: 'n8n-nodes-base.gmail' } as INode);
 
 		expect(extractNodeConfig).toHaveBeenCalledTimes(2);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Earlier writes ledger — a read sees what this execution already wrote
+// ---------------------------------------------------------------------------
+
+describe('earlier writes ledger', () => {
+	const SECTION = '## Earlier writes in this execution';
+	const sheetsUrl = 'https://sheets.googleapis.com/v4/spreadsheets/eval-spreadsheet-id/values';
+	const logNode = { name: 'Log Candidate Row', type: 'n8n-nodes-base.googleSheets' } as INode;
+	const lookupNode = {
+		name: 'Write Score to Candidate Row',
+		type: 'n8n-nodes-base.googleSheets',
+	} as INode;
+	const appendRow = (sourceFile: string, extra: Record<string, unknown> = {}) =>
+		({
+			url: `${sheetsUrl}/CVs!A:F:append`,
+			method: 'POST',
+			qs: { valueInputOption: 'USER_ENTERED' },
+			body: { range: 'CVs!A:F', values: [[sourceFile, 'Pending']], ...extra },
+		}) as IHttpRequestOptions;
+	const readSheet = { url: `${sheetsUrl}/CVs`, method: 'GET' } as IHttpRequestOptions;
+	const promptOf = (call: number) => mockGenerate.mock.calls[call][0];
+	const sectionOf = (prompt: string) =>
+		prompt.slice(prompt.indexOf(SECTION), prompt.lastIndexOf('## Date anchors'));
+
+	it('shows a later read the row an earlier request appended to the same service', async () => {
+		llmSubmits({ type: 'json', body: { updates: { updatedRows: 1 } } });
+		llmSubmits({ type: 'json', body: { values: [] } });
+		const handler = createLlmMockHandler();
+
+		await handler(appendRow('Doe, Jane A_.pdf [#1368-1]'), logNode);
+		await handler(readSheet, lookupNode);
+
+		expect(promptOf(0)).not.toContain(SECTION);
+		const prompt = promptOf(1);
+		expect(prompt).toContain(SECTION);
+		expect(prompt).toContain(
+			'POST /v4/spreadsheets/eval-spreadsheet-id/values/CVs!A:F:append ("Log Candidate Row")',
+		);
+		expect(prompt).toContain('"valueInputOption":"USER_ENTERED"');
+		expect(prompt).toContain('Doe, Jane A_.pdf [#1368-1]');
+		// Date anchors stay the last section.
+		expect(prompt.indexOf(SECTION)).toBeLessThan(prompt.lastIndexOf('## Date anchors'));
+	});
+
+	it('leaves out reads, failed writes and writes to another service', async () => {
+		llmSubmits({ type: 'json', body: { values: [] } });
+		llmSubmits({ type: 'error', statusCode: 400, body: { error: { message: 'bad range' } } });
+		llmSubmits({ type: 'json', body: { ok: true } });
+		llmSubmits({ type: 'json', body: { values: [] } });
+		const handler = createLlmMockHandler();
+
+		await handler(
+			{ url: `${sheetsUrl}/Archive`, method: 'GET' } as IHttpRequestOptions,
+			lookupNode,
+		);
+		await handler(appendRow('rejected.pdf'), logNode);
+		await handler(
+			{
+				url: 'https://slack.com/api/chat.postMessage',
+				method: 'POST',
+				body: { text: 'posted' },
+			} as IHttpRequestOptions,
+			baseNode,
+		);
+		await handler(readSheet, lookupNode);
+
+		expect(promptOf(3)).not.toContain(SECTION);
+	});
+
+	it('leaves out a write the mock could not answer', async () => {
+		llmRejects(new Error('provider down'));
+		const handler = createLlmMockHandler({ maxRetries: 0 });
+		await handler(appendRow('lost.pdf'), logNode);
+
+		generateOverride.fn = undefined;
+		llmSubmits({ type: 'json', body: { values: [] } });
+		await handler(readSheet, lookupNode);
+
+		expect(promptOf(1)).not.toContain(SECTION);
+	});
+
+	it('shows only the latest writes and cuts long bodies', async () => {
+		const handler = createLlmMockHandler();
+		for (let i = 1; i <= 12; i++) {
+			llmSubmits({ type: 'json', body: { updates: { updatedRows: 1 } } });
+			await handler(appendRow(`row-${i}-${i === 12 ? 'x'.repeat(5000) : 'end'}`), logNode);
+		}
+		llmSubmits({ type: 'json', body: { values: [] } });
+		await handler(readSheet, lookupNode);
+
+		const section = sectionOf(promptOf(12));
+		expect(section).toContain('4 earlier writes to this service not shown');
+		expect(section).not.toContain('row-4-end');
+		expect(section).toContain('row-5-end');
+		expect(section).toContain('row-12-x');
+		expect(section).toContain('…');
+		expect(section.length).toBeLessThan(4600);
+	});
+
+	it('redacts secret keys in a recorded write body', async () => {
+		llmSubmits({ type: 'json', body: { ok: true } });
+		llmSubmits({ type: 'json', body: { values: [] } });
+		const handler = createLlmMockHandler();
+
+		await handler(appendRow('cv.pdf', { access_token: 'tok-1234567890' }), logNode);
+		await handler(readSheet, lookupNode);
+
+		const section = sectionOf(promptOf(1));
+		expect(section).toContain('<redacted>');
+		expect(section).not.toContain('tok-1234567890');
+	});
+
+	it('regenerates an identical read after a write to the same service', async () => {
+		llmSubmits({ type: 'json', body: { values: [] } });
+		llmSubmits({ type: 'json', body: { updates: { updatedRows: 1 } } });
+		llmSubmits({ type: 'json', body: { values: [['new.pdf', 'Pending']] } });
+		const handler = createLlmMockHandler();
+
+		await handler(readSheet, lookupNode);
+		await handler(appendRow('new.pdf'), logNode);
+		await handler(readSheet, lookupNode);
+
+		expect(mockGenerate).toHaveBeenCalledTimes(3);
+		expect(promptOf(2)).toContain('new.pdf');
+	});
+
+	it('still serves an identical read from the cache when only another service was written', async () => {
+		llmSubmits({ type: 'json', body: { values: [] } });
+		llmSubmits({ type: 'json', body: { ok: true } });
+		const handler = createLlmMockHandler();
+
+		await handler(readSheet, lookupNode);
+		await handler(baseRequest, baseNode);
+		await handler(readSheet, lookupNode);
+
+		expect(mockGenerate).toHaveBeenCalledTimes(2);
+	});
+
+	describe('formatWriteLedger', () => {
+		const entry = {
+			hostname: 'sheets.googleapis.com',
+			method: 'PUT',
+			endpoint: '/v4/x',
+			nodeName: 'A',
+		};
+
+		it('returns undefined when this service has no writes', () => {
+			expect(formatWriteLedger([], 'sheets.googleapis.com')).toBeUndefined();
+			expect(formatWriteLedger([entry], 'api.slack.com')).toBeUndefined();
+			expect(formatWriteLedger([entry], undefined)).toBeUndefined();
+		});
+
+		it('numbers the writes in order', () => {
+			expect(formatWriteLedger([entry, { ...entry, nodeName: 'B' }], 'sheets.googleapis.com')).toBe(
+				'- [1] PUT /v4/x ("A")\n- [2] PUT /v4/x ("B")',
+			);
+		});
 	});
 });
 
