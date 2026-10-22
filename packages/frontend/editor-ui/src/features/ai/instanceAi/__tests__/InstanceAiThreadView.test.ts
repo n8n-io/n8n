@@ -165,7 +165,8 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 
 	return {
 		...original,
-		useScroll: () => ({ arrivedState: { bottom: true } }),
+		// N8nScrollArea also reads useScroll and calls measure() on mount.
+		useScroll: () => ({ arrivedState: { bottom: true }, measure: vi.fn() }),
 		useWindowSize: () => ({ width: mockWindowSizeState.width }),
 		useElementSize: () => ({ width: mockThreadAreaSizeState.width }),
 	};

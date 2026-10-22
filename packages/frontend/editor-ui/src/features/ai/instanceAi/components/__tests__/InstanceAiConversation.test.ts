@@ -51,7 +51,8 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 
 vi.mock('@vueuse/core', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@vueuse/core')>()),
-	useScroll: () => ({ arrivedState: { bottom: true } }),
+	// N8nScrollArea also reads useScroll and calls measure() on mount.
+	useScroll: () => ({ arrivedState: { bottom: true }, measure: vi.fn() }),
 }));
 
 describe('InstanceAiConversation', () => {
