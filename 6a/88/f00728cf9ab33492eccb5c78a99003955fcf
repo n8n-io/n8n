@@ -1,0 +1,32 @@
+packages/frontend/editor-ui/src/features/agents/components/VersionHistory/AgentVersionHistoryPanel.vue
+  s_5785bc20fb92a9::t_0d8da2ce123d2d 2,38
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderHeader.vue
+  s_5785bc20fb92a9::t_0d8da2ce123d2d 62,258,264
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_5785bc20fb92a9::t_0d8da2ce123d2d 658,1291-1294,2519,2521,2622,3236,3441
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPublishButton.test.ts
+  s_5785bc20fb92a9::t_04363ef0809755 115,169-185,187-205
+  s_5785bc20fb92a9::t_c6838c8f8c19d4 186
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_5785bc20fb92a9::t_0d8da2ce123d2d 20-26
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentVersionHistoryPanel.test.ts
+  s_5785bc20fb92a9::t_04363ef0809755 56,302-310
+packages/frontend/editor-ui/src/features/agents/components/AgentPublishButton.vue
+  s_5785bc20fb92a9::t_0d8da2ce123d2d 20,44,131-138,167-170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6a88f00728cf9ab33492eccb5c78a99003955fcf",
+  "prompts": {},
+  "sessions": {
+    "s_5785bc20fb92a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a162ad-ab21-7f50-b574-6896331f2bca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": null
+    }
+  }
+}
