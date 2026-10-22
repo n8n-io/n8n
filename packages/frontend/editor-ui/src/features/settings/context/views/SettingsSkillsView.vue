@@ -496,6 +496,7 @@ onMounted(async () => {
 			:items-length="skillsStore.count"
 			:loading="skillsStore.loading"
 			:show-empty="showEmptyState"
+			:show-available-to-mcp="mcpSkillsEnabled"
 			@open="openEditModal"
 			@download="onDownload"
 			@delete="onDelete"
