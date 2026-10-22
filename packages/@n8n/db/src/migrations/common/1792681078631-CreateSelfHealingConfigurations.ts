@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class CreateSelfHealingConfigurations1792584737484 implements ReversibleMigration {
+export class CreateSelfHealingConfigurations1792681078631 implements ReversibleMigration {
 	async up(ctx: MigrationContext) {
 		const {
 			schemaBuilder: { createTable, column, createIndex, addColumns, addForeignKey },
