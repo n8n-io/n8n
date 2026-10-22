@@ -32,8 +32,16 @@ export interface SourceUnderTest {
 	id: string;
 	/** The issuer that resource metadata must list. */
 	issuer: string;
+	/** Where a Form or Chat trigger sends a visitor without a session. */
+	authorizationEndpoint: string;
+	/** A webhook id for a Form or Chat trigger whose redirect login the source accepts. */
+	loginWebhookId(trigger: 'form' | 'chat'): string;
 	/** A bearer token for the member. Only the internal source uses `resource`. */
 	bearerFor(resource?: string): Promise<string>;
+	/** The request context that runs the redirect login and keeps its cookies. */
+	visitor: ApiHelpers;
+	/** Runs the login at the source. Returns the n8n callback URL with `code` and `state`. */
+	login(authorizationUrl: string): Promise<string>;
 	/** Checks that the member has one identity binding. The internal source binds none. */
 	expectBinding(): Promise<void>;
 }
@@ -51,11 +59,14 @@ type InboundAuthWorkerFixtures = {
 type InboundAuthFixtures = {
 	/** The n8n member that both sources resolve to. */
 	member: TestUser;
-	/** Signed in as the member: creates the member's workflows and mints internal tokens. */
+	/**
+	 * Signed in as the member: creates the member's workflows, mints internal
+	 * tokens and approves consent.
+	 */
 	memberApi: ApiHelpers;
 	/**
 	 * No session. Every surface call goes through it: a session cookie would
-	 * authenticate the public API before the bearer token does.
+	 * authenticate the public API and a Chat POST before the bearer token does.
 	 */
 	caller: ApiHelpers;
 	sources: Record<SourceKind, SourceUnderTest>;
@@ -72,6 +83,12 @@ function keycloakSourceInput(keycloak: ServiceHelpers['keycloak']): TrustedSourc
 			authentication: {
 				type: 'oauth2',
 				discovery: { mode: 'manual', metadataUrl: keycloak.internalDiscoveryUrl },
+				// The Form and Chat trigger logins exchange the code with this client.
+				client: {
+					kind: 'registered',
+					clientId: keycloak.clientId,
+					clientSecret: keycloak.clientSecret,
+				},
 			},
 			surfaces: { 'public-api': surface, 'instance-mcp': surface, trigger: surface },
 			// User tokens carry `azp`, not `client_id`, and instance MCP needs a client id.
@@ -148,7 +165,7 @@ export const test = base.extend<InboundAuthFixtures, InboundAuthWorkerFixtures>(
 		await context.dispose();
 	},
 
-	sources: async ({ suiteSetup, member, memberApi, services }, use) => {
+	sources: async ({ suiteSetup, member, memberApi, caller, services }, use) => {
 		const { internalSource, keycloakSource } = suiteSetup;
 		const { keycloak } = services;
 
@@ -157,9 +174,16 @@ export const test = base.extend<InboundAuthFixtures, InboundAuthWorkerFixtures>(
 				kind: 'n8n-internal',
 				id: internalSource.id,
 				issuer: internalSource.issuer,
+				authorizationEndpoint: `${internalSource.issuer.replace(/\/$/, '')}/mcp-oauth/authorize`,
+				// n8n accepts any trigger URL of its own instance as a redirect URI.
+				loginWebhookId: () => nanoid(),
 				bearerFor: async (resource) =>
 					(await memberApi.mcpOauth.completeAuthorizationCodeFlow({ resource })).tokens
 						.access_token,
+				// The consent step needs the member's session.
+				visitor: memberApi,
+				login: async (authorizationUrl) =>
+					(await memberApi.mcpOauth.loginAtAuthorizeUrl(authorizationUrl)).href,
 				// The internal source resolves the user from the token and stores no binding.
 				expectBinding: async () => {},
 			},
@@ -167,8 +191,14 @@ export const test = base.extend<InboundAuthFixtures, InboundAuthWorkerFixtures>(
 				kind: 'keycloak',
 				id: keycloakSource.id,
 				issuer: keycloakSource.issuer,
+				authorizationEndpoint: keycloak.authorizationEndpoint,
+				// The realm lists the exact trigger URLs that it accepts as redirect URIs.
+				loginWebhookId: (trigger) => keycloak.triggerWebhookIds[trigger],
 				bearerFor: async () =>
 					await keycloak.getAccessToken(keycloak.testUser.email, keycloak.testUser.password),
+				visitor: caller,
+				login: async (authorizationUrl) =>
+					await keycloak.completeAuthorizationCodeFlow(authorizationUrl),
 				expectBinding: async () => {
 					// One binding, made by the email link, and the same one on every surface.
 					expect(keycloakSource.id).toMatch(/^[\w-]+$/);
@@ -247,6 +277,13 @@ function expectSourceNotAccepted(response: APIResponse): void {
 function expectInsufficientScope(response: APIResponse): void {
 	expect(response.status()).toBe(403);
 	expect(response.headers()['www-authenticate']).toContain('error="insufficient_scope"');
+}
+
+/** Reads a cookie from the request context's cookie jar. */
+async function cookieValue(api: ApiHelpers, name: string): Promise<string | undefined> {
+	const { cookies } = await api.request.storageState();
+	const cookie = cookies.find((candidate) => candidate.name === name);
+	return cookie && decodeURIComponent(cookie.value);
 }
 
 export interface PublishedTrigger {
@@ -330,6 +367,76 @@ export async function publishMcpTrigger(
 	return await publish(api, workflow, `/mcp/${trigger!.parameters.path as string}`);
 }
 
+export const FORM_TITLE = 'Inbound auth form';
+
+/** A form whose visitors sign in at the source. With no `path`, the form path is the webhook id. */
+export async function publishFormTrigger(
+	api: ApiHelpers,
+	sourceId: string,
+	webhookId: string,
+): Promise<PublishedTrigger> {
+	const workflow = await api.workflows.createWorkflowFromDefinition(
+		{
+			name: `Inbound auth form ${nanoid()}`,
+			nodes: [
+				{
+					id: nanoid(),
+					name: 'On form submission',
+					type: 'n8n-nodes-base.formTrigger',
+					typeVersion: 2.6,
+					position: [0, 0],
+					webhookId,
+					parameters: {
+						formTitle: FORM_TITLE,
+						formFields: { values: [{ fieldLabel: 'Name' }] },
+						authentication: 'n8nUserAuth',
+						trustedSource: sourceId,
+						options: {},
+					},
+				},
+			],
+			connections: {},
+		},
+		// Keycloak accepts only the exact trigger URLs in its realm, so the webhook id stays fixed.
+		{ makeUnique: false },
+	);
+	return await publish(api, workflow, `/form/${webhookId}`);
+}
+
+/** A hosted chat whose visitors sign in at the source. */
+export async function publishChatTrigger(
+	api: ApiHelpers,
+	sourceId: string,
+	webhookId: string,
+): Promise<PublishedTrigger> {
+	const workflow = await api.workflows.createWorkflowFromDefinition(
+		{
+			name: `Inbound auth chat ${nanoid()}`,
+			nodes: [
+				{
+					id: nanoid(),
+					name: 'When chat message received',
+					type: '@n8n/n8n-nodes-langchain.chatTrigger',
+					typeVersion: 1.5,
+					position: [0, 0],
+					webhookId,
+					parameters: {
+						public: true,
+						mode: 'hostedChat',
+						authentication: 'n8nUserAuth',
+						trustedSource: sourceId,
+						options: {},
+					},
+				},
+			],
+			connections: {},
+		},
+		// Keycloak accepts only the exact trigger URLs in its realm, so the webhook id stays fixed.
+		{ makeUnique: false },
+	);
+	return await publish(api, workflow, `/webhook/${webhookId}/chat`);
+}
+
 /** Runs the checks against a published trigger, then unpublishes it, also when a check fails. */
 export async function withTrigger(
 	api: ApiHelpers,
@@ -395,4 +502,38 @@ export async function expectTriggerRefusals(
 	// A token for any resource will do: the pipeline refuses the source before it checks the audience.
 	expectSourceNotAccepted(await send(await sources[otherKind(kind)].bearerFor()));
 	expect(await api.workflows.getExecutions(trigger.workflowId)).toHaveLength(0);
+}
+
+/**
+ * Runs the redirect login of a Form or Chat trigger as the source's visitor.
+ * Returns the value of the one-hop cookie that carries the token to the clean
+ * trigger URL.
+ */
+export async function loginThroughTrigger(
+	source: SourceUnderTest,
+	trigger: PublishedTrigger,
+	cookieName: string,
+): Promise<string> {
+	const { visitor } = source;
+
+	const start = await visitor.webhooks.trigger(trigger.path, { maxRedirects: 0 });
+	expect(start.status()).toBe(302);
+	const authorizationUrl = new URL(start.headers().location);
+	expect(`${authorizationUrl.origin}${authorizationUrl.pathname}`).toBe(
+		source.authorizationEndpoint,
+	);
+	// The trigger URL is both the redirect URI and the resource.
+	expect(authorizationUrl.searchParams.get('redirect_uri')).toBe(trigger.resource);
+
+	const callbackUrl = new URL(await source.login(authorizationUrl.href));
+	expect(`${callbackUrl.origin}${callbackUrl.pathname}`).toBe(trigger.resource);
+	expect(callbackUrl.searchParams.has('code')).toBe(true);
+
+	// n8n exchanges the code, keeps the token in a cookie and drops `code` from the URL.
+	const exchanged = await visitor.webhooks.trigger(callbackUrl.href, { maxRedirects: 0 });
+	expect(exchanged.status()).toBe(302);
+	expect(new URL(exchanged.headers().location, trigger.resource).href).toBe(trigger.resource);
+	const cookie = await cookieValue(visitor, cookieName);
+	expect(cookie).toBeTruthy();
+	return cookie!;
 }
