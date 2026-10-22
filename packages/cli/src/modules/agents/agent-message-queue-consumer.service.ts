@@ -1,4 +1,4 @@
-import type { AgentSseEvent } from '@n8n/api-types';
+import { AGENT_CHAT_ERROR_CODES, type AgentSseEvent } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { UserRepository, type User } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
@@ -292,7 +292,7 @@ export class AgentMessageQueueConsumer {
 				type: 'error',
 				message,
 				...(prepared.status === 'agent_misconfigured'
-					? { errorCode: 'agent_misconfigured', missing: prepared.missing }
+					? { errorCode: AGENT_CHAT_ERROR_CODES.agentMisconfigured, missing: prepared.missing }
 					: {}),
 			});
 			return;
