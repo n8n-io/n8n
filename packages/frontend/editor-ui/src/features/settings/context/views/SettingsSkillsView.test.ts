@@ -136,11 +136,11 @@ describe('SettingsSkillsView', () => {
 		saveAsMock.mockClear();
 	});
 
-	it('loads the first page on mount', async () => {
+	it('loads the first page of 10 skills on mount', async () => {
 		renderView();
 		await new Promise(process.nextTick);
 
-		expect(skillsStore.fetchSkills).toHaveBeenCalledWith({ skip: 0, take: 50 });
+		expect(skillsStore.fetchSkills).toHaveBeenCalledWith({ skip: 0, take: 10 });
 	});
 
 	it('shows the empty state when there are no skills', async () => {
@@ -193,7 +193,7 @@ describe('SettingsSkillsView', () => {
 
 		expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith({
 			skip: 0,
-			take: 50,
+			take: 10,
 			search: 'brand',
 		});
 		expect(queryByTestId('skills-empty-state')).not.toBeInTheDocument();
@@ -211,7 +211,7 @@ describe('SettingsSkillsView', () => {
 		await waitFor(() =>
 			expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith({
 				skip: 0,
-				take: 50,
+				take: 10,
 				scope: 'agent',
 			}),
 		);

@@ -37,7 +37,7 @@ import type {
 } from '@/features/agents/components/AgentSkillModal.vue';
 
 import SkillsTable from '../components/SkillsTable.vue';
-import { PREFERENCES_DEFAULT_PAGE_SIZE } from '../context.constants';
+import { SKILLS_DEFAULT_PAGE_SIZE } from '../context.constants';
 import { canWriteInstanceSkillScope, canWriteProjectSkillScope } from '../context.utils';
 import type { SkillListQuery } from '../skills.api';
 import { useSkillsStore } from '../skills.store';
@@ -63,7 +63,7 @@ const { scopeDisplay } = useSkillScopeDisplay();
 
 const tableOptions = ref<TableOptions>({
 	page: 0,
-	itemsPerPage: PREFERENCES_DEFAULT_PAGE_SIZE,
+	itemsPerPage: SKILLS_DEFAULT_PAGE_SIZE,
 	sortBy: [],
 });
 const search = ref('');
@@ -145,7 +145,7 @@ function parseScope(value: string): { scope: 'project' | 'instance'; projectId?:
 }
 
 async function load() {
-	const { page = 0, itemsPerPage = PREFERENCES_DEFAULT_PAGE_SIZE } = tableOptions.value;
+	const { page = 0, itemsPerPage = SKILLS_DEFAULT_PAGE_SIZE } = tableOptions.value;
 	try {
 		await skillsStore.fetchSkills(listQuery(page, itemsPerPage));
 		loadFailed.value = false;
