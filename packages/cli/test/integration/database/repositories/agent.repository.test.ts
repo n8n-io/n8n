@@ -213,6 +213,7 @@ describe('AgentRepository', () => {
 				),
 				completion,
 				mock<AgentSetupCompletionService>(),
+				mock(),
 			);
 			const user = mock<User>();
 			const id = uuid();

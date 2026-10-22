@@ -1,5 +1,4 @@
 import {
-	AGENTS_N8N_CHAT_FLAG,
 	AgentIntegrationConfigSchema,
 	N8N_CHAT_INTEGRATION_TYPE,
 	isDraftIntegration,
@@ -13,7 +12,6 @@ import { OperationalError, UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { PostHogClient } from '@/posthog';
 
 import {
 	AgentModificationTelemetryService,
@@ -29,6 +27,7 @@ import {
 	ChatIntegrationRegistry,
 	type AgentChatIntegration,
 } from './integrations/agent-chat-integration';
+import { N8nChatFlagService } from './integrations/platforms/n8n-chat/n8n-chat-flag.service';
 import { assertSingleConnections } from './integrations/single-connection';
 import { AgentRepository } from './repositories/agent.repository';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
@@ -124,7 +123,7 @@ export class AgentIntegrationPersistenceService {
 		private readonly credentialsService: CredentialsService,
 		private readonly setupCompletionService: AgentSetupCompletionService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
-		private readonly postHogClient: PostHogClient,
+		private readonly n8nChatFlag: N8nChatFlagService,
 	) {}
 
 	/**
@@ -142,18 +141,8 @@ export class AgentIntegrationPersistenceService {
 	async listBuilderChatIntegrations(user: User): Promise<ChatIntegrationDescriptor[]> {
 		const integrations = this.listChatIntegrations();
 		const n8nChat = this.chatIntegrationRegistry.get(N8N_CHAT_INTEGRATION_TYPE);
-		if (!n8nChat || !(await this.isN8nChatEnabled(user))) return integrations;
+		if (!n8nChat || !(await this.n8nChatFlag.isEnabledFor(user))) return integrations;
 		return [...integrations, toChatIntegrationDescriptor(n8nChat)];
-	}
-
-	/** Mirrors the editor's `useAgentsN8nChatFlag`: every variant except `control` is on. */
-	private async isN8nChatEnabled(user: User): Promise<boolean> {
-		try {
-			const variant = (await this.postHogClient.getFeatureFlags(user))[AGENTS_N8N_CHAT_FLAG];
-			return typeof variant === 'string' && variant !== 'control';
-		} catch {
-			return false;
-		}
 	}
 
 	/**

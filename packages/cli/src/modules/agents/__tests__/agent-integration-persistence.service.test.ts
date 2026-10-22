@@ -10,6 +10,8 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { PostHogClient } from '@/posthog';
+
+import { N8nChatFlagService } from '../integrations/platforms/n8n-chat/n8n-chat-flag.service';
 import type { Telemetry } from '@/telemetry';
 
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
@@ -111,7 +113,7 @@ function setup(options: SetupOptions = {}) {
 			credentialsService,
 			setupCompletionService,
 			createAgentSkillRefsService(),
-			postHogClient,
+			new N8nChatFlagService(postHogClient),
 		),
 		agent,
 		row,
