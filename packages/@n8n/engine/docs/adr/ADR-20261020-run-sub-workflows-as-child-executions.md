@@ -29,26 +29,36 @@ the credential checks read control-plane state.
 1. **A sub-workflow call is a wait.** The engine suspends the step before it starts the
    child and resumes it when the child ends, as it suspends and resumes a waiting step
    (ADR-20260902-steps-declare-waits). The step does not declare a wait. It asks for a
-   child, and the engine suspends it on that child. On resume the Execute Sub-workflow node
-   runs again, and the call returns the child's result. This narrows the wait ADR's rule
-   that no node code runs on a resume to deadline and request resumes; that ADR stays as
-   written. It holds for that node because its work before the call has no side effects. A
-   fire-and-forget call does not suspend, but the child still records its parent.
-2. **The control plane resolves the child, and the engine starts it.** When a node asks
+   child, and the engine suspends it on that child. A fire-and-forget call does not suspend,
+   but the child still records its parent.
+2. **The resume runs the node's execute method again.** When the child ends, the engine
+   dispatches the step to the executor once more. The node runs from the start, and its
+   `executeWorkflow` call returns the child's result instead of asking for a child. The code
+   after that call is what shapes the node's output: paired items, the sub-execution
+   metadata, `continueOnFail`, and the error output per node version. On engine v2 that
+   code cannot run in the dispatch that made the call, because a step returns before the
+   child runs. Running the node again keeps its behaviour without a copy of it in the shim.
+   It is safe for the Execute Sub-workflow node because its work before the call has no
+   side effect, and it holds for that node only. This supersedes, for a child resume, the
+   wait ADR's rule that the engine never runs the node's execute method again; the rule
+   stands for deadline and request resumes, and that ADR stays as written. A later change
+   to the node interface can split the node into a call phase and a resume phase, as the
+   Wait node has for a request, and then the second run goes.
+3. **The control plane resolves the child, and the engine starts it.** When a node asks
    for a sub-workflow, the shim calls the control plane. The control plane looks up the
    workflow, applies the caller policy and the credential checks, and returns the graph.
    The engine then starts the child itself as it processes the step result. Starting it in
    the engine keeps admittance and the parent link in one place.
-3. **Suspend before start.** The engine suspends the parent step before it starts the
+4. **Suspend before start.** The engine suspends the parent step before it starts the
    child, so the child cannot end before the parent can resume. When the start fails,
    reconciliation recovers the waiting step.
-4. **The child returns all its terminal branches, concatenated.** The branches are ordered
+5. **The child returns all its terminal branches, concatenated.** The branches are ordered
    as engine v1 orders execution, by canvas position from top to bottom, and then by run.
    Engine v1 returns the output of the last node that ran. This is a breaking change for a
    child with several end branches.
-5. **Cancellation cascades.** Cancelling a parent cancels its children, awaited or not. A
+6. **Cancellation cascades.** Cancelling a parent cancels its children, awaited or not. A
    timeout that ends the parent does the same, once engine v2 has timeouts.
-6. **Dropped features.** The "run once for each item" mode and the inline, local file and
+7. **Dropped features.** The "run once for each item" mode and the inline, local file and
    URL sources are refused. A v2 parent calls v2 children only.
 
 ## Alternatives Considered
@@ -59,15 +69,18 @@ the credential checks read control-plane state.
 - **A native step type that the converter builds.** The converter cannot resolve the
   expressions that choose the workflow. The option stays available for a static native node
   later.
+- **Shape the resumed output in the shim, without running the node.** Keeps the wait ADR's
+  rule intact. Rejected because the shim would carry a copy of the node's output shaping,
+  for every node version, and keep it in step with the node.
 - **Keep the v1 result rule.** Which branch wins depends on execution order. Concatenation
   is deterministic.
 
 ## Consequences
 
-- The wait ADR's rule that no node code runs on a resume holds for deadline and request
-  resumes only.
-- A caller with side effects before its `executeWorkflow` call cannot use the replay. The
-  AI Agent tools need their own design (CET-291).
+- The wait ADR's rule that the engine never runs the node's execute method again holds
+  for deadline and request resumes only.
+- A caller with side effects before its `executeWorkflow` call cannot have its node run
+  again. The AI Agent tools need their own design (CET-291).
 - The child row carries a parent link that the engine alone sets. The read path can show
   parent and sub-execution links.
 - A parent that awaits a child reports `waiting`. Engine v1 reports `running`.
