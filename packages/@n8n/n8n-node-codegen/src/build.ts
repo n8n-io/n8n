@@ -5,7 +5,7 @@ import type {
 } from 'n8n-workflow';
 
 import type { Overrides, ParamTemplate } from '../../../nodes-base/nodes/N8n/v2/define-overrides';
-import { OVERRIDES_FILE } from './contract';
+import { OVERRIDES_FILE } from './paths';
 import { operationDisplayName, words } from './naming';
 import { isFlatObjectList } from './spec';
 import type { Field, ResolvedOperation, Schema } from './types';
@@ -357,6 +357,28 @@ export function checkMethodNames(config: Overrides): string[] {
 					`${OVERRIDES_FILE}: a template uses searchListMethod "${name}". Pass that function as { listSearch: ${name} } to param().`,
 				);
 			}
+		}
+	}
+	const byName = new Map<string, unknown>();
+	for (const template of templates) {
+		for (const [kind, method] of [
+			['loadOptions', template.loadOptions],
+			['listSearch', template.listSearch],
+		] as const) {
+			if (!method) continue;
+			if (!method.name || method.name === kind) {
+				errors.push(
+					`${OVERRIDES_FILE}: a template passes an unnamed ${kind} function. Export a named function from methods.ts and pass it.`,
+				);
+				continue;
+			}
+			const known = byName.get(method.name);
+			if (known && known !== method) {
+				errors.push(
+					`${OVERRIDES_FILE}: two different functions are named "${method.name}". The node registers methods by name, so give each function its own name.`,
+				);
+			}
+			byName.set(method.name, method);
 		}
 	}
 	return [...new Set(errors)];

@@ -19,6 +19,7 @@
     "n8n": "workspace:*",
     "n8n-nodes-base": "workspace:*",
     "n8n-workflow": "workspace:*",
+    "prettier": "catalog:",
     "tsx": "catalog:",
     "vitest": "catalog:",
     "yaml": "catalog:"

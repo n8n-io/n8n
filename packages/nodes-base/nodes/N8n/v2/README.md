@@ -106,12 +106,12 @@ exclude: {
 
 First check if the bad name is a label or a name.
 
-- **A label** is the text that users see: "Add Users To Project". You can
-  change it at any time.
+- **A label** is the text that users see: "Get Many". You can change it at
+  any time.
 
   ```ts
   operations: {
-  	'project:addUsers': { displayName: 'Add User', action: 'Add a user to a project' },
+  	'execution:getAll': { displayName: 'Get Executions', action: 'Get executions' },
   },
   ```
 
@@ -119,17 +119,19 @@ First check if the bad name is a label or a name.
 
   ```ts
   operations: {
-  	'tag:merge': { params: { targetTagId: { use: param({ displayName: 'Merge Into' }) } } },
+  	'execution:get': { params: { executionId: { use: param({ displayName: 'Execution' }) } } },
   },
   ```
 
-- **A name** is the key in the contract: `project:addUsers`, `targetTagId`.
-  Before a release, you can change it. Bind the new name to the API name:
+- **A name** is the key in the contract: `execution:getAll`, `executionId`.
+  Before a release, you can change it. Bind the new name to the API name. The
+  first line gives `addUsersToProject` the name `project:addUser`. The second
+  line names the parameter `id` in the node:
 
   ```ts
   operations: {
   	'project:addUser': { api: 'addUsersToProject' },
-  	'tag:merge': { params: { mergeInto: { api: 'body:targetTagId' } } },
+  	'execution:get': { params: { id: { api: 'path:executionId' } } },
   },
   ```
 
@@ -143,7 +145,7 @@ add:
 
 ```text
 - execution:retry: parameter "executionId" was removed. If the API renamed it,
-  add to nodes/N8n/v2/overrides.ts:
+  add to packages/nodes-base/nodes/N8n/v2/overrides.ts:
   operations: { 'execution:retry': { params: { executionId: { api: 'path:id' } } } }.
 ```
 
@@ -184,7 +186,9 @@ All fields accept expressions by default. To block expressions, set
 `noDataExpression`:
 
 ```ts
-params: { mode: { use: param({ noDataExpression: true }) } },
+operations: {
+	'execution:getAll': { params: { status: { use: param({ noDataExpression: true }) } } },
+},
 ```
 
 To allow expressions again, remove the line. Both changes are safe after a
@@ -195,7 +199,9 @@ release.
 Set the place:
 
 ```ts
-params: { loadWorkflow: { placement: 'root' } },
+operations: {
+	'execution:get': { params: { includeData: { placement: 'root' } } },
+},
 ```
 
 The values are `root`, `options` (query parameters) and `additionalFields`
@@ -209,7 +215,9 @@ Flatten the list. The fields of one item move to the top level, and the node
 sends a list with one item:
 
 ```ts
-'project:addUser': { api: 'addUsersToProject', flatten: 'relations' },
+operations: {
+	'project:addUser': { api: 'addUsersToProject', flatten: 'relations' },
+},
 ```
 
 ### I want to change the default value
@@ -243,9 +251,15 @@ descriptions, fix the descriptions in the API spec or in `overrides.ts`.
 
 ## A new node version
 
-When a breaking change is necessary, create `v3/` from a copy of `v2/` and point
-the generator at `v3/`. The generator then does not touch `v2/`. Saved
-workflows that use version 2 keep the description that was released.
+When a breaking change is necessary:
 
-Keep `methods.ts` and `define-overrides.ts` in `v2/`, because the released node
-uses them at run time. Stop the `--check` job for `v2/`.
+1. Copy `v2/` to `v3/`. Register `N8nV3` in `../N8n.node.ts`.
+2. Set `NODE_DIR` in `packages/@n8n/n8n-node-codegen/src/paths.ts` to
+   `packages/nodes-base/nodes/N8n/v3`.
+3. Make the breaking change in `v3/overrides.ts` and run `pnpm build`.
+
+The generator then writes only to `v3/`. Saved workflows that use version 2
+keep the description that was released. Keep `methods.ts` and
+`define-overrides.ts` in `v2/`, because the released node uses them at run
+time. The generator imports its types from `v2/define-overrides.ts`. Keep
+`v3/define-overrides.ts` compatible, or change the type imports too.

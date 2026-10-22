@@ -1,5 +1,6 @@
 import type { Overrides, OperationConfig } from '../../../nodes-base/nodes/N8n/v2/define-overrides';
 import { operationName, resourceName } from './naming';
+import { OVERRIDES_FILE } from './paths';
 import type {
 	ApiParameter,
 	Contract,
@@ -18,8 +19,6 @@ const RESERVED_NAMES = new Set([
 	'options',
 	'additionalFields',
 ]);
-
-export const OVERRIDES_FILE = 'packages/nodes-base/nodes/N8n/v2/overrides.ts';
 
 export const emptyContract = (): Contract => ({ operations: {}, excluded: {} });
 

@@ -76,10 +76,7 @@
 				"customTelemetryTags": { "api": "body:customTelemetryTags", "placement": "additionalFields", "shape": "object", "default": {} }
 			}
 		},
-		"project:delete": {
-			"api": "deleteProject",
-			"params": { "projectId": { "api": "path:projectId", "placement": "root", "shape": "string", "default": "" } }
-		},
+		"project:delete": { "api": "deleteProject", "params": { "projectId": { "api": "path:projectId", "placement": "root", "shape": "string", "default": "" } } },
 		"project:deleteUser": {
 			"api": "deleteUserFromProject",
 			"params": {

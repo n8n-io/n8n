@@ -27,7 +27,8 @@ export const generatedProperties: INodeProperties[] = [
 				name: 'Generate',
 				value: 'generate',
 				action: 'Generate an audit',
-				description: 'Generate a security audit for your n8n instance. Requires the API key scope "securityAudit:generate".',
+				description:
+					'Generate a security audit for your n8n instance. Requires the API key scope "securityAudit:generate".',
 				routing: { request: { method: 'POST', url: '/audit' } },
 			},
 		],
@@ -67,14 +68,16 @@ export const generatedProperties: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				action: 'Create a credential',
-				description: 'Creates a credential that can be used by nodes of the specified type. Requires the API key scope "credential:create".',
+				description:
+					'Creates a credential that can be used by nodes of the specified type. Requires the API key scope "credential:create".',
 				routing: { request: { method: 'POST', url: '/credentials' } },
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				action: 'Delete credential by ID',
-				description: 'Deletes a credential from your instance. You must be the owner of the credential. Requires the API key scope "credential:delete".',
+				description:
+					'Deletes a credential from your instance. You must be the owner of the credential. Requires the API key scope "credential:delete".',
 				routing: {
 					request: {
 						method: 'DELETE',
@@ -142,7 +145,8 @@ export const generatedProperties: INodeProperties[] = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Plain text, up to 512 characters. A blank value is saved as null. Ignored when credential descriptions are disabled.',
+				description:
+					'Plain text, up to 512 characters. A blank value is saved as null. Ignored when credential descriptions are disabled.',
 				routing: { send: { type: 'body', property: 'description' } },
 			},
 			{
@@ -150,7 +154,8 @@ export const generatedProperties: INodeProperties[] = [
 				name: 'id',
 				type: 'string',
 				default: '',
-				description: 'An unused credential ID of 1–16 letters, digits, underscores, or hyphens. The supplied ID is preserved exactly. Omit to generate an ID.',
+				description:
+					'An unused credential ID of 1–16 letters, digits, underscores, or hyphens. The supplied ID is preserved exactly. Omit to generate an ID.',
 				routing: { send: { type: 'body', property: 'id' } },
 			},
 			{
@@ -166,7 +171,8 @@ export const generatedProperties: INodeProperties[] = [
 				name: 'projectId',
 				type: 'string',
 				default: '',
-				description: 'Project to create the credential in. Defaults to the user\'s personal project.',
+				description:
+					"Project to create the credential in. Defaults to the user's personal project.",
 				routing: { send: { type: 'body', property: 'projectId' } },
 			},
 		],
@@ -200,7 +206,8 @@ export const generatedProperties: INodeProperties[] = [
 				name: 'Delete',
 				value: 'delete',
 				action: 'Delete an execution',
-				description: 'Deletes an execution from your instance. Requires the API key scope "execution:delete".',
+				description:
+					'Deletes an execution from your instance. Requires the API key scope "execution:delete".',
 				routing: {
 					request: {
 						method: 'DELETE',
@@ -212,7 +219,8 @@ export const generatedProperties: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				action: 'Retrieve an execution',
-				description: 'Retrieve an execution from your instance. Requires the API key scope "execution:read".',
+				description:
+					'Retrieve an execution from your instance. Requires the API key scope "execution:read".',
 				routing: {
 					request: {
 						method: 'GET',
@@ -224,12 +232,11 @@ export const generatedProperties: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				action: 'Retrieve all executions',
-				description: 'Retrieve many executions from your instance. Requires the API key scope "execution:list".',
+				description:
+					'Retrieve many executions from your instance. Requires the API key scope "execution:list".',
 				routing: {
 					request: { method: 'GET', url: '/executions' },
-					output: {
-						postReceive: [{ type: 'rootProperty', properties: { property: 'data' } }],
-					},
+					output: { postReceive: [{ type: 'rootProperty', properties: { property: 'data' } }] },
 				},
 			},
 		],
@@ -266,7 +273,8 @@ export const generatedProperties: INodeProperties[] = [
 				name: 'ignoreDataSizeLimit',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to return the full execution data even if it exceeds the configured size limit (EXECUTIONS_DATA_MAX_DISPLAY_SIZE). Oversized executions are otherwise returned without their data.',
+				description:
+					'Whether to return the full execution data even if it exceeds the configured size limit (EXECUTIONS_DATA_MAX_DISPLAY_SIZE). Oversized executions are otherwise returned without their data.',
 				routing: { send: { type: 'query', property: 'ignoreDataSizeLimit' } },
 			},
 			{
@@ -274,7 +282,7 @@ export const generatedProperties: INodeProperties[] = [
 				name: 'includeData',
 				type: 'boolean',
 				default: false,
-				description: 'Whether or not to include the execution\'s detailed data',
+				description: "Whether or not to include the execution's detailed data",
 				routing: { send: { type: 'query', property: 'includeData' } },
 			},
 			{
@@ -282,7 +290,8 @@ export const generatedProperties: INodeProperties[] = [
 				name: 'redactExecutionData',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to redact the execution output data. Leave it out to follow the workflow redaction policy. Revealing the data needs the `execution:reveal` scope.',
+				description:
+					'Whether to redact the execution output data. Leave it out to follow the workflow redaction policy. Revealing the data needs the `execution:reveal` scope.',
 				routing: { send: { type: 'query', property: 'redactExecutionData' } },
 			},
 		],
@@ -345,7 +354,8 @@ export const generatedProperties: INodeProperties[] = [
 				name: 'ignoreDataSizeLimit',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to return the full execution data even if it exceeds the configured size limit (EXECUTIONS_DATA_MAX_DISPLAY_SIZE). Oversized executions are otherwise returned without their data.',
+				description:
+					'Whether to return the full execution data even if it exceeds the configured size limit (EXECUTIONS_DATA_MAX_DISPLAY_SIZE). Oversized executions are otherwise returned without their data.',
 				routing: { send: { type: 'query', property: 'ignoreDataSizeLimit' } },
 			},
 			{
@@ -353,7 +363,7 @@ export const generatedProperties: INodeProperties[] = [
 				name: 'includeData',
 				type: 'boolean',
 				default: false,
-				description: 'Whether or not to include the execution\'s detailed data',
+				description: "Whether or not to include the execution's detailed data",
 				routing: { send: { type: 'query', property: 'includeData' } },
 			},
 			{
@@ -368,7 +378,8 @@ export const generatedProperties: INodeProperties[] = [
 				name: 'redactExecutionData',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to redact the execution output data. Leave it out to follow the workflow redaction policy. Revealing the data needs the `execution:reveal` scope.',
+				description:
+					'Whether to redact the execution output data. Leave it out to follow the workflow redaction policy. Revealing the data needs the `execution:reveal` scope.',
 				routing: { send: { type: 'query', property: 'redactExecutionData' } },
 			},
 			{
@@ -447,10 +458,7 @@ export const generatedProperties: INodeProperties[] = [
 						validation: [
 							{
 								type: 'regex',
-								properties: {
-									regex: '[0-9a-zA-Z]{1,}',
-									errorMessage: 'Not a valid Workflow ID',
-								},
+								properties: { regex: '[0-9a-zA-Z]{1,}', errorMessage: 'Not a valid Workflow ID' },
 							},
 						],
 						placeholder: '1',
@@ -471,33 +479,31 @@ export const generatedProperties: INodeProperties[] = [
 				name: 'Add User',
 				value: 'addUser',
 				action: 'Add a user to a project',
-				description: 'Add a user to a project with a project role. Requires the API key scope "project:manageMembers".',
+				description:
+					'Add a user to a project with a project role. Requires the API key scope "project:manageMembers".',
 				routing: {
 					request: {
 						method: 'POST',
 						url: '=/projects/{{ toPathSegment($parameter["projectId"]) }}/users',
 					},
 					output: {
-						postReceive: [
-							{ type: 'set', properties: { value: '={{ { "success": true } }}' } },
-						],
+						postReceive: [{ type: 'set', properties: { value: '={{ { "success": true } }}' } }],
 					},
 				},
 			},
 			{
 				name: 'Change User Role',
 				value: 'changeUserRole',
-				action: 'Change a user\'s role in a project',
-				description: 'Change a user\'s role in a project. Requires the API key scope "project:manageMembers".',
+				action: "Change a user's role in a project",
+				description:
+					'Change a user\'s role in a project. Requires the API key scope "project:manageMembers".',
 				routing: {
 					request: {
 						method: 'PATCH',
 						url: '=/projects/{{ toPathSegment($parameter["projectId"]) }}/users/{{ toPathSegment($parameter["userId"]) }}',
 					},
 					output: {
-						postReceive: [
-							{ type: 'set', properties: { value: '={{ { "success": true } }}' } },
-						],
+						postReceive: [{ type: 'set', properties: { value: '={{ { "success": true } }}' } }],
 					},
 				},
 			},
@@ -505,23 +511,23 @@ export const generatedProperties: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				action: 'Create a project',
-				description: 'Create a team project on your instance. Requires the API key scope "project:create".',
+				description:
+					'Create a team project on your instance. Requires the API key scope "project:create".',
 				routing: { request: { method: 'POST', url: '/projects' } },
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				action: 'Delete a project',
-				description: 'Delete a project from your instance. Requires the API key scope "project:delete".',
+				description:
+					'Delete a project from your instance. Requires the API key scope "project:delete".',
 				routing: {
 					request: {
 						method: 'DELETE',
 						url: '=/projects/{{ toPathSegment($parameter["projectId"]) }}',
 					},
 					output: {
-						postReceive: [
-							{ type: 'set', properties: { value: '={{ { "success": true } }}' } },
-						],
+						postReceive: [{ type: 'set', properties: { value: '={{ { "success": true } }}' } }],
 					},
 				},
 			},
@@ -529,16 +535,15 @@ export const generatedProperties: INodeProperties[] = [
 				name: 'Delete User',
 				value: 'deleteUser',
 				action: 'Delete a user from a project',
-				description: 'Delete a user from a project on your instance. Requires the API key scope "project:manageMembers".',
+				description:
+					'Delete a user from a project on your instance. Requires the API key scope "project:manageMembers".',
 				routing: {
 					request: {
 						method: 'DELETE',
 						url: '=/projects/{{ toPathSegment($parameter["projectId"]) }}/users/{{ toPathSegment($parameter["userId"]) }}',
 					},
 					output: {
-						postReceive: [
-							{ type: 'set', properties: { value: '={{ { "success": true } }}' } },
-						],
+						postReceive: [{ type: 'set', properties: { value: '={{ { "success": true } }}' } }],
 					},
 				},
 			},
@@ -546,43 +551,40 @@ export const generatedProperties: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				action: 'Retrieve projects',
-				description: 'Retrieve projects from your instance. Requires the API key scope "project:list".',
+				description:
+					'Retrieve projects from your instance. Requires the API key scope "project:list".',
 				routing: {
 					request: { method: 'GET', url: '/projects' },
-					output: {
-						postReceive: [{ type: 'rootProperty', properties: { property: 'data' } }],
-					},
+					output: { postReceive: [{ type: 'rootProperty', properties: { property: 'data' } }] },
 				},
 			},
 			{
 				name: 'Get Users',
 				value: 'getUsers',
 				action: 'List project members',
-				description: 'Returns a list of all members of a project including their role. Requires user:list scope. Requires the API key scope "user:list".',
+				description:
+					'Returns a list of all members of a project including their role. Requires user:list scope. Requires the API key scope "user:list".',
 				routing: {
 					request: {
 						method: 'GET',
 						url: '=/projects/{{ toPathSegment($parameter["projectId"]) }}/users',
 					},
-					output: {
-						postReceive: [{ type: 'rootProperty', properties: { property: 'data' } }],
-					},
+					output: { postReceive: [{ type: 'rootProperty', properties: { property: 'data' } }] },
 				},
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				action: 'Update a project',
-				description: 'Update a project on your instance. Requires the API key scope "project:update".',
+				description:
+					'Update a project on your instance. Requires the API key scope "project:update".',
 				routing: {
 					request: {
 						method: 'PUT',
 						url: '=/projects/{{ toPathSegment($parameter["projectId"]) }}',
 					},
 					output: {
-						postReceive: [
-							{ type: 'set', properties: { value: '={{ { "success": true } }}' } },
-						],
+						postReceive: [{ type: 'set', properties: { value: '={{ { "success": true } }}' } }],
 					},
 				},
 			},
@@ -619,7 +621,8 @@ export const generatedProperties: INodeProperties[] = [
 		name: 'role',
 		type: 'options',
 		default: 'project:viewer',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		typeOptions: { loadOptionsMethod: 'getProjectRoles' },
 		required: true,
 		displayOptions: { show: { resource: ['project'], operation: ['addUser'] } },
@@ -647,7 +650,8 @@ export const generatedProperties: INodeProperties[] = [
 		name: 'role',
 		type: 'options',
 		default: 'project:viewer',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		typeOptions: { loadOptionsMethod: 'getProjectRoles' },
 		routing: { send: { type: 'body', property: 'role' } },
 		required: true,
@@ -720,7 +724,8 @@ export const generatedProperties: INodeProperties[] = [
 				name: 'id',
 				type: 'string',
 				default: '',
-				description: 'Project ID. The server generates an ID when omitted. An ID that is in use returns HTTP 409.',
+				description:
+					'Project ID. The server generates an ID when omitted. An ID that is in use returns HTTP 409.',
 				routing: { send: { type: 'body', property: 'id' } },
 			},
 		],
@@ -784,9 +789,7 @@ export const generatedProperties: INodeProperties[] = [
 		default: 50,
 		typeOptions: { minValue: 1, maxValue: 250 },
 		description: 'Max number of results to return',
-		displayOptions: {
-			show: { resource: ['project'], operation: ['getAll'], returnAll: [false] },
-		},
+		displayOptions: { show: { resource: ['project'], operation: ['getAll'], returnAll: [false] } },
 		routing: { send: { type: 'query', property: 'limit' } },
 	},
 	{
@@ -863,7 +866,7 @@ export const generatedProperties: INodeProperties[] = [
 			{
 				name: 'Change Role',
 				value: 'changeRole',
-				action: 'Change a user\'s global role',
+				action: "Change a user's global role",
 				description: 'Change a user\'s global role Requires the API key scope "user:changeRole"',
 				routing: {
 					request: {
@@ -871,9 +874,7 @@ export const generatedProperties: INodeProperties[] = [
 						url: '=/users/{{ toPathSegment($parameter["userId"]) }}/role',
 					},
 					output: {
-						postReceive: [
-							{ type: 'set', properties: { value: '={{ { "success": true } }}' } },
-						],
+						postReceive: [{ type: 'set', properties: { value: '={{ { "success": true } }}' } }],
 					},
 				},
 			},
@@ -890,14 +891,9 @@ export const generatedProperties: INodeProperties[] = [
 				action: 'Delete user',
 				description: 'Delete a user from your instance. Requires the API key scope "user:delete".',
 				routing: {
-					request: {
-						method: 'DELETE',
-						url: '=/users/{{ toPathSegment($parameter["userId"]) }}',
-					},
+					request: { method: 'DELETE', url: '=/users/{{ toPathSegment($parameter["userId"]) }}' },
 					output: {
-						postReceive: [
-							{ type: 'set', properties: { value: '={{ { "success": true } }}' } },
-						],
+						postReceive: [{ type: 'set', properties: { value: '={{ { "success": true } }}' } }],
 					},
 				},
 			},
@@ -905,24 +901,21 @@ export const generatedProperties: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				action: 'Get user by ID/Email',
-				description: 'Retrieve a user from your instance. Only available for the instance owner. Requires the API key scope "user:read".',
+				description:
+					'Retrieve a user from your instance. Only available for the instance owner. Requires the API key scope "user:read".',
 				routing: {
-					request: {
-						method: 'GET',
-						url: '=/users/{{ toPathSegment($parameter["userId"]) }}',
-					},
+					request: { method: 'GET', url: '=/users/{{ toPathSegment($parameter["userId"]) }}' },
 				},
 			},
 			{
 				name: 'Get Many',
 				value: 'getAll',
 				action: 'Retrieve all users',
-				description: 'Retrieve many users from your instance. Only available for the instance owner. Requires the API key scope "user:list".',
+				description:
+					'Retrieve many users from your instance. Only available for the instance owner. Requires the API key scope "user:list".',
 				routing: {
 					request: { method: 'GET', url: '/users' },
-					output: {
-						postReceive: [{ type: 'rootProperty', properties: { property: 'data' } }],
-					},
+					output: { postReceive: [{ type: 'rootProperty', properties: { property: 'data' } }] },
 				},
 			},
 		],
@@ -985,7 +978,8 @@ export const generatedProperties: INodeProperties[] = [
 				name: 'transferId',
 				type: 'string',
 				default: '',
-				description: 'ID of the project to transfer the deleted user\'s workflows and credentials to. Omit to delete those resources instead of transferring them.',
+				description:
+					"ID of the project to transfer the deleted user's workflows and credentials to. Omit to delete those resources instead of transferring them.",
 				routing: { send: { type: 'query', property: 'transferId' } },
 			},
 		],
@@ -1088,7 +1082,8 @@ export const generatedProperties: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				action: 'Create a workflow',
-				description: 'Create a workflow in your instance. Requires the API key scope "workflow:create".',
+				description:
+					'Create a workflow in your instance. Requires the API key scope "workflow:create".',
 				routing: { request: { method: 'POST', url: '/workflows' } },
 			},
 			{
@@ -1109,40 +1104,43 @@ export const generatedProperties: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				action: 'Retrieve all workflows',
-				description: 'Retrieve many workflows from your instance. Requires the API key scope "workflow:list".',
+				description:
+					'Retrieve many workflows from your instance. Requires the API key scope "workflow:list".',
 				routing: {
 					request: { method: 'GET', url: '/workflows' },
-					output: {
-						postReceive: [{ type: 'rootProperty', properties: { property: 'data' } }],
-					},
+					output: { postReceive: [{ type: 'rootProperty', properties: { property: 'data' } }] },
 				},
 			},
 			{
 				name: 'Get Version',
 				value: 'getVersion',
 				action: 'Retrieve a workflow version',
-				description: 'Retrieve a single version of a workflow from its version history. Requires the API key scope "workflow:read".',
+				description:
+					'Retrieve a single version of a workflow from its version history. Requires the API key scope "workflow:read".',
 				routing: {},
 			},
 			{
 				name: 'Publish',
 				value: 'publish',
 				action: 'Publish a workflow',
-				description: 'Publish a workflow. In n8n v1, this action was termed activating a workflow. Requires the API key scope "workflow:activate".',
+				description:
+					'Publish a workflow. In n8n v1, this action was termed activating a workflow. Requires the API key scope "workflow:activate".',
 				routing: {},
 			},
 			{
 				name: 'Unpublish',
 				value: 'unpublish',
 				action: 'Unpublish a workflow',
-				description: 'Unpublish a workflow. In n8n v1, this action was termed deactivating a workflow. Requires the API key scope "workflow:deactivate".',
+				description:
+					'Unpublish a workflow. In n8n v1, this action was termed deactivating a workflow. Requires the API key scope "workflow:deactivate".',
 				routing: {},
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				action: 'Update a workflow',
-				description: 'Update a workflow. If the workflow is published, the updated version will be automatically re-published unless `publishIfActive` is set to `false`. Because that re-publication puts a new version live, it additionally requires the `workflow:activate` API key scope and the `workflow:publish` project permission. A caller without either can still save: the new version is stored as a draft and the response is a `403` naming the missing permission, leaving the published version live. Saving an unpublished workflow, or saving with `publishIfActive=false`, only needs `workflow:update`. Requires the API key scope "workflow:update".',
+				description:
+					'Update a workflow. If the workflow is published, the updated version will be automatically re-published unless `publishIfActive` is set to `false`. Because that re-publication puts a new version live, it additionally requires the `workflow:activate` API key scope and the `workflow:publish` project permission. A caller without either can still save: the new version is stored as a draft and the response is a `403` naming the missing permission, leaving the published version live. Saving an unpublished workflow, or saving with `publishIfActive=false`, only needs `workflow:update`. Requires the API key scope "workflow:update".',
 				routing: {},
 			},
 		],
@@ -1239,7 +1237,8 @@ export const generatedProperties: INodeProperties[] = [
 				name: 'parentFolderId',
 				type: 'string',
 				default: '',
-				description: 'ID of the folder to place the workflow in. Omit or null to place at the project root.',
+				description:
+					'ID of the folder to place the workflow in. Omit or null to place at the project root.',
 				routing: { send: { type: 'body', property: 'parentFolderId' } },
 			},
 			{
@@ -1261,7 +1260,8 @@ export const generatedProperties: INodeProperties[] = [
 				name: 'projectId',
 				type: 'string',
 				default: '',
-				description: 'Target project to create the workflow in. Defaults to the user\'s personal project.',
+				description:
+					"Target project to create the workflow in. Defaults to the user's personal project.",
 				routing: { send: { type: 'body', property: 'projectId' } },
 			},
 			{
@@ -1269,7 +1269,8 @@ export const generatedProperties: INodeProperties[] = [
 				name: 'shared',
 				type: 'json',
 				default: '[]',
-				description: 'Accepted for compatibility and ignored. The owner share is derived from the target project.',
+				description:
+					'Accepted for compatibility and ignored. The owner share is derived from the target project.',
 				routing: {
 					send: {
 						type: 'body',
@@ -1336,10 +1337,7 @@ export const generatedProperties: INodeProperties[] = [
 				validation: [
 					{
 						type: 'regex',
-						properties: {
-							regex: '[0-9a-zA-Z]{1,}',
-							errorMessage: 'Not a valid Workflow ID',
-						},
+						properties: { regex: '[0-9a-zA-Z]{1,}', errorMessage: 'Not a valid Workflow ID' },
 					},
 				],
 				placeholder: '1',
@@ -1391,10 +1389,7 @@ export const generatedProperties: INodeProperties[] = [
 				validation: [
 					{
 						type: 'regex',
-						properties: {
-							regex: '[0-9a-zA-Z]{1,}',
-							errorMessage: 'Not a valid Workflow ID',
-						},
+						properties: { regex: '[0-9a-zA-Z]{1,}', errorMessage: 'Not a valid Workflow ID' },
 					},
 				],
 				placeholder: '1',
@@ -1460,9 +1455,7 @@ export const generatedProperties: INodeProperties[] = [
 		default: 50,
 		typeOptions: { minValue: 1, maxValue: 250 },
 		description: 'Max number of results to return',
-		displayOptions: {
-			show: { resource: ['workflow'], operation: ['getAll'], returnAll: [false] },
-		},
+		displayOptions: { show: { resource: ['workflow'], operation: ['getAll'], returnAll: [false] } },
 		routing: { send: { type: 'query', property: 'limit' } },
 	},
 	{
@@ -1568,10 +1561,7 @@ export const generatedProperties: INodeProperties[] = [
 				validation: [
 					{
 						type: 'regex',
-						properties: {
-							regex: '[0-9a-zA-Z]{1,}',
-							errorMessage: 'Not a valid Workflow ID',
-						},
+						properties: { regex: '[0-9a-zA-Z]{1,}', errorMessage: 'Not a valid Workflow ID' },
 					},
 				],
 				placeholder: '1',
@@ -1637,10 +1627,7 @@ export const generatedProperties: INodeProperties[] = [
 				validation: [
 					{
 						type: 'regex',
-						properties: {
-							regex: '[0-9a-zA-Z]{1,}',
-							errorMessage: 'Not a valid Workflow ID',
-						},
+						properties: { regex: '[0-9a-zA-Z]{1,}', errorMessage: 'Not a valid Workflow ID' },
 					},
 				],
 				placeholder: '1',
@@ -1681,7 +1668,8 @@ export const generatedProperties: INodeProperties[] = [
 				name: 'versionId',
 				type: 'string',
 				default: '',
-				description: 'The specific version ID to publish. If not provided, the latest version is used.',
+				description:
+					'The specific version ID to publish. If not provided, the latest version is used.',
 				routing: { send: { type: 'body', property: 'versionId' } },
 			},
 		],
@@ -1728,10 +1716,7 @@ export const generatedProperties: INodeProperties[] = [
 				validation: [
 					{
 						type: 'regex',
-						properties: {
-							regex: '[0-9a-zA-Z]{1,}',
-							errorMessage: 'Not a valid Workflow ID',
-						},
+						properties: { regex: '[0-9a-zA-Z]{1,}', errorMessage: 'Not a valid Workflow ID' },
 					},
 				],
 				placeholder: '1',
@@ -1785,10 +1770,7 @@ export const generatedProperties: INodeProperties[] = [
 				validation: [
 					{
 						type: 'regex',
-						properties: {
-							regex: '[0-9a-zA-Z]{1,}',
-							errorMessage: 'Not a valid Workflow ID',
-						},
+						properties: { regex: '[0-9a-zA-Z]{1,}', errorMessage: 'Not a valid Workflow ID' },
 					},
 				],
 				placeholder: '1',
@@ -1867,7 +1849,8 @@ export const generatedProperties: INodeProperties[] = [
 				name: 'publishIfActive',
 				type: 'boolean',
 				default: true,
-				description: 'Whether to publish the update if the workflow is currently published. Set to `false` to save the change as a draft on the existing published version instead of releasing it. Has no effect on a workflow that isn\'t currently published.',
+				description:
+					"Whether to publish the update if the workflow is currently published. Set to `false` to save the change as a draft on the existing published version instead of releasing it. Has no effect on a workflow that isn't currently published.",
 				routing: { send: { type: 'query', property: 'publishIfActive' } },
 			},
 		],
@@ -1907,7 +1890,8 @@ export const generatedProperties: INodeProperties[] = [
 				name: 'parentFolderId',
 				type: 'string',
 				default: '',
-				description: 'ID of the folder to move the workflow into. Pass null to move it to the project root; omit to leave its current folder unchanged.',
+				description:
+					'ID of the folder to move the workflow into. Pass null to move it to the project root; omit to leave its current folder unchanged.',
 				routing: { send: { type: 'body', property: 'parentFolderId' } },
 			},
 			{
@@ -1929,7 +1913,8 @@ export const generatedProperties: INodeProperties[] = [
 				name: 'shared',
 				type: 'json',
 				default: '[]',
-				description: 'Accepted for compatibility and ignored. The owner share is derived from the target project.',
+				description:
+					'Accepted for compatibility and ignored. The owner share is derived from the target project.',
 				routing: {
 					send: {
 						type: 'body',

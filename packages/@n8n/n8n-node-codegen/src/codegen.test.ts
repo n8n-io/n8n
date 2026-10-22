@@ -8,7 +8,6 @@ import {
 import { buildProperties, checkMethodNames } from './build';
 import { diffContracts, emptyContract, resolveOperations, toContract } from './contract';
 import { operationName, resourceName } from './naming';
-import { serialize } from './serialize';
 import type { Contract, SpecOperation } from './types';
 
 const retryOperation = (pathParam = 'executionId', bodyRequired = false): SpecOperation => ({
@@ -382,33 +381,6 @@ describe('n8n node codegen', () => {
 			expect(errors).toEqual([
 				'packages/nodes-base/nodes/N8n/v2/overrides.ts: "include" names "executions", which is neither a resource nor a node operation. Did you mean "execution"?',
 			]);
-		});
-	});
-
-	describe('serialize', () => {
-		it('keeps a short object on one line', () => {
-			expect(serialize({ type: 'body', property: 'name' }, 'ts', 100)).toBe(
-				"{ type: 'body', property: 'name' }",
-			);
-		});
-
-		it('breaks a long object over lines with trailing commas', () => {
-			expect(serialize({ description: 'x'.repeat(90), name: 'a' }, 'ts', 100)).toBe(
-				`{\n\tdescription: '${'x'.repeat(90)}',\n\tname: 'a',\n}`,
-			);
-		});
-
-		it('writes valid JSON', () => {
-			const value = {
-				operations: { 'a:b': { api: 'x', params: { long: 'y'.repeat(200) } } },
-				excluded: {},
-			};
-
-			expect(JSON.parse(serialize(value, 'json', 160))).toEqual(value);
-		});
-
-		it('quotes keys that are not identifiers and escapes quotes', () => {
-			expect(serialize({ 'Content-Type': "it's" }, 'ts', 100)).toBe("{ 'Content-Type': 'it\\'s' }");
 		});
 	});
 

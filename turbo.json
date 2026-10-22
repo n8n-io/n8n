@@ -16,11 +16,6 @@
 			"dependsOn": ["^build:unchecked"],
 			"outputs": ["dist/**"]
 		},
-		"n8n-nodes-base#build": {
-			"dependsOn": ["^build"],
-			"inputs": ["$TURBO_DEFAULT$", "!nodes/N8n/v2/generated/**"],
-			"outputs": ["dist/**"]
-		},
 		"@n8n/n8n-node-codegen#build": {
 			"dependsOn": ["^build"],
 			"inputs": [

@@ -3635,6 +3635,9 @@ importers:
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
+      prettier:
+        specifier: 'catalog:'
+        version: 3.6.2
       tsx:
         specifier: 'catalog:'
         version: 4.19.3

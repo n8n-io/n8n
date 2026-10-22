@@ -19,6 +19,19 @@ describe('Test N8n Node', () => {
 				relations: [{ userId: 'user-456', role: 'project:editor' }],
 			})
 			.reply(201);
+		nock(baseUrl)
+			.post('/projects/proj-v2/users', {
+				relations: [{ userId: 'user-v2', role: 'project:editor' }],
+			})
+			.reply(201);
+		nock(baseUrl)
+			.get('/executions')
+			.query({ status: 'error' })
+			.reply(200, { data: [{ id: '1', status: 'error' }], nextCursor: 'page-2' });
+		nock(baseUrl)
+			.get('/executions')
+			.query({ status: 'error', cursor: 'page-2' })
+			.reply(200, { data: [{ id: '2', status: 'error' }], nextCursor: null });
 	});
 
 	new NodeTestHarness().setupTests({ credentials });
