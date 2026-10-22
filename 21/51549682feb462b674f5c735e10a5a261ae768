@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSubAgentsPanel.spec.ts
+  s_15ee6b89414a1e::t_fbaff9f19401b5 4,12,602,624
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2151549682feb462b674f5c735e10a5a261ae768",
+  "prompts": {},
+  "sessions": {
+    "s_15ee6b89414a1e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1632e-922e-7781-a5b3-55f280e6078f",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
