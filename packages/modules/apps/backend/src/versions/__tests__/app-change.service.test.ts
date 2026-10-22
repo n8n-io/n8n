@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
@@ -18,7 +19,7 @@ function setup() {
 		statusUpdatedAt: null,
 		diagnostics: { stage: 'build', message: 'Fix the source.', log: 'Error' },
 	});
-	return { versions, builds, service: new AppChangeService(versions, builds) };
+	return { versions, builds, service: new AppChangeService(versions, builds, mock<Logger>()) };
 }
 
 describe('AppChangeService', () => {

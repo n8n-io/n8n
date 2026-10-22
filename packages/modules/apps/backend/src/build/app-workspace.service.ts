@@ -49,6 +49,12 @@ export class AppWorkspaceService {
 		const root = `${await raceAbort(getWorkspaceRoot({ sandbox }), signal, () => new AppBuildError('sandbox', 'Sandbox acquisition was interrupted.'))}/app-build`;
 		const stage = `${root}/attempts/${versionId}-${attempt.attemptNumber}`;
 		await filesystem.mkdir(stage, { recursive: true, abortSignal: signal });
+		this.logger.debug('App build sandbox is ready.', {
+			appId,
+			versionId,
+			attempt: attempt.attemptNumber,
+			provider: config.provider,
+		});
 		let commandFinished = false;
 		try {
 			await filesystem.writeFile(`${stage}/source.tgz`, await this.archives.pack(files), {
@@ -60,6 +66,7 @@ export class AppWorkspaceService {
 			signal.throwIfAborted();
 			if (remaining <= 0) throw new AppBuildError('sandbox', 'The app build timed out.');
 			const seconds = Math.max(1, Math.floor(remaining / 1000));
+			const commandStartedAt = Date.now();
 			const result = await execute(
 				'timeout',
 				[
@@ -80,6 +87,15 @@ export class AppWorkspaceService {
 				],
 				{ timeout: remaining, abortSignal: signal, env: { CI: 'true' } },
 			);
+			this.logger.debug('App build command finished.', {
+				appId,
+				versionId,
+				attempt: attempt.attemptNumber,
+				exitCode: result.exitCode,
+				timedOut: result.timedOut,
+				killed: result.killed,
+				durationMs: Date.now() - commandStartedAt,
+			});
 			commandFinished =
 				!result.timedOut && !result.killed && result.exitCode !== 124 && result.exitCode !== 137;
 			const log = Buffer.from(`${result.stdout}\n${result.stderr}`)
@@ -108,7 +124,15 @@ export class AppWorkspaceService {
 			if (!Buffer.isBuffer(body))
 				throw new AppBuildError('validate', 'The sandbox returned an invalid app bundle.');
 			try {
-				return await this.archives.unpack(body, true);
+				const bundle = await this.archives.unpack(body, true);
+				this.logger.debug('Validated app build bundle.', {
+					appId,
+					versionId,
+					attempt: attempt.attemptNumber,
+					fileCount: bundle.size,
+					sizeBytes: body.length,
+				});
+				return bundle;
 			} catch (error) {
 				throw new AppBuildError(
 					'validate',
@@ -133,8 +157,13 @@ export class AppWorkspaceService {
 
 	async delete(appId: string): Promise<void> {
 		const sandbox = await createSandbox(await this.sandboxConfig(appId), { logger: this.logger });
-		if (sandbox?.deleteRemote) await sandbox.deleteRemote();
-		else await sandbox?.destroy?.();
+		if (sandbox?.deleteRemote) {
+			await sandbox.deleteRemote();
+			this.logger.debug('Deleted app sandbox.', { appId });
+		} else if (sandbox?.destroy) {
+			await sandbox.destroy();
+			this.logger.debug('Destroyed app sandbox.', { appId });
+		}
 	}
 
 	private async sandboxConfig(appId: string): Promise<SandboxConfig> {

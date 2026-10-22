@@ -45,7 +45,9 @@ export class AppsService {
 
 	async createApp(projectId: string, dto: CreateAppDto): Promise<AppResponse> {
 		await this.assertProjectExists(projectId);
-		return toResponse(await this.appRepository.createApp(projectId, dto));
+		const app = await this.appRepository.createApp(projectId, dto);
+		this.logger.debug('Created app.', { projectId, appId: app.id });
+		return toResponse(app);
 	}
 
 	async getApp(projectId: string, appId: string): Promise<AppResponse> {
@@ -74,6 +76,7 @@ export class AppsService {
 		this.assertValidAppId(appId);
 		const app = await this.appRepository.updateApp(projectId, appId, dto);
 		if (!app) throw new NotFoundError('App not found');
+		this.logger.debug('Updated app.', { projectId, appId });
 		return toResponse(app);
 	}
 
@@ -95,6 +98,7 @@ export class AppsService {
 		if (!deleted) {
 			throw new NotFoundError('App not found');
 		}
+		this.logger.debug('Deleted app.', { projectId, appId });
 		try {
 			await this.workspaces.delete(appId);
 		} catch (error) {

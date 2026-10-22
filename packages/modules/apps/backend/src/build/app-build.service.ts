@@ -46,10 +46,20 @@ export class AppBuildService {
 	): Promise<AppBuildResponse> {
 		await this.versionService.getVersion(projectId, appId, versionId);
 		this.assertNotStopping();
+		const startedAt = Date.now();
 		const work = this.run(projectId, appId, versionId, retry);
 		this.active.add(work);
 		try {
-			return await work;
+			const result = await work;
+			this.logger.debug('App build finished.', {
+				projectId,
+				appId,
+				versionId,
+				status: result.status,
+				attempt: result.attempts,
+				durationMs: Date.now() - startedAt,
+			});
+			return result;
 		} finally {
 			this.active.delete(work);
 		}
@@ -76,6 +86,12 @@ export class AppBuildService {
 			);
 			if (!attempt)
 				throw new ConflictError('The app build is already running or cannot be retried.');
+			this.logger.debug('Started app build attempt.', {
+				projectId,
+				appId,
+				versionId,
+				attempt: attempt.attemptNumber,
+			});
 			const deadline = AbortSignal.timeout(this.config.buildTimeoutMs);
 			const signal = AbortSignal.any([deadline, this.stopping.signal]);
 			let stage: 'source' | 'sandbox' | 'store' = 'source';
@@ -116,8 +132,16 @@ export class AppBuildService {
 					!this.stopping.signal.aborted
 				) {
 					try {
+						const delayMs = 1000 * (index + 1);
+						this.logger.debug('Scheduled app build retry.', {
+							appId,
+							versionId,
+							attempt: attempt.attemptNumber,
+							stage: failure.stage,
+							delayMs,
+						});
 						// Keep the version running so retention and manual retries cannot take it during the delay.
-						await delay(1000 * (index + 1), undefined, { signal: this.stopping.signal });
+						await delay(delayMs, undefined, { signal: this.stopping.signal });
 						previousAttemptNumber = attempt.attemptNumber;
 						continue;
 					} catch (error) {
@@ -187,7 +211,9 @@ export class AppBuildService {
 	}
 
 	async shutdown() {
+		this.logger.debug('Stopping app builds.', { activeBuilds: this.active.size });
 		this.stopping.abort();
 		await Promise.allSettled(this.active);
+		this.logger.debug('Stopped app builds.');
 	}
 }

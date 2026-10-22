@@ -44,6 +44,13 @@ export class AppVersionService {
 			files,
 		);
 		const version = await this.requireVersion(versionId);
+		this.logger.debug('Stored app source version.', {
+			projectId,
+			appId,
+			versionId,
+			artifactId: version.sourceArtifactId,
+			fileCount: files.size,
+		});
 		await this.prune(appId);
 		return version;
 	}
@@ -61,6 +68,14 @@ export class AppVersionService {
 		}
 		await this.buildResults.recordSuccess(appId, versionId, files, attempt);
 		const version = await this.requireVersion(versionId);
+		this.logger.debug('Stored app bundle.', {
+			projectId,
+			appId,
+			versionId,
+			artifactId: version.bundleArtifactId,
+			attempt: attempt.attemptNumber,
+			fileCount: files.size,
+		});
 		await this.prune(appId);
 		return version;
 	}
@@ -113,6 +128,7 @@ export class AppVersionService {
 		await this.getVersion(projectId, appId, versionId);
 		const version = await this.versions.setLabel(versionId, label);
 		if (!version) throw new NotFoundError('App version not found.');
+		this.logger.debug('Updated app version label.', { projectId, appId, versionId });
 		return version;
 	}
 

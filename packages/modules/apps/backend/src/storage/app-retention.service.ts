@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { DbLock, DbLockService } from '@n8n/db';
 import { Service } from '@n8n/di';
 
@@ -16,11 +17,12 @@ export class AppRetentionService {
 		private readonly locks: DbLockService,
 		private readonly sourceVersions: AppSourceVersionStore,
 		private readonly buildResults: AppBuildResultStore,
+		private readonly logger: Logger,
 	) {}
 
 	async prune(appId: string, signal?: AbortSignal): Promise<void> {
 		signal?.throwIfAborted();
-		await this.locks.withLockContext(
+		const pruned = await this.locks.withLockContext(
 			DbLock.APPS_STORAGE,
 			async (ctx) => {
 				const app = await this.apps.findById(appId, ctx);
@@ -50,9 +52,16 @@ export class AppRetentionService {
 					this.config.maxVersionsPerApp,
 				);
 				await this.sourceVersions.removeVersions(versionsToRemove, ctx);
+				return {
+					removedVersions: versionsToRemove.length,
+					removedBundles: bundlesToRemove.length,
+				};
 			},
 			{ subKey: appStorageLockSubKey(appId) },
 		);
+		if (pruned && (pruned.removedVersions > 0 || pruned.removedBundles > 0)) {
+			this.logger.debug('Pruned app history.', { appId, ...pruned });
+		}
 	}
 
 	private oldestExcess(

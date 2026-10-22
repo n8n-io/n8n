@@ -29,6 +29,7 @@ function createRetention() {
 		locks,
 		sourceVersions,
 		buildResults,
+		mock<Logger>(),
 	);
 	return { retention, ctx, apps, versions, sourceVersions, buildResults, config, locks };
 }

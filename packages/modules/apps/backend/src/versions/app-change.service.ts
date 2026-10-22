@@ -1,4 +1,5 @@
 import type { AppBuildResponse } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
 
@@ -12,6 +13,7 @@ export class AppChangeService {
 	constructor(
 		private readonly versions: AppVersionService,
 		private readonly builds: AppBuildService,
+		private readonly logger: Logger,
 	) {}
 
 	async commit(
@@ -33,7 +35,14 @@ export class AppChangeService {
 			return await this.builds.build(projectId, appId, version.id);
 		} catch (error) {
 			if (error instanceof ConflictError) {
-				return await this.builds.status(projectId, appId, version.id);
+				const status = await this.builds.status(projectId, appId, version.id);
+				this.logger.debug('Returning stored app build status after a conflict.', {
+					projectId,
+					appId,
+					versionId: version.id,
+					status: status.status,
+				});
+				return status;
 			}
 			throw error;
 		}
@@ -55,6 +64,12 @@ export class AppChangeService {
 		this.builds.assertNotStopping();
 		const version = await this.versions.getVersion(projectId, appId, versionId);
 		const files = await this.versions.readSource(projectId, appId, versionId);
+		this.logger.debug('Restoring app source into a new version.', {
+			projectId,
+			appId,
+			sourceVersionId: versionId,
+			expectedDraftVersionId,
+		});
 		return await this.commit(projectId, appId, expectedDraftVersionId, files, version.label);
 	}
 }
