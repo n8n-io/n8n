@@ -3,6 +3,9 @@ import { nextTick, reactive } from 'vue';
 import { vi } from 'vitest';
 import { useProjectsStore } from './projects.store';
 import * as projectsApi from './projects.api';
+import * as workflowsEEApi from '@/app/api/workflows.ee';
+import * as credentialsEEApi from '@/features/credentials/credentials.ee.api';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { Project, ProjectListItem, ProjectType } from './projects.types';
 import { ProjectTypes } from './projects.types';
 import type { ProjectRole, Scope } from '@n8n/permissions';
@@ -29,6 +32,11 @@ vi.mock('./projects.api', () => ({
 	addProjectMembers: vi.fn(),
 	updateProjectMemberRole: vi.fn(),
 	deleteProjectMember: vi.fn(),
+}));
+
+vi.mock('@/app/api/workflows.ee', () => ({ moveWorkflowToProject: vi.fn() }));
+vi.mock('@/features/credentials/credentials.ee.api', () => ({
+	moveCredentialToProject: vi.fn(),
 }));
 
 // Typed mocked facade for the API module
@@ -349,5 +357,52 @@ describe('useProjectsStore.setProjectNavActiveIdByWorkflowHomeProject', () => {
 
 		expect(store.projectNavActiveId).toBe('inbox');
 		expect(store.currentProject).toBeNull();
+	});
+});
+
+describe('useProjectsStore.moveResourceToProject', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+		vi.clearAllMocks();
+	});
+
+	it('should return the workflow transfer result from the API', async () => {
+		const result = { unpublishReasons: [] };
+		vi.mocked(workflowsEEApi.moveWorkflowToProject).mockResolvedValue(result);
+		const store = useProjectsStore();
+
+		const returned = await store.moveResourceToProject('workflow', 'w1', 'p2', 'f1', ['c1']);
+
+		expect(returned).toBe(result);
+		expect(workflowsEEApi.moveWorkflowToProject).toHaveBeenCalledWith(expect.anything(), 'w1', {
+			destinationProjectId: 'p2',
+			destinationParentFolderId: 'f1',
+			shareCredentials: ['c1'],
+		});
+	});
+
+	it('should return undefined when the workflow keeps its state', async () => {
+		vi.mocked(workflowsEEApi.moveWorkflowToProject).mockResolvedValue(undefined);
+		const store = useProjectsStore();
+
+		expect(await store.moveResourceToProject('workflow', 'w1', 'p2')).toBeUndefined();
+	});
+
+	it('should move a credential and return undefined', async () => {
+		vi.mocked(credentialsEEApi.moveCredentialToProject).mockResolvedValue(undefined);
+		const store = useProjectsStore();
+		const credentialsStore = useCredentialsStore();
+		vi.spyOn(credentialsStore, 'fetchAllCredentials').mockResolvedValue([]);
+
+		const returned = await store.moveResourceToProject('credential', 'c1', 'p2');
+
+		expect(returned).toBeUndefined();
+		expect(credentialsEEApi.moveCredentialToProject).toHaveBeenCalledWith(
+			expect.anything(),
+			'c1',
+			'p2',
+		);
+		expect(workflowsEEApi.moveWorkflowToProject).not.toHaveBeenCalled();
+		expect(credentialsStore.fetchAllCredentials).toHaveBeenCalled();
 	});
 });

@@ -112,6 +112,88 @@ describe('ContactAdminModal', () => {
 		expect(getByText(/request access to Anthropic credentials/)).toBeInTheDocument();
 	});
 
+	describe('with several type names', () => {
+		it('uses the several copy and joins the names in the description and mail subject', async () => {
+			setup([owner]);
+			const { findByTestId, getByText } = renderComponent({
+				props: {
+					open: true,
+					nodeTypeName: ['Slack', 'GitHub API'],
+					kind: 'credential',
+					audience: 'instance',
+				},
+			});
+
+			await findByTestId('contact-admin-list');
+
+			expect(
+				getByText(
+					'Instance admins manage which nodes and credential types are available. Contact one of them to request access to Slack, GitHub API.',
+				),
+			).toBeInTheDocument();
+			expect(getByText('ada@example.com').closest('a')).toHaveAttribute(
+				'href',
+				`mailto:ada@example.com?subject=${encodeURIComponent('Access request for Slack, GitHub API')}`,
+			);
+		});
+
+		it('looks up admins with the scope of the given kind', async () => {
+			const usersStore = setup([owner]);
+			const { findByTestId } = renderComponent({
+				props: {
+					open: true,
+					nodeTypeName: ['Slack', 'GitHub API'],
+					kind: 'credential',
+					audience: 'instance',
+				},
+			});
+
+			await findByTestId('contact-admin-list');
+
+			expect(usersStore.fetchUsers).toHaveBeenCalledWith({
+				filter: { scope: 'credentialTypePolicy:manage' },
+			});
+		});
+
+		it('uses the several copy for the project audience', async () => {
+			setup([owner]);
+			mockPolicyProject({
+				type: 'team',
+				relations: [
+					{
+						id: 'admin-1',
+						firstName: 'Grace',
+						lastName: 'Hopper',
+						email: 'grace@example.com',
+						role: 'project:admin',
+					},
+				],
+			});
+			const { findByTestId, getByText } = renderComponent({
+				props: { open: true, nodeTypeName: ['Slack', 'GitHub API'], audience: 'project' },
+			});
+
+			await findByTestId('contact-admin-list');
+
+			expect(getByText(/request access to Slack, GitHub API\./)).toBeInTheDocument();
+		});
+
+		it('keeps the single copy for an array of one name', async () => {
+			setup([owner]);
+			const { findByTestId, getByText } = renderComponent({
+				props: { open: true, nodeTypeName: ['Slack'], audience: 'instance' },
+			});
+
+			await findByTestId('contact-admin-list');
+
+			expect(getByText(/request access to 'Slack'/)).toBeInTheDocument();
+			expect(getByText('ada@example.com').closest('a')).toHaveAttribute(
+				'href',
+				'mailto:ada@example.com?subject=Access%20request%20for%20the%20Slack%20node',
+			);
+		});
+	});
+
 	it('keeps loading until the latest owner lookup resolves after a reopen', async () => {
 		const lookups: Array<() => void> = [];
 		setup(
