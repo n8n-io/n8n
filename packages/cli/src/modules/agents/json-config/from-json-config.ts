@@ -147,13 +147,13 @@ export interface BuildFromJsonOptions {
 	 * them on their own cache key.
 	 */
 	previewChat?: boolean;
-	/** Called once for each vector store search, before it runs, with the run id of the agent runtime. */
-	onVectorStoreSearch?: (runId: string | undefined) => void;
+	/** Called once for each vector store search, with the size of the output that the model gets (0 when the search fails). */
+	onVectorStoreSearch?: (runId: string | undefined, contentChars: number) => void;
 }
 
 function countVectorStoreSearches(
 	searchTool: BuiltTool,
-	onVectorStoreSearch: (runId: string | undefined) => void,
+	onVectorStoreSearch: (runId: string | undefined, contentChars: number) => void,
 ): BuiltTool {
 	const searchHandler = searchTool.handler;
 	if (!searchHandler) {
@@ -163,8 +163,19 @@ function countVectorStoreSearches(
 	return {
 		...searchTool,
 		async handler(input, ctx) {
-			onVectorStoreSearch(ctx.runId);
-			return await searchHandler.call(searchTool, input, ctx);
+			let output: unknown;
+			try {
+				output = await searchHandler.call(searchTool, input, ctx);
+			} catch (error) {
+				onVectorStoreSearch(ctx.runId, 0);
+				throw error;
+			}
+
+			const modelOutput = searchTool.toModelOutput ? searchTool.toModelOutput(output) : output;
+			const json: string | undefined = JSON.stringify(modelOutput);
+			const contentChars = json?.length ?? 0;
+			onVectorStoreSearch(ctx.runId, contentChars);
+			return output;
 		},
 	};
 }
