@@ -5,7 +5,7 @@ import type { EngineLogger } from '../../logging';
 import type { StepMessage, WorkQueue } from '../../queue';
 import { ExecutionNotFoundError, type ExecutionStore } from '../execution-store';
 import type { ExecutionStatus } from '../execution.types';
-import { ResumeRequestService } from '../resume-request.service';
+import { ResumeRequestService, type ResumeHold } from '../resume-request.service';
 import { StepNotFoundError, type StepRecord, type StepStore } from '../step-store';
 
 const secret = 'a'.repeat(32);
@@ -37,6 +37,7 @@ function setup({
 	status = 'running' as ExecutionStatus | 'missing',
 	step = accepting('s1') as StepRecord | 'missing',
 	resumed = true,
+	serviceHold = hold as ResumeHold | 'default',
 } = {}) {
 	const loadWaitingSteps = vi.fn();
 	for (const rows of waiting) loadWaitingSteps.mockResolvedValueOnce(rows);
@@ -65,7 +66,7 @@ function setup({
 		stepQueue,
 		secret,
 		logger,
-		hold,
+		...(serviceHold === 'default' ? [] : [serviceHold]),
 	);
 	return { service, stepStore, stepQueue, loadWaitingSteps, logger };
 }
@@ -73,13 +74,14 @@ function setup({
 const rejection = (code: string) => expect.objectContaining({ code });
 
 describe('ResumeRequestService.locate', () => {
-	it('names the one step that accepts a request', async () => {
-		const { service } = setup({ waiting: [[accepting('s1'), deadlineOnly]] });
+	it('names the one step that accepts a request, and logs nothing when it held nothing', async () => {
+		const { service, logger } = setup({ waiting: [[accepting('s1'), deadlineOnly]] });
 
 		await expect(service.locate(executionId, token)).resolves.toEqual({
 			stepId: 's1',
 			nodeId: 'node-s1',
 		});
+		expect(logger.debug).not.toHaveBeenCalled();
 	});
 
 	it('rejects a token for another execution before it reads a step', async () => {
@@ -95,32 +97,45 @@ describe('ResumeRequestService.locate', () => {
 		await expect(service.locate(executionId, token)).rejects.toEqual(rejection('ambiguous'));
 	});
 
-	it('holds a request for a live execution until its step suspends, and logs the hold', async () => {
-		const { service, loadWaitingSteps, logger } = setup({ waiting: [[], [accepting('s1')]] });
-
-		await expect(service.locate(executionId, token)).resolves.toMatchObject({ stepId: 's1' });
-		expect(loadWaitingSteps).toHaveBeenCalledTimes(2);
-		expect(logger.debug).toHaveBeenCalledWith(
-			'engine: held a resume request',
-			expect.objectContaining({ executionId, outcome: 'target', stepId: 's1' }),
-		);
-	});
-
-	it('answers null for an execution that ended before its wait was cancelled', async () => {
-		const { service } = setup({ waiting: [[accepting('s1')]], status: 'failed' });
-
-		await expect(service.locate(executionId, token)).resolves.toBeNull();
-	});
-
-	it.each(['queued', 'waiting'] as const)(
-		'holds a request for a %s execution as for a running one',
+	it.each(['queued', 'running', 'waiting'] as const)(
+		'holds a request for a %s execution until its step suspends, and logs the hold',
 		async (status) => {
-			const { service, loadWaitingSteps } = setup({ waiting: [[], [accepting('s1')]], status });
+			const { service, loadWaitingSteps, logger } = setup({
+				waiting: [[], [accepting('s1')]],
+				status,
+			});
 
 			await expect(service.locate(executionId, token)).resolves.toMatchObject({ stepId: 's1' });
 			expect(loadWaitingSteps).toHaveBeenCalledTimes(2);
+			expect(logger.debug).toHaveBeenCalledWith(
+				'engine: held a resume request',
+				expect.objectContaining({
+					executionId,
+					outcome: 'target',
+					stepId: 's1',
+					heldMs: hold.delayMs,
+				}),
+			);
 		},
 	);
+
+	it('waits between two checks', async () => {
+		const { service } = setup({
+			waiting: [[], [accepting('s1')]],
+			serviceHold: { attempts: 2, delayMs: 50 },
+		});
+		const startedAt = Date.now();
+
+		await service.locate(executionId, token);
+
+		expect(Date.now() - startedAt).toBeGreaterThanOrEqual(45);
+	});
+
+	it('holds by default for more than one check', async () => {
+		const { service } = setup({ waiting: [[], [accepting('s1')]], serviceHold: 'default' });
+
+		await expect(service.locate(executionId, token)).resolves.toMatchObject({ stepId: 's1' });
+	});
 
 	it('answers null once the hold runs out, and logs the hold', async () => {
 		const { service, loadWaitingSteps, logger } = setup();
@@ -133,8 +148,11 @@ describe('ResumeRequestService.locate', () => {
 		);
 	});
 
-	it('answers null at once for an execution that ended', async () => {
-		const { service, loadWaitingSteps } = setup({ status: 'completed' });
+	it('answers null at once for an execution that ended, even with a wait not cancelled yet', async () => {
+		const { service, loadWaitingSteps } = setup({
+			waiting: [[accepting('s1')]],
+			status: 'completed',
+		});
 
 		await expect(service.locate(executionId, token)).resolves.toBeNull();
 		expect(loadWaitingSteps).toHaveBeenCalledTimes(1);
@@ -151,7 +169,7 @@ describe('ResumeRequestService.locate', () => {
 	});
 
 	it('answers null for a wait that only its deadline can end', async () => {
-		const { service } = setup({ waiting: [[deadlineOnly]], status: 'completed' });
+		const { service } = setup({ waiting: [[deadlineOnly]] });
 
 		await expect(service.locate(executionId, token)).resolves.toBeNull();
 	});
