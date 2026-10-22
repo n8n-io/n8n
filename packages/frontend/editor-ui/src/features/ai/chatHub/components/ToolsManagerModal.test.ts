@@ -727,52 +727,28 @@ describe('ToolsManagerModal', () => {
 		}
 
 		it('opens the settings view for an installed tool that no policy restricts', async () => {
-			mockInstallNode.mockResolvedValue({ success: true, policyRestrictions: { nodeTypes: [] } });
+			mockInstallNode.mockResolvedValue({ success: true, restricted: false });
 
 			const { queryByTestId } = await installPreviewTool();
 
 			expect(mockInstallNode).toHaveBeenCalledWith(
-				expect.objectContaining({ packageName: 'n8n-nodes-firecrawl' }),
+				expect.objectContaining({
+					packageName: 'n8n-nodes-firecrawl',
+					selectedNodeType: PREVIEW_TOOL.name,
+				}),
 			);
 			await waitFor(() => {
 				expect(queryByTestId('tool-settings-content')).toBeTruthy();
 			});
 		});
 
-		it('adds nothing and shows no second warning when the install note named the restricted tool', async () => {
-			mockInstallNode.mockImplementation(async () => {
-				mockRestrictedNodeTypes({ [INSTALLED_TOOL.name]: 'instance' });
-				return {
-					success: true,
-					policyRestrictions: {
-						nodeTypes: [
-							{
-								type: 'n8n-nodes-firecrawl.firecrawl',
-								blockedOn: 'instance',
-								optInAvailable: false,
-							},
-						],
-					},
-				};
-			});
+		it('adds nothing and shows no second warning when the install reports the tool as restricted', async () => {
+			mockInstallNode.mockResolvedValue({ success: true, restricted: true });
 
 			const { queryByTestId } = await installPreviewTool();
 
 			expect(queryByTestId('tool-settings-content')).toBeNull();
 			expect(mockShowMessage).not.toHaveBeenCalled();
-		});
-
-		it('adds nothing and warns when the install note did not name the restricted tool', async () => {
-			mockInstallNode.mockImplementation(async () => {
-				mockRestrictedNodeTypes({ [INSTALLED_TOOL.name]: 'instance' });
-				return { success: true, policyRestrictions: { nodeTypes: [] } };
-			});
-
-			const { queryByTestId } = await installPreviewTool();
-
-			expect(queryByTestId('tool-settings-content')).toBeNull();
-			expect(mockShowMessage).toHaveBeenCalledOnce();
-			expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }));
 		});
 	});
 });

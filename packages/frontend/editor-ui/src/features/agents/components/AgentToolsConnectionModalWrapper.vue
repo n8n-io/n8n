@@ -43,7 +43,6 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useInstallNode } from '@/features/settings/communityNodes/composables/useInstallNode';
-import { isBlockReportedOnInstall } from '@/features/settings/communityNodes/communityNodes.utils';
 import { useUsersStore } from '@n8n/stores/users.store';
 import {
 	listenForCredentialChanges,
@@ -54,7 +53,6 @@ import {
 	filterAndSearchNodes,
 	getNodeItemRestriction,
 	isAiGatewayEligibleNode,
-	isNodeItemRestricted,
 	isNodePreviewKey,
 	removePreviewToken,
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
@@ -481,6 +479,7 @@ async function installAndAddCommunityPreview(nodeType: INodeTypeDescription) {
 			type: 'verified',
 			packageName: communityPackageNameFor(nodeType),
 			nodeType: stripToolSuffix(nodeType.name),
+			selectedNodeType: nodeType.name,
 			telemetry: { source: 'agent builder tools', hasQuickConnect: false },
 		});
 		if (!result.success) return;
@@ -494,12 +493,7 @@ async function installAndAddCommunityPreview(nodeType: INodeTypeDescription) {
 			);
 			return;
 		}
-		if (isNodeItemRestricted(installed.name)) {
-			if (!isBlockReportedOnInstall(result.policyRestrictions, stripToolSuffix(installed.name))) {
-				warnIfRestricted(installed.name);
-			}
-			return;
-		}
+		if (result.restricted) return;
 		addNodeTool(installed);
 	} finally {
 		installingToolName.value = null;

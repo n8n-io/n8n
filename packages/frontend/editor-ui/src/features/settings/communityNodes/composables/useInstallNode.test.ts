@@ -1,4 +1,7 @@
-import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
+import {
+	getNodeItemRestriction,
+	removePreviewToken,
+} from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { useCommunityNodesStore } from '../communityNodes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -63,6 +66,7 @@ vi.mock('../communityNodes.utils', async (importOriginal) => ({
 
 vi.mock('@/features/shared/nodeCreator/nodeCreator.utils', () => ({
 	removePreviewToken: vi.fn((key: string) => key.replace('preview:', '')),
+	getNodeItemRestriction: vi.fn(() => undefined),
 }));
 
 let workflowsStore: ReturnType<typeof useWorkflowsStore>;
@@ -521,7 +525,7 @@ describe('useInstallNode', () => {
 
 			const result = await installNode({ type: 'unverified', packageName: 'test-package' });
 
-			expect(result).toEqual({ success: true, policyRestrictions: { nodeTypes: [] } });
+			expect(result).toEqual({ success: true, restricted: false });
 			expect(showMessage).toHaveBeenCalledOnce();
 			expect(showMessage).toHaveBeenCalledWith({
 				title: 'settings.communityNodes.messages.install.success',
@@ -540,9 +544,64 @@ describe('useInstallNode', () => {
 
 			const result = await installNode({ type: 'unverified', packageName: 'test-package' });
 
-			expect(result).toEqual({ success: true, policyRestrictions });
+			expect(result).toEqual({ success: true, restricted: false });
 			expect(describeInstallPolicyNote).toHaveBeenCalledWith(policyRestrictions, 5);
 			expect(showMessage).toHaveBeenCalledOnce();
+			expect(showMessage).toHaveBeenCalledWith({
+				title: 'settings.communityNodes.messages.install.success',
+				type: 'warning',
+				message: 'policy note',
+			});
+		});
+
+		it('names the selected node instead of the package counts when a policy restricts it', async () => {
+			vi.mocked(getNodeItemRestriction).mockImplementation((name) =>
+				name === 'test-package.nodeTool'
+					? ({ name, available: false, scope: 'instance' } as never)
+					: undefined,
+			);
+			vi.mocked(communityNodesStore.installPackage).mockResolvedValue(
+				installedPackage({
+					nodeTypes: [{ type: 'test-package.node', blockedOn: 'instance', optInAvailable: false }],
+				}),
+			);
+			const { installNode } = useInstallNode();
+
+			const result = await installNode({
+				type: 'verified',
+				packageName: 'test-package',
+				nodeType: 'preview:test-package.node',
+				selectedNodeType: 'preview:test-package.nodeTool',
+			});
+
+			expect(result).toEqual({ success: true, restricted: true });
+			expect(getNodeItemRestriction).toHaveBeenCalledWith('test-package.nodeTool');
+			expect(describeInstallPolicyNote).not.toHaveBeenCalled();
+			expect(showMessage).toHaveBeenCalledOnce();
+			expect(showMessage).toHaveBeenCalledWith({
+				title: 'settings.communityNodes.messages.install.success',
+				type: 'warning',
+				message: 'settings.communityNodes.messages.install.policyNote.selected.instance',
+			});
+		});
+
+		it('keeps the package note when the selected node is not restricted', async () => {
+			const policyRestrictions: PackagePolicyRestrictions = {
+				nodeTypes: [{ type: 'test-package.node1', blockedOn: 'instance', optInAvailable: false }],
+			};
+			vi.mocked(communityNodesStore.installPackage).mockResolvedValue(
+				installedPackage(policyRestrictions),
+			);
+			const { installNode } = useInstallNode();
+
+			const result = await installNode({
+				type: 'verified',
+				packageName: 'test-package',
+				nodeType: 'test-package.node0',
+				selectedNodeType: 'test-package.node0Tool',
+			});
+
+			expect(result).toEqual({ success: true, restricted: false });
 			expect(showMessage).toHaveBeenCalledWith({
 				title: 'settings.communityNodes.messages.install.success',
 				type: 'warning',
@@ -555,7 +614,7 @@ describe('useInstallNode', () => {
 
 			const result = await installNode({ type: 'unverified', packageName: 'test-package' });
 
-			expect(result).toEqual({ success: true, policyRestrictions: undefined });
+			expect(result).toEqual({ success: true, restricted: false });
 			expect(showMessage).toHaveBeenCalledWith({
 				title: 'settings.communityNodes.messages.install.success',
 				type: 'success',

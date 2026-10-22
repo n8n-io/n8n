@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import type { PackagePolicyRestrictions, RestrictedPackageType } from '@n8n/api-types';
+import type { RestrictedPackageType } from '@n8n/api-types';
 import {
 	describeInstallPolicyNote,
-	isBlockReportedOnInstall,
+	describeSelectedNodeRestriction,
 	isCommunityPackageUpdateAvailable,
 	isNodesApiVersionError,
 } from './communityNodes.utils';
@@ -133,20 +133,16 @@ describe('describeInstallPolicyNote', () => {
 	});
 });
 
-describe('isBlockReportedOnInstall', () => {
-	const restrictions: PackagePolicyRestrictions = {
-		nodeTypes: [{ type: 'n8n-nodes-a.alpha', blockedOn: 'instance', optInAvailable: false }],
-	};
-
-	it('is true for a node type the install response names', () => {
-		expect(isBlockReportedOnInstall(restrictions, 'n8n-nodes-a.alpha')).toBe(true);
+describe('describeSelectedNodeRestriction', () => {
+	it('names a node the instance restricts', () => {
+		expect(describeSelectedNodeRestriction('Apify', 'instance')).toBe(
+			'Apify is restricted on this instance.',
+		);
 	});
 
-	it('is false for a node type the install response does not name', () => {
-		expect(isBlockReportedOnInstall(restrictions, 'n8n-nodes-a.beta')).toBe(false);
-	});
-
-	it('is false without policy information', () => {
-		expect(isBlockReportedOnInstall(undefined, 'n8n-nodes-a.alpha')).toBe(false);
+	it('names a node the current project restricts', () => {
+		expect(describeSelectedNodeRestriction('Apify', 'project')).toBe(
+			'Apify is restricted in this project.',
+		);
 	});
 });

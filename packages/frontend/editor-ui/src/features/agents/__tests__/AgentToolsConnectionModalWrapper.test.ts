@@ -1497,14 +1497,10 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			expect(multiStepAttrs['editable-title']).toBe(true);
 		});
 
-		it('adds nothing and warns once more when the install note did not name the restricted tool', async () => {
+		it('adds nothing when the install reports the selected tool as restricted', async () => {
 			mockCommunityPreviewCatalog();
 			mockRestrictedNodeTypes();
-			// The install reloads the policy, which now covers the new node type.
-			installNodeMock.mockImplementation(async () => {
-				mockRestrictedNodeTypes({ [COMMUNITY_INSTALLED.name]: 'instance' });
-				return { success: true };
-			});
+			installNodeMock.mockResolvedValue({ success: true, restricted: true });
 			render();
 			await flushPromises();
 
@@ -1512,36 +1508,11 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			emitConnect(preview!);
 			await flushPromises();
 
+			expect(installNodeMock).toHaveBeenCalledWith(
+				expect.objectContaining({ selectedNodeType: COMMUNITY_PREVIEW.name }),
+			);
 			expect(configFormData).toBeNull();
-			expect(showMessageMock).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }));
-		});
-
-		it('adds nothing and shows no second warning when the install note named the restricted tool', async () => {
-			mockCommunityPreviewCatalog();
-			mockRestrictedNodeTypes();
-			installNodeMock.mockImplementation(async () => {
-				mockRestrictedNodeTypes({ [COMMUNITY_INSTALLED.name]: 'instance' });
-				return {
-					success: true,
-					policyRestrictions: {
-						nodeTypes: [
-							{
-								type: 'n8n-nodes-firecrawl.firecrawl',
-								blockedOn: 'instance',
-								optInAvailable: false,
-							},
-						],
-					},
-				};
-			});
-			render();
-			await flushPromises();
-
-			const preview = getItems().find((item) => item.id === `nodeType:${COMMUNITY_PREVIEW.name}`);
-			emitConnect(preview!);
-			await flushPromises();
-
-			expect(configFormData).toBeNull();
+			// The install toast names the restricted tool, so no second warning appears.
 			expect(showMessageMock).not.toHaveBeenCalled();
 		});
 

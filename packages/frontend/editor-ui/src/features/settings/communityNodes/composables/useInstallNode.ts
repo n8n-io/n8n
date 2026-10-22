@@ -1,4 +1,8 @@
-import { describeInstallPolicyNote, isNodesApiVersionError } from '../communityNodes.utils';
+import {
+	describeInstallPolicyNote,
+	describeSelectedNodeRestriction,
+	isNodesApiVersionError,
+} from '../communityNodes.utils';
 import { useCommunityNodesStore } from '../communityNodes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -8,14 +12,18 @@ import { i18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
-import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
+import {
+	getNodeItemRestriction,
+	removePreviewToken,
+} from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
-import type { PackagePolicyRestrictions } from '@n8n/api-types';
 
 type InstallNodeProps = {
 	type: 'verified' | 'unverified';
+	/** The node type the caller adds right after the install, such as a Tool variant. */
+	selectedNodeType?: string;
 	telemetry?: {
 		hasQuickConnect: boolean;
 		source: string;
@@ -36,8 +44,8 @@ type InstallNodeProps = {
 type InstallNodeResult = {
 	success: boolean;
 	error?: Error;
-	/** What the install toast reported, so callers do not warn about the same blocks again. */
-	policyRestrictions?: PackagePolicyRestrictions;
+	/** A policy restricts `selectedNodeType`. The install toast already said so. */
+	restricted?: boolean;
 };
 
 export function useInstallNode() {
@@ -61,6 +69,15 @@ export function useInstallNode() {
 		}
 
 		return undefined;
+	};
+
+	/** `undefined` when no policy restricts the node in the current project. */
+	const describeSelectedNode = (nodeTypeName: string) => {
+		const restriction = getNodeItemRestriction(nodeTypeName);
+		if (!restriction) return undefined;
+
+		const displayName = nodeTypesStore.getNodeType(nodeTypeName)?.displayName ?? nodeTypeName;
+		return describeSelectedNodeRestriction(displayName, restriction.scope);
 	};
 
 	const installNode = async (props: InstallNodeProps): Promise<InstallNodeResult> => {
@@ -105,16 +122,20 @@ export function useInstallNode() {
 				const nodesToUpdate = allNodes.filter((node) => node.type === removePreviewToken(nodeType));
 				canvasOperations.initializeUnknownNodes(nodesToUpdate);
 			}
-			const { policyRestrictions } = installedPackage;
-			const policyNote = describeInstallPolicyNote(
-				policyRestrictions,
-				installedPackage.installedNodes.length,
-			);
+			const selectedNote = props.selectedNodeType
+				? describeSelectedNode(removePreviewToken(props.selectedNodeType))
+				: undefined;
+			const policyNote =
+				selectedNote ??
+				describeInstallPolicyNote(
+					installedPackage.policyRestrictions,
+					installedPackage.installedNodes.length,
+				);
 			toast.showMessage({
 				title: i18n.baseText('settings.communityNodes.messages.install.success'),
 				...(policyNote ? { type: 'warning', message: policyNote } : { type: 'success' }),
 			});
-			return { success: true, policyRestrictions };
+			return { success: true, restricted: selectedNote !== undefined };
 		} catch (error) {
 			toast.showError(
 				error,

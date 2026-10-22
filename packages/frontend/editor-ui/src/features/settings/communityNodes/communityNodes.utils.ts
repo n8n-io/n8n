@@ -1,4 +1,8 @@
-import type { CommunityNodeType, PackagePolicyRestrictions } from '@n8n/api-types';
+import type {
+	CommunityNodeType,
+	NodeTypeAvailabilityScope,
+	PackagePolicyRestrictions,
+} from '@n8n/api-types';
 import { i18n } from '@n8n/i18n';
 import semver from 'semver';
 
@@ -91,10 +95,15 @@ export function describeInstallPolicyNote(
 	return sentences.length > 0 ? sentences.join(' ') : undefined;
 }
 
-/** Pass the base node type name: the install response names base types, not Tool variants. */
-export function isBlockReportedOnInstall(
-	restrictions: PackagePolicyRestrictions | undefined,
-	baseNodeTypeName: string,
-): boolean {
-	return restrictions?.nodeTypes.some((node) => node.type === baseNodeTypeName) ?? false;
+/** The install toast message for the node the user installed the package to use. */
+export function describeSelectedNodeRestriction(
+	displayName: string,
+	scope: NodeTypeAvailabilityScope | undefined,
+): string {
+	return i18n.baseText(
+		scope === 'project'
+			? 'settings.communityNodes.messages.install.policyNote.selected.project'
+			: 'settings.communityNodes.messages.install.policyNote.selected.instance',
+		{ interpolate: { nodeType: displayName } },
+	);
 }
