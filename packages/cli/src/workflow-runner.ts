@@ -137,6 +137,7 @@ export class WorkflowRunner {
 		executionId: string,
 		hooks?: ExecutionLifecycleHooks,
 		storedAt: ExecutionStorageLocation = this.storageConfig.modeTag,
+		failedBeforeStart = false,
 	) {
 		// This means the execution was probably cancelled and has already
 		// been cleaned up.
@@ -306,6 +307,7 @@ export class WorkflowRunner {
 						stack: error.stack,
 					},
 					runData: {},
+					...(failedBeforeStart && { failedBeforeStart: true }),
 				},
 			}),
 			finished: false,
@@ -803,7 +805,19 @@ export class WorkflowRunner {
 			// We use "getLifecycleHooksForScalingWorker" as "getLifecycleHooksForScalingMain" does not contain the
 			// "workflowExecuteAfter" which we require.
 			const lifecycleHooks = getLifecycleHooksForScalingWorker(data, executionId);
-			await this.processError(error, new Date(), data.executionMode, executionId, lifecycleHooks);
+			// Without a job, no worker can have run a node.
+			const failedBeforeStart =
+				job === undefined &&
+				!hasExecutionRunNodes(data.executionData?.resultData?.runData, !!restartExecutionId);
+			await this.processError(
+				error,
+				new Date(),
+				data.executionMode,
+				executionId,
+				lifecycleHooks,
+				undefined,
+				failedBeforeStart,
+			);
 			// Nobody will wait for this job, so drop any outcome the worker already reported
 			if (job) this.scalingService.popJobResult(job);
 			throw error;

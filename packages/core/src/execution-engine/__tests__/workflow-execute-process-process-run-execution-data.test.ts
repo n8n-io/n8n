@@ -21,6 +21,12 @@ vi.mock('node:fs', async (importActual) => ({
 	writeFileSync: vi.fn(),
 }));
 
+vi.mock('../execution-context', async (importActual) => {
+	const actual = await importActual<typeof import('../execution-context')>();
+	return { ...actual, establishExecutionContext: vi.fn(actual.establishExecutionContext) };
+});
+
+import { establishExecutionContext } from '../execution-context';
 import { DirectedGraph } from '../partial-execution-utils';
 import {
 	types,
@@ -210,6 +216,25 @@ describe('processRunExecutionData', () => {
 			);
 
 			expect(result.data.resultData.failedBeforeStart).toBe(true);
+		});
+
+		test('flags the run when establishing the execution context fails', async () => {
+			vi.mocked(establishExecutionContext).mockRejectedValueOnce(new Error('No identity'));
+
+			const result = await new WorkflowExecute(
+				additionalData,
+				executionMode,
+				createRunExecutionData({
+					startData: { startNodes: [{ name: node.name, sourceData: null }] },
+					executionData: {
+						nodeExecutionStack: [{ data: { main: [[{ json: { foo: 1 } }]] }, node, source: null }],
+					},
+				}),
+			).processRunExecutionData(workflow);
+
+			expect(result.data.resultData.error?.message).toBe('No identity');
+			expect(result.data.resultData.failedBeforeStart).toBe(true);
+			expect(hookNames()).toEqual(['workflowExecuteAfter']);
 		});
 
 		// Empty for e.g. a Chat Trigger-only workflow, which used to mask the error with a TypeError.

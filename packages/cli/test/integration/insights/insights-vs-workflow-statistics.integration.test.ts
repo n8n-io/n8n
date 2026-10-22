@@ -12,6 +12,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { Project, WorkflowEntity } from '@n8n/db';
 import { ExecutionRepository, StatisticsNames, WorkflowStatisticsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import * as core from 'n8n-core';
 import { InstanceSettings } from 'n8n-core';
 import { createRunExecutionData } from 'n8n-workflow';
 
@@ -44,6 +45,7 @@ describe('Insights vs Workflow Statistics Integration', () => {
 			'n8n-nodes-base.manualTrigger',
 			'n8n-nodes-base.executeWorkflow',
 			'n8n-nodes-base.executeWorkflowTrigger',
+			'n8n-nodes-base.httpRequest',
 		]);
 
 		await utils.initNodeTypes(nodeTypes);
@@ -173,6 +175,7 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		workflowId: string,
 		expectedSuccessCount: number,
 		timeout = 20000,
+		type = 'success',
 	): Promise<void> {
 		const controller = new AbortController();
 		const start = Date.now();
@@ -182,7 +185,7 @@ describe('Insights vs Workflow Statistics Integration', () => {
 			const compactedInsights = await getCompactedInsightsByWorkflow(workflowId);
 
 			const successCount = compactedInsights
-				.filter((insight) => insight.type === 'success')
+				.filter((insight) => insight.type === type)
 				.reduce((sum, insight) => sum + insight.value, 0);
 
 			if (successCount >= expectedSuccessCount) {
@@ -191,7 +194,7 @@ describe('Insights vs Workflow Statistics Integration', () => {
 			await new Promise((resolve) => setTimeout(resolve, 200));
 		}
 		throw new Error(
-			`Insights compaction did not reach ${expectedSuccessCount} successes within ${timeout}ms`,
+			`Insights compaction did not reach ${expectedSuccessCount} ${type} events within ${timeout}ms`,
 		);
 	}
 
@@ -310,36 +313,104 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		expect(billableCount).toBe(rootProductionCount);
 	}, 60000);
 
-	test('should count runs that failed before start as failures but not as billable', async () => {
-		const blockedCount = 3;
-		const successCount = 5;
-		const check = vi
-			.spyOn(Container.get(CredentialsPermissionChecker), 'check')
-			.mockRejectedValue(new Error('Credential not usable'));
-		for (let i = 0; i < blockedCount; i++) await executeWorkflow(workflow, 'webhook');
-		check.mockRestore();
+	const httpRequestWithoutUrl = {
+		parameters: { url: '' },
+		type: 'n8n-nodes-base.httpRequest',
+		typeVersion: 4.2,
+		position: [200, 0] as [number, number],
+		id: 'http-request-without-url',
+		name: 'HTTP Request',
+	};
 
-		const executionIds: string[] = [];
-		for (let i = 0; i < successCount; i++) {
-			executionIds.push(await executeWorkflow(workflow, 'webhook'));
-		}
+	test.each([
+		{
+			cause: 'an unusable credential',
+			error: 'Credential not usable',
+			workflowFixture: createSimpleWorkflowFixture,
+			fail: () =>
+				vi
+					.spyOn(Container.get(CredentialsPermissionChecker), 'check')
+					.mockRejectedValue(new Error('Credential not usable')),
+		},
+		{
+			cause: 'an execution context failure',
+			error: 'No identity',
+			workflowFixture: createSimpleWorkflowFixture,
+			fail: () =>
+				vi.spyOn(core, 'establishExecutionContext').mockRejectedValue(new Error('No identity')),
+		},
+		{
+			cause: 'a missing required parameter',
+			error: "The 'HTTP Request' node has issues",
+			workflowFixture: () => {
+				const fixture = createSimpleWorkflowFixture();
+				return {
+					...fixture,
+					nodes: [...fixture.nodes, httpRequestWithoutUrl],
+					connections: { Trigger: { main: [[{ node: 'HTTP Request', type: 'main', index: 0 }]] } },
+				};
+			},
+			fail: () => undefined,
+		},
+	])(
+		'should count runs refused by $cause as failures but not as billable',
+		async ({ error, workflowFixture, fail }) => {
+			const blockedCount = 3;
+			const blockedWorkflow = await createWorkflow(
+				{ name: 'Refused before start', ...workflowFixture() },
+				project,
+			);
 
-		await Promise.all(executionIds.map(async (id) => await waitForExecution(id)));
-		await waitForStatistics(workflow.id, blockedCount, 10000, StatisticsNames.productionError);
-		await waitForStatistics(workflow.id, successCount);
-		await waitForCompaction(workflow.id, successCount);
+			// A trigger item on the stack, so the engine checks the nodes after the trigger.
+			const [trigger] = blockedWorkflow.nodes;
+			const runWithTriggerItem = async () =>
+				await workflowRunner.run(
+					{
+						workflowData: blockedWorkflow,
+						executionMode: 'webhook',
+						executionData: createRunExecutionData({
+							executionData: {
+								nodeExecutionStack: [
+									{ node: trigger, data: { main: [[{ json: {} }]] }, source: null },
+								],
+							},
+						}),
+					},
+					true,
+				);
 
-		const productionError = await workflowStatisticsRepository.findOne({
-			where: { workflowId: workflow.id, name: StatisticsNames.productionError },
-		});
-		expect(productionError).toMatchObject({ count: blockedCount, rootCount: 0 });
+			const spy = fail();
+			for (let i = 0; i < blockedCount; i++) await runWithTriggerItem();
+			spy?.mockRestore();
 
-		const compactedInsights = await getCompactedInsightsByWorkflow(workflow.id);
-		const sum = (type: string) =>
-			compactedInsights
-				.filter((insight) => insight.type === type)
-				.reduce((total, insight) => total + insight.value, 0);
-		expect(sum('failure')).toBe(blockedCount);
-		expect(sum('billable')).toBe(successCount);
-	}, 60000);
+			await waitForStatistics(
+				blockedWorkflow.id,
+				blockedCount,
+				10000,
+				StatisticsNames.productionError,
+			);
+			await waitForCompaction(blockedWorkflow.id, blockedCount, 20000, 'failure');
+
+			const productionError = await workflowStatisticsRepository.findOne({
+				where: { workflowId: blockedWorkflow.id, name: StatisticsNames.productionError },
+			});
+			expect(productionError).toMatchObject({ count: blockedCount, rootCount: 0 });
+
+			const [refused] = await executionRepository.findMultipleExecutions(
+				{ where: { workflowId: blockedWorkflow.id } },
+				{ includeData: true, unflattenData: true },
+			);
+			expect(refused.data.resultData.error?.message).toContain(error);
+			expect(refused.data.resultData.failedBeforeStart).toBe(true);
+
+			const compactedInsights = await getCompactedInsightsByWorkflow(blockedWorkflow.id);
+			const sum = (type: string) =>
+				compactedInsights
+					.filter((insight) => insight.type === type)
+					.reduce((total, insight) => total + insight.value, 0);
+			expect(sum('failure')).toBe(blockedCount);
+			expect(sum('billable')).toBe(0);
+		},
+		60000,
+	);
 });

@@ -1191,6 +1191,55 @@ describe('enqueueExecution', () => {
 		);
 	});
 
+	describe('when the start fails on main', () => {
+		const runHook = vi.fn().mockResolvedValue(undefined);
+		const data = mock<IWorkflowExecutionDataProcess>({
+			executionMode: 'webhook',
+			workflowData: { nodes: [], staticData: {} },
+			executionData: createRunExecutionData({}),
+		});
+
+		const finishedRun = () => {
+			const call = runHook.mock.calls.find(([name]) => name === 'workflowExecuteAfter');
+			return (call?.[1] as [IRun])[0];
+		};
+
+		beforeEach(() => {
+			runHook.mockClear();
+			vi.spyOn(Container.get(ActiveExecutions), 'finalizeExecution').mockReturnValue();
+			vi.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForScalingWorker').mockReturnValueOnce(
+				mock<core.ExecutionLifecycleHooks>({ runHook }),
+			);
+		});
+
+		it('flags the run as failed before start when the job cannot be enqueued', async () => {
+			addJob.mockRejectedValueOnce(new Error('queue unavailable'));
+
+			// @ts-expect-error Private method
+			await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrow(
+				'queue unavailable',
+			);
+
+			expect(finishedRun().data.resultData.failedBeforeStart).toBe(true);
+		});
+
+		it('does not flag the run once the job is enqueued', async () => {
+			addJob.mockResolvedValueOnce(mock<Job>({ id: 'job-1', data: { executionId: '1' } }));
+			vi.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForScalingMain').mockReturnValueOnce(
+				mock<core.ExecutionLifecycleHooks>({
+					runHook: vi.fn().mockRejectedValue(new Error('hook failed')),
+				}),
+			);
+
+			// @ts-expect-error Private method
+			await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrow(
+				'hook failed',
+			);
+
+			expect(finishedRun().data.resultData.failedBeforeStart).toBeUndefined();
+		});
+	});
+
 	it('keeps failedBeforeStart when it rebuilds the run from the job result', async () => {
 		const activeExecutions = Container.get(ActiveExecutions);
 		let workflowExecution: PCancelable<IRun> | undefined;
@@ -1312,6 +1361,8 @@ describe('enqueueExecution', () => {
 			data.executionMode,
 			'1',
 			expect.anything(),
+			undefined,
+			true,
 		);
 		expect(addJob).not.toHaveBeenCalled();
 	});
@@ -1784,6 +1835,27 @@ describe('pre-persist context establishment', () => {
 
 		expect(gateSpy).not.toHaveBeenCalled();
 		expect(failExecution).toHaveBeenCalledWith(data, 'exec-1', unauthorized, undefined, undefined);
+	});
+
+	it('flags the run as failed before start when credential authorization fails', async () => {
+		vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockRejectedValueOnce(
+			new Error('unauthorized'),
+		);
+		addSpy.mockReset();
+		addSpy.mockResolvedValue('exec-1');
+		const runHook = vi.fn().mockResolvedValue(undefined);
+		vi.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain').mockReturnValueOnce(
+			mock<core.ExecutionLifecycleHooks>({ runHook }),
+		);
+		vi.spyOn(Container.get(ActiveExecutions), 'finalizeExecution').mockReturnValue();
+
+		await runner.run(buildRunData(buildExecutionDataWithHeader()));
+
+		const [, [run]] = runHook.mock.calls.find(([name]) => name === 'workflowExecuteAfter') as [
+			string,
+			[IRun],
+		];
+		expect(run.data.resultData.failedBeforeStart).toBe(true);
 	});
 
 	it('skips the preExecute gate when claiming an existing execution', async () => {
