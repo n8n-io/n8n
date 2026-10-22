@@ -1,9 +1,2 @@
-export {
-	GEN_AI_ATTR,
-	GEN_AI_OPERATION,
-	buildChatGenAiAttributes,
-	isGenAiAttributeKey,
-	pickGenAiAttributes,
-	toTracingMetadata,
-} from './attributes';
-export type { GenAiSpanAttributes } from './attributes';
+export { GEN_AI_ATTR, buildChatGenAiAttributes, isGenAiAttributeKey } from './attributes';
+export type { GenAiAttributes } from './attributes';

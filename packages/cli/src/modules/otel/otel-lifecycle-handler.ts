@@ -1,4 +1,4 @@
-import { isGenAiAttributeKey, type GenAiSpanAttributes } from '@n8n/ai-utilities/gen-ai';
+import { isGenAiAttributeKey, type GenAiAttributes } from '@n8n/ai-utilities/gen-ai';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { WorkflowRepository, type Project } from '@n8n/db';
@@ -323,7 +323,7 @@ export class OtelLifecycleHandler {
 	private tryBuildGenAiAttributes(
 		ctx: NodeExecuteAfterContext,
 		node: INode,
-	): GenAiSpanAttributes | undefined {
+	): GenAiAttributes | undefined {
 		try {
 			return buildNodeGenAiAttributes(
 				node,

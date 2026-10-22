@@ -11,7 +11,7 @@ import type { Generation, LLMResult } from '@langchain/core/outputs';
 import type { IDataObject, ISupplyDataFunctions, ITaskMetadata, JsonObject } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow';
 
-import { buildChatGenAiAttributes, toTracingMetadata } from '../gen-ai';
+import { buildChatGenAiAttributes } from '../gen-ai';
 import { extractRespondingModel, toRunDataGeneration } from './extract-responding-model';
 import { logAiEvent } from './log-ai-event';
 import { redactHeaderValues } from './redact-headers';
@@ -330,14 +330,14 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 	): ITaskMetadata | undefined {
 		if (!runDetails.isChatModel) return undefined;
 
-		const attributes = buildChatGenAiAttributes({
-			nodeType: this.executionFunctions.getNode().type,
-			requestModel: runDetails.requestModel,
-			responseModel: generation ? extractRespondingModel(generation) : undefined,
-			usage: usage && { inputTokens: usage.promptTokens, outputTokens: usage.completionTokens },
-		});
-
-		return { tracing: toTracingMetadata(attributes) };
+		return {
+			tracing: buildChatGenAiAttributes({
+				nodeType: this.executionFunctions.getNode().type,
+				requestModel: runDetails.requestModel,
+				responseModel: generation ? extractRespondingModel(generation) : undefined,
+				usage: usage && { inputTokens: usage.promptTokens, outputTokens: usage.completionTokens },
+			}),
+		};
 	}
 
 	private applyTracingTokenMetadata(params: {

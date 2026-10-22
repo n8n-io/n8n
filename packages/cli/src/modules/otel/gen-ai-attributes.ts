@@ -1,9 +1,4 @@
-import {
-	GEN_AI_ATTR,
-	GEN_AI_OPERATION,
-	pickGenAiAttributes,
-	type GenAiSpanAttributes,
-} from '@n8n/ai-utilities/gen-ai';
+import { GEN_AI_ATTR, isGenAiAttributeKey, type GenAiAttributes } from '@n8n/ai-utilities/gen-ai';
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	NodeConnectionTypes,
@@ -17,25 +12,29 @@ export function buildNodeGenAiAttributes(
 	taskData: ITaskData,
 	runData: IRunData,
 	connections: IConnections,
-): GenAiSpanAttributes | undefined {
-	if (node.type !== AGENT_LANGCHAIN_NODE_TYPE) {
-		const attributes = pickGenAiAttributes(taskData.metadata?.tracing);
-		return attributes[GEN_AI_ATTR.OPERATION_NAME] ? attributes : undefined;
+): GenAiAttributes | undefined {
+	if (node.type === AGENT_LANGCHAIN_NODE_TYPE) {
+		return {
+			[GEN_AI_ATTR.OPERATION_NAME]: 'invoke_agent',
+			[GEN_AI_ATTR.AGENT_NAME]: node.name,
+			[GEN_AI_ATTR.AGENT_ID]: node.id,
+			...summarizeChatCalls(node.name, runData, connections),
+		};
 	}
 
-	return {
-		[GEN_AI_ATTR.OPERATION_NAME]: GEN_AI_OPERATION.INVOKE_AGENT,
-		[GEN_AI_ATTR.AGENT_NAME]: node.name,
-		[GEN_AI_ATTR.AGENT_ID]: node.id,
-		...summarizeChatCalls(node.name, runData, connections),
-	};
+	const attributes = pickGenAiAttributes(taskData.metadata?.tracing);
+	return attributes[GEN_AI_ATTR.OPERATION_NAME] ? attributes : undefined;
+}
+
+function pickGenAiAttributes(tracing: GenAiAttributes = {}): GenAiAttributes {
+	return Object.fromEntries(Object.entries(tracing).filter(([key]) => isGenAiAttributeKey(key)));
 }
 
 function summarizeChatCalls(
 	agentName: string,
 	runData: IRunData,
 	connections: IConnections,
-): GenAiSpanAttributes {
+): GenAiAttributes {
 	const agentRunIndex = (runData[agentName]?.length ?? 1) - 1;
 	const chatModelNames = getParentNodes(
 		mapConnectionsByDestination(connections),
@@ -44,11 +43,11 @@ function summarizeChatCalls(
 		1,
 	);
 
-	let firstCall: { executionIndex: number; attributes: GenAiSpanAttributes } | undefined;
+	let firstCall: { executionIndex: number; attributes: GenAiAttributes } | undefined;
 	let inputTokens = 0;
 	let outputTokens = 0;
 	let reportedCalls = 0;
-	let missingCalls = 0;
+	let isUsageMissing = false;
 
 	for (const task of chatModelNames.flatMap((name) => runData[name] ?? [])) {
 		const source = task?.source?.[0];
@@ -56,7 +55,7 @@ function summarizeChatCalls(
 		if ((source.previousNodeRun ?? 0) !== agentRunIndex) continue;
 
 		const attributes = pickGenAiAttributes(task.metadata?.tracing);
-		if (attributes[GEN_AI_ATTR.OPERATION_NAME] !== GEN_AI_OPERATION.CHAT) continue;
+		if (attributes[GEN_AI_ATTR.OPERATION_NAME] !== 'chat') continue;
 
 		if (!firstCall || task.executionIndex < firstCall.executionIndex) {
 			firstCall = { executionIndex: task.executionIndex, attributes };
@@ -64,25 +63,31 @@ function summarizeChatCalls(
 
 		const callInputTokens = attributes[GEN_AI_ATTR.USAGE_INPUT_TOKENS];
 		const callOutputTokens = attributes[GEN_AI_ATTR.USAGE_OUTPUT_TOKENS];
-		if (callInputTokens === undefined || callOutputTokens === undefined) {
-			missingCalls++;
-			continue;
+		if (typeof callInputTokens === 'number' && typeof callOutputTokens === 'number') {
+			inputTokens += callInputTokens;
+			outputTokens += callOutputTokens;
+			reportedCalls++;
+		} else {
+			isUsageMissing = true;
 		}
-		inputTokens += callInputTokens;
-		outputTokens += callOutputTokens;
-		reportedCalls++;
 	}
 
 	if (!firstCall) return {};
 
-	return {
-		[GEN_AI_ATTR.PROVIDER_NAME]: firstCall.attributes[GEN_AI_ATTR.PROVIDER_NAME],
-		[GEN_AI_ATTR.REQUEST_MODEL]: firstCall.attributes[GEN_AI_ATTR.REQUEST_MODEL],
-		[GEN_AI_ATTR.RESPONSE_MODEL]: firstCall.attributes[GEN_AI_ATTR.RESPONSE_MODEL],
-		...(reportedCalls > 0 && {
-			[GEN_AI_ATTR.USAGE_INPUT_TOKENS]: inputTokens,
-			[GEN_AI_ATTR.USAGE_OUTPUT_TOKENS]: outputTokens,
-		}),
-		...(missingCalls > 0 && { [GEN_AI_ATTR.USAGE_REPORTED]: false }),
-	};
+	const summary: GenAiAttributes = {};
+	for (const key of [
+		GEN_AI_ATTR.PROVIDER_NAME,
+		GEN_AI_ATTR.REQUEST_MODEL,
+		GEN_AI_ATTR.RESPONSE_MODEL,
+	]) {
+		const value = firstCall.attributes[key];
+		if (value !== undefined) summary[key] = value;
+	}
+	if (reportedCalls > 0) {
+		summary[GEN_AI_ATTR.USAGE_INPUT_TOKENS] = inputTokens;
+		summary[GEN_AI_ATTR.USAGE_OUTPUT_TOKENS] = outputTokens;
+	}
+	if (isUsageMissing) summary[GEN_AI_ATTR.USAGE_REPORTED] = false;
+
+	return summary;
 }

@@ -1171,22 +1171,6 @@ describe('OtelLifecycleHandler', () => {
 			);
 		});
 
-		it('should drop GenAI attributes of the wrong type', () => {
-			handler.onNodeEnd(
-				makeEndCtx({
-					metadata: {
-						tracing: { ...chatModelTracing, 'gen_ai.usage.input_tokens': '5' },
-					},
-				} as unknown as Partial<NodeExecuteAfterContext['taskData']>),
-			);
-
-			expect(tracer.endNode).toHaveBeenCalledWith(
-				expect.objectContaining({
-					genAiAttributes: expect.not.objectContaining({ 'gen_ai.usage.input_tokens': '5' }),
-				}),
-			);
-		});
-
 		describe('AI Agent span', () => {
 			const agentNode = {
 				id: 'agent-id',
