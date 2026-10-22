@@ -1,0 +1,33 @@
+packages/cli/test/integration/database/repositories/shared-credentials.repository.test.ts
+  s_5a94d40a19f16d::t_b87821bb455691 1-165
+packages/@n8n/db/src/repositories/shared-credentials.repository.ts
+  s_5a94d40a19f16d::t_abf6715ab64f53 7,10,13-23,26-29,31,118,120,127-146
+  s_5a94d40a19f16d::t_98ca0d5b46f0a3 147
+packages/cli/test/integration/database/repositories/credentials.repository.test.ts
+  s_5a94d40a19f16d::t_b87821bb455691 3-8,880-963
+packages/@n8n/db/src/repositories/user.repository.ts
+  s_5a94d40a19f16d::t_abf6715ab64f53 351-355
+packages/@n8n/db/src/repositories/credentials.repository.ts
+  s_5a94d40a19f16d::t_4ca51d5af6390e 209-220
+packages/cli/src/commands/import/credentials.ts
+  s_5a94d40a19f16d::t_4ca51d5af6390e 158-164,166-168,170-173,320,330,334,344,375,390,394,401-403,556-561,563-564
+packages/cli/test/integration/database/repositories/user.repository.test.ts
+  s_5a94d40a19f16d::t_88b0d30bbab9cd 28,37
+  s_5a94d40a19f16d::t_b87821bb455691 1-27,29-36,38-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "15a2669861ff2eeed733a5acafbdc64a7725dc7f",
+  "prompts": {},
+  "sessions": {
+    "s_5a94d40a19f16d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a44f1ca3-68e2-4497-bcf5-878b24c07975",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
