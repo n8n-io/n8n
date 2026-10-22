@@ -1,0 +1,19 @@
+packages/@n8n/typeorm/vitest.config.ts
+  s_b890640623da9f::t_dc127c59dfa582 1,4-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "16889788126fb929a31498eb9238b81523ee162d",
+  "prompts": {},
+  "sessions": {
+    "s_b890640623da9f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7d913c52-7f2b-41a8-8d05-b45c13d24e79",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
