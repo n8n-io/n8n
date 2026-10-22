@@ -22,8 +22,11 @@ const usageKeyByCall: Record<KnowledgeToolCall, keyof KnowledgeRunUsage> = {
 	vector_store_search: 'vector_store_search_count',
 };
 
-/** A run that never ends, for example after a crash, is dropped after this time. */
-const STALE_RUN_MS = Time.hours.toMilliseconds;
+/**
+ * A run that never ends, for example after a crash, is dropped after this time.
+ * It is far longer than any real run, so a long run keeps its counts.
+ */
+const STALE_RUN_MS = Time.days.toMilliseconds;
 
 /**
  * Counts the knowledge tool calls of each agent run in memory, keyed by the
