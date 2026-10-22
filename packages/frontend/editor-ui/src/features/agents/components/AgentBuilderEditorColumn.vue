@@ -25,6 +25,7 @@ import { provideAgentPersonalisation } from '../channels/agentPersonalisation';
 import AgentIdentityHeader from './AgentIdentityHeader.vue';
 import AgentInfoPanel from './AgentInfoPanel.vue';
 import AgentFilesPanel from './AgentFilesPanel.vue';
+import AgentMemoryEntriesPanel from './AgentMemoryEntriesPanel.vue';
 import AgentVectorStoresPanel from './AgentVectorStoresPanel.vue';
 import AgentMcpPanel from './AgentMcpPanel.vue';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
@@ -311,6 +312,12 @@ defineExpose({ onSetupTaskAction });
 							@delete-file="emit('delete-file', $event)"
 						/>
 					</AgentPanel>
+					<AgentMemoryEntriesPanel
+						v-if="!agentUnsaved"
+						:project-id="projectId"
+						:agent-id="agentId"
+						:disabled="childrenDisabled"
+					/>
 					<AgentPanel :header="i18n.baseText('agents.builder.knowledge.advanced.title')">
 						<template #header="{ headerId }">
 							<button

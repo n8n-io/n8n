@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agents_memory_entries" ("id" varchar(36) PRIMARY KEY NOT NULL, "agentId" varchar(36) NOT NULL, "resourceId" varchar(255) NOT NULL, "content" text NOT NULL, "contentHash" varchar(64) NOT NULL, "status" varchar(16) NOT NULL, "supersededBy" varchar(36), "embeddingModel" varchar(128), "embedding" text, "metadata" text, "lastSeenAt" datetime(3) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_agents_memory_entries_status" CHECK ("status" IN ('active', 'superseded', 'dropped')), CONSTRAINT "FK_28e981fb675e9b44ce02f0ec1dd" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE, CONSTRAINT "FK_1443a75e59adbfb796071d66393" FOREIGN KEY ("resourceId") REFERENCES "agents_resources" ("id") ON DELETE CASCADE, CONSTRAINT "FK_0edf1226b77ddc525eae4938079" FOREIGN KEY ("supersededBy") REFERENCES "agents_memory_entries" ("id"))
+CREATE TABLE "agents_memory_entries" ("id" varchar(36) PRIMARY KEY NOT NULL, "agentId" varchar(36) NOT NULL, "resourceId" varchar(255) NOT NULL, "content" text NOT NULL, "contentHash" varchar(64) NOT NULL, "status" varchar(16) NOT NULL, "supersededBy" varchar(36), "embeddingModel" varchar(128), "embedding" text, "metadata" text, "lastSeenAt" datetime(3) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_agents_memory_entries_status" CHECK ("status" IN ('active', 'superseded', 'dropped', 'deleted')), CONSTRAINT "FK_0edf1226b77ddc525eae4938079" FOREIGN KEY ("supersededBy") REFERENCES "agents_memory_entries" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION, CONSTRAINT "FK_1443a75e59adbfb796071d66393" FOREIGN KEY ("resourceId") REFERENCES "agents_resources" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_28e981fb675e9b44ce02f0ec1dd" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -33,10 +33,10 @@ CREATE TABLE "agents_memory_entries" ("id" varchar(36) PRIMARY KEY NOT NULL, "ag
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK ("status" IN ('active', 'superseded', 'dropped')) |
-| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (supersededBy) REFERENCES agents_memory_entries (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE |
+| - | CHECK | CHECK ("status" IN ('active', 'superseded', 'dropped', 'deleted')) |
+| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (resourceId) REFERENCES agents_resources (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
-| - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (supersededBy) REFERENCES agents_memory_entries (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_agents_memory_entries_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
