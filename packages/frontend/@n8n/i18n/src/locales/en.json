@@ -6112,6 +6112,8 @@
 	"settings.n8nAgent.capabilities.description": "The n8n Assistant works without these, with fewer abilities.",
 	"settings.n8nAgent.browserUse.label": "Browser use",
 	"settings.n8nAgent.browserUse.description": "Let users connect n8n Assistant to their browser to view pages and automate tasks",
+	"settings.n8nAgent.cloudBrowser.label": "Cloud browser",
+	"settings.n8nAgent.cloudBrowser.description": "Let n8n Assistant use a cloud browser to view pages and automate tasks in the background",
 	"settings.n8nAgent.mcp.title": "MCP servers",
 	"settings.n8nAgent.mcp.description": "MCP servers add tools to the n8n Assistant, like internal APIs or third party apps.",
 	"settings.n8nAgent.mcpAccess.label": "Let users connect MCP servers",
