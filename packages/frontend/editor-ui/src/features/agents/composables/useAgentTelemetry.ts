@@ -265,10 +265,10 @@ export function useAgentTelemetry() {
 		});
 	}
 
-	function trackStartedKnowledgeUpload(
+	function trackStartedAddingKnowledge(
 		params: { agentId: string } & ({ kind: 'file'; fileCount: number } | { kind: 'vector_store' }),
 	) {
-		safeTrack(TELEMETRY_EVENT.AGENTS.USER_STARTED_AGENT_KNOWLEDGE_UPLOAD, {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_STARTED_ADDING_AGENT_KNOWLEDGE, {
 			agent_id: params.agentId,
 			kind: params.kind,
 			...(params.kind === 'file' ? { file_count: params.fileCount } : {}),
@@ -311,7 +311,7 @@ export function useAgentTelemetry() {
 		trackSentMessageToN8nChatAgent,
 		trackClickedSidebarItem,
 		trackOpenedKnowledgeTab,
-		trackStartedKnowledgeUpload,
+		trackStartedAddingKnowledge,
 		trackFailedKnowledgeUpload,
 	};
 }

@@ -160,7 +160,7 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 	}
 
 	function trackStartedFileUpload(fileCount: number) {
-		agentTelemetry.trackStartedKnowledgeUpload({
+		agentTelemetry.trackStartedAddingKnowledge({
 			agentId: deps.agentId.value,
 			kind: 'file',
 			fileCount,
@@ -168,7 +168,7 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 	}
 
 	function trackStartedVectorStoreSetup() {
-		agentTelemetry.trackStartedKnowledgeUpload({
+		agentTelemetry.trackStartedAddingKnowledge({
 			agentId: deps.agentId.value,
 			kind: 'vector_store',
 		});

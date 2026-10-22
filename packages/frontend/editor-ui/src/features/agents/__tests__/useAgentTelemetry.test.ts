@@ -130,22 +130,22 @@ describe('useAgentTelemetry', () => {
 		});
 	});
 
-	it('trackStartedKnowledgeUpload sends the file count for files', () => {
-		useAgentTelemetry().trackStartedKnowledgeUpload({
+	it('trackStartedAddingKnowledge sends the file count for files', () => {
+		useAgentTelemetry().trackStartedAddingKnowledge({
 			agentId: 'ag-1',
 			kind: 'file',
 			fileCount: 3,
 		});
 		expect(trackMock).toHaveBeenCalledWith(
-			TELEMETRY_EVENT.AGENTS.USER_STARTED_AGENT_KNOWLEDGE_UPLOAD,
+			TELEMETRY_EVENT.AGENTS.USER_STARTED_ADDING_AGENT_KNOWLEDGE,
 			{ agent_id: 'ag-1', kind: 'file', file_count: 3, session_id: 'session-xyz' },
 		);
 	});
 
-	it('trackStartedKnowledgeUpload sends no file count for a vector store', () => {
-		useAgentTelemetry().trackStartedKnowledgeUpload({ agentId: 'ag-1', kind: 'vector_store' });
+	it('trackStartedAddingKnowledge sends no file count for a vector store', () => {
+		useAgentTelemetry().trackStartedAddingKnowledge({ agentId: 'ag-1', kind: 'vector_store' });
 		expect(trackMock).toHaveBeenCalledWith(
-			TELEMETRY_EVENT.AGENTS.USER_STARTED_AGENT_KNOWLEDGE_UPLOAD,
+			TELEMETRY_EVENT.AGENTS.USER_STARTED_ADDING_AGENT_KNOWLEDGE,
 			{ agent_id: 'ag-1', kind: 'vector_store', session_id: 'session-xyz' },
 		);
 	});

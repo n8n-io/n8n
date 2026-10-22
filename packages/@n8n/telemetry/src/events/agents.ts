@@ -723,8 +723,8 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			session_id: sessionId,
 		}),
 	},
-	USER_STARTED_AGENT_KNOWLEDGE_UPLOAD: {
-		name: 'User started agent knowledge upload',
+	USER_STARTED_ADDING_AGENT_KNOWLEDGE: {
+		name: 'User started adding agent knowledge',
 		description:
 			'The user chose files to upload to the knowledge of an agent, or opened the modal to add a vector store. Sent before any check. The success step is "User uploaded agent knowledge files" for files, and "User modified agent" with the vectorStores part for vector stores.',
 		properties: z.object({
