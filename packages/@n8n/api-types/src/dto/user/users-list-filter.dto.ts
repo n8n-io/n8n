@@ -36,6 +36,7 @@ const userSelectSchema = z.array(
 const userFilterSchema = z.object({
 	ids: z.array(z.string()).optional(),
 	isOwner: z.boolean().optional(),
+	roles: z.array(z.string()).optional(),
 	firstName: z.string().optional(),
 	lastName: z.string().optional(),
 	email: z.string().optional(),

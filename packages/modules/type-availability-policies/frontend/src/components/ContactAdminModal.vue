@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { ROLE } from '@n8n/api-types';
 import {
 	N8nAvatar,
 	N8nDialog,
@@ -80,7 +79,7 @@ const managerRoles = computed(() => {
 
 const instanceAdmins = computed<Admin[]>(() =>
 	usersStore.allUsers
-		.filter((user) => user.role === ROLE.Owner && !user.isPendingUser)
+		.filter((user) => managerRoles.value.has(user.role ?? '') && !user.isPendingUser)
 		.filter(hasEmail),
 );
 
@@ -104,7 +103,9 @@ watch(
 		// A reopen can start a second lookup before the first resolves; only the latest one ends loading.
 		const id = ++lookupId;
 		isLoading.value = true;
-		await usersStore.fetchUsers({ filter: { isOwner: true } }).catch(() => undefined);
+		await usersStore
+			.fetchUsers({ filter: { roles: [...managerRoles.value] } })
+			.catch(() => undefined);
 		if (id === lookupId) isLoading.value = false;
 	},
 	{ immediate: true },

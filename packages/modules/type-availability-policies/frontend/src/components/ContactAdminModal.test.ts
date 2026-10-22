@@ -37,6 +37,23 @@ const owner = {
 } as unknown as IUser;
 
 const member = { ...owner, id: 'member-1', fullName: 'Bob Builder', role: ROLE.Member } as IUser;
+const admin = {
+	...owner,
+	id: 'admin-1',
+	firstName: 'Margaret',
+	lastName: 'Hamilton',
+	email: 'margaret@example.com',
+	role: ROLE.Admin,
+} as IUser;
+const policyManager = {
+	...owner,
+	id: 'policy-manager-1',
+	firstName: 'Katherine',
+	lastName: 'Johnson',
+	email: 'katherine@example.com',
+	role: 'global:policyManager',
+} as IUser;
+
 function mockCustomRole(slug: string, roleType: 'global' | 'project') {
 	mockedStore(useRolesStore).roles[roleType] = [
 		{
@@ -64,14 +81,19 @@ function setup(allUsers: IUser[], fetchUsers = vi.fn().mockResolvedValue(undefin
 }
 
 describe('ContactAdminModal', () => {
-	it('lists the owners with a mailto link and builds the copy from the node type name', async () => {
-		const usersStore = setup([owner, member]);
+	it('lists everyone whose global role can manage node type policies, with a mailto link', async () => {
+		const usersStore = setup([owner, admin, policyManager, member]);
+		mockCustomRole('global:policyManager', 'global');
 		const { findByTestId, getByText } = renderComponent();
 
 		const list = await findByTestId('contact-admin-list');
 
-		expect(usersStore.fetchUsers).toHaveBeenCalledWith({ filter: { isOwner: true } });
+		expect(usersStore.fetchUsers).toHaveBeenCalledWith({
+			filter: { roles: [ROLE.Owner, ROLE.Admin, 'global:policyManager'] },
+		});
 		expect(list).toHaveTextContent('Ada Lovelace');
+		expect(list).toHaveTextContent('Margaret Hamilton');
+		expect(list).toHaveTextContent('Katherine Johnson');
 		expect(list).not.toHaveTextContent('Bob Builder');
 		expect(getByText('ada@example.com').closest('a')).toHaveAttribute(
 			'href',

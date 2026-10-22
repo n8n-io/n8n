@@ -414,6 +414,12 @@ export class UserRepository extends BaseRepository<User> {
 			}
 		}
 
+		if (filter?.roles !== undefined && filter.roles.length > 0) {
+			queryBuilder.andWhere('user.role IN (:...roles)', {
+				roles: filter.roles,
+			});
+		}
+
 		if (filter?.ids !== undefined && filter.ids.length > 0) {
 			queryBuilder.andWhere('user.id IN (:...ids)', {
 				ids: filter.ids,
