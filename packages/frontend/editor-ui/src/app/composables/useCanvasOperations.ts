@@ -184,7 +184,7 @@ import {
 	pinDataToExecutionData,
 	injectWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
-import { serializeNode } from '@/app/utils/nodes/nodeTransforms';
+import { remapToolAvailabilitySourceIds, serializeNode } from '@/app/utils/nodes/nodeTransforms';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -3327,16 +3327,19 @@ export function useCanvasOperations() {
 				});
 			}
 
-			// Remap nodeGroup nodeIds to new node IDs
-			if (regenerateIds && workflowData.nodeGroups?.length) {
+			if (regenerateIds) {
 				const oldToNewIdMap = new Map(
 					Object.entries(nodeIdMap).map(([newId, previousId]) => [previousId, newId]),
 				);
 
-				workflowData.nodeGroups = workflowData.nodeGroups.map((group) => ({
-					...group,
-					nodeIds: group.nodeIds.map((id) => oldToNewIdMap.get(id) ?? id),
-				}));
+				remapToolAvailabilitySourceIds(workflowData.nodes ?? [], oldToNewIdMap);
+
+				if (workflowData.nodeGroups?.length) {
+					workflowData.nodeGroups = workflowData.nodeGroups.map((group) => ({
+						...group,
+						nodeIds: group.nodeIds.map((id) => oldToNewIdMap.get(id) ?? id),
+					}));
+				}
 			}
 
 			removeUnknownCredentials(workflowData);

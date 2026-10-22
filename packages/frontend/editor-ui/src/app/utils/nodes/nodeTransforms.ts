@@ -1,4 +1,5 @@
 import {
+	AGENT_NODE_TYPE,
 	AI_CODE_TOOL_LANGCHAIN_NODE_TYPE,
 	AI_MCP_TOOL_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
@@ -7,6 +8,7 @@ import {
 import type { INodeUi } from '@/Interface';
 import type { NodeTypeProvider } from '@/app/utils/nodeTypes/nodeTypeTransforms';
 import type {
+	INode,
 	INodeCredentialDescription,
 	INodeCredentials,
 	FromAIArgument,
@@ -28,6 +30,7 @@ import {
 	usesParameterSelectedCredentials,
 } from '@/app/utils/nodeTypesUtils';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { isRecord } from '@n8n/utils/is-record';
 
 /**
  * Assigns a freshly generated id to the given node and returns it.
@@ -41,6 +44,24 @@ export function assignNodeId(node: INodeUi): string {
 	const id = window.crypto.randomUUID();
 	node.id = id;
 	return id;
+}
+
+/** Keep Tool Availability rules linked to their sources after node IDs change. */
+export function remapToolAvailabilitySourceIds(
+	nodes: INode[],
+	nodeIdMap: ReadonlyMap<string, string>,
+): void {
+	for (const node of nodes) {
+		if (node.type !== AGENT_NODE_TYPE) continue;
+
+		const availability = node.parameters.toolAvailability;
+		if (!isRecord(availability) || !Array.isArray(availability.rules)) continue;
+
+		for (const rule of availability.rules.filter(isRecord)) {
+			if (typeof rule.sourceNodeId !== 'string') continue;
+			rule.sourceNodeId = nodeIdMap.get(rule.sourceNodeId) ?? rule.sourceNodeId;
+		}
+	}
 }
 
 /**

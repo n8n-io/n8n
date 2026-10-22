@@ -6402,6 +6402,118 @@ describe('useCanvasOperations', () => {
 			connections: {},
 		};
 
+		describe.each([3, 3.1])('Tool Availability in Agent %s', (typeVersion) => {
+			function createWorkflowWithAvailability(): WorkflowDataUpdate {
+				return {
+					nodes: [
+						createTestNode({
+							id: 'agent-id',
+							name: 'AI Agent',
+							type: AGENT_NODE_TYPE,
+							typeVersion,
+							parameters: {
+								toolAvailability: {
+									rules: [{ sourceNodeId: 'calculator-id', available: '={{ $json.allowTool }}' }],
+								},
+							},
+						}),
+						createTestNode({
+							id: 'calculator-id',
+							name: 'Calculator',
+							type: '@n8n/n8n-nodes-langchain.toolCalculator',
+						}),
+					],
+					connections: {
+						Calculator: {
+							ai_tool: [[{ node: 'AI Agent', type: NodeConnectionTypes.AiTool, index: 0 }]],
+						},
+					},
+				};
+			}
+
+			beforeEach(() => {
+				const agentType = mockLoadedNodeType(AGENT_NODE_TYPE);
+				agentType.type.description.properties = [
+					createTestNodeProperties({
+						name: 'toolAvailability',
+						type: 'fixedCollection',
+						default: {},
+						typeOptions: { multipleValues: true },
+						options: [
+							{
+								displayName: 'Rule',
+								name: 'rules',
+								values: [
+									createTestNodeProperties({ name: 'sourceNodeId', type: 'options', default: '' }),
+									createTestNodeProperties({ name: 'available', type: 'boolean', default: true }),
+								],
+							},
+						],
+					}),
+				];
+				vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+					(nodes, connections) =>
+						createTestWorkflowObject({
+							nodes,
+							connections,
+							nodeTypes: createMockNodeTypes({
+								[AGENT_NODE_TYPE]: agentType,
+								'@n8n/n8n-nodes-langchain.toolCalculator': mockLoadedNodeType(
+									'@n8n/n8n-nodes-langchain.toolCalculator',
+								),
+							}),
+						}),
+				);
+			});
+
+			it.each(['paste', 'duplicate', 'file', 'url'])(
+				'remaps Tool Availability source IDs when importing from %s',
+				async (source) => {
+					const { importWorkflowData } = useCanvasOperations();
+					const workflow = createWorkflowWithAvailability();
+					const originalConnections = structuredClone(workflow.connections);
+					const result = await importWorkflowData(workflow, source);
+					const importedAgent = result.nodes!.find((node) => node.name === 'AI Agent')!;
+					const importedTool = result.nodes!.find((node) => node.name === 'Calculator')!;
+
+					expect(importedTool.id).not.toBe('calculator-id');
+					expect(importedAgent.parameters.toolAvailability).toEqual({
+						rules: [{ sourceNodeId: importedTool.id, available: '={{ $json.allowTool }}' }],
+					});
+					expect(workflowDocumentStoreInstance.addNode).toHaveBeenCalledWith(
+						expect.objectContaining({
+							id: importedAgent.id,
+							parameters: importedAgent.parameters,
+						}),
+					);
+					expect(result.connections).toEqual(originalConnections);
+				},
+			);
+
+			it('preserves Tool Availability references to sources outside the import', async () => {
+				const workflow = createWorkflowWithAvailability();
+				workflow.nodes = workflow.nodes!.filter((node) => node.id === 'agent-id');
+				const originalParameters = structuredClone(workflow.nodes[0].parameters);
+				const { importWorkflowData } = useCanvasOperations();
+
+				const result = await importWorkflowData(workflow, 'paste');
+
+				expect(result.nodes?.[0].id).not.toBe('agent-id');
+				expect(result.nodes?.[0].parameters).toEqual(originalParameters);
+			});
+
+			it('preserves Tool Availability source IDs when ID regeneration is disabled', async () => {
+				const workflow = createWorkflowWithAvailability();
+				const originalParameters = structuredClone(workflow.nodes![0].parameters);
+				const { importWorkflowData } = useCanvasOperations();
+
+				const result = await importWorkflowData(workflow, 'paste', { regenerateIds: false });
+
+				expect(result.nodes?.map((node) => node.id)).toEqual(['agent-id', 'calculator-id']);
+				expect(result.nodes?.[0].parameters).toEqual(originalParameters);
+			});
+		});
+
 		it('centers a pasted node in the viewport instead of using the last click', async () => {
 			const nodes = [createTestNode({ name: 'Pasted', position: [100, 100] })];
 			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
