@@ -1,5 +1,5 @@
 packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
-  s_71ad2034164515::t_7502e9cf292f32 176,181,221
+  s_71ad2034164515::t_ad77063a94c79a 176,181,221
 ---
 {
   "schema_version": "authorship/3.0.0",
