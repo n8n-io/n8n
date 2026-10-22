@@ -8,14 +8,14 @@ export type AuthStrategyOptions = {
 
 /**
  * What one strategy decided for a request.
- * `challenge` is an RFC 7235 challenge, for example `Bearer resource_metadata="…"`. The registry
- * collects the challenges of every strategy it asked, and the 401 carries them. A strategy sets it
- * when it abstained because its credential was absent, or when it rejected the credential it owns.
+ * A `rejected` outcome may carry an RFC 7235 challenge specific to the refused credential, for
+ * example `Bearer …, error="invalid_token"`. The strategy's generic challenge comes from
+ * `AuthStrategy.challenge` instead.
  */
 export type AuthStrategyResult =
 	| { outcome: 'authenticated' }
 	| { outcome: 'rejected'; challenge?: string }
-	| { outcome: 'abstained'; challenge?: string };
+	| { outcome: 'abstained' };
 
 /**
  * A single authentication strategy for the public API.
@@ -30,6 +30,14 @@ export type AuthStrategyResult =
  */
 export interface AuthStrategy {
 	authenticate(req: AuthenticatedRequest): Promise<AuthStrategyResult>;
+
+	/**
+	 * The RFC 7235 challenge for a 401 on this request, for example `Bearer resource_metadata="…"`.
+	 * The registry asks every registered strategy on every 401, also the ones it never asked to
+	 * authenticate, unless the strategy rejected with a challenge of its own. Keep it cheap and
+	 * free of side effects.
+	 */
+	challenge?(req: AuthenticatedRequest): Promise<string | undefined>;
 
 	/**
 	 * This builds the token grant based on the authentication token.

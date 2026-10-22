@@ -67,8 +67,7 @@ export class InboundResourceAdmission extends ResourceAdmission {
 	 * Carries no token, no external subject and no email.
 	 */
 	refuse(inbound: Inbound, reason: RefusalReason, context?: SecurityContext): Refused {
-		const level = reason === 'no-credential' ? 'debug' : 'warn';
-		this.logger[level]('Inbound authentication denied', {
+		this.logger.warn('Inbound authentication denied', {
 			surface: inbound.surface,
 			resource: inbound.resource.url,
 			sourceId: context?.subjectClaim?.sourceId,
@@ -81,6 +80,10 @@ export class InboundResourceAdmission extends ResourceAdmission {
 }
 
 /** Keeps the request, and with it the credential, out of the result. */
-function advertisedOf({ surface, resource, acceptedSourceIds }: Inbound): AdvertisedResource {
+export function advertisedOf({
+	surface,
+	resource,
+	acceptedSourceIds,
+}: Inbound): AdvertisedResource {
 	return { surface, resource, ...(acceptedSourceIds !== undefined && { acceptedSourceIds }) };
 }

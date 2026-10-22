@@ -104,6 +104,17 @@ describe('Public API with OAuth2 bearer tokens', () => {
 		expect(pipeline.run).not.toHaveBeenCalled();
 	});
 
+	test('answers 401 with the bare discovery challenge for a wrong API key', async () => {
+		const response = await testServer
+			.publicApiAgentWithoutApiKey()
+			.set('X-N8N-API-KEY', 'not-a-valid-key')
+			.get('/workflows');
+
+		expect(response.statusCode).toBe(401);
+		expect(response.headers['www-authenticate']).toBe(CHALLENGE);
+		expect(pipeline.run).not.toHaveBeenCalled();
+	});
+
 	test('leaves API keys to the API key strategy, with no challenge on the success', async () => {
 		const owner = await createOwnerWithApiKey();
 
@@ -114,7 +125,7 @@ describe('Public API with OAuth2 bearer tokens', () => {
 		expect(pipeline.run).not.toHaveBeenCalled();
 	});
 
-	test('leaves a bearer whose issuer is not a URL to the other strategies', async () => {
+	test('leaves a bearer whose issuer is not a URL to the other strategies, and still challenges the 401', async () => {
 		const response = await testServer
 			.publicApiAgentWithoutApiKey()
 			.set('Authorization', `Bearer ${tokenFrom('n8n-token-exchange')}`)
@@ -122,7 +133,7 @@ describe('Public API with OAuth2 bearer tokens', () => {
 
 		expect(response.statusCode).toBe(401);
 		expect(pipeline.run).not.toHaveBeenCalled();
-		expect(response.headers['www-authenticate']).toBeUndefined();
+		expect(response.headers['www-authenticate']).toBe(CHALLENGE);
 	});
 
 	describe('scope enforcement', () => {

@@ -19,6 +19,7 @@ import type { AuthStrategy, AuthStrategyResult } from '@n8n/backend-services/aut
 import { JwtService } from '@n8n/backend-services';
 
 import { PublicApiProtectedResource } from './public-api-protected-resource';
+import { advertisedOf } from './resource-admission';
 
 // Token scopes arrive as plain strings; `isApiKeyScope` only takes known scope names.
 const isApiKeyScopeName = (scope: string): scope is ApiKeyScope =>
@@ -45,6 +46,15 @@ export class PublicApiOAuthStrategy implements AuthStrategy {
 		return isUrlIssuer(this.jwtService.decodeUnverified<{ iss?: unknown } | null>(token)?.iss);
 	}
 
+	async challenge(req: AuthenticatedRequest): Promise<string | undefined> {
+		if (!(await this.resource.isAvailable())) {
+			return undefined;
+		}
+
+		const inbound = inboundFrom(this.resource, inboundRequestOf(req));
+		return await this.admission.challenge({ advertised: advertisedOf(inbound) });
+	}
+
 	async authenticate(req: AuthenticatedRequest): Promise<AuthStrategyResult> {
 		const isAvailable = await this.resource.isAvailable();
 		if (!isAvailable) {
@@ -56,9 +66,7 @@ export class PublicApiOAuthStrategy implements AuthStrategy {
 		// Routing, not verification: a bearer another strategy owns is left to it.
 		const extracted = extractBearer(inbound);
 		if (!extracted.ok) {
-			if (extracted.reason !== 'no-credential') return { outcome: 'abstained' };
-			const refused = this.admission.refuse(inbound, 'no-credential');
-			return { outcome: 'abstained', challenge: await this.admission.challenge(refused) };
+			return { outcome: 'abstained' };
 		}
 
 		if (!this.isOAuthIssuer(extracted.value.credential.token)) {
@@ -72,7 +80,10 @@ export class PublicApiOAuthStrategy implements AuthStrategy {
 
 		const user = await this.userRepository.findByIdWithRole(admitted.context.subject.id);
 		if (!user) {
-			return { outcome: 'rejected' };
+			return {
+				outcome: 'rejected',
+				challenge: await this.admission.challenge({ advertised: advertisedOf(inbound) }),
+			};
 		}
 
 		// Only API key scopes narrow the grant. An external IdP's own scopes (`openid`, ...) are

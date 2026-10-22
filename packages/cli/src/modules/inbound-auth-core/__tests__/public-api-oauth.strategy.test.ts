@@ -80,28 +80,11 @@ describe('PublicApiOAuthStrategy', () => {
 	});
 
 	describe('authenticate', () => {
-		it('abstains with the bare discovery challenge when the request has no Authorization header', async () => {
-			const { req, res } = makeReq({});
-
-			expect(await strategy.authenticate(req)).toEqual({
-				outcome: 'abstained',
-				challenge: CHALLENGE,
-			});
-
-			expect(pipeline.run).not.toHaveBeenCalled();
-			expect(authenticationService.advertise).toHaveBeenCalledWith(
-				expect.objectContaining({
-					surface: 'public-api',
-					resource: { url: RESOURCE_URL, acceptedAudiences: [RESOURCE_URL] },
-				}),
-			);
-			expect(res.setHeader).not.toHaveBeenCalled();
-		});
-
 		it.each([
+			['no Authorization header', {}],
 			['a non-bearer Authorization header', { authorization: 'Basic dXNlcjpwYXNz' }],
 			['a bearer that is not a JWT', { authorization: 'Bearer not-a-jwt' }],
-		])('abstains without a challenge with %s', async (_name, headers) => {
+		])('abstains without looking anything up with %s', async (_name, headers) => {
 			const { req } = makeReq(headers);
 
 			expect(await strategy.authenticate(req)).toEqual({ outcome: 'abstained' });
@@ -122,17 +105,14 @@ describe('PublicApiOAuthStrategy', () => {
 		it.each([
 			['a URL-issuer bearer', { authorization: `Bearer ${tokenFrom('https://idp.example')}` }],
 			['no credential', {}],
-		])(
-			'abstains without a challenge while the public API is unavailable, with %s',
-			async (_name, headers) => {
-				resource.isAvailable.mockResolvedValue(false);
-				const { req } = makeReq(headers);
+		])('abstains while the public API is unavailable, with %s', async (_name, headers) => {
+			resource.isAvailable.mockResolvedValue(false);
+			const { req } = makeReq(headers);
 
-				expect(await strategy.authenticate(req)).toEqual({ outcome: 'abstained' });
-				expect(pipeline.run).not.toHaveBeenCalled();
-				expect(authenticationService.advertise).not.toHaveBeenCalled();
-			},
-		);
+			expect(await strategy.authenticate(req)).toEqual({ outcome: 'abstained' });
+			expect(pipeline.run).not.toHaveBeenCalled();
+			expect(authenticationService.advertise).not.toHaveBeenCalled();
+		});
 
 		it.each(['https://idp.example', 'http://localhost:5678'])(
 			'runs the pipeline for issuer %s on the public-api surface with the resource and the request',
@@ -288,15 +268,42 @@ describe('PublicApiOAuthStrategy', () => {
 				expect(req.tokenGrant?.apiKeyScopes).toEqual(expected(getApiKeyScopesForRole(user)));
 			});
 
-			it('fails fast when the subject no longer exists', async () => {
+			it('rejects with the bare challenge when the subject no longer exists', async () => {
 				pipeline.run.mockResolvedValue({ ok: true, value: contextWith() });
 				userRepository.findByIdWithRole.mockResolvedValue(null);
 				const { req } = makeReq({
 					authorization: `Bearer ${tokenFrom('https://idp.example')}`,
 				});
 
-				expect(await strategy.authenticate(req)).toEqual({ outcome: 'rejected' });
+				expect(await strategy.authenticate(req)).toEqual({
+					outcome: 'rejected',
+					challenge: CHALLENGE,
+				});
 			});
+		});
+	});
+
+	describe('challenge', () => {
+		it('answers the bare discovery challenge for the request on the public-api surface', async () => {
+			const { req } = makeReq({});
+
+			expect(await strategy.challenge(req)).toBe(CHALLENGE);
+
+			expect(authenticationService.advertise).toHaveBeenCalledWith(
+				expect.objectContaining({
+					surface: 'public-api',
+					resource: { url: RESOURCE_URL, acceptedAudiences: [RESOURCE_URL] },
+				}),
+			);
+			expect(pipeline.run).not.toHaveBeenCalled();
+		});
+
+		it('answers nothing while the public API is unavailable', async () => {
+			resource.isAvailable.mockResolvedValue(false);
+			const { req } = makeReq({});
+
+			expect(await strategy.challenge(req)).toBeUndefined();
+			expect(authenticationService.advertise).not.toHaveBeenCalled();
 		});
 	});
 });
