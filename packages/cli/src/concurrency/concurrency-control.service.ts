@@ -9,6 +9,7 @@ import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit
 import { UnknownExecutionModeError } from '@/errors/unknown-execution-mode.error';
 import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
 import { License } from '@/license';
+import { ProductionHold } from '@/memory-guard/production-hold';
 import { Telemetry } from '@/telemetry';
 
 import { ConcurrencyQueue } from './concurrency-queue';
@@ -21,13 +22,6 @@ export type ConcurrencyQueueType = 'production' | 'evaluation';
 export interface CapacityTarget {
 	executionId: string;
 	mode: WorkflowExecuteMode;
-}
-
-interface HeldExecution {
-	executionId: string;
-	mode: WorkflowExecuteMode;
-	heldAt: number;
-	admit: () => void;
 }
 
 @Service()
@@ -49,12 +43,6 @@ export class ConcurrencyControlService {
 	// because `License.init()` resolves after the DI graph is built.
 	private evalQueueResolved = false;
 
-	/** Whether new production executions wait because memory is high. Set by the memory guard. */
-	private holding = false;
-
-	/** Production executions that wait because memory is high, oldest first. */
-	private readonly held: HeldExecution[] = [];
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
@@ -62,6 +50,7 @@ export class ConcurrencyControlService {
 		private readonly eventService: EventService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly license: License,
+		private readonly productionHold: ProductionHold,
 	) {
 		this.logger = this.logger.scoped('concurrency');
 
@@ -169,7 +158,7 @@ export class ConcurrencyControlService {
 	 * Check whether an execution is in any of the queues.
 	 */
 	has(executionId: string) {
-		if (this.held.some((item) => item.executionId === executionId)) return true;
+		if (this.productionHold.has(executionId)) return true;
 
 		if (!this.isEnabled) return false;
 
@@ -192,11 +181,7 @@ export class ConcurrencyControlService {
 		}
 
 		// After the queue, so that executions the queue lets through during a hold also wait.
-		if (isProductionMode(mode) && (this.holding || this.held.length > 0)) {
-			await new Promise<void>((admit) => {
-				this.held.push({ executionId, mode, heldAt: Date.now(), admit });
-			});
-		}
+		if (this.productionHold.shouldHold(mode)) await this.productionHold.wait(executionId);
 	}
 
 	/**
@@ -215,10 +200,7 @@ export class ConcurrencyControlService {
 	remove({ mode, executionId }: CapacityTarget) {
 		if (mode === 'evaluation') this.ensureEvalQueueResolved();
 
-		// Like the concurrency queue, never resume a removed execution.
-		const heldIndex = this.held.findIndex((item) => item.executionId === executionId);
-		if (heldIndex > -1) {
-			this.held.splice(heldIndex, 1);
+		if (this.productionHold.remove(executionId)) {
 			// A held execution already took a place in the concurrency queue.
 			if (this.isEnabled && !this.isUnlimited(mode)) this.getQueue(mode)?.dequeue();
 			return;
@@ -227,38 +209,6 @@ export class ConcurrencyControlService {
 		if (!this.isEnabled || this.isUnlimited(mode)) return;
 
 		this.getQueue(mode)?.remove(executionId);
-	}
-
-	/** Make new production executions wait until the hold ends and `admitHeld()` lets them start. */
-	startProductionHold() {
-		this.holding = true;
-	}
-
-	/** Stop holding new production executions. Executions held so far wait for `admitHeld()`. */
-	endProductionHold() {
-		this.holding = false;
-	}
-
-	/** Let up to `count` held executions start, oldest first. Returns how many started. */
-	admitHeld(count: number) {
-		let started = 0;
-		while (started < count) {
-			const item = this.held.shift();
-			if (!item) break;
-			item.admit();
-			started++;
-		}
-		return started;
-	}
-
-	/** Number of held production executions. */
-	get heldCount() {
-		return this.held.length;
-	}
-
-	/** When the oldest held execution started to wait, or `undefined` if none waits. */
-	get oldestHeldAt(): number | undefined {
-		return this.held[0]?.heldAt;
 	}
 
 	/**
@@ -325,8 +275,4 @@ export class ConcurrencyControlService {
 
 		throw new UnknownExecutionModeError(mode);
 	}
-}
-
-function isProductionMode(mode: WorkflowExecuteMode) {
-	return mode === 'webhook' || mode === 'trigger' || mode === 'chat';
 }

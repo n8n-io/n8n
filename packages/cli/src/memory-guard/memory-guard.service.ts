@@ -7,7 +7,6 @@ import { sleep } from '@n8n/utils/sleep';
 import { MemoryPressureExecutionCancelledError } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
-import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 
 import {
 	ADMIT_INTERVAL_MS,
@@ -30,6 +29,7 @@ import {
 import type { StopTarget, StopTrigger } from './memory-guard.types';
 import { buildStopError, exposeGc, settleWithin } from './memory-guard.utils';
 import { getContainerLimit, type MemoryUsage, readMemoryUsage } from './memory-usage';
+import { ProductionHold } from './production-hold';
 import { RunDataTracker } from './run-data-tracker';
 import { StoppedExecutions } from './stopped-executions';
 
@@ -89,7 +89,7 @@ export class MemoryGuardService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly activeExecutions: ActiveExecutions,
-		private readonly concurrencyControl: ConcurrencyControlService,
+		private readonly productionHold: ProductionHold,
 		private readonly tracker: RunDataTracker,
 		private readonly stoppedExecutions: StoppedExecutions,
 	) {
@@ -127,7 +127,7 @@ export class MemoryGuardService {
 		const isUnderPressure =
 			this.lastUtilization >= FAST_SAMPLING_LEVEL ||
 			this.isHolding ||
-			this.concurrencyControl.heldCount > 0 ||
+			this.productionHold.heldCount > 0 ||
 			this.pendingStop !== undefined ||
 			this.isStandingDown ||
 			Date.now() < this.fastSamplingUntil;
@@ -199,7 +199,7 @@ export class MemoryGuardService {
 	private admitOneHeld() {
 		const now = Date.now();
 		if (now - this.lastStarvationAdmitAt < STARVATION_ADMIT_INTERVAL_MS) return;
-		if (this.concurrencyControl.admitHeld(1) > 0) this.lastStarvationAdmitAt = now;
+		if (this.productionHold.admit(1) > 0) this.lastStarvationAdmitAt = now;
 	}
 
 	private getStopTrigger(isCritical: boolean): StopTrigger | undefined {
@@ -224,7 +224,7 @@ export class MemoryGuardService {
 	}
 
 	private hasHoldLimitPassed() {
-		const { oldestHeldAt } = this.concurrencyControl;
+		const { oldestHeldAt } = this.productionHold;
 		if (!this.isHolding || oldestHeldAt === undefined) return false;
 		return Date.now() - Math.max(oldestHeldAt, this.lastStopEndedAt) >= HOLD_LIMIT_MS;
 	}
@@ -234,7 +234,7 @@ export class MemoryGuardService {
 	 * only when memory did not rise since the batch before it.
 	 */
 	private admitHeldGradually(utilization: number) {
-		if (this.concurrencyControl.heldCount === 0) {
+		if (this.productionHold.heldCount === 0) {
 			this.admitBatch = 1;
 			return;
 		}
@@ -245,7 +245,7 @@ export class MemoryGuardService {
 		if (utilization >= RESUME_LEVEL || utilization > this.utilizationAtLastAdmit) {
 			this.admitBatch = 1;
 		}
-		this.concurrencyControl.admitHeld(this.admitBatch);
+		this.productionHold.admit(this.admitBatch);
 		this.admitBatch *= 2;
 		this.lastAdmitAt = now;
 		this.utilizationAtLastAdmit = utilization;
@@ -253,7 +253,7 @@ export class MemoryGuardService {
 
 	private startHold(usage: MemoryUsage) {
 		this.holdStartedAt = Date.now();
-		this.concurrencyControl.startProductionHold();
+		this.productionHold.start();
 		this.logger.warn(
 			`Memory at ${formatBytes(usage.usedBytes)} of ${formatBytes(usage.limitBytes)}, holding new production executions`,
 		);
@@ -265,7 +265,7 @@ export class MemoryGuardService {
 		const heldMs = Date.now() - this.holdStartedAt;
 		this.holdStartedAt = undefined;
 		this.fastSamplingUntil = Date.now() + FAST_SAMPLING_AFTER_HOLD_MS;
-		this.concurrencyControl.endProductionHold();
+		this.productionHold.end();
 		return heldMs;
 	}
 

@@ -12,6 +12,7 @@ import {
 	ConcurrencyControlService,
 } from '@/concurrency/concurrency-control.service';
 import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit.error';
+import { ProductionHold } from '@/memory-guard/production-hold';
 import type { License } from '@/license';
 import type { Telemetry } from '@/telemetry';
 
@@ -87,6 +88,7 @@ describe('ConcurrencyControlService', () => {
 					eventService,
 					globalConfig,
 					license,
+					new ProductionHold(),
 				);
 
 				/**
@@ -121,6 +123,7 @@ describe('ConcurrencyControlService', () => {
 						eventService,
 						globalConfig,
 						license,
+						new ProductionHold(),
 					);
 				} catch (error) {
 					/**
@@ -148,6 +151,7 @@ describe('ConcurrencyControlService', () => {
 				eventService,
 				globalConfig,
 				license,
+				new ProductionHold(),
 			);
 
 			/**
@@ -176,6 +180,7 @@ describe('ConcurrencyControlService', () => {
 					eventService,
 					globalConfig,
 					license,
+					new ProductionHold(),
 				);
 
 				/**
@@ -203,6 +208,7 @@ describe('ConcurrencyControlService', () => {
 				eventService,
 				globalConfig,
 				license,
+				new ProductionHold(),
 			);
 
 			/**
@@ -237,6 +243,7 @@ describe('ConcurrencyControlService', () => {
 				eventService,
 				globalConfig,
 				license,
+				new ProductionHold(),
 			);
 
 			// No eager queue — pending lazy resolution.
@@ -263,6 +270,7 @@ describe('ConcurrencyControlService', () => {
 				eventService,
 				globalConfig,
 				license,
+				new ProductionHold(),
 			);
 
 			// Fill the queue up to the cap. These first five pass through
@@ -305,6 +313,7 @@ describe('ConcurrencyControlService', () => {
 				eventService,
 				globalConfig,
 				license,
+				new ProductionHold(),
 			);
 
 			await service.throttle({ mode: 'evaluation', executionId: 'eval-1' });
@@ -332,6 +341,7 @@ describe('ConcurrencyControlService', () => {
 				eventService,
 				globalConfig,
 				license,
+				new ProductionHold(),
 			);
 
 			await service.throttle({ mode: 'evaluation', executionId: 'eval-1' });
@@ -368,6 +378,7 @@ describe('ConcurrencyControlService', () => {
 						eventService,
 						globalConfig,
 						license,
+						new ProductionHold(),
 					);
 					const enqueueSpy = vi.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
@@ -398,6 +409,7 @@ describe('ConcurrencyControlService', () => {
 						eventService,
 						globalConfig,
 						license,
+						new ProductionHold(),
 					);
 					const enqueueSpy = vi.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
@@ -426,6 +438,7 @@ describe('ConcurrencyControlService', () => {
 					eventService,
 					globalConfig,
 					license,
+					new ProductionHold(),
 				);
 				const enqueueSpy = vi.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
@@ -457,6 +470,7 @@ describe('ConcurrencyControlService', () => {
 						eventService,
 						globalConfig,
 						license,
+						new ProductionHold(),
 					);
 					const dequeueSpy = vi.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
@@ -487,6 +501,7 @@ describe('ConcurrencyControlService', () => {
 						eventService,
 						globalConfig,
 						license,
+						new ProductionHold(),
 					);
 					const dequeueSpy = vi.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
@@ -515,6 +530,7 @@ describe('ConcurrencyControlService', () => {
 					eventService,
 					globalConfig,
 					license,
+					new ProductionHold(),
 				);
 				const dequeueSpy = vi.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
@@ -546,6 +562,7 @@ describe('ConcurrencyControlService', () => {
 						eventService,
 						globalConfig,
 						license,
+						new ProductionHold(),
 					);
 					const removeSpy = vi.spyOn(ConcurrencyQueue.prototype, 'remove');
 
@@ -576,6 +593,7 @@ describe('ConcurrencyControlService', () => {
 						eventService,
 						globalConfig,
 						license,
+						new ProductionHold(),
 					);
 					const removeSpy = vi.spyOn(ConcurrencyQueue.prototype, 'remove');
 
@@ -604,6 +622,7 @@ describe('ConcurrencyControlService', () => {
 					eventService,
 					globalConfig,
 					license,
+					new ProductionHold(),
 				);
 				const removeSpy = vi.spyOn(ConcurrencyQueue.prototype, 'remove');
 
@@ -636,6 +655,7 @@ describe('ConcurrencyControlService', () => {
 						eventService,
 						globalConfig,
 						license,
+						new ProductionHold(),
 					);
 
 					vi.spyOn(ConcurrencyQueue.prototype, 'getAll').mockReturnValueOnce(
@@ -677,6 +697,7 @@ describe('ConcurrencyControlService', () => {
 					eventService,
 					globalConfig,
 					license,
+					new ProductionHold(),
 				);
 				// @ts-expect-error Private property
 				const queue = service.getQueue('webhook');
@@ -705,6 +726,7 @@ describe('ConcurrencyControlService', () => {
 					eventService,
 					globalConfig,
 					license,
+					new ProductionHold(),
 				);
 				// @ts-expect-error Private property
 				const queue = service.getQueue('evaluation');
@@ -737,6 +759,7 @@ describe('ConcurrencyControlService', () => {
 					eventService,
 					globalConfig,
 					license,
+					new ProductionHold(),
 				);
 				const enqueueSpy = vi.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
@@ -766,6 +789,7 @@ describe('ConcurrencyControlService', () => {
 					eventService,
 					globalConfig,
 					license,
+					new ProductionHold(),
 				);
 				const enqueueSpy = vi.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
@@ -796,6 +820,7 @@ describe('ConcurrencyControlService', () => {
 					eventService,
 					globalConfig,
 					license,
+					new ProductionHold(),
 				);
 				const dequeueSpy = vi.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
@@ -823,6 +848,7 @@ describe('ConcurrencyControlService', () => {
 					eventService,
 					globalConfig,
 					license,
+					new ProductionHold(),
 				);
 				const dequeueSpy = vi.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
@@ -852,6 +878,7 @@ describe('ConcurrencyControlService', () => {
 					eventService,
 					globalConfig,
 					license,
+					new ProductionHold(),
 				);
 				const removeSpy = vi.spyOn(ConcurrencyQueue.prototype, 'remove');
 
@@ -879,6 +906,7 @@ describe('ConcurrencyControlService', () => {
 					eventService,
 					globalConfig,
 					license,
+					new ProductionHold(),
 				);
 				const removeSpy = vi.spyOn(ConcurrencyQueue.prototype, 'remove');
 
@@ -916,6 +944,7 @@ describe('ConcurrencyControlService', () => {
 						eventService,
 						globalConfig,
 						license,
+						new ProductionHold(),
 					);
 
 					/**
@@ -951,6 +980,7 @@ describe('ConcurrencyControlService', () => {
 						eventService,
 						globalConfig,
 						license,
+						new ProductionHold(),
 					);
 
 					/**
@@ -985,6 +1015,7 @@ describe('ConcurrencyControlService', () => {
 						eventService,
 						globalConfig,
 						license,
+						new ProductionHold(),
 					);
 
 					/**
@@ -1007,6 +1038,12 @@ describe('ConcurrencyControlService', () => {
 	});
 
 	describe('production hold', () => {
+		let hold: ProductionHold;
+
+		beforeEach(() => {
+			hold = new ProductionHold();
+		});
+
 		const createService = () =>
 			new ConcurrencyControlService(
 				logger,
@@ -1015,6 +1052,7 @@ describe('ConcurrencyControlService', () => {
 				eventService,
 				globalConfig,
 				license,
+				hold,
 			);
 
 		/** Resolves with whether the throttled execution was let through. */
@@ -1031,13 +1069,13 @@ describe('ConcurrencyControlService', () => {
 			'should hold a new %s execution during a hold',
 			async (mode) => {
 				const service = createService();
-				service.startProductionHold();
+				hold.start();
 
 				const throttled = service.throttle({ mode, executionId: '1' });
 
 				expect(await isAdmitted(throttled)).toBe(false);
 				expect(service.has('1')).toBe(true);
-				expect(service.heldCount).toBe(1);
+				expect(hold.heldCount).toBe(1);
 			},
 		);
 
@@ -1045,41 +1083,28 @@ describe('ConcurrencyControlService', () => {
 			'should not hold a %s execution',
 			async (mode) => {
 				const service = createService();
-				service.startProductionHold();
+				hold.start();
 
 				expect(await isAdmitted(service.throttle({ mode, executionId: '1' }))).toBe(true);
 			},
 		);
 
-		it('should let held executions start oldest first, and only as many as asked', async () => {
-			const service = createService();
-			service.startProductionHold();
-			const first = service.throttle({ mode: 'webhook', executionId: '1' });
-			const second = service.throttle({ mode: 'webhook', executionId: '2' });
-			service.endProductionHold();
-
-			expect(service.admitHeld(1)).toBe(1);
-
-			expect(await isAdmitted(first)).toBe(true);
-			expect(await isAdmitted(second)).toBe(false);
-		});
-
 		it('should hold an arrival behind held executions after the hold ends', async () => {
 			const service = createService();
-			service.startProductionHold();
+			hold.start();
 			void service.throttle({ mode: 'webhook', executionId: '1' });
-			service.endProductionHold();
+			hold.end();
 
 			const arrival = service.throttle({ mode: 'webhook', executionId: '2' });
 
 			expect(await isAdmitted(arrival)).toBe(false);
-			expect(service.heldCount).toBe(2);
+			expect(hold.heldCount).toBe(2);
 		});
 
 		it('should not let a held execution start when a running execution ends', async () => {
 			const service = createService();
 			await service.throttle({ mode: 'manual', executionId: '1' });
-			service.startProductionHold();
+			hold.start();
 			const held = service.throttle({ mode: 'webhook', executionId: '2' });
 
 			service.release({ mode: 'manual' });
@@ -1089,12 +1114,12 @@ describe('ConcurrencyControlService', () => {
 
 		it('should never resume a held execution that is removed', async () => {
 			const service = createService();
-			service.startProductionHold();
+			hold.start();
 			const throttled = service.throttle({ mode: 'webhook', executionId: '1' });
 
 			service.remove({ mode: 'webhook', executionId: '1' });
-			service.endProductionHold();
-			service.admitHeld(10);
+			hold.end();
+			hold.admit(10);
 
 			expect(await isAdmitted(throttled)).toBe(false);
 			expect(service.has('1')).toBe(false);
@@ -1103,38 +1128,26 @@ describe('ConcurrencyControlService', () => {
 		it('should give back the queue place of a removed held execution', async () => {
 			globalConfig.executions.concurrency.productionLimit = 1;
 			const service = createService();
-			service.startProductionHold();
+			hold.start();
 			void service.throttle({ mode: 'webhook', executionId: '1' });
 			const queued = service.throttle({ mode: 'webhook', executionId: '2' });
 			await new Promise(process.nextTick);
 
 			service.remove({ mode: 'webhook', executionId: '1' });
-			service.endProductionHold();
-			service.admitHeld(10);
+			hold.end();
+			hold.admit(10);
 
 			expect(await isAdmitted(queued)).toBe(true);
 		});
 
 		it('should keep held executions held when disabled for shutdown', async () => {
 			const service = createService();
-			service.startProductionHold();
+			hold.start();
 			const throttled = service.throttle({ mode: 'webhook', executionId: '1' });
 
 			service.disable();
 
 			expect(await isAdmitted(throttled)).toBe(false);
-		});
-
-		it('should report when the oldest held execution started to wait', () => {
-			vi.useFakeTimers({ now: 1_000 });
-			const service = createService();
-			service.startProductionHold();
-			void service.throttle({ mode: 'webhook', executionId: '1' });
-			vi.setSystemTime(2_000);
-			void service.throttle({ mode: 'webhook', executionId: '2' });
-
-			expect(service.oldestHeldAt).toBe(1_000);
-			vi.useRealTimers();
 		});
 	});
 });

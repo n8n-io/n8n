@@ -22,6 +22,7 @@ import type { Telemetry } from '@/telemetry';
 import { HOLD_LIMIT_MS } from '../memory-guard.constants';
 import { MemoryGuardService } from '../memory-guard.service';
 import { readMemoryUsage } from '../memory-usage';
+import { ProductionHold } from '../production-hold';
 import type { RunDataEstimate, RunDataTracker } from '../run-data-tracker';
 import { StoppedExecutions } from '../stopped-executions';
 
@@ -49,6 +50,7 @@ describe('MemoryGuardService', () => {
 	const guardLogger = mock<Logger>();
 	logger.scoped.mockReturnValue(guardLogger);
 
+	let productionHold: ProductionHold;
 	let concurrencyControl: ConcurrencyControlService;
 	let stoppedExecutions: StoppedExecutions;
 	let guard: MemoryGuardService;
@@ -147,6 +149,7 @@ describe('MemoryGuardService', () => {
 		});
 		tracker.getEstimate.mockImplementation((id) => estimates.get(id));
 
+		productionHold = new ProductionHold();
 		concurrencyControl = new ConcurrencyControlService(
 			mockLogger(),
 			mock<ExecutionRepository>(),
@@ -154,12 +157,13 @@ describe('MemoryGuardService', () => {
 			mock<EventService>(),
 			globalConfig,
 			mock<License>(),
+			productionHold,
 		);
 		stoppedExecutions = new StoppedExecutions();
 		guard = new MemoryGuardService(
 			logger,
 			activeExecutions,
-			concurrencyControl,
+			productionHold,
 			tracker,
 			stoppedExecutions,
 		);
@@ -248,23 +252,23 @@ describe('MemoryGuardService', () => {
 
 			utilization = 0.78;
 			await sample();
-			expect(concurrencyControl.heldCount).toBe(4);
+			expect(productionHold.heldCount).toBe(4);
 
 			utilization = 0.7;
 			await sample();
-			expect(concurrencyControl.heldCount).toBe(3);
+			expect(productionHold.heldCount).toBe(3);
 			expect(guardLogger.info).toHaveBeenCalledWith(
 				expect.stringContaining('letting held executions start'),
 			);
 
 			await sample();
-			expect(concurrencyControl.heldCount).toBe(3);
+			expect(productionHold.heldCount).toBe(3);
 
 			await vi.advanceTimersByTimeAsync(1_000);
-			expect(concurrencyControl.heldCount).toBe(1);
+			expect(productionHold.heldCount).toBe(1);
 
 			await vi.advanceTimersByTimeAsync(1_000);
-			expect(concurrencyControl.heldCount).toBe(0);
+			expect(productionHold.heldCount).toBe(0);
 			await Promise.all(held);
 		});
 
@@ -279,15 +283,15 @@ describe('MemoryGuardService', () => {
 
 			utilization = 0.6;
 			await sample();
-			expect(concurrencyControl.heldCount).toBe(3);
+			expect(productionHold.heldCount).toBe(3);
 
 			utilization = 0.7;
 			await vi.advanceTimersByTimeAsync(1_000);
-			expect(concurrencyControl.heldCount).toBe(2);
+			expect(productionHold.heldCount).toBe(2);
 
 			utilization = 0.7;
 			await vi.advanceTimersByTimeAsync(1_000);
-			expect(concurrencyControl.heldCount).toBe(0);
+			expect(productionHold.heldCount).toBe(0);
 			await Promise.all(held);
 		});
 	});
