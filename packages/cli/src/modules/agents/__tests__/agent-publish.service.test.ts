@@ -8,7 +8,6 @@ import type { User, TransactionRunner, OperationContext, Transaction } from '@n8
 import { Container } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { QueryFailedError } from '@n8n/typeorm';
-import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -1250,7 +1249,7 @@ describe('AgentPublishService', () => {
 			const [[saved, saveCtx]] = agentHistoryRepository.saveVersion.mock.calls;
 			// The legacy columns keep the refs, so a rollback still finds the published skills.
 			expect(saved.schema?.skills).toEqual(skillRefs);
-			expect(refsService.versionSnapshot).toHaveBeenCalledWith(agent, ctx, false);
+			expect(refsService.versionSnapshot).toHaveBeenCalledWith(agent, ctx);
 			expect(refsService.pinVersion).toHaveBeenCalledWith(
 				saved.versionId,
 				expect.objectContaining({ pins: expect.any(Map) }),
