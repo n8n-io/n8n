@@ -18,8 +18,6 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
-import { SkillRepository } from '@/modules/skills/skill.repository';
-import { toAgentSkill } from '@/modules/skills/skill.service';
 import { SkillsApiService } from '@/modules/skills/skills-api.service';
 import { Telemetry } from '@/telemetry';
 
@@ -32,17 +30,22 @@ const SKILL_MD_URI_PATTERN = /^skill:\/\/([^/]+)\/([^/]+)\/SKILL\.md$/;
 const listParams = z.object({ cursor: z.string().regex(/^\d+$/).optional() });
 const getParams = z.object({ uri: z.string() });
 
-export function toSkillName(hubName: string): string {
-	const name = hubName
+function toSlug(text: string): string {
+	return text
+		.normalize('NFKD')
+		.replace(/\p{M}/gu, '')
 		.toLowerCase()
 		.replace(/[^a-z0-9]+/g, '-')
 		.slice(0, SKILL_NAME_MAX_LENGTH)
 		.replace(/^-|-$/g, '');
-	return name || 'skill';
+}
+
+export function toSkillName(hubName: string, skillId: string): string {
+	return toSlug(hubName) || toSlug(skillId);
 }
 
 function skillFiles(skill: AgentSkill, name: string) {
-	const skillMd = `---\nname: ${name}\ndescription: ${JSON.stringify(skill.description)}\n---\n\n${skill.instructions}\n`;
+	const skillMd = `---\nname: ${JSON.stringify(name)}\ndescription: ${JSON.stringify(skill.description)}\n---\n\n${skill.instructions}\n`;
 	return [{ path: SKILL_MD_PATH, content: skillMd }, ...(skill.references ?? [])];
 }
 
@@ -60,7 +63,7 @@ function fileResource(uri: string, content: string) {
 }
 
 export function toSkillEntry(skillId: string, skill: AgentSkill) {
-	const name = toSkillName(skill.name);
+	const name = toSkillName(skill.name, skillId);
 	const root = `skill://${skillId}/${name}`;
 	const [skillMd, ...references] = skillFiles(skill, name).map((file) =>
 		fileResource(`${root}/${toUriPath(file.path)}`, file.content),
@@ -77,7 +80,6 @@ export function toSkillEntry(skillId: string, skill: AgentSkill) {
 export class McpSkillExtensionService {
 	constructor(
 		private readonly skillsApi: SkillsApiService,
-		private readonly skillRepository: SkillRepository,
 		private readonly telemetry: Telemetry,
 	) {}
 
@@ -96,7 +98,7 @@ export class McpSkillExtensionService {
 		server.server.setRequestHandler('skills/get', { params: getParams }, async ({ uri }) => {
 			const [, skillId = '', name] = SKILL_MD_URI_PATTERN.exec(uri) ?? [];
 			const detail = await this.readableSkill(user, skillId);
-			if (!detail || toSkillName(detail.skill.name) !== name) {
+			if (!detail || toSkillName(detail.skill.name, skillId) !== name) {
 				throw new ProtocolError(ProtocolErrorCode.InvalidParams, `Unknown skill: ${uri}`);
 			}
 			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.MCP_LISTED_SKILLS, {
@@ -104,7 +106,7 @@ export class McpSkillExtensionService {
 				method: 'skills/get',
 				count: 1,
 			});
-			return { skill: toSkillEntry(skillId, detail.skill) };
+			return { skill: toSkillEntry(skillId, detail.skill), ttlMs: 0, cacheScope: 'private' };
 		});
 
 		server.registerResource(
@@ -113,7 +115,7 @@ export class McpSkillExtensionService {
 			{ description: 'A file of a skills hub skill' },
 			async (uri, { skillId, name, path }) => {
 				const detail = typeof skillId === 'string' ? await this.readableSkill(user, skillId) : null;
-				const skillName = detail ? toSkillName(detail.skill.name) : undefined;
+				const skillName = detail ? toSkillName(detail.skill.name, detail.id) : undefined;
 				const file =
 					detail && skillName === name
 						? skillFiles(detail.skill, skillName).find(
@@ -136,27 +138,22 @@ export class McpSkillExtensionService {
 	}
 
 	private async list(user: User, skip: number) {
-		const { count, data } = await this.skillsApi.list(
+		const { count, data } = await this.skillsApi.listContents(
 			user,
 			ListSkillsQueryDto.parse({ skip: String(skip), take: String(SKILLS_MAX_PAGE_SIZE) }),
 		);
-		const ids = data
+		const skills = data
 			.filter((item) => item.scope !== 'agent' && item.availableToMCP)
-			.map((item) => item.id);
-		const rows = await this.skillRepository.findLatestSaved(ids);
-		const skills = ids.flatMap((id) => {
-			const row = rows.get(id);
-			return row ? [toSkillEntry(id, toAgentSkill(row))] : [];
-		});
+			.map((item) => toSkillEntry(item.id, item.skill));
 		this.telemetry.track(TELEMETRY_EVENT.CONTEXT.MCP_LISTED_SKILLS, {
 			user_id: user.id,
 			method: 'skills/list',
 			count: skills.length,
 		});
-		const next = skip + data.length;
+		const next = skip + SKILLS_MAX_PAGE_SIZE;
 		return {
 			skills,
-			ttlMs: 0,
+			ttlMs: 60_000,
 			cacheScope: 'private',
 			...(next < count ? { nextCursor: String(next) } : {}),
 		};

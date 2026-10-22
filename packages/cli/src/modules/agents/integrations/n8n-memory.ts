@@ -70,14 +70,31 @@ import { AgentObservationRepository } from '../repositories/agent-observation.re
 import { AgentResourceRepository } from '../repositories/agent-resource.repository';
 import { AgentThreadRepository } from '../repositories/agent-thread.repository';
 import { EXECUTION_METADATA_KEY } from '../types/agent-queued-message';
-import {
-	episodicMemoryWriteScopeId,
-	isIntegrationMemoryResourceId,
-	threadMemoryResourceId,
-} from '../utils/agent-memory-scope';
+import { isIntegrationMemoryResourceId } from '../utils/agent-memory-scope';
 
-/** Bounds the `IN` list of thread scopes one recall reads; older threads fall out first. */
-const EPISODIC_MEMORY_MAX_THREAD_SCOPES = 200;
+/**
+ * Integration chats are shared conversations, so each channel resolves its own
+ * scope. A turn on an integration resource without one has no owner: it must
+ * not capture, and it recalls nothing. Other runs keep their resource as scope.
+ */
+function episodicWriteScopeId(scope: Pick<EpisodicMemoryScope, 'resourceId' | 'episodic'>): string {
+	if (scope.episodic) return scope.episodic.writeScopeId;
+	if (isIntegrationMemoryResourceId(scope.resourceId)) {
+		throw new UnexpectedError('An integration turn needs a resolved episodic memory scope');
+	}
+	return scope.resourceId;
+}
+
+/** The write scope as a list: empty when the turn has no owner, so reads stay empty. */
+function episodicWriteScopeIds(scope: EpisodicMemoryScope): string[] {
+	const hasOwner = scope.episodic !== undefined || !isIntegrationMemoryResourceId(scope.resourceId);
+	return hasOwner ? [episodicWriteScopeId(scope)] : [];
+}
+
+function episodicReadScopeIds(scope: EpisodicMemoryScope): string[] {
+	if (scope.episodic) return scope.episodic.readScopeIds;
+	return isIntegrationMemoryResourceId(scope.resourceId) ? [] : [scope.resourceId];
+}
 
 @Service()
 export class N8nMemory {
@@ -585,11 +602,12 @@ export class N8nMemoryImpl
 	private async enqueueEpisodicMemoryCaptureCandidate(
 		candidate: NewEpisodicMemoryCaptureCandidate,
 	): Promise<EpisodicMemoryCaptureCandidate> {
-		const resourceId = episodicMemoryWriteScopeId(candidate);
+		const resourceId = episodicWriteScopeId(candidate);
 		await this.resourceRepository.ensureExists(resourceId);
+		const { episodic: _episodic, ...candidateData } = candidate;
 		const entity = await this.memoryEntryCandidateRepository.enqueueCandidate({
 			agentId: this.agentId,
-			...candidate,
+			...candidateData,
 			resourceId,
 		});
 		return this.toEpisodicMemoryCaptureCandidate(entity);
@@ -601,7 +619,7 @@ export class N8nMemoryImpl
 	): Promise<EpisodicMemoryCaptureCandidate[]> {
 		const entities = await this.memoryEntryCandidateRepository.findPendingForResource(
 			this.agentId,
-			episodicMemoryWriteScopeId(scope),
+			episodicWriteScopeId(scope),
 			opts?.limit ?? 100,
 		);
 		return entities.map((entity) => this.toEpisodicMemoryCaptureCandidate(entity));
@@ -626,7 +644,7 @@ export class N8nMemoryImpl
 		scope: EpisodicMemoryScope,
 		opts: { ttlMs: number; holderId: string },
 	): Promise<EpisodicMemoryTaskLockHandle | null> {
-		const resourceId = episodicMemoryWriteScopeId(scope);
+		const resourceId = episodicWriteScopeId(scope);
 		await this.resourceRepository.ensureExists(resourceId);
 
 		const now = new Date();
@@ -682,7 +700,7 @@ export class N8nMemoryImpl
 	): Promise<EpisodicMemoryEntry[]> {
 		const entities = await this.memoryEntryRepository.findByContentHashes(
 			this.agentId,
-			episodicMemoryWriteScopeId(scope),
+			episodicWriteScopeId(scope),
 			contentHashes,
 		);
 		return entities.map((entity) => this.toEpisodicMemoryEntry(entity));
@@ -692,15 +710,13 @@ export class N8nMemoryImpl
 		entry: NewEpisodicMemoryEntry,
 		sources: NewEpisodicMemoryEntrySourceForEntry[],
 	): Promise<EpisodicMemoryEntry | null> {
-		const sourceThreadId = sources[0]?.threadId;
-		const resourceId = sourceThreadId
-			? episodicMemoryWriteScopeId({ resourceId: entry.resourceId, threadId: sourceThreadId })
-			: entry.resourceId;
+		const { episodic: _episodic, ...entryData } = entry;
+		const resourceId = episodicWriteScopeId(entry);
 		await this.resourceRepository.ensureExists(resourceId);
 
 		const persisted = await this.memoryEntryRepository.saveEntryWithSources(
 			this.agentId,
-			{ ...entry, resourceId },
+			{ ...entryData, resourceId },
 			sources,
 			{},
 		);
@@ -715,8 +731,9 @@ export class N8nMemoryImpl
 		const statuses = opts?.includeStatuses ?? ['active'];
 		// Reflection must not pull entries from other scopes into a shared thread.
 		const resourceIds = opts?.writeScopeOnly
-			? [episodicMemoryWriteScopeId(scope)]
-			: await this.episodicMemoryReadScopeIds(scope);
+			? episodicWriteScopeIds(scope)
+			: episodicReadScopeIds(scope);
+		if (resourceIds.length === 0) return [];
 		const entities = await this.memoryEntryRepository.find({
 			where: {
 				agentId: this.agentId,
@@ -736,25 +753,6 @@ export class N8nMemoryImpl
 			query,
 			opts,
 		);
-	}
-
-	/**
-	 * Own scope plus every integration thread the resource has posted in: a
-	 * participant recalls a thread's notes wherever they ask, and a late joiner
-	 * gets them as soon as they post there.
-	 */
-	private async episodicMemoryReadScopeIds(scope: EpisodicMemoryScope): Promise<string[]> {
-		if (!isIntegrationMemoryResourceId(scope.resourceId)) return [scope.resourceId];
-		const threadIds = await this.messageRepository.findRecentThreadIdsByResourceId(
-			this.agentId,
-			scope.resourceId,
-			EPISODIC_MEMORY_MAX_THREAD_SCOPES,
-		);
-		return uniqueStrings([
-			scope.resourceId,
-			threadMemoryResourceId(scope.threadId),
-			...threadIds.map(threadMemoryResourceId),
-		]);
 	}
 
 	private async getEpisodicMemoryEntrySources(
@@ -795,7 +793,7 @@ export class N8nMemoryImpl
 		reflection: EpisodicMemoryReflectionApply,
 	): Promise<EpisodicMemoryReflectionResult> {
 		// Recall spans several scopes; lifecycle changes stay inside the one being written.
-		const resourceId = episodicMemoryWriteScopeId(scope);
+		const resourceId = episodicWriteScopeId(scope);
 		return await this.memoryEntryRepository.manager.transaction(async (trx) => {
 			const entryRepo = trx.getRepository(AgentMemoryEntryEntity);
 			const sourceRepo = trx.getRepository(AgentMemoryEntrySourceEntity);

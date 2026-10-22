@@ -7,7 +7,6 @@ import { createHash } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 import { parse as parseYaml } from 'yaml';
 
-import type { ResolvedSkillRow, SkillRepository } from '@/modules/skills/skill.repository';
 import type { SkillsApiService } from '@/modules/skills/skills-api.service';
 import type { Telemetry } from '@/telemetry';
 
@@ -36,12 +35,13 @@ describe('toSkillName', () => {
 	it.each([
 		['Release Notes Writer', 'release-notes-writer'],
 		['  --Brand   voice!!  ', 'brand-voice'],
-		['Ünïcode Skill', 'n-code-skill'],
-		['!!!', 'skill'],
+		['Ünïcode Skill', 'unicode-skill'],
+		['!!!', 'skill-a1'],
+		['Заметки', 'skill-a1'],
 		[`${'a'.repeat(63)} b`, 'a'.repeat(63)],
 		['x'.repeat(128), 'x'.repeat(64)],
 	])('converts %j to %j', (hubName, expected) => {
-		expect(toSkillName(hubName)).toBe(expected);
+		expect(toSkillName(hubName, 'skill_a1')).toBe(expected);
 	});
 });
 
@@ -61,7 +61,7 @@ describe('toSkillEntry', () => {
 		skillsApi.get.mockResolvedValue(
 			mock<SkillDetail>({ scope: 'instance', availableToMCP: true, skill: releaseNotes }),
 		);
-		const client = await connect(new McpSkillExtensionService(skillsApi, mock(), mock()));
+		const client = await connect(new McpSkillExtensionService(skillsApi, mock()));
 
 		const read = await client.request('resources/read', { uri: entry.uri });
 
@@ -72,9 +72,24 @@ describe('toSkillEntry', () => {
 		});
 	});
 
+	it.each(['2025', 'True', 'Null'])(
+		'keeps the name %j a string in the served SKILL.md frontmatter',
+		async (hubName) => {
+			const skill = { ...releaseNotes, name: hubName };
+			const skillsApi = mock<SkillsApiService>();
+			skillsApi.get.mockResolvedValue(mock<SkillDetail>({ scope: 'instance', skill }));
+			const client = await connect(new McpSkillExtensionService(skillsApi, mock()));
+			const skillEntry = toSkillEntry('skill_a1', skill);
+
+			const read = await client.request('resources/read', { uri: skillEntry.uri });
+
+			expect(skillMarkdown(read.result.contents[0].text)).toEqual(skillEntry.frontmatter);
+		},
+	);
+
 	it('gives the digest and byte size of every file, and the SKILL.md digest at top level', () => {
 		const skillMd =
-			'---\nname: release-notes-writer\ndescription: "Write release notes: \\"short\\" and clear — für alle"\n---\n\nRead references/style.md first.\n';
+			'---\nname: "release-notes-writer"\ndescription: "Write release notes: \\"short\\" and clear — für alle"\n---\n\nRead references/style.md first.\n';
 		const style = '# Style\n\nUse the active voice. ✓';
 
 		expect(entry.resources).toEqual([
@@ -138,21 +153,21 @@ async function connect(extension: McpSkillExtensionService) {
 
 describe('McpSkillExtensionService', () => {
 	const skillsApi = mock<SkillsApiService>();
-	const skillRepository = mock<SkillRepository>();
 	const telemetry = mock<Telemetry>();
-	const service = new McpSkillExtensionService(skillsApi, skillRepository, telemetry);
+	const service = new McpSkillExtensionService(skillsApi, telemetry);
 
-	const item = (id: string, scope: SkillListItem['scope'], availableToMCP = true) =>
-		mock<SkillListItem>({ id, scope, availableToMCP });
-	const row = (skill: AgentSkill) =>
-		mock<ResolvedSkillRow>({
-			version: {
-				name: skill.name,
-				description: skill.description,
-				instructions: skill.instructions,
-			},
-			files: skill.references ?? [],
-		});
+	const item = (
+		id: string,
+		scope: SkillListItem['scope'],
+		availableToMCP = true,
+		skill = releaseNotes,
+	) => ({
+		...mock<SkillListItem>({ id, scope }),
+		id,
+		scope,
+		availableToMCP,
+		skill,
+	});
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -181,16 +196,14 @@ describe('McpSkillExtensionService', () => {
 
 	describe('skills/list', () => {
 		it('lists the skills the user can read, without agent skills', async () => {
-			skillsApi.list.mockResolvedValue({
+			skillsApi.listContents.mockResolvedValue({
 				count: 2,
 				data: [item('skill_a1', 'instance'), item('skill_agent', 'agent')],
 			});
-			skillRepository.findLatestSaved.mockResolvedValue(new Map([['skill_a1', row(releaseNotes)]]));
 			const client = await connect(service);
 
 			const { result } = await client.request('skills/list', {});
 
-			expect(skillRepository.findLatestSaved).toHaveBeenCalledWith(['skill_a1']);
 			expect(result.skills).toEqual([toSkillEntry('skill_a1', releaseNotes)]);
 			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.MCP_LISTED_SKILLS, {
 				user_id: 'user-1',
@@ -198,35 +211,39 @@ describe('McpSkillExtensionService', () => {
 				count: 1,
 			});
 			expect(result.nextCursor).toBeUndefined();
-			expect(result).toMatchObject({ resultType: 'complete', ttlMs: 0, cacheScope: 'private' });
+			expect(result).toMatchObject({
+				resultType: 'complete',
+				ttlMs: 60_000,
+				cacheScope: 'private',
+			});
 		});
 
 		it('lists only the skills that are available to MCP', async () => {
-			skillsApi.list.mockResolvedValue({
+			skillsApi.listContents.mockResolvedValue({
 				count: 2,
 				data: [item('skill_a1', 'instance'), item('skill_off', 'project', false)],
 			});
-			skillRepository.findLatestSaved.mockResolvedValue(new Map([['skill_a1', row(releaseNotes)]]));
 			const client = await connect(service);
 
 			const { result } = await client.request('skills/list', {});
 
-			expect(skillRepository.findLatestSaved).toHaveBeenCalledWith(['skill_a1']);
 			expect(result.skills).toEqual([toSkillEntry('skill_a1', releaseNotes)]);
 		});
 
 		it('pages with an offset cursor', async () => {
-			skillsApi.list.mockResolvedValue({ count: 250, data: [item('skill_a1', 'instance')] });
-			skillRepository.findLatestSaved.mockResolvedValue(new Map());
+			skillsApi.listContents.mockResolvedValue({
+				count: 250,
+				data: [item('skill_a1', 'instance')],
+			});
 			const client = await connect(service);
 
 			const { result } = await client.request('skills/list', { cursor: '100' });
 
-			expect(skillsApi.list).toHaveBeenCalledWith(
+			expect(skillsApi.listContents).toHaveBeenCalledWith(
 				expect.anything(),
 				expect.objectContaining({ skip: 100, take: 100 }),
 			);
-			expect(result.nextCursor).toBe('101');
+			expect(result.nextCursor).toBe('200');
 		});
 	});
 
@@ -239,7 +256,7 @@ describe('McpSkillExtensionService', () => {
 			});
 
 			expect(result.skill).toEqual(toSkillEntry('skill_a1', releaseNotes));
-			expect(result.resultType).toBe('complete');
+			expect(result).toMatchObject({ resultType: 'complete', ttlMs: 0, cacheScope: 'private' });
 			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.MCP_LISTED_SKILLS, {
 				user_id: 'user-1',
 				method: 'skills/get',

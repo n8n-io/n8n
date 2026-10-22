@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import type { SkillListItem } from '@n8n/api-types';
 import {
 	N8nActionToggle,
+	N8nBadge,
 	N8nDataTableServer,
 	N8nIcon,
 	N8nText,
@@ -34,6 +35,7 @@ const props = defineProps<{
 	skills: SkillListItem[];
 	itemsLength: number;
 	loading?: boolean;
+	showAssistantAvailability?: boolean;
 	/** The table renders its cover row whenever the slot exists, so the slot is withheld. */
 	showEmpty?: boolean;
 	showAvailableToMCP?: boolean;
@@ -170,12 +172,28 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 
 			<template #[`item.name`]="{ item }">
 				<div :class="$style.skillCell">
-					<div :class="$style.nameRow">
+					<div :class="$style.skillTitle">
 						<N8nText size="medium" color="text-dark" data-test-id="skill-name">
 							{{ item.name }}
 						</N8nText>
 						<N8nTooltip
-							v-if="props.showAvailableToMCP && item.availableToMCP"
+							v-if="
+								props.showAssistantAvailability &&
+								item.scope !== 'agent' &&
+								item.availableToAssistant
+							"
+							:content="i18n.baseText('settings.context.skills.assistant.label')"
+						>
+							<N8nBadge
+								variant="secondary"
+								leading-icon="n8n-assistant"
+								data-test-id="skill-assistant-badge"
+							>
+								{{ i18n.baseText('settings.context.skills.assistant.badge') }}
+							</N8nBadge>
+						</N8nTooltip>
+						<N8nTooltip
+							v-if="props.showAvailableToMCP && item.scope !== 'agent' && item.availableToMCP"
 							placement="right"
 							:content="i18n.baseText('settings.context.skills.modal.mcp.label')"
 						>
@@ -226,7 +244,6 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 				<div :class="$style.actions" @click.stop>
 					<N8nActionToggle
 						:actions="actionsFor(item)"
-						icon-orientation="vertical"
 						data-test-id="skill-actions"
 						@action="(action: SkillAction) => onAction(item, action)"
 					/>
@@ -244,16 +261,16 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 	min-width: 0;
 }
 
-.nameRow {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	min-width: 0;
-}
-
 .creator {
 	padding-block: var(--spacing--2xs);
 	min-width: 0;
+}
+
+.skillTitle {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs);
 }
 
 .description {
