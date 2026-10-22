@@ -7,7 +7,11 @@ import { TokenExpiredError } from 'jsonwebtoken';
 
 import { isApiKeyAuthEnabled } from '@/public-api';
 
-import type { AuthStrategy, AuthStrategyOptions } from '@n8n/backend-services/auth';
+import type {
+	AuthStrategy,
+	AuthStrategyOptions,
+	AuthStrategyResult,
+} from '@n8n/backend-services/auth';
 import { JwtService, API_KEY_PURPOSES } from '@n8n/backend-services';
 import { API_KEY_AUDIENCE, API_KEY_ISSUER, PREFIX_LEGACY_API_KEY } from './public-api-key.service';
 
@@ -81,24 +85,27 @@ export class ApiKeyAuthStrategy implements AuthStrategy {
 			});
 	}
 
-	async authenticate(req: AuthenticatedRequest): Promise<boolean | null> {
+	async authenticate(req: AuthenticatedRequest): Promise<AuthStrategyResult> {
 		// Abstain when API-key auth is disabled so other strategies (e.g. session
 		// cookie) can still authenticate the request.
-		if (!isApiKeyAuthEnabled()) return null;
+		if (!isApiKeyAuthEnabled()) return { outcome: 'abstained' };
 
 		const providedApiKey = req.headers[API_KEY_HEADER];
 
-		if (typeof providedApiKey !== 'string' || !providedApiKey) return null;
+		if (typeof providedApiKey !== 'string' || !providedApiKey) return { outcome: 'abstained' };
 
 		const tokenGrant = await this.buildTokenGrant(providedApiKey);
 
-		if (tokenGrant === false || tokenGrant === null) {
-			return tokenGrant;
+		if (tokenGrant === false) {
+			return { outcome: 'rejected' };
+		}
+		if (tokenGrant === null) {
+			return { outcome: 'abstained' };
 		}
 
 		req.user = tokenGrant.subject;
 		req.tokenGrant = tokenGrant;
 
-		return true;
+		return { outcome: 'authenticated' };
 	}
 }

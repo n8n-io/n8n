@@ -168,7 +168,7 @@ beforeEach(() => {
 			subject: authenticatedUser,
 			...(typeof apiKeyId === 'string' && { apiKeyId }),
 		};
-		return true;
+		return { authenticated: true };
 	});
 	lastActiveAtService.updateLastActiveIfStale.mockResolvedValue(undefined);
 	Container.set(ControllerRegistryMetadata, new ControllerRegistryMetadata());

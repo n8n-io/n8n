@@ -15,7 +15,7 @@ import {
 	type Scope,
 } from '@n8n/permissions';
 
-import type { AuthStrategy } from '@n8n/backend-services/auth';
+import type { AuthStrategy, AuthStrategyResult } from '@n8n/backend-services/auth';
 import { JwtService } from '@n8n/backend-services';
 
 import { PublicApiProtectedResource } from './public-api-protected-resource';
@@ -45,27 +45,34 @@ export class PublicApiOAuthStrategy implements AuthStrategy {
 		return isUrlIssuer(this.jwtService.decodeUnverified<{ iss?: unknown } | null>(token)?.iss);
 	}
 
-	async authenticate(req: AuthenticatedRequest): Promise<boolean | null> {
+	async authenticate(req: AuthenticatedRequest): Promise<AuthStrategyResult> {
 		const isAvailable = await this.resource.isAvailable();
 		if (!isAvailable) {
-			return null;
+			return { outcome: 'abstained' };
 		}
 
+		const inbound = inboundFrom(this.resource, inboundRequestOf(req));
+
 		// Routing, not verification: a bearer another strategy owns is left to it.
-		const extracted = extractBearer(inboundFrom(this.resource, inboundRequestOf(req)));
-		if (!extracted.ok || !this.isOAuthIssuer(extracted.value.credential.token)) {
-			return null;
+		const extracted = extractBearer(inbound);
+		if (!extracted.ok) {
+			if (extracted.reason !== 'no-credential') return { outcome: 'abstained' };
+			const refused = this.admission.refuse(inbound, 'no-credential');
+			return { outcome: 'abstained', challenge: await this.admission.challenge(refused) };
+		}
+
+		if (!this.isOAuthIssuer(extracted.value.credential.token)) {
+			return { outcome: 'abstained' };
 		}
 
 		const admitted = await this.admission.admit(this.resource, extracted.value);
 		if (!admitted.ok) {
-			req.res?.setHeader('WWW-Authenticate', await this.admission.challenge(admitted));
-			return false;
+			return { outcome: 'rejected', challenge: await this.admission.challenge(admitted) };
 		}
 
 		const user = await this.userRepository.findByIdWithRole(admitted.context.subject.id);
 		if (!user) {
-			return false;
+			return { outcome: 'rejected' };
 		}
 
 		// Only API key scopes narrow the grant. An external IdP's own scopes (`openid`, ...) are
@@ -82,6 +89,6 @@ export class PublicApiOAuthStrategy implements AuthStrategy {
 		req.ctx = {
 			security: admitted.context,
 		};
-		return true;
+		return { outcome: 'authenticated' };
 	}
 }

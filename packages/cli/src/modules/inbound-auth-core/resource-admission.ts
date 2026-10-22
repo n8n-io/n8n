@@ -67,7 +67,8 @@ export class InboundResourceAdmission extends ResourceAdmission {
 	 * Carries no token, no external subject and no email.
 	 */
 	refuse(inbound: Inbound, reason: RefusalReason, context?: SecurityContext): Refused {
-		this.logger.warn('Inbound authentication denied', {
+		const level = reason === 'no-credential' ? 'debug' : 'warn';
+		this.logger[level]('Inbound authentication denied', {
 			surface: inbound.surface,
 			resource: inbound.resource.url,
 			sourceId: context?.subjectClaim?.sourceId,

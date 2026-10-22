@@ -3,22 +3,27 @@ import { Service } from '@n8n/di';
 
 import type { AuthStrategy, AuthStrategyOptions } from './auth-strategy.types';
 
+export type AuthenticationOutcome =
+	| { authenticated: true }
+	| { authenticated: false; challenges: string[] };
+
 /**
  * Ordered registry of AuthStrategy implementations for the public API.
  *
- * Each strategy returns:
- *   null  — abstain (try next strategy)
- *   false — fail fast (stop chain, request is unauthenticated)
- *   true  — success (stop chain, request is authenticated)
+ * Each strategy answers with an outcome:
+ *   abstained     — try the next strategy
+ *   rejected      — stop the chain, the request is unauthenticated
+ *   authenticated — stop the chain, the request is authenticated
  *
- * If all strategies abstain the request is treated as unauthenticated.
+ * If all strategies abstain the request is treated as unauthenticated. The challenges of every
+ * strategy asked travel with the unauthenticated outcome, so the caller can put them on the 401.
  *
  * Register a strategy (e.g. from a module init):
  *   Container.get(AuthStrategyRegistry).register(myStrategy);
  *
  * Evaluate strategies (e.g. from auth middleware):
- *   const authenticated = await registry.authenticate(req);
- *   if (!authenticated) return false;
+ *   const result = await registry.authenticate(req);
+ *   if (!result.authenticated) res.setHeader('WWW-Authenticate', result.challenges.join(', '));
  */
 @Service()
 export class AuthStrategyRegistry {
@@ -43,14 +48,15 @@ export class AuthStrategyRegistry {
 		return null;
 	}
 
-	async authenticate(req: AuthenticatedRequest): Promise<boolean> {
+	async authenticate(req: AuthenticatedRequest): Promise<AuthenticationOutcome> {
+		const challenges: string[] = [];
 		for (const strategy of this.strategies) {
 			const result = await strategy.authenticate(req);
-			if (result !== null) {
-				return result; // true = success, false = fail fast
-			}
-			// null = this strategy abstained, continue to next
+			if (result.outcome === 'authenticated') return { authenticated: true };
+			if (result.challenge) challenges.push(result.challenge);
+			if (result.outcome === 'rejected') break;
+			// abstained: continue to the next strategy
 		}
-		return false; // all strategies abstained = unauthenticated
+		return { authenticated: false, challenges };
 	}
 }

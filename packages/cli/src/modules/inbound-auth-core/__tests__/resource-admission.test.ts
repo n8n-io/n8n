@@ -83,12 +83,13 @@ describe('InboundResourceAdmission', () => {
 			expect(logger.warn).not.toHaveBeenCalled();
 		});
 
-		it('refuses an empty token with no-credential without running the pipeline', async () => {
+		it('refuses an empty token with no-credential at debug level, without running the pipeline', async () => {
 			const result = await admission.admitBearer(resource, REQUEST, '');
 
 			expect(result).toEqual({ ok: false, reason: 'no-credential', advertised });
 			expect(pipeline.run).not.toHaveBeenCalled();
-			expect(logger.warn).toHaveBeenCalledWith('Inbound authentication denied', {
+			expect(logger.warn).not.toHaveBeenCalled();
+			expect(logger.debug).toHaveBeenCalledWith('Inbound authentication denied', {
 				surface: 'trigger',
 				resource: RESOURCE_URL,
 				sourceId: undefined,

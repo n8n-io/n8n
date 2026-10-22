@@ -80,15 +80,33 @@ describe('PublicApiOAuthStrategy', () => {
 	});
 
 	describe('authenticate', () => {
+		it('abstains with the bare discovery challenge when the request has no Authorization header', async () => {
+			const { req, res } = makeReq({});
+
+			expect(await strategy.authenticate(req)).toEqual({
+				outcome: 'abstained',
+				challenge: CHALLENGE,
+			});
+
+			expect(pipeline.run).not.toHaveBeenCalled();
+			expect(authenticationService.advertise).toHaveBeenCalledWith(
+				expect.objectContaining({
+					surface: 'public-api',
+					resource: { url: RESOURCE_URL, acceptedAudiences: [RESOURCE_URL] },
+				}),
+			);
+			expect(res.setHeader).not.toHaveBeenCalled();
+		});
+
 		it.each([
-			['no Authorization header', {}],
 			['a non-bearer Authorization header', { authorization: 'Basic dXNlcjpwYXNz' }],
 			['a bearer that is not a JWT', { authorization: 'Bearer not-a-jwt' }],
-		])('abstains with %s', async (_name, headers) => {
+		])('abstains without a challenge with %s', async (_name, headers) => {
 			const { req } = makeReq(headers);
 
-			expect(await strategy.authenticate(req)).toBeNull();
+			expect(await strategy.authenticate(req)).toEqual({ outcome: 'abstained' });
 			expect(pipeline.run).not.toHaveBeenCalled();
+			expect(authenticationService.advertise).not.toHaveBeenCalled();
 		});
 
 		it.each(['n8n', 'n8n-token-exchange', 'urn:example:idp', 'ftp://idp.example', ''])(
@@ -96,18 +114,25 @@ describe('PublicApiOAuthStrategy', () => {
 			async (iss) => {
 				const { req } = makeReq({ authorization: `Bearer ${tokenFrom(iss)}` });
 
-				expect(await strategy.authenticate(req)).toBeNull();
+				expect(await strategy.authenticate(req)).toEqual({ outcome: 'abstained' });
 				expect(pipeline.run).not.toHaveBeenCalled();
 			},
 		);
 
-		it('abstains while the public API is unavailable', async () => {
-			resource.isAvailable.mockResolvedValue(false);
-			const { req } = makeReq({ authorization: `Bearer ${tokenFrom('https://idp.example')}` });
+		it.each([
+			['a URL-issuer bearer', { authorization: `Bearer ${tokenFrom('https://idp.example')}` }],
+			['no credential', {}],
+		])(
+			'abstains without a challenge while the public API is unavailable, with %s',
+			async (_name, headers) => {
+				resource.isAvailable.mockResolvedValue(false);
+				const { req } = makeReq(headers);
 
-			expect(await strategy.authenticate(req)).toBeNull();
-			expect(pipeline.run).not.toHaveBeenCalled();
-		});
+				expect(await strategy.authenticate(req)).toEqual({ outcome: 'abstained' });
+				expect(pipeline.run).not.toHaveBeenCalled();
+				expect(authenticationService.advertise).not.toHaveBeenCalled();
+			},
+		);
 
 		it.each(['https://idp.example', 'http://localhost:5678'])(
 			'runs the pipeline for issuer %s on the public-api surface with the resource and the request',
@@ -135,7 +160,7 @@ describe('PublicApiOAuthStrategy', () => {
 		);
 
 		describe('on a pipeline reject', () => {
-			it('fails fast with the advertised challenge, error=invalid_token and the reason', async () => {
+			it('rejects with the advertised challenge, error=invalid_token and the reason, and leaves the response alone', async () => {
 				pipeline.run.mockResolvedValue({
 					ok: false,
 					reason: 'source-not-accepted',
@@ -145,7 +170,10 @@ describe('PublicApiOAuthStrategy', () => {
 					authorization: `Bearer ${tokenFrom('https://idp.example')}`,
 				});
 
-				expect(await strategy.authenticate(req)).toBe(false);
+				expect(await strategy.authenticate(req)).toEqual({
+					outcome: 'rejected',
+					challenge: `${CHALLENGE}, error="invalid_token", error_description="source-not-accepted"`,
+				});
 
 				expect(authenticationService.advertise).toHaveBeenCalledWith(
 					expect.objectContaining({
@@ -153,25 +181,22 @@ describe('PublicApiOAuthStrategy', () => {
 						resource: { url: RESOURCE_URL, acceptedAudiences: [RESOURCE_URL] },
 					}),
 				);
-				expect(res.setHeader).toHaveBeenCalledWith(
-					'WWW-Authenticate',
-					`${CHALLENGE}, error="invalid_token", error_description="source-not-accepted"`,
-				);
+				expect(res.setHeader).not.toHaveBeenCalled();
 			});
 
-			it('never puts the reject detail into the response header', async () => {
+			it('never puts the reject detail into the result', async () => {
 				pipeline.run.mockResolvedValue({
 					ok: false,
 					reason: 'source-unusable',
 					detail: 'source status is error',
 				});
-				const { req, res } = makeReq({
+				const { req } = makeReq({
 					authorization: `Bearer ${tokenFrom('https://idp.example')}`,
 				});
 
-				await strategy.authenticate(req);
+				const result = await strategy.authenticate(req);
 
-				expect(JSON.stringify(res.setHeader.mock.calls)).not.toContain('source status is error');
+				expect(JSON.stringify(result)).not.toContain('source status is error');
 			});
 
 			it('falls back to a bare Bearer challenge when no source is advertised', async () => {
@@ -180,15 +205,14 @@ describe('PublicApiOAuthStrategy', () => {
 					challenges: [],
 				});
 				pipeline.run.mockResolvedValue({ ok: false, reason: 'unknown-issuer' });
-				const { req, res } = makeReq({
+				const { req } = makeReq({
 					authorization: `Bearer ${tokenFrom('https://idp.example')}`,
 				});
 
-				expect(await strategy.authenticate(req)).toBe(false);
-				expect(res.setHeader).toHaveBeenCalledWith(
-					'WWW-Authenticate',
-					'Bearer, error="invalid_token", error_description="unknown-issuer"',
-				);
+				expect(await strategy.authenticate(req)).toEqual({
+					outcome: 'rejected',
+					challenge: 'Bearer, error="invalid_token", error_description="unknown-issuer"',
+				});
 			});
 		});
 
@@ -207,12 +231,11 @@ describe('PublicApiOAuthStrategy', () => {
 					authorization: `Bearer ${tokenFrom('https://idp.example')}`,
 				});
 
-				expect(await strategy.authenticate(req)).toBe(false);
-
-				expect(res.setHeader).toHaveBeenCalledWith(
-					'WWW-Authenticate',
-					`${CHALLENGE}, error="insufficient_scope", error_description="insufficient_scope"`,
-				);
+				expect(await strategy.authenticate(req)).toEqual({
+					outcome: 'rejected',
+					challenge: `${CHALLENGE}, error="insufficient_scope", error_description="insufficient_scope"`,
+				});
+				expect(res.setHeader).not.toHaveBeenCalled();
 				expect(userRepository.findByIdWithRole).not.toHaveBeenCalled();
 			});
 
@@ -225,7 +248,7 @@ describe('PublicApiOAuthStrategy', () => {
 					authorization: `Bearer ${tokenFrom('https://idp.example')}`,
 				});
 
-				expect(await strategy.authenticate(req)).toBe(true);
+				expect(await strategy.authenticate(req)).toEqual({ outcome: 'authenticated' });
 
 				expect(userRepository.findByIdWithRole).toHaveBeenCalledWith('user-1');
 				expect(req.user).toBe(user);
@@ -272,7 +295,7 @@ describe('PublicApiOAuthStrategy', () => {
 					authorization: `Bearer ${tokenFrom('https://idp.example')}`,
 				});
 
-				expect(await strategy.authenticate(req)).toBe(false);
+				expect(await strategy.authenticate(req)).toEqual({ outcome: 'rejected' });
 			});
 		});
 	});

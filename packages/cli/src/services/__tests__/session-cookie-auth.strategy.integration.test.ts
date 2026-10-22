@@ -49,16 +49,18 @@ describe('SessionCookieAuthStrategy', () => {
 		await testDb.terminate();
 	});
 
-	it('returns null when no session cookie is present', async () => {
-		expect(await authenticator.authenticate(mockReqWithoutCookie())).toBeNull();
+	it('abstains when no session cookie is present', async () => {
+		expect(await authenticator.authenticate(mockReqWithoutCookie())).toEqual({
+			outcome: 'abstained',
+		});
 	});
 
-	it('returns true and populates req.user + req.tokenGrant on success', async () => {
+	it('authenticates and populates req.user + req.tokenGrant on success', async () => {
 		const owner = await createOwner();
 		const token = authService.issueJWT(owner, false);
 		const req = mockReqWith(token);
 
-		expect(await authenticator.authenticate(req)).toBe(true);
+		expect(await authenticator.authenticate(req)).toEqual({ outcome: 'authenticated' });
 		expect(req.user.id).toBe(owner.id);
 		expect(req.tokenGrant?.subject.id).toBe(owner.id);
 		expect(req.tokenGrant?.scopes.length).toBeGreaterThan(0);
@@ -66,11 +68,13 @@ describe('SessionCookieAuthStrategy', () => {
 		expect(req.tokenGrant?.apiKeyId).toBeUndefined();
 	});
 
-	it('returns false for an invalid session cookie', async () => {
-		expect(await authenticator.authenticate(mockReqWith('not-a-jwt'))).toBe(false);
+	it('rejects an invalid session cookie', async () => {
+		expect(await authenticator.authenticate(mockReqWith('not-a-jwt'))).toEqual({
+			outcome: 'rejected',
+		});
 	});
 
-	it('returns false for a revoked token', async () => {
+	it('rejects a revoked token', async () => {
 		const owner = await createOwner();
 		const token = authService.issueJWT(owner, false);
 		await Container.get(InvalidAuthTokenRepository).insert({
@@ -78,15 +82,15 @@ describe('SessionCookieAuthStrategy', () => {
 			expiresAt: new Date(Date.now() + 60_000),
 		});
 
-		expect(await authenticator.authenticate(mockReqWith(token))).toBe(false);
+		expect(await authenticator.authenticate(mockReqWith(token))).toEqual({ outcome: 'rejected' });
 	});
 
-	it('returns false for a disabled user', async () => {
+	it('rejects a disabled user', async () => {
 		const owner = await createOwner();
 		const token = authService.issueJWT(owner, false);
 		await Container.get(UserRepository).update({ id: owner.id }, { disabled: true });
 
-		expect(await authenticator.authenticate(mockReqWith(token))).toBe(false);
+		expect(await authenticator.authenticate(mockReqWith(token))).toEqual({ outcome: 'rejected' });
 	});
 
 	it('buildTokenGrant always abstains — session cookies must never satisfy audience-scoped bearer-token checks', async () => {

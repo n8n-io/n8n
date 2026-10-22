@@ -94,12 +94,23 @@ describe('Public API with OAuth2 bearer tokens', () => {
 		);
 	});
 
-	test('leaves API keys to the API key strategy', async () => {
+	test('answers 401 with the bare discovery challenge when the request has no credential', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().get('/workflows');
+
+		expect(response.statusCode).toBe(401);
+		expect(response.body).toEqual({ message: 'Unauthorized' });
+		// RFC 6750 §3.1: no error code when the request carried no credential.
+		expect(response.headers['www-authenticate']).toBe(CHALLENGE);
+		expect(pipeline.run).not.toHaveBeenCalled();
+	});
+
+	test('leaves API keys to the API key strategy, with no challenge on the success', async () => {
 		const owner = await createOwnerWithApiKey();
 
 		const response = await testServer.publicApiAgentFor(owner).get('/workflows');
 
 		expect(response.statusCode).toBe(200);
+		expect(response.headers['www-authenticate']).toBeUndefined();
 		expect(pipeline.run).not.toHaveBeenCalled();
 	});
 

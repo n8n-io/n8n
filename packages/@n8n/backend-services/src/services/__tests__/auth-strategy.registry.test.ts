@@ -17,31 +17,34 @@ describe('AuthStrategyRegistry', () => {
 	});
 
 	describe('authenticate', () => {
-		it('returns false when no strategies are registered', async () => {
-			expect(await registry.authenticate(mock<AuthenticatedRequest>())).toBe(false);
+		const req = mock<AuthenticatedRequest>();
+
+		it('answers unauthenticated with no challenges when no strategies are registered', async () => {
+			expect(await registry.authenticate(req)).toEqual({ authenticated: false, challenges: [] });
 		});
 
-		it('returns false when all strategies abstain', async () => {
+		it('answers unauthenticated with no challenges when all strategies abstain without one', async () => {
 			const strategy1 = mock<AuthStrategy>();
 			const strategy2 = mock<AuthStrategy>();
-			strategy1.authenticate.mockResolvedValue(null);
-			strategy2.authenticate.mockResolvedValue(null);
+			strategy1.authenticate.mockResolvedValue({ outcome: 'abstained' });
+			strategy2.authenticate.mockResolvedValue({ outcome: 'abstained' });
 
 			registry.register(strategy1);
 			registry.register(strategy2);
 
-			expect(await registry.authenticate(mock<AuthenticatedRequest>())).toBe(false);
+			expect(await registry.authenticate(req)).toEqual({ authenticated: false, challenges: [] });
 		});
 
-		it('returns true when the first strategy succeeds', async () => {
+		it('answers authenticated when the first strategy succeeds, without calling the next', async () => {
 			const strategy1 = mock<AuthStrategy>();
 			const strategy2 = mock<AuthStrategy>();
-			strategy1.authenticate.mockResolvedValue(true);
+			strategy1.authenticate.mockResolvedValue({ outcome: 'authenticated' });
 
 			registry.register(strategy1);
 			registry.register(strategy2);
 
-			expect(await registry.authenticate(mock<AuthenticatedRequest>())).toBe(true);
+			expect(await registry.authenticate(req)).toEqual({ authenticated: true });
+			expect(strategy2.authenticate).not.toHaveBeenCalled();
 		});
 
 		it('evaluates strategies in registration order', async () => {
@@ -49,14 +52,14 @@ describe('AuthStrategyRegistry', () => {
 			const strategy1: AuthStrategy = {
 				authenticate: vi.fn().mockImplementation(async () => {
 					order.push(1);
-					return null;
+					return { outcome: 'abstained' };
 				}),
 				buildTokenGrant: vi.fn().mockResolvedValue(null),
 			};
 			const strategy2: AuthStrategy = {
 				authenticate: vi.fn().mockImplementation(async () => {
 					order.push(2);
-					return null;
+					return { outcome: 'abstained' };
 				}),
 				buildTokenGrant: vi.fn().mockResolvedValue(null),
 			};
@@ -64,86 +67,99 @@ describe('AuthStrategyRegistry', () => {
 			registry.register(strategy1);
 			registry.register(strategy2);
 
-			await registry.authenticate(mock<AuthenticatedRequest>());
+			await registry.authenticate(req);
 
 			expect(order).toEqual([1, 2]);
 		});
 
-		it('passes control to the next strategy when the current one abstains', async () => {
+		it('passes the request to the next strategy when the current one abstains', async () => {
 			const strategy1 = mock<AuthStrategy>();
 			const strategy2 = mock<AuthStrategy>();
-			strategy1.authenticate.mockResolvedValue(null);
-			strategy2.authenticate.mockResolvedValue(true);
+			strategy1.authenticate.mockResolvedValue({ outcome: 'abstained' });
+			strategy2.authenticate.mockResolvedValue({ outcome: 'authenticated' });
 
 			registry.register(strategy1);
 			registry.register(strategy2);
 
-			const req = mock<AuthenticatedRequest>();
-
-			expect(await registry.authenticate(req)).toBe(true);
+			expect(await registry.authenticate(req)).toEqual({ authenticated: true });
 			expect(strategy1.authenticate).toHaveBeenCalledWith(req);
 			expect(strategy2.authenticate).toHaveBeenCalledWith(req);
 		});
 
-		it('stops the chain immediately when a strategy returns false', async () => {
-			const strategy1 = mock<AuthStrategy>();
-			const strategy2 = mock<AuthStrategy>();
-			strategy1.authenticate.mockResolvedValue(false);
-
-			registry.register(strategy1);
-			registry.register(strategy2);
-
-			expect(await registry.authenticate(mock<AuthenticatedRequest>())).toBe(false);
-			expect(strategy2.authenticate).not.toHaveBeenCalled();
-		});
-
-		it('stops the chain after abstain then false, without calling further strategies', async () => {
+		it('stops the chain when a strategy rejects, before and after an abstain', async () => {
 			const strategy1 = mock<AuthStrategy>();
 			const strategy2 = mock<AuthStrategy>();
 			const strategy3 = mock<AuthStrategy>();
-			strategy1.authenticate.mockResolvedValue(null);
-			strategy2.authenticate.mockResolvedValue(false);
+			strategy1.authenticate.mockResolvedValue({ outcome: 'abstained' });
+			strategy2.authenticate.mockResolvedValue({ outcome: 'rejected' });
 
 			registry.register(strategy1);
 			registry.register(strategy2);
 			registry.register(strategy3);
 
-			expect(await registry.authenticate(mock<AuthenticatedRequest>())).toBe(false);
+			expect(await registry.authenticate(req)).toEqual({ authenticated: false, challenges: [] });
 			expect(strategy3.authenticate).not.toHaveBeenCalled();
 		});
 
-		it('does not call subsequent strategies after success', async () => {
+		it('collects the challenge of every abstaining strategy, in registration order', async () => {
 			const strategy1 = mock<AuthStrategy>();
 			const strategy2 = mock<AuthStrategy>();
-			strategy1.authenticate.mockResolvedValue(true);
+			const strategy3 = mock<AuthStrategy>();
+			strategy1.authenticate.mockResolvedValue({ outcome: 'abstained', challenge: 'Basic' });
+			strategy2.authenticate.mockResolvedValue({ outcome: 'abstained' });
+			strategy3.authenticate.mockResolvedValue({ outcome: 'abstained', challenge: 'Bearer' });
+
+			registry.register(strategy1);
+			registry.register(strategy2);
+			registry.register(strategy3);
+
+			expect(await registry.authenticate(req)).toEqual({
+				authenticated: false,
+				challenges: ['Basic', 'Bearer'],
+			});
+		});
+
+		it("keeps the challenges gathered before a reject and adds the reject's own", async () => {
+			const strategy1 = mock<AuthStrategy>();
+			const strategy2 = mock<AuthStrategy>();
+			const strategy3 = mock<AuthStrategy>();
+			strategy1.authenticate.mockResolvedValue({ outcome: 'abstained', challenge: 'Basic' });
+			strategy2.authenticate.mockResolvedValue({
+				outcome: 'rejected',
+				challenge: 'Bearer, error="invalid_token"',
+			});
+			strategy3.authenticate.mockResolvedValue({ outcome: 'abstained', challenge: 'Digest' });
+
+			registry.register(strategy1);
+			registry.register(strategy2);
+			registry.register(strategy3);
+
+			expect(await registry.authenticate(req)).toEqual({
+				authenticated: false,
+				challenges: ['Basic', 'Bearer, error="invalid_token"'],
+			});
+		});
+
+		it('drops the gathered challenges when a later strategy authenticates', async () => {
+			const strategy1 = mock<AuthStrategy>();
+			const strategy2 = mock<AuthStrategy>();
+			strategy1.authenticate.mockResolvedValue({ outcome: 'abstained', challenge: 'Bearer' });
+			strategy2.authenticate.mockResolvedValue({ outcome: 'authenticated' });
 
 			registry.register(strategy1);
 			registry.register(strategy2);
 
-			await registry.authenticate(mock<AuthenticatedRequest>());
-
-			expect(strategy2.authenticate).not.toHaveBeenCalled();
-		});
-
-		it('passes the request object unchanged to each strategy', async () => {
-			const strategy = mock<AuthStrategy>();
-			strategy.authenticate.mockResolvedValue(null);
-			registry.register(strategy);
-
-			const req = mock<AuthenticatedRequest>();
-			await registry.authenticate(req);
-
-			expect(strategy.authenticate).toHaveBeenCalledWith(req);
+			expect(await registry.authenticate(req)).toEqual({ authenticated: true });
 		});
 
 		it('allows the same strategy instance to be registered multiple times', async () => {
 			const strategy = mock<AuthStrategy>();
-			strategy.authenticate.mockResolvedValue(true);
+			strategy.authenticate.mockResolvedValue({ outcome: 'authenticated' });
 
 			registry.register(strategy);
 			registry.register(strategy);
 
-			await registry.authenticate(mock<AuthenticatedRequest>());
+			await registry.authenticate(req);
 
 			// First registration succeeded — short-circuited
 			expect(strategy.authenticate).toHaveBeenCalledTimes(1);
