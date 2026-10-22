@@ -141,14 +141,16 @@ function onLogout() {
 						/>
 					</template>
 				</N8nPopover>
-				<!-- Settings popover -->
+				<!-- Settings popover. max-height: ~15 rows of 32px, so the menu does not fill a
+				     tall screen; the rest scrolls behind the edge fade and the sign-out footer stays
+				     pinned. On a short screen the available height still wins. -->
 				<N8nPopover
 					v-else-if="item.children && item.id === 'settings'"
 					key="settings"
 					side="right"
 					align="end"
 					:side-offset="12"
-					max-height="var(--reka-popover-content-available-height)"
+					max-height="min(480px, var(--reka-popover-content-available-height))"
 					scroll-edge-fade
 				>
 					<template #content>
