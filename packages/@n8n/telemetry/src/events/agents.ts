@@ -717,7 +717,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	USER_OPENED_AGENT_KNOWLEDGE_TAB: {
 		name: 'User opened agent knowledge tab',
 		description:
-			'The knowledge tab of the agent builder became the active tab, by a click or by opening a URL with the knowledge section. First step of the knowledge funnel.',
+			'The knowledge tab of the agent builder became the active tab, by a click or by opening a URL with the knowledge section. When the page opens on the tab, the event can fire before the agent finishes loading. First step of the knowledge funnel.',
 		properties: z.object({
 			agent_id: z.string(),
 			session_id: sessionId,
