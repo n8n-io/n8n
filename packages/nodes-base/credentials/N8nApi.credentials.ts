@@ -42,7 +42,8 @@ export class N8nApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{ $credentials.baseUrl }}',
+			baseURL:
+				'={{ $credentials.baseUrl.replace(new RegExp("([^:])/{2,}", "g"), "$1/").replace(new RegExp("/+$"), "") }}',
 			url: '/credentials/schema/n8nApi',
 		},
 	};

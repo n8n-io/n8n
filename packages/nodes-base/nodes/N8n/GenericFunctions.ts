@@ -39,7 +39,7 @@ export async function apiRequest(
 		method,
 		body,
 		qs: query,
-		uri: `${baseUrl.replace(new RegExp('/$'), '')}/${endpoint}`,
+		uri: `${baseUrl.replace(/([^:])\/{2,}/g, '$1/').replace(/\/+$/, '')}/${endpoint}`,
 		json: true,
 	};
 
