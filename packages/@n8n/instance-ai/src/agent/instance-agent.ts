@@ -20,7 +20,7 @@ import {
 	createOrchestrationTools,
 	getActiveOrchestratorDomainToolNames,
 } from '../tools';
-import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
+import { createToolsFromLocalMcpServer } from '../tools/create-tools-from-mcp-server';
 import { ALWAYS_LOADED_TOOL_NAMES, CHECKPOINT_FOLLOW_UP_TOOL_NAMES } from '../tools/tool-ids';
 import { isSetupPanelEnabled } from '../tools/workflows/setup-items';
 import {
@@ -156,7 +156,7 @@ export async function createInstanceAgent(
 	const claimedOrchestratorToolNames = createClaimedToolNames(reservedToolNames);
 	const safeLocalMcpTools = createToolRegistry();
 	addSafeMcpTools(safeLocalMcpTools, rawLocalMcpTools, {
-		source: 'local gateway MCP',
+		source: 'Browser Use MCP',
 		claimedToolNames: claimedOrchestratorToolNames,
 		warn: warnSkippedMcpTool,
 	});
@@ -198,7 +198,7 @@ export async function createInstanceAgent(
 		orchestrationContext?.promptConfiguration?.systemPromptVersion ??
 			resolvePromptProfile({}).profile.systemPromptVersion,
 		{
-			computerUseState: context.computerUseState,
+			browserUseState: context.browserUseState,
 			toolSearchEnabled: hasDeferrableTools,
 			mcpToolSearchEnabled: hasDeferredExternalMcpTools,
 			licenseHints: context.licenseHints,

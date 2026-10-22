@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // ---------------------------------------------------------------------------
-// CLI for browser/computer-use discovery evaluation.
+// CLI for Browser Use discovery evaluation.
 //
 // Usage:
 //   pnpm eval:discovery                                # run all scenarios, 3 trials each
