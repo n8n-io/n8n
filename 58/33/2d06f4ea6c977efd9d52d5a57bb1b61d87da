@@ -1,0 +1,38 @@
+packages/cli/test/integration/promotion-review-inbox.test.ts
+  s_4fa6fba46b04d1::t_fe78821bcbc120 259
+packages/modules/inbox/frontend/src/promotions/PromotionReviewDetail.test.ts
+  s_4fa6fba46b04d1::t_fe78821bcbc120 14
+packages/@n8n/api-types/src/inbox.ts
+  s_4fa6fba46b04d1::t_fe78821bcbc120 7,44-45
+packages/modules/inbox/frontend/src/components/InboxListItem.vue
+  s_4fa6fba46b04d1::t_fe78821bcbc120 2,9,21-23,107
+  s_4fa6fba46b04d1::t_b292ad5f8e104d 111-118
+packages/modules/inbox/frontend/src/components/InboxList.test.ts
+  s_4fa6fba46b04d1::t_fe78821bcbc120 260
+packages/modules/inbox/frontend/src/inbox.routes.test.ts
+  s_4fa6fba46b04d1::t_fe78821bcbc120 105
+packages/frontend/@n8n/design-system/src/components/N8nBadge/Badge.vue
+  s_4fa6fba46b04d1::t_b292ad5f8e104d 242-247
+packages/modules/inbox/frontend/src/components/InboxList.vue
+  s_4fa6fba46b04d1::t_0587acbb14f674 158-161,163-165
+packages/cli/src/modules/promotions.ee/promotion-review-inbox.service.ts
+  s_4fa6fba46b04d1::t_fe78821bcbc120 76
+packages/modules/inbox/frontend/src/views/InboxView.test.ts
+  s_4fa6fba46b04d1::t_fe78821bcbc120 452
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "58332d06f4ea6c977efd9d52d5a57bb1b61d87da",
+  "prompts": {},
+  "sessions": {
+    "s_4fa6fba46b04d1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3c498e9-c222-400c-9d15-39bad59e09a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
