@@ -13,10 +13,10 @@ import { GLOBAL_OWNER_ROLE } from '../constants';
 import { isValidEmail } from '../utils/is-valid-email';
 import { lowerCaser, objectRetriever } from '../utils/transformers';
 
-/** A human account. Lives in the `user` table with `kind = 'human'`. Shared columns are on `Actor`. */
-@ChildEntity('human')
+/** The account of a person. Lives in the `user` table with `kind = 'person'`. Shared columns are on `Actor`. */
+@ChildEntity('person')
 export class User extends Actor implements IUser {
-	declare readonly kind: 'human';
+	declare readonly kind: 'person';
 
 	@Column({
 		length: 254,

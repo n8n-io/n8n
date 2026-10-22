@@ -128,11 +128,11 @@ describe('AddKindToUserTable Migration', () => {
 		await context.runQuery('PRAGMA foreign_keys=ON');
 	}
 
-	it('gives every existing user the human kind and keeps its id', async () => {
+	it('gives every existing user the person kind and keeps its id', async () => {
 		// An earlier migration seeds the instance owner, so more than one row exists.
 		const rows = await selectUsers();
 		expect(rows.map((row) => row.id)).toContain(existingUserId);
-		expect(rows.every((row) => row.kind === 'human')).toBe(true);
+		expect(rows.every((row) => row.kind === 'person')).toBe(true);
 	});
 
 	it('keeps the linked rows of existing users', async () => {
@@ -169,8 +169,8 @@ describe('AddKindToUserTable Migration', () => {
 			`INSERT INTO ${table('auth_identity')} (${column('userId')}, ${column('providerId')}, ${column('providerType')}) VALUES (:userId, :providerId, :providerType)`,
 			{ userId: serviceAccountId, providerId: 'service-subject', providerType: 'oidc' },
 		);
-		const humanIds = (await selectUsers())
-			.filter((row) => row.kind === 'human')
+		const personIds = (await selectUsers())
+			.filter((row) => row.kind === 'person')
 			.map((row) => row.id);
 		if (context.isSqlite) await rebuildUserTable();
 		await context.queryRunner.release();
@@ -179,7 +179,7 @@ describe('AddKindToUserTable Migration', () => {
 
 		context = createTestMigrationContext(dataSource);
 		const rows = await selectUsers();
-		expect(rows.map((row) => row.id)).toEqual(humanIds);
+		expect(rows.map((row) => row.id)).toEqual(personIds);
 		expect(rows.every((row) => row.kind === undefined)).toBe(true);
 		expect(await countRows('project_relation', serviceAccountId)).toBe(0);
 		expect(await countRows('auth_identity', serviceAccountId)).toBe(0);

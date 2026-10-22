@@ -34,7 +34,7 @@ export abstract class Actor extends WithTimestamps implements AuthPrincipal {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
 
-	@Column({ type: 'varchar', length: 16, default: 'human', update: false })
+	@Column({ type: 'varchar', length: 16, default: 'person', update: false })
 	readonly kind: ActorKind;
 
 	@ManyToOne(() => Role)

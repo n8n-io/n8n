@@ -1,7 +1,7 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 /**
- * Service accounts share the `user` table with humans. The `kind` column tells
+ * Service accounts share the `user` table with people. The `kind` column tells
  * the two apart.
  *
  * The column is added and dropped with raw SQL, so SQLite never rebuilds
@@ -19,15 +19,15 @@ export class AddKindToUserTable1792587656930 implements ReversibleMigration {
 		const table = escape.tableName('user');
 		const kind = escape.columnName('kind');
 
-		await runQuery(`ALTER TABLE ${table} ADD COLUMN ${kind} VARCHAR(16) NOT NULL DEFAULT 'human'`);
+		await runQuery(`ALTER TABLE ${table} ADD COLUMN ${kind} VARCHAR(16) NOT NULL DEFAULT 'person'`);
 
 		if (isPostgres) {
 			const checkName = escape.columnName(`CHK_${tablePrefix}user_kind`);
 			// `NOT VALID` skips the scan of existing rows. They all get the default.
 			await runQuery(
-				`ALTER TABLE ${table} ADD CONSTRAINT ${checkName} CHECK (${kind} IN ('human', 'service')) NOT VALID`,
+				`ALTER TABLE ${table} ADD CONSTRAINT ${checkName} CHECK (${kind} IN ('person', 'service')) NOT VALID`,
 			);
-			await runQuery(`COMMENT ON COLUMN ${table}.${kind} IS 'Kind of account: human or service'`);
+			await runQuery(`COMMENT ON COLUMN ${table}.${kind} IS 'Kind of account: person or service'`);
 		}
 	}
 

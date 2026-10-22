@@ -17,7 +17,7 @@ describe('actor guards', () => {
 	});
 
 	it.each([
-		['a plain object with the human kind', { id: 'id', kind: 'human' }],
+		['a plain object with the person kind', { id: 'id', kind: 'person' }],
 		['a plain object with the service kind', { id: 'id', kind: 'service' }],
 		['a bare Actor instance', Object.create(Actor.prototype)],
 	])('rejects %s', (_, value) => {

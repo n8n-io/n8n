@@ -49,7 +49,7 @@ describe('ActorRepository', () => {
 		const byId = new Map(actors.map((actor) => [actor.id, actor]));
 
 		expect(byId.get(human.id)).toBeInstanceOf(User);
-		expect(byId.get(human.id)?.kind).toBe('human');
+		expect(byId.get(human.id)?.kind).toBe('person');
 		expect(byId.get(serviceAccount.id)).toBeInstanceOf(ServiceAccount);
 		expect(byId.get(serviceAccount.id)?.kind).toBe('service');
 		expect(byId.get(serviceAccount.id)?.role.slug).toBe(GLOBAL_MEMBER_ROLE.slug);
@@ -76,10 +76,10 @@ describe('ActorRepository', () => {
 
 	it('sets the kind on a newly saved account', async () => {
 		const serviceAccount = await createServiceAccount();
-		const human = await userRepository.save(userRepository.create({ role: GLOBAL_MEMBER_ROLE }));
+		const person = await userRepository.save(userRepository.create({ role: GLOBAL_MEMBER_ROLE }));
 
 		expect(serviceAccount.kind).toBe('service');
-		expect(human.kind).toBe('human');
+		expect(person.kind).toBe('person');
 	});
 
 	it('rejects insert and upsert', async () => {
@@ -95,7 +95,7 @@ describe('ActorRepository', () => {
 		const serviceAccount = await createServiceAccount();
 
 		await actorRepository.update({ id: serviceAccount.id }, {
-			kind: 'human',
+			kind: 'person',
 			disabled: true,
 		} as Partial<Actor>);
 
@@ -163,7 +163,7 @@ describe('ActorRepository', () => {
 	});
 
 	describe('testDb.truncate', () => {
-		it("clears humans and service accounts for 'User'", async () => {
+		it("clears people and service accounts for 'User'", async () => {
 			await createMember();
 			await createServiceAccount();
 
