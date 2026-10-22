@@ -58,7 +58,7 @@ import { ChatIntegrationActionExecutor } from '../integration-action-executor';
 import { ChannelRateLimitGuard } from '../channel-rate-limit.guard';
 import { getIntegrationToolConnectionDescriptors } from '../integration-tools';
 import type { IntegrationMessageContext } from '../integration-tool-types';
-import { LinearIntegration } from '../platforms/linear-integration';
+import { LinearIntegration } from '../platforms/linear/linear-integration';
 import { SlackIntegration } from '../platforms/slack/slack-integration';
 import { TeamsIntegration } from '../platforms/teams/teams-integration';
 import type { ChatIntegrationService, ChatInstance } from '../chat-integration.service';
@@ -102,6 +102,10 @@ class ShortCallbackTelegramIntegration extends AgentChatIntegration {
 	];
 
 	readonly needsShortCallbackData = true;
+
+	buildOriginDraft() {
+		return undefined;
+	}
 
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		return {};

@@ -4,7 +4,7 @@ import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentChatIntegrationContext } from '../agent-chat-integration';
-import { LinearIntegration } from '../platforms/linear-integration';
+import { LinearIntegration } from '../platforms/linear/linear-integration';
 
 vi.mock('../esm-loader', () => ({
 	loadLinearAdapter: vi.fn(),

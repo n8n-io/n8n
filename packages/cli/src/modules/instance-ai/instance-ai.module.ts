@@ -55,16 +55,10 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiEventRelay } = await import('./instance-ai-event-relay.service.js');
 		Container.get(InstanceAiEventRelay);
 
-		// Startup sweep resolves runs the previous process left mid-flight by
-		// converting their in-flight tool calls into tool-interrupted facts and
-		// appending run-finish{interrupted}.
-		const { InterruptedRunSweeper } = await import('./event-bus/interrupted-run-sweeper.js');
-		const { InstanceAiService } = await import('./instance-ai.service.js');
-		const sweepLogger = Container.get(Logger).scoped('instance-ai');
-		const sweeper = Container.get(InterruptedRunSweeper);
-		sweeper.setResumeHost(Container.get(InstanceAiService));
-		void sweeper.sweep().catch((error: unknown) => {
-			sweepLogger.error('Interrupted-run sweep failed on startup', { error });
+		void this.reconcileInterruptedRuns().catch((error: unknown) => {
+			Container.get(Logger)
+				.scoped('instance-ai')
+				.error('Startup run reconciliation failed', { error });
 		});
 
 		if (process.env.E2E_TESTS === 'true' && process.env.NODE_ENV !== 'production') {
@@ -72,14 +66,30 @@ export class InstanceAiModule implements ModuleInterface {
 		}
 	}
 
+	private async reconcileInterruptedRuns(): Promise<void> {
+		const { InterruptedRunSweeper } = await import('./event-bus/interrupted-run-sweeper.js');
+		const { InstanceAiService } = await import('./instance-ai.service.js');
+		const { SelfHealingInvestigationService } = await import(
+			'./self-healing/self-healing-investigation.service.js'
+		);
+		const sweeper = Container.get(InterruptedRunSweeper);
+		sweeper.setResumeHost(Container.get(InstanceAiService));
+
+		await sweeper.sweep();
+		await Container.get(SelfHealingInvestigationService).reconcile();
+	}
+
 	async systemTasks() {
 		const { InstanceAiConfig } = await import('@n8n/config');
-		if (Container.get(InstanceAiConfig).pruneInterval <= 0) return [];
+		const { SelfHealingReconciliationTask } = await import(
+			'./self-healing/self-healing-reconciliation.task.js'
+		);
+		if (Container.get(InstanceAiConfig).pruneInterval <= 0) return [SelfHealingReconciliationTask];
 
 		const { InstanceAiCheckpointPruningTask } = await import(
 			'./instance-ai-checkpoint-pruning.task.js'
 		);
-		return [InstanceAiCheckpointPruningTask];
+		return [InstanceAiCheckpointPruningTask, SelfHealingReconciliationTask];
 	}
 
 	async settings() {
@@ -145,6 +155,9 @@ export class InstanceAiModule implements ModuleInterface {
 		const { SelfHealingResult } = await import(
 			'./self-healing/database/self-healing-result.entity.js'
 		);
+		const { SelfHealingInvestigation } = await import(
+			'./self-healing/database/self-healing-investigation.entity.js'
+		);
 
 		return [
 			InstanceAiThread,
@@ -163,6 +176,7 @@ export class InstanceAiModule implements ModuleInterface {
 			WorkflowSuggestion,
 			WorkflowSuggestionActivity,
 			SelfHealingResult,
+			SelfHealingInvestigation,
 		];
 	}
 

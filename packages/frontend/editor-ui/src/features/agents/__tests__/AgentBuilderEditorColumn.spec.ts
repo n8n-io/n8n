@@ -47,6 +47,7 @@ vi.mock('@n8n/design-system', () => ({
 		props: ['open'],
 	},
 	N8nDialogHeader: { template: '<div><slot /></div>' },
+	N8nDialogBody: { template: '<div><slot /></div>' },
 	N8nDialogTitle: { template: '<div><slot /></div>' },
 	N8nHeading: { template: '<h2><slot /></h2>', props: ['size'] },
 	N8nIcon: { template: '<span />', props: ['icon', 'size'] },
@@ -252,7 +253,7 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(track).toHaveBeenCalledTimes(2);
 		expect(track).toHaveBeenLastCalledWith(TELEMETRY_EVENT.AGENTS.USER_CLICKED_AGENTS_TAB, {
 			agent_id: 'agent-1',
-			session_id: 'session-xyz',
+			push_ref: 'session-xyz',
 			name,
 		});
 		expect(wrapper.emitted('update:activeMainTab')).toEqual([[tab], [tab]]);

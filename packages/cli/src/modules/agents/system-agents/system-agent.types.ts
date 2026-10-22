@@ -12,20 +12,26 @@ import type { AgentExecutionThread } from '../entities/agent-execution-thread.en
 import type { ToolRegistry } from '../tool-registry';
 import type { StoredAttachmentRef } from '../types/agent-chat-attachment';
 import type { AgentExecutionStreamChunk } from '../types/agent-steering';
-import type { AgentTurnFinalizeOutcome, AgentTurnStatus } from '../types/agent-turn-outcome';
+import type {
+	AgentTurnFinalizeOutcome,
+	AgentTurnStatus,
+	FormattedTurnError,
+} from '../types/agent-turn-outcome';
 
 /** Provider-defined, JSON-safe turn options. The queue stores them with the message. */
 export type SystemAgentTurnOptions = Record<string, unknown>;
 
-interface SystemAgentTurnBase {
+interface SystemAgentTurnBase<TLease> {
 	user: User;
 	thread: AgentExecutionThread;
 	resourceId: string;
 	/** Aborts when the turn stops: a user cancel, the queue, or `runOptions.abortSignal`. */
 	abortSignal: AbortSignal;
+	/** The lease from the provider's workspace source. It is not set when the provider has no source. */
+	workspace?: TLease;
 }
 
-export interface SystemAgentStartTurn extends SystemAgentTurnBase {
+export interface SystemAgentStartTurn<TLease = unknown> extends SystemAgentTurnBase<TLease> {
 	type: 'start';
 	/** Execution id when the queue admitted the turn. */
 	executionId?: string;
@@ -35,8 +41,8 @@ export interface SystemAgentStartTurn extends SystemAgentTurnBase {
 	options: SystemAgentTurnOptions;
 }
 
-export interface SystemAgentResumeTurn
-	extends SystemAgentTurnBase,
+export interface SystemAgentResumeTurn<TLease = unknown>
+	extends SystemAgentTurnBase<TLease>,
 		Pick<ResumeOptions, 'runId' | 'toolCallId'> {
 	type: 'resume';
 	/** Host metadata the suspended run stored in its checkpoint. */
@@ -44,7 +50,9 @@ export interface SystemAgentResumeTurn
 	resumeData: unknown;
 }
 
-export type SystemAgentTurn = SystemAgentStartTurn | SystemAgentResumeTurn;
+export type SystemAgentTurn<TLease = unknown> =
+	| SystemAgentStartTurn<TLease>
+	| SystemAgentResumeTurn<TLease>;
 
 export type SystemAgentTurnStatus = AgentTurnStatus;
 
@@ -75,6 +83,67 @@ export interface SystemAgentTurnHandle {
 	 * turn record. A turn without an execution record settles after it fails.
 	 */
 	onSettled?: (outcome: SystemAgentTurnOutcome) => Promise<void>;
+	/**
+	 * Give the user-facing form of a turn error: the text, and an optional
+	 * client code such as `quota_exhausted`. The runtime awaits this once per
+	 * error, before it sends the `error` event and stores the execution error,
+	 * so it can do async work such as a credit check. Keep it short: the error
+	 * event waits for it.
+	 *
+	 * The provider owns the text. The runtime sends the text and code to the
+	 * client unchanged. It stores the text as the execution error, where the
+	 * usual secret redaction of execution records applies. The code is not
+	 * stored, so the history shows the text without it. Return `undefined`, or
+	 * an empty message, to keep the raw error.
+	 * When it throws, the runtime logs the failure and keeps the raw error.
+	 * Errors that already have a client code, such as `turn_already_running`,
+	 * are not formatted.
+	 */
+	formatError?: (error: unknown) => Promise<FormattedTurnError | undefined>;
+}
+
+/** The sandbox scope of one thread of a system agent. */
+export interface SystemAgentWorkspaceScope {
+	agentId: string;
+	threadId: string;
+	/** The working project of the thread. */
+	projectId: string;
+	user: User;
+}
+
+/** The scope of a deleted thread. A host that deletes threads on its own path may not know the user. */
+export interface SystemAgentWorkspaceDestroyScope {
+	agentId: string;
+	threadId: string;
+	userId?: string;
+}
+
+/**
+ * Supplies the sandbox workspace of a system agent. The provider keeps its own
+ * sandbox identity, images and lifecycle. The runtime only reports when a turn
+ * starts and settles, and when a thread is deleted. The lease is opaque to the
+ * runtime: it passes the lease to `prepareTurn` and back to `release`.
+ */
+export interface SystemAgentWorkspaceSource<TLease = unknown> {
+	/**
+	 * Give the lease for one turn (start or resume). Return `undefined` when the
+	 * turn has no workspace. Do not start a sandbox here. Start it on first use,
+	 * so that a turn that does not use the sandbox stays cheap.
+	 */
+	acquire(scope: SystemAgentWorkspaceScope): Promise<TLease | undefined>;
+	/**
+	 * The turn settled. The source can drop cached handles. Keep this fast:
+	 * the client gets the `done` event and the queue starts the next turn only
+	 * after it returns. Start slow work, such as a sandbox stop, in the
+	 * background. A failure is logged and does not change the turn result.
+	 */
+	release?(
+		scope: SystemAgentWorkspaceScope,
+		lease: TLease,
+		outcome: SystemAgentTurnOutcome,
+	): Promise<void>;
+	/** The thread was deleted. Delete its sandbox. A failure is logged. */
+	destroy?(scope: SystemAgentWorkspaceDestroyScope): Promise<void>;
 }
 
 /**
@@ -83,15 +152,17 @@ export interface SystemAgentTurnHandle {
  * fresh runtime for each turn and adds its own access checks on top of the
  * runtime floor (see `canUseSystemAgent`).
  */
-export interface SystemAgentProvider {
+export interface SystemAgentProvider<TLease = unknown> {
 	readonly agentId: string;
 	readonly name: string;
+	/** The sandbox workspace source. Without a source, the turns of the agent have no sandbox. */
+	readonly workspace?: SystemAgentWorkspaceSource<TLease>;
 	/**
 	 * Agent-specific access checks for the user in the working project. The
 	 * runtime calls this only after its own floor check passed.
 	 */
 	authorize(user: User, projectId: string): Promise<boolean>;
-	prepareTurn(turn: SystemAgentTurn): Promise<SystemAgentTurnHandle>;
+	prepareTurn(turn: SystemAgentTurn<TLease>): Promise<SystemAgentTurnHandle>;
 	/** Turn options for a message sent through the system-agent chat route. */
 	chatTurnOptions?(
 		user: User,

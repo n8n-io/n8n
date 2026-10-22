@@ -62,11 +62,12 @@ import { CallbackStore, type CallbackMetadata } from './callback-store';
 import type { ComponentMapper, ShortenCallback } from './component-mapper';
 import { loadChatSdk } from './esm-loader';
 import { IntegrationMessageContextService } from './integration-message-context.service';
+import { buildIntegrationOrigin } from './integration-origin';
 import type {
 	IntegrationMessageContext,
 	IntegrationPlatformMessageContext,
 } from './integration-tools';
-import { downloadDiscordAttachment } from './platforms/discord-operations';
+import { downloadDiscordAttachment } from './platforms/discord/discord-operations';
 import { SLACK_STREAMING_OPTIONS } from './platforms/slack/slack-bridge-behavior';
 
 import { type InternalThread, toInternalThreadId } from './types';
@@ -912,13 +913,24 @@ export class AgentChatBridge {
 			}) ?? 'required';
 		let accepted = false;
 		try {
-			const [context, subject] = await Promise.all([
+			const subjectPromise = this.messageContextBridge.resolveSubject(message);
+			const [context, subject, integrationOrigin] = await Promise.all([
 				this.resolveBridgeExecutionContext(thread, message, platformAgentContext, {
 					isNewMention,
 					inSubscribedThread,
 					replyExpectation,
 				}),
-				this.messageContextBridge.resolveSubject(message),
+				subjectPromise,
+				// The origin lookup overlaps the other fetches so it adds little delay.
+				subjectPromise.then(
+					async (subject) =>
+						this.integrationImpl &&
+						(await buildIntegrationOrigin(
+							this.integrationImpl,
+							{ thread, message, subject },
+							this.logger,
+						)),
+				),
 			]);
 			const messageContext = this.messageContextBridge.capture(thread, {
 				messageId: message.id,
@@ -945,6 +957,7 @@ export class AgentChatBridge {
 						context,
 					),
 					author,
+					integrationOrigin,
 					sender: { userId, userName, fullName, isBot, isMe },
 					attachments: attachments.length ? attachments : undefined,
 					resourceId: session.memory.resourceId,

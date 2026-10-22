@@ -98,17 +98,23 @@ export class AgentsModule implements ModuleInterface {
 			'./integrations/platforms/slack/slack-integration.js'
 		);
 		const { TelegramIntegration } = await import(
-			'./integrations/platforms/telegram-integration.js'
+			'./integrations/platforms/telegram/telegram-integration.js'
 		);
-		const { LinearIntegration } = await import('./integrations/platforms/linear-integration.js');
-		const { DiscordIntegration } = await import('./integrations/platforms/discord-integration.js');
+		const { LinearIntegration } = await import(
+			'./integrations/platforms/linear/linear-integration.js'
+		);
+		const { DiscordIntegration } = await import(
+			'./integrations/platforms/discord/discord-integration.js'
+		);
 		const { WhatsAppIntegration } = await import(
 			'./integrations/platforms/whatsapp/whatsapp-integration.js'
 		);
 		const { TeamsIntegration } = await import(
 			'./integrations/platforms/teams/teams-integration.js'
 		);
-		const { N8nChatIntegration } = await import('./integrations/platforms/n8n-chat-integration.js');
+		const { N8nChatIntegration } = await import(
+			'./integrations/platforms/n8n-chat/n8n-chat-integration.js'
+		);
 		const registry = Container.get(ChatIntegrationRegistry);
 		registry.register(Container.get(SlackIntegration));
 		registry.register(Container.get(TelegramIntegration));
@@ -229,14 +235,16 @@ export class AgentsModule implements ModuleInterface {
 		const config = Container.get(AgentsConfig);
 		const { AgentsSettingsService } = await import('./agents-settings.service.js');
 		const { AiService } = await import('@/services/ai.service.js');
-		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
+		const { KnowledgeAvailabilityService } = await import(
+			'@/modules/knowledge/knowledge-availability.service.js'
+		);
 		const { SkillsHubRollout } = await import('@/modules/skills/skills-hub-rollout.js');
 		const aiService = Container.get(AiService);
 		const proxyEnabled = aiService.isProxyEnabled();
 		return {
 			enabled: await Container.get(AgentsSettingsService).getEnabled(),
 			modules: [...config.modules],
-			knowledgeBaseEnabled: Container.get(SandboxSettingsService).isAgentSandboxEnabled(),
+			knowledgeBaseEnabled: Container.get(KnowledgeAvailabilityService).isFileKnowledgeEnabled(),
 			proxyEnabled,
 			skillsHubEnabled: Container.get(SkillsHubRollout).isEnabled,
 		};

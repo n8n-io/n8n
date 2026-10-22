@@ -1,73 +1,31 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
-import { getResourcePermissions } from '@n8n/permissions';
 import { N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
-import { useUsersStore } from '@n8n/stores/users.store';
 import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
-import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 import { PROMOTION_SELECT_MODAL_KEY } from '../promotions.constants';
 import { promotionEventBus, type PromotionEventBusEvents } from '../promotions.eventBus';
-import { useInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
-import { usePromotionChangeCount } from '../composables/usePromotionChangeCount';
+import { usePromotionEntryPoints } from '../composables/usePromotionEntryPoints';
 
 const i18n = useI18n();
 const router = useRouter();
 const uiStore = useUIStore();
-const usersStore = useUsersStore();
 const projectsStore = useProjectsStore();
-const { isEnabled: isPromotionsEnabled } = usePromotionsEnabled();
 
-const currentProjectId = computed(() => projectsStore.currentProject?.id);
-const isTeamProject = computed(() => projectsStore.currentProject?.type === ProjectTypes.Team);
-const projectPermissions = computed(
-	() => getResourcePermissions(projectsStore.currentProject?.scopes).project,
-);
-const gitConnectionPermissions = computed(
-	() => getResourcePermissions(usersStore.currentUser?.globalScopes).gitConnection,
-);
-
-// Each banner needs the direction configured on the instance connection, so a
-// source never asks for incoming changes and a destination never asks for outgoing ones.
-const { hasPromoteConfig, hasApplyConfig, load: loadConnection } = useInstancePromotionConnection();
-
-const canPreviewChanges = computed(
-	() =>
-		isTeamProject.value &&
-		isPromotionsEnabled.value &&
-		!!projectPermissions.value.export &&
-		!!gitConnectionPermissions.value.list &&
-		(!!gitConnectionPermissions.value.push || !!gitConnectionPermissions.value.pull),
-);
-const showPromoteBanner = computed(
-	() => canPreviewChanges.value && hasPromoteConfig.value && !!gitConnectionPermissions.value.push,
-);
-
-const showIncomingBanner = computed(
-	() => canPreviewChanges.value && hasApplyConfig.value && !!gitConnectionPermissions.value.pull,
-);
-
-watch(
-	[canPreviewChanges, currentProjectId],
-	async ([canPreview]) => {
-		if (canPreview) await loadConnection();
-	},
-	{ immediate: true },
-);
-const { count: promotableChangeCount, refetch: refetchPromotable } = usePromotionChangeCount(
-	currentProjectId,
-	'promote',
-	showPromoteBanner,
-);
 const {
-	count: incomingChangeCount,
-	failed: incomingCheckFailed,
-	refetch: refetchIncoming,
-} = usePromotionChangeCount(currentProjectId, 'apply', showIncomingBanner);
+	currentProjectId,
+	showPromote: showPromoteBanner,
+	showApply: showIncomingBanner,
+	promote: { workflowCount: promotableChangeCount, refetch: refetchPromotable },
+	apply: {
+		workflowCount: incomingChangeCount,
+		failed: incomingCheckFailed,
+		refetch: refetchIncoming,
+	},
+} = usePromotionEntryPoints();
 
 // The store's project id follows the route at once, the current project only once it loaded,
 // so a result for a project the user already left is dropped here.

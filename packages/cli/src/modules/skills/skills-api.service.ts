@@ -155,6 +155,8 @@ export class SkillsApiService {
 			return { id: skillId, ...saved, skillHash: getSkillHash(saved.skill) };
 		}
 
+		// A refused move names only the agents the user may read, as the detail does.
+		const agentProjectIds = await this.projectScopeService.getProjectIds(user, ['agent:read']);
 		// Keep availability, scope, and content changes atomic. Move first so the name
 		// check uses the destination scope.
 		const { followingAgentIds, ...saved } = await this.txRunner.run({}, async (ctx) => {
@@ -162,6 +164,7 @@ export class SkillsApiService {
 				await this.skillService.changeTarget(skillId, target, undefined, ctx, {
 					nameAfterMove: update.name,
 					checkedSource,
+					agentProjectIds: agentProjectIds ?? 'all',
 				});
 			}
 			if (availableToAssistant !== undefined) {
