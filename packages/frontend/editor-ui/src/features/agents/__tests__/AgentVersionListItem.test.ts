@@ -61,6 +61,23 @@ describe('AgentVersionListItem', () => {
 		expect(wrapper.text()).toContain('Ada Lovelace');
 	});
 
+	it('shows the last publisher separately from the saved-version author', () => {
+		const wrapper = mount(AgentVersionListItem, {
+			props: {
+				item: makeItem({
+					lastPublished: {
+						author: 'Grace Hopper',
+						createdAt: '2026-02-03T10:00:00.000Z',
+						isLegacy: false,
+					},
+				}),
+				actions,
+			},
+		});
+		expect(wrapper.text()).toContain('Ada Lovelace');
+		expect(wrapper.find('[title]').attributes('title')).toContain('Grace Hopper');
+	});
+
 	it('renders the published badge when the version is active', () => {
 		const wrapper = mount(AgentVersionListItem, {
 			props: {

@@ -49,6 +49,15 @@ const statusLabel = computed(() =>
 	),
 );
 
+const statusTooltip = computed(() => {
+	const publication = props.item.lastPublished;
+	if (!publication) return statusLabel.value;
+	const { date, time } = formatTimestamp(publication.createdAt);
+	return `${statusLabel.value}. ${i18n.baseText('agents.versionHistory.item.lastPublished', {
+		interpolate: { author: publication.author, date, time },
+	})}`;
+});
+
 function onAction(value: string) {
 	emit('action', {
 		action: value as AgentVersionAction,
@@ -62,7 +71,7 @@ function onAction(value: string) {
 		:class="[$style.item, { [$style.current]: item.isCurrent }]"
 		data-test-id="agent-version-history-list-item"
 	>
-		<N8nTooltip :content="statusLabel">
+		<N8nTooltip :content="statusTooltip">
 			<span :class="$style.timelineColumn" :aria-label="statusLabel" role="img">
 				<AgentVersionStatusIndicator :status="status" />
 			</span>
