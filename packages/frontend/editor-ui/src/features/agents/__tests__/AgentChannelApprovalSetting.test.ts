@@ -5,11 +5,6 @@ import type { AgentApproval, ChatIntegrationApprovableAction } from '@n8n/api-ty
 
 import AgentChannelApprovalSetting from '../components/AgentChannelApprovalSetting.vue';
 
-vi.mock('@n8n/i18n', () => {
-	const i18n = { baseText: (key: string) => key };
-	return { useI18n: () => i18n, i18n, i18nInstance: { install: vi.fn() } };
-});
-
 vi.mock('@n8n/design-system', async () => {
 	const { defineComponent, inject, provide } = await import('vue');
 
@@ -88,6 +83,16 @@ function toggle(wrapper: ReturnType<typeof renderComponent>) {
 }
 
 describe('AgentChannelApprovalSetting', () => {
+	it('labels approval for risky actions with the real translations', () => {
+		const wrapper = renderComponent();
+
+		expect(wrapper.find('label').text()).toBe('Require approval for risky actions');
+		expect(wrapper.text()).toContain(
+			'The agent waits for approval before it acts outside the conversation it was addressed in.',
+		);
+		expect(wrapper.text()).not.toContain('Ask before risky actions');
+	});
+
 	it('starts off, with no selector, when the channel has no approval saved', () => {
 		const wrapper = renderComponent();
 
