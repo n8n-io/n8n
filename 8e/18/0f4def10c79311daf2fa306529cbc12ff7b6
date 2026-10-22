@@ -1,0 +1,36 @@
+packages/@n8n/agents/src/workspace/types.ts
+  s_f98e7b80097552::t_84b6b64830c4ed 157-166
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-sandbox.service.test.ts
+  s_f98e7b80097552::t_1ea08bf9732c35 532-533,539-560,562-574,580-597
+  s_f98e7b80097552::t_962849373d314d 534-538,575-579
+  s_f98e7b80097552::t_a5e13e6b3cc6fb 561
+packages/@n8n/agents/src/__tests__/workspace/sandbox/n8n-sandbox-sandbox.test.ts
+  s_f98e7b80097552::t_99f4edb76a3d1c 326-431
+packages/@n8n/agents/src/workspace/sandbox/base-sandbox.ts
+  s_f98e7b80097552::t_84b6b64830c4ed 21,38-41,128-130,179
+packages/@n8n/agents/src/workspace/sandbox/n8n-sandbox-sandbox.ts
+  s_f98e7b80097552::t_9ee6db6ef956c5 8-18,53-54,120-132,147-175,180-198
+packages/cli/src/modules/instance-ai/sandbox/instance-ai-sandbox.service.ts
+  s_f98e7b80097552::t_fee9128b1c4d51 43-44,425,432-434,442-443,445
+  s_f98e7b80097552::t_352400cbf374c6 426-431,435-436
+packages/@n8n/agents/src/__tests__/workspace/sandbox/n8n-sandbox-filesystem.test.ts
+  s_f98e7b80097552::t_99f4edb76a3d1c 10-11,31-32,53-54,117-150
+packages/@n8n/agents/src/workspace/filesystem/n8n-sandbox-filesystem.ts
+  s_f98e7b80097552::t_9ee6db6ef956c5 53-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8e180f4def10c79311daf2fa306529cbc12ff7b6",
+  "prompts": {},
+  "sessions": {
+    "s_f98e7b80097552": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5acae-89c6-4aaf-8517-d4adb04af2ea",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
