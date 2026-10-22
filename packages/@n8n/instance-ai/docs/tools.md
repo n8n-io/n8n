@@ -880,7 +880,7 @@ is false or missing, `list` and `get` omit `description`, including managed entr
 
 > **Security note**: The agent never handles raw credential secrets. Credential
 > creation and secret configuration is done through the n8n frontend UI (via
-> `workflow_builder_credentials(action="setup")`) or Computer Use browser credential capture.
+> `workflow_builder_credentials(action="setup")`) or Browser Use credential capture.
 
 ### `workflow_builder_credentials(action="list")`
 
@@ -959,7 +959,7 @@ means setup is already complete, and the card is never open once a result is
 returned. Generic auth types (bearer/header/query/basic/etc.) stay preselected
 but always require an explicit Continue, since the type alone does not identify
 a service. When `needsBrowserSetup=true`, the orchestrator should load the
-`credential-setup-with-computer-use` skill, use Computer Use `browser_*` tools
+`credential-setup-with-browser-use` skill, use Browser Use `browser_*` tools
 directly, then call `workflow_builder_credentials(action="setup")` again to select the created
 credential.
 
@@ -1371,11 +1371,10 @@ carries *what* it does.
 
 ---
 
-## Filesystem Tools (dynamic, conditional)
+## Browser Use Tools (dynamic, conditional)
 
-Only registered when a `localMcpServer` (computer-use gateway) is connected.
+Only registered when a `localMcpServer` (the Browser Use session) is connected.
 Tools are dynamically created from the MCP server's advertised capabilities.
-See `docs/filesystem-access.md`.
 
 ---
 

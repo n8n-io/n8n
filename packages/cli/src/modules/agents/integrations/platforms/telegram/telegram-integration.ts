@@ -159,6 +159,11 @@ export class TelegramIntegration extends AgentChatIntegration {
 		return buildTelegramOriginDraft(decoded);
 	}
 
+	/** Episodic memory stays off until this channel defines its ownership policy. */
+	resolveEpisodicScope() {
+		return null;
+	}
+
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {
 		const botToken = this.extractBotToken(ctx.credential);
 		const mode = ctx.ingressEnabled ? this.getMode() : 'webhook';

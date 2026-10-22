@@ -221,6 +221,11 @@ export class DiscordIntegration extends AgentChatIntegration {
 		return await buildDiscordOriginDraft(input, decoded);
 	}
 
+	/** Episodic memory stays off until this channel defines its ownership policy. */
+	resolveEpisodicScope() {
+		return null;
+	}
+
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {
 		const botToken = this.extractBotToken(ctx.credential);
 		const publicKey = this.extractPublicKey(ctx.credential);
