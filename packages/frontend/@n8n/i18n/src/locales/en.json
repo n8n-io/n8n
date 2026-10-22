@@ -48,7 +48,8 @@
 	"inbox.promotionReview.approve.disabled.changesRequested": "A reviewer requested changes. Resolve them on GitLab, then reload the Inbox.",
 	"inbox.promotionReview.approve.disabled.conflicts": "The merge request has conflicts. Resolve them on GitLab.",
 	"inbox.promotionReview.approve.disabled.changesUnavailable": "n8n couldn't show the changes of this review. Review and merge it on GitLab.",
-	"inbox.promotionReview.approve.disabled.newCommits": "The merge request has new commits since the changes loaded. Reload the Inbox to review them.",
+	"inbox.promotionReview.approve.disabled.newCommits": "The merge request has new commits since the changes loaded.",
+	"inbox.promotionReview.approve.reloadChanges": "Reload changes",
 	"inbox.promotionReview.approve.error.title": "Couldn't approve and merge",
 	"_reusableBaseText": {
 		"cancel": "Cancel",

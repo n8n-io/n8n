@@ -57,6 +57,15 @@ watch(
 	() => (changes.value = { status: 'loading' }),
 );
 
+const hasNewCommits = computed(
+	() =>
+		changes.value.status === 'ready' &&
+		!!props.item.headCommitSha &&
+		changes.value.headCommitSha !== props.item.headCommitSha,
+);
+// A new key mounts the Changes tab again, so it loads the newest head.
+const changesKey = ref(0);
+
 /** What the admin confirms. A later change of the selected row does not change it. */
 const pendingApproval = ref<{ id: string; headCommitSha: string } | null>(null);
 const approving = ref(false);
@@ -76,7 +85,7 @@ const disabledReason = computed(() => {
 	if (changes.value.status === 'unavailable') {
 		return i18n.baseText('inbox.promotionReview.approve.disabled.changesUnavailable');
 	}
-	if (changes.value.status === 'ready' && changes.value.headCommitSha !== item.headCommitSha) {
+	if (hasNewCommits.value) {
 		return i18n.baseText('inbox.promotionReview.approve.disabled.newCommits');
 	}
 	return null;
@@ -149,16 +158,25 @@ async function onApprove() {
 				</div>
 			</div>
 			<!-- Visible text, not a tooltip: a disabled button cannot take keyboard focus. -->
-			<N8nText
-				v-if="item.state === 'open' && disabledReason"
-				:id="disabledReasonId"
-				:class="$style.disabledReason"
-				size="small"
-				color="text-light"
-				data-test-id="inbox-promotion-review-approve-reason"
-			>
-				{{ disabledReason }}
-			</N8nText>
+			<div v-if="item.state === 'open' && disabledReason" :class="$style.disabledReason">
+				<N8nText
+					:id="disabledReasonId"
+					size="small"
+					color="text-light"
+					data-test-id="inbox-promotion-review-approve-reason"
+				>
+					{{ disabledReason }}
+				</N8nText>
+				<N8nButton
+					v-if="hasNewCommits"
+					variant="outline"
+					size="xsmall"
+					data-test-id="inbox-promotion-review-reload-changes"
+					@click="changesKey++"
+				>
+					{{ i18n.baseText('inbox.promotionReview.approve.reloadChanges') }}
+				</N8nButton>
+			</div>
 			<div :class="$style.meta">
 				<span v-if="item.environmentName" :class="$style.metaItem">
 					<N8nText size="small" color="text-light">
@@ -207,6 +225,7 @@ async function onApprove() {
 		</div>
 		<component
 			:is="PromotionChanges"
+			:key="changesKey"
 			:class="$style.changes"
 			:review-id="item.id"
 			@state="changes = $event"
@@ -292,6 +311,9 @@ async function onApprove() {
 }
 
 .disabledReason {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 	align-self: flex-end;
 }
 

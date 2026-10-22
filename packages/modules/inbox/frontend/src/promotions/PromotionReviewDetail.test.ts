@@ -203,11 +203,6 @@ it.each([
 		{ status: 'unavailable' } as const,
 		"n8n couldn't show the changes of this review. Review and merge it on GitLab.",
 	],
-	[
-		'GitLab reports newer commits than the changes show',
-		{ status: 'ready', headCommitSha: 'b'.repeat(40) } as const,
-		'The merge request has new commits since the changes loaded. Reload the Inbox to review them.',
-	],
 ])('only approves changes that the admin saw: disabled when %s', async (_case, state, reason) => {
 	shownChanges = state;
 
@@ -221,4 +216,25 @@ it.each([
 		expect(queryByTestId('inbox-promotion-review-approve-reason')).not.toBeInTheDocument();
 	}
 	expect(getByTestId('inbox-promotion-review-approve')).toBeDisabled();
+});
+
+it('reloads the changes when GitLab reports new commits, then approves the new head', async () => {
+	const newHead = 'b'.repeat(40);
+	const rendered = renderComponent({
+		props: { item: item({ headCommitSha: newHead }), onItemChange },
+	});
+	const { getByTestId, findByTestId } = rendered;
+
+	expect(await findByTestId('inbox-promotion-review-approve-reason')).toHaveTextContent(
+		'The merge request has new commits since the changes loaded.',
+	);
+	expect(getByTestId('inbox-promotion-review-approve')).toBeDisabled();
+
+	shownChanges = { status: 'ready', headCommitSha: newHead };
+	await userEvent.click(getByTestId('inbox-promotion-review-reload-changes'));
+	await approveInDialog(rendered);
+
+	expect(approvePromotionReview).toHaveBeenCalledWith(expect.anything(), 'rev-1', {
+		headCommitSha: newHead,
+	});
 });
