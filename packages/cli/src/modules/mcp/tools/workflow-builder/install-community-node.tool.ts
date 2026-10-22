@@ -50,7 +50,7 @@ const outputSchema = {
 	policyRestrictions: packagePolicyRestrictionsSchema
 		.optional()
 		.describe(
-			'Node types from the package that a node type policy restricts. The package is installed, but a workflow that uses a node type with blockedOn "instance" cannot be saved, unless optInAvailable is true and the project of the workflow allows it. A node type with blockedOn "projects" is restricted only in some projects. Do not build with a restricted node type: tell the user which nodes are restricted and that an admin manages these policies. Absent when no policy was evaluated.',
+			'Node types from the package that a node type policy restricts. The package is installed either way. blockedOn "instance": a workflow that uses the node type cannot be saved, unless optInAvailable is true and the project of the workflow allows it. Do not build with these node types: tell the user which nodes are restricted and that an admin manages node type policies. blockedOn "projects": the instance allows the node type, but some projects block it, and this result does not say which. You can build with it. If saving the workflow fails because of a policy, tell the user that the project of the workflow blocks the node type. Absent when no policy was evaluated.',
 		),
 } satisfies z.ZodRawShape;
 
