@@ -361,8 +361,9 @@ export class ImapSimple {
 
 			try {
 				await withTimeout(this.reopen(attempt), this.reconnectTimeout);
+				// A superseded attempt installed nothing; the restore that took over owns the budget.
 				// A planned replace that held is no sign of an outage; only its failed dials count.
-				this.spentTries = planned ? tries : tries + 1;
+				if (attempt === this.attempt) this.spentTries = planned ? tries : tries + 1;
 				return;
 			} catch (error) {
 				// Another restore has taken over, or the caller is gone: either way this one is

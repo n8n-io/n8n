@@ -629,6 +629,36 @@ describe('reconnecting', () => {
 			expect(third.mailboxOpen).toHaveBeenCalledWith('INBOX');
 		});
 
+		it('lets a drop restore the replace overtook leave the budget alone', async () => {
+			const [first, second, third, fourth] = [
+				new FakeTransport(),
+				new FakeTransport(),
+				new FakeTransport(),
+				new FakeTransport(),
+			];
+			let releaseSelect!: () => void;
+			second.mailboxOpen.mockReturnValue(
+				new Promise((resolve) => {
+					releaseSelect = () => resolve({ exists: 0 });
+				}),
+			);
+
+			await openWatching(handOut(first, second, third, fourth), { interval: REPLACE_INTERVAL });
+			await vi.advanceTimersByTimeAsync(REPLACE_INTERVAL - 10);
+
+			// The drop's restore hangs on its SELECT while the scheduled replace installs `third`.
+			first.emit('close');
+			await vi.advanceTimersByTimeAsync(11);
+			releaseSelect();
+			await vi.advanceTimersByTimeAsync(1);
+
+			third.emit('close');
+			await vi.advanceTimersByTimeAsync(1);
+
+			expect(second.close).toHaveBeenCalled();
+			expect(fourth.mailboxOpen).toHaveBeenCalledWith('INBOX');
+		});
+
 		it('does not let a slow replace stack up behind the next tick', async () => {
 			// A replace that outlasts its own interval; a naive interval timer would double up.
 			const TICK = 10_000;
