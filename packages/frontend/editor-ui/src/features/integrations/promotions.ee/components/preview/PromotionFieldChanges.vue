@@ -2,11 +2,15 @@
 import type { PromotionDirection } from '@n8n/api-types';
 import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed } from 'vue';
+import { computed, inject } from 'vue';
 
 import NodeDiff from '@/features/workflows/workflowDiff/NodeDiff.vue';
 
-import type { DetailSide, FieldChange } from '../../promotionPreview.content';
+import {
+	PromotionAbsentSideLabelsKey,
+	type DetailSide,
+	type FieldChange,
+} from '../../promotionPreview.content';
 
 const props = defineProps<{
 	changes: FieldChange[];
@@ -16,9 +20,11 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const absentLabels = inject(PromotionAbsentSideLabelsKey, undefined);
 
 // Before is the branch for promote, and this instance for apply.
 const absentText = (side: DetailSide) =>
+	absentLabels?.[side] ??
 	i18n.baseText(
 		side === (props.direction === 'promote' ? 'before' : 'after')
 			? 'promotions.preview.side.notOnBranch'

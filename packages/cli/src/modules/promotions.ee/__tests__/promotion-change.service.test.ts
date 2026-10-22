@@ -1,7 +1,7 @@
 import { FORMAT_VERSION } from '@/modules/n8n-packages/spec/constants';
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
-import { scopeManifestToProject } from '../promotion-change.service';
+import { scopeManifestToProject } from '../promotion-preview';
 
 const ids = (entries: Array<{ id: string }> | undefined) => entries?.map(({ id }) => id).sort();
 

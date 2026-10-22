@@ -189,6 +189,10 @@ onBeforeUnmount(() => {
 				>
 					<InboxEmptyState />
 				</WorkflowReviewDetail>
+				<PromotionReviewDetail
+					v-else-if="selectedPromotionItem && !store.disabledSources.includes('promotion_review')"
+					:item="selectedPromotionItem"
+				/>
 				<template v-else>
 					<div :class="$style.columnTitle" />
 					<div :class="$style.mainBody">
@@ -198,12 +202,6 @@ onBeforeUnmount(() => {
 								!store.disabledSources.includes(selection.type)
 							"
 							:selection="selection"
-						/>
-						<PromotionReviewDetail
-							v-else-if="
-								selectedPromotionItem && !store.disabledSources.includes('promotion_review')
-							"
-							:item="selectedPromotionItem"
 						/>
 						<InboxEmptyState v-else />
 					</div>

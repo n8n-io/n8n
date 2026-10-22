@@ -33,17 +33,21 @@ import PromotionFieldChanges from './PromotionFieldChanges.vue';
 import PromotionWorkflowPreview from './PromotionWorkflowPreview.vue';
 import PromotionWorkflowLinks from './PromotionWorkflowLinks.vue';
 
-const props = defineProps<{
-	resource: PromotionResource;
-	graph: SelectionGraph;
-	direction: PromotionDirection;
-	included: boolean;
-	entry?: DetailEntry;
-	inspected: boolean;
-	blockers?: Blocker[];
-	branchName?: string;
-	diffActive?: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		resource: PromotionResource;
+		graph: SelectionGraph;
+		direction: PromotionDirection;
+		included: boolean;
+		entry?: DetailEntry;
+		inspected: boolean;
+		blockers?: Blocker[];
+		diffActive?: boolean;
+		/** False for a list that users only read. The card then shows no inclusion state. */
+		selectable?: boolean;
+	}>(),
+	{ selectable: true },
+);
 
 const emit = defineEmits<{
 	inspect: [key: ResourceKey];
@@ -77,6 +81,7 @@ const status = computed(() => {
 	if (blocker.value) {
 		return { label: blocker.value, icon: 'circle-alert' as const, tone: 'blocked' };
 	}
+	if (!props.selectable) return undefined;
 	return props.included
 		? {
 				label: i18n.baseText('promotions.preview.card.included'),
@@ -99,18 +104,19 @@ const scope = computed(() =>
 
 type Footer = { keypath: BaseTextKey; workflows: Array<{ key: ResourceKey; name: string }> };
 
-// Resources that users cannot select name the workflows that use or call them.
+// Resources that users cannot select name the workflows that use or call them. A resource
+// that a review deletes can have no such workflow left.
 const footer = computed((): Footer | undefined => {
 	const { resource, graph } = props;
 	if (resource.selectable || isContainer(resource)) return undefined;
 	const users = graph.requiredBy.get(resource.key) ?? [];
+	const callers = graph.calledBy.get(resource.key) ?? [];
 	const named = (keys: readonly ResourceKey[]) => keys.map((key) => ({ key, name: nameOf(key) }));
 	if (users.length > 0)
 		return { keypath: 'promotions.preview.card.usedBy', workflows: named(users) };
-	return {
-		keypath: 'promotions.preview.card.calledBy',
-		workflows: named(graph.calledBy.get(resource.key) ?? []),
-	};
+	if (callers.length > 0)
+		return { keypath: 'promotions.preview.card.calledBy', workflows: named(callers) };
+	return undefined;
 });
 
 const detail = computed(() => (props.entry?.status === 'loaded' ? props.entry.detail : undefined));
@@ -175,7 +181,7 @@ const tagNote = computed(() => {
 					</N8nText>
 				</span>
 				<N8nIcon icon="chevron-down" size="small" :class="$style.chevron" />
-				<N8nTooltip :content="status.label" as-child>
+				<N8nTooltip v-if="status" :content="status.label" as-child>
 					<span
 						role="img"
 						:aria-label="status.label"
@@ -254,7 +260,6 @@ const tagNote = computed(() => {
 						:resource-key="resource.key"
 						:workflow-name="resource.name"
 						:direction="direction"
-						:branch-name="branchName"
 						:graph="graph"
 						@activate="emit('activateDiff')"
 						@retry="emit('retry')"
@@ -276,9 +281,14 @@ const tagNote = computed(() => {
 					</N8nText>
 				</template>
 
-				<footer v-if="footer" :class="$style.footer">
+				<footer v-if="footer || scope" :class="$style.footer">
 					<N8nText v-if="scope" step="2xs" color="text-light">{{ scope }}</N8nText>
-					<N8nText step="2xs" color="text-light" data-test-id="promotion-preview-card-inclusion">
+					<N8nText
+						v-if="footer"
+						step="2xs"
+						color="text-light"
+						data-test-id="promotion-preview-card-inclusion"
+					>
 						<I18nT :keypath="footer.keypath" scope="global">
 							<template #names>
 								<PromotionWorkflowLinks

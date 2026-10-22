@@ -2,13 +2,13 @@
 import type { PromotionDirection, PromotionResourceDetail } from '@n8n/api-types';
 import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, onMounted } from 'vue';
+import { computed, inject, onMounted } from 'vue';
 
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import WorkflowDiffView from '@/features/workflows/workflowDiff/WorkflowDiffView.vue';
 import { toDiffWorkflow } from '@/features/workflows/workflowDiff/workflowDiff.utils';
 
-import type { DetailSide } from '../../promotionPreview.content';
+import { PromotionAbsentSideLabelsKey, type DetailSide } from '../../promotionPreview.content';
 import type { ResourceKey, SelectionGraph } from '../../promotionPreview.selection';
 import { isBranchSide, toPromotionDiffSide } from '../../promotionPreview.workflow';
 import PromotionWorkflowSideLabel from './PromotionWorkflowSideLabel.vue';
@@ -17,11 +17,11 @@ const props = defineProps<{
 	detail: Extract<PromotionResourceDetail, { type: 'workflow' }>;
 	resourceKey: ResourceKey;
 	direction: PromotionDirection;
-	branchName?: string;
 	graph: SelectionGraph;
 }>();
 
 const i18n = useI18n();
+const absentLabels = inject(PromotionAbsentSideLabelsKey, undefined);
 const tagsStore = useTagsStore();
 
 onMounted(async () => {
@@ -50,10 +50,13 @@ const source = computed(() => workflowOf('before'));
 const target = computed(() => workflowOf('after'));
 
 function emptyTextOf(side: DetailSide) {
-	return i18n.baseText(
-		isBranchSide(side, props.direction)
-			? 'promotions.preview.side.notOnBranch'
-			: 'promotions.preview.side.notOnInstance',
+	return (
+		absentLabels?.[side] ??
+		i18n.baseText(
+			isBranchSide(side, props.direction)
+				? 'promotions.preview.side.notOnBranch'
+				: 'promotions.preview.side.notOnInstance',
+		)
 	);
 }
 </script>
@@ -69,14 +72,10 @@ function emptyTextOf(side: DetailSide) {
 			hide-title
 		>
 			<template #sourceLabel>
-				<PromotionWorkflowSideLabel
-					side="before"
-					:direction="direction"
-					:branch-name="branchName"
-				/>
+				<PromotionWorkflowSideLabel side="before" />
 			</template>
 			<template #targetLabel>
-				<PromotionWorkflowSideLabel side="after" :direction="direction" :branch-name="branchName" />
+				<PromotionWorkflowSideLabel side="after" />
 			</template>
 			<template #sourceEmptyText>
 				<N8nText size="small" color="text-base">{{ emptyTextOf('before') }}</N8nText>

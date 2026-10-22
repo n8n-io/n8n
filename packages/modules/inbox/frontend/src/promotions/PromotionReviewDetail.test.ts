@@ -1,5 +1,8 @@
 import type { InboxPromotionReviewItem } from '@n8n/api-types';
+import { componentRegistry } from '@n8n/frontend-module-sdk';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
+import { defineComponent } from 'vue';
+import { onTestFinished } from 'vitest';
 
 import PromotionReviewDetail from './PromotionReviewDetail.vue';
 
@@ -56,4 +59,20 @@ it('falls back to the branch name, explains why GitLab did not answer, and shows
 	expect(queryByRole('link', { name: 'Open in GitLab' })).not.toBeInTheDocument();
 	expect(getByText('Merged')).toBeInTheDocument();
 	expect(getByText('Grace Hopper')).toBeInTheDocument();
+});
+
+it('shows the changes of the review from the shell', () => {
+	componentRegistry.register(
+		'promotion-changes',
+		defineComponent({
+			props: { reviewId: { type: String, required: true } },
+			template: '<div data-test-id="promotion-changes-stub">{{ reviewId }}</div>',
+		}),
+	);
+	onTestFinished(() => componentRegistry.unregister('promotion-changes'));
+
+	const { getByRole, getByTestId } = renderComponent({ props: { item: item() } });
+
+	expect(getByRole('tab', { name: 'Changes' })).toBeInTheDocument();
+	expect(getByTestId('promotion-changes-stub')).toHaveTextContent('rev-1');
 });

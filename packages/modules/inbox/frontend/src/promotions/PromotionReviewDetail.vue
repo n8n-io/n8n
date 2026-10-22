@@ -4,13 +4,15 @@ import {
 	N8nAvatar,
 	N8nBadge,
 	N8nCallout,
+	N8nExternalLink,
 	N8nHeading,
-	N8nIcon,
-	N8nLink,
+	N8nTabs,
 	N8nText,
 	type BadgeVariant,
 } from '@n8n/design-system';
+import { componentRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
+import { computed } from 'vue';
 
 import { formatUserDisplayName } from '../reviews/workflowReviews.utils';
 
@@ -23,6 +25,13 @@ const stateBadge: Record<PromotionReviewState, BadgeVariant> = {
 	merged: 'success',
 	closed: 'subtle',
 };
+
+// The editor renders the changes.
+const PromotionChanges = computed(() => componentRegistry.get('promotion-changes'));
+// One tab for now. The bar matches workflow reviews, which also have an Activity tab.
+const tabOptions = computed(() => [
+	{ label: i18n.baseText('inbox.promotionReview.detail.tabs.changes'), value: 'changes' as const },
+]);
 </script>
 
 <template>
@@ -32,13 +41,17 @@ const stateBadge: Record<PromotionReviewState, BadgeVariant> = {
 				<N8nHeading tag="h2" size="xlarge" bold>
 					{{ item.title ?? item.branchName ?? i18n.baseText('inbox.promotionReview.untitled') }}
 				</N8nHeading>
-				<N8nBadge :variant="stateBadge[item.reviewState]">
+				<N8nBadge :variant="stateBadge[item.reviewState]" size="xxsmall">
 					{{ i18n.baseText(`inbox.promotionReview.state.${item.reviewState}`) }}
 				</N8nBadge>
-				<N8nLink v-if="item.webUrl" :class="$style.gitlabLink" :to="item.webUrl" new-window>
-					<N8nIcon icon="arrow-up-right" size="small" />
+				<N8nExternalLink
+					v-if="item.webUrl"
+					:class="$style.gitlabLink"
+					:href="item.webUrl"
+					size="small"
+				>
 					{{ i18n.baseText('inbox.promotionReview.detail.openInGitLab') }}
-				</N8nLink>
+				</N8nExternalLink>
 			</div>
 			<div :class="$style.meta">
 				<span v-if="item.environmentName" :class="$style.metaItem">
@@ -78,14 +91,41 @@ const stateBadge: Record<PromotionReviewState, BadgeVariant> = {
 		>
 			{{ i18n.baseText(`inbox.promotionReview.detail.remoteError.${item.remoteError}`) }}
 		</N8nCallout>
+		<div :class="$style.tabRow">
+			<N8nTabs
+				model-value="changes"
+				:options="tabOptions"
+				variant="modern"
+				data-test-id="inbox-promotion-review-tab-bar"
+			/>
+		</div>
+		<component :is="PromotionChanges" :class="$style.changes" :review-id="item.id" />
 	</section>
 </template>
 
 <style module lang="scss">
 .detail {
 	display: flex;
+	flex: 1;
 	flex-direction: column;
 	gap: var(--spacing--md);
+	min-height: 0;
+}
+
+.tabRow {
+	/* Holds the active-tab indicator, so the border sits under it. */
+	padding-bottom: var(--review-tab-bar--indicator-overhang);
+	border-bottom: var(--border);
+
+	> :global(.n8n-tabs) {
+		transform: translateY(var(--spacing--sm));
+	}
+}
+
+.changes {
+	flex: 1;
+	/* The tab row border already separates the changes from the header. */
+	margin-top: calc(-1 * var(--spacing--md));
 }
 
 .header {
@@ -99,13 +139,14 @@ const stateBadge: Record<PromotionReviewState, BadgeVariant> = {
 	align-items: center;
 	gap: var(--spacing--xs);
 	min-width: 0;
+	/* Matches the title row of workflow reviews, so both headings sit at the same height. */
+	min-height: var(--spacing--xl);
 }
 
 .gitlabLink {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
 	margin-left: auto;
+	/* A standalone external link takes the font size around it. The text next to it is smaller. */
+	font-size: var(--font-size--sm);
 	white-space: nowrap;
 }
 
