@@ -832,17 +832,18 @@ describe('AgentPublishService', () => {
 		},
 	);
 
-	it('reads the knowledge file totals before it commits the publication', async () => {
+	it('publishes and sends the event without knowledge totals when the totals read fails', async () => {
 		const { service, agentRepository, agentFileRepository, telemetry } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 		agentFileRepository.getKnowledgeTotals.mockRejectedValue(new Error('read failed'));
 
-		await expect(service.publishAgent(agentId, projectId, user, byUser)).rejects.toThrow(
-			'read failed',
-		);
+		await service.publishAgent(agentId, projectId, user, byUser);
 
-		expect(agentRepository.setActiveVersionFenced).not.toHaveBeenCalled();
-		expect(telemetry.track).not.toHaveBeenCalled();
+		expect(agentRepository.setActiveVersionFenced).toHaveBeenCalled();
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.USER_PUBLISHED_AGENT,
+			expect.not.objectContaining({ knowledge_file_count: expect.anything() }),
+		);
 	});
 
 	it('reverts draft fields and task bodies from the active published snapshot', async () => {

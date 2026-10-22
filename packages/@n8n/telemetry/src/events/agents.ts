@@ -192,10 +192,16 @@ const agentPublish = {
 	version_id: z.string().describe('AgentHistory versionId that became active'),
 	knowledge_file_count: z
 		.number()
-		.describe('Knowledge files of the agent at publish time. Files have no versions.'),
+		.optional()
+		.describe(
+			'Knowledge files of the agent at publish time. Files have no versions. Absent when the server could not read the files.',
+		),
 	knowledge_total_bytes: z
 		.number()
-		.describe('Sum of the original sizes of the knowledge files at publish time'),
+		.optional()
+		.describe(
+			'Sum of the original sizes of the knowledge files at publish time. Absent when the server could not read the files.',
+		),
 };
 
 export const AGENTS_TELEMETRY = defineTelemetryEvents({
