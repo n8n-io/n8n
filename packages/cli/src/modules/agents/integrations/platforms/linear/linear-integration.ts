@@ -1,4 +1,5 @@
 import type { ResolvedEpisodicScope } from '@n8n/agents';
+import type { AgentMessageIntegrationOrigin } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
@@ -22,7 +23,7 @@ import {
 	LINEAR_ACTION_TOOL_DEFINITIONS,
 	LINEAR_CONTEXT_QUERY_TOOL_DEFINITIONS,
 } from './linear-tool-definitions';
-import { buildLinearOriginDraft } from './linear-origin';
+import { buildLinearOriginDraft, fetchLinearOriginNames } from './linear-origin';
 import type { DecodedThread, OriginInput } from '../../integration-origin-support';
 
 /**
@@ -108,8 +109,12 @@ export class LinearIntegration extends AgentChatIntegration {
 		});
 	}
 
-	async buildOriginDraft(input: OriginInput, decoded: DecodedThread) {
-		return await buildLinearOriginDraft(input, decoded);
+	buildOriginDraft(input: OriginInput, decoded: DecodedThread) {
+		return buildLinearOriginDraft(input, decoded);
+	}
+
+	async fetchOriginNames(input: OriginInput, origin: AgentMessageIntegrationOrigin) {
+		return await fetchLinearOriginNames(input, origin);
 	}
 
 	/**
