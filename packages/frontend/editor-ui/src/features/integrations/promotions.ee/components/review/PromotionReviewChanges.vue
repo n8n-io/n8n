@@ -13,7 +13,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, provide, ref, shallowRef, watch } from 'vue';
 
 import { usePromotionResourceDetails } from '../../composables/usePromotionResourceDetails';
-import { emptyBlockerIndex } from '../../promotionOperation';
+import { indexBlockers } from '../../promotionOperation';
 import { PromotionAbsentSideLabelsKey } from '../../promotionPreview.content';
 import {
 	buildSelectionGraph,
@@ -35,6 +35,7 @@ const rootStore = useRootStore();
 // A review is read-only: nothing is selected, blocked, or included.
 const noInclusion: Inclusion = { included: new Set(), reasons: new Map() };
 const noKeys: ReadonlySet<ResourceKey> = new Set();
+const noBlockers = indexBlockers([]);
 
 provide(PromotionAbsentSideLabelsKey, {
 	before: i18n.baseText('promotions.review.side.added'),
@@ -189,7 +190,7 @@ const treeResizer = useResizablePanel({
 						:disabled="noKeys"
 						:locked="true"
 						direction="promote"
-						:blockers="emptyBlockerIndex"
+						:blockers="noBlockers"
 						:selectable="false"
 						@inspect="inspect"
 					/>
@@ -204,7 +205,7 @@ const treeResizer = useResizablePanel({
 						:inclusion="noInclusion"
 						:entries="details.entries.value"
 						:inspected-key="inspectedKey"
-						:blockers="emptyBlockerIndex"
+						:blockers="noBlockers"
 						:selectable="false"
 						@retry="details.retry"
 						@refresh="load"
