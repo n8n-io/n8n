@@ -257,7 +257,7 @@ export const settingsOpenApi: ZodOpenAPIMetadata = alsoNullable({
 			enum: ['separate', 'combined'],
 			...workflowSettingsFieldDocs.binaryMode,
 		},
-		engineType: { type: 'string', ...workflowSettingsFieldDocs.engineType },
+		engineType: { type: 'string', nullable: true, ...workflowSettingsFieldDocs.engineType },
 		callerPolicy: {
 			type: 'string',
 			enum: ['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner'],
