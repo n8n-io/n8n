@@ -39,7 +39,10 @@ the credential checks read control-plane state.
    code cannot run in the dispatch that made the call, because a step returns before the
    child runs. Running the node again keeps its behaviour without a copy of it in the shim.
    It is safe for the Execute Sub-workflow node because its work before the call has no
-   side effect, and it holds for that node only. This supersedes, for a child resume, the
+   side effect, and it holds for that node only. The second run re-evaluates expressions,
+   so the shim answers the call from the recorded child whatever the node asks for this
+   time: an expression that resolves differently cannot start another child, it can only
+   mislabel the one that ran. This supersedes, for a child resume, the
    wait ADR's rule that the engine never runs the node's execute method again; the rule
    stands for deadline and request resumes, and that ADR stays as written. A later change
    to the node interface can split the node into a call phase and a resume phase, as the
