@@ -49,7 +49,7 @@ it('records each HTTP attempt, with no payload or duplicate usage', async () => 
 		.fn<typeof fetch>()
 		.mockResolvedValueOnce(new Response('private error', { status: 500 }))
 		.mockResolvedValueOnce(new Response('private output'));
-	const fetcher = traceModelRequests(delegate, telemetry, 'custom', 'test-model');
+	const fetcher = traceModelRequests(delegate, telemetry, 'google', 'test-model');
 	const init = {
 		method: 'POST',
 		headers: { Authorization: 'private key' },
@@ -64,7 +64,7 @@ it('records each HTTP attempt, with no payload or duplicate usage', async () => 
 		'langsmith.traceable': 'true',
 		'langsmith.metadata.thread_id': 'thread',
 		'langsmith.metadata.evalRole': 'helper',
-		'gen_ai.system': 'custom',
+		'gen_ai.provider.name': 'gcp.gemini',
 		'gen_ai.request.model': 'test-model',
 		'http.response.status_code': 500,
 	});
@@ -95,7 +95,6 @@ it('keeps generic OpenTelemetry spans free of LangSmith attributes', async () =>
 		{
 			name: 'model.provider.request',
 			attributes: {
-				'gen_ai.system': 'custom',
 				'gen_ai.request.model': 'model',
 				'http.response.status_code': 200,
 			},
@@ -117,7 +116,6 @@ it('records LangSmith request spans without optional metadata', async () => {
 	expect(spans[0]).toEqual({
 		name: 'model.provider.request',
 		attributes: {
-			'gen_ai.system': 'custom',
 			'gen_ai.request.model': 'model',
 			'langsmith.traceable': 'true',
 			'langsmith.span.kind': 'chain',

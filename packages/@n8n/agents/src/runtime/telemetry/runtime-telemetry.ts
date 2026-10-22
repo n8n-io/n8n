@@ -121,9 +121,11 @@ function buildGenAiRootAttributes(
 ): Record<string, AttributeValue> {
 	const modelId = t.metadata?.model_id;
 	const threadId = t.metadata?.thread_id;
+	const agentId = t.metadata?.agent_id;
 	return {
 		'gen_ai.operation.name': 'invoke_agent',
 		'gen_ai.agent.name': config.name,
+		...(typeof agentId === 'string' ? { 'gen_ai.agent.id': agentId } : {}),
 		...(typeof modelId === 'string' ? { 'gen_ai.request.model': modelId } : {}),
 		...(typeof threadId === 'string' ? { 'gen_ai.conversation.id': threadId } : {}),
 	};
