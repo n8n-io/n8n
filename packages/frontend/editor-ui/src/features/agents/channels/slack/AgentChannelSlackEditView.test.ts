@@ -72,7 +72,7 @@ describe('AgentChannelSlackEditView', () => {
 		async (managed) => {
 			const { wrapper } = mountForm({}, managed);
 			expect(wrapper.get(switchSelector).attributes('aria-label')).toBe(
-				'Only respond when @mentioned',
+				'Reply only when @mentioned',
 			);
 			expect(wrapper.get(switchSelector).attributes('aria-checked')).toBe('false');
 			expect(wrapper.vm.currentSettings).toBeUndefined();

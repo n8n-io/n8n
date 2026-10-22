@@ -147,5 +147,6 @@ defineExpose({ currentSettings, validationError, loading, beforeSave });
 
 .settingsGroup.settingsGroup {
 	background: transparent;
+	overflow: visible;
 }
 </style>

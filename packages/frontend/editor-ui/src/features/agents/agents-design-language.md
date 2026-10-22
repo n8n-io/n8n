@@ -116,10 +116,13 @@ Keep changes local until Save. Cancel and Close discard them. Show the same
 behavior controls for managed and manual connections.
 
 Group related controls in labeled Settings Row Groups, as Slack and WhatsApp do.
-Put reply controls in Conversations and approval controls in Permissions. Keep
+Put reply controls in Conversations and approval controls in Agent permissions. Keep
 the credential selector outside these groups. Use inset dividers between rows.
 Keep each control on the right and its full description on the left. Keep the
 approval action selector inside its setting row.
+When channel approval is on, show a full-width action picker directly below
+Actions that need approval. Do not show a mode picker or helper text for this
+field. Show saved approval for all actions as a selection of every action.
 
 ### Form spacing
 
