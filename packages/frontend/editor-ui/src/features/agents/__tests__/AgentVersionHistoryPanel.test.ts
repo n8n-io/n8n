@@ -53,7 +53,7 @@ vi.mock('../composables/useAgentPublish', () => ({
 }));
 
 const STUBS = {
-	N8nTabs: {
+	Tabs: {
 		name: 'N8nTabs',
 		template: '<div />',
 		props: ['modelValue', 'options'],
@@ -298,4 +298,14 @@ it('switches between Versions and Publish Timeline', async () => {
 		projectId: 'project-1',
 		agentId: 'agent-1',
 	});
+});
+
+it('selects the requested tab and keeps tab changes in sync with its parent', async () => {
+	const wrapper = mountPanel({ activeTab: 'timeline' });
+	await flushPromises();
+	expect(wrapper.findComponent({ name: 'AgentPublishTimeline' }).exists()).toBe(true);
+	await wrapper.setProps({ activeTab: 'versions' });
+	expect(wrapper.findComponent({ name: 'AgentVersionList' }).exists()).toBe(true);
+	wrapper.getComponent({ name: 'N8nTabs' }).vm.$emit('update:modelValue', 'timeline');
+	expect(wrapper.emitted('update:activeTab')).toEqual([['timeline']]);
 });

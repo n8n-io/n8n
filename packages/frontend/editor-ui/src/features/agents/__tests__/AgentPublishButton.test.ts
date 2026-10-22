@@ -112,6 +112,7 @@ interface RenderProps {
 	projectId?: string;
 	agentId?: string;
 	isSaving?: boolean;
+	showPublishTimeline?: boolean;
 	beforeRevertToPublished?: () => Promise<void> | void;
 	configValidationStatus?: 'valid' | 'invalid' | null;
 	configValidationIssues?: AgentConfigValidationIssue[];
@@ -163,6 +164,45 @@ describe('AgentPublishButton', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		trackMock.mockReset();
+	});
+
+	it('opens the timeline from the publish menu while editing is unavailable', async () => {
+		const wrapper = await renderComponent({ showPublishTimeline: true, isSaving: true });
+		const action = wrapper.get('[data-action="publish-timeline"]');
+		expect(action.text()).toBe('workflowHistory.action.viewTimeline');
+		expect(action.attributes('disabled')).toBeUndefined();
+		await action.trigger('click');
+		expect(wrapper.emitted('open-publish-timeline')).toEqual([[]]);
+		wrapper.unmount();
+	});
+
+	it('keeps timeline access available for read-only viewers before the first publication', async () => {
+		agentPermissionsMock.canPublish.value = false;
+		agentPermissionsMock.canUpdate.value = false;
+		try {
+			const wrapper = await renderComponent({ showPublishTimeline: true });
+			await wrapper.get('[data-action="publish-timeline"]').trigger('click');
+			expect(wrapper.emitted('open-publish-timeline')).toEqual([[]]);
+			wrapper.unmount();
+		} finally {
+			agentPermissionsMock.canPublish.value = true;
+			agentPermissionsMock.canUpdate.value = true;
+		}
+	});
+
+	it('disables timeline access before the agent is saved', async () => {
+		const wrapper = await renderComponent({ showPublishTimeline: true, agent: null });
+		const action = wrapper.get('[data-action="publish-timeline"]');
+		expect(action.attributes('disabled')).toBeDefined();
+		await action.trigger('click');
+		expect(wrapper.emitted('open-publish-timeline')).toBeUndefined();
+		wrapper.unmount();
+	});
+
+	it('omits the timeline when its caller does not show history', async () => {
+		const wrapper = await renderComponent();
+		expect(wrapper.find('[data-action="publish-timeline"]').exists()).toBe(false);
+		wrapper.unmount();
 	});
 
 	it('publishes with Shift+P when Publish is enabled', async () => {

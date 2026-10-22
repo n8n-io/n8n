@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, toRef, useTemplateRef, watch } from 'vue';
+import { computed, onMounted, toRef, useTemplateRef, watch } from 'vue';
 import type { UserAction } from '@n8n/design-system';
 import { N8nTabs, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import type { IUser } from 'n8n-workflow';
@@ -35,7 +35,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const activeTab = ref('versions');
+const activeTab = defineModel<string>('activeTab', { default: 'versions' });
 const tabs = computed(() => [
 	{ value: 'versions', label: i18n.baseText('workflowHistory.tab.history') },
 	{ value: 'timeline', label: i18n.baseText('workflowHistory.tab.publishTimeline') },
