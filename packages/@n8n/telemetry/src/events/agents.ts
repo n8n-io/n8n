@@ -204,6 +204,21 @@ const agentPublish = {
 		),
 };
 
+/** Upload checks that the editor makes before it sends the files. */
+const knowledgeUploadClientFailureReason = z.enum(['file_size', 'too_many_files', 'total_limit']);
+
+/** Upload checks that the server makes. `unknown` covers every other error. */
+const knowledgeUploadServerFailureReason = z.enum([
+	'file_type',
+	'file_size',
+	'too_many_files',
+	'total_limit',
+	'duplicate_name',
+	'pdf_no_text',
+	'invalid_file_name',
+	'unknown',
+]);
+
 export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	AGENT_TEAMS_SETUP_STEP: {
 		name: 'Agent Teams setup step',
@@ -870,7 +885,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	USER_UPLOADED_AGENT_KNOWLEDGE_FILES: {
 		name: 'User uploaded agent knowledge files',
 		description:
-			'The user uploaded one or more files to the knowledge of an agent. Fires once for each upload request that stored all of its files. A failed upload stores no files and sends no event.',
+			'The user uploaded one or more files to the knowledge of an agent. Fires once for each upload request that stored all of its files. A failed upload stores no files and sends "User failed agent knowledge upload" instead.',
 		properties: z.object({
 			agent_id: z.string(),
 			project_id: z.string(),
@@ -885,6 +900,62 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 						.describe('Size of the original file, not of the stored text extracted from a PDF'),
 				}),
 			),
+		}),
+	},
+	USER_OPENED_AGENT_KNOWLEDGE_TAB: {
+		name: 'User opened agent knowledge tab',
+		description:
+			'The knowledge tab of the agent builder became the active tab, by a click or by opening a URL with the knowledge section. When the page opens on the tab, the event can fire before the agent finishes loading. First step of the knowledge funnel.',
+		properties: z.object({
+			agent_id: z.string(),
+			push_ref: pushRef,
+		}),
+	},
+	USER_STARTED_ADDING_AGENT_KNOWLEDGE: {
+		name: 'User started adding agent knowledge',
+		description:
+			'The user chose files to upload to the knowledge of an agent, or opened the modal to add a vector store. Sent before any check. The success step is "User uploaded agent knowledge files" for files, and "User modified agent" with the vectorStores part for vector stores.',
+		properties: z.object({
+			agent_id: z.string(),
+			kind: z.enum(['file', 'vector_store']),
+			file_count: z.number().optional().describe('Files chosen. Only for kind file.'),
+			push_ref: pushRef,
+		}),
+	},
+	USER_FAILED_AGENT_KNOWLEDGE_UPLOAD: {
+		name: 'User failed agent knowledge upload',
+		description:
+			'A file upload to the knowledge of an agent was rejected. stage client: the editor rejected it before sending. stage server: the server rejected it, and sent no files. When only some chosen files are too large, the editor reports a client file_size failure and still uploads the other files, so the same upload can also send "User uploaded agent knowledge files".',
+		properties: z.discriminatedUnion('stage', [
+			z.object({
+				stage: z.literal('client'),
+				agent_id: z.string(),
+				file_count: z.number().describe('Files rejected by the check'),
+				reason: knowledgeUploadClientFailureReason,
+				push_ref: pushRef,
+			}),
+			z.object({
+				stage: z.literal('server'),
+				agent_id: z.string(),
+				project_id: z.string(),
+				user_id: z.string(),
+				file_count: z
+					.number()
+					.describe(
+						'Files that the server accepted before it rejected the request. When the server rejects a file while it reads the request, the count does not include that file or any file after it.',
+					),
+				reason: knowledgeUploadServerFailureReason,
+			}),
+		]),
+	},
+	USER_REMOVED_AGENT_KNOWLEDGE: {
+		name: 'User removed agent knowledge',
+		description:
+			'The server deleted one knowledge file of an agent at the request of a user. Not sent when the agent itself is deleted. Removing a vector store sends "User modified agent" with the vectorStores part instead.',
+		properties: z.object({
+			agent_id: z.string(),
+			project_id: z.string(),
+			user_id: z.string(),
 		}),
 	},
 	USER_STARTED_AGENT_CHANNEL_SETUP: {

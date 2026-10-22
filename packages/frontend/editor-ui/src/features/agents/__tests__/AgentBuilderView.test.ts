@@ -3,7 +3,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { nextTick, ref, computed, reactive } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
-import { MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES, type PushMessage } from '@n8n/api-types';
+import {
+	MAX_AGENT_FILE_SIZE_BYTES,
+	MAX_AGENT_FILES_PER_UPLOAD,
+	MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
+	type PushMessage,
+} from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { persistPendingAgent } from '@/features/ai/instanceAi/instanceAi.memory.api';
@@ -284,6 +289,10 @@ const builderTelemetryMock = vi.hoisted(() => ({
 	trackOpenedToolFromList: vi.fn(),
 	trackOpenedSkillFromList: vi.fn(),
 	trackOpenedAddSkillModal: vi.fn(),
+	trackOpenedKnowledgeTab: vi.fn(),
+	trackStartedFileUpload: vi.fn(),
+	trackStartedVectorStoreSetup: vi.fn(),
+	trackRejectedFileUpload: vi.fn(),
 }));
 
 vi.mock('../composables/useAgentBuilderTelemetry', () => ({
@@ -2019,6 +2028,138 @@ describe('AgentBuilderView — preview routing', () => {
 			expect.any(Error),
 			'agents.builder.files.uploadTotalTooLarge.title',
 		);
+		expect(builderTelemetryMock.trackStartedFileUpload).toHaveBeenCalledWith(1);
+		expect(builderTelemetryMock.trackRejectedFileUpload).toHaveBeenCalledWith('total_limit', 1);
+	});
+
+	describe('knowledge funnel telemetry', () => {
+		function emitFromEditorColumn(
+			wrapper: Awaited<ReturnType<typeof renderView>>,
+			event: string,
+			...args: unknown[]
+		) {
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit(event, ...args);
+		}
+
+		function textFile(name: string, size?: number) {
+			const file = new File(['x'], name, { type: 'text/plain' });
+			if (size !== undefined) {
+				Object.defineProperty(file, 'size', { value: size });
+			}
+
+			return file;
+		}
+
+		it('reports the knowledge tab once when the page opens on it', async () => {
+			routeQuery.section = 'knowledge';
+			await renderView({ knowledgeBaseEnabled: true });
+
+			expect(builderTelemetryMock.trackOpenedKnowledgeTab).toHaveBeenCalledTimes(1);
+		});
+
+		it('reports the knowledge tab again when the user switches agents on it', async () => {
+			routeQuery.section = 'knowledge';
+			await renderView({ knowledgeBaseEnabled: true });
+			expect(builderTelemetryMock.trackOpenedKnowledgeTab).toHaveBeenCalledTimes(1);
+
+			routeParams.agentId = 'a2';
+			await flushPromises();
+
+			expect(builderTelemetryMock.trackOpenedKnowledgeTab).toHaveBeenCalledTimes(2);
+		});
+
+		it('reports the knowledge tab when the user switches to it', async () => {
+			const wrapper = await renderView({ knowledgeBaseEnabled: true });
+			expect(builderTelemetryMock.trackOpenedKnowledgeTab).not.toHaveBeenCalled();
+
+			emitFromEditorColumn(wrapper, 'update:activeMainTab', 'knowledge');
+			await flushPromises();
+
+			expect(builderTelemetryMock.trackOpenedKnowledgeTab).toHaveBeenCalledTimes(1);
+		});
+
+		it('reports the start of an upload and nothing else when the files pass the checks', async () => {
+			const wrapper = await renderView({ knowledgeBaseEnabled: true });
+
+			emitFromEditorColumn(wrapper, 'upload-files', [textFile('a.txt'), textFile('b.txt')]);
+			await flushPromises();
+
+			expect(builderTelemetryMock.trackStartedFileUpload).toHaveBeenCalledWith(2);
+			expect(builderTelemetryMock.trackRejectedFileUpload).not.toHaveBeenCalled();
+		});
+
+		it('reports the oversized files and still uploads the others', async () => {
+			const wrapper = await renderView({ knowledgeBaseEnabled: true });
+			const smallFile = textFile('small.txt');
+
+			emitFromEditorColumn(wrapper, 'upload-files', [
+				textFile('big.txt', MAX_AGENT_FILE_SIZE_BYTES + 1),
+				smallFile,
+			]);
+			await flushPromises();
+
+			expect(builderTelemetryMock.trackRejectedFileUpload).toHaveBeenCalledWith('file_size', 1);
+			expect(uploadAgentFilesMock).toHaveBeenCalledWith(expect.anything(), 'p1', 'a1', [smallFile]);
+		});
+
+		it('reports the oversized files when no file is small enough', async () => {
+			const wrapper = await renderView({ knowledgeBaseEnabled: true });
+
+			emitFromEditorColumn(wrapper, 'upload-files', [
+				textFile('big-1.txt', MAX_AGENT_FILE_SIZE_BYTES + 1),
+				textFile('big-2.txt', MAX_AGENT_FILE_SIZE_BYTES + 1),
+			]);
+			await flushPromises();
+
+			expect(builderTelemetryMock.trackRejectedFileUpload).toHaveBeenCalledTimes(1);
+			expect(builderTelemetryMock.trackRejectedFileUpload).toHaveBeenCalledWith('file_size', 2);
+			expect(uploadAgentFilesMock).not.toHaveBeenCalled();
+		});
+
+		it('reports only the later rejection when oversized files come with too many files', async () => {
+			const wrapper = await renderView({ knowledgeBaseEnabled: true });
+			const files = Array.from({ length: MAX_AGENT_FILES_PER_UPLOAD + 1 }, (_, index) =>
+				textFile(`file-${index}.txt`),
+			);
+
+			emitFromEditorColumn(wrapper, 'upload-files', [
+				textFile('big.txt', MAX_AGENT_FILE_SIZE_BYTES + 1),
+				...files,
+			]);
+			await flushPromises();
+
+			expect(builderTelemetryMock.trackRejectedFileUpload).toHaveBeenCalledTimes(1);
+			expect(builderTelemetryMock.trackRejectedFileUpload).toHaveBeenCalledWith(
+				'too_many_files',
+				MAX_AGENT_FILES_PER_UPLOAD + 1,
+			);
+			expect(uploadAgentFilesMock).not.toHaveBeenCalled();
+		});
+
+		it('reports an upload with too many files', async () => {
+			const wrapper = await renderView({ knowledgeBaseEnabled: true });
+			const files = Array.from({ length: MAX_AGENT_FILES_PER_UPLOAD + 1 }, (_, index) =>
+				textFile(`file-${index}.txt`),
+			);
+
+			emitFromEditorColumn(wrapper, 'upload-files', files);
+			await flushPromises();
+
+			expect(builderTelemetryMock.trackRejectedFileUpload).toHaveBeenCalledWith(
+				'too_many_files',
+				MAX_AGENT_FILES_PER_UPLOAD + 1,
+			);
+			expect(uploadAgentFilesMock).not.toHaveBeenCalled();
+		});
+
+		it('reports the start of a vector store setup', async () => {
+			const wrapper = await renderView({ knowledgeBaseEnabled: true });
+
+			emitFromEditorColumn(wrapper, 'add-vector-store');
+			await flushPromises();
+
+			expect(builderTelemetryMock.trackStartedVectorStoreSetup).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	it('generates eval cases and confirms the result with a toast', async () => {
