@@ -266,6 +266,12 @@ function statusError(status: number, body: unknown) {
 	if (status === 404) {
 		return new NotFoundError('GitLab could not find the project or merge request.');
 	}
+	// The merge call answers 405 when GitLab cannot merge now. The body gives no reason.
+	if (status === 405) {
+		return new BadRequestError(
+			'GitLab cannot merge this merge request now. Check its merge checks on GitLab, such as a required pipeline.',
+		);
+	}
 	if (status === 408) {
 		return new ServiceUnavailableError(
 			'The GitLab request timed out. Check that GitLab is available and try again.',

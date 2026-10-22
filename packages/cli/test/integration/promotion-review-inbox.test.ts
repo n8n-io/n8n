@@ -509,7 +509,7 @@ describe('Promotion reviews in the Inbox', () => {
 
 			const refused = await approve(admin, reviewId);
 			expect(refused.status).toBe(400);
-			expect(refused.body.message).toBe('GitLab: 405 refused');
+			expect(refused.body.message).toContain('GitLab cannot merge this merge request now.');
 			expect(JSON.stringify(refused.body)).not.toContain(token);
 			expect(await approvedById(reviewId)).toBeNull();
 
