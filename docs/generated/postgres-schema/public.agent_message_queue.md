@@ -76,6 +76,8 @@ erDiagram
   integer duration
   text error
   json failureSummary
+  varchar_32_ finishReason
+  varchar_64_ guardrailCode
   varchar_16_ hitlStatus
   varchar_36_ id
   varchar_255_ model
