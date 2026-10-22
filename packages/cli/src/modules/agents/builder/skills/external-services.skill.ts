@@ -212,7 +212,16 @@ search terms for that service.
     selecting a server, asking for credentials, verifying a connection, or
     mutating config. Do not re-present the question.
 - Use \`name\`, \`url\`, \`transport\`, \`authentication\`, \`credentialType\`,
-  \`tools\`, and optional \`metadata\` only from \`selectedResult\`.
+  \`tools\`, and optional \`metadata\` and \`credential\` only from \`selectedResult\`.
+- When \`selectedResult.credential\` is set, the server runs on Gateway credits and
+  needs no credential: skip the credential step, and use that \`credential\` unchanged
+  in \`agent_builder_verify_mcp_server\` and in the \`mcpServers\` entry.
+- When \`selectedResult.aiGatewayCredential\` is set, the server can also run on Gateway
+  credits. Use them when the user asks for Gateway credits, or when
+  \`agent_builder_list_credentials\` with \`types: [selectedResult.credentialType]\` returns
+  none: set \`authentication\` to \`"none"\` and \`credential\` to
+  \`selectedResult.aiGatewayCredential\`, and skip the credential step. Otherwise follow
+  the steps below.
 
 Follow these steps for the selected MCP result:
 
