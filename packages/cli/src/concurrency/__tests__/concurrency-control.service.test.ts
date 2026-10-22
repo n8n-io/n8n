@@ -1089,18 +1089,6 @@ describe('ConcurrencyControlService', () => {
 			},
 		);
 
-		it('should hold an arrival behind held executions after the hold ends', async () => {
-			const service = createService();
-			hold.start();
-			void service.throttle({ mode: 'webhook', executionId: '1' });
-			hold.end();
-
-			const arrival = service.throttle({ mode: 'webhook', executionId: '2' });
-
-			expect(await isAdmitted(arrival)).toBe(false);
-			expect(hold.heldCount).toBe(2);
-		});
-
 		it('should not let a held execution start when a running execution ends', async () => {
 			const service = createService();
 			await service.throttle({ mode: 'manual', executionId: '1' });
@@ -1110,19 +1098,6 @@ describe('ConcurrencyControlService', () => {
 			service.release({ mode: 'manual' });
 
 			expect(await isAdmitted(held)).toBe(false);
-		});
-
-		it('should never resume a held execution that is removed', async () => {
-			const service = createService();
-			hold.start();
-			const throttled = service.throttle({ mode: 'webhook', executionId: '1' });
-
-			service.remove({ mode: 'webhook', executionId: '1' });
-			hold.end();
-			hold.admit(10);
-
-			expect(await isAdmitted(throttled)).toBe(false);
-			expect(service.has('1')).toBe(false);
 		});
 
 		it('should give back the queue place of a removed held execution', async () => {

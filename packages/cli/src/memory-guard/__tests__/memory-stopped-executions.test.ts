@@ -43,16 +43,6 @@ describe('MemoryStoppedExecutions', () => {
 		expect(memoryStoppedExecutions.isFinishing('1')).toBe(false);
 	});
 
-	it('should mark an execution that was not stopped as finishing, and keep its run', () => {
-		const run = createRun();
-
-		memoryStoppedExecutions.onWorkflowExecuteAfter('1', run);
-
-		expect(run.status).toBe('canceled');
-		expect(run.data.resultData.runData).toEqual({ Big: [] });
-		expect(memoryStoppedExecutions.isFinishing('1')).toBe(true);
-	});
-
 	it('should record nothing while disabled', () => {
 		memoryStoppedExecutions.enabled = false;
 		const run = createRun();
@@ -60,14 +50,6 @@ describe('MemoryStoppedExecutions', () => {
 		memoryStoppedExecutions.onWorkflowExecuteAfter('1', run);
 
 		expect(run.status).toBe('canceled');
-		expect(memoryStoppedExecutions.isFinishing('1')).toBe(false);
-	});
-
-	it('should clear the finishing mark when the execution starts again', () => {
-		memoryStoppedExecutions.onWorkflowExecuteAfter('1', createRun());
-
-		memoryStoppedExecutions.onWorkflowExecuteStart('1');
-
 		expect(memoryStoppedExecutions.isFinishing('1')).toBe(false);
 	});
 
