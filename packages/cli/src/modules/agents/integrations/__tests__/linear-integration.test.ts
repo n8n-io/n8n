@@ -91,14 +91,21 @@ describe('LinearIntegration', () => {
 		});
 
 		it.each([
-			{ agentId: 'agent-2' },
-			{ credentialId: 'cred-2' },
-			{ origin: { ...origin, teamId: 'team-2' } },
-		] satisfies Partial<EpisodicScopeContext>[])('separates scopes for %j', (overrides) => {
-			expect(integration.resolveEpisodicScope(context(overrides))).not.toEqual(
-				integration.resolveEpisodicScope(context()),
-			);
-		});
+			{ overrides: { agentId: 'agent-2' }, scopeId: 'linear:agent-2:cred-1:team-1' },
+			{ overrides: { credentialId: 'cred-2' }, scopeId: 'linear:agent-1:cred-2:team-1' },
+			{
+				overrides: { origin: { ...origin, teamId: 'team-2' } },
+				scopeId: 'linear:agent-1:cred-1:team-2',
+			},
+		] satisfies Array<{ overrides: Partial<EpisodicScopeContext>; scopeId: string }>)(
+			'separates scopes for %j',
+			({ overrides, scopeId }) => {
+				const scope = integration.resolveEpisodicScope(context(overrides));
+
+				expect(scope).toEqual({ writeScopeId: scopeId, readScopeIds: [scopeId] });
+				expect(scope).not.toEqual(integration.resolveEpisodicScope(context()));
+			},
+		);
 
 		it.each([
 			{ agentId: '' },
