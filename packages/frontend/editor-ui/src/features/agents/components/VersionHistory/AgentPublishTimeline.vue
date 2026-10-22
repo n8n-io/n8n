@@ -35,6 +35,7 @@ async function load(refresh = false) {
 	const token = ++requestToken;
 	loading.value = true;
 	hasError.value = false;
+
 	try {
 		const data = await listAgentPublishHistory(
 			rootStore.restApiContext,
@@ -45,7 +46,9 @@ async function load(refresh = false) {
 				skip: refresh ? 0 : fetchedCount,
 			},
 		);
+
 		if (token !== requestToken) return;
+
 		events.value = refresh
 			? data
 			: [...new Map([...events.value, ...data].map((event) => [event.id, event])).values()];
@@ -53,6 +56,7 @@ async function load(refresh = false) {
 		hasMore.value = data.length === PAGE_SIZE;
 	} catch (error) {
 		if (token !== requestToken) return;
+
 		hasError.value = true;
 		retryRefresh = refresh;
 		toast.showError(error, i18n.baseText('agents.versionHistory.timeline.error'));
@@ -68,15 +72,19 @@ const { observe } = useIntersectionObserver({
 		void load();
 	},
 });
+
 watch([sentinel, hasMore, () => events.value.length], ([target, more]) => {
 	if (target && more) observe(target);
 });
+
 onMounted(() => {
 	void load(true);
 });
+
 onBeforeUnmount(() => {
 	requestToken++;
 });
+
 defineExpose({ refresh: () => load(true) });
 
 const entries = computed(() =>
@@ -126,6 +134,7 @@ const entries = computed(() =>
 					? 'd mmm'
 					: 'd mmm yyyy',
 		);
+
 		return { ...event, title, duration, tooltip, shortDate };
 	}),
 );

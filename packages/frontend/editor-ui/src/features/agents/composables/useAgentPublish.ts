@@ -58,10 +58,12 @@ export function useAgentPublish() {
 	): Promise<AgentResource | null> {
 		if (publishing.value) return null;
 		publishing.value = true;
+
 		try {
 			const selectedId =
 				versionId ?? (await getAgent(rootStore.restApiContext, projectId, agentId)).versionId;
 			if (!selectedId) return null;
+
 			const version = await getAgentVersion(
 				rootStore.restApiContext,
 				projectId,
@@ -69,6 +71,7 @@ export function useAgentPublish() {
 				selectedId,
 			);
 			if (!isCurrent()) return null;
+
 			let updated: AgentResource | null = null;
 			const published = await openVersionMetadata({
 				mode: 'publish',
@@ -96,7 +99,9 @@ export function useAgentPublish() {
 					}
 				},
 			});
+
 			if (published && isCurrent()) showAgentPublishedConfirmation(agentId);
+
 			return updated;
 		} catch (error) {
 			showError(error, locale.baseText('agents.publish.error.publish'));
@@ -112,6 +117,7 @@ export function useAgentPublish() {
 		agentName?: string,
 	): Promise<AgentResource | null> {
 		if (publishing.value) return null;
+
 		const confirmed = await openAgentConfirmationModal({
 			title: locale.baseText('agents.unpublish.modal.title', {
 				interpolate: { name: agentName ?? '' },
@@ -127,6 +133,7 @@ export function useAgentPublish() {
 			const updated = await unpublishAgent(rootStore.restApiContext, projectId, agentId);
 			upsertProjectAgentsListCache(projectId, updated);
 			showMessage({ title: locale.baseText('agents.publish.toast.unpublished'), type: 'success' });
+
 			return updated;
 		} catch (error) {
 			showError(error, locale.baseText('agents.publish.error.unpublish'));
