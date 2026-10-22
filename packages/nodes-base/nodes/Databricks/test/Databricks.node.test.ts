@@ -275,6 +275,15 @@ describe('Databricks', () => {
 			},
 		);
 
+		it('should list Lakebase in the resource dropdown', () => {
+			const { description } = new Databricks();
+			const resource = description.properties.find((property) => property.name === 'resource');
+
+			expect(resource?.options).toContainEqual(
+				expect.objectContaining({ name: 'Lakebase', value: 'lakebase' }),
+			);
+		});
+
 		it('should keep the Lakebase locators scoped to the lakebase resource', () => {
 			const { description } = new Databricks();
 
