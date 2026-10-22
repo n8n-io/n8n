@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_fc89baa43a0d3c::t_11973e423c3de3 118-122
+packages/frontend/editor-ui/src/features/agents/channels/slack/AgentChannelSlackEditView.vue
+  s_fc89baa43a0d3c::t_11973e423c3de3 4,81-107,130-137
+  s_fc89baa43a0d3c::t_87fbc336b79076 138-139
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  s_fc89baa43a0d3c::t_11973e423c3de3 735-746,757
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelModal.test.ts
+  s_fc89baa43a0d3c::t_11973e423c3de3 111,781-786,796,808
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_fc89baa43a0d3c::t_11973e423c3de3 9507
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0b6dac114b2ae9a0df239892f96bc9fbcf77d979",
+  "prompts": {},
+  "sessions": {
+    "s_fc89baa43a0d3c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15f07-c638-74e0-aed0-251af56be3fb",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
