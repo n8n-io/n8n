@@ -52,5 +52,29 @@ describe.each([
 				campaigns.map((campaign) => ({ name: campaign.name, value: campaign._id })),
 			);
 		});
+
+		it('should skip campaigns without string names or IDs', async () => {
+			const context = mockDeep<ILoadOptionsFunctions>();
+			context.helpers.requestWithAuthentication
+				.mockResolvedValueOnce([
+					{ _id: 'cam_1', name: 'Campaign 1' },
+					{},
+					{ _id: 'cam_missing_name' },
+					{ name: 'Missing ID' },
+					{ _id: 'cam_null_name', name: null },
+					{ _id: null, name: 'Null ID' },
+					{ _id: 'cam_numeric_name', name: 42 },
+					{ _id: 42, name: 'Numeric ID' },
+					{ _id: 'cam_2', name: 'Campaign 2' },
+				])
+				.mockResolvedValue([]);
+
+			const options = await node.methods.loadOptions.getCampaigns.call(context);
+
+			expect(options).toEqual([
+				{ name: 'Campaign 1', value: 'cam_1' },
+				{ name: 'Campaign 2', value: 'cam_2' },
+			]);
+		});
 	});
 });

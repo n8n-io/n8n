@@ -99,10 +99,9 @@ export class LemlistV1 implements INodeType {
 		loadOptions: {
 			async getCampaigns(this: ILoadOptionsFunctions) {
 				const campaigns = await lemlistApiRequestAllItems.call(this, 'GET', '/campaigns');
-				return campaigns.map(({ _id, name }) => ({
-					name: String(name),
-					value: String(_id),
-				}));
+				return campaigns.flatMap(({ _id, name }) =>
+					typeof name === 'string' && typeof _id === 'string' ? [{ name, value: _id }] : [],
+				);
 			},
 		},
 	};
