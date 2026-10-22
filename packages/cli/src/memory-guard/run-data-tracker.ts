@@ -185,6 +185,7 @@ export class RunDataTracker {
 
 		let ownBytes = 0;
 		let ownRuns = 0;
+		const measuredCounts = nodes.map(() => 0);
 		for (const [i, [nodeName, runs]] of nodes.entries()) {
 			const sampled = sampleCounts[i];
 			if (sampled === 0) continue;
@@ -206,23 +207,31 @@ export class RunDataTracker {
 				),
 			);
 			// A later run can add to the shared bytes of an earlier run, so read them after all runs.
-			const nodeOwnBytes = measuredBytes.reduce(
-				(sum, bytes, run) => sum + Math.max(0, bytes - (sharing?.sharedBytesOf(run) ?? 0)),
-				0,
-			);
+			// A run whose estimate failed is not measured, so it does not lower the average.
+			let nodeOwnBytes = 0;
+			let measured = 0;
+			for (const [run, bytes] of measuredBytes.entries()) {
+				if (bytes === undefined) continue;
+				nodeOwnBytes += Math.max(0, bytes - (sharing?.sharedBytesOf(run) ?? 0));
+				measured++;
+			}
+			if (measured === 0) continue;
+			measuredCounts[i] = measured;
 			ownBytes += nodeOwnBytes;
-			ownRuns += sampled;
+			ownRuns += measured;
 
 			this.addBytes(
 				execution,
 				nodeName,
-				Math.round((nodeOwnBytes / sampled) * (runs.length - sampled)),
+				Math.round((nodeOwnBytes / measured) * (runs.length - measured)),
 			);
 		}
 
-		// Nodes beyond the budget get the average of all measured runs.
+		if (ownRuns === 0) return;
+
+		// Nodes without a measured run get the average of all measured runs.
 		for (const [i, [nodeName, runs]] of nodes.entries()) {
-			if (sampleCounts[i] === 0 && runs.length > 0) {
+			if (measuredCounts[i] === 0 && runs.length > 0) {
 				this.addBytes(execution, nodeName, Math.round((ownBytes / ownRuns) * runs.length));
 			}
 		}
@@ -233,14 +242,14 @@ export class RunDataTracker {
 		executionId: string,
 		nodeName: string,
 		estimateBytes: () => number,
-	): number {
+	): number | undefined {
 		let bytes: number;
 		try {
 			bytes = estimateBytes();
 		} catch {
 			// Never fail the execution. Reading the thrown value can throw too.
 			this.logger.debug('Failed to estimate node output size', { executionId, nodeName });
-			return 0;
+			return undefined;
 		}
 
 		this.addBytes(execution, nodeName, bytes);

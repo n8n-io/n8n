@@ -342,6 +342,32 @@ describe('RunDataTracker', () => {
 			expect(tracker.getEstimate('1')?.totalBytes).toBe(30 * sizeOf(toItems(2)));
 		});
 
+		it('should leave a run whose estimate fails out of the average of its node', () => {
+			vi.mocked(estimateTaskDataSize).mockImplementationOnce(() => {
+				throw new Error('estimate');
+			});
+
+			start('1', { Node: runsOf(100, 3) });
+
+			expect(tracker.getEstimate('1')?.totalBytes).toBe(100 * sizeOf(toItems(3)));
+		});
+
+		it('should give a node whose estimates all fail the average of all measured runs', async () => {
+			const actual = await vi.importActual<typeof import('../estimate-run-data-size')>(
+				'../estimate-run-data-size',
+			);
+			const loop = runsOf(1000, 2);
+			vi.mocked(estimateTaskDataSize).mockImplementation((taskData, ...rest) => {
+				if (loop.includes(taskData)) throw new Error('estimate');
+				return actual.estimateTaskDataSize(taskData, ...rest);
+			});
+
+			start('1', { Loop: loop, Other: runsOf(1, 2) });
+
+			expect(tracker.getEstimate('1')?.bytesByNode.get('Loop')).toBe(1000 * sizeOf(toItems(2)));
+			vi.mocked(estimateTaskDataSize).mockImplementation(actual.estimateTaskDataSize);
+		});
+
 		const payloads = Array.from({ length: 25 }, (_, i) => ({ data: `${i}-`.repeat(50_000) }));
 
 		it.each([
