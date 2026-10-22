@@ -188,6 +188,7 @@ watch(
 			>
 				<N8nScrollArea
 					v-if="enableScrolling"
+					:class="$style.scrollArea"
 					:max-height="hasScrollingFooter ? undefined : maxHeight"
 					:type="scrollType"
 					:edge-fade="scrollEdgeFade"
@@ -241,6 +242,20 @@ watch(
 	&[data-state='closed'] {
 		display: none;
 	}
+}
+
+/*
+ * The scroll area is what clips the content and its edge fades, so it must share the
+ * card's corners; a square clip paints the fade over the rounded outline. A footer sits
+ * below the scroll area, so only the top corners are rounded in that layout.
+ */
+.scrollArea {
+	border-radius: inherit;
+}
+
+.withFooter > .scrollArea {
+	border-bottom-left-radius: 0;
+	border-bottom-right-radius: 0;
 }
 
 .popoverContent[data-state='open'][data-side='top'] {
