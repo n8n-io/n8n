@@ -626,6 +626,32 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
+		it('should mark a manual `workflow-pre-execute` event with workflow data as manual', () => {
+			// GOV-287: Lifecycle hooks pass workflow data for manual executions.
+			const event: RelayEventMap['workflow-pre-execute'] = {
+				executionId: 'exec-manual',
+				data: mock<IWorkflowBase>({ id: 'wf-manual', name: 'Manual Workflow' }),
+				mode: 'manual',
+				projectId: 'proj-123',
+				projectName: 'Test Project',
+			};
+
+			eventService.emit('workflow-pre-execute', event);
+
+			expect(eventBus.sendWorkflowEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.workflow.started',
+				payload: expect.objectContaining({
+					executionId: 'exec-manual',
+					workflowId: 'wf-manual',
+					workflowName: 'Manual Workflow',
+					isManual: true,
+					mode: 'manual',
+					projectId: 'proj-123',
+					projectName: 'Test Project',
+				}),
+			});
+		});
+
 		it('should log on `workflow-pre-execute` with IWorkflowExecutionDataProcess data', () => {
 			const executionData = {
 				executionData: undefined,
