@@ -1,0 +1,19 @@
+packages/cli/src/executions/executions.controller.ts
+  s_29a87116e1a9a0::t_f0b967bd58e00f 30-31,63,76,88,104-106,142,153
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "58b69aa8167065f97f5c872d0030370de838916b",
+  "prompts": {},
+  "sessions": {
+    "s_29a87116e1a9a0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "644d0bb8-0197-41a8-966c-b49961cd19af",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
