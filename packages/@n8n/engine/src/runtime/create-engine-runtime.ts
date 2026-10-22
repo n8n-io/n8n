@@ -152,7 +152,7 @@ export function createEngineRuntime({
 		resumeRequests:
 			resumeSecret === undefined
 				? undefined
-				: new ResumeRequestService(executionStore, stepStore, stepQueue, resumeSecret, logger),
+				: new ResumeRequestService(executionStore, stepStore, stepQueue, resumeSecret),
 		identityVerifier,
 		logger,
 	});
