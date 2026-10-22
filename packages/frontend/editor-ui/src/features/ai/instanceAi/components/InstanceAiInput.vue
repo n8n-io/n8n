@@ -331,9 +331,7 @@ const isGatedBySetup = computed(
 const showAttach = computed(
 	() => props.attachOnlyMimeTypes === undefined || props.attachOnlyMimeTypes.length > 0,
 );
-const shouldShowMentions = computed(
-	() => props.mentionsEnabled && Boolean(props.mentionProjectId),
-);
+const shouldShowMentions = computed(() => props.mentionsEnabled && Boolean(props.mentionProjectId));
 const mentionAvailability = useAssistantMentionAvailability({
 	enabled: shouldShowMentions,
 	projectId: () => props.mentionProjectId,
@@ -921,10 +919,7 @@ const resizable = computed(() => {
 					/>
 				</div>
 			</template>
-			<template
-				v-if="props.attachOnlyMimeTypes === undefined"
-				#footer-start
-			>
+			<template v-if="props.attachOnlyMimeTypes === undefined" #footer-start>
 				<InstanceAiInputMenu
 					:disabled="isBusy || isGatedBySetup"
 					:is-streaming="props.isStreaming"

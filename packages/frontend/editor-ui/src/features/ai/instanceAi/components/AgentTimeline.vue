@@ -231,7 +231,6 @@ function isCardReadOnly(tc: InstanceAiToolCallState): boolean {
 	const requestId = tc.confirmation?.requestId;
 	return !!requestId && thread.resolvedConfirmationIds.has(requestId);
 }
-
 </script>
 
 <template>

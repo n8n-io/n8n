@@ -487,16 +487,13 @@ watch(
 	},
 );
 
-watch(
-	[chatInputRef, pendingComposerDraft],
-	([input, draft]) => {
-		if (!input || !draft) return;
-		input.setPrefill({ text: draft.text, prefillType: draft.prefillType });
-		generatedComposerDraft.value = draft.text;
-		pendingComposerDraft.value = null;
-		void nextTick(focusChatInputIfFocusIsIdle);
-	},
-);
+watch([chatInputRef, pendingComposerDraft], ([input, draft]) => {
+	if (!input || !draft) return;
+	input.setPrefill({ text: draft.text, prefillType: draft.prefillType });
+	generatedComposerDraft.value = draft.text;
+	pendingComposerDraft.value = null;
+	void nextTick(focusChatInputIfFocusIsIdle);
+});
 
 function isCurrentThreadRuntime(): boolean {
 	return store.getRuntime(thread.id) === thread;
