@@ -325,6 +325,69 @@ describe('reconnecting', () => {
 		);
 	});
 
+	describe('when the server hangs up right after every SELECT', () => {
+		const hangsUpAfterSelect = (times = Infinity) =>
+			vi.fn(() => {
+				const transport = new FakeTransport();
+				if (times-- <= 0) return transport as unknown as ImapTransport;
+				transport.mailboxOpen.mockImplementation(async () => {
+					setTimeout(() => {
+						transport.emit('error', new Error('read ECONNRESET'));
+						transport.emit('close');
+					}, 50);
+					return { exists: 0 };
+				});
+				return transport as unknown as ImapTransport;
+			});
+
+		it('backs off across the drops and closes as dropped once the budget is spent', async () => {
+			const createTransport = hangsUpAfterSelect();
+			const onClose = vi.fn();
+			const connection = await openWatching(createTransport);
+			connection.onError(vi.fn()).onClose(onClose).onArrival(vi.fn());
+
+			await vi.advanceTimersByTimeAsync(ALL_BACKOFF + 1000);
+
+			expect(createTransport).toHaveBeenCalledTimes(1 + 6);
+			expect(onClose).toHaveBeenCalledExactlyOnceWith(
+				'dropped',
+				expect.objectContaining({ message: 'read ECONNRESET' }),
+			);
+		});
+
+		it('lets a scheduled replace start a fresh budget', async () => {
+			// Six dials spend the budget on drops, the seventh stays up, and the replace lands
+			// within the stable period of it.
+			const createTransport = hangsUpAfterSelect(6);
+			const onClose = vi.fn();
+			const connection = await openWatching(createTransport, { interval: ALL_BACKOFF + 4000 });
+			connection.onError(vi.fn()).onClose(onClose).onArrival(vi.fn());
+
+			await vi.advanceTimersByTimeAsync(ALL_BACKOFF + 4001);
+
+			expect(createTransport).toHaveBeenCalledTimes(1 + 6 + 1);
+			expect(onClose).not.toHaveBeenCalled();
+			connection.end();
+		});
+
+		it('gives a connection that stayed up a while a fresh budget', async () => {
+			const createTransport = vi.fn(() => {
+				const transport = new FakeTransport();
+				setTimeout(() => transport.emit('close'), 15_000);
+				return transport as unknown as ImapTransport;
+			});
+			const onClose = vi.fn();
+			const connection = await openWatching(createTransport);
+			connection.onClose(onClose).onArrival(vi.fn());
+
+			await vi.advanceTimersByTimeAsync(10 * 15_000 + 1000);
+
+			expect(createTransport).toHaveBeenCalledTimes(1 + 10);
+			expect(onClose).not.toHaveBeenCalled();
+			connection.end();
+		});
+	});
+
 	it('gives up on an attempt that outlives the timeout', async () => {
 		const [first, second] = [new FakeTransport(), new FakeTransport()];
 		second.connect.mockImplementation(neverSettles);
