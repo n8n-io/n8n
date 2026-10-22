@@ -370,7 +370,15 @@ export function actionNeedsApproval(
 	// of the silence the model chose.
 	if (action === 'do_not_respond') return false;
 	if (approval.mode === 'global') return true;
-	return approval.tools.includes(action);
+	return approvalToolsFor(action).some((tool) => approval.tools.includes(tool));
+}
+
+/**
+ * Configs saved before `send_template` existed cannot list it. A template is a
+ * message to the customer, so it follows the approval of the sends it replaces.
+ */
+function approvalToolsFor(action: IntegrationAction): IntegrationAction[] {
+	return action === 'send_template' ? [action, 'send_dm'] : [action];
 }
 
 function toDefinitionMap<

@@ -57,6 +57,11 @@ export function parseWindowClosedFailures(payload: unknown): WindowClosedFailure
 const MAX_FAILURE_AGE_MS = 15 * 60 * 1000;
 
 /** True when the failure is recent enough for the agent to act on it. */
+/** Whether a message is the synthetic delivery notice, not a customer message. */
+export function isDeliveryFailureNotice(message: { id: string }): boolean {
+	return message.id.endsWith(DELIVERY_FAILURE_MESSAGE_ID_SUFFIX);
+}
+
 export function isRecentFailure(failure: WindowClosedFailure, now = Date.now()): boolean {
 	const reportedAtMs = Number(failure.timestamp) * 1000;
 	return Number.isFinite(reportedAtMs) && now - reportedAtMs <= MAX_FAILURE_AGE_MS;

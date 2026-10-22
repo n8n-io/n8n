@@ -79,6 +79,7 @@ import {
 	DELIVERY_FAILURE_MESSAGE_ID_SUFFIX,
 	DELIVERY_FAILURE_NOTICE,
 	DeliveryFailureRecoveryLimiter,
+	isDeliveryFailureNotice,
 	isRecentFailure,
 	parseWindowClosedFailures,
 	WHATSAPP_REENGAGEMENT_ERROR_CODE,
@@ -532,7 +533,7 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 	getFailedSendReport(
 		message: Message<unknown>,
 	): { messageId: string; chatNotice: string } | undefined {
-		if (!message.id.endsWith(DELIVERY_FAILURE_MESSAGE_ID_SUFFIX)) return undefined;
+		if (!isDeliveryFailureNotice(message)) return undefined;
 		return {
 			messageId: message.id.slice(0, -DELIVERY_FAILURE_MESSAGE_ID_SUFFIX.length),
 			chatNotice: DELIVERY_FAILURE_CHAT_NOTICE,
@@ -545,7 +546,7 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 	 * silently.
 	 */
 	getReplyExpectation({ message }: { message: Message<unknown> }): ReplyExpectation {
-		return message.id.endsWith(DELIVERY_FAILURE_MESSAGE_ID_SUFFIX) ? 'optional' : 'required';
+		return isDeliveryFailureNotice(message) ? 'optional' : 'required';
 	}
 
 	formatActionDecisionMessage({
@@ -971,7 +972,8 @@ async function lastInboundMessageAt(
 		const messages = await history.getMessages(threadId);
 		let lastInboundAt: Date | undefined;
 		for (const message of messages) {
-			if (message.author.isMe) continue;
+			// A delivery notice is not from the customer, so it must not reopen the window.
+			if (message.author.isMe || isDeliveryFailureNotice(message)) continue;
 			lastInboundAt = message.metadata.dateSent;
 		}
 		return lastInboundAt;
