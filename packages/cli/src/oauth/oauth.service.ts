@@ -1226,7 +1226,9 @@ export class OauthService {
 		const effectiveScopes = discoveredResourceScopes?.length
 			? withOfflineAccess(discoveredResourceScopes, scopes_supported)
 			: scopes_supported;
-		const scope = effectiveScopes?.length ? effectiveScopes.join(' ') : undefined;
+		const scope =
+			oauthCredentials.scope?.trim() ||
+			(effectiveScopes?.length ? effectiveScopes.join(' ') : undefined);
 		if (scope) {
 			oauthCredentials.scope = scope;
 			toUpdate.scope = scope;
