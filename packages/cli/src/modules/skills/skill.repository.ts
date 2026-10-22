@@ -145,11 +145,7 @@ export class SkillRepository extends BaseRepository<Skill> {
 	}
 
 	async findAssistantSkillSummaries(projectId: string | null): Promise<AssistantSkillSummary[]> {
-		return await highestVersionsQuery(this.manager)
-			.innerJoin(Skill, 'skill', 'skill.id = version.skillId')
-			.andWhere('skill.availableToAssistant = :enabled', { enabled: true })
-			.andWhere('skill.agentId IS NULL')
-			.andWhere('(skill.projectId IS NULL OR skill.projectId = :projectId)', { projectId })
+		return await assistantVersionsQuery(this.manager, projectId)
 			.select('skill.id', 'id')
 			.addSelect('skill.projectId', 'projectId')
 			.addSelect('version.id', 'versionId')
@@ -158,6 +154,18 @@ export class SkillRepository extends BaseRepository<Skill> {
 			.addSelect('version.description', 'description')
 			.orderBy('skill.id', 'ASC')
 			.getRawMany<AssistantSkillSummary>();
+	}
+
+	async findAssistantSkill(
+		skillId: string,
+		projectId: string | null,
+	): Promise<ResolvedSkillRow | null> {
+		const version = await assistantVersionsQuery(this.manager, projectId)
+			.andWhere('skill.id = :skillId', { skillId })
+			.getOne();
+		if (!version) return null;
+		const [row] = await this.resolve([version], {});
+		return row ?? null;
 	}
 
 	async setAssistantAvailability(
@@ -506,6 +514,14 @@ function latestVersionsQuery(manager: EntityManager, skillIds: string[]) {
 	return highestVersionsQuery(manager).andWhere('version.skillId IN (:...skillIds)', {
 		skillIds,
 	});
+}
+
+function assistantVersionsQuery(manager: EntityManager, projectId: string | null) {
+	return highestVersionsQuery(manager)
+		.innerJoin(Skill, 'skill', 'skill.id = version.skillId')
+		.andWhere('skill.availableToAssistant = :enabled', { enabled: true })
+		.andWhere('skill.agentId IS NULL')
+		.andWhere('(skill.projectId IS NULL OR skill.projectId = :projectId)', { projectId });
 }
 
 async function insertVersion(

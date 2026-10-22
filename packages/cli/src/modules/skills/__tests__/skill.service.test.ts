@@ -159,7 +159,9 @@ describe('SkillService', () => {
 				instructions: 'Be brief.',
 			});
 			row.skill.availableToAssistant = true;
-			skills.findLatestSaved.mockImplementation(async () => new Map([['skill-1', row]]));
+			skills.findAssistantSkill.mockImplementation(async (id) =>
+				id === row.skill.id ? row : null,
+			);
 			vi.mocked(userHasScopes).mockResolvedValue(true);
 		});
 
@@ -208,16 +210,18 @@ describe('SkillService', () => {
 		});
 
 		it.each([
-			['project-1', ['project-1'], true],
-			['project-2', ['project-1', 'project-2'], false],
-			['project-1', [], false],
-			['project-1', null, true],
+			['project-1', ['project-1'], true, 'project-1'],
+			['project-2', ['project-1', 'project-2'], false, 'project-1'],
+			['project-1', [], false, null],
+			['project-1', null, true, 'project-1'],
 		] as const)(
 			'limits content reads to the authorized session project (%s, %s)',
-			async (projectId, allowed, eligible) => {
+			async (projectId, allowed, eligible, authorizedProjectId) => {
 				row.skill.projectId = projectId;
 				projectScope.getProjectIds.mockResolvedValue(allowed === null ? null : [...allowed]);
 				const result = await service.readForAssistant(context, 'skill-1');
+				expect(skills.findAssistantSkill).toHaveBeenCalledWith('skill-1', authorizedProjectId);
+				expect(skills.findLatestSaved).not.toHaveBeenCalled();
 				if (eligible) expect(result).toMatchObject({ id: 'skill-1', projectId });
 				else expect(result).toBeNull();
 			},
@@ -227,6 +231,7 @@ describe('SkillService', () => {
 			row.skill.projectId = 'project-1';
 			projectScope.getProjectIds.mockResolvedValue(null);
 			expect(await service.readForAssistant({ user: context.user }, 'skill-1')).toBeNull();
+			expect(skills.findAssistantSkill).toHaveBeenCalledWith('skill-1', null);
 		});
 
 		it('reads enabled content with its saved version', async () => {

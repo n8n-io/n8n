@@ -138,7 +138,7 @@ export class SkillService {
 		skillId: string,
 	): Promise<AssistantSkillContent | null> {
 		const projectId = await this.authorizedAssistantProject(context);
-		const row = (await this.skillRepository.findLatestSaved([skillId])).get(skillId);
+		const row = await this.skillRepository.findAssistantSkill(skillId, projectId);
 		if (!row) return null;
 		const { skill, version, files } = row;
 		if (

@@ -83,17 +83,21 @@ describe('SkillRepository', () => {
 		await testDb.terminate();
 	});
 
-	it('lists only enabled instance and session-project skills, with the latest metadata', async () => {
+	it('reads only enabled instance and session-project skills at their latest version', async () => {
 		const instance = await createSkill();
 		const scoped = await createSkill({ projectId: project.id });
 		const other = await createSkill({ projectId: otherProject.id });
-		await createSkill();
+		const disabled = await createSkill();
 		for (const id of [instance, scoped, other])
 			await skills.update(id, { availableToAssistant: true });
 		const versionId = await skills.insertSavedVersion(
 			scoped,
 			2,
-			content({ name: 'Updated' }),
+			content({
+				name: 'Updated',
+				instructions: 'Updated instructions.',
+				files: [{ path: 'references/style.md', content: 'Style guide.' }],
+			}),
 			null,
 		);
 		expect((await assistantSkills.listSkills({ user: owner })).map(({ id }) => id)).toEqual([
@@ -109,6 +113,19 @@ describe('SkillRepository', () => {
 			version: 2,
 			versionId,
 		});
+		expect(await skills.findAssistantSkill(scoped, project.id)).toMatchObject({
+			skill: { id: scoped, projectId: project.id },
+			version: { id: versionId, version: 2, instructions: 'Updated instructions.' },
+			files: [{ path: 'references/style.md', content: 'Style guide.' }],
+		});
+		expect(await skills.findAssistantSkill(instance, null)).toMatchObject({
+			skill: { id: instance, projectId: null },
+		});
+		expect(await skills.findAssistantSkill(instance, project.id)).not.toBeNull();
+		expect(await skills.findAssistantSkill(scoped, null)).toBeNull();
+		expect(await skills.findAssistantSkill(other, project.id)).toBeNull();
+		expect(await skills.findAssistantSkill(disabled, project.id)).toBeNull();
+		expect(await skills.findAssistantSkill('skill_missing', project.id)).toBeNull();
 	});
 
 	it.each(['project', 'instance'] as const)(
@@ -123,6 +140,7 @@ describe('SkillRepository', () => {
 
 			expect(await skills.findAssistantSkillSummaries(null)).toEqual([]);
 			expect(await skills.findAssistantSkillSummaries(project.id)).toEqual([]);
+			expect(await skills.findAssistantSkill(id, project.id)).toBeNull();
 			expect(
 				await assistantSkills.readSkill({ user: owner, projectId: project.id }, id),
 			).toBeNull();
