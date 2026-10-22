@@ -301,8 +301,10 @@ function spreadBudget(runCounts: number[], budget: number): number[] {
 
 /** One sample in each equal part of the runs, offset so it does not follow a repeating pattern. */
 function sampleIndex(j: number, count: number, sampled: number) {
+	const start = Math.floor((j * count) / sampled);
+	const end = Math.floor(((j + 1) * count) / sampled);
 	const placeInPart = ((j + 1) * GOLDEN_RATIO) % 1;
-	return Math.floor(((j + placeInPart) * count) / sampled);
+	return start + Math.floor(placeInPart * (end - start));
 }
 
 const GOLDEN_RATIO = (1 + Math.sqrt(5)) / 2;

@@ -305,10 +305,23 @@ describe('RunDataTracker', () => {
 			expect(tracker.getEstimate('1')?.totalBytes).toBe(25 * sizeOf(toItems(3)));
 		});
 
-		it('should measure a run of every node before a second run of any node', () => {
-			start('1', { Loop: runsOf(1000, 1), Large: runsOf(2, 50) });
+		it('should measure distinct runs when a node has a few more runs than the budget', () => {
+			start('1', { Node: runsOf(26, 3) });
 
-			expect(estimateTaskDataSize).toHaveBeenCalledTimes(25);
+			const measured = vi.mocked(estimateTaskDataSize).mock.calls.map(([taskData]) => taskData);
+			expect(new Set(measured).size).toBe(25);
+			expect(tracker.getEstimate('1')?.totalBytes).toBe(26 * sizeOf(toItems(3)));
+		});
+
+		it('should measure a run of every node before a second run of any node', () => {
+			const loop = runsOf(1000, 1);
+			const large = runsOf(2, 50);
+
+			start('1', { Loop: loop, Large: large });
+
+			const measured = vi.mocked(estimateTaskDataSize).mock.calls.map(([taskData]) => taskData);
+			expect(measured.filter((taskData) => loop.includes(taskData))).toHaveLength(23);
+			expect(measured.filter((taskData) => large.includes(taskData))).toHaveLength(2);
 			expect(tracker.getEstimate('1')?.bytesByNode).toEqual(
 				new Map([
 					['Loop', 1000 * sizeOf(toItems(1))],
