@@ -183,6 +183,7 @@ export class MigrationFindingQueryService {
 
 		const affectedWorkflows: BreakingChangeRuleDetailWorkflow[] = [];
 		for (const finding of findings) {
+			const project = projectsByWorkflow.get(finding.workflowId);
 			affectedWorkflows.push({
 				id: finding.workflowId,
 				name: finding.workflow.name,
@@ -194,7 +195,9 @@ export class MigrationFindingQueryService {
 				status: finding.status,
 				notifiedAt: finding.notifiedAt ?? undefined,
 				owner: ownersByWorkflow.get(finding.workflowId),
-				homeProjectId: projectsByWorkflow.get(finding.workflowId)?.id,
+				homeProjectId: project?.id,
+				homeProjectName: project?.name,
+				homeProjectType: project?.type,
 			});
 		}
 

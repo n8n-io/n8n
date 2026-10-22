@@ -86,6 +86,15 @@ describe('workflowFilters', () => {
 		expect(matches(workflow(), { owner: 'unassigned' })).toBe(true);
 	});
 
+	it('should filter the project by team project id or by all personal projects', () => {
+		const team = workflow({ homeProjectId: 'project-1', homeProjectType: 'team' });
+		const personal = workflow({ homeProjectId: 'project-2', homeProjectType: 'personal' });
+		expect(matches(team, { project: 'project-1' })).toBe(true);
+		expect(matches(team, { project: 'project-3' })).toBe(false);
+		expect(matches(team, { project: 'personal' })).toBe(false);
+		expect(matches(personal, { project: 'personal' })).toBe(true);
+	});
+
 	it('should filter the state that the page shows', () => {
 		expect(matches(workflow({ status: 'open' }), { state: 'open' })).toBe(true);
 		expect(matches(workflow({ status: 'open' }), { state: 'wont_fix' })).toBe(false);

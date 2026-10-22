@@ -712,6 +712,20 @@ const ownerFilterOptions = computed(() => {
 	);
 });
 
+// The team projects of the listed workflows, for the project filter. Personal projects share one option.
+const projectFilterOptions = computed(() => {
+	const projects = new Map<string, string>();
+	for (const workflow of state.value.affectedWorkflows) {
+		if (workflow.homeProjectType === 'team' && workflow.homeProjectId) {
+			projects.set(workflow.homeProjectId, workflow.homeProjectName ?? workflow.homeProjectId);
+		}
+	}
+	return orderBy(
+		[...projects].map(([id, label]) => ({ id, label })),
+		[(project) => project.label.toLowerCase()],
+	);
+});
+
 const filteredWorkflows = computed(() => {
 	const query = searchQuery.value.toLowerCase();
 	const now = Date.now();
@@ -854,6 +868,7 @@ const sortedWorkflows = computed(() => {
 			<WorkflowFiltersPopover
 				v-model="workflowFilters"
 				:owners="ownerFilterOptions"
+				:projects="projectFilterOptions"
 				:current-user-id="currentUserId"
 				:counts="quickFilterCounts"
 			/>
