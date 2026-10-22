@@ -11,7 +11,9 @@ import { CredentialTypes } from '@/credential-types';
 import type { ICredentialsOverwrite, ManagedVersionEntry } from '@/interfaces';
 import {
 	hasEmptyClientFields,
+	hasInvalidStoredVersion,
 	hasTokenData,
+	nearestValue,
 	parseOverwritesPayload,
 	readStoredVersion,
 	withoutVersion,
@@ -264,7 +266,7 @@ export class CredentialsOverwrites {
 	 * The version of the app a credential uses, or `undefined` for the default app.
 	 *
 	 * - A user-owned app (client fields set in the credential) uses no managed app.
-	 * - A stored version is used as it is.
+	 * - A stored version is used as it is. A stored value that is not a valid version fails.
 	 * - A credential with tokens and no stored version was connected before versions
 	 *   existed: version 1.
 	 * - A credential with no tokens at all is tied to no app yet: the default app.
@@ -275,6 +277,12 @@ export class CredentialsOverwrites {
 
 		const stored = readStoredVersion(data);
 		if (stored !== undefined) return stored;
+
+		if (hasInvalidStoredVersion(data)) {
+			throw new UserError(
+				'The managed app version stored on this credential is not valid. Reconnect the credential to continue.',
+			);
+		}
 
 		return hasTokenData(data) ? IMPLICIT_MANAGED_VERSION : undefined;
 	}
@@ -295,10 +303,7 @@ export class CredentialsOverwrites {
 
 	/** The value of the type, or of its nearest parent type that has one. */
 	private nearest<T>(type: string, values: Record<string, T>): T | undefined {
-		for (const name of [type, ...this.credentialTypes.getParentTypes(type)]) {
-			if (Object.hasOwn(values, name)) return values[name];
-		}
-		return undefined;
+		return nearestValue(type, this.credentialTypes.getParentTypes(type), values);
 	}
 
 	/** Picks the app of an OAuth type from its base overwrite and its newer app, if any. */

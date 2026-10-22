@@ -853,6 +853,12 @@ describe('Slack setup services', () => {
 		expect(iconRequest.body.get('file')).toBeInstanceOf(Blob);
 		expect(fetchParams(requestMock, 2).get('grant_type')).toBe('refresh_token');
 		// The refresh uses the app that the stored version names, and keeps that version.
+		expect(credentialsOverwrites.resolveBoundVersion).toHaveBeenCalledWith(
+			'slackManagerOAuth2Api',
+			expect.objectContaining({
+				oauthTokenData: expect.objectContaining({ n8n_managed_version: 2 }),
+			}),
+		);
 		expect(credentialsOverwrites.getOverwrites).toHaveBeenCalledWith('slackManagerOAuth2Api', 2);
 		const retriedIconRequest = requestMock.mock.calls[3]?.[0] as {
 			url: string;

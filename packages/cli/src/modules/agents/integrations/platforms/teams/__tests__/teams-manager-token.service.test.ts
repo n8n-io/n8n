@@ -302,12 +302,20 @@ describe('TeamsManagerTokenService', () => {
 	});
 
 	it('refuses when the stored app version is no longer in the overwrites', async () => {
+		credentialsService.decrypt.mockResolvedValue({
+			oauthTokenData: { refresh_token: 'refresh-1', n8n_managed_version: 2 },
+		} as never);
+		credentialsOverwrites.resolveBoundVersion.mockReturnValue(2);
 		credentialsOverwrites.getOverwrites.mockImplementation(() => {
 			throw new UserError('no app with version 2');
 		});
 
 		await expect(service.acquire(credential, GRAPH_RESOURCE)).rejects.toThrow(
 			'Reconnect the Microsoft Teams credential to use the recommended setup.',
+		);
+		expect(credentialsOverwrites.getOverwrites).toHaveBeenCalledWith(
+			'microsoftTeamsManagerOAuth2Api',
+			2,
 		);
 		expect(request).not.toHaveBeenCalled();
 	});

@@ -1431,13 +1431,36 @@ describe('CredentialsOverwrites', () => {
 
 			it('should keep a user-owned client, whatever the stored version is', async () => {
 				const instance = await createInstance(rollout);
-				const data = { clientId: 'mine', clientSecret: 'my-secret', oauthTokenData: { ...tokens } };
+				const data = {
+					clientId: 'mine',
+					clientSecret: 'my-secret',
+					oauthTokenData: { ...tokens, [MANAGED_VERSION_KEY]: 5 },
+				};
 
 				expect(instance.applyOverwrite('notionOAuth2Api', data)).toMatchObject({
 					clientId: 'mine',
 					clientSecret: 'my-secret',
 				});
+				expect(instance.resolveBoundVersion('notionOAuth2Api', data)).toBeUndefined();
 			});
+
+			it.each([
+				['a string', '2'],
+				['zero', 0],
+				['a fraction', 1.5],
+			])(
+				'should fail when the stored version is %s, and not use version 1',
+				async (_name, value) => {
+					const instance = await createInstance(rollout);
+					const data = managed({ ...tokens, [MANAGED_VERSION_KEY]: value });
+
+					expect(() => instance.resolveBoundVersion('notionOAuth2Api', data)).toThrow(UserError);
+					expect(() => instance.applyOverwrite('notionOAuth2Api', data)).toThrow(
+						'Reconnect the credential to continue.',
+					);
+					expect(instance.getManagedAuthState('notionOAuth2Api', data)).toBe('missing-app');
+				},
+			);
 
 			it('should give the newer app the fields of the base entry that it does not set', async () => {
 				const instance = await createInstance({

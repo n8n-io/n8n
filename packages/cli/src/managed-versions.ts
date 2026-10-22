@@ -57,6 +57,30 @@ export function readStoredVersion(data: ICredentialDataDecryptedObject): number 
 	return isManagedVersion(version) ? version : undefined;
 }
 
+/**
+ * True when the token data carries a version value that is not a valid version. A credential
+ * in this state cannot be tied to an app, so it must fail and not fall back to version 1.
+ */
+export function hasInvalidStoredVersion(data: ICredentialDataDecryptedObject): boolean {
+	const tokenData = data.oauthTokenData;
+	if (!isRecord(tokenData)) return false;
+
+	const version = tokenData[MANAGED_VERSION_KEY];
+	return version !== undefined && !isManagedVersion(version);
+}
+
+/** The value of the type, or of its nearest parent type that has one. `parentTypes` is nearest first. */
+export function nearestValue<T>(
+	type: string,
+	parentTypes: readonly string[],
+	values: Record<string, T>,
+): T | undefined {
+	for (const name of [type, ...parentTypes]) {
+		if (Object.hasOwn(values, name)) return values[name];
+	}
+	return undefined;
+}
+
 /** Returns a copy of the token data with the version added. */
 export function withTokenVersion(
 	tokenData: ICredentialDataDecryptedObject,
@@ -136,9 +160,7 @@ export function parseOverwritesPayload(
 			isKnown: isKnownType(type),
 			hasBaseEntry: entries[type] !== undefined,
 			baseVersion:
-				[type, ...parentTypesOf(type)]
-					.map((name) => entryVersions[name])
-					.find((version) => version !== undefined) ?? IMPLICIT_MANAGED_VERSION,
+				nearestValue(type, parentTypesOf(type), entryVersions) ?? IMPLICIT_MANAGED_VERSION,
 		});
 
 		if (problem !== undefined) {
