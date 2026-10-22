@@ -86,19 +86,18 @@ export function buildChatGenAiAttributes({
 	responseModel?: string;
 	usage?: { inputTokens: number; outputTokens: number };
 }): GenAiAttributes {
-	const attributes: GenAiAttributes = { [GEN_AI_ATTR.OPERATION_NAME]: 'chat' };
 	const provider = PROVIDER_BY_CHAT_MODEL_NODE[nodeType.replace(LANGCHAIN_NODE_PREFIX, '')];
 
-	if (provider) attributes[GEN_AI_ATTR.PROVIDER_NAME] = provider;
-	if (requestModel) attributes[GEN_AI_ATTR.REQUEST_MODEL] = requestModel;
-	if (responseModel) attributes[GEN_AI_ATTR.RESPONSE_MODEL] = responseModel;
-
-	if (usage) {
-		attributes[GEN_AI_ATTR.USAGE_INPUT_TOKENS] = usage.inputTokens;
-		attributes[GEN_AI_ATTR.USAGE_OUTPUT_TOKENS] = usage.outputTokens;
-	} else {
-		attributes[GEN_AI_ATTR.USAGE_REPORTED] = false;
-	}
-
-	return attributes;
+	return {
+		[GEN_AI_ATTR.OPERATION_NAME]: 'chat',
+		...(provider && { [GEN_AI_ATTR.PROVIDER_NAME]: provider }),
+		...(requestModel && { [GEN_AI_ATTR.REQUEST_MODEL]: requestModel }),
+		...(responseModel && { [GEN_AI_ATTR.RESPONSE_MODEL]: responseModel }),
+		...(usage
+			? {
+					[GEN_AI_ATTR.USAGE_INPUT_TOKENS]: usage.inputTokens,
+					[GEN_AI_ATTR.USAGE_OUTPUT_TOKENS]: usage.outputTokens,
+				}
+			: { [GEN_AI_ATTR.USAGE_REPORTED]: false }),
+	};
 }
