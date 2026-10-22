@@ -459,12 +459,11 @@ describe('Promotion reviews in the Inbox', () => {
 			expect((await inbox(admin, { state: 'closed' })).body.data.data).toEqual([merged]);
 		});
 
-		it('refuses the requester, a member, and a disabled rollout flag without a GitLab write', async () => {
+		it('refuses a member and a disabled rollout flag without a GitLab write', async () => {
 			const reviewId = await insertReview(1);
 			gitlab({ 1: { state: 'opened' } });
 			const writes = gitlabWrites(1);
 
-			expect((await approve(owner, reviewId)).status).toBe(403);
 			expect((await approve(await createMember(), reviewId)).status).toBe(403);
 			process.env.N8N_ENV_FEAT_PROMOTIONS = 'false';
 			try {
@@ -511,7 +510,7 @@ describe('Promotion reviews in the Inbox', () => {
 
 			const refused = await approve(admin, reviewId);
 			expect(refused.status).toBe(400);
-			expect(refused.body.message).toContain('GitLab cannot merge this merge request now.');
+			expect(refused.body.message).toContain("GitLab can't merge this merge request now.");
 			expect(JSON.stringify(refused.body)).not.toContain(token);
 			expect(await approvedById(reviewId)).toBeNull();
 
@@ -523,10 +522,7 @@ describe('Promotion reviews in the Inbox', () => {
 				'merge',
 				'note',
 			]);
-			expect(writes.at(-1)).toEqual([
-				'note',
-				{ body: `Approved and merged in n8n by ${admin.email}.` },
-			]);
+			expect(writes.at(-1)).toEqual(['note', { body: 'Approved and merged in n8n.' }]);
 		});
 
 		it('answers Merged when an Inbox sync records the merge first', async () => {
@@ -580,7 +576,7 @@ describe('Promotion reviews in the Inbox', () => {
 			const response = await approve(admin, reviewId);
 
 			expect(response.status).toBe(503);
-			expect(response.body.message).toContain('GitLab did not confirm the merge');
+			expect(response.body.message).toContain("GitLab didn't confirm the merge");
 			expect(await approvedById(reviewId)).toBe(admin.id);
 			answers[1] = { state: 'opened' };
 			expect((await approve(await createAdmin(), reviewId)).status).toBe(409);

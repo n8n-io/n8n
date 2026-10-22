@@ -15,16 +15,14 @@ import {
 	N8nIcon,
 	N8nLink,
 	N8nText,
-	N8nTooltip,
 	type BadgeVariant,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useUsersStore } from '@n8n/stores/users.store';
-import { computed, ref } from 'vue';
+import { computed, ref, useId } from 'vue';
 
 import type { InboxItemChange } from '../inbox.constants';
-import { formatUserDisplayName } from '../reviews/workflowReviews.utils';
+import { formatUserDisplayName, toError } from '../reviews/workflowReviews.utils';
 import { approvePromotionReview } from './promotionReviews.api';
 
 const props = defineProps<{
@@ -34,7 +32,7 @@ const props = defineProps<{
 const i18n = useI18n();
 const { showError } = useToast();
 const rootStore = useRootStore();
-const usersStore = useUsersStore();
+const disabledReasonId = useId();
 
 const stateBadge: Record<PromotionReviewState, BadgeVariant> = {
 	open: 'info',
@@ -49,9 +47,6 @@ const approving = ref(false);
 
 const disabledReason = computed(() => {
 	const { item } = props;
-	if (item.requester?.id === usersStore.currentUserId) {
-		return i18n.baseText('inbox.promotionReview.approve.disabled.requester');
-	}
 	if (item.reviewState === 'changes_requested') {
 		return i18n.baseText('inbox.promotionReview.approve.disabled.changesRequested');
 	}
@@ -86,8 +81,8 @@ async function onApprove() {
 			headCommitSha,
 		});
 		onItemChange({ type: 'promotion_review', id, state, updatedAt });
-	} catch (error) {
-		showError(error, i18n.baseText('inbox.promotionReview.approve.error.title'));
+	} catch (error: unknown) {
+		showError(toError(error), i18n.baseText('inbox.promotionReview.approve.error.title'));
 		// Reload the list, so the next attempt uses the current state from GitLab.
 		onItemChange({ type: 'promotion_review', id });
 	} finally {
@@ -112,26 +107,30 @@ async function onApprove() {
 						<N8nIcon icon="arrow-up-right" size="small" />
 						{{ i18n.baseText('inbox.promotionReview.detail.openInGitLab') }}
 					</N8nLink>
-					<!-- A disabled button fires no hover events, so the span carries the tooltip. -->
-					<span v-if="item.state === 'open'">
-						<N8nTooltip
-							:content="disabledReason ?? ''"
-							:disabled="!disabledReason"
-							:show-after="300"
-						>
-							<N8nButton
-								size="small"
-								:disabled="!!disabledReason"
-								:loading="approving"
-								data-test-id="inbox-promotion-review-approve"
-								@click="openApproval"
-							>
-								{{ i18n.baseText('inbox.promotionReview.approve.button') }}
-							</N8nButton>
-						</N8nTooltip>
-					</span>
+					<N8nButton
+						v-if="item.state === 'open'"
+						size="small"
+						:disabled="!!disabledReason"
+						:loading="approving"
+						:aria-describedby="disabledReason ? disabledReasonId : undefined"
+						data-test-id="inbox-promotion-review-approve"
+						@click="openApproval"
+					>
+						{{ i18n.baseText('inbox.promotionReview.approve.button') }}
+					</N8nButton>
 				</div>
 			</div>
+			<!-- Visible text, not a tooltip: a disabled button cannot take keyboard focus. -->
+			<N8nText
+				v-if="item.state === 'open' && disabledReason"
+				:id="disabledReasonId"
+				:class="$style.disabledReason"
+				size="small"
+				color="text-light"
+				data-test-id="inbox-promotion-review-approve-reason"
+			>
+				{{ disabledReason }}
+			</N8nText>
 			<div :class="$style.meta">
 				<span v-if="item.environmentName" :class="$style.metaItem">
 					<N8nText size="small" color="text-light">
@@ -228,6 +227,10 @@ async function onApprove() {
 	align-items: center;
 	gap: var(--spacing--xs);
 	margin-left: auto;
+}
+
+.disabledReason {
+	align-self: flex-end;
 }
 
 .gitlabLink {

@@ -269,7 +269,7 @@ function statusError(status: number, body: unknown) {
 	// The merge call answers 405 when GitLab cannot merge now. The body gives no reason.
 	if (status === 405) {
 		return new BadRequestError(
-			'GitLab cannot merge this merge request now. Check its merge checks on GitLab, such as a required pipeline.',
+			"GitLab can't merge this merge request now. Check its merge checks on GitLab, such as a required pipeline.",
 		);
 	}
 	if (status === 408) {

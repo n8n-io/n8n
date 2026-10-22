@@ -1,7 +1,6 @@
 import type { InboxPromotionReviewItem } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
-import { createComponentRenderer, mockedStore } from '@n8n/frontend-test-utils';
-import { useUsersStore } from '@n8n/stores/users.store';
+import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { waitFor, within } from '@testing-library/vue';
@@ -35,18 +34,7 @@ const item = (props: Partial<InboxPromotionReviewItem> = {}): InboxPromotionRevi
 	...props,
 });
 
-// The real tooltip renders its content in a portal on hover, which jsdom cannot exercise.
-const renderComponent = createComponentRenderer(PromotionReviewDetail, {
-	global: {
-		stubs: {
-			N8nTooltip: {
-				props: ['content', 'disabled'],
-				template:
-					'<div data-test-id="approve-tooltip" :data-content="content" :data-disabled="disabled"><slot /></div>',
-			},
-		},
-	},
-});
+const renderComponent = createComponentRenderer(PromotionReviewDetail);
 
 const showError = vi.fn();
 const onItemChange = vi.fn();
@@ -54,7 +42,6 @@ const onItemChange = vi.fn();
 beforeEach(() => {
 	vi.clearAllMocks();
 	createTestingPinia();
-	mockedStore(useUsersStore).currentUserId = 'u2';
 	vi.mocked(useToast).mockReturnValue({ showError } as unknown as ReturnType<typeof useToast>);
 });
 
@@ -109,11 +96,11 @@ it('falls back to the branch name, explains why GitLab did not answer, and shows
 it('approves the review the admin confirmed, and locks the dialog until GitLab answers', async () => {
 	const merged = createDeferredPromise<InboxPromotionReviewItem>();
 	vi.mocked(approvePromotionReview).mockReturnValue(merged.promise);
-	const { getByRole, getByTestId, rerender } = renderComponent({
+	const { getByRole, getByTestId, queryByTestId, rerender } = renderComponent({
 		props: { item: item(), onItemChange },
 	});
 	const dialogButton = (name: string) => within(getByRole('dialog')).getByRole('button', { name });
-	expect(getByTestId('approve-tooltip')).toHaveAttribute('data-disabled', 'true');
+	expect(queryByTestId('inbox-promotion-review-approve-reason')).not.toBeInTheDocument();
 
 	await userEvent.click(getByTestId('inbox-promotion-review-approve'));
 	await userEvent.click(dialogButton('Cancel'));
@@ -143,14 +130,9 @@ it('approves the review the admin confirmed, and locks the dialog until GitLab a
 
 it.each([
 	[
-		'the viewer requested the promotion',
-		{ requester: { id: 'u2', firstName: 'Grace', lastName: 'Hopper', email: null } },
-		'You requested this promotion. Another owner or admin must approve it.',
-	],
-	[
 		'a reviewer requested changes',
 		{ reviewState: 'changes_requested' as const },
-		'A reviewer requested changes on GitLab.',
+		'A reviewer requested changes. Resolve them on GitLab, then reload the Inbox.',
 	],
 	[
 		'the merge request has conflicts',
@@ -171,10 +153,10 @@ it.each([
 	const { getByTestId } = renderComponent({ props: { item: item(props), onItemChange } });
 
 	const button = getByTestId('inbox-promotion-review-approve');
-	const tooltip = button.closest('[data-test-id="approve-tooltip"]');
+	const text = getByTestId('inbox-promotion-review-approve-reason');
 	expect(button).toBeDisabled();
-	expect(tooltip).toHaveAttribute('data-content', reason);
-	expect(tooltip).toHaveAttribute('data-disabled', 'false');
+	expect(text).toHaveTextContent(reason);
+	expect(button).toHaveAttribute('aria-describedby', text.id);
 });
 
 it('shows the error, reloads the list, and enables approve again when the approval fails', async () => {

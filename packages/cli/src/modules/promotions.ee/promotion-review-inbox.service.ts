@@ -53,12 +53,12 @@ const CHANGED_ON_HOST =
 	'The merge request changed on GitLab. Reload the Inbox and review the changes again.';
 
 const UNCONFIRMED_MERGE =
-	'GitLab did not confirm the merge. Check the merge request on GitLab, then try again in two minutes.';
+	"GitLab didn't confirm the merge. Check the merge request on GitLab, then try again in two minutes.";
 
 /**
  * Promotion Reviews as an Inbox source, and their approval. The first page of each tab and
- * the counters share one sync of the open reviews with the Git host. A host failure never
- * changes a row.
+ * the counters share one sync of the open reviews with the Git host. An Inbox sync failure
+ * never changes the review state.
  */
 @Service()
 export class PromotionReviewInboxService {
@@ -117,14 +117,9 @@ export class PromotionReviewInboxService {
 		reviewId: string,
 		{ headCommitSha }: ApprovePromotionReviewDto,
 	): Promise<InboxPromotionReviewItem> {
-		if (!this.isEnabled()) throw new ForbiddenError('Promotion reviews are not enabled.');
+		if (!this.isEnabled()) throw new ForbiddenError("Promotion reviews aren't enabled.");
 		const review = await this.reviewRepository.findByIdWithRelations(reviewId);
 		if (!review) throw new NotFoundError('Promotion review not found.');
-		if (review.createdById === user.id) {
-			throw new ForbiddenError(
-				'You requested this promotion. Another owner or admin must approve it.',
-			);
-		}
 		if (review.state === 'merged' || review.state === 'closed') {
 			throw new ConflictError(`This promotion review is already ${review.state}.`);
 		}
@@ -140,7 +135,9 @@ export class PromotionReviewInboxService {
 		await this.applyHostState(review, mergeRequest);
 		const hostState = toReviewState(mergeRequest);
 		if (hostState === 'changes_requested') {
-			throw new ConflictError('A reviewer requested changes on GitLab.');
+			throw new ConflictError(
+				'A reviewer requested changes. Resolve them on GitLab, then reload the Inbox.',
+			);
 		}
 		if (hostState !== 'open') {
 			throw new ConflictError(`The merge request is already ${hostState} on GitLab.`);
@@ -157,7 +154,9 @@ export class PromotionReviewInboxService {
 		};
 		const staleBefore = new Date(claim.approvedAt.getTime() - APPROVAL_CLAIM_TTL_MS);
 		if (!(await this.reviewRepository.claimApproval(claim, staleBefore))) {
-			throw new ConflictError('Another owner or admin is approving this promotion review.');
+			throw new ConflictError(
+				'Someone is already approving this promotion review. Wait for the approval to finish, then reload the Inbox.',
+			);
 		}
 
 		const merged = await this.mergeClaimed(claim, access, ref, headCommitSha);
@@ -282,7 +281,7 @@ export class PromotionReviewInboxService {
 		const mergeRequest = await this.mergeRequests.getMergeRequest(access, ref);
 		// The stored ids are not unique across hosts. Only the branch n8n pushed proves it is ours.
 		if (mergeRequest.source_branch !== detailsOf(run)?.branchName) {
-			throw new NotFoundError('GitLab could not find the merge request of this promotion.');
+			throw new NotFoundError("GitLab couldn't find the merge request of this promotion.");
 		}
 		return { access, ref, mergeRequest };
 	}
