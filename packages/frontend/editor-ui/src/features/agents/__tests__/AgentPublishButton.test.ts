@@ -44,6 +44,10 @@ vi.mock('@n8n/composables/useToast', () => {
 	return { useToast: () => ({ showMessage, showError }) };
 });
 
+vi.mock('../composables/useAgentsN8nChatFlag', () => ({
+	useAgentsN8nChatFlag: () => ({ value: false }),
+}));
+
 const openModalWithDataMock = vi.fn();
 const closeModalMock = vi.fn();
 
@@ -331,7 +335,7 @@ describe('AgentPublishButton', () => {
 			expect(wrapper.emitted('reverted')).toEqual([[updatedAgent]]);
 			expect(trackMock).toHaveBeenCalledExactlyOnceWith(
 				TELEMETRY_EVENT.AGENTS.USER_REVERTED_CHANGES_ON_AGENT,
-				{ agent_id: 'agent-1', session_id: 'editor-session' },
+				{ agent_id: 'agent-1', push_ref: 'editor-session' },
 			);
 		},
 	);

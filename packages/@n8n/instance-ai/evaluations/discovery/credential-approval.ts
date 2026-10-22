@@ -4,7 +4,7 @@ import type { ApprovalResponder } from './confirmation-policy';
 
 /** Approving a credential card means "Auto-setup with browser". A bare approval
  *  takes the "user picked an existing credential" branch, so the orchestrator never
- *  sees `needsBrowserSetup=true` — the flag that wires it to the Computer Use
+ *  sees `needsBrowserSetup=true` — the flag that wires it to the Browser Use
  *  credential setup skill. The card offers one credential at a time once browser
  *  setup is in play, so the first request is the one `autoSetup` names. */
 export const credentialAutoSetupResponder: ApprovalResponder = (payload) => {

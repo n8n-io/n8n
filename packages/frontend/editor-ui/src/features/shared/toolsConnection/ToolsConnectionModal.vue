@@ -211,11 +211,15 @@ function itemsForCategory(category: ToolCategoryKey): ToolConnectionItem[] {
 	// Stable sort keeps each bucket in its original order (Array.sort is stable).
 	if (category === 'all') return [...props.items].sort((a, b) => allSortRank(a) - allSortRank(b));
 	if (category === 'connected') return props.items.filter((item) => hasToolConnection(item.status));
-	return props.items.filter(
+	const categoryItems = props.items.filter(
 		(item) =>
 			categoryOf(item) === category &&
 			(hasConnectedTab.value ? !hasToolConnection(item.status) : true),
 	);
+	// Connectors on Gateway credits come first, as "All" ranks them, so they need no scrolling.
+	return category === 'mcp'
+		? partitionLast(categoryItems, (item) => !item.freeCredits)
+		: categoryItems;
 }
 
 const countByCategory = computed<Record<string, number>>(() => {
@@ -557,11 +561,13 @@ function handleOpenChange(value: boolean) {
 
 	.listWrapper {
 		margin-inline: 0;
-		margin-bottom: calc(-1 * var(--spacing--lg));
+		// The body already reaches the host's bottom edge. A negative margin pushes the last row out of view.
+		margin-bottom: 0;
 	}
 
 	.scroller {
 		padding-inline: 0;
+		padding-block-end: var(--spacing--md);
 	}
 }
 

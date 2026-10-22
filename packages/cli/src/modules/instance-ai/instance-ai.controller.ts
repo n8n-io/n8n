@@ -1,16 +1,12 @@
 import {
 	InstanceAiConfirmRequestDto,
 	InstanceAiFeedbackRequestDto,
-	InstanceAiGatewayCapabilitiesDto,
-	InstanceAiGatewayCreateCredentialDto,
-	InstanceAiFilesystemResponseDto,
 	InstanceAiRenameThreadRequestDto,
 	InstanceAiThreadTabsRequestDto,
 	InstanceAiPreferenceCardEditRequestDto,
 	InstanceAiPreferenceCardUndoRequestDto,
 	InstanceAiSendMessageRequest,
 	InstanceAiEventsQuery,
-	instanceAiGatewayKeySchema,
 	InstanceAiCorrectTaskRequest,
 	InstanceAiEnsureThreadRequest,
 	InstanceAiPersistPendingAgentRequest,
@@ -20,7 +16,6 @@ import {
 	InstanceAiVerifyModelRequest,
 	InstanceAiVerifySandboxRequest,
 	InstanceAiVerifySearchRequest,
-	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiEvalExecutionRequest,
 	InstanceAiEvalAgentExecutionRequest,
 	InstanceAiEvalCredentialAllowlistRequest,
@@ -38,7 +33,7 @@ import type {
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
+import { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	RestController,
@@ -69,7 +64,7 @@ import {
 	validateAttachmentSizes,
 } from '@n8n/instance-ai/parsers';
 import type { NextFunction, Request, Response } from 'express';
-import { randomUUID, timingSafeEqual } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
 import { EvalAgentExecutionService } from './eval/agent-execution.service';
 import { EvalExecutionService } from './eval/execution.service';
@@ -79,7 +74,6 @@ import { DurableEventLog } from './event-bus/durable-event-log';
 import { DurableLogMetrics } from './event-bus/durable-log-metrics';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.service';
-import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelCatalogService } from './instance-ai-model-catalog.service';
 import { InstanceAiPendingAgentService } from './instance-ai-pending-agent.service';
@@ -89,13 +83,10 @@ import { InstanceAiThreadTabsService } from './instance-ai-thread-tabs.service';
 import { InstanceAiVerificationService } from './instance-ai-verification.service';
 import { InstanceAiService } from './instance-ai.service';
 import { InstanceAiOnboardingService, startsOnboardingFirstTurn } from './onboarding';
-import { CredentialsService } from '@/credentials/credentials.service';
 
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
-import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { UrlService } from '@n8n/backend-services';
 
 type FlushableResponse = Response & { flush?: () => void };
 
@@ -103,13 +94,10 @@ const KEEP_ALIVE_INTERVAL_MS = 15_000;
 
 @RestController('/instance-ai')
 export class InstanceAiController {
-	private readonly gatewayApiKey: string;
-
 	private readonly instanceAiConfig: GlobalConfig['instanceAi'];
 
 	constructor(
 		private readonly instanceAiService: InstanceAiService,
-		private readonly gatewayService: InstanceAiGatewayService,
 		private readonly browserSessionService: InstanceAiBrowserSessionService,
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly onboarding: InstanceAiOnboardingService,
@@ -124,10 +112,6 @@ export class InstanceAiController {
 		private readonly eventLog: DurableEventLog,
 		private readonly durableLogMetrics: DurableLogMetrics,
 		private readonly moduleRegistry: ModuleRegistry,
-		private readonly push: Push,
-		private readonly urlService: UrlService,
-		private readonly userRepository: UserRepository,
-		private readonly credentialsService: CredentialsService,
 		private readonly projectService: ProjectService,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
 		private readonly publisher: Publisher,
@@ -135,7 +119,6 @@ export class InstanceAiController {
 		globalConfig: GlobalConfig,
 		private readonly threadTabsService: InstanceAiThreadTabsService,
 	) {
-		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
 		this.instanceAiConfig = globalConfig.instanceAi;
 	}
 
@@ -256,7 +239,7 @@ export class InstanceAiController {
 			payload.pushRef,
 			payload.mode,
 			payload.promptVersion,
-			payload.computerUseChannels,
+			payload.browserUseAvailable,
 			payload.threadArtifacts,
 			payload.observerThresholdTokens,
 		);
@@ -811,15 +794,11 @@ export class InstanceAiController {
 		await this.applyAdminSettingsSideEffects({
 			enabled: this.settingsService.isInstanceAiEnabled(),
 			browserUseEnabled: this.settingsService.isBrowserUseEnabled(),
-			localGatewayDisabled: this.settingsService.isLocalGatewayDisabled(),
 		});
 	}
 
 	private async applyAdminSettingsSideEffects(
-		settings: Pick<
-			InstanceAiAdminSettingsResponse,
-			'enabled' | 'browserUseEnabled' | 'localGatewayDisabled'
-		>,
+		settings: Pick<InstanceAiAdminSettingsResponse, 'enabled' | 'browserUseEnabled'>,
 	) {
 		const sideEffects: Array<() => Promise<void> | void> = [
 			async () => {
@@ -831,25 +810,6 @@ export class InstanceAiController {
 		];
 		if (!settings.enabled || !settings.browserUseEnabled) {
 			sideEffects.push(async () => await this.browserSessionService.shutdown());
-		}
-
-		if (!settings.enabled || settings.localGatewayDisabled) {
-			sideEffects.push(() => {
-				const disconnectedUserIds = this.gatewayService.disconnectAllGateways();
-				if (disconnectedUserIds.length === 0) return;
-				this.push.sendToUsers(
-					{
-						type: 'instanceAiGatewayStateChanged',
-						data: {
-							connected: false,
-							directory: null,
-							hostIdentifier: null,
-							toolCategories: [],
-						},
-					},
-					disconnectedUserIds,
-				);
-			});
 		}
 
 		const results = await Promise.allSettled(sideEffects.map(async (apply) => await apply()));
@@ -869,20 +829,6 @@ export class InstanceAiController {
 	@GlobalScope('instanceAi:message')
 	async getUserPreferences(req: AuthenticatedRequest) {
 		return await this.settingsService.getUserPreferences(req.user);
-	}
-
-	@Put('/preferences')
-	@GlobalScope('instanceAi:message')
-	async updateUserPreferences(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Body payload: InstanceAiUserPreferencesUpdateRequest,
-	) {
-		const result = await this.settingsService.updateUserPreferences(req.user, payload);
-		if (payload.localGatewayDisabled !== undefined) {
-			await this.moduleRegistry.refreshModuleSettings('instance-ai');
-		}
-		return result;
 	}
 
 	@Get('/settings/service-credentials')
@@ -1459,197 +1405,7 @@ export class InstanceAiController {
 		return { ok: true, tableId: payload.tableId, rowCount: payload.rows.length };
 	}
 
-	// ── Gateway endpoints (daemon ↔ server) ──────────────────────────────────
-
-	@Post('/gateway/create-link')
-	@GlobalScope('instanceAi:gateway')
-	async createGatewayLink(req: AuthenticatedRequest) {
-		await this.assertGatewayEnabled(req.user.id);
-		const token = this.gatewayService.generatePairingToken(req.user.id);
-		const expiresAt = this.gatewayService.getGatewayApiKeyExpiresAt(req.user.id, token);
-		const ttlSeconds = expiresAt
-			? Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / 1000))
-			: null;
-		const baseUrl = this.urlService.getInstanceBaseUrl();
-		const command = `npx @n8n/computer-use ${baseUrl} ${token}`;
-		return { token, command, expiresAt: expiresAt?.toISOString() ?? null, ttlSeconds };
-	}
-
-	@Get('/gateway/events', { usesTemplates: true, skipAuth: true })
-	async gatewayEvents(req: Request, res: FlushableResponse) {
-		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
-		await this.assertGatewayEnabled(userId);
-
-		const gateway = this.gatewayService.getLocalGateway(userId);
-
-		// If the grace-period timer already fired (e.g. after a long reconnect gap),
-		// the gateway state is torn down. Reject so the daemon falls into its auth-error
-		// reconnect branch, which re-uploads capabilities and re-establishes state.
-		if (!gateway.isConnected) {
-			throw new ForbiddenError('Local gateway not initialized');
-		}
-
-		// Daemon reconnected within the grace window — cancel the pending disconnect.
-		this.gatewayService.clearDisconnectTimer(userId);
-
-		(res as unknown as { compress: boolean }).compress = false;
-		res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
-		res.setHeader('Cache-Control', 'no-cache, no-transform');
-		res.setHeader('Connection', 'keep-alive');
-		res.setHeader('X-Accel-Buffering', 'no');
-		res.flushHeaders();
-
-		const unsubscribeRequest = gateway.onRequest((event) => {
-			res.write(`data: ${JSON.stringify(event)}\n\n`);
-			res.flush?.();
-		});
-		const unsubscribeDisconnect = gateway.onDisconnect((event) => {
-			res.write(`data: ${JSON.stringify(event)}\n\n`);
-			res.flush?.();
-			res.end();
-		});
-
-		const keepAlive = setInterval(() => {
-			res.write(': ping\n\n');
-			res.flush?.();
-		}, KEEP_ALIVE_INTERVAL_MS);
-
-		let cleanedUp = false;
-		const cleanup = () => {
-			if (cleanedUp) return;
-			cleanedUp = true;
-			unsubscribeRequest();
-			unsubscribeDisconnect();
-			clearInterval(keepAlive);
-			this.gatewayService.startDisconnectTimer(userId, () => {
-				this.push.sendToUsers(
-					{
-						type: 'instanceAiGatewayStateChanged',
-						data: {
-							connected: false,
-							directory: null,
-							hostIdentifier: null,
-							toolCategories: [],
-						},
-					},
-					[userId],
-				);
-			});
-		};
-		res.once('close', cleanup);
-		res.once('finish', cleanup);
-	}
-
-	@Post('/gateway/init', { skipAuth: true })
-	async gatewayInit(req: Request, _res: Response, @Body payload: InstanceAiGatewayCapabilitiesDto) {
-		const key = this.getGatewayKeyHeader(req);
-		const userId = this.validateGatewayApiKey(key);
-		await this.assertGatewayEnabled(userId);
-
-		this.gatewayService.initGateway(userId, payload);
-		this.gatewayService.applyToolPolicy(userId);
-
-		const status = this.gatewayService.getGatewayStatus(userId);
-		this.push.sendToUsers(
-			{
-				type: 'instanceAiGatewayStateChanged',
-				data: {
-					connected: status.connected,
-					directory: status.directory,
-					hostIdentifier: status.hostIdentifier,
-					toolCategories: status.toolCategories,
-				},
-			},
-			[userId],
-		);
-
-		// Try to consume a pairing token and upgrade to a session key
-		const sessionKey = key ? this.gatewayService.consumePairingToken(userId, key) : null;
-		if (sessionKey) {
-			return { ok: true, sessionKey };
-		}
-		return { ok: true };
-	}
-
-	@Post('/gateway/disconnect', { skipAuth: true })
-	gatewayDisconnect(req: Request) {
-		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
-
-		this.gatewayService.clearDisconnectTimer(userId);
-		this.gatewayService.disconnectGateway(userId);
-		this.gatewayService.clearActiveSessionKey(userId);
-		this.push.sendToUsers(
-			{
-				type: 'instanceAiGatewayStateChanged',
-				data: { connected: false, directory: null, hostIdentifier: null, toolCategories: [] },
-			},
-			[userId],
-		);
-		return { ok: true };
-	}
-
-	@Post('/gateway/response/:requestId', { skipAuth: true })
-	gatewayResponse(
-		req: Request,
-		_res: Response,
-		@Param('requestId') requestId: string,
-		@Body payload: InstanceAiFilesystemResponseDto,
-	) {
-		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
-
-		const resolved = this.gatewayService.resolveGatewayRequest(
-			userId,
-			requestId,
-			payload.result,
-			payload.error,
-		);
-		if (!resolved) {
-			throw new NotFoundError('Gateway request not found or already resolved');
-		}
-		return { ok: true };
-	}
-
-	@Post('/gateway/credentials', { skipAuth: true })
-	async gatewayCreateCredential(
-		req: Request,
-		_res: Response,
-		@Body payload: InstanceAiGatewayCreateCredentialDto,
-	) {
-		const user = await this.resolveGatewayUser(this.getGatewayKeyHeader(req));
-		await this.assertGatewayEnabled(user.id);
-		const credential = await this.credentialsService.createUnmanagedCredential(payload, user);
-		return { credentialId: credential.id };
-	}
-
-	@Get('/gateway/status')
-	@GlobalScope('instanceAi:gateway')
-	async gatewayStatus(req: AuthenticatedRequest) {
-		await this.assertGatewayEnabled(req.user.id);
-		this.gatewayService.applyToolPolicy(req.user.id);
-		return this.gatewayService.getGatewayStatus(req.user.id);
-	}
-
-	/**
-	 * User-initiated gateway disconnect. Tears down the paired daemon session
-	 * so its tools are no longer exposed to the agent, without changing the
-	 * user's preference to disabled.
-	 */
-	@Post('/gateway/disconnect-session')
-	@GlobalScope('instanceAi:gateway')
-	async gatewayDisconnectSession(req: AuthenticatedRequest) {
-		const userId = req.user.id;
-		this.gatewayService.clearDisconnectTimer(userId);
-		this.gatewayService.disconnectGateway(userId);
-		this.gatewayService.clearActiveSessionKey(userId);
-		this.push.sendToUsers(
-			{
-				type: 'instanceAiGatewayStateChanged',
-				data: { connected: false, directory: null, hostIdentifier: null, toolCategories: [] },
-			},
-			[userId],
-		);
-		return { ok: true };
-	}
+	// ── Browser Use endpoints ───────────────────────────────────────────────────
 
 	@Post('/browser/create-link')
 	@GlobalScope('instanceAi:gateway')
@@ -1699,68 +1455,6 @@ export class InstanceAiController {
 		if (!options?.allowNew && ownership === 'not_found') {
 			throw new NotFoundError('Thread not found');
 		}
-	}
-
-	/** Throw if the local gateway is disabled globally or for this user. */
-	private async assertGatewayEnabled(userId: string): Promise<void> {
-		if (await this.settingsService.isLocalGatewayDisabledForUser(userId)) {
-			throw new ForbiddenError('Local gateway is disabled');
-		}
-	}
-
-	/**
-	 * Safely extract and validate the x-gateway-key header value.
-	 * Headers can be string | string[] | undefined — take only the first value
-	 * and validate against the shared gateway key schema.
-	 */
-	private getGatewayKeyHeader(req: Request): string | undefined {
-		const raw = req.headers['x-gateway-key'];
-		const value = Array.isArray(raw) ? raw[0] : raw;
-		const parsed = instanceAiGatewayKeySchema.safeParse(value);
-		return parsed.success ? parsed.data : undefined;
-	}
-
-	/**
-	 * Validate the gateway API key from query param or header.
-	 * Accepts: static env var key, one-time pairing token (init only), or active session key.
-	 * Returns the userId associated with the key.
-	 */
-	private validateGatewayApiKey(key: string | undefined): string {
-		if (!key) {
-			throw new ForbiddenError('Missing API key');
-		}
-		const actual = Buffer.from(key);
-
-		// Check static env var key — out of user-scoped flow, uses a sentinel userId
-		if (this.gatewayApiKey) {
-			const expected = Buffer.from(this.gatewayApiKey);
-			if (expected.length === actual.length && timingSafeEqual(expected, actual)) {
-				return 'env-gateway';
-			}
-		}
-
-		// Check per-user pairing token or session key via reverse lookup
-		const userId = this.gatewayService.getUserIdForApiKey(key);
-		if (userId) return userId;
-
-		throw new ForbiddenError('Invalid API key');
-	}
-
-	/**
-	 * Resolve a gateway API key to its associated User. Requires a user-scoped
-	 * key — the static env-var key (which has no associated DB user) is rejected.
-	 */
-	private async resolveGatewayUser(key: string | undefined): Promise<User> {
-		const userId = this.validateGatewayApiKey(key);
-		if (userId === 'env-gateway') {
-			throw new ForbiddenError('Credential creation requires a user-scoped gateway key');
-		}
-		const user = await this.userRepository.findOne({
-			where: { id: userId },
-			relations: ['role', 'role.scopes'],
-		});
-		if (!user) throw new ForbiddenError('Invalid API key');
-		return user;
 	}
 
 	private writeSseEvent(res: FlushableResponse, stored: StoredEvent): void {

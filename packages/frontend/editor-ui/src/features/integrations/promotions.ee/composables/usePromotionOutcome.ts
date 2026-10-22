@@ -18,7 +18,7 @@ export function usePromotionOutcome() {
 	function showPromoted(projectId: string, result: PromotePackageResultDto) {
 		promotionEventBus.emit('promoted', { projectId });
 		toast.showMessage({
-			title: i18n.baseText('promotions.modal.toast.success.title'),
+			title: i18n.baseText('promotions.operation.toast.success.title'),
 			type: result.warnings?.length ? 'warning' : 'success',
 			...promoteSuccessToast(result, {
 				pushed: i18n.baseText('promotions.result.pushed', {
@@ -42,11 +42,11 @@ export function usePromotionOutcome() {
 		};
 		// A workflow can be imported and still fail to publish, so success alone would mislead.
 		toast.showMessage({
-			title: i18n.baseText('promotions.modal.incoming.applied.title'),
+			title: i18n.baseText('promotions.operation.incoming.applied.title'),
 			message: i18n.baseText(
 				notPublished
-					? 'promotions.modal.incoming.applied.messageNotPublished'
-					: 'promotions.modal.incoming.applied.message',
+					? 'promotions.operation.incoming.applied.messageNotPublished'
+					: 'promotions.operation.incoming.applied.message',
 				{ interpolate },
 			),
 			type: notPublished ? 'warning' : 'success',

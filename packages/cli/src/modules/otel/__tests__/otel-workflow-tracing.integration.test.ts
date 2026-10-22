@@ -113,6 +113,7 @@ describe('OTEL Workflow Tracing Integration', () => {
 		const workflowSpan = otel.getFinishedSpans().find((s) => s.name === 'workflow.execute')!;
 		expect(workflowSpan.status.code).toBe(SpanStatusCode.ERROR);
 		expect(workflowSpan.attributes['n8n.execution.status']).toBe('error');
+		expect(workflowSpan.attributes['n8n.execution.error_type']).toBe('UnexpectedError');
 	});
 
 	it('should keep the resumed segment in the trace of the parked segment', async () => {

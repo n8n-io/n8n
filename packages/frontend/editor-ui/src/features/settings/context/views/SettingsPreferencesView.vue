@@ -17,6 +17,10 @@ import type { TableOptions } from '@n8n/design-system';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { PREFERENCES_EMPTY_STATE_EXPERIMENT } from '@/app/constants/experiments';
+import PreferencesEmptyStateAssistant from '@/experiments/preferencesEmptyState/components/PreferencesEmptyStateAssistant.vue';
+import PreferencesEmptyStateExamples from '@/experiments/preferencesEmptyState/components/PreferencesEmptyStateExamples.vue';
+import { usePreferencesEmptyStateExperiment } from '@/experiments/preferencesEmptyState/usePreferencesEmptyStateExperiment';
 
 import PreferenceModal from '../components/PreferenceModal.vue';
 import PreferencesTable from '../components/PreferencesTable.vue';
@@ -33,6 +37,8 @@ const documentTitle = useDocumentTitle();
 const message = useMessage();
 const telemetry = useTelemetry();
 const contextStore = useContextStore();
+const preferencesEmptyStateExperiment = usePreferencesEmptyStateExperiment();
+const emptyStateVariant = preferencesEmptyStateExperiment.variant;
 const { showError, showMessage } = useToast();
 
 const tableOptions = ref<TableOptions>({
@@ -190,6 +196,7 @@ onMounted(async () => {
 		count: contextStore.count,
 		scope_types: [...new Set(contextStore.preferences.map((row) => preferenceScope(row)))],
 	});
+	if (contextStore.count === 0) preferencesEmptyStateExperiment.trackExposure();
 });
 </script>
 
@@ -208,7 +215,11 @@ onMounted(async () => {
 			:show-docs-link="false"
 		/>
 
-		<div :class="$style.tableArea">
+		<PreferencesEmptyStateAssistant
+			v-if="showEmptyState && emptyStateVariant === PREFERENCES_EMPTY_STATE_EXPERIMENT.assistant"
+			@write-own="openCreateModal"
+		/>
+		<div v-else :class="$style.tableArea">
 			<div :class="$style.toolbar">
 				<N8nText v-if="selectedCount > 0" color="text-light" size="small">
 					{{
@@ -244,7 +255,11 @@ onMounted(async () => {
 				@update:options="onOptionsUpdate"
 			>
 				<template #empty>
-					<div :class="$style.empty" data-test-id="preferences-empty-state">
+					<PreferencesEmptyStateExamples
+						v-if="emptyStateVariant === PREFERENCES_EMPTY_STATE_EXPERIMENT.examples"
+						@write-own="openCreateModal"
+					/>
+					<div v-else :class="$style.empty" data-test-id="preferences-empty-state">
 						<N8nHeading tag="h2" size="medium" bold>
 							{{ i18n.baseText('settings.context.preferences.empty.title') }}
 						</N8nHeading>

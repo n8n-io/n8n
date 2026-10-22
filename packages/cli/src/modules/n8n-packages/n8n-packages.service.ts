@@ -739,7 +739,7 @@ function emptyImportResult(manifest: PackageManifest): ImportResult {
 		folders: [],
 		projects: [],
 		bindings: createBindings(),
-		credentials: { matched: [], stubbed: [], seeded: [], incomplete: [] },
+		credentials: { matched: [], stubbed: [], seeded: [], incomplete: [], updated: [] },
 		dataTables: { matched: 0, created: 0, updated: 0 },
 		variables: { matched: [], created: [], stubbed: [], updated: [], missing: [] },
 		tags: { matched: [], created: [], renamed: [], reconciled: [], skipped: [] },

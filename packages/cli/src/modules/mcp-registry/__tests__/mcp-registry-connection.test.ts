@@ -4,7 +4,13 @@ import {
 	prepareMcpRegistryConnection,
 	resolveMcpRegistryConnection,
 } from '../mcp-registry-connection';
-import { databricksGenieTemplatedMockServer, notionMockServer } from '../registry/mock-servers';
+import { pairAiGatewayServers } from '../registry/mcp-registry-ai-gateway';
+import {
+	databricksGenieTemplatedMockServer,
+	firecrawlAiGatewayMockServer,
+	firecrawlMockServer,
+	notionMockServer,
+} from '../registry/mock-servers';
 
 const credentialType: McpOAuth2CredentialType = 'exampleMcpOAuth2Api';
 
@@ -206,6 +212,54 @@ describe('prepareMcpRegistryConnection', () => {
 				code: 'unresolved_server_url',
 				message: 'Credential type "exampleMcpOAuth2Api" did not resolve a server URL',
 			},
+		});
+	});
+});
+
+describe('a server paired with its AI Gateway twin', () => {
+	it('sends Gateway credits calls to the AI Gateway, without the row headers', () => {
+		const firecrawlWithPartnerHeader = {
+			...firecrawlMockServer,
+			remotes: [
+				{
+					type: 'streamable-http' as const,
+					url: 'https://mcp.firecrawl.dev/mcp',
+					headers: { 'User-Agent': 'partner' },
+				},
+			],
+		};
+		const [twin] = pairAiGatewayServers(
+			[firecrawlWithPartnerHeader, firecrawlAiGatewayMockServer],
+			() => true,
+		);
+		const twinConnection = resolveMcpRegistryConnection(twin);
+		if (!twinConnection) throw new Error('expected a connection');
+
+		const aiGateway = prepareMcpRegistryConnection({
+			connection: twinConnection,
+			credentialType: 'n8nConnectFirecrawlMcpAiGatewayApi',
+			credentialData: { token: 'minted' },
+		});
+		const oauth = prepareMcpRegistryConnection({
+			connection: twinConnection,
+			credentialType: 'firecrawlMcpOAuth2Api',
+			credentialData: { oauthTokenData: { access_token: 'own' } },
+		});
+
+		expect(aiGateway).toEqual({
+			ok: true,
+			value: expect.objectContaining({
+				endpointUrl: 'https://gateway.n8n.test/v1/gateway/mcp/firecrawl',
+				allowedDomains: 'gateway.n8n.test',
+				headers: { Authorization: 'Bearer minted' },
+			}),
+		});
+		expect(oauth).toEqual({
+			ok: true,
+			value: expect.objectContaining({
+				endpointUrl: 'https://mcp.firecrawl.dev/mcp',
+				headers: { 'User-Agent': 'partner', Authorization: 'Bearer own' },
+			}),
 		});
 	});
 });

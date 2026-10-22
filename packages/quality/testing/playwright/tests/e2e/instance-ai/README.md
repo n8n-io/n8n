@@ -86,9 +86,9 @@ pnpm test:local:instance-ai --grep "preview" --headed
 
 It's a thin wrapper over the generic
 [`test:local:isolated`](../../../README.md#testlocalisolated--local-run-with-full-isolation)
-runner that pre-fills the four env vars n8n needs to boot the instance-ai
+runner that pre-fills the three env vars n8n needs to boot the instance-ai
 module (`N8N_ENABLED_MODULES`, `N8N_INSTANCE_AI_MODEL`,
-`N8N_INSTANCE_AI_MODEL_API_KEY`, `N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED`).
+`N8N_INSTANCE_AI_MODEL_API_KEY`).
 
 From the isolated runner you get:
 

@@ -180,7 +180,6 @@ const instanceAi = computed<IMenuItem>(() => ({
 		? locale.baseText('instanceAi.thread.new')
 		: locale.baseText('projects.menu.instanceAi'),
 	route: { to: { name: INSTANCE_AI_VIEW } },
-	preview: true,
 }));
 
 function onNewChatClick(): void {

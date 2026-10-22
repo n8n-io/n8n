@@ -228,7 +228,7 @@ describe('useAgentVersionHistory', () => {
 			expect(result).toBe(updatedAgent);
 			expect(mocks.track).toHaveBeenCalledExactlyOnceWith(
 				TELEMETRY_EVENT.AGENTS.USER_REVERTED_CHANGES_ON_AGENT,
-				{ agent_id: 'agent-1', session_id: 'version-editor-session' },
+				{ agent_id: 'agent-1', push_ref: 'version-editor-session' },
 			);
 		});
 

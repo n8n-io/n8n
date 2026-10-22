@@ -1,0 +1,38 @@
+{
+	"title": "Stop button in the Assistant",
+	"feature": "The user can stop a run while the Assistant works. After the stop, the composer is ready and a new message gets a reply. The Assistant screens look the same as on master.",
+	"scenarios": [
+		{
+			"id": "stop-mid-run",
+			"title": "Stop a run in the middle",
+			"kind": "feature",
+			"script": "stop-mid-run.mjs",
+			"expected": "The stop button shows during the run. A click ends the run without an error message. The send button comes back, and a follow-up message gets a reply.",
+			"timeoutMin": 6
+		},
+		{
+			"id": "smoke-chat",
+			"title": "A prompt gets a reply",
+			"kind": "regression",
+			"script": "lib:smoke-chat.mjs",
+			"expected": "A short prompt opens a new thread and gets the reply OK. The composer is ready after the reply.",
+			"timeoutMin": 5
+		},
+		{
+			"id": "assistant-home",
+			"title": "Assistant home and chat history",
+			"kind": "visual",
+			"script": "lib:visual-assistant-home.mjs",
+			"expected": "The home screen and the chat history popover look the same as on master.",
+			"timeoutMin": 3
+		},
+		{
+			"id": "thread-reply",
+			"title": "Thread with one reply",
+			"kind": "visual",
+			"script": "lib:visual-thread-reply.mjs",
+			"expected": "A thread with one short exchange looks the same as on master.",
+			"timeoutMin": 5
+		}
+	]
+}
