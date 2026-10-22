@@ -564,6 +564,9 @@ export class SlackManagedSetupService {
 		if (!credential) throw new NotFoundError(`Credential "${credentialId}" not found`);
 		const rawData = await this.credentialsService.decrypt(credential, true);
 		if (!this.usesManagedSlackAuth(rawData)) {
+			if (this.hasMissingManagedApp(rawData)) {
+				throw new BadRequestError('Reconnect the Slack credential to use the managed app');
+			}
 			throw new BadRequestError('The selected Slack credential does not use managed OAuth');
 		}
 		const oauthTokenData = childRecord(rawData, 'oauthTokenData');
@@ -579,6 +582,14 @@ export class SlackManagedSetupService {
 			throw new BadRequestError('Reconnect the Slack credential to grant managed app access');
 		}
 		return { credential, rawData, oauthTokenData, accessToken };
+	}
+
+	/** True when the credential is bound to a managed app version that this instance no longer has. */
+	private hasMissingManagedApp(data: ICredentialDataDecryptedObject): boolean {
+		return (
+			this.credentialsOverwrites.getManagedAuthState(SLACK_MANAGER_CREDENTIAL_TYPE, data) ===
+			'missing-app'
+		);
 	}
 
 	private usesManagedSlackAuth(data: ICredentialDataDecryptedObject): boolean {
@@ -726,7 +737,8 @@ export class SlackManagedSetupService {
 		if (!credential) return undefined;
 
 		const rawData = await this.credentialsService.decrypt(credential, true);
-		if (!this.usesManagedSlackAuth(rawData)) return undefined;
+		const managedAppMissing = this.hasMissingManagedApp(rawData);
+		if (!managedAppMissing && !this.usesManagedSlackAuth(rawData)) return undefined;
 		const oauthTokenData = childRecord(rawData, 'oauthTokenData');
 		const authedUser = oauthTokenData ? childRecord(oauthTokenData, 'authed_user') : undefined;
 		const accessToken = stringProperty(authedUser, 'access_token');
@@ -734,7 +746,19 @@ export class SlackManagedSetupService {
 			stringProperty(authedUser, 'scope') ?? stringProperty(oauthTokenData, 'scope'),
 		);
 		const reconnectRequired =
-			!!accessToken && REQUIRED_MANAGER_SCOPES.some((scope) => !grantedScopes.has(scope));
+			!!accessToken &&
+			(managedAppMissing || REQUIRED_MANAGER_SCOPES.some((scope) => !grantedScopes.has(scope)));
+		// The credential stays in the list so that the user can reconnect it. Its token can no
+		// longer be refreshed, so n8n does not call Slack with it.
+		if (managedAppMissing) {
+			return {
+				id: credential.id,
+				name: credential.name,
+				connected: !!accessToken,
+				reconnectRequired,
+				workspaces: [],
+			};
+		}
 		const workspaces =
 			accessToken && oauthTokenData
 				? await this.getWorkspacesFromContext(

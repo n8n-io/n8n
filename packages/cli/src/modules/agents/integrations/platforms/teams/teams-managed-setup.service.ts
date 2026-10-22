@@ -220,7 +220,11 @@ export class TeamsManagedSetupService {
 			connected,
 			reconnectRequired:
 				connected &&
-				(!canRefresh || REQUIRED_MANAGER_SCOPES.some((scope) => isMissingScope(granted, scope))),
+				(!canRefresh ||
+					REQUIRED_MANAGER_SCOPES.some((scope) => isMissingScope(granted, scope)) ||
+					// The app that issued the sign-in is not in the overwrites any more.
+					this.credentialsOverwrites.getManagedAuthState(TEAMS_MANAGER_CREDENTIAL_TYPE, data) ===
+						'missing-app'),
 			// Written by the provisioning step once it has read the tenant; absent
 			// until then, which is why both are nullable rather than empty strings.
 			organizationName: stringProperty(data, 'organizationName') ?? null,

@@ -398,18 +398,31 @@ export class CredentialsOverwrites {
 	}
 
 	usesManagedAuth(type: string, data: Record<string, unknown>): boolean {
+		return this.getManagedAuthState(type, data) === 'managed';
+	}
+
+	/**
+	 * How a credential relates to the managed app of its type:
+	 * - `managed`: applying the overwrite fills a value.
+	 * - `missing-app`: the credential is bound to a version that no app has any more. It needs a reconnect.
+	 * - `not-managed`: no overwrite applies, because there is none or the credential has its own client.
+	 */
+	getManagedAuthState(
+		type: string,
+		data: Record<string, unknown>,
+	): 'managed' | 'missing-app' | 'not-managed' {
 		const overwrites = this.get(type);
-		if (overwrites === undefined) return false;
+		if (overwrites === undefined) return 'not-managed';
 
 		// Managed iff applying the overwrite actually injects a value. Delegating to
 		// applyOverwrite keeps this in lockstep with the skip-list / customization rules.
 		try {
 			const applied = this.applyOverwrite(type, data as ICredentialDataDecryptedObject);
-			return Object.keys(overwrites).some((key) => applied[key] !== data[key]);
+			return Object.keys(overwrites).some((key) => applied[key] !== data[key])
+				? 'managed'
+				: 'not-managed';
 		} catch (error) {
-			// A version that matches no app is an error for the caller that runs the
-			// credential. This check only reports, so it does not fail.
-			if (error instanceof UserError) return false;
+			if (error instanceof UserError) return 'missing-app';
 			throw error;
 		}
 	}

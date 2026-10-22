@@ -254,6 +254,9 @@ export class TeamsManagerTokenService {
 		} catch (error) {
 			// A stored version that matches no app. The overwrites of this instance no longer list it.
 			if (!(error instanceof UserError)) throw error;
+			throw new BadRequestError(
+				'Reconnect the Microsoft Teams credential to use the recommended setup.',
+			);
 		}
 		const clientId = typeof overwrite?.clientId === 'string' ? overwrite.clientId.trim() : '';
 		const clientSecret =

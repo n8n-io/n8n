@@ -1237,6 +1237,107 @@ describe('Slack setup services', () => {
 		});
 	});
 
+	describe('a manager credential that cannot use the managed app', () => {
+		const setUp = (state: 'missing-app' | 'not-managed') => {
+			credentialsOverwrites.getOverwrites.mockReturnValue({
+				clientId: 'client',
+				clientSecret: 'secret',
+				userScope: 'app_configurations:read app_configurations:write managed_apps:install',
+			});
+			credentialsOverwrites.usesManagedAuth.mockReturnValue(false);
+			credentialsOverwrites.getManagedAuthState.mockReturnValue(state);
+			agentRepository.findByIdAndProjectId.mockResolvedValue({
+				...agent,
+				integrations: [{ type: 'slack', credentialId: 'bot-credential' }],
+			} as never);
+			credentialsFinderService.findCredentialForUser
+				.mockResolvedValueOnce({ id: 'bot-credential', type: 'slackApi' } as CredentialsEntity)
+				.mockResolvedValueOnce({
+					id: 'manager',
+					type: 'slackManagerOAuth2Api',
+				} as CredentialsEntity);
+			credentialsService.decrypt
+				.mockResolvedValueOnce({
+					managedAppId: 'A123',
+					managerCredentialId: 'manager',
+					teamId: 'T123',
+				})
+				.mockResolvedValueOnce({ oauthTokenData: { n8n_managed_version: 1 } });
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				{ id: 'manager', type: 'slackManagerOAuth2Api' },
+			] as never);
+		};
+		it('should keep the credential in the setup list with a reconnect flag when the app is gone', async () => {
+			credentialsOverwrites.getOverwrites.mockReturnValue({
+				clientId: 'client',
+				clientSecret: 'secret',
+				userScope: 'app_configurations:read app_configurations:write managed_apps:install',
+			});
+			credentialsOverwrites.usesManagedAuth.mockReturnValue(false);
+			credentialsOverwrites.getManagedAuthState.mockReturnValue('missing-app');
+			agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				{ id: 'manager', type: 'slackManagerOAuth2Api', name: 'Managed Slack' },
+			] as never);
+			credentialsFinderService.findCredentialForUser.mockResolvedValue({
+				id: 'manager',
+				name: 'Managed Slack',
+				type: 'slackManagerOAuth2Api',
+			} as CredentialsEntity);
+			credentialsService.decrypt.mockResolvedValue({
+				oauthTokenData: {
+					authed_user: {
+						access_token: 'xoxp-manager',
+						scope: 'app_configurations:read,app_configurations:write,managed_apps:install',
+					},
+					n8n_managed_version: 1,
+				},
+			});
+
+			await expect(
+				service.getManagedSetupState({ projectId: 'project-1', agentId: 'agent-1', user }),
+			).resolves.toEqual({
+				managedSetupAvailable: true,
+				managerCredentials: [
+					{
+						id: 'manager',
+						name: 'Managed Slack',
+						connected: true,
+						reconnectRequired: true,
+						workspaces: [],
+					},
+				],
+			});
+			expect(requestMock).not.toHaveBeenCalled();
+		});
+
+		const readSettings = async () =>
+			await service.getManagedAppSettings({
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				credentialId: 'bot-credential',
+				user,
+			});
+
+		it('should ask for a reconnect when the app of the stored version is gone', async () => {
+			setUp('missing-app');
+
+			await expect(readSettings()).rejects.toThrow(
+				'Reconnect the Slack credential to use the managed app',
+			);
+			expect(requestMock).not.toHaveBeenCalled();
+		});
+
+		it('should keep the message for a credential that is not managed', async () => {
+			setUp('not-managed');
+
+			await expect(readSettings()).rejects.toThrow(
+				'The selected Slack credential does not use managed OAuth',
+			);
+			expect(requestMock).not.toHaveBeenCalled();
+		});
+	});
+
 	it('updates the live manifest', async () => {
 		credentialsOverwrites.getOverwrites.mockReturnValue({
 			clientId: 'client',

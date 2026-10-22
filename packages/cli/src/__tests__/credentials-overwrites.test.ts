@@ -1638,6 +1638,42 @@ describe('CredentialsOverwrites', () => {
 			});
 		});
 
+		describe('getManagedAuthState', () => {
+			const rollout = {
+				notionOAuth2Api: baseApp,
+				__versions: { notionOAuth2Api: { version: 2, ...newApp } },
+			};
+			const empty = { clientId: '', clientSecret: '' };
+
+			it('should report a credential that gets its client from the overwrite as managed', async () => {
+				const instance = await createInstance(rollout);
+
+				expect(instance.getManagedAuthState('notionOAuth2Api', empty)).toBe('managed');
+				expect(instance.usesManagedAuth('notionOAuth2Api', empty)).toBe(true);
+			});
+
+			it('should report a stored version that no app has as missing-app', async () => {
+				const instance = await createInstance(rollout);
+				const data = { ...empty, oauthTokenData: { access_token: 'a', n8n_managed_version: 3 } };
+
+				expect(instance.getManagedAuthState('notionOAuth2Api', data)).toBe('missing-app');
+				expect(instance.usesManagedAuth('notionOAuth2Api', data)).toBe(false);
+			});
+
+			it('should report a credential with its own client as not-managed', async () => {
+				const instance = await createInstance(rollout);
+				const data = { clientId: 'own', clientSecret: 'own-secret' };
+
+				expect(instance.getManagedAuthState('notionOAuth2Api', data)).toBe('not-managed');
+			});
+
+			it('should report a type without an overwrite as not-managed', async () => {
+				const instance = await createInstance(rollout);
+
+				expect(instance.getManagedAuthState('notionApi', {})).toBe('not-managed');
+			});
+		});
+
 		describe('a payload that does not follow the format', () => {
 			const base = { notionOAuth2Api: baseApp };
 			const newerThan = (version: unknown) => ({
