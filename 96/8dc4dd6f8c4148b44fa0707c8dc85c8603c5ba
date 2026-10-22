@@ -9,6 +9,14 @@ packages/cli/src/modules/instance-ai/eval/__tests__/thread-restore.service.test.
   "base_commit_sha": "968dc4dd6f8c4148b44fa0707c8dc85c8603c5ba",
   "prompts": {},
   "sessions": {
+    "s_3c534142b2065c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cdc79e9e-95fa-4aec-bf3d-916979e7d2a4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
     "s_71ad2034164515": {
       "agent_id": {
         "tool": "codex",
