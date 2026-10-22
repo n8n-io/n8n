@@ -1977,15 +1977,20 @@ watch(isEditingLocked, (locked) => {
 async function flushBeforePublish(): Promise<boolean> {
 	const targetProjectId = projectId.value;
 	const targetAgentId = agentId.value;
+
 	agentCollaborationStore.requestWriteAccess();
+
 	try {
 		let result = await flushAutosave();
+
 		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
+
 		if (result === 'skipped' && !isEditingLocked.value && localConfig.value) {
 			// Retry the current config after the lock clears. Its hash rejects intervening edits.
 			replaceConfigAndScheduleSave(localConfig.value);
 			result = await flushAutosave();
 		}
+
 		return isPersistedSave(result) && !isStaleAgentTarget(targetProjectId, targetAgentId);
 	} catch {
 		return false;
@@ -1996,11 +2001,16 @@ async function flushBeforePublish(): Promise<boolean> {
 async function refreshValidationBeforePublish(): Promise<boolean> {
 	const targetProjectId = projectId.value;
 	const targetAgentId = agentId.value;
+
 	if (!(await flushBeforePublish())) return false;
+
 	await refreshConfigValidation(targetProjectId, targetAgentId);
 	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
+
 	if (configValidation.value === null) return false;
+
 	if (hasBlockingIssues(configValidation.value.issues)) return false;
+
 	// Unpublished workflow tools do not disable the Publish button, but the
 	// backend rejects the publish — surface them here instead of failing the
 	// request (AGENT-1001).
@@ -2008,13 +2018,16 @@ async function refreshValidationBeforePublish(): Promise<boolean> {
 		configValidation.value.issues,
 		localConfig.value?.tools ?? [],
 	);
+
 	if (unpublishedWorkflows.length > 0) {
 		uiStore.openModalWithData({
 			name: AGENT_UNPUBLISHED_WORKFLOWS_MODAL_KEY,
 			data: { workflows: unpublishedWorkflows },
 		});
+
 		return false;
 	}
+
 	return true;
 }
 
@@ -2053,6 +2066,7 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>, meta?: { source:
 	// if needed) to pick up the merged config.
 	const ridesAlongWithDraft = meta?.source === 'auto' && isUnsaved.value;
 	if (ridesAlongWithDraft && !configAutosave.hasPendingSave.value) return;
+
 	configAutosave.scheduleAutosave({
 		projectId: projectId.value,
 		agentId: agentId.value,
