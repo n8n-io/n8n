@@ -5,7 +5,10 @@ import { BaseRepository } from './base-repository';
 import { ServiceAccount } from '../entities';
 import { TransactionRunner } from '../services/transaction';
 
-/** Loads and saves service accounts only. Each query filters on `kind = 'service'`. */
+/**
+ * Loads, updates and deletes service accounts only: each filters on `kind = 'service'`.
+ * `save` writes the kind of the instance's class, so it does not filter.
+ */
 @Service()
 export class ServiceAccountRepository extends BaseRepository<ServiceAccount> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
