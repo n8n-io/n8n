@@ -170,16 +170,14 @@ export class SlackIntegration extends AgentChatIntegration {
 	shouldHandleInboundMessage({
 		message,
 		integration,
-		isNewMention,
 	}: {
 		message: BridgeMessageContextParams['message'];
 		integration: AgentIntegrationConfig;
-		isNewMention: boolean;
 	}): boolean {
+		// The SDK can route DMs through the mention handler. Check the message itself.
 		return (
 			integration.type !== 'slack' ||
 			integration.settings?.onlyRespondWhenMentioned !== true ||
-			isNewMention ||
 			message.isMention === true ||
 			isSlackDirectMessage(message.raw)
 		);

@@ -3925,6 +3925,51 @@ describe('AgentChatBridge — Slack thread history', () => {
 		expect(call.modelMessage).toBe('[alice (u1)]: thanks');
 	});
 
+	it.each(['mention', 'subscribed'] as const)(
+		'requires a mention in group DMs delivered through the %s handler',
+		async (route) => {
+			const { bot, handlers } = makeBot();
+			bot.getAdapter.mockReturnValue({ botUserId: 'U_BOT' });
+			const thread = makeThread('thread-1');
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+			makeQueuedBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{
+					type: 'slack',
+					credentialId: 'cred-1',
+					settings: { messagingExperience: 'agent', onlyRespondWhenMentioned: true },
+				},
+			);
+			const author = { userId: 'u1', userName: 'alice' };
+			const raw = { channel: 'G_GROUP', channel_type: 'mpim' };
+
+			await handlers[route]!(thread, {
+				id: 'untagged',
+				text: 'hello',
+				isMention: false,
+				author,
+				raw,
+			});
+			expect(agentExecutor.captured).toHaveLength(0);
+			expect(thread.startTyping).not.toHaveBeenCalled();
+			expect(thread.post).not.toHaveBeenCalled();
+
+			await handlers[route]!(thread, {
+				id: 'tagged',
+				text: '<@U_BOT> hello',
+				isMention: true,
+				author,
+				raw,
+			});
+			expect(agentExecutor.captured).toHaveLength(1);
+		},
+	);
+
 	it.each(['assistant', 'agent'] as const)(
 		'includes skipped thread messages when tagged again in mention-only mode with %s messaging',
 		async (messagingExperience) => {

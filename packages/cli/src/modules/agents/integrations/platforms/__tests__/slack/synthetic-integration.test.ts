@@ -88,24 +88,54 @@ describe('Slack channel integration scenarios', () => {
 		},
 	);
 
-	it('requires mentions in subscribed group direct messages', async () => {
-		const fixtures = slackReplayFixtures({
-			channel: { id: 'G_GROUP', name: 'group' },
-			mention: slackEventCallback({
-				event: { channel: 'G_GROUP', channel_type: 'mpim', thread_ts: undefined },
-			}),
-		});
-		const ctx = await createSlackReplayContext(fixtures, {
-			settings: { messagingExperience: 'agent', onlyRespondWhenMentioned: true },
-		});
-		try {
-			await ctx.sendWebhook(fixtures.mention);
-			await ctx.sendWebhook(fixtures.followUp);
-			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
-		} finally {
-			await ctx.shutdown();
-		}
-	});
+	it.each([undefined, false, true])(
+		'applies the mention-only setting to subscribed group direct messages: %s',
+		async (onlyRespondWhenMentioned) => {
+			const fixtures = slackReplayFixtures({
+				channel: { id: 'G_GROUP', name: 'group' },
+				mention: slackEventCallback({
+					event: { channel: 'G_GROUP', channel_type: 'mpim', thread_ts: undefined },
+				}),
+			});
+			const ctx = await createSlackReplayContext(fixtures, {
+				settings: { messagingExperience: 'agent', onlyRespondWhenMentioned },
+			});
+			try {
+				await ctx.sendWebhook(fixtures.mention);
+				expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
+				const threadId = ctx.latestContext()!.target.threadId;
+				expect(await ctx.chat.thread(threadId).isSubscribed()).toBe(true);
+				const callsBeforeFollowUp = ctx.apiCalls.length;
+
+				await ctx.sendWebhook(
+					slackEventCallback({
+						event: { ...fixtures.followUp.event, channel_type: 'mpim' },
+					}),
+				);
+				expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(
+					onlyRespondWhenMentioned ? 1 : 2,
+				);
+				if (onlyRespondWhenMentioned) {
+					expect(ctx.apiCalls).toHaveLength(callsBeforeFollowUp);
+				}
+
+				await ctx.sendWebhook(
+					slackEventCallback({
+						event: {
+							...fixtures.mention.event,
+							thread_ts: fixtures.mention.event.ts,
+							ts: '1719000003.000400',
+						},
+					}),
+				);
+				expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(
+					onlyRespondWhenMentioned ? 2 : 3,
+				);
+			} finally {
+				await ctx.shutdown();
+			}
+		},
+	);
 
 	it('handles Slack URL verification without an active connection', () => {
 		const integration = new SlackIntegration(mock<AgentRepository>());
