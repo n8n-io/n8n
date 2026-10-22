@@ -356,6 +356,7 @@ packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/Promot
   s_ffcee02881150d::t_9b0e14ab23cac3 137-138,142-147,156-158,160,187,199-201,203-205,207-208,210,215,217-221,223,228-229,232,234-237,241,244-245,249,252,256
   s_ffcee02881150d::t_3cf91ba615e561 139-141,159,225-227,238-240,253-255
   s_13fdf695fc0ff1::t_694bfd01a278d1 148-155
+  s_b04e0a910005c0::t_0c0ad56ee6c9ab 5-6,367-371,375-411
 packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionResourceTree.test.ts
   s_983eea3c47ac98::t_94cf370560a4ca 1-7,9-12,14-27,32-64
   s_7f7a4dee511a6b::t_3907daa8e6de66 28-29
@@ -455,6 +456,8 @@ packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/
   s_4572c1d605e995::t_fed610a84980f2 73,83,89
   s_4572c1d605e995::t_00c1685cdad32e 7
   s_4572c1d605e995::t_61c78ba41c5fd4 23-29
+  s_b04e0a910005c0::t_7c4fb6c8f4faba 57-62,64-70
+  s_b04e0a910005c0::t_c983a44bbaae2f 63
 packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChangeCount.ts
   s_983eea3c47ac98::t_8aef96472200c5 5-6,8,16-17,26,32,37
   s_4572c1d605e995::t_fed610a84980f2 18,46
@@ -721,6 +724,14 @@ packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/A
         "tool": "claude",
         "id": "b56759c2-2e98-4e80-abcb-5f332f8ff366",
         "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_b04e0a910005c0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1629a-64c5-7b60-91b9-0fa7d4d6d6b5",
+        "model": "gpt-6.1-sol"
       },
       "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     },
