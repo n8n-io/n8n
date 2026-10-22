@@ -38,6 +38,7 @@ packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
   s_71ad2034164515::t_f4938fa0839516 120,360
   s_d3c0f6f6f7d41c::t_c057a57cc01518 17,138,531-536
   s_71ad2034164515::t_4671db2ad3d78b 14,20,61,72-77,487,558-560,562,576-598,725-726,728-754
+  s_71ad2034164515::t_18ed5e91852090 23,517-518,727
 packages/@n8n/cli/src/__tests__/package-error.test.ts
   s_c71d8d6a27245a::t_6f2d9600ed2ade 62,70,88,95,156,271,273,364,377,383
   s_c71d8d6a27245a::t_83dcdc856b3318 145-148,351-354
