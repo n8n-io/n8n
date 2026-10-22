@@ -9,7 +9,10 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import type { AgentChatAttachmentService } from '../../agent-chat-attachment.service';
 import type { AgentChatExecutionService } from '../../agent-chat-execution.service';
 import { AgentConversationStateService } from '../../agent-conversation-state.service';
+import { AgentFormattedTurnError } from '../../agent-formatted-turn.error';
 import type { AgentExecutionService } from '../../agent-execution.service';
+import { toChatErrorEvent } from '../../agent-sse-stream';
+import { AgentTurnAlreadyRunningError } from '../../agent-turn-already-running.error';
 import type {
 	AgentMessageQueueService,
 	ClaimedAgentMessage,
@@ -506,6 +509,184 @@ describe('SystemAgentExecutionService', () => {
 
 			await expect(service.consume(claimFor(), user, controller.signal, vi.fn())).rejects.toThrow();
 			expect(provider.prepareTurn).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('error formatting', () => {
+		const failure = new Error('raw provider failure');
+		const errorChunk = { type: 'error', error: failure } as AgentExecutionStreamChunk;
+		const quotaError = { message: 'You ran out of credits.', code: 'quota_exhausted' };
+
+		it('sends the raw error text when the handle has no formatter', async () => {
+			const { service, turnExecutionService } = setup([errorChunk]);
+			const send = vi.fn();
+
+			await service.consume(claimFor(), user, new AbortController().signal, send);
+
+			expect(send).toHaveBeenCalledWith({ type: 'error', message: 'raw provider failure' });
+			const [config] = turnExecutionService.execute.mock.calls[0];
+			await expect(config.formatError?.(failure)).resolves.toBeUndefined();
+		});
+
+		it('sends the formatted text and code, and keeps the raw error for the settle hook', async () => {
+			const { service, handle, turnExecutionService, onSettled } = setup([errorChunk], {
+				status: 'errored',
+				error: failure,
+			});
+			handle.formatError = vi.fn(async () => quotaError);
+			const send = vi.fn();
+
+			await service.consume(claimFor(), user, new AbortController().signal, send);
+
+			expect(handle.formatError).toHaveBeenCalledWith(failure);
+			expect(send).toHaveBeenCalledWith({
+				type: 'error',
+				message: 'You ran out of credits.',
+				errorCode: 'quota_exhausted',
+			});
+			expect(send).not.toHaveBeenCalledWith(
+				expect.objectContaining({ message: 'raw provider failure' }),
+			);
+			const [config] = turnExecutionService.execute.mock.calls[0];
+			await expect(config.formatError?.(failure)).resolves.toEqual(quotaError);
+			expect(onSettled).toHaveBeenCalledWith(
+				expect.objectContaining({ status: 'errored', error: failure }),
+			);
+		});
+
+		it('calls the hook once when the recorder and the live event format the same error', async () => {
+			const { service, handle, turnExecutionService } = setup();
+			handle.formatError = vi.fn(async () => quotaError);
+			turnExecutionService.execute.mockImplementation(async function* (config) {
+				// The turn service formats the error for the record before it yields the chunk.
+				await config.formatError?.(failure);
+				yield errorChunk;
+			});
+
+			await service.consume(claimFor(), user, new AbortController().signal, vi.fn());
+
+			expect(handle.formatError).toHaveBeenCalledTimes(1);
+		});
+
+		it('sends no error code when the formatter gives only text', async () => {
+			const { service, handle } = setup([errorChunk]);
+			handle.formatError = vi.fn(async () => ({ message: 'Something went wrong.' }));
+			const send = vi.fn();
+
+			await service.consume(claimFor(), user, new AbortController().signal, send);
+
+			expect(send).toHaveBeenCalledWith({ type: 'error', message: 'Something went wrong.' });
+		});
+
+		it.each([
+			['undefined', undefined],
+			['an empty message', { message: '', code: 'quota_exhausted' }],
+		])('keeps the raw error when the formatter returns %s', async (_name, formatted) => {
+			const { service, handle } = setup([errorChunk]);
+			handle.formatError = vi.fn(async () => formatted);
+			const send = vi.fn();
+
+			await service.consume(claimFor(), user, new AbortController().signal, send);
+
+			expect(send).toHaveBeenCalledWith({ type: 'error', message: 'raw provider failure' });
+		});
+
+		it('keeps the raw error and logs when the formatter rejects', async () => {
+			const { service, handle, logger, turnExecutionService } = setup([errorChunk]);
+			handle.formatError = vi.fn(async () => {
+				throw new Error('formatter broke');
+			});
+			const send = vi.fn();
+
+			await service.consume(claimFor(), user, new AbortController().signal, send);
+
+			expect(send).toHaveBeenCalledWith({ type: 'error', message: 'raw provider failure' });
+			expect(logger.warn).toHaveBeenCalledWith(
+				'System agent error formatter failed',
+				expect.objectContaining({ threadId: 'thread-1' }),
+			);
+			const [config] = turnExecutionService.execute.mock.calls[0];
+			await expect(config.formatError?.(failure)).resolves.toBeUndefined();
+		});
+
+		it('rethrows a thrown turn error with the formatted text, code and raw cause', async () => {
+			const { service, handle, onSettled, turnExecutionService } = setup();
+			handle.formatError = vi.fn(async () => quotaError);
+			// eslint-disable-next-line require-yield
+			turnExecutionService.execute.mockImplementation(async function* () {
+				throw failure;
+			});
+
+			const consumed = service.consume(claimFor(), user, new AbortController().signal, vi.fn());
+
+			await expect(consumed).rejects.toBeInstanceOf(AgentFormattedTurnError);
+			await expect(consumed).rejects.toMatchObject({
+				message: 'You ran out of credits.',
+				errorCode: 'quota_exhausted',
+				cause: failure,
+			});
+			const thrown: unknown = await consumed.catch((error: unknown) => error);
+			// The queue consumer and the resume relay send the thrown error with this event.
+			expect(toChatErrorEvent(thrown, 'Chat failed')).toEqual({
+				type: 'error',
+				message: 'You ran out of credits.',
+				errorCode: 'quota_exhausted',
+			});
+			expect(onSettled).toHaveBeenCalledWith(
+				expect.objectContaining({ status: 'errored', error: failure }),
+			);
+		});
+
+		it('rethrows a thrown turn error as is when the handle has no formatter', async () => {
+			const { service, turnExecutionService } = setup();
+			// eslint-disable-next-line require-yield
+			turnExecutionService.execute.mockImplementation(async function* () {
+				throw failure;
+			});
+
+			await expect(
+				service.consume(claimFor(), user, new AbortController().signal, vi.fn()),
+			).rejects.toBe(failure);
+		});
+
+		it('does not format an error that already has a client error code', async () => {
+			const { service, handle, turnExecutionService } = setup();
+			handle.formatError = vi.fn(async () => quotaError);
+			const running = new AgentTurnAlreadyRunningError();
+			// eslint-disable-next-line require-yield
+			turnExecutionService.execute.mockImplementation(async function* () {
+				throw running;
+			});
+
+			await expect(
+				service.consume(claimFor(), user, new AbortController().signal, vi.fn()),
+			).rejects.toBe(running);
+			expect(handle.formatError).not.toHaveBeenCalled();
+			expect(toChatErrorEvent(running, 'Chat failed')).toMatchObject({
+				errorCode: 'turn_already_running',
+			});
+		});
+
+		it('formats the errors of a resumed turn', async () => {
+			const { service, handle, checkpointStorage } = setup([errorChunk]);
+			checkpointStorage.findSuspendedForThread.mockResolvedValue(suspendedCheckpoint() as never);
+			handle.formatError = vi.fn(async () => quotaError);
+			const send = vi.fn();
+
+			const { done } = await service.resume({
+				agentId: AGENT_ID,
+				user,
+				threadId: 'thread-1',
+				resumeData: { approved: true },
+				send,
+			});
+			await done;
+
+			expect(send).toHaveBeenCalledWith({
+				type: 'error',
+				message: 'You ran out of credits.',
+				errorCode: 'quota_exhausted',
+			});
 		});
 	});
 
