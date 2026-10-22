@@ -36,32 +36,23 @@ const owner = {
 	isPendingUser: false,
 } as unknown as IUser;
 
-const member = { ...owner, id: 'member-1', fullName: 'Bob Builder', role: ROLE.Member } as IUser;
-const admin = {
+const invitedAdmin = {
 	...owner,
 	id: 'admin-1',
-	firstName: 'Margaret',
-	lastName: 'Hamilton',
-	email: 'margaret@example.com',
+	fullName: 'Bob Builder',
+	email: 'bob@example.com',
 	role: ROLE.Admin,
-} as IUser;
-const policyManager = {
-	...owner,
-	id: 'policy-manager-1',
-	firstName: 'Katherine',
-	lastName: 'Johnson',
-	email: 'katherine@example.com',
-	role: 'global:policyManager',
+	isPendingUser: true,
 } as IUser;
 
-function mockCustomRole(slug: string, roleType: 'global' | 'project') {
-	mockedStore(useRolesStore).roles[roleType] = [
+function mockCustomProjectRole(slug: string) {
+	mockedStore(useRolesStore).roles.project = [
 		{
 			slug,
 			displayName: slug,
 			description: null,
 			systemRole: false,
-			roleType,
+			roleType: 'project',
 			licensed: true,
 			scopes: ['nodeTypePolicy:manage'],
 		},
@@ -69,31 +60,27 @@ function mockCustomRole(slug: string, roleType: 'global' | 'project') {
 }
 
 const renderComponent = createComponentRenderer(ContactAdminModal, {
-	props: { open: true, nodeTypeName: 'Slack' },
+	props: { open: true, nodeTypeName: 'Slack', audience: 'instance' },
 });
 
-function setup(allUsers: IUser[], fetchUsers = vi.fn().mockResolvedValue(undefined)) {
+function setup(policyManagers: IUser[], fetchUsers = vi.fn().mockResolvedValue(policyManagers)) {
 	setActivePinia(createTestingPinia());
 	const usersStore = mockedStore(useUsersStore);
-	usersStore.allUsers = allUsers;
 	usersStore.fetchUsers = fetchUsers;
 	return usersStore;
 }
 
 describe('ContactAdminModal', () => {
-	it('lists everyone whose global role can manage node type policies, with a mailto link', async () => {
-		const usersStore = setup([owner, admin, policyManager, member]);
-		mockCustomRole('global:policyManager', 'global');
+	it('lists the active users who can manage node type policies, with a mailto link', async () => {
+		const usersStore = setup([owner, invitedAdmin]);
 		const { findByTestId, getByText } = renderComponent();
 
 		const list = await findByTestId('contact-admin-list');
 
 		expect(usersStore.fetchUsers).toHaveBeenCalledWith({
-			filter: { roles: [ROLE.Owner, ROLE.Admin, 'global:policyManager'] },
+			filter: { scope: 'nodeTypePolicy:manage' },
 		});
 		expect(list).toHaveTextContent('Ada Lovelace');
-		expect(list).toHaveTextContent('Margaret Hamilton');
-		expect(list).toHaveTextContent('Katherine Johnson');
 		expect(list).not.toHaveTextContent('Bob Builder');
 		expect(getByText('ada@example.com').closest('a')).toHaveAttribute(
 			'href',
@@ -103,13 +90,21 @@ describe('ContactAdminModal', () => {
 	});
 
 	it('builds the credential type copy', async () => {
-		setup([owner]);
+		const usersStore = setup([owner]);
 		const { findByTestId, getByText } = renderComponent({
-			props: { open: true, nodeTypeName: 'Anthropic credentials', kind: 'credential' },
+			props: {
+				open: true,
+				nodeTypeName: 'Anthropic credentials',
+				kind: 'credential',
+				audience: 'instance',
+			},
 		});
 
 		await findByTestId('contact-admin-list');
 
+		expect(usersStore.fetchUsers).toHaveBeenCalledWith({
+			filter: { scope: 'credentialTypePolicy:manage' },
+		});
 		expect(getByText('ada@example.com').closest('a')).toHaveAttribute(
 			'href',
 			'mailto:ada@example.com?subject=Access%20request%20for%20Anthropic%20credentials',
@@ -121,7 +116,9 @@ describe('ContactAdminModal', () => {
 		const lookups: Array<() => void> = [];
 		setup(
 			[owner],
-			vi.fn(async () => await new Promise<void>((resolve) => lookups.push(resolve))),
+			vi.fn(
+				async () => await new Promise<IUser[]>((resolve) => lookups.push(() => resolve([owner]))),
+			),
 		);
 		const { rerender, queryByTestId, findByTestId } = renderComponent();
 
@@ -162,7 +159,7 @@ describe('ContactAdminModal', () => {
 
 		it('lists only the project members whose role can manage node type policies', async () => {
 			const usersStore = setup([owner]);
-			mockCustomRole('project:policyManager', 'project');
+			mockCustomProjectRole('project:policyManager');
 			const policyManager = {
 				...projectEditor,
 				id: 'policy-manager-1',

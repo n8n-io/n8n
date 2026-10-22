@@ -158,12 +158,12 @@ describe('useNodeTypeRestriction', () => {
 			);
 		});
 
-		it('points to a project admin when every restriction comes from the team project', () => {
+		it('points to a project admin when a project admin can lift every restriction', () => {
 			mockPolicyProject({ type: 'team' });
 
 			const text = describeRestrictedNodeTypes([
 				{ displayName: 'Slack', scope: 'project' },
-				{ displayName: 'Jira', scope: 'project' },
+				{ displayName: 'Jira', scope: 'instance', optInAvailable: true },
 			]);
 
 			expect(text.split('\n').at(-1)).toBe(

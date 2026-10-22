@@ -9,12 +9,12 @@ vi.mock('@n8n/frontend-module-type-availability-policies', () => ({
 		name: 'RestrictedNodePopover',
 		props: ['nodeTypeName', 'restriction', 'kind', 'anchor', 'side', 'markerSize'],
 		emits: ['contactAdmin'],
-		template: '<button @click="$emit(\'contactAdmin\')" />',
+		template: "<button @click=\"$emit('contactAdmin', 'project')\" />",
 	},
 }));
 
 describe('ModelSelectorRestrictedMarker', () => {
-	it('anchors the popover to its menu row and forwards the contact-admin request', async () => {
+	it('anchors the popover to its menu row and forwards the contact-admin request with its audience', async () => {
 		const onContactAdmin = vi.fn();
 		const Row = defineComponent({
 			render: () =>
@@ -41,7 +41,7 @@ describe('ModelSelectorRestrictedMarker', () => {
 
 		await popover.find('button').trigger('click');
 
-		expect(onContactAdmin).toHaveBeenCalledOnce();
+		expect(onContactAdmin).toHaveBeenCalledExactlyOnceWith('project');
 		wrapper.unmount();
 	});
 });

@@ -27,11 +27,11 @@ import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.
 const {
 	nodeTypeName,
 	kind = 'node',
-	audience = 'instance',
+	audience,
 } = defineProps<{
 	nodeTypeName: string;
 	kind?: RestrictedTypeKind;
-	audience?: ContactAudience;
+	audience: ContactAudience;
 }>();
 
 const open = defineModel<boolean>('open', { default: false });
@@ -66,27 +66,22 @@ function displayName({ firstName, lastName, email }: Admin): string {
 	return [firstName, lastName].filter(Boolean).join(' ') || email;
 }
 
-const managerRoles = computed(() => {
+const instanceAdmins = ref<Admin[]>([]);
+
+const projectManagerRoles = computed(() => {
 	const scope = POLICY_MANAGE_SCOPE[kind];
-	const namespace = audience === 'project' ? 'project' : 'global';
 	return new Set([
-		...staticRolesWithScope(namespace, scope),
-		...rolesStore.roles[namespace]
+		...staticRolesWithScope('project', scope),
+		...rolesStore.roles.project
 			.filter((role) => role.scopes.includes(scope))
 			.map((role) => role.slug),
 	]);
 });
 
-const instanceAdmins = computed<Admin[]>(() =>
-	usersStore.allUsers
-		.filter((user) => managerRoles.value.has(user.role ?? '') && !user.isPendingUser)
-		.filter(hasEmail),
-);
-
 const projectAdmins = computed<Admin[]>(() => {
 	const project = policiesStore.policyProject;
 	const explicitAdmins = (project?.relations ?? [])
-		.filter((relation) => managerRoles.value.has(relation.role))
+		.filter((relation) => projectManagerRoles.value.has(relation.role))
 		.filter(hasEmail);
 	return explicitAdmins.length ? explicitAdmins : (project?.implicitMembers ?? []).filter(hasEmail);
 });
@@ -103,10 +98,12 @@ watch(
 		// A reopen can start a second lookup before the first resolves; only the latest one ends loading.
 		const id = ++lookupId;
 		isLoading.value = true;
-		await usersStore
-			.fetchUsers({ filter: { roles: [...managerRoles.value] } })
-			.catch(() => undefined);
-		if (id === lookupId) isLoading.value = false;
+		const users = await usersStore
+			.fetchUsers({ filter: { scope: POLICY_MANAGE_SCOPE[kind] } })
+			.catch(() => []);
+		if (id !== lookupId) return;
+		instanceAdmins.value = users.filter((user) => !user.isPendingUser).filter(hasEmail);
+		isLoading.value = false;
 	},
 	{ immediate: true },
 );

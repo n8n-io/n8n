@@ -9,11 +9,12 @@ export {
 	describeNodeTypeRestriction,
 	describeRestrictedNodeTypes,
 	getNodeTypeRestriction,
-	getRestrictionContact,
+	getRestrictionMessage,
 	getViolationVerdict,
 	isNodeTypeRestricted,
 	useNodeTypeRestriction,
 	useRestrictionContact,
+	type RestrictionMessage,
 	type TypeRestriction,
 } from './composables/useNodeTypeRestriction';
 export { default as RestrictedNodePopover } from './components/RestrictedNodePopover.vue';

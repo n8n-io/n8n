@@ -32,10 +32,10 @@ export const RESTRICTED_TYPE_COPY: Record<
 	},
 };
 
-export const POLICY_MANAGE_SCOPE: Record<RestrictedTypeKind, Scope> = {
+export const POLICY_MANAGE_SCOPE = {
 	node: 'nodeTypePolicy:manage',
 	credential: 'credentialTypePolicy:manage',
-};
+} as const satisfies Record<RestrictedTypeKind, Scope>;
 
 export type ContactAudience = NodeTypeAvailabilityScope;
 

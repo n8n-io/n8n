@@ -202,13 +202,17 @@ describe('RestrictedNodePopover', () => {
 		).toBeInTheDocument();
 	});
 
-	it('hands the contact-admin request to a listening parent instead of opening its own dialog', async () => {
+	it('hands the contact-admin request and its audience to a listening parent instead of opening its own dialog', async () => {
+		mockPolicyProject({ type: 'team' });
 		const onContactAdmin = vi.fn();
-		renderComponent({ props: { active: true }, attrs: { onContactAdmin } });
+		renderComponent({
+			props: { active: true, restriction: { scope: 'project' } },
+			attrs: { onContactAdmin },
+		});
 
 		await userEvent.click(await screen.findByTestId('node-restricted-contact-admin'));
 
-		expect(onContactAdmin).toHaveBeenCalledOnce();
+		expect(onContactAdmin).toHaveBeenCalledExactlyOnceWith('project');
 		expect(screen.queryByTestId('contact-admin-modal')).not.toBeInTheDocument();
 	});
 

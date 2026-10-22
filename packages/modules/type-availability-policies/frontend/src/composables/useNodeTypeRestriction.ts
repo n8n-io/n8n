@@ -128,8 +128,12 @@ const RESTRICTED_SCOPES: Array<[NodeTypeAvailabilityScope | undefined, BaseTextK
 ];
 
 function sharedRestrictionContact(verdicts: RestrictionVerdict[]): RestrictionContact {
-	const [first, ...rest] = verdicts.map((verdict) => getRestrictionContact(verdict));
-	return rest.every((contact) => contact === first) ? first : 'instance';
+	const contacts = new Set(verdicts.map((verdict) => getRestrictionContact(verdict)));
+	const [first] = contacts;
+	if (contacts.size === 1) return first;
+	return [...contacts].every((contact) => RESTRICTION_CONTACT_COPY[contact].audience === 'project')
+		? 'project'
+		: 'instance';
 }
 
 /** Why these node types block a publish, with one scope on each line when there are several. */
@@ -161,24 +165,28 @@ export function describeRestrictedNodeTypes(restricted: RestrictedNodeTypeName[]
 	].join('\n');
 }
 
-const AGENT_TOOL_DESCRIPTION_KEY: Record<NodeTypeAvailabilityScope, BaseTextKey> = {
+export type RestrictionMessage = NodeTypeAvailabilityScope | 'optIn' | 'generic';
+
+export function getRestrictionMessage(
+	verdict: OptionalVerdict,
+	projectId?: string,
+): RestrictionMessage {
+	if (getRestrictionContact(verdict, projectId) === 'optIn') return 'optIn';
+	return verdict?.scope ?? 'generic';
+}
+
+const AGENT_TOOL_DESCRIPTION_KEY: Record<RestrictionMessage, BaseTextKey> = {
 	instance: 'typeAvailabilityPolicies.restrictedNode.agentTool.instance',
 	project: 'typeAvailabilityPolicies.restrictedNode.agentTool.project',
+	optIn: 'typeAvailabilityPolicies.restrictedNode.agentTool.optIn',
+	generic: 'typeAvailabilityPolicies.restrictedNode.agentTool.generic',
 };
-
-function agentToolDescriptionKey(verdict: OptionalVerdict): BaseTextKey {
-	if (getRestrictionContact(verdict) === 'optIn') {
-		return 'typeAvailabilityPolicies.restrictedNode.agentTool.optIn';
-	}
-	if (verdict?.scope) return AGENT_TOOL_DESCRIPTION_KEY[verdict.scope];
-	return 'typeAvailabilityPolicies.restrictedNode.agentTool.generic';
-}
 
 export function describeAgentToolRestriction(
 	nodeTypeName: string,
 	verdict: OptionalVerdict,
 ): string {
-	return useI18n().baseText(agentToolDescriptionKey(verdict), {
+	return useI18n().baseText(AGENT_TOOL_DESCRIPTION_KEY[getRestrictionMessage(verdict)], {
 		interpolate: { nodeType: nodeTypeName },
 	});
 }

@@ -18,8 +18,8 @@ import { useAiGateway } from '@/app/composables/useAiGateway';
 import { AI_GATEWAY_MANAGED_TAG, type CredentialTypeAvailability } from '@n8n/api-types';
 import {
 	ContactAdminModal,
-	useRestrictionContact,
 	SCOPE_LABEL_KEY,
+	type ContactAudience,
 	useTypeAvailabilityPoliciesStore,
 } from '@n8n/frontend-module-type-availability-policies';
 import ModelSelectorTriggerIcon from './model-selector/ModelSelectorTriggerIcon.vue';
@@ -104,10 +104,7 @@ const pendingDefaultCredential = ref<{
 	provider: AgentModelProvider;
 	credentialId: string;
 } | null>(null);
-const contactAdmin = ref<{ subject: string; restriction?: CredentialTypeAvailability } | null>(
-	null,
-);
-const { copy: contactAdminCopy } = useRestrictionContact(() => contactAdmin.value?.restriction);
+const contactAdmin = ref<{ subject: string; audience: ContactAudience } | null>(null);
 const forceModelOptionsDisabled = ref(false);
 const isResolvingDefaultModel = computed(
 	() => pendingDefaultCredential.value !== null || forceModelOptionsDisabled.value,
@@ -248,9 +245,9 @@ function restrictedCredentialsName(item: MenuItem): string {
 	});
 }
 
-function requestContactAdmin(subject: string, restriction?: CredentialTypeAvailability) {
+function requestContactAdmin(subject: string, audience: ContactAudience) {
 	dropdownRef.value?.close();
-	contactAdmin.value = { subject, restriction };
+	contactAdmin.value = { subject, audience };
 }
 
 function providerToMenuItem(provider: AgentModelProvider): MenuItem {
@@ -758,7 +755,7 @@ defineExpose({
 					:name="restrictedCredentialsName(item)"
 					:restriction="item.data?.restriction"
 					@contact-admin="
-						requestContactAdmin(restrictedCredentialsName(item), item.data?.restriction)
+						(audience) => requestContactAdmin(restrictedCredentialsName(item), audience)
 					"
 				/>
 			</template>
@@ -766,7 +763,7 @@ defineExpose({
 		<ContactAdminModal
 			kind="credential"
 			:node-type-name="contactAdmin?.subject ?? ''"
-			:audience="contactAdminCopy.audience"
+			:audience="contactAdmin?.audience ?? 'instance'"
 			:open="contactAdmin !== null"
 			@update:open="(isOpen) => !isOpen && (contactAdmin = null)"
 		/>

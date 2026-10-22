@@ -4,7 +4,6 @@ import { setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
-import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 import type * as typeAvailabilityPolicies from '@n8n/frontend-module-type-availability-policies';
 import type * as permissions from '@n8n/permissions';
 
@@ -134,7 +133,7 @@ vi.mock('../components/model-selector/ModelSelectorRestrictedMarker.vue', () => 
 		props: ['name', 'restriction'],
 		emits: ['contactAdmin'],
 		template:
-			'<button data-testid="restricted-marker" @click="$emit(\'contactAdmin\')">{{ name }}</button>',
+			'<button data-testid="restricted-marker" @click="$emit(\'contactAdmin\', \'project\')">{{ name }}</button>',
 	},
 }));
 
@@ -429,11 +428,6 @@ describe('AgentModelSelector', () => {
 
 	it('explains a restricted provider on its row and opens the contact-admin dialog from it', async () => {
 		restrictedCredentialTypes.value = { openAiApi: 'project' };
-		setActivePinia(
-			createTestingPinia({
-				initialState: { typeAvailabilityPolicies: { policyProject: createTestProject({}) } },
-			}),
-		);
 
 		const wrapper = await mountSelector({ anthropic: null });
 		const marker = wrapper.findComponent({ name: 'ModelSelectorRestrictedMarker' });

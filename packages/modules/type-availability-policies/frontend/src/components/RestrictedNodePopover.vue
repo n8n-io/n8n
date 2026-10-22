@@ -9,6 +9,7 @@ import { useRestrictionContact, type OptionalVerdict } from '../composables/useN
 import {
 	RESTRICTED_TYPE_COPY,
 	SCOPE_LABEL_KEY,
+	type ContactAudience,
 	type RestrictedTypeKind,
 } from '../type-availability-policies.constants';
 import ContactAdminModal from './ContactAdminModal.vue';
@@ -40,7 +41,7 @@ const props = withDefaults(
 );
 
 /** A parent that listens owns the contact-admin dialog, so it can live outside a menu that closes. */
-const emit = defineEmits<{ contactAdmin: [] }>();
+const emit = defineEmits<{ contactAdmin: [audience: ContactAudience] }>();
 const parentHandlesContactAdmin = Boolean(getCurrentInstance()?.vnode.props?.onContactAdmin);
 
 /** Leaving waits this long before closing, so the pointer can cross the gap to the popover. */
@@ -81,7 +82,7 @@ const scopeKey = computed<BaseTextKey>(() => {
 });
 
 function requestContactAdmin() {
-	if (parentHandlesContactAdmin) emit('contactAdmin');
+	if (parentHandlesContactAdmin) emit('contactAdmin', contactCopy.value.audience);
 	else isContactAdminOpen.value = true;
 }
 </script>

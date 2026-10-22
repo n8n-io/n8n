@@ -1,7 +1,8 @@
 import type { PolicyViolation } from '@n8n/api-types';
 import {
-	getRestrictionContact,
+	getRestrictionMessage,
 	getViolationVerdict,
+	type RestrictionMessage,
 } from '@n8n/frontend-module-type-availability-policies';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
@@ -10,6 +11,13 @@ import type { ToolPolicyRefusal } from '@/features/ai/shared/agentsChat/toolPoli
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
 const TOOL_SUFFIX = 'Tool';
+
+const REASON_KEY: Record<RestrictionMessage, BaseTextKey> = {
+	instance: 'agents.chat.toolPolicyRefusal.reason',
+	project: 'agents.chat.toolPolicyRefusal.reason.project',
+	optIn: 'agents.chat.toolPolicyRefusal.reason.optIn',
+	generic: 'agents.chat.toolPolicyRefusal.reason',
+};
 
 export function useToolPolicyRefusalText() {
 	const i18n = useI18n();
@@ -44,18 +52,9 @@ export function useToolPolicyRefusalText() {
 		]);
 	}
 
-	function reasonKey(violation: PolicyViolation): BaseTextKey {
-		const verdict = getViolationVerdict(violation);
-		if (getRestrictionContact(verdict, violation.projectId) === 'optIn') {
-			return 'agents.chat.toolPolicyRefusal.reason.optIn';
-		}
-		return verdict.scope === 'project'
-			? 'agents.chat.toolPolicyRefusal.reason.project'
-			: 'agents.chat.toolPolicyRefusal.reason';
-	}
-
 	function reason(violation: PolicyViolation, fallbackName: string): string {
-		return i18n.baseText(reasonKey(violation), {
+		const message = getRestrictionMessage(getViolationVerdict(violation), violation.projectId);
+		return i18n.baseText(REASON_KEY[message], {
 			interpolate: { name: subjectName(violation) ?? fallbackName },
 		});
 	}
