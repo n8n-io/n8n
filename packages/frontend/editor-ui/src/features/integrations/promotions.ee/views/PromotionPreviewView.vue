@@ -27,6 +27,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import PromotionBlockers from '../components/preview/PromotionBlockers.vue';
 import PromotionChangeCards from '../components/preview/PromotionChangeCards.vue';
 import PromotionResourceTree from '../components/preview/PromotionResourceTree.vue';
+import PromotionReviewBlocker from '../components/preview/PromotionReviewBlocker.vue';
 import { usePromotionOperation } from '../composables/usePromotionOperation';
 import { usePromotionResourceDetails } from '../composables/usePromotionResourceDetails';
 import { usePromotionPreview } from '../composables/usePromotionPreview';
@@ -67,6 +68,7 @@ const {
 	preview,
 	check,
 	graph,
+	blocker,
 	repositoryName,
 	refreshing,
 	refreshFailed,
@@ -358,6 +360,11 @@ const treeResizer = useResizablePanel({
 			:button-text="i18n.baseText('promotions.preview.state.retry')"
 			data-test-id="promotion-preview-error"
 			@click:button="refresh"
+		/>
+		<PromotionReviewBlocker
+			v-else-if="state === 'blocked' && blocker"
+			:class="$style.state"
+			:blocker="blocker"
 		/>
 		<N8nEmptyState
 			v-else-if="state === 'empty'"

@@ -1,5 +1,7 @@
 import type { ApplyCheckResult } from '@n8n/api-types';
+import { INBOX_VIEW } from '@n8n/frontend-module-inbox';
 import { ResponseError } from '@n8n/rest-api-client';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { render as renderToast, waitFor, within } from '@testing-library/vue';
@@ -7,7 +9,7 @@ import { defineComponent } from 'vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
 import { createComponentRenderer } from '@/__tests__/render';
-import { waitAllPromises } from '@/__tests__/utils';
+import { mockedStore, waitAllPromises } from '@/__tests__/utils';
 import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 
 import { applied, destructiveChange, variable } from '../__tests__/bindings.fixtures';
@@ -59,6 +61,7 @@ const router = createRouter({
 			name: PROMOTION_PREVIEW_VIEWS.apply,
 			component: stub,
 		},
+		{ path: '/inbox', name: INBOX_VIEW, component: stub },
 	],
 });
 const renderComponent = createComponentRenderer(PromotionPreviewView, {
@@ -337,6 +340,46 @@ describe('PromotionPreviewView', () => {
 
 		expect(getByText(/Couldn't refresh the preview/)).toBeInTheDocument();
 		expect(getByTestId('promotion-preview-tree')).toBeInTheDocument();
+	});
+
+	describe('with an open review', () => {
+		const blocked = () =>
+			billingPreview({
+				resources: [],
+				changes: [],
+				blocker: { code: 'reviewOpen', reviewId: 'review-1' },
+			});
+
+		async function renderBlocked(canReadReviews: boolean) {
+			vi.mocked(api.getPromotionPreview).mockResolvedValue(blocked());
+			await router.push('/projects/p1/promotions/promote');
+			const pinia = createTestingPinia();
+			mockedStore(useRBACStore).hasScope.mockReturnValue(canReadReviews);
+			const result = renderComponent({ pinia, props: { projectId: 'p1', direction: 'promote' } });
+			await waitAllPromises();
+			return result;
+		}
+
+		it('should show the blocker with a link to the Inbox and no changes to promote', async () => {
+			const { getByTestId, queryByTestId, getByText } = await renderBlocked(true);
+
+			expect(getByTestId('promotion-review-blocker')).toHaveTextContent('A review is open');
+			expect(queryByTestId('promotion-preview-tree')).not.toBeInTheDocument();
+			expect(queryByTestId('promotion-preview-empty')).not.toBeInTheDocument();
+			expect(getByTestId('promotion-preview-submit')).toBeDisabled();
+
+			await userEvent.click(getByText('Open the Inbox'));
+			await waitFor(() => expect(router.currentRoute.value.name).toBe(INBOX_VIEW));
+		});
+
+		it('should ask for an admin when the user cannot read reviews', async () => {
+			const { getByTestId, queryByText } = await renderBlocked(false);
+
+			expect(getByTestId('promotion-review-blocker')).toHaveTextContent(
+				'Ask an admin to merge or close the review.',
+			);
+			expect(queryByText('Open the Inbox')).not.toBeInTheDocument();
+		});
 	});
 
 	it('should show the error when the refresh of an empty preview fails', async () => {

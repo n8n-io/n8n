@@ -59,6 +59,7 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 		/>
 		<slot name="leading" />
 		<N8nText
+			v-if="$slots.default"
 			:class="[$style.label, { [$style.hasIcon]: props.leadingIcon || props.trailingIcon }]"
 			:step="effectiveTextSize"
 			bold

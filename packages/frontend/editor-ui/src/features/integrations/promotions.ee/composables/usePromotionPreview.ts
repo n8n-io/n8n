@@ -1,4 +1,9 @@
-import type { ApplyCheckResult, PromotionDirection, PromotionPreview } from '@n8n/api-types';
+import type {
+	ApplyCheckResult,
+	PromotionBlocker,
+	PromotionDirection,
+	PromotionPreview,
+} from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, shallowRef, watch, type Ref } from 'vue';
 
@@ -16,6 +21,8 @@ type PromotionPreviewState =
 	/** The instance has no environment for this direction. */
 	| 'disconnected'
 	| 'error'
+	/** An open review holds the changes, so the preview lists none. */
+	| 'blocked'
 	| 'empty'
 	| 'ready';
 
@@ -46,6 +53,7 @@ export function usePromotionPreview(projectId: Ref<string>, direction: Ref<Promo
 	const environment = computed(
 		() => environments.value.find((candidate) => candidate.direction === direction.value) ?? null,
 	);
+	const blocker = computed<PromotionBlocker | null>(() => preview.value?.blocker ?? null);
 	const repositoryName = computed(() =>
 		environment.value ? repositoryDisplayName(environment.value.remote) : null,
 	);
@@ -80,7 +88,7 @@ export function usePromotionPreview(projectId: Ref<string>, direction: Ref<Promo
 			preview.value = result;
 			check.value = blockers;
 			lastRefreshedAt.value = new Date();
-			state.value = result.resources.length === 0 ? 'empty' : 'ready';
+			state.value = result.blocker ? 'blocked' : result.resources.length === 0 ? 'empty' : 'ready';
 		} catch {
 			if (!isLatest()) return;
 			// Only the changes view shows the refresh warning. Other states show the error.
@@ -112,6 +120,7 @@ export function usePromotionPreview(projectId: Ref<string>, direction: Ref<Promo
 		preview,
 		check,
 		graph,
+		blocker,
 		repositoryName,
 		refreshing,
 		refreshFailed,
