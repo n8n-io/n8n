@@ -38,6 +38,7 @@ import {
 	type AgentFixtureOverrides,
 	type AgentHistoryFixtureOverrides,
 	createAgentSkillRefsService,
+	storedAgentConfig,
 	storedSkillRefs,
 } from './test-utils/stored-agent-config';
 
@@ -243,7 +244,7 @@ describe('AgentPublishService', () => {
 		agentValidationService.validateAgentHistoryConfiguration.mockImplementation(async () => {
 			agent.versionId = 'draft-v2';
 			agent.revision += 1;
-			agent.schema = { ...schema, instructions: 'New draft instructions' };
+			agent.schema = storedAgentConfig({ ...schema, instructions: 'New draft instructions' });
 			return { status: 'valid', issues: [] };
 		});
 		const result = await service.publishAgent(agentId, projectId, user, byUser, 'saved-v0');
@@ -293,7 +294,6 @@ describe('AgentPublishService', () => {
 			service,
 			agentRepository,
 			agentHistoryRepository,
-			taskSnapshotRepository,
 			agentValidationService,
 			runtimeCacheService,
 			eventService,
@@ -329,8 +329,7 @@ describe('AgentPublishService', () => {
 	});
 
 	it('names unpublished workflow tools when rejecting the publish', async () => {
-		const { service, agentRepository, agentHistoryRepository, agentValidationService } =
-			makeService();
+		const { service, agentRepository, agentValidationService } = makeService();
 		const agent = makeAgent();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 		agentValidationService.validateAgentHistoryConfiguration.mockResolvedValue({
@@ -466,7 +465,6 @@ describe('AgentPublishService', () => {
 			const {
 				service,
 				agentRepository,
-				agentHistoryRepository,
 				chatIntegrationService,
 				runtimeCacheService,
 				eventService,
@@ -584,7 +582,6 @@ describe('AgentPublishService', () => {
 			agentHistoryRepository,
 			agentTaskRepository,
 			taskSnapshotRepository,
-			customToolsService,
 			runtimeCacheService,
 			chatIntegrationService,
 			agentValidationService,
@@ -594,7 +591,9 @@ describe('AgentPublishService', () => {
 			ctx,
 			skillRefs,
 		} = makeService();
-		const configuredTools = { tool: { descriptor: { name: 'tool' } } };
+		const configuredTools = {
+			tool: { code: 'return 1;', descriptor: mock<ToolDescriptor>({ name: 'tool' }) },
+		};
 		const integrations = [
 			{ type: 'slack', credentialId: 'slack-1' },
 			{
@@ -622,7 +621,7 @@ describe('AgentPublishService', () => {
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 		agentValidationService.validateAgentEntityConfiguration.mockResolvedValue(draftValidation);
-		agent.tools = configuredTools as Agent['tools'];
+		agent.tools = configuredTools;
 		agentTaskRepository.findByAgentId.mockResolvedValue([task] as never);
 
 		const result = await service.publishAgent(agentId, projectId, user, byBuilder);
