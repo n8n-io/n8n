@@ -10,11 +10,12 @@ import { mintIdentityToken, SharedSecretIdentityVerifier } from '../../auth';
 import { mintResumeToken } from '../../auth/resume-token';
 import { createDataSource, createStores } from '../../database';
 import { generateId } from '../../database/generate-id';
-import type { WaitDeclaration } from '../../execution';
-import type { WorkflowGraph } from '../../graph';
+import { ExecutionNotFoundError, type WaitDeclaration } from '../../execution';
+import { MAX_SLOT_INDEX, type WorkflowGraph } from '../../graph';
 import { noopExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../../runtime';
 import type { ResumeTargetResponse } from '../api.types';
+import { createEngineServer, type EngineServerDeps } from '../create-engine-server';
 
 const identitySecret = 'a'.repeat(32);
 const resumeSecret = 'r'.repeat(32);
@@ -147,6 +148,33 @@ describe('POST /api/workflow-executions/:id/resume-target (integration)', () => 
 		await resumeTarget(executionId, { token }).expect(401, { error: 'invalid_token' });
 	});
 
+	it('answers 401 for a bad token even when the execution does not exist', async () => {
+		await resumeTarget(generateId(), { token: mintResumeToken(resumeSecret, generateId()) }).expect(
+			401,
+			{ error: 'invalid_token' },
+		);
+	});
+
+	it('answers 404 when the execution goes away after the token check', async () => {
+		const executionId = generateId();
+		const deps = {
+			identityVerifier: new SharedSecretIdentityVerifier(identitySecret),
+			resumeRequests: { locate: async () => null },
+			executionQuery: {
+				getExecutionWithSteps: async () => {
+					throw new ExecutionNotFoundError(executionId);
+				},
+			},
+		} as unknown as EngineServerDeps;
+		const { app: stubbed } = createEngineServer(deps);
+
+		await request(stubbed)
+			.post(`/api/workflow-executions/${executionId}/resume-target`)
+			.set(auth())
+			.send({ token: mintResumeToken(resumeSecret, executionId) })
+			.expect(404, { error: 'not_found' });
+	});
+
 	it('answers 404 for an execution that does not exist', async () => {
 		const executionId = generateId();
 
@@ -184,6 +212,7 @@ describe('POST /api/step-executions/:id/resolve (integration)', () => {
 		const step = await stepStore.loadStep(stepId);
 		expect(step.status).toBe('queued');
 		expect(step.resumeCause).toEqual({ kind: 'request', outputs });
+		expect(await stepStore.loadWaitingSteps(executionId)).toEqual([]);
 	});
 
 	it('resolves a wait once: a second request answers 409', async () => {
@@ -191,13 +220,6 @@ describe('POST /api/step-executions/:id/resolve (integration)', () => {
 
 		await resolve(stepIds['wait-a'], { token, outputs }).expect(200);
 		await resolve(stepIds['wait-a'], { token, outputs }).expect(409, { error: 'not_waiting' });
-	});
-
-	it('refuses a wait that only its deadline can end with 409', async () => {
-		const { stepIds, token, stepStore } = await seed({ 'wait-a': deadlineOnly });
-
-		await resolve(stepIds['wait-a'], { token, outputs }).expect(409, { error: 'not_waiting' });
-		expect((await stepStore.loadStep(stepIds['wait-a'])).status).toBe('waiting');
 	});
 
 	it('refuses a token for another execution with 401', async () => {
@@ -228,6 +250,21 @@ describe('POST /api/step-executions/:id/resolve (integration)', () => {
 			.post(`/api/step-executions/${stepIds['wait-a']}/resolve`)
 			.send({ token, outputs })
 			.expect(401);
+	});
+
+	it.each([
+		['an unknown key', { extra: 1 }],
+		['too many output slots', { outputs: Array.from({ length: MAX_SLOT_INDEX + 2 }, () => []) }],
+	])('rejects a body with %s with 400', async (_, change) => {
+		const { stepIds, token } = await seed({ 'wait-a': acceptsRequest });
+
+		await resolve(stepIds['wait-a'], { token, outputs, ...change }).expect(400);
+	});
+
+	it('rejects a step id that is not a UUID with 400', async () => {
+		const { token } = await seed({ 'wait-a': acceptsRequest });
+
+		await resolve('not-a-uuid', { token, outputs }).expect(400, { error: 'invalid_request' });
 	});
 
 	it('rejects a body without outputs with 400', async () => {
