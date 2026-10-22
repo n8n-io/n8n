@@ -24,7 +24,7 @@ import { MemoryGuardService } from '../memory-guard.service';
 import { readMemoryUsage } from '../memory-usage';
 import { ProductionHold } from '../production-hold';
 import type { RunDataEstimate, RunDataTracker } from '../run-data-tracker';
-import { StoppedExecutions } from '../stopped-executions';
+import { MemoryStoppedExecutions } from '../memory-stopped-executions';
 
 vi.mock('../memory-usage', () => ({
 	getContainerLimit: () => 1_000,
@@ -52,7 +52,7 @@ describe('MemoryGuardService', () => {
 
 	let productionHold: ProductionHold;
 	let concurrencyControl: ConcurrencyControlService;
-	let stoppedExecutions: StoppedExecutions;
+	let memoryStoppedExecutions: MemoryStoppedExecutions;
 	let guard: MemoryGuardService;
 
 	const executions = new Map<string, IExecutingWorkflowData>();
@@ -159,13 +159,13 @@ describe('MemoryGuardService', () => {
 			mock<License>(),
 			productionHold,
 		);
-		stoppedExecutions = new StoppedExecutions();
+		memoryStoppedExecutions = new MemoryStoppedExecutions();
 		guard = new MemoryGuardService(
 			logger,
 			activeExecutions,
 			productionHold,
 			tracker,
-			stoppedExecutions,
+			memoryStoppedExecutions,
 		);
 		guard.init();
 	});
@@ -327,11 +327,11 @@ describe('MemoryGuardService', () => {
 			const engine = executions.get('large')!.workflowExecution;
 			utilization = 0.96;
 			let recorded: IRun | undefined;
-			stoppedExecutions.enabled = true;
+			memoryStoppedExecutions.enabled = true;
 			activeExecutions.stopExecution.mockImplementation((id) => {
 				// The cancel save runs while the execution is still marked as stopped.
 				const run = mock<IRun>({ status: 'canceled', data: { resultData: { runData: {} } } });
-				stoppedExecutions.onWorkflowExecuteAfter(id, run);
+				memoryStoppedExecutions.onWorkflowExecuteAfter(id, run);
 				recorded = run;
 			});
 
@@ -360,8 +360,8 @@ describe('MemoryGuardService', () => {
 			addExecution('finishing', { megabytes: 300 });
 			addExecution('starting', { megabytes: 200, engine: null });
 			addExecution('running', { megabytes: 10 });
-			stoppedExecutions.enabled = true;
-			stoppedExecutions.onWorkflowExecuteAfter('finishing', mock<IRun>());
+			memoryStoppedExecutions.enabled = true;
+			memoryStoppedExecutions.onWorkflowExecuteAfter('finishing', mock<IRun>());
 			utilization = 0.96;
 
 			await sample();
@@ -640,12 +640,12 @@ describe('MemoryGuardService', () => {
 		});
 
 		it('should forget finishing executions that ended, at every sample', async () => {
-			stoppedExecutions.onWorkflowExecuteAfter('ended', mock<IRun>());
-			expect(stoppedExecutions.isFinishing('ended')).toBe(true);
+			memoryStoppedExecutions.onWorkflowExecuteAfter('ended', mock<IRun>());
+			expect(memoryStoppedExecutions.isFinishing('ended')).toBe(true);
 
 			await sample();
 
-			expect(stoppedExecutions.isFinishing('ended')).toBe(false);
+			expect(memoryStoppedExecutions.isFinishing('ended')).toBe(false);
 		});
 	});
 

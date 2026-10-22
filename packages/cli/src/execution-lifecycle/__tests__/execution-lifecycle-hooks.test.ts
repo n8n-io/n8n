@@ -46,7 +46,7 @@ import {
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 
 import { ExternalHooks } from '@/external-hooks';
-import { StoppedExecutions } from '@/memory-guard/stopped-executions';
+import { MemoryStoppedExecutions } from '@/memory-guard/memory-stopped-executions';
 import { Push } from '@/push';
 import { ExecutionMetadataService } from '@/services/execution-metadata.service';
 import { OwnershipService } from '@/services/ownership.service';
@@ -643,7 +643,7 @@ describe('Execution Lifecycle Hooks', () => {
 		statisticsTests();
 
 		describe('memory guard stops', () => {
-			const stoppedExecutions = Container.get(StoppedExecutions);
+			const memoryStoppedExecutions = Container.get(MemoryStoppedExecutions);
 			const stopError = new WorkflowOperationError(
 				'Execution stopped because the instance was running out of memory.',
 			);
@@ -659,13 +659,16 @@ describe('Execution Lifecycle Hooks', () => {
 				});
 
 			beforeEach(() => {
-				stoppedExecutions.enabled = true;
-				stoppedExecutions.markStopped(executionId, { error: stopError, runningNode: nodeName });
+				memoryStoppedExecutions.enabled = true;
+				memoryStoppedExecutions.markStopped(executionId, {
+					error: stopError,
+					runningNode: nodeName,
+				});
 			});
 
 			afterEach(() => {
-				stoppedExecutions.forget(executionId);
-				stoppedExecutions.enabled = false;
+				memoryStoppedExecutions.forget(executionId);
+				memoryStoppedExecutions.enabled = false;
 			});
 
 			it('should save a stopped execution as failed, without run data', async () => {
@@ -717,7 +720,7 @@ describe('Execution Lifecycle Hooks', () => {
 			});
 
 			it('should leave a run that was not stopped unchanged', async () => {
-				stoppedExecutions.forget(executionId);
+				memoryStoppedExecutions.forget(executionId);
 
 				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
 
@@ -726,13 +729,16 @@ describe('Execution Lifecycle Hooks', () => {
 					expect.objectContaining({ status: 'success' }),
 					{ requireNotCanceled: true },
 				);
-				expect(stoppedExecutions.isFinishing(executionId)).toBe(true);
+				expect(memoryStoppedExecutions.isFinishing(executionId)).toBe(true);
 			});
 
 			it('should not push the output when the stop comes while the push is prepared', async () => {
-				stoppedExecutions.forget(executionId);
+				memoryStoppedExecutions.forget(executionId);
 				redactionProxy.processExecution.mockImplementation(async (execution) => {
-					stoppedExecutions.markStopped(executionId, { error: stopError, runningNode: nodeName });
+					memoryStoppedExecutions.markStopped(executionId, {
+						error: stopError,
+						runningNode: nodeName,
+					});
 					return execution;
 				});
 
@@ -746,7 +752,7 @@ describe('Execution Lifecycle Hooks', () => {
 			});
 
 			it('should save progress only while the execution is running', async () => {
-				stoppedExecutions.forget(executionId);
+				memoryStoppedExecutions.forget(executionId);
 				workflowData.settings = { saveExecutionProgress: true };
 				lifecycleHooks = createHooks();
 
@@ -763,15 +769,15 @@ describe('Execution Lifecycle Hooks', () => {
 			it.each(['workflowExecuteBefore', 'workflowExecuteResume'] as const)(
 				'should clear the finishing mark when the execution starts again with %s',
 				async (hookName) => {
-					stoppedExecutions.forget(executionId);
+					memoryStoppedExecutions.forget(executionId);
 					lifecycleHooks = createHooks('trigger');
 					await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
-					expect(stoppedExecutions.isFinishing(executionId)).toBe(true);
+					expect(memoryStoppedExecutions.isFinishing(executionId)).toBe(true);
 
 					lifecycleHooks = createHooks('trigger');
 					await lifecycleHooks.runHook(hookName, [workflow, runExecutionData]);
 
-					expect(stoppedExecutions.isFinishing(executionId)).toBe(false);
+					expect(memoryStoppedExecutions.isFinishing(executionId)).toBe(false);
 				},
 			);
 		});

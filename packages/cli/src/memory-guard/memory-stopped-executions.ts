@@ -12,7 +12,7 @@ interface StoppedExecution {
  * lifecycle hooks read this for every execution, so it has no dependencies.
  */
 @Service()
-export class StoppedExecutions {
+export class MemoryStoppedExecutions {
 	/** Set by the memory guard. Nothing is recorded while it is off. */
 	enabled = false;
 

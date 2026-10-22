@@ -31,7 +31,7 @@ import { buildStopError, exposeGc, settleWithin } from './memory-guard.utils';
 import { getContainerLimit, type MemoryUsage, readMemoryUsage } from './memory-usage';
 import { ProductionHold } from './production-hold';
 import { RunDataTracker } from './run-data-tracker';
-import { StoppedExecutions } from './stopped-executions';
+import { MemoryStoppedExecutions } from './memory-stopped-executions';
 
 /**
  * Keeps the instance from running out of memory. When memory is high, new production
@@ -91,7 +91,7 @@ export class MemoryGuardService {
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly productionHold: ProductionHold,
 		private readonly tracker: RunDataTracker,
-		private readonly stoppedExecutions: StoppedExecutions,
+		private readonly memoryStoppedExecutions: MemoryStoppedExecutions,
 	) {
 		this.logger = this.logger.scoped('memory-guard');
 	}
@@ -99,7 +99,7 @@ export class MemoryGuardService {
 	init() {
 		this.containerLimit = getContainerLimit();
 		this.forceGc = exposeGc();
-		this.stoppedExecutions.enabled = true;
+		this.memoryStoppedExecutions.enabled = true;
 		this.scheduleNext(SLOW_INTERVAL_MS);
 	}
 
@@ -118,7 +118,7 @@ export class MemoryGuardService {
 
 	private check() {
 		try {
-			this.stoppedExecutions.pruneFinishing((id) => this.activeExecutions.has(id));
+			this.memoryStoppedExecutions.pruneFinishing((id) => this.activeExecutions.has(id));
 			this.evaluate(readMemoryUsage(this.containerLimit));
 		} catch (error) {
 			this.logger.error('Memory guard check failed', { error: ensureError(error) });
@@ -285,7 +285,7 @@ export class MemoryGuardService {
 		for (const executionId of target.memberIds) {
 			const execution = this.activeExecutions.getExecutionOrFail(executionId);
 			const estimate = this.tracker.getEstimate(executionId);
-			this.stoppedExecutions.markStopped(executionId, {
+			this.memoryStoppedExecutions.markStopped(executionId, {
 				error: buildStopError(execution.executionData.workflowData, estimate, usage),
 				runningNode: estimate?.runningNode,
 			});
@@ -293,7 +293,7 @@ export class MemoryGuardService {
 			// A node that ignores the stop can fire events until the engine ends, so the
 			// execution stays marked as stopped until then. Do not keep the engine result,
 			// because it holds the full run data.
-			const forget = () => this.stoppedExecutions.forget(executionId);
+			const forget = () => this.memoryStoppedExecutions.forget(executionId);
 			engines.push(Promise.resolve(execution.workflowExecution).then(forget, forget));
 		}
 
@@ -368,7 +368,11 @@ export class MemoryGuardService {
 		for (const { id, status } of this.activeExecutions.getActiveExecutions()) {
 			if (status !== 'running') continue;
 			// A finishing execution is saving its result, and a stop then would save it twice.
-			if (this.stoppedExecutions.isStopped(id) || this.stoppedExecutions.isFinishing(id)) continue;
+			if (
+				this.memoryStoppedExecutions.isStopped(id) ||
+				this.memoryStoppedExecutions.isFinishing(id)
+			)
+				continue;
 			// Before the engine is attached, a stop would leave the engine running.
 			if (!this.activeExecutions.getExecutionOrFail(id).workflowExecution) continue;
 
