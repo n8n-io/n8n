@@ -70,7 +70,8 @@ const showEmptyState = computed(
 );
 const selectedCount = computed(() => selection.value.length);
 
-async function load() {
+/** Resolves to `true` only when this load succeeded and no newer load replaced it. */
+async function load(): Promise<boolean> {
 	const run = ++latestLoad;
 	const { page = 0, itemsPerPage = PREFERENCES_DEFAULT_PAGE_SIZE } = tableOptions.value;
 	const sortBy = toPreferenceSortOption(tableOptions.value.sortBy);
@@ -84,7 +85,7 @@ async function load() {
 			...filter,
 		});
 		// A newer load owns the page now. Its filter and page replace this one.
-		if (run !== latestLoad) return;
+		if (run !== latestLoad) return false;
 		loadFailed.value = false;
 		appliedSearch.value = term;
 
@@ -99,10 +100,12 @@ async function load() {
 				...filter,
 			});
 		}
+		return run === latestLoad;
 	} catch (error) {
-		if (run !== latestLoad) return;
+		if (run !== latestLoad) return false;
 		loadFailed.value = true;
 		showError(error, i18n.baseText('settings.context.preferences.error.load'));
+		return false;
 	}
 }
 
@@ -222,10 +225,10 @@ async function goBack() {
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.context.preferences.title'));
-	await load();
 	// Once for the visit, not once for each page: paging is not a second visit. A failed load
-	// reports nothing, so a zero here is an empty list and never a broken one.
-	if (loadFailed.value) return;
+	// reports nothing, so a zero here is an empty list and never a broken one. A search that
+	// replaces the first load also reports nothing, because the store then holds its filtered rows.
+	if (!(await load())) return;
 	telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_VIEWED_PREFERENCES, {
 		count: contextStore.count,
 		scope_types: [...new Set(contextStore.preferences.map((row) => preferenceScope(row)))],

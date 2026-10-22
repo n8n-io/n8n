@@ -609,6 +609,40 @@ describe('SettingsPreferencesView', () => {
 				search: 'short',
 			});
 		});
+
+		it('reports no visit when a search replaces the first load', async () => {
+			vi.useFakeTimers({ shouldAdvanceTime: true });
+			contextStore.preferences = [];
+			contextStore.count = 0;
+
+			// The first load stays pending until the search has finished.
+			let finishFirstLoad: () => void = () => {};
+			contextStore.fetchPreferences.mockImplementationOnce(
+				async () =>
+					await new Promise((resolve) => {
+						finishFirstLoad = () => resolve({ count: 0, data: [] });
+					}),
+			);
+			contextStore.fetchPreferences.mockImplementation(async () => {
+				contextStore.preferences = [];
+				contextStore.count = 0;
+				return { count: 0, data: [] };
+			});
+
+			const { getByTestId } = renderView();
+			await userEvent.type(getByTestId('preferences-search'), 'zzz');
+			await vi.runAllTimersAsync();
+
+			finishFirstLoad();
+			await vi.runAllTimersAsync();
+
+			// The store holds the filtered rows, so their count does not describe the visit.
+			expect(trackMock).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.USER_VIEWED_PREFERENCES,
+				expect.anything(),
+			);
+			expect(trackEmptyStateExposure).not.toHaveBeenCalled();
+		});
 	});
 
 	it('returns to the Context landing page', async () => {
