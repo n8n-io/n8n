@@ -1118,6 +1118,7 @@ export function useCanvasOperations() {
 	function toggleNodesDisabled(ids: string[], { trackHistory = true, trackBulk = true } = {}) {
 		const nodes = workflowDocumentStore.value.getNodesByIds(ids);
 		if (nodes.some(nodeTypesStore.isNodeDeprecated)) return;
+		if (refuseRestrictedNodes(nodes)) return;
 
 		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
