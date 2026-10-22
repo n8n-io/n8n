@@ -1,3 +1,4 @@
+import assert from 'node:assert/strict';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentRepository } from '../../../../repositories/agent.repository';
@@ -62,7 +63,8 @@ describe('Slack channel integration scenarios', () => {
 			try {
 				await ctx.sendWebhook(fixtures.mention);
 				expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
-				const threadId = ctx.latestContext()!.target.threadId;
+				const threadId = ctx.latestContext()?.target.threadId;
+				assert(threadId, 'The Slack mention must create a thread.');
 				expect(await ctx.chat.thread(threadId).isSubscribed()).toBe(true);
 
 				const callsBeforeFollowUp = ctx.apiCalls.length;
@@ -103,7 +105,8 @@ describe('Slack channel integration scenarios', () => {
 			try {
 				await ctx.sendWebhook(fixtures.mention);
 				expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
-				const threadId = ctx.latestContext()!.target.threadId;
+				const threadId = ctx.latestContext()?.target.threadId;
+				assert(threadId, 'The Slack mention must create a thread.');
 				expect(await ctx.chat.thread(threadId).isSubscribed()).toBe(true);
 				const callsBeforeFollowUp = ctx.apiCalls.length;
 
