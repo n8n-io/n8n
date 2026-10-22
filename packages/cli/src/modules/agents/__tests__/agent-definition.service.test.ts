@@ -6,7 +6,7 @@ import { AgentDefinitionService } from '../agent-definition.service';
 import type { AgentSkillRefsService } from '../agent-skill-refs.service';
 import type { AgentHistory } from '../entities/agent-history.entity';
 import type { AgentTask } from '../entities/agent-task.entity';
-import type { Agent } from '../entities/agent.entity';
+import { Agent } from '../entities/agent.entity';
 import type { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
@@ -36,17 +36,17 @@ describe('Agent definition snapshots', () => {
 			model: 'anthropic/claude-sonnet-4-5',
 			instructions: 'Help',
 			tasks: [
-				{ id: 'enabled', enabled: true },
-				{ id: 'disabled', enabled: false },
+				{ type: 'task', id: 'enabled', enabled: true },
+				{ type: 'task', id: 'disabled', enabled: false },
 			],
 		};
-		const agent = {
+		const agent = Object.assign(new Agent(), {
 			id: 'agent',
 			versionId: 'version',
 			schema,
 			tools: {},
 			integrations: [],
-		} as Agent;
+		});
 		const user = { id: 'saver' } as User;
 		const version = { versionId: 'version' } as AgentHistory;
 		history.findByVersionAndAgentId.mockResolvedValue(null);
