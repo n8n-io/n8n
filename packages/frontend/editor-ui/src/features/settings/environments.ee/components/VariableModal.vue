@@ -187,6 +187,7 @@ const destinationName = computed(() =>
 
 // On a protected instance, source control owns which variables exist and their keys.
 // Users can still edit values, because source control does not carry them.
+// Bindings can still be created during the promotion apply flow.
 const isProtectedInstance = computed(() => sourceControlStore.preferences.branchReadOnly);
 const isKeyLocked = computed(() => props.mode === 'edit' && isProtectedInstance.value);
 
