@@ -12,8 +12,8 @@ describe('AppBuildController', () => {
 		expect(route.accessScope?.globalOnly).toBe(false);
 		expect(route.accessScope?.scope).toMatch(/^app:/);
 	});
-	it('uses read permission for status and update permission for retry', () => {
-		expect(routes.get('status')?.accessScope?.scope).toBe('app:read');
+	it('exposes retry with update permission', () => {
+		expect([...routes.keys()]).toEqual(['retry']);
 		expect(routes.get('retry')?.accessScope?.scope).toBe('app:update');
 	});
 });
