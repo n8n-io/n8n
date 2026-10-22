@@ -1,4 +1,3 @@
-import type { AgentFileDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Delete, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
@@ -12,7 +11,7 @@ import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-avai
 import { Telemetry } from '@/telemetry';
 
 import { AgentKnowledgeUploadError } from './agent-knowledge-upload.error';
-import { AgentKnowledgeService } from './agent-knowledge.service';
+import { AgentKnowledgeService, type UploadedKnowledgeFile } from './agent-knowledge.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import {
 	AgentUploadMiddleware,
@@ -87,7 +86,7 @@ export class AgentKnowledgeController {
 			const uploadedFiles = await this.agentKnowledgeService.uploadFiles(agentId, projectId, files);
 			this.runtimeCacheService.clearRuntimes(agentId);
 			this.trackUploadedFiles(req.user.id, projectId, agentId, uploadedFiles);
-			return uploadedFiles;
+			return uploadedFiles.map(({ file }) => file);
 		} catch (error) {
 			// Multer wrote temp files to disk before this handler ran. The success
 			// path hands them to AgentKnowledgeService (which cleans up its own temp
@@ -128,9 +127,10 @@ export class AgentKnowledgeController {
 		userId: string,
 		projectId: string,
 		agentId: string,
-		uploadedFiles: AgentFileDto[],
+		uploadedFiles: UploadedKnowledgeFile[],
 	) {
-		const files = uploadedFiles.map((file) => ({
+		const files = uploadedFiles.map(({ file, contentHash }) => ({
+			...(contentHash === undefined ? {} : { content_hash: contentHash }),
 			mime_type: file.mimeType,
 			size_bytes: file.fileSizeBytes,
 		}));

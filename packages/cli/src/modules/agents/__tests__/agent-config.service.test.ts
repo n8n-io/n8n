@@ -13,6 +13,7 @@ import { BadRequestError } from '@n8n/errors';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import set from 'lodash/set';
 import { mock } from 'vitest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 
@@ -137,7 +138,11 @@ function makeService() {
 			eventService,
 			agentUpdateBroadcaster,
 			// Experiment cleanup (123_surface_mcp_to_claude_trial_users): remove only the mock<EventService>() argument.
-			new AgentModificationTelemetryService(telemetry, mock<EventService>()),
+			new AgentModificationTelemetryService(
+				telemetry,
+				mock<InstanceSettings>(),
+				mock<EventService>(),
+			),
 		),
 		skillRefs,
 		chatIntegrationRegistry,

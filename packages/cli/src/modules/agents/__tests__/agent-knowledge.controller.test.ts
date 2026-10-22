@@ -67,7 +67,9 @@ describe('AgentKnowledgeController file uploads', () => {
 		const { controller, agentKnowledgeService, runtimeCacheService } = makeController();
 		const files = [{ path: '/tmp/uploaded-file' }];
 		const uploaded = [{ id: 'file-1', name: 'uploaded-file' }];
-		agentKnowledgeService.uploadFiles.mockResolvedValue(uploaded as never);
+		agentKnowledgeService.uploadFiles.mockResolvedValue(
+			uploaded.map((file) => ({ file })) as never,
+		);
 
 		await expect(
 			controller.uploadFiles(
@@ -80,7 +82,7 @@ describe('AgentKnowledgeController file uploads', () => {
 				'project-1',
 				'agent-1',
 			),
-		).resolves.toBe(uploaded);
+		).resolves.toEqual(uploaded);
 
 		expect(agentKnowledgeService.uploadFiles).toHaveBeenCalledWith('agent-1', 'project-1', files);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith('agent-1');
@@ -147,11 +149,28 @@ describe('AgentKnowledgeController upload telemetry', () => {
 		const { controller, agentKnowledgeService, telemetry } = makeController();
 
 		agentKnowledgeService.uploadFiles.mockResolvedValue([
+			{
+				file: fakeFileDto({ id: 'file-1', mimeType: 'application/pdf', fileSizeBytes: 2048 }),
+				contentHash: 'a'.repeat(64),
+			},
+			{ file: fakeFileDto({ id: 'file-2', mimeType: 'text/csv', fileSizeBytes: 512 }) },
+		]);
+
+		const response = await controller.uploadFiles(
+			fakeUploadRequest(),
+			mock<Response>(),
+			'project-1',
+			'agent-1',
+		);
+		expect(response).toEqual([
 			fakeFileDto({ id: 'file-1', mimeType: 'application/pdf', fileSizeBytes: 2048 }),
 			fakeFileDto({ id: 'file-2', mimeType: 'text/csv', fileSizeBytes: 512 }),
 		]);
-
-		await controller.uploadFiles(fakeUploadRequest(), mock<Response>(), 'project-1', 'agent-1');
+		const payload = telemetry.track.mock.calls[0][1];
+		expect(
+			TELEMETRY_EVENT.AGENTS.USER_UPLOADED_AGENT_KNOWLEDGE_FILES.properties.safeParse(payload)
+				.success,
+		).toBe(true);
 
 		expect(telemetry.track).toHaveBeenCalledTimes(1);
 		expect(telemetry.track).toHaveBeenCalledWith(
@@ -163,7 +182,7 @@ describe('AgentKnowledgeController upload telemetry', () => {
 				file_count: 2,
 				total_bytes: 2048 + 512,
 				files: [
-					{ mime_type: 'application/pdf', size_bytes: 2048 },
+					{ mime_type: 'application/pdf', size_bytes: 2048, content_hash: 'a'.repeat(64) },
 					{ mime_type: 'text/csv', size_bytes: 512 },
 				],
 			},

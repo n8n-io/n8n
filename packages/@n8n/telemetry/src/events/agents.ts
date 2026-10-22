@@ -148,6 +148,15 @@ const agentCapabilityProfile = {
 	tool_types: z.array(z.string()).describe('Tool types, never user-authored tool names'),
 };
 
+const agentKnowledgeModification = {
+	vector_store_fingerprints: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Codes that identify the knowledge sources connected to the agent after a change. Each code is a keyed hash of the provider and source name, with a key that is different for each instance. In one instance, the same provider and source name produce the same code, even across different accounts. The list contains each code once. An empty list means no sources remain. This field is sent when the vector store settings change, also when the connected sources stay the same.',
+		),
+};
+
 /**
  * Shared by the six creation and modification events, which differ only in
  * which surface wrote and whether the write was the agent's first — so they
@@ -417,6 +426,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			'A user saved a tracked configuration or resource change to an existing Agent. Emitted after the change commits. Incomplete Agents also count. No-op and cosmetic-only saves emit nothing. Creation emits User created agent instead. The profile describes the saved configuration. Version 2 removes the configured-state gate and creation inference.',
 		properties: z.object({
 			...agentWrite,
+			...agentKnowledgeModification,
 			changed_settings: z
 				.array(
 					z.enum([
@@ -443,6 +453,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			'The Instance AI builder saved a tracked configuration or resource change to an existing Agent. Emitted after the change commits, including the first generated configuration of a saved draft. No-op and cosmetic-only saves emit nothing. Creation emits Builder created agent instead. The profile describes the saved configuration. Version 2 removes the configured-state gate and creation inference.',
 		properties: z.object({
 			...agentWrite,
+			...agentKnowledgeModification,
 			event_version: z.literal('2'),
 		}),
 	},
@@ -452,6 +463,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			'An MCP client saved a tracked configuration or resource change to an existing Agent through mutate_agent. Emitted after the change commits. Incomplete Agents also count. No-op and cosmetic-only saves emit nothing. Creation emits MCP created agent instead. User called mcp tool also reports the tool call. Version 2 removes the configured-state gate and creation inference.',
 		properties: z.object({
 			...agentWrite,
+			...agentKnowledgeModification,
 			event_version: z.literal('2'),
 		}),
 	},
@@ -895,6 +907,12 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			files: z.array(
 				z.object({
 					mime_type: z.string().describe('MIME type that the browser sent with the file'),
+					content_hash: z
+						.string()
+						.optional()
+						.describe(
+							'Keyed hash of the original uploaded bytes, independent of the file name. The key is different for each instance, so the same file produces the same code only in one instance. Omitted if the telemetry hash could not be computed.',
+						),
 					size_bytes: z
 						.number()
 						.describe('Size of the original file, not of the stored text extracted from a PDF'),

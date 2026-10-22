@@ -8,6 +8,7 @@ import { Logger } from '@n8n/backend-common';
 import { isUniqueConstraintError } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
+import { InstanceSettings } from 'n8n-core';
 import { createReadStream } from 'node:fs';
 import { unlink } from 'node:fs/promises';
 import path from 'node:path';
@@ -26,6 +27,7 @@ import {
 	type StoredAgentKnowledgeFile,
 } from './agent-knowledge-file-store';
 import { AgentKnowledgeMirrorService } from './agent-knowledge-mirror.service';
+import { createKnowledgeTelemetryHmac } from './agent-knowledge-telemetry';
 import { storageFileNameForOriginalFileName, toAgentFileDto } from './agent-knowledge-storage';
 import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
 import type { AgentFile } from './entities/agent-file.entity';
@@ -33,6 +35,11 @@ import { AgentFileRepository } from './repositories/agent-file.repository';
 import { AgentRepository } from './repositories/agent.repository';
 
 const MAX_AGENT_FILE_METADATA_LENGTH = 255;
+
+export interface UploadedKnowledgeFile {
+	file: AgentFileDto;
+	contentHash?: string;
+}
 
 @Service()
 export class AgentKnowledgeService {
@@ -42,6 +49,7 @@ export class AgentKnowledgeService {
 		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
 		private readonly agentKnowledgeMirrorService: AgentKnowledgeMirrorService,
 		private readonly agentKnowledgeFileStore: AgentKnowledgeFileStore,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
 		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
 	) {}
@@ -50,7 +58,7 @@ export class AgentKnowledgeService {
 		agentId: string,
 		projectId: string,
 		files: Express.Multer.File[],
-	): Promise<AgentFileDto[]> {
+	): Promise<UploadedKnowledgeFile[]> {
 		try {
 			this.knowledgeAvailabilityService.assertModuleActive();
 			await getAgentOrThrow(this.agentRepository, agentId, projectId);
@@ -58,9 +66,13 @@ export class AgentKnowledgeService {
 			await this.validateUploadBatch(agentId, files);
 
 			const uploadedFiles: AgentFile[] = [];
+			const results: UploadedKnowledgeFile[] = [];
 			try {
 				for (const file of files) {
-					uploadedFiles.push(await this.storeAgentFile(agentId, file));
+					const contentHash = await this.hashUploadedFile(file.path);
+					const storedFile = await this.storeAgentFile(agentId, file);
+					uploadedFiles.push(storedFile);
+					results.push({ file: toAgentFileDto(storedFile), contentHash });
 				}
 			} catch (error) {
 				await this.cleanupUploadedFiles(uploadedFiles);
@@ -69,9 +81,24 @@ export class AgentKnowledgeService {
 
 			this.agentKnowledgeMirrorService.prewarmMirrorInBackground(projectId, agentId);
 
-			return uploadedFiles.map((file) => toAgentFileDto(file));
+			return results;
 		} finally {
 			await this.cleanupUploadTempFiles(files);
+		}
+	}
+
+	private async hashUploadedFile(filePath: string): Promise<string | undefined> {
+		try {
+			const hash = createKnowledgeTelemetryHmac(this.instanceSettings.hmacSignatureSecret);
+			for await (const chunk of createReadStream(filePath)) {
+				hash.update(chunk as Buffer);
+			}
+
+			return hash.digest('hex');
+		} catch {
+			// A telemetry read must not reject an otherwise valid upload.
+			this.logger.warn('Could not hash an agent knowledge upload for telemetry');
+			return undefined;
 		}
 	}
 

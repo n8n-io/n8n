@@ -1,6 +1,6 @@
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-import { access, mkdtemp, writeFile } from 'node:fs/promises';
+import { access, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Readable } from 'node:stream';
@@ -8,18 +8,26 @@ import { Readable } from 'node:stream';
 import { MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import { NotFoundError } from '@n8n/errors';
+import type { InstanceSettings } from 'n8n-core';
 
 import type { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 
 import type { AgentKnowledgeFileStore } from '../agent-knowledge-file-store';
 import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
+import { createKnowledgeTelemetryHmac } from '../agent-knowledge-telemetry';
 import { AgentKnowledgeUploadError } from '../agent-knowledge-upload.error';
 import { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import type { AgentFile } from '../entities/agent-file.entity';
 import type { AgentFileRepository } from '../repositories/agent-file.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
+
+const instanceSecret = 'instance-secret';
+
+function knowledgeHash(content: string, secret = instanceSecret) {
+	return createKnowledgeTelemetryHmac(secret).update(content).digest('hex');
+}
 
 vi.unmock('node:fs');
 vi.unmock('node:fs/promises');
@@ -155,6 +163,7 @@ describe('AgentKnowledgeService', () => {
 			agentSandboxRuntimeService,
 			agentKnowledgeMirrorService,
 			agentKnowledgeFileStore,
+			mock<InstanceSettings>({ hmacSignatureSecret: instanceSecret }),
 			logger,
 			knowledgeAvailabilityService,
 		);
@@ -210,7 +219,7 @@ describe('AgentKnowledgeService', () => {
 			}),
 		]);
 
-		expect(result).toEqual([
+		expect(result.map(({ file }) => file)).toEqual([
 			expect.objectContaining({
 				agentId,
 				fileName: 'notes.txt',
@@ -225,6 +234,10 @@ describe('AgentKnowledgeService', () => {
 			}),
 		]);
 
+		expect(result.map(({ contentHash }) => contentHash)).toEqual([
+			knowledgeHash('hello world'),
+			knowledgeHash('%PDF-1.4'),
+		]);
 		expect(agentKnowledgeFileStore.write).toHaveBeenCalledTimes(2);
 		const [textCall, pdfCall] = agentKnowledgeFileStore.write.mock.calls;
 		expect(textCall[0]).toEqual({ agentId, fileId: expect.any(String) });
@@ -243,6 +256,52 @@ describe('AgentKnowledgeService', () => {
 
 		await expect(access(textFilePath)).rejects.toThrow();
 		await expect(access(pdfFilePath)).rejects.toThrow();
+		await rm(tempDirectory, { recursive: true, force: true });
+	});
+
+	it('matches original bytes across names and agents and distinguishes different content', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+		const directory = await mkdtemp(path.join(tmpdir(), 'knowledge-hash-'));
+		try {
+			const hashes: Array<string | undefined> = [];
+			for (const [index, content] of ['hello', 'hello', 'different'].entries()) {
+				const filePath = path.join(directory, `file-${index}.txt`);
+				await writeFile(filePath, content);
+				const [result] = await service.uploadFiles(`agent-${index}`, projectId, [
+					makeMulterFile({
+						path: filePath,
+						originalname: `renamed-${index}.txt`,
+						size: content.length,
+					}),
+				]);
+				hashes.push(result.contentHash);
+				await expect(access(filePath)).rejects.toThrow();
+			}
+			expect(hashes[0]).toBe(knowledgeHash('hello'));
+			expect(hashes[0]).not.toBe(knowledgeHash('hello', 'other-instance-secret'));
+			expect(hashes[1]).toBe(hashes[0]);
+			expect(hashes[2]).not.toBe(hashes[0]);
+		} finally {
+			await rm(directory, { recursive: true, force: true });
+		}
+	});
+
+	it('continues storage when the telemetry read fails', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+		const directory = await mkdtemp(path.join(tmpdir(), 'knowledge-hash-failure-'));
+		try {
+			// The PDF loader is mocked, so storage can succeed after a failed telemetry read.
+			const [result] = await service.uploadFiles(agentId, projectId, [
+				makeMulterFile({ path: path.join(directory, 'missing.pdf'), originalname: 'report.pdf' }),
+			]);
+			expect(result.contentHash).toBeUndefined();
+			expect(agentFileRepository.all()).toHaveLength(1);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Could not hash an agent knowledge upload for telemetry',
+			);
+		} finally {
+			await rm(directory, { recursive: true, force: true });
+		}
 	});
 
 	it('rejects uploads whose file name would escape the knowledge files directory', async () => {
@@ -318,11 +377,14 @@ describe('AgentKnowledgeService', () => {
 				}),
 			]),
 		).resolves.toEqual([
-			expect.objectContaining({
-				agentId,
-				fileName: 'notes.txt',
-				fileSizeBytes: 1,
-			}),
+			{
+				file: expect.objectContaining({
+					agentId,
+					fileName: 'notes.txt',
+					fileSizeBytes: 1,
+				}),
+				contentHash: knowledgeHash('x'),
+			},
 		]);
 		expect(agentFileRepository.all()).toHaveLength(2);
 		expect(agentKnowledgeFileStore.write).toHaveBeenCalledTimes(1);

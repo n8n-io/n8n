@@ -9,6 +9,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { QueryFailedError } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@n8n/errors';
@@ -165,7 +166,11 @@ function makeService() {
 			eventService,
 			agentUpdateBroadcaster,
 			// Experiment cleanup (123_surface_mcp_to_claude_trial_users): remove only the mock<EventService>() argument.
-			new AgentModificationTelemetryService(telemetry, mock<EventService>()),
+			new AgentModificationTelemetryService(
+				telemetry,
+				mock<InstanceSettings>(),
+				mock<EventService>(),
+			),
 		),
 		new AgentDefinitionService(
 			agentTaskRepository,
