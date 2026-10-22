@@ -72,6 +72,37 @@ export class AgentRepository extends BaseRepository<Agent> {
 		await this.managerFor(ctx).insert(Agent, agent as QueryDeepPartialEntity<Agent>);
 	}
 
+	async findMissingVersionIds(take: number): Promise<string[]> {
+		const rows = await this.createQueryBuilder('agent')
+			.leftJoin('agent_history', 'history', 'history.versionId = agent.versionId')
+			.where(projectScopeSql)
+			.andWhere('history.versionId IS NULL')
+			.select(['agent.id'])
+			.orderBy('agent.id', 'ASC')
+			.take(take)
+			.getMany();
+		return rows.map(({ id }) => id);
+	}
+
+	async lockForVersionCapture(id: string, ctx: OperationContext): Promise<Agent | null> {
+		const manager = this.managerFor(ctx);
+		const agent = await manager.findOne(Agent, {
+			where: { id, scope: projectScope },
+			...(this.manager.connection.options.type === 'postgres'
+				? { lock: { mode: 'pessimistic_write' as const } }
+				: {}),
+		});
+		if (agent && !agent.versionId) {
+			agent.versionId = randomUUID();
+			await manager.update(
+				Agent,
+				{ id },
+				{ versionId: agent.versionId, updatedAt: agent.updatedAt },
+			);
+		}
+		return agent;
+	}
+
 	async hasRevision(id: string, revision: number): Promise<boolean> {
 		return await this.existsBy({ id, revision });
 	}

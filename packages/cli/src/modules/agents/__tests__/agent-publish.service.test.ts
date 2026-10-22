@@ -1,3 +1,4 @@
+import type { AgentPublishHistoryRepository } from '../repositories/agent-publish-history.repository';
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore a type-only EventService import; keep the import.
 import { EventService } from '@n8n/backend-services';
 import type { ToolDescriptor } from '@n8n/agents';
@@ -102,6 +103,7 @@ function makeTaskSnapshot(overrides: Partial<AgentTaskSnapshot> = {}): AgentTask
 function makeService() {
 	const agentRepository = mock<AgentRepository>();
 	const agentHistoryRepository = mock<AgentHistoryRepository>();
+	const publishHistory = mock<AgentPublishHistoryRepository>();
 	const taskSnapshotRepository = mock<AgentTaskSnapshotRepository>();
 	const agentTaskRepository = mock<AgentTaskRepository>();
 	const customToolsService = mock<AgentCustomToolsService>();
@@ -166,6 +168,7 @@ function makeService() {
 		),
 		new AgentDefinitionService(
 			agentTaskRepository,
+			agentHistoryRepository,
 			taskSnapshotRepository,
 			agentRepository,
 			transactionRunner,
@@ -173,9 +176,11 @@ function makeService() {
 		),
 		agentPolicyService,
 		skillRefs,
+		publishHistory,
 	);
 
 	return {
+		publishHistory,
 		service,
 		skillRefs,
 		agentPolicyService,
@@ -201,6 +206,22 @@ describe('AgentPublishService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		Container.reset();
+	});
+
+	it('records each publication transition in its transaction', async () => {
+		const { service, agentRepository, publishHistory, ctx } = makeService();
+		const agent = makeAgent();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		await service.publishAgent(agentId, projectId, user, byUser);
+		expect(publishHistory.record).toHaveBeenCalledWith(agentId, versionId, 'activated', user, ctx);
+		await service.unpublishAgent(agentId, projectId, user, 'user');
+		expect(publishHistory.record).toHaveBeenCalledWith(
+			agentId,
+			versionId,
+			'deactivated',
+			user,
+			ctx,
+		);
 	});
 
 	it('rejects publishing the current draft when validation reports it invalid', async () => {

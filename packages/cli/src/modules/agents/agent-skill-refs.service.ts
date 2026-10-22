@@ -392,13 +392,14 @@ export class AgentSkillRefsService {
 	async versionSnapshot(
 		agent: Pick<Agent, 'id' | 'schema' | 'skills'>,
 		ctx: OperationContext,
+		requireComplete = true,
 	): Promise<PublishSnapshot> {
 		if (!agent.schema) return { schema: null, skills: null, pins: new Map() };
 		if (!this.usesSkillsHub) {
 			const skillRefs = readLegacyRefs(agent.schema);
 			const skills = pickBodies(agent.skills ?? {}, skillRefs);
 			const missing = getMissingSkillIds(skillRefs, skills);
-			if (missing.length > 0) {
+			if (requireComplete && missing.length > 0) {
 				throw new UserError(
 					`Cannot publish agent with missing skill bodies: ${missing.join(', ')}`,
 				);
@@ -421,7 +422,7 @@ export class AgentSkillRefsService {
 			ctx,
 		);
 		const missing = refs.filter((ref) => !versionByRef.has(ref.id)).map((ref) => ref.id);
-		if (missing.length > 0) {
+		if (requireComplete && missing.length > 0) {
 			throw new UserError(`Cannot publish agent with missing skills: ${missing.join(', ')}`);
 		}
 		const schema = {
