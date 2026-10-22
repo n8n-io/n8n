@@ -8,7 +8,11 @@ import {
 	findStoredVerifierRun,
 	type StoredEvalResults,
 } from './eval-results-artifact';
-import { VERIFIER_RESPONSE_FORMAT } from './checklist/verifier';
+import {
+	supportsOpenAiReasoning,
+	VERIFIER_MAX_OUTPUT_TOKENS,
+	VERIFIER_RESPONSE_FORMAT,
+} from './checklist/verifier';
 import { MOCK_EXECUTION_VERIFY_PROMPT } from './system-prompts/mock-execution-verify';
 
 type Scenario = {
@@ -317,10 +321,17 @@ function getWorkflowJson(workflowId: string): WorkflowJson {
 	return jsonParse<WorkflowJson>(row);
 }
 
-/** The OpenAI Responses request the verifier sends, with the verifier's own response format. */
+/**
+ * The OpenAI Responses request the verifier sends: its response format, output limit and
+ * reasoning effort, so a replay truncates and reasons the way the live judge does.
+ */
 function buildVerifierRequestBody(userMessage: string) {
+	const model =
+		(process.env.N8N_INSTANCE_AI_MODEL ?? 'openai/gpt-5.5').split('/').at(-1) ?? 'gpt-5.5';
 	return {
-		model: (process.env.N8N_INSTANCE_AI_MODEL ?? 'openai/gpt-5.5').split('/').at(-1) ?? 'gpt-5.5',
+		model,
+		max_output_tokens: VERIFIER_MAX_OUTPUT_TOKENS,
+		...(supportsOpenAiReasoning(model) ? { reasoning: { effort: 'high' } } : {}),
 		input: [
 			{
 				role: 'developer',

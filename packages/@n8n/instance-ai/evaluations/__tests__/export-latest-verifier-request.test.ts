@@ -1,3 +1,4 @@
+import { VERIFIER_MAX_OUTPUT_TOKENS } from '../checklist/verifier';
 import { findStoredTestCaseResult, findStoredVerifierRun } from '../eval-results-artifact';
 import { buildVerifierRequestBody, getScenarios } from '../export-latest-verifier-request';
 
@@ -90,5 +91,12 @@ describe('export-latest-verifier-request helpers', () => {
 		const keys = ['id', 'reasoning', 'pass', 'failureCategory', 'rootCause'];
 		expect(Object.keys(item.properties)).toEqual(keys);
 		expect(item.required).toEqual(keys);
+	});
+
+	it('sends the same output limit and reasoning effort as the live verifier', () => {
+		const body = buildVerifierRequestBody('user message');
+
+		expect(body.max_output_tokens).toBe(VERIFIER_MAX_OUTPUT_TOKENS);
+		expect(body.reasoning).toEqual({ effort: 'high' });
 	});
 });
