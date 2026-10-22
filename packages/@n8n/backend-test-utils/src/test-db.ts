@@ -283,9 +283,7 @@ export async function truncate(entities: EntityName[]) {
 			}
 			continue;
 		}
-		// A delete through `User` filters on `kind`. 'User' has always meant the whole
-		// `user` table, so delete through the root entity to remove service accounts too.
-		await connection.getRepository(name === 'User' ? 'Actor' : name).delete({});
+		await connection.getRepository(name).delete({});
 	}
 }
 

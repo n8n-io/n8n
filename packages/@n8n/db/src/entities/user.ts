@@ -1,11 +1,25 @@
-import { ChildEntity, Column, Index, OneToMany } from '@n8n/typeorm';
+import type { AuthPrincipal, PrincipalType } from '@n8n/permissions';
+import {
+	AfterLoad,
+	AfterUpdate,
+	BeforeInsert,
+	BeforeUpdate,
+	Column,
+	Entity,
+	Index,
+	JoinColumn,
+	ManyToOne,
+	OneToMany,
+	PrimaryGeneratedColumn,
+	TableInheritance,
+} from '@n8n/typeorm';
 import type { IUser, IUserSettings } from 'n8n-workflow';
 
-import { JsonColumn } from './abstract-entity';
-import { Actor } from './actor';
+import { JsonColumn, WithTimestamps } from './abstract-entity';
 import type { ApiKey } from './api-key';
 import type { AuthIdentity } from './auth-identity';
 import type { ProjectRelation } from './project-relation';
+import { Role } from './role';
 import type { SharedCredentials } from './shared-credentials';
 import type { SharedWorkflow } from './shared-workflow';
 import type { IPersonalizationSurveyAnswers } from './types-db';
@@ -13,10 +27,35 @@ import { GLOBAL_OWNER_ROLE } from '../constants';
 import { isValidEmail } from '../utils/is-valid-email';
 import { lowerCaser, objectRetriever } from '../utils/transformers';
 
-/** The account of a person. Lives in the `user` table with `kind = 'person'`. Shared columns are on `Actor`. */
-@ChildEntity('person')
-export class User extends Actor implements IUser {
-	declare readonly kind: 'person';
+/** The same values a `Principal` carries, so a `User` maps to a `Principal` without translation. */
+export type UserKind = PrincipalType;
+
+/**
+ * An account: a person or a service account. Both live in the `user` table,
+ * and the `kind` column tells them apart. TypeORM maps each row to its child
+ * entity, `Person` or `ServiceAccount`.
+ *
+ * A query through `User` returns both kinds. Use `PersonRepository` when only
+ * a person may appear.
+ *
+ * A `new User()` is a person: `kind` defaults to `'person'`, and TypeORM
+ * saves a value under the child that its `kind` names. Build a service
+ * account with `new ServiceAccount()`.
+ */
+@Entity()
+@TableInheritance({ column: 'kind' })
+export class User extends WithTimestamps implements IUser, AuthPrincipal {
+	@PrimaryGeneratedColumn('uuid')
+	id: string;
+
+	/**
+	 * TypeORM picks the child entity from this value on save, and sets it from
+	 * the row on load. The initializer makes a bare `User` a person. The column
+	 * default makes TypeORM read the value back after an insert. `update: false`
+	 * keeps an update from moving an account to the other kind.
+	 */
+	@Column({ type: 'varchar', length: 16, default: 'person', update: false })
+	readonly kind: UserKind = 'person';
 
 	@Column({
 		length: 254,
@@ -44,6 +83,10 @@ export class User extends Actor implements IUser {
 	@JsonColumn({ nullable: true })
 	settings: IUserSettings | null;
 
+	@ManyToOne(() => Role)
+	@JoinColumn({ name: 'roleSlug', referencedColumnName: 'slug' })
+	role: Role;
+
 	@OneToMany('AuthIdentity', 'user')
 	authIdentities: AuthIdentity[];
 
@@ -59,7 +102,12 @@ export class User extends Actor implements IUser {
 	@OneToMany('ProjectRelation', 'user')
 	projectRelations: ProjectRelation[];
 
-	override preUpsertHook(): void {
+	@Column({ type: Boolean, default: false })
+	disabled: boolean;
+
+	@BeforeInsert()
+	@BeforeUpdate()
+	preUpsertHook(): void {
 		this.email = this.email?.toLowerCase() ?? null;
 
 		// Validate email if present (including empty strings)
@@ -71,8 +119,14 @@ export class User extends Actor implements IUser {
 		}
 	}
 
+	@Column({ type: Boolean, default: false })
+	mfaEnabled: boolean;
+
 	@Column({ type: String, nullable: true })
 	mfaSecret?: string | null;
+
+	@Column({ type: 'simple-array', default: '' })
+	mfaRecoveryCodes: string[];
 
 	@Column({ type: 'date', nullable: true })
 	lastActiveAt?: Date | null;
@@ -82,10 +136,8 @@ export class User extends Actor implements IUser {
 	 */
 	isPending: boolean;
 
-	override postLoadHook(): void {
-		this.computeIsPending();
-	}
-
+	@AfterLoad()
+	@AfterUpdate()
 	computeIsPending(): void {
 		const hasExternalAuthIdentity =
 			this.authIdentities?.some((identity) => identity.providerType !== 'email') ?? false;
@@ -95,7 +147,7 @@ export class User extends Actor implements IUser {
 			this.role?.slug !== GLOBAL_OWNER_ROLE.slug;
 	}
 
-	override toJSON() {
+	toJSON() {
 		const { password, mfaSecret, mfaRecoveryCodes, ...rest } = this;
 		return rest;
 	}

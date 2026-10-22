@@ -151,7 +151,7 @@ export {
 	type NodeUsageScope,
 } from './workflow-dependency.repository';
 export { WebhookRepository } from './webhook.repository';
-export { ActorRepository } from './actor.repository';
+export { PersonRepository } from './person.repository';
 export { ServiceAccountRepository } from './service-account.repository';
 export { UserRepository } from './user.repository';
 export { SecretsProviderConnectionRepository } from './secrets-provider-connection.repository.ee';
