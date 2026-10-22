@@ -117,6 +117,7 @@ import {
 	createLlmMockHandler,
 	extractDateFilterConstraints,
 	findDateFilterViolations,
+	isPlaceholderHost,
 } from '../mock-handler';
 import { extractNodeConfig } from '../node-config';
 
@@ -807,6 +808,92 @@ describe('prompt construction', () => {
 
 		const prompt = mockGenerate.mock.calls[0][0];
 		expect(prompt).toContain('GET');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Placeholder API hosts — reserved example names have no real API to recall
+// ---------------------------------------------------------------------------
+
+describe('placeholder API hosts', () => {
+	it.each([
+		'api.example.com',
+		'API.Example.COM',
+		'api.ticketdesk.example.com',
+		'example.org',
+		'example.net',
+		'helpdesk.acme-demo.test',
+		'billing.invalid',
+		'shop.example',
+		'app.localhost',
+	])('treats %s as a placeholder host', (hostname) => {
+		expect(isPlaceholderHost(hostname)).toBe(true);
+	});
+
+	it.each([
+		'api.slack.com',
+		'example.com.evil.io',
+		'notexample.com',
+		'api.internal',
+		'printer.local',
+		'test',
+		undefined,
+	])('treats %s as a real host', (hostname) => {
+		expect(isPlaceholderHost(hostname)).toBe(false);
+	});
+
+	it('asks a placeholder host for the stated layout, else a bare array', async () => {
+		llmSubmits({ type: 'json', body: [] });
+		const handler = createLlmMockHandler();
+
+		await handler({ url: 'https://api.example.com/v1/orders?status=paid', method: 'GET' }, {
+			name: 'Fetch Orders',
+			type: 'n8n-nodes-base.httpRequest',
+		} as INode);
+
+		const prompt = mockGenerate.mock.calls[0][0];
+		expect(prompt).toContain('## Placeholder API');
+		expect(prompt).toContain('bare top-level JSON array');
+		expect(prompt).not.toContain('No API documentation is attached');
+	});
+
+	it('keeps the API-knowledge note for a real host', async () => {
+		llmSubmits({ type: 'json', body: {} });
+		const handler = createLlmMockHandler();
+
+		await handler(baseRequest, baseNode);
+
+		const prompt = mockGenerate.mock.calls[0][0];
+		expect(prompt).toContain('No API documentation is attached');
+		expect(prompt).not.toContain('## Placeholder API');
+	});
+
+	it('passes a layout stated in the scenario to a placeholder host', async () => {
+		llmSubmits({ type: 'json', body: [] });
+		const scenarioHints =
+			'The ticket API GET returns three open tickets: [{ "id": "T-1", "priority": "high" }]';
+		const handler = createLlmMockHandler({ scenarioHints });
+
+		await handler(
+			{ url: 'https://api.ticketdesk.example.com/v1/tickets?status=open', method: 'GET' },
+			{ name: 'Fetch Open Tickets', type: 'n8n-nodes-base.httpRequest' } as INode,
+		);
+
+		const prompt = mockGenerate.mock.calls[0][0];
+		expect(prompt).toContain('## Placeholder API');
+		expect(prompt).toContain(scenarioHints);
+	});
+
+	it('lets the Placeholder API section override the layout rule', async () => {
+		llmSubmits({ type: 'json', body: {} });
+		const handler = createLlmMockHandler();
+
+		await handler(baseRequest, baseNode);
+
+		const { instructions } = vi.mocked(createEvalAgent).mock.calls.at(-1)![1] as {
+			instructions: string;
+		};
+		expect(instructions).toContain('Placeholder API section');
 	});
 });
 
