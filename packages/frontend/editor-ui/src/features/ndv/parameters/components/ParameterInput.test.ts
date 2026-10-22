@@ -1387,6 +1387,7 @@ describe('ParameterInput.vue', () => {
 		function renderModelParam(
 			getModels: () => Promise<Array<{ name: string; value: string }>>,
 			modelValue: string = 'gpt-3.5-turbo',
+			isReadOnly = false,
 		) {
 			mockNodeTypesState.getNodeParameterOptions = vi.fn(getModels);
 			const activeNode = reactive({
@@ -1413,6 +1414,7 @@ describe('ParameterInput.vue', () => {
 						typeOptions: { loadOptionsMethod: 'getModels' },
 					}),
 					modelValue,
+					isReadOnly,
 				},
 			});
 			return { emitted, activeNode };
@@ -1482,6 +1484,16 @@ describe('ParameterInput.vue', () => {
 			const { emitted, activeNode } = renderModelParam(async () => []);
 			await switchCredentialsAndReload(activeNode);
 			await expectModelResetToDefault(emitted);
+		});
+
+		test('should keep the value and load nothing when credentials change in read-only mode', async () => {
+			const { emitted, activeNode } = renderModelParam(async () => [], 'gpt-3.5-turbo', true);
+			activeNode.credentials = { openAiApi: { id: '2', name: 'OpenAI Account 2' } };
+			await nextTick();
+			await flushPromises();
+
+			expect(mockNodeTypesState.getNodeParameterOptions).not.toHaveBeenCalled();
+			expect(emitted('update')).toBeUndefined();
 		});
 
 		test('should not apply a stale reload when credentials change again mid-load', async () => {

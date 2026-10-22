@@ -34,10 +34,7 @@ describe('rolesWithScope', () => {
 				['credential:connect', 'credential:update'],
 			);
 
-			expect(roles).toEqual(
-				expect.arrayContaining(['project:admin', 'project:personalOwner', 'project:editor']),
-			);
-			expect(roles).not.toContain('project:viewer');
+			expect(roles).toEqual(['project:admin', 'project:personalOwner', 'project:editor']);
 		});
 
 		test('returns no role when none holds one of the extra scopes', () => {

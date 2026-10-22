@@ -404,6 +404,8 @@ const createRequestParams = async (methodName: string) => {
 };
 
 async function fetchFields(): Promise<ResourceMapperFields | null> {
+	// A read-only view keeps the saved schema; no refresh path may load fields.
+	if (props.isReadOnly) return null;
 	const { resourceMapperMethod, localResourceMapperMethod } =
 		props.parameter.typeOptions?.resourceMapper ?? {};
 

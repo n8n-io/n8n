@@ -1480,7 +1480,8 @@ onBeforeUnmount(() => {
 watch(
 	() => node.value?.credentials,
 	async (newCredentials, oldCredentials) => {
-		if (!hasRemoteMethod.value || !node.value) return;
+		// Read-only: no options are loaded, so there is nothing to validate the value against.
+		if (!hasRemoteMethod.value || !node.value || props.isReadOnly) return;
 		await loadRemoteParameterOptions();
 		// Credentials changed again while loading — a newer run will validate the fresh results.
 		if (!node.value || node.value.credentials !== newCredentials) return;
