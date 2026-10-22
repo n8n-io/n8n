@@ -369,3 +369,58 @@ packages/cli/src/modules/promotions.ee/__tests__/promotions-git.integration.test
     }
   }
 }
+
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_2cc11fea2f54fd::t_c8d06c8f4d5665 14,25,41,834,837-840,845,852,856,859,862-866,868-873,943,946-951,953,955,957-958,975-980,983-1001,1023-1024,1026,1037-1041,1098-1111,1113-1128
+  s_2cc11fea2f54fd::t_3593d01e803c96 17,918-920
+  s_ff8b9aa92a9930::t_8addefa9e8c921 21,54,770-781
+  s_2cc11fea2f54fd::t_175d814c1a885e 38,44,826-827,830-833,835-836,841-842,846-851,853-855,857-858,860-861,867,874-894,897-917,921-942,944-945,952,954,965-974,981-982,1002-1020,1025,1027-1036,1042-1043,1046-1048,1051-1052,1054-1078,1082-1090,1093,1129
+  s_2cc11fea2f54fd::t_bdc5855132f915 216,523,586,668
+  s_ff8b9aa92a9930::t_a57a4b24200961 755,757,760,765,769,782-792,794,796-808,810-824
+  s_13fdf695fc0ff1::t_6cc310bef95231 793,795,809
+  s_2cc11fea2f54fd::t_019a9ad4ee92bc 956,961-964
+  s_a0c92b179996b0::t_b4835d395cf11a 1044
+  s_2cc11fea2f54fd::t_8f42ef7456d2a6 1045,1053,1079-1080,1091-1092,1094-1097
+  s_2cc11fea2f54fd::t_20d581c610e955 1130
+  s_ff8b9aa92a9930::t_e29aeaee85c3d6 825
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8832e9b23037cc3fde88349fb13cc25d02eac32b",
+  "prompts": {},
+  "sessions": {
+    "s_13fdf695fc0ff1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d68ad11-e5a3-42cc-a4cf-9389fb57dfde",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_2cc11fea2f54fd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2424be1e-cf29-4877-a74e-de56398714d7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_a0c92b179996b0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b56759c2-2e98-4e80-abcb-5f332f8ff366",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_ff8b9aa92a9930": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0f5ab687-045b-4fa4-82f0-836e06007165",
+        "model": "unknown"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

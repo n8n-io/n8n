@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/InvoiceNinja/__tests__/InvoiceNinja.node.test.ts
+  s_f859a12f4761c3::t_df9624add5227b 1-2,6-7,9-14,17-18,20,26-30,32-54
+  s_f859a12f4761c3::t_7a1bcdba2553f7 15-16,23-24
+packages/nodes-base/nodes/InvoiceNinja/InvoiceNinja.node.ts
+  s_f859a12f4761c3::t_84a380fd1ca44e 319,323-324
+  s_f859a12f4761c3::t_7a1bcdba2553f7 318
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0219ac9d531a7fbf56c3ee5cc869b860fafea996",
+  "prompts": {},
+  "sessions": {
+    "s_f859a12f4761c3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f3a0c33d-9118-489a-984c-33ed821e24b2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

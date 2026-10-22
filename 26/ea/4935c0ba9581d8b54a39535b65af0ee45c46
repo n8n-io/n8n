@@ -1,0 +1,14 @@
+packages/cli/src/modules/mcp/__tests__/mcp-protected-resource.test.ts
+  h_52a137d26d774c 33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "26ea4935c0ba9581d8b54a39535b65af0ee45c46",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
