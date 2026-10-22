@@ -38,6 +38,6 @@ export class MyFeatureService {
 	}
 
 	async getSummary() {
-		return await this.myFeatureRepository.getSummary();
+		return await this.myFeatureRepository.getSummary({});
 	}
 }

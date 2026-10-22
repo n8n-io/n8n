@@ -34,11 +34,14 @@ const systemRow = async () => await rows.findOneByOrFail({ id: ID });
 
 const dueIds = async () =>
 	(
-		await Container.get(TrustedSourceRepository).findDue({
-			errorRetrySeconds: ERROR_RETRY_SECONDS,
-			healthyRefreshSeconds: HEALTHY_REFRESH_SECONDS,
-			limit: 10,
-		})
+		await Container.get(TrustedSourceRepository).findDue(
+			{
+				errorRetrySeconds: ERROR_RETRY_SECONDS,
+				healthyRefreshSeconds: HEALTHY_REFRESH_SECONDS,
+				limit: 10,
+			},
+			{},
+		)
 	).map((row) => row.id);
 
 const adminConfig: TrustedSourceConfigInput = {
