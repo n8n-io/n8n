@@ -5,6 +5,7 @@ import type { CredentialsEntity, User, UserRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import type { Cipher } from 'n8n-core';
 
+import type { ManagedAuthState } from '@/interfaces';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import {
 	type CredentialsFinderService,
@@ -1244,7 +1245,7 @@ describe('Slack setup services', () => {
 	});
 
 	describe('a manager credential that cannot use the managed app', () => {
-		const setUp = (state: 'missing-app' | 'not-managed') => {
+		const setUp = (state: Exclude<ManagedAuthState, 'managed'>) => {
 			credentialsOverwrites.getOverwrites.mockReturnValue({
 				clientId: 'client',
 				clientSecret: 'secret',

@@ -8,7 +8,7 @@ import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { deepCopy, IMPLICIT_MANAGED_VERSION, jsonParse, UserError } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
-import type { ICredentialsOverwrite, ManagedVersionEntry } from '@/interfaces';
+import type { ICredentialsOverwrite, ManagedAuthState, ManagedVersionEntry } from '@/interfaces';
 import {
 	hasEmptyClientFields,
 	hasClientFields,
@@ -417,16 +417,8 @@ export class CredentialsOverwrites {
 		return this.getManagedAuthState(type, data) === 'managed';
 	}
 
-	/**
-	 * How a credential relates to the managed app of its type:
-	 * - `managed`: applying the overwrite fills a value.
-	 * - `missing-app`: the credential is bound to a version that no app has any more. It needs a reconnect.
-	 * - `not-managed`: no overwrite applies, because there is none or the credential has its own client.
-	 */
-	getManagedAuthState(
-		type: string,
-		data: Record<string, unknown>,
-	): 'managed' | 'missing-app' | 'not-managed' {
+	/** How a credential relates to the managed app of its type. See `ManagedAuthState`. */
+	getManagedAuthState(type: string, data: Record<string, unknown>): ManagedAuthState {
 		const overwrites = this.get(type);
 		if (overwrites === undefined) return 'not-managed';
 

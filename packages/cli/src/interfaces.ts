@@ -41,6 +41,14 @@ export interface ICredentialsOverwrite {
 /** Client fields of one managed OAuth app, with the version that identifies it. */
 export type ManagedVersionEntry = ICredentialDataDecryptedObject & { version: number };
 
+/**
+ * How a credential relates to the managed app of its type.
+ * - `managed`: the overwrite supplies the client of the credential.
+ * - `missing-app`: the credential is bound to a version that no app has any more. It needs a reconnect.
+ * - `not-managed`: no overwrite applies, because there is none or the credential has its own client.
+ */
+export type ManagedAuthState = 'managed' | 'missing-app' | 'not-managed';
+
 /** An overwrite payload after parsing: the base entries and the newer app of each type in a rollout. */
 export interface ParsedCredentialsOverwrites {
 	entries: ICredentialsOverwrite;
