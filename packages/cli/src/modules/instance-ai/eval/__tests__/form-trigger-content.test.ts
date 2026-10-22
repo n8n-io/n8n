@@ -142,6 +142,15 @@ describe('normalizeFormTriggerContent', () => {
 			});
 		});
 
+		it('renames a key that differs from the label only in punctuation', () => {
+			const node = formNode([{ fieldLabel: 'Customer (ID)', fieldType: 'text' }]);
+
+			expect(normalizeFormTriggerContent(node, { 'Customer ID': 'CUST-4821' }, NOW)).toEqual({
+				'Customer (ID)': 'CUST-4821',
+				...FORM_FIELDS_ADDED,
+			});
+		});
+
 		it('renames to the field label before typeVersion 2.4', () => {
 			const node = formNode(
 				[{ fieldLabel: 'Full Name', fieldName: 'fullName', fieldType: 'text' }],

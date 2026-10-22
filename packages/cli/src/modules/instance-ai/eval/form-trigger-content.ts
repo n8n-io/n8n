@@ -36,8 +36,9 @@ function nonEmpty(value: unknown): string | undefined {
 	return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
 
+/** Case, whitespace, punctuation and symbols removed: `Customer (ID)` and `customer_id` agree. */
 function normalizeKey(key: string): string {
-	return key.toLowerCase().replace(/[\s_-]+/g, '');
+	return key.toLowerCase().replace(/[\s\p{P}\p{S}]+/gu, '');
 }
 
 function declaredFields(node: INode): DeclaredField[] {
@@ -91,6 +92,7 @@ function rekeyToDeclaredFields(
 	for (const key of Object.keys(content)) {
 		if (emittedKeys.has(key) || FORM_OUTPUT_KEYS.has(key)) continue;
 		const normalized = normalizeKey(key);
+		if (normalized === '') continue;
 		const matches = fields.filter((field) =>
 			field.spellings.some((spelling) => normalizeKey(spelling) === normalized),
 		);
