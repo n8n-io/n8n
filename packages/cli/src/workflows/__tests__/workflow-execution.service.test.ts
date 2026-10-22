@@ -1062,10 +1062,9 @@ describe('WorkflowExecutionService', () => {
 			});
 
 			test('starts the run from a pinned trigger without registering the unpinned form trigger', async () => {
-				const workflowData = toWorkflowData([webhookNode, secondWebhookNode, formTriggerNode], {
+				const workflowData = toWorkflowData([webhookNode, formTriggerNode], {
 					pinData: {
 						[webhookNode.name]: [{ json: {} }],
-						[secondWebhookNode.name]: [{ json: {} }],
 					},
 				});
 				const runPayload: WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload = {
@@ -1082,9 +1081,7 @@ describe('WorkflowExecutionService', () => {
 				expect(defaultTestWebhooks.registerWebhooks).not.toHaveBeenCalled();
 				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 				const [runData] = workflowRunner.run.mock.calls[0];
-				expect([webhookNode.name, secondWebhookNode.name]).toContain(
-					runData.triggerToStartFrom?.name,
-				);
+				expect(runData.triggerToStartFrom?.name).toEqual(webhookNode.name);
 				expect(result).toEqual({ executionId: 'fake-execution-id' });
 			});
 
