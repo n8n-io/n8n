@@ -56,7 +56,7 @@ const updateSkillInput = {
 		'skillHash from get_skill. The update is refused if the skill changed since',
 	),
 	scope: SaveSkillDto.schema.shape.scope.describe(
-		'Moves the skill. Refused while an Agent uses it',
+		'Moves the skill. Refused if an Agent that uses the skill cannot use it in the new scope',
 	),
 } satisfies z.ZodRawShape;
 

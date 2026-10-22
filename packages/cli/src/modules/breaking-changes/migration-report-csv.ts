@@ -1,4 +1,8 @@
-import type { BreakingChangeLightReportResult, BreakingChangeVersion } from '@n8n/api-types';
+import type {
+	BreakingChangeLightReportResult,
+	BreakingChangeRuleImpact,
+	BreakingChangeVersion,
+} from '@n8n/api-types';
 
 /**
  * One flat table: one row per rule that fired, with the instance totals
@@ -15,10 +19,21 @@ const COLUMNS = [
 	'rule_id',
 	'rule_title',
 	'impact',
+	'impact_label',
 	// Open and notified findings: a notification does not resolve a finding.
 	'unresolved_workflows',
 	'wont_fix_workflows',
 ] as const;
+
+// The same labels as the impact badge in the editor (`settings.migrationReport.impact.*`).
+// The backend has no i18n, so a spreadsheet reads the English label.
+const IMPACT_LABELS: Record<BreakingChangeRuleImpact, string> = {
+	upgradeBlocked: 'Upgrade blocked',
+	executionsFail: 'Executions will fail',
+	executionsMightFail: 'Executions might fail',
+	behaviorChanges: 'Behavior changes',
+	capabilityRemoved: 'Capability removed',
+};
 
 type CsvValue = string | number | undefined;
 
@@ -52,6 +67,7 @@ export function toMigrationReportCsv(result: BreakingChangeLightReportResult): s
 			rule.ruleId,
 			rule.ruleTitle,
 			rule.ruleImpact,
+			IMPACT_LABELS[rule.ruleImpact],
 			rule.nbAffectedWorkflows,
 			rule.nbWontFixWorkflows,
 		]),
@@ -61,6 +77,7 @@ export function toMigrationReportCsv(result: BreakingChangeLightReportResult): s
 			rule.ruleId,
 			rule.ruleTitle,
 			rule.ruleImpact,
+			IMPACT_LABELS[rule.ruleImpact],
 			undefined,
 			undefined,
 		]),

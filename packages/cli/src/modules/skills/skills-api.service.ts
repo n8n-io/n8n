@@ -142,6 +142,8 @@ export class SkillsApiService {
 			return { id: skillId, ...saved, skillHash: getSkillHash(saved.skill) };
 		}
 
+		// A refused move names only the agents the user may read, as the detail does.
+		const agentProjectIds = await this.projectScopeService.getProjectIds(user, ['agent:read']);
 		// One transaction, so a refused save does not leave the skill moved. The move runs
 		// first and checks the final name in the new scope only: a name that only the old
 		// scope holds does not block it. The save then checks a rename in the new scope too.
@@ -149,6 +151,7 @@ export class SkillsApiService {
 			await this.skillService.changeTarget(skillId, target, undefined, ctx, {
 				nameAfterMove: update.name,
 				checkedSource,
+				agentProjectIds: agentProjectIds ?? 'all',
 			});
 			return await this.skillService.save(skillId, update, user.id, ctx);
 		});
