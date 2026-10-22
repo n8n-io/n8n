@@ -39,15 +39,18 @@ const formattedCreatedAt = computed(() => {
 const status = computed(() =>
 	props.item.isActive ? 'published' : props.item.isCurrent ? 'latest' : 'default',
 );
-const statusLabel = computed(() =>
-	i18n.baseText(
-		props.item.isActive
-			? 'agents.versionHistory.item.publishedBadge'
-			: props.item.isCurrent
-				? 'agents.versionHistory.item.currentDraft'
-				: 'agents.versionHistory.item.savedVersion',
-	),
-);
+
+const statusLabel = computed(() => {
+	if (props.item.isActive) {
+		return i18n.baseText('agents.versionHistory.item.publishedBadge');
+	}
+
+	if (props.item.isCurrent) {
+		return i18n.baseText('agents.versionHistory.item.currentDraft');
+	}
+
+	return i18n.baseText('agents.versionHistory.item.savedVersion');
+});
 
 const statusTooltip = computed(() => {
 	const publication = props.item.lastPublished;
