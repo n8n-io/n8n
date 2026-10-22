@@ -346,12 +346,18 @@ export const policyViolationIssueOpenApi: ZodOpenAPIMetadata = {
 
 export const credentialPolicyViolationFieldDocs = {
 	sourceId: { description: 'Credential id as it appears in the package.' },
+	targetId: {
+		description:
+			'Id of the matched credential on the target instance. Set when the policy refused an ' +
+			'update of this credential under `credentialConflictPolicy=overwrite`. Absent when the ' +
+			'policy refused a credential that the import would create.',
+	},
 	usedBy: { description: 'Package consumers that use this credential.' },
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
 
 export const credentialPolicyViolationIssueOpenApi: ZodOpenAPIMetadata = {
 	description:
-		'A credential the import would write that the credential-save policy refused, for ' +
-		'example a stub of a credential type this instance does not allow. The import stops ' +
-		'before any writes.',
+		'A credential the import would write that a credential-save or content-import policy ' +
+		'refused, for example a stub of a credential type this instance does not allow, or an ' +
+		'update of a matched credential. The import stops before any writes.',
 };

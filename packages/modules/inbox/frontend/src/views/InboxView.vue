@@ -15,6 +15,7 @@ import { INBOX_VIEW, type InboxItemChange } from '../inbox.constants';
 import { inboxItemLocation, isInboxRoute, selectionFromRoute } from '../inbox.routes';
 import { useInboxStore } from '../inbox.store';
 import WorkflowReviewDetail from '../reviews/WorkflowReviewDetail.vue';
+import PromotionReviewDetail from '../promotions/PromotionReviewDetail.vue';
 import SelfHealingResultDetail from '../self-healing/SelfHealingResultDetail.vue';
 
 const store = useInboxStore();
@@ -52,6 +53,9 @@ const selectedListItem = computed(() =>
 );
 const selectedReviewItem = computed(() =>
 	selectedListItem.value?.type === 'workflow_review' ? selectedListItem.value : undefined,
+);
+const selectedPromotionItem = computed(() =>
+	selectedListItem.value?.type === 'promotion_review' ? selectedListItem.value : undefined,
 );
 const detailTab = computed(() => (route.query.tab === 'changes' ? 'changes' : 'activity'));
 let isMounted = false;
@@ -194,6 +198,12 @@ onBeforeUnmount(() => {
 								!store.disabledSources.includes(selection.type)
 							"
 							:selection="selection"
+						/>
+						<PromotionReviewDetail
+							v-else-if="
+								selectedPromotionItem && !store.disabledSources.includes('promotion_review')
+							"
+							:item="selectedPromotionItem"
 						/>
 						<InboxEmptyState v-else />
 					</div>

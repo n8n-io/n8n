@@ -15,6 +15,14 @@ import { UserError } from 'n8n-workflow';
 import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { findIntroducedNameClashes, findNameClashGroups } from '@/modules/skills/skill-names';
+import type { SkillTarget } from '@/modules/skills/skill.repository';
+import { SkillService, withTrimmedName } from '@/modules/skills/skill.service';
+import {
+	SkillsTelemetry,
+	type SkillTelemetryMethod,
+	type SkillTelemetrySource,
+} from '@/modules/skills/skills-telemetry';
 
 import {
 	type AgentMutationTelemetryContext,
@@ -26,14 +34,6 @@ import type { Agent } from './entities/agent.entity';
 import { composeJsonConfig } from './json-config/agent-config-composition';
 import type { AgentSkillRefs } from './json-config/agent-document';
 import { AgentRepository } from './repositories/agent.repository';
-import { findIntroducedNameClashes, findNameClashGroups } from './skills/skill-names';
-import type { SkillTarget } from './repositories/skill.repository';
-import { SkillService, withTrimmedName } from './skills/skill.service';
-import {
-	SkillsTelemetry,
-	type SkillTelemetryMethod,
-	type SkillTelemetrySource,
-} from './skills/skills-telemetry';
 import { getAgentConfigHash, getAgentSkillHash } from './utils/agent-config-hash';
 import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';

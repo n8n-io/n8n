@@ -49,17 +49,19 @@ describe('useInstancePromotionConnection', () => {
 		expect(hasPromoteConfig.value).toBe(false);
 	});
 
-	it('should treat a failed lookup as no environment and retry on the next load', async () => {
+	it('should report a failed lookup and retry on the next load', async () => {
 		vi.mocked(api.fetchPromotionEnvironments)
 			.mockRejectedValueOnce(new Error('offline'))
 			.mockResolvedValueOnce([applyEnvironment]);
-		const { environments, load } = useInstancePromotionConnection();
+		const { environments, failed, load } = useInstancePromotionConnection();
 
 		await load();
 		expect(environments.value).toEqual([]);
+		expect(failed.value).toBe(true);
 
 		await load();
 		expect(environments.value).toEqual([applyEnvironment]);
+		expect(failed.value).toBe(false);
 		expect(api.fetchPromotionEnvironments).toHaveBeenCalledTimes(2);
 	});
 

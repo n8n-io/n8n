@@ -693,6 +693,11 @@ export {
 	OtelTestTraceRequestPublicDto,
 	OtelTestTraceResultPublicDto,
 } from './otel/otel-test-trace-public.dto';
+export {
+	UpdatePublicApiRateLimitSettingsDto,
+	type PublicApiRateLimitSettings,
+	type PublicApiRateLimitSettingsResponse,
+} from './public-api-rate-limit-settings/update-public-api-rate-limit-settings.dto';
 
 export {
 	PromotionChangesDto,
@@ -797,6 +802,7 @@ export {
 	type PromotionEnvironmentSummary,
 } from './promotions/promotion-environment.dto';
 export {
+	ApplyCheckQueryDto,
 	ApplyPackageDto,
 	ApplyPackageResultDto,
 	ApplySelectionDto,
@@ -811,6 +817,7 @@ export {
 	promotionGitResultSchema,
 	promotionPromoteWarningSchema,
 	type PromotionPromoteWarning,
+	type ApplyCheckResult,
 } from './promotions/promotion-operations.dto';
 export {
 	parsePromotionRunDetails,
@@ -842,6 +849,7 @@ export {
 	type PromotionReviewResult,
 	type PromotionReviewChangeKind,
 	type PromotionReviewRemote,
+	type PromotionReviewRemoteError,
 	type PromotionReviewState,
 	type PromotionReviewSummary,
 	type PromotionReviewType,

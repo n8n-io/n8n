@@ -233,4 +233,8 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		description:
 			'Allows importing all projects from a Git connection working copy into the instance.',
 	},
+	'gitConnection:readReviews': {
+		displayName: 'Read promotion reviews',
+		description: 'Allows listing promotion reviews and reading their state from the Git host.',
+	},
 };

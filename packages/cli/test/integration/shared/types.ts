@@ -56,6 +56,7 @@ type EndpointGroup =
 	| 'module-settings'
 	| 'promotions'
 	| 'security-settings'
+	| 'public-api-rate-limit-settings'
 	| 'data-table'
 	| 'third-party-licenses'
 	| 'mcp'

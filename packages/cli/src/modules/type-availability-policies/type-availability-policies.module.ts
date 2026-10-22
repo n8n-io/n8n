@@ -35,6 +35,12 @@ export class TypeAvailabilityPoliciesModule implements ModuleInterface {
 		Container.get(RestrictedNodeTypesProviderProxy).registerProvider(
 			Container.get(NodeTypePolicyRestrictedTypesProvider),
 		);
+
+		// Loaded before the process takes work, so the first decision already reads memory.
+		const { TypeAvailabilityPolicySnapshot } = await import(
+			'./type-availability-policy-snapshot.js'
+		);
+		await Container.get(TypeAvailabilityPolicySnapshot).start();
 	}
 
 	async entities() {
