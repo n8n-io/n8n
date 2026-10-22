@@ -19,6 +19,93 @@ describe('useAgentTelemetry', () => {
 		trackMock.mockReset();
 	});
 
+	it.each(['build', 'sessions', 'knowledge', 'settings'] as const)(
+		'tracks the %s tab with editor context',
+		(name) => {
+			useAgentTelemetry().trackClickedAgentsTab({ agentId: 'ag-1', name });
+			expect(trackMock).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.AGENTS.USER_CLICKED_AGENTS_TAB,
+				{ agent_id: 'ag-1', session_id: 'session-xyz', name },
+			);
+		},
+	);
+
+	it('tracks knowledge upload with only editor context', () => {
+		useAgentTelemetry().trackClickedKnowledgeUpload({ agentId: 'ag-1' });
+		expect(trackMock).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_KNOWLEDGE_UPLOAD,
+			{ agent_id: 'ag-1', session_id: 'session-xyz' },
+		);
+	});
+
+	it.each([
+		'user',
+		'agent',
+		'skill',
+		'tool',
+		'node',
+		'workflow',
+		'execution-error',
+		'suspension',
+		'hitl-response',
+		'background-task-signal',
+	] as const)('tracks %s trace selection without trace content', (itemType) => {
+		useAgentTelemetry().trackClickedTraceItem({ agentId: 'ag-1', itemType });
+		expect(trackMock).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_ITEM,
+			{ agent_id: 'ag-1', session_id: 'session-xyz', item_type: itemType },
+		);
+	});
+
+	it('tracks changed filter names without values', () => {
+		useAgentTelemetry().trackAppliedSessionFilter({
+			agentId: 'ag-1',
+			filterNames: ['status', 'origin', 'start_date', 'end_date'],
+		});
+		expect(trackMock).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_APPLIED_SESSION_FILTER,
+			{
+				agent_id: 'ag-1',
+				session_id: 'session-xyz',
+				filter_names: ['status', 'origin', 'start_date', 'end_date'],
+			},
+		);
+	});
+
+	it.each(['test-panel', 'shortcut', 'standalone'] as const)(
+		'tracks a new test chat from %s',
+		(source) => {
+			useAgentTelemetry().trackClickedNewTestChat({ agentId: 'ag-1', source });
+			expect(trackMock).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_TEST_CHAT_ICON_FROM_TEST_PANEL,
+				{ agent_id: 'ag-1', session_id: 'session-xyz', source },
+			);
+		},
+	);
+
+	it('tracks opening the preview More menu', () => {
+		useAgentTelemetry().trackClickedPreviewMoreOptions({ agentId: 'ag-1' });
+		expect(trackMock).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_MORE_OPTIONS_FROM_TEST_PANEL,
+			{ agent_id: 'ag-1', session_id: 'session-xyz' },
+		);
+	});
+
+	it.each([
+		'copy-link',
+		'copy-conversation',
+		'open-in-new-tab',
+		'toggle-full-width',
+		'export-session',
+		'delete-session',
+	] as const)('tracks the %s preview More action', (option) => {
+		useAgentTelemetry().trackClickedPreviewMoreOption({ agentId: 'ag-1', option });
+		expect(trackMock).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_AN_OPTION_FROM_MORE_LIST,
+			{ agent_id: 'ag-1', session_id: 'session-xyz', option },
+		);
+	});
+
 	it('trackClickedNewAgent fires event with source, minted agent_id and session_id', () => {
 		useAgentTelemetry().trackClickedNewAgent('button', 'aBcDeFgHiJkLmNoP');
 		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_AGENT, {
@@ -27,6 +114,32 @@ describe('useAgentTelemetry', () => {
 			session_id: 'session-xyz',
 		});
 	});
+
+	it.each([
+		{
+			method: 'trackRevertedChangesOnAgent',
+			event: TELEMETRY_EVENT.AGENTS.USER_REVERTED_CHANGES_ON_AGENT,
+		},
+		{
+			method: 'trackClickedTraceDetailsFromTestPanel',
+			event: TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_DETAILS_FROM_TEST_PANEL,
+		},
+	] as const)(
+		'$method sends only agent and editor session ids and stays best-effort',
+		({ method, event }) => {
+			const track = useAgentTelemetry()[method];
+			track({ agentId: 'agent-1' });
+
+			expect(trackMock).toHaveBeenCalledExactlyOnceWith(event, {
+				agent_id: 'agent-1',
+				session_id: 'session-xyz',
+			});
+			trackMock.mockImplementationOnce(() => {
+				throw new Error('telemetry unavailable');
+			});
+			expect(() => track({ agentId: 'agent-1' })).not.toThrow();
+		},
+	);
 
 	it('trackClickedNewAgent tracks card source', () => {
 		useAgentTelemetry().trackClickedNewAgent('card', 'aBcDeFgHiJkLmNoP');

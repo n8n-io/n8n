@@ -13,7 +13,7 @@ import {
 	StaticRouterMetadata,
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { AuthenticationService } from '@n8n/inbound-auth';
+import { AuthenticationService, type SurfaceId } from '@n8n/inbound-auth';
 import { isRecord } from '@n8n/utils/is-record';
 import type { Response, Request, RequestHandler, Router } from 'express';
 
@@ -31,6 +31,16 @@ const globalConfig = Container.get(GlobalConfig);
 const oauthServerConfig = Container.get(OAuthServerConfig);
 const logger = Container.get(Logger);
 const urlService = Container.get(UrlService);
+
+/**
+ * Surfaces that authenticate through the inbound-auth pipeline advertise the trusted sources
+ * accepted there. A trigger resource joins through `getAcceptedSourceIds()` instead, which also
+ * narrows the advertised issuers to the source its node selected.
+ */
+const PIPELINE_SURFACES: ReadonlySet<SurfaceId> = new Set<SurfaceId>([
+	'public-api',
+	'instance-mcp',
+]);
 
 /**
  * Pre-check guard for the unauthenticated DCR endpoint. Short-circuits with
@@ -340,8 +350,11 @@ export class OAuthController {
 	private async buildProtectedResourceMetadata(
 		resource: ProtectedResource,
 	): Promise<Record<string, unknown>> {
+		// A trigger narrows the surface to the source its node selected, so it advertises that
+		// source's issuer only. Resources outside the pipeline keep this instance.
+		const acceptedSourceIds = resource.getAcceptedSourceIds?.();
 		const authorizationServers =
-			resource.surface === 'public-api'
+			PIPELINE_SURFACES.has(resource.surface) || acceptedSourceIds !== undefined
 				? (
 						await this.authenticationService.advertise({
 							surface: resource.surface,
@@ -349,6 +362,7 @@ export class OAuthController {
 								url: resource.getResourceUrl(),
 								acceptedAudiences: resource.getAudiences(),
 							},
+							...(acceptedSourceIds !== undefined && { acceptedSourceIds }),
 						})
 					).authorizationServers
 				: [this.urlService.getInstanceBaseUrl()];

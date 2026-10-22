@@ -62,13 +62,17 @@ vi.mock('@/app/utils/rbac/permissions', () => ({
 	hasPermission: vi.fn().mockReturnValue(true),
 }));
 
-const { computerUseExperimentMock, contextPreferencesEnabledMock, routerPushMock } = vi.hoisted(
-	() => ({
-		computerUseExperimentMock: vi.fn(),
-		contextPreferencesEnabledMock: vi.fn(() => true),
-		routerPushMock: vi.fn(),
-	}),
-);
+const {
+	computerUseExperimentMock,
+	contextPreferencesEnabledMock,
+	contextSkillsEnabledMock,
+	routerPushMock,
+} = vi.hoisted(() => ({
+	computerUseExperimentMock: vi.fn(),
+	contextPreferencesEnabledMock: vi.fn(() => true),
+	contextSkillsEnabledMock: vi.fn(() => true),
+	routerPushMock: vi.fn(),
+}));
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -81,6 +85,7 @@ vi.mock('@/experiments/instanceAiComputerUse', () => ({
 
 vi.mock('@/features/settings/context/context.utils', () => ({
 	isContextPreferencesEnabled: () => contextPreferencesEnabledMock(),
+	isContextSkillsEnabled: () => contextSkillsEnabledMock(),
 }));
 
 const renderComponent = createComponentRenderer(SettingsInstanceAiView);
@@ -98,6 +103,10 @@ async function selectOption(select: HTMLElement, label: string) {
 	).find((element) => element.textContent === label);
 	expect(option).toBeDefined();
 	await fireEvent.click(option!);
+}
+
+function setPlanName(settingsStore: ReturnType<typeof useSettingsStore>, planName: string) {
+	settingsStore.settings.license = { ...settingsStore.settings.license, planName };
 }
 
 function setModuleSettings(
@@ -301,6 +310,30 @@ describe('SettingsInstanceAiView', () => {
 		});
 	});
 
+	describe('page header', () => {
+		it('shows the limited enterprise support badge next to the title on enterprise', () => {
+			setPlanName(settingsStore, 'Enterprise');
+
+			const { getByRole, getByTestId } = renderComponent();
+			const title = getByRole('heading', { name: 'settings.n8nAgent' });
+			expect(title.parentElement).toContainElement(
+				getByTestId('n8n-agent-enterprise-readiness-badge'),
+			);
+		});
+
+		it('does not show the limited enterprise support badge on other plans', () => {
+			setPlanName(settingsStore, 'Business');
+
+			const { queryByTestId } = renderComponent();
+			expect(queryByTestId('n8n-agent-enterprise-readiness-badge')).toBeNull();
+		});
+
+		it('does not show a Preview badge', () => {
+			const { queryByText } = renderComponent();
+			expect(queryByText('Preview')).toBeNull();
+		});
+	});
+
 	describe('status row', () => {
 		it('renders the enabled status action', () => {
 			store.$patch({
@@ -390,6 +423,15 @@ describe('SettingsInstanceAiView', () => {
 			const { getByText, queryByText } = renderComponent();
 			expect(getByText('settings.n8nAgent.empty.title')).toBeVisible();
 			expect(queryByText('settings.n8nAgent.permissions.title')).toBeNull();
+		});
+
+		it('shows the limited enterprise support badge in the empty state', () => {
+			setPlanName(settingsStore, 'Enterprise');
+			store.$patch({ settings: { ...store.settings!, enabled: false } });
+			setModuleSettings(settingsStore, { ...defaultModuleSettings, enabled: false });
+
+			const { getByTestId } = renderComponent();
+			expect(getByTestId('n8n-agent-enterprise-readiness-badge')).toBeVisible();
 		});
 
 		it('hides content when disabled via moduleSettings fallback', () => {
@@ -772,6 +814,22 @@ describe('SettingsInstanceAiView', () => {
 
 			expect(queryByTestId('n8n-agent-permission-group-preferences')).toBeNull();
 			expect(getByTestId('n8n-agent-permission-group-workflows')).toBeVisible();
+		});
+
+		it('shows the Skills group while the skills hub is on', () => {
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('n8n-agent-permission-group-skills').textContent).toContain(
+				'settings.n8nAgent.permissions.group.default',
+			);
+		});
+
+		it('hides the Skills group while the skills hub is off', () => {
+			contextSkillsEnabledMock.mockReturnValueOnce(false);
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('n8n-agent-permission-group-skills')).toBeNull();
 		});
 
 		it('summarises the untouched Preferences group as the default', () => {

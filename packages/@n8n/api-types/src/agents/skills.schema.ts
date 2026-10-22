@@ -28,7 +28,11 @@ export const skillScopeSchema = z.enum(['project', 'agent', 'instance']);
 
 export type SkillScope = z.infer<typeof skillScopeSchema>;
 
-export type SkillSource = 'ui' | 'agent';
+/**
+ * How a skill was created: `ui` in the skills hub, `agent` from the agent builder or the
+ * migration, `mcp` from an MCP client, `assistant` from n8n Assistant.
+ */
+export type SkillSource = 'ui' | 'agent' | 'mcp' | 'assistant';
 
 /** The user who created a skill, as the settings list names them. */
 export type SkillUserDto = {
@@ -165,8 +169,9 @@ export class SaveSkillDto extends Z.class({
 	references: agentSkillShape.references.optional(),
 	baseSkillHash: z.string().min(1),
 	/**
-	 * Moves the skill to the instance or to a project. Refused with 409 while an agent
-	 * uses it. An agent skill is made from inside its agent, so `agent` is not a choice.
+	 * Moves the skill to the instance or to a project. Refused with 409 when an agent that
+	 * uses the skill cannot use it there. An agent skill is made from inside its agent, so
+	 * `agent` is not a choice.
 	 */
 	scope: z.enum(['project', 'instance']).optional(),
 	/** Required when `scope` is `project`, absent otherwise. */

@@ -532,8 +532,10 @@ export class ChatTrigger extends Node {
 						public: [true],
 					},
 				},
-				description:
-					'The identity provider the visitor signs in with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+				// The resolvers read the raw value without an execution context, so it must be static.
+				noDataExpression: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
+				description: 'The identity provider the visitor signs in with',
 			},
 			{
 				...includeUserInOutputOption,

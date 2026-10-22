@@ -1,3 +1,4 @@
+import type { SerializedCredential, SerializedVariable } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
@@ -55,7 +56,9 @@ import {
 } from './import-orchestrator';
 import {
 	buildImportResult,
+	credentialsUpdatedAcrossScopes,
 	identifyRequirements,
+	reconcileCredentialSummary,
 	reconcileVariableSummary,
 	scopeCredentialBindingsToRequirements,
 	toImportedWorkflowSummaries,
@@ -66,8 +69,6 @@ import {
 import type { ImportOutcome, PackageImportScope } from './import-telemetry';
 import { N8nPackageParser } from './n8n-package-parser';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
-import type { SerializedCredential } from '../spec/serialized/credential.schema';
-import type { SerializedVariable } from '../spec/serialized/variable.schema';
 
 @Service()
 export class ProjectPackageImporter {
@@ -276,7 +277,15 @@ export class ProjectPackageImporter {
 			folders,
 			projects: projectSummaries,
 			bindings: mergeBindings(...scopedBindings),
-			credentials: { matched, stubbed, seeded, incomplete },
+			credentials: reconcileCredentialSummary({
+				matched,
+				stubbed,
+				seeded,
+				incomplete,
+				updated: credentialsUpdatedAcrossScopes(
+					applied.map(({ content }) => content.credentialResult),
+				),
+			}),
 			dataTables: {
 				matched: dataTablesMatched,
 				created: dataTablesCreated,
@@ -383,6 +392,7 @@ export class ProjectPackageImporter {
 			// sub-workflow, or it would archive a dependency and leave its packaged parent unpublishable.
 			subWorkflowRequirements: identifyRequirements(manifest.requirements?.workflows, workflows),
 			explicitDeleteWorkflowIds: deletesForProject(request.selection, project.id),
+			checkRootPlacement: true,
 		};
 	}
 

@@ -166,11 +166,11 @@ describe('domain tool construction', () => {
 		expect(createDataTablesTool).toHaveBeenCalledWith(context);
 	});
 
-	it('makes model catalog search discoverable without loading it for every turn', () => {
+	it('never defers model catalog search behind search_tools', () => {
 		expect(getActiveOrchestratorDomainToolNames(makeContext())).toContain(
 			'workflow_builder_search_models',
 		);
-		expect(ALWAYS_LOADED_TOOL_NAMES.has('workflow_builder_search_models')).toBe(false);
+		expect(ALWAYS_LOADED_TOOL_NAMES.has('workflow_builder_search_models')).toBe(true);
 	});
 
 	it('does not include local MCP server tools in orchestrator domain tools', () => {
@@ -218,6 +218,13 @@ describe('domain tool construction', () => {
 		expect(createOrchestratorDomainTools(enabled).get('mcp-servers')).toBeDefined();
 	});
 
+	it('gates the skills tool on the host-wired skillService', () => {
+		expect(createOrchestratorDomainTools(makeContext()).get('skills')).toBeUndefined();
+
+		const enabled = makeContext({ skillService: {} as InstanceAiContext['skillService'] });
+		expect(createOrchestratorDomainTools(enabled).get('skills')).toBeDefined();
+	});
+
 	it('reports the same active names that the domain registry exposes', () => {
 		vi.mocked(isParseableAttachment).mockReturnValue(true);
 		const context = makeContext({
@@ -261,6 +268,10 @@ describe('domain tool construction', () => {
 
 	it('never defers mcp-servers behind search_tools', () => {
 		expect(ALWAYS_LOADED_TOOL_NAMES.has('mcp-servers')).toBe(true);
+	});
+
+	it('never defers skills behind search_tools', () => {
+		expect(ALWAYS_LOADED_TOOL_NAMES.has('skills')).toBe(true);
 	});
 
 	it('gates Agent context on the project-scoped reader', () => {

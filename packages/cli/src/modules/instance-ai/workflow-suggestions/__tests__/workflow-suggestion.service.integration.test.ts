@@ -336,7 +336,7 @@ describe.skipIf(process.env.DB_TYPE !== 'postgresdb')('Concurrent workflow saves
 		if (peer?.isInitialized) await peer.destroy();
 	});
 
-	it('preserves an edit made after the final baseline check without blocking it', async () => {
+	it('preserves an edit committed after the final baseline check', async () => {
 		const { saved, workflows, baseline, graph } = await fixture();
 		const prepared = await service.prepareSuggestion(baseline, {
 			resultKind: 'fix_ready',
@@ -349,7 +349,9 @@ describe.skipIf(process.env.DB_TYPE !== 'postgresdb')('Concurrent workflow saves
 			.mockImplementationOnce(async (...args) => {
 				await peer.transaction(async (manager) => {
 					await manager.query("SET LOCAL lock_timeout = '250ms'");
-					await manager.update(WorkflowEntity, saved.id, { settings: { executionTimeout: 60 } });
+					await manager.update(WorkflowEntity, saved.id, {
+						settings: { executionTimeout: 60 },
+					});
 				});
 				return await createPending(...args);
 			});
