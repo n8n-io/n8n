@@ -43,6 +43,10 @@ describe('isBumpOnly', () => {
 		assert.equal(isBumpOnly(['pnpm-workspace.yaml', 'packages/cli/package.json']), true);
 	});
 
+	it('forces a build for the nodes-base manifest', () => {
+		assert.equal(isBumpOnly(['packages/nodes-base/package.json']), false);
+	});
+
 	it('rejects a Dockerfile change', () => {
 		assert.equal(isBumpOnly(['pnpm-workspace.yaml', 'docker/images/n8n/Dockerfile']), false);
 	});

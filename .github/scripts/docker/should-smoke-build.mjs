@@ -15,6 +15,7 @@ import { pathToFileURL } from 'node:url';
 
 const WORKSPACE_FILE = 'pnpm-workspace.yaml';
 const ROOT_MANIFEST = 'package.json';
+const NODES_BASE_MANIFEST = 'packages/nodes-base/package.json';
 const EDIT_IMAGE_NATIVE_PACKAGES = new Set([
 	'@napi-rs/canvas',
 	'@napi-rs/canvas-linux-arm64-musl',
@@ -27,7 +28,11 @@ const EDIT_IMAGE_NATIVE_PACKAGES = new Set([
 const BUMP_ONLY = [/^pnpm-workspace\.yaml$/, /^pnpm-lock\.yaml$/, /(^|\/)package\.json$/];
 
 export function isBumpOnly(files) {
-	return files.length > 0 && files.every((f) => BUMP_ONLY.some((re) => re.test(f)));
+	return (
+		files.length > 0 &&
+		!files.includes(NODES_BASE_MANIFEST) &&
+		files.every((f) => BUMP_ONLY.some((re) => re.test(f)))
+	);
 }
 
 // Packages pnpm may run build scripts for — read from the file so a newly
