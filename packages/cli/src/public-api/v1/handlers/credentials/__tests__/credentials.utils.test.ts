@@ -164,6 +164,7 @@ describe('credentials.utils', () => {
 			]);
 
 			it.each([
+				['number', { port: '={{ $vars.PORT }}' }],
 				['boolean', { secure: '={{ $vars.SECURE }}' }],
 				['options', { authType: '={{ $vars.AUTH_TYPE }}' }],
 			])('accepts an expression in a %s field', (_, data) => {
