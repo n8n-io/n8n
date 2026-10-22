@@ -5,10 +5,10 @@ import {
 	N8nButton,
 	N8nDropdownMenu,
 	N8nEmptyState,
+	N8nEnterpriseReadinessBadge,
 	N8nIcon,
 	N8nLoading,
 	N8nOption,
-	N8nPreviewBadge,
 	N8nSelect,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
@@ -474,8 +474,11 @@ function openAiUsageSettings() {
 			:docs-url="DOCS_URL"
 			:docs-label="i18n.baseText('settings.n8nAgent.docsLabel')"
 		>
-			<template #titleTrailing>
-				<N8nPreviewBadge size="xsmall" />
+			<template v-if="settingsStore.isEnterprisePlan" #titleTrailing>
+				<N8nEnterpriseReadinessBadge
+					size="xsmall"
+					data-test-id="n8n-agent-enterprise-readiness-badge"
+				/>
 			</template>
 		</N8nSettingsPageHeader>
 

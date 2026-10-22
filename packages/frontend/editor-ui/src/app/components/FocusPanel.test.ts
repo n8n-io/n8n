@@ -129,6 +129,25 @@ describe('FocusPanel', () => {
 			expect(rendered.getByDisplayValue('v0')).toBeInTheDocument(); // current value of the parameter
 		});
 
+		it('should render the parameter focus input read-only for a deprecated node', async () => {
+			nodeTypesStore.setNodeTypes([
+				mockNodeTypeDescription({
+					name: SET_NODE_TYPE,
+					properties: [parameter0, parameter1],
+					deprecated: true,
+				}),
+			]);
+			const rendered = renderComponent({});
+
+			focusPanelStore.openWithFocusedNodeParameter({
+				nodeId: 'n0',
+				parameter: parameter0,
+				parameterPath: 'parameters.p0',
+			});
+
+			expect(await rendered.findByDisplayValue('v0')).toHaveAttribute('readonly');
+		});
+
 		it('should render node parameters when a node is selected on canvas', async () => {
 			const graphNode = createCanvasGraphNode({ id: 'n0' });
 			const vueFlow = useVueFlow('w0');
