@@ -77,7 +77,7 @@ export type CustomAttributePrefixes = z.infer<typeof customAttributePrefixesSche
 @Config
 export class OtelCustomAttributesConfig {
 	/**
-	 * A JSON object that replaces the prefix n8n adds to custom telemetry tag keys on spans, for each of `project`, `workflow` and `node`. Set a level to an empty string to send its keys without a prefix, for example `{"project":"","node":""}` sends `gen_ai.system` instead of `n8n.project.custom.gen_ai.system`. A level you leave out keeps its default prefix, and n8n ignores the whole value if it isn't valid. Set the same value on all main, worker and webhook instances.
+	 * A JSON object that replaces the prefix n8n adds to custom telemetry tag keys on spans, for each of `project`, `workflow` and `node`. Set a level to an empty string to send its keys without a prefix, for example `{"project":"","node":""}` sends `team` instead of `n8n.project.custom.team`. A level you leave out keeps its default prefix, and n8n ignores the whole value if it isn't valid. Set the same value on all main, worker and webhook instances.
 	 */
 	@Env(CUSTOM_ATTRIBUTE_PREFIXES_ENV_VAR, customAttributePrefixesSchema)
 	prefixes: CustomAttributePrefixes = { ...DEFAULT_CUSTOM_ATTRIBUTE_PREFIXES };
