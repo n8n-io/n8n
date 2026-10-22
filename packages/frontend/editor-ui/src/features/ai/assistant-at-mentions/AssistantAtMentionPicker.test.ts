@@ -231,8 +231,8 @@ describe('AssistantAtMentionPicker', () => {
 		expect(groupResult.querySelector('[data-icon="group"]')).toBeVisible();
 		expect(nodeResult.querySelector('.n8n-node-icon')).toBeVisible();
 		expect(
-			[...nodeResult.querySelectorAll('[class*="breadcrumbAncestor"]')].map((element) =>
-				element.textContent?.trim(),
+			[...nodeResult.querySelectorAll('[class*="breadcrumbAncestor"]')].map(
+				(element) => element.getAttribute('aria-label')?.trim() || element.textContent?.trim(),
 			),
 		).toEqual(['Orders', '>', 'If checks', '>']);
 		expect(getNodeType).toHaveBeenCalledWith('n8n-nodes-base.if', 2.2);
