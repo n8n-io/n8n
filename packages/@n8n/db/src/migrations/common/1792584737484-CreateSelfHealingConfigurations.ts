@@ -6,6 +6,7 @@ export class CreateSelfHealingConfigurations1792584737484 implements ReversibleM
 			schemaBuilder: { createTable, column, createIndex, addColumns, addForeignKey },
 			escape,
 			isSqlite,
+			runQuery,
 		} = ctx;
 		// Deleted IDs must not identify replacement configurations in delayed requests.
 		const id = isSqlite
@@ -64,7 +65,10 @@ export class CreateSelfHealingConfigurations1792584737484 implements ReversibleM
 			})
 			.withForeignKey('userId', { tableName: 'user', columnName: 'id', onDelete: 'CASCADE' });
 
-		// These opt-in tables contain development data only. Start from an empty development schema.
+		// Existing rows have no configuration. Clear them before adding the required reference.
+		await runQuery(`DELETE FROM ${escape.tableName('self_healing_investigation')}`);
+		await runQuery(`DELETE FROM ${escape.tableName('self_healing_result')}`);
+
 		for (const table of ['self_healing_result', 'self_healing_investigation']) {
 			await addColumns(table, [column('configurationId').int.notNull], { recreatesOnSqlite: true });
 			await addForeignKey(
