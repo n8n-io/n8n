@@ -4,10 +4,12 @@ export * from './agent-config-validation.schema';
 export * from './agent-files.constants';
 export * from './agent-integration.schema';
 export * from './agent-json-config.schema';
+export * from './agent-message-origin.schema';
 export * from './agent-node-tool-operations';
 export * from './agent-personalisation';
 export * from './agent-skill.schema';
 export * from './skills.schema';
+export * from './skill-names';
 export * from './child-trace';
 export type * from './background-job';
 export * from './inline-agent-config.schema';
@@ -18,6 +20,7 @@ export type * from './teams';
 export type * from './whatsapp';
 export * from './agent-task.schema';
 export * from './dto';
+export * from './model-id';
 export * from './model-providers';
 export * from './provider-capabilities';
 export * from './reasoning';
@@ -47,3 +50,5 @@ export {
 	type CancellationResumeData,
 } from '../agent-builder-interactive';
 export * from './agent-interaction.schema';
+
+export type * from './task-cancellation';

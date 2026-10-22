@@ -11,10 +11,11 @@ export class AgentsModule implements ModuleInterface {
 		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
 		Container.get(SandboxSettingsService).registerCredentialUses();
 
-		// Read the skills hub setting once, before anything reads or writes agent skills. With
-		// it on, each main copies inline agent skills into the hub before agents run.
-		const { SkillsHubRollout } = await import('./skills/skills-hub-rollout.js');
-		Container.get(SkillsHubRollout).init();
+		// The skills module reads the skills hub setting before this module starts. Tell it
+		// which agents use skills, then, with the hub on, copy inline agent skills into the
+		// hub on each main before agents run.
+		const { registerSkillAgentsProvider } = await import('./register-skill-agents-provider.js');
+		registerSkillAgentsProvider();
 		const { SkillsHubStartupCopy } = await import('./skills/skills-hub-startup-copy.js');
 		await Container.get(SkillsHubStartupCopy).runOnStartup();
 
@@ -28,10 +29,10 @@ export class AgentsModule implements ModuleInterface {
 		await import('./agents-settings.controller.js');
 		await import('./agents-config.controller.js');
 		await import('./agents-skills.controller.js');
-		await import('./skills.controller.js');
 		await import('./agent-knowledge.controller.js');
 		await import('./agent-publish.controller.js');
 		await import('./agent-chat.controller.js');
+		await import('./system-agents/system-agent-chat.controller.js');
 		await import('./agent-integrations.controller.js');
 		await import('./agent-slack-integrations.controller.js');
 		await import('./agent-teams-integrations.controller.js');
@@ -97,17 +98,23 @@ export class AgentsModule implements ModuleInterface {
 			'./integrations/platforms/slack/slack-integration.js'
 		);
 		const { TelegramIntegration } = await import(
-			'./integrations/platforms/telegram-integration.js'
+			'./integrations/platforms/telegram/telegram-integration.js'
 		);
-		const { LinearIntegration } = await import('./integrations/platforms/linear-integration.js');
-		const { DiscordIntegration } = await import('./integrations/platforms/discord-integration.js');
+		const { LinearIntegration } = await import(
+			'./integrations/platforms/linear/linear-integration.js'
+		);
+		const { DiscordIntegration } = await import(
+			'./integrations/platforms/discord/discord-integration.js'
+		);
 		const { WhatsAppIntegration } = await import(
 			'./integrations/platforms/whatsapp/whatsapp-integration.js'
 		);
 		const { TeamsIntegration } = await import(
 			'./integrations/platforms/teams/teams-integration.js'
 		);
-		const { N8nChatIntegration } = await import('./integrations/platforms/n8n-chat-integration.js');
+		const { N8nChatIntegration } = await import(
+			'./integrations/platforms/n8n-chat/n8n-chat-integration.js'
+		);
 		const registry = Container.get(ChatIntegrationRegistry);
 		registry.register(Container.get(SlackIntegration));
 		registry.register(Container.get(TelegramIntegration));
@@ -228,14 +235,16 @@ export class AgentsModule implements ModuleInterface {
 		const config = Container.get(AgentsConfig);
 		const { AgentsSettingsService } = await import('./agents-settings.service.js');
 		const { AiService } = await import('@/services/ai.service.js');
-		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
-		const { SkillsHubRollout } = await import('./skills/skills-hub-rollout.js');
+		const { KnowledgeAvailabilityService } = await import(
+			'@/modules/knowledge/knowledge-availability.service.js'
+		);
+		const { SkillsHubRollout } = await import('@/modules/skills/skills-hub-rollout.js');
 		const aiService = Container.get(AiService);
 		const proxyEnabled = aiService.isProxyEnabled();
 		return {
 			enabled: await Container.get(AgentsSettingsService).getEnabled(),
 			modules: [...config.modules],
-			knowledgeBaseEnabled: Container.get(SandboxSettingsService).isAgentSandboxEnabled(),
+			knowledgeBaseEnabled: Container.get(KnowledgeAvailabilityService).isFileKnowledgeEnabled(),
 			proxyEnabled,
 			skillsHubEnabled: Container.get(SkillsHubRollout).isEnabled,
 		};
@@ -292,9 +301,6 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentMemoryEntrySourceEntity } = await import(
 			'./entities/agent-memory-entry-source.entity.js'
 		);
-		const { Skill } = await import('./entities/skill.entity.js');
-		const { SkillVersion } = await import('./entities/skill-version.entity.js');
-		const { SkillFile } = await import('./entities/skill-file.entity.js');
 		const { AgentSkillDependency } = await import('./entities/agent-skill-dependency.entity.js');
 		const { AgentVersionSkillDependency } = await import(
 			'./entities/agent-version-skill-dependency.entity.js'
@@ -333,9 +339,6 @@ export class AgentsModule implements ModuleInterface {
 			AgentMemoryEntryCandidateEntity,
 			AgentMemoryEntryLockEntity,
 			AgentMemoryEntrySourceEntity,
-			Skill,
-			SkillVersion,
-			SkillFile,
 			AgentSkillDependency,
 			AgentVersionSkillDependency,
 		];

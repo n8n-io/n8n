@@ -133,10 +133,19 @@ describe('nested package SBOMs', () => {
 			{ source: '@napi-rs/canvas-linux-x64-musl/sbom.cdx.json', sbom: nested },
 		]);
 
-		assert.equal(mergedComponents, 2);
+		assert.equal(mergedComponents, 3);
 		assert.deepEqual(
 			sbom.components.map((component) => component.name),
-			['existing', 'canvas', 'cssparser'],
+			['existing', '@napi-rs/canvas-linux-x64-musl', 'canvas', 'cssparser'],
+		);
+		const nativePackage = sbom.components.find(
+			(component) => component.name === '@napi-rs/canvas-linux-x64-musl',
+		);
+		assert.equal(nativePackage.type, 'library');
+		assert.equal(
+			nativePackage.properties.find((property) => property.name === NESTED_SBOM_SOURCE_PROPERTY)
+				.value,
+			'@napi-rs/canvas-linux-x64-musl/sbom.cdx.json',
 		);
 		const canvas = sbom.components.find((component) => component.name === 'canvas');
 		assert.deepEqual(canvas.licenses, [{ license: { id: 'MIT' } }]);
@@ -156,7 +165,15 @@ describe('nested package SBOMs', () => {
 			await mkdir(nested, { recursive: true });
 			await writeFile(
 				path.join(scoped, 'sbom.cdx.json'),
-				JSON.stringify({ components: [{ name: 'cssparser' }] }),
+				JSON.stringify({
+					metadata: {
+						component: {
+							name: '@napi-rs/canvas-linux-x64-musl',
+							purl: 'pkg:npm/%40napi-rs/canvas-linux-x64-musl@1.0.11',
+						},
+					},
+					components: [{ name: 'cssparser' }],
+				}),
 			);
 			await writeFile(
 				path.join(nested, 'sbom.cdx.json'),

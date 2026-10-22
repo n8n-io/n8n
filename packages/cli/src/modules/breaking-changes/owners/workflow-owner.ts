@@ -14,3 +14,8 @@ export function toWorkflowOwner(
 		source,
 	};
 }
+
+/** A user who can sign in, so they can open the workflow and fix it. Needs the role and the auth identities loaded. */
+export function canOwnFindings(user: Pick<User, 'disabled' | 'isPending'>): boolean {
+	return !user.disabled && !user.isPending;
+}

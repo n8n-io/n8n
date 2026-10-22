@@ -2,7 +2,7 @@
 export const ActionDropdownTestStub = {
 	name: 'ActionDropdown',
 	template:
-		'<div><slot name="activator" /><button v-for="item in items" :key="item.id" :data-testid="item.testId" @click="$emit(\'select\', item.id)">{{ item.label }} {{ item.description }}</button></div>',
+		'<div><slot name="activator" /><button v-for="item in items" :key="item.id" :data-testid="item.testId" :disabled="item.disabled" @click="$emit(\'select\', item.id)">{{ item.label }} {{ item.description }}</button></div>',
 	props: ['items', 'placement', 'teleported'],
 	emits: ['select'],
 };

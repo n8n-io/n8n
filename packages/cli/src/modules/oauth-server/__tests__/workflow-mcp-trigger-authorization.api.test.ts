@@ -20,6 +20,7 @@ import { CacheService, UrlService, JwtService } from '@n8n/backend-services';
 
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 import type { OAuthSessionPayload } from '../oauth-session.service';
+import { sessionCookieFor, TEST_FLOW_ID } from './oauth-flow-test-utils';
 
 /**
  * Authorization for OAuth-protected MCP Server Triggers. A workflow whose MCP
@@ -194,8 +195,8 @@ describe('consent gate: workflow name and authorization code require execute acc
 
 		const response = await testServer
 			.authAgentFor(memberNoAccess)
-			.get('/consent/details')
-			.set('Cookie', `n8n-oauth-session=${sessionToken}`);
+			.get(`/consent/details?flow=${TEST_FLOW_ID}`)
+			.set('Cookie', sessionCookieFor(TEST_FLOW_ID, sessionToken));
 
 		expect(JSON.stringify(response.body)).not.toContain(workflowName);
 	});
@@ -207,8 +208,8 @@ describe('consent gate: workflow name and authorization code require execute acc
 
 		const response = await testServer
 			.authAgentFor(owner)
-			.get('/consent/details')
-			.set('Cookie', `n8n-oauth-session=${sessionToken}`);
+			.get(`/consent/details?flow=${TEST_FLOW_ID}`)
+			.set('Cookie', sessionCookieFor(TEST_FLOW_ID, sessionToken));
 
 		expect(response.body.data.resourceName).toBe(workflowName);
 	});
@@ -220,8 +221,8 @@ describe('consent gate: workflow name and authorization code require execute acc
 		const response = await testServer
 			.authAgentFor(memberNoAccess)
 			.post('/consent/approve')
-			.set('Cookie', `n8n-oauth-session=${sessionToken}`)
-			.send({ approved: true })
+			.set('Cookie', sessionCookieFor(TEST_FLOW_ID, sessionToken))
+			.send({ approved: true, flow: TEST_FLOW_ID })
 			.expect(403);
 
 		expect(String(response.body.data?.redirectUrl ?? '')).not.toContain('code=');

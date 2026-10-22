@@ -5,6 +5,7 @@ summary: Retry an execution
 description: Retry an execution from your instance.
 x-required-scope: execution:retry
 parameters:
+  - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
   - schema:
       type: integer
       minimum: 1
@@ -170,3 +171,5 @@ responses:
     $ref: ../../../../shared/spec/responses/conflict.yml
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '422':
+    $ref: ../../../../shared/spec/responses/unprocessableEntity.yml

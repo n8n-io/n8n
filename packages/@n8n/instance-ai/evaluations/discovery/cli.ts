@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // ---------------------------------------------------------------------------
-// CLI for browser/computer-use discovery evaluation.
+// CLI for Browser Use discovery evaluation.
 //
 // Usage:
 //   pnpm eval:discovery                                # run all scenarios, 3 trials each
@@ -61,7 +61,8 @@ interface CliArgs {
 	verbose: boolean;
 	trials: number;
 	passThreshold: number;
-	timeoutMs: number;
+	/** Unset uses 60 s for each discovery trial and ROUTING_TURN_TIMEOUT_MS for each routing turn. */
+	timeoutMs?: number;
 	/** Optional iteration cap; unset uses the SDK default. */
 	maxSteps?: number;
 	modelId: string;
@@ -124,7 +125,6 @@ function parseArgs(argv: string[]): CliArgs {
 		verbose: false,
 		trials: 3,
 		passThreshold: 2 / 3,
-		timeoutMs: 60_000,
 		modelId: DEFAULT_MODEL,
 		concurrency: 3,
 		failOnZeroPass: false,
@@ -317,6 +317,13 @@ function printSummary(aggregates: ScenarioAggregate[], args: CliArgs): void {
 // ---------------------------------------------------------------------------
 
 /**
+ * A workflow route shows only when a call makes it clear that the user keeps the workflow, for
+ * example the build call. This is often 70 to 150 s into the turn. With 60 s, such a turn ends
+ * before the judge sees a route, and its retry times out again.
+ */
+const ROUTING_TURN_TIMEOUT_MS = 180_000;
+
+/**
  * One routing trial. A question in text ends the turn, so the user proxy
  * replies in a new turn of the same thread.
  */
@@ -348,7 +355,7 @@ async function runRoutingTrial(args: CliArgs, routingCase: RoutingCase) {
 			scenario,
 			modelId: args.modelId,
 			maxSteps: args.maxSteps,
-			timeoutMs: args.timeoutMs,
+			timeoutMs: args.timeoutMs ?? ROUTING_TURN_TIMEOUT_MS,
 			stopBeforeTool: watcher.beforeToolCall,
 			...(proxy
 				? {

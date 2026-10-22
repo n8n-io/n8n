@@ -2,7 +2,7 @@ import { LruCache } from '@n8n/utils/lru-cache';
 import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
 
-import type { RuntimeBridge, BridgeConfig, ExecuteOptions, WorkflowData } from '../types';
+import type { RuntimeBridge, BridgeConfig, ExecuteOptions, Logger, WorkflowData } from '../types';
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
 import { isLuxonSentinel, rebuildLuxonValue } from '../runtime/luxon-transfer';
 import type { EscapedTransferValue } from '../runtime/transfer';
@@ -30,11 +30,13 @@ type QuickJSWasm = Awaited<ReturnType<QuickJSModule['getQuickJS']>>;
 let _quickjs: QuickJSModule | null = null;
 
 /**
- * The instantiated WASM module, cached after the first async initialize().
- * Creating runtimes/contexts from it is synchronous, so once it is cached
- * (pool warmup does this) initializeSync() can build a bridge on demand.
+ * The instantiated WASM module that new bridges use, cached after the first
+ * async initialize(). Creating runtimes/contexts from it is synchronous, so
+ * once it is cached (pool warmup does this) initializeSync() can build a
+ * bridge on demand. retireQuickJSWasm() replaces it.
  */
 let _quickjsWasm: QuickJSWasm | null = null;
+let _quickjsWasmLoading: Promise<QuickJSWasm> | null = null;
 /** Runtime bundle source, read once per process by loadRuntimeBundle(). */
 let _runtimeBundle: string | null = null;
 
@@ -43,6 +45,40 @@ async function getQuickJSModule(): Promise<QuickJSModule> {
 		_quickjs = await import('quickjs-emscripten');
 	}
 	return _quickjs;
+}
+
+/**
+ * Our own module instance, not the library's getQuickJS() singleton: that one
+ * cannot be replaced after it is retired.
+ */
+async function loadQuickJSWasm(): Promise<QuickJSWasm> {
+	if (_quickjsWasm) return _quickjsWasm;
+	_quickjsWasmLoading ??= getQuickJSModule()
+		.then(async ({ newQuickJSWASMModule }) => await newQuickJSWASMModule())
+		.then((wasm) => {
+			_quickjsWasm = wasm;
+			return wasm;
+		})
+		.finally(() => {
+			_quickjsWasmLoading = null;
+		});
+	return await _quickjsWasmLoading;
+}
+
+/**
+ * Stop building runtimes on a module that a host error unwound through. The
+ * unwind skips the code that restores the module's stack pointer, and all
+ * runtimes in the module share that stack. Runtimes that already exist keep
+ * their stack limit, but a new one would take its limit from the lowered
+ * pointer and could write past the end of the stack.
+ */
+function retireQuickJSWasm(wasm: QuickJSWasm, logger: Logger): void {
+	if (_quickjsWasm !== wasm) return;
+	_quickjsWasm = null;
+	// Load the replacement now, so that the next initializeSync() finds it.
+	loadQuickJSWasm().catch((error: unknown) => {
+		logger.error('[QuickJsBridge] Failed to load a replacement WASM module', { error });
+	});
 }
 
 // Joined by hand, not with `path.join`. This runs at module load, and a browser
@@ -443,6 +479,9 @@ const INTL_DISPATCH: Record<string, IntlDispatchEntry> = {
 	},
 };
 
+/** The dumped result of one guest call. */
+type GuestOutcome = { kind: 'compileError' | 'error' | 'value'; dump: unknown };
+
 /**
  * QuickJsBridge - Runtime bridge using quickjs-emscripten for expression evaluation.
  *
@@ -458,10 +497,23 @@ const INTL_DISPATCH: Record<string, IntlDispatchEntry> = {
  * the host callback functions directly.
  */
 export class QuickJsBridge implements RuntimeBridge {
+	private wasm: QuickJSWasm | undefined;
 	private runtime: import('quickjs-emscripten').QuickJSRuntime | undefined;
 	private vm: import('quickjs-emscripten').QuickJSContext | undefined;
 	private initialized = false;
 	private disposed = false;
+
+	/**
+	 * Set when a host error escapes a call into the runtime, for example V8
+	 * running out of native stack in deep recursion. QuickJS reports its own
+	 * errors as results, so an escaped error means that the unwind skipped
+	 * QuickJS cleanup. The runtime is not used again, and execute() builds a new
+	 * one on a new module.
+	 */
+	private broken = false;
+
+	/** The bundle that the runtime loaded. A rebuild loads it again. */
+	private runtimeBundle: string | undefined;
 	private config: Required<BridgeConfig>;
 	private logger: Required<BridgeConfig>['logger'];
 
@@ -493,9 +545,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		if (this.disposed) throw new Error('Bridge has been disposed and cannot be reinitialized.');
 		if (this.initialized) return;
 
-		const { getQuickJS } = await getQuickJSModule();
-		const QuickJS = await getQuickJS();
-		_quickjsWasm = QuickJS;
+		const QuickJS = await loadQuickJSWasm();
 
 		// A host without a filesystem (the browser) passes the bundle in, so
 		// loadRuntimeBundle() — the only Node-only code here — is never reached.
@@ -520,11 +570,12 @@ export class QuickJsBridge implements RuntimeBridge {
 
 		// Both caches are populated by the same async initialize() (pool
 		// warmup), so the sync path never touches the filesystem or the
-		// event loop beyond the context setup itself.
+		// event loop beyond the context setup itself. The module is also empty
+		// while a replacement for a retired one loads.
 		if (_quickjsWasm === null || _runtimeBundle === null) {
 			throw new Error(
 				'QuickJS WASM module and runtime bundle are not loaded yet: an async initialize() ' +
-					'must run once (pool warmup) before bridges can be created synchronously',
+					'must load them before bridges can be created synchronously',
 			);
 		}
 
@@ -533,6 +584,7 @@ export class QuickJsBridge implements RuntimeBridge {
 
 	/** Everything after module/bundle acquisition is synchronous and shared. */
 	private setupContext(QuickJS: QuickJSWasm, runtimeBundle: string): void {
+		this.wasm = QuickJS;
 		// Create runtime with memory limit (MB → bytes)
 		this.runtime = QuickJS.newRuntime();
 		this.runtime.setMemoryLimit(this.config.memoryLimit * 1024 * 1024);
@@ -542,7 +594,10 @@ export class QuickJsBridge implements RuntimeBridge {
 		// Install the interrupt handler once. It reads the live deadline stack, so
 		// nested execute() calls share one budget: the earliest deadline wins.
 		// Math.min() of an empty stack is Infinity, so an idle runtime never fires.
-		this.runtime.setInterruptHandler(() => Date.now() > Math.min(...this.deadlines));
+		// A broken runtime also stops the outer call that a nested call broke it in.
+		this.runtime.setInterruptHandler(
+			() => (this.broken && this.deadlines.length > 0) || Date.now() > Math.min(...this.deadlines),
+		);
 
 		// Set up 'global' / 'globalThis' self-reference
 		const globalHandle = this.vm.global;
@@ -554,6 +609,7 @@ export class QuickJsBridge implements RuntimeBridge {
 
 		// Load runtime bundle (DateTime, extend, SafeObject, proxy system, buildContext)
 		this.loadRuntimeBundle(runtimeBundle);
+		this.runtimeBundle = runtimeBundle;
 
 		// Wrap __prepareForTransfer to mark Date/NaN/Map/Set/Error so they survive vm.dump()
 		this.injectTransferWrapper();
@@ -564,6 +620,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		this.verifyProxySystem();
 
 		this.initialized = true;
+		this.broken = false;
 
 		this.logger.info('[QuickJsBridge] Initialized successfully');
 	}
@@ -1130,7 +1187,8 @@ export class QuickJsBridge implements RuntimeBridge {
 	private hostValueToQuickJSHandle(value: unknown): import('quickjs-emscripten').QuickJSHandle {
 		if (!this.vm) throw new Error('Context not initialized');
 
-		if (value === undefined) return this.vm.undefined;
+		// Building a value runs guest code, which a broken runtime must not do.
+		if (value === undefined || this.broken) return this.vm.undefined;
 		if (value === null) return this.vm.null;
 
 		if (typeof value === 'number') {
@@ -1173,9 +1231,11 @@ export class QuickJsBridge implements RuntimeBridge {
 	 * 4. Reconstruct error sentinels into real Errors
 	 */
 	execute(code: string, data: WorkflowData, options?: ExecuteOptions): unknown {
+		if (this.broken && !this.disposed) this.rebuildRuntime();
 		if (!this.initialized || !this.vm || !this.runtime) {
 			throw new Error('Bridge not initialized. Call initialize() first.');
 		}
+		const vm = this.vm;
 
 		// A nested call runs on what is left of the configured timeout, so the
 		// chain shares one budget (mirrors IsolatedVmBridge). A configured
@@ -1189,7 +1249,6 @@ export class QuickJsBridge implements RuntimeBridge {
 		}
 
 		const callbackHandles = this.createCallbackHandles(data);
-		let wrapperFn: import('quickjs-emscripten').QuickJSHandle | undefined;
 		// Push this call's deadline; the interrupt handler (set in initialize)
 		// interrupts on the earliest in-flight deadline. Popped in finally so a
 		// nested call can't leave the outer budget extended.
@@ -1230,19 +1289,20 @@ export class QuickJsBridge implements RuntimeBridge {
   }
 })`;
 
-			const wrapperResult = this.vm.evalCode(wrappedCode);
-			if (wrapperResult.error) {
-				const errDump = this.vm.dump(wrapperResult.error);
-				wrapperResult.error.dispose();
-				throw new Error(`Expression compilation failed: ${String(errDump)}`);
+			let outcome: GuestOutcome;
+			try {
+				outcome = this.runInGuest(vm, wrappedCode, callbackHandles);
+			} catch (error) {
+				this.broken = true;
+				throw error;
 			}
-			wrapperFn = wrapperResult.value;
 
-			const execResult = this.vm.callFunction(wrapperFn, this.vm.undefined, ...callbackHandles);
+			if (outcome.kind === 'compileError') {
+				throw new Error(`Expression compilation failed: ${String(outcome.dump)}`);
+			}
 
-			if (execResult.error) {
-				const errDump = this.vm.dump(execResult.error);
-				execResult.error.dispose();
+			if (outcome.kind === 'error') {
+				const errDump = outcome.dump;
 
 				// buildContext throws on invalid timezone — propagate the original message
 				const errStr = String(
@@ -1263,9 +1323,7 @@ export class QuickJsBridge implements RuntimeBridge {
 				throw new Error(`Expression evaluation failed: ${errStr}`);
 			}
 
-			const rawResult = this.vm.dump(execResult.value);
-			execResult.value.dispose();
-			const result = unwrapSentinels(rawResult);
+			const result = unwrapSentinels(outcome.dump);
 
 			if (isErrorSentinel(result)) {
 				throw reconstructError(result);
@@ -1285,6 +1343,9 @@ export class QuickJsBridge implements RuntimeBridge {
 				throw error;
 			}
 			const errorMessage = error instanceof Error ? error.message : String(error);
+			// A host error, for example a WASM trap, can name memory without the
+			// guest reaching its memory limit.
+			if (this.broken) throw new Error(`Expression evaluation failed: ${errorMessage}`);
 			if (errorMessage.includes('interrupted')) {
 				throw this.timeoutError(nested);
 			}
@@ -1297,11 +1358,111 @@ export class QuickJsBridge implements RuntimeBridge {
 			throw new Error(`Expression evaluation failed: ${errorMessage}`);
 		} finally {
 			this.deadlines.pop();
-			wrapperFn?.dispose();
-			for (const handle of callbackHandles) {
-				handle.dispose();
+			if (!this.broken) {
+				for (const handle of callbackHandles) {
+					handle.dispose();
+				}
+			} else if (this.deadlines.length === 0) {
+				// Only the outermost call drops the runtime. A nested call returns
+				// into the frames of the outer call, which still use the runtime.
+				this.abandonRuntime();
 			}
 		}
+	}
+
+	/**
+	 * Run the wrapped code and give back its outcome as host values. QuickJS
+	 * reports guest errors as results, so a throw from here is a host error.
+	 */
+	private runInGuest(
+		vm: import('quickjs-emscripten').QuickJSContext,
+		wrappedCode: string,
+		callbackHandles: Array<import('quickjs-emscripten').QuickJSHandle>,
+	): GuestOutcome {
+		const wrapperResult = vm.evalCode(wrappedCode);
+		if (wrapperResult.error) {
+			const dump: unknown = vm.dump(wrapperResult.error);
+			wrapperResult.error.dispose();
+			return { kind: 'compileError', dump };
+		}
+		const wrapperFn = wrapperResult.value;
+		const execResult = vm.callFunction(wrapperFn, vm.undefined, ...callbackHandles);
+		// A nested execute() that broke the runtime returned into this call.
+		if (this.broken) throw new Error('A nested expression stopped the expression engine');
+		wrapperFn.dispose();
+
+		if (execResult.error) {
+			const dump: unknown = vm.dump(execResult.error);
+			execResult.error.dispose();
+			return { kind: 'error', dump };
+		}
+		const dump: unknown = vm.dump(execResult.value);
+		execResult.value.dispose();
+		return { kind: 'value', dump };
+	}
+
+	/**
+	 * Build a new runtime in place of a broken one, so that the caller that holds
+	 * this bridge can go on. The runtime goes on the current module, which is
+	 * never the retired one.
+	 */
+	private rebuildRuntime(): void {
+		// A nested call must not enter a runtime that an inner call has broken.
+		if (this.vm || _quickjsWasm === null) {
+			// Retries a failed load. A load that is in progress is reused.
+			loadQuickJSWasm().catch((error: unknown) => {
+				this.logger.error('[QuickJsBridge] Failed to load a replacement WASM module', { error });
+			});
+			throw new Error(
+				'Expression evaluation failed: the expression engine is restarting after an earlier error. Try again.',
+			);
+		}
+		if (this.runtimeBundle === undefined) {
+			throw new Error('Bridge not initialized. Call initialize() first.');
+		}
+		// The process-wide bundle cache holds the bundle of the bridge that
+		// initialized last, which can differ from the bundle of this bridge.
+		try {
+			this.setupContext(_quickjsWasm, this.runtimeBundle);
+		} catch (error) {
+			// Clears this.vm, so the next execute() tries the rebuild again.
+			this.discardFailedRuntime();
+			throw error;
+		}
+	}
+
+	/**
+	 * Free the runtime of a failed rebuild. It ran no guest call, so it can
+	 * usually be freed. If the free aborts, the module is unusable.
+	 */
+	private discardFailedRuntime(): void {
+		try {
+			for (const handle of this.intlHandles) handle.dispose();
+			this.vm?.dispose();
+			this.runtime?.dispose();
+		} catch {
+			if (this.wasm) retireQuickJSWasm(this.wasm, this.logger);
+		} finally {
+			this.intlHandles = [];
+			this.vm = undefined;
+			this.runtime = undefined;
+			this.wasm = undefined;
+		}
+	}
+
+	/**
+	 * Drop a broken runtime without freeing it. JS_FreeRuntime asserts that no
+	 * objects are left, and the unwind left some, so a free aborts the module.
+	 * The memory is released when the module is garbage collected.
+	 */
+	private abandonRuntime(): void {
+		if (this.wasm) retireQuickJSWasm(this.wasm, this.logger);
+		this.wasm = undefined;
+		this.vm = undefined;
+		this.runtime = undefined;
+		this.intlHandles = [];
+		this.initialized = false;
+		this.logger.warn('[QuickJsBridge] Discarded the runtime after a host error in a guest call');
 	}
 
 	/**
@@ -1333,6 +1494,7 @@ export class QuickJsBridge implements RuntimeBridge {
 
 	async dispose(): Promise<void> {
 		if (this.disposed) return;
+		if (this.broken && this.vm) this.abandonRuntime();
 
 		for (const handle of this.intlHandles) {
 			handle.dispose();

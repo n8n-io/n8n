@@ -11,6 +11,11 @@ export {
 export const AGENTS_MODULE_NAME = 'agents';
 export const AGENTS_SETTINGS_VIEW = 'AgentsSettings';
 
+export const AGENT_MIN_PANEL_WIDTH = 320;
+export const AGENT_MAX_PANEL_WIDTH = 720;
+export const AGENT_DEFAULT_PANEL_WIDTH = 480;
+export const AGENT_DEFAULT_PANEL_WIDTH_RATIO = 0.3;
+
 /** The shared "chat with a published agent over n8n Chat" screen. */
 export const AGENT_N8N_CHAT_VIEW = 'AgentN8nChatView';
 
@@ -75,8 +80,11 @@ export const RECENT_CHATS_LIMIT = 5;
 export const AGENT_N8N_CHAT_HISTORY_PAGE_SIZE = 30;
 
 export {
+	CHAT_MESSAGE_ROLE,
 	CHAT_MESSAGE_STATUS,
+	HOST_EVENT_PLACEMENT,
 	TOOL_CALL_STATE,
+	type ChatMessageRole,
 	type ChatMessageStatus,
 	type ToolCallState,
 } from '@/features/ai/shared/agentsChat/constants';

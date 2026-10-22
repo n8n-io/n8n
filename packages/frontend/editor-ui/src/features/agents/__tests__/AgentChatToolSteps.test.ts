@@ -75,10 +75,9 @@ vi.mock('@n8n/frontend-module-type-availability-policies', async () => ({
 			'@n8n/frontend-module-type-availability-policies',
 		)
 	).getPolicyViolations,
-	ContactInstanceAdminModal: {
+	ContactAdminModal: {
 		props: ['open', 'nodeTypeName', 'kind'],
-		template:
-			'<div v-if="open" data-test-id="contact-instance-admin-modal">{{ nodeTypeName }}</div>',
+		template: '<div v-if="open" data-test-id="contact-admin-modal">{{ nodeTypeName }}</div>',
 	},
 }));
 
@@ -103,7 +102,7 @@ vi.mock('@n8n/i18n', () => {
 				'The plan change was rejected. Expand this step for details.',
 			'agents.chat.toolNames.webSearch': 'Web search',
 			'agents.chat.toolNames.flagMemory': 'Memory noted',
-			'instanceAi.tools.search_nodes': 'Search nodes',
+			'instanceAi.tools.agent_builder_search_nodes': 'Search nodes',
 			'agents.chat.difficulty.low': 'Low',
 			'agents.chat.difficulty.medium': 'Medium',
 			'agents.chat.difficulty.high': 'High',
@@ -326,7 +325,7 @@ describe('AgentChatToolSteps', () => {
 	it('makes generic tool steps with output data expandable', async () => {
 		const wrapper = mountSteps([
 			{
-				tool: 'search_nodes',
+				tool: 'agent_builder_search_nodes',
 				toolCallId: 'tc-1',
 				state: TOOL_CALL_STATE.DONE,
 				output: { nodes: ['Slack'] },
@@ -344,7 +343,7 @@ describe('AgentChatToolSteps', () => {
 	it('does not make generic tool steps without data expandable', () => {
 		const wrapper = mountSteps([
 			{
-				tool: 'search_nodes',
+				tool: 'agent_builder_search_nodes',
 				toolCallId: 'tc-2',
 				state: TOOL_CALL_STATE.DONE,
 			},
@@ -352,6 +351,18 @@ describe('AgentChatToolSteps', () => {
 
 		expect(wrapper.text()).toContain('Search nodes');
 		expect(wrapper.find('button').exists()).toBe(false);
+	});
+
+	it('labels a legacy builder tool name from persisted history', () => {
+		const wrapper = mountSteps([
+			{
+				tool: 'search_nodes',
+				toolCallId: 'tc-legacy',
+				state: TOOL_CALL_STATE.DONE,
+			},
+		]);
+
+		expect(wrapper.text()).toContain('Search nodes');
 	});
 
 	it('shows a completed memory flag as a compact acknowledgement', () => {

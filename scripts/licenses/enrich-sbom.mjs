@@ -216,6 +216,17 @@ export function mergeNestedSboms(sbom, nestedSboms) {
 
 	for (const { source, sbom: nested } of nestedSboms) {
 		const packageLicenses = nested.metadata?.component?.licenses ?? [];
+		const packageComponent = nested.metadata?.component;
+		if (packageComponent && packageComponent.type !== 'file') {
+			const component = withNestedSource({ ...packageComponent, type: 'library' }, source);
+			const key = componentKey(component);
+			if (!seen.has(key)) {
+				seen.add(key);
+				components.push(component);
+				mergedComponents++;
+			}
+		}
+
 		for (const rawComponent of nested.components ?? []) {
 			if (rawComponent.type === 'file') continue;
 
@@ -244,9 +255,7 @@ export function mergeNestedSboms(sbom, nestedSboms) {
 }
 
 /**
- * Find CycloneDX files in a deployed node_modules tree. pnpm keeps optional
- * native packages in its .pnpm virtual store, so package-root traversal alone
- * misses the SBOMs that describe the shipped binaries.
+ * Find CycloneDX files in a deployed node_modules tree.
  */
 export async function loadNestedSboms(nodeModulesRoot) {
 	const nestedSboms = [];
