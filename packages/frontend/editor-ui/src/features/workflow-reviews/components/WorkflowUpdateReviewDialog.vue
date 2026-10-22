@@ -4,6 +4,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import {
 	N8nButton,
 	N8nDialog,
+	N8nDialogBody,
 	N8nDialogDescription,
 	N8nDialogFooter,
 	N8nDialogHeader,
@@ -236,113 +237,120 @@ const submit = async () => {
 <template>
 	<N8nDialog :open="open" size="medium" @update:open="close">
 		<N8nDialogHeader>
-			<N8nText
-				:class="$style.step"
-				size="xsmall"
-				color="text-light"
-				bold
-				tag="p"
-				data-test-id="workflow-update-review-dialog-step"
-			>
-				{{ stepLabel }}
-			</N8nText>
-			<N8nDialogTitle>{{ i18n.baseText('workflowReviews.updateReview.title') }}</N8nDialogTitle>
+			<div :class="$style.heading">
+				<N8nText
+					:class="$style.step"
+					size="xsmall"
+					color="text-light"
+					bold
+					tag="p"
+					data-test-id="workflow-update-review-dialog-step"
+				>
+					{{ stepLabel }}
+				</N8nText>
+				<N8nDialogTitle>{{ i18n.baseText('workflowReviews.updateReview.title') }}</N8nDialogTitle>
+			</div>
 		</N8nDialogHeader>
-		<N8nDialogDescription :class="$style.description">
-			<I18nT keypath="workflowReviews.updateReview.description" tag="span" scope="global">
-				<!-- the id is undefined until fetchStatus resolves (409 path), so the
+		<N8nDialogBody>
+			<N8nDialogDescription :class="$style.description">
+				<I18nT keypath="workflowReviews.updateReview.description" tag="span" scope="global">
+					<!-- the id is undefined until fetchStatus resolves (409 path), so the
 					label must render unlinked rather than leaving an empty slot. -->
-				<template #review>
-					<N8nLink
-						v-if="workflowReviewRequestId"
-						:to="{
-							name: WORKFLOW_REVIEW_REQUESTS_VIEW,
-							params: { reviewId: workflowReviewRequestId },
-						}"
-					>
-						{{ i18n.baseText('workflowReviews.updateReview.description.review') }}
-					</N8nLink>
-					<span v-else>
-						{{ i18n.baseText('workflowReviews.updateReview.description.review') }}
-					</span>
-				</template>
-			</I18nT>
-		</N8nDialogDescription>
-		<form
-			:class="$style.form"
-			data-test-id="workflow-update-review-dialog"
-			@submit.prevent="handleFormSubmit"
-		>
-			<WorkflowVersionForm
-				v-if="step === 1"
-				v-model:version-name="versionName"
-				v-model:description="versionDescription"
-				:disabled="isSubmitting"
-				version-name-test-id="workflow-update-review-version-name-input"
-				description-test-id="workflow-update-review-version-description-input"
-				@submit="goToReviewStep"
-			/>
-			<N8nInputLabel
-				v-else
-				input-name="workflow-update-review-description"
-				:label="i18n.baseText('workflowReviews.submitForReview.description.label')"
+					<template #review>
+						<N8nLink
+							v-if="workflowReviewRequestId"
+							:to="{
+								name: WORKFLOW_REVIEW_REQUESTS_VIEW,
+								params: { reviewId: workflowReviewRequestId },
+							}"
+						>
+							{{ i18n.baseText('workflowReviews.updateReview.description.review') }}
+						</N8nLink>
+						<span v-else>
+							{{ i18n.baseText('workflowReviews.updateReview.description.review') }}
+						</span>
+					</template>
+				</I18nT>
+			</N8nDialogDescription>
+			<form
+				id="workflow-update-review-form"
+				:class="$style.form"
+				data-test-id="workflow-update-review-dialog"
+				@submit.prevent="handleFormSubmit"
 			>
-				<N8nInput
-					id="workflow-update-review-description"
-					v-model="reviewDescription"
-					type="textarea"
-					:rows="3"
-					:maxlength="REVIEW_DESCRIPTION_MAX_LENGTH"
+				<WorkflowVersionForm
+					v-if="step === 1"
+					v-model:version-name="versionName"
+					v-model:description="versionDescription"
 					:disabled="isSubmitting"
-					data-test-id="workflow-update-review-description-input"
+					version-name-test-id="workflow-update-review-version-name-input"
+					description-test-id="workflow-update-review-version-description-input"
+					@submit="goToReviewStep"
 				/>
-				<CharacterCount
-					:value="reviewDescription"
-					:max="REVIEW_DESCRIPTION_MAX_LENGTH"
-					data-test-id="workflow-update-review-description-character-count"
-				/>
-			</N8nInputLabel>
-			<N8nDialogFooter>
-				<template v-if="step === 1">
-					<N8nButton
-						type="button"
-						variant="outline"
+				<N8nInputLabel
+					v-else
+					input-name="workflow-update-review-description"
+					:label="i18n.baseText('workflowReviews.submitForReview.description.label')"
+				>
+					<N8nInput
+						id="workflow-update-review-description"
+						v-model="reviewDescription"
+						type="textarea"
+						:rows="3"
+						:maxlength="REVIEW_DESCRIPTION_MAX_LENGTH"
 						:disabled="isSubmitting"
-						data-test-id="workflow-update-review-cancel-button"
-						@click="close"
-					>
-						{{ i18n.baseText('generic.cancel') }}
-					</N8nButton>
-					<N8nButton
-						type="submit"
-						:loading="isLoadingReviewDescription"
-						:disabled="isNextDisabled"
-						data-test-id="workflow-update-review-next-button"
-					>
-						{{ i18n.baseText('generic.next') }}
-					</N8nButton>
-				</template>
-				<template v-else>
-					<N8nButton
-						type="button"
-						variant="outline"
-						:disabled="isSubmitting"
-						data-test-id="workflow-update-review-back-button"
-						@click="goBack"
-					>
-						{{ i18n.baseText('generic.back') }}
-					</N8nButton>
-					<N8nButton
-						type="submit"
-						:loading="isSubmitting"
-						:disabled="isSubmitDisabled"
-						data-test-id="workflow-update-review-submit-button"
-					>
-						{{ i18n.baseText('workflowReviews.updateReview.submit') }}
-					</N8nButton>
-				</template>
-			</N8nDialogFooter>
-		</form>
+						data-test-id="workflow-update-review-description-input"
+					/>
+					<CharacterCount
+						:value="reviewDescription"
+						:max="REVIEW_DESCRIPTION_MAX_LENGTH"
+						data-test-id="workflow-update-review-description-character-count"
+					/>
+				</N8nInputLabel>
+			</form>
+		</N8nDialogBody>
+		<N8nDialogFooter>
+			<template v-if="step === 1">
+				<N8nButton
+					type="button"
+					variant="outline"
+					:disabled="isSubmitting"
+					data-test-id="workflow-update-review-cancel-button"
+					@click="close"
+				>
+					{{ i18n.baseText('generic.cancel') }}
+				</N8nButton>
+				<N8nButton
+					type="submit"
+					form="workflow-update-review-form"
+					:loading="isLoadingReviewDescription"
+					:disabled="isNextDisabled"
+					data-test-id="workflow-update-review-next-button"
+				>
+					{{ i18n.baseText('generic.next') }}
+				</N8nButton>
+			</template>
+			<template v-else>
+				<N8nButton
+					type="button"
+					variant="outline"
+					:disabled="isSubmitting"
+					data-test-id="workflow-update-review-back-button"
+					@click="goBack"
+				>
+					{{ i18n.baseText('generic.back') }}
+				</N8nButton>
+				<N8nButton
+					type="submit"
+					form="workflow-update-review-form"
+					:loading="isSubmitting"
+					:disabled="isSubmitDisabled"
+					data-test-id="workflow-update-review-submit-button"
+				>
+					{{ i18n.baseText('workflowReviews.updateReview.submit') }}
+				</N8nButton>
+			</template>
+		</N8nDialogFooter>
 	</N8nDialog>
 </template>
 
@@ -356,7 +364,14 @@ const submit = async () => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--lg);
-	margin-top: var(--spacing--sm);
+}
+
+.heading {
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 auto;
+	min-width: 0;
+	gap: var(--spacing--2xs);
 }
 
 .step {

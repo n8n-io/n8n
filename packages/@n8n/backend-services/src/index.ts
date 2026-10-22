@@ -105,4 +105,27 @@ export {
 	RestrictedNodeTypesProviderProxy,
 	type RestrictedNodeTypesProvider,
 } from './workflows/restricted-node-types-provider-proxy.service';
+export * from './services/assistant-skill-provider-proxy.service';
+export {
+	InstalledTypeRestrictionsProxy,
+	type InstalledTypeRestrictionsProvider,
+} from './services/installed-type-restrictions-proxy.service';
+
+export {
+	type AiPreferenceProjectRef,
+	type AiPreferenceItem,
+	type AppliedPreference,
+	type ApplicableAiPreferences,
+	type AiPreferenceUpdateRequest,
+	AiPreferenceService,
+	groupAiPreferences,
+	renderAiPreferences,
+	flattenAiPreferences,
+	type AppliedPreferencesInjection,
+	buildAppliedPreferencesPayload,
+	AI_PREFERENCES_REPLACES_EARLIER,
+	AI_PREFERENCES_CLEARED_BLOCK,
+	renderAiPreferencesBlock,
+} from './services/ai-preference.service';
+export { AiPreferenceScopeFullError } from './errors/response-errors/ai-preference-scope-full.error';
 export * from './auth';

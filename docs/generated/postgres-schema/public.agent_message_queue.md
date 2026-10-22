@@ -76,6 +76,8 @@ erDiagram
   integer duration
   text error
   json failureSummary
+  varchar_32_ finishReason
+  varchar_64_ guardrailCode
   varchar_16_ hitlStatus
   varchar_36_ id
   varchar_255_ model
@@ -118,6 +120,7 @@ erDiagram
   varchar_255_ projectId FK
   integer sessionNumber
   varchar_32_ taskId
+  json taskStop
   varchar_36_ taskVersionId FK
   varchar_255_ title
   integer totalCompletionTokens

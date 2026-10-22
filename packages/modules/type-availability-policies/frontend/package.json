@@ -1,6 +1,6 @@
 {
   "name": "@n8n/frontend-module-type-availability-policies",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "type": "module",
   "main": "src/index.ts",
   "exports": {
@@ -23,6 +23,7 @@
     "@n8n/design-system": "workspace:*",
     "@n8n/frontend-module-sdk": "workspace:*",
     "@n8n/i18n": "workspace:*",
+    "@n8n/permissions": "workspace:*",
     "@n8n/rest-api-client": "workspace:*",
     "@n8n/stores": "workspace:*",
     "@n8n/utils": "workspace:*",

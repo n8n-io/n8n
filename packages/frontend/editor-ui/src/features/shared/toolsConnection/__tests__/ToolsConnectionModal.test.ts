@@ -254,6 +254,37 @@ describe('ToolsConnectionModal', () => {
 		});
 	});
 
+	it('lists connectors on Gateway credits first on the Connectors tab, keeping their order', async () => {
+		const connector = (title: string, freeCredits = false): ToolConnectionItem => ({
+			id: `registry:${title}`,
+			kind: 'mcp-server',
+			title,
+			description: `${title} MCP`,
+			status: 'none',
+			availableTools: [],
+			freeCredits,
+		});
+		const { getAllByTestId } = renderWith({
+			items: [
+				connector('Notion'),
+				connector('Firecrawl', true),
+				connector('GitHub'),
+				connector('Brave', true),
+			],
+			categories: ['mcp'],
+		});
+
+		await waitFor(() => {
+			const titles = getAllByTestId('tools-connection-row').map((row) => row.textContent);
+			expect(titles.map((title) => title?.match(/Notion|Firecrawl|GitHub|Brave/)?.[0])).toEqual([
+				'Firecrawl',
+				'Brave',
+				'Notion',
+				'GitHub',
+			]);
+		});
+	});
+
 	it('labels and populates the n8n-connect tab and finds its items in search', async () => {
 		const gatewayItem: ToolConnectionItem = {
 			id: 'n8n-connect:slack',

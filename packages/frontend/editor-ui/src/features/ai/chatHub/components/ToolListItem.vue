@@ -102,7 +102,7 @@ const restriction = computed(() => getNodeItemRestriction(props.nodeType.name));
 			<RestrictedNodePopover
 				v-if="restriction"
 				:node-type-name="nodeType.displayName"
-				:scope="restriction.scope"
+				:restriction="restriction"
 				:anchor="rowRef"
 			/>
 

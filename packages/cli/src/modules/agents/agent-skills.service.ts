@@ -7,6 +7,7 @@ import {
 	type SkillCreateMethod,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { ProjectScopeService } from '@n8n/backend-services';
 import { TransactionRunner, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import isEqual from 'lodash/isEqual';
@@ -15,11 +16,21 @@ import { UserError } from 'n8n-workflow';
 import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { findIntroducedNameClashes, findNameClashGroups } from '@/modules/skills/skill-names';
+import {
+	SkillService,
+	withTrimmedName,
+	type SkillMoveOptions,
+} from '@/modules/skills/skill.service';
+import {
+	SkillsTelemetry,
+	type SkillTelemetryMethod,
+	type SkillTelemetrySource,
+} from '@/modules/skills/skills-telemetry';
 
 import {
 	type AgentMutationTelemetryContext,
 	buildAgentMutationEvent,
-	captureAgentMutation,
 } from './agent-modification-telemetry.service';
 import { AgentSaveCompletionService } from './agent-save-completion.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
@@ -27,14 +38,6 @@ import type { Agent } from './entities/agent.entity';
 import { composeJsonConfig } from './json-config/agent-config-composition';
 import type { AgentSkillRefs } from './json-config/agent-document';
 import { AgentRepository } from './repositories/agent.repository';
-import { findIntroducedNameClashes, findNameClashGroups } from './skills/skill-names';
-import type { SkillTarget } from './repositories/skill.repository';
-import { SkillService, withTrimmedName } from './skills/skill.service';
-import {
-	SkillsTelemetry,
-	type SkillTelemetryMethod,
-	type SkillTelemetrySource,
-} from './skills/skills-telemetry';
 import { getAgentConfigHash, getAgentSkillHash } from './utils/agent-config-hash';
 import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
@@ -59,6 +62,7 @@ export class AgentSkillsService {
 		private readonly skillService: SkillService,
 		private readonly transactionRunner: TransactionRunner,
 		private readonly skillsTelemetry: SkillsTelemetry,
+		private readonly projectScopeService: ProjectScopeService,
 	) {}
 
 	/** The skills of the agent draft, keyed by skill id: the versions that the draft runs. */
@@ -159,7 +163,6 @@ export class AgentSkillsService {
 
 		const previous = await this.agentSkillRefs.readDraft(entity, {});
 		this.assertNoNameClashes(previous.skills, bodies);
-		const snapshot = captureAgentMutation(entity, previous.skillRefs);
 
 		markAgentDraftDirty(entity);
 		const { ids, skillRefs } = await this.transactionRunner.run({}, async (ctx) => {
@@ -169,6 +172,7 @@ export class AgentSkillsService {
 				bodies,
 				context.user.id,
 				availableTo,
+				telemetrySourceOf(context),
 				ctx,
 			);
 			const nextRefs: AgentJsonSkillConfig[] = [
@@ -183,7 +187,7 @@ export class AgentSkillsService {
 		});
 
 		await this.saveCompletion.bodySaved(
-			buildAgentMutationEvent(entity, skillRefs, projectId, context, snapshot, { skills: true }),
+			buildAgentMutationEvent(entity, skillRefs, projectId, context, ['skills']),
 			context.pushRef,
 		);
 
@@ -262,11 +266,16 @@ export class AgentSkillsService {
 		this.validateSkill(updated);
 
 		const nextAvailability = await this.availabilityChange(skillId, availableTo);
-		let checkedSource: SkillTarget | undefined;
+		let moveOptions: SkillMoveOptions = {};
 		if (nextAvailability) {
 			await this.skillService.assertCanEdit(context.user, [skillId]);
-			checkedSource = await this.skillService.assertCanMove(context.user, skillId);
+			const checkedSource = await this.skillService.assertCanMove(context.user, skillId);
 			await this.assertCanCreateSkills(context.user, entity.projectId, nextAvailability);
+			// A refused move names only the agents the user may read.
+			const agentProjectIds = await this.projectScopeService.getProjectIds(context.user, [
+				'agent:read',
+			]);
+			moveOptions = { checkedSource, agentProjectIds: agentProjectIds ?? 'all' };
 		}
 
 		if (isEqual(existing, updated)) {
@@ -276,9 +285,7 @@ export class AgentSkillsService {
 					skillId,
 					nextAvailability,
 					{},
-					{
-						checkedSource,
-					},
+					moveOptions,
 				);
 			}
 			return {
@@ -305,15 +312,14 @@ export class AgentSkillsService {
 			}
 		}
 		await this.skillService.assertCanEdit(context.user, [skillId]);
-		const snapshot = captureAgentMutation(entity, skillRefs);
 
 		if (pinned) markAgentDraftDirty(entity);
 		const saved = await this.transactionRunner.run({}, async (ctx) => {
 			if (nextAvailability) {
 				// The move checks the name the skill has after the save, not the old one.
 				await this.agentSkillRefs.setAvailability(entity, skillId, nextAvailability, ctx, {
+					...moveOptions,
 					nameAfterMove: updated.name,
-					checkedSource,
 				});
 			}
 			if (pinned) {
@@ -345,8 +351,7 @@ export class AgentSkillsService {
 				await this.agentSkillRefs.refsForDraft(fresh, {}),
 				projectId,
 				context,
-				snapshot,
-				{ skills: true },
+				['skills'],
 			),
 			context.pushRef,
 		);
@@ -395,8 +400,6 @@ export class AgentSkillsService {
 		if (!previousSkillRefs?.some((ref) => ref.id === skillId)) {
 			throw new NotFoundError('Skill not found');
 		}
-		const snapshot = captureAgentMutation(entity, previousSkillRefs);
-
 		markAgentDraftDirty(entity);
 		const skillRefs = await this.transactionRunner.run({}, async (ctx) => {
 			await saveAgentDraftFenced(this.agentRepository, entity, ctx);
@@ -408,7 +411,7 @@ export class AgentSkillsService {
 			return await this.agentSkillRefs.refsForDraft(entity, ctx);
 		});
 		await this.saveCompletion.bodySaved(
-			buildAgentMutationEvent(entity, skillRefs, projectId, context, snapshot, { skills: true }),
+			buildAgentMutationEvent(entity, skillRefs, projectId, context, ['skills']),
 			context.pushRef,
 		);
 
@@ -435,14 +438,13 @@ export class AgentSkillsService {
 		// Every body on the agent row counts, with or without a ref, as on master.
 		const { [skillId]: _self, ...others } = entity.skills ?? {};
 		this.assertNoNameClashes(others, [updated]);
-		const snapshot = captureAgentMutation(entity, skillRefs);
 		entity.skills = { ...entity.skills, [skillId]: updated };
 		markAgentDraftDirty(entity);
 		await this.transactionRunner.run({}, async (ctx) => {
 			await saveAgentDraftFenced(this.agentRepository, entity, ctx);
 		});
 		await this.saveCompletion.bodySaved(
-			buildAgentMutationEvent(entity, skillRefs, projectId, context, snapshot, { skills: true }),
+			buildAgentMutationEvent(entity, skillRefs, projectId, context, ['skills']),
 			context.pushRef,
 		);
 		this.logger.debug('Updated agent skill', { agentId: entity.id, projectId, skillId });

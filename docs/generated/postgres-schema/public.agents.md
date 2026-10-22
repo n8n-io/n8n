@@ -119,8 +119,11 @@ erDiagram
   varchar_255_ parentResourceId
   varchar_128_ parentThreadId
   uuid pauseRequestId
+  uuid planId FK
+  uuid planTaskId
   text result
   timestamp_3__with_time_zone settledAt
+  varchar_36_ sourceExecutionId FK
   varchar_16_ status
   varchar_36_ subAgentId
   timestamp_3__with_time_zone timeoutAt
@@ -202,6 +205,7 @@ erDiagram
   varchar_255_ projectId FK
   integer sessionNumber
   varchar_32_ taskId
+  json taskStop
   varchar_36_ taskVersionId FK
   varchar_255_ title
   integer totalCompletionTokens
@@ -334,6 +338,7 @@ erDiagram
 }
 "public.skill" {
   varchar_36_ agentId FK
+  boolean availableToAssistant
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   varchar_36_ id

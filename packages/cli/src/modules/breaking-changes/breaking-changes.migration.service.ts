@@ -23,6 +23,10 @@ import { isWorkflowMigration, WorkflowMigrationNodeError } from './migrations/no
 
 export { WorkflowMigrationNodeError };
 
+/** The same for a workflow that does not exist, so the response does not confirm that it exists. */
+export const WORKFLOW_NOT_EDITABLE_MESSAGE =
+	'Workflow not found, or you do not have permission to update it.';
+
 @Service()
 export class BreakingChangeMigrationService {
 	constructor(
@@ -60,9 +64,7 @@ export class BreakingChangeMigrationService {
 			'workflow:update',
 		]);
 		if (!workflow) {
-			throw new NotFoundError(
-				'You do not have permission to update this workflow. Ask the owner to share it with you.',
-			);
+			throw new NotFoundError(WORKFLOW_NOT_EDITABLE_MESSAGE);
 		}
 
 		// Whether the version we're about to migrate is the one currently published.
@@ -170,7 +172,8 @@ export class BreakingChangeMigrationService {
 			connections: workflow.connections,
 			migratedNodeIds,
 			unmapped,
-			notes,
+			// Same note from several nodes is one review item, not one per node.
+			notes: [...new Set(notes)],
 		};
 	}
 
