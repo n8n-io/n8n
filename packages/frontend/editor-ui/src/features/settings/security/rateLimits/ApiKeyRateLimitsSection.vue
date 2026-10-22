@@ -125,7 +125,7 @@ async function persist(next: PublicApiRateLimitSettings) {
 				<template #action>
 					<N8nTooltip
 						:disabled="!isToggleLocked"
-						:content="i18n.baseText('settings.security.rateLimits.envLocked')"
+						:content="i18n.baseText('settings.security.rateLimits.envLocked.toggle')"
 					>
 						<N8nSwitch
 							v-model="toggleValue"

@@ -167,7 +167,7 @@ function save() {
 							<div :class="$style.field">
 								<N8nTooltip
 									:disabled="!isLimitLocked(rows[kind])"
-									:content="i18n.baseText('settings.security.rateLimits.envLocked')"
+									:content="i18n.baseText('settings.security.rateLimits.envLocked.field')"
 								>
 									<N8nInput
 										v-model="draft[rows[kind]].limit"
@@ -186,7 +186,7 @@ function save() {
 							<div :class="$style.field">
 								<N8nTooltip
 									:disabled="!isWindowLocked(rows[kind])"
-									:content="i18n.baseText('settings.security.rateLimits.envLocked')"
+									:content="i18n.baseText('settings.security.rateLimits.envLocked.field')"
 								>
 									<N8nInput
 										v-model="draft[rows[kind]].window"

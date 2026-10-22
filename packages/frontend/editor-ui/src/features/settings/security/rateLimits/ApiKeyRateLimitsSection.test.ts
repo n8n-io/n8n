@@ -256,6 +256,34 @@ describe('ApiKeyRateLimitsSection', () => {
 		expect(limitInput('globalWrite')).not.toBeDisabled();
 	});
 
+	it('explains how to change the limits when an environment variable turns them on', async () => {
+		const { getByTestId } = await renderLoaded({ enabled: true, envManagedFields: ['enabled'] });
+
+		await userEvent.hover(getByTestId('rate-limits-toggle').parentElement!);
+
+		expect(
+			await screen.findByText(
+				'These limits are set through an environment variable. To change them or turn them off, edit the variable.',
+			),
+		).toBeInTheDocument();
+	});
+
+	it('explains how to change a limit that an environment variable sets', async () => {
+		const { getByTestId } = await renderLoaded({
+			enabled: true,
+			envManagedFields: ['globalReadLimit'],
+		});
+
+		await userEvent.click(getByTestId('rate-limits-edit'));
+		await userEvent.hover(limitInput('globalRead').parentElement!);
+
+		expect(
+			await screen.findByText(
+				'This limit is set by an environment variable. To change it, edit the variable.',
+			),
+		).toBeInTheDocument();
+	});
+
 	it('shows an error when the settings cannot be saved', async () => {
 		updateSettings.mockRejectedValue(new Error('boom'));
 		const { getByTestId } = await renderLoaded({ enabled: true });
