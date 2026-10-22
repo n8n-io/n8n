@@ -1309,6 +1309,23 @@ describe('CredentialsService', () => {
 		});
 	});
 
+	describe('hasConnectionTest', () => {
+		it('is false when n8n has no test for the credential type', () => {
+			credentialsTester.getCredentialTestFunction.mockReturnValue(undefined);
+
+			expect(service.hasConnectionTest('httpHeaderAuth')).toBe(false);
+			expect(credentialsTester.getCredentialTestFunction).toHaveBeenCalledWith('httpHeaderAuth');
+		});
+
+		it('is true when n8n has a test for the credential type', () => {
+			credentialsTester.getCredentialTestFunction.mockReturnValue({
+				testRequest: { request: { url: '/auth.test' } },
+			});
+
+			expect(service.hasConnectionTest('slackApi')).toBe(true);
+		});
+	});
+
 	describe('testById', () => {
 		it('throws CredentialNotFoundError when the user cannot use the credential', async () => {
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
