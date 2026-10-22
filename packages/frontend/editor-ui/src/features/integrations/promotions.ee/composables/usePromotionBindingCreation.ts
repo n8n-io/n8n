@@ -159,14 +159,17 @@ export function usePromotionBindingCreation(
 
 	function assertCanCreate(resource: CreateResource, destination?: ResourceEditorDestination) {
 		if (canCreate(resource, destination)) return;
-		if (destination?.kind === 'pending' && !projectsStore.hasTeamProjectQuota) {
+		if (destination?.kind === 'resolved') {
+			throw new Error(i18n.baseText('promotions.bindings.destinationDenied'));
+		}
+		if (destination && !projectsStore.hasTeamProjectQuota) {
 			throw new Error(
 				i18n.baseText('promotions.bindings.projectLimitReached', {
 					interpolate: { projectName: destination.name },
 				}),
 			);
 		}
-		throw new Error(i18n.baseText('promotions.bindings.destinationDenied'));
+		throw new Error(i18n.baseText('promotions.bindings.instanceDenied'));
 	}
 
 	function openCredentialEditor(

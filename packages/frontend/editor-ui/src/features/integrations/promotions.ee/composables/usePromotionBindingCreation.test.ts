@@ -297,8 +297,7 @@ it.each([
 		prepare: () => {
 			stores.projects.hasPermissionToCreateProjects = false;
 		},
-		message:
-			"You can't create this item in the destination project. Ask a project admin for access.",
+		message: "You can't create this item on this instance. Ask an instance admin for access.",
 	},
 	{
 		name: 'global variable without variable access',
@@ -306,8 +305,7 @@ it.each([
 		prepare: () => {
 			stores.users.currentUser = { globalScopes: [] };
 		},
-		message:
-			"You can't create this item in the destination project. Ask a project admin for access.",
+		message: "You can't create this item on this instance. Ask an instance admin for access.",
 	},
 ])(
 	'says why an item cannot be created before it opens the editor: $name',

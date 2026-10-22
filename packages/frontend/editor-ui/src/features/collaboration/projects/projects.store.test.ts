@@ -362,7 +362,7 @@ describe('useProjectsStore.hasTeamProjectQuota', () => {
 
 	it('keeps team project quota available on a protected instance', () => {
 		useSettingsStore().settings = {
-			enterprise: { projects: { team: { limit: -1 } } },
+			enterprise: { projects: { team: { limit: 1 } } },
 		} as FrontendSettings;
 		useSourceControlStore().setPreferences({ branchReadOnly: true });
 		const store = useProjectsStore();
