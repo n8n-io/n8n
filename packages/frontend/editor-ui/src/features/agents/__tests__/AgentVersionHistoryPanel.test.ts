@@ -53,6 +53,17 @@ vi.mock('../composables/useAgentPublish', () => ({
 }));
 
 const STUBS = {
+	N8nTabs: {
+		name: 'N8nTabs',
+		template: '<div />',
+		props: ['modelValue', 'options'],
+		emits: ['update:modelValue'],
+	},
+	AgentPublishTimeline: {
+		name: 'AgentPublishTimeline',
+		template: '<div />',
+		props: ['projectId', 'agentId'],
+	},
 	N8nHeading: { template: '<div><slot /></div>' },
 	N8nIconButton: {
 		template: '<button @click="$emit(\'click\')" />',
@@ -270,4 +281,21 @@ it('refreshes history when a new draft version is saved', async () => {
 	versionHistoryMock.refresh.mockClear();
 	await wrapper.setProps({ currentVersionId: 'v2' });
 	expect(versionHistoryMock.refresh).toHaveBeenCalledWith('project-1', 'agent-1');
+});
+
+it('switches between Versions and Publish Timeline', async () => {
+	const wrapper = mountPanel();
+	await flushPromises();
+	const tabs = wrapper.findComponent('[data-test-id="agent-history-tabs"]');
+	expect(tabs.props('options')).toEqual([
+		{ value: 'versions', label: 'workflowHistory.tab.history' },
+		{ value: 'timeline', label: 'workflowHistory.tab.publishTimeline' },
+	]);
+	tabs.vm.$emit('update:modelValue', 'timeline');
+	await flushPromises();
+	expect(wrapper.findComponent({ name: 'AgentVersionList' }).exists()).toBe(false);
+	expect(wrapper.findComponent({ name: 'AgentPublishTimeline' }).props()).toMatchObject({
+		projectId: 'project-1',
+		agentId: 'agent-1',
+	});
 });
