@@ -1,10 +1,15 @@
-import { ListAgentSessionsQueryDto, type AgentSessionPreviewAccess } from '@n8n/api-types';
+import {
+	AgentTaskApprovalDto,
+	ListAgentSessionsQueryDto,
+	type AgentSessionPreviewAccess,
+} from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Delete, Get, Post, ProjectScope, Query, RestController } from '@n8n/decorators';
+import { Body, Delete, Get, Post, ProjectScope, Query, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
 import { NotFoundError } from '@n8n/errors';
 
+import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentSessionLangSmithExportService } from './agent-session-langsmith-export.service';
 import { SystemAgentRegistry } from './system-agents/system-agent-registry';
@@ -16,6 +21,7 @@ export class AgentThreadsController {
 	constructor(
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly langsmithExportService: AgentSessionLangSmithExportService,
+		private readonly agentExecutionOrchestratorService: AgentExecutionOrchestratorService,
 		private readonly systemAgents: SystemAgentRegistry,
 	) {}
 
@@ -69,6 +75,27 @@ export class AgentThreadsController {
 			),
 		};
 		return { ...result, thread: { ...thread, ...access, source: source ?? null } };
+	}
+
+	@Post('/:agentId/threads/:threadId/approval')
+	@ProjectScope('agent:execute')
+	async resumeTaskApproval(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+		// The route registry calls the handler as (req, res, body). This unused
+		// response argument keeps the parsed body in the third position.
+		_res: Response,
+		@Body payload: AgentTaskApprovalDto,
+	) {
+		const { projectId, agentId, threadId } = req.params;
+		await this.agentExecutionOrchestratorService.resumeTaskApproval({
+			projectId,
+			agentId,
+			threadId,
+			user: req.user,
+			toolCallId: payload.toolCallId,
+			resumeData: payload.resumeData,
+		});
+		return { success: true };
 	}
 
 	@Post('/:agentId/threads/:threadId/langsmith-export')

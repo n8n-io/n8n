@@ -1360,6 +1360,75 @@ describe('AgentExecutionService', () => {
 	});
 
 	describe('finalizeExecution', () => {
+		const approvalTimeline = [
+			{
+				type: 'suspension' as const,
+				toolName: 'send_channel_message',
+				toolCallId: 'call-1',
+				timestamp: 1,
+				suspendPayload: { type: 'approval', toolName: 'send_channel_message' },
+			},
+		];
+
+		it('records a task approval suspension as awaiting and skips turn telemetry', async () => {
+			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
+			const record = makeMessageRecord({ timeline: approvalTimeline });
+
+			await service.finalizeExecution('execution-1', {
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Run',
+				record,
+				source: 'task',
+				hitlStatus: 'suspended',
+				telemetry: {
+					runType: 'production',
+					configuration: {
+						model: null,
+						channels: [],
+						tool_types: [],
+						tool_count: 0,
+						num_skills: 0,
+						memory_type: 'none',
+					},
+				},
+			});
+
+			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
+				'execution-1',
+				expect.objectContaining({ status: 'awaiting' }),
+				undefined,
+				expect.any(Object),
+				undefined,
+			);
+			expect(telemetry.trackAgentTurnFinished).not.toHaveBeenCalled();
+		});
+
+		it('keeps a channel approval suspension as success', async () => {
+			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
+
+			await service.finalizeExecution('execution-1', {
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Run',
+				record: makeMessageRecord({ timeline: approvalTimeline }),
+				source: 'slack',
+				hitlStatus: 'suspended',
+			});
+
+			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
+				'execution-1',
+				expect.objectContaining({ status: 'success' }),
+				undefined,
+				expect.any(Object),
+				undefined,
+			);
+		});
+
 		it('makes the terminal timeline authoritative', async () => {
 			const record = makeMessageRecord({
 				finishReason: 'cancelled',

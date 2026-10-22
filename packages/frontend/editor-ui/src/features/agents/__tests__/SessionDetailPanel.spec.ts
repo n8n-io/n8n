@@ -46,7 +46,10 @@ function makeRouter(): Router {
 
 function mountIt(
 	item: TimelineItem | null,
-	extraProps: { projectId?: string; agentId?: string } = {},
+	extraProps: {
+		projectId?: string;
+		agentId?: string;
+	} = {},
 ) {
 	return mount(SessionDetailPanel, {
 		props: { item, ...extraProps },

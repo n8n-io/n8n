@@ -2,6 +2,7 @@ import type { AuthenticatedRequest, User } from '@n8n/db';
 import { NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
+import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentSessionLangSmithExportService } from '../agent-session-langsmith-export.service';
 import { AgentThreadsController } from '../agent-threads.controller';
@@ -28,6 +29,7 @@ describe('AgentThreadsController route access scopes', () => {
 	it.each([
 		['listThreads', 'get', '/:agentId/threads'],
 		['getThread', 'get', '/:agentId/threads/:threadId'],
+		['resumeTaskApproval', 'post', '/:agentId/threads/:threadId/approval'],
 		['exportThreadToLangSmith', 'post', '/:agentId/threads/:threadId/langsmith-export'],
 		['deleteThread', 'delete', '/:agentId/threads/:threadId'],
 	])('%s uses %s %s', (handlerName, method, path) => {
@@ -37,6 +39,7 @@ describe('AgentThreadsController route access scopes', () => {
 	it.each([
 		['listThreads', 'agent:read'],
 		['getThread', 'agent:read'],
+		['resumeTaskApproval', 'agent:execute'],
 		['exportThreadToLangSmith', 'agent:read'],
 		['deleteThread', 'agent:update'],
 	])('%s uses %s', (handlerName, scope) => {
@@ -48,6 +51,7 @@ describe('AgentThreadsController route access scopes', () => {
 		const controller = new AgentThreadsController(
 			agentExecutionService,
 			mock<AgentSessionLangSmithExportService>(),
+			mock<AgentExecutionOrchestratorService>(),
 			new SystemAgentRegistry(),
 		);
 		agentExecutionService.getThreadDetail.mockResolvedValue({
@@ -72,6 +76,41 @@ describe('AgentThreadsController route access scopes', () => {
 	});
 });
 
+describe('AgentThreadsController task approval', () => {
+	it('passes the posted tool call id to the resume', async () => {
+		const orchestrator = mock<AgentExecutionOrchestratorService>();
+		const controller = new AgentThreadsController(
+			mock<AgentExecutionService>(),
+			mock<AgentSessionLangSmithExportService>(),
+			orchestrator,
+			new SystemAgentRegistry(),
+		);
+		const user = mock<User>({ id: 'user-1' });
+		const req = mock<
+			AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>
+		>({
+			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+			user,
+		});
+		const response = { toolCallId: 'from-response', resumeData: { approved: false } };
+
+		const result = await controller.resumeTaskApproval(req, response as never, {
+			toolCallId: 'call-1',
+			resumeData: { approved: true },
+		});
+
+		expect(result).toEqual({ success: true });
+		expect(orchestrator.resumeTaskApproval).toHaveBeenCalledWith({
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			threadId: 'thread-1',
+			user,
+			toolCallId: 'call-1',
+			resumeData: { approved: true },
+		});
+	});
+});
+
 describe('AgentThreadsController session details', () => {
 	it.each([
 		['private root', 'user', null, 'chat', true],
@@ -88,6 +127,7 @@ describe('AgentThreadsController session details', () => {
 			const controller = new AgentThreadsController(
 				service,
 				mock<AgentSessionLangSmithExportService>(),
+				mock<AgentExecutionOrchestratorService>(),
 				new SystemAgentRegistry(),
 			);
 			service.getThreadDetail.mockResolvedValue({
@@ -130,6 +170,7 @@ describe('AgentThreadsController deleteThread', () => {
 		const controller = new AgentThreadsController(
 			service,
 			mock<AgentSessionLangSmithExportService>(),
+			mock<AgentExecutionOrchestratorService>(),
 			registry,
 		);
 		return { service, controller };

@@ -2,6 +2,7 @@ import {
 	readEpisodicScopeDecision,
 	type Agent as RuntimeAgent,
 	type EpisodicScopeDecision,
+	type JSONObject,
 	type SerializableAgentState,
 } from '@n8n/agents';
 import type {
@@ -14,8 +15,9 @@ import type {
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AiConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import { UserRepository, type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { OperationalError, UserError } from 'n8n-workflow';
 
 import { ExternalHooks } from '@/external-hooks';
@@ -32,6 +34,7 @@ import type { AgentThreadAccess } from './entities/agent-execution-thread.entity
 import type { AgentChatSurface, AgentSessionMode } from './utils/agent-thread-access';
 import {
 	isTaskRunMemoryResourceId,
+	taskRunMemoryResourceId,
 	userIdFromDraftChatMemoryResourceId,
 	userIdFromProductionChatMemoryResourceId,
 } from './utils/agent-memory-scope';
@@ -87,6 +90,14 @@ import { createAgentExecutionCounter } from './utils/agent-execution-counter';
 import { resolveAgentRunSource } from './utils/agent-published-snapshot';
 import { buildInboundUserMessage } from './utils/inbound-attachments';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
+
+/** Written on a manual task run so a later approval can rebuild that starter's runtime. */
+const TASK_RUN_STARTER_USER_KEY = 'n8nTaskRunStarterUserId';
+
+function taskRunStarterUserId(hostMetadata: JSONObject | undefined): string | undefined {
+	const value = hostMetadata?.[TASK_RUN_STARTER_USER_KEY];
+	return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
 
 export interface AgentMemoryScope {
 	threadId: string;
@@ -360,6 +371,7 @@ export class AgentExecutionOrchestratorService {
 		private readonly backgroundJobService: AgentBackgroundJobService,
 		private readonly settingsService: AgentsSettingsService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly userRepository: UserRepository,
 	) {}
 
 	async getSessionMode(threadId: string): Promise<AgentSessionMode> {
@@ -484,22 +496,53 @@ export class AgentExecutionOrchestratorService {
 		) {
 			throw notThisChat();
 		}
-		// A draft task run ("Run now") stays bound to the user who started it.
-		const owner = usePublishedVersion ? undefined : user;
+		// A Run now checkpoint keeps the member who started it. The caller may be
+		// another project member approving the action.
+		const taskRun = isTaskRunMemoryResourceId(memoryScope.resourceId);
+		const runtimeUser = usePublishedVersion
+			? undefined
+			: taskRun
+				? await this.starterForTaskRun(memoryScope)
+				: user;
 		const sandboxPrincipalHash = this.checkResumeSandbox(config, memoryScope, {
 			always: false,
-			owner: usePublishedVersion
-				? undefined
-				: {
-						principalHash: owner
-							? hashAgentSandboxPrincipal({ type: 'n8n-user', userId: owner.id })
-							: undefined,
-					},
+			owner:
+				usePublishedVersion || taskRun
+					? undefined
+					: {
+							principalHash: runtimeUser
+								? hashAgentSandboxPrincipal({ type: 'n8n-user', userId: runtimeUser.id })
+								: undefined,
+						},
 		});
 		return {
-			scope: { access: { accessScope: 'project', ownerId: null }, runtime: { user: owner } },
+			scope: {
+				access: { accessScope: 'project', ownerId: null },
+				runtime: { user: runtimeUser },
+			},
 			sandboxPrincipalHash,
 		};
+	}
+
+	/**
+	 * The Run now starter, when the checkpoint names one whose sandbox principal
+	 * still matches. A missing or disabled starter leaves the runtime unscoped.
+	 */
+	private async starterForTaskRun(
+		memoryScope: ResumeCheckpoint['memoryScope'],
+	): Promise<User | undefined> {
+		const userId = taskRunStarterUserId(memoryScope.hostMetadata);
+		const scope = decodeAgentSandboxHostMetadata(memoryScope.hostMetadata);
+		if (
+			!userId ||
+			!scope ||
+			hashAgentSandboxPrincipal({ type: 'n8n-user', userId }) !== scope.principalHash
+		) {
+			return undefined;
+		}
+		const starter = await this.userRepository.findByIdWithRole(userId);
+		if (!starter || starter.disabled) return undefined;
+		return starter;
 	}
 
 	private checkResumeSandbox(
@@ -545,6 +588,94 @@ export class AgentExecutionOrchestratorService {
 			async () => await this.getResumeRuntime(run, checkpoint),
 			(runtime) => this.resumeRuntimeTurn(run, checkpoint, runtime),
 		);
+	}
+
+	/**
+	 * Approve or deny a gated action on a task session. The resume continues
+	 * in the background, the same way a manual task run does.
+	 */
+	async resumeTaskApproval(config: {
+		agentId: string;
+		projectId: string;
+		threadId: string;
+		user: User;
+		toolCallId: string;
+		resumeData: unknown;
+	}): Promise<void> {
+		const { agentId, projectId, threadId, user, toolCallId, resumeData } = config;
+		const thread = await this.agentExecutionService.findThreadById(threadId);
+		const suspended = await this.agentExecutionService.findLatestSuspendedRun(threadId);
+		if (
+			!thread ||
+			thread.projectId !== projectId ||
+			thread.agentId !== agentId ||
+			suspended?.source !== 'task' ||
+			suspended.status !== 'awaiting'
+		) {
+			throw new UserError('This session has no approval to resume');
+		}
+		const runId = await this.n8nCheckpointStorage.findApprovalRunId(agentId, threadId, toolCallId);
+		if (!runId) {
+			throw new UserError(
+				'This action is no longer available. The link may have expired or already been used.',
+			);
+		}
+		const usePublishedVersion = thread.taskVersionId !== null;
+		void this.drainTaskApprovalResume({
+			agentId,
+			projectId,
+			threadId,
+			runId,
+			toolCallId,
+			resumeData,
+			user,
+			usePublishedVersion,
+			resourceId: thread.taskId ? taskRunMemoryResourceId(thread.taskId) : undefined,
+		}).catch((error: unknown) => {
+			// Scrub before logging. A platform error can quote the credential it failed with.
+			const message = error instanceof Error ? error.message : String(error);
+			this.logger.error('Task approval resume failed', {
+				agentId,
+				threadId,
+				error: scrubSecretsInText(message),
+			});
+		});
+	}
+
+	private async drainTaskApprovalResume(config: {
+		agentId: string;
+		projectId: string;
+		threadId: string;
+		runId: string;
+		toolCallId: string;
+		resumeData: unknown;
+		user: User;
+		usePublishedVersion: boolean;
+		resourceId: string | undefined;
+	}): Promise<void> {
+		const stream = this.resumeForChat({
+			agentId: config.agentId,
+			projectId: config.projectId,
+			runId: config.runId,
+			toolCallId: config.toolCallId,
+			resumeData: config.resumeData,
+			// The approver. A Run now runtime stays the starter named on the checkpoint.
+			user: config.user,
+			usePublishedVersion: config.usePublishedVersion,
+			source: 'task',
+			...(config.usePublishedVersion ? { integrationType: 'task' } : {}),
+			expectedMemory: {
+				threadId: config.threadId,
+				...(config.resourceId ? { resourceId: config.resourceId } : {}),
+			},
+		});
+		let chunkCount = 0;
+		for await (const _chunk of stream) chunkCount += 1;
+		this.logger.debug('Task approval resume finished', {
+			agentId: config.agentId,
+			threadId: config.threadId,
+			chunkCount,
+		});
 	}
 
 	async resumeBackgroundForChat(config: ResumeForChatConfig): Promise<boolean> {
@@ -1691,6 +1822,9 @@ export class AgentExecutionOrchestratorService {
 				projectId,
 				principalHash: sandboxPrincipalHash,
 			}),
+			...(config.source === 'task' && config.userId
+				? { [TASK_RUN_STARTER_USER_KEY]: config.userId }
+				: {}),
 			...encodeIntegrationMessageContext(messageContext),
 			...episodicScopeHostMetadata(resourceId, config.episodicScope),
 			...(config.chatSurface !== undefined &&

@@ -56,7 +56,7 @@ erDiagram
   INTEGER position
 }
 "agent_execution" {
-  BOOLEAN acceptsSteering
+  boolean acceptsSteering
   TEXT attachments
   TEXT author
   INTEGER completionTokens
@@ -65,8 +65,8 @@ erDiagram
   INTEGER duration
   TEXT error
   TEXT failureSummary
-  VARCHAR_32_ finishReason
-  VARCHAR_64_ guardrailCode
+  varchar_32_ finishReason
+  varchar_64_ guardrailCode
   varchar_16_ hitlStatus
   varchar_36_ id PK
   varchar_255_ model

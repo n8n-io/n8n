@@ -223,6 +223,28 @@ export class N8NCheckpointStorage {
 	}
 
 	/**
+	 * Run id of the live checkpoint on this thread whose pending tool call
+	 * matches. Null when the approval is gone or the checkpoint has expired.
+	 */
+	async findApprovalRunId(
+		agentId: string,
+		threadId: string,
+		toolCallId: string,
+	): Promise<string | null> {
+		const rows = await this.agentCheckpointRepository.findActiveForThread(
+			agentId,
+			threadId,
+			this.expiryCutoff(),
+		);
+		for (const row of rows) {
+			const checkpoint = this.parseSuspendedState(row.state, threadId);
+			const pending = checkpoint?.pendingToolCalls[toolCallId];
+			if (pending?.suspended) return row.runId;
+		}
+		return null;
+	}
+
+	/**
 	 * The agent's open (unexpired, still parked) checkpoint for a thread, or
 	 * null. The authoritative "is this conversation suspended right now?"
 	 * lookup: unlike the `suspended` execution record, a checkpoint stops being
@@ -375,16 +397,19 @@ export class N8NCheckpointStorage {
 		await this.agentCheckpointRepository.expireByRunIdAndAgentId(key, agentId);
 	}
 
-	/** Marks checkpoints past their TTL as expired. A failure propagates to the caller. */
-	async pruneStaleSuspensions() {
+	/**
+	 * Marks checkpoints past their TTL as expired. Returns the thread ids of the
+	 * checkpoints this pass expired. A failure propagates to the caller.
+	 */
+	async pruneStaleSuspensions(): Promise<string[]> {
 		const ttlMs = this.agentsConfig.checkpointTtlSeconds * Time.seconds.toMilliseconds;
 		const cutoffDate = new Date(Date.now() - ttlMs);
-
-		const count = await this.agentCheckpointRepository.markExpired(cutoffDate);
-		if (count > 0) {
-			this.logger.info('Marked stale agent checkpoints as expired', { count });
+		const { affected, threadIds } = await this.agentCheckpointRepository.expireStale(cutoffDate);
+		if (affected > 0) {
+			this.logger.info('Marked stale agent checkpoints as expired', { count: affected });
 		} else {
 			this.logger.debug('No stale agent checkpoints to expire');
 		}
+		return threadIds;
 	}
 }

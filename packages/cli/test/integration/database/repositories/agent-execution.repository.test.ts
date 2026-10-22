@@ -1521,6 +1521,7 @@ describe('AgentExecutionRepository', () => {
 				mock<AgentBackgroundJobService>(),
 				mock<AgentsSettingsService>(),
 				mock<AgentSkillRefsService>(),
+				mock<UserRepository>(),
 			);
 			const resume = async (
 				user: User,
@@ -4323,6 +4324,56 @@ describe('AgentExecutionRepository', () => {
 			const result = await repository.findFirstSourceByThreadIds([thread.id]);
 
 			expect(result.has(thread.id)).toBe(false);
+		});
+	});
+
+	describe('failExpiredWaitingApprovals', () => {
+		it('keeps earlier tool failures when an approval expires', async () => {
+			const thread = await createThread();
+			const other = await createThread({ sessionNumber: 2 });
+			const toolFailures = {
+				count: 2,
+				latest: { kind: 'tool' as const, name: 'Lookup', message: 'failed', occurredAt: 10 },
+			};
+			const awaiting = await createExecution({
+				threadId: thread.id,
+				status: 'awaiting',
+				failureSummary: toolFailures,
+			});
+			const clean = await createExecution({
+				threadId: other.id,
+				status: 'awaiting',
+				failureSummary: null,
+			});
+			const succeeded = await createExecution({
+				threadId: thread.id,
+				status: 'success',
+				failureSummary: null,
+			});
+
+			await repository.failExpiredWaitingApprovals([thread.id, other.id]);
+
+			const expired = await repository.findOneByOrFail({ id: awaiting.id });
+			expect(expired.status).toBe('error');
+			expect(expired.error).toBe('This approval expired.');
+			expect(expired.failureSummary?.count).toBe(3);
+			expect(expired.failureSummary?.latest).toMatchObject({
+				kind: 'execution',
+				name: null,
+				message: 'This approval expired.',
+			});
+			expect(expired.failureSummary?.latest.occurredAt).toBeGreaterThan(10);
+
+			const firstExpiry = await repository.findOneByOrFail({ id: clean.id });
+			expect(firstExpiry.status).toBe('error');
+			expect(firstExpiry.failureSummary).toMatchObject({
+				count: 1,
+				latest: { kind: 'execution', message: 'This approval expired.' },
+			});
+
+			const untouched = await repository.findOneByOrFail({ id: succeeded.id });
+			expect(untouched.status).toBe('success');
+			expect(untouched.failureSummary).toBeNull();
 		});
 	});
 

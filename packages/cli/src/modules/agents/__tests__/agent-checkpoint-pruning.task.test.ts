@@ -3,17 +3,24 @@ import { MAX_TIMER_DELAY_SECONDS } from '@n8n/constants';
 import { mock } from 'vitest-mock-extended';
 
 import { AgentCheckpointPruningTask } from '../agent-checkpoint-pruning.task';
-import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
+import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
+import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 
 describe('AgentCheckpointPruningTask', () => {
 	const checkpointStorage = mock<N8NCheckpointStorage>();
 	const backgroundJobs = mock<AgentBackgroundJobService>();
+	const agentExecutionRepository = mock<AgentExecutionRepository>();
 	const databaseConfig = mock<DatabaseConfig>({
 		type: 'postgresdb',
 		postgresdb: { statementTimeoutMs: 300_000 },
 	});
-	const task = new AgentCheckpointPruningTask(databaseConfig, checkpointStorage, backgroundJobs);
+	const task = new AgentCheckpointPruningTask(
+		databaseConfig,
+		checkpointStorage,
+		backgroundJobs,
+		agentExecutionRepository,
+	);
 
 	it('should declare an hourly prune cadence', () => {
 		expect(task.name).toBe('agent-checkpoint-pruning');
@@ -36,18 +43,24 @@ describe('AgentCheckpointPruningTask', () => {
 			const database = mock<DatabaseConfig>({ type, postgresdb: { statementTimeoutMs } });
 
 			expect(
-				new AgentCheckpointPruningTask(database, checkpointStorage, backgroundJobs).target.scheduler
-					.timeoutSeconds,
+				new AgentCheckpointPruningTask(
+					database,
+					checkpointStorage,
+					backgroundJobs,
+					agentExecutionRepository,
+				).target.scheduler.timeoutSeconds,
 			).toBe(timeoutSeconds);
 		},
 	);
 
 	it('should prune stale suspensions on run', async () => {
 		const { signal } = new AbortController();
+		checkpointStorage.pruneStaleSuspensions.mockResolvedValue(['thread-1']);
 
 		await task.run(signal);
 
 		expect(checkpointStorage.pruneStaleSuspensions).toHaveBeenCalledTimes(1);
+		expect(agentExecutionRepository.failExpiredWaitingApprovals).toHaveBeenCalledWith(['thread-1']);
 		expect(backgroundJobs.pruneExpiredPausedJobs).toHaveBeenCalledWith(undefined, signal);
 	});
 });

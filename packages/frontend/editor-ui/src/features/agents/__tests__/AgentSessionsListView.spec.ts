@@ -71,6 +71,7 @@ vi.mock('@n8n/i18n', () => ({
 					'agentSessions.status.error': 'Error',
 					'agentSessions.status.cancelled': 'Canceled',
 					'agentSessions.status.interrupted': 'Interrupted',
+					'agentSessions.status.awaiting': 'Awaiting',
 				}[key] ?? key
 			);
 		},
@@ -298,6 +299,7 @@ describe('AgentSessionsListView', () => {
 		['error', 'Error', 'danger', true],
 		['cancelled', 'Canceled', 'warning', true],
 		['interrupted', 'Interrupted', 'warning', true],
+		['awaiting', 'Awaiting', 'secondary', true],
 		['running', 'Running', 'text-base', false],
 	] as const)('renders the %s session state', async (status, label, color, showsDuration) => {
 		const wrapper = await mountView({
