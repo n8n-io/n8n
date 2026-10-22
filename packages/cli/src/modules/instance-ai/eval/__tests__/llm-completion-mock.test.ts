@@ -263,6 +263,37 @@ describe('createLlmCompletionMockHandler', () => {
 		expect(warning.length).toBeLessThan(2000);
 	});
 
+	it('asks again after a final step with no content', async () => {
+		submitQueue.push({ kind: 'final' });
+		submitQueue.push({ kind: 'final', content: 'Done.' });
+		const handler = createLlmCompletionMockHandler();
+
+		const res = await handler(chatRequest({ messages: [{ role: 'user', content: 'hi' }] }), node);
+
+		expect(res?.body).toEqual({ content: 'Done.' });
+		expect(mockGenerate).toHaveBeenCalledTimes(2);
+		const warning = String(mockLogger.warn.mock.calls.at(-1)?.[0]);
+		expect(warning).toContain('kind="final" requires content');
+	});
+
+	it('includes the run error in the log when an attempt ends in an error', async () => {
+		mockGenerate.mockImplementationOnce((async () => ({
+			finishReason: 'error',
+			error: new Error('provider timed out'),
+			messages: [],
+			_text: '',
+		})) as never);
+		submitQueue.push({ kind: 'final', content: 'ok' });
+		const handler = createLlmCompletionMockHandler();
+
+		const res = await handler(chatRequest({ messages: [{ role: 'user', content: 'hi' }] }), node);
+
+		expect(res?.body).toEqual({ content: 'ok' });
+		const warning = String(mockLogger.warn.mock.calls.at(-1)?.[0]);
+		expect(warning).toContain('finishReason=error');
+		expect(warning).toContain('error=Error: provider timed out');
+	});
+
 	it('unwraps a chat.completion envelope the model wrongly returns as content', async () => {
 		const envelope = JSON.stringify({
 			id: 'chatcmpl-x',

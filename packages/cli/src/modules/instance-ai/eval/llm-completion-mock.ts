@@ -248,6 +248,8 @@ const SUBMIT_TOOL_NAME = 'submit_agent_step';
 
 const TOOL_CALL_WITHOUT_NAME = 'kind="tool_call" requires toolName';
 
+const FINAL_WITHOUT_CONTENT = 'kind="final" requires content';
+
 /**
  * One re-ask after an attempt that accepts no step. Each attempt has its own
  * 120 s abort, and the OpenAI node retries a failed (HTTP 500) turn up to 2
@@ -284,6 +286,7 @@ function unhandledSubmits(messages: readonly unknown[]): string[] {
 /** Why an attempt accepted no step, in one bounded line for the log and the re-ask. */
 function describeFailedAttempt(result: GenerateResult, rejected: string[]): string {
 	const parts = [`finishReason=${String(result.finishReason)}`];
+	if (result.error) parts.push(`error=${truncate(String(result.error))}`);
 	if (result.guardrail) parts.push(`guardrail=${result.guardrail.code}`);
 	const all = [...rejected, ...unhandledSubmits(result.messages)];
 	parts.push(`rejected: ${all.length > 0 ? all.join(' | ') : 'none (no submit_agent_step call)'}`);
@@ -316,8 +319,12 @@ async function runSubmitAttempt(
 					rejected.push(`${TOOL_CALL_WITHOUT_NAME}; input=${toLogJson(input)}`);
 					return `Invalid: ${TOOL_CALL_WITHOUT_NAME}. Call submit_agent_step again.`;
 				}
+				if (!input.content?.trim()) {
+					rejected.push(`${FINAL_WITHOUT_CONTENT}; input=${toLogJson(input)}`);
+					return `Invalid: ${FINAL_WITHOUT_CONTENT}. Call submit_agent_step again.`;
+				}
 				capture.kind = 'final';
-				capture.content = input.content ?? '';
+				capture.content = input.content;
 				return 'Accepted.';
 			})
 			.build(),
