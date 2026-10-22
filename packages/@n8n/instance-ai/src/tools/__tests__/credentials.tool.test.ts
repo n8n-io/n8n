@@ -4,6 +4,7 @@ import type { InstanceAiPermissions } from '@n8n/api-types';
 import type { Mock } from 'vitest';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
+import { OutsideThreadProjectError } from '../../errors/outside-thread-project.error';
 import type { InstanceAiContext, CredentialSummary, CredentialDetail } from '../../types';
 import {
 	createDeleteCredentialTool,
@@ -622,6 +623,21 @@ describe('credential tools', () => {
 
 			expect(context.credentialService.delete).toHaveBeenCalledWith('1');
 			expect(result).toEqual({ success: true });
+		});
+
+		it('should reject a credential outside the thread project before asking for approval', async () => {
+			const assertInThreadProject = vi.fn().mockRejectedValue(new OutsideThreadProjectError());
+			const context = createMockContext({ assertInThreadProject });
+			const suspendFn = vi.fn();
+
+			const tool = createDeleteCredentialTool(context);
+			await expect(
+				executeTool(tool, { credentialId: 'cred-1' }, suspendCtx(suspendFn)),
+			).rejects.toThrow(OutsideThreadProjectError);
+
+			expect(assertInThreadProject).toHaveBeenCalledWith({ kind: 'credential', id: 'cred-1' });
+			expect(suspendFn).not.toHaveBeenCalled();
+			expect(context.credentialService.delete).not.toHaveBeenCalled();
 		});
 
 		it('should suspend for confirmation when permission needs approval', async () => {

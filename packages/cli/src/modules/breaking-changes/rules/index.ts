@@ -37,6 +37,8 @@ import './v3/offload-manual-executions.rule';
 import './v3/pre-execute-error-creates-execution.rule';
 import './v3/removed-nodes.rule';
 import './v3/removed-nodes-with-replacements.rule';
+import './v3/slack-credential-signature-secret.rule';
+import './v3/slack-trigger-signature-secret.rule';
 import './v3/ssrf-default-blocked-ranges.rule';
 import './v3/storage-path-rename.rule';
 import './v3/task-runner-task-timeout.rule';

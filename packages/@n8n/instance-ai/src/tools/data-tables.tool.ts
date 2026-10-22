@@ -108,13 +108,24 @@ const filterDescribe =
 	'case-sensitive. Values without `%` are wrapped as `%value%`.';
 
 const projectIdDescribe =
-	'Project ID. Scopes list/create (defaults to personal); for id-based actions, disambiguates when `dataTableId` is a name found in multiple accessible projects. Ignored when `dataTableId` is a UUID.';
+	"Project ID. Scopes list (defaults to this conversation's project); for id-based actions, disambiguates when `dataTableId` is a name found in multiple accessible projects. Ignored when `dataTableId` is a UUID.";
 
 const dataTableNameDescribe =
 	'Data table name for the approval card. Pass whenever known so users see a name instead of an ID.';
 
 const columnNameForCardDescribe =
 	'Current column name for the approval card. Pass whenever known so users see a name instead of an ID.';
+
+async function assertTableInThreadProject(
+	context: InstanceAiContext,
+	input: DataTableReferenceInput,
+): Promise<void> {
+	await context.assertInThreadProject?.({
+		kind: 'data-table',
+		id: input.dataTableId,
+		projectId: input.projectId,
+	});
+}
 
 /** Name shown in the approval card title. Falls back to the id when the agent passed no name. */
 function dataTableResourceName(input: DataTableReferenceInput): string {
@@ -528,15 +539,9 @@ async function handleCreate(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		let message = `Create the table with ${input.columns.length} ${input.columns.length === 1 ? 'column' : 'columns'}: ${input.columns.map((column) => `"${column.name}"`).join(', ')}`;
-		if (input.projectId) {
-			const project = await context.workspaceService?.getProject?.(input.projectId);
-			const projectLabel = project?.name ?? input.projectId;
-			message += ` in project "${projectLabel}"`;
-		}
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message,
+			message: `Create the table with ${input.columns.length} ${input.columns.length === 1 ? 'column' : 'columns'}: ${input.columns.map((column) => `"${column.name}"`).join(', ')}`,
 			resourceName: input.name,
 			severity: 'info' as const,
 		});
@@ -585,6 +590,7 @@ async function handleDelete(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await assertTableInThreadProject(context, input);
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: 'Permanently delete the table and all its rows',
@@ -623,6 +629,7 @@ async function handleAddColumn(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await assertTableInThreadProject(context, input);
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Add column "${input.columnName}" (${input.type})`,
@@ -670,6 +677,7 @@ async function handleDeleteColumn(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await assertTableInThreadProject(context, input);
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Delete column "${input.currentColumnName ?? input.columnId}" and its values`,
@@ -714,6 +722,7 @@ async function handleRenameColumn(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await assertTableInThreadProject(context, input);
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Rename column "${input.currentColumnName ?? input.columnId}" to "${input.newName}"`,
@@ -759,6 +768,7 @@ async function handleInsertRows(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await assertTableInThreadProject(context, input);
 		const rowDescriptions = input.rows.slice(0, MAX_DESCRIBED_ROWS).map((row, index) => {
 			const changes = describeRowChanges(row);
 			return `Row ${index + 1}: ${changes ? `set ${changes}` : 'no column values supplied'}`;
@@ -816,6 +826,7 @@ async function handleUpdateRows(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await assertTableInThreadProject(context, input);
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message:
@@ -871,6 +882,7 @@ async function handleDeleteRows(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await assertTableInThreadProject(context, input);
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Delete rows where ${describeRowFilter(input.filter)}`,

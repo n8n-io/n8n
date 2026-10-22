@@ -174,6 +174,51 @@ describe('AgentMessageQueueService', () => {
 		});
 	});
 
+	describe('episodic scope', () => {
+		it.each([
+			['a resolved scope', { writeScopeId: 'slack:T1:C1', readScopeIds: ['slack:T1:C1'] }],
+			['a disabled marker', { disabled: true as const }],
+		])('keeps %s in the dispatch', async (_label, episodicScope) => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(mock<ProjectAgent>({ name: 'Agent' }));
+			messages.createInput.mockResolvedValue(mock({ id: 'message-1' }));
+			repository.enqueue.mockResolvedValue(mock<AgentMessageQueue>({ threadId: 'thread-1' }));
+
+			await service.enqueue({
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				threadId: 'thread-1',
+				sessionMode: 'new',
+				source: 'slack',
+				payload: {
+					kind: 'integration',
+					message: 'hello',
+					modelMessage: 'hello',
+					resourceId: 'resource-1',
+					credentialId: 'credential-1',
+					platformThreadId: 'slack:C1:1.2',
+					author: { id: 'U1', name: 'Alice' },
+					episodicScope,
+					sender: { userId: 'U1', userName: 'alice', fullName: 'Alice', isBot: false, isMe: false },
+					messageContext: {
+						integrationConnectionId: 'connection-1',
+						platform: 'slack',
+						messageId: 'platform-message-1',
+						target: { type: 'thread', threadId: 'slack:C1:1.2' },
+						updatedAt: '2026-10-21T00:00:00.000Z',
+					},
+					contextConversation: { threadId: 'thread-1', resourceId: 'U1' },
+				},
+			});
+
+			expect(repository.enqueue).toHaveBeenCalledWith(
+				'thread-1',
+				'message-1',
+				expect.objectContaining({ episodicScope }),
+				expect.anything(),
+			);
+		});
+	});
+
 	describe('hidden system turns', () => {
 		const systemThread = () => makeThread({ agentId: 'system-agent' });
 

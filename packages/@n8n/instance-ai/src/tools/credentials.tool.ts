@@ -638,6 +638,7 @@ async function handleDelete(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await context.assertInThreadProject?.({ kind: 'credential', id: input.credentialId });
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Delete ${input.credentialName ?? input.credentialId}`,

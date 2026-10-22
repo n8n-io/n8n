@@ -274,6 +274,7 @@ export {
 	WorkflowNotFoundError,
 	WorkflowEditorLockedError,
 	FolderResolutionError,
+	OutsideThreadProjectError,
 	formatRedactedError,
 } from './errors';
 export {
