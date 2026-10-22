@@ -1,3 +1,5 @@
+import { NotFoundError } from '@n8n/errors';
+import type { AgentPublishHistory } from '../entities/agent-publish-history.entity';
 import type { AgentPublishHistoryRepository } from '../repositories/agent-publish-history.repository';
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore a type-only EventService import; keep the import.
 import { EventService } from '@n8n/backend-services';
@@ -1336,7 +1338,7 @@ describe('AgentPublishService', () => {
 		);
 		agentHistoryRepository.findByAgentId.mockResolvedValue([active, inactive]);
 
-		await expect(service.listPublishHistory(agentId, projectId, 20, 0)).resolves.toEqual([
+		await expect(service.listVersions(agentId, projectId, 20, 0)).resolves.toEqual([
 			expect.objectContaining({
 				versionId: 'active-version',
 				author: 'Ada Lovelace',
@@ -1482,5 +1484,109 @@ describe('AgentPublishService', () => {
 		expect(agent.revision).toBe(3);
 		expect(agent.publicationRevision).toBe(8);
 		expect(agent.activeVersionId).toBe(versionId);
+	});
+	describe('version metadata', () => {
+		it('writes publication labels inside the publication transaction', async () => {
+			const { service, agentRepository, agentHistoryRepository, ctx } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(makeHistory());
+			const metadata = { name: 'Release', description: 'Ready for support' };
+			await service.publishAgent(agentId, projectId, user, byUser, versionId, undefined, metadata);
+			expect(agentHistoryRepository.updateMetadata).toHaveBeenCalledWith(
+				agentId,
+				versionId,
+				metadata,
+				ctx,
+			);
+		});
+
+		it('keeps labels when publication fails validation', async () => {
+			const { service, agentRepository, agentHistoryRepository, agentValidationService } =
+				makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(makeHistory());
+			agentValidationService.validateAgentHistoryConfiguration.mockResolvedValue({
+				status: 'invalid',
+				issues: [],
+			});
+			await expect(
+				service.publishAgent(agentId, projectId, user, byUser, versionId, undefined, {
+					name: 'Release',
+				}),
+			).rejects.toThrow();
+			expect(agentHistoryRepository.updateMetadata).not.toHaveBeenCalled();
+		});
+
+		it('edits active version labels without another publication', async () => {
+			const { service, agentRepository, agentHistoryRepository, publishHistory } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ activeVersionId: versionId }),
+			);
+			agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(makeHistory());
+			await service.publishAgent(agentId, projectId, user, byUser, versionId, undefined, {
+				name: null,
+			});
+			expect(agentHistoryRepository.updateMetadata).toHaveBeenCalledWith(agentId, versionId, {
+				name: null,
+			});
+			expect(publishHistory.record).not.toHaveBeenCalled();
+			expect(agentRepository.setActiveVersionFenced).not.toHaveBeenCalled();
+		});
+
+		it('does not edit another Agent version', async () => {
+			const { service, agentRepository, agentHistoryRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(null);
+			await expect(
+				service.updateVersionMetadata(agentId, projectId, 'other-version', { name: 'Release' }),
+			).rejects.toThrow(NotFoundError);
+			expect(agentHistoryRepository.updateMetadata).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('publication timeline', () => {
+		const event = (id: number, overrides: Partial<AgentPublishHistory> = {}): AgentPublishHistory =>
+			({
+				id,
+				agentId,
+				versionId,
+				event: 'activated',
+				author: 'Ada',
+				isLegacy: false,
+				createdAt: new Date(`2026-01-0${id}T00:00:00Z`),
+				...overrides,
+			}) as AgentPublishHistory;
+		it('keeps repeated publications and bounds each period by the next event', async () => {
+			const { service, agentRepository, publishHistory } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ activeVersionId: versionId }),
+			);
+			publishHistory.list.mockResolvedValue([
+				event(3),
+				event(2, { event: 'deactivated' }),
+				event(1),
+			]);
+			const rows = await service.listPublishHistory(agentId, projectId, 20, 0);
+			expect(rows.map(({ isActive, endedAt }) => ({ isActive, endedAt }))).toEqual([
+				{ isActive: true, endedAt: null },
+				{ isActive: false, endedAt: '2026-01-03T00:00:00.000Z' },
+				{ isActive: false, endedAt: '2026-01-02T00:00:00.000Z' },
+			]);
+		});
+		it('loads the preceding event across page boundaries and leaves legacy durations unknown', async () => {
+			const { service, agentRepository, publishHistory } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ activeVersionId: versionId }),
+			);
+			publishHistory.list
+				.mockResolvedValueOnce([event(3), event(2), event(1, { isLegacy: true })])
+				.mockResolvedValueOnce([event(4)]);
+			const rows = await service.listPublishHistory(agentId, projectId, 2, 2);
+			expect(publishHistory.list).toHaveBeenNthCalledWith(1, agentId, 3, 1);
+			expect(rows).toMatchObject([
+				{ id: 2, isActive: false, endedAt: '2026-01-03T00:00:00.000Z' },
+				{ id: 1, isActive: false, endedAt: null },
+			]);
+		});
 	});
 });

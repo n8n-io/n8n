@@ -262,6 +262,22 @@ export interface AgentVersionListItemDto {
 	updatedAt: string;
 	author: string;
 	isActive: boolean;
+	name?: string | null;
+	description?: string | null;
+	isCurrent?: boolean;
+}
+
+export interface AgentPublishHistoryItemDto {
+	id: number;
+	versionId: string | null;
+	name: string | null;
+	description: string | null;
+	event: 'activated' | 'deactivated';
+	author: string;
+	createdAt: string;
+	endedAt: string | null;
+	isActive: boolean;
+	isLegacy: boolean;
 }
 
 /**
