@@ -301,7 +301,6 @@ export function toV1ExecuteContext({
 	};
 
 	const runExecutionData = createRunExecutionData({
-		// Core appends this token to `$execution.resumeUrl` and `$execution.resumeFormUrl`.
 		resumeToken,
 		startData: {},
 		resultData: { runData: execution.runData },

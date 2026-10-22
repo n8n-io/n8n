@@ -549,7 +549,6 @@ describe('V1StepExecutor', () => {
 			expect(resumeAt).toBeLessThanOrEqual(after + 2000);
 		});
 
-		// No deadline, so only a resume request ends the wait.
 		it('declares a wait with no deadline', async () => {
 			const graph = graphWith('test.waitsUntil', { waitTill: WAIT_INDEFINITELY.toISOString() });
 			const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
@@ -581,7 +580,6 @@ describe('V1StepExecutor', () => {
 			expect(execute).not.toHaveBeenCalled();
 		});
 
-		// The Chat node waits for a chat reply in every version and operation.
 		it('fails a Chat node step before the node sends its message', async () => {
 			const graph = graphWith(CHAT_NODE_TYPE, { operation: 'send' });
 			const echo = testNodeTypes.getByNameAndVersion('test.echoParam');
@@ -600,8 +598,6 @@ describe('V1StepExecutor', () => {
 			expect(execute).not.toHaveBeenCalled();
 		});
 
-		// Sub-workflow steps do not exist, so completing the step would report a
-		// wait that never happened.
 		it('fails the step for the WAIT_FOR_SUB_EXECUTION sentinel', async () => {
 			const graph = graphWith('test.waitsUntil', {
 				waitTill: WAIT_FOR_SUB_EXECUTION.toISOString(),

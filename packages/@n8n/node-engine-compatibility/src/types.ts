@@ -64,7 +64,7 @@ export interface V1StepExecutorDeps {
 	/**
 	 * Mints the token that `$execution.resumeUrl` and `$execution.resumeFormUrl`
 	 * carry. The host supplies it because the host holds the resume secret.
-	 * Without it, core puts a random token there that the engine cannot verify.
+	 * Without it, the URLs carry a random token that the engine cannot verify.
 	 */
 	resumeToken?: (context: { executionId: string }) => string;
 }
