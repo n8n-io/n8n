@@ -17,6 +17,10 @@ import { BadRequestError } from '@n8n/errors';
 
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 
+import {
+	AgentKnowledgeUploadError,
+	type AgentKnowledgeUploadFailureReason,
+} from './agent-knowledge-upload.error';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import {
 	AgentKnowledgeFileStore,
@@ -113,13 +117,14 @@ export class AgentKnowledgeService {
 		await this.agentSandboxRuntimeService.warmKnowledgeSandbox(projectId, agentId);
 	}
 
-	async deleteFile(agentId: string, projectId: string, fileId: string): Promise<void> {
+	/** Returns false when the agent has no file with this id, so nothing was deleted. */
+	async deleteFile(agentId: string, projectId: string, fileId: string): Promise<boolean> {
 		this.knowledgeAvailabilityService.assertModuleActive();
 		await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const file = await this.agentFileRepository.findByIdAndAgentId(fileId, agentId);
 		if (!file) {
-			return;
+			return false;
 		}
 
 		await this.agentFileRepository.delete({ id: fileId, agentId });
@@ -137,6 +142,8 @@ export class AgentKnowledgeService {
 		} else {
 			await this.agentSandboxRuntimeService.destroyKnowledgeSandbox(projectId, agentId);
 		}
+
+		return true;
 	}
 
 	/**
@@ -243,8 +250,9 @@ export class AgentKnowledgeService {
 			.replaceAll('\u0000', '')
 			.trim();
 		if (!extractedText) {
-			throw new BadRequestError(
+			throw new AgentKnowledgeUploadError(
 				'PDF contains no extractable text and cannot be added to knowledge',
+				'pdf_no_text',
 			);
 		}
 		return extractedText;
@@ -252,7 +260,8 @@ export class AgentKnowledgeService {
 
 	private validateUploadMetadata(files: Express.Multer.File[]) {
 		for (const file of files) {
-			this.validateMetadataLength('File name', file.originalname);
+			this.validateMetadataLength('File name', file.originalname, 'invalid_file_name');
+			// No reason fits a MIME type that is too long, so the failure event reports `unknown`.
 			this.validateMetadataLength('MIME type', file.mimetype);
 		}
 	}
@@ -265,8 +274,9 @@ export class AgentKnowledgeService {
 		);
 		const uploadTotalSizeBytes = files.reduce((total, file) => total + file.size, 0);
 		if (existingTotalSizeBytes + uploadTotalSizeBytes > MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES) {
-			throw new BadRequestError(
+			throw new AgentKnowledgeUploadError(
 				`Knowledge base limit reached. The total size can't be larger than ${MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB} GB.`,
+				'total_limit',
 			);
 		}
 
@@ -300,17 +310,21 @@ export class AgentKnowledgeService {
 		}
 	}
 
-	private duplicateFileNameError(fileName: string): BadRequestError {
-		return new BadRequestError(
+	private duplicateFileNameError(fileName: string): AgentKnowledgeUploadError {
+		return new AgentKnowledgeUploadError(
 			`A knowledge file named "${fileName}" already exists for this agent`,
+			'duplicate_name',
 		);
 	}
 
-	private validateMetadataLength(label: string, value: string) {
+	private validateMetadataLength(
+		label: string,
+		value: string,
+		reason?: AgentKnowledgeUploadFailureReason,
+	) {
 		if (value.length > MAX_AGENT_FILE_METADATA_LENGTH) {
-			throw new BadRequestError(
-				`${label} must be ${MAX_AGENT_FILE_METADATA_LENGTH} characters or less`,
-			);
+			const message = `${label} must be ${MAX_AGENT_FILE_METADATA_LENGTH} characters or less`;
+			throw reason ? new AgentKnowledgeUploadError(message, reason) : new BadRequestError(message);
 		}
 	}
 
