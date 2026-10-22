@@ -2,8 +2,8 @@ import { createComponentRenderer } from '@/__tests__/render';
 import type { MockedStore } from '@/__tests__/utils';
 import { mockedStore } from '@/__tests__/utils';
 import ProjectTabs from './ProjectTabs.vue';
-import { within } from '@testing-library/vue';
 import { createPinia, setActivePinia } from 'pinia';
+import { within } from '@testing-library/vue';
 import { useProjectsStore } from '../projects.store';
 import type { Project } from '../projects.types';
 

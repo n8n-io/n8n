@@ -4,14 +4,13 @@
 
 Tests the workflows and standalone Agents that Instance AI builds. Builds call the real configured Instance AI model. Agent execution scenarios also call the configured target Agent model. The harness mocks external tool and service calls. Workflow runs use LLM-generated mock HTTP responses.
 
-Six harnesses live here:
+Five harnesses live here:
 
 - **`eval:instance-ai`** — end-to-end build + mocked execution + LLM verification (drives a running n8n instance)
 - **`eval:agents`** — standalone Agent build cases from the LangTracer `agents` suite (author new ones in `data/agents/`)
 - **`eval:subagent`** — legacy command name for the workflow-build compatibility corpus; it drives the live orchestrator/skill build path, scored by binary checks
 - **`eval:discovery`** — orchestrator in-process, scored against required or forbidden tool/dispatch events (no n8n server)
 - **`eval:pairwise`** — live orchestrator workflow builds, scored by an LLM judge panel against do/don't lists. Intended for head-to-head comparison with `ai-workflow-builder.ee` on the same dataset
-- **`eval:computer-use`** — grades the computer-use agent (file / OAuth / doc-reading tasks) against fixtures; see [`computer-use/README.md`](computer-use/README.md)
 
 > **Writing a test case?** This README is the reference and quick-start. Use the [`create-instance-ai-eval` skill](../../../../.agents/skills/create-instance-ai-eval/SKILL.md) for the shared process and workflow cases. Use the [`create-agent-builder-eval` skill](../../../../.agents/skills/create-agent-builder-eval/SKILL.md) for standalone Agent cases. To source cases from real failures, see [sourcing from LangTracer + LangSmith](../../../../.agents/skills/create-instance-ai-eval/sourcing-cases.md).
 
@@ -39,6 +38,7 @@ Each run:
 - **Mocked nodes** — anything that makes HTTP requests (Gmail, Slack, Google Sheets, HTTP Request, Notion…). The request is intercepted before it leaves the process; an LLM generates the response.
 - **Pinned nodes** — nodes that don't go through the HTTP layer (triggers/webhooks, LangChain/AI nodes, database nodes). They receive LLM-generated pin data.
 - **Real nodes** — logic nodes (Code, Set, Merge, Filter, IF, Switch) execute on the mocked data.
+- **Data Table nodes** — run for real against the real table. Before each scenario, the server empties every Data Table the workflow uses and inserts starting rows that an LLM writes from the scenario. A table declared in the scenario's `seedDataTables` gets those exact rows instead. Two runs that use the same table run one after the other. A scenario that gives rows a `createdAt` or `updatedAt` time is a framework issue: the table sets those columns itself.
 
 ~95% of node types are covered. See [Known limitations](#known-limitations) for the gaps.
 
@@ -798,6 +798,7 @@ reliable signal. Two specific things to know:
 - **Mocked nodes** — any node that makes HTTP requests (Gmail, Slack, Google Sheets, HTTP Request, Notion, etc.). The request is intercepted before it leaves the process. An LLM generates the response.
 - **Pinned nodes** — nodes that don't go through the HTTP layer: trigger/webhook nodes, LangChain/AI nodes (they use SDKs directly), database nodes. These receive LLM-generated data as pin data.
 - **Real nodes** — logic nodes (Code, Set, Merge, Filter, IF, Switch) execute their actual code on the mocked/pinned data.
+- **Data Table nodes** — run for real against the real table, which the server empties and fills with the scenario's starting rows before each scenario (see [What gets mocked](#what-gets-mocked)).
 
 No real credentials or API connections are needed. ~95% of node types are covered; the main gaps are binary-data nodes (file attachments, image generation) and streaming nodes.
 
@@ -1328,6 +1329,7 @@ packages/cli/src/modules/instance-ai/eval/
 ├── workflow-analysis.ts  # Hint generation (Phase 1)
 ├── mock-handler.ts       # Per-request mock generation (Phase 2)
 ├── node-config.ts        # Node config serializer
+├── data-table-rows.ts    # LLM starting rows for the workflow's Data Tables (Phase 1.5)
 └── pin-data-generator.ts # LLM pin data for bypass nodes (Phase 1.5)
 ```
 

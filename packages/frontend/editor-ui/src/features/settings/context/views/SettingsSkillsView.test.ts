@@ -1,3 +1,4 @@
+import { usePostHog } from '@/app/stores/posthog.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
@@ -60,6 +61,7 @@ function skill(overrides: Partial<SkillListItem> = {}): SkillListItem {
 		source: 'ui',
 		createdBy: null,
 		latestVersion: 1,
+		availableToAssistant: false,
 		usedByAgents: 0,
 		canEdit: true,
 		canDelete: true,
@@ -183,21 +185,92 @@ describe('SettingsSkillsView', () => {
 		expect(queryByTestId('skills-empty-state')).not.toBeInTheDocument();
 	});
 
-	it('searches on the server and shows an empty table, not the empty state, for no matches', async () => {
-		vi.useFakeTimers({ shouldAdvanceTime: true });
-		const { getByTestId, queryByTestId } = renderView();
-		await new Promise(process.nextTick);
-
-		await userEvent.type(getByTestId('skills-search'), 'brand');
-		await vi.runAllTimersAsync();
-
-		expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith({
-			skip: 0,
-			take: 10,
-			search: 'brand',
+	describe('search', () => {
+		beforeEach(() => {
+			vi.useFakeTimers({ shouldAdvanceTime: true });
 		});
-		expect(queryByTestId('skills-empty-state')).not.toBeInTheDocument();
-		vi.useRealTimers();
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('searches on the server and says when nothing matches', async () => {
+			const { getByTestId, findByTestId, queryByTestId } = renderView();
+			await new Promise(process.nextTick);
+
+			await userEvent.type(getByTestId('skills-search'), 'brand');
+			await vi.runAllTimersAsync();
+
+			expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith({
+				skip: 0,
+				take: 10,
+				search: 'brand',
+			});
+			expect(await findByTestId('skills-no-results')).toHaveTextContent(
+				'No skills match your search or filter',
+			);
+			expect(queryByTestId('skills-empty-state')).not.toBeInTheDocument();
+		});
+
+		it('keeps the no-results state, not "No skills yet", while a cleared search reloads', async () => {
+			const { getByTestId, findByTestId, queryByTestId } = renderView();
+			await new Promise(process.nextTick);
+			await userEvent.type(getByTestId('skills-search'), 'brand');
+			await vi.runAllTimersAsync();
+			await findByTestId('skills-no-results');
+
+			const pending = Promise.withResolvers<{ count: number; data: SkillListItem[] }>();
+			skillsStore.fetchSkills.mockReturnValueOnce(pending.promise);
+			await userEvent.clear(getByTestId('skills-search'));
+			await vi.runAllTimersAsync();
+
+			expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith({ skip: 0, take: 10 });
+			expect(queryByTestId('skills-empty-state')).not.toBeInTheDocument();
+			expect(getByTestId('skills-no-results')).toBeInTheDocument();
+
+			skillsStore.skills = [skill()];
+			skillsStore.count = 1;
+			pending.resolve({ count: 1, data: skillsStore.skills });
+			await waitFor(() => expect(queryByTestId('skills-no-results')).not.toBeInTheDocument());
+			expect(queryByTestId('skills-empty-state')).not.toBeInTheDocument();
+			expect(getByTestId('skill-name')).toHaveTextContent('research-search');
+		});
+
+		it('keeps the previous rows instead of the loading rows while a search reloads', async () => {
+			skillsStore.skills = [skill()];
+			skillsStore.count = 1;
+			const { getByTestId, container } = renderView();
+			await new Promise(process.nextTick);
+
+			skillsStore.fetchSkills.mockImplementationOnce(async () => {
+				skillsStore.loading = true;
+				return await new Promise(() => {});
+			});
+			await userEvent.type(getByTestId('skills-search'), 'res');
+			await vi.runAllTimersAsync();
+
+			expect(getByTestId('skill-name')).toHaveTextContent('research-search');
+			expect(container.querySelector('.table--loading')).not.toBeInTheDocument();
+		});
+
+		it('ignores a slower earlier search that ends after a newer one', async () => {
+			const { getByTestId, findByTestId } = renderView();
+			await new Promise(process.nextTick);
+
+			const stale = Promise.withResolvers<never>();
+			skillsStore.fetchSkills.mockReturnValueOnce(stale.promise);
+			await userEvent.type(getByTestId('skills-search'), 'brand');
+			await vi.runAllTimersAsync();
+			await userEvent.clear(getByTestId('skills-search'));
+			await vi.runAllTimersAsync();
+			expect(await findByTestId('skills-empty-state')).toBeInTheDocument();
+
+			stale.reject(new Error('offline'));
+			await new Promise(process.nextTick);
+
+			expect(showErrorMock).not.toHaveBeenCalled();
+			expect(getByTestId('skills-empty-state')).toBeInTheDocument();
+		});
 	});
 
 	it('filters by scope on the server', async () => {
@@ -349,6 +422,52 @@ describe('SettingsSkillsView', () => {
 	});
 
 	describe('edit', () => {
+		it.each([
+			['instance', true, false, false],
+			['project', true, true, true],
+			['agent', true, true, undefined],
+			['instance', false, true, undefined],
+		] as const)(
+			'shows availability in the table and modal behind the Assistant flag (%s, %s)',
+			async (scope, enabled, availableToAssistant, expected) => {
+				mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(enabled);
+				skillsStore.skills = [skill({ scope, availableToAssistant })];
+				skillsStore.count = 1;
+				skillsStore.fetchSkill.mockResolvedValue(detail({ scope, availableToAssistant }));
+				const { getByText, queryByTestId } = renderView();
+				expect(queryByTestId('skill-assistant-badge') !== null).toBe(expected === true);
+				await userEvent.click(getByText('research-search'));
+				await waitFor(() => expect(uiStore.openModalWithData).toHaveBeenCalled());
+				expect(lastModalData().availableToAssistant).toBe(expected);
+			},
+		);
+
+		it('persists a toggle-only save and reloads the list', async () => {
+			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
+			skillsStore.skills = [skill()];
+			skillsStore.count = 1;
+			skillsStore.fetchSkill.mockResolvedValue(detail());
+			skillsStore.saveSkill.mockResolvedValue({
+				id: 's1',
+				versionId: 'v1',
+				version: 1,
+				created: false,
+				skill: detail().skill,
+				skillHash: 'hash-1',
+			});
+			const { getByText } = renderView();
+			await userEvent.click(getByText('research-search'));
+			await waitFor(() => expect(uiStore.openModalWithData).toHaveBeenCalled());
+			skillsStore.fetchSkills.mockClear();
+			await lastModalData().onConfirm({ skill: detail().skill, availableToAssistant: true });
+			expect(skillsStore.saveSkill).toHaveBeenCalledWith(
+				's1',
+				expect.objectContaining({ availableToAssistant: true }),
+			);
+			expect(skillsStore.fetchSkills).toHaveBeenCalled();
+			expect(showMessageMock).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'info' }));
+		});
+
 		it('opens a skill read-only when the user cannot change it', async () => {
 			skillsStore.skills = [skill({ canEdit: false })];
 			skillsStore.count = 1;

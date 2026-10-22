@@ -765,6 +765,90 @@ describe('useWorkflowDocumentNodes', () => {
 		});
 	});
 
+	describe('replaceInvalidWorkflowCredentials', () => {
+		const invalid = { id: 'deleted-id', name: 'Deleted credential' };
+		const replacement = { id: 'replacement-id', name: 'Replacement credential' };
+		const otherCredential = { id: 'other-id', name: 'Other credential' };
+
+		it.each([
+			{ label: 'ID', credential: invalid },
+			{ label: 'name with a null ID', credential: { id: null, name: invalid.name } },
+			{ label: 'legacy name', credential: invalid.name },
+		])('marks replacements by $label as changed', ({ credential }) => {
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes(
+				['A', 'B'].map((name) =>
+					createNode({
+						name,
+						credentials: {
+							n8nApi: credential,
+							httpBasicAuth: otherCredential,
+						} as INodeUi['credentials'],
+					}),
+				),
+			);
+			const dirtySpy = vi.fn();
+			const changeSpy = vi.fn();
+			workflowDocumentNodes.onStateDirty(dirtySpy);
+			workflowDocumentNodes.onNodesChange(changeSpy);
+			vi.mocked(deps.syncWorkflowObject).mockClear();
+
+			workflowDocumentNodes.replaceInvalidWorkflowCredentials({
+				credentials: replacement,
+				invalid,
+				type: 'n8nApi',
+			});
+
+			for (const name of ['A', 'B']) {
+				expect(workflowDocumentNodes.getNodeByName(name)?.credentials).toEqual({
+					n8nApi: replacement,
+					httpBasicAuth: otherCredential,
+				});
+				expect(changeSpy).toHaveBeenCalledWith({ action: 'update', payload: { name } });
+			}
+			expect(dirtySpy).toHaveBeenCalledTimes(2);
+			expect(deps.syncWorkflowObject).toHaveBeenCalledTimes(2);
+			expect(deps.syncWorkflowObject).toHaveBeenLastCalledWith(
+				workflowDocumentNodes.allNodes.value,
+			);
+		});
+
+		it('does not change unrelated or identical credentials', () => {
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			const credentials = [
+				undefined,
+				{ httpBasicAuth: invalid },
+				{ n8nApi: { id: 'other-id', name: invalid.name } },
+				{ n8nApi: { id: null, name: 'Other credential' } },
+				{ n8nApi: 'Other credential' },
+				{ n8nApi: invalid },
+			];
+			workflowDocumentNodes.setNodes(
+				credentials.map((value, index) =>
+					createNode({ name: `Node ${index}`, credentials: value as INodeUi['credentials'] }),
+				),
+			);
+			const dirtySpy = vi.fn();
+			const changeSpy = vi.fn();
+			workflowDocumentNodes.onStateDirty(dirtySpy);
+			workflowDocumentNodes.onNodesChange(changeSpy);
+			vi.mocked(deps.syncWorkflowObject).mockClear();
+
+			workflowDocumentNodes.replaceInvalidWorkflowCredentials({
+				credentials: { ...invalid },
+				invalid,
+				type: 'n8nApi',
+			});
+
+			expect(workflowDocumentNodes.allNodes.value.map((node) => node.credentials)).toEqual(
+				credentials,
+			);
+			expect(dirtySpy).not.toHaveBeenCalled();
+			expect(changeSpy).not.toHaveBeenCalled();
+			expect(deps.syncWorkflowObject).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('assignCredentialToMatchingNodes', () => {
 		beforeEach(() => {
 			getNodeType.mockReset();

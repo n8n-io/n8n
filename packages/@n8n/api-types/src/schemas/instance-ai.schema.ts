@@ -247,7 +247,6 @@ export const instanceAiEventTypeSchema = z.enum([
 	'setup-items',
 	'preferences-applied',
 	'preference-card',
-	'filesystem-request',
 	'thread-title-updated',
 	'status',
 	'error',
@@ -266,7 +265,6 @@ export const INSTANCE_AI_EPHEMERAL_EVENT_TYPES: ReadonlySet<InstanceAiEventType>
 	'text-delta',
 	'reasoning-delta',
 	'status',
-	'filesystem-request',
 ]);
 
 // ---------------------------------------------------------------------------
@@ -1125,28 +1123,13 @@ export const mcpToolCallResultSchema = z.object({
 });
 export type McpToolCallResult = z.infer<typeof mcpToolCallResultSchema>;
 
-// Sent by the daemon on connect — replaces the old file-tree upload
+// Tool category a local MCP server (the Browser Use session) advertises
 export const toolCategorySchema = z.object({
 	name: z.string(),
 	enabled: z.boolean(),
 	writeAccess: z.boolean().optional(),
 });
 export type ToolCategory = z.infer<typeof toolCategorySchema>;
-
-export class InstanceAiGatewayCapabilitiesDto extends Z.class({
-	rootPath: z.string(),
-	tools: z.array(mcpToolSchema).default([]),
-	hostIdentifier: z.string().optional(),
-	toolCategories: z.array(toolCategorySchema).default([]),
-}) {}
-export type InstanceAiGatewayCapabilities = InstanceType<typeof InstanceAiGatewayCapabilitiesDto>;
-
-export class InstanceAiGatewayCreateCredentialDto extends Z.class({
-	name: z.string().min(1).max(128),
-	type: z.string().min(1).max(128),
-	data: z.record(z.unknown()),
-	projectId: z.string().optional(),
-}) {}
 
 export interface InstanceAiBrowserCreateLinkResponse {
 	connectUrl: string;
@@ -1159,20 +1142,6 @@ export interface InstanceAiBrowserStatusResponse {
 	connectedAt: string | null;
 	toolCategories: ToolCategory[];
 }
-
-// ---------------------------------------------------------------------------
-// Filesystem bridge payloads (browser ↔ server round-trip)
-// ---------------------------------------------------------------------------
-
-export const filesystemRequestPayloadSchema = z.object({
-	requestId: z.string(),
-	toolCall: mcpToolCallRequestSchema,
-});
-
-export class InstanceAiFilesystemResponseDto extends Z.class({
-	result: mcpToolCallResultSchema.optional(),
-	error: z.string().optional(),
-}) {}
 
 export const tasksUpdatePayloadSchema = z.object({
 	tasks: taskListSchema,
@@ -1383,11 +1352,6 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 	z.object({ type: z.literal('status'), ...eventBase, payload: statusPayloadSchema }),
 	z.object({ type: z.literal('error'), ...eventBase, payload: errorPayloadSchema }),
 	z.object({
-		type: z.literal('filesystem-request'),
-		...eventBase,
-		payload: filesystemRequestPayloadSchema,
-	}),
-	z.object({
 		type: z.literal('thread-title-updated'),
 		...eventBase,
 		payload: threadTitleUpdatedPayloadSchema,
@@ -1424,16 +1388,10 @@ export type InstanceAiPreferencesAppliedEvent = Extract<
 export type InstanceAiPreferenceCardEvent = Extract<InstanceAiEvent, { type: 'preference-card' }>;
 export type InstanceAiStatusEvent = Extract<InstanceAiEvent, { type: 'status' }>;
 export type InstanceAiErrorEvent = Extract<InstanceAiEvent, { type: 'error' }>;
-export type InstanceAiFilesystemRequestEvent = Extract<
-	InstanceAiEvent,
-	{ type: 'filesystem-request' }
->;
 export type InstanceAiThreadTitleUpdatedEvent = Extract<
 	InstanceAiEvent,
 	{ type: 'thread-title-updated' }
 >;
-
-export type InstanceAiFilesystemResponse = InstanceType<typeof InstanceAiFilesystemResponseDto>;
 
 // ---------------------------------------------------------------------------
 // API types
@@ -1750,15 +1708,6 @@ export const instanceAiPromptConfigurationSchema = z.object({
 });
 export type InstanceAiPromptConfiguration = z.infer<typeof instanceAiPromptConfigurationSchema>;
 
-/**
- * A Computer Use entry point in the chat input's + menu. The client decides
- * which entries it renders — its rollout and the device are only visible there
- * — so it reports them and the backend never advertises an entry it is not told
- * about.
- */
-export const computerUseChannelSchema = z.enum(['localComputer', 'browser']);
-export type ComputerUseChannel = z.infer<typeof computerUseChannelSchema>;
-
 export const MAX_INSTANCE_AI_ATTACHMENTS_PER_MESSAGE = 10;
 
 export class InstanceAiSendMessageRequest extends Z.class({
@@ -1772,9 +1721,10 @@ export class InstanceAiSendMessageRequest extends Z.class({
 	threadArtifacts: instanceAiThreadArtifactsContextSchema.optional(),
 	timeZone: TimeZoneSchema,
 	pushRef: z.string().optional(),
-	/** Entries the client renders for this user. Omit to advertise none. The
-	 *  backend still applies the admin switches, so this can only narrow. */
-	computerUseChannels: z.array(computerUseChannelSchema).optional(),
+	/** Whether the client renders the Browser Use entry in the + menu for this
+	 *  user. Its device support is only visible there. Omit to advertise none.
+	 *  The backend still applies the admin switch, so this can only narrow. */
+	browserUseAvailable: z.boolean().optional(),
 	/** Explicit override for evals. Omit to use the backend experiment assignment. */
 	mode: instanceAiBuildModeSchema.optional(),
 	/** Pin a published prompt profile. Takes precedence over mode. */
@@ -1941,12 +1891,6 @@ export class InstanceAiPersistPendingAgentRequest extends Z.class({
 	agentId: clientMintedAgentIdSchema,
 	name: z.string().min(1),
 	config: z.record(z.unknown()).optional(),
-}) {}
-
-export const instanceAiGatewayKeySchema = z.string().min(1).max(256);
-
-export class InstanceAiGatewayEventsQuery extends Z.class({
-	apiKey: instanceAiGatewayKeySchema,
 }) {}
 
 export class InstanceAiEventsQuery extends Z.class({
@@ -2348,7 +2292,6 @@ const instanceAiPermissionsSchema = z.object({
 	mutateDataTableSchema: instanceAiPermissionModeSchema,
 	mutateDataTableRows: instanceAiPermissionModeSchema,
 	cleanupTestExecutions: instanceAiPermissionModeSchema,
-	readFilesystem: instanceAiPermissionModeSchema,
 	fetchUrl: instanceAiPermissionModeSchema,
 	webSearch: instanceAiPermissionModeSchema,
 	restoreWorkflowVersion: instanceAiPermissionModeSchema,
@@ -2380,7 +2323,6 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	mutateDataTableSchema: 'require_approval',
 	mutateDataTableRows: 'require_approval',
 	cleanupTestExecutions: 'require_approval',
-	readFilesystem: 'require_approval',
 	fetchUrl: 'require_approval',
 	webSearch: 'require_approval',
 	restoreWorkflowVersion: 'require_approval',
@@ -2412,7 +2354,6 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
  * `packages/@n8n/instance-ai/src/agent/system-prompt.ts` (`getReadOnlySection`).
  */
 const BRANCH_READ_ONLY_SAFE_PERMISSIONS: ReadonlySet<keyof InstanceAiPermissions> = new Set([
-	'readFilesystem',
 	'fetchUrl',
 	'webSearch',
 	'mcpRead',
@@ -2526,7 +2467,6 @@ export interface InstanceAiAdminSettingsResponse {
 	searchDisabled: boolean;
 	n8nSandboxServiceUrl: string | null;
 	envManaged: InstanceAiEnvManagedFields;
-	localGatewayDisabled: boolean;
 	browserUseEnabled: boolean;
 }
 
@@ -2638,7 +2578,6 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	modelName: z.string().trim().min(1).nullable().optional(),
 	searchDisabled: z.boolean().optional(),
 	n8nSandboxServiceUrl: z.string().url().nullable().optional(),
-	localGatewayDisabled: z.boolean().optional(),
 	browserUseEnabled: z.boolean().optional(),
 }) {}
 
@@ -2692,14 +2631,7 @@ export interface InstanceAiUserPreferencesResponse {
 	credentialType: string | null;
 	credentialName: string | null;
 	modelName: string;
-	localGatewayDisabled: boolean;
 }
-
-export class InstanceAiUserPreferencesUpdateRequest extends Z.class({
-	credentialId: z.string().nullable().optional(),
-	modelName: z.string().optional(),
-	localGatewayDisabled: z.boolean().optional(),
-}) {}
 
 export interface InstanceAiProviderConnection {
 	id: string;
@@ -2963,8 +2895,8 @@ export class InstanceAiEvalExecutionRequest extends Z.class({
 	 * budget can exceed the 15 minutes a plain run takes.
 	 */
 	timeoutMs: z.number().int().min(30_000).max(3_600_000).optional(),
-	/** Data tables the caller reseeded with this scenario's rows. A Data Table read
-	 *  bound to one of them reads the table instead of pinned rows. */
+	/** Data tables the caller reseeded with this scenario's rows. The server keeps
+	 *  their rows, and fills every other table the workflow uses itself. */
 	seededDataTableIds: z.array(z.string().min(1)).max(20).optional(),
 }) {}
 

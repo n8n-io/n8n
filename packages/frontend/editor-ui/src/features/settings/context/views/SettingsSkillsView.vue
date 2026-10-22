@@ -23,9 +23,11 @@ import {
 import type { DropdownMenuItemProps, TableOptions } from '@n8n/design-system';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useLatestFetch } from '@/app/composables/useLatestFetch';
 import { useMessage } from '@/app/composables/useMessage';
 import { DEBOUNCE_TIME, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useAssistantSkillsExperiment } from '@/experiments/assistantSkills/useAssistantSkillsExperiment';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { AGENT_SKILL_MODAL_KEY } from '@/features/agents/constants';
 import { isSkillNameTakenError } from '@/features/agents/utils/agentSkill';
@@ -57,6 +59,7 @@ const message = useMessage();
 const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 const skillsStore = useSkillsStore();
+const { isEnabled: assistantSkillsEnabled } = useAssistantSkillsExperiment();
 const telemetry = useTelemetry();
 const { showError, showMessage } = useToast();
 const { scopeDisplay } = useSkillScopeDisplay();
@@ -70,14 +73,18 @@ const search = ref('');
 const scopeFilter = ref<ScopeFilter>(ALL_SCOPES);
 const loadFailed = ref(false);
 
-// Paging, search and the scope filter run on the server: the count and the page both
-// describe the matching skills, and the page is the only slice the browser holds.
-const isFiltered = computed(() => search.value.trim() !== '' || scopeFilter.value !== ALL_SCOPES);
-// A failed load also reports zero rows, so the empty state must not stand in for it. A
-// filter that matches nothing shows an empty table, not "No skills yet".
-const showEmptyState = computed(
-	() => !skillsStore.loading && !loadFailed.value && !isFiltered.value && skillsStore.count === 0,
-);
+// The empty states describe the rows on screen, so they follow the query that loaded
+// them, not the live search input.
+const loadedFiltered = ref(false);
+const hasLoaded = ref(false);
+// Each search reloads the list. Only the first load shows the loading rows, so a search
+// keeps the previous rows until the new ones arrive.
+const showLoading = computed(() => skillsStore.loading && !hasLoaded.value);
+// A failed load also reports zero rows, so neither empty state must stand in for it.
+const emptyState = computed<'none' | 'noSkills' | 'noResults'>(() => {
+	if (!hasLoaded.value || loadFailed.value || skillsStore.count > 0) return 'none';
+	return loadedFiltered.value ? 'noResults' : 'noSkills';
+});
 
 const scopeFilterItems = computed<Array<DropdownMenuItemProps<ScopeFilter>>>(() =>
 	(
@@ -94,6 +101,8 @@ const scopeFilterItems = computed<Array<DropdownMenuItemProps<ScopeFilter>>>(() 
 	})),
 );
 
+// Paging, search and the scope filter run on the server: the count and the page both
+// describe the matching skills, and the page is the only slice the browser holds.
 function listQuery(page: number, itemsPerPage: number): SkillListQuery {
 	const term = search.value.trim();
 	return {
@@ -147,20 +156,32 @@ function parseScope(value: string): { scope: 'project' | 'instance'; projectId?:
 	return { scope: 'instance' };
 }
 
+// Only the newest load updates the page state, so a slow earlier search cannot win.
+const { next: nextLoad } = useLatestFetch();
+
 async function load() {
+	const isLatest = nextLoad();
 	const { page = 0, itemsPerPage = SKILLS_DEFAULT_PAGE_SIZE } = tableOptions.value;
+	const query = listQuery(page, itemsPerPage);
+	const filtered = query.search !== undefined || query.scope !== undefined;
 	try {
-		await skillsStore.fetchSkills(listQuery(page, itemsPerPage));
-		loadFailed.value = false;
+		await skillsStore.fetchSkills(query);
+		if (!isLatest()) return;
 		// Deleting the last rows of a page can leave the page past the end.
 		const lastPage = Math.max(0, Math.ceil(skillsStore.count / itemsPerPage) - 1);
 		if (page > lastPage) {
 			tableOptions.value = { ...tableOptions.value, page: lastPage };
 			await skillsStore.fetchSkills(listQuery(lastPage, itemsPerPage));
+			if (!isLatest()) return;
 		}
+		loadFailed.value = false;
+		loadedFiltered.value = filtered;
 	} catch (error) {
+		if (!isLatest()) return;
 		loadFailed.value = true;
 		showError(error, i18n.baseText('settings.context.skills.error.load'));
+	} finally {
+		if (isLatest()) hasLoaded.value = true;
 	}
 }
 
@@ -294,17 +315,21 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>) {
 			skill: detail.skill,
 			skillId: detail.id,
 			readOnly: !detail.canEdit,
+			...(assistantSkillsEnabled.value && detail.scope !== 'agent'
+				? { availableToAssistant: detail.availableToAssistant }
+				: {}),
 			scopeOptions: options,
 			initialScope: currentValue,
 			...scopeLock(detail),
 			usedBy: detail.usedBy,
 			existingSkillNames: [],
-			onConfirm: async ({ skill, scope }) =>
+			onConfirm: async ({ skill, scope, availableToAssistant }) =>
 				await onSave(
 					detail.id,
 					skill,
 					detail.skillHash,
 					scope !== currentValue ? scope : undefined,
+					availableToAssistant,
 				),
 		});
 	} catch (error) {
@@ -319,6 +344,7 @@ async function onSave(
 	skill: AgentSkill,
 	baseSkillHash: string,
 	newScope?: string,
+	availableToAssistant?: boolean,
 ): Promise<AgentSkillConfirmFailure | undefined> {
 	let created: boolean;
 	try {
@@ -330,13 +356,13 @@ async function onSave(
 			references: skill.references ?? [],
 			baseSkillHash,
 			...(newScope ? parseScope(newScope) : {}),
+			...(availableToAssistant !== undefined ? { availableToAssistant } : {}),
 		}));
 	} catch (error) {
 		return saveFailed(error);
 	}
-	// A move is a change even when the content stays the same. Only "Nothing to save"
-	// gets a message: a real change shows in the table.
-	if (created || newScope !== undefined) {
+	// Scope and availability changes do not create a content version.
+	if (created || newScope !== undefined || availableToAssistant !== undefined) {
 		await load();
 		confirmIfHidden(id, 'saved');
 	} else {
@@ -472,15 +498,25 @@ onMounted(async () => {
 			v-model:table-options="tableOptions"
 			:skills="skillsStore.skills"
 			:items-length="skillsStore.count"
-			:loading="skillsStore.loading"
-			:show-empty="showEmptyState"
+			:loading="showLoading"
+			:show-empty="emptyState !== 'none'"
+			:show-assistant-availability="assistantSkillsEnabled"
 			@open="openEditModal"
 			@download="onDownload"
 			@delete="onDelete"
 			@update:options="onOptionsUpdate"
 		>
 			<template #empty>
-				<div :class="$style.empty" data-test-id="skills-empty-state">
+				<div
+					v-if="emptyState === 'noResults'"
+					:class="$style.empty"
+					data-test-id="skills-no-results"
+				>
+					<N8nText color="text-light">
+						{{ i18n.baseText('settings.context.skills.search.noResults') }}
+					</N8nText>
+				</div>
+				<div v-else :class="$style.empty" data-test-id="skills-empty-state">
 					<N8nHeading tag="h2" size="medium" bold>
 						{{ i18n.baseText('settings.context.skills.empty.title') }}
 					</N8nHeading>

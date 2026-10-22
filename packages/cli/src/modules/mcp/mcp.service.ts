@@ -863,7 +863,7 @@ export class McpService {
 
 		if (areSkillToolsAvailable(Container.get(SkillsHubRollout))) {
 			const { McpSkillToolsService } = await import('./tools/skills/skill-tools.service.js');
-			Container.get(McpSkillToolsService).registerTools(registerIfAllowed, user);
+			await Container.get(McpSkillToolsService).registerTools(registerIfAllowed, user);
 		}
 
 		return server;

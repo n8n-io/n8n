@@ -19,6 +19,7 @@ import { AI_GATEWAY_MANAGED_TAG, type CredentialTypeAvailability } from '@n8n/ap
 import {
 	ContactAdminModal,
 	SCOPE_LABEL_KEY,
+	type ContactAudience,
 	useTypeAvailabilityPoliciesStore,
 } from '@n8n/frontend-module-type-availability-policies';
 import ModelSelectorTriggerIcon from './model-selector/ModelSelectorTriggerIcon.vue';
@@ -103,7 +104,7 @@ const pendingDefaultCredential = ref<{
 	provider: AgentModelProvider;
 	credentialId: string;
 } | null>(null);
-const contactAdminSubject = ref<string | null>(null);
+const contactAdmin = ref<{ subject: string; audience: ContactAudience } | null>(null);
 const forceModelOptionsDisabled = ref(false);
 const isResolvingDefaultModel = computed(
 	() => pendingDefaultCredential.value !== null || forceModelOptionsDisabled.value,
@@ -244,9 +245,9 @@ function restrictedCredentialsName(item: MenuItem): string {
 	});
 }
 
-function requestContactAdmin(subject: string) {
+function requestContactAdmin(subject: string, audience: ContactAudience) {
 	dropdownRef.value?.close();
-	contactAdminSubject.value = subject;
+	contactAdmin.value = { subject, audience };
 }
 
 function providerToMenuItem(provider: AgentModelProvider): MenuItem {
@@ -752,16 +753,19 @@ defineExpose({
 			<template #item-restricted="{ item }">
 				<ModelSelectorRestrictedMarker
 					:name="restrictedCredentialsName(item)"
-					:scope="item.data?.restriction?.scope"
-					@contact-admin="requestContactAdmin(restrictedCredentialsName(item))"
+					:restriction="item.data?.restriction"
+					@contact-admin="
+						(audience) => requestContactAdmin(restrictedCredentialsName(item), audience)
+					"
 				/>
 			</template>
 		</N8nAiModelSelectorDropdown>
 		<ContactAdminModal
 			kind="credential"
-			:node-type-name="contactAdminSubject ?? ''"
-			:open="contactAdminSubject !== null"
-			@update:open="(isOpen) => !isOpen && (contactAdminSubject = null)"
+			:node-type-name="contactAdmin?.subject ?? ''"
+			:audience="contactAdmin?.audience ?? 'instance'"
+			:open="contactAdmin !== null"
+			@update:open="(isOpen) => !isOpen && (contactAdmin = null)"
 		/>
 	</div>
 </template>
