@@ -60,9 +60,9 @@ export function createResumeTargetHandler(
 
 		try {
 			const target = await resumeRequests.locate(params.data.id, body.data.token);
-			// Read after the token is verified, so a bad token learns nothing of the
-			// execution. The steps ride along, because the resume method can resolve
-			// expressions against what the execution produced so far.
+			// Read after the token check, so a bad token learns nothing about the
+			// execution. The response carries every step, because the resume method
+			// can resolve expressions against earlier outputs.
 			const execution = await executionQuery.getExecutionWithSteps(params.data.id);
 			const response: ResumeTargetResponse = {
 				execution: toExecutionSnapshot(execution),

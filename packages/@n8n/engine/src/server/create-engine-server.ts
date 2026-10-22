@@ -24,7 +24,11 @@ export interface EngineServerDeps {
 	startExecution: StartExecutionService;
 	cancelExecution: CancelExecutionService;
 	executionQuery: ExecutionQueryService;
-	/** Absent, both resume routes answer 501. */
+	/**
+	 * Absent when the host gives no resume secret. Both resume routes then
+	 * answer 501. Optional until a later decision says where the secret comes
+	 * from and whether the engine refuses to start without it.
+	 */
 	resumeRequests?: ResumeRequestService;
 	identityVerifier: IdentityVerifier;
 	/** Where the engine writes its own messages. Defaults to the console. */

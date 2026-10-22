@@ -113,6 +113,7 @@ export class ResumeRequestService {
 
 		// Resume first and announce second, as the sweep does. The reverse order
 		// announces a step that the claim still refuses.
+		// TODO(CAT-2938): a crash here leaves the step `queued` with nothing to announce it.
 		await this.stepQueue.publish({
 			type: 'step:ready',
 			executionId: step.executionId,
