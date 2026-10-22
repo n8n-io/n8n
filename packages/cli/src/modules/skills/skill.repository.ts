@@ -1,3 +1,4 @@
+import type { AssistantSkillSummary } from '@n8n/backend-services';
 import {
 	BaseRepository,
 	LIKE_ESCAPE_CLAUSE,
@@ -141,6 +142,38 @@ export class SkillRepository extends BaseRepository<Skill> {
 		if (filter.take !== undefined) query.limit(filter.take);
 		const [skills, count] = await query.getManyAndCount();
 		return { skills, count };
+	}
+
+	async findAssistantSkillSummaries(projectId: string | null): Promise<AssistantSkillSummary[]> {
+		return await assistantVersionsQuery(this.manager, projectId)
+			.select('skill.id', 'id')
+			.addSelect('skill.projectId', 'projectId')
+			.addSelect('version.id', 'versionId')
+			.addSelect('version.version', 'version')
+			.addSelect('version.name', 'name')
+			.addSelect('version.description', 'description')
+			.orderBy('skill.id', 'ASC')
+			.getRawMany<AssistantSkillSummary>();
+	}
+
+	async findAssistantSkill(
+		skillId: string,
+		projectId: string | null,
+	): Promise<ResolvedSkillRow | null> {
+		const version = await assistantVersionsQuery(this.manager, projectId)
+			.andWhere('skill.id = :skillId', { skillId })
+			.getOne();
+		if (!version) return null;
+		const [row] = await this.resolve([version], {});
+		return row ?? null;
+	}
+
+	async setAssistantAvailability(
+		skillId: string,
+		available: boolean,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.managerFor(ctx).update(Skill, skillId, { availableToAssistant: available });
 	}
 
 	async findByIds(ids: string[], ctx: OperationContext = {}): Promise<Skill[]> {
@@ -350,7 +383,12 @@ export class SkillRepository extends BaseRepository<Skill> {
 		await this.managerFor(ctx).update(
 			Skill,
 			{ id: skillId },
-			{ projectId: target.projectId, agentId: target.agentId, updatedAt: new Date() },
+			{
+				projectId: target.projectId,
+				agentId: target.agentId,
+				...(target.agentId !== null ? { availableToAssistant: false } : {}),
+				updatedAt: new Date(),
+			},
 		);
 	}
 
@@ -476,6 +514,14 @@ function latestVersionsQuery(manager: EntityManager, skillIds: string[]) {
 	return highestVersionsQuery(manager).andWhere('version.skillId IN (:...skillIds)', {
 		skillIds,
 	});
+}
+
+function assistantVersionsQuery(manager: EntityManager, projectId: string | null) {
+	return highestVersionsQuery(manager)
+		.innerJoin(Skill, 'skill', 'skill.id = version.skillId')
+		.andWhere('skill.availableToAssistant = :enabled', { enabled: true })
+		.andWhere('skill.agentId IS NULL')
+		.andWhere('(skill.projectId IS NULL OR skill.projectId = :projectId)', { projectId });
 }
 
 async function insertVersion(

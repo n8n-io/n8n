@@ -12,6 +12,7 @@ import { paginationSchema } from '../dto/pagination/pagination.dto';
 import { Z } from '../zod-class';
 
 export const SKILLS_MAX_PAGE_SIZE = 100;
+export const ASSISTANT_SKILLS_FLAG = '130_attach_skills_to_assistant';
 
 /** Optional on purpose: without `take` the caller gets every visible skill. */
 const optionalTake = z
@@ -63,6 +64,7 @@ export type SkillListItem = {
 	latestVersion: number;
 	/** Distinct agents that use the skill: draft refs plus published pins. */
 	usedByAgents: number;
+	availableToAssistant: boolean;
 	canEdit: boolean;
 	canDelete: boolean;
 	createdAt: string;
@@ -163,6 +165,7 @@ export class CreateSkillDto extends Z.class({
  * started from: a save based on an older version is refused with 409.
  */
 export class SaveSkillDto extends Z.class({
+	availableToAssistant: z.boolean().optional(),
 	name: skillNameSchema.optional(),
 	description: agentSkillShape.description.optional(),
 	instructions: agentSkillShape.instructions.optional(),

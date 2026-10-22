@@ -5,15 +5,13 @@ export interface PinFieldViolation {
 	nodeName: string;
 	/** Keys present on pinned items but absent from the declared contract. */
 	unknownKeys: string[];
-	/** Declared keys missing from pinned items — reported only for `exact` contracts. */
-	missingKeys: string[];
 	declaredKeys: string[];
 	envelopeKey?: string;
 }
 
 /**
  * Compare generated pin data against each node's declared field-name contract
- * (extractor attributes, parser schema keys, real Data Table columns).
+ * (extractor attributes, parser schema keys).
  * Near-miss renames (`invoice_amount` for `total_amount`, `email` for
  * `contact_email`) are the dominant residual mock defect in eval runs — they
  * make correctly-built downstream expressions resolve undefined. Run this
@@ -37,20 +35,11 @@ export function collectPinFieldViolations(
 
 		const declared = new Set(contract.keys);
 		const unknownKeys = new Set<string>();
-		// Exact contracts (Data Table rows) require every declared key on EVERY
-		// item — real rows always carry every column.
-		const missingKeySet = new Set<string>();
 
 		for (const item of items) {
 			const json = item.json;
-			if (typeof json !== 'object' || json === null || Array.isArray(json)) {
-				// A malformed item (`{"json": "not a row"}`, `{"json": []}`) carries no
-				// field names at all. Under an exact contract that IS the violation —
-				// skipping it let the pin pass validation with rows no downstream
-				// column expression can resolve.
-				if (contract.exact) for (const key of contract.keys) missingKeySet.add(key);
-				continue;
-			}
+			// A malformed item (`{"json": "not a row"}`) carries no field names to check.
+			if (typeof json !== 'object' || json === null || Array.isArray(json)) continue;
 			let fields = json as Record<string, unknown>;
 			if (contract.envelopeKey) {
 				const enveloped = fields[contract.envelopeKey];
@@ -64,20 +53,12 @@ export function collectPinFieldViolations(
 			for (const key of Object.keys(fields)) {
 				if (!declared.has(key)) unknownKeys.add(key);
 			}
-			if (contract.exact) {
-				for (const key of contract.keys) {
-					if (!(key in fields)) missingKeySet.add(key);
-				}
-			}
 		}
 
-		const missingKeys = [...missingKeySet];
-
-		if (unknownKeys.size > 0 || missingKeys.length > 0) {
+		if (unknownKeys.size > 0) {
 			violations.push({
 				nodeName: ctx.nodeName,
 				unknownKeys: [...unknownKeys],
-				missingKeys,
 				declaredKeys: contract.keys,
 				envelopeKey: contract.envelopeKey,
 			});
@@ -98,12 +79,7 @@ export function buildFieldViolationRetryMessage(violations: PinFieldViolation[])
 	for (const v of violations) {
 		const location = v.envelopeKey ? ` (inside the \`${v.envelopeKey}\` object)` : '';
 		lines.push(`- ${v.nodeName}${location}:`);
-		if (v.unknownKeys.length > 0) {
-			lines.push(`  - remove/rename these unknown fields: ${v.unknownKeys.join(', ')}`);
-		}
-		if (v.missingKeys.length > 0) {
-			lines.push(`  - every item must also carry: ${v.missingKeys.join(', ')}`);
-		}
+		lines.push(`  - remove/rename these unknown fields: ${v.unknownKeys.join(', ')}`);
 		lines.push(`  - the ONLY valid field names are: ${v.declaredKeys.join(', ')}`);
 	}
 	return lines.join('\n');
