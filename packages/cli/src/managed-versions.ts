@@ -74,6 +74,18 @@ export function hasInvalidStoredVersion(data: ICredentialDataDecryptedObject): b
 	return version !== undefined && !isManagedVersion(version);
 }
 
+/** The value of the type, or of its nearest parent type that has one. `parentTypes` is nearest first. */
+export function nearestValue<T>(
+	type: string,
+	parentTypes: readonly string[],
+	values: Record<string, T>,
+): T | undefined {
+	for (const name of [type, ...parentTypes]) {
+		if (Object.hasOwn(values, name)) return values[name];
+	}
+	return undefined;
+}
+
 /** Returns a copy of the token data with the version added. */
 export function withTokenVersion(
 	tokenData: ICredentialDataDecryptedObject,
@@ -94,14 +106,16 @@ export function withTokenVersion(
  *
  * @param clientFieldsOf returns the client fields of an OAuth credential type, `undefined` for other types
  * @param isKnownType returns true when this instance knows the credential type. A type can come from a package that is not installed here.
+ * @param parentTypesOf returns the parent types of a credential type, nearest first. A base `version` on a parent applies to a child that sets no client fields.
  *
- * A type owns an app when its own entry sets the client fields. The version and the newer app
- * of that type come from its own entries only, never from a parent: a parent can use other client credentials.
+ * A type whose own entry sets the client fields has its own app. Its version and its newer app
+ * come from its own entries only, because a parent can use other client credentials.
  */
 export function parseOverwritesPayload(
 	payload: unknown,
 	clientFieldsOf: (type: string) => readonly string[] | undefined,
 	isKnownType: (type: string) => boolean,
+	parentTypesOf: (type: string) => readonly string[],
 ): ParsedCredentialsOverwrites {
 	const entries: ICredentialsOverwrite = {};
 	const entryVersions: Record<string, number> = {};
@@ -150,14 +164,18 @@ export function parseOverwritesPayload(
 
 	for (const [type, value] of Object.entries(versionsPayload)) {
 		const clientFields = clientFieldsOf(type);
+		const hasOwnApp =
+			clientFields !== undefined &&
+			entries[type] !== undefined &&
+			hasClientFields(entries[type], clientFields);
 		const problem = checkNewerApp(value, {
 			clientFields,
 			isKnown: isKnownType(type),
-			ownsBaseApp:
-				clientFields !== undefined &&
-				entries[type] !== undefined &&
-				hasClientFields(entries[type], clientFields),
-			baseVersion: entryVersions[type] ?? IMPLICIT_MANAGED_VERSION,
+			hasBaseEntry: entries[type] !== undefined,
+			baseVersion:
+				(hasOwnApp
+					? entryVersions[type]
+					: nearestValue(type, parentTypesOf(type), entryVersions)) ?? IMPLICIT_MANAGED_VERSION,
 		});
 
 		if (problem !== undefined) {
@@ -176,7 +194,7 @@ function checkNewerApp(
 	context: {
 		clientFields: readonly string[] | undefined;
 		isKnown: boolean;
-		ownsBaseApp: boolean;
+		hasBaseEntry: boolean;
 		baseVersion: number;
 	},
 ): string | undefined {
@@ -188,9 +206,7 @@ function checkNewerApp(
 	if (!isManagedVersionEntry(value)) {
 		return 'it must be an object with an integer "version" of at least 1.';
 	}
-	if (!context.ownsBaseApp) {
-		return 'it needs a base entry that sets the client fields of the same type.';
-	}
+	if (!context.hasBaseEntry) return 'it needs a base entry for the same type.';
 	if (value.version <= context.baseVersion) {
 		return `the version (${value.version}) must be greater than the version of the base entry (${context.baseVersion}). Never reuse a version.`;
 	}

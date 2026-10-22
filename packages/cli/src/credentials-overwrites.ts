@@ -14,6 +14,7 @@ import {
 	hasClientFields,
 	hasInvalidStoredVersion,
 	hasTokenData,
+	nearestValue,
 	parseOverwritesPayload,
 	readStoredVersion,
 	withoutVersion,
@@ -33,7 +34,7 @@ export class CredentialsOverwrites {
 	/** The newer app of a rollout, for OAuth types that list one in `__versions`. */
 	private newerApps: Record<string, ManagedVersionEntry> = {};
 
-	/** Types whose own entry sets the client fields. Each one owns its app, its version and its rollout. */
+	/** Types whose own entry sets the client fields. Each one has its own app, version and rollout. */
 	private appOwners = new Set<string>();
 
 	private resolvedTypes: string[] = [];
@@ -137,6 +138,7 @@ export class CredentialsOverwrites {
 			overwriteData,
 			(type) => this.getClientFields(type),
 			(type) => this.credentialTypes.recognizes(type),
+			(type) => this.credentialTypes.getParentTypes(type),
 		);
 
 		for (const problem of parsed.problems) {
@@ -254,10 +256,9 @@ export class CredentialsOverwrites {
 	getDefaultVersion(type: string): number | undefined {
 		if (!this.getClientFields(type) || this.get(type) === undefined) return undefined;
 
-		const owner = this.getAppOwner(type);
 		return (
-			this.ownValue(this.newerApps, owner)?.version ??
-			this.ownValue(this.entryVersions, owner) ??
+			this.versionValue(type, this.newerApps)?.version ??
+			this.versionValue(type, this.entryVersions) ??
 			IMPLICIT_MANAGED_VERSION
 		);
 	}
@@ -313,26 +314,23 @@ export class CredentialsOverwrites {
 	}
 
 	/**
-	 * The type that supplies the app of this type: the type itself when its entry sets the client
-	 * fields, else its nearest parent that does. The version and the rollout belong to that type.
+	 * The version data of a type: its base version or its newer app.
+	 *
+	 * A type that sets its own client fields uses its own data only, because a parent can use
+	 * other client credentials. Any other type uses the data of the nearest parent that has some.
 	 */
-	private getAppOwner(type: string): string | undefined {
-		return [type, ...this.credentialTypes.getParentTypes(type)].find((name) =>
-			this.appOwners.has(name),
-		);
-	}
+	private versionValue<T>(type: string, values: Record<string, T>): T | undefined {
+		if (this.appOwners.has(type)) return Object.hasOwn(values, type) ? values[type] : undefined;
 
-	private ownValue<T>(values: Record<string, T>, owner: string | undefined): T | undefined {
-		return owner !== undefined && Object.hasOwn(values, owner) ? values[owner] : undefined;
+		return nearestValue(type, this.credentialTypes.getParentTypes(type), values);
 	}
 
 	/** Picks the app of an OAuth type from its base overwrite and its newer app, if any. */
 	private pickApp(type: string, base: ICredentialDataDecryptedObject, version?: number) {
 		if (!this.getClientFields(type)) return base;
 
-		const owner = this.getAppOwner(type);
-		const newer = this.ownValue(this.newerApps, owner);
-		const baseVersion = this.ownValue(this.entryVersions, owner) ?? IMPLICIT_MANAGED_VERSION;
+		const newer = this.versionValue(type, this.newerApps);
+		const baseVersion = this.versionValue(type, this.entryVersions) ?? IMPLICIT_MANAGED_VERSION;
 		const target = version ?? newer?.version ?? baseVersion;
 
 		if (target === baseVersion) return base;
@@ -400,7 +398,7 @@ export class CredentialsOverwrites {
 	 * so the editor must hide them, even when the base entry does not set them.
 	 */
 	getNewerAppProperties(type: string): string[] {
-		const newer = this.ownValue(this.newerApps, this.getAppOwner(type));
+		const newer = this.versionValue(type, this.newerApps);
 		return newer ? Object.keys(withoutVersion(newer)) : [];
 	}
 

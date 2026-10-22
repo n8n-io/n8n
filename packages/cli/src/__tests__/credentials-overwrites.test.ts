@@ -1778,7 +1778,7 @@ describe('CredentialsOverwrites', () => {
 			});
 
 			it('should compare a versions entry with the version of its own base entry', async () => {
-				// The parent has another client and another version. Neither applies to the child.
+				// The child sets its own client. The version of the parent does not apply to it.
 				const instance = await createInstance({
 					oAuth2Api: { version: 5, clientId: 'parent-id', clientSecret: 'parent-secret' },
 					notionOAuth2Api: baseApp,
@@ -1789,17 +1789,28 @@ describe('CredentialsOverwrites', () => {
 				expect(instance.getDefaultVersion('notionOAuth2Api')).toBe(2);
 			});
 
-			it('should skip a versions entry for a type whose entry sets no client fields', async () => {
-				const instance = await createInstance({
-					oAuth2Api: baseApp,
+			it('should compare a versions entry with the base version of a parent type', async () => {
+				// The child entry sets no client fields, so it inherits the version of the parent.
+				const parentBase = {
+					oAuth2Api: { version: 2, ...baseApp },
 					notionOAuth2Api: { scope: 'read' },
+				};
+
+				await createInstance({
+					...parentBase,
 					__versions: { notionOAuth2Api: { version: 2, ...newApp } },
 				});
-
 				expect(logger.warn).toHaveBeenCalledWith(
-					expect.stringContaining('needs a base entry that sets the client fields'),
+					expect.stringContaining('must be greater than the version of the base entry (2)'),
 				);
-				expect(instance.getDefaultVersion('notionOAuth2Api')).toBe(1);
+
+				logger.warn.mockClear();
+				const instance = await createInstance({
+					...parentBase,
+					__versions: { notionOAuth2Api: { version: 3, ...newApp } },
+				});
+				expect(logger.warn).not.toHaveBeenCalled();
+				expect(instance.getDefaultVersion('notionOAuth2Api')).toBe(3);
 			});
 
 			it('should skip a versions entry that has no base entry', async () => {
