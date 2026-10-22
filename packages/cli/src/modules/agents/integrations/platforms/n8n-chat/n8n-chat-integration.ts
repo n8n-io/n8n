@@ -42,6 +42,20 @@ export class N8nChatIntegration extends AgentChatIntegration {
 
 	readonly requiresChatInstance = false;
 
+	readonly builderGuidance = {
+		capabilities: [
+			'Make the agent available to users of this n8n instance in n8n Chat.',
+			'Respond in the n8n Chat conversation and render rich cards with buttons and selects.',
+			'Needs no credential. The setup card saves the channel and the agent description that n8n Chat shows.',
+			'Production n8n Chat reaches only a published agent: after setup, offer to publish if the agent is not published.',
+		],
+		useIntegrationWhen: [
+			'The user asks to make the agent available in n8n Chat, or to chat with it inside n8n.',
+			'The agent should be usable by people on this n8n instance without an external chat platform.',
+		],
+		useNodeToolWhen: ['Never. n8n Chat is a channel only and has no node tool.'],
+	};
+
 	readonly supportedComponents: readonly RichCardComponentType[] = [
 		'section',
 		'button',

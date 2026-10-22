@@ -282,8 +282,11 @@ function validateCredentialTypes(input: FinishSetupInput, deps: FinishSetupToolD
 }
 
 /** Throws for any requested channel whose type isn't a known chat integration. */
-function validateChannelTypes(input: FinishSetupInput, deps: FinishSetupToolDeps): void {
-	const availableChannelTypes = deps.listChatIntegrationTypes();
+async function validateChannelTypes(
+	input: FinishSetupInput,
+	deps: FinishSetupToolDeps,
+): Promise<void> {
+	const availableChannelTypes = await deps.listChatIntegrationTypes();
 	for (const channel of input.channels ?? []) {
 		if (!availableChannelTypes.includes(channel.integrationType)) {
 			const availableMessage = availableChannelTypes.length
@@ -311,7 +314,7 @@ async function computeInitialPlan(
 	deps: FinishSetupToolDeps,
 ): Promise<{ phases: PhaseDescriptor[]; collected: Collected }> {
 	validateCredentialTypes(input, deps);
-	validateChannelTypes(input, deps);
+	await validateChannelTypes(input, deps);
 
 	const collected: Collected = {};
 	const pendingSlots: CredentialSlotInput[] = [];

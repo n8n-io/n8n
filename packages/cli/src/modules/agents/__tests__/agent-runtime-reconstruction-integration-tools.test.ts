@@ -19,6 +19,8 @@ import type {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
+
+import type { PostHogClient } from '@/posthog';
 import type { AgentsSettingsService } from '../agents-settings.service';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -341,6 +343,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			credentialsService,
 			mock<AgentSetupCompletionService>(),
 			skillRefs,
+			mock<PostHogClient>(),
 		);
 		agentValidationService = new AgentValidationService(
 			agentRepository,

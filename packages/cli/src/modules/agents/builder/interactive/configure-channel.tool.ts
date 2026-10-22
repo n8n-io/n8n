@@ -27,7 +27,7 @@ export function buildConfigureChannelTool(deps: ChannelSetupDeps): BuiltTool {
 			'Configure one available chat channel for the target agent. First call ' +
 				'agent-context with type "integrations" and pass a returned `type` as `integrationType`; do not infer ' +
 				'channel names. Shows setup UI in chat where the user creates a new channel credential ' +
-				'or skips. The setup UI persists the channel configuration and does not publish the agent, ' +
+				'(for n8n_chat: confirms the agent description) or skips. The setup UI persists the channel configuration and does not publish the agent, ' +
 				'so use this for channel credentials instead of the credentials tool or config writes. ' +
 				'Returns { configured: boolean } (plus configMutated/agentId refresh metadata when configured); ' +
 				'false means the user skipped, so continue without the channel and do not re-prompt.',
@@ -54,7 +54,7 @@ export function buildConfigureChannelTool(deps: ChannelSetupDeps): BuiltTool {
 					return { configured: ctx.resumeData.approved };
 				}
 
-				const availableTypes = deps.listChatIntegrationTypes();
+				const availableTypes = await deps.listChatIntegrationTypes();
 				if (!availableTypes.includes(integrationType)) {
 					const availableMessage = availableTypes.length
 						? ` Available: ${availableTypes.join(', ')}.`

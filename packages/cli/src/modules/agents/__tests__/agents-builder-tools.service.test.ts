@@ -66,7 +66,7 @@ const standardApprovalResumeSchema = zodToJsonSchema(APPROVAL_RESUME_SCHEMA)!;
 type BuilderPurposeServices = Pick<AgentsService, 'findById' | 'findByProjectId'> &
 	Pick<AgentConfigService, 'updateConfig'> &
 	Pick<AgentCustomToolsService, 'buildCustomTool'> &
-	Pick<AgentIntegrationPersistenceService, 'listChatIntegrations'> &
+	Pick<AgentIntegrationPersistenceService, 'listBuilderChatIntegrations'> &
 	Pick<AgentSkillsService, 'createAndAttachSkills' | 'getSkill' | 'listSkills' | 'updateSkill'>;
 
 function makeService() {
@@ -74,7 +74,7 @@ function makeService() {
 	const agentConfigService = mock<Pick<AgentConfigService, 'updateConfig'>>();
 	const agentCustomToolsService = mock<Pick<AgentCustomToolsService, 'buildCustomTool'>>();
 	const agentIntegrationPersistenceService =
-		mock<Pick<AgentIntegrationPersistenceService, 'listChatIntegrations'>>();
+		mock<Pick<AgentIntegrationPersistenceService, 'listBuilderChatIntegrations'>>();
 	const agentSkillsService =
 		mock<
 			Pick<AgentSkillsService, 'createAndAttachSkills' | 'getSkill' | 'listSkills' | 'updateSkill'>
@@ -84,7 +84,7 @@ function makeService() {
 		findByProjectId: agentsService.findByProjectId,
 		updateConfig: agentConfigService.updateConfig,
 		buildCustomTool: agentCustomToolsService.buildCustomTool,
-		listChatIntegrations: agentIntegrationPersistenceService.listChatIntegrations,
+		listBuilderChatIntegrations: agentIntegrationPersistenceService.listBuilderChatIntegrations,
 		createAndAttachSkills: agentSkillsService.createAndAttachSkills,
 		getSkill: agentSkillsService.getSkill,
 		listSkills: agentSkillsService.listSkills,
@@ -642,7 +642,7 @@ describe('AgentsBuilderToolsService', () => {
 				tools: [gmailTool('search_order_emails'), gmailTool('escalate', { sendTo: '' })],
 			};
 			let stored = currentConfig;
-			agentsService.listChatIntegrations.mockReturnValue([]);
+			agentsService.listBuilderChatIntegrations.mockResolvedValue([]);
 			agentsService.findById.mockImplementation(async () => makeAgent(stored));
 			agentsService.updateConfig.mockImplementation(async (_agentId, _projectId, config) => {
 				stored = config as AgentJsonConfig;
@@ -720,7 +720,7 @@ describe('AgentsBuilderToolsService', () => {
 
 		it('agent_builder_finish_setup does not overwrite a config field that already has a value', async () => {
 			const { service, agentsService } = makeService();
-			agentsService.listChatIntegrations.mockReturnValue([]);
+			agentsService.listBuilderChatIntegrations.mockResolvedValue([]);
 			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
 
 			const tool = getJsonTool(service, BUILDER_TOOLS.FINISH_SETUP);
@@ -3278,11 +3278,11 @@ describe('AgentsBuilderToolsService', () => {
 			vi.spyOn(
 				(
 					service as unknown as {
-						agentIntegrationPersistenceService: { listChatIntegrations: () => unknown };
+						agentIntegrationPersistenceService: { listBuilderChatIntegrations: () => unknown };
 					}
 				).agentIntegrationPersistenceService,
-				'listChatIntegrations',
-			).mockReturnValue([{ type: 'telegram' }]);
+				'listBuilderChatIntegrations',
+			).mockResolvedValue([{ type: 'telegram' }]);
 			const tool = tools.json.find((t) => t.name === 'agent_builder_configure_channel')!;
 
 			const result = await tool.handler!({ integrationType: 'telegram' }, { ...ctx, suspend });

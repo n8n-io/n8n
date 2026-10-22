@@ -665,7 +665,7 @@ export class AgentsBuilderToolsService {
 			buildAskQuestionsTool({ track }),
 			this.withConfigMutationMarker(
 				this.withConfigSnapshotOnResume(
-					this.createConfigureChannelTool(agentId, projectId, track),
+					this.createConfigureChannelTool(agentId, projectId, user, track),
 					agentId,
 					projectId,
 					(result) => typeof result.configured === 'boolean',
@@ -730,10 +730,10 @@ export class AgentsBuilderToolsService {
 					)
 					.map((integration) => integration.credentialId);
 			},
-			listChatIntegrationTypes: () =>
-				this.agentIntegrationPersistenceService
-					.listChatIntegrations()
-					.map((integration) => integration.type),
+			listChatIntegrationTypes: async () =>
+				(await this.agentIntegrationPersistenceService.listBuilderChatIntegrations(user)).map(
+					(integration) => integration.type,
+				),
 			listAiGatewayManagedCredentialTypes: async () => {
 				const agent = await this.agentsService.findById(agentId, projectId);
 				return listAiGatewayManagedCredentialTypes(agent?.schema?.tools, this.nodeTypes);
@@ -744,15 +744,16 @@ export class AgentsBuilderToolsService {
 	private createConfigureChannelTool(
 		agentId: string,
 		projectId: string,
+		user: User,
 		track: BuilderTrackFn,
 	): BuiltTool {
 		return buildConfigureChannelTool({
 			agentId,
 			projectId,
-			listChatIntegrationTypes: () =>
-				this.agentIntegrationPersistenceService
-					.listChatIntegrations()
-					.map((integration) => integration.type),
+			listChatIntegrationTypes: async () =>
+				(await this.agentIntegrationPersistenceService.listBuilderChatIntegrations(user)).map(
+					(integration) => integration.type,
+				),
 			track,
 		});
 	}
