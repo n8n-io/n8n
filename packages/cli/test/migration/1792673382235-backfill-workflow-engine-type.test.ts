@@ -24,6 +24,7 @@ const seeds = {
 	engineV2: '{"engineType":"v2"}',
 	engineV1: '{"engineType":"v1","executionOrder":"v0"}',
 	engineNull: '{"engineType":null}',
+	unicodeEscape: '{"note":"\\u00e9"}',
 	array: '[]',
 	string: '"x"',
 	invalidJson: 'not json',
@@ -33,6 +34,8 @@ const seeds = {
 const postgresOnlySeeds = {
 	nulEscape: '{"note":"a\\u0000b"}',
 	loneSurrogate: '{"note":"\\ud83d"}',
+	upperCaseSurrogate: '{"note":"\\uD83D"}',
+	lowSurrogate: '{"note":"\\udc00"}',
 } as const;
 
 type SeedId = keyof typeof seeds;
@@ -133,8 +136,9 @@ describe('BackfillWorkflowEngineType Migration', () => {
 		expect(stored.string).toBe(seeds.string);
 		if (!isPostgres) expect(stored.invalidJson).toBe(seeds.invalidJson);
 		if (isPostgres) {
-			expect(stored.nulEscape).toBe(postgresOnlySeeds.nulEscape);
-			expect(stored.loneSurrogate).toBe(postgresOnlySeeds.loneSurrogate);
+			for (const [id, settings] of Object.entries(postgresOnlySeeds)) {
+				expect(stored[id]).toBe(settings);
+			}
 		}
 	}
 
@@ -147,6 +151,7 @@ describe('BackfillWorkflowEngineType Migration', () => {
 		expect(parsed(stored, 'engineV2')).toEqual({ engineType: 'v2' });
 		expect(parsed(stored, 'engineV1')).toEqual({ engineType: 'v1', executionOrder: 'v0' });
 		expect(parsed(stored, 'engineNull')).toEqual({ engineType: null });
+		expect(parsed(stored, 'unicodeEscape')).toEqual({ note: 'é', engineType: 'v1' });
 		expectSkippedRowsUnchanged(stored);
 	}
 
@@ -156,9 +161,11 @@ describe('BackfillWorkflowEngineType Migration', () => {
 
 	it('counts the workflows it skips', () => {
 		// SQLite: the array, the string, and the invalid JSON. Postgres: the array, the
-		// string, and the two objects that `jsonb` rejects.
-		const skipped = isPostgres ? 4 : 3;
-		expect(upWarnings).toEqual([[expect.stringContaining(`Skipped ${skipped} workflows`)]]);
+		// string, and the four objects that `jsonb` rejects.
+		const skipped = isPostgres ? 6 : 3;
+		// The test helpers also log warnings, such as for an old Postgres version.
+		const ownWarnings = upWarnings.filter(([message]) => String(message).includes(MIGRATION_NAME));
+		expect(ownWarnings).toEqual([[expect.stringContaining(`Skipped ${skipped} workflows`)]]);
 	});
 
 	it('changes nothing when up runs again', async () => {
@@ -190,6 +197,7 @@ describe('BackfillWorkflowEngineType Migration', () => {
 		expect(parsed(stored, 'engineV2')).toEqual({ engineType: 'v2' });
 		expect(parsed(stored, 'engineV1')).toEqual({ executionOrder: 'v0' });
 		expect(parsed(stored, 'engineNull')).toEqual({ engineType: null });
+		expect(parsed(stored, 'unicodeEscape')).toEqual({ note: 'é' });
 		expectSkippedRowsUnchanged(stored);
 	});
 });
