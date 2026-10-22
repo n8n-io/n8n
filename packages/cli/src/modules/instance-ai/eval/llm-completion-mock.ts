@@ -5,6 +5,7 @@
  * a provider envelope the adapter can't read a tool call from.
  */
 
+import type { GenerateResult } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
@@ -12,6 +13,7 @@ import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import { isRecord } from '@n8n/utils/is-record';
 import { isUnknownArray } from '@n8n/utils/is-unknown-array';
 import type { EvalLlmMockHandler, EvalMockHttpResponse } from 'n8n-core';
+import { OperationalError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import {
@@ -242,6 +244,92 @@ function jsonResponse(body: Record<string, unknown>): EvalMockHttpResponse {
 	return { body, headers: { 'content-type': 'application/json' }, statusCode: 200 };
 }
 
+const SUBMIT_TOOL_NAME = 'submit_agent_step';
+
+const TOOL_CALL_WITHOUT_NAME = 'kind="tool_call" requires toolName';
+
+/**
+ * One re-ask after an attempt that accepts no step. Each attempt has its own
+ * 120 s abort, and the OpenAI node retries a failed (HTTP 500) turn up to 2
+ * times, so one node turn costs at most 6 mock generations.
+ */
+const MAX_SUBMIT_ATTEMPTS = 2;
+
+/** Bounded JSON for the log: a rejected input can hold a whole document. */
+function toLogJson(value: unknown): string {
+	return truncate(JSON.stringify(value) ?? String(value));
+}
+
+/**
+ * Submit calls that never reached the handler: the input failed the schema
+ * (`rejected`), or the output limit cut the call off (`pending`).
+ */
+function unhandledSubmits(messages: readonly unknown[]): string[] {
+	const found: string[] = [];
+	for (const message of messages) {
+		if (!isRecord(message) || !isUnknownArray(message.content)) continue;
+		for (const part of message.content) {
+			if (!isRecord(part) || part.type !== 'tool-call' || part.toolName !== SUBMIT_TOOL_NAME) {
+				continue;
+			}
+			if (part.state === 'resolved') continue;
+			const reason =
+				typeof part.error === 'string' ? truncate(part.error) : `call left ${String(part.state)}`;
+			found.push(`${reason}; input=${toLogJson(part.input)}`);
+		}
+	}
+	return found;
+}
+
+/** Why an attempt accepted no step, in one bounded line for the log and the re-ask. */
+function describeFailedAttempt(result: GenerateResult, rejected: string[]): string {
+	const parts = [`finishReason=${String(result.finishReason)}`];
+	if (result.guardrail) parts.push(`guardrail=${result.guardrail.code}`);
+	const all = [...rejected, ...unhandledSubmits(result.messages)];
+	parts.push(`rejected: ${all.length > 0 ? all.join(' | ') : 'none (no submit_agent_step call)'}`);
+	return parts.join('; ');
+}
+
+/** Run the mock model once. Fills `capture` when the submit tool accepts a step. */
+async function runSubmitAttempt(
+	prompt: string,
+	capture: CompletionStep,
+): Promise<{ result: GenerateResult; rejected: string[] }> {
+	const rejected: string[] = [];
+	const agent = createEvalAgent('eval-llm-completion-mock', {
+		instructions: COMPLETION_MOCK_PROMPT,
+		cache: true,
+	}).tool(
+		new Tool(SUBMIT_TOOL_NAME)
+			.description("Submit the agent's next step: one tool call, or a final answer.")
+			.input(submitStepSchema)
+			.handler(async (input: CompletionStep) => {
+				// A named tool always wins, even on a step labeled "final" — structured-output
+				// agents finalize by calling the tool. Capture it regardless of `kind`.
+				if (input.toolName) {
+					capture.kind = 'tool_call';
+					capture.toolName = input.toolName;
+					capture.toolArguments = input.toolArguments ?? {};
+					return 'Accepted.';
+				}
+				if (input.kind === 'tool_call') {
+					rejected.push(`${TOOL_CALL_WITHOUT_NAME}; input=${toLogJson(input)}`);
+					return `Invalid: ${TOOL_CALL_WITHOUT_NAME}. Call submit_agent_step again.`;
+				}
+				capture.kind = 'final';
+				capture.content = input.content ?? '';
+				return 'Accepted.';
+			})
+			.build(),
+	);
+
+	// Hang guard: one stalled model turn must not eat the scenario budget.
+	const result = await agent.generate(prompt, {
+		abortSignal: AbortSignal.timeout(120_000),
+	});
+	return { result, rejected };
+}
+
 /** LLM-completion mock handler for the wire server — same signature as the HTTP mock. */
 export function createLlmCompletionMockHandler(
 	options?: LlmCompletionMockOptions,
@@ -260,67 +348,53 @@ export function createLlmCompletionMockHandler(
 		);
 
 		const capture: CompletionStep = {};
-		const agent = createEvalAgent('eval-llm-completion-mock', {
-			instructions: COMPLETION_MOCK_PROMPT,
-			cache: true,
-		}).tool(
-			new Tool('submit_agent_step')
-				.description("Submit the agent's next step: one tool call, or a final answer.")
-				.input(submitStepSchema)
-				.handler(async (input: CompletionStep) => {
-					// A named tool always wins, even on a step labeled "final" — structured-output
-					// agents finalize by calling the tool. Capture it regardless of `kind`.
-					if (input.toolName) {
-						capture.kind = 'tool_call';
-						capture.toolName = input.toolName;
-						capture.toolArguments = input.toolArguments ?? {};
-						return 'Accepted.';
-					}
-					if (input.kind === 'tool_call') {
-						return 'Invalid: kind="tool_call" requires toolName. Call submit_agent_step again.';
-					}
-					capture.kind = 'final';
-					capture.content = input.content ?? '';
-					return 'Accepted.';
-				})
-				.build(),
-		);
+		let prompt = userPrompt;
+		let failure = '';
+		for (let attempt = 1; attempt <= MAX_SUBMIT_ATTEMPTS; attempt++) {
+			const { result, rejected } = await runSubmitAttempt(prompt, capture);
 
-		// Hang guard: one stalled model turn must not eat the scenario budget.
-		const result = await agent.generate(userPrompt, {
-			abortSignal: AbortSignal.timeout(120_000),
-		});
+			if (capture.toolName) {
+				// A named tool always wins — structured-output agents finalize by calling
+				// the tool even while labeling the step "final".
+				return jsonResponse({
+					tool_calls: [{ name: capture.toolName, arguments: capture.toolArguments ?? {} }],
+				});
+			}
+			if (capture.kind === 'final') {
+				// Unwrap a stray provider envelope, then conform to any structured-output
+				// schema the request declared (drops invented fields / stray wrappers that
+				// would fail the node's `additionalProperties: false` parser).
+				return jsonResponse({
+					content: conformContentToSchema(
+						unwrapProviderEnvelope(capture.content ?? ''),
+						outputSchema,
+					),
+				});
+			}
 
-		let responseBody: Record<string, unknown>;
-		if (capture.toolName) {
-			// A named tool always wins — structured-output agents finalize by calling
-			// the tool even while labeling the step "final".
-			responseBody = {
-				tool_calls: [{ name: capture.toolName, arguments: capture.toolArguments ?? {} }],
-			};
-		} else if (capture.kind === 'final') {
-			// Unwrap a stray provider envelope, then conform to any structured-output
-			// schema the request declared (drops invented fields / stray wrappers that
-			// would fail the node's `additionalProperties: false` parser).
-			responseBody = {
-				content: conformContentToSchema(
-					unwrapProviderEnvelope(capture.content ?? ''),
-					outputSchema,
-				),
-			};
-		} else {
-			// Agent never submitted — fall back to its raw text so the turn isn't empty.
-			const fallback = extractText(result).trim();
-			Container.get(Logger).warn(
-				`[EvalMock] llm-completion-mock produced no submit_agent_step for "${node.name}"; using raw text fallback`,
+			// The model answered in prose instead of submitting: use that text.
+			const fallback = conformContentToSchema(
+				unwrapProviderEnvelope(extractText(result).trim()),
+				outputSchema,
 			);
-			responseBody = {
-				content:
-					conformContentToSchema(unwrapProviderEnvelope(fallback), outputSchema) ||
-					'[eval completion-mock: empty response]',
-			};
+			if (fallback) {
+				Container.get(Logger).warn(
+					`[EvalMock] llm-completion-mock produced no submit_agent_step for "${node.name}"; using raw text fallback`,
+				);
+				return jsonResponse({ content: fallback });
+			}
+
+			failure = describeFailedAttempt(result, rejected);
+			Container.get(Logger).warn(
+				`[EvalMock] llm-completion-mock attempt ${attempt}/${MAX_SUBMIT_ATTEMPTS} accepted no submit_agent_step for "${node.name}": ${failure}`,
+			);
+			prompt = `${userPrompt}\n\n## Previous attempt\nThe previous attempt submitted no accepted step (${failure}). Call submit_agent_step exactly once with a valid step.`;
 		}
 
-		return jsonResponse(responseBody);
+		// An empty answer reads as a workflow failure. A throw reaches the wire
+		// server, which records it as a mock generation failure (mock_issue).
+		throw new OperationalError(
+			`llm-completion-mock: no accepted submit_agent_step for "${node.name}" after ${MAX_SUBMIT_ATTEMPTS} attempts (${failure})`,
+		);
 	};
 }

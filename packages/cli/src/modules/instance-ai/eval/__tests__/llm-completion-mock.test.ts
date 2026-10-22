@@ -125,6 +125,8 @@ beforeEach(() => {
 	submitCapture.handler = undefined;
 	promptCapture.prompt = undefined;
 	reapplyMockImplementations();
+	mockGenerate.mockClear();
+	mockLogger.warn.mockClear();
 });
 
 describe('createLlmCompletionMockHandler', () => {
@@ -186,6 +188,79 @@ describe('createLlmCompletionMockHandler', () => {
 
 		expect(res?.body).toEqual({ content: 'raw fallback text' });
 		expect(mockLogger.warn).toHaveBeenCalled();
+	});
+
+	it('asks again after a rejected submit and returns the next accepted step', async () => {
+		submitQueue.push({ kind: 'tool_call', content: 'draft' });
+		submitQueue.push({ kind: 'final', content: 'The Daily Dragon: 3 stories' });
+		const handler = createLlmCompletionMockHandler();
+
+		const res = await handler(
+			chatRequest({ messages: [{ role: 'user', content: 'Write the newsletter' }] }),
+			node,
+		);
+
+		expect(res?.body).toEqual({ content: 'The Daily Dragon: 3 stories' });
+		expect(mockGenerate).toHaveBeenCalledTimes(2);
+		const warning = String(mockLogger.warn.mock.calls.at(-1)?.[0]);
+		expect(warning).toContain('requires toolName');
+		expect(warning).toContain('"draft"');
+		expect(promptCapture.prompt).toContain('## Previous attempt');
+		expect(promptCapture.prompt).toContain('requires toolName');
+	});
+
+	it('throws instead of answering with empty text when no attempt submits an accepted step', async () => {
+		submitQueue.push({ kind: 'tool_call' }, { kind: 'tool_call' }, { kind: 'tool_call' });
+		const handler = createLlmCompletionMockHandler();
+
+		await expect(
+			handler(chatRequest({ messages: [{ role: 'user', content: 'hi' }] }), node),
+		).rejects.toThrow(/no accepted submit_agent_step for "My Agent" after 2 attempts/);
+		expect(mockGenerate).toHaveBeenCalledTimes(2);
+	});
+
+	it('logs a submit that failed input validation, with the finish reason', async () => {
+		mockGenerate.mockImplementationOnce((async () => ({
+			finishReason: 'stop',
+			messages: [
+				{
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: 'call-1',
+							toolName: 'submit_agent_step',
+							state: 'rejected',
+							input: { kind: 'final', content: { html: '<p>x</p>' } },
+							error: 'Invalid tool input: content: Expected string, received object',
+						},
+					],
+				},
+			],
+			_text: '',
+		})) as never);
+		submitQueue.push({ kind: 'final', content: 'ok' });
+		const handler = createLlmCompletionMockHandler();
+
+		const res = await handler(chatRequest({ messages: [{ role: 'user', content: 'hi' }] }), node);
+
+		expect(res?.body).toEqual({ content: 'ok' });
+		const warning = String(mockLogger.warn.mock.calls.at(-1)?.[0]);
+		expect(warning).toContain('finishReason=stop');
+		expect(warning).toContain('Invalid tool input');
+		expect(warning).toContain('<p>x</p>');
+	});
+
+	it('truncates a long rejected input in the log', async () => {
+		submitQueue.push({ kind: 'tool_call', content: 'x'.repeat(5000) });
+		submitQueue.push({ kind: 'final', content: 'ok' });
+		const handler = createLlmCompletionMockHandler();
+
+		await handler(chatRequest({ messages: [{ role: 'user', content: 'hi' }] }), node);
+
+		const warning = String(mockLogger.warn.mock.calls.at(-1)?.[0]);
+		expect(warning).not.toContain('x'.repeat(600));
+		expect(warning.length).toBeLessThan(2000);
 	});
 
 	it('unwraps a chat.completion envelope the model wrongly returns as content', async () => {
