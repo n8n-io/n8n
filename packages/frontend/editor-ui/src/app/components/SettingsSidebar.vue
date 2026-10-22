@@ -132,7 +132,8 @@ onMounted(() => {
 }
 
 .versionContainer {
-	padding: var(--spacing--xs);
+	/* Extra bottom space keeps the version clear of the browser's link preview bar. */
+	padding: var(--spacing--xs) var(--spacing--xs) var(--spacing--xl);
 }
 
 @media screen and (max-height: 420px) {
