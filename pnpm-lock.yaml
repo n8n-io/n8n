@@ -4396,9 +4396,6 @@ importers:
         specifier: 13.0.1
         version: 13.0.1
     devDependencies:
-      '@n8n/vitest-config':
-        specifier: workspace:*
-        version: link:../vitest-config
       '@tsconfig/node16':
         specifier: ^16.1.1
         version: 16.1.8
