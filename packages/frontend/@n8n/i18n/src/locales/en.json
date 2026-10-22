@@ -41,6 +41,8 @@
 	"inbox.promotionReview.detail.reviewer": "Reviewer",
 	"inbox.promotionReview.detail.requestedBy": "Requested by",
 	"inbox.promotionReview.detail.tabs.changes": "Changes",
+	"inbox.promotionReview.changes.newCommits": "The merge request has new commits since these changes loaded.",
+	"inbox.promotionReview.changes.reload": "Reload changes",
 	"inbox.promotionReview.approve.button": "Approve and merge",
 	"inbox.promotionReview.approve.confirm.title": "Approve and merge this promotion?",
 	"inbox.promotionReview.approve.confirm.description": "n8n approves the merge request on GitLab, merges it, and deletes its branch. You can't undo this.",
@@ -48,8 +50,6 @@
 	"inbox.promotionReview.approve.disabled.changesRequested": "A reviewer requested changes. Resolve them on GitLab, then reload the Inbox.",
 	"inbox.promotionReview.approve.disabled.conflicts": "The merge request has conflicts. Resolve them on GitLab.",
 	"inbox.promotionReview.approve.disabled.changesUnavailable": "n8n couldn't show the changes of this review. Review and merge it on GitLab.",
-	"inbox.promotionReview.approve.disabled.newCommits": "The merge request has new commits since the changes loaded.",
-	"inbox.promotionReview.approve.reloadChanges": "Reload changes",
 	"inbox.promotionReview.approve.error.title": "Couldn't approve and merge",
 	"_reusableBaseText": {
 		"cancel": "Cancel",

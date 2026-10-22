@@ -34,6 +34,7 @@ const i18n = useI18n();
 const { showError } = useToast();
 const rootStore = useRootStore();
 const disabledReasonId = useId();
+const newCommitsId = useId();
 
 const stateBadge: Record<PromotionReviewState, BadgeVariant> = {
 	open: 'info',
@@ -85,13 +86,17 @@ const disabledReason = computed(() => {
 	if (changes.value.status === 'unavailable') {
 		return i18n.baseText('inbox.promotionReview.approve.disabled.changesUnavailable');
 	}
-	if (hasNewCommits.value) {
-		return i18n.baseText('inbox.promotionReview.approve.disabled.newCommits');
-	}
 	return null;
 });
-// While the changes load, there is nothing to explain yet.
-const approveDisabled = computed(() => !!disabledReason.value || changes.value.status !== 'ready');
+// Loading and new commits show no reason under Approve: loading is short, and the new commits
+// callout above the changes explains itself. Screen readers get that callout as the reason.
+const approveDisabled = computed(
+	() => !!disabledReason.value || hasNewCommits.value || changes.value.status !== 'ready',
+);
+const approveDescribedBy = computed(() => {
+	if (disabledReason.value) return disabledReasonId;
+	return hasNewCommits.value ? newCommitsId : undefined;
+});
 
 function openApproval() {
 	if (changes.value.status !== 'ready') return;
@@ -127,55 +132,29 @@ async function onApprove() {
 
 <template>
 	<section :class="$style.detail" data-test-id="inbox-promotion-review-detail">
-		<header :class="$style.header">
+		<header :class="[$style.header, $style.gutter]">
 			<div :class="$style.titleRow">
-				<N8nHeading tag="h2" size="xlarge" bold>
-					{{ item.title ?? item.branchName ?? i18n.baseText('inbox.promotionReview.untitled') }}
-				</N8nHeading>
-				<N8nBadge :variant="stateBadge[item.reviewState]" size="xxsmall">
-					{{ i18n.baseText(`inbox.promotionReview.state.${item.reviewState}`) }}
-				</N8nBadge>
-				<div :class="$style.actions">
-					<N8nExternalLink
-						v-if="item.webUrl"
-						:class="$style.gitlabLink"
-						:href="item.webUrl"
-						size="small"
+				<!-- Inline, so the state tag follows the last word of a title that wraps. -->
+				<div :class="$style.title">
+					<N8nHeading tag="h2" size="xlarge" bold :class="$style.titleText">
+						{{ item.title ?? item.branchName ?? i18n.baseText('inbox.promotionReview.untitled') }}
+					</N8nHeading>
+					<N8nBadge
+						:variant="stateBadge[item.reviewState]"
+						size="xxsmall"
+						:class="$style.stateBadge"
 					>
-						{{ i18n.baseText('inbox.promotionReview.detail.openInGitLab') }}
-					</N8nExternalLink>
-					<N8nButton
-						v-if="item.state === 'open'"
-						size="small"
-						:disabled="approveDisabled"
-						:loading="approving"
-						:aria-describedby="disabledReason ? disabledReasonId : undefined"
-						data-test-id="inbox-promotion-review-approve"
-						@click="openApproval"
-					>
-						{{ i18n.baseText('inbox.promotionReview.approve.button') }}
-					</N8nButton>
+						{{ i18n.baseText(`inbox.promotionReview.state.${item.reviewState}`) }}
+					</N8nBadge>
 				</div>
-			</div>
-			<!-- Visible text, not a tooltip: a disabled button cannot take keyboard focus. -->
-			<div v-if="item.state === 'open' && disabledReason" :class="$style.disabledReason">
-				<N8nText
-					:id="disabledReasonId"
+				<N8nExternalLink
+					v-if="item.webUrl"
+					:class="$style.gitlabLink"
+					:href="item.webUrl"
 					size="small"
-					color="text-light"
-					data-test-id="inbox-promotion-review-approve-reason"
 				>
-					{{ disabledReason }}
-				</N8nText>
-				<N8nButton
-					v-if="hasNewCommits"
-					variant="outline"
-					size="xsmall"
-					data-test-id="inbox-promotion-review-reload-changes"
-					@click="changesKey++"
-				>
-					{{ i18n.baseText('inbox.promotionReview.approve.reloadChanges') }}
-				</N8nButton>
+					{{ i18n.baseText('inbox.promotionReview.detail.openInGitLab') }}
+				</N8nExternalLink>
 			</div>
 			<div :class="$style.meta">
 				<span v-if="item.environmentName" :class="$style.metaItem">
@@ -210,26 +189,73 @@ async function onApprove() {
 		</header>
 		<N8nCallout
 			v-if="item.remoteError"
+			:class="$style.gutter"
 			theme="warning"
 			data-test-id="inbox-promotion-review-remote-error"
 		>
 			{{ i18n.baseText(`inbox.promotionReview.detail.remoteError.${item.remoteError}`) }}
 		</N8nCallout>
-		<div :class="$style.tabRow">
+		<div :class="[$style.tabRow, $style.gutter]">
 			<N8nTabs
 				model-value="changes"
 				:options="tabOptions"
 				variant="modern"
 				data-test-id="inbox-promotion-review-tab-bar"
 			/>
+			<!-- In the tab row, like the Review button of workflow reviews. -->
+			<div v-if="item.state === 'open'" :class="$style.approve">
+				<!-- Visible text, not a tooltip: a disabled button cannot take keyboard focus. -->
+				<N8nText
+					v-if="disabledReason"
+					:id="disabledReasonId"
+					size="small"
+					color="text-light"
+					data-test-id="inbox-promotion-review-approve-reason"
+				>
+					{{ disabledReason }}
+				</N8nText>
+				<N8nButton
+					size="small"
+					:disabled="approveDisabled"
+					:loading="approving"
+					:aria-describedby="approveDescribedBy"
+					data-test-id="inbox-promotion-review-approve"
+					@click="openApproval"
+				>
+					{{ i18n.baseText('inbox.promotionReview.approve.button') }}
+				</N8nButton>
+			</div>
 		</div>
-		<component
-			:is="PromotionChanges"
-			:key="changesKey"
-			:class="$style.changes"
-			:review-id="item.id"
-			@state="changes = $event"
-		/>
+		<div :class="$style.changesArea">
+			<N8nCallout
+				v-if="hasNewCommits"
+				theme="warning"
+				slim
+				:class="[$style.newCommits, $style.gutter]"
+				data-test-id="inbox-promotion-review-new-commits"
+			>
+				<span :id="newCommitsId">{{
+					i18n.baseText('inbox.promotionReview.changes.newCommits')
+				}}</span>
+				<template #trailingContent>
+					<N8nButton
+						variant="outline"
+						size="small"
+						data-test-id="inbox-promotion-review-reload-changes"
+						@click="changesKey++"
+					>
+						{{ i18n.baseText('inbox.promotionReview.changes.reload') }}
+					</N8nButton>
+				</template>
+			</N8nCallout>
+			<component
+				:is="PromotionChanges"
+				:key="changesKey"
+				:class="$style.changes"
+				:review-id="item.id"
+				@state="changes = $event"
+			/>
+		</div>
 		<N8nDialog
 			:open="!!pendingApproval"
 			size="small"
@@ -273,6 +299,10 @@ async function onApprove() {
 }
 
 .tabRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
 	/* Holds the active-tab indicator, so the border sits under it. */
 	padding-bottom: var(--review-tab-bar--indicator-overhang);
 	border-bottom: var(--border);
@@ -282,10 +312,28 @@ async function onApprove() {
 	}
 }
 
-.changes {
+.changesArea {
+	display: flex;
 	flex: 1;
+	flex-direction: column;
+	min-height: 0;
 	/* The tab row border already separates the changes from the header. */
 	margin-top: calc(-1 * var(--spacing--md));
+}
+
+.newCommits {
+	/* The same space as the warnings of the changes. */
+	margin-top: var(--spacing--sm);
+}
+
+.changes {
+	flex: 1;
+	min-height: 0;
+}
+
+/* The right gutter of workflow reviews, so Approve sits where their Review button does. */
+.gutter {
+	margin-right: var(--spacing--md);
 }
 
 .header {
@@ -303,18 +351,28 @@ async function onApprove() {
 	min-height: var(--spacing--xl);
 }
 
-.actions {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--xs);
-	margin-left: auto;
+.title {
+	flex: 1;
+	min-width: 0;
+	/* The font of the heading, so the tag lines up with the title text. */
+	font-size: var(--font-size--xl);
+	line-height: var(--line-height--sm);
 }
 
-.disabledReason {
+.titleText {
+	display: inline;
+}
+
+.stateBadge {
+	margin-left: var(--spacing--xs);
+	vertical-align: middle;
+}
+
+.approve {
 	display: flex;
+	flex-shrink: 0;
 	align-items: center;
-	gap: var(--spacing--2xs);
-	align-self: flex-end;
+	gap: var(--spacing--xs);
 }
 
 .gitlabLink {

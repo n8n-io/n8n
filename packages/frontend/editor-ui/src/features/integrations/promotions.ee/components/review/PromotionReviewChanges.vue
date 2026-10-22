@@ -236,15 +236,16 @@ const treeResizer = useResizablePanel({
 }
 
 .state {
-	/* The empty states draw their own border, so the space goes outside them. */
-	margin: var(--spacing--sm) 0;
+	/* The empty states draw their own border, so the space goes outside them. The right space
+	   matches the gutter of the inbox detail. */
+	margin: var(--spacing--sm) var(--spacing--md) var(--spacing--sm) 0;
 }
 
 .notices {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
-	padding-top: var(--spacing--sm);
+	padding: var(--spacing--sm) var(--spacing--md) 0 0;
 }
 
 .panes {
@@ -269,6 +270,7 @@ const treeResizer = useResizablePanel({
 	min-width: 0;
 	min-height: 0;
 	overflow-y: auto;
-	padding: var(--spacing--sm);
+	/* The scroll bar stays at the edge, and the cards end where the tab row divider ends. */
+	padding: var(--spacing--sm) var(--spacing--md) var(--spacing--sm) var(--spacing--sm);
 }
 </style>

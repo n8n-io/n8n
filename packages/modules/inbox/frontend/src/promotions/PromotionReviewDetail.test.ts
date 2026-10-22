@@ -223,12 +223,16 @@ it('reloads the changes when GitLab reports new commits, then approves the new h
 	const rendered = renderComponent({
 		props: { item: item({ headCommitSha: newHead }), onItemChange },
 	});
-	const { getByTestId, findByTestId } = rendered;
+	const { getByTestId, findByTestId, getByText } = rendered;
 
-	expect(await findByTestId('inbox-promotion-review-approve-reason')).toHaveTextContent(
-		'The merge request has new commits since the changes loaded.',
+	expect(await findByTestId('inbox-promotion-review-new-commits')).toBeInTheDocument();
+	const approve = getByTestId('inbox-promotion-review-approve');
+	expect(approve).toBeDisabled();
+	// The callout above the changes explains why.
+	expect(approve).toHaveAttribute(
+		'aria-describedby',
+		getByText('The merge request has new commits since these changes loaded.').id,
 	);
-	expect(getByTestId('inbox-promotion-review-approve')).toBeDisabled();
 
 	shownChanges = { status: 'ready', headCommitSha: newHead };
 	await userEvent.click(getByTestId('inbox-promotion-review-reload-changes'));
