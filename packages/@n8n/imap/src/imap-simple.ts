@@ -382,7 +382,9 @@ export class ImapSimple {
 	/** Waits out the backoff before try `tries`, answering whether it is still wanted once over. */
 	private async waitToTryAgain(tries: number, attempt: number): Promise<boolean> {
 		try {
-			await sleep(RESTORE_BACKOFF * 2 ** (tries - 1), this.aborter.signal);
+			// ±25 %, so connections that dropped together do not all dial back at the same moment.
+			const jitter = 0.75 + Math.random() / 2;
+			await sleep(RESTORE_BACKOFF * 2 ** (tries - 1) * jitter, this.aborter.signal);
 		} catch {
 			return false;
 		}

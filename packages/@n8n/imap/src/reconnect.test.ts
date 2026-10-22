@@ -52,8 +52,15 @@ const handOut = (...transports: FakeTransport[]) => {
 	return () => transports[Math.min(index++, transports.length - 1)] as unknown as ImapTransport;
 };
 
-beforeEach(() => vi.useFakeTimers());
-afterEach(() => vi.useRealTimers());
+beforeEach(() => {
+	vi.useFakeTimers();
+	// Centres the backoff jitter, so every wait is the plain doubling the timings below assume.
+	vi.spyOn(Math, 'random').mockReturnValue(0.5);
+});
+afterEach(() => {
+	vi.useRealTimers();
+	vi.restoreAllMocks();
+});
 
 describe('reconnecting', () => {
 	it('restores itself when the transport drops', async () => {
@@ -372,6 +379,29 @@ describe('reconnecting', () => {
 			expect(onClose).not.toHaveBeenCalled();
 			connection.end();
 		});
+
+		it.each([
+			{ random: 0, dialledBy: 900 },
+			{ random: 0.999, notYetAt: 1300, dialledBy: 1400 },
+		])(
+			'spreads the redials of connections that dropped together ($random)',
+			async ({ random, notYetAt, dialledBy }) => {
+				vi.mocked(Math.random).mockReturnValue(random);
+				const createTransport = hangsUpAfterSelect();
+				const connection = await openWatching(createTransport);
+				connection.onError(vi.fn()).onClose(vi.fn()).onArrival(vi.fn());
+
+				// The second drop lands at about 100ms and waits out a second, give or take a quarter.
+				if (notYetAt !== undefined) {
+					await vi.advanceTimersByTimeAsync(notYetAt);
+					expect(createTransport).toHaveBeenCalledTimes(2);
+				}
+				await vi.advanceTimersByTimeAsync(dialledBy - (notYetAt ?? 0));
+				expect(createTransport).toHaveBeenCalledTimes(3);
+
+				connection.end();
+			},
+		);
 
 		it('gives a connection that stayed up a while a fresh budget', async () => {
 			const createTransport = vi.fn(() => {
