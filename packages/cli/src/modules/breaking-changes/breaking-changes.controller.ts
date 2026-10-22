@@ -37,6 +37,7 @@ import {
 	WORKFLOW_NOT_EDITABLE_MESSAGE,
 } from './breaking-changes.migration.service';
 import { RuleRegistry } from './breaking-changes.rule-registry.service';
+import { migrationReportCsvFilename, toMigrationReportCsv } from './migration-report-csv';
 import { MigrationFindingNotificationService } from './notifications/migration-finding-notification.service';
 import { MigrationOwnerAssignmentService } from './owners/migration-owner-assignment.service';
 import {
@@ -139,6 +140,33 @@ export class BreakingChangesController {
 			report,
 		});
 		return report;
+	}
+
+	/**
+	 * The overview as a CSV download, for an admin who shares the counts with
+	 * support from an instance that sends no telemetry. Same scope and stale
+	 * check as the overview. Declared before `/report/:ruleId`, which would
+	 * otherwise read `export` as a rule id.
+	 */
+	@Get('/report/export')
+	@GlobalScope('breakingChanges:list')
+	async exportReport(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Query query: BreakingChangeReportQueryDto,
+	): Promise<void> {
+		const version = query.version ?? DEFAULT_TARGET_VERSION;
+		const scope = await this.scopeFor(req.user);
+		await this.syncService.syncIfStale(version);
+		const report = await this.queryService.getLightReport(version, scope);
+		res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+		res.setHeader(
+			'Content-Disposition',
+			`attachment; filename="${migrationReportCsvFilename(version, new Date())}"`,
+		);
+		// A cross-origin editor, as in local development, reads the file name only when exposed.
+		res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
+		res.send(toMigrationReportCsv(report));
 	}
 
 	/**

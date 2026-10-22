@@ -15,8 +15,8 @@ import { z } from 'zod';
 import {
 	SkillNameTakenError,
 	skillNameTakenToolMessage,
-} from '@/modules/agents/skills/skill-name-taken.error';
-import { SkillsApiService } from '@/modules/agents/skills/skills-api.service';
+} from '@/modules/skills/skill-name-taken.error';
+import { SkillsApiService } from '@/modules/skills/skills-api.service';
 import { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
@@ -56,7 +56,7 @@ const updateSkillInput = {
 		'skillHash from get_skill. The update is refused if the skill changed since',
 	),
 	scope: SaveSkillDto.schema.shape.scope.describe(
-		'Moves the skill. Refused while an Agent uses it',
+		'Moves the skill. Refused if an Agent that uses the skill cannot use it in the new scope',
 	),
 } satisfies z.ZodRawShape;
 

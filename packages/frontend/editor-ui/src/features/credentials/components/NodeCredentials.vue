@@ -9,7 +9,7 @@ import type {
 	INodeParameters,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { resolveSupportedCredentialActivation } from 'n8n-workflow';
+import { isMcpAiGatewayAuthentication, resolveSupportedCredentialActivation } from 'n8n-workflow';
 import {
 	computed,
 	inject,
@@ -41,6 +41,7 @@ import TitledList from '@/app/components/TitledList.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
+	AI_GATEWAY_CREDITS_DOCS_URL,
 	AI_GATEWAY_UNSUPPORTED_NODE_TYPES,
 	ChatHubToolContextKey,
 	CREDENTIAL_ONLY_NODE_PREFIX,
@@ -256,6 +257,13 @@ const node = computed(() => props.node);
 const nodeType = computed(() =>
 	nodeTypesStore.getNodeType(props.node.type, props.node.typeVersion),
 );
+
+// An MCP registry server that offers Gateway credits and nothing else: the user has
+// nothing to pick. A server that also offers its own credential keeps the picker.
+const isAiGatewayOnlyMcpServer = computed(() => {
+	const declared = nodeType.value?.credentials ?? [];
+	return declared.length > 0 && declared.every(({ name }) => isMcpAiGatewayAuthentication(name));
+});
 
 const {
 	mainNodeAuthField,
@@ -1546,6 +1554,40 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 						</N8nTooltip>
 					</div>
 				</div>
+				<div v-else-if="isAiGatewayOnlyMcpServer" :class="$style.input">
+					<N8nTooltip
+						as-child
+						placement="top"
+						:content-class="$style.aiGatewayOnlyTooltip"
+						:content="
+							i18n.baseText('aiGateway.picker.gatewayCreditsOnly', {
+								interpolate: { docURL: AI_GATEWAY_CREDITS_DOCS_URL },
+							})
+						"
+					>
+						<div :class="$style.aiGatewayOnly" data-test-id="node-credentials-ai-gateway-only">
+							<N8nIcon icon="wallet" size="large" :class="$style.optionIcon" />
+							<N8nText size="small">{{ N8N_CREDITS_LABEL }}</N8nText>
+							<N8nBadge
+								v-if="balancePill"
+								size="xxsmall"
+								:variant="balancePill.type === 'danger' ? 'danger' : 'success'"
+								:class="$style.aiGatewayOnlyPill"
+							>
+								{{ balancePill.text }}
+							</N8nBadge>
+						</div>
+					</N8nTooltip>
+					<div :class="$style.edit">
+						<N8nIcon
+							icon="settings"
+							class="clickable"
+							data-test-id="credential-topup-button"
+							:title="i18n.baseText('aiGateway.toggle.topUp')"
+							@click="onTopUp(type.name)"
+						/>
+					</div>
+				</div>
 				<div
 					v-else-if="showQuickConnectSlot(type, options)"
 					:class="[$style.quickConnectContainer]"
@@ -2039,6 +2081,25 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 	align-items: center;
 }
 
+.aiGatewayOnly {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	height: var(--height--sm);
+	padding: 0 var(--spacing--2xs);
+	border-radius: var(--radius--3xs);
+	box-shadow: 0 0 0 1px var(--border-color);
+	background-color: light-dark(var(--color--neutral-white), var(--color--neutral-950));
+	color: var(--color--text--shade-1);
+	cursor: default;
+}
+
+// As wide as the parameter hint tooltips, so it reads as part of the field.
+:global(.n8n-tooltip).aiGatewayOnlyTooltip {
+	max-width: 400px;
+}
+
 .selectContainer {
 	--credential-select-side-padding: var(--spacing--2xs);
 	--credential-select-icon-size: var(--spacing--sm);
@@ -2264,6 +2325,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 
 .balanceIndicator > span:not(.balanceLabelSizer),
 .credentialOption > .optionName + span,
+.aiGatewayOnlyPill,
 .entryPill {
 	padding: var(--spacing--5xs) var(--spacing--3xs);
 	border-radius: var(--radius);

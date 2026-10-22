@@ -85,6 +85,7 @@ import { SubAgentRunner } from '../sub-agents/sub-agent-runner';
 import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { AgentPolicyService } from '@/modules/agents/agent-policy.service';
+import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
 
 const agentId = 'agent-1';
@@ -152,6 +153,7 @@ function makeRuntimeReconstructionService(
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
 		mock<CredentialsService>(),
+		makeKnowledgeAvailabilityService(),
 	);
 }
 
@@ -296,6 +298,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			transactionRunner,
 			saveCompletion,
 			skillRefs,
+			mock<ChatIntegrationRegistry>(),
 		);
 		agentCustomToolsService = new AgentCustomToolsService(
 			logger,

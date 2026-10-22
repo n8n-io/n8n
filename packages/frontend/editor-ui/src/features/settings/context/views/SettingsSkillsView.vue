@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn } from '@vueuse/core';
+import { saveAs } from 'file-saver';
 import type { AgentSkill, SkillCreateMethod, SkillListItem, SkillScope } from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
@@ -28,6 +29,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { AGENT_SKILL_MODAL_KEY } from '@/features/agents/constants';
 import { isSkillNameTakenError } from '@/features/agents/utils/agentSkill';
+import { exportAgentSkill } from '@/features/agents/utils/agentSkillExport';
 import type {
 	AgentSkillConfirmFailure,
 	AgentSkillModalData,
@@ -35,7 +37,7 @@ import type {
 } from '@/features/agents/components/AgentSkillModal.vue';
 
 import SkillsTable from '../components/SkillsTable.vue';
-import { PREFERENCES_DEFAULT_PAGE_SIZE } from '../context.constants';
+import { SKILLS_DEFAULT_PAGE_SIZE } from '../context.constants';
 import { canWriteInstanceSkillScope, canWriteProjectSkillScope } from '../context.utils';
 import type { SkillListQuery } from '../skills.api';
 import { useSkillsStore } from '../skills.store';
@@ -61,7 +63,7 @@ const { scopeDisplay } = useSkillScopeDisplay();
 
 const tableOptions = ref<TableOptions>({
 	page: 0,
-	itemsPerPage: PREFERENCES_DEFAULT_PAGE_SIZE,
+	itemsPerPage: SKILLS_DEFAULT_PAGE_SIZE,
 	sortBy: [],
 });
 const search = ref('');
@@ -113,6 +115,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 			value: INSTANCE_SCOPE,
 			label: i18n.baseText('settings.context.skills.scope.instance'),
 			icon: 'globe',
+			target: { projectId: null, agentId: null },
 		});
 	}
 	const personalProject = projectsStore.personalProject;
@@ -121,6 +124,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 			value: `${PROJECT_SCOPE_PREFIX}${personalProject.id}`,
 			label: i18n.baseText('settings.context.skills.scope.personalProject'),
 			icon: 'user',
+			target: { projectId: personalProject.id, agentId: null },
 		});
 	}
 	for (const project of projectsStore.myProjects) {
@@ -129,6 +133,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 			value: `${PROJECT_SCOPE_PREFIX}${project.id}`,
 			label: project.name ?? project.id,
 			icon: 'layers',
+			target: { projectId: project.id, agentId: null },
 		});
 	}
 	return options;
@@ -143,7 +148,7 @@ function parseScope(value: string): { scope: 'project' | 'instance'; projectId?:
 }
 
 async function load() {
-	const { page = 0, itemsPerPage = PREFERENCES_DEFAULT_PAGE_SIZE } = tableOptions.value;
+	const { page = 0, itemsPerPage = SKILLS_DEFAULT_PAGE_SIZE } = tableOptions.value;
 	try {
 		await skillsStore.fetchSkills(listQuery(page, itemsPerPage));
 		loadFailed.value = false;
@@ -257,21 +262,13 @@ function scopeValueOf(skill: Pick<SkillListItem, 'scope' | 'projectId'>): string
 }
 
 /**
- * Why the scope of a saved skill cannot change, if it cannot. The backend refuses a move
- * while an agent uses the skill, and a move needs the delete permission where the skill is,
- * because it takes the skill out of that scope.
+ * Why the scope of a saved skill cannot change, if it cannot. A move needs the delete
+ * permission where the skill is, because it takes the skill out of that scope. A skill in
+ * use can still move: the modal warns about a scope that drops an agent.
  */
 function scopeLock(
-	detail: Pick<SkillListItem, 'usedByAgents' | 'canDelete'>,
+	detail: Pick<SkillListItem, 'canDelete'>,
 ): Pick<AgentSkillModalData, 'scopeLockedReason'> {
-	if (detail.usedByAgents > 0) {
-		return {
-			scopeLockedReason: i18n.baseText('settings.context.skills.modal.scope.inUse', {
-				interpolate: { count: detail.usedByAgents },
-				adjustToNumber: detail.usedByAgents,
-			}),
-		};
-	}
 	if (!detail.canDelete) {
 		return { scopeLockedReason: i18n.baseText('settings.context.skills.modal.scope.noDelete') };
 	}
@@ -300,6 +297,7 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>) {
 			scopeOptions: options,
 			initialScope: currentValue,
 			...scopeLock(detail),
+			usedBy: detail.usedBy,
 			existingSkillNames: [],
 			onConfirm: async ({ skill, scope }) =>
 				await onSave(
@@ -345,6 +343,23 @@ async function onSave(
 		showMessage({ title: i18n.baseText('settings.context.skills.save.noChanges'), type: 'info' });
 	}
 	return undefined;
+}
+
+/** The list row has no content, so the download reads the latest version first. */
+async function onDownload(item: Pick<SkillListItem, 'id'>) {
+	try {
+		const detail = await skillsStore.fetchSkill(item.id);
+		const { blob, fileName, format } = await exportAgentSkill(detail.skill);
+		saveAs(blob, fileName);
+		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_DOWNLOADED_SKILL, {
+			skill_id: detail.id,
+			scope: detail.scope,
+			...(detail.projectId ? { project_id: detail.projectId } : {}),
+			format,
+		});
+	} catch (error) {
+		showError(error, i18n.baseText('settings.context.skills.error.download'));
+	}
 }
 
 async function onDelete(skill: SkillListItem) {
@@ -460,6 +475,7 @@ onMounted(async () => {
 			:loading="skillsStore.loading"
 			:show-empty="showEmptyState"
 			@open="openEditModal"
+			@download="onDownload"
 			@delete="onDelete"
 			@update:options="onOptionsUpdate"
 		>

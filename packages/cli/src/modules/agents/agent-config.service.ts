@@ -20,7 +20,9 @@ import { AgentSaveCompletionService } from './agent-save-completion.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
 import type { ProjectAgent } from './entities/agent.entity';
+import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
+import { assertSingleConnections } from './integrations/single-connection';
 import { composeJsonConfig } from './json-config/agent-config-composition';
 import { fromAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
@@ -50,6 +52,7 @@ export class AgentConfigService {
 		private readonly transactionRunner: TransactionRunner,
 		private readonly saveCompletion: AgentSaveCompletionService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 	) {}
 
 	/**
@@ -110,6 +113,7 @@ export class AgentConfigService {
 				previousSkillRefs,
 				clearOmitted,
 			});
+		assertSingleConnections(this.chatIntegrationRegistry, replacement.nextIntegrations);
 		const next = fromAgentDocument(replacement.nextSchema);
 		entity.schema = next.config;
 		entity.name = validatedConfig.name;

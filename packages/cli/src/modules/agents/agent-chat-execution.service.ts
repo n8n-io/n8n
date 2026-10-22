@@ -15,14 +15,14 @@ import { PARENT_TASK_CANCELLED_REASON } from './background/sub-agent-background-
 import type { AgentExecutionThread } from './entities/agent-execution-thread.entity';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
+import { SystemAgentRegistry } from './system-agents/system-agent-registry';
 import {
 	userIdFromDraftChatMemoryResourceId,
 	userIdFromProductionChatMemoryResourceId,
 	userIdFromSystemChatMemoryResourceId,
 } from './utils/agent-memory-scope';
 import {
-	canContinueSystemThread,
-	canContinueThreadInPreview,
+	canContinueThreadOnSurface,
 	chatSurfaceMemoryResourceId,
 	N8N_CHAT_PRODUCTION_SOURCE,
 	threadBelongsTo,
@@ -66,6 +66,7 @@ export class AgentChatExecutionService {
 		private readonly executionUpdates: AgentExecutionUpdateBroadcaster,
 		private readonly steering: AgentMessageSteeringService,
 		private readonly backgroundJobService: AgentBackgroundJobService,
+		private readonly systemAgents: SystemAgentRegistry,
 	) {}
 
 	/** Register each execution under this lock before Stop can inspect its database row. */
@@ -248,18 +249,23 @@ export class AgentChatExecutionService {
 		thread: AgentExecutionThread,
 		source: string | null,
 	): boolean {
-		switch (context.surface) {
-			case 'n8n-chat':
-				return (
-					thread.accessScope === 'user' &&
-					thread.ownerId === context.userId &&
-					source === N8N_CHAT_PRODUCTION_SOURCE
-				);
-			case 'system':
-				return canContinueSystemThread(thread, context.userId, source);
-			case 'preview':
-				return canContinueThreadInPreview(thread, context.userId, source);
+		const isSystemAgent = this.systemAgents.has(thread.agentId);
+		// n8n Chat keeps its own cancel rule. The other surfaces use their continue rule.
+		if (context.surface === 'n8n-chat') {
+			return (
+				!isSystemAgent &&
+				thread.accessScope === 'user' &&
+				thread.ownerId === context.userId &&
+				source === N8N_CHAT_PRODUCTION_SOURCE
+			);
 		}
+		return canContinueThreadOnSurface(
+			context.surface,
+			thread,
+			context.userId,
+			source,
+			isSystemAgent,
+		);
 	}
 
 	private async cancelRecordedSuspension(context: ExecutionContext): Promise<boolean> {

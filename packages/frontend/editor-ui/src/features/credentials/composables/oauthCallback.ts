@@ -16,6 +16,26 @@ const POPUP_CLOSED_POLL_INTERVAL = 500;
 const VERIFY_CONNECTED_INTERVAL = 2000;
 
 /**
+ * Open the OAuth popup synchronously from the click handler, before any
+ * request. `window.open` only succeeds inside the click's transient user
+ * activation: Chrome drops it after about 5 s, Safari and mobile browsers
+ * drop it after the first await. The window opens on `about:blank`; set
+ * `location.href` once the authorization URL is known and close it on every
+ * exit. `signal` closes it on abort.
+ */
+export function openOAuthPopup(signal?: AbortSignal): Window | null {
+	const params =
+		'scrollbars=no,resizable=yes,status=no,titlebar=no,location=no,toolbar=no,menubar=no,width=500,height=700';
+	const popup = window.open('about:blank', 'OAuth Authorization', params);
+
+	signal?.addEventListener('abort', () => {
+		popup?.close();
+	});
+
+	return popup;
+}
+
+/**
  * The OAuth callback page is served by the n8n backend and notifies the editor
  * UI that the flow finished. It signals completion over two channels:
  *

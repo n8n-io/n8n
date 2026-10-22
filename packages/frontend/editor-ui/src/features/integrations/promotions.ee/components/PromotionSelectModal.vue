@@ -4,21 +4,18 @@ import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { ResponseError } from '@n8n/rest-api-client';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants/modals';
 import Modal from '@/app/components/Modal.vue';
 import TimeAgo from '@/app/components/TimeAgo.vue';
-import { N8nButton, N8nCheckbox, N8nInput, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCheckbox, N8nInput, N8nNewBadge, N8nText } from '@n8n/design-system';
 import type { PromotableResourceStatus, PromotionDirection } from '@n8n/api-types';
 import { usePromotionChanges } from '../composables/usePromotionChanges';
-import { promotionEventBus } from '../promotions.eventBus';
+import { usePromotionOutcome } from '../composables/usePromotionOutcome';
 import { applyProjectSelection } from '../promotionsSettings.api';
 import { getPromoteErrorMessage } from '../promoteErrorMessage';
-import { promoteSuccessToast } from '../promotionResult';
 import PromotionBindingsFlow from './PromotionBindingsFlow.vue';
 import type { AppliedResult, BlockedApplyResult } from '../promotions.types';
 
@@ -31,7 +28,6 @@ interface Props {
 }
 
 const props = defineProps<Props>();
-const projectsStore = useProjectsStore();
 
 const i18n = useI18n();
 const uiStore = useUIStore();
@@ -40,6 +36,7 @@ const rootStore = useRootStore();
 const message = useMessage();
 const toast = useToast();
 const modalBus = createEventBus();
+const outcome = usePromotionOutcome();
 
 const { direction } = props.data;
 const isIncoming = direction === 'apply';
@@ -171,18 +168,7 @@ async function onPromote() {
 		const result = await submitSelection();
 		if (!result) return;
 
-		promotionEventBus.emit('promoted', { projectId: props.data.projectId });
-		toast.showMessage({
-			title: i18n.baseText('promotions.modal.toast.success.title'),
-			type: result.warnings?.length ? 'warning' : 'success',
-			...promoteSuccessToast(result, {
-				pushed: i18n.baseText('promotions.result.pushed', {
-					interpolate: { branch: result.git.branchName },
-				}),
-				viewMergeRequest: i18n.baseText('promotions.result.viewMergeRequest'),
-				reviewNotRecorded: i18n.baseText('promotions.result.reviewNotRecorded'),
-			}),
-		});
+		outcome.showPromoted(props.data.projectId, result);
 		onClose();
 	} catch (promoteError) {
 		const title = i18n.baseText('promotions.modal.promoteError');
@@ -202,51 +188,11 @@ async function onRefresh() {
 	await fetchChanges();
 }
 
-// The open views refresh once the outcome for this project is known, so none of them
-// asks for a project the package removed.
-async function announceApplied() {
-	const { projectId } = props.data;
-	try {
-		const project = await projectsStore.fetchProject(projectId);
-		promotionEventBus.emit('applied', { projectId, project });
-	} catch (error) {
-		if (error instanceof ResponseError && error.httpStatusCode === 404) {
-			toast.showMessage({
-				title: i18n.baseText('promotions.applied.projectRemoved'),
-				type: 'info',
-			});
-			promotionEventBus.emit('projectRemoved', { projectId });
-			return;
-		}
-		// The apply went through, so the views still refresh. Only the header keeps its name.
-		promotionEventBus.emit('applied', { projectId });
-	}
-}
-
 async function onApplied(result: AppliedResult) {
-	const { workflows } = result.counts;
-	const notPublished = workflows.publishing.failed + workflows.publishing.blocked;
-	const interpolate = {
-		created: String(workflows.created),
-		updated: String(workflows.updated),
-		archived: String(workflows.archived),
-		deleted: String(workflows.deleted),
-		notPublished: String(notPublished),
-	};
-	// A workflow can be imported and still fail to publish, so success alone would mislead.
-	toast.showMessage({
-		title: i18n.baseText('promotions.modal.incoming.applied.title'),
-		message: i18n.baseText(
-			notPublished
-				? 'promotions.modal.incoming.applied.messageNotPublished'
-				: 'promotions.modal.incoming.applied.message',
-			{ interpolate },
-		),
-		type: notPublished ? 'warning' : 'success',
-	});
+	outcome.showApplied(result);
 	// Close before the project lookup, so the stale change list does not show again.
 	onClose();
-	await announceApplied();
+	await outcome.announceApplied(props.data.projectId);
 }
 
 async function onSourceChanged() {
@@ -438,7 +384,13 @@ onMounted(async () => {
 								<div :class="$style.rowContent">
 									<div :class="$style.rowHeader">
 										<N8nText size="medium" bold>{{ change.name }}</N8nText>
+										<N8nNewBadge
+											v-if="change.status === 'new'"
+											:text="getStatusLabel(change.status)"
+											data-test-id="promotion-change-status"
+										/>
 										<span
+											v-else
 											:class="[
 												$style.statusLabel,
 												change.status === 'archived' && $style.statusArchived,

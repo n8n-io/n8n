@@ -2,24 +2,28 @@ import type {
 	AgentJsonSkillConfig,
 	AgentSkill,
 	AgentSkillAvailability,
+	SkillSource,
 	StoredAgentConfig,
 } from '@n8n/api-types';
 import type { OperationContext, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { deepCopy, UnexpectedError, UserError } from 'n8n-workflow';
 
-import type { AgentHistory } from './entities/agent-history.entity';
-import type { Agent } from './entities/agent.entity';
-import { withoutLegacySkillRefs, type AgentSkillRefs } from './json-config/agent-document';
-import { AgentRepository } from './repositories/agent.repository';
-import { SkillRepository } from './repositories/skill.repository';
+import { SkillRepository } from '@/modules/skills/skill.repository';
 import {
 	SkillService,
 	toAgentSkill,
 	type SkillMoveOptions,
 	type SkillRef,
-} from './skills/skill.service';
-import { SkillsHubRollout } from './skills/skills-hub-rollout';
+} from '@/modules/skills/skill.service';
+import { SkillsHubRollout } from '@/modules/skills/skills-hub-rollout';
+
+import { AgentSkillUsageService } from './agent-skill-usage.service';
+import type { AgentHistory } from './entities/agent-history.entity';
+import type { Agent } from './entities/agent.entity';
+import { withoutLegacySkillRefs, type AgentSkillRefs } from './json-config/agent-document';
+import { AgentRepository } from './repositories/agent.repository';
+import { AgentSkillRepository } from './repositories/agent-skill.repository';
 import { getAgentSkillHash } from './utils/agent-config-hash';
 import { getMissingSkillIds } from './utils/agent-missing-skill-ids';
 import { generateAgentResourceId } from './utils/agent-resource-id';
@@ -56,7 +60,9 @@ export interface AgentSkillsSnapshot {
 export class AgentSkillRefsService {
 	constructor(
 		private readonly skillRepository: SkillRepository,
+		private readonly agentSkillRepository: AgentSkillRepository,
 		private readonly skillService: SkillService,
+		private readonly agentSkillUsage: AgentSkillUsageService,
 		private readonly agentRepository: AgentRepository,
 		private readonly rollout: SkillsHubRollout,
 	) {}
@@ -71,7 +77,8 @@ export class AgentSkillRefsService {
 		ctx: OperationContext,
 	): Promise<AgentJsonSkillConfig[]> {
 		if (!this.usesSkillsHub) return readLegacyRefs(agent.schema);
-		const rows = (await this.skillRepository.findDependencies([agent.id], ctx)).get(agent.id) ?? [];
+		const rows =
+			(await this.agentSkillRepository.findDependencies([agent.id], ctx)).get(agent.id) ?? [];
 		return toSkillRefs(
 			rows.map(({ skillId, versionId }) => ({ id: skillId, ...(versionId ? { versionId } : {}) })),
 		);
@@ -86,7 +93,7 @@ export class AgentSkillRefsService {
 		ctx: OperationContext,
 	): Promise<AgentJsonSkillConfig[]> {
 		if (!this.usesSkillsHub) return readLegacyRefs(version.schema);
-		const skillIds = await this.skillRepository.findPinnedSkillIds(version.versionId, ctx);
+		const skillIds = await this.agentSkillRepository.findPinnedSkillIds(version.versionId, ctx);
 		return toSkillRefs(skillIds.map((id) => ({ id })));
 	}
 
@@ -108,7 +115,7 @@ export class AgentSkillRefsService {
 			const skillRefs = readLegacyRefs(version.schema);
 			return { skillRefs, skills: pickBodies(version.skills ?? {}, skillRefs) };
 		}
-		const pinned = await this.skillRepository.findPinned(version.versionId, ctx);
+		const pinned = await this.agentSkillRepository.findPinned(version.versionId, ctx);
 		const skillRefs = toSkillRefs([...pinned.keys()].map((id) => ({ id })));
 		const skills = Object.fromEntries(
 			[...pinned].map(([skillId, row]) => [skillId, toAgentSkill(row)]),
@@ -169,7 +176,7 @@ export class AgentSkillRefsService {
 				(ref) => existingIds.has(ref.id) || Object.hasOwn(agent.skills ?? {}, ref.id),
 			);
 		}
-		const checked = await this.skillService.checkRefs(
+		const checked = await this.agentSkillUsage.checkRefs(
 			{ id: agent.id, projectId: agent.projectId },
 			toServiceRefs(refs),
 			ctx,
@@ -200,7 +207,7 @@ export class AgentSkillRefsService {
 			await this.writeLegacyDraft(agent, agent.schema, kept, agent.skills ?? {}, ctx);
 			return;
 		}
-		const checked = await this.skillService.checkRefs(
+		const checked = await this.agentSkillUsage.checkRefs(
 			{ id: agent.id, projectId: agent.projectId },
 			toServiceRefs(refs ?? []),
 			ctx,
@@ -230,7 +237,7 @@ export class AgentSkillRefsService {
 			);
 			return;
 		}
-		const restored = await this.skillService.restoreFromVersion(
+		const restored = await this.agentSkillUsage.restoreFromVersion(
 			version.versionId,
 			toServiceRefs(refs ?? []),
 			ctx,
@@ -290,7 +297,7 @@ export class AgentSkillRefsService {
 		);
 		// Copy only the agent skills of agents in this project (a duplicate). Any other
 		// agent skill stays a plain ref, so `checkRefs` refuses it without reading its body.
-		const otherAgents = await this.skillRepository.findAgents(
+		const otherAgents = await this.agentSkillRepository.findAgents(
 			[...found.values()].flatMap((skill) =>
 				skill.agentId && skill.agentId !== agent.id ? [skill.agentId] : [],
 			),
@@ -342,6 +349,7 @@ export class AgentSkillRefsService {
 		skills: AgentSkill[],
 		creatorId: string,
 		availableTo: AgentSkillAvailability,
+		source: SkillSource,
 		ctx: OperationContext,
 	): Promise<string[]> {
 		if (!this.usesSkillsHub) {
@@ -362,7 +370,7 @@ export class AgentSkillRefsService {
 					{
 						target: targetFor(agent, availableTo),
 						skill,
-						source: 'agent',
+						source,
 						createdById: creatorId,
 						checkNameTaken: true,
 					},
@@ -434,7 +442,7 @@ export class AgentSkillRefsService {
 		ctx: OperationContext,
 	): Promise<void> {
 		if (snapshot.pins.size === 0) return;
-		await this.skillService.pinForPublish(agentVersionId, snapshot.pins, ctx);
+		await this.agentSkillUsage.pinForPublish(agentVersionId, snapshot.pins, ctx);
 	}
 
 	async availabilityOf(
@@ -484,7 +492,7 @@ export class AgentSkillRefsService {
 		refs: SkillRef[],
 		ctx: OperationContext,
 	): Promise<void> {
-		await this.skillRepository.replaceDependencies(
+		await this.agentSkillRepository.replaceDependencies(
 			agentId,
 			refs.map((ref) => ({ skillId: ref.id, versionId: ref.versionId ?? null })),
 			ctx,

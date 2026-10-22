@@ -15,6 +15,16 @@ export class PromotionsModule implements ModuleInterface {
 
 		const { PromotionsService } = await import('./promotions.service.js');
 		Container.get(PromotionsService);
+
+		const { InboxSourceRegistry } = await import('../inbox/inbox-source.registry.js');
+		const { PromotionReviewInboxService } = await import('./promotion-review-inbox.service.js');
+		const reviews = Container.get(PromotionReviewInboxService);
+		Container.get(InboxSourceRegistry).register({
+			type: 'promotion_review',
+			isEnabled: async () => reviews.isEnabled(),
+			list: async (user, query) => await reviews.listForInbox(user, query),
+			count: async (user) => await reviews.countForInbox(user),
+		});
 	}
 
 	async entities() {
