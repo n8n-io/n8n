@@ -18,13 +18,17 @@ import { InstanceAiModule } from '../instance-ai.module';
 import { InstanceAiService } from '../instance-ai.service';
 import { SelfHealingInvestigationService } from '../self-healing/self-healing-investigation.service';
 
-const { loadSuggestionEventRelay, createSuggestionEventRelay, loadResultController } = vi.hoisted(
-	() => ({
-		loadSuggestionEventRelay: vi.fn(),
-		createSuggestionEventRelay: vi.fn(),
-		loadResultController: vi.fn(),
-	}),
-);
+const {
+	loadSuggestionEventRelay,
+	createSuggestionEventRelay,
+	loadResultController,
+	loadEvalController,
+} = vi.hoisted(() => ({
+	loadSuggestionEventRelay: vi.fn(),
+	createSuggestionEventRelay: vi.fn(),
+	loadResultController: vi.fn(),
+	loadEvalController: vi.fn(),
+}));
 
 vi.mock('@/credentials/instance-credential-broker', () => ({
 	InstanceCredentialBroker: vi.fn(),
@@ -55,6 +59,10 @@ vi.mock('../self-healing/self-healing-investigation.service', () => ({
 }));
 vi.mock('../instance-ai.controller', () => ({}));
 vi.mock('../mcp/instance-ai-mcp-connection.controller', () => ({}));
+vi.mock('../eval/eval.controller', () => {
+	loadEvalController();
+	return {};
+});
 vi.mock('../self-healing/self-healing-results.controller', () => {
 	loadResultController();
 	return {};
@@ -72,7 +80,10 @@ vi.mock('../workflow-suggestions/workflow-suggestion-event-relay.service', () =>
 
 describe('InstanceAiModule.init', () => {
 	function setup() {
-		const config = mockInstance(InstanceAiConfig, { workflowSuggestionsEnabled: false });
+		const config = mockInstance(InstanceAiConfig, {
+			workflowSuggestionsEnabled: false,
+			evalInstance: false,
+		});
 		const sources = mockInstance(InboxSourceRegistry);
 		mockInstance(SelfHealingResultService);
 		mockInstance(InstanceCredentialBroker);
@@ -112,6 +123,21 @@ describe('InstanceAiModule.init', () => {
 		expect(sources.register).toHaveBeenCalledWith(
 			expect.objectContaining({ type: 'self_healing_result' }),
 		);
+	});
+
+	it('registers the eval controller only on an eval instance', async () => {
+		const { config, investigations } = setup();
+
+		await new InstanceAiModule().init();
+		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledOnce());
+
+		expect(loadEvalController).not.toHaveBeenCalled();
+
+		config.evalInstance = true;
+		await new InstanceAiModule().init();
+		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledTimes(2));
+
+		expect(loadEvalController).toHaveBeenCalledOnce();
 	});
 
 	it('starts reconciliation after the interrupted-run sweep finishes', async () => {

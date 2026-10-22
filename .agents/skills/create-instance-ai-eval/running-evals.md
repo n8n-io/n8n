@@ -12,7 +12,8 @@ exhaustive flag list.
 - **A running n8n instance with Instance AI enabled**, reachable over HTTP. The
   eval is a client — it logs in and drives the normal build flow. Point it with
   `--base-url` (defaults to `http://localhost:5678`); use whatever instance you
-  already run for Instance AI dev.
+  already run for Instance AI dev. Start it with
+  `N8N_INSTANCE_AI_EVAL_INSTANCE=true`, or the eval routes return 404.
 - **A login** — the eval signs in as an existing user. Set the eval login env
   vars to a user your instance has; the model and most settings have defaults
   that a working Instance AI dev setup already provides.
@@ -146,7 +147,7 @@ second instance its own everything:
 # N8N_AI_ANTHROPIC_KEY. Skip .env.local: its staging base-url / port-5678
 # defaults fight the settings below.
 N8N_PORT=5680 N8N_RUNNERS_BROKER_PORT=5681 N8N_USER_FOLDER=/tmp/n8n-eval-run \
-E2E_TESTS=true N8N_AI_ASSISTANT_BASE_URL= \
+E2E_TESTS=true N8N_INSTANCE_AI_EVAL_INSTANCE=true N8N_AI_ASSISTANT_BASE_URL= \
   npx dotenvx run -f .env.eval -- \
   sh -c 'ANTHROPIC_API_KEY="$N8N_AI_ANTHROPIC_KEY" exec pnpm start'
 # then seed the owner (above), and run the eval with: --base-url http://localhost:5680

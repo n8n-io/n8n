@@ -202,7 +202,6 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'instanceAi:message',
 	'instanceAi:manage',
 	'instanceAi:gateway',
-	'instanceAi:eval',
 	'roleMappingRule:create',
 	'roleMappingRule:read',
 	'roleMappingRule:update',

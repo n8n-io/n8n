@@ -31,6 +31,9 @@ export class InstanceAiModule implements ModuleInterface {
 		await import('./instance-ai.controller.js');
 		await import('./mcp/instance-ai-mcp-connection.controller.js');
 		const { InstanceAiConfig } = await import('@n8n/config');
+		if (Container.get(InstanceAiConfig).evalInstance) {
+			await import('./eval/eval.controller.js');
+		}
 		if (Container.get(InstanceAiConfig).workflowSuggestionsEnabled) {
 			await import('./self-healing/self-healing-results.controller.js');
 			const { InboxSourceRegistry } = await import('../inbox/inbox-source.registry.js');
