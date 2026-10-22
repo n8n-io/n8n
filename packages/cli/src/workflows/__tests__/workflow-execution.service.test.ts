@@ -1087,6 +1087,31 @@ describe('WorkflowExecutionService', () => {
 				);
 				expect(result).toEqual({ executionId: 'fake-execution-id' });
 			});
+
+			test('starts the run from the pinned trigger without registering it when the destination is that trigger', async () => {
+				const workflowData = toWorkflowData([formTriggerNode], {
+					pinData: { [formTriggerNode.name]: [{ json: {} }] },
+				});
+				const runPayload: WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload = {
+					destinationNode: { nodeName: formTriggerNode.name, mode: 'inclusive' },
+				};
+				workflowRunner.run.mockResolvedValue('fake-execution-id');
+
+				const result = await workflowExecutionService.executeManually(
+					workflowData,
+					runPayload,
+					user,
+				);
+
+				expect(defaultTestWebhooks.registerWebhooks).not.toHaveBeenCalled();
+				expect(workflowRunner.run).toHaveBeenCalledWith(
+					expect.objectContaining({
+						triggerToStartFrom: { name: formTriggerNode.name },
+						destinationNode: runPayload.destinationNode,
+					}),
+				);
+				expect(result).toEqual({ executionId: 'fake-execution-id' });
+			});
 		});
 
 		test('should pass workflowIsActive to testWebhooks.registerWebhooks', async () => {
@@ -1256,6 +1281,21 @@ describe('WorkflowExecutionService', () => {
 			const node = workflowExecutionService.selectPinnedTrigger(
 				workflow,
 				hackerNewsNode.name,
+				pinData,
+			);
+
+			expect(node).toEqual(webhookNode);
+		});
+
+		it('should select the destination node when it is a pinned trigger', () => {
+			workflow.nodes.push(webhookNode, hackerNewsNode);
+			workflow.connections = {
+				...createMainConnection(hackerNewsNode.name, webhookNode.name),
+			};
+
+			const node = workflowExecutionService.selectPinnedTrigger(
+				workflow,
+				webhookNode.name,
 				pinData,
 			);
 
