@@ -10,6 +10,7 @@ import { MemoryPressureExecutionCancelledError } from 'n8n-workflow';
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 import { UserManagementMailer } from '@/user-management/email/user-management-mailer';
+import { isWorkflowIdValid } from '@/utils';
 import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
 
 import {
@@ -451,7 +452,7 @@ export class MemoryGuardService {
 	 * draft. Returns whether the workflow was deactivated.
 	 */
 	private async countStop({ workflow, mode }: StopTarget) {
-		if (!isProductionMode(mode)) return false;
+		if (!isProductionMode(mode) || !isWorkflowIdValid(workflow.id)) return false;
 
 		const stops = (this.stopsByWorkflow.get(workflow.id) ?? 0) + 1;
 		this.stopsByWorkflow.set(workflow.id, stops);

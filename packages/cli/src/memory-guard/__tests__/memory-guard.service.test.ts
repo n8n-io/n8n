@@ -695,9 +695,13 @@ describe('MemoryGuardService', () => {
 	describe('deactivation', () => {
 		const stopOnce = async (
 			id: string,
-			{ mode = 'webhook', after = 0.5 }: { mode?: WorkflowExecuteMode; after?: number } = {},
+			{
+				mode = 'webhook',
+				after = 0.5,
+				workflowId = 'repeat',
+			}: { mode?: WorkflowExecuteMode; after?: number; workflowId?: string } = {},
 		) => {
-			addExecution(id, { megabytes: 300, mode, workflowId: 'repeat' });
+			addExecution(id, { megabytes: 300, mode, workflowId });
 			readMemoryUsageOnce(0.96);
 			readMemoryUsageOnce(0.96);
 			readMemoryUsageOnce(after);
@@ -783,6 +787,15 @@ describe('MemoryGuardService', () => {
 			await stopOnce('2', { mode: 'manual' });
 			await stopOnce('3', { mode: 'manual' });
 
+			expect(deactivateWorkflowAsSystem).not.toHaveBeenCalled();
+		});
+
+		it('should not count stops of a workflow without a valid id', async () => {
+			await stopOnce('1', { workflowId: '' });
+			await stopOnce('2', { workflowId: '' });
+			await stopOnce('3', { workflowId: '' });
+
+			expect(workflowRepository.findOne).not.toHaveBeenCalled();
 			expect(deactivateWorkflowAsSystem).not.toHaveBeenCalled();
 		});
 
