@@ -13,7 +13,7 @@ import type { IRunData, ITaskData, ITaskStartedData } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 
-import { estimateInputSize, estimateTaskDataSize } from './estimate-run-data-size';
+import { estimateInputSize, estimateTaskDataSize, RunSharing } from './estimate-run-data-size';
 
 /**
  * Max runs measured when an execution starts with run data, to limit how long the walk
@@ -193,12 +193,21 @@ export class RunDataTracker {
 				{ length: sampled },
 				(_, j) => runs[sampleIndex(j, runs.length, sampled)],
 			);
-			const nodeOwnBytes = sampledRuns.reduce(
-				(sum, taskData) =>
-					sum +
-					this.addEstimate(execution, executionId, nodeName, () =>
-						estimateTaskDataSize(taskData, runData, execution.seen),
+			// Objects that several runs hold count once, so the extrapolation leaves them out.
+			const sharing = sampled < runs.length ? new RunSharing() : undefined;
+			const measuredBytes = sampledRuns.map((taskData, run) =>
+				this.addEstimate(execution, executionId, nodeName, () =>
+					estimateTaskDataSize(
+						taskData,
+						runData,
+						execution.seen,
+						sharing ? { runs: sharing, run } : undefined,
 					),
+				),
+			);
+			// A later run can add to the shared bytes of an earlier run, so read them after all runs.
+			const nodeOwnBytes = measuredBytes.reduce(
+				(sum, bytes, run) => sum + Math.max(0, bytes - (sharing?.sharedBytesOf(run) ?? 0)),
 				0,
 			);
 			ownBytes += nodeOwnBytes;

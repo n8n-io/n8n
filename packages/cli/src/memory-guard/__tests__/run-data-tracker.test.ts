@@ -295,6 +295,16 @@ describe('RunDataTracker', () => {
 			expect(tracker.getEstimate('1')?.totalBytes).toBe(100 * sizeOf(toItems(3)));
 		});
 
+		it('should measure each run once, without sharing, when all runs fit in the budget', () => {
+			start('1', { Node: runsOf(25, 3) });
+
+			expect(estimateTaskDataSize).toHaveBeenCalledTimes(25);
+			for (const [, , , sharing] of vi.mocked(estimateTaskDataSize).mock.calls) {
+				expect(sharing).toBeUndefined();
+			}
+			expect(tracker.getEstimate('1')?.totalBytes).toBe(25 * sizeOf(toItems(3)));
+		});
+
 		it('should measure a run of every node before a second run of any node', () => {
 			start('1', { Loop: runsOf(1000, 1), Large: runsOf(2, 50) });
 
@@ -317,6 +327,33 @@ describe('RunDataTracker', () => {
 			expect(estimateTaskDataSize).toHaveBeenCalledTimes(25);
 			expect(tracker.getEstimate('1')?.bytesByNode.get('Node 29')).toBe(sizeOf(toItems(2)));
 			expect(tracker.getEstimate('1')?.totalBytes).toBe(30 * sizeOf(toItems(2)));
+		});
+
+		const payloads = Array.from({ length: 25 }, (_, i) => ({ data: `${i}-`.repeat(50_000) }));
+
+		it.each([
+			['all runs hold one object', () => ({ payload: payloads[0] })],
+			[
+				'the second half of the runs hold a second object',
+				(run: number) => ({ payload: payloads[run < 50 ? 0 : 1] }),
+			],
+			['the runs alternate between two objects', (run: number) => ({ payload: payloads[run % 2] })],
+			['the runs take turns with three objects', (run: number) => ({ payload: payloads[run % 3] })],
+			[
+				'each group of 4 runs holds its object and the object of the next group',
+				(run: number) => {
+					const group = Math.floor(run / 4);
+					return { payload: payloads[group], next: payloads[(group + 1) % 25] };
+				},
+			],
+		])('should count once each object that many runs hold, when %s', (_, jsonOf) => {
+			const runs = Array.from({ length: 100 }, (_, run) => [{ json: jsonOf(run) }]);
+			const seen = new WeakSet<object>();
+			const fullWalk = runs.reduce((bytes, items) => bytes + estimateItemsSize(items, seen), 0);
+
+			start('1', { Node: runs.map(taskDataOf) });
+
+			expect(tracker.getEstimate('1')?.totalBytes).toBe(fullWalk);
 		});
 
 		it('should count nothing for a node without runs', () => {
