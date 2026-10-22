@@ -5,6 +5,7 @@ import { type EventService, type CredentialsFinderService } from '@n8n/backend-s
 import type { InstanceAiConfig } from '@n8n/config';
 import type { CredentialsEntity, DbLockService, SettingsRepository, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { jsonParse } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { UnprocessableRequestError } from '@n8n/errors';
@@ -16,12 +17,14 @@ import {
 } from '@/services/sandbox-settings.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
+import type { License } from '@/license';
 
 import {
 	INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
 	INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
 	InstanceAiSettingsService,
 } from '../instance-ai-settings.service';
+import type { InstanceAiThreadRepository } from '../repositories/instance-ai-thread.repository';
 
 type CredentialOperationContext = NonNullable<
 	Parameters<InstanceCredentialBroker['clearForUse']>[1]
@@ -57,6 +60,8 @@ describe('InstanceAiSettingsService', () => {
 	const instanceCredentialBroker = mock<InstanceCredentialBroker>();
 	const sandboxSettingsService = mock<SandboxSettingsService>();
 	const eventService = mock<EventService>();
+	const license = mock<License>();
+	const threadRepository = mock<InstanceAiThreadRepository>();
 	const logger = mock<Logger>();
 
 	let service: InstanceAiSettingsService;
@@ -72,6 +77,8 @@ describe('InstanceAiSettingsService', () => {
 			instanceCredentialBroker,
 			sandboxSettingsService,
 			eventService,
+			license,
+			threadRepository,
 		);
 
 	beforeEach(() => {
@@ -101,8 +108,11 @@ describe('InstanceAiSettingsService', () => {
 			vertexProjectId: '',
 			vertexLocation: '',
 			vertexServiceAccountJson: '',
+			enabled: undefined,
 		});
 		globalConfig.deployment.type = 'default';
+		license.isEnterprisePlan.mockReturnValue(false);
+		threadRepository.exists.mockResolvedValue(false);
 		instanceCredentialBroker.listForUse.mockResolvedValue([]);
 		instanceCredentialBroker.getAssignedCredentialId.mockResolvedValue(null);
 		sandboxSettingsService.getProvider.mockImplementation(() =>
@@ -1261,6 +1271,110 @@ describe('InstanceAiSettingsService', () => {
 			);
 			expect(getAdminSettings).not.toHaveBeenCalled();
 			getAdminSettings.mockRestore();
+		});
+	});
+
+	describe('enabled', () => {
+		it('is on for a non-Enterprise plan when nothing is saved', async () => {
+			await service.loadFromDb();
+
+			expect(service.isInstanceAiEnabled()).toBe(true);
+			expect(service.isAgentEnabled()).toBe(true);
+			expect((await service.getAdminSettings()).enabled).toBe(true);
+		});
+
+		it('is off on Enterprise without threads and saves nothing', async () => {
+			license.isEnterprisePlan.mockReturnValue(true);
+
+			await service.loadFromDb();
+
+			expect(service.isInstanceAiEnabled()).toBe(false);
+			expect((await service.getAdminSettings()).enabled).toBe(false);
+			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
+		});
+
+		it('saves enabled for Enterprise with threads and keeps it after the threads are gone', async () => {
+			license.isEnterprisePlan.mockReturnValue(true);
+			threadRepository.exists.mockResolvedValue(true);
+			persistedSettingsValue = JSON.stringify({ mcpAccessEnabled: false });
+
+			await service.loadFromDb();
+
+			expect(jsonParse(persistedSettingsValue)).toEqual({
+				mcpAccessEnabled: false,
+				enabled: true,
+			});
+			expect(service.isInstanceAiEnabled()).toBe(true);
+
+			threadRepository.exists.mockResolvedValue(false);
+			service = createService();
+			await service.loadFromDb();
+
+			expect(service.isInstanceAiEnabled()).toBe(true);
+		});
+
+		it('does not overwrite a choice saved before it got the lock', async () => {
+			license.isEnterprisePlan.mockReturnValue(true);
+			threadRepository.exists.mockResolvedValue(true);
+			settingsRepository.findByKeyInContext.mockResolvedValueOnce({
+				key: 'instanceAi.settings',
+				value: JSON.stringify({ enabled: false }),
+				loadOnStartup: true,
+			} as never);
+
+			await service.loadFromDb();
+
+			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
+			expect(service.isInstanceAiEnabled()).toBe(false);
+		});
+
+		it('prefers a saved choice over the env var and the plan', async () => {
+			globalConfig.instanceAi.enabled = true;
+			persistedSettingsValue = JSON.stringify({ enabled: false });
+			await service.loadFromDb();
+
+			expect(service.isInstanceAiEnabled()).toBe(false);
+
+			globalConfig.instanceAi.enabled = false;
+			license.isEnterprisePlan.mockReturnValue(true);
+			persistedSettingsValue = JSON.stringify({ enabled: true });
+			await service.reloadFromDb();
+
+			expect(service.isInstanceAiEnabled()).toBe(true);
+		});
+
+		it('prefers the env var over the plan and saves nothing', async () => {
+			license.isEnterprisePlan.mockReturnValue(true);
+			threadRepository.exists.mockResolvedValue(true);
+			globalConfig.instanceAi.enabled = false;
+
+			await service.loadFromDb();
+
+			expect(service.isInstanceAiEnabled()).toBe(false);
+			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
+
+			globalConfig.instanceAi.enabled = true;
+
+			expect(service.isInstanceAiEnabled()).toBe(true);
+		});
+
+		it('follows a plan change after load without a reload', async () => {
+			await service.loadFromDb();
+
+			license.isEnterprisePlan.mockReturnValue(true);
+
+			expect(service.isInstanceAiEnabled()).toBe(false);
+			expect(service.isAgentEnabled()).toBe(false);
+		});
+
+		it('does not save enabled when another setting is saved', async () => {
+			await service.updateAdminSettings({ mcpAccessEnabled: false });
+
+			expect(jsonParse(persistedSettingsValue ?? '{}')).not.toHaveProperty('enabled');
+
+			license.isEnterprisePlan.mockReturnValue(true);
+
+			expect(service.isInstanceAiEnabled()).toBe(false);
 		});
 	});
 

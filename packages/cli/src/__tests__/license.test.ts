@@ -266,6 +266,21 @@ describe('License', () => {
 		expect(mainPlan).toBeUndefined();
 	});
 
+	describe('isEnterprisePlan', () => {
+		it.each([
+			{ planName: 'Enterprise', expected: true },
+			{ planName: 'Business', expected: false },
+		])('returns $expected when the plan is $planName', ({ planName, expected }) => {
+			vi.spyOn(license, 'getPlanName').mockReturnValue(planName);
+
+			expect(license.isEnterprisePlan()).toBe(expected);
+		});
+
+		it('returns false when the license has no plan', () => {
+			expect(license.isEnterprisePlan()).toBe(false);
+		});
+	});
+
 	describe('onExpirySoon', () => {
 		it.each([
 			{
@@ -360,6 +375,24 @@ describe('License', () => {
 				}
 			},
 		);
+
+		it('activate on a follower main in queue mode publishes', async () => {
+			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
+			const publisher = mockInstance(Publisher, { publishCommand: vi.fn() });
+			license = new License(
+				mockLogger(),
+				mock<InstanceSettings>({ instanceType: 'main', isLeader: false }),
+				mock(),
+				mock(),
+				mock<GlobalConfig>({ license: licenseConfig, executions: { mode: 'queue' } }),
+			);
+			await license.init();
+
+			await license.activate(MOCK_ACTIVATION_KEY);
+			await new Promise(setImmediate);
+
+			expect(publisher.publishCommand).toHaveBeenCalledWith({ command: 'reload-license' });
+		});
 	});
 
 	describe('reload', () => {
@@ -476,6 +509,29 @@ describe('License', () => {
 			await license.reload();
 
 			expect(callback).toHaveBeenCalledWith('');
+		});
+
+		it('should call callbacks on license activation', async () => {
+			const subscriber = vi.fn();
+			license.onCertRefresh(subscriber);
+
+			await license.activate(MOCK_ACTIVATION_KEY);
+
+			expect(subscriber).toHaveBeenCalledTimes(1);
+		});
+
+		it('should load the renewed cert before calling callbacks', async () => {
+			const { calls, instances } = (LicenseManager as MockedClass<typeof LicenseManager>).mock;
+			const subscriber = vi.fn();
+			license.onCertRefresh(subscriber);
+
+			calls[calls.length - 1][0].onLicenseRenewed!();
+			await new Promise(setImmediate);
+
+			const manager = vi.mocked(instances[instances.length - 1]);
+			expect(manager.reloadStoredCert.mock.invocationCallOrder[0]).toBeLessThan(
+				subscriber.mock.invocationCallOrder[0],
+			);
 		});
 
 		it('should call multiple registered callbacks', async () => {

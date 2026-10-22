@@ -192,10 +192,12 @@ jobs:
           # agents registers the agent-builder MCP tools so the suite measures
           # workflow building with the production tool surface, catching
           # tool-choice regressions the extra tools could introduce.
+          # E2E mode reports the Enterprise plan, where the Assistant is off by default.
           for i in "${!PORTS[@]}"; do
             port="${PORTS[$i]}"
             docker run -d --name "n8n-eval-mcp-$((i + 1))" \
               -e E2E_TESTS=true \
+              -e N8N_INSTANCE_AI_ENABLED=true \
               -e N8N_ENABLED_MODULES=instance-ai,agents \
               -e N8N_AI_ENABLED=true \
               -e N8N_INSTANCE_AI_MODEL_API_KEY="$EVALS_ANTHROPIC_KEY" \
