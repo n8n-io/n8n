@@ -97,7 +97,7 @@ export class UnsupportedWaitError extends UserError {
 		super(
 			waitsFor === 'a sub-execution'
 				? `Node "${nodeName}" waits for a sub-workflow that is itself waiting, and engine v2 cannot end that wait yet.`
-				: `Node "${nodeName}" sends a message and waits for a response, and engine v2 cannot end that wait yet.`,
+				: `Node "${nodeName}" sends a message and waits, and engine v2 cannot end that wait yet.`,
 		);
 	}
 }

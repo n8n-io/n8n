@@ -580,7 +580,7 @@ describe('V1StepExecutor', () => {
 			const execution = testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
 
 			await expect(execution).rejects.toThrow(
-				'Node "Subject" sends a message and waits for a response, and engine v2 cannot end that wait yet.',
+				'Node "Subject" sends a message and waits, and engine v2 cannot end that wait yet.',
 			);
 			expect(execute).not.toHaveBeenCalled();
 		});
@@ -599,7 +599,7 @@ describe('V1StepExecutor', () => {
 			const execution = executor.execute(stepRequest(graph, 'n', input));
 
 			await expect(execution).rejects.toThrow(
-				'Node "Subject" sends a message and waits for a response, and engine v2 cannot end that wait yet.',
+				'Node "Subject" sends a message and waits, and engine v2 cannot end that wait yet.',
 			);
 			expect(execute).not.toHaveBeenCalled();
 		});
