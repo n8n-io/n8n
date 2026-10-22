@@ -5,6 +5,7 @@ import {
 	type PromotionPromoteWarning,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { TransactionRunner, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BaseError } from '@n8n/errors';
@@ -45,6 +46,7 @@ export class PromotionReviewsService {
 		private readonly hostResolver: PromotionReviewHostResolver,
 		private readonly mergeRequests: GitLabMergeRequestClient,
 		private readonly logger: Logger,
+		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.scoped('promotions');
 	}
@@ -110,6 +112,12 @@ export class PromotionReviewsService {
 				],
 			};
 		}
+
+		this.eventService.emit('promotion-merge-request-opened', {
+			user: actor,
+			environmentId: input.environmentId,
+			reviewType: type,
+		});
 
 		return { review: { reviewId, ['number']: iid, webUrl }, warnings: [] };
 	}

@@ -351,6 +351,12 @@ export class TelemetryEventRelay extends EventRelay {
 			'workflow-review-decided': (event) => this.workflowReviewDecided(event),
 			'workflow-review-closed': (event) => this.workflowReviewClosed(event),
 			'workflow-review-comment-created': (event) => this.workflowReviewCommentCreated(event),
+			'promotion-provider-created': (event) => this.promotionProviderCreated(event),
+			'promotion-environment-created': (event) => this.promotionEnvironmentCreated(event),
+			'promotion-repository-cloned': (event) => this.promotionRepositoryCloned(event),
+			'promotion-promoted': (event) => this.promotionPromoted(event),
+			'promotion-applied': (event) => this.promotionApplied(event),
+			'promotion-merge-request-opened': (event) => this.promotionMergeRequestOpened(event),
 			'custom-role-created': (event) => this.customRoleCreated(event),
 			'custom-role-updated': (event) => this.customRoleUpdated(event),
 			'custom-role-deleted': (event) => this.customRoleDeleted(event),
@@ -2641,6 +2647,127 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track(TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_COMMENTED_ON_WORKFLOW_REVIEW, {
 			user_id: user.id,
 			workflow_review_request_id: workflowReviewRequestId,
+		});
+	}
+
+	// #endregion
+
+	// #region Promotions
+
+	private promotionProviderCreated({
+		user,
+		providerId,
+		providerType,
+		authType,
+	}: RelayEventMap['promotion-provider-created']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_CREATED_PROMOTION_PROVIDER, {
+			user_id: user.id,
+			provider_id: providerId,
+			provider_type: providerType,
+			auth_type: authType,
+		});
+	}
+
+	private promotionEnvironmentCreated({
+		user,
+		environmentId,
+		providerType,
+		direction,
+		environmentScope,
+		createBranchOnPromotion,
+	}: RelayEventMap['promotion-environment-created']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_CREATED_PROMOTION_ENVIRONMENT, {
+			user_id: user.id,
+			environment_id: environmentId,
+			provider_type: providerType,
+			direction,
+			environment_scope: environmentScope,
+			create_branch_on_promotion: createBranchOnPromotion,
+		});
+	}
+
+	private promotionRepositoryCloned({
+		user,
+		environmentId,
+		direction,
+		outcome,
+		failureKind,
+		durationMs,
+	}: RelayEventMap['promotion-repository-cloned']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_CLONED_PROMOTION_REPOSITORY, {
+			user_id: user.id,
+			environment_id: environmentId,
+			direction,
+			outcome,
+			failure_kind: failureKind,
+			duration_ms: durationMs,
+		});
+	}
+
+	private promotionPromoted({
+		user,
+		environmentId,
+		scope,
+		projectId,
+		outcome,
+		failureKind,
+		durationMs,
+		counts,
+		selectedWorkflowCount,
+		openedReview,
+	}: RelayEventMap['promotion-promoted']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_PROMOTED_CHANGES, {
+			user_id: user.id,
+			environment_id: environmentId,
+			scope,
+			project_id: projectId,
+			outcome,
+			failure_kind: failureKind,
+			duration_ms: durationMs,
+			workflow_count: counts?.workflows,
+			folder_count: counts?.folders,
+			credential_count: counts?.credentials,
+			data_table_count: counts?.dataTables,
+			variable_count: counts?.variables,
+			tag_count: counts?.tags,
+			selected_workflow_count: selectedWorkflowCount,
+			opened_review: openedReview,
+		});
+	}
+
+	private promotionApplied({
+		user,
+		environmentId,
+		scope,
+		projectId,
+		outcome,
+		failureKind,
+		durationMs,
+		workflowsChanged,
+		workflowsFailedToPublish,
+	}: RelayEventMap['promotion-applied']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_APPLIED_CHANGES, {
+			user_id: user.id,
+			environment_id: environmentId,
+			scope,
+			project_id: projectId,
+			outcome,
+			failure_kind: failureKind,
+			duration_ms: durationMs,
+			workflows_changed: workflowsChanged,
+			workflows_failed_to_publish: workflowsFailedToPublish,
+		});
+	}
+
+	private promotionMergeRequestOpened({
+		user,
+		environmentId,
+		reviewType,
+	}: RelayEventMap['promotion-merge-request-opened']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_OPENED_PROMOTION_MERGE_REQUEST, {
+			user_id: user.id,
+			environment_id: environmentId,
+			review_type: reviewType,
 		});
 	}
 

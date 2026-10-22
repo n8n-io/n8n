@@ -3,6 +3,11 @@ import type {
 	BreakingChangeLightReportResult,
 	BreakingChangeVersion,
 	ProjectRelation,
+	PromotionDirection,
+	PromotionEnvironmentScope,
+	PromotionProviderAuthType,
+	PromotionProviderType,
+	PromotionReviewType,
 	RedactionFloor,
 } from '@n8n/api-types';
 import type { AuthProviderType, User, IWorkflowDb } from '@n8n/db';
@@ -20,6 +25,7 @@ import type {
 } from 'n8n-workflow';
 
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
+import type { PromotionFailureKind } from '@/modules/promotions.ee/promotion-telemetry';
 import type { CredentialAuthProbeOutcome } from '@/services/credentials-tester.service';
 import type {
 	CredentialExportPolicy,
@@ -1289,6 +1295,79 @@ export type RelayEventMap = {
 	'workflow-review-comment-created': {
 		user: UserLike;
 		workflowReviewRequestId: string;
+	};
+
+	// #endregion
+
+	// #region Promotions
+
+	'promotion-provider-created': {
+		user: UserLike;
+		providerId: string;
+		providerType: PromotionProviderType;
+		authType: PromotionProviderAuthType;
+	};
+
+	'promotion-environment-created': {
+		user: UserLike;
+		environmentId: string;
+		providerType: PromotionProviderType;
+		direction: PromotionDirection;
+		environmentScope: PromotionEnvironmentScope;
+		/** Promote environments only. */
+		createBranchOnPromotion?: boolean;
+	};
+
+	'promotion-repository-cloned': {
+		user: UserLike;
+		environmentId: string;
+		direction: PromotionDirection;
+		outcome: 'success' | 'failed';
+		failureKind?: PromotionFailureKind;
+		durationMs: number;
+	};
+
+	'promotion-promoted': {
+		user: UserLike;
+		environmentId: string;
+		scope: 'instance' | 'project';
+		projectId?: string;
+		outcome: 'success' | 'success_with_warnings' | 'failed';
+		failureKind?: PromotionFailureKind;
+		durationMs: number;
+		/** Set when the outcome is not 'failed'. */
+		counts?: {
+			workflows: number;
+			folders: number;
+			credentials: number;
+			dataTables: number;
+			variables: number;
+			tags: number;
+		};
+		/** Project scope only. */
+		selectedWorkflowCount?: number;
+		/** Set when the outcome is not 'failed'. */
+		openedReview?: boolean;
+	};
+
+	'promotion-applied': {
+		user: UserLike;
+		environmentId: string;
+		scope: 'instance' | 'project';
+		projectId?: string;
+		outcome: 'applied' | 'blocked' | 'source_changed' | 'failed';
+		failureKind?: PromotionFailureKind;
+		durationMs: number;
+		/** Set when the outcome is 'applied'. */
+		workflowsChanged?: number;
+		/** Set when the outcome is 'applied'. */
+		workflowsFailedToPublish?: number;
+	};
+
+	'promotion-merge-request-opened': {
+		user: UserLike;
+		environmentId: string;
+		reviewType: PromotionReviewType;
 	};
 
 	// #endregion

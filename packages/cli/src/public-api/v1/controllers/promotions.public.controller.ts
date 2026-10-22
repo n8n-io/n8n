@@ -96,11 +96,11 @@ export class PromotionsPublicController {
 	@ApiResponse(201, PromotionProviderCreatedPublicDto)
 	@ApiErrorResponse(503)
 	async createPromotionProvider(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Body input: CreatePromotionProviderDto,
 	): Promise<PromotionProviderCreatedPublicDto> {
-		return await (await this.providersService()).create(input);
+		return await (await this.providersService()).create(input, req.user);
 	}
 
 	@Get('/providers')
@@ -270,11 +270,11 @@ export class PromotionsPublicController {
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
 	async createPromotionEnvironment(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Body input: CreatePromotionEnvironmentDto,
 	): Promise<PromotionEnvironmentPublicDto> {
-		return await (await this.environmentsService()).create(input);
+		return await (await this.environmentsService()).create(input, req.user);
 	}
 
 	@Get('/environments')
@@ -387,12 +387,12 @@ export class PromotionsPublicController {
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(503)
 	async connectPromotionCheckout(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('promotionEnvironmentId', promotionEnvironmentIdParamSchema)
 		promotionEnvironmentId: string,
 	): Promise<PromotionCheckoutPublicDto> {
-		return await (await this.promotionsService()).clone(promotionEnvironmentId);
+		return await (await this.promotionsService()).clone(promotionEnvironmentId, req.user);
 	}
 
 	@Post('/environments/:promotionEnvironmentId/disconnect')

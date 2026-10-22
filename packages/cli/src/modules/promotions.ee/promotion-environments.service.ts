@@ -13,6 +13,7 @@ import type {
 } from '@n8n/api-types';
 import { isPromotionGitHostType } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { ProjectRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
@@ -58,11 +59,15 @@ export class PromotionEnvironmentsService {
 		private readonly gitService: PromotionsGitService,
 		private readonly workingDirectory: PromotionWorkingDirectoryService,
 		private readonly logger: Logger,
+		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.scoped('promotions');
 	}
 
-	async create(input: CreatePromotionEnvironmentDto): Promise<PromotionEnvironmentPublicDto> {
+	async create(
+		input: CreatePromotionEnvironmentDto,
+		actor: User,
+	): Promise<PromotionEnvironmentPublicDto> {
 		const provider = await this.providersService.getEntity(input.providerId);
 		this.gitService.validateRemoteUrl(input.remote.remoteUrl, provider.authType);
 		const remote = storePromotionRemote(provider, input.remote);
@@ -79,6 +84,17 @@ export class PromotionEnvironmentsService {
 					settings,
 				}),
 		);
+
+		this.eventService.emit('promotion-environment-created', {
+			user: actor,
+			environmentId: environment.id,
+			providerType: provider.type,
+			direction: input.direction,
+			environmentScope: input.scope,
+			...('createBranchOnPromotion' in settings && {
+				createBranchOnPromotion: settings.createBranchOnPromotion,
+			}),
+		});
 
 		return await this.toPublic(Object.assign(environment, { provider }));
 	}

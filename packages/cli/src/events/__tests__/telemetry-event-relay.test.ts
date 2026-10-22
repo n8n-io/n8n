@@ -5260,6 +5260,202 @@ describe('TelemetryEventRelay', () => {
 		});
 	});
 
+	describe('promotion events', () => {
+		const user = { id: 'user123' };
+
+		it('should track a created provider with its type and authentication', () => {
+			eventService.emit('promotion-provider-created', {
+				user,
+				providerId: 'prov-1',
+				providerType: 'gitlab',
+				authType: 'token',
+			});
+
+			const payload = {
+				user_id: 'user123',
+				provider_id: 'prov-1',
+				provider_type: 'gitlab',
+				auth_type: 'token',
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.PROMOTIONS.USER_CREATED_PROMOTION_PROVIDER,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.PROMOTIONS.USER_CREATED_PROMOTION_PROVIDER.getValidationError(payload),
+			).toBeNull();
+		});
+
+		it('should track a created environment with its direction and scope', () => {
+			eventService.emit('promotion-environment-created', {
+				user,
+				environmentId: 'env-1',
+				providerType: 'git',
+				direction: 'promote',
+				environmentScope: 'instance',
+				createBranchOnPromotion: true,
+			});
+
+			const payload = {
+				user_id: 'user123',
+				environment_id: 'env-1',
+				provider_type: 'git',
+				direction: 'promote',
+				environment_scope: 'instance',
+				create_branch_on_promotion: true,
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.PROMOTIONS.USER_CREATED_PROMOTION_ENVIRONMENT,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.PROMOTIONS.USER_CREATED_PROMOTION_ENVIRONMENT.getValidationError(payload),
+			).toBeNull();
+		});
+
+		it('should track a failed clone with its failure kind', () => {
+			eventService.emit('promotion-repository-cloned', {
+				user,
+				environmentId: 'env-1',
+				direction: 'apply',
+				outcome: 'failed',
+				failureKind: 'git_remote',
+				durationMs: 120,
+			});
+
+			const payload = {
+				user_id: 'user123',
+				environment_id: 'env-1',
+				direction: 'apply',
+				outcome: 'failed',
+				failure_kind: 'git_remote',
+				duration_ms: 120,
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.PROMOTIONS.USER_CLONED_PROMOTION_REPOSITORY,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.PROMOTIONS.USER_CLONED_PROMOTION_REPOSITORY.getValidationError(payload),
+			).toBeNull();
+		});
+
+		it('should track a project promotion with the per-type counts', () => {
+			eventService.emit('promotion-promoted', {
+				user,
+				environmentId: 'env-1',
+				scope: 'project',
+				projectId: 'project-1',
+				outcome: 'success_with_warnings',
+				durationMs: 900,
+				counts: {
+					workflows: 3,
+					folders: 1,
+					credentials: 2,
+					dataTables: 0,
+					variables: 4,
+					tags: 5,
+				},
+				selectedWorkflowCount: 3,
+				openedReview: false,
+			});
+
+			const payload = {
+				user_id: 'user123',
+				environment_id: 'env-1',
+				scope: 'project',
+				project_id: 'project-1',
+				outcome: 'success_with_warnings',
+				failure_kind: undefined,
+				duration_ms: 900,
+				workflow_count: 3,
+				folder_count: 1,
+				credential_count: 2,
+				data_table_count: 0,
+				variable_count: 4,
+				tag_count: 5,
+				selected_workflow_count: 3,
+				opened_review: false,
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.PROMOTIONS.USER_PROMOTED_CHANGES,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.PROMOTIONS.USER_PROMOTED_CHANGES.getValidationError(payload),
+			).toBeNull();
+		});
+
+		it('should track a failed instance promotion without counts', () => {
+			eventService.emit('promotion-promoted', {
+				user,
+				environmentId: 'env-1',
+				scope: 'instance',
+				outcome: 'failed',
+				failureKind: 'user',
+				durationMs: 15,
+			});
+
+			const payload = expect.objectContaining({
+				outcome: 'failed',
+				failure_kind: 'user',
+				workflow_count: undefined,
+			});
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.PROMOTIONS.USER_PROMOTED_CHANGES,
+				payload,
+			);
+		});
+
+		it('should track an applied instance change with the workflow totals', () => {
+			eventService.emit('promotion-applied', {
+				user,
+				environmentId: 'env-1',
+				scope: 'instance',
+				outcome: 'applied',
+				durationMs: 2000,
+				workflowsChanged: 6,
+				workflowsFailedToPublish: 1,
+			});
+
+			const payload = {
+				user_id: 'user123',
+				environment_id: 'env-1',
+				scope: 'instance',
+				project_id: undefined,
+				outcome: 'applied',
+				failure_kind: undefined,
+				duration_ms: 2000,
+				workflows_changed: 6,
+				workflows_failed_to_publish: 1,
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.PROMOTIONS.USER_APPLIED_CHANGES,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.PROMOTIONS.USER_APPLIED_CHANGES.getValidationError(payload),
+			).toBeNull();
+		});
+
+		it('should track an opened merge request', () => {
+			eventService.emit('promotion-merge-request-opened', {
+				user,
+				environmentId: 'env-1',
+				reviewType: 'gitlab',
+			});
+
+			const payload = { user_id: 'user123', environment_id: 'env-1', review_type: 'gitlab' };
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.PROMOTIONS.USER_OPENED_PROMOTION_MERGE_REQUEST,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.PROMOTIONS.USER_OPENED_PROMOTION_MERGE_REQUEST.getValidationError(payload),
+			).toBeNull();
+		});
+	});
+
 	describe('workflow review events', () => {
 		it('should track a workflow submitted for review, with how many reviewers were asked', () => {
 			eventService.emit('workflow-review-requested', {

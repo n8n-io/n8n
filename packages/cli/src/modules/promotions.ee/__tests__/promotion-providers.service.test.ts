@@ -1,4 +1,6 @@
 import type { CreatePromotionProviderDto, UpdatePromotionProviderDto } from '@n8n/api-types';
+import type { EventService } from '@n8n/backend-services';
+import type { User } from '@n8n/db';
 import type { Cipher } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -16,6 +18,8 @@ describe('PromotionProvidersService', () => {
 	const environmentRepository = mock<PromotionEnvironmentRepository>();
 	const gitService = mock<PromotionsGitService>();
 	const cipher = mock<Cipher>();
+	const eventService = mock<EventService>();
+	const actor = mock<User>({ id: 'user-1' });
 
 	const service = new PromotionProvidersService(
 		providerRepository,
@@ -23,6 +27,7 @@ describe('PromotionProvidersService', () => {
 		gitService,
 		cipher,
 		mock<GitHostClients>(),
+		eventService,
 	);
 
 	const sshProvider = (): PromotionProvider =>
@@ -67,11 +72,14 @@ describe('PromotionProvidersService', () => {
 
 	describe('create', () => {
 		it('generates a key pair and stores the private key encrypted', async () => {
-			const result = await service.create({
-				name: 'Deploy key',
-				type: 'git',
-				auth: { authType: 'ssh-key', keyType: 'ed25519' },
-			} as CreatePromotionProviderDto);
+			const result = await service.create(
+				{
+					name: 'Deploy key',
+					type: 'git',
+					auth: { authType: 'ssh-key', keyType: 'ed25519' },
+				} as CreatePromotionProviderDto,
+				actor,
+			);
 
 			expect(gitService.generateSshKeyPair).toHaveBeenCalledWith('ed25519');
 			const saved = providerRepository.insertProvider.mock.calls[0][0];
@@ -82,11 +90,14 @@ describe('PromotionProvidersService', () => {
 		});
 
 		it('stores the username and password encrypted', async () => {
-			const result = await service.create({
-				name: 'Bot user',
-				type: 'git',
-				auth: { authType: 'token', username: 'u', password: 'p' },
-			} as CreatePromotionProviderDto);
+			const result = await service.create(
+				{
+					name: 'Bot user',
+					type: 'git',
+					auth: { authType: 'token', username: 'u', password: 'p' },
+				} as CreatePromotionProviderDto,
+				actor,
+			);
 
 			expect(gitService.generateSshKeyPair).not.toHaveBeenCalled();
 			const saved = providerRepository.insertProvider.mock.calls[0][0];
@@ -97,21 +108,70 @@ describe('PromotionProvidersService', () => {
 
 		it('rejects a password with a newline, which would split the credential helper', async () => {
 			await expect(
-				service.create({
-					name: 'Bot user',
-					type: 'git',
-					auth: { authType: 'token', username: 'u', password: 'p\nmore' },
-				} as CreatePromotionProviderDto),
+				service.create(
+					{
+						name: 'Bot user',
+						type: 'git',
+						auth: { authType: 'token', username: 'u', password: 'p\nmore' },
+					} as CreatePromotionProviderDto,
+					actor,
+				),
 			).rejects.toThrow(BadRequestError);
 			expect(providerRepository.insertProvider).not.toHaveBeenCalled();
 		});
 
+		it('emits an event with the provider type and no secrets', async () => {
+			providerRepository.insertProvider.mockImplementationOnce(
+				async (provider) =>
+					({
+						...provider,
+						id: 'prov1',
+						createdAt: new Date(),
+						updatedAt: new Date(),
+					}) as PromotionProvider,
+			);
+
+			await service.create(
+				{
+					name: 'Bot user',
+					type: 'git',
+					auth: { authType: 'token', username: 'u', password: 'p' },
+				} as CreatePromotionProviderDto,
+				actor,
+			);
+
+			expect(eventService.emit).toHaveBeenCalledWith('promotion-provider-created', {
+				user: actor,
+				providerId: 'prov1',
+				providerType: 'git',
+				authType: 'token',
+			});
+		});
+
+		it('emits no event when the create fails', async () => {
+			await expect(
+				service.create(
+					{
+						name: 'Bot user',
+						type: 'git',
+						auth: { authType: 'token', username: 'u', password: 'p\nmore' },
+					} as CreatePromotionProviderDto,
+					actor,
+				),
+			).rejects.toThrow(BadRequestError);
+
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
 		it('leaves the stored ciphertext out of the response', async () => {
-			const result = await service.create({
-				name: 'Bot user',
-				type: 'git',
-				auth: { authType: 'token', username: 'u', password: 'p' },
-			} as CreatePromotionProviderDto);
+			const result = await service.create(
+				{
+					name: 'Bot user',
+					type: 'git',
+					auth: { authType: 'token', username: 'u', password: 'p' },
+				} as CreatePromotionProviderDto,
+				actor,
+			);
 
 			expect(JSON.stringify(result)).not.toContain('enc:');
 			expect(result.provider).not.toHaveProperty('auth');

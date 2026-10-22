@@ -16,6 +16,8 @@ import {
 	promotionProviderTypeCapabilities,
 	supportsPromotionAuthType,
 } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
@@ -47,9 +49,13 @@ export class PromotionProvidersService {
 		private readonly gitService: PromotionsGitService,
 		private readonly cipher: Cipher,
 		private readonly gitHosts: GitHostClients,
+		private readonly eventService: EventService,
 	) {}
 
-	async create(input: CreatePromotionProviderDto): Promise<PromotionProviderCreatedPublicDto> {
+	async create(
+		input: CreatePromotionProviderDto,
+		actor: User,
+	): Promise<PromotionProviderCreatedPublicDto> {
 		const hostConfig = this.resolveHostConfig(input.type, input.auth.authType, input.config);
 		const { config, credentials } = await this.buildAuthentication(
 			input.type,
@@ -64,6 +70,12 @@ export class PromotionProvidersService {
 			authType: input.auth.authType,
 			config,
 			auth,
+		});
+		this.eventService.emit('promotion-provider-created', {
+			user: actor,
+			providerId: provider.id,
+			providerType: provider.type,
+			authType: provider.authType,
 		});
 		return { provider: this.toPublic(provider), publicKey: this.publicKeyOf(provider) };
 	}
