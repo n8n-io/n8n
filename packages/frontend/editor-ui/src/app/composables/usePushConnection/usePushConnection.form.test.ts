@@ -210,8 +210,10 @@ describe('Form execution push events', () => {
 
 	it('marks the same execution as running when it resumes', async () => {
 		await reachReviewForm();
+		const executionStore = useExecutionDataStore(createExecutionDataId(executionId));
 		receive({ type: 'executionWaiting', data: { executionId } });
 		await flushPromises();
+		expect(executionStore.execution?.status).toBe('waiting');
 
 		receive({
 			type: 'executionStarted',
@@ -225,12 +227,26 @@ describe('Form execution push events', () => {
 		});
 		await flushPromises();
 
-		const executionStore = useExecutionDataStore(createExecutionDataId(executionId));
 		expect(executionStore.execution?.status).toBe('running');
 		expect(useWorkflowExecutionStateStore(documentId).activeExecutionId).toBe(executionId);
 		expect(executionStore.execution?.data?.resultData.runData[reviewForm.name][0]).toEqual(
 			formTask,
 		);
+	});
+
+	it('clears the executing node when a waiting execution has no data', async () => {
+		await reachReviewForm();
+		const executionStore = useExecutionDataStore(createExecutionDataId(executionId));
+		executionStore.setExecution(null);
+		const executionState = useWorkflowExecutionStateStore(documentId);
+		expect(executionState.executingNode.lastAddedExecutingNode).toBe(reviewForm.name);
+
+		receive({ type: 'executionWaiting', data: { executionId } });
+		await flushPromises();
+
+		expect(executionState.executingNode.lastAddedExecutingNode).toBeNull();
+		expect(executionState.activeExecutionId).toBe(executionId);
+		expect(executionStore.execution).toBeNull();
 	});
 
 	it('ignores a waiting event from another execution', async () => {

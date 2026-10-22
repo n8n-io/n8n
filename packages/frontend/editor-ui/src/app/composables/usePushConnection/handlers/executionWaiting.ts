@@ -12,6 +12,8 @@ export async function executionWaiting(
 		return;
 	}
 
+	workflowExecutionStateStore.executingNode.clearNodeExecutionQueue();
+
 	const executionDataStore = useExecutionDataStore(createExecutionDataId(data.executionId));
 	const execution = executionDataStore.getExecutionSnapshot();
 	if (!execution) {
@@ -22,5 +24,4 @@ export async function executionWaiting(
 		{ ...execution, status: 'waiting' },
 		{ stripWaitingTaskData: false },
 	);
-	workflowExecutionStateStore.executingNode.clearNodeExecutionQueue();
 }
