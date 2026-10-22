@@ -527,15 +527,7 @@ export class McpApiHelper {
 		path: string,
 		options?: { headers?: Record<string, string> },
 	): Promise<McpSession> {
-		const response = await this.trigger(path, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Accept: 'application/json, text/event-stream',
-				...options?.headers,
-			},
-			data: this.createInitializeMessage(),
-		});
+		const response = await this.streamableHttpInitializeRaw(path, options);
 
 		const sessionId = response.headers()['mcp-session-id'];
 		if (!sessionId) {
@@ -547,6 +539,25 @@ export class McpApiHelper {
 			sessionId,
 			transport: 'streamableHttp',
 		};
+	}
+
+	/**
+	 * Sends the Streamable HTTP `initialize` request and returns the raw response,
+	 * for tests that assert on a refused request.
+	 */
+	async streamableHttpInitializeRaw(
+		path: string,
+		options?: { headers?: Record<string, string> },
+	): Promise<APIResponse> {
+		return await this.trigger(path, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Accept: 'application/json, text/event-stream',
+				...options?.headers,
+			},
+			data: this.createInitializeMessage(),
+		});
 	}
 
 	/**
