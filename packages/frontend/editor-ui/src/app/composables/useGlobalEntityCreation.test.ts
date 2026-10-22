@@ -1,4 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
+import { i18n, i18nInstance } from '@n8n/i18n';
 import { setActivePinia } from 'pinia';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { mockedStore } from '@/__tests__/utils';
@@ -274,6 +275,39 @@ describe('useGlobalEntityCreation', () => {
 
 			expect(menu.value[0].submenu?.length).toBe(4);
 			expect(menu.value[1].submenu?.length).toBe(4);
+		});
+
+		it('should localize the submenu headings', () => {
+			const originalLocale = i18nInstance.global.locale.value;
+			i18nInstance.global.setLocaleMessage('test-locale', {
+				'projects.menu.create.in': 'Translated create in',
+			});
+			i18nInstance.global.locale.value = 'test-locale';
+			i18n.clearCache();
+
+			try {
+				const projectsStore = mockedStore(useProjectsStore);
+				projectsStore.teamProjectsLimit = -1;
+				projectsStore.isTeamProjectFeatureEnabled = true;
+				projectsStore.personalProject = { id: 'personal-project' } as Project;
+				projectsStore.myProjects = [{ id: '1', name: '1', type: 'team' }] as ProjectListItem[];
+
+				const { menu } = useGlobalEntityCreation();
+
+				const headings = menu.value.flatMap(
+					(item) => item.submenu?.filter((sub) => sub.id.endsWith('-title')) ?? [],
+				);
+				expect(headings.map((heading) => heading.id)).toEqual([
+					'workflow-title',
+					'credential-title',
+				]);
+				for (const heading of headings) {
+					expect(heading.title).toBe('Translated create in');
+				}
+			} finally {
+				i18nInstance.global.locale.value = originalLocale;
+				i18n.clearCache();
+			}
 		});
 
 		it('should not show submenus when team feature is enabled but no team projects exist', () => {

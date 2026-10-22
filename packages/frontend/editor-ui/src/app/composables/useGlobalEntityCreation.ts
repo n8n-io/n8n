@@ -127,7 +127,7 @@ export const useGlobalEntityCreation = () => {
 	const variableScopeSubmenu = computed<BaseItem[]>(() => {
 		const readOnly = sourceControlStore.preferences.branchReadOnly;
 		return [
-			{ id: 'variable-title', title: 'Create in', disabled: true },
+			{ id: 'variable-title', title: i18n.baseText('projects.menu.create.in'), disabled: true },
 			{
 				id: 'variable-global',
 				title: i18n.baseText('variables.modal.scope.global'),
@@ -165,7 +165,7 @@ export const useGlobalEntityCreation = () => {
 	});
 
 	const dataTableScopeSubmenu = computed<BaseItem[]>(() => [
-		{ id: 'data-table-title', title: 'Create in', disabled: true },
+		{ id: 'data-table-title', title: i18n.baseText('projects.menu.create.in'), disabled: true },
 		{
 			id: 'data-table-personal',
 			title: i18n.baseText('projects.menu.personal'),
@@ -344,7 +344,7 @@ export const useGlobalEntityCreation = () => {
 					submenu: [
 						{
 							id: 'workflow-title',
-							title: 'Create in',
+							title: i18n.baseText('projects.menu.create.in'),
 							disabled: true,
 						},
 						{
@@ -378,7 +378,7 @@ export const useGlobalEntityCreation = () => {
 					submenu: [
 						{
 							id: 'credential-title',
-							title: 'Create in',
+							title: i18n.baseText('projects.menu.create.in'),
 							disabled: true,
 						},
 						{
@@ -417,7 +417,7 @@ export const useGlobalEntityCreation = () => {
 								submenu: [
 									{
 										id: 'agent-title',
-										title: 'Create in',
+										title: i18n.baseText('projects.menu.create.in'),
 										disabled: true,
 									},
 									{
