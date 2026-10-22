@@ -441,6 +441,15 @@ export class ExecutionRecorder {
 					chunk.canceled === true,
 				);
 				break;
+			case 'usage':
+				this.usage = {
+					promptTokens: chunk.usage.promptTokens,
+					completionTokens: chunk.usage.completionTokens,
+					totalTokens: chunk.usage.totalTokens,
+				};
+				this.model = chunk.model;
+				this.totalCost = chunk.usage.cost ?? null;
+				break;
 			case 'finish':
 				this.flushReasoningBuffer();
 				this.flushTextBuffer();
@@ -459,9 +468,9 @@ export class ExecutionRecorder {
 						completionTokens: chunk.usage.completionTokens,
 						totalTokens: chunk.usage.totalTokens,
 					};
+					this.totalCost = chunk.usage.cost ?? null;
 				}
-				this.model = chunk.model ?? null;
-				this.totalCost = chunk.usage?.cost ?? null;
+				this.model = chunk.model ?? this.model;
 				break;
 			case 'tool-call-suspended':
 				this.flushReasoningBuffer();

@@ -1074,6 +1074,67 @@ describe('AgentRuntime — execution counters', () => {
 		expect(counter.incrementTokenCount).toHaveBeenCalledWith(15);
 	});
 
+	it.each([true, false])(
+		'streams cumulative usage before tools finish (priced: %s)',
+		async (priced) => {
+			vi.mocked(getModelCost).mockResolvedValueOnce(priced ? { input: 1, output: 2 } : undefined);
+			const started = createDeferredPromise();
+			const release = createDeferredPromise();
+			const tool = makeMockTool('search', async () => {
+				started.resolve();
+				await release.promise;
+				return 'found';
+			});
+			streamText
+				.mockReturnValueOnce(
+					makeStreamWithToolCalls([{ toolCallId: 'search-1', toolName: 'search', args: {} }]),
+				)
+				.mockReturnValueOnce(makeStreamSuccess('done'));
+			const runtime = new AgentRuntime({
+				name: 'test',
+				model: 'openai/gpt-4o-mini',
+				instructions: 'Test',
+				tools: [tool],
+				eventBus: new AgentEventBus(),
+			});
+			const result = await runtime.stream('search');
+			const chunks: StreamChunk[] = [];
+			const reading = (async () => {
+				const reader = result.stream.getReader();
+				while (true) {
+					const { done, value } = await reader.read();
+					if (done) return;
+					chunks.push(value);
+					if (value.type === 'input-boundary') value.acknowledge();
+				}
+			})();
+			await started.promise;
+			try {
+				expect(chunks.filter((chunk) => chunk.type === 'usage')).toEqual([
+					expect.objectContaining({
+						usage: expect.objectContaining({
+							promptTokens: 10,
+							completionTokens: 5,
+							totalTokens: 15,
+						}),
+					}),
+				]);
+				expect(chunks.some((chunk) => chunk.type === 'finish')).toBe(false);
+			} finally {
+				release.resolve();
+				await reading;
+			}
+			const updates = chunks.filter((chunk) => chunk.type === 'usage');
+			expect(updates.map((chunk) => chunk.usage.totalTokens)).toEqual([15, 30]);
+			if (priced) {
+				expect(updates[0].usage.cost).toBeCloseTo(0.00002);
+				expect(updates[1].usage.cost).toBeCloseTo(0.00004);
+			} else {
+				expect(updates.every((chunk) => chunk.usage.cost === undefined)).toBe(true);
+			}
+		},
+	);
+
 	it('forwards onStepStart and onStepEnd to generateText and streamText', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 		streamText.mockReturnValue(makeStreamSuccess());

@@ -418,6 +418,81 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 		expect(track).not.toHaveBeenCalled();
 	});
 
+	it('hides unavailable pricing and keeps the token count', async () => {
+		getThreadDetail.mockResolvedValueOnce({ thread: { ...thread, totalCost: 0 }, executions: [] });
+		const wrapper = mountMenu();
+		await flushPromises();
+		expect(wrapper.text()).toContain('125t');
+		expect(wrapper.text()).not.toContain('$');
+	});
+
+	it('hides token and price values before usage is known', async () => {
+		getThreadDetail.mockResolvedValueOnce({
+			thread: { ...thread, totalPromptTokens: 0, totalCompletionTokens: 0, totalCost: 0 },
+			executions: [],
+		});
+		const wrapper = mountMenu();
+		await flushPromises();
+		expect(wrapper.text()).not.toContain('0t');
+		expect(wrapper.text()).not.toContain('$');
+	});
+
+	it('replaces turn snapshots and reconciles them with the saved result', async () => {
+		const wrapper = mountMenu();
+		await flushPromises();
+		const update = {
+			sessionId: 'thread-1',
+			executionId: 'live-1',
+			complete: false,
+			usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.025 },
+		};
+		await wrapper.setProps({ usageUpdates: { 'live-1': update } });
+		expect(wrapper.text()).toContain('140t ($0.1500)');
+		const next = {
+			...update,
+			usage: { promptTokens: 20, completionTokens: 10, totalTokens: 30, cost: 0.05 },
+		};
+		await wrapper.setProps({ usageUpdates: { 'live-1': next } });
+		expect(wrapper.text()).toContain('155t ($0.1750)');
+		getThreadDetail.mockResolvedValueOnce({
+			thread: { ...thread, totalPromptTokens: 120, totalCompletionTokens: 35, totalCost: 0.18 },
+			executions: [
+				mock<AgentExecution>({
+					id: 'live-1',
+					source: null,
+					status: 'success',
+					totalTokens: 30,
+					cost: 0.055,
+				}),
+			],
+		});
+		await wrapper.setProps({ usageUpdates: { 'live-1': { ...next, complete: true } } });
+		await flushPromises();
+		expect(wrapper.text()).toContain('155t ($0.1800)');
+	});
+
+	it('loads a new session when its first usage update arrives', async () => {
+		getThreadDetail.mockRejectedValueOnce({ httpStatusCode: 404 });
+		const wrapper = mountMenu();
+		await flushPromises();
+		getThreadDetail.mockResolvedValueOnce({
+			thread: { ...thread, totalPromptTokens: 0, totalCompletionTokens: 0, totalCost: 0 },
+			executions: [],
+		});
+		await wrapper.setProps({
+			usageUpdates: {
+				'execution-1': {
+					sessionId: 'thread-1',
+					executionId: 'execution-1',
+					complete: false,
+					usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.025 },
+				},
+			},
+		});
+		await flushPromises();
+		expect(wrapper.text()).toContain('15t ($0.0250)');
+	});
+
 	it('loads current metadata when the menu opens', async function refreshesMetadata() {
 		const wrapper = mountMenu();
 		await flushPromises();

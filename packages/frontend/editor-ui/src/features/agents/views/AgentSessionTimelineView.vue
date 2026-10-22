@@ -11,6 +11,7 @@ import {
 } from '@/features/agents/constants';
 import { useAgentSessionLangSmithExport } from '@/features/agents/composables/useAgentSessionLangSmithExport';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
+import { getAgentSessionUsage } from '@/features/agents/utils/agent-usage';
 import {
 	defaultAgentSessionFilters,
 	type AgentExecution,
@@ -205,7 +206,11 @@ const canPreviewSession = computed(
 		(hasLoadedThread.value && thread.value?.canContinueInPreview === true),
 );
 const previewVisible = computed(() => canPreviewSession.value && isPreviewOpen.value);
-const totalCost = computed(() => thread.value?.totalCost ?? 0);
+const totalCost = computed(() =>
+	thread.value
+		? getAgentSessionUsage({ thread: thread.value, executions: executions.value }).cost
+		: null,
+);
 const durationLabel = computed(() => formatDuration(thread.value?.totalDuration ?? 0));
 
 /**

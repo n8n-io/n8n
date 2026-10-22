@@ -126,7 +126,7 @@ export interface RunOutputSink<TResult> {
 	 * implementations keep it so an aborted run can still emit a terminal
 	 * finish chunk carrying the tokens consumed before the stop.
 	 */
-	reportUsage(usage: TokenUsage | undefined): void;
+	reportUsage(usage: TokenUsage | undefined): void | Promise<void>;
 	/**
 	 * Signal that the just-returned turn's messages have been folded into the list.
 	 * Streaming implementations drop the retained streamed text here so a later abort

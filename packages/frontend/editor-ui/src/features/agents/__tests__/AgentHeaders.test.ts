@@ -129,6 +129,16 @@ describe('AgentSessionTimelineHeader', () => {
 		expect(icon.props('size')).toBe('mini');
 	});
 
+	it('hides unknown prices and then hides usage when tokens are unavailable', async () => {
+		const wrapper = mountHeader();
+		await wrapper.setProps({ totalCost: null });
+		expect(wrapper.text()).toContain('1,234t');
+		expect(wrapper.text()).not.toContain('$');
+		await wrapper.setProps({ totalTokens: 0 });
+		expect(wrapper.text()).not.toContain('0t');
+		expect(wrapper.text()).toContain('1.2s');
+	});
+
 	it('hides metrics and close button while metrics are unavailable', () => {
 		const wrapper = mountHeader({ showMetrics: false });
 

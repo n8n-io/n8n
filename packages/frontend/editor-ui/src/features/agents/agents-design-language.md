@@ -45,6 +45,11 @@ remaining width in proportion to each panel's requested extra width above
 
 ## Preview history
 
+Show token usage after a model turn reports it. Hide the cost when pricing is
+unavailable. Keep known token counts visible. Show a positive cost below the
+display precision as `<$0.0001`. Replace live totals with saved session totals
+after the execution completes.
+
 Use the shared `ChatHistoryDropdownTrigger` in the Preview dock and the Assistant.
 The shared button shows the history icon and the chat title. Click the title or
 the icon to open history. Show only “Chat history” when no chat title exists. Do

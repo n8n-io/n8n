@@ -15,6 +15,8 @@ import {
 } from '@n8n/design-system';
 
 import { useI18n } from '@n8n/i18n';
+import { computed } from 'vue';
+import { formatAgentUsage } from '../utils/agent-usage';
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 
 interface SessionDropdownData {
@@ -33,7 +35,7 @@ const props = withDefaults(
 		triggerIcon: IconName;
 		triggerLabel: string;
 		totalTokens: number;
-		totalCost: number;
+		totalCost: number | null;
 		durationLabel: string;
 		showLangsmithExport: boolean;
 		langsmithExportLoading: boolean;
@@ -52,6 +54,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const tokenSpendLabel = computed(() => formatAgentUsage(props.totalTokens, props.totalCost));
 </script>
 
 <template>
@@ -121,12 +124,12 @@ const i18n = useI18n();
 				<N8nIcon :icon="props.triggerIcon" :size="12" />
 				<span>{{ props.triggerLabel }}</span>
 			</span>
-			<span v-if="props.showMetrics" :class="$style.sep">·</span>
-			<span v-if="props.showMetrics" :class="$style.metricItem">
+			<span v-if="props.showMetrics && props.triggerSource" :class="$style.sep">·</span>
+			<span v-if="props.showMetrics && tokenSpendLabel" :class="$style.metricItem">
 				<N8nIcon icon="circle-dollar-sign" :size="12" />
-				<span>{{ props.totalTokens.toLocaleString() }}t (${{ props.totalCost.toFixed(4) }})</span>
+				<span>{{ tokenSpendLabel }}</span>
 			</span>
-			<span v-if="props.showMetrics" :class="$style.sep">·</span>
+			<span v-if="props.showMetrics && tokenSpendLabel" :class="$style.sep">·</span>
 			<span v-if="props.showMetrics" :class="$style.metricItem">
 				<N8nIcon icon="clock" :size="12" />
 				<span>{{ props.durationLabel }}</span>

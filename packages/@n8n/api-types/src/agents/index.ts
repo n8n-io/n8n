@@ -33,6 +33,7 @@ export type {
 	AgentBudgetNoticeCode,
 	AgentSseEvent,
 	AgentSseMessage,
+	AgentTokenUsage,
 	ForwardedChildChunkWire,
 	ToolSuspendedPayload,
 } from '../agent-sse';
