@@ -338,6 +338,24 @@ catalogs:
     '@n8n_io/ai-assistant-sdk':
       specifier: 1.27.0
       version: 1.27.0
+    '@napi-rs/canvas':
+      specifier: 1.0.11
+      version: 1.0.11
+    '@napi-rs/canvas-linux-arm64-musl':
+      specifier: 1.0.11
+      version: 1.0.11
+    '@napi-rs/canvas-linux-x64-musl':
+      specifier: 1.0.11
+      version: 1.0.11
+    '@napi-rs/image':
+      specifier: 1.15.0
+      version: 1.15.0
+    '@napi-rs/image-linux-arm64-musl':
+      specifier: 1.15.0
+      version: 1.15.0
+    '@napi-rs/image-linux-x64-musl':
+      specifier: 1.15.0
+      version: 1.15.0
     '@openrouter/ai-sdk-provider':
       specifier: ^3.0.0
       version: 3.0.0
@@ -1063,7 +1081,7 @@ overrides:
   '@grpc/grpc-js@<1.14.5': 1.14.5
   prosemirror-model: 1.25.12
   prosemirror-view@<1.42.3: 1.42.3
-  pdf-parse>@napi-rs/canvas: ^1.0.0
+  pdf-parse>@napi-rs/canvas: 1.0.11
   '@icetee/ftp>xregexp': npm:empty-npm-package@1.0.0
   toml@<4.2.0: 4.2.0
   '@langchain/langgraph': 1.4.21
@@ -7735,6 +7753,9 @@ importers:
       '@n8n/i18n':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/i18n
+      '@n8n/permissions':
+        specifier: workspace:*
+        version: link:../../../@n8n/permissions
       '@n8n/rest-api-client':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/rest-api-client
@@ -7957,6 +7978,24 @@ importers:
       '@n8n/utils':
         specifier: workspace:*
         version: link:../@n8n/utils
+      '@napi-rs/canvas':
+        specifier: 'catalog:'
+        version: 1.0.11
+      '@napi-rs/canvas-linux-arm64-musl':
+        specifier: 'catalog:'
+        version: 1.0.11
+      '@napi-rs/canvas-linux-x64-musl':
+        specifier: 'catalog:'
+        version: 1.0.11
+      '@napi-rs/image':
+        specifier: 'catalog:'
+        version: 1.15.0
+      '@napi-rs/image-linux-arm64-musl':
+        specifier: 'catalog:'
+        version: 1.15.0
+      '@napi-rs/image-linux-x64-musl':
+        specifier: 'catalog:'
+        version: 1.15.0
       '@smithy/node-http-handler':
         specifier: 4.5.0
         version: 4.5.0
@@ -11920,13 +11959,92 @@ packages:
     resolution: {integrity: sha512-vt5tog1cr+QKadIddGe+3LrcX0EmjEd0izF717Uwf92mBmgYfq2XRmL2r4bZU40spB69exxhrBn9I91HYEr/7w==}
     engines: {node: '>= 10'}
 
+  '@napi-rs/image-android-arm64@1.15.0':
+    resolution: {integrity: sha512-BhW7Zyk0Y17FNWcrc+7bwK8Yo9gdt/OsB5AsK3yvu+z3pCvVtztjuANNfdwcC2KHolJkJWeu42ZfC0qwBYB57A==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [android]
+
+  '@napi-rs/image-darwin-arm64@1.15.0':
+    resolution: {integrity: sha512-HHUDoMil1WONvbFs97FBtO2G0C6Xjzo7G4Ioywn/wmEgFFgWdlNO0n1ARp3WsnssH4j89rDEVHfkpjrwNa96OQ==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@napi-rs/image-darwin-x64@1.15.0':
+    resolution: {integrity: sha512-CIEDQYJEjk81TIM2tpWj1T6R9RkzZU7rVwBw/6+El/tcER+v9HF4oZIp+YLUMT3G5kVXqoNtda8mRcTs9CUwMw==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [darwin]
+
+  '@napi-rs/image-freebsd-x64@1.15.0':
+    resolution: {integrity: sha512-ztYxPGsPEpw8Odc2d9w6+gLkEe1Ocifjae938DFFKytYztRcFenFIq+6Ha6fsnr/4LtZHH70GnBwB0lhM8dwtQ==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [freebsd]
+
+  '@napi-rs/image-linux-arm-gnueabihf@1.15.0':
+    resolution: {integrity: sha512-Pgnt8ekNnYmDX/dB2n+o3WABojL2u9vrceoSa85VFa1zs5fMy+k6z1UCjDgDwpQOSmq2AotTABedvL8vqZKDJA==}
+    engines: {node: '>= 10'}
+    cpu: [arm]
+    os: [linux]
+
+  '@napi-rs/image-linux-arm64-gnu@1.15.0':
+    resolution: {integrity: sha512-/4XHp1GbXNfVmMQYmyUAErMBXaAxGF3JZnv+Q73P9jhEwfOvgl3CUTCZwZEivScIbVjdxrcQnlWw9xSzZXsx3w==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [linux]
+    libc: [glibc]
+
+  '@napi-rs/image-linux-arm64-musl@1.15.0':
+    resolution: {integrity: sha512-jjqW0eg09OY2rYZl07tHNKKXqwwHNgeuwQyU2/1OX34qFoc1nfmITaud2WAuaAjmVnxbYpigs0JQiAHYTs0koA==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [linux]
+    libc: [musl]
+
+  '@napi-rs/image-linux-x64-gnu@1.15.0':
+    resolution: {integrity: sha512-IiayUG47OTY89iPLiN/wtnIwqOqtHbO1W/h5aZdSzfQa7Ke0NlNuUsE4qkbLIkInYyd7gWSs1GiX8+VpewIhZw==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [linux]
+    libc: [glibc]
+
+  '@napi-rs/image-linux-x64-musl@1.15.0':
+    resolution: {integrity: sha512-EqHJBpf+LXB47Andl5IWaP2Tdavb3ehH3a9/cLkBAZ3mW07h1PTnhNHtWbxP/O2RkBCr87gi92OVA+1J2KSJKg==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [linux]
+    libc: [musl]
+
+  '@napi-rs/image-win32-arm64-msvc@1.15.0':
+    resolution: {integrity: sha512-n34XcQjrMAQZ8/O2uK/E+rqVo+G0h4Y6eDMvJduZWVL7c9fpcfiSWaUDdaw+6lz3RugauJ97ectCDk5LTlXnjg==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [win32]
+
+  '@napi-rs/image-win32-ia32-msvc@1.15.0':
+    resolution: {integrity: sha512-SOs9Mc5/7cMMu3vXl97SwvlG2l4jcACcLTcPotl6N3u/Vi8N6Qc6rnxqol2L5KRzLkmULgs3nNx/OqFEvpPpsg==}
+    engines: {node: '>= 10'}
+    cpu: [ia32]
+    os: [win32]
+
+  '@napi-rs/image-win32-x64-msvc@1.15.0':
+    resolution: {integrity: sha512-3S4O+oJnLZ3MmWYhGLPwqlNoNLu2GP2ZIXlJrTXDvCqxq9Qpb4lh4ymAUKvztxkQn6CsPLUa4j2XR5GydFBrwg==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [win32]
+
+  '@napi-rs/image@1.15.0':
+    resolution: {integrity: sha512-WtMwFCgKDPcWLKH3Ooy8pCTMmjwC3NNlBicb5Qaqx0PafOjbRQ/zx5ZEWlxnjTFfMWIW3ptskuX8wt4NXJvvVg==}
+    engines: {node: '>= 10'}
+
   '@napi-rs/wasm-runtime@0.2.11':
     resolution: {integrity: sha512-9DPkXtvHydrcOsopiYpUgPHpmj0HWZKMUnL2dZqpvC42lsratuBG06V5ipyno0fUek5VlFsNQ+AcFATSrJXgMA==}
 
   '@napi-rs/wasm-runtime@1.1.6':
     resolution: {integrity: sha512-ZLv/JdUfkvOy9eCnnBaGfiO+XimbjebAeO+MRQqD/B+FR1tnRN0tpKSJHRbE8sFfS6aqsXZ67TQjfwfsxULVbg==}
     peerDependencies:
-      '@emnapi/core': ^1.7.1
       '@emnapi/runtime': ^1.7.1
 
   '@neoconfetti/react@1.0.0':
@@ -12007,8 +12125,6 @@ packages:
   '@octokit/plugin-paginate-rest@9.2.2':
     resolution: {integrity: sha512-u3KYkGF7GcZnSD/3UP0S7K5XUFT2FkOQdcfXZGZQPGv3lm4F2Xbf71lvjldr8c1H3nNbF+33cLEkWYbokGWqiQ==}
     engines: {node: '>= 18'}
-    peerDependencies:
-      '@octokit/core': '5'
 
   '@octokit/plugin-rest-endpoint-methods@10.4.1':
     resolution: {integrity: sha512-xV1b+ceKV9KytQe3zCVqjg+8GTGfDYwaT1ATU5isiUyVtlVAO3HNdzpS4sr4GBx4hxQ46s7ITtZrAsxG22+rVg==}
@@ -29239,8 +29355,7 @@ snapshots:
   '@napi-rs/canvas-linux-arm64-gnu@1.0.11':
     optional: true
 
-  '@napi-rs/canvas-linux-arm64-musl@1.0.11':
-    optional: true
+  '@napi-rs/canvas-linux-arm64-musl@1.0.11': {}
 
   '@napi-rs/canvas-linux-riscv64-gnu@1.0.11':
     optional: true
@@ -29248,8 +29363,7 @@ snapshots:
   '@napi-rs/canvas-linux-x64-gnu@1.0.11':
     optional: true
 
-  '@napi-rs/canvas-linux-x64-musl@1.0.11':
-    optional: true
+  '@napi-rs/canvas-linux-x64-musl@1.0.11': {}
 
   '@napi-rs/canvas-win32-arm64-msvc@1.0.11':
     optional: true
@@ -29270,6 +29384,55 @@ snapshots:
       '@napi-rs/canvas-linux-x64-musl': 1.0.11
       '@napi-rs/canvas-win32-arm64-msvc': 1.0.11
       '@napi-rs/canvas-win32-x64-msvc': 1.0.11
+
+  '@napi-rs/image-android-arm64@1.15.0':
+    optional: true
+
+  '@napi-rs/image-darwin-arm64@1.15.0':
+    optional: true
+
+  '@napi-rs/image-darwin-x64@1.15.0':
+    optional: true
+
+  '@napi-rs/image-freebsd-x64@1.15.0':
+    optional: true
+
+  '@napi-rs/image-linux-arm-gnueabihf@1.15.0':
+    optional: true
+
+  '@napi-rs/image-linux-arm64-gnu@1.15.0':
+    optional: true
+
+  '@napi-rs/image-linux-arm64-musl@1.15.0': {}
+
+  '@napi-rs/image-linux-x64-gnu@1.15.0':
+    optional: true
+
+  '@napi-rs/image-linux-x64-musl@1.15.0': {}
+
+  '@napi-rs/image-win32-arm64-msvc@1.15.0':
+    optional: true
+
+  '@napi-rs/image-win32-ia32-msvc@1.15.0':
+    optional: true
+
+  '@napi-rs/image-win32-x64-msvc@1.15.0':
+    optional: true
+
+  '@napi-rs/image@1.15.0':
+    optionalDependencies:
+      '@napi-rs/image-android-arm64': 1.15.0
+      '@napi-rs/image-darwin-arm64': 1.15.0
+      '@napi-rs/image-darwin-x64': 1.15.0
+      '@napi-rs/image-freebsd-x64': 1.15.0
+      '@napi-rs/image-linux-arm-gnueabihf': 1.15.0
+      '@napi-rs/image-linux-arm64-gnu': 1.15.0
+      '@napi-rs/image-linux-arm64-musl': 1.15.0
+      '@napi-rs/image-linux-x64-gnu': 1.15.0
+      '@napi-rs/image-linux-x64-musl': 1.15.0
+      '@napi-rs/image-win32-arm64-msvc': 1.15.0
+      '@napi-rs/image-win32-ia32-msvc': 1.15.0
+      '@napi-rs/image-win32-x64-msvc': 1.15.0
 
   '@napi-rs/wasm-runtime@0.2.11':
     dependencies:

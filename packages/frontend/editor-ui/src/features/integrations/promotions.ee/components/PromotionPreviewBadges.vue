@@ -2,14 +2,97 @@
 import type { PromotionDirection } from '@n8n/api-types';
 import { N8nBadge, N8nTooltip, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed } from 'vue';
-import { RouterLink } from 'vue-router';
+import { computed, onBeforeUnmount, onMounted, watch } from 'vue';
+import { RouterLink, useRouter } from 'vue-router';
+import { getResourcePermissions } from '@n8n/permissions';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { VIEWS } from '@/app/constants';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
+import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 
-import { usePromotionEntryPoints } from '../composables/usePromotionEntryPoints';
+import { useInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
+import { usePromotionChangeCount } from '../composables/usePromotionChangeCount';
+import { promotionEventBus, type PromotionEventBusEvents } from '../promotions.eventBus';
 import { PROMOTION_PREVIEW_VIEWS } from '../promotions.constants';
 
 const i18n = useI18n();
-const { currentProjectId, showPromote, showApply, promote, apply } = usePromotionEntryPoints();
+const router = useRouter();
+const usersStore = useUsersStore();
+const projectsStore = useProjectsStore();
+const { isEnabled: isPromotionsEnabled } = usePromotionsEnabled();
+
+const currentProjectId = computed(() => projectsStore.currentProject?.id);
+const isTeamProject = computed(() => projectsStore.currentProject?.type === ProjectTypes.Team);
+const projectPermissions = computed(
+	() => getResourcePermissions(projectsStore.currentProject?.scopes).project,
+);
+const gitConnectionPermissions = computed(
+	() => getResourcePermissions(usersStore.currentUser?.globalScopes).gitConnection,
+);
+
+// Each direction needs its configuration on the instance connection, so a source never
+// asks for incoming changes and a destination never asks for outgoing ones.
+const { hasPromoteConfig, hasApplyConfig, load: loadConnection } = useInstancePromotionConnection();
+
+const canPreviewChanges = computed(
+	() =>
+		isTeamProject.value &&
+		isPromotionsEnabled.value &&
+		!!projectPermissions.value.export &&
+		// `list` loads the connection. `read` loads the preview, as on the preview page.
+		!!gitConnectionPermissions.value.list &&
+		!!gitConnectionPermissions.value.read &&
+		(!!gitConnectionPermissions.value.push || !!gitConnectionPermissions.value.pull),
+);
+const showPromote = computed(
+	() => canPreviewChanges.value && hasPromoteConfig.value && !!gitConnectionPermissions.value.push,
+);
+const showApply = computed(
+	() => canPreviewChanges.value && hasApplyConfig.value && !!gitConnectionPermissions.value.pull,
+);
+
+watch(
+	[canPreviewChanges, currentProjectId],
+	async ([canPreview]) => {
+		if (canPreview) await loadConnection();
+	},
+	{ immediate: true },
+);
+
+const promote = usePromotionChangeCount(currentProjectId, 'promote', showPromote);
+const apply = usePromotionChangeCount(currentProjectId, 'apply', showApply);
+
+// The store's project id follows the route at once, the current project only once it loaded,
+// so a result for a project the user already left is dropped here.
+async function onPromotionApplied({ projectId, project }: PromotionEventBusEvents['applied']) {
+	if (project && projectsStore.currentProjectId === projectId) {
+		projectsStore.setCurrentProject(project);
+	}
+	await Promise.all([promote.refetch(), apply.refetch()]);
+}
+
+async function onPromoted({ projectId }: PromotionEventBusEvents['promoted']) {
+	if (projectsStore.currentProjectId !== projectId) return;
+	await promote.refetch();
+}
+
+async function onProjectRemoved({ projectId }: PromotionEventBusEvents['projectRemoved']) {
+	if (projectsStore.currentProjectId !== projectId) return;
+	await router.replace({ name: VIEWS.HOMEPAGE });
+}
+
+onMounted(() => {
+	promotionEventBus.on('applied', onPromotionApplied);
+	promotionEventBus.on('promoted', onPromoted);
+	promotionEventBus.on('projectRemoved', onProjectRemoved);
+});
+
+onBeforeUnmount(() => {
+	promotionEventBus.off('applied', onPromotionApplied);
+	promotionEventBus.off('promoted', onPromoted);
+	promotionEventBus.off('projectRemoved', onProjectRemoved);
+});
 
 const ICONS: Record<PromotionDirection, IconName> = { apply: 'arrow-down', promote: 'arrow-up' };
 
