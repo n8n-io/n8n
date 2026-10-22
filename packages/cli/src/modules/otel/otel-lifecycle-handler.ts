@@ -238,7 +238,7 @@ export class OtelLifecycleHandler {
 			customAttributes: this.buildNodeCustomAttributes(ctx),
 			genAiAttributes: buildNodeGenAiAttributes(
 				node,
-				ctx.taskData,
+				ctx.taskData.metadata?.tracing,
 				ctx.executionData.resultData.runData,
 				ctx.workflow.connections,
 			),

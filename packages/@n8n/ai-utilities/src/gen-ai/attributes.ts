@@ -90,7 +90,7 @@ export function buildChatGenAiAttributes({
 	nodeType: string;
 	requestModel?: string;
 	responseModel?: string;
-	usage?: { inputTokens: number; outputTokens: number };
+	usage?: { promptTokens: number; completionTokens: number };
 }): GenAiAttributes {
 	const provider = PROVIDER_BY_CHAT_MODEL_NODE[nodeType.replace(LANGCHAIN_NODE_PREFIX, '')];
 
@@ -101,8 +101,8 @@ export function buildChatGenAiAttributes({
 		...(responseModel && { [GEN_AI_ATTR.RESPONSE_MODEL]: responseModel }),
 		...(usage
 			? {
-					[GEN_AI_ATTR.USAGE_INPUT_TOKENS]: usage.inputTokens,
-					[GEN_AI_ATTR.USAGE_OUTPUT_TOKENS]: usage.outputTokens,
+					[GEN_AI_ATTR.USAGE_INPUT_TOKENS]: usage.promptTokens,
+					[GEN_AI_ATTR.USAGE_OUTPUT_TOKENS]: usage.completionTokens,
 				}
 			: { [N8N_USAGE_REPORTED_ATTR]: false }),
 	};

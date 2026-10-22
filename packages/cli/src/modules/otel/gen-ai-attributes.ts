@@ -5,17 +5,18 @@ import {
 	type GenAiAttributes,
 } from '@n8n/ai-utilities/gen-ai';
 import pick from 'lodash/pick';
+import pickBy from 'lodash/pickBy';
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	NodeConnectionTypes,
 	getParentNodes,
 	mapConnectionsByDestination,
 } from 'n8n-workflow';
-import type { IConnections, INode, IRunData, ITaskData } from 'n8n-workflow';
+import type { IConnections, INode, IRunData, ITaskMetadata } from 'n8n-workflow';
 
 export function buildNodeGenAiAttributes(
 	node: INode,
-	taskData: ITaskData,
+	tracing: ITaskMetadata['tracing'],
 	runData: IRunData,
 	connections: IConnections,
 ): GenAiAttributes | undefined {
@@ -28,12 +29,12 @@ export function buildNodeGenAiAttributes(
 		};
 	}
 
-	const attributes = pickGenAiAttributes(taskData.metadata?.tracing);
+	const attributes = pickGenAiAttributes(tracing);
 	return attributes[GEN_AI_ATTR.OPERATION_NAME] ? attributes : undefined;
 }
 
-function pickGenAiAttributes(tracing: GenAiAttributes = {}): GenAiAttributes {
-	return Object.fromEntries(Object.entries(tracing).filter(([key]) => isGenAiAttributeKey(key)));
+function pickGenAiAttributes(tracing: ITaskMetadata['tracing']): GenAiAttributes {
+	return pickBy(tracing, (_, key) => isGenAiAttributeKey(key));
 }
 
 function summarizeChatCalls(
@@ -52,7 +53,7 @@ function summarizeChatCalls(
 	let firstCall: { executionIndex: number; attributes: GenAiAttributes } | undefined;
 	let inputTokens = 0;
 	let outputTokens = 0;
-	let reportedCalls = 0;
+	let hasUsage = false;
 	let isUsageMissing = false;
 
 	for (const task of chatModelNames.flatMap((name) => runData[name] ?? [])) {
@@ -72,7 +73,7 @@ function summarizeChatCalls(
 		if (typeof callInputTokens === 'number' && typeof callOutputTokens === 'number') {
 			inputTokens += callInputTokens;
 			outputTokens += callOutputTokens;
-			reportedCalls++;
+			hasUsage = true;
 		} else {
 			isUsageMissing = true;
 		}
@@ -86,7 +87,7 @@ function summarizeChatCalls(
 			GEN_AI_ATTR.REQUEST_MODEL,
 			GEN_AI_ATTR.RESPONSE_MODEL,
 		]),
-		...(reportedCalls > 0 && {
+		...(hasUsage && {
 			[GEN_AI_ATTR.USAGE_INPUT_TOKENS]: inputTokens,
 			[GEN_AI_ATTR.USAGE_OUTPUT_TOKENS]: outputTokens,
 		}),

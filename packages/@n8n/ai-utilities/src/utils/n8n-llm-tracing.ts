@@ -335,7 +335,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 				nodeType: this.executionFunctions.getNode().type,
 				requestModel: runDetails.requestModel,
 				responseModel: generation ? extractRespondingModel(generation) : undefined,
-				usage: usage && { inputTokens: usage.promptTokens, outputTokens: usage.completionTokens },
+				usage,
 			}),
 		};
 	}
