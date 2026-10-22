@@ -6,12 +6,17 @@ import type { OperationContext, TransactionRunner } from '../services/transactio
 import { TypeOrmTransaction } from '../services/typeorm-transaction';
 
 /**
- * Base class for repositories that participate in {@link TransactionRunner} transactions.
+ * Base class for the table behind a repository. It participates in {@link TransactionRunner}
+ * transactions and owns the single seam that turns an opaque {@link Transaction} back into a
+ * native `EntityManager`: {@link BaseRepository.managerFor}.
  *
- * It owns the single seam that turns an opaque {@link Transaction} back into a native
- * `EntityManager`: {@link BaseRepository.managerFor}. That method is `protected`, so the
- * unwrap is reachable only from repository subclasses — business logic can hold a
- * `Transaction` but never resolve it to a driver handle.
+ * A repository does not extend this class. It declares a file-private subclass (the table),
+ * which is never exported or registered with DI, and holds it as a private field. Every data
+ * access is a named use-case method on the repository that calls the table internally. If the
+ * repository extended this class instead, every service that injects it would also get `find`,
+ * `save`, `delete`, `createQueryBuilder` and `.manager`, and TypeORM would leak through inferred
+ * types that no lint rule can see. See `trusted-source.repository.ts` in `packages/cli` for the
+ * pattern.
  */
 export abstract class BaseRepository<Entity extends ObjectLiteral> extends Repository<Entity> {
 	constructor(
@@ -27,7 +32,7 @@ export abstract class BaseRepository<Entity extends ObjectLiteral> extends Repos
 	 * otherwise this repository's default manager. `ctx` is always required — thread the one
 	 * received from `TransactionRunner.run`; a non-transactional caller passes the root `{}`.
 	 */
-	protected managerFor(ctx: OperationContext): EntityManager {
+	managerFor(ctx: OperationContext): EntityManager {
 		const { trx } = ctx;
 		if (!trx) return this.manager;
 

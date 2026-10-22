@@ -260,22 +260,44 @@ Service-level decorators to be aware of:
 
 Repositories handle database access using `typeorm`, operating on database models ("entities").
 
+A repository is the boundary that keeps TypeORM out of business logic. It therefore **composes** a `BaseRepository` and never extends one. If it extended `BaseRepository`, every service that injects it would also get `find`, `save`, `delete`, `createQueryBuilder` and `.manager` for free, and TypeORM would leak through inferred types that no lint rule can see. Instead the repository holds a file-private subclass (the table) and exposes only named use-case methods that call the table internally.
+
 ```ts
+import { BaseRepository, OperationContext, TransactionRunner } from '@n8n/db';
+import { Service } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
+
+import { MyFeatureEntity } from './my-feature.entity';
+
+// File-private: never exported, never registered with DI.
+class MyFeatureTable extends BaseRepository<MyFeatureEntity> {
+  constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+    super(MyFeatureEntity, dataSource.manager, transactionRunner);
+  }
+}
+
 @Service()
-export class MyFeatureRepository extends Repository<MyFeatureEntity> {
-  constructor(dataSource: DataSource) {
-    super(MyFeatureEntity, dataSource.manager);
+export class MyFeatureRepository {
+  private readonly table: MyFeatureTable;
+
+  constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+    this.table = new MyFeatureTable(dataSource, transactionRunner);
   }
 
-  async getSummary() {
-    return await /* typeorm query on entities */;
+  async findById(id: string, ctx: OperationContext): Promise<MyFeatureEntity | null> {
+    return await this.table.managerFor(ctx).findOneBy(MyFeatureEntity, { id });
   }
 }
 ```
 
-Repository-level decorators to be aware of:
+Rules:
 
-- `@Service()` to make a repository usable by the dependency injection container
+- Only the repository is `@Service()`. The table class is not exported.
+- Every public method takes plain parameters, returns domain shapes, and takes `ctx: OperationContext` last. Pass the entity class explicitly to the manager call (`findOneBy(MyFeatureEntity, …)`), because the repository is not a TypeORM repository for that entity.
+- No generic `find`/`save`/`delete` passthrough and no getter for the table.
+- A non-transactional caller passes `{}` as `ctx`. Inside `TransactionRunner.run`, thread the `ctx` you received.
+
+See `packages/cli/src/modules/inbound-auth-core/database/repositories/trusted-source.repository.ts` for a real example.
 
 ## Entities
 

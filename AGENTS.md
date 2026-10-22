@@ -253,10 +253,21 @@ baseline. A new business-logic import fails CI.
   repository methods you call. `run` **requires** a context — pass an empty `{}`
   at the operation entry point, and reuse the one you were handed everywhere
   below it (a context that already carries a transaction is joined, not nested).
-  Repositories extend `BaseRepository` and resolve the right `EntityManager` with
-  `this.managerFor(ctx)`; the `Transaction` handle is opaque and never exposes a
-  driver type to business logic. See `oauth-token.service.ts` +
-  `oauth-*-token.repository.ts` for a worked example.
+  The `Transaction` handle is opaque and never exposes a driver type to
+  business logic. See `oauth-token.service.ts` for a worked service example.
+- **Repositories compose, they don't extend.** A repository is the boundary
+  that keeps TypeORM out of business logic. If it extended `BaseRepository`,
+  every service that injects it would also get `find`, `save`, `delete`,
+  `createQueryBuilder` and `.manager` for free, and TypeORM would leak through
+  inferred types that no lint rule can see. So a repository is a plain
+  `@Service()` class that holds a **file-private `BaseRepository` subclass (the
+  table)** as a private field and resolves the manager with
+  `this.table.managerFor(ctx)`. The table is never exported or registered with
+  DI. Every data access is a named use-case method on the repository that
+  calls the table internally; there is no generic `find`/`save`/`delete`
+  unless you write it for one operation. See
+  `packages/cli/src/modules/inbound-auth-core/database/repositories/trusted-source.repository.ts`
+  for a worked example.
 - **Anti-patterns reviewers reject** — they hide the dependency instead of
   removing it:
   - String-matching TypeORM errors, e.g. `error.name === 'QueryFailedError'`.
@@ -265,6 +276,9 @@ baseline. A new business-logic import fails CI.
     dependency rather than removing it).
   - Pushing `.manager` / `createQueryBuilder` into business logic to avoid an
     operator import — trades a visible leak for an invisible one.
+  - A repository that `extends BaseRepository` / `extends Repository`, or that
+    exposes its table (public property, getter, or a `find(options)`
+    passthrough) — the inherited TypeORM surface must stay private to the table.
 
 ### ESLint configuration layers
 

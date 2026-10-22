@@ -15,10 +15,6 @@ class TrustedSourceTable extends BaseRepository<TrustedSourceEntity> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
 		super(TrustedSourceEntity, dataSource.manager, transactionRunner);
 	}
-
-	override managerFor(ctx: OperationContext) {
-		return super.managerFor(ctx);
-	}
 }
 
 export type NewTrustedSourceRow = Pick<

@@ -19,10 +19,6 @@ class TrustedSourceIdentityStore extends BaseRepository<TrustedSourceIdentityEnt
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
 		super(TrustedSourceIdentityEntity, dataSource.manager, transactionRunner);
 	}
-
-	override managerFor(ctx: OperationContext) {
-		return super.managerFor(ctx);
-	}
 }
 
 export type InsertTrustedSourceIdentityRow = Pick<
