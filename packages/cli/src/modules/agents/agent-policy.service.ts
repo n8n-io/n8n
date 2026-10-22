@@ -1,4 +1,4 @@
-import type { AgentJsonConfig, PolicyViolation } from '@n8n/api-types';
+import type { AgentJsonConfig } from '@n8n/api-types';
 import type { PolicedWorkflow, PolicyDecision } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 
@@ -76,21 +76,4 @@ export class AgentPolicyService {
 			projectId,
 		});
 	}
-}
-
-/**
- * The denied node types of a decision, by type name. A violation names the type, never the node
- * that holds it, so a caller attributes it by matching the types its own entry runs as.
- */
-export function deniedNodeTypes(decision: PolicyDecision): Map<string, PolicyViolation> {
-	const denied = new Map<string, PolicyViolation>();
-
-	for (const violation of decision.violations) {
-		if (violation.kind !== 'node-type-unavailable') continue;
-		if (violation.subjectType !== 'nodeType') continue;
-		if (!violation.subject) continue;
-		if (!denied.has(violation.subject)) denied.set(violation.subject, violation);
-	}
-
-	return denied;
 }

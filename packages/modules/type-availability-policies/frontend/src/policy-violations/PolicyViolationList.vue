@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { PolicyViolation } from '@n8n/api-types';
+import { POLICY_VIOLATION_KIND, type PolicyViolation } from '@n8n/api-types';
 import { N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
@@ -20,8 +20,9 @@ const emit = defineEmits<{ jump: [violation: PolicyViolation] }>();
 const i18n = useI18n();
 
 const NAME_KEY_BY_KIND: Record<string, BaseTextKey | undefined> = {
-	'node-type-unavailable': 'typeAvailabilityPolicies.violations.nodeType',
-	'credential-type-unavailable': 'typeAvailabilityPolicies.violations.credentialType',
+	[POLICY_VIOLATION_KIND.nodeTypeUnavailable]: 'typeAvailabilityPolicies.violations.nodeType',
+	[POLICY_VIOLATION_KIND.credentialTypeUnavailable]:
+		'typeAvailabilityPolicies.violations.credentialType',
 	'node-type-deprecated': 'typeAvailabilityPolicies.violations.nodeType',
 };
 

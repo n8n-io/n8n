@@ -235,7 +235,12 @@ export {
 	SOURCE_CONTROL_FILE_TYPE,
 } from './schemas/source-controlled-file.schema';
 
-export { policyViolationSchema, type PolicyViolation } from './schemas/policy-violation.schema';
+export {
+	policyViolationSchema,
+	type PolicyViolation,
+	POLICY_VIOLATION_KIND,
+	POLICY_VIOLATION_SUBJECT_TYPE,
+} from './schemas/policy-violation.schema';
 export { publicApiUploadedFileSchema } from './schemas/public-api-uploaded-file.schema';
 
 export {

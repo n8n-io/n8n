@@ -6,7 +6,7 @@ import type { PolicyEnforcementBackend } from '@/policy/policy-enforcement-backe
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 
-import { AgentPolicyService, deniedNodeTypes } from '../agent-policy.service';
+import { AgentPolicyService } from '../agent-policy.service';
 
 vi.mock('@/node-execution/resolve-tool-node-type', () => ({
 	resolveToolNodeType: (nodeType: string) => nodeType,
@@ -156,29 +156,5 @@ describe('AgentPolicyService', () => {
 				expect.objectContaining({ type: '@n8n/n8n-nodes-langchain.mcpClientTool' }),
 			]);
 		});
-	});
-});
-
-describe('deniedNodeTypes', () => {
-	it('keys the denied node types by the type they name', () => {
-		expect(deniedNodeTypes({ violations: [violation] })).toEqual(
-			new Map([['n8n-nodes-base.dateTime', violation]]),
-		);
-	});
-
-	it('keeps the first violation for a type that several rules deny', () => {
-		const second = { ...violation, checkId: 'other-check' };
-
-		expect(
-			deniedNodeTypes({ violations: [violation, second] }).get('n8n-nodes-base.dateTime'),
-		).toBe(violation);
-	});
-
-	it.each([
-		['another kind', { ...violation, kind: 'credential-type-unavailable' }],
-		['another subject type', { ...violation, subjectType: 'credentialType' }],
-		['no subject', { ...violation, subject: undefined }],
-	])('ignores a violation with %s', (_label, ignored) => {
-		expect(deniedNodeTypes({ violations: [ignored] }).size).toBe(0);
 	});
 });

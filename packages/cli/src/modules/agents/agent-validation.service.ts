@@ -34,13 +34,14 @@ import {
 } from 'n8n-workflow';
 
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
+import { deniedNodeTypes } from '@/modules/type-availability-policies/type-violation';
 import { NodeTypes } from '@/node-types';
 import { toPolicedNodes, withInlineAgentToolNodes } from '@/policy/policed-agent-nodes';
 import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { AgentDefinitionService } from './agent-definition.service';
-import { AgentPolicyService, deniedNodeTypes } from './agent-policy.service';
+import { AgentPolicyService } from './agent-policy.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
 import {
 	getAgentDefinitionContent,
