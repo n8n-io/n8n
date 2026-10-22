@@ -51,7 +51,6 @@
 	color: inherit;
 	cursor: pointer;
 	padding: 0;
-	opacity: 0;
 }
 
 @media (hover: hover) {
@@ -60,6 +59,7 @@
 		top: 50%;
 		left: calc(var(--spacing--2xs) + var(--spacing--xs) / 2);
 		transform: translate(-50%, -50%);
+		opacity: 0;
 	}
 
 	.mention-story-chip:hover .mention-story-chip-remove,
