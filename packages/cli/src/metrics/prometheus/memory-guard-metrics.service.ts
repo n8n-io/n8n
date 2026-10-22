@@ -9,7 +9,7 @@ import type { PrometheusMetricsCollector } from './base';
  * Collects Prometheus metrics for the memory guard, from its events on `EventService`.
  * Active when the memory guard runs, which is in regular mode only.
  *
- * Labels are bounded (trigger, freed): no workflow or instance label.
+ * Labels are bounded (trigger, freed, last_action): no workflow or instance label.
  */
 @Service()
 export class PrometheusMemoryGuardMetricsService implements PrometheusMetricsCollector {
@@ -52,6 +52,18 @@ export class PrometheusMemoryGuardMetricsService implements PrometheusMetricsCol
 		const deactivations = new promClient.Counter({
 			name: `${prefix}memory_guard_deactivations_total`,
 			help: 'Total number of workflows that the memory guard deactivated after repeated stops.',
+		});
+
+		// An OOM kill resets the counters above, so the guard reports the crash totals of its journal.
+		const crashes = new promClient.Counter({
+			name: `${prefix}memory_guard_crashes_total`,
+			help: 'Total number of crashed sessions, by the strongest memory guard action since memory was last below 70% (none, hold, stop). Kept across restarts.',
+			labelNames: ['last_action'],
+		});
+		this.eventService.on('memory-guard-crashes-counted', ({ crashes: totals }) => {
+			for (const [action, count] of Object.entries(totals)) {
+				crashes.inc({ last_action: action }, count);
+			}
 		});
 
 		this.eventService.on('memory-guard-hold-started', () => {

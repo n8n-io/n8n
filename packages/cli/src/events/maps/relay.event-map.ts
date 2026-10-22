@@ -1137,6 +1137,11 @@ export type RelayEventMap = {
 		heldMs: number;
 	};
 
+	/** Crashed sessions so far, by the strongest guard action before each crash. */
+	'memory-guard-crashes-counted': {
+		crashes: Record<'none' | 'hold' | 'stop', number>;
+	};
+
 	'memory-guard-execution-stopped': {
 		executionId: string;
 		workflowId: string;

@@ -45,6 +45,7 @@ import {
 import { getContainerLimit, type MemoryUsage, readMemoryUsage } from './memory-usage';
 import { ProductionHold } from './production-hold';
 import { type RunDataEstimate, RunDataTracker } from './run-data-tracker';
+import { MemoryGuardJournal } from './memory-guard-journal';
 import { MemoryStoppedExecutions } from './memory-stopped-executions';
 
 /**
@@ -86,6 +87,8 @@ export class MemoryGuardService {
 
 	private lastStopEndedAt = 0;
 
+	private areCrashesReported = false;
+
 	private pendingStop: Promise<void> | undefined;
 
 	/**
@@ -119,6 +122,7 @@ export class MemoryGuardService {
 		private readonly tracker: RunDataTracker,
 		private readonly memoryStoppedExecutions: MemoryStoppedExecutions,
 		private readonly eventService: EventService,
+		private readonly journal: MemoryGuardJournal,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly executionRecoveryService: ExecutionRecoveryService,
 		private readonly mailer: UserManagementMailer,
@@ -149,6 +153,7 @@ export class MemoryGuardService {
 
 	private check() {
 		try {
+			this.reportCrashes();
 			this.memoryStoppedExecutions.pruneFinishing((id) => this.activeExecutions.has(id));
 			this.evaluate(readMemoryUsage(this.containerLimit));
 		} catch (error) {
@@ -165,6 +170,16 @@ export class MemoryGuardService {
 		this.scheduleNext(isUnderPressure ? FAST_INTERVAL_MS : SLOW_INTERVAL_MS);
 	}
 
+	/** The metrics start after the guard, so report the crash totals once something listens. */
+	private reportCrashes() {
+		if (this.areCrashesReported) return;
+		if (!(this.eventService.listenerCount('memory-guard-crashes-counted') > 0)) return;
+		this.areCrashesReported = true;
+		this.eventService.emit('memory-guard-crashes-counted', {
+			crashes: { ...this.journal.crashes },
+		});
+	}
+
 	private get isHolding() {
 		return this.holdStartedAt !== undefined;
 	}
@@ -172,6 +187,7 @@ export class MemoryGuardService {
 	private evaluate(usage: MemoryUsage) {
 		const { utilization } = usage;
 		this.lastUtilization = utilization;
+		if (utilization < FAST_SAMPLING_LEVEL) this.journal.reset();
 		this.holdStreak = utilization >= HOLD_LEVEL ? this.holdStreak + 1 : 0;
 		this.stopStreak = utilization >= STOP_LEVEL ? this.stopStreak + 1 : 0;
 		const isCritical = utilization >= CRITICAL_LEVEL;
@@ -294,6 +310,7 @@ export class MemoryGuardService {
 	private startHold(usage: MemoryUsage) {
 		this.holdStartedAt = Date.now();
 		this.productionHold.start();
+		this.journal.record('hold');
 		this.logger.warn(
 			`Memory at ${formatBytes(usage.usedBytes)} of ${formatBytes(usage.limitBytes)}, holding new production executions`,
 		);
@@ -318,6 +335,7 @@ export class MemoryGuardService {
 	private stop(trigger: StopTrigger, usageAfterGc?: MemoryUsage) {
 		const target = this.findStopTarget();
 		if (!target) return false;
+		this.journal.record('stop');
 
 		// The check after the stop also collects first, so only the stop counts as freed memory.
 		const usage = usageAfterGc ?? this.readUsageAfterGc();

@@ -97,4 +97,14 @@ describe('PrometheusMemoryGuardMetricsService', () => {
 		).toBe(1);
 		expect(await value('n8n_memory_guard_deactivations_total')).toBe(1);
 	});
+
+	it('should count crashes by the last guard action', async () => {
+		service.init();
+
+		eventService.emit('memory-guard-crashes-counted', { crashes: { none: 3, hold: 1, stop: 2 } });
+
+		expect(await value('n8n_memory_guard_crashes_total', { last_action: 'none' })).toBe(3);
+		expect(await value('n8n_memory_guard_crashes_total', { last_action: 'hold' })).toBe(1);
+		expect(await value('n8n_memory_guard_crashes_total', { last_action: 'stop' })).toBe(2);
+	});
 });
