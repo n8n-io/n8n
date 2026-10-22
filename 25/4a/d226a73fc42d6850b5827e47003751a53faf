@@ -1,0 +1,26 @@
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_d9d88a00917b32::t_3387e2e94a5108 721-731
+  s_d9d88a00917b32::t_e0c56770739f20 720
+packages/cli/src/modules/agents/agents.service.ts
+  s_d9d88a00917b32::t_3387e2e94a5108 624-625
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_d9d88a00917b32::t_8bb2efcf38ac5e 2147-2158
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_d9d88a00917b32::t_3387e2e94a5108 536-540
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "254ad226a73fc42d6850b5827e47003751a53faf",
+  "prompts": {},
+  "sessions": {
+    "s_d9d88a00917b32": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "68edb8e9-845c-4339-81f0-08bac8202ed7",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
