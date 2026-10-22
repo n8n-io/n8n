@@ -175,6 +175,7 @@ function hookFunctionsWorkflowEvents(
 		const { executionId, workflowData, mode } = this;
 		eventService.emit('workflow-pre-execute', {
 			executionId,
+			userId,
 			data: workflowData,
 			mode,
 			projectId,
