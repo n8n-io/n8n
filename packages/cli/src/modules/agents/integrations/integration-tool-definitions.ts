@@ -252,7 +252,7 @@ export const GENERIC_CONTEXT_QUERY_TOOL_DEFINITIONS = [
 		name: 'search_users',
 		inputSchema: searchUsersInputSchema,
 		description:
-			'search_users: input.query or input.email is required. Returns matching platform user IDs for names, handles, or emails. Prefer get_user when the user ID is known. Use input.email for an exact email lookup. When the response includes nextCursor, pass it back as input.cursor with the same search inputs, even if the page is empty. Do not report that a user does not exist while nextCursor is present. Stop when the required person is found.',
+			'search_users: input.query or input.email is required. Returns matching platform user IDs for names, handles, or emails. Prefer get_user when the user ID is known. Use input.email for an exact email lookup. When the response includes nextCursor, pass it back as input.cursor with the same search inputs, even if the page is empty. Stop when the required person is found.',
 	},
 	{
 		name: 'search_channels',

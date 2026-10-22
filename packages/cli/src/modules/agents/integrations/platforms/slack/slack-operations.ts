@@ -12,7 +12,6 @@ import { stringValue, unsupportedQuery } from '../../integration-helpers';
 import type { IntegrationContextQuery } from '../../integration-tools';
 
 const PLATFORM = 'slack';
-const MAX_USER_SEARCH_PAGES = 5;
 
 const getUserSchema = z.object({ userId: z.string().min(1) });
 const getChannelInfoSchema = z.object({ channelId: z.string().min(1) });
@@ -189,7 +188,7 @@ async function searchSlackUsers(
 			abortSignal?.throwIfAborted();
 			const code = isRecord(error) && isRecord(error.data) ? error.data.error : undefined;
 			if (code === 'users_not_found' && !input.includeDeleted) {
-				return { ok: true, users: [], resultCount: 0, searchComplete: true };
+				return { ok: true, users: [], resultCount: 0 };
 			}
 			// The directory can contain deactivated users that email lookup excludes.
 			if (code !== 'missing_scope' && code !== 'users_not_found') throw error;
@@ -197,54 +196,36 @@ async function searchSlackUsers(
 	}
 	if (!usersApi.list) return unsupportedQuery(PLATFORM, 'search_users');
 
-	let position = readSlackSearchCursor('users', input.cursor);
+	const position = readSlackSearchCursor('users', input.cursor);
+	const options = await withSlackToken(adapter, {
+		limit: SLACK_SEARCH_PAGE_SIZE,
+		...(position.cursor ? { cursor: position.cursor } : {}),
+	});
+	abortSignal?.throwIfAborted();
+	const response = await usersApi.list(options);
+	abortSignal?.throwIfAborted();
 	const searchTerm = normalizeSearchTerm(input.query ?? email ?? '');
-	let users: SlackUserSearchResult[] = [];
-	let nextCursor: string | undefined;
-	for (let page = 0; page < MAX_USER_SEARCH_PAGES; page++) {
-		const options = await withSlackToken(adapter, {
-			limit: SLACK_SEARCH_PAGE_SIZE,
-			...(position.cursor ? { cursor: position.cursor } : {}),
-		});
-		abortSignal?.throwIfAborted();
-		const response = await usersApi.list(options);
-		abortSignal?.throwIfAborted();
-		const matches = new Map<string, SlackUserSearchResult>();
-		for (const rawUser of response.members ?? []) {
-			if (!shouldIncludeUser(rawUser, input) || !matchesUserSearch(rawUser, searchTerm, email))
-				continue;
-			const user = normalizeSlackUser(rawUser);
-			if (user) matches.set(user.userId, user);
-		}
-		({ results: users, nextCursor } = selectSlackSearchPage({
-			kind: 'users',
-			matches: [...matches.values()],
-			limit: input.limit,
-			position,
-			nextCursor: response.response_metadata?.next_cursor || undefined,
-		}));
-		if (users.length > 0 || !nextCursor) break;
-		position = readSlackSearchCursor('users', nextCursor);
+	const matches = new Map<string, SlackUserSearchResult>();
+	for (const rawUser of response.members ?? []) {
+		if (!shouldIncludeUser(rawUser, input) || !matchesUserSearch(rawUser, searchTerm, email))
+			continue;
+		const user = normalizeSlackUser(rawUser);
+		if (user) matches.set(user.userId, user);
 	}
-	return {
-		ok: true,
-		users,
-		resultCount: users.length,
-		searchComplete: !nextCursor,
-		...(nextCursor ? { nextCursor } : {}),
-		...(users.length === 0 && nextCursor
-			? {
-					message:
-						'This search is incomplete. These pages contain no matching users. Continue with nextCursor and the same search inputs. Do not report that the user does not exist until searchComplete is true.',
-				}
-			: {}),
-	};
+	const { results: users, nextCursor } = selectSlackSearchPage({
+		kind: 'users',
+		matches: [...matches.values()],
+		limit: input.limit,
+		position,
+		nextCursor: response.response_metadata?.next_cursor || undefined,
+	});
+	return { ok: true, users, resultCount: users.length, ...(nextCursor ? { nextCursor } : {}) };
 }
 
 function userLookupResult(rawUser: SlackUser | undefined, input: SearchUsersInput) {
 	const user = shouldIncludeUser(rawUser, input) ? normalizeSlackUser(rawUser) : undefined;
 	const users = user ? [user] : [];
-	return { ok: true, users, resultCount: users.length, searchComplete: true };
+	return { ok: true, users, resultCount: users.length };
 }
 
 async function searchSlackChannels(
