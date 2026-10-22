@@ -16,6 +16,7 @@ import type { IntegrationMessageContextService } from '../../integration-message
 import type {
 	IntegrationMessageContext,
 	IntegrationMessageContextStore,
+	SessionReplyScope,
 } from '../../integration-tools';
 import { getIntegrationToolConnectionDescriptors } from '../../integration-tools';
 import { AgentResourceRepository } from '../../../repositories/agent-resource.repository';
@@ -69,6 +70,11 @@ export class MemoryMessageContextStore implements IntegrationMessageContextStore
 		derivedThreadId: string,
 	): Promise<{ threadId: string; resourceId: string } | null> {
 		return await Promise.resolve(this.bindings.get(derivedThreadId) ?? null);
+	}
+
+	async resolveSessionReplyScope(derivedThreadId: string): Promise<SessionReplyScope | null> {
+		const binding = await this.resolveSession(derivedThreadId);
+		return binding ? { binding, sharedWithOtherRecipients: false, outboundMessages: [] } : null;
 	}
 
 	async unbindSession(derivedThreadId: string): Promise<void> {

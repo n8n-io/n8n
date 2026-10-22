@@ -162,8 +162,14 @@ export interface IntegrationMessageContextStore {
 		resourceId: string,
 		context: IntegrationMessageContext,
 	): Promise<void>;
-	bindSession(derivedThreadId: string, origin: SessionBinding): Promise<void>;
+	/** `outboundText` is the message the task sent to this recipient. */
+	bindSession(
+		derivedThreadId: string,
+		origin: SessionBinding,
+		outboundText?: string,
+	): Promise<void>;
 	resolveSession(derivedThreadId: string): Promise<SessionBinding | null>;
+	resolveSessionReplyScope(derivedThreadId: string): Promise<SessionReplyScope | null>;
 	unbindSession(derivedThreadId: string): Promise<void>;
 	clearSessionBindings(originThreadId: string): Promise<void>;
 }
@@ -171,6 +177,15 @@ export interface IntegrationMessageContextStore {
 export interface SessionBinding {
 	threadId: string;
 	resourceId: string;
+}
+
+/** What a reply on a task-bound thread may see of the task's session. */
+export interface SessionReplyScope {
+	binding: SessionBinding;
+	/** True when the task also messaged other recipients. */
+	sharedWithOtherRecipients: boolean;
+	/** Messages the task sent to this recipient, oldest first. */
+	outboundMessages: string[];
 }
 
 export interface IntegrationContextQueryParams {

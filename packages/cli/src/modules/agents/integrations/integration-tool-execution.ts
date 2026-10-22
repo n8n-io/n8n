@@ -296,6 +296,7 @@ export async function executeActionToolOperation(params: {
 			await messageContextStore.bindSession(
 				`${descriptor.agentId}:${messageContext.target.threadId}`,
 				{ threadId: persistence.threadId, resourceId: persistence.resourceId },
+				getOutboundText(message),
 			);
 		}
 		actionResult = { ...result, messageContext };
@@ -337,6 +338,13 @@ function isCurrentContextQuery(query: IntegrationContextQuery): boolean {
 		query === 'get_current_user' ||
 		query === 'get_current_channel_info'
 	);
+}
+
+function getOutboundText(message: z.infer<typeof messageSchema> | undefined): string | undefined {
+	const text = [message?.text, message?.card?.title, message?.card?.message]
+		.filter((part): part is string => typeof part === 'string' && part.length > 0)
+		.join('\n');
+	return text || undefined;
 }
 
 function parseMessage(value: unknown): z.infer<typeof messageSchema> | undefined {

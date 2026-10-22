@@ -1053,6 +1053,19 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 		});
 	});
 
+	describe('normalizeUserId', () => {
+		it.each(['+447397567320', '447397567320', '+44 7397-567-320'])(
+			'maps %s to the digits-only wa_id',
+			(input) => {
+				expect(createWhatsAppIntegration().normalizeUserId(input)).toBe('447397567320');
+			},
+		);
+
+		it('keeps an ID with no digits unchanged', () => {
+			expect(createWhatsAppIntegration().normalizeUserId('abc')).toBe('abc');
+		});
+	});
+
 	describe('deriveWhatsAppVerifyToken', () => {
 		it('derives the same verify token for repeated calls with the same agent ID', () => {
 			const first = deriveWhatsAppVerifyToken('encryption-key', 'agent-1');
