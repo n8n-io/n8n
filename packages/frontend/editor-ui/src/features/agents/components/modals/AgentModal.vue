@@ -209,11 +209,7 @@ function onOpenAutoFocus(event: Event) {
 
 		<N8nDialogBody
 			ref="bodyRoot"
-			:class="[
-				$style.body,
-				hasFooter && $style.bodyAboveFooter,
-				props.stableHeight && $style.bodyStableHeight,
-			]"
+			:class="[$style.body, props.stableHeight && $style.bodyStableHeight]"
 			:data-flush="props.bodyFlush ? 'true' : undefined"
 			:data-scrollable="props.bodyScrollable ? 'true' : 'false'"
 			data-testid="agent-modal-body"
@@ -350,11 +346,6 @@ function onOpenAutoFocus(event: Event) {
 	padding: 0 var(--agent-modal-body--padding-inline) var(--agent-modal-body--padding-block-end);
 
 	@include scrollbar-mixins.scroll-bar;
-}
-
-.bodyAboveFooter[data-slot='dialog-body'][data-scrollable] {
-	--agent-modal-body--padding-block-end: 0;
-	padding-block-end: 0;
 }
 
 .body[data-flush='true'][data-slot='dialog-body'][data-scrollable] {
