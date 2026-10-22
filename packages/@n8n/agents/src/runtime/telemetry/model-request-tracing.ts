@@ -1,4 +1,4 @@
-import { GEN_AI_ATTR, type GenAiProviderName } from '@n8n/ai-utilities/gen-ai';
+import type { GenAiProviderName } from '@n8n/ai-utilities/gen-ai';
 import type { Span, Tracer } from '@opentelemetry/api';
 
 import type { AttributeValue, BuiltTelemetry } from '../../types/telemetry';
@@ -50,8 +50,8 @@ export function traceModelRequests(
 		try {
 			const attributes: Record<string, AttributeValue> = {
 				'gen_ai.system': provider,
-				...(providerName ? { [GEN_AI_ATTR.PROVIDER_NAME]: providerName } : {}),
-				[GEN_AI_ATTR.REQUEST_MODEL]: model,
+				...(providerName ? { 'gen_ai.provider.name': providerName } : {}),
+				'gen_ai.request.model': model,
 			};
 			if (telemetry.isLangSmith) {
 				attributes['langsmith.traceable'] = 'true';
