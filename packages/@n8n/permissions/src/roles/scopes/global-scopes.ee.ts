@@ -82,6 +82,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'promotions:manageProjects',
 	'promotions:apply',
 	'promotions:readReviews',
+	'promotions:approveReviews',
 	'tag:create',
 	'tag:read',
 	'tag:update',
