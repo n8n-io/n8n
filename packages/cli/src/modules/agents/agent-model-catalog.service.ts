@@ -215,8 +215,8 @@ export class AgentModelCatalogService {
 	}
 
 	private logLiveLookupFailure(provider: string, error: unknown): void {
-		const log = error instanceof UserError ? this.logger.debug : this.logger.warn;
-		log('Live model list failed', {
+		const level = error instanceof UserError ? 'debug' : 'warn';
+		this.logger[level]('Live model list failed', {
 			provider,
 			error: error instanceof Error ? error.message : String(error),
 		});
