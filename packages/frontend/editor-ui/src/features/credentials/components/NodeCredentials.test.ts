@@ -272,7 +272,7 @@ describe('NodeCredentials', () => {
 	});
 
 	it.each([false, true])(
-		'offers end-user credentials with forAgent set to %s',
+		'offers end-user credentials only outside agents (forAgent=%s)',
 		async (forAgent) => {
 			credentialsStore.state.credentials = {
 				fixed: createCredential({ id: 'fixed' }),

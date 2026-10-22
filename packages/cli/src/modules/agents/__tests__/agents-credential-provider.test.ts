@@ -70,6 +70,7 @@ describe('AgentsCredentialProvider', () => {
 		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
 			projectId: 'project-1',
 			excludePersonalRoute: true,
+			excludeResolvable: true,
 		});
 		expect(credentialsService.findAllCredentialIdsForProject).not.toHaveBeenCalled();
 	});
@@ -137,7 +138,6 @@ describe('AgentsCredentialProvider', () => {
 			credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
 			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
 				mock({ id: fixed.id, name: fixed.name, type: fixed.type, isResolvable: false }),
-				mock({ id: endUser.id, name: endUser.name, type: endUser.type, isResolvable: true }),
 			]);
 			const provider = new AgentsCredentialProvider(
 				credentialsService,

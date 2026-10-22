@@ -123,6 +123,7 @@ describe('AgentCredentialLookupService', () => {
 			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
 				projectId: PROJECT_ID,
 				excludePersonalRoute: true,
+				excludeResolvable: true,
 			});
 		});
 

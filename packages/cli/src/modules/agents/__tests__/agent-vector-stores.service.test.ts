@@ -70,7 +70,7 @@ function makeService(
 			scopes: [],
 			isManaged: false,
 			isGlobal: false,
-			isResolvable: true,
+			isResolvable: false,
 			currentUserHasAccess: true,
 			homeProject: null,
 			sharedWithProjects: [],

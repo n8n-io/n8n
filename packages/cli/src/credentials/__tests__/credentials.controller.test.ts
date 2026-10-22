@@ -139,24 +139,27 @@ describe('CredentialsController', () => {
 
 	describe('getProjectCredentials', () => {
 		it.each(['true', 'false', undefined] as const)(
-			'filters end-user credentials when forAgent is %s',
+			'requests agent credential restrictions only when forAgent is true (forAgent=%s)',
 			async (forAgent) => {
 				const fixed = mock<
 					Awaited<ReturnType<CredentialsService['getCredentialsAUserCanUseInAWorkflow']>>[number]
 				>({ id: 'fixed', isResolvable: false });
-				const endUser = { ...fixed, id: 'end-user', isResolvable: true };
-				vi.spyOn(credentialsService, 'getCredentialsAUserCanUseInAWorkflow').mockResolvedValue([
-					fixed,
-					endUser,
-				]);
+				const getUsableCredentials = vi
+					.spyOn(credentialsService, 'getCredentialsAUserCanUseInAWorkflow')
+					.mockResolvedValue([fixed]);
 				const request = mock<CredentialRequest.ForWorkflow>({
 					user: req.user,
 					query: { projectId: 'project-1', forAgent },
 				});
 
-				await expect(credentialsController.getProjectCredentials(request)).resolves.toEqual(
-					forAgent === 'true' ? [fixed] : [fixed, endUser],
-				);
+				await expect(credentialsController.getProjectCredentials(request)).resolves.toEqual([
+					fixed,
+				]);
+				expect(getUsableCredentials).toHaveBeenCalledWith(request.user, {
+					projectId: 'project-1',
+					excludePersonalRoute: forAgent === 'true',
+					excludeResolvable: forAgent === 'true',
+				});
 			},
 		);
 	});

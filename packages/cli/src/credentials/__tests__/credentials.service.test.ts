@@ -3341,6 +3341,49 @@ describe('CredentialsService', () => {
 			);
 		});
 
+		it.each([true, false, undefined])(
+			'excludes end-user credentials only when requested (excludeResolvable=%s)',
+			async (excludeResolvable) => {
+				const projectEndUser = mock<CredentialsEntity>({
+					...regularCredential,
+					id: 'project-end-user',
+					isResolvable: true,
+				});
+				const fixedGlobal = mock<CredentialsEntity>({
+					...globalCredential,
+					id: 'global-fixed',
+					isResolvable: false,
+				});
+				credentialsFinderService.findCredentialsForUser.mockResolvedValue([
+					regularCredential,
+					projectEndUser,
+					fixedGlobal,
+					globalCredential,
+				]);
+				credentialsRepository.findAllCredentialsForProject.mockResolvedValue([
+					regularCredential,
+					projectEndUser,
+				]);
+				credentialsRepository.findAllCredentialsForWorkflow.mockResolvedValue([
+					regularCredential,
+					projectEndUser,
+				]);
+
+				for (const scope of [{ projectId: 'project-1' }, { workflowId: 'workflow-1' }]) {
+					const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+						...scope,
+						excludeResolvable,
+					});
+
+					expect(result.map(({ id }) => id)).toEqual(
+						excludeResolvable
+							? ['cred-1', 'global-fixed']
+							: ['cred-1', 'project-end-user', 'global-fixed', 'cred-2'],
+					);
+				}
+			},
+		);
+
 		it.each([null, 'x'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH)])(
 			'returns the stored description in a workflow-scoped list',
 			async (description) => {

@@ -118,7 +118,7 @@ describe('TeamsManagedSetupService', () => {
 
 			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(
 				scope.user,
-				expect.objectContaining({ excludePersonalRoute: true }),
+				expect.objectContaining({ excludePersonalRoute: true, excludeResolvable: true }),
 			);
 		});
 

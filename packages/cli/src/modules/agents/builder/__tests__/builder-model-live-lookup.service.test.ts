@@ -330,6 +330,7 @@ describe('BuilderModelLiveLookupService', () => {
 		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
 			projectId,
 			excludePersonalRoute: true,
+			excludeResolvable: true,
 		});
 		// Credential fields are mapped for the provider (anthropic: apiKey + url→baseURL).
 		expect(listModelsForProvider).toHaveBeenCalledWith(

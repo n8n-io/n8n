@@ -450,7 +450,7 @@ export class AgentIntegrationManagementService {
 
 		const usableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
 			user,
-			{ projectId: agent.projectId, excludePersonalRoute: true },
+			{ projectId: agent.projectId, excludePersonalRoute: true, excludeResolvable: true },
 		);
 		const credential = usableCredentials.find((item) => item.id === integration.credentialId);
 		if (!credential) {

@@ -116,16 +116,11 @@ export class CredentialsController {
 			.union([z.object({ workflowId: z.string() }), z.object({ projectId: z.string() })])
 			.and(z.object({ forAgent: z.enum(['true', 'false']).optional() }))
 			.parse(req.query);
-		const credentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
-			req.user,
-			{
-				...scope,
-				excludePersonalRoute: forAgent === 'true',
-			},
-		);
-		return forAgent === 'true'
-			? credentials.filter((credential) => !credential.isResolvable)
-			: credentials;
+		return await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(req.user, {
+			...scope,
+			excludePersonalRoute: forAgent === 'true',
+			excludeResolvable: forAgent === 'true',
+		});
 	}
 
 	@Get('/new')
