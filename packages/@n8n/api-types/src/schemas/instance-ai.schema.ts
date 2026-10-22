@@ -314,6 +314,7 @@ export const instanceAiAgentKindSchema = z.enum([
 	'planner',
 	'eval-setup',
 	'agent-builder',
+	'cloud-browser',
 ]);
 export type InstanceAiAgentKind = z.infer<typeof instanceAiAgentKindSchema>;
 
@@ -768,6 +769,8 @@ export type InstanceGatewayResourceDecision = z.infer<typeof instanceGatewayReso
 
 export const gatewayConfirmationRequiredWirePayloadSchema = z.object({
 	toolGroup: z.string(),
+	/** What resource the approval is for: a site to open (`host`) or a credential to save (`credential-write`). */
+	kind: z.enum(['host', 'credential-write']).optional(),
 	resource: z.string(),
 	description: z.string(),
 	/** Available decision options. */
