@@ -4,15 +4,11 @@ import { useToast } from '@n8n/composables/useToast';
 import { computed, onScopeDispose, shallowRef, watch } from 'vue';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useUsersStore } from '@n8n/stores/users.store';
 import { useI18n } from '@n8n/i18n';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import type {
-	Project,
-	ResourceEditorDestination,
-} from '@/features/collaboration/projects/projects.types';
+import type { ResourceEditorDestination } from '@/features/collaboration/projects/projects.types';
 import { createPublicProject } from '@/features/collaboration/projects/projects.api';
 import { createPublicCredential } from '@/features/credentials/credentials.api';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -30,7 +26,6 @@ import type {
 
 type MissingCredentialBinding = Extract<MissingPromotionBinding, { kind: 'credential' }>;
 type MissingVariableBinding = Extract<MissingPromotionBinding, { kind: 'variable' }>;
-type CreateResource = 'credential' | 'projectVariable';
 type EditorSetup = { destination?: ResourceEditorDestination; notice?: () => string };
 // Connects an open editor to its pending createBinding call.
 type EditorSession = {
@@ -46,7 +41,6 @@ export function usePromotionBindingCreation(
 	const uiStore = useUIStore();
 	const rootStore = useRootStore();
 	const projectsStore = useProjectsStore();
-	const usersStore = useUsersStore();
 	const credentialsStore = useCredentialsStore();
 	const environmentsStore = useEnvironmentsStore();
 	const i18n = useI18n();
@@ -71,11 +65,7 @@ export function usePromotionBindingCreation(
 		return project;
 	}
 
-	function canCreateIn(project: Project, resource: CreateResource) {
-		return project.type === 'team' && getResourcePermissions(project.scopes)[resource].create;
-	}
-
-	async function ensureProject(id: string, resource: CreateResource) {
+	async function ensureProject(id: string, resource: 'credential' | 'projectVariable') {
 		const missing = preflight.missingProjects.find((project) => project.id === id);
 		if (missing && !knownProjectIds.has(id)) {
 			try {
@@ -97,7 +87,7 @@ export function usePromotionBindingCreation(
 		}
 		const project = await loadProject(id);
 		knownProjectIds.add(id);
-		if (!canCreateIn(project, resource)) {
+		if (project.type !== 'team' || !getResourcePermissions(project.scopes)[resource].create) {
 			throw new Error(i18n.baseText('promotions.bindings.destinationDenied'));
 		}
 		return project;
@@ -147,29 +137,6 @@ export function usePromotionBindingCreation(
 			throw new Error(i18n.baseText('promotions.bindings.variablesUnavailable'));
 		}
 		await environmentsStore.fetchAllVariables();
-	}
-
-	function canCreate(resource: CreateResource, destination?: ResourceEditorDestination) {
-		if (!destination) {
-			return getResourcePermissions(usersStore.currentUser?.globalScopes).variable.create;
-		}
-		if (destination.kind === 'resolved') return canCreateIn(destination.project, resource);
-		return destination.permissions.create;
-	}
-
-	function assertCanCreate(resource: CreateResource, destination?: ResourceEditorDestination) {
-		if (canCreate(resource, destination)) return;
-		if (destination?.kind === 'resolved') {
-			throw new Error(i18n.baseText('promotions.bindings.destinationDenied'));
-		}
-		if (destination && !projectsStore.hasTeamProjectQuota) {
-			throw new Error(
-				i18n.baseText('promotions.bindings.projectLimitReached', {
-					interpolate: { projectName: destination.name },
-				}),
-			);
-		}
-		throw new Error(i18n.baseText('promotions.bindings.instanceDenied'));
 	}
 
 	function openCredentialEditor(
@@ -266,10 +233,6 @@ export function usePromotionBindingCreation(
 			const setup = await prepareDestination(bindingProject(binding));
 			await assertEditorAvailable(binding);
 			if (disposed) return null;
-			assertCanCreate(
-				binding.kind === 'credential' ? 'credential' : 'projectVariable',
-				setup.destination,
-			);
 			const modalName =
 				binding.kind === 'credential' ? CREDENTIAL_EDIT_MODAL_KEY : VARIABLE_MODAL_KEY;
 			if (uiStore.modalsById[modalName]?.open)

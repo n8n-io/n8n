@@ -24,8 +24,6 @@ const stores = vi.hoisted(() => ({
 		hasTeamProjectQuota: true,
 		hasPermissionToCreateProjects: true,
 	},
-	users: { currentUser: { globalScopes: ['variable:create'] } },
-	showError: vi.fn(),
 	credentials: { fetchCredentialTypes: vi.fn(), getCredentialTypeByName: vi.fn() },
 	environments: { fetchAllVariables: vi.fn(), createVariable: vi.fn() },
 	ui: {
@@ -45,13 +43,10 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 vi.mock('@/features/settings/environments.ee/environments.store', () => ({
 	useEnvironmentsStore: () => stores.environments,
 }));
-vi.mock('@n8n/stores/users.store', () => ({ useUsersStore: () => stores.users }));
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ publicApiContext: { baseUrl: '/custom/api/v1' } }),
 }));
-vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showError: stores.showError }),
-}));
+vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showError: vi.fn() }) }));
 vi.mock('@/features/collaboration/projects/projects.api', () => ({ createPublicProject: vi.fn() }));
 vi.mock('@/features/credentials/credentials.api', () => ({ createPublicCredential: vi.fn() }));
 
@@ -92,9 +87,6 @@ function setup(missingProjects = false) {
 
 beforeEach(() => {
 	vi.resetAllMocks();
-	stores.projects.hasTeamProjectQuota = true;
-	stores.projects.hasPermissionToCreateProjects = true;
-	stores.users.currentUser = { globalScopes: ['variable:create'] };
 	stores.ui.modalsById = reactive({
 		[CREDENTIAL_EDIT_MODAL_KEY]: { open: false },
 		[VARIABLE_MODAL_KEY]: { open: false },
@@ -268,55 +260,3 @@ it('blocks concurrent editors and ignores callbacks after closure', async () => 
 	stores.ui.modalsById[VARIABLE_MODAL_KEY].open = false;
 	await nextTick();
 });
-
-it.each([
-	{
-		name: 'credential in a project without credential access',
-		binding: credential,
-		prepare: () =>
-			stores.projects.fetchProject.mockResolvedValue({
-				...project,
-				scopes: ['projectVariable:create'],
-			}),
-		message:
-			"You can't create this item in the destination project. Ask a project admin for access.",
-	},
-	{
-		name: 'project variable in a missing project without team project quota',
-		binding: { ...variable, scope: { kind: 'project' as const, project: credential.ownerProject } },
-		missingProjects: true,
-		prepare: () => {
-			stores.projects.hasTeamProjectQuota = false;
-		},
-		message: `You can't create the project ${missingProject.name}. This instance has reached its team project limit.`,
-	},
-	{
-		name: 'credential in a missing project without project access',
-		binding: credential,
-		missingProjects: true,
-		prepare: () => {
-			stores.projects.hasPermissionToCreateProjects = false;
-		},
-		message: "You can't create this item on this instance. Ask an instance admin for access.",
-	},
-	{
-		name: 'global variable without variable access',
-		binding: variable,
-		prepare: () => {
-			stores.users.currentUser = { globalScopes: [] };
-		},
-		message: "You can't create this item on this instance. Ask an instance admin for access.",
-	},
-])(
-	'says why an item cannot be created before it opens the editor: $name',
-	async ({ binding, missingProjects, prepare, message }) => {
-		prepare();
-		await expect(setup(missingProjects).createBinding(binding)).rejects.toThrow(message);
-		expect(stores.showError).toHaveBeenCalledWith(
-			expect.objectContaining({ message }),
-			"Couldn't open the editor",
-		);
-		expect(stores.ui.openNewCredential).not.toHaveBeenCalled();
-		expect(stores.ui.openModalWithData).not.toHaveBeenCalled();
-	},
-);

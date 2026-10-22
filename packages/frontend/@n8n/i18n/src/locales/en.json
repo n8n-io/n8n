@@ -9915,8 +9915,6 @@
 	"promotions.bindings.projectSetup.retained": "Created project {projectName}. It stays when you close this dialog.",
 	"promotions.bindings.variablesUnavailable": "Variables aren't available on this plan. Upgrade your plan to create this variable.",
 	"promotions.bindings.destinationDenied": "You can't create this item in the destination project. Ask a project admin for access.",
-	"promotions.bindings.instanceDenied": "You can't create this item on this instance. Ask an instance admin for access.",
-	"promotions.bindings.projectLimitReached": "You can't create the project {projectName}. This instance has reached its team project limit.",
 	"promotions.bindings.editorBusy": "Another editor is open. Close it and try again.",
 	"promotions.bindings.editorClosed": "The editor closed. Open it again to continue.",
 	"promotions.preview.title.promote": "Changes to promote",
