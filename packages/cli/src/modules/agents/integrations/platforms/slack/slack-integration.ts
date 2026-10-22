@@ -1,3 +1,4 @@
+import type { ResolvedEpisodicScope } from '@n8n/agents';
 import type {
 	AgentIntegrationConfig,
 	AgentIntegrationDisconnectWarning,
@@ -16,6 +17,7 @@ import {
 	type BridgeExecutionContext,
 	type BridgeMessageContextParams,
 	type BridgeResumeExecutionContext,
+	type EpisodicScopeContext,
 	type PlatformAgentContext,
 	type PlatformContextQueryParams,
 	type UnauthenticatedWebhookContext,
@@ -23,13 +25,13 @@ import {
 } from '../../agent-chat-integration';
 import type { ChatInstance } from '../../chat-integration.service';
 import { assertCredentialNotClaimed } from '../../credential-claim';
-import { loadSlackAdapter } from '../../esm-loader';
 import { connectionUnavailable } from '../../integration-helpers';
 import {
 	resolveIntegrationActionDefinitions,
 	resolveIntegrationContextQueryDefinitions,
 } from '../../integration-tool-definitions';
 import type { ReplyExpectation } from '../../integration-tools';
+import { createSlackSourceAdapter } from './slack-adapter';
 import {
 	createSlackBridgeExecutionContext,
 	createSlackResumeExecutionContext,
@@ -201,11 +203,39 @@ export class SlackIntegration extends AgentChatIntegration {
 		return await buildSlackOriginDraft(input, decoded);
 	}
 
+	resolveEpisodicScope({
+		agentId,
+		integrationType,
+		author,
+		origin,
+	}: EpisodicScopeContext): ResolvedEpisodicScope | null {
+		if (integrationType !== 'slack' || origin?.type !== 'slack') return null;
+		if (!agentId || !origin.workspaceId || !origin.channelId) return null;
+
+		let ownerId: string;
+		switch (origin.conversationKind) {
+			case 'channel':
+			case 'group':
+				ownerId = origin.channelId;
+				break;
+			case 'dm':
+				ownerId = author.id;
+				break;
+			default:
+				return null;
+		}
+		if (!ownerId || ownerId === 'unknown') return null;
+
+		const scopeId = ['slack', agentId, origin.workspaceId, origin.conversationKind, ownerId]
+			.map(encodeURIComponent)
+			.join(':');
+		return { writeScopeId: scopeId, readScopeIds: [scopeId] };
+	}
+
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {
 		const botToken = this.extractBotToken(ctx.credential);
 		const signingSecret = this.extractSigningSecret(ctx.credential);
-		const { createSlackAdapter } = await loadSlackAdapter();
-		return createSlackAdapter({
+		return await createSlackSourceAdapter({
 			botToken,
 			signingSecret,
 			// Post-and-edit delivers short updates without a native stream buffer.

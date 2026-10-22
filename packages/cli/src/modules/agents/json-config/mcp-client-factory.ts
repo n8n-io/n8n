@@ -4,14 +4,19 @@ import type {
 	McpServerConfig,
 	McpConnectionFailedEvent,
 } from '@n8n/agents';
-import type { AgentJsonMcpServerConfig } from '@n8n/api-types';
+import { AI_GATEWAY_MANAGED_TAG, type AgentJsonMcpServerConfig } from '@n8n/api-types';
 import { compileMcpToolPermissions } from '@n8n/ai-utilities/agent-config';
 import type { CustomFetch } from '@n8n/backend-network';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { getMcpAuthHeaders, isMcpOAuth2Authentication, OperationalError } from 'n8n-workflow';
-import type { ICredentialDataDecryptedObject, McpRegistryConnection } from 'n8n-workflow';
+import { getMcpAuthHeaders, isMcpRegistryAuthentication, OperationalError } from 'n8n-workflow';
+import type {
+	ICredentialDataDecryptedObject,
+	McpAiGatewayCredentialType,
+	McpRegistryConnection,
+} from 'n8n-workflow';
 
 import {
+	findAiGatewayCredentialType,
 	prepareMcpRegistryConnection,
 	toAgentMcpTransport,
 } from '@/modules/mcp-registry/mcp-registry-connection';
@@ -65,8 +70,28 @@ async function deriveAuthHeaders(
 	}
 }
 
+/** Mints the Gateway credits credential of an MCP registry server. It has no stored id. */
+export interface AiGatewayMcpCredentialResolver {
+	resolveAiGatewayMcpCredential(
+		credentialType: McpAiGatewayCredentialType,
+	): Promise<ICredentialDataDecryptedObject>;
+}
+
+/** Mint the credential of the connection's Gateway credits option. */
+async function mintAiGatewayCredential(
+	connection: McpRegistryConnection,
+	credentialProvider: Partial<AiGatewayMcpCredentialResolver>,
+) {
+	const credentialType = findAiGatewayCredentialType(connection);
+	if (!credentialType || !credentialProvider.resolveAiGatewayMcpCredential) {
+		throw new OperationalError('MCP registry server does not offer Gateway credits');
+	}
+	const credentialData = await credentialProvider.resolveAiGatewayMcpCredential(credentialType);
+	return { credentialType, credentialData };
+}
+
 export interface BuildMcpClientDeps {
-	credentialProvider: CredentialProvider;
+	credentialProvider: CredentialProvider & Partial<AiGatewayMcpCredentialResolver>;
 	resolveRegistryConnection?: (nodeTypeName: string) => Promise<McpRegistryConnection | undefined>;
 	/**
 	 * Used to refresh OAuth2 tokens before expiry or after a 401 response without an
@@ -119,7 +144,7 @@ export async function buildMcpClientForServer(
 	const { McpClient } = await import('@n8n/agents');
 
 	const derivedAuth = await deriveAuthHeaders(server, credentialProvider);
-	const { credentialData, credentialType } = derivedAuth;
+	let { credentialData, credentialType } = derivedAuth;
 	let { headers: initialHeaders, credentialError } = derivedAuth;
 	let runtimeUrl = server.url;
 	let runtimeTransport = server.transport;
@@ -127,6 +152,8 @@ export async function buildMcpClientForServer(
 	let allowedDomains = credentialData
 		? resolveMcpAuthDomainPolicy(server.authentication, credentialData, mcpHostname)
 		: undefined;
+
+	let refreshHeaders: (() => Promise<Record<string, string> | null>) | undefined;
 
 	const registryNodeName = server.metadata?.nodeTypeName;
 	if (!registryNodeName && credentialType?.endsWith('McpOAuth2Api')) {
@@ -136,11 +163,24 @@ export async function buildMcpClientForServer(
 	} else if (registryNodeName) {
 		try {
 			const connection = await deps.resolveRegistryConnection?.(registryNodeName);
+			// Gateway credits entries carry the same marker as Gateway credits models. Mint only for it:
+			// an entry whose own credential is missing must fail, not switch to Gateway credits.
+			if (connection && server.credential === AI_GATEWAY_MANAGED_TAG) {
+				const minted = await mintAiGatewayCredential(connection, credentialProvider);
+				credentialType = minted.credentialType;
+				credentialData = minted.credentialData;
+				// The token expires while a cached runtime still uses this client, so mint again on a 401.
+				refreshHeaders = async () => {
+					const fresh = await mintAiGatewayCredential(connection, credentialProvider);
+					const prepared = prepareMcpRegistryConnection({ connection, ...fresh });
+					return prepared.ok ? prepared.value.headers : null;
+				};
+			}
 			if (
 				!connection ||
 				!credentialData ||
 				!credentialType ||
-				!isMcpOAuth2Authentication(credentialType)
+				!isMcpRegistryAuthentication(credentialType)
 			) {
 				throw new OperationalError('MCP registry connection could not be resolved');
 			}
@@ -192,6 +232,7 @@ export async function buildMcpClientForServer(
 					oauthService,
 					projectId,
 					allowedDomains,
+					refreshHeaders,
 				}),
 			};
 

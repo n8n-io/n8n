@@ -110,6 +110,11 @@ export class LinearIntegration extends AgentChatIntegration {
 		return buildLinearOriginDraft(input, decoded);
 	}
 
+	/** Episodic memory stays off until this channel defines its ownership policy. */
+	resolveEpisodicScope() {
+		return null;
+	}
+
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {
 		const accessToken = this.extractAccessToken(ctx.credential);
 		const webhookSecret = this.extractSigningSecret(ctx.credential);

@@ -2372,7 +2372,7 @@ describe('AgentBuilderView — preview routing', () => {
 			expect(windowOpen).not.toHaveBeenCalled();
 			expect(trackMock).toHaveBeenCalledExactlyOnceWith(
 				TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_DETAILS_FROM_TEST_PANEL,
-				{ agent_id: agentId, session_id: 'tab-1' },
+				{ agent_id: agentId, push_ref: 'tab-1' },
 			);
 			expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('effectiveSessionId')).toBe(
 				'thread-1',

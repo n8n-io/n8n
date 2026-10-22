@@ -9,7 +9,7 @@
 //
 // What's tested: the orchestrator's first dispatch decision. Most tools are
 // NOT stubbed — when the orchestrator loads a skill or reaches for a
-// Computer Use browser tool, the tool-call event fires before any downstream
+// Browser Use tool, the tool-call event fires before any downstream
 // failure, so the discovery check still sees the dispatch intent. The Agent
 // Builder tools are the exception: they accept any input and report success,
 // and `agent_builder_select_agent` runs against a stub builder delegate. Only
@@ -71,7 +71,7 @@ import { AGENT_BUILDER_ORCHESTRATOR_TOOL_NAMES } from '../../src/tools/tool-ids'
 import type {
 	InstanceAiContext,
 	InstanceAiBuilderDelegate,
-	ComputerUseState,
+	BrowserUseState,
 	ModelConfig,
 	OrchestrationContext,
 	TaskStorage,
@@ -356,27 +356,14 @@ function applyInstanceState(
 	const state = scenario.instanceState;
 	if (!state) return base;
 
-	const computerUse: ComputerUseState | undefined = state.computerUse;
-	// Both channels can serve tools, so the stub server gets the union.
-	const liveToolCategories = computerUse
-		? Object.values(computerUse).flatMap((channel) =>
-				channel.status === 'connected' ? channel.toolCategories : [],
-			)
-		: [];
+	const browserUse: BrowserUseState | undefined = state.browserUse;
 
 	const localMcpServer =
-		liveToolCategories.length > 0
-			? createStubLocalMcpServer({
-					capabilities: liveToolCategories.filter(
-						(c): c is 'browser' | 'filesystem' | 'shell' =>
-							c === 'browser' || c === 'filesystem' || c === 'shell',
-					),
-				})
-			: base.localMcpServer;
+		browserUse?.status === 'connected' ? createStubLocalMcpServer() : base.localMcpServer;
 
 	return {
 		...base,
-		...(computerUse ? { computerUseState: computerUse } : {}),
+		...(browserUse ? { browserUseState: browserUse } : {}),
 		...(localMcpServer ? { localMcpServer } : {}),
 		...(mcpRegistry ? { mcpService: mcpRegistry.service } : {}),
 		...(state.folderExploration !== undefined
@@ -465,7 +452,7 @@ function createStubOrchestrationContext(
 		skills: loadInstanceAiSkills(),
 		abortSignal: opts.abortSignal,
 		taskStorage,
-		// Surface the localMcpServer so Computer Use browser tools are available to the
+		// Surface the localMcpServer so Browser Use tools are available to the
 		// orchestrator.
 		...(opts.context.localMcpServer ? { localMcpServer: opts.context.localMcpServer } : {}),
 		// Registers the `workspace_*` file tools for workflow_builder_build_workflow
