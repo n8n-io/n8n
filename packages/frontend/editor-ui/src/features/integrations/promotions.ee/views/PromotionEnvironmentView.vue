@@ -273,6 +273,7 @@ onBeforeRouteLeave(() => {
 
 <template>
 	<N8nSettingsLayout
+		:class="$style.layout"
 		show-back
 		:back-label="i18n.baseText('settings.promotions.environment.back')"
 		@back="router.push(overview)"
@@ -499,6 +500,10 @@ onBeforeRouteLeave(() => {
 </template>
 
 <style lang="scss" module>
+.layout {
+	padding-top: 0;
+}
+
 .settings {
 	display: flex;
 	flex-direction: column;

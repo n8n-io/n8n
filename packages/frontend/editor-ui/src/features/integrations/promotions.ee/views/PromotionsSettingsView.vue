@@ -221,6 +221,7 @@ async function remove(environment: PromotionEnvironment) {
 
 .layout {
 	container-type: inline-size;
+	padding-top: 0;
 }
 
 .columns {

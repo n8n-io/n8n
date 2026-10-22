@@ -4200,7 +4200,7 @@
 	"settings.promotions.environment.reconnect": "Reconnect",
 	"settings.promotions.environment.remove": "Remove",
 	"settings.promotions.environment.remove.confirm.title": "Remove environment?",
-	"settings.promotions.environment.remove.confirm.message": "This removes {name} from this instance without affecting the Git repository. If no other environment uses the same provider, its connection details will also be deleted. This can't be undone.",
+	"settings.promotions.environment.remove.confirm.message": "This removes {name} from this instance without affecting the Git repository. If no other environment uses the same provider, n8n also deletes its connection details. This can't be undone.",
 	"settings.promotions.environment.remove.confirm.button": "Remove environment",
 	"settings.promotions.environment.toast.added": "Environment {name} added",
 	"settings.promotions.environment.toast.saved": "Environment {name} saved",
