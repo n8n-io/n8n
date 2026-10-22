@@ -39,6 +39,7 @@ export class AgentDefinitionService {
 	): Promise<AgentHistory> {
 		if (!agent.versionId) throw new ConflictError('Agent has no saved version');
 
+		// Check for an existing snapshot
 		const existing = await this.historyRepository.findByVersionAndAgentId(
 			agent.versionId,
 			agent.id,
@@ -46,7 +47,10 @@ export class AgentDefinitionService {
 		);
 		if (existing) return existing;
 
+		// Capture schema + skills snapshot
 		const snapshot = await this.agentSkillRefs.versionSnapshot(agent, ctx);
+
+		// Insert a new history row
 		const history = await this.historyRepository.saveVersion(
 			{
 				versionId: agent.versionId,
@@ -65,9 +69,12 @@ export class AgentDefinitionService {
 			},
 			ctx,
 		);
-		await this.agentSkillRefs.pinVersion(history.versionId, snapshot, ctx);
-		const tasks = await this.taskRepository.findByAgentId(agent.id, ctx);
 
+		// Link the skill versions
+		await this.agentSkillRefs.pinVersion(history.versionId, snapshot, ctx);
+
+		// Snapshot tasks
+		const tasks = await this.taskRepository.findByAgentId(agent.id, ctx);
 		await this.taskSnapshotRepository.saveForVersion(
 			tasks.map((task) => ({
 				...getAgentTaskBody(task),
