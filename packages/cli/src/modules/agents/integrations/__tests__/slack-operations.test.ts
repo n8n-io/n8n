@@ -17,8 +17,8 @@ function setup() {
 	});
 	const run = async (input: Record<string, unknown>, abortSignal?: AbortSignal) =>
 		await executeSlackContextQuery({ chat, query: 'search_users', input, abortSignal });
-	const channels = async (input: Record<string, unknown>) =>
-		await executeSlackContextQuery({ chat, query: 'search_channels', input });
+	const channels = async (input: Record<string, unknown>, abortSignal?: AbortSignal) =>
+		await executeSlackContextQuery({ chat, query: 'search_channels', input, abortSignal });
 	return { run, channels, list, info, lookupByEmail, conversationsList, chat };
 }
 
@@ -262,6 +262,125 @@ describe('Slack directory search', () => {
 
 		await expect(run({ query: 'Example Person' }, controller.signal)).rejects.toThrow();
 		expect(list).toHaveBeenCalledTimes(1);
+	});
+
+	it('continues past empty channel pages and stops at the first matching page', async () => {
+		const { channels, conversationsList } = setup();
+		conversationsList
+			.mockResolvedValueOnce({
+				channels: [{ id: 'C1', name: 'other' }],
+				response_metadata: { next_cursor: 'page-2' },
+			})
+			.mockResolvedValueOnce({
+				channels: [{ id: 'C2', name: 'team' }],
+				response_metadata: { next_cursor: 'page-3' },
+			});
+
+		await expect(channels({ query: '#team' })).resolves.toMatchObject({
+			ok: true,
+			channels: [{ channelId: 'C2' }],
+			resultCount: 1,
+			nextCursor: 'page-3',
+		});
+		expect(conversationsList.mock.calls.map(([options]) => options)).toEqual([
+			{ exclude_archived: true, limit: 200, types: 'public_channel,private_channel' },
+			{
+				exclude_archived: true,
+				limit: 200,
+				types: 'public_channel,private_channel',
+				cursor: 'page-2',
+			},
+		]);
+	});
+
+	it('returns a successful empty channel result only after the directory ends', async () => {
+		const { channels, conversationsList } = setup();
+		conversationsList
+			.mockResolvedValueOnce({
+				channels: [{ id: 'C1', name: 'other' }],
+				response_metadata: { next_cursor: 'page-2' },
+			})
+			.mockResolvedValueOnce({ channels: [], response_metadata: {} });
+
+		await expect(channels({ query: 'team' })).resolves.toEqual({
+			ok: true,
+			channels: [],
+			resultCount: 0,
+		});
+		expect(conversationsList).toHaveBeenCalledTimes(2);
+	});
+
+	it('returns an incomplete channel search with a usable continuation after five empty pages', async () => {
+		const { channels, conversationsList } = setup();
+		conversationsList.mockImplementation(async () => ({
+			channels: [],
+			response_metadata: { next_cursor: `page-${conversationsList.mock.calls.length + 1}` },
+		}));
+		const response = await channels({ query: 'team', limit: 1, includeArchived: true });
+		expect(response).not.toHaveProperty('channels');
+		expect(response).not.toHaveProperty('resultCount');
+		const result = z
+			.object({
+				ok: z.literal(false),
+				error: z.object({ code: z.literal('CONTEXT_SEARCH_INCOMPLETE'), message: z.string() }),
+				searchComplete: z.literal(false),
+				nextCursor: z.literal('page-6'),
+				nextQuery: z.object({
+					query: z.literal('search_channels'),
+					input: z.record(z.unknown()),
+				}),
+			})
+			.parse(response);
+		expect(result.error.message).toContain('Do not report that the channel does not exist');
+		expect(conversationsList).toHaveBeenCalledTimes(5);
+		expect(result.nextQuery.input).toMatchObject({
+			query: 'team',
+			limit: 1,
+			includeArchived: true,
+			cursor: 'page-6',
+		});
+		conversationsList.mockResolvedValueOnce({
+			channels: [{ id: 'C1', name: 'team', is_archived: true }],
+			response_metadata: {},
+		});
+
+		await expect(channels(result.nextQuery.input)).resolves.toMatchObject({
+			ok: true,
+			channels: [{ channelId: 'C1', isArchived: true }],
+		});
+		expect(conversationsList).toHaveBeenLastCalledWith({
+			exclude_archived: false,
+			limit: 200,
+			types: 'public_channel,private_channel',
+			cursor: 'page-6',
+		});
+	});
+
+	it('returns a channel match on the last allowed page', async () => {
+		const { channels, conversationsList } = setup();
+		conversationsList.mockImplementation(async () => ({
+			channels: conversationsList.mock.calls.length === 5 ? [{ id: 'C1', name: 'team' }] : [],
+			response_metadata: { next_cursor: `page-${conversationsList.mock.calls.length + 1}` },
+		}));
+
+		await expect(channels({ query: 'team' })).resolves.toMatchObject({
+			ok: true,
+			channels: [{ channelId: 'C1' }],
+			nextCursor: 'page-6',
+		});
+		expect(conversationsList).toHaveBeenCalledTimes(5);
+	});
+
+	it('does not request another channel page after cancellation', async () => {
+		const { channels, conversationsList } = setup();
+		const controller = new AbortController();
+		conversationsList.mockImplementationOnce(async () => {
+			controller.abort();
+			return { channels: [], response_metadata: { next_cursor: 'page-2' } };
+		});
+
+		await expect(channels({ query: 'team' }, controller.signal)).rejects.toThrow();
+		expect(conversationsList).toHaveBeenCalledTimes(1);
 	});
 
 	it('keeps every matching channel when the result limit splits a directory page', async () => {

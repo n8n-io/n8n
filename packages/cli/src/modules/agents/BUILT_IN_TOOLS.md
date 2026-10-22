@@ -92,8 +92,8 @@ Source: [`packages/@n8n/agents/src/workspace/tools/`](../../../../@n8n/agents/sr
 - Attach condition: Top-level agent with at least one configured chat integration, or a run through n8n Chat.
 - Read-only platform queries return `CONTEXT_QUERY_TIMEOUT` after 30 seconds. The agent can then explain the delay or use a more specific lookup. Cancellation stops the wait. A platform request can continue if its SDK does not support cancellation.
 - Use `get_user` for a known platform user ID. Use `search_users` with `email` for an exact email address. Slack also recognizes an email or user ID in `query`.
-- Slack user searches read up to five directory pages of 200 entries per call. They stop when a page has matches or the directory ends. If five pages have no matches and more remain, the tool returns `CONTEXT_SEARCH_INCOMPLETE` and `nextQuery` to continue. Only a completed search returns a successful empty user list.
-- Slack channel searches read one directory page of up to 200 entries per call. User and channel searches return `nextCursor` when more results remain. The cursor retains unused matches from the current page. An empty channel page with a cursor does not mean that the search is complete.
+- Slack user and channel searches read up to five directory pages of 200 entries per call. They stop when a page has matches or the directory ends. If five pages have no matches and more remain, the tool returns `CONTEXT_SEARCH_INCOMPLETE` and `nextQuery` to continue. Only a completed search returns a successful empty list.
+- Slack user and channel searches return `nextCursor` when more results remain. The cursor retains unused matches from the current page. Use `get_channel_info` when the channel ID is known.
 - Teams and Linear user searches use platform filters. They return a continuation cursor when the platform has another page.
 - Source: [`integrations/integration-tool-factory.ts`](./integrations/integration-tool-factory.ts).
 

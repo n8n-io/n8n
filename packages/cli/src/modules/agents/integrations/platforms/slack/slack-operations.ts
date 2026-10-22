@@ -13,7 +13,7 @@ import { integrationError, stringValue, unsupportedQuery } from '../../integrati
 import type { IntegrationContextQuery } from '../../integration-tools';
 
 const PLATFORM = 'slack';
-const MAX_USER_SEARCH_PAGES = 5;
+const MAX_SEARCH_PAGES = 5;
 
 const getUserSchema = z.object({ userId: z.string().min(1) });
 const getChannelInfoSchema = z.object({ channelId: z.string().min(1) });
@@ -200,7 +200,7 @@ async function searchSlackUsers(
 
 	let position = readSlackSearchCursor('users', input.cursor);
 	const searchTerm = normalizeSearchTerm(input.query ?? email ?? '');
-	for (let page = 0; page < MAX_USER_SEARCH_PAGES; page++) {
+	for (let page = 0; page < MAX_SEARCH_PAGES; page++) {
 		const options = await withSlackToken(adapter, {
 			limit: SLACK_SEARCH_PAGE_SIZE,
 			...(position.cursor ? { cursor: position.cursor } : {}),
@@ -253,36 +253,50 @@ async function searchSlackChannels(
 	const conversationsApi = adapter?.client?.conversations;
 	if (!adapter || !conversationsApi?.list) return unsupportedQuery(PLATFORM, 'search_channels');
 
-	const position = readSlackSearchCursor('channels', input.cursor);
-	const options = await withSlackToken(adapter, {
-		exclude_archived: !input.includeArchived,
-		limit: SLACK_SEARCH_PAGE_SIZE,
-		types: 'public_channel,private_channel',
-		...(position.cursor ? { cursor: position.cursor } : {}),
-	});
-	abortSignal?.throwIfAborted();
-	const response = await conversationsApi.list(options);
-	abortSignal?.throwIfAborted();
+	let position = readSlackSearchCursor('channels', input.cursor);
 	const searchTerm = normalizeChannelSearchTerm(input.query);
-	const matches = new Map<string, SlackChannelSearchResult>();
-	for (const rawChannel of response.channels ?? []) {
-		if (!input.includeArchived && rawChannel.is_archived === true) continue;
-		if (!matchesChannelSearch(rawChannel, searchTerm)) continue;
-		const channel = normalizeSlackChannel(rawChannel);
-		if (channel) matches.set(channel.channelId, channel);
+	for (let page = 0; page < MAX_SEARCH_PAGES; page++) {
+		const options = await withSlackToken(adapter, {
+			exclude_archived: !input.includeArchived,
+			limit: SLACK_SEARCH_PAGE_SIZE,
+			types: 'public_channel,private_channel',
+			...(position.cursor ? { cursor: position.cursor } : {}),
+		});
+		abortSignal?.throwIfAborted();
+		const response = await conversationsApi.list(options);
+		abortSignal?.throwIfAborted();
+		const matches = new Map<string, SlackChannelSearchResult>();
+		for (const rawChannel of response.channels ?? []) {
+			if (!input.includeArchived && rawChannel.is_archived === true) continue;
+			if (!matchesChannelSearch(rawChannel, searchTerm)) continue;
+			const channel = normalizeSlackChannel(rawChannel);
+			if (channel) matches.set(channel.channelId, channel);
+		}
+		const { results: channels, nextCursor } = selectSlackSearchPage({
+			kind: 'channels',
+			matches: [...matches.values()],
+			limit: input.limit,
+			position,
+			nextCursor: response.response_metadata?.next_cursor || undefined,
+		});
+		if (channels.length > 0 || !nextCursor) {
+			return {
+				ok: true,
+				channels,
+				resultCount: channels.length,
+				...(nextCursor ? { nextCursor } : {}),
+			};
+		}
+		position = readSlackSearchCursor('channels', nextCursor);
 	}
-	const { results: channels, nextCursor } = selectSlackSearchPage({
-		kind: 'channels',
-		matches: [...matches.values()],
-		limit: input.limit,
-		position,
-		nextCursor: response.response_metadata?.next_cursor || undefined,
-	});
 	return {
-		ok: true,
-		channels,
-		resultCount: channels.length,
-		...(nextCursor ? { nextCursor } : {}),
+		...integrationError(
+			INTEGRATION_ERROR_CODES.CONTEXT_SEARCH_INCOMPLETE,
+			'The Slack channel search is incomplete. Use nextQuery to continue the search. Do not report that the channel does not exist. If you cannot continue, explain that the search is incomplete and ask for a channel ID.',
+		),
+		searchComplete: false,
+		nextCursor: position.cursor,
+		nextQuery: { query: 'search_channels', input: { ...input, cursor: position.cursor } },
 	};
 }
 
