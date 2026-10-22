@@ -1150,14 +1150,35 @@ describe('SkillsHubStartupCopy', () => {
 			expect(await skillRefs.refsForDraft(later!, {})).toEqual([]);
 		});
 
-		it('copies no draft while the progress row is unreadable, and repairs the row', async () => {
-			await settings().upsertByKey(SKILLS_HUB_COPY_PROGRESS_KEY, 'not json', false, {});
-			const agent = await legacyAgent([{ type: 'skill', id: 'tone' }], { tone: body('Tone') });
-
+		it('defers draft snapshots while copy progress is unreadable across restarts', async () => {
+			const deleted = await legacyAgent([{ type: 'skill', id: 'deleted' }], {
+				deleted: body('Deleted'),
+			});
 			await copy.copyAll();
+			const savedProgress = await settings().findByKey(SKILLS_HUB_COPY_PROGRESS_KEY);
+			await detachAndDeleteAll(deleted);
+			const uncopied = await legacyAgent([{ type: 'skill', id: 'tone' }], { tone: body('Tone') });
+			await settings().upsertByKey(SKILLS_HUB_COPY_PROGRESS_KEY, 'not json', false, {});
+			const initializer = Container.get(AgentVersionInitializer);
 
-			expect(await skillRefs.refsForDraft(agent, {})).toEqual([]);
-			expect(await progress()).toMatchObject({ retryAgentIds: [] });
+			for (let startup = 0; startup < 2; startup++) {
+				const failedCopies = await copy.runOnStartup();
+				expect(failedCopies).toBeNull();
+				await initializer.run(failedCopies);
+				expect(await histories.countBy({ agentId: uncopied.id })).toBe(0);
+				expect(await skillRefs.refsForDraft(deleted, {})).toEqual([]);
+				expect(await settings().findByKey(SKILLS_HUB_COPY_PROGRESS_KEY)).toMatchObject({
+					value: 'not json',
+				});
+			}
+
+			await settings().upsertByKey(SKILLS_HUB_COPY_PROGRESS_KEY, savedProgress!.value, false, {});
+			await initializer.run(await copy.runOnStartup());
+			const version = await histories.findOneByOrFail({ agentId: uncopied.id });
+			expect(instructionsOf((await skillRefs.readVersion(version, {})).skills)).toEqual({
+				tone: 'Tone instructions.',
+			});
+			expect(await skillRefs.refsForDraft(deleted, {})).toEqual([]);
 		});
 	});
 

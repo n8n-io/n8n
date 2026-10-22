@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
 
@@ -13,9 +14,12 @@ export class AgentVersionInitializer {
 		private readonly agents: AgentRepository,
 		private readonly definitions: AgentDefinitionService,
 		private readonly transactionRunner: TransactionRunner,
+		private readonly logger: Logger,
 	) {}
 
-	async run(excludedAgentIds: string[] = []): Promise<void> {
+	async run(excludedAgentIds: string[] | null = []): Promise<void> {
+		// Unknown copy progress cannot establish which drafts are ready to capture.
+		if (excludedAgentIds === null) return;
 		const excluded = new Set(excludedAgentIds);
 		let afterId: string | undefined;
 		let ids: string[];
@@ -24,10 +28,15 @@ export class AgentVersionInitializer {
 		) {
 			for (const id of ids) {
 				if (excluded.has(id)) continue;
-				await this.transactionRunner.run({}, async (ctx) => {
-					const agent = await this.agents.lockForVersionCapture(id, ctx);
-					if (agent) await this.definitions.captureVersion(agent, 'Unknown', ctx);
-				});
+				try {
+					await this.transactionRunner.run({}, async (ctx) => {
+						const agent = await this.agents.lockForVersionCapture(id, ctx);
+						if (agent) await this.definitions.captureVersion(agent, 'Unknown', ctx);
+					});
+				} catch (error) {
+					// The transaction rolls back. The next startup can try this draft again.
+					this.logger.error('Failed to capture the initial Agent version', { agentId: id, error });
+				}
 			}
 			afterId = ids[ids.length - 1];
 		}
