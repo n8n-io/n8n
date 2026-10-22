@@ -66,14 +66,14 @@ You need an n8n instance running with Instance AI enabled, a seeded owner accoun
    LANGSMITH_API_KEY=...
    ```
 
-2. **Start the instance**:
+2. **Start the instance**. `N8N_INSTANCE_AI_EVAL_INSTANCE=true` registers the eval routes the harness calls:
    ```bash
-   dotenvx run -f .env.local -- pnpm dev:ai
+   N8N_INSTANCE_AI_EVAL_INSTANCE=true dotenvx run -f .env.local -- pnpm dev:ai
    ```
 
 3. **Create the owner account**. First time only: open `http://localhost:5678`, sign up with the email/password from your `.env.local`. If you'd rather reset to a known state (useful after deleting the DB or between iterations), start the server with `E2E_TESTS=true` and `curl` the reset endpoint:
    ```bash
-   E2E_TESTS=true dotenvx run -f .env.local -- pnpm dev:ai
+   N8N_INSTANCE_AI_EVAL_INSTANCE=true E2E_TESTS=true dotenvx run -f .env.local -- pnpm dev:ai
    # then in another shell:
    curl -sf -X POST http://localhost:5678/rest/e2e/reset \
      -H "Content-Type: application/json" \

@@ -46,6 +46,7 @@ import {
 	Query,
 } from '@n8n/decorators';
 import type { StoredEvent } from '@n8n/instance-ai';
+import { hasGlobalScope } from '@n8n/permissions';
 import { buildAgentTreeFromEvents } from '@n8n/instance-ai';
 import {
 	OversizedAttachmentError,
@@ -214,10 +215,15 @@ export class InstanceAiController {
 			throw new ConflictError('A run is already active for this thread');
 		}
 
-		// The override is an eval knob. It changes how often the observer runs, so
-		// only an eval instance accepts it.
-		if (payload.observerThresholdTokens !== undefined && !this.instanceAiConfig.evalInstance) {
-			throw new ForbiddenError('observerThresholdTokens is only available on an eval instance');
+		// The override is an eval knob that changes how often the observer runs, so it
+		// follows the same gate as the eval routes.
+		if (
+			payload.observerThresholdTokens !== undefined &&
+			(!this.instanceAiConfig.evalInstance || !hasGlobalScope(req.user, 'instanceAi:manage'))
+		) {
+			throw new ForbiddenError(
+				'observerThresholdTokens requires an eval instance and the instanceAi:manage scope',
+			);
 		}
 
 		const runId = this.instanceAiService.startRun(

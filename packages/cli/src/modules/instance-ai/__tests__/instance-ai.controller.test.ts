@@ -241,28 +241,45 @@ describe('InstanceAiController', () => {
 				observerThresholdTokens: 1000,
 			});
 
+			const manageReq = mock<AuthenticatedRequest>({
+				user: { id: USER_ID, role: { scopes: [{ slug: 'instanceAi:manage' }] } },
+			});
+			const messageReq = mock<AuthenticatedRequest>({
+				user: { id: USER_ID, role: { scopes: [{ slug: 'instanceAi:message' }] } },
+			});
+
+			beforeEach(() => {
+				memoryService.checkThreadOwnership.mockResolvedValue('owned');
+				instanceAiService.hasActiveRun.mockReturnValue(false);
+			});
+
 			afterEach(() => {
 				globalConfig.instanceAi.evalInstance = false;
 			});
 
-			it('forwards the override on an eval instance', async () => {
+			it('forwards the override on an eval instance for a caller with instanceAi:manage', async () => {
 				globalConfig.instanceAi.evalInstance = true;
-				memoryService.checkThreadOwnership.mockResolvedValue('owned');
-				instanceAiService.hasActiveRun.mockReturnValue(false);
 				instanceAiService.startRun.mockReturnValue('run-7');
 
-				await controller.chat(req, res, THREAD_ID, overridePayload);
+				await controller.chat(manageReq, res, THREAD_ID, overridePayload);
 
 				const args = instanceAiService.startRun.mock.calls[0];
 				expect(args[args.length - 1]).toBe(1000);
 			});
 
+			it('rejects the override on an eval instance for a caller without instanceAi:manage', async () => {
+				globalConfig.instanceAi.evalInstance = true;
+
+				await expect(controller.chat(messageReq, res, THREAD_ID, overridePayload)).rejects.toThrow(
+					ForbiddenError,
+				);
+				expect(instanceAiService.startRun).not.toHaveBeenCalled();
+			});
+
 			it('rejects the override on an instance that is not an eval instance', async () => {
 				globalConfig.instanceAi.evalInstance = false;
-				memoryService.checkThreadOwnership.mockResolvedValue('owned');
-				instanceAiService.hasActiveRun.mockReturnValue(false);
 
-				await expect(controller.chat(req, res, THREAD_ID, overridePayload)).rejects.toThrow(
+				await expect(controller.chat(manageReq, res, THREAD_ID, overridePayload)).rejects.toThrow(
 					ForbiddenError,
 				);
 				expect(instanceAiService.startRun).not.toHaveBeenCalled();
