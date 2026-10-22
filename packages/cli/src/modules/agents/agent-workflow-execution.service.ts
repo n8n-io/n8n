@@ -499,18 +499,6 @@ export class AgentWorkflowExecutionService {
 				// month bucket. The email uses the saved agent the node targets.
 				agentId: telemetryAgentId,
 				...(savedAgentId ? { alertAgentId: savedAgentId } : {}),
-				// Workflow runs mint the gateway credential without a user, so
-				// the mint resolves the owner from the project. The preflight
-				// must resolve the same way — a telemetry user would check a
-				// different wallet than the one the run debits on shared projects.
-				...(params.modelCredentialGatewayManaged
-					? {
-							gatewayWallet: {
-								projectId: tracing.projectId,
-								...(tracing.workflowId !== undefined ? { workflowId: tracing.workflowId } : {}),
-							},
-						}
-					: {}),
 			},
 		);
 	}

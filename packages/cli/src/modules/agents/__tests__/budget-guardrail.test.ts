@@ -1,9 +1,9 @@
 import type { ExecutionOptions, RunOptions, SpendLedger } from '@n8n/agents';
-import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
+import { APICallError } from 'ai';
 import { mock } from 'vitest-mock-extended';
 
-import { AiGatewayService } from '@/services/ai-gateway.service';
+import { classifyGatewayError } from '../utils/gateway-error-classifier';
 
 import { AgentBudgetAlertService } from '../agent-budget-alert.service';
 import { withBudgetGuardrail } from '../budget-guardrail';
@@ -59,10 +59,14 @@ describe('withBudgetGuardrail', () => {
 		Container.reset();
 	});
 
-	it('attaches nothing when budget is missing or turned off', () => {
-		expect(
-			withBudgetGuardrail(base, { ledger, sessionId: 'thread-1', agentId: 'agent-1' }).guardrails,
-		).toBeUndefined();
+	it('attaches only the gateway error classifier when budget is missing or turned off', () => {
+		const noBudget = withBudgetGuardrail(base, {
+			ledger,
+			sessionId: 'thread-1',
+			agentId: 'agent-1',
+		});
+		expect(noBudget.guardrails).toBeUndefined();
+		expect(noBudget.classifyModelError).toBe(classifyGatewayError);
 
 		const off = withBudgetGuardrail(base, {
 			ledger,
@@ -71,10 +75,10 @@ describe('withBudgetGuardrail', () => {
 			agentId: 'agent-1',
 		});
 		expect(off.guardrails).toBeUndefined();
-		expect(off).toBe(base);
+		expect(off.classifyModelError).toBe(classifyGatewayError);
 	});
 
-	it('attaches nothing when every amount is 0', () => {
+	it('attaches only the gateway error classifier when every amount is 0', () => {
 		const attached = withBudgetGuardrail(base, {
 			ledger,
 			budget: { enabled: true, monthlyBudgetUsd: 0, sessionCostCapUsd: 0 },
@@ -83,7 +87,32 @@ describe('withBudgetGuardrail', () => {
 		});
 
 		expect(attached.guardrails).toBeUndefined();
-		expect(attached).toBe(base);
+		expect(attached.classifyModelError).toBe(classifyGatewayError);
+	});
+
+	it('maps a gateway 402 to a budget.credits stop through the attached classifier', () => {
+		const attached = withBudgetGuardrail(base, {
+			ledger,
+			sessionId: 'thread-1',
+			agentId: 'agent-1',
+		});
+
+		const depleted = new APICallError({
+			message: 'Payment Required',
+			url: 'https://gateway.example/v1/responses',
+			requestBodyValues: {},
+			statusCode: 402,
+			responseBody: '{"error":"Your Gateway credits have been depleted"}',
+		});
+		expect(attached.classifyModelError?.(depleted)).toEqual({ code: 'budget.credits' });
+
+		const other = new APICallError({
+			message: 'Internal Server Error',
+			url: 'https://gateway.example/v1/responses',
+			requestBodyValues: {},
+			statusCode: 500,
+		});
+		expect(attached.classifyModelError?.(other)).toBeUndefined();
 	});
 
 	it('attaches one hook when the guardrail is on', () => {
@@ -270,129 +299,5 @@ describe('withBudgetGuardrail', () => {
 		);
 
 		expect(budgetAlert.notifyMonthlyThreshold).not.toHaveBeenCalled();
-	});
-});
-
-describe('withBudgetGuardrail wallet preflight', () => {
-	const gateway = mock<AiGatewayService>();
-	const callCtx = { callId: 'call-1', model: 'openai/gpt-4o-mini', source: 'turn' as const };
-
-	beforeEach(() => {
-		vi.clearAllMocks();
-		Container.set(AiGatewayService, gateway);
-		Container.set(Logger, mock<Logger>());
-	});
-
-	afterEach(() => {
-		Container.reset();
-	});
-
-	it('attaches the preflight with no budget bucket when the model runs on Gateway credits', () => {
-		const attached = withBudgetGuardrail(base, {
-			sessionId: 'thread-1',
-			agentId: 'agent-1',
-			gatewayWallet: { userId: 'user-1' },
-		});
-
-		expect(attached).not.toBe(base);
-		expect(attached.guardrails?.hooks).toHaveLength(1);
-	});
-
-	it('stops the next model call with budget.credits when the wallet is empty', async () => {
-		gateway.resolveWalletOwner.mockResolvedValue('user-1');
-		gateway.getWallet.mockResolvedValue({ budget: 10, balance: 0, hasEverToppedUp: true });
-		const attached = withBudgetGuardrail(base, {
-			sessionId: 'thread-1',
-			agentId: 'agent-1',
-			gatewayWallet: { userId: 'user-1', projectId: 'project-1' },
-		});
-		const hook = attached.guardrails?.hooks[0];
-		if (!hook?.before) throw new Error('Expected a wallet preflight hook');
-
-		await expect(hook.before(callCtx)).resolves.toEqual({
-			action: 'stop',
-			code: 'budget.credits',
-		});
-		expect(gateway.resolveWalletOwner).toHaveBeenCalledWith({
-			userId: 'user-1',
-			projectId: 'project-1',
-		});
-		expect(gateway.getWallet).toHaveBeenCalledWith('user-1');
-	});
-
-	it('lets the call run when the wallet has a balance', async () => {
-		gateway.resolveWalletOwner.mockResolvedValue('user-1');
-		gateway.getWallet.mockResolvedValue({ budget: 10, balance: 0.5, hasEverToppedUp: true });
-		const attached = withBudgetGuardrail(base, {
-			sessionId: 'thread-1',
-			agentId: 'agent-1',
-			gatewayWallet: { userId: 'user-1' },
-		});
-		const hook = attached.guardrails?.hooks[0];
-		if (!hook?.before) throw new Error('Expected a wallet preflight hook');
-
-		await expect(hook.before(callCtx)).resolves.toEqual({ action: 'allow' });
-	});
-
-	it('runs the preflight before the cap checks when a bucket is on', async () => {
-		gateway.resolveWalletOwner.mockResolvedValue('user-1');
-		gateway.getWallet.mockResolvedValue({ budget: 10, balance: 0, hasEverToppedUp: true });
-		const attached = withBudgetGuardrail(base, {
-			ledger: spendLedger(),
-			budget: { enabled: true, monthlyBudgetUsd: 20 },
-			sessionId: 'thread-1',
-			agentId: 'agent-1',
-			gatewayWallet: { userId: 'user-1' },
-		});
-
-		expect(attached.guardrails?.hooks).toHaveLength(2);
-		const hook = attached.guardrails?.hooks[0];
-		if (!hook?.before) throw new Error('Expected a wallet preflight hook');
-		await expect(hook.before(callCtx)).resolves.toEqual({
-			action: 'stop',
-			code: 'budget.credits',
-		});
-	});
-
-	it('lets the call run when no wallet owner can be resolved', async () => {
-		gateway.resolveWalletOwner.mockResolvedValue(undefined);
-		const attached = withBudgetGuardrail(base, {
-			sessionId: 'thread-1',
-			agentId: 'agent-1',
-			gatewayWallet: { projectId: 'project-1' },
-		});
-		const hook = attached.guardrails?.hooks[0];
-		if (!hook?.before) throw new Error('Expected a wallet preflight hook');
-
-		await expect(hook.before(callCtx)).resolves.toEqual({ action: 'allow' });
-		expect(gateway.getWallet).not.toHaveBeenCalled();
-	});
-
-	it('lets the call run when the wallet read fails', async () => {
-		gateway.resolveWalletOwner.mockResolvedValue('user-1');
-		gateway.getWallet.mockRejectedValue(new Error('gateway unreachable'));
-		const attached = withBudgetGuardrail(base, {
-			sessionId: 'thread-1',
-			agentId: 'agent-1',
-			gatewayWallet: { userId: 'user-1' },
-		});
-		const hook = attached.guardrails?.hooks[0];
-		if (!hook?.before) throw new Error('Expected a wallet preflight hook');
-
-		await expect(hook.before(callCtx)).resolves.toEqual({ action: 'allow' });
-		expect(Container.get(Logger).warn).toHaveBeenCalledWith(
-			'Gateway credits wallet check failed; letting the call run',
-			{ error: 'gateway unreachable' },
-		);
-	});
-
-	it('attaches nothing for an own-key agent with no budget bucket', () => {
-		const attached = withBudgetGuardrail(base, {
-			sessionId: 'thread-1',
-			agentId: 'agent-1',
-		});
-
-		expect(attached).toBe(base);
-		expect(attached.guardrails).toBeUndefined();
 	});
 });

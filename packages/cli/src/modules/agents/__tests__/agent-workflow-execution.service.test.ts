@@ -15,7 +15,6 @@ import { SkillService } from '../skills/skill.service';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { ExecutionLevelTracer } from '@/modules/otel/execution-level-tracer';
-import { AiGatewayService } from '@/services/ai-gateway.service';
 import type { Telemetry } from '@/telemetry';
 
 import type { AgentExecutionService } from '../agent-execution.service';
@@ -599,42 +598,6 @@ describe('AgentWorkflowExecutionService', () => {
 			agentId,
 			alertThresholdPercent: 80,
 		});
-	});
-
-	it('resolves the wallet owner from the project, not the telemetry user', async () => {
-		// Workflow runs mint the gateway credential without a user, so the mint
-		// owner resolves from the project. The preflight must check the same
-		// wallet — passing the telemetry user would check a different balance
-		// on shared projects.
-		const aiGatewayService = mock<AiGatewayService>();
-		aiGatewayService.resolveWalletOwner.mockResolvedValue('owner-1');
-		aiGatewayService.getWallet.mockResolvedValue({ budget: 10, balance: 5, hasEverToppedUp: true });
-		Container.set(AiGatewayService, aiGatewayService);
-
-		const { service, agentRepository, reconstructionService } = makeService();
-		const runtime = { ...makeRuntime(), modelCredentialGatewayManaged: true };
-		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
-		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
-
-		await service.executeForWorkflow(
-			agentId,
-			'hello',
-			'execution-1',
-			'thread-1',
-			projectId,
-			'telemetry-user-99',
-		);
-
-		const options = runtime.agent.stream.mock.calls[0]?.[1] as RunOptions & ExecutionOptions;
-		const hook = options.guardrails?.hooks[0];
-		if (!hook?.before) throw new Error('Expected a wallet preflight hook');
-		await expect(
-			hook.before({ callId: 'call-1', model: 'openai/gpt-5', source: 'turn' }),
-		).resolves.toEqual({ action: 'allow' });
-		expect(aiGatewayService.resolveWalletOwner).toHaveBeenCalledWith(
-			expect.not.objectContaining({ userId: expect.anything() }),
-		);
-		expect(aiGatewayService.getWallet).toHaveBeenCalledWith('owner-1');
 	});
 
 	it('omits the telemetry option from stream() when AgentRunTracingService.build resolves undefined', async () => {

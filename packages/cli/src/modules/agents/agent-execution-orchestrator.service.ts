@@ -1328,14 +1328,6 @@ export class AgentExecutionOrchestratorService {
 					budget: runtime.budget,
 					sessionId: memoryScope.threadId,
 					agentId: config.agentId,
-					...(runtime.modelCredentialGatewayManaged
-						? {
-								gatewayWallet: {
-									...(config.user?.id !== undefined ? { userId: config.user.id } : {}),
-									projectId: config.projectId,
-								},
-							}
-						: {}),
 					...(config.chatSurface === 'preview' && config.onBudgetNotice
 						? { onNotice: config.onBudgetNotice }
 						: {}),
@@ -1732,14 +1724,6 @@ export class AgentExecutionOrchestratorService {
 					budget: config.budget,
 					sessionId: threadId,
 					agentId,
-					...(config.modelCredentialGatewayManaged
-						? {
-								gatewayWallet: {
-									...(userId !== undefined ? { userId } : {}),
-									projectId,
-								},
-							}
-						: {}),
 					...(config.chatSurface === 'preview' && config.onBudgetNotice
 						? { onNotice: config.onBudgetNotice }
 						: {}),
