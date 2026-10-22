@@ -151,4 +151,80 @@ describe('resolveNodeAnnotations', () => {
 			RESTRICTIVE,
 		);
 	});
+
+	describe('nested parameters', () => {
+		const NOTIFY = { effect: 'write', destructive: false, idempotent: false };
+
+		const sideEffect = (
+			defaultValue = 'none',
+			displayOptions?: INodeProperties['displayOptions'],
+		): INodeProperties => ({
+			displayName: 'Side Effect',
+			name: 'sideEffect',
+			type: 'options',
+			default: defaultValue,
+			displayOptions,
+			options: [
+				{ name: 'None', value: 'none' },
+				{ name: 'Notify', value: 'notify', annotations: NOTIFY },
+			],
+		});
+
+		const withCollection = (child: INodeProperties) =>
+			describeNode([
+				resourceProperty,
+				recordOperations,
+				{
+					displayName: 'Additional Fields',
+					name: 'additionalFields',
+					type: 'collection',
+					default: {},
+					options: [child],
+				},
+			]);
+
+		const withFixedCollection = (child: INodeProperties) =>
+			describeNode([
+				resourceProperty,
+				recordOperations,
+				{
+					displayName: 'Rules',
+					name: 'rules',
+					type: 'fixedCollection',
+					typeOptions: { multipleValues: true },
+					default: {},
+					options: [{ displayName: 'Rule', name: 'rule', values: [child] }],
+				},
+			]);
+
+		it('applies the annotations of a selected option in a collection', () => {
+			expect(
+				resolve(withCollection(sideEffect()), { additionalFields: { sideEffect: 'notify' } }),
+			).toEqual(NOTIFY);
+		});
+
+		it('uses the default of an unset collection child', () => {
+			expect(resolve(withCollection(sideEffect()))).toEqual(READ);
+			expect(resolve(withCollection(sideEffect('notify')))).toEqual(NOTIFY);
+		});
+
+		it('combines every entry of a fixedCollection', () => {
+			expect(
+				resolve(withFixedCollection(sideEffect()), {
+					rules: { rule: [{ sideEffect: 'none' }, { sideEffect: 'notify' }] },
+				}),
+			).toEqual(NOTIFY);
+		});
+
+		it('ignores a fixedCollection without entries', () => {
+			expect(resolve(withFixedCollection(sideEffect('notify')))).toEqual(READ);
+		});
+
+		it('checks the visibility of a child against the root parameters', () => {
+			const child = sideEffect('none', { show: { '/operation': ['delete'] } });
+			expect(
+				resolve(withCollection(child), { additionalFields: { sideEffect: 'notify' } }),
+			).toEqual(READ);
+		});
+	});
 });

@@ -7,9 +7,20 @@ import type {
 	NodeOperationAnnotations,
 } from './interfaces';
 import { displayParameter, getNodeParameters } from './node-helpers';
-import { isINodePropertyOptionsList } from './type-guards';
+import {
+	isINodePropertiesList,
+	isINodePropertyCollectionList,
+	isINodePropertyOptionsList,
+} from './type-guards';
+import { isObject } from './utils';
 
 type Annotations = Partial<NodeOperationAnnotations>;
+
+interface ResolutionContext {
+	node: Pick<INode, 'typeVersion'>;
+	nodeType: INodeTypeDescription;
+	root: INodeParameters;
+}
 
 export const READ_ONLY_ANNOTATIONS: NodeOperationAnnotations = {
 	effect: 'read',
@@ -37,46 +48,84 @@ function mergeAnnotations(sources: Annotations[], strict = false): NodeOperation
 	};
 }
 
-function dependsOnExpression(property: INodeProperties, values: INodeParameters): boolean {
+const isNodeParameters = (value: unknown): value is INodeParameters => isObject(value);
+
+const toEntries = (value: unknown): INodeParameters[] =>
+	(Array.isArray(value) ? value : [value]).filter(isNodeParameters);
+
+function dependsOnExpression(
+	property: INodeProperties,
+	values: INodeParameters,
+	root: INodeParameters,
+): boolean {
 	const { show = {}, hide = {} } = property.displayOptions ?? {};
 	return [...Object.keys(show), ...Object.keys(hide)].some((key) =>
-		isExpression(values[key.replace(/^\//, '')]),
+		isExpression(key.startsWith('/') ? root[key.slice(1)] : values[key]),
 	);
 }
 
-function propertyAnnotations(
+function optionAnnotations(
 	property: INodeProperties,
 	values: INodeParameters,
-	node: Pick<INode, 'typeVersion'>,
-	nodeType: INodeTypeDescription,
-): Annotations | undefined {
+	root: INodeParameters,
+): Annotations[] {
 	const { options } = property;
-	if (property.type !== 'options' || !isINodePropertyOptionsList(options)) return undefined;
-	if (!options.some((option) => option.annotations)) return undefined;
-	if (!displayParameter(values, property, node, nodeType)) return undefined;
+	if (!isINodePropertyOptionsList(options) || !options.some((option) => option.annotations)) {
+		return [];
+	}
 
-	const value = values[property.name];
+	const value = values[property.name] ?? property.default;
 	const selected =
-		isExpression(value) || dependsOnExpression(property, values)
+		isExpression(value) || dependsOnExpression(property, values, root)
 			? undefined
 			: options.find((option) => option.value === value);
-	if (selected) return selected.annotations ?? {};
+	if (selected) return [selected.annotations ?? {}];
 
-	return mergeAnnotations(
-		options.map((option) => option.annotations ?? {}),
-		true,
-	);
+	return [
+		mergeAnnotations(
+			options.map((option) => option.annotations ?? {}),
+			true,
+		),
+	];
+}
+
+function collectAnnotations(
+	properties: INodeProperties[],
+	values: INodeParameters,
+	context: ResolutionContext,
+): Annotations[] {
+	return properties.flatMap((property) => {
+		if (!displayParameter(values, property, context.node, context.nodeType, context.root)) {
+			return [];
+		}
+
+		const { options } = property;
+		if (property.type === 'options') return optionAnnotations(property, values, context.root);
+
+		if (property.type === 'collection' && isINodePropertiesList(options)) {
+			const [children = {}] = toEntries(values[property.name]);
+			return collectAnnotations(options, children, context);
+		}
+
+		if (property.type === 'fixedCollection' && isINodePropertyCollectionList(options)) {
+			const [groups = {}] = toEntries(values[property.name]);
+			return options.flatMap((group) =>
+				toEntries(groups[group.name]).flatMap((entry) =>
+					collectAnnotations(group.values, entry, context),
+				),
+			);
+		}
+
+		return [];
+	});
 }
 
 export function resolveNodeAnnotations(
 	nodeType: INodeTypeDescription,
 	node: Pick<INode, 'parameters' | 'typeVersion'>,
 ): NodeOperationAnnotations {
-	const values =
+	const root =
 		getNodeParameters(nodeType.properties, node.parameters, true, false, node, nodeType) ?? {};
-	const sources = nodeType.properties.flatMap((property) => {
-		const annotations = propertyAnnotations(property, values, node, nodeType);
-		return annotations ? [annotations] : [];
-	});
+	const sources = collectAnnotations(nodeType.properties, root, { node, nodeType, root });
 	return mergeAnnotations([nodeType.annotations ?? {}, ...sources]);
 }
