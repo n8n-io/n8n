@@ -1,0 +1,32 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionBindingCreation.test.ts
+  s_6f5f2699e39bdc::t_91efb76b3be3e1 23
+  s_6f5f2699e39bdc::t_cdb84c001d1542 26,47,51,94,269-270,271-274,276-286,288-293,297,299-312,323
+  s_6f5f2699e39bdc::t_39858c2b13b1ff 121-125,229
+  s_6f5f2699e39bdc::t_ea4031c801ded3 96
+  s_6f5f2699e39bdc::t_b4834132aeeb2d 275,287,294-296,298
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionBindingCreation.ts
+  s_6f5f2699e39bdc::t_aff597063f133f 72-73,150-151,172,7,12-15,33,49,74-78,100,158-159,170-171
+  s_6f5f2699e39bdc::t_3bf581df39910f 123,236
+  s_6f5f2699e39bdc::t_57c21ff4170afd 265
+  s_6f5f2699e39bdc::t_4527a2f1aa7133 270-271,153,155,167-169,268-269
+  s_6f5f2699e39bdc::t_84ca9050bffb15 152,154,156-157,160-162
+  s_6f5f2699e39bdc::t_912b8d9ec40841 163-166
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_6f5f2699e39bdc::t_aff597063f133f 9918
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4bcb5f6fea8b9f0f0fd38e99798f475a42aabfb8",
+  "prompts": {},
+  "sessions": {
+    "s_6f5f2699e39bdc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "897d8036-2f58-40e8-85de-79d06d0839c1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}
