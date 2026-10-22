@@ -72,7 +72,7 @@ export function useLogsPanelLayout(
 		width: {
 			localStorageKey: LOCAL_STORAGE_OVERVIEW_PANEL_WIDTH,
 			defaultSize: function getDefaultWidth(size) {
-				return Math.min(240, size * 0.2);
+				return Math.min(400, size * 0.3);
 			},
 			minSize: 80,
 			maxSize: 500,
