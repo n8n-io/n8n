@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource, TableCheck } from '@n8n/typeorm';
 import { v7 as uuidv7 } from 'uuid';
 
-const MIGRATION_NAME = 'AddKindToUserTable1792587656930';
+const MIGRATION_NAME = 'AddKindToUserTable1792666710382';
 
 type UserRow = { id: string; kind?: string };
 type ForeignKeyRow = { table: string; column: string; onDelete: string };
