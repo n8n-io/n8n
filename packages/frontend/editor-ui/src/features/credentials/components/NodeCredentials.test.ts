@@ -2367,6 +2367,115 @@ describe('NodeCredentials', () => {
 			});
 		});
 
+		describe('Gateway credits only (MCP registry server)', () => {
+			const aiGatewayType = 'n8nConnectBraveSearchMcpAiGatewayApi';
+			const aiGatewayNodeType: INodeTypeDescription = {
+				...googleAiNodeType,
+				name: '@n8n/mcp-registry.n8nConnectBraveSearch',
+				credentials: [{ name: aiGatewayType, required: true }],
+			};
+			const aiGatewayNode: INodeUi = {
+				...googleAiNode,
+				type: aiGatewayNodeType.name,
+				credentials: { [aiGatewayType]: { id: null, name: '', __aiGatewayManaged: true } },
+			};
+
+			beforeEach(() => {
+				vi.mocked(useAiGateway).mockReturnValue({
+					...useAiGateway(),
+					isCredentialTypeSupported: vi.fn((credType: string) => credType === aiGatewayType),
+				});
+				credentialsStore.state.credentialTypes = {
+					[aiGatewayType]: { name: aiGatewayType, displayName: 'Brave Search', properties: [] },
+				};
+				ndvStore.activeNode = aiGatewayNode;
+			});
+
+			it('shows a locked Gateway credits field instead of a picker', () => {
+				mockedStore(useNodeTypesStore).setNodeTypes([aiGatewayNodeType]);
+
+				renderComponent({ props: { node: aiGatewayNode, overrideCredType: aiGatewayType } });
+
+				expect(screen.getByTestId('node-credentials-ai-gateway-only')).toHaveTextContent(
+					'Gateway credits',
+				);
+				expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+				expect(screen.getByTestId('credential-topup-button')).toBeInTheDocument();
+			});
+
+			it('offers Gateway credits next to the own credential of a paired server', async () => {
+				const ownType = 'firecrawlMcpOAuth2Api';
+				const pairedType = 'n8nConnectFirecrawlMcpAiGatewayApi';
+				const ownCredential = {
+					id: 'cred-1',
+					name: 'My Firecrawl',
+					type: ownType,
+					isManaged: false,
+					createdAt: '2024-01-01',
+					updatedAt: '2024-01-01',
+				};
+				vi.mocked(useAiGateway).mockReturnValue({
+					...useAiGateway(),
+					isCredentialTypeSupported: vi.fn((credType: string) => credType === pairedType),
+				});
+				mockedStore(useNodeTypesStore).setNodeTypes([
+					{
+						...aiGatewayNodeType,
+						name: '@n8n/mcp-registry.firecrawl',
+						credentials: [
+							{
+								name: ownType,
+								required: true,
+								displayOptions: { show: { authentication: ['oAuth2'] } },
+							},
+							{
+								name: pairedType,
+								required: true,
+								displayOptions: { show: { authentication: ['aiGateway'] } },
+							},
+						],
+						properties: [
+							{
+								displayName: 'Authentication',
+								name: 'authentication',
+								type: 'options',
+								options: [
+									{ name: 'Gateway credits', value: 'aiGateway' },
+									{ name: 'OAuth2', value: 'oAuth2' },
+								],
+								default: 'oAuth2',
+							},
+						],
+					},
+				]);
+				credentialsStore.state.credentialTypes = {
+					[ownType]: { name: ownType, displayName: 'Firecrawl OAuth2', properties: [] },
+					[pairedType]: {
+						name: pairedType,
+						displayName: 'Firecrawl Gateway credits',
+						properties: [],
+					},
+				};
+				credentialsStore.state.credentials = { 'cred-1': ownCredential };
+				credentialsStore.getCredentialById = vi.fn().mockReturnValue(ownCredential);
+				const pairedNode: INodeUi = {
+					...googleAiNode,
+					type: '@n8n/mcp-registry.firecrawl',
+					parameters: { authentication: 'oAuth2' },
+					credentials: { [ownType]: { id: 'cred-1', name: 'My Firecrawl' } },
+				};
+				ndvStore.activeNode = pairedNode;
+
+				// An NDV row: no credential type override.
+				renderComponent({ props: { node: pairedNode, overrideCredType: '' } });
+				await userEvent.click(screen.getByTestId('node-credentials-select'));
+
+				expect(screen.queryByTestId('node-credentials-ai-gateway-only')).not.toBeInTheDocument();
+				expect(screen.getByTestId('node-credentials-select-item-n8n-credits')).toBeInTheDocument();
+				expect(screen.getByTestId('node-credentials-select-item-cred-1')).toBeInTheDocument();
+			});
+		});
+
 		describe('multiple credential types (n8n credits on a non-default auth)', () => {
 			// Mirrors a node whose `authentication` defaults to an option mapping to a
 			// credential type NOT covered by n8n credits, while a sibling auth option
@@ -3539,13 +3648,6 @@ describe('NodeCredentials', () => {
 			};
 		}
 
-		beforeEach(() => {
-			settingsStore.settings = {
-				...settingsStore.settings,
-				granularCredentialSharing: true,
-			} as unknown as FrontendSettings;
-		});
-
 		it('names the project the credentials are shared with, and puts yours first', async () => {
 			inTeamProject('Sales Ops');
 			seedBothRoutes();
@@ -3651,25 +3753,6 @@ describe('NodeCredentials', () => {
 				'Available in this project',
 			);
 		});
-
-		it('renders no headings at all while the feature flag is off', async () => {
-			settingsStore.settings = {
-				...settingsStore.settings,
-				granularCredentialSharing: false,
-			} as unknown as FrontendSettings;
-			inTeamProject();
-			seedBothRoutes();
-			renderComponent();
-
-			await userEvent.click(screen.getByTestId('node-credentials-select'));
-
-			expect(
-				await screen.findByTestId('node-credentials-select-item-personal-cred'),
-			).toBeInTheDocument();
-			expect(screen.getByTestId('node-credentials-select-item-project-cred')).toBeInTheDocument();
-			expect(screen.queryByTestId(YOURS_HEADER)).not.toBeInTheDocument();
-			expect(screen.queryByTestId(SHARED_HEADER)).not.toBeInTheDocument();
-		});
 	});
 
 	describe('a current credential the user cannot use', () => {
@@ -3696,11 +3779,7 @@ describe('NodeCredentials', () => {
 			},
 		});
 
-		function setUp({ flag = true, usable = true, canUse = false } = {}) {
-			settingsStore.settings = {
-				...settingsStore.settings,
-				granularCredentialSharing: flag,
-			} as unknown as FrontendSettings;
+		function setUp({ usable = true, canUse = false } = {}) {
 			projectsStore.currentProject = {
 				id: 'marketing',
 				name: 'Marketing',
@@ -3903,21 +3982,6 @@ describe('NodeCredentials', () => {
 			const option = screen.getByTestId('node-credentials-select-item-alice-cred');
 			expect(option).not.toHaveClass('is-disabled');
 			expect(option).toHaveTextContent("Alice Chen's · not shared with Marketing");
-		});
-
-		it('changes nothing while the feature flag is off', async () => {
-			setUp({ flag: false });
-
-			expect(screen.queryByTestId('node-credentials-unusable-warning')).not.toBeInTheDocument();
-
-			await userEvent.click(screen.getByTestId('node-credentials-select'));
-
-			expect(
-				await screen.findByTestId('node-credentials-select-item-team-cred'),
-			).toBeInTheDocument();
-			expect(
-				screen.queryByTestId('node-credentials-select-item-alice-cred'),
-			).not.toBeInTheDocument();
 		});
 	});
 });

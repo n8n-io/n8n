@@ -226,7 +226,8 @@ export type RelayEventMap = {
 
 	'workflow-pre-execute': {
 		executionId: string;
-		data: IWorkflowExecutionDataProcess /* main process */ | IWorkflowBase /* worker */;
+		userId?: string;
+		data: IWorkflowBase;
 		mode: WorkflowExecuteMode;
 		projectId?: string;
 		projectName?: string;
@@ -364,6 +365,12 @@ export type RelayEventMap = {
 		userEmail: string;
 		authenticationMethod: AuthenticationMethod;
 		reason?: string;
+	};
+
+	'user-login-email-conflict': {
+		user: UserLike;
+		authenticationMethod: AuthenticationMethod;
+		assertedEmail: string;
 	};
 
 	'user-changed-role': {
@@ -1210,7 +1217,8 @@ export type RelayEventMap = {
 					| '2fa_enforcement'
 					| 'workflow_publishing'
 					| 'workflow_sharing'
-					| 'workflow_reviews';
+					| 'workflow_reviews'
+					| 'public_api_rate_limit';
 				value: boolean;
 		  }
 		| {

@@ -12,7 +12,7 @@ on:
         description: Version of node to use.
         required: false
         type: string
-        default: 26.5.1
+        default: 26.12.1
 
 env:
   # Each shard runs two workers with a 6 GB cap. This fits the runner's 15.2 GB.

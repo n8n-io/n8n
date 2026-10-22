@@ -1,4 +1,5 @@
 import type { AgentMessageSteeringService } from '../agent-message-steering.service';
+import { EPISODIC_SCOPE_METADATA_KEY, encodeEpisodicScopeMetadata } from '@n8n/agents';
 import type {
 	Agent as RuntimeAgent,
 	CredentialProvider,
@@ -80,6 +81,7 @@ import {
 import type { ToolRegistry } from '../tool-registry';
 import { AgentN8nChatUnavailableError } from '../agent-n8n-chat-unavailable.error';
 import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
+import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
 
 const aiConfigMock = mock<AiConfig>({
 	modelStreamIdleTimeoutMs: 90_000,
@@ -212,6 +214,7 @@ function makeService(sandboxEnabled = false) {
 		mock<AgentExecutionUpdateBroadcaster>(),
 		mock<AgentMessageSteeringService>(),
 		backgroundJobs,
+		new SystemAgentRegistry(),
 	);
 	const telemetry = mock<Telemetry>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
@@ -2610,6 +2613,51 @@ describe('AgentExecutionOrchestratorService', () => {
 		},
 	);
 
+	describe('episodic memory scope', () => {
+		async function runPublishedTurn(
+			resourceId: string,
+			episodicScope?: Parameters<typeof encodeEpisodicScopeMetadata>[0],
+		) {
+			const { service, runtimeCacheService } = makeService();
+			const runtime = makeRuntime();
+			runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+			await collect(
+				service.executeForChatPublished({
+					agentId,
+					projectId,
+					message: 'hello',
+					memory: { threadId: 'thread-1', resourceId },
+					messageContext: selectedContext,
+					integrationType: 'slack',
+					sandboxPrincipalHash: taskPrincipalHash,
+					episodicScope,
+				}),
+			);
+			return runtime.agent.stream.mock.calls[0][1]?.persistence?.hostMetadata;
+		}
+
+		it.each([
+			['a resolved scope', { writeScopeId: 'slack:T1:C1', readScopeIds: ['slack:T1:C1'] }],
+			['a disabled decision', { disabled: true as const }],
+		])('carries %s from the channel into the run', async (_label, episodicScope) => {
+			const hostMetadata = await runPublishedTurn('integration:slack:U1', episodicScope);
+
+			expect(hostMetadata).toMatchObject(encodeEpisodicScopeMetadata(episodicScope));
+		});
+
+		it('turns episodic memory off for an integration resource without a decision', async () => {
+			const hostMetadata = await runPublishedTurn('integration:slack:U1');
+
+			expect(hostMetadata).toMatchObject(encodeEpisodicScopeMetadata({ disabled: true }));
+		});
+
+		it('leaves other resources on their own scope', async () => {
+			const hostMetadata = await runPublishedTurn('task:task-1');
+
+			expect(hostMetadata).not.toHaveProperty(EPISODIC_SCOPE_METADATA_KEY);
+		});
+	});
+
 	it.each(['new', 'existing'] as const)(
 		'preserves %s intent when recording a failed runtime build',
 		async (sessionMode) => {
@@ -3142,6 +3190,9 @@ describe('AgentExecutionOrchestratorService', () => {
 			usePublishedVersion: true,
 			sandboxPrincipalHash: integrationPrincipalHash,
 		});
+		expect(runtime.agent.stream.mock.calls[0][1]?.persistence?.hostMetadata).toMatchObject(
+			encodeEpisodicScopeMetadata({ disabled: true }),
+		);
 		expect(externalHooks.run).toHaveBeenCalledWith('agent.preExecute', [agentId]);
 		expect(chatIntegrationService.getBridge).toHaveBeenCalledWith(agentId, 'slack', 'credential-1');
 		// The third argument keeps a card the woken turn raises addressed to the
@@ -3681,6 +3732,8 @@ describe('AgentExecutionOrchestratorService', () => {
 					agentUserId: 'bot',
 					subject: { type: 'issue', id: 'issue-1' },
 				});
+				// The resume merge lets new metadata win, so it must not carry a scope. The checkpoint's stays.
+				expect(options.hostMetadata).not.toHaveProperty(EPISODIC_SCOPE_METADATA_KEY);
 				if (!claimed) throw new Error('Already handled');
 				await options.onResumeClaimed?.();
 				return {
@@ -3717,6 +3770,57 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect(runtimeCacheService.releaseRuntimeLease).toHaveBeenCalledWith(runtime.agent);
 		},
 	);
+
+	it.each([
+		[
+			'turns memory off for a checkpoint without a decision on an integration resource',
+			'integration:slack:U1',
+			undefined,
+			true,
+		],
+		[
+			'keeps the decision a checkpoint already stores',
+			'integration:slack:U1',
+			{ writeScopeId: 'slack:T1:C1', readScopeIds: ['slack:T1:C1'] },
+			false,
+		],
+		['leaves a checkpoint on another resource alone', 'task:task-1', undefined, false],
+	])('on resume, %s', async (_label, resourceId, stored, expectsDisabled) => {
+		const { service, checkpointStorage, runtimeCacheService } = makeService();
+		const memory = { threadId: 'thread-1', resourceId };
+		checkpointStorage.getStatus.mockResolvedValue({
+			status: 'active',
+			checkpoint: makeCheckpoint(
+				{},
+				{ ...memory, ...(stored && { hostMetadata: encodeEpisodicScopeMetadata(stored) }) },
+			),
+		});
+		const runtime = makeRuntime();
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		runtime.agent.resume.mockImplementation(async (_method, _data, options: ResumeOptions) => {
+			await options.onResumeClaimed?.();
+			return {
+				runId: 'run-1',
+				stream: makeReadableStream([{ type: 'finish', finishReason: 'stop' }]),
+			};
+		});
+
+		await collect(
+			service.resumeForChat({
+				agentId,
+				projectId,
+				runId: 'run-1',
+				toolCallId: 'tc-1',
+				resumeData: { approved: true },
+				messageContext: selectedContext,
+			}),
+		);
+
+		const sent = runtime.agent.resume.mock.calls[0][2].hostMetadata;
+		if (expectsDisabled)
+			expect(sent).toMatchObject(encodeEpisodicScopeMetadata({ disabled: true }));
+		else expect(sent).not.toHaveProperty(EPISODIC_SCOPE_METADATA_KEY);
+	});
 
 	it('reconstructs a resumed runtime from the persisted sandbox scope', async () => {
 		const { service, checkpointStorage, runtimeCacheService } = makeService(true);

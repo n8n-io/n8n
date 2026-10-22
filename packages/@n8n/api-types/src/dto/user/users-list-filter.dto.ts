@@ -36,6 +36,7 @@ const userSelectSchema = z.array(
 const userFilterSchema = z.object({
 	ids: z.array(z.string()).optional(),
 	isOwner: z.boolean().optional(),
+	scope: z.enum(['nodeTypePolicy:manage', 'credentialTypePolicy:manage']).optional(),
 	firstName: z.string().optional(),
 	lastName: z.string().optional(),
 	email: z.string().optional(),

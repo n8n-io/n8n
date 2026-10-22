@@ -3,7 +3,7 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ForbiddenError } from '@n8n/errors';
 import type { Scope } from '@n8n/permissions';
-import { UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -119,6 +119,15 @@ export class AgentsBuilderService {
 	}
 
 	async deleteBuilderSessions(prefix: string): Promise<void> {
+		const namespace = 'ia-builder:';
+		if (
+			!prefix.startsWith(namespace) ||
+			!prefix.endsWith(':') ||
+			prefix.length <= namespace.length + 1
+		) {
+			throw new UnexpectedError('Invalid builder session prefix.');
+		}
+
 		const threadIds = await this.threads.findBuilderSessionIds(prefix);
 		for (const threadId of threadIds) {
 			await this.memory.getImplementation(threadId.slice(prefix.length)).deleteThread(threadId);

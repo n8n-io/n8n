@@ -12,8 +12,6 @@ import { AgentDraftService } from '@/modules/agents/agent-draft.service';
 import { AgentsBuilderService } from '@/modules/agents/builder/agents-builder.service';
 import { Telemetry } from '@/telemetry';
 
-const TOOLS_PROVIDED_BY_INSTANCE_AI = ['agent-context'];
-
 @Service()
 export class InstanceAiBuilderDelegateAdapterService {
 	constructor(
@@ -32,7 +30,10 @@ export class InstanceAiBuilderDelegateAdapterService {
 	): InstanceAiBuilderDelegate {
 		return {
 			createAgent: async (name, createOptions) =>
-				await this.drafts.createDraft(user, projectId, name, createOptions),
+				await this.drafts.createDraft(user, projectId, name, {
+					...createOptions,
+					createdBy: 'builder',
+				}),
 			getBuilderTools: (resolveTargetAgentId, session) =>
 				this.builder.getTools(
 					user,
@@ -41,7 +42,6 @@ export class InstanceAiBuilderDelegateAdapterService {
 					credentialProviderFor,
 					credentialService,
 					{
-						excludeToolNames: TOOLS_PROVIDED_BY_INSTANCE_AI,
 						...(options.useEvalModelCatalog ? { useEvalModelCatalog: true } : {}),
 						track: (entry, properties) =>
 							this.telemetry.track(entry, {

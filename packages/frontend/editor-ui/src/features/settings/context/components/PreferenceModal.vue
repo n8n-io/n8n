@@ -8,6 +8,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
 	N8nButton,
 	N8nDialog,
+	N8nDialogBody,
 	N8nDialogFooter,
 	N8nFormInput,
 	N8nIcon,
@@ -20,6 +21,7 @@ import type { IconOrEmoji } from '@n8n/design-system';
 import { useUsersStore } from '@n8n/stores/users.store';
 import type { Rule, RuleGroup } from '@/Interface';
 
+import type { PreferenceExample } from '@/experiments/preferencesEmptyState/preferenceExamples';
 import { DEFAULT_PROJECT_ICON } from '@/features/collaboration/projects/projects.constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
@@ -40,6 +42,7 @@ import {
 const props = defineProps<{
 	open: boolean;
 	preference: Preference | null;
+	example?: PreferenceExample;
 }>();
 
 const emit = defineEmits<{
@@ -97,7 +100,7 @@ const form = reactive({
 
 function resetForm() {
 	initialScope.value = initialScopeValue();
-	form.content = preference.value?.content ?? '';
+	form.content = preference.value?.content ?? props.example?.content ?? '';
 	form.scope = initialScope.value;
 	contentValid.value = false;
 }
@@ -257,6 +260,7 @@ async function handleSubmit() {
 				scope_type: scope,
 				text_length: content.length,
 				...(projectId ? { project_id: projectId } : {}),
+				...(props.example ? { example_id: props.example.id } : {}),
 			});
 		} else if (preference.value) {
 			await contextStore.updatePreference(preference.value.id, payload);
@@ -294,6 +298,7 @@ watch(
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_OPENED_PREFERENCE_MODAL, {
 			mode: mode.value,
 			...(preference.value ? { scope_type: preferenceScope(preference.value) } : {}),
+			...(props.example ? { example_id: props.example.id } : {}),
 		});
 		void projectsStore.getMyProjects();
 	},
@@ -305,12 +310,17 @@ watch(
 	<N8nDialog
 		:open="open"
 		:header="modalTitle"
+		:description="
+			example
+				? i18n.baseText('experiments.preferencesEmptyState.examples.modalDescription')
+				: undefined
+		"
 		size="medium"
 		:disable-outside-pointer-events="true"
 		data-test-id="preference-modal"
 		@update:open="emit('update:open', $event)"
 	>
-		<div :class="$style.form">
+		<N8nDialogBody :class="$style.form">
 			<N8nFormInput
 				v-model="form.content"
 				name="content"
@@ -368,7 +378,7 @@ watch(
 					</N8nOption>
 				</N8nSelect>
 			</N8nInputLabel>
-		</div>
+		</N8nDialogBody>
 		<N8nDialogFooter>
 			<N8nButton
 				variant="outline"
@@ -392,7 +402,6 @@ watch(
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
-	padding: var(--spacing--sm) 0;
 }
 
 .counter {

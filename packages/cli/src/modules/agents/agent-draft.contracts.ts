@@ -1,5 +1,7 @@
 import type { ToolDescriptor } from '@n8n/agents';
 import type {
+	AgentActor,
+	AgentCreationState,
 	AgentIntegrationConfig,
 	AgentJsonConfig,
 	AgentSkill,
@@ -11,6 +13,8 @@ export interface CreateAgentDraftOptions {
 	adoptOnCollision?: boolean;
 	schema?: AgentJsonConfig;
 	skills?: Record<string, AgentSkill>;
+	/** Internal seeds omit this field to keep creation telemetry silent. */
+	createdBy?: AgentActor;
 }
 
 export interface AgentDraftReference {
@@ -20,13 +24,21 @@ export interface AgentDraftReference {
 	adopted: boolean;
 }
 
+export interface PersistAgentDraftOptions {
+	id: string;
+	name: string;
+	adoptOnCollision: boolean;
+	config?: Record<string, unknown>;
+	pushRef?: string;
+}
+
 export interface PersistedAgentDraft {
 	id: string;
 	name: string;
 	getState(): Promise<AgentDraftState>;
 }
 
-export interface AgentDraftState {
+export interface AgentDraftState extends AgentCreationState {
 	id: string;
 	name: string;
 	projectId: string;
@@ -43,7 +55,6 @@ export interface AgentDraftState {
 	updatedAt: Date;
 	isRunnable: boolean;
 	hasPublishHistory: boolean;
-	configHash: string | null;
 	skillHashes: Record<string, string>;
 	outdatedSkillIds: string[];
 }

@@ -159,6 +159,17 @@ export class UnregisteredOwnerTypeError extends Error {
 	}
 }
 
+/** Raised when a job's name is too long to store. */
+export class InvalidJobNameError extends Error {
+	constructor(
+		readonly length: number,
+		readonly maxLength: number,
+	) {
+		super('Scheduled job name must fit its length limit');
+		this.name = 'InvalidJobNameError';
+	}
+}
+
 /** Raised when a job's owner id is empty or too long to store. */
 export class InvalidOwnerIdError extends Error {
 	constructor(

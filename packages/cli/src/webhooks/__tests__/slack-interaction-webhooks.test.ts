@@ -338,4 +338,10 @@ describe('SlackInteractionWebhooks', () => {
 			suffix: 'node-1',
 		});
 	});
+
+	it('advertises POST as the only method without reading an execution', async () => {
+		await expect(slackInteractionWebhooks.getWebhookMethods()).resolves.toEqual(['POST']);
+
+		expect(executionPersistence.findSingleExecution).not.toHaveBeenCalled();
+	});
 });

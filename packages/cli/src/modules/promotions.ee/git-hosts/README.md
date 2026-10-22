@@ -1,7 +1,7 @@
 # Git host adapters
 
-Providers own encrypted authentication and host configuration. Connections own
-repository targets. Direction configs own branches. Git operations consume the
+Providers own encrypted authentication and host configuration. Environments own
+repository remotes and the branch of one direction. Git operations consume the
 same plain credentials regardless of provider type.
 
 `GitHostClient` checks host authentication before provider settings are saved.
@@ -18,14 +18,15 @@ capabilities declare the supported auth methods and fixed transport usernames.
 4. Register the adapter in `GitHostClients`.
 5. Add tests for validation and Git transport compatibility.
 
-Do not add provider-specific branches to connection, promotion, or apply logic.
-Add merge-request capabilities when that feature lands. This layer does not
-change the editor UI.
+Do not add provider-specific branches to environment, promotion, or apply logic.
+A branched Promote opens a GitLab merge request. `PromotionReviewHostResolver`
+reads the saved base URL, token, and repository path. A plain Git provider
+pushes and does not open a review. This layer does not change the editor UI.
 
 ## Discovery
 
-Discovery uses a saved provider, not a connection. A client can pick a repository
-before it creates a connection. Both routes require the `gitConnection:discover`
+Discovery uses a saved provider, not an environment. A client can pick a repository
+before it creates an environment. Both routes require the `gitConnection:discover`
 API-key grant and global user scope:
 
 - `GET /api/v1/promotions/providers/{promotionProviderId}/repositories`
@@ -53,14 +54,14 @@ The client never follows a pagination URL. It computes each page on the saved
 host. If a proxy omits pagination headers, a full page gets a continuation cursor.
 That fallback can cause one extra request at the end of a list.
 
-## Connection targets
+## Environment remotes
 
-The API accepts and returns `remoteUrl`. New GitLab targets store only a
+The API accepts and returns `remoteUrl`. New GitLab remotes store only a
 `repositoryPath`. Reads and Git operations derive the URL from the provider.
-Plain Git and existing URL-based targets stay compatible. Resave an existing
-GitLab target to convert it to a path. Older versions cannot read path targets.
-Connection responses also return the stored `repositoryPath`. URL-encode it
-before you use it as the `repositoryId` to list branches of a saved connection.
+Plain Git and existing URL-based remotes stay compatible. Resave an existing
+GitLab remote to convert it to a path. Older versions cannot read path remotes.
+Environment responses also return the stored `repositoryPath`. URL-encode it
+before you use it as the `repositoryId` to list branches of a saved environment.
 
 ## GitLab
 
