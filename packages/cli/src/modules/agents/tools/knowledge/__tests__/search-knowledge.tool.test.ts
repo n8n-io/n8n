@@ -2,6 +2,7 @@ import type { BuiltTool } from '@n8n/agents';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentKnowledgeMirrorService } from '../../../agent-knowledge-mirror.service';
+import type { KnowledgeToolCall } from '../../../agent-knowledge-usage-tracker';
 import { createKnowledgeRetrievalTools } from '../search-knowledge.tool';
 
 const projectId = 'project-1';
@@ -10,11 +11,13 @@ const agentId = 'agent-1';
 function buildTool(
 	knowledgeMirrorService: AgentKnowledgeMirrorService,
 	toolName: 'find_file' | 'search_text' | 'read_file',
+	recordToolCall: (runId: string | undefined, call: KnowledgeToolCall) => void = vi.fn(),
 ): BuiltTool {
 	const tool = createKnowledgeRetrievalTools({
 		projectId,
 		agentId,
 		knowledgeMirrorService,
+		recordToolCall,
 	})
 		.map((builder) => builder.build())
 		.find((candidate) => candidate.name === toolName);
@@ -91,5 +94,30 @@ describe('createKnowledgeRetrievalTools', () => {
 		});
 
 		expect(knowledgeMirrorService.readKnowledge).toHaveBeenCalledWith(projectId, agentId, input);
+	});
+
+	it.each([
+		['find_file', 'file_find', { pattern: '*' }],
+		['search_text', 'file_search', { pattern: 'refund' }],
+		['read_file', 'file_read', { file: 'notes.txt' }],
+	] as const)('records one %s call for the run', async (toolName, call, input) => {
+		const recordToolCall = vi.fn();
+		const tool = buildTool(mock<AgentKnowledgeMirrorService>(), toolName, recordToolCall);
+
+		await getToolHandler(tool)(input, { runId: 'run-1' });
+
+		expect(recordToolCall).toHaveBeenCalledTimes(1);
+		expect(recordToolCall).toHaveBeenCalledWith('run-1', call);
+	});
+
+	it('records a call that fails', async () => {
+		const recordToolCall = vi.fn();
+		const knowledgeMirrorService = mock<AgentKnowledgeMirrorService>();
+		knowledgeMirrorService.searchKnowledge.mockRejectedValue(new Error('search failed'));
+		const tool = buildTool(knowledgeMirrorService, 'search_text', recordToolCall);
+
+		await getToolHandler(tool)({ pattern: 'refund' }, { runId: 'run-1' });
+
+		expect(recordToolCall).toHaveBeenCalledWith('run-1', 'file_search');
 	});
 });

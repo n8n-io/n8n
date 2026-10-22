@@ -1,11 +1,12 @@
-import { Logger } from '@n8n/backend-common';
+import type { Logger } from '@n8n/backend-common';
 import { mock } from 'vitest-mock-extended';
 
-import { AgentChatExecutionService } from '../agent-chat-execution.service';
-import { AgentExecutionService } from '../agent-execution.service';
-import { AgentMessageQueueService } from '../agent-message-queue.service';
-import { AgentMessageSteeringService } from '../agent-message-steering.service';
-import { AgentToolApprovalService } from '../agent-tool-approval.service';
+import type { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
+import type { AgentChatExecutionService } from '../agent-chat-execution.service';
+import type { AgentExecutionService } from '../agent-execution.service';
+import type { AgentMessageQueueService } from '../agent-message-queue.service';
+import type { AgentMessageSteeringService } from '../agent-message-steering.service';
+import type { AgentToolApprovalService } from '../agent-tool-approval.service';
 import { AgentTurnExecutionService, type AgentTurnRequest } from '../agent-turn-execution.service';
 
 it('ends a preview turn stopped during preparation without recording an error', async () => {
@@ -21,6 +22,7 @@ it('ends a preview turn stopped during preparation without recording an error', 
 		mock<AgentMessageQueueService>(),
 		mock<AgentMessageSteeringService>(),
 		mock<AgentToolApprovalService>(),
+		mock<AgentKnowledgeUsageTracker>(),
 	);
 	const controller = new AbortController();
 	const turn: AgentTurnRequest = {
