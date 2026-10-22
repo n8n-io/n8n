@@ -1,0 +1,24 @@
+packages/core/src/errors/__tests__/error-reporter.test.ts
+  s_1aa69298eb4cf0::t_bae6951a1bd376 491-502,507,513,516-519,532
+packages/core/src/instance-settings/__tests__/instance-type.test.ts
+  s_1aa69298eb4cf0::t_07cdafd14d2414 4-9
+packages/cli/src/error-reporting/__tests__/error-reporting-boot.test.ts
+  s_1aa69298eb4cf0::t_e6b46ddf253e31 65,108
+  s_1aa69298eb4cf0::t_6521abdf7db8fc 45-64,66-93,115-116,118-123,144-149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "29e6e2f518b7b58289e42d97c19dbf4167bf4412",
+  "prompts": {},
+  "sessions": {
+    "s_1aa69298eb4cf0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca44bdce-ec18-4d0c-bc10-a8d9b4963216",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}
