@@ -127,7 +127,7 @@ erDiagram
   datetime_3_ updatedAt
 }
 "agent_execution" {
-  boolean acceptsSteering
+  BOOLEAN acceptsSteering
   TEXT attachments
   TEXT author
   INTEGER cacheReadTokens
@@ -138,8 +138,8 @@ erDiagram
   INTEGER duration
   TEXT error
   TEXT failureSummary
-  varchar_32_ finishReason
-  varchar_64_ guardrailCode
+  VARCHAR_32_ finishReason
+  VARCHAR_64_ guardrailCode
   varchar_16_ hitlStatus
   varchar_36_ id PK
   varchar_255_ model

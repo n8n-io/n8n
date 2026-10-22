@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const migrationName = 'AddAgentExecutionUsageAndLinks1792665706795';
+const migrationName = 'AddAgentExecutionUsageAndLinks1792679908817';
 
 describe('AddAgentExecutionUsageAndLinks migration', () => {
 	let dataSource: DataSource;
