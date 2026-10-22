@@ -1,0 +1,24 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_ba2ae60894487d::t_56fd5983d6e33a 4272
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review-inbox.service.test.ts
+  s_ba2ae60894487d::t_03aafbad136dcf 17-18
+packages/cli/test/integration/promotion-review-inbox.test.ts
+  s_ba2ae60894487d::t_70f1f3968dfb1f 13
+  s_ba2ae60894487d::t_b2319cc25f1438 122-124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4e2bf7e9ec565e9ae40aa053b414287136a1919e",
+  "prompts": {},
+  "sessions": {
+    "s_ba2ae60894487d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "04a467cb-e333-46a5-b84f-448b11db34b5",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}
