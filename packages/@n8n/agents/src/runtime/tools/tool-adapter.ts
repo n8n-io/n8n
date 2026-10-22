@@ -1,4 +1,6 @@
+import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import type { Tool as AiSdkTool } from 'ai';
+import type { JSONSchema7 } from 'json-schema';
 import { z } from 'zod';
 
 import { isCancellation } from '../../sdk/cancellation';
@@ -16,6 +18,23 @@ import { fixSchema } from '../../utils/json-schema';
 import { isZodSchema } from '../../utils/zod';
 import { loadAi } from '../model/lazy-ai';
 import { applyToolProviderOptionDefaults } from '../model/provider-quirks';
+
+// Routing experiment only: send these workflow tools without property descriptions to test prompt volume.
+const VOLUME_TEST_STRIPPED_TOOLS = new Set([
+	'workflow_builder_workflows',
+	'workflow_builder_executions',
+	'workflow_builder_build_workflow',
+]);
+
+function stripDescriptions(value: unknown): unknown {
+	if (Array.isArray(value)) return value.map(stripDescriptions);
+	if (typeof value !== 'object' || value === null) return value;
+	return Object.fromEntries(
+		Object.entries(value)
+			.filter(([key]) => key !== 'description')
+			.map(([key, inner]) => [key, stripDescriptions(inner)]),
+	);
+}
 
 type AiSdkProviderTool = AiSdkTool & {
 	type: 'provider';
@@ -80,7 +99,16 @@ export function toAiSdkTools(tools?: BuiltTool[]): Record<string, AiSdkTool> {
 			const providerOptions = applyToolProviderOptionDefaults(t.providerOptions);
 			// Responses otherwise normalizes omitted strict schemas and makes optional MCP fields required.
 			const strict = t.mcpTool ? false : undefined;
-			if (isZodSchema(t.inputSchema)) {
+			if (isZodSchema(t.inputSchema) && VOLUME_TEST_STRIPPED_TOOLS.has(t.name)) {
+				result[t.name] = ai.tool({
+					description: t.description,
+					inputSchema: ai.jsonSchema(
+						fixSchema(stripDescriptions(zodSchemaToJsonSchema(t.inputSchema)) as JSONSchema7),
+					),
+					providerOptions,
+					strict,
+				});
+			} else if (isZodSchema(t.inputSchema)) {
 				result[t.name] = ai.tool({
 					description: t.description,
 					inputSchema: t.inputSchema,
