@@ -1090,6 +1090,15 @@ export class CredentialsService {
 		}
 	}
 
+	/**
+	 * Decrypts the credentials data without redaction. Unlike `decrypt`, throws
+	 * `CredentialDataError` when the stored data is missing or unreadable, for a caller that
+	 * must not treat unreadable data as empty.
+	 */
+	async decryptOrFail(credential: CredentialsEntity): Promise<ICredentialDataDecryptedObject> {
+		return await createCredentialsFromCredentialsEntity(credential).getData();
+	}
+
 	async update(
 		credentialId: string,
 		newCredentialData: ICredentialsDb,
@@ -1285,21 +1294,11 @@ export class CredentialsService {
 		await this.credentialDescriptions.stripIfDisabled(newCredential);
 
 		// Authorize first: a caller without access to the project must not learn its policy verdict.
-		const project = await this.projectService.getProjectWithScope(user, projectId, [
-			'credential:create',
-		]);
-		if (project === null) {
-			if (!(await this.projectRepository.existsBy({ id: projectId }))) {
-				throw new NotFoundError('Project not found');
-			}
-			throw new ForbiddenError(
-				"You don't have the permissions to save the credential in this project.",
-			);
-		}
+		await this.assertCanCreateInProject(user, projectId);
 
 		// Gate the save on policy before persisting, so the author learns about a blocked type
 		// while setting the credential up rather than at run time. No stored credential: this one is new.
-		const cleared = await this.enforceCredentialCreate(newCredential.type, project.id, user);
+		const cleared = await this.enforceCredentialCreate(newCredential.type, projectId, user);
 
 		const result = await this.credentialsRepository.runInTransaction(
 			{ policyCleared: cleared },
@@ -1311,7 +1310,7 @@ export class CredentialsService {
 				const newSharedCredential = this.sharedCredentialsRepository.create({
 					role: 'credential:owner',
 					credentials: savedCredential,
-					projectId: project.id,
+					projectId,
 				});
 
 				await transactionManager.save<SharedCredentials>(newSharedCredential);
@@ -1363,6 +1362,19 @@ export class CredentialsService {
 		);
 	}
 
+	async assertCanCreateInProject(user: User, projectId: string): Promise<void> {
+		const project = await this.projectService.getProjectWithScope(user, projectId, [
+			'credential:create',
+		]);
+		if (project !== null) return;
+		if (!(await this.projectRepository.existsBy({ id: projectId }))) {
+			throw new NotFoundError('Project not found');
+		}
+		throw new ForbiddenError(
+			"You don't have the permissions to save the credential in this project.",
+		);
+	}
+
 	/** A create binds to its type: the row has no committed id yet, whatever the payload claims. */
 	private async enforceCredentialCreate(type: string, projectId: string | null, user: User) {
 		return await this.policyEnforcementService.enforceCredentialSave(
@@ -1386,22 +1398,12 @@ export class CredentialsService {
 			await this.credentialDependencyService.resolveProviderIdsFromCredentialData(
 				decryptedCredentialData,
 			);
-		const project = await this.projectService.getProjectWithScope(user, projectId, [
-			'credential:create',
-		]);
-		if (project === null) {
-			if (!(await this.projectRepository.existsBy({ id: projectId }))) {
-				throw new NotFoundError('Project not found');
-			}
-			throw new ForbiddenError(
-				"You don't have the permissions to save the credential in this project.",
-			);
-		}
-		const cleared = await this.enforceCredentialCreate(newCredential.type, project.id, user);
+		await this.assertCanCreateInProject(user, projectId);
+		const cleared = await this.enforceCredentialCreate(newCredential.type, projectId, user);
 		const saved = await this.transactionRunner.run({ policyCleared: cleared }, async (ctx) => {
 			return await this.credentialsRepository.insertProjectCredentialWithOwner(
 				newCredential,
-				project.id,
+				projectId,
 				externalSecretProviderIds,
 				ctx,
 			);

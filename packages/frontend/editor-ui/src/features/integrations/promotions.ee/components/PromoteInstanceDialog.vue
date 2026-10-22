@@ -4,6 +4,7 @@ import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
 	N8nDialog,
+	N8nDialogBody,
 	N8nDialogFooter,
 	N8nDialogHeader,
 	N8nDialogTitle,
@@ -128,28 +129,31 @@ async function submit() {
 			</N8nDialogTitle>
 		</N8nDialogHeader>
 
-		<form v-if="!result" :class="$style.body" @submit.prevent="submit">
-			<N8nText color="text-base">{{ bodyText }}</N8nText>
+		<template v-if="!result">
+			<N8nDialogBody>
+				<form id="promote-instance-form" :class="$style.body" @submit.prevent="submit">
+					<N8nText color="text-base">{{ bodyText }}</N8nText>
 
-			<N8nInputLabel
-				input-name="promote-commit-message"
-				:label="i18n.baseText('settings.promotions.promote.dialog.commitMessage.label')"
-				required
-			>
-				<N8nInput
-					id="promote-commit-message"
-					ref="messageInput"
-					v-model="commitMessage"
-					type="textarea"
-					:rows="3"
-					:disabled="isSubmitting"
-					:placeholder="
-						i18n.baseText('settings.promotions.promote.dialog.commitMessage.placeholder')
-					"
-					data-test-id="promote-commit-message"
-				/>
-			</N8nInputLabel>
-
+					<N8nInputLabel
+						input-name="promote-commit-message"
+						:label="i18n.baseText('settings.promotions.promote.dialog.commitMessage.label')"
+						required
+					>
+						<N8nInput
+							id="promote-commit-message"
+							ref="messageInput"
+							v-model="commitMessage"
+							type="textarea"
+							:rows="3"
+							:disabled="isSubmitting"
+							:placeholder="
+								i18n.baseText('settings.promotions.promote.dialog.commitMessage.placeholder')
+							"
+							data-test-id="promote-commit-message"
+						/>
+					</N8nInputLabel>
+				</form>
+			</N8nDialogBody>
 			<N8nDialogFooter>
 				<N8nButton
 					type="button"
@@ -162,6 +166,7 @@ async function submit() {
 				</N8nButton>
 				<N8nButton
 					type="submit"
+					form="promote-instance-form"
 					:disabled="isPromoteDisabled"
 					:loading="isSubmitting"
 					data-test-id="promote-confirm-button"
@@ -169,42 +174,46 @@ async function submit() {
 					{{ i18n.baseText('settings.promotions.promote.dialog.confirm') }}
 				</N8nButton>
 			</N8nDialogFooter>
-		</form>
+		</template>
 
-		<div v-else :class="$style.body">
-			<N8nLink
-				v-if="mergeRequestUrl"
-				:to="mergeRequestUrl"
-				new-window
-				data-test-id="promote-merge-request-link"
-			>
-				{{ i18n.baseText('promotions.result.viewMergeRequest') }}
-			</N8nLink>
-			<N8nText v-else color="text-base" data-test-id="promote-result-summary">
-				{{ pushedText }}
-			</N8nText>
-			<N8nText
-				v-for="(warning, index) in result.warnings"
-				:key="index"
-				color="text-base"
-				data-test-id="promote-warning"
-			>
-				<template
-					v-for="(segment, segmentIndex) in warningSegments(warning, reviewNotRecorded)"
-					:key="segmentIndex"
-				>
-					<N8nLink v-if="segment.kind === 'link'" :to="segment.url" new-window>
-						{{ segment.url }}
+		<template v-else>
+			<N8nDialogBody>
+				<div :class="$style.body">
+					<N8nLink
+						v-if="mergeRequestUrl"
+						:to="mergeRequestUrl"
+						new-window
+						data-test-id="promote-merge-request-link"
+					>
+						{{ i18n.baseText('promotions.result.viewMergeRequest') }}
 					</N8nLink>
-					<template v-else>{{ segment.text }}</template>
-				</template>
-			</N8nText>
+					<N8nText v-else color="text-base" data-test-id="promote-result-summary">
+						{{ pushedText }}
+					</N8nText>
+					<N8nText
+						v-for="(warning, index) in result.warnings"
+						:key="index"
+						color="text-base"
+						data-test-id="promote-warning"
+					>
+						<template
+							v-for="(segment, segmentIndex) in warningSegments(warning, reviewNotRecorded)"
+							:key="segmentIndex"
+						>
+							<N8nLink v-if="segment.kind === 'link'" :to="segment.url" new-window>
+								{{ segment.url }}
+							</N8nLink>
+							<template v-else>{{ segment.text }}</template>
+						</template>
+					</N8nText>
+				</div>
+			</N8nDialogBody>
 			<N8nDialogFooter>
 				<N8nButton type="button" data-test-id="promote-close-button" @click="close">
 					{{ i18n.baseText('generic.close') }}
 				</N8nButton>
 			</N8nDialogFooter>
-		</div>
+		</template>
 	</N8nDialog>
 </template>
 

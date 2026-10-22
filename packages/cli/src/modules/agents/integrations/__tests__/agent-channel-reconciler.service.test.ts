@@ -37,6 +37,10 @@ class FakeIntegration extends AgentChatIntegration {
 		return this.leaderOnly;
 	}
 
+	buildOriginDraft() {
+		return undefined;
+	}
+
 	async createAdapter(): Promise<unknown> {
 		return {};
 	}

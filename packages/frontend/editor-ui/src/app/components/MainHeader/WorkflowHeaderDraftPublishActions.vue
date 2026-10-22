@@ -39,9 +39,10 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { useToast } from '@n8n/composables/useToast';
 import {
-	describeNodeTypeRestriction,
+	describeRestrictedNodeTypes,
 	getNodeTypeRestriction,
 } from '@n8n/frontend-module-type-availability-policies';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowVersionFormModalEventBusEvents } from '@/features/workflows/workflowHistory/components/WorkflowVersionFormModal.vue';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
@@ -95,6 +96,7 @@ const collaborationStore = useCollaborationStore();
 const projectStore = useProjectsStore();
 const workflowHistoryStore = useWorkflowHistoryStore();
 const settingsStore = useSettingsStore();
+const nodeTypesStore = useNodeTypesStore();
 const i18n = useI18n();
 const router = useRouter();
 const toast = useToast();
@@ -182,17 +184,29 @@ const nodesWithValidationIssues = computed(() => workflowDocumentStore.value.pub
 
 const hasNodeIssues = computed(() => workflowDocumentStore.value.hasPublishBlockingIssues);
 
-const isWorkflowPublishable = computed(() => containsTrigger.value && !hasNodeIssues.value);
+/** The publish policy check judges every node, disabled or unreachable ones too. */
+const restrictedNodeTypes = computed(() => {
+	const nodeTypes = workflowDocumentStore.value.allNodes.map((node) => node.type);
+	return [...new Set(nodeTypes)].flatMap((type) => {
+		const restriction = getNodeTypeRestriction(type);
+		if (!restriction) return [];
+
+		const displayName = nodeTypesStore.getNodeType(type)?.displayName ?? type;
+		return [{ displayName, scope: restriction.scope }];
+	});
+});
+
+const hasRestrictedNodeTypes = computed(() => restrictedNodeTypes.value.length > 0);
+
+const isWorkflowPublishable = computed(
+	() => containsTrigger.value && !hasNodeIssues.value && !hasRestrictedNodeTypes.value,
+);
 
 /** Why publishing is blocked, or '' when it is not. Also the Publish tooltip. */
 const publishBlockedReason = computed(() => {
 	if (isWorkflowPublishable.value) return '';
 	if (!containsTrigger.value) return i18n.baseText('workflows.publishModal.noTriggerMessage');
-
-	for (const node of nodesWithValidationIssues.value) {
-		const restriction = getNodeTypeRestriction(node.type);
-		if (restriction) return describeNodeTypeRestriction(node.name, restriction.scope, 'replace');
-	}
+	if (hasRestrictedNodeTypes.value) return describeRestrictedNodeTypes(restrictedNodeTypes.value);
 
 	return i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title', {
 		interpolate: { count: nodesWithValidationIssues.value.length },
@@ -238,7 +252,7 @@ const workflowPublishState = computed((): WorkflowPublishState => {
 		return 'published-invalid-trigger';
 	}
 
-	if (hasNodeIssues.value) {
+	if (hasNodeIssues.value || hasRestrictedNodeTypes.value) {
 		return 'published-node-issues';
 	}
 
@@ -845,7 +859,7 @@ onBeforeUnmount(() => {
 					<template #content>
 						<div>
 							<template v-if="publishButtonConfig.tooltip">
-								{{ publishButtonConfig.tooltip }} <br />
+								<span :class="$style.tooltipReason">{{ publishButtonConfig.tooltip }}</span> <br />
 							</template>
 							<template v-if="activeVersion && publishButtonConfig.showVersionInfo">
 								<span data-test-id="workflow-active-version-info">{{ activeVersionName }}</span
@@ -952,6 +966,11 @@ onBeforeUnmount(() => {
 <style lang="scss" module>
 .container {
 	display: contents;
+}
+
+/* A restricted node list puts one scope on each line. */
+.tooltipReason {
+	white-space: pre-line;
 }
 
 .activeVersionIndicator {

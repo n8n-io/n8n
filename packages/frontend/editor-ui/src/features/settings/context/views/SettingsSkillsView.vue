@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn } from '@vueuse/core';
+import { saveAs } from 'file-saver';
 import type { AgentSkill, SkillCreateMethod, SkillListItem, SkillScope } from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
@@ -28,6 +29,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { AGENT_SKILL_MODAL_KEY } from '@/features/agents/constants';
 import { isSkillNameTakenError } from '@/features/agents/utils/agentSkill';
+import { exportAgentSkill } from '@/features/agents/utils/agentSkillExport';
 import type {
 	AgentSkillConfirmFailure,
 	AgentSkillModalData,
@@ -347,6 +349,23 @@ async function onSave(
 	return undefined;
 }
 
+/** The list row has no content, so the download reads the latest version first. */
+async function onDownload(item: Pick<SkillListItem, 'id'>) {
+	try {
+		const detail = await skillsStore.fetchSkill(item.id);
+		const { blob, fileName, format } = await exportAgentSkill(detail.skill);
+		saveAs(blob, fileName);
+		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_DOWNLOADED_SKILL, {
+			skill_id: detail.id,
+			scope: detail.scope,
+			...(detail.projectId ? { project_id: detail.projectId } : {}),
+			format,
+		});
+	} catch (error) {
+		showError(error, i18n.baseText('settings.context.skills.error.download'));
+	}
+}
+
 async function onDelete(skill: SkillListItem) {
 	const confirmed = await message.confirm(
 		i18n.baseText('settings.context.skills.delete.confirm.message'),
@@ -460,6 +479,7 @@ onMounted(async () => {
 			:loading="skillsStore.loading"
 			:show-empty="showEmptyState"
 			@open="openEditModal"
+			@download="onDownload"
 			@delete="onDelete"
 			@update:options="onOptionsUpdate"
 		>

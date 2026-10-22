@@ -10,6 +10,7 @@ import { Service } from '@n8n/di';
 import {
 	BadRequestError,
 	ConflictError,
+	NotFoundError,
 	ServiceUnavailableError,
 	TooManyRequestsError,
 	UnexpectedError,
@@ -80,7 +81,7 @@ export const parseGitLabReviewId = (remoteReviewId: string): MergeRequestRef => 
 	return { projectId: Number(groups.projectId), iid: Number(groups.iid) };
 };
 
-/** Opens GitLab merge requests. GitLab records each write as the token's bot user. */
+/** Opens and reads GitLab merge requests. GitLab records each write as the token's bot user. */
 @Service()
 export class GitLabMergeRequestClient {
 	private readonly http: HttpRequestClient;
@@ -109,6 +110,17 @@ export class GitLabMergeRequestClient {
 				// Keep the source branch until the connection can choose this.
 				remove_source_branch: false,
 			},
+		});
+		return this.parse(body);
+	}
+
+	async getMergeRequest(
+		access: GitHostAccess,
+		{ projectId, iid }: MergeRequestRef,
+	): Promise<GitLabMergeRequest> {
+		const { body } = await this.request(access, {
+			method: 'GET',
+			path: `projects/${projectId}/merge_requests/${iid}`,
 		});
 		return this.parse(body);
 	}
@@ -221,7 +233,7 @@ function statusError(status: number, body: unknown) {
 		);
 	}
 	if (status === 404) {
-		return new BadRequestError('GitLab could not find the project or merge request.');
+		return new NotFoundError('GitLab could not find the project or merge request.');
 	}
 	if (status === 408) {
 		return new ServiceUnavailableError(

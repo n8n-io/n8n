@@ -12,7 +12,7 @@ import type {
 	PlatformContextQueryParams,
 } from '../agent-chat-integration';
 import type { ChatInstance } from '../chat-integration.service';
-import { DiscordIntegration } from '../platforms/discord-integration';
+import { DiscordIntegration } from '../platforms/discord/discord-integration';
 import { installFetchStub } from './helpers/replay-test-helpers';
 
 // The chat SDK + adapters are ESM-only. Production loads them via esm-loader's
