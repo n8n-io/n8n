@@ -8,6 +8,7 @@ import {
 	findStoredVerifierRun,
 	type StoredEvalResults,
 } from './eval-results-artifact';
+import { VERIFIER_RESPONSE_FORMAT } from './checklist/verifier';
 import { MOCK_EXECUTION_VERIFY_PROMPT } from './system-prompts/mock-execution-verify';
 
 type Scenario = {
@@ -316,6 +317,29 @@ function getWorkflowJson(workflowId: string): WorkflowJson {
 	return jsonParse<WorkflowJson>(row);
 }
 
+/** The OpenAI Responses request the verifier sends, with the verifier's own response format. */
+function buildVerifierRequestBody(userMessage: string) {
+	return {
+		model: (process.env.N8N_INSTANCE_AI_MODEL ?? 'openai/gpt-5.5').split('/').at(-1) ?? 'gpt-5.5',
+		input: [
+			{
+				role: 'developer',
+				content: MOCK_EXECUTION_VERIFY_PROMPT,
+			},
+			{
+				role: 'user',
+				content: [
+					{
+						type: 'input_text',
+						text: userMessage,
+					},
+				],
+			},
+		],
+		text: { format: VERIFIER_RESPONSE_FORMAT },
+	};
+}
+
 function main(): void {
 	const args = parseCliArgs(process.argv.slice(2));
 	const testCase = readJson<WorkflowTestCaseJson>(args.testCasePath);
@@ -350,54 +374,7 @@ function main(): void {
 	const artifact = buildVerificationArtifact(scenario, evalResult, workflowJson);
 	const userMessage = `## Checklist\n\n${JSON.stringify(checklist, null, 2)}\n\n## Verification Artifact\n\n${artifact}\n\nVerify each checklist item against the artifact above.`;
 
-	const requestBody = {
-		model: (process.env.N8N_INSTANCE_AI_MODEL ?? 'openai/gpt-5.5').split('/').at(-1) ?? 'gpt-5.5',
-		input: [
-			{
-				role: 'developer',
-				content: MOCK_EXECUTION_VERIFY_PROMPT,
-			},
-			{
-				role: 'user',
-				content: [
-					{
-						type: 'input_text',
-						text: userMessage,
-					},
-				],
-			},
-		],
-		text: {
-			format: {
-				type: 'json_schema',
-				strict: true,
-				name: 'response',
-				schema: {
-					type: 'object',
-					properties: {
-						results: {
-							type: 'array',
-							items: {
-								type: 'object',
-								properties: {
-									id: { type: 'number' },
-									pass: { type: 'boolean' },
-									reasoning: { type: 'string' },
-									failureCategory: { type: ['string', 'null'] },
-									rootCause: { type: ['string', 'null'] },
-								},
-								required: ['id', 'pass', 'reasoning', 'failureCategory', 'rootCause'],
-								additionalProperties: false,
-							},
-						},
-					},
-					required: ['results'],
-					additionalProperties: false,
-					$schema: 'http://json-schema.org/draft-07/schema#',
-				},
-			},
-		},
-	};
+	const requestBody = buildVerifierRequestBody(userMessage);
 
 	mkdirSync(dataDir, { recursive: true });
 	const outputPath = path.join(dataDir, `openai-verifier-request-${scenarioName}.json`);
@@ -409,4 +386,4 @@ if (require.main === module) {
 	main();
 }
 
-export { getScenarios };
+export { buildVerifierRequestBody, getScenarios };

@@ -45,6 +45,40 @@ export const VERIFY_INACTIVITY_TIMEOUT_MS = 45_000;
  * (Sonnet 4.6 / 5 replays hit it), so leave room for thinking plus the JSON.
  */
 export const VERIFIER_MAX_OUTPUT_TOKENS = 16_384;
+
+/**
+ * Native OpenAI Responses `text.format` for the verifier: the JSON-schema twin of
+ * `checklistResultSchema`. `reasoning` comes before `pass` for the same reason.
+ * Shared with `export-latest-verifier-request.ts`, so a replayed request asks the same thing.
+ */
+export const VERIFIER_RESPONSE_FORMAT = {
+	type: 'json_schema',
+	strict: true,
+	name: 'response',
+	schema: {
+		type: 'object',
+		properties: {
+			results: {
+				type: 'array',
+				items: {
+					type: 'object',
+					properties: {
+						id: { type: 'number' },
+						reasoning: { type: 'string' },
+						pass: { type: 'boolean' },
+						failureCategory: { type: ['string', 'null'] },
+						rootCause: { type: ['string', 'null'] },
+					},
+					required: ['id', 'reasoning', 'pass', 'failureCategory', 'rootCause'],
+					additionalProperties: false,
+				},
+			},
+		},
+		required: ['results'],
+		additionalProperties: false,
+		$schema: 'http://json-schema.org/draft-07/schema#',
+	},
+};
 const VERIFIER_DEBUG = process.env.N8N_EVAL_VERIFIER_DEBUG === '1';
 
 function jitteredPauseMs(attempt: number): number {
@@ -194,36 +228,7 @@ async function runNativeOpenAiVerifier(
 				],
 			},
 		],
-		text: {
-			format: {
-				type: 'json_schema',
-				strict: true,
-				name: 'response',
-				schema: {
-					type: 'object',
-					properties: {
-						results: {
-							type: 'array',
-							items: {
-								type: 'object',
-								properties: {
-									id: { type: 'number' },
-									reasoning: { type: 'string' },
-									pass: { type: 'boolean' },
-									failureCategory: { type: ['string', 'null'] },
-									rootCause: { type: ['string', 'null'] },
-								},
-								required: ['id', 'reasoning', 'pass', 'failureCategory', 'rootCause'],
-								additionalProperties: false,
-							},
-						},
-					},
-					required: ['results'],
-					additionalProperties: false,
-					$schema: 'http://json-schema.org/draft-07/schema#',
-				},
-			},
-		},
+		text: { format: VERIFIER_RESPONSE_FORMAT },
 	};
 	const response = await fetch(getOpenAiResponsesUrl(model.url), {
 		method: 'POST',

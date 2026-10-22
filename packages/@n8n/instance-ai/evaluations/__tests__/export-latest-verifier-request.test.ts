@@ -1,5 +1,5 @@
 import { findStoredTestCaseResult, findStoredVerifierRun } from '../eval-results-artifact';
-import { getScenarios } from '../export-latest-verifier-request';
+import { buildVerifierRequestBody, getScenarios } from '../export-latest-verifier-request';
 
 function evalResult(marker: string) {
 	return {
@@ -80,5 +80,15 @@ describe('export-latest-verifier-request helpers', () => {
 		expect(storedRun?.runIndex).toBe(1);
 		expect(storedRun?.evalResult.nodeResults).toHaveProperty('target-node');
 		expect(storedRun?.workflowId).toBe('wf-target');
+	});
+
+	it('asks for the reasoning before the verdict in the replayed request schema', () => {
+		const body = buildVerifierRequestBody('user message');
+
+		// Structured output writes keys in schema order, so `pass` must come after `reasoning`.
+		const item = body.text.format.schema.properties.results.items;
+		const keys = ['id', 'reasoning', 'pass', 'failureCategory', 'rootCause'];
+		expect(Object.keys(item.properties)).toEqual(keys);
+		expect(item.required).toEqual(keys);
 	});
 });
