@@ -4,7 +4,7 @@ packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
 {
   "schema_version": "authorship/3.0.0",
   "git_ai_version": "1.5.2",
-  "base_commit_sha": "0fdc80922b134a844b683bdfa31f853acddd5a5d",
+  "base_commit_sha": "a2ec770217bf3c8c0c2989bbc8342d98e1b0e56b",
   "prompts": {},
   "sessions": {
     "s_fcc77b2931f263": {
