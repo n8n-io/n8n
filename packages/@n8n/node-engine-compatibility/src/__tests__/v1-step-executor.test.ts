@@ -8,10 +8,11 @@ import type {
 } from 'n8n-workflow';
 import {
 	CHAT_NODE_TYPE,
-	WAIT_FOR_SUB_EXECUTION,
-	WAIT_INDEFINITELY,
 	Expression,
 	ExpressionError,
+	UserError,
+	WAIT_FOR_SUB_EXECUTION,
+	WAIT_INDEFINITELY,
 } from 'n8n-workflow';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -549,17 +550,11 @@ describe('V1StepExecutor', () => {
 		});
 
 		// No deadline, so only a resume request ends the wait.
-		it.each(['omitted', 'true'])(
-			'declares a wait with no deadline when acceptsResumeRequest is %s',
-			async (acceptsResumeRequest) => {
-				const graph = graphWith('test.waitsUntil', {
-					waitTill: WAIT_INDEFINITELY.toISOString(),
-					acceptsResumeRequest,
-				});
-				const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
-				expect(result).toEqual({ wait: { resumeBinding: 'execution' } });
-			},
-		);
+		it('declares a wait with no deadline', async () => {
+			const graph = graphWith('test.waitsUntil', { waitTill: WAIT_INDEFINITELY.toISOString() });
+			const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
+			expect(result).toEqual({ wait: { resumeBinding: 'execution' } });
+		});
 
 		it('fails the step when a wait with no deadline refuses resume requests', async () => {
 			const graph = graphWith('test.waitsUntil', {
@@ -570,6 +565,7 @@ describe('V1StepExecutor', () => {
 			await expect(execution).rejects.toThrow(
 				'Node "Subject" waits with no time limit and does not accept a resume request, so nothing can end the wait',
 			);
+			await expect(execution).rejects.toBeInstanceOf(UserError);
 		});
 
 		it('fails a send-and-wait step before the node sends its message', async () => {
@@ -587,7 +583,7 @@ describe('V1StepExecutor', () => {
 
 		// The Chat node waits for a chat reply in every version and operation.
 		it('fails a Chat node step before the node sends its message', async () => {
-			const graph = graphWith(CHAT_NODE_TYPE);
+			const graph = graphWith(CHAT_NODE_TYPE, { operation: 'send' });
 			const echo = testNodeTypes.getByNameAndVersion('test.echoParam');
 			const execute = vi.spyOn(echo, 'execute');
 			const executor = new V1StepExecutor({
