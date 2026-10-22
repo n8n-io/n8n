@@ -25,6 +25,7 @@ import type { UrlService } from '@n8n/backend-services';
 import { Container } from '@n8n/di';
 
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
+import { SkillsHubRollout } from '@/modules/skills/skills-hub-rollout';
 
 import { ACTIVITY_LOG_TOOLS, INSTANCE_CONTEXT_TOOLS } from '../mcp-scopes';
 import { McpProtectedResource } from '../mcp-protected-resource';
@@ -32,10 +33,8 @@ import { McpProtectedResource } from '../mcp-protected-resource';
 const makeGlobalConfig = ({
 	builderEnabled = true,
 	managedByEnv = false,
-	skillsHubEnabled = true,
 } = {}) =>
 	({
-		agents: { skillsHubEnabled },
 		endpoints: { mcpBuilderEnabled: builderEnabled },
 		instanceSettingsLoader: { communityPackagesManagedByEnv: managedByEnv },
 	}) as unknown as GlobalConfig;
@@ -71,6 +70,7 @@ describe('McpProtectedResource', () => {
 			CommunityPackagesConfig,
 			mock<CommunityPackagesConfig>({ enabled: true, verifiedEnabled: true }),
 		);
+		Container.set(SkillsHubRollout, mock<SkillsHubRollout>({ isEnabled: true }));
 	});
 
 	describe('getScopeTools', () => {
@@ -83,20 +83,12 @@ describe('McpProtectedResource', () => {
 		});
 
 		it('withholds skill scopes and tools when the skills hub is off', async () => {
-			const hubOffResource = new McpProtectedResource(
-				urlService,
-				mcpSettingsService,
-				mcpConfig,
-				makeGlobalConfig({ skillsHubEnabled: false }),
-				moduleRegistry,
-				licenseState,
-				postHogClient,
-			);
+			Container.set(SkillsHubRollout, mock<SkillsHubRollout>({ isEnabled: false }));
 
-			expect(hubOffResource.scopes).toContain('agent:read');
-			expect(hubOffResource.scopes).not.toContain('skill:read');
-			expect(hubOffResource.scopes).not.toContain('skill:write');
-			expect(await hubOffResource.getScopeTools()).not.toHaveProperty('skill:read');
+			expect(resource.scopes).toContain('agent:read');
+			expect(resource.scopes).not.toContain('skill:read');
+			expect(resource.scopes).not.toContain('skill:write');
+			expect(await resource.getScopeTools()).not.toHaveProperty('skill:read');
 		});
 
 		it('keeps skill scopes when Agents is disabled', () => {
