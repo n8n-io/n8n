@@ -4,8 +4,9 @@ import { Service } from '@n8n/di';
 import type { IWorkflowSettings } from 'n8n-workflow';
 
 /**
- * Gives a new workflow an explicit engine when its creator did not choose one.
- * Engine v2 runs only with the `engine-v2` module, so without it the default is v1.
+ * Puts a new workflow on engine v2 when the instance runs new workflows on v2 and the
+ * creator did not choose an engine. A workflow without an engine runs on v1, so v1 is
+ * never written.
  */
 @Service()
 export class WorkflowEngineDefaults {
@@ -14,16 +15,16 @@ export class WorkflowEngineDefaults {
 		private readonly moduleRegistry: ModuleRegistry,
 	) {}
 
-	applyTo(settings: IWorkflowSettings | undefined): IWorkflowSettings {
-		if (settings?.engineType !== undefined) return settings;
+	applyTo(settings: IWorkflowSettings): IWorkflowSettings;
+	applyTo(settings: IWorkflowSettings | undefined): IWorkflowSettings | undefined;
+	applyTo(settings: IWorkflowSettings | undefined): IWorkflowSettings | undefined {
+		if (settings?.engineType !== undefined || !this.runsNewWorkflowsOnV2()) return settings;
 
-		return { ...(settings ?? {}), engineType: this.resolveDefault() };
+		return { ...(settings ?? {}), engineType: 'v2' };
 	}
 
 	// Read at call time: modules become active after services are constructed.
-	private resolveDefault(): NonNullable<IWorkflowSettings['engineType']> {
-		return this.engineConfig.defaultType === 'v2' && this.moduleRegistry.isActive('engine-v2')
-			? 'v2'
-			: 'v1';
+	private runsNewWorkflowsOnV2() {
+		return this.engineConfig.defaultType === 'v2' && this.moduleRegistry.isActive('engine-v2');
 	}
 }

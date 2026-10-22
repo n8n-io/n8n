@@ -2277,7 +2277,7 @@ describe('POST /workflows', () => {
 		expect(id).toBeDefined();
 		expect(name).toBe(payload.name);
 		expect(connections).toEqual(payload.connections);
-		expect(settings).toEqual({ ...payload.settings, engineType: 'v1' });
+		expect(settings).toEqual(payload.settings);
 		expect(active).toBe(false);
 		expect(staticData).toEqual(payload.staticData);
 		expect(nodes).toEqual(payload.nodes);
@@ -2297,7 +2297,7 @@ describe('POST /workflows', () => {
 		expect(sharedWorkflow?.workflow.name).toBe(name);
 		expect(sharedWorkflow?.workflow.createdAt.toISOString()).toBe(createdAt);
 		expect(sharedWorkflow?.workflow.nodes).toEqual(payload.nodes);
-		expect(sharedWorkflow?.workflow.settings).toEqual({ ...payload.settings, engineType: 'v1' });
+		expect(sharedWorkflow?.workflow.settings).toEqual(payload.settings);
 		expect(sharedWorkflow?.role).toEqual('workflow:owner');
 	});
 
@@ -2314,27 +2314,12 @@ describe('POST /workflows', () => {
 		expect(stored?.description).toBe(description);
 	});
 
-	test('should create a workflow on the default engine and ignore engineType', async () => {
-		Container.get(EngineConfig).defaultType = 'v1';
-		const payload = {
-			...mockPostWorkflowPayload(),
-			settings: { executionOrder: 'v1', engineType: 'v2' },
-		};
-
-		const response = await authOwnerAgent.post('/workflows').send(payload);
-
-		expect(response.statusCode).toBe(200);
-		expect(response.body.settings.engineType).toBe('v1');
-
-		const workflow = await workflowRepository.findOneBy({ id: response.body.id });
-
-		expect(workflow?.settings?.engineType).toBe('v1');
-	});
-
 	test.each([
 		{ key: 'binaryMode', value: 'combined' },
+		{ key: 'engineType', value: 'v2' },
 		{ key: 'credentialResolverId', value: 'some-resolver-id' },
 	] as const)('should ignore $key when creating a workflow', async ({ key, value }) => {
+		Container.get(EngineConfig).defaultType = 'v1';
 		const payload = {
 			...mockPostWorkflowPayload(),
 			settings: {

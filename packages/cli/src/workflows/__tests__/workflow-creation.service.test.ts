@@ -1197,7 +1197,7 @@ describe('WorkflowCreationService', () => {
 
 		const expectSavedSettings = (settings: WorkflowEntity['settings']) => {
 			expect(workflowRepositoryMock.createContent).toHaveBeenCalledTimes(1);
-			expect(savedSettings).toEqual(settings);
+			expect(savedSettings).toStrictEqual(settings);
 		};
 
 		beforeEach(() => {
@@ -1243,32 +1243,33 @@ describe('WorkflowCreationService', () => {
 			},
 		);
 
-		it('saves a workflow on v1 when the default is v2 but the module is not active', async () => {
+		it('writes no engine when the default is v2 but the module is not active', async () => {
 			engineConfig.defaultType = 'v2';
-			const workflow = makeWorkflow({ settings: {} });
+			const workflow = makeWorkflow({ settings: { executionOrder: 'v1' } });
 
 			await workflowCreationService.createWorkflow(user, workflow, { projectId: 'project-1' });
 
-			expectSavedSettings({ engineType: 'v1' });
+			expectSavedSettings({ executionOrder: 'v1' });
 		});
 
-		it('saves a workflow on v1 when the default is v1', async () => {
+		it('writes no engine when the default is v1', async () => {
 			engineConfig.defaultType = 'v1';
 			activateEngineV2Module();
 			const workflow = makeWorkflow({ settings: { executionOrder: 'v1' } });
 
 			await workflowCreationService.createWorkflow(user, workflow, { projectId: 'project-1' });
 
-			expectSavedSettings({ executionOrder: 'v1', engineType: 'v1' });
+			expectSavedSettings({ executionOrder: 'v1' });
 		});
 
-		it('creates the settings when the workflow has none', async () => {
+		it('adds no settings when the workflow has none and the default is v1', async () => {
 			engineConfig.defaultType = 'v1';
+			activateEngineV2Module();
 			const workflow = makeWorkflow({ settings: undefined });
 
 			await workflowCreationService.createWorkflow(user, workflow, { projectId: 'project-1' });
 
-			expectSavedSettings({ engineType: 'v1' });
+			expectSavedSettings(undefined);
 		});
 	});
 });

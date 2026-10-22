@@ -4250,11 +4250,11 @@ describe('createWorkflowAdapter', () => {
 
 		expect(mockWorkflowRepository.create).toHaveBeenNthCalledWith(
 			1,
-			expect.objectContaining({ settings: { executionOrder: 'v1', engineType: 'v1' } }),
+			expect.objectContaining({ settings: { executionOrder: 'v1' } }),
 		);
 		expect(mockWorkflowService.update).toHaveBeenCalledWith(
 			expect.anything(),
-			expect.objectContaining({ settings: { executionOrder: 'v1', engineType: 'v1' } }),
+			expect.objectContaining({ settings: { executionOrder: 'v1' } }),
 			expect.anything(),
 			expect.anything(),
 		);
@@ -4271,7 +4271,7 @@ describe('createWorkflowAdapter', () => {
 
 		expect(mockWorkflowService.update).toHaveBeenCalledWith(
 			expect.anything(),
-			expect.objectContaining({ settings: { executionOrder: 'v0', engineType: 'v1' } }),
+			expect.objectContaining({ settings: { executionOrder: 'v0' } }),
 			expect.anything(),
 			expect.anything(),
 		);
@@ -4323,7 +4323,7 @@ describe('createWorkflowAdapter', () => {
 			},
 		);
 
-		it('saves a workflow on v1 when the default is v2 but the module is not active', async () => {
+		it('writes no engine when the default is v2 but the module is not active', async () => {
 			Container.get(EngineConfig).defaultType = 'v2';
 			const { adapter, mockWorkflowRepository } = createWorkflowAdapterForTests();
 
@@ -4331,7 +4331,7 @@ describe('createWorkflowAdapter', () => {
 
 			expect(mockWorkflowRepository.create).toHaveBeenNthCalledWith(
 				1,
-				expect.objectContaining({ settings: { executionOrder: 'v1', engineType: 'v1' } }),
+				expect.objectContaining({ settings: { executionOrder: 'v1' } }),
 			);
 		});
 	});

@@ -1470,7 +1470,7 @@ describe('Public API endpoints with API key scopes', () => {
 					expect(id).toBeDefined();
 					expect(name).toBe(payload.name);
 					expect(connections).toEqual(payload.connections);
-					expect(settings).toEqual({ ...payload.settings, engineType: 'v1' });
+					expect(settings).toEqual(payload.settings);
 					expect(staticData).toEqual(payload.staticData);
 					expect(nodes).toEqual(payload.nodes);
 					expect(active).toBe(false);
