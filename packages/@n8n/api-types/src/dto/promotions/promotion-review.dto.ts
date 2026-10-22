@@ -145,6 +145,11 @@ export class PromotionReviewWorkflowDiffDto extends Z.class(
 	promotionReviewWorkflowDiffSchema.shape,
 ) {}
 
+/** The merge request head the reviewer saw. The approval fails when the host has a newer head. */
+export class ApprovePromotionReviewDto extends Z.class({
+	headCommitSha: z.string().regex(/^[0-9a-f]{40}([0-9a-f]{24})?$/),
+}) {}
+
 /** The review a Promote opened, returned with the promote result. */
 export const promotionReviewResultSchema = z.object({
 	reviewId: n8nIdSchema,

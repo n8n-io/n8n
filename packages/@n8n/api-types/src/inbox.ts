@@ -47,6 +47,11 @@ export type InboxPromotionReviewItem = {
 	requester: PromotionReviewSummary['createdBy'];
 	approver: PromotionReviewSummary['approvedBy'];
 	remoteError: PromotionReviewRemoteError | null;
+	/** The merge request head on the host. It differs from runCommitSha after a push on the host. */
+	headCommitSha: string | null;
+	/** The commit n8n pushed in the newest run. */
+	runCommitSha: string | null;
+	hasConflicts: boolean;
 	createdAt: string;
 	updatedAt: string;
 };

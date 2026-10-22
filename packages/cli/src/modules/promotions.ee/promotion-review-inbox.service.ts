@@ -1,38 +1,64 @@
 import {
 	promotionRunDetailsSchemas,
+	type ApprovePromotionReviewDto,
 	type InboxCounts,
 	type InboxPromotionReviewItem,
 	type PromotionReviewRemoteError,
 	type PromotionReviewState,
 } from '@n8n/api-types';
-import { LicenseState, isEnvFeatureEnabled } from '@n8n/backend-common';
+import { LicenseState, Logger, isEnvFeatureEnabled } from '@n8n/backend-common';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { BadRequestError, NotFoundError } from '@n8n/errors';
+import {
+	BadRequestError,
+	ConflictError,
+	ForbiddenError,
+	NotFoundError,
+	ServiceUnavailableError,
+	TooManyRequestsError,
+} from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 import { singleFlight } from '@n8n/utils/promise/single-flight';
 
 import type { InboxSourceQuery } from '../inbox/inbox-source.registry';
 import type { PromotionReview } from './database/entities/promotion-review.entity';
 import type { PromotionRun } from './database/entities/promotion-run.entity';
-import { PromotionReviewRepository } from './database/repositories/promotion-review.repository';
+import {
+	PromotionReviewRepository,
+	type ApprovalClaim,
+} from './database/repositories/promotion-review.repository';
 import { PromotionRunRepository } from './database/repositories/promotion-run.repository';
+import type { GitHostAccess } from './git-hosts/git-host.types';
 import {
 	GitLabMergeRequestClient,
 	parseGitLabReviewId,
 } from './git-hosts/gitlab-merge-request.client';
-import type { GitLabMergeRequest } from './git-hosts/gitlab-merge-request.types';
+import type { GitLabMergeRequest, MergeRequestRef } from './git-hosts/gitlab-merge-request.types';
 import { PromotionReviewHostResolver } from './promotion-review-host.resolver';
+import { approvalNote } from './promotion-review.utils';
 
 type RemoteView = Readonly<{
 	mergeRequest: GitLabMergeRequest | null;
 	remoteError: PromotionReviewRemoteError | null;
 }>;
 
+/** Host access for each environment and review type, shared by one batch of reads. */
+type AccessCache = Map<string, Promise<GitHostAccess | null>>;
+
+/** Longer than the two GitLab writes (15 seconds each), so a live approval keeps its claim. */
+const APPROVAL_CLAIM_TTL_MS = 2 * 60_000;
+
+const CHANGED_ON_HOST =
+	'The merge request changed on GitLab. Reload the Inbox and review the changes again.';
+
+const UNCONFIRMED_MERGE =
+	"GitLab didn't confirm the merge. Check the merge request on GitLab, then try again in two minutes.";
+
 /**
- * Promotion Reviews as an Inbox source. The first page of each tab and the counters
- * share one sync of the open reviews with the Git host. A host failure never changes a row.
+ * Promotion Reviews as an Inbox source, and their approval. The first page of each tab and
+ * the counters share one sync of the open reviews with the Git host. An Inbox sync failure
+ * never changes the review state.
  */
 @Service()
 export class PromotionReviewInboxService {
@@ -44,7 +70,10 @@ export class PromotionReviewInboxService {
 		private readonly runRepository: PromotionRunRepository,
 		private readonly hostResolver: PromotionReviewHostResolver,
 		private readonly mergeRequests: GitLabMergeRequestClient,
-	) {}
+		private readonly logger: Logger,
+	) {
+		this.logger = this.logger.scoped('promotions');
+	}
 
 	isEnabled() {
 		return (
@@ -64,32 +93,125 @@ export class PromotionReviewInboxService {
 			runs,
 		);
 
-		return reviews.map((review) => {
-			const { mergeRequest, remoteError } = synced.get(review.id) ??
-				read.get(review.id) ?? { mergeRequest: null, remoteError: null };
-			const run = runs.get(review.id);
-			return {
-				type: 'promotion_review',
-				id: review.id,
-				state: query.state,
-				reviewState: review.state,
-				title: mergeRequest?.title ?? null,
-				webUrl: mergeRequest?.web_url ?? null,
-				branchName: branchOf(run),
-				environmentName: run?.environment?.name ?? null,
-				requester: toReviewUser(review.createdBy),
-				approver: toReviewUser(review.approvedBy),
-				remoteError,
-				createdAt: review.createdAt.toISOString(),
-				updatedAt: (review.lastStateChangeAt ?? review.createdAt).toISOString(),
-			};
-		});
+		return reviews.map((review) =>
+			toItem(
+				review,
+				runs.get(review.id),
+				synced.get(review.id) ?? read.get(review.id) ?? { mergeRequest: null, remoteError: null },
+			),
+		);
 	}
 
 	async countForInbox(user: User): Promise<InboxCounts> {
 		if (!canRead(user)) return { open: 0, closed: 0 };
 		await this.syncOnce();
 		return await this.reviewRepository.countForInbox();
+	}
+
+	/**
+	 * Approves and merges on the host as the GitLab user of the token, then names the n8n
+	 * approver in a note. The stored state can be old, so this reads the host first.
+	 */
+	async approve(
+		user: User,
+		reviewId: string,
+		{ headCommitSha }: ApprovePromotionReviewDto,
+	): Promise<InboxPromotionReviewItem> {
+		if (!this.isEnabled()) throw new ForbiddenError("Promotion reviews aren't enabled.");
+		const review = await this.reviewRepository.findByIdWithRelations(reviewId);
+		if (!review) throw new NotFoundError('Promotion review not found.');
+		if (review.state === 'merged' || review.state === 'closed') {
+			throw new ConflictError(`This promotion review is already ${review.state}.`);
+		}
+
+		const run = (await this.newestRuns([review])).get(review.id);
+		const host = await this.readMergeRequest(review, run);
+		if (!host) {
+			throw new BadRequestError(
+				'The environment of this promotion review was deleted, or it no longer uses GitLab.',
+			);
+		}
+		const { access, ref, mergeRequest } = host;
+		await this.applyHostState(review, mergeRequest);
+		const hostState = toReviewState(mergeRequest);
+		if (hostState === 'changes_requested') {
+			throw new ConflictError(
+				'A reviewer requested changes. Resolve them on GitLab, then reload the Inbox.',
+			);
+		}
+		if (hostState !== 'open') {
+			throw new ConflictError(`The merge request is already ${hostState} on GitLab.`);
+		}
+		if (mergeRequest.has_conflicts) {
+			throw new ConflictError('The merge request has conflicts. Resolve them on GitLab.');
+		}
+		if (mergeRequest.sha !== headCommitSha) throw new ConflictError(CHANGED_ON_HOST);
+
+		const claim: ApprovalClaim = {
+			reviewId: review.id,
+			approvedById: user.id,
+			approvedAt: new Date(),
+		};
+		const staleBefore = new Date(claim.approvedAt.getTime() - APPROVAL_CLAIM_TTL_MS);
+		if (!(await this.reviewRepository.claimApproval(claim, staleBefore))) {
+			throw new ConflictError(
+				'Someone is already approving this promotion review. Wait for the approval to finish, then reload the Inbox.',
+			);
+		}
+
+		const merged = await this.mergeClaimed(claim, access, ref, headCommitSha);
+		await this.applyHostState(review, merged);
+		// A sync can record the merge first. Then the guarded write changes nothing.
+		review.state = toReviewState(merged);
+		Object.assign(review, {
+			approvedById: user.id,
+			approvedBy: user,
+			approvedAt: claim.approvedAt,
+		});
+		// The merge is done, so a failed note must not fail the approval.
+		await this.mergeRequests.createNote(access, ref, approvalNote(user)).catch((error: unknown) => {
+			this.logger.warn('Could not post the approval note on GitLab', {
+				reviewId,
+				error: error instanceof Error ? error.constructor.name : typeof error,
+			});
+		});
+		return toItem(review, run, { mergeRequest: merged, remoteError: null });
+	}
+
+	/**
+	 * Approves and merges on the host under a claim. The claim is released only when the host
+	 * surely did not merge. A lost merge answer keeps it, so the next sync records the merge
+	 * with this approver.
+	 */
+	private async mergeClaimed(
+		claim: ApprovalClaim,
+		access: GitHostAccess,
+		ref: MergeRequestRef,
+		sha: string,
+	): Promise<GitLabMergeRequest> {
+		let merging = false;
+		try {
+			await this.mergeRequests.approve(access, ref, sha).catch((error: unknown) => {
+				// The GitLab approval is best effort. A real problem also fails the merge, which reports it.
+				if (!(error instanceof BadRequestError)) throw error;
+				// Log only the error type. Its message can contain text from GitLab's response.
+				this.logger.info('GitLab did not accept the approval', {
+					reviewId: claim.reviewId,
+					error: error.constructor.name,
+				});
+			});
+			merging = true;
+			return await this.mergeRequests.merge(access, ref, sha);
+		} catch (error) {
+			// Only the merge call can fail after GitLab merged, for example on a timeout.
+			if (merging && !isRefusal(error)) {
+				const current = await this.mergeRequests.getMergeRequest(access, ref).catch(() => null);
+				if (current?.state === 'merged') return current;
+				throw new ServiceUnavailableError(UNCONFIRMED_MERGE);
+			}
+			await this.reviewRepository.releaseApproval(claim);
+			throw error instanceof ConflictError ? new ConflictError(CHANGED_ON_HOST) : error;
+		}
 	}
 
 	private async syncOpenReviews(): Promise<Map<string, RemoteView>> {
@@ -117,30 +239,51 @@ export class PromotionReviewInboxService {
 		reviews: PromotionReview[],
 		runs: Map<string, PromotionRun>,
 	): Promise<Map<string, RemoteView>> {
+		// Most reviews share one environment, so a batch reads and decrypts each provider once.
+		const accessCache: AccessCache = new Map();
 		const views = await Promise.all(
-			reviews.map(async (review) => await this.readOne(review, runs.get(review.id))),
+			reviews.map(async (review) => await this.readOne(review, runs.get(review.id), accessCache)),
 		);
 		return new Map(reviews.map(({ id }, index) => [id, views[index]]));
 	}
 
 	private async readOne(
-		{ type, environment, remoteReviewId }: PromotionReview,
+		review: PromotionReview,
 		run: PromotionRun | undefined,
+		accessCache: AccessCache,
 	): Promise<RemoteView> {
-		if (!environment || !remoteReviewId) return failed('no_connection');
 		try {
-			const access = await this.hostResolver.resolveForEnvironment(environment, type);
-			if (!access) return failed('no_connection');
-			const mergeRequest = await this.mergeRequests.getMergeRequest(
-				access,
-				parseGitLabReviewId(remoteReviewId),
-			);
-			// The stored ids are not unique across hosts. Only the branch n8n pushed proves it is ours.
-			if (mergeRequest.source_branch !== branchOf(run)) return failed('not_found');
-			return { mergeRequest, remoteError: null };
+			const host = await this.readMergeRequest(review, run, accessCache);
+			return host
+				? { mergeRequest: host.mergeRequest, remoteError: null }
+				: failed('no_connection');
 		} catch (error) {
 			return failed(remoteErrorOf(error));
 		}
+	}
+
+	/** NULL when no host can be resolved. Throws the host errors. */
+	private async readMergeRequest(
+		{ type, environment, remoteReviewId }: PromotionReview,
+		run: PromotionRun | undefined,
+		accessCache: AccessCache = new Map(),
+	) {
+		if (!environment || !remoteReviewId) return null;
+		const key = `${environment.id}:${type}`;
+		let resolving = accessCache.get(key);
+		if (!resolving) {
+			resolving = this.hostResolver.resolveForEnvironment(environment, type);
+			accessCache.set(key, resolving);
+		}
+		const access = await resolving;
+		if (!access) return null;
+		const ref = parseGitLabReviewId(remoteReviewId);
+		const mergeRequest = await this.mergeRequests.getMergeRequest(access, ref);
+		// The stored ids are not unique across hosts. Only the branch n8n pushed proves it is ours.
+		if (mergeRequest.source_branch !== detailsOf(run)?.branchName) {
+			throw new NotFoundError("GitLab couldn't find the merge request of this promotion.");
+		}
+		return { access, ref, mergeRequest };
 	}
 
 	private async applyHostState(review: PromotionReview, mergeRequest: GitLabMergeRequest) {
@@ -169,6 +312,13 @@ const remoteErrorOf = (error: unknown): PromotionReviewRemoteError => {
 	return 'unreachable';
 };
 
+/** GitLab answered and did not merge. A timeout or a 5xx answer leaves the outcome unknown. */
+const isRefusal = (error: unknown) =>
+	error instanceof BadRequestError ||
+	error instanceof ConflictError ||
+	error instanceof NotFoundError ||
+	error instanceof TooManyRequestsError;
+
 const toReviewState = ({
 	state,
 	detailed_merge_status,
@@ -182,8 +332,35 @@ const toReviewUser = (user: User | null) =>
 		? { id: user.id, firstName: user.firstName, lastName: user.lastName, email: user.email }
 		: null;
 
-const branchOf = (run: PromotionRun | undefined) => {
+const detailsOf = (run: PromotionRun | undefined) => {
 	if (!run) return null;
 	const parsed = promotionRunDetailsSchemas[run.type].safeParse(run.details);
-	return parsed.success ? parsed.data.branchName : null;
+	return parsed.success ? parsed.data : null;
+};
+
+const toItem = (
+	review: PromotionReview,
+	run: PromotionRun | undefined,
+	{ mergeRequest, remoteError }: RemoteView,
+): InboxPromotionReviewItem => {
+	const details = detailsOf(run);
+	return {
+		type: 'promotion_review',
+		id: review.id,
+		state: review.state === 'merged' || review.state === 'closed' ? 'closed' : 'open',
+		reviewState: review.state,
+		title: mergeRequest?.title ?? null,
+		webUrl: mergeRequest?.web_url ?? null,
+		branchName: details?.branchName ?? null,
+		environmentName: run?.environment?.name ?? null,
+		requester: toReviewUser(review.createdBy),
+		// On other states, approvedBy is a claim in progress or one that a stopped request left.
+		approver: review.state === 'merged' ? toReviewUser(review.approvedBy) : null,
+		remoteError,
+		headCommitSha: mergeRequest?.sha ?? null,
+		runCommitSha: details?.commitSha ?? null,
+		hasConflicts: mergeRequest?.has_conflicts ?? false,
+		createdAt: review.createdAt.toISOString(),
+		updatedAt: (review.lastStateChangeAt ?? review.createdAt).toISOString(),
+	};
 };

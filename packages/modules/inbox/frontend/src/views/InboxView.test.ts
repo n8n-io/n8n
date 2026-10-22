@@ -456,6 +456,9 @@ function promotionItem(): InboxPromotionReviewItem {
 		requester: null,
 		approver: null,
 		remoteError: null,
+		headCommitSha: null,
+		runCommitSha: null,
+		hasConflicts: false,
 		createdAt: '2026-01-01T00:00:00.000Z',
 		updatedAt: '2026-01-01T00:00:00.000Z',
 	};
