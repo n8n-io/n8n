@@ -105,6 +105,18 @@ describe('ApiKeyRateLimitsSection', () => {
 		expect(getByTestId('rate-limits-summary-allEndpoints')).toBeInTheDocument();
 	});
 
+	it('describes the limits in the dialog', async () => {
+		const { getByTestId } = await renderLoaded();
+
+		await userEvent.click(getByTestId('rate-limits-toggle'));
+
+		expect(
+			screen.getByText(
+				'Limits how many requests each API key can make. Requests over the limit get a 429 response until it resets.',
+			),
+		).toBeInTheDocument();
+	});
+
 	it('keeps rate limiting off when the dialog is cancelled', async () => {
 		const { getByTestId, queryByTestId } = await renderLoaded();
 
