@@ -1104,6 +1104,7 @@ describe('MigrationRuleDetail', () => {
 		it.each([
 			{ impact: 'upgradeBlocked', label: 'Upgrade blocked' },
 			{ impact: 'executionsFail', label: 'Executions will fail' },
+			{ impact: 'executionsMightFail', label: 'Executions might fail' },
 			{ impact: 'behaviorChanges', label: 'Behavior changes' },
 			{ impact: 'capabilityRemoved', label: 'Capability removed' },
 		] as const)('should display $impact impact correctly', async ({ impact, label }) => {

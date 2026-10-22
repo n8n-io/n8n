@@ -73,6 +73,7 @@ export interface TimelineItem {
 	 */
 	subAgentName?: string;
 	resumed?: boolean;
+	guardrailCode?: string;
 }
 
 export interface IdleRange {

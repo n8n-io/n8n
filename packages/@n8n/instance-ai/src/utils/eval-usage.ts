@@ -56,7 +56,7 @@ function toEvalLlmUsage(agent: string, model: string, usage: TokenUsage): Instan
 		agent,
 		model,
 		calls: 1,
-		// A zero `noCache` is left out of the details, so derive it from the total.
+		// Derive `noCache` from the total when the provider did not report it.
 		uncachedInputTokens:
 			usage.inputTokenDetails?.noCache ??
 			Math.max(usage.promptTokens - cacheReadTokens - cacheWriteTokens, 0),

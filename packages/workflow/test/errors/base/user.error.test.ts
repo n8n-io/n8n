@@ -16,6 +16,11 @@ describe('UserError', () => {
 		expect(error).toBeInstanceOf(BaseError);
 	});
 
+	it('should set name to the class name', () => {
+		const error = new UserError('test');
+		expect(error.name).toBe('UserError');
+	});
+
 	it('should have correct defaults', () => {
 		const error = new UserError('test');
 		expect(error.level).toBe('info');

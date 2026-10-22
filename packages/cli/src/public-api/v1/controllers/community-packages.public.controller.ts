@@ -2,6 +2,7 @@ import {
 	CommunityPackageListPublicDto,
 	CommunityPackagePublicDto,
 	InstallCommunityPackagePublicDto,
+	InstallCommunityPackageResponsePublicDto,
 	ListCommunityPackagesQueryDto,
 	UpdateCommunityPackagePublicDto,
 	communityPackageNameParamSchema,
@@ -55,19 +56,22 @@ export class CommunityPackagesPublicController {
 	@ApiSummary('Install a community package')
 	@ApiDescription('Install a community package by npm name and optional version.')
 	@ApiTags(['CommunityPackage'])
-	@ApiResponse(200, CommunityPackagePublicDto)
+	@ApiResponse(200, InstallCommunityPackageResponsePublicDto)
 	async installPackage(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Body body: InstallCommunityPackagePublicDto,
-	): Promise<CommunityPackagePublicDto> {
+	): Promise<InstallCommunityPackageResponsePublicDto> {
 		const installedPackage = await this.communityPackagesLifecycleService.install(
 			{ name: body.name, version: body.version },
 			req.user,
 			'publicApi',
 		);
+		const policyRestrictions =
+			await this.communityPackagesLifecycleService.describePolicyRestrictions(installedPackage);
+		const publicPackage = toCommunityPackagePublic(installedPackage);
 
-		return toCommunityPackagePublic(installedPackage);
+		return policyRestrictions ? { ...publicPackage, policyRestrictions } : publicPackage;
 	}
 
 	@Patch('/:name')
