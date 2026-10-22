@@ -237,10 +237,16 @@ describe('POST /api/step-executions/:id/resolve (integration)', () => {
 		await resolve(generateId(), { token, outputs }).expect(401, { error: 'invalid_token' });
 	});
 
-	it('refuses a step of an execution with two waits that accept a request with 409', async () => {
-		const { stepIds, token } = await seed({ 'wait-a': acceptsRequest, 'wait-b': acceptsRequest });
+	it('resumes the named step of an execution with two waits that accept a request', async () => {
+		const { executionId, stepIds, token } = await seed({
+			'wait-a': acceptsRequest,
+			'wait-b': acceptsRequest,
+		});
 
-		await resolve(stepIds['wait-a'], { token, outputs }).expect(409, { error: 'ambiguous' });
+		await resolve(stepIds['wait-a'], { token, outputs }).expect(200, {
+			executionId,
+			stepId: stepIds['wait-a'],
+		});
 	});
 
 	it('requires the identity token', async () => {

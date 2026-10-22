@@ -90,11 +90,11 @@ export class ResumeRequestService {
 
 	/**
 	 * Ends the wait of `stepId` with `outputs`, and announces the step. The
-	 * worker that claims it emits the outputs.
+	 * worker that claims it emits the outputs. A second wait does not refuse
+	 * the request: `locate` chose the step while it was the only one.
 	 *
-	 * @throws {ResumeRejectedError} `invalid_token`, `not_waiting` when the step
-	 * does not wait for a request (any more) or its execution ended, or
-	 * `ambiguous` when the execution holds two such waits.
+	 * @throws {ResumeRejectedError} `invalid_token`, or `not_waiting` when the
+	 * step does not wait for a request (any more) or its execution ended.
 	 */
 	async resolve(stepId: string, token: string, outputs: StepSlots): Promise<StepRecord> {
 		const step = await this.loadStep(stepId);
@@ -105,8 +105,6 @@ export class ResumeRequestService {
 		if (!isLive(await this.loadStatus(step.executionId))) {
 			throw new ResumeRejectedError('not_waiting');
 		}
-		// The same rule as `locate`: an execution-bound token cannot pick one of two waits.
-		await this.loadExecutionBoundWait(step.executionId);
 
 		const resumed = await this.stepStore.resumeStep(step.id, { kind: 'request', outputs });
 		if (!resumed) throw new ResumeRejectedError('not_waiting');
