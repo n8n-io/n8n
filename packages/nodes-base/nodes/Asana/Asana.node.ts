@@ -316,7 +316,7 @@ export class Asana implements INodeType {
 				},
 				typeOptions: {
 					minValue: 1,
-					maxValue: 100,
+					maxValue: 500,
 				},
 				default: 100,
 				description: 'Max number of results to return',
