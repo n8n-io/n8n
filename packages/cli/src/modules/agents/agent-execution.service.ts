@@ -1072,6 +1072,8 @@ export class AgentExecutionService {
 			error: record.error,
 			failureSummary,
 			hitlStatus: hitlStatus ?? null,
+			finishReason: record.finishReason,
+			guardrailCode: record.guardrailCode,
 		};
 		const maxAttempts = 3;
 		let lastError: unknown;
