@@ -60,23 +60,23 @@ Attach condition: The sandbox is on and the agent is not an inline agent. The ru
 
 Source: [`packages/@n8n/agents/src/workspace/tools/`](../../../../@n8n/agents/src/workspace/tools/).
 
-| Tool | Purpose |
-| --- | --- |
-| `workspace_read_file` | Reads a file from the workspace. |
+| Tool                         | Purpose                                        |
+| ---------------------------- | ---------------------------------------------- |
+| `workspace_read_file`        | Reads a file from the workspace.               |
 | `workspace_read_tool_result` | Reads the full result of an earlier tool call. |
-| `workspace_write_file` | Writes a file to the workspace. |
-| `workspace_str_replace_file` | Replaces a string in a workspace file. |
-| `workspace_append_file` | Appends content to a workspace file. |
-| `workspace_list_files` | Lists the files in the workspace. |
-| `workspace_file_stat` | Returns metadata for a workspace file. |
-| `workspace_mkdir` | Creates a directory in the workspace. |
-| `workspace_delete_file` | Deletes a file from the workspace. |
-| `workspace_copy_file` | Copies a file in the workspace. |
-| `workspace_move_file` | Moves a file in the workspace. |
-| `workspace_rmdir` | Removes a directory from the workspace. |
-| `workspace_execute_command` | Runs a shell command in the sandbox. |
-| `workspace_list_processes` | Lists the processes that run in the sandbox. |
-| `workspace_kill_process` | Stops a process in the sandbox. |
+| `workspace_write_file`       | Writes a file to the workspace.                |
+| `workspace_str_replace_file` | Replaces a string in a workspace file.         |
+| `workspace_append_file`      | Appends content to a workspace file.           |
+| `workspace_list_files`       | Lists the files in the workspace.              |
+| `workspace_file_stat`        | Returns metadata for a workspace file.         |
+| `workspace_mkdir`            | Creates a directory in the workspace.          |
+| `workspace_delete_file`      | Deletes a file from the workspace.             |
+| `workspace_copy_file`        | Copies a file in the workspace.                |
+| `workspace_move_file`        | Moves a file in the workspace.                 |
+| `workspace_rmdir`            | Removes a directory from the workspace.        |
+| `workspace_execute_command`  | Runs a shell command in the sandbox.           |
+| `workspace_list_processes`   | Lists the processes that run in the sandbox.   |
+| `workspace_kill_process`     | Stops a process in the sandbox.                |
 
 ### Knowledge retrieval tools
 
@@ -92,7 +92,8 @@ Source: [`packages/@n8n/agents/src/workspace/tools/`](../../../../@n8n/agents/sr
 - Attach condition: Top-level agent with at least one configured chat integration, or a run through n8n Chat.
 - Read-only platform queries return `CONTEXT_QUERY_TIMEOUT` after 30 seconds. The agent can then explain the delay or use a more specific lookup. Cancellation stops the wait. A platform request can continue if its SDK does not support cancellation.
 - Use `get_user` for a known platform user ID. Use `search_users` with `email` for an exact email address. Slack also recognizes an email or user ID in `query`.
-- Slack user and channel searches read one directory page of up to 200 entries per call. They return `nextCursor` when more results remain. The cursor retains unused matches from the current page. An empty page with a cursor does not mean that the search is complete.
+- Slack user searches read up to five directory pages of 200 entries per call. They stop when a page has matches or the directory ends. They return `searchComplete: false` and `nextCursor` when more results remain. An empty result with a cursor includes an instruction to continue the search. The agent must continue before it reports that a user does not exist.
+- Slack channel searches read one directory page of up to 200 entries per call. User and channel cursors retain unused matches from the current page. An empty page with a cursor does not mean that the search is complete.
 - Teams and Linear user searches use platform filters. They return a continuation cursor when the platform has another page.
 - Source: [`integrations/integration-tool-factory.ts`](./integrations/integration-tool-factory.ts).
 
@@ -130,11 +131,13 @@ For example, a task completion needs only:
 
 ```json
 {
-  "planId": "<saved plan UUID>",
-  "expectedRevision": 4,
-  "document": {
-    "items": [{ "id": "<saved task UUID>", "status": "done", "resultSummary": "Reviewed the findings." }]
-  }
+	"planId": "<saved plan UUID>",
+	"expectedRevision": 4,
+	"document": {
+		"items": [
+			{ "id": "<saved task UUID>", "status": "done", "resultSummary": "Reviewed the findings." }
+		]
+	}
 }
 ```
 
@@ -157,11 +160,11 @@ Attach condition: Top-level agent and background tasks on. Background tasks are 
 
 Source: [`background/background-job-tools.ts`](./background/background-job-tools.ts).
 
-| Tool | Purpose |
-| --- | --- |
-| `check_background_jobs` | Lists the background jobs of the conversation with their status and results. |
-| `cancel_background_job` | Cancels a running background job by its job id. |
-| `resume_background_jobs` | Resumes jobs from the latest user stop. |
+| Tool                     | Purpose                                                                      |
+| ------------------------ | ---------------------------------------------------------------------------- |
+| `check_background_jobs`  | Lists the background jobs of the conversation with their status and results. |
+| `cancel_background_job`  | Cancels a running background job by its job id.                              |
+| `resume_background_jobs` | Resumes jobs from the latest user stop.                                      |
 
 Use `delegate_subagent` with `mode: "background"` to start a background sub-agent.
 

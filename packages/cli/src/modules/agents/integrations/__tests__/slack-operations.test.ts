@@ -39,16 +39,64 @@ describe('Slack directory search', () => {
 		expect(list).toHaveBeenCalledExactlyOnceWith({ limit: 200 });
 	});
 
-	it('returns an empty page with a cursor instead of scanning for matches', async () => {
+	it('continues past an empty page and returns a match from the next directory page', async () => {
 		const { run, list } = setup();
-		list.mockResolvedValue({ members: [person], response_metadata: { next_cursor: 'page-2' } });
+		list
+			.mockResolvedValueOnce({
+				members: [{ ...person, real_name: 'Other Person', name: 'other' }],
+				response_metadata: { next_cursor: 'page-2' },
+			})
+			.mockResolvedValueOnce({ members: [person], response_metadata: { next_cursor: 'page-3' } });
+		await expect(run({ query: 'Example Person' })).resolves.toMatchObject({
+			users: [{ userId: person.id }],
+			resultCount: 1,
+			nextCursor: 'page-3',
+		});
+		expect(list.mock.calls.map(([options]) => options)).toEqual([
+			{ limit: 200 },
+			{ limit: 200, cursor: 'page-2' },
+		]);
+	});
+
+	it('reports an incomplete search after five empty directory pages', async () => {
+		const { run, list } = setup();
+		list.mockImplementation(async () => ({
+			members: [person],
+			response_metadata: { next_cursor: `page-${list.mock.calls.length + 1}` },
+		}));
+		await expect(run({ query: 'Other Person' })).resolves.toMatchObject({
+			ok: true,
+			users: [],
+			resultCount: 0,
+			searchComplete: false,
+			nextCursor: 'page-6',
+			message: expect.stringContaining('search is incomplete'),
+		});
+		expect(list).toHaveBeenCalledTimes(5);
+		list.mockResolvedValueOnce({
+			members: [{ ...person, real_name: 'Other Person' }],
+			response_metadata: {},
+		});
+		await expect(run({ query: 'Other Person', cursor: 'page-6' })).resolves.toMatchObject({
+			users: [{ userId: person.id }],
+			resultCount: 1,
+			searchComplete: true,
+		});
+		expect(list).toHaveBeenLastCalledWith({ limit: 200, cursor: 'page-6' });
+	});
+
+	it('reports no matches only after the directory ends', async () => {
+		const { run, list } = setup();
+		list
+			.mockResolvedValueOnce({ members: [person], response_metadata: { next_cursor: 'page-2' } })
+			.mockResolvedValueOnce({ members: [], response_metadata: {} });
 		await expect(run({ query: 'Other Person' })).resolves.toEqual({
 			ok: true,
 			users: [],
 			resultCount: 0,
-			nextCursor: 'page-2',
+			searchComplete: true,
 		});
-		expect(list).toHaveBeenCalledTimes(1);
+		expect(list).toHaveBeenCalledTimes(2);
 	});
 
 	it('keeps every matching user when the result limit splits a directory page', async () => {
@@ -106,6 +154,7 @@ describe('Slack directory search', () => {
 			ok: true,
 			users: [],
 			resultCount: 0,
+			searchComplete: true,
 		});
 		expect(list).not.toHaveBeenCalled();
 	});
@@ -153,6 +202,17 @@ describe('Slack directory search', () => {
 			'cursor is invalid',
 		);
 		expect(list).not.toHaveBeenCalled();
+	});
+
+	it('stops before the next directory page after cancellation', async () => {
+		const { run, list } = setup();
+		const controller = new AbortController();
+		list.mockImplementationOnce(async () => {
+			controller.abort();
+			return { members: [], response_metadata: { next_cursor: 'page-2' } };
+		});
+		await expect(run({ query: 'Example' }, controller.signal)).rejects.toThrow();
+		expect(list).toHaveBeenCalledTimes(1);
 	});
 
 	it('does not start a Slack request after cancellation during token resolution', async () => {

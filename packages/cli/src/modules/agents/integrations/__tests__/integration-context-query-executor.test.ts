@@ -93,6 +93,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 				},
 			],
 			resultCount: 1,
+			searchComplete: true,
 		});
 	});
 
