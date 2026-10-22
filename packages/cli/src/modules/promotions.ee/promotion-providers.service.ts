@@ -23,7 +23,7 @@ import { jsonParse } from 'n8n-workflow';
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 
 import type { PromotionProvider } from './database/entities/promotion-provider.entity';
-import { PromotionConnectionRepository } from './database/repositories/promotion-connection.repository';
+import { PromotionEnvironmentRepository } from './database/repositories/promotion-environment.repository';
 import { PromotionProviderRepository } from './database/repositories/promotion-provider.repository';
 import { GitHostClients } from './git-hosts/git-host-clients';
 import type { GitHostDiscoveryQuery } from './git-hosts/git-host.types';
@@ -36,14 +36,14 @@ import {
 } from './promotions.types';
 
 /**
- * Owns provider credentials. One provider can serve several connections, so
+ * Owns provider credentials. One provider can serve several environments, so
  * editing it changes authentication for all of them.
  */
 @Service()
 export class PromotionProvidersService {
 	constructor(
 		private readonly providerRepository: PromotionProviderRepository,
-		private readonly connectionRepository: PromotionConnectionRepository,
+		private readonly environmentRepository: PromotionEnvironmentRepository,
 		private readonly gitService: PromotionsGitService,
 		private readonly cipher: Cipher,
 		private readonly gitHosts: GitHostClients,
@@ -113,7 +113,7 @@ export class PromotionProvidersService {
 
 	/**
 	 * Type and auth type are immutable. Leaving `auth` out keeps the stored
-	 * credentials; sending it replaces them for every connection on this provider.
+	 * credentials; sending it replaces them for every environment on this provider.
 	 */
 	async update(id: string, input: UpdatePromotionProviderDto): Promise<PromotionProviderPublicDto> {
 		if (Object.keys(input).length === 0) {
@@ -149,12 +149,12 @@ export class PromotionProvidersService {
 
 	/**
 	 * A provider in use cannot be deleted. The pre-check answers 409 for the normal
-	 * case; the foreign key is the final guard when a connection appears in between.
+	 * case; the foreign key is the final guard when an environment appears in between.
 	 */
 	async delete(id: string): Promise<void> {
 		await this.getEntity(id);
-		if ((await this.connectionRepository.countByProviderId(id)) > 0) {
-			throw new ConflictError('This provider is used by a connection');
+		if ((await this.environmentRepository.countByProviderId(id)) > 0) {
+			throw new ConflictError('This provider is used by a promotion environment');
 		}
 		await mapPromotionConflicts(async () => await this.providerRepository.deleteProvider(id));
 	}

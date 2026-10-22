@@ -4,38 +4,29 @@ import type {
 	ApplySelectionDto,
 	ContinueApplyPackageDto,
 	ContinueApplySelectionDto,
-	CreatePromotionConnectionDto,
+	CreatePromotionEnvironmentDto,
 	CreatePromotionProviderDto,
+	ListPromotionEnvironmentsQueryDto,
 	ListPromotionRepositoriesQueryDto,
 	ListPromotionBranchesQueryDto,
-	PromotionApplyConfigPublicDto,
 	PromotionCheckoutPublicDto,
-	PromotionConnectionPublicDto,
-	PromotionConnectionScope,
-	PromotionConnectionSummary,
-	PromotionDirection,
+	PromotionEnvironmentPublicDto,
+	PromotionEnvironmentSummary,
 	PromotePackageDto,
 	PromotePackageResultDto,
 	PromotionProviderCreatedPublicDto,
-	PromotionProviderListPublicDto,
 	PromotionProviderPublicDto,
 	PromotionRepositoryListPublicDto,
 	PromotionBranchListPublicDto,
-	PromotionPromoteConfigPublicDto,
-	UpdatePromotionConnectionDto,
+	UpdatePromotionEnvironmentDto,
 	UpdatePromotionProviderDto,
-	UpsertPromotionApplyConfigDto,
-	UpsertPromotionPromoteConfigDto,
 } from '@n8n/api-types';
 import type { PublicApiContext } from '@n8n/rest-api-client';
-import { request } from '@n8n/rest-api-client';
+import { request, ResponseError } from '@n8n/rest-api-client';
 
-/** Includes the SSH public key. */
 export type PromotionProvider = PromotionProviderPublicDto;
-/** Omits the SSH public key. */
-export type PromotionProviderSummary = PromotionProviderListPublicDto['data'][number];
-export type PromotionConnection = PromotionConnectionPublicDto;
-export type { PromotionConnectionSummary };
+export type PromotionEnvironment = PromotionEnvironmentPublicDto;
+export type { PromotionEnvironmentSummary };
 
 const promotionsApiRoot = '/promotions';
 
@@ -79,20 +70,6 @@ async function fetchAllPages<T>(
 	return items;
 }
 
-export const fetchPromotionProviders = async (
-	context: PublicApiContext,
-): Promise<PromotionProviderSummary[]> =>
-	await fetchAllPages(
-		async (cursor) =>
-			await request({
-				method: 'GET',
-				baseURL: context.baseUrl,
-				endpoint: `${promotionsApiRoot}/providers`,
-				data: { cursor },
-			}),
-	);
-
-/** Fetches the provider with its SSH public key. */
 export const fetchPromotionProvider = async (
 	context: PublicApiContext,
 	id: string,
@@ -126,10 +103,7 @@ export const updatePromotionProvider = async (
 		data: payload,
 	});
 
-export const deletePromotionProvider = async (
-	context: PublicApiContext,
-	id: string,
-): Promise<void> => {
+const deletePromotionProvider = async (context: PublicApiContext, id: string): Promise<void> => {
 	await request({
 		method: 'DELETE',
 		baseURL: context.baseUrl,
@@ -137,149 +111,125 @@ export const deletePromotionProvider = async (
 	});
 };
 
-export const fetchPromotionConnections = async (
+/** The API refuses to delete a provider that an environment still uses, in any scope. */
+export const deleteProviderIfUnused = async (context: PublicApiContext, id: string) => {
+	try {
+		await deletePromotionProvider(context, id);
+	} catch (error) {
+		if (
+			error instanceof ResponseError &&
+			(error.httpStatusCode === 404 || error.httpStatusCode === 409)
+		)
+			return;
+		throw error;
+	}
+};
+
+export const fetchPromotionEnvironments = async (
 	context: PublicApiContext,
-	filter: { scope?: PromotionConnectionScope; providerId?: string } = {},
-): Promise<PromotionConnectionSummary[]> =>
+	filter: Omit<ListPromotionEnvironmentsQueryDto, 'limit' | 'cursor'> = {},
+): Promise<PromotionEnvironmentSummary[]> =>
 	await fetchAllPages(
 		async (cursor) =>
 			await request({
 				method: 'GET',
 				baseURL: context.baseUrl,
-				endpoint: `${promotionsApiRoot}/connections`,
+				endpoint: `${promotionsApiRoot}/environments`,
 				data: { ...filter, cursor },
 			}),
 	);
 
-/** Fetches live checkout state with the stored connection fields. */
-export const fetchPromotionConnection = async (
+/** Fetches live checkout state with the stored environment fields. */
+export const fetchPromotionEnvironment = async (
 	context: PublicApiContext,
 	id: string,
-): Promise<PromotionConnection> =>
+): Promise<PromotionEnvironment> =>
 	await request({
 		method: 'GET',
 		baseURL: context.baseUrl,
-		endpoint: `${promotionsApiRoot}/connections/${id}`,
+		endpoint: `${promotionsApiRoot}/environments/${encodeURIComponent(id)}`,
 	});
 
-export const createPromotionConnection = async (
+export const createPromotionEnvironment = async (
 	context: PublicApiContext,
-	payload: CreatePromotionConnectionDto,
-): Promise<PromotionConnection> =>
+	payload: CreatePromotionEnvironmentDto,
+): Promise<PromotionEnvironment> =>
 	await request({
 		method: 'POST',
 		baseURL: context.baseUrl,
-		endpoint: `${promotionsApiRoot}/connections`,
+		endpoint: `${promotionsApiRoot}/environments`,
 		data: payload,
 	});
 
-export const updatePromotionConnection = async (
+export const updatePromotionEnvironment = async (
 	context: PublicApiContext,
 	id: string,
-	payload: UpdatePromotionConnectionDto,
-): Promise<PromotionConnection> =>
+	payload: UpdatePromotionEnvironmentDto,
+): Promise<PromotionEnvironment> =>
 	await request({
 		method: 'PUT',
 		baseURL: context.baseUrl,
-		endpoint: `${promotionsApiRoot}/connections/${id}`,
+		endpoint: `${promotionsApiRoot}/environments/${id}`,
 		data: payload,
 	});
 
-export const upsertPromotionApplyConfig = async (
+export const deletePromotionEnvironment = async (
 	context: PublicApiContext,
-	connectionId: string,
-	payload: UpsertPromotionApplyConfigDto,
-): Promise<PromotionApplyConfigPublicDto> =>
-	await request({
-		method: 'PUT',
-		baseURL: context.baseUrl,
-		endpoint: `${promotionsApiRoot}/connections/${connectionId}/configs/apply`,
-		data: payload,
-	});
-
-export const upsertPromotionPromoteConfig = async (
-	context: PublicApiContext,
-	connectionId: string,
-	payload: UpsertPromotionPromoteConfigDto,
-): Promise<PromotionPromoteConfigPublicDto> =>
-	await request({
-		method: 'PUT',
-		baseURL: context.baseUrl,
-		endpoint: `${promotionsApiRoot}/connections/${connectionId}/configs/promote`,
-		data: payload,
-	});
-
-export const deletePromotionConfig = async (
-	context: PublicApiContext,
-	connectionId: string,
-	direction: PromotionDirection,
+	id: string,
 ): Promise<void> => {
 	await request({
 		method: 'DELETE',
 		baseURL: context.baseUrl,
-		endpoint: `${promotionsApiRoot}/connections/${connectionId}/configs/${direction}`,
+		endpoint: `${promotionsApiRoot}/environments/${id}`,
 	});
 };
 
-/** Clones one direction into local storage on the instance. Safe to repeat. */
-export const clonePromotionCheckout = async (
+/** Connects the environment on the instance. For Git, this clones its branch. Safe to repeat. */
+export const connectPromotionCheckout = async (
 	context: PublicApiContext,
-	connectionId: string,
-	direction: PromotionDirection,
+	environmentId: string,
 ): Promise<PromotionCheckoutPublicDto> =>
 	await request({
 		method: 'POST',
 		baseURL: context.baseUrl,
-		endpoint: `${promotionsApiRoot}/connections/${connectionId}/${direction}/clone`,
+		endpoint: `${promotionsApiRoot}/environments/${environmentId}/connect`,
 	});
 
-/** Removes one direction's local checkout. Keeps the config and its credentials. */
-export const disconnectPromotionCheckout = async (
-	context: PublicApiContext,
-	connectionId: string,
-	direction: PromotionDirection,
-): Promise<PromotionCheckoutPublicDto> =>
-	await request({
-		method: 'POST',
-		baseURL: context.baseUrl,
-		endpoint: `${promotionsApiRoot}/connections/${connectionId}/${direction}/disconnect`,
-	});
-
-/** Promotes the whole instance through its instance connection. */
+/** Promotes the whole instance through its instance Promote environment. */
 export const promotePackage = async (
 	context: PublicApiContext,
-	connectionId: string,
+	environmentId: string,
 	payload: PromotePackageDto,
 ): Promise<PromotePackageResultDto> =>
 	await request({
 		method: 'POST',
 		baseURL: context.baseUrl,
-		endpoint: `${promotionsApiRoot}/connections/${connectionId}/promote`,
+		endpoint: `${promotionsApiRoot}/environments/${environmentId}/promote`,
 		data: payload,
 	});
 
 export const applyPromotion = async (
 	context: PublicApiContext,
-	connectionId: string,
+	environmentId: string,
 	payload?: ApplyPackageDto,
 ): Promise<ApplyPackageResultDto> =>
 	await request({
 		method: 'POST',
 		baseURL: context.baseUrl,
-		endpoint: `${promotionsApiRoot}/connections/${connectionId}/apply`,
+		endpoint: `${promotionsApiRoot}/environments/${environmentId}/apply`,
 		data: payload,
 	});
 
 /** Resumes an apply that paused on unresolved bindings, once they are created. */
 export const continueApplyPromotion = async (
 	context: PublicApiContext,
-	connectionId: string,
+	environmentId: string,
 	payload: ContinueApplyPackageDto,
 ): Promise<ApplyPackageResultDto> =>
 	await request({
 		method: 'POST',
 		baseURL: context.baseUrl,
-		endpoint: `${promotionsApiRoot}/connections/${connectionId}/apply/continue`,
+		endpoint: `${promotionsApiRoot}/environments/${environmentId}/apply/continue`,
 		data: payload,
 	});
 

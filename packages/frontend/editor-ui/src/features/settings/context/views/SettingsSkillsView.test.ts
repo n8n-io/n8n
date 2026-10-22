@@ -24,6 +24,9 @@ const confirmMock = vi.fn().mockResolvedValue('confirm');
 const showMessageMock = vi.fn();
 const showErrorMock = vi.fn();
 const trackMock = vi.fn();
+const saveAsMock = vi.fn();
+
+vi.mock('file-saver', () => ({ saveAs: (...args: unknown[]) => saveAsMock(...args) }));
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: trackMock }),
@@ -130,6 +133,7 @@ describe('SettingsSkillsView', () => {
 		showMessageMock.mockClear();
 		showErrorMock.mockClear();
 		trackMock.mockClear();
+		saveAsMock.mockClear();
 	});
 
 	it('loads the first page on mount', async () => {
@@ -487,6 +491,78 @@ describe('SettingsSkillsView', () => {
 
 		expect(confirmMock).toHaveBeenCalled();
 		expect(skillsStore.deleteSkill).toHaveBeenCalledWith('s1');
+	});
+
+	describe('download', () => {
+		async function clickDownload() {
+			const { getByTestId } = renderView();
+			await new Promise(process.nextTick);
+			await userEvent.click(getByTestId('skill-actions').querySelector('button')!);
+			await waitFor(() =>
+				expect(document.querySelector('[data-test-id="action-download"]')).toBeInTheDocument(),
+			);
+			await userEvent.click(document.querySelector('[data-test-id="action-download"]')!);
+			await waitFor(() => expect(skillsStore.fetchSkill).toHaveBeenCalledWith('s1'));
+			await new Promise(process.nextTick);
+		}
+
+		beforeEach(() => {
+			skillsStore.skills = [skill()];
+			skillsStore.count = 1;
+		});
+
+		it('saves a skill without references as SKILL.md and reports it', async () => {
+			skillsStore.fetchSkill.mockResolvedValue(detail());
+
+			await clickDownload();
+
+			expect(saveAsMock).toHaveBeenCalledWith(expect.any(Blob), 'SKILL.md');
+			expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_DOWNLOADED_SKILL, {
+				skill_id: 's1',
+				scope: 'instance',
+				format: 'markdown',
+			});
+		});
+
+		it('saves a skill with references as a zip', async () => {
+			skillsStore.fetchSkill.mockResolvedValue(
+				detail({
+					scope: 'project',
+					projectId: 'p1',
+					skill: {
+						name: 'research-search',
+						description: 'Find research and cite the evidence.',
+						instructions: 'Cite every source.',
+						references: [{ path: 'references/style.md', content: '# Style' }],
+					},
+				}),
+			);
+
+			await clickDownload();
+
+			await waitFor(() =>
+				expect(saveAsMock).toHaveBeenCalledWith(expect.any(Blob), 'research-search.zip'),
+			);
+			expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_DOWNLOADED_SKILL, {
+				skill_id: 's1',
+				scope: 'project',
+				project_id: 'p1',
+				format: 'zip',
+			});
+		});
+
+		it('shows a toast and reports nothing when the skill does not load', async () => {
+			skillsStore.fetchSkill.mockRejectedValue(new Error('offline'));
+
+			await clickDownload();
+
+			expect(saveAsMock).not.toHaveBeenCalled();
+			expect(showErrorMock).toHaveBeenCalledWith(expect.any(Error), 'Could not download the skill');
+			expect(trackMock).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.USER_DOWNLOADED_SKILL,
+				expect.anything(),
+			);
+		});
 	});
 
 	describe('deep links', () => {

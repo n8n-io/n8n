@@ -11,7 +11,7 @@ describe('nodeRemovalMigrations', () => {
 	});
 
 	it('keys every migration to a rule that exists', () => {
-		const known = new Set([...ruleIds, 'ai-transform-deprecated']);
+		const known = new Set([...ruleIds, 'ai-transform-deprecated', 'agent-node-version-v3']);
 
 		for (const { ruleId } of nodeRemovalMigrations) {
 			expect(known, ruleId).toContain(ruleId);

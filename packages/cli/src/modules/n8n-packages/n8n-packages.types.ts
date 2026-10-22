@@ -311,8 +311,8 @@ export interface ImportSelection {
  * Match or create the destination project from the package. Callers cannot override its location.
  * The service fixes all policies except `workflowConflictPolicy`, `workflowIdPolicy`,
  * `overwriteDeletionPolicy` (how removals are carried out; defaults to `archive`),
- * `dataTableSchemaConflictPolicy` (defaults to `fail`), and `credentialConflictPolicy`
- * (defaults to `keep-existing`).
+ * `dataTableSchemaConflictPolicy` (defaults to `fail`), `tagConflictPolicy` (defaults to `skip`),
+ * and `credentialConflictPolicy` (defaults to `keep-existing`).
  */
 export type ImportSelectionRequest = {
 	user: User;
@@ -322,6 +322,7 @@ export type ImportSelectionRequest = {
 	workflowIdPolicy?: WorkflowIdPolicy;
 	overwriteDeletionPolicy?: OverwriteDeletionPolicy;
 	dataTableSchemaConflictPolicy?: DataTableSchemaConflictPolicy;
+	tagConflictPolicy?: TagConflictPolicy;
 	/** Omitted means `keep-existing`. */
 	credentialConflictPolicy?: CredentialConflictPolicy;
 };

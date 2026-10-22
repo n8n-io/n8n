@@ -2,6 +2,7 @@ import {
 	AGENTS_N8N_CHAT_FLAG,
 	AI_ASSISTANT_AT_MENTIONS_FLAG,
 	CREDENTIAL_DESCRIPTIONS_FLAG,
+	INSTANCE_AI_CONCISE_STYLE_FLAG,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
 	INSTANCE_AI_SETUP_PANEL_FLAG,
 } from '@n8n/api-types';
@@ -144,6 +145,10 @@ export const INSTANCE_AI_PROGRESSIVE_BUILDING_EXPERIMENT = createExperiment(
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
 );
 
+export const INSTANCE_AI_CONCISE_STYLE_EXPERIMENT = createExperiment(
+	INSTANCE_AI_CONCISE_STYLE_FLAG,
+);
+
 export const INSTANCE_AI_SETUP_PANEL_EXPERIMENT = createExperiment(INSTANCE_AI_SETUP_PANEL_FLAG);
 export const AI_ASSISTANT_AT_MENTIONS_EXPERIMENT = createExperiment(AI_ASSISTANT_AT_MENTIONS_FLAG);
 
@@ -156,6 +161,9 @@ export const MCP_JSON_NUDGE_EXPERIMENT = createExperiment('113_mcp_nudge_modal_o
 
 export const CREDENTIAL_DESCRIPTIONS_EXPERIMENT = createExperiment(CREDENTIAL_DESCRIPTIONS_FLAG);
 
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+export const MCP_DISCOVERY_EXPERIMENT = createExperiment('123_surface_mcp_to_claude_trial_users');
+// EOF Experiment cleanup
 export const SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT = createExperiment(
 	'119_surface_assistant_on_workflow_error',
 );
@@ -183,9 +191,13 @@ export const QUICKJS_EXPRESSION_SHADOW_EXPERIMENT = createExperiment(
 );
 
 export const EXPERIMENTS_TO_TRACK = [
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	MCP_DISCOVERY_EXPERIMENT.name,
+	// EOF Experiment cleanup
 	INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name,
 	AI_ASSISTANT_AT_MENTIONS_EXPERIMENT.name,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_EXPERIMENT.name,
+	INSTANCE_AI_CONCISE_STYLE_EXPERIMENT.name,
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
 	BATCH_11AUG_EXPERIMENT.name,

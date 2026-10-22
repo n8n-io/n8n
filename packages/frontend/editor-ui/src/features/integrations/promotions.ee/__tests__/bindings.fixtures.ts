@@ -68,8 +68,7 @@ export function blocked(
 ): BlockedApplyResult {
 	return {
 		status: 'blocked',
-		connectionId: 'connection-id',
-		configId: 'config-id',
+		environmentId: 'environment-id',
 		git: { branchName: 'main', commitSha: 'a'.repeat(40) },
 		preflight: {
 			missingProjects: [],
@@ -84,8 +83,7 @@ export function blocked(
 
 export const applied: AppliedResult = {
 	status: 'applied',
-	connectionId: 'connection-id',
-	configId: 'config-id',
+	environmentId: 'environment-id',
 	git: { branchName: 'main', commitSha: 'a'.repeat(40) },
 	counts: {
 		projects: { created: 0, updated: 1, skipped: 1, deleted: 0 },

@@ -11,6 +11,7 @@ import {
 } from 'n8n-workflow';
 import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 
+import { SCOPE_LABEL_KEY } from '../type-availability-policies.constants';
 import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.store';
 
 /** The verdict that restricts a node type: from the node kind, or the credential kind for a credential-only node. */
@@ -71,6 +72,44 @@ export function describeNodeTypeRestriction(
 		scope ? DESCRIPTION_KEY[scope] : 'typeAvailabilityPolicies.restrictedNode.description.generic',
 		{ interpolate: { nodeType: nodeTypeName, nextStep: nextStepText } },
 	);
+}
+
+/** A restricted node type, named as the user sees it in the node panel. */
+type RestrictedNodeTypeName = { displayName: string; scope?: NodeTypeAvailabilityScope };
+
+const RESTRICTED_SCOPES: Array<[NodeTypeAvailabilityScope | undefined, BaseTextKey]> = [
+	['instance', SCOPE_LABEL_KEY.instance],
+	['project', SCOPE_LABEL_KEY.project],
+	[undefined, 'typeAvailabilityPolicies.restrictedNodes.scope.generic'],
+];
+
+/** Why these node types block a publish, with one scope on each line when there are several. */
+export function describeRestrictedNodeTypes(restricted: RestrictedNodeTypeName[]): string {
+	if (restricted.length === 1) {
+		const [{ displayName, scope }] = restricted;
+		return describeNodeTypeRestriction(displayName, scope, 'replace');
+	}
+
+	const i18n = useI18n();
+	const scopeLines = RESTRICTED_SCOPES.flatMap(([scope, labelKey]) => {
+		// Quoted because some display names contain commas.
+		const names = restricted
+			.filter((type) => type.scope === scope)
+			.map((type) => `'${type.displayName}'`);
+		if (names.length === 0) return [];
+
+		return [
+			i18n.baseText('typeAvailabilityPolicies.restrictedNodes.scopeLine', {
+				interpolate: { scope: i18n.baseText(labelKey), nodeTypes: names.join(', ') },
+			}),
+		];
+	});
+
+	return [
+		i18n.baseText('typeAvailabilityPolicies.restrictedNodes.title'),
+		...scopeLines,
+		i18n.baseText('typeAvailabilityPolicies.restrictedNodes.nextStep'),
+	].join('\n');
 }
 
 const AGENT_TOOL_DESCRIPTION_KEY: Record<NodeTypeAvailabilityScope, BaseTextKey> = {

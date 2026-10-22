@@ -73,7 +73,7 @@ describe('BreakingChangeMigrationService', () => {
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
 
 		await expect(service.migrateWorkflow(RULE_ID, 'wf-1', user)).rejects.toThrow(
-			'You do not have permission to update this workflow',
+			'Workflow not found, or you do not have permission to update it.',
 		);
 		expect(workflowService.update).not.toHaveBeenCalled();
 	});

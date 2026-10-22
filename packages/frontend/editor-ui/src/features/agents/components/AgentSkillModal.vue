@@ -713,7 +713,6 @@ function onRemove() {
 		:show-back="step === 'manual' || step === 'preview' || (step === 'upload' && hasPicker)"
 		:show-footer="step === 'select' || step === 'manual' || step === 'edit' || step === 'preview'"
 		:show-cancel="step !== 'select'"
-		:body-flush="step !== 'select'"
 		:busy="isImporting || previewLoading || isSaving"
 		size="fit"
 		data-testid="agent-skill-modal"
@@ -959,11 +958,8 @@ function onRemove() {
 .content {
 	/* The Design System has no width preset between 2xlarge and full. */
 	width: min(52rem, calc(100dvw - var(--spacing--lg) * 3));
-	min-height: min(
-		calc(70dvh - var(--spacing--lg)),
-		calc(var(--height--5xl) * 6 - var(--spacing--lg))
-	);
 	display: flex;
+	gap: var(--spacing--lg);
 }
 
 .picker {
@@ -972,7 +968,7 @@ function onRemove() {
 }
 
 .callout {
-	margin: var(--spacing--md) var(--spacing--lg) 0;
+	margin-bottom: var(--spacing--md);
 }
 
 .footerHint {

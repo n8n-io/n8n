@@ -1,5 +1,7 @@
 import { APPROVAL_SUSPEND_SCHEMA, type StreamChunk } from '@n8n/agents';
 import {
+	AGENT_BUILDER_TOOL_NAMES,
+	resolveBuilderToolName,
 	instanceAiApprovalDetailsSchema,
 	instanceAiQuestionSchema,
 	credentialRequestSchema,
@@ -357,7 +359,11 @@ function mapSuspendedChunk(
 		mcpConnectRequestSchema,
 	);
 	const testListener = parseSchemaRecord(suspendPayload.testListener, testListenerCardSchema);
-	const targetApprovalResult = isRecord(suspendPayload.builderCheckpoint)
+	// A test run of the target Agent pauses for the target's own tool approvals.
+	const isTargetTestRun =
+		typeof chunk.toolName === 'string' &&
+		resolveBuilderToolName(chunk.toolName) === AGENT_BUILDER_TOOL_NAMES.CALL_AGENT;
+	const targetApprovalResult = isTargetTestRun
 		? APPROVAL_SUSPEND_SCHEMA.safeParse(suspendPayload)
 		: undefined;
 	const targetApproval = targetApprovalResult?.success

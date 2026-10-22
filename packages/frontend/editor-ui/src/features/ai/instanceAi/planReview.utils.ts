@@ -24,7 +24,7 @@ function firstNonEmpty(...sources: Array<PlannedTaskArg[] | undefined>): Planned
 /**
  * Resolve the planned tasks a plan-review card is about.
  *
- * The `create-tasks` suspend payload carries `tasks` only, so `planItems` is
+ * The `workflow_builder_create_tasks` suspend payload carries `tasks` only, so `planItems` is
  * empty on a live card and `args.tasks` is the real source. Keep all three
  * sources in one place — a count taken from `planItems` alone reports zero.
  */

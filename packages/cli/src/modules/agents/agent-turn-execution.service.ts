@@ -18,6 +18,7 @@ import { AgentChatExecutionService } from './agent-chat-execution.service';
 import { AgentMessageQueueService } from './agent-message-queue.service';
 import { AgentMessageSteeringService } from './agent-message-steering.service';
 import type { AgentExecutionStreamChunk, SteeredMessageEvent } from './types/agent-steering';
+import type { AgentTurnFinalizeOutcome } from './types/agent-turn-outcome';
 import { AgentToolApprovalService } from './agent-tool-approval.service';
 import { EXECUTION_METADATA_KEY, type AgentExecutionAdmission } from './types/agent-queued-message';
 import {
@@ -58,12 +59,22 @@ interface ExecuteTurnConfig {
 	backgroundJobSignal?: AgentBackgroundJobSignal;
 	/** The chat surface this turn runs under. Undefined for integrations and tasks. */
 	chatSurface?: AgentChatSurface;
+	/**
+	 * The controller of the chat turn. Defaults to a new controller. A cancel
+	 * aborts it, and the caller can abort it to stop the turn at any time. The
+	 * abort signal in the turn options also aborts it.
+	 */
+	chatController?: AbortController;
 	automaticPreviewContinuation?: boolean;
-	/** The abort signal is a wake lease, not a chat request. */
-	isWakeRun?: boolean;
 	onExecutionStarted?: (executionId: string, sessionId: string, inputMessageIds: string[]) => void;
 	onExecutionRecorded?: (executionId: string) => void;
 	onSettled?: (suspended: boolean) => Promise<void>;
+	/**
+	 * Called once when the outcome of the turn is known, before the runtime
+	 * stores the turn record. The runtime does not call it when the turn has
+	 * no execution record.
+	 */
+	onBeforeFinalize?: (outcome: AgentTurnFinalizeOutcome) => Promise<void>;
 }
 
 interface TurnExecutionState {
@@ -78,7 +89,7 @@ interface TurnExecutionState {
 /** Preview and n8n Chat both run under one of these — a steerable, cancellable chat turn. */
 interface ChatExecutionControl {
 	controller: AbortController;
-	detachRequest: () => void;
+	dispose: () => void;
 	userId: string;
 	surface: AgentChatSurface;
 }
@@ -132,18 +143,29 @@ export class AgentTurnExecutionService {
 			turn = await config.prepare();
 			const preparedTurn = turn;
 			if (config.chatSurface !== undefined) {
-				chatControl = this.createChatExecutionControl(preparedTurn, config.chatSurface);
+				chatControl = this.createChatExecutionControl(
+					preparedTurn,
+					config.chatSurface,
+					config.chatController,
+				);
 				preparedTurn.options.abortSignal = chatControl.controller.signal;
 			}
+
 			const stream = await this.admitTurn(preparedTurn, config, recorder, state, chatControl);
 			yield* this.streamTurn(stream, preparedTurn, config, recorder, state);
 		} catch (error) {
+			if (
+				(await this.isStoppedChatTurn(turn, config)) &&
+				!(error instanceof AgentExecutionRecordingError)
+			)
+				return;
+
 			state.executionError = error;
 			recorder.record({ type: 'error', error });
 			recorder.record({ type: 'finish', finishReason: 'error' });
 			throw error;
 		} finally {
-			chatControl?.detachRequest();
+			chatControl?.dispose();
 			if (turn && state.executionId) {
 				try {
 					await this.settleTurn(turn, config, recorder, state.executionId, state, chatControl);
@@ -155,24 +177,36 @@ export class AgentTurnExecutionService {
 		}
 	}
 
+	private async isStoppedChatTurn(
+		turn: AgentTurnRequest | undefined,
+		config: ExecuteTurnConfig,
+	): Promise<boolean> {
+		const signal = turn?.options.abortSignal;
+		if (!signal?.aborted || config.chatSurface === undefined) return false;
+		const { isAbortError } = await import('@n8n/agents');
+		return Boolean(
+			config.chatSurface !== undefined && signal?.aborted && isAbortError(signal.reason),
+		);
+	}
+
 	private createChatExecutionControl(
 		turn: AgentTurnRequest,
 		surface: AgentChatSurface,
+		controller = new AbortController(),
 	): ChatExecutionControl {
 		const userId = turn.recording.access.ownerId;
 		if (turn.recording.access.accessScope !== 'user' || !userId) {
 			throw new UnexpectedError('A preview execution must have an owning user.');
 		}
-		const requestSignal = turn.options.abortSignal;
-		const controller = new AbortController();
-		const abort = () => controller.abort(requestSignal?.reason);
-		if (requestSignal?.aborted) abort();
-		else requestSignal?.addEventListener('abort', abort, { once: true });
+		const executionSignal = turn.options.abortSignal;
+		const abort = () => controller.abort(executionSignal?.reason);
+		if (executionSignal?.aborted) abort();
+		else executionSignal?.addEventListener('abort', abort, { once: true });
 		return {
 			controller,
 			userId,
 			surface,
-			detachRequest: () => requestSignal?.removeEventListener('abort', abort),
+			dispose: () => executionSignal?.removeEventListener('abort', abort),
 		};
 	}
 
@@ -214,11 +248,12 @@ export class AgentTurnExecutionService {
 	): AsyncGenerator<AgentExecutionStreamChunk> {
 		const attributionTracker = createAttributionTracker(config.mcpServerAttributions);
 
-		for await (const chunk of streamAgentChunks(stream)) {
+		for await (let chunk of streamAgentChunks(stream)) {
 			if (chunk.type === 'input-boundary') {
 				chunk.acknowledge();
 				continue;
 			}
+
 			if (chunk.type === 'input') {
 				const event = state.steeredMessages.get(chunk.message.id);
 				if (event) {
@@ -227,7 +262,18 @@ export class AgentTurnExecutionService {
 				}
 				continue;
 			}
+
+			// The runtime reports requested stops as errors. Keep chat outcomes consistent.
+			if (
+				(chunk.type === 'error' || (chunk.type === 'finish' && chunk.finishReason === 'error')) &&
+				(await this.isStoppedChatTurn(turn, config))
+			) {
+				if (chunk.type === 'error') continue;
+				chunk = { ...chunk, finishReason: 'cancelled' };
+			}
+
 			recorder.record(chunk);
+
 			if (chunk.type === 'tool-call-suspended') state.suspendedRunId = chunk.runId;
 			if (chunk.type === 'error') state.executionError = chunk.error;
 			if (chunk.type === 'finish') state.receivedFinish = true;
@@ -268,10 +314,9 @@ export class AgentTurnExecutionService {
 		executionId: string,
 		state: TurnExecutionState,
 	): Promise<void> {
+		const cancelled = this.isCancelled(turn, recorder, state);
+		await this.runBeforeFinalize(config, recorder, executionId, state, cancelled);
 		const record = recorder.getMessageRecord();
-		const cancelled =
-			turn.options.abortSignal?.aborted ||
-			(!state.receivedFinish && !recorder.suspended && record.error === null);
 		let hitlStatus: RecordMessageParams['hitlStatus'];
 		if (recorder.suspended) hitlStatus = 'suspended';
 		else if (turn.type === 'resume' && state.executionStarted) hitlStatus = 'resumed';
@@ -287,6 +332,49 @@ export class AgentTurnExecutionService {
 				hitlStatus,
 			},
 		});
+	}
+
+	private isCancelled(
+		turn: AgentTurnRequest,
+		recorder: ExecutionRecorder,
+		state: TurnExecutionState,
+	): boolean {
+		return (
+			turn.options.abortSignal?.aborted === true ||
+			(!state.receivedFinish && !recorder.suspended && recorder.getMessageRecord().error === null)
+		);
+	}
+
+	/** Give the host the outcome of the turn before the record is final. */
+	private async runBeforeFinalize(
+		config: ExecuteTurnConfig,
+		recorder: ExecutionRecorder,
+		executionId: string,
+		state: TurnExecutionState,
+		cancelled: boolean,
+	): Promise<void> {
+		if (!config.onBeforeFinalize) return;
+		const record = recorder.getMessageRecord();
+		let status: AgentTurnFinalizeOutcome['status'] = 'completed';
+		if (cancelled) status = 'cancelled';
+		else if (recorder.suspended) status = 'suspended';
+		else if (record.error !== null || record.finishReason === 'error') status = 'errored';
+		// A thrown error, or the error that the model stream reported.
+		const error = state.executionError ?? record.error ?? undefined;
+		try {
+			await config.onBeforeFinalize({
+				executionId,
+				status,
+				...(status === 'errored' && error !== undefined ? { error } : {}),
+			});
+		} catch (hookError) {
+			// The turn record must be stored even when the host hook fails.
+			this.logger.warn('Agent turn before-finalize hook failed', {
+				threadId: config.context.threadId,
+				executionId,
+				error: hookError,
+			});
+		}
 	}
 
 	createRecorder(
@@ -417,10 +505,32 @@ export class AgentTurnExecutionService {
 		state: TurnExecutionState,
 		chatControl?: ChatExecutionControl,
 	): Promise<ReadableStream<StreamChunk>> {
-		const admission =
-			config.admittedExecution ??
-			(await this.recordTurnStart(turn, config, recorder, state, chatControl));
-		state.executionId = admission.executionId;
+		const admit = async (signal?: AbortSignal) => {
+			signal?.throwIfAborted();
+			const admission =
+				config.admittedExecution ??
+				(await this.recordTurnStart(turn, config, recorder, state, chatControl));
+			state.executionId = admission.executionId;
+			signal?.throwIfAborted();
+
+			if (chatControl) {
+				this.chatExecutionService.register(
+					{
+						...config.context,
+						userId: chatControl.userId,
+						executionId: admission.executionId,
+						surface: chatControl.surface,
+					},
+					chatControl.controller,
+				);
+			}
+			return admission;
+		};
+
+		const admission = chatControl
+			? await this.chatExecutionService.withTurnLock(config.context.threadId, admit)
+			: await admit();
+
 		return await this.startAcceptedTurn(admission, turn, config, recorder, state, chatControl);
 	}
 
@@ -475,6 +585,7 @@ export class AgentTurnExecutionService {
 				[EXECUTION_METADATA_KEY]: executionId,
 			};
 		}
+
 		if (chatControl) {
 			turn.options.onInputBoundary = async (boundary) => {
 				const result = await this.steering.consume(
@@ -487,23 +598,13 @@ export class AgentTurnExecutionService {
 				for (const event of result.events) state.steeredMessages.set(event.message.id, event);
 				return result.messages;
 			};
-			this.chatExecutionService.register(
-				{
-					...config.context,
-					userId: chatControl.userId,
-					executionId,
-					surface: chatControl.surface,
-				},
-				chatControl.controller,
-			);
-			// A closed chat request must not stop an admitted turn. A lost wake lease must,
-			// because the wake leaves its job results unconsumed and another wake retries them.
-			if (!config.isWakeRun) chatControl.detachRequest();
 		}
+
 		config.onExecutionStarted?.(executionId, config.context.threadId, inputMessageIds);
 		turn.options.abortSignal?.throwIfAborted();
 		await config.onAdmitted?.();
 		turn.options.abortSignal?.throwIfAborted();
+
 		// Forward side-call model costs (title generation, observation-log
 		// observer/reflector, episodic-memory model calls) onto this execution
 		// row and its thread. The SDK prices each call; the host only adds the

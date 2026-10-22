@@ -35,14 +35,18 @@ export const workflowFolderConflictFieldDocs = {
 			'Folder that currently contains the matched workflow, or null when it lives at the ' +
 			'project root.',
 	},
-	targetFolderId: { description: 'Folder the import was requested to land in.' },
+	targetFolderId: {
+		description:
+			'Folder the import was requested to land in, or null when a project package puts the ' +
+			'workflow at the project root.',
+	},
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
 
 export const workflowFolderConflictIssueOpenApi: ZodOpenAPIMetadata = {
 	description:
-		'A workflow whose source id already matches one in the target project but lives outside ' +
-		'the requested import folder. Folder-targeted imports cannot update workflows in place at ' +
-		'a different location.',
+		'A workflow whose source id already matches one in the target project but lives in a ' +
+		'different folder than the import target. An import cannot move a workflow while it ' +
+		'updates it in place. For a project package, the project root is a target too.',
 };
 
 export const workflowArchiveForbiddenFieldDocs = {

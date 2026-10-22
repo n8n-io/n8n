@@ -51,6 +51,7 @@ import {
 	ExportDependencyPolicy,
 	ExportVersionPolicy,
 	OverwriteDeletionPolicy,
+	TagConflictPolicy,
 	WorkflowConflictPolicy,
 	WorkflowIdPolicy,
 	type ExportPackageEventCounts,
@@ -96,8 +97,8 @@ type DirectoryProjectPackage =
  * A cherry-pick import acts only on its selection, so most policies are fixed here. Deletion mode is
  * left to the caller (`overwriteDeletionPolicy`): promotion passes `hard-delete` for diff convergence,
  * while the public selection import defaults to the safe `archive`. The caller also sets
- * `dataTableSchemaConflictPolicy`, which defaults to `fail`, and `credentialConflictPolicy`, which
- * defaults to `keep-existing`.
+ * `dataTableSchemaConflictPolicy`, which defaults to `fail`, `tagConflictPolicy`, which defaults to
+ * `skip`, and `credentialConflictPolicy`, which defaults to `keep-existing`.
  */
 const CHERRY_PICK_IMPORT_POLICY = {
 	projectConflictPolicy: 'merge',
@@ -111,7 +112,6 @@ const CHERRY_PICK_IMPORT_POLICY = {
 	variableMissingMode: 'must-preexist',
 	variableConflictPolicy: 'keep-existing',
 	tagMissingMode: 'create',
-	tagConflictPolicy: 'skip',
 } as const satisfies Omit<
 	ResolvedImportRequest,
 	| 'user'
@@ -124,6 +124,7 @@ const CHERRY_PICK_IMPORT_POLICY = {
 	| 'workflowConflictPolicy'
 	| 'workflowIdPolicy'
 	| 'dataTableSchemaConflictPolicy'
+	| 'tagConflictPolicy'
 	| 'credentialConflictPolicy'
 >;
 
@@ -630,6 +631,7 @@ export class N8nPackagesService {
 			workflowIdPolicy: request.workflowIdPolicy ?? WorkflowIdPolicy.Source,
 			dataTableSchemaConflictPolicy:
 				request.dataTableSchemaConflictPolicy ?? DataTableSchemaConflictPolicy.Fail,
+			tagConflictPolicy: request.tagConflictPolicy ?? TagConflictPolicy.Skip,
 			credentialConflictPolicy:
 				request.credentialConflictPolicy ?? CredentialConflictPolicy.KeepExisting,
 			selection,

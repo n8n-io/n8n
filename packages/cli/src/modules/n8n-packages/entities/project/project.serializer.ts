@@ -1,10 +1,7 @@
+import { type SerializedProject, serializedProjectSchema } from '@n8n/api-types';
 import type { Project } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import {
-	serializedProjectSchema,
-	type SerializedProject,
-} from '../../spec/serialized/project.schema';
 import { definePackageSerializationPayload } from '../package-serialization.types';
 
 type ProjectPackageKeyHandling = {
