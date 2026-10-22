@@ -13,6 +13,8 @@ const props = defineProps<{
 	 *  accessible label so a collapsed summary pill's avatars don't reduce to
 	 *  status alone. */
 	label?: string;
+	/** The judge gave no readable verdict: the neutral look, labelled "Couldn't grade" rather than "Not run". */
+	notGraded?: boolean;
 }>();
 
 const i18n = useI18n();
@@ -48,6 +50,7 @@ const statusLabel = computed(() => {
 		idle: i18n.baseText('instanceAi.testAgentPreview.avatar.notRun'),
 		waiting: i18n.baseText('instanceAi.testAgentPreview.avatar.notRun'),
 	};
+	if (props.notGraded) return i18n.baseText('instanceAi.testAgentPreview.avatar.notGraded');
 	return labelByKind[props.kind];
 });
 
