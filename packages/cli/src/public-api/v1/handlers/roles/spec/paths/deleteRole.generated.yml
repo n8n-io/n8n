@@ -1,6 +1,6 @@
 operationId: deleteRole
 tags:
-  - Role
+  - Roles
 summary: Delete a custom role
 description: Deletes a custom role. System roles cannot be deleted. A role with users assigned cannot be deleted unless `reassignRoleSlug` is set to move those users to another role first.
 x-required-scope: role:manage,role:manageProject

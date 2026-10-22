@@ -71,7 +71,7 @@ export class RolesPublicController {
 	@ApiDescription(
 		'Returns all roles grouped by type (global and project). Set `withUsageCount` to include how many users and projects use each role.',
 	)
-	@ApiTags(['Role'])
+	@ApiTags(['Roles'])
 	@ApiResponse(200, RoleListPublicDto)
 	async getAllRoles(
 		_req: AuthenticatedRequest,
@@ -102,7 +102,7 @@ export class RolesPublicController {
 	@ApiDescription(
 		'Returns a single role with its scopes. Set `withUsageCount` to include how many users and projects use the role.',
 	)
-	@ApiTags(['Role'])
+	@ApiTags(['Roles'])
 	@ApiResponse(200, RoleGetPublicDto)
 	@ApiErrorResponse(404)
 	async getRole(
@@ -126,7 +126,7 @@ export class RolesPublicController {
 	@ApiDescription(
 		'Creates a custom role. Set `roleType` to `global` for an instance-wide role or `project` for a project role.',
 	)
-	@ApiTags(['Role'])
+	@ApiTags(['Roles'])
 	@ApiResponse(201, RolePublicDto)
 	async createRole(
 		req: AuthenticatedRequest,
@@ -158,7 +158,7 @@ export class RolesPublicController {
 	@ApiDescription(
 		"Replaces a custom role's display name, description, and scopes. System roles cannot be updated.",
 	)
-	@ApiTags(['Role'])
+	@ApiTags(['Roles'])
 	@ApiResponse(200, RolePublicDto)
 	@ApiErrorResponse(404)
 	async updateRole(
@@ -194,7 +194,7 @@ export class RolesPublicController {
 	@ApiDescription(
 		'Deletes a custom role. System roles cannot be deleted. A role with users assigned cannot be deleted unless `reassignRoleSlug` is set to move those users to another role first.',
 	)
-	@ApiTags(['Role'])
+	@ApiTags(['Roles'])
 	@ApiResponse(200, RolePublicDto)
 	@ApiErrorResponse(404)
 	async deleteRole(

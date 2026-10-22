@@ -1,6 +1,6 @@
 operationId: updateRole
 tags:
-  - Role
+  - Roles
 summary: Update a custom role
 description: Replaces a custom role's display name, description, and scopes. System roles cannot be updated.
 x-required-scope: role:manage,role:manageProject

@@ -1,6 +1,6 @@
 operationId: getRoleMappingRules
 tags:
-  - RoleMappingRule
+  - RoleMappingRules
 summary: Retrieve role-mapping rules
 description: Returns the configured role-mapping rules. `order` is the rule's evaluation position within its own `type`, so instance and project rules each have their own sequence starting at 0 — filter by `type` to retrieve a single evaluation order.
 x-required-scope: roleMappingRule:list

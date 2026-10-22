@@ -61,7 +61,7 @@ export class RoleMappingRulesPublicController {
 	@ApiDescription(
 		"Returns the configured role-mapping rules. `order` is the rule's evaluation position within its own `type`, so instance and project rules each have their own sequence starting at 0 — filter by `type` to retrieve a single evaluation order.",
 	)
-	@ApiTags(['RoleMappingRule'])
+	@ApiTags(['RoleMappingRules'])
 	@ApiResponse(200, RoleMappingRuleListPublicDto)
 	async getRoleMappingRules(
 		_req: AuthenticatedRequest,
@@ -94,7 +94,7 @@ export class RoleMappingRulesPublicController {
 	@ApiDescription(
 		'Creates a rule that maps an identity-provider claim expression to a role. Set `type` to `instance` for a rule granting a global role, or `project` for a rule granting a project role on the projects named in `projectIds`. Omitting `order` appends the rule to the end of the evaluation order for its type.',
 	)
-	@ApiTags(['RoleMappingRule'])
+	@ApiTags(['RoleMappingRules'])
 	@ApiResponse(201, RoleMappingRulePublicDto)
 	@ApiErrorResponse(404)
 	async createRoleMappingRule(
@@ -115,7 +115,7 @@ export class RoleMappingRulesPublicController {
 	@ApiDescription(
 		"Changes a rule's position in the evaluation order for its type. `targetIndex` is the desired 0-based position within the rule's own `type` sequence; a value beyond the last position moves the rule to the end.",
 	)
-	@ApiTags(['RoleMappingRule'])
+	@ApiTags(['RoleMappingRules'])
 	@ApiResponse(200, RoleMappingRulePublicDto)
 	@ApiErrorResponse(404)
 	async moveRoleMappingRule(
@@ -142,7 +142,7 @@ export class RoleMappingRulesPublicController {
 	@ApiDescription(
 		"Updates a rule's claim expression, role, and/or project assignments. A rule's type cannot be changed once created, so `type` isn't accepted here, and reordering is handled by the move endpoint.",
 	)
-	@ApiTags(['RoleMappingRule'])
+	@ApiTags(['RoleMappingRules'])
 	@ApiResponse(200, RoleMappingRulePublicDto)
 	@ApiErrorResponse(404)
 	async updateRoleMappingRule(
@@ -169,7 +169,7 @@ export class RoleMappingRulesPublicController {
 	@ApiDescription(
 		'Deletes a role-mapping rule. The remaining rules of the same type close the gap, so their `order` values stay a contiguous sequence starting at 0.',
 	)
-	@ApiTags(['RoleMappingRule'])
+	@ApiTags(['RoleMappingRules'])
 	@ApiResponse(200, RoleMappingRulePublicDto)
 	@ApiErrorResponse(404)
 	async deleteRoleMappingRule(

@@ -41,7 +41,7 @@ const EXPECTED_GROUPS: Record<string, string[]> = {
 		'Variables',
 		'Workflow',
 	],
-	AccessAndOrganization: ['Projects', 'Role', 'RoleMappingRule', 'User'],
+	AccessAndOrganization: ['Projects', 'Roles', 'RoleMappingRules', 'User'],
 	InstanceSettings: [
 		'CredentialTypePolicy',
 		'LogStreaming',
@@ -80,6 +80,10 @@ describe('openapi.yml tags', () => {
 	test.each(parentTags)('parent tag $name has an x-displayName and a description', (tag) => {
 		expect(tag['x-displayName']).toEqual(expect.any(String));
 		expect(tag.description).toEqual(expect.any(String));
+	});
+
+	test.each(childTags)('child tag $name has an x-displayName', (tag) => {
+		expect(tag['x-displayName']).toEqual(expect.any(String));
 	});
 
 	test('groups each child tag under the parent in the API-166 taxonomy', () => {
