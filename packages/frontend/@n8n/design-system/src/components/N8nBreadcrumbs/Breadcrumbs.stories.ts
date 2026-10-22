@@ -70,25 +70,29 @@ export const Sizes: StoryFn = () => ({
 	`,
 });
 
-export const WithIcons = defaultTemplate.bind({});
-WithIcons.args = {
-	items: [
-		{
-			id: 'project',
-			label: 'My project',
-			href: '/project',
-			icon: { type: 'icon', value: 'folder' },
-		},
-		{ id: 'folder', label: 'Launch', href: '/launch', icon: { type: 'emoji', value: '🚀' } },
-		{ id: 'current', label: 'Current' },
-	],
-};
+const itemsWithIcons: PathItem[] = [
+	{
+		id: 'project',
+		label: 'My project',
+		href: '/project',
+		icon: { type: 'icon', value: 'folder' },
+	},
+	{ id: 'folder', label: 'Launch', href: '/launch', icon: { type: 'emoji', value: '🚀' } },
+	{ id: 'current', label: 'Current' },
+];
 
-export const SmallWithIcons = defaultTemplate.bind({});
-SmallWithIcons.args = {
-	...WithIcons.args,
-	theme: 'small',
-};
+export const WithIcons: StoryFn = () => ({
+	components: { Breadcrumbs },
+	setup() {
+		return { itemsWithIcons };
+	},
+	template: `
+		<div style="display: flex; flex-direction: column; gap: 16px;">
+			<Breadcrumbs :items="itemsWithIcons" theme="medium" />
+			<Breadcrumbs :items="itemsWithIcons" theme="small" />
+		</div>
+	`,
+});
 
 export const CustomSeparator = defaultTemplate.bind({});
 CustomSeparator.args = {
