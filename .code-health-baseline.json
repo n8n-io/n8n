@@ -1641,14 +1641,6 @@
 				"hash": "a5cc02a1d765"
 			}
 		],
-		"packages/cli/src/evaluation.ee/test-runner/test-runner.service.ee.ts": [
-			{
-				"rule": "typeorm-persistence-boundary",
-				"line": 17,
-				"message": "Business logic imports TypeORM directly.",
-				"hash": "d34dbe0bf9e7"
-			}
-		],
 		"packages/cli/src/events/relays/telemetry.event-relay.ts": [
 			{
 				"rule": "typeorm-persistence-boundary",
