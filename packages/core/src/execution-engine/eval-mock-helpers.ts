@@ -211,14 +211,18 @@ function nonEmptyString(value: unknown): string | undefined {
  * credential's `authenticate` builds the endpoint URL. The eval mock intercepts before
  * `authenticate`, so build the same default endpoint here. Credentials are not read, so
  * custom endpoints are ignored. Any other request is returned unchanged.
+ * Takes the legacy shape too: resolve before `normalizeLegacyRequest`, which drops the
+ * top-level `region` and `baseURL`.
  */
-export function resolveEvalMockRequestUrl(
-	requestOptions: IHttpRequestOptions,
+// oxlint-disable-next-line typescript/no-deprecated
+export function resolveEvalMockRequestUrl<T extends IHttpRequestOptions | IRequestOptions>(
+	requestOptions: T,
 	credentialsType: string,
-): IHttpRequestOptions {
+): T {
 	const qs = requestOptions.qs;
 	const service = nonEmptyString(qs?.service);
-	const hasUrl = Boolean(requestOptions.url || requestOptions.baseURL);
+	const legacyUri = 'uri' in requestOptions ? requestOptions.uri : undefined;
+	const hasUrl = Boolean(requestOptions.url || requestOptions.baseURL || legacyUri);
 	if (!AWS_CREDENTIAL_TYPES.has(credentialsType) || !qs || !service || hasUrl) {
 		return requestOptions;
 	}

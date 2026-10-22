@@ -224,7 +224,7 @@ export async function requestWithAuthentication(
 	if (additionalData.evalLlmMockHandler) {
 		const evalMockResponse = await callEvalMockHandler(
 			additionalData.evalLlmMockHandler,
-			resolveEvalMockRequestUrl(normalizeLegacyRequest(requestOptions), credentialsType),
+			normalizeLegacyRequest(resolveEvalMockRequestUrl(requestOptions, credentialsType)),
 			node,
 			requestOptions.resolveWithFullResponse,
 			'legacy',

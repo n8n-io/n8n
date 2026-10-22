@@ -121,6 +121,35 @@ describe('request helpers under the eval mock', () => {
 			expect(mockedUrl()).toBe('https://my-bucket.s3.us-east-1.amazonaws.com/?location=');
 		});
 
+		test('legacy requestWithAuthentication reads the top-level region', async () => {
+			const { helpers, context, mockedUrl } = setup();
+
+			// Shape sent by the generic awsApiRequest: the region rides at the top level.
+			await helpers.requestWithAuthentication.call(context, 'aws', {
+				method: 'POST',
+				url: '',
+				qs: { service: 'lambda', path: '/2015-03-31/functions/fn/invocations' },
+				region: 'eu-central-1',
+			} as IHttpRequestOptions);
+
+			expect(mockedUrl()).toBe(
+				'https://lambda.eu-central-1.amazonaws.com/2015-03-31/functions/fn/invocations',
+			);
+		});
+
+		test('legacy requestWithAuthentication leaves a request with a baseURL unchanged', async () => {
+			const { handler, helpers, context } = setup();
+
+			await helpers.requestWithAuthentication.call(context, 'aws', {
+				method: 'GET',
+				baseURL: 'https://minio.local',
+				url: '',
+				qs: { service: 's3', path: '/bucket' },
+			});
+
+			expect(handler.mock.calls[0][0].url).not.toContain('amazonaws.com');
+		});
+
 		test('httpRequestWithAuthentication resolves the URL for awsAssumeRole', async () => {
 			const { helpers, context, mockedUrl } = setup();
 
