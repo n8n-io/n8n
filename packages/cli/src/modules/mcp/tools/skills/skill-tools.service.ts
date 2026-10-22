@@ -39,7 +39,7 @@ const searchSkillsInput = {
 } satisfies z.ZodRawShape;
 
 const skillIdInput = {
-	skillId: z.string().min(1).describe('The skill ID from search_skills'),
+	skillId: z.string().min(1).describe('The skill ID from search_n8n_skills'),
 } satisfies z.ZodRawShape;
 
 const createSkillInput = {
@@ -108,12 +108,12 @@ export class McpSkillToolsService {
 		const assistantSkillsEnabled = await this.assistantSkillsRollout.isEnabled();
 		const { availableToAssistant: _availability, ...updateWithoutAssistant } = updateSkillInput;
 		registerTool({
-			name: 'search_skills',
+			name: 'search_n8n_skills',
 			config: {
 				description: 'Search the skills hub. Skills are reusable instructions.',
 				inputSchema: searchSkillsInput,
 				annotations: {
-					title: 'Search Skills',
+					title: 'Search n8n Skills',
 					readOnlyHint: true,
 					destructiveHint: false,
 					idempotentHint: true,
@@ -121,7 +121,7 @@ export class McpSkillToolsService {
 				},
 			},
 			handler: async (input: SearchSkillsInput) =>
-				await this.run(user, 'search_skills', { scope: input.scope }, async () => {
+				await this.run(user, 'search_n8n_skills', { scope: input.scope }, async () => {
 					const { count, data } = await this.skillsApi.list(
 						user,
 						ListSkillsQueryDto.parse({

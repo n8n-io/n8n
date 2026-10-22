@@ -84,8 +84,8 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'unpublish_agent',
 	],
 	'agent:execute': ['call_agent'],
-	'skill:read': ['search_skills', 'get_skill'],
-	'skill:write': ['create_skill', 'update_skill', 'delete_skill', 'search_skills', 'get_skill'],
+	'skill:read': ['search_n8n_skills', 'get_skill'],
+	'skill:write': ['create_skill', 'update_skill', 'delete_skill', 'search_n8n_skills', 'get_skill'],
 	// explore_node_resources queries external services with stored credentials,
 	// so it must sit behind the credential scope rather than a workflow one.
 	'credential:read': ['list_credentials', 'list_n8n_gateway_services', 'explore_node_resources'],
