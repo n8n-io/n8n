@@ -30,7 +30,7 @@ function integrationFor(platform: string): AgentChatIntegration {
 
 function makeThread(
 	decoded: unknown,
-	options: { isDM?: boolean; channelName?: string | Error } = {},
+	options: { isDM?: boolean; channelName?: string | Error; client?: unknown } = {},
 ): Thread<unknown, unknown> {
 	const fetchMetadata =
 		options.channelName instanceof Error
@@ -39,7 +39,7 @@ function makeThread(
 	return {
 		id: 'thread-id',
 		isDM: options.isDM ?? false,
-		adapter: { decodeThreadId: vi.fn().mockReturnValue(decoded) },
+		adapter: { decodeThreadId: vi.fn().mockReturnValue(decoded), client: options.client },
 		channel: { fetchMetadata },
 	} as unknown as Thread<unknown, unknown>;
 }
@@ -185,6 +185,60 @@ describe('buildIntegrationOrigin', () => {
 		await expect(
 			buildIntegrationOrigin(integrationFor('linear'), { thread, message: makeMessage() }, logger),
 		).resolves.toEqual({ type: 'linear', issueId: 'issue-uuid' });
+	});
+
+	describe('Linear team', () => {
+		const subject = { type: 'issue', id: 'ENG-1', teamId: 'team-1' };
+		const origin = async (client: unknown, teamSubject: object = subject) =>
+			await buildIntegrationOrigin(
+				integrationFor('linear'),
+				{
+					thread: makeThread({ issueId: 'issue-uuid' }, { client }),
+					message: makeMessage(),
+					subject: teamSubject as never,
+				},
+				logger,
+			);
+
+		it('records the team ID and the team name snapshot', async () => {
+			const team = vi.fn().mockResolvedValue({ name: 'Core' });
+
+			await expect(origin({ team })).resolves.toEqual({
+				type: 'linear',
+				issueId: 'issue-uuid',
+				identifier: 'ENG-1',
+				teamId: 'team-1',
+				teamName: 'Core',
+			});
+			expect(team).toHaveBeenCalledWith('team-1');
+		});
+
+		it.each([
+			{ name: 'the lookup fails', client: { team: vi.fn().mockRejectedValue(new Error('boom')) } },
+			{
+				name: 'the lookup never settles',
+				client: { team: vi.fn().mockReturnValue(new Promise(() => {})) },
+			},
+			{ name: 'the adapter has no client', client: undefined },
+		])('keeps the team ID when $name', async ({ client }) => {
+			await expect(origin(client)).resolves.toEqual({
+				type: 'linear',
+				issueId: 'issue-uuid',
+				identifier: 'ENG-1',
+				teamId: 'team-1',
+			});
+		});
+
+		it('does not look up a name without a team ID', async () => {
+			const team = vi.fn();
+
+			await expect(origin({ team }, { type: 'issue', id: 'ENG-1' })).resolves.toEqual({
+				type: 'linear',
+				issueId: 'issue-uuid',
+				identifier: 'ENG-1',
+			});
+			expect(team).not.toHaveBeenCalled();
+		});
 	});
 
 	it('omits empty optional Linear fields and keeps the issue ID', async () => {
