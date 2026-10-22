@@ -1,7 +1,6 @@
 import { Logger } from '@n8n/backend-common';
-import { InstanceWriteAccessService } from '@n8n/backend-services';
 import { DbLock, DbLockService, type OperationContext } from '@n8n/db';
-import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { AppBuildService } from '../app-build.service';
@@ -19,7 +18,6 @@ function setup() {
 	const source = mock<AppVersionService>();
 	const workspaces = mock<AppWorkspaceService>();
 	const locks = mock<DbLockService>();
-	const writeAccess = mock<InstanceWriteAccessService>();
 	const logger = mock<Logger>();
 	const config = new AppsConfig();
 	const ctx = mock<OperationContext>();
@@ -51,27 +49,8 @@ function setup() {
 		version.buildStatus = 'succeeded';
 		return version;
 	});
-	const service = new AppBuildService(
-		versions,
-		source,
-		workspaces,
-		locks,
-		writeAccess,
-		logger,
-		config,
-	);
-	return {
-		service,
-		versions,
-		source,
-		workspaces,
-		locks,
-		writeAccess,
-		version,
-		bundle,
-		ctx,
-		config,
-	};
+	const service = new AppBuildService(versions, source, workspaces, locks, logger, config);
+	return { service, versions, source, workspaces, locks, version, bundle, ctx, config };
 }
 
 describe('AppBuildService', () => {
@@ -267,11 +246,30 @@ describe('AppBuildService', () => {
 		expect(versions.claimBuild).not.toHaveBeenCalled();
 	});
 
-	it('rejects protected-instance writes', async () => {
-		const { service, writeAccess, versions } = setup();
-		writeAccess.isReadOnly.mockReturnValue(true);
-		await expect(service.build('project', 'app', 'version')).rejects.toThrow(ForbiddenError);
+	it('rejects builds after shutdown', async () => {
+		const { service, versions, workspaces } = setup();
+		await service.shutdown();
+		await expect(service.build('project', 'app', 'version')).rejects.toThrow(ConflictError);
 		expect(versions.claimBuild).not.toHaveBeenCalled();
+		expect(workspaces.build).not.toHaveBeenCalled();
+	});
+
+	it('rejects a build if shutdown finishes during the version lookup', async () => {
+		const { service, source, versions, workspaces, version } = setup();
+		let finishLookup!: (value: AppVersion) => void;
+		source.getVersion.mockReturnValue(
+			new Promise<AppVersion>((resolve) => {
+				finishLookup = resolve;
+			}),
+		);
+		const build = service.build('project', 'app', 'version');
+
+		await service.shutdown();
+		finishLookup(version);
+
+		await expect(build).rejects.toThrow(ConflictError);
+		expect(versions.claimBuild).not.toHaveBeenCalled();
+		expect(workspaces.build).not.toHaveBeenCalled();
 	});
 
 	it('marks a running build failed on shutdown', async () => {

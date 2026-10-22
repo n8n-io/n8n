@@ -1,5 +1,6 @@
 import type { AppBuildResponse } from '@n8n/api-types';
 import { Service } from '@n8n/di';
+import { ConflictError } from '@n8n/errors';
 
 import { AppBuildService } from './app-build.service';
 import { createAppScaffold } from './app-scaffold';
@@ -20,7 +21,7 @@ export class AppChangeService {
 		files: AppFiles,
 		label: string | null = null,
 	): Promise<AppBuildResponse> {
-		this.builds.assertWritable();
+		this.builds.assertNotStopping();
 		const version = await this.versions.saveSource(
 			projectId,
 			appId,
@@ -28,7 +29,14 @@ export class AppChangeService {
 			files,
 			label,
 		);
-		return await this.builds.build(projectId, appId, version.id);
+		try {
+			return await this.builds.build(projectId, appId, version.id);
+		} catch (error) {
+			if (error instanceof ConflictError) {
+				return await this.builds.status(projectId, appId, version.id);
+			}
+			throw error;
+		}
 	}
 
 	// TODO: might remove this later, as it's likely that the AI assistant
@@ -44,7 +52,7 @@ export class AppChangeService {
 		versionId: string,
 		expectedDraftVersionId: string | null,
 	): Promise<AppBuildResponse> {
-		this.builds.assertWritable();
+		this.builds.assertNotStopping();
 		const version = await this.versions.getVersion(projectId, appId, versionId);
 		const files = await this.versions.readSource(projectId, appId, versionId);
 		return await this.commit(projectId, appId, expectedDraftVersionId, files, version.label);

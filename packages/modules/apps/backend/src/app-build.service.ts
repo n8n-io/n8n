@@ -1,6 +1,5 @@
 import type { AppBuildResponse } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { InstanceWriteAccessService } from '@n8n/backend-services';
 import { DbLock, DbLockService } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
@@ -26,14 +25,11 @@ export class AppBuildService {
 		private readonly versionService: AppVersionService,
 		private readonly workspaces: AppWorkspaceService,
 		private readonly locks: DbLockService,
-		private readonly writeAccess: InstanceWriteAccessService,
 		private readonly logger: Logger,
 		private readonly config: AppsConfig,
 	) {}
 
-	assertWritable() {
-		if (this.writeAccess.isReadOnly())
-			throw new ForbiddenError('This instance does not allow app changes.');
+	assertNotStopping() {
 		if (this.stopping.signal.aborted)
 			throw new ConflictError('The instance is stopping. Retry the app build.');
 	}
@@ -48,8 +44,8 @@ export class AppBuildService {
 		versionId: string,
 		retry = false,
 	): Promise<AppBuildResponse> {
-		this.assertWritable();
 		await this.versionService.getVersion(projectId, appId, versionId);
+		this.assertNotStopping();
 		const work = this.run(projectId, appId, versionId, retry);
 		this.active.add(work);
 		try {
