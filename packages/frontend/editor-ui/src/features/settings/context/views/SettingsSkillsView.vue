@@ -27,6 +27,7 @@ import { useLatestFetch } from '@/app/composables/useLatestFetch';
 import { useMessage } from '@/app/composables/useMessage';
 import { DEBOUNCE_TIME, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useAssistantSkillsExperiment } from '@/experiments/assistantSkills/useAssistantSkillsExperiment';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { AGENT_SKILL_MODAL_KEY } from '@/features/agents/constants';
 import { isSkillNameTakenError } from '@/features/agents/utils/agentSkill';
@@ -38,7 +39,7 @@ import type {
 } from '@/features/agents/components/AgentSkillModal.vue';
 
 import SkillsTable from '../components/SkillsTable.vue';
-import { PREFERENCES_DEFAULT_PAGE_SIZE } from '../context.constants';
+import { SKILLS_DEFAULT_PAGE_SIZE } from '../context.constants';
 import { canWriteInstanceSkillScope, canWriteProjectSkillScope } from '../context.utils';
 import type { SkillListQuery } from '../skills.api';
 import { useSkillsStore } from '../skills.store';
@@ -58,13 +59,14 @@ const message = useMessage();
 const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 const skillsStore = useSkillsStore();
+const { isEnabled: assistantSkillsEnabled } = useAssistantSkillsExperiment();
 const telemetry = useTelemetry();
 const { showError, showMessage } = useToast();
 const { scopeDisplay } = useSkillScopeDisplay();
 
 const tableOptions = ref<TableOptions>({
 	page: 0,
-	itemsPerPage: PREFERENCES_DEFAULT_PAGE_SIZE,
+	itemsPerPage: SKILLS_DEFAULT_PAGE_SIZE,
 	sortBy: [],
 });
 const search = ref('');
@@ -122,6 +124,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 			value: INSTANCE_SCOPE,
 			label: i18n.baseText('settings.context.skills.scope.instance'),
 			icon: 'globe',
+			target: { projectId: null, agentId: null },
 		});
 	}
 	const personalProject = projectsStore.personalProject;
@@ -130,6 +133,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 			value: `${PROJECT_SCOPE_PREFIX}${personalProject.id}`,
 			label: i18n.baseText('settings.context.skills.scope.personalProject'),
 			icon: 'user',
+			target: { projectId: personalProject.id, agentId: null },
 		});
 	}
 	for (const project of projectsStore.myProjects) {
@@ -138,6 +142,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 			value: `${PROJECT_SCOPE_PREFIX}${project.id}`,
 			label: project.name ?? project.id,
 			icon: 'layers',
+			target: { projectId: project.id, agentId: null },
 		});
 	}
 	return options;
@@ -156,7 +161,7 @@ const { next: nextLoad } = useLatestFetch();
 
 async function load() {
 	const isLatest = nextLoad();
-	const { page = 0, itemsPerPage = PREFERENCES_DEFAULT_PAGE_SIZE } = tableOptions.value;
+	const { page = 0, itemsPerPage = SKILLS_DEFAULT_PAGE_SIZE } = tableOptions.value;
 	const query = listQuery(page, itemsPerPage);
 	const filtered = query.search !== undefined || query.scope !== undefined;
 	try {
@@ -278,21 +283,13 @@ function scopeValueOf(skill: Pick<SkillListItem, 'scope' | 'projectId'>): string
 }
 
 /**
- * Why the scope of a saved skill cannot change, if it cannot. The backend refuses a move
- * while an agent uses the skill, and a move needs the delete permission where the skill is,
- * because it takes the skill out of that scope.
+ * Why the scope of a saved skill cannot change, if it cannot. A move needs the delete
+ * permission where the skill is, because it takes the skill out of that scope. A skill in
+ * use can still move: the modal warns about a scope that drops an agent.
  */
 function scopeLock(
-	detail: Pick<SkillListItem, 'usedByAgents' | 'canDelete'>,
+	detail: Pick<SkillListItem, 'canDelete'>,
 ): Pick<AgentSkillModalData, 'scopeLockedReason'> {
-	if (detail.usedByAgents > 0) {
-		return {
-			scopeLockedReason: i18n.baseText('settings.context.skills.modal.scope.inUse', {
-				interpolate: { count: detail.usedByAgents },
-				adjustToNumber: detail.usedByAgents,
-			}),
-		};
-	}
 	if (!detail.canDelete) {
 		return { scopeLockedReason: i18n.baseText('settings.context.skills.modal.scope.noDelete') };
 	}
@@ -318,16 +315,21 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>) {
 			skill: detail.skill,
 			skillId: detail.id,
 			readOnly: !detail.canEdit,
+			...(assistantSkillsEnabled.value && detail.scope !== 'agent'
+				? { availableToAssistant: detail.availableToAssistant }
+				: {}),
 			scopeOptions: options,
 			initialScope: currentValue,
 			...scopeLock(detail),
+			usedBy: detail.usedBy,
 			existingSkillNames: [],
-			onConfirm: async ({ skill, scope }) =>
+			onConfirm: async ({ skill, scope, availableToAssistant }) =>
 				await onSave(
 					detail.id,
 					skill,
 					detail.skillHash,
 					scope !== currentValue ? scope : undefined,
+					availableToAssistant,
 				),
 		});
 	} catch (error) {
@@ -342,6 +344,7 @@ async function onSave(
 	skill: AgentSkill,
 	baseSkillHash: string,
 	newScope?: string,
+	availableToAssistant?: boolean,
 ): Promise<AgentSkillConfirmFailure | undefined> {
 	let created: boolean;
 	try {
@@ -353,13 +356,13 @@ async function onSave(
 			references: skill.references ?? [],
 			baseSkillHash,
 			...(newScope ? parseScope(newScope) : {}),
+			...(availableToAssistant !== undefined ? { availableToAssistant } : {}),
 		}));
 	} catch (error) {
 		return saveFailed(error);
 	}
-	// A move is a change even when the content stays the same. Only "Nothing to save"
-	// gets a message: a real change shows in the table.
-	if (created || newScope !== undefined) {
+	// Scope and availability changes do not create a content version.
+	if (created || newScope !== undefined || availableToAssistant !== undefined) {
 		await load();
 		confirmIfHidden(id, 'saved');
 	} else {
@@ -497,6 +500,7 @@ onMounted(async () => {
 			:items-length="skillsStore.count"
 			:loading="showLoading"
 			:show-empty="emptyState !== 'none'"
+			:show-assistant-availability="assistantSkillsEnabled"
 			@open="openEditModal"
 			@download="onDownload"
 			@delete="onDelete"

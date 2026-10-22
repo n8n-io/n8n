@@ -5,7 +5,13 @@ describe('AgentMessageIntegrationOriginSchema', () => {
 		const origins = [
 			{ type: 'slack', workspaceId: 'T1', conversationKind: 'dm', channelId: 'D1' },
 			{ type: 'discord', channelId: 'C1' },
-			{ type: 'linear', issueId: 'issue-1', projectId: 'project-1' },
+			{
+				type: 'linear',
+				issueId: 'issue-1',
+				projectId: 'project-1',
+				teamId: 'team-1',
+				teamName: 'Core',
+			},
 			{ type: 'telegram', chatId: '-100' },
 			{ type: 'teams', conversationId: 'conv-1' },
 			{ type: 'whatsapp', phoneNumberId: 'p1', userWaId: 'u1' },

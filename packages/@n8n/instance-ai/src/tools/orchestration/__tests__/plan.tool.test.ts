@@ -1,4 +1,5 @@
 import { executeTool, parseToolInput } from '../../../__tests__/tool-test-utils';
+import { OutsideThreadProjectError } from '../../../errors/outside-thread-project.error';
 import { PlanValidationError } from '../../../planned-tasks/planned-task-service';
 import type { OrchestrationContext, PlannedTaskService, TaskStorage } from '../../../types';
 import { createPlanTool } from '../plan.tool';
@@ -475,6 +476,27 @@ describe('createPlanTool — createPlan validation failures', () => {
 				suspend: vi.fn(),
 			}),
 		).rejects.toBe(storageError);
+	});
+
+	it('rejects a plan that edits a workflow outside the thread project before review', async () => {
+		const error = new OutsideThreadProjectError();
+		const assertInThreadProject = vi.fn().mockRejectedValue(error);
+		const context = createMockContext({
+			domainContext: { assertInThreadProject } as unknown as OrchestrationContext['domainContext'],
+		});
+		const suspend = vi.fn();
+
+		await expect(
+			executeTool(
+				createPlanTool(context),
+				{ ...planInput(), tasks: [{ ...validTasks()[0], workflowId: 'wf-other' }] },
+				{ suspend },
+			),
+		).rejects.toBe(error);
+
+		expect(assertInThreadProject).toHaveBeenCalledWith({ kind: 'workflow', id: 'wf-other' });
+		expect(context.plannedTaskService!.createPlan).not.toHaveBeenCalled();
+		expect(suspend).not.toHaveBeenCalled();
 	});
 });
 

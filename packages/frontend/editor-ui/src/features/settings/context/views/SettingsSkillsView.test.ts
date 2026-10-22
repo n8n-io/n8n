@@ -1,3 +1,4 @@
+import { usePostHog } from '@/app/stores/posthog.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
@@ -60,6 +61,7 @@ function skill(overrides: Partial<SkillListItem> = {}): SkillListItem {
 		source: 'ui',
 		createdBy: null,
 		latestVersion: 1,
+		availableToAssistant: false,
 		usedByAgents: 0,
 		canEdit: true,
 		canDelete: true,
@@ -136,11 +138,11 @@ describe('SettingsSkillsView', () => {
 		saveAsMock.mockClear();
 	});
 
-	it('loads the first page on mount', async () => {
+	it('loads the first page of 10 skills on mount', async () => {
 		renderView();
 		await new Promise(process.nextTick);
 
-		expect(skillsStore.fetchSkills).toHaveBeenCalledWith({ skip: 0, take: 50 });
+		expect(skillsStore.fetchSkills).toHaveBeenCalledWith({ skip: 0, take: 10 });
 	});
 
 	it('shows the empty state when there are no skills', async () => {
@@ -201,7 +203,7 @@ describe('SettingsSkillsView', () => {
 
 			expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith({
 				skip: 0,
-				take: 50,
+				take: 10,
 				search: 'brand',
 			});
 			expect(await findByTestId('skills-no-results')).toHaveTextContent(
@@ -222,7 +224,7 @@ describe('SettingsSkillsView', () => {
 			await userEvent.clear(getByTestId('skills-search'));
 			await vi.runAllTimersAsync();
 
-			expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith({ skip: 0, take: 50 });
+			expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith({ skip: 0, take: 10 });
 			expect(queryByTestId('skills-empty-state')).not.toBeInTheDocument();
 			expect(getByTestId('skills-no-results')).toBeInTheDocument();
 
@@ -282,7 +284,7 @@ describe('SettingsSkillsView', () => {
 		await waitFor(() =>
 			expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith({
 				skip: 0,
-				take: 50,
+				take: 10,
 				scope: 'agent',
 			}),
 		);
@@ -303,8 +305,18 @@ describe('SettingsSkillsView', () => {
 			await userEvent.click(getByTestId('skills-create-button'));
 
 			expect(lastModalData().scopeOptions).toEqual([
-				{ value: 'project:personal-1', label: 'Personal project', icon: 'user' },
-				{ value: 'project:team-1', label: 'Marketing', icon: 'layers' },
+				{
+					value: 'project:personal-1',
+					label: 'Personal project',
+					icon: 'user',
+					target: { projectId: 'personal-1', agentId: null },
+				},
+				{
+					value: 'project:team-1',
+					label: 'Marketing',
+					icon: 'layers',
+					target: { projectId: 'team-1', agentId: null },
+				},
 			]);
 		});
 
@@ -319,6 +331,7 @@ describe('SettingsSkillsView', () => {
 				value: 'instance',
 				label: 'Global',
 				icon: 'globe',
+				target: { projectId: null, agentId: null },
 			});
 		});
 
@@ -409,6 +422,52 @@ describe('SettingsSkillsView', () => {
 	});
 
 	describe('edit', () => {
+		it.each([
+			['instance', true, false, false],
+			['project', true, true, true],
+			['agent', true, true, undefined],
+			['instance', false, true, undefined],
+		] as const)(
+			'shows availability in the table and modal behind the Assistant flag (%s, %s)',
+			async (scope, enabled, availableToAssistant, expected) => {
+				mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(enabled);
+				skillsStore.skills = [skill({ scope, availableToAssistant })];
+				skillsStore.count = 1;
+				skillsStore.fetchSkill.mockResolvedValue(detail({ scope, availableToAssistant }));
+				const { getByText, queryByTestId } = renderView();
+				expect(queryByTestId('skill-assistant-badge') !== null).toBe(expected === true);
+				await userEvent.click(getByText('research-search'));
+				await waitFor(() => expect(uiStore.openModalWithData).toHaveBeenCalled());
+				expect(lastModalData().availableToAssistant).toBe(expected);
+			},
+		);
+
+		it('persists a toggle-only save and reloads the list', async () => {
+			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
+			skillsStore.skills = [skill()];
+			skillsStore.count = 1;
+			skillsStore.fetchSkill.mockResolvedValue(detail());
+			skillsStore.saveSkill.mockResolvedValue({
+				id: 's1',
+				versionId: 'v1',
+				version: 1,
+				created: false,
+				skill: detail().skill,
+				skillHash: 'hash-1',
+			});
+			const { getByText } = renderView();
+			await userEvent.click(getByText('research-search'));
+			await waitFor(() => expect(uiStore.openModalWithData).toHaveBeenCalled());
+			skillsStore.fetchSkills.mockClear();
+			await lastModalData().onConfirm({ skill: detail().skill, availableToAssistant: true });
+			expect(skillsStore.saveSkill).toHaveBeenCalledWith(
+				's1',
+				expect.objectContaining({ availableToAssistant: true }),
+			);
+			expect(skillsStore.fetchSkills).toHaveBeenCalled();
+			expect(showMessageMock).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'info' }));
+		});
+
 		it('opens a skill read-only when the user cannot change it', async () => {
 			skillsStore.skills = [skill({ canEdit: false })];
 			skillsStore.count = 1;
@@ -427,11 +486,22 @@ describe('SettingsSkillsView', () => {
 			});
 		});
 
-		it('locks the scope while agents use the skill', async () => {
+		it('lets the user move a skill that agents use, and hands the modal who uses it', async () => {
+			const usedBy = {
+				drafts: [{ agentId: 'a1', agentName: 'FirstClassDarwin', projectId: 'team-1' }],
+				pins: [],
+				hiddenAgents: 0,
+			};
 			skillsStore.skills = [skill({ scope: 'agent', agentName: 'FirstClassDarwin' })];
 			skillsStore.count = 1;
 			skillsStore.fetchSkill.mockResolvedValue(
-				detail({ scope: 'agent', agentId: 'a1', agentName: 'FirstClassDarwin', usedByAgents: 1 }),
+				detail({
+					scope: 'agent',
+					agentId: 'a1',
+					agentName: 'FirstClassDarwin',
+					usedByAgents: 1,
+					usedBy,
+				}),
 			);
 			const { getByText } = renderView();
 			await new Promise(process.nextTick);
@@ -446,9 +516,9 @@ describe('SettingsSkillsView', () => {
 				icon: 'bot',
 			});
 			expect(lastModalData().initialScope).toBe('agent');
-			expect(lastModalData().scopeLockedReason).toBe(
-				'Used by 1 agent. Remove the skill from it to change where it is available.',
-			);
+			// The modal warns about a scope that drops an agent, so the picker stays open.
+			expect(lastModalData().scopeLockedReason).toBeUndefined();
+			expect(lastModalData().usedBy).toEqual(usedBy);
 		});
 
 		it('locks the scope when the user may edit but not delete the skill', async () => {

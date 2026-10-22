@@ -1,101 +1,71 @@
 /**
- * Browser/computer-use *discoverability* asserts on the assembled system prompt
+ * Browser Use *discoverability* asserts on the assembled system prompt
  * and the credentials tool description (which carries the needsBrowserSetup
  * routing that used to live in the orchestrator routing index).
  *
  * These tests pin the orchestrator-level wiring that connects discovery
- * signals (OAuth setup, local files, screenshots, platform migration, shell
- * commands) to the right tool. They are intentionally semantic — they assert
+ * signals (OAuth setup, authenticated research, frontend testing) to the
+ * browser tools. They are intentionally semantic — they assert
  * the protected concept survives, not exact wording — so that copy edits do
  * not churn them but intent-shifting edits fail loudly.
  */
 
 import { createCredentialsTool } from '../../tools/credentials.tool';
-import type { ComputerUseState } from '../../types';
+import type { BrowserUseState } from '../../types';
 import { getSystemPrompt } from '../system-prompt';
 
-const browserCapableOptions: { computerUseState: ComputerUseState } = {
-	computerUseState: {
-		localComputer: { status: 'connected', toolCategories: ['filesystem'] },
-		browser: { status: 'connected', toolCategories: ['browser'] },
-	},
+const browserCapableOptions: { browserUseState: BrowserUseState } = {
+	browserUseState: { status: 'connected' },
 };
 
-describe('getSystemPrompt — browser/computer-use discoverability', () => {
-	describe('credentials tool → Computer Use credential setup skill', () => {
-		it('routes needsBrowserSetup=true credential responses to the Computer Use skill', () => {
+describe('getSystemPrompt — browser discoverability', () => {
+	describe('credentials tool → Browser Use credential setup skill', () => {
+		it('routes needsBrowserSetup=true credential responses to the Browser Use skill', () => {
 			const tool = createCredentialsTool({} as never);
 
 			expect(tool.description).toContain('needsBrowserSetup=true');
-			expect(tool.description).toContain('credential-setup-with-computer-use');
-			expect(tool.description).toMatch(/use Computer Use `browser_\*` tools directly/);
+			expect(tool.description).toContain('credential-setup-with-browser-use');
+			expect(tool.description).toMatch(/use Browser Use `browser_\*` tools directly/);
 		});
 
-		it('routes browser credential setup through Computer Use tools', () => {
+		it('routes browser credential setup through Browser Use tools', () => {
 			const tool = createCredentialsTool({} as never);
 
-			expect(tool.description).toMatch(/use Computer Use `browser_\*` tools directly/);
+			expect(tool.description).toMatch(/use Browser Use `browser_\*` tools directly/);
 		});
 	});
 
-	describe('Computer Use proactive suggestions are reachable from the orchestrator prompt', () => {
-		it('includes the Computer Use section when the gateway is connected with browser available', () => {
+	describe('Browser Use proactive suggestions are reachable from the orchestrator prompt', () => {
+		it('includes the Browser Use section when the browser is connected', () => {
 			const prompt = getSystemPrompt(browserCapableOptions);
 
-			expect(prompt).toContain('## Computer Use');
-			expect(prompt).toContain('When to suggest or use Computer Use');
+			expect(prompt).toContain('## Browser Use');
+			expect(prompt).toContain('When to suggest or use Browser Use');
 		});
 
-		it('omits the Computer Use section when computer use is disabled globally', () => {
-			const prompt = getSystemPrompt({
-				computerUseState: {
-					localComputer: { status: 'unavailable' },
-					browser: { status: 'unavailable' },
-				},
-			});
+		it('omits the Browser Use section when browser use is unavailable', () => {
+			const prompt = getSystemPrompt({ browserUseState: { status: 'unavailable' } });
 
-			expect(prompt).not.toContain('## Computer Use');
-			expect(prompt).not.toContain('When to suggest or use Computer Use');
-		});
-
-		it('omits the Computer Use section when the client renders no + menu entry for this user', () => {
-			const prompt = getSystemPrompt({
-				computerUseState: {
-					localComputer: { status: 'unavailable' },
-					browser: { status: 'unavailable' },
-				},
-			});
-
-			expect(prompt).not.toContain('## Computer Use');
+			expect(prompt).not.toContain('## Browser Use');
+			expect(prompt).not.toContain('When to suggest or use Browser Use');
 			expect(prompt).not.toContain('+ button beside the chat input');
 		});
 
-		it('still includes proactive suggestions when computer use is set up but disconnected', () => {
-			const prompt = getSystemPrompt({
-				computerUseState: {
-					localComputer: { status: 'disconnected' },
-					browser: { status: 'disconnected' },
-				},
-			});
+		it('omits the Browser Use section when the state is not reported', () => {
+			const prompt = getSystemPrompt({});
 
-			expect(prompt).toContain('Proactively suggest connecting');
-			expect(prompt).toContain('credential/OAuth/API-key setup');
+			expect(prompt).not.toContain('## Browser Use');
 		});
 
-		it('still includes proactive suggestions when computer use has not been set up', () => {
-			const prompt = getSystemPrompt({
-				computerUseState: {
-					localComputer: { status: 'disabledByUser' },
-					browser: { status: 'disconnected' },
-				},
-			});
+		it('still includes proactive suggestions when browser use is set up but disconnected', () => {
+			const prompt = getSystemPrompt({ browserUseState: { status: 'disconnected' } });
 
 			expect(prompt).toContain('Proactively suggest connecting');
 			expect(prompt).toContain('credential/OAuth/API-key setup');
 		});
 	});
 
-	describe('discovery-signal pairings — each signal routes to the right tool', () => {
+	describe('discovery-signal pairings — each signal is offered with the browser', () => {
 		const findSignalLine = (prompt: string, signal: string): string => {
 			const lines = prompt.split('\n');
 			const line = lines.find((l) => l.includes(signal));
@@ -105,68 +75,27 @@ describe('getSystemPrompt — browser/computer-use discoverability', () => {
 			return line;
 		};
 
-		it('pairs Credential / OAuth setup with the browser tool', () => {
-			const prompt = getSystemPrompt(browserCapableOptions);
-			const line = findSignalLine(prompt, 'Credential / OAuth setup');
+		it.each(['Credential / OAuth setup', 'Authenticated web research', 'Form / frontend testing'])(
+			'lists the %s signal',
+			(signal) => {
+				const prompt = getSystemPrompt(browserCapableOptions);
 
-			expect(line).toContain('browser');
-		});
-
-		it('pairs Local file as context with the filesystem tool', () => {
-			const prompt = getSystemPrompt(browserCapableOptions);
-			const line = findSignalLine(prompt, 'Local file as context');
-
-			expect(line).toContain('filesystem');
-		});
-
-		it('pairs Authenticated web research with the browser tool', () => {
-			const prompt = getSystemPrompt(browserCapableOptions);
-			const line = findSignalLine(prompt, 'Authenticated web research');
-
-			expect(line).toContain('browser');
-		});
-
-		it('pairs Form / frontend testing with the browser tool', () => {
-			const prompt = getSystemPrompt(browserCapableOptions);
-			const line = findSignalLine(prompt, 'Form / frontend testing');
-
-			expect(line).toContain('browser');
-		});
-
-		it('pairs Shell / environment with the shell tool', () => {
-			const prompt = getSystemPrompt(browserCapableOptions);
-			const line = findSignalLine(prompt, 'Shell / environment');
-
-			expect(line).toContain('shell');
-		});
-
-		it('pairs Platform migration with both browser and filesystem tools', () => {
-			const prompt = getSystemPrompt(browserCapableOptions);
-			const line = findSignalLine(prompt, 'Platform migration');
-
-			expect(line).toContain('browser');
-			expect(line).toContain('filesystem');
-		});
-
-		it('pairs Documentation / output to files with the filesystem tool', () => {
-			const prompt = getSystemPrompt(browserCapableOptions);
-			const line = findSignalLine(prompt, 'Documentation / output to files');
-
-			expect(line).toContain('filesystem');
-		});
+				expect(findSignalLine(prompt, signal)).toContain('user');
+			},
+		);
 	});
 
 	describe('proactive framing is preserved (not narrowed to passive responses)', () => {
 		it('keeps the "Proactively suggest" instruction so the orchestrator initiates discovery', () => {
 			const prompt = getSystemPrompt(browserCapableOptions);
 
-			expect(prompt).toMatch(/Proactively suggest Computer Use/);
+			expect(prompt).toMatch(/Proactively suggest Browser Use/);
 		});
 
 		it('does not instruct the orchestrator to wait for the user to ask first', () => {
 			const prompt = getSystemPrompt(browserCapableOptions);
 
-			expect(prompt).not.toMatch(/only suggest Computer Use when the user asks/i);
+			expect(prompt).not.toMatch(/only suggest Browser Use when the user asks/i);
 			expect(prompt).not.toMatch(/wait for the user to request browser/i);
 		});
 	});
@@ -206,26 +135,16 @@ describe('getSystemPrompt — browser/computer-use discoverability', () => {
 	});
 
 	describe('browser availability state propagates to the prompt', () => {
-		it('includes browser automation rules when browser is available', () => {
-			const prompt = getSystemPrompt({
-				computerUseState: {
-					localComputer: { status: 'disconnected' },
-					browser: { status: 'connected', toolCategories: ['browser'] },
-				},
-			});
+		it('includes browser automation rules when the browser is connected', () => {
+			const prompt = getSystemPrompt({ browserUseState: { status: 'connected' } });
 
 			expect(prompt).toContain('Browser Automation rules');
 		});
 
-		it('shows the browser-disabled notice when computer use is connected without browser', () => {
-			const prompt = getSystemPrompt({
-				computerUseState: {
-					localComputer: { status: 'connected', toolCategories: ['filesystem'] },
-					browser: { status: 'disconnected' },
-				},
-			});
+		it('leaves out browser automation rules when the browser is disconnected', () => {
+			const prompt = getSystemPrompt({ browserUseState: { status: 'disconnected' } });
 
-			expect(prompt).toContain('Browser Automation (Disabled in Computer Use)');
+			expect(prompt).not.toContain('Browser Automation rules');
 		});
 	});
 });

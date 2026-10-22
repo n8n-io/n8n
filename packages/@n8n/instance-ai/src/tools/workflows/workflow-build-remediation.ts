@@ -1,6 +1,7 @@
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 
 import type { WorkflowSourceCompileFailureReason } from './workflow-source-compiler';
+import { isOutsideThreadProjectError } from '../../errors/outside-thread-project.error';
 import { isWorkflowEditorLockedError } from '../../errors/workflow-editor-locked.error';
 import { isWorkflowNotFoundError } from '../../errors/workflow-not-found.error';
 import { WorkflowSaveConflictError } from '../../errors/workflow-save-conflict.error';
@@ -81,6 +82,16 @@ export function createSaveFailureRemediation(
 
 	if (isWorkflowEditorLockedError(error)) {
 		return createWorkflowLockedByEditorRemediation();
+	}
+
+	if (isOutsideThreadProjectError(error)) {
+		return createRemediation({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'workflow_outside_thread_project',
+			guidance:
+				"The workflow is outside this conversation's project, so this conversation cannot change it. Stop editing and tell the user to start a conversation in the project that owns the workflow.",
+		});
 	}
 
 	const text = getFailureText(error);
