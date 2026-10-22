@@ -142,7 +142,7 @@ describe('WorkflowReviewStatusBanner', () => {
 				if (secondaryEnabled) {
 					expect(secondary).toBeEnabled();
 				} else {
-					expect(secondary).toBeDisabled();
+					expect(secondary).toHaveAttribute('aria-disabled', 'true');
 				}
 			},
 		);
@@ -229,7 +229,7 @@ describe('WorkflowReviewStatusBanner', () => {
 			});
 
 			const button = getByTestId('workflow-review-submit-changes-button');
-			expect(button).toBeDisabled();
+			expect(button).toHaveAttribute('aria-disabled', 'true');
 
 			await userEvent.hover(button);
 

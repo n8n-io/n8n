@@ -260,18 +260,17 @@ async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: bo
 			</DraggableTarget>
 		</div>
 		<div :class="$style.controls">
-			<N8nTooltip :disabled="isSubmitEnabled">
-				<div>
-					<N8nButton
-						variant="outline"
-						:disabled="!isSubmitEnabled"
-						size="small"
-						:loading="isLoading"
-						@click="onSubmit"
-					>
-						{{ buttonLabel }}
-					</N8nButton>
-				</div>
+			<N8nTooltip as-child :disabled="isSubmitEnabled">
+				<N8nButton
+					variant="outline"
+					:disabled="!isSubmitEnabled"
+					:focusable-when-disabled="!isReadOnly && (!hasExecutionData || prompt.length === 0)"
+					size="small"
+					:loading="isLoading"
+					@click="onSubmit"
+				>
+					{{ buttonLabel }}
+				</N8nButton>
 				<template #content>
 					<span
 						v-if="!hasExecutionData"

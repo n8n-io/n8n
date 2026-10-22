@@ -134,7 +134,7 @@ function handleUpgradeClick() {
 					{{ i18n.baseText('chatHub.welcome.button.startNewChat') }}
 				</N8nButton>
 
-				<N8nTooltip v-if="showInviteButton" :disabled="!isInviteDisabled">
+				<N8nTooltip v-if="showInviteButton" as-child :disabled="!isInviteDisabled">
 					<template #content>
 						<I18nT keypath="chatHub.welcome.inviteUpgrade.tooltip" scope="global">
 							<template #link>
@@ -154,6 +154,7 @@ function handleUpgradeClick() {
 						size="medium"
 						icon="users"
 						:disabled="isInviteDisabled"
+						focusable-when-disabled
 						data-test-id="welcome-invite-chat-users"
 						@click="handleInviteUsers"
 					>

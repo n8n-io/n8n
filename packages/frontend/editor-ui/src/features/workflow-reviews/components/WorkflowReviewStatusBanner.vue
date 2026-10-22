@@ -196,6 +196,7 @@ const onSubmitChanges = () => {
 					</N8nButton>
 					<N8nTooltip
 						v-if="status.action === 'submit-changes'"
+						as-child
 						:disabled="!submitChangesHint"
 						:show-after="300"
 					>
@@ -209,6 +210,7 @@ const onSubmitChanges = () => {
 						<N8nButton
 							size="small"
 							:disabled="!isSubmitChangesEnabled"
+							:focusable-when-disabled="!!submitChangesHint"
 							data-test-id="workflow-review-submit-changes-button"
 							@click="onSubmitChanges"
 						>

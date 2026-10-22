@@ -409,34 +409,42 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 			</div>
 
 			<div :class="$style.actions">
-				<N8nTooltip
-					:content="locale.baseText('executionsList.debug.button.redacted.tooltip')"
-					:disabled="!pinBlockedByRedaction"
+				<RouterLink
+					v-slot="{ navigate }"
+					custom
+					:to="{
+						name: VIEWS.EXECUTION_DEBUG,
+						params: {
+							workflowId: execution.workflowId,
+							executionId: execution.id,
+						},
+					}"
 				>
-					<RouterLink
-						:to="{
-							name: VIEWS.EXECUTION_DEBUG,
-							params: {
-								workflowId: execution.workflowId,
-								executionId: execution.id,
-							},
-						}"
+					<N8nTooltip
+						as-child
+						:content="locale.baseText('executionsList.debug.button.redacted.tooltip')"
+						:disabled="!pinBlockedByRedaction"
 					>
+						<template #content>{{
+							locale.baseText('executionsList.debug.button.redacted.tooltip')
+						}}</template>
 						<N8nButton
 							size="medium"
 							variant="outline"
 							:class="$style.debugLink"
 							:disabled="!workflowPermissions.update || pinBlockedByRedaction"
+							:focusable-when-disabled="pinBlockedByRedaction"
+							@click="
+								executionDebugging.handleDebugLinkClick();
+								navigate($event);
+							"
 						>
-							<span
-								data-test-id="execution-debug-button"
-								@click="executionDebugging.handleDebugLinkClick"
-							>
+							<span data-test-id="execution-debug-button">
 								{{ debugButtonData.text }}
 							</span>
 						</N8nButton>
-					</RouterLink>
-				</N8nTooltip>
+					</N8nTooltip>
+				</RouterLink>
 
 				<ElDropdown
 					v-if="isRetriable"

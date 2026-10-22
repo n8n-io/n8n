@@ -318,20 +318,18 @@ defineExpose({
 						@click.stop="handleAttach"
 					/>
 				</N8nTooltip>
-				<N8nTooltip
-					v-if="showVoice && speechInput.isSupported"
-					:content="
+				<N8nTooltip v-if="showVoice && speechInput.isSupported" as-child placement="top">
+					<template #content>{{
 						i18n.baseText(
 							isStreaming
 								? 'chatInputBase.button.dictate.stopResponse'
 								: 'chatInputBase.button.dictate',
 						)
-					"
-					placement="top"
-				>
+					}}</template>
 					<N8nIconButton
 						variant="ghost"
 						:disabled="disabled || isStreaming"
+						:focusable-when-disabled="isStreaming"
 						:icon="speechInput.isListening.value ? 'square' : 'mic'"
 						:class="{ [$style.recording]: speechInput.isListening.value }"
 						icon-size="large"

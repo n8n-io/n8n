@@ -147,12 +147,12 @@ describe('ButtonParameter', () => {
 			ndvInputData: [],
 		} as any);
 		const wrapper = mountComponent();
-		expect(wrapper.find('button').attributes('disabled')).toBeDefined();
+		expect(wrapper.find('button').attributes('aria-disabled')).toBe('true');
 	});
 
 	it('disables submit button when prompt is empty', async () => {
 		const wrapper = mountComponent();
-		expect(wrapper.find('button').attributes('disabled')).toBeDefined();
+		expect(wrapper.find('button').attributes('aria-disabled')).toBe('true');
 	});
 
 	it('enables submit button when there is execution data and prompt', async () => {

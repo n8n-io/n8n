@@ -72,7 +72,10 @@ describe('WorkflowSetupWizardFooter', () => {
 
 		const { getByTestId } = renderComponent();
 
-		expect(getByTestId('instance-ai-workflow-setup-apply')).toBeDisabled();
+		expect(getByTestId('instance-ai-workflow-setup-apply')).toHaveAttribute(
+			'aria-disabled',
+			'true',
+		);
 		const tooltip = getByTestId('primary-action-tooltip');
 		expect(tooltip.getAttribute('data-tooltip-disabled')).toBe('false');
 		expect(tooltip.getAttribute('data-tooltip-content')).toBe(
@@ -86,7 +89,10 @@ describe('WorkflowSetupWizardFooter', () => {
 
 		const { getByTestId } = renderComponent();
 
-		expect(getByTestId('instance-ai-workflow-setup-apply')).toBeDisabled();
+		expect(getByTestId('instance-ai-workflow-setup-apply')).toHaveAttribute(
+			'aria-disabled',
+			'true',
+		);
 		const tooltip = getByTestId('primary-action-tooltip');
 		expect(tooltip.getAttribute('data-tooltip-disabled')).toBe('false');
 		expect(tooltip.getAttribute('data-tooltip-content')).toBe(

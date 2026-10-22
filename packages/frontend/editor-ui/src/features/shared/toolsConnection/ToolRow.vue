@@ -305,20 +305,16 @@ function handleConnect() {
 				{{ i18n.baseText('tools.connection.action.connecting') }}
 			</span>
 			<template v-else-if="hasDirectAction">
-				<N8nTooltip
-					v-if="installBlocked && !item.installing"
-					:content="i18n.baseText('tools.connection.install.contactAdmin')"
-					placement="top"
-				>
-					<span>
-						<N8nButton
-							:label="actionLabel"
-							variant="outline"
-							size="small"
-							disabled
-							data-test-id="tools-connection-row-install"
-						/>
-					</span>
+				<N8nTooltip v-if="installBlocked && !item.installing" as-child placement="top">
+					<template #content>{{ i18n.baseText('tools.connection.install.contactAdmin') }}</template>
+					<N8nButton
+						:label="actionLabel"
+						variant="outline"
+						size="small"
+						disabled
+						focusable-when-disabled
+						data-test-id="tools-connection-row-install"
+					/>
 				</N8nTooltip>
 				<N8nButton
 					v-else

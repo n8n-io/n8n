@@ -131,29 +131,29 @@ const headers = computed<Array<TableHeader<Preference>>>(() => [
 
 			<template #[`item.actions`]="{ item }">
 				<div :class="$style.actions" @click.stop>
-					<N8nTooltip :disabled="permissions(item).update" :content="readOnlyHint">
-						<span>
-							<N8nButton
-								variant="outline"
-								size="small"
-								:disabled="!permissions(item).update"
-								:label="i18n.baseText('settings.context.preferences.actions.edit')"
-								data-test-id="preference-edit-button"
-								@click="emit('edit', item)"
-							/>
-						</span>
+					<N8nTooltip as-child :disabled="permissions(item).update">
+						<template #content>{{ readOnlyHint }}</template>
+						<N8nButton
+							variant="outline"
+							size="small"
+							:disabled="!permissions(item).update"
+							focusable-when-disabled
+							:label="i18n.baseText('settings.context.preferences.actions.edit')"
+							data-test-id="preference-edit-button"
+							@click="emit('edit', item)"
+						/>
 					</N8nTooltip>
-					<N8nTooltip :disabled="permissions(item).delete" :content="readOnlyHint">
-						<span>
-							<N8nButton
-								variant="outline"
-								size="small"
-								:disabled="!permissions(item).delete"
-								:label="i18n.baseText('settings.context.preferences.actions.delete')"
-								data-test-id="preference-delete-button"
-								@click="emit('delete', item)"
-							/>
-						</span>
+					<N8nTooltip as-child :disabled="permissions(item).delete">
+						<template #content>{{ readOnlyHint }}</template>
+						<N8nButton
+							variant="outline"
+							size="small"
+							:disabled="!permissions(item).delete"
+							focusable-when-disabled
+							:label="i18n.baseText('settings.context.preferences.actions.delete')"
+							data-test-id="preference-delete-button"
+							@click="emit('delete', item)"
+						/>
 					</N8nTooltip>
 				</div>
 			</template>

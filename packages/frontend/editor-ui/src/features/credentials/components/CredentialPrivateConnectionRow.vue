@@ -106,7 +106,7 @@ function onDisconnectConfirm() {
 		</div>
 
 		<div :class="$style.right">
-			<N8nTooltip v-if="!isConnected" :disabled="canConnect" placement="top">
+			<N8nTooltip v-if="!isConnected" as-child :disabled="canConnect" placement="top">
 				<template #content>{{
 					i18n.baseText('credentials.private.row.connect.noPermission')
 				}}</template>
@@ -115,6 +115,7 @@ function onDisconnectConfirm() {
 					variant="outline"
 					:label="i18n.baseText('credentials.private.row.connect')"
 					:disabled="!canConnect"
+					focusable-when-disabled
 					data-test-id="node-credential-private-connect"
 					@click="emit('connect')"
 				/>

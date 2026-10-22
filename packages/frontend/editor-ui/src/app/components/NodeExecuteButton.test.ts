@@ -260,7 +260,7 @@ describe('NodeExecuteButton', () => {
 		const { getByRole } = renderComponent();
 
 		const button = getByRole('button');
-		expect(button).toBeDisabled();
+		expect(button).toHaveAttribute('aria-disabled', 'true');
 
 		await userEvent.hover(button);
 
@@ -329,7 +329,7 @@ describe('NodeExecuteButton', () => {
 		const { getByRole } = renderComponent();
 
 		const button = getByRole('button');
-		expect(button).toBeDisabled();
+		expect(button).toHaveAttribute('aria-disabled', 'true');
 
 		await userEvent.hover(button);
 
@@ -353,7 +353,7 @@ describe('NodeExecuteButton', () => {
 
 		const { getByRole } = renderComponent();
 
-		expect(getByRole('button')).toBeDisabled();
+		expect(getByRole('button')).toHaveAttribute('aria-disabled', 'true');
 	});
 
 	it('stops webhook when clicking button while listening for events', async () => {

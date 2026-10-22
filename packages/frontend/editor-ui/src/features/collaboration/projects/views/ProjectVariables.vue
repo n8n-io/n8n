@@ -446,6 +446,7 @@ onMounted(() => {
 					<div class="action-buttons">
 						<N8nTooltip
 							:disabled="globalPermissions.update ?? projectPermissions.update"
+							as-child
 							placement="top"
 						>
 							<N8nButton
@@ -454,6 +455,7 @@ onMounted(() => {
 								data-test-id="variable-row-edit-button"
 								class="mr-xs"
 								:disabled="!(globalPermissions.update ?? projectPermissions.update)"
+								focusable-when-disabled
 								@click="openEditVariableModal(data)"
 							>
 								{{ i18n.baseText('variables.row.button.edit') }}
@@ -464,14 +466,17 @@ onMounted(() => {
 						</N8nTooltip>
 						<N8nTooltip
 							:disabled="canDeleteVariables"
+							as-child
 							:content="deleteDisabledTooltip"
 							placement="top"
 						>
+							<template #content>{{ deleteDisabledTooltip }}</template>
 							<N8nButton
 								variant="outline"
 								size="small"
 								data-test-id="variable-row-delete-button"
 								:disabled="!canDeleteVariables"
+								focusable-when-disabled
 								@click="handleDeleteVariable(data)"
 							>
 								{{ i18n.baseText('variables.row.button.delete') }}

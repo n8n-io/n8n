@@ -255,7 +255,7 @@ describe('OAuthConsentView', () => {
 		await waitAllPromises();
 
 		const allowButton = getByTestId('consent-allow-button');
-		expect(allowButton).toBeDisabled();
+		expect(allowButton).toHaveAttribute('aria-disabled', 'true');
 
 		await userEvent.click(getByLabelText('I recognize and trust this URL'));
 
@@ -591,7 +591,7 @@ describe('OAuthConsentView', () => {
 			// Custom mode starts with an empty selection
 			await userEvent.click(getByTestId('scopes-mode-custom'));
 
-			expect(getByTestId('consent-allow-button')).toBeDisabled();
+			expect(getByTestId('consent-allow-button')).toHaveAttribute('aria-disabled', 'true');
 		});
 	});
 });

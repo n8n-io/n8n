@@ -134,6 +134,7 @@ function pullWorkfolder() {
 			<div :class="$style.buttonContainer">
 				<N8nTooltip
 					:disabled="!isCollapsed && hasPullPermission"
+					as-child
 					:show-after="tooltipOpenDelay"
 					:placement="isCollapsed ? 'right' : 'top'"
 				>
@@ -152,6 +153,8 @@ function pullWorkfolder() {
 						data-test-id="main-sidebar-source-control-pull"
 						icon="arrow-down"
 						:disabled="!hasPullPermission"
+						focusable-when-disabled
+						:aria-label="i18n.baseText('settings.sourceControl.button.pull')"
 						:label="isCollapsed ? '' : i18n.baseText('settings.sourceControl.button.pull')"
 						@click="pullWorkfolder"
 					/>
@@ -160,6 +163,7 @@ function pullWorkfolder() {
 					:disabled="
 						!isCollapsed && !sourceControlStore.preferences.branchReadOnly && hasPushPermission
 					"
+					as-child
 					:show-after="tooltipOpenDelay"
 					:placement="isCollapsed ? 'right' : 'top'"
 				>
@@ -179,6 +183,8 @@ function pullWorkfolder() {
 						icon="arrow-up"
 						:label="isCollapsed ? '' : i18n.baseText('settings.sourceControl.button.push')"
 						:disabled="sourceControlStore.preferences.branchReadOnly || !hasPushPermission"
+						focusable-when-disabled
+						:aria-label="i18n.baseText('settings.sourceControl.button.push')"
 						@click="pushWorkfolder"
 					/>
 				</N8nTooltip>

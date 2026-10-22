@@ -5,6 +5,8 @@ import { STORES } from '@n8n/stores';
 import { useUsersStore } from '@n8n/stores/users.store';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import userEvent from '@testing-library/user-event';
+import { waitFor } from '@testing-library/vue';
+import { getTooltip } from '@/__tests__/utils';
 import { mock } from 'vitest-mock-extended';
 
 import PreferencesTable from './PreferencesTable.vue';
@@ -155,11 +157,28 @@ describe('PreferencesTable', () => {
 		expect(getByTestId('preference-delete-button')).toBeEnabled();
 	});
 
-	it('disables both actions on a read-only row', () => {
-		const { getByTestId } = render([preference({ scopes: READ_ONLY })]);
+	it('explains read-only actions on focus and blocks activation', async () => {
+		const user = userEvent.setup();
+		const { getByTestId, emitted } = render([preference({ scopes: READ_ONLY })]);
 
-		expect(getByTestId('preference-edit-button')).toBeDisabled();
-		expect(getByTestId('preference-delete-button')).toBeDisabled();
+		const edit = getByTestId('preference-edit-button');
+		const remove = getByTestId('preference-delete-button');
+		expect(edit).toHaveAttribute('aria-disabled', 'true');
+		expect(remove).toHaveAttribute('aria-disabled', 'true');
+		edit.focus();
+		await waitFor(() =>
+			expect(getTooltip()).toHaveTextContent(
+				'You do not have permission to change this preference',
+			),
+		);
+		expect(edit).toHaveAccessibleDescription(
+			'You do not have permission to change this preference',
+		);
+		await user.keyboard('{Enter} ');
+		await user.click(edit);
+		await user.click(remove);
+		expect(emitted('edit')).toBeUndefined();
+		expect(emitted('delete')).toBeUndefined();
 	});
 
 	// The data table renders its cover row whenever the slot exists, so an always-on

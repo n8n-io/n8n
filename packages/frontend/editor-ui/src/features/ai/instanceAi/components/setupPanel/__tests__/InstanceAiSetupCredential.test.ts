@@ -1161,14 +1161,17 @@ describe('InstanceAiSetupCredential', () => {
 		expect(JSON.stringify(rendered.emitted('askForHelp'))).not.toContain('private-draft');
 		expect(rendered.getByLabelText('API key')).toHaveValue('private-draft');
 		await rendered.rerender({ helpDisabled: true });
-		expect(rendered.getByRole('button', { name: 'Help me find my API key' })).toBeDisabled();
+		expect(rendered.getByRole('button', { name: 'Help me find my API key' })).toHaveAttribute(
+			'aria-disabled',
+			'true',
+		);
 	});
 
 	it('explains why Help is unavailable while the assistant is building', async () => {
 		const view = renderComponent({ props: { helpDisabled: true } });
 		const button = view.getByRole('button', { name: 'Help me find my API key' });
-		expect(button).toBeDisabled();
-		await userEvent.hover(button.parentElement!);
+		expect(button).toHaveAttribute('aria-disabled', 'true');
+		await userEvent.hover(button);
 		expect(await view.findByTestId('tooltip-content')).toHaveTextContent(
 			'The assistant is still working. Help will be available when it finishes.',
 		);

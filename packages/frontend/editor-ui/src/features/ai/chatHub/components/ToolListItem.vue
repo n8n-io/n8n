@@ -161,21 +161,21 @@ const restriction = computed(() => getNodeItemRestriction(props.nodeType.name));
 			<template v-else-if="!restriction">
 				<N8nTooltip
 					v-if="communityPreview && installDisabled && !installing"
-					:content="i18n.baseText('communityNodeInfo.contact.admin')"
+					as-child
 					placement="top"
 				>
-					<span>
-						<N8nButton
-							variant="outline"
-							size="small"
-							icon="plus"
-							:loading="installing"
-							:disabled="true"
-							data-test-id="chat-tool-install-button"
-						>
-							{{ actionLabel }}
-						</N8nButton>
-					</span>
+					<template #content>{{ i18n.baseText('communityNodeInfo.contact.admin') }}</template>
+					<N8nButton
+						variant="outline"
+						size="small"
+						icon="plus"
+						:loading="installing"
+						:disabled="true"
+						focusable-when-disabled
+						data-test-id="chat-tool-install-button"
+					>
+						{{ actionLabel }}
+					</N8nButton>
 				</N8nTooltip>
 				<N8nButton
 					v-else

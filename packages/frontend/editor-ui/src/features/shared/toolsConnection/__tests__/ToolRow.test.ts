@@ -386,7 +386,7 @@ describe('ToolRow', () => {
 		const { getByTestId, emitted } = render(item);
 
 		const install = getByTestId('tools-connection-row-install');
-		expect(install).toBeDisabled();
+		expect(install).toHaveAttribute('aria-disabled', 'true');
 
 		await fireEvent.click(install);
 		expect(emitted().connect).toBeUndefined();

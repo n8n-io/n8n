@@ -69,7 +69,7 @@ describe('RunDataPinButton.vue', () => {
 			},
 		});
 
-		expect(getByRole('button')).toBeDisabled();
+		expect(getByRole('button')).toHaveAttribute('aria-disabled', 'true');
 		// Verify tooltip is not visible before hover
 		expect(queryTooltip()).not.toBeInTheDocument();
 
@@ -121,7 +121,7 @@ describe('RunDataPinButton.vue', () => {
 			const tooltip = getTooltip();
 			expect(tooltip).toHaveTextContent(/disabled/);
 		});
-		expect(getByRole('button')).toBeDisabled();
+		expect(getByRole('button')).toHaveAttribute('aria-disabled', 'true');
 
 		await userEvent.hover(getByRole('button'));
 

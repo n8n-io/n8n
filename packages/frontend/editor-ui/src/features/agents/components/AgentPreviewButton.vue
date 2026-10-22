@@ -58,7 +58,7 @@ function onClick() {
 		:issues="props.validationIssues"
 	>
 		<N8nToggle
-			v-if="props.iconOnly"
+			v-if="props.iconOnly && !isDisabled"
 			:model-value="props.isPreviewOpen"
 			variant="outline"
 			size="medium"
@@ -73,8 +73,12 @@ function onClick() {
 			:variant="props.variant"
 			size="medium"
 			icon="flask-conical"
-			:label="label"
+			:label="props.iconOnly ? undefined : label"
+			:aria-label="label"
+			:icon-only="props.iconOnly"
+			:aria-pressed="props.iconOnly ? false : undefined"
 			:disabled="isDisabled"
+			focusable-when-disabled
 			:data-testid="props.testId"
 			@click="onClick"
 		/>

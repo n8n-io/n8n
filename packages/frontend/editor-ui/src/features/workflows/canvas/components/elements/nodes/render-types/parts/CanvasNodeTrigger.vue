@@ -133,13 +133,16 @@ async function handleClickExecute() {
 				<N8nTooltip
 					v-else
 					:disabled="!unusableCredentialReason"
+					as-child
 					:content="unusableCredentialReason"
 				>
+					<template #content>{{ unusableCredentialReason }}</template>
 					<N8nButton
 						variant="solid"
 						icon="flask-conical"
 						size="large"
 						:disabled="isExecuting || !!unusableCredentialReason"
+						:focusable-when-disabled="!!unusableCredentialReason"
 						:data-test-id="testId"
 						:label="i18n.baseText('nodeView.runButtonText.executeWorkflow')"
 						@click.capture="handleClickExecute"

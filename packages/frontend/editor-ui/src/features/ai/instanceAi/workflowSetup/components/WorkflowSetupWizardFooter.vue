@@ -114,11 +114,13 @@ function onPrimaryAction() {
 				data-test-id="instance-ai-workflow-setup-later"
 				@click="ctx.skipCurrentStep"
 			/>
-			<N8nTooltip :disabled="!primaryActionTooltip" :content="primaryActionTooltip">
+			<N8nTooltip as-child :disabled="!primaryActionTooltip" :content="primaryActionTooltip">
+				<template #content>{{ primaryActionTooltip }}</template>
 				<N8nButton
 					size="medium"
 					:label="primaryActionLabel"
 					:disabled="isActiveSectionUnhandled"
+					:focusable-when-disabled="!!primaryActionTooltip"
 					:data-test-id="primaryActionTestId"
 					@click="onPrimaryAction"
 				/>

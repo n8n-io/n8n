@@ -396,7 +396,7 @@ describe('SettingsApiView', () => {
 			renderComponent(SettingsApiView);
 
 			const createButton = screen.getByTestId('api-key-create-button');
-			expect(createButton).toBeDisabled();
+			expect(createButton).toHaveAttribute('aria-disabled', 'true');
 
 			const tooltip = createButton.closest('[data-tooltip-content]');
 			expect(tooltip?.getAttribute('data-tooltip-disabled')).toBe('false');

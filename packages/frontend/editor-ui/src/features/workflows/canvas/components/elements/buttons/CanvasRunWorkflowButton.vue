@@ -167,6 +167,7 @@ function onSelectTriggerNode(name: string) {
 		</svg>
 		<KeyboardShortcutTooltip
 			:label="disabledReason || tooltipLabel"
+			as-child
 			:shortcut="disabledReason ? undefined : { metaKey: true, keys: ['↵'] }"
 			:disabled="!disabledReason && (executing || hideTooltip)"
 		>
@@ -177,6 +178,7 @@ function onSelectTriggerNode(name: string) {
 				:iconOnly="executing"
 				:aria-label="tooltipLabel"
 				:disabled="disabled"
+				:focusable-when-disabled="!!disabledReason"
 				:size="buttonSize"
 				icon="flask-conical"
 				data-test-id="execute-workflow-button"

@@ -245,8 +245,12 @@ watch(
 				v-if="props.selectedCredentialId"
 				:disabled="credentialPermissions.update"
 				:content="i18n.baseText('nodeCredentials.updateCredential.permissionDenied')"
+				as-child
 				:placement="'top'"
 			>
+				<template #content>{{
+					i18n.baseText('nodeCredentials.updateCredential.permissionDenied')
+				}}</template>
 				<N8nIconButton
 					variant="outline"
 					:size="props.buttonSize ?? undefined"
@@ -257,16 +261,22 @@ watch(
 					:title="i18n.baseText('nodeCredentials.updateCredential')"
 					data-test-id="credential-edit-button"
 					:disabled="!credentialPermissions.update"
+					focusable-when-disabled
+					:aria-label="i18n.baseText('nodeCredentials.updateCredential')"
 					@click="editCredential()"
 				/>
 			</N8nTooltip>
 
 			<N8nTooltip
 				v-if="props.showDelete && props.selectedCredentialId"
-				:disabled="credentialPermissions.update"
+				:disabled="credentialPermissions.delete"
+				as-child
 				:content="i18n.baseText('nodeCredentials.deleteCredential.permissionDenied')"
 				:placement="'top'"
 			>
+				<template #content>{{
+					i18n.baseText('nodeCredentials.deleteCredential.permissionDenied')
+				}}</template>
 				<N8nIconButton
 					v-if="props.showDelete && props.selectedCredentialId"
 					native-type="button"
@@ -275,6 +285,8 @@ watch(
 					icon-size="large"
 					variant="outline"
 					:disabled="!credentialPermissions.delete"
+					focusable-when-disabled
+					:aria-label="i18n.baseText('nodeCredentials.deleteCredential')"
 					@click="deleteCredential()"
 				/>
 			</N8nTooltip>

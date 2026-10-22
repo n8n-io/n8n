@@ -102,17 +102,20 @@ defineExpose({
 			</template>
 			<template #right-actions>
 				<N8nTooltip
-					:content="
+					:disabled="canUploadFiles && messagingState === 'idle'"
+					as-child
+					placement="top"
+				>
+					<template #content>{{
 						!canUploadFiles
 							? i18n.baseText('chatHub.chat.prompt.button.attach.disabled')
 							: i18n.baseText('chatHub.chat.prompt.button.attach')
-					"
-					:disabled="canUploadFiles && messagingState === 'idle'"
-					placement="top"
-				>
+					}}</template>
 					<N8nIconButton
 						variant="ghost"
 						:disabled="messagingState !== 'idle' || !canUploadFiles"
+						:focusable-when-disabled="!canUploadFiles"
+						:aria-label="i18n.baseText('chatHub.chat.prompt.button.attach')"
 						icon="paperclip"
 						icon-size="large"
 						@click.stop="emit('attach')"

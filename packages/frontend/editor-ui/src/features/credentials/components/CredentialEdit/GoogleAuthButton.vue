@@ -1,5 +1,9 @@
+<script setup lang="ts">
+import { N8nButton } from '@n8n/design-system';
+</script>
+
 <template>
-	<button :class="$style.googleAuthBtn" aria-label="Sign in with Google">
+	<N8nButton variant="ghost" :class="$style.googleAuthBtn" aria-label="Sign in with Google">
 		<svg
 			xmlns="http://www.w3.org/2000/svg"
 			width="175"
@@ -38,7 +42,7 @@
 				</clipPath>
 			</defs>
 		</svg>
-	</button>
+	</N8nButton>
 </template>
 
 <style module lang="scss">
@@ -48,16 +52,24 @@
 	border: none;
 	padding: 0;
 	background: transparent;
+	height: auto;
 	border-radius: var(--radius);
+	box-shadow: none;
 
-	&:not(:disabled):hover,
-	&:not(:disabled):active {
+	&:hover,
+	&:active {
+		background: transparent;
+		box-shadow: none;
+	}
+
+	&:not([aria-disabled='true']):hover,
+	&:not([aria-disabled='true']):active {
 		svg {
 			filter: brightness(0.9);
 		}
 	}
 
-	&:not(:disabled):active svg {
+	&:not([aria-disabled='true']):active svg {
 		filter: brightness(0.9);
 	}
 
@@ -71,7 +83,8 @@
 		outline-offset: 2px;
 	}
 
-	&:disabled {
+	&[aria-disabled='true'] {
+		opacity: 1;
 		svg {
 			opacity: 0.56;
 		}
