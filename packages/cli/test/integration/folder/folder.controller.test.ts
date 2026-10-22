@@ -1995,7 +1995,7 @@ describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
 				.expect(200);
 
 			// ASSERT
-			expect(response.body).toEqual({});
+			expect(response.body).toEqual({ data: { unpublishedWorkflows: [] } });
 
 			const allSharings = await getWorkflowSharing(workflow);
 			expect(allSharings).toHaveLength(1);

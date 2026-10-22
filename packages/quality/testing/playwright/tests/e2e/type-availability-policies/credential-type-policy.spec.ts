@@ -220,9 +220,7 @@ test.describe(
 				expect(accepted.status()).toBe(200);
 			});
 
-			test('should refuse moving a workflow that uses the type into that project', async ({
-				api,
-			}) => {
+			test('should move a workflow that uses the type into that project', async ({ api }) => {
 				const created = await api.credentials.createCredential(postgresCredential(otherProjectId));
 				const workflow = await api.workflows.createWorkflow(
 					postgresWorkflow({ id: created.id, name: created.name }),
@@ -231,15 +229,12 @@ test.describe(
 
 				const response = await api.workflows.transferRaw(workflow.id, narrowedProjectId);
 
-				expect(response.status()).toBe(403);
-				expect(await violationsOf(response)).toEqual([
-					expect.objectContaining({ subject: POSTGRES_CREDENTIAL, scope: 'project' }),
-				]);
+				expect(response.status()).toBe(200);
 
 				const stored = (await api.workflows.getWorkflow(workflow.id)) as IWorkflowBase & {
 					homeProject?: { id: string };
 				};
-				expect(stored.homeProject?.id).toBe(otherProjectId);
+				expect(stored.homeProject?.id).toBe(narrowedProjectId);
 			});
 		});
 
