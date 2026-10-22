@@ -501,9 +501,9 @@ export class AgentPublishService {
 
 	private async reconcilePublishedServices(agentId: string): Promise<void> {
 		const channels = Container.get(ChatIntegrationService);
-		for (let attempt = 0; attempt < 5; attempt++) {
-			const current = await this.agentRepository.findById(agentId);
-			if (!current) break;
+		const current = await this.agentRepository.findById(agentId);
+
+		if (current) {
 			const integrations = (current.integrations ?? []).filter(isCredentialAgentIntegration);
 			if (current.activeVersionId) {
 				await channels
@@ -516,9 +516,8 @@ export class AgentPublishService {
 					await channels.disconnectChannel(agentId, integration, { deleteSubscriptions: false });
 				}
 			}
-			const latest = await this.agentRepository.findById(agentId);
-			if (!latest || latest.publicationRevision === current.publicationRevision) break;
 		}
+
 		const { AgentTaskService } = await import('./agent-task.service.js');
 		await Container.get(AgentTaskService)
 			.requestReconcile(agentId)

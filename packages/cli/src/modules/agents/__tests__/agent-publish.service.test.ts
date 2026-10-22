@@ -267,7 +267,7 @@ describe('AgentPublishService', () => {
 		);
 	});
 
-	it('reconciles channels again if publication changes during startup', async () => {
+	it('uses the current publication state when updating channels', async () => {
 		const { service, agentRepository, agentHistoryRepository, chatIntegrationService } =
 			makeService();
 		const integrations = [
@@ -276,15 +276,11 @@ describe('AgentPublishService', () => {
 		const agent = makeAgent({ integrations });
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 		agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(makeHistory());
-		agentRepository.findById
-			.mockResolvedValueOnce(
-				makeAgent({ integrations, activeVersionId: versionId, publicationRevision: 1 }),
-			)
-			.mockResolvedValue(
-				makeAgent({ integrations, activeVersionId: null, publicationRevision: 2 }),
-			);
+		agentRepository.findById.mockResolvedValue(
+			makeAgent({ integrations, activeVersionId: null, publicationRevision: 2 }),
+		);
 		await service.publishAgent(agentId, projectId, user, byUser);
-		expect(chatIntegrationService.syncToConfig).toHaveBeenCalledTimes(1);
+		expect(chatIntegrationService.syncToConfig).not.toHaveBeenCalled();
 		expect(chatIntegrationService.disconnectChannel).toHaveBeenCalledWith(
 			agentId,
 			integrations[0],
