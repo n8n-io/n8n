@@ -841,9 +841,7 @@ export type {
 	AgentContextLookup,
 	InstanceAiAgentContextReader,
 	InstanceAiSkillService,
-	ComputerUseChannel,
-	ComputerUseChannelState,
-	ComputerUseState,
+	BrowserUseState,
 } from './types';
 export {
 	CONVERSATION_HISTORY_MAX_SEARCH_LIMIT,
