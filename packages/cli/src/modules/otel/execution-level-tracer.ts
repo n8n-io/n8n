@@ -21,6 +21,7 @@ import {
 	withExecutionIdentity,
 } from './execution-identity';
 import {
+	type CustomAttributes,
 	type StartWorkflowParams,
 	type EndWorkflowParams,
 	type EndCrashedWorkflowParams,
@@ -73,15 +74,14 @@ export class ExecutionLevelTracer {
 				identity,
 			);
 			const links = this.buildContinuationLinks(params.linkTo);
-			const projectCustomAttributes = this.buildCustomAttributes({
-				project: params.project?.customAttributes,
-			});
+			const projectCustomAttributes = this.buildCustomAttributes(
+				'project',
+				params.project?.customAttributes,
+			);
 
 			const attributes = {
-				...this.buildCustomAttributes({
-					project: params.project?.customAttributes,
-					workflow: params.workflow?.customAttributes,
-				}),
+				...projectCustomAttributes,
+				...this.buildCustomAttributes('workflow', params.workflow?.customAttributes),
 				[ATTR.WORKFLOW_NAME]: params.workflow.name,
 				[ATTR.WORKFLOW_VERSION_ID]: params.workflow.versionId ?? '',
 				[ATTR.WORKFLOW_NODE_COUNT]: params.workflow.nodeCount,
@@ -187,10 +187,8 @@ export class ExecutionLevelTracer {
 			{
 				startTime: params.startedAt,
 				attributes: {
-					...this.buildCustomAttributes({
-						project: params.project?.customAttributes,
-						workflow: params.workflow?.customAttributes,
-					}),
+					...this.buildCustomAttributes('project', params.project?.customAttributes),
+					...this.buildCustomAttributes('workflow', params.workflow?.customAttributes),
 					...(params.workflowName && { [ATTR.WORKFLOW_NAME]: params.workflowName }),
 					...(params.workflowVersionId && {
 						[ATTR.WORKFLOW_VERSION_ID]: params.workflowVersionId,
@@ -264,7 +262,7 @@ export class ExecutionLevelTracer {
 			activeNodeSpan.setAttributes({
 				[ATTR.NODE_ITEMS_INPUT]: params.inputItemCount,
 				[ATTR.NODE_ITEMS_OUTPUT]: params.outputItemCount,
-				...this.buildCustomAttributes({ node: params.customAttributes }),
+				...this.buildCustomAttributes('node', params.customAttributes),
 			});
 
 			if (params.error) {
@@ -379,40 +377,17 @@ export class ExecutionLevelTracer {
 	}
 
 	private buildCustomAttributes(
-		attributesByLevel: Partial<Record<CustomAttributeLevel, Record<string, string>>>,
-	): Record<string, string> {
-		const { prefixes } = this.customAttributesConfig;
-		const result: Record<string, string> = {};
-		const dropped: string[] = [];
-
-		for (const level of CUSTOM_ATTRIBUTE_LEVELS_BY_PRECEDENCE) {
-			for (const [key, value] of Object.entries(attributesByLevel[level] ?? {})) {
-				const prefixedKey = `${prefixes[level]}${key}`;
-				if (BUILT_IN_ATTRIBUTE_KEYS.has(prefixedKey)) {
-					dropped.push(prefixedKey);
-				} else {
-					result[prefixedKey] = value;
-				}
-			}
-		}
-
-		if (dropped.length > 0) {
-			this.logger.debug('Dropped custom span attributes that match built-in attributes', {
-				keys: dropped,
-			});
-		}
-
-		return result;
+		level: keyof CustomAttributePrefixes,
+		attributes: CustomAttributes = {},
+	): CustomAttributes {
+		const prefix = this.customAttributesConfig.prefixes[level];
+		return Object.fromEntries(
+			Object.entries(attributes)
+				.map(([key, value]): [string, string] => [`${prefix}${key}`, value])
+				.filter(([key]) => !BUILT_IN_ATTRIBUTE_KEYS.has(key)),
+		);
 	}
 }
-
-type CustomAttributeLevel = keyof CustomAttributePrefixes;
-
-const CUSTOM_ATTRIBUTE_LEVELS_BY_PRECEDENCE: CustomAttributeLevel[] = [
-	'project',
-	'workflow',
-	'node',
-];
 
 function resolveWorkflowIdentity(params: StartWorkflowParams): ExecutionIdentity {
 	const saved = params.savedIdentity;

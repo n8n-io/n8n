@@ -96,7 +96,7 @@ replaces them with a JSON object, for example `{"project":"","node":""}`.
 - An empty string removes the prefix for that level. A level that is left out keeps its default.
 - An invalid value logs a warning, and n8n uses the default prefixes.
 - When keys collide, the more specific level wins: node, then workflow, then project.
-- A custom key that matches a built-in key in `ATTR` is dropped. The built-in value stays.
+- n8n compares the key after it adds the prefix. If that key matches a built-in key in `ATTR`, n8n drops it and keeps the built-in value.
 - Node metadata from the Tools Agent (`ai.agent.*`) uses the node prefix too.
 - Set the same value on main, workers and webhook processes.
 

@@ -65,13 +65,12 @@ const customAttributePrefixesSchema = z
 	.pipe(
 		z
 			.object({
-				project: z.string().optional(),
-				workflow: z.string().optional(),
-				node: z.string().optional(),
+				project: z.string().default(DEFAULT_CUSTOM_ATTRIBUTE_PREFIXES.project),
+				workflow: z.string().default(DEFAULT_CUSTOM_ATTRIBUTE_PREFIXES.workflow),
+				node: z.string().default(DEFAULT_CUSTOM_ATTRIBUTE_PREFIXES.node),
 			})
 			.strict(),
-	)
-	.transform((prefixes) => ({ ...DEFAULT_CUSTOM_ATTRIBUTE_PREFIXES, ...prefixes }));
+	);
 
 export type CustomAttributePrefixes = z.infer<typeof customAttributePrefixesSchema>;
 
