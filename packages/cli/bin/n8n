@@ -63,6 +63,7 @@ require('net').setDefaultAutoSelectFamily?.(false);
 
 (async () => {
 	await require('../dist/error-reporting/error-reporting-boot').initErrorReporting();
+	require('../dist/observability/observability-boot').startObservability();
 
 	const { Container } = await import('@n8n/di');
 	const { CommandRegistry } = await import('../dist/command-registry.js');

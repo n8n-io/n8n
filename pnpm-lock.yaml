@@ -1267,6 +1267,9 @@ importers:
       '@openrouter/ai-sdk-provider':
         specifier: 'catalog:'
         version: 3.0.0(ai@7.0.74(zod@3.25.76))(zod@3.25.76)
+      '@opentelemetry/context-async-hooks':
+        specifier: ^2.7.1
+        version: 2.11.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/exporter-trace-otlp-http':
         specifier: '>=0.50.0'
         version: 0.222.0(@opentelemetry/api@1.9.1)
@@ -1310,9 +1313,6 @@ importers:
       '@opentelemetry/api':
         specifier: 1.9.1
         version: 1.9.1
-      '@opentelemetry/context-async-hooks':
-        specifier: ^2.7.1
-        version: 2.11.0(@opentelemetry/api@1.9.1)
       '@pinecone-database/pinecone':
         specifier: 'catalog:'
         version: 5.1.2
@@ -4824,9 +4824,6 @@ importers:
       '@opentelemetry/api':
         specifier: 1.9.1
         version: 1.9.1
-      '@opentelemetry/context-async-hooks':
-        specifier: ^2.7.1
-        version: 2.11.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/core':
         specifier: 2.10.0
         version: 2.10.0(@opentelemetry/api@1.9.1)
@@ -4839,6 +4836,9 @@ importers:
       '@opentelemetry/resources':
         specifier: 2.10.0
         version: 2.10.0(@opentelemetry/api@1.9.1)
+      '@opentelemetry/sdk-node':
+        specifier: 0.221.0
+        version: 0.221.0(@opentelemetry/api@1.9.1)(supports-color@8.1.1)
       '@opentelemetry/sdk-trace-base':
         specifier: 2.10.0
         version: 2.10.0(@opentelemetry/api@1.9.1)

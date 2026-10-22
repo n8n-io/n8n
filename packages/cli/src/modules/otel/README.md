@@ -1,7 +1,7 @@
 ## Workflow level OTEL
 This module enables workflow level telemetry
 
-The module should work in complete isolation - plugging into n8n to add tracing. When switched off no otel items should be loaded
+The module plugs into n8n to add tracing. The process-wide OTel setup lives outside the module, in `packages/cli/src/observability/`.
 
 It is based upon and an extension of the work done in the community by:
 @gabrielhmsantos - https://github.com/gabrielhmsantos/n8n-tracekit
@@ -14,31 +14,65 @@ All attributes are listed in `otel.constants.ts`
 
 ### Global API ownership
 
-`OtelService` starts a `NodeTracerProvider` and hands out tracers through `getTracer()`.
-The module's own spans never depend on the global `@opentelemetry/api` registry.
+n8n sets up OTel once, in `bin/n8n`, after Sentry and before the command module loads. The
+startup step (`observability/observability-boot.ts`) runs in every `bin/n8n` process, also when
+OTel is off and when this module does not load. The task runner has no OTel.
 
-At start, the service checks whether another library already registered a global tracer
-provider. Sentry does this in `ErrorReporter.init`. A user SDK loaded with `--require` does
-it too.
+- Sentry does not set up OTel. It does not trace a request that runs with OTel tracing
+  suppressed, such as n8n's own OTLP export.
+- `OtelSdk` starts `NodeSDK`. NodeSDK registers the tracer provider, the
+  `AsyncLocalStorageContextManager` and the propagator. Nothing replaces or disables these
+  globals. At exit, `NodeSDK.shutdown()` flushes the exporter.
+- NodeSDK gets no metric readers and no log processors. It still registers an empty logger
+  provider. Nothing leaves through it.
+- The tracer gate gives each library a no-op tracer, unless its tracer name is on:
 
-- The slot is free: the service registers its provider, an `AsyncLocalStorageContextManager`
-  and the default W3C propagators. A restart swaps only the tracer provider. Shutdown leaves
-  the globals in place.
-- The slot is taken: the service keeps its provider private and logs one info line. It never
-  disables or replaces the other library's globals.
+| Tracer name                                             | On when                                        |
+| ------------------------------------------------------- | ---------------------------------------------- |
+| `n8n-workflow`, `@n8n/agents`, `n8n-expression-runtime` | always                                         |
+| `''` (Daytona)                                          | `N8N_DAYTONA_TRACING_ENABLED=true`             |
+| `@microsoft/agents-telemetry`, `Agent365Sdk`            | `N8N_MICROSOFT_AGENT_365_TRACING_ENABLED=true` |
+
+  n8n's own tracers check their own setting before they make spans. To add a library, add one
+  entry to `OtelSdk`. The gate reads the env vars once at startup, so a change needs a restart.
+- `OTEL_SDK_DISABLED=true` turns off all of OTel. n8n logs one warning.
+- When another OTel setup is already registered at startup, for example with
+  `NODE_OPTIONS=--require @opentelemetry/auto-instrumentations-node/register`, n8n does not
+  start its own setup and does not gate that setup's tracers. n8n logs one warning. Workflow
+  spans then go to that setup, and the n8n OTel settings have no effect.
+- When the startup step fails, n8n logs the error and starts with tracing off.
+- A save never fails because the old exporter cannot flush. n8n logs one warning.
+
+The setup starts with three no-op parts: the span processors, the sampler and the propagator.
+`OtelService` builds these parts from the saved settings and gives them to `OtelSdk.apply()`. It
+does this at module init, on each settings save and on `reload-otel-config`. With OTel off, it
+applies the no-op parts again.
+
+- The span processors add the execution identity and send batches to the OTLP exporter.
+- The export step merges `service.name`, `service.version`, `n8n.instance.id` and
+  `n8n.instance.role` into the resource of each span. The other resource attributes stay. A
+  saved service name applies without a restart.
+- The global propagator sends and reads W3C `traceparent` only when OTel is on and
+  `N8N_OTEL_TRACES_INJECT_OUTBOUND` is true. It never sends `baggage`.
+
+`OTEL_*` env vars: an n8n setting wins where one exists. `OTEL_*` fills the rest and never locks
+a UI field.
+
+- n8n ignores `OTEL_SERVICE_NAME`, `OTEL_TRACES_SAMPLER`, `OTEL_TRACES_EXPORTER`,
+  `OTEL_PROPAGATORS`, `OTEL_METRICS_EXPORTER` and `OTEL_LOGS_EXPORTER`.
+- These apply: `OTEL_RESOURCE_ATTRIBUTES`, `OTEL_NODE_RESOURCE_DETECTORS`, the
+  `OTEL_EXPORTER_OTLP_*` certificate, timeout and compression variables, `OTEL_BSP_*`, extra
+  header keys from `OTEL_EXPORTER_OTLP_HEADERS`, and `OTEL_LOG_LEVEL`. OTel diagnostics go to the
+  n8n logger at the `OTEL_LOG_LEVEL` level, with `warn` as the default.
 
 Consequences:
 
-- Workflow spans go to the module exporter only. To get them into Sentry, point the OTel
-  settings at Sentry's OTLP endpoint.
 - Workflow root spans start on `ROOT_CONTEXT`. They never join a trace that is active in the
-  process, such as a Sentry request span or an HTTP server span from a user SDK. An inbound
-  `traceparent` header still sets the parent.
-- Persisted trace context and outbound headers always use the W3C `traceparent` and
-  `tracestate` format, whoever owns the global propagator. `OTEL_PROPAGATORS` has no effect
-  on them. Outbound headers never carry `baggage`.
-- The resource uses the env, process and host detectors. `OTEL_NODE_RESOURCE_DETECTORS` has
-  no effect.
+  process, such as a Sentry request span. An inbound `traceparent` header still sets the parent.
+- Persisted trace context and n8n's outbound headers always use the W3C `traceparent` and
+  `tracestate` format.
+- A library that starts its own OTel setup cannot register next to n8n's setup. Examples are
+  Daytona with `DAYTONA_OTEL_ENABLED` and Microsoft's own exporter mode.
 
 ### Execution identity
 
@@ -119,11 +153,11 @@ graph TD
 
     subgraph SDK Layer
         SVC["OtelService
-        owns the NodeTracerProvider, getTracer()"]
-        SDK["NodeTracerProvider
-        OTLP exporter, sampler, resource"]
+        builds the export parts"]
+        SDK["OtelSdk (startup step)
+        NodeSDK, tracer gate, swappable parts"]
         API["Global @opentelemetry/api
-        registered only when the slot is free"]
+        registered once at startup"]
     end
 
     subgraph Instrumentation Layer
@@ -151,22 +185,22 @@ graph TD
 
     MOD -- "1. load settings" --> SET
     SET --> CFG
-    MOD -- "2. start provider" --> SVC
-    SVC -- "creates" --> SDK
-    SVC -. "registers when free" .-> API
+    MOD -- "2. apply saved settings" --> SVC
+    SVC -- "apply()" --> SDK
+    SDK -- "registers at startup" --> API
     MOD -- "3. import handler" --> LCH
     MOD -- "4. main only" --> CTRL
     CTRL -- "save, then publish" --> PUB
     PUB -. "fires" .-> LCH
-    LCH -- "restart()" --> SVC
+    LCH -- "applySavedSettings()" --> SVC
 
     LC -. "fires" .-> LCH
     LCH -- "start and end workflow and node spans" --> ELT
     LCH -- "persist and read" --> TCS
-    ELT -- "getTracer()" --> SVC
+    ELT -- "trace.getTracer()" --> API
     REQ -- "outbound traceparent" --> ELT
     AGT -- "getActiveContext()" --> ELT
-    AGT -- "getTracer()" --> SVC
+    AGT -- "trace.getTracer()" --> API
     SDK -. "exports spans" .-> COL
 
     classDef module fill:#4a9eff,color:#fff

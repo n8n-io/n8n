@@ -1389,13 +1389,14 @@ describe('onReloadOtelConfig', () => {
 		vi.clearAllMocks();
 	});
 
-	it('restarts the OTel tracer provider', async () => {
+	it('applies the saved settings without shutting tracing down', async () => {
 		const handler = makeHandler();
-		otelService.restart.mockResolvedValue(undefined);
+		otelService.applySavedSettings.mockResolvedValue(undefined);
 
 		await handler.onReloadOtelConfig();
 
-		expect(otelService.restart).toHaveBeenCalledTimes(1);
+		expect(otelService.applySavedSettings).toHaveBeenCalledTimes(1);
+		expect(otelService.shutdown).not.toHaveBeenCalled();
 	});
 });
 
