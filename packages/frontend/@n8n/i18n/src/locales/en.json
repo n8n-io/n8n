@@ -8378,6 +8378,8 @@
 	"instanceAi.tools.update-tasks": "Updating tasks",
 	"instanceAi.tools.workflow_builder_report_verification_verdict": "Verifying workflow",
 	"instanceAi.tools.workflow_builder_verify_built_workflow": "Verifying workflow",
+	"instanceAi.tools.workflow_builder_complete_checkpoint": "Completing checkpoint",
+	"instanceAi.tools.workflow_builder_create_tasks": "Planning tasks",
 	"instanceAi.tools.workflow_builder_search_models": "Searching models",
 	"instanceAi.tools.search_tools": "Searching tools",
 	"instanceAi.tools.load_tool": "Loading tool",
