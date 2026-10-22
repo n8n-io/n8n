@@ -348,6 +348,12 @@ function onOpenAutoFocus(event: Event) {
 	@include scrollbar-mixins.scroll-bar;
 }
 
+.body[data-slot='dialog-body'][data-scrollable] {
+	/* `DialogBody` reads the region padding, which this modal sets to 0, so the
+	   plain `.body` padding loses. Match its specificity to keep space above the footer. */
+	padding-block-end: var(--agent-modal-body--padding-block-end);
+}
+
 .body[data-flush='true'][data-slot='dialog-body'][data-scrollable] {
 	padding: 0;
 }
