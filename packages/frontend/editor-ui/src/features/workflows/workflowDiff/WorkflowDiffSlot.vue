@@ -1,32 +1,26 @@
 <script setup lang="ts">
 import type { WorkflowReviewVersionSnapshot } from '@n8n/api-types';
 import type { SlotWorkflowDiffProps } from '@n8n/frontend-module-sdk';
-import { deepCopy } from 'n8n-workflow';
-import { computed, markRaw } from 'vue';
+import { computed } from 'vue';
 
 import type { IWorkflowDb } from '@/Interface';
 
 import WorkflowDiffView from './WorkflowDiffView.vue';
+import { toDiffWorkflow } from './workflowDiff.utils';
 
 const props = defineProps<SlotWorkflowDiffProps>();
 
 function toWorkflow(snapshot: WorkflowReviewVersionSnapshot | undefined): IWorkflowDb | undefined {
 	if (!snapshot) return undefined;
-	return markRaw(
-		deepCopy({
-			id: props.workflowId,
-			name: props.workflowName,
-			active: false,
-			isArchived: false,
-			createdAt: snapshot.createdAt,
-			updatedAt: snapshot.createdAt,
-			versionId: snapshot.versionId,
-			activeVersionId: null,
-			nodes: snapshot.nodes,
-			connections: snapshot.connections,
-			nodeGroups: snapshot.nodeGroups,
-		}),
-	);
+	return toDiffWorkflow({
+		id: props.workflowId,
+		name: props.workflowName,
+		versionId: snapshot.versionId,
+		createdAt: snapshot.createdAt,
+		nodes: snapshot.nodes,
+		connections: snapshot.connections,
+		nodeGroups: snapshot.nodeGroups,
+	});
 }
 
 const sourceWorkflow = computed(() => toWorkflow(props.sourceSnapshot));
