@@ -148,6 +148,15 @@ describe('Form execution push events', () => {
 		const { data: _output, ...taskMetadata } = formTask;
 		const events: PushMessage[] = [
 			{
+				type: 'nodeExecuteBefore',
+				data: {
+					executionId,
+					nodeName: reviewForm.name,
+					sequenceNumber: 0,
+					data: { startTime: formTask.startTime, executionIndex: 1, source: formTask.source },
+				},
+			},
+			{
 				type: 'nodeExecuteAfter',
 				data: {
 					executionId,
@@ -191,5 +200,49 @@ describe('Form execution push events', () => {
 		await flushPromises();
 
 		expect(executionStore.execution?.status).toBe('waiting');
+		const executionState = useWorkflowExecutionStateStore(documentId);
+		expect(executionState.activeExecutionId).toBe(executionId);
+		expect(executionState.executingNode.lastAddedExecutingNode).toBeNull();
+		expect(executionStore.execution?.data?.resultData.runData[reviewForm.name][0]).toEqual(
+			formTask,
+		);
+	});
+
+	it('marks the same execution as running when it resumes', async () => {
+		await reachReviewForm();
+		receive({ type: 'executionWaiting', data: { executionId } });
+		await flushPromises();
+
+		receive({
+			type: 'executionStarted',
+			data: {
+				executionId,
+				workflowId,
+				mode: 'manual',
+				startedAt: new Date(),
+				flattedRunData: stringify({ [trigger.name]: [triggerTask], [reviewForm.name]: [formTask] }),
+			},
+		});
+		await flushPromises();
+
+		const executionStore = useExecutionDataStore(createExecutionDataId(executionId));
+		expect(executionStore.execution?.status).toBe('running');
+		expect(useWorkflowExecutionStateStore(documentId).activeExecutionId).toBe(executionId);
+		expect(executionStore.execution?.data?.resultData.runData[reviewForm.name][0]).toEqual(
+			formTask,
+		);
+	});
+
+	it('ignores a waiting event from another execution', async () => {
+		await reachReviewForm();
+		receive({ type: 'executionWaiting', data: { executionId: 'other-execution' } });
+		await flushPromises();
+
+		expect(useExecutionDataStore(createExecutionDataId(executionId)).execution?.status).toBe(
+			'running',
+		);
+		expect(useWorkflowExecutionStateStore(documentId).executingNode.lastAddedExecutingNode).toBe(
+			reviewForm.name,
+		);
 	});
 });
