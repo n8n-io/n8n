@@ -56,8 +56,6 @@ import type {
 	InstanceAiConfirmRequest,
 	InstanceAiEnsureThreadRequest,
 	InstanceAiThreadMessagesQuery,
-	InstanceAiUserPreferencesUpdateRequest,
-	InstanceAiUserPreferencesResponse,
 	InstanceAiRenameThreadRequestDto,
 	InstanceAiEnsureThreadResponse,
 	InstanceAiThreadInfo,
@@ -66,7 +64,6 @@ import type {
 	InstanceAiThreadTabsState,
 } from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
-import type { GlobalConfig } from '@n8n/config';
 import {
 	buildAgentTreeFromEvents,
 	meterEvalUsage,
@@ -78,21 +75,19 @@ import {
 	MAX_ATTACHMENT_BASE64_BYTES,
 	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
 } from '@n8n/api-types';
-import type { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
+import type { GlobalConfig } from '@n8n/config';
+import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import type { Request, Response } from 'express';
+import type { Response } from 'express';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
-import type { CredentialsService } from '@/credentials/credentials.service';
-import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { UrlService } from '@n8n/backend-services';
 
 import type { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';
 import type { EvalAgentExecutionService } from '../eval/agent-execution.service';
@@ -102,8 +97,6 @@ import type { EvalThreadRestoreService } from '../eval/thread-restore.service';
 import type { DurableEventLog } from '../event-bus/durable-event-log';
 import type { DurableLogMetrics } from '../event-bus/durable-log-metrics';
 import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
-import type { LocalGateway } from '../filesystem/local-gateway';
-import type { InstanceAiGatewayService } from '../instance-ai-gateway.service';
 import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
 import type { InstanceAiOnboardingService } from '../onboarding';
 import type { InstanceAiPendingAgentService } from '../instance-ai-pending-agent.service';
@@ -141,7 +134,6 @@ const MOCK_RESPONDER_USAGE: InstanceAiEvalLlmUsage = {
 
 describe('InstanceAiController', () => {
 	const instanceAiService = mock<InstanceAiService>();
-	const gatewayService = mock<InstanceAiGatewayService>();
 	const browserSessionService = mock<InstanceAiBrowserSessionService>();
 	const memoryService = mock<InstanceAiMemoryService>();
 	const pendingAgentService = mock<InstanceAiPendingAgentService>();
@@ -151,17 +143,8 @@ describe('InstanceAiController', () => {
 	const eventLog = mock<DurableEventLog>();
 	const durableLogMetrics = mock<DurableLogMetrics>();
 	const moduleRegistry = mock<ModuleRegistry>();
-	const push = mock<Push>();
 	const publisher = mock<Publisher>();
-	const urlService = mock<UrlService>();
-	const globalConfig = mock<GlobalConfig>({
-		instanceAi: { gatewayApiKey: 'static-key' },
-		editorBaseUrl: 'http://localhost:5678',
-		port: 5678,
-	});
 
-	const userRepository = mock<UserRepository>();
-	const credentialsService = mock<CredentialsService>();
 	const projectService = mock<ProjectService>();
 	const instanceAiErrorReporter = mock<InstanceAiErrorReporterService>();
 
@@ -172,10 +155,10 @@ describe('InstanceAiController', () => {
 	const preferenceCardService = mock<InstanceAiPreferenceCardService>();
 	const onboarding = mock<InstanceAiOnboardingService>();
 	const threadTabsService = mock<InstanceAiThreadTabsService>();
+	const globalConfig = mock<GlobalConfig>({ instanceAi: { evalInstance: false } });
 
 	const controller = new InstanceAiController(
 		instanceAiService,
-		gatewayService,
 		browserSessionService,
 		memoryService,
 		onboarding,
@@ -190,10 +173,6 @@ describe('InstanceAiController', () => {
 		eventLog,
 		durableLogMetrics,
 		moduleRegistry,
-		push,
-		urlService,
-		userRepository,
-		credentialsService,
 		projectService,
 		instanceAiErrorReporter,
 		publisher,
@@ -246,7 +225,7 @@ describe('InstanceAiController', () => {
 				payload.pushRef,
 				payload.mode,
 				payload.promptVersion,
-				payload.computerUseChannels,
+				payload.browserUseAvailable,
 				payload.threadArtifacts,
 				payload.observerThresholdTokens,
 			);
@@ -279,7 +258,7 @@ describe('InstanceAiController', () => {
 				payloadWithArtifacts.pushRef,
 				payloadWithArtifacts.mode,
 				payloadWithArtifacts.promptVersion,
-				payloadWithArtifacts.computerUseChannels,
+				payloadWithArtifacts.browserUseAvailable,
 				payloadWithArtifacts.threadArtifacts,
 				payloadWithArtifacts.observerThresholdTokens,
 			);
@@ -357,7 +336,7 @@ describe('InstanceAiController', () => {
 				'iframe-push-ref-123',
 				payloadWithPushRef.mode,
 				payloadWithPushRef.promptVersion,
-				payloadWithPushRef.computerUseChannels,
+				payloadWithPushRef.browserUseAvailable,
 				payloadWithPushRef.threadArtifacts,
 				payloadWithPushRef.observerThresholdTokens,
 			);
@@ -388,7 +367,7 @@ describe('InstanceAiController', () => {
 				payloadWithMode.pushRef,
 				'progressive',
 				'progressive@1',
-				payloadWithMode.computerUseChannels,
+				payloadWithMode.browserUseAvailable,
 				payloadWithMode.threadArtifacts,
 				payloadWithMode.observerThresholdTokens,
 			);
@@ -426,7 +405,7 @@ describe('InstanceAiController', () => {
 				payloadWithContext.pushRef,
 				payloadWithContext.mode,
 				payloadWithContext.promptVersion,
-				payloadWithContext.computerUseChannels,
+				payloadWithContext.browserUseAvailable,
 				payloadWithContext.threadArtifacts,
 				payloadWithContext.observerThresholdTokens,
 			);
@@ -532,7 +511,7 @@ describe('InstanceAiController', () => {
 				nodesPayload.pushRef,
 				nodesPayload.mode,
 				nodesPayload.promptVersion,
-				nodesPayload.computerUseChannels,
+				nodesPayload.browserUseAvailable,
 				nodesPayload.threadArtifacts,
 				nodesPayload.observerThresholdTokens,
 			);
@@ -2079,55 +2058,31 @@ describe('InstanceAiController', () => {
 			});
 		});
 
-		it('should disconnect all gateways when enabled is set to false', async () => {
-			settingsService.updateAdminSettings.mockResolvedValue({ enabled: false } as never);
-			gatewayService.disconnectAllGateways.mockReturnValue(['user-a', 'user-b']);
+		it('should shut down browser sessions when enabled is set to false', async () => {
+			settingsService.updateAdminSettings.mockResolvedValue({
+				enabled: false,
+				browserUseEnabled: true,
+			} as never);
 			const payload = { enabled: false } as InstanceAiAdminSettingsUpdateRequest;
 
 			await controller.updateAdminSettings(req, res, payload);
 
-			expect(gatewayService.disconnectAllGateways).toHaveBeenCalled();
-			expect(push.sendToUsers).toHaveBeenCalledWith(
-				expect.objectContaining({
-					type: 'instanceAiGatewayStateChanged',
-					data: { connected: false, directory: null, hostIdentifier: null, toolCategories: [] },
-				}),
-				['user-a', 'user-b'],
-			);
+			expect(browserSessionService.shutdown).toHaveBeenCalled();
 		});
 
-		it('should disconnect all gateways when localGatewayDisabled is set to true', async () => {
+		it('should not shut down browser sessions when enabling features', async () => {
 			settingsService.updateAdminSettings.mockResolvedValue({
 				enabled: true,
-				localGatewayDisabled: true,
-			} as never);
-			gatewayService.disconnectAllGateways.mockReturnValue(['user-c']);
-			const payload = { localGatewayDisabled: true } as InstanceAiAdminSettingsUpdateRequest;
-
-			await controller.updateAdminSettings(req, res, payload);
-
-			expect(gatewayService.disconnectAllGateways).toHaveBeenCalled();
-			expect(push.sendToUsers).toHaveBeenCalledWith(
-				expect.objectContaining({
-					type: 'instanceAiGatewayStateChanged',
-				}),
-				['user-c'],
-			);
-		});
-
-		it('should not disconnect gateways when enabling features', async () => {
-			settingsService.updateAdminSettings.mockResolvedValue({
-				enabled: true,
-				localGatewayDisabled: false,
+				browserUseEnabled: true,
 			} as never);
 			const payload = {
 				enabled: true,
-				localGatewayDisabled: false,
+				browserUseEnabled: true,
 			} as InstanceAiAdminSettingsUpdateRequest;
 
 			await controller.updateAdminSettings(req, res, payload);
 
-			expect(gatewayService.disconnectAllGateways).not.toHaveBeenCalled();
+			expect(browserSessionService.shutdown).not.toHaveBeenCalled();
 		});
 
 		it('should publish settings reloads and refresh affected module settings', async () => {
@@ -2147,10 +2102,8 @@ describe('InstanceAiController', () => {
 			settingsService.updateAdminSettings.mockResolvedValue({
 				enabled: false,
 				browserUseEnabled: false,
-				localGatewayDisabled: true,
 			} as never);
 			moduleRegistry.refreshModuleSettings.mockRejectedValueOnce(refreshError);
-			gatewayService.disconnectAllGateways.mockReturnValue([]);
 
 			await expect(
 				controller.updateAdminSettings(req, res, { enabled: false }),
@@ -2159,7 +2112,6 @@ describe('InstanceAiController', () => {
 				command: 'reload-instance-ai-settings',
 			});
 			expect(browserSessionService.shutdown).toHaveBeenCalled();
-			expect(gatewayService.disconnectAllGateways).toHaveBeenCalled();
 			expect(instanceAiErrorReporter.report).toHaveBeenCalledWith(refreshError, {
 				component: 'settings-side-effects',
 				threadId: 'admin-settings',
@@ -2170,12 +2122,10 @@ describe('InstanceAiController', () => {
 			const committedSettings = {
 				enabled: false,
 				browserUseEnabled: false,
-				localGatewayDisabled: true,
 			};
 			const publishError = new Error('publish failed');
 			settingsService.updateAdminSettings.mockResolvedValue(committedSettings as never);
 			publisher.publishCommand.mockRejectedValue(publishError);
-			gatewayService.disconnectAllGateways.mockReturnValue([]);
 
 			await expect(controller.updateAdminSettings(req, res, { enabled: false })).resolves.toBe(
 				committedSettings,
@@ -2186,7 +2136,6 @@ describe('InstanceAiController', () => {
 			});
 			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('instance-ai');
 			expect(browserSessionService.shutdown).toHaveBeenCalled();
-			expect(gatewayService.disconnectAllGateways).toHaveBeenCalled();
 		});
 	});
 
@@ -2194,8 +2143,6 @@ describe('InstanceAiController', () => {
 		it('should apply side effects from the reloaded local flags', async () => {
 			settingsService.isInstanceAiEnabled.mockReturnValue(false);
 			settingsService.isBrowserUseEnabled.mockReturnValue(false);
-			settingsService.isLocalGatewayDisabled.mockReturnValue(true);
-			gatewayService.disconnectAllGateways.mockReturnValue([]);
 
 			await controller.reloadAdminSettings();
 
@@ -2203,7 +2150,6 @@ describe('InstanceAiController', () => {
 			expect(settingsService.getAdminSettings).not.toHaveBeenCalled();
 			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('instance-ai');
 			expect(browserSessionService.shutdown).toHaveBeenCalled();
-			expect(gatewayService.disconnectAllGateways).toHaveBeenCalled();
 		});
 	});
 
@@ -2213,41 +2159,6 @@ describe('InstanceAiController', () => {
 				scope: 'instanceAi:message',
 				globalOnly: true,
 			});
-		});
-	});
-
-	describe('updateUserPreferences', () => {
-		it('should require instanceAi:message scope', () => {
-			expect(scopeOf('updateUserPreferences')).toEqual({
-				scope: 'instanceAi:message',
-				globalOnly: true,
-			});
-		});
-
-		it('should refresh module settings when localGatewayDisabled changes', async () => {
-			const payload = mock<InstanceAiUserPreferencesUpdateRequest>({
-				localGatewayDisabled: true,
-			});
-			settingsService.updateUserPreferences.mockResolvedValue(
-				mock<InstanceAiUserPreferencesResponse>(),
-			);
-
-			await controller.updateUserPreferences(req, res, payload);
-
-			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('instance-ai');
-		});
-
-		it('should not refresh module settings when localGatewayDisabled is not in payload', async () => {
-			const payload = mock<InstanceAiUserPreferencesUpdateRequest>({
-				localGatewayDisabled: undefined,
-			});
-			settingsService.updateUserPreferences.mockResolvedValue(
-				mock<InstanceAiUserPreferencesResponse>(),
-			);
-
-			await controller.updateUserPreferences(req, res, payload);
-
-			expect(moduleRegistry.refreshModuleSettings).not.toHaveBeenCalled();
 		});
 	});
 
@@ -2630,427 +2541,16 @@ describe('InstanceAiController', () => {
 		});
 	});
 
-	describe('createGatewayLink', () => {
-		it('should require instanceAi:gateway scope', () => {
-			expect(scopeOf('createGatewayLink')).toEqual({
-				scope: 'instanceAi:gateway',
-				globalOnly: true,
-			});
-		});
-
-		it('should return token, command, and token expiry', async () => {
-			const nowSpy = vi
-				.spyOn(Date, 'now')
-				.mockReturnValue(new Date('2026-01-01T00:00:00.000Z').getTime());
-			gatewayService.generatePairingToken.mockReturnValue('pairing-token');
-			gatewayService.getGatewayApiKeyExpiresAt.mockReturnValue(
-				new Date('2026-01-01T00:05:00.000Z'),
-			);
-			urlService.getInstanceBaseUrl.mockReturnValue('https://myinstance.n8n.cloud');
-
-			const result = await controller.createGatewayLink(req);
-
-			expect(result).toEqual({
-				token: 'pairing-token',
-				command: 'npx @n8n/computer-use https://myinstance.n8n.cloud pairing-token',
-				expiresAt: '2026-01-01T00:05:00.000Z',
-				ttlSeconds: 300,
-			});
-			expect(gatewayService.generatePairingToken).toHaveBeenCalledWith(USER_ID);
-			expect(gatewayService.getGatewayApiKeyExpiresAt).toHaveBeenCalledWith(
-				USER_ID,
-				'pairing-token',
-			);
-			nowSpy.mockRestore();
-		});
-	});
-
-	describe('gatewayInit', () => {
-		const makeGatewayReq = (key: string | undefined, body: unknown) =>
-			({ headers: key ? { 'x-gateway-key': key } : {}, body }) as unknown as Request;
-
-		beforeEach(() => {
-			gatewayService.getGatewayStatus.mockReturnValue({
-				connected: true,
-				connectedAt: null,
-				directory: '/home/user',
-				hostIdentifier: null,
-				toolCategories: [],
-			});
-		});
-
-		it('should have no access scope (skipAuth)', () => {
-			expect(scopeOf('gatewayInit')).toBeUndefined();
-		});
-
-		it('should initialize gateway with valid key and body', async () => {
-			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
-			gatewayService.consumePairingToken.mockReturnValue(null);
-			const gatewayReq = makeGatewayReq('session-key', { rootPath: '/home/user' });
-			const payload = { rootPath: '/home/user', tools: [], toolCategories: [] };
-
-			const result = await controller.gatewayInit(gatewayReq, res, payload);
-
-			expect(result).toEqual({ ok: true });
-			expect(gatewayService.initGateway).toHaveBeenCalledWith(
-				USER_ID,
-				expect.objectContaining({ rootPath: '/home/user' }),
-			);
-			expect(push.sendToUsers).toHaveBeenCalledWith(
-				expect.objectContaining({
-					type: 'instanceAiGatewayStateChanged',
-					data: {
-						connected: true,
-						directory: '/home/user',
-						hostIdentifier: null,
-						toolCategories: [],
-					},
-				}),
-				[USER_ID],
-			);
-		});
-
-		it('should return sessionKey when pairing token is consumed', async () => {
-			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
-			gatewayService.consumePairingToken.mockReturnValue('new-session-key');
-			const gatewayReq = makeGatewayReq('pairing-token', { rootPath: '/tmp' });
-
-			const result = await controller.gatewayInit(gatewayReq, res, {
-				rootPath: '/tmp',
-				tools: [],
-				toolCategories: [],
-			});
-
-			expect(result).toEqual({ ok: true, sessionKey: 'new-session-key' });
-		});
-
-		it('should accept static env var key', async () => {
-			gatewayService.consumePairingToken.mockReturnValue(null);
-			const gatewayReq = makeGatewayReq('static-key', { rootPath: '/tmp' });
-
-			const result = await controller.gatewayInit(gatewayReq, res, {
-				rootPath: '/tmp',
-				tools: [],
-				toolCategories: [],
-			});
-
-			expect(result).toEqual({ ok: true });
-			expect(gatewayService.initGateway).toHaveBeenCalledWith('env-gateway', expect.anything());
-		});
-
-		it('should throw ForbiddenError with missing API key', async () => {
-			const gatewayReq = makeGatewayReq(undefined, { rootPath: '/tmp' });
-
-			await expect(
-				controller.gatewayInit(gatewayReq, res, {
-					rootPath: '/tmp',
-					tools: [],
-					toolCategories: [],
-				}),
-			).rejects.toThrow(ForbiddenError);
-		});
-
-		it('should throw ForbiddenError with invalid API key', async () => {
-			gatewayService.getUserIdForApiKey.mockReturnValue(undefined);
-			const gatewayReq = makeGatewayReq('wrong-key', { rootPath: '/tmp' });
-
-			await expect(
-				controller.gatewayInit(gatewayReq, res, {
-					rootPath: '/tmp',
-					tools: [],
-					toolCategories: [],
-				}),
-			).rejects.toThrow(ForbiddenError);
-		});
-	});
-
-	describe('gatewayEvents', () => {
-		const makeGatewayReq = (key: string) =>
-			({
-				headers: { 'x-gateway-key': key },
-				once: vi.fn(),
-			}) as unknown as Request;
-
-		const makeFlushableRes = () => {
-			const res = {
-				setHeader: vi.fn(),
-				flushHeaders: vi.fn(),
-				write: vi.fn(),
-				flush: vi.fn(),
-				once: vi.fn(),
-			};
-			return res as unknown as Parameters<typeof controller.gatewayEvents>[1];
-		};
-
-		it('should have no access scope (skipAuth)', () => {
-			expect(scopeOf('gatewayEvents')).toBeUndefined();
-		});
-
-		it('should reject with ForbiddenError when the gateway has not been initialized', async () => {
-			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
-			gatewayService.getLocalGateway.mockReturnValue(mock<LocalGateway>({ isConnected: false }));
-
-			await expect(
-				controller.gatewayEvents(makeGatewayReq('session-key'), makeFlushableRes()),
-			).rejects.toThrow(ForbiddenError);
-
-			expect(gatewayService.clearDisconnectTimer).not.toHaveBeenCalled();
-		});
-
-		it('should clear a pending disconnect timer when SSE reconnects while still connected', async () => {
-			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
-			const gateway = mock<LocalGateway>({ isConnected: true });
-			gateway.onRequest.mockReturnValue(() => {});
-			gatewayService.getLocalGateway.mockReturnValue(gateway);
-
-			await controller.gatewayEvents(makeGatewayReq('session-key'), makeFlushableRes());
-
-			expect(gatewayService.clearDisconnectTimer).toHaveBeenCalledWith(USER_ID);
-		});
-
-		describe('connection cleanup', () => {
-			const unsubscribeRequest = vi.fn();
-			const unsubscribeDisconnect = vi.fn();
-
-			/** Open the SSE stream and return the handlers registered on res events. */
-			const openStream = async () => {
-				gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
-				const gateway = mock<LocalGateway>({ isConnected: true });
-				gateway.onRequest.mockReturnValue(unsubscribeRequest);
-				gateway.onDisconnect.mockReturnValue(unsubscribeDisconnect);
-				gatewayService.getLocalGateway.mockReturnValue(gateway);
-
-				const res = makeFlushableRes();
-				await controller.gatewayEvents(makeGatewayReq('session-key'), res);
-
-				const handlerFor = (event: string) =>
-					(res.once as Mock).mock.calls.find(([name]) => name === event)?.[1] as
-						| (() => void)
-						| undefined;
-				return { onClose: handlerFor('close'), onFinish: handlerFor('finish') };
-			};
-
-			it("should start the disconnect grace timer on res 'close'", async () => {
-				// Client-drop detection must hang off res 'close' — req 'close' tracks the
-				// request message (already complete for a GET) and res 'finish' only fires
-				// on server-initiated end, so neither fires when the daemon dies.
-				const { onClose } = await openStream();
-				expect(onClose).toBeDefined();
-
-				onClose!();
-
-				expect(gatewayService.startDisconnectTimer).toHaveBeenCalledWith(
-					USER_ID,
-					expect.any(Function),
-				);
-				expect(unsubscribeRequest).toHaveBeenCalledTimes(1);
-				expect(unsubscribeDisconnect).toHaveBeenCalledTimes(1);
-			});
-
-			it('should push disconnected state when the grace timer fires', async () => {
-				const { onClose } = await openStream();
-
-				onClose!();
-				const [, onTimerFired] = gatewayService.startDisconnectTimer.mock.calls[0];
-				onTimerFired();
-
-				expect(push.sendToUsers).toHaveBeenCalledWith(
-					{
-						type: 'instanceAiGatewayStateChanged',
-						data: { connected: false, directory: null, hostIdentifier: null, toolCategories: [] },
-					},
-					[USER_ID],
-				);
-			});
-
-			it("should run cleanup only once when both 'close' and 'finish' fire", async () => {
-				const { onClose, onFinish } = await openStream();
-
-				onClose!();
-				onFinish!();
-
-				expect(gatewayService.startDisconnectTimer).toHaveBeenCalledTimes(1);
-				expect(unsubscribeRequest).toHaveBeenCalledTimes(1);
-			});
-		});
-	});
-
-	describe('gatewayResponse', () => {
-		const makeGatewayReq = (key: string, body: unknown) =>
-			({ headers: { 'x-gateway-key': key }, body }) as unknown as Request;
-
-		it('should have no access scope (skipAuth)', () => {
-			expect(scopeOf('gatewayResponse')).toBeUndefined();
-		});
-
-		it('should resolve gateway request', () => {
-			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
-			gatewayService.resolveGatewayRequest.mockReturnValue(true);
-			const gatewayReq = makeGatewayReq('session-key', { result: { content: [] } });
-
-			const result = controller.gatewayResponse(gatewayReq, res, 'req-1', {
-				result: { content: [] },
-			});
-
-			expect(result).toEqual({ ok: true });
-			expect(gatewayService.resolveGatewayRequest).toHaveBeenCalledWith(
-				USER_ID,
-				'req-1',
-				{ content: [] },
-				undefined,
-			);
-		});
-
-		it('should throw NotFoundError when request not found', () => {
-			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
-			gatewayService.resolveGatewayRequest.mockReturnValue(false);
-			const gatewayReq = makeGatewayReq('session-key', { result: { content: [] } });
-
-			expect(() =>
-				controller.gatewayResponse(gatewayReq, res, 'req-1', { result: { content: [] } }),
-			).toThrow(NotFoundError);
-		});
-	});
-
-	describe('gatewayDisconnect', () => {
-		it('should have no access scope (skipAuth)', () => {
-			expect(scopeOf('gatewayDisconnect')).toBeUndefined();
-		});
-
-		it('should disconnect gateway and send push notification', () => {
-			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
-			const gatewayReq = {
-				headers: { 'x-gateway-key': 'session-key' },
-			} as unknown as Request;
-
-			const result = controller.gatewayDisconnect(gatewayReq);
-
-			expect(result).toEqual({ ok: true });
-			expect(gatewayService.clearDisconnectTimer).toHaveBeenCalledWith(USER_ID);
-			expect(gatewayService.disconnectGateway).toHaveBeenCalledWith(USER_ID);
-			expect(gatewayService.clearActiveSessionKey).toHaveBeenCalledWith(USER_ID);
-			expect(push.sendToUsers).toHaveBeenCalledWith(
-				{
-					type: 'instanceAiGatewayStateChanged',
-					data: { connected: false, directory: null, hostIdentifier: null, toolCategories: [] },
-				},
-				[USER_ID],
-			);
-		});
-	});
-
-	describe('gatewayStatus', () => {
-		it('should require instanceAi:gateway scope', () => {
-			expect(scopeOf('gatewayStatus')).toEqual({
-				scope: 'instanceAi:gateway',
-				globalOnly: true,
-			});
-		});
-	});
-
-	describe('gatewayDisconnectSession', () => {
-		it('should require instanceAi:gateway scope', () => {
-			expect(scopeOf('gatewayDisconnectSession')).toEqual({
-				scope: 'instanceAi:gateway',
-				globalOnly: true,
-			});
-		});
-
-		it('should tear down the session and push state change without flipping preferences', async () => {
-			const result = await controller.gatewayDisconnectSession(req);
-
-			expect(result).toEqual({ ok: true });
-			expect(gatewayService.clearDisconnectTimer).toHaveBeenCalledWith(USER_ID);
-			expect(gatewayService.disconnectGateway).toHaveBeenCalledWith(USER_ID);
-			expect(gatewayService.clearActiveSessionKey).toHaveBeenCalledWith(USER_ID);
-			expect(push.sendToUsers).toHaveBeenCalledWith(
-				{
-					type: 'instanceAiGatewayStateChanged',
-					data: { connected: false, directory: null, hostIdentifier: null, toolCategories: [] },
-				},
-				[USER_ID],
-			);
-			expect(settingsService.updateUserPreferences).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('gatewayCreateCredential', () => {
-		const makeGatewayReq = (key: string) =>
-			({ headers: { 'x-gateway-key': key } }) as unknown as Request;
-
-		const payload = {
-			name: 'My Slack Cred',
-			type: 'slackApi',
-			data: { accessToken: 'xoxb-token' },
-		};
-
-		it('should have no access scope (skipAuth)', () => {
-			expect(scopeOf('gatewayCreateCredential')).toBeUndefined();
-		});
-
-		it('should create credential and return credentialId', async () => {
-			const user = mock<User>({ id: USER_ID });
-			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
-			userRepository.findOne.mockResolvedValue(user);
-			credentialsService.createUnmanagedCredential.mockResolvedValue(
-				mock<Awaited<ReturnType<CredentialsService['createUnmanagedCredential']>>>({
-					id: 'cred-1',
-				}),
-			);
-
-			const result = await controller.gatewayCreateCredential(
-				makeGatewayReq('session-key'),
-				res,
-				payload,
-			);
-
-			expect(result).toEqual({ credentialId: 'cred-1' });
-			expect(credentialsService.createUnmanagedCredential).toHaveBeenCalledWith(payload, user);
-		});
-
-		it('should throw ForbiddenError when using the static env-var key', async () => {
-			const gatewayReq = makeGatewayReq('static-key');
-
-			await expect(controller.gatewayCreateCredential(gatewayReq, res, payload)).rejects.toThrow(
-				ForbiddenError,
-			);
-		});
-
-		it('should throw ForbiddenError when the user is not found', async () => {
-			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
-			userRepository.findOne.mockResolvedValue(null);
-
-			await expect(
-				controller.gatewayCreateCredential(makeGatewayReq('session-key'), res, payload),
-			).rejects.toThrow(ForbiddenError);
-		});
-
-		it('should throw ForbiddenError when the gateway is disabled', async () => {
-			const user = mock<User>({ id: USER_ID });
-			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
-			userRepository.findOne.mockResolvedValue(user);
-			settingsService.isLocalGatewayDisabledForUser.mockResolvedValue(true);
-
-			await expect(
-				controller.gatewayCreateCredential(makeGatewayReq('session-key'), res, payload),
-			).rejects.toThrow(ForbiddenError);
-		});
-	});
-
-	describe('getGatewayKeyHeader', () => {
-		it('should extract first element from array header', () => {
-			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
-			gatewayService.resolveGatewayRequest.mockReturnValue(true);
-			const gatewayReq = {
-				headers: { 'x-gateway-key': ['key1', 'key2'] },
-				body: { result: { content: [] } },
-			} as unknown as Request;
-
-			controller.gatewayResponse(gatewayReq, res, 'req-1', { result: { content: [] } });
-
-			// validateGatewayApiKey receives 'key1' (the first element)
-			expect(gatewayService.getUserIdForApiKey).toHaveBeenCalledWith('key1');
-		});
+	describe('Browser Use endpoints', () => {
+		it.each(['createBrowserLink', 'browserStatus', 'browserDisconnectSession'])(
+			'%s requires instanceAi:gateway scope',
+			(handler) => {
+				expect(scopeOf(handler)).toEqual({
+					scope: 'instanceAi:gateway',
+					globalOnly: true,
+				});
+			},
+		);
 	});
 });
 
@@ -3061,15 +2561,9 @@ describe('InstanceAiController — durable-log SSE replay', () => {
 	const eventBus = mock<InProcessEventBus>();
 	const eventLog = mock<DurableEventLog>();
 	const durableLogMetrics = mock<DurableLogMetrics>();
-	const globalConfig = mock<GlobalConfig>({
-		instanceAi: { gatewayApiKey: 'static-key' },
-		editorBaseUrl: 'http://localhost:5678',
-		port: 5678,
-	});
 
 	const controller = new InstanceAiController(
 		instanceAiService,
-		mock<InstanceAiGatewayService>(),
 		mock<InstanceAiBrowserSessionService>(),
 		memoryService,
 		mock<InstanceAiOnboardingService>(),
@@ -3084,15 +2578,11 @@ describe('InstanceAiController — durable-log SSE replay', () => {
 		eventLog,
 		durableLogMetrics,
 		mock<ModuleRegistry>(),
-		mock<Push>(),
-		mock<UrlService>(),
-		mock<UserRepository>(),
-		mock<CredentialsService>(),
 		mock<ProjectService>(),
 		mock<InstanceAiErrorReporterService>(),
 		mock<Publisher>(),
 		mock<InstanceAiPreferenceCardService>(),
-		globalConfig,
+		mock<GlobalConfig>(),
 		mock<InstanceAiThreadTabsService>(),
 	);
 
