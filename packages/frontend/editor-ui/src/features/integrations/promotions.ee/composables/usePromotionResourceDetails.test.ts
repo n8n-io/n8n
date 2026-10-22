@@ -16,12 +16,15 @@ const restApiContext = { baseUrl: 'https://example.test/rest' };
 vi.mock('@n8n/stores/useRootStore', () => ({ useRootStore: () => ({ restApiContext }) }));
 vi.mock('../promotions.api');
 
-function setup(initial: PromotionPreview) {
+function setup(initial: PromotionPreview, openWorkflowKey?: string) {
 	const preview = shallowRef<PromotionPreview | null>(initial);
 	const graph = computed(() =>
 		preview.value ? buildSelectionGraph(preview.value, 'promote') : null,
 	);
-	return { preview, ...usePromotionResourceDetails(ref('p1'), ref('promote'), preview, graph) };
+	return {
+		preview,
+		...usePromotionResourceDetails(ref('p1'), ref('promote'), preview, graph, ref(openWorkflowKey)),
+	};
 }
 
 const tagDetail = (revision = { before: 'g1-before', after: 'g1-after' }) => ({
@@ -75,7 +78,7 @@ describe('usePromotionResourceDetails', () => {
 		expect(entries.value.get(billingResources.reminders.key)).toEqual({ status: 'missing' });
 	});
 
-	it('should load the changed resources other than workflows of a new preview and drop late answers', async () => {
+	it('should load the changed resources and the open workflow of a new preview and drop late answers', async () => {
 		let answer: (details: PromotionResourceDetails) => void = () => {};
 		vi.mocked(api.getPromotionResourceDetails)
 			.mockReturnValueOnce(
@@ -84,7 +87,7 @@ describe('usePromotionResourceDetails', () => {
 				}),
 			)
 			.mockResolvedValue({ details: [], missingKeys: [] });
-		const { request, entries, preview } = setup(billingPreview());
+		const { request, entries, preview } = setup(billingPreview(), 'workflow:w1');
 
 		const pending = request(['tag:g1']);
 		await waitAllPromises();
@@ -93,9 +96,11 @@ describe('usePromotionResourceDetails', () => {
 		answer({ details: [tagDetail()], missingKeys: [] });
 		await pending;
 
-		// The new preview loaded its own changed resources. The answer for the old one is ignored.
+		// The new preview loaded its own changed resources and the open diff, but not the other
+		// changed workflow. The answer for the old preview is ignored.
 		expect([...entries.value.keys()]).toEqual([
 			'folder:f1',
+			'workflow:w1',
 			'dataTable:t1',
 			'variable:global:API_URL',
 		]);

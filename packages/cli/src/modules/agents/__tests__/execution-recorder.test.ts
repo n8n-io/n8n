@@ -403,6 +403,32 @@ describe('ExecutionRecorder', () => {
 			const record = recorder.getMessageRecord();
 			expect(record.assistantResponse).toBe('Hello world');
 		});
+
+		it('records a guardrail stop after the final text', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.record({ type: 'text-delta', id: 't1', delta: 'Partial' });
+			recorder.record({
+				type: 'finish',
+				finishReason: 'guardrail',
+				guardrail: { code: 'budget.session' },
+			});
+
+			const record = recorder.getMessageRecord();
+			expect(record.guardrailCode).toBe('budget.session');
+			expect(record.timeline.map((event) => event.type)).toEqual(['text', 'guardrail']);
+			expect(record.timeline[1]).toMatchObject({ type: 'guardrail', code: 'budget.session' });
+		});
+
+		it('records no guardrail stop for a normal finish', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.record({ type: 'finish', finishReason: 'stop' });
+
+			const record = recorder.getMessageRecord();
+			expect(record.guardrailCode).toBeNull();
+			expect(record.timeline).toEqual([]);
+		});
 	});
 
 	describe('secret scrubbing', () => {

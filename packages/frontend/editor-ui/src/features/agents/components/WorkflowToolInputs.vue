@@ -240,6 +240,7 @@ watch(fieldsWithErrors, (fields) => emit('update:valid', fields.length === 0), {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
+	padding-block-end: var(--spacing--md);
 }
 
 .field {
