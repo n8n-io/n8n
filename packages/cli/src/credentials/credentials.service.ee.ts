@@ -274,14 +274,6 @@ export class EnterpriseCredentialsService {
 			await this.credentialsService.ensureCanManageEndUserCredential(user, destinationProject.id);
 		}
 
-		await this.policyEnforcementService.enforceCredentialTransfer(
-			{
-				credential: { id: credential.id, type: credential.type },
-				targetProjectId: destinationProject.id,
-			},
-			{ kind: 'user', user },
-		);
-
 		// 6. validate that the destination project has access to all external secret providers
 		if (
 			this.licenseState.isExternalSecretsLicensed() &&
