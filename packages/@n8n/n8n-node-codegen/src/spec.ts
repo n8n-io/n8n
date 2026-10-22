@@ -1,59 +1,46 @@
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
+import { bundle, createConfig } from '@redocly/openapi-core';
 import type { IHttpRequestMethods } from 'n8n-workflow';
-import { parse } from 'yaml';
+import path from 'node:path';
+import { OpenAPIV3 } from 'openapi-types';
 
 import type { ApiParameter, Schema, SpecOperation } from './types';
 
-type YamlObject = Record<string, unknown>;
+type Ref = OpenAPIV3.ReferenceObject;
 
 const SCALAR_TYPES = new Set(['string', 'number', 'integer', 'boolean']);
 
-const HTTP_METHODS: IHttpRequestMethods[] = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'];
+const HTTP_METHODS: Array<[IHttpRequestMethods, OpenAPIV3.HttpMethods]> = [
+	['DELETE', OpenAPIV3.HttpMethods.DELETE],
+	['GET', OpenAPIV3.HttpMethods.GET],
+	['HEAD', OpenAPIV3.HttpMethods.HEAD],
+	['PATCH', OpenAPIV3.HttpMethods.PATCH],
+	['POST', OpenAPIV3.HttpMethods.POST],
+	['PUT', OpenAPIV3.HttpMethods.PUT],
+];
 
-function toHttpMethod(method: string): IHttpRequestMethods {
-	const found = HTTP_METHODS.find((m) => m === method.toUpperCase());
-	if (!found) throw new Error(`Unsupported HTTP method "${method}"`);
-	return found;
+const isRef = (value: object): value is Ref => '$ref' in value;
+
+const resolved = <T extends object>(value: T | Ref | undefined): T | undefined =>
+	value === undefined || isRef(value) ? undefined : value;
+
+function isDocument(value: unknown): value is OpenAPIV3.Document {
+	return typeof value === 'object' && value !== null && 'openapi' in value && 'paths' in value;
 }
 
-const isObject = (value: unknown): value is YamlObject =>
-	typeof value === 'object' && value !== null && !Array.isArray(value);
-
-const asObject = (value: unknown): YamlObject => (isObject(value) ? value : {});
-const asString = (value: unknown) => (typeof value === 'string' ? value : undefined);
-const asArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
-
-const loadYaml = (file: string): unknown => parse(readFileSync(file, 'utf8'));
-
-function deref(node: unknown, fromFile: string): unknown {
-	if (Array.isArray(node)) return node.map((item) => deref(item, fromFile));
-	if (!isObject(node)) return node;
-	const ref = asString(node.$ref);
-	if (ref) {
-		const target = path.resolve(path.dirname(fromFile), ref);
-		return deref(loadYaml(target), target);
-	}
-	return Object.fromEntries(
-		Object.entries(node).map(([key, value]) => [key, deref(value, fromFile)]),
-	);
-}
-
-function toSchema(value: unknown): Schema {
-	const raw = asObject(value);
-	const properties = isObject(raw.properties)
-		? Object.fromEntries(Object.entries(raw.properties).map(([key, v]) => [key, toSchema(v)]))
-		: undefined;
+function toSchema(value: OpenAPIV3.SchemaObject | Ref | undefined): Schema {
+	const schema = resolved(value) ?? {};
 	return {
-		type: asString(raw.type),
-		format: asString(raw.format),
-		enum: Array.isArray(raw.enum) ? raw.enum : undefined,
-		default: raw.default,
-		description: asString(raw.description),
-		readOnly: raw.readOnly === true,
-		items: raw.items === undefined ? undefined : toSchema(raw.items),
-		properties,
-		required: asArray(raw.required).flatMap((r) => (typeof r === 'string' ? [r] : [])),
+		type: schema.type,
+		format: schema.format,
+		enum: schema.enum,
+		default: schema.default,
+		description: schema.description,
+		readOnly: schema.readOnly === true,
+		items: 'items' in schema ? toSchema(schema.items) : undefined,
+		properties:
+			schema.properties &&
+			Object.fromEntries(Object.entries(schema.properties).map(([k, v]) => [k, toSchema(v)])),
+		required: schema.required ?? [],
 	};
 }
 
@@ -63,14 +50,13 @@ export const isFlatObjectList = (schema: Schema) =>
 	Object.values(schema.items.properties ?? {}).length > 0 &&
 	Object.values(schema.items.properties ?? {}).every((s) => SCALAR_TYPES.has(s.type ?? ''));
 
-function readParameters(spec: YamlObject) {
+function readParameters(operation: OpenAPIV3.OperationObject) {
 	const parameters: ApiParameter[] = [];
-	const specParameters = asArray(spec.parameters).map(asObject);
+	const specParameters = (operation.parameters ?? []).flatMap((p) => resolved(p) ?? []);
 	const paginated = specParameters.some((p) => p.in === 'query' && p.name === 'cursor');
 
 	for (const parameter of specParameters) {
-		const name = asString(parameter.name) ?? '';
-		const location = parameter.in;
+		const { name, in: location } = parameter;
 		if (location !== 'path' && location !== 'query') continue;
 		if (paginated && (name === 'cursor' || name === 'limit')) continue;
 		const schema = toSchema(parameter.schema);
@@ -80,15 +66,15 @@ function readParameters(spec: YamlObject) {
 			location,
 			required: location === 'path' || parameter.required === true,
 			schema,
-			description: asString(parameter.description) ?? schema.description,
+			description: parameter.description ?? schema.description,
 		});
 	}
 
-	const requestBody = asObject(spec.requestBody);
-	const jsonBody = asObject(asObject(requestBody.content)['application/json']);
-	if (jsonBody.schema === undefined) return { parameters, paginated };
+	const requestBody = resolved(operation.requestBody);
+	const bodySchema = requestBody?.content['application/json']?.schema;
+	if (!requestBody || !bodySchema) return { parameters, paginated };
 
-	const body = toSchema(jsonBody.schema);
+	const body = toSchema(bodySchema);
 	if (body.type === 'object' && body.properties) {
 		for (const [name, schema] of Object.entries(body.properties)) {
 			if (schema.readOnly) continue;
@@ -115,49 +101,48 @@ function readParameters(spec: YamlObject) {
 	return { parameters, paginated };
 }
 
-function successMediaTypes(responses: unknown, fromFile: string) {
-	const types = new Set<string>();
-	for (const [status, response] of Object.entries(asObject(responses))) {
-		if (!status.startsWith('2')) continue;
-		const ref = asString(asObject(response).$ref);
-		const resolved = ref ? loadYaml(path.resolve(path.dirname(fromFile), ref)) : response;
-		for (const mediaType of Object.keys(asObject(asObject(resolved).content))) types.add(mediaType);
-	}
-	return [...types];
+function successMediaTypes(operation: OpenAPIV3.OperationObject) {
+	return Object.entries(operation.responses)
+		.filter(([status]) => status.startsWith('2'))
+		.flatMap(([, response]) => Object.keys(resolved(response)?.content ?? {}));
 }
 
-function unsupportedReason(spec: YamlObject, responseTypes: string[]) {
-	if (spec.deprecated === true) return 'generator: the API marks this operation as deprecated';
-	const requestType = Object.keys(asObject(asObject(spec.requestBody).content)).find(
-		(type) => type !== 'application/json',
-	);
+function unsupportedReason(operation: OpenAPIV3.OperationObject, responseTypes: string[]) {
+	if (operation.deprecated) return 'generator: the API marks this operation as deprecated';
+	const requestTypes = Object.keys(resolved(operation.requestBody)?.content ?? {});
+	const requestType = requestTypes.find((type) => type !== 'application/json');
 	if (requestType) return `generator: ${requestType} request bodies are not supported`;
 	const responseType = responseTypes.find((type) => type !== 'application/json');
 	if (responseType) return `generator: ${responseType} responses are not supported`;
 	return undefined;
 }
 
-export function readSpecOperations(specDir: string): SpecOperation[] {
-	const root = asObject(loadYaml(path.join(specDir, 'openapi.decorator-routes.generated.yml')));
-	const operations: SpecOperation[] = [];
+export async function readSpecOperations(specDir: string): Promise<SpecOperation[]> {
+	const { bundle: document } = await bundle({
+		ref: path.join(specDir, 'openapi.decorator-routes.generated.yml'),
+		config: await createConfig({}),
+		dereference: true,
+	});
+	const doc: unknown = document.parsed;
+	if (!isDocument(doc)) throw new Error('The public API spec is not an OpenAPI 3 document');
 
-	for (const [apiPath, methods] of Object.entries(asObject(root.paths))) {
-		for (const [method, entry] of Object.entries(asObject(methods))) {
-			const file = path.resolve(specDir, asString(asObject(entry).$ref) ?? '');
-			const { responses, ...request } = asObject(loadYaml(file));
-			const spec = asObject(deref(request, file));
-			const responseTypes = successMediaTypes(responses, file);
+	const operations: SpecOperation[] = [];
+	for (const [apiPath, item] of Object.entries(doc.paths)) {
+		for (const [method, key] of HTTP_METHODS) {
+			const operation = item?.[key];
+			if (!operation) continue;
+			const responseTypes = successMediaTypes(operation);
 			operations.push({
-				operationId: asString(spec.operationId) ?? '',
-				tag: asString(asArray(spec.tags)[0]) ?? 'Other',
-				method: toHttpMethod(method),
+				operationId: operation.operationId ?? '',
+				tag: operation.tags?.[0] ?? 'Other',
+				method,
 				apiPath,
-				summary: asString(spec.summary),
-				description: asString(spec.description),
-				scope: asString(spec['x-required-scope']),
+				summary: operation.summary,
+				description: operation.description,
+				scope: 'x-required-scope' in operation ? String(operation['x-required-scope']) : undefined,
 				emptyResponse: responseTypes.length === 0,
-				unsupported: unsupportedReason(spec, responseTypes),
-				...readParameters(spec),
+				unsupported: unsupportedReason(operation, responseTypes),
+				...readParameters(operation),
 			});
 		}
 	}

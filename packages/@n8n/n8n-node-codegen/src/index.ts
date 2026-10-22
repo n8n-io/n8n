@@ -90,7 +90,7 @@ async function main() {
 	const previousText = readFile(contractPath);
 	const previous = previousText ? parseContract(previousText, CONTRACT_FILE) : emptyContract();
 	const { resolved, pending, excluded, errors } = resolveOperations(
-		readSpecOperations(SPEC_DIR),
+		await readSpecOperations(SPEC_DIR),
 		overrides,
 		previous,
 	);
