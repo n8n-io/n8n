@@ -163,6 +163,29 @@ describe('System agent sessions on user deletion', () => {
 			expect(destroy).toHaveBeenCalledTimes(1);
 		});
 
+		it('deletes the child sessions of delegated runs', async () => {
+			const user = await createMember();
+			const projectId = await teamProject(user);
+			const rootId = await createAssistantSession(user, projectId);
+			const childId = await createAssistantSession(user, projectId);
+			const grandchildId = await createAssistantSession(user, projectId);
+			await threadRepo.update(childId, {
+				parentThreadId: rootId,
+				parentAgentId: INSTANCE_AGENT_ID,
+			});
+			await threadRepo.update(grandchildId, {
+				parentThreadId: childId,
+				parentAgentId: INSTANCE_AGENT_ID,
+			});
+
+			await Container.get(UserService).deleteUser(admin, user.id);
+
+			for (const threadId of [rootId, childId, grandchildId]) {
+				await expectSessionGone(threadId);
+			}
+			expect(destroy).toHaveBeenCalledTimes(3);
+		});
+
 		it('deletes the sessions when the Agents feature is turned off', async () => {
 			const settings = Container.get(AgentsSettingsService);
 			await settings.setEnabled(false);
