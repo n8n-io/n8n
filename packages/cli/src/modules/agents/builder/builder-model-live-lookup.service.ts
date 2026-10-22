@@ -1,4 +1,8 @@
-import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+import {
+	AI_GATEWAY_MANAGED_TAG,
+	getAgentModelProviderCredentialTypes,
+	type AgentModelsUnavailableReason,
+} from '@n8n/api-types';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -9,6 +13,7 @@ import { AiGatewayService } from '@/services/ai-gateway.service';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
 import type { ModelChoice } from './model-lookup.types';
+import { AzureFoundryDeploymentsService } from '../azure-foundry-deployments.service';
 import { mapCredentialForProvider } from '../json-config/credential-field-mapping';
 import { LLM_PROVIDER_DEFAULTS } from '../llm-provider-defaults';
 import { decryptAgentCredential } from '../utils/decrypt-agent-credential';
@@ -21,7 +26,13 @@ export type LiveModelLookupResult =
 			models: ModelChoice[];
 			policy: ModelCatalogPolicy;
 	  }
-	| { status: 'unavailable'; error: unknown; policy: ModelCatalogPolicy };
+	| {
+			status: 'unavailable';
+			error: unknown;
+			policy: ModelCatalogPolicy;
+			/** Set when the user can fix the cause, so the picker can say how. */
+			reason?: AgentModelsUnavailableReason;
+	  };
 
 interface ModelLookupOptions {
 	useEvalModelCatalog?: boolean;
@@ -43,6 +54,7 @@ export class BuilderModelLiveLookupService {
 		private readonly credentialsHelper: CredentialsHelper,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly aiGatewayService: AiGatewayService,
+		private readonly azureFoundryDeploymentsService: AzureFoundryDeploymentsService,
 	) {}
 
 	/**
@@ -87,14 +99,7 @@ export class BuilderModelLiveLookupService {
 			return await this.lookupAiGatewayManagedModels(projectId, provider, user);
 		}
 
-		const usableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
-			user,
-			{ projectId, excludePersonalRoute: true },
-		);
-		const usable = usableCredentials.find((c) => c.id === credentialId);
-		if (!usable || usable.type !== credentialType) {
-			throw new Error(`Credential ${credentialId} not found or not accessible`);
-		}
+		const usable = await this.findUsableCredential(user, projectId, credentialId, [credentialType]);
 		if (options?.useEvalModelCatalog) {
 			return this.getEvalModelCatalog(credentialType, provider, 'curated');
 		}
@@ -105,6 +110,60 @@ export class BuilderModelLiveLookupService {
 		});
 
 		return await this.discoverModels(provider, credentialData);
+	}
+
+	/**
+	 * Lists the deployments of the Microsoft Foundry project on an Azure OpenAI
+	 * credential. The deployment names are the exact model ids, so the list is
+	 * authoritative (`endpoint-only`) and has no static catalog fallback.
+	 */
+	async lookupAzureFoundryDeployments(
+		user: User,
+		projectId: string,
+		credentialId: string,
+	): Promise<LiveModelLookupResult> {
+		const usable = await this.findUsableCredential(
+			user,
+			projectId,
+			credentialId,
+			getAgentModelProviderCredentialTypes('azure-openai'),
+		);
+		const credentialData = await decryptAgentCredential(this.credentialsHelper, usable, {
+			projectId,
+			userId: user.id,
+		});
+
+		const result = await this.azureFoundryDeploymentsService.list(credentialData);
+		if (result.status === 'unavailable') {
+			const { error, reason } = result;
+			return { status: 'unavailable', error, reason, policy: 'endpoint-only' };
+		}
+		return {
+			status: 'success',
+			models: result.deployments.map((deployment) => ({
+				name: deployment.name,
+				value: deployment.id,
+			})),
+			policy: 'endpoint-only',
+		};
+	}
+
+	/** The credential must be usable by the user in the project and have one of the given types. */
+	private async findUsableCredential(
+		user: User,
+		projectId: string,
+		credentialId: string,
+		credentialTypes: readonly string[],
+	) {
+		const usableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
+			user,
+			{ projectId, excludePersonalRoute: true },
+		);
+		const usable = usableCredentials.find((c) => c.id === credentialId);
+		if (!usable || !credentialTypes.includes(usable.type)) {
+			throw new Error(`Credential ${credentialId} not found or not accessible`);
+		}
+		return usable;
 	}
 
 	private getEvalModelCatalog(

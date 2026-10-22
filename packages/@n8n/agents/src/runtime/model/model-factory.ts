@@ -410,7 +410,7 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 	},
 	'azure-openai': {
 		build: (creds, model, fetch) => {
-			const { baseURL, resourceName, apiVersion, apiKey, endpointType, deploymentName } = creds;
+			const { baseURL, resourceName, apiVersion, apiKey, endpointType } = creds;
 			const isEntra = isAzureEntraCredential(creds);
 
 			// Azure AI Foundry exposes an OpenAI-compatible `/openai/v1` base on
@@ -420,9 +420,8 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			// `…/openai/v1/openai`. Drive it as a plain OpenAI-compatible endpoint
 			// so the configured base is used verbatim.
 			if (endpointType === 'foundry') {
-				// The path segment Foundry matches against is the user-chosen
-				// deployment name, which can differ from the model it serves.
-				const deploymentId = deploymentName ?? model;
+				// The model id is the deployment name picked from the project's
+				// deployment list, which is what Foundry matches against.
 				if (isEntra) {
 					// `buildOpenAiCompatible` has no `tokenProvider` slot, so wrap the
 					// transport to inject `Authorization: Bearer <token>` per request.
@@ -431,17 +430,11 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 						'azure-openai',
 						undefined,
 						{ baseURL },
-						deploymentId,
+						model,
 						withBearerAuth(fetch, tokenProvider),
 					);
 				}
-				return buildOpenAiCompatible(
-					'azure-openai',
-					undefined,
-					{ apiKey, baseURL },
-					deploymentId,
-					fetch,
-				);
+				return buildOpenAiCompatible('azure-openai', undefined, { apiKey, baseURL }, model, fetch);
 			}
 
 			// Classic Azure OpenAI (`*.openai.azure.com`, or `resourceName` only).
@@ -452,10 +445,8 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			// selects the Responses API + the `/v1/` path, which Azure rejects with
 			// "API version not supported" for date-based versions.
 			//
-			// Azure deployments are user-named and surfaced in the URL path on
-			// both endpoint types. The catalog model id is not the deployment id,
-			// so prefer the user's `deploymentName` when provided and fall back to
-			// the model id.
+			// Agents no longer accept new Classic credentials, but published agents
+			// keep running: the model id is used as the deployment name.
 			const { createAzure } = require('@ai-sdk/azure') as typeof import('@ai-sdk/azure');
 			let normalizedBaseURL = baseURL;
 			// SDK expects url like `https://resourceName.openai.azure.com/openai`
@@ -477,7 +468,7 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 				useDeploymentBasedUrls: true,
 				fetch,
 				...auth,
-			}).chat(deploymentName ?? model);
+			}).chat(model);
 		},
 	},
 	'aws-bedrock': {

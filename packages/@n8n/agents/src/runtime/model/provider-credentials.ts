@@ -75,13 +75,6 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 			 */
 			endpointType: z.enum(['classic', 'foundry']).optional(),
 			/**
-			 * User-defined Azure deployment name. The catalog model id is not the
-			 * deployment id, so the agent flow must carry this separately. Used by
-			 * both the classic and Foundry branches; on Foundry it overrides the
-			 * model id in the request path.
-			 */
-			deploymentName: z.string().optional(),
-			/**
 			 * Entra OAuth2 fields. The model factory mints a Bearer token from these
 			 * via `@n8n/client-oauth2` (client-credentials), mirroring the LangChain
 			 * Azure node. Mutually exclusive with `apiKey`.

@@ -1,6 +1,10 @@
 import { UserError } from 'n8n-workflow';
 
-import { shouldIncludeAzureModel, listAzureOpenAiModels } from '../providers/azure';
+import {
+	AzureProjectNotFoundError,
+	shouldIncludeAzureModel,
+	listAzureOpenAiModels,
+} from '../providers/azure';
 
 function mockFetch(body: unknown, ok = true, status = 200) {
 	return vi.fn().mockResolvedValue({
@@ -97,6 +101,38 @@ describe('listAzureOpenAiModels', () => {
 		expect(models).toEqual([{ id: 'my-gpt4', name: 'my-gpt4' }]);
 	});
 
+	it('drops Anthropic deployments only when openAiCompatibleOnly is set', async () => {
+		const chat = { chat_completion: 'true' };
+		const body = {
+			value: [
+				{ name: 'gpt', modelName: 'gpt-4.1', modelPublisher: 'OpenAI', capabilities: chat },
+				{
+					name: 'claude',
+					modelName: 'claude-opus-4-1',
+					modelPublisher: 'Anthropic',
+					capabilities: chat,
+				},
+				{ name: 'claude-no-publisher', modelName: 'claude-sonnet-4-5', capabilities: chat },
+				{ name: 'llama', modelName: 'Llama-3.3-70B', modelPublisher: 'Meta', capabilities: chat },
+			],
+		};
+		const options = {
+			baseURL: 'https://my-resource.services.ai.azure.com',
+			project: 'my-project',
+			headers: {},
+		};
+
+		const all = await listAzureOpenAiModels({ ...options, fetch: mockFetch(body) });
+		const openAiOnly = await listAzureOpenAiModels({
+			...options,
+			fetch: mockFetch(body),
+			openAiCompatibleOnly: true,
+		});
+
+		expect(all.map((model) => model.id)).toEqual(['claude', 'claude-no-publisher', 'gpt', 'llama']);
+		expect(openAiOnly.map((model) => model.id)).toEqual(['gpt', 'llama']);
+	});
+
 	it('returns an empty list when the response has no value field', async () => {
 		const fetch = mockFetch({});
 
@@ -156,6 +192,7 @@ describe('listAzureOpenAiModels', () => {
 				fetch,
 			}).catch((error: unknown) => error);
 
+			expect(error).toBeInstanceOf(AzureProjectNotFoundError);
 			expect(error).toBeInstanceOf(UserError);
 			expect(error).toMatchObject({
 				message: 'Project "no-such-project" was not found. Check the project name and try again.',

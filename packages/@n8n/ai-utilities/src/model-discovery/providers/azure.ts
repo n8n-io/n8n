@@ -23,12 +23,35 @@ export interface AzureOpenAiListModelsOptions {
 	headers: Record<string, string>;
 	apiVersion?: string;
 	fetch?: typeof globalThis.fetch;
+	/**
+	 * Drop deployments that only answer on the Anthropic Messages API (Claude),
+	 * for callers that send every request to the OpenAI-compatible endpoint.
+	 */
+	openAiCompatibleOnly?: boolean;
+}
+
+/** The deployments call returned 404 for the requested project. */
+export class AzureProjectNotFoundError extends UserError {
+	constructor(project: string) {
+		super(`Project "${project}" was not found. Check the project name and try again.`, {
+			shouldReport: false,
+		});
+	}
 }
 
 interface AzureDeployment {
 	name?: unknown;
 	modelName?: unknown;
+	modelPublisher?: unknown;
 	capabilities?: Record<string, unknown>;
+}
+
+function isAnthropicDeployment(deployment: AzureDeployment): boolean {
+	const publisher =
+		typeof deployment.modelPublisher === 'string' ? deployment.modelPublisher.toLowerCase() : '';
+	const modelName =
+		typeof deployment.modelName === 'string' ? deployment.modelName.toLowerCase() : '';
+	return publisher === 'anthropic' || modelName.startsWith('claude');
 }
 
 /**
@@ -67,10 +90,7 @@ export async function listAzureOpenAiModels(
 			);
 		}
 		if (response.status === 404) {
-			throw new UserError(
-				`Project "${options.project}" was not found. Check the project name and try again.`,
-				{ shouldReport: false },
-			);
+			throw new AzureProjectNotFoundError(options.project);
 		}
 		const body = await response.text().catch(() => '');
 		throw new Error(
@@ -83,7 +103,9 @@ export async function listAzureOpenAiModels(
 	return (data.value ?? [])
 		.filter(
 			(deployment): deployment is AzureDeployment & { name: string } =>
-				typeof deployment.name === 'string' && shouldIncludeAzureModel(deployment.capabilities),
+				typeof deployment.name === 'string' &&
+				shouldIncludeAzureModel(deployment.capabilities) &&
+				!(options.openAiCompatibleOnly && isAnthropicDeployment(deployment)),
 		)
 		.map((deployment) => ({
 			id: deployment.name,

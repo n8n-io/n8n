@@ -10,14 +10,6 @@ export async function resolveCredentialAwareModelConfig(
 	model: string,
 	credential: string,
 	credentialProvider: AgentCredentialProvider,
-	/**
-	 * Azure OpenAI deployments are user-named in Azure and surfaced in the URL
-	 * path on both endpoint types. The catalog model id is not the deployment
-	 * id, so the agent flow must carry the user's deployment name separately.
-	 * Only meaningful for the `azure-openai` provider — on classic it is
-	 * required, on Foundry it is optional and overrides the model id.
-	 */
-	deploymentName?: string,
 ): Promise<ModelConfig> {
 	const { provider, model: modelName } = splitModelId(model);
 	if (provider === 'google-vertex') {
@@ -55,9 +47,5 @@ export async function resolveCredentialAwareModelConfig(
 		const sdk = catalog?.[provider]?.models[modelName]?.sdk;
 		return { id: model, ...mapped, ...(sdk !== undefined && { sdk }) };
 	}
-	return {
-		id: model,
-		...mapped,
-		...(provider === 'azure-openai' && deploymentName ? { deploymentName } : {}),
-	};
+	return { id: model, ...mapped };
 }
