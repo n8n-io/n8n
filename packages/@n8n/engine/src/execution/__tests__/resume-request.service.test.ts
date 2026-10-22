@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { mintResumeToken } from '../../auth/resume-token';
-import type { EngineLogger } from '../../logging';
 import type { StepMessage, WorkQueue } from '../../queue';
 import { ExecutionNotFoundError, type ExecutionStore } from '../execution-store';
 import type { ExecutionStatus } from '../execution.types';
@@ -58,30 +57,27 @@ function setup({
 		}),
 	} as unknown as ExecutionStore;
 	const stepQueue = { publish: vi.fn() } as unknown as WorkQueue<StepMessage>;
-	const logger = { debug: vi.fn() } as unknown as EngineLogger;
 
 	const service = new ResumeRequestService(
 		executionStore,
 		stepStore,
 		stepQueue,
 		secret,
-		logger,
 		...(serviceHold === 'default' ? [] : [serviceHold]),
 	);
-	return { service, stepStore, stepQueue, loadWaitingSteps, logger };
+	return { service, stepStore, stepQueue, loadWaitingSteps };
 }
 
 const rejection = (code: string) => expect.objectContaining({ code });
 
 describe('ResumeRequestService.locate', () => {
-	it('names the one step that accepts a request, and logs nothing when it held nothing', async () => {
-		const { service, logger } = setup({ waiting: [[accepting('s1'), deadlineOnly]] });
+	it('names the one step that accepts a request', async () => {
+		const { service } = setup({ waiting: [[accepting('s1'), deadlineOnly]] });
 
 		await expect(service.locate(executionId, token)).resolves.toEqual({
 			stepId: 's1',
 			nodeId: 'node-s1',
 		});
-		expect(logger.debug).not.toHaveBeenCalled();
 	});
 
 	it('rejects a token for another execution before it reads a step', async () => {
@@ -98,24 +94,15 @@ describe('ResumeRequestService.locate', () => {
 	});
 
 	it.each(['queued', 'running', 'waiting'] as const)(
-		'holds a request for a %s execution until its step suspends, and logs the hold',
+		'holds a request for a %s execution until its step suspends',
 		async (status) => {
-			const { service, loadWaitingSteps, logger } = setup({
+			const { service, loadWaitingSteps } = setup({
 				waiting: [[], [accepting('s1')]],
 				status,
 			});
 
 			await expect(service.locate(executionId, token)).resolves.toMatchObject({ stepId: 's1' });
 			expect(loadWaitingSteps).toHaveBeenCalledTimes(2);
-			expect(logger.debug).toHaveBeenCalledWith(
-				'engine: held a resume request',
-				expect.objectContaining({
-					executionId,
-					outcome: 'target',
-					stepId: 's1',
-					heldMs: hold.delayMs,
-				}),
-			);
 		},
 	);
 
@@ -137,15 +124,11 @@ describe('ResumeRequestService.locate', () => {
 		await expect(service.locate(executionId, token)).resolves.toMatchObject({ stepId: 's1' });
 	});
 
-	it('answers null once the hold runs out, and logs the hold', async () => {
-		const { service, loadWaitingSteps, logger } = setup();
+	it('answers null once the hold runs out', async () => {
+		const { service, loadWaitingSteps } = setup();
 
 		await expect(service.locate(executionId, token)).resolves.toBeNull();
 		expect(loadWaitingSteps).toHaveBeenCalledTimes(hold.attempts);
-		expect(logger.debug).toHaveBeenCalledWith(
-			'engine: held a resume request',
-			expect.objectContaining({ executionId, outcome: 'no_target', status: 'running' }),
-		);
 	});
 
 	it('answers null at once for an execution that ended, even with a wait not cancelled yet', async () => {

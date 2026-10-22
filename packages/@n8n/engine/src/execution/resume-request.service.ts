@@ -1,8 +1,6 @@
 import { setTimeout as sleep } from 'node:timers/promises';
 
 import { verifyResumeToken } from '../auth/resume-token';
-import type { EngineLogger } from '../logging';
-import { createConsoleLogger } from '../logging';
 import type { StepMessage, WorkQueue } from '../queue';
 import { ExecutionNotFoundError, type ExecutionStore } from './execution-store';
 import { isLiveExecutionStatus, type ExecutionStatus, type StepSlots } from './execution.types';
@@ -62,42 +60,32 @@ export class ResumeRequestService {
 		private readonly stepStore: StepStore,
 		private readonly stepQueue: WorkQueue<StepMessage>,
 		private readonly secret: string,
-		private readonly logger: EngineLogger = createConsoleLogger(),
 		private readonly hold: ResumeHold = DEFAULT_RESUME_HOLD,
 	) {}
 
 	/**
-	 * The one step of the execution that accepts a request, or `null` when none
-	 * does. `null` is an answer, not a refusal: the execution's status says why.
+	 * Verifies the token and returns the execution's execution-bound wait, or
+	 * `null` if it has none. The caller reads the execution's status to learn why.
 	 *
-	 * A request can arrive before the step records its wait. While the
-	 * execution is live, this holds the request for a short time.
+	 * A request can arrive before the step writes its wait. While the execution
+	 * is live, this retries for a short time.
 	 *
 	 * @throws {ResumeRejectedError} `invalid_token`, `not_found`, or `ambiguous`
-	 * when two steps accept a request at once.
+	 * when the execution has two execution-bound waits.
 	 */
 	async locate(executionId: string, token: string): Promise<ResumeTarget | null> {
 		if (!verifyResumeToken(this.secret, token, executionId)) {
 			throw new ResumeRejectedError('invalid_token');
 		}
 
-		for (let attempt = 0; ; attempt++) {
-			// Liveness comes from the execution and not from the step rows. An execution
-			// that ended can still hold a waiting row, so the row alone does not make a
-			// target.
+		for (let attempt = 0; attempt < this.hold.attempts; attempt++) {
+			if (attempt > 0) await sleep(this.hold.delayMs);
 			const status = await this.loadStatus(executionId);
-			const [step] = await this.loadOnlyWait(executionId);
-			if (step && isLive(status)) {
-				this.logHold(executionId, attempt, step.id);
-				return { stepId: step.id, nodeId: step.nodeId };
-			}
-
-			if (!isLive(status) || attempt + 1 >= this.hold.attempts) {
-				this.logHold(executionId, attempt, null, status);
-				return null;
-			}
-			await sleep(this.hold.delayMs);
+			const step = await this.loadExecutionBoundWait(executionId);
+			if (!isLive(status)) return null;
+			if (step) return { stepId: step.id, nodeId: step.nodeId };
 		}
+		return null;
 	}
 
 	/**
@@ -118,7 +106,7 @@ export class ResumeRequestService {
 			throw new ResumeRejectedError('not_waiting');
 		}
 		// The same rule as `locate`: an execution-bound token cannot pick one of two waits.
-		await this.loadOnlyWait(step.executionId);
+		await this.loadExecutionBoundWait(step.executionId);
 
 		const resumed = await this.stepStore.resumeStep(step.id, { kind: 'request', outputs });
 		if (!resumed) throw new ResumeRejectedError('not_waiting');
@@ -133,31 +121,11 @@ export class ResumeRequestService {
 		return step;
 	}
 
-	/**
-	 * The execution's wait that an execution-bound token can resume, as a list of
-	 * at most one.
-	 *
-	 * @throws {ResumeRejectedError} `ambiguous` when there are two.
-	 */
-	private async loadOnlyWait(executionId: string): Promise<StepRecord[]> {
+	/** @throws {ResumeRejectedError} `ambiguous` when the execution has two. */
+	private async loadExecutionBoundWait(executionId: string): Promise<StepRecord | null> {
 		const waits = (await this.stepStore.loadWaitingSteps(executionId)).filter(acceptsRequest);
 		if (waits.length > 1) throw new ResumeRejectedError('ambiguous');
-		return waits;
-	}
-
-	/** Logs a held request on either exit, so a `null` after a hold is traceable. */
-	private logHold(
-		executionId: string,
-		attempt: number,
-		stepId: string | null,
-		status?: ExecutionStatus,
-	): void {
-		if (attempt === 0) return;
-		this.logger.debug('engine: held a resume request', {
-			executionId,
-			heldMs: attempt * this.hold.delayMs,
-			...(stepId === null ? { outcome: 'no_target', status } : { outcome: 'target', stepId }),
-		});
+		return waits[0] ?? null;
 	}
 
 	private async loadStatus(executionId: string): Promise<ExecutionStatus> {
