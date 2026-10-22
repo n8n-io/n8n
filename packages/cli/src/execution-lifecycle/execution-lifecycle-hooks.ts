@@ -43,6 +43,7 @@ import { type ExecutionSaveSettings, toSaveSettings } from './to-save-settings';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 
 import { ExternalHooks } from '@/external-hooks';
+import { MemoryStoppedExecutions } from '@/memory-guard/memory-stopped-executions';
 import { Push } from '@/push';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { isWorkflowIdValid } from '@/utils';
@@ -222,6 +223,20 @@ function hookFunctionsWorkflowEvents(
 	});
 }
 
+/** Must be the first `workflowExecuteAfter` handler, so that every later handler sees a stop. */
+function hookFunctionsMemoryGuard(hooks: ExecutionLifecycleHooks) {
+	const memoryStoppedExecutions = Container.get(MemoryStoppedExecutions);
+	hooks.addHandler('workflowExecuteBefore', function () {
+		memoryStoppedExecutions.onWorkflowExecuteStart(this.executionId);
+	});
+	hooks.addHandler('workflowExecuteResume', function () {
+		memoryStoppedExecutions.onWorkflowExecuteStart(this.executionId);
+	});
+	hooks.addHandler('workflowExecuteAfter', function (fullRunData) {
+		memoryStoppedExecutions.onWorkflowExecuteAfter(this.executionId, fullRunData);
+	});
+}
+
 function hookFunctionsNodeEvents(hooks: ExecutionLifecycleHooks) {
 	const eventService = Container.get(EventService);
 	hooks.addHandler('nodeExecuteBefore', function (nodeName) {
@@ -288,6 +303,7 @@ function hookFunctionsPush(
 	const pushInstance = Container.get(Push);
 	const redactionProxy = Container.get(ExecutionRedactionServiceProxy);
 	const userRepository = Container.get(UserRepository);
+	const memoryStoppedExecutions = Container.get(MemoryStoppedExecutions);
 
 	// Lazy user resolution — resolved once, reused across all node events in this execution
 	let resolvedUser: User | null | undefined; // undefined = not yet resolved
@@ -328,6 +344,9 @@ function hookFunctionsPush(
 	});
 	hooks.addHandler('nodeExecuteAfter', async function (nodeName, data, executionData) {
 		const { executionId } = this;
+		// Do not push node data of a stopped execution. The editor clears it at the end.
+		if (memoryStoppedExecutions.isStopped(executionId)) return;
+
 		// Push data to session which started workflow after each rendered node
 		logger.debug(`Executing hook on node "${nodeName}" (hookFunctionsPush)`, {
 			executionId,
@@ -387,6 +406,9 @@ function hookFunctionsPush(
 			});
 			return;
 		}
+
+		// The guard can stop the execution while the user or the redaction is awaited.
+		if (memoryStoppedExecutions.isStopped(executionId)) return;
 
 		// We send the node execution data as a WS binary message to the FE. Not
 		// because it's more efficient on the wire: the content is a JSON string
@@ -519,13 +541,16 @@ function hookFunctionsSaveProgress(
 	{ saveSettings }: HooksSetupParameters,
 ) {
 	if (!saveSettings.progress) return;
+	const memoryStoppedExecutions = Container.get(MemoryStoppedExecutions);
 	hooks.addHandler('nodeExecuteAfter', async function (nodeName, data, executionData) {
+		if (memoryStoppedExecutions.isStopped(this.executionId)) return;
 		await saveExecutionProgress(
 			this.workflowData.id,
 			this.executionId,
 			nodeName,
 			data,
 			executionData,
+			memoryStoppedExecutions.enabled,
 		);
 	});
 }
@@ -840,6 +865,7 @@ export function getLifecycleHooksForSubExecutions(
 ): ExecutionLifecycleHooks {
 	const hooks = new ExecutionLifecycleHooks(mode, executionId, workflowData);
 	const saveSettings = toSaveSettings(workflowData.settings);
+	hookFunctionsMemoryGuard(hooks);
 	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName);
 	hookFunctionsNodeEvents(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
@@ -1024,6 +1050,7 @@ export function getLifecycleHooksForRegularMain(
 		source,
 		suppressErrorWorkflow,
 	};
+	hookFunctionsMemoryGuard(hooks);
 	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName, source, telemetryMetadata);
 	hookFunctionsNodeEvents(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
