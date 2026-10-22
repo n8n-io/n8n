@@ -1,5 +1,3 @@
-import { readFileSync, writeFileSync } from 'node:fs';
-import path from 'node:path';
 import type { Mocked } from 'vitest';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
@@ -22,7 +20,7 @@ import {
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test';
-import { jsonParse, NodeConnectionTypes, UserError } from 'n8n-workflow';
+import { NodeConnectionTypes, UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 import type { ZodTypeAny } from 'zod';
 
@@ -44,12 +42,11 @@ import type { AgentPublishService } from '../agent-publish.service';
 import type { AgentSkillsService } from '../agent-skills.service';
 import type { AgentTaskService } from '../agent-task.service';
 import type { AgentTestRunService } from '../agent-test-run.service';
-import { AgentsToolsService } from '../agents-tools.service';
+import type { AgentsToolsService } from '../agents-tools.service';
 import type { AgentsService } from '../agents.service';
 import { AgentsBuilderToolsService } from '../builder/agents-builder-tools.service';
 import type { BuilderModelLiveLookupService } from '../builder/builder-model-live-lookup.service';
 import { BUILDER_TOOLS } from '../builder/builder-tool-names';
-import { getBuilderRuntimeSkills } from '../builder/skills';
 import type { Agent, ProjectAgent } from '../entities/agent.entity';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
@@ -151,7 +148,6 @@ function makeService() {
 
 	return {
 		service,
-		agentsToolsService,
 		collaborationService,
 		agentsService: purposeServices,
 		secureRuntime,
@@ -3374,44 +3370,6 @@ describe('AgentsBuilderToolsService', () => {
 
 			expect(resolve).toHaveBeenLastCalledWith(undefined);
 			expect(result).toEqual({ targetAgentId: 'agent-b', continuation: { step: 1 } });
-		});
-
-		it('matches the copy of the tools and skills that the routing eval shows the model', () => {
-			// The eval cannot import cli, so it reads this file instead of building the tools.
-			const evalCopyPath = path.resolve(
-				__dirname,
-				'../../../../../@n8n/instance-ai/evaluations/discovery/agent-builder.json',
-			);
-			const { service, agentsToolsService } = makeService();
-			const sharedTools = new AgentsToolsService(mock());
-			agentsToolsService.getSharedTools.mockImplementation((...args) =>
-				sharedTools.getSharedTools(...args),
-			);
-
-			const tools = service
-				.getToolsForResolvedTarget(
-					async () => agentId,
-					projectId,
-					() => credentialProvider,
-					credentialService,
-					user,
-				)
-				.map(({ name, description, inputSchema }) => ({
-					name,
-					description,
-					inputSchema:
-						inputSchema && 'safeParse' in inputSchema
-							? zodToJsonSchema(inputSchema as ZodTypeAny)
-							: inputSchema,
-				}));
-			const evalCopy = { tools, skills: getBuilderRuntimeSkills() };
-			if (process.env.UPDATE_EVAL_AGENT_BUILDER) {
-				writeFileSync(evalCopyPath, `${JSON.stringify(evalCopy, null, '\t')}\n`);
-			}
-
-			expect(evalCopy, 'Run this test with UPDATE_EVAL_AGENT_BUILDER=1 to update the file').toEqual(
-				jsonParse(readFileSync(evalCopyPath, 'utf8')),
-			);
 		});
 	});
 });

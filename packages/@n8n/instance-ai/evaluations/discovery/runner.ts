@@ -402,8 +402,7 @@ async function stopAtAgentBuild(
 
 /**
  * A copy of the builder tools and reference skills that the agents module in packages/cli
- * supplies, which this package cannot import. A test in agents-builder-tools.service.test.ts
- * keeps the copy current.
+ * supplies, which this package cannot import. Nothing updates the copy automatically.
  */
 const agentBuilderFileSchema = z.object({
 	tools: z.array(
