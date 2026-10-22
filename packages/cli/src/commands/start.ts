@@ -324,6 +324,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		// that a wiring error stops startup instead of the first execution.
 		const { RunDataTracker } = await import('@/memory-guard/run-data-tracker.js');
 		Container.get(RunDataTracker);
+		const { MemoryGuardService } = await import('@/memory-guard/memory-guard.service.js');
+		Container.get(MemoryGuardService).init();
 		this.logger.debug('Memory guard init complete');
 	}
 
