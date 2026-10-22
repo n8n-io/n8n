@@ -1,0 +1,33 @@
+packages/@n8n/db/src/migrations/common/1792584485672-AddAgentExecutionUsageAndLinks.ts
+  s_234832aa318d60::t_67ef2675f247a8 28
+  s_234832aa318d60::t_3f26ac01017323 38
+  s_234832aa318d60::t_a24540c1f6790a 4-9,16-23,34
+  s_234832aa318d60::t_e3bea858c8bdc4 10,12-13,15
+  s_234832aa318d60::t_301f5bc2b21fe1 1-3,11,14,32-33,41-42
+  s_234832aa318d60::t_3c8248d0d5bc7f 24-27,29-31,35-37,39-40
+packages/@n8n/db/src/migrations/sqlite/1792584485672-AddAgentExecutionUsageAndLinks.ts
+  s_234832aa318d60::t_cce94266cc60b4 1-6
+packages/cli/test/migration/1792584485672-add-agent-execution-usage-and-links.test.ts
+  s_234832aa318d60::t_301f5bc2b21fe1 1-104,106-122,125-129,131-152,154-200
+  s_234832aa318d60::t_3f26ac01017323 105,123-124,130,153
+packages/cli/src/modules/agents/entities/agent-execution.entity.ts
+  s_234832aa318d60::t_c14bd26abe342a 58-63,103-108,112-117
+  s_234832aa318d60::t_67ef2675f247a8 52-55
+  s_234832aa318d60::t_301f5bc2b21fe1 28,47-51,56-57,64-65,98,102,109-111,118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e5c40a3c49db63460eb39b20ec01222cff4d5daf",
+  "prompts": {},
+  "sessions": {
+    "s_234832aa318d60": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be3f1a42-934b-41b5-b566-dced269d16b9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
