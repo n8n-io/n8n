@@ -1,0 +1,143 @@
+packages/frontend/editor-ui/src/features/agents/components/interactive/ApprovalCard.vue
+  s_23578dfeac2a25::t_b8d3c62df6e8aa 75-76,87-88
+  s_ae75cca2e8fdf3::t_eec4d72483a4b9 15-16,22,25,27,37-48,69
+  s_23578dfeac2a25::t_b482adf016d5c6 8,94
+  s_23578dfeac2a25::t_564c7b6454eae6 80,84,86
+  s_67c77664b3c460::t_74fd13f334a635 23-24,26,70
+  s_23578dfeac2a25::t_314ba13ff7b8f5 13-14,19,77,79
+  s_23578dfeac2a25::t_0b4930829a5ee4 5-7
+  s_23578dfeac2a25::t_a4a3b92b7b5a93 73-74
+  s_23578dfeac2a25::t_62e109b91d4e22 78
+  s_23578dfeac2a25::t_83d83e5c4d19f9 81-83
+  s_23578dfeac2a25::t_56f7bd124bcb3b 85
+  s_23578dfeac2a25::t_7702ffd05f1b31 89-90
+  s_23578dfeac2a25::t_f48067855a8777 92-93
+  s_23578dfeac2a25::t_2ab3d3954576cb 95-97
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelinePanel.vue
+  s_ae75cca2e8fdf3::t_1e26ffe110d9de 87-90,97,428
+  s_ae75cca2e8fdf3::t_e6f885ea47bb2c 2,76-79,86,91-96,98-112,260,356,429
+packages/frontend/@n8n/design-system/src/components/N8nApprovalCard/ApprovalCard.test.ts
+  s_ae75cca2e8fdf3::t_954c59c934768a 44-45,48-49,51-53,62,64,66,77,80,88-89
+  s_ae75cca2e8fdf3::t_9d2a3461737b93 13-30
+  s_ae75cca2e8fdf3::t_96ff6a56f3e884 92,97-99
+  s_ae75cca2e8fdf3::t_ccef648717e672 31-38
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineTable.spec.ts
+  s_ae75cca2e8fdf3::t_45992039411801 87-107,117-142
+  s_ae75cca2e8fdf3::t_cec15d0b7278eb 108-116
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_ae75cca2e8fdf3::t_88b6c5353ccaf3 333-337
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionTimelinePanel.spec.ts
+  s_ae75cca2e8fdf3::t_e67c165dee6216 3,5,12-25,50,183-184,190-236,240,243
+  s_ae75cca2e8fdf3::t_9b986b6c983d4e 237-239,241-242
+packages/frontend/@n8n/design-system/src/components/N8nApprovalCard/ApprovalCard.vue
+  s_c086648a73d2eb::t_b21aededeff43a 5,166-174,209,211-212,215
+  s_ae75cca2e8fdf3::t_0faa1d2f7f487d 148-149,152-154,195
+  s_ae75cca2e8fdf3::t_cc5231120eee4e 2,134-140,228,230,241,245-247,273-274,341-342,344,350-352,356,359-363,365,372
+  s_67c77664b3c460::t_320181a96a0055 67-68,74,158-161,268
+  s_27bd7530af8e0e::t_8c772c3e514e24 198
+  s_67c77664b3c460::t_355f19e961e746 271
+  s_67c77664b3c460::t_66e938b9838054 7,262-267,269-270,272
+  s_27bd7530af8e0e::t_daa54911b55627 280-281,318
+  s_ae75cca2e8fdf3::t_fd951fd287b633 65-66,73
+  s_ae75cca2e8fdf3::t_bbddc332c306bd 150-151
+  s_27bd7530af8e0e::t_740b9e4d4307c5 290,299,302,311-316,384
+  s_67c77664b3c460::t_2827f384064e6b 157
+  s_c086648a73d2eb::t_341ee0c0057020 175
+  s_27bd7530af8e0e::t_6e676d69db7b00 199-201
+  s_27bd7530af8e0e::t_184100aec7f910 287-289
+  s_27bd7530af8e0e::t_a4a72bd98ae8a9 291-293,296-298
+  s_27bd7530af8e0e::t_23a07b80da0d47 300-301
+  s_27bd7530af8e0e::t_ab18c2e759bd63 303-305,308-310
+  s_27bd7530af8e0e::t_2609995bcd121c 317
+  s_27bd7530af8e0e::t_921fd705639a2c 382-383
+  s_27bd7530af8e0e::t_1391e57ad299e0 385-387
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineTable.vue
+  s_ae75cca2e8fdf3::t_b70e9295e1fe1c 4,17-18,291-292,331-332
+packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionBackgroundTaskItem.vue
+  s_ae75cca2e8fdf3::t_baefa6eb1fdb92 5-7,15-16,40-55,76-77,80,84,222
+  s_ae75cca2e8fdf3::t_da6c85a385f3af 81
+  s_ae75cca2e8fdf3::t_d2bd74436870f4 3
+  s_ae75cca2e8fdf3::t_3bb9fa7ac64149 68,88-94,96-122,137-143
+  s_67c77664b3c460::t_acf68897ab8275 82-83
+  s_ae75cca2e8fdf3::t_27ccd3af5bd03a 69-72,74-75,85,220-221,223-227,229
+  s_23578dfeac2a25::t_ce6b9cfcad355c 4,22,79
+  s_ae75cca2e8fdf3::t_82f33e391bf804 228
+  s_23578dfeac2a25::t_d060e5ffc16d94 21
+  s_ae75cca2e8fdf3::t_61184d81b0f45f 86-87
+  s_23578dfeac2a25::t_ead9c3f137b1ed 78
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionBackgroundTaskItem.test.ts
+  s_ae75cca2e8fdf3::t_98fe23457de016 2-3,20-35,41,43,46-51,53-73,77-88,91-96,99-115,117,119,122-134
+  s_ae75cca2e8fdf3::t_adb86f246a4fad 4,52
+  s_ae75cca2e8fdf3::t_8ae51e71ca4622 36-38
+  s_ae75cca2e8fdf3::t_01148ba06ed87e 135-136
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineRow.vue
+  s_ae75cca2e8fdf3::t_e247bc1095b7d1 2,16-17,55,57,60
+  s_23578dfeac2a25::t_851b2adad217e9 59
+  s_23578dfeac2a25::t_82a539634ef855 58
+packages/frontend/@n8n/design-system/src/components/N8nApprovalCard/ApprovalCard.stories.ts
+  s_ae75cca2e8fdf3::t_3cf82403fe485f 26-27
+  s_ae75cca2e8fdf3::t_0f673a1828337a 24-25,28,30-34
+  s_ae75cca2e8fdf3::t_f1ee5b6f965398 20-23
+  s_ae75cca2e8fdf3::t_084b10ca37cf33 29
+packages/frontend/@n8n/design-system/src/css/mixins/motion.scss
+  s_27bd7530af8e0e::t_a94f611146aafb 290-313
+packages/frontend/editor-ui/src/features/agents/stubAgentSession.store.ts
+  s_ae75cca2e8fdf3::t_f04a5d7ee66b25 5-6,9-10,40,220-221,223,234-243,254-274,293,319,337
+  s_38f7795ae2c01a::t_d82fe765f68894 173-200,227-229,247-249
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "11c52e4dfedf04ad8920d049bfa0d5f01ee86b57",
+  "prompts": {},
+  "sessions": {
+    "s_23578dfeac2a25": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a16460-407b-76ed-9b86-53c7bfd426c4",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_27bd7530af8e0e": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a16473-2530-76ed-9b86-53ca5fc226d7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_38f7795ae2c01a": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a16457-3658-76ed-9b86-53c5eae74411",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_67c77664b3c460": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a16434-177c-76ed-9b86-53c38c731113",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_ae75cca2e8fdf3": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a163f9-3159-76ed-9b86-53bc0ea3fecc",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_c086648a73d2eb": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a16426-ec8d-76ed-9b86-53bfd3a039a1",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
