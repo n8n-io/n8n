@@ -49,6 +49,7 @@ export function traceModelRequests(
 		let span: Span | undefined;
 		try {
 			const attributes: Record<string, AttributeValue> = {
+				'gen_ai.system': provider,
 				...(providerName ? { [GEN_AI_ATTR.PROVIDER_NAME]: providerName } : {}),
 				[GEN_AI_ATTR.REQUEST_MODEL]: model,
 			};

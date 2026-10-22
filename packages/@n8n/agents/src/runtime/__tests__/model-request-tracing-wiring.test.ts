@@ -103,6 +103,7 @@ describe('model request tracing wiring', () => {
 		expect(requestSpans(spans)).toEqual([
 			expect.objectContaining({
 				attributes: expect.objectContaining({
+					'gen_ai.system': 'anthropic',
 					'gen_ai.provider.name': 'anthropic',
 					'gen_ai.request.model': 'claude-sonnet-4-5',
 				}),
