@@ -187,13 +187,15 @@ async function handleClickExecute() {
 		opacity: 0;
 	}
 
-	&.interactive.hovered button {
+	&.interactive.hovered button,
+	& button:focus-visible {
 		opacity: 1;
 		translate: 0 0;
 		pointer-events: all;
 	}
 
-	&.interactive.hovered button[aria-disabled='true'] {
+	&.interactive.hovered button[aria-disabled='true'],
+	& button[aria-disabled='true']:focus-visible {
 		opacity: 0.5;
 	}
 
@@ -213,7 +215,8 @@ async function handleClickExecute() {
 		translate 0.1s ease-in,
 		opacity 0.1s ease-in;
 
-	.container.interactive.hovered & {
+	.container.interactive.hovered &,
+	.container:focus-within & {
 		translate: -12px 0;
 		opacity: 0;
 	}

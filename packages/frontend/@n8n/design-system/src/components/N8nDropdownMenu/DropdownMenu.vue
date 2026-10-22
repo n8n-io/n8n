@@ -14,6 +14,7 @@ import {
 	DropdownMenuPortalTargetKey,
 	DropdownMenuSubMaxHeightKey,
 	DropdownMenuWidthKey,
+	DropdownMenuExtraPopperClassKey,
 	DropdownMenuExternalNavigationKey,
 	type DropdownMenuExternalNavigationController,
 	type DropdownMenuItemProps,
@@ -75,6 +76,11 @@ provide(
 provide(
 	DropdownMenuWidthKey,
 	computed(() => props.width),
+);
+
+provide(
+	DropdownMenuExtraPopperClassKey,
+	computed(() => props.extraPopperClass),
 );
 
 // Handle controlled/uncontrolled state

@@ -1186,6 +1186,7 @@ describe('InstanceAiSetupCredential', () => {
 		await flushPromises();
 		await fireEvent.update(view.getByLabelText('API key'), 'test-key');
 		await userEvent.click(view.getByRole('button', { name: 'Save' }));
+		expect(mockedStore(useCredentialsStore).createNewCredential).toHaveBeenCalledTimes(1);
 		const help = view.getByRole('button', { name: 'Help me find my API key' });
 		expect(help).toHaveAttribute('aria-disabled', 'true');
 		expect(help).not.toBeDisabled();

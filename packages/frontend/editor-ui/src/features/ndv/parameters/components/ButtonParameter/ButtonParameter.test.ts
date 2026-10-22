@@ -191,9 +191,7 @@ describe('ButtonParameter', () => {
 		const user = userEvent.setup();
 		editorContext.askAi.value = state.aiAvailable ?? true;
 		if (state.hasExecutionData === false) {
-			vi.mocked(injectNDVStore).mockReturnValue({
-				value: { ndvInputData: [], activeNode: { name: 'TestNode', parameters: {} } },
-			} as ReturnType<typeof injectNDVStore>);
+			injectNDVStore().value.ndvInputData = [];
 		}
 		const { getByRole, emitted } = createComponentRenderer(ButtonParameter)({
 			pinia: createTestingPinia(),
