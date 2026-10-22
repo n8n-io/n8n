@@ -11589,10 +11589,10 @@ describe('AgentRuntime — model error classification', () => {
 		const error = depletedGatewayError();
 		streamText.mockReturnValue({
 			stream: makeChunkStream([]),
-			finishReason: Promise.reject(error),
-			usage: Promise.reject(error),
-			response: Promise.reject(error),
-			toolCalls: Promise.reject(error),
+			finishReason: silentReject(error),
+			usage: silentReject(error),
+			response: silentReject(error),
+			toolCalls: silentReject(error),
 		});
 		const { runtime } = createRuntime();
 
@@ -11625,6 +11625,23 @@ describe('AgentRuntime — model error classification', () => {
 		const result = await runtime.generate('hi');
 
 		expect(result.finishReason).toBe('error');
+		expect(result.guardrail).toBeUndefined();
+	});
+
+	it('lets cancellation win when the run aborts while the call rejects', async () => {
+		const controller = new AbortController();
+		generateText.mockImplementation(async () => {
+			controller.abort();
+			throw depletedGatewayError();
+		});
+		const { runtime } = createRuntime();
+
+		const result = await runtime.generate('hi', {
+			abortSignal: controller.signal,
+			classifyModelError: classifyAsCredits,
+		});
+
+		expect(result.finishReason).not.toBe('guardrail');
 		expect(result.guardrail).toBeUndefined();
 	});
 });

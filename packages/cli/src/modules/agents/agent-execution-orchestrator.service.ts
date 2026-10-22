@@ -1328,6 +1328,7 @@ export class AgentExecutionOrchestratorService {
 					budget: runtime.budget,
 					sessionId: memoryScope.threadId,
 					agentId: config.agentId,
+					...(runtime.modelCredentialGatewayManaged ? { modelCredentialGatewayManaged: true } : {}),
 					...(config.chatSurface === 'preview' && config.onBudgetNotice
 						? { onNotice: config.onBudgetNotice }
 						: {}),
@@ -1724,6 +1725,7 @@ export class AgentExecutionOrchestratorService {
 					budget: config.budget,
 					sessionId: threadId,
 					agentId,
+					...(config.modelCredentialGatewayManaged ? { modelCredentialGatewayManaged: true } : {}),
 					...(config.chatSurface === 'preview' && config.onBudgetNotice
 						? { onNotice: config.onBudgetNotice }
 						: {}),

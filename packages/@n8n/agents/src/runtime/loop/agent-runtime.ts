@@ -1115,6 +1115,9 @@ export class AgentRuntime {
 			try {
 				turn = await sink.callModel(modelCallContext);
 			} catch (error) {
+				// A cancellation wins over error classification: an aborted run
+				// must end on the existing cancelled path, not as a guardrail stop.
+				this.assertNotAborted(ctx.abortScope);
 				// A host-mapped failure (e.g. a gateway 402) ends the run like a
 				// guardrail stop instead of a generic error finish.
 				const stop = ctx.options?.classifyModelError?.(error);

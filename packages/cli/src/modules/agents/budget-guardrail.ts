@@ -124,6 +124,13 @@ export interface BudgetAttachInput {
 	sessionId?: string;
 	agentId?: string;
 	/**
+	 * Set when the run's model credential is the Gateway credits marker: the
+	 * gateway 402 classifier attaches, so a depleted wallet ends the run with
+	 * `budget.credits`. Own-key runs never attach it — a provider's own 402
+	 * must keep its provider error, not the n8n Gateway wallet stop.
+	 */
+	modelCredentialGatewayManaged?: boolean;
+	/**
 	 * Saved agent to email when the month total crosses the alert.
 	 * A workflow run sets this to the agent the node targets. Inline workflow
 	 * runs have no saved agent, so they leave it unset.
@@ -273,9 +280,11 @@ function attachGuardrails<T extends RunOptions & ExecutionOptions>(
 }
 
 /**
- * Appends the budget hook when a bucket is on, and always attaches the gateway
- * 402 classifier: a depleted wallet ends the run with `budget.credits` from
- * the gateway's own rejection, so no wallet read runs before a model call.
+ * Appends the budget hook when a bucket is on. For a Gateway credits model it
+ * also attaches the 402 classifier: a depleted wallet ends the run with
+ * `budget.credits` from the gateway's own rejection, so no wallet read runs
+ * before a model call. Own-key runs get no classifier — a provider's own 402
+ * keeps its provider error.
  */
 export function withBudgetGuardrail<T extends RunOptions & ExecutionOptions>(
 	options: T,
@@ -302,6 +311,6 @@ export function withBudgetGuardrail<T extends RunOptions & ExecutionOptions>(
 				? attachGuardrails(options, [], sink)
 				: options
 			: attachGuardrails(options, hooks, sink);
-	if (withHooks.classifyModelError) return withHooks;
+	if (!input.modelCredentialGatewayManaged || withHooks.classifyModelError) return withHooks;
 	return { ...withHooks, classifyModelError: classifyGatewayError };
 }

@@ -499,6 +499,7 @@ export class AgentWorkflowExecutionService {
 				// month bucket. The email uses the saved agent the node targets.
 				agentId: telemetryAgentId,
 				...(savedAgentId ? { alertAgentId: savedAgentId } : {}),
+				...(params.modelCredentialGatewayManaged ? { modelCredentialGatewayManaged: true } : {}),
 			},
 		);
 	}

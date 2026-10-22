@@ -377,6 +377,9 @@ export class SubAgentRunner {
 					sessionId: context.rootSessionId,
 					agentId: runtimeSource.source.sourceId,
 					rootSessionCapUsd: context.rootSessionCapUsd,
+					...(reconstructed.modelCredentialGatewayManaged
+						? { modelCredentialGatewayManaged: true }
+						: {}),
 					...(forwardBudgetNotice !== undefined ? { onNotice: forwardBudgetNotice } : {}),
 				},
 			);

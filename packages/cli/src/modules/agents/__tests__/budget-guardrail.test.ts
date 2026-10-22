@@ -59,14 +59,14 @@ describe('withBudgetGuardrail', () => {
 		Container.reset();
 	});
 
-	it('attaches only the gateway error classifier when budget is missing or turned off', () => {
+	it('attaches nothing for an own-key run when budget is missing or turned off', () => {
 		const noBudget = withBudgetGuardrail(base, {
 			ledger,
 			sessionId: 'thread-1',
 			agentId: 'agent-1',
 		});
 		expect(noBudget.guardrails).toBeUndefined();
-		expect(noBudget.classifyModelError).toBe(classifyGatewayError);
+		expect(noBudget.classifyModelError).toBeUndefined();
 
 		const off = withBudgetGuardrail(base, {
 			ledger,
@@ -75,10 +75,11 @@ describe('withBudgetGuardrail', () => {
 			agentId: 'agent-1',
 		});
 		expect(off.guardrails).toBeUndefined();
-		expect(off.classifyModelError).toBe(classifyGatewayError);
+		expect(off.classifyModelError).toBeUndefined();
+		expect(off).toBe(base);
 	});
 
-	it('attaches only the gateway error classifier when every amount is 0', () => {
+	it('attaches nothing when every amount is 0', () => {
 		const attached = withBudgetGuardrail(base, {
 			ledger,
 			budget: { enabled: true, monthlyBudgetUsd: 0, sessionCostCapUsd: 0 },
@@ -87,7 +88,25 @@ describe('withBudgetGuardrail', () => {
 		});
 
 		expect(attached.guardrails).toBeUndefined();
-		expect(attached.classifyModelError).toBe(classifyGatewayError);
+		expect(attached.classifyModelError).toBeUndefined();
+		expect(attached).toBe(base);
+	});
+
+	it('attaches the classifier only for a Gateway credits model', () => {
+		const ownKey = withBudgetGuardrail(base, {
+			ledger,
+			sessionId: 'thread-1',
+			agentId: 'agent-1',
+		});
+		expect(ownKey.classifyModelError).toBeUndefined();
+
+		const gateway = withBudgetGuardrail(base, {
+			ledger,
+			sessionId: 'thread-1',
+			agentId: 'agent-1',
+			modelCredentialGatewayManaged: true,
+		});
+		expect(gateway.classifyModelError).toBe(classifyGatewayError);
 	});
 
 	it('maps a gateway 402 to a budget.credits stop through the attached classifier', () => {
@@ -95,6 +114,7 @@ describe('withBudgetGuardrail', () => {
 			ledger,
 			sessionId: 'thread-1',
 			agentId: 'agent-1',
+			modelCredentialGatewayManaged: true,
 		});
 
 		const depleted = new APICallError({
