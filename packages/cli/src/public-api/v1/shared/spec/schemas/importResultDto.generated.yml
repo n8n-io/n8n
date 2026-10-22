@@ -235,12 +235,18 @@ properties:
         items:
           type: string
         description: Source credential ids for which credentials were created in the target project with bundled expression values, but the package does not confirm that it carries all source data. These credentials need input. The import does not publish the imported version of workflows that use them (`incomplete-credential`).
+      updated:
+        type: array
+        items:
+          type: string
+        description: Source credential ids whose matched credential this import changed under `credentialConflictPolicy=overwrite`. These ids are not listed under `matched`. Empty for other policies.
     required:
       - matched
       - stubbed
       - seeded
       - incomplete
-    description: Source credential ids grouped by whether they matched an existing credential or were created as empty stubs, seeded credentials, or incomplete credentials. Full source→target id mapping is in `bindings.credentials`.
+      - updated
+    description: Source credential ids grouped by whether they matched an existing credential, were created as empty stubs, seeded credentials, or incomplete credentials, or matched a credential that this import updated. Full source→target id mapping is in `bindings.credentials`.
   dataTables:
     type: object
     properties:

@@ -1,5 +1,8 @@
+import type { AgentKnowledgeUsageTracker } from '../../agent-knowledge-usage-tracker';
 import type { AgentMessageSteeringService } from '../../agent-message-steering.service';
 import {
+	encodeEpisodicScopeMetadata,
+	EPISODIC_SCOPE_METADATA_KEY,
 	INLINE_SUB_AGENT_ID,
 	type BuiltAgent,
 	type BuiltTelemetry,
@@ -127,6 +130,7 @@ describe('SubAgentRunner', () => {
 	let runner: SubAgentRunner;
 	let childAgent: Mocked<BuiltAgent>;
 	let agentExecutionService: Mocked<AgentExecutionService>;
+	let knowledgeUsageTracker: Mocked<AgentKnowledgeUsageTracker>;
 	let logger: Mocked<Logger>;
 	let checkpointStorage: Mocked<N8NCheckpointStorage>;
 	let credentialProvider: Mocked<CredentialProvider>;
@@ -149,6 +153,7 @@ describe('SubAgentRunner', () => {
 		);
 		agentExecutionService.finalizeExecution.mockResolvedValue('agent-execution-1');
 		checkpointStorage = mock<N8NCheckpointStorage>();
+		knowledgeUsageTracker = mock<AgentKnowledgeUsageTracker>();
 		logger = mock<Logger>();
 		runner = new SubAgentRunner(
 			sourceResolver,
@@ -159,6 +164,7 @@ describe('SubAgentRunner', () => {
 				mock<AgentMessageQueueService>(),
 				mock<AgentMessageSteeringService>(),
 				toolApprovalService,
+				knowledgeUsageTracker,
 			),
 			checkpointStorage,
 			logger,
@@ -191,6 +197,74 @@ describe('SubAgentRunner', () => {
 		});
 
 		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledTimes(1);
+	});
+
+	it('sends the knowledge use of the child run when it ends', async () => {
+		await runner.run(spawnRequest, {
+			parentAgentId,
+			projectId,
+			credentialProvider,
+			runType: 'production',
+		});
+
+		expect(knowledgeUsageTracker.sendRunUsage).toHaveBeenCalledTimes(1);
+		expect(knowledgeUsageTracker.sendRunUsage).toHaveBeenCalledWith(
+			'child-run-1',
+			expect.objectContaining({ runType: 'production' }),
+		);
+	});
+
+	it.each([
+		['a disabled decision', { disabled: true as const }],
+		['a resolved scope', { writeScopeId: 'slack:T1:C1', readScopeIds: ['slack:T1:C1'] }],
+	])(
+		'keeps the parent turn episodic scope for the child: %s',
+		async (_label, parentEpisodicScope) => {
+			agentExecutionService.startExecutionRecording.mockImplementation(
+				async (_params, startedAt) => ({
+					executionId: 'agent-execution-1',
+					startedAt,
+					inputMessageIds: ['message-1'],
+				}),
+			);
+			agentExecutionService.finalizeExecution.mockResolvedValue('agent-execution-1');
+
+			await runner.run(
+				{ ...spawnRequest, parentResourceId: 'task:task-1' },
+				{
+					parentAgentId,
+					projectId,
+					credentialProvider,
+					runType: 'production',
+					parentEpisodicScope,
+				},
+			);
+
+			const options = childAgent.stream.mock.calls[0][1];
+			expect(options?.persistence?.hostMetadata).toMatchObject(
+				encodeEpisodicScopeMetadata(parentEpisodicScope),
+			);
+		},
+	);
+
+	it('leaves a task resource child on its own scope when the parent decided nothing', async () => {
+		agentExecutionService.startExecutionRecording.mockImplementation(
+			async (_params, startedAt) => ({
+				executionId: 'agent-execution-1',
+				startedAt,
+				inputMessageIds: ['message-1'],
+			}),
+		);
+		agentExecutionService.finalizeExecution.mockResolvedValue('agent-execution-1');
+
+		await runner.run(
+			{ ...spawnRequest, parentResourceId: 'task:task-1' },
+			{ parentAgentId, projectId, credentialProvider, runType: 'production' },
+		);
+
+		expect(childAgent.stream.mock.calls[0][1]?.persistence?.hostMetadata).not.toHaveProperty(
+			EPISODIC_SCOPE_METADATA_KEY,
+		);
 	});
 
 	it('rebuilds the child through the shared reconstruction service and runs it with a fresh prompt', async () => {

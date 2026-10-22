@@ -18,11 +18,6 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { ExecutionRedactionService } from '../execution-redaction.service';
 import { FullItemRedactionStrategy } from '../strategies/full-item-redaction.strategy';
 
-const credSharingFlags = { enabled: true };
-vi.mock('@/constants/credential-sharing', () => ({
-	isCredSharingEnabled: () => credSharingFlags.enabled,
-}));
-
 describe('ExecutionRedactionService', () => {
 	const logger = mockInstance(Logger);
 	const licenseState = mockInstance(LicenseState);
@@ -43,7 +38,6 @@ describe('ExecutionRedactionService', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		credSharingFlags.enabled = true;
 		licenseState.isDataRedactionLicensed.mockReturnValue(true);
 		service = new ExecutionRedactionService(
 			logger,
@@ -1357,22 +1351,6 @@ describe('ExecutionRedactionService', () => {
 				redactionPolicy: 'none',
 				rejectionReason: 'User cannot use a credential referenced by this execution',
 			});
-		});
-
-		it('makes no DB call and does not redact when the credential-sharing flag is off', async () => {
-			credSharingFlags.enabled = false;
-			const execution = makeExecution({
-				policy: 'none',
-				mode: 'manual',
-				nodes: [nodeWithCredential('cred-1')],
-			});
-
-			await service.processExecution(execution, { user: mockUser });
-
-			expect(
-				credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser,
-			).not.toHaveBeenCalled();
-			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
 		});
 
 		it('does not call the DB when no execution references a credential', async () => {

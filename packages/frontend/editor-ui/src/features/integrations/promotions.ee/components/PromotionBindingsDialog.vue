@@ -4,8 +4,10 @@ import {
 	N8nButton,
 	N8nCallout,
 	N8nDialog,
+	N8nDialogBody,
 	N8nDialogDescription,
 	N8nDialogFooter,
+	N8nDialogHeader,
 	N8nDialogTitle,
 	N8nIcon,
 } from '@n8n/design-system';
@@ -15,7 +17,6 @@ import { usePromotionBindings } from '../composables/usePromotionBindings';
 import type {
 	AppliedResult,
 	BlockedApplyResult,
-	ContinueTarget,
 	CreatedPromotionBinding,
 	CreatePromotionBinding,
 	MissingPromotionBinding,
@@ -26,7 +27,6 @@ const props = defineProps<{
 	open: boolean;
 	blockedResult: BlockedApplyResult;
 	createBinding: CreatePromotionBinding;
-	continueWith: ContinueTarget;
 }>();
 
 const emit = defineEmits<{
@@ -61,7 +61,7 @@ const {
 watch(
 	() => props.open,
 	(open) => {
-		if (open) bindings.start(props.blockedResult, props.continueWith);
+		if (open) bindings.start(props.blockedResult);
 		else bindings.end();
 	},
 	{ immediate: true },
@@ -195,7 +195,7 @@ async function create(key: string, event: MouseEvent) {
 }
 
 async function continueApply() {
-	const result = await bindings.continueApply();
+	const result = await bindings.continueInstanceApply();
 	if (result?.status === 'applied') {
 		emit('applied', result);
 		emit('update:open', false);
@@ -212,7 +212,7 @@ async function continueApply() {
 <template>
 	<N8nDialog
 		:open="open"
-		size="fit"
+		size="xlarge"
 		:show-close-button="!isBusy"
 		:trap-focus="!isCreating"
 		:disable-outside-pointer-events="!isCreating"
@@ -221,241 +221,239 @@ async function continueApply() {
 		@escape-key-down="preventEscapeDismissal"
 		@interact-outside="preventBusyDismissal"
 	>
-		<form
-			:class="[$style.form, mode !== 'bindings' && $style.compact]"
-			@submit.prevent="continueApply"
-		>
-			<header :class="$style.header">
-				<N8nButton
-					type="button"
-					variant="ghost"
-					size="small"
-					icon="arrow-left"
-					icon-only
-					:aria-label="i18n.baseText('promotions.bindings.back')"
-					:disabled="isBusy"
-					@click="close"
-				/>
-				<div>
-					<N8nDialogTitle as-child>
-						<h2 ref="title" :class="$style.title" tabindex="-1">
-							{{ header.title }}
-						</h2>
-					</N8nDialogTitle>
-					<N8nDialogDescription :class="$style.subtitle">
-						{{ header.subtitle }}
-					</N8nDialogDescription>
-				</div>
-			</header>
-			<div :class="$style.body" data-test-id="promotion-bindings-body">
-				<slot name="notices" />
-				<N8nCallout v-if="sourceChanged" theme="warning">
-					{{ i18n.baseText('promotions.bindings.sourceChanged') }}
-				</N8nCallout>
-				<N8nCallout v-if="error" theme="danger">
-					{{ i18n.baseText(`promotions.bindings.error.${error.kind}`) }}
-					<p v-if="errorDetail">{{ errorDetail }}</p>
-				</N8nCallout>
-				<section v-if="preflight?.accessRequirements.length" :class="$style.notices">
-					<h3>{{ i18n.baseText('promotions.bindings.access.title') }}</h3>
-					<N8nCallout
-						v-for="item in preflight.accessRequirements"
-						:key="item.sourceId"
-						theme="warning"
-					>
-						<strong>{{ item.name }}</strong>
-						<p>{{ i18n.baseText('promotions.bindings.access.description') }}</p>
-						<p>{{ consumerNames(item.consumers) }}</p>
+		<N8nDialogHeader :class="$style.header">
+			<N8nButton
+				type="button"
+				variant="ghost"
+				size="small"
+				icon="arrow-left"
+				icon-only
+				:aria-label="i18n.baseText('promotions.bindings.back')"
+				:disabled="isBusy"
+				@click="close"
+			/>
+			<div>
+				<N8nDialogTitle as-child>
+					<h2 ref="title" :class="$style.title" tabindex="-1">
+						{{ header.title }}
+					</h2>
+				</N8nDialogTitle>
+				<N8nDialogDescription :class="$style.subtitle">
+					{{ header.subtitle }}
+				</N8nDialogDescription>
+			</div>
+		</N8nDialogHeader>
+		<N8nDialogBody>
+			<form id="promotion-bindings-form" :class="$style.form" @submit.prevent="continueApply">
+				<div :class="$style.body" data-test-id="promotion-bindings-body">
+					<slot name="notices" />
+					<N8nCallout v-if="sourceChanged" theme="warning">
+						{{ i18n.baseText('promotions.bindings.sourceChanged') }}
 					</N8nCallout>
-				</section>
-				<section v-if="hardConflicts.length" :class="$style.notices">
-					<h3>{{ i18n.baseText('promotions.bindings.conflicts.title') }}</h3>
-					<N8nCallout v-for="(item, index) in hardConflicts" :key="index" theme="warning">
-						<strong>{{ item.kind === 'project' ? item.project.name : item.name }}</strong>
-						<p>{{ i18n.baseText(`promotions.bindings.conflicts.${item.code}`) }}</p>
-						<p v-if="item.kind !== 'project'">{{ consumerNames(item.consumers) }}</p>
-						<p v-else>{{ item.workflows.map((workflow) => workflow.name).join(', ') }}</p>
+					<N8nCallout v-if="error" theme="danger">
+						{{ i18n.baseText(`promotions.bindings.error.${error.kind}`) }}
+						<p v-if="errorDetail">{{ errorDetail }}</p>
 					</N8nCallout>
-				</section>
-				<p v-if="mode === 'blocked'">
-					{{ i18n.baseText('promotions.bindings.restart') }}
-				</p>
-				<section v-if="projectDeletions.length" :class="$style.notices">
-					<h3>{{ i18n.baseText('promotions.bindings.projectDeletion.title') }}</h3>
-					<p>
-						{{
-							i18n.baseText('promotions.bindings.projectDeletion.description', {
-								adjustToNumber: projectDeletions.length,
-							})
-						}}
+					<section v-if="preflight?.accessRequirements.length" :class="$style.notices">
+						<h3>{{ i18n.baseText('promotions.bindings.access.title') }}</h3>
+						<N8nCallout
+							v-for="item in preflight.accessRequirements"
+							:key="item.sourceId"
+							theme="warning"
+						>
+							<strong>{{ item.name }}</strong>
+							<p>{{ i18n.baseText('promotions.bindings.access.description') }}</p>
+							<p>{{ consumerNames(item.consumers) }}</p>
+						</N8nCallout>
+					</section>
+					<section v-if="hardConflicts.length" :class="$style.notices">
+						<h3>{{ i18n.baseText('promotions.bindings.conflicts.title') }}</h3>
+						<N8nCallout v-for="(item, index) in hardConflicts" :key="index" theme="warning">
+							<strong>{{ item.kind === 'project' ? item.project.name : item.name }}</strong>
+							<p>{{ i18n.baseText(`promotions.bindings.conflicts.${item.code}`) }}</p>
+							<p v-if="item.kind !== 'project'">{{ consumerNames(item.consumers) }}</p>
+							<p v-else>{{ item.workflows.map((workflow) => workflow.name).join(', ') }}</p>
+						</N8nCallout>
+					</section>
+					<p v-if="mode === 'blocked'">
+						{{ i18n.baseText('promotions.bindings.restart') }}
 					</p>
-					<N8nCallout
-						v-for="item in projectDeletions"
-						:key="item.project.id"
-						theme="warning"
-						iconless
-					>
-						<strong>{{ item.project.name }}</strong>
-					</N8nCallout>
-				</section>
-				<section v-if="destructiveChanges.length" :class="$style.notices">
-					<h3 v-if="mode !== 'review' || projectDeletions.length">
-						{{ i18n.baseText('promotions.bindings.destructive.title') }}
-					</h3>
-					<p>{{ destructiveSummary }}</p>
-					<N8nCallout v-for="item in destructiveChanges" :key="item.id" theme="warning" iconless>
-						<strong>{{ item.name }}</strong>
-						<p>{{ destructiveColumns(item.changes) }}</p>
-					</N8nCallout>
-				</section>
-				<div v-if="mode === 'bindings'" :class="$style.notices">
-					<h3 v-if="needsConfirmation">
-						{{ i18n.baseText('promotions.bindings.bindingsSection.title') }}
-					</h3>
-					<p :class="$style.description">
-						{{ i18n.baseText('promotions.bindings.description') }}
-					</p>
-				</div>
-				<section v-for="group in visibleGroups" :key="group.project.id" :class="$style.project">
-					<h3 v-if="groups.length > 1" :class="$style.projectName">{{ group.project.name }}</h3>
-					<section v-for="entry in group.workflows" :key="entry.workflow.id">
-						<h4 :class="$style.workflow">
-							<N8nIcon icon="workflow" size="small" />
-							<span>{{ entry.workflow.name }}</span>
-						</h4>
-						<div :class="$style.tableContainer">
-							<table :class="$style.table" :aria-label="entry.workflow.name">
-								<colgroup>
-									<col :class="$style.sourceColumn" />
-									<col :class="$style.destinationColumn" />
-									<col :class="$style.statusColumn" />
-								</colgroup>
-								<thead>
-									<tr>
-										<th scope="col">{{ i18n.baseText('promotions.bindings.source') }}</th>
-										<th scope="col">{{ i18n.baseText('promotions.bindings.destination') }}</th>
-										<th scope="col">{{ i18n.baseText('promotions.bindings.status') }}</th>
-									</tr>
-								</thead>
-								<tbody>
-									<tr v-for="row in entry.rows" :key="row.key" tabindex="-1">
-										<td>
-											<div :class="$style.sourceItem">
-												<N8nIcon
-													:icon="row.binding.kind === 'credential' ? 'key-round' : 'json'"
-													size="small"
-													aria-hidden="false"
-													:aria-label="
-														i18n.baseText(`promotions.bindings.kind.${row.binding.kind}`)
-													"
-												/>
-												<span :class="$style.name">{{ row.binding.name }}</span>
-											</div>
-										</td>
-										<td>
-											<div :class="$style.destination">
-												<div
-													:class="[
-														$style.destinationItem,
-														row.status === 'missing' && $style.pendingItem,
-													]"
-												>
-													<span :class="$style.name">{{
-														row.status === 'missing'
-															? i18n.baseText('promotions.bindings.notCreated')
-															: (row.created?.name ?? row.binding.name)
-													}}</span>
+					<section v-if="projectDeletions.length" :class="$style.notices">
+						<h3>{{ i18n.baseText('promotions.bindings.projectDeletion.title') }}</h3>
+						<p>
+							{{
+								i18n.baseText('promotions.bindings.projectDeletion.description', {
+									adjustToNumber: projectDeletions.length,
+								})
+							}}
+						</p>
+						<N8nCallout
+							v-for="item in projectDeletions"
+							:key="item.project.id"
+							theme="warning"
+							iconless
+						>
+							<strong>{{ item.project.name }}</strong>
+						</N8nCallout>
+					</section>
+					<section v-if="destructiveChanges.length" :class="$style.notices">
+						<h3 v-if="mode !== 'review' || projectDeletions.length">
+							{{ i18n.baseText('promotions.bindings.destructive.title') }}
+						</h3>
+						<p>{{ destructiveSummary }}</p>
+						<N8nCallout v-for="item in destructiveChanges" :key="item.id" theme="warning" iconless>
+							<strong>{{ item.name }}</strong>
+							<p>{{ destructiveColumns(item.changes) }}</p>
+						</N8nCallout>
+					</section>
+					<div v-if="mode === 'bindings'" :class="$style.notices">
+						<h3 v-if="needsConfirmation">
+							{{ i18n.baseText('promotions.bindings.bindingsSection.title') }}
+						</h3>
+						<p :class="$style.description">
+							{{ i18n.baseText('promotions.bindings.description') }}
+						</p>
+					</div>
+					<section v-for="group in visibleGroups" :key="group.project.id" :class="$style.project">
+						<h3 v-if="groups.length > 1" :class="$style.projectName">{{ group.project.name }}</h3>
+						<section v-for="entry in group.workflows" :key="entry.workflow.id">
+							<h4 :class="$style.workflow">
+								<N8nIcon icon="workflow" size="small" />
+								<span>{{ entry.workflow.name }}</span>
+							</h4>
+							<div :class="$style.tableContainer">
+								<table :class="$style.table" :aria-label="entry.workflow.name">
+									<colgroup>
+										<col :class="$style.sourceColumn" />
+										<col :class="$style.destinationColumn" />
+										<col :class="$style.statusColumn" />
+									</colgroup>
+									<thead>
+										<tr>
+											<th scope="col">{{ i18n.baseText('promotions.bindings.source') }}</th>
+											<th scope="col">{{ i18n.baseText('promotions.bindings.destination') }}</th>
+											<th scope="col">{{ i18n.baseText('promotions.bindings.status') }}</th>
+										</tr>
+									</thead>
+									<tbody>
+										<tr v-for="row in entry.rows" :key="row.key" tabindex="-1">
+											<td>
+												<div :class="$style.sourceItem">
 													<N8nIcon
-														v-if="row.status === 'missing'"
-														icon="circle-alert"
+														:icon="row.binding.kind === 'credential' ? 'key-round' : 'json'"
 														size="small"
+														aria-hidden="false"
+														:aria-label="
+															i18n.baseText(`promotions.bindings.kind.${row.binding.kind}`)
+														"
+													/>
+													<span :class="$style.name">{{ row.binding.name }}</span>
+												</div>
+											</td>
+											<td>
+												<div :class="$style.destination">
+													<div
+														:class="[
+															$style.destinationItem,
+															row.status === 'missing' && $style.pendingItem,
+														]"
+													>
+														<span :class="$style.name">{{
+															row.status === 'missing'
+																? i18n.baseText('promotions.bindings.notCreated')
+																: (row.created?.name ?? row.binding.name)
+														}}</span>
+														<N8nIcon
+															v-if="row.status === 'missing'"
+															icon="circle-alert"
+															size="small"
+														/>
+													</div>
+													<N8nButton
+														v-if="row.status === 'missing'"
+														type="button"
+														variant="outline"
+														size="small"
+														icon="plus"
+														icon-only
+														:disabled="isBusy || sourceChanged"
+														:aria-label="
+															i18n.baseText('promotions.bindings.createNamed', {
+																interpolate: { name: row.binding.name },
+															})
+														"
+														@click="create(row.key, $event)"
 													/>
 												</div>
-												<N8nButton
-													v-if="row.status === 'missing'"
-													type="button"
-													variant="outline"
-													size="small"
-													icon="plus"
-													icon-only
-													:disabled="isBusy || sourceChanged"
-													:aria-label="
-														i18n.baseText('promotions.bindings.createNamed', {
-															interpolate: { name: row.binding.name },
-														})
-													"
-													@click="create(row.key, $event)"
-												/>
-											</div>
-											<div :class="$style.scope">{{ destinationScope(row.binding) }}</div>
-										</td>
-										<td aria-live="polite">
-											<span
-												:class="[
-													$style.status,
-													row.status === 'resolved' ? $style.resolved : $style.pending,
-												]"
-											>
-												<N8nIcon
-													:icon="row.status === 'resolved' ? 'circle-check' : 'circle-alert'"
-													size="small"
-												/>
-												{{ i18n.baseText(`promotions.bindings.status.${row.status}`) }}
-											</span>
-										</td>
-									</tr>
-								</tbody>
-							</table>
-						</div>
+												<div :class="$style.scope">{{ destinationScope(row.binding) }}</div>
+											</td>
+											<td aria-live="polite">
+												<span
+													:class="[
+														$style.status,
+														row.status === 'resolved' ? $style.resolved : $style.pending,
+													]"
+												>
+													<N8nIcon
+														:icon="row.status === 'resolved' ? 'circle-check' : 'circle-alert'"
+														size="small"
+													/>
+													{{ i18n.baseText(`promotions.bindings.status.${row.status}`) }}
+												</span>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</section>
 					</section>
-				</section>
-				<section v-if="preflight?.warnings.length" :class="$style.notices">
-					<h3>{{ i18n.baseText('promotions.bindings.warnings.title') }}</h3>
-					<N8nCallout v-for="(item, index) in preflight.warnings" :key="index" theme="info">
-						{{
-							i18n.baseText('promotions.bindings.warnings.variableShadowed', {
-								interpolate: { name: item.name },
-							})
-						}}
-						<p>{{ consumerNames(item.consumers) }}</p>
-					</N8nCallout>
-				</section>
-			</div>
-			<div :class="$style.footer">
+					<section v-if="preflight?.warnings.length" :class="$style.notices">
+						<h3>{{ i18n.baseText('promotions.bindings.warnings.title') }}</h3>
+						<N8nCallout v-for="(item, index) in preflight.warnings" :key="index" theme="info">
+							{{
+								i18n.baseText('promotions.bindings.warnings.variableShadowed', {
+									interpolate: { name: item.name },
+								})
+							}}
+							<p>{{ consumerNames(item.consumers) }}</p>
+						</N8nCallout>
+					</section>
+				</div>
 				<p v-if="savedResources.length" :class="$style.savedResources">
 					{{ i18n.baseText('promotions.bindings.savedResources') }}
 				</p>
-				<N8nDialogFooter :class="$style.actions">
-					<span v-if="mode === 'bindings'" :class="$style.count" role="status">
-						{{
-							i18n.baseText('promotions.bindings.unresolvedCount', {
-								adjustToNumber: unresolvedCount,
-								interpolate: { count: unresolvedCount },
-							})
-						}}
-					</span>
-					<N8nButton
-						type="button"
-						:variant="mode === 'blocked' ? 'solid' : 'outline'"
-						size="small"
-						:disabled="isBusy"
-						@click="close"
-					>
-						{{ i18n.baseText('promotions.bindings.close') }}
-					</N8nButton>
-					<N8nButton
-						v-if="mode !== 'blocked'"
-						type="submit"
-						size="small"
-						:variant="needsConfirmation ? 'destructive' : 'solid'"
-						:disabled="!canContinue"
-						:loading="isSubmitting"
-					>
-						{{ submitLabel }}
-					</N8nButton>
-				</N8nDialogFooter>
-			</div>
-		</form>
+			</form>
+		</N8nDialogBody>
+		<N8nDialogFooter :class="$style.actions">
+			<span v-if="mode === 'bindings'" :class="$style.count" role="status">
+				{{
+					i18n.baseText('promotions.bindings.unresolvedCount', {
+						adjustToNumber: unresolvedCount,
+						interpolate: { count: unresolvedCount },
+					})
+				}}
+			</span>
+			<N8nButton
+				type="button"
+				:variant="mode === 'blocked' ? 'solid' : 'outline'"
+				size="small"
+				:disabled="isBusy"
+				@click="close"
+			>
+				{{ i18n.baseText('promotions.bindings.close') }}
+			</N8nButton>
+			<N8nButton
+				v-if="mode !== 'blocked'"
+				type="submit"
+				form="promotion-bindings-form"
+				size="small"
+				:variant="needsConfirmation ? 'destructive' : 'solid'"
+				:disabled="!canContinue"
+				:loading="isSubmitting"
+			>
+				{{ submitLabel }}
+			</N8nButton>
+		</N8nDialogFooter>
 	</N8nDialog>
 </template>
 
@@ -463,25 +461,18 @@ async function continueApply() {
 .form {
 	display: flex;
 	flex-direction: column;
-	margin: calc(-1 * var(--spacing--lg));
-	// The design uses a 704 × 640 dialog. There are no matching size tokens.
-	width: min(44rem, calc(100dvw - var(--spacing--lg)));
-	height: min(40rem, calc(100dvh - var(--spacing--xl)));
 	color: var(--text-color);
 }
 
-// Without the bindings table the content is short, so the dialog fits it.
-.compact {
-	height: auto;
-	max-height: min(40rem, calc(100dvh - var(--spacing--xl)));
+.description {
+	line-height: var(--line-height--xl);
+	color: var(--text-color--subtle);
 }
 
 .header {
 	display: flex;
 	align-items: flex-start;
 	gap: var(--spacing--2xs);
-	padding: var(--spacing--sm) var(--spacing--2xl) var(--spacing--sm) var(--spacing--md);
-	border-bottom: var(--border);
 	flex-shrink: 0;
 }
 
@@ -498,19 +489,10 @@ async function continueApply() {
 .body {
 	display: flex;
 	flex-direction: column;
-	flex: 1;
 	gap: var(--spacing--md);
-	min-height: 0;
-	padding: var(--spacing--md) var(--spacing--lg);
-	overflow: auto;
 	overflow-wrap: anywhere;
 	font-size: var(--font-size--2xs);
 	line-height: var(--line-height--xl);
-}
-
-.description {
-	line-height: var(--line-height--xl);
-	color: var(--text-color--subtle);
 }
 
 .project,
@@ -639,12 +621,6 @@ async function continueApply() {
 .notices h3 {
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--medium);
-}
-
-.footer {
-	flex-shrink: 0;
-	padding: var(--spacing--sm);
-	border-top: var(--border);
 }
 
 .savedResources {

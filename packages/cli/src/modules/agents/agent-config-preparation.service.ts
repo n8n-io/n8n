@@ -14,7 +14,12 @@ import { UserError } from 'n8n-workflow';
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 
-import { diffAgentConfigParts, type AgentConfigPart } from './agent-modification-telemetry.service';
+import {
+	diffAgentConfigParts,
+	diffAgentConfigSettings,
+	type AgentConfigPart,
+	type AgentConfigSetting,
+} from './agent-modification-telemetry.service';
 import { AgentPolicyService } from './agent-policy.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
 import type { Agent, ProjectAgent } from './entities/agent.entity';
@@ -40,6 +45,7 @@ export interface ConfigReplacement {
 	nextIntegrations: NonNullable<Agent['integrations']>;
 	previousIntegrations: NonNullable<Agent['integrations']>;
 	changedParts: AgentConfigPart[];
+	changedSettings: AgentConfigSetting[];
 }
 
 @Service()
@@ -221,11 +227,13 @@ export class AgentConfigPreparationService {
 			previousIntegrations,
 			nextIntegrations,
 		);
+		const changedSettings = diffAgentConfigSettings(previousSchema, nextSchema);
 		return {
 			nextSchema,
 			nextIntegrations,
 			previousIntegrations,
 			changedParts,
+			changedSettings,
 		};
 	}
 

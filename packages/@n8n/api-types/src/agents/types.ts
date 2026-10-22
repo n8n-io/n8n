@@ -427,7 +427,7 @@ export interface AgentChatMessagesResponse {
 /**
  * One agent as the n8n chat page lists it.
  *
- * Deliberately narrow. Its audience holds `agent:execute` alone — a
+ * Deliberately narrow. Its audience can hold `agent:execute` alone — a
  * `project:chatUser` can start a production chat but has no `agent:read` — so
  * the published instructions, tools and skills must not travel with the list.
  * The page needs a label, an avatar, the owning project, and a user-facing
@@ -443,6 +443,11 @@ export interface AgentChatListItem {
 	project: { id: string; name: string };
 	/** Media types this agent's model accepts as attachments, derived from its published config. */
 	attachments: ProviderAttachmentCapabilities;
+	/**
+	 * `false` for an agent the user owns that is not published to n8n Chat yet.
+	 * Its icon, blurb and attachments then come from the draft config.
+	 */
+	availableInChat: boolean;
 }
 
 export interface AgentChatListResponse {
@@ -474,6 +479,19 @@ export interface AgentN8nChatThreadSummary {
 export interface AgentN8nChatThreadsResponse {
 	data: AgentN8nChatThreadSummary[];
 	nextCursor: string | null;
+}
+
+/** One of the user's own threads with a system agent. `projectId` is its working project. */
+export interface SystemAgentThreadSummary {
+	id: string;
+	title: string | null;
+	updatedAt: string;
+	projectId: string;
+}
+
+/** The user's own threads with one system agent, newest first. */
+export interface SystemAgentThreadsResponse {
+	data: SystemAgentThreadSummary[];
 }
 
 export interface AgentSessionLangSmithExportResponse {

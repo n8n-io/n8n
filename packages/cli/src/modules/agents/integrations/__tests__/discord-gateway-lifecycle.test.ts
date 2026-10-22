@@ -7,7 +7,7 @@ import { ConflictError } from '@n8n/errors';
 
 import type { AgentRepository } from '../../repositories/agent.repository';
 import type { AgentChatIntegrationContext } from '../agent-chat-integration';
-import { DiscordIntegration } from '../platforms/discord-integration';
+import { DiscordIntegration } from '../platforms/discord/discord-integration';
 
 const hoisted = vi.hoisted(() => ({
 	adapter: undefined as unknown,

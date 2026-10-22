@@ -1,4 +1,5 @@
 import type { AgentJsonVectorStoreConfig } from '@n8n/api-types';
+import type { EventService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { InstanceSettings } from 'n8n-core';
@@ -81,7 +82,11 @@ describe('knowledge reuse telemetry', () => {
 		['mcp', TELEMETRY_EVENT.AGENTS.MCP_MODIFIED_AGENT],
 	] as const)('reports committed stores for %s with the acting user', (by, entry) => {
 		const telemetry = mock<Telemetry>();
-		const service = new AgentModificationTelemetryService(telemetry, instanceSettings);
+		const service = new AgentModificationTelemetryService(
+			telemetry,
+			instanceSettings,
+			mock<EventService>(),
+		);
 		service.record(event({ by }));
 		service.record(event({ by, agent: mock<Agent>({ id: 'agent-2', integrations: [] }) }));
 		expect(telemetry.track).toHaveBeenCalledTimes(2);
@@ -99,7 +104,7 @@ describe('knowledge reuse telemetry', () => {
 
 	it('reports an empty set after all stores are removed', () => {
 		const telemetry = mock<Telemetry>();
-		new AgentModificationTelemetryService(telemetry, instanceSettings).record(
+		new AgentModificationTelemetryService(telemetry, instanceSettings, mock<EventService>()).record(
 			event({ config: null }),
 		);
 		expect(telemetry.track).toHaveBeenCalledWith(
@@ -110,7 +115,11 @@ describe('knowledge reuse telemetry', () => {
 
 	it('omits fingerprints for unrelated changes and creation', () => {
 		const telemetry = mock<Telemetry>();
-		const service = new AgentModificationTelemetryService(telemetry, instanceSettings);
+		const service = new AgentModificationTelemetryService(
+			telemetry,
+			instanceSettings,
+			mock<EventService>(),
+		);
 		service.record(event({ changedParts: ['instructions'] }));
 		service.recordCreation(event());
 		expect(telemetry.track).toHaveBeenCalledTimes(2);
@@ -121,7 +130,7 @@ describe('knowledge reuse telemetry', () => {
 
 	it('does not emit for an unchanged configuration', () => {
 		const telemetry = mock<Telemetry>();
-		new AgentModificationTelemetryService(telemetry, instanceSettings).record(
+		new AgentModificationTelemetryService(telemetry, instanceSettings, mock<EventService>()).record(
 			event({ changedParts: [] }),
 		);
 		expect(telemetry.track).not.toHaveBeenCalled();

@@ -47,6 +47,11 @@ export class NodeCredentials {
 		return this.root.getByTestId('node-credentials-empty-state');
 	}
 
+	/** Warning shown beside a selected credential the current user cannot use */
+	getUnusableWarning(): Locator {
+		return this.root.getByTestId('node-credentials-unusable-warning');
+	}
+
 	/** Direct create button shown for standard empty states with no alternate credential choice */
 	getEmptyStateCreateButton(eq: number = 0): Locator {
 		return this.getSlot(eq).getByTestId('node-credentials-empty-state').getByRole('button');

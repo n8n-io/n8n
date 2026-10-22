@@ -12,6 +12,9 @@ export const MODULE_NAMES = [
 	'data-table',
 	'oauth-server',
 	'mcp',
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	'mcp-discovery',
+	// EOF Experiment cleanup
 	'provisioning',
 	'breaking-changes',
 	'source-control',
@@ -43,6 +46,9 @@ export const MODULE_NAMES = [
 	'instance-reporting',
 	'inbound-auth-core',
 	'scim',
+	'skills',
+	'apps',
+	'knowledge',
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];

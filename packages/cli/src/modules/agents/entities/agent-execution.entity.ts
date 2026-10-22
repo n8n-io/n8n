@@ -99,6 +99,14 @@ export class AgentExecution extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 16, nullable: true })
 	hitlStatus: AgentExecutionHitlStatus | null;
 
+	/** Why the run ended, e.g. 'stop' or 'guardrail'. Null for runs recorded before this column. */
+	@Column({ type: 'varchar', length: 32, nullable: true })
+	finishReason: string | null;
+
+	/** Code of the guardrail that stopped the run, e.g. 'budget.session'. */
+	@Column({ type: 'varchar', length: 64, nullable: true })
+	guardrailCode: string | null;
+
 	/** Where the run originated, e.g. 'chat', 'slack'. */
 	@Column({ type: 'varchar', length: 32, nullable: true })
 	source: string | null;

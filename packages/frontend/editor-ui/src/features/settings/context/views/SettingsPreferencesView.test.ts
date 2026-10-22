@@ -2,8 +2,11 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
+import { ref } from 'vue';
 
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+
+import type { PreferencesEmptyStateVariant } from '@/experiments/preferencesEmptyState/usePreferencesEmptyStateExperiment';
 
 import SettingsPreferencesView from './SettingsPreferencesView.vue';
 import { useContextStore } from '../context.store';
@@ -12,9 +15,18 @@ import type { Preference } from '../context.types';
 const push = vi.fn();
 const trackMock = vi.fn();
 const confirmMock = vi.fn().mockResolvedValue('confirm');
+const emptyStateVariant = ref<PreferencesEmptyStateVariant | undefined>(undefined);
+const trackEmptyStateExposure = vi.fn();
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: trackMock }),
+}));
+
+vi.mock('@/experiments/preferencesEmptyState/usePreferencesEmptyStateExperiment', () => ({
+	usePreferencesEmptyStateExperiment: () => ({
+		variant: emptyStateVariant,
+		trackExposure: trackEmptyStateExposure,
+	}),
 }));
 
 vi.mock('@/app/composables/useMessage', () => ({
@@ -76,6 +88,8 @@ describe('SettingsPreferencesView', () => {
 		contextStore.loading = false;
 		push.mockClear();
 		trackMock.mockReset();
+		emptyStateVariant.value = undefined;
+		trackEmptyStateExposure.mockReset();
 		confirmMock.mockClear();
 		confirmMock.mockResolvedValue('confirm');
 	});
@@ -289,6 +303,97 @@ describe('SettingsPreferencesView', () => {
 				([event]) => event === TELEMETRY_EVENT.CONTEXT.USER_VIEWED_PREFERENCES,
 			),
 		).toHaveLength(1);
+	});
+
+	it('tracks the empty state experiment exposure when the page has no preferences', async () => {
+		contextStore.preferences = [];
+		contextStore.count = 0;
+
+		renderView();
+		await new Promise(process.nextTick);
+
+		expect(trackEmptyStateExposure).toHaveBeenCalledTimes(1);
+	});
+
+	it.each([
+		{ variant: undefined, testId: 'preferences-empty-state' },
+		{ variant: 'control' as const, testId: 'preferences-empty-state' },
+		{ variant: 'examples' as const, testId: 'preferences-empty-state-examples' },
+		{ variant: 'assistant' as const, testId: 'preferences-empty-state-assistant' },
+	])('shows the $testId empty state for the $variant variant', async ({ variant, testId }) => {
+		contextStore.preferences = [];
+		contextStore.count = 0;
+		emptyStateVariant.value = variant;
+
+		const { findByTestId } = renderView();
+
+		expect(await findByTestId(testId)).toBeInTheDocument();
+	});
+
+	it.each(['examples' as const, 'assistant' as const])(
+		'opens the create modal from "Write your own" in the %s variant',
+		async (variant) => {
+			contextStore.preferences = [];
+			contextStore.count = 0;
+			emptyStateVariant.value = variant;
+
+			const { findByTestId, getByTestId } = renderView();
+			await userEvent.click(await findByTestId('preferences-empty-state-write-own'));
+
+			expect(getByTestId('preference-modal-stub')).toHaveAttribute('data-open', 'true');
+		},
+	);
+
+	it('shows only the assistant empty state, with no toolbar or table, in the assistant variant', async () => {
+		contextStore.preferences = [];
+		contextStore.count = 0;
+		emptyStateVariant.value = 'assistant';
+
+		const { findByTestId, queryByTestId, queryByText } = renderView();
+
+		expect(await findByTestId('preferences-empty-state-assistant')).toBeInTheDocument();
+		expect(queryByTestId('preferences-create-button')).not.toBeInTheDocument();
+		expect(queryByText(/^Last updated/)).not.toBeInTheDocument();
+	});
+
+	it.each([
+		{ variant: 'assistant' as const, count: 1 },
+		{ variant: 'control' as const, count: 0 },
+		{ variant: 'examples' as const, count: 0 },
+	])(
+		'shows the toolbar and table for the $variant variant with $count preferences',
+		async ({ variant, count }) => {
+			contextStore.preferences = count > 0 ? [preference()] : [];
+			contextStore.count = count;
+			emptyStateVariant.value = variant;
+
+			const { getByTestId, getByText } = renderView();
+			await new Promise(process.nextTick);
+
+			expect(getByTestId('preferences-create-button')).toBeInTheDocument();
+			expect(getByText(/^Last updated/)).toBeInTheDocument();
+		},
+	);
+
+	it('tracks no empty state experiment exposure when the page has preferences', async () => {
+		contextStore.preferences = [preference()];
+		contextStore.count = 1;
+
+		renderView();
+		await new Promise(process.nextTick);
+
+		expect(trackEmptyStateExposure).not.toHaveBeenCalled();
+	});
+
+	it('tracks no empty state experiment exposure when the load failed', async () => {
+		contextStore.preferences = [];
+		contextStore.count = 0;
+		contextStore.fetchPreferences.mockRejectedValueOnce(new Error('offline'));
+
+		renderView();
+		await new Promise(process.nextTick);
+
+		expect(trackEmptyStateExposure).not.toHaveBeenCalled();
 	});
 
 	it('reports no visit when the load failed, so a zero never means a broken page', async () => {

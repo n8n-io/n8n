@@ -1,9 +1,11 @@
 import { mock } from 'vitest-mock-extended';
+import type { ClientOAuth2Options } from '@n8n/client-oauth2';
 import type { User } from '@n8n/db';
 
 import type { CredentialsFinderService } from '@n8n/backend-services';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
+import type { ExternalHooks } from '@/external-hooks';
 import type { OauthService } from '@/oauth/oauth.service';
 import type { NamingService } from '@/services/naming.service';
 import { BadRequestError } from '@n8n/errors';
@@ -33,6 +35,7 @@ describe('TeamsManagedSetupService', () => {
 	let credentialsOverwrites: ReturnType<typeof mock<CredentialsOverwrites>>;
 	let oauthService: ReturnType<typeof mock<OauthService>>;
 	let namingService: ReturnType<typeof mock<NamingService>>;
+	let externalHooks: ReturnType<typeof mock<ExternalHooks>>;
 	let service: TeamsManagedSetupService;
 
 	const withOverwrites = (overwrites: Record<string, unknown> | undefined) => {
@@ -57,13 +60,16 @@ describe('TeamsManagedSetupService', () => {
 		credentialsOverwrites = mock<CredentialsOverwrites>();
 		oauthService = mock<OauthService>();
 		oauthService.getBaseUrl.mockReturnValue('https://n8n.example.com/rest/oauth2-credential');
+		oauthService.createCsrfState.mockResolvedValue(['secret', 'csrf-state', 'token']);
 		namingService = mock<NamingService>();
+		externalHooks = mock<ExternalHooks>();
 		service = new TeamsManagedSetupService(
 			credentialsService,
 			credentialsFinderService,
 			credentialsOverwrites,
 			oauthService,
 			namingService,
+			externalHooks,
 		);
 		withOverwrites({ clientId: 'client-id', clientSecret: 'client-secret' });
 	});
@@ -101,6 +107,19 @@ describe('TeamsManagedSetupService', () => {
 				adminConsentUrl: null,
 			});
 			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('lists only sign-ins the project itself holds, never a personal one', async () => {
+			withManagerCredential({
+				oauthTokenData: { access_token: 'token', refresh_token: 'refresh-1', scope: ALL_SCOPES },
+			});
+
+			await service.getSetupState(scope);
+
+			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(
+				scope.user,
+				expect.objectContaining({ excludePersonalRoute: true }),
+			);
 		});
 
 		it('lists a connected sign-in with its organisation', async () => {
@@ -223,17 +242,17 @@ describe('TeamsManagedSetupService', () => {
 		 * redeemed for one resource. `/.default` asks for every permission on the
 		 * app registration instead, which is what makes one prompt cover both.
 		 */
-		it('asks for every permission on the registration, so one prompt covers both APIs', () => {
-			const url = new URL(String(service.adminConsentUrl()));
+		it('asks for every permission on the registration, so one prompt covers both APIs', async () => {
+			const url = new URL(String(await service.adminConsentUrl()));
 
 			expect(url.searchParams.get('scope')).toBe('https://graph.microsoft.com/.default');
 			expect(url.searchParams.get('client_id')).toBe('client-id');
 		});
 
-		it('never offers organisation consent to a personal account', () => {
+		it('never offers organisation consent to a personal account', async () => {
 			// `common` would; `organizations` cannot.
-			expect(String(service.adminConsentUrl())).toContain('/organizations/');
-			expect(String(service.adminConsentUrl())).not.toContain('/common/');
+			expect(String(await service.adminConsentUrl())).toContain('/organizations/');
+			expect(String(await service.adminConsentUrl())).not.toContain('/common/');
 		});
 
 		it('comes back with the setup state, so the step can offer it', async () => {
@@ -241,13 +260,53 @@ describe('TeamsManagedSetupService', () => {
 
 			const state = await service.getSetupState(scope);
 
-			expect(state.adminConsentUrl).toBe(service.adminConsentUrl());
+			expect(state.adminConsentUrl).toBe(await service.adminConsentUrl());
 		});
 
-		it('offers nothing when the instance has no manager client credentials', () => {
+		it('offers nothing when the instance has no manager client credentials', async () => {
 			withOverwrites(undefined);
 
-			expect(service.adminConsentUrl()).toBeNull();
+			expect(await service.adminConsentUrl()).toBeNull();
+		});
+
+		it('sends the administrator back to the instance when no hook changes the options', async () => {
+			const url = new URL(String(await service.adminConsentUrl()));
+
+			expect(url.searchParams.get('redirect_uri')).toBe(
+				'https://n8n.example.com/rest/oauth2-credential/callback',
+			);
+			expect(url.searchParams.get('state')).toBe('csrf-state');
+		});
+
+		/**
+		 * On Cloud the manager app registers only the OAuth proxy, and the proxy
+		 * routes the answer by the state. The hook sets both.
+		 */
+		it('uses the redirect URI and state that the oauth2.authenticate hook returns', async () => {
+			externalHooks.run.mockImplementation(async (name, args) => {
+				if (name !== 'oauth2.authenticate') return;
+				const [options] = args as [ClientOAuth2Options];
+				options.redirectUri = 'https://oauth.n8n.cloud/oauth2/callback';
+				options.state = 'proxy-state';
+			});
+
+			const url = new URL(String(await service.adminConsentUrl()));
+
+			expect(externalHooks.run).toHaveBeenCalledWith('oauth2.authenticate', [
+				expect.objectContaining({ clientId: 'client-id' }),
+			]);
+			expect(url.searchParams.get('redirect_uri')).toBe('https://oauth.n8n.cloud/oauth2/callback');
+			expect(url.searchParams.get('state')).toBe('proxy-state');
+		});
+
+		it('offers no link, but keeps the setup state, when the hook fails', async () => {
+			externalHooks.run.mockRejectedValue(new Error('hook failed'));
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([] as never);
+
+			await expect(service.getSetupState(scope)).resolves.toMatchObject({
+				managedSetupAvailable: true,
+				adminConsentUrl: null,
+			});
 		});
 	});
 

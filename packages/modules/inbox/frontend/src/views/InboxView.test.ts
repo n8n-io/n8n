@@ -1,5 +1,6 @@
 import type {
 	DecideWorkflowReviewRequestResponse,
+	InboxPromotionReviewItem,
 	InboxSelfHealingItem,
 	InboxWorkflowReviewItem,
 	WorkflowReviewRequestDetail,
@@ -85,6 +86,10 @@ const renderOptions = {
 				props: ['selection'],
 				template: '<div data-test-id="result-detail" :data-id="selection.id" />',
 			},
+			PromotionReviewDetail: {
+				props: ['item'],
+				template: '<div data-test-id="promotion-detail" :data-id="item.id" />',
+			},
 		},
 	},
 };
@@ -164,6 +169,21 @@ it('clears source context and keeps the current state and tab', async () => {
 	getByTestId('clear-review').click();
 	await waitAllPromises();
 	expect(router.currentRoute.value.fullPath).toBe('/inbox?state=closed&tab=changes');
+});
+
+it('renders a promotion review from its loaded row until its source becomes disabled', async () => {
+	await router.replace('/inbox/promotion-reviews/rev-1');
+	const { getByTestId, queryByTestId } = renderComponent();
+	expect(queryByTestId('promotion-detail')).not.toBeInTheDocument();
+
+	store.lists.waiting.items = [promotionItem()];
+	await waitAllPromises();
+	expect(getByTestId('promotion-detail')).toHaveAttribute('data-id', 'rev-1');
+
+	store.disabledSources = ['promotion_review'];
+	await waitAllPromises();
+	expect(router.currentRoute.value.fullPath).toBe('/inbox');
+	expect(queryByTestId('promotion-detail')).not.toBeInTheDocument();
 });
 
 it('clears a disabled-source deep link without mounting its detail entry', async () => {
@@ -423,6 +443,24 @@ function reviewItem(): InboxWorkflowReviewItem {
 		updatedAt: '2024-01-01T00:00:00.000Z',
 	};
 }
+function promotionItem(): InboxPromotionReviewItem {
+	return {
+		type: 'promotion_review',
+		id: 'rev-1',
+		state: 'open',
+		reviewState: 'open',
+		title: 'Promote the thing',
+		webUrl: null,
+		branchName: 'n8n-promotion/1',
+		environmentName: null,
+		requester: null,
+		approver: null,
+		remoteError: null,
+		createdAt: '2026-01-01T00:00:00.000Z',
+		updatedAt: '2026-01-01T00:00:00.000Z',
+	};
+}
+
 function resultItem(): InboxSelfHealingItem {
 	return {
 		type: 'self_healing_result',

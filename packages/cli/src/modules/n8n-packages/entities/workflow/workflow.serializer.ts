@@ -1,15 +1,13 @@
+import {
+	type SerializedWorkflow,
+	type SerializedWorkflowMetadata,
+	serializedWorkflowMetadataSchema,
+	serializedWorkflowSchema,
+} from '@n8n/api-types';
 import type { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { IConnections, INode } from 'n8n-workflow';
 
-import {
-	serializedWorkflowMetadataSchema,
-	type SerializedWorkflowMetadata,
-} from '../../spec/serialized/workflow-metadata.schema';
-import {
-	serializedWorkflowSchema,
-	type SerializedWorkflow,
-} from '../../spec/serialized/workflow.schema';
 import { definePackageSerializationPayload } from '../package-serialization.types';
 import { compareTagsByName } from '../tag/tag.types';
 

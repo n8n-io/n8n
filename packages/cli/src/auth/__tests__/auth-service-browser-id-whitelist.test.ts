@@ -1,3 +1,6 @@
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import { EventService } from '@n8n/backend-services';
+// EOF Experiment cleanup
 import type { GlobalConfig } from '@n8n/config';
 import type { InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
@@ -20,6 +23,9 @@ describe('AuthService Browser ID Whitelist', () => {
 		const mfaService = mock<MfaService>();
 
 		authService = new AuthService(
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			mock<EventService>(),
+			// EOF Experiment cleanup
 			globalConfig,
 			mock(),
 			mock(),

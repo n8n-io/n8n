@@ -503,13 +503,13 @@ const workflowOutput = computed((): unknown => {
 					</template>
 
 					<template v-else-if="item.kind === 'user' || item.kind === 'agent'">
+						<VueMarkdown :source="item.content ?? ''" :class="$style.markdown" />
 						<AgentChatMessageAttachments
 							v-if="userAttachments.length > 0 && projectId && agentId"
 							:attachments="userAttachments"
 							:project-id="projectId"
 							:agent-id="agentId"
 						/>
-						<VueMarkdown :source="item.content ?? ''" :class="$style.markdown" />
 					</template>
 					<AiThinkingBlock
 						v-if="item.kind === 'agent' && item.thinkingSegments?.length"
