@@ -35,14 +35,16 @@ export const TRACING_OFF: TracingPipeline = {
 export class SwappableSpanProcessor implements SpanProcessor {
 	private processors = TRACING_OFF.spanProcessors;
 
-	async replace(next: SpanProcessor[]): Promise<ShutdownErrors> {
-		const previous = this.processors;
-		this.processors = next;
-		const results = await Promise.allSettled(
-			previous.map(async (processor) => await processor.shutdown()),
-		);
+	private readonly pendingShutdowns = new Set<Promise<ShutdownErrors>>();
 
-		return results.flatMap((result) => (result.status === 'rejected' ? [result.reason] : []));
+	async replace(next: SpanProcessor[]): Promise<ShutdownErrors> {
+		const leaving = this.processors.filter((processor) => !next.includes(processor));
+		this.processors = next;
+		const shutdown = shutDownAll(leaving);
+		this.pendingShutdowns.add(shutdown);
+		void shutdown.finally(() => this.pendingShutdowns.delete(shutdown));
+
+		return await shutdown;
 	}
 
 	onStart(span: Span, parentContext: Context): void {
@@ -54,13 +56,25 @@ export class SwappableSpanProcessor implements SpanProcessor {
 	}
 
 	async forceFlush(): Promise<void> {
-		await Promise.all(this.processors.map(async (processor) => await processor.forceFlush()));
+		await Promise.all([
+			...this.processors.map(async (processor) => await processor.forceFlush()),
+			...this.pendingShutdowns,
+		]);
 	}
 
 	async shutdown(): Promise<void> {
 		const [error] = await this.replace([]);
+		await Promise.all(this.pendingShutdowns);
 		if (error) throw ensureError(error);
 	}
+}
+
+async function shutDownAll(processors: SpanProcessor[]): Promise<ShutdownErrors> {
+	const results = await Promise.allSettled(
+		processors.map(async (processor) => await processor.shutdown()),
+	);
+
+	return results.flatMap((result) => (result.status === 'rejected' ? [result.reason] : []));
 }
 
 export class SwappableSampler implements Sampler {
