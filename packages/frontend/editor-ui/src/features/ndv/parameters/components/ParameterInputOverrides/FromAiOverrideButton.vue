@@ -66,16 +66,14 @@ const emit = defineEmits<{
 	--from-ai-button-size: var(--height--md);
 }
 
-.inline {
+.overrideButton.inline {
 	border-left: 0;
-	border-top-right-radius: var(--radius);
-	border-bottom-right-radius: var(--radius);
+	border-radius: 0 var(--radius) var(--radius) 0;
 }
 
-.standalone {
+.overrideButton.standalone {
 	background-color: var(--color--foreground);
 	border-top: 0;
-	border-top-left-radius: var(--radius);
-	border-top-right-radius: var(--radius);
+	border-radius: var(--radius) var(--radius) 0 0;
 }
 </style>

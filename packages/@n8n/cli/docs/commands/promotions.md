@@ -4,19 +4,18 @@ Move projects between n8n instances through a Git repository. One instance
 **promotes** its projects to a branch. Another instance **applies** that branch
 to itself.
 
-Setup has three parts:
+Setup has two parts:
 
 | Part | Command topic | What it holds |
 |------|---------------|---------------|
 | Provider | `promotion-provider` | The credentials for a Git host |
-| Connection | `promotion-connection` | The repository to use, and which provider to use |
-| Configuration | `promotion-connection set-config` | The branch settings of one direction |
+| Environment | `promotion-environment` | One direction: the repository, the provider, and the branch settings |
 
-A connection has up to one configuration for each direction: `promote` pushes to
-Git, `apply` imports from Git. A direction with no configuration is not set up.
-Create a connection without `configs` to leave both directions unconfigured.
-This lets you read the public key of an SSH provider before the remote accepts a
-clone.
+An environment has one direction: `promote` pushes to Git, `apply` imports from
+Git. The instance can have one environment for each direction, so it can promote
+to one repository and apply from another. A project can have its own environment
+for each direction. A direction without a project environment uses the instance
+environment.
 
 Requires the Promotions feature to be licensed. The API key scopes are named
 `gitConnection:*`.
@@ -31,36 +30,40 @@ echo '{"name":"GitHub","type":"git","auth":{"authType":"ssh-key","keyType":"ed25
 
 # 2. Add that public key to the repository as a deploy key.
 
-# 3. Create a connection on the provider, with both directions configured.
-cat connection.json | n8n-cli promotion-connection create --stdin
+# 3. Create an environment for each direction you want to use.
+cat promote.json | n8n-cli promotion-environment create --stdin
+cat apply.json | n8n-cli promotion-environment create --stdin
 
-# 4. Clone each direction you want to use.
-n8n-cli promotion-connection clone conn-1 promote
-n8n-cli promotion-connection clone conn-1 apply
+# 4. Connect each environment.
+n8n-cli promotion-environment connect env-1
+n8n-cli promotion-environment connect env-2
 
 # 5. Promote from this instance, or apply to it.
-n8n-cli promotion-connection promote conn-1 --message="Promote team projects"
-n8n-cli promotion-connection apply conn-1
+n8n-cli promotion-environment promote env-1 --message="Promote team projects"
+n8n-cli promotion-environment apply env-2
 ```
 
-`connection.json` for step 3:
+`promote.json` and `apply.json` for step 3:
 
 ```json
 {
   "name": "Production",
   "scope": "instance",
   "providerId": "prov-1",
-  "target": { "schemaVersion": 1, "remoteUrl": "git@github.com:acme/flows.git" },
-  "configs": {
-    "promote": {
-      "settings": {
-        "schemaVersion": 1,
-        "baseBranchName": "main",
-        "createBranchOnPromotion": false
-      }
-    },
-    "apply": { "settings": { "schemaVersion": 1, "branchName": "main" } }
-  }
+  "remote": { "schemaVersion": 1, "remoteUrl": "git@github.com:acme/flows.git" },
+  "direction": "promote",
+  "settings": { "schemaVersion": 1, "baseBranchName": "main", "createBranchOnPromotion": false }
+}
+```
+
+```json
+{
+  "name": "Production",
+  "scope": "instance",
+  "providerId": "prov-1",
+  "remote": { "schemaVersion": 1, "remoteUrl": "git@github.com:acme/flows.git" },
+  "direction": "apply",
+  "settings": { "schemaVersion": 1, "branchName": "main" }
 }
 ```
 
@@ -90,7 +93,7 @@ The response holds the provider fields at the top level, with `publicKey` beside
 them. `publicKey` is `null` for a `token` provider. Add an SSH public key to the
 remote as a deploy key.
 
-Capture the new ID for the connection you create next:
+Capture the new ID for the environment you create next:
 
 ```bash
 # Just the ID.
@@ -115,105 +118,85 @@ n8n-cli promotion-provider delete prov-1
 `list` leaves out the public key. Read it with `get`.
 
 `update` takes `name`, `auth`, or both. Sending `auth` replaces the credentials
-of every connection that uses the provider. The authentication method cannot
+of every environment that uses the provider. The authentication method cannot
 change. For `ssh-key`, leave out `keyType` to keep the current algorithm when
 you rotate the key.
 
-`delete` fails while a connection still uses the provider.
+`delete` fails while an environment still uses the provider.
 
-## `promotion-connection create`
+## `promotion-environment create`
 
-Create a connection on an existing provider, from JSON.
+Create an environment for one direction on an existing provider, from JSON.
 
 ```bash
-n8n-cli promotion-connection create --file=connection.json
+n8n-cli promotion-environment create --file=promote.json
 ```
 
 | Field | Description |
 |-------|-------------|
 | `name` | Display name. |
-| `scope` | `instance` covers the whole instance. `projects` covers the linked projects. Only one `instance` connection can exist. |
+| `scope` | `instance` covers the whole instance. `projects` covers the linked projects. The instance can have one environment for each direction. |
 | `providerId` | The provider to use. |
-| `target.remoteUrl` | The SSH or HTTP(S) remote URL. Do not put credentials in the URL. |
-| `configs` | Optional initial configurations, keyed by direction. Leave it out to configure no direction. |
+| `remote.remoteUrl` | The SSH or HTTP(S) remote URL. Do not put credentials in the URL. |
+| `direction` | `promote` or `apply`. |
+| `settings.branchName` | For `apply`: the branch to import from. |
+| `settings.baseBranchName` | For `promote`: the branch to push to. |
+| `settings.createBranchOnPromotion` | For `promote`: required. Push to a new timestamped branch instead of the base branch. |
 
-## `promotion-connection list` / `get` / `update` / `delete`
+## `promotion-environment list` / `get` / `update` / `delete`
 
 ```bash
-n8n-cli promotion-connection list
-n8n-cli promotion-connection list --scope=instance
-n8n-cli promotion-connection list --provider=prov-1
-n8n-cli promotion-connection get conn-1
-echo '{"name":"Production (EU)"}' | n8n-cli promotion-connection update conn-1 --stdin
-n8n-cli promotion-connection delete conn-1
+n8n-cli promotion-environment list
+n8n-cli promotion-environment list --scope=instance --direction=promote
+n8n-cli promotion-environment list --provider=prov-1
+n8n-cli promotion-environment get env-1
+echo '{"name":"Production (EU)"}' | n8n-cli promotion-environment update env-1 --stdin
+n8n-cli promotion-environment delete env-1
 ```
 
 | Flag | Description |
 |------|-------------|
-| `--scope` | Show only `instance` or only `projects` connections. |
-| `--provider` | Show only the connections that use this provider. Use it to see which connections a provider edit affects. |
+| `--scope` | Show only `instance` or only `projects` environments. |
+| `--direction` | Show only `promote` or only `apply` environments. |
+| `--provider` | Show only the environments that use this provider. Use it to see which environments a provider edit affects. |
 | `--limit` | Maximum number of results. |
 
-`update` takes `name`, `target`, `providerId`, or a combination. The scope cannot
-change. Configurations have their own commands.
-
-`delete` also removes the configurations, the project links, and the local
-checkouts. The provider stays.
-
-## `promotion-connection set-config`
-
-Create the configuration of one direction, or replace it.
+`update` takes `name`, `providerId`, `remote`, `settings`, or a combination. The
+direction and the scope cannot change. `settings` replaces the whole saved
+settings and must match the direction, so send every setting you want to keep.
 
 ```bash
-echo '{"settings":{"schemaVersion":1,"branchName":"main"}}' \
-  | n8n-cli promotion-connection set-config conn-1 apply --stdin
-
-echo '{"settings":{"schemaVersion":1,"baseBranchName":"main","createBranchOnPromotion":false}}' \
-  | n8n-cli promotion-connection set-config conn-1 promote --stdin
+echo '{"settings":{"schemaVersion":1,"baseBranchName":"main","createBranchOnPromotion":true}}' \
+  | n8n-cli promotion-environment update env-1 --stdin
 ```
 
-| Field | Direction | Description |
-|-------|-----------|-------------|
-| `name` | both | Optional display name. |
-| `settings.branchName` | `apply` | The branch to import from. |
-| `settings.baseBranchName` | `promote` | The branch to push to. |
-| `settings.createBranchOnPromotion` | `promote` | Required. Send the current value to keep it. |
+`delete` also removes the project links and the local checkout. The provider
+stays. Nothing in Git changes.
 
-The write replaces the whole configuration. Send every setting you want to keep.
-An omitted `name` resets it to `Apply` or `Promote`.
-
-## `promotion-connection delete-config`
-
-Delete the configuration of one direction, and its local checkout. Nothing in
-Git changes.
+## `promotion-environment connect` / `disconnect`
 
 ```bash
-n8n-cli promotion-connection delete-config conn-1 apply
+n8n-cli promotion-environment connect env-1
+n8n-cli promotion-environment disconnect env-1
 ```
 
-## `promotion-connection clone` / `disconnect`
+`connect` prepares the environment. For Git, it copies the configured branch
+into local storage. You can run it again at any time. Connecting one environment
+does not make another environment ready.
 
-```bash
-n8n-cli promotion-connection clone conn-1 promote
-n8n-cli promotion-connection disconnect conn-1 promote
-```
-
-`clone` copies the configured branch into local storage. You can run it again at
-any time. Cloning one direction does not make the other direction ready.
-
-`disconnect` removes the local checkout. The configuration, its credentials, and
+`disconnect` removes the local checkout. The environment, its credentials, and
 the trusted SSH host keys stay.
 
 Both commands work on the instance that handles the request. Another instance in
 the deployment can hold a different checkout.
 
-## `promotion-connection promote`
+## `promotion-environment promote`
 
 Export all team projects, commit them, and push to the configured branch.
 
 ```bash
-n8n-cli promotion-connection promote conn-1 --message="Promote team projects"
-n8n-cli promotion-connection promote conn-1 -m "Promote team projects" --force
+n8n-cli promotion-environment promote env-1 --message="Promote team projects"
+n8n-cli promotion-environment promote env-1 -m "Promote team projects" --force
 ```
 
 | Flag | Description |
@@ -221,18 +204,18 @@ n8n-cli promotion-connection promote conn-1 -m "Promote team projects" --force
 | `-m, --message` | Commit message. Required. |
 | `--force` | Overwrite the remote branch when it has diverged. |
 
-Personal projects are not included. Clone the `promote` direction first. This
-command works on the `instance` connection only. The API key also needs
+Personal projects are not included. Connect the environment first. This command
+works on an `instance` Promote environment only. The API key also needs
 `variable:list` when the workflows reference variables.
 
-## `promotion-connection list-changes`
+## `promotion-environment list-changes`
 
 List the workflows that differ between a project and the branch of its
-promotion configuration, in one direction.
+promotion environment for one direction.
 
 ```bash
-n8n-cli promotion-connection list-changes proj-abc promote
-n8n-cli promotion-connection list-changes proj-abc apply
+n8n-cli promotion-environment list-changes proj-abc promote
+n8n-cli promotion-environment list-changes proj-abc apply
 ```
 
 | Flag | Description |
@@ -245,17 +228,18 @@ For `promote` the rows are what a promotion would send to the branch, and the
 API key needs `gitConnection:push`. For `apply` the rows are what applying the
 branch would change on this instance, and the key needs `gitConnection:pull`.
 `commitSha` is the commit the rows were read from. Table output shows the rows
-only. Use `--json` to get the rows and `commitSha` together. Clone the direction
-first. Use the `id` of each row to build a selective promote.
+only. Use `--json` to get the rows and `commitSha` together. Connect the
+environment first. Use the `id` of each row to build a selective promote.
 
-## `promotion-connection promote-selection`
+## `promotion-environment promote-selection`
 
 Read a chosen set of a project's workflows now, and push their current state to
-the `instance` connection's Promote branch.
+the branch of the project's Promote environment, or of the instance Promote
+environment.
 
 ```bash
-n8n-cli promotion-connection promote-selection proj-abc -w wf-1 -w wf-2
-n8n-cli promotion-connection promote-selection proj-abc -w wf-1 -m "Promote checkout flow"
+n8n-cli promotion-environment promote-selection proj-abc -w wf-1 -w wf-2
+n8n-cli promotion-environment promote-selection proj-abc -w wf-1 -m "Promote checkout flow"
 ```
 
 | Flag | Description |
@@ -266,23 +250,23 @@ n8n-cli promotion-connection promote-selection proj-abc -w wf-1 -m "Promote chec
 Archived workflows stay on the branch as archived. A selected workflow that was
 deleted or moved to another project leaves this project's branch. The request
 fails before any write if the branch does not hold that workflow under this
-project. Clone the `promote` direction first. The API key also needs
+project. Connect that environment first. The API key also needs
 `variable:list` when the workflows reference variables.
 
-## `promotion-connection apply`
+## `promotion-environment apply`
 
 Reset the local checkout to the tip of the configured branch, and import the
 package. This overwrites the instance to match the branch.
 
 ```bash
-n8n-cli promotion-connection apply conn-1
-n8n-cli promotion-connection apply conn-1 \
-  --expected-config-id=cfg-2 --expected-branch=main --expected-commit-sha=<full sha>
+n8n-cli promotion-environment apply env-2
+n8n-cli promotion-environment apply env-2 \
+  --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<full sha>
 ```
 
 | Flag | Description |
 |------|-------------|
-| `--expected-config-id` | ID of the apply configuration that you reviewed (`configs.apply.id`). |
+| `--expected-environment-id` | ID of the Apply environment that you reviewed. |
 | `--expected-branch` | Branch that you reviewed. |
 | `--expected-commit-sha` | Full commit SHA that you reviewed (40 or 64 lowercase hex characters). |
 
@@ -293,7 +277,7 @@ none.
 | Result | Exit code | What happened |
 |--------|-----------|---------------|
 | `applied` | `0` | The package was imported. JSON output includes `counts` and `warnings`. |
-| `source-changed` | `3` | The configuration, branch, or commit is not the one you reviewed. Nothing was imported. Review the changes again. |
+| `source-changed` | `3` | The environment, branch, or commit is not the one you reviewed. Nothing was imported. Review the changes again. |
 | `blocked` | `4` | Preflight found missing bindings, access requirements, or conflicts. A conflict can be a destructive data table change or a project deletion. Nothing was imported. The output shows the `apply-continue` command to run after you resolve them. |
 
 With `--json`, the output is the full result for each status. For `blocked`, the
@@ -305,19 +289,19 @@ each team project that the package does not hold, with all its workflows,
 credentials, and data tables. Preflight reports each such project as a
 `project-deletion` conflict.
 
-Clone the `apply` direction first. This command works on the `instance`
-connection only. The API key needs `gitConnection:pull`.
+Connect the environment first. This command works on an `instance` Apply
+environment only. The API key needs `gitConnection:pull`.
 
-## `promotion-connection apply-continue`
+## `promotion-environment apply-continue`
 
 Continue an Apply that was `blocked`, after you resolve the missing bindings, access requirements, or conflicts.
 
 ```bash
-n8n-cli promotion-connection apply-continue conn-1 \
-  --expected-config-id=cfg-2 --expected-branch=main --expected-commit-sha=<full sha>
+n8n-cli promotion-environment apply-continue env-2 \
+  --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<full sha>
 ```
 
-The three `--expected-*` flags are required. Use the `configId`,
+The three `--expected-*` flags are required. Use the `environmentId`,
 `git.branchName`, and `git.commitSha` that the blocked Apply reported. The
 command runs the preflight again. The results and exit codes are the same as
 for `apply`: `blocked` again means that something still blocks, and
@@ -341,37 +325,36 @@ destructive change or a project deletion blocks the command, and it exits `4`.
 ```bash
 # 1. Review the changes. Take the commit SHA from the same response as the rows:
 #    a second request can read a newer commit.
-n8n-cli promotion-connection list-changes proj-abc apply --json > reviewed-changes.json
+n8n-cli promotion-environment list-changes proj-abc apply --json > reviewed-changes.json
 jq '{commitSha, changes}' reviewed-changes.json
 
-# 2. Read the apply configuration ID and branch of the connection.
-n8n-cli promotion-connection get conn-1 --jq '.configs.apply.id'
-n8n-cli promotion-connection get conn-1 --jq '.configs.apply.settings.branchName'
+# 2. Read the branch of the Apply environment.
+n8n-cli promotion-environment get env-2 --jq '.settings.branchName'
 
 # 3. Apply that commit only.
-n8n-cli promotion-connection apply conn-1 \
-  --expected-config-id=cfg-2 --expected-branch=main --expected-commit-sha=<sha from step 1>
+n8n-cli promotion-environment apply env-2 \
+  --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<sha from step 1>
 
 # 4. On exit code 4, resolve the missing bindings, access requirements, or conflicts.
 #    Then run the apply-continue command that step 3 printed.
 ```
 
-## `promotion-connection apply-selection`
+## `promotion-environment apply-selection`
 
 Apply a chosen set of a project's workflow changes from its Apply branch. This is
 the apply counterpart of `promote-selection`: build the selection from the `id`
 values that `list-changes proj-abc apply` returns.
 
 ```bash
-n8n-cli promotion-connection apply-selection proj-abc -w wf-1 -w wf-2
-n8n-cli promotion-connection apply-selection proj-abc -w wf-1 \
-  --expected-config-id=cfg-2 --expected-branch=main --expected-commit-sha=<full sha>
+n8n-cli promotion-environment apply-selection proj-abc -w wf-1 -w wf-2
+n8n-cli promotion-environment apply-selection proj-abc -w wf-1 \
+  --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<full sha>
 ```
 
 | Flag | Description |
 |------|-------------|
 | `-w, --workflow` | Workflow ID to apply. Repeat the flag for more than one. Required. |
-| `--expected-config-id` | ID of the apply configuration that you reviewed (`configs.apply.id`). |
+| `--expected-environment-id` | ID of the Apply environment that you reviewed. |
 | `--expected-branch` | Branch that you reviewed. |
 | `--expected-commit-sha` | Full commit SHA that you reviewed (40 or 64 lowercase hex characters). |
 
@@ -387,22 +370,22 @@ the `apply-selection-continue` command to run after you resolve the bindings; it
 resends the same workflow ids. With `--json`, the output is the full result for
 each status.
 
-Clone the `apply` direction first. The API key needs `gitConnection:pull`. The
-connection is the project's own connection when it has one, otherwise the
-instance connection.
+Connect the environment first. The API key needs `gitConnection:pull`. The
+environment is the project's own Apply environment when it has one, otherwise
+the instance Apply environment.
 
-## `promotion-connection apply-selection-continue`
+## `promotion-environment apply-selection-continue`
 
 Continue a selection Apply that was `blocked`, after you resolve the missing
 bindings, access requirements, or conflicts.
 
 ```bash
-n8n-cli promotion-connection apply-selection-continue proj-abc -w wf-1 -w wf-2 \
-  --expected-config-id=cfg-2 --expected-branch=main --expected-commit-sha=<full sha>
+n8n-cli promotion-environment apply-selection-continue proj-abc -w wf-1 -w wf-2 \
+  --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<full sha>
 ```
 
 Resend the same workflow ids. The three `--expected-*` flags are required: use
-the `configId`, `git.branchName`, and `git.commitSha` that the blocked Apply
+the `environmentId`, `git.branchName`, and `git.commitSha` that the blocked Apply
 reported. The command runs the preflight again. The results and exit codes are
 the same as for `apply-selection`. The server keeps no session, so run the
 command again when it exits `4`.
@@ -413,14 +396,15 @@ Rows and other columns are kept. The flag applies all such changes when the
 command runs. This includes changes that the blocked Apply did not report.
 Without the flag, a destructive change blocks the command, and it exits `4`.
 
-## `promotion-connection list-projects` / `add-project` / `remove-project`
+## `promotion-environment list-projects` / `add-project` / `remove-project`
 
-Link team projects to a `projects`-scoped connection.
+Link team projects to a `projects`-scoped environment.
 
 ```bash
-n8n-cli promotion-connection list-projects conn-1
-n8n-cli promotion-connection add-project conn-1 proj-abc
-n8n-cli promotion-connection remove-project conn-1 proj-abc
+n8n-cli promotion-environment list-projects env-3
+n8n-cli promotion-environment add-project env-3 proj-abc
+n8n-cli promotion-environment remove-project env-3 proj-abc
 ```
 
-A project can be linked to one connection only.
+A project can have one environment for each direction. A direction without a
+project environment uses the instance environment.

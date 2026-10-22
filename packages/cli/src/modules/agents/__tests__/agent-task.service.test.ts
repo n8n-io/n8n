@@ -638,7 +638,6 @@ describe('AgentTaskService', () => {
 			expect.objectContaining({
 				by: 'user',
 				changedParts: ['tasks'],
-				wasUnconfigured: false,
 			}),
 		);
 

@@ -3,6 +3,7 @@ import type { Mock } from 'vitest';
 import type { z } from 'zod';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
+import { OutsideThreadProjectError } from '../../errors/outside-thread-project.error';
 import type { InstanceAiContext } from '../../types';
 import { createDataTablesTool } from '../data-tables.tool';
 
@@ -51,7 +52,7 @@ function noSuspendCtx() {
 
 // ── Tests ────────────────────────────────────────────────────────────────────
 
-describe('data-tables tool', () => {
+describe('data_tables tool', () => {
 	it.each([true, false])(
 		'resumes a saved row deletion without display names when approved=%s',
 		async (approved) => {
@@ -231,6 +232,48 @@ describe('data-tables tool', () => {
 					resourceName: 'Contacts',
 				}),
 			);
+		},
+	);
+
+	it.each([
+		{ input: { action: 'delete' }, method: 'delete' },
+		{ input: { action: 'add-column', columnName: 'email', type: 'string' }, method: 'addColumn' },
+		{ input: { action: 'delete-column', columnId: 'col-1' }, method: 'deleteColumn' },
+		{
+			input: { action: 'rename-column', columnId: 'col-1', newName: 'mail' },
+			method: 'renameColumn',
+		},
+		{ input: { action: 'insert-rows', rows: [{ email: 'a@b.c' }] }, method: 'insertRows' },
+		{
+			input: { action: 'update-rows', filter: { type: 'and', filters: [] }, data: { a: 1 } },
+			method: 'updateRows',
+		},
+		{
+			input: { action: 'delete-rows', filter: { type: 'and', filters: [] } },
+			method: 'deleteRows',
+		},
+	] as const)(
+		'rejects $input.action outside the thread project before asking for approval',
+		async ({ input, method }) => {
+			const assertInThreadProject = vi.fn().mockRejectedValue(new OutsideThreadProjectError());
+			const context = createMockContext({ assertInThreadProject });
+			const suspend = vi.fn();
+
+			await expect(
+				executeTool(
+					createDataTablesTool(context),
+					{ ...input, dataTableId: 'Contacts', projectId: 'proj-2' },
+					suspendCtx(suspend),
+				),
+			).rejects.toThrow(OutsideThreadProjectError);
+
+			expect(assertInThreadProject).toHaveBeenCalledWith({
+				kind: 'data-table',
+				id: 'Contacts',
+				projectId: 'proj-2',
+			});
+			expect(suspend).not.toHaveBeenCalled();
+			expect(context.dataTableService[method]).not.toHaveBeenCalled();
 		},
 	);
 
@@ -423,7 +466,7 @@ describe('data-tables tool', () => {
 			expect(result).toEqual({
 				dataTableId: 'dt-1',
 				...queryResult,
-				hint: '50 more rows available. Use additional paginated data-tables queries for bulk operations.',
+				hint: '50 more rows available. Use additional paginated data_tables queries for bulk operations.',
 			});
 		});
 
@@ -442,7 +485,7 @@ describe('data-tables tool', () => {
 			expect(result).toEqual({
 				dataTableId: 'dt-1',
 				...queryResult,
-				hint: '70 more rows available. Use additional paginated data-tables queries for bulk operations.',
+				hint: '70 more rows available. Use additional paginated data_tables queries for bulk operations.',
 			});
 		});
 
@@ -654,36 +697,6 @@ describe('data-tables tool', () => {
 				}),
 			);
 			expect(context.dataTableService.create).not.toHaveBeenCalled();
-		});
-
-		it('should include project name in message when projectId is provided', async () => {
-			const context = createMockContext({
-				permissions: {},
-				workspaceService: {
-					getProject: vi.fn().mockResolvedValue({ id: 'proj-1', name: 'My Project', type: 'team' }),
-					listProjects: vi.fn(),
-					tagWorkflow: vi.fn(),
-					listTags: vi.fn(),
-					createTag: vi.fn(),
-					cleanupTestExecutions: vi.fn(),
-				},
-			});
-			const suspendFn = vi.fn();
-
-			const tool = createDataTablesTool(context);
-			await executeTool(
-				tool,
-				{ ...createInput, projectId: 'proj-1' } as never,
-				suspendCtx(suspendFn),
-			);
-
-			expect(suspendFn).toHaveBeenCalled();
-			expect(suspendFn.mock.calls[0][0]).toEqual(
-				expect.objectContaining({
-					message: 'Create the table with 1 column: "email" in project "My Project"',
-					resourceName: 'Contacts',
-				}),
-			);
 		});
 
 		it('should execute immediately when permission is always_allow', async () => {

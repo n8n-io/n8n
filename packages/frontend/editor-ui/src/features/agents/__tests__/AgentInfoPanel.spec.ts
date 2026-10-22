@@ -331,6 +331,37 @@ describe('AgentInfoPanel', () => {
 		expect(events.at(-1)?.[1]).toBeUndefined();
 	});
 
+	it.each([
+		{ provider: 'openrouter', model: 'anthropic/claude-sonnet-4.5', supported: true },
+		{ provider: 'openrouter', model: 'openai/gpt-5', supported: false },
+		{ provider: 'google-vertex', model: 'claude-sonnet-4-5', supported: true },
+		{ provider: 'google-vertex', model: 'gemini-2.5-pro', supported: false },
+	])(
+		'normalizes caching when selecting $provider/$model',
+		async ({ provider, model, supported }) => {
+			credsHolder.value[provider] = 'credential-2';
+			const wrapper = mountModelPanel({
+				name: 'Support agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				credential: 'credential-1',
+				instructions: 'Help users.',
+				config: {
+					toolCallConcurrency: 2,
+					promptCaching: { enabled: true, anthropic: { ttl: '5m' } },
+				},
+			});
+			wrapper.findComponent({ name: 'AgentModelSelector' }).vm.$emit('change', { provider, model });
+			await wrapper.vm.$nextTick();
+
+			const changes = wrapper.emitted('update:config')?.at(-1)?.[0] as Partial<AgentJsonConfig>;
+			expect(changes.model).toBe(`${provider}/${model}`);
+			expect(changes.config?.toolCallConcurrency).toBe(2);
+			expect(changes.config?.promptCaching).toEqual(
+				supported ? { enabled: true, anthropic: { ttl: '5m' } } : undefined,
+			);
+		},
+	);
+
 	it('forwards the model selector\'s own "auto" source through to update:config', async () => {
 		const config: AgentJsonConfig = {
 			name: 'Support agent',

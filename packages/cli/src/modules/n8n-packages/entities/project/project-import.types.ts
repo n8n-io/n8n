@@ -1,5 +1,6 @@
+import type { SerializedProject } from '@n8n/api-types';
+
 import type { ProjectConflict } from '../../n8n-packages.types';
-import type { SerializedProject } from '../../spec/serialized/project.schema';
 
 export interface PreparedProject {
 	sourceProjectId: string;

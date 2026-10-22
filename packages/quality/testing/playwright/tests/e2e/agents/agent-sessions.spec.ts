@@ -1,11 +1,7 @@
-import type { IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { expect, test } from '../../../fixtures/base';
 
-const CHILD_TRIGGER_NAME = 'When Executed by Another Workflow';
-const CHILD_INPUT_NODE_NAME = 'Prepare workflow tool input';
-const CHILD_OUTPUT_NODE_NAME = 'Prepare workflow tool output';
 const NODE_TOOL_NAME = 'Node tool';
 const WORKFLOW_TOOL_NAME = 'Workflow tool';
 
@@ -24,72 +20,6 @@ test.use({
 		},
 	},
 });
-
-function childWorkflow(): Partial<IWorkflowBase> {
-	return {
-		name: `Agent session child workflow ${nanoid(8)}`,
-		active: false,
-		nodes: [
-			{
-				id: nanoid(),
-				name: CHILD_TRIGGER_NAME,
-				type: 'n8n-nodes-base.executeWorkflowTrigger',
-				typeVersion: 1.1,
-				position: [0, 0],
-				parameters: { inputSource: 'passthrough' },
-			},
-			{
-				id: nanoid(),
-				name: CHILD_INPUT_NODE_NAME,
-				type: 'n8n-nodes-base.set',
-				typeVersion: 3.4,
-				position: [240, 0],
-				parameters: {
-					assignments: {
-						assignments: [
-							{
-								id: nanoid(),
-								name: 'workflowInput',
-								value: WORKFLOW_INPUT_MARKER,
-								type: 'string',
-							},
-						],
-					},
-					options: {},
-				},
-			},
-			{
-				id: nanoid(),
-				name: CHILD_OUTPUT_NODE_NAME,
-				type: 'n8n-nodes-base.set',
-				typeVersion: 3.4,
-				position: [480, 0],
-				parameters: {
-					assignments: {
-						assignments: [
-							{
-								id: nanoid(),
-								name: 'workflowOutput',
-								value: WORKFLOW_OUTPUT_MARKER,
-								type: 'string',
-							},
-						],
-					},
-					options: {},
-				},
-			},
-		],
-		connections: {
-			[CHILD_TRIGGER_NAME]: {
-				main: [[{ node: CHILD_INPUT_NODE_NAME, type: 'main', index: 0 }]],
-			},
-			[CHILD_INPUT_NODE_NAME]: {
-				main: [[{ node: CHILD_OUTPUT_NODE_NAME, type: 'main', index: 0 }]],
-			},
-		},
-		settings: { saveManualExecutions: true },
-	};
-}
 
 test.describe('Agent sessions', { annotation: [{ type: 'owner', description: 'Agent' }] }, () => {
 	test('fits long session titles within the sessions table', async ({ n8n, api }) => {
@@ -126,11 +56,6 @@ test.describe('Agent sessions', { annotation: [{ type: 'owner', description: 'Ag
 
 	test('shows input and output data for node and workflow tools', async ({ n8n, api }) => {
 		const project = await api.projects.getMyPersonalProject();
-		const { workflowId } = await api.workflows.createWorkflowFromDefinition(childWorkflow(), {
-			projectId: project.id,
-		});
-		const { executionId } = await api.workflows.runManually(workflowId, CHILD_TRIGGER_NAME);
-
 		const agentId = `agent-${nanoid(8)}`;
 		const threadId = `thread-${nanoid(8)}`;
 		await n8n.agentSessions.mockSession({
@@ -144,8 +69,14 @@ test.describe('Agent sessions', { annotation: [{ type: 'owner', description: 'Ag
 			},
 			workflowTool: {
 				name: WORKFLOW_TOOL_NAME,
-				workflowId,
-				executionId,
+				workflowId: 'workflow-id',
+				executionId: 'execution-id',
+				input: { request: WORKFLOW_INPUT_MARKER },
+				output: {
+					executionId: 'execution-id',
+					status: 'success',
+					data: { 'Last node': [{ value: WORKFLOW_OUTPUT_MARKER }] },
+				},
 			},
 		});
 
@@ -157,8 +88,9 @@ test.describe('Agent sessions', { annotation: [{ type: 'owner', description: 'Ag
 		await expect(n8n.agentSessions.getOutputRunData()).toContainText(NODE_OUTPUT_MARKER);
 
 		await n8n.agentSessions.openTimelineItem(WORKFLOW_TOOL_NAME);
-		await n8n.agentSessions.openWorkflowLogNode(CHILD_OUTPUT_NODE_NAME);
-		await expect(n8n.agentSessions.getInputRunData()).toContainText(WORKFLOW_INPUT_MARKER);
-		await expect(n8n.agentSessions.getOutputRunData()).toContainText(WORKFLOW_OUTPUT_MARKER);
+		await expect(n8n.agentSessions.getWorkflowInput()).toContainText(WORKFLOW_INPUT_MARKER);
+		await expect(n8n.agentSessions.getWorkflowOutput()).toContainText(WORKFLOW_OUTPUT_MARKER);
+		await expect(n8n.agentSessions.getWorkflowOutput()).toContainText('Last node');
+		await expect(n8n.agentSessions.getOpenFullExecution()).toBeVisible();
 	});
 });

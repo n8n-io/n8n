@@ -75,6 +75,7 @@ import {
 } from '@n8n/errors';
 import { createExecutionIdV2, type ExecutionIdV2 } from '@/executions/execution-id';
 import { parseBody } from '@/middlewares';
+import * as ResponseHelper from '@/response-helper';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import { EngineV2PayloadFiles } from '@/services/engine-v2-payload-files.service';
 import { OwnershipService } from '@/services/ownership.service';
@@ -445,9 +446,7 @@ async function sendResponseNodeResponse(
 			applySandboxCSP(res);
 			try {
 				const stream = await Container.get(BinaryDataService).getAsStream(binaryData.id);
-				res.once('close', () => stream.destroy());
-				stream.pipe(res, { end: false });
-				await finished(stream);
+				await ResponseHelper.sendStreamToResponse(res, stream);
 			} finally {
 				void Container.get(WebhookResponseRelay).deleteOffloadedBody(response, {
 					workflowId: workflow.id,
@@ -486,7 +485,9 @@ async function sendResponseNodeResponse(
 			`Error with Webhook-Response for execution "${executionId}": "${error.message}"`,
 			{ executionId, workflowId: workflow.id },
 		);
-		responder.respondWithError(error);
+		// The client left, or a stream that failed halfway destroyed the response.
+		if (res.destroyed) responder.respondWithNoResponse();
+		else responder.respondWithError(error);
 	}
 }
 

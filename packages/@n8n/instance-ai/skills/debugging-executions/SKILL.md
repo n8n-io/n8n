@@ -8,8 +8,8 @@ description: >-
   with an error from a node or an external service (for example a 401), before
   you explain the cause to the user.
 recommended_tools:
-  - executions
-  - workflows
+  - workflow_builder_executions
+  - workflow_builder_workflows
 ---
 
 # Debugging Executions
@@ -19,8 +19,8 @@ with wrong or empty values.
 
 ## When the user reports it still fails
 
-Re-run the failing path with `executions(action="run")` (or
-`verify-built-workflow`) and inspect the real result before responding. Do not
+Re-run the failing path with `workflow_builder_executions(action="run")` (or
+`workflow_builder_verify_built_workflow`) and inspect the real result before responding. Do not
 restate that the workflow is "fixed", "verified", or "working", and do not
 attribute the reported failure to a test-harness artifact, stale state, or "it
 works in production" without a re-run against the failing path. Treat live
@@ -39,13 +39,15 @@ Check what you can see on the n8n side first. These checks are read-only, so
 run them unprompted:
 
 - **Auth errors (401, 403, "unauthorized", "invalid key").** Confirm that the
-  credential exists (`credentials(action="list")` or `get`), that the node uses
-  it (the node's `credentials` in `workflows(action="get")`; resolved
-  parameters show only the auth type, not which credential is bound), and what
-  `credentials(action="test")` reports. A generic credential, such as Header
-  Auth, can pass its test without a call to the service, so a pass does not
-  show that the service accepts it. Say so when you report the check.
-- **Other node errors.** Start from `executions(action="debug")` and the
+  credential exists (`workflow_builder_credentials(action="list")` or `get`),
+  that the node uses it (the node's `credentials` in
+  `workflow_builder_workflows(action="get")`; resolved parameters show only the
+  auth type, not which credential is bound), and what
+  `workflow_builder_credentials(action="test")` reports. A generic credential,
+  such as Header Auth, can pass its test without a call to the service, so a
+  pass does not show that the service accepts it. Say so when you report the
+  check.
+- **Other node errors.** Start from `workflow_builder_executions(action="debug")` and the
   resolved parameters of the failed node.
 
 Then report the checks and their results, and only after that give a cause.
@@ -69,7 +71,7 @@ own.
 
 Two consequences when the user reports a live workflow failing:
 
-- **Read the version each execution ran.** `executions(action="list", workflowId)`
+- **Read the version each execution ran.** `workflow_builder_executions(action="list", workflowId)`
   returns `workflowVersionId` on every row, plus `workflow.activeVersionId`
   (the published version) and `workflow.draftVersionId`. Only a row whose
   `workflowVersionId` equals `workflow.activeVersionId` ran the published code.
@@ -86,7 +88,7 @@ the fix — an earlier execution ran the old version.
 
 ## Testing event-triggered workflows
 
-Use `executions(action="run")` with `inputData` matching the trigger's output
+Use `workflow_builder_executions(action="run")` with `inputData` matching the trigger's output
 shape — do not rebuild the workflow with a Manual Trigger. For trigger
 `inputData` shapes, read the workspace file
 `knowledge-base/reference/trigger-input-data-shapes.md`
@@ -94,7 +96,7 @@ when a sandbox workspace is available.
 
 ## Failed execution
 
-`executions(action="debug")` already includes `failedNode.resolvedParameters` —
+`workflow_builder_executions(action="debug")` already includes `failedNode.resolvedParameters` —
 start there. That bundle has `parameters` (raw, with expressions intact),
 `resolved` (substituted), `failedExpressions` (those that threw), and
 `emptyResolutions` (those that resolved to `null`/`undefined`/`""` silently).
@@ -106,11 +108,11 @@ time; we just don't have it here.
 
 ## Confirming a fix on the node that failed
 
-`executions(action="debug")` tells you what the node received. It does not tell
+`workflow_builder_executions(action="debug")` tells you what the node received. It does not tell
 you whether your fix works. To learn that, run the node itself:
 
 ```
-executions(action="run-step", workflowId, nodeName, reuseExecutionId=<the failed execution>)
+workflow_builder_executions(action="run-step", workflowId, nodeName, reuseExecutionId=<the failed execution>)
 ```
 
 `reuseExecutionId` replays the data the node really received and re-runs only
@@ -194,13 +196,13 @@ that Agent:
   and it does not report which. Do not name a single Agent to the user when
   this field holds more than one.
 - A tool on two Agents where one runs above the other is refused. Run the
-  upper Agent, then read the tool with `executions(action="get-node-output")`.
+  upper Agent, then read the tool with `workflow_builder_executions(action="get-node-output")`.
 
 The tool's own arguments come from `toolArguments` — the values the agent would
 normally decide:
 
 ```
-executions(action="run-step", workflowId, nodeName="Search Tickets Tool",
+workflow_builder_executions(action="run-step", workflowId, nodeName="Search Tickets Tool",
            reuseExecutionId=<the failed execution>,
            toolArguments={"query": "login fails", "status": "open"})
 ```
@@ -211,7 +213,7 @@ Ticket" tool creates the ticket again, and `toolArguments` does not change that.
 Only run one when the user has accepted a second write.
 
 Use the argument names from the node's `$fromAI` calls, which
-`workflows(action="get-as-code")` shows. Pass a plain string instead for a tool
+`workflow_builder_workflows(action="get-as-code")` shows. Pass a plain string instead for a tool
 that takes one free-text input (Wikipedia, Code Tool, a vector store used as a
 tool).
 
@@ -225,13 +227,13 @@ the node's output from that execution.
 
 A sub-node that is not a tool — a model, memory, embeddings — cannot be run this
 way at all. Run the Agent, and read the sub-node with
-`executions(action="get-node-output")` on **that** execution: n8n records every
+`workflow_builder_executions(action="get-node-output")` on **that** execution: n8n records every
 call a sub-node made while the Agent ran.
 
 ## Successful execution with wrong or empty value
 
 When `debug` doesn't apply because nothing errored, call
-`executions(action="get-resolved-node-parameters", executionId, nodeName)` on the
+`workflow_builder_executions(action="get-resolved-node-parameters", executionId, nodeName)` on the
 node whose output looks off and on the nodes that feed it —
 **do this unprompted**, don't ask the user for permission first. It's a cheap
 read-only inspection and the only reliable way to confirm whether an empty value came
