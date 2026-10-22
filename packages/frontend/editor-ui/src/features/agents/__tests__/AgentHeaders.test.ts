@@ -199,7 +199,7 @@ describe('AgentPreviewHeader', () => {
 		expect(wrapper.emitted('new-session')).toEqual([[]]);
 		expect(track).toHaveBeenCalledExactlyOnceWith(
 			TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_TEST_CHAT_ICON_FROM_TEST_PANEL,
-			{ agent_id: 'agent-1', session_id: 'session-xyz', source: 'standalone' },
+			{ agent_id: 'agent-1', push_ref: 'session-xyz', source: 'standalone' },
 		);
 	});
 

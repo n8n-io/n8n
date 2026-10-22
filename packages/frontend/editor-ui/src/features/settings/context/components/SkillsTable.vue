@@ -204,7 +204,6 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 				<div :class="$style.actions" @click.stop>
 					<N8nActionToggle
 						:actions="actionsFor(item)"
-						icon-orientation="vertical"
 						data-test-id="skill-actions"
 						@action="(action: SkillAction) => onAction(item, action)"
 					/>
