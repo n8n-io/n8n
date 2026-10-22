@@ -56,6 +56,8 @@ import PromotionProviderCreate from './commands/promotion-provider/create';
 import PromotionProviderDelete from './commands/promotion-provider/delete';
 import PromotionProviderGet from './commands/promotion-provider/get';
 import PromotionProviderList from './commands/promotion-provider/list';
+import PromotionProviderListBranches from './commands/promotion-provider/list-branches';
+import PromotionProviderListRepositories from './commands/promotion-provider/list-repositories';
 import PromotionProviderUpdate from './commands/promotion-provider/update';
 import SkillInstall from './commands/skill/install';
 import SourceControlPull from './commands/source-control/pull';
@@ -108,6 +110,8 @@ export const commands = {
 	'promotion-provider:create': PromotionProviderCreate,
 	'promotion-provider:update': PromotionProviderUpdate,
 	'promotion-provider:delete': PromotionProviderDelete,
+	'promotion-provider:list-repositories': PromotionProviderListRepositories,
+	'promotion-provider:list-branches': PromotionProviderListBranches,
 
 	'promotion-environment:list': PromotionEnvironmentList,
 	'promotion-environment:get': PromotionEnvironmentGet,
