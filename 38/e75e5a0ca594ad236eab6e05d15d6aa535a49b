@@ -1,0 +1,13 @@
+packages/cli/src/modules/agents/agent-version-initializer.ts
+  ai_agent 16-18,20,22,28
+packages/cli/src/modules/agents/__tests__/agent-version-initializer.test.ts
+  ai_agent 36-53
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  ai_agent 17-18,77-79,84-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "38e75e5a0ca594ad236eab6e05d15d6aa535a49b",
+  "prompts": {}
+}
