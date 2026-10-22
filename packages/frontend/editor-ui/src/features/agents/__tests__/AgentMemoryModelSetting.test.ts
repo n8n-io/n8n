@@ -41,8 +41,21 @@ vi.mock('../composables/useModelCatalog', () => ({
 				models: [
 					{
 						provider: 'azure-openai',
+						model: 'gpt-4o-mini',
+						name: 'GPT-4o mini',
+						metadata: { functionCalling: true, available: true },
+					},
+					{
+						provider: 'azure-openai',
+						model: 'gpt-4o',
+						name: 'GPT-4o',
+						metadata: { functionCalling: true, available: true },
+					},
+					{
+						provider: 'azure-openai',
 						model: 'My-Chat',
 						catalogModelId: 'gpt-4.1',
+						deploymentName: 'My-Chat',
 						name: 'My-Chat (gpt-4.1)',
 						metadata: { functionCalling: true, available: true },
 					},
@@ -106,10 +119,10 @@ function makeConfig(): AgentJsonConfig {
 	};
 }
 
-function mountSetting() {
+function mountSetting(config: AgentJsonConfig = makeConfig()) {
 	return mount(AgentMemoryModelSetting, {
 		props: {
-			config: makeConfig(),
+			config,
 			projectId: 'project-1',
 		},
 	});
@@ -139,6 +152,30 @@ describe('AgentMemoryModelSetting', () => {
 		expect(selector.props('selectedModel')).toMatchObject({
 			model: 'My-Chat',
 			name: 'My-Chat (gpt-4.1)',
+		});
+	});
+
+	it('matches a classic worker by model ID when its deployment has another model ID', () => {
+		const wrapper = mountSetting({
+			...makeConfig(),
+			memory: {
+				enabled: true,
+				storage: 'n8n',
+				episodicMemory: {
+					enabled: true,
+					reflectorModel: {
+						model: 'azure-openai/gpt-4o',
+						modelDeploymentName: 'gpt-4o-mini',
+						credential: 'azure-credential',
+					},
+				},
+			},
+		});
+		expect(
+			wrapper.getComponent({ name: 'AgentModelSelector' }).props('selectedModel'),
+		).toMatchObject({
+			model: 'gpt-4o',
+			name: 'GPT-4o',
 		});
 	});
 

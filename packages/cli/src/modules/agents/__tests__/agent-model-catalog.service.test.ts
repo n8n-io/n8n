@@ -537,6 +537,7 @@ describe('AgentModelCatalogService', () => {
 						value: 'my-other',
 						catalogModelId: 'gpt-4.1-mini',
 					},
+					{ name: 'gpt-4.1', value: 'gpt-4.1' },
 				],
 			});
 
@@ -553,6 +554,7 @@ describe('AgentModelCatalogService', () => {
 				models: [
 					{
 						id: 'my-chat',
+						deploymentName: 'my-chat',
 						name: 'my-chat (gpt-4.1)',
 						catalogModelId: 'gpt-4.1',
 						toolCall: false,
@@ -561,10 +563,12 @@ describe('AgentModelCatalogService', () => {
 					},
 					{
 						id: 'my-other',
+						deploymentName: 'my-other',
 						name: 'my-other (gpt-4.1-mini)',
 						catalogModelId: 'gpt-4.1-mini',
 						toolCall: true,
 					},
+					{ id: 'gpt-4.1', name: 'gpt-4.1', deploymentName: 'gpt-4.1', toolCall: true },
 				],
 			});
 			expect(lookupService.lookup).toHaveBeenCalledWith(

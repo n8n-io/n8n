@@ -180,7 +180,7 @@ function selectedModelForDifficulty(difficulty: SubAgentTaskDifficulty): AgentMo
 	const selectedId =
 		parsed.provider === 'azure-openai' ? mapping.modelDeploymentName || parsed.name : parsed.name;
 	const registryEntry = modelsByDifficulty.value[difficulty][parsed.provider]?.models.find(
-		(model) => model.model === selectedId || (!model.catalogModelId && model.model === parsed.name),
+		(model) => model.model === (model.deploymentName ? selectedId : parsed.name),
 	);
 	if (registryEntry) return registryEntry;
 

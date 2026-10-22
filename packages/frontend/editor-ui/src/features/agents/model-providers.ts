@@ -10,6 +10,7 @@ export interface AgentModelOption {
 	provider: AgentModelProvider;
 	model: string;
 	catalogModelId?: string;
+	deploymentName?: string;
 	name: string;
 	description?: string | null;
 	createdAt?: string | null;

@@ -335,7 +335,7 @@ export class BuilderModelLiveLookupService {
 				models: models.filter(supportsFoundryChatCompletions).map((model) => ({
 					name: model.name,
 					value: model.id,
-					catalogModelId: model.modelName || model.id,
+					...(model.modelName ? { catalogModelId: model.modelName } : {}),
 				})),
 				policy: 'endpoint-only',
 			};

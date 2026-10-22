@@ -58,8 +58,8 @@ export function resolveModelSelection(
 	const modelId = sanitizeModelId(selection.provider, catalogModelId ?? selection.model);
 	return {
 		model: `${selection.provider}/${modelId}`,
-		...(selection.provider === 'azure-openai' && catalogModelId
-			? { modelDeploymentName: selection.model }
+		...(selection.provider === 'azure-openai' && selected?.deploymentName
+			? { modelDeploymentName: selected.deploymentName }
 			: {}),
 	};
 }

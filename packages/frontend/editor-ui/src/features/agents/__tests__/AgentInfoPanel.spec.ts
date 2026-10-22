@@ -792,6 +792,12 @@ describe('AgentInfoPanel', () => {
 			azureModels.value = [
 				{
 					provider: 'azure-openai',
+					model: 'gpt-4o-mini',
+					name: 'GPT-4o mini',
+					metadata: { functionCalling: true, available: true },
+				},
+				{
+					provider: 'azure-openai',
 					model: 'gpt-4o',
 					name: 'GPT-4o',
 					metadata: { functionCalling: true, available: true },
@@ -802,7 +808,7 @@ describe('AgentInfoPanel', () => {
 				instructions: 'Help users.',
 				model: 'azure-openai/gpt-4o',
 				credential: 'azure-key-1',
-				modelDeploymentName: 'Custom-Deployment',
+				modelDeploymentName: 'gpt-4o-mini',
 			});
 			await flushAsync(wrapper);
 			expect(selectorProps(wrapper).selectedModel).toMatchObject({
@@ -830,6 +836,7 @@ describe('AgentInfoPanel', () => {
 						provider: 'azure-openai',
 						model: 'My-Chat',
 						catalogModelId: 'gpt-4.1',
+						deploymentName: 'My-Chat',
 						name: 'My-Chat (gpt-4.1)',
 						metadata: { functionCalling: true, available: true },
 					},

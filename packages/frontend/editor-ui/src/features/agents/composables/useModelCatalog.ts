@@ -49,6 +49,7 @@ function toAgentModel(provider: AgentModelProvider, model: ModelInfo): AgentMode
 		provider,
 		model: model.id,
 		...(model.catalogModelId ? { catalogModelId: model.catalogModelId } : {}),
+		...(model.deploymentName ? { deploymentName: model.deploymentName } : {}),
 		name: model.name,
 		description: null,
 		createdAt: model.releaseDate ?? null,

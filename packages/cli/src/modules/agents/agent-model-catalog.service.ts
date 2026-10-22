@@ -138,12 +138,13 @@ export class AgentModelCatalogService {
 				provider,
 				verified: true,
 				models: lookup.models.map((live) => {
-					const catalogModel = catalogModels[live.catalogModelId ?? live.value];
+					const catalogModel = live.catalogModelId ? catalogModels[live.catalogModelId] : undefined;
 					return {
 						...catalogModel,
 						toolCall: catalogModel?.toolCall ?? true,
 						id: live.value,
 						name: live.name || live.value,
+						...(provider === 'azure-openai' ? { deploymentName: live.value } : {}),
 						...(live.catalogModelId ? { catalogModelId: live.catalogModelId } : {}),
 					};
 				}),

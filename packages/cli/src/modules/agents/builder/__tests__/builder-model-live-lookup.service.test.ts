@@ -436,7 +436,7 @@ describe('BuilderModelLiveLookupService', () => {
 			expect(result).toEqual({
 				status: 'success',
 				policy: 'endpoint-only',
-				models: [{ name: 'my-chat (gpt-4.1)', value: 'my-chat', catalogModelId: 'my-chat' }],
+				models: [{ name: 'my-chat (gpt-4.1)', value: 'my-chat' }],
 			});
 			// The deployments list needs the Foundry audience, not the inference
 			// audience, and the token mint runs through the instance's SSRF policy.

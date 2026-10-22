@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AgentModelOption } from '../model-providers';
+import { resolveModelSelection } from '../utils/model-string';
 
 const mocks = vi.hoisted(() => ({
 	getModelCatalog: vi.fn(),
@@ -141,8 +142,17 @@ describe('useModelCatalog', () => {
 			provider: 'azure-openai',
 			verified: true,
 			models: [
-				{ ...model('My-Chat', 'My-Chat (gpt-4.1)'), catalogModelId: 'gpt-4.1' },
-				{ ...model('Other-Chat', 'Other-Chat (gpt-4.1)'), catalogModelId: 'gpt-4.1' },
+				{
+					...model('My-Chat', 'My-Chat (gpt-4.1)'),
+					catalogModelId: 'gpt-4.1',
+					deploymentName: 'My-Chat',
+				},
+				{
+					...model('Other-Chat', 'Other-Chat (gpt-4.1)'),
+					catalogModelId: 'gpt-4.1',
+					deploymentName: 'Other-Chat',
+				},
+				{ ...model('Unknown-Chat'), deploymentName: 'Unknown-Chat' },
 			],
 		});
 		const { useModelCatalog } = await import('../composables/useModelCatalog');
@@ -151,10 +161,34 @@ describe('useModelCatalog', () => {
 		const credentials = { 'azure-openai': 'azure-credential' };
 		getModelsForPicker(credentials);
 		await flushAsync();
-		expect(getModelsForPicker(credentials)['azure-openai']?.models).toMatchObject([
-			{ model: 'My-Chat', catalogModelId: 'gpt-4.1', name: 'My-Chat (gpt-4.1)' },
-			{ model: 'Other-Chat', catalogModelId: 'gpt-4.1', name: 'Other-Chat (gpt-4.1)' },
+		const pickerModels = getModelsForPicker(credentials);
+		expect(pickerModels['azure-openai']?.models).toMatchObject([
+			{
+				model: 'My-Chat',
+				catalogModelId: 'gpt-4.1',
+				deploymentName: 'My-Chat',
+				name: 'My-Chat (gpt-4.1)',
+			},
+			{
+				model: 'Other-Chat',
+				catalogModelId: 'gpt-4.1',
+				deploymentName: 'Other-Chat',
+				name: 'Other-Chat (gpt-4.1)',
+			},
+			{ model: 'Unknown-Chat', deploymentName: 'Unknown-Chat', name: 'Unknown-Chat' },
 		]);
+		expect(
+			resolveModelSelection({ provider: 'azure-openai', model: 'My-Chat' }, pickerModels),
+		).toEqual({
+			model: 'azure-openai/gpt-4.1',
+			modelDeploymentName: 'My-Chat',
+		});
+		expect(
+			resolveModelSelection({ provider: 'azure-openai', model: 'Unknown-Chat' }, pickerModels),
+		).toEqual({
+			model: 'azure-openai/Unknown-Chat',
+			modelDeploymentName: 'Unknown-Chat',
+		});
 	});
 
 	it('lists models with a priority first and the rest by name', async () => {

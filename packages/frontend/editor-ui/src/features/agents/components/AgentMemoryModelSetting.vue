@@ -93,7 +93,7 @@ const selectedModel = computed<AgentModelOption | null>(() => {
 	const selectedId =
 		parsed.provider === 'azure-openai' ? worker?.modelDeploymentName || parsed.name : parsed.name;
 	const catalogModel = modelsByProvider.value[parsed.provider]?.models.find(
-		(model) => model.model === selectedId || (!model.catalogModelId && model.model === parsed.name),
+		(model) => model.model === (model.deploymentName ? selectedId : parsed.name),
 	);
 	if (catalogModel) return catalogModel;
 

@@ -65,6 +65,7 @@ export function getAgentModelProviderCredentialTypes(provider: string): readonly
 export interface AgentCatalogModel {
 	id: string;
 	catalogModelId?: string;
+	deploymentName?: string;
 	name: string;
 	releaseDate?: string;
 	reasoning?: boolean;

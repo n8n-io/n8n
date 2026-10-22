@@ -131,7 +131,7 @@ const selectedAgent = computed<AgentModelOption | null>(() => {
 			? props.config?.modelDeploymentName || parsed.name
 			: parsed.name;
 	const registryEntry = filteredAgents.value[parsed.provider]?.models.find(
-		(m) => m.model === selectedId || (!m.catalogModelId && m.model === parsed.name),
+		(model) => model.model === (model.deploymentName ? selectedId : parsed.name),
 	);
 	if (registryEntry) return registryEntry;
 

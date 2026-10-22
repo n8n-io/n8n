@@ -98,8 +98,21 @@ vi.mock('../composables/useModelCatalog', async () => {
 					models: [
 						{
 							provider: 'azure-openai',
+							model: 'gpt-4o-mini',
+							name: 'GPT-4o mini',
+							metadata: { functionCalling: true, available: true },
+						},
+						{
+							provider: 'azure-openai',
+							model: 'gpt-4o',
+							name: 'GPT-4o',
+							metadata: { functionCalling: true, available: true },
+						},
+						{
+							provider: 'azure-openai',
 							model: 'My-Chat',
 							catalogModelId: 'gpt-4.1',
+							deploymentName: 'My-Chat',
 							name: 'My-Chat (gpt-4.1)',
 							metadata: { functionCalling: true, available: true },
 						},
@@ -591,6 +604,28 @@ describe('AgentSubAgentsPanel', () => {
 		expect(selector.props('selectedModel')).toMatchObject({
 			model: 'My-Chat',
 			name: 'My-Chat (gpt-4.1)',
+		});
+	});
+
+	it('matches a classic difficulty model by model ID when its deployment has another model ID', async () => {
+		const wrapper = await mountPanel({
+			...defaultConfig,
+			subAgents: {
+				modelsByDifficulty: {
+					high: {
+						model: 'azure-openai/gpt-4o',
+						modelDeploymentName: 'gpt-4o-mini',
+						credential: 'azure-credential',
+					},
+				},
+			},
+		});
+		const selector = wrapper.findComponent(
+			'[data-testid="agent-sub-agents-difficulty-high-model"]',
+		);
+		expect(selector.props('selectedModel')).toMatchObject({
+			model: 'gpt-4o',
+			name: 'GPT-4o',
 		});
 	});
 
