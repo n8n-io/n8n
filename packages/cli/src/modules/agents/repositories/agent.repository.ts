@@ -74,6 +74,10 @@ export class AgentRepository extends BaseRepository<Agent> {
 		await this.managerFor(ctx).insert(Agent, agent as QueryDeepPartialEntity<Agent>);
 	}
 
+	/**
+	 * Find Agent IDs whose current draft do not have history snapshot
+	 * (used for backfill after updating versioning logic)
+	 */
 	async findMissingVersionIds(take: number, afterId?: string): Promise<string[]> {
 		const query = this.createQueryBuilder('agent')
 			.leftJoin(AgentHistory, 'history', 'history.versionId = agent.versionId')
@@ -82,7 +86,9 @@ export class AgentRepository extends BaseRepository<Agent> {
 			.select(['agent.id'])
 			.orderBy('agent.id', 'ASC')
 			.take(take);
+
 		if (afterId) query.andWhere('agent.id > :afterId', { afterId });
+
 		return (await query.getMany()).map(({ id }) => id);
 	}
 
@@ -94,6 +100,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 				? { lock: { mode: 'pessimistic_write' as const } }
 				: {}),
 		});
+
 		if (agent && !agent.versionId) {
 			agent.versionId = randomUUID();
 			await manager.update(
@@ -102,6 +109,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 				{ versionId: agent.versionId, updatedAt: agent.updatedAt },
 			);
 		}
+
 		return agent;
 	}
 

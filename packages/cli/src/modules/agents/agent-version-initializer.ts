@@ -4,7 +4,9 @@ import { Service } from '@n8n/di';
 import { AgentDefinitionService } from './agent-definition.service';
 import { AgentRepository } from './repositories/agent.repository';
 
-/** Capture pre-upgrade drafts before the module serves saved-version requests. */
+const BACKFILL_BATCH_SIZE = 100;
+
+/** Backfill missing history snapshots for existing Agent drafts at startup. */
 @Service()
 export class AgentVersionInitializer {
 	constructor(
@@ -17,7 +19,9 @@ export class AgentVersionInitializer {
 		const excluded = new Set(excludedAgentIds);
 		let afterId: string | undefined;
 		let ids: string[];
-		while ((ids = await this.agents.findMissingVersionIds(100, afterId)).length > 0) {
+		while (
+			(ids = await this.agents.findMissingVersionIds(BACKFILL_BATCH_SIZE, afterId)).length > 0
+		) {
 			for (const id of ids) {
 				if (excluded.has(id)) continue;
 				await this.transactionRunner.run({}, async (ctx) => {
