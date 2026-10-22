@@ -4,6 +4,8 @@
 // https://opentelemetry.io/docs/specs/semconv/non-normative/code-generation/#stability-and-versioning
 // https://github.com/open-telemetry/opentelemetry-js/tree/main/semantic-conventions#unstable-semconv
 // Source: https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/registry/attributes/gen-ai.md
+import type { ITaskMetadata } from 'n8n-workflow';
+
 export const GEN_AI_ATTR = {
 	OPERATION_NAME: 'gen_ai.operation.name',
 	PROVIDER_NAME: 'gen_ai.provider.name',
@@ -13,8 +15,9 @@ export const GEN_AI_ATTR = {
 	USAGE_OUTPUT_TOKENS: 'gen_ai.usage.output_tokens',
 	AGENT_NAME: 'gen_ai.agent.name',
 	AGENT_ID: 'gen_ai.agent.id',
-	USAGE_REPORTED: 'n8n.llm.usage_reported',
 } as const;
+
+export const N8N_USAGE_REPORTED_ATTR = 'n8n.llm.usage_reported';
 
 type SpecProviderName =
 	| 'anthropic'
@@ -42,7 +45,7 @@ type N8nProviderName =
 
 type GenAiProviderName = SpecProviderName | N8nProviderName;
 
-export type GenAiAttributes = Record<string, string | number | boolean>;
+export type GenAiAttributes = NonNullable<ITaskMetadata['tracing']>;
 
 const LANGCHAIN_NODE_PREFIX = '@n8n/n8n-nodes-langchain.';
 
@@ -69,7 +72,10 @@ const PROVIDER_BY_CHAT_MODEL_NODE: Readonly<Record<string, GenAiProviderName>> =
 	lmChatXAiGrok: 'x_ai',
 };
 
-const GEN_AI_ATTRIBUTE_KEYS: ReadonlySet<string> = new Set(Object.values(GEN_AI_ATTR));
+const GEN_AI_ATTRIBUTE_KEYS: ReadonlySet<string> = new Set([
+	...Object.values(GEN_AI_ATTR),
+	N8N_USAGE_REPORTED_ATTR,
+]);
 
 export function isGenAiAttributeKey(key: string): boolean {
 	return GEN_AI_ATTRIBUTE_KEYS.has(key);
@@ -98,6 +104,6 @@ export function buildChatGenAiAttributes({
 					[GEN_AI_ATTR.USAGE_INPUT_TOKENS]: usage.inputTokens,
 					[GEN_AI_ATTR.USAGE_OUTPUT_TOKENS]: usage.outputTokens,
 				}
-			: { [GEN_AI_ATTR.USAGE_REPORTED]: false }),
+			: { [N8N_USAGE_REPORTED_ATTR]: false }),
 	};
 }

@@ -1,4 +1,4 @@
-import { isGenAiAttributeKey, type GenAiAttributes } from '@n8n/ai-utilities/gen-ai';
+import { isGenAiAttributeKey } from '@n8n/ai-utilities/gen-ai';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { WorkflowRepository, type Project } from '@n8n/db';
@@ -11,7 +11,7 @@ import type {
 	NodeExecuteAfterContext,
 } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import type { ICustomTelemetryTag, INode, IWorkflowBase, WorkflowExecuteMode } from 'n8n-workflow';
+import type { ICustomTelemetryTag, IWorkflowBase, WorkflowExecuteMode } from 'n8n-workflow';
 
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 
@@ -236,7 +236,12 @@ export class OtelLifecycleHandler {
 			outputItemCount: countOutputItems(ctx.taskData.data),
 			error: ctx.taskData.error ?? undefined,
 			customAttributes: this.buildNodeCustomAttributes(ctx),
-			genAiAttributes: this.tryBuildGenAiAttributes(ctx, node),
+			genAiAttributes: buildNodeGenAiAttributes(
+				node,
+				ctx.taskData,
+				ctx.executionData.resultData.runData,
+				ctx.workflow.connections,
+			),
 		});
 	}
 
@@ -318,27 +323,6 @@ export class OtelLifecycleHandler {
 				.filter(([key]) => !isGenAiAttributeKey(key))
 				.map(([key, value]) => [key, String(value)]),
 		);
-	}
-
-	private tryBuildGenAiAttributes(
-		ctx: NodeExecuteAfterContext,
-		node: INode,
-	): GenAiAttributes | undefined {
-		try {
-			return buildNodeGenAiAttributes(
-				node,
-				ctx.taskData,
-				ctx.executionData.resultData.runData,
-				ctx.workflow.connections,
-			);
-		} catch (error) {
-			this.logger.warn('Failed to build GenAI attributes for OTEL span', {
-				executionId: ctx.executionId,
-				nodeName: ctx.nodeName,
-				error: error instanceof Error ? error.message : String(error),
-			});
-			return undefined;
-		}
 	}
 }
 

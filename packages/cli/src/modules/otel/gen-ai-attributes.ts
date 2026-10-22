@@ -1,4 +1,10 @@
-import { GEN_AI_ATTR, isGenAiAttributeKey, type GenAiAttributes } from '@n8n/ai-utilities/gen-ai';
+import {
+	GEN_AI_ATTR,
+	N8N_USAGE_REPORTED_ATTR,
+	isGenAiAttributeKey,
+	type GenAiAttributes,
+} from '@n8n/ai-utilities/gen-ai';
+import pick from 'lodash/pick';
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	NodeConnectionTypes,
@@ -74,20 +80,16 @@ function summarizeChatCalls(
 
 	if (!firstCall) return {};
 
-	const summary: GenAiAttributes = {};
-	for (const key of [
-		GEN_AI_ATTR.PROVIDER_NAME,
-		GEN_AI_ATTR.REQUEST_MODEL,
-		GEN_AI_ATTR.RESPONSE_MODEL,
-	]) {
-		const value = firstCall.attributes[key];
-		if (value !== undefined) summary[key] = value;
-	}
-	if (reportedCalls > 0) {
-		summary[GEN_AI_ATTR.USAGE_INPUT_TOKENS] = inputTokens;
-		summary[GEN_AI_ATTR.USAGE_OUTPUT_TOKENS] = outputTokens;
-	}
-	if (isUsageMissing) summary[GEN_AI_ATTR.USAGE_REPORTED] = false;
-
-	return summary;
+	return {
+		...pick(firstCall.attributes, [
+			GEN_AI_ATTR.PROVIDER_NAME,
+			GEN_AI_ATTR.REQUEST_MODEL,
+			GEN_AI_ATTR.RESPONSE_MODEL,
+		]),
+		...(reportedCalls > 0 && {
+			[GEN_AI_ATTR.USAGE_INPUT_TOKENS]: inputTokens,
+			[GEN_AI_ATTR.USAGE_OUTPUT_TOKENS]: outputTokens,
+		}),
+		...(isUsageMissing && { [N8N_USAGE_REPORTED_ATTR]: false }),
+	};
 }
