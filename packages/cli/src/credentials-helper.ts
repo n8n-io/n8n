@@ -943,7 +943,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			return;
 		}
 
-		const oauthTokenData = await this.withManagedVersionIfFirstToken(
+		const oauthTokenData = await this.getTokenDataForFirstConnection(
 			type,
 			credentials,
 			data.oauthTokenData,
@@ -988,7 +988,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 	 * version. The first token gets the version of the default app, which the execution used to
 	 * fetch it. A refresh keeps the stored version.
 	 */
-	private async withManagedVersionIfFirstToken(
+	private async getTokenDataForFirstConnection(
 		type: string,
 		credentials: Credentials,
 		tokenData: ICredentialDataDecryptedObject['oauthTokenData'],
