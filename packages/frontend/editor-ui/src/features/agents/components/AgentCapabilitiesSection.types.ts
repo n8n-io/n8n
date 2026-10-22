@@ -6,6 +6,16 @@ import type { AgentJsonToolRef } from '../types';
 
 export type ToolRowNodeType = SimplifiedNodeType | null;
 
+/** Why a policy locks a chip, as its lock tooltip states it. */
+export type ChipRestriction = {
+	/** The level that denied the type; absent when the policy names none. */
+	scope?: NodeTypeAvailabilityScope;
+	/** The denied type's display name, which is not always the type the chip shows. */
+	typeLabel: string;
+	/** Set only when the entry itself is allowed and something it embeds is denied. */
+	message?: string;
+};
+
 export type ToolPickerMode = 'tools' | 'workflows';
 
 export type ToolOpenTarget =
@@ -27,14 +37,8 @@ export type ToolRowItem = {
 	openTarget: ToolOpenTarget;
 	invalid: boolean;
 	invalidReasons: string[];
-	/** True when a policy denies the node type this row runs as. It outranks `invalid` and `warning`. */
-	restricted: boolean;
-	/** The level that denied the type; absent when the policy names none. */
-	restrictedScope?: NodeTypeAvailabilityScope;
-	/** The type name the restriction popover shows. */
-	restrictedTypeLabel: string;
-	/** Set only when the row itself is allowed and something it embeds is denied. */
-	restrictedMessage: string;
+	/** Set when a policy locks the row. It outranks `invalid` and `warning`. */
+	restriction: ChipRestriction | null;
 };
 
 type ToolRowBase = {
@@ -51,14 +55,8 @@ type ToolRowBase = {
 	/** True when the row blocks publishing but still works in preview (e.g. an unpublished workflow). */
 	warning: boolean;
 	warningReasons: string[];
-	/** True when a policy denies the node type this row runs as. It outranks `invalid` and `warning`. */
-	restricted: boolean;
-	/** The level that denied the type; absent when the policy names none. */
-	restrictedScope?: NodeTypeAvailabilityScope;
-	/** The type name the restriction popover shows. */
-	restrictedTypeLabel: string;
-	/** Set only when the row itself is allowed and something it embeds is denied. */
-	restrictedMessage: string;
+	/** Set when a policy locks the row. It outranks `invalid` and `warning`. */
+	restriction: ChipRestriction | null;
 };
 
 export type GroupedToolRow = ToolRowBase & {
@@ -82,9 +80,6 @@ export type ToolMenuItem = DropdownMenuItemProps<
 		openTarget: ToolOpenTarget;
 		invalid: boolean;
 		invalidReasons: string[];
-		restricted: boolean;
-		restrictedScope?: NodeTypeAvailabilityScope;
-		restrictedTypeLabel: string;
-		restrictedMessage: string;
+		restriction: ChipRestriction | null;
 	}
 >;

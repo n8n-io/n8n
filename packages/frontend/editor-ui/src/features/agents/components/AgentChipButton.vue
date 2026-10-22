@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
 import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
-import { describeAgentToolRestriction } from '@n8n/frontend-module-type-availability-policies';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
+
+import type { ChipRestriction } from './AgentCapabilitiesSection.types';
+import { chipRestrictionText } from './AgentCapabilitiesSection.utils';
 
 const props = withDefaults(
 	defineProps<{
@@ -21,17 +22,8 @@ const props = withDefaults(
 		warning?: boolean;
 		/** Human-readable reasons behind `warning`; ignored while `invalid` is set. */
 		warningReasons?: string[];
-		/** Set when a policy denies the node type this chip runs as. It outranks `invalid` and `warning`. */
-		restricted?: boolean;
-		/** The level that denied the type, shown in the popover. Absent when the policy names none. */
-		restrictedScope?: NodeTypeAvailabilityScope;
-		/** The name the restriction popover shows. Falls back to the chip's own label. */
-		restrictedTypeLabel?: string;
-		/**
-		 * Set when the entry itself is allowed and only something it embeds is denied. The lock then
-		 * carries this text instead of the node popover, which would name the wrong node type.
-		 */
-		restrictedMessage?: string;
+		/** Set when a policy locks this chip. It outranks `invalid` and `warning`. */
+		restriction?: ChipRestriction | null;
 		clickable?: boolean;
 	}>(),
 	{
@@ -43,10 +35,7 @@ const props = withDefaults(
 		invalidReasons: () => [],
 		warning: false,
 		warningReasons: () => [],
-		restricted: false,
-		restrictedScope: undefined,
-		restrictedTypeLabel: '',
-		restrictedMessage: '',
+		restriction: null,
 		clickable: true,
 	},
 );
@@ -55,13 +44,10 @@ const i18n = useI18n();
 const reasons = computed(() => (props.invalid ? props.invalidReasons : props.warningReasons));
 // A restricted chip carries the lock alone: the popover already states why it cannot run.
 const showAlertIcon = computed(
-	() => !props.deactivated && !props.restricted && (props.invalid || props.warning),
+	() => !props.deactivated && !props.restriction && (props.invalid || props.warning),
 );
-/** One translated sentence, so a locale owns its wording and order. */
 const restrictionText = computed(() =>
-	props.restrictedMessage
-		? props.restrictedMessage
-		: describeAgentToolRestriction(props.restrictedTypeLabel, props.restrictedScope),
+	props.restriction ? chipRestrictionText(props.restriction) : '',
 );
 
 defineSlots<{
@@ -83,10 +69,10 @@ const emit = defineEmits<{
 			{
 				[$style.active]: props.active,
 				[$style.deactivated]: props.deactivated,
-				[$style.restricted]: props.restricted,
-				[$style.invalid]: props.invalid && !props.deactivated && !props.restricted,
+				[$style.restricted]: !!props.restriction,
+				[$style.invalid]: props.invalid && !props.deactivated && !props.restriction,
 				[$style.warning]:
-					props.warning && !props.invalid && !props.deactivated && !props.restricted,
+					props.warning && !props.invalid && !props.deactivated && !props.restriction,
 				[$style.nonClickable]: !props.clickable,
 			},
 		]"
@@ -114,7 +100,7 @@ const emit = defineEmits<{
 			content inside a button is invalid HTML and adds a tab stop that cannot activate the
 			chip. The ticket asks for a tooltip with the scope line, which this is.
 		-->
-		<N8nTooltip v-if="props.restricted" placement="top">
+		<N8nTooltip v-if="props.restriction" placement="top">
 			<!-- The lock explains the chip; it must not also open what the chip opens. -->
 			<span :class="$style.lock" @click.stop>
 				<N8nIcon

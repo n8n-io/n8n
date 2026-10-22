@@ -706,10 +706,19 @@ describe('AgentToolConfigModal', () => {
 		});
 
 		it('explains an inline restriction but keeps the tool editable, so it can be repaired', async () => {
-			// The tool's own type is allowed; the agent it embeds holds the denied type.
-			mockRestrictedNodeTypes({ 'n8n-nodes-base.mySql': 'instance' });
+			// The tool's own type is allowed; the backend reports that the agent it embeds is not.
+			mockRestrictedNodeTypes();
 			const { container, getByTestId, queryByTestId } = renderModal({
 				valid: true,
+				validationIssues: [
+					{
+						code: 'restricted_node_type',
+						reason: 'restricted_by_inline_tool',
+						path: 'tools.0.node.nodeType',
+						capability: { kind: 'tool', id: 'ask_billing_agent', index: 0, toolType: 'node' },
+						restriction: { nodeType: 'n8n-nodes-base.mySql', scope: 'instance' },
+					},
+				],
 				ref: toolRef({
 					nodeType: 'n8n-nodes-base.messageAnAgentTool',
 					credentials: {},

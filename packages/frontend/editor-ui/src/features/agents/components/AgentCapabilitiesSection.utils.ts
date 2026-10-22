@@ -1,8 +1,9 @@
-import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
+import { describeAgentToolRestriction } from '@n8n/frontend-module-type-availability-policies';
 
 import type { AgentJsonToolRef } from '../types';
 import type {
+	ChipRestriction,
 	GroupedToolRow,
 	ToolOpenTarget,
 	ToolRow,
@@ -11,6 +12,13 @@ import type {
 } from './AgentCapabilitiesSection.types';
 
 export const MIN_GROUPED_TOOLS_PER_TYPE = 2;
+
+/** One translated sentence, so a locale owns its wording and order. */
+export function chipRestrictionText(restriction: ChipRestriction): string {
+	return (
+		restriction.message ?? describeAgentToolRestriction(restriction.typeLabel, restriction.scope)
+	);
+}
 
 type BaseToolRow = {
 	index: number;
@@ -25,10 +33,7 @@ type BaseToolRow = {
 	invalidReasons: string[];
 	warning: boolean;
 	warningReasons: string[];
-	restricted: boolean;
-	restrictedScope?: NodeTypeAvailabilityScope;
-	restrictedTypeLabel: string;
-	restrictedMessage: string;
+	restriction: ChipRestriction | null;
 };
 
 function toUngroupedToolRow(row: BaseToolRow): ToolRow {
@@ -40,10 +45,7 @@ function toUngroupedToolRow(row: BaseToolRow): ToolRow {
 		openTarget: row.openTarget,
 		invalid: row.invalid,
 		invalidReasons: row.invalidReasons,
-		restricted: row.restricted,
-		restrictedScope: row.restrictedScope,
-		restrictedTypeLabel: row.restrictedTypeLabel,
-		restrictedMessage: row.restrictedMessage,
+		restriction: row.restriction,
 	};
 
 	return {
@@ -57,10 +59,7 @@ function toUngroupedToolRow(row: BaseToolRow): ToolRow {
 		invalidReasons: row.invalidReasons,
 		warning: row.warning,
 		warningReasons: row.warningReasons,
-		restricted: row.restricted,
-		restrictedScope: row.restrictedScope,
-		restrictedTypeLabel: row.restrictedTypeLabel,
-		restrictedMessage: row.restrictedMessage,
+		restriction: row.restriction,
 		isGrouped: false,
 		tool: item,
 	};
@@ -81,10 +80,7 @@ function toGroupedToolRow(group: BaseToolRow[]): GroupedToolRow {
 		warning: group.some((row) => row.warning),
 		warningReasons: [...new Set(group.flatMap((row) => row.warningReasons))],
 		// Members are grouped by restricted state too, so the group speaks for all of them.
-		restricted: first.restricted,
-		restrictedScope: first.restrictedScope,
-		restrictedTypeLabel: first.restrictedTypeLabel,
-		restrictedMessage: first.restrictedMessage,
+		restriction: first.restriction,
 		isGrouped: true,
 		tools: group.map((row) => ({
 			index: row.index,
@@ -94,10 +90,7 @@ function toGroupedToolRow(group: BaseToolRow[]): GroupedToolRow {
 			openTarget: row.openTarget,
 			invalid: row.invalid,
 			invalidReasons: row.invalidReasons,
-			restricted: row.restricted,
-			restrictedScope: row.restrictedScope,
-			restrictedTypeLabel: row.restrictedTypeLabel,
-			restrictedMessage: row.restrictedMessage,
+			restriction: row.restriction,
 		})),
 	};
 }
@@ -123,7 +116,7 @@ export function buildToolRows(rows: BaseToolRow[]): ToolRow[] {
 		 * type, but a tool that embeds an inline agent is restricted by what it holds, so two
 		 * tools of one type can differ. Grouping them would dim a tool that is perfectly usable.
 		 */
-		const key = `${row.nodeType.name}|${row.restricted ? 'restricted' : 'allowed'}`;
+		const key = `${row.nodeType.name}|${row.restriction ? 'restricted' : 'allowed'}`;
 		const group = nodeGroups.get(key);
 		if (group) {
 			group.push(row);

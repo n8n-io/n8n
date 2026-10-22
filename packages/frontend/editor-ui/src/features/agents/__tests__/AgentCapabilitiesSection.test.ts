@@ -1654,7 +1654,7 @@ describe('AgentCapabilitiesSection — restricted node types', () => {
 		expect(wrapper.emitted('open-tool')).toBeUndefined();
 	});
 
-	it('keeps the lock from the policy store while an unsaved edit clears the issues', async () => {
+	it('shows no lock once an unsaved edit clears the issues, whatever the policy store says', async () => {
 		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
 		storeRestrictions.set('n8n-nodes-base.slackTool', { scope: 'project' });
 		// No issues: the builder drops the stale result as soon as the draft is edited.
@@ -1663,13 +1663,10 @@ describe('AgentCapabilitiesSection — restricted node types', () => {
 		});
 		await flushPromises();
 
-		expect(wrapper.find('[data-test-id="node-restricted-icon"]').exists()).toBe(true);
-		expect(lockText(wrapper)).toContain(
-			'typeAvailabilityPolicies.restrictedNode.agentTool.project',
-		);
+		expect(wrapper.find('[data-test-id="node-restricted-icon"]').exists()).toBe(false);
 	});
 
-	it('prefers the scope the publish gate reported over the store verdict', async () => {
+	it('shows the scope the publish gate reported, not the store verdict', async () => {
 		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
 		storeRestrictions.set('n8n-nodes-base.slackTool', { scope: 'project' });
 		const wrapper = mountSection([slackTool('send_message')], {}, null, [], [], {
@@ -1713,41 +1710,6 @@ describe('AgentCapabilitiesSection — restricted node types', () => {
 		expect(
 			chips.filter((c) => c.find('[data-test-id="node-restricted-icon"]').exists()),
 		).toHaveLength(1);
-	});
-
-	it('keeps an inline lock while an unsaved edit clears the issues', async () => {
-		getNodeType.mockReturnValue(
-			createNodeType('n8n-nodes-base.messageAnAgentTool', 'Message an Agent Tool'),
-		);
-		// The embedding tool is allowed; only what it holds is denied.
-		storeRestrictions.set('n8n-nodes-base.mySql', { scope: 'instance' });
-		const embedding: AgentJsonToolRef = {
-			type: 'node',
-			name: 'ask_billing_agent',
-			node: {
-				nodeType: 'n8n-nodes-base.messageAnAgentTool',
-				nodeTypeVersion: 1,
-				nodeParameters: {
-					agentSource: 'inline',
-					inlineAgent: {
-						config: {
-							tools: [
-								{
-									type: 'node',
-									name: 'inline_query',
-									node: { nodeType: 'n8n-nodes-base.mySql', nodeParameters: {} },
-								},
-							],
-						},
-					},
-				},
-			},
-		};
-		const wrapper = mountSection([embedding], {}, null, [], [], { validationIssues: [] });
-		await flushPromises();
-
-		expect(wrapper.find('[data-test-id="node-restricted-icon"]').exists()).toBe(true);
-		expect(lockText(wrapper)).toContain('agents.builder.validation.issue.restrictedByInlineTool');
 	});
 
 	it('names the denied type, not the one the entry displays', async () => {
