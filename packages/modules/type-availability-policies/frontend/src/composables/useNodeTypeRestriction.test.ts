@@ -158,6 +158,19 @@ describe('useNodeTypeRestriction', () => {
 			);
 		});
 
+		it('points to a project admin when every restriction comes from the team project', () => {
+			mockPolicyProject({ type: 'team' });
+
+			const text = describeRestrictedNodeTypes([
+				{ displayName: 'Slack', scope: 'project' },
+				{ displayName: 'Jira', scope: 'project' },
+			]);
+
+			expect(text.split('\n').at(-1)).toBe(
+				'Contact a project admin or replace these nodes to continue.',
+			);
+		});
+
 		it('skips a scope group with no entries', () => {
 			const text = describeRestrictedNodeTypes([
 				{ displayName: 'Slack', scope: 'instance' },

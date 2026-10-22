@@ -44,6 +44,7 @@ export const RESTRICTION_CONTACT_COPY: Record<
 		action: BaseTextKey;
 		popoverDescription: Record<RestrictedTypeKind, BaseTextKey>;
 		nextStep: Record<RestrictionNextStep, BaseTextKey>;
+		severalNextStep: BaseTextKey;
 	}
 > = {
 	instance: {
@@ -57,6 +58,7 @@ export const RESTRICTION_CONTACT_COPY: Record<
 			contact: 'typeAvailabilityPolicies.restrictedNode.nextStep.contact',
 			replace: 'typeAvailabilityPolicies.restrictedNode.nextStep.replace',
 		},
+		severalNextStep: 'typeAvailabilityPolicies.restrictedNodes.nextStep',
 	},
 	project: {
 		audience: 'project',
@@ -69,6 +71,7 @@ export const RESTRICTION_CONTACT_COPY: Record<
 			contact: 'typeAvailabilityPolicies.restrictedNode.nextStep.project.contact',
 			replace: 'typeAvailabilityPolicies.restrictedNode.nextStep.project.replace',
 		},
+		severalNextStep: 'typeAvailabilityPolicies.restrictedNodes.nextStep.project',
 	},
 	optIn: {
 		audience: 'project',
@@ -81,6 +84,7 @@ export const RESTRICTION_CONTACT_COPY: Record<
 			contact: 'typeAvailabilityPolicies.restrictedNode.nextStep.optIn.contact',
 			replace: 'typeAvailabilityPolicies.restrictedNode.nextStep.optIn.replace',
 		},
+		severalNextStep: 'typeAvailabilityPolicies.restrictedNodes.nextStep.optIn',
 	},
 };
 

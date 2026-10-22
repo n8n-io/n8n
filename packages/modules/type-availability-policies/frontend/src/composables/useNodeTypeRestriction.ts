@@ -127,6 +127,11 @@ const RESTRICTED_SCOPES: Array<[NodeTypeAvailabilityScope | undefined, BaseTextK
 	[undefined, 'typeAvailabilityPolicies.restrictedNodes.scope.generic'],
 ];
 
+function sharedRestrictionContact(verdicts: RestrictionVerdict[]): RestrictionContact {
+	const [first, ...rest] = verdicts.map((verdict) => getRestrictionContact(verdict));
+	return rest.every((contact) => contact === first) ? first : 'instance';
+}
+
 /** Why these node types block a publish, with one scope on each line when there are several. */
 export function describeRestrictedNodeTypes(restricted: RestrictedNodeTypeName[]): string {
 	if (restricted.length === 1) {
@@ -152,7 +157,7 @@ export function describeRestrictedNodeTypes(restricted: RestrictedNodeTypeName[]
 	return [
 		i18n.baseText('typeAvailabilityPolicies.restrictedNodes.title'),
 		...scopeLines,
-		i18n.baseText('typeAvailabilityPolicies.restrictedNodes.nextStep'),
+		i18n.baseText(RESTRICTION_CONTACT_COPY[sharedRestrictionContact(restricted)].severalNextStep),
 	].join('\n');
 }
 
