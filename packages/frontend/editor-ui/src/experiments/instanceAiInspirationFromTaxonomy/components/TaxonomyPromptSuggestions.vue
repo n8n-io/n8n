@@ -1,6 +1,6 @@
 <!-- Experiment cleanup (129_aia_inspiration_from_taxonomy_v2) -->
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { N8nIcon, type IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
@@ -49,11 +49,51 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
+function shuffle<T>(items: readonly T[]): T[] {
+	const copy = [...items];
+	for (let index = copy.length - 1; index > 0; index -= 1) {
+		const swapIndex = Math.floor(Math.random() * (index + 1));
+		const current = copy[index];
+		const next = copy[swapIndex];
+		if (current === undefined || next === undefined) continue;
+		copy[index] = next;
+		copy[swapIndex] = current;
+	}
+	return copy;
+}
+
+const roleSuggestions = computed(() =>
+	props.suggestions.filter((suggestion) => suggestion.section === 'role'),
+);
+// Shuffled once per catalog, so a re-render does not reorder the rows.
+const shuffledRoleIds = ref<string[]>([]);
+watch(
+	() => roleSuggestions.value.map((suggestion) => suggestion.id).join('\0'),
+	() => {
+		shuffledRoleIds.value = shuffle(roleSuggestions.value).map((suggestion) => suggestion.id);
+	},
+	{ immediate: true },
+);
+
 const sections = computed(() =>
-	SECTIONS.map((section) => ({
-		...section,
-		suggestions: props.suggestions.filter((suggestion) => suggestion.section === section.id),
-	})).filter((section) => section.suggestions.length > 0),
+	SECTIONS.map((section) => {
+		const inSection = props.suggestions.filter((suggestion) => suggestion.section === section.id);
+		if (section.id !== 'role') {
+			return { ...section, suggestions: inSection };
+		}
+		const byId = new Map(inSection.map((suggestion) => [suggestion.id, suggestion]));
+		return {
+			...section,
+			suggestions: shuffledRoleIds.value.flatMap((id) => {
+				const suggestion = byId.get(id);
+				return suggestion ? [suggestion] : [];
+			}),
+		};
+	}).filter((section) => section.suggestions.length > 0),
+);
+
+const displayedSuggestions = computed(() =>
+	sections.value.flatMap((section) => section.suggestions),
 );
 
 function iconFor(suggestionId: string): IconName {
@@ -77,7 +117,8 @@ function handleSuggestionClick(suggestion: TaxonomyDisplaySuggestion) {
 	if (props.disabled) return;
 
 	clearPreview();
-	const position = props.suggestions.findIndex((candidate) => candidate.id === suggestion.id) + 1;
+	const position =
+		displayedSuggestions.value.findIndex((candidate) => candidate.id === suggestion.id) + 1;
 
 	emit('insert-suggestion', {
 		prompt: suggestion.builderPrompt,

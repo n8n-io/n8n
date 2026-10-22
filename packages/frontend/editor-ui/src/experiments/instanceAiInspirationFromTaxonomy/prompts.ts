@@ -62,7 +62,7 @@ export const INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS = [
 		taxonomyRole: 'sales-and-marketing',
 		section: 'everyone',
 		order: 5,
-		shortTitle: 'Morning brief of the news and updates I care about',
+		shortTitle: 'Morning brief from Slack, Gmail and the news',
 		description: 'A daily 8:00 summary of the sources and topics you follow.',
 		builderPrompt:
 			'Build a workflow that sends me a daily brief every morning at 8:00. Collect the latest items from the sources I choose (for example news sites or RSS feeds, newsletters in my inbox, industry blogs, or Slack channels). Use AI to pick the most important items, summarize each in one or two sentences with a link, and group them by topic. Send the brief to me by email, Slack or Telegram. Before building, ask me which topics and sources to follow and where to send the brief.',
