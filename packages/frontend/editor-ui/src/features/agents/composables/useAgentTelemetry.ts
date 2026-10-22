@@ -16,6 +16,7 @@ export type AgentCreateSource =
 	| 'empty_state_template'
 	| 'command_bar';
 export type N8nChatAgentSource = 'card' | 'library' | 'dropdown';
+export type N8nChatHint = 'channel_chip' | 'new_chat_sidebar';
 export type AgentSessionFilterName = InferTelemetryProps<
 	typeof TELEMETRY_EVENT.AGENTS.USER_APPLIED_SESSION_FILTER
 >['filter_names'][number];
@@ -160,7 +161,6 @@ export function useAgentTelemetry() {
 		});
 	}
 
-	function trackOpenedToolFromList(params: { agentId: string; toolType: string }) {
 	function trackRemovedTrigger(params: {
 		agentId: string;
 		triggerType: string;
@@ -178,6 +178,7 @@ export function useAgentTelemetry() {
 		});
 	}
 
+	function trackOpenedToolFromList(params: { agentId: string; toolType: string }) {
 		safeTrack(TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_TOOL, {
 			agent_id: params.agentId,
 			tool_type: params.toolType,
@@ -319,10 +320,35 @@ export function useAgentTelemetry() {
 		}
 	}
 
-	function trackDismissedAgentPublishedModal(params: { agentId: string; dontShowAgain: boolean }) {
+	function trackDismissedAgentPublishedModal(params: {
+		agentId: string;
+		dontShowAgain: boolean;
+		action: 'got_it' | 'talk_to_agent' | 'closed';
+		n8nChatLive: boolean;
+	}) {
 		safeTrack(TELEMETRY_EVENT.AGENTS.USER_DISMISSED_AGENT_PUBLISHED_MODAL, {
 			agent_id: params.agentId,
 			dont_show_again: params.dontShowAgain,
+			action: params.action,
+			n8n_chat_live: params.n8nChatLive,
+			...common(),
+		});
+	}
+
+	function trackViewedN8nChatHint(params: { hint: N8nChatHint; agentId?: string }) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_VIEWED_N8N_CHAT_HINT, {
+			hint: params.hint,
+			...(params.agentId ? { agent_id: params.agentId } : {}),
+			variant: currentN8nChatVariant(),
+			...common(),
+		});
+	}
+
+	function trackDismissedN8nChatHint(params: { hint: N8nChatHint; agentId?: string }) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_DISMISSED_N8N_CHAT_HINT, {
+			hint: params.hint,
+			...(params.agentId ? { agent_id: params.agentId } : {}),
+			variant: currentN8nChatVariant(),
 			...common(),
 		});
 	}
@@ -375,6 +401,7 @@ export function useAgentTelemetry() {
 		trackClickedNewAgent,
 		trackSubmittedMessage,
 		trackAddedTrigger,
+		trackRemovedTrigger,
 		trackOpenedToolFromList,
 		trackOpenedSkillFromList,
 		trackOpenedAddSkillModal,
@@ -383,6 +410,8 @@ export function useAgentTelemetry() {
 		trackImportedSkill,
 		trackDuplicatedAgent,
 		trackDismissedAgentPublishedModal,
+		trackViewedN8nChatHint,
+		trackDismissedN8nChatHint,
 		trackStartedChannelSetup,
 		trackClosedChannelSetup,
 		trackFailedToConnectChannel,
@@ -394,4 +423,3 @@ export function useAgentTelemetry() {
 		trackClickedSidebarItem,
 	};
 }
-		trackRemovedTrigger,

@@ -22,6 +22,14 @@ vi.mock('../composables/useAgentTelemetry', () => ({
 	useAgentTelemetry: () => ({ trackDismissedAgentPublishedModal }),
 }));
 
+const routerPush = vi.fn();
+vi.mock('vue-router', () => ({ useRouter: () => ({ push: routerPush }) }));
+
+vi.mock('../composables/useAgentProjectBreadcrumb', async () => {
+	const { computed } = await import('vue');
+	return { useAgentProjectBreadcrumb: () => ({ projectName: computed(() => 'Personal') }) };
+});
+
 const stubs = {
 	AgentModal: AgentModalTestStub,
 	N8nText: { template: '<span><slot /></span>' },
@@ -43,6 +51,7 @@ describe('AgentPublishedModal', () => {
 		createTestingPinia({ stubActions: false });
 		localStorage.removeItem(LOCAL_STORAGE_HIDE_AGENT_PUBLISHED_CONFIRMATION);
 		trackDismissedAgentPublishedModal.mockClear();
+		routerPush.mockClear();
 		const uiStore = mockedStore(useUIStore);
 		uiStore.openModal(MODAL_NAME);
 		uiStore.closeModal = vi.fn();
@@ -52,7 +61,10 @@ describe('AgentPublishedModal', () => {
 		const { getByTestId } = createComponentRenderer(AgentPublishedModal, {
 			global: { stubs },
 		})({
-			props: { modalName: MODAL_NAME, data: { agentId: 'a1' } },
+			props: {
+				modalName: MODAL_NAME,
+				data: { agentId: 'a1', projectId: 'p1', n8nChatLive: false },
+			},
 		});
 
 		expect(localStorage.getItem(LOCAL_STORAGE_HIDE_AGENT_PUBLISHED_CONFIRMATION)).toBeNull();
@@ -64,7 +76,10 @@ describe('AgentPublishedModal', () => {
 		const { getByTestId } = createComponentRenderer(AgentPublishedModal, {
 			global: { stubs },
 		})({
-			props: { modalName: MODAL_NAME, data: { agentId: 'a1' } },
+			props: {
+				modalName: MODAL_NAME,
+				data: { agentId: 'a1', projectId: 'p1', n8nChatLive: false },
+			},
 		});
 
 		await fireEvent.click(getByTestId('agent-published-modal-dont-show-again'));
@@ -73,6 +88,8 @@ describe('AgentPublishedModal', () => {
 		expect(trackDismissedAgentPublishedModal).toHaveBeenCalledWith({
 			agentId: 'a1',
 			dontShowAgain: true,
+			action: 'got_it',
+			n8nChatLive: false,
 		});
 		expect(mockedStore(useUIStore).closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
@@ -81,7 +98,10 @@ describe('AgentPublishedModal', () => {
 		const { getByTestId } = createComponentRenderer(AgentPublishedModal, {
 			global: { stubs },
 		})({
-			props: { modalName: MODAL_NAME, data: { agentId: 'a1' } },
+			props: {
+				modalName: MODAL_NAME,
+				data: { agentId: 'a1', projectId: 'p1', n8nChatLive: false },
+			},
 		});
 
 		await fireEvent.click(getByTestId('agent-published-modal-got-it'));
@@ -89,7 +109,46 @@ describe('AgentPublishedModal', () => {
 		expect(trackDismissedAgentPublishedModal).toHaveBeenCalledWith({
 			agentId: 'a1',
 			dontShowAgain: false,
+			action: 'got_it',
+			n8nChatLive: false,
 		});
 		expect(mockedStore(useUIStore).closeModal).toHaveBeenCalledWith(MODAL_NAME);
+	});
+
+	it('hides the n8n Chat line and the Talk to agent button when n8n Chat is not live', () => {
+		const { queryByTestId } = createComponentRenderer(AgentPublishedModal, {
+			global: { stubs },
+		})({
+			props: {
+				modalName: MODAL_NAME,
+				data: { agentId: 'a1', projectId: 'p1', n8nChatLive: false },
+			},
+		});
+
+		expect(queryByTestId('agent-published-modal-n8n-chat')).toBeNull();
+		expect(queryByTestId('agent-published-modal-talk-to-agent')).toBeNull();
+	});
+
+	it('opens the agent in n8n Chat and tracks the action on "Talk to agent"', async () => {
+		const { getByTestId } = createComponentRenderer(AgentPublishedModal, {
+			global: { stubs },
+		})({
+			props: { modalName: MODAL_NAME, data: { agentId: 'a1', projectId: 'p1', n8nChatLive: true } },
+		});
+
+		expect(getByTestId('agent-published-modal-n8n-chat')).toBeInTheDocument();
+		await fireEvent.click(getByTestId('agent-published-modal-talk-to-agent'));
+
+		expect(trackDismissedAgentPublishedModal).toHaveBeenCalledWith({
+			agentId: 'a1',
+			dontShowAgain: false,
+			action: 'talk_to_agent',
+			n8nChatLive: true,
+		});
+		expect(mockedStore(useUIStore).closeModal).toHaveBeenCalledWith(MODAL_NAME);
+		expect(routerPush).toHaveBeenCalledWith({
+			name: 'AgentN8nChatView',
+			params: { agentId: 'a1' },
+		});
 	});
 });

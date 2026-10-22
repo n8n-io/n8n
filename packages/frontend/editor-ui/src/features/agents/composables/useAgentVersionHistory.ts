@@ -135,7 +135,7 @@ export function useAgentVersionHistory() {
 				title: locale.baseText('agents.versionHistory.publish.toast.title'),
 				type: 'success',
 			});
-			showAgentPublishedConfirmation(agentId);
+			showAgentPublishedConfirmation(updated);
 			await refresh(projectId, agentId);
 			return updated;
 		} catch (error) {
