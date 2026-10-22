@@ -81,7 +81,7 @@ import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import type { Request, Response } from 'express';
+import type { Response } from 'express';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
