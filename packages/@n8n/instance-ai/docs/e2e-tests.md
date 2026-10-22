@@ -114,8 +114,8 @@ would fail when replay produces different IDs or other runtime data.
 
 ### Shared State Across Runs
 
-A single test may trigger multiple n8n "runs" — the orchestrator run or a planned
-task follow-up. The `TraceIndex` and
+A single test may trigger multiple n8n "runs" — the orchestrator run or a
+follow-up run. The `TraceIndex` and
 `IdRemapper` are shared across all runs within one test (keyed by the test slug),
 so cursor positions and ID mappings persist correctly.
 
@@ -412,7 +412,7 @@ LLM responses are frozen — the replay serves the exact same bytes regardless o
 
 3. **Per-role trace cursors** — The `TraceIndex` groups events by `agentRole` with independent cursors. This handles interleaved orchestrator and sub-agent calls naturally, without requiring a single global sequence that breaks when parallelism changes.
 
-4. **Shared state across runs** — The `TraceIndex` and `IdRemapper` are shared across all runs within one test (orchestrator run and planned follow-ups). This means a workflowId learned in run 1 is available for remapping in run 2.
+4. **Shared state across runs** — The `TraceIndex` and `IdRemapper` are shared across all runs within one test (orchestrator run and follow-up runs). This means a workflowId learned in run 1 is available for remapping in run 2.
 
 5. **Reduced request-body matching** — During recording, full LLM request bodies are replaced with regex anchors for the agent type and stable turn context. Volatile IDs and dynamic prompt context are normalized so replay does not depend on the complete conversation or raw tool output.
 

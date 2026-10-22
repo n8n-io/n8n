@@ -52,7 +52,7 @@ describe('buildCatalog', () => {
 				{ name: 'block_state', type: '"absent" | "injected"', optional: false },
 				{
 					name: 'absence_reason',
-					type: '"disabled" | "machine-follow-up" | "empty" | "failed"',
+					type: '"disabled" | "empty" | "failed"',
 					optional: true,
 					description: 'Why this turn received no block',
 				},

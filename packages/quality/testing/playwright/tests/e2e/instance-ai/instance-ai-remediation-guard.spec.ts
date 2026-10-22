@@ -13,7 +13,6 @@ const CURRENT_TOOL_NAMES = new Map<string, WorkflowBuilderToolName>([
 	['build-workflow', 'workflow_builder_build_workflow'],
 	['verify-built-workflow', 'workflow_builder_verify_built_workflow'],
 	['report-verification-verdict', 'workflow_builder_report_verification_verdict'],
-	['complete-checkpoint', 'workflow_builder_complete_checkpoint'],
 ]);
 
 test.use({
@@ -49,7 +48,6 @@ type RemediationTraceSummary = {
 	openedWorkflowSetup: boolean;
 	workflowSetupAfterBuild: boolean;
 	workflowSetupAfterSetupSignal: boolean;
-	completedCheckpointBeforeWorkflowSetup: boolean;
 	fallbackNarrationSeen: boolean;
 };
 
@@ -190,11 +188,6 @@ function summarizeRemediationTrace(events: TraceEvent[]): RemediationTraceSummar
 		terminalSetupVerifyIndex,
 		terminalSetupReportIndex,
 	);
-	const firstCompleteCheckpointIndex = events.findIndex(
-		(event) =>
-			(event.kind === 'tool-call' || event.kind === 'tool-suspend') &&
-			event.toolName === 'workflow_builder_complete_checkpoint',
-	);
 	const remediation =
 		terminalSetupVerifyIndex >= 0
 			? (events[terminalSetupVerifyIndex].output?.remediation as Record<string, unknown>)
@@ -237,9 +230,6 @@ function summarizeRemediationTrace(events: TraceEvent[]): RemediationTraceSummar
 			terminalWorkflowSetupIndex > firstSuccessfulBuildEventIndex,
 		workflowSetupAfterSetupSignal:
 			terminalSetupSignalIndex >= 0 && terminalWorkflowSetupIndex > terminalSetupSignalIndex,
-		completedCheckpointBeforeWorkflowSetup:
-			firstCompleteCheckpointIndex >= 0 &&
-			(terminalWorkflowSetupIndex < 0 || firstCompleteCheckpointIndex < terminalWorkflowSetupIndex),
 		fallbackNarrationSeen: JSON.stringify(events).includes(TERMINAL_FALLBACK_TEXT),
 	};
 }
@@ -299,7 +289,6 @@ test.describe(
 					openedWorkflowSetup: true,
 					workflowSetupAfterBuild: true,
 					workflowSetupAfterSetupSignal: true,
-					completedCheckpointBeforeWorkflowSetup: false,
 					fallbackNarrationSeen: false,
 				});
 				expect(summary.postBuildRemediationSubmitsUsed).toBeLessThanOrEqual(2);

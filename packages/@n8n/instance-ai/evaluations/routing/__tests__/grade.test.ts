@@ -221,7 +221,7 @@ describe('createRouteWatcher', () => {
 		const watcher = createRouteWatcher(judge);
 
 		const results = await Promise.all([
-			watcher.beforeToolCall(pending('workflow_builder_create_tasks'), []),
+			watcher.beforeToolCall(pending('workflow_builder_build_workflow'), []),
 			watcher.beforeToolCall(pending('search-nodes'), []),
 		]);
 

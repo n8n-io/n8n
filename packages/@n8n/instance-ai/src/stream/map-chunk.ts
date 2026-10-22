@@ -6,8 +6,6 @@ import {
 	instanceAiQuestionSchema,
 	credentialRequestSchema,
 	workflowSetupNodeSchema,
-	taskListSchema,
-	plannedTaskArgSchema,
 	gatewayConfirmationRequiredPayloadSchema,
 	webSearchMetaSchema,
 	channelConfigSchema,
@@ -212,13 +210,7 @@ function extractErrorInfo(error: unknown): ErrorInfo {
 
 type EventBase = { runId: string; agentId: string; responseId?: string };
 
-type ConfirmationInputType =
-	| 'approval'
-	| 'text'
-	| 'questions'
-	| 'plan-review'
-	| 'resource-decision'
-	| 'continue';
+type ConfirmationInputType = 'approval' | 'text' | 'questions' | 'resource-decision' | 'continue';
 
 /** A non-empty string, or undefined for anything else (matches the legacy `value ? value : undefined` gate). */
 function presentString(value: unknown): string | undefined {
@@ -248,14 +240,7 @@ function parseSeverity(value: unknown): 'destructive' | 'warning' | 'info' {
 
 function parseInputType(value: unknown): ConfirmationInputType | undefined {
 	const raw = typeof value === 'string' ? value : undefined;
-	const valid = [
-		'approval',
-		'text',
-		'questions',
-		'plan-review',
-		'resource-decision',
-		'continue',
-	] as const;
+	const valid = ['approval', 'text', 'questions', 'resource-decision', 'continue'] as const;
 	return (valid as readonly string[]).includes(raw ?? '')
 		? (raw as (typeof valid)[number])
 		: undefined;
@@ -333,8 +318,6 @@ function mapSuspendedChunk(
 	const inputType = parseInputType(suspendPayload.inputType);
 	const questions = parseSchemaArray(suspendPayload.questions, instanceAiQuestionSchema);
 	const introMessage = presentString(suspendPayload.introMessage);
-	const tasks = parseSchemaRecord(suspendPayload.tasks, taskListSchema);
-	const planItems = parseSchemaArray(suspendPayload.planItems, plannedTaskArgSchema);
 	const domainAccess = parseDomainAccess(suspendPayload.domainAccess);
 	const webSearch = parseSchemaRecord(suspendPayload.webSearch, webSearchMetaSchema);
 	const credentialFlow = parseCredentialFlow(suspendPayload.credentialFlow);
@@ -404,8 +387,6 @@ function mapSuspendedChunk(
 			...(approvalDetails ? { approvalDetails } : {}),
 			...(questions ? { questions } : {}),
 			...(introMessage ? { introMessage } : {}),
-			...(tasks ? { tasks } : {}),
-			...(planItems ? { planItems } : {}),
 			...(resourceDecision ? { resourceDecision } : {}),
 			...(channelConfig ? { channelConfig } : {}),
 			...(mcpConnectRequest ? { mcpConnectRequest } : {}),

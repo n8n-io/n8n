@@ -660,7 +660,7 @@ describe('agent-run-reducer', () => {
 		it('routes a follow-up run to the tree after the state is rebuilt from a snapshot', () => {
 			// A two-run group, as a run-sync frame or history hydration delivers it.
 			const original = stateWithRun('run-1', 'orchestrator-run-1');
-			reduceEvent(original, makeToolCall('run-1', 'orchestrator-run-1', 'tc-plan', 'create-tasks'));
+			reduceEvent(original, makeToolCall('run-1', 'orchestrator-run-1', 'tc-first', 'workspace'));
 			reduceEvent(original, makeRunStart('run-2', 'orchestrator-run-2'));
 			reduceEvent(original, makeToolCall('run-2', 'orchestrator-run-2', 'tc-folder', 'workspace'));
 			const state = stateFromAgentTree(deepCopy(toAgentTree(original)))!;
@@ -688,7 +688,7 @@ describe('agent-run-reducer', () => {
 
 		it('attaches a sub-agent spawned by a follow-up run after a snapshot rebuild', () => {
 			const original = stateWithRun('run-1', 'orchestrator-run-1');
-			reduceEvent(original, makeToolCall('run-1', 'orchestrator-run-1', 'tc-plan', 'create-tasks'));
+			reduceEvent(original, makeToolCall('run-1', 'orchestrator-run-1', 'tc-first', 'workspace'));
 			const state = stateFromAgentTree(deepCopy(toAgentTree(original)))!;
 
 			reduceEvent(
@@ -701,7 +701,7 @@ describe('agent-run-reducer', () => {
 
 		it('does not alias an agent whose id is not the orchestrator id of its run', () => {
 			const original = stateWithRun('run-1', 'orchestrator-run-1');
-			reduceEvent(original, makeToolCall('run-1', 'orchestrator-run-1', 'tc-plan', 'create-tasks'));
+			reduceEvent(original, makeToolCall('run-1', 'orchestrator-run-1', 'tc-first', 'workspace'));
 			const state = stateFromAgentTree(deepCopy(toAgentTree(original)))!;
 
 			reduceEvent(state, makeToolCall('run-2', 'orchestrator-run-3', 'tc-stray', 'workspace'));

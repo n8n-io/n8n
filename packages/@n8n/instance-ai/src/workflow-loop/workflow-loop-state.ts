@@ -30,40 +30,6 @@ export const remediationMetadataSchema = z.object({
 export type RemediationCategory = z.infer<typeof remediationCategorySchema>;
 export type RemediationMetadata = z.infer<typeof remediationMetadataSchema>;
 
-// ── WorkflowBuildOwner ──────────────────────────────────────────────────────
-
-export const workflowBuildOwnerSchema = z.discriminatedUnion('type', [
-	z.object({ type: z.literal('direct') }),
-	z.object({ type: z.literal('planned'), taskId: z.string() }),
-]);
-
-export type WorkflowBuildOwner = z.infer<typeof workflowBuildOwnerSchema>;
-
-type WorkflowBuildOwnerSource = {
-	owner?: WorkflowBuildOwner;
-	plannedTaskId?: string;
-};
-
-export function resolveWorkflowBuildOwner(
-	...sources: Array<WorkflowBuildOwnerSource | undefined>
-): WorkflowBuildOwner {
-	for (const source of sources) {
-		if (source?.owner) return source.owner;
-		if (source?.plannedTaskId) return { type: 'planned', taskId: source.plannedTaskId };
-	}
-	return { type: 'direct' };
-}
-
-export function plannedTaskIdFromWorkflowBuildOwner(
-	owner: WorkflowBuildOwner | undefined,
-): string | undefined {
-	return owner?.type === 'planned' ? owner.taskId : undefined;
-}
-
-export function isPlannedWorkflowBuildOwner(owner: WorkflowBuildOwner | undefined): boolean {
-	return owner?.type === 'planned';
-}
-
 // ── WorkflowLoopState ───────────────────────────────────────────────────────
 
 export const workflowLoopStateSchema = z.object({
@@ -75,10 +41,6 @@ export const workflowLoopStateSchema = z.object({
 	phase: workflowLoopPhaseSchema,
 	status: workflowLoopStatusSchema,
 	source: workflowLoopSourceSchema,
-	/** Canonical owner of this workflow build. Defaults to direct for legacy records. */
-	owner: workflowBuildOwnerSchema.optional(),
-	/** Planned task that owns this workflow build, when the build came from an approved plan. */
-	plannedTaskId: z.string().optional(),
 	lastTaskId: z.string().optional(),
 	lastExecutionId: z.string().optional(),
 	lastFailureSignature: z.string().optional(),
@@ -373,10 +335,6 @@ export const workflowBuildOutcomeSchema = z.object({
 	workItemId: z.string(),
 	runId: z.string().optional(),
 	taskId: z.string(),
-	/** Canonical owner of this workflow build. Defaults to direct for legacy outcomes. */
-	owner: workflowBuildOwnerSchema.optional(),
-	/** Planned task that owns this build outcome, when the build came from an approved plan. */
-	plannedTaskId: z.string().optional(),
 	workflowId: z.string().optional(),
 	sourceFilePath: z.string().optional(),
 	submitted: z.boolean(),
@@ -494,17 +452,12 @@ export const workflowVerificationObligationPolicySchema = z.enum([
 	'manual',
 ]);
 
-export const workflowVerificationObligationSourceSchema = z.enum(['direct', 'planned']);
-
 export const workflowVerificationObligationSchema = z.object({
 	workItemId: z.string(),
 	threadId: z.string(),
 	runId: z.string().optional(),
 	taskId: z.string().optional(),
-	owner: workflowBuildOwnerSchema.optional(),
-	plannedTaskId: z.string().optional(),
 	workflowId: z.string().optional(),
-	source: workflowVerificationObligationSourceSchema,
 	policy: workflowVerificationObligationPolicySchema,
 	status: workflowVerificationObligationStatusSchema,
 	readiness: workflowVerificationReadinessSchema.optional(),
@@ -522,9 +475,6 @@ export type WorkflowVerificationObligationStatus = z.infer<
 >;
 export type WorkflowVerificationObligationPolicy = z.infer<
 	typeof workflowVerificationObligationPolicySchema
->;
-export type WorkflowVerificationObligationSource = z.infer<
-	typeof workflowVerificationObligationSourceSchema
 >;
 export type WorkflowVerificationObligation = z.infer<typeof workflowVerificationObligationSchema>;
 

@@ -150,7 +150,6 @@ export class InstanceAiTerminalOutcomeService {
 			workSummary?: WorkSummary;
 			errorMessage?: string;
 			errorCode?: InstanceAiErrorCode;
-			suppressCompletedFallback?: boolean;
 		} = {},
 	): Promise<TerminalResponseDecision | undefined> {
 		const guard = new InstanceAiTerminalResponseGuard({
@@ -166,7 +165,6 @@ export class InstanceAiTerminalOutcomeService {
 				workSummary: options.workSummary,
 				errorMessage: options.errorMessage,
 				errorCode: options.errorCode,
-				suppressCompletedFallback: options.suppressCompletedFallback,
 			},
 		);
 		this.handleTerminalResponseDecision(threadId, runId, decision, options.messageGroupId);

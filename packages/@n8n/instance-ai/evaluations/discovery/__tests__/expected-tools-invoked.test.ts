@@ -207,11 +207,11 @@ describe('runExpectedToolsInvokedCheck', () => {
 	});
 
 	describe('noneOfToolCalls — actual tool-call guard', () => {
-		const planningScenario: DiscoveryTestCase = {
+		const buildScenario: DiscoveryTestCase = {
 			id: 'test',
 			userMessage: 'Build a Gmail and Calendar workflow',
 			expectedToolInvocations: {
-				anyOf: ['workflow_builder_create_tasks'],
+				anyOf: ['workflow_builder_build_workflow'],
 				noneOfToolCalls: [
 					{ toolName: 'workflow_builder_ask_user', argsContainAny: ['credential'] },
 				],
@@ -220,9 +220,9 @@ describe('runExpectedToolsInvokedCheck', () => {
 
 		it('passes when workflow_builder_ask_user is available to a spawned agent but is not called', () => {
 			const result = runExpectedToolsInvokedCheck(
-				planningScenario,
+				buildScenario,
 				makeOutcome({
-					toolCalls: [{ toolName: 'workflow_builder_create_tasks' }],
+					toolCalls: [{ toolName: 'workflow_builder_build_workflow' }],
 					agents: [
 						{
 							role: 'delegate',
@@ -238,10 +238,10 @@ describe('runExpectedToolsInvokedCheck', () => {
 
 		it('fails when the forbidden tool call happens with matching args', () => {
 			const result = runExpectedToolsInvokedCheck(
-				planningScenario,
+				buildScenario,
 				makeOutcome({
 					toolCalls: [
-						{ toolName: 'workflow_builder_create_tasks' },
+						{ toolName: 'workflow_builder_build_workflow' },
 						{
 							toolName: 'workflow_builder_ask_user',
 							args: { question: 'Which Google Calendar credential should I use?' },
@@ -263,10 +263,10 @@ describe('runExpectedToolsInvokedCheck', () => {
 
 		it('passes when the same tool is called for unrelated args', () => {
 			const result = runExpectedToolsInvokedCheck(
-				planningScenario,
+				buildScenario,
 				makeOutcome({
 					toolCalls: [
-						{ toolName: 'workflow_builder_create_tasks' },
+						{ toolName: 'workflow_builder_build_workflow' },
 						{
 							toolName: 'workflow_builder_ask_user',
 							args: { question: 'Which failure branch should run?' },

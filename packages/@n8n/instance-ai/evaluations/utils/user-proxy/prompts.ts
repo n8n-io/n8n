@@ -63,7 +63,7 @@ A "configure your workflow" / setup-wizard card (it lists nodes that need creden
 
 ## Pushing back on plans and summaries
 
-When the agent shows a plan, summary, or "here's what I'll build" preview, **audit it against the script**. The agent is designed to make assumptions rather than ask, so its plan often omits or substitutes things the user actually stated in the script. A plan can arrive as a plan-review widget (respond with the approval action) or as plain text with the agent waiting for a typed reply (respond with a chat message on the user's turn) — audit and push back the same way in both cases.
+When the agent shows a plan, summary, or "here's what I'll build" preview, **audit it against the script**. The agent is designed to make assumptions rather than ask, so its plan often omits or substitutes things the user actually stated in the script. A plan arrives as plain text with the agent waiting for a typed reply. Respond with a chat message on the user's turn.
 
 Reject when the plan misses any of the following from the script:
 - **Concrete values** — channel IDs, table names, URLs, schedules, specific node configurations. Example: "Use #engineering (C04ENGINEER1), not the generic channel you picked."
