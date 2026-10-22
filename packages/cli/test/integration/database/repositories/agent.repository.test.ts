@@ -213,8 +213,9 @@ describe('AgentRepository', () => {
 				),
 				completion,
 				mock<AgentSetupCompletionService>(),
+				definitionService,
 			);
-			const user = mock<User>();
+			const user = mock<User>({ firstName: 'Test', lastName: 'User' });
 			const id = uuid();
 			const options = {
 				id,
@@ -245,6 +246,9 @@ describe('AgentRepository', () => {
 				config: { instructions: 'Help users', skills: [{ type: 'skill', id: skillId }] },
 			});
 			expect(created.configHash).toBe(getAgentConfigHash(created.config));
+			expect(
+				await agentHistoryRepo.findByVersionAndAgentId(created.agent.versionId!, created.agent.id),
+			).toMatchObject({ schema: { skills: [{ id: skillId }] } });
 			expect(await agentRepo.findById(id)).toMatchObject({
 				schema: { instructions: 'Help users' },
 			});
@@ -300,6 +304,7 @@ describe('AgentRepository', () => {
 				completion,
 				Container.get(AgentSkillRefsService),
 				mock<ChatIntegrationRegistry>(),
+				definitionService,
 			);
 			const deleteTasks = taskRepo.deleteForAgent.bind(taskRepo);
 			vi.spyOn(taskRepo, 'deleteForAgent').mockImplementationOnce(async (id, ids, ctx) => {
@@ -312,7 +317,13 @@ describe('AgentRepository', () => {
 				modifiedBy: 'user',
 			} as const;
 			await expect(
-				service.updateConfig(agent.id, projectId, config, mock<User>(), options),
+				service.updateConfig(
+					agent.id,
+					projectId,
+					config,
+					mock<User>({ firstName: 'Test', lastName: 'User' }),
+					options,
+				),
 			).rejects.toThrow('Task cleanup failed');
 			expect(await agentRepo.findById(agent.id)).toMatchObject({
 				schema,
@@ -321,12 +332,31 @@ describe('AgentRepository', () => {
 			expect(await taskRepo.findByAgentId(agent.id)).toMatchObject([{ id: 'task-remove' }]);
 			expect(completion.configurationSaved).not.toHaveBeenCalled();
 
-			const saved = await service.updateConfig(agent.id, projectId, config, mock<User>(), options);
+			const saved = await service.updateConfig(
+				agent.id,
+				projectId,
+				config,
+				mock<User>({ firstName: 'Test', lastName: 'User' }),
+				options,
+			);
 			expect(saved.config).toMatchObject({ name: 'Updated agent', tasks: [] });
 			expect(await agentRepo.findById(agent.id)).toMatchObject({
 				schema: { name: 'Updated agent', tasks: [] },
 			});
 			expect(await taskRepo.findByAgentId(agent.id)).toEqual([]);
+			expect(await agentHistoryRepo.countBy({ agentId: agent.id })).toBe(1);
+			const repeated = await service.updateConfig(
+				agent.id,
+				projectId,
+				saved.config,
+				mock<User>({ firstName: 'Test', lastName: 'User' }),
+				{
+					...options,
+					baseConfigHash: saved.configHash,
+				},
+			);
+			expect(repeated.versionId).toBe(saved.versionId);
+			expect(await agentHistoryRepo.countBy({ agentId: agent.id })).toBe(1);
 			expect(completion.configurationSaved).toHaveBeenCalled();
 		});
 
@@ -438,6 +468,7 @@ describe('AgentRepository', () => {
 				mock(),
 				transactionRunner,
 				Container.get(AgentSkillRefsService),
+				definitionService,
 			);
 			const readTask = taskRepo.findByIdAndAgentId.bind(taskRepo);
 			vi.spyOn(taskRepo, 'findByIdAndAgentId').mockImplementationOnce(async (id, agentId) => {
@@ -458,7 +489,7 @@ describe('AgentRepository', () => {
 					'task-1',
 					{ name: 'Renamed task' },
 					{
-						user: mock<User>(),
+						user: mock<User>({ firstName: 'Test', lastName: 'User' }),
 						modifiedBy: 'user',
 					},
 				),

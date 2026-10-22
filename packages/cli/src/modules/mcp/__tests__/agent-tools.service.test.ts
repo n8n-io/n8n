@@ -1,3 +1,4 @@
+import type { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { APPROVAL_RESUME_SCHEMA } from '@n8n/agents/tool';
 import type { AgentJsonConfig } from '@n8n/api-types';
@@ -264,6 +265,8 @@ describe('McpAgentToolsService', () => {
 			agentRepository,
 			saveCompletion,
 			agentSkillRefs,
+			mock<AgentDefinitionService>(),
+			transactionRunner,
 		);
 		const configService = new AgentConfigService(
 			mockLogger(),
@@ -283,6 +286,7 @@ describe('McpAgentToolsService', () => {
 			saveCompletion,
 			agentSkillRefs,
 			mock<ChatIntegrationRegistry>(),
+			mock<AgentDefinitionService>(),
 		);
 		agentCustomToolsService.buildCustomTool.mockImplementation(
 			async (agentId, projectId, code, descriptor, context, options) =>

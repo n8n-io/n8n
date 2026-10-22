@@ -1,3 +1,4 @@
+import { AgentPublishHistoryRepository } from '@/modules/agents/repositories/agent-publish-history.repository';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -90,6 +91,12 @@ describe('AgentSkillRepository', () => {
 	async function publish(agentId: string): Promise<string> {
 		const versionId = randomUUID();
 		await histories.save(histories.create({ versionId, agentId, author: 'Test' }));
+		await Container.get(AgentPublishHistoryRepository).save({
+			agentId,
+			versionId,
+			event: 'activated',
+			author: 'Test',
+		});
 		return versionId;
 	}
 
@@ -98,6 +105,19 @@ describe('AgentSkillRepository', () => {
 		if (!row) throw new Error(`no saved version for ${skillId}`);
 		return row.version.id;
 	}
+
+	it('does not count never-published saved pins as skill usage', async () => {
+		const id = await createSkill();
+		const agent = await createAgent('Draft');
+		const versionId = randomUUID();
+		await histories.save(histories.create({ versionId, agentId: agent.id, author: 'Test' }));
+		await agentSkills.insertPins([
+			{ agentVersionId: versionId, skillId: id, skillVersionId: await latestVersionId(id) },
+		]);
+		expect(await agentSkills.findUsingAgentIds(id)).toEqual([]);
+		expect(await agentSkills.countUsingAgents([id])).toEqual(new Map());
+		expect(await agentSkills.findUsage(id)).toEqual({ drafts: [], pins: [], hiddenAgents: 0 });
+	});
 
 	describe('pins', () => {
 		it('finds the pinned version of each skill of one published agent version', async () => {

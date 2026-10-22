@@ -18,8 +18,8 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError, NotFoundError } from '@n8n/errors';
 import { Telemetry } from '@/telemetry';
 
-import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentDefinitionService } from './agent-definition.service';
+import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentSaveCompletionService } from './agent-save-completion.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
 import type { AgentDefinition } from './utils/agent-definition';
@@ -351,7 +351,7 @@ export class AgentPublishService {
 			throw new ConflictError(`Agent "${agentId}" is not published`);
 		}
 
-		await this.restoreVersion(agent, activeVersion, activeVersion.versionId, {
+		await this.restoreVersion(agent, activeVersion, uuid(), {
 			user,
 			modifiedBy,
 			pushRef,
@@ -416,6 +416,7 @@ export class AgentPublishService {
 				// Each skill ref is pinned to the version that the published version ran.
 				// No skill row is written, so this needs no skill permission.
 				const changed = await this.definitionService.replaceDraft(agent, definition, ctx, version);
+				await this.definitionService.captureVersion(agent, context.user, ctx, context.modifiedBy);
 				return {
 					tasksChanged: changed,
 					nextSchema: definition.schema,

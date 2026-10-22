@@ -1,3 +1,4 @@
+import type { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore a type-only EventService import; keep the import.
 import { EventService } from '@n8n/backend-services';
 import type { Mocked } from 'vitest';
@@ -141,6 +142,7 @@ function makeService() {
 		),
 		skillRefs,
 		chatIntegrationRegistry,
+		mock<AgentDefinitionService>(),
 	);
 
 	return {
@@ -573,7 +575,8 @@ describe('AgentConfigService', () => {
 
 			await service.updateConfig(agentId, projectId, { ...baseConfig }, user, fencedOn(agent));
 
-			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as ProjectAgent;
+			expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
+			const saved = agent;
 			expect(saved.integrations).toEqual([slack]);
 			expect(syncAgentIntegrations).not.toHaveBeenCalled();
 		});
@@ -732,7 +735,8 @@ describe('AgentConfigService', () => {
 
 			await service.updateConfig(agentId, projectId, { ...baseConfig }, user, fencedOn(agent));
 
-			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as ProjectAgent;
+			expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
+			const saved = agent;
 			expect(saved.schema).toHaveProperty('description', '');
 		});
 
@@ -775,13 +779,10 @@ describe('AgentConfigService', () => {
 
 			await service.updateConfig(agentId, projectId, { ...baseConfig }, user, fencedOn(agent));
 
-			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as ProjectAgent;
+			expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
+			const saved = agent;
 			expect(saved.tools).toEqual(storedCustomTool);
-			expect(skillRefs.replaceDraftRefs).toHaveBeenCalledWith(
-				saved,
-				[{ type: 'skill', id: 'skill-1' }],
-				{},
-			);
+			expect(skillRefs.replaceDraftRefs).not.toHaveBeenCalled();
 			expect(agentTaskRepository.deleteForAgent).not.toHaveBeenCalled();
 		});
 
@@ -1336,7 +1337,13 @@ describe('AgentConfigService', () => {
 			agentRepository.saveDraftFenced.mockResolvedValue(false);
 
 			await expect(
-				service.updateConfig(agentId, projectId, baseConfig, user, byUser),
+				service.updateConfig(
+					agentId,
+					projectId,
+					{ ...baseConfig, instructions: 'Changed' },
+					user,
+					byUser,
+				),
 			).rejects.toThrow('Agent was modified concurrently; please retry');
 
 			expect(telemetry.track).not.toHaveBeenCalled();
@@ -1367,7 +1374,7 @@ describe('AgentConfigService', () => {
 			expect(config.skills).toEqual(skillRefs);
 		});
 
-		it('saves the refs of a config that getConfig returned without a change', async () => {
+		it('keeps the version and refs when the config did not change', async () => {
 			const { service, agentRepository, skillRefs: refsService } = makeService();
 			const agent = makeAgentWithSkillRefs();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
@@ -1382,14 +1389,9 @@ describe('AgentConfigService', () => {
 			expect(result.config.skills).toEqual(skillRefs);
 			expect(result.configHash).toBe(baseConfigHash);
 			expect(await service.getConfig(agentId, projectId)).toEqual(config);
-			// The fenced save and the skill refs write share one transaction.
-			const [[, saveCtx]] = agentRepository.saveDraftFenced.mock.calls;
-			const [[written, refs, refsCtx]] = refsService.replaceDraftRefs.mock.calls;
-			expect(refsCtx).toBe(saveCtx);
-			expect(written).toBe(agent);
-			expect(refs).toEqual(skillRefs);
-			// The stored config holds no skill refs.
-			expect(agent.schema).not.toHaveProperty('skills');
+			expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
+			expect(refsService.replaceDraftRefs).not.toHaveBeenCalled();
+			expect(result.versionId).toBe(agent.versionId);
 		});
 
 		it('passes the submitted refs to the skill refs seam', async () => {
@@ -1421,7 +1423,7 @@ describe('AgentConfigService', () => {
 				{ baseConfigHash: getAgentConfigHash(config), modifiedBy: 'user' },
 			);
 
-			expect(refsService.replaceDraftRefs).toHaveBeenCalledWith(expect.anything(), kept, {});
+			expect(refsService.replaceDraftRefs).not.toHaveBeenCalled();
 			expect(result.config.skills).toEqual(kept);
 			expect(telemetry.track).not.toHaveBeenCalledWith(
 				TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,

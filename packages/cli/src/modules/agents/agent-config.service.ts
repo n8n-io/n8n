@@ -10,6 +10,7 @@ import { UserError } from 'n8n-workflow';
 
 import { ConflictError } from '@n8n/errors';
 
+import { AgentDefinitionService } from './agent-definition.service';
 import type { AgentActor } from './agent-modification-telemetry.service';
 import {
 	AgentConfigPreparationService,
@@ -28,7 +29,7 @@ import { fromAgentDocument, type AgentSkillRefs } from './json-config/agent-docu
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
-import { getAgentConfigHash } from './utils/agent-config-hash';
+import { getAgentConfigHash, isSameAgentConfig } from './utils/agent-config-hash';
 import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
 import type { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 
@@ -53,6 +54,7 @@ export class AgentConfigService {
 		private readonly saveCompletion: AgentSaveCompletionService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
+		private readonly definitionService: AgentDefinitionService,
 	) {}
 
 	/**
@@ -114,12 +116,35 @@ export class AgentConfigService {
 				clearOmitted,
 			});
 		assertSingleConnections(this.chatIntegrationRegistry, replacement.nextIntegrations);
+		const previous = {
+			schema: entity.schema,
+			name: entity.name,
+			integrations: entity.integrations,
+			tools: entity.tools,
+			skills: entity.skills,
+		};
 		const next = fromAgentDocument(replacement.nextSchema);
 		entity.schema = next.config;
 		entity.name = validatedConfig.name;
 		entity.integrations = replacement.nextIntegrations;
-		markAgentDraftDirty(entity);
 		this.removeUnreferencedResources(entity, validatedConfig, clearOmitted);
+		if (
+			isSameAgentConfig(
+				{ tools: previous.tools, skills: previous.skills },
+				{ tools: entity.tools, skills: entity.skills },
+			) &&
+			options.baseConfigHash === getAgentConfigHash(composeJsonConfig(entity, next.skillRefs)) &&
+			existingTaskIds.every((id) => entity.schema?.tasks?.some((ref) => ref.id === id))
+		) {
+			Object.assign(entity, previous);
+			return {
+				config: composeJsonConfig(entity, previousSkillRefs) ?? replacement.nextSchema,
+				configHash: options.baseConfigHash,
+				versionId: entity.versionId,
+				updatedAt: entity.updatedAt.toISOString(),
+			};
+		}
+		markAgentDraftDirty(entity);
 
 		const saved = await this.saveConfig(
 			entity,
@@ -196,6 +221,7 @@ export class AgentConfigService {
 			await saveAgentDraftFenced(this.agentRepository, entity, ctx);
 			await this.agentSkillRefs.replaceDraftRefs(entity, skillRefs, ctx);
 			await this.removeUnreferencedTasks(entity, existingTaskIds, ctx);
+			await this.definitionService.captureVersion(entity, user, ctx, options.modifiedBy);
 			return entity;
 		});
 		await this.saveCompletion.configurationSaved(

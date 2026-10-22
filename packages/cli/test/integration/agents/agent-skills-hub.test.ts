@@ -1,3 +1,4 @@
+import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 /**
  * Agents read and write their skills through the skills hub (CONTEXT-225).
  * A draft keeps its skill refs in `agent_skill_dependency`, a published
@@ -148,6 +149,26 @@ describe('Agent skills in the skills hub', () => {
 			Object.entries(skillsRecord).map(([id, skill]) => [id, skill.instructions]),
 		);
 	}
+
+	it('saves each shared-skill edit as a complete draft version', async () => {
+		const skill = await createSkill(body('Writing', 'First instructions'));
+		const agent = await createAgent([skill]);
+		await saveInstructions(skill, 'Second instructions');
+		const second = await reload(agent);
+		await saveInstructions(skill, 'Third instructions');
+		const third = await reload(agent);
+		expect(new Set([agent.versionId, second.versionId, third.versionId]).size).toBe(3);
+		const history = Container.get(AgentHistoryRepository);
+		for (const [versionId, instructions] of [
+			[agent.versionId, 'First instructions'],
+			[second.versionId, 'Second instructions'],
+			[third.versionId, 'Third instructions'],
+		]) {
+			const saved = await history.findByVersionAndAgentId(versionId!, agent.id);
+			expect(saved?.skills?.[skill]?.instructions).toBe(instructions);
+		}
+		expect(third.activeVersionId).toBeNull();
+	});
 
 	it('lists the skills of a draft and of its published version in the same attach order', async () => {
 		const zeta = await createSkill(body('Zeta'));

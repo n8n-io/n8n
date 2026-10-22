@@ -6,6 +6,7 @@ import { DataSource, In, IsNull, type EntityManager } from '@n8n/typeorm';
 import { SkillRepository, type ResolvedSkillRow } from '@/modules/skills/skill.repository';
 import type { SkillVersion } from '@/modules/skills/skill-version.entity';
 
+import { AgentPublishHistory } from '../entities/agent-publish-history.entity';
 import { AgentHistory } from '../entities/agent-history.entity';
 import { AgentSkillDependency } from '../entities/agent-skill-dependency.entity';
 import { AgentVersionSkillDependency } from '../entities/agent-version-skill-dependency.entity';
@@ -205,6 +206,11 @@ export class AgentSkillRepository extends BaseRepository<AgentSkillDependency> {
 					.select('history.agentId')
 					.from(AgentHistory, 'history')
 					.innerJoin(AgentVersionSkillDependency, 'pin', 'pin.agentVersionId = history.versionId')
+					.innerJoin(
+						AgentPublishHistory,
+						'publication',
+						"publication.versionId = history.versionId AND publication.event = 'activated'",
+					)
 					.where('pin.skillId = :skillId')
 					.getQuery();
 				return `agent.id IN ${pinned}`;
@@ -347,6 +353,11 @@ export class AgentSkillRepository extends BaseRepository<AgentSkillDependency> {
 		const pins = await manager
 			.createQueryBuilder(AgentVersionSkillDependency, 'pin')
 			.innerJoin(AgentHistory, 'history', 'history.versionId = pin.agentVersionId')
+			.innerJoin(
+				AgentPublishHistory,
+				'publication',
+				"publication.versionId = history.versionId AND publication.event = 'activated'",
+			)
 			.where('pin.skillId = :skillId', { skillId })
 			.select('history.agentId', 'agentId')
 			.distinct(true)
@@ -368,6 +379,11 @@ export class AgentSkillRepository extends BaseRepository<AgentSkillDependency> {
 			const pins = await manager
 				.createQueryBuilder(AgentVersionSkillDependency, 'pin')
 				.innerJoin(AgentHistory, 'history', 'history.versionId = pin.agentVersionId')
+				.innerJoin(
+					AgentPublishHistory,
+					'publication',
+					"publication.versionId = history.versionId AND publication.event = 'activated'",
+				)
 				.where('pin.skillId IN (:...chunk)', { chunk })
 				.select('pin.skillId', 'skillId')
 				.addSelect('history.agentId', 'agentId')
