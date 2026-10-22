@@ -1,6 +1,7 @@
 import { testDb } from '@n8n/backend-test-utils';
-import { GLOBAL_MEMBER_ROLE, ServiceAccountRepository, UserRepository } from '@n8n/db';
+import { GLOBAL_MEMBER_ROLE, ServiceAccount, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -34,9 +35,9 @@ describe('export:entities and import:entities', () => {
 	it('exports the user table once and imports people and service accounts back', async () => {
 		const owner = await createOwner();
 		const member = await createMember();
-		const serviceAccountRepository = Container.get(ServiceAccountRepository);
-		const serviceAccount = await serviceAccountRepository.save(
-			serviceAccountRepository.create({ role: GLOBAL_MEMBER_ROLE }),
+		const serviceAccounts = Container.get(DataSource).getRepository(ServiceAccount);
+		const serviceAccount = await serviceAccounts.save(
+			serviceAccounts.create({ role: GLOBAL_MEMBER_ROLE }),
 		);
 
 		await Container.get(ExportService).exportEntities(outputDir, new Set(), undefined, {
