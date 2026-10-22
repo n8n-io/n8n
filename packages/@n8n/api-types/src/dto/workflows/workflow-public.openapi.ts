@@ -84,6 +84,15 @@ export const workflowSettingsFieldDocs = {
 			'- `manual-only`: Redact manually triggered executions only.\n' +
 			'- `all`: Redact all executions, manual and production.',
 	},
+	redactCallerExecutions: {
+		example: true,
+		description:
+			'Controls whether a workflow that calls this workflow as a sub-workflow has its ' +
+			'executions redacted on the same channels as this workflow. The calling execution ' +
+			'keeps a copy of the output of this workflow. Defaults to true. Turn it off only when ' +
+			'the output of this workflow is not sensitive. Redaction that this workflow received ' +
+			'from its own sub-workflows always passes to the caller.',
+	},
 	availableInMCP: {
 		example: false,
 		description:
@@ -262,6 +271,10 @@ export const settingsOpenApi: ZodOpenAPIMetadata = alsoNullable({
 			enum: ['none', 'non-manual', 'manual-only', 'all'],
 			...workflowSettingsFieldDocs.redactionPolicy,
 		},
+		redactCallerExecutions: {
+			type: 'boolean',
+			...workflowSettingsFieldDocs.redactCallerExecutions,
+		},
 		availableInMCP: { type: 'boolean', ...workflowSettingsFieldDocs.availableInMCP },
 		customTelemetryTags: {
 			type: 'array',
@@ -298,6 +311,20 @@ export const metaOpenApi: ZodOpenAPIMetadata = alsoNullable({
 		templateCredsSetupCompleted: { type: 'boolean' },
 	},
 });
+
+export const parentFolderOpenApi: ZodOpenAPIMetadata = {
+	description: 'Folder that contains the workflow, or null at the project root',
+};
+
+export const listParentFolderOpenApi: ZodOpenAPIMetadata = {
+	description:
+		'Folder that contains the workflow, or null at the project root. The field is present only when `includeParentFolder` is `true`.',
+};
+
+export const includeParentFolderOpenApi: ZodOpenAPIMetadata = {
+	description:
+		'Set to `true` to add `parentFolder` to each workflow. `parentFolder` holds the folder `id`, or is `null` at the project root.',
+};
 
 /** `ZodOpenAPIMetadata` is a union, which will not assign into a nested `properties` slot. */
 function nestingDescriptor(schema: Record<string, unknown>): ZodOpenAPIMetadata {

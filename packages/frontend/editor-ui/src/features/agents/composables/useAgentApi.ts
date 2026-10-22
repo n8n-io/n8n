@@ -37,13 +37,21 @@ import type {
 	SkillDetail,
 	SkillListItem,
 	SkillListResponse,
+	SkillCreateMethod,
+	SkillNewNameQueryDto,
+	SkillNewNameResponse,
 	VectorStoreTestResult,
 } from '@n8n/api-types';
 import { getFullApiResponse, makeRestApiRequest, request } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { isRecord } from '@n8n/utils/is-record';
 import { UnexpectedError } from 'n8n-workflow';
-import type { AgentResource, AgentJsonConfig, CustomToolEntry } from '../types';
+import type {
+	AgentCreationResource,
+	AgentResource,
+	AgentJsonConfig,
+	CustomToolEntry,
+} from '../types';
 
 export async function getAgentsSettings(context: IRestApiContext): Promise<AgentsSettingsDto> {
 	return await makeRestApiRequest(context, 'GET', '/agents/settings');
@@ -285,17 +293,19 @@ export const createAgent = async (
 	 *  `skills` to seed a full agent in a duplicate operation). */
 	options: {
 		id?: string;
+		config?: AgentJsonConfig;
 		schema?: AgentJsonConfig;
 		tools?: Record<string, CustomToolEntry>;
 		skills?: Record<string, AgentSkill>;
 	} = {},
-): Promise<AgentResource> => {
-	return await makeRestApiRequest<AgentResource>(
+): Promise<AgentCreationResource> => {
+	return await makeRestApiRequest<AgentCreationResource>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2`,
 		{
 			name,
+			...(options.config ? { config: options.config } : {}),
 			...(options.id ? { id: options.id } : {}),
 			...(options.schema ? { schema: options.schema } : {}),
 			...(options.tools ? { tools: options.tools } : {}),
@@ -708,12 +718,13 @@ export const createAgentSkill = async (
 	agentId: string,
 	skill: AgentSkill,
 	availableTo?: AgentSkillAvailability,
+	method?: SkillCreateMethod,
 ): Promise<AgentSkillMutationResponse> => {
 	return await makeRestApiRequest<AgentSkillMutationResponse>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/skills`,
-		availableTo ? { ...skill, availableTo } : skill,
+		{ ...skill, ...(availableTo ? { availableTo } : {}), ...(method ? { method } : {}) },
 	);
 };
 
@@ -753,6 +764,20 @@ export const getHubSkill = async (
 	skillId: string,
 ): Promise<SkillDetail> => {
 	return await makeRestApiRequest<SkillDetail>(context, 'GET', `/skills/${skillId}`);
+};
+
+/** A name like `name` that no skill in the scope has yet, such as "New skill 2". */
+export const getNewSkillName = async (
+	context: IRestApiContext,
+	query: SkillNewNameQueryDto,
+): Promise<string> => {
+	const { name } = await makeRestApiRequest<SkillNewNameResponse>(
+		context,
+		'GET',
+		'/skills/new-name',
+		query,
+	);
+	return name;
 };
 
 export const getAgentBackgroundJobs = async (

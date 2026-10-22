@@ -24,7 +24,7 @@ import { Credentials } from 'n8n-core';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialTypes } from '@/credential-types';
-import { BadRequestError, UnprocessableRequestError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, UnprocessableRequestError } from '@n8n/errors';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import {
 	affixRoleToSaveCredential,
@@ -1288,6 +1288,7 @@ describe('Package import event emission', () => {
 				credentials: {
 					matched: 0,
 					created: 0,
+					updated: 0,
 					requirements: 0,
 				},
 				dataTables: {
@@ -1388,6 +1389,7 @@ describe('Package import event emission', () => {
 				credentials: {
 					matched: 2,
 					created: 1,
+					updated: 0,
 					requirements: 3,
 				},
 				dataTables: {
@@ -1458,6 +1460,7 @@ describe('Package import event emission', () => {
 				credentials: {
 					matched: 0,
 					created: 0,
+					updated: 0,
 					requirements: 0,
 				},
 				dataTables: {
@@ -1530,6 +1533,7 @@ describe('Package import event emission', () => {
 				credentials: {
 					matched: 0,
 					created: 0,
+					updated: 0,
 					requirements: 0,
 				},
 				dataTables: {
@@ -1868,6 +1872,7 @@ describe('ImportPipeline credential matching modes', () => {
 				stubbed: [],
 				seeded: [],
 				incomplete: [],
+				updated: [],
 			});
 		});
 
@@ -2230,6 +2235,7 @@ describe('credential-missing-mode: create-stub', () => {
 			stubbed: ['missing-cred'],
 			seeded: [],
 			incomplete: [],
+			updated: [],
 		});
 		expect(result.bindings.credentials['missing-cred']).toBe('missing-cred');
 
@@ -2387,6 +2393,29 @@ describe('credential-missing-mode: create-stub', () => {
 		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: active.id });
 		expect(stored.activeVersionId).toBe(originalActiveVersionId);
 	});
+
+	it('does not require the API key credential:create scope for create-stub', async () => {
+		const owner = await createOwner();
+
+		const result = await importPackage({
+			user: owner,
+			credentialMissingMode: 'create-stub',
+			apiKeyScopes: ['workflow:import'],
+			packageBuffer: await buildImportPackageBuffer(
+				[
+					serializedWorkflowWithCredential({
+						id: 'wf-missing-cred',
+						name: 'Missing cred workflow',
+						credentialId: 'missing-cred',
+						credentialName: 'Missing GitHub',
+					}),
+				],
+				{ sourceId },
+			),
+		});
+
+		expect(result.credentials.stubbed).toEqual(['missing-cred']);
+	});
 });
 
 describe('credential-missing-mode: create-with-values', () => {
@@ -2456,6 +2485,7 @@ describe('credential-missing-mode: create-with-values', () => {
 			stubbed: [],
 			seeded: [],
 			incomplete: ['missing-cred'],
+			updated: [],
 		});
 
 		const targetId = result.bindings.credentials['missing-cred'];
@@ -2498,6 +2528,8 @@ describe('credential-missing-mode: create-with-values', () => {
 				),
 			}),
 		).rejects.toThrow('Lacking permissions to reference external secrets in credentials');
+		expect(await Container.get(CredentialsRepository).count()).toBe(0);
+		expect(await Container.get(WorkflowRepository).count()).toBe(0);
 	});
 
 	it('publishes workflows with seeded credentials but blocks those with fallback stubs', async () => {
@@ -2545,6 +2577,7 @@ describe('credential-missing-mode: create-with-values', () => {
 			stubbed: ['bare-cred'],
 			seeded: ['seeded-cred'],
 			incomplete: [],
+			updated: [],
 		});
 
 		const seeded = result.workflows.find(
@@ -2601,6 +2634,7 @@ describe('credential-missing-mode: create-with-values', () => {
 			stubbed: [],
 			seeded: [],
 			incomplete: [credential.id],
+			updated: [],
 		});
 		expect(result.workflows[0]?.publishing).toEqual({
 			state: 'blocked',
@@ -2665,6 +2699,7 @@ describe('credential-missing-mode: create-with-values', () => {
 			stubbed: ['bare-cred'],
 			seeded: [],
 			incomplete: ['incomplete-cred'],
+			updated: [],
 		});
 		const publishingOf = (id: string) =>
 			result.workflows.find(({ sourceWorkflowId }) => sourceWorkflowId === id)?.publishing;
@@ -2762,6 +2797,75 @@ describe('credential-missing-mode: create-with-values', () => {
 		).rejects.toThrow('failed schema validation');
 
 		expect(await Container.get(CredentialsRepository).count()).toBe(0);
+	});
+
+	it('requires the credential:create scope when create-with-values creates a credential, and writes nothing without it', async () => {
+		const owner = await createOwner();
+		const packageBuffer = await buildImportPackageBuffer(
+			[
+				serializedWorkflowWithCredential({
+					id: 'wf-missing-cred',
+					name: 'Missing cred workflow',
+					credentialId: 'missing-cred',
+					credentialName: 'Missing GitHub',
+				}),
+			],
+			{ sourceId },
+		);
+
+		await expect(
+			importPackage({
+				user: owner,
+				credentialMissingMode: 'create-with-values',
+				apiKeyScopes: ['workflow:import'],
+				packageBuffer,
+			}),
+		).rejects.toThrow(ForbiddenError);
+		expect(await Container.get(CredentialsRepository).count()).toBe(0);
+		expect(await Container.get(WorkflowRepository).count()).toBe(0);
+
+		const result = await importPackage({
+			user: owner,
+			credentialMissingMode: 'create-with-values',
+			apiKeyScopes: ['workflow:import', 'credential:create'],
+			packageBuffer,
+		});
+		expect(result.credentials.stubbed).toEqual(['missing-cred']);
+	});
+
+	it('does not require the credential:create scope when every credential resolves', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		const credential = await saveOwnedCredential(githubCredentialPayload({ name: 'GitHub' }), {
+			project: personalProject,
+		});
+
+		const result = await importPackage({
+			user: owner,
+			credentialMissingMode: 'create-with-values',
+			apiKeyScopes: ['workflow:import'],
+			packageBuffer: await buildImportPackageBuffer(
+				[
+					serializedWorkflowWithCredential({
+						id: 'wf-resolved-cred',
+						name: 'Resolved cred workflow',
+						credentialId: credential.id,
+						credentialName: credential.name,
+					}),
+				],
+				{ sourceId },
+			),
+		});
+
+		expect(result.credentials).toEqual({
+			matched: [credential.id],
+			stubbed: [],
+			seeded: [],
+			incomplete: [],
+			updated: [],
+		});
 	});
 });
 

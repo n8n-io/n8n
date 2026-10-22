@@ -11,7 +11,7 @@ import pgPromise from 'pg-promise';
 
 import { ConnectionPoolManager } from '@utils/connection-pool-manager';
 import { LOCALHOST } from '@utils/constants';
-import { getDateAsStringTypeParsers, parseDateToISO } from '@utils/postgres';
+import { getDateAsStringTypeParsers, getLegacyDateTypeParsers } from '@utils/postgres';
 
 import type {
 	ConnectionsData,
@@ -135,9 +135,7 @@ export async function configurePostgres(
 			dbConfig.types = getDateAsStringTypeParsers(pgp);
 		} else if (typeof options.nodeVersion === 'number' && options.nodeVersion >= 2.1) {
 			// DATE columns still return Date objects on these versions
-			[pgp.pg.types.builtins.TIMESTAMP, pgp.pg.types.builtins.TIMESTAMPTZ].forEach((type) => {
-				pgp.pg.types.setTypeParser(type, parseDateToISO);
-			});
+			dbConfig.types = getLegacyDateTypeParsers(pgp);
 		}
 
 		if (!credentials.sshTunnel) {
@@ -160,21 +158,34 @@ export async function configurePostgres(
 			});
 
 			proxy.on('connection', (localSocket) => {
-				sshClient.forwardOut(
-					LOCALHOST,
-					localSocket.remotePort!,
-					credentials.host,
-					credentials.port,
-					(error, clientChannel) => {
-						if (error) {
-							this.logger.error('SSH Client: Port forwarding encountered an error', { error });
-							abortController.abort();
-						} else {
-							localSocket.pipe(clientChannel);
-							clientChannel.pipe(localSocket);
-						}
-					},
-				);
+				// Closing the proxy server does not close sockets it already accepted, so
+				// destroy this one too. Otherwise pg waits on it forever.
+				const onForwardError = (error: unknown) => {
+					this.logger.error('SSH Client: Port forwarding encountered an error', { error });
+					localSocket.destroy();
+					abortController.abort();
+				};
+
+				try {
+					sshClient.forwardOut(
+						LOCALHOST,
+						localSocket.remotePort!,
+						credentials.host,
+						credentials.port,
+						(error, clientChannel) => {
+							if (error) {
+								onForwardError(error);
+							} else {
+								localSocket.pipe(clientChannel);
+								clientChannel.pipe(localSocket);
+							}
+						},
+					);
+				} catch (error) {
+					// `forwardOut` throws synchronously once the SSH client has been closed,
+					// e.g. when another pool sharing it was cleaned up.
+					onForwardError(error);
+				}
 			});
 
 			const db = pgp({

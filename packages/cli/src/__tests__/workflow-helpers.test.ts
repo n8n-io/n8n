@@ -481,6 +481,29 @@ describe('removeDefaultValues', () => {
 		});
 	});
 
+	it('should remove redactCallerExecutions when true', () => {
+		const settings: IWorkflowSettings = {
+			redactCallerExecutions: true,
+			timezone: 'America/New_York',
+		};
+		const result = removeDefaultValues(settings, DEFAULT_EXECUTION_TIMEOUT);
+		expect(result).toEqual({
+			timezone: 'America/New_York',
+		});
+	});
+
+	it('should keep redactCallerExecutions when false', () => {
+		const settings: IWorkflowSettings = {
+			redactCallerExecutions: false,
+			timezone: 'America/New_York',
+		};
+		const result = removeDefaultValues(settings, DEFAULT_EXECUTION_TIMEOUT);
+		expect(result).toEqual({
+			redactCallerExecutions: false,
+			timezone: 'America/New_York',
+		});
+	});
+
 	it('should not mutate the original settings object', () => {
 		const settings = {
 			errorWorkflow: DEFAULT,
@@ -979,6 +1002,11 @@ describe('getLastExecutedNodeRuns', () => {
 describe('updateParentExecutionWithChildResults', () => {
 	const PARENT_ID = 'parent-execution-id';
 
+	// A child with no credentials of its own, unless a test says otherwise.
+	beforeEach(() => {
+		mockInstance(CredentialsPermissionChecker).getCredentialIdsForNodes.mockReturnValue([]);
+	});
+
 	const waitingParent = (): IExecutionResponse =>
 		({
 			status: 'waiting',
@@ -1290,12 +1318,7 @@ describe('updateParentExecutionWithChildResults', () => {
 	});
 
 	describe('credentials the sub-workflows reference', () => {
-		afterEach(() => {
-			delete process.env.N8N_ENV_FEAT_CRED_SHARING;
-		});
-
 		it('stamps them on the waiting task and the resume stash, joining sibling children', async () => {
-			process.env.N8N_ENV_FEAT_CRED_SHARING = 'true';
 			const parent = waitingParent();
 			parent.data.resultData = {
 				runData: {
@@ -1332,7 +1355,6 @@ describe('updateParentExecutionWithChildResults', () => {
 		});
 
 		it('stamps them when the sub-workflow fails, next to the resume error', async () => {
-			process.env.N8N_ENV_FEAT_CRED_SHARING = 'true';
 			const parent = waitingParent();
 			parent.data.resultData = {
 				runData: {
@@ -1367,23 +1389,132 @@ describe('updateParentExecutionWithChildResults', () => {
 			expect(entry.metadata?.resumeError).toMatchObject({ message: 'ERROR' });
 			expect(entry.metadata?.dynamicCredentialsUsage?.usedCredentialIds).toEqual(['child-cred']);
 		});
+	});
 
-		it('reports nothing with credential sharing off', async () => {
+	describe('sub-workflow redaction', () => {
+		const parentWithContext = (subWorkflowRedaction?: {
+			production: boolean;
+			manual: boolean;
+		}): IExecutionResponse => {
 			const parent = waitingParent();
+			parent.data.executionData!.runtimeData = {
+				version: 1,
+				establishedAt: 0,
+				source: 'manual',
+				redaction: { version: 2, production: false, manual: false },
+				...(subWorkflowRedaction && { subWorkflowRedaction }),
+			};
+			return parent;
+		};
+
+		const childWithRedaction = (
+			redaction: { production: boolean; manual: boolean },
+			error?: ExecutionError,
+		): IRun =>
+			({
+				mode: 'integrated',
+				status: error ? 'error' : 'success',
+				data: {
+					resultData: {
+						lastNodeExecuted: 'Done',
+						error,
+						runData: { Done: [error ? { error } : { data: { main: [[{ json: { out: 1 } }]] } }] },
+					},
+					executionData: {
+						runtimeData: {
+							version: 1,
+							establishedAt: 0,
+							source: 'integrated',
+							redaction: { version: 2, ...redaction },
+						},
+					},
+				},
+			}) as unknown as IRun;
+
+		async function persistedContextAfter(
+			parent: IExecutionResponse,
+			child: IRun,
+			childWorkflowData?: IWorkflowBase,
+		) {
 			const executionPersistence = mockInstance(ExecutionPersistence);
 			executionPersistence.findSingleExecution.mockResolvedValue(parent);
-			const permissionChecker = mockInstance(CredentialsPermissionChecker);
 
-			await updateParentExecutionWithChildResults(
-				PARENT_ID,
-				childRun('success', 'Done', { data: { main: [[{ json: { out: 1 } }]] } }),
-				undefined,
-				mock<IWorkflowBase>({ nodes: [] }),
+			await updateParentExecutionWithChildResults(PARENT_ID, child, undefined, childWorkflowData);
+
+			const [, payload] = executionPersistence.updateExistingExecution.mock.calls[0];
+			return (payload as IExecutionResponse).data.executionData?.runtimeData;
+		}
+
+		// The resume keeps the saved context, so the escalation must be in it before it is saved.
+		it('escalates the parent context with the channels of the child final run', async () => {
+			const runtimeData = await persistedContextAfter(
+				parentWithContext(),
+				childWithRedaction({ production: true, manual: true }),
 			);
 
-			expect(permissionChecker.getCredentialIdsForNodes).not.toHaveBeenCalled();
-			const entry = parent.data.executionData!.nodeExecutionStack[0] as unknown as StackEntry;
-			expect(entry.metadata?.dynamicCredentialsUsage?.usedCredentialIds).toBeUndefined();
+			expect(runtimeData?.subWorkflowRedaction).toEqual({ production: true, manual: true });
+			// The start snapshot keeps its meaning.
+			expect(runtimeData?.redaction).toEqual({ version: 2, production: false, manual: false });
+		});
+
+		it('escalates the parent context when the child failed', async () => {
+			const error = { name: 'NodeOperationError', message: 'ERROR' } as unknown as ExecutionError;
+			const runtimeData = await persistedContextAfter(
+				parentWithContext(),
+				childWithRedaction({ production: true, manual: false }, error),
+			);
+
+			expect(runtimeData?.subWorkflowRedaction).toEqual({ production: true, manual: false });
+		});
+
+		it('never lowers a channel that an earlier child reported', async () => {
+			const runtimeData = await persistedContextAfter(
+				parentWithContext({ production: true, manual: true }),
+				childWithRedaction({ production: true, manual: false }),
+			);
+
+			expect(runtimeData?.subWorkflowRedaction).toEqual({ production: true, manual: true });
+		});
+
+		it('leaves the parent context alone when the child redacts no channel', async () => {
+			const runtimeData = await persistedContextAfter(
+				parentWithContext(),
+				childWithRedaction({ production: false, manual: false }),
+			);
+
+			expect(runtimeData).not.toHaveProperty('subWorkflowRedaction');
+		});
+
+		describe('when the child opts out of redacting its callers', () => {
+			const library = {
+				id: 'library',
+				name: 'Library',
+				nodes: [],
+				connections: {},
+				settings: { redactCallerExecutions: false },
+			} as unknown as IWorkflowBase;
+
+			it("does not escalate the parent context with the child's own channels", async () => {
+				const runtimeData = await persistedContextAfter(
+					parentWithContext(),
+					childWithRedaction({ production: true, manual: true }),
+					library,
+				);
+
+				expect(runtimeData).not.toHaveProperty('subWorkflowRedaction');
+			});
+
+			it('still escalates with the channels its own sub-workflows reported', async () => {
+				const child = childWithRedaction({ production: true, manual: true });
+				child.data.executionData!.runtimeData!.subWorkflowRedaction = {
+					production: true,
+					manual: false,
+				};
+
+				const runtimeData = await persistedContextAfter(parentWithContext(), child, library);
+
+				expect(runtimeData?.subWorkflowRedaction).toEqual({ production: true, manual: false });
+			});
 		});
 	});
 

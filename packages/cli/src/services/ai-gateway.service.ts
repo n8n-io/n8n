@@ -1,6 +1,8 @@
 import {
 	AiGatewayConfigDto,
+	AiGatewayMcpServersResponse,
 	getAgentModelProviderCredentialTypes,
+	type AiGatewayMcpServer,
 	type AiGatewayUsageResponse,
 	type AiGatewayWalletResponse,
 } from '@n8n/api-types';
@@ -12,12 +14,21 @@ import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IHttpRequestMethods, INode } from 'n8n-workflow';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { isMcpAiGatewayAuthentication, OperationalError, UserError } from 'n8n-workflow';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
+import { CredentialTypes } from '@/credential-types';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { BadRequestError } from '@n8n/errors';
 import { License } from '@/license';
+import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/mcp-registry-connection';
+import {
+	AI_GATEWAY_MANAGED_AUTH_TYPE,
+	AI_GATEWAY_MCP_CAPABILITY,
+	AI_GATEWAY_MCP_SLUG_PREFIX,
+	mcpRegistryIconMimeTypeSchema,
+	type McpRegistryServer,
+} from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@n8n/backend-services';
@@ -25,6 +36,47 @@ import { UrlService } from '@n8n/backend-services';
 interface GatewayTokenResponse {
 	token: string;
 	expiresIn: number;
+}
+
+/**
+ * Maps an AI Gateway MCP server to a registry row. The row slug has a reserved
+ * prefix, so it cannot replace a registry row; the URL keeps the gateway's own
+ * slug. Optional keys are only set when present, because the refresh compares
+ * rows in their stored form.
+ */
+function toAiGatewayRegistryServer(server: AiGatewayMcpServer, baseUrl: string): McpRegistryServer {
+	return {
+		name: server.name,
+		slug: `${AI_GATEWAY_MCP_SLUG_PREFIX}${server.slug}`,
+		title: server.title,
+		description: server.description,
+		tagline: server.tagline,
+		version: server.version,
+		updatedAt: server.updatedAt,
+		icons: server.icons.map(({ src, mimeType, theme }) => {
+			// The registry picks the preferred icon by MIME type. Drop a value it does not accept.
+			const parsedMimeType = mcpRegistryIconMimeTypeSchema.safeParse(mimeType);
+			return {
+				src,
+				...(parsedMimeType.success ? { mimeType: parsedMimeType.data } : {}),
+				...(theme ? { theme } : {}),
+			};
+		}),
+		...(server.websiteUrl ? { websiteUrl: server.websiteUrl } : {}),
+		authType: AI_GATEWAY_MANAGED_AUTH_TYPE,
+		remotes: [{ type: 'streamable-http', url: `${baseUrl}/v1/gateway/mcp/${server.slug}` }],
+		tools: server.tools.map(({ name, title, readOnlyHint }) => ({
+			name,
+			...(title ? { title } : {}),
+			...(readOnlyHint !== undefined ? { annotations: { readOnlyHint } } : {}),
+		})),
+		// n8n hosts the server, so the service vendor does not publish it.
+		isOfficial: false,
+		origin: 'registry',
+		status: 'active',
+		requiredCapabilities: [AI_GATEWAY_MCP_CAPABILITY],
+		...(server.tags ? { tags: server.tags } : {}),
+	};
 }
 
 export type AiGatewayAvailability =
@@ -63,6 +115,7 @@ export class AiGatewayService {
 		private readonly userRepository: UserRepository,
 		private readonly urlService: UrlService,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly credentialTypes: CredentialTypes,
 	) {}
 
 	/**
@@ -91,6 +144,7 @@ export class AiGatewayService {
 			url: string;
 			headers?: Record<string, string>;
 			body?: unknown;
+			signal?: AbortSignal;
 		},
 		errorMessage: string,
 	): Promise<T> {
@@ -103,6 +157,7 @@ export class AiGatewayService {
 				url: options.url,
 				...(options.headers ? { headers: options.headers } : {}),
 				...(options.body !== undefined ? { body: options.body, json: true } : {}),
+				...(options.signal ? { abortSignal: options.signal } : {}),
 				returnFullResponse: true,
 				ignoreHttpStatusErrors: true, // A non-2xx status is surfaced as a `UserError` carrying the status code
 			});
@@ -197,6 +252,17 @@ export class AiGatewayService {
 
 		const baseUrl = this.requireBaseUrl();
 
+		if (isMcpAiGatewayAuthentication(credentialType)) {
+			return await this.getAiGatewayMcpCredential({
+				credentialType,
+				userId,
+				workflowId,
+				projectId,
+				node,
+				baseUrl,
+			});
+		}
+
 		const config = await this.getGatewayConfig();
 		const providerConfig = config.providerConfig[credentialType];
 		if (!providerConfig) {
@@ -214,19 +280,11 @@ export class AiGatewayService {
 			}
 		}
 
-		const resolvedProjectId = await this.resolveProjectId({ projectId, workflowId });
-		const resolvedUserId = await this.resolveUserId({
+		const { jwt, resolvedProjectId } = await this.resolveAndMintToken({
 			userId,
-			projectId: resolvedProjectId,
 			workflowId,
+			projectId,
 		});
-		if (!resolvedUserId) {
-			throw new UserError('Failed to resolve user for Gateway credits attribution.');
-		}
-		const jwt = await this.getOrFetchToken(resolvedUserId);
-		if (!jwt) {
-			throw new UserError('Failed to obtain a valid Gateway credits token.');
-		}
 
 		const urlFields = this.buildUrlFields(baseUrl, providerConfig, {
 			executionId,
@@ -379,6 +437,71 @@ export class AiGatewayService {
 		return url;
 	}
 
+	/**
+	 * Mints the Gateway credits credential of an MCP registry server. Its checks
+	 * replace the provider config lookup and the node eligibility check of models.
+	 */
+	private async getAiGatewayMcpCredential({
+		credentialType,
+		userId,
+		workflowId,
+		projectId,
+		node,
+		baseUrl,
+	}: {
+		credentialType: string;
+		userId: string | undefined;
+		workflowId?: string;
+		projectId?: string;
+		node?: Pick<INode, 'type'>;
+		baseUrl: string;
+	}): Promise<ICredentialDataDecryptedObject> {
+		// The registry loader registers this type only for a server the AI Gateway lists.
+		if (!this.credentialTypes.recognizes(credentialType)) {
+			throw new UserError(`Gateway credits do not serve credential type "${credentialType}".`);
+		}
+		// Only a registry MCP node may hold this token. A node that can request any
+		// credential type, such as HTTP Request, must not receive it.
+		if (node && !node.type.startsWith(`${MCP_REGISTRY_PACKAGE_NAME}.`)) {
+			throw new UserError(
+				`Credential type "${credentialType}" can only be used by its MCP server node.`,
+			);
+		}
+		const { jwt } = await this.resolveAndMintToken({ userId, workflowId, projectId });
+		// The token is billed and not limited to one provider, so pin it to the AI Gateway host.
+		return {
+			token: jwt,
+			allowedHttpRequestDomains: 'domains',
+			allowedDomains: new URL(baseUrl).hostname,
+		};
+	}
+
+	/** Resolves the user that a credential is attributed to, and mints a token for that user. */
+	private async resolveAndMintToken({
+		userId,
+		workflowId,
+		projectId,
+	}: {
+		userId: string | undefined;
+		workflowId?: string;
+		projectId?: string;
+	}): Promise<{ jwt: string; resolvedProjectId?: string }> {
+		const resolvedProjectId = await this.resolveProjectId({ projectId, workflowId });
+		const resolvedUserId = await this.resolveUserId({
+			userId,
+			projectId: resolvedProjectId,
+			workflowId,
+		});
+		if (!resolvedUserId) {
+			throw new UserError('Failed to resolve user for Gateway credits attribution.');
+		}
+		const jwt = await this.getOrFetchToken(resolvedUserId);
+		if (!jwt) {
+			throw new UserError('Failed to obtain a valid Gateway credits token.');
+		}
+		return { jwt, resolvedProjectId };
+	}
+
 	private isConfigStale(): boolean {
 		return (
 			this.gatewayConfig === null ||
@@ -437,6 +560,24 @@ export class AiGatewayService {
 			this.configFetchFailedAt = Date.now();
 			throw error;
 		}
+	}
+
+	/**
+	 * Fetches the AI Gateway MCP servers as registry rows. The registry refresh
+	 * stores them, so every n8n process reads them from the database.
+	 * @throws when the request fails or the response is not valid.
+	 */
+	async fetchAiGatewayMcpServers(signal?: AbortSignal): Promise<McpRegistryServer[]> {
+		const baseUrl = this.requireBaseUrl();
+		const data = await this.gatewayRequest<unknown>(
+			{ method: 'GET', url: `${baseUrl}/v1/gateway/mcp-servers`, signal },
+			'Failed to fetch Gateway credits MCP servers',
+		);
+		const parsed = AiGatewayMcpServersResponse.safeParse(data);
+		if (!parsed.success) {
+			throw new UserError('Gateway credits returned an invalid MCP servers response.');
+		}
+		return parsed.data.servers.map((server) => toAiGatewayRegistryServer(server, baseUrl));
 	}
 
 	/**

@@ -4,6 +4,7 @@ import {
 	AGENT_SKILL_NAME_MAX_LENGTH,
 	agentSkillSchema,
 	agentSkillShape,
+	skillCreateMethodSchema,
 } from './agent-skill.schema';
 import type { AgentSkill } from './types';
 import type { ProjectType } from '../schemas/project.schema';
@@ -27,7 +28,11 @@ export const skillScopeSchema = z.enum(['project', 'agent', 'instance']);
 
 export type SkillScope = z.infer<typeof skillScopeSchema>;
 
-export type SkillSource = 'ui' | 'agent';
+/**
+ * How a skill was created: `ui` in the skills hub, `agent` from the agent builder or the
+ * migration, `mcp` from an MCP client, `assistant` from n8n Assistant.
+ */
+export type SkillSource = 'ui' | 'agent' | 'mcp' | 'assistant';
 
 /** The user who created a skill, as the settings list names them. */
 export type SkillUserDto = {
@@ -118,6 +123,12 @@ export class ListSkillsQueryDto extends Z.class({
 }) {}
 
 /**
+ * A skills hub name, trimmed first. A name of only spaces is refused, and padding is not
+ * stored, so it cannot make a name look free or show as an untitled row.
+ */
+const skillNameSchema = z.string().trim().min(1).max(AGENT_SKILL_NAME_MAX_LENGTH);
+
+/**
  * Asks for a name that no skill in the scope has yet, as `/workflows/new` does for a
  * workflow: the requested name, or the same name with the first free number after it.
  */
@@ -127,8 +138,7 @@ export class SkillNewNameQueryDto extends Z.class({
 	projectId: z.string().max(36).optional(),
 	/** Required for an agent skill, absent otherwise. */
 	agentId: z.string().max(36).optional(),
-	/** Trimmed first, so a name of only spaces is refused instead of suggested as "". */
-	name: z.string().trim().min(1).max(AGENT_SKILL_NAME_MAX_LENGTH),
+	name: skillNameSchema,
 }) {}
 
 export type SkillNewNameResponse = { name: string };
@@ -143,7 +153,9 @@ export class CreateSkillDto extends Z.class({
 	/** Required for an agent skill, absent otherwise. */
 	agentId: z.string().max(36).optional(),
 	/** Hub skills ignore `allowedTools`, so a create that sends it is refused. */
-	skill: agentSkillSchema.omit({ allowedTools: true }),
+	skill: agentSkillSchema.omit({ allowedTools: true }).extend({ name: skillNameSchema }),
+	/** For telemetry only. Absent counts as `manual`. */
+	method: skillCreateMethodSchema.optional(),
 }) {}
 
 /**
@@ -151,14 +163,15 @@ export class CreateSkillDto extends Z.class({
  * started from: a save based on an older version is refused with 409.
  */
 export class SaveSkillDto extends Z.class({
-	name: agentSkillShape.name.optional(),
+	name: skillNameSchema.optional(),
 	description: agentSkillShape.description.optional(),
 	instructions: agentSkillShape.instructions.optional(),
 	references: agentSkillShape.references.optional(),
 	baseSkillHash: z.string().min(1),
 	/**
-	 * Moves the skill to the instance or to a project. Refused with 409 while an agent
-	 * uses it. An agent skill is made from inside its agent, so `agent` is not a choice.
+	 * Moves the skill to the instance or to a project. Refused with 409 when an agent that
+	 * uses the skill cannot use it there. An agent skill is made from inside its agent, so
+	 * `agent` is not a choice.
 	 */
 	scope: z.enum(['project', 'instance']).optional(),
 	/** Required when `scope` is `project`, absent otherwise. */

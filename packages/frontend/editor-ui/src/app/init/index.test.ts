@@ -4,6 +4,7 @@ import { initializeAuthenticatedFeatures, initializeCore, state } from '@/app/in
 import { AuthenticationMethod } from '@n8n/api-types';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
@@ -103,6 +104,7 @@ describe('Init', () => {
 	let sourceControlStore: ReturnType<typeof mockedStore<typeof useSourceControlStore>>;
 	let usersStore: ReturnType<typeof mockedStore<typeof useUsersStore>>;
 	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
+	let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;
 	let versionsStore: ReturnType<typeof mockedStore<typeof useVersionsStore>>;
 	let ssoStore: ReturnType<typeof mockedStore<typeof useSSOStore>>;
 	let rootStore: ReturnType<typeof mockedStore<typeof useRootStore>>;
@@ -121,6 +123,7 @@ describe('Init', () => {
 		cloudPlanStore = mockedStore(useCloudPlanStore);
 		sourceControlStore = mockedStore(useSourceControlStore);
 		nodeTypesStore = mockedStore(useNodeTypesStore);
+		credentialsStore = mockedStore(useCredentialsStore);
 		usersStore = mockedStore(useUsersStore);
 		versionsStore = mockedStore(useVersionsStore);
 		versionsStore = mockedStore(useVersionsStore);
@@ -355,6 +358,8 @@ describe('Init', () => {
 			expect(nodeTranslationSpy).not.toHaveBeenCalled();
 			expect(versionsSpy).not.toHaveBeenCalled();
 			expect(nodeTypesStore.loadNodeTypesIfNotLoaded).not.toHaveBeenCalled();
+			expect(credentialsStore.fetchAllCredentials).not.toHaveBeenCalled();
+			expect(credentialsStore.fetchCredentialTypes).not.toHaveBeenCalled();
 		});
 
 		it('loads node types before authenticated pages render', async () => {
@@ -373,6 +378,44 @@ describe('Init', () => {
 			resolve();
 			await initializing;
 			expect(initialized).toBe(true);
+		});
+
+		it('loads credentials and credential types before authenticated pages render', async () => {
+			settingsStore.isCloudDeployment = false;
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
+			const credentials = Promise.withResolvers<[]>();
+			const credentialTypes = Promise.withResolvers<void>();
+			credentialsStore.fetchAllCredentials.mockReturnValueOnce(credentials.promise);
+			credentialsStore.fetchCredentialTypes.mockReturnValueOnce(credentialTypes.promise);
+			let initialized = false;
+			const initializing = initializeAuthenticatedFeatures(false).then(() => {
+				initialized = true;
+			});
+
+			await flushPromises();
+			expect(credentialsStore.fetchAllCredentials).toHaveBeenCalledTimes(1);
+			expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(false);
+			expect(initialized).toBe(false);
+
+			// Each request must hold up init on its own.
+			credentials.resolve([]);
+			await flushPromises();
+			expect(initialized).toBe(false);
+
+			credentialTypes.resolve();
+			await initializing;
+			expect(initialized).toBe(true);
+		});
+
+		it('fetches credentials and credential types only once across repeated calls', async () => {
+			settingsStore.isCloudDeployment = false;
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
+
+			await initializeAuthenticatedFeatures(false);
+			await initializeAuthenticatedFeatures();
+
+			expect(credentialsStore.fetchAllCredentials).toHaveBeenCalledTimes(1);
+			expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledTimes(1);
 		});
 
 		it('should init authenticated features only once if user is logged in', async () => {

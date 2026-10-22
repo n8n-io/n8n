@@ -25,6 +25,7 @@ import type { UrlService } from '@n8n/backend-services';
 import { Container } from '@n8n/di';
 
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
+import { SkillsHubRollout } from '@/modules/skills/skills-hub-rollout';
 
 import { ACTIVITY_LOG_TOOLS, INSTANCE_CONTEXT_TOOLS } from '../mcp-scopes';
 import { McpProtectedResource } from '../mcp-protected-resource';
@@ -71,6 +72,7 @@ describe('McpProtectedResource', () => {
 			CommunityPackagesConfig,
 			mock<CommunityPackagesConfig>({ enabled: true, verifiedEnabled: true }),
 		);
+		Container.set(SkillsHubRollout, mock<SkillsHubRollout>({ isEnabled: true }));
 	});
 
 	describe('getScopeTools', () => {
@@ -82,6 +84,23 @@ describe('McpProtectedResource', () => {
 			expect(scopeTools['agent:read']).toBeUndefined();
 		});
 
+		it('withholds skill scopes and tools when the skills hub is off', async () => {
+			Container.set(SkillsHubRollout, mock<SkillsHubRollout>({ isEnabled: false }));
+
+			expect(resource.scopes).toContain('agent:read');
+			expect(resource.scopes).not.toContain('skill:read');
+			expect(resource.scopes).not.toContain('skill:write');
+			expect(await resource.getScopeTools()).not.toHaveProperty('skill:read');
+		});
+
+		it('keeps skill scopes when Agents is disabled', () => {
+			vi.mocked(moduleRegistry.settings.get).mockReturnValue({ enabled: false });
+
+			expect(resource.scopes).not.toContain('agent:read');
+			expect(resource.scopes).toContain('skill:read');
+			expect(resource.scopes).toContain('skill:write');
+		});
+
 		it('should expose the full tool mapping when all features are enabled', async () => {
 			const scopeTools = await resource.getScopeTools();
 
@@ -90,6 +109,8 @@ describe('McpProtectedResource', () => {
 			expect(scopeTools['workflow:read']).toContain('search_workflows');
 			expect(scopeTools['workflow:read']).toContain('search_nodes');
 			expect(scopeTools['agent:read']).toContain('search_agents');
+			expect(scopeTools['skill:read']).toContain('search_skills');
+			expect(scopeTools['skill:write']).toContain('create_skill');
 			expect(scopeTools['tag:read']).toContain('list_workflow_tags');
 		});
 

@@ -3,6 +3,7 @@ import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import { SKILL_NAME_TAKEN_MESSAGE, type SkillDetail, type SkillListItem } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useUsersStore } from '@n8n/stores/users.store';
 import userEvent from '@testing-library/user-event';
@@ -22,6 +23,14 @@ const routeQuery: Record<string, string> = {};
 const confirmMock = vi.fn().mockResolvedValue('confirm');
 const showMessageMock = vi.fn();
 const showErrorMock = vi.fn();
+const trackMock = vi.fn();
+const saveAsMock = vi.fn();
+
+vi.mock('file-saver', () => ({ saveAs: (...args: unknown[]) => saveAsMock(...args) }));
+
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: trackMock }),
+}));
 
 vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => ({ confirm: confirmMock, alert: vi.fn(), prompt: vi.fn() }),
@@ -123,19 +132,45 @@ describe('SettingsSkillsView', () => {
 		confirmMock.mockResolvedValue('confirm');
 		showMessageMock.mockClear();
 		showErrorMock.mockClear();
+		trackMock.mockClear();
+		saveAsMock.mockClear();
 	});
 
-	it('loads the first page on mount', async () => {
+	it('loads the first page of 10 skills on mount', async () => {
 		renderView();
 		await new Promise(process.nextTick);
 
-		expect(skillsStore.fetchSkills).toHaveBeenCalledWith({ skip: 0, take: 50 });
+		expect(skillsStore.fetchSkills).toHaveBeenCalledWith({ skip: 0, take: 10 });
 	});
 
 	it('shows the empty state when there are no skills', async () => {
 		const { findByTestId } = renderView();
 
 		expect(await findByTestId('skills-empty-state')).toHaveTextContent('No skills yet');
+	});
+
+	it('reports the visit once, with the total count', async () => {
+		skillsStore.fetchSkills.mockImplementation(async () => {
+			skillsStore.count = 72;
+			return { count: 72, data: [] };
+		});
+
+		renderView();
+		await new Promise(process.nextTick);
+
+		expect(trackMock).toHaveBeenCalledTimes(1);
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_VIEWED_SKILLS, {
+			count: 72,
+		});
+	});
+
+	it('reports no visit when the load fails', async () => {
+		skillsStore.fetchSkills.mockRejectedValueOnce(new Error('offline'));
+
+		renderView();
+		await new Promise(process.nextTick);
+
+		expect(trackMock).not.toHaveBeenCalled();
 	});
 
 	it('does not show the empty state when the load fails', async () => {
@@ -158,7 +193,7 @@ describe('SettingsSkillsView', () => {
 
 		expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith({
 			skip: 0,
-			take: 50,
+			take: 10,
 			search: 'brand',
 		});
 		expect(queryByTestId('skills-empty-state')).not.toBeInTheDocument();
@@ -176,7 +211,7 @@ describe('SettingsSkillsView', () => {
 		await waitFor(() =>
 			expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith({
 				skip: 0,
-				take: 50,
+				take: 10,
 				scope: 'agent',
 			}),
 		);
@@ -197,8 +232,18 @@ describe('SettingsSkillsView', () => {
 			await userEvent.click(getByTestId('skills-create-button'));
 
 			expect(lastModalData().scopeOptions).toEqual([
-				{ value: 'project:personal-1', label: 'Personal project', icon: 'user' },
-				{ value: 'project:team-1', label: 'Marketing', icon: 'layers' },
+				{
+					value: 'project:personal-1',
+					label: 'Personal project',
+					icon: 'user',
+					target: { projectId: 'personal-1', agentId: null },
+				},
+				{
+					value: 'project:team-1',
+					label: 'Marketing',
+					icon: 'layers',
+					target: { projectId: 'team-1', agentId: null },
+				},
 			]);
 		});
 
@@ -213,6 +258,7 @@ describe('SettingsSkillsView', () => {
 				value: 'instance',
 				label: 'Global',
 				icon: 'globe',
+				target: { projectId: null, agentId: null },
 			});
 		});
 
@@ -249,13 +295,18 @@ describe('SettingsSkillsView', () => {
 				description: 'Write copy.',
 				instructions: 'Be brief.',
 			};
-			lastModalData().onConfirm({ skill: content, scope: 'project:personal-1' });
+			lastModalData().onConfirm({
+				skill: content,
+				scope: 'project:personal-1',
+				method: 'upload',
+			});
 			await new Promise(process.nextTick);
 
 			expect(skillsStore.createSkill).toHaveBeenCalledWith({
 				scope: 'project',
 				projectId: 'personal-1',
 				skill: content,
+				method: 'upload',
 			});
 			// The new row is the feedback, as on the preferences page.
 			expect(showMessageMock).not.toHaveBeenCalled();
@@ -309,13 +360,29 @@ describe('SettingsSkillsView', () => {
 			await new Promise(process.nextTick);
 
 			expect(lastModalData().readOnly).toBe(true);
+			expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_OPENED_SKILL, {
+				skill_id: 's1',
+				scope: 'instance',
+				read_only: true,
+			});
 		});
 
-		it('locks the scope while agents use the skill', async () => {
+		it('lets the user move a skill that agents use, and hands the modal who uses it', async () => {
+			const usedBy = {
+				drafts: [{ agentId: 'a1', agentName: 'FirstClassDarwin', projectId: 'team-1' }],
+				pins: [],
+				hiddenAgents: 0,
+			};
 			skillsStore.skills = [skill({ scope: 'agent', agentName: 'FirstClassDarwin' })];
 			skillsStore.count = 1;
 			skillsStore.fetchSkill.mockResolvedValue(
-				detail({ scope: 'agent', agentId: 'a1', agentName: 'FirstClassDarwin', usedByAgents: 1 }),
+				detail({
+					scope: 'agent',
+					agentId: 'a1',
+					agentName: 'FirstClassDarwin',
+					usedByAgents: 1,
+					usedBy,
+				}),
 			);
 			const { getByText } = renderView();
 			await new Promise(process.nextTick);
@@ -330,8 +397,24 @@ describe('SettingsSkillsView', () => {
 				icon: 'bot',
 			});
 			expect(lastModalData().initialScope).toBe('agent');
+			// The modal warns about a scope that drops an agent, so the picker stays open.
+			expect(lastModalData().scopeLockedReason).toBeUndefined();
+			expect(lastModalData().usedBy).toEqual(usedBy);
+		});
+
+		it('locks the scope when the user may edit but not delete the skill', async () => {
+			skillsStore.skills = [skill()];
+			skillsStore.count = 1;
+			skillsStore.fetchSkill.mockResolvedValue(detail({ canEdit: true, canDelete: false }));
+			const { getByText } = renderView();
+			await new Promise(process.nextTick);
+
+			await userEvent.click(getByText('research-search'));
+			await new Promise(process.nextTick);
+
+			expect(lastModalData().readOnly).toBe(false);
 			expect(lastModalData().scopeLockedReason).toBe(
-				'Used by 1 agent. Remove the skill from it to change where it is available.',
+				'You need permission to delete this skill to move it, because moving removes it from where it is now.',
 			);
 		});
 
@@ -430,6 +513,78 @@ describe('SettingsSkillsView', () => {
 
 		expect(confirmMock).toHaveBeenCalled();
 		expect(skillsStore.deleteSkill).toHaveBeenCalledWith('s1');
+	});
+
+	describe('download', () => {
+		async function clickDownload() {
+			const { getByTestId } = renderView();
+			await new Promise(process.nextTick);
+			await userEvent.click(getByTestId('skill-actions').querySelector('button')!);
+			await waitFor(() =>
+				expect(document.querySelector('[data-test-id="action-download"]')).toBeInTheDocument(),
+			);
+			await userEvent.click(document.querySelector('[data-test-id="action-download"]')!);
+			await waitFor(() => expect(skillsStore.fetchSkill).toHaveBeenCalledWith('s1'));
+			await new Promise(process.nextTick);
+		}
+
+		beforeEach(() => {
+			skillsStore.skills = [skill()];
+			skillsStore.count = 1;
+		});
+
+		it('saves a skill without references as SKILL.md and reports it', async () => {
+			skillsStore.fetchSkill.mockResolvedValue(detail());
+
+			await clickDownload();
+
+			expect(saveAsMock).toHaveBeenCalledWith(expect.any(Blob), 'SKILL.md');
+			expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_DOWNLOADED_SKILL, {
+				skill_id: 's1',
+				scope: 'instance',
+				format: 'markdown',
+			});
+		});
+
+		it('saves a skill with references as a zip', async () => {
+			skillsStore.fetchSkill.mockResolvedValue(
+				detail({
+					scope: 'project',
+					projectId: 'p1',
+					skill: {
+						name: 'research-search',
+						description: 'Find research and cite the evidence.',
+						instructions: 'Cite every source.',
+						references: [{ path: 'references/style.md', content: '# Style' }],
+					},
+				}),
+			);
+
+			await clickDownload();
+
+			await waitFor(() =>
+				expect(saveAsMock).toHaveBeenCalledWith(expect.any(Blob), 'research-search.zip'),
+			);
+			expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_DOWNLOADED_SKILL, {
+				skill_id: 's1',
+				scope: 'project',
+				project_id: 'p1',
+				format: 'zip',
+			});
+		});
+
+		it('shows a toast and reports nothing when the skill does not load', async () => {
+			skillsStore.fetchSkill.mockRejectedValue(new Error('offline'));
+
+			await clickDownload();
+
+			expect(saveAsMock).not.toHaveBeenCalled();
+			expect(showErrorMock).toHaveBeenCalledWith(expect.any(Error), 'Could not download the skill');
+			expect(trackMock).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.USER_DOWNLOADED_SKILL,
+				expect.anything(),
+			);
+		});
 	});
 
 	describe('deep links', () => {

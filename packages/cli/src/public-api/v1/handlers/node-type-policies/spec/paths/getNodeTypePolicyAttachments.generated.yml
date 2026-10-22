@@ -1,0 +1,31 @@
+operationId: getNodeTypePolicyAttachments
+tags:
+  - NodeTypePolicy
+summary: "Preview: Retrieve a scope's attached policy documents"
+description: |-
+  **Preview** — breaking changes may still occur without major version bump.
+
+  Returns every attached policy document and the scope version. Attachments use evaluation order: floor first, then priority ascending within each group. Use this version when replacing the attachments. `scopeId` comes from `GET /instance` or `GET /projects/{projectId}`, and is null until the scope is first written. This route needs instance-level access, also for a project scope.
+x-required-scope: nodeTypePolicy:manage
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the node type policy scope.
+    name: scopeId
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/policyAttachmentsPublicDto.generated.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

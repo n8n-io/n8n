@@ -22,7 +22,7 @@ describe('loadDiscoveryTestCasesWithFiles', () => {
 				'google-oauth-credential-setup',
 				'screenshot-dashboard',
 				'http-node-config-no-browser',
-				'oauth-with-computer-use-disabled',
+				'oauth-with-browser-use-disabled',
 				'workflow-builder-no-credential-ask',
 				'folder-scoped-workflow-list',
 			]),
@@ -34,7 +34,7 @@ describe('loadDiscoveryTestCasesWithFiles', () => {
 		'google-oauth-credential-setup',
 		'screenshot-dashboard',
 		'http-node-config-no-browser',
-		'oauth-with-computer-use-disabled',
+		'oauth-with-browser-use-disabled',
 		'workflow-builder-no-credential-ask',
 		'folder-scoped-workflow-list',
 	])('%s parses with a valid expectedToolInvocations rule', (slug) => {
@@ -76,7 +76,7 @@ describe('discoveryTestCaseSchema', () => {
 	const valid = {
 		id: 'my-scenario',
 		userMessage: 'do the thing',
-		expectedToolInvocations: { anyOf: ['build-workflow'] },
+		expectedToolInvocations: { anyOf: ['workflow_builder_build_workflow'] },
 	};
 
 	it('accepts a minimal valid case', () => {
@@ -99,36 +99,21 @@ describe('discoveryTestCaseSchema', () => {
 	});
 
 	it.each([
-		[
-			'connected with tool categories',
-			{ status: 'connected', toolCategories: ['screenshot'] },
-			true,
-		],
-		['connected without tool categories', { status: 'connected' }, false],
+		['connected', { status: 'connected' }, true],
 		['disconnected', { status: 'disconnected' }, true],
-		['disabledByUser', { status: 'disabledByUser' }, true],
 		['unavailable', { status: 'unavailable' }, true],
+		['connected with tool categories', { status: 'connected', toolCategories: ['browser'] }, false],
 		['an unknown status', { status: 'on-fire' }, false],
-	])('validates each computerUse channel strictly: %s', (_name, channel, ok) => {
-		const withChannel = {
-			...valid,
-			instanceState: {
-				computerUse: { localComputer: channel, browser: { status: 'unavailable' } },
-			},
-		};
-		expect(discoveryTestCaseSchema.safeParse(withChannel).success).toBe(ok);
+	])('validates the browserUse state strictly: %s', (_name, browserUse, ok) => {
+		const withState = { ...valid, instanceState: { browserUse } };
+		expect(discoveryTestCaseSchema.safeParse(withState).success).toBe(ok);
 	});
 
-	it('requires both channels — a half-filled state is dead config', () => {
-		const halfFilled = {
+	it('rejects the retired computerUse key instead of passing vacuously', () => {
+		const retired = {
 			...valid,
-			instanceState: { computerUse: { localComputer: { status: 'disconnected' } } },
+			instanceState: { computerUse: { browser: { status: 'disconnected' } } },
 		};
-		expect(discoveryTestCaseSchema.safeParse(halfFilled).success).toBe(false);
-	});
-
-	it('rejects the retired localGateway key instead of passing vacuously', () => {
-		const retired = { ...valid, instanceState: { localGateway: { status: 'disconnected' } } };
 		expect(discoveryTestCaseSchema.safeParse(retired).success).toBe(false);
 	});
 });

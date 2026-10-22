@@ -8,6 +8,7 @@ import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import type { Mock } from 'vitest';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
+import { OutsideThreadProjectError } from '../../errors/outside-thread-project.error';
 import type { InstanceAiContext } from '../../types';
 import {
 	analyzeWorkflow,
@@ -1316,6 +1317,26 @@ describe('workflows tool', () => {
 			expect(files.get(filePath)).toBe(edited);
 		});
 
+		it('keeps the conflict warning with investigation source guidance', async () => {
+			const files = new Map<string, string>();
+			const context = createWorkspaceContext(files);
+			const guidance = 'Edit the investigation candidate.';
+			const tool = createWorkflowsTool(context, { surface: 'full', sourceGuidance: guidance });
+			await executeTool(tool, { action: 'get-as-code', workflowId: 'wf1' }, {} as never);
+			const filePath = 'src/workflows/test-wf.workflow.ts';
+			const edited = `${files.get(filePath)}\n// local edit`;
+			files.set(filePath, edited);
+			const result = await executeTool<{ status: string; note: string }>(
+				tool,
+				{ action: 'get-as-code', workflowId: 'wf1' },
+				{} as never,
+			);
+			expect(result.status).toBe('conflict');
+			expect(result.note).toContain('unbuilt edits');
+			expect(result.note).toContain(guidance);
+			expect(files.get(filePath)).toBe(edited);
+		});
+
 		it('regenerates the file when the saved workflow changed and the file has no local edits', async () => {
 			const files = new Map<string, string>();
 			const context = createWorkspaceContext(files);
@@ -1517,6 +1538,42 @@ describe('workflows tool', () => {
 			expect(result.filePath).toBeUndefined();
 			expect(files.size).toBe(0);
 		});
+
+		it('keeps a workflow outside the thread project inline and unbound', async () => {
+			const files = new Map<string, string>();
+			const context = createWorkspaceContext(files);
+			const error = new OutsideThreadProjectError();
+			context.assertInThreadProject = vi.fn().mockRejectedValue(error);
+			const tool = createWorkflowsTool(context, 'full');
+
+			const result = await executeTool<{ code?: string; filePath?: string; note?: string }>(
+				tool,
+				{ action: 'get-as-code', workflowId: 'wf1' },
+				{} as never,
+			);
+
+			expect(result.code).toContain(GENERATED);
+			expect(result.filePath).toBeUndefined();
+			expect(result.note).toContain(error.message);
+			expect(files.size).toBe(0);
+			await expect(
+				getWorkflowSourceFileBinding(context, 'src/workflows/test-wf.workflow.ts'),
+			).resolves.toBeUndefined();
+		});
+
+		it('reports a failed project lookup as an error, not as read-only', async () => {
+			const context = createWorkspaceContext(new Map());
+			context.assertInThreadProject = vi.fn().mockRejectedValue(new Error('lookup failed'));
+
+			const result = await executeTool<{ error?: string; note?: string }>(
+				createWorkflowsTool(context, 'full'),
+				{ action: 'get-as-code', workflowId: 'wf1' },
+				{} as never,
+			);
+
+			expect(result.error).toBe('lookup failed');
+			expect(result.note).toBeUndefined();
+		});
 	});
 
 	describe('get with full: true', () => {
@@ -1671,6 +1728,23 @@ describe('workflows tool', () => {
 			expect(suspend.mock.calls[0][0]).toMatchObject({
 				message: expect.stringContaining('wf1'),
 			});
+		});
+
+		it('fails without an approval card for a workflow outside the thread project', async () => {
+			const error = new OutsideThreadProjectError();
+			const assertInThreadProject = vi.fn().mockRejectedValue(error);
+			const context = createMockContext({ assertInThreadProject });
+			const suspend = vi.fn();
+
+			await expect(
+				executeTool(createWorkflowsTool(context), { action: 'delete', workflowId: 'wf1' }, {
+					suspend,
+					resumeData: undefined,
+				} as never),
+			).rejects.toBe(error);
+			expect(assertInThreadProject).toHaveBeenCalledWith({ kind: 'workflow', id: 'wf1' });
+			expect(suspend).not.toHaveBeenCalled();
+			expect(context.workflowService.archive).not.toHaveBeenCalled();
 		});
 
 		it('should archive when approved via resume', async () => {
@@ -2125,6 +2199,41 @@ describe('workflows tool', () => {
 				publishedWorkflowIds: ['sub-a', 'sub-b', 'wf1'],
 				supportingWorkflowIds: ['sub-a', 'sub-b'],
 			});
+		});
+
+		it('publishes nothing when a supporting workflow is outside the thread project', async () => {
+			const error = new OutsideThreadProjectError();
+			const assertInThreadProject = vi.fn(async ({ id }: { id: string }) => {
+				if (id === 'sub-b') throw error;
+			});
+			const context = createMockContext({
+				assertInThreadProject,
+				permissions: { publishWorkflow: 'always_allow' },
+			});
+			(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue({
+				name: 'Parent',
+				nodes: [
+					{
+						name: 'Call A',
+						type: 'n8n-nodes-base.executeWorkflow',
+						parameters: { source: 'database', workflowId: 'sub-a' },
+					},
+					{
+						name: 'Call B',
+						type: 'n8n-nodes-base.executeWorkflow',
+						parameters: { source: 'database', workflowId: 'sub-b' },
+					},
+				],
+				connections: {},
+			});
+
+			await expect(
+				executeTool(createWorkflowsTool(context), { action: 'publish', workflowId: 'wf1' }, {
+					suspend: vi.fn(),
+				} as never),
+			).rejects.toBe(error);
+			expect(assertInThreadProject).toHaveBeenCalledWith({ kind: 'workflow', id: 'sub-b' });
+			expect(context.workflowService.publish).not.toHaveBeenCalled();
 		});
 
 		it('should roll back direct Execute Workflow dependencies when the main workflow publish fails', async () => {
@@ -3889,7 +3998,7 @@ describe('node usage', () => {
 	});
 });
 
-describe('workflows(action="setup") — setup panel', () => {
+describe('workflow_builder_workflows(action="setup") — setup panel', () => {
 	const openSlack = {
 		node: { name: 'Slack', type: 'n8n-nodes-base.slack' },
 		credentialType: 'slackApi',

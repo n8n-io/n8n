@@ -2,16 +2,13 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn } from '@vueuse/core';
-import {
-	SKILL_NAME_TAKEN_MESSAGE,
-	type AgentSkill,
-	type SkillListItem,
-	type SkillScope,
-} from '@n8n/api-types';
+import { saveAs } from 'file-saver';
+import type { AgentSkill, SkillCreateMethod, SkillListItem, SkillScope } from '@n8n/api-types';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
-import { ResponseError } from '@n8n/rest-api-client';
 import { useToast } from '@n8n/composables/useToast';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
 	N8nButton,
 	N8nDropdownMenu,
@@ -31,6 +28,8 @@ import { DEBOUNCE_TIME, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { AGENT_SKILL_MODAL_KEY } from '@/features/agents/constants';
+import { isSkillNameTakenError } from '@/features/agents/utils/agentSkill';
+import { exportAgentSkill } from '@/features/agents/utils/agentSkillExport';
 import type {
 	AgentSkillConfirmFailure,
 	AgentSkillModalData,
@@ -38,7 +37,7 @@ import type {
 } from '@/features/agents/components/AgentSkillModal.vue';
 
 import SkillsTable from '../components/SkillsTable.vue';
-import { PREFERENCES_DEFAULT_PAGE_SIZE } from '../context.constants';
+import { SKILLS_DEFAULT_PAGE_SIZE } from '../context.constants';
 import { canWriteInstanceSkillScope, canWriteProjectSkillScope } from '../context.utils';
 import type { SkillListQuery } from '../skills.api';
 import { useSkillsStore } from '../skills.store';
@@ -58,12 +57,13 @@ const message = useMessage();
 const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 const skillsStore = useSkillsStore();
+const telemetry = useTelemetry();
 const { showError, showMessage } = useToast();
 const { scopeDisplay } = useSkillScopeDisplay();
 
 const tableOptions = ref<TableOptions>({
 	page: 0,
-	itemsPerPage: PREFERENCES_DEFAULT_PAGE_SIZE,
+	itemsPerPage: SKILLS_DEFAULT_PAGE_SIZE,
 	sortBy: [],
 });
 const search = ref('');
@@ -115,6 +115,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 			value: INSTANCE_SCOPE,
 			label: i18n.baseText('settings.context.skills.scope.instance'),
 			icon: 'globe',
+			target: { projectId: null, agentId: null },
 		});
 	}
 	const personalProject = projectsStore.personalProject;
@@ -123,6 +124,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 			value: `${PROJECT_SCOPE_PREFIX}${personalProject.id}`,
 			label: i18n.baseText('settings.context.skills.scope.personalProject'),
 			icon: 'user',
+			target: { projectId: personalProject.id, agentId: null },
 		});
 	}
 	for (const project of projectsStore.myProjects) {
@@ -131,6 +133,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 			value: `${PROJECT_SCOPE_PREFIX}${project.id}`,
 			label: project.name ?? project.id,
 			icon: 'layers',
+			target: { projectId: project.id, agentId: null },
 		});
 	}
 	return options;
@@ -145,7 +148,7 @@ function parseScope(value: string): { scope: 'project' | 'instance'; projectId?:
 }
 
 async function load() {
-	const { page = 0, itemsPerPage = PREFERENCES_DEFAULT_PAGE_SIZE } = tableOptions.value;
+	const { page = 0, itemsPerPage = SKILLS_DEFAULT_PAGE_SIZE } = tableOptions.value;
 	try {
 		await skillsStore.fetchSkills(listQuery(page, itemsPerPage));
 		loadFailed.value = false;
@@ -196,7 +199,8 @@ function openCreateModal() {
 				...parseScope(scopeValue),
 				name: i18n.baseText('agents.builder.skills.defaultName'),
 			}),
-		onConfirm: async ({ skill, scope }) => await onCreate(skill, scope ?? options[0].value),
+		onConfirm: async ({ skill, scope, method }) =>
+			await onCreate(skill, scope ?? options[0].value, method),
 	});
 }
 
@@ -221,11 +225,7 @@ function confirmIfHidden(skillId: string, key: 'created' | 'saved') {
  * shows on the name field, any other error in a toast.
  */
 function saveFailed(error: unknown): AgentSkillConfirmFailure {
-	if (
-		error instanceof ResponseError &&
-		error.httpStatusCode === 409 &&
-		error.message === SKILL_NAME_TAKEN_MESSAGE
-	) {
+	if (isSkillNameTakenError(error)) {
 		return { saved: false, nameError: i18n.baseText('settings.context.skills.error.nameTaken') };
 	}
 	showError(error, i18n.baseText('settings.context.skills.error.save'));
@@ -235,10 +235,17 @@ function saveFailed(error: unknown): AgentSkillConfirmFailure {
 async function onCreate(
 	skill: AgentSkill,
 	scopeValue: string,
+	method?: SkillCreateMethod,
 ): Promise<AgentSkillConfirmFailure | undefined> {
 	let createdId: string;
 	try {
-		createdId = (await skillsStore.createSkill({ ...parseScope(scopeValue), skill })).id;
+		createdId = (
+			await skillsStore.createSkill({
+				...parseScope(scopeValue),
+				skill,
+				...(method ? { method } : {}),
+			})
+		).id;
 	} catch (error) {
 		return saveFailed(error);
 	}
@@ -254,31 +261,43 @@ function scopeValueOf(skill: Pick<SkillListItem, 'scope' | 'projectId'>): string
 	return skill.scope;
 }
 
+/**
+ * Why the scope of a saved skill cannot change, if it cannot. A move needs the delete
+ * permission where the skill is, because it takes the skill out of that scope. A skill in
+ * use can still move: the modal warns about a scope that drops an agent.
+ */
+function scopeLock(
+	detail: Pick<SkillListItem, 'canDelete'>,
+): Pick<AgentSkillModalData, 'scopeLockedReason'> {
+	if (!detail.canDelete) {
+		return { scopeLockedReason: i18n.baseText('settings.context.skills.modal.scope.noDelete') };
+	}
+	return {};
+}
+
 async function openEditModal(item: Pick<SkillListItem, 'id'>) {
 	try {
 		const detail = await skillsStore.fetchSkill(item.id);
+		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_OPENED_SKILL, {
+			skill_id: detail.id,
+			scope: detail.scope,
+			...(detail.projectId ? { project_id: detail.projectId } : {}),
+			read_only: !detail.canEdit,
+		});
 		const currentValue = scopeValueOf(detail);
 		// The current scope is listed even when the user could not create a skill there,
 		// such as an agent skill, which is only made from inside its agent.
 		const options = scopeOptions.value.some((option) => option.value === currentValue)
 			? scopeOptions.value
 			: [{ value: currentValue, ...scopeDisplay(detail) }, ...scopeOptions.value];
-		// The backend refuses to move a skill while an agent uses it.
-		const inUse = detail.usedByAgents > 0;
 		openModal({
 			skill: detail.skill,
 			skillId: detail.id,
 			readOnly: !detail.canEdit,
 			scopeOptions: options,
 			initialScope: currentValue,
-			...(inUse
-				? {
-						scopeLockedReason: i18n.baseText('settings.context.skills.modal.scope.inUse', {
-							interpolate: { count: detail.usedByAgents },
-							adjustToNumber: detail.usedByAgents,
-						}),
-					}
-				: {}),
+			...scopeLock(detail),
+			usedBy: detail.usedBy,
 			existingSkillNames: [],
 			onConfirm: async ({ skill, scope }) =>
 				await onSave(
@@ -326,6 +345,23 @@ async function onSave(
 	return undefined;
 }
 
+/** The list row has no content, so the download reads the latest version first. */
+async function onDownload(item: Pick<SkillListItem, 'id'>) {
+	try {
+		const detail = await skillsStore.fetchSkill(item.id);
+		const { blob, fileName, format } = await exportAgentSkill(detail.skill);
+		saveAs(blob, fileName);
+		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_DOWNLOADED_SKILL, {
+			skill_id: detail.id,
+			scope: detail.scope,
+			...(detail.projectId ? { project_id: detail.projectId } : {}),
+			format,
+		});
+	} catch (error) {
+		showError(error, i18n.baseText('settings.context.skills.error.download'));
+	}
+}
+
 async function onDelete(skill: SkillListItem) {
 	const confirmed = await message.confirm(
 		i18n.baseText('settings.context.skills.delete.confirm.message'),
@@ -357,6 +393,11 @@ async function goBack() {
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.context.skills.title'));
 	await Promise.all([load(), projectsStore.getMyProjects().catch(() => undefined)]);
+	// Once for the visit, not once for each page. A failed load reports nothing, so a zero
+	// here is an empty list and never a broken one.
+	if (!loadFailed.value) {
+		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_VIEWED_SKILLS, { count: skillsStore.count });
+	}
 	// Deep links: one skill to open, or a new one to start. The skill may be on another
 	// page, so it is read by id rather than from the list.
 	const { skillId, create } = route.query;
@@ -434,6 +475,7 @@ onMounted(async () => {
 			:loading="skillsStore.loading"
 			:show-empty="showEmptyState"
 			@open="openEditModal"
+			@download="onDownload"
 			@delete="onDelete"
 			@update:options="onOptionsUpdate"
 		>

@@ -10,7 +10,6 @@ import {
 	N8nLink,
 	N8nOption,
 	N8nSelect,
-	N8nSpinner,
 	N8nStepper,
 	N8nText,
 } from '@n8n/design-system';
@@ -31,14 +30,16 @@ import AgentChannelTeamsAvailability from './AgentChannelTeamsAvailability.vue';
 import {
 	availabilityFrom,
 	entraApiPermissionsUrl,
-	readsSharedConversations as readsShared,
+	permissionUseFor,
 	TEAMS_PACKAGE_FILENAME,
 	type TeamsAvailability,
 } from './constants';
 import AgentChannelTeamsIdentityCard from './AgentChannelTeamsIdentityCard.vue';
 import AgentChannelTeamsOptionLabel from './AgentChannelTeamsOptionLabel.vue';
 import { useTeamsFileAccessMenu } from './useTeamsFileAccessMenu';
+import type { AgentChannelRestart } from '../types';
 import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
+import { useTeamsSetupRestart } from './useTeamsSetupRestart';
 import { useTeamsUploadInstruction } from './useTeamsUploadInstruction';
 
 const selectedCredentialId = defineModel<string>({ default: '' });
@@ -69,6 +70,8 @@ const emit = defineEmits<{
 	provisioned: [credentialId: string];
 	/** The user is finished here, whether or not Microsoft is. */
 	done: [];
+	/** The sign-in changed under a saved channel: remove it and start from the first step. */
+	restart: [restart: AgentChannelRestart];
 }>();
 
 const TEAMS_MANAGE_APPS_URL = 'https://admin.teams.microsoft.com/policies/manage-apps';
@@ -162,32 +165,29 @@ const hasPublished = ref(false);
 
 /**
  * The two routes are independent, so downloading the package once must not take
- * publishing away. Only a pending review drops an item: it is the one state
- * that cannot take another submission.
+ * publishing away. Publishing is offered once: a pending review cannot take
+ * another submission, and a published app is already in the catalog.
  */
-const installMenuItems = computed(() => {
-	const items = [
-		{
-			id: 'for-me',
-			testId: 'teams-install-download-package',
-			label: i18n.baseText(
-				installRoute.value === 'downloaded'
-					? 'agents.channels.teams.managed.install.downloadAgain'
-					: 'agents.channels.teams.managed.install.forMe',
-			),
-			description: i18n.baseText('agents.channels.teams.managed.install.forMeHint'),
-		},
-	];
-	if (catalogState.value?.status !== 'submitted') {
-		items.push({
-			id: 'publish',
-			testId: 'teams-publish',
-			label: i18n.baseText('agents.channels.teams.managed.install.publish'),
-			description: i18n.baseText('agents.channels.teams.managed.install.publishHintShort'),
-		});
-	}
-	return items;
-});
+const installMenuItems = computed(() => [
+	{
+		id: 'for-me',
+		testId: 'teams-install-download-package',
+		label: i18n.baseText(
+			installRoute.value === 'downloaded'
+				? 'agents.channels.teams.managed.install.downloadAgain'
+				: 'agents.channels.teams.managed.install.forMe',
+		),
+		description: i18n.baseText('agents.channels.teams.managed.install.forMeHint'),
+	},
+	{
+		id: 'publish',
+		testId: 'teams-publish',
+		label: i18n.baseText('agents.channels.teams.managed.install.publish'),
+		description: i18n.baseText('agents.channels.teams.managed.install.publishHintShort'),
+		disabled:
+			hasPublished.value || ['published', 'submitted'].includes(catalogState.value?.status ?? ''),
+	},
+]);
 
 const onInstallMenu = async (id: string) =>
 	id === 'publish' ? await publishApp() : await downloadPackage();
@@ -206,8 +206,6 @@ const installProgress = computed(() => {
  * client, so that route ends on the step after this one instead.
  */
 const installDone = computed(() => published.value);
-
-const readsSharedConversations = computed(() => readsShared(availability.value));
 
 /** Without a consent link the instance has no address Entra accepts to return to. */
 const fileAccessUrl = computed(() => {
@@ -241,6 +239,36 @@ const persisted = ref(false);
  * credential back to the agent at all.
  */
 const canFinish = computed(() => persisted.value || published.value);
+
+/**
+ * A saved channel runs on the bot this sign-in made. Another sign-in would
+ * make a second bot beside it, so switching it sets the channel up again.
+ */
+const signInLocked = computed(() => persisted.value || props.channelConnected === true);
+const { confirmRestart } = useTeamsSetupRestart();
+
+// Under a saved channel the new sign-in is applied only once the host has
+// removed the channel, so a removal that fails leaves this setup as it was.
+async function selectSignIn(credentialId: string) {
+	if (credentialId === selectedCredentialId.value) return;
+	if (!signInLocked.value) {
+		selectedCredentialId.value = credentialId;
+		return;
+	}
+	if (await confirmRestart()) {
+		emit('restart', { credentialId: '', signInCredentialId: credentialId });
+	}
+}
+
+async function addSignIn() {
+	if (!signInLocked.value) {
+		await connect();
+		return;
+	}
+	if (!(await confirmRestart())) return;
+	const signedIn = await connect(undefined, { select: false });
+	if (signedIn) emit('restart', { credentialId: '', signInCredentialId: signedIn });
+}
 
 /**
  * Every step after the first runs on the sign-in, so a sign-in that has to be
@@ -327,15 +355,13 @@ const steps = computed(() => [
 		title: i18n.baseText('agents.channels.teams.managed.install.title'),
 		description: i18n.baseText('agents.channels.teams.managed.install.description'),
 	},
-	...(readsSharedConversations.value
-		? [
-				{
-					id: 'file-access',
-					title: i18n.baseText('agents.channels.teams.managed.fileAccess.title'),
-					description: i18n.baseText('agents.channels.teams.managed.fileAccess.description'),
-				},
-			]
-		: []),
+	{
+		id: 'file-access',
+		title: i18n.baseText('agents.channels.teams.managed.fileAccess.title'),
+		description: i18n.baseText(
+			`agents.channels.teams.managed.fileAccess.description.${permissionUseFor(availability.value)}`,
+		),
+	},
 	{
 		id: 'finish',
 		title: i18n.baseText('agents.channels.teams.managed.finish.title'),
@@ -431,10 +457,16 @@ async function run(name: string, action: () => Promise<void>) {
  * credential first. The picker already names one whenever the project has any,
  * so passing it is what keeps a second sign-in from piling up beside it.
  */
-async function connect(credentialId?: string) {
+async function connect(
+	credentialId?: string,
+	options?: { select?: boolean },
+): Promise<string | null> {
+	let signedIn: string | null = null;
 	await run('connect', async () => {
-		connectFailed.value = !(await props.runtime.connectManagerCredential(credentialId));
+		signedIn = await props.runtime.connectManagerCredential(credentialId, options);
+		connectFailed.value = !signedIn;
 	});
+	return signedIn;
 }
 
 const provisionApp = async () =>
@@ -564,6 +596,13 @@ async function copyApprovalRequest() {
 	requestCopied.value = true;
 }
 
+/** The person signing in is often not the admin who can approve n8n. */
+const { onSelect: onAdminConsentMenu } = useTeamsFileAccessMenu({
+	url: () => props.setup.adminConsentUrl ?? '',
+	organization: '',
+});
+const copyAdminConsentLink = async () => await onAdminConsentMenu('copy');
+
 /**
  * Hands the setup to the manual flow, for the walls this one cannot climb: a
  * tenant that will not let this account register an app, or an account with no
@@ -615,9 +654,10 @@ const downloadPackage = async () =>
 							:selected-credential-id="selectedCredentialId"
 							:permissions="credentialPermissions"
 							:loading="loading"
+							:disabled="busy !== null"
 							data-testid="teams-manager-credential-select"
-							@credential-selected="selectedCredentialId = $event"
-							@new-credential="connect()"
+							@credential-selected="selectSignIn"
+							@new-credential="addSignIn"
 						/>
 						<N8nIconButton
 							v-if="credentialPermissions.update"
@@ -638,9 +678,10 @@ const downloadPackage = async () =>
 							:selected-credential-id="selectedCredentialId"
 							:permissions="credentialPermissions"
 							:loading="loading"
+							:disabled="busy !== null"
 							data-testid="teams-manager-credential-select"
-							@credential-selected="selectedCredentialId = $event"
-							@new-credential="connect()"
+							@credential-selected="selectSignIn"
+							@new-credential="addSignIn"
 						/>
 					</div>
 					<N8nText
@@ -654,7 +695,7 @@ const downloadPackage = async () =>
 					<N8nButton
 						variant="outline"
 						size="medium"
-						icon="teams"
+						icon="microsoft"
 						:loading="busy === 'connect'"
 						:disabled="loading || busy !== null"
 						data-testid="teams-manager-connect"
@@ -666,19 +707,17 @@ const downloadPackage = async () =>
 						The one prompt that covers Graph and Azure together. A sign-in cannot:
 						a code is redeemed for one resource at a time.
 					-->
-					<N8nButton
-						v-if="setup.adminConsentUrl"
-						:href="setup.adminConsentUrl"
-						tag="a"
-						target="_blank"
-						variant="ghost"
-						size="small"
-						data-testid="teams-admin-consent"
-					>
+					<N8nText v-if="setup.adminConsentUrl && !connectFailed" size="small" color="text-light">
 						{{ i18n.baseText('agents.channels.teams.managed.connect.adminConsent') }}
-					</N8nButton>
-					<N8nText v-if="setup.adminConsentUrl" size="small" color="text-light">
-						{{ i18n.baseText('agents.channels.teams.managed.connect.adminConsentHint') }}
+						<N8nLink
+							theme="text"
+							size="small"
+							underline
+							data-testid="teams-admin-consent"
+							@click="copyAdminConsentLink"
+						>
+							{{ i18n.baseText('agents.channels.teams.managed.connect.adminConsentLink') }}
+						</N8nLink>
 					</N8nText>
 					<N8nText
 						v-if="connectFailed"
@@ -687,6 +726,16 @@ const downloadPackage = async () =>
 						data-testid="teams-manager-error"
 					>
 						{{ i18n.baseText('agents.channels.teams.managed.connect.failed') }}
+						<N8nLink
+							v-if="setup.adminConsentUrl"
+							theme="danger"
+							size="small"
+							underline
+							data-testid="teams-manager-error-admin-consent"
+							@click="copyAdminConsentLink"
+						>
+							{{ i18n.baseText('agents.channels.teams.managed.connect.adminConsentLink') }}
+						</N8nLink>
 					</N8nText>
 				</div>
 
@@ -707,24 +756,26 @@ const downloadPackage = async () =>
 					>
 						{{ i18n.baseText('agents.channels.teams.managed.useOwnApp') }}
 					</N8nButton>
-					<N8nButton
-						variant="outline"
-						size="medium"
-						:loading="busy === 'create-app'"
-						:disabled="busy !== null"
-						data-testid="teams-create-app"
-						@click="provisionApp"
-					>
-						{{ i18n.baseText('agents.channels.teams.managed.createApp.button') }}
-					</N8nButton>
-					<N8nText
-						v-if="busy === 'create-app'"
-						size="small"
-						color="text-light"
-						data-testid="teams-create-app-progress"
-					>
-						{{ i18n.baseText('agents.channels.teams.managed.createApp.progress') }}
-					</N8nText>
+					<div :class="$style.actionWithProgress">
+						<N8nButton
+							variant="outline"
+							size="medium"
+							:loading="busy === 'create-app'"
+							:disabled="busy !== null"
+							data-testid="teams-create-app"
+							@click="provisionApp"
+						>
+							{{ i18n.baseText('agents.channels.teams.managed.createApp.button') }}
+						</N8nButton>
+						<N8nText
+							v-if="busy === 'create-app'"
+							size="small"
+							color="text-light"
+							data-testid="teams-create-app-progress"
+						>
+							{{ i18n.baseText('agents.channels.teams.managed.createApp.progress') }}
+						</N8nText>
+					</div>
 				</div>
 
 				<div
@@ -775,24 +826,26 @@ const downloadPackage = async () =>
 								/>
 							</N8nSelect>
 						</N8nInputLabel>
-						<N8nButton
-							variant="outline"
-							size="medium"
-							:loading="busy === 'create-bot'"
-							:disabled="busy !== null || !subscriptionId"
-							data-testid="teams-create-bot"
-							@click="provisionBot"
-						>
-							{{ i18n.baseText('agents.channels.teams.managed.createBot.create') }}
-						</N8nButton>
-						<N8nText
-							v-if="busy === 'create-bot'"
-							size="small"
-							color="text-light"
-							data-testid="teams-create-bot-progress"
-						>
-							{{ i18n.baseText('agents.channels.teams.managed.createBot.progress') }}
-						</N8nText>
+						<div :class="$style.actionWithProgress">
+							<N8nButton
+								variant="outline"
+								size="medium"
+								:loading="busy === 'create-bot'"
+								:disabled="busy !== null || !subscriptionId"
+								data-testid="teams-create-bot"
+								@click="provisionBot"
+							>
+								{{ i18n.baseText('agents.channels.teams.managed.createBot.create') }}
+							</N8nButton>
+							<N8nText
+								v-if="busy === 'create-bot'"
+								size="small"
+								color="text-light"
+								data-testid="teams-create-bot-progress"
+							>
+								{{ i18n.baseText('agents.channels.teams.managed.createBot.progress') }}
+							</N8nText>
+						</div>
 					</template>
 
 					<template v-else>
@@ -855,7 +908,7 @@ const downloadPackage = async () =>
 				</div>
 
 				<div
-					v-else-if="step.id === 'install' && statusOf[step.id] === 'active'"
+					v-else-if="step.id === 'install' && statusOf[step.id] !== 'locked'"
 					:class="$style.stepContent"
 				>
 					<N8nText
@@ -874,11 +927,18 @@ const downloadPackage = async () =>
 						ready
 					>
 						<template #action>
-							<N8nSpinner
+							<!-- Outside the menu: its trigger lays the button out as flex, which
+								pushes the loading spinner to the left edge. -->
+							<N8nButton
 								v-if="installProgress"
+								variant="solid"
 								size="medium"
-								data-testid="teams-install-spinner"
-							/>
+								loading
+								data-testid="teams-install-menu"
+							>
+								{{ i18n.baseText('agents.channels.teams.managed.install.menu') }}
+								<N8nIcon icon="chevron-down" size="small" />
+							</N8nButton>
 							<N8nActionDropdown
 								v-else
 								:items="installMenuItems"
@@ -890,6 +950,7 @@ const downloadPackage = async () =>
 									<AgentChannelTeamsOptionLabel
 										:label="item.label"
 										:description="item.description"
+										:disabled="item.disabled"
 									/>
 								</template>
 								<template #activator>
@@ -1117,6 +1178,14 @@ const downloadPackage = async () =>
 	flex-direction: column;
 	align-items: flex-start;
 	width: 100%;
+}
+
+/* The progress line sits beside the button and drops below it when narrow, as in the Assistant chat. */
+.actionWithProgress {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--spacing--2xs) var(--spacing--sm);
 }
 
 .stepContent {

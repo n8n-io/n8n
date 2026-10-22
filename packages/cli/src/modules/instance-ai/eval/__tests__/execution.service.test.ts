@@ -17,7 +17,7 @@ import { NodeConnectionTypes, TimeoutExecutionCancelledError, UserError } from '
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import type { PrepareWorkflowAgentForEval } from '@/modules/agents/agent-runtime-instrumentation';
+import type { PrepareWorkflowAgentForEval } from '@/modules/agents/evaluation/agent-evaluation.contracts';
 import type { NodeTypes } from '@/node-types';
 import type { PostHogClient } from '@/posthog';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
