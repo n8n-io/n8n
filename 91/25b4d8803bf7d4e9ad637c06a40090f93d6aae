@@ -1,0 +1,69 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_bbc52937c57305::t_5bfc2db44c6775 317,328-338,731-735,973-1006,1218
+packages/@n8n/cli/src/__tests__/promotion-environment-operations.test.ts
+  s_bbc52937c57305::t_7730deae693a95 123-137
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromoteInstanceDialog.test.ts
+  s_bbc52937c57305::t_018802c222873e 53-54,56-57,64,115,117
+  s_ea937ea2ac308b::t_2625acb8da8148 67
+  s_83ad41e81d6da7::t_2ce529db5353e5 60,93,95
+packages/cli/src/modules/promotions.ee/promotion-commit-message.ts
+  s_bbc52937c57305::t_b98ff5618874ae 1-60
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_bbc52937c57305::t_bacf46c4653a9e 59
+  s_bbc52937c57305::t_e95f5de626dd01 34,61-63,83-87,242-246,359,366,450-456,540,1079-1100
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_bbc52937c57305::t_e95f5de626dd01 16-22
+packages/cli/test/integration/public-api/promotions.test.ts
+  s_bbc52937c57305::t_82f5f7fdabaeec 1883-1904
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-operations.dto.test.ts
+  s_bbc52937c57305::t_50087690468276 12-13
+packages/@n8n/cli/src/client.ts
+  s_bbc52937c57305::t_018802c222873e 420
+packages/@n8n/cli/docs/commands/promotions.md
+  s_bbc52937c57305::t_7730deae693a95 204
+  s_83ad41e81d6da7::t_86c8112452992e 198
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promotePackage.generated.yml
+  s_bbc52937c57305::t_70d01439b7eae9 26
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromoteInstanceDialog.vue
+  s_bbc52937c57305::t_018802c222873e 16,89,93,136
+  s_83ad41e81d6da7::t_278715d55ba8ac 94
+packages/@n8n/cli/src/commands/promotion-environment/promote.ts
+  s_bbc52937c57305::t_018802c222873e 20
+  s_83ad41e81d6da7::t_86c8112452992e 10
+packages/cli/src/modules/promotions.ee/__tests__/promotion-commit-message.test.ts
+  s_bbc52937c57305::t_ebe976e46c36d8 1-92
+packages/@n8n/cli/skills/n8n-cli/SKILL.md
+  s_83ad41e81d6da7::t_86c8112452992e 216
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9125b4d8803bf7d4e9ad637c06a40090f93d6aae",
+  "prompts": {},
+  "sessions": {
+    "s_83ad41e81d6da7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "913713bc-1b9d-4c34-92a5-a61511800f74",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_bbc52937c57305": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0eacde6c-6447-4389-a009-0188bf4f0678",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_ea937ea2ac308b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e3f3c5a3-eade-4950-a450-a6551350d91c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
