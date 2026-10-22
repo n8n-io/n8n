@@ -11,9 +11,10 @@
 // NOT stubbed — when the orchestrator loads a skill or reaches for a
 // Computer Use browser tool, the tool-call event fires before any downstream
 // failure, so the discovery check still sees the dispatch intent. The Agent
-// Builder tools are the exception: they accept any input and report success,
-// and `agent_builder_select_agent` runs against a stub builder delegate. Only
-// the routing to them is graded, not the Agent build itself. The wall-clock
+// Builder tools are the exception: they have the production names, descriptions,
+// input schemas, and reference skills, but they report success without doing
+// work, and `agent_builder_select_agent` runs against a stub builder delegate.
+// Only the routing to them is graded, not the Agent build itself. The wall-clock
 // timeout bounds the trial, not the run: at the budget the trial stops and fails,
 // and the abandoned stream is left to unwind on its own. Scenarios or --max-steps
 // can additionally opt into an iteration cap.
@@ -26,9 +27,10 @@
 // (see ./seeded-turn.ts).
 // ---------------------------------------------------------------------------
 
-import { Tool, type BuiltTool, type GuardrailsOptions } from '@n8n/agents';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+
+import { Tool, type BuiltTool, type GuardrailsOptions, type RuntimeSkill } from '@n8n/agents';
 import { AGENT_BUILDER_TOOL_NAMES, type InstanceAiEvent, type TaskList } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { nanoid } from 'nanoid';
@@ -411,31 +413,46 @@ async function stopAtAgentBuild(
 	return await Promise.resolve(agentSelected && STUB_BUILDER_TOOL_NAMES.includes(call.toolName));
 }
 
-// Eval branch only: the real builder tool names, descriptions, and input schemas, dumped from
-// packages/cli AgentsBuilderToolsService, so the model sees what production shows.
-const REAL_BUILDER_TOOLS = new Map(
-	(
-		JSON.parse(readFileSync(path.join(__dirname, 'agent-builder-tools.json'), 'utf8')) as Array<{
-			name: string;
-			description: string;
-			inputSchema: Exclude<BuiltTool['inputSchema'], z.ZodType | undefined>;
-		}>
-	).map((tool) => [tool.name, tool]),
-);
+/**
+ * A copy of the builder tools and reference skills that the agents module in packages/cli
+ * supplies, which this package cannot import. A test in agents-builder-tools.service.test.ts
+ * keeps the copy current.
+ */
+const agentBuilderFileSchema = z.object({
+	tools: z.array(
+		z.object({
+			name: z.string(),
+			description: z.string(),
+			inputSchema: z.custom<NonNullable<BuiltTool['inputSchema']>>(isRecord),
+		}),
+	),
+	skills: z.array(
+		z.custom<RuntimeSkill>(
+			(skill) =>
+				isRecord(skill) && typeof skill.id === 'string' && typeof skill.instructions === 'string',
+		),
+	),
+});
 
-/** Builder tools that accept any input and report success, so routing is all that is graded. */
-function createStubBuilderTools(): BuiltTool[] {
+type AgentBuilderFile = z.infer<typeof agentBuilderFileSchema>;
+
+/** Builder tools with the production names, descriptions, and input schemas that report success. */
+function createStubBuilderTools(tools: AgentBuilderFile['tools']): BuiltTool[] {
 	return STUB_BUILDER_TOOL_NAMES.map((name) => {
-		const real = REAL_BUILDER_TOOLS.get(name);
+		const tool = tools.find((candidate) => candidate.name === name);
+		if (!tool) throw new Error(`agent-builder.json has no "${name}" tool`);
 		return new Tool(name)
-			.description(real?.description ?? `Discovery stub for ${name}.`)
-			.input(real?.inputSchema ?? z.object({}).passthrough())
+			.description(tool.description)
+			.input(tool.inputSchema)
 			.handler(async () => await Promise.resolve({ ok: true }))
 			.build();
 	});
 }
 
 function createStubBuilderDelegate(): InstanceAiBuilderDelegate {
+	const agentBuilder = agentBuilderFileSchema.parse(
+		JSON.parse(readFileSync(path.join(__dirname, 'agent-builder.json'), 'utf8')),
+	);
 	return {
 		createAgent: async (name) =>
 			await Promise.resolve({
@@ -443,8 +460,8 @@ function createStubBuilderDelegate(): InstanceAiBuilderDelegate {
 				projectId: 'discovery-project',
 				name,
 			}),
-		getBuilderTools: () => createStubBuilderTools(),
-		getRuntimeSkills: () => [],
+		getBuilderTools: () => createStubBuilderTools(agentBuilder.tools),
+		getRuntimeSkills: () => agentBuilder.skills,
 		getBuilderSessionContext: async () => await Promise.resolve('## Session context'),
 		resolveAgentName: async () => await Promise.resolve(undefined),
 	};
