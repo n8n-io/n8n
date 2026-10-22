@@ -1,0 +1,14 @@
+packages/@n8n/backend-network/src/http/__tests__/binary-string.test.ts
+  h_52a137d26d774c 2,5,8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cbb4c3cf4d710bbb4928285dd4d0ab697abc8560",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
