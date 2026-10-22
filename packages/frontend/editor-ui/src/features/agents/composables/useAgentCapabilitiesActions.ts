@@ -43,6 +43,7 @@ export interface AgentCapabilitiesTelemetry {
 	trackOpenedSkillFromList?: (skillId: string) => void;
 	trackOpenedAddSkillModal?: () => void;
 	trackTriggerAdded?: (payload: { triggerType: string; triggers: string[] }) => void;
+	trackTriggerRemoved?: (payload: { triggerType: string; triggers: string[] }) => void;
 }
 
 export interface UseAgentCapabilitiesActionsDeps {
@@ -704,6 +705,11 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		telemetry?.trackTriggerAdded?.(payload);
 	}
 
+	function onTriggerRemoved(payload: { triggerType: string; triggers: string[] }) {
+		connectedTriggers.value = payload.triggers;
+		telemetry?.trackTriggerRemoved?.(payload);
+	}
+
 	return {
 		appliedSkills,
 		onOpenAddToolModal,
@@ -715,5 +721,6 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		onToggleTask,
 		onConnectedTriggersUpdate,
 		onTriggerAdded,
+		onTriggerRemoved,
 	};
 }

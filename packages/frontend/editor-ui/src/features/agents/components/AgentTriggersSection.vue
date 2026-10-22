@@ -66,6 +66,7 @@ const emit = defineEmits<{
 	'toggle-task': [payload: { id: string; enabled: boolean }];
 	'tasks-changed': [];
 	'preview-task': [instructions: string];
+	'trigger-removed': [{ triggerType: string; triggers: string[] }];
 	'agent-changed': [];
 }>();
 
@@ -297,10 +298,9 @@ function openTeamsAfterFileAccessConsent(integrations: Array<{ type: string }>) 
 defineExpose({ openChannelModal });
 
 function handleChannelDisconnected(channelType: string) {
-	emit(
-		'update:connected-triggers',
-		props.connectedTriggers.filter((channel) => channel !== channelType),
-	);
+	const channels = props.connectedTriggers.filter((channel) => channel !== channelType);
+	emit('update:connected-triggers', channels);
+	emit('trigger-removed', { triggerType: channelType, triggers: channels });
 }
 </script>
 

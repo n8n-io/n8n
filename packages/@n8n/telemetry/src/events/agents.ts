@@ -110,6 +110,7 @@ const agentConfigPart = z.enum([
 	'credential',
 	'memory',
 	'name',
+	'description',
 	'config',
 	'tools',
 	'providerTools',
@@ -522,6 +523,16 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 		name: 'User answered builder questions',
 		description:
 			'The user resumed a builder agent_builder_ask_questions card by answering, skipping, or dismissing it.',
+	BUILDER_REMOVED_TRIGGER: {
+		name: 'Builder removed trigger from agent',
+		description:
+			'The Instance AI builder saved a config through agent_builder_write_config or agent_builder_patch_config that removed a configured chat channel. One event fires for each removed channel type, after the save commits. Mirrors the frontend "User removed trigger from agent" event.',
+		properties: z.object({
+			...builderSessionIdentity,
+			trigger_type: z.string().describe('Chat integration type that was removed'),
+			triggers: z.array(z.string()).describe('Configured trigger types after the change'),
+		}),
+	},
 		properties: z.object({
 			...builderSessionIdentity,
 			outcome: z.enum(['answered', 'skipped', 'dismissed']),
@@ -620,6 +631,19 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			agent_id: z.string().optional().describe('Referenced agent ID, when one was picked'),
 			workflow_id: z.string(),
 			node_id: z.string(),
+	USER_REMOVED_TRIGGER_FROM_AGENT: {
+		name: 'User removed trigger from agent',
+		description:
+			'The user removed a chat trigger from the agent builder, from the channel menu or the channel settings. Counterpart of "User added trigger to agent". No event fires when the channel stays configured after the removal.',
+		properties: z.object({
+			agent_id: z.string(),
+			trigger_type: z.string(),
+			triggers: z.array(z.string()).describe('Configured trigger types after the change'),
+			config_version: z.string(),
+			status: agentStatus,
+			session_id: sessionId,
+		}),
+	},
 			node_version: z.number(),
 		}),
 	},

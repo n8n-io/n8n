@@ -161,6 +161,23 @@ export function useAgentTelemetry() {
 	}
 
 	function trackOpenedToolFromList(params: { agentId: string; toolType: string }) {
+	function trackRemovedTrigger(params: {
+		agentId: string;
+		triggerType: string;
+		triggers: string[];
+		configVersion: string;
+		status: AgentTelemetryStatus;
+	}) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_REMOVED_TRIGGER_FROM_AGENT, {
+			agent_id: params.agentId,
+			trigger_type: params.triggerType,
+			triggers: params.triggers,
+			config_version: params.configVersion,
+			status: params.status,
+			...common(),
+		});
+	}
+
 		safeTrack(TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_TOOL, {
 			agent_id: params.agentId,
 			tool_type: params.toolType,
@@ -377,3 +394,4 @@ export function useAgentTelemetry() {
 		trackClickedSidebarItem,
 	};
 }
+		trackRemovedTrigger,

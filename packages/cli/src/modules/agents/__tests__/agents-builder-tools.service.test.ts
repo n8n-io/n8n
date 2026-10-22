@@ -891,7 +891,7 @@ describe('AgentsBuilderToolsService', () => {
 		});
 
 		it('agent_builder_patch_config can remove one integration while preserving siblings', async () => {
-			const { service, agentsService } = makeService();
+			const { service, agentsService, telemetry } = makeService();
 			const currentIntegrations = [
 				{ type: 'slack', credentialId: 'slack-1' },
 				{ type: 'linear', credentialId: 'linear-1' },
@@ -941,7 +941,86 @@ describe('AgentsBuilderToolsService', () => {
 				}),
 			);
 			expect(result).toEqual(expect.objectContaining({ ok: true, configMutated: true, agentId }));
+			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.AGENTS.BUILDER_REMOVED_TRIGGER,
+				{
+					agent_id: agentId,
+					user_id: user.id,
+					trigger_type: 'linear',
+					triggers: ['slack', 'telegram'],
+				},
+			);
 		});
+
+		it('agent_builder_write_config reports n8n Chat as a removed trigger', async () => {
+			const { service, agentsService, telemetry } = makeService();
+			const currentIntegrations = [
+				{ type: 'n8n_chat', credentialId: '' },
+				{ type: 'slack', credentialId: 'slack-1' },
+			] as NonNullable<AgentJsonConfig['integrations']>;
+			const currentConfig = { ...baseConfig, integrations: currentIntegrations };
+			const agent = makeAgent(baseConfig);
+			agent.integrations = currentIntegrations;
+			agentsService.findById.mockResolvedValue(agent);
+			agentsService.updateConfig.mockResolvedValue({
+				config: { ...currentConfig, integrations: [currentIntegrations[1]] },
+				configHash: 'config-hash',
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+
+			await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					config: { integrations: [currentIntegrations[1]] },
+				},
+				ctx,
+			);
+
+			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.AGENTS.BUILDER_REMOVED_TRIGGER,
+				expect.objectContaining({ trigger_type: 'n8n_chat', triggers: ['slack'] }),
+			);
+		});
+
+		it.each([
+			['the removed channel was a draft', { type: 'slack', credentialId: '' }, true],
+			['the save fails', { type: 'slack', credentialId: 'slack-1' }, false],
+		])(
+			'agent_builder_patch_config reports no removed trigger when %s',
+			async (_case, integration, saves) => {
+				const { service, agentsService, telemetry } = makeService();
+				const currentIntegrations = [integration] as NonNullable<AgentJsonConfig['integrations']>;
+				const currentConfig = { ...baseConfig, integrations: currentIntegrations };
+				const agent = makeAgent(baseConfig);
+				agent.integrations = currentIntegrations;
+				agentsService.findById.mockResolvedValue(agent);
+				if (saves) {
+					agentsService.updateConfig.mockResolvedValue({
+						config: { ...currentConfig, integrations: [] },
+						configHash: 'config-hash',
+						updatedAt: '2026-01-02T00:00:00.000Z',
+						versionId: 'v2',
+					});
+				} else {
+					agentsService.updateConfig.mockRejectedValue(new Error('Save failed'));
+				}
+
+				await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
+					{
+						baseConfigHash: getAgentConfigHash(currentConfig),
+						operations: [{ op: 'remove', path: '/integrations/0' }],
+					},
+					ctx,
+				);
+
+				expect(agentsService.updateConfig).toHaveBeenCalled();
+				expect(telemetry.track).not.toHaveBeenCalledWith(
+					TELEMETRY_EVENT.AGENTS.BUILDER_REMOVED_TRIGGER,
+					expect.anything(),
+				);
+			},
+		);
 
 		it('agent_builder_patch_config strips legacy schedule integrations from the current snapshot', async () => {
 			const { service, agentsService } = makeService();

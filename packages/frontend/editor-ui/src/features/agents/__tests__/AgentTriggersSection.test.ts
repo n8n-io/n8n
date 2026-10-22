@@ -250,6 +250,9 @@ describe('AgentTriggersSection', () => {
 				deleteExternalResource: undefined,
 			});
 			expect(wrapper.emitted('update:connected-triggers')).toEqual([[['telegram']]]);
+			expect(wrapper.emitted('trigger-removed')).toEqual([
+				[{ triggerType: 'slack', triggers: ['telegram'] }],
+			]);
 			expect(wrapper.emitted('agent-changed')).toEqual([[]]);
 			expect(wrapper.find('[data-testid="agent-channel-modal-stub"]').exists()).toBe(false);
 		},
@@ -312,6 +315,7 @@ describe('AgentTriggersSection', () => {
 		await flushPromises();
 
 		expect(wrapper.emitted('update:connected-triggers')).toBeUndefined();
+		expect(wrapper.emitted('trigger-removed')).toBeUndefined();
 		expect(screen.getByRole('button', { name: 'slack' })).toBeEnabled();
 		expect(showErrorSpy).toHaveBeenCalledWith(error, 'agents.channels.modal.removeChannelError');
 
@@ -518,6 +522,23 @@ describe('AgentTriggersSection', () => {
 				view,
 			);
 			expect(wrapper.emitted('update:connected-triggers')).toBeUndefined();
+		});
+
+		it('reports n8n Chat as removed when the modal makes it unavailable', async () => {
+			n8nChatFlag.value = true;
+			const wrapper = mountSection(undefined, false, { connectedTriggers: ['n8n_chat', 'slack'] });
+			await flushPromises();
+			await findChip(wrapper, 'agents.channels.n8nChat.label')?.trigger('click');
+			await flushPromises();
+
+			wrapper
+				.findComponent({ name: 'AgentChannelModal' })
+				.vm.$emit('channel-disconnected', 'n8n_chat');
+
+			expect(wrapper.emitted('update:connected-triggers')).toEqual([[['slack']]]);
+			expect(wrapper.emitted('trigger-removed')).toEqual([
+				[{ triggerType: 'n8n_chat', triggers: ['slack'] }],
+			]);
 		});
 
 		it('shows the chip when n8n Chat is not a connected channel', async () => {

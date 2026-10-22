@@ -29,6 +29,7 @@ export type AgentConfigPart =
 	| 'credential'
 	| 'memory'
 	| 'name'
+	| 'description'
 	| 'config'
 	| 'tools'
 	| 'providerTools'
@@ -50,6 +51,7 @@ const CONFIG_PARTS = [
 	'credential',
 	'memory',
 	'name',
+	'description',
 	'config',
 	'tools',
 	'providerTools',
@@ -261,7 +263,7 @@ export class AgentModificationTelemetryService {
 			!event.config?.model?.trim() &&
 			!event.config?.instructions?.trim() &&
 			capabilityCount === 0 &&
-			!changedParts?.some((part) => part !== 'name')
+			!changedParts?.some((part) => part !== 'name' && part !== 'description')
 		) {
 			return;
 		}

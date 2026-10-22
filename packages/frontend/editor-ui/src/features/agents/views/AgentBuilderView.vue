@@ -2097,6 +2097,7 @@ const caps = useAgentCapabilitiesActions({
 		trackOpenedSkillFromList: builderTelemetry.trackOpenedSkillFromList,
 		trackOpenedAddSkillModal: builderTelemetry.trackOpenedAddSkillModal,
 		trackTriggerAdded: builderTelemetry.trackTriggerAdded,
+		trackTriggerRemoved: builderTelemetry.trackTriggerRemoved,
 	},
 });
 // Top-level alias so the template auto-unwraps the ref (nested `caps.appliedSkills`
@@ -3421,6 +3422,7 @@ useKeybindings({
 					@remove-skill="caps.onRemoveSkill"
 					@update:connected-triggers="caps.onConnectedTriggersUpdate"
 					@trigger-added="caps.onTriggerAdded"
+					@trigger-removed="caps.onTriggerRemoved"
 					@toggle-task="caps.onToggleTask"
 					@toggle-mcp-access="onToggleMcpAccess"
 					@tasks-changed="() => onConfigUpdated()"
