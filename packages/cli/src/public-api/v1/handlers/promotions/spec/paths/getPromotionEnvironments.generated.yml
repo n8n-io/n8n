@@ -3,7 +3,7 @@ tags:
   - Promotions
 summary: List promotion environments
 description: Returns a cursor-paginated list of environments. Filter by `scope` and `direction` for the instance environments, or by `providerId` to see which environments a provider edit affects.
-x-required-scope: gitConnection:list
+x-required-scope: promotions:list
 parameters:
   - $ref: ../../../../shared/spec/parameters/limit.yml
   - $ref: ../../../../shared/spec/parameters/cursor.yml

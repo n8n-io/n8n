@@ -3,7 +3,7 @@ tags:
   - Promotions
 summary: Delete a promotion provider
 description: A provider used by an environment cannot be deleted.
-x-required-scope: gitConnection:delete
+x-required-scope: promotions:delete
 parameters:
   - schema:
       type: string

@@ -3,7 +3,7 @@ tags:
   - Promotions
 summary: Update a promotion environment
 description: Updates the name, provider, remote, or settings. A remote replaces the whole saved remote, and settings replace the whole saved settings. The settings must match the direction of the environment, so `createBranchOnPromotion` is always required for Promote. GitLab environments store a repository path and derive remoteUrl from the provider. Plain Git environments keep the full remote URL. If the provider changes during the update, the update returns 409. Reload the environment and try again. Direction and scope cannot change.
-x-required-scope: gitConnection:update
+x-required-scope: promotions:update
 parameters:
   - schema:
       type: string
