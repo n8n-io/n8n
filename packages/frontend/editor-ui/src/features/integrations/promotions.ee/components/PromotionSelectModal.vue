@@ -12,7 +12,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants/modals';
 import Modal from '@/app/components/Modal.vue';
 import TimeAgo from '@/app/components/TimeAgo.vue';
-import { N8nButton, N8nCheckbox, N8nInput, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCheckbox, N8nInput, N8nNewBadge, N8nText } from '@n8n/design-system';
 import {
 	PROMOTION_BRANCH_PREFIX,
 	type PromotableResourceStatus,
@@ -444,7 +444,13 @@ onMounted(async () => {
 								<div :class="$style.rowContent">
 									<div :class="$style.rowHeader">
 										<N8nText size="medium" bold>{{ change.name }}</N8nText>
+										<N8nNewBadge
+											v-if="change.status === 'new'"
+											:text="getStatusLabel(change.status)"
+											data-test-id="promotion-change-status"
+										/>
 										<span
+											v-else
 											:class="[
 												$style.statusLabel,
 												change.status === 'archived' && $style.statusArchived,

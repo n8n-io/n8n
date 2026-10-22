@@ -144,6 +144,22 @@ describe('PromotionSelectModal', () => {
 		});
 	});
 
+	it('uses the new badge only for new changes', async () => {
+		const { findAllByTestId } = renderComponent({
+			pinia,
+			props: {
+				modalName: PROMOTION_SELECT_MODAL_KEY,
+				data: { projectId: 'project-1', direction: 'promote' },
+			},
+		});
+
+		const statuses = await findAllByTestId('promotion-change-status');
+		expect(statuses[0]).toHaveTextContent('Modified');
+		expect(statuses[0].className).not.toContain('newBadge');
+		expect(statuses[1]).toHaveTextContent('New');
+		expect(statuses[1].className).toContain('newBadge');
+	});
+
 	it('should show when the changes were last refreshed', async () => {
 		const { findByTestId, findByText } = renderComponent({
 			pinia,
