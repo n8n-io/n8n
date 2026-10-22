@@ -1,7 +1,7 @@
 import { createTestingPinia } from '@pinia/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
-import { ref } from 'vue';
+import { ref, type ComponentPublicInstance } from 'vue';
 import {
 	AI_GATEWAY_MANAGED_TAG,
 	SUB_AGENT_MAX_CHILDREN_DEFAULT,
@@ -598,7 +598,7 @@ describe('AgentSubAgentsPanel', () => {
 			credential: 'azure-credential',
 		});
 		await wrapper.setProps({ config: { ...defaultConfig, ...changes } });
-		const selector = wrapper.findComponent(
+		const selector = wrapper.getComponent<ComponentPublicInstance>(
 			'[data-testid="agent-sub-agents-difficulty-high-model"]',
 		);
 		expect(selector.props('selectedModel')).toMatchObject({
@@ -620,7 +620,7 @@ describe('AgentSubAgentsPanel', () => {
 				},
 			},
 		});
-		const selector = wrapper.findComponent(
+		const selector = wrapper.getComponent<ComponentPublicInstance>(
 			'[data-testid="agent-sub-agents-difficulty-high-model"]',
 		);
 		expect(selector.props('selectedModel')).toMatchObject({

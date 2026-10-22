@@ -163,6 +163,7 @@ describe('AgentMemoryModelSetting', () => {
 				storage: 'n8n',
 				episodicMemory: {
 					enabled: true,
+					credential: 'embedding-credential',
 					reflectorModel: {
 						model: 'azure-openai/gpt-4o',
 						modelDeploymentName: 'gpt-4o-mini',

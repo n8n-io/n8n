@@ -841,13 +841,14 @@ describe('AgentInfoPanel', () => {
 						metadata: { functionCalling: true, available: true },
 					},
 				];
-				const wrapper = mountModelPanel({
+				const config: AgentJsonConfig = {
 					name: 'Agent',
 					instructions: 'Help users.',
 					model:
 						scenario === 'first switch' ? 'anthropic/claude-sonnet-4-5' : 'azure-openai/gpt-4o',
 					credential: scenario === 'first switch' ? 'credential-1' : 'azure-shared-1',
-				});
+				};
+				const wrapper = mountModelPanel(config);
 				await flushAsync(wrapper);
 				wrapper.findComponent({ name: 'AgentModelSelector' }).vm.$emit('change', {
 					provider: 'azure-openai',
@@ -860,7 +861,7 @@ describe('AgentInfoPanel', () => {
 					modelDeploymentName: 'My-Chat',
 					credential: 'azure-shared-1',
 				});
-				await wrapper.setProps({ config: { ...wrapper.props('config'), ...changes } });
+				await wrapper.setProps({ config: { ...config, ...changes } });
 				expect(selectorProps(wrapper).selectedModel).toMatchObject({
 					model: 'My-Chat',
 					name: 'My-Chat (gpt-4.1)',
