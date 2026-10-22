@@ -2,6 +2,7 @@ packages/@n8n/api-types/src/dto/packages/import-package-request.openapi.ts
   s_71ad2034164515::t_0c1f62a836cf07 91-92
 packages/cli/src/modules/n8n-packages/engine/__tests__/import-gates.test.ts
   s_71ad2034164515::t_98a1c200f771f2 12-23
+  s_71ad2034164515::t_a0cdc89328cf11 7-11
 packages/cli/src/modules/n8n-packages/engine/import-gates.ts
   s_71ad2034164515::t_97ba72cf24bd85 23-25
 packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-importer.test.ts
