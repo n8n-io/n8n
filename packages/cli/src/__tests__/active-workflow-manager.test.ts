@@ -205,6 +205,7 @@ describe('ActiveWorkflowManager', () => {
 		const activationErrorsService = mock<ActivationErrorsService>();
 		const activeWorkflowTriggers = mock<ActiveWorkflowTriggers>();
 		const errorReporter = mock<ErrorReporter>();
+		const publisher = mock<Publisher>();
 
 		const VERSION_NODES = [{ id: 'node-1', name: 'Active trigger' } as INode];
 		const DRAFT_NODES = [{ id: 'node-2', name: 'Draft node' } as INode];
@@ -222,7 +223,7 @@ describe('ActiveWorkflowManager', () => {
 				mock(),
 				mock(),
 				instanceSettings,
-				mock(),
+				publisher,
 				policyWorkflowsConfig,
 				mock<TriggerExecutionContextFactory>(),
 				mock(),
@@ -328,19 +329,39 @@ describe('ActiveWorkflowManager', () => {
 			expect(policyEnforcementService.enforceWorkflowPublish).not.toHaveBeenCalled();
 		});
 
-		// The forward is unconditional on multi-main, not leader-specific; the leader
-		// enforces when it handles the pubsub command with `shouldPublish: false`.
-		test('does not enforce when a multi-main instance forwards the activation', async () => {
-			Object.assign(instanceSettings, { isMultiMain: true });
-			workflowRepository.findById.mockResolvedValue(makeWorkflow());
+		describe('on multi-main', () => {
+			beforeEach(() => {
+				Object.assign(instanceSettings, { isMultiMain: true });
+				workflowRepository.findById.mockResolvedValue(makeWorkflow());
+			});
 
-			try {
+			afterEach(() => {
+				Object.assign(instanceSettings, { isMultiMain: false });
+			});
+
+			test('enforces before forwarding the activation to the leader', async () => {
 				await activeWorkflowManager.add('wf-1', 'activate');
 
-				expect(policyEnforcementService.enforceWorkflowPublish).not.toHaveBeenCalled();
-			} finally {
-				Object.assign(instanceSettings, { isMultiMain: false });
-			}
+				expect(policyEnforcementService.enforceWorkflowPublish).toHaveBeenCalledOnce();
+				expect(publisher.publishCommand).toHaveBeenCalledExactlyOnceWith({
+					command: 'add-webhooks-triggers-and-pollers',
+					payload: { workflowId: 'wf-1', activeVersionId: 'v1', activationMode: 'activate' },
+				});
+			});
+
+			test('throws the refusal to the caller and forwards nothing when policy blocks', async () => {
+				policyEnforcementService.enforceWorkflowPublish.mockRejectedValue(
+					new PolicyViolationError([
+						{ kind: 'node-type-unavailable', checkId: 'check-1', message: 'Blocked by policy' },
+					]),
+				);
+
+				await expect(activeWorkflowManager.add('wf-1', 'activate')).rejects.toBeInstanceOf(
+					PolicyViolationError,
+				);
+
+				expect(publisher.publishCommand).not.toHaveBeenCalled();
+			});
 		});
 
 		// Already queued for an unrelated transient failure: if policy then blocks it,
