@@ -3,6 +3,7 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import isEqual from 'lodash/isEqual';
+import { InstanceSettings } from 'n8n-core';
 
 import { Telemetry } from '@/telemetry';
 
@@ -131,7 +132,10 @@ function modificationProperties({
 /** Reports committed Agent creations and subsequent configuration changes. */
 @Service()
 export class AgentModificationTelemetryService {
-	constructor(private readonly telemetry: Telemetry) {}
+	constructor(
+		private readonly telemetry: Telemetry,
+		private readonly instanceSettings: InstanceSettings,
+	) {}
 
 	record(event: AgentModificationEvent): void {
 		if (event.changedParts.length === 0) return;
@@ -143,6 +147,7 @@ export class AgentModificationTelemetryService {
 					? {
 							vector_store_fingerprints: buildVectorStoreFingerprints(
 								event.config?.vectorStores ?? [],
+								this.instanceSettings.hmacSignatureSecret,
 							),
 						}
 					: {}),

@@ -20,6 +20,7 @@ import type {
 import { Container } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock, type MockProxy } from 'vitest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
 import type { AgentsSettingsService } from '../agents-settings.service';
 
 import { ConflictError, NotFoundError } from '@n8n/errors';
@@ -98,7 +99,7 @@ function makeService() {
 	const saveCompletion = new AgentSaveCompletionService(
 		eventService,
 		broadcaster,
-		new AgentModificationTelemetryService(telemetry),
+		new AgentModificationTelemetryService(telemetry, mock<InstanceSettings>()),
 	);
 	const setupCompletion = mock<AgentSetupCompletionService>();
 	setupCompletion.recordIfSetupComplete.mockResolvedValue(null);

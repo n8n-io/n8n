@@ -1,6 +1,5 @@
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-import { createHash } from 'node:crypto';
 import { access, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -8,14 +7,22 @@ import { Readable } from 'node:stream';
 
 import { MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import type { InstanceSettings } from 'n8n-core';
 
 import type { AgentKnowledgeFileStore } from '../agent-knowledge-file-store';
 import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
+import { createKnowledgeTelemetryHmac } from '../agent-knowledge-telemetry';
 import { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import type { AgentFile } from '../entities/agent-file.entity';
 import type { AgentFileRepository } from '../repositories/agent-file.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
+
+const instanceSecret = 'instance-secret';
+
+function knowledgeHash(content: string, secret = instanceSecret) {
+	return createKnowledgeTelemetryHmac(secret).update(content).digest('hex');
+}
 
 vi.unmock('node:fs');
 vi.unmock('node:fs/promises');
@@ -164,6 +171,7 @@ describe('AgentKnowledgeService', () => {
 			agentSandboxRuntimeService,
 			agentKnowledgeMirrorService,
 			agentKnowledgeFileStore,
+			mock<InstanceSettings>({ hmacSignatureSecret: instanceSecret }),
 			logger,
 		);
 		loadMock.mockResolvedValue([{ pageContent: 'extracted pdf text' }]);
@@ -215,8 +223,8 @@ describe('AgentKnowledgeService', () => {
 		]);
 
 		expect(result.map(({ contentHash }) => contentHash)).toEqual([
-			createHash('sha256').update('hello world').digest('hex'),
-			createHash('sha256').update('%PDF-1.4').digest('hex'),
+			knowledgeHash('hello world'),
+			knowledgeHash('%PDF-1.4'),
 		]);
 		expect(agentKnowledgeFileStore.write).toHaveBeenCalledTimes(2);
 		const [textCall, pdfCall] = agentKnowledgeFileStore.write.mock.calls;
@@ -257,7 +265,8 @@ describe('AgentKnowledgeService', () => {
 				hashes.push(result.contentHash);
 				await expect(access(filePath)).rejects.toThrow();
 			}
-			expect(hashes[0]).toBe('2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824');
+			expect(hashes[0]).toBe(knowledgeHash('hello'));
+			expect(hashes[0]).not.toBe(knowledgeHash('hello', 'other-instance-secret'));
 			expect(hashes[1]).toBe(hashes[0]);
 			expect(hashes[2]).not.toBe(hashes[0]);
 		} finally {
@@ -362,7 +371,7 @@ describe('AgentKnowledgeService', () => {
 					fileName: 'notes.txt',
 					fileSizeBytes: 1,
 				}),
-				contentHash: createHash('sha256').update('x').digest('hex'),
+				contentHash: knowledgeHash('x'),
 			},
 		]);
 		expect(agentFileRepository.all()).toHaveLength(2);

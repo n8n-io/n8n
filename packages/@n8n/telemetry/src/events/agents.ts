@@ -153,7 +153,7 @@ const agentKnowledgeModification = {
 		.array(z.string())
 		.optional()
 		.describe(
-			'Codes that identify the knowledge sources connected to the agent after a change. Each code comes from the provider and source name. The same provider and source name produce the same code, even across different accounts. The list contains each code once. An empty list means no sources remain. This field is sent only when the connected sources change.',
+			'Codes that identify the knowledge sources connected to the agent after a change. Each code is a keyed hash of the provider and source name, with a key that is different for each instance. In one instance, the same provider and source name produce the same code, even across different accounts. The list contains each code once. An empty list means no sources remain. This field is sent only when the connected sources change.',
 		),
 };
 
@@ -739,7 +739,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 						.string()
 						.optional()
 						.describe(
-							'SHA-256 of the original uploaded bytes, independent of the file name. Omitted if the telemetry hash could not be computed.',
+							'Keyed hash of the original uploaded bytes, independent of the file name. The key is different for each instance, so the same file produces the same code only in one instance. Omitted if the telemetry hash could not be computed.',
 						),
 					size_bytes: z
 						.number()

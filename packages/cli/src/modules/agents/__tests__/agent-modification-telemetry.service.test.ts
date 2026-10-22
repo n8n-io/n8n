@@ -1,17 +1,23 @@
 import type { AgentJsonVectorStoreConfig } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
-import { createHash } from 'node:crypto';
+import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type { Telemetry } from '@/telemetry';
 
-import { buildVectorStoreFingerprints } from '../agent-knowledge-telemetry';
+import {
+	buildVectorStoreFingerprints,
+	createKnowledgeTelemetryHmac,
+} from '../agent-knowledge-telemetry';
 import {
 	AgentModificationTelemetryService,
 	type AgentModificationEvent,
 } from '../agent-modification-telemetry.service';
 import type { Agent } from '../entities/agent.entity';
+
+const instanceSecret = 'instance-secret';
+const instanceSettings = mock<InstanceSettings>({ hmacSignatureSecret: instanceSecret });
 
 const base = {
 	name: 'knowledge',
@@ -40,22 +46,33 @@ function event(overrides: Partial<AgentModificationEvent> = {}): AgentModificati
 
 describe('knowledge reuse telemetry', () => {
 	it.each(stores)('hashes the identity for $provider', (store) => {
-		expect(buildVectorStoreFingerprints([store])).toEqual([
-			createHash('sha256')
+		expect(buildVectorStoreFingerprints([store], instanceSecret)).toEqual([
+			createKnowledgeTelemetryHmac(instanceSecret)
 				.update(JSON.stringify([store.provider, 'documents']))
 				.digest('hex'),
 		]);
 	});
 
+	it('produces different codes for the same store in another instance', () => {
+		expect(buildVectorStoreFingerprints(stores, 'other-instance-secret')).not.toEqual(
+			buildVectorStoreFingerprints(stores, instanceSecret),
+		);
+	});
+
 	it('ignores connection labels and credentials and deduplicates in stable order', () => {
 		const renamed = stores.map((store) => ({ ...store, name: 'renamed', credential: 'different' }));
-		const expected = buildVectorStoreFingerprints(stores);
+		const expected = buildVectorStoreFingerprints(stores, instanceSecret);
 		expect(expected).toHaveLength(4);
-		expect(buildVectorStoreFingerprints([...renamed.reverse(), ...stores])).toEqual(expected);
+		expect(buildVectorStoreFingerprints([...renamed.reverse(), ...stores], instanceSecret)).toEqual(
+			expected,
+		);
 		expect(JSON.stringify(expected)).not.toContain('documents');
 		expect(
-			buildVectorStoreFingerprints([{ ...base, provider: 'pinecone', indexName: 'other' }]),
-		).not.toEqual(buildVectorStoreFingerprints([stores[0]]));
+			buildVectorStoreFingerprints(
+				[{ ...base, provider: 'pinecone', indexName: 'other' }],
+				instanceSecret,
+			),
+		).not.toEqual(buildVectorStoreFingerprints([stores[0]], instanceSecret));
 	});
 
 	it.each([
@@ -64,7 +81,7 @@ describe('knowledge reuse telemetry', () => {
 		['mcp', TELEMETRY_EVENT.AGENTS.MCP_MODIFIED_AGENT],
 	] as const)('reports committed stores for %s with the acting user', (by, entry) => {
 		const telemetry = mock<Telemetry>();
-		const service = new AgentModificationTelemetryService(telemetry);
+		const service = new AgentModificationTelemetryService(telemetry, instanceSettings);
 		service.record(event({ by }));
 		service.record(event({ by, agent: mock<Agent>({ id: 'agent-2', integrations: [] }) }));
 		expect(telemetry.track).toHaveBeenCalledTimes(2);
@@ -72,7 +89,7 @@ describe('knowledge reuse telemetry', () => {
 			expect(emitted).toBe(entry);
 			expect(payload).toMatchObject({
 				user_id: 'user-1',
-				vector_store_fingerprints: buildVectorStoreFingerprints(stores),
+				vector_store_fingerprints: buildVectorStoreFingerprints(stores, instanceSecret),
 			});
 			expect(entry.properties.safeParse(payload).success).toBe(true);
 			expect(JSON.stringify(payload)).not.toContain('documents');
@@ -82,7 +99,9 @@ describe('knowledge reuse telemetry', () => {
 
 	it('reports an empty set after all stores are removed', () => {
 		const telemetry = mock<Telemetry>();
-		new AgentModificationTelemetryService(telemetry).record(event({ config: null }));
+		new AgentModificationTelemetryService(telemetry, instanceSettings).record(
+			event({ config: null }),
+		);
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
 			expect.objectContaining({ vector_store_fingerprints: [] }),
@@ -91,7 +110,7 @@ describe('knowledge reuse telemetry', () => {
 
 	it('omits fingerprints for unrelated changes and creation', () => {
 		const telemetry = mock<Telemetry>();
-		const service = new AgentModificationTelemetryService(telemetry);
+		const service = new AgentModificationTelemetryService(telemetry, instanceSettings);
 		service.record(event({ changedParts: ['instructions'] }));
 		service.recordCreation(event());
 		expect(telemetry.track).toHaveBeenCalledTimes(2);
@@ -102,7 +121,9 @@ describe('knowledge reuse telemetry', () => {
 
 	it('does not emit for an unchanged configuration', () => {
 		const telemetry = mock<Telemetry>();
-		new AgentModificationTelemetryService(telemetry).record(event({ changedParts: [] }));
+		new AgentModificationTelemetryService(telemetry, instanceSettings).record(
+			event({ changedParts: [] }),
+		);
 		expect(telemetry.track).not.toHaveBeenCalled();
 	});
 });

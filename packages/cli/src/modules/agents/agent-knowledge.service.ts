@@ -8,9 +8,8 @@ import { Logger } from '@n8n/backend-common';
 import { isUniqueConstraintError } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
-import { createHash } from 'node:crypto';
+import { InstanceSettings } from 'n8n-core';
 import { createReadStream } from 'node:fs';
-import { pipeline } from 'node:stream/promises';
 import { unlink } from 'node:fs/promises';
 import path from 'node:path';
 import type { Readable } from 'node:stream';
@@ -22,6 +21,7 @@ import {
 	type StoredAgentKnowledgeFile,
 } from './agent-knowledge-file-store';
 import { AgentKnowledgeMirrorService } from './agent-knowledge-mirror.service';
+import { createKnowledgeTelemetryHmac } from './agent-knowledge-telemetry';
 import { storageFileNameForOriginalFileName, toAgentFileDto } from './agent-knowledge-storage';
 import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
 import type { AgentFile } from './entities/agent-file.entity';
@@ -43,6 +43,7 @@ export class AgentKnowledgeService {
 		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
 		private readonly agentKnowledgeMirrorService: AgentKnowledgeMirrorService,
 		private readonly agentKnowledgeFileStore: AgentKnowledgeFileStore,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
 	) {}
 
@@ -80,8 +81,11 @@ export class AgentKnowledgeService {
 
 	private async hashUploadedFile(filePath: string): Promise<string | undefined> {
 		try {
-			const hash = createHash('sha256');
-			await pipeline(createReadStream(filePath), hash);
+			const hash = createKnowledgeTelemetryHmac(this.instanceSettings.hmacSignatureSecret);
+			for await (const chunk of createReadStream(filePath)) {
+				hash.update(chunk as Buffer);
+			}
+
 			return hash.digest('hex');
 		} catch {
 			// A telemetry read must not reject an otherwise valid upload.

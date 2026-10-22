@@ -1,5 +1,16 @@
 import type { AgentJsonVectorStoreConfig } from '@n8n/api-types';
-import { createHash } from 'node:crypto';
+import { createHmac, type Hmac } from 'node:crypto';
+
+const KNOWLEDGE_TELEMETRY_KEY_LABEL = 'agent-knowledge-telemetry';
+
+/**
+ * Make sure a knowledge code cannot be matched to a known file or source name outside this instance.
+ * The derived key keeps these codes apart from other uses of the instance secret.
+ */
+export function createKnowledgeTelemetryHmac(instanceSecret: string): Hmac {
+	const key = createHmac('sha256', instanceSecret).update(KNOWLEDGE_TELEMETRY_KEY_LABEL).digest();
+	return createHmac('sha256', key);
+}
 
 function vectorStoreIdentity(store: AgentJsonVectorStoreConfig): string {
 	switch (store.provider) {
@@ -13,9 +24,12 @@ function vectorStoreIdentity(store: AgentJsonVectorStoreConfig): string {
 	}
 }
 
-export function buildVectorStoreFingerprints(stores: AgentJsonVectorStoreConfig[]): string[] {
+export function buildVectorStoreFingerprints(
+	stores: AgentJsonVectorStoreConfig[],
+	instanceSecret: string,
+): string[] {
 	const fingerprints = stores.map((store) =>
-		createHash('sha256')
+		createKnowledgeTelemetryHmac(instanceSecret)
 			.update(JSON.stringify([store.provider, vectorStoreIdentity(store)]))
 			.digest('hex'),
 	);
