@@ -1,0 +1,38 @@
+packages/@n8n/db/AGENTS.md
+  s_dad4655b0ad2a1::t_b3e73de1f5c8af 19-25
+packages/@n8n/db/src/repositories/base-repository.ts
+  s_dad4655b0ad2a1::t_57743e3f2176f1 9-11,13-19
+  s_dad4655b0ad2a1::t_33fb105b02ed57 35
+scripts/backend-module/backend-module-guide.md
+  s_dad4655b0ad2a1::t_4d3fc55af952d0 263-264,266-278,280-284,287-288,293-298,300
+scripts/backend-module/my-feature.service.template
+  s_dad4655b0ad2a1::t_1a7f49edc39d2e 41
+packages/cli/AGENTS.md
+  s_dad4655b0ad2a1::t_42a0152384fccf 10-16
+  s_dad4655b0ad2a1::t_04e95740983bf8 29-46
+packages/@n8n/db/src/repositories/deployment-key.repository.ts
+  s_dad4655b0ad2a1::t_fd0bfaa9e04a97 122,253,265
+packages/@n8n/module-cli/src/templates/backend/README.md.template
+  s_dad4655b0ad2a1::t_4a464f656e56c0 25-27
+AGENTS.md
+  s_dad4655b0ad2a1::t_91df8d5ddb80bf 279-281
+  s_dad4655b0ad2a1::t_d0a090f19b54fd 256-270
+scripts/backend-module/my-feature.repository.template
+  s_dad4655b0ad2a1::t_f508c378c9dc00 1,3,7-14,16-20,23-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a20bab8f899b19aa80e52295aa8e87c1547ee230",
+  "prompts": {},
+  "sessions": {
+    "s_dad4655b0ad2a1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e4836f61-5631-4e22-a040-9f95f9e5f72e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
