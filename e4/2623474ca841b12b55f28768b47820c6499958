@@ -1,0 +1,20 @@
+packages/cli/src/public-api/v1/handlers/workflows/__tests__/workflow-node-schema.openapi.test.ts
+  s_4a1f24235d183a::t_53466afe96e75e 62-68
+  s_4a1f24235d183a::t_739bb49dbe991f 1-61,69-80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e42623474ca841b12b55f28768b47820c6499958",
+  "prompts": {},
+  "sessions": {
+    "s_4a1f24235d183a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a2017b73-9746-402d-9456-c812ebac1f4a",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
