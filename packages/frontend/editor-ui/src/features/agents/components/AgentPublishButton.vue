@@ -17,6 +17,7 @@ const props = withDefaults(
 		projectId: string;
 		agentId: string;
 		isSaving?: boolean;
+		isUnsaved?: boolean;
 		showPublishTimeline?: boolean;
 		beforeRevertToPublished?: () => Promise<void> | void;
 		/**
@@ -132,7 +133,7 @@ const dropdownActions = computed(() => {
 		actions.push({
 			id: 'publish-timeline',
 			label: locale.baseText('workflowHistory.action.viewTimeline'),
-			disabled: !props.agent,
+			disabled: !props.agent || props.isUnsaved,
 		});
 	}
 
@@ -165,7 +166,7 @@ defineExpose({ publish: onPublishClick });
 
 async function onDropdownSelect(action: string) {
 	if (action === 'publish-timeline') {
-		if (props.showPublishTimeline && props.agent) emit('open-publish-timeline');
+		if (props.showPublishTimeline && props.agent && !props.isUnsaved) emit('open-publish-timeline');
 		return;
 	}
 	if (action === 'publish') {

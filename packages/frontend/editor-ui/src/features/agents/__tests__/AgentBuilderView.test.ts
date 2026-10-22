@@ -627,6 +627,7 @@ const commonStubs = {
 			'projectIcon',
 			'headerActions',
 			'beforeRevertToPublished',
+			'isUnsaved',
 			'artifactMode',
 			'isPreviewOpen',
 			'configValidationStatus',
@@ -3426,6 +3427,33 @@ describe('AgentBuilderView — three-column shell', () => {
 		panel.vm.$emit('close');
 		await flushPromises();
 		expect(wrapper.findComponent({ name: 'AgentVersionHistoryPanel' }).exists()).toBe(false);
+	});
+
+	it('blocks both history entry points until the Agent is persisted', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		const wrapper = await renderView();
+		const header = wrapper.getComponent({ name: 'AgentBuilderHeader' });
+		const historyAction = () =>
+			header.props('headerActions').find((item: { id: string }) => item.id === 'version-history');
+		expect(header.props('isUnsaved')).toBe(true);
+		expect(historyAction().disabled).toBe(true);
+		for (const [event, action] of [
+			['header-action', 'version-history'],
+			['open-publish-timeline', undefined],
+		]) {
+			header.vm.$emit(event!, action);
+			await nextTick();
+			expect(wrapper.findComponent({ name: 'AgentVersionHistoryPanel' }).exists()).toBe(false);
+		}
+
+		wrapper
+			.getComponent({ name: 'AgentBuilderEditorColumn' })
+			.vm.$emit('update:config', { instructions: 'Answer support mail' });
+		await vi.waitFor(() => expect(header.props('isUnsaved')).toBe(false));
+		expect(historyAction().disabled).toBe(false);
+		header.vm.$emit('header-action', 'version-history');
+		await nextTick();
+		expect(wrapper.findComponent({ name: 'AgentVersionHistoryPanel' }).exists()).toBe(true);
 	});
 
 	it('renders only the manual editor without build chat controls', async () => {

@@ -104,6 +104,37 @@ it('lets a failed initial request retry', async () => {
 	wrapper.unmount();
 });
 
+it.each([1, 20])('retries a failed refresh after loading %i events', async (count) => {
+	mocks.list
+		.mockResolvedValueOnce(Array.from({ length: count }, (_, index) => event(index)))
+		.mockRejectedValueOnce(new Error('Refresh failed'))
+		.mockResolvedValueOnce([event(99)]);
+	const wrapper = render();
+	await flushPromises();
+	await wrapper.vm.refresh();
+	await wrapper.get('button').trigger('click');
+	await flushPromises();
+	expect(mocks.list).toHaveBeenLastCalledWith({}, 'project', 'agent', { take: 20, skip: 0 });
+	expect(wrapper.findAll('[data-test-id="agent-publish-timeline-entry"]')).toHaveLength(1);
+	wrapper.unmount();
+});
+
+it('retries a failed page without replacing the loaded events', async () => {
+	mocks.list
+		.mockResolvedValueOnce(Array.from({ length: 20 }, (_, index) => event(index)))
+		.mockRejectedValueOnce(new Error('Page failed'))
+		.mockResolvedValueOnce([event(99)]);
+	const wrapper = render();
+	await flushPromises();
+	mocks.intersect();
+	await flushPromises();
+	await wrapper.get('button').trigger('click');
+	await flushPromises();
+	expect(mocks.list).toHaveBeenLastCalledWith({}, 'project', 'agent', { take: 20, skip: 20 });
+	expect(wrapper.findAll('[data-test-id="agent-publish-timeline-entry"]')).toHaveLength(21);
+	wrapper.unmount();
+});
+
 it('paginates by event count and keeps separate publications of one version', async () => {
 	mocks.list
 		.mockResolvedValueOnce(Array.from({ length: 20 }, (_, index) => event(index + 2)))

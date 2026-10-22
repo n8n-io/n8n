@@ -1289,7 +1289,7 @@ function onUnpublished(updated: AgentResource) {
 }
 
 function onOpenVersionHistory(tab: 'versions' | 'timeline' = 'versions') {
-	if (!agent.value) return;
+	if (!agent.value || isUnsaved.value) return;
 	versionHistoryTab.value = tab;
 	isVersionHistoryOpen.value = true;
 }
@@ -2518,7 +2518,7 @@ const headerActions = computed(() => {
 		id: 'version-history',
 		label: locale.baseText('menuActions.versionHistory'),
 		icon: 'history',
-		disabled: !agent.value,
+		disabled: !agent.value || isUnsaved.value,
 		divided: true,
 	});
 
@@ -3225,6 +3225,7 @@ useKeybindings({
 			:header-actions="headerActions"
 			:save-status="saveStatus"
 			:before-revert-to-published="beforeRevertToPublished"
+			:is-unsaved="isUnsaved"
 			:artifact-mode="isArtifactMode"
 			:editing-locked="isEditingLocked"
 			:config-validation-status="configValidation?.status ?? null"

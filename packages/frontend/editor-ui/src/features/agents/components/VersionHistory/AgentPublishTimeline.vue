@@ -28,6 +28,7 @@ const sentinel = ref<HTMLElement | null>(null);
 const PAGE_SIZE = 20;
 let fetchedCount = 0;
 let requestToken = 0;
+let retryRefresh = true;
 
 async function load(refresh = false) {
 	if (!refresh && (loading.value || !hasMore.value)) return;
@@ -53,6 +54,7 @@ async function load(refresh = false) {
 	} catch (error) {
 		if (token !== requestToken) return;
 		hasError.value = true;
+		retryRefresh = refresh;
 		toast.showError(error, i18n.baseText('agents.versionHistory.timeline.error'));
 	} finally {
 		if (token === requestToken) loading.value = false;
@@ -181,13 +183,9 @@ const entries = computed(() =>
 		</ol>
 		<div v-if="hasMore" ref="sentinel" :class="$style.sentinel" />
 		<N8nLoading v-if="loading && events.length" :rows="1" :loading="true" />
-		<N8nButton
-			v-if="hasError"
-			variant="ghost"
-			:disabled="loading"
-			@click="load(events.length === 0)"
-			>{{ i18n.baseText('generic.retry') }}</N8nButton
-		>
+		<N8nButton v-if="hasError" variant="ghost" :disabled="loading" @click="load(retryRefresh)">{{
+			i18n.baseText('generic.retry')
+		}}</N8nButton>
 	</div>
 </template>
 

@@ -37,6 +37,7 @@ const props = defineProps<{
 	projectName: string | null;
 	projectIcon: IconOrEmoji;
 	headerActions: Array<ActionDropdownItem<string>>;
+	isUnsaved?: boolean;
 	saveStatus?: 'idle' | 'saving' | 'saved';
 	beforeRevertToPublished?: () => Promise<void> | void;
 	artifactMode?: boolean;
@@ -252,6 +253,7 @@ function onMenuSelect(id: string) {
 				:agent-id="agentId"
 				:is-saving="saveStatus === 'saving' || editingLocked"
 				:show-publish-timeline="!artifactMode"
+				:is-unsaved="isUnsaved"
 				:before-revert-to-published="beforeRevertToPublished"
 				:config-validation-status="configValidationStatus"
 				:config-validation-issues="props.configValidationIssues ?? []"

@@ -112,6 +112,7 @@ interface RenderProps {
 	projectId?: string;
 	agentId?: string;
 	isSaving?: boolean;
+	isUnsaved?: boolean;
 	showPublishTimeline?: boolean;
 	beforeRevertToPublished?: () => Promise<void> | void;
 	configValidationStatus?: 'valid' | 'invalid' | null;
@@ -190,14 +191,21 @@ describe('AgentPublishButton', () => {
 		}
 	});
 
-	it('disables timeline access before the agent is saved', async () => {
-		const wrapper = await renderComponent({ showPublishTimeline: true, agent: null });
-		const action = wrapper.get('[data-action="publish-timeline"]');
-		expect(action.attributes('disabled')).toBeDefined();
-		await action.trigger('click');
-		expect(wrapper.emitted('open-publish-timeline')).toBeUndefined();
-		wrapper.unmount();
-	});
+	it.each([null, createAgent()])(
+		'disables timeline access before the agent is saved (%j)',
+		async (agent) => {
+			const wrapper = await renderComponent({
+				showPublishTimeline: true,
+				agent,
+				isUnsaved: agent !== null,
+			});
+			const action = wrapper.get('[data-action="publish-timeline"]');
+			expect(action.attributes('disabled')).toBeDefined();
+			await action.trigger('click');
+			expect(wrapper.emitted('open-publish-timeline')).toBeUndefined();
+			wrapper.unmount();
+		},
+	);
 
 	it('omits the timeline when its caller does not show history', async () => {
 		const wrapper = await renderComponent();
