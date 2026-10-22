@@ -24,7 +24,6 @@ import { resourceIcon } from '../../promotionPreview.tree';
 import PromotionWorkflowLinks from './PromotionWorkflowLinks.vue';
 
 const props = defineProps<{
-	projectId: string;
 	/** The Apply check, scoped to the workflows that the preview lists. */
 	check: ApplyCheckResult;
 	/** Folders and workflows that the branch holds in another folder. Apply cannot move them. */
@@ -62,7 +61,7 @@ watch(
 			return;
 		}
 		sessionCommit = check.git.commitSha;
-		bindings.start(result, { kind: 'selection', projectId: props.projectId, workflowIds: [] });
+		bindings.start(result);
 	},
 	{ immediate: true },
 );

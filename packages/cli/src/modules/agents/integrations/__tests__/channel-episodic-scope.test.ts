@@ -8,7 +8,6 @@ import { mock } from 'vitest-mock-extended';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import type { ChannelRateLimitGuard } from '../channel-rate-limit.guard';
 import { DiscordIntegration } from '../platforms/discord/discord-integration';
-import { LinearIntegration } from '../platforms/linear/linear-integration';
 import { N8nChatIntegration } from '../platforms/n8n-chat/n8n-chat-integration';
 import { TeamsIntegration } from '../platforms/teams/teams-integration';
 import { TelegramIntegration } from '../platforms/telegram/telegram-integration';
@@ -49,7 +48,6 @@ describe('channel episodic memory policy', () => {
 			'Discord',
 			() => new DiscordIntegration(logger, instanceSettings, agentRepository, outboundHttp),
 		],
-		['Linear', () => new LinearIntegration(logger, outboundHttp)],
 		['n8n Chat', () => new N8nChatIntegration(mock<UserRepository>())],
 	])('%s returns no episodic scope', (_name, create) => {
 		expect(create().resolveEpisodicScope()).toBeNull();

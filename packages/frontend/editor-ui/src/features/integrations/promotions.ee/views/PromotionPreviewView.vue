@@ -466,7 +466,6 @@ const treeResizer = useResizablePanel({
 				v-if="showBlockersTab && scopedCheck"
 				v-show="activeTab === 'blockers'"
 				:class="$style.blockers"
-				:project-id="projectId"
 				:check="scopedCheck"
 				:locations="locations"
 				:busy="operation.isBusy.value"
