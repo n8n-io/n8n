@@ -328,6 +328,22 @@ describe('usePushConnection composable', () => {
 			);
 		});
 
+		it.each<ExecutionStatus>(['error', 'crashed', 'canceled'])(
+			'dispatches the %s status on reconnect when the tracked execution ended with it',
+			async (status) => {
+				trackExecution();
+				vi.mocked(makeRestApiRequest).mockResolvedValue(serverExecution(status));
+				pushConnection.initialize();
+
+				await reconnect();
+
+				expect(executionFinished).toHaveBeenCalledWith(
+					expect.objectContaining({ data: expect.objectContaining({ status }) }),
+					expect.any(Object),
+				);
+			},
+		);
+
 		it('restores the run data from the fetched execution before dispatching the finish', async () => {
 			trackExecution();
 			vi.mocked(makeRestApiRequest).mockResolvedValue(serverExecution('success'));
