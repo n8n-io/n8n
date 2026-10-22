@@ -4,7 +4,7 @@ Date: 2026-10-20
 
 Status: Active
 
-Decision Owner: Core Execution Team
+Decision Owner: Core Execution
 
 Source: https://linear.app/n8n/issue/CET-292
 
