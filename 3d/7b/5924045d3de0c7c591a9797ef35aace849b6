@@ -1,0 +1,37 @@
+packages/cli/src/public-api/public-api-rate-limit-settings.service.ts
+  s_5ec421ac1b75d2::t_618e1aa4c98dc9 125
+  s_5ec421ac1b75d2::t_767c8765a3c5e4 122-124
+  s_5ec421ac1b75d2::t_16fd492f57fcfb 126-128
+packages/@n8n/api-types/src/dto/public-api-rate-limit-settings/update-public-api-rate-limit-settings.dto.ts
+  s_b6511d2447bcc2::t_c0f44877c338c5 10-23
+  s_b6511d2447bcc2::t_fd965924c2267f 7-9
+  s_b6511d2447bcc2::t_7068a41e270a39 24-26
+packages/cli/src/public-api/__tests__/public-api-rate-limit-settings.service.test.ts
+  s_b6511d2447bcc2::t_5d9194e91dcd43 44
+  s_b6511d2447bcc2::t_652a2cb44d20da 41-43
+  s_b6511d2447bcc2::t_4da1574f7bda16 45-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3d7b5924045d3de0c7c591a9797ef35aace849b6",
+  "prompts": {},
+  "sessions": {
+    "s_5ec421ac1b75d2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed9e367a-ac98-4c2e-8a4e-57ab1aa90405",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    },
+    "s_b6511d2447bcc2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "28754926-3134-4bb9-9e2c-5e7f297c606a",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

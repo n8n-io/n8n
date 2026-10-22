@@ -18,3 +18,24 @@ packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/
     }
   }
 }
+
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionEntryPoints.test.ts
+  s_983eea3c47ac98::t_11dc46253040e3 1-52,59-73,78-80
+  s_983eea3c47ac98::t_cb1b29b6670da1 53-58,74-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "014f99b3e27ebb217042cc9ba4a71fce6e03f046",
+  "prompts": {},
+  "sessions": {
+    "s_983eea3c47ac98": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6afe657c-702d-4003-8734-85a65b043c95",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
