@@ -24,6 +24,113 @@ export class AgentBuilderPage extends BasePage {
 		return this.page.locator('[data-testid="agent-preview-dock"]');
 	}
 
+	getAssistantChat(): Locator {
+		return this.page.locator('[data-testid="agent-ai-chat-panel"]');
+	}
+
+	getConfiguration(): Locator {
+		return this.page.locator('[data-testid="agent-builder-editor-column"]');
+	}
+
+	getModeButton(mode: 'build' | 'test'): Locator {
+		return this.page.locator(`[data-testid="agent-builder-mode-${mode}"]:visible`);
+	}
+
+	getComposer(mode: 'build' | 'test'): Locator {
+		return (mode === 'build' ? this.getAssistantChat() : this.getPreviewDock()).locator('textarea');
+	}
+
+	getComposerFrame(mode: 'build' | 'test'): Locator {
+		return (mode === 'build' ? this.getAssistantChat() : this.getPreviewDock()).getByTestId(
+			'chat-input-composer',
+		);
+	}
+
+	getBuildAgentAttachment(): Locator {
+		return this.getAssistantChat().getByTestId('instance-ai-handoff-context-chip');
+	}
+
+	getTestAttachIcon(): Locator {
+		return this.getPreviewDock().getByTestId('chat-input-attach-button').locator('[data-icon]');
+	}
+
+	async attachTestFile(filePath: string): Promise<void> {
+		const chooser = this.page.waitForEvent('filechooser');
+		await this.getPreviewDock().getByTestId('chat-input-attach-button').click();
+		await (await chooser).setFiles(filePath);
+	}
+
+	getTestAttachment(name: string): Locator {
+		return this.getComposerFrame('test').getByText(name, { exact: true });
+	}
+
+	async isComposerScrollable(mode: 'build' | 'test'): Promise<boolean> {
+		return await this.getComposer(mode).evaluate(
+			(element) => element.scrollHeight > element.clientHeight,
+		);
+	}
+
+	getOpenChatButton(): Locator {
+		return this.page.locator('[data-testid="agent-builder-show-chat"]');
+	}
+
+	getCloseChatButton(mode: 'build' | 'test'): Locator {
+		return mode === 'build'
+			? this.getAssistantChat().getByTestId('instance-ai-embed-close')
+			: this.getPreviewDock().locator('[data-testid="agent-preview-close-btn"]');
+	}
+
+	getLayout(): Locator {
+		return this.page.locator('[data-testid="agent-builder-layout"]');
+	}
+
+	getModeSelector(): Locator {
+		return this.page.locator('[data-testid="agent-builder-chat-mode"]:visible');
+	}
+
+	getDisclaimer(mode: 'build' | 'test'): Locator {
+		return (mode === 'build' ? this.getAssistantChat() : this.getPreviewDock()).locator(
+			'[data-testid="agent-builder-chat-disclaimer"]',
+		);
+	}
+
+	getComposerActions(mode: 'build' | 'test'): Locator {
+		return (mode === 'build' ? this.getAssistantChat() : this.getPreviewDock()).locator(
+			'[data-test-id="instance-ai-send-button"], [data-test-id="chat-input-voice-button"]',
+		);
+	}
+
+	async getComposerLayout(mode: 'build' | 'test') {
+		const composer = await this.getComposer(mode).boundingBox();
+		if (!composer) throw new Error('The composer is not visible');
+		const controls = [this.getModeSelector(), ...(await this.getComposerActions(mode).all())];
+		const controlBounds = await Promise.all(
+			controls.map(async (control) => {
+				const bounds = await control.boundingBox();
+				if (!bounds) throw new Error('The composer control is not visible');
+				return bounds;
+			}),
+		);
+		return { composer, controls: controlBounds };
+	}
+
+	getChatResizeHandle(): Locator {
+		return this.page.locator('[data-testid="agent-ai-dock"] [data-dir="right"]');
+	}
+
+	async resizeConfiguration(width: number): Promise<void> {
+		const handle = await this.getChatResizeHandle().boundingBox();
+		const configuration = await this.getConfiguration().boundingBox();
+		if (!handle || !configuration) throw new Error('The builder panels are not visible');
+
+		const x = handle.x + handle.width / 2;
+		const y = handle.y + handle.height / 2;
+		await this.page.mouse.move(x, y);
+		await this.page.mouse.down();
+		await this.page.mouse.move(x + configuration.width - width, y, { steps: 10 });
+		await this.page.mouse.up();
+	}
+
 	getPreviewMoreButton(): Locator {
 		return this.getPreviewDock().locator('[data-testid="agent-preview-more-btn"]');
 	}

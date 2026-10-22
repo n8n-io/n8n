@@ -23,6 +23,8 @@ const props = withDefaults(
 		effectiveSessionId?: string;
 		newSession?: boolean;
 		initialPrompt?: string;
+		placeholder?: string;
+		composerHeight?: string;
 		canSendToAssistant?: boolean;
 		dismissedFixToolCallIds?: string[];
 		beforeSend?: () => Promise<void> | void;
@@ -47,10 +49,15 @@ const emit = defineEmits<{
 	'open-build': [];
 	'send-to-assistant': [event?: AgentSendToAssistantEvent];
 	'initial-consumed': [];
+	'message-sent': [];
 }>();
 
 const inputDraft = ref('');
 const chatPanel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('chatPanel');
+
+function onFirstUserMessage(text: string | undefined) {
+	if (text !== undefined) emit('message-sent');
+}
 
 function focusInput(options?: FocusOptions) {
 	chatPanel.value?.focusInput(options);
@@ -90,6 +97,9 @@ defineExpose({ focusInput, getConversationMarkdown, clearBudgetStops });
 				v-model:input-draft="inputDraft"
 				:project-id="projectId"
 				:agent-id="agentId"
+				:placeholder="placeholder"
+				:composer-height="composerHeight"
+				attach-button-icon="plus"
 				:visible="visible"
 				:background-jobs-active="visible"
 				mode="inline"
@@ -108,7 +118,15 @@ defineExpose({ focusInput, getConversationMarkdown, clearBudgetStops });
 				@initial-consumed="emit('initial-consumed')"
 				@open-build="emit('open-build')"
 				@send-to-assistant="emit('send-to-assistant', $event)"
-			/>
+				@first-user-message="onFirstUserMessage"
+			>
+				<template v-if="$slots['composer-start']" #composer-start>
+					<slot name="composer-start" />
+				</template>
+				<template v-if="$slots['composer-footer']" #composer-footer>
+					<slot name="composer-footer" />
+				</template>
+			</AgentChatPanel>
 		</div>
 	</component>
 </template>

@@ -122,6 +122,7 @@ const AgentPreviewMoreMenuStub = {
 function mountDock(
 	overrides: Partial<{
 		hasSession: boolean;
+		inline: boolean;
 		sessionTitle: string;
 		effectiveSessionId?: string;
 		beforeSend: () => Promise<void> | void;
@@ -169,6 +170,13 @@ describe('AgentPreviewDock', () => {
 	beforeEach(function resetMocks() {
 		vi.clearAllMocks();
 		localStorage.removeItem('N8N_AGENT_PREVIEW_LAYOUT');
+	});
+
+	it('keeps inline test chat in the shared column regardless of the saved dock layout', () => {
+		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'fullpage');
+		const wrapper = mountDock({ inline: true });
+		expect(wrapper.attributes('data-preview-layout')).toBe('docked');
+		expect(wrapper.find('[data-testid="agent-preview-close-btn"]').exists()).toBe(false);
 	});
 
 	it('shows the session title only after a session starts', async () => {
@@ -542,6 +550,15 @@ describe('AgentPreviewChatPage', () => {
 			},
 		});
 	}
+
+	it('reports a first user message only after one exists', () => {
+		const wrapper = mountChatPage();
+		const chat = wrapper.findComponent({ name: 'AgentChatPanel' });
+		chat.vm.$emit('first-user-message', undefined);
+		expect(wrapper.emitted('message-sent')).toBeUndefined();
+		chat.vm.$emit('first-user-message', 'Hello');
+		expect(wrapper.emitted('message-sent')).toEqual([[]]);
+	});
 
 	it('uses a neutral root inside the complementary dock landmark', () => {
 		expect(mountChatPage().element.tagName).toBe('DIV');

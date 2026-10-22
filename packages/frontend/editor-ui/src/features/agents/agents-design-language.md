@@ -43,6 +43,32 @@ Reserve 480 pixels for the editor. When both panels are open, share the
 remaining width in proportion to each panel's requested extra width above
 320 pixels. Do not save automatic layout adjustments as user resize choices.
 
+## Chat-first builder
+
+The standalone builder uses one chat area for Build and Test. Keep each chat
+mounted when the mode changes. Preserve each draft, session, and active response.
+Put the grouped Build/Test selector first in the composer toolbar. Use wrench
+and flask icons. Show a purple active state in both themes. Stop the discovery
+pulse after the first message. Disable the pulse for reduced motion.
+
+Start the configuration panel at 440 pixels. Resize it between 360 and 720
+pixels. Keep this width separate from the saved Assistant dock width. Reserve
+320 pixels for chat. Below 680 pixels of available workspace, fill the viewport
+with one panel at a time, above the sidebar. Measure the original workspace to
+keep this layout stable when the sidebar is open. Close either chat to show the
+full-width configuration. Use Chat to reopen the selected mode. Keep both panels
+mounted. Keep the mode selector and composer actions inside the input at narrow
+widths. Show the same preview disclaimer below both composers, including empty
+chats. Use the same footer spacing.
+
+Keep both composers at the same fixed height. Reserve an attachment row, including
+when it is empty. Scroll long prompts and attachment lists inside the composer.
+Use a plus icon for the Test file picker, in the same position as the Build menu.
+
+Keep chat width and test placement independent. The control layout and the
+artifact builder keep their existing docks. Test links and task previews select
+Test. Fix with Assistant selects Build.
+
 ## Preview history
 
 Use the shared `ChatHistoryDropdownTrigger` in the Preview dock and the Assistant.

@@ -133,12 +133,14 @@ const props = withDefaults(
 		 * question card and for a non-empty queue still take priority.
 		 */
 		placeholder?: string;
+		composerHeight?: string;
 		/**
 		 * Shows the attach button of the composer. A host that opens the file
 		 * picker from its own `footer-start` menu sets this to false and calls
 		 * the exposed `openFilePicker`.
 		 */
 		showAttachButton?: boolean;
+		attachButtonIcon?: 'paperclip' | 'plus';
 		/**
 		 * Card types of the host agent. Only this chat maps and renders them. The
 		 * list is read once, when the panel is set up.
@@ -162,6 +164,7 @@ const props = withDefaults(
 		clientContext: undefined,
 		placeholder: undefined,
 		showAttachButton: true,
+		attachButtonIcon: 'paperclip',
 		interactionExtensions: () => [],
 	},
 );
@@ -207,6 +210,7 @@ defineSlots<{
 	}) => unknown;
 	/** Controls at the start of the composer footer. */
 	'footer-start'?: () => unknown;
+	'composer-start'?: () => unknown;
 	/** Controls at the end of the composer footer, next to the send button. */
 	'composer-actions'?: () => unknown;
 	/**
@@ -216,6 +220,8 @@ defineSlots<{
 	'message-actions'?: (props: { message: ChatMessage; executionId?: string }) => unknown;
 	/** Content below the composer. */
 	'input-footer'?: () => unknown;
+	/** Content below the composer or an approval card. */
+	'composer-footer'?: () => unknown;
 }>();
 
 const locale = useI18n();
@@ -1621,6 +1627,7 @@ onBeforeUnmount(() => {
 						@submit="respondToBackgroundApproval(backgroundApproval.approval, $event)"
 					/>
 				</div>
+				<slot name="composer-start" />
 			</div>
 			<div v-else :class="$style.composer">
 				<ChatInputBase
@@ -1628,6 +1635,7 @@ onBeforeUnmount(() => {
 					v-model="inputText"
 					:block-canvas-shortcuts="false"
 					:placeholder="chatPlaceholder"
+					:composer-height="composerHeight"
 					:is-streaming="false"
 					:show-stop-button="showStop"
 					show-voice
@@ -1710,6 +1718,7 @@ onBeforeUnmount(() => {
 						</div>
 					</template>
 					<template #footer-start>
+						<slot name="composer-start" />
 						<N8nTooltip
 							v-if="showAttach && showAttachButton"
 							:content="locale.baseText('chatInputBase.button.attach')"
@@ -1717,7 +1726,7 @@ onBeforeUnmount(() => {
 						>
 							<N8nIconButton
 								variant="ghost"
-								icon="paperclip"
+								:icon="attachButtonIcon"
 								icon-size="large"
 								:disabled="isPreparingToSend || !!editingQueueId"
 								:aria-label="locale.baseText('chatInputBase.button.attach')"
@@ -1733,6 +1742,7 @@ onBeforeUnmount(() => {
 				</ChatInputBase>
 				<slot name="input-footer" />
 			</div>
+			<slot name="composer-footer" />
 		</div>
 	</aside>
 </template>
@@ -1769,12 +1779,12 @@ onBeforeUnmount(() => {
 
 .inputArea {
 	flex-shrink: 0;
-	padding: var(--spacing--xs) var(--spacing--sm);
+	padding: var(--agent-chat-input-padding, var(--spacing--xs) var(--spacing--sm));
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
 	width: 100%;
-	max-width: 800px;
+	max-width: var(--agent-chat-max-width, 800px);
 	margin: 0 auto;
 }
 
