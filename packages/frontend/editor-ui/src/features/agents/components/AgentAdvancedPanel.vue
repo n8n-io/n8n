@@ -19,7 +19,7 @@ import { modelToString, parseModelString } from '../utils/model-string';
 import shared from '../styles/agent-panel.module.scss';
 
 const i18n = useI18n();
-const { catalog, ensureLoaded } = useModelCatalog();
+const { getModelInfo, ensureLoaded } = useModelCatalog();
 
 function normalizeReasoningLevel(value: unknown): AgentReasoningLevel {
 	return AGENT_REASONING_LEVELS.find((level) => level === value) ?? 'medium';
@@ -40,7 +40,11 @@ const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] 
 const selectedModel = computed(() => parseModelString(modelToString(props.config?.model)));
 const selectedCatalogModel = computed(() => {
 	if (!selectedModel.value) return undefined;
-	return catalog.value[selectedModel.value.provider]?.models[selectedModel.value.name];
+	return getModelInfo(
+		selectedModel.value.provider,
+		selectedModel.value.name,
+		props.config?.credential,
+	);
 });
 const isReasoningUnavailable = computed(
 	() => !selectedModel.value || selectedCatalogModel.value?.reasoning === false,

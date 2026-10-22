@@ -51,6 +51,39 @@ describe('useModelCatalog', () => {
 		mocks.getProviderModels.mockRejectedValue(new Error('not available'));
 	});
 
+	it('loads Ollama models after connection and isolates each server credential', async () => {
+		mocks.getModelCatalog.mockResolvedValue({});
+		mocks.getProviderModels
+			.mockResolvedValueOnce({
+				provider: 'ollama',
+				verified: true,
+				models: [model('gemma4:latest')],
+			})
+			.mockResolvedValueOnce({
+				provider: 'ollama',
+				verified: true,
+				models: [model('team/custom:latest')],
+			});
+		const { useModelCatalog } = await import('../composables/useModelCatalog');
+		const { ensureLoaded, getModelsForPicker, getModelInfo } = useModelCatalog();
+		await ensureLoaded('project-1');
+		expect(getModelsForPicker(null).ollama?.models).toEqual([]);
+		expect(mocks.getProviderModels).not.toHaveBeenCalled();
+		getModelsForPicker({ ollama: 'server-1' });
+		await flushAsync();
+		expect(modelIds(getModelsForPicker({ ollama: 'server-1' }).ollama?.models ?? [])).toEqual([
+			'gemma4:latest',
+		]);
+		expect(getModelInfo('ollama', 'gemma4:latest', 'server-1')).toEqual(model('gemma4:latest'));
+		expect(getModelInfo('ollama', 'gemma4:latest', 'server-2')).toBeUndefined();
+		expect(getModelsForPicker({ ollama: 'server-2' }).ollama?.models).toEqual([]);
+		await flushAsync();
+		expect(modelIds(getModelsForPicker({ ollama: 'server-2' }).ollama?.models ?? [])).toEqual([
+			'team/custom:latest',
+		]);
+		expect(mocks.getProviderModels).toHaveBeenCalledWith({}, 'project-1', 'ollama', 'server-2');
+	});
+
 	it('returns models for the agent providers that have selected credentials', async () => {
 		mocks.getModelCatalog.mockResolvedValue({
 			openai: provider('openai', {

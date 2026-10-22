@@ -8,7 +8,11 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { BuilderModelLiveLookupService } from './builder/builder-model-live-lookup.service';
-import { LLM_PROVIDER_DEFAULTS, LLM_PROVIDER_PRIORITY } from './llm-provider-defaults';
+import {
+	LLM_PROVIDER_DEFAULTS,
+	LLM_PROVIDER_PRIORITY,
+	type LlmProviderDefault,
+} from './llm-provider-defaults';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import { findVerifiedModelId } from './utils/provider-model-id';
 
@@ -81,7 +85,7 @@ export class AgentDefaultModelResolverService {
 		verifiedModelIds: readonly string[],
 	): AgentModelCredentialConfig | null {
 		const defaults = this.findProviderDefault(provider);
-		if (!defaults) return null;
+		if (!defaults?.defaultModel) return null;
 
 		const match = findVerifiedModelId(provider, defaults.defaultModel, verifiedModelIds);
 		return match ? { model: `${provider}/${match}`, credential: credentialId } : null;
@@ -89,7 +93,7 @@ export class AgentDefaultModelResolverService {
 
 	private findProviderDefault(
 		provider: string,
-	): { provider: string; defaultModel: string; credentialType: string } | undefined {
+	): (LlmProviderDefault & { credentialType: string }) | undefined {
 		const entry = Object.entries(LLM_PROVIDER_DEFAULTS).find(
 			([, defaults]) => defaults.provider === provider,
 		);
@@ -132,7 +136,7 @@ export class AgentDefaultModelResolverService {
 		if (!credential) return null;
 
 		const defaults = LLM_PROVIDER_DEFAULTS[credential.type];
-		if (!defaults) return null;
+		if (!defaults?.defaultModel) return null;
 
 		if (!isModelDiscoveryProvider(defaults.provider)) {
 			return { model: `${defaults.provider}/${defaults.defaultModel}`, credential: credential.id };

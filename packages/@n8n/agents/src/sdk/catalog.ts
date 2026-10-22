@@ -299,10 +299,11 @@ export async function getCachedCatalog(): Promise<ProviderCatalog | undefined> {
  * @internal
  */
 export async function getModelCost(modelId: string): Promise<ModelCost | undefined> {
+	const { provider, model: modelName } = splitModelId(modelId);
+	// Ollama pricing depends on the server. Do not infer a hosted model price.
+	if (provider === 'ollama') return undefined;
 	const catalog = await getCachedCatalog();
 	if (!catalog) return undefined;
-
-	const { provider, model: modelName } = splitModelId(modelId);
 
 	return catalog[provider]?.models[modelName]?.cost;
 }

@@ -63,6 +63,80 @@ describe('AgentModelCatalogService', () => {
 		fetchProviderCatalog.mockResolvedValue(catalogFixture);
 	});
 
+	it('lists Ollama models with endpoint metadata and no static pricing', async () => {
+		const { service, lookupService } = makeService();
+		lookupService.lookup.mockResolvedValue({
+			status: 'success',
+			policy: 'endpoint-only',
+			models: [
+				{
+					name: 'team/gemma4:latest',
+					value: 'team/gemma4:latest',
+					metadata: { toolCall: true, reasoning: true, limits: { context: 262144 } },
+				},
+				{ name: 'chat:latest', value: 'chat:latest', metadata: { toolCall: false } },
+				{ name: 'legacy:latest', value: 'legacy:latest' },
+			],
+		});
+		const result = await service.getProviderModels(user, 'project-1', 'ollama', credentialId);
+		expect(result).toEqual({
+			provider: 'ollama',
+			verified: true,
+			models: [
+				{
+					id: 'team/gemma4:latest',
+					name: 'team/gemma4:latest',
+					toolCall: true,
+					reasoning: true,
+					limits: { context: 262144 },
+				},
+				{ id: 'chat:latest', name: 'chat:latest', toolCall: false },
+				{ id: 'legacy:latest', name: 'legacy:latest', toolCall: false },
+			],
+		});
+		expect(fetchProviderCatalog).not.toHaveBeenCalled();
+		expect(lookupService.lookup).toHaveBeenCalledWith(
+			user,
+			'project-1',
+			credentialId,
+			'ollamaApi',
+			'ollama',
+		);
+	});
+
+	it('does not offer Ollama models before a credential is connected', async () => {
+		const { service, lookupService } = makeService();
+		expect(await service.getProviderModels(user, 'project-1', 'ollama')).toEqual({
+			provider: 'ollama',
+			verified: false,
+			models: [],
+		});
+		expect(fetchProviderCatalog).not.toHaveBeenCalled();
+		expect(lookupService.lookup).not.toHaveBeenCalled();
+	});
+
+	it('distinguishes an empty Ollama server from an unavailable server', async () => {
+		const { service, lookupService } = makeService();
+		lookupService.lookup.mockResolvedValue({
+			status: 'success',
+			policy: 'endpoint-only',
+			models: [],
+		});
+		expect(await service.getProviderModels(user, 'project-1', 'ollama', credentialId)).toEqual({
+			provider: 'ollama',
+			verified: true,
+			models: [],
+		});
+		lookupService.lookup.mockRejectedValue(new Error('unavailable'));
+		expect(await service.getProviderModels(user, 'project-1', 'ollama', credentialId)).toEqual({
+			provider: 'ollama',
+			verified: true,
+			unavailable: true,
+			models: [],
+		});
+		expect(fetchProviderCatalog).not.toHaveBeenCalled();
+	});
+
 	it('keeps catalog models the provider still reports live, with catalog metadata, and prunes the rest', async () => {
 		const { service, lookupService } = makeService();
 		// Provider reports Sonnet but not Opus — Opus (retired) must be pruned.

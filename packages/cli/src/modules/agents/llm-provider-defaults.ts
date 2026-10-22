@@ -6,9 +6,9 @@
  * Provider strings match the provider IDs used by `@n8n/agents`'s
  * `.model(provider, model)` call.
  *
- * Keep this list narrow — when the canonical default is unclear (e.g. Bedrock,
- * Azure variants), omit the entry so the tool falls through to suspending and
- * lets the user pick explicitly.
+ * Omit defaultModel for providers whose models depend on the connected server.
+ * Live discovery supplies the choices. Providers without discovery or a known
+ * default stay out of this list.
  *
  * These are hints, not guarantees. For providers supported by
  * `@n8n/ai-utilities/model-discovery`, `agent_builder_resolve_llm` verifies the model it is
@@ -18,10 +18,12 @@
  */
 export interface LlmProviderDefault {
 	provider: string;
-	defaultModel: string;
+	/** Omit when the model must come from the connected server. */
+	defaultModel?: string;
 }
 
 export const LLM_PROVIDER_DEFAULTS: Record<string, LlmProviderDefault> = {
+	ollamaApi: { provider: 'ollama' },
 	anthropicApi: {
 		provider: 'anthropic',
 		defaultModel: 'claude-sonnet-5',
@@ -102,4 +104,5 @@ export const LLM_PROVIDER_PRIORITY: string[] = [
 	'moonshotai',
 	'alibaba',
 	'minimax',
+	'ollama',
 ];

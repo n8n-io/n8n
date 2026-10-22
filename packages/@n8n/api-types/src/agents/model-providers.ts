@@ -1,6 +1,7 @@
 export const AGENT_MODEL_PROVIDERS = [
 	'openai',
 	'anthropic',
+	'ollama',
 	'google',
 	'google-vertex',
 	'azure-openai',
@@ -39,6 +40,7 @@ export function isAgentModelProvider(provider: string): provider is AgentModelPr
 export const AGENT_MODEL_PROVIDER_CREDENTIAL_TYPES = {
 	openai: ['openAiApi'],
 	anthropic: ['anthropicApi'],
+	ollama: ['ollamaApi'],
 	google: ['googlePalmApi'],
 	'google-vertex': ['googleVertexAiApi'],
 	'azure-openai': ['azureOpenAiApi', 'azureEntraCognitiveServicesOAuth2Api'],

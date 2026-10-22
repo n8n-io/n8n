@@ -1,4 +1,4 @@
-import { computeCost, fetchProviderCatalog } from '../catalog';
+import { computeCost, fetchProviderCatalog, getModelCost } from '../catalog';
 
 describe('fetchProviderCatalog', () => {
 	const originalFetch = global.fetch;
@@ -6,6 +6,13 @@ describe('fetchProviderCatalog', () => {
 	afterEach(() => {
 		global.fetch = originalFetch;
 		vi.restoreAllMocks();
+	});
+
+	it('does not fetch or infer a token price for an Ollama model', async () => {
+		const fetchMock = vi.fn();
+		global.fetch = fetchMock;
+		expect(await getModelCost('ollama/gemma4:latest')).toBeUndefined();
+		expect(fetchMock).not.toHaveBeenCalled();
 	});
 
 	it('returns provider ids that match the agents runtime', async () => {

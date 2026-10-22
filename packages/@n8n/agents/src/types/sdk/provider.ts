@@ -14,6 +14,7 @@ export type Provider =
 	| 'groq'
 	| 'mistral'
 	| 'openai'
+	| 'ollama'
 	| 'openrouter'
 	| 'perplexity'
 	| 'vercel'

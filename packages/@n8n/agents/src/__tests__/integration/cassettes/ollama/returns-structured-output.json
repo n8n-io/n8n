@@ -1,0 +1,71 @@
+[
+	{
+		"scope": "http://localhost:11434",
+		"method": "POST",
+		"path": "/v1/chat/completions",
+		"body": {
+			"model": "gemma4:latest",
+			"response_format": {
+				"type": "json_schema",
+				"json_schema": {
+					"schema": {
+						"type": "object",
+						"properties": {
+							"city": {
+								"type": "string"
+							}
+						},
+						"required": ["city"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"strict": true,
+					"name": "response"
+				}
+			},
+			"messages": [
+				{
+					"role": "system",
+					"content": "Extract the city. Respond with a JSON object containing a city string."
+				},
+				{
+					"role": "user",
+					"content": "The city is London."
+				}
+			]
+		},
+		"status": 200,
+		"response": {
+			"id": "chatcmpl-740",
+			"object": "chat.completion",
+			"created": 1792601633,
+			"model": "gemma4:latest",
+			"system_fingerprint": "fp_ollama",
+			"choices": [
+				{
+					"index": 0,
+					"message": {
+						"role": "assistant",
+						"content": "{\"city\": \"London\"}",
+						"reasoning": "The user wants me to extract the city from the input \"The city is London.\" and respond with a JSON object containing only the city string.\nCity: London\nJSON format: {\"city\": \"London\"}"
+					},
+					"finish_reason": "stop"
+				}
+			],
+			"usage": {
+				"prompt_tokens": 35,
+				"prompt_tokens_details": {
+					"cached_tokens": 6
+				},
+				"completion_tokens": 53,
+				"total_tokens": 88
+			}
+		},
+		"rawHeaders": {
+			"content-length": "560",
+			"content-type": "application/json",
+			"date": "Wed, 21 Oct 2026 16:53:53 GMT"
+		},
+		"responseIsBinary": false
+	}
+]

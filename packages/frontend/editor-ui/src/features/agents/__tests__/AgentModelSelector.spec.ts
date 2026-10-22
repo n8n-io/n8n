@@ -317,6 +317,13 @@ function getFreeOpenAiCreditsItem(wrapper: VueWrapper) {
 }
 
 describe('AgentModelSelector', () => {
+	it('offers Ollama through its existing credential type', async () => {
+		const wrapper = await mountSelector({ ollama: null }, { selectedModel: null });
+		expect(getProviderItem(wrapper, 'ollama')).toMatchObject({
+			label: 'Ollama',
+			data: { credentialType: 'ollamaApi' },
+		});
+	});
 	beforeEach(() => {
 		vi.clearAllMocks();
 		credentialsByType.value = {

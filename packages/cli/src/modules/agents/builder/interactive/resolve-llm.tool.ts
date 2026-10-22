@@ -100,10 +100,12 @@ function toLlmResolution(
 	defaults: LlmProviderDefault,
 	model?: string,
 ) {
+	const selectedModel = model?.trim() || defaults.defaultModel;
+	if (!selectedModel) return unknownModel(defaults.provider, '', []);
 	return {
 		ok: true as const,
 		provider: defaults.provider,
-		model: model?.trim() || defaults.defaultModel,
+		model: selectedModel,
 		credentialId: credential.id,
 		credentialName: credential.name,
 	};
@@ -159,9 +161,10 @@ async function listCallableModels(
 		const models = await modelLookup.list(credential.id, credential.type, provider);
 		return {
 			ok: true,
-			models: models.map(({ name, value }) => ({
+			models: models.map(({ name, value, metadata }) => ({
 				name: normalizeProviderModelId(provider, name),
 				value: normalizeProviderModelId(provider, value),
+				...(metadata ? { metadata } : {}),
 			})),
 		};
 	} catch (error) {
@@ -223,9 +226,13 @@ async function resolveDefaultModelForCredential(
 	}
 
 	const lookup = await listCallableModels(credential, defaults.provider, modelLookup);
-	if (!lookup.ok) return modelLookupFailed(defaults.provider, defaults.defaultModel, lookup.error);
+	if (!lookup.ok)
+		return modelLookupFailed(defaults.provider, defaults.defaultModel ?? '', lookup.error);
 
 	const availableModels = lookup.models;
+	if (!defaults.defaultModel) {
+		return unknownModel(defaults.provider, '', availableModels);
+	}
 	if (availableModels.length > 0) {
 		const verified = findVerifiedModelId(
 			defaults.provider,

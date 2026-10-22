@@ -114,7 +114,7 @@ export class BuilderModelLiveLookupService {
 	): LiveModelLookupResult {
 		const configuredDefault = LLM_PROVIDER_DEFAULTS[credentialType];
 		const model =
-			configuredDefault?.provider === provider
+			configuredDefault?.provider === provider && configuredDefault.defaultModel
 				? configuredDefault.defaultModel
 				: `eval-${provider}-model`;
 
@@ -171,7 +171,9 @@ export class BuilderModelLiveLookupService {
 			typeof mapped.baseURL === 'string' && mapped.baseURL ? mapped.baseURL : undefined;
 		const policy =
 			policyOverride ??
-			(provider === 'openai' && isOpenAiCustomEndpoint(baseURL) ? 'endpoint-only' : 'curated');
+			(provider === 'ollama' || (provider === 'openai' && isOpenAiCustomEndpoint(baseURL))
+				? 'endpoint-only'
+				: 'curated');
 		const headers = this.getOpenAiHeaders(provider, credentialData);
 
 		try {
@@ -182,9 +184,8 @@ export class BuilderModelLiveLookupService {
 				...(headers ? { headers } : {}),
 			});
 
-			// Every supported chat provider offers models, so an empty list means a
-			// broken request or a drifted response shape, not a zero-model account.
-			if (models.length === 0) {
+			// An Ollama server can have no installed chat models.
+			if (models.length === 0 && provider !== 'ollama') {
 				throw new Error(`Provider ${provider} returned no models`);
 			}
 
@@ -194,6 +195,7 @@ export class BuilderModelLiveLookupService {
 					name: model.name,
 					value: model.id,
 					...(model.priority !== undefined ? { priority: model.priority } : {}),
+					...(model.metadata !== undefined ? { metadata: model.metadata } : {}),
 				})),
 				policy,
 			};
