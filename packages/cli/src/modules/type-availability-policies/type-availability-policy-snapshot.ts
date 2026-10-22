@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import { OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { latestWins } from '@n8n/utils/promise/latest-wins';
 
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
@@ -45,12 +46,6 @@ function sameFingerprint(a: ScopeFingerprint, b: ScopeFingerprint): boolean {
 @Service()
 export class TypeAvailabilityPolicySnapshot {
 	private loaded: Loaded | null = null;
-
-	/** Loads run one at a time, so a later load always applies last. */
-	private queue: Promise<void> = Promise.resolve();
-
-	/** A queued load that has not started. A caller can join it: it reads after their write. */
-	private pending: Promise<void> | null = null;
 
 	private pollTimer: NodeJS.Timeout | undefined;
 
@@ -116,17 +111,7 @@ export class TypeAvailabilityPolicySnapshot {
 	}
 
 	/** Rejects when the load fails. The snapshot then keeps what it had. */
-	async reload(): Promise<void> {
-		this.pending ??= this.queue.then(async () => {
-			this.pending = null;
-			await this.load();
-		});
-
-		const pending = this.pending;
-		this.queue = pending.catch(() => {});
-
-		await pending;
-	}
+	readonly reload = latestWins(async () => await this.load());
 
 	private async reloadAndLog(): Promise<void> {
 		try {

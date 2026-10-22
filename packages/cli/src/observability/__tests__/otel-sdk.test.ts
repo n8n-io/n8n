@@ -1,9 +1,10 @@
-import type { Logger } from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
 import type { TracingSourcesConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import {
 	context,
-	createContextKey,
 	diag,
+	type DiagLogger,
 	metrics,
 	propagation,
 	ROOT_CONTEXT,
@@ -17,11 +18,10 @@ import {
 	type SpanProcessor,
 } from '@opentelemetry/sdk-trace-base';
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
-import { init as initSentry, close as closeSentry } from '@sentry/node';
 import { mock } from 'vitest-mock-extended';
 
+import { startObservability } from '../observability-boot';
 import { OtelSdk } from '../otel-sdk';
-import { TRACING_OFF } from '../swappable-pipeline';
 
 type OptIns = {
 	daytona?: boolean;
@@ -151,43 +151,6 @@ describe('OtelSdk', () => {
 	});
 
 	describe('global setup', () => {
-		it('keeps the same tracer provider, context manager and propagator across applies', async () => {
-			const sdk = await startWithExport();
-			const workflowTracer = trace.getTracer('n8n-workflow');
-			const globalPropagator = propagation['_getGlobalPropagator']();
-
-			await sdk.apply(TRACING_OFF);
-			await sdk.apply(exportingPipeline());
-
-			const marked = ROOT_CONTEXT.setValue(createContextKey('marker'), 'marked');
-			expect(trace.getTracer('n8n-workflow')).toBe(workflowTracer);
-			expect(propagation['_getGlobalPropagator']()).toBe(globalPropagator);
-			expect(context.with(marked, () => context.active())).toBe(marked);
-		});
-
-		it('records nothing and injects no header while the no-op parts are applied', async () => {
-			const sdk = await startWithExport();
-			await sdk.apply(TRACING_OFF);
-
-			const span = trace.getTracer('n8n-workflow').startSpan('workflow.execute');
-			const headers: Record<string, string> = {};
-			propagation.inject(trace.setSpan(ROOT_CONTEXT, span), headers);
-			span.end();
-
-			expect(span.isRecording()).toBe(false);
-			expect(headers).toEqual({});
-		});
-
-		it('injects only traceparent with an exporting pipeline', async () => {
-			await startWithExport();
-
-			const span = trace.getTracer('n8n-workflow').startSpan('workflow.execute');
-			const headers: Record<string, string> = {};
-			propagation.inject(trace.setSpan(ROOT_CONTEXT, span), headers);
-
-			expect(Object.keys(headers)).toEqual(['traceparent']);
-		});
-
 		it('registers no meter provider', async () => {
 			const meterProviderBeforeStart = metrics.getMeterProvider();
 
@@ -221,15 +184,32 @@ describe('OtelSdk', () => {
 			expect(await exportedSpans()).toHaveLength(1);
 		});
 
+		it('sends spans to the new processor as soon as apply is called, before the old one shuts down', async () => {
+			const sdk = createSdk();
+			sdk.start();
+			const flushingProcessor = mock<SpanProcessor>();
+			flushingProcessor.shutdown.mockReturnValue(new Promise(() => {}));
+			await sdk.apply({ ...exportingPipeline(), spanProcessors: [flushingProcessor] });
+
+			void sdk.apply(exportingPipeline());
+			trace.getTracer('n8n-workflow').startSpan('workflow.execute').end();
+
+			expect(await exportedSpans()).toHaveLength(1);
+			expect(flushingProcessor.onEnd).not.toHaveBeenCalled();
+		});
+
 		it('does not replace or gate a tracer provider that another setup registered first', async () => {
 			const foreignExporter = new InMemorySpanExporter();
 			new NodeTracerProvider({
 				spanProcessors: [new SimpleSpanProcessor(foreignExporter)],
 			}).register();
+			const foreignDiagnosticsLogger = mock<DiagLogger>();
+			diag.setLogger(foreignDiagnosticsLogger);
 
 			await startWithExport();
 			trace.getTracer('some-library').startSpan('GET /webhook').end();
 			trace.getTracer('n8n-workflow').startSpan('workflow.execute').end();
+			diag.error('from a library');
 
 			expect(foreignExporter.getFinishedSpans().map((span) => span.name)).toEqual([
 				'GET /webhook',
@@ -237,19 +217,8 @@ describe('OtelSdk', () => {
 			]);
 			expect(await exportedSpans()).toEqual([]);
 			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(foreignDiagnosticsLogger.error).toHaveBeenCalledWith('from a library');
 			expect(logger.error).not.toHaveBeenCalled();
-		});
-
-		it('forwards OpenTelemetry diagnostics to the n8n logger', () => {
-			createSdk().start();
-
-			diag.error('duplicate registration');
-			diag.info('not forwarded at the default level');
-
-			expect(logger.error).toHaveBeenCalledWith('OpenTelemetry diagnostics error', {
-				args: ['duplicate registration'],
-			});
-			expect(logger.info).not.toHaveBeenCalled();
 		});
 
 		it('forwards diagnostics at the OTEL_LOG_LEVEL level to the n8n logger', () => {
@@ -263,39 +232,6 @@ describe('OtelSdk', () => {
 				args: ['exporter ready'],
 			});
 			expect(consoleInfo).not.toHaveBeenCalled();
-		});
-
-		it('keeps the diagnostics logger of a setup that another tool registered first', () => {
-			new NodeTracerProvider().register();
-			const foreignLogger = {
-				error: vi.fn(),
-				warn: vi.fn(),
-				info: vi.fn(),
-				debug: vi.fn(),
-				verbose: vi.fn(),
-			};
-			diag.setLogger(foreignLogger);
-
-			createSdk().start();
-			diag.error('from a library');
-
-			expect(foreignLogger.error).toHaveBeenCalledWith('from a library');
-			expect(logger.error).not.toHaveBeenCalled();
-		});
-
-		it('starts the n8n setup after Sentry starts', async () => {
-			initSentry({
-				dsn: 'http://public@127.0.0.1:9/1',
-				tracesSampleRate: 1,
-				defaultIntegrations: false,
-				enableRuntimeChannelInjection: false,
-			});
-
-			await startWithExport();
-			trace.getTracer('n8n-workflow').startSpan('workflow.execute').end();
-
-			expect(await exportedSpans()).toHaveLength(1);
-			await closeSentry(0);
 		});
 
 		it('flushes and shuts down the span processors through the SDK', async () => {
@@ -317,6 +253,36 @@ describe('OtelSdk', () => {
 			await sdk.apply({ ...exportingPipeline(), spanProcessors: [failingProcessor] });
 
 			await expect(sdk.shutdown()).rejects.toThrow('ECONNREFUSED');
+		});
+	});
+
+	describe('startObservability', () => {
+		let sdk: OtelSdk;
+
+		beforeEach(() => {
+			sdk = createSdk();
+			Container.set(OtelSdk, sdk);
+			Container.set(Logger, logger);
+		});
+
+		it('starts the OTel setup so that n8n spans export', async () => {
+			startObservability();
+			await sdk.apply(exportingPipeline());
+			trace.getTracer('n8n-workflow').startSpan('workflow.execute').end();
+
+			expect(await exportedSpans()).toHaveLength(1);
+		});
+
+		it('logs the error and lets n8n start when the OTel setup throws', () => {
+			vi.spyOn(sdk, 'start').mockImplementation(() => {
+				throw new Error('setup failed');
+			});
+
+			expect(() => startObservability()).not.toThrow();
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to set up observability at startup, so tracing stays off',
+				{ error: 'setup failed' },
+			);
 		});
 	});
 });

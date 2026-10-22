@@ -1,45 +1,72 @@
 import type { UpdateOtelSettingsDto } from '@n8n/api-types';
-import type { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
-import type { EventService } from '@n8n/backend-services';
-import type { TracingSourcesConfig } from '@n8n/config';
+import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
-import type { AuthenticatedRequest, WorkflowRepository } from '@n8n/db';
-import { context, diag, metrics, propagation, ROOT_CONTEXT, trace } from '@opentelemetry/api';
+import type { TracingSourcesConfig } from '@n8n/config';
+import type { AuthenticatedRequest } from '@n8n/db';
+import {
+	context,
+	diag,
+	metrics,
+	propagation,
+	ROOT_CONTEXT,
+	trace,
+	TraceFlags,
+} from '@opentelemetry/api';
 import { isTracingSuppressed } from '@opentelemetry/core';
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import type { ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import { withExecutionIdentity } from '../execution-identity';
-import type { ExecutionLevelTracer } from '../execution-level-tracer';
-import { OtelLifecycleHandler } from '../otel-lifecycle-handler';
+import { OtelExporterFactory } from '../otel-exporter.factory';
 import { OtelSettingsController } from '../otel-settings.controller';
 import type { OtelSettingsService } from '../otel-settings.service';
 import type { OtelConfig } from '../otel.config';
 import { ATTR } from '../otel.constants';
 import { OtelService } from '../otel.service';
-import type { TraceContextService } from '../tracing-context';
 
 import { N8N_VERSION } from '@/constants';
 import { OtelSdk } from '@/observability/otel-sdk';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { OwnershipService } from '@/services/ownership.service';
 
-const { exportedSpans, urlsWithFailingFlush, exportsInsideSuppressTracing } = vi.hoisted(() => ({
+const {
+	exportedSpans,
+	urlsWithFailingFlush,
+	urlsWithHeldExports,
+	heldExports,
+	exportsInsideSuppressTracing,
+} = vi.hoisted(() => ({
 	exportedSpans: [] as { url: string; span: ReadableSpan }[],
 	urlsWithFailingFlush: new Set<string>(),
+	urlsWithHeldExports: new Set<string>(),
+	heldExports: [] as (() => void)[],
 	exportsInsideSuppressTracing: [] as boolean[],
 }));
 
 vi.mock('@opentelemetry/exporter-trace-otlp-proto', () => ({
 	OTLPTraceExporter: vi.fn().mockImplementation(function ({ url }: { url: string }) {
+		const pendingExports: Promise<void>[] = [];
 		return {
 			export: (spans: ReadableSpan[], resultCallback: (result: { code: number }) => void) => {
 				exportsInsideSuppressTracing.push(isTracingSuppressed(context.active()));
-				exportedSpans.push(...spans.map((span) => ({ url, span })));
-				resultCallback({ code: 0 });
+				const finish = () => {
+					exportedSpans.push(...spans.map((span) => ({ url, span })));
+					resultCallback({ code: 0 });
+				};
+				if (!urlsWithHeldExports.has(url)) return finish();
+
+				pendingExports.push(
+					new Promise((resolve) =>
+						heldExports.push(() => {
+							finish();
+							resolve();
+						}),
+					),
+				);
 			},
 			shutdown: async () => {
+				await Promise.all(pendingExports);
 				if (urlsWithFailingFlush.has(url)) throw new Error('ECONNREFUSED');
 			},
 			forceFlush: async () => {},
@@ -70,9 +97,16 @@ const enabledSettings: OtelConfig = {
 
 const disabledSettings: OtelConfig = { ...enabledSettings, enabled: false };
 
+const COLLECTOR_A = 'http://collector-a:4318/v1/traces';
+const COLLECTOR_B = 'http://collector-b:4318/v1/traces';
+
 async function exportedAfterFlush() {
 	await new Promise<void>((resolve) => setImmediate(resolve));
 	return exportedSpans;
+}
+
+function releaseHeldExports() {
+	for (const release of heldExports.splice(0)) release();
 }
 
 function startWorkflowSpan() {
@@ -87,6 +121,7 @@ describe('OtelService on the startup OTel setup', () => {
 	let otelSettingsService: ReturnType<typeof mock<OtelSettingsService>>;
 	let logger: ReturnType<typeof mock<Logger>>;
 	let service: OtelService;
+	let publisher: ReturnType<typeof mock<Publisher>>;
 
 	beforeEach(() => {
 		process.env.OTEL_NODE_RESOURCE_DETECTORS = 'env';
@@ -95,6 +130,8 @@ describe('OtelService on the startup OTel setup', () => {
 		exportedSpans.length = 0;
 		exportsInsideSuppressTracing.length = 0;
 		urlsWithFailingFlush.clear();
+		urlsWithHeldExports.clear();
+		heldExports.length = 0;
 		logger = mock<Logger>();
 		fetchMock.mockResolvedValue({ ok: true });
 		otelSettingsService = mock<OtelSettingsService>();
@@ -108,16 +145,21 @@ describe('OtelService on the startup OTel setup', () => {
 			}),
 		);
 		otelSdk.start();
+		publisher = mock<Publisher>();
+		publisher.publishCommand.mockResolvedValue();
 		service = new OtelService(
 			otelSettingsService,
 			mock<InstanceSettings>({ instanceId: 'inst-1', instanceType: 'main' }),
 			logger,
-			outboundHttp,
+			new OtelExporterFactory(logger, outboundHttp),
 			otelSdk,
+			mock<ModuleRegistry>(),
+			publisher,
 		);
 	});
 
 	afterEach(async () => {
+		releaseHeldExports();
 		await service.shutdown();
 		trace.disable();
 		context.disable();
@@ -129,33 +171,41 @@ describe('OtelService on the startup OTel setup', () => {
 		delete process.env.OTEL_SERVICE_NAME;
 	});
 
-	it('exports workflow spans with the saved settings once the module initialises', async () => {
+	it.each([
+		{ parentSampled: false, tracesSampleRate: 1, isRecording: false },
+		{ parentSampled: true, tracesSampleRate: 0, isRecording: true },
+	])(
+		'follows an incoming traceparent with sampled=$parentSampled at sample rate $tracesSampleRate',
+		async ({ parentSampled, tracesSampleRate, isRecording }) => {
+			otelSettingsService.loadSettings.mockResolvedValue({ ...enabledSettings, tracesSampleRate });
+			await service.init();
+			const remoteParent = trace.setSpanContext(ROOT_CONTEXT, {
+				traceId: '0af7651916cd43dd8448eb211c80319c',
+				spanId: 'b7ad6b7169203331',
+				traceFlags: parentSampled ? TraceFlags.SAMPLED : TraceFlags.NONE,
+				isRemote: true,
+			});
+
+			const span = trace.getTracer('n8n-workflow').startSpan('workflow.execute', {}, remoteParent);
+
+			expect(span.isRecording()).toBe(isRecording);
+		},
+	);
+
+	it('exports workflow spans with the saved settings, keeps the startup resource attributes and lets the n8n attributes win', async () => {
 		await service.init();
 
 		startWorkflowSpan().end();
 
 		const [exported] = await exportedAfterFlush();
-		expect(exported.url).toBe('http://collector-a:4318/v1/traces');
-		expect(exported.span.resource.attributes).toMatchObject({
-			[ATTR.OTEL_SERVICE_NAME]: 'n8n',
-			[ATTR.OTEL_SERVICE_VERSION]: N8N_VERSION,
-			[ATTR.INSTANCE_ID]: 'inst-1',
-			[ATTR.INSTANCE_ROLE]: 'main',
-		});
-	});
-
-	it('keeps the startup resource attributes and lets the n8n attributes win', async () => {
-		await service.init();
-
-		startWorkflowSpan().end();
-
-		const [exported] = await exportedAfterFlush();
+		expect(exported.url).toBe(COLLECTOR_A);
 		expect(exported.span.resource.attributes).toMatchObject({
 			'deployment.environment': 'repro',
 			'telemetry.sdk.language': 'nodejs',
 			[ATTR.OTEL_SERVICE_NAME]: 'n8n',
 			[ATTR.OTEL_SERVICE_VERSION]: N8N_VERSION,
 			[ATTR.INSTANCE_ID]: 'inst-1',
+			[ATTR.INSTANCE_ROLE]: 'main',
 		});
 	});
 
@@ -221,24 +271,7 @@ describe('OtelService on the startup OTel setup', () => {
 			...enabledSettings,
 			exporterEndpoint: 'http://collector-b:4318',
 		});
-		const publisher = mock<Publisher>();
-		const controller = new OtelSettingsController(
-			otelSettingsService,
-			service,
-			new OtelLifecycleHandler(
-				mock<ExecutionLevelTracer>(),
-				mock<TraceContextService>(),
-				service,
-				otelSettingsService,
-				mock<OwnershipService>(),
-				mock<WorkflowRepository>(),
-				mock<Logger>(),
-				mock<LicenseState>(),
-				mock<EventService>(),
-			),
-			mock<ModuleRegistry>(),
-			publisher,
-		);
+		const controller = new OtelSettingsController(otelSettingsService, service);
 
 		await controller.updateSettings(
 			mock<AuthenticatedRequest>(),
@@ -252,38 +285,104 @@ describe('OtelService on the startup OTel setup', () => {
 			'http://collector-b:4318/v1/traces',
 		]);
 		expect(logger.warn).toHaveBeenCalledWith(
-			'Failed to cleanly shut down the previous OpenTelemetry exporter (its flush may have failed)',
+			'Failed to cleanly shut down an OpenTelemetry exporter (its flush may have failed)',
 			{ error: 'ECONNREFUSED' },
 		);
 	});
 
-	it('sends nothing and injects no header when OTel is off', async () => {
-		otelSettingsService.loadSettings.mockResolvedValue(disabledSettings);
+	it('finishes a save while the old exporter still flushes, then logs one warning when that flush fails', async () => {
 		await service.init();
+		urlsWithHeldExports.add(COLLECTOR_A);
+		urlsWithFailingFlush.add(COLLECTOR_A);
+		startWorkflowSpan().end();
+		otelSettingsService.loadSettings.mockResolvedValue({
+			...enabledSettings,
+			exporterEndpoint: 'http://collector-b:4318',
+		});
 
-		const span = startWorkflowSpan();
-		const headers: Record<string, string> = {};
-		propagation.inject(trace.setSpan(ROOT_CONTEXT, span), headers);
-		span.end();
+		await service.applySavedSettings();
+		startWorkflowSpan().end();
 
-		expect(await exportedAfterFlush()).toEqual([]);
-		expect(headers).toEqual({});
+		expect((await exportedAfterFlush()).map(({ url }) => url)).toEqual([COLLECTOR_B]);
+		expect(logger.warn).not.toHaveBeenCalled();
+
+		releaseHeldExports();
+		await exportedAfterFlush();
+
+		expect(logger.warn).toHaveBeenCalledTimes(1);
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Failed to cleanly shut down an OpenTelemetry exporter (its flush may have failed)',
+			{ error: 'ECONNREFUSED' },
+		);
+	});
+
+	it('waits for background flushes before shutdown finishes', async () => {
+		await service.init();
+		urlsWithHeldExports.add(COLLECTOR_A);
+		startWorkflowSpan().end();
+		otelSettingsService.loadSettings.mockResolvedValue({
+			...enabledSettings,
+			exporterEndpoint: 'http://collector-b:4318',
+		});
+		await service.applySavedSettings();
+		let isShutDown = false;
+
+		const shutdown = service.shutdown().then(() => (isShutDown = true));
+		await exportedAfterFlush();
+		expect(isShutDown).toBe(false);
+
+		releaseHeldExports();
+		await shutdown;
+		expect(exportedSpans.map(({ url }) => url)).toEqual([COLLECTOR_A]);
+	});
+
+	it('keeps the exporter when a save changes only the sample rate', async () => {
+		await service.init();
+		urlsWithHeldExports.add(COLLECTOR_A);
+		startWorkflowSpan().end();
+		vi.mocked(OTLPTraceExporter).mockClear();
+		otelSettingsService.loadSettings.mockResolvedValue({
+			...enabledSettings,
+			tracesSampleRate: 0.5,
+		});
+
+		await service.applySavedSettings();
+		releaseHeldExports();
+
+		expect((await exportedAfterFlush()).map(({ url }) => url)).toEqual([COLLECTOR_A]);
+		expect(OTLPTraceExporter).not.toHaveBeenCalled();
+		expect(logger.warn).not.toHaveBeenCalled();
 	});
 
 	it('turns tracing on and off through saves without a restart', async () => {
+		const endSpanAndInjectHeaders = () => {
+			const span = startWorkflowSpan();
+			const headers: Record<string, string> = {};
+			propagation.inject(trace.setSpan(ROOT_CONTEXT, span), headers);
+			span.end();
+			return headers;
+		};
+		const saveSettings = async (settings: OtelConfig) => {
+			otelSettingsService.loadSettings.mockResolvedValueOnce(settings);
+			await service.applySavedSettings();
+		};
+
 		otelSettingsService.loadSettings.mockResolvedValueOnce(disabledSettings);
 		await service.init();
-		startWorkflowSpan().end();
+		expect(endSpanAndInjectHeaders()).toEqual({});
+		expect(await exportedAfterFlush()).toHaveLength(0);
 
-		otelSettingsService.loadSettings.mockResolvedValueOnce(enabledSettings);
-		await service.applySavedSettings();
-		startWorkflowSpan().end();
-
-		otelSettingsService.loadSettings.mockResolvedValueOnce(disabledSettings);
-		await service.applySavedSettings();
-		startWorkflowSpan().end();
-
+		await saveSettings(enabledSettings);
+		endSpanAndInjectHeaders();
 		expect(await exportedAfterFlush()).toHaveLength(1);
+
+		await saveSettings(disabledSettings);
+		expect(endSpanAndInjectHeaders()).toEqual({});
+		expect(await exportedAfterFlush()).toHaveLength(1);
+
+		await saveSettings(enabledSettings);
+		endSpanAndInjectHeaders();
+		expect(await exportedAfterFlush()).toHaveLength(2);
 	});
 
 	it('sends nothing at a sample rate of 0', async () => {
@@ -295,27 +394,21 @@ describe('OtelService on the startup OTel setup', () => {
 		expect(await exportedAfterFlush()).toEqual([]);
 	});
 
-	it('injects no header from a library when outbound trace headers are off', async () => {
-		otelSettingsService.loadSettings.mockResolvedValue({
-			...enabledSettings,
-			injectOutbound: false,
-		});
-		await service.init();
+	it.each([
+		{ injectOutbound: false, headerNames: [] },
+		{ injectOutbound: true, headerNames: ['traceparent'] },
+	])(
+		'injects only $headerNames from a library, never baggage, when injectOutbound is $injectOutbound',
+		async ({ injectOutbound, headerNames }) => {
+			otelSettingsService.loadSettings.mockResolvedValue({ ...enabledSettings, injectOutbound });
+			await service.init();
 
-		const headers: Record<string, string> = {};
-		propagation.inject(trace.setSpan(ROOT_CONTEXT, startWorkflowSpan()), headers);
+			const headers: Record<string, string> = {};
+			propagation.inject(trace.setSpan(ROOT_CONTEXT, startWorkflowSpan()), headers);
 
-		expect(headers).toEqual({});
-	});
-
-	it('injects traceparent and never baggage from a library when outbound headers are on', async () => {
-		await service.init();
-
-		const headers: Record<string, string> = {};
-		propagation.inject(trace.setSpan(ROOT_CONTEXT, startWorkflowSpan()), headers);
-
-		expect(Object.keys(headers)).toEqual(['traceparent']);
-	});
+			expect(Object.keys(headers)).toEqual(headerNames);
+		},
+	);
 
 	it('adds the execution identity of an n8n context to exported spans', async () => {
 		await service.init();

@@ -65,8 +65,9 @@ export class OtelLifecycleHandler {
 	}
 
 	@OnPubSubEvent('reload-otel-config')
+	@OnPubSubEvent('pubsub-reconnected')
 	async onReloadOtelConfig(): Promise<void> {
-		await this.otelService.applySavedSettings();
+		await this.otelService.reloadSettings();
 	}
 
 	private shouldTrace(ctx: { type: string; mode: WorkflowExecuteMode }): boolean {
