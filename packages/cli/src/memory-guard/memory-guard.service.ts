@@ -440,10 +440,14 @@ export class MemoryGuardService {
 		return { rootId, depth };
 	}
 
-	/** A successful execution shows that the workflow can run, so its count of stops starts again. */
+	/**
+	 * A successful production run shows that the published workflow can run, so its count of
+	 * stops starts again. A manual run uses the draft.
+	 */
 	@OnLifecycleEvent('workflowExecuteAfter')
-	onExecutionEnd({ workflow, runData }: WorkflowExecuteAfterContext) {
-		if (runData.status === 'success' && workflow.id) this.stopsByWorkflow.delete(workflow.id);
+	onExecutionEnd({ workflow, mode, runData }: WorkflowExecuteAfterContext) {
+		if (runData.status !== 'success' || !PRODUCTION_MODES.includes(mode) || !workflow.id) return;
+		this.stopsByWorkflow.delete(workflow.id);
 	}
 
 	/** Count a stop that freed memory. Returns whether the workflow was deactivated. */

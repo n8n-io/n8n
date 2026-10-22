@@ -823,6 +823,7 @@ describe('MemoryGuardService', () => {
 			guard.onExecutionEnd(
 				mock<WorkflowExecuteAfterContext>({
 					workflow: { id: 'repeat' },
+					mode: 'webhook',
 					runData: { status: 'success' },
 				}),
 			);
@@ -830,6 +831,22 @@ describe('MemoryGuardService', () => {
 			await stopOnce('3');
 
 			expect(deactivateWorkflowAsSystem).not.toHaveBeenCalled();
+		});
+
+		it('should keep the count after a successful manual execution of the workflow', async () => {
+			await stopOnce('1');
+			await stopOnce('2');
+			guard.onExecutionEnd(
+				mock<WorkflowExecuteAfterContext>({
+					workflow: { id: 'repeat' },
+					mode: 'manual',
+					runData: { status: 'success' },
+				}),
+			);
+
+			await stopOnce('3');
+
+			expect(deactivateWorkflowAsSystem).toHaveBeenCalledWith('repeat');
 		});
 	});
 
