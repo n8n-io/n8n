@@ -473,11 +473,6 @@ export class TestWebhooks implements IWebhookManager {
 				}
 			}
 
-			// Check before any registration, so an empty result never leaves registrations behind.
-			if (runData && webhooks.some((w) => w.node in runData)) {
-				return [];
-			}
-
 			const timeout = setTimeout(
 				async () => await this.cancelWebhook(workflow.id),
 				timeoutDuration,
@@ -509,6 +504,10 @@ export class TestWebhooks implements IWebhookManager {
 
 				const key = this.registrations.toKey(webhook);
 				const registrationByKey = await this.registrations.get(key);
+
+				if (runData && webhook.node in runData) {
+					return [];
+				}
 
 				// if registration already exists and is not a test webhook created by this user in this workflow throw an error
 				if (

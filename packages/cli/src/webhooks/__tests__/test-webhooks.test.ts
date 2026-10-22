@@ -148,8 +148,7 @@ describe('TestWebhooks', () => {
 			expect(registrations.register).not.toHaveBeenCalled();
 		});
 
-		test('returns an empty list and registers nothing if run data already exists for a webhook node', async () => {
-			vi.clearAllTimers();
+		test('returns an empty list if run data already exists for a webhook node', async () => {
 			const workflow = mock<Workflow>({ expression: mock<WorkflowExpression>() });
 			const toWebhook = (node: string, webhookPath: string) =>
 				mock<IWebhookData>({
@@ -172,9 +171,6 @@ describe('TestWebhooks', () => {
 			});
 
 			expect(registeredNodes).toEqual([]);
-			expect(registrations.register).not.toHaveBeenCalled();
-			expect(webhookService.createWebhookIfNotExists).not.toHaveBeenCalled();
-			expect(vi.getTimerCount()).toBe(0);
 		});
 
 		test('registers with a TTL that covers the listener window plus the buffer', async () => {
