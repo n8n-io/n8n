@@ -1,0 +1,54 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentInfoPanel.spec.ts
+  s_15ee6b89414a1e::t_80a16f312fa927 839
+  s_15ee6b89414a1e::t_3512ae1860cdab 793-798,811
+packages/frontend/editor-ui/src/features/agents/__tests__/useModelCatalog.test.ts
+  s_15ee6b89414a1e::t_3c0d39f84d4c60 3,145-155,164-178,180-191
+packages/cli/src/modules/agents/builder/__tests__/builder-model-live-lookup.service.test.ts
+  s_15ee6b89414a1e::t_43a76f3e1ac9a6 439
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_15ee6b89414a1e::t_80a16f312fa927 134
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSubAgentsPanel.spec.ts
+  s_15ee6b89414a1e::t_80a16f312fa927 115
+  s_15ee6b89414a1e::t_f0389303886b40 623-625
+  s_15ee6b89414a1e::t_0cea7b44b2fd9d 99-110,610-622,626-631
+packages/frontend/editor-ui/src/features/agents/composables/useModelCatalog.ts
+  s_15ee6b89414a1e::t_3c0d39f84d4c60 52
+packages/frontend/editor-ui/src/features/agents/model-providers.ts
+  s_15ee6b89414a1e::t_3c0d39f84d4c60 13
+packages/cli/src/modules/agents/builder/builder-model-live-lookup.service.ts
+  s_15ee6b89414a1e::t_43a76f3e1ac9a6 338
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMemoryModelSetting.test.ts
+  s_15ee6b89414a1e::t_f0389303886b40 174-176
+  s_15ee6b89414a1e::t_80a16f312fa927 58
+  s_15ee6b89414a1e::t_955b84d002a8fd 42-53,122,125,158-173,177-181
+packages/frontend/editor-ui/src/features/agents/components/AgentSubAgentsPanel.vue
+  s_15ee6b89414a1e::t_80a16f312fa927 183
+packages/frontend/editor-ui/src/features/agents/utils/model-string.ts
+  s_15ee6b89414a1e::t_3c0d39f84d4c60 61-62
+packages/cli/src/modules/agents/__tests__/agent-model-catalog.service.test.ts
+  s_15ee6b89414a1e::t_43a76f3e1ac9a6 540
+  s_15ee6b89414a1e::t_3c0d39f84d4c60 557,566,571
+packages/@n8n/api-types/src/agents/model-providers.ts
+  s_15ee6b89414a1e::t_3c0d39f84d4c60 68
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryModelSetting.vue
+  s_15ee6b89414a1e::t_80a16f312fa927 96
+packages/cli/src/modules/agents/agent-model-catalog.service.ts
+  s_15ee6b89414a1e::t_43a76f3e1ac9a6 141
+  s_15ee6b89414a1e::t_3c0d39f84d4c60 147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cb578e1998f4aac737545319d09a130deedcd22c",
+  "prompts": {},
+  "sessions": {
+    "s_15ee6b89414a1e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1632e-922e-7781-a5b3-55f280e6078f",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
