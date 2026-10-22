@@ -1298,14 +1298,17 @@ export class N8nClient {
 		timeoutMs: number = 120_000,
 		pinNodes?: string[],
 		seededDataTableIds?: string[],
+		scenarioDescription?: string,
 	): Promise<InstanceAiEvalExecutionResult> {
 		const body: {
 			scenarioHints?: string;
+			scenarioDescription?: string;
 			pinNodes?: string[];
 			timeoutMs?: number;
 			seededDataTableIds?: string[];
 		} = {};
 		if (scenarioHints) body.scenarioHints = scenarioHints;
+		if (scenarioDescription) body.scenarioDescription = scenarioDescription;
 		if (pinNodes && pinNodes.length > 0) body.pinNodes = pinNodes;
 		if (seededDataTableIds && seededDataTableIds.length > 0) {
 			body.seededDataTableIds = seededDataTableIds;
