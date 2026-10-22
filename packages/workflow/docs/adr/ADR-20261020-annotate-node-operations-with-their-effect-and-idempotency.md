@@ -76,6 +76,11 @@ not allow this.
 4. The resolver checks the visibility of each parameter, also of nested parameters. Its cost
    grows with the number of visible parameters. Most of the cost comes from filling in the
    parameter defaults, and it stays below a millisecond for each call on the largest nodes.
+   Measurement: the Notion node (version 3) with `databasePage/create`, the configuration with
+   the most visible nested parameters (213), and three entries in each `fixedCollection`. We ran
+   the resolution 1000 times with only the first level of parameters and 1000 times with all
+   nested parameters, on an Apple M4 Pro. The first level took 0.14 to 0.19 ms for each call. All
+   nested parameters took 0.16 to 0.24 ms. Filling in the defaults alone took 0.13 to 0.14 ms.
 5. A new annotation field must be optional and must have a restrictive default. Then it does not
    change behavior for nodes that do not set it.
 6. An operation whose effect cannot be known, such as a raw SQL query, sets no annotation and
