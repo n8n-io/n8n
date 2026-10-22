@@ -516,7 +516,7 @@ describe('AgentModelCatalogService', () => {
 					'gpt-4.1': {
 						id: 'gpt-4.1',
 						name: 'GPT-4.1',
-						toolCall: true,
+						toolCall: false,
 						reasoning: false,
 						cost: { input: 2, output: 8 },
 					},
@@ -555,7 +555,7 @@ describe('AgentModelCatalogService', () => {
 						id: 'my-chat',
 						name: 'my-chat (gpt-4.1)',
 						catalogModelId: 'gpt-4.1',
-						toolCall: true,
+						toolCall: false,
 						reasoning: false,
 						cost: { input: 2, output: 8 },
 					},

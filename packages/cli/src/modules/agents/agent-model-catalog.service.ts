@@ -140,8 +140,8 @@ export class AgentModelCatalogService {
 				models: lookup.models.map((live) => {
 					const catalogModel = catalogModels[live.catalogModelId ?? live.value];
 					return {
-						toolCall: true,
 						...catalogModel,
+						toolCall: catalogModel?.toolCall ?? true,
 						id: live.value,
 						name: live.name || live.value,
 						...(live.catalogModelId ? { catalogModelId: live.catalogModelId } : {}),
