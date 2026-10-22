@@ -1,0 +1,69 @@
+packages/cli/src/modules/agents/sub-agents/delegate-sub-agent-tool.ts
+  s_234832aa318d60::t_74db230380473a 16,70,84
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-chat.controller.test.ts
+  s_234832aa318d60::t_88e61b441af3d5 413-414,426-444
+  s_234832aa318d60::t_74db230380473a 415-425
+packages/cli/src/modules/agents/system-agents/system-agent-execution.service.ts
+  s_234832aa318d60::t_74db230380473a 2-7,25-28,349-353,355-373,837-882
+  s_234832aa318d60::t_88e61b441af3d5 354
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_234832aa318d60::t_74db230380473a 40-43,179,290,303,503-525
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_234832aa318d60::t_74db230380473a 17-41,43-45,53-59,81,83-128,131-132
+  s_234832aa318d60::t_88e61b441af3d5 42,78-80,82,129-130
+packages/cli/src/modules/agents/background/__tests__/background-job-tools.test.ts
+  s_234832aa318d60::t_74db230380473a 208-230
+packages/cli/src/modules/agents/background/sub-agent-background-runner.ts
+  s_234832aa318d60::t_74db230380473a 52-53,128-130
+packages/cli/src/modules/agents/sub-agents/__tests__/delegate-sub-agent-tool.test.ts
+  s_234832aa318d60::t_74db230380473a 189-192,200
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_234832aa318d60::t_74db230380473a 510,4546-4646
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_234832aa318d60::t_74db230380473a 280-283,333,335-336,454-455,507-508
+  s_234832aa318d60::t_88e61b441af3d5 334
+packages/cli/src/modules/agents/system-agents/system-agent-chat.controller.ts
+  s_234832aa318d60::t_88e61b441af3d5 11,243-252
+packages/@n8n/api-types/src/agents/sub-agent.schema.ts
+  s_234832aa318d60::t_74db230380473a 40-44
+packages/cli/src/modules/agents/background/__tests__/sub-agent-background-runner.test.ts
+  s_234832aa318d60::t_74db230380473a 303-313
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_234832aa318d60::t_74db230380473a 85-86,426-464,811,821-822,828-833,838,1043-1044,1201-1202
+  s_234832aa318d60::t_88e61b441af3d5 812-820,823-827,834-837,839-847
+packages/cli/src/modules/agents/utils/__tests__/fatal-session-outcome.test.ts
+  s_234832aa318d60::t_74db230380473a 27-28
+packages/cli/src/modules/agents/__tests__/execution-recorder.test.ts
+  s_234832aa318d60::t_88e61b441af3d5 410-429,432-447,451-452,454-461,465-466,468-469,481-492,494,496,498-500
+  s_234832aa318d60::t_74db230380473a 408-409,430-431,448-450,453,462-464,467,470-480,493,495,497
+packages/cli/src/modules/agents/background/background-job-tools.ts
+  s_234832aa318d60::t_74db230380473a 16,92,105
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_234832aa318d60::t_74db230380473a 67,115-116,245-246,250-251,1077-1078
+packages/@n8n/api-types/src/agents/types.ts
+  s_234832aa318d60::t_74db230380473a 416-417,419-422,424,426-428,431-432,434-437,443-450,453,455-457
+  s_234832aa318d60::t_88e61b441af3d5 415,418,423,425,429-430,433,438-442,451-452,454,458-459
+packages/cli/src/modules/agents/types/agent-queued-message.ts
+  s_234832aa318d60::t_74db230380473a 1,87-91
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
+  s_234832aa318d60::t_74db230380473a 37,134,155-157,172,620-716
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-execution.service.test.ts
+  s_234832aa318d60::t_74db230380473a 23-26,793-811,813-816,818-819,823-824,826-850,853-854,856-901
+  s_234832aa318d60::t_88e61b441af3d5 792,812,817,820-822,825,851-852,855,902-904
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9aa6274f2f6fa3cd0dd882e276e6d1088f5dc514",
+  "prompts": {},
+  "sessions": {
+    "s_234832aa318d60": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be3f1a42-934b-41b5-b566-dced269d16b9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

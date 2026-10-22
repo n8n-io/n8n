@@ -1,0 +1,42 @@
+packages/cli/src/public-api/swagger-spec.ts
+  s_a1ffd067a33fea::t_969b7509261fb3 11
+  s_a1ffd067a33fea::t_ddf09dfa53e075 17,19
+  s_a1ffd067a33fea::t_2532127cc29b2e 1
+  s_a1ffd067a33fea::t_4020da72ef0208 2-3,7,10,12,26-27,31-35
+  s_a1ffd067a33fea::t_c051c8caa3a876 5
+  s_a1ffd067a33fea::t_7b3e9b73f95a81 4,6,8-9,13-16,18,20-25,28-30
+packages/cli/src/public-api/index.ts
+  s_a1ffd067a33fea::t_89b9a04b4ea87b 13
+  s_a1ffd067a33fea::t_6ab64cd5855ded 90
+  s_a1ffd067a33fea::t_6bb74da896c91a 89
+packages/cli/src/public-api/__tests__/swagger-spec.test.ts
+  s_a1ffd067a33fea::t_c52ced656cce36 1-4
+  s_a1ffd067a33fea::t_c4cfd86ef9cda0 6-8,13,18-19,24-27,30-32,34-35,40-44,57
+  s_a1ffd067a33fea::t_6b634d19980b87 5
+  s_a1ffd067a33fea::t_5e554a21ee137f 29
+  s_a1ffd067a33fea::t_f162627c0bcbb2 46,48-54,56
+  s_a1ffd067a33fea::t_b93b47243424a4 9,33
+  s_a1ffd067a33fea::t_cc011401f6c7ec 12,14,36-39
+  s_a1ffd067a33fea::t_149688f267bbd9 45,47,55,58
+  s_a1ffd067a33fea::t_5d8c06705d1d82 20-21
+  s_a1ffd067a33fea::t_350a5e574f4003 10-11
+  s_a1ffd067a33fea::t_967466162eb2d7 15-17
+  s_a1ffd067a33fea::t_62599d1cf55544 22-23
+  s_a1ffd067a33fea::t_e56ffe8d1712ea 28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e0bf80859a027973b4d9dec597cbfec49feea7c9",
+  "prompts": {},
+  "sessions": {
+    "s_a1ffd067a33fea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "57318cd2-38a2-4765-9b9f-5a07cf98cf54",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
