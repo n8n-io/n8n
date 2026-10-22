@@ -67,6 +67,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'scim:manage',
 	'securityAudit:generate',
 	'securitySettings:manage',
+	'publicApiRateLimit:manage',
 	'sourceControl:pull',
 	'sourceControl:push',
 	'sourceControl:manage',

@@ -28,6 +28,7 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'gitConnection:pull',
 	'securityAudit:generate',
 	'securitySettings:manage',
+	'publicApiRateLimit:manage',
 	'saml:manage',
 	'oidc:manage',
 	'otel:manage',
