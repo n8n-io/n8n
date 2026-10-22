@@ -726,6 +726,7 @@ describe('MemoryGuardService', () => {
 			addExecution('large', { megabytes: 300 });
 			utilization = 0.96;
 			readMemoryUsageOnce(0.96);
+			readMemoryUsageOnce(0.96);
 			readMemoryUsageOnce(0.6);
 
 			await sample();
