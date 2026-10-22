@@ -563,6 +563,7 @@ export class AgentPublishService {
 				if (!body) {
 					throw new UserError(`Cannot publish agent with missing task body: ${ref.id}`);
 				}
+
 				return {
 					versionId,
 					taskId: ref.id,
@@ -589,6 +590,7 @@ export class AgentPublishService {
 					)
 				: null;
 		}
+
 		return agent.schema
 			? toAgentDocument(agent.schema, await this.agentSkillRefs.refsForDraft(agent, {}))
 			: null;
@@ -670,9 +672,12 @@ export class AgentPublishService {
 				{ activeVersionId: next.activeVersionId, versionId: next.versionId },
 				ctx,
 			);
-			if (!won)
+			if (!won) {
 				throw new ConflictError('Agent was modified concurrently while publishing; please retry');
+			}
+
 			await this.publishHistory.record(agent.id, next.activeVersionId, 'activated', user, ctx);
+
 			// Update the caller's entity only after the revision fence succeeds.
 			agent.activeVersionId = next.activeVersionId;
 			agent.activeVersion = next.activeVersion;
@@ -695,12 +700,14 @@ export class AgentPublishService {
 				versionId: uuid(),
 			};
 		}
+
 		const saved = agent.versionId
 			? await this.agentHistoryRepository.findByVersionAndAgentId(agent.versionId, agent.id, ctx)
 			: null;
 		const versionId = saved ? uuid() : (agent.versionId ?? uuid());
 		const activeVersion = await this.saveDraftHistory(ctx, agent, user, versionId);
 		await this.snapshotConfiguredTasks(ctx, versionId, agent.schema, tasks);
+
 		return { activeVersionId: versionId, activeVersion, versionId };
 	}
 
@@ -731,14 +738,17 @@ export class AgentPublishService {
 				},
 				ctx,
 			);
+
 			// The skill pins need the `agent_history` row.
 			await this.agentSkillRefs.pinVersion(versionId, snapshot, ctx);
+
 			return history;
 		} catch (error) {
 			// Concurrent publishes of one draft can collide before they reach the revision fence.
 			if (isUniqueConstraintError(error)) {
 				throw new ConflictError('Agent was modified concurrently while publishing; please retry');
 			}
+
 			throw error;
 		}
 	}
