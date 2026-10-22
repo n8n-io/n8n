@@ -4,6 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| acceptsSteering | boolean | false | false |  |  | Accept input until the runtime closes admission |
 | attachments | json |  | true |  |  | Metadata of files attached to the user turn ({id, fileName, mimeType, sizeBytes}[]); bytes live in BinaryDataService |
 | author | json |  | true |  |  | Chat platform user who wrote the turn as {id, name}; null for runs outside chat integrations |
 | completionTokens | integer |  | true |  |  |  |
@@ -12,8 +13,10 @@
 | duration | integer | 0 | false |  |  |  |
 | error | text |  | true |  |  |  |
 | failureSummary | json |  | true |  |  | Execution failure projection as {count, latest} for session list queries |
+| finishReason | varchar(32) |  | true |  |  | Why the run ended, e.g. stop or guardrail. Null for older runs. |
+| guardrailCode | varchar(64) |  | true |  |  | Code of the guardrail that stopped the run, e.g. budget.session. |
 | hitlStatus | varchar(16) |  | true |  |  |  |
-| id | varchar(36) |  | false |  |  |  |
+| id | varchar(36) |  | false | [public.agent_background_job](public.agent_background_job.md) [public.agent_execution_message_links](public.agent_execution_message_links.md) [public.agent_message_queue](public.agent_message_queue.md) |  |  |
 | model | varchar(255) |  | true |  |  |  |
 | promptTokens | integer |  | true |  |  |  |
 | source | varchar(32) |  | true |  |  |  |
@@ -36,6 +39,7 @@
 | CHK_agent_execution_storedAt | CHECK | CHECK ((("storedAt")::text = ANY ((ARRAY['db'::character varying, 'fs'::character varying, 's3'::character varying, 'az'::character varying])::text[]))) |
 | FK_add2432fb6034cc18b6af299dce | FOREIGN KEY | FOREIGN KEY ("threadId") REFERENCES agent_execution_threads(id) ON DELETE CASCADE |
 | PK_ba438acc8532addc12d1ef17049 | PRIMARY KEY | PRIMARY KEY (id) |
+| agent_execution_acceptsSteering_not_null | n | NOT NULL "acceptsSteering" |
 | agent_execution_createdAt_not_null | n | NOT NULL "createdAt" |
 | agent_execution_duration_not_null | n | NOT NULL duration |
 | agent_execution_id_not_null | n | NOT NULL id |
@@ -57,9 +61,14 @@
 ```mermaid
 erDiagram
 
+"public.agent_background_job" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;sourceExecutionId#quot;) REFERENCES agent_execution(id) ON DELETE SET NULL"
+"public.agent_execution_message_links" }o--|| "public.agent_execution" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES agent_execution(id) ON DELETE CASCADE"
+"public.agent_message_queue" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES agent_execution(id)"
+"public.agent_message_queue" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;steeringExecutionId#quot;) REFERENCES agent_execution(id)"
 "public.agent_execution" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 
 "public.agent_execution" {
+  boolean acceptsSteering
   json attachments
   json author
   integer completionTokens
@@ -68,6 +77,8 @@ erDiagram
   integer duration
   text error
   json failureSummary
+  varchar_32_ finishReason
+  varchar_64_ guardrailCode
   varchar_16_ hitlStatus
   varchar_36_ id
   varchar_255_ model
@@ -83,6 +94,50 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
   text userMessage
 }
+"public.agent_background_job" {
+  varchar_36_ childExecutionId
+  varchar_128_ childThreadId
+  timestamp_3__with_time_zone createdAt
+  text error
+  varchar_36_ id
+  varchar_16_ kind
+  timestamp_3__with_time_zone notifiedAt
+  varchar_36_ parentAgentId FK
+  varchar_64_ parentPrincipalHash
+  varchar_255_ parentResourceId
+  varchar_128_ parentThreadId
+  uuid pauseRequestId
+  uuid planId FK
+  uuid planTaskId
+  text result
+  timestamp_3__with_time_zone settledAt
+  varchar_36_ sourceExecutionId FK
+  varchar_16_ status
+  varchar_36_ subAgentId
+  timestamp_3__with_time_zone timeoutAt
+  varchar_255_ title
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ workflowId
+}
+"public.agent_execution_message_links" {
+  timestamp_3__with_time_zone createdAt
+  varchar_6_ direction
+  varchar_36_ executionId FK
+  varchar_36_ messageId FK
+  integer position
+}
+"public.agent_message_queue" {
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ executionId FK
+  bigint id
+  varchar_36_ messageId FK
+  json payload
+  integer position
+  varchar_36_ steeringExecutionId FK
+  integer steeringOrder
+  varchar_128_ threadId FK
+  timestamp_3__with_time_zone updatedAt
+}
 "public.agent_execution_threads" {
   varchar_16_ accessScope
   varchar_36_ agentId FK
@@ -96,6 +151,7 @@ erDiagram
   varchar_255_ projectId FK
   integer sessionNumber
   varchar_32_ taskId
+  json taskStop
   varchar_36_ taskVersionId FK
   varchar_255_ title
   integer totalCompletionTokens

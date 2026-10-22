@@ -9,6 +9,7 @@ import {
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { chatRLC, userRLC } from '../../descriptions';
+import { aadUserConversationMember } from '../../helpers/utils';
 import {
 	buildTeamsPath,
 	getGraphBaseUrl,
@@ -16,7 +17,6 @@ import {
 	SP_HIDE,
 	validateTeamsId,
 } from '../../transport';
-import { throwIfChatMemberUnsupported } from './sharedGuard';
 
 const properties: INodeProperties[] = [
 	{
@@ -104,9 +104,6 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number) {
 	// https://learn.microsoft.com/en-us/graph/api/chat-post-members?view=graph-rest-1.0
 
-	// The chat picker cannot list chats app-only; fail before any request.
-	throwIfChatMemberUnsupported.call(this);
-
 	const chatId = this.getNodeParameter('chatId', i, '', { extractValue: true }) as string;
 	// Direct validator call rather than buildTeamsPath: this id is interpolated into
 	// the body, and RLC `validation` is UI-only, so an expression can still supply
@@ -117,11 +114,12 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	);
 	const options = this.getNodeParameter('options', i, {});
 
-	const body: IDataObject = {
-		'@odata.type': '#microsoft.graph.aadUserConversationMember',
-		'user@odata.bind': `${await getGraphBaseUrl.call(this)}/v1.0/users/${userId}`,
-		roles: [options.role === 'guest' ? 'guest' : 'owner'],
-	};
+	// Slash key form, as the add-member docs show. Raw is safe: the validator above rejects
+	// `/ \ ? # %`, so the id cannot break out of the path.
+	const body: IDataObject = aadUserConversationMember(
+		`${await getGraphBaseUrl.call(this)}/v1.0/users/${userId}`,
+		options.role === 'guest' ? 'guest' : 'owner',
+	);
 
 	// Not inverted: omitting the field shares NO history, and the 0001-01-01 sentinel
 	// shares the WHOLE history.

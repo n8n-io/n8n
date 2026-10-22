@@ -8,13 +8,17 @@ const InstanceRegistrationSchemaV1 = z
 			.string()
 			.regex(/^[a-zA-Z0-9\-_]+$/, 'instanceKey must be alphanumeric with hyphens/underscores'),
 		hostId: z.string(),
-		instanceType: z.enum(['main', 'worker', 'webhook']),
+		instanceType: z.enum(['main', 'worker', 'webhook', 'engine']),
 		instanceRole: z.enum(['leader', 'follower', 'unset']),
 		version: z.string(),
 		registeredAt: z.number(),
 		lastSeen: z.number(),
 		/** Worker pool label. Present (possibly empty) on worker registrations; absent on main/webhook. */
 		poolName: z.string().optional(),
+		/** Memory limit in bytes. `null` means no limit. Absent on registrations from older versions. */
+		memoryLimit: z.number().nullable().optional(),
+		/** CPU limit in CPUs. `null` means no limit. Absent on registrations from older versions. */
+		cpuLimit: z.number().nullable().optional(),
 	})
 	.passthrough();
 
@@ -33,7 +37,7 @@ const ClusterVersionMismatchSchema = z.object({
 				z.object({
 					instanceKey: z.string(),
 					hostId: z.string(),
-					instanceType: z.enum(['main', 'worker', 'webhook']),
+					instanceType: z.enum(['main', 'worker', 'webhook', 'engine']),
 					instanceRole: z.enum(['leader', 'follower', 'unset']),
 				}),
 			),

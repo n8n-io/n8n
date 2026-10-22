@@ -107,6 +107,7 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 	}
 
 	const actions = useWorkflowSetupActions({
+		workflowId,
 		requestId: opts.requestId,
 		sections,
 		activeSection,

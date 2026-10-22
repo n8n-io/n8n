@@ -421,8 +421,8 @@ function toggleScope(scope: S, checked: boolean) {
 												@update:model-value="(checked: boolean) => toggleScope(scope, checked)"
 											/>
 											<N8nBadge
-												:theme="
-													classifyScope(scope, readActions) === 'read' ? 'default' : 'success'
+												:variant="
+													classifyScope(scope, readActions) === 'read' ? 'outline' : 'success'
 												"
 											>
 												{{ getBadgeLabel(scope) }}
@@ -567,7 +567,7 @@ function toggleScope(scope: S, checked: boolean) {
 
 .tools-popover-header {
 	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	letter-spacing: 0.06em;
 	text-transform: uppercase;
 	color: var(--color--text--tint-1);

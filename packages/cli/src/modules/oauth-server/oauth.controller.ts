@@ -13,12 +13,14 @@ import {
 	StaticRouterMetadata,
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { AuthenticationService, type SurfaceId } from '@n8n/inbound-auth';
+import { isRecord } from '@n8n/utils/is-record';
 import type { Response, Request, RequestHandler, Router } from 'express';
 
-import type { ProtectedResource } from '@/services/protected-resource.registry';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
+import { type ProtectedResource, ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 
+import { OAuthServerLocalAuthorizationServer } from './oauth-local-authorization-server';
 import { OAuthServerConfig } from './oauth-server.config';
 import { OAuthServerService } from './oauth-server.service';
 import { buildOAuthClientLimitReachedMessage } from './oauth.errors';
@@ -29,6 +31,16 @@ const globalConfig = Container.get(GlobalConfig);
 const oauthServerConfig = Container.get(OAuthServerConfig);
 const logger = Container.get(Logger);
 const urlService = Container.get(UrlService);
+
+/**
+ * Surfaces that authenticate through the inbound-auth pipeline advertise the trusted sources
+ * accepted there. A trigger resource joins through `getAcceptedSourceIds()` instead, which also
+ * narrows the advertised issuers to the source its node selected.
+ */
+const PIPELINE_SURFACES: ReadonlySet<SurfaceId> = new Set<SurfaceId>([
+	'public-api',
+	'instance-mcp',
+]);
 
 /**
  * Pre-check guard for the unauthenticated DCR endpoint. Short-circuits with
@@ -76,15 +88,56 @@ const rfc9207IssuerParam: RequestHandler = (_req, res, next) => {
 	next();
 };
 
+/**
+ * The SDK's token handler serializes every rejection (unknown client, expired
+ * or reused code, PKCE mismatch, ...) straight into the HTTP response without
+ * logging, which leaves a failed token exchange with no trace in the server
+ * logs at all. Wrap `res.json` so the token route reports what it rejected and
+ * for which client.
+ */
+const logTokenFailures: RequestHandler = (req, res, next) => {
+	const originalJson = res.json.bind(res);
+	res.json = (body?: unknown) => {
+		if (res.statusCode >= 400) {
+			const errorBody = isRecord(body) ? body : {};
+			// The SDK's handler parses the form body before it responds, so the
+			// request body is populated by the time this runs.
+			const requestBody = isRecord(req.body) ? req.body : {};
+			// A `client_secret_basic` request has no `client_id` field; its id is the
+			// Basic username.
+			const clientId =
+				typeof requestBody.client_id === 'string'
+					? requestBody.client_id
+					: OAuthHelpers.basicAuthClientId(req.headers.authorization);
+			logger.warn('OAuth token request failed', {
+				statusCode: res.statusCode,
+				error: errorBody.error,
+				errorDescription: errorBody.error_description,
+				grantType: requestBody.grant_type,
+				clientId,
+			});
+		}
+		return originalJson(body);
+	};
+	next();
+};
+
 // Built once and mounted under both the legacy `/mcp-oauth/*` paths (existing
 // DCR clients hold them in their stored discovery metadata) and the neutral
 // `/oauth/*` paths that future, non-MCP protected resources will advertise.
 const registerRouter = clientRegistrationHandler({
 	clientsStore: oauthServerService.clientsStore,
+	rateLimit: false,
 }) as Router;
-const authorizeRouter = authorizationHandler({ provider: oauthServerService }) as Router;
-const tokenRouter = tokenHandler({ provider: oauthServerService }) as Router;
-const revokeRouter = revocationHandler({ provider: oauthServerService }) as Router;
+const authorizeRouter = authorizationHandler({
+	provider: oauthServerService,
+	rateLimit: false,
+}) as Router;
+const tokenRouter = tokenHandler({ provider: oauthServerService, rateLimit: false }) as Router;
+const revokeRouter = revocationHandler({
+	provider: oauthServerService,
+	rateLimit: false,
+}) as Router;
 
 const sharedEndpointRouters = (basePath: '/mcp-oauth' | '/oauth'): StaticRouterMetadata[] => [
 	{
@@ -111,6 +164,7 @@ const sharedEndpointRouters = (basePath: '/mcp-oauth' | '/oauth'): StaticRouterM
 		path: `${basePath}/token`,
 		router: tokenRouter,
 		skipAuth: true,
+		middlewares: [logTokenFailures],
 		ipRateLimit: createIpRateLimit(
 			oauthServerConfig.rateLimitToken,
 			5 * Time.minutes.toMilliseconds,
@@ -140,6 +194,8 @@ export class OAuthController {
 	constructor(
 		private readonly urlService: UrlService,
 		private readonly resourceRegistry: ProtectedResourceRegistry,
+		private readonly localServer: OAuthServerLocalAuthorizationServer,
+		private readonly authenticationService: AuthenticationService,
 	) {}
 
 	// Add CORS headers for OAuth discovery endpoints
@@ -165,44 +221,15 @@ export class OAuthController {
 		res.status(204).end();
 	}
 
-	/**
-	 * Single RFC 8414 authorization-server metadata document, shared by all
-	 * protected resources: one issuer (the instance origin), one set of
-	 * endpoints, one signing key.
-	 *
-	 * Keeps advertising the legacy `/mcp-oauth/*` endpoint paths — clients that
-	 * registered via DCR persist these URLs, so changing them would strand
-	 * every already-connected client.
-	 */
+	/** RFC 8414 authorization-server metadata, built by the local authorization server. */
 	@Get('/.well-known/oauth-authorization-server', {
 		skipAuth: true,
 		usesTemplates: true,
 		ipRateLimit: wellKnownIpRateLimit,
 	})
-	metadata(_req: Request, res: Response) {
+	async metadata(_req: Request, res: Response) {
 		this.setCorsHeaders(res);
-
-		const baseUrl = this.urlService.getInstanceBaseUrl();
-		const allScopes = this.resourceRegistry.getAllScopes();
-		const metadata: Record<string, unknown> = {
-			issuer: baseUrl,
-			authorization_endpoint: `${baseUrl}/mcp-oauth/authorize`,
-			token_endpoint: `${baseUrl}/mcp-oauth/token`,
-			registration_endpoint: `${baseUrl}/mcp-oauth/register`,
-			revocation_endpoint: `${baseUrl}/mcp-oauth/revoke`,
-			response_types_supported: ['code'],
-			grant_types_supported: ['authorization_code', 'refresh_token'],
-			token_endpoint_auth_methods_supported: ['none', 'client_secret_post', 'client_secret_basic'],
-			code_challenge_methods_supported: ['S256'],
-			// RFC 9207: we include the `iss` parameter on authorization responses
-			authorization_response_iss_parameter_supported: true,
-		};
-
-		if (allScopes.length > 0) {
-			metadata.scopes_supported = allScopes;
-		}
-
-		res.json(metadata);
+		res.json(await this.localServer.getMetadata());
 	}
 
 	@Options('/.well-known/oauth-authorization-server/*issuerPath', {
@@ -272,7 +299,7 @@ export class OAuthController {
 			return;
 		}
 
-		res.json(this.buildProtectedResourceMetadata(resource));
+		res.json(await this.buildProtectedResourceMetadata(resource));
 	}
 
 	@Options('/.well-known/oauth-protected-resource', {
@@ -317,15 +344,33 @@ export class OAuthController {
 			return;
 		}
 
-		res.json(this.buildProtectedResourceMetadata(resource));
+		res.json(await this.buildProtectedResourceMetadata(resource));
 	}
 
-	private buildProtectedResourceMetadata(resource: ProtectedResource): Record<string, unknown> {
-		const baseUrl = this.urlService.getInstanceBaseUrl();
+	private async buildProtectedResourceMetadata(
+		resource: ProtectedResource,
+	): Promise<Record<string, unknown>> {
+		// A trigger narrows the surface to the source its node selected, so it advertises that
+		// source's issuer only. Resources outside the pipeline keep this instance.
+		const acceptedSourceIds = resource.getAcceptedSourceIds?.();
+		const authorizationServers =
+			PIPELINE_SURFACES.has(resource.surface) || acceptedSourceIds !== undefined
+				? (
+						await this.authenticationService.advertise({
+							surface: resource.surface,
+							resource: {
+								url: resource.getResourceUrl(),
+								acceptedAudiences: resource.getAudiences(),
+							},
+							...(acceptedSourceIds !== undefined && { acceptedSourceIds }),
+						})
+					).authorizationServers
+				: [this.urlService.getInstanceBaseUrl()];
+
 		const metadata: Record<string, unknown> = {
 			resource: resource.getResourceUrl(),
 			bearer_methods_supported: ['header'],
-			authorization_servers: [baseUrl],
+			authorization_servers: authorizationServers,
 		};
 
 		if (resource.scopes.length > 0) {

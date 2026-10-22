@@ -1,5 +1,5 @@
 /**
- * Consolidated nodes tool — list, search, describe, type-definition, suggested,
+ * Consolidated workflow_builder_nodes tool — list, search, describe, type-definition, suggested,
  * explore-resources, execute.
  */
 import { Tool, type ToolContext } from '@n8n/agents';
@@ -12,6 +12,7 @@ import {
 	type SearchableNodeType,
 } from '@n8n/ai-utilities/node-catalog';
 import {
+	getLegacyBuilderToolNames,
 	buildExecuteNodeSessionGrantKey,
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
@@ -21,12 +22,13 @@ import { validateNodeConfig } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext, NodeDescription } from '../types';
+import { restrictToolActions } from './restrict-tool-actions';
 import { needsModelSelection } from './nodes/model-selection';
 import { pickPreferredChatModelNode } from './nodes/preferred-chat-model';
 import { addSetupPreference, type NodeWithSetupPreference } from './nodes/setup-preference';
 import { buildCredentialMap } from './workflows/resolve-credentials';
+import { DOMAIN_TOOL_IDS } from './tool-ids';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
 
@@ -41,7 +43,13 @@ const NODE_TYPES_ARRAY_DESCRIPTION =
 	'Node type IDs for node-level lookups (max 5). For split nodes (e.g. Slack, Gmail, Google Sheets), pass the object form WITH resource/operation (or mode) discriminators when you know them — a bare string errors with the resource→operations index for resource/operation nodes, and returns all mode variants for mode-split nodes.';
 
 const listAction = z.object({
-	action: z.literal('list').describe('List available node types'),
+	action: z
+		.literal('list')
+		.describe(
+			'List available node types. When picking a service node for a task (web search, scraping, ' +
+				'document parsing), also consider services covered by n8n Connect (they run on Gateway ' +
+				'credits, no API key needed) — pass `gatewayCreditsOnly=true` to see the covered set.',
+		),
 	query: z
 		.string()
 		.optional()
@@ -58,7 +66,8 @@ const searchAction = z.object({
 	action: z
 		.literal('search')
 		.describe(
-			'Search node types by name or AI connection type. Use for service-specific discovery — short service names like "Gmail" or "Slack", not full task phrases.',
+			'Search node types by name or AI connection type. Use for service-specific discovery — short service names like "Gmail" or "Slack", not full task phrases. ' +
+				'When the task fits a service covered by n8n Connect (web search, scraping, document parsing — no API key needed), surface that option too; list the covered set with `workflow_builder_nodes(action="list", gatewayCreditsOnly=true)`.',
 		),
 	query: z
 		.string()
@@ -108,7 +117,10 @@ const suggestedAction = z.object({
 	action: z
 		.literal('suggested')
 		.describe(
-			'Get curated node recommendations by category. Call first when the workflow fits a known category.',
+			'Get curated node recommendations by category. Call first when the workflow fits a known category. ' +
+				'The curated list is a starting point, not the full set: also add any n8n Connect covered services ' +
+				'relevant to the category (they run on Gateway credits, no API key needed). Check coverage with ' +
+				'`workflow_builder_nodes(action="list", gatewayCreditsOnly=true)` or `workflow_builder_credentials(action="search-types", gatewayCreditsOnly=true)`.',
 		),
 	categories: z
 		.array(z.string())
@@ -195,19 +207,23 @@ const suspendSchema = z.object({
 	severity: instanceAiConfirmationSeveritySchema,
 });
 
-const fullInputSchema = sanitizeInputSchema(
-	z.discriminatedUnion('action', [
-		listAction,
-		searchAction,
-		describeAction,
-		typeDefinitionAction,
-		suggestedAction,
-		exploreResourcesAction,
-		executeAction,
-	]),
-);
+const actions = [
+	listAction,
+	searchAction,
+	describeAction,
+	typeDefinitionAction,
+	suggestedAction,
+	exploreResourcesAction,
+	executeAction,
+] as const;
 
-type FullInput = z.infer<typeof fullInputSchema>;
+type FullInput = z.infer<(typeof actions)[number]>;
+
+interface NodesToolOptions {
+	surface?: 'full' | 'orchestrator';
+	allowedActions?: ReadonlyArray<FullInput['action']>;
+	description?: string;
+}
 
 interface SearchEngineCache {
 	nodeTypes?: SearchableNodeType[];
@@ -336,7 +352,7 @@ async function handleDescribe(
 
 /**
  * Resolve TypeScript type definitions for a validated list of node requests.
- * Used by the consolidated `nodes` tool's `type-definition` action.
+ * Used by the consolidated `workflow_builder_nodes` tool's `type-definition` action.
  */
 async function resolveNodeTypeDefinitions(
 	context: InstanceAiContext,
@@ -381,6 +397,7 @@ async function resolveNodeTypeDefinitions(
 				content: result.content,
 				...(result.builderHint ? { builderHint: result.builderHint } : {}),
 				...(result.deprecated ? { deprecated: true } : {}),
+				...(result.unavailable ? { unavailable: result.unavailable } : {}),
 			};
 		}),
 	);
@@ -629,11 +646,12 @@ async function handleExecute(
 
 export function createNodesTool(
 	context: InstanceAiContext,
-	surface: 'full' | 'orchestrator' = 'full',
+	optionsInput: NodesToolOptions | 'full' | 'orchestrator' = 'full',
 ) {
+	const options = typeof optionsInput === 'string' ? { surface: optionsInput } : optionsInput;
 	const searchEngineCache: SearchEngineCache = {};
 
-	if (surface === 'orchestrator') {
+	if (options.surface === 'orchestrator') {
 		const orchestratorExploreAction = z.object({
 			action: z
 				.literal('explore-resources')
@@ -655,13 +673,15 @@ export function createNodesTool(
 				.describe(CURRENT_NODE_PARAMETERS_DESCRIPTION),
 		});
 
-		const orchestratorInputSchema = sanitizeInputSchema(
-			z.discriminatedUnion('action', [typeDefinitionAction, orchestratorExploreAction]),
+		const orchestratorInputSchema = restrictToolActions(
+			[typeDefinitionAction, orchestratorExploreAction],
+			options.allowedActions,
 		);
 
 		type OrchestratorInput = z.infer<typeof orchestratorInputSchema>;
 
-		return new Tool('nodes')
+		return new Tool(DOMAIN_TOOL_IDS.NODES)
+			.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.NODES))
 			.description(
 				"Read node type definitions or query real resources for a node's RLC parameters " +
 					'(e.g. list Google Sheets, OpenAI models, Slack channels). Use `type-definition` ' +
@@ -680,11 +700,13 @@ export function createNodesTool(
 			.build();
 	}
 
-	return new Tool('nodes')
+	return new Tool(DOMAIN_TOOL_IDS.NODES)
+		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.NODES))
 		.description(
-			'Work with n8n node types. Use `suggested` for known workflow categories, `search` for service-specific discovery, `type-definition` before configuring nodes, `explore-resources` for live credential-backed lists, and `execute` to run one node standalone (requires user approval, real side effects).',
+			options.description ??
+				'Work with n8n node types. Use `suggested` for known workflow categories, `search` for service-specific discovery, `type-definition` before configuring nodes, `explore-resources` for live credential-backed lists, and `execute` to run one node standalone (requires user approval, real side effects).',
 		)
-		.input(fullInputSchema)
+		.input(restrictToolActions(actions, options.allowedActions))
 		.suspend(suspendSchema)
 		.resume(instanceAiApprovalResumeSchema)
 		.handler(async (input: FullInput, ctx) => {

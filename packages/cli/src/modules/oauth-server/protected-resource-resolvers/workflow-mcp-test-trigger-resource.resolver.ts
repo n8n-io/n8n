@@ -1,6 +1,6 @@
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
-import type { ProtectedResourceResolver } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
+import { type ProtectedResourceResolver } from '@n8n/backend-services/auth';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { Logger } from '@n8n/backend-common';
@@ -9,6 +9,7 @@ import { Service } from '@n8n/di';
 
 import { triggerResourceGate } from '../resource-gate';
 import {
+	acceptedTrustedSourceIds,
 	WORKFLOW_MCP_TRIGGER_SCOPES,
 	trimSlashes,
 	trimTrailingSlash,
@@ -82,8 +83,10 @@ export class WorkflowMcpTestTriggerResourceResolver implements ProtectedResource
 			const audiences = [resourceUrl];
 			return {
 				id: 'workflow-mcp-test:' + workflowEntity.id,
+				surface: 'trigger' as const,
 				getResourceUrl: () => resourceUrl,
 				getAudiences: () => audiences,
+				getAcceptedSourceIds: () => acceptedTrustedSourceIds(node),
 				scopes: WORKFLOW_MCP_TRIGGER_SCOPES,
 				displayName: workflowEntity.name,
 				...triggerResourceGate(this.workflowFinderService, {

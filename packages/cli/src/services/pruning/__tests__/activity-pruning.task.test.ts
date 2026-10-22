@@ -24,6 +24,14 @@ describe('ActivityPruningTask', () => {
 		activityEventRepository.deleteBeyondNewest.mockResolvedValue(0);
 	});
 
+	it('runs durably, on any main, and on the fallback timer as soon as a leader takes over', () => {
+		expect(taskWith().target).toEqual({
+			scope: 'cluster',
+			scheduler: { retryOnFailure: true },
+			leaderTimer: { runOnTakeover: true },
+		});
+	});
+
 	it('applies the age cap and the count backstop, and reports what went', async () => {
 		activityEventRepository.deleteOlderThan.mockResolvedValue(3);
 		activityEventRepository.deleteBeyondNewest.mockResolvedValue(2);

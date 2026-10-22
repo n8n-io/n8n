@@ -1,63 +1,80 @@
-import type { MockProxy } from 'vitest-mock-extended';
+import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
-import type { IBinaryData, IExecuteSingleFunctions } from 'n8n-workflow';
 
-import { downloadFilePostReceive, escapeFilterValue } from '../../v1/helpers/utils';
+import {
+	odataFieldEqualsClause,
+	SHAREPOINT_ILLEGAL_FILE_NAME_CHARS,
+	validateSharePointFileName,
+} from '../../helpers/utils';
 
-describe('Microsoft SharePoint Node', () => {
-	let executeSingleFunctions: MockProxy<IExecuteSingleFunctions>;
+describe('Microsoft SharePoint v2 — validateSharePointFileName', () => {
+	const node = mock<INode>();
 
-	beforeEach(() => {
-		executeSingleFunctions = mock<IExecuteSingleFunctions>();
+	it('accepts an ordinary file name', () => {
+		expect(() => validateSharePointFileName(node, 'report.pdf', 0)).not.toThrow();
 	});
 
-	afterEach(() => {
-		vi.resetAllMocks();
-	});
-
-	it('should download file post receive', async () => {
-		const mockResponse = {
-			body: '',
-			statusCode: 200,
-			headers: {
-				'content-disposition': "attachment; filename*=UTF-8''encoded%20name.pdf",
-				'content-type': 'application/pdf',
-			},
-		};
-		const mockPrepareBinaryData = vi.fn().mockReturnValueOnce({
-			data: '',
-			mimeType: 'application/pdf',
-			fileName: 'encoded name.pdf',
-		} as IBinaryData);
-		executeSingleFunctions.helpers.prepareBinaryData = mockPrepareBinaryData;
-
-		const result = await downloadFilePostReceive.call(executeSingleFunctions, [], mockResponse);
-
-		expect(mockPrepareBinaryData).toHaveBeenCalledWith(
-			mockResponse.body,
-			'encoded name.pdf',
-			'application/pdf',
+	it.each([undefined, '', '   '])('rejects a missing or blank name (%j)', (fileName) => {
+		expect(() => validateSharePointFileName(node, fileName as string | undefined, 0)).toThrow(
+			'File name must be set!',
 		);
-		expect(result).toEqual([
-			{
-				json: {},
-				binary: {
-					data: {
-						data: '',
-						mimeType: 'application/pdf',
-						fileName: 'encoded name.pdf',
-					},
-				},
-			},
-		]);
 	});
 
-	describe('escapeFilterValue', () => {
-		it('should escape single quotes', () => {
-			expect(escapeFilterValue("hello' there ''")).toEqual("hello'' there ''''");
-		});
-		it('should not escape double quotes', () => {
-			expect(escapeFilterValue('hello " there ""')).toEqual('hello " there ""');
-		});
+	it.each(SHAREPOINT_ILLEGAL_FILE_NAME_CHARS)('rejects a name containing %s', (char) => {
+		expect(() => validateSharePointFileName(node, `a${char}b.txt`, 0)).toThrow(
+			`contains characters that SharePoint doesn't allow: ${char}`,
+		);
+	});
+
+	it('names every offending character at once', () => {
+		expect(() => validateSharePointFileName(node, 'a:b*c.txt', 0)).toThrow(
+			"contains characters that SharePoint doesn't allow: * :",
+		);
+	});
+
+	it('suggests a colon-free timestamp format only when a colon is present', () => {
+		try {
+			validateSharePointFileName(node, 'report 12:30.pdf', 0);
+			expect.unreachable('should have thrown');
+		} catch (error) {
+			expect((error as { description?: string }).description).toContain('colon-free format');
+		}
+
+		try {
+			validateSharePointFileName(node, 'report?.pdf', 0);
+			expect.unreachable('should have thrown');
+		} catch (error) {
+			expect((error as { description?: string }).description).not.toContain('colon-free format');
+		}
+	});
+});
+
+describe('Microsoft SharePoint v2 — odataFieldEqualsClause', () => {
+	it('quotes the value as a string literal', () => {
+		expect(odataFieldEqualsClause('Title', 'Report')).toBe("fields/Title eq 'Report'");
+	});
+
+	it('doubles single quotes inside the value', () => {
+		expect(odataFieldEqualsClause('Author', "O'Brien")).toBe("fields/Author eq 'O''Brien'");
+		expect(odataFieldEqualsClause('Note', "a'b'c")).toBe("fields/Note eq 'a''b''c'");
+	});
+
+	it('keeps a value that is only quotes intact', () => {
+		expect(odataFieldEqualsClause('Note', "''")).toBe("fields/Note eq ''''''");
+	});
+
+	it.each([null, undefined])('compares %s against the empty string, like v1', (value) => {
+		expect(odataFieldEqualsClause('Title', value)).toBe("fields/Title eq ''");
+	});
+
+	it('stringifies non-string values', () => {
+		expect(odataFieldEqualsClause('Count', 3)).toBe("fields/Count eq '3'");
+		expect(odataFieldEqualsClause('Done', false)).toBe("fields/Done eq 'false'");
+	});
+
+	it('leaves characters the URL layer owns untouched', () => {
+		expect(odataFieldEqualsClause('Title', 'a & b % c + d')).toBe(
+			"fields/Title eq 'a & b % c + d'",
+		);
 	});
 });

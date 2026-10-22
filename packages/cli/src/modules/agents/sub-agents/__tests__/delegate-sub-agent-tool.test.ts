@@ -1,5 +1,6 @@
 import {
 	AgentEvent,
+	encodeEpisodicScopeMetadata,
 	getInlineDelegateSubAgentToolOptions,
 	INLINE_SUB_AGENT_ID,
 	type CredentialProvider,
@@ -10,7 +11,7 @@ import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import { OperationalError, UserError } from 'n8n-workflow';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 
 import { AgentExecutionRecordingError } from '../../agent-execution-recording.error';
 import {
@@ -201,6 +202,65 @@ describe('createN8nDelegateSubAgentTool', () => {
 		);
 	});
 
+	it('forwards the parent episodic scope decision to the runner context', async () => {
+		const tool = createN8nDelegateSubAgentTool({
+			parentAgentId,
+			runner,
+			sourcesById: { 'agent-2': source },
+			projectId,
+			credentialProvider,
+			runType: 'production',
+		});
+
+		await tool.handler?.(
+			{ subAgentId: 'agent-2', taskName: 'Research API', goal: 'Find behavior.' },
+			{
+				runId: 'parent-run-1',
+				persistence: {
+					threadId: 'parent-thread-1',
+					resourceId: 'task:task-1',
+					hostMetadata: encodeEpisodicScopeMetadata({ disabled: true }),
+				},
+			},
+		);
+
+		expect(runner.run).toHaveBeenCalledWith(
+			expect.any(Object),
+			expect.objectContaining({ parentEpisodicScope: { disabled: true } }),
+		);
+	});
+
+	it('does not hand a resolved parent scope to the child', async () => {
+		const tool = createN8nDelegateSubAgentTool({
+			parentAgentId,
+			runner,
+			sourcesById: { 'agent-2': source },
+			projectId,
+			credentialProvider,
+			runType: 'production',
+		});
+
+		await tool.handler?.(
+			{ subAgentId: 'agent-2', taskName: 'Research API', goal: 'Find behavior.' },
+			{
+				runId: 'parent-run-1',
+				persistence: {
+					threadId: 'parent-thread-1',
+					resourceId: 'task:task-1',
+					hostMetadata: encodeEpisodicScopeMetadata({
+						writeScopeId: 'slack:T1:C1',
+						readScopeIds: ['slack:T1:C1'],
+					}),
+				},
+			},
+		);
+
+		expect(runner.run).toHaveBeenCalledWith(
+			expect.any(Object),
+			expect.not.objectContaining({ parentEpisodicScope: expect.anything() }),
+		);
+	});
+
 	it('forwards the parent telemetry from the tool context to the foreground runner', async () => {
 		const tool = createN8nDelegateSubAgentTool({
 			parentAgentId,
@@ -343,6 +403,32 @@ describe('createN8nDelegateSubAgentTool', () => {
 		);
 	});
 
+	it('fails loudly when an inline sub-agent has no parent identity', async () => {
+		const tool = createN8nDelegateSubAgentTool({
+			runner,
+			sourcesById: { 'agent-2': source },
+			projectId,
+			credentialProvider,
+			runType: 'production',
+		} as unknown as Parameters<typeof createN8nDelegateSubAgentTool>[0]);
+
+		await expect(
+			tool.handler?.(
+				{
+					subAgentId: INLINE_SUB_AGENT_ID,
+					taskName: 'Research API',
+					goal: 'Find behavior.',
+				},
+				{ runId: 'parent-run-1' },
+			),
+		).resolves.toMatchObject({
+			status: 'failed',
+			answer: '',
+			error: 'Inline sub-agent parent Agent identity is missing',
+		});
+		expect(runner.run).not.toHaveBeenCalled();
+	});
+
 	it('routes a configured child resume to the exact persisted checkpoint', async () => {
 		runner.resumeForeground.mockResolvedValue(foregroundResult);
 		const parentExecutionCounter = {
@@ -351,6 +437,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			incrementTokenCount: vi.fn(),
 		};
 		const tool = createN8nDelegateSubAgentTool({
+			runBackgroundSubAgent: async () => ({ status: 'started', jobId: 'background-job-1' }),
 			parentAgentId,
 			runner,
 			sourcesById: { 'agent-2': source },

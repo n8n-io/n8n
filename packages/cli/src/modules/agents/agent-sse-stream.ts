@@ -9,11 +9,16 @@ import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import type { Response } from 'express';
 import { LoggerProxy } from 'n8n-workflow';
 
+import { AgentFormattedTurnError } from './agent-formatted-turn.error';
+import { AgentN8nChatUnavailableError } from './agent-n8n-chat-unavailable.error';
+import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
+import type { AgentExecutionStreamChunk } from './types/agent-steering';
+
 export type FlushableResponse = Response & { flush?: () => void };
 
 const SSE_HEARTBEAT_INTERVAL_MS = 30_000;
 
-/** Set up preview delivery and request cancellation when the connection closes. */
+/** The abort signal describes delivery. An accepted execution owns its cancellation. */
 export function initSseStream(res: FlushableResponse) {
 	res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
 	res.setHeader('Cache-Control', 'no-cache, no-transform');
@@ -23,47 +28,68 @@ export function initSseStream(res: FlushableResponse) {
 	res.socket?.setTimeout(0);
 	res.socket?.setNoDelay(true);
 	res.socket?.setKeepAlive(true);
-	res.write(':ok\n\n');
-	res.flush?.();
-
-	const heartbeat = setInterval(() => {
-		if (!res.writableEnded && !res.destroyed) {
-			res.write(':ping\n\n');
-			res.flush?.();
-		}
-	}, SSE_HEARTBEAT_INTERVAL_MS);
-	heartbeat.unref();
-	const stopHeartbeat = () => clearInterval(heartbeat);
-	res.once('finish', stopHeartbeat);
-	res.once('close', stopHeartbeat);
-
 	const abortController = new AbortController();
-	const abortOnClose = () => abortController.abort();
-	res.once('close', abortOnClose);
+	const detach = () => {
+		abortController.abort();
+		clearInterval(heartbeat);
+	};
+	const write = (data: string) => {
+		if (abortController.signal.aborted) return;
+		if (res.writableEnded || res.destroyed) return detach();
+		try {
+			res.write(data);
+			res.flush?.();
+		} catch {
+			detach();
+		}
+	};
+	const heartbeat = setInterval(() => write(':ping\n\n'), SSE_HEARTBEAT_INTERVAL_MS);
+	heartbeat.unref();
+	res.once('finish', detach);
+	res.once('close', detach);
+	res.once('error', detach);
+	write(':ok\n\n');
 	const close = () => {
-		res.off('close', abortOnClose);
-		stopHeartbeat();
+		res.off('close', detach);
+		res.off('finish', detach);
+		res.off('error', detach);
+		clearInterval(heartbeat);
 		if (!res.writableEnded && !res.destroyed) res.end();
 	};
 
 	const send = (event: AgentSseEvent) => {
-		if (abortController.signal.aborted) return;
-		res.write(`data: ${JSON.stringify(event)}\n\n`);
-		res.flush?.();
+		write(`data: ${JSON.stringify(event)}\n\n`);
 	};
 
-	const onChunk = (chunk: StreamChunk) => {
+	const onChunk = (chunk: AgentExecutionStreamChunk) => {
 		if (abortController.signal.aborted) return;
 		try {
 			emitChunkEvents(chunk, send);
-		} catch (error) {
-			abortController.abort();
+		} catch {
+			detach();
 			close();
-			throw error;
 		}
 	};
 
 	return { send, onChunk, abortSignal: abortController.signal, close };
+}
+
+/** The stable client `errorCode` of a known error class, if it has one. */
+export function chatErrorCode(error: unknown): string | undefined {
+	if (error instanceof AgentTurnAlreadyRunningError) return 'turn_already_running';
+	if (error instanceof AgentN8nChatUnavailableError) return 'agent_unavailable';
+	if (error instanceof AgentFormattedTurnError) return error.errorCode;
+	return undefined;
+}
+
+/** Build the `error` SSE event for a caught error, mapping known error classes to a stable `errorCode`. */
+export function toChatErrorEvent(error: unknown, fallbackMessage: string): AgentSseEvent {
+	const errorCode = chatErrorCode(error);
+	return {
+		type: 'error',
+		message: scrubSecretsInText(error instanceof Error ? error.message : fallbackMessage),
+		...(errorCode && { errorCode }),
+	};
 }
 
 function toAgentSseMessage(message: AgentMessage): AgentSseMessage | undefined {
@@ -209,8 +235,14 @@ function emitToolChunk(
 /**
  * Translate a single chunk into one or more SSE events.
  */
-export function emitChunkEvents(chunk: StreamChunk, send: (event: AgentSseEvent) => void): void {
+export function emitChunkEvents(
+	chunk: AgentExecutionStreamChunk,
+	send: (event: AgentSseEvent) => void,
+): void {
 	switch (chunk.type) {
+		case 'message-steered':
+			send(chunk);
+			return;
 		case 'start-step':
 			send({ type: 'start-step' });
 			return;
@@ -249,6 +281,13 @@ export function emitChunkEvents(chunk: StreamChunk, send: (event: AgentSseEvent)
 			});
 			return;
 		}
+		case 'finish':
+			send({
+				type: 'finish',
+				finishReason: chunk.finishReason,
+				...(chunk.guardrail !== undefined && { guardrail: { code: chunk.guardrail.code } }),
+			});
+			return;
 		case 'error': {
 			const errMsg = stringifyError(chunk.error);
 			send({ type: 'error', message: errMsg });

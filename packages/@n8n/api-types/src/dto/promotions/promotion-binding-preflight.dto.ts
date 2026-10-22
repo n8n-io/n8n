@@ -2,12 +2,20 @@ import '../../openapi-extend';
 
 import { z } from 'zod';
 
+import { dataTableColumnTypeSchema } from '../../schemas/data-table.schema';
+import { projectIconSchema } from '../../schemas/project.schema';
 import { Z } from '../../zod-class';
 import { variableTypeSchema, variableValueSchema } from '../variables/base.dto';
 
 const sourceId = z.string().min(1);
 
 export const promotionBindingProjectSchema = z.object({ id: sourceId, name: z.string() });
+// Report package values unchanged. The create API validates them when used.
+export const promotionMissingProjectSchema = promotionBindingProjectSchema.extend({
+	icon: z.object({ type: projectIconSchema.shape.type, value: z.string() }).optional(),
+	description: z.string().optional(),
+	customTelemetryTags: z.array(z.object({ key: z.string(), value: z.string() })).optional(),
+});
 const workflowSchema = z.object({ id: sourceId, name: z.string() });
 
 export const promotionBindingConsumerSchema = z.object({
@@ -91,7 +99,45 @@ const credentialConflictSchema = z.object({
 	consumers: consumersSchema,
 });
 
-/** Conflicts need a package or target correction before creation can proceed. */
+export const promotionDataTableChangeSchema = z.discriminatedUnion('kind', [
+	z.object({
+		kind: z.literal('add-column'),
+		column: z.string(),
+		type: dataTableColumnTypeSchema,
+		destructive: z.literal(false),
+	}),
+	z.object({
+		kind: z.literal('remove-column'),
+		column: z.string(),
+		type: dataTableColumnTypeSchema,
+		destructive: z.literal(true),
+	}),
+	z.object({
+		kind: z.literal('change-column-type'),
+		column: z.string(),
+		from: dataTableColumnTypeSchema,
+		to: dataTableColumnTypeSchema,
+		destructive: z.literal(true),
+	}),
+	z.object({
+		kind: z.literal('rename-column'),
+		from: z.string(),
+		to: z.string(),
+		destructive: z.literal(false),
+	}),
+	z.object({ kind: z.literal('reorder-columns'), destructive: z.literal(false) }),
+	z.object({
+		kind: z.literal('rename-table'),
+		from: z.string(),
+		to: z.string(),
+		destructive: z.literal(false),
+	}),
+]);
+
+/**
+ * Continue can confirm a `destructive-change` or `project-deletion` conflict.
+ * The other conflicts need a package or target correction before creation can proceed.
+ */
 export const promotionBindingConflictSchema = z.discriminatedUnion('code', [
 	credentialConflictSchema.extend({ code: z.literal('missing-id') }),
 	credentialConflictSchema.extend({ code: z.literal('conflicting-types') }),
@@ -119,6 +165,21 @@ export const promotionBindingConflictSchema = z.discriminatedUnion('code', [
 		filePath: z.string(),
 		workflows: z.array(workflowSchema),
 	}),
+	/** A full apply deletes each team project that the package does not hold. */
+	z.object({
+		kind: z.literal('project'),
+		code: z.literal('project-deletion'),
+		project: promotionBindingProjectSchema,
+	}),
+	z.object({
+		kind: z.literal('data-table'),
+		code: z.literal('destructive-change'),
+		id: sourceId,
+		name: z.string(),
+		consumers: consumersSchema,
+		/** Every change that the import would make, destructive or not. */
+		changes: z.array(promotionDataTableChangeSchema).min(1),
+	}),
 ]);
 
 export const promotionBindingWarningSchema = z.object({
@@ -135,6 +196,12 @@ export const promotionBindingWarningSchema = z.object({
  * Callers must enforce the permissions for their endpoint.
  */
 export const promotionBindingPreflightResultSchema = z.object({
+	missingProjects: z.array(promotionMissingProjectSchema).openapi({
+		description:
+			'Projects in the package that do not exist on this instance. ' +
+			'Preflight preserves their metadata without checking project creation rules. ' +
+			'The project creation API can reject invalid values.',
+	}),
 	missingBindings: z.array(
 		z.discriminatedUnion('kind', [
 			promotionMissingCredentialBindingSchema,
@@ -157,4 +224,5 @@ export type PromotionCredentialExpressionData = z.infer<
 	typeof promotionCredentialExpressionDataSchema
 >;
 export type PromotionBindingConflict = z.infer<typeof promotionBindingConflictSchema>;
+export type PromotionDataTableChange = z.infer<typeof promotionDataTableChangeSchema>;
 export type PromotionBindingPreflightResult = z.infer<typeof promotionBindingPreflightResultSchema>;

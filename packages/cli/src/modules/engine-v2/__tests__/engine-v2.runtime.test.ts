@@ -1,12 +1,14 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { EngineConfig } from '@n8n/config';
 import type { ExecutionResponseSender } from '@n8n/engine';
+import type { BinaryDataService } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsHelper } from '@/credentials-helper';
 import type { NodeTypes } from '@/node-types';
 
+import type { EngineAdditionalDataBuilder } from '../engine-additional-data';
 import type { EngineControlPlaneClient } from '../engine-control-plane-client';
 import type { EngineCredentialsClient } from '../engine-credentials-client';
 import { EngineV2Runtime } from '../engine-v2.runtime';
@@ -60,7 +62,6 @@ const mocks = vi.hoisted(() => {
 	};
 
 	return {
-		getBase: vi.fn(async () => ({}) as AdditionalData),
 		dataSource,
 		listen,
 		server,
@@ -90,8 +91,6 @@ vi.mock('@n8n/node-engine-compatibility', () => ({
 	V1StepExecutor: mocks.V1StepExecutor,
 }));
 
-vi.mock('@/workflow-execute-additional-data', () => ({ getBase: mocks.getBase }));
-
 describe('EngineV2Runtime', () => {
 	const engineConfig = (databaseUrl: string) =>
 		mock<EngineConfig>({ databaseUrl, host: '0.0.0.0', port: 3000 });
@@ -102,6 +101,8 @@ describe('EngineV2Runtime', () => {
 	let credentialsClient: EngineCredentialsClient;
 	const credentialsHelper = mock<CredentialsHelper>();
 	const credentialTypes = mock<CredentialTypes>();
+	const additionalDataBuilder = mock<EngineAdditionalDataBuilder>();
+	const binaryDataService = mock<BinaryDataService>();
 
 	// `@n8n/engine` is mocked below, so the sender is a stand-in too.
 	const responseSender = () => mock<ExecutionResponseSender>();
@@ -115,6 +116,8 @@ describe('EngineV2Runtime', () => {
 			credentialsClient,
 			credentialsHelper,
 			credentialTypes,
+			additionalDataBuilder,
+			binaryDataService,
 		);
 
 	const stepContext = {
@@ -145,6 +148,12 @@ describe('EngineV2Runtime', () => {
 		mocks.listen.error = undefined;
 		controlPlaneClient = mock<EngineControlPlaneClient>();
 		credentialsClient = mock<EngineCredentialsClient>();
+		additionalDataBuilder.build.mockImplementation(
+			(_context, helper) =>
+				({
+					credentialsHelper: helper,
+				}) as unknown as ReturnType<EngineAdditionalDataBuilder['build']>,
+		);
 	});
 
 	describe('init', () => {
@@ -197,6 +206,23 @@ describe('EngineV2Runtime', () => {
 			);
 		});
 
+		it('injects a deleter that removes the binary files of one execution', async () => {
+			await newRuntime().init(responseSender());
+
+			const deleteExecutionFiles = externalDependencies({ executionStore: {}, stepStore: {} })
+				.deleteExecutionFiles as (execution: {
+				workflowId: string;
+				executionId: string;
+			}) => Promise<void>;
+
+			await deleteExecutionFiles({ workflowId: 'wf-1', executionId: 'exec-1' });
+
+			// One location per run, so the store removes the whole directory of the execution.
+			expect(binaryDataService.deleteMany).toHaveBeenCalledExactlyOnceWith([
+				{ type: 'execution', workflowId: 'wf-1', executionId: 'exec-1' },
+			]);
+		});
+
 		it('injects the v1 step executor so v1-node steps can run', async () => {
 			await newRuntime().init(responseSender());
 
@@ -214,24 +240,15 @@ describe('EngineV2Runtime', () => {
 			);
 		});
 
-		it('builds the v1 additional data for the workflow and user of the step', async () => {
+		it('builds the v1 additional data from the step context, not from the control plane', async () => {
 			await newRuntime().init(responseSender());
 
 			await additionalDataFactory()(stepContext);
 
-			expect(mocks.getBase).toHaveBeenCalledExactlyOnceWith({
-				userId: 'user-1',
-				workflowId: 'wf-1',
-				projectId: 'project-1',
-			});
-		});
-
-		it('tags the v1 additional data with the engine execution id', async () => {
-			await newRuntime().init(responseSender());
-
-			const additionalData = await additionalDataFactory()(stepContext);
-
-			expect(additionalData.executionId).toBe('exec-1');
+			expect(additionalDataBuilder.build).toHaveBeenCalledExactlyOnceWith(
+				stepContext,
+				expect.any(RemoteCredentialsHelper),
+			);
 		});
 
 		it('gives the step a credentials helper that asks the control plane', async () => {

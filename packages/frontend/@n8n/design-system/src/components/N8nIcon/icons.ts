@@ -1,32 +1,53 @@
 import Anthropic from './custom/anthropic.svg';
+import Azure from './custom/azure.svg';
 import Binary from './custom/binary.svg';
-import BoltFilled from './custom/bolt-filled.svg';
+import BoltFilled from './custom/brand/lightning--solid-16.svg';
+import BotFail from './custom/bot-fail.svg';
+import BotIdle from './custom/bot-idle.svg';
+import BotPass from './custom/bot-pass.svg';
+import BotWaiting from './custom/bot-waiting.svg';
+import BotWarning from './custom/bot-warning.svg';
+import CheckCircleFilled from './custom/brand/check-circle--solid-16.svg';
+import CircleDashedFilled from './custom/brand/circle-dashed--solid-16.svg';
 import Continue from './custom/continue.svg';
 import Discord from './custom/discord.svg';
 import EmptyOutput from './custom/empty-output.svg';
+import Entra from './custom/entra.svg';
 import FilledSquare from './custom/filled-square.svg';
 import Form from './custom/form.svg';
 import GripLinesVertical from './custom/grip-lines-vertical.svg';
+import GroupFilled from './custom/brand/group--solid-16.svg';
+import HourglassFilled from './custom/brand/hourglass--solid-16.svg';
 import Linear from './custom/linear.svg';
 import Lovable from './custom/lovable.svg';
 import Mcp from './custom/mcp.svg';
+import Meta from './custom/meta.svg';
+import Microsoft from './custom/microsoft.svg';
 import NodeDirty from './custom/node-dirty.svg';
-import NodeEllipsis from './custom/node-ellipsis.svg';
+import NodeEllipsis from './custom/brand/dots-horizontal--solid-16.svg';
 import NodeExecutionError from './custom/node-execution-error.svg';
+import NodeExtract from './custom/brand/workflow--solid-16.svg';
+import NodeFocus from './custom/brand/crosshair--solid-16.svg';
 import NodePin from './custom/node-pin.svg';
-import NodePlay from './custom/node-play.svg';
-import NodePower from './custom/node-power.svg';
-import NodeSuccess from './custom/node-success.svg';
-import NodeTrash from './custom/node-trash.svg';
-import NodeValidationError from './custom/node-validation-error.svg';
-import PopOut from './custom/pop-out.svg';
+import NodePlay from './custom/brand/play--solid-16.svg';
+import NodePower from './custom/brand/power--solid-16.svg';
+import NodeSparkle from './custom/brand/sparkle--solid-16.svg';
+import NodeSuccess from './custom/brand/check--solid-16.svg';
+import NodeUngroup from './custom/brand/blocks--solid-16.svg';
+import NodeTrash from './custom/brand/trash--solid-16.svg';
+import NodeValidationError from './custom/brand/exclamation-triangle--solid-16.svg';
+import PopOut from './custom/brand/arrow-square-out--outline-16.svg';
+import QuestionCircleFilled from './custom/brand/question-circle--solid-16.svg';
 import Resolver from './custom/resolver.svg';
 import Retry from './custom/retry.svg';
 import RunOnce from './custom/run-once.svg';
-import Schema from './custom/schema.svg';
+import Schema from './custom/brand/list-tree--outline-16.svg';
 import Slack from './custom/slack.svg';
+import SlashCircleFilled from './custom/brand/slash-circle--solid-16.svg';
+import SparklesFilled from './custom/brand/sparkle-rays--solid-16.svg';
 import Spinner from './custom/spinner.svg';
-import StarFilled from './custom/star-filled.svg';
+import SpinnerFilled from './custom/brand/spinner--solid-16.svg';
+import StarFilled from './custom/brand/star--solid-16.svg';
 import StatusCanceled from './custom/status-canceled.svg';
 import StatusCompleted from './custom/status-completed.svg';
 import StatusError from './custom/status-error.svg';
@@ -34,258 +55,288 @@ import StatusNew from './custom/status-new.svg';
 import StatusUnknown from './custom/status-unknown.svg';
 import StatusWaiting from './custom/status-waiting.svg';
 import StatusWarning from './custom/status-warning.svg';
+import Teams from './custom/teams.svg';
 import Telegram from './custom/telegram.svg';
 import Text from './custom/text.svg';
 import Toolbox from './custom/toolbox.svg';
 import Triangle from './custom/triangle.svg';
 import VectorSquare from './custom/vector-square.svg';
 import Webhook from './custom/webhook.svg';
+import WhatsApp from './custom/whatsapp.svg';
+import WorkflowFilled12 from './custom/brand/workflow--solid-12.svg';
+import XCircleFilled from './custom/brand/x-circle--solid-16.svg';
 import { nodeIconNames, type NodeIconName } from './node-icon-names';
+import {
+	Archive as BrandArchive,
+	ArrowBlockDown as BrandArrowBlockDown,
+	ArrowBlockUp as BrandArrowBlockUp,
+	ArrowCircleDown as BrandArrowCircleDown,
+	ArrowDown as BrandArrowDown,
+	ArrowLeft as BrandArrowLeft,
+	ArrowRight as BrandArrowRight,
+	ArrowRightFromLine as BrandArrowRightFromLine,
+	ArrowRightToLine as BrandArrowRightToLine,
+	ArrowUp as BrandArrowUp,
+	ArrowUpRight as BrandArrowUpRight,
+	AtSign as BrandAtSign,
+	BadgeCheck as BrandBadgeCheck,
+	Ban as BrandBan,
+	Bell as BrandBell,
+	Blocks as BrandBlocks,
+	Bold as BrandBold,
+	Book as BrandBook,
+	BookOpen as BrandBookOpen,
+	Bot as BrandBot,
+	Box as BrandBox,
+	Braces as BrandBraces,
+	Brain as BrandBrain,
+	Briefcase as BrandBriefcase,
+	Broom as BrandBroom,
+	Bug as BrandBug,
+	Calendar as BrandCalendar,
+	ChartColumnDecreasing as BrandChartColumnDecreasing,
+	Check as BrandCheck,
+	CheckCheck as BrandCheckCheck,
+	ChevronDown as BrandChevronDown,
+	ChevronLeft as BrandChevronLeft,
+	ChevronRight as BrandChevronRight,
+	ChevronRight12 as BrandChevronRight12,
+	ChevronsDownUp as BrandChevronsDownUp,
+	ChevronsLeft as BrandChevronsLeft,
+	ChevronsRight as BrandChevronsRight,
+	ChevronsUpDown as BrandChevronsUpDown,
+	ChevronUp as BrandChevronUp,
+	Circle as BrandCircle,
+	CircleAlert as BrandCircleAlert,
+	CircleCheck as BrandCircleCheck,
+	CircleDollarSign as BrandCircleDollarSign,
+	CircleEllipsis as BrandCircleEllipsis,
+	CircleHelp as BrandCircleHelp,
+	CircleMinus as BrandCircleMinus,
+	CirclePlay as BrandCirclePlay,
+	CirclePlus as BrandCirclePlus,
+	CircleUserRound as BrandCircleUserRound,
+	CircleX as BrandCircleX,
+	Clipboard as BrandClipboard,
+	ClipboardList as BrandClipboardList,
+	Clock as BrandClock,
+	Cloud as BrandCloud,
+	CloudArrowUp as BrandCloudArrowUp,
+	Code as BrandCode,
+	Cog as BrandCog,
+	Copy as BrandCopy,
+	CornerDownRight as BrandCornerDownRight,
+	Corners as BrandCorners,
+	Crosshair as BrandCrosshair,
+	Database as BrandDatabase,
+	Ellipsis as BrandEllipsis,
+	Ellipsis12 as BrandEllipsis12,
+	EllipsisVertical as BrandEllipsisVertical,
+	EllipsisVertical12 as BrandEllipsisVertical12,
+	Expand as BrandExpand,
+	ExternalLink as BrandExternalLink,
+	Eye as BrandEye,
+	EyeOff as BrandEyeOff,
+	File as BrandFile,
+	FileCode as BrandFileCode,
+	FileDiff as BrandFileDiff,
+	FileDown as BrandFileDown,
+	FileInput as BrandFileInput,
+	Files as BrandFiles,
+	FileText as BrandFileText,
+	FlaskConical as BrandFlaskConical,
+	Flow as BrandFlow,
+	Folder as BrandFolder,
+	FolderOpen as BrandFolderOpen,
+	FolderPlus as BrandFolderPlus,
+	Funnel as BrandFunnel,
+	Gauge as BrandGauge,
+	Gift as BrandGift,
+	GitBranch as BrandGitBranch,
+	Globe as BrandGlobe,
+	GraduationCap as BrandGraduationCap,
+	Graph as BrandGraph,
+	Graph12 as BrandGraph12,
+	Grid2x2 as BrandGrid2x2,
+	GripVertical as BrandGripVertical,
+	Group as BrandGroup,
+	HardDrive as BrandHardDrive,
+	HardDriveDownload as BrandHardDriveDownload,
+	Hash as BrandHash,
+	History as BrandHistory,
+	Hourglass as BrandHourglass,
+	House as BrandHouse,
+	Inbox as BrandInbox,
+	Info as BrandInfo,
+	Italic as BrandItalic,
+	KeyRound as BrandKeyRound,
+	Layers as BrandLayers,
+	LayoutTemplate as BrandLayoutTemplate,
+	Ldap as BrandLdap,
+	Lightbulb as BrandLightbulb,
+	Link as BrandLink,
+	List as BrandList,
+	ListChecks as BrandListChecks,
+	ListPlus as BrandListPlus,
+	ListTree as BrandListTree,
+	Lock as BrandLock,
+	LogIn as BrandLogIn,
+	LogOut as BrandLogOut,
+	Mail as BrandMail,
+	Maximize as BrandMaximize,
+	Maximize2 as BrandMaximize2,
+	Menu as BrandMenu,
+	MessageCircle as BrandMessageCircle,
+	MessageCirclePlus as BrandMessageCirclePlus,
+	MessageSquare as BrandMessageSquare,
+	MessageSquarePlus as BrandMessageSquarePlus,
+	MessagesSquare as BrandMessagesSquare,
+	Mic as BrandMic,
+	Minimize2 as BrandMinimize2,
+	Minus as BrandMinus,
+	MousePointer as BrandMousePointer,
+	N8nAssistant as BrandN8nAssistant,
+	PackageOpen as BrandPackageOpen,
+	Palette as BrandPalette,
+	PanelLeft as BrandPanelLeft,
+	PanelRight as BrandPanelRight,
+	Paperclip as BrandPaperclip,
+	Pen as BrandPen,
+	Pencil as BrandPencil,
+	PencilOff as BrandPencilOff,
+	Pin as BrandPin,
+	Play as BrandPlay,
+	Plug as BrandPlug,
+	Plus as BrandPlus,
+	Power as BrandPower,
+	Quote as BrandQuote,
+	Redo2 as BrandRedo2,
+	RefreshCw as BrandRefreshCw,
+	Robot as BrandRobot,
+	Robot12 as BrandRobot12,
+	Rss as BrandRss,
+	SatelliteDish as BrandSatelliteDish,
+	Search as BrandSearch,
+	Send as BrandSend,
+	Settings as BrandSettings,
+	Share as BrandShare,
+	Shield as BrandShield,
+	ShieldHalf as BrandShieldHalf,
+	Smile as BrandSmile,
+	Sparkle as BrandSparkle,
+	Sparkles as BrandSparkles,
+	Split as BrandSplit,
+	Square as BrandSquare,
+	SquareArrowOutUpRight as BrandSquareArrowOutUpRight,
+	SquarePen as BrandSquarePen,
+	Squares as BrandSquares,
+	Star as BrandStar,
+	StickyNote as BrandStickyNote,
+	Strikethrough as BrandStrikethrough,
+	Sun as BrandSun,
+	Table as BrandTable,
+	Tags as BrandTags,
+	Telescope as BrandTelescope,
+	Terminal as BrandTerminal,
+	TextAa as BrandTextAa,
+	ThumbsDown as BrandThumbsDown,
+	ThumbsUp as BrandThumbsUp,
+	Toggles as BrandToggles,
+	Trash2 as BrandTrash2,
+	TriangleAlert as BrandTriangleAlert,
+	Underline as BrandUnderline,
+	Undo2 as BrandUndo2,
+	Unlink as BrandUnlink,
+	Upload as BrandUpload,
+	User as BrandUser,
+	UserCheck as BrandUserCheck,
+	UserPen as BrandUserPen,
+	UserRound as BrandUserRound,
+	Users as BrandUsers,
+	Variable as BrandVariable,
+	Vault as BrandVault,
+	Video as BrandVideo,
+	Volume2 as BrandVolume2,
+	VolumeX as BrandVolumeX,
+	WandSparkles as BrandWandSparkles,
+	Workflow as BrandWorkflow,
+	Wrench as BrandWrench,
+	X as BrandX,
+	Zap as BrandZap,
+	ZoomIn as BrandZoomIn,
+	ZoomOut as BrandZoomOut,
+} from './brand-icons';
 
 import IconLucideAlignRight from '~icons/lucide/align-right';
-import IconLucideArchive from '~icons/lucide/archive';
 import IconLucideArchiveRestore from '~icons/lucide/archive-restore';
-import IconLucideArrowDown from '~icons/lucide/arrow-down';
-import IconLucideArrowLeft from '~icons/lucide/arrow-left';
 import IconLucideArrowLeftRight from '~icons/lucide/arrow-left-right';
-import IconLucideArrowRight from '~icons/lucide/arrow-right';
-import IconLucideArrowRightFromLine from '~icons/lucide/arrow-right-from-line';
-import IconLucideArrowRightToLine from '~icons/lucide/arrow-right-to-line';
-import IconLucideArrowUp from '~icons/lucide/arrow-up';
-import IconLucideArrowUpRight from '~icons/lucide/arrow-up-right';
-import IconLucideAtSign from '~icons/lucide/at-sign';
-import IconLucideBadgeCheck from '~icons/lucide/badge-check';
-import IconLucideBan from '~icons/lucide/ban';
-import IconLucideBell from '~icons/lucide/bell';
-import IconLucideBlocks from '~icons/lucide/blocks';
-import IconLucideBold from '~icons/lucide/bold';
-import IconLucideBook from '~icons/lucide/book';
-import IconLucideBookOpen from '~icons/lucide/book-open';
-import IconLucideBot from '~icons/lucide/bot';
-import IconLucideBox from '~icons/lucide/box';
-import IconLucideBraces from '~icons/lucide/braces';
-import IconLucideBrain from '~icons/lucide/brain';
-import IconLucideBug from '~icons/lucide/bug';
+import IconLucideBookmark from '~icons/lucide/bookmark';
 import IconLucideCalculator from '~icons/lucide/calculator';
-import IconLucideCalendar from '~icons/lucide/calendar';
 import IconLucideCaseUpper from '~icons/lucide/case-upper';
-import IconLucideChartColumnDecreasing from '~icons/lucide/chart-column-decreasing';
-import IconLucideCheck from '~icons/lucide/check';
-import IconLucideCheckCheck from '~icons/lucide/check-check';
-import IconLucideChevronDown from '~icons/lucide/chevron-down';
-import IconLucideChevronLeft from '~icons/lucide/chevron-left';
-import IconLucideChevronRight from '~icons/lucide/chevron-right';
-import IconLucideChevronUp from '~icons/lucide/chevron-up';
-import IconLucideChevronsDownUp from '~icons/lucide/chevrons-down-up';
-import IconLucideChevronsLeft from '~icons/lucide/chevrons-left';
-import IconLucideChevronsRight from '~icons/lucide/chevrons-right';
-import IconLucideChevronsUpDown from '~icons/lucide/chevrons-up-down';
-import IconLucideCircle from '~icons/lucide/circle';
-import IconLucideCircleAlert from '~icons/lucide/circle-alert';
-import IconLucideCircleCheck from '~icons/lucide/circle-check';
-import IconLucideCircleDollarSign from '~icons/lucide/circle-dollar-sign';
 import IconLucideCircleDot from '~icons/lucide/circle-dot';
-import IconLucideCircleEllipsis from '~icons/lucide/circle-ellipsis';
-import IconLucideCircleHelp from '~icons/lucide/circle-help';
-import IconLucideCircleMinus from '~icons/lucide/circle-minus';
 import IconLucideCirclePause from '~icons/lucide/circle-pause';
-import IconLucideCirclePlay from '~icons/lucide/circle-play';
-import IconLucideCirclePlus from '~icons/lucide/circle-plus';
-import IconLucideCircleUserRound from '~icons/lucide/circle-user-round';
-import IconLucideCircleX from '~icons/lucide/circle-x';
-import IconLucideClipboard from '~icons/lucide/clipboard';
 import IconLucideClipboardCheck from '~icons/lucide/clipboard-check';
-import IconLucideClipboardList from '~icons/lucide/clipboard-list';
-import IconLucideClock from '~icons/lucide/clock';
-import IconLucideCloud from '~icons/lucide/cloud';
 import IconLucideCloudDownload from '~icons/lucide/cloud-download';
-import IconLucideCode from '~icons/lucide/code';
-import IconLucideCog from '~icons/lucide/cog';
 import IconLucideColumns3Cog from '~icons/lucide/columns-3-cog';
 import IconLucideContrast from '~icons/lucide/contrast';
-import IconLucideCopy from '~icons/lucide/copy';
-import IconLucideCornerDownRight from '~icons/lucide/corner-down-right';
-import IconLucideCrosshair from '~icons/lucide/crosshair';
-import IconLucideDatabase from '~icons/lucide/database';
 import IconLucideDoorOpen from '~icons/lucide/door-open';
 import IconLucideDot from '~icons/lucide/dot';
-import IconLucideDownload from '~icons/lucide/download';
 import IconLucideEarth from '~icons/lucide/earth';
-import IconLucideEllipsis from '~icons/lucide/ellipsis';
-import IconLucideEllipsisVertical from '~icons/lucide/ellipsis-vertical';
 import IconLucideEqual from '~icons/lucide/equal';
-import IconLucideExpand from '~icons/lucide/expand';
-import IconLucideExternalLink from '~icons/lucide/external-link';
-import IconLucideEye from '~icons/lucide/eye';
-import IconLucideEyeOff from '~icons/lucide/eye-off';
-import IconLucideFile from '~icons/lucide/file';
 import IconLucideFileArchive from '~icons/lucide/file-archive';
-import IconLucideFileCode from '~icons/lucide/file-code';
-import IconLucideFileDiff from '~icons/lucide/file-diff';
-import IconLucideFileDown from '~icons/lucide/file-down';
-import IconLucideFileInput from '~icons/lucide/file-input';
 import IconLucideFileOutput from '~icons/lucide/file-output';
-import IconLucideFileText from '~icons/lucide/file-text';
-import IconLucideFiles from '~icons/lucide/files';
 import IconLucideFingerprint from '~icons/lucide/fingerprint';
 import IconLucideFlame from '~icons/lucide/flame';
-import IconLucideFlaskConical from '~icons/lucide/flask-conical';
-import IconLucideFolder from '~icons/lucide/folder';
-import IconLucideFolderOpen from '~icons/lucide/folder-open';
-import IconLucideFolderPlus from '~icons/lucide/folder-plus';
-import IconLucideFunnel from '~icons/lucide/funnel';
-import IconLucideGauge from '~icons/lucide/gauge';
 import IconLucideGem from '~icons/lucide/gem';
-import IconLucideGift from '~icons/lucide/gift';
-import IconLucideGitBranch from '~icons/lucide/git-branch';
-import IconLucideGlobe from '~icons/lucide/globe';
-import IconLucideGraduationCap from '~icons/lucide/graduation-cap';
-import IconLucideGrid2x2 from '~icons/lucide/grid-2x2';
-import IconLucideGripVertical from '~icons/lucide/grip-vertical';
-import IconLucideGroup from '~icons/lucide/group';
+import IconLucideGitlab from '~icons/lucide/gitlab';
 import IconLucideHandCoins from '~icons/lucide/hand-coins';
 import IconLucideHandshake from '~icons/lucide/handshake';
-import IconLucideHardDrive from '~icons/lucide/hard-drive';
-import IconLucideHardDriveDownload from '~icons/lucide/hard-drive-download';
-import IconLucideHash from '~icons/lucide/hash';
 import IconLucideHeading1 from '~icons/lucide/heading-1';
 import IconLucideHeading2 from '~icons/lucide/heading-2';
 import IconLucideHeading3 from '~icons/lucide/heading-3';
-import IconLucideHistory from '~icons/lucide/history';
-import IconLucideHourglass from '~icons/lucide/hourglass';
-import IconLucideHouse from '~icons/lucide/house';
 import IconLucideImage from '~icons/lucide/image';
-import IconLucideInbox from '~icons/lucide/inbox';
-import IconLucideInfo from '~icons/lucide/info';
-import IconLucideItalic from '~icons/lucide/italic';
-import IconLucideKeyRound from '~icons/lucide/key-round';
 import IconLucideLanguages from '~icons/lucide/languages';
 import IconLucideLaptop from '~icons/lucide/laptop';
-import IconLucideLayers from '~icons/lucide/layers';
-import IconLucideLayoutTemplate from '~icons/lucide/layout-template';
 import IconLucideLifeBuoy from '~icons/lucide/life-buoy';
-import IconLucideLightbulb from '~icons/lucide/lightbulb';
-import IconLucideLink from '~icons/lucide/link';
-import IconLucideList from '~icons/lucide/list';
-import IconLucideListChecks from '~icons/lucide/list-checks';
 import IconLucideListOrdered from '~icons/lucide/list-ordered';
-import IconLucideListPlus from '~icons/lucide/list-plus';
-import IconLucideListTree from '~icons/lucide/list-tree';
 import IconLucideLoaderCircle from '~icons/lucide/loader-circle';
 import IconLucideLoader2 from '~icons/lucide/loader2';
-import IconLucideLock from '~icons/lucide/lock';
-import IconLucideLogIn from '~icons/lucide/log-in';
-import IconLucideLogOut from '~icons/lucide/log-out';
-import IconLucideMail from '~icons/lucide/mail';
-import IconLucideMaximize from '~icons/lucide/maximize';
-import IconLucideMaximize2 from '~icons/lucide/maximize-2';
-import IconLucideMenu from '~icons/lucide/menu';
-import IconLucideMessageCircle from '~icons/lucide/message-circle';
-import IconLucideMessageCirclePlus from '~icons/lucide/message-circle-plus';
-import IconLucideMessageSquare from '~icons/lucide/message-square';
-import IconLucideMessageSquarePlus from '~icons/lucide/message-square-plus';
-import IconLucideMessagesSquare from '~icons/lucide/messages-square';
-import IconLucideMic from '~icons/lucide/mic';
 import IconLucideMilestone from '~icons/lucide/milestone';
-import IconLucideMinimize2 from '~icons/lucide/minimize-2';
-import IconLucideMinus from '~icons/lucide/minus';
-import IconLucideMousePointer from '~icons/lucide/mouse-pointer';
+import IconLucideMonitor from '~icons/lucide/monitor';
+import IconLucideMoon from '~icons/lucide/moon';
 import IconLucideNetwork from '~icons/lucide/network';
 import IconLucideNotebookPen from '~icons/lucide/notebook-pen';
-import IconLucidePackageOpen from '~icons/lucide/package-open';
-import IconLucidePalette from '~icons/lucide/palette';
-import IconLucidePanelLeft from '~icons/lucide/panel-left';
 import IconLucidePanelLeftClose from '~icons/lucide/panel-left-close';
-import IconLucidePanelRight from '~icons/lucide/panel-right';
-import IconLucidePaperclip from '~icons/lucide/paperclip';
 import IconLucidePause from '~icons/lucide/pause';
-import IconLucidePen from '~icons/lucide/pen';
-import IconLucidePencil from '~icons/lucide/pencil';
-import IconLucidePencilOff from '~icons/lucide/pencil-off';
 import IconLucidePictureInPicture2 from '~icons/lucide/picture-in-picture-2';
-import IconLucidePin from '~icons/lucide/pin';
-import IconLucidePlay from '~icons/lucide/play';
-import IconLucidePlug from '~icons/lucide/plug';
 import IconLucidePlugZap from '~icons/lucide/plug-zap';
-import IconLucidePlus from '~icons/lucide/plus';
 import IconLucidePocketKnife from '~icons/lucide/pocket-knife';
-import IconLucidePower from '~icons/lucide/power';
-import IconLucideQuote from '~icons/lucide/quote';
-import IconLucideRedo2 from '~icons/lucide/redo-2';
-import IconLucideRefreshCw from '~icons/lucide/refresh-cw';
 import IconLucideRemoveFormatting from '~icons/lucide/remove-formatting';
-import IconLucideRss from '~icons/lucide/rss';
-import IconLucideSatelliteDish from '~icons/lucide/satellite-dish';
 import IconLucideSave from '~icons/lucide/save';
 import IconLucideScale from '~icons/lucide/scale';
 import IconLucideScissors from '~icons/lucide/scissors';
 import IconLucideScrollText from '~icons/lucide/scroll-text';
-import IconLucideSearch from '~icons/lucide/search';
-import IconLucideSend from '~icons/lucide/send';
 import IconLucideServer from '~icons/lucide/server';
-import IconLucideSettings from '~icons/lucide/settings';
 import IconLucideSettings2 from '~icons/lucide/settings-2';
-import IconLucideShare from '~icons/lucide/share';
-import IconLucideShield from '~icons/lucide/shield';
-import IconLucideShieldHalf from '~icons/lucide/shield-half';
 import IconLucideShieldUser from '~icons/lucide/shield-user';
 import IconLucideShredder from '~icons/lucide/shredder';
 import IconLucideSlidersHorizontal from '~icons/lucide/sliders-horizontal';
-import IconLucideSmile from '~icons/lucide/smile';
-import IconLucideSparkles from '~icons/lucide/sparkles';
-import IconLucideSplit from '~icons/lucide/split';
-import IconLucideSquare from '~icons/lucide/square';
-import IconLucideSquareArrowOutUpRight from '~icons/lucide/square-arrow-out-up-right';
 import IconLucideSquareCheck from '~icons/lucide/square-check';
 import IconLucideSquareMinus from '~icons/lucide/square-minus';
-import IconLucideSquarePen from '~icons/lucide/square-pen';
 import IconLucideSquarePlus from '~icons/lucide/square-plus';
-import IconLucideStar from '~icons/lucide/star';
-import IconLucideStickyNote from '~icons/lucide/sticky-note';
-import IconLucideStrikethrough from '~icons/lucide/strikethrough';
-import IconLucideSun from '~icons/lucide/sun';
-import IconLucideTable from '~icons/lucide/table';
-import IconLucideTags from '~icons/lucide/tags';
-import IconLucideTelescope from '~icons/lucide/telescope';
-import IconLucideTerminal from '~icons/lucide/terminal';
-import IconLucideThumbsDown from '~icons/lucide/thumbs-down';
-import IconLucideThumbsUp from '~icons/lucide/thumbs-up';
 import IconLucideTimer from '~icons/lucide/timer';
 import IconLucideToggleRight from '~icons/lucide/toggle-right';
-import IconLucideTrash2 from '~icons/lucide/trash-2';
 import IconLucideTreePine from '~icons/lucide/tree-pine';
 import IconLucideTrendingDown from '~icons/lucide/trending-down';
 import IconLucideTrendingUp from '~icons/lucide/trending-up';
-import IconLucideTriangleAlert from '~icons/lucide/triangle-alert';
 import IconLucideType from '~icons/lucide/type';
-import IconLucideUnderline from '~icons/lucide/underline';
-import IconLucideUndo2 from '~icons/lucide/undo-2';
 import IconLucideUngroup from '~icons/lucide/ungroup';
-import IconLucideUnlink from '~icons/lucide/unlink';
 import IconLucideUnplug from '~icons/lucide/unplug';
-import IconLucideUpload from '~icons/lucide/upload';
-import IconLucideUser from '~icons/lucide/user';
-import IconLucideUserCheck from '~icons/lucide/user-check';
 import IconLucideUserLock from '~icons/lucide/user-lock';
-import IconLucideUserPen from '~icons/lucide/user-pen';
-import IconLucideUserRound from '~icons/lucide/user-round';
 import IconLucideUserRoundKey from '~icons/lucide/user-round-key';
-import IconLucideUsers from '~icons/lucide/users';
-import IconLucideVariable from '~icons/lucide/variable';
-import IconLucideVault from '~icons/lucide/vault';
-import IconLucideVideo from '~icons/lucide/video';
-import IconLucideVolume2 from '~icons/lucide/volume-2';
-import IconLucideVolumeX from '~icons/lucide/volume-x';
 import IconLucideWallet from '~icons/lucide/wallet';
-import IconLucideWandSparkles from '~icons/lucide/wand-sparkles';
 import IconLucideWaypoints from '~icons/lucide/waypoints';
-import IconLucideWorkflow from '~icons/lucide/workflow';
-import IconLucideWrench from '~icons/lucide/wrench';
-import IconLucideX from '~icons/lucide/x';
 import IconLucideYoutube from '~icons/lucide/youtube';
-import IconLucideZap from '~icons/lucide/zap';
-import IconLucideZoomIn from '~icons/lucide/zoom-in';
-import IconLucideZoomOut from '~icons/lucide/zoom-out';
 
 /**
  * Need to keep old icon names
@@ -294,7 +345,7 @@ import IconLucideZoomOut from '~icons/lucide/zoom-out';
  */
 export const deprecatedIconSet = {
 	// customIcons
-	variable: IconLucideVariable,
+	variable: BrandVariable,
 	'pop-out': PopOut,
 	triangle: Triangle,
 	'status-completed': StatusCompleted,
@@ -306,7 +357,7 @@ export const deprecatedIconSet = {
 	'status-warning': StatusWarning,
 	'vector-square': VectorSquare,
 	schema: Schema,
-	json: IconLucideBraces,
+	json: BrandBraces,
 	binary: Binary,
 	text: Text,
 	toolbox: Toolbox,
@@ -314,193 +365,195 @@ export const deprecatedIconSet = {
 	linear: Linear,
 	telegram: Telegram,
 	discord: Discord,
+	whatsapp: WhatsApp,
+	teams: Teams,
 	spinner: Spinner,
-	xmark: IconLucideX,
+	xmark: BrandX,
 	mcp: Mcp,
 
 	// fontAwesomeIcons
-	'caret-up': IconLucideChevronUp,
-	'caret-down': IconLucideChevronDown,
-	'caret-right': IconLucideChevronRight,
-	'caret-left': IconLucideChevronLeft,
-	'folder-plus': IconLucideFolderPlus,
-	share: IconLucideShare,
-	'user-check': IconLucideUserCheck,
-	'check-double': IconLucideCheckCheck,
-	'exclamation-circle': IconLucideCircleAlert,
-	circle: IconLucideCircle,
-	'eye-slash': IconLucideEyeOff,
-	folder: IconLucideFolder,
-	'minus-circle': IconLucideCircleMinus,
+	'caret-up': BrandChevronUp,
+	'caret-down': BrandChevronDown,
+	'caret-right': BrandChevronRight,
+	'caret-left': BrandChevronLeft,
+	'folder-plus': BrandFolderPlus,
+	share: BrandShare,
+	'user-check': BrandUserCheck,
+	'check-double': BrandCheckCheck,
+	'exclamation-circle': BrandCircleAlert,
+	circle: BrandCircle,
+	'eye-slash': BrandEyeOff,
+	folder: BrandFolder,
+	'minus-circle': BrandCircleMinus,
 	adjust: IconLucideContrast,
-	refresh: IconLucideRefreshCw,
-	vault: IconLucideVault,
-	'angle-double-left': IconLucideChevronsLeft,
-	'angle-down': IconLucideChevronDown,
-	'angle-left': IconLucideChevronLeft,
-	'angle-right': IconLucideChevronRight,
-	'angle-up': IconLucideChevronUp,
-	archive: IconLucideArchive,
-	'arrow-left': IconLucideArrowLeft,
-	'arrow-right': IconLucideArrowRight,
-	'arrow-up': IconLucideArrowUp,
-	'arrow-down': IconLucideArrowDown,
-	at: IconLucideAtSign,
-	ban: IconLucideBan,
+	refresh: BrandRefreshCw,
+	vault: BrandVault,
+	'angle-double-left': BrandChevronsLeft,
+	'angle-down': BrandChevronDown,
+	'angle-left': BrandChevronLeft,
+	'angle-right': BrandChevronRight,
+	'angle-up': BrandChevronUp,
+	archive: BrandArchive,
+	'arrow-left': BrandArrowLeft,
+	'arrow-right': BrandArrowRight,
+	'arrow-up': BrandArrowUp,
+	'arrow-down': BrandArrowDown,
+	at: BrandAtSign,
+	ban: BrandBan,
 	'balance-scale-left': IconLucideScale,
-	bars: IconLucideMenu,
-	bolt: IconLucideZap,
-	book: IconLucideBook,
-	'box-open': IconLucidePackageOpen,
-	bug: IconLucideBug,
-	brain: IconLucideBrain,
+	bars: BrandMenu,
+	bolt: BrandZap,
+	book: BrandBook,
+	'box-open': BrandPackageOpen,
+	bug: BrandBug,
+	brain: BrandBrain,
 	calculator: IconLucideCalculator,
-	calendar: IconLucideCalendar,
-	'chart-bar': IconLucideChartColumnDecreasing,
-	check: IconLucideCheck,
-	'check-circle': IconLucideCircleCheck,
+	calendar: BrandCalendar,
+	'chart-bar': BrandChartColumnDecreasing,
+	check: BrandCheck,
+	'check-circle': BrandCircleCheck,
 	'check-square': IconLucideSquareCheck,
-	'chevron-left': IconLucideChevronLeft,
-	'chevron-right': IconLucideChevronRight,
-	'chevron-down': IconLucideChevronDown,
-	'chevron-up': IconLucideChevronUp,
-	code: IconLucideCode,
-	'code-branch': IconLucideGitBranch,
-	cog: IconLucideCog,
-	cogs: IconLucideCog,
+	'chevron-left': BrandChevronLeft,
+	'chevron-right': BrandChevronRight,
+	'chevron-down': BrandChevronDown,
+	'chevron-up': BrandChevronUp,
+	code: BrandCode,
+	'code-branch': BrandGitBranch,
+	cog: BrandCog,
+	cogs: BrandCog,
 	'columns-3-cog': IconLucideColumns3Cog,
-	comment: IconLucideMessageCircle,
-	comments: IconLucideMessagesSquare,
-	clipboard: IconLucideClipboard,
+	comment: BrandMessageCircle,
+	comments: BrandMessagesSquare,
+	clipboard: BrandClipboard,
 	'clipboard-check': IconLucideClipboardCheck,
-	'clipboard-list': IconLucideClipboardList,
-	clock: IconLucideClock,
-	clone: IconLucideCopy,
-	cloud: IconLucideCloud,
+	'clipboard-list': BrandClipboardList,
+	clock: BrandClock,
+	clone: BrandCopy,
+	cloud: BrandCloud,
 	'cloud-download-alt': IconLucideCloudDownload,
-	compress: IconLucideChevronsUpDown,
-	copy: IconLucideFiles,
-	cube: IconLucideBox,
+	compress: BrandChevronsUpDown,
+	copy: BrandFiles,
+	cube: BrandBox,
 	cut: IconLucideScissors,
-	database: IconLucideDatabase,
+	database: BrandDatabase,
 	'dot-circle': IconLucideCircleDot,
 	'grip-lines-vertical': GripLinesVertical,
-	'grip-vertical': IconLucideGripVertical,
-	edit: IconLucideSquarePen,
-	'ellipsis-h': IconLucideEllipsis,
-	'ellipsis-v': IconLucideEllipsisVertical,
-	envelope: IconLucideMail,
+	'grip-vertical': BrandGripVertical,
+	edit: BrandSquarePen,
+	'ellipsis-h': BrandEllipsis,
+	'ellipsis-v': BrandEllipsisVertical,
+	envelope: BrandMail,
 	equals: IconLucideEqual,
-	eye: IconLucideEye,
-	'exclamation-triangle': IconLucideTriangleAlert,
-	expand: IconLucideMaximize,
-	'expand-alt': IconLucideMaximize2,
-	'external-link-alt': IconLucideExternalLink,
+	eye: BrandEye,
+	'exclamation-triangle': BrandTriangleAlert,
+	expand: BrandMaximize,
+	'expand-alt': BrandMaximize2,
+	'external-link-alt': BrandExternalLink,
 	'exchange-alt': IconLucideArrowLeftRight,
-	file: IconLucideFile,
-	'file-alt': IconLucideFileText,
+	file: BrandFile,
+	'file-alt': BrandFileText,
 	'file-archive': IconLucideFileArchive,
-	'file-code': IconLucideFileCode,
-	'file-download': IconLucideFileDown,
+	'file-code': BrandFileCode,
+	'file-download': BrandFileDown,
 	'file-export': IconLucideFileOutput,
-	'file-import': IconLucideFileInput,
-	'file-pdf': IconLucideFileText,
-	filter: IconLucideFunnel,
+	'file-import': BrandFileInput,
+	'file-pdf': BrandFileText,
+	filter: BrandFunnel,
 	fingerprint: IconLucideFingerprint,
-	flask: IconLucideFlaskConical,
-	'folder-open': IconLucideFolderOpen,
+	flask: BrandFlaskConical,
+	'folder-open': BrandFolderOpen,
 	font: IconLucideCaseUpper,
-	gift: IconLucideGift,
-	globe: IconLucideGlobe,
+	gift: BrandGift,
+	globe: BrandGlobe,
 	'globe-americas': IconLucideEarth,
-	'graduation-cap': IconLucideGraduationCap,
+	'graduation-cap': BrandGraduationCap,
 	'hand-holding-usd': IconLucideHandCoins,
 	'hand-scissors': IconLucideScissors,
 	handshake: IconLucideHandshake,
-	'hand-point-left': IconLucideArrowLeft,
-	hashtag: IconLucideHash,
-	hdd: IconLucideHardDrive,
-	history: IconLucideHistory,
-	home: IconLucideHouse,
-	hourglass: IconLucideHourglass,
+	'hand-point-left': BrandArrowLeft,
+	hashtag: BrandHash,
+	hdd: BrandHardDrive,
+	history: BrandHistory,
+	home: BrandHouse,
+	hourglass: BrandHourglass,
 	image: IconLucideImage,
-	inbox: IconLucideInbox,
-	info: IconLucideInfo,
-	'info-circle': IconLucideInfo,
-	key: IconLucideKeyRound,
+	inbox: BrandInbox,
+	info: BrandInfo,
+	'info-circle': BrandInfo,
+	key: BrandKeyRound,
 	language: IconLucideLanguages,
-	'layer-group': IconLucideLayers,
-	link: IconLucideLink,
-	list: IconLucideList,
-	lightbulb: IconLucideLightbulb,
-	lock: IconLucideLock,
+	'layer-group': BrandLayers,
+	link: BrandLink,
+	list: BrandList,
+	lightbulb: BrandLightbulb,
+	lock: BrandLock,
 	'map-signs': IconLucideMilestone,
-	'mouse-pointer': IconLucideMousePointer,
+	'mouse-pointer': BrandMousePointer,
 	'network-wired': IconLucideNetwork,
-	palette: IconLucidePalette,
+	palette: BrandPalette,
 	pause: IconLucidePause,
 	'pause-circle': IconLucideCirclePause,
-	pen: IconLucidePen,
-	'pencil-alt': IconLucidePencil,
-	play: IconLucidePlay,
-	'play-circle': IconLucideCirclePlay,
-	plug: IconLucidePlug,
+	pen: BrandPen,
+	'pencil-alt': BrandPencil,
+	play: BrandPlay,
+	'play-circle': BrandCirclePlay,
+	plug: BrandPlug,
 	'plug-zap': IconLucidePlugZap,
-	plus: IconLucidePlus,
-	'plus-circle': IconLucideCirclePlus,
+	plus: BrandPlus,
+	'plus-circle': BrandCirclePlus,
 	'plus-square': IconLucideSquarePlus,
 	'project-diagram': IconLucideWaypoints,
-	question: IconLucideCircleHelp,
-	'question-circle': IconLucideCircleHelp,
-	quote: IconLucideQuote,
-	redo: IconLucideRedo2,
+	question: BrandCircleHelp,
+	'question-circle': BrandCircleHelp,
+	quote: BrandQuote,
+	redo: BrandRedo2,
 	'remove-format': IconLucideRemoveFormatting,
-	robot: IconLucideBot,
-	rss: IconLucideRss,
+	robot: BrandRobot,
+	rss: BrandRss,
 	save: IconLucideSave,
-	'satellite-dish': IconLucideSatelliteDish,
-	search: IconLucideSearch,
-	'search-minus': IconLucideZoomOut,
-	'search-plus': IconLucideZoomIn,
+	'satellite-dish': BrandSatelliteDish,
+	search: BrandSearch,
+	'search-minus': BrandZoomOut,
+	'search-plus': BrandZoomIn,
 	server: IconLucideServer,
 	screwdriver: IconLucidePocketKnife,
-	smile: IconLucideSmile,
-	'sign-in-alt': IconLucideLogIn,
-	'sign-out-alt': IconLucideLogOut,
+	smile: BrandSmile,
+	'sign-in-alt': BrandLogIn,
+	'sign-out-alt': BrandLogOut,
 	'sliders-h': IconLucideSlidersHorizontal,
-	'sticky-note': IconLucideStickyNote,
-	stop: IconLucideSquare,
+	'sticky-note': BrandStickyNote,
+	stop: BrandSquare,
 	stream: IconLucideAlignRight,
-	sun: IconLucideSun,
-	sync: IconLucideRefreshCw,
-	'sync-alt': IconLucideRefreshCw,
-	table: IconLucideTable,
-	tags: IconLucideTags,
-	tasks: IconLucideListChecks,
-	terminal: IconLucideTerminal,
-	'th-large': IconLucideGrid2x2,
+	sun: BrandSun,
+	sync: BrandRefreshCw,
+	'sync-alt': BrandRefreshCw,
+	table: BrandTable,
+	tags: BrandTags,
+	tasks: BrandListChecks,
+	terminal: BrandTerminal,
+	'th-large': BrandGrid2x2,
 	timer: IconLucideTimer,
-	thumbtack: IconLucidePin,
-	'thumbs-down': IconLucideThumbsDown,
-	'thumbs-up': IconLucideThumbsUp,
-	times: IconLucideX,
-	'times-circle': IconLucideCircleX,
-	tools: IconLucideWrench,
-	trash: IconLucideTrash2,
-	undo: IconLucideUndo2,
-	unlink: IconLucideUnlink,
-	user: IconLucideUser,
-	'user-circle': IconLucideCircleUserRound,
-	'user-friends': IconLucideUserRound,
-	users: IconLucideUsers,
-	video: IconLucideVideo,
+	thumbtack: BrandPin,
+	'thumbs-down': BrandThumbsDown,
+	'thumbs-up': BrandThumbsUp,
+	times: BrandX,
+	'times-circle': BrandCircleX,
+	tools: BrandWrench,
+	trash: BrandTrash2,
+	undo: BrandUndo2,
+	unlink: BrandUnlink,
+	user: BrandUser,
+	'user-circle': BrandCircleUserRound,
+	'user-friends': BrandUserRound,
+	users: BrandUsers,
+	video: BrandVideo,
 	tree: IconLucideTreePine,
 	'user-lock': IconLucideUserLock,
 	gem: IconLucideGem,
-	download: IconLucideHardDriveDownload,
-	'power-off': IconLucidePower,
-	'paper-plane': IconLucideSend,
-	bell: IconLucideBell,
+	download: BrandHardDriveDownload,
+	'power-off': BrandPower,
+	'paper-plane': BrandSend,
+	bell: BrandBell,
 } as const;
 
 export const updatedIconSet = {
@@ -508,9 +561,14 @@ export const updatedIconSet = {
 	// NOTE: ensure to replace any colors with "currentColor" in SVG
 	anthropic: Anthropic,
 	'bolt-filled': BoltFilled,
+	'bot-fail': BotFail,
+	'bot-idle': BotIdle,
+	'bot-pass': BotPass,
+	'bot-waiting': BotWaiting,
+	'bot-warning': BotWarning,
 	'filled-square': FilledSquare,
 	'grip-lines-vertical': GripLinesVertical,
-	variable: IconLucideVariable,
+	variable: BrandVariable,
 	'pop-out': PopOut,
 	triangle: Triangle,
 	'status-completed': StatusCompleted,
@@ -520,6 +578,17 @@ export const updatedIconSet = {
 	'status-new': StatusNew,
 	'status-unknown': StatusUnknown,
 	'status-warning': StatusWarning,
+	'check-circle-filled': CheckCircleFilled,
+	'circle-dashed-filled': CircleDashedFilled,
+	'hourglass-filled': HourglassFilled,
+	'question-circle-filled': QuestionCircleFilled,
+	'slash-circle-filled': SlashCircleFilled,
+	'spinner-filled': SpinnerFilled,
+	'x-circle-filled': XCircleFilled,
+	'group-filled': GroupFilled,
+	'sparkles-filled': SparklesFilled,
+	'workflow-filled': NodeExtract,
+	'workflow-filled-12': WorkflowFilled12,
 	'star-filled': StarFilled,
 	'vector-square': VectorSquare,
 	'continue-on-error': Continue,
@@ -527,7 +596,7 @@ export const updatedIconSet = {
 	'retry-on-fail': Retry,
 	'execute-once': RunOnce,
 	schema: Schema,
-	json: IconLucideBraces,
+	json: BrandBraces,
 	binary: Binary,
 	text: Text,
 	toolbox: Toolbox,
@@ -535,15 +604,25 @@ export const updatedIconSet = {
 	linear: Linear,
 	telegram: Telegram,
 	discord: Discord,
+	whatsapp: WhatsApp,
+	teams: Teams,
+	azure: Azure,
+	entra: Entra,
+	meta: Meta,
+	microsoft: Microsoft,
 	spinner: Spinner,
 	'node-dirty': NodeDirty,
 	'node-ellipsis': NodeEllipsis,
+	'node-focus': NodeFocus,
 	'node-execution-error': NodeExecutionError,
+	'node-extract': NodeExtract,
 	'node-validation-error': NodeValidationError,
 	'node-pin': NodePin,
 	'node-play': NodePlay,
 	'node-power': NodePower,
+	'node-sparkle': NodeSparkle,
 	'node-success': NodeSuccess,
+	'node-ungroup': NodeUngroup,
 	'node-trash': NodeTrash,
 	mcp: Mcp,
 	lovable: Lovable,
@@ -551,248 +630,277 @@ export const updatedIconSet = {
 	form: Form,
 	webhook: Webhook,
 
+	// brand-only
+	'arrow-to-bracket-right': BrandLogIn,
+	// 12px glyph for 12px slots; the 16px set blurs when scaled down
+	'chevron-right-12': BrandChevronRight12,
+	'ellipsis-12': BrandEllipsis12,
+	'ellipsis-vertical-12': BrandEllipsisVertical12,
+	'graph-12': BrandGraph12,
+	'robot-12': BrandRobot12,
+	'n8n-assistant': BrandN8nAssistant,
+	briefcase: BrandBriefcase,
+	broom: BrandBroom,
+	corners: BrandCorners,
+	flow: BrandFlow,
+	sparkle: BrandSparkle,
+	squares: BrandSquares,
+
 	// lucide
 	'align-right': IconLucideAlignRight,
-	archive: IconLucideArchive,
+	archive: BrandArchive,
 	'archive-restore': IconLucideArchiveRestore,
-	'arrow-down': IconLucideArrowDown,
-	'arrow-left': IconLucideArrowLeft,
+	'arrow-block-down': BrandArrowBlockDown,
+	'arrow-block-up': BrandArrowBlockUp,
+	'arrow-circle-down': BrandArrowCircleDown,
+	'arrow-down': BrandArrowDown,
+	'arrow-left': BrandArrowLeft,
 	'arrow-left-right': IconLucideArrowLeftRight,
-	'arrow-right': IconLucideArrowRight,
-	'arrow-right-from-line': IconLucideArrowRightFromLine,
-	'arrow-right-to-line': IconLucideArrowRightToLine,
-	'arrow-up': IconLucideArrowUp,
-	'arrow-up-right': IconLucideArrowUpRight,
-	'at-sign': IconLucideAtSign,
-	ban: IconLucideBan,
-	'badge-check': IconLucideBadgeCheck,
-	bell: IconLucideBell,
-	blocks: IconLucideBlocks,
-	bold: IconLucideBold,
-	book: IconLucideBook,
-	'book-open': IconLucideBookOpen,
-	bot: IconLucideBot,
-	box: IconLucideBox,
-	brain: IconLucideBrain,
-	bug: IconLucideBug,
+	'arrow-right': BrandArrowRight,
+	'arrow-right-from-line': BrandArrowRightFromLine,
+	'arrow-right-to-line': BrandArrowRightToLine,
+	'arrow-up': BrandArrowUp,
+	'arrow-up-right': BrandArrowUpRight,
+	'at-sign': BrandAtSign,
+	ban: BrandBan,
+	'badge-check': BrandBadgeCheck,
+	bell: BrandBell,
+	blocks: BrandBlocks,
+	bold: BrandBold,
+	book: BrandBook,
+	'book-open': BrandBookOpen,
+	bookmark: IconLucideBookmark,
+	bot: BrandBot,
+	box: BrandBox,
+	brain: BrandBrain,
+	bug: BrandBug,
 	calculator: IconLucideCalculator,
-	calendar: IconLucideCalendar,
+	calendar: BrandCalendar,
 	'case-upper': IconLucideCaseUpper,
-	'chart-column-decreasing': IconLucideChartColumnDecreasing,
-	check: IconLucideCheck,
-	'check-check': IconLucideCheckCheck,
-	'chevron-down': IconLucideChevronDown,
-	'chevron-left': IconLucideChevronLeft,
-	'chevron-right': IconLucideChevronRight,
-	'chevron-up': IconLucideChevronUp,
-	'chevrons-left': IconLucideChevronsLeft,
-	'chevrons-right': IconLucideChevronsRight,
-	'chevrons-down-up': IconLucideChevronsDownUp,
-	'chevrons-up-down': IconLucideChevronsUpDown,
-	circle: IconLucideCircle,
-	'circle-alert': IconLucideCircleAlert,
-	'circle-check': IconLucideCircleCheck,
-	'circle-dollar-sign': IconLucideCircleDollarSign,
+	'chart-column-decreasing': BrandChartColumnDecreasing,
+	check: BrandCheck,
+	'check-check': BrandCheckCheck,
+	'chevron-down': BrandChevronDown,
+	'chevron-left': BrandChevronLeft,
+	'chevron-right': BrandChevronRight,
+	'chevron-up': BrandChevronUp,
+	'chevrons-left': BrandChevronsLeft,
+	'chevrons-right': BrandChevronsRight,
+	'chevrons-down-up': BrandChevronsDownUp,
+	'chevrons-up-down': BrandChevronsUpDown,
+	circle: BrandCircle,
+	'circle-alert': BrandCircleAlert,
+	'circle-check': BrandCircleCheck,
+	'circle-dollar-sign': BrandCircleDollarSign,
 	'circle-dot': IconLucideCircleDot,
-	'circle-ellipsis': IconLucideCircleEllipsis,
-	'circle-help': IconLucideCircleHelp,
-	'circle-minus': IconLucideCircleMinus,
+	'circle-ellipsis': BrandCircleEllipsis,
+	'circle-help': BrandCircleHelp,
+	'circle-minus': BrandCircleMinus,
 	'circle-pause': IconLucideCirclePause,
-	'circle-play': IconLucideCirclePlay,
-	'circle-plus': IconLucideCirclePlus,
-	'circle-user-round': IconLucideCircleUserRound,
-	'circle-x': IconLucideCircleX,
-	clipboard: IconLucideClipboard,
+	'circle-play': BrandCirclePlay,
+	'circle-plus': BrandCirclePlus,
+	'circle-user-round': BrandCircleUserRound,
+	'circle-x': BrandCircleX,
+	clipboard: BrandClipboard,
 	'clipboard-check': IconLucideClipboardCheck,
-	'clipboard-list': IconLucideClipboardList,
-	clock: IconLucideClock,
-	cloud: IconLucideCloud,
+	'clipboard-list': BrandClipboardList,
+	clock: BrandClock,
+	cloud: BrandCloud,
+	'cloud-arrow-up': BrandCloudArrowUp,
 	'cloud-download': IconLucideCloudDownload,
-	code: IconLucideCode,
-	cog: IconLucideCog,
+	code: BrandCode,
+	cog: BrandCog,
 	contrast: IconLucideContrast,
-	copy: IconLucideCopy,
-	'corner-down-right': IconLucideCornerDownRight,
-	crosshair: IconLucideCrosshair,
-	database: IconLucideDatabase,
+	copy: BrandCopy,
+	'corner-down-right': BrandCornerDownRight,
+	crosshair: BrandCrosshair,
+	database: BrandDatabase,
 	'door-open': IconLucideDoorOpen,
 	dot: IconLucideDot,
-	download: IconLucideDownload,
+	download: BrandHardDriveDownload,
 	earth: IconLucideEarth,
-	ellipsis: IconLucideEllipsis,
-	'ellipsis-vertical': IconLucideEllipsisVertical,
+	ellipsis: BrandEllipsis,
+	'ellipsis-vertical': BrandEllipsisVertical,
 	equal: IconLucideEqual,
-	expand: IconLucideExpand,
-	'external-link': IconLucideExternalLink,
-	eye: IconLucideEye,
-	'eye-off': IconLucideEyeOff,
-	file: IconLucideFile,
+	expand: BrandExpand,
+	'external-link': BrandExternalLink,
+	eye: BrandEye,
+	'eye-off': BrandEyeOff,
+	file: BrandFile,
 	'file-archive': IconLucideFileArchive,
-	'file-code': IconLucideFileCode,
-	'file-diff': IconLucideFileDiff,
-	'file-down': IconLucideFileDown,
-	'file-input': IconLucideFileInput,
+	'file-code': BrandFileCode,
+	'file-diff': BrandFileDiff,
+	'file-down': BrandFileDown,
+	'file-input': BrandFileInput,
 	'file-output': IconLucideFileOutput,
-	'file-text': IconLucideFileText,
-	files: IconLucideFiles,
+	'file-text': BrandFileText,
+	files: BrandFiles,
 	fingerprint: IconLucideFingerprint,
-	'flask-conical': IconLucideFlaskConical,
-	folder: IconLucideFolder,
-	'folder-open': IconLucideFolderOpen,
-	'folder-plus': IconLucideFolderPlus,
-	funnel: IconLucideFunnel,
-	gauge: IconLucideGauge,
+	'flask-conical': BrandFlaskConical,
+	folder: BrandFolder,
+	'folder-open': BrandFolderOpen,
+	'folder-plus': BrandFolderPlus,
+	funnel: BrandFunnel,
+	gauge: BrandGauge,
 	gem: IconLucideGem,
-	gift: IconLucideGift,
-	'git-branch': IconLucideGitBranch,
-	globe: IconLucideGlobe,
-	'graduation-cap': IconLucideGraduationCap,
-	'grid-2x2': IconLucideGrid2x2,
-	'grip-vertical': IconLucideGripVertical,
-	group: IconLucideGroup,
+	gift: BrandGift,
+	'git-branch': BrandGitBranch,
+	gitlab: IconLucideGitlab,
+	globe: BrandGlobe,
+	'graduation-cap': BrandGraduationCap,
+	graph: BrandGraph,
+	'grid-2x2': BrandGrid2x2,
+	'grip-vertical': BrandGripVertical,
+	group: BrandGroup,
 	'hand-coins': IconLucideHandCoins,
 	handshake: IconLucideHandshake,
-	'hard-drive': IconLucideHardDrive,
-	'hard-drive-download': IconLucideHardDriveDownload,
-	hash: IconLucideHash,
+	'hard-drive': BrandHardDrive,
+	'hard-drive-download': BrandHardDriveDownload,
+	hash: BrandHash,
 	'heading-1': IconLucideHeading1,
 	'heading-2': IconLucideHeading2,
 	'heading-3': IconLucideHeading3,
-	history: IconLucideHistory,
-	hourglass: IconLucideHourglass,
-	house: IconLucideHouse,
+	history: BrandHistory,
+	hourglass: BrandHourglass,
+	house: BrandHouse,
 	image: IconLucideImage,
-	inbox: IconLucideInbox,
-	info: IconLucideInfo,
-	italic: IconLucideItalic,
-	'key-round': IconLucideKeyRound,
+	inbox: BrandInbox,
+	info: BrandInfo,
+	italic: BrandItalic,
+	'key-round': BrandKeyRound,
 	languages: IconLucideLanguages,
 	laptop: IconLucideLaptop,
-	layers: IconLucideLayers,
-	'layout-template': IconLucideLayoutTemplate,
+	layers: BrandLayers,
+	'layout-template': BrandLayoutTemplate,
+	ldap: BrandLdap,
 	'life-buoy': IconLucideLifeBuoy,
-	lightbulb: IconLucideLightbulb,
-	link: IconLucideLink,
-	list: IconLucideList,
-	'list-checks': IconLucideListChecks,
-	'list-plus': IconLucideListPlus,
-	'list-tree': IconLucideListTree,
+	lightbulb: BrandLightbulb,
+	link: BrandLink,
+	list: BrandList,
+	'list-checks': BrandListChecks,
+	'list-plus': BrandListPlus,
+	'list-tree': BrandListTree,
 	'list-ordered': IconLucideListOrdered,
-	lock: IconLucideLock,
-	'log-in': IconLucideLogIn,
-	'log-out': IconLucideLogOut,
-	mail: IconLucideMail,
-	'minimize-2': IconLucideMinimize2,
-	maximize: IconLucideMaximize,
-	'maximize-2': IconLucideMaximize2,
-	menu: IconLucideMenu,
-	'message-circle': IconLucideMessageCircle,
-	'message-square': IconLucideMessageSquare,
-	'message-square-plus': IconLucideMessageSquarePlus,
-	'message-circle-plus': IconLucideMessageCirclePlus,
-	'messages-square': IconLucideMessagesSquare,
-	mic: IconLucideMic,
+	lock: BrandLock,
+	'log-in': BrandLogIn,
+	'log-out': BrandLogOut,
+	mail: BrandMail,
+	'minimize-2': BrandMinimize2,
+	maximize: BrandMaximize,
+	'maximize-2': BrandMaximize2,
+	menu: BrandMenu,
+	'message-circle': BrandMessageCircle,
+	'message-square': BrandMessageSquare,
+	'message-square-plus': BrandMessageSquarePlus,
+	'message-circle-plus': BrandMessageCirclePlus,
+	'messages-square': BrandMessagesSquare,
+	mic: BrandMic,
 	milestone: IconLucideMilestone,
-	minus: IconLucideMinus,
-	'mouse-pointer': IconLucideMousePointer,
+	minus: BrandMinus,
+	monitor: IconLucideMonitor,
+	moon: IconLucideMoon,
+	'mouse-pointer': BrandMousePointer,
 	network: IconLucideNetwork,
 	'notebook-pen': IconLucideNotebookPen,
-	'package-open': IconLucidePackageOpen,
-	palette: IconLucidePalette,
-	'panel-left': IconLucidePanelLeft,
+	'package-open': BrandPackageOpen,
+	palette: BrandPalette,
+	'panel-left': BrandPanelLeft,
 	'panel-left-close': IconLucidePanelLeftClose,
-	'panel-right': IconLucidePanelRight,
-	paperclip: IconLucidePaperclip,
+	'panel-right': BrandPanelRight,
+	paperclip: BrandPaperclip,
 	pause: IconLucidePause,
-	pen: IconLucidePen,
-	pencil: IconLucidePencil,
-	'pencil-off': IconLucidePencilOff,
+	pen: BrandPen,
+	pencil: BrandPencil,
+	'pencil-off': BrandPencilOff,
 	'picture-in-picture-2': IconLucidePictureInPicture2,
-	pin: IconLucidePin,
-	play: IconLucidePlay,
-	plug: IconLucidePlug,
+	pin: BrandPin,
+	play: BrandPlay,
+	plug: BrandPlug,
 	'plug-zap': IconLucidePlugZap,
-	plus: IconLucidePlus,
+	plus: BrandPlus,
 	'pocket-knife': IconLucidePocketKnife,
-	power: IconLucidePower,
-	'redo-2': IconLucideRedo2,
-	'refresh-cw': IconLucideRefreshCw,
+	power: BrandPower,
+	'redo-2': BrandRedo2,
+	'refresh-cw': BrandRefreshCw,
 	'remove-formatting': IconLucideRemoveFormatting,
-	rss: IconLucideRss,
-	robot: IconLucideBot,
-	'satellite-dish': IconLucideSatelliteDish,
+	rss: BrandRss,
+	robot: BrandRobot,
+	'satellite-dish': BrandSatelliteDish,
 	save: IconLucideSave,
 	scale: IconLucideScale,
 	scissors: IconLucideScissors,
 	'scroll-text': IconLucideScrollText,
-	search: IconLucideSearch,
-	settings: IconLucideSettings,
+	search: BrandSearch,
+	settings: BrandSettings,
 	settings2: IconLucideSettings2,
-	send: IconLucideSend,
+	send: BrandSend,
 	server: IconLucideServer,
-	share: IconLucideShare,
-	shield: IconLucideShield,
-	'shield-half': IconLucideShieldHalf,
+	share: BrandShare,
+	shield: BrandShield,
+	'shield-half': BrandShieldHalf,
 	'shield-user': IconLucideShieldUser,
 	shredder: IconLucideShredder,
 	'sliders-horizontal': IconLucideSlidersHorizontal,
-	smile: IconLucideSmile,
-	sparkles: IconLucideSparkles,
-	split: IconLucideSplit,
-	square: IconLucideSquare,
-	'square-arrow-out-up-right': IconLucideSquareArrowOutUpRight,
+	smile: BrandSmile,
+	sparkles: BrandSparkles,
+	split: BrandSplit,
+	square: BrandSquare,
+	'square-arrow-out-up-right': BrandSquareArrowOutUpRight,
 	'square-check': IconLucideSquareCheck,
 	'square-minus': IconLucideSquareMinus,
-	'square-pen': IconLucideSquarePen,
+	'square-pen': BrandSquarePen,
 	'square-plus': IconLucideSquarePlus,
-	star: IconLucideStar,
-	'sticky-note': IconLucideStickyNote,
-	strikethrough: IconLucideStrikethrough,
-	sun: IconLucideSun,
-	table: IconLucideTable,
-	tags: IconLucideTags,
-	telescope: IconLucideTelescope,
-	terminal: IconLucideTerminal,
-	'thumbs-down': IconLucideThumbsDown,
-	'thumbs-up': IconLucideThumbsUp,
-	'trash-2': IconLucideTrash2,
+	star: BrandStar,
+	'sticky-note': BrandStickyNote,
+	strikethrough: BrandStrikethrough,
+	sun: BrandSun,
+	table: BrandTable,
+	tags: BrandTags,
+	telescope: BrandTelescope,
+	terminal: BrandTerminal,
+	'text-aa': BrandTextAa,
+	'thumbs-down': BrandThumbsDown,
+	'thumbs-up': BrandThumbsUp,
+	timer: IconLucideTimer,
+	'trash-2': BrandTrash2,
 	'tree-pine': IconLucideTreePine,
 	'trending-down': IconLucideTrendingDown,
 	'trending-up': IconLucideTrendingUp,
-	'triangle-alert': IconLucideTriangleAlert,
+	'triangle-alert': BrandTriangleAlert,
 	type: IconLucideType,
 	'toggle-right': IconLucideToggleRight,
-	'undo-2': IconLucideUndo2,
+	toggles: BrandToggles,
+	'undo-2': BrandUndo2,
 	ungroup: IconLucideUngroup,
-	unlink: IconLucideUnlink,
+	unlink: BrandUnlink,
 	unplug: IconLucideUnplug,
-	upload: IconLucideUpload,
-	user: IconLucideUser,
-	'user-check': IconLucideUserCheck,
+	upload: BrandUpload,
+	user: BrandUser,
+	'user-check': BrandUserCheck,
 	'user-lock': IconLucideUserLock,
-	'user-pen': IconLucideUserPen,
-	'user-round': IconLucideUserRound,
+	'user-pen': BrandUserPen,
+	'user-round': BrandUserRound,
 	'user-round-key': IconLucideUserRoundKey,
-	users: IconLucideUsers,
-	vault: IconLucideVault,
-	video: IconLucideVideo,
-	'volume-2': IconLucideVolume2,
-	'volume-x': IconLucideVolumeX,
+	users: BrandUsers,
+	vault: BrandVault,
+	video: BrandVideo,
+	'volume-2': BrandVolume2,
+	'volume-x': BrandVolumeX,
 	wallet: IconLucideWallet,
-	'wand-sparkles': IconLucideWandSparkles,
+	'wand-sparkles': BrandWandSparkles,
 	waypoints: IconLucideWaypoints,
-	workflow: IconLucideWorkflow,
-	wrench: IconLucideWrench,
-	x: IconLucideX,
+	workflow: BrandWorkflow,
+	wrench: BrandWrench,
+	x: BrandX,
 	youtube: IconLucideYoutube,
-	zap: IconLucideZap,
-	'zoom-in': IconLucideZoomIn,
-	'zoom-out': IconLucideZoomOut,
+	zap: BrandZap,
+	'zoom-in': BrandZoomIn,
+	'zoom-out': BrandZoomOut,
 	loader: IconLucideLoader2,
 	'loader-circle': IconLucideLoaderCircle,
-	quote: IconLucideQuote,
+	quote: BrandQuote,
 	'quick-connect': IconLucideFlame,
-	underline: IconLucideUnderline,
+	underline: BrandUnderline,
 } as const;
 
 export type IconName = keyof typeof updatedIconSet; // only new icon names should be used moving forward

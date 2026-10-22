@@ -132,7 +132,7 @@ describe('N8nDropdownMenuItem', () => {
 				highlighted: true,
 			});
 
-			expect(await wrapper.findByRole('menuitem')).toHaveAttribute('aria-selected', 'true');
+			expect(await wrapper.findByRole('menuitem')).toHaveAttribute('data-virtual-highlighted');
 		});
 
 		it('should show title attribute when label is 20+ characters', async () => {
@@ -326,7 +326,9 @@ describe('N8nDropdownMenuItem', () => {
 
 			await wrapper.findByText('Child');
 			expect(wrapper.emitted('select')).toBeUndefined();
-			expect(wrapper.emitted('update:subMenuOpen')?.at(-1)).toEqual([true]);
+			// Exactly one open: Reka echoes the open back once its controlled prop
+			// catches up, and that echo must not reach the parent as a second toggle.
+			expect(wrapper.emitted('update:subMenuOpen')).toEqual([[true]]);
 		});
 
 		it('should select a selectable parent with Enter', async () => {
@@ -369,7 +371,7 @@ describe('N8nDropdownMenuItem', () => {
 			});
 
 			await waitFor(() => {
-				const chevron = document.querySelector('[data-icon="chevron-right"]');
+				const chevron = document.querySelector('[data-icon="chevron-right-12"]');
 				expect(chevron).toBeInTheDocument();
 			});
 		});
@@ -382,7 +384,7 @@ describe('N8nDropdownMenuItem', () => {
 			});
 
 			await waitFor(() => {
-				const chevron = document.querySelector('[data-icon="chevron-right"]');
+				const chevron = document.querySelector('[data-icon="chevron-right-12"]');
 				expect(chevron).toBeInTheDocument();
 			});
 		});
@@ -398,7 +400,7 @@ describe('N8nDropdownMenuItem', () => {
 			});
 
 			await waitFor(() => {
-				expect(document.querySelector('[data-icon="chevron-right"]')).toBeInTheDocument();
+				expect(document.querySelector('[data-icon="chevron-right-12"]')).toBeInTheDocument();
 			});
 
 			const trigger = document.querySelector('[role="menuitem"]')!;
@@ -419,7 +421,7 @@ describe('N8nDropdownMenuItem', () => {
 			});
 
 			await waitFor(() => {
-				expect(document.querySelector('[data-icon="chevron-right"]')).toBeInTheDocument();
+				expect(document.querySelector('[data-icon="chevron-right-12"]')).toBeInTheDocument();
 			});
 
 			const trigger = document.querySelector('[role="menuitem"]')!;
@@ -440,7 +442,7 @@ describe('N8nDropdownMenuItem', () => {
 			});
 
 			await waitFor(() => {
-				expect(document.querySelector('[data-icon="chevron-right"]')).toBeInTheDocument();
+				expect(document.querySelector('[data-icon="chevron-right-12"]')).toBeInTheDocument();
 			});
 
 			const trigger = document.querySelector('[role="menuitem"]')!;
@@ -470,7 +472,7 @@ describe('N8nDropdownMenuItem', () => {
 			});
 
 			await waitFor(() => {
-				expect(document.querySelector('[data-icon="chevron-right"]')).toBeInTheDocument();
+				expect(document.querySelector('[data-icon="chevron-right-12"]')).toBeInTheDocument();
 			});
 
 			const trigger = document.querySelector('[role="menuitem"]')!;
@@ -513,6 +515,21 @@ describe('N8nDropdownMenuItem', () => {
 			await waitFor(() => {
 				const customTrailing = document.querySelector('[data-test-id="custom-trailing"]');
 				expect(customTrailing).toBeInTheDocument();
+			});
+		});
+
+		it('should render custom item-trailing slot on a sub-menu parent', async () => {
+			renderMenuItem(
+				{ id: 'parent', label: 'Parent', children: [{ id: 'child', label: 'Child' }] },
+				{
+					slots: {
+						'item-trailing': '<span data-test-id="submenu-trailing">2</span>',
+					},
+				},
+			);
+
+			await waitFor(() => {
+				expect(document.querySelector('[data-test-id="submenu-trailing"]')).toHaveTextContent('2');
 			});
 		});
 	});

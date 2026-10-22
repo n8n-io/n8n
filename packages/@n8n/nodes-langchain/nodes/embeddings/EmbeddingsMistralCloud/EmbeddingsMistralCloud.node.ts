@@ -1,5 +1,6 @@
 import type { MistralAIEmbeddingsParams } from '@langchain/mistralai';
 import { MistralAIEmbeddings } from '@langchain/mistralai';
+import { HTTPClient } from '@mistralai/mistralai/lib/http.js';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -8,7 +9,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
+import { logWrapper, getConnectionHintNoticeField, proxyFetch } from '@n8n/ai-utilities';
 
 export class EmbeddingsMistralCloud implements INodeType {
 	description: INodeTypeDescription = {
@@ -142,10 +143,16 @@ export class EmbeddingsMistralCloud implements INodeType {
 			{},
 		) as Partial<MistralAIEmbeddingsParams>;
 
+		const egressFilter = this.helpers.getSecureEgressFilter();
+		const fetchWithTimeout = async (input: RequestInfo | URL, init?: RequestInit) =>
+			await proxyFetch({ input, init, timeoutOptions: {}, egressFilter });
+		const httpClient = new HTTPClient({ fetcher: fetchWithTimeout });
+
 		const embeddings = new MistralAIEmbeddings({
 			apiKey: credentials.apiKey as string,
 			model: modelName,
 			...options,
+			httpClient,
 		});
 
 		return {

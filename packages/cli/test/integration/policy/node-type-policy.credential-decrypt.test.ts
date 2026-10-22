@@ -16,7 +16,7 @@ import { saveCredential } from '../shared/db/credentials';
 import { createOwner } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
-import { clearPolicyCache } from './shared/policy-cache';
+import { reloadPolicySnapshot } from './shared/policy-snapshot';
 
 const CHECK_ID = 'node-type-availability';
 
@@ -26,7 +26,7 @@ const HTTP_REQUEST = 'n8n-nodes-base.httpRequest';
 const testServer = utils.setupTestServer({
 	endpointGroups: ['type-availability-policies'],
 	modules: ['policy-infrastructure', 'type-availability-policies'],
-	enabledFeatures: [LICENSE_FEATURES.NODE_TYPE_POLICIES],
+	enabledFeatures: [LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES],
 });
 
 let owner: User;
@@ -91,7 +91,7 @@ afterEach(async () => {
 		'SharedCredentials',
 		'CredentialsEntity',
 	]);
-	await clearPolicyCache();
+	await reloadPolicySnapshot();
 });
 
 describe('credential lock', () => {

@@ -1,4 +1,4 @@
-ARG NODE_VERSION=26.7.0
+ARG NODE_VERSION=26.12.1
 ARG PNPM_VERSION=12.4.2
 ARG PYTHON_VERSION=3.13
 
@@ -91,7 +91,7 @@ RUN uv pip install . && rm -rf /app/task-runner-python/src
 # ==============================================================================
 FROM alpine:3.22 AS launcher-downloader
 ARG TARGETPLATFORM
-ARG LAUNCHER_VERSION=1.5.0
+ARG LAUNCHER_VERSION=1.5.1
 
 RUN set -e; \
     case "$TARGETPLATFORM" in \
@@ -132,9 +132,9 @@ COPY --from=python-runner-builder /usr/local/bin/uv /usr/local/bin/uv
 # Bring node over from node-alpine
 COPY --from=node-alpine /usr/local/bin/node /usr/local/bin/node
 
-# libstdc++ is required by Node
+# libstdc++ and libatomic are required by Node
 # libc6-compat is required by task-runner-launcher
-RUN apk add --no-cache ca-certificates tini libstdc++ libc6-compat && \
+RUN apk add --no-cache ca-certificates tini libstdc++ libatomic libc6-compat && \
     apk upgrade --no-cache && \
     pip install --no-cache-dir "pip>=26.0" && \
     apk del apk-tools

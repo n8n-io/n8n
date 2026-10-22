@@ -5,6 +5,7 @@ import { STORES } from '@n8n/stores';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { mockedStore } from '@/__tests__/utils';
 import type { IUser } from '@n8n/rest-api-client/api/users';
+import { ResponseError } from '@n8n/rest-api-client';
 
 import type { Preference } from './context.types';
 import {
@@ -13,7 +14,9 @@ import {
 	preferenceAudience,
 	preferenceScope,
 	preferenceUserName,
+	preferenceWriteRejectionReason,
 	toPreferencePermissions,
+	toPreferenceSortOption,
 } from './context.utils';
 
 function preference(overrides: Partial<Preference> = {}): Preference {
@@ -25,6 +28,7 @@ function preference(overrides: Partial<Preference> = {}): Preference {
 		projectId: null,
 		project: null,
 		source: 'ui',
+		createdBy: null,
 		scopes: [],
 		createdAt: '2026-09-08T00:00:00.000Z',
 		updatedAt: '2026-09-08T00:00:00.000Z',
@@ -141,6 +145,16 @@ describe('context.utils', () => {
 		});
 	});
 
+	describe('toPreferenceSortOption', () => {
+		it('turns the table sort into the API sort', () => {
+			expect(toPreferenceSortOption([{ id: 'updatedAt', desc: false }])).toBe('updatedAt:asc');
+		});
+
+		it('falls back to the last updated rows first when the table has no sort', () => {
+			expect(toPreferenceSortOption([])).toBe('updatedAt:desc');
+		});
+	});
+
 	describe('toPreferencePermissions', () => {
 		it('grants nothing when the row carries no write scopes', () => {
 			expect(toPreferencePermissions(preference({ scopes: ['aiPreference:read'] }))).toEqual({
@@ -196,6 +210,35 @@ describe('context.utils', () => {
 
 			usersStore.currentUser = null;
 			expect(canWriteInstanceScope()).toBe(false);
+		});
+	});
+
+	describe('preferenceWriteRejectionReason', () => {
+		it.each([
+			[409, 'dup', 'duplicate'],
+			[400, 'A user cannot hold more than 50 preferences', 'scope_full'],
+			[403, 'no', 'not_permitted'],
+			[500, 'boom', 'failed'],
+		])('maps %s to %s', (status, message, reason) => {
+			expect(
+				preferenceWriteRejectionReason(new ResponseError(message, { httpStatusCode: status })),
+			).toBe(reason);
+		});
+
+		// A 400 covers malformed requests too, and calling one of those a full scope would
+		// corrupt the number that reviews the cap.
+		it('reports a 400 that is not the cap as a failure', () => {
+			expect(
+				preferenceWriteRejectionReason(
+					new ResponseError('An edit of a user preference must name the user', {
+						httpStatusCode: 400,
+					}),
+				),
+			).toBe('failed');
+		});
+
+		it('reports anything that is not a response as a failure', () => {
+			expect(preferenceWriteRejectionReason(new Error('offline'))).toBe('failed');
 		});
 	});
 });

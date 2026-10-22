@@ -1,5 +1,6 @@
 import type {
 	AgentIntegrationConfig,
+	AgentSseEvent,
 	ChatHubMessageStatus,
 	InstanceAiEvent,
 	PushMessage,
@@ -10,6 +11,12 @@ import type {
 import type { IWorkflowBase, RelatedAgentRun, WorkflowActivateMode } from 'n8n-workflow';
 
 export type PubSubCommandMap = {
+	'relay-agent-queued-chat': {
+		queueId: string;
+		sequence: number;
+		// An omitted event is a relay heartbeat. Null closes the stream.
+		event?: AgentSseEvent | null;
+	};
 	// #region Lifecycle
 
 	'reload-license': never;
@@ -34,12 +41,17 @@ export type PubSubCommandMap = {
 
 	// #endregion
 
+	// # region OAuth server
+	'reload-oauth-signing-keys': never;
+	// #endregion
+
 	'reload-source-control-config': never;
 
 	'reload-mcp-registry': never;
 
 	'reload-otel-config': never;
 	'reload-instance-ai-settings': never;
+	'reload-agents-settings': never;
 
 	// #region Community packages
 
@@ -129,6 +141,24 @@ export type PubSubCommandMap = {
 
 	'relay-agent-execution-update': {
 		data: PushPayload<'agentExecutionUpdated'>;
+		userIds: string[];
+	};
+
+	'cancel-agent-chat-execution': {
+		projectId: string;
+		agentId: string;
+		threadId: string;
+		executionId: string;
+		userId: string;
+		/** Older mains read only `productionN8nChat`, so senders set both. */
+		surface?: 'preview' | 'n8n-chat' | 'system';
+		productionN8nChat?: boolean;
+	};
+
+	'cancel-agent-chat-foreground': PubSubCommandMap['cancel-agent-chat-execution'];
+
+	'relay-agent-message-queue-update': {
+		data: PushPayload<'agentMessageQueueUpdated'>;
 		userIds: string[];
 	};
 
@@ -403,6 +433,16 @@ export type PubSubCommandMap = {
 	'redaction-floor-changed': never;
 
 	// #endregion
+
+	// #region Policies
+
+	/**
+	 * Reload the type availability policy snapshot. Published after a policy write commits.
+	 * The writing process reloads its own snapshot, so this is not a self-send command.
+	 */
+	'reload-type-availability-policies': never;
+
+	// #endregion
 };
 
 export type PubSubWorkerResponseMap = {
@@ -411,4 +451,10 @@ export type PubSubWorkerResponseMap = {
 	};
 };
 
-export type PubSubEventMap = PubSubCommandMap & PubSubWorkerResponseMap;
+/** Emitted on this process only, never published. */
+export type PubSubLocalEventMap = {
+	/** The subscriber is back on its channels. Commands sent while it was away are lost. */
+	'pubsub-reconnected': never;
+};
+
+export type PubSubEventMap = PubSubCommandMap & PubSubWorkerResponseMap & PubSubLocalEventMap;

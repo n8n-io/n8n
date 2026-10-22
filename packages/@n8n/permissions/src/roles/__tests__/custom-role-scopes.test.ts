@@ -1,3 +1,12 @@
+import { API_KEY_RESOURCES } from '@/constants.ee';
+import {
+	ADMIN_API_KEY_SCOPES,
+	API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT,
+	CHAT_USER_API_KEY_SCOPES,
+	MEMBER_API_KEY_SCOPES,
+	OWNER_API_KEY_SCOPES,
+} from '@/public-api-permissions.ee';
+import type { Scope } from '@/types.ee';
 import {
 	CUSTOM_ROLE_SCOPE_WHITELIST,
 	GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS,
@@ -8,8 +17,55 @@ import {
 	PROJECT_CUSTOM_ROLE_SCOPES,
 	withMandatoryInstanceScopes,
 } from '@/roles/custom-role-scopes.ee';
-import { GLOBAL_MEMBER_SCOPES } from '@/roles/scopes/global-scopes.ee';
+import {
+	CREDENTIALS_SHARING_OWNER_SCOPES,
+	CREDENTIALS_SHARING_USER_SCOPES,
+} from '@/roles/scopes/credential-sharing-scopes.ee';
+import {
+	GLOBAL_ADMIN_SCOPES,
+	GLOBAL_MEMBER_SCOPES,
+	GLOBAL_OWNER_SCOPES,
+} from '@/roles/scopes/global-scopes.ee';
+import {
+	PERSONAL_PROJECT_OWNER_SCOPES,
+	PROJECT_CHAT_USER_SCOPES,
+	PROJECT_EDITOR_SCOPES,
+	PROJECT_VIEWER_SCOPES,
+	REGULAR_PROJECT_ADMIN_SCOPES,
+} from '@/roles/scopes/project-scopes.ee';
 import { ALL_SCOPES } from '@/scope-information';
+
+describe('Agent package export scope', () => {
+	it.each(
+		Object.entries({
+			owner: GLOBAL_OWNER_SCOPES,
+			admin: GLOBAL_ADMIN_SCOPES,
+			personalOwner: PERSONAL_PROJECT_OWNER_SCOPES,
+			projectAdmin: REGULAR_PROJECT_ADMIN_SCOPES,
+			editor: PROJECT_EDITOR_SCOPES,
+			viewer: PROJECT_VIEWER_SCOPES,
+		}),
+	)('grants Agent export to %s', (_role, scopes) => {
+		expect(scopes).toContain('agent:export');
+	});
+	it('keeps export separate from chat access', () => {
+		expect(PROJECT_CHAT_USER_SCOPES).not.toContain('agent:export');
+		expect(CHAT_USER_API_KEY_SCOPES).not.toContain('agent:export');
+		expect(GLOBAL_MEMBER_SCOPES).not.toContain('agent:export');
+		expect(PROJECT_CUSTOM_ROLE_SCOPES.has('agent:export')).toBe(true);
+		expect(API_KEY_RESOURCES.agent).toEqual(['export']);
+	});
+	it.each(
+		Object.entries({
+			owner: OWNER_API_KEY_SCOPES,
+			admin: ADMIN_API_KEY_SCOPES,
+			member: MEMBER_API_KEY_SCOPES,
+			personalProject: API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT,
+		}),
+	)('allows Agent export on a %s API key', (_role, scopes) => {
+		expect(scopes).toContain('agent:export');
+	});
+});
 
 describe('custom role scope whitelists', () => {
 	const allScopes = new Set<string>(ALL_SCOPES);
@@ -44,6 +100,29 @@ describe('custom role scope whitelists', () => {
 		expect(PROJECT_CUSTOM_ROLE_SCOPES.has('workflow:list')).toBe(true);
 		expect(PROJECT_CUSTOM_ROLE_SCOPES.has('credential:list')).toBe(true);
 		expect(PROJECT_CUSTOM_ROLE_SCOPES.has('dataTable:listProject')).toBe(true);
+		expect(PROJECT_CUSTOM_ROLE_SCOPES.has('app:list')).toBe(true);
+	});
+
+	it('grants app list access through project roles or explicit global grants', () => {
+		expect(GLOBAL_MEMBER_SCOPES).not.toContain('app:list');
+		expect(GLOBAL_MEMBER_SCOPES).not.toContain('app:read');
+		expect(BASELINE_INSTANCE_SCOPES).not.toContain('app:list');
+		expect(PROJECT_VIEWER_SCOPES).toContain('app:read');
+		expect(PROJECT_VIEWER_SCOPES).toContain('app:list');
+		expect(PROJECT_VIEWER_SCOPES).not.toContain('app:update');
+		expect(PROJECT_CHAT_USER_SCOPES).not.toContain('app:read');
+		expect(PROJECT_CHAT_USER_SCOPES).not.toContain('app:list');
+		for (const scopes of [
+			GLOBAL_OWNER_SCOPES,
+			GLOBAL_ADMIN_SCOPES,
+			PERSONAL_PROJECT_OWNER_SCOPES,
+			REGULAR_PROJECT_ADMIN_SCOPES,
+			PROJECT_EDITOR_SCOPES,
+		]) {
+			expect(scopes).toEqual(
+				expect.arrayContaining(['app:create', 'app:read', 'app:update', 'app:delete', 'app:list']),
+			);
+		}
 	});
 
 	it('exposes whitelists keyed by role type', () => {
@@ -74,7 +153,7 @@ describe('custom role scope whitelists', () => {
 
 	it('"AiAssistant use" matches GLOBAL_MEMBER_SCOPES\' instanceAi:* grants exactly', () => {
 		// Member's baseline n8n Assistant access is `instanceAi:message` +
-		// `instanceAi:gateway` (computer-use gateway pairing). A custom role built
+		// `instanceAi:gateway` (Browser Use pairing). A custom role built
 		// to mirror Member must get both, or it ends up strictly weaker than Member.
 		const use = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.settings['AiAssistant use'];
 		const memberInstanceAiScopes = GLOBAL_MEMBER_SCOPES.filter((s) => s.startsWith('instanceAi:'));
@@ -161,6 +240,64 @@ describe('custom role scope whitelists', () => {
 		for (const scope of GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.tag.View) {
 			expect(GLOBAL_MEMBER_SCOPES).toContain(scope);
 		}
+	});
+
+	it('exposes "Credentials: View" as exactly the credential list/read pair', () => {
+		expect(GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.credential.View).toEqual([
+			'credential:list',
+			'credential:read',
+		]);
+	});
+
+	it('keeps credential "Use" a strict superset of credential "View"', () => {
+		// The editor's implied/downgrade arithmetic (SUPERSEDED_BY:
+		// View -> Use -> Manage) only holds while each rung contains everything the
+		// rung below grants.
+		const view = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.credential.View as readonly string[];
+		const use = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.credential.Use as readonly string[];
+		expect(view.every((scope) => use.includes(scope))).toBe(true);
+		expect(use.length).toBeGreaterThan(view.length);
+	});
+
+	it('keeps credential "Manage" a strict superset of credential "Use"', () => {
+		const use = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.credential.Use as readonly string[];
+		const manage = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.credential.Manage as readonly string[];
+		expect(use.every((scope) => manage.includes(scope))).toBe(true);
+		expect(manage.length).toBeGreaterThan(use.length);
+	});
+
+	it('adds `credential:use` at the "Use" rung and nowhere below it', () => {
+		// The whole point of the group: View sees credentials, Use may run them.
+		expect(GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.credential.View).not.toContain('credential:use');
+		expect(GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.credential.Use).toContain('credential:use');
+		expect(GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.credential.Manage).toContain('credential:use');
+	});
+
+	it('keeps the owner-only credential scopes out of every credential option', () => {
+		// These stay Owner/Admin-only. `shareGlobally` reaches every user on the
+		// instance, `manageInstance` is a separate lane for provider connections,
+		// `createEndUser` is an owner-level *project* capability, and `connect` is
+		// per-user and per-credential.
+		const excluded: Scope[] = [
+			'credential:shareGlobally',
+			'credential:manageInstance',
+			'credential:createEndUser',
+			'credential:connect',
+		];
+		for (const option of Object.values<readonly string[]>(
+			GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.credential,
+		)) {
+			for (const scope of excluded) expect(option).not.toContain(scope);
+		}
+		for (const scope of excluded) expect(GLOBAL_CUSTOM_ROLE_SCOPES.has(scope)).toBe(false);
+	});
+
+	it('keeps credential scopes out of the settings.Manage bundle', () => {
+		// Every scope must live under exactly one group.
+		const bundle = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.settings.Manage as readonly string[];
+		expect(bundle).not.toContain('credential:list');
+		expect(bundle).not.toContain('credential:read');
+		expect(bundle).not.toContain('credential:use');
 	});
 
 	it('exposes "Users: View" as exactly user:list, matching GLOBAL_MEMBER_SCOPES', () => {
@@ -276,5 +413,80 @@ describe('baseline instance scopes', () => {
 		for (const scope of BASELINE_INSTANCE_SCOPES) {
 			expect(GLOBAL_CUSTOM_ROLE_SCOPES.has(scope)).toBe(true);
 		}
+	});
+});
+
+describe('`credential:use` is global-only by construction', () => {
+	// `credential:use` means "may use any credential on the instance in a workflow,
+	// without being a member of its project". It is not a per-credential or
+	// per-project right, so the enforcement split in CredentialsFinderService only
+	// holds while the scope stays out of the project lane entirely: no project role,
+	// no sharing mask, no project custom role, no API key. Adding it to any of them
+	// would silently change what the same predicate means.
+	it('is held by the static global Owner and Admin roles', () => {
+		// Owner and Admin must keep today's behaviour exactly, which they do only
+		// because the second conjunct of every changed predicate is true for them.
+		expect(GLOBAL_OWNER_SCOPES).toContain('credential:use');
+		expect(GLOBAL_ADMIN_SCOPES).toContain('credential:use');
+	});
+
+	it('is not held by the static global Member role', () => {
+		expect(GLOBAL_MEMBER_SCOPES).not.toContain('credential:use');
+	});
+
+	it('is absent from every static project role', () => {
+		const projectRoleScopes = {
+			REGULAR_PROJECT_ADMIN_SCOPES,
+			PERSONAL_PROJECT_OWNER_SCOPES,
+			PROJECT_EDITOR_SCOPES,
+			PROJECT_VIEWER_SCOPES,
+			PROJECT_CHAT_USER_SCOPES,
+		};
+		for (const [name, scopes] of Object.entries(projectRoleScopes)) {
+			expect(scopes, name).not.toContain('credential:use');
+		}
+	});
+
+	it('is absent from both credential sharing masks', () => {
+		expect(CREDENTIALS_SHARING_OWNER_SCOPES).not.toContain('credential:use');
+		expect(CREDENTIALS_SHARING_USER_SCOPES).not.toContain('credential:use');
+	});
+
+	it('is absent from the project custom-role whitelist', () => {
+		expect(PROJECT_CUSTOM_ROLE_SCOPES.has('credential:use')).toBe(false);
+	});
+
+	it('is present in the global custom-role whitelist', () => {
+		expect(GLOBAL_CUSTOM_ROLE_SCOPES.has('credential:use')).toBe(true);
+	});
+
+	it('is not an API key scope', () => {
+		// getApiKeyScopesForRole filters through isApiKeyScope, so leaving `use` out of
+		// API_KEY_RESOURCES keeps every API-key scope set byte-identical.
+		expect(API_KEY_RESOURCES.credential).not.toContain('use');
+	});
+
+	it('is the one global credential scope absent from the project whitelist', () => {
+		// The 'scopes are partitioned by role type' test above only asserts
+		// workflow:create and user:create, so a credential scope living in both
+		// whitelists does not fail it. Most credential scopes live in both by design:
+		// the same right can be granted per project and instance-wide. `credential:use`
+		// is the only global one that does not, and the enforcement split depends on it
+		// staying so.
+		//
+		// The reverse direction is not claimed here — `credential:connect` and
+		// `credential:createEndUser` are project-only, deliberately excluded from every
+		// instance-role option (see the comment on the credential group).
+		const credentialScopesInBoth = [...GLOBAL_CUSTOM_ROLE_SCOPES].filter(
+			(scope) => scope.startsWith('credential:') && PROJECT_CUSTOM_ROLE_SCOPES.has(scope),
+		);
+		expect(credentialScopesInBoth).not.toContain('credential:use');
+
+		const globalCredentialScopes = [...GLOBAL_CUSTOM_ROLE_SCOPES].filter((scope) =>
+			scope.startsWith('credential:'),
+		);
+		expect(
+			globalCredentialScopes.filter((scope) => !PROJECT_CUSTOM_ROLE_SCOPES.has(scope)),
+		).toEqual(['credential:use']);
 	});
 });

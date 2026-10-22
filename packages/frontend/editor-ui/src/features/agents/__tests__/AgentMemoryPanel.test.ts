@@ -27,6 +27,7 @@ vi.mock('@n8n/design-system', () => ({
 		props: ['open'],
 	},
 	N8nDialogHeader: { template: '<div><slot /></div>' },
+	N8nDialogBody: { template: '<div><slot /></div>' },
 	N8nDialogTitle: { template: '<div><slot /></div>' },
 	N8nSwitch: {
 		template:
@@ -76,7 +77,7 @@ function mountPanel({
 	const settingsStore = useSettingsStore();
 	settingsStore.setSettings({
 		...defaultSettings,
-		aiAssistant: { enabled: true, setup: true },
+		aiAssistant: { enabled: true, setup: true, cloudUbbEnabled: false },
 	});
 	settingsStore.moduleSettings = {
 		agents: {

@@ -10,10 +10,12 @@ import {
 	TOOLTIP_DELAY_MS,
 	type DropdownMenuItemProps,
 	type IconName,
+	type IconOrEmoji,
 	type PathItem,
 } from '@n8n/design-system';
 
 import { useI18n } from '@n8n/i18n';
+import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 
 interface SessionDropdownData {
 	date: string;
@@ -23,6 +25,7 @@ interface SessionDropdownData {
 const props = withDefaults(
 	defineProps<{
 		breadcrumbItems: PathItem[];
+		projectIcon: IconOrEmoji;
 		sessionTitle: string;
 		sessionOptions: Array<DropdownMenuItemProps<string, SessionDropdownData>>;
 		showMetrics: boolean;
@@ -59,6 +62,9 @@ const i18n = useI18n();
 				theme="medium"
 				@item-selected="emit('breadcrumb-select', $event)"
 			>
+				<template #prepend>
+					<ProjectIcon :icon="projectIcon" border-less size="mini" aria-hidden="true" />
+				</template>
 				<template #append>
 					<span :class="$style.crumbSeparator" aria-hidden="true">/</span>
 					<N8nDropdownMenu
@@ -172,6 +178,10 @@ const i18n = useI18n();
 
 .topBarLeft :global(.n8n-breadcrumbs) {
 	min-width: 0;
+}
+
+.topBarLeft :global(.n8n-breadcrumbs > ul > li:first-child) {
+	display: none;
 }
 
 .topBarLeft :global(.n8n-breadcrumbs [data-test-id='breadcrumbs-item']) {

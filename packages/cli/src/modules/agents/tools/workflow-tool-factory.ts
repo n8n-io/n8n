@@ -31,7 +31,9 @@ import {
 	createRunExecutionData,
 	isTerminalExecutionStatus,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 	TimeoutExecutionCancelledError,
+	OperationalError,
 	isIndefiniteWait,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -40,10 +42,11 @@ import { z } from 'zod';
 import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
+import type { EphemeralNodeExecutor } from '@/node-execution/ephemeral-node-executor';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import type { WorkflowRunner } from '@/workflow-runner';
 
-import type { InstrumentToolAdditionalData } from '../agent-runtime-instrumentation';
+import type { InstrumentToolAdditionalData } from '../evaluation/agent-evaluation.contracts';
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
 import { isTaskRunMemoryResourceId } from '../utils/agent-memory-scope';
 import { WorkflowToolUnavailableError } from './workflow-tool-unavailable-error';
@@ -151,6 +154,7 @@ export type WorkflowToolExecutionMode = Extract<WorkflowExecuteMode, 'manual' | 
 
 export interface WorkflowToolContext {
 	workflowLoader: WorkflowToolWorkflowLoader;
+	executor: EphemeralNodeExecutor;
 	workflowRunner: WorkflowRunner;
 	subworkflowPolicyChecker: SubworkflowPolicyChecker;
 	activeExecutions: ActiveExecutions;
@@ -167,6 +171,7 @@ export interface WorkflowToolContext {
 	integrationType?: string;
 	/** The in-app preview chat started this run — see `RelatedAgentRun.previewChat`. */
 	previewChat?: boolean;
+	publishedN8nChat?: boolean;
 	userId?: string;
 	/** Whether a suspension can be resumed at all. Defaults to true. */
 	supportsHitl?: boolean;
@@ -178,6 +183,7 @@ export interface WorkflowToolContext {
 
 /** {@link WorkflowToolContext} plus fields that only exist once a run does. */
 export interface WorkflowToolRunContext extends WorkflowToolContext {
+	abortSignal?: AbortSignal;
 	/** Stamped onto sub-executions so a Wait node finishing can wake this run. */
 	agentRun?: RelatedAgentRun;
 }
@@ -276,17 +282,12 @@ function fieldTypeToZod(type: string | undefined, label: string): z.ZodTypeAny {
 
 export type WorkflowInputFieldDef = { name: string; type?: string };
 
-/**
- * Resolve the Execute Workflow Trigger `inputSource`. Mirrors the runtime
- * fallback in `getNodeParameter(INPUT_SOURCE, 0, PASSTHROUGH)`: when the
- * parameter is absent (legacy node versions < 1.1, or imported triggers that
- * never saved it), the trigger treats the workflow as passthrough and passes
- * all input data through unchanged. Defaulting to PASSTHROUGH here keeps the
- * inferred schema open so undeclared input fields are not dropped.
- */
+/** Apply the trigger's version-specific default before workflow execution adds node defaults. */
 function getExecuteWorkflowInputSource(triggerNode: INode): string {
 	const params = triggerNode.parameters ?? {};
-	return (params[INPUT_SOURCE] as string | undefined) ?? PASSTHROUGH;
+	const inputSource = params[INPUT_SOURCE];
+	const defaultInputSource = triggerNode.typeVersion >= 1.1 ? WORKFLOW_INPUTS : PASSTHROUGH;
+	return typeof inputSource === 'string' ? inputSource : defaultInputSource;
 }
 
 /** Declared field defs from an Execute Workflow Trigger (empty for passthrough). */
@@ -361,29 +362,29 @@ export function getFixedWorkflowToolInputs(
 	inputs: WorkflowToolInputsConfig | undefined,
 ): Record<string, unknown> {
 	if (!inputs) return {};
-	const fixed: Record<string, unknown> = {};
+	const fixed: Array<[string, unknown]> = [];
 	for (const [name, binding] of Object.entries(inputs)) {
 		if (binding.mode === 'fixed') {
-			fixed[name] = binding.value;
+			fixed.push([name, binding.value]);
 		}
 	}
-	return fixed;
+	return Object.fromEntries(fixed);
 }
 
-/**
- * Drop fixed-bound keys from the LLM-facing schema so the model is not asked
- * for values the user already configured.
- */
-export function omitFixedFieldsFromSchema(
+/** Advertise AI inputs and their guidance. Configured values stay out of the model schema. */
+export function buildWorkflowToolInputSchema(
 	schema: z.ZodObject<z.ZodRawShape>,
 	inputs: WorkflowToolInputsConfig | undefined,
 ): z.ZodObject<z.ZodRawShape> {
-	const fixedKeys = Object.keys(getFixedWorkflowToolInputs(inputs));
-	if (fixedKeys.length === 0) return schema;
+	if (!inputs) return schema;
 
 	const shape = { ...schema.shape };
-	for (const key of fixedKeys) {
-		delete shape[key];
+	for (const [name, binding] of Object.entries(inputs)) {
+		if (binding.mode !== 'ai') {
+			delete shape[name];
+		} else if (Object.hasOwn(shape, name) && binding.description?.trim()) {
+			shape[name] = shape[name].describe(binding.description.trim());
+		}
 	}
 
 	const catchall = schema._def.catchall as z.ZodTypeAny | undefined;
@@ -393,23 +394,55 @@ export function omitFixedFieldsFromSchema(
 	return z.object(shape);
 }
 
-/**
- * Merge LLM-supplied args with fixed tool-config values (fixed wins), then
- * parse the result against the full declared schema so fixed values are
- * coerced to their field's declared type (e.g. numeric IDs stored as strings
- * are converted to numbers for number fields). Without this, fixed bindings
- * bypass the schema and reach the sub-workflow with the wrong runtime type.
- */
+/** Merge configured values over model arguments. Validate and coerce them to the trigger types. */
 export function mergeWorkflowToolInput(
 	llmInput: Record<string, unknown>,
 	inputs: WorkflowToolInputsConfig | undefined,
 	fullSchema: z.ZodObject<z.ZodRawShape>,
+	expressionValues: Record<string, unknown> = {},
 ): Record<string, unknown> {
 	const merged: Record<string, unknown> = {
 		...llmInput,
 		...getFixedWorkflowToolInputs(inputs),
+		...expressionValues,
 	};
 	return fullSchema.parse(merged);
+}
+
+async function resolveWorkflowToolInput(
+	input: Record<string, unknown>,
+	inputs: WorkflowToolInputsConfig | undefined,
+	fullSchema: z.ZodObject<z.ZodRawShape>,
+	context: WorkflowToolContext,
+	toolName: string,
+): Promise<Record<string, unknown>> {
+	const modelInput: IDataObject = buildWorkflowToolInputSchema(fullSchema, inputs).parse(input);
+	const expressions: Record<string, string> = {};
+	const acceptsExtraInputs = !(fullSchema._def.catchall instanceof z.ZodNever);
+	for (const [name, binding] of Object.entries(inputs ?? {})) {
+		if (
+			binding.mode === 'expression' &&
+			(Object.hasOwn(fullSchema.shape, name) || acceptsExtraInputs)
+		) {
+			expressions[name] = binding.value;
+		}
+	}
+	if (Object.keys(expressions).length === 0) {
+		return mergeWorkflowToolInput(modelInput, inputs, fullSchema);
+	}
+
+	const resolved = await context.executor.evaluateExpressions(
+		{
+			projectId: context.projectId,
+			nodeType: WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
+			nodeTypeVersion: 2.2,
+			nodeParameters: {},
+			nodeName: toolName,
+		},
+		expressions,
+		[{ json: modelInput }],
+	);
+	return mergeWorkflowToolInput(modelInput, inputs, fullSchema, resolved);
 }
 
 // ---------------------------------------------------------------------------
@@ -427,7 +460,9 @@ export async function executeWorkflow(
 ): Promise<WorkflowToolExecutionResult> {
 	const { workflowRunner, subworkflowPolicyChecker, activeExecutions } = context;
 
+	context.abortSignal?.throwIfAborted();
 	await subworkflowPolicyChecker.checkForProject(workflow, context.projectId);
+	context.abortSignal?.throwIfAborted();
 
 	// Build pin data for the trigger
 	const triggerPinData: IPinData = {
@@ -488,60 +523,104 @@ export async function executeWorkflow(
 		responsePromise,
 	);
 
-	// Wait for completion with timeout protection
-	const timeoutMs = DEFAULT_TIMEOUT_MS;
+	return await withWorkflowCancellation(executionId, workflow.id, context.abortSignal, async () => {
+		// Wait for completion with timeout protection
+		const timeoutMs = DEFAULT_TIMEOUT_MS;
 
-	let completedRun: IRun | undefined;
-	if (activeExecutions.has(executionId)) {
-		let timeoutId: NodeJS.Timeout | undefined;
-		const timeoutPromise = new Promise<never>((_, reject) => {
-			timeoutId = setTimeout(() => {
-				reject(new Error(`Execution timed out after ${timeoutMs}ms`));
-			}, timeoutMs);
-		});
+		let completedRun: IRun | undefined;
+		if (activeExecutions.has(executionId)) {
+			let timeoutId: NodeJS.Timeout | undefined;
+			const timeoutPromise = new Promise<never>((_, reject) => {
+				timeoutId = setTimeout(() => {
+					reject(new Error(`Execution timed out after ${timeoutMs}ms`));
+				}, timeoutMs);
+			});
 
-		try {
-			completedRun = await Promise.race([
-				activeExecutions.getPostExecutePromise(executionId),
-				timeoutPromise,
-			]);
-			clearTimeout(timeoutId);
-		} catch (error) {
-			clearTimeout(timeoutId);
-			if (error instanceof Error && error.message.includes('timed out')) {
-				try {
-					activeExecutions.stopExecution(
+			try {
+				completedRun = await Promise.race([
+					activeExecutions.getPostExecutePromise(executionId),
+					timeoutPromise,
+				]);
+				clearTimeout(timeoutId);
+			} catch (error) {
+				clearTimeout(timeoutId);
+				if (error instanceof Error && error.message.includes('timed out')) {
+					try {
+						activeExecutions.stopExecution(
+							executionId,
+							new TimeoutExecutionCancelledError(executionId),
+						);
+					} catch {
+						// Execution may have completed between timeout and cancel
+					}
+					return {
 						executionId,
-						new TimeoutExecutionCancelledError(executionId),
-					);
-				} catch {
-					// Execution may have completed between timeout and cancel
+						status: 'error',
+						error: `Execution timed out after ${timeoutMs}ms and was cancelled`,
+					};
 				}
-				return {
-					executionId,
-					status: 'error',
-					error: `Execution timed out after ${timeoutMs}ms and was cancelled`,
-				};
+				throw error;
 			}
-			throw error;
 		}
-	}
 
-	const result =
-		completedRun && context.executionMode === 'integrated'
-			? formatResult(executionId, completedRun.status, completedRun.data, allOutputs)
-			: await extractResult(executionId, allOutputs);
-	if (isWorkflowToolResponse(webhookResponse)) {
-		const response = await Container.get(WebhookResponseRelay).restoreOffloadedBody(
-			webhookResponse,
-			{ reclaim: true, context: { workflowId: workflow.id, executionId } },
-		);
-		result.data = {
-			...(result.data ?? {}),
-			response: truncateWebhookResponse(response),
-		};
+		const result =
+			completedRun && context.executionMode === 'integrated'
+				? formatResult(executionId, completedRun.status, completedRun.data, allOutputs)
+				: await extractResult(executionId, allOutputs);
+		if (isWorkflowToolResponse(webhookResponse)) {
+			const response = await Container.get(WebhookResponseRelay).restoreOffloadedBody(
+				webhookResponse,
+				{ reclaim: true, context: { workflowId: workflow.id, executionId } },
+			);
+			result.data = {
+				...(result.data ?? {}),
+				response: truncateWebhookResponse(response),
+			};
+		}
+		return result;
+	});
+}
+
+/** The foreground tool owns cancellation until it hands the workflow to a background job. */
+async function withWorkflowCancellation<T>(
+	executionId: string,
+	workflowId: string | undefined,
+	signal: AbortSignal | undefined,
+	execute: () => Promise<T>,
+): Promise<T> {
+	if (!signal) return await execute();
+	const aborted = createDeferredPromise<never>();
+	const onAbort = () => {
+		void (async () => {
+			try {
+				const { ExecutionService } = await import('@/executions/execution.service.js');
+				const id =
+					workflowId ??
+					(await Container.get(ExecutionPersistence).findSingleExecution(executionId))?.workflowId;
+				if (!id) throw new OperationalError('The workflow execution is no longer available');
+				await Container.get(ExecutionService).stop(executionId, [id]);
+				aborted.reject(signal.reason);
+			} catch (error) {
+				aborted.reject(error);
+			}
+		})();
+	};
+	signal.addEventListener('abort', onAbort, { once: true });
+	try {
+		if (signal.aborted) {
+			onAbort();
+			return await aborted.promise;
+		}
+		const result = await Promise.race([execute(), aborted.promise]);
+		if (signal.aborted) return await aborted.promise;
+		return result;
+	} catch (error) {
+		// The callback can observe the abort before workflow stopping completes.
+		if (signal.aborted) return await aborted.promise;
+		throw error;
+	} finally {
+		signal.removeEventListener('abort', onAbort);
 	}
-	return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -643,6 +722,7 @@ function agentRunOf(
 		...(context.integrationType ? { integrationType: context.integrationType } : {}),
 		...(context.userId ? { userId: context.userId } : {}),
 		...(context.previewChat ? { previewChat: true } : {}),
+		...(context.publishedN8nChat ? { publishedN8nChat: true } : {}),
 	};
 }
 
@@ -1004,7 +1084,7 @@ async function buildWorkflowTool(
 
 	return assembleWorkflowTool(descriptor, context, {
 		reference: { workflowId: workflow.id, workflowName: workflow.name },
-		inputSchema: omitFixedFieldsFromSchema(fullInputSchema, descriptor.inputs),
+		inputSchema: buildWorkflowToolInputSchema(fullInputSchema, descriptor.inputs),
 		triggerType,
 	});
 }
@@ -1053,7 +1133,7 @@ function assembleWorkflowTool(
 			// A continuation means this workflow already ran on without us, so re-running
 			// it would be wrong. Skip the reload too: a settled run's output should still
 			// come back even if the workflow was archived since. The input is not parsed
-			// again either — fixed tool inputs were merged in on the original call.
+			// again either — configured inputs were resolved on the original call.
 			const pending = WAIT_CONTINUATION_SCHEMA.safeParse(ctx.continuation);
 			let current: Awaited<ReturnType<typeof loadCurrentWorkflow>> | undefined;
 			let result: WorkflowToolExecutionResult;
@@ -1063,17 +1143,22 @@ function assembleWorkflowTool(
 			} else {
 				current = await loadCurrentWorkflow(context, reference);
 				const currentFullSchema = inferInputSchema(current.triggerNode, current.triggerType);
-				const currentSchema = omitFixedFieldsFromSchema(currentFullSchema, toolInputs);
-				const parsedInput = mergeWorkflowToolInput(
-					currentSchema.parse(input),
+				const parsedInput = await resolveWorkflowToolInput(
+					input,
 					toolInputs,
 					currentFullSchema,
+					context,
+					toolName,
 				);
 				result = await executeWorkflow(
 					current.workflow,
 					current.triggerNode,
 					parsedInput,
-					{ ...context, agentRun: agentRunOf(context, ctx) },
+					{
+						...context,
+						agentRun: agentRunOf(context, ctx),
+						abortSignal: ctx.abortSignal,
+					},
 					allOutputs,
 					toolName,
 				);
@@ -1091,27 +1176,37 @@ function assembleWorkflowTool(
 
 			// A wait due within the poll window resolves inline. Only a wait the poll
 			// did not settle is handed to the background.
-			if (result.status === 'waiting') {
-				result = await pollIfDueSoon(result, allOutputs, ctx.abortSignal);
-			}
+			if (result.status !== 'waiting') return withoutWaitState(result);
 
-			if (result.status === 'waiting' && context.backgroundTasksEnabled) {
-				const backgrounded = await backgroundWaitingExecution(
-					result,
-					context,
-					ctx,
-					reference,
-					allOutputs,
-				);
-				if (backgrounded) return backgrounded;
-			}
+			const waiting = result;
+			return await withWorkflowCancellation(
+				waiting.executionId,
+				reference.workflowId,
+				ctx.abortSignal,
+				async () => {
+					result = await pollIfDueSoon(waiting, allOutputs, ctx.abortSignal);
+					ctx.abortSignal?.throwIfAborted();
+					if (result.status === 'waiting' && context.backgroundTasksEnabled) {
+						const backgrounded = await backgroundWaitingExecution(
+							result,
+							context,
+							ctx,
+							reference,
+							allOutputs,
+						);
+						ctx.abortSignal?.throwIfAborted();
+						if (backgrounded) return backgrounded;
+					}
 
-			if (result.status !== 'waiting' || !supportsHitl) return withoutWaitState(result);
+					if (result.status !== 'waiting' || !supportsHitl) return withoutWaitState(result);
 
-			current ??= await loadCurrentWorkflow(context, reference);
-			return await ctx.suspend(buildWaitCard(current.workflow.name, result.wait), {
-				continuation: { executionId: result.executionId },
-			});
+					current ??= await loadCurrentWorkflow(context, reference);
+					ctx.abortSignal?.throwIfAborted();
+					return await ctx.suspend(buildWaitCard(current.workflow.name, result.wait), {
+						continuation: { executionId: result.executionId },
+					});
+				},
+			);
 		});
 
 	const built = builder.build();

@@ -6,8 +6,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
+import { BadRequestError, ServiceUnavailableError } from '@n8n/errors';
 
 import { PromotionsGitService } from '../promotions-git.service';
 
@@ -23,6 +22,7 @@ const { mockGit, simpleGitMock, GitPluginError } = vi.hoisted(() => {
 		checkIsRepo: vi.fn(),
 		listRemote: vi.fn(),
 		clone: vi.fn(),
+		addRemote: vi.fn(),
 		show: vi.fn(),
 		branch: vi.fn(),
 	};
@@ -153,7 +153,7 @@ describe('PromotionsGitService (git operations)', () => {
 	const remoteUrl = 'https://github.com/o/r.git';
 	// Use HTTP(S) credentials to avoid temporary SSH key files in unit tests.
 	const credentials = { authType: 'token' as const, username: 'u', password: 'p' };
-	const configId = 'cfg1';
+	const environmentId = 'cfg1';
 
 	let rootFolder: string;
 	let paths: {
@@ -204,7 +204,7 @@ describe('PromotionsGitService (git operations)', () => {
 
 	describe('clone', () => {
 		const call = async () =>
-			await gitService.clone({ remoteUrl, credentials, paths, branchName: 'main', configId });
+			await gitService.clone({ remoteUrl, credentials, paths, branchName: 'main', environmentId });
 
 		beforeEach(() => {
 			// Mirror filesystem side effects needed by rename assertions.
@@ -248,7 +248,7 @@ describe('PromotionsGitService (git operations)', () => {
 				credentials: tokenCredentials,
 				paths,
 				branchName: 'main',
-				configId,
+				environmentId,
 			});
 
 			const options = JSON.stringify(simpleGitMock.mock.calls);
@@ -310,14 +310,10 @@ describe('PromotionsGitService (git operations)', () => {
 				'--initial-branch=main',
 				paths.nextRepositoryFolder,
 			]);
-			expect(mockGit.raw).toHaveBeenCalledWith([
-				'-C',
-				paths.nextRepositoryFolder,
-				'remote',
-				'add',
-				'origin',
-				remoteUrl,
-			]);
+			expect(simpleGitMock).toHaveBeenCalledWith(
+				expect.objectContaining({ baseDir: paths.nextRepositoryFolder }),
+			);
+			expect(mockGit.addRemote).toHaveBeenCalledWith('origin', remoteUrl);
 			await expect(stat(paths.repositoryFolder)).resolves.toBeDefined();
 		});
 
@@ -342,11 +338,11 @@ describe('PromotionsGitService (git operations)', () => {
 				credentials,
 				paths,
 				branchName: 'main',
-				configId,
+				environmentId,
 				author: { name: 'Ada Lovelace', email: 'ada@example.com' },
 				commitMessage: 'sync',
 				force: false,
-				stagePathspec: 'n8n-export',
+				stagePathspec: 'n8n',
 				onCheckoutRestored,
 				...over,
 			});
@@ -463,16 +459,19 @@ describe('PromotionsGitService (git operations)', () => {
 		});
 
 		it('restores HEAD and the index when the push fails', async () => {
-			mockGit.revparse.mockResolvedValueOnce('before\n').mockResolvedValueOnce('after\n');
+			mockGit.raw.mockResolvedValueOnce('before\n');
 			mockGit.push.mockRejectedValueOnce(new Error('push rejected'));
 
 			await expect(call({ rollbackOnFailure: true })).rejects.toThrow(BadRequestError);
 
-			expect(mockGit.revparse.mock.invocationCallOrder[0]).toBeLessThan(
+			expect(mockGit.raw.mock.calls).toEqual([
+				[['for-each-ref', '--format=%(objectname)', 'refs/heads/main']],
+				[['reset', '--mixed', 'before']],
+			]);
+			expect(mockGit.raw.mock.invocationCallOrder[0]).toBeLessThan(
 				mockGit.add.mock.invocationCallOrder[0],
 			);
-			expect(mockGit.raw).toHaveBeenCalledExactlyOnceWith(['reset', '--mixed', 'before']);
-			expect(mockGit.raw.mock.invocationCallOrder[0]).toBeGreaterThan(
+			expect(mockGit.raw.mock.invocationCallOrder[1]).toBeGreaterThan(
 				mockGit.push.mock.invocationCallOrder[0],
 			);
 		});
@@ -480,23 +479,30 @@ describe('PromotionsGitService (git operations)', () => {
 		it('keeps the push error when rollback fails', async () => {
 			const pushError = new ServiceUnavailableError('Push timed out');
 			mockGit.push.mockRejectedValueOnce(pushError);
-			mockGit.raw.mockRejectedValueOnce(new Error('reset failed'));
+			mockGit.raw
+				.mockResolvedValueOnce('before\n')
+				.mockRejectedValueOnce(new Error('reset failed'));
 
 			await expect(call({ rollbackOnFailure: true })).rejects.toBe(pushError);
 
 			expect(logger.warn.mock.calls).toContainEqual([
 				'Failed to restore the Git revision after a failed promotion',
-				{ configId, branchName: 'main' },
+				{ environmentId, branchName: 'main' },
 			]);
 		});
 
 		it('keeps the new commit when the push succeeds', async () => {
-			mockGit.revparse.mockResolvedValueOnce('before\n').mockResolvedValueOnce('after\n');
+			mockGit.raw.mockResolvedValueOnce('before\n');
+			mockGit.revparse.mockResolvedValueOnce('after\n');
 
 			await expect(call({ rollbackOnFailure: true })).resolves.toEqual({ commitSha: 'after' });
 
 			expect(mockGit.push).toHaveBeenCalledExactlyOnceWith('origin', 'main');
-			expect(mockGit.raw).not.toHaveBeenCalled();
+			expect(mockGit.raw).toHaveBeenCalledExactlyOnceWith([
+				'for-each-ref',
+				'--format=%(objectname)',
+				'refs/heads/main',
+			]);
 		});
 
 		it('redacts a push failure and keeps raw git output out of the log', async () => {
@@ -520,8 +526,8 @@ describe('PromotionsGitService (git operations)', () => {
 			credentials,
 			paths,
 			branchName: 'main',
-			configId,
-			pathspecs: ['n8n-export/manifest.json', 'n8n-export/projects/'],
+			environmentId,
+			pathspecs: ['n8n/manifest.json', 'n8n/projects/'],
 		});
 
 		beforeEach(() => {
@@ -530,7 +536,7 @@ describe('PromotionsGitService (git operations)', () => {
 		});
 
 		it('lists the tree at the fetched tip and returns that commit', async () => {
-			mockGit.raw.mockResolvedValueOnce('100644 blob b1\tn8n-export/manifest.json\0');
+			mockGit.raw.mockResolvedValueOnce('100644 blob b1\tn8n/manifest.json\0');
 
 			const result = await gitService.listBranchTree(operation());
 
@@ -546,12 +552,12 @@ describe('PromotionsGitService (git operations)', () => {
 				'-z',
 				commitSha,
 				'--',
-				'n8n-export/manifest.json',
-				'n8n-export/projects/',
+				'n8n/manifest.json',
+				'n8n/projects/',
 			]);
 			expect(result).toEqual({
 				commitSha,
-				lsTreeOutput: '100644 blob b1\tn8n-export/manifest.json\0',
+				lsTreeOutput: '100644 blob b1\tn8n/manifest.json\0',
 			});
 		});
 
@@ -586,15 +592,12 @@ describe('PromotionsGitService (git operations)', () => {
 
 	describe('readFilesAtCommit', () => {
 		const commitSha = 'c'.repeat(40);
-		const filePaths = [
-			'n8n-export/manifest.json',
-			'n8n-export/projects/a-p1/workflows/b-w1/workflow.json',
-		];
+		const filePaths = ['n8n/manifest.json', 'n8n/projects/a-p1/workflows/b-w1/workflow.json'];
 		const read = async (over: Record<string, unknown> = {}) =>
 			await gitService.readFilesAtCommit({
 				paths,
 				branchName: 'main',
-				configId,
+				environmentId,
 				commitSha,
 				filePaths,
 				...over,
@@ -629,8 +632,8 @@ describe('PromotionsGitService (git operations)', () => {
 				credentials,
 				paths,
 				branchName: 'main',
-				configId,
-				pathspecs: ['n8n-export/'],
+				environmentId,
+				pathspecs: ['n8n/'],
 			});
 			await vi.waitFor(() => expect(mockGit.fetch).toHaveBeenCalledTimes(1));
 
@@ -670,7 +673,7 @@ describe('PromotionsGitService (git operations)', () => {
 				credentials,
 				paths,
 				branchName: 'main',
-				configId,
+				environmentId,
 			});
 
 		it('fetches and resets to the configured remote base branch', async () => {
@@ -701,7 +704,7 @@ describe('PromotionsGitService (git operations)', () => {
 				credentials,
 				paths,
 				branchName: 'main',
-				configId,
+				environmentId,
 			});
 
 		beforeEach(() => {

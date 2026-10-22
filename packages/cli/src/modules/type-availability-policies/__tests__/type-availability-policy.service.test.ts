@@ -1,13 +1,11 @@
-import { mockLogger } from '@n8n/backend-test-utils';
+import type { EventService } from '@n8n/backend-services';
 import type { OperationContext, TransactionRunner } from '@n8n/db';
 import type { NodeLoader } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { EventService } from '@/events/event.service';
+import { ConflictError, NotFoundError } from '@n8n/errors';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import type { CacheService } from '@/services/cache/cache.service';
+import type { NodeTypes } from '@/node-types';
 
 import { CREDENTIAL_TYPES_KIND } from '../constants';
 import type { TypeAvailabilityPolicyAttachmentRepository } from '../database/repositories/type-availability-policy-attachment.repository';
@@ -15,11 +13,10 @@ import type { TypeAvailabilityPolicyScopeRepository } from '../database/reposito
 import type { TypeAvailabilityPolicyRepository } from '../database/repositories/type-availability-policy.repository';
 import { TypeAvailabilityPolicy } from '../database/entities/type-availability-policy.entity';
 import { TypeAvailabilityPolicyScope } from '../database/entities/type-availability-policy-scope.entity';
-import type { PolicyRule } from '../policy-rule.types';
-import {
-	LOCAL_READ_MAX_ENTRIES,
-	TypeAvailabilityPolicyService,
-} from '../type-availability-policy.service';
+import { unconfiguredScope, type EffectivePolicy } from '../effective-policy';
+import type { PolicyAttachment, PolicyRule } from '../policy-rule.types';
+import type { TypeAvailabilityPolicySnapshot } from '../type-availability-policy-snapshot';
+import { TypeAvailabilityPolicyService } from '../type-availability-policy.service';
 
 const KIND = 'node-types';
 const ROOT: OperationContext = {};
@@ -45,6 +42,8 @@ const RULE: PolicyRule = {
 	action: 'deny',
 	selector: { kind: 'name', value: 'n8n-nodes-base.slack' },
 };
+
+const RULE_2: PolicyRule = { ...RULE, id: 'r2' };
 
 const DELEGATE_RULE: PolicyRule = {
 	id: 'r-delegate',
@@ -83,8 +82,9 @@ describe('TypeAvailabilityPolicyService', () => {
 	const attachmentRepository = mock<TypeAvailabilityPolicyAttachmentRepository>();
 	const transactionRunner = mock<TransactionRunner>();
 	const eventService = mock<EventService>();
-	const cacheService = mock<CacheService>();
+	const snapshot = mock<TypeAvailabilityPolicySnapshot>();
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
+	const nodeTypes = mock<NodeTypes>();
 
 	const service = new TypeAvailabilityPolicyService(
 		policyRepository,
@@ -92,25 +92,29 @@ describe('TypeAvailabilityPolicyService', () => {
 		attachmentRepository,
 		transactionRunner,
 		eventService,
-		cacheService,
+		snapshot,
 		loadNodesAndCredentials,
-		mockLogger(),
+		nodeTypes,
 	);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		// One service instance serves the whole file, and its memo outlives a mock reset.
-		service.resetLocalCaches();
-		// `clearAllMocks` keeps implementations, so without this a test that stubbed a cache
-		// call as never settling leaves every later test waiting on it.
-		cacheService.get.mockResolvedValue(undefined);
-		cacheService.set.mockResolvedValue(undefined);
-		cacheService.deleteMany.mockResolvedValue(undefined);
+		// An unloaded snapshot, so evaluations read the mocked repositories.
+		snapshot.read.mockReturnValue(null);
+		snapshot.projectScopes.mockReturnValue(null);
+		snapshot.refreshAfterWrite.mockResolvedValue(undefined);
 		transactionRunner.run.mockImplementation(async (_ctx, fn) => await fn(ROOT));
-		// The real repository always answers with an array; an unstubbed mock answers undefined.
-		scopeRepository.findScopeKeysByIds.mockResolvedValue([]);
 		// Every fixture rule names `n8n-nodes-base`, so it must resolve as an installed package.
 		loadNodesAndCredentials.loaders = { 'n8n-nodes-base': makeLoader('n8n-nodes-base') };
+		// Fixture `name` rules name Slack, so it must resolve as a loaded node.
+		Object.defineProperty(loadNodesAndCredentials, 'knownNodes', {
+			configurable: true,
+			value: { 'n8n-nodes-base.slack': { className: '', sourcePath: '' } },
+		});
+		nodeTypes.resolveBaseName.mockImplementation((name) => ({
+			baseName: name,
+			isSyntheticTool: false,
+		}));
 	});
 
 	describe('getEffectivePolicy', () => {
@@ -151,6 +155,84 @@ describe('TypeAvailabilityPolicyService', () => {
 			expect(result.defaultAction).toBe('deny');
 			expect(result.version).toBe(3);
 		});
+	});
+
+	describe('getAttachments', () => {
+		it.each([
+			[KIND, null],
+			[KIND, 'project-1'],
+			[CREDENTIAL_TYPES_KIND, null],
+			[CREDENTIAL_TYPES_KIND, 'project-1'],
+		])('reads %s attachments for project %s in evaluation order', async (kind, projectId) => {
+			const ctx: OperationContext = {};
+			const scope = makeScope({ kind, projectId, version: 7 });
+			const normalLate: PolicyAttachment = {
+				policyId: 'normal-late',
+				rules: [RULE],
+				priority: 10,
+				isFloor: false,
+			};
+			const floorLate: PolicyAttachment = {
+				policyId: 'floor-late',
+				rules: [],
+				priority: 20,
+				isFloor: true,
+			};
+			const normalEarly: PolicyAttachment = {
+				policyId: 'normal-early',
+				rules: [],
+				priority: -5,
+				isFloor: false,
+			};
+			const floorEarly: PolicyAttachment = {
+				policyId: 'floor-early',
+				rules: [RULE],
+				priority: 0,
+				isFloor: true,
+			};
+			const stored = [normalLate, floorLate, normalEarly, floorEarly];
+			scopeRepository.findScopeByIdAndKind.mockResolvedValue(scope);
+			attachmentRepository.listAttachmentsForScope.mockResolvedValue(stored);
+
+			const result = await service.getAttachments(kind, scope.id, ctx);
+
+			expect(result).toEqual({
+				attachments: [floorEarly, floorLate, normalEarly, normalLate],
+				version: 7,
+			});
+			expect(stored).toEqual([normalLate, floorLate, normalEarly, floorEarly]);
+			expect(scopeRepository.findScopeByIdAndKind).toHaveBeenCalledWith(scope.id, kind, ctx);
+			expect(attachmentRepository.listAttachmentsForScope).toHaveBeenCalledWith(scope.id, ctx);
+			expect(scopeRepository.findScopeByIdAndKind.mock.invocationCallOrder[0]).toBeLessThan(
+				attachmentRepository.listAttachmentsForScope.mock.invocationCallOrder[0],
+			);
+			expect(transactionRunner.run).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+			expect(snapshot.read).not.toHaveBeenCalled();
+			expect(snapshot.refreshAfterWrite).not.toHaveBeenCalled();
+		});
+
+		it.each([KIND, CREDENTIAL_TYPES_KIND])('rejects an unknown scope for %s', async (kind) => {
+			scopeRepository.findScopeByIdAndKind.mockResolvedValue(null);
+
+			await expect(service.getAttachments(kind, 'missing')).rejects.toThrow(NotFoundError);
+			expect(attachmentRepository.listAttachmentsForScope).not.toHaveBeenCalled();
+		});
+
+		it.each([KIND, CREDENTIAL_TYPES_KIND])(
+			'rejects a scope of another kind for %s',
+			async (kind) => {
+				const otherKind = kind === KIND ? CREDENTIAL_TYPES_KIND : KIND;
+				const scope = makeScope({ kind: otherKind });
+				scopeRepository.findScopeByIdAndKind.mockImplementation(async (id, requestedKind) =>
+					id === scope.id && requestedKind === scope.kind ? scope : null,
+				);
+
+				await expect(service.getAttachments(kind, scope.id)).rejects.toThrow(NotFoundError);
+				expect(scopeRepository.findScopeByIdAndKind).toHaveBeenCalledWith(scope.id, kind, {});
+				expect(attachmentRepository.listAttachmentsForScope).not.toHaveBeenCalled();
+			},
+		);
 	});
 
 	describe('setDefaultAction', () => {
@@ -309,21 +391,153 @@ describe('TypeAvailabilityPolicyService', () => {
 
 			const { warnings } = await service.createPolicyDocument(KIND, [RULE, shadowed], 'user-1');
 
-			expect(warnings).toEqual([{ ruleId: 'r2', shadowedByRuleId: 'r1' }]);
+			expect(warnings).toEqual([{ kind: 'shadowed', ruleId: 'r2', shadowedByRuleId: 'r1' }]);
 			expect(policyRepository.createPolicy).toHaveBeenCalled();
 		});
 
-		it('rejects a package rule naming a package that is not installed', async () => {
+		it('saves a package rule naming a package that is not installed, with a warning', async () => {
+			policyRepository.createPolicy.mockResolvedValue(makePolicy());
 			const rule: PolicyRule = {
 				id: 'r1',
 				action: 'deny',
 				selector: { kind: 'package', value: 'n8n-nodes-not-installed' },
 			};
 
-			await expect(service.createPolicyDocument(KIND, [rule], 'user-1')).rejects.toThrow(
-				'Package rule names a package that is not installed: n8n-nodes-not-installed',
+			const { warnings } = await service.createPolicyDocument(KIND, [rule], 'user-1');
+
+			expect(warnings).toEqual([{ kind: 'notLoaded', ruleId: 'r1' }]);
+			expect(policyRepository.createPolicy).toHaveBeenCalled();
+		});
+
+		it('saves a name rule naming a node type that is not loaded, with a warning', async () => {
+			policyRepository.createPolicy.mockResolvedValue(makePolicy());
+			const rule: PolicyRule = {
+				id: 'r1',
+				action: 'deny',
+				selector: { kind: 'name', value: 'n8n-nodes-base.notLoaded' },
+			};
+
+			const { warnings } = await service.createPolicyDocument(KIND, [rule], 'user-1');
+
+			expect(warnings).toEqual([{ kind: 'notLoaded', ruleId: 'r1' }]);
+		});
+
+		it('checks a synthetic tool variant rule against its base node', async () => {
+			policyRepository.createPolicy.mockResolvedValue(makePolicy());
+			nodeTypes.resolveBaseName.mockImplementation((name) => ({
+				baseName: name.replace(/Tool$/, ''),
+				isSyntheticTool: name.endsWith('Tool'),
+			}));
+			const rules: PolicyRule[] = [
+				{ id: 'r1', action: 'deny', selector: { kind: 'name', value: 'n8n-nodes-base.slackTool' } },
+				{ id: 'r2', action: 'deny', selector: { kind: 'name', value: 'n8n-nodes-base.fooTool' } },
+			];
+
+			const { warnings } = await service.createPolicyDocument(KIND, rules, 'user-1');
+
+			expect(warnings).toEqual([{ kind: 'notLoaded', ruleId: 'r2' }]);
+		});
+
+		it('lists a shadowed warning before a notLoaded warning for the same rule, in rule order', async () => {
+			policyRepository.createPolicy.mockResolvedValue(makePolicy());
+			const missing = (id: string): PolicyRule => ({
+				id,
+				action: 'deny',
+				selector: { kind: 'name', value: 'n8n-nodes-base.notLoaded' },
+			});
+
+			const { warnings } = await service.createPolicyDocument(
+				KIND,
+				[missing('r1'), RULE_2, missing('r3')],
+				'user-1',
 			);
-			expect(policyRepository.createPolicy).not.toHaveBeenCalled();
+
+			expect(warnings).toEqual([
+				{ kind: 'notLoaded', ruleId: 'r1' },
+				{ kind: 'shadowed', ruleId: 'r3', shadowedByRuleId: 'r1' },
+				{ kind: 'notLoaded', ruleId: 'r3' },
+			]);
+		});
+
+		describe('extends rules', () => {
+			const familyRule = (id: string, value: string): PolicyRule => ({
+				id,
+				action: 'deny',
+				selector: { kind: 'extends', value },
+			});
+
+			beforeEach(() => {
+				Object.defineProperty(loadNodesAndCredentials, 'knownCredentials', {
+					configurable: true,
+					value: {
+						oAuth2Api: { className: '', sourcePath: '' },
+						googleSheetsOAuth2Api: { className: '', sourcePath: '', extends: ['oAuth2Api'] },
+					},
+				});
+			});
+
+			afterEach(() => {
+				delete (loadNodesAndCredentials as { knownCredentials?: unknown }).knownCredentials;
+			});
+
+			it('rejects an extends rule in a node type policy', async () => {
+				await expect(
+					service.createPolicyDocument(KIND, [familyRule('r1', 'oAuth2Api')], 'user-1'),
+				).rejects.toThrow('An "extends" rule is only valid in a credential type policy');
+				expect(policyRepository.createPolicy).not.toHaveBeenCalled();
+			});
+
+			it('saves an extends rule naming a credential type that is not installed, with a warning', async () => {
+				policyRepository.createPolicy.mockResolvedValue(
+					makePolicy({ kind: CREDENTIAL_TYPES_KIND }),
+				);
+
+				const { warnings } = await service.createPolicyDocument(
+					CREDENTIAL_TYPES_KIND,
+					[familyRule('r1', 'notLoadedApi')],
+					'user-1',
+				);
+
+				expect(warnings).toEqual([{ kind: 'notLoaded', ruleId: 'r1' }]);
+			});
+
+			it('saves a credential name rule naming a type that is not installed, with a warning', async () => {
+				policyRepository.createPolicy.mockResolvedValue(
+					makePolicy({ kind: CREDENTIAL_TYPES_KIND }),
+				);
+				const rule: PolicyRule = {
+					id: 'r1',
+					action: 'deny',
+					selector: { kind: 'name', value: 'notLoadedApi' },
+				};
+
+				const { warnings } = await service.createPolicyDocument(
+					CREDENTIAL_TYPES_KIND,
+					[rule],
+					'user-1',
+				);
+
+				expect(warnings).toEqual([{ kind: 'notLoaded', ruleId: 'r1' }]);
+			});
+
+			it('warns about a derived-type rule placed after the family rule that covers it', async () => {
+				policyRepository.createPolicy.mockResolvedValue(
+					makePolicy({ kind: CREDENTIAL_TYPES_KIND }),
+				);
+				const allowSheets: PolicyRule = {
+					id: 'r2',
+					action: 'allow',
+					selector: { kind: 'name', value: 'googleSheetsOAuth2Api' },
+				};
+
+				const { warnings } = await service.createPolicyDocument(
+					CREDENTIAL_TYPES_KIND,
+					[familyRule('r1', 'oAuth2Api'), allowSheets],
+					'user-1',
+				);
+
+				expect(warnings).toEqual([{ kind: 'shadowed', ruleId: 'r2', shadowedByRuleId: 'r1' }]);
+			});
 		});
 
 		it('accepts a package rule naming an installed package', async () => {
@@ -336,6 +550,45 @@ describe('TypeAvailabilityPolicyService', () => {
 
 			await expect(service.createPolicyDocument(KIND, [rule], 'user-1')).resolves.toBeDefined();
 		});
+
+		it('rejects a node type rule naming a credential-only node, and names the rule to write instead', async () => {
+			const rule: PolicyRule = {
+				id: 'r1',
+				action: 'deny',
+				selector: { kind: 'name', value: 'n8n-creds-base.virusTotalApi' },
+			};
+
+			await expect(service.createPolicyDocument(KIND, [rule], 'user-1')).rejects.toThrow(
+				'Node type rule names the credential-only node "n8n-creds-base.virusTotalApi", which is HTTP Request with a credential attached. Write a credential type rule on "virusTotalApi" instead.',
+			);
+			expect(policyRepository.createPolicy).not.toHaveBeenCalled();
+		});
+
+		it('accepts a credential type rule on the type a credential-only node wraps', async () => {
+			policyRepository.createPolicy.mockResolvedValue(makePolicy({ kind: CREDENTIAL_TYPES_KIND }));
+			const rule: PolicyRule = {
+				id: 'r1',
+				action: 'deny',
+				selector: { kind: 'name', value: 'virusTotalApi' },
+			};
+
+			await expect(
+				service.createPolicyDocument(CREDENTIAL_TYPES_KIND, [rule], 'user-1'),
+			).resolves.toBeDefined();
+		});
+
+		it('rejects a package rule on the credential-only prefix, which no loader provides', async () => {
+			const rule: PolicyRule = {
+				id: 'r1',
+				action: 'deny',
+				selector: { kind: 'package', value: 'n8n-creds-base' },
+			};
+
+			await expect(service.createPolicyDocument(KIND, [rule], 'user-1')).rejects.toThrow(
+				'Package rule names "n8n-creds-base", which no package provides. Write a credential type rule instead.',
+			);
+			expect(policyRepository.createPolicy).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('updatePolicyDocument', () => {
@@ -345,18 +598,41 @@ describe('TypeAvailabilityPolicyService', () => {
 			scopeRepository.containsProjectScope.mockResolvedValue(false);
 		});
 
-		it('rejects a package rule naming a package that is not installed, before opening a transaction', async () => {
+		it('keeps accepting edits to a document whose package rule names an uninstalled package', async () => {
+			const missingPackage: PolicyRule = {
+				id: 'r-missing',
+				action: 'deny',
+				selector: { kind: 'package', value: 'n8n-nodes-mcp' },
+			};
+			policyRepository.findByIdAndKind.mockResolvedValue(
+				makePolicy({ rules: [missingPackage], version: 1 }),
+			);
+			policyRepository.updateRules.mockResolvedValue(
+				makePolicy({ rules: [missingPackage, RULE], version: 2 }),
+			);
+
+			const { warnings } = await service.updatePolicyDocument(
+				KIND,
+				'policy-1',
+				[missingPackage, RULE],
+				1,
+				'user-1',
+			);
+
+			expect(warnings).toEqual([{ kind: 'notLoaded', ruleId: 'r-missing' }]);
+			expect(policyRepository.updateRules).toHaveBeenCalled();
+		});
+
+		it('rejects a node type rule naming a credential-only node, before opening a transaction', async () => {
 			const rule: PolicyRule = {
 				id: 'r1',
 				action: 'deny',
-				selector: { kind: 'package', value: 'n8n-nodes-not-installed' },
+				selector: { kind: 'name', value: 'n8n-creds-base.virusTotalApi' },
 			};
 
 			await expect(
 				service.updatePolicyDocument(KIND, 'policy-1', [rule], 1, 'user-1'),
-			).rejects.toThrow(
-				'Package rule names a package that is not installed: n8n-nodes-not-installed',
-			);
+			).rejects.toThrow('Node type rule names the credential-only node');
 			expect(transactionRunner.run).not.toHaveBeenCalled();
 		});
 
@@ -567,6 +843,7 @@ describe('TypeAvailabilityPolicyService', () => {
 						{ policyId: 'p1', priority: 0, isFloor: false },
 						{ policyId: 'p1', priority: 1, isFloor: false },
 					],
+					1,
 					'user-1',
 				),
 			).rejects.toThrow('Duplicate policyId');
@@ -584,6 +861,7 @@ describe('TypeAvailabilityPolicyService', () => {
 						{ policyId: 'p1', priority: 0, isFloor: false },
 						{ policyId: 'p2', priority: 0, isFloor: false },
 					],
+					1,
 					'user-1',
 				),
 			).rejects.toThrow('Duplicate (isFloor, priority)');
@@ -599,6 +877,7 @@ describe('TypeAvailabilityPolicyService', () => {
 					KIND,
 					'missing',
 					[{ policyId: 'p1', priority: 0, isFloor: false }],
+					1,
 					'user-1',
 				),
 			).rejects.toThrow(NotFoundError);
@@ -612,7 +891,7 @@ describe('TypeAvailabilityPolicyService', () => {
 			scopeRepository.findScopeByIdAndKind.mockResolvedValue(null);
 
 			await expect(
-				service.replaceAttachments(CREDENTIAL_TYPES_KIND, 'scope-1', [], 'user-1'),
+				service.replaceAttachments(CREDENTIAL_TYPES_KIND, 'scope-1', [], 1, 'user-1'),
 			).rejects.toThrow(NotFoundError);
 
 			expect(scopeRepository.findScopeByIdAndKind).toHaveBeenCalledWith(
@@ -624,7 +903,24 @@ describe('TypeAvailabilityPolicyService', () => {
 			expect(attachmentRepository.replaceAttachmentsForScope).not.toHaveBeenCalled();
 		});
 
-		it('replaces attachments, bumps the version, and emits once', async () => {
+		it('throws ConflictError for a stale version and writes nothing', async () => {
+			const scope = makeScope({ version: 2 });
+			scopeRepository.findScopeByIdAndKind.mockResolvedValueOnce(scope);
+
+			const write = service.replaceAttachments(KIND, scope.id, [], 1, 'user-1');
+			await expect(write).rejects.toThrow(ConflictError);
+			await expect(write).rejects.toThrow(
+				'Policy scope has changed since it was last read (expected version 1, found 2)',
+			);
+
+			expect(scopeRepository.findScopeByIdAndKind).toHaveBeenCalledWith(scope.id, KIND, ROOT, true);
+			expect(attachmentRepository.replaceAttachmentsForScope).not.toHaveBeenCalled();
+			expect(scopeRepository.bumpVersion).not.toHaveBeenCalled();
+			expect(snapshot.refreshAfterWrite).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('replaces attachments with the current version, bumps the version, and emits once', async () => {
 			const scope = makeScope({ version: 1 });
 			scopeRepository.findScopeByIdAndKind.mockResolvedValueOnce(scope);
 			scopeRepository.findScopeById.mockResolvedValueOnce(makeScope({ version: 2 }));
@@ -636,6 +932,7 @@ describe('TypeAvailabilityPolicyService', () => {
 				KIND,
 				scope.id,
 				[{ policyId: 'p1', priority: 0, isFloor: false }],
+				scope.version,
 				'user-1',
 			);
 
@@ -671,10 +968,47 @@ describe('TypeAvailabilityPolicyService', () => {
 				KIND,
 				scope.id,
 				[{ policyId: 'p1', priority: 0, isFloor: false }],
+				scope.version,
 				'user-1',
 			);
 
 			expect(result.version).toBe(2);
+		});
+
+		it.each([
+			[KIND, null],
+			[KIND, 'project-1'],
+			[CREDENTIAL_TYPES_KIND, null],
+			[CREDENTIAL_TYPES_KIND, 'project-1'],
+		])('returns %s attachments for project %s in evaluation order', async (kind, projectId) => {
+			const scope = makeScope({ kind, projectId, version: 1 });
+			const stored: PolicyAttachment[] = [
+				{ policyId: 'normal-late', rules: [RULE], priority: 10, isFloor: false },
+				{ policyId: 'floor-late', rules: [], priority: 20, isFloor: true },
+				{ policyId: 'normal-early', rules: [], priority: -5, isFloor: false },
+				{ policyId: 'floor-early', rules: [RULE], priority: 0, isFloor: true },
+			];
+			scopeRepository.findScopeByIdAndKind.mockResolvedValueOnce(scope);
+			scopeRepository.findScopeById.mockResolvedValueOnce(
+				makeScope({ kind, projectId, version: 2 }),
+			);
+			policyRepository.findManyByIds.mockResolvedValue([]);
+			attachmentRepository.listAttachmentsForScope
+				.mockResolvedValueOnce([])
+				.mockResolvedValueOnce(stored);
+
+			const result = await service.replaceAttachments(
+				kind,
+				scope.id,
+				stored.map(({ policyId, priority, isFloor }) => ({ policyId, priority, isFloor })),
+				scope.version,
+				'user-1',
+			);
+
+			expect(result).toEqual({
+				attachments: [stored[3], stored[1], stored[2], stored[0]],
+				version: 2,
+			});
 		});
 
 		it('rejects attaching a document with a delegate rule to a project scope, and writes nothing', async () => {
@@ -692,6 +1026,7 @@ describe('TypeAvailabilityPolicyService', () => {
 						{ policyId: 'p1', priority: 0, isFloor: false },
 						{ policyId: 'p2', priority: 1, isFloor: false },
 					],
+					1,
 					'user-1',
 				),
 			).rejects.toThrow(DELEGATE_RULE_AT_PROJECT_SCOPE);
@@ -711,6 +1046,7 @@ describe('TypeAvailabilityPolicyService', () => {
 				KIND,
 				'scope-1',
 				[{ policyId: 'p-delegating', priority: 0, isFloor: false }],
+				1,
 				'user-1',
 			);
 
@@ -725,11 +1061,11 @@ describe('TypeAvailabilityPolicyService', () => {
 			attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue(['scope-1']);
 		});
 
-		it('rejects a package rule naming a package that is not installed, before opening a transaction', async () => {
+		it('rejects a package rule on the credential-only prefix, before opening a transaction', async () => {
 			const rule: PolicyRule = {
 				id: 'r1',
 				action: 'deny',
-				selector: { kind: 'package', value: 'n8n-nodes-not-installed' },
+				selector: { kind: 'package', value: 'n8n-creds-base' },
 			};
 
 			await expect(
@@ -740,9 +1076,26 @@ describe('TypeAvailabilityPolicyService', () => {
 					0,
 					'user-1',
 				),
-			).rejects.toThrow(
-				'Package rule names a package that is not installed: n8n-nodes-not-installed',
-			);
+			).rejects.toThrow('Package rule names "n8n-creds-base"');
+			expect(transactionRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('rejects a node type rule naming a credential-only node, before opening a transaction', async () => {
+			const rule: PolicyRule = {
+				id: 'r1',
+				action: 'deny',
+				selector: { kind: 'name', value: 'n8n-creds-base.virusTotalApi' },
+			};
+
+			await expect(
+				service.setEffectivePolicy(
+					KIND,
+					null,
+					{ rules: [rule], defaultAction: 'allow' },
+					0,
+					'user-1',
+				),
+			).rejects.toThrow('Node type rule names the credential-only node');
 			expect(transactionRunner.run).not.toHaveBeenCalled();
 		});
 
@@ -824,6 +1177,7 @@ describe('TypeAvailabilityPolicyService', () => {
 			expect(policyRepository.findByIdAndKind.mock.invocationCallOrder[0]).toBeLessThan(
 				attachmentRepository.listScopeIdsAttachedToPolicy.mock.invocationCallOrder[0],
 			);
+			expect(scopeRepository.bumpVersion).toHaveBeenCalledWith(scope.id, ROOT);
 		});
 
 		it('rejects a delegate defaultAction at project scope before opening a transaction', async () => {
@@ -868,7 +1222,7 @@ describe('TypeAvailabilityPolicyService', () => {
 			});
 			policyRepository.createPolicy.mockResolvedValue(makePolicy({ rules: [], version: 1 }));
 			scopeRepository.findScopeById.mockResolvedValue(
-				makeScope({ defaultAction: 'delegate', version: 2 }),
+				makeScope({ defaultAction: 'delegate', version: 1 }),
 			);
 
 			await expect(
@@ -937,7 +1291,7 @@ describe('TypeAvailabilityPolicyService', () => {
 			const createdPolicy = makePolicy({ rules: [RULE], version: 1 });
 			policyRepository.createPolicy.mockResolvedValue(createdPolicy);
 			scopeRepository.findScopeById.mockResolvedValue(
-				makeScope({ defaultAction: 'deny', version: 2 }),
+				makeScope({ defaultAction: 'deny', version: 1 }),
 			);
 
 			const result = await service.setEffectivePolicy(
@@ -948,8 +1302,9 @@ describe('TypeAvailabilityPolicyService', () => {
 				'user-1',
 			);
 
-			expect(result.version).toBe(2);
+			expect(result.version).toBe(1);
 			expect(result.rules).toEqual([RULE]);
+			expect(scopeRepository.bumpVersion).not.toHaveBeenCalled();
 			expect(attachmentRepository.replaceAttachmentsForScope).toHaveBeenCalledWith(
 				createdScope.id,
 				[{ policyId: createdPolicy.id, priority: 0, isFloor: false }],
@@ -970,10 +1325,11 @@ describe('TypeAvailabilityPolicyService', () => {
 				projectId: null,
 				scopeId: createdScope.id,
 				before: null,
-				after: { defaultAction: 'deny', version: 2 },
+				after: { defaultAction: 'deny', version: 1 },
 				rulesBefore: null,
 				rulesAfter: [RULE],
-				warningCount: 0,
+				shadowWarningCount: 0,
+				notLoadedWarningCount: 0,
 			});
 		});
 
@@ -988,7 +1344,7 @@ describe('TypeAvailabilityPolicyService', () => {
 			const updatedPolicy = makePolicy({ rules: [RULE], version: 2 });
 			policyRepository.updateRules.mockResolvedValue(updatedPolicy);
 			scopeRepository.findScopeById.mockResolvedValue(
-				makeScope({ defaultAction: 'deny', version: 3 }),
+				makeScope({ defaultAction: 'deny', version: 2 }),
 			);
 
 			await service.setEffectivePolicy(
@@ -1005,6 +1361,7 @@ describe('TypeAvailabilityPolicyService', () => {
 				'user-2',
 				ROOT,
 			);
+			expect(scopeRepository.bumpVersion).not.toHaveBeenCalled();
 			expect(eventService.emit).toHaveBeenCalledTimes(3);
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'node-type-policy-document-updated',
@@ -1020,11 +1377,48 @@ describe('TypeAvailabilityPolicyService', () => {
 				projectId: null,
 				scopeId: scope.id,
 				before: { defaultAction: 'allow', version: 1 },
-				after: { defaultAction: 'deny', version: 3 },
+				after: { defaultAction: 'deny', version: 2 },
 				rulesBefore: [],
 				rulesAfter: [RULE],
-				warningCount: 0,
+				shadowWarningCount: 0,
+				notLoadedWarningCount: 0,
 			});
+		});
+
+		it('saves a rule for an uninstalled package, returns its warning and counts it apart', async () => {
+			const missingPackage: PolicyRule = {
+				id: 'r-missing',
+				action: 'deny',
+				selector: { kind: 'package', value: 'n8n-nodes-mcp' },
+			};
+			const scope = makeScope({ defaultAction: 'allow', version: 1 });
+			scopeRepository.findScopeByKindAndProject.mockResolvedValue(scope);
+			const existingPolicy = makePolicy({ rules: [missingPackage], version: 1 });
+			attachmentRepository.listAttachmentsForScope.mockResolvedValue([
+				{ policyId: existingPolicy.id, rules: [missingPackage], priority: 0, isFloor: false },
+			]);
+			policyRepository.findByIdAndKind.mockResolvedValue(existingPolicy);
+			policyRepository.updateRules.mockResolvedValue(
+				makePolicy({ rules: [missingPackage, RULE, RULE_2], version: 2 }),
+			);
+			scopeRepository.findScopeById.mockResolvedValue(makeScope({ version: 2 }));
+
+			const result = await service.setEffectivePolicy(
+				KIND,
+				null,
+				{ rules: [missingPackage, RULE, RULE_2], defaultAction: 'allow' },
+				1,
+				'user-2',
+			);
+
+			expect(result.warnings).toEqual([
+				{ kind: 'notLoaded', ruleId: 'r-missing' },
+				{ kind: 'shadowed', ruleId: 'r2', shadowedByRuleId: 'r1' },
+			]);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'node-type-policy-saved',
+				expect.objectContaining({ shadowWarningCount: 1, notLoadedWarningCount: 1 }),
+			);
 		});
 
 		it('throws NotFoundError when the document update unexpectedly finds no row', async () => {
@@ -1093,6 +1487,31 @@ describe('TypeAvailabilityPolicyService', () => {
 
 			expect(result.defaultAction).toBe('deny');
 			expect(result.version).toBe(1);
+		});
+
+		it('moves the version once when neither the rules nor the default action change', async () => {
+			const scope = makeScope({ defaultAction: 'allow', version: 1 });
+			scopeRepository.findScopeByKindAndProject.mockResolvedValue(scope);
+			const existingPolicy = makePolicy({ rules: [RULE], version: 1 });
+			attachmentRepository.listAttachmentsForScope.mockResolvedValue([
+				{ policyId: existingPolicy.id, rules: [RULE], priority: 0, isFloor: false },
+			]);
+			policyRepository.findByIdAndKind.mockResolvedValue(existingPolicy);
+			policyRepository.updateRules.mockResolvedValue(existingPolicy);
+			scopeRepository.findScopeById.mockResolvedValue(
+				makeScope({ defaultAction: 'allow', version: 2 }),
+			);
+
+			await service.setEffectivePolicy(
+				KIND,
+				null,
+				{ rules: [RULE], defaultAction: 'allow' },
+				1,
+				'user-2',
+			);
+
+			expect(scopeRepository.updateDefaultAction).not.toHaveBeenCalled();
+			expect(scopeRepository.bumpVersion).toHaveBeenCalledTimes(1);
 		});
 	});
 
@@ -1414,453 +1833,241 @@ describe('TypeAvailabilityPolicyService', () => {
 				});
 			});
 		});
-	});
-	/**
-	 * Behaviour the integration suite cannot reach: what a cache failure does, and what the
-	 * TTL is set to. `node-type-policy.store-reads.test.ts` covers hit/miss counts and the
-	 * invalidation of each write path against a real store.
-	 */
-	describe('the evaluation read cache', () => {
-		const INSTANCE_KEY = 'type-availability-policy:scope:node-types:instance';
-		const TYPE = 'n8n-nodes-base.slack';
-		const TEN_MINUTES = 600_000;
 
-		it('caches an unconfigured scope as its allow-all object, not as an absent value', async () => {
-			cacheService.get.mockResolvedValue(undefined);
-			scopeRepository.findScopeByKindAndProject.mockResolvedValue(null);
+		describe('tool variants', () => {
+			const GMAIL = 'n8n-nodes-base.gmail';
+			const GMAIL_TOOL = 'n8n-nodes-base.gmailTool';
 
-			await service.evaluateComposedTypesFor(KIND, null, [TYPE]);
-
-			expect(cacheService.set).toHaveBeenCalledWith(
-				INSTANCE_KEY,
-				expect.objectContaining({ scopeId: null, defaultAction: 'allow', version: 0 }),
-				TEN_MINUTES,
-			);
-		});
-
-		it('answers from the cache without reading the store', async () => {
-			cacheService.get.mockResolvedValue({
-				scopeId: 'scope-1',
-				kind: KIND,
-				projectId: null,
-				defaultAction: 'deny',
-				version: 3,
-				rules: [],
-				attachments: [],
+			beforeEach(() => {
+				scopeRepository.findScopeByKindAndProject.mockResolvedValue(makeScope({ projectId: null }));
+				attachmentRepository.listAttachmentsForScope.mockResolvedValue([
+					{
+						policyId: 'p1',
+						rules: [{ id: 'deny-gmail', action: 'deny', selector: { kind: 'name', value: GMAIL } }],
+						priority: 0,
+						isFloor: false,
+					},
+				]);
 			});
 
-			const result = await service.evaluateComposedTypesFor(KIND, null, [TYPE]);
+			it('judges a node type by the base name the registry resolves it to', async () => {
+				nodeTypes.resolveBaseName.mockImplementation((name) => ({
+					baseName: name === GMAIL_TOOL ? GMAIL : name,
+					isSyntheticTool: name === GMAIL_TOOL,
+				}));
 
-			expect(scopeRepository.findScopeByKindAndProject).not.toHaveBeenCalled();
-			expect(result.verdicts[0].action).toBe('deny');
-			expect(result.versions).toEqual([{ scope: 'instance', version: 3 }]);
-		});
+				const result = await service.evaluateComposedTypesFor(KIND, null, [GMAIL_TOOL]);
 
-		it('falls back to the store when the cache read throws', async () => {
-			cacheService.get.mockRejectedValue(new Error('redis is down'));
-			scopeRepository.findScopeByKindAndProject.mockResolvedValue(
-				makeScope({ defaultAction: 'deny', version: 7 }),
-			);
-			attachmentRepository.listAttachmentsForScope.mockResolvedValue([]);
+				expect(result.verdicts).toEqual([
+					{
+						name: GMAIL_TOOL,
+						action: 'deny',
+						scope: 'instance',
+						matchedRuleId: 'deny-gmail',
+						optInAvailable: false,
+					},
+				]);
+			});
 
-			const result = await service.evaluateComposedTypesFor(KIND, null, [TYPE]);
+			it('does not resolve a base name for a credential type', async () => {
+				await service.evaluateComposedTypesFor(CREDENTIAL_TYPES_KIND, null, ['gmailApi']);
 
-			expect(result.verdicts[0].action).toBe('deny');
-			expect(result.versions).toEqual([{ scope: 'instance', version: 7 }]);
-		});
-
-		it('still answers when the cache write throws', async () => {
-			cacheService.get.mockResolvedValue(undefined);
-			cacheService.set.mockRejectedValue(new Error('redis is down'));
-			scopeRepository.findScopeByKindAndProject.mockResolvedValue(
-				makeScope({ defaultAction: 'deny', version: 7 }),
-			);
-			attachmentRepository.listAttachmentsForScope.mockResolvedValue([]);
-
-			const result = await service.evaluateComposedTypesFor(KIND, null, [TYPE]);
-
-			expect(result.verdicts[0].action).toBe('deny');
-		});
-
-		it('leaves the cache alone when setDefaultAction changes nothing', async () => {
-			const unchanged = makeScope({ defaultAction: 'deny', version: 4 });
-			scopeRepository.findScopeByKindAndProject.mockResolvedValue(unchanged);
-			scopeRepository.updateDefaultAction.mockResolvedValue(unchanged);
-
-			await service.setDefaultAction(KIND, null, 'deny', 4, 'user-1');
-
-			expect(cacheService.deleteMany).not.toHaveBeenCalled();
-		});
-
-		it('reads the store when the cache read hangs past its timeout', async () => {
-			// Never settles, the way ioredis leaves a command queued while it is disconnected.
-			cacheService.get.mockReturnValue(new Promise(() => {}));
-			scopeRepository.findScopeByKindAndProject.mockResolvedValue(
-				makeScope({ defaultAction: 'deny', version: 7 }),
-			);
-			attachmentRepository.listAttachmentsForScope.mockResolvedValue([]);
-
-			const result = await service.evaluateComposedTypesFor(KIND, null, [TYPE]);
-
-			expect(result.verdicts[0].action).toBe('deny');
-			expect(scopeRepository.findScopeByKindAndProject).toHaveBeenCalled();
-		});
-
-		it('still answers when the cache write hangs past its timeout', async () => {
-			cacheService.get.mockResolvedValue(undefined);
-			cacheService.set.mockReturnValue(new Promise(() => {}));
-			scopeRepository.findScopeByKindAndProject.mockResolvedValue(
-				makeScope({ defaultAction: 'deny', version: 7 }),
-			);
-			attachmentRepository.listAttachmentsForScope.mockResolvedValue([]);
-
-			const result = await service.evaluateComposedTypesFor(KIND, null, [TYPE]);
-
-			expect(result.verdicts[0].action).toBe('deny');
-		});
-
-		it('still answers when the invalidation hangs past its timeout', async () => {
-			const before = makeScope({ defaultAction: 'allow', version: 4 });
-			scopeRepository.findScopeByKindAndProject.mockResolvedValue(before);
-			scopeRepository.updateDefaultAction.mockResolvedValue(
-				makeScope({ defaultAction: 'deny', version: 5 }),
-			);
-			// Never settles, the way ioredis leaves a command queued while it is disconnected.
-			// The write has already committed, so the response must not wait on it.
-			cacheService.deleteMany.mockReturnValue(new Promise(() => {}));
-
-			const result = await service.setDefaultAction(KIND, null, 'deny', 4, 'user-1');
-
-			expect(result.defaultAction).toBe('deny');
-			expect(cacheService.deleteMany).toHaveBeenCalledWith([INSTANCE_KEY]);
-			expect(eventService.emit).toHaveBeenCalledWith(
-				'node-type-policy-scope-updated',
-				expect.anything(),
-			);
-		});
-
-		it('does not invalidate when a policy document edit bumps no scope', async () => {
-			const policy = makePolicy({ version: 1 });
-			attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue([]);
-			scopeRepository.lockScopesByIds.mockResolvedValue([]);
-			policyRepository.findByIdAndKind.mockResolvedValue(policy);
-			policyRepository.updateRules.mockResolvedValue(policy);
-
-			await service.updatePolicyDocument(KIND, 'policy-1', [RULE], 1, 'user-1');
-
-			expect(scopeRepository.findScopeKeysByIds).not.toHaveBeenCalled();
-			expect(cacheService.deleteMany).not.toHaveBeenCalled();
-		});
-
-		it('drops the invalidated keys a second time, after the fill window', async () => {
-			vi.useFakeTimers();
-			try {
-				scopeRepository.findScopeByKindAndProject.mockResolvedValue(
-					makeScope({ defaultAction: 'allow', version: 4 }),
-				);
-				scopeRepository.updateDefaultAction.mockResolvedValue(
-					makeScope({ defaultAction: 'deny', version: 5 }),
-				);
-
-				await service.setDefaultAction(KIND, null, 'deny', 4, 'user-1');
-				expect(cacheService.deleteMany).toHaveBeenCalledTimes(1);
-
-				await vi.advanceTimersByTimeAsync(1_000);
-
-				expect(cacheService.deleteMany).toHaveBeenCalledTimes(2);
-				expect(cacheService.deleteMany).toHaveBeenLastCalledWith([INSTANCE_KEY]);
-			} finally {
-				vi.useRealTimers();
-			}
-		});
-
-		it('cancels a pending repeat delete when the local state is reset', async () => {
-			vi.useFakeTimers();
-			try {
-				scopeRepository.findScopeByKindAndProject.mockResolvedValue(
-					makeScope({ defaultAction: 'allow', version: 4 }),
-				);
-				scopeRepository.updateDefaultAction.mockResolvedValue(
-					makeScope({ defaultAction: 'deny', version: 5 }),
-				);
-
-				await service.setDefaultAction(KIND, null, 'deny', 4, 'user-1');
-				service.resetLocalCaches();
-				await vi.advanceTimersByTimeAsync(1_000);
-
-				expect(cacheService.deleteMany).toHaveBeenCalledTimes(1);
-			} finally {
-				vi.useRealTimers();
-			}
+				expect(nodeTypes.resolveBaseName).not.toHaveBeenCalled();
+			});
 		});
 	});
 
-	/**
-	 * A decision runs for each execution, each sub-execution and each credential decryption, so
-	 * a burst of them arrives together on a cold entry. These pin that the burst costs one read.
-	 */
-	describe('coalescing concurrent reads', () => {
-		const INSTANCE_KEY = 'type-availability-policy:scope:node-types:instance';
+	describe('reading the snapshot', () => {
+		const PROJECT_ID = 'project-1';
 		const TYPE = 'n8n-nodes-base.slack';
 
-		/** A store read that finishes only once the test opens it. */
-		function gate() {
-			let open!: () => void;
-			const gated = new Promise<void>((resolve) => {
-				open = resolve;
-			});
+		// The composer evaluates `attachments`, so the rules are mirrored into one attachment.
+		function loadedPolicy(overrides: Partial<EffectivePolicy>): EffectivePolicy {
+			const rules = overrides.rules ?? [];
+			const attachments =
+				rules.length === 0 ? [] : [{ policyId: 'p1', rules, priority: 0, isFloor: false }];
 
-			return { open, gated };
+			return { ...unconfiguredScope(KIND, null), attachments, ...overrides };
 		}
 
-		const decide = async (projectId: string | null = null) =>
-			await service.evaluateComposedTypesFor(KIND, projectId, [TYPE]);
+		function givenSnapshotScopes(instance: EffectivePolicy, project: EffectivePolicy) {
+			snapshot.read.mockImplementation((_kind, projectId) =>
+				projectId === null ? instance : project,
+			);
+		}
 
-		beforeEach(() => {
-			attachmentRepository.listAttachmentsForScope.mockResolvedValue([]);
-		});
-
-		it('reads the store once for many decisions that miss the same scope', async () => {
-			const { open, gated } = gate();
-			scopeRepository.findScopeByKindAndProject.mockImplementation(async () => {
-				await gated;
-				return makeScope({ defaultAction: 'deny', version: 7 });
-			});
-
-			const decisions = Array.from({ length: 50 }, async () => await decide());
-			open();
-			const results = await Promise.all(decisions);
-
-			expect(scopeRepository.findScopeByKindAndProject).toHaveBeenCalledTimes(1);
-			expect(cacheService.get).toHaveBeenCalledTimes(1);
-			expect(cacheService.set).toHaveBeenCalledTimes(1);
-			expect(results.every((result) => result.verdicts[0].action === 'deny')).toBe(true);
-		});
-
-		it('coalesces each scope on its own, so one project decision reads two', async () => {
-			const { open, gated } = gate();
-			scopeRepository.findScopeByKindAndProject.mockImplementation(async (_kind, projectId) => {
-				await gated;
-				return makeScope({ projectId, defaultAction: 'allow', version: 7 });
-			});
-
-			const decisions = Array.from({ length: 50 }, async () => await decide('project-1'));
-			open();
-			await Promise.all(decisions);
-
-			expect(scopeRepository.findScopeByKindAndProject).toHaveBeenCalledTimes(2);
-			expect(cacheService.set).toHaveBeenCalledTimes(2);
-		});
-
-		it('does not keep a failed read, so the next decision retries', async () => {
-			scopeRepository.findScopeByKindAndProject.mockRejectedValueOnce(new Error('db is down'));
-
-			await expect(decide()).rejects.toThrow('db is down');
-
-			scopeRepository.findScopeByKindAndProject.mockResolvedValue(
-				makeScope({ defaultAction: 'deny', version: 7 }),
+		it('decides from the snapshot rules without reading a repository', async () => {
+			givenSnapshotScopes(
+				loadedPolicy({ scopeId: 'scope-1', version: 4, rules: [RULE] }),
+				loadedPolicy({ scopeId: 'scope-2', projectId: PROJECT_ID, version: 2 }),
 			);
 
-			expect((await decide()).verdicts[0].action).toBe('deny');
+			const result = await service.evaluateComposedTypesFor(KIND, PROJECT_ID, [TYPE]);
+
+			expect(result.verdicts).toEqual([
+				{
+					name: TYPE,
+					action: 'deny',
+					scope: 'instance',
+					matchedRuleId: 'r1',
+					optInAvailable: false,
+				},
+			]);
+			expect(result.versions).toEqual([
+				{ scope: 'instance', version: 4 },
+				{ scope: 'project', version: 2 },
+			]);
+			expect(scopeRepository.findScopeByKindAndProject).not.toHaveBeenCalled();
+			expect(attachmentRepository.listAttachmentsForScope).not.toHaveBeenCalled();
 		});
 
-		it('does not publish a fill that an invalidation overtook', async () => {
-			const { open, gated } = gate();
-			scopeRepository.findScopeByKindAndProject.mockResolvedValue(
-				makeScope({ defaultAction: 'allow', version: 4 }),
+		it('falls back to the repositories when the snapshot has not loaded', async () => {
+			snapshot.read.mockReturnValue(null);
+			scopeRepository.findScopeByKindAndProject.mockImplementation(async (_kind, projectId) =>
+				makeScope(
+					projectId === null
+						? { projectId: null, version: 4 }
+						: { id: 'scope-2', projectId: PROJECT_ID, version: 2 },
+				),
 			);
-			attachmentRepository.listAttachmentsForScope.mockImplementation(async () => {
-				await gated;
-				return [];
+			attachmentRepository.listAttachmentsForScope.mockResolvedValue([
+				{ policyId: 'p1', rules: [RULE], priority: 0, isFloor: false },
+			]);
+
+			const result = await service.evaluateComposedTypesFor(KIND, PROJECT_ID, [TYPE]);
+
+			expect(scopeRepository.findScopeByKindAndProject).toHaveBeenCalledWith(KIND, null, ROOT);
+			expect(scopeRepository.findScopeByKindAndProject).toHaveBeenCalledWith(
+				KIND,
+				PROJECT_ID,
+				ROOT,
+			);
+			expect(result.verdicts[0]).toMatchObject({ action: 'deny', matchedRuleId: 'r1' });
+			expect(result.versions).toEqual([
+				{ scope: 'instance', version: 4 },
+				{ scope: 'project', version: 2 },
+			]);
+		});
+
+		describe('evaluateComposedTypesForAllProjects', () => {
+			it('uses the snapshot project scopes without reading a repository', async () => {
+				snapshot.read.mockReturnValue(loadedPolicy({ scopeId: 'scope-1' }));
+				snapshot.projectScopes.mockReturnValue([
+					loadedPolicy({
+						scopeId: 'scope-2',
+						projectId: 'project-a',
+						rules: [RULE],
+					}) as EffectivePolicy & {
+						projectId: string;
+					},
+					loadedPolicy({ scopeId: 'scope-3', projectId: 'project-b' }) as EffectivePolicy & {
+						projectId: string;
+					},
+				]);
+
+				const result = await service.evaluateComposedTypesForAllProjects(KIND, [TYPE]);
+
+				expect(snapshot.projectScopes).toHaveBeenCalledWith(KIND);
+				expect(result.byProject.map(({ projectId }) => projectId)).toEqual([
+					'project-a',
+					'project-b',
+				]);
+				expect(result.byProject[0].verdicts[0]).toMatchObject({ action: 'deny', scope: 'project' });
+				expect(result.byProject[1].verdicts[0]).toMatchObject({ action: 'allow' });
+				expect(result.withoutProjectPolicy[0]).toMatchObject({ action: 'allow' });
+				expect(scopeRepository.findProjectScopes).not.toHaveBeenCalled();
+				expect(attachmentRepository.listAttachmentsForScopes).not.toHaveBeenCalled();
 			});
-			scopeRepository.updateDefaultAction.mockResolvedValue(
-				makeScope({ defaultAction: 'deny', version: 5 }),
-			);
 
-			const decision = decide();
-			await service.setDefaultAction(KIND, null, 'deny', 4, 'user-1');
-			open();
-			await decision;
+			it('falls back to the repositories when the snapshot has not loaded', async () => {
+				snapshot.read.mockReturnValue(null);
+				snapshot.projectScopes.mockReturnValue(null);
+				scopeRepository.findScopeByKindAndProject.mockResolvedValue(null);
+				scopeRepository.findProjectScopes.mockResolvedValue([
+					makeScope({ id: 'scope-2', projectId: 'project-a' }) as TypeAvailabilityPolicyScope & {
+						projectId: string;
+					},
+				]);
+				attachmentRepository.listAttachmentsForScopes.mockResolvedValue(
+					new Map([['scope-2', [{ policyId: 'p1', rules: [RULE], priority: 0, isFloor: false }]]]),
+				);
 
-			expect(cacheService.deleteMany).toHaveBeenCalledWith([INSTANCE_KEY]);
-			expect(cacheService.set).not.toHaveBeenCalled();
+				const result = await service.evaluateComposedTypesForAllProjects(KIND, [TYPE]);
+
+				expect(scopeRepository.findProjectScopes).toHaveBeenCalledWith(KIND, {});
+				expect(attachmentRepository.listAttachmentsForScopes).toHaveBeenCalledWith(['scope-2'], {});
+				expect(result.byProject).toHaveLength(1);
+				expect(result.byProject[0].projectId).toBe('project-a');
+				expect(result.byProject[0].verdicts[0]).toMatchObject({ action: 'deny', scope: 'project' });
+			});
 		});
 
-		/**
-		 * A read slower than the repeat delete could `set` its snapshot after both deletes of a
-		 * write that committed on another process, which this one cannot see.
-		 */
-		it('does not publish a read that outlived the repeat delete', async () => {
-			// Only `Date` is faked, because faking `setTimeout` would hang the cache timeout.
-			vi.useFakeTimers({ toFake: ['Date'] });
-			try {
-				const { open, gated } = gate();
-				scopeRepository.findScopeByKindAndProject.mockImplementation(async () => {
-					await gated;
-					return makeScope({ defaultAction: 'deny', version: 7 });
+		describe('after a write', () => {
+			let committed: boolean;
+			let committedAtRefresh: boolean | undefined;
+
+			beforeEach(() => {
+				committed = false;
+				committedAtRefresh = undefined;
+				transactionRunner.run.mockImplementation(async (_ctx, fn) => {
+					const result = await fn(ROOT);
+					committed = true;
+					return result;
+				});
+				snapshot.refreshAfterWrite.mockImplementation(async () => {
+					committedAtRefresh = committed;
+				});
+			});
+
+			function expectRefreshedOnceAfterCommit() {
+				expect(snapshot.refreshAfterWrite).toHaveBeenCalledTimes(1);
+				expect(committedAtRefresh).toBe(true);
+				expect(transactionRunner.run.mock.invocationCallOrder[0]).toBeLessThan(
+					snapshot.refreshAfterWrite.mock.invocationCallOrder[0],
+				);
+			}
+
+			it('refreshes once after setDefaultAction commits a changed scope', async () => {
+				scopeRepository.findScopeByKindAndProject.mockResolvedValue(makeScope({ version: 1 }));
+				scopeRepository.updateDefaultAction.mockResolvedValue(
+					makeScope({ defaultAction: 'deny', version: 2 }),
+				);
+
+				await service.setDefaultAction(KIND, null, 'deny', 1, 'user-2');
+
+				expectRefreshedOnceAfterCommit();
+			});
+
+			it('does not refresh when setDefaultAction changes nothing', async () => {
+				scopeRepository.findScopeByKindAndProject.mockResolvedValue(
+					makeScope({ defaultAction: 'deny', version: 1 }),
+				);
+				scopeRepository.updateDefaultAction.mockResolvedValue(
+					makeScope({ defaultAction: 'deny', version: 1 }),
+				);
+
+				await service.setDefaultAction(KIND, null, 'deny', 1, 'user-2');
+
+				expect(snapshot.refreshAfterWrite).not.toHaveBeenCalled();
+			});
+
+			describe('updatePolicyDocument', () => {
+				beforeEach(() => {
+					scopeRepository.containsProjectScope.mockResolvedValue(false);
 				});
 
-				const decision = decide();
-				vi.setSystemTime(Date.now() + 1_001);
-				open();
+				it('does not refresh when the document version does not change', async () => {
+					const unchanged = makePolicy({ rules: [RULE], version: 1 });
+					policyRepository.findByIdAndKind.mockResolvedValue(unchanged);
+					policyRepository.updateRules.mockResolvedValue(unchanged);
+					attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue(['scope-1']);
+					scopeRepository.lockScopesByIds.mockResolvedValue(['scope-1']);
 
-				expect((await decision).verdicts[0].action).toBe('deny');
-				expect(cacheService.set).not.toHaveBeenCalled();
-			} finally {
-				vi.useRealTimers();
-			}
-		});
+					await service.updatePolicyDocument(KIND, unchanged.id, [RULE], 1, 'user-2');
 
-		/**
-		 * `clearPolicyCache()` in the integration suites resets this state after truncating the
-		 * tables, so a read in flight must not put the pre-truncation rows back.
-		 */
-		it('does not publish a read that a reset overtook', async () => {
-			const { open, gated } = gate();
-			scopeRepository.findScopeByKindAndProject.mockImplementation(async () => {
-				await gated;
-				return makeScope({ defaultAction: 'deny', version: 7 });
+					expect(snapshot.refreshAfterWrite).not.toHaveBeenCalled();
+				});
 			});
-
-			const decision = decide();
-			service.resetLocalCaches();
-			open();
-
-			expect((await decision).verdicts[0].action).toBe('deny');
-			expect(cacheService.set).not.toHaveBeenCalled();
-		});
-
-		it('keeps the read that replaced a failed one', async () => {
-			vi.useFakeTimers({ toFake: ['Date'] });
-			try {
-				const failing = gate();
-				const replacing = gate();
-				scopeRepository.findScopeByKindAndProject
-					.mockImplementationOnce(async () => {
-						await failing.gated;
-						throw new Error('db is down');
-					})
-					.mockImplementationOnce(async () => {
-						await replacing.gated;
-						return makeScope({ defaultAction: 'deny', version: 7 });
-					});
-
-				const first = decide();
-				vi.setSystemTime(Date.now() + 1_001);
-				const second = decide();
-
-				failing.open();
-				await expect(first).rejects.toThrow('db is down');
-
-				// Must share the second read rather than start a third.
-				const third = decide();
-				replacing.open();
-				await Promise.all([second, third]);
-
-				expect(scopeRepository.findScopeByKindAndProject).toHaveBeenCalledTimes(2);
-			} finally {
-				vi.useRealTimers();
-			}
-		});
-	});
-
-	/**
-	 * The memo is what keeps a warm decision off the shared cache — a Redis round trip and a
-	 * parse of every rule, for each decision.
-	 */
-	describe('the in-process memo', () => {
-		const TYPE = 'n8n-nodes-base.slack';
-		const CACHED_DENY = {
-			scopeId: 'scope-1',
-			kind: KIND,
-			projectId: null,
-			defaultAction: 'deny' as const,
-			version: 3,
-			rules: [],
-			attachments: [],
-		};
-
-		const decide = async () => await service.evaluateComposedTypesFor(KIND, null, [TYPE]);
-
-		it('answers a repeat decision without a cache call', async () => {
-			cacheService.get.mockResolvedValue(CACHED_DENY);
-
-			await decide();
-			const result = await decide();
-
-			expect(cacheService.get).toHaveBeenCalledTimes(1);
-			expect(result.verdicts[0].action).toBe('deny');
-		});
-
-		it('reads the cache again once the memo expires', async () => {
-			// Only `Date` is faked, because faking `setTimeout` would hang the cache timeout.
-			vi.useFakeTimers({ toFake: ['Date'] });
-			try {
-				cacheService.get.mockResolvedValue(CACHED_DENY);
-
-				await decide();
-				vi.setSystemTime(Date.now() + 1_001);
-				await decide();
-
-				expect(cacheService.get).toHaveBeenCalledTimes(2);
-			} finally {
-				vi.useRealTimers();
-			}
-		});
-
-		/**
-		 * The cap has to drop the scope nobody has read for longest, not the one that happens to
-		 * have been inserted first — a busy scope is re-read every window and would otherwise be
-		 * evicted while a quiet one survives.
-		 */
-		it('evicts the least recently read scope when it reaches the cap', async () => {
-			vi.useFakeTimers({ toFake: ['Date'] });
-			try {
-				cacheService.get.mockResolvedValue(CACHED_DENY);
-				const decideFor = async (projectId: string) =>
-					await service.evaluateComposedTypesFor(KIND, projectId, [TYPE]);
-
-				// Fill to the cap: the instance scope, one busy project, and quiet ones for the rest.
-				const quietScopes = LOCAL_READ_MAX_ENTRIES - 2;
-
-				await decideFor('busy');
-				vi.setSystemTime(Date.now() + 600);
-				for (let index = 0; index < quietScopes; index++) await decideFor(`quiet-${index}`);
-
-				// Past the busy scope's window, so it is read again, which is the case that used
-				// to leave it at the front of the map.
-				vi.setSystemTime(Date.now() + 401);
-				await decideFor('busy');
-
-				// One over the cap, so exactly one entry is evicted.
-				await decideFor('straw');
-
-				cacheService.get.mockClear();
-				await decideFor('busy');
-				expect(cacheService.get).not.toHaveBeenCalled();
-
-				await decideFor('quiet-0');
-				expect(cacheService.get).toHaveBeenCalledTimes(1);
-			} finally {
-				vi.useRealTimers();
-			}
-		});
-
-		it('is dropped by a write, so the process that wrote sees its own change at once', async () => {
-			cacheService.get.mockResolvedValue(CACHED_DENY);
-			await decide();
-
-			scopeRepository.findScopeByKindAndProject.mockResolvedValue(
-				makeScope({ defaultAction: 'deny', version: 4 }),
-			);
-			scopeRepository.updateDefaultAction.mockResolvedValue(
-				makeScope({ defaultAction: 'allow', version: 5 }),
-			);
-			await service.setDefaultAction(KIND, null, 'allow', 4, 'user-1');
-			cacheService.get.mockResolvedValue({ ...CACHED_DENY, defaultAction: 'allow', version: 5 });
-
-			expect((await decide()).verdicts[0].action).toBe('allow');
-			expect(cacheService.get).toHaveBeenCalledTimes(2);
 		});
 	});
 });

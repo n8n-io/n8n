@@ -1,6 +1,5 @@
 export type * from './action-dropdown';
 export * from './assistant';
-export type * from './badge';
 export type * from './button';
 export type * from './callout';
 export type * from './datatable';

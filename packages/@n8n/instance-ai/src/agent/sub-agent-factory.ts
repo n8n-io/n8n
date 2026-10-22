@@ -1,56 +1,14 @@
-import { Agent, type CheckpointStore, type RuntimeSkillSource, type Workspace } from '@n8n/agents';
-
 import {
 	SCOPE_GROUNDING_GUARDRAIL,
 	SECRET_ASK_GUARDRAIL,
 	SECRET_PASTE_GUARDRAIL,
 } from './credential-guardrails.prompt';
-import { attachRuntimeWorkspaceCapabilities } from './runtime-workspace';
 import {
 	ASK_USER_FALLBACK,
 	SUBAGENT_OUTPUT_CONTRACT,
 	UNTRUSTED_CONTENT_DOCTRINE,
 } from './shared-prompts';
 import { getDateTimeSection } from './system-prompt';
-import { toolRegistryValues } from '../tool-registry';
-import {
-	buildAgentTraceInputs,
-	mergeTraceRunInputs,
-	modelIdTraceMetadata,
-	setTraceModelId,
-} from '../tracing/langsmith-tracing';
-import type {
-	InstanceAiToolRegistry,
-	InstanceAiTraceContext,
-	InstanceAiTraceRun,
-	ModelConfig,
-} from '../types';
-
-export interface SubAgentOptions {
-	/** Unique ID for this sub-agent instance (e.g., "agent-V1StGX") */
-	agentId: string;
-	/** Free-form role description */
-	role: string;
-	/** Task-specific system prompt written by the orchestrator */
-	instructions: string;
-	/** Validated subset of domain tools */
-	tools: InstanceAiToolRegistry;
-	/** Model config (same as orchestrator) */
-	modelId: ModelConfig;
-	/** Native checkpoint store for HITL/suspend state. */
-	checkpointStore?: CheckpointStore;
-	/** Optional trace run to annotate with the sub-agent's static config */
-	traceRun?: InstanceAiTraceRun;
-	/** Optional trace context used to attach native AI SDK telemetry. */
-	tracing?: InstanceAiTraceContext;
-	/** Shared runtime workspace for skill scripts/files. */
-	workspace?: Workspace;
-	/** Runtime skills already materialized into the shared runtime workspace. */
-	runtimeSkills?: RuntimeSkillSource;
-	/** IANA time zone for the current user — used to render the datetime section so
-	 *  the sub-agent resolves "now" consistently with the orchestrator. */
-	timeZone?: string;
-}
 
 /** Hard protocol injected into every sub-agent — cannot be overridden by orchestrator instructions. */
 const SUB_AGENT_PROTOCOL = `${SUBAGENT_OUTPUT_CONTRACT}
@@ -80,52 +38,13 @@ export { SUB_AGENT_PROTOCOL };
 
 export function buildSubAgentPrompt(role: string, instructions: string, timeZone?: string): string {
 	return `${SUB_AGENT_PROTOCOL}
+
+## Current Date and Time
+
 ${getDateTimeSection(timeZone)}
 
 You are a sub-agent with the role: ${role}.
 
 ## Task
 ${instructions}`;
-}
-
-export function createSubAgent(options: SubAgentOptions): Agent {
-	const { role, instructions, tools, modelId, traceRun, timeZone } = options;
-
-	const systemPrompt = buildSubAgentPrompt(role, instructions, timeZone);
-
-	const agent = new Agent(`Sub-Agent: ${role}`)
-		.model(modelId)
-		.instructions(systemPrompt, {
-			providerOptions: {
-				anthropic: { cacheControl: { type: 'ephemeral' } },
-			},
-		})
-		.tool(toolRegistryValues(tools))
-		.checkpoint(options.checkpointStore ?? 'memory');
-	attachRuntimeWorkspaceCapabilities(agent, {
-		workspace: options.workspace,
-		runtimeSkills: options.runtimeSkills,
-	});
-	setTraceModelId(options.tracing, modelId);
-	const telemetry = options.tracing?.getTelemetry?.({
-		agentRole: role,
-		functionId: `instance-ai.subagent.${role.replace(/[^a-zA-Z0-9._-]+/g, '-')}`,
-		executionMode:
-			options.tracing.traceKind === 'background_subagent' ? 'background_subagent' : 'background',
-		metadata: { agent_id: options.agentId, ...modelIdTraceMetadata(modelId) },
-	});
-	if (telemetry) {
-		agent.telemetry(telemetry);
-	}
-
-	mergeTraceRunInputs(
-		traceRun,
-		buildAgentTraceInputs({
-			systemPrompt,
-			tools,
-			modelId,
-		}),
-	);
-
-	return agent;
 }

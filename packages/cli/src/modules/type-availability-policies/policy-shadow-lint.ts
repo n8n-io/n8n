@@ -1,11 +1,16 @@
-import { nodeTypePackageResolver, type PackageResolver } from './policy-evaluator';
-import type { PolicyRule } from './policy-rule.types';
+import {
+	nodeTypePackageResolver,
+	type PackageResolver,
+	type PolicedType,
+} from './policy-evaluator';
+import type { PolicyRule, PolicySelector } from './policy-rule.types';
 
 /**
  * One case of an unreachable rule: `ruleId` can never match, because `shadowedByRuleId`
  * appears earlier in the same rule list and matches every type that `ruleId` would match.
  */
 export type ShadowWarning = {
+	readonly kind: 'shadowed';
 	readonly ruleId: string;
 	readonly shadowedByRuleId: string;
 };
@@ -44,10 +49,14 @@ function resolvePackageOrUndefined(
  * Finds rules in an ordered rule list that can never match, because an earlier rule in the
  * same list already matches every type the later rule would match.
  *
- * A name selector matches exactly one type, so it is shadowed only by an earlier, identical
- * name selector. A package selector matches every type in that package, so it also shadows a
- * later name selector scoped to that same package. A name selector never shadows a package
- * selector: one type can't cover a whole package.
+ * A name selector is shadowed by an earlier, identical name selector, or by an earlier name
+ * selector for the base node it is a synthetic tool variant of — `gmail` matches `gmailTool`
+ * too, so a later `gmailTool` rule is dead. A package selector matches every type in that
+ * package, so it also shadows a later name selector scoped to that same package. A name
+ * selector never shadows a package selector: one type can't cover a whole package.
+ *
+ * An `extends` selector shadows a later `name` or `extends` selector whose type is the same one
+ * or built on it. Nothing else shadows an `extends`: its family can span several packages.
  *
  * Runs in one O(n) pass: instead of comparing each rule against every rule before it, it
  * keeps, per selector kind, only the earliest rule seen so far for each selector value, and
@@ -56,36 +65,59 @@ function resolvePackageOrUndefined(
  * Pure and synchronous, like `evaluateType` — it never throws and never blocks the write.
  * Callers decide what to do with the warnings (e.g. return them alongside the saved policy).
  *
- * `resolvePackage` must resolve the same way `evaluateType` will for this policy's `kind`
- * (see `packageResolverFor` in `package-resolver.ts`), so a shadow this lint warns about is
- * exactly one evaluation would also produce. Defaults to the `node-types` convention.
+ * `resolvePackage` and `policedType` must resolve the same way `evaluateType` will for this
+ * policy's `kind` (see `package-resolver.ts`), so a shadow this lint warns about is exactly
+ * one evaluation would also produce. Both default to the `node-types` convention, with no
+ * knowledge of which names are synthetic variants.
  */
 export function lintRulesForShadowing(
 	rules: readonly PolicyRule[],
 	resolvePackage: PackageResolver = nodeTypePackageResolver,
+	policedType: (name: string) => PolicedType = (name) => ({ name, baseName: name }),
 ): ShadowWarning[] {
 	const warnings: ShadowWarning[] = [];
 
-	const firstByName = new Map<string, FirstOccurrence>();
-	const firstByPackage = new Map<string, FirstOccurrence>();
+	const firstByKind: Record<PolicySelector['kind'], Map<string, FirstOccurrence>> = {
+		name: new Map(),
+		package: new Map(),
+		extends: new Map(),
+	};
+
+	/** The earliest `extends` rule naming the type itself or one it is built on. */
+	const firstFamilyOccurrence = (type: PolicedType) =>
+		[type.name, ...(type.ancestors ?? [])]
+			.map((name) => firstByKind.extends.get(name))
+			.reduce(earlierOccurrence, undefined);
 
 	for (let index = 0; index < rules.length; index++) {
 		const rule = rules[index];
 		const { selector } = rule;
 
-		const shadowedBy =
-			selector.kind === 'package'
-				? firstByPackage.get(selector.value)
-				: earlierOccurrence(
-						firstByName.get(selector.value),
-						resolvePackageOrUndefined(firstByPackage, resolvePackage, selector.value),
-					);
-
-		if (shadowedBy) {
-			warnings.push({ ruleId: rule.id, shadowedByRuleId: shadowedBy.rule.id });
+		let shadowedBy: FirstOccurrence | undefined;
+		switch (selector.kind) {
+			case 'package':
+				shadowedBy = firstByKind.package.get(selector.value);
+				break;
+			case 'extends':
+				shadowedBy = firstFamilyOccurrence(policedType(selector.value));
+				break;
+			case 'name': {
+				const type = policedType(selector.value);
+				shadowedBy = [
+					firstByKind.name.get(selector.value),
+					firstByKind.name.get(type.baseName),
+					resolvePackageOrUndefined(firstByKind.package, resolvePackage, selector.value),
+					firstFamilyOccurrence(type),
+				].reduce(earlierOccurrence, undefined);
+				break;
+			}
 		}
 
-		const firstOccurrenceByValue = selector.kind === 'package' ? firstByPackage : firstByName;
+		if (shadowedBy) {
+			warnings.push({ kind: 'shadowed', ruleId: rule.id, shadowedByRuleId: shadowedBy.rule.id });
+		}
+
+		const firstOccurrenceByValue = firstByKind[selector.kind];
 		if (!firstOccurrenceByValue.has(selector.value)) {
 			firstOccurrenceByValue.set(selector.value, { rule, index });
 		}

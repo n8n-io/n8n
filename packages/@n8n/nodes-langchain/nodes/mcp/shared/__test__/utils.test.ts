@@ -4,6 +4,7 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import { proxyFetch } from '@n8n/ai-utilities';
 import { createResultError, createResultOk } from '@n8n/utils/result';
 import type {
+	ICredentialDataDecryptedObject,
 	IExecuteFunctions,
 	INode,
 	LiteralMcpRegistryConnection,
@@ -19,7 +20,9 @@ import {
 	connectMcpClient,
 	connectMcpClientForCredential,
 	getAuthHeaders,
+	isMcpContentArray,
 	mapToNodeOperationError,
+	tryRefreshAiGatewayToken,
 	tryRefreshOAuth2Token,
 } from '../utils';
 
@@ -35,6 +38,9 @@ vi.mock('@n8n/ai-utilities', async () => {
 });
 
 const MockedClient = Client as MockedClass<typeof Client>;
+const MockedStreamableHTTPClientTransport = StreamableHTTPClientTransport as MockedClass<
+	typeof StreamableHTTPClientTransport
+>;
 
 const createTestEgressFilter = (): NodeEgressFilter => ({
 	validateUrl: vi.fn().mockResolvedValue(createResultOk(undefined)),
@@ -46,6 +52,45 @@ const createTestEgressFilter = (): NodeEgressFilter => ({
 describe('utils', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
+	});
+
+	describe('isMcpContentArray', () => {
+		it('should reject sparse arrays', () => {
+			expect(isMcpContentArray(new Array(1))).toBe(false);
+		});
+	});
+
+	describe('tryRefreshAiGatewayToken', () => {
+		const aiGatewayType = 'n8nConnectFirecrawlMcpAiGatewayApi';
+
+		it('should replace the expired token and keep the other headers', async () => {
+			const ctx = mockDeep<IExecuteFunctions>();
+			ctx.getCredentials.mockResolvedValue({ token: 'fresh' });
+
+			const headers = await tryRefreshAiGatewayToken(ctx, aiGatewayType, {
+				Foo: 'bar',
+				authorization: 'Bearer expired',
+			});
+
+			expect(ctx.getCredentials).toHaveBeenCalledWith(aiGatewayType);
+			expect(headers).toEqual({ Foo: 'bar', Authorization: 'Bearer fresh' });
+		});
+
+		it('should return null when the credential has no token', async () => {
+			const ctx = mockDeep<IExecuteFunctions>();
+			ctx.getCredentials.mockResolvedValue({});
+
+			expect(await tryRefreshAiGatewayToken(ctx, aiGatewayType)).toBeNull();
+		});
+
+		it('should throw the mint error instead of returning null', async () => {
+			const ctx = mockDeep<IExecuteFunctions>();
+			ctx.getCredentials.mockRejectedValue(new Error('No Gateway credits left'));
+
+			await expect(tryRefreshAiGatewayToken(ctx, aiGatewayType)).rejects.toThrow(
+				'No Gateway credits left',
+			);
+		});
 	});
 
 	describe('tryRefreshOAuth2Token', () => {
@@ -313,6 +358,27 @@ describe('utils', () => {
 			});
 		});
 
+		it.each<{
+			case: string;
+			credentials: ICredentialDataDecryptedObject;
+			headers?: Record<string, string>;
+		}>([
+			{
+				case: 'the minted token',
+				credentials: { token: 'minted' },
+				headers: { Authorization: 'Bearer minted' },
+			},
+			{ case: 'no headers without a token', credentials: {}, headers: undefined },
+		])('should return $case for a Gateway credits credential', async ({ credentials, headers }) => {
+			const ctx = mockDeep<IExecuteFunctions>();
+			ctx.getCredentials.mockResolvedValue(credentials);
+
+			const result = await getAuthHeaders(ctx, 'n8nConnectFirecrawlMcpAiGatewayApi');
+
+			expect(ctx.getCredentials).toHaveBeenCalledWith('n8nConnectFirecrawlMcpAiGatewayApi');
+			expect(result).toEqual(headers ? { headers, credentials } : { credentials });
+		});
+
 		it('should return the headers and credentials for multipleHeadersAuth', async () => {
 			const ctx = mockDeep<IExecuteFunctions>();
 			const credentials = {
@@ -505,10 +571,9 @@ describe('utils', () => {
 
 				// Trigger the abort; the listener will call client.close (the wrapper)
 				expect(() => abort.abort()).not.toThrow();
-				await Promise.resolve();
 
 				// The original close function should have been called exactly once
-				expect(closeSpy).toHaveBeenCalledTimes(1);
+				await vi.waitFor(() => expect(closeSpy).toHaveBeenCalledTimes(1));
 			});
 
 			it('should remove the abort listener on normal close, preventing double-close on later abort', async () => {
@@ -979,6 +1044,96 @@ describe('utils', () => {
 
 				expect(egressFilter.validateUrl).toHaveBeenCalledWith('https://mcp.example.com/');
 				expect(mockedProxyFetch).toHaveBeenCalledTimes(1);
+			});
+		});
+
+		describe('httpStreamable session cleanup', () => {
+			const connectHttpClient = async (signal?: AbortSignal) => {
+				const result = await connectMcpClient({
+					serverTransport: 'httpStreamable',
+					secureEgressFilter: createTestEgressFilter(),
+					endpointUrl: 'https://example.com',
+					name: 'test-client',
+					version: 1,
+					signal,
+				});
+
+				expect(result.ok).toBe(true);
+				if (!result.ok) throw result.error.error;
+
+				const transport = MockedStreamableHTTPClientTransport.mock.instances.at(-1);
+				if (!transport) throw new Error('Expected Streamable HTTP transport');
+
+				return { client: result.result, transport };
+			};
+
+			it('should terminate the session before closing the client', async () => {
+				const originalClose = mockClient.close;
+				const { client, transport } = await connectHttpClient();
+				const terminateSession = vi.mocked(transport.terminateSession);
+				terminateSession.mockResolvedValue(undefined);
+
+				await client.close();
+
+				expect(terminateSession).toHaveBeenCalledTimes(1);
+				expect(originalClose).toHaveBeenCalledTimes(1);
+				expect(terminateSession.mock.invocationCallOrder[0]).toBeLessThan(
+					originalClose.mock.invocationCallOrder[0],
+				);
+			});
+
+			it('should close the client when session termination fails', async () => {
+				const originalClose = mockClient.close;
+				const { client, transport } = await connectHttpClient();
+				vi.mocked(transport.terminateSession).mockRejectedValue(new Error('DELETE failed'));
+
+				await expect(client.close()).resolves.toBeUndefined();
+				expect(originalClose).toHaveBeenCalledTimes(1);
+			});
+
+			it('should close the client when session termination times out', async () => {
+				vi.useFakeTimers();
+				try {
+					const originalClose = mockClient.close;
+					const { client, transport } = await connectHttpClient();
+					vi.mocked(transport.terminateSession).mockReturnValue(new Promise(() => {}));
+
+					const closePromise = client.close();
+					await vi.runAllTimersAsync();
+					await closePromise;
+
+					expect(originalClose).toHaveBeenCalledTimes(1);
+				} finally {
+					vi.useRealTimers();
+				}
+			});
+
+			it('should terminate the session when execution is aborted', async () => {
+				const abort = new AbortController();
+				const originalClose = mockClient.close;
+				const { transport } = await connectHttpClient(abort.signal);
+				const terminateSession = vi.mocked(transport.terminateSession);
+				terminateSession.mockResolvedValue(undefined);
+
+				abort.abort();
+
+				await vi.waitFor(() => expect(originalClose).toHaveBeenCalledTimes(1));
+				expect(terminateSession).toHaveBeenCalledTimes(1);
+				expect(terminateSession.mock.invocationCallOrder[0]).toBeLessThan(
+					originalClose.mock.invocationCallOrder[0],
+				);
+			});
+
+			it('should terminate and close only once', async () => {
+				const originalClose = mockClient.close;
+				const { client, transport } = await connectHttpClient();
+				const terminateSession = vi.mocked(transport.terminateSession);
+				terminateSession.mockResolvedValue(undefined);
+
+				await Promise.all([client.close(), client.close()]);
+
+				expect(terminateSession).toHaveBeenCalledTimes(1);
+				expect(originalClose).toHaveBeenCalledTimes(1);
 			});
 		});
 	});

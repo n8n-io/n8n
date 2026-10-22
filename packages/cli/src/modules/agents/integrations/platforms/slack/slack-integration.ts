@@ -1,3 +1,4 @@
+import type { ResolvedEpisodicScope } from '@n8n/agents';
 import type {
 	AgentIntegrationConfig,
 	AgentIntegrationDisconnectWarning,
@@ -16,28 +17,33 @@ import {
 	type BridgeExecutionContext,
 	type BridgeMessageContextParams,
 	type BridgeResumeExecutionContext,
+	type EpisodicScopeContext,
 	type PlatformAgentContext,
 	type PlatformContextQueryParams,
+	type UnauthenticatedWebhookContext,
 	type UnauthenticatedWebhookResponse,
 } from '../../agent-chat-integration';
 import type { ChatInstance } from '../../chat-integration.service';
 import { assertCredentialNotClaimed } from '../../credential-claim';
-import { loadSlackAdapter } from '../../esm-loader';
 import { connectionUnavailable } from '../../integration-helpers';
 import {
 	resolveIntegrationActionDefinitions,
 	resolveIntegrationContextQueryDefinitions,
 } from '../../integration-tool-definitions';
 import type { ReplyExpectation } from '../../integration-tools';
+import { createSlackSourceAdapter } from './slack-adapter';
 import {
 	createSlackBridgeExecutionContext,
 	createSlackResumeExecutionContext,
 	getSlackPlatformAgentContext,
 	getSlackReplyExpectation,
 	prepareSlackInboundText,
+	type SlackThreadContext,
 } from './slack-bridge-behavior';
 import { SlackManagedSetupService } from './slack-managed-setup.service';
 import { executeSlackContextQuery, subscribeSlackThread } from './slack-operations';
+import { buildSlackOriginDraft } from './slack-origin';
+import type { DecodedThread, OriginInput } from '../../integration-origin-support';
 
 /**
  * Slack platform integration.
@@ -179,6 +185,7 @@ export class SlackIntegration extends AgentChatIntegration {
 		thread: BridgeMessageContextParams['thread'];
 		logger: BridgeMessageContextParams['logger'];
 		agentId: string;
+		slackThreadContext?: SlackThreadContext;
 	}): Promise<BridgeResumeExecutionContext> {
 		return await createSlackResumeExecutionContext(params);
 	}
@@ -192,13 +199,47 @@ export class SlackIntegration extends AgentChatIntegration {
 		});
 	}
 
+	async buildOriginDraft(input: OriginInput, decoded: DecodedThread) {
+		return await buildSlackOriginDraft(input, decoded);
+	}
+
+	resolveEpisodicScope({
+		agentId,
+		integrationType,
+		author,
+		origin,
+	}: EpisodicScopeContext): ResolvedEpisodicScope | null {
+		if (integrationType !== 'slack' || origin?.type !== 'slack') return null;
+		if (!agentId || !origin.workspaceId || !origin.channelId) return null;
+
+		let ownerId: string;
+		switch (origin.conversationKind) {
+			case 'channel':
+			case 'group':
+				ownerId = origin.channelId;
+				break;
+			case 'dm':
+				ownerId = author.id;
+				break;
+			default:
+				return null;
+		}
+		if (!ownerId || ownerId === 'unknown') return null;
+
+		const scopeId = ['slack', agentId, origin.workspaceId, origin.conversationKind, ownerId]
+			.map(encodeURIComponent)
+			.join(':');
+		return { writeScopeId: scopeId, readScopeIds: [scopeId] };
+	}
+
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {
 		const botToken = this.extractBotToken(ctx.credential);
 		const signingSecret = this.extractSigningSecret(ctx.credential);
-		const { createSlackAdapter } = await loadSlackAdapter();
-		return createSlackAdapter({
+		return await createSlackSourceAdapter({
 			botToken,
 			signingSecret,
+			// Post-and-edit delivers short updates without a native stream buffer.
+			nativeStreaming: false,
 			agentView: this.usesAgentMessagingExperience(ctx.integration),
 		});
 	}
@@ -209,7 +250,10 @@ export class SlackIntegration extends AgentChatIntegration {
 	 * bot token + signing secret in n8n. Slack's docs:
 	 * https://api.slack.com/events/url_verification
 	 */
-	handleUnauthenticatedWebhook(body: unknown): UnauthenticatedWebhookResponse | undefined {
+	handleUnauthenticatedWebhook(
+		context: UnauthenticatedWebhookContext,
+	): UnauthenticatedWebhookResponse | undefined {
+		const { body } = context;
 		if (!body || typeof body !== 'object') return undefined;
 		const evt = body as { type?: unknown; challenge?: unknown };
 		if (evt.type === 'url_verification' && typeof evt.challenge === 'string') {

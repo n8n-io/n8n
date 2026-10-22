@@ -19,6 +19,8 @@ export type {
 	RuntimeSkillLoader,
 	RuntimeSkillMcpServerDependency,
 	RuntimeSkillPolicyContract,
+	RuntimeSkillReferenceContract,
+	RuntimeSkillReferenceLocation,
 	RuntimeSkillRegistry,
 	RuntimeSkillRegistryEntry,
 	RuntimeSkillSource,
@@ -35,6 +37,7 @@ export {
 export {
 	createRuntimeSkillRegistry,
 	createRuntimeSkillSource,
+	extendRuntimeSkillSource,
 	filterRuntimeSkillSource,
 	formatSkillValidationErrors,
 	InvalidRuntimeSkillError,

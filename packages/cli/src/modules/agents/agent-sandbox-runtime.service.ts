@@ -19,7 +19,6 @@ import { OperationalError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { v5 as uuidv5 } from 'uuid';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { AiService } from '@/services/ai.service';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 import { callAiServiceWithRetry } from '@/utils/ai-service-retry';
@@ -27,6 +26,7 @@ import { callAiServiceWithRetry } from '@/utils/ai-service-retry';
 import { assertKnowledgePathSegment } from './agent-knowledge-storage';
 import type { AgentSandboxPrincipalHash } from './agent-sandbox-principal';
 import { AgentRepository } from './repositories/agent.repository';
+import { getAgentOrThrow } from './utils/get-agent-or-throw';
 
 const WORKSPACE_SANDBOX_NAMESPACE = '38348f53-e947-42c7-8c04-83aa154be385';
 const KNOWLEDGE_SANDBOX_NAMESPACE = '51989c13-3ae7-4167-8e64-d874dd068795';
@@ -353,10 +353,7 @@ export class AgentSandboxRuntimeService {
 		lifecycle: SandboxLifecycle,
 		startOptions: SandboxStartOptions,
 	): Promise<AgentSandboxRuntime> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!agent) {
-			throw new NotFoundError(`Agent "${agentId}" not found`);
-		}
+		await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const config =
 			provider === 'daytona'

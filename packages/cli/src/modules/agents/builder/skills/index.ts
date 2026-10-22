@@ -1,5 +1,6 @@
 import type { RuntimeSkill } from '@n8n/agents';
 
+import { configSkill } from './config.skill';
 import { customToolsSkill } from './custom-tools.skill';
 import { externalServicesSkill } from './external-services.skill';
 import { memorySkill } from './memory.skill';
@@ -9,8 +10,20 @@ import { subAgentsSkill } from './sub-agents.skill';
 import { targetSkillsSkill } from './target-skills.skill';
 import { targetTasksSkill } from './target-tasks.skill';
 
+/** The Instance AI skill that lists the builder skills as its references. */
+const AGENT_BUILDER_SKILL_ID = 'agent-builder';
+
+function asAgentBuilderReference(skill: RuntimeSkill): RuntimeSkill {
+	return {
+		...skill,
+		parents: [AGENT_BUILDER_SKILL_ID],
+		reference: { owner: AGENT_BUILDER_SKILL_ID, path: `references/${skill.id}.md` },
+	};
+}
+
 export function getBuilderRuntimeSkills(): RuntimeSkill[] {
 	return [
+		configSkill(),
 		customToolsSkill(),
 		externalServicesSkill(),
 		memorySkill(),
@@ -23,5 +36,5 @@ export function getBuilderRuntimeSkills(): RuntimeSkill[] {
 		// Re-enable this skill only when the builder can actually perform research
 		// instead of merely loading instructions that tell it to research.
 		// researchSkill(),
-	];
+	].map(asAgentBuilderReference);
 }

@@ -6,7 +6,12 @@
  * behaviour the RFC asks for and the one users will call a bug — "my old workflow saves but
  * will not run" — so it is worth pinning on the real paths rather than in the check's own tests.
  */
-import { createWorkflow, createWorkflowWithHistory, testDb } from '@n8n/backend-test-utils';
+import {
+	createWorkflow,
+	createWorkflowWithHistory,
+	getPersonalProject,
+	testDb,
+} from '@n8n/backend-test-utils';
 import { WorkflowsConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository, type IWorkflowDb, type User } from '@n8n/db';
@@ -22,7 +27,7 @@ import { WorkflowRunner } from '@/workflow-runner';
 import { createOwner } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
-import { clearPolicyCache } from './shared/policy-cache';
+import { reloadPolicySnapshot } from './shared/policy-snapshot';
 
 const CHECK_ID = 'node-type-availability';
 
@@ -33,7 +38,7 @@ const SET = 'n8n-nodes-base.set';
 const testServer = utils.setupTestServer({
 	endpointGroups: ['workflows', 'activeWorkflows', 'type-availability-policies'],
 	modules: ['policy-infrastructure', 'type-availability-policies'],
-	enabledFeatures: [LICENSE_FEATURES.NODE_TYPE_POLICIES],
+	enabledFeatures: [LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES],
 });
 
 let owner: User;
@@ -57,6 +62,28 @@ const node = (type: string, name = type): INode => ({
 /** The `set` node stays unconnected: the check reads the node list, not the graph. */
 const withBlockedNode = (triggerType: string) => [node(triggerType), node(SET)];
 
+/** The blocked type is only a node tool of the inline agent, never a workflow node. */
+const withBlockedInlineAgentTool = (triggerType: string): INode[] => [
+	node(triggerType),
+	{
+		...node('n8n-nodes-base.messageAnAgent', 'Message an Agent'),
+		parameters: {
+			agentSource: 'inline',
+			inlineAgent: {
+				config: {
+					tools: [
+						{
+							type: 'node',
+							name: 'Set fields',
+							node: { nodeType: SET, nodeTypeVersion: 1, nodeParameters: {} },
+						},
+					],
+				},
+			},
+		},
+	},
+];
+
 async function denySetAtInstanceScope() {
 	const response = await ownerAgent.put('/node-type-policies/instance').send({
 		rules: [{ id: 'deny-set', action: 'deny', selector: { kind: 'name', value: SET } }],
@@ -75,6 +102,7 @@ const expectedViolation = {
 	subjectType: 'nodeType',
 	scope: 'instance',
 	matchedRuleId: 'deny-set',
+	optInAvailable: false,
 };
 
 beforeAll(async () => {
@@ -122,7 +150,7 @@ afterEach(async () => {
 		'WorkflowHistory',
 		'WorkflowPublishHistory',
 	]);
-	await clearPolicyCache();
+	await reloadPolicySnapshot();
 });
 
 describe('POST /workflows/:workflowId/activate', () => {
@@ -146,6 +174,27 @@ describe('POST /workflows/:workflowId/activate', () => {
 		const stored = await workflowRepository.findOneBy({ id: workflow.id });
 		expect(stored?.activeVersionId).toBeNull();
 		expect(activeWorkflowManager.allActiveInMemory()).not.toContain(workflow.id);
+	});
+
+	test('refuses to publish a workflow whose inline agent has a blocked node tool', async () => {
+		const workflow = await createWorkflowWithHistory(
+			{
+				name: 'Publishing',
+				nodes: withBlockedInlineAgentTool(SCHEDULE_TRIGGER),
+				connections: {},
+			},
+			owner,
+		);
+		await denySetAtInstanceScope();
+
+		const response = await ownerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: workflow.versionId })
+			.expect(403);
+
+		expect(response.body).toMatchObject({ meta: { violations: [expectedViolation] } });
+		const stored = await workflowRepository.findOneBy({ id: workflow.id });
+		expect(stored?.activeVersionId).toBeNull();
 	});
 
 	test('publishes as usual when no rule matches the workflow', async () => {
@@ -211,7 +260,28 @@ describe('starting a run', () => {
 			violations?: unknown[];
 		};
 
-		expect(error?.violations).toEqual([expectedViolation]);
+		const { id: projectId } = await getPersonalProject(owner);
+		expect(error?.violations).toEqual([{ ...expectedViolation, projectId }]);
+	});
+
+	test('fails the run of a workflow whose inline agent has a blocked node tool', async () => {
+		const workflow = await createWorkflow(
+			{ name: 'Running', nodes: withBlockedInlineAgentTool(MANUAL_TRIGGER), connections: {} },
+			owner,
+		);
+		await denySetAtInstanceScope();
+
+		const executionId = await run(workflow);
+
+		const execution = await waitForFinalStatus(executionId);
+		expect(execution.status).toBe('error');
+		const stored = await executionRepository.findSingleExecution(executionId, {
+			includeData: true,
+			unflattenData: true,
+		});
+		const error = stored?.data.resultData.error as unknown as { violations?: unknown[] };
+		const { id: projectId } = await getPersonalProject(owner);
+		expect(error?.violations).toEqual([{ ...expectedViolation, projectId }]);
 	});
 
 	test('runs as usual when no rule matches the workflow', async () => {

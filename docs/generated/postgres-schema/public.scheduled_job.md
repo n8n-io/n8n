@@ -4,6 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| concurrencyLimit | integer |  | true |  |  | How many occurrences of this job may run at the same time. NULL means no limit. |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | cronExpression | varchar(255) |  | true |  |  | Cron expression. For kind 'cron' it is the schedule; for 'recurring_cron' it lists the candidate run times that the every-N-periods filter then keeps every Nth of. |
 | enabled | boolean | true | false |  |  | Whether the scheduler considers this job for firing. |
@@ -25,6 +26,7 @@
 | recurrenceSize | integer |  | true |  |  | The N in a recurring_cron schedule's every-N-periods filter, e.g. 3 for every 3 weeks; at least 2. Set only when kind is 'recurring_cron'. |
 | recurrenceUnit | varchar(16) |  | true |  |  | Calendar period counted by a recurring_cron schedule's every-N-periods filter (hours, days, weeks, months). Set only when kind is 'recurring_cron'. |
 | taskType | varchar(128) |  | false |  |  | Selects which registered handler runs the task. |
+| timeoutSeconds | integer | 300 | false |  |  | How long, in seconds, one attempt of an occurrence may run before the executor stops it. |
 | timezone | varchar(64) |  | true |  |  | IANA timezone the cron expression is evaluated in; NULL uses the instance default. |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
@@ -32,6 +34,7 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| CHK_scheduled_job_concurrencyLimit | CHECK | CHECK ((("concurrencyLimit" IS NULL) OR (("concurrencyLimit" >= 1) AND ("concurrencyLimit" <= 2147483647)))) |
 | CHK_scheduled_job_cron_expression | CHECK | CHECK ((((kind)::text <> 'cron'::text) OR ("cronExpression" IS NOT NULL))) |
 | CHK_scheduled_job_fire_at | CHECK | CHECK ((((kind)::text <> 'one_off'::text) OR ("fireAt" IS NOT NULL))) |
 | CHK_scheduled_job_interval_seconds | CHECK | CHECK ((((kind)::text <> 'interval'::text) OR ("intervalSeconds" IS NOT NULL))) |
@@ -41,6 +44,7 @@
 | CHK_scheduled_job_recurrence_size | CHECK | CHECK (("recurrenceSize" >= 2)) |
 | CHK_scheduled_job_recurrence_unit | CHECK | CHECK ((("recurrenceUnit")::text = ANY ((ARRAY['hours'::character varying, 'days'::character varying, 'weeks'::character varying, 'months'::character varying])::text[]))) |
 | CHK_scheduled_job_recurring_cron | CHECK | CHECK ((((kind)::text <> 'recurring_cron'::text) OR (("cronExpression" IS NOT NULL) AND ("recurrenceUnit" IS NOT NULL) AND ("recurrenceSize" IS NOT NULL)))) |
+| CHK_scheduled_job_timeoutSeconds | CHECK | CHECK ((("timeoutSeconds" > 0) AND ("timeoutSeconds" <= 2147483))) NOT VALID |
 | PK_893185383f029ca8d57bb781fa8 | PRIMARY KEY | PRIMARY KEY (id) |
 | scheduled_job_createdAt_not_null | n | NOT NULL "createdAt" |
 | scheduled_job_enabled_not_null | n | NOT NULL enabled |
@@ -54,12 +58,14 @@
 | scheduled_job_ownerType_not_null | n | NOT NULL "ownerType" |
 | scheduled_job_payload_not_null | n | NOT NULL payload |
 | scheduled_job_taskType_not_null | n | NOT NULL "taskType" |
+| scheduled_job_timeoutSeconds_not_null | n | NOT NULL "timeoutSeconds" |
 | scheduled_job_updatedAt_not_null | n | NOT NULL "updatedAt" |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_scheduled_job_concurrencyLimit | CREATE INDEX "IDX_scheduled_job_concurrencyLimit" ON public.scheduled_job USING btree ("concurrencyLimit") WHERE ("concurrencyLimit" IS NOT NULL) |
 | IDX_scheduled_job_name | CREATE UNIQUE INDEX "IDX_scheduled_job_name" ON public.scheduled_job USING btree (name) |
 | IDX_scheduled_job_nextRunAt | CREATE INDEX "IDX_scheduled_job_nextRunAt" ON public.scheduled_job USING btree ("nextRunAt") WHERE ((enabled = true) AND ("nextRunAt" IS NOT NULL)) |
 | IDX_scheduled_job_ownerType_ownerId_ownerMemberId | CREATE INDEX "IDX_scheduled_job_ownerType_ownerId_ownerMemberId" ON public.scheduled_job USING btree ("ownerType", "ownerId", "ownerMemberId") |
@@ -73,6 +79,7 @@ erDiagram
 "public.scheduled_task" }o--|| "public.scheduled_job" : "FOREIGN KEY (#quot;jobId#quot;) REFERENCES scheduled_job(id) ON DELETE CASCADE"
 
 "public.scheduled_job" {
+  integer concurrencyLimit
   timestamp_3__with_time_zone createdAt
   varchar_255_ cronExpression
   boolean enabled
@@ -94,6 +101,7 @@ erDiagram
   integer recurrenceSize
   varchar_16_ recurrenceUnit
   varchar_128_ taskType
+  integer timeoutSeconds
   varchar_64_ timezone
   timestamp_3__with_time_zone updatedAt
 }
@@ -116,6 +124,7 @@ erDiagram
   timestamp_3__with_time_zone startedAt
   varchar_16_ status
   varchar_128_ taskType
+  integer timeoutSeconds
 }
 ```
 

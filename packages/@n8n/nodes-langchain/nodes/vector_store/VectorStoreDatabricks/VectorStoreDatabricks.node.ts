@@ -94,6 +94,28 @@ const sharedFields: INodeProperties[] = [
 				description:
 					'Columns to return in document metadata. Defaults to all columns except the key, content and vector columns. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
+			{
+				displayName: 'Search Mode',
+				name: 'searchMode',
+				type: 'options',
+				default: 'ANN',
+				options: [
+					{ name: 'Vector', value: 'ANN' },
+					{ name: 'Hybrid', value: 'HYBRID' },
+				],
+				description:
+					'Vector ranks purely by semantic similarity. Hybrid adds keyword matching on top, using the search text. Sent as query_type ANN or HYBRID.',
+			},
+			{
+				displayName: 'Metadata Filter',
+				name: 'searchFilterJson',
+				type: 'json',
+				typeOptions: { rows: 5 },
+				default: '{}',
+				validateType: 'object',
+				description:
+					'Restrict results to rows matching this metadata condition, for example {"source": "handbook"}. Sent as filters_json. Works on STANDARD endpoints only.',
+			},
 		],
 	},
 ];
@@ -173,6 +195,9 @@ async function createStore(
 		(value): value is string => typeof value === 'string',
 		node,
 	);
+	const searchMode = ctx.getNodeParameter('options.searchMode', itemIndex, 'ANN');
+	assertParamIsString('options.searchMode', searchMode, node);
+	const queryType = searchMode === 'HYBRID' ? 'HYBRID' : 'ANN';
 
 	let index = indexes.get(indexName);
 	if (!index) {
@@ -190,6 +215,7 @@ async function createStore(
 		indexName,
 		contentColumn,
 		metadataColumns,
+		queryType,
 		filter,
 		index: await index,
 	});
@@ -205,6 +231,7 @@ async function searchIndexes(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
+	const insertOnly = this.getCurrentNodeParameter('mode') === 'insert';
 	const credentials = await this.getCredentials<DatabricksOAuth2Credential>(
 		DATABRICKS_CREDENTIAL_TYPE,
 	);
@@ -226,12 +253,13 @@ async function searchIndexes(
 					{ endpoint_name: endpoint.name },
 					(page: ListPage) => page.vector_indexes,
 				);
-				// The type tells the user which indexes accept inserts
-				return indexes.map((index) => ({
-					name: index.name,
-					value: index.name,
-					description: `${index.index_type} - ${endpoint.name}`,
-				}));
+				return indexes
+					.filter((index) => !insertOnly || index.index_type === 'DIRECT_ACCESS')
+					.map((index) => ({
+						name: index.name,
+						value: index.name,
+						description: `${index.index_type} - ${endpoint.name}`,
+					}));
 			}),
 		)
 	)
@@ -281,7 +309,6 @@ export class VectorStoreDatabricks extends createVectorStoreNode<DatabricksVecto
 			},
 		],
 	},
-	hidden: true,
 	// The index decides between query_text and query_vector inside the class
 	searchByText: true,
 	methods: { listSearch: { searchIndexes }, loadOptions: { getIndexColumns } },

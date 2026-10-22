@@ -6,6 +6,30 @@ import { mock } from 'vitest-mock-extended';
 
 import { useSettingsStore } from './settings.store';
 
+it.each([
+	{ active: true, enabled: true, expected: true },
+	{ active: true, enabled: undefined, expected: true },
+	{ active: true, enabled: false, expected: false },
+	{ active: false, enabled: true, expected: false },
+])(
+	'gates Agents and its features (active=$active, enabled=$enabled)',
+	({ active, enabled, expected }) => {
+		setActivePinia(createPinia());
+		const store = useSettingsStore();
+		store.settings.activeModules = active ? ['agents'] : [];
+		store.moduleSettings.agents = {
+			enabled,
+			modules: ['tasks'],
+			knowledgeBaseEnabled: true,
+			proxyEnabled: false,
+		};
+
+		expect(store.isAgentsEnabled).toBe(expected);
+		expect(store.isAgentModuleActive('tasks')).toBe(expected);
+		expect(store.isAgentsKnowledgeBaseFeatureEnabled).toBe(expected);
+	},
+);
+
 const mockRootStore = {
 	restApiContext: {},
 	setUrlBaseWebhook: vi.fn(),
@@ -108,6 +132,82 @@ describe('settings.store', () => {
 		setActivePinia(createPinia());
 	});
 
+	describe('setWorkflowReviewsPolicy', () => {
+		beforeEach(() => {
+			const store = useSettingsStore();
+			store.settings.activeModules = ['inbox', 'workflow-reviews'];
+			store.settings.enterprise = { ...mockSettings.enterprise, workflowReviews: true };
+			store.settings.inbox = { enabled: false, availableTypes: [], failedTypes: [] };
+		});
+
+		it.each(['availableTypes', 'failedTypes'] as const)(
+			'preserves Assistant %s when Reviews are enabled and disabled',
+			(sourceStatus) => {
+				const store = useSettingsStore();
+				store.settings.inbox = {
+					enabled: true,
+					availableTypes: [],
+					failedTypes: ['workflow_review'],
+				};
+				store.settings.inbox[sourceStatus].push('self_healing_result');
+
+				store.setWorkflowReviewsPolicy({ enabled: true });
+				expect(store.settings.inbox.availableTypes).toContain('workflow_review');
+				expect(store.settings.inbox.failedTypes).not.toContain('workflow_review');
+				expect(store.settings.inbox[sourceStatus]).toContain('self_healing_result');
+
+				store.setWorkflowReviewsPolicy({ enabled: false });
+				expect(store.settings.inbox).toEqual({
+					enabled: true,
+					availableTypes: [],
+					failedTypes: [],
+					[sourceStatus]: ['self_healing_result'],
+				});
+			},
+		);
+
+		it('disables Inbox when its last source is disabled', () => {
+			const store = useSettingsStore();
+			store.setWorkflowReviewsPolicy({ enabled: true });
+			expect(store.settings.inbox?.enabled).toBe(true);
+
+			store.setWorkflowReviewsPolicy({ enabled: false });
+
+			expect(store.settings.inbox).toEqual({
+				enabled: false,
+				availableTypes: [],
+				failedTypes: [],
+			});
+		});
+
+		it.each([
+			{ licensed: false, activeModules: ['inbox', 'workflow-reviews'] },
+			{ licensed: true, activeModules: ['inbox'] },
+			{ licensed: true, activeModules: ['workflow-reviews'] },
+		])('keeps license and module gates: %j', ({ licensed, activeModules }) => {
+			const store = useSettingsStore();
+			store.settings.enterprise.workflowReviews = licensed;
+			store.settings.activeModules = activeModules;
+
+			store.setWorkflowReviewsPolicy({ enabled: true });
+
+			expect(store.settings.inbox).toEqual({
+				enabled: false,
+				availableTypes: [],
+				failedTypes: [],
+			});
+		});
+
+		it('does not invent Inbox settings when they are absent', () => {
+			const store = useSettingsStore();
+			delete store.settings.inbox;
+
+			store.setWorkflowReviewsPolicy({ enabled: true });
+
+			expect(store.settings.inbox).toBeUndefined();
+		});
+	});
+
 	describe('isAutosaveEnabled', () => {
 		it('should return true when workflowsAutosaveDisabled is false', async () => {
 			getSettings.mockResolvedValueOnce({
@@ -146,71 +246,21 @@ describe('settings.store', () => {
 		});
 	});
 
-	describe('isExecuteWorkflowNodeExcluded', () => {
-		it('should return true when executeWorkflow is in excludeNodes', async () => {
-			getSettings.mockResolvedValueOnce({
-				...mockSettings,
-				excludeNodes: ['n8n-nodes-base.executeWorkflow'],
-			});
-
-			const settingsStore = useSettingsStore();
-			await settingsStore.getSettings();
-
-			expect(settingsStore.isExecuteWorkflowNodeExcluded).toBe(true);
-		});
-
-		it('should return false when executeWorkflow is not excluded', async () => {
-			getSettings.mockResolvedValueOnce({
-				...mockSettings,
-				excludeNodes: ['n8n-nodes-base.executeCommand'],
-			});
-
-			const settingsStore = useSettingsStore();
-			await settingsStore.getSettings();
-
-			expect(settingsStore.isExecuteWorkflowNodeExcluded).toBe(false);
-		});
-
-		it('should return false when only executeWorkflowTrigger is excluded', async () => {
-			getSettings.mockResolvedValueOnce({
-				...mockSettings,
-				excludeNodes: ['n8n-nodes-base.executeWorkflowTrigger'],
-			});
-
-			const settingsStore = useSettingsStore();
-			await settingsStore.getSettings();
-
-			expect(settingsStore.isExecuteWorkflowNodeExcluded).toBe(false);
-		});
-	});
-
-	describe('isSubworkflowConversionDisabled', () => {
+	describe('isEnterprisePlan', () => {
 		it.each([
-			[['n8n-nodes-base.executeWorkflow']],
-			[['n8n-nodes-base.executeWorkflowTrigger']],
-			[['n8n-nodes-base.executeWorkflow', 'n8n-nodes-base.executeWorkflowTrigger']],
-		])('should return true when %j is excluded', async (excludeNodes) => {
+			{ planName: 'Enterprise', expected: true },
+			{ planName: 'Business', expected: false },
+			{ planName: undefined, expected: false },
+		])('returns $expected for plan $planName', async ({ planName, expected }) => {
 			getSettings.mockResolvedValueOnce({
 				...mockSettings,
-				excludeNodes,
+				license: { planName } as FrontendSettings['license'],
 			});
 
 			const settingsStore = useSettingsStore();
 			await settingsStore.getSettings();
 
-			expect(settingsStore.isSubworkflowConversionDisabled).toBe(true);
-		});
-
-		it('should return false when both sub-workflow nodes are available', async () => {
-			getSettings.mockResolvedValueOnce({
-				...mockSettings,
-				excludeNodes: ['n8n-nodes-base.executeCommand'],
-			});
-
-			const settingsStore = useSettingsStore();
-			await settingsStore.getSettings();
-
-			expect(settingsStore.isSubworkflowConversionDisabled).toBe(false);
+			expect(settingsStore.isEnterprisePlan).toBe(expected);
 		});
 	});
 

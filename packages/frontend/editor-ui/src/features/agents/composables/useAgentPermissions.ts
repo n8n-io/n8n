@@ -5,7 +5,7 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 
 type AgentMutationKey = 'create' | 'update' | 'delete' | 'publish' | 'unpublish';
-type AgentPermissionKey = AgentMutationKey | 'execute';
+type AgentPermissionKey = AgentMutationKey | 'execute' | 'read';
 
 export type AgentPermissions = Record<`can${Capitalize<AgentPermissionKey>}`, ComputedRef<boolean>>;
 
@@ -49,5 +49,6 @@ export function useAgentPermissions(
 		canPublish: pick('publish'),
 		canUnpublish: pick('unpublish'),
 		canExecute: computed(() => hasScope('execute')),
+		canRead: computed(() => hasScope('read')),
 	};
 }

@@ -24,7 +24,7 @@ import type { LifecycleOptions } from './lifecycle';
 import { DEFAULT_MATERIALIZER_OPTIONS, materialize, totalDiscarded } from './materializer';
 import type { MaterializerOptions, RunInTransaction } from './materializer';
 import { DEFAULT_REAPER_OPTIONS, reap } from './reaper';
-import type { ReaperOptions, ReaperTaskStore } from './reaper';
+import type { ReaperOptions, ReaperTaskStore, RetiredTask } from './reaper';
 import { DEFAULT_RECONCILIATION_OPTIONS, reconcile } from './reconciliation';
 import type {
 	ReconciliationCursor,
@@ -36,6 +36,7 @@ import type {
 import { DEFAULT_RETENTION_OPTIONS, prune } from './retention';
 import type { RetentionOptions, RetentionStore } from './retention';
 import type { Scheduler, SchedulerPasses } from './scheduler';
+import { withDefaults } from './with-defaults';
 import { SCHEDULER_ATTRIBUTES } from '../observability/attributes';
 import { createExecutorTracing, withHandoffTracing } from '../observability/executor-tracing';
 import { traceCreatedTasks } from '../observability/materializer-tracing';
@@ -123,27 +124,18 @@ export interface SchedulerDeps {
 
 	onEvent?: (event: SchedulerEvent) => void;
 
+	/**
+	 * Called when the reaper retires tasks whose job was at its concurrency limit at
+	 * their deadline. The host decides what to report. Errors from this listener are
+	 * ignored.
+	 */
+	onHeldByConcurrencyLimit?: (tasks: RetiredTask[]) => void;
+
 	/** Host tracer; defaults to a no-op. */
 	tracer?: Tracer;
 
 	/** Host metrics; defaults to a no-op. */
 	metrics?: SchedulerMetrics;
-}
-
-/**
- * A plain `{ ...defaults, ...overrides }` would let an explicitly-undefined
- * override clobber a default (turning e.g. `leaseMs` into `NaN` downstream),
- * so undefined entries are treated as absent.
- */
-function withDefaults<T extends object>(defaults: T, overrides: Partial<T> = {}): T {
-	const merged = { ...defaults };
-	for (const key of Object.keys(overrides) as Array<keyof T>) {
-		const value = overrides[key];
-		if (value !== undefined) {
-			merged[key] = value;
-		}
-	}
-	return merged;
 }
 
 /**
@@ -303,6 +295,13 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 					{ ...context },
 				);
 			},
+			onLeaseShorterThanRenewalInterval: (context) => {
+				emit(
+					'warn',
+					'Scheduler lease is too short to be renewed. A task that runs longer than the lease may be stopped and run again',
+					{ ...context },
+				);
+			},
 			onMissingHandler: (task) => {
 				emit('warn', 'Scheduler claimed a task with no registered handler; claim released', {
 					taskId: task.id,
@@ -319,6 +318,20 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 				emit('error', 'Scheduler failed to release a claimed task; left for the reaper', {
 					taskId,
 					error: described(error),
+				});
+			},
+			onLeaseRenewalError: (task, error) => {
+				emit('warn', 'Scheduler could not renew the lease of a running task; retrying', {
+					taskId: task.id,
+					error: described(error),
+				});
+			},
+			onTaskTimeout: (task) => {
+				recordMetric(() => metrics.recordTaskTimeout(task.taskType));
+				emit('warn', 'Scheduler task run reached its timeout', {
+					taskId: task.id,
+					taskType: task.taskType,
+					timeoutSeconds: task.timeoutSeconds,
 				});
 			},
 			onDispatch: (taskType, lagSeconds) => {
@@ -347,6 +360,23 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 					'Scheduler task finished after losing its lease; another instance may have run the same occurrence concurrently',
 					{ taskType },
 				);
+			},
+			onLeaseRenewal: (task, result) => {
+				recordMetric(() => metrics.recordLeaseRenewal(task.taskType, result));
+				if (result === 'lost') {
+					emit(
+						'warn',
+						'Scheduler lost the claim of a running task; another instance may run it unless it was already dispatched',
+						{ taskId: task.id, taskType: task.taskType },
+					);
+				}
+				if (result === 'expired') {
+					emit(
+						'warn',
+						'Scheduler could not renew the lease of a running task in time; another instance may run it unless it was already dispatched',
+						{ taskId: task.id, taskType: task.taskType },
+					);
+				}
 			},
 		},
 		createExecutorTracing(tracer),
@@ -464,6 +494,12 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 						emit('error', 'Scheduler could not retire stale pending occurrences', {
 							error: described(error),
 						});
+					},
+					onHeldByConcurrencyLimit: (tasks) => {
+						emit('debug', 'Scheduler retired tasks their job had no free slot for', {
+							count: tasks.length,
+						});
+						deps.onHeldByConcurrencyLimit?.(tasks);
 					},
 					onDeadLetter: (task) => {
 						emit('warn', 'Scheduler dead-lettered a task; its last attempt lost its lease', {
@@ -636,23 +672,35 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 			},
 			{
 				onError: (error) => {
-					emit('error', 'Scheduler pass failed; retrying on its next tick', {
-						pass,
-						error: described(error),
-					});
+					emit(
+						'error',
+						`Scheduler pass "${pass}" failed; retrying on its next tick: ${described(error)}`,
+						{
+							pass,
+							error: described(error),
+						},
+					);
 				},
 				onTimeout: ({ timeoutMs }) => {
-					emit('error', 'Scheduler pass timed out and was abandoned; retrying on its next tick', {
-						pass,
-						timeoutMs,
-					});
+					emit(
+						'error',
+						`Scheduler pass "${pass}" timed out after ${timeoutMs}ms and was abandoned; retrying on its next tick`,
+						{
+							pass,
+							timeoutMs,
+						},
+					);
 				},
 				onSkippedTick: ({ inFlight, limit }) => {
-					emit('warn', 'Scheduler pass tick dropped; in-flight passes at the concurrency limit', {
-						pass,
-						inFlight,
-						limit,
-					});
+					emit(
+						'warn',
+						`Scheduler pass "${pass}" tick dropped; ${inFlight} of ${limit} passes in flight at the concurrency limit`,
+						{
+							pass,
+							inFlight,
+							limit,
+						},
+					);
 				},
 			},
 		);

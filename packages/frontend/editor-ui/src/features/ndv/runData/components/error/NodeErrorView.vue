@@ -184,7 +184,11 @@ const isSubNodeError = computed(() => {
 });
 
 function nodeVersionTag(nodeType: NodeError['node']): string {
-	if (!nodeType || ('hidden' in nodeType && nodeType.hidden)) {
+	if (
+		!nodeType ||
+		('hidden' in nodeType && nodeType.hidden) ||
+		nodeTypesStore.isNodeDeprecated(nodeType)
+	) {
 		return i18n.baseText('nodeSettings.deprecated');
 	}
 
@@ -505,7 +509,7 @@ async function onInstanceAiHandoffClick() {
 
 			<div v-if="isSubNodeError">
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					icon="arrow-right"
 					:label="i18n.baseText('pushConnection.executionError.openNode')"
 					class="node-error-view__button"
@@ -860,7 +864,7 @@ async function onInstanceAiHandoffClick() {
 
 	&__info-title {
 		font-size: var(--font-size--2xs);
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 		color: var(--color--text--shade-1);
 	}
 

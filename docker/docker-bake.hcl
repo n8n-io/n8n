@@ -1,7 +1,7 @@
 # Every n8n image build uses this file. `pnpm build:docker` and CI both drive
 # these targets, so a pin changed here changes both.
 
-variable "NODE_VERSION" { default = "26.7.0" }
+variable "NODE_VERSION" { default = "26.12.1" }
 variable "N8N_VERSION" { default = "snapshot" }
 variable "N8N_RELEASE_TYPE" { default = "dev" }
 
@@ -15,14 +15,14 @@ variable "BUILDER_IMAGE" { default = "" }
 variable "RUNTIME_IMAGE" { default = "" }
 
 variable "PC_BUILDER_IMAGE" {
-  default = "n8nio/node-pc:26.7.0-dev@sha256:c64642dcb9464e50bd08aef8504affafeb795d01aed2f7ab158976c334a36ef6"
+  default = "n8nio/node-pc:26.12.1-dev@sha256:8993967928b6167703f05f28a95f82543974357dcfd4160281cf352490d208ca"
 }
 variable "PC_RUNTIME_IMAGE" {
-  default = "n8nio/node-pc:26.7.0@sha256:6577d0742ad043baaa39db7dda2ce8aeb73f32c84eb241c49bf716f170c53297"
+  default = "n8nio/node-pc:26.12.1@sha256:15afd63862b7cbc828537b7481f0c58a6e504765b62e7f55a226ad052068f77c"
 }
 
 variable "DHI_REF" {
-  default = "dhi.io/node:26.7.0-alpine3.24-dev@sha256:4b494d89fb26c950ce97865acf45b480dc7a6868fdc2b81c2d66599702eeac3f"
+  default = "dhi.io/node:26.12.1-alpine3.24-dev@sha256:4b1591bfce570a17f9562e206b62e76be84d6df32c3a86bfc677fc87959402cc"
 }
 
 variable "N8N_TAGS" { default = "" }

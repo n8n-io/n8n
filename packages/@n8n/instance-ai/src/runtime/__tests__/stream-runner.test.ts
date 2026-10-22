@@ -1,7 +1,12 @@
 import type { WorkSummary } from '../../stream/work-summary-accumulator';
+import { emitBuilderMetric } from '../../tracing/builder-metric-event';
 import type * as ResumableStreamExecutor from '../resumable-stream-executor';
 import { executeResumableStream } from '../resumable-stream-executor';
 import { streamAgentRun } from '../stream-runner';
+
+vi.mock('../../tracing/builder-metric-event', () => ({
+	emitBuilderMetric: vi.fn(async () => {}),
+}));
 
 vi.mock('../resumable-stream-executor', async () => {
 	const actual = await vi.importActual<typeof ResumableStreamExecutor>(
@@ -14,7 +19,12 @@ vi.mock('../resumable-stream-executor', async () => {
 	};
 });
 
-const emptyWorkSummary: WorkSummary = { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 };
+const emptyWorkSummary: WorkSummary = {
+	toolCalls: [],
+	totalToolCalls: 0,
+	totalToolErrors: 0,
+	askedClarifyingQuestion: false,
+};
 
 function createLogger() {
 	return { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
@@ -87,12 +97,17 @@ describe('streamAgentRun', () => {
 		expect(result.workSummary).toBe(emptyWorkSummary);
 	});
 
-	it('returns completed status for successful streams', async () => {
-		vi.mocked(executeResumableStream).mockResolvedValue({
+	it('preserves terminal details for successful streams', async () => {
+		const terminalResult = {
 			status: 'completed',
 			agentRunId: 'agent-run-1',
 			workSummary: emptyWorkSummary,
-		});
+			structuredOutput: { summary: 'Checked the candidate.' },
+			finishReason: 'max-iterations',
+			stepCount: 3,
+			usage: { promptTokens: 10, completionTokens: 0, totalTokens: 10, costUsd: 0 },
+		} satisfies ResumableStreamExecutor.ExecuteResumableStreamResult;
+		vi.mocked(executeResumableStream).mockResolvedValue(terminalResult);
 		const eventBus = createEventBus();
 		const agent = {
 			stream: vi.fn().mockResolvedValue({
@@ -104,7 +119,7 @@ describe('streamAgentRun', () => {
 		const result = await streamAgentRun(
 			agent,
 			'test input',
-			{},
+			{ recoverUsageOnAbort: true },
 			{
 				threadId: 'thread-1',
 				runId: 'run-1',
@@ -115,8 +130,8 @@ describe('streamAgentRun', () => {
 			},
 		);
 
-		expect(result.status).toBe('completed');
-		expect(result.workSummary).toBe(emptyWorkSummary);
+		expect(result).toEqual(terminalResult);
+		expect(agent.stream).toHaveBeenCalledWith('test input', { recoverUsageOnAbort: true });
 	});
 
 	it('passes through the buffered manual confirmation event', async () => {
@@ -273,5 +288,40 @@ describe('streamAgentRun', () => {
 		);
 		await expect(collectAsyncIterable(source.fullStream)).resolves.toEqual([nativeChunk]);
 		await expect(source.text).resolves.toBe('All good');
+	});
+
+	it('records first_response once, on the first response chunk', async () => {
+		const mockedExecuteResumableStream = vi.mocked(executeResumableStream);
+		mockedExecuteResumableStream.mockClear();
+		vi.mocked(emitBuilderMetric).mockClear();
+		mockedExecuteResumableStream.mockImplementation(async ({ context }) => {
+			expect(emitBuilderMetric).not.toHaveBeenCalled();
+			context.onResponseChunk?.();
+			context.onResponseChunk?.();
+			return { status: 'completed', agentRunId: 'agent-run-1', workSummary: emptyWorkSummary };
+		});
+		const agent = {
+			stream: vi.fn().mockResolvedValue({ runId: 'agent-run-1', fullStream: emptyStream() }),
+		};
+
+		await streamAgentRun(
+			agent,
+			'hello',
+			{},
+			{
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				signal: new AbortController().signal,
+				eventBus: createEventBus(),
+				logger: createLogger(),
+			},
+		);
+
+		expect(emitBuilderMetric).toHaveBeenCalledTimes(1);
+		expect(emitBuilderMetric).toHaveBeenCalledWith(undefined, 'first_response', {
+			success: true,
+			phase: 'message',
+		});
 	});
 });

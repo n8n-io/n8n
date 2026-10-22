@@ -108,6 +108,7 @@ interface RunWorkflowOptions {
 }
 
 function normalizeUnhandledAxiosError(error: unknown, node: INode): ExecutionBaseError {
+	// oxlint-disable-next-line typescript/no-deprecated
 	if (isAxiosError(error)) {
 		return new NodeApiError(node, error as JsonObject);
 	}
@@ -120,6 +121,30 @@ export class WorkflowExecute {
 
 	private readonly abortController = new AbortController();
 	timedOut: boolean = false;
+
+	private suspensionRequested = false;
+
+	/**
+	 * Ask the engine to stop at the next node boundary and park the execution as
+	 * 'waiting', so another process can resume it from the persisted state. The
+	 * node currently executing runs to completion. Safe to call at any time;
+	 * no-ops if the run finishes, waits, or is canceled first.
+	 */
+	suspend(): void {
+		if (this.status !== 'running') return;
+		this.suspensionRequested = true;
+	}
+
+	/**
+	 * A cancel or error can land after a suspension already stamped the run
+	 * data; clear the markers so the persisted state is not treated as
+	 * resumable. A genuine Wait-node waitTill is never cleared here.
+	 */
+	private clearSuspensionMarkers(): void {
+		if (!this.suspensionRequested) return;
+		this.runExecutionData.waitTill = undefined;
+		this.runExecutionData.waitReason = undefined;
+	}
 
 	constructor(
 		private readonly additionalData: IWorkflowExecuteAdditionalData,
@@ -1508,6 +1533,13 @@ export class WorkflowExecute {
 				this.mode,
 			);
 
+			if (this.runExecutionData.waitReason === 'suspended') {
+				// The engine was suspended at a node boundary, so the stack head has
+				// not executed yet: run it normally instead of passing it through.
+				this.runExecutionData.waitReason = undefined;
+				return;
+			}
+
 			const executionStackEntry = this.runExecutionData.executionData.nodeExecutionStack[0];
 			// Error reporting itself does not depend on this: `runNode` checks
 			// `metadata.resumeError` before `node.disabled`, so the entry carrying the
@@ -1630,6 +1662,7 @@ export class WorkflowExecute {
 		onCancel.shouldReject = false;
 		onCancel(() => {
 			this.status = 'canceled';
+			this.clearSuspensionMarkers();
 			this.updateTaskStatusesToCancelled();
 			this.abortController.abort();
 			const fullRunData = this.getFullRunData(startedAt);
@@ -1712,10 +1745,13 @@ export class WorkflowExecute {
 	 * so `executeWorkflow` never reports again). Restore it so the new task and
 	 * `runtimeData.executedByUserId` still inherit the flags. The stash is
 	 * transport-only, so consume it to keep it out of the persisted task metadata.
+	 * It also resets and restores the plain credential ids sub-workflows report
+	 * (`currentNodeUsedCredentialIds`), which credential usability redaction reads.
 	 */
 	private resetDynamicCredentialsUsage(executionData: IExecuteData): void {
 		this.additionalData.currentNodeUsedDynamicCredentials = false;
 		this.additionalData.currentNodeAttemptedDynamicCredentials = false;
+		this.additionalData.currentNodeUsedCredentialIds = undefined;
 
 		const reportedUsage = executionData.metadata?.dynamicCredentialsUsage;
 		if (reportedUsage) {
@@ -1877,6 +1913,10 @@ export class WorkflowExecute {
 		}
 
 		if (nodeSuccessData && executionData.node.onError === 'continueErrorOutput') {
+			// Pair output items before the split. After the split there are two output
+			// arrays and `assignPairedItems` can no longer match items by count, so
+			// items the node did not pair itself would lose their lineage.
+			this.assignPairedItems(nodeSuccessData, executionData);
 			this.handleNodeErrorOutput(workflow, executionData, nodeSuccessData, runIndex);
 		}
 
@@ -1903,6 +1943,7 @@ export class WorkflowExecute {
 			return error;
 		}
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (!(error instanceof Error) || isAxiosError(error)) {
 			// Axios errors are suppressed in ErrorReporter's beforeSend via the
 			// `isAxiosError` brand, which sanitizing below would strip - so skip them here
@@ -1999,6 +2040,9 @@ export class WorkflowExecute {
 			usedDynamicCredentials: this.additionalData.currentNodeUsedDynamicCredentials || undefined,
 			attemptedDynamicCredentials:
 				this.additionalData.currentNodeAttemptedDynamicCredentials || undefined,
+			...(this.additionalData.currentNodeUsedCredentialIds?.length && {
+				usedCredentialIds: [...this.additionalData.currentNodeUsedCredentialIds],
+			}),
 		};
 	}
 
@@ -2226,7 +2270,12 @@ export class WorkflowExecute {
 	processRunExecutionData(workflow: Workflow): PCancelable<IRun> {
 		Logger.debug('Workflow execution started', { workflowId: workflow.id });
 		const { startedAt, hooks } = this.setupExecution();
-		this.checkForWorkflowIssues(workflow);
+		assertExecutionDataExists(
+			this.runExecutionData.executionData,
+			workflow,
+			this.additionalData,
+			this.mode,
+		);
 		this.handleWaitingState(workflow);
 
 		// Variables which hold temporary data for each node-execution
@@ -2245,9 +2294,20 @@ export class WorkflowExecute {
 			// eslint-disable-next-line complexity
 			const returnPromise = (async () => {
 				await this.initializeExecution(workflow, hooks);
+				this.checkForWorkflowIssues(workflow);
 
 				executionLoop: while (this.isExecutionStackNotEmpty()) {
 					if (this.shouldStopExecuting()) {
+						return;
+					}
+
+					// Suspension exits before popping, so the stack head is the next
+					// not-yet-executed node and the persisted state resumes by running it.
+					// The cancel check above must win over suspension.
+					if (this.suspensionRequested) {
+						this.runExecutionData.waitTill = new Date();
+						this.runExecutionData.waitReason = 'suspended';
+						this.additionalData.setExecutionStatus?.('waiting');
 						return;
 					}
 
@@ -2888,6 +2948,7 @@ export class WorkflowExecute {
 	): Promise<IRun> {
 		// Set status before creating fullRunData
 		if (executionError !== undefined) {
+			this.clearSuspensionMarkers();
 			Logger.debug('Workflow execution finished with error', {
 				error: executionError,
 				workflowId: workflow.id,
@@ -2947,6 +3008,7 @@ export class WorkflowExecute {
 		} else if (this.runExecutionData.waitTill) {
 			fullRunData.waitTill = this.runExecutionData.waitTill;
 		} else {
+			// oxlint-disable-next-line typescript/no-deprecated
 			fullRunData.finished = true;
 		}
 

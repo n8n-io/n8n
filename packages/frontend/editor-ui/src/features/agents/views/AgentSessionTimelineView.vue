@@ -2,7 +2,7 @@
 import { truncate } from '@n8n/utils/string/truncate';
 import { VIEWS } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useAgentProjectBreadcrumb } from '@/features/agents/composables/useAgentProjectBreadcrumb';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import {
 	AGENT_BUILDER_VIEW,
@@ -25,7 +25,13 @@ import { useAgentExecutionUpdates } from '@/features/agents/composables/useAgent
 import { getAgent } from '@/features/agents/composables/useAgentApi';
 import { useAgentConfig } from '@/features/agents/composables/useAgentConfig';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
+import { useBackOrFallback } from '@/features/agents/composables/useBackOrFallback';
 import type { AgentResource } from '@/features/agents/types';
+import {
+	increasedBudgetConfig,
+	type BudgetAmountField,
+} from '@/features/agents/utils/budget-config';
+import { useToast } from '@n8n/composables/useToast';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useI18n } from '@n8n/i18n';
 import { N8nEmptyState } from '@n8n/design-system';
@@ -38,14 +44,14 @@ const threadTitleOf = useThreadTitle();
 const route = useRoute();
 const router = useRouter();
 const sessionsStore = useAgentSessionsStore();
-const projectsStore = useProjectsStore();
 const {
 	isEnabled: isLangSmithExportEnabled,
 	isExporting,
 	sendSession,
 } = useAgentSessionLangSmithExport();
 const rootStore = useRootStore();
-const { config: localConfig, fetchConfig } = useAgentConfig();
+const toast = useToast();
+const { config: localConfig, fetchConfig, updateConfig } = useAgentConfig();
 
 const projectId = computed(() => route.params.projectId as string);
 const agentId = computed(() => route.params.agentId as string);
@@ -65,11 +71,13 @@ const {
 	effectiveSessionId,
 	currentSessionHasMessages,
 	currentSessionIsEphemeral,
+	currentSessionIsLocallyMinted,
 	currentSessionTitle,
 	sessionMenu,
 	isDeletingSession,
 	onSessionPick,
 	onNewChat,
+	markSessionCreated,
 	deleteSession,
 } = useAgentBuilderSession({ routeBacked: computed(() => false), projectId, agentId });
 
@@ -81,7 +89,7 @@ const {
  */
 const isPreviewSessionStale = computed(
 	() =>
-		currentSessionIsEphemeral.value &&
+		currentSessionIsLocallyMinted.value &&
 		effectiveSessionId.value !== undefined &&
 		effectiveSessionId.value !== threadId.value,
 );
@@ -100,6 +108,8 @@ const triggerIcon = computed((): IconName => {
 			return 'slack';
 		case 'instance-ai':
 			return 'sparkles';
+		case 'n8n_chat_production':
+			return 'message-square';
 		default:
 			return 'bolt-filled';
 	}
@@ -115,6 +125,9 @@ const triggerLabel = computed((): string => {
 	if (source === 'instance-ai') {
 		return i18n.baseText('agentSessions.origin.instanceAi');
 	}
+	if (source === 'n8n_chat_production') {
+		return i18n.baseText('agentSessions.origin.n8nChat');
+	}
 	return source.charAt(0).toUpperCase() + source.slice(1);
 });
 
@@ -123,15 +136,7 @@ const sessionTitle = computed(() => {
 	return truncate(threadTitleOf(thread.value), 64);
 });
 
-const projectName = computed<string | null>(() => {
-	if (projectsStore.personalProject?.id === projectId.value) {
-		return i18n.baseText('projects.menu.personal');
-	}
-	const current = projectsStore.currentProject;
-	if (current && current.id === projectId.value) return current.name ?? null;
-	const match = projectsStore.myProjects.find((p) => p.id === projectId.value);
-	return match?.name ?? null;
-});
+const { projectName, projectIcon } = useAgentProjectBreadcrumb(projectId);
 
 const projectRoute = computed<RouteLocationRaw>(() => ({
 	name: VIEWS.PROJECTS_WORKFLOWS,
@@ -196,7 +201,7 @@ const totalTokens = computed(() => {
 const hasLoadedThread = computed(() => thread.value?.id === threadId.value);
 const canPreviewSession = computed(
 	() =>
-		currentSessionIsEphemeral.value ||
+		currentSessionIsLocallyMinted.value ||
 		(hasLoadedThread.value && thread.value?.canContinueInPreview === true),
 );
 const previewVisible = computed(() => canPreviewSession.value && isPreviewOpen.value);
@@ -311,22 +316,9 @@ function formatDate(fullDate: string): string {
 	return `${date} ${time}`;
 }
 
-function closeTimeline() {
-	/**
-	 * Get the last visited route from Vue router so we return to the correct starting point (e.g Preview)
-	 * If no state is available, it's most likey because the link was visited directly.
-	 * Here we fallback to default Agents view.
-	 */
-	const previousRoute = router.options.history.state.back;
-	const resolvedPreviousRoute =
-		typeof previousRoute === 'string' ? router.resolve(previousRoute) : null;
-
-	if (resolvedPreviousRoute?.matched.length) {
-		router.back();
-		return;
-	}
-	void router.push(agentExecutionsRoute.value);
-}
+// Returns to the correct starting point (e.g. Preview) when there is one;
+// otherwise falls back to the agent's executions tab, e.g. for a direct visit.
+const closeTimeline = useBackOrFallback(agentExecutionsRoute);
 
 function onBreadcrumbSelect(item: PathItem) {
 	if (item.id === projectId.value) {
@@ -351,6 +343,29 @@ async function onDeletePreviewSession(sessionId: string) {
 	void router.replace(agentExecutionsRoute.value);
 }
 
+/**
+ * Raises a budget cap from the timeline's budget notice. Only a persisted cap
+ * counts: a stale or failed save would stop the next run against the old cap.
+ */
+async function onIncreaseBudget(payload: {
+	field: BudgetAmountField;
+	amount: number;
+}): Promise<boolean> {
+	const current = localConfig.value;
+	if (!canUpdate.value || !current) return false;
+	const update = increasedBudgetConfig(current, payload.field, payload.amount);
+	if (!update) return false;
+	try {
+		const result = await updateConfig(projectId.value, agentId.value, { ...current, ...update });
+		if (result.stale) return false;
+		localConfig.value = result.config;
+		return true;
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agentSessions.showError.budget'));
+		return false;
+	}
+}
+
 function togglePreview() {
 	if (!canPreviewSession.value) return;
 	isPreviewOpen.value = !isPreviewOpen.value;
@@ -366,6 +381,7 @@ function viewPreviewTrace() {
 	<div :class="$style.view">
 		<AgentSessionTimelineHeader
 			:breadcrumb-items="breadcrumbItems"
+			:project-icon="projectIcon"
 			:session-title="sessionTitle"
 			:session-options="sessionOptions"
 			:show-metrics="Boolean(thread)"
@@ -392,6 +408,7 @@ function viewPreviewTrace() {
 				:project-id="projectId"
 				:agent-id="agentId"
 				:thread-id="threadId"
+				:increase-budget="canUpdate ? onIncreaseBudget : undefined"
 				@loaded="onPanelLoaded"
 			/>
 			<div v-else :class="$style.newSessionEmpty">
@@ -415,12 +432,14 @@ function viewPreviewTrace() {
 				:local-config="localConfig"
 				:connected-triggers="[]"
 				:effective-session-id="effectiveSessionId"
+				:new-session="currentSessionIsEphemeral"
 				:can-delete-session="canDeleteSession"
 				:is-deleting-session="isDeletingSession"
 				@view-trace="viewPreviewTrace"
 				@new-session="onNewChat"
 				@delete-session="onDeletePreviewSession"
 				@session-select="onSessionPick"
+				@session-created="markSessionCreated"
 				@close="togglePreview"
 			/>
 		</div>

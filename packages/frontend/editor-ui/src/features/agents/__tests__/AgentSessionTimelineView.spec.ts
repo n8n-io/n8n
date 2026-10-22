@@ -203,6 +203,7 @@ describe('AgentSessionTimelineView', () => {
 		const wrapper = shallowMount(AgentSessionTimelineHeader, {
 			props: {
 				breadcrumbItems: [],
+				projectIcon: { type: 'icon', value: 'user' },
 				sessionTitle: '',
 				sessionOptions: [],
 				showMetrics: false,

@@ -26,7 +26,6 @@ describe('IntegrationMessageContextService', () => {
 		}
 		const threadRepository = mock<AgentThreadRepository>();
 		const resourceRepository = mock<AgentResourceRepository>();
-		resourceRepository.existsBy.mockResolvedValue(true);
 		threadRepository.findOneBy.mockImplementation(async ({ id }: { id: string }) =>
 			threads.has(id) ? (threads.get(id) as never) : (null as never),
 		);

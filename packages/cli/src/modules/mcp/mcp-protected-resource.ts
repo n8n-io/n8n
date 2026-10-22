@@ -1,16 +1,17 @@
 import {
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	MCP_AGENT_SCOPES,
+	MCP_SKILL_SCOPES,
 	MCP_INSTANCE_SCOPES,
 } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { INSTANCE_MCP_RESOURCE_ID } from '@n8n/constants';
-import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 
-import type { ProtectedResource } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import type { ProtectedResource, ResourcePrincipal, ResourceUser } from '@n8n/inbound-auth';
+import { UrlService } from '@n8n/backend-services';
+import { SkillsHubRollout } from '@/modules/skills/skills-hub-rollout';
 import { PostHogClient } from '@/posthog';
 
 import {
@@ -20,7 +21,12 @@ import {
 	INSTANCE_CONTEXT_TOOLS,
 	TOOLS_BY_SCOPE,
 } from './mcp-scopes';
-import { areAgentToolsAvailable, isCommunityNodeInstallAvailable } from './mcp-tool-availability';
+import {
+	areAgentToolsAvailable,
+	arePreferenceToolsEnabled,
+	areSkillToolsAvailable,
+	isCommunityNodeInstallAvailable,
+} from './mcp-tool-availability';
 import { McpConfig } from './mcp.config';
 import { McpSettingsService } from './mcp.settings.service';
 
@@ -30,6 +36,8 @@ import { McpSettingsService } from './mcp.settings.service';
  */
 export const SUPPORTED_SCOPES: string[] = [...MCP_INSTANCE_SCOPES];
 const AGENT_SCOPES = new Set<string>(MCP_AGENT_SCOPES);
+const SKILL_SCOPES = new Set<string>(MCP_SKILL_SCOPES);
+const PREFERENCE_SCOPES = new Set<string>(['aiPreference:read', 'aiPreference:write']);
 
 const MCP_RESOURCE_PATH = '/mcp-server/http';
 
@@ -50,6 +58,8 @@ const LEGACY_MCP_AUDIENCE = 'mcp-server-api';
 export class McpProtectedResource implements ProtectedResource {
 	readonly id = INSTANCE_MCP_RESOURCE_ID;
 
+	readonly surface = 'instance-mcp' as const;
+
 	/**
 	 * Fallback audience for token requests without an RFC 8707 resource
 	 * indicator — the instance MCP server predates resource indicators, so
@@ -68,8 +78,13 @@ export class McpProtectedResource implements ProtectedResource {
 	) {}
 
 	get scopes(): string[] {
-		if (areAgentToolsAvailable(this.globalConfig, this.moduleRegistry)) return SUPPORTED_SCOPES;
-		return SUPPORTED_SCOPES.filter((scope) => !AGENT_SCOPES.has(scope));
+		const agentsAvailable = areAgentToolsAvailable(this.globalConfig, this.moduleRegistry);
+		const skillsAvailable = areSkillToolsAvailable(Container.get(SkillsHubRollout));
+		return SUPPORTED_SCOPES.filter(
+			(scope) =>
+				(agentsAvailable || !AGENT_SCOPES.has(scope)) &&
+				(skillsAvailable || !SKILL_SCOPES.has(scope)),
+		);
 	}
 
 	/**
@@ -159,10 +174,12 @@ export class McpProtectedResource implements ProtectedResource {
 	 * nothing. Delegates to the same predicate registration uses rather than
 	 * re-checking one of its conditions: the screen pre-checks every offered
 	 * scope on first consent, so a scope offered here is a scope granted.
+	 *
+	 * `aiPreference:*` is dropped for a user outside the preferences experiment
+	 * arm for the same reason, and one more: showing the scopes to the control
+	 * arm exposes the feature to the users the experiment keeps unaware of it.
 	 */
-	async getGrantableScopes(user: User): Promise<string[]> {
-		const scopes = this.scopes;
-
+	async getGrantableScopes(user: ResourceUser): Promise<string[]> {
 		const { CommunityPackagesConfig } = await import(
 			'@/modules/community-packages/community-packages.config.js'
 		);
@@ -173,16 +190,29 @@ export class McpProtectedResource implements ProtectedResource {
 			this.mcpConfig,
 			user,
 		);
-		if (installAvailable) return scopes;
+		const preferencesEnabled = await this.arePreferencesEnabledFor(user);
 
-		return scopes.filter((scope) => scope !== 'communityPackage:install');
+		return this.scopes.filter(
+			(scope) =>
+				(installAvailable || scope !== 'communityPackage:install') &&
+				(preferencesEnabled || !PREFERENCE_SCOPES.has(scope)),
+		);
+	}
+
+	private async arePreferencesEnabledFor(user: ResourceUser): Promise<boolean> {
+		try {
+			return arePreferenceToolsEnabled(await this.postHogClient.getFeatureFlags(user));
+		} catch {
+			// Registration treats an unreadable flag as off; consent must agree.
+			return false;
+		}
 	}
 
 	async isAvailable(): Promise<boolean> {
 		return await this.mcpSettingsService.getEnabled();
 	}
 
-	async authorize(_user: User): Promise<boolean> {
+	async authorize(_user: ResourcePrincipal): Promise<boolean> {
 		// The instance MCP server has no per-user authorization rule: any
 		// authenticated user may access it while the server is enabled, and all
 		// users are denied when it is disabled.

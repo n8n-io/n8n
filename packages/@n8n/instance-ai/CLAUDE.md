@@ -23,18 +23,17 @@ Read these docs before starting any implementation:
 - `docs/streaming-protocol.md` — canonical event schema, SSE transport, replay rules
 - `docs/tools.md` — tool reference, orchestration tools, domain tools, tool distribution
 - `docs/memory.md` — memory tiers, scoping model, sub-agent memory
-- `docs/filesystem-access.md` — filesystem architecture, gateway protocol, security model
 - `docs/sandboxing.md` — Daytona/local sandbox providers, workspace lifecycle, builder loop
 - `docs/configuration.md` — environment variables, minimal setup, storage, event bus
 
 ## E2E Testing
 
-Tests live in `packages/testing/playwright/tests/e2e/instance-ai/`.
+Tests live in `packages/quality/testing/playwright/tests/e2e/instance-ai/`.
 
 ### Local-build mode (no docker, no recording — hits real Anthropic API)
 
 ```bash
-cd packages/testing/playwright
+cd packages/quality/testing/playwright
 export ANTHROPIC_API_KEY=sk-ant-...
 pnpm test:local:instance-ai                  # full suite
 pnpm test:local:instance-ai --grep "preview" # single test
@@ -52,7 +51,7 @@ mode with a real key. This captures LLM traffic + tool traces into
 
 ```bash
 pnpm build:docker   # from repo root — build the local n8n image first
-cd packages/testing/playwright
+cd packages/quality/testing/playwright
 ANTHROPIC_API_KEY=sk-ant-... pnpm test:container:sqlite tests/e2e/instance-ai --workers 1
 ```
 
@@ -66,6 +65,6 @@ See `docs/e2e-tests.md` for the full recording/replay architecture.
 - **POST `/chat/:threadId`** returns `{ runId }` — not a stream
 - **SSE `/events/:threadId`** delivers all events — replay via `Last-Event-ID` header or `?lastEventId` query param
 - **Run lifecycle**: `run-start` is first; `run-finish` ends orchestrator processing and carries its status. Detached background-agent events for the same `runId` can follow.
-- **Planned tasks**: the `planning` skill and deferred `create-tasks` tool define multi-step work. Build and checkpoint tasks run as orchestrator follow-ups.
+- **Planned tasks**: the `planning` skill and deferred `workflow_builder_create_tasks` tool define multi-step work. Build and checkpoint tasks run as orchestrator follow-ups.
 - **Specialized background agents**: the eval-setup agent receives native domain tools only, no MCP, and no recursive delegation. It uses dedicated persistence for checkpoint and suspension state. The embedded Agent Builder inherits the orchestrator's safe MCP tools.
 - **Memory**: observational memory is thread-scoped and working memory is disabled

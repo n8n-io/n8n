@@ -1,4 +1,6 @@
 import { inDevelopment, inProduction, ModuleRegistry } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
+import { AuthStrategyRegistry } from '@n8n/backend-services/auth';
 import { SecurityConfig } from '@n8n/config';
 import { HTML_NONCE_PLACEHOLDER, Time } from '@n8n/constants';
 import type { APIRequest, AuthenticatedRequest } from '@n8n/db';
@@ -16,7 +18,6 @@ import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { EventService } from '@/events/event.service';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import type { ICredentialsOverwrite } from '@/interfaces';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -58,10 +59,13 @@ import '@/controllers/user-settings.controller';
 import '@/controllers/workflow-statistics.controller';
 import '@/controllers/api-keys.controller';
 import '@/controllers/security-settings.controller';
+import '@/controllers/public-api-rate-limit-settings.controller';
 import '@/credentials/credentials.controller';
+import '@/credentials/credential-options.controller';
 import '@/events/events.controller';
 import '@/executions/executions.controller';
 import '@/node-execution/ephemeral-node-executor';
+import '@/jwks/jwks.controller';
 import '@/license/license.controller';
 import '@/evaluation.ee/test-runs.controller.ee';
 import '@/evaluation.ee/evaluation-config.controller';
@@ -78,7 +82,6 @@ import { MfaService } from './mfa/mfa.service';
 import { BrowserUseServer } from './modules/instance-ai/browser/browser-use-server';
 import { PubSubRegistry } from './scaling/pubsub/pubsub.registry';
 import { ApiKeyAuthStrategy } from './services/api-key-auth.strategy';
-import { AuthStrategyRegistry } from './services/auth-strategy.registry';
 import { SessionCookieAuthStrategy } from './services/session-cookie-auth.strategy';
 
 @Service()
@@ -347,13 +350,28 @@ export class Server extends AbstractServer {
 		}
 
 		const maxAge = Time.days.toMilliseconds;
-		const cacheOptions = inE2ETests || inDevelopment ? {} : { maxAge };
+		const cacheOptions: { maxAge?: number } = inE2ETests || inDevelopment ? {} : { maxAge };
 		const { staticCacheDir } = Container.get(InstanceSettings);
 
 		this.protectTypeFiles(staticCacheDir);
 
 		if (frontendService) {
-			this.app.use(
+			const assetAuthMiddleware = Container.get(AuthService).createAssetAuthMiddleware();
+
+			const registerAuthenticatedRoutes = (paths: string[], handler: express.RequestHandler) => {
+				for (const assetPath of paths) {
+					this.app.get(assetPath, assetAuthMiddleware, handler);
+				}
+			};
+
+			const respondWithPrivateFile = (res: express.Response, filePath: string, assetMaxAge = 0) => {
+				const maxAgeSeconds = Math.floor(assetMaxAge * Time.milliseconds.toSeconds);
+				// `res.sendFile` writes its own `Cache-Control` only when the response carries none.
+				res.setHeader('Cache-Control', `private, max-age=${maxAgeSeconds}`);
+				return res.sendFile(filePath, { maxAge: assetMaxAge, dotfiles: 'allow' });
+			};
+
+			registerAuthenticatedRoutes(
 				[
 					'/icons/{@:scope/}:packageName/*path/*file.svg',
 					'/icons/{@:scope/}:packageName/*path/*file.png',
@@ -366,7 +384,7 @@ export class Server extends AbstractServer {
 					if (filePath) {
 						try {
 							await fsAccess(filePath);
-							return res.sendFile(filePath, { maxAge, dotfiles: 'allow' });
+							return respondWithPrivateFile(res, filePath, maxAge);
 						} catch {}
 					}
 					res.sendStatus(404);
@@ -385,12 +403,15 @@ export class Server extends AbstractServer {
 				if (filePath) {
 					try {
 						await fsAccess(filePath);
-						return res.sendFile(filePath, { ...cacheOptions, dotfiles: 'allow' });
+						return respondWithPrivateFile(res, filePath, cacheOptions.maxAge);
 					} catch {}
 				}
 				res.sendStatus(404);
 			};
-			this.app.use('/schemas/:node/:version{/:resource}{/:operation}.json', serveSchemas);
+			registerAuthenticatedRoutes(
+				['/schemas/:node/:version{/:resource}{/:operation}.json'],
+				serveSchemas,
+			);
 
 			const isTLSEnabled =
 				this.globalConfig.protocol === 'https' && !!(this.sslKey && this.sslCert);

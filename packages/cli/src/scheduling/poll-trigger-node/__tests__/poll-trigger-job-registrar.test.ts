@@ -21,6 +21,7 @@ const NEXT_TEN = new Date('2026-01-05T10:00:00.000Z');
 const WORKFLOW_ID = 'wf-1';
 const NODE_ID = 'node-1';
 const TIMEZONE = 'UTC';
+const POLL_TIMEOUT_SECONDS = 45;
 
 // Custom crons map straight through to `cron` schedules, so their first fire is exact.
 const DAILY_AT_NINE: TriggerTime = { mode: 'custom', cronExpression: '0 0 9 * * *' };
@@ -42,7 +43,10 @@ describe('PollTriggerJobRegistrar', () => {
 	const makeRegistrar = () =>
 		new PollTriggerJobRegistrar(
 			mockLogger(),
-			mock<GlobalConfig>({ generic: { timezone: TIMEZONE } }),
+			mock<GlobalConfig>({
+				generic: { timezone: TIMEZONE },
+				scheduler: { pollTimeoutSeconds: POLL_TIMEOUT_SECONDS },
+			}),
 			jobProvisioner,
 			pollBackoffService,
 			owner,
@@ -96,6 +100,7 @@ describe('PollTriggerJobRegistrar', () => {
 					},
 				],
 				misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+				timeoutSeconds: POLL_TIMEOUT_SECONDS,
 			});
 		});
 
@@ -246,6 +251,7 @@ describe('PollTriggerJobRegistrar', () => {
 				payload: { workflowId: WORKFLOW_ID, nodeId: NODE_ID },
 				desired: [],
 				misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+				timeoutSeconds: POLL_TIMEOUT_SECONDS,
 			});
 		});
 

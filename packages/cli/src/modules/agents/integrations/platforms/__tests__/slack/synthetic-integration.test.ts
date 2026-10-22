@@ -26,8 +26,11 @@ describe('Slack channel integration scenarios', () => {
 
 		expect(
 			integration.handleUnauthenticatedWebhook({
-				type: 'url_verification',
-				challenge: 'url-verification-challenge',
+				agentId: 'agent-1',
+				method: 'POST',
+				query: {},
+				headers: {},
+				body: { type: 'url_verification', challenge: 'url-verification-challenge' },
 			}),
 		).toEqual({ status: 200, body: { challenge: 'url-verification-challenge' } });
 	});
@@ -56,6 +59,10 @@ describe('Slack channel integration scenarios', () => {
 				expect.objectContaining({
 					message: "DM message. What's your name?",
 					integrationType: 'slack',
+					episodicScope: {
+						writeScopeId: 'slack:agent-1:T_TEAM:dm:U_DM_USER',
+						readScopeIds: ['slack:agent-1:T_TEAM:dm:U_DM_USER'],
+					},
 				}),
 			);
 			expect(ctx.latestContext()).toMatchObject({
@@ -70,6 +77,92 @@ describe('Slack channel integration scenarios', () => {
 				channel: 'D_DM',
 				markdown_text: 'Got it',
 			});
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it.each([
+		{ channelType: 'channel', channelId: 'C_SUPPORT', kind: 'channel' },
+		{ channelType: 'group', channelId: 'G_PRIVATE', kind: 'channel' },
+		{ channelType: 'mpim', channelId: 'G_DM', kind: 'group' },
+		{ channelType: undefined, channelId: 'C_SUPPORT', kind: 'channel' },
+	])(
+		'uses the receiving workspace for $channelType events',
+		async ({ channelType, channelId, kind }) => {
+			const fixtures = slackReplayFixtures();
+			const ctx = await createSlackReplayContext(fixtures);
+			try {
+				const payload = {
+					...fixtures.mention,
+					team_id: 'T_RECEIVING',
+					event: {
+						...fixtures.mention.event,
+						channel: channelId,
+						channel_type: channelType,
+						team: 'T_AUTHOR',
+						team_id: 'T_INNER',
+						n8nWorkspaceId: 'T_FORGED',
+					},
+				};
+				await ctx.sendWebhook(payload);
+
+				const scopeId = `slack:agent-1:T_RECEIVING:${kind}:${channelId}`;
+				expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+					expect.objectContaining({
+						episodicScope: { writeScopeId: scopeId, readScopeIds: [scopeId] },
+					}),
+				);
+			} finally {
+				await ctx.shutdown();
+			}
+		},
+	);
+
+	it.each([
+		{ workspaceId: undefined, channelType: 'channel' },
+		{ workspaceId: 'T_TEAM', channelType: 'unsupported' },
+	])(
+		'keeps chat available without resolved ownership: %j',
+		async ({ workspaceId, channelType }) => {
+			const fixtures = slackReplayFixtures();
+			const ctx = await createSlackReplayContext(fixtures);
+			try {
+				await ctx.sendWebhook({
+					...fixtures.mention,
+					team_id: workspaceId,
+					event: {
+						...fixtures.mention.event,
+						channel_type: channelType,
+						n8nWorkspaceId: 'T_FORGED',
+					},
+				});
+
+				expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+					expect.objectContaining({
+						episodicScope: { disabled: true },
+					}),
+				);
+			} finally {
+				await ctx.shutdown();
+			}
+		},
+	);
+
+	it('rejects an invalid webhook signature before processing the event', async () => {
+		const fixtures = slackReplayFixtures();
+		const ctx = await createSlackReplayContext(fixtures);
+		try {
+			const response = await ctx.sendWebhook(
+				fixtures.mention,
+				new Headers({
+					'x-slack-request-timestamp': String(Math.floor(Date.now() / 1000)),
+					'x-slack-signature': `v0=${'0'.repeat(64)}`,
+				}),
+			);
+
+			expect(response.status).toBe(401);
+			expect(ctx.agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
 		} finally {
 			await ctx.shutdown();
 		}

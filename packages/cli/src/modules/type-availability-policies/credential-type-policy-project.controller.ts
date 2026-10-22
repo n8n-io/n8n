@@ -1,4 +1,4 @@
-import { PutProjectPolicyDto } from '@n8n/api-types';
+import { PutCredentialTypeProjectPolicyDto } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Licensed, ProjectScope, Put, RestController } from '@n8n/decorators';
@@ -20,7 +20,7 @@ export class CredentialTypePolicyProjectController {
 	constructor(private readonly service: TypeAvailabilityPolicyService) {}
 
 	@Get('/project')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ProjectScope('credentialTypePolicy:manage')
 	async getProjectPolicy(req: AuthenticatedRequest<{ projectId: string }>) {
 		const effective = await this.service.getEffectivePolicy(
@@ -37,12 +37,12 @@ export class CredentialTypePolicyProjectController {
 	}
 
 	@Put('/project')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ProjectScope('credentialTypePolicy:manage')
 	async putProjectPolicy(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
-		@Body dto: PutProjectPolicyDto,
+		@Body dto: PutCredentialTypeProjectPolicyDto,
 	) {
 		const result = await this.service.setEffectivePolicy(
 			CREDENTIAL_TYPES_KIND,

@@ -11,7 +11,7 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
+import { UnauthenticatedError } from '@n8n/errors';
 import { buildDiscoverResponse } from '@/public-api/v1/handlers/discover/discover.service';
 
 @PublicApiController('/discover')

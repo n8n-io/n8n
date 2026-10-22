@@ -197,6 +197,22 @@ describe('InstanceAiConversationHistoryRepository', () => {
 			expect(rows.map((row) => row.id)).toEqual([answered]);
 		});
 
+		it('matches ask-user answers stored under the former tool name', async () => {
+			const answered = await createThread({ title: 'Timezone setup' });
+			await createMessage({
+				threadId: answered,
+				role: 'assistant',
+				content: askUserContent(
+					[{ question: 'Which timezone?', selectedOptions: ['Europe/Berlin'] }],
+					{ toolName: 'ask-user' },
+				),
+			});
+
+			const rows = await search('berlin');
+
+			expect(rows.map((row) => row.id)).toEqual([answered]);
+		});
+
 		it('treats wildcards in the query as literal characters', async () => {
 			const literal = await createThread({ title: 'Discount 50% off campaign' });
 			await createThread({ title: 'Discount 5012 off campaign' });
@@ -305,6 +321,25 @@ describe('InstanceAiConversationHistoryRepository', () => {
 
 	// The ownership check behind every `get-messages` read.
 	describe('findOwnedThread', () => {
+		it('keeps producer messages out of normal chat context, including for the actor', async () => {
+			const threadId = await createThread({
+				title: 'Slack investigation',
+				resourceId: `ia-self-healing:${USER_ID}`,
+			});
+			const scope = {
+				userId: USER_ID,
+				projectId: project.id,
+				excludeThreadId: currentThreadId,
+			};
+
+			expect(await search('Slack')).toEqual([]);
+			expect(await repository.listRecentProjectThreadsForUser({ ...scope, limit: 5 })).toEqual([]);
+			expect(await repository.countProjectThreadsForUser(scope)).toBe(0);
+			for (const userId of [USER_ID, OTHER_USER_ID]) {
+				expect(await repository.findOwnedThread(threadId, userId, project.id)).toBeNull();
+			}
+		});
+
 		it('returns the thread for its owner in its project', async () => {
 			const threadId = await createThread({ title: 'Mine' });
 
@@ -425,6 +460,40 @@ describe('InstanceAiConversationHistoryRepository', () => {
 			expect(byThread.get(threadId)?.id).toBe(first);
 			expect(byThread.has(emptyThreadId)).toBe(false);
 		});
+	});
+
+	it('uses the same id tie-break for search, opening messages, and windows', async () => {
+		const threadId = await createThread({ withOpeningMessage: false });
+		const createdAt = at(9000);
+		for (const id of ['msg-bbb', 'msg-ccc', 'msg-aaa']) {
+			await createMessage({
+				threadId,
+				id,
+				role: 'user',
+				content: userContent('deploy'),
+				createdAt,
+			});
+		}
+
+		const matches = await repository.findSearchMatchRows([threadId], 'deploy', 2);
+		const first = await repository.findFirstUserMessages([threadId]);
+		const tail = await repository.getConversationWindow({
+			threadId,
+			before: 2,
+			after: 0,
+			project: (row) => row,
+		});
+		const head = await repository.getConversationWindow({
+			threadId,
+			before: 0,
+			after: 2,
+			project: (row) => row,
+		});
+
+		expect(matches.get(threadId)?.map((row) => row.id)).toEqual(['msg-ccc', 'msg-bbb']);
+		expect(first.get(threadId)?.id).toBe('msg-aaa');
+		expect(tail.rows.map((row) => row.id)).toEqual(['msg-bbb', 'msg-ccc']);
+		expect(head.rows.map((row) => row.id)).toEqual(['msg-aaa', 'msg-bbb']);
 	});
 
 	describe('findMessageInThread', () => {
@@ -622,6 +691,26 @@ describe('InstanceAiConversationHistoryRepository', () => {
 				threadId,
 				role: 'assistant',
 				content: askUserContent([{ question: 'Which channel?', selectedOptions: ['#alerts'] }]),
+				createdAt: at(5000),
+			});
+
+			const window = await repository.getConversationWindow({
+				threadId,
+				before: 2,
+				after: 0,
+				project: (row) => row,
+			});
+
+			expect(window.rows.map((row) => row.id)).toEqual([messageIds.e, askUserId]);
+		});
+
+		it('keeps ask-user rows stored under the former tool name visible in windows', async () => {
+			const askUserId = await createMessage({
+				threadId,
+				role: 'assistant',
+				content: askUserContent([{ question: 'Which channel?', selectedOptions: ['#alerts'] }], {
+					toolName: 'ask-user',
+				}),
 				createdAt: at(5000),
 			});
 

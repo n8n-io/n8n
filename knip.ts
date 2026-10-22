@@ -68,6 +68,9 @@ const config: KnipConfig = {
 		'.github/scripts': {
 			entry: ['**/*.mjs'],
 			ignoreDependencies: [
+				// docker/edit-image-native-smoke-check.mjs requires these from the n8n install under test.
+				'@napi-rs/canvas',
+				'@napi-rs/image',
 				// docker/kafka-native-smoke-check.mjs requires it from the n8n install under test.
 				'@confluentinc/kafka-javascript',
 				// The generate-sbom script runs the cdxgen binary; the package is not installed here.
@@ -92,6 +95,10 @@ const config: KnipConfig = {
 				// psl is loaded with a dynamic import, which knip does not link to @types.
 				'@types/psl',
 			],
+		}),
+		'packages/@n8n/backend-services': pkg({
+			// ioredis-mock is loaded with vi.importActual, which knip does not link.
+			ignoreDependencies: ['ioredis-mock'],
 		}),
 		'packages/@n8n/instance-ai': pkg({
 			// psl is loaded with a dynamic import, which knip does not link to @types.
@@ -124,8 +131,15 @@ const config: KnipConfig = {
 			ignoreDependencies: ['@langchain/langgraph-checkpoint'],
 		}),
 		'packages/nodes-base': pkg({
-			// Pins the pg version that pg-promise resolves for npm installs of the published package.
-			ignoreDependencies: ['pg'],
+			ignoreDependencies: [
+				// napi-rs wrappers load these platform bindings dynamically at runtime.
+				'@napi-rs/canvas-linux-arm64-musl',
+				'@napi-rs/canvas-linux-x64-musl',
+				'@napi-rs/image-linux-arm64-musl',
+				'@napi-rs/image-linux-x64-musl',
+				// Pins the pg version that pg-promise resolves for npm installs of the published package.
+				'pg',
+			],
 		}),
 		'packages/@n8n/create-node': pkg({
 			// bin/create-node.cjs spawns the n8n-node binary through require.resolve.
@@ -143,7 +157,7 @@ const config: KnipConfig = {
 			// Only named in JSDoc type imports; @stryker-mutator/core provides it.
 			ignoreDependencies: ['@stryker-mutator/api'],
 		}),
-		'packages/@n8n/benchmark': pkg({
+		'packages/quality/efficiency/scale/benchmark': pkg({
 			// The k6 runtime provides its own modules; only @types/k6 is installed.
 			ignoreDependencies: ['k6'],
 		}),
@@ -200,7 +214,7 @@ const config: KnipConfig = {
 			// Spawned as a binary through execFile.
 			ignoreDependencies: ['agent-browser'],
 		}),
-		'packages/testing/playwright': pkg({
+		'packages/quality/testing/playwright': pkg({
 			ignoreDependencies: [
 				// The e2e suite runs against the built app; the edge orders the turbo build.
 				'n8n',

@@ -11,6 +11,8 @@ import SessionTimelineChart from '@/features/agents/components/SessionTimelineCh
 import SessionEventFilter from '@/features/agents/components/SessionEventFilter.vue';
 import SessionTimelineTable from '@/features/agents/components/SessionTimelineTable.vue';
 import SessionDetailPanel from '@/features/agents/components/SessionDetailPanel.vue';
+import AgentBudgetNoticeCard from '@/features/agents/components/AgentBudgetNoticeCard.vue';
+import { isBudgetStopCode, type BudgetAmountField } from '@/features/agents/utils/budget-config';
 import {
 	flattenExecutionsToTimelineItems,
 	computeIdleRanges,
@@ -21,6 +23,7 @@ import {
 	itemStatusFilterKey,
 } from '@/features/agents/session-timeline.utils';
 import { useSubAgentNames } from '@/features/agents/composables/useSubAgentNames';
+import { useAgentTelemetry } from '@/features/agents/composables/useAgentTelemetry';
 import { resolveSubAgentName } from '@/features/agents/utils/delegate-tool';
 import { backgroundJobTimelineLabelKey } from '@/features/agents/utils/background-job-labels';
 import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.utils';
@@ -31,7 +34,7 @@ import type {
 	TimelineStatusFilterKey,
 } from '@/features/agents/session-timeline.types';
 import { useI18n } from '@n8n/i18n';
-import { N8nIcon, N8nInput } from '@n8n/design-system';
+import { N8nIcon, N8nInput, type BadgeVariant } from '@n8n/design-system';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useActiveElement, useDocumentVisibility, useEventListener } from '@vueuse/core';
 
@@ -39,6 +42,11 @@ const props = defineProps<{
 	projectId: string;
 	agentId: string;
 	threadId: string;
+	/**
+	 * Persists a raised budget cap. Omitted when the user cannot edit the
+	 * agent, which hides the increase action on the budget notice.
+	 */
+	increaseBudget?: (payload: { field: BudgetAmountField; amount: number }) => Promise<boolean>;
 }>();
 
 // Hands the loaded thread detail up so an enclosing view (the standalone
@@ -50,6 +58,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const toast = useToast();
+const agentTelemetry = useAgentTelemetry();
 const sessionsStore = useAgentSessionsStore();
 const pushStore = usePushConnectionStore();
 const activeElement = useActiveElement();
@@ -64,6 +73,8 @@ const selectedIndex = ref<number | null>(null);
 const highlightedIndex = ref<number | null>(null);
 const selectedFilters = ref<Set<string>>(new Set());
 const searchQuery = ref('');
+const resolvedBudgetStopExecutionId = ref<string | null>(null);
+const budgetIncreasePending = ref(false);
 let threadDetailRequestId = 0;
 let refreshPending = false;
 let removePushListener: (() => void) | undefined;
@@ -88,7 +99,45 @@ const items = computed<TimelineItem[]>(() =>
 	}),
 );
 const idleRanges = computed(() => computeIdleRanges(items.value));
+
 const bounds = computed(() => sessionBounds(items.value));
+
+// Only a budget stop in the latest run is still open: a later run got past an
+// older one. Raising the cap here resolves that run's stop, but the refreshed
+// history keeps the stop item, so remember which run was resolved. A newer run
+// that stops at the raised cap gets its own notice.
+const budgetStop = computed<{
+	index: number;
+	executionId: string;
+	code: 'budget.monthly' | 'budget.session';
+} | null>(() => {
+	const lastExecutionId = executions.value.at(-1)?.id;
+	if (!lastExecutionId || lastExecutionId === resolvedBudgetStopExecutionId.value) return null;
+	for (let index = items.value.length - 1; index >= 0; index--) {
+		const item = items.value[index];
+		if (item.executionId !== lastExecutionId || item.kind !== 'execution-error') continue;
+		if (item.guardrailCode && isBudgetStopCode(item.guardrailCode)) {
+			return { index, executionId: lastExecutionId, code: item.guardrailCode };
+		}
+	}
+	return null;
+});
+
+async function onIncreaseBudget(payload: { field: BudgetAmountField; amount: number }) {
+	const stopExecutionId = budgetStop.value?.executionId;
+	if (!props.increaseBudget || !stopExecutionId || budgetIncreasePending.value) return;
+	// The save outlives a thread switch: only close the notice it was raised from.
+	const identity = threadIdentity();
+	budgetIncreasePending.value = true;
+	try {
+		const saved = await props.increaseBudget(payload);
+		if (saved && identity === threadIdentity()) {
+			resolvedBudgetStopExecutionId.value = stopExecutionId;
+		}
+	} finally {
+		budgetIncreasePending.value = false;
+	}
+}
 
 function labelForKey(key: string): string {
 	const backgroundJobKey = backgroundJobTimelineLabelKey(key);
@@ -136,11 +185,11 @@ function labelForKey(key: string): string {
 
 const STATUS_FILTER_OPTIONS = [
 	{ key: 'approved', badgeTheme: 'success' },
-	{ key: 'declined', badgeTheme: 'default' },
+	{ key: 'declined', badgeTheme: 'outline' },
 	{ key: 'error', badgeTheme: 'danger' },
 ] satisfies Array<{
 	key: TimelineStatusFilterKey;
-	badgeTheme: 'default' | 'success' | 'danger';
+	badgeTheme: Extract<BadgeVariant, 'outline' | 'success' | 'danger'>;
 }>;
 
 const filterOptions = computed<FilterOption[]>(() => {
@@ -215,6 +264,14 @@ function selectTimelineItem(index: number | null) {
 	highlightedIndex.value = index;
 }
 
+function onTimelineItemSelect(index: number | null) {
+	selectTimelineItem(index);
+	if (index === null) return;
+	const item = items.value[index];
+	if (!item) return;
+	agentTelemetry.trackClickedTraceItem({ agentId: props.agentId, itemType: item.kind });
+}
+
 function shouldHandleShortcut() {
 	const element = activeElement.value;
 	if (!(element instanceof Element)) return false;
@@ -261,7 +318,7 @@ function onKeyUp(event: KeyboardEvent) {
 	if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
 	if (highlightedIndex.value === selectedIndex.value) return;
 	event.preventDefault();
-	selectTimelineItem(highlightedIndex.value);
+	onTimelineItemSelect(highlightedIndex.value);
 }
 
 useEventListener(document, 'keyup', onKeyUp);
@@ -270,6 +327,7 @@ function loadThreadDetail() {
 	executions.value = [];
 	selectedFilters.value = new Set();
 	searchQuery.value = '';
+	resolvedBudgetStopExecutionId.value = null;
 	selectTimelineItem(null);
 	loading.value = true;
 	emit('loaded', null);
@@ -403,7 +461,7 @@ watch([() => props.projectId, () => props.agentId, () => props.threadId], loadTh
 				:session-end="bounds.end"
 				:visible-kinds="selectedFilters"
 				:selected-index="highlightedIndex"
-				@select="selectTimelineItem"
+				@select="onTimelineItemSelect"
 			/>
 		</div>
 
@@ -419,8 +477,19 @@ watch([() => props.projectId, () => props.agentId, () => props.threadId], loadTh
 					:selected-index="highlightedIndex"
 					:visible-kinds="selectedFilters"
 					:search-query="searchQuery"
-					@select="selectTimelineItem"
-				/>
+					:notice-index="budgetStop?.index ?? null"
+					@select="onTimelineItemSelect"
+				>
+					<template #notice>
+						<AgentBudgetNoticeCard
+							v-if="budgetStop"
+							:code="budgetStop.code"
+							:can-increase="props.increaseBudget !== undefined"
+							:pending="budgetIncreasePending"
+							@increase="onIncreaseBudget"
+						/>
+					</template>
+				</SessionTimelineTable>
 			</div>
 			<Transition name="session-detail-panel">
 				<div v-if="selectedItem" :class="$style.detailPanel">

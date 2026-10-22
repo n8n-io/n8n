@@ -6,6 +6,13 @@ export type {
 	BuiltEpisodicMemoryCaptureStore,
 	BuiltEpisodicMemoryStore,
 	BuiltGuardrail,
+	GuardrailDecision,
+	GuardrailModelCallContext,
+	GuardrailModelCallSource,
+	GuardrailStop,
+	GuardrailToolCallContext,
+	GuardrailsOptions,
+	ModelGuardrail,
 	PiiDetectionType,
 	BuiltEval,
 	RunOptions,
@@ -19,6 +26,7 @@ export type {
 	ToolContext,
 	ToolCancellationContext,
 	ToolExecutionContext,
+	ToolApprovalContext,
 	InterruptibleToolContext,
 	ToolSuspendOptions,
 	CheckpointStore,
@@ -52,6 +60,7 @@ export type {
 	EpisodicMemoryMethods,
 	EpisodicMemoryPrompts,
 	EpisodicMemoryReflectFn,
+	EpisodicMemoryReflectResult,
 	EpisodicMemoryReflection,
 	EpisodicMemoryReflectionApply,
 	EpisodicMemoryReflectionApplyMerge,
@@ -59,6 +68,8 @@ export type {
 	EpisodicMemoryReflectionResult,
 	EpisodicMemoryReflectorInput,
 	EpisodicMemoryScope,
+	EpisodicScopeDecision,
+	ResolvedEpisodicScope,
 	EpisodicMemorySearchOptions,
 	EpisodicMemoryStatus,
 	EpisodicMemoryTaskLockHandle,
@@ -75,13 +86,18 @@ export type {
 	McpVerifyResult,
 	ModelConfig,
 	ExecutionOptions,
+	AgentInputBoundary,
 	SmoothStreamOptions,
 	TokenUsage,
+	PromptSizeUsage,
 	AgentExecutionCounter,
+	SideCallTask,
+	SideCallUsageReport,
 	PersistedExecutionOptions,
 	AnthropicPromptCachingConfig,
 	OpenAIPromptCachingConfig,
 	PromptCachingConfig,
+	NativeToolDeferralConfig,
 	BuiltTelemetry,
 	AttributeValue,
 	ObservationCursor,
@@ -90,11 +106,16 @@ export type {
 	BuiltObservationLogTaskLockStore,
 	MemoryTaskUsageReport,
 	NewObservationLogEntry,
+	ObservationLogBatch,
+	ObservationLogBatchEntry,
+	ObservationLogBatchCommitResult,
 	ObservationLogEntry,
 	ObservationLogMarker,
 	ObservationLogMerge,
+	ObservationLogObserveResult,
 	ObservationLogReadOptions,
 	ObservationLogReflection,
+	ObservationLogReflectResult,
 	ObservationLogReflectionResult,
 	ObservationLogScope,
 	ObservationLogStatus,
@@ -105,7 +126,7 @@ export type {
 export { FINISH_REASONS, isFinishReason } from './types';
 export type { ProviderOptions } from '@ai-sdk/provider-utils';
 export { AgentEvent } from './types';
-export type { AgentEventData, AgentEventHandler } from './types';
+export type { AgentEventData, AgentEventHandler, ForwardedChildChunk } from './types';
 export {
 	OBSERVATION_LOG_MARKERS,
 	OBSERVATION_LOG_STATUSES,
@@ -151,6 +172,13 @@ export {
 } from './sdk/vector-store-filter';
 export type { VectorFilterInput } from './sdk/vector-store-filter';
 export { Guardrail } from './sdk/guardrail';
+export { budgetMonthKey, createBudgetGuardrail } from './runtime/guardrails/budget-guardrail';
+export type {
+	BudgetGuardrailOptions,
+	SpendEntry,
+	SpendLedger,
+	SpendTotal,
+} from './runtime/guardrails/budget-guardrail';
 export {
 	redactText,
 	redactDeep,
@@ -177,6 +205,10 @@ export { deriveSubAgentTelemetry } from './runtime/telemetry/sub-agent-telemetry
 export { LangSmithTelemetry } from './integrations/langsmith';
 export type { LangSmithTelemetryConfig } from './integrations/langsmith';
 export { Agent } from './sdk/agent';
+export {
+	PROMPT_SIZE_BUCKET_THRESHOLDS,
+	withPromptSizeBreakdown,
+} from './runtime/loop/prompt-size-usage';
 export type {
 	VolatileInstructionsContext,
 	VolatileInstructionsProvider,
@@ -188,6 +220,7 @@ export {
 	createRuntimeSkillSource,
 	createRuntimeSkillTools,
 	createSkillLoadTool,
+	extendRuntimeSkillSource,
 	filterRuntimeSkillSource,
 	formatSkillValidationErrors,
 	InvalidRuntimeSkillError,
@@ -220,6 +253,8 @@ export type {
 	RuntimeSkillLoader,
 	RuntimeSkillMcpServerDependency,
 	RuntimeSkillPolicyContract,
+	RuntimeSkillReferenceContract,
+	RuntimeSkillReferenceLocation,
 	RuntimeSkillRegistry,
 	RuntimeSkillRegistryEntry,
 	RuntimeSkillSource,
@@ -295,6 +330,12 @@ export type {
 export { createModel } from './runtime/model/model-factory';
 export type { FetchFn, EmbeddingProviderOptions } from './runtime/model/model-factory';
 export {
+	hasAzureApiKey,
+	hasAzureEntraToken,
+	isAzureEntraCredential,
+	type AzureOpenAiAuthFields,
+} from './runtime/model/provider-credentials';
+export {
 	DEFAULT_SUB_AGENT_MAX_CHILDREN,
 	ROOT_SUB_AGENT_TASK_PATH,
 	assertSubAgentTaskPath,
@@ -352,6 +393,9 @@ export {
 export {
 	RECALL_MEMORY_TOOL_NAME,
 	createRecallMemoryTool,
+	EPISODIC_SCOPE_METADATA_KEY,
+	encodeEpisodicScopeMetadata,
+	readEpisodicScopeDecision,
 	getEpisodicMemoryScope,
 	hashEpisodicMemoryContent,
 	hashEpisodicMemoryEvidence,
@@ -369,6 +413,7 @@ export {
 export type {
 	RunEpisodicMemoryCandidateProcessorOpts,
 	RunEpisodicMemoryCandidateProcessorResult,
+	EpisodicMemoryUsageReport,
 } from './runtime/memory/episodic-memory-capture';
 export {
 	DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION,
@@ -385,6 +430,7 @@ export type {
 	MemoryLifecycleState,
 	MemoryLifecycleStatus,
 } from './runtime/memory/memory-lifecycle';
+export { prepareObservationLogBatchCursor } from './runtime/memory/observation-log-batch';
 export {
 	parseObservationLogMarkdown,
 	renderObserverTranscript,

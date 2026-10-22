@@ -1,9 +1,20 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount, type VueWrapper } from '@vue/test-utils';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import AgentPreviewHeader from '../components/AgentPreviewHeader.vue';
 import AgentSessionTimelineHeader from '../components/AgentSessionTimelineHeader.vue';
+
+const track = vi.fn();
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track }),
+}));
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ pushRef: 'session-xyz' }),
+}));
+
+beforeEach(() => vi.clearAllMocks());
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
@@ -41,7 +52,8 @@ vi.mock('@n8n/design-system', () => ({
 	},
 	N8nBreadcrumbs: {
 		name: 'N8nBreadcrumbs',
-		template: '<div data-testid="stub-breadcrumbs"><slot name="append" /></div>',
+		template:
+			'<div data-testid="stub-breadcrumbs"><slot name="prepend" /><slot name="append" /></div>',
 		props: ['items'],
 		emits: ['itemSelected'],
 	},
@@ -74,6 +86,7 @@ describe('AgentSessionTimelineHeader', () => {
 		return mount(AgentSessionTimelineHeader, {
 			props: {
 				breadcrumbItems,
+				projectIcon: { type: 'icon', value: 'user' },
 				sessionTitle: 'Support session',
 				sessionOptions: [
 					{
@@ -106,6 +119,14 @@ describe('AgentSessionTimelineHeader', () => {
 		expect(wrapper.text()).toContain('Slack');
 		expect(wrapper.text()).toContain('1,234t ($0.1234)');
 		expect(wrapper.text()).toContain('1.2s');
+	});
+
+	it('shows the project icon before the breadcrumb', () => {
+		const wrapper = mountHeader();
+		const icon = wrapper.getComponent({ name: 'ProjectIcon' });
+
+		expect(icon.props('icon')).toEqual({ type: 'icon', value: 'user' });
+		expect(icon.props('size')).toBe('mini');
 	});
 
 	it('hides metrics and close button while metrics are unavailable', () => {
@@ -146,6 +167,7 @@ describe('AgentPreviewHeader', () => {
 	function mountPreviewHeader() {
 		return mount(AgentPreviewHeader, {
 			props: {
+				agentId: 'agent-1',
 				agentName: 'Darwin',
 				agentHref: '/projects/project-1/agents/agent-1',
 				sessionTitle: 'Alpha',
@@ -168,6 +190,18 @@ describe('AgentPreviewHeader', () => {
 			},
 		});
 	}
+
+	it('tracks the standalone New chat button once and preserves its event', async () => {
+		const wrapper = mountPreviewHeader();
+		expect(track).not.toHaveBeenCalled();
+		await wrapper.get('[data-testid="agent-preview-new-chat-btn"]').trigger('click');
+
+		expect(wrapper.emitted('new-session')).toEqual([[]]);
+		expect(track).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_TEST_CHAT_ICON_FROM_TEST_PANEL,
+			{ agent_id: 'agent-1', push_ref: 'session-xyz', source: 'standalone' },
+		);
+	});
 
 	it('forwards history props and events', () => {
 		const wrapper = mountPreviewHeader();

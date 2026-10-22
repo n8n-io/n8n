@@ -1,10 +1,20 @@
 import { createTestingPinia } from '@pinia/testing';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import { useAgentEvalsStore } from '../agentEvals.store';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
 import type { AgentResource } from '../types';
+
+const track = vi.fn();
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track }),
+}));
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ pushRef: 'session-xyz' }),
+}));
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
@@ -37,6 +47,7 @@ vi.mock('@n8n/design-system', () => ({
 		props: ['open'],
 	},
 	N8nDialogHeader: { template: '<div><slot /></div>' },
+	N8nDialogBody: { template: '<div><slot /></div>' },
 	N8nDialogTitle: { template: '<div><slot /></div>' },
 	N8nHeading: { template: '<h2><slot /></h2>', props: ['size'] },
 	N8nIcon: { template: '<span />', props: ['icon', 'size'] },
@@ -55,8 +66,16 @@ vi.mock('@n8n/design-system', () => ({
 	N8nTabs: {
 		name: 'N8nTabs',
 		template:
-			'<nav data-testid="agent-header-tabs"><button v-for="option in options" :key="option.value">{{ option.label }}</button></nav>',
+			'<nav data-testid="agent-header-tabs"><button v-for="option in options" :key="option.value" :data-tab="option.value" @click="$emit(\'update:modelValue\', option.value)">{{ option.label }}</button></nav>',
 		props: ['modelValue', 'options'],
+		emits: ['update:modelValue'],
+	},
+	N8nToggle: {
+		name: 'N8nToggle',
+		template:
+			'<button :disabled="disabled" :aria-label="label" :aria-pressed="modelValue" @click="$emit(\'click\', $event)" />',
+		props: ['modelValue', 'variant', 'size', 'icon', 'label', 'disabled'],
+		emits: ['click'],
 	},
 	N8nTooltip: { template: '<div><slot /><slot name="content" /></div>' },
 }));
@@ -94,7 +113,7 @@ vi.mock('../components/AgentFilesPanel.vue', () => ({
 	default: {
 		name: 'AgentFilesPanel',
 		template: '<div data-testid="agent-files-panel" />',
-		props: ['files', 'disabled', 'loading', 'uploading', 'deletingFileId'],
+		props: ['agentId', 'files', 'disabled', 'loading', 'uploading', 'deletingFileId'],
 		emits: ['upload-files', 'delete-file'],
 	},
 }));
@@ -103,6 +122,15 @@ vi.mock('../components/AgentPanelHeader.vue', () => ({
 	default: {
 		name: 'AgentPanelHeader',
 		template: '<header data-testid="agent-panel-header"><slot name="actions" /></header>',
+	},
+}));
+
+vi.mock('../components/AgentBudgetPanel.vue', () => ({
+	default: {
+		name: 'AgentBudgetPanel',
+		template: '<div data-testid="agent-budget-panel-stub" />',
+		props: ['config', 'disabled', 'projectId', 'agentId'],
+		emits: ['update:config'],
 	},
 }));
 
@@ -210,6 +238,36 @@ describe('AgentBuilderEditorColumn', () => {
 		vi.clearAllMocks();
 	});
 
+	it.each([
+		['agent', 'build'],
+		['sessions', 'sessions'],
+		['knowledge', 'knowledge'],
+		['settings', 'settings'],
+	] as const)('tracks repeated %s tab activation as %s', async (tab, name) => {
+		const wrapper = await mountColumn({ activeMainTab: tab });
+		expect(track).not.toHaveBeenCalled();
+
+		await wrapper.get(`[data-tab="${tab}"]`).trigger('click');
+		await wrapper.get(`[data-tab="${tab}"]`).trigger('click');
+
+		expect(track).toHaveBeenCalledTimes(2);
+		expect(track).toHaveBeenLastCalledWith(TELEMETRY_EVENT.AGENTS.USER_CLICKED_AGENTS_TAB, {
+			agent_id: 'agent-1',
+			push_ref: 'session-xyz',
+			name,
+		});
+		expect(wrapper.emitted('update:activeMainTab')).toEqual([[tab], [tab]]);
+	});
+
+	it('keeps initialization, programmatic tab changes, and Evals telemetry silent', async () => {
+		const wrapper = await mountColumn({ activeMainTab: 'knowledge' });
+		await wrapper.setProps({ activeMainTab: 'settings' });
+		wrapper.getComponent({ name: 'N8nTabs' }).vm.$emit('update:modelValue', 'evals');
+
+		expect(track).not.toHaveBeenCalled();
+		expect(wrapper.emitted('update:activeMainTab')).toEqual([['evals']]);
+	});
+
 	it('renders Build, Knowledge, Sessions, and Settings tabs without Raw', async () => {
 		const wrapper = await mountColumn();
 
@@ -219,6 +277,12 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(tabs.text()).toContain('Sessions');
 		expect(tabs.text()).toContain('Settings');
 		expect(tabs.text()).not.toContain('Raw');
+	});
+
+	it('loads the type availability policies for the project', async () => {
+		await mountColumn();
+
+		expect(useTypeAvailabilityPoliciesStore().fetchForProject).toHaveBeenCalledWith('project-1');
 	});
 
 	it('does not render per-tab headings or descriptions for Sessions and Settings', async () => {
@@ -302,6 +366,14 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(wrapper.emitted('update:config')?.[0]).toEqual([{ instructions: 'x' }, undefined]);
 	});
 
+	it('forwards draft input before the config update', async () => {
+		const wrapper = await mountColumn();
+
+		wrapper.getComponent({ name: 'AgentInfoPanel' }).vm.$emit('draft:config');
+
+		expect(wrapper.emitted('draft:config')).toHaveLength(1);
+	});
+
 	it('disables the evals CTA for a read-only agent', async () => {
 		const wrapper = await mountColumn({ activeMainTab: 'evals', canEditAgent: false });
 
@@ -333,6 +405,9 @@ describe('AgentBuilderEditorColumn', () => {
 
 		expect(agentWrapper.findComponent({ name: 'AgentFilesPanel' }).exists()).toBe(false);
 		expect(knowledgeWrapper.findComponent({ name: 'AgentFilesPanel' }).exists()).toBe(true);
+		expect(knowledgeWrapper.findComponent({ name: 'AgentFilesPanel' }).props('agentId')).toBe(
+			'agent-1',
+		);
 		expect(
 			knowledgeWrapper
 				.findAllComponents({ name: 'AgentPanel' })
@@ -387,13 +462,16 @@ describe('AgentBuilderEditorColumn', () => {
 		]);
 	});
 
-	it('opens preview chat from the Triggers card', async function opensPreviewChat() {
-		const wrapper = await mountColumn({ agent: { isRunnable: true } as AgentResource });
+	it.each([true, false])(
+		'handles preview clicks from the Triggers card when runnable is %s',
+		async (isRunnable) => {
+			const wrapper = await mountColumn({ agent: { isRunnable } as AgentResource });
 
-		await wrapper.get('[data-testid="agent-triggers-preview-chat-button"]').trigger('click');
+			await wrapper.get('[data-testid="agent-triggers-preview-chat-button"]').trigger('click');
 
-		expect(wrapper.emitted('open-preview')).toEqual([[]]);
-	});
+			expect(wrapper.emitted('open-preview')).toEqual(isRunnable ? [['icon']] : undefined);
+		},
+	);
 
 	it('renders the episodic memory row on the Agent tab', async function rendersMemoryOnAgentTab() {
 		const wrapper = await mountColumn();
@@ -407,6 +485,15 @@ describe('AgentBuilderEditorColumn', () => {
 		const wrapper = await mountColumn({ activeMainTab: 'settings' });
 		await flushPromises();
 
+		const budgetPanel = wrapper.findComponent({ name: 'AgentBudgetPanel' });
+		expect(budgetPanel.exists()).toBe(true);
+		expect(budgetPanel.props('config')).toMatchObject({
+			name: 'Agent',
+			model: 'anthropic/claude-sonnet-4-5',
+		});
+		expect(budgetPanel.props('disabled')).toBe(false);
+		expect(budgetPanel.props('projectId')).toBe('project-1');
+		expect(budgetPanel.props('agentId')).toBe('agent-1');
 		const subAgentsPanel = wrapper.findComponent({ name: 'AgentSubAgentsPanel' });
 		expect(subAgentsPanel.exists()).toBe(true);
 		expect(subAgentsPanel.props('config')).toMatchObject({
@@ -416,10 +503,26 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(subAgentsPanel.props('disabled')).toBe(false);
 		expect(subAgentsPanel.props('projectId')).toBe('project-1');
 		expect(subAgentsPanel.props('agentId')).toBe('agent-1');
+		// Usage and limits sits above sub-agents.
+		expect(
+			budgetPanel.element.compareDocumentPosition(subAgentsPanel.element) &
+				Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
 		expect(wrapper.findComponent({ name: 'AgentMemoryPanel' }).exists()).toBe(false);
 		const advancedPanel = wrapper.findComponent({ name: 'AgentAdvancedPanel' });
 		expect(advancedPanel.exists()).toBe(true);
 		expect(advancedPanel.props('projectId')).toBe('project-1');
+	});
+
+	it('forwards a budget panel config update to the host as a budget save', async () => {
+		const wrapper = await mountColumn({ activeMainTab: 'settings' });
+		await flushPromises();
+
+		const changes = { config: { guardrails: { budget: { enabled: true, sessionCostCapUsd: 5 } } } };
+		wrapper.findComponent({ name: 'AgentBudgetPanel' }).vm.$emit('update:config', changes);
+
+		expect(wrapper.emitted('update:budget-config')?.[0]).toEqual([changes]);
+		expect(wrapper.emitted('update:config')).toBeUndefined();
 	});
 
 	it('keeps core setup and attached capabilities on the Agent tab', async () => {

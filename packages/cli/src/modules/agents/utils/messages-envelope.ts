@@ -1,7 +1,8 @@
-import type { SerializableAgentState } from '@n8n/agents';
+import { redactDeep, type SerializableAgentState } from '@n8n/agents';
 import type { AgentChatMessagesResponse, AgentPersistedMessageDto } from '@n8n/api-types';
 
 import { messagesToDto } from '../agent-message-mapper';
+import { isApprovalSuspendPayload } from '../integrations/agent-chat-suspension-cards';
 
 type MessageContentPart = AgentPersistedMessageDto['content'][number];
 
@@ -96,7 +97,9 @@ export function withOpenSuspensions(
 		.map((tc) => ({
 			toolCallId: tc.toolCallId,
 			runId: tc.runId,
-			suspendPayload: tc.suspendPayload,
+			suspendPayload: isApprovalSuspendPayload(tc.suspendPayload)
+				? redactDeep(tc.suspendPayload, { redactSensitiveKeys: true }).value
+				: tc.suspendPayload,
 		}));
 
 	const openToolCallIds = new Set(openSuspensions.map((s) => s.toolCallId));
@@ -160,4 +163,30 @@ export function withOpenSuspensions(
 	}
 
 	return { messages: merged, openSuspensions };
+}
+
+/** The checkpoint if it belongs to the memory resource of the user, otherwise null. */
+export function ownCheckpoint(
+	checkpoint: SerializableAgentState | null,
+	resourceId: string,
+): SerializableAgentState | null {
+	return checkpoint?.persistence?.resourceId === resourceId ? checkpoint : null;
+}
+
+/**
+ * The messages response of a thread. The history already holds the turns,
+ * so inactive checkpoint messages stay out. A thread without history shows
+ * only its open suspensions.
+ */
+export function threadMessagesResponse(
+	history: Pick<AgentChatMessagesResponse, 'messages' | 'activeExecutionId'> | null,
+	checkpoint: SerializableAgentState | null,
+): AgentChatMessagesResponse {
+	if (!history) return { ...withOpenSuspensions([], checkpoint), activeExecutionId: null };
+	return {
+		...withOpenSuspensions(history.messages, checkpoint, {
+			appendInactiveCheckpointMessages: false,
+		}),
+		activeExecutionId: history.activeExecutionId,
+	};
 }

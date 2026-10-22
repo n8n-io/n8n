@@ -8,7 +8,7 @@ import type {
 	ICredentialDataDecryptedObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
-	McpOAuth2CredentialType,
+	McpRegistryCredentialType,
 	McpRegistryConnection,
 	INode,
 	ISupplyDataFunctions,
@@ -20,6 +20,7 @@ import {
 	assertCredentialAllowsUrl,
 	assertUrlAllowed,
 	getMcpAuthHeaders,
+	isMcpAiGatewayAuthentication,
 	NodeOperationError,
 	shouldRefreshMcpOAuth2Token,
 } from 'n8n-workflow';
@@ -30,6 +31,20 @@ import {
 	type McpServerTransport,
 	type McpTool,
 } from './types';
+
+import { ContentBlockSchema, type ContentBlock } from '@modelcontextprotocol/sdk/types.js';
+
+export type { ContentBlock as McpContentBlock };
+
+/**
+ * Strict MCP content array detection. Returns false for empty arrays so callers
+ * fall back to default formatting.
+ */
+export function isMcpContentArray(data: unknown): data is ContentBlock[] {
+	if (!Array.isArray(data) || data.length === 0) return false;
+	return Array.from(data).every((item) => ContentBlockSchema.safeParse(item).success);
+}
+const MCP_SESSION_TERMINATION_TIMEOUT_MS = 1_000;
 
 export async function getAllTools(client: Client, cursor?: string): Promise<McpTool[]> {
 	const { tools, nextCursor } = await client.listTools({ cursor });
@@ -214,6 +229,26 @@ export async function connectMcpClient({
 				fetch: authFetch,
 				...(signal ? { requestInit: { signal } } : {}),
 			});
+			const originalClose = client.close.bind(client);
+			let closePromise: Promise<void> | undefined;
+			client.close = async () => {
+				closePromise ??= (async () => {
+					let timeout: ReturnType<typeof setTimeout> | undefined;
+					try {
+						await Promise.race([
+							Promise.resolve(transport.terminateSession()).catch(() => {}),
+							new Promise<void>((resolve) => {
+								timeout = setTimeout(resolve, MCP_SESSION_TERMINATION_TIMEOUT_MS);
+							}),
+						]);
+					} finally {
+						if (timeout !== undefined) clearTimeout(timeout);
+						await originalClose();
+					}
+				})();
+
+				await closePromise;
+			};
 			await client.connect(transport);
 			return createResultOk(client);
 		} catch (error) {
@@ -329,6 +364,14 @@ export async function getAuthHeaders(
 }> {
 	if (authentication === 'none') return {};
 
+	// Reading the credential mints a token. A failed mint is not caught: its error (Gateway
+	// credits off, no credits left) is the real cause. An expired token is minted again on a 401.
+	if (isMcpAiGatewayAuthentication(authentication)) {
+		const credentials = await ctx.getCredentials<ICredentialDataDecryptedObject>(authentication);
+		const headers = getMcpAuthHeaders(authentication, credentials);
+		return Object.keys(headers).length > 0 ? { headers, credentials } : { credentials };
+	}
+
 	let credentialType: string;
 	if (isMcpOAuth2Authentication(authentication)) {
 		credentialType = authentication;
@@ -406,6 +449,25 @@ export async function tryRefreshOAuth2Token(
 }
 
 /**
+ * Reads the Gateway credits credential again, which mints a current token. The token can expire
+ * while the MCP client is still in use: in a long execution, or after a wait.
+ * @returns The headers with the new token, or null when the credential has no token
+ */
+export async function tryRefreshAiGatewayToken(
+	ctx: IExecuteFunctions | ISupplyDataFunctions | ILoadOptionsFunctions,
+	authentication: McpAuthenticationOption,
+	headers: Record<string, string> = {},
+) {
+	const credentials = await ctx.getCredentials<ICredentialDataDecryptedObject>(authentication);
+	const authHeaders = getMcpAuthHeaders(authentication, credentials);
+	if (Object.keys(authHeaders).length === 0) return null;
+	const otherHeaders = Object.fromEntries(
+		Object.entries(headers).filter(([name]) => name.toLowerCase() !== 'authorization'),
+	);
+	return { ...otherHeaders, ...authHeaders };
+}
+
+/**
  * Connect to an MCP server on behalf of a user credential
  * enforcing the credential's "Allowed Domains"
  */
@@ -417,7 +479,7 @@ export async function connectMcpClientForCredential(
 		endpointUrl: string;
 		registryCredential?: {
 			connection: McpRegistryConnection;
-			credentialType: McpOAuth2CredentialType;
+			credentialType: McpRegistryCredentialType;
 			prepareConnection(
 				input: PrepareMcpRegistryConnectionInput,
 			): PrepareMcpRegistryConnectionResult;
@@ -470,7 +532,9 @@ export async function connectMcpClientForCredential(
 		version: node.typeVersion,
 		onUnauthorized: isOAuth2
 			? async (h) => await tryRefreshOAuth2Token(ctx, config.authentication, h)
-			: undefined,
+			: isMcpAiGatewayAuthentication(config.authentication)
+				? async (h) => await tryRefreshAiGatewayToken(ctx, config.authentication, h)
+				: undefined,
 		signal: config.signal,
 	});
 }

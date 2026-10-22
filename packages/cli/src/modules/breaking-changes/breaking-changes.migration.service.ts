@@ -5,8 +5,7 @@ import { Service } from '@n8n/di';
 import { calculateWorkflowChecksum } from 'n8n-workflow';
 import type { INode } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { NodeTypes } from '@/node-types';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
@@ -23,6 +22,10 @@ import type {
 import { isWorkflowMigration, WorkflowMigrationNodeError } from './migrations/node-migration';
 
 export { WorkflowMigrationNodeError };
+
+/** The same for a workflow that does not exist, so the response does not confirm that it exists. */
+export const WORKFLOW_NOT_EDITABLE_MESSAGE =
+	'Workflow not found, or you do not have permission to update it.';
 
 @Service()
 export class BreakingChangeMigrationService {
@@ -61,9 +64,7 @@ export class BreakingChangeMigrationService {
 			'workflow:update',
 		]);
 		if (!workflow) {
-			throw new NotFoundError(
-				'You do not have permission to update this workflow. Ask the owner to share it with you.',
-			);
+			throw new NotFoundError(WORKFLOW_NOT_EDITABLE_MESSAGE);
 		}
 
 		// Whether the version we're about to migrate is the one currently published.
@@ -95,10 +96,12 @@ export class BreakingChangeMigrationService {
 			unmapped.length === 0 &&
 			notes.length === 0 &&
 			wasPublishedVersion &&
-			this.workflowValidationService.validateForActivation(
-				Object.fromEntries(nodes.map((node) => [node.name, node])),
-				connections,
-				this.nodeTypes,
+			(
+				await this.workflowValidationService.validateForActivation(
+					Object.fromEntries(nodes.map((node) => [node.name, node])),
+					connections,
+					this.nodeTypes,
+				)
 			).isValid;
 
 		// Checksum of the workflow as fetched, so a concurrent edit landing between
@@ -169,7 +172,8 @@ export class BreakingChangeMigrationService {
 			connections: workflow.connections,
 			migratedNodeIds,
 			unmapped,
-			notes,
+			// Same note from several nodes is one review item, not one per node.
+			notes: [...new Set(notes)],
 		};
 	}
 

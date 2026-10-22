@@ -17,7 +17,11 @@ const props = defineProps<{
 	visibleKinds: Set<string>;
 	searchQuery?: string;
 	idleRanges?: IdleRange[];
+	/** Index of the item that gets the `notice` slot rendered directly below it. */
+	noticeIndex?: number | null;
 }>();
+
+defineSlots<{ notice?: (props: { item: TimelineItem }) => unknown }>();
 
 const emit = defineEmits<{ select: [index: number] }>();
 
@@ -73,7 +77,8 @@ function labelForKey(key: string): string {
 
 type Row =
 	| { id: string; kind: 'event'; item: TimelineItem; index: number; sortKey: number }
-	| { id: string; kind: 'idle'; range: IdleRange; sortKey: number };
+	| { id: string; kind: 'idle'; range: IdleRange; sortKey: number }
+	| { id: string; kind: 'notice'; item: TimelineItem; sortKey: number };
 
 const rows = computed<Row[]>(() => {
 	const events: Row[] = filteredTimelineItemIndexes(
@@ -96,7 +101,21 @@ const rows = computed<Row[]>(() => {
 		sortKey: range.start,
 	}));
 
-	return [...events, ...idles].sort((a, b) => a.sortKey - b.sortKey);
+	const sorted = [...events, ...idles].sort((a, b) => a.sortKey - b.sortKey);
+
+	// Spliced in after sorting so the notice stays directly below its event.
+	const noticeIndex = props.noticeIndex;
+	if (noticeIndex === null || noticeIndex === undefined) return sorted;
+	const position = sorted.findIndex((row) => row.kind === 'event' && row.index === noticeIndex);
+	if (position === -1) return sorted;
+	const anchor = sorted[position];
+	sorted.splice(position + 1, 0, {
+		id: `notice-${noticeIndex}`,
+		kind: 'notice',
+		item: props.items[noticeIndex],
+		sortKey: anchor.sortKey,
+	});
+	return sorted;
 });
 
 const shouldVirtualizeRows = computed(() => rows.value.length > VIRTUALIZE_AFTER_ROWS);
@@ -261,6 +280,17 @@ watch(
 					<SessionTimelineRow :item="row.item" :selected="props.selectedIndex === row.index" />
 				</div>
 				<div
+					v-else-if="row.kind === 'notice'"
+					data-test-id="timeline-notice-row"
+					:data-timeline-row-id="row.id"
+					:class="$style.noticeRow"
+					role="row"
+				>
+					<div :class="$style.noticeCell" role="gridcell">
+						<slot name="notice" :item="row.item" />
+					</div>
+				</div>
+				<div
 					v-else
 					data-test-id="timeline-idle-row"
 					:data-timeline-row-id="row.id"
@@ -295,6 +325,17 @@ watch(
 					@keydown.space.self.prevent="emit('select', row.index)"
 				>
 					<SessionTimelineRow :item="row.item" :selected="props.selectedIndex === row.index" />
+				</div>
+				<div
+					v-else-if="row.kind === 'notice'"
+					data-test-id="timeline-notice-row"
+					:data-timeline-row-id="row.id"
+					:class="$style.noticeRow"
+					role="row"
+				>
+					<div :class="$style.noticeCell" role="gridcell">
+						<slot name="notice" :item="row.item" />
+					</div>
 				</div>
 				<div
 					v-else
@@ -380,6 +421,14 @@ watch(
 	mask-image: linear-gradient(to bottom, transparent 0%, black 2%, black 95%, transparent 100%);
 }
 
+.noticeRow {
+	padding: var(--spacing--2xs) var(--spacing--sm) var(--spacing--sm);
+}
+.noticeCell {
+	display: flex;
+	justify-content: center;
+	width: 100%;
+}
 .idleRow {
 	position: relative;
 	display: flex;
@@ -408,7 +457,7 @@ watch(
 	   mirroring the .idleFill treatment on the chart. */
 	background-color: var(--color--background);
 	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text--tint-1);
 	text-transform: lowercase;
 	letter-spacing: 0.02em;
