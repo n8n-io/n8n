@@ -8,6 +8,7 @@ export class CreateAgentPublishHistory1792668224044 implements ReversibleMigrati
 		await runQuery(
 			`ALTER TABLE ${escape.tableName('agents')} ADD COLUMN ${escape.columnName('publicationRevision')} integer NOT NULL DEFAULT 0`,
 		);
+
 		const { createTable, column } = ctx.schemaBuilder;
 
 		await createTable('agent_publish_history')
@@ -52,6 +53,7 @@ export class CreateAgentPublishHistory1792668224044 implements ReversibleMigrati
 
 	async down({ schemaBuilder: { dropTable }, escape, runQuery }: MigrationContext) {
 		await dropTable('agent_publish_history');
+
 		await runQuery(
 			`ALTER TABLE ${escape.tableName('agents')} DROP COLUMN ${escape.columnName('publicationRevision')}`,
 		);
