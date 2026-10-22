@@ -795,7 +795,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 				};
 			}
 			if (credentialId === 'low-cred') {
-				return { apiKey: 'low-key', url: 'https://low.example/v1' };
+				return { apiKey: 'low-key', resourceName: 'low-resource' };
 			}
 			if (credentialId === 'high-cred') {
 				return {
@@ -810,7 +810,11 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		const entity = makeAgentEntity(undefined, {
 			subAgents: {
 				modelsByDifficulty: {
-					low: { model: 'openai/gpt-4o-mini', credential: 'low-cred' },
+					low: {
+						model: 'azure-openai/gpt-4o-mini',
+						credential: 'low-cred',
+						modelDeploymentName: 'My-Mini',
+					},
 					medium: {
 						model: 'google-vertex/gemini-3-flash-preview',
 						credential: 'vertex-cred',
@@ -832,9 +836,10 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 
 		expect(getInjectedInlineSubAgentModelsByDifficulty()).toEqual({
 			low: {
-				id: 'openai/gpt-4o-mini',
+				id: 'azure-openai/gpt-4o-mini',
 				apiKey: 'low-key',
-				baseURL: 'https://low.example/v1',
+				resourceName: 'low-resource',
+				deploymentName: 'My-Mini',
 			},
 			medium: {
 				id: 'google-vertex/gemini-3-flash-preview',

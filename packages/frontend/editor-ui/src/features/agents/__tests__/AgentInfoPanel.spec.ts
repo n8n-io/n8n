@@ -810,6 +810,7 @@ describe('AgentInfoPanel', () => {
 		it.each(['first switch', 'shared credential'])(
 			'keeps the deployment ID on %s',
 			async (scenario) => {
+				deploymentNameRequired.value = false;
 				credsHolder.value['azure-openai'] = 'azure-shared-1';
 				azureModels.value = [
 					{
@@ -849,6 +850,23 @@ describe('AgentInfoPanel', () => {
 				});
 			},
 		);
+
+		it('keeps the deployment-name field when the model list does not report the endpoint type', async () => {
+			seedAzureCredential('azure-key-1', 'classic', 'azureOpenAiApi');
+			deploymentNameRequired.value = undefined;
+			const wrapper = mountAzurePanel('azure-key-1');
+			await flushAsync(wrapper);
+			expect(wrapper.find('[data-testid="agent-deployment-name-field"]').exists()).toBe(true);
+
+			wrapper.findComponent({ name: 'AgentModelSelector' }).vm.$emit('change', {
+				provider: 'azure-openai',
+				model: 'gpt-4o-mini',
+			});
+			await wrapper.vm.$nextTick();
+
+			const last = wrapper.emitted('update:config')?.at(-1)?.[0] as Partial<AgentJsonConfig>;
+			expect(last.modelDeploymentName).toBe('gpt-4o-mini');
+		});
 
 		it('clears modelDeploymentName on a foundry model change', async () => {
 			seedAzureCredential('azure-foundry-1', 'foundry', 'azureOpenAiApi');

@@ -148,8 +148,10 @@ const selectedAgent = computed<AgentModelOption | null>(() => {
 	};
 });
 
+// Only an explicit `false` (Foundry) drops the input. A failed or pending list
+// keeps it, so a Classic config can still be repaired.
 const deploymentNameRequired = computed(
-	() => filteredAgents.value['azure-openai']?.deploymentNameRequired === true,
+	() => filteredAgents.value['azure-openai']?.deploymentNameRequired !== false,
 );
 
 const showDeploymentName = computed(() => {
