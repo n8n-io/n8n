@@ -1,3 +1,11 @@
+## [1.123.86](https://github.com/n8n-io/n8n/compare/n8n@1.123.85...n8n@1.123.86) (2026-10-22)
+
+
+### Bug Fixes
+
+* **deps:** bump sharp to 0.35.5 on 1.x (DEVP-1241) ([9fa95f0](https://github.com/n8n-io/n8n/commit/9fa95f0cff15ddde5ea56277207d54602b33fa78))
+
+
 ## [1.123.85](https://github.com/n8n-io/n8n/compare/n8n@1.123.84...n8n@1.123.85) (2026-10-14)
 
 
