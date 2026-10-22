@@ -238,26 +238,30 @@ describe('POST /api/step-executions/:id/resolve (integration)', () => {
 });
 
 describe('resume secret', () => {
-	it('answers 501 on both routes when the engine has no resume secret', async () => {
-		const { app: bare } = createEngineRuntime({
-			dataSource,
-			admittance: new AllowAllAdmittance(),
-			identityVerifier: new SharedSecretIdentityVerifier(identitySecret),
-			responseSender: noopExecutionResponseSender,
-		});
-		const id = generateId();
+	it.each([undefined, ''])(
+		'answers 501 on both routes when the resume secret is %j',
+		async (resumeSecret) => {
+			const { app: bare } = createEngineRuntime({
+				dataSource,
+				admittance: new AllowAllAdmittance(),
+				identityVerifier: new SharedSecretIdentityVerifier(identitySecret),
+				responseSender: noopExecutionResponseSender,
+				resumeSecret,
+			});
+			const id = generateId();
 
-		await request(bare)
-			.post(`/api/workflow-executions/${id}/resume-target`)
-			.set(auth())
-			.send({ token: 't' })
-			.expect(501);
-		await request(bare)
-			.post(`/api/step-executions/${id}/resolve`)
-			.set(auth())
-			.send({ token: 't', outputs: [] })
-			.expect(501);
-	});
+			await request(bare)
+				.post(`/api/workflow-executions/${id}/resume-target`)
+				.set(auth())
+				.send({ token: 't' })
+				.expect(501);
+			await request(bare)
+				.post(`/api/step-executions/${id}/resolve`)
+				.set(auth())
+				.send({ token: 't', outputs: [] })
+				.expect(501);
+		},
+	);
 
 	it('refuses to build an engine with a short resume secret', () => {
 		expect(() =>
@@ -266,7 +270,7 @@ describe('resume secret', () => {
 				admittance: new AllowAllAdmittance(),
 				identityVerifier: new SharedSecretIdentityVerifier(identitySecret),
 				responseSender: noopExecutionResponseSender,
-				resumeSecret: 'short',
+				resumeSecret: 'r'.repeat(31),
 			}),
 		).toThrow(/at least 32 characters/);
 	});
