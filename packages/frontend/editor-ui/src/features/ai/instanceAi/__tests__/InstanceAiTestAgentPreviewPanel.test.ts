@@ -1316,11 +1316,11 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 
 		// A judge error means the answer was never graded: it must not read as "passed".
 		describe('when the judge errored', () => {
-			it('never says "passed", and shows a neutral note in place of findings', async () => {
+			it('says neither "passed" nor "needs work", and shows a neutral note in place of findings', async () => {
 				const { getByTestId } = await renderCard({ verdict: UNGRADED_VERDICT });
 
 				expect(getByTestId('instance-ai-test-agent-preview-first-check-title')).toHaveTextContent(
-					'First check needs work',
+					'We couldn\u2019t grade the first check',
 				);
 				expect(getByTestId('instance-ai-test-agent-preview-findings')).toHaveTextContent(
 					'We couldn’t check this answer against its rule.',
@@ -1641,7 +1641,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		});
 	});
 
-	it('shows the confirmed try as needing work, not passing, when the judge could not grade it', async () => {
+	it('shows the confirmed try as neither passing nor needing work when the judge could not grade it', async () => {
 		const store = useAgentEvalsStore();
 		mockPreviewRun(store, { verdict: UNGRADED_VERDICT });
 		vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
@@ -1655,7 +1655,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		await user.click(getByTestId('instance-ai-test-agent-preview-check-harder'));
 
 		const row = await findByTestId('instance-ai-test-agent-examples-try');
-		expect(within(row).getByRole('img', { name: /Needs work/ })).toBeInTheDocument();
+		expect(within(row).queryByRole('img', { name: /Needs work/ })).not.toBeInTheDocument();
 		expect(within(row).queryByRole('img', { name: /Passed/ })).not.toBeInTheDocument();
 	});
 
@@ -1719,6 +1719,62 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 			// label is what distinguishes a graded fail from an execution error.
 			expect(within(row).getByRole('img', { name: /Needs work/ })).toBeInTheDocument();
 			expect(within(row).queryByRole('img', { name: /Couldn't finish/ })).not.toBeInTheDocument();
+		});
+
+		// The judge gave no readable verdict: the case is not the agent's fault, so
+		// the tally counts it on its own and the row reads as not graded.
+		it('counts a case the judge could not grade apart from needs work', async () => {
+			const store = useAgentEvalsStore();
+			mockPreviewRun(store);
+			vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
+				cases: [
+					{ input: 'Can I pay by invoice?', whatToCheck: 'Must always refuse.', scenario: 'Vague' },
+				],
+			});
+			mockCommit(store, {
+				rows: [{ rowId: 1, input: 'Can I pay by invoice?', whatToCheck: 'Must always refuse.' }],
+			});
+			vi.spyOn(store, 'isRunInFlight').mockReturnValue(false);
+			vi.spyOn(store, 'getReview').mockReturnValue({
+				run: { status: 'completed' } as never,
+				results: [
+					{
+						id: 'res-1',
+						sourceRowId: '1',
+						status: 'success',
+						input: { input: 'Can I pay by invoice?', criteria: 'Must always refuse.' },
+						output: { finalText: 'Sure, invoice payment works for this order.' },
+						verdict: UNGRADED_VERDICT,
+					} as never,
+				],
+				resultsCount: 1,
+				ratingsByResultId: {},
+				pendingByResultId: {},
+				draftsByResultId: {},
+				counts: null,
+				loading: false,
+				loadingMore: false,
+			});
+
+			const user = userEvent.setup();
+			const { getByTestId, findByTestId, findByText } = renderComponent();
+			await waitFor(() =>
+				expect(getByTestId('instance-ai-test-agent-preview-check-harder')).toBeEnabled(),
+			);
+			await user.click(getByTestId('instance-ai-test-agent-preview-check-harder'));
+			await findByTestId('instance-ai-test-agent-examples-check-agent');
+			await user.click(getByTestId('instance-ai-test-agent-examples-check-agent'));
+
+			expect(
+				await findByText('0 of 1 went well, 0 need work, 1 couldn’t be graded'),
+			).toBeInTheDocument();
+			const row = await findByTestId('instance-ai-test-agent-examples-case-1');
+			expect(within(row).getByRole('img', { name: /Couldn’t grade/ })).toBeInTheDocument();
+			expect(within(row).queryByRole('img', { name: /Needs work/ })).not.toBeInTheDocument();
+			expect(within(row).queryByRole('img', { name: /Couldn't finish/ })).not.toBeInTheDocument();
+			const pill = getByTestId('instance-ai-test-agent-examples-summary-toggle');
+			expect(within(pill).getByRole('img', { name: /Couldn’t grade/ })).toBeInTheDocument();
+			expect(within(pill).queryByRole('img', { name: /Needs work/ })).not.toBeInTheDocument();
 		});
 	});
 });

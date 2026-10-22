@@ -13,6 +13,8 @@ import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { useApplyAgentEvalSuggestions } from '@/features/agents/composables/useApplyAgentEvalSuggestions';
 import type { AgentEvalCase } from '@/features/agents/agentEvals.types';
 import {
+	isJudgeError,
+	isUngradedVerdict,
 	readAgentAnswer,
 	readErrorMessage,
 	readVerdictReasoning,
@@ -95,9 +97,18 @@ const firstCheckPassed = computed(
 		previewVerdict.value?.status === 'skipped' ||
 		(previewVerdict.value?.status === 'completed' && previewVerdict.value.outcome === 'pass'),
 );
+// The judge never graded the answer, so the title must not say the check needs work.
+const firstCheckNotGraded = computed(() => isUngradedVerdict(previewVerdict.value));
+const firstCheckTitleKey = computed(() => {
+	if (firstCheckPassed.value) return 'instanceAi.testAgentPreview.firstCheckPassed';
+	if (firstCheckNotGraded.value) return 'instanceAi.testAgentPreview.firstCheckNotGraded';
+	return 'instanceAi.testAgentPreview.firstCheckNeedsWork';
+});
 // The confirmed try's own state in the examples panel. A try that was never graded
-// reads as a pass there, except a judge error, which `toAvatarKind` keeps as needs work.
-const previewStatus = computed(() => toAvatarKind('success', previewVerdict.value));
+// reads as a pass there. An ungraded try shows the neutral idle look, not needs work.
+const previewStatus = computed(() =>
+	isUngradedVerdict(previewVerdict.value) ? 'idle' : toAvatarKind('success', previewVerdict.value),
+);
 const previewReasoning = computed(() => readVerdictReasoning(previewVerdict.value));
 // "Keep as is" hides the card until a different suggestion arrives, so a new proposal is
 // never swallowed by an old dismissal.
@@ -158,6 +169,7 @@ const suiteCaseRuns = computed<SuiteCaseRun[] | null>(() => {
 			// filling this in is unambiguous.
 			errorMessage: readErrorMessage(result.errorDetails) ?? readVerdictReasoning(result.verdict),
 			fixSuggestion: readVerdictSuggestion(result.verdict),
+			notGraded: isJudgeError(result.status, result.verdict),
 		};
 	});
 });
@@ -476,13 +488,7 @@ function onDontCreateEvals() {
 						color="text-dark"
 						data-test-id="instance-ai-test-agent-preview-first-check-title"
 					>
-						{{
-							i18n.baseText(
-								firstCheckPassed
-									? 'instanceAi.testAgentPreview.firstCheckPassed'
-									: 'instanceAi.testAgentPreview.firstCheckNeedsWork',
-							)
-						}}
+						{{ i18n.baseText(firstCheckTitleKey) }}
 					</N8nText>
 				</div>
 
@@ -611,6 +617,7 @@ function onDontCreateEvals() {
 				:preview-scenario="previewScenario"
 				:preview-status="previewStatus"
 				:preview-reasoning="previewReasoning"
+				:preview-not-graded="firstCheckNotGraded"
 				:project-id="target.projectId"
 				:examples="suiteCases"
 				:case-runs="suiteCaseRuns"
