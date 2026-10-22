@@ -129,6 +129,7 @@ export class AgentConfigService {
 		entity.integrations = replacement.nextIntegrations;
 		this.removeUnreferencedResources(entity, validatedConfig, clearOmitted);
 		if (
+			entity.versionId !== null &&
 			isSameAgentConfig(
 				{ tools: previous.tools, skills: previous.skills },
 				{ tools: entity.tools, skills: entity.skills },

@@ -181,6 +181,24 @@ describe('AgentConfigService', () => {
 		vi.restoreAllMocks();
 	});
 
+	it('initializes a legacy version ID when the submitted configuration has no changes', async () => {
+		const { service, agentRepository } = makeService();
+		const agent = makeAgent({ versionId: null });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+		const result = await service.updateConfig(
+			agentId,
+			projectId,
+			baseConfig,
+			user,
+			fencedOn(agent),
+		);
+
+		expect(agentRepository.saveDraftFenced).toHaveBeenCalledOnce();
+		expect(result.versionId).toEqual(expect.any(String));
+		expect(result.versionId).toBe(agent.versionId);
+	});
+
 	describe('validateConfig', () => {
 		it('rejects unsafe node tool schemas before deeper validation', async () => {
 			const { service } = makeService();
