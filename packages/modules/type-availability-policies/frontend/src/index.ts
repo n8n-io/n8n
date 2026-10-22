@@ -5,9 +5,11 @@ export {
 	type ContactAudience,
 	type RestrictedTypeKind,
 } from './type-availability-policies.constants';
+export { useTypeAvailability } from './composables/useTypeAvailability';
 export {
 	describeNodeTypeRestriction,
 	describeRestrictedNodeTypes,
+	getCredentialTypeRestriction,
 	getNodeTypeRestriction,
 	getRestrictionMessage,
 	getViolationVerdict,

@@ -25,16 +25,23 @@ import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.
 /** The verdict that restricts a node type: from the node kind, or the credential kind for a credential-only node. */
 export type TypeRestriction = NodeTypeAvailability | CredentialTypeAvailability;
 
-function nodeRestriction(nodeType: string): NodeTypeAvailability | null {
-	const availability = useTypeAvailabilityPoliciesStore().getNodeTypeAvailability(nodeType);
+function nodeRestriction(nodeType: string, projectId?: string): NodeTypeAvailability | null {
+	const availability = useTypeAvailabilityPoliciesStore().getNodeTypeAvailability(
+		nodeType,
+		projectId,
+	);
 	return availability && !availability.available ? availability : null;
 }
 
+/** Without `projectId`, every lookup here answers for the store's active project. */
 export function getCredentialTypeRestriction(
 	credentialType: string,
+	projectId?: string,
 ): CredentialTypeAvailability | null {
-	const availability =
-		useTypeAvailabilityPoliciesStore().getCredentialTypeAvailability(credentialType);
+	const availability = useTypeAvailabilityPoliciesStore().getCredentialTypeAvailability(
+		credentialType,
+		projectId,
+	);
 	return availability && !availability.available ? availability : null;
 }
 
@@ -45,15 +52,18 @@ export function getCredentialTypeRestriction(
  * reason and already covers every credential-only node. This mirrors the backend, where the
  * node check judges the stored `httpRequest` node and the credential check judges its type.
  */
-export function getNodeTypeRestriction(nodeType: string): TypeRestriction | null {
+export function getNodeTypeRestriction(
+	nodeType: string,
+	projectId?: string,
+): TypeRestriction | null {
 	if (isCredentialOnlyNodeType(nodeType)) {
 		return (
-			nodeRestriction(HTTP_REQUEST_NODE_TYPE) ??
-			getCredentialTypeRestriction(getCredentialOnlyNodeCredentialType(nodeType))
+			nodeRestriction(HTTP_REQUEST_NODE_TYPE, projectId) ??
+			getCredentialTypeRestriction(getCredentialOnlyNodeCredentialType(nodeType), projectId)
 		);
 	}
 
-	return nodeRestriction(nodeType);
+	return nodeRestriction(nodeType, projectId);
 }
 
 export function isNodeTypeRestricted(nodeType: string): boolean {
