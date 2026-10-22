@@ -123,7 +123,7 @@ vi.mock('../../tools', () => ({
 	),
 }));
 
-vi.mock('../../tools/filesystem/create-tools-from-mcp-server', () => ({
+vi.mock('../../tools/create-tools-from-mcp-server', () => ({
 	createToolsFromLocalMcpServer: vi.fn().mockReturnValue(new Map()),
 }));
 
@@ -145,7 +145,7 @@ vi.mock('../system-prompt', () => ({
 import { Agent as AgentImport, Memory as MemoryImport } from '@n8n/agents';
 
 import { createOrchestratorDomainTools as createOrchestratorDomainToolsImport } from '../../tools';
-import { createToolsFromLocalMcpServer as createToolsFromLocalMcpServerImport } from '../../tools/filesystem/create-tools-from-mcp-server';
+import { createToolsFromLocalMcpServer as createToolsFromLocalMcpServerImport } from '../../tools/create-tools-from-mcp-server';
 import { setTraceModelId, setTracePromptVersion } from '../../tracing/langsmith-tracing';
 import { createInstanceAgent } from '../instance-agent';
 import { getSystemPrompt as getSystemPromptImport } from '../system-prompt';
@@ -215,7 +215,7 @@ describe('createInstanceAgent', () => {
 				modelId: 'test-model',
 				context: {
 					runLabel: runId,
-					computerUseState: undefined,
+					browserUseState: undefined,
 					licenseHints: undefined,
 					localMcpServer: undefined,
 				},
@@ -294,7 +294,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'builder-skill-run',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -328,7 +328,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'docs-parity-run',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -360,7 +360,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'ws-test',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -381,7 +381,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'ws-test',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -406,7 +406,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'trace-test',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -459,7 +459,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'skills-test',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -491,7 +491,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'builder-skills-test',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 				builderDelegate: { getRuntimeSkills: () => [builderSkill] },
@@ -536,7 +536,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'browser-test',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer,
 			},
@@ -558,7 +558,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'external-mcp-prompt',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -583,7 +583,7 @@ describe('createInstanceAgent', () => {
 			context: {
 				runLabel: 'project-scope-prompt',
 				projectId: 'project-1',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -675,7 +675,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'external-mcp-eager-prompt',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -695,7 +695,7 @@ describe('createInstanceAgent', () => {
 		);
 	});
 
-	it('does not enable MCP-specific tool search guidance for local gateway tools alone', async () => {
+	it('does not enable MCP-specific tool search guidance for Browser Use tools alone', async () => {
 		const localMcpServer = {
 			getToolsByCategory: vi.fn().mockReturnValue([{ name: 'browser_navigate' }]),
 		};
@@ -707,7 +707,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'local-mcp-prompt',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer,
 			},
@@ -724,7 +724,7 @@ describe('createInstanceAgent', () => {
 		);
 	});
 
-	it('prefers local gateway tools over external MCP tools when names collide', async () => {
+	it('prefers Browser Use tools over external MCP tools when names collide', async () => {
 		const memoryConfig = {} as never;
 		const localMcpServer = {
 			getToolsByCategory: vi.fn().mockReturnValue([]),
@@ -742,7 +742,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'local-priority',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer,
 				logger: mockLogger,
@@ -781,7 +781,7 @@ describe('createInstanceAgent', () => {
 			context: {
 				runLabel: 'reserved-names',
 				conversationHistoryService: {},
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer,
 				logger: mockLogger,
@@ -801,7 +801,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'inactive-native-tools',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 				logger: mockLogger,
@@ -837,7 +837,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'active-native-tools',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 				logger: mockLogger,
@@ -870,7 +870,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'memory-test',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -980,7 +980,6 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'memory-test',
-				localGatewayStatus: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -1010,7 +1009,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'anthropic/claude-opus-4-8',
 			context: {
 				runLabel: 'thinking-test',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -1032,7 +1031,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'anthropic/claude-opus-4-8',
 			context: {
 				runLabel: 'thinking-off',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -1057,7 +1056,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'mcp-failure-run',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -1077,7 +1076,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'no-mcp-failure-run',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -1100,7 +1099,7 @@ describe('createInstanceAgent', () => {
 		const context = {
 			threadId: 'thread-sticky-1',
 			runLabel: 'modal-sticky-run',
-			computerUseState: undefined,
+			browserUseState: undefined,
 			licenseHints: undefined,
 			localMcpServer: undefined,
 			modelId: modalModel,

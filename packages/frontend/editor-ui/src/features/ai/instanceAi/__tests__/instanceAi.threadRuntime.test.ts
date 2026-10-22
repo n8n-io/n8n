@@ -1688,7 +1688,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			undefined,
 			expect.any(String),
 			'iframe-push-ref-123',
-			expect.any(Array),
+			expect.any(Boolean),
 			undefined,
 		);
 	});
@@ -1724,7 +1724,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			context,
 			expect.any(String),
 			undefined,
-			expect.any(Array),
+			expect.any(Boolean),
 			undefined,
 		);
 	});
@@ -1742,7 +1742,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			undefined,
 			expect.any(String),
 			undefined,
-			expect.any(Array),
+			expect.any(Boolean),
 			undefined,
 		);
 	});
@@ -1796,7 +1796,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			undefined,
 			expect.any(String),
 			undefined,
-			expect.any(Array),
+			expect.any(Boolean),
 			{
 				artifacts: [{ type: 'workflow', id: 'wf-1', name: 'WhatsApp FAQ Auto-Responder' }],
 				activeId: 'wf-1',

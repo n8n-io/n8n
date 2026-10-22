@@ -1,17 +1,17 @@
 import { DateTime } from 'luxon';
 
+import { getBrowserUsePrompt } from './browser-use-prompt';
 import { COMMUNICATION_STYLE_SECTION } from './communication-style.prompt';
-import { getComputerUsePrompt } from './computer-use-prompt';
 import {
 	SCOPE_GROUNDING_GUARDRAIL,
 	SECRET_ASK_GUARDRAIL,
 	SECRET_PASTE_GUARDRAIL,
 } from './credential-guardrails.prompt';
 import { getSandboxWorkspaceSection, UNTRUSTED_CONTENT_DOCTRINE } from './shared-prompts';
-import type { ComputerUseState } from '../types';
+import type { BrowserUseState } from '../types';
 
 interface SystemPromptOptions {
-	computerUseState?: ComputerUseState;
+	browserUseState?: BrowserUseState;
 	toolSearchEnabled?: boolean;
 	mcpToolSearchEnabled?: boolean;
 	/** Human-readable hints about licensed features that are NOT available on this instance. */
@@ -246,7 +246,7 @@ function getCredentialSetupBullet(setupPanelEnabled?: boolean): string {
 export function createSystemPromptRenderer(communicationStyleSection: string) {
 	return function getSystemPromptForStyle(options: SystemPromptOptions = {}): string {
 		const {
-			computerUseState,
+			browserUseState,
 			toolSearchEnabled,
 			mcpToolSearchEnabled,
 			licenseHints,
@@ -299,7 +299,7 @@ Don't fabricate provider setup mechanics (credential field names, secret values,
 
 ${UNTRUSTED_CONTENT_DOCTRINE}
 
-${getComputerUsePrompt({ state: computerUseState })}
+${getBrowserUsePrompt({ state: browserUseState })}
 ${getLicenseLimitationsSection(licenseHints)}
 ${getReadOnlySection(branchReadOnly)}
 ${getLimitedModeSection(parameterValuesHidden)}

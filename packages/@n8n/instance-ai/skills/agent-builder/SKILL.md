@@ -8,7 +8,7 @@ description: >-
   directly for routine Agent follow-ups; rerun intent-recognition only when the
   requested artifact is no longer clear.
 shared_references:
-  - credential-setup-with-computer-use
+  - credential-setup-with-browser-use
 recommended_tools:
   - agent_builder_select_agent
   - agent-context

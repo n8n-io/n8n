@@ -25,6 +25,7 @@ import type { Skill } from './skill.entity';
 import { SkillRepository, type SkillTarget } from './skill.repository';
 import { SkillService, toAgentSkill } from './skill.service';
 import { SkillsTelemetry, type SkillTelemetrySource } from './skills-telemetry';
+import { AssistantSkillsRollout } from './assistant-skills-rollout';
 
 function scopeOf(skill: Pick<Skill, 'projectId' | 'agentId'>): SkillScope {
 	if (skill.agentId) return 'agent';
@@ -47,6 +48,7 @@ export class SkillsApiService {
 		private readonly userRepository: UserRepository,
 		private readonly skillsTelemetry: SkillsTelemetry,
 		private readonly skillAgents: SkillAgentsProxy,
+		private readonly assistantSkillsRollout: AssistantSkillsRollout,
 	) {}
 
 	async list(user: User, query: ListSkillsQueryDto): Promise<SkillListResponse> {
@@ -120,8 +122,14 @@ export class SkillsApiService {
 		payload: SaveSkillDto,
 		source: SkillTelemetrySource = 'ui',
 	): Promise<SkillSaveResponse> {
+		if (
+			payload.availableToAssistant !== undefined &&
+			!(await this.assistantSkillsRollout.isEnabled())
+		) {
+			throw new NotFoundError('Skill not found');
+		}
 		const skill = await this.requireAccess(user, skillId, 'update');
-		const { scope, projectId, ...update } = payload;
+		const { scope, projectId, availableToAssistant, ...update } = payload;
 		const target = scope ? await this.targetForCreate(user, { scope, projectId }) : undefined;
 		const moves =
 			target !== undefined &&
@@ -129,7 +137,7 @@ export class SkillsApiService {
 
 		const checkedSource = moves ? await this.skillService.assertCanMove(user, skillId) : undefined;
 
-		if (!moves) {
+		if (!moves && availableToAssistant === undefined) {
 			const { followingAgentIds: _following, ...saved } = await this.skillService.save(
 				skillId,
 				update,
@@ -144,15 +152,24 @@ export class SkillsApiService {
 
 		// A refused move names only the agents the user may read, as the detail does.
 		const agentProjectIds = await this.projectScopeService.getProjectIds(user, ['agent:read']);
-		// One transaction, so a refused save does not leave the skill moved. The move runs
-		// first and checks the final name in the new scope only: a name that only the old
-		// scope holds does not block it. The save then checks a rename in the new scope too.
+		// Keep availability, scope, and content changes atomic. Move first so the name
+		// check uses the destination scope.
 		const { followingAgentIds, ...saved } = await this.txRunner.run({}, async (ctx) => {
-			await this.skillService.changeTarget(skillId, target, undefined, ctx, {
-				nameAfterMove: update.name,
-				checkedSource,
-				agentProjectIds: agentProjectIds ?? 'all',
-			});
+			if (moves) {
+				await this.skillService.changeTarget(skillId, target, undefined, ctx, {
+					nameAfterMove: update.name,
+					checkedSource,
+					agentProjectIds: agentProjectIds ?? 'all',
+				});
+			}
+			if (availableToAssistant !== undefined) {
+				await this.skillService.setAssistantAvailability(
+					skillId,
+					availableToAssistant,
+					target ?? skill,
+					ctx,
+				);
+			}
 			return await this.skillService.save(skillId, update, user.id, ctx);
 		});
 		// `save` leaves the refresh to the caller when it joins a transaction.
@@ -160,10 +177,10 @@ export class SkillsApiService {
 		if (saved.created) {
 			await this.skillsTelemetry.updated(
 				user.id,
-				{ id: skillId, ...target },
+				target ? { id: skillId, ...target } : skill,
 				source,
 				saved.version,
-				true,
+				moves,
 			);
 		}
 		return { id: skillId, ...saved, skillHash: getSkillHash(saved.skill) };
@@ -307,6 +324,7 @@ export class SkillsApiService {
 				createdBy: skill.createdById ? (creators.get(skill.createdById) ?? null) : null,
 				latestVersion: summary.version,
 				usedByAgents: usage.get(skill.id) ?? 0,
+				availableToAssistant: skill.availableToAssistant,
 				canEdit: canEdit(skill, projectId),
 				canDelete: canDelete(skill, projectId),
 				createdAt: skill.createdAt.toISOString(),
