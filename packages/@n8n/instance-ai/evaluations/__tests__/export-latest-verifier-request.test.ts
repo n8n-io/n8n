@@ -1,4 +1,4 @@
-import { VERIFIER_MAX_OUTPUT_TOKENS } from '../checklist/verifier';
+import { buildNativeVerifierRequestBody, VERIFIER_MAX_OUTPUT_TOKENS } from '../checklist/verifier';
 import { findStoredTestCaseResult, findStoredVerifierRun } from '../eval-results-artifact';
 import { buildVerifierRequestBody, getScenarios } from '../export-latest-verifier-request';
 
@@ -84,7 +84,7 @@ describe('export-latest-verifier-request helpers', () => {
 	});
 
 	it('asks for the reasoning before the verdict in the replayed request schema', () => {
-		const body = buildVerifierRequestBody('user message');
+		const body = buildVerifierRequestBody('user message', 'openai/gpt-5.5');
 
 		// Structured output writes keys in schema order, so `pass` must come after `reasoning`.
 		const item = body.text.format.schema.properties.results.items;
@@ -94,9 +94,31 @@ describe('export-latest-verifier-request helpers', () => {
 	});
 
 	it('sends the same output limit and reasoning effort as the live verifier', () => {
-		const body = buildVerifierRequestBody('user message');
+		const body = buildVerifierRequestBody('user message', 'openai/gpt-5.5');
 
 		expect(body.max_output_tokens).toBe(VERIFIER_MAX_OUTPUT_TOKENS);
 		expect(body.reasoning).toEqual({ effort: 'high' });
+	});
+
+	it('replays exactly the body the live verifier builds for the judge model', () => {
+		expect(buildVerifierRequestBody('user message', 'openai/gpt-5.5')).toEqual(
+			buildNativeVerifierRequestBody('user message', 'gpt-5.5'),
+		);
+	});
+
+	it('targets the judge model, not the builder model', () => {
+		vi.stubEnv('N8N_INSTANCE_AI_MODEL', 'openai/gpt-5.5');
+		vi.stubEnv('N8N_INSTANCE_AI_EVAL_JUDGE_MODEL', 'openai/gpt-5.4-mini');
+		try {
+			expect(buildVerifierRequestBody('user message').model).toBe('gpt-5.4-mini');
+		} finally {
+			vi.unstubAllEnvs();
+		}
+	});
+
+	it('refuses a judge model that does not use the native OpenAI request', () => {
+		expect(() => buildVerifierRequestBody('user message', 'anthropic/claude-sonnet-5-5')).toThrow(
+			/only an OpenAI judge/i,
+		);
 	});
 });

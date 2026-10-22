@@ -199,20 +199,15 @@ export function supportsOpenAiReasoning(modelId: string): boolean {
 	return /^(gpt-5(?:$|[-.])|o[1-9](?:$|[-.]))/.test(normalized);
 }
 
-async function runNativeOpenAiVerifier(
-	userMessage: string,
-	abortSignal: AbortSignal,
-): Promise<{
-	finishReason: unknown;
-	usage: unknown;
-	assistantText: string;
-	parsed: z.infer<typeof checklistResultSchema> | undefined;
-}> {
-	const model = resolveEvalModelConfig(resolveJudgeModel());
-	const requestBody = {
-		model: model.providerModelId,
+/**
+ * The OpenAI Responses request the native verifier sends. The replay export builds its
+ * request here too, so the two cannot drift apart.
+ */
+export function buildNativeVerifierRequestBody(userMessage: string, providerModelId: string) {
+	return {
+		model: providerModelId,
 		max_output_tokens: VERIFIER_MAX_OUTPUT_TOKENS,
-		...(supportsOpenAiReasoning(model.providerModelId) ? { reasoning: { effort: 'high' } } : {}),
+		...(supportsOpenAiReasoning(providerModelId) ? { reasoning: { effort: 'high' } } : {}),
 		input: [
 			{
 				role: 'developer',
@@ -230,6 +225,19 @@ async function runNativeOpenAiVerifier(
 		],
 		text: { format: VERIFIER_RESPONSE_FORMAT },
 	};
+}
+
+async function runNativeOpenAiVerifier(
+	userMessage: string,
+	abortSignal: AbortSignal,
+): Promise<{
+	finishReason: unknown;
+	usage: unknown;
+	assistantText: string;
+	parsed: z.infer<typeof checklistResultSchema> | undefined;
+}> {
+	const model = resolveEvalModelConfig(resolveJudgeModel());
+	const requestBody = buildNativeVerifierRequestBody(userMessage, model.providerModelId);
 	const response = await fetch(getOpenAiResponsesUrl(model.url), {
 		method: 'POST',
 		headers: {

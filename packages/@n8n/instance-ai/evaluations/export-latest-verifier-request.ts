@@ -8,12 +8,8 @@ import {
 	findStoredVerifierRun,
 	type StoredEvalResults,
 } from './eval-results-artifact';
-import {
-	supportsOpenAiReasoning,
-	VERIFIER_MAX_OUTPUT_TOKENS,
-	VERIFIER_RESPONSE_FORMAT,
-} from './checklist/verifier';
-import { MOCK_EXECUTION_VERIFY_PROMPT } from './system-prompts/mock-execution-verify';
+import { resolveJudgeModel } from '../src/utils/eval-agents';
+import { buildNativeVerifierRequestBody } from './checklist/verifier';
 
 type Scenario = {
 	name: string;
@@ -322,33 +318,17 @@ function getWorkflowJson(workflowId: string): WorkflowJson {
 }
 
 /**
- * The OpenAI Responses request the verifier sends: its response format, output limit and
- * reasoning effort, so a replay truncates and reasons the way the live judge does.
+ * The request the live verifier sends for the judge model. Only an OpenAI judge sends this
+ * native Responses request; any other judge goes through the agents wrapper instead.
  */
-function buildVerifierRequestBody(userMessage: string) {
-	const model =
-		(process.env.N8N_INSTANCE_AI_MODEL ?? 'openai/gpt-5.5').split('/').at(-1) ?? 'gpt-5.5';
-	return {
-		model,
-		max_output_tokens: VERIFIER_MAX_OUTPUT_TOKENS,
-		...(supportsOpenAiReasoning(model) ? { reasoning: { effort: 'high' } } : {}),
-		input: [
-			{
-				role: 'developer',
-				content: MOCK_EXECUTION_VERIFY_PROMPT,
-			},
-			{
-				role: 'user',
-				content: [
-					{
-						type: 'input_text',
-						text: userMessage,
-					},
-				],
-			},
-		],
-		text: { format: VERIFIER_RESPONSE_FORMAT },
-	};
+function buildVerifierRequestBody(userMessage: string, judgeModelId = resolveJudgeModel()) {
+	const [provider, ...modelParts] = judgeModelId.split('/');
+	if (provider !== 'openai') {
+		throw new Error(
+			`The judge model is "${judgeModelId}". Only an OpenAI judge sends the native Responses request this script replays; set N8N_INSTANCE_AI_EVAL_JUDGE_MODEL to an openai/... model.`,
+		);
+	}
+	return buildNativeVerifierRequestBody(userMessage, modelParts.join('/'));
 }
 
 function main(): void {
