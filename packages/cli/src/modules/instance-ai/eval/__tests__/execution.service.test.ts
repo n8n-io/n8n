@@ -83,6 +83,8 @@ vi.mock('@n8n/workflow-sdk', async (importOriginal) => ({
 
 // Same constructor-protocol gotcha — use a class so `new Workflow()` returns an instance with `getStartNode`.
 const mockGetStartNode = vi.fn();
+// No-op by default (reset in beforeEach). A test that needs the real constructor's parameter rewrite installs it here.
+const mockWorkflowConstructed = vi.fn();
 vi.mock('n8n-workflow', async () => {
 	const actual = await vi.importActual<typeof import('n8n-workflow')>('n8n-workflow');
 	class MockWorkflow {
@@ -90,6 +92,7 @@ vi.mock('n8n-workflow', async () => {
 		connections: IConnections;
 		getStartNode = mockGetStartNode;
 		constructor(options: { nodes?: Array<{ name: string }>; connections?: IConnections }) {
+			mockWorkflowConstructed(options);
 			// Key the entity's node objects by name (same references, so the SUT's
 			// in-place parameter patching propagates to the executed workflow).
 			this.nodes = Object.fromEntries((options?.nodes ?? []).map((node) => [node.name, node]));
@@ -293,6 +296,7 @@ describe('EvalExecutionService', () => {
 		generatePinDataMock.mockResolvedValue({});
 		createLlmMockHandlerMock.mockReturnValue(vi.fn());
 		mockGetStartNode.mockReturnValue(makeStartNode());
+		mockWorkflowConstructed.mockReset();
 		mockWireServerStart.mockResolvedValue('http://127.0.0.1:54321');
 		mockWireServerStop.mockResolvedValue(undefined);
 		// Default: kill-switch enabled. Tests that need it off flip this.
@@ -1321,6 +1325,117 @@ describe('EvalExecutionService', () => {
 	// ── Parameter issue patching ─────────────────────────────────────
 
 	describe('parameter issue patching', () => {
+		it.each([
+			{
+				mappingMode: 'defineBelow',
+				value: {
+					row_number: '={{ $json.row_number }}',
+					PRD: '={{ $json.output.prd }}',
+					'Test Cases': '={{ $json.output.test_cases }}',
+				},
+			},
+			{ mappingMode: 'autoMapInputData', value: null },
+		])(
+			'keeps a Sheets update mapping ($mappingMode) when Phase 1 builds the workflow before the sheet picker is filled',
+			async (mapper) => {
+				const actual = await vi.importActual<typeof import('n8n-workflow')>('n8n-workflow');
+				// What the real `Workflow` constructor does: rewrite each node's
+				// parameters in place, without the ones hidden by displayOptions.
+				mockWorkflowConstructed.mockImplementation(
+					(options: { nodes: INode[]; nodeTypes: NodeTypes }) => {
+						for (const node of options.nodes) {
+							const nodeType = options.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+							if (!nodeType) continue;
+							node.parameters =
+								actual.NodeHelpers.getNodeParameters(
+									nodeType.description.properties,
+									node.parameters,
+									true,
+									false,
+									node,
+									nodeType.description,
+								) ?? {};
+						}
+					},
+				);
+				const sheetsType = {
+					description: {
+						properties: [
+							{ displayName: 'Resource', name: 'resource', type: 'string', default: 'sheet' },
+							{ displayName: 'Operation', name: 'operation', type: 'string', default: 'update' },
+							{ displayName: 'Document', name: 'documentId', type: 'string', default: '' },
+							{ displayName: 'Sheet', name: 'sheetName', type: 'string', default: '' },
+							{
+								displayName: 'Columns',
+								name: 'columns',
+								type: 'resourceMapper',
+								default: { mappingMode: 'defineBelow', value: null },
+								// Same rule as the node's `untilSheetSelected`.
+								displayOptions: {
+									show: { resource: ['sheet'], operation: ['update'] },
+									hide: { sheetName: [''] },
+								},
+							},
+						],
+					} as unknown as INodeTypeDescription,
+				};
+				nodeTypes.getByNameAndVersion.mockImplementation(
+					(type) =>
+						(type === 'n8n-nodes-base.googleSheets'
+							? sheetsType
+							: { description: { properties: [] } as unknown as INodeTypeDescription }) as never,
+				);
+				workflowFinderService.findWorkflowForUser.mockResolvedValue(
+					makeWorkflowEntity({
+						nodes: [
+							makeStartNode(),
+							{
+								id: 'node-2',
+								name: 'Write PRD to Row',
+								type: 'n8n-nodes-base.googleSheets',
+								typeVersion: 4.7,
+								position: [200, 0],
+								parameters: {
+									resource: 'sheet',
+									operation: 'update',
+									documentId: { __rl: true, mode: 'list', value: '' },
+									sheetName: { __rl: true, mode: 'list', value: '' },
+									columns: { ...mapper, matchingColumns: ['row_number'], schema: [] },
+								},
+							} as INode,
+						],
+						connections: {
+							Webhook: {
+								main: [[{ node: 'Write PRD to Row', type: NodeConnectionTypes.Main, index: 0 }]],
+							},
+						},
+					}) as never,
+				);
+				// The mock gets the entity by reference and Phase 2 changes it later: copy at call time.
+				let hintedNodes: INode[] = [];
+				generateMockHintsMock.mockImplementation(async (options) => {
+					hintedNodes = structuredClone(options.workflow.nodes);
+					return makeEmptyHints();
+				});
+
+				await service.executeWithLlmMock('wf-1', makeUser());
+
+				const runArg = workflowRunner.run.mock.calls[0][0];
+				const sheetsNode = runArg.workflowData.nodes.find(
+					(node) => node.name === 'Write PRD to Row',
+				);
+				expect(sheetsNode?.parameters.columns).toMatchObject({
+					mappingMode: mapper.mappingMode,
+					matchingColumns: ['row_number'],
+					...(mapper.value ? { value: mapper.value } : {}),
+				});
+				const hintedSheetsNode = hintedNodes.find((node) => node.name === 'Write PRD to Row');
+				expect(hintedSheetsNode?.parameters.columns).toMatchObject({
+					matchingColumns: ['row_number'],
+				});
+			},
+		);
+
 		it('keeps missing required parameters visible as failed config issues after synthesis', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity() as never);
 			nodeTypes.getByNameAndVersion.mockImplementation((nodeType) => {
