@@ -300,6 +300,17 @@ describe('spawn', () => {
 		});
 	});
 
+	it('forwards the parent execution id to the run and omits it when none is supplied', async () => {
+		const { backgroundRunner, runner, context } = setup();
+
+		await backgroundRunner.spawn({ ...request, parentExecutionId: 'turn-1' }, context);
+		await backgroundRunner.spawn(request, context);
+		await flushDetachedRun();
+
+		expect(runner.run.mock.calls[0][0]).toMatchObject({ parentExecutionId: 'turn-1' });
+		expect(runner.run.mock.calls[1][0]).not.toHaveProperty('parentExecutionId');
+	});
+
 	it('runs on its own abort scope without parent telemetry or execution counter', async () => {
 		const { backgroundRunner, runner, context } = setup();
 

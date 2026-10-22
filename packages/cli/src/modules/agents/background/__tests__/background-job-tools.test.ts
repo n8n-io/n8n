@@ -205,6 +205,29 @@ describe('delegate_subagent background mode', () => {
 		});
 	});
 
+	it('forwards the parent execution id so the child execution links to the dispatching turn', async () => {
+		const { backgroundRunner, options } = setup();
+		backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
+		const tool = createBackgroundDelegateTool(options);
+		const input = {
+			mode: 'background',
+			subAgentId: 'sub-1',
+			taskName: 'research',
+			goal: 'find things',
+		};
+
+		await tool.handler!(input, {
+			persistence: {
+				...persistence,
+				hostMetadata: { ...persistence.hostMetadata, n8nExecutionId: 'turn-1' },
+			},
+		});
+		await tool.handler!(input, { persistence });
+
+		expect(backgroundRunner.spawn.mock.calls[0][0]).toMatchObject({ parentExecutionId: 'turn-1' });
+		expect(backgroundRunner.spawn.mock.calls[1][0]).not.toHaveProperty('parentExecutionId');
+	});
+
 	it('forwards the sandbox principal when the host scope matches the project', async () => {
 		const { backgroundRunner, options } = setup();
 		backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });

@@ -14,6 +14,7 @@ import { ResponseError } from '@n8n/errors';
 
 import { AgentExecutionRecordingError } from '../agent-execution-recording.error';
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
+import { hostMetadataExecutionId } from '../types/agent-queued-message';
 import { formatSubAgentToolOutput } from './format-sub-agent-tool-output';
 import type { SubAgentRunContext, SubAgentRunner } from './sub-agent-runner';
 
@@ -71,6 +72,7 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 			const parentDecision = readEpisodicScopeDecision(request.parentHostMetadata);
 			const parentEpisodicScope =
 				parentDecision && 'disabled' in parentDecision ? parentDecision : undefined;
+			const parentExecutionId = hostMetadataExecutionId(request.parentHostMetadata);
 
 			const result = await runner.run(
 				{
@@ -84,6 +86,7 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 					...(request.parentThreadId !== undefined
 						? { parentThreadId: request.parentThreadId }
 						: {}),
+					...(parentExecutionId !== undefined ? { parentExecutionId } : {}),
 					...(request.parentResourceId !== undefined
 						? { parentResourceId: request.parentResourceId }
 						: {}),
