@@ -1,0 +1,33 @@
+description: Too many requests.
+headers:
+  Retry-After:
+    description: The number of seconds to wait before you retry the request.
+    schema:
+      type: integer
+      minimum: 0
+  X-RateLimit-Limit:
+    description: The maximum number of requests allowed in the rate-limit window.
+    schema:
+      type: integer
+      minimum: 0
+  X-RateLimit-Remaining:
+    description: The number of requests remaining in the rate-limit window.
+    schema:
+      type: integer
+      minimum: 0
+  X-RateLimit-Reset:
+    description: The time when the rate-limit window resets, as a Unix timestamp in seconds.
+    schema:
+      type: integer
+      format: int64
+      minimum: 0
+content:
+  application/json:
+    schema:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          example: Too many requests

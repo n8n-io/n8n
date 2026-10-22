@@ -99,3 +99,5 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     description: The given `projectId` does not exist.
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

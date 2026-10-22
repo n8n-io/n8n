@@ -85,3 +85,5 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     description: No user with that ID or email.
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

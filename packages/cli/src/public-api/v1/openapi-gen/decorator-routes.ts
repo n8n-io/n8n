@@ -47,6 +47,7 @@ export const ERROR_RESPONSE_REFS = {
 	413: { $ref: '../../../../shared/spec/responses/contentTooLarge.yml' },
 	415: { $ref: '../../../../shared/spec/responses/unsupportedMediaType.yml' },
 	422: { $ref: '../../../../shared/spec/responses/unprocessableEntity.yml' },
+	429: { $ref: '../../../../shared/spec/responses/tooManyRequests.yml' },
 	500: { $ref: '../../../../shared/spec/responses/internalServerError.yml' },
 	503: { $ref: '../../../../shared/spec/responses/serviceUnavailable.yml' },
 } as const satisfies Record<number, { $ref: string }>;
@@ -71,6 +72,7 @@ export const ERROR_RESPONSE_DESCRIPTIONS: Record<DocumentedErrorStatus, string> 
 	413: 'Content too large.',
 	415: 'Unsupported media type.',
 	422: 'Unprocessable Entity',
+	429: 'Too many requests.',
 	500: 'Internal server error.',
 	503: 'The requested service is temporarily unavailable.',
 };
@@ -250,9 +252,10 @@ export function buildJsonSuccessResponse(
 /**
  * Response set is derived from what `PublicApiControllerRegistry` actually does at runtime, not
  * invented: the success status is the one `@ApiResponse` declares (and the same one the registry
- * sends), auth always 401s, `@ApiKeyScope` always 403s on mismatch, and a body/query DTO always
- * 400s on failed `.safeParse()`. Anything else - like a 404 from a business-rule lookup that isn't
- * visible in decorator metadata - has to be declared explicitly via `@ApiErrorResponse`.
+ * sends), auth always 401s, rate limiting can return 429, `@ApiKeyScope` always 403s on mismatch,
+ * and a body/query DTO always 400s on failed `.safeParse()`. Anything else - like a 404 from a
+ * business-rule lookup that isn't visible in decorator metadata - has to be declared explicitly
+ * via `@ApiErrorResponse`.
  * A binary `@ApiResponse` documents its media type, description and headers instead of a JSON DTO.
  */
 function buildResponses(
@@ -284,6 +287,7 @@ function buildResponses(
 		}
 	}
 	responses[401] = ERROR_RESPONSE_REFS[401];
+	responses[429] = ERROR_RESPONSE_REFS[429];
 	if (route.apiKeyScope) {
 		responses[403] = ERROR_RESPONSE_REFS[403];
 	}
