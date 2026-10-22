@@ -15,6 +15,10 @@ export default {
 			type: 'select',
 			options: ['default', 'dark'],
 		},
+		iconSize: {
+			type: 'select',
+			options: ['xsmall', 'small', 'medium', 'large'],
+		},
 	},
 	parameters: {
 		docs: {

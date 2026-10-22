@@ -38,6 +38,25 @@ describe('N8nActionToggle', () => {
 
 		expect(getByRole('button').querySelector('svg')).toHaveAttribute('data-icon', 'ellipsis-12');
 	});
+	it('renders the icon at the button size by default', function () {
+		const { getByRole } = render(ActionToggle, {
+			props: {
+				actions: [{ label: 'Duplicate', value: 'duplicate' }],
+			},
+		});
+
+		expect(getByRole('button').querySelector('svg')).toHaveAttribute('width', '12px');
+	});
+	it('renders the icon at the given iconSize', function () {
+		const { getByRole } = render(ActionToggle, {
+			props: {
+				actions: [{ label: 'Duplicate', value: 'duplicate' }],
+				iconSize: 'medium',
+			},
+		});
+
+		expect(getByRole('button').querySelector('svg')).toHaveAttribute('width', '14px');
+	});
 	it('should have bottom-end as default placement', async function () {
 		const { container, getByRole } = render(ActionToggle, {
 			props: {

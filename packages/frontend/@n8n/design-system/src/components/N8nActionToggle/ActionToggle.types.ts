@@ -1,3 +1,5 @@
+import type { IconSize } from '../../types/icon';
+
 /**
  * Extracted from the SFC: `<script setup>` types that reference the component's
  * generic parameter cannot be exported in place — the export hoists them above
@@ -20,6 +22,7 @@ export interface ActionToggleProps<T extends string = string> {
 	placement?: 'top' | 'top-start' | 'top-end' | 'bottom' | 'bottom-start' | 'bottom-end';
 	theme?: 'default' | 'dark';
 	iconOrientation?: 'horizontal' | 'vertical';
+	iconSize?: IconSize;
 	loading?: boolean;
 	loadingRowCount?: number;
 	disabled?: boolean;

@@ -16,6 +16,7 @@ const props = withDefaults(defineProps<ActionToggleProps<T>>(), {
 	placement: 'bottom-end',
 	theme: 'default',
 	iconOrientation: 'horizontal',
+	iconSize: 'small',
 	loading: false,
 	loadingRowCount: 3,
 	disabled: false,
@@ -103,6 +104,7 @@ defineExpose({
 						:class="$style[theme]"
 						:icon="iconOrientation === 'horizontal' ? 'ellipsis-12' : 'ellipsis-vertical-12'"
 						size="small"
+						:icon-size="iconSize"
 						:disabled="disabled"
 						role="button"
 						:aria-controls="dropdownId"
