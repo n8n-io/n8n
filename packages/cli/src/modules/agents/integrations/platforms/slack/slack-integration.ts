@@ -35,6 +35,7 @@ import {
 	createSlackResumeExecutionContext,
 	getSlackPlatformAgentContext,
 	getSlackReplyExpectation,
+	isSlackDirectMessage,
 	prepareSlackInboundText,
 	type SlackThreadContext,
 } from './slack-bridge-behavior';
@@ -162,6 +163,24 @@ export class SlackIntegration extends AgentChatIntegration {
 
 	prepareInboundText(text: string, context: PlatformAgentContext): string {
 		return prepareSlackInboundText(text, context);
+	}
+
+	shouldHandleInboundMessage({
+		message,
+		integration,
+		isNewMention,
+	}: {
+		message: BridgeMessageContextParams['message'];
+		integration: AgentIntegrationConfig;
+		isNewMention: boolean;
+	}): boolean {
+		return (
+			integration.type !== 'slack' ||
+			integration.settings?.onlyRespondWhenMentioned !== true ||
+			isNewMention ||
+			message.isMention === true ||
+			isSlackDirectMessage(message.raw)
+		);
 	}
 
 	getReplyExpectation(params: {

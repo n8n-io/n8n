@@ -73,12 +73,16 @@ export function getSlackReplyExpectation(params: {
 	const raw = params.message.raw;
 	if (!isRecord(raw)) return 'required';
 
-	const channelType = stringValue(raw.channel_type);
-	const channelId = stringValue(raw.channel);
-	const isDm = channelType === 'im' || channelId?.startsWith('D') === true;
-	if (isDm) return 'required';
+	if (isSlackDirectMessage(raw)) return 'required';
 
 	return 'optional';
+}
+
+export function isSlackDirectMessage(raw: unknown): boolean {
+	return (
+		isRecord(raw) &&
+		(raw.channel_type === 'im' || stringValue(raw.channel)?.startsWith('D') === true)
+	);
 }
 
 export function prepareSlackInboundText(text: string, context: PlatformAgentContext): string {
@@ -96,7 +100,14 @@ export async function createSlackBridgeExecutionContext(
 		params.integration.type === 'slack' &&
 			params.integration.settings?.messagingExperience === 'agent',
 	);
-	const shouldFetchHistory = params.isNewMention && slackThreadContext?.hasRealThreadTs === true;
+	// Mention-only mode skips intervening messages. Read them when the bot is tagged again.
+	const mentionOnlyFollowUp =
+		params.integration.type === 'slack' &&
+		params.integration.settings?.onlyRespondWhenMentioned === true &&
+		params.message.isMention === true &&
+		!isSlackDirectMessage(params.message.raw);
+	const shouldFetchHistory =
+		(params.isNewMention || mentionOnlyFollowUp) && slackThreadContext?.hasRealThreadTs === true;
 
 	const [statusHandle, historyContext] = await Promise.all([
 		// When the reply is optional the agent may stay silent — showing

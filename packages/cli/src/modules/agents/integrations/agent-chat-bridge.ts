@@ -784,6 +784,15 @@ export class AgentChatBridge {
 		message: Message,
 		options: InboundOptions,
 	): Promise<void> {
+		if (
+			this.integrationImpl?.shouldHandleInboundMessage?.({
+				message,
+				integration: this.integration,
+				isNewMention: options.isNewMention,
+			}) === false
+		) {
+			return;
+		}
 		const inbound = await this.readInboundMessage(thread, message);
 		if (!inbound) return;
 		if (isResetCommand(inbound)) {

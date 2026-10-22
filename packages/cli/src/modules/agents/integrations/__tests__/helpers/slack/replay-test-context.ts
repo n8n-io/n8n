@@ -1,5 +1,5 @@
 import type { StreamChunk } from '@n8n/agents';
-import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { AgentIntegrationConfig, AgentSlackIntegrationSettings } from '@n8n/api-types';
 import nock from 'nock';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -190,7 +190,7 @@ function installSlackApiNock(botUserId: string) {
 
 export async function createSlackReplayContext(
 	fixtures: SlackReplayFixtures,
-	options: { stream?: StreamChunk[] } = {},
+	options: { stream?: StreamChunk[]; settings?: AgentSlackIntegrationSettings } = {},
 ): Promise<SlackReplayContext> {
 	const stub = installSlackApiNock(fixtures.botUserId);
 
@@ -216,7 +216,11 @@ export async function createSlackReplayContext(
 		concurrency: 'concurrent',
 	});
 
-	const integration: AgentIntegrationConfig = { type: 'slack', credentialId: 'cred-slack' };
+	const integration: AgentIntegrationConfig = {
+		type: 'slack',
+		credentialId: 'cred-slack',
+		...(options.settings ? { settings: options.settings } : {}),
+	};
 	const setup = createReplayContextSetup({
 		chat: chat as never,
 		integrationImpl: new SlackIntegration(mock<AgentRepository>()),

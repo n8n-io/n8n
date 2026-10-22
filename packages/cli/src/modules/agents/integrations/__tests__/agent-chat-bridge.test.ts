@@ -3797,6 +3797,55 @@ describe('AgentChatBridge — Slack thread history', () => {
 		expect(call.modelMessage).toBe('[alice (u1)]: thanks');
 	});
 
+	it.each(['assistant', 'agent'] as const)(
+		'includes skipped thread messages when tagged again in mention-only mode with %s messaging',
+		async (messagingExperience) => {
+			const { bot, handlers } = makeBot();
+			bot.getAdapter.mockReturnValue({ botUserId: 'U_BOT' });
+			const author = { userId: 'u1', userName: 'alice' };
+			const thread = makeThread(
+				'thread-1',
+				undefined,
+				asyncIterableOf([{ id: 'skipped', text: 'The deadline is Friday', author }]),
+			);
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+			makeQueuedBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{
+					type: 'slack',
+					credentialId: 'cred-1',
+					settings: { messagingExperience, onlyRespondWhenMentioned: true },
+				},
+			);
+			const raw = { channel: 'C123', channel_type: 'channel', thread_ts: '1779466577.518139' };
+
+			await handlers.subscribed!(thread, {
+				id: 'skipped',
+				text: 'The deadline is Friday',
+				author,
+				raw,
+			});
+			expect(agentExecutor.captured).toHaveLength(0);
+
+			await handlers.subscribed!(thread, {
+				id: 'trigger',
+				text: '<@U_BOT> When is the deadline?',
+				isMention: true,
+				author,
+				raw,
+			});
+
+			expect(agentExecutor.captured).toHaveLength(1);
+			expect(agentExecutor.captured[0].modelMessage).toContain('[alice]: The deadline is Friday');
+			expect(agentExecutor.captured[0].message).toBe('When is the deadline?');
+		},
+	);
+
 	it('logs a warning and runs the agent with the plain message when history fetch throws', async () => {
 		const { bot, handlers } = makeBot();
 		bot.getAdapter.mockReturnValue({ botUserId: 'U_BOT' });

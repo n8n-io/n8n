@@ -105,6 +105,13 @@ or deactivation.
 
 ## Modal patterns
 
+### Channel behavior settings
+
+Put optional channel behavior controls in the channel edit view after setup.
+Use a Settings Row with a labeled control and a short description of its scope.
+Keep changes local until Save. Cancel and Close discard them. Show the same
+behavior controls for managed and manual connections.
+
 ### Canonical components
 
 Use these components:

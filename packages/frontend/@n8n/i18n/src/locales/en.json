@@ -9489,6 +9489,8 @@
 	"agents.channels.slack.managed.install.approvalDenied": "A Slack admin denied this app request. Ask an admin to review the app approval settings before trying again.",
 	"agents.channels.slack.managed.workspace.placeholder": "Select a workspace",
 	"agents.channels.slack.managed.settings.name": "Agent name",
+	"agents.channels.slack.settings.onlyRespondWhenMentioned": "Only respond when {'@'}mentioned",
+	"agents.channels.slack.settings.onlyRespondWhenMentionedHint": "Includes threads and group direct messages. Always replies to one-to-one direct messages.",
 	"agents.channels.slack.managed.settings.nameDescription": "The name displayed for this agent in Slack",
 	"agents.channels.slack.managed.settings.description": "Description",
 	"agents.channels.slack.managed.settings.alwaysOnline": "Always show my bot as online",

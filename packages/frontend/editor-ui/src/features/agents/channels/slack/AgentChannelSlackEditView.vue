@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
+import { AgentSlackSettingsSchema, type AgentSlackIntegrationSettings } from '@n8n/api-types';
+import { N8nSettingsRow, N8nSwitch2 } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 
 import AgentIntegrationCredentialConnection from '../../components/AgentIntegrationCredentialConnection.vue';
 import AgentChannelSlackManagedSettings from '../../components/AgentChannelSlackManagedSettings.vue';
@@ -15,7 +18,30 @@ const emit = defineEmits<{
 	edit: [];
 }>();
 
-const currentSettings = computed(() => props.savedSettings);
+const i18n = useI18n();
+const savedSlackSettings = computed(
+	() => AgentSlackSettingsSchema.safeParse(props.savedSettings).data,
+);
+const onlyRespondWhenMentioned = ref(false);
+watch(
+	savedSlackSettings,
+	(settings) => {
+		onlyRespondWhenMentioned.value = settings?.onlyRespondWhenMentioned ?? false;
+	},
+	{ immediate: true },
+);
+const currentSettings = computed<AgentSlackIntegrationSettings | undefined>(() => {
+	if (
+		onlyRespondWhenMentioned.value === (savedSlackSettings.value?.onlyRespondWhenMentioned ?? false)
+	) {
+		return savedSlackSettings.value;
+	}
+	return {
+		...savedSlackSettings.value,
+		messagingExperience: savedSlackSettings.value?.messagingExperience ?? 'assistant',
+		onlyRespondWhenMentioned: onlyRespondWhenMentioned.value,
+	};
+});
 const settingsRef = ref<InstanceType<typeof AgentChannelSlackManagedSettings>>();
 const managed = computed(() => props.runtime.isManagedCredential(credentialId.value));
 const validationError = computed(() =>
@@ -36,7 +62,7 @@ defineExpose({ currentSettings, validationError, loading, beforeSave });
 </script>
 
 <template>
-	<div :class="$style.editView">
+	<div :class="$style.editView" tabindex="-1" data-agent-modal-autofocus>
 		<AgentIntegrationCredentialConnection
 			v-model="credentialId"
 			:integration-type="integration.type"
@@ -51,6 +77,22 @@ defineExpose({ currentSettings, validationError, loading, beforeSave });
 			@create="emit('create')"
 			@edit="emit('edit')"
 		/>
+		<N8nSettingsRow
+			:title="i18n.baseText('agents.channels.slack.settings.onlyRespondWhenMentioned')"
+			:description="i18n.baseText('agents.channels.slack.settings.onlyRespondWhenMentionedHint')"
+			:truncate-title="false"
+			:max-description-lines="3"
+			:show-divider="false"
+		>
+			<template #action>
+				<N8nSwitch2
+					v-model="onlyRespondWhenMentioned"
+					:aria-label="i18n.baseText('agents.channels.slack.settings.onlyRespondWhenMentioned')"
+					:disabled="disabled || loading"
+					data-testid="slack-only-respond-when-mentioned"
+				/>
+			</template>
+		</N8nSettingsRow>
 		<AgentChannelSlackManagedSettings
 			v-if="managed"
 			ref="settingsRef"
@@ -68,5 +110,9 @@ defineExpose({ currentSettings, validationError, loading, beforeSave });
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
+
+	&:focus {
+		outline: none;
+	}
 }
 </style>
