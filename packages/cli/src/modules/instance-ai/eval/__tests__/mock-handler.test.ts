@@ -819,6 +819,7 @@ describe('placeholder API hosts', () => {
 	it.each([
 		'api.example.com',
 		'API.Example.COM',
+		'api.example.com.',
 		'api.ticketdesk.example.com',
 		'example.org',
 		'example.net',
@@ -855,6 +856,25 @@ describe('placeholder API hosts', () => {
 		expect(prompt).toContain('## Placeholder API');
 		expect(prompt).toContain('bare top-level JSON array');
 		expect(prompt).not.toContain('No API documentation is attached');
+	});
+
+	it('keeps the GraphQL envelope for a placeholder GraphQL endpoint', async () => {
+		llmSubmits({ type: 'json', body: { data: { orders: [] } } });
+		const handler = createLlmMockHandler();
+
+		await handler(
+			{
+				url: 'https://api.example.com/graphql',
+				method: 'POST',
+				body: { query: '{ orders { id } }' },
+			},
+			{ name: 'Fetch Orders', type: 'n8n-nodes-base.graphql' } as INode,
+		);
+
+		const prompt = mockGenerate.mock.calls[0][0];
+		expect(prompt).toContain('## Placeholder API');
+		expect(prompt).toContain('## GraphQL format requirement');
+		expect(prompt).toContain('keep the GraphQL envelope');
 	});
 
 	it('keeps the API-knowledge note for a real host', async () => {

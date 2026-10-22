@@ -101,7 +101,7 @@ const API_DOCS_NOTE =
 // Reserved example names (RFC 2606, RFC 6761) never host a real API, so the model has no layout
 // to recall. The scenario's stated layout wins; otherwise one fixed default keeps runs stable.
 const PLACEHOLDER_API_NOTE =
-	'This host is a reserved placeholder domain. No real API exists here, so you have no layout to recall. The Scenario, Data and Hint lines are this API\'s specification. If they state a body or layout for THIS request (a JSON literal, a top-level array, named wrapper keys), return that layout exactly, with its values. If they state none, return a list as a bare top-level JSON array of records, with no wrapper object and no pagination or count fields, and return a single record or a write result as a bare JSON object. For an error scenario, still use type "error".';
+	'This host is a reserved placeholder domain. No real API exists here, so you have no layout to recall. The Scenario, Data and Hint lines are this API\'s specification. If they state a body or layout for THIS request (a JSON literal, a top-level array, named wrapper keys), return that layout exactly, with its values. If they state none, return a list as a bare top-level JSON array of records, with no wrapper object and no pagination or count fields, and return a single record or a write result as a bare JSON object. When the user message also has a GraphQL format requirement section, keep the GraphQL envelope: with no stated layout, that list or record goes under the operation\'s field inside "data". For an error scenario, still use type "error".';
 
 const PLACEHOLDER_DOMAINS = ['example.com', 'example.net', 'example.org'];
 const PLACEHOLDER_TLDS = ['example', 'test', 'invalid', 'localhost'];
@@ -109,7 +109,8 @@ const PLACEHOLDER_TLDS = ['example', 'test', 'invalid', 'localhost'];
 /** True for a reserved example hostname (RFC 2606, RFC 6761), which never hosts a real API. */
 export function isPlaceholderHost(hostname: string | undefined): boolean {
 	if (!hostname) return false;
-	const host = hostname.toLowerCase();
+	// A fully qualified name may end in one dot (`api.example.com.`).
+	const host = hostname.toLowerCase().replace(/\.$/, '');
 	if (PLACEHOLDER_DOMAINS.some((domain) => host === domain || host.endsWith(`.${domain}`))) {
 		return true;
 	}
