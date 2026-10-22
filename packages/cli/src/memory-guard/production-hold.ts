@@ -1,6 +1,8 @@
 import { Service } from '@n8n/di';
 import type { WorkflowExecuteMode } from 'n8n-workflow';
 
+import { isProductionMode } from './memory-guard.utils';
+
 interface HeldExecution {
 	executionId: string;
 	heldAt: number;
@@ -72,8 +74,4 @@ export class ProductionHold {
 	get oldestHeldAt(): number | undefined {
 		return this.held[0]?.heldAt;
 	}
-}
-
-function isProductionMode(mode: WorkflowExecuteMode) {
-	return mode === 'webhook' || mode === 'trigger' || mode === 'chat';
 }

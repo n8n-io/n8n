@@ -1,5 +1,5 @@
 import { formatBytes } from '@n8n/utils/number/bytes';
-import type { IWorkflowBase } from 'n8n-workflow';
+import type { IWorkflowBase, WorkflowExecuteMode } from 'n8n-workflow';
 import { WorkflowOperationError } from 'n8n-workflow';
 import { setFlagsFromString } from 'node:v8';
 import { runInNewContext } from 'node:vm';
@@ -79,4 +79,8 @@ export function exposeGc(): (() => void) | undefined {
 	} finally {
 		setFlagsFromString('--no-expose-gc');
 	}
+}
+
+export function isProductionMode(mode: WorkflowExecuteMode) {
+	return mode === 'webhook' || mode === 'trigger' || mode === 'chat';
 }

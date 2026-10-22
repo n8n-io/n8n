@@ -10,7 +10,6 @@ import { MemoryPressureExecutionCancelledError } from 'n8n-workflow';
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 import { UserManagementMailer } from '@/user-management/email/user-management-mailer';
-import { isWorkflowIdValid } from '@/utils';
 import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
 
 import {
@@ -22,7 +21,6 @@ import {
 	FREED_SHARE,
 	HOLD_LEVEL,
 	HOLD_LIMIT_MS,
-	PRODUCTION_MODES,
 	RELEASE_TIMEOUT_MS,
 	REMEASURE_INTERVAL_MS,
 	REMEASURE_TIMEOUT_MS,
@@ -34,7 +32,7 @@ import {
 	STOPS_TO_DEACTIVATE,
 } from './memory-guard.constants';
 import type { StopTarget, StopTrigger } from './memory-guard.types';
-import { buildStopError, exposeGc, settleWithin } from './memory-guard.utils';
+import { buildStopError, exposeGc, isProductionMode, settleWithin } from './memory-guard.utils';
 import { getContainerLimit, type MemoryUsage, readMemoryUsage } from './memory-usage';
 import { ProductionHold } from './production-hold';
 import { RunDataTracker } from './run-data-tracker';
@@ -353,7 +351,7 @@ export class MemoryGuardService {
 	) {
 		await settleWithin(engines, RELEASE_TIMEOUT_MS);
 		const { after, freedMemory } = await this.measureAfterStop(before, target.estimatedBytes);
-		// A hold-limit stop shows that a held execution waited, not that this workflow uses much memory.
+		// A hold-limit stop happens below the stop level, so it says nothing about this workflow.
 		if (freedMemory && trigger !== 'hold-limit') await this.countStop(target);
 
 		this.logger.warn(
@@ -440,20 +438,20 @@ export class MemoryGuardService {
 		return { rootId, depth };
 	}
 
-	/**
-	 * A successful production run shows that the published workflow can run, so its count of
-	 * stops starts again. A manual run uses the draft.
-	 */
+	/** A successful production run shows that the workflow can run, so its count starts again. */
 	@OnLifecycleEvent('workflowExecuteAfter')
 	onExecutionEnd({ workflow, mode, runData }: WorkflowExecuteAfterContext) {
-		if (runData.status !== 'success' || !PRODUCTION_MODES.includes(mode) || !workflow.id) return;
-		this.stopsByWorkflow.delete(workflow.id);
+		if (runData.status === 'success' && isProductionMode(mode)) {
+			this.stopsByWorkflow.delete(workflow.id);
+		}
 	}
 
-	/** Count a stop that freed memory. Returns whether the workflow was deactivated. */
+	/**
+	 * Count a stop that freed memory, of production runs only, because a manual run uses the
+	 * draft. Returns whether the workflow was deactivated.
+	 */
 	private async countStop({ workflow, mode }: StopTarget) {
-		// A test run uses the draft, so it says nothing about the published version.
-		if (!PRODUCTION_MODES.includes(mode) || !isWorkflowIdValid(workflow.id)) return false;
+		if (!isProductionMode(mode)) return false;
 
 		const stops = (this.stopsByWorkflow.get(workflow.id) ?? 0) + 1;
 		this.stopsByWorkflow.set(workflow.id, stops);
@@ -471,7 +469,7 @@ export class MemoryGuardService {
 				return false;
 			}
 
-			// Lazy import, like crash recovery, because the workflow service depends on much
+			// Lazy import, as in crash recovery, because the workflow service has many dependencies.
 			const { WorkflowService } = await import('@/workflows/workflow.service.js');
 			await Container.get(WorkflowService).deactivateWorkflowAsSystem(workflowId);
 			this.stopsByWorkflow.delete(workflowId);
