@@ -5,7 +5,7 @@ import { ProjectRepository, SharedWorkflowRepository, WorkflowRepository } from 
 import { Container } from '@n8n/di';
 import { Cipher, type InstanceSettings } from 'n8n-core';
 import { mkdtempSync } from 'node:fs';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { simpleGit } from 'simple-git';
@@ -385,4 +385,22 @@ it('reads a merged review from the target branch after the host deleted its head
 		[`project:${project.id}`, 'added'],
 		[`workflow:${quote.id}`, 'added'],
 	]);
+}, 60_000);
+
+it('lists nothing when the manifest of the target branch cannot be read', async () => {
+	const project = await createTeamProject('Sales', owner);
+	await createWorkflow({ name: 'Quote', nodes: [], connections: {} }, project);
+	await commitOnMain(async (folder) => {
+		await mkdir(path.join(folder, 'n8n'), { recursive: true });
+		await writeFile(path.join(folder, 'n8n', 'manifest.json'), '{ not json');
+	});
+	const review = await promote('Changes');
+
+	const changes = await changesOf(review.reviewId);
+
+	expect(changes).toMatchObject({
+		resources: [],
+		dependencies: [],
+		warnings: ['baselineManifestUnreadable'],
+	});
 }, 60_000);

@@ -44,9 +44,7 @@ beforeEach(() => {
 });
 
 it('lists what the review changes, read-only, and reads each card at the commits of the list', async () => {
-	vi.mocked(api.getPromotionReviewChanges).mockResolvedValue(
-		reviewChanges({ warnings: ['headManifestUnreadable'] }),
-	);
+	vi.mocked(api.getPromotionReviewChanges).mockResolvedValue(reviewChanges());
 	vi.mocked(api.getPromotionReviewDetails).mockResolvedValue({
 		details: [
 			{
@@ -60,20 +58,17 @@ it('lists what the review changes, read-only, and reads each card at the commits
 		missingKeys: [],
 	});
 
-	const { getByTestId, getAllByTestId, queryAllByRole } = await render();
+	const { getAllByTestId, queryAllByRole } = await render();
 
-	expect(getByTestId('promotion-review-warning')).toHaveTextContent(
-		"The package manifest in this review can't be read",
-	);
 	expect(api.getPromotionReviewDetails).toHaveBeenCalledWith(expect.anything(), 'review-1', {
 		baselineCommitSha,
 		headCommitSha,
 		keys: expect.arrayContaining(['variable:global:API_URL', 'folder:f1', 'workflow:w1']),
 	});
-	// The base of a review is its target branch, not this instance.
+	// The review describes its own change, not this instance.
 	expect(
 		cardOf('variable:global:API_URL', getAllByTestId('promotion-preview-card')),
-	).toHaveTextContent('Not on the target branch');
+	).toHaveTextContent('Added in this review');
 	expect(queryAllByRole('checkbox')).toEqual([]);
 });
 
@@ -94,4 +89,18 @@ it('explains why the changes cannot be read and loads them again on retry', asyn
 	await userEvent.click(getByRole('button', { name: 'Try again' }));
 
 	expect(await findAllByTestId('promotion-preview-card')).not.toHaveLength(0);
+});
+
+it('explains that the changes cannot be listed when a manifest cannot be read', async () => {
+	vi.mocked(api.getPromotionReviewChanges).mockResolvedValue(
+		reviewChanges({ resources: [], dependencies: [], warnings: ['headManifestUnreadable'] }),
+	);
+
+	const { getByTestId, queryByTestId } = await render();
+
+	expect(getByTestId('promotion-review-warning')).toHaveTextContent(
+		"The package manifest in this review can't be read, so n8n can't list the changes.",
+	);
+	// An empty list here does not mean that the review changes nothing.
+	expect(queryByTestId('promotion-review-empty')).not.toBeInTheDocument();
 });

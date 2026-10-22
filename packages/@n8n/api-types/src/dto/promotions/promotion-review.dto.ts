@@ -113,7 +113,7 @@ export const promotionReviewChangesSchema = z.object({
 	headCommitSha: commitShaSchema,
 	resources: z.array(promotionResourceSchema),
 	dependencies: z.array(promotionResourceDependencySchema),
-	/** Why the list can be incomplete. A side whose package manifest cannot be read is one cause. */
+	/** Why the changes cannot be listed. The resources are then empty. */
 	warnings: z.array(promotionReviewWarningSchema),
 });
 export type PromotionReviewChanges = z.infer<typeof promotionReviewChangesSchema>;

@@ -37,7 +37,7 @@ const noInclusion: Inclusion = { included: new Set(), reasons: new Map() };
 const noKeys: ReadonlySet<ResourceKey> = new Set();
 
 provide(PromotionAbsentSideLabelsKey, {
-	before: i18n.baseText('promotions.review.side.notOnTarget'),
+	before: i18n.baseText('promotions.review.side.added'),
 	after: i18n.baseText('promotions.review.side.removed'),
 });
 
@@ -164,7 +164,7 @@ const treeResizer = useResizablePanel({
 				</N8nCallout>
 			</div>
 			<N8nEmptyState
-				v-if="totalChanges === 0"
+				v-else-if="totalChanges === 0"
 				:class="$style.state"
 				:icon="{ type: 'icon', value: 'check' }"
 				:heading="i18n.baseText('promotions.review.state.empty.title')"

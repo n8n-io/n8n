@@ -74,6 +74,16 @@ export class PromotionReviewChangesService {
 			baseline: baselineOf(mergeRequest),
 		});
 		const [base, head] = [await readSide(commits.baseline), await readSide(commits.head)];
+		const commitShas = {
+			baselineCommitSha: commits.baseline.commitSha,
+			headCommitSha: commits.head.commitSha,
+		};
+		const warnings: PromotionReviewWarning[] = [];
+		if (base.manifestUnreadable) warnings.push('baselineManifestUnreadable');
+		if (head.manifestUnreadable) warnings.push('headManifestUnreadable');
+		// Without a manifest, every resource of the other side looks added or deleted.
+		if (warnings.length > 0) return { ...commitShas, resources: [], dependencies: [], warnings };
+
 		const projectIds = projectIdsOf(base.side.manifest, head.side.manifest);
 		const archiveState = await readArchiveState(commits.head, base.side, head.side, projectIds);
 		const { resources, dependencies } = buildPreview({
@@ -83,16 +93,7 @@ export class PromotionReviewChangesService {
 			desired: head.side,
 			isArchived: (path) => archiveState.get(path) ?? false,
 		});
-		const warnings: PromotionReviewWarning[] = [];
-		if (base.manifestUnreadable) warnings.push('baselineManifestUnreadable');
-		if (head.manifestUnreadable) warnings.push('headManifestUnreadable');
-		return {
-			baselineCommitSha: commits.baseline.commitSha,
-			headCommitSha: commits.head.commitSha,
-			resources,
-			dependencies,
-			warnings,
-		};
+		return { ...commitShas, resources, dependencies, warnings };
 	}
 
 	/** Reads both sides at the commits of the summary, without the host. */
