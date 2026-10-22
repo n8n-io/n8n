@@ -13,10 +13,15 @@ type RequestLimit = { maxRequests: number; windowSeconds: number };
 
 type AccessRequestLimits = { perEndpoint: RequestLimit; allEndpoints: RequestLimit };
 
-type CountingLimiter = {
-	middleware: RequestHandler;
-	store: Store;
+/**
+ * One counter, for example the per-endpoint reads of one route. It reads its limit for each
+ * request, so a saved change applies without a restart.
+ */
+type Layer = {
 	requestPropertyName: string;
+	storeName: string;
+	readLimit: () => RequestLimit;
+	limiter?: { windowMs: number; middleware: RequestHandler; store: Store };
 };
 
 const ENDPOINT_LIMIT = 'endpointRateLimit';
@@ -42,10 +47,7 @@ const resolveAccess = (
 
 @Service()
 export class PublicApiRateLimitService {
-	private readonly allEndpointsLimiterCache = new Map<
-		RateLimitAccessName,
-		CountingLimiter | undefined
-	>();
+	private readonly allEndpointsLayers = new Map<RateLimitAccessName, Layer>();
 
 	constructor(
 		private readonly rateLimitSettingsService: PublicApiRateLimitSettingsService,
@@ -66,29 +68,57 @@ export class PublicApiRateLimitService {
 		path: string,
 		accessFromDecorator?: RateLimitAccessName,
 	): RequestHandler[] {
-		if (!this.config.enabled) return [];
-
 		const access = resolveAccess(method, accessFromDecorator);
 		const endpoint = `${method.toUpperCase()} ${path}`;
 
-		const limiters = [
-			this.createPerEndpointLimiter(access, endpoint),
-			this.getAllEndpointsLimiter(access),
-		].filter((limiter) => limiter !== undefined);
-		if (limiters.length === 0) return [];
+		const layers = [
+			this.createPerEndpointLayer(access, endpoint),
+			this.getAllEndpointsLayer(access),
+		];
 
-		return [...limiters.map((limiter) => limiter.middleware), this.enforceLimits(limiters)];
+		return [...layers.map((layer) => this.countRequests(layer)), this.enforceLimits(layers)];
+	}
+
+	/** Counts the request, unless rate limiting is off or the layer's limit is 0. */
+	private countRequests(layer: Layer): RequestHandler {
+		return async (req, res, next) => {
+			const { maxRequests, windowSeconds } = layer.readLimit();
+			if (!this.config.enabled || maxRequests === 0) {
+				next();
+				return;
+			}
+
+			const { middleware } = this.getLimiter(layer, windowSeconds * Time.seconds.toMilliseconds);
+			await middleware(req, res, next);
+		};
+	}
+
+	/**
+	 * `express-rate-limit` fixes the window when it creates a limiter, so a new window needs a new
+	 * limiter and a new store. On multi-main the new store shares the old Redis keys.
+	 */
+	private getLimiter(layer: Layer, windowMs: number) {
+		if (layer.limiter?.windowMs !== windowMs) {
+			void layer.limiter?.store.shutdown?.();
+			const store = this.storeFactory.create(layer.storeName);
+			const middleware = this.rateLimitService.createApiKeyRateLimitMiddleware(
+				{ limit: () => layer.readLimit().maxRequests, windowMs },
+				{ requestPropertyName: layer.requestPropertyName, store },
+			);
+			layer.limiter = { windowMs, middleware, store };
+		}
+		return layer.limiter;
 	}
 
 	/**
 	 * Runs after the limiters, which only count. Sends a 429 when the request is over any limit.
 	 * Otherwise sets the headers from the limit with the fewest requests left.
 	 */
-	private enforceLimits(limiters: CountingLimiter[]): RequestHandler {
+	private enforceLimits(layers: Layer[]): RequestHandler {
 		return async (req: AugmentedRequest, res, next) => {
-			const counted = limiters.flatMap(({ store, requestPropertyName }) => {
+			const counted = layers.flatMap(({ limiter, requestPropertyName }) => {
 				const limit: RateLimitInfo | undefined = req[requestPropertyName];
-				return limit ? [{ store, limit }] : [];
+				return limit && limiter ? [{ store: limiter.store, limit }] : [];
 			});
 			const limits = counted.map(({ limit }) => limit);
 
@@ -121,26 +151,26 @@ export class PublicApiRateLimitService {
 		};
 	}
 
-	private createPerEndpointLimiter(access: RateLimitAccessName, endpoint: string) {
-		return this.createRateLimiter(
-			this.getLimitsFromConfig(access).perEndpoint,
-			ENDPOINT_LIMIT,
-			`endpoint:${access}:${endpoint}`,
-		);
+	private createPerEndpointLayer(access: RateLimitAccessName, endpoint: string): Layer {
+		return {
+			requestPropertyName: ENDPOINT_LIMIT,
+			storeName: `endpoint:${access}:${endpoint}`,
+			readLimit: () => this.getLimitsFromConfig(access).perEndpoint,
+		};
 	}
 
-	private getAllEndpointsLimiter(access: RateLimitAccessName) {
-		if (!this.allEndpointsLimiterCache.has(access)) {
-			this.allEndpointsLimiterCache.set(
-				access,
-				this.createRateLimiter(
-					this.getLimitsFromConfig(access).allEndpoints,
-					ALL_ENDPOINTS_LIMIT,
-					`all:${access}`,
-				),
-			);
+	/** All routes with the same access share one layer, so they share one count. */
+	private getAllEndpointsLayer(access: RateLimitAccessName): Layer {
+		let layer = this.allEndpointsLayers.get(access);
+		if (!layer) {
+			layer = {
+				requestPropertyName: ALL_ENDPOINTS_LIMIT,
+				storeName: `all:${access}`,
+				readLimit: () => this.getLimitsFromConfig(access).allEndpoints,
+			};
+			this.allEndpointsLayers.set(access, layer);
 		}
-		return this.allEndpointsLimiterCache.get(access);
+		return layer;
 	}
 
 	private getLimitsFromConfig(access: RateLimitAccessName): AccessRequestLimits {
@@ -168,21 +198,5 @@ export class PublicApiRateLimitService {
 			},
 		};
 		return limits[access];
-	}
-
-	private createRateLimiter(
-		{ maxRequests, windowSeconds }: RequestLimit,
-		requestPropertyName: string,
-		storeName: string,
-	): CountingLimiter | undefined {
-		if (maxRequests === 0) return undefined;
-
-		const limits = { limit: maxRequests, windowMs: windowSeconds * Time.seconds.toMilliseconds };
-		const store = this.storeFactory.create(storeName);
-		const middleware = this.rateLimitService.createApiKeyRateLimitMiddleware(limits, {
-			requestPropertyName,
-			store,
-		});
-		return { middleware, store, requestPropertyName };
 	}
 }

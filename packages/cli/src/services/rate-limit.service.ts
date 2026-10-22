@@ -80,7 +80,7 @@ export class RateLimitService {
 	 * The counts are stored on the request under `requestPropertyName`.
 	 */
 	createApiKeyRateLimitMiddleware(
-		limits: Required<RateLimiterLimits>,
+		limits: { limit: number | (() => number); windowMs: number },
 		{ requestPropertyName, store }: { requestPropertyName: string; store: Store },
 	): RequestHandler {
 		const limiter = expressRateLimit({
