@@ -2804,6 +2804,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		create: vi.fn().mockImplementation((data: Record<string, unknown>) => data),
 		save: vi.fn().mockResolvedValue(undefined),
 		makeOwner: vi.fn().mockResolvedValue(undefined),
+		findProjectIds: vi.fn().mockResolvedValue(['team-project-id']),
 	};
 
 	const mockAiBuilderTemporaryWorkflowRepository = {
