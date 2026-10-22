@@ -286,6 +286,19 @@ describe('useGlobalEntityCreation', () => {
 			i18n.clearCache();
 
 			try {
+				const settingsStore = mockedStore(useSettingsStore);
+				settingsStore.isEnterpriseFeatureEnabled = {
+					[EnterpriseEditionFeature.Variables]: true,
+				} as unknown as (typeof settingsStore)['isEnterpriseFeatureEnabled'];
+				settingsStore.isDataTableFeatureEnabled = true;
+				settingsStore.isModuleActive.mockImplementation(
+					(name: string) => name === AGENTS_MODULE_NAME,
+				);
+				const usersStore = mockedStore(useUsersStore);
+				usersStore.currentUser = {
+					globalScopes: ['variable:create'],
+				} as unknown as (typeof usersStore)['currentUser'];
+
 				const projectsStore = mockedStore(useProjectsStore);
 				projectsStore.teamProjectsLimit = -1;
 				projectsStore.isTeamProjectFeatureEnabled = true;
@@ -297,9 +310,12 @@ describe('useGlobalEntityCreation', () => {
 				const headings = menu.value.flatMap(
 					(item) => item.submenu?.filter((sub) => sub.id.endsWith('-title')) ?? [],
 				);
-				expect(headings.map((heading) => heading.id)).toEqual([
-					'workflow-title',
+				expect(headings.map((heading) => heading.id).sort()).toEqual([
+					'agent-title',
 					'credential-title',
+					'data-table-title',
+					'variable-title',
+					'workflow-title',
 				]);
 				for (const heading of headings) {
 					expect(heading.title).toBe('Translated create in');
