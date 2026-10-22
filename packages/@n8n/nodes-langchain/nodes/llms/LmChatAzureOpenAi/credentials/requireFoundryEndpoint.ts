@@ -1,6 +1,6 @@
 import { NodeOperationError, type INode } from 'n8n-workflow';
 
-import { normalizeEndpoint } from './normalizeEndpoint';
+import { normalizeEndpoint } from '../../../../utils/normalizeEndpoint';
 
 /**
  * A Foundry credential carries the inference base URL directly, unlike
