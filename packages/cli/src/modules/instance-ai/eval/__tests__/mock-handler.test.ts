@@ -731,6 +731,66 @@ describe('earlier writes ledger', () => {
 		expect(mockGenerate).toHaveBeenCalledTimes(2);
 	});
 
+	it('redacts secret query parameters in a recorded write URL', async () => {
+		llmSubmits({ type: 'json', body: { ok: true } });
+		llmSubmits({ type: 'json', body: { values: [] } });
+		const handler = createLlmMockHandler();
+
+		await handler(
+			{
+				url: `${sheetsUrl}/CVs!A:F:append?access_token=tok-1234567890&valueInputOption=RAW`,
+				method: 'POST',
+				body: { values: [['cv.pdf']] },
+			} as IHttpRequestOptions,
+			logNode,
+		);
+		await handler(readSheet, lookupNode);
+
+		const section = sectionOf(promptOf(1));
+		expect(section).not.toContain('tok-1234567890');
+		expect(section).toContain('access_token=<redacted>');
+		expect(section).toContain('valueInputOption=RAW');
+	});
+
+	describe('GraphQL', () => {
+		const graphqlUrl = 'https://api.linear.app/graphql';
+		const graphql = (query: string) =>
+			({ url: graphqlUrl, method: 'POST', body: { query } }) as IHttpRequestOptions;
+		const listIssues = graphql('query Issues { issues { nodes { id title } } }');
+
+		it('does not record a GraphQL query as a write', async () => {
+			llmSubmits({ type: 'json', body: { data: { issues: { nodes: [] } } } });
+			llmSubmits({ type: 'json', body: { data: { viewer: { id: 'u1' } } } });
+			const handler = createLlmMockHandler();
+
+			await handler(listIssues, baseNode);
+			await handler(graphql('{ viewer { id } }'), baseNode);
+
+			expect(promptOf(1)).not.toContain(SECTION);
+		});
+
+		it('records a GraphQL mutation and regenerates an identical query after it', async () => {
+			llmSubmits({ type: 'json', body: { data: { issues: { nodes: [] } } } });
+			llmSubmits({ type: 'json', body: { data: { issueCreate: { success: true } } } });
+			llmSubmits({ type: 'json', body: { data: { issues: { nodes: [{ id: 'i1' }] } } } });
+			const handler = createLlmMockHandler();
+
+			await handler(listIssues, baseNode);
+			await handler(
+				graphql(
+					'# create one\nmutation CreateIssue { issueCreate(input: { title: "Bug" }) { success } }',
+				),
+				baseNode,
+			);
+			await handler(listIssues, baseNode);
+
+			expect(mockGenerate).toHaveBeenCalledTimes(3);
+			const section = sectionOf(promptOf(2));
+			expect(section).toContain('POST /graphql');
+			expect(section).toContain('mutation CreateIssue');
+		});
+	});
+
 	describe('formatWriteLedger', () => {
 		const entry = {
 			hostname: 'sheets.googleapis.com',

@@ -12,6 +12,7 @@ import { Tool } from '@n8n/agents/tool';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
+import { isRecord } from '@n8n/utils/is-record';
 import { sleep } from '@n8n/utils/sleep';
 import type { EvalLlmMockHandler, EvalMockHttpResponse, FixtureSizeHint } from 'n8n-core';
 import { buildPdfWithText, synthesizeBinaryFixture } from 'n8n-core';
@@ -27,7 +28,7 @@ import {
 	type ProviderRequestInfo,
 } from './provider-shapes';
 import { redactBinaryBody } from './request-binary-redactor';
-import { redactSecretKeys, truncateForLlm } from './request-sanitizer';
+import { redactSecretKeys, redactSecretSearchParams, truncateForLlm } from './request-sanitizer';
 
 // Re-export: existing consumers/tests import buildDateAnchors from this module.
 export { buildDateAnchors } from './date-anchors';
@@ -176,6 +177,34 @@ function isWriteMethod(method: string | undefined): boolean {
 	return WRITE_METHODS.has((method ?? 'GET').toUpperCase());
 }
 
+/** The GraphQL document in a request body, when the body carries one. */
+function graphqlDocument(body: unknown): string | undefined {
+	return isRecord(body) && typeof body.query === 'string' ? body.query : undefined;
+}
+
+/**
+ * True when a GraphQL document only reads: an anonymous `{ ... }` or `query`
+ * operations, with no `mutation` or `subscription` among them.
+ */
+function isGraphqlRead(document: string): boolean {
+	const source = document.replace(/#[^\n]*/g, '').trim();
+	const kinds = [...source.matchAll(/(?:^|\})\s*(query|mutation|subscription)\b/g)].map(
+		(match) => match[1],
+	);
+	if (kinds.includes('mutation') || kinds.includes('subscription')) return false;
+	return source.startsWith('{') || kinds.includes('query');
+}
+
+/**
+ * Whether a request changes data. A write method decides it, except for a
+ * GraphQL POST, which the operation in the body decides: a query reads.
+ */
+function isWriteRequest(request: Pick<MockRequest, 'method' | 'body'>): boolean {
+	if (!isWriteMethod(request.method)) return false;
+	const document = graphqlDocument(request.body);
+	return document === undefined || !isGraphqlRead(document);
+}
+
 function clip(text: string, max: number): string {
 	return text.length <= max ? text : `${text.slice(0, max)}…`;
 }
@@ -195,14 +224,14 @@ function recordWrite(
 	nodeName: string,
 	response: EvalMockHttpResponse,
 ): void {
-	if (!request.url || !isWriteMethod(request.method)) return;
+	if (!request.url || !isWriteRequest(request)) return;
 	if (response.statusCode >= 400 || isMockErrorSentinel(response)) return;
 	const hostname = extractHostname(request.url);
 	if (!hostname) return;
 	ledger.push({
 		hostname,
 		method: (request.method ?? 'GET').toUpperCase(),
-		endpoint: extractEndpoint(request.url),
+		endpoint: redactSecretSearchParams(extractEndpoint(request.url)),
 		nodeName,
 		// Redact now: the snapshot must not change when node code mutates the body later.
 		body:
@@ -286,7 +315,7 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 			const hostname = requestOptions.url ? extractHostname(requestOptions.url) : undefined;
 			// A cached read predates any later write to the same service, so the
 			// count of those writes is part of a read's identity.
-			const ledgerVersion = isWriteMethod(requestOptions.method)
+			const ledgerVersion = isWriteRequest(requestOptions)
 				? undefined
 				: writeLedger.filter((entry) => entry.hostname === hostname).length;
 			const cacheKey = buildMockCacheKey(requestOptions, node.name, ledgerVersion);
