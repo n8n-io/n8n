@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
 
 // Mirrors the Data Table node's `get` parameters; absent keys mean the node defaults.
@@ -33,6 +34,28 @@ export interface DataTableReadParameters {
 	/** Absent when the node's limit is an expression. */
 	limit?: number;
 	sortBy?: [column: string, direction: 'ASC' | 'DESC'];
+}
+
+export interface DataTableLocator {
+	mode: 'name' | 'id';
+	value: string;
+	/** The table name an id locator caches, when it has one. */
+	cachedName?: string;
+}
+
+/** A Data Table node's `dataTableId`: the id, or the name in `name` mode. The eval
+ *  server prepares the table it names, and the eval harness keys its run lock on it,
+ *  so both read it here and cannot drift apart. An expression names no table before
+ *  the run, so it reads as nothing. */
+export function readDataTableLocator(dataTableId: unknown): DataTableLocator | undefined {
+	const locator = isRecord(dataTableId) ? dataTableId : undefined;
+	const value = literalParameter(locator ? locator.value : dataTableId).literal;
+	if (typeof value !== 'string' || value.length === 0) return undefined;
+	if (locator?.mode === 'name') return { mode: 'name', value };
+	const cachedName = locator?.cachedResultName;
+	return typeof cachedName === 'string' && cachedName.length > 0
+		? { mode: 'id', value, cachedName }
+		: { mode: 'id', value };
 }
 
 /** A `=` prefix puts a parameter in expression mode; without `{{ }}` the rest is a literal. */
