@@ -63,10 +63,10 @@ describe('PromotionPreviewBadges', () => {
 		vi.mocked(api.getPromotionPreview).mockResolvedValue(billingPreview());
 		mockedStore(useUsersStore).currentUser = mock<IUser>({
 			globalScopes: [
-				'gitConnection:list',
-				'gitConnection:read',
-				'gitConnection:push',
-				'gitConnection:pull',
+				'promotions:list',
+				'promotions:read',
+				'promotions:promote',
+				'promotions:apply',
 			],
 		});
 		vi.mocked(settingsApi.fetchPromotionEnvironments).mockResolvedValue([

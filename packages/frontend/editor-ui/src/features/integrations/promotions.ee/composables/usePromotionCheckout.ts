@@ -14,9 +14,9 @@ export function usePromotionCheckout() {
 	const usersStore = useUsersStore();
 
 	const permissions = computed(
-		() => getResourcePermissions(usersStore.currentUser?.globalScopes).gitConnection,
+		() => getResourcePermissions(usersStore.currentUser?.globalScopes).promotions,
 	);
-	const canClone = computed(() => !!permissions.value.clone);
+	const canConnect = computed(() => !!permissions.value.connect);
 
 	async function connect(environmentId: string): Promise<boolean> {
 		try {
@@ -29,5 +29,5 @@ export function usePromotionCheckout() {
 		}
 	}
 
-	return { connectErrors, permissions, canClone, connect };
+	return { connectErrors, permissions, canConnect, connect };
 }

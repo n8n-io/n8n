@@ -4,11 +4,11 @@ export const PROMOTIONS_ENVIRONMENT_EDIT_VIEW = 'PromotionsEnvironmentEdit';
 
 /** The scopes that the promotion settings page needs. */
 export const PROMOTIONS_SETTINGS_SCOPES = [
-	'gitConnection:list',
-	'gitConnection:read',
-	'gitConnection:create',
-	'gitConnection:update',
-	'gitConnection:delete',
+	'promotions:list',
+	'promotions:read',
+	'promotions:create',
+	'promotions:update',
+	'promotions:delete',
 ] as const;
 
 export const PROMOTION_PREVIEW_VIEWS = {

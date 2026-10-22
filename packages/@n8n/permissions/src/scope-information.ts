@@ -192,48 +192,48 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Manage project roles',
 		description: 'Allows creating, editing, and deleting project role definitions.',
 	},
-	'gitConnection:create': {
+	'promotions:create': {
 		displayName: 'Create Git Connection',
 		description: 'Allows creating Git connections and their authentication material.',
 	},
-	'gitConnection:read': {
+	'promotions:read': {
 		displayName: 'Read Git Connection',
 		description: 'Allows reading Git connection configuration. Secrets are never returned.',
 	},
-	'gitConnection:update': {
+	'promotions:update': {
 		displayName: 'Update Git Connection',
 		description: 'Allows updating Git connections, including their authentication material.',
 	},
-	'gitConnection:delete': {
+	'promotions:delete': {
 		displayName: 'Delete Git Connection',
 		description: 'Allows deleting Git connections and their local files.',
 	},
-	'gitConnection:list': {
+	'promotions:list': {
 		displayName: 'List Git Connections',
 		description: 'Allows listing Git connections.',
 	},
-	'gitConnection:discover': {
+	'promotions:discover': {
 		displayName: 'Discover Git repositories',
 		description: 'Allows listing remote repositories and branches with saved provider credentials.',
 	},
-	'gitConnection:clone': {
+	'promotions:connect': {
 		displayName: 'Clone Git Connection',
 		description: 'Allows cloning and removing the local working copy of a Git connection.',
 	},
-	'gitConnection:push': {
+	'promotions:promote': {
 		displayName: 'Push Git Connection',
 		description: 'Allows pushing all projects linked to a Git connection to its remote repository.',
 	},
-	'gitConnection:manageProjects': {
+	'promotions:manageProjects': {
 		displayName: 'Manage Git Connection Projects',
 		description: 'Allows adding projects to and removing projects from a Git connection.',
 	},
-	'gitConnection:pull': {
+	'promotions:apply': {
 		displayName: 'Pull Git Connection',
 		description:
 			'Allows importing all projects from a Git connection working copy into the instance.',
 	},
-	'gitConnection:readReviews': {
+	'promotions:readReviews': {
 		displayName: 'Read promotion reviews',
 		description: 'Allows listing promotion reviews and reading their state from the Git host.',
 	},

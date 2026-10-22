@@ -92,8 +92,8 @@ const DEPENDENCY_COLLECTIONS = {
 >;
 
 const GIT_SCOPES = {
-	promote: 'gitConnection:push',
-	apply: 'gitConnection:pull',
+	promote: 'promotions:promote',
+	apply: 'promotions:apply',
 } as const satisfies Record<PromotionDirection, Scope>;
 
 type DesiredPackage = {

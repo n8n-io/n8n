@@ -101,7 +101,7 @@ const renderAt = async (path: string) => {
 };
 
 const allowClone = () => {
-	mockedStore(useUsersStore).currentUser = mock<IUser>({ globalScopes: ['gitConnection:clone'] });
+	mockedStore(useUsersStore).currentUser = mock<IUser>({ globalScopes: ['promotions:connect'] });
 };
 
 const fillInput = async (testId: string, value: string) => {

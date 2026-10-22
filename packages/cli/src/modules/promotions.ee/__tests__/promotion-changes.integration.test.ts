@@ -776,13 +776,13 @@ it('checks authentication, the scopes of each direction, and the promotions lice
 });
 
 // No built-in role has the read scope without the pull scope, so the requests above cannot tell them apart.
-it('requires the global pull scope of Apply for the Apply check', () => {
+it('requires the global apply scope for the Apply check', () => {
 	const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
 		PromotionChangesController as Controller,
 	);
 
 	expect(metadata.routes.get('getApplyBlockers')?.accessScope).toEqual({
-		scope: 'gitConnection:pull',
+		scope: 'promotions:apply',
 		globalOnly: true,
 	});
 });

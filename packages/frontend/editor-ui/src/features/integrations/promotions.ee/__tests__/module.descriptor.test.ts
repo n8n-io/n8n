@@ -34,7 +34,7 @@ const createTestRouter = () =>
 
 const setup = ({
 	flag = 'true',
-	scopes = ['gitConnection:read', 'gitConnection:push', 'gitConnection:pull'] as Scope[],
+	scopes = ['promotions:read', 'promotions:promote', 'promotions:apply'] as Scope[],
 } = {}) => {
 	createTestingPinia({ stubActions: false });
 
@@ -82,7 +82,7 @@ describe('PromotionsModule preview routes', () => {
 	});
 
 	it('leads users who cannot apply changes home', async () => {
-		setup({ scopes: ['gitConnection:read', 'gitConnection:push'] });
+		setup({ scopes: ['promotions:read', 'promotions:promote'] });
 		const router = createTestRouter();
 
 		await router.push('/projects/p1/promotions/apply');

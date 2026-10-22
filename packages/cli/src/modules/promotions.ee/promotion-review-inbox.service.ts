@@ -154,7 +154,7 @@ export class PromotionReviewInboxService {
 	}
 }
 
-const canRead = (user: User) => hasGlobalScope(user, 'gitConnection:readReviews');
+const canRead = (user: User) => hasGlobalScope(user, 'promotions:readReviews');
 
 const failed = (remoteError: PromotionReviewRemoteError): RemoteView => ({
 	mergeRequest: null,
