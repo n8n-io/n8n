@@ -1625,6 +1625,10 @@ describe('AgentValidationService — restricted node types', () => {
 		const made = makeService();
 		made.agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent(config));
 		made.agentPolicyService.evaluatePublish.mockResolvedValue({ violations });
+		// The other checks still run for a locked tool, so its node type must resolve.
+		made.nodeTypes.getByNameAndVersion.mockReturnValue({
+			description: { properties: [] },
+		} as never);
 		return made;
 	}
 
@@ -1788,6 +1792,42 @@ describe('AgentValidationService — restricted node types', () => {
 			capability: { kind: 'tool', id: 'Ask the billing agent', index: 0, toolType: 'node' },
 			restriction: { nodeType: 'n8n-nodes-base.messageAnAgentTool', scope: 'instance' },
 		});
+	});
+
+	it('keeps the other issues of a tool that only its inline agent locks', async () => {
+		const messageAnAgent = {
+			type: 'node',
+			name: 'Ask the billing agent',
+			node: {
+				nodeType: 'n8n-nodes-base.messageAnAgentTool',
+				nodeTypeVersion: 1,
+				nodeParameters: {
+					agentSource: 'inline',
+					inlineAgent: { config: { tools: [slackTool] } },
+				},
+			},
+		} as const;
+		const { service, nodeTypes } = setUpDenied({ ...runnableConfig, tools: [messageAnAgent] }, [
+			deny('n8n-nodes-base.slackTool', 'project'),
+		]);
+		nodeTypes.getByNameAndVersion.mockReturnValue({
+			description: { credentials: [{ name: 'httpBasicAuth', required: true }], properties: [] },
+		} as never);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		// The tool itself stays usable once the embedded tool is removed, so its own issues stay.
+		expect(result.issues.filter((i) => i.capability.index === 0)).toEqual([
+			expect.objectContaining({
+				code: 'restricted_node_type',
+				reason: 'restricted_by_inline_tool',
+			}),
+			expect.objectContaining({ code: 'missing_credential' }),
+		]);
 	});
 
 	it('reports an MCP server whose client node type is denied', async () => {

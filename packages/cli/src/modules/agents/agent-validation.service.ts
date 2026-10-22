@@ -99,6 +99,28 @@ function issue(
 	};
 }
 
+const RESTRICTED_BY_INLINE_TOOL = 'restricted_by_inline_tool';
+
+/**
+ * A locked entry shows one reason, not a lock plus the credential issues of a tool the agent
+ * cannot use at all. A tool locked only by its inline agent keeps them: it stays usable once
+ * the embedded tool is removed.
+ */
+function withoutIssuesOfLockedEntries(
+	issues: AgentConfigValidationIssue[],
+): AgentConfigValidationIssue[] {
+	const entryKey = ({ capability }: AgentConfigValidationIssue) =>
+		`${capability.kind}:${capability.index}`;
+	const locked = new Set(
+		issues
+			.filter((i) => i.code === 'restricted_node_type' && i.reason !== RESTRICTED_BY_INLINE_TOOL)
+			.map(entryKey),
+	);
+	if (locked.size === 0) return issues;
+
+	return issues.filter((i) => i.code === 'restricted_node_type' || !locked.has(entryKey(i)));
+}
+
 /** A scope the API does not know is dropped rather than passed on as an open string. */
 function toRestriction(
 	nodeType: string,
@@ -361,11 +383,10 @@ export class AgentValidationService {
 		this.collectSubAgentRefIssues(ctx, agentsById, issues);
 		this.collectSkillIssues(config, ctx.skills, issues);
 		// Runs in both scopes: the runtime scope is what blocks the draft preview.
-		const restricted = await this.collectRestrictedTypeIssues(ctx, issues);
+		await this.collectRestrictedTypeIssues(ctx, issues);
 		if (scope === 'publish') {
 			for (const violation of findHttpRequestToolUrlFromAiViolations(config.tools)) {
 				if (config.tools?.[violation.toolIndex].enabled === false) continue;
-				if (restricted.toolIndexes.has(violation.toolIndex)) continue;
 				issues.push(
 					issue('invalid_value', violation.path, {
 						kind: 'tool',
@@ -378,17 +399,10 @@ export class AgentValidationService {
 			this.collectTaskIssues(config, ctx.tasks, issues);
 			await this.collectChannelIssues(ctx.integrations, findCredential, issues);
 		}
-		await this.collectToolIssues(
-			ctx,
-			findCredential,
-			workflowsByReference,
-			issues,
-			scope,
-			restricted.toolIndexes,
-		);
-		await this.collectMcpServerIssues(config, findCredential, issues, restricted.mcpIndexes);
+		await this.collectToolIssues(ctx, findCredential, workflowsByReference, issues, scope);
+		await this.collectMcpServerIssues(config, findCredential, issues);
 
-		return this.dedupe(issues);
+		return this.dedupe(withoutIssuesOfLockedEntries(issues));
 	}
 
 	private async prefetchReferenceLookups(ctx: ConfigurationValidationContext): Promise<{
@@ -651,9 +665,7 @@ export class AgentValidationService {
 	}
 
 	/**
-	 * Reports every tool and MCP server whose node type a policy denies, and returns their
-	 * positions so the callers that follow leave them alone: a locked entry shows one reason,
-	 * not a lock plus the credential issues of a tool the agent cannot use at all.
+	 * Reports every tool and MCP server whose node type a policy denies.
 	 *
 	 * Reads the types through the same mapping the publish gate polices, so the reported set
 	 * and the refused publish never disagree, inline agents and MCP servers included. Disabled
@@ -662,10 +674,8 @@ export class AgentValidationService {
 	private async collectRestrictedTypeIssues(
 		ctx: ConfigurationValidationContext,
 		issues: AgentConfigValidationIssue[],
-	): Promise<{ toolIndexes: Set<number>; mcpIndexes: Set<number> }> {
+	): Promise<void> {
 		const { config } = ctx;
-		const toolIndexes = new Set<number>();
-		const mcpIndexes = new Set<number>();
 
 		const decision = await this.agentPolicyService.evaluatePublish(ctx.projectId, ctx.agentId, {
 			name: config.name,
@@ -673,7 +683,7 @@ export class AgentValidationService {
 			mcpServers: config.mcpServers,
 		});
 		const denied = deniedNodeTypes(decision);
-		if (denied.size === 0) return { toolIndexes, mcpIndexes };
+		if (denied.size === 0) return;
 
 		const firstDenied = (nodes: readonly { type: string }[]) => {
 			for (const node of nodes) {
@@ -698,13 +708,12 @@ export class AgentValidationService {
 			const restriction = ownRestriction ?? firstDenied(withInlineAgentToolNodes(own));
 			if (!restriction) continue;
 
-			toolIndexes.add(index);
 			issues.push(
 				issue(
 					'restricted_node_type',
 					`tools.${index}.node.nodeType`,
 					{ kind: 'tool', id: tool.name, index, toolType: 'node' },
-					ownRestriction ? undefined : 'restricted_by_inline_tool',
+					ownRestriction ? undefined : RESTRICTED_BY_INLINE_TOOL,
 					restriction,
 				),
 			);
@@ -715,7 +724,6 @@ export class AgentValidationService {
 			const restriction = firstDenied(toPolicedMcpNodes([servers[index]]));
 			if (!restriction) continue;
 
-			mcpIndexes.add(index);
 			issues.push(
 				issue(
 					'restricted_node_type',
@@ -726,8 +734,6 @@ export class AgentValidationService {
 				),
 			);
 		}
-
-		return { toolIndexes, mcpIndexes };
 	}
 
 	private async collectToolIssues(
@@ -736,12 +742,10 @@ export class AgentValidationService {
 		workflowsByReference: Map<string, WorkflowEntity>,
 		issues: AgentConfigValidationIssue[],
 		scope: AgentValidationScope,
-		restrictedIndexes: ReadonlySet<number>,
 	) {
 		const tools = ctx.config.tools ?? [];
 		for (let index = 0; index < tools.length; index++) {
 			const tool = tools[index];
-			if (restrictedIndexes.has(index)) continue;
 			if (tool.enabled === false) continue;
 
 			if (tool.type === 'custom') {
@@ -876,11 +880,9 @@ export class AgentValidationService {
 		config: AgentJsonConfig,
 		findCredential: FindCredential,
 		issues: AgentConfigValidationIssue[],
-		restrictedIndexes: ReadonlySet<number>,
 	) {
 		const servers = config.mcpServers ?? [];
 		for (let index = 0; index < servers.length; index++) {
-			if (restrictedIndexes.has(index)) continue;
 			const server = servers[index];
 			const capability: AgentConfigValidationIssue['capability'] = {
 				kind: 'mcpServer',
