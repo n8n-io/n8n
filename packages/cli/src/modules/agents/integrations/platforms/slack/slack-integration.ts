@@ -104,6 +104,8 @@ export class SlackIntegration extends AgentChatIntegration {
 		'search_channels',
 	]);
 
+	readonly contextToolGuidance = ['Prefer get_channel_info when the channel ID is known.'];
+
 	readonly actionToolDefinitions = resolveIntegrationActionDefinitions([
 		'respond',
 		'send_dm',

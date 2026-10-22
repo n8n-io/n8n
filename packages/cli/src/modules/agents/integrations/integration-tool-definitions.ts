@@ -258,7 +258,7 @@ export const GENERIC_CONTEXT_QUERY_TOOL_DEFINITIONS = [
 		name: 'search_channels',
 		inputSchema: searchChannelsInputSchema,
 		description:
-			'search_channels: input.query is required. Returns matching platform channel IDs for channel names or IDs. Prefer get_channel_info when the channel ID is known. When the response includes nextCursor, pass it back as input.cursor with the same search inputs, even if the page is empty. Slack returns CONTEXT_SEARCH_INCOMPLETE when its bounded scan finds no matches but more pages remain. Use the returned nextQuery to continue, or explain that the search is incomplete. Never conclude that a channel does not exist from an incomplete search. Stop when the required channel is found.',
+			'search_channels: input.query is required. Returns matching platform channel IDs for channel names or IDs. When the response includes nextCursor, pass it back as input.cursor with the same search inputs, even if the page is empty. Slack returns CONTEXT_SEARCH_INCOMPLETE when its bounded scan finds no matches but more pages remain. Use the returned nextQuery to continue, or explain that the search is incomplete. Never conclude that a channel does not exist from an incomplete search. Stop when the required channel is found.',
 	},
 ] satisfies IntegrationContextQueryDefinition[];
 
