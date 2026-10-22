@@ -5,7 +5,7 @@ import type { EngineLogger } from '../../logging';
 import type { StepMessage, WorkQueue } from '../../queue';
 import { ExecutionNotFoundError, type ExecutionStore } from '../execution-store';
 import type { ExecutionStatus } from '../execution.types';
-import { ResumeRejectedError, ResumeRequestService } from '../resume-request.service';
+import { ResumeRequestService } from '../resume-request.service';
 import { StepNotFoundError, type StepRecord, type StepStore } from '../step-store';
 
 const secret = 'a'.repeat(32);
@@ -234,10 +234,9 @@ describe('ResumeRequestService.resolve', () => {
 		expect(stepQueue.publish).not.toHaveBeenCalled();
 	});
 
-	it('refuses a step that does not exist', async () => {
+	it('refuses a step that does not exist as it refuses a bad token', async () => {
 		const { service } = setup({ step: 'missing' });
 
-		await expect(service.resolve('s1', token, outputs)).rejects.toBeInstanceOf(ResumeRejectedError);
-		await expect(service.resolve('s1', token, outputs)).rejects.toEqual(rejection('not_found'));
+		await expect(service.resolve('s1', token, outputs)).rejects.toEqual(rejection('invalid_token'));
 	});
 });
