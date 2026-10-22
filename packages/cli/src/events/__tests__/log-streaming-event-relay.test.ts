@@ -630,6 +630,7 @@ describe('LogStreamingEventRelay', () => {
 			// GOV-287: Lifecycle hooks pass workflow data for manual executions.
 			const event: RelayEventMap['workflow-pre-execute'] = {
 				executionId: 'exec-manual',
+				userId: 'user-manual',
 				data: mock<IWorkflowBase>({ id: 'wf-manual', name: 'Manual Workflow' }),
 				mode: 'manual',
 				projectId: 'proj-123',
@@ -642,6 +643,7 @@ describe('LogStreamingEventRelay', () => {
 				eventName: 'n8n.workflow.started',
 				payload: expect.objectContaining({
 					executionId: 'exec-manual',
+					userId: 'user-manual',
 					workflowId: 'wf-manual',
 					workflowName: 'Manual Workflow',
 					isManual: true,

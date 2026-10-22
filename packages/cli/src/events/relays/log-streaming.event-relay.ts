@@ -355,6 +355,7 @@ export class LogStreamingEventRelay extends EventRelay {
 	private workflowPreExecute({
 		data,
 		executionId,
+		userId,
 		mode,
 		projectId,
 		projectName,
@@ -365,7 +366,7 @@ export class LogStreamingEventRelay extends EventRelay {
 						executionId,
 						userId: data.userId,
 						workflowId: data.workflowData.id,
-						isManual: data.executionMode === 'manual',
+						isManual: mode === 'manual',
 						mode,
 						workflowName: data.workflowData.name,
 						projectId: data.projectId ?? projectId,
@@ -373,9 +374,9 @@ export class LogStreamingEventRelay extends EventRelay {
 					}
 				: {
 						executionId,
-						userId: undefined,
+						userId,
 						workflowId: (data as IWorkflowBase).id,
-						isManual: false,
+						isManual: mode === 'manual',
 						mode,
 						workflowName: (data as IWorkflowBase).name,
 						projectId,

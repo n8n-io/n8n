@@ -280,6 +280,7 @@ describe('Execution Lifecycle Hooks', () => {
 
 				expect(eventService.emit).toHaveBeenCalledWith('workflow-pre-execute', {
 					executionId,
+					userId: expectedUserId,
 					data: workflowData,
 					mode: 'manual',
 				});
