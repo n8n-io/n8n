@@ -140,13 +140,29 @@ is available and the instance PostHog flag `130_attach_skills_to_assistant` is
 `true`. The Hub still requires `N8N_AGENTS_SKILLS_HUB_ENABLED=true` and its modules.
 `AssistantSkillsRollout` supplies the shared gate. The provider reads skills through
 `SkillService`. A disabled or unresolved gate adds no Hub catalog entries, prompts,
-or workspace preparation. It validates their saved
-content before publishing the catalog. The catalog contains metadata only.
-`load_skill` and the workspace use the same content for the turn. Hub files live
-under `.n8n/skills/hub/<stable-id>/SKILL.md`. Names do not affect these paths.
-The lazy workspace replaces this dedicated directory before exposing it.
-Attachments are unsupported. The Assistant receives an explicit reason when
-a skill is excluded. A Hub failure leaves built-in skills available.
+or workspace preparation. Discovery reads summaries only. It does not read skill
+instructions or references. Each catalog entry identifies a saved version.
+
+`load_skill` reads and validates that version when the model selects the skill.
+The service checks current permissions and Assistant availability again. The runtime
+caches the selected content for the turn. It returns the main instructions and
+reference paths. Reference bodies enter the model context only when requested
+through `load_skill` with `filePath` or a workspace read. This follows the
+[Agent Skills progressive disclosure model](https://agentskills.io/specification#progressive-disclosure).
+
+Hub files live under `.n8n/skills/hub/<stable-id>/SKILL.md`. Names do not affect
+these paths. Markdown reference files live under each skill's `references/`
+directory. Paths in the skill resolve relative to that skill directory.
+The lazy workspace clears the Hub directory before exposing it. It writes only
+selected skills, including active skills restored from earlier turns. Later
+selections add their files to the
+workspace. Tool reads and workspace files use the same prepared text and hashes.
+Staging the files does not add their bodies to the model context.
+
+The runtime uses the custom Agent reference schema and rejects files above the
+tool's UTF-8 byte limit. Scripts and other attachment types are unsupported.
+Invalid or oversized references prevent activation of the whole skill. The tool
+returns an explicit reason. A Hub failure leaves built-in skills available.
 
 Built-in skills refer to the knowledge base with paths relative to the workspace
 root, such as `knowledge-base/index.json`.

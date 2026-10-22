@@ -45,7 +45,12 @@ function content(overrides: Partial<AssistantSkillContent> = {}): AssistantSkill
 function providerFor(contents: AssistantSkillContent[]) {
 	const provider = mock<AssistantSkillProvider>();
 	provider.isEnabled.mockResolvedValue(true);
-	provider.listSkills.mockResolvedValue(contents);
+	provider.listSkills.mockResolvedValue(
+		contents.map(
+			({ instructions: _instructions, frontmatter: _frontmatter, files: _files, ...summary }) =>
+				summary,
+		),
+	);
 	provider.readSkill.mockImplementation(
 		async (_context, id) => contents.find((skill) => skill.id === id) ?? null,
 	);
@@ -111,13 +116,18 @@ describe('Assistant Hub runtime skills', () => {
 
 			expect(hubEntries(result.source)).toHaveLength(enabled ? 1 : 0);
 			expect(skillService.listForAssistant).toHaveBeenCalledTimes(enabled ? 1 : 0);
-			expect(skillService.readForAssistant).toHaveBeenCalledTimes(enabled ? 1 : 0);
+			expect(skillService.readForAssistant).not.toHaveBeenCalled();
 			if (hubEnabled) {
 				expect(postHog.getFeatureFlagForInstance).toHaveBeenCalledWith(ASSISTANT_SKILLS_FLAG);
 			}
 			if (enabled) {
 				expect(skillService.listForAssistant).toHaveBeenCalledWith(context);
-				expect(skillService.readForAssistant).toHaveBeenCalledWith(context, content().id);
+				await result.source.loadSkill(hubEntries(result.source)[0].id);
+				expect(skillService.readForAssistant).toHaveBeenCalledWith(
+					context,
+					content().id,
+					content().versionId,
+				);
 				const { workspace, files } = workspaceWithFiles();
 				await result.prepareWorkspace?.(workspace);
 				expect(files.size).toBe(1);
@@ -150,38 +160,43 @@ describe('Assistant Hub runtime skills', () => {
 		expect(catalog).toContain(saved.description);
 		expect(catalog).toContain('Review workflows · Instance');
 		expect(catalog).not.toContain(saved.instructions);
+		expect(provider.readSkill).not.toHaveBeenCalled();
 		const tool = createSkillLoadTool(source);
 		const loaded = await tool.handler?.({ skillId: entry.id }, {});
 		expect(loaded).toMatchObject({
 			type: 'content',
 			value: [{ type: 'text', text: expect.stringContaining(saved.instructions) }],
 		});
-		expect(provider.readSkill).toHaveBeenCalledWith(context, saved.id);
+		expect(provider.readSkill).toHaveBeenCalledWith(context, saved.id, saved.versionId);
 		expect(await source.loadSkill(builtIn.id)).toMatchObject(builtIn);
 	});
 
-	it('uses the same saved version for the catalog, load_skill and workspace', async () => {
-		const provider = providerFor([content()]);
-		// A save between discovery and reading must not leave version-1 metadata on version-2 content.
-		provider.readSkill.mockResolvedValue(
-			content({
-				versionId: 'version-2',
-				version: 2,
-				instructions: 'Second version.',
-				name: 'New name',
-			}),
-		);
+	it('keeps the selected snapshot for tool and workspace reads through the turn', async () => {
+		const saved = content({
+			files: [{ path: 'references/guide.md', content: 'Original reference.' }],
+		});
+		const provider = providerFor([saved]);
 		const result = await loadHubRunSkills(createRuntimeSkillSource([builtIn]), provider, context);
 		const [entry] = hubEntries(result.source);
-		provider.readSkill.mockResolvedValue(content({ instructions: 'Later edit.' }));
-		const loaded = await result.source.loadSkill(entry.id);
+		const [loaded, repeated] = await Promise.all([
+			result.source.loadSkill(entry.id),
+			result.source.loadSkill(entry.id),
+		]);
+		provider.readSkill.mockResolvedValue(
+			content({ versionId: 'version-2', instructions: 'Later edit.' }),
+		);
+		expect(repeated).toBe(loaded);
+		expect(await result.source.loadSkill(entry.id)).toBe(loaded);
+		const reference = await result.source.loadFile?.(entry.id, 'references/guide.md');
 		const { workspace, filesystem } = workspaceWithFiles();
 		await result.prepareWorkspace?.(workspace);
-		expect(entry.version).toBe('version-2');
-		expect(entry.name).toContain('New name');
-		expect(loaded?.instructions).toContain('Second version.');
+		expect(entry.version).toBe('version-1');
 		expect(await filesystem.readFile(entry.path!)).toBe(loaded?.instructions);
-		expect(provider.readSkill).toHaveBeenCalledTimes(1);
+		expect(await filesystem.readFile(`${entry.directory}/references/guide.md`)).toBe(
+			reference?.content,
+		);
+		expect(reference?.content).toBe('Original reference.');
+		expect(provider.readSkill).toHaveBeenCalledExactlyOnceWith(context, saved.id, saved.versionId);
 	});
 
 	it('keeps paths and IDs stable across renames and content versions', async () => {
@@ -276,26 +291,22 @@ describe('Assistant Hub runtime skills', () => {
 		expect(hubEntries(result.source)).toHaveLength(1);
 	});
 
-	it('rejects attachments explicitly without suppressing a valid skill with the same name', async () => {
-		const valid = content();
-		const unsupported = content({
-			id: 'skill-2',
-			files: [{ path: 'references/guide.md', content: 'Required guide.' }],
+	it('reports unsupported files on activation without suppressing a valid namesake', async () => {
+		const provider = providerFor([
+			content({ id: 'unsupported', files: [{ path: 'scripts/run.py', content: 'print(1)' }] }),
+			content(),
+		]);
+		const result = await loadHubRunSkills(createRuntimeSkillSource([builtIn]), provider, context);
+		const [unsupported, valid] = hubEntries(result.source);
+		const tool = createSkillLoadTool(result.source);
+		expect(await tool.handler?.({ skillId: unsupported.id }, {})).toMatchObject({
+			success: false,
+			error: expect.stringContaining('Unsupported'),
 		});
-		const result = await loadHubRunSkills(
-			createRuntimeSkillSource([builtIn]),
-			providerFor([unsupported, valid]),
-			context,
-		);
-		expect(hubEntries(result.source)).toHaveLength(1);
-		expect(hubEntries(result.source)[0].name).toBe('Review workflows · Instance');
-		expect(result.availabilityNotice).toContain('unsupported attachments');
-		expect(result.availabilityNotice).toContain(unsupported.id);
-		expect(result.availabilityNotice).not.toContain('"skillId":"skill-1"');
+		expect(await result.source.loadSkill(valid.id)).not.toBeNull();
 		const { workspace, files } = workspaceWithFiles();
 		await result.prepareWorkspace?.(workspace);
-		expect([...files.keys()]).toHaveLength(1);
-		expect([...files.values()][0]).not.toContain('Required guide.');
+		expect([...files.keys()]).toEqual([valid.path]);
 	});
 
 	it.each(['', '   '])('rejects empty instructions (%j)', async (instructions) => {
@@ -304,8 +315,9 @@ describe('Assistant Hub runtime skills', () => {
 			providerFor([content({ instructions })]),
 			context,
 		);
-		expect(hubEntries(result.source)).toHaveLength(0);
-		expect(result.availabilityNotice).toContain('invalid skill content');
+		const [entry] = hubEntries(result.source);
+		expect(await result.source.loadSkill(entry.id)).toBeNull();
+		expect(result.source.getLoadError?.(entry.id)).toContain('invalid instructions');
 	});
 
 	it('applies the same UTF-8 byte limit to ASCII and non-ASCII content', async () => {
@@ -326,14 +338,15 @@ describe('Assistant Hub runtime skills', () => {
 				providerFor([content({ instructions })]),
 				context,
 			);
-			expect(hubEntries(atLimit.source)).toHaveLength(1);
+			expect(await atLimit.source.loadSkill(hubEntries(atLimit.source)[0].id)).not.toBeNull();
 			const tooLarge = await loadHubRunSkills(
 				createRuntimeSkillSource([builtIn]),
 				providerFor([content({ instructions: instructions + 'a' })]),
 				context,
 			);
-			expect(hubEntries(tooLarge.source)).toHaveLength(0);
-			expect(tooLarge.availabilityNotice).toContain('UTF-8 bytes');
+			const [entry] = hubEntries(tooLarge.source);
+			expect(await tooLarge.source.loadSkill(entry.id)).toBeNull();
+			expect(tooLarge.source.getLoadError?.(entry.id)).toContain('UTF-8 bytes');
 		}
 	});
 
@@ -358,16 +371,17 @@ describe('Assistant Hub runtime skills', () => {
 		const provider = providerFor([content(), content({ id: 'skill-2' })]);
 		provider.readSkill.mockRejectedValueOnce(new Error('Unavailable'));
 		const result = await loadHubRunSkills(createRuntimeSkillSource([builtIn]), provider, context);
-		expect(hubEntries(result.source)).toHaveLength(1);
-		expect(hubEntries(result.source)[0].metadata?.hubSkillId).toBe('skill-2');
-		expect(result.availabilityNotice).toContain('could not be read');
+		const [failed, valid] = hubEntries(result.source);
+		expect(await result.source.loadSkill(failed.id)).toBeNull();
+		expect(await result.source.loadSkill(valid.id)).not.toBeNull();
+		expect(result.source.getLoadError?.(failed.id)).toContain('could not be loaded');
 	});
 
-	it('does not publish a skill that becomes unavailable between discovery and reading', async () => {
+	it('does not activate a skill that becomes unavailable between discovery and reading', async () => {
 		const provider = providerFor([content()]);
 		provider.readSkill.mockResolvedValue(null);
 		const result = await loadHubRunSkills(createRuntimeSkillSource([builtIn]), provider, context);
-		expect(hubEntries(result.source)).toHaveLength(0);
+		expect(await result.source.loadSkill(hubEntries(result.source)[0].id)).toBeNull();
 	});
 
 	it.each(['name', 'description'] as const)('excludes skills with an empty %s', async (field) => {
@@ -377,7 +391,6 @@ describe('Assistant Hub runtime skills', () => {
 			context,
 		);
 		expect(hubEntries(result.source)).toHaveLength(0);
-		expect(result.availabilityNotice).toContain('invalid skill content');
 	});
 
 	it('does not remove a missing directory on first workspace use', async () => {
@@ -389,7 +402,7 @@ describe('Assistant Hub runtime skills', () => {
 		const { workspace, filesystem, files } = workspaceWithFiles();
 		await result.prepareWorkspace?.(workspace);
 		expect(filesystem.rmdir).not.toHaveBeenCalled();
-		expect(files.size).toBe(1);
+		expect(files.size).toBe(0);
 	});
 
 	it('fails workspace preparation if current content cannot be written', async () => {
@@ -399,7 +412,159 @@ describe('Assistant Hub runtime skills', () => {
 			context,
 		);
 		const { workspace, filesystem } = workspaceWithFiles();
+		await result.source.loadSkill(hubEntries(result.source)[0].id);
 		filesystem.writeFile.mockRejectedValue(new Error('Write failed'));
 		await expect(result.prepareWorkspace?.(workspace)).rejects.toThrow('Write failed');
+	});
+
+	it.each([false, true])(
+		'exposes only selected files with workspace prepared first: %s',
+		async (prepareFirst) => {
+			const referenceBody = 'Detailed reference body that must stay out of activation.';
+			const saved = content({
+				instructions: 'See [guide](references/guide.md).',
+				files: [{ path: 'references/guide.md', content: referenceBody }],
+			});
+			const provider = providerFor([saved, content({ id: 'unselected' })]);
+			const result = await loadHubRunSkills(createRuntimeSkillSource([builtIn]), provider, context);
+			const [entry] = hubEntries(result.source);
+			const { workspace, files } = workspaceWithFiles();
+			if (prepareFirst) await result.prepareWorkspace?.(workspace);
+			expect(files.size).toBe(0);
+			expect(provider.readSkill).not.toHaveBeenCalled();
+			expect(renderSkillCatalogPrompt(result.source.registry)).not.toContain(saved.instructions);
+			const tool = createSkillLoadTool(result.source);
+			const activation = await tool.handler?.({ skillId: entry.id }, {});
+			expect(activation).toMatchObject({
+				type: 'content',
+				value: [{ text: expect.stringContaining('references/guide.md') }],
+			});
+			expect(JSON.stringify(activation)).not.toContain(referenceBody);
+			if (!prepareFirst) await result.prepareWorkspace?.(workspace);
+			expect([...files.keys()].sort()).toEqual(
+				[entry.path, `${entry.directory}/references/guide.md`].sort(),
+			);
+			const reference = await tool.handler?.(
+				{ skillId: entry.id, filePath: 'references/guide.md' },
+				{},
+			);
+			expect(reference).toMatchObject({
+				success: true,
+				content: referenceBody,
+				bytes: Buffer.byteLength(referenceBody),
+			});
+			expect(provider.readSkill).toHaveBeenCalledTimes(1);
+		},
+	);
+
+	it.each([
+		'references/../other.md',
+		'assets/template.md',
+		'/references/guide.md',
+		'references/guide.txt',
+		'references/a\\b.md',
+		'references/a\0.md',
+	])('rejects unsupported reference path %s', async (path) => {
+		const result = await loadHubRunSkills(
+			createRuntimeSkillSource([builtIn]),
+			providerFor([content({ files: [{ path, content: 'Guide.' }] })]),
+			context,
+		);
+		const [entry] = hubEntries(result.source);
+		expect(await result.source.loadSkill(entry.id)).toBeNull();
+		expect(result.source.getLoadError?.(entry.id)).toContain('Unsupported');
+	});
+
+	it('checks the UTF-8 limit for reference files', async () => {
+		for (const extra of ['', 'a']) {
+			const body = 'é'.repeat(RUNTIME_SKILL_MAX_OUTPUT_BYTES / 2) + extra;
+			const result = await loadHubRunSkills(
+				createRuntimeSkillSource([builtIn]),
+				providerFor([content({ files: [{ path: 'references/guide.markdown', content: body }] })]),
+				context,
+			);
+			const loaded = await result.source.loadSkill(hubEntries(result.source)[0].id);
+			if (extra) expect(loaded).toBeNull();
+			else expect(loaded?.linkedFiles?.references[0].bytes).toBe(RUNTIME_SKILL_MAX_OUTPUT_BYTES);
+		}
+	});
+
+	it('reads only registered paths and preserves built-in reference loading', async () => {
+		const builtIns = createRuntimeSkillSource([builtIn]);
+		builtIns.loadFile = vi.fn(async () => ({
+			skillId: builtIn.id,
+			filePath: 'references/builtin.md',
+			content: 'Built-in reference.',
+		}));
+		const result = await loadHubRunSkills(
+			builtIns,
+			providerFor([content({ files: [{ path: 'references/guide.md', content: 'Guide.' }] })]),
+			context,
+		);
+		const [entry] = hubEntries(result.source);
+		await result.source.loadSkill(entry.id);
+		for (const path of ['../SKILL.md', 'references/missing.md', '/references/guide.md']) {
+			expect(await result.source.loadFile?.(entry.id, path)).toBeNull();
+			expect(
+				await createSkillLoadTool(result.source).handler?.(
+					{ skillId: entry.id, filePath: path },
+					{},
+				),
+			).toMatchObject({ success: false });
+		}
+		expect(builtIns.loadFile).not.toHaveBeenCalled();
+		expect(await result.source.loadFile?.(builtIn.id, 'references/builtin.md')).toMatchObject({
+			content: 'Built-in reference.',
+		});
+	});
+
+	it.each([{ id: 'different-skill' }, { versionId: 'different-version' }])(
+		'rejects a mismatched response %j',
+		async (override) => {
+			const provider = providerFor([content()]);
+			provider.readSkill.mockResolvedValue(content(override));
+			const result = await loadHubRunSkills(createRuntimeSkillSource([builtIn]), provider, context);
+			const [entry] = hubEntries(result.source);
+			expect(await result.source.loadSkill(entry.id)).toBeNull();
+			expect(result.source.getLoadError?.(entry.id)).toContain('version listed for this turn');
+		},
+	);
+
+	it('changes the catalog hash for reference-only updates', async () => {
+		const first = await loadHubRunSkills(
+			createRuntimeSkillSource([builtIn]),
+			providerFor([content()]),
+			context,
+		);
+		const second = await loadHubRunSkills(
+			createRuntimeSkillSource([builtIn]),
+			providerFor([
+				content({
+					versionId: 'version-2',
+					files: [{ path: 'references/guide.md', content: 'New reference.' }],
+				}),
+			]),
+			context,
+		);
+		expect(second.source.registry.skillsHash).not.toBe(first.source.registry.skillsHash);
+	});
+
+	it('preserves a prepared built-in registry without reading Hub content', async () => {
+		const builtIns = createRuntimeSkillSource([builtIn]);
+		builtIns.prepare = async () => {
+			builtIns.registry = {
+				...builtIns.registry,
+				skillsHash: 'prepared',
+				skills: builtIns.registry.skills.map((entry) => ({ ...entry, hash: 'prepared' })),
+			};
+		};
+		const provider = providerFor([content()]);
+		const result = await loadHubRunSkills(builtIns, provider, context);
+		const previousHash = result.source.registry.skillsHash;
+		await result.source.prepare?.();
+		expect(result.source.registry.skills[0].hash).toBe('prepared');
+		expect(result.source.registry.skillsHash).not.toBe(previousHash);
+		expect(hubEntries(result.source)).toHaveLength(1);
+		expect(provider.readSkill).not.toHaveBeenCalled();
 	});
 });

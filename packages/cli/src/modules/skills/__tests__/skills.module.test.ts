@@ -70,7 +70,7 @@ describe('SkillsModule', () => {
 			expect(service.readForAssistant).toHaveBeenCalledTimes(expected ? 1 : 0);
 			if (expected) {
 				expect(service.listForAssistant).toHaveBeenCalledWith(context);
-				expect(service.readForAssistant).toHaveBeenCalledWith(context, summary.id);
+				expect(service.readForAssistant).toHaveBeenCalledWith(context, summary.id, undefined);
 			}
 		},
 	);

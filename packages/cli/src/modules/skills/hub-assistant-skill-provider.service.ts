@@ -28,8 +28,9 @@ export class HubAssistantSkillProvider implements AssistantSkillProvider {
 	async readSkill(
 		context: AssistantSkillContext,
 		skillId: string,
+		versionId?: string,
 	): Promise<AssistantSkillContent | null> {
 		if (!(await this.rollout.isEnabled())) return null;
-		return await this.skillService.readForAssistant(context, skillId);
+		return await this.skillService.readForAssistant(context, skillId, versionId);
 	}
 }

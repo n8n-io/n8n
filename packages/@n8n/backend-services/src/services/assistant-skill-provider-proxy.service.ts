@@ -26,8 +26,12 @@ export interface AssistantSkillContent extends AssistantSkillSummary {
 export interface AssistantSkillProvider {
 	isEnabled(): Promise<boolean>;
 	listSkills(context: AssistantSkillContext): Promise<AssistantSkillSummary[]>;
-	/** Reads the latest saved version. */
-	readSkill(context: AssistantSkillContext, skillId: string): Promise<AssistantSkillContent | null>;
+	/** Reads the requested version, or the latest saved version when omitted. */
+	readSkill(
+		context: AssistantSkillContext,
+		skillId: string,
+		versionId?: string,
+	): Promise<AssistantSkillContent | null>;
 }
 
 /** Keeps the Assistant available when the Hub module is absent. */
@@ -50,7 +54,8 @@ export class AssistantSkillProviderProxy implements AssistantSkillProvider {
 	async readSkill(
 		context: AssistantSkillContext,
 		skillId: string,
+		versionId?: string,
 	): Promise<AssistantSkillContent | null> {
-		return (await this.provider?.readSkill(context, skillId)) ?? null;
+		return (await this.provider?.readSkill(context, skillId, versionId)) ?? null;
 	}
 }

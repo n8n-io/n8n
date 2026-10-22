@@ -136,9 +136,10 @@ export class SkillService {
 	async readForAssistant(
 		context: AssistantSkillContext,
 		skillId: string,
+		versionId?: string,
 	): Promise<AssistantSkillContent | null> {
 		const projectId = await this.authorizedAssistantProject(context);
-		const row = await this.skillRepository.findAssistantSkill(skillId, projectId);
+		const row = await this.skillRepository.findAssistantSkill(skillId, projectId, versionId);
 		if (!row) return null;
 		const { skill, version, files } = row;
 		if (

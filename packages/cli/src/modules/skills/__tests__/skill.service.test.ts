@@ -220,7 +220,11 @@ describe('SkillService', () => {
 				row.skill.projectId = projectId;
 				projectScope.getProjectIds.mockResolvedValue(allowed === null ? null : [...allowed]);
 				const result = await service.readForAssistant(context, 'skill-1');
-				expect(skills.findAssistantSkill).toHaveBeenCalledWith('skill-1', authorizedProjectId);
+				expect(skills.findAssistantSkill).toHaveBeenCalledWith(
+					'skill-1',
+					authorizedProjectId,
+					undefined,
+				);
 				expect(skills.findLatestSaved).not.toHaveBeenCalled();
 				if (eligible) expect(result).toMatchObject({ id: 'skill-1', projectId });
 				else expect(result).toBeNull();
@@ -231,7 +235,7 @@ describe('SkillService', () => {
 			row.skill.projectId = 'project-1';
 			projectScope.getProjectIds.mockResolvedValue(null);
 			expect(await service.readForAssistant({ user: context.user }, 'skill-1')).toBeNull();
-			expect(skills.findAssistantSkill).toHaveBeenCalledWith('skill-1', null);
+			expect(skills.findAssistantSkill).toHaveBeenCalledWith('skill-1', null, undefined);
 		});
 
 		it('reads enabled content with its saved version', async () => {
@@ -246,6 +250,11 @@ describe('SkillService', () => {
 				frontmatter: null,
 				files: [],
 			});
+		});
+
+		it('forwards the selected version with the authorized scope', async () => {
+			await service.readForAssistant(context, 'skill-1', 'version-1');
+			expect(skills.findAssistantSkill).toHaveBeenCalledWith('skill-1', 'project-1', 'version-1');
 		});
 
 		it('allows instance skills without project access', async () => {

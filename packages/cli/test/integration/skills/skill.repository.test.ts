@@ -128,6 +128,40 @@ describe('SkillRepository', () => {
 		expect(await skills.findAssistantSkill('skill_missing', project.id)).toBeNull();
 	});
 
+	it('reads a selected saved version with current availability and scope checks', async () => {
+		const id = await createSkill(
+			{ projectId: project.id },
+			content({ files: [{ path: 'references/guide.md', content: 'Original guide.' }] }),
+		);
+		await skills.update(id, { availableToAssistant: true });
+		const v1 = await latestVersionId(id);
+		const v2 = await skills.insertSavedVersion(
+			id,
+			2,
+			content({ files: [{ path: 'references/guide.md', content: 'Updated guide.' }] }),
+			null,
+		);
+		const context = { user: owner, projectId: project.id };
+		expect(await assistantSkills.readSkill(context, id, v1)).toMatchObject({
+			versionId: v1,
+			files: [{ path: 'references/guide.md', content: 'Original guide.' }],
+		});
+		expect(await assistantSkills.readSkill(context, id)).toMatchObject({
+			versionId: v2,
+			files: [{ path: 'references/guide.md', content: 'Updated guide.' }],
+		});
+		expect(await assistantSkills.readSkill(context, id, 'missing')).toBeNull();
+		expect(await assistantSkills.readSkill(context, id, '')).toBeNull();
+		const other = await createSkill({ projectId: project.id });
+		expect(await assistantSkills.readSkill(context, id, await latestVersionId(other))).toBeNull();
+		expect(
+			await assistantSkills.readSkill({ user: owner, projectId: otherProject.id }, id, v1),
+		).toBeNull();
+		expect(await assistantSkills.readSkill({ user, projectId: project.id }, id, v1)).toBeNull();
+		await skills.update(id, { availableToAssistant: false });
+		expect(await assistantSkills.readSkill(context, id, v1)).toBeNull();
+	});
+
 	it.each(['project', 'instance'] as const)(
 		'excludes skills scoped to an agent with %s scope even when their flag is set',
 		async (scope) => {

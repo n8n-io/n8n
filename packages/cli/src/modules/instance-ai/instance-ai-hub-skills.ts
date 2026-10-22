@@ -1,12 +1,13 @@
 import {
-	extendRuntimeSkillSource,
 	RUNTIME_SKILL_MAX_OUTPUT_BYTES,
-	validateRuntimeSkill,
-	type RuntimeSkill,
+	type RuntimeSkillContent,
+	type RuntimeSkillFileContent,
+	type RuntimeSkillRegistryEntry,
 	type RuntimeSkillSource,
 	type Workspace,
+	type WorkspaceFilesystem,
 } from '@n8n/agents';
-import { skillNameKey } from '@n8n/api-types';
+import { agentSkillShape, skillNameKey } from '@n8n/api-types';
 import type {
 	AssistantSkillContent,
 	AssistantSkillContext,
@@ -25,7 +26,12 @@ export interface HubRunSkills {
 	prepareWorkspace?: (workspace: Workspace) => Promise<void>;
 }
 
-/** Resolve one turn before publishing its catalog. Never reuse content from another turn. */
+type LoadedHubSkill = {
+	skill: RuntimeSkillContent & Pick<RuntimeSkillRegistryEntry, 'linkedFiles'>;
+	files: RuntimeSkillFileContent[];
+};
+
+/** Discover metadata only. Each turn resolves its selected versions on demand. */
 export async function loadHubRunSkills(
 	builtIns: RuntimeSkillSource,
 	provider: AssistantSkillProvider,
@@ -34,154 +40,222 @@ export async function loadHubRunSkills(
 	try {
 		if (!(await provider.isEnabled())) return { source: builtIns };
 	} catch {
-		// Keep the Assistant available when the rollout cannot be resolved.
 		return { source: builtIns };
 	}
 
-	const unavailable: string[] = [];
-	const candidates: Array<{ content: AssistantSkillContent; skill: RuntimeSkill }> = [];
+	let summaries: AssistantSkillSummary[] = [];
+	let availabilityNotice: string | undefined;
 	try {
-		const summaries = await provider.listSkills(context);
-		for (const summary of summaries) {
-			try {
-				const content = await provider.readSkill(context, summary.id);
-				if (!content) continue;
-				if (content.id !== summary.id) {
-					unavailable.push(`${describeHubSkill(summary)}: the Hub returned a different skill ID.`);
-					continue;
-				}
-				if (content.files.length > 0) {
-					unavailable.push(
-						`${describeHubSkill(content)}: unsupported attachments. The Assistant supports SKILL.md only.`,
-					);
-					continue;
-				}
-				const skill = toRuntimeSkill(content);
-				if (
-					!content.name.trim() ||
-					!content.description.trim() ||
-					!content.instructions.trim() ||
-					!validateRuntimeSkill(skill).ok
-				) {
-					unavailable.push(`${describeHubSkill(content)}: invalid skill content.`);
-					continue;
-				}
-				if (Buffer.byteLength(skill.instructions, 'utf8') > RUNTIME_SKILL_MAX_OUTPUT_BYTES) {
-					unavailable.push(
-						`${describeHubSkill(content)}: SKILL.md exceeds ${RUNTIME_SKILL_MAX_OUTPUT_BYTES} UTF-8 bytes.`,
-					);
-					continue;
-				}
-				candidates.push({ content, skill });
-			} catch {
-				unavailable.push(
-					`${describeHubSkill(summary)}: Hub content could not be read. Do not use an earlier copy.`,
-				);
-			}
-		}
+		summaries = await provider.listSkills(context);
 	} catch {
-		unavailable.push(
-			'The Hub catalog could not be read. Hub skills are unavailable for this turn. Do not use earlier copies.',
-		);
+		availabilityNotice = 'Hub skills are unavailable for this turn. Do not use earlier copies.';
 	}
 
-	// Qualify only validated candidates. An unsupported skill cannot hide a valid one.
-	const nameCounts = new Map<string, number>();
-	for (const { skill } of candidates) {
-		const key = skillNameKey(skill.name.normalize('NFKC'));
-		nameCounts.set(key, (nameCounts.get(key) ?? 0) + 1);
-	}
-	const names = new Set(
-		builtIns.registry.skills.map(({ name }) => skillNameKey(name.normalize('NFKC'))),
-	);
-	const ids = new Set(builtIns.registry.skills.map(({ id }) => id));
-	const accepted: RuntimeSkill[] = [];
-	for (const { content, skill } of candidates) {
-		if (ids.has(skill.id)) {
-			unavailable.push(`${describeHubSkill(content)}: duplicate runtime skill ID.`);
-			continue;
-		}
-		let key = skillNameKey(skill.name.normalize('NFKC'));
-		if ((nameCounts.get(key) ?? 0) > 1 || names.has(key)) {
-			skill.name = `${skill.name} (${skill.id})`;
-			key = skillNameKey(skill.name.normalize('NFKC'));
-		}
-		if (names.has(key)) {
-			unavailable.push(`${describeHubSkill(content)}: ambiguous runtime skill label.`);
-			continue;
-		}
-		names.add(key);
-		ids.add(skill.id);
-		accepted.push(skill);
-	}
+	return createDeferredHubSource(builtIns, provider, context, summaries, availabilityNotice);
+}
 
-	const source = extendRuntimeSkillSource(builtIns, accepted);
-	const files = accepted.map((skill) => ({
-		path: `${HUB_SKILL_DIRECTORY}/${skill.id}/SKILL.md`,
-		content: skill.instructions,
-	}));
-	const notice = [
-		...(accepted.length > 0
-			? [
-					'Hub skill labels include their scope. Load them by the exact skillId from the catalog. If the request does not distinguish matching skills, ask which one to use. Do not choose a scope by default.',
-				]
-			: []),
-		...(unavailable.length > 0
-			? [
-					'These Hub skills are unavailable. If the request needs one, explain the reason. Do not claim to have applied its instructions:',
-					...unavailable,
-				]
-			: []),
-	].join('\n');
+function createDeferredHubSource(
+	builtIns: RuntimeSkillSource,
+	provider: AssistantSkillProvider,
+	context: AssistantSkillContext,
+	summaries: AssistantSkillSummary[],
+	availabilityNotice?: string,
+): HubRunSkills {
+	const knownIds = new Set(builtIns.registry.skills.map(({ id }) => id));
+	summaries = summaries.filter((summary) => {
+		const id = `hub-${hash(summary.id)}`;
+		if (knownIds.has(id) || !summary.name.trim() || !summary.description.trim()) return false;
+		knownIds.add(id);
+		return true;
+	});
+	const entries = summaries.map(toRegistryEntry);
+	const names = new Set(builtIns.registry.skills.map(({ name }) => nameKey(name)));
+	const counts = new Map<string, number>();
+	for (const entry of entries)
+		counts.set(nameKey(entry.name), (counts.get(nameKey(entry.name)) ?? 0) + 1);
+	for (const entry of entries) {
+		if ((counts.get(nameKey(entry.name)) ?? 0) > 1 || names.has(nameKey(entry.name))) {
+			entry.name = `${entry.name} (${entry.id})`;
+		}
+		names.add(nameKey(entry.name));
+	}
+	const summariesById = new Map(entries.map((entry, index) => [entry.id, summaries[index]]));
+	const entriesById = new Map(entries.map((entry) => [entry.id, entry]));
+	const pending = new Map<string, Promise<LoadedHubSkill | null>>();
+	const loaded = new Map<string, LoadedHubSkill>();
+	const errors = new Map<string, string>();
+	let filesystem: WorkspaceFilesystem | undefined;
+
+	const writeSkill = async (target: WorkspaceFilesystem, snapshot: LoadedHubSkill) => {
+		for (const file of snapshot.files) {
+			await target.writeFile(
+				`${HUB_SKILL_DIRECTORY}/${file.skillId}/${file.filePath}`,
+				file.content,
+				{
+					recursive: true,
+					overwrite: true,
+				},
+			);
+		}
+	};
+	const resolveSkill = async (id: string): Promise<LoadedHubSkill | null> => {
+		const summary = summariesById.get(id);
+		const entry = entriesById.get(id);
+		if (!summary || !entry) return null;
+		try {
+			const content = await provider.readSkill(context, summary.id, summary.versionId);
+			if (!content) {
+				errors.set(id, 'This Hub skill is no longer available. Do not use an earlier copy.');
+				return null;
+			}
+			if (content.id !== summary.id || content.versionId !== summary.versionId) {
+				errors.set(id, 'The Hub did not return the version listed for this turn.');
+				return null;
+			}
+			const snapshot = prepareSkill(entry, content);
+			if (typeof snapshot === 'string') {
+				errors.set(id, snapshot);
+				return null;
+			}
+			if (filesystem) await writeSkill(filesystem, snapshot);
+			// Activation exposes paths. Reference bodies stay behind loadFile.
+			entry.linkedFiles = snapshot.skill.linkedFiles;
+			loaded.set(id, snapshot);
+			return snapshot;
+		} catch {
+			errors.set(id, 'Hub content could not be loaded. Do not use an earlier copy.');
+			return null;
+		}
+	};
+	const load = async (id: string) => {
+		let result = pending.get(id);
+		if (!result) {
+			result = resolveSkill(id);
+			pending.set(id, result);
+		}
+		return await result;
+	};
+
+	const hubHash = hash(JSON.stringify(entries));
+	const mergedRegistry = () => ({
+		...builtIns.registry,
+		skills: [...builtIns.registry.skills, ...entries],
+		skillsHash: hash(JSON.stringify([builtIns.registry.skillsHash, hubHash])),
+	});
+	const source: RuntimeSkillSource = {
+		...builtIns,
+		registry: mergedRegistry(),
+		loadSkill: async (id) =>
+			summariesById.has(id) ? ((await load(id))?.skill ?? null) : await builtIns.loadSkill(id),
+		loadFile: async (id, path) => {
+			if (!summariesById.has(id)) return (await builtIns.loadFile?.(id, path)) ?? null;
+			return (await load(id))?.files.find((file) => file.filePath === path) ?? null;
+		},
+		getLoadError: (id) => errors.get(id) ?? builtIns.getLoadError?.(id),
+	};
+
+	if (builtIns.prepare) {
+		source.prepare = async () => {
+			await builtIns.prepare?.();
+			source.registry = mergedRegistry();
+		};
+	}
 
 	return {
 		source,
-		...(notice ? { availabilityNotice: notice } : {}),
+		availabilityNotice:
+			availabilityNotice ??
+			(entries.length > 0
+				? 'Hub skill labels include their scope. Load by exact skillId before reading workspace files. If matching skills are ambiguous, ask which one to use. Do not choose a scope by default.'
+				: undefined),
 		prepareWorkspace: async (workspace) => {
-			const filesystem = workspace.filesystem;
-			if (!filesystem) throw new UnexpectedError('The skill workspace has no filesystem');
-			// This directory belongs only to Hub skills. Clear it even after a provider failure.
-			if (await filesystem.exists(HUB_SKILL_DIRECTORY)) {
-				await filesystem.rmdir(HUB_SKILL_DIRECTORY, { recursive: true, force: true });
+			const target = workspace.filesystem;
+			if (!target) throw new UnexpectedError('The skill workspace has no filesystem');
+			if (await target.exists(HUB_SKILL_DIRECTORY)) {
+				await target.rmdir(HUB_SKILL_DIRECTORY, { recursive: true, force: true });
 			}
-			for (const file of files) {
-				await filesystem.writeFile(file.path, file.content, { recursive: true, overwrite: true });
-			}
+			filesystem = target;
+			for (const snapshot of loaded.values()) await writeSkill(target, snapshot);
 		},
 	};
 }
 
-function toRuntimeSkill(content: AssistantSkillContent): RuntimeSkill {
-	// Only the immutable Hub ID contributes to the path. Names and versions cannot change it.
-	const id = `hub-${createHash('sha256').update(content.id).digest('hex')}`;
-	const scope = content.projectId === null ? 'Instance' : 'Current project';
-	const path = `${HUB_SKILL_DIRECTORY}/${id}/SKILL.md`;
+function toRegistryEntry(summary: AssistantSkillSummary): RuntimeSkillRegistryEntry {
+	const id = `hub-${hash(summary.id)}`;
+	const scope = summary.projectId === null ? 'Instance' : 'Current project';
+	const directory = `${HUB_SKILL_DIRECTORY}/${id}`;
+	return {
+		id,
+		name: `${summary.name} · ${scope}`,
+		description: `${summary.description}\nWorkspace file after load_skill: ${directory}/SKILL.md`,
+		hash: summary.versionId,
+		version: summary.versionId,
+		path: `${directory}/SKILL.md`,
+		directory,
+		metadata: {
+			hubSkillId: summary.id,
+			versionId: summary.versionId,
+			version: summary.version,
+			projectId: summary.projectId,
+		},
+		linkedFiles: {
+			references: [],
+			templates: [],
+			scripts: [],
+			assets: [],
+			examples: [],
+			other: [],
+		},
+	};
+}
+
+function prepareSkill(
+	entry: RuntimeSkillRegistryEntry,
+	content: AssistantSkillContent,
+): LoadedHubSkill | string {
+	if (!content.name.trim() || !content.description.trim() || !content.instructions.trim()) {
+		return 'This Hub skill has invalid instructions or metadata.';
+	}
+	if (
+		!agentSkillShape.references.safeParse(content.files).success ||
+		content.files.some(({ path }) => path.includes('\0'))
+	) {
+		return 'Unsupported or invalid references. Use Markdown files under references/ within the custom Agent reference limits.';
+	}
 	const frontmatter = JSON.stringify({
 		...content.frontmatter,
 		name: content.name,
 		description: content.description,
 	});
-	return {
-		id,
-		name: `${content.name} · ${scope}`,
-		description: `${content.description}\nWorkspace file: ${path}`,
-		instructions: scrubSecretsInText(`---\n${frontmatter}\n---\n\n${content.instructions}`),
-		path,
-		directory: `${HUB_SKILL_DIRECTORY}/${id}`,
-		version: content.versionId,
-		metadata: {
-			hubSkillId: content.id,
-			versionId: content.versionId,
-			version: content.version,
-			projectId: content.projectId,
-		},
+	const files = [
+		{ path: 'SKILL.md', content: `---\n${frontmatter}\n---\n\n${content.instructions}` },
+		...content.files,
+	].map((file) => {
+		const text = scrubSecretsInText(file.content);
+		return {
+			skillId: entry.id,
+			filePath: file.path,
+			content: text,
+			bytes: Buffer.byteLength(text, 'utf8'),
+			sha256: hash(text),
+		};
+	});
+	if (files.some(({ bytes }) => bytes > RUNTIME_SKILL_MAX_OUTPUT_BYTES)) {
+		return `This skill contains a file above ${RUNTIME_SKILL_MAX_OUTPUT_BYTES} UTF-8 bytes.`;
+	}
+	const linkedFiles = {
+		...entry.linkedFiles,
+		references: files
+			.slice(1)
+			.map(({ filePath, bytes, sha256 }) => ({ path: filePath, bytes, sha256 })),
 	};
+	return { skill: { ...entry, instructions: files[0].content, linkedFiles }, files };
 }
 
-function describeHubSkill(skill: AssistantSkillSummary): string {
-	return JSON.stringify({
-		skillId: skill.id,
-		name: skill.name,
-		scope: skill.projectId === null ? 'Instance' : 'Current project',
-	});
+function hash(value: string): string {
+	return createHash('sha256').update(value).digest('hex');
+}
+
+function nameKey(value: string): string {
+	return skillNameKey(value.normalize('NFKC'));
 }

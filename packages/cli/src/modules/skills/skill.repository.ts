@@ -159,8 +159,9 @@ export class SkillRepository extends BaseRepository<Skill> {
 	async findAssistantSkill(
 		skillId: string,
 		projectId: string | null,
+		versionId?: string,
 	): Promise<ResolvedSkillRow | null> {
-		const version = await assistantVersionsQuery(this.manager, projectId)
+		const version = await assistantVersionsQuery(this.manager, projectId, versionId)
 			.andWhere('skill.id = :skillId', { skillId })
 			.getOne();
 		if (!version) return null;
@@ -516,8 +517,18 @@ function latestVersionsQuery(manager: EntityManager, skillIds: string[]) {
 	});
 }
 
-function assistantVersionsQuery(manager: EntityManager, projectId: string | null) {
-	return highestVersionsQuery(manager)
+function assistantVersionsQuery(
+	manager: EntityManager,
+	projectId: string | null,
+	versionId?: string,
+) {
+	const versions =
+		versionId !== undefined
+			? manager
+					.createQueryBuilder(SkillVersion, 'version')
+					.where('version.id = :versionId', { versionId })
+			: highestVersionsQuery(manager);
+	return versions
 		.innerJoin(Skill, 'skill', 'skill.id = version.skillId')
 		.andWhere('skill.availableToAssistant = :enabled', { enabled: true })
 		.andWhere('skill.agentId IS NULL')

@@ -192,6 +192,8 @@ export interface RuntimeSkillSource {
 	prepare?: () => Promise<void>;
 	loadSkill: RuntimeSkillLoader;
 	loadFile?: RuntimeSkillFileLoader;
+	/** Explains a failed deferred load without failing restoration of other active skills. */
+	getLoadError?: (skillId: string) => string | undefined;
 }
 
 export interface RuntimeSkillStateScope {

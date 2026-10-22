@@ -223,7 +223,9 @@ async function loadSkill(
 			success: false,
 			skillId: skillEntry.id,
 			name: skillEntry.name,
-			error: `Skill "${skillEntry.name}" is not attached to this agent.`,
+			error:
+				source.getLoadError?.(skillEntry.id) ??
+				`Skill "${skillEntry.name}" is not attached to this agent.`,
 			availableSkills: source.registry.skills.map((entry) => entry.id).slice(0, 20),
 		};
 	}
