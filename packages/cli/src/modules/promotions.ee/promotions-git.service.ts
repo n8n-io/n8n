@@ -41,6 +41,15 @@ type GitOperation = {
 	environmentId: string;
 };
 
+type TreeReadLimits = {
+	maxEntries: number;
+	maxEntryBytes: number;
+	maxUncompressedBytes: number;
+	maxPathLength: number;
+};
+
+type TreeEntry = { path: string; objectName: string; size: number };
+
 /** A full SHA-1 or SHA-256 object name, as `rev-parse` prints it. */
 const COMMIT_SHA = /^[0-9a-f]{40}([0-9a-f]{24})?$/;
 
@@ -579,6 +588,62 @@ export class PromotionsGitService {
 		}
 	}
 
+	/**
+	 * Reads every file under `directory` at the commit, keyed by its path inside `directory`.
+	 * One `cat-file --batch` reads all files: a `git show` per file takes seconds for a large package.
+	 * The limits are checked on the listed sizes, before any content is read.
+	 */
+	async readTreeAtCommit({
+		commitSha,
+		directory,
+		limits,
+		...operation
+	}: GitOperation & {
+		commitSha: string;
+		directory: string;
+		limits: TreeReadLimits;
+	}): Promise<Map<string, Buffer>> {
+		const { paths, branchName, environmentId } = operation;
+		if (!COMMIT_SHA.test(commitSha)) {
+			throw new UnexpectedError('The commit SHA is not a Git object name');
+		}
+		try {
+			return await this.lockCheckout(paths.repositoryFolder, async () => {
+				const options = { ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder };
+				// Another main may have served the preview, so this checkout can lack its commit.
+				if (!(await hasCommit(simpleGit(options), commitSha))) {
+					await this.fetchBranch(operation);
+					if (!(await hasCommit(simpleGit(options), commitSha))) {
+						throw new BadRequestError(
+							'The branch no longer has the commit of the preview. Load the preview again.',
+						);
+					}
+				}
+				const tree = await simpleGit(options).raw([
+					'ls-tree',
+					'-r',
+					'-l',
+					'-z',
+					commitSha,
+					'--',
+					`${directory}/`,
+				]);
+				const entries = parseTreeEntries(tree, directory);
+				assertWithinLimits(entries, limits);
+				if (entries.length === 0) return new Map();
+
+				const objectNames = entries.map(({ objectName }) => objectName).join('\n') + '\n';
+				const output: Buffer = await simpleGit({
+					...options,
+					input: () => objectNames,
+				}).binaryCatFile(['--batch']);
+				return splitBatchOutput(output, entries);
+			});
+		} catch (error) {
+			throw this.mapGitError(error, { environmentId, branchName });
+		}
+	}
+
 	// Configure credentials per operation and remove temporary SSH key material afterwards.
 	private async withGit<T>(
 		{
@@ -655,4 +720,66 @@ export class PromotionsGitService {
 		this.logger.warn('Git operation failed', ctx);
 		return new BadRequestError('Could not complete the Git operation');
 	}
+}
+
+async function hasCommit(git: SimpleGit, commitSha: string): Promise<boolean> {
+	try {
+		await git.raw(['cat-file', '-e', `${commitSha}^{commit}`]);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+/** Parses `ls-tree -r -l -z`. Like a package folder on disk, the tree may hold only regular files. */
+function parseTreeEntries(output: string, directory: string): TreeEntry[] {
+	return output
+		.split('\0')
+		.filter(Boolean)
+		.map((line) => {
+			const tab = line.indexOf('\t');
+			const [mode, type, objectName, size] = line.slice(0, tab).split(/\s+/);
+			const entryPath = line.slice(tab + 1 + directory.length + 1);
+			if (type !== 'blob' || mode === '120000') {
+				throw new BadRequestError(`Package contains a disallowed entry type for "${entryPath}"`);
+			}
+			return { path: entryPath, objectName, size: Number(size) };
+		});
+}
+
+/** The package import limits, with the same messages as `DirectoryPackageReader`. */
+function assertWithinLimits(entries: TreeEntry[], limits: TreeReadLimits) {
+	if (entries.length > limits.maxEntries) {
+		throw new BadRequestError('Package contains too many entries');
+	}
+	let totalBytes = 0;
+	for (const { path: entryPath, size } of entries) {
+		if (entryPath.length > limits.maxPathLength) {
+			throw new BadRequestError('Package entry path exceeds the maximum allowed length');
+		}
+		if (size > limits.maxEntryBytes) {
+			throw new BadRequestError(
+				`Package entry "${entryPath}" exceeds the maximum allowed uncompressed size per entry`,
+			);
+		}
+		totalBytes += size;
+	}
+	if (totalBytes > limits.maxUncompressedBytes) {
+		throw new BadRequestError('Package exceeds the maximum allowed uncompressed size');
+	}
+}
+
+/** `cat-file --batch` prints `<name> <type> <size>\n<content>\n` for each object, in input order. */
+function splitBatchOutput(output: Buffer, entries: TreeEntry[]): Map<string, Buffer> {
+	const files = new Map<string, Buffer>();
+	let offset = 0;
+	for (const { path: entryPath, size } of entries) {
+		const contentStart = output.indexOf('\n', offset) + 1;
+		files.set(entryPath, output.subarray(contentStart, contentStart + size));
+		offset = contentStart + size + 1;
+	}
+	if (offset !== output.length) {
+		throw new UnexpectedError('Git returned a different amount of file content than it listed');
+	}
+	return files;
 }

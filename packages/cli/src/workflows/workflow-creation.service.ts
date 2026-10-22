@@ -326,7 +326,7 @@ export class WorkflowCreationService {
 					user,
 					effectiveProjectId,
 					['workflow:create'],
-					transactionManager,
+					ctx,
 				);
 
 				if (project === null) {

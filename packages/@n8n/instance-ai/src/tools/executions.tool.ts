@@ -15,9 +15,9 @@ import { Tool } from '@n8n/agents';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
 import { approvalSummarySchema, formatApprovalMessage } from './approval-copy';
+import { restrictToolActions } from './restrict-tool-actions';
 import { recordLiveRunVerification } from './orchestration/verification/record-live-run';
 import { DOMAIN_TOOL_IDS } from './tool-ids';
 
@@ -225,20 +225,23 @@ const stopAction = z.object({
 	executionId: z.string().describe('Execution ID'),
 });
 
-const inputSchema = sanitizeInputSchema(
-	z.discriminatedUnion('action', [
-		listAction,
-		getAction,
-		runAction,
-		runStepAction,
-		debugAction,
-		getNodeOutputAction,
-		getResolvedNodeParametersAction,
-		stopAction,
-	]),
-);
+const actions = [
+	listAction,
+	getAction,
+	runAction,
+	runStepAction,
+	debugAction,
+	getNodeOutputAction,
+	getResolvedNodeParametersAction,
+	stopAction,
+] as const;
 
-type Input = z.infer<typeof inputSchema>;
+type Input = z.infer<(typeof actions)[number]>;
+
+interface ExecutionsToolOptions {
+	allowedActions?: ReadonlyArray<Input['action']>;
+	description?: string;
+}
 
 // ── Suspend / resume schemas (used by `run`) ───────────────────────────────
 
@@ -574,22 +577,38 @@ async function handleStop(context: InstanceAiContext, input: Extract<Input, { ac
 
 // ── Tool factory ───────────────────────────────────────────────────────────
 
-export function createExecutionsTool(context: InstanceAiContext) {
+/**
+ * Appended to every description, a custom one too: each caller reads
+ * executions redacted for its user.
+ */
+const REDACTED_RESULT_GUIDANCE =
+	' A result with `redaction` set carries no output items: n8n hides that ' +
+	"execution's data from this user, for example because a node uses a colleague's " +
+	'personal credential. Tell the user so. Do not read the empty result as a bug, ' +
+	'and do not try to get the data another way.';
+
+export function createExecutionsTool(
+	context: InstanceAiContext,
+	options: ExecutionsToolOptions = {},
+) {
+	const inputSchema = restrictToolActions(actions, options.allowedActions);
+
 	return new Tool(DOMAIN_TOOL_IDS.EXECUTIONS)
 		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.EXECUTIONS))
 		.description(
-			'Manage workflow executions — list, inspect, run, run one node, debug, ' +
-				'get node output, get resolved node parameters for a past run, and stop. ' +
-				'action="run" is how you satisfy "trigger/run my <workflow>": find the workflow with ' +
-				'workflow_builder_workflows(action="list"), then run it here with the user\'s values as inputData — ' +
-				'do not treat such a request as a request to build something. ' +
-				'To verify a workflow you built, use workflow_builder_verify_built_workflow, not action="run". ' +
-				'Reserve action="run" for runs the user explicitly asked for: it runs the workflow live with no pin data and prompts the user for approval. ' +
-				'action="run-step" runs a single node of the saved workflow, like the canvas ' +
-				'"Execute step" button. Use it to see what one node really returns — when ' +
-				'debugging a read node that failed a real execution, pass reuseExecutionId so ' +
-				'the node re-runs on the data it actually received. It runs for real, so do ' +
-				'not point it at a node that writes.',
+			(options.description ??
+				'Manage workflow executions — list, inspect, run, run one node, debug, ' +
+					'get node output, get resolved node parameters for a past run, and stop. ' +
+					'action="run" is how you satisfy "trigger/run my <workflow>": find the workflow with ' +
+					'workflow_builder_workflows(action="list"), then run it here with the user\'s values as inputData — ' +
+					'do not treat such a request as a request to build something. ' +
+					'To verify a workflow you built, use workflow_builder_verify_built_workflow, not action="run". ' +
+					'Reserve action="run" for runs the user explicitly asked for: it runs the workflow live with no pin data and prompts the user for approval. ' +
+					'action="run-step" runs a single node of the saved workflow, like the canvas ' +
+					'"Execute step" button. Use it to see what one node really returns — when ' +
+					'debugging a read node that failed a real execution, pass reuseExecutionId so ' +
+					'the node re-runs on the data it actually received. It runs for real, so do ' +
+					'not point it at a node that writes.') + REDACTED_RESULT_GUIDANCE,
 		)
 		.input(inputSchema)
 		.suspend(suspendSchema)

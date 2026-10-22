@@ -42,6 +42,8 @@ import { resolveIntegrationActionDefinitions } from '../../integration-tool-defi
 import { buildIntegrationConnectionId } from '../../integration-tool-factory';
 import { startTypingIndicator } from '../typing-indicator';
 import { WhatsAppWebhookVerificationStore } from './whatsapp-webhook-verification.store';
+import { buildWhatsAppOriginDraft } from './whatsapp-origin';
+import type { DecodedThread, OriginInput } from '../../integration-origin-support';
 
 type ChatSdk = Awaited<ReturnType<typeof loadChatSdk>>;
 
@@ -268,6 +270,10 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 
 	shouldDownloadAttachments(integration: AgentIntegrationConfig): boolean {
 		return whatsAppSettings(integration).downloadMedia;
+	}
+
+	buildOriginDraft(_input: OriginInput, decoded: DecodedThread) {
+		return buildWhatsAppOriginDraft(decoded);
 	}
 
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {

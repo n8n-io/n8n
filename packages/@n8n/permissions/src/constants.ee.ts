@@ -57,6 +57,7 @@ export const RESOURCES = {
 		'push',
 		'manageProjects',
 		'pull',
+		'readReviews',
 	] as const,
 	tag: [...DEFAULT_OPERATIONS] as const,
 	user: [

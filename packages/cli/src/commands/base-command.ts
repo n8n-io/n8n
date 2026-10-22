@@ -30,6 +30,7 @@ import {
 } from 'n8n-core';
 import { sleep } from '@n8n/utils/sleep';
 import { Expression, UnexpectedError } from 'n8n-workflow';
+import type { NativeVerifyMismatch } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
 import * as CrashJournal from '@/crash-journal';
@@ -269,8 +270,10 @@ export abstract class BaseCommand<F = never> {
 				lazyAcquire,
 				compileCache,
 				nativeEvaluation,
+				nativeEvaluationVerifySample,
 			} = this.globalConfig.expressionEngine;
 			const observability = Container.get(ExpressionObservabilityProvider);
+			this.logNativeVerifyModeStatus();
 			try {
 				await Expression.initExpressionEngine({
 					engine,
@@ -282,6 +285,11 @@ export abstract class BaseCommand<F = never> {
 					lazyAcquire,
 					compileCache,
 					nativeEvaluation,
+					nativeEvaluationVerifySample,
+					reportNativeVerifyMismatch: this.errorReporter.isSentryActive()
+						? (mismatch) => this.reportNativeVerifyMismatch(mismatch)
+						: undefined,
+					canReportNativeVerifyMismatch: () => this.errorReporter.isSentryActive(),
 					observability,
 				});
 			} catch (error) {
@@ -295,6 +303,45 @@ export abstract class BaseCommand<F = never> {
 			// vm-configured instance fails loudly instead of silently using the legacy engine
 			Expression.setExpressionEngine(this.globalConfig.expressionEngine.engine);
 		}
+	}
+
+	private logNativeVerifyModeStatus() {
+		const { nativeEvaluation, nativeEvaluationVerifySample, engine } =
+			this.globalConfig.expressionEngine;
+		if (nativeEvaluationVerifySample > 0) {
+			if (nativeEvaluation) {
+				this.logger.warn(
+					'Native evaluation verify mode does nothing because native evaluation is enabled',
+				);
+			} else if (engine === 'legacy') {
+				this.logger.warn(
+					'Native evaluation verify mode does nothing because the expression engine is legacy',
+				);
+			} else if (!this.errorReporter.isSentryActive()) {
+				this.logger.warn('Native evaluation verify mode does nothing because Sentry is not active');
+			} else {
+				this.logger.info('Native evaluation verify mode is active', {
+					sample: nativeEvaluationVerifySample,
+					engine,
+				});
+			}
+		}
+	}
+
+	private reportNativeVerifyMismatch({
+		engine,
+		skeleton,
+		nativeResultType,
+		engineResultType,
+		workflowId,
+	}: NativeVerifyMismatch) {
+		// Not warn: it wraps the message in an Error, which is deduplicated by stack.
+		this.errorReporter.info('Native evaluation result differs from the expression engine', {
+			tags: { expressionEngine: engine },
+			extra: { skeleton, nativeResultType, engineResultType, workflowId },
+			fingerprint: ['native-evaluation-verify-mismatch', skeleton],
+			shouldIsolate: true,
+		});
 	}
 
 	/**
