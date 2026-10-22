@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-integration.ts
+  s_b82caf968b8c36::t_7309ecf85f2d0d 107-110
+packages/cli/src/modules/agents/integrations/integration-tool-definitions.ts
+  s_b82caf968b8c36::t_7309ecf85f2d0d 255,261
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "32b6e8a1e71f522e4e98b46c91ba5ef4e0b9aa43",
+  "prompts": {},
+  "sessions": {
+    "s_b82caf968b8c36": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1630e-8c2e-7cb1-ab55-c37ffdbc2763",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
