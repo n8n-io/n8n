@@ -30,6 +30,7 @@ const rootDir = isInScriptsDir ? path.join(scriptDir, '..') : scriptDir;
 // #region ===== Configuration =====
 const config = {
 	compiledAppDir: path.join(rootDir, 'compiled'),
+	compiledNativeDir: path.join(rootDir, 'compiled-native'),
 	compiledTaskRunnerDir: path.join(rootDir, 'dist', 'task-runner-javascript'),
 	cliDir: path.join(rootDir, 'packages', 'cli'),
 	rootDir: rootDir,
@@ -81,6 +82,7 @@ startTimer('total_build');
 // 0. Clean Previous Build Output
 echo(chalk.yellow(`INFO: Cleaning previous output directory: ${config.compiledAppDir}...`));
 await fs.remove(config.compiledAppDir);
+await fs.remove(config.compiledNativeDir);
 echo(
 	chalk.yellow(
 		`INFO: Cleaning previous task runner output directory: ${config.compiledTaskRunnerDir}...`,
@@ -597,6 +599,25 @@ try {
 	// package.json can no longer survive a failure partway through this block.
 	await restorePackageJsonFiles();
 }
+
+// One closure serves both image architectures. Move each architecture's @napi-rs
+// bindings out of it, so each image copies only the bindings it can load.
+echo(chalk.yellow('INFO: Splitting @napi-rs bindings by architecture...'));
+for (const [dockerArch, nodeArch] of [
+	['amd64', 'x64'],
+	['arm64', 'arm64'],
+]) {
+	const pnpmDir = path.join(config.compiledAppDir, 'node_modules', '.pnpm');
+	const targetDir = path.join(config.compiledNativeDir, dockerArch, 'node_modules', '.pnpm');
+	const bindings = (await fs.readdir(pnpmDir)).filter((name) =>
+		new RegExp(`^@napi-rs\\+[a-z]+-linux-${nodeArch}-musl@`).test(name),
+	);
+	if (bindings.length === 0) throw new Error(`No @napi-rs ${nodeArch} musl bindings in the closure`);
+	for (const binding of bindings) {
+		await fs.move(path.join(pnpmDir, binding), path.join(targetDir, binding));
+	}
+}
+echo(chalk.green('✅ @napi-rs bindings split by architecture'));
 
 // Calculate output size
 const compiledAppOutputSize = (await $`du -sh ${config.compiledAppDir} | cut -f1`).stdout.trim();

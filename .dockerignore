@@ -7,6 +7,8 @@
 # === n8n main image (docker/images/n8n/Dockerfile) ===
 !compiled
 !compiled/**
+!compiled-native
+!compiled-native/**
 !THIRD_PARTY_LICENSES.md
 
 # === runners image (docker/images/runners/Dockerfile + Dockerfile.distroless) ===

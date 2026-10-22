@@ -165,6 +165,7 @@ jobs:
           key: docker-build-context-v1-${{ github.run_id }}
           path: |
             compiled
+            compiled-native
             dist/task-runner-javascript
 
   build-and-push-docker:
@@ -212,6 +213,7 @@ jobs:
           key: docker-build-context-v1-${{ github.run_id }}
           path: |
             compiled
+            compiled-native
             dist/task-runner-javascript
           fail-on-cache-miss: true
 

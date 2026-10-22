@@ -65,6 +65,7 @@ test-results/
 compiled_app_output
 trivy_report*
 compiled
+compiled-native
 docker-build-manifest.json
 packages/cli/src/modules/my-feature
 .secrets

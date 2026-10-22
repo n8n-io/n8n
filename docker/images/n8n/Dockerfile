@@ -49,6 +49,7 @@ RUN BUILD_LIBRDKAFKA=0 node "$NODE_GYP" rebuild --release
 FROM ${RUNTIME_IMAGE}
 
 ARG N8N_VERSION
+ARG TARGETARCH
 ARG N8N_RELEASE_TYPE=dev
 ARG IMAGE_DESCRIPTION="Workflow Automation Tool"
 ENV NODE_ENV=production
@@ -58,6 +59,8 @@ ENV SHELL=/bin/sh
 WORKDIR /home/node
 
 COPY --link ./compiled /usr/local/lib/node_modules/n8n
+# build-n8n.mjs moves the @napi-rs bindings out of ./compiled, one directory for each architecture.
+COPY --link ./compiled-native/${TARGETARCH}/ /usr/local/lib/node_modules/n8n/
 COPY --link docker/images/n8n/docker-entrypoint.sh /
 
 # Do not use --link here. These destinations are pnpm symlinks. A --link copy
