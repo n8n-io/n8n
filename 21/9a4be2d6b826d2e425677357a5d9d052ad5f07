@@ -1,0 +1,27 @@
+packages/cli/src/modules/skills/skill.service.ts
+  s_20d484677b459f::t_d47d2e822a4581 215-236
+packages/cli/src/modules/skills/skill.repository.ts
+  s_20d484677b459f::t_d47d2e822a4581 148-150
+packages/cli/src/modules/skills/__tests__/skills-api.service.test.ts
+  s_20d484677b459f::t_d47d2e822a4581 552
+packages/cli/test/integration/skills/skill.repository.test.ts
+  s_20d484677b459f::t_d47d2e822a4581 23,138
+packages/cli/src/modules/skills/skills-api.service.ts
+  s_20d484677b459f::t_d47d2e822a4581 166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "219a4be2d6b826d2e425677357a5d9d052ad5f07",
+  "prompts": {},
+  "sessions": {
+    "s_20d484677b459f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1541d-6ef7-7ef0-a84b-83bd91fd72c5",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
