@@ -199,11 +199,12 @@ describe('ResumeRequestService.resolve', () => {
 		expect(stepStore.resumeStep).not.toHaveBeenCalled();
 	});
 
-	it('refuses a step of an execution that holds two such waits', async () => {
+	it('resumes the named step of an execution that holds a second such wait', async () => {
 		const { service, stepStore } = setup({ waiting: [[accepting('s1'), accepting('s2')]] });
 
-		await expect(service.resolve('s1', token, outputs)).rejects.toEqual(rejection('ambiguous'));
-		expect(stepStore.resumeStep).not.toHaveBeenCalled();
+		await service.resolve('s1', token, outputs);
+
+		expect(stepStore.resumeStep).toHaveBeenCalledWith('s1', { kind: 'request', outputs });
 	});
 
 	it('refuses a step of an execution that ended', async () => {
