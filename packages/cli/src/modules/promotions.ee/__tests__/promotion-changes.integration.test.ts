@@ -14,10 +14,13 @@ import {
 	CredentialsRepository,
 	FolderRepository,
 	SharedWorkflowRepository,
+	TagRepository,
 	type User,
 	VariablesRepository,
 	WorkflowRepository,
+	WorkflowTagMappingRepository,
 } from '@n8n/db';
+import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Cipher, type InstanceSettings } from 'n8n-core';
 import { mkdtempSync } from 'node:fs';
@@ -40,7 +43,9 @@ import {
 	executeWorkflowNode,
 } from '@/modules/n8n-packages/__tests__/utils/test-builders';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
+import { TagService } from '@/services/tag.service';
 import { saveCredential } from '@test-integration/db/credentials';
+import { createTag } from '@test-integration/db/tags';
 import { createMember, createOwner } from '@test-integration/db/users';
 import { createFolder } from '@test-integration/db/folders';
 import { createVariable } from '@test-integration/db/variables';
@@ -50,6 +55,7 @@ import type { PromotionEnvironment } from '../database/entities/promotion-enviro
 import { PromotionEnvironmentProjectRepository } from '../database/repositories/promotion-environment-project.repository';
 import { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
 import { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
+import { PromotionChangesController } from '../promotion-changes.controller';
 import { PromotionsService } from '../promotions.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
@@ -75,6 +81,8 @@ beforeEach(async () => {
 	await Container.get(PromotionEnvironmentRepository).delete({});
 	await Container.get(PromotionProviderRepository).delete({});
 	await testDb.truncate([
+		'WorkflowTagMapping',
+		'TagEntity',
 		'WorkflowEntity',
 		'SharedWorkflow',
 		'Folder',
@@ -750,17 +758,77 @@ it('checks authentication, the scopes of each direction, and the promotions lice
 	const project = await createTeamProject('Private', owner);
 	const endpoint = `/promotions/${project.id}/changes/promote`;
 	const applyEndpoint = `/promotions/${project.id}/changes/apply`;
+	const blockersEndpoint = `${applyEndpoint}/blockers?commitSha=${'0'.repeat(40)}`;
 	await server.authlessAgent.get(endpoint).expect(401);
+	await server.authlessAgent.get(blockersEndpoint).expect(401);
 	await server.authAgentFor(member).get(endpoint).expect(403);
 	await server.authAgentFor(member).get(applyEndpoint).expect(403);
+	await server.authAgentFor(member).get(blockersEndpoint).expect(403);
 	// A project admin manages the project, but lacks the global git connection scopes.
 	await linkUserToProject(member, project, 'project:admin');
 	await server.authAgentFor(member).get(endpoint).expect(403);
 	await server.authAgentFor(member).get(applyEndpoint).expect(403);
+	await server.authAgentFor(member).get(blockersEndpoint).expect(403);
 	await server.authAgentFor(owner).get(`/promotions/${project.id}/changes/sideways`).expect(404);
 	server.license.disable('feat:gitConnections');
 	await server.authAgentFor(owner).get(endpoint).expect(403);
+	await server.authAgentFor(owner).get(blockersEndpoint).expect(403);
 });
+
+// No built-in role has the read scope without the pull scope, so the requests above cannot tell them apart.
+it('requires the global pull scope of Apply for the Apply check', () => {
+	const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
+		PromotionChangesController as Controller,
+	);
+
+	expect(metadata.routes.get('getApplyBlockers')?.accessScope).toEqual({
+		scope: 'gitConnection:pull',
+		globalOnly: true,
+	});
+});
+
+it('checks Apply blockers at the commit of the Apply preview, also after a newer push', async () => {
+	const owner = await createOwner();
+	const project = await createTeamProject('Orders', owner);
+	const firstVariable = await createVariable('FIRST_URL', 'https://first.example.com');
+	await buildWorkflowReferencingVariables({
+		name: 'Uses FIRST_URL',
+		project,
+		variableNames: [firstVariable.key],
+	});
+	const environments = await createInstanceEnvironments(['promote', 'apply']);
+	const service = Container.get(PromotionsService);
+	await service.promote(environments.promote.id, owner, {
+		commitMessage: 'First',
+		canExportVariableValues: true,
+	});
+	const agent = server.authAgentFor(owner);
+	const preview = await agent.get(`/promotions/${project.id}/changes/apply`).expect(200);
+	const { commitSha } = preview.body.data;
+
+	const secondVariable = await createVariable('SECOND_URL', 'https://second.example.com');
+	await buildWorkflowReferencingVariables({
+		name: 'Uses SECOND_URL',
+		project,
+		variableNames: [secondVariable.key],
+	});
+	await service.promote(environments.promote.id, owner, {
+		commitMessage: 'Second',
+		canExportVariableValues: true,
+	});
+	await Container.get(VariablesRepository).delete([firstVariable.id, secondVariable.id]);
+	await Container.get(VariablesService).updateCache();
+
+	const response = await agent
+		.get(`/promotions/${project.id}/changes/apply/blockers`)
+		.query({ commitSha })
+		.expect(200);
+
+	expect(response.body.data.git.commitSha).toBe(commitSha);
+	expect(response.body.data.preflight.missingBindings).toEqual([
+		expect.objectContaining({ kind: 'variable', name: 'FIRST_URL' }),
+	]);
+}, 30_000);
 
 describe('resources in the preview', () => {
 	const promoteBaseline = async (environmentId: string, owner: User) =>
@@ -979,6 +1047,68 @@ describe('resources in the preview', () => {
 			}),
 		]);
 	}, 30_000);
+
+	it.each([
+		{
+			drift: 'a renamed local tag',
+			changeLocalTag: async (tagId: string) =>
+				await Container.get(TagRepository).update(tagId, { name: 'released' }),
+			expected: { previousName: 'released' },
+			local: { name: 'released' },
+		},
+		{
+			drift: 'a renamed local tag that no local workflow uses',
+			changeLocalTag: async (tagId: string) => {
+				await Container.get(TagRepository).update(tagId, { name: 'released' });
+				await Container.get(WorkflowTagMappingRepository).delete({ tagId });
+			},
+			expected: { previousName: 'released' },
+			local: { name: 'released' },
+		},
+		{
+			drift: 'a local tag with the same name and another id',
+			changeLocalTag: async (tagId: string) =>
+				await Container.get(TagService).reconcileTagId(tagId, 'localTagId'),
+			expected: { previousId: 'localTagId' },
+			local: { id: 'localTagId', name: 'release' },
+		},
+	])(
+		'lists and details the tag change that Apply makes for $drift',
+		async ({ changeLocalTag, expected, local }) => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Releases', owner);
+			const workflow = await createWorkflow({ name: 'Ship', nodes: [], connections: {} }, project);
+			const tag = await createTag({ name: 'release' }, workflow);
+			const environments = await createInstanceEnvironments(['promote', 'apply']);
+			await promoteBaseline(environments.promote.id, owner);
+			await changeLocalTag(tag.id);
+
+			const agent = server.authAgentFor(owner);
+			const endpoint = `/promotions/${project.id}/changes/apply`;
+			const summary = (await agent.get(endpoint).expect(200)).body.data;
+			const key = `tag:${tag.id}`;
+			const resource = summary.resources.find(
+				(candidate: { key: string }) => candidate.key === key,
+			);
+			const { body } = await agent
+				.post(`${endpoint}/details`)
+				.send({ commitSha: summary.commitSha, keys: [key] })
+				.expect(200);
+
+			expect(resource).toEqual(
+				expect.objectContaining({ name: 'release', change: 'modified', ...expected }),
+			);
+			// The card shows the local tag, with the revision of the summary, so it is not stale.
+			expect(body.data.details).toEqual([
+				expect.objectContaining({
+					before: expect.objectContaining(local),
+					after: expect.objectContaining({ id: tag.id, name: 'release' }),
+					revision: resource.revision,
+				}),
+			]);
+		},
+		30_000,
+	);
 
 	it('returns both sides of a changed workflow from the reviewed commit and reports later local changes', async () => {
 		const owner = await createOwner();

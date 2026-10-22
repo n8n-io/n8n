@@ -1,22 +1,25 @@
 import { Service } from '@n8n/di';
-import type { EntityManager, FindManyOptions } from '@n8n/typeorm';
-import { DataSource, In, Repository } from '@n8n/typeorm';
+import type { FindManyOptions } from '@n8n/typeorm';
+import { DataSource, In } from '@n8n/typeorm';
 import { UnexpectedError, type IDataObject } from 'n8n-workflow';
 
 import { TestRun } from '../entities';
 import type { TestRunStatus } from '../entities/test-run.ee';
 import { TestRunErrorCode } from '../entities/types-db';
 import type { AggregatedTestRunMetrics, TestRunFinalResult } from '../entities/types-db';
+import type { OperationContext } from '../services/transaction';
+import { TransactionRunner } from '../services/transaction';
 import { getTestRunFinalResult } from '../utils/get-final-test-result';
+import { BaseRepository } from './base-repository';
 
 export type TestRunSummary = TestRun & {
 	finalResult: TestRunFinalResult | null;
 };
 
 @Service()
-export class TestRunRepository extends Repository<TestRun> {
-	constructor(dataSource: DataSource) {
-		super(TestRun, dataSource.manager);
+export class TestRunRepository extends BaseRepository<TestRun> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(TestRun, dataSource.manager, transactionRunner);
 	}
 
 	async createTestRun(
@@ -54,9 +57,26 @@ export class TestRunRepository extends Repository<TestRun> {
 		return await this.update(id, { status: 'completed', completedAt: new Date(), metrics });
 	}
 
-	async markAsCancelled(id: string, trx?: EntityManager) {
-		trx = trx ?? this.manager;
-		return await trx.update(TestRun, id, { status: 'cancelled', completedAt: new Date() });
+	async markAsCancelled(id: string, ctx: OperationContext = {}) {
+		return await this.managerFor(ctx).update(TestRun, id, {
+			status: 'cancelled',
+			completedAt: new Date(),
+		});
+	}
+
+	/**
+	 * Multi-main race guard: flips a run to `cancelled` only while it is still
+	 * `new` or `running`, so a cancel that lands after another main already
+	 * finished the run does not overwrite the terminal state. Returns whether
+	 * a row flipped.
+	 */
+	async markAsCancelledIfActive(id: string, ctx: OperationContext = {}): Promise<boolean> {
+		const result = await this.managerFor(ctx).update(
+			TestRun,
+			{ id, status: In(['new', 'running']) },
+			{ status: 'cancelled', completedAt: new Date() },
+		);
+		return (result.affected ?? 0) > 0;
 	}
 
 	async markAsError(id: string, errorCode: TestRunErrorCode, errorDetails?: IDataObject) {

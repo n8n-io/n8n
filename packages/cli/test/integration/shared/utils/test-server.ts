@@ -420,6 +420,10 @@ export const setupTestServer = ({
 						await import('@/controllers/security-settings.controller.js');
 						break;
 
+					case 'public-api-rate-limit-settings':
+						await import('@/controllers/public-api-rate-limit-settings.controller.js');
+						break;
+
 					case 'third-party-licenses':
 						await import('@/controllers/third-party-licenses.controller.js');
 						break;

@@ -69,6 +69,9 @@ function formatTimelineEvent(event: TimelineEvent, execution: AgentSessionTurn):
 	if (event.type === 'hitl-response') {
 		return `Human response: ${stringifyToolValue(event.response)}`;
 	}
+	if (event.type === 'guardrail') {
+		return `[stopped by guardrail ${event.code}]`;
+	}
 	const durationMs = event.endTime > 0 ? event.endTime - event.startTime : null;
 	const headerParts = [
 		`Tool call: ${event.name}`,

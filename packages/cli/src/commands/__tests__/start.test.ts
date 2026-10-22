@@ -12,6 +12,7 @@ import https from 'node:https';
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { Start } from '../start';
 import { WaitTracker } from '@/wait-tracker';
+import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { AbstractServer } from '@/abstract-server';
@@ -85,6 +86,11 @@ taskRunnerModule.start.mockResolvedValue(undefined);
 const pollJobProvider = mockInstance(PollJobProvider);
 
 const instanceSettings = Container.get(InstanceSettings);
+
+const { FakeRunDataTracker } = vi.hoisted(() => ({ FakeRunDataTracker: class {} }));
+vi.mock('@/memory-guard/run-data-tracker', () => ({
+	RunDataTracker: FakeRunDataTracker,
+}));
 
 describe('Start - AuthRolesService initialization', () => {
 	let start: Start;
@@ -169,6 +175,7 @@ describe('Start - AuthRolesService initialization', () => {
 			outboundProxy: { mode: 'all' },
 			expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
 			workflows: { useWorkflowPublicationService: false },
+			memoryGuard: { enabled: false },
 		};
 		// @ts-expect-error - Accessing protected method for testing
 		start.initCrashJournal = vi.fn().mockResolvedValue(undefined);
@@ -230,6 +237,7 @@ describe('Start - AuthRolesService initialization', () => {
 				outboundProxy: { mode: 'all' },
 				expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
 				workflows: { useWorkflowPublicationService: false },
+				memoryGuard: { enabled: false },
 			};
 
 			await start.init();
@@ -268,6 +276,7 @@ describe('Start - AuthRolesService initialization', () => {
 				outboundProxy: { mode: 'all' },
 				expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
 				workflows: { useWorkflowPublicationService: false },
+				memoryGuard: { enabled: false },
 			};
 
 			await start.init();
@@ -316,6 +325,7 @@ describe('Start - AuthRolesService initialization', () => {
 			outboundProxy: { mode: 'all' },
 			expressionEngine: { engine: 'legacy' as const, poolSize: 1, maxCodeCacheSize: 1024 },
 			workflows: { useWorkflowPublicationService: false },
+			memoryGuard: { enabled: false },
 		};
 
 		beforeEach(() => {
@@ -385,6 +395,51 @@ describe('Start - AuthRolesService initialization', () => {
 
 			// Followers only retry via reload; leaders should fail immediately
 			expect(license.reload).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('init - memory guard', () => {
+		// The tracker module stays cached after its first import, so check that it is
+		// resolved, not that it is imported.
+		let containerGet: MockInstance<typeof Container.get>;
+
+		beforeEach(() => {
+			setupInstanceSettings('main', false, false);
+			Container.set(FakeRunDataTracker, new FakeRunDataTracker());
+			containerGet = vi.spyOn(Container, 'get');
+		});
+
+		afterEach(() => {
+			containerGet.mockRestore();
+		});
+
+		it('should start the run data tracker when the guard is enabled in regular mode', async () => {
+			// @ts-expect-error - Accessing protected property for testing
+			start.globalConfig.memoryGuard = { enabled: true };
+
+			await start.init();
+
+			expect(containerGet).toHaveBeenCalledWith(FakeRunDataTracker);
+		});
+
+		it('should not start the run data tracker when the guard is disabled', async () => {
+			await start.init();
+
+			expect(containerGet).not.toHaveBeenCalledWith(FakeRunDataTracker);
+		});
+
+		it('should not start the run data tracker in queue mode, and should warn', async () => {
+			// @ts-expect-error - Accessing protected property for testing
+			start.globalConfig.memoryGuard = { enabled: true };
+			// @ts-expect-error - Accessing protected property for testing
+			start.globalConfig.executions = { mode: 'queue' };
+			// @ts-expect-error - Accessing protected property for testing
+			const warn = vi.spyOn(start.logger, 'warn');
+
+			await start.init();
+
+			expect(containerGet).not.toHaveBeenCalledWith(FakeRunDataTracker);
+			expect(warn).toHaveBeenCalledWith('Memory guard supports only regular mode, so it stays off');
 		});
 	});
 

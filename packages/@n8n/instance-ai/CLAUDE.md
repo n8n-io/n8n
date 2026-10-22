@@ -23,7 +23,6 @@ Read these docs before starting any implementation:
 - `docs/streaming-protocol.md` — canonical event schema, SSE transport, replay rules
 - `docs/tools.md` — tool reference, orchestration tools, domain tools, tool distribution
 - `docs/memory.md` — memory tiers, scoping model, sub-agent memory
-- `docs/filesystem-access.md` — filesystem architecture, gateway protocol, security model
 - `docs/sandboxing.md` — Daytona/local sandbox providers, workspace lifecycle, builder loop
 - `docs/configuration.md` — environment variables, minimal setup, storage, event bus
 
