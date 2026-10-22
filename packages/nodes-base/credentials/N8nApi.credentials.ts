@@ -45,5 +45,17 @@ export class N8nApi implements ICredentialType {
 			baseURL: '={{ $credentials.baseUrl }}',
 			url: '/credentials/schema/n8nApi',
 		},
+		rules: [
+			// A Base URL without `/api/v1` reaches the editor UI, which answers with HTML and a 200
+			{
+				type: 'responseSuccessBody',
+				properties: {
+					key: 'type',
+					value: undefined,
+					message:
+						'The Base URL does not point to the n8n API. Make sure it includes the API path, for example /api/v1.',
+				},
+			},
+		],
 	};
 }
