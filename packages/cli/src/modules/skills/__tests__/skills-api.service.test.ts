@@ -618,8 +618,14 @@ describe('SkillsApiService', () => {
 				undefined,
 				TX_CTX,
 				// The move is refused under its lock if the skill left the scope checked here.
-				{ nameAfterMove: undefined, checkedSource: { projectId: null, agentId: null } },
+				// A refusal names only the agents in projects the user may read.
+				{
+					nameAfterMove: undefined,
+					checkedSource: { projectId: null, agentId: null },
+					agentProjectIds: ['project-1'],
+				},
 			);
+			expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(user, ['agent:read']);
 			expect(skillService.save).toHaveBeenCalledWith(
 				'skill_a',
 				{ baseSkillHash: 'base' },
@@ -638,6 +644,24 @@ describe('SkillsApiService', () => {
 			// The move runs first, so the save checks a rename in the new scope.
 			expect(skillService.changeTarget.mock.invocationCallOrder[0]).toBeLessThan(
 				skillService.save.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('lets a move refusal name every agent for a user who may read all agents', async () => {
+			vi.mocked(hasGlobalScope).mockReturnValue(true);
+			projectScopeService.getProjectIds.mockResolvedValue(null);
+			skillService.save.mockResolvedValue(saved);
+			skillService.assertCanMove.mockResolvedValue({ projectId: 'project-1', agentId: null });
+			visible = [skill('skill_a', { projectId: 'project-1' })];
+
+			await service.update(user, 'skill_a', update({ scope: 'instance', baseSkillHash: 'base' }));
+
+			expect(skillService.changeTarget).toHaveBeenCalledWith(
+				'skill_a',
+				{ projectId: null, agentId: null },
+				undefined,
+				TX_CTX,
+				expect.objectContaining({ agentProjectIds: 'all' }),
 			);
 		});
 
