@@ -6,6 +6,7 @@ import { resolvePromptProfile } from '../../prompts/prompt-profiles';
 import { ALWAYS_LOADED_TOOL_NAMES } from '../../tools/tool-ids';
 import {
 	INSTANCE_AI_SKILLS_DIR,
+	LEGACY_SKILL_IDS,
 	loadInstanceAiPromptSkills,
 	loadInstanceAiSkills,
 } from '../skills';
@@ -194,6 +195,15 @@ describe('Instance AI skills', () => {
 		expect(
 			skillLoadText(await createSkillLoadTool(source).handler?.({ skillId: 'agent-builder' }, {})),
 		).toContain('- "credential-setup-with-computer-use": ');
+	});
+
+	it('maps every legacy skill id to a bundled skill', () => {
+		const ids = new Set(loadInstanceAiSkills().registry.skills.map(({ id }) => id));
+
+		for (const [legacy, current] of Object.entries(LEGACY_SKILL_IDS)) {
+			expect(ids.has(legacy)).toBe(false);
+			expect(ids.has(current)).toBe(true);
+		}
 	});
 
 	it('loads the bundled data-table-manager skill and its linked files', async () => {

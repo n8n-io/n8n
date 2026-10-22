@@ -13,7 +13,9 @@ import {
 	SAVE_USER_PREFERENCE_DESCRIPTION,
 } from '../save-user-preference.tool';
 
-const DESCRIPTION = 'Save a preference that applies to this user across conversations.';
+const DESCRIPTION =
+	'Save a preference that applies to this user across conversations. ' +
+	'If it conflicts with a preference already saved, say so and let the user decide.';
 
 const saved: InstanceAiPreferenceWriteResult = {
 	ok: true,

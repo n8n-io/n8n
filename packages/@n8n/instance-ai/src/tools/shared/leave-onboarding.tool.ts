@@ -12,7 +12,9 @@ import { DOMAIN_TOOL_IDS } from '../tool-ids';
 export function createLeaveOnboardingTool() {
 	return (
 		new Tool(DOMAIN_TOOL_IDS.LEAVE_ONBOARDING)
-			.description('End the onboarding flow.')
+			.description(
+				'End the onboarding flow. Not needed before a build: a build ends the onboarding by itself.',
+			)
 			.input(
 				z.object({
 					// ponytail: optional, so a call without a reason still ends the onboarding.

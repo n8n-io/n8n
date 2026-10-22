@@ -23,11 +23,25 @@ function substituteSkillPlaceholders(instructions: string): string {
 	);
 }
 
+/** Persisted threads can still name skills by these retired ids. */
+export const LEGACY_SKILL_IDS: Readonly<Record<string, string>> = {
+	'suggest-automations': 'automation-suggester',
+	'debugging-executions': 'execution-debugger',
+	'progressive-building': 'incremental-builder',
+	'instance-awareness': 'instance-explorer',
+	'intent-recognition': 'intent-classifier',
+	'planned-task-runtime': 'planned-task-runner',
+	planning: 'task-planner',
+};
+
 /** Bundled Assistant skills, including the fragments that prompt profiles append. */
 export function loadInstanceAiSkills(): RuntimeSkillSource {
-	cachedSkills ??= loadRuntimeSkillSourceFromDirectory(INSTANCE_AI_SKILLS_DIR, {
-		transformInstructions: substituteSkillPlaceholders,
-	});
+	cachedSkills ??= {
+		...loadRuntimeSkillSourceFromDirectory(INSTANCE_AI_SKILLS_DIR, {
+			transformInstructions: substituteSkillPlaceholders,
+		}),
+		legacySkillIds: LEGACY_SKILL_IDS,
+	};
 	return cachedSkills;
 }
 

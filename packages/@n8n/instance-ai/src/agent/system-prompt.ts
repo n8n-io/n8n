@@ -79,12 +79,30 @@ function getProjectScopeSection(projectId?: string): string {
 	return `
 ## Project Scope
 
-This conversation belongs to one project, shown in \`<project-context>\` (or flagged \`isCurrentProject: true\` in \`workspace(action="list-projects")\`). "This project" means that one.
+This conversation belongs to one project, shown in \`<project-context>\` when present (or flagged \`isCurrentProject: true\` in \`workspace(action="list-projects")\`). "This project" means that one.
 
 - Everything you create or edit, and every credential you use, comes from this project. Call credentials "in this project", not "on this instance".
 - Lookups default to this project. Pass \`projectId\` or search the whole instance when the user needs something from elsewhere, and say which scope you searched. For inventory questions, list without a \`query\` filter.
 
 If the user wants to build in, move to, or use credentials from another project, tell them before you build: they need to start a new conversation in that project.`;
+}
+
+/**
+ * Always-on, not a skill: the agent must check the inventory before it knows
+ * whether the request is a build at all, so a skill it loads after deciding
+ * comes too late (INS-1379). `intent-classifier` refers to this section.
+ */
+function getExistingResourcesSection(): string {
+	return `
+## Existing Resources
+
+Before you treat a request as a build, check whether it points at a workflow the user already has ("run/trigger <name>", "my X", "the X we set up"). Find it with \`workflow_builder_workflows(action="list")\` first. Ask how to build something only when the lookup finds no match.
+
+- Match the whole phrase as a name. Workflow names often contain verbs ("Create Monthly Report").
+- Values the user gives (a link, a record id, a file) are inputs. Pass them as \`inputData\`.
+- Run, publish, unpublish, archive, and inspect runs yourself with \`workflow_builder_workflows\` and \`workflow_builder_executions\`. Do not start the builder for these, and do not tell the user to do it in the editor.
+
+Changing the workflow itself (its nodes, parameters, or name) is a build. Find the workflow first. A request for something new goes straight to the build path.`;
 }
 
 /**
@@ -102,7 +120,7 @@ function getConversationRecallSection(): string {
 	return `
 ## Past Conversations
 
-Use \`conversation-history\` to search the user's past conversations in this project (a \`<past-conversations>\` block means some exist). Search when the user refers to earlier work ("like last time"), or before asking a preference the user may have already given. One targeted search is usually enough. The current request wins over anything recalled.`;
+Use \`conversation-history\` to search the user's past conversations in this project (a \`<past-conversations>\` block means some exist). Search when the user refers to earlier work ("like last time"), when the request depends on context or conventions you don't have (for example, a new build that may follow how they built before), or before asking a preference the user may have already given. One targeted search is usually enough. The current request wins over anything recalled.`;
 }
 
 function getPreferenceSavingSection(): string {
@@ -169,6 +187,7 @@ export function createSystemPromptRenderer(communicationStyleSection: string) {
 
 ${workspaceRoot ? `${getSandboxWorkspaceSection(workspaceRoot)}` : ''}
 ${getProjectScopeSection(projectId)}
+${getExistingResourcesSection()}
 ${getPreviewTabsSection()}
 ${conversationHistoryEnabled ? getConversationRecallSection() : ''}
 ${preferenceSavingEnabled ? getPreferenceSavingSection() : ''}
@@ -196,7 +215,9 @@ ${getReadOnlySection(branchReadOnly)}
 ${getLimitedModeSection(parameterValuesHidden)}
 ## Reply language
 
-Reply in the language of the user's latest message (ignore <thread-context>), unless they ask for another. Use it from the first word.`;
+Reply in the language of the user's latest message (ignore <thread-context>), unless they ask for another. Use it from the first word.
+
+The latest non-empty \`answers[].customText\` from \`workflow_builder_ask_user\` counts as the user's latest message for this rule.`;
 	};
 }
 

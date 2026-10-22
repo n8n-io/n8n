@@ -7,7 +7,10 @@ dependencies:
     - workflow_builder_workflows
     - workflow_builder_executions
 description: >-
-  Use when building or extending a workflow, to deliver it one tested step at a time.
+  Use when the user wants a new workflow or a change to an existing one, including
+  its credentials, evaluations, verification, and repairs. Load it before
+  workflow_builder_build_workflow. Delivers the workflow one tested step at a
+  time. Not for running or inspecting existing workflows.
 ---
 
 # Progressive building

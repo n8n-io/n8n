@@ -1,7 +1,9 @@
 ---
 name: execution-debugger
 description: >-
-  Use when a workflow run failed or produced wrong or empty output, before explaining the cause.
+  Use when a workflow run failed or produced wrong or empty output, when a node
+  shows a red expression error, or when a live run you started fails with a node
+  or service error (for example a 401). Load it before you explain the cause.
 ---
 
 # Debugging Executions

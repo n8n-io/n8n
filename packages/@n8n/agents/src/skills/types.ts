@@ -192,6 +192,11 @@ export interface RuntimeSkillSource {
 	prepare?: () => Promise<void>;
 	loadSkill: RuntimeSkillLoader;
 	loadFile?: RuntimeSkillFileLoader;
+	/**
+	 * Maps retired skill ids to their current ids. Restoring a thread reads
+	 * persisted ids, so a renamed skill stays active after an upgrade.
+	 */
+	legacySkillIds?: Readonly<Record<string, string>>;
 }
 
 export interface RuntimeSkillStateScope {

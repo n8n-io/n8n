@@ -185,6 +185,20 @@ describe('active skills', () => {
 		expect(active.instructions()).toContain('Build one workflow.');
 	});
 
+	it('restores a renamed skill from its legacy id', async () => {
+		const list = new AgentMessageList();
+		list.activeSkillIds = ['old-builder'];
+		const active = new ActiveSkills(
+			{ ...source, legacySkillIds: { 'old-builder': 'builder' } },
+			'assistant',
+		);
+
+		await active.restore(list);
+
+		expect(active.instructions()).toContain('Build one workflow.');
+		expect(list.activeSkillIds).toEqual(['builder']);
+	});
+
 	it('persists checkpoint skills when they differ from stored state', async () => {
 		const memory = new InMemoryMemory();
 		await memory.skillState.save({ ...scope, agentName: 'assistant' }, ['planning']);

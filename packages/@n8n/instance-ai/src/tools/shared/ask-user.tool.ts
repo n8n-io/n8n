@@ -50,7 +50,14 @@ export const askUserResumeSchema = z.object({
 export function createAskUserTool() {
 	return new Tool(ASK_USER_TOOL_ID)
 		.legacyNames(...getLegacyBuilderToolNames(ASK_USER_TOOL_ID))
-		.description('Ask the user questions and wait for their answers.')
+		.description(
+			'Ask the user questions and wait for their answers. ' +
+				'When the request does not yet say what to build (no trigger, no steps, no named workflow or Agent), ' +
+				'ask about the goal: the result the user wants, whether it happens once now or keeps running, and ' +
+				'whether people chat with it. Do not call it a workflow or an Agent yet, and do not ask about triggers or nodes. ' +
+				'The UI adds a "Something else" input to every select question, so never add catch-all options ' +
+				'("Other", "None of the above") to `options`.',
+		)
 		.input(askUserInputSchema)
 		.output(
 			z.object({

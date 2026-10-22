@@ -579,6 +579,15 @@ async function handleStop(context: InstanceAiContext, input: Extract<Input, { ac
 
 // ── Tool factory ───────────────────────────────────────────────────────────
 
+/**
+ * Appended to every description, a custom one too: each caller reads
+ * executions redacted for its user.
+ */
+const REDACTED_RESULT_GUIDANCE =
+	' A result with `redaction` set has no output items because n8n hides that ' +
+	'execution data from this user. Tell the user so. Do not read the empty result as a bug, ' +
+	'and do not try to get the data another way.';
+
 export function createExecutionsTool(
 	context: InstanceAiContext,
 	options: ExecutionsToolOptions = {},
@@ -588,7 +597,10 @@ export function createExecutionsTool(
 	return new Tool(DOMAIN_TOOL_IDS.EXECUTIONS)
 		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.EXECUTIONS))
 		.description(
-			options.description ?? 'Run workflows and inspect, debug, and stop their executions.',
+			(options.description ??
+				'Run workflows and inspect, debug, and stop their executions. ' +
+					'To run an existing workflow, find it with `workflow_builder_workflows(action="list")`, ' +
+					'then use action="run" with the user\'s values as inputData.') + REDACTED_RESULT_GUIDANCE,
 		)
 		.input(inputSchema)
 		.suspend(suspendSchema)

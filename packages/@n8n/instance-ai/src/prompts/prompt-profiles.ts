@@ -15,7 +15,8 @@ export interface PromptProfile {
 }
 
 export const DEFAULT_PROMPT_VERSION = 'default@1';
-export const PROGRESSIVE_PROMPT_VERSION = 'progressive@1';
+export const PROGRESSIVE_PROMPT_VERSION = 'progressive@2';
+const LEGACY_PROGRESSIVE_PROMPT_VERSION = 'progressive@1';
 export const CONCISE_PROMPT_VERSION = 'concise@1';
 
 const SYSTEM_PROMPT_VERSION = 'instance-agent@1';
@@ -31,6 +32,16 @@ const progressiveBuilding: SkillVariant = {
 	disabledTools: [ORCHESTRATION_TOOL_IDS.CREATE_TASKS],
 };
 
+/**
+ * `progressive@1` predates the skill renames. Its fragment skill no longer exists
+ * under the old id, so it keeps its variant id and reads the renamed skills.
+ * Threads that persisted it stay in progressive mode instead of falling back.
+ */
+const legacyProgressiveBuilding: SkillVariant = {
+	...progressiveBuilding,
+	id: 'progressive-building@1',
+};
+
 /** Published versions are immutable. Add a new entry to change a profile. */
 export const INSTANCE_AI_PROMPT_PROFILES: readonly PromptProfile[] = [
 	{
@@ -38,6 +49,12 @@ export const INSTANCE_AI_PROMPT_PROFILES: readonly PromptProfile[] = [
 		mode: 'default',
 		systemPromptVersion: SYSTEM_PROMPT_VERSION,
 		variants: [],
+	},
+	{
+		version: LEGACY_PROGRESSIVE_PROMPT_VERSION,
+		mode: 'progressive',
+		systemPromptVersion: SYSTEM_PROMPT_VERSION,
+		variants: [legacyProgressiveBuilding],
 	},
 	{
 		version: PROGRESSIVE_PROMPT_VERSION,

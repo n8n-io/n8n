@@ -67,7 +67,8 @@ export class ActiveSkills {
 				...this.stampedActivations(list).map(([, skillId]) => skillId),
 			];
 		const registered = new Set(this.source.registry.skills.map(({ id }) => id));
-		for (const id of new Set(ids)) {
+		const legacy = this.source.legacySkillIds ?? {};
+		for (const id of new Set(ids.map((stored) => legacy[stored] ?? stored))) {
 			if (!registered.has(id)) continue;
 			const skill = await this.source.loadSkill(id);
 			if (skill) this.loaded.set(id, skill);

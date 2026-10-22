@@ -34,11 +34,19 @@ describe('prompt profiles', () => {
 			'incremental-builder@1',
 		);
 		expect(describePromptProfile(selected, result.source)).toEqual({
-			version: 'progressive@1',
+			version: 'progressive@2',
 			systemPromptVersion: 'instance-agent@1',
 			skillVariants: ['incremental-builder@1'],
 			skillsHash: result.source.registry.skillsHash,
 		});
+	});
+
+	it('keeps progressive@1 in progressive mode under its original variant id', () => {
+		const legacy = resolvePromptProfile({ version: 'progressive@1' });
+
+		expect(legacy.fallbackFrom).toBeUndefined();
+		expect(legacy.profile.mode).toBe('progressive');
+		expect(legacy.profile.variants.map(({ id }) => id)).toEqual(['progressive-building@1']);
 	});
 
 	it('honors explicit versions before mode and reports retired-version fallback', () => {

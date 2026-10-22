@@ -606,7 +606,11 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 	return new Tool(DOMAIN_TOOL_IDS.BUILD_WORKFLOW)
 		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.BUILD_WORKFLOW))
-		.description('Build and save a workflow from TypeScript SDK source.')
+		.description(
+			'Build and save a workflow from TypeScript SDK source. ' +
+				'Load `workflow-builder` via `load_skill` before you call this tool. ' +
+				'When the workflow creates or writes Data Tables, load `data-table-manager` first.',
+		)
 		.input(pickBuildWorkflowInputSchema(context))
 		.output(pickBuildWorkflowOutputSchema(context))
 		.suspend(confirmationSuspendSchema)

@@ -165,7 +165,8 @@ async function handleGetMessages(
 
 // ── Tool factory ─────────────────────────────────────────────────────────────
 
-const DESCRIPTION = "Search and read the user's past conversations in this project. Read-only.";
+const DESCRIPTION =
+	"Search and read the user's past conversations in this project. The current conversation is excluded. Read-only.";
 
 export function createConversationHistoryTool(context: InstanceAiContext) {
 	return new Tool(DOMAIN_TOOL_IDS.CONVERSATION_HISTORY)

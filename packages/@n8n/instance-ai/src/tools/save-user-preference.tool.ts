@@ -8,7 +8,8 @@ import { DOMAIN_TOOL_IDS } from './tool-ids';
 
 /** A requirement, not prose: a test pins this string verbatim. Change it on purpose. */
 export const SAVE_USER_PREFERENCE_DESCRIPTION =
-	'Save a preference that applies to this user across conversations.';
+	'Save a preference that applies to this user across conversations. ' +
+	'If it conflicts with a preference already saved, say so and let the user decide.';
 
 const inputSchema = z.object({
 	content: z

@@ -97,7 +97,9 @@ const mcpServersOutputSchema = z.union([
 ]);
 
 const DESCRIPTION =
-	"Manage the user's MCP servers: connections to third-party services that give you tools to use in this conversation.";
+	"Manage the user's MCP servers: connections to third-party services that give you tools to use in this conversation. " +
+	'Use them to read or act on a service now. They are not workflow credentials or workflow nodes, so do not build a workflow for that. ' +
+	'Before you say a service is unavailable, check `connected` and `search`.';
 
 const NOTHING_CONNECTED_HINT =
 	'Nothing connected. Only the user can connect a server: `search` for it, then `connect` it.';

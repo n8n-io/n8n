@@ -250,7 +250,10 @@ async function handleFetchUrl(
 
 export function createResearchTool(context: InstanceAiContext) {
 	return new Tool('research')
-		.description('Search the web and fetch page content for information outside n8n.')
+		.description(
+			'Search the web and fetch page content for information outside n8n. ' +
+				'For n8n questions, prefer `n8n-docs`, which is always loaded, over web search.',
+		)
 		.input(inputSchema)
 		.suspend(domainGatingSuspendSchema)
 		.resume(domainGatingResumeSchema)
