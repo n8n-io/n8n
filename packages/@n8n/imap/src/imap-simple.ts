@@ -361,7 +361,8 @@ export class ImapSimple {
 
 			try {
 				await withTimeout(this.reopen(attempt), this.reconnectTimeout);
-				this.spentTries = tries + 1;
+				// A planned replace that held is no sign of an outage; only its failed dials count.
+				this.spentTries = planned ? tries : tries + 1;
 				return;
 			} catch (error) {
 				// Another restore has taken over, or the caller is gone: either way this one is

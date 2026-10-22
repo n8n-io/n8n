@@ -346,8 +346,11 @@ describe('reconnecting', () => {
 			const connection = await openWatching(createTransport);
 			connection.onError(vi.fn()).onClose(onClose).onArrival(vi.fn());
 
-			await vi.advanceTimersByTimeAsync(ALL_BACKOFF + 1000);
+			// The first redial goes out at once; the next waits out a second of backoff.
+			await vi.advanceTimersByTimeAsync(900);
+			expect(createTransport).toHaveBeenCalledTimes(2);
 
+			await vi.advanceTimersByTimeAsync(ALL_BACKOFF);
 			expect(createTransport).toHaveBeenCalledTimes(1 + 6);
 			expect(onClose).toHaveBeenCalledExactlyOnceWith(
 				'dropped',
@@ -608,6 +611,22 @@ describe('reconnecting', () => {
 			expect(first.close).toHaveBeenCalled();
 			expect(onReconnect).toHaveBeenCalledTimes(1);
 			expect(second.mailboxOpen).toHaveBeenCalledWith('INBOX');
+		});
+
+		it('redials at once when the server drops right after a replace', async () => {
+			const [first, second, third] = [
+				new FakeTransport(),
+				new FakeTransport(),
+				new FakeTransport(),
+			];
+
+			await openWatching(handOut(first, second, third), { interval: REPLACE_INTERVAL });
+			await vi.advanceTimersByTimeAsync(REPLACE_INTERVAL + 1);
+
+			second.emit('close');
+			await vi.advanceTimersByTimeAsync(1);
+
+			expect(third.mailboxOpen).toHaveBeenCalledWith('INBOX');
 		});
 
 		it('does not let a slow replace stack up behind the next tick', async () => {
