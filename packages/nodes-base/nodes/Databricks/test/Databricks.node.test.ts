@@ -284,6 +284,22 @@ describe('Databricks', () => {
 			);
 		});
 
+		it('should surface the Lakebase operation and locators when the resource is selected', () => {
+			const { description } = new Databricks();
+
+			const result = NodeHelpers.getNodeParameters(
+				description.properties,
+				{ resource: 'lakebase' },
+				true,
+				false,
+				node,
+				description,
+			);
+
+			expect(result?.operation).toBe('getAll');
+			expect(result).toHaveProperty('lakebaseProject');
+		});
+
 		it('should keep the Lakebase locators scoped to the lakebase resource', () => {
 			const { description } = new Databricks();
 
