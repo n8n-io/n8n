@@ -16,6 +16,9 @@ import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotions
 
 type ShellSettingsItem = IMenuSettingItem & { order: number };
 
+/** Registered by the instance AI module for its Assistant settings page. */
+const ASSISTANT_SETTINGS_ITEM_ID = 'settings-instance-ai';
+
 /**
  * Links without a `section` form the `general` group: it has no heading and is listed first.
  * The other groups follow in the order of `SETTINGS_SECTION_ORDER`.
@@ -51,6 +54,12 @@ export function useSettingsItems() {
 	const { isEnabled: isPromotionsEnabled } = usePromotionsEnabled();
 	const { balance } = useAiGateway();
 	const { openTopUp } = useAiGatewayTopUp();
+
+	const hasAssistantSettingsPage = computed(() =>
+		uiStore.settingsSidebarItems.some(
+			(item) => item.id === ASSISTANT_SETTINGS_ITEM_ID && item.available,
+		),
+	);
 
 	const settingsItems = computed<IMenuSettingItem[]>(() => {
 		// `order` is the row inside the section, in steps of ten so a module can slot in between.
@@ -104,6 +113,8 @@ export function useSettingsItems() {
 			// Features come first, then the cross-cutting AI usage controls. Chat is last
 			// because it is on its way out.
 			{
+				// The Assistant page carries the AI usage controls in its "Data sent to the
+				// model" section, so the standalone page is only listed when that page is not.
 				id: 'settings-ai',
 				order: 50,
 				section: 'ai',
@@ -111,7 +122,9 @@ export function useSettingsItems() {
 				label: i18n.baseText('settings.ai'),
 				position: 'top',
 				available:
-					settingsStore.isAiAssistantEnabled && canUserAccessRouteByName(VIEWS.AI_SETTINGS),
+					settingsStore.isAiAssistantEnabled &&
+					canUserAccessRouteByName(VIEWS.AI_SETTINGS) &&
+					!hasAssistantSettingsPage.value,
 				route: { to: { name: VIEWS.AI_SETTINGS } },
 			},
 			{

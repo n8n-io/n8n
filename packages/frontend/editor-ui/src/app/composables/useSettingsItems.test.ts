@@ -125,7 +125,6 @@ describe('useSettingsItems', () => {
 				'settings-instance-ai',
 				'settings-agents',
 				'settings-context',
-				'settings-ai',
 				'settings-chat-hub',
 				'settings-api',
 				'settings-community-nodes',
@@ -175,7 +174,6 @@ describe('useSettingsItems', () => {
 						'settings-instance-ai',
 						'settings-agents',
 						'settings-context',
-						'settings-ai',
 						'settings-chat-hub',
 					],
 				},
@@ -291,6 +289,34 @@ describe('useSettingsItems', () => {
 
 			expect(ids.indexOf('settings-second')).toBe(ids.indexOf('settings-first') + 1);
 			expect(ids.indexOf('settings-fourth')).toBe(ids.indexOf('settings-third') + 1);
+		});
+	});
+
+	describe('the AI usage item', () => {
+		const idsOf = () => useSettingsItems().settingsItems.value.map(({ id }) => id);
+
+		it('is listed when the Assistant settings page is not', () => {
+			isAiAssistantEnabled.value = true;
+
+			expect(idsOf()).toContain('settings-ai');
+		});
+
+		it('gives way to the Assistant settings page, which carries the same controls', () => {
+			isAiAssistantEnabled.value = true;
+			settingsSidebarItems.value = [
+				{ id: 'settings-instance-ai', available: true, order: 20, section: 'ai' },
+			];
+
+			expect(idsOf()).not.toContain('settings-ai');
+		});
+
+		it('stays listed while the Assistant settings page is unavailable', () => {
+			isAiAssistantEnabled.value = true;
+			settingsSidebarItems.value = [
+				{ id: 'settings-instance-ai', available: false, order: 20, section: 'ai' },
+			];
+
+			expect(idsOf()).toContain('settings-ai');
 		});
 	});
 
