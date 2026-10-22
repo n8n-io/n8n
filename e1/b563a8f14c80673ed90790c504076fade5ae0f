@@ -1,0 +1,48 @@
+packages/cli/src/modules/promotions.ee/promotion-review-gate.service.ts
+  s_a8967635a0a747::t_8fef4b0450f878 1-65,69-99
+  s_a8967635a0a747::t_4ba8b61446104b 66-68
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review-inbox.service.test.ts
+  s_a8967635a0a747::t_da1a7c8e0ace78 1-48,57-59,61-169
+  s_a8967635a0a747::t_28b3d2dcb110f7 49,51,56
+  s_a8967635a0a747::t_fe47dbbbdcebe5 50,52-55,60
+packages/cli/src/modules/promotions.ee/git-hosts/gitlab-merge-request.client.ts
+  s_a8967635a0a747::t_d6168bcb28d3ad 70,121,126,142,156
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_a8967635a0a747::t_21006942190e7f 79-80,82,151-152,183-201
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review-gate.service.test.ts
+  s_a8967635a0a747::t_28b3d2dcb110f7 19,21,30
+  s_a8967635a0a747::t_14ff20b33afe8c 1-18,20,22-29,31-192
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-review.repository.ts
+  s_a8967635a0a747::t_f03477e1422d3d 47-55
+packages/cli/src/modules/promotions.ee/__tests__/promotion-change-gate.test.ts
+  s_a8967635a0a747::t_857a6c9acbc47b 3,5-7,10-40,42-44,49-102,106-110
+  s_a8967635a0a747::t_7d635800d0f85d 4,41,45-48
+  s_a8967635a0a747::t_d1f1d42c3c9a69 1,8-9
+  s_a8967635a0a747::t_4ba8b61446104b 2,103-105
+packages/@n8n/api-types/src/dto/promotions/promotion-run.dto.ts
+  s_a8967635a0a747::t_5cc266894c976b 19-20
+packages/cli/src/modules/promotions.ee/git-hosts/__tests__/gitlab-merge-request.client.test.ts
+  s_a8967635a0a747::t_3747d2236acd64 106-116
+packages/@n8n/api-types/src/dto/promotions/promotion-preview.dto.ts
+  s_a8967635a0a747::t_8665cee1ae5c8f 72-79,83
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-run.dto.test.ts
+  s_a8967635a0a747::t_3747d2236acd64 19-25
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_a8967635a0a747::t_257c86774a673e 483-484
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e1b563a8f14c80673ed90790c504076fade5ae0f",
+  "prompts": {},
+  "sessions": {
+    "s_a8967635a0a747": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8c351be2-e350-4182-9abe-9aa257c71186",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
