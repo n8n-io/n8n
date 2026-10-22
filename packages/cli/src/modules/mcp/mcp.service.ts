@@ -65,6 +65,7 @@ import {
 	MCP_CREATE_AGENT_TOOL_NAME,
 	MCP_GET_USER_PREFERENCES_TOOL_NAME,
 	MCP_PREVIEW_RENDER_REQUESTED_EVENT,
+	MCP_SKILLS_EXTENSION_FLAG,
 	USER_CALLED_MCP_TOOL_EVENT,
 } from './mcp.constants';
 import { getAllowedToolNames } from './mcp-scopes';
@@ -168,6 +169,7 @@ export type McpFeatureFlags = {
 	instanceContextEnabled: boolean;
 	/** The `get_user_preferences` tool. */
 	aiPreferencesEnabled: boolean;
+	skillsExtensionEnabled?: boolean;
 };
 
 type McpAppTelemetryResolution = {
@@ -307,6 +309,7 @@ export class McpService {
 			mcpApps: this.resolveMcpApps(mcpAppsEnabled, flags),
 			instanceContextEnabled: instanceFlag.status === 'fulfilled' && instanceFlag.value === true,
 			aiPreferencesEnabled: arePreferenceToolsEnabled(flags),
+			skillsExtensionEnabled: flags[MCP_SKILLS_EXTENSION_FLAG] === true,
 		};
 	}
 
@@ -864,6 +867,12 @@ export class McpService {
 		if (areSkillToolsAvailable(Container.get(SkillsHubRollout))) {
 			const { McpSkillToolsService } = await import('./tools/skills/skill-tools.service.js');
 			await Container.get(McpSkillToolsService).registerTools(registerIfAllowed, user);
+			if (featureFlags.skillsExtensionEnabled && (allowedToolNames?.has('get_skill') ?? true)) {
+				const { McpSkillExtensionService } = await import(
+					'./tools/skills/skill-extension.service.js'
+				);
+				Container.get(McpSkillExtensionService).register(server, user);
+			}
 		}
 
 		return server;

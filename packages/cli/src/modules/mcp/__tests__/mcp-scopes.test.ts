@@ -299,6 +299,29 @@ describe('McpService scope enforcement', () => {
 		},
 	);
 
+	it.each([
+		['the skills hub on and an API key', true, true, undefined, true],
+		['the skills hub on and skill:read', true, true, ['skill:read'], true],
+		['the skills hub on and skill:write', true, true, ['skill:write'], true],
+		['the skills hub on and no skill scope', true, true, ['workflow:read'], false],
+		['the skills hub off', false, true, undefined, false],
+		['the feature flag off', true, false, undefined, false],
+	])(
+		'declares the skills extension with %s',
+		async (_, skillsHubEnabled, skillsExtensionEnabled, grantedScopes, declared) => {
+			mockInstance(SkillsApiService);
+			mockInstance(SkillsHubRollout, { isEnabled: skillsHubEnabled });
+			const server = await buildService({
+				builderEnabled: false,
+				agentsActive: true,
+			}).getServer(user, mcpFeatureFlags({ skillsExtensionEnabled }), undefined, { grantedScopes });
+
+			expect(server.server.getCapabilities().extensions).toEqual(
+				declared ? { 'io.modelcontextprotocol/skills': {} } : undefined,
+			);
+		},
+	);
+
 	it.each([true, false])(
 		'sets all context tools and the resource from the shared flag override: %s',
 		async (enabled) => {

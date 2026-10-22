@@ -74,7 +74,11 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { registerWorkflowPreviewApp, WORKFLOW_PREVIEW_APP_URI } from '@n8n/mcp-apps/server';
 
 import { McpConfig } from '../mcp.config';
-import { MCP_DISCOVER_METHOD, MCP_PREVIEW_RENDER_REQUESTED_EVENT } from '../mcp.constants';
+import {
+	MCP_DISCOVER_METHOD,
+	MCP_PREVIEW_RENDER_REQUESTED_EVENT,
+	MCP_SKILLS_EXTENSION_FLAG,
+} from '../mcp.constants';
 import { McpService, type McpFeatureFlags } from '../mcp.service';
 import type { McpAuthContext, McpClientInfo } from '../mcp.types';
 
@@ -446,6 +450,7 @@ describe('McpService', () => {
 				mcpApps: { enabled: true, variant: 'variant' },
 				instanceContextEnabled: false,
 				aiPreferencesEnabled: false,
+				skillsExtensionEnabled: false,
 			});
 
 			expect(postHogClient.getFeatureFlags).toHaveBeenCalledTimes(1);
@@ -612,6 +617,20 @@ describe('McpService', () => {
 			});
 		});
 
+		it.each([
+			[true, true],
+			['variant', false],
+			[undefined, false],
+		])('resolves the skills extension flag %j to %j', async (value, enabled) => {
+			const postHogClient = mockInstance(PostHogClient);
+			postHogClient.getFeatureFlags.mockResolvedValue({ [MCP_SKILLS_EXTENSION_FLAG]: value });
+			const service = buildResolutionService({ postHogClient });
+
+			await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
+				skillsExtensionEnabled: enabled,
+			});
+		});
+
 		it('still queries PostHog when only some features are env-overridden', async () => {
 			const postHogClient = mockInstance(PostHogClient);
 			postHogClient.getFeatureFlags.mockResolvedValue({});
@@ -622,6 +641,7 @@ describe('McpService', () => {
 				mcpApps: { enabled: true, variant: 'env_override' },
 				instanceContextEnabled: false,
 				aiPreferencesEnabled: false,
+				skillsExtensionEnabled: false,
 			});
 
 			expect(postHogClient.getFeatureFlags).toHaveBeenCalledTimes(1);
@@ -643,6 +663,7 @@ describe('McpService', () => {
 				mcpApps: { enabled: true, variant: 'env_override' },
 				instanceContextEnabled: true,
 				aiPreferencesEnabled: true,
+				skillsExtensionEnabled: false,
 			});
 
 			expect(postHogClient.getFeatureFlags).toHaveBeenCalledTimes(1);
