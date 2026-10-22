@@ -84,7 +84,7 @@ export class OtelPublicController {
 		}
 
 		await this.settingsService.saveSettings(body);
-		await this.otelService.restart();
+		await this.otelService.applySavedSettings();
 		await this.moduleRegistry.refreshModuleSettings('otel');
 		void this.publisher.publishCommand({ command: 'reload-otel-config' });
 
