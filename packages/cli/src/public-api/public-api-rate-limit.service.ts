@@ -1,7 +1,7 @@
 import { Time } from '@n8n/constants';
 import type { Method, RateLimitAccessName } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import type { RequestHandler, Response } from 'express';
+import type { Request, RequestHandler, Response } from 'express';
 import type { AugmentedRequest, RateLimitInfo, Store } from 'express-rate-limit';
 
 import { RateLimitService } from '@/services/rate-limit.service';
@@ -49,6 +49,12 @@ const resolveAccess = (
 export class PublicApiRateLimitService {
 	private readonly allEndpointsLayers = new Map<RateLimitAccessName, Layer>();
 
+	/**
+	 * The store that counted each request in each layer. A window change can replace a layer's
+	 * store while a request is in flight, and the count must be taken back from the store that made it.
+	 */
+	private readonly countingStores = new WeakMap<Request, Map<Layer, Store>>();
+
 	constructor(
 		private readonly rateLimitSettingsService: PublicApiRateLimitSettingsService,
 		private readonly rateLimitService: RateLimitService,
@@ -88,7 +94,13 @@ export class PublicApiRateLimitService {
 				return;
 			}
 
-			const { middleware } = this.getLimiter(layer, windowSeconds * Time.seconds.toMilliseconds);
+			const { middleware, store } = this.getLimiter(
+				layer,
+				windowSeconds * Time.seconds.toMilliseconds,
+			);
+			const stores = this.countingStores.get(req) ?? new Map<Layer, Store>();
+			stores.set(layer, store);
+			this.countingStores.set(req, stores);
 			await middleware(req, res, next);
 		};
 	}
@@ -116,9 +128,11 @@ export class PublicApiRateLimitService {
 	 */
 	private enforceLimits(layers: Layer[]): RequestHandler {
 		return async (req: AugmentedRequest, res, next) => {
-			const counted = layers.flatMap(({ limiter, requestPropertyName }) => {
-				const limit: RateLimitInfo | undefined = req[requestPropertyName];
-				return limit && limiter ? [{ store: limiter.store, limit }] : [];
+			const stores = this.countingStores.get(req);
+			const counted = layers.flatMap((layer) => {
+				const limit: RateLimitInfo | undefined = req[layer.requestPropertyName];
+				const store = stores?.get(layer);
+				return limit && store ? [{ store, limit }] : [];
 			});
 			const limits = counted.map(({ limit }) => limit);
 

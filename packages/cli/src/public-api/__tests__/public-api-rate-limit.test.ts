@@ -15,6 +15,7 @@ import {
 import type { Controller } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import express from 'express';
+import { MemoryStore } from 'express-rate-limit';
 import type { Request, RequestHandler, Response } from 'express';
 import RedisMock from 'ioredis-mock';
 import { request as httpRequest } from 'node:http';
@@ -644,5 +645,52 @@ describe('Public API rate limiting across mains', () => {
 		);
 
 		expect(await sendTimes(main, 2, 'get', '/widgets')).toEqual([200, 429]);
+	});
+});
+
+describe('PublicApiRateLimitService when a window changes during a request', () => {
+	const apiKeyRequest = () =>
+		({
+			tokenGrant: { apiKeyId: 'key-1' },
+			ip: '127.0.0.1',
+			headers: {},
+			app: { get: () => false },
+		}) as unknown as Request;
+
+	it('takes back a blocked count from the store that counted it', async () => {
+		const stores: MemoryStore[] = [];
+		const storeFactory = mock<PublicApiRateLimitStoreFactory>({
+			create: () => {
+				const store = new MemoryStore();
+				stores.push(store);
+				return store;
+			},
+		});
+		const settings = rateLimitSettings({ globalReadLimit: 1, endpointReadLimit: 0 });
+		const [countEndpoint, countAllEndpoints, enforceLimits] = new PublicApiRateLimitService(
+			mock<PublicApiRateLimitSettingsService>({ settings }),
+			new RateLimitService(),
+			storeFactory,
+		).createRouteLimiters('get', '/v1/widgets');
+		const res = mock<Response>();
+		res.status.mockReturnValue(res);
+		const run = async (handler: RequestHandler, req: Request) => await handler(req, res, vi.fn());
+
+		const blocked = apiKeyRequest();
+		await run(countEndpoint, apiKeyRequest());
+		await run(countAllEndpoints, apiKeyRequest());
+		await run(countEndpoint, blocked);
+		await run(countAllEndpoints, blocked);
+
+		settings.globalReadWindowSeconds = 30;
+		await run(countAllEndpoints, apiKeyRequest());
+		const [oldStore, newStore] = stores;
+		const takeBackFromOld = vi.spyOn(oldStore, 'decrement');
+		const takeBackFromNew = vi.spyOn(newStore, 'decrement');
+		await run(enforceLimits, blocked);
+
+		expect(res.status).toHaveBeenCalledWith(429);
+		expect(takeBackFromOld).toHaveBeenCalledWith('apiKey:key-1');
+		expect(takeBackFromNew).not.toHaveBeenCalled();
 	});
 });
