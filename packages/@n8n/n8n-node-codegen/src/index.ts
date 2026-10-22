@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { format } from 'prettier';
 
 import type { Overrides } from '../../../nodes-base/nodes/N8n/v2/define-overrides';
@@ -81,7 +82,7 @@ function readBaseContract(): Contract | undefined {
 
 async function main() {
 	const { default: overrides }: { default: Overrides } = await import(
-		path.join(REPO_ROOT, OVERRIDES_FILE)
+		pathToFileURL(path.join(REPO_ROOT, OVERRIDES_FILE)).href
 	);
 	const contractPath = path.join(REPO_ROOT, CONTRACT_FILE);
 	const descriptionPath = path.join(REPO_ROOT, DESCRIPTION_FILE);

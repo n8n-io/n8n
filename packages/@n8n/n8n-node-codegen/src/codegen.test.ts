@@ -1,4 +1,4 @@
-import type { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
+import type { INodeListSearchResult, INodeProperties, INodePropertyOptions } from 'n8n-workflow';
 
 import {
 	collectMethods,
@@ -381,6 +381,77 @@ describe('n8n node codegen', () => {
 			expect(errors).toEqual([
 				'packages/nodes-base/nodes/N8n/v2/overrides.ts: "include" names "executions", which is neither a resource nor a node operation. Did you mean "execution"?',
 			]);
+		});
+	});
+
+	describe('method names', () => {
+		it('reports an unnamed load options function', () => {
+			const overrides: Overrides = {
+				rules: [
+					{ api: 'body:role', use: param({ type: 'options' }, { loadOptions: async () => [] }) },
+				],
+			};
+
+			expect(checkMethodNames(overrides)).toEqual([
+				'packages/nodes-base/nodes/N8n/v2/overrides.ts: a template passes an unnamed loadOptions function. Export a named function from methods.ts and pass it.',
+			]);
+		});
+
+		it('reports two different load options functions with the same name', () => {
+			const first = { getRoles };
+			const second = {
+				async getRoles(): Promise<INodePropertyOptions[]> {
+					return [];
+				},
+			};
+			const overrides: Overrides = {
+				rules: [
+					{ api: 'body:role', use: param({ type: 'options' }, { loadOptions: first.getRoles }) },
+					{
+						api: 'body:otherRole',
+						use: param({ type: 'options' }, { loadOptions: second.getRoles }),
+					},
+				],
+			};
+
+			expect(checkMethodNames(overrides)).toEqual([
+				'packages/nodes-base/nodes/N8n/v2/overrides.ts: two different loadOptions functions are named "getRoles". The node registers methods by name, so give each function its own name.',
+			]);
+		});
+
+		it('accepts the same function in two templates', () => {
+			const overrides: Overrides = {
+				rules: [
+					{ api: 'body:role', use: param({ type: 'options' }, { loadOptions: getRoles }) },
+					{ api: 'body:otherRole', use: param({ type: 'options' }, { loadOptions: getRoles }) },
+				],
+			};
+
+			expect(checkMethodNames(overrides)).toEqual([]);
+		});
+
+		it('accepts a load options and a list search function with the same name', () => {
+			const loader = {
+				async sameName(): Promise<INodePropertyOptions[]> {
+					return [];
+				},
+			};
+			const search = {
+				async sameName(): Promise<INodeListSearchResult> {
+					return { results: [] };
+				},
+			};
+			const overrides: Overrides = {
+				rules: [
+					{ api: 'body:role', use: param({ type: 'options' }, { loadOptions: loader.sameName }) },
+					{
+						api: 'path:workflowId',
+						use: param({ type: 'resourceLocator' }, { listSearch: search.sameName }),
+					},
+				],
+			};
+
+			expect(checkMethodNames(overrides)).toEqual([]);
 		});
 	});
 

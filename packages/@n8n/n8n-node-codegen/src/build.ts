@@ -372,13 +372,13 @@ export function checkMethodNames(config: Overrides): string[] {
 				);
 				continue;
 			}
-			const known = byName.get(method.name);
+			const known = byName.get(`${kind}:${method.name}`);
 			if (known && known !== method) {
 				errors.push(
-					`${OVERRIDES_FILE}: two different functions are named "${method.name}". The node registers methods by name, so give each function its own name.`,
+					`${OVERRIDES_FILE}: two different ${kind} functions are named "${method.name}". The node registers methods by name, so give each function its own name.`,
 				);
 			}
-			byName.set(method.name, method);
+			byName.set(`${kind}:${method.name}`, method);
 		}
 	}
 	return [...new Set(errors)];
