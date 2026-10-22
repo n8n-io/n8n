@@ -56,7 +56,7 @@ const environments = ref<Partial<Record<PromotionDirection, PromotionEnvironment
 const isInitialLoading = ref(true);
 const loadError = ref(false);
 const busy = ref<{ id: string; action: 'retry' | 'remove' }>();
-const savingProtection = ref(false);
+const protectionBusy = ref(true);
 const addButtons: Partial<Record<PromotionDirection, Element | ComponentPublicInstance | null>> =
 	{};
 
@@ -80,13 +80,21 @@ async function load() {
 	}
 }
 
+async function loadProtection() {
+	try {
+		await sourceControlStore.getPreferences();
+	} finally {
+		protectionBusy.value = false;
+	}
+}
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.promotions.title'));
-	await Promise.all([load(), sourceControlStore.getPreferences()]);
+	await Promise.all([load(), loadProtection()]);
 });
 
 async function setProtected(branchReadOnly: boolean) {
-	savingProtection.value = true;
+	protectionBusy.value = true;
 	try {
 		await sourceControlStore.updatePreferences({ branchReadOnly });
 		toast.showMessage({
@@ -96,7 +104,7 @@ async function setProtected(branchReadOnly: boolean) {
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.promotions.protected.toast.error.save'));
 	} finally {
-		savingProtection.value = false;
+		protectionBusy.value = false;
 	}
 }
 
@@ -239,7 +247,7 @@ async function remove(environment: PromotionEnvironment) {
 					<template #action>
 						<N8nSwitch
 							:model-value="sourceControlStore.preferences.branchReadOnly"
-							:disabled="savingProtection"
+							:disabled="protectionBusy"
 							:aria-label="i18n.baseText('settings.sourceControl.protected.bold')"
 							data-test-id="promotion-protected-instance-switch"
 							@update:model-value="setProtected"

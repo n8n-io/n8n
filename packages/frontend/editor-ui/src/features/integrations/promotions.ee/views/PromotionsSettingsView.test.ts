@@ -9,6 +9,7 @@ import {
 	updatePreferences,
 } from '@/features/integrations/sourceControl.ee/sourceControl.api';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import type { SourceControlPreferences } from '@/features/integrations/sourceControl.ee/sourceControl.types';
 import {
 	invalidateInstancePromotionConnection,
 	useInstancePromotionConnection,
@@ -98,13 +99,11 @@ describe('PromotionsSettingsView', () => {
 		expect(cachedEnvironments.hasApplyConfig.value).toBe(false);
 	});
 
-	it('shows the current protection state and saves a toggle as branchReadOnly only', async () => {
+	it('allows a toggle only after the current protection state loads, and saves branchReadOnly only', async () => {
 		api.fetchPromotionEnvironments.mockResolvedValue([]);
 		const sourceControlStore = useSourceControlStore();
-		vi.mocked(getPreferences).mockResolvedValue({
-			...sourceControlStore.preferences,
-			branchReadOnly: true,
-		});
+		const preferences = Promise.withResolvers<SourceControlPreferences>();
+		vi.mocked(getPreferences).mockReturnValue(preferences.promise);
 		vi.mocked(updatePreferences).mockResolvedValue({
 			...sourceControlStore.preferences,
 			branchReadOnly: false,
@@ -112,7 +111,10 @@ describe('PromotionsSettingsView', () => {
 		renderView();
 
 		const toggle = await screen.findByRole('switch', { name: 'Protected instance' });
-		await waitFor(() => expect(toggle).toBeChecked());
+		expect(toggle).toBeDisabled();
+		preferences.resolve({ ...sourceControlStore.preferences, branchReadOnly: true });
+		await waitFor(() => expect(toggle).toBeEnabled());
+		expect(toggle).toBeChecked();
 		await userEvent.click(toggle);
 
 		expect(updatePreferences).toHaveBeenCalledWith(expect.anything(), { branchReadOnly: false });
