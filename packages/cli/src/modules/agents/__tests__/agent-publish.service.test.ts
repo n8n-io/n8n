@@ -1360,7 +1360,7 @@ describe('AgentPublishService', () => {
 			agentUpdateBroadcaster,
 			ctx,
 		} = makeService();
-		const agent = makeAgent({ revision: 5, publicationRevision: 5 });
+		const agent = makeAgent({ revision: 3, publicationRevision: 5 });
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 		agentRepository.setActiveVersionFenced.mockResolvedValue(false);
 
@@ -1376,7 +1376,7 @@ describe('AgentPublishService', () => {
 		expect(agent.activeVersionId).toBeNull();
 		expect(agent.activeVersion).toBeNull();
 		expect(agent.versionId).toBe(versionId);
-		expect(agent.revision).toBe(5);
+		expect(agent.revision).toBe(3);
 	});
 
 	it('conflicts when a second publish races the same agent', async () => {
@@ -1473,13 +1473,13 @@ describe('AgentPublishService', () => {
 
 	it('passes the loaded revision as the fence expectation on publish', async () => {
 		const { service, agentRepository, ctx } = makeService();
-		const agent = makeAgent({ revision: 7, publicationRevision: 7 });
+		const agent = makeAgent({ revision: 3, publicationRevision: 7 });
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
 		await service.publishAgent(agentId, projectId, user, byUser);
 
 		expect(agentRepository.setActiveVersionFenced).toHaveBeenCalledWith(agentId, 7, versionId, ctx);
-		expect(agent.revision).toBe(7);
+		expect(agent.revision).toBe(3);
 		expect(agent.publicationRevision).toBe(8);
 		expect(agent.activeVersionId).toBe(versionId);
 	});
