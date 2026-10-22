@@ -405,7 +405,7 @@ async function handleMentionSelection(selection: AssistantMentionSelection): Pro
 			i18n.baseText('instanceAi.nodeContext.truncated.title'),
 		);
 	}
-	await mentions.replaceActiveRange(selection.item.label);
+	await mentions.clearActiveRange();
 }
 
 const canSubmit = computed(() =>

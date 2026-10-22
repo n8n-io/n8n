@@ -174,20 +174,30 @@ export function useAssistantAtMentions(options: {
 		}
 	}
 
-	async function replaceActiveRange(label: string): Promise<void> {
+	/**
+	 * A typed pick removes the `@` query. A button pick leaves the draft unchanged.
+	 */
+	async function clearActiveRange(): Promise<void> {
 		const range = activeRange.value;
-		const start = range?.start ?? savedSelection.value.start;
-		const end = range?.end ?? savedSelection.value.end;
-		const insertedText = `"${label}"`;
-		updateText(options.text.value.slice(0, start) + insertedText + options.text.value.slice(end));
+		const typed = range?.origin === 'typed';
+		if (typed && range) {
+			updateText(options.text.value.slice(0, range.start) + options.text.value.slice(range.end));
+		}
 		close(false, 'selected');
 
 		await nextTick();
-		const caret = start + insertedText.length;
 		const input = options.getInputElement();
 		input?.focus({ preventScroll: true });
-		input?.setSelectionRange(caret, caret);
-		savedSelection.value = { start: caret, end: caret };
+		if (typed && range) {
+			input?.setSelectionRange(range.start, range.start);
+			savedSelection.value = { start: range.start, end: range.start };
+			return;
+		}
+
+		const start = range?.start ?? savedSelection.value.start;
+		const end = range?.end ?? savedSelection.value.end;
+		input?.setSelectionRange(start, end);
+		savedSelection.value = { start, end };
 	}
 
 	/**
@@ -252,7 +262,7 @@ export function useAssistantAtMentions(options: {
 		handleTextChange,
 		handleCaretMove,
 		handleMenuOpenChange,
-		replaceActiveRange,
+		clearActiveRange,
 		close,
 	};
 }
