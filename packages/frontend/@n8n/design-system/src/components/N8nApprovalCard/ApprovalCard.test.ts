@@ -10,21 +10,47 @@ const OPTIONS: ApprovalOption[] = [
 ];
 
 describe('N8nApprovalCard', () => {
+	it('focuses the choices on mount by default', () => {
+		const { getByRole } = render(N8nApprovalCard, {
+			props: { title: 'Approval required' },
+		});
+		expect(getByRole('listbox')).toHaveFocus();
+	});
+
+	it('keeps existing focus when automatic focus is disabled', async () => {
+		const previousFocus = document.activeElement;
+		const { getByRole, getByText, emitted } = render(N8nApprovalCard, {
+			props: { title: 'Approval required', autoFocus: false },
+		});
+		expect(document.activeElement).toBe(previousFocus);
+		await userEvent.click(getByText('Allow once'));
+		expect(getByRole('listbox')).toHaveFocus();
+		expect(emitted('select')).toEqual([['allow-once']]);
+	});
+
+	it('focuses the listbox when the user clicks the card', async () => {
+		const { getByRole, getByText } = render(N8nApprovalCard, {
+			props: { title: 'Approval required', autoFocus: false },
+		});
+		await userEvent.click(getByText('Approval required'));
+		expect(getByRole('listbox')).toHaveFocus();
+	});
+
 	it('offers the standard session choice only when supported', async () => {
 		const { getByRole, queryByRole, getAllByRole, rerender } = render(N8nApprovalCard, {
 			props: { title: 'Approval required', supportsSessionApproval: true },
 		});
 		expect(
-			getByRole('option', { name: 'Always allow during this session' }).getAttribute(
-				'aria-selected',
+			getByRole('button', { name: 'Always allow during this session' }).getAttribute(
+				'aria-pressed',
 			),
 		).toBe('true');
-		expect(getByRole('option', { name: 'Allow once' }).getAttribute('aria-selected')).toBe('false');
-		expect(getByRole('option', { name: 'Deny' })).toBeVisible();
+		expect(getByRole('button', { name: 'Allow once' }).getAttribute('aria-pressed')).toBe('false');
+		expect(getByRole('button', { name: 'Deny' })).toBeVisible();
 		await rerender({ supportsSessionApproval: false });
-		expect(queryByRole('option', { name: /Always allow/ })).toBeNull();
-		expect(getAllByRole('option')).toHaveLength(2);
-		expect(getByRole('option', { name: 'Allow once' }).getAttribute('aria-selected')).toBe('true');
+		expect(queryByRole('button', { name: /Always allow/ })).toBeNull();
+		expect(getAllByRole('button')).toHaveLength(2);
+		expect(getByRole('button', { name: 'Allow once' }).getAttribute('aria-pressed')).toBe('true');
 	});
 
 	it('moves highlight on ArrowDown and stops at the last option', async () => {
@@ -33,11 +59,11 @@ describe('N8nApprovalCard', () => {
 		});
 		const listbox = getByRole('listbox');
 		await fireEvent.keyDown(listbox, { key: 'ArrowDown' });
-		expect(getByTestId('opt-allow-once').getAttribute('aria-selected')).toBe('true');
+		expect(getByTestId('opt-allow-once').getAttribute('aria-pressed')).toBe('true');
 		await fireEvent.keyDown(listbox, { key: 'ArrowDown' });
-		expect(getByTestId('opt-deny').getAttribute('aria-selected')).toBe('true');
+		expect(getByTestId('opt-deny').getAttribute('aria-pressed')).toBe('true');
 		await fireEvent.keyDown(listbox, { key: 'ArrowDown' });
-		expect(getByTestId('opt-deny').getAttribute('aria-selected')).toBe('true');
+		expect(getByTestId('opt-deny').getAttribute('aria-pressed')).toBe('true');
 	});
 
 	it('moves highlight on ArrowUp and stops at the first option', async () => {
@@ -48,10 +74,10 @@ describe('N8nApprovalCard', () => {
 		await fireEvent.keyDown(listbox, { key: 'ArrowDown' });
 		await fireEvent.keyDown(listbox, { key: 'ArrowDown' });
 		await fireEvent.keyDown(listbox, { key: 'ArrowUp' });
-		expect(getByTestId('opt-allow-once').getAttribute('aria-selected')).toBe('true');
+		expect(getByTestId('opt-allow-once').getAttribute('aria-pressed')).toBe('true');
 		await fireEvent.keyDown(listbox, { key: 'ArrowUp' });
 		await fireEvent.keyDown(listbox, { key: 'ArrowUp' });
-		expect(getByTestId('opt-always-allow').getAttribute('aria-selected')).toBe('true');
+		expect(getByTestId('opt-always-allow').getAttribute('aria-pressed')).toBe('true');
 	});
 
 	it('hovering a row moves the highlight to that row', async () => {
@@ -59,17 +85,18 @@ describe('N8nApprovalCard', () => {
 			props: { title: 'Approval required', options: OPTIONS },
 		});
 		await fireEvent.mouseEnter(getByTestId('opt-deny'));
-		expect(getByTestId('opt-deny').getAttribute('aria-selected')).toBe('true');
-		expect(getByTestId('opt-always-allow').getAttribute('aria-selected')).toBe('false');
+		expect(getByTestId('opt-deny').getAttribute('aria-pressed')).toBe('true');
+		expect(getByTestId('opt-always-allow').getAttribute('aria-pressed')).toBe('false');
 	});
 
-	it.each(['Enter', ' '])('emits select with the highlighted option on %j', async (key) => {
+	it.each(['Enter', ' '])('handles %j from the automatically focused listbox', async (key) => {
 		const { getByRole, emitted } = render(N8nApprovalCard, {
 			props: { title: 'Approval required', options: OPTIONS },
 		});
 		const listbox = getByRole('listbox');
-		await fireEvent.keyDown(listbox, { key: 'ArrowDown' });
-		await fireEvent.keyDown(listbox, { key });
+		expect(listbox).toHaveFocus();
+		await fireEvent.keyDown(document.activeElement as Element, { key: 'ArrowDown' });
+		await fireEvent.keyDown(document.activeElement as Element, { key });
 		expect(emitted('select')).toEqual([['allow-once']]);
 	});
 

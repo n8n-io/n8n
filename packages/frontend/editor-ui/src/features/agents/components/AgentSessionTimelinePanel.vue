@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { AgentJsonConfig, PushMessage } from '@n8n/api-types';
+import type { AgentChatResumeDto, AgentJsonConfig, PushMessage } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
@@ -78,12 +78,42 @@ let refreshPending = false;
 let removePushListener: (() => void) | undefined;
 let activeRequest: { identity: string; promise: Promise<void> } | undefined;
 
-const { allJobs } = useAgentBackgroundJobs({
+const pendingApprovalRunIds = ref(new Set<string>());
+let disposed = false;
+
+const { allJobs, respondToApproval } = useAgentBackgroundJobs({
 	projectId: () => props.projectId,
 	agentId: () => props.agentId,
 	threadId: () => props.threadId,
 	active: true,
 });
+
+async function respondToBackgroundApproval(payload: AgentChatResumeDto) {
+	if (stubStore.active) {
+		stubStore.respondToApproval(payload);
+		return;
+	}
+	const approval = allJobs.value.find(
+		(job) =>
+			job.status === 'suspended' &&
+			job.approval?.runId === payload.runId &&
+			job.approval.toolCallId === payload.toolCallId,
+	);
+	if (!approval || pendingApprovalRunIds.value.has(payload.runId)) return;
+
+	const identity = threadIdentity();
+	const pending = pendingApprovalRunIds.value;
+	pending.add(payload.runId);
+	try {
+		await respondToApproval(payload);
+	} catch (error) {
+		if (!disposed && identity === threadIdentity()) {
+			toast.showError(error, i18n.baseText('agents.chat.backgroundTasks.approvalError'));
+		}
+	} finally {
+		pending.delete(payload.runId);
+	}
+}
 
 const baseItems = computed<TimelineItem[]>(() =>
 	insertBackgroundTaskTimelineItems(
@@ -270,6 +300,7 @@ function onChartSelect(index: number): void {
 
 function loadThreadDetail() {
 	resolvedBudgetStopExecutionId.value = null;
+	pendingApprovalRunIds.value = new Set();
 	executions.value = [];
 	selectedFilters.value = new Set();
 	searchQuery.value = '';
@@ -365,6 +396,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+	disposed = true;
 	threadDetailRequestId++;
 	refreshPending = false;
 	removePushListener?.();
@@ -435,6 +467,8 @@ useKeybindings({
 				:visible-kinds="selectedFilters"
 				:search-query="searchQuery"
 				:notice-index="budgetStop?.index"
+				:respond-to-approval="respondToBackgroundApproval"
+				:pending-approval-run-ids="pendingApprovalRunIds"
 				@select="onTimelineItemSelect"
 			>
 				<template v-if="budgetStop" #notice>
