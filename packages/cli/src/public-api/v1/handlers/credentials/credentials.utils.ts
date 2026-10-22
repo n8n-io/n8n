@@ -84,7 +84,10 @@ export function validateCredentialData(
 
 	if (!valid) {
 		throw new BadRequestError(
-			errors.map((error) => `request.body.data ${error.message}`).join(','),
+			errors
+				.filter((error) => error.name !== 'anyOf')
+				.map((error) => `request.body.data ${error.message}`)
+				.join(','),
 		);
 	}
 }
