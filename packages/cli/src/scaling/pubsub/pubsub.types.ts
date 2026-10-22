@@ -81,6 +81,8 @@ export namespace PubSub {
 		export type ReloadSourceControlConfiguration = ToCommand<'reload-source-control-config'>;
 		export type ReloadMcpRegistry = ToCommand<'reload-mcp-registry'>;
 		export type ReloadOtelConfig = ToCommand<'reload-otel-config'>;
+		export type ReloadPublicApiRateLimitSettings =
+			ToCommand<'reload-public-api-rate-limit-settings'>;
 		export type ReloadInstanceAiSettings = ToCommand<'reload-instance-ai-settings'>;
 		export type ReloadAgentsSettings = ToCommand<'reload-agents-settings'>;
 		export type CancelTestRun = ToCommand<'cancel-test-run'>;
@@ -138,6 +140,7 @@ export namespace PubSub {
 		| Commands.ReloadSourceControlConfiguration
 		| Commands.ReloadMcpRegistry
 		| Commands.ReloadOtelConfig
+		| Commands.ReloadPublicApiRateLimitSettings
 		| Commands.ReloadInstanceAiSettings
 		| Commands.ReloadAgentsSettings
 		| Commands.CancelTestRun
