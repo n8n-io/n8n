@@ -487,6 +487,7 @@ describe('AgentExecutionRepository', () => {
 			};
 			const createMain = () => {
 				const service = new AgentBackgroundJobService(
+					mock<AgentExecutionThreadRepository>(),
 					jobs,
 					repository,
 					mock<ExecutionPersistence>(),

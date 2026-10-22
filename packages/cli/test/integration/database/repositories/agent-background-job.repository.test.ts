@@ -80,7 +80,7 @@ describe('AgentBackgroundJobRepository', () => {
 			parentThreadId: string;
 		},
 	) {
-		await repository.insert({
+		await repository.save({
 			kind: 'subagent',
 			status: 'completed',
 			parentAgentId: agentId,
@@ -261,6 +261,7 @@ describe('AgentBackgroundJobRepository', () => {
 		logger.scoped.mockReturnValue(logger);
 		const checkpointTtlSeconds = Container.get(AgentsConfig).checkpointTtlSeconds;
 		const service = new AgentBackgroundJobService(
+			mock<AgentExecutionThreadRepository>(),
 			repository,
 			mock<AgentExecutionRepository>(),
 			mock<ExecutionPersistence>(),
@@ -289,6 +290,12 @@ describe('AgentBackgroundJobRepository', () => {
 			});
 		}
 		expect((await repository.findById(foreignId))?.status).toBe('paused');
+		if (kind === 'subagent') {
+			expect(await checkpoints.findByRunId(runIds.get(newJobId)!)).toMatchObject({
+				expired: false,
+				state: expect.any(String),
+			});
+		}
 		expect(await repository.findById(newJobId)).toMatchObject({
 			status,
 			error: status === 'failed' ? 'Workflow failed' : null,
@@ -482,6 +489,7 @@ describe('AgentBackgroundJobRepository', () => {
 			status: 'running',
 			settledAt: null,
 		});
+
 		await repository.requestPause(agentId, 'parent', 'draft-chat:user-1', pauseRequestId);
 		await repository.requestPause(agentId, 'parent', 'draft-chat:user-1', uuid());
 		expect(
@@ -492,6 +500,7 @@ describe('AgentBackgroundJobRepository', () => {
 		).toEqual([first, second, workflow].sort());
 		expect((await repository.findById(otherResource))?.pauseRequestId).toBeNull();
 		expect((await repository.findById(otherThread))?.pauseRequestId).toBeNull();
+
 		expect(await repository.resumeIfSuspended(second, new Date())).toBe(false);
 		expect(await repository.findById(second)).toMatchObject({
 			status: 'suspended',
@@ -812,6 +821,7 @@ describe('AgentBackgroundJobRepository', () => {
 				return affected;
 			});
 			const jobService = new AgentBackgroundJobService(
+				mock<AgentExecutionThreadRepository>(),
 				repository,
 				executionRepository,
 				mock<ExecutionPersistence>(),
@@ -823,6 +833,7 @@ describe('AgentBackgroundJobRepository', () => {
 				mock<AgentMessageRepository>(),
 			);
 			const wakeService = new AgentWakeService(
+				mock<AgentExecutionThreadRepository>(),
 				repository,
 				new AgentConversationStateService(executionRepository, checkpointStorage),
 				agentRepository,
@@ -835,6 +846,7 @@ describe('AgentBackgroundJobRepository', () => {
 				agentsConfig,
 				logger,
 				jobService,
+				mock<AgentExecutionUpdateBroadcaster>(),
 			);
 			Container.set(AgentWakeService, wakeService);
 
