@@ -229,28 +229,35 @@ describe('PostHog', () => {
 	describe('getFeatureFlags', () => {
 		const createdAt = new Date();
 
-		it('uses one instance result for all users and backend consumers', async () => {
-			(PostHog.prototype.evaluateFlags as Mock).mockImplementation(async (distinctId: string) =>
-				mockEvaluatedFlags({
-					[CREDENTIAL_DESCRIPTIONS_FLAG]: distinctId === `company_${instanceId}`,
-					[ASSISTANT_SKILLS_FLAG]: distinctId === `company_${instanceId}`,
-				}),
-			);
-			const ph = new PostHogClient(instanceSettings, globalConfig);
-			await ph.init();
+		it.each(['editor', 'backend'])(
+			'shares one batched instance evaluation across users and backend reads (%s first)',
+			async (firstReader) => {
+				(PostHog.prototype.evaluateFlags as Mock).mockImplementation(async (distinctId: string) =>
+					mockEvaluatedFlags({
+						[CREDENTIAL_DESCRIPTIONS_FLAG]: distinctId === `company_${instanceId}`,
+						[ASSISTANT_SKILLS_FLAG]: distinctId === `company_${instanceId}`,
+					}),
+				);
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
 
-			for (const id of ['user-1', 'user-2']) {
-				const flags = await ph.getFeatureFlags({ id, createdAt });
-				expect(flags[CREDENTIAL_DESCRIPTIONS_FLAG]).toBe(true);
-				expect(flags[ASSISTANT_SKILLS_FLAG]).toBe(true);
-			}
-			expect(await ph.getFeatureFlagForInstance(CREDENTIAL_DESCRIPTIONS_FLAG)).toBe(true);
-			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(4);
-			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledWith(`company_${instanceId}`, {
-				groups: { company: instanceId },
-				flagKeys: [CREDENTIAL_DESCRIPTIONS_FLAG],
-			});
-		});
+				if (firstReader === 'backend') {
+					expect(await ph.getFeatureFlagForInstance(ASSISTANT_SKILLS_FLAG)).toBe(true);
+				}
+				for (const id of ['user-1', 'user-2']) {
+					const flags = await ph.getFeatureFlags({ id, createdAt });
+					expect(flags[CREDENTIAL_DESCRIPTIONS_FLAG]).toBe(true);
+					expect(flags[ASSISTANT_SKILLS_FLAG]).toBe(true);
+				}
+				expect(await ph.getFeatureFlagForInstance(CREDENTIAL_DESCRIPTIONS_FLAG)).toBe(true);
+				expect(await ph.getFeatureFlagForInstance(ASSISTANT_SKILLS_FLAG)).toBe(true);
+				expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(3);
+				expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledWith(`company_${instanceId}`, {
+					groups: { company: instanceId },
+					flagKeys: [CREDENTIAL_DESCRIPTIONS_FLAG, ASSISTANT_SKILLS_FLAG],
+				});
+			},
+		);
 
 		it.each([false, undefined, 'true', 'variant'])(
 			'keeps instance features disabled when the instance result is %s',
@@ -317,7 +324,7 @@ describe('PostHog', () => {
 			await expect(ph.getFeatureFlagsAndPayloads({ id: userId, createdAt })).resolves.toEqual(
 				expected,
 			);
-			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(3);
+			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(2);
 		});
 
 		it('returns cached flags on second call', async () => {
@@ -340,7 +347,7 @@ describe('PostHog', () => {
 				[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
 				[ASSISTANT_SKILLS_FLAG]: false,
 			});
-			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(3);
+			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(2);
 		});
 
 		it('refetches after cache expires', async () => {
@@ -354,12 +361,12 @@ describe('PostHog', () => {
 			await ph.init();
 
 			await ph.getFeatureFlags({ id: userId, createdAt });
-			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(3);
+			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(2);
 
 			spy.mockReturnValue(now + 10 * 60 * 1000 + 1);
 
 			await ph.getFeatureFlags({ id: userId, createdAt });
-			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(6);
+			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(4);
 
 			spy.mockRestore();
 		});
@@ -373,7 +380,7 @@ describe('PostHog', () => {
 			await ph.getFeatureFlags({ id: userId, createdAt });
 			await ph.getFeatureFlags({ id: userId, createdAt });
 
-			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(6);
+			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(4);
 		});
 
 		describe('env-var overrides', () => {
