@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent, waitFor } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiView from '../InstanceAiView.vue';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
@@ -17,6 +18,7 @@ const routerReplace = vi.hoisted(() => vi.fn());
 const routerHistoryState = vi.hoisted(() => ({ back: null as string | null }));
 const routeState = vi.hoisted(() => ({ name: '', params: { threadId: 'thread-1' } }));
 const telemetryTrack = vi.hoisted(() => vi.fn());
+const computerUseRollout = vi.hoisted(() => ({ enabled: true }));
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -48,6 +50,15 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ instanceId: TEST_INSTANCE_ID }),
 }));
 
+vi.mock('@/experiments/instanceAiComputerUse', async () => {
+	const { computed } = await import('vue');
+	return {
+		useInstanceAiComputerUseExperiment: () => ({
+			isFeatureEnabled: computed(() => computerUseRollout.enabled),
+		}),
+	};
+});
+
 const renderView = createComponentRenderer(InstanceAiView, {
 	global: {
 		stubs: {
@@ -73,6 +84,7 @@ describe('InstanceAiView', () => {
 		telemetryTrack.mockClear();
 		routerHistoryState.back = null;
 		routeState.name = INSTANCE_AI_VIEW;
+		computerUseRollout.enabled = true;
 		sessionStorage.clear();
 	});
 
@@ -132,6 +144,47 @@ describe('InstanceAiView', () => {
 		renderView({ pinia });
 
 		expect(useNodeTypesStore().loadNodeTypesIfNotLoaded).toHaveBeenCalledOnce();
+	});
+
+	describe('gateway state', () => {
+		beforeEach(() => {
+			useSettingsStore().moduleSettings = {
+				'instance-ai': {
+					enabled: true,
+					mcpConnectionsAvailable: true,
+					localGatewayDisabled: false,
+					browserUseEnabled: false,
+					proxyEnabled: false,
+					cloudManaged: false,
+					setupCompleted: true,
+					sandboxEnabled: true,
+					workflowBuilderAvailable: true,
+					sandboxUnavailableReason: null,
+					runDebugEnabled: false,
+				},
+			};
+		});
+
+		it('listens for gateway changes and fetches the status when Computer Use is available', async () => {
+			const settingsStore = useInstanceAiSettingsStore();
+
+			renderView({ pinia });
+
+			await waitFor(() => expect(settingsStore.fetchGatewayStatus).toHaveBeenCalled());
+			expect(settingsStore.startGatewayPushListener).toHaveBeenCalled();
+		});
+
+		it('does not contact the gateway when the Computer Use rollout is off', async () => {
+			computerUseRollout.enabled = false;
+			const settingsStore = useInstanceAiSettingsStore();
+
+			renderView({ pinia });
+
+			await waitFor(() => expect(settingsStore.ensurePreferencesLoaded).toHaveBeenCalled());
+			await flushPromises();
+			expect(settingsStore.startGatewayPushListener).not.toHaveBeenCalled();
+			expect(settingsStore.fetchGatewayStatus).not.toHaveBeenCalled();
+		});
 	});
 
 	it('shows onboarding to self-managed admins and returns to chat after completion', async () => {

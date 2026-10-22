@@ -155,7 +155,7 @@ async function copyCommand() {
 }
 
 async function prepareSetupCommand() {
-	if (!store.isLocalGatewayDisabledByAdmin && store.isLocalGatewayDisabled) {
+	if (store.isComputerUseAvailable && store.isLocalGatewayDisabled) {
 		await store.persistLocalGatewayPreference(false);
 	}
 

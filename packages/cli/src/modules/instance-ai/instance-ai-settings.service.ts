@@ -5,6 +5,8 @@ import { isDeepStrictEqual } from 'node:util';
 import {
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	deriveInstanceAiSetupState,
+	INSTANCE_AI_COMPUTER_USE_ENABLED_VARIANT,
+	INSTANCE_AI_COMPUTER_USE_FLAG,
 	INSTANCE_AI_MODEL_CREDENTIAL_TYPES,
 	INSTANCE_AI_SEARCH_CREDENTIAL_TYPES,
 	resolveInstanceAiPermissions,
@@ -45,6 +47,7 @@ import {
 	type ResolvedInstanceCredential,
 } from '@/credentials/instance-credential-broker';
 import { ConflictError, ForbiddenError, UnprocessableRequestError } from '@n8n/errors';
+import { PostHogClient } from '@/posthog';
 import { AiService } from '@/services/ai.service';
 import {
 	INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
@@ -314,6 +317,7 @@ export class InstanceAiSettingsService {
 		private readonly instanceCredentialBroker: InstanceCredentialBroker,
 		private readonly sandboxSettingsService: SandboxSettingsService,
 		private readonly eventService: EventService,
+		private readonly postHogClient: PostHogClient,
 	) {
 		this.config = globalConfig.instanceAi;
 		this.deploymentConfig = globalConfig.deployment;
@@ -1263,13 +1267,19 @@ export class InstanceAiSettingsService {
 		return this.mcpAccessEnabled;
 	}
 
-	/** Whether the local gateway is disabled for a given user (admin override OR user preference). */
+	/**
+	 * Whether the local gateway is disabled for a given user (admin override, rollout
+	 * experiment OR user preference).
+	 */
 	async isLocalGatewayDisabledForUser(userId: string): Promise<boolean> {
 		if (!this.enabled) return true;
 		if (this.config.localGatewayDisabled) return true;
 		const user = await this.userRepository.findOneBy({ id: userId });
 		if (!user) return true;
-		return this.readUserPreferences(user).localGatewayDisabled ?? false;
+		if (this.readUserPreferences(user).localGatewayDisabled) return true;
+		// The editor receives the same flags. A PostHog outage returns no flags, so the gate stays closed.
+		const flags = await this.postHogClient.getFeatureFlags(user);
+		return flags[INSTANCE_AI_COMPUTER_USE_FLAG] !== INSTANCE_AI_COMPUTER_USE_ENABLED_VARIANT;
 	}
 
 	/** Whether the n8n Agent is enabled by the admin. */

@@ -2935,8 +2935,8 @@ export class InstanceAiService {
 		});
 
 		// The client reports which + menu entries it renders, because only it can see
-		// its own rollout and the device. The admin switches are still applied here,
-		// so the report can only narrow.
+		// the device. The admin switches are still applied here, so the report can
+		// only narrow.
 		context.computerUseState = resolveComputerUseState({
 			localGatewayDisabledGlobally,
 			localGatewayDisabledForUser,

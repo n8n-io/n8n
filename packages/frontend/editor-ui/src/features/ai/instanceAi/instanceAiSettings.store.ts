@@ -94,10 +94,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const isLocalGatewayDisabledByAdmin = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.localGatewayDisabled !== false,
 	);
-	/** Whether the local gateway is effectively disabled (admin override OR user preference). */
-	const isLocalGatewayDisabled = computed(
-		() => isLocalGatewayDisabledByAdmin.value || preferences.value?.localGatewayDisabled === true,
-	);
 	const isBrowserUseEnabledByAdmin = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.browserUseEnabled === true,
 	);
@@ -110,14 +106,18 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const isComputerUseAvailable = computed(
 		() => isComputerUseFeatureEnabled.value && !isLocalGatewayDisabledByAdmin.value,
 	);
+	/** Whether the local gateway is effectively disabled (unavailable to this user OR user preference). */
+	const isLocalGatewayDisabled = computed(
+		() => !isComputerUseAvailable.value || preferences.value?.localGatewayDisabled === true,
+	);
 	const isBrowserUseAvailable = computed(
 		() => isBrowserUseSupportedOnDevice() && isBrowserUseEnabledByAdmin.value,
 	);
 
 	/**
 	 * The Computer Use entries the + menu renders for this user. Sent with every
-	 * message: the rollout and the device are visible only here, so the backend
-	 * cannot work them out and must not advertise an entry we do not report.
+	 * message: the device is visible only here, and the backend must not
+	 * advertise an entry we do not report.
 	 */
 	const computerUseChannels = computed<ComputerUseChannel[]>(() => {
 		const channels: ComputerUseChannel[] = [];
@@ -369,6 +369,8 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	// ── Gateway status fetch ──────────────────────────────────────────────
 
 	async function fetchGatewayStatus(): Promise<void> {
+		// The backend rejects gateway requests when the gateway is disabled for the user.
+		if (isLocalGatewayDisabled.value) return;
 		try {
 			const status = await getGatewayStatus(rootStore.restApiContext);
 			gatewayConnected.value = status.connected;

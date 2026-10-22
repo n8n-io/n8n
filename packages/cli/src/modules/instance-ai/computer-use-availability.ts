@@ -50,7 +50,7 @@ function resolveBrowser({
 
 /**
  * `clientChannels` are the + menu entries the client says it renders. Only the
- * client can see its own rollout and the device, so it decides which entries the
+ * client can see the device, so it decides which entries the
  * prompt may offer — but it is client input, so it may only narrow: every channel
  * is still checked against the admin switches here.
  *

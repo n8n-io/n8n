@@ -1,4 +1,8 @@
-import { DEFAULT_INSTANCE_AI_PERMISSIONS } from '@n8n/api-types';
+import {
+	DEFAULT_INSTANCE_AI_PERMISSIONS,
+	INSTANCE_AI_COMPUTER_USE_ENABLED_VARIANT,
+	INSTANCE_AI_COMPUTER_USE_FLAG,
+} from '@n8n/api-types';
 import type { InstanceAiPermissions } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { type EventService, type CredentialsFinderService } from '@n8n/backend-services';
@@ -14,6 +18,7 @@ import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import { UnprocessableRequestError } from '@n8n/errors';
+import type { PostHogClient } from '@/posthog';
 import type { AiService } from '@/services/ai.service';
 import {
 	INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
@@ -67,6 +72,7 @@ describe('InstanceAiSettingsService', () => {
 	const instanceCredentialBroker = mock<InstanceCredentialBroker>();
 	const sandboxSettingsService = mock<SandboxSettingsService>();
 	const eventService = mock<EventService>();
+	const postHogClient = mock<PostHogClient>();
 	const logger = mock<Logger>();
 
 	let service: InstanceAiSettingsService;
@@ -84,6 +90,7 @@ describe('InstanceAiSettingsService', () => {
 			instanceCredentialBroker,
 			sandboxSettingsService,
 			eventService,
+			postHogClient,
 		);
 
 	beforeEach(() => {
@@ -2479,6 +2486,64 @@ describe('InstanceAiSettingsService', () => {
 			expect(logger.warn).toHaveBeenCalledWith('Failed to apply local settings event', {
 				error: 'listener failed',
 			});
+		});
+	});
+
+	describe('isLocalGatewayDisabledForUser', () => {
+		const computerUseOn = {
+			[INSTANCE_AI_COMPUTER_USE_FLAG]: INSTANCE_AI_COMPUTER_USE_ENABLED_VARIANT,
+		};
+
+		const mockUser = (settings: User['settings'] = {}) => {
+			const user = mock<User>({ id: 'user-1', settings });
+			userRepository.findOneBy.mockResolvedValue(user);
+			return user;
+		};
+
+		const resetAdminSwitch = () => {
+			globalConfig.instanceAi.localGatewayDisabled = false;
+		};
+		beforeEach(resetAdminSwitch);
+		afterEach(resetAdminSwitch);
+
+		it('should return true when the experiment is off for the user', async () => {
+			const user = mockUser();
+			postHogClient.getFeatureFlags.mockResolvedValue({});
+
+			await expect(service.isLocalGatewayDisabledForUser('user-1')).resolves.toBe(true);
+			expect(postHogClient.getFeatureFlags).toHaveBeenCalledWith(user);
+		});
+
+		it('should return true when the user is in the control arm', async () => {
+			mockUser();
+			postHogClient.getFeatureFlags.mockResolvedValue({
+				[INSTANCE_AI_COMPUTER_USE_FLAG]: 'control',
+			});
+
+			await expect(service.isLocalGatewayDisabledForUser('user-1')).resolves.toBe(true);
+		});
+
+		it('should return false when the experiment is on and nothing else disables it', async () => {
+			mockUser();
+			postHogClient.getFeatureFlags.mockResolvedValue(computerUseOn);
+
+			await expect(service.isLocalGatewayDisabledForUser('user-1')).resolves.toBe(false);
+		});
+
+		it('should follow the user preference when the experiment is on', async () => {
+			mockUser({ instanceAi: { localGatewayDisabled: true } });
+			postHogClient.getFeatureFlags.mockResolvedValue(computerUseOn);
+
+			await expect(service.isLocalGatewayDisabledForUser('user-1')).resolves.toBe(true);
+		});
+
+		it('should follow the admin setting when the experiment is on', async () => {
+			mockUser();
+			postHogClient.getFeatureFlags.mockResolvedValue(computerUseOn);
+			globalConfig.instanceAi.localGatewayDisabled = true;
+
+			await expect(service.isLocalGatewayDisabledForUser('user-1')).resolves.toBe(true);
+			expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
 		});
 	});
 

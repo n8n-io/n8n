@@ -2874,6 +2874,11 @@ export const INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT = 'variant';
 export const INSTANCE_AI_SETUP_PANEL_FLAG = '118_instance_ai_setup_overhaul';
 export const INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT = 'variant';
 
+/** Rollout flag for Computer Use (the local gateway). The backend refuses pairing
+ *  and local tools for users outside the enabled arm. */
+export const INSTANCE_AI_COMPUTER_USE_FLAG = '091_instance_ai_computer_use';
+export const INSTANCE_AI_COMPUTER_USE_ENABLED_VARIANT = 'variant';
+
 /** Enables the node-usage context surface for Instance AI: the `node-usage`
 
  *  action and the `nodeTypes` filter on `workflows(action="list")`. */

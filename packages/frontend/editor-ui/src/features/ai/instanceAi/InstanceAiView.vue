@@ -120,7 +120,7 @@ onMounted(() => {
 		.catch(() => {})
 		.then(() => {
 			const browserUseEnabled = settingsStore.isBrowserUseEnabledByAdmin;
-			const computerUseEnabled = !settingsStore.isLocalGatewayDisabledByAdmin;
+			const computerUseEnabled = settingsStore.isComputerUseAvailable;
 			if (!browserUseEnabled && !computerUseEnabled) return;
 			settingsStore.startGatewayPushListener();
 			if (browserUseEnabled) void settingsStore.fetchBrowserStatus();
@@ -135,10 +135,7 @@ watch(
 	() => settingsStore.isLocalGatewayDisabled,
 	(disabled) => {
 		if (disabled) {
-			if (
-				settingsStore.isLocalGatewayDisabledByAdmin &&
-				!settingsStore.isBrowserUseEnabledByAdmin
-			) {
+			if (!settingsStore.isComputerUseAvailable && !settingsStore.isBrowserUseEnabledByAdmin) {
 				settingsStore.stopGatewayPushListener();
 			}
 		} else {

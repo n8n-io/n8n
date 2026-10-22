@@ -277,6 +277,13 @@ describe('useInstanceAiSettingsStore', () => {
 			expect(store.isLocalGatewayDisabled).toBe(true);
 		});
 
+		it('returns true when the Computer Use rollout is off', () => {
+			rollouts.computerUse = false;
+			setModuleSettings(settingsStore, { localGatewayDisabled: false });
+			store.$patch({ preferences: { localGatewayDisabled: false } });
+			expect(store.isLocalGatewayDisabled).toBe(true);
+		});
+
 		it('returns false when neither admin flag nor user preference is set', () => {
 			setModuleSettings(settingsStore, {
 				enabled: true,
@@ -608,6 +615,24 @@ describe('useInstanceAiSettingsStore', () => {
 			expect(store.gatewayHostIdentifier).toBeNull();
 		});
 
+		it('does not fetch the gateway status when the Computer Use rollout is off', async () => {
+			rollouts.computerUse = false;
+			setModuleSettings(settingsStore, { localGatewayDisabled: false });
+
+			await store.fetchGatewayStatus();
+
+			expect(mockGetGatewayStatus).not.toHaveBeenCalled();
+		});
+
+		it('does not fetch the gateway status when the user turned the gateway off', async () => {
+			setModuleSettings(settingsStore, { localGatewayDisabled: false });
+			store.$patch({ preferences: { localGatewayDisabled: true } });
+
+			await store.fetchGatewayStatus();
+
+			expect(mockGetGatewayStatus).not.toHaveBeenCalled();
+		});
+
 		it('tracks Browser Use disconnects observed in the current session', async () => {
 			mockGetBrowserStatus
 				.mockResolvedValueOnce({ connected: true, connectedAt: '2026-01-01', toolCategories: [] })
@@ -687,6 +712,15 @@ describe('useInstanceAiSettingsStore', () => {
 			await store.fetchSetupCommand();
 
 			expect(store.setupCommandFetchedAt).toBe(new Date('2026-01-01T00:00:00.000Z').getTime());
+		});
+
+		it('does not request a setup command when the Computer Use rollout is off', async () => {
+			rollouts.computerUse = false;
+
+			await store.fetchSetupCommand();
+
+			expect(mockCreateGatewayLink).not.toHaveBeenCalled();
+			expect(store.setupCommand).toBeNull();
 		});
 
 		it('clears setup command state on disconnect', async () => {
