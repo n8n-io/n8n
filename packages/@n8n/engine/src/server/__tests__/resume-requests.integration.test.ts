@@ -209,10 +209,10 @@ describe('POST /api/step-executions/:id/resolve (integration)', () => {
 		});
 	});
 
-	it('answers 404 for a step that does not exist', async () => {
+	it('answers 401 for a step that does not exist, as for a bad token', async () => {
 		const { token } = await seed({ 'wait-a': acceptsRequest });
 
-		await resolve(generateId(), { token, outputs }).expect(404, { error: 'not_found' });
+		await resolve(generateId(), { token, outputs }).expect(401, { error: 'invalid_token' });
 	});
 
 	it('refuses a step of an execution with two waits that accept a request with 409', async () => {

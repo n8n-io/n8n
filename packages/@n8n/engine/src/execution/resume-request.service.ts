@@ -109,10 +109,9 @@ export class ResumeRequestService {
 	 * Ends the wait of `stepId` with `outputs`, and announces the step. The
 	 * worker that claims it emits the outputs. No node code runs here.
 	 *
-	 * @throws {ResumeRejectedError} `not_found`, `invalid_token` when the token
-	 * names another execution, `not_waiting` when the step does not wait for a
-	 * request (any more) or its execution ended, or `ambiguous` when the
-	 * execution holds two such waits.
+	 * @throws {ResumeRejectedError} `invalid_token`, `not_waiting` when the step
+	 * does not wait for a request (any more) or its execution ended, or
+	 * `ambiguous` when the execution holds two such waits.
 	 */
 	async resolve(stepId: string, token: string, outputs: StepSlots): Promise<StepRecord> {
 		const step = await this.loadStep(stepId);
@@ -181,7 +180,8 @@ export class ResumeRequestService {
 		try {
 			return await this.stepStore.loadStep(stepId);
 		} catch (error) {
-			if (error instanceof StepNotFoundError) throw new ResumeRejectedError('not_found');
+			// As a bad token, so a caller cannot learn whether a step id exists.
+			if (error instanceof StepNotFoundError) throw new ResumeRejectedError('invalid_token');
 			throw error;
 		}
 	}
