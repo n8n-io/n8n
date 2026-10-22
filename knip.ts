@@ -131,8 +131,15 @@ const config: KnipConfig = {
 			ignoreDependencies: ['@langchain/langgraph-checkpoint'],
 		}),
 		'packages/nodes-base': pkg({
-			// Pins the pg version that pg-promise resolves for npm installs of the published package.
-			ignoreDependencies: ['pg'],
+			ignoreDependencies: [
+				// napi-rs wrappers load these platform bindings dynamically at runtime.
+				'@napi-rs/canvas-linux-arm64-musl',
+				'@napi-rs/canvas-linux-x64-musl',
+				'@napi-rs/image-linux-arm64-musl',
+				'@napi-rs/image-linux-x64-musl',
+				// Pins the pg version that pg-promise resolves for npm installs of the published package.
+				'pg',
+			],
 		}),
 		'packages/@n8n/create-node': pkg({
 			// bin/create-node.cjs spawns the n8n-node binary through require.resolve.
