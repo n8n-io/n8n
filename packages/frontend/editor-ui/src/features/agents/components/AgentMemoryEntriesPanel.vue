@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import { N8nButton, N8nIcon, N8nIconButton, N8nText, updatedIconSet } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
 import type { AgentMemoryEntryDto, AgentMemoryEntrySourceDto } from '@n8n/api-types';
@@ -39,7 +39,9 @@ const deletingId = ref<string | null>(null);
 /** The parent hides the other Knowledge cards while this is true. */
 const showAll = defineModel<boolean>('showAll', { default: false });
 
-const pageSize = computed(() => (showAll.value ? FULL_PAGE_SIZE : INLINE_PAGE_SIZE));
+function limitFor(showAllEntries: boolean) {
+	return showAllEntries ? FULL_PAGE_SIZE : INLINE_PAGE_SIZE;
+}
 
 const SURFACE_ICONS: Record<string, IconName> = {
 	'n8n-chat': 'message-circle',
@@ -57,12 +59,12 @@ function isStale(projectId: string, agentId: string) {
 	return projectId !== props.projectId || agentId !== props.agentId;
 }
 
-async function loadEntries({ append }: { append: boolean }) {
+async function loadEntries({ append, limit }: { append: boolean; limit: number }) {
 	const { projectId, agentId } = props;
 	loading.value = true;
 	try {
 		const page = await listAgentMemoryEntries(rootStore.restApiContext, projectId, agentId, {
-			limit: pageSize.value,
+			limit,
 			cursor: append ? (nextCursor.value ?? undefined) : undefined,
 		});
 		if (isStale(projectId, agentId)) return;
@@ -82,7 +84,7 @@ async function loadEntries({ append }: { append: boolean }) {
 
 async function setShowAll(value: boolean) {
 	showAll.value = value;
-	await loadEntries({ append: false });
+	await loadEntries({ append: false, limit: limitFor(value) });
 }
 
 async function onDelete(entry: AgentMemoryEntryDto) {
@@ -111,7 +113,7 @@ async function onDelete(entry: AgentMemoryEntryDto) {
 			type: 'success',
 		});
 		// Backfill the inline page. "View all" keeps its loaded pages.
-		if (!showAll.value) await loadEntries({ append: false });
+		if (!showAll.value) await loadEntries({ append: false, limit: INLINE_PAGE_SIZE });
 	} catch (error) {
 		showError(error, i18n.baseText('agents.builder.memory.entries.deleteError' as BaseTextKey));
 	} finally {
@@ -166,7 +168,7 @@ function metaLine(entry: AgentMemoryEntryDto): string {
 }
 
 onMounted(async () => {
-	await loadEntries({ append: false });
+	await loadEntries({ append: false, limit: limitFor(showAll.value) });
 	await ensureLoaded(props.projectId).catch(() => undefined);
 });
 
@@ -174,7 +176,7 @@ watch(
 	() => [props.projectId, props.agentId],
 	async () => {
 		showAll.value = false;
-		await loadEntries({ append: false });
+		await loadEntries({ append: false, limit: INLINE_PAGE_SIZE });
 	},
 );
 </script>
@@ -264,7 +266,7 @@ watch(
 				variant="ghost"
 				:loading="loading"
 				data-testid="agent-memory-entries-load-more"
-				@click="loadEntries({ append: true })"
+				@click="loadEntries({ append: true, limit: FULL_PAGE_SIZE })"
 			>
 				{{ i18n.baseText('agents.builder.memory.entries.loadMore' as BaseTextKey) }}
 			</N8nButton>

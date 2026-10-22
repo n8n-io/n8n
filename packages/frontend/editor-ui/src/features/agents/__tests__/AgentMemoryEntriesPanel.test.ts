@@ -149,6 +149,34 @@ describe('AgentMemoryEntriesPanel', () => {
 		expect(wrapper.emitted('update:showAll')?.[1]).toEqual([false]);
 	});
 
+	it('uses the page size of the requested mode when the parent model updates later', async () => {
+		listAgentMemoryEntries.mockResolvedValue(page([makeEntry('e1')], { total: 14 }));
+		const wrapper = mount(AgentMemoryEntriesPanel, {
+			props: {
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				showAll: false,
+				'onUpdate:showAll': vi.fn(),
+			},
+		});
+		await flushPromises();
+
+		await wrapper.find('[data-testid="agent-memory-entries-view-all"]').trigger('click');
+		await flushPromises();
+		expect(listAgentMemoryEntries).toHaveBeenLastCalledWith({}, 'project-1', 'agent-1', {
+			limit: 25,
+			cursor: undefined,
+		});
+
+		await wrapper.setProps({ showAll: true });
+		await wrapper.find('[data-testid="agent-memory-entries-back"]').trigger('click');
+		await flushPromises();
+		expect(listAgentMemoryEntries).toHaveBeenLastCalledWith({}, 'project-1', 'agent-1', {
+			limit: 10,
+			cursor: undefined,
+		});
+	});
+
 	it('removes an entry after the delete is confirmed', async () => {
 		openAgentConfirmationModal.mockResolvedValue(MODAL_CONFIRM);
 		listAgentMemoryEntries
