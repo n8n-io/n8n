@@ -144,9 +144,10 @@ describe('WorkflowExecute', () => {
 				});
 
 				execution = workflowExecute.run({ workflow, startNode: retryNode });
-				await execution;
+				const result = await execution;
 
 				expect(runNodeSpy).toHaveBeenCalledTimes(1);
+				expect(result.data.resultData.error?.message).toBe('aborted');
 			});
 
 			it('should not retry a node that continues on error', async () => {
