@@ -75,24 +75,27 @@ export function isGenAiAttributeKey(key: string): boolean {
 	return GEN_AI_ATTRIBUTE_KEYS.has(key);
 }
 
-export function buildChatGenAiAttributes(input: {
+export function buildChatGenAiAttributes({
+	nodeType,
+	requestModel,
+	responseModel,
+	usage,
+}: {
 	nodeType: string;
 	requestModel?: string;
 	responseModel?: string;
 	usage?: { inputTokens: number; outputTokens: number };
 }): GenAiAttributes {
 	const attributes: GenAiAttributes = { [GEN_AI_ATTR.OPERATION_NAME]: 'chat' };
+	const provider = PROVIDER_BY_CHAT_MODEL_NODE[nodeType.replace(LANGCHAIN_NODE_PREFIX, '')];
 
-	const provider = input.nodeType.startsWith(LANGCHAIN_NODE_PREFIX)
-		? PROVIDER_BY_CHAT_MODEL_NODE[input.nodeType.slice(LANGCHAIN_NODE_PREFIX.length)]
-		: undefined;
 	if (provider) attributes[GEN_AI_ATTR.PROVIDER_NAME] = provider;
-	if (input.requestModel) attributes[GEN_AI_ATTR.REQUEST_MODEL] = input.requestModel;
-	if (input.responseModel) attributes[GEN_AI_ATTR.RESPONSE_MODEL] = input.responseModel;
+	if (requestModel) attributes[GEN_AI_ATTR.REQUEST_MODEL] = requestModel;
+	if (responseModel) attributes[GEN_AI_ATTR.RESPONSE_MODEL] = responseModel;
 
-	if (input.usage) {
-		attributes[GEN_AI_ATTR.USAGE_INPUT_TOKENS] = input.usage.inputTokens;
-		attributes[GEN_AI_ATTR.USAGE_OUTPUT_TOKENS] = input.usage.outputTokens;
+	if (usage) {
+		attributes[GEN_AI_ATTR.USAGE_INPUT_TOKENS] = usage.inputTokens;
+		attributes[GEN_AI_ATTR.USAGE_OUTPUT_TOKENS] = usage.outputTokens;
 	} else {
 		attributes[GEN_AI_ATTR.USAGE_REPORTED] = false;
 	}
