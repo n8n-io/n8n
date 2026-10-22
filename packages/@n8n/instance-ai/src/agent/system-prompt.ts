@@ -146,18 +146,6 @@ For blocked actions, tell the user an owner or admin can turn on "Send actual da
 }
 
 /**
- * Setup panel v2 changes what `workflow_builder_workflows(action="setup")` does: it announces the
- * checklist and returns instead of opening a card. Instance-wide flag, so the
- * two variants never fragment the prompt cache within one instance.
- */
-function getCredentialSetupBullet(setupPanelEnabled?: boolean): string {
-	if (setupPanelEnabled) {
-		return '**Credential setup** uses the setup panel. Announce known credentials early with `setup_credentials(filePath, ...)`. After the build, call `workflow_builder_workflows(action="setup")`. If it returns `announced: true`, summarize open items and warnings, then end your turn; otherwise follow its guidance. Trust the latest `<workflow-setup-state>` over older results. Use `setup_credentials` without filePath only for credentials outside a workflow. Never tell the user to start setup from the canvas.';
-	}
-	return '**Credential setup** uses `workflow_builder_workflows(action="setup")` once a workflowId exists; it opens a setup card for credentials, parameters, and triggers. Use `setup_credentials` only for credentials outside a workflow, never both for one workflow. Once setup returns, the card is closed: describe the outcome, not an open card. Never tell the user to start setup from the canvas. For `parameterIssues` and `skippedByUser`, follow the post-build-flow reference.';
-}
-
-/**
  * Builds a system prompt renderer around one `## Communication Style` block.
  * Published system prompt versions differ only by that block, so the prompt
  * body below stays free of profile-specific conditions.
@@ -175,7 +163,6 @@ export function createSystemPromptRenderer(communicationStyleSection: string) {
 			workspaceRoot,
 			conversationHistoryEnabled,
 			preferenceSavingEnabled,
-			setupPanelEnabled,
 		} = options;
 
 		return `You are the n8n Instance Agent, an AI assistant inside an n8n instance. Route requests through the skill catalog.

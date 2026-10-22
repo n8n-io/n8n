@@ -42,9 +42,11 @@ describe('getSystemPrompt — project scope', () => {
 		const prompt = getSystemPrompt({ projectId: 'project-1' });
 
 		expect(prompt).toContain('<project-context>');
-		expect(prompt).toMatch(/when .{0,30}block is present|whenever that block is present/i);
+		expect(prompt).toContain(
+			'(or flagged `isCurrentProject: true` in `workspace(action="list-projects")`)',
+		);
 		// The pre-build check must still be reachable without the block.
-		expect(prompt).toMatch(/BEFORE you build[\s\S]{0,200}list-projects/);
+		expect(prompt).toContain('tell them before you build');
 	});
 
 	it('forbids answering inventory questions from a filtered lookup', () => {

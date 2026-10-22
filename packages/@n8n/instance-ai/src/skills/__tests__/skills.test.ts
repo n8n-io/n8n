@@ -208,13 +208,8 @@ describe('Instance AI skills', () => {
 			name: 'data-table-manager',
 			platforms: ['daytona'],
 		});
-		expect(dataTableManager?.description).toContain(
-			'Load before calling data_tables or parse-file',
-		);
-		expect(dataTableManager?.description).toContain('what data tables do I have?');
-		expect(dataTableManager?.description).toContain(
-			'load before building or planning workflows that create or write to Data Tables',
-		);
+		expect(dataTableManager?.description).toContain('change data tables');
+		expect(dataTableManager?.description).toContain('when a workflow will create or write to one');
 		expect(dataTableManager?.linkedFiles.references).toEqual([
 			expect.objectContaining({ path: 'references/data-table-playbook.md' }),
 		]);
@@ -339,9 +334,7 @@ describe('Instance AI skills', () => {
 		});
 		// `n8n-docs` is always loaded, so the catalog must not ask the model to load it.
 		expect(skill?.description).not.toContain('load_tool');
-		expect(skill?.description).toContain(
-			'credential setup questions — including which OAuth scopes or permissions a provider app needs',
-		);
+		expect(skill?.description).toContain('credentials and OAuth scopes');
 		expect(skill?.linkedFiles.references).toEqual([]);
 
 		const loaded = await source.loadSkill('n8n-docs-assistant');
@@ -361,18 +354,8 @@ describe('Instance AI skills', () => {
 
 		expect(skill?.name).toBe('workflow-builder');
 		expect(skill?.platforms).toBeUndefined();
-		expect(skill?.description).toContain('Load before calling workflow_builder_build_workflow');
-		expect(skill?.description).not.toContain('Default path');
-		expect(skill?.description).toContain('new one-off workflows');
-		expect(skill?.description).toContain('Once the user wants a workflow, load it before you ask');
-		expect(skill?.description).toContain(
-			'For any other new workflow, load intent-classifier first when it is listed',
-		);
-		expect(skill?.description).toContain('workflow-sdk validate');
-		expect(skill?.description).toContain('load data-table-manager first');
-		expect(skill?.description).toContain(
-			'Do not load task-planner or workflow_builder_create_tasks first',
-		);
+		expect(skill?.description).toContain('a new workflow or a change to an existing one');
+		expect(skill?.description).toContain('credentials, evaluations, and verification');
 
 		const loaded = await source.loadSkill('workflow-builder');
 		expect(loaded?.instructions).toContain('## Routing');
@@ -438,10 +421,7 @@ describe('Instance AI skills', () => {
 		const skill = source.registry.skills.find((entry) => entry.name === 'task-planner');
 
 		expect(skill?.name).toBe('task-planner');
-		expect(skill?.description).toContain(
-			'If workflow_builder_create_tasks is not visible, load it via load_tool',
-		);
-		expect(skill?.description).toContain('Do NOT use for new one-off workflows');
+		expect(skill?.description).toContain('Use only for coordinated work across several workflows');
 
 		const loaded = await source.loadSkill('task-planner');
 		expect(loaded?.instructions).toContain('## When NOT to use this skill');
@@ -553,7 +533,7 @@ describe('Instance AI skills', () => {
 		const source = loadInstanceAiSkills();
 		const skill = source.registry.skills.find((entry) => entry.name === 'planned-task-runner');
 
-		expect(skill?.description).toContain('planned-task-follow-up');
+		expect(skill?.description).toContain('planned-task, background-task, or running-tasks');
 
 		const loaded = await source.loadSkill('planned-task-runner');
 		expect(loaded?.instructions).toContain(
@@ -599,7 +579,7 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain('do this unprompted');
 		expect(loaded?.instructions).toContain('## Before you name a cause');
 		expect(loaded?.instructions).toContain('test_credential');
-		expect(skill?.description).toContain('a live run you started');
+		expect(skill?.description).toContain('failed or produced wrong or empty output');
 	});
 });
 

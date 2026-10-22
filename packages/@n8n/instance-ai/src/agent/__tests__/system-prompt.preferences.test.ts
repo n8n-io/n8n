@@ -5,16 +5,15 @@ describe('system prompt: saving preferences', () => {
 		const prompt = getSystemPrompt({ preferenceSavingEnabled: true });
 		expect(prompt).toContain('## Saving Preferences');
 		expect(prompt).toContain('`save_user_preference`');
-		expect(prompt).toContain('not only for the current task');
-		expect(prompt).toContain(
-			'Do not tell the user you saved a preference until the tool returns a success',
-		);
+		expect(prompt).toContain('lasting rule or preference for future work');
+		expect(prompt).toContain('Skip one-off instructions');
+		expect(prompt).toContain('Confirm only after success');
 	});
 
 	it('tells the model to retry a too-long text once, and to stop on any other refusal', () => {
 		const prompt = getSystemPrompt({ preferenceSavingEnabled: true });
-		expect(prompt).toContain('shorten it to the limit the result names and call it once more');
-		expect(prompt).toContain('do not call it again in this turn');
+		expect(prompt).toContain('shorten it and retry once');
+		expect(prompt).toContain("On any other refusal, tell the user and don't retry");
 	});
 
 	it('says nothing about preferences when the feature is off', () => {

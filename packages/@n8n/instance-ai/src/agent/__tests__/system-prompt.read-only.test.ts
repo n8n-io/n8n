@@ -8,14 +8,11 @@ describe('getSystemPrompt — read-only instance', () => {
 
 	it('allows data table row writes and blocks data table structure changes', () => {
 		const prompt = getSystemPrompt({ branchReadOnly: true });
-		const [blocked, available] = prompt
-			.slice(prompt.indexOf('## Read-Only Instance'))
-			.split('The following operations remain available:');
+		const section = prompt.slice(prompt.indexOf('## Read-Only Instance'));
 
-		expect(blocked).toContain(
-			'Creating, renaming, or deleting data tables, and adding, renaming, or deleting their columns',
-		);
-		expect(blocked).not.toContain('rows');
-		expect(available).toContain('Inserting, updating, and deleting data table rows');
+		expect(section).toContain('Still allowed:');
+		expect(section).toContain('editing data table rows');
+		expect(section).not.toMatch(/Still allowed:[^.]*creating data tables/);
+		expect(section).toContain('For anything else, explain the instance is read-only');
 	});
 });

@@ -88,8 +88,8 @@ describe('prompt profiles', () => {
 		expect(rendered).toContain('unprompted or scheduled messages');
 		// No banned-word list: measured zero hits, so it only cost prompt budget.
 		expect(rendered).not.toContain('Do not use these words');
-		// Hedge ban deliberately not adopted — `## Capability Honesty` needs "may not work".
-		expect(rendered).toContain('may not work');
+		// Hedge ban deliberately not adopted — `## Capability Honesty` needs to hedge.
+		expect(rendered).toContain("can't be done reliably");
 	});
 
 	it('renders the concise style and keeps every shared system prompt section', () => {
@@ -106,12 +106,7 @@ describe('prompt profiles', () => {
 		expect(concise).not.toContain('- Be concise.');
 
 		// The extraction must not have dropped anything outside the style block.
-		for (const shared of [
-			'## Capability Honesty',
-			'## Setup Accuracy',
-			'## Safety',
-			'## Reply language',
-		]) {
+		for (const shared of ['## Capability Honesty', '## Setup Accuracy', '## Reply language']) {
 			expect(standard).toContain(shared);
 			expect(concise).toContain(shared);
 		}
