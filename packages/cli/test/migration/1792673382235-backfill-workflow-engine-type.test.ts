@@ -25,6 +25,8 @@ const seeds = {
 	engineV1: '{"engineType":"v1","executionOrder":"v0"}',
 	engineNull: '{"engineType":null}',
 	unicodeEscape: '{"note":"\\u00e9"}',
+	pairedSurrogates: '{"note":"\\ud83d\\ude00"}',
+	escapedBackslash: '{"note":"\\\\u0000"}',
 	array: '[]',
 	string: '"x"',
 	invalidJson: 'not json',
@@ -36,6 +38,7 @@ const postgresOnlySeeds = {
 	loneSurrogate: '{"note":"\\ud83d"}',
 	upperCaseSurrogate: '{"note":"\\uD83D"}',
 	lowSurrogate: '{"note":"\\udc00"}',
+	numberOutOfRange: '{"n":1e1000000}',
 } as const;
 
 type SeedId = keyof typeof seeds;
@@ -152,6 +155,8 @@ describe('BackfillWorkflowEngineType Migration', () => {
 		expect(parsed(stored, 'engineV1')).toEqual({ engineType: 'v1', executionOrder: 'v0' });
 		expect(parsed(stored, 'engineNull')).toEqual({ engineType: null });
 		expect(parsed(stored, 'unicodeEscape')).toEqual({ note: 'é', engineType: 'v1' });
+		expect(parsed(stored, 'pairedSurrogates')).toEqual({ note: '😀', engineType: 'v1' });
+		expect(parsed(stored, 'escapedBackslash')).toEqual({ note: '\\u0000', engineType: 'v1' });
 		expectSkippedRowsUnchanged(stored);
 	}
 
@@ -161,8 +166,8 @@ describe('BackfillWorkflowEngineType Migration', () => {
 
 	it('counts the workflows it skips', () => {
 		// SQLite: the array, the string, and the invalid JSON. Postgres: the array, the
-		// string, and the four objects that `jsonb` rejects.
-		const skipped = isPostgres ? 6 : 3;
+		// string, and the five objects that `jsonb` rejects.
+		const skipped = isPostgres ? 7 : 3;
 		// The test helpers also log warnings, such as for an old Postgres version.
 		const ownWarnings = upWarnings.filter(([message]) => String(message).includes(MIGRATION_NAME));
 		expect(ownWarnings).toEqual([[expect.stringContaining(`Skipped ${skipped} workflows`)]]);
@@ -198,6 +203,8 @@ describe('BackfillWorkflowEngineType Migration', () => {
 		expect(parsed(stored, 'engineV1')).toEqual({ executionOrder: 'v0' });
 		expect(parsed(stored, 'engineNull')).toEqual({ engineType: null });
 		expect(parsed(stored, 'unicodeEscape')).toEqual({ note: 'é' });
+		expect(parsed(stored, 'pairedSurrogates')).toEqual({ note: '😀' });
+		expect(parsed(stored, 'escapedBackslash')).toEqual({ note: '\\u0000' });
 		expectSkippedRowsUnchanged(stored);
 	});
 });
