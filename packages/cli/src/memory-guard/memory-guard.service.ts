@@ -81,8 +81,8 @@ export class MemoryGuardService {
 	private isStandingDown = false;
 
 	/**
-	 * Set when a held execution waits too long and the guard cannot stop an execution, until
-	 * memory falls below the resume level.
+	 * Set when a held execution waits too long and no stop can end the hold, until memory
+	 * falls below the resume level.
 	 */
 	private isHoldSuspended = false;
 
@@ -172,15 +172,15 @@ export class MemoryGuardService {
 		if (this.pendingStop) return;
 
 		if (this.isStandingDown) {
-			if (isCritical) this.stop(usage, 'critical');
+			if (isCritical) this.stop('critical');
 			else if (this.hasHoldLimitPassed()) this.suspendHold('The last stop freed no memory');
 			return;
 		}
 
-		const trigger = this.getStopTrigger(isCritical);
-		if (!trigger) return;
+		const stop = this.getStop(isCritical);
+		if (!stop) return;
 
-		const isStopped = this.stop(usage, trigger);
+		const isStopped = this.stop(stop.trigger, stop.usageAfterGc);
 		if (!isStopped && this.hasHoldLimitPassed()) {
 			this.suspendHold('No execution can be stopped to end the hold');
 		}
@@ -202,23 +202,27 @@ export class MemoryGuardService {
 		if (this.concurrencyControl.admitHeld(1) > 0) this.lastStarvationAdmitAt = now;
 	}
 
-	private getStopTrigger(isCritical: boolean): StopTrigger | undefined {
-		if (isCritical) return 'critical';
-		if (this.stopStreak >= SAMPLES_TO_ACT && this.isAboveStopLevelAfterGc()) return 'threshold';
-		if (this.hasHoldLimitPassed()) return 'hold-limit';
-		return undefined;
-	}
-
 	/**
 	 * Freed memory shows only after a garbage collection, so collect before a threshold stop.
 	 * If memory falls below the stop level, the streak starts again, to limit collections.
 	 */
-	private isAboveStopLevelAfterGc() {
-		if (!this.forceGc) return true;
-		this.forceGc();
-		if (readMemoryUsage(this.containerLimit).utilization >= STOP_LEVEL) return true;
-		this.stopStreak = 0;
-		return false;
+	private getStop(
+		isCritical: boolean,
+	): { trigger: StopTrigger; usageAfterGc?: MemoryUsage } | undefined {
+		if (isCritical) return { trigger: 'critical' };
+		// Without a stop target, a collection on every sample only pauses the event loop.
+		if (this.stopStreak >= SAMPLES_TO_ACT && this.findStopTarget()) {
+			const usageAfterGc = this.readUsageAfterGc();
+			if (usageAfterGc.utilization >= STOP_LEVEL) return { trigger: 'threshold', usageAfterGc };
+			this.stopStreak = 0;
+		}
+		if (this.hasHoldLimitPassed()) return { trigger: 'hold-limit' };
+		return undefined;
+	}
+
+	private readUsageAfterGc() {
+		this.forceGc?.();
+		return readMemoryUsage(this.containerLimit);
 	}
 
 	private hasHoldLimitPassed() {
@@ -268,9 +272,12 @@ export class MemoryGuardService {
 	}
 
 	/** Stop the execution tree that holds the most run data. Returns whether it stopped one. */
-	private stop(usage: MemoryUsage, trigger: StopTrigger) {
+	private stop(trigger: StopTrigger, usageAfterGc?: MemoryUsage) {
 		const target = this.findStopTarget();
 		if (!target) return false;
+
+		// The check after the stop also collects first, so only the stop counts as freed memory.
+		const usage = usageAfterGc ?? this.readUsageAfterGc();
 
 		const engines: Array<Promise<void>> = [];
 		for (const executionId of target.memberIds) {

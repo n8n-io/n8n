@@ -491,6 +491,15 @@ describe('MemoryGuardService', () => {
 			expect(stoppedIds()).toEqual(['large']);
 		});
 
+		it('should not collect garbage at the stop level when no execution can be stopped', async () => {
+			utilization = 0.9;
+			vi.mocked(readMemoryUsage).mockClear();
+
+			await sample(4);
+
+			expect(readMemoryUsage).toHaveBeenCalledTimes(4);
+		});
+
 		it('should wait for the stopped engine before it measures memory', async () => {
 			let endEngine!: () => void;
 			const engine = new Promise<IRun>((resolve) => {
@@ -513,14 +522,29 @@ describe('MemoryGuardService', () => {
 			addExecution('large', { megabytes: 300 });
 			utilization = 0.96;
 			readMemoryUsageOnce(0.96);
+			readMemoryUsageOnce(0.95);
 			readMemoryUsageOnce(0.6);
 
 			await sample();
 
 			expect(stopLogs()).toEqual([
-				'Stopped execution large of workflow workflow-large at 960MB of 1000MB (critical). It held an estimated 300MB of run data. Memory after the stop: 600MB',
+				'Stopped execution large of workflow workflow-large at 950MB of 1000MB (critical). It held an estimated 300MB of run data. Memory after the stop: 600MB',
 			]);
 			expect(guardLogger.warn).not.toHaveBeenCalledWith(expect.stringContaining('freed no memory'));
+		});
+
+		it('should not count memory that a garbage collection frees before the stop', async () => {
+			addExecution('large', { megabytes: 300 });
+			utilization = 0.96;
+			readMemoryUsageOnce(0.96);
+			readMemoryUsageOnce(0.7);
+			readMemoryUsageOnce(0.6);
+
+			await sample();
+			await vi.advanceTimersByTimeAsync(3_000);
+
+			expect(stoppedIds()).toEqual(['large']);
+			expect(guardLogger.warn).toHaveBeenCalledWith(expect.stringContaining('freed no memory'));
 		});
 
 		it('should measure memory again while the stopped execution saves its result', async () => {
@@ -539,6 +563,7 @@ describe('MemoryGuardService', () => {
 		it('should count a stop as freeing memory when memory drops by half its estimate', async () => {
 			addExecution('small', { megabytes: 20 });
 			utilization = 0.96;
+			readMemoryUsageOnce(0.96);
 			readMemoryUsageOnce(0.96);
 			readMemoryUsageOnce(0.95);
 
@@ -602,6 +627,7 @@ describe('MemoryGuardService', () => {
 				activeExecutions.getExecutionOrFail.mockClear();
 			});
 			let isResultHeld: boolean | undefined;
+			readMemoryUsageOnce(0.96);
 			readMemoryUsageOnce(0.96);
 			vi.mocked(readMemoryUsage).mockImplementationOnce(() => {
 				isResultHeld = result.deref() !== undefined;

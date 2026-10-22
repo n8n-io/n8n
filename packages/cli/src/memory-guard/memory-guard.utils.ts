@@ -72,10 +72,11 @@ export function exposeGc(): (() => void) | undefined {
 	try {
 		setFlagsFromString('--expose-gc');
 		const gc: unknown = runInNewContext('gc');
-		setFlagsFromString('--no-expose-gc');
 		if (!isGarbageCollect(gc)) return undefined;
 		return () => gc({ type: 'major', execution: 'sync', flavor: 'last-resort' });
 	} catch {
 		return undefined;
+	} finally {
+		setFlagsFromString('--no-expose-gc');
 	}
 }
