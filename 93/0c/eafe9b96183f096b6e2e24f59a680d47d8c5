@@ -1,0 +1,23 @@
+packages/@n8n/cli/docs/commands/promotions.md
+  s_f22a30eb938e0c::t_8b63c677404039 21,228-229,293,373
+packages/cli/src/modules/promotions.ee/git-hosts/README.md
+  s_f22a30eb938e0c::t_8b63c677404039 29,35
+packages/@n8n/cli/skills/n8n-cli/SKILL.md
+  s_f22a30eb938e0c::t_8b63c677404039 298
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "930ceafe9b96183f096b6e2e24f59a680d47d8c5",
+  "prompts": {},
+  "sessions": {
+    "s_f22a30eb938e0c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "089345ba-a85e-46fe-a596-b06a86f1735f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
