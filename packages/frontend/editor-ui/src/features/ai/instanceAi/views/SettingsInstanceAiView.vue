@@ -73,7 +73,8 @@ const {
 const { isFeatureEnabled: isComputerUseExperimentEnabled } = useInstanceAiComputerUseExperiment();
 
 const DOCS_URL = 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant';
-const DATA_SHARING_DOCS_URL = 'https://docs.n8n.io/manage-cloud/ai-assistant/#ai-usage-settings';
+const DATA_SHARING_DOCS_URL =
+	'https://docs.n8n.io/build/ways-of-building-workflows/use-the-ai-assistant#ai-usage-settings';
 
 const isAdmin = computed(() => store.canManage);
 const isEnabled = computed(
