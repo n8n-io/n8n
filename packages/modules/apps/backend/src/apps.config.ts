@@ -6,7 +6,7 @@ const positiveInteger = z.coerce.number().int().positive().max(Number.MAX_SAFE_I
 @Config
 export class AppsConfig {
 	/** Maximum duration of one app build attempt, in milliseconds. Increase this limit for apps that need more time to install dependencies or compile. */
-	@Env('N8N_APPS_BUILD_TIMEOUT_MS', positiveInteger)
+	@Env('N8N_APPS_BUILD_TIMEOUT_MS', positiveInteger.max(2 ** 31 - 1))
 	buildTimeoutMs: number = 10 * 60 * 1000;
 
 	/** Maximum time an app version can stay queued before n8n marks its build as failed, in milliseconds. */

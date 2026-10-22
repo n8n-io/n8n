@@ -1,11 +1,12 @@
 import { CreateAppDto, ListAppsQueryDto, UpdateAppDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ProjectScopeService } from '@n8n/backend-services';
-import { DbLock, DbLockService, type User } from '@n8n/db';
-import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { DbLock, DbLockService, type OperationContext, type User } from '@n8n/db';
+import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { appStorageLockSubKey } from '../app-storage-lock';
+import { AppVersionRepository } from '../app-version.repository';
 import { AppWorkspaceService } from '../app-workspace.service';
 import type { App } from '../app.entity';
 import { AppRepository } from '../app.repository';
@@ -13,13 +14,22 @@ import { AppsService } from '../apps.service';
 
 function createService() {
 	const appRepository = mock<AppRepository>();
+	const appVersions = mock<AppVersionRepository>();
 	const projectScopeService = mock<ProjectScopeService>();
 	const locks = mock<DbLockService>();
 	const workspaces = mock<AppWorkspaceService>();
 	const logger = mock<Logger>();
 	locks.withLockContext.mockImplementation(async (_key, fn) => await fn({}));
-	const service = new AppsService(appRepository, projectScopeService, locks, workspaces, logger);
-	return { service, appRepository, projectScopeService, locks, workspaces, logger };
+	appVersions.hasRunningBuild.mockResolvedValue(false);
+	const service = new AppsService(
+		appRepository,
+		appVersions,
+		projectScopeService,
+		locks,
+		workspaces,
+		logger,
+	);
+	return { service, appRepository, appVersions, projectScopeService, locks, workspaces, logger };
 }
 
 describe('AppsService', () => {
@@ -153,11 +163,15 @@ describe('AppsService', () => {
 	);
 
 	it.each([1, 0])('handles app deletion when %i rows match', async (affected) => {
-		const { service, appRepository, locks, workspaces } = createService();
+		const { service, appRepository, appVersions, locks, workspaces } = createService();
 		const appId = '11111111-1111-4111-8111-111111111111';
+		const ctx = mock<OperationContext>();
+		appRepository.findInProject.mockResolvedValue(mock<App>({ id: appId }));
 		appRepository.deleteInProject.mockResolvedValue(affected === 1);
 		locks.withLockContext.mockImplementation(async (_key, fn) => {
-			const result = await fn({});
+			expect(appVersions.hasRunningBuild).not.toHaveBeenCalled();
+			const result = await fn(ctx);
+			expect(appVersions.hasRunningBuild).toHaveBeenCalledExactlyOnceWith(appId, ctx);
 			expect(workspaces.delete).not.toHaveBeenCalled();
 			return result;
 		});
@@ -170,16 +184,53 @@ describe('AppsService', () => {
 			await expect(deletion).rejects.toThrow(NotFoundError);
 			expect(workspaces.delete).not.toHaveBeenCalled();
 		}
-		expect(appRepository.deleteInProject).toHaveBeenCalledWith('project-1', appId, {});
+		expect(appRepository.findInProject).toHaveBeenCalledWith('project-1', appId, ctx);
+		expect(appRepository.deleteInProject).toHaveBeenCalledWith('project-1', appId, ctx);
 		expect(locks.withLockContext).toHaveBeenCalledWith(DbLock.APPS_STORAGE, expect.any(Function), {
 			subKey: appStorageLockSubKey(appId),
 		});
+	});
+
+	it('returns not found before checking builds when the app is not in the project', async () => {
+		const { service, appRepository, appVersions, workspaces } = createService();
+		const appId = '11111111-1111-4111-8111-111111111111';
+		appRepository.findInProject.mockResolvedValue(null);
+		appVersions.hasRunningBuild.mockResolvedValue(true);
+
+		await expect(service.deleteApp('project-1', appId)).rejects.toThrow(NotFoundError);
+		expect(appVersions.hasRunningBuild).not.toHaveBeenCalled();
+		expect(appRepository.deleteInProject).not.toHaveBeenCalled();
+		expect(workspaces.delete).not.toHaveBeenCalled();
+	});
+
+	it('blocks deletion during a running build and allows it after the build finishes', async () => {
+		const { service, appRepository, appVersions, locks, workspaces } = createService();
+		const appId = '11111111-1111-4111-8111-111111111111';
+		const ctx = mock<OperationContext>();
+		locks.withLockContext.mockImplementation(async (_key, fn) => await fn(ctx));
+		appRepository.findInProject.mockResolvedValue(mock<App>({ id: appId }));
+		appRepository.deleteInProject.mockResolvedValue(true);
+		appVersions.hasRunningBuild.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+
+		const deletion = service.deleteApp('project-1', appId);
+		await expect(deletion).rejects.toThrow(ConflictError);
+		await expect(deletion).rejects.toThrow(
+			'The app has a running build. Wait for the build to finish before deleting it.',
+		);
+		expect(appVersions.hasRunningBuild).toHaveBeenCalledExactlyOnceWith(appId, ctx);
+		expect(appRepository.deleteInProject).not.toHaveBeenCalled();
+		expect(workspaces.delete).not.toHaveBeenCalled();
+
+		await expect(service.deleteApp('project-1', appId)).resolves.toBeUndefined();
+		expect(appRepository.deleteInProject).toHaveBeenCalledExactlyOnceWith('project-1', appId, ctx);
+		expect(workspaces.delete).toHaveBeenCalledExactlyOnceWith(appId);
 	});
 
 	it('completes app deletion when sandbox teardown fails', async () => {
 		const { service, appRepository, workspaces, logger } = createService();
 		const appId = '11111111-1111-4111-8111-111111111111';
 		const error = new Error('Provider unavailable.');
+		appRepository.findInProject.mockResolvedValue(mock<App>({ id: appId }));
 		appRepository.deleteInProject.mockResolvedValue(true);
 		workspaces.delete.mockRejectedValue(error);
 

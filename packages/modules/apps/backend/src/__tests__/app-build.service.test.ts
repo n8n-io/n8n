@@ -1,12 +1,13 @@
 import { Logger } from '@n8n/backend-common';
 import { InstanceWriteAccessService } from '@n8n/backend-services';
-import { DbLockService, type OperationContext } from '@n8n/db';
+import { DbLock, DbLockService, type OperationContext } from '@n8n/db';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { AppBuildService } from '../app-build.service';
 import { AppBuildError } from '../app-build.types';
 import { createAppScaffold } from '../app-scaffold';
+import { appStorageLockSubKey } from '../app-storage-lock';
 import type { AppVersion } from '../app-version.entity';
 import { AppVersionRepository } from '../app-version.repository';
 import { AppVersionService } from '../app-version.service';
@@ -59,7 +60,18 @@ function setup() {
 		logger,
 		config,
 	);
-	return { service, versions, source, workspaces, writeAccess, version, bundle, ctx, config };
+	return {
+		service,
+		versions,
+		source,
+		workspaces,
+		locks,
+		writeAccess,
+		version,
+		bundle,
+		ctx,
+		config,
+	};
 }
 
 describe('AppBuildService', () => {
@@ -84,12 +96,16 @@ describe('AppBuildService', () => {
 	});
 
 	it('builds the selected stored source and attaches output with attempt ownership', async () => {
-		const { service, source, workspaces, version, bundle } = setup();
+		const { service, source, workspaces, locks, versions, version, bundle, ctx } = setup();
 		expect(await service.build('project', 'app', 'version')).toMatchObject({
 			versionId: 'version',
 			status: 'succeeded',
 			attempts: 1,
 		});
+		expect(locks.withLockContext).toHaveBeenCalledWith(DbLock.APPS_STORAGE, expect.any(Function), {
+			subKey: appStorageLockSubKey('app'),
+		});
+		expect(versions.claimBuild).toHaveBeenCalledWith('app', 'version', 'queued', ctx);
 		expect(source.readSource).toHaveBeenCalledWith('project', 'app', 'version');
 		expect(workspaces.build).toHaveBeenCalledWith(
 			'app',

@@ -47,6 +47,10 @@ export class AppVersionRepository extends BaseRepository<AppVersion> {
 		});
 	}
 
+	async hasRunningBuild(appId: string, ctx: OperationContext): Promise<boolean> {
+		return await this.managerFor(ctx).existsBy(AppVersion, { appId, buildStatus: 'running' });
+	}
+
 	async listForRetention(appId: string, ctx: OperationContext) {
 		const versions = await this.managerFor(ctx).find(AppVersion, {
 			select: { id: true, buildStatus: true, bundleArtifactId: true },
