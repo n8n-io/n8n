@@ -504,6 +504,14 @@ onBeforeRouteLeave(() => {
 	padding-top: 0;
 }
 
+/* Pin the back action to the top-left of the settings area so the heading lines up with the overview. */
+.layout > div:first-child {
+	position: absolute;
+	top: var(--spacing--lg);
+	left: var(--spacing--lg);
+	width: auto;
+}
+
 .settings {
 	display: flex;
 	flex-direction: column;
