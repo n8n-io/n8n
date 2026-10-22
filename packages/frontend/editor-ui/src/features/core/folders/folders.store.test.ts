@@ -4,6 +4,7 @@ import { faker } from '@faker-js/faker';
 
 import { useFoldersStore } from './folders.store';
 import * as foldersApi from './folders.api';
+import * as workflowsEEApi from '@/app/api/workflows.ee';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import type { ChangeLocationSearchResponseItem } from './folders.types';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -201,6 +202,33 @@ describe('folders.store', () => {
 				projectId,
 				folderId,
 			);
+		});
+	});
+
+	describe('moveFolderToProject', () => {
+		it('should return the transfer result from the API', async () => {
+			const result = {
+				unpublishedWorkflows: [{ id: 'w1', name: 'Flow', unpublishReasons: [] }],
+			};
+			vi.spyOn(workflowsEEApi, 'moveFolderToProject').mockResolvedValue(result);
+
+			const returned = await foldersStore.moveFolderToProject('p1', 'f1', 'p2', 'f2', ['c1']);
+
+			expect(returned).toBe(result);
+			expect(workflowsEEApi.moveFolderToProject).toHaveBeenCalledWith(
+				rootStore.restApiContext,
+				'p1',
+				'f1',
+				'p2',
+				'f2',
+				['c1'],
+			);
+		});
+
+		it('should reject when the API call fails', async () => {
+			vi.spyOn(workflowsEEApi, 'moveFolderToProject').mockRejectedValue(new Error('nope'));
+
+			await expect(foldersStore.moveFolderToProject('p1', 'f1', 'p2')).rejects.toThrow('nope');
 		});
 	});
 });

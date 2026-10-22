@@ -23,3 +23,9 @@ export { default as RestrictedToolCallout } from './components/RestrictedToolCal
 export { default as ContactAdminModal } from './components/ContactAdminModal.vue';
 export { getPolicyViolations } from './policy-violations/policyViolations';
 export { default as PolicyViolationList } from './policy-violations/PolicyViolationList.vue';
+export {
+	useTransferPreview,
+	type TransferPreview,
+	type TransferPreviewTarget,
+} from './transfer-preview/useTransferPreview';
+export { default as TransferPolicyWarning } from './transfer-preview/TransferPolicyWarning.vue';

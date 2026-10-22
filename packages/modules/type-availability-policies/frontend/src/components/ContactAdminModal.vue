@@ -29,7 +29,8 @@ const {
 	kind = 'node',
 	audience,
 } = defineProps<{
-	nodeTypeName: string;
+	/** Several names switch to copy that does not assume one node or one credential type. */
+	nodeTypeName: string | string[];
 	kind?: RestrictedTypeKind;
 	audience: ContactAudience;
 }>();
@@ -44,10 +45,17 @@ const policiesStore = useTypeAvailabilityPoliciesStore();
 const isLoading = ref(false);
 let lookupId = 0;
 
+const typeNames = computed(() => (Array.isArray(nodeTypeName) ? nodeTypeName : [nodeTypeName]));
+const isSeveral = computed(() => typeNames.value.length > 1);
+const typeLabel = computed(() => typeNames.value.join(', '));
+
 const mailSubject = computed(() =>
-	i18n.baseText(RESTRICTED_TYPE_COPY[kind].mailSubject, {
-		interpolate: { nodeType: nodeTypeName },
-	}),
+	i18n.baseText(
+		isSeveral.value
+			? 'typeAvailabilityPolicies.contactAdmin.several.mailSubject'
+			: RESTRICTED_TYPE_COPY[kind].mailSubject,
+		{ interpolate: { nodeType: typeLabel.value } },
+	),
 );
 
 type Admin = Pick<IUserResponse, 'id' | 'firstName' | 'lastName'> & { email: string };
@@ -97,8 +105,8 @@ const admins = computed(() => {
 
 const copy = computed(() => CONTACT_DIALOG_COPY[listedAudience.value]);
 const description = computed(() =>
-	i18n.baseText(copy.value.description[kind], {
-		interpolate: { nodeType: nodeTypeName },
+	i18n.baseText(copy.value.description[isSeveral.value ? 'several' : kind], {
+		interpolate: { nodeType: typeLabel.value },
 	}),
 );
 
