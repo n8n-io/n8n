@@ -11,6 +11,7 @@ const item = (props: Partial<InboxPromotionReviewItem> = {}): InboxPromotionRevi
 	id: 'rev-1',
 	state: 'open',
 	reviewState: 'open',
+	reviewType: 'gitlab',
 	title: 'Promote the thing',
 	webUrl: 'https://gitlab.example.com/platform/workflows/-/merge_requests/1',
 	branchName: 'n8n-promotion/1',

@@ -102,6 +102,7 @@ it('links a promotion review row to its detail route', () => {
 		id: 'review-1',
 		state: 'open',
 		reviewState: 'open',
+		reviewType: 'gitlab',
 		title: null,
 		webUrl: null,
 		branchName: null,

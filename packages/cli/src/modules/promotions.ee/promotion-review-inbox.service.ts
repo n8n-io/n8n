@@ -73,6 +73,7 @@ export class PromotionReviewInboxService {
 				id: review.id,
 				state: query.state,
 				reviewState: review.state,
+				reviewType: review.type,
 				title: mergeRequest?.title ?? null,
 				webUrl: mergeRequest?.web_url ?? null,
 				branchName: branchOf(run),

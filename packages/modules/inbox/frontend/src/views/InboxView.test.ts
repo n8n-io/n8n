@@ -449,6 +449,7 @@ function promotionItem(): InboxPromotionReviewItem {
 		id: 'rev-1',
 		state: 'open',
 		reviewState: 'open',
+		reviewType: 'gitlab',
 		title: 'Promote the thing',
 		webUrl: null,
 		branchName: 'n8n-promotion/1',

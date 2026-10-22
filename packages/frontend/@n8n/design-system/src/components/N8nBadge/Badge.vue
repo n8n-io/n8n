@@ -239,4 +239,10 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 .label + .trailingIcon {
 	margin-inline-start: calc(var(--n8n-badge--padding-inline-start) * 0.2);
 }
+
+/* At small sizes the capitals sit above the middle of the icon. A label without an icon stays put. */
+.xxsmall .hasIcon,
+.xsmall .hasIcon {
+	transform: translateY(1px);
+}
 </style>
