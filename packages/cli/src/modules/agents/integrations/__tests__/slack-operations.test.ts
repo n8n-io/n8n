@@ -39,16 +39,99 @@ describe('Slack directory search', () => {
 		expect(list).toHaveBeenCalledExactlyOnceWith({ limit: 200 });
 	});
 
-	it('returns an empty page with a cursor instead of scanning for matches', async () => {
+	it('continues past empty pages and stops as soon as a matching user is found', async () => {
 		const { run, list } = setup();
-		list.mockResolvedValue({ members: [person], response_metadata: { next_cursor: 'page-2' } });
+		list
+			.mockResolvedValueOnce({
+				members: [{ id: 'U99999999', real_name: 'Another Person', name: 'another' }],
+				response_metadata: { next_cursor: 'page-2' },
+			})
+			.mockResolvedValueOnce({
+				members: [person],
+				response_metadata: { next_cursor: 'page-3' },
+			});
+
+		await expect(run({ query: 'Example Person' })).resolves.toMatchObject({
+			ok: true,
+			users: [{ userId: person.id }],
+			resultCount: 1,
+			nextCursor: 'page-3',
+		});
+		expect(list.mock.calls.map(([options]) => options)).toEqual([
+			{ limit: 200 },
+			{ limit: 200, cursor: 'page-2' },
+		]);
+	});
+
+	it('returns a successful empty result only after the directory ends', async () => {
+		const { run, list } = setup();
+		list
+			.mockResolvedValueOnce({ members: [person], response_metadata: { next_cursor: 'page-2' } })
+			.mockResolvedValueOnce({ members: [], response_metadata: {} });
+
 		await expect(run({ query: 'Other Person' })).resolves.toEqual({
 			ok: true,
 			users: [],
 			resultCount: 0,
-			nextCursor: 'page-2',
 		});
-		expect(list).toHaveBeenCalledTimes(1);
+		expect(list).toHaveBeenCalledTimes(2);
+	});
+
+	it('returns an incomplete-search error and a usable continuation after five empty pages', async () => {
+		const { run, list } = setup();
+		list.mockImplementation(async () => ({
+			members: [],
+			response_metadata: { next_cursor: `page-${list.mock.calls.length + 1}` },
+		}));
+		const response = await run({ query: 'Example Person', limit: 1, includeDeleted: true });
+		expect(response).not.toHaveProperty('users');
+		expect(response).not.toHaveProperty('resultCount');
+
+		const result = z
+			.object({
+				ok: z.literal(false),
+				error: z.object({
+					code: z.literal('CONTEXT_SEARCH_INCOMPLETE'),
+					message: z.string(),
+				}),
+				searchComplete: z.literal(false),
+				nextCursor: z.literal('page-6'),
+				nextQuery: z.object({
+					query: z.literal('search_users'),
+					input: z.record(z.unknown()),
+				}),
+			})
+			.parse(response);
+		expect(result.error.message).toContain('Do not report that the user does not exist');
+		expect(list).toHaveBeenCalledTimes(5);
+		expect(result.nextQuery.input).toMatchObject({
+			query: 'Example Person',
+			limit: 1,
+			includeDeleted: true,
+			cursor: 'page-6',
+		});
+		list.mockResolvedValueOnce({ members: [person], response_metadata: {} });
+
+		await expect(run(result.nextQuery.input)).resolves.toMatchObject({
+			ok: true,
+			users: [{ userId: person.id }],
+		});
+		expect(list).toHaveBeenLastCalledWith({ limit: 200, cursor: 'page-6' });
+	});
+
+	it('returns a match on the last allowed page', async () => {
+		const { run, list } = setup();
+		list.mockImplementation(async () => ({
+			members: list.mock.calls.length === 5 ? [person] : [],
+			response_metadata: { next_cursor: `page-${list.mock.calls.length + 1}` },
+		}));
+
+		await expect(run({ query: 'Example Person' })).resolves.toMatchObject({
+			ok: true,
+			users: [{ userId: person.id }],
+			nextCursor: 'page-6',
+		});
+		expect(list).toHaveBeenCalledTimes(5);
 	});
 
 	it('keeps every matching user when the result limit splits a directory page', async () => {
@@ -167,6 +250,18 @@ describe('Slack directory search', () => {
 		});
 		await expect(run({ query: 'Example' }, controller.signal)).rejects.toThrow();
 		expect(list).not.toHaveBeenCalled();
+	});
+
+	it('does not request another directory page after cancellation', async () => {
+		const { run, list } = setup();
+		const controller = new AbortController();
+		list.mockImplementationOnce(async () => {
+			controller.abort();
+			return { members: [], response_metadata: { next_cursor: 'page-2' } };
+		});
+
+		await expect(run({ query: 'Example Person' }, controller.signal)).rejects.toThrow();
+		expect(list).toHaveBeenCalledTimes(1);
 	});
 
 	it('keeps every matching channel when the result limit splits a directory page', async () => {

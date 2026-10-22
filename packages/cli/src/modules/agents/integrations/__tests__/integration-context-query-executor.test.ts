@@ -945,16 +945,22 @@ describe('ChatIntegrationContextQueryExecutor — deadlines', () => {
 		return { executor, params, list, service };
 	}
 
-	it('returns a timeout for a pending query and permits a subsequent query', async () => {
+	it('bounds all search pages by one deadline and permits a subsequent query', async () => {
 		vi.useFakeTimers();
 		const { executor, params, list } = setup();
-		list.mockImplementationOnce(async () => await new Promise(() => {}));
+		list
+			.mockImplementationOnce(async () => {
+				await new Promise((resolve) => setTimeout(resolve, 10_000));
+				return { members: [], response_metadata: { next_cursor: 'page-2' } };
+			})
+			.mockImplementationOnce(async () => await new Promise(() => {}));
 		const pending = executor.execute(params);
 		await vi.advanceTimersByTimeAsync(30_000);
 		await expect(pending).resolves.toMatchObject({
 			ok: false,
 			error: { code: 'CONTEXT_QUERY_TIMEOUT' },
 		});
+		expect(list).toHaveBeenCalledTimes(2);
 		await expect(executor.execute(params)).resolves.toMatchObject({ ok: true, resultCount: 0 });
 		expect(vi.getTimerCount()).toBe(0);
 	});

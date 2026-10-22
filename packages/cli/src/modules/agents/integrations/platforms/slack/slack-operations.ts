@@ -8,10 +8,12 @@ import {
 } from './slack-search-pagination';
 
 import type { ChatInstance } from '../../chat-integration.service';
-import { stringValue, unsupportedQuery } from '../../integration-helpers';
+import { INTEGRATION_ERROR_CODES } from '../../integration-error-codes';
+import { integrationError, stringValue, unsupportedQuery } from '../../integration-helpers';
 import type { IntegrationContextQuery } from '../../integration-tools';
 
 const PLATFORM = 'slack';
+const MAX_USER_SEARCH_PAGES = 5;
 
 const getUserSchema = z.object({ userId: z.string().min(1) });
 const getChannelInfoSchema = z.object({ channelId: z.string().min(1) });
@@ -196,30 +198,44 @@ async function searchSlackUsers(
 	}
 	if (!usersApi.list) return unsupportedQuery(PLATFORM, 'search_users');
 
-	const position = readSlackSearchCursor('users', input.cursor);
-	const options = await withSlackToken(adapter, {
-		limit: SLACK_SEARCH_PAGE_SIZE,
-		...(position.cursor ? { cursor: position.cursor } : {}),
-	});
-	abortSignal?.throwIfAborted();
-	const response = await usersApi.list(options);
-	abortSignal?.throwIfAborted();
+	let position = readSlackSearchCursor('users', input.cursor);
 	const searchTerm = normalizeSearchTerm(input.query ?? email ?? '');
-	const matches = new Map<string, SlackUserSearchResult>();
-	for (const rawUser of response.members ?? []) {
-		if (!shouldIncludeUser(rawUser, input) || !matchesUserSearch(rawUser, searchTerm, email))
-			continue;
-		const user = normalizeSlackUser(rawUser);
-		if (user) matches.set(user.userId, user);
+	for (let page = 0; page < MAX_USER_SEARCH_PAGES; page++) {
+		const options = await withSlackToken(adapter, {
+			limit: SLACK_SEARCH_PAGE_SIZE,
+			...(position.cursor ? { cursor: position.cursor } : {}),
+		});
+		abortSignal?.throwIfAborted();
+		const response = await usersApi.list(options);
+		abortSignal?.throwIfAborted();
+		const matches = new Map<string, SlackUserSearchResult>();
+		for (const rawUser of response.members ?? []) {
+			if (!shouldIncludeUser(rawUser, input) || !matchesUserSearch(rawUser, searchTerm, email))
+				continue;
+			const user = normalizeSlackUser(rawUser);
+			if (user) matches.set(user.userId, user);
+		}
+		const { results: users, nextCursor } = selectSlackSearchPage({
+			kind: 'users',
+			matches: [...matches.values()],
+			limit: input.limit,
+			position,
+			nextCursor: response.response_metadata?.next_cursor || undefined,
+		});
+		if (users.length > 0 || !nextCursor) {
+			return { ok: true, users, resultCount: users.length, ...(nextCursor ? { nextCursor } : {}) };
+		}
+		position = readSlackSearchCursor('users', nextCursor);
 	}
-	const { results: users, nextCursor } = selectSlackSearchPage({
-		kind: 'users',
-		matches: [...matches.values()],
-		limit: input.limit,
-		position,
-		nextCursor: response.response_metadata?.next_cursor || undefined,
-	});
-	return { ok: true, users, resultCount: users.length, ...(nextCursor ? { nextCursor } : {}) };
+	return {
+		...integrationError(
+			INTEGRATION_ERROR_CODES.CONTEXT_SEARCH_INCOMPLETE,
+			'The Slack user search is incomplete. Use nextQuery to continue the search. Do not report that the user does not exist. If you cannot continue, explain that the search is incomplete and ask for a Slack mention or an exact email address.',
+		),
+		searchComplete: false,
+		nextCursor: position.cursor,
+		nextQuery: { query: 'search_users', input: { ...input, cursor: position.cursor } },
+	};
 }
 
 function userLookupResult(rawUser: SlackUser | undefined, input: SearchUsersInput) {
