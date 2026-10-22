@@ -232,8 +232,18 @@ describe('SettingsSkillsView', () => {
 			await userEvent.click(getByTestId('skills-create-button'));
 
 			expect(lastModalData().scopeOptions).toEqual([
-				{ value: 'project:personal-1', label: 'Personal project', icon: 'user' },
-				{ value: 'project:team-1', label: 'Marketing', icon: 'layers' },
+				{
+					value: 'project:personal-1',
+					label: 'Personal project',
+					icon: 'user',
+					target: { projectId: 'personal-1', agentId: null },
+				},
+				{
+					value: 'project:team-1',
+					label: 'Marketing',
+					icon: 'layers',
+					target: { projectId: 'team-1', agentId: null },
+				},
 			]);
 		});
 
@@ -248,6 +258,7 @@ describe('SettingsSkillsView', () => {
 				value: 'instance',
 				label: 'Global',
 				icon: 'globe',
+				target: { projectId: null, agentId: null },
 			});
 		});
 
@@ -356,11 +367,22 @@ describe('SettingsSkillsView', () => {
 			});
 		});
 
-		it('locks the scope while agents use the skill', async () => {
+		it('lets the user move a skill that agents use, and hands the modal who uses it', async () => {
+			const usedBy = {
+				drafts: [{ agentId: 'a1', agentName: 'FirstClassDarwin', projectId: 'team-1' }],
+				pins: [],
+				hiddenAgents: 0,
+			};
 			skillsStore.skills = [skill({ scope: 'agent', agentName: 'FirstClassDarwin' })];
 			skillsStore.count = 1;
 			skillsStore.fetchSkill.mockResolvedValue(
-				detail({ scope: 'agent', agentId: 'a1', agentName: 'FirstClassDarwin', usedByAgents: 1 }),
+				detail({
+					scope: 'agent',
+					agentId: 'a1',
+					agentName: 'FirstClassDarwin',
+					usedByAgents: 1,
+					usedBy,
+				}),
 			);
 			const { getByText } = renderView();
 			await new Promise(process.nextTick);
@@ -375,9 +397,9 @@ describe('SettingsSkillsView', () => {
 				icon: 'bot',
 			});
 			expect(lastModalData().initialScope).toBe('agent');
-			expect(lastModalData().scopeLockedReason).toBe(
-				'Used by 1 agent. Remove the skill from it to change where it is available.',
-			);
+			// The modal warns about a scope that drops an agent, so the picker stays open.
+			expect(lastModalData().scopeLockedReason).toBeUndefined();
+			expect(lastModalData().usedBy).toEqual(usedBy);
 		});
 
 		it('locks the scope when the user may edit but not delete the skill', async () => {

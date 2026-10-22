@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method -- async mock stubs and unbound-method references are acceptable test idioms */
 import type { AgentJsonSkillConfig, AgentSkill } from '@n8n/api-types';
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, ProjectScopeService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { GLOBAL_MEMBER_ROLE, type TransactionRunner, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -82,6 +82,7 @@ describe('AgentSkillsService', () => {
 	let modificationTelemetry: Mocked<AgentModificationTelemetryService>;
 	let agentUpdateBroadcaster: Mocked<AgentUpdateBroadcaster>;
 	let skillsTelemetry: Mocked<SkillsTelemetry>;
+	let projectScopeService: Mocked<ProjectScopeService>;
 
 	function givenAgent(overrides: AgentFixtureOverrides = {}) {
 		const agent = makeAgent(overrides);
@@ -105,6 +106,8 @@ describe('AgentSkillsService', () => {
 		transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 		vi.mocked(userHasScopes).mockResolvedValue(true);
 		skillsTelemetry = mock<SkillsTelemetry>();
+		projectScopeService = mock<ProjectScopeService>();
+		projectScopeService.getProjectIds.mockResolvedValue([projectId]);
 		service = new AgentSkillsService(
 			mockLogger(),
 			agentRepository,
@@ -117,6 +120,7 @@ describe('AgentSkillsService', () => {
 			skillService,
 			transactionRunner,
 			skillsTelemetry,
+			projectScopeService,
 		);
 	});
 
@@ -421,7 +425,8 @@ describe('AgentSkillsService', () => {
 				'skill_a',
 				'agent',
 				{},
-				{ checkedSource: { projectId, agentId: null } },
+				// A refused move names only the agents in projects the user may read.
+				{ checkedSource: { projectId, agentId: null }, agentProjectIds: [projectId] },
 			);
 			expect(skillService.save).not.toHaveBeenCalled();
 		});
