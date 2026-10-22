@@ -130,7 +130,10 @@ export class InMemoryMemory
 			const hashes = new Set(contentHashes);
 			return await Promise.resolve(
 				this.episodicMemory
-					.filter((entry) => entry.resourceId === scope.resourceId && hashes.has(entry.contentHash))
+					.filter(
+						(entry) =>
+							entry.resourceId === episodicWriteScopeId(scope) && hashes.has(entry.contentHash),
+					)
 					.map(cloneEpisodicMemoryEntry),
 			);
 		},
@@ -151,7 +154,7 @@ export class InMemoryMemory
 			await this.recordEpisodicMemoryCaptureCandidateFailure(ids, maxAttempts),
 		taskLock: {
 			acquire: async (scope, opts) =>
-				await this.acquireEpisodicMemoryTaskLock(scope.resourceId, opts),
+				await this.acquireEpisodicMemoryTaskLock(episodicWriteScopeId(scope), opts),
 			release: async (handle) => await this.releaseEpisodicMemoryTaskLock(handle),
 		},
 	};
@@ -536,8 +539,10 @@ export class InMemoryMemory
 		if (existing) return cloneEpisodicMemoryCaptureCandidate(existing);
 
 		const now = new Date();
+		const { episodic: _episodic, ...candidateData } = candidate;
 		const row: EpisodicMemoryCaptureCandidate = {
-			...candidate,
+			...candidateData,
+			resourceId: episodicWriteScopeId(candidate),
 			id: crypto.randomUUID(),
 			status: 'pending',
 			attemptCount: 0,
@@ -555,7 +560,8 @@ export class InMemoryMemory
 	): Promise<EpisodicMemoryCaptureCandidate[]> {
 		return this.episodicMemoryCaptureCandidates
 			.filter(
-				(candidate) => candidate.resourceId === scope.resourceId && candidate.status === 'pending',
+				(candidate) =>
+					candidate.resourceId === episodicWriteScopeId(scope) && candidate.status === 'pending',
 			)
 			.sort((a, b) => compareKeyset(a, b))
 			.slice(0, opts?.limit)
@@ -594,9 +600,9 @@ export class InMemoryMemory
 		const saved: EpisodicMemoryEntry[] = [];
 		for (const entry of entries) {
 			const contentHash = entry.contentHash ?? hashEpisodicMemoryContent(entry.content);
+			const resourceId = episodicWriteScopeId(entry);
 			const duplicate = this.episodicMemory.find(
-				(existing) =>
-					existing.resourceId === entry.resourceId && existing.contentHash === contentHash,
+				(existing) => existing.resourceId === resourceId && existing.contentHash === contentHash,
 			);
 			if (duplicate) {
 				refreshEpisodicMemoryEntry(duplicate, entry, now);
@@ -606,7 +612,7 @@ export class InMemoryMemory
 
 			const row: EpisodicMemoryEntry = {
 				id: crypto.randomUUID(),
-				resourceId: entry.resourceId,
+				resourceId,
 				content: entry.content,
 				contentHash,
 				...activeLifecycleState(),
@@ -682,9 +688,18 @@ export class InMemoryMemory
 		query: string,
 		opts?: EpisodicMemorySearchOptions,
 	): Promise<RetrievedEpisodicMemoryEntry[]> {
-		const scoped = this.episodicMemory
-			.filter((entry) => entry.resourceId === scope.resourceId)
-			.map(cloneEpisodicMemoryEntry);
+		const scopeIds = opts?.writeScopeOnly
+			? [episodicWriteScopeId(scope)]
+			: episodicReadScopeIds(scope);
+		// The same fact told in two scopes is one memory to the reader.
+		const newestByContent = new Map<string, EpisodicMemoryEntry>();
+		for (const entry of this.episodicMemory) {
+			if (!scopeIds.includes(entry.resourceId)) continue;
+			const key = `${entry.status}\n${entry.contentHash}`;
+			const seen = newestByContent.get(key);
+			if (!seen || entry.lastSeenAt > seen.lastSeenAt) newestByContent.set(key, entry);
+		}
+		const scoped = [...newestByContent.values()].map(cloneEpisodicMemoryEntry);
 		return rankEpisodicMemoryEntries(scoped, query, opts);
 	}
 
@@ -715,7 +730,9 @@ export class InMemoryMemory
 	): Promise<EpisodicMemoryReflectionResult> {
 		const activeIds = new Set(
 			this.episodicMemory
-				.filter((entry) => entry.resourceId === scope.resourceId && entry.status === 'active')
+				.filter(
+					(entry) => entry.resourceId === episodicWriteScopeId(scope) && entry.status === 'active',
+				)
 				.map((entry) => entry.id),
 		);
 		const normalized = normalizeFlatReflectionActions({
@@ -856,4 +873,13 @@ function provenanceOf(source: {
 	if (source.observationId) return { observationId: source.observationId };
 	if (source.candidateId) return { candidateId: source.candidateId };
 	return null;
+}
+
+/** The scope a turn writes to. A host-resolved scope wins over the resource. */
+function episodicWriteScopeId(scope: Pick<EpisodicMemoryScope, 'resourceId' | 'episodic'>): string {
+	return scope.episodic?.writeScopeId ?? scope.resourceId;
+}
+
+function episodicReadScopeIds(scope: EpisodicMemoryScope): string[] {
+	return scope.episodic?.readScopeIds ?? [scope.resourceId];
 }

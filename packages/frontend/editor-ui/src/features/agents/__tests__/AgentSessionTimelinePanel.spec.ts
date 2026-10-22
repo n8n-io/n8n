@@ -5,6 +5,7 @@ import { enableAutoUnmount, mount, flushPromises } from '@vue/test-utils';
 import { reactive } from 'vue';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import AgentSessionTimelinePanel from '../components/AgentSessionTimelinePanel.vue';
+import AgentBudgetNoticeCard from '../components/AgentBudgetNoticeCard.vue';
 import type { ThreadDetail } from '../composables/useAgentThreadsApi';
 import type { FilterOption } from '../session-timeline.types';
 
@@ -114,6 +115,8 @@ const keyboardExecution = {
 	failureSummary: null,
 	hitlStatus: null,
 	source: null,
+	finishReason: null,
+	guardrailCode: null,
 } satisfies ThreadDetail['executions'][number];
 
 const errorFilterExecution = {
@@ -136,6 +139,16 @@ const errorFilterExecution = {
 	],
 } satisfies ThreadDetail['executions'][number];
 
+function budgetStopExecution(code: string, id = 'execution-2') {
+	return {
+		...keyboardExecution,
+		id,
+		finishReason: 'guardrail',
+		guardrailCode: code,
+		timeline: [{ type: 'guardrail', code, timestamp: Date.parse('2026-08-03T12:00:02.000Z') }],
+	} satisfies ThreadDetail['executions'][number];
+}
+
 function dispatchKeyboardEvent(type: 'keydown' | 'keyup', key: string) {
 	const event = new KeyboardEvent(type, { key, bubbles: true, cancelable: true });
 	document.dispatchEvent(event);
@@ -155,7 +168,7 @@ const update: PushMessage = {
 enableAutoUnmount(afterEach);
 
 function mountPanel(
-	props: Partial<{ projectId: string; agentId: string; threadId: string }> = {},
+	props: Partial<InstanceType<typeof AgentSessionTimelinePanel>['$props']> = {},
 	options: { attachTo?: HTMLElement; renderTimelineTable?: boolean } = {},
 ) {
 	return mount(AgentSessionTimelinePanel, {
@@ -206,7 +219,7 @@ describe('AgentSessionTimelinePanel', () => {
 			expect(wrapper.find('[data-test-id="detail-stub"]').exists()).toBe(false);
 			expect(track).toHaveBeenCalledExactlyOnceWith(
 				TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_ITEM,
-				{ agent_id: 'a1', session_id: 'session-xyz', item_type: 'agent' },
+				{ agent_id: 'a1', push_ref: 'session-xyz', item_type: 'agent' },
 			);
 		},
 	);
@@ -324,11 +337,11 @@ describe('AgentSessionTimelinePanel', () => {
 			expect(track.mock.calls).toEqual([
 				[
 					TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_ITEM,
-					{ agent_id: 'a1', session_id: 'session-xyz', item_type: 'user' },
+					{ agent_id: 'a1', push_ref: 'session-xyz', item_type: 'user' },
 				],
 				[
 					TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_ITEM,
-					{ agent_id: 'a1', session_id: 'session-xyz', item_type: 'agent' },
+					{ agent_id: 'a1', push_ref: 'session-xyz', item_type: 'agent' },
 				],
 			]);
 
@@ -502,8 +515,94 @@ describe('AgentSessionTimelinePanel', () => {
 		expect(wrapper.find('[data-test-id="table-stub"]').attributes('data-selected-index')).toBe('2');
 		expect(track).toHaveBeenCalledExactlyOnceWith(TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_ITEM, {
 			agent_id: 'a1',
-			session_id: 'session-xyz',
+			push_ref: 'session-xyz',
 			item_type: 'agent',
+		});
+	});
+	describe('budget notice', () => {
+		const budgetCard = '[data-testid="agent-budget-notice-card"]';
+
+		async function mountWithExecutions(
+			executions: ThreadDetail['executions'],
+			props: Partial<InstanceType<typeof AgentSessionTimelinePanel>['$props']> = {},
+		) {
+			getThreadDetail.mockResolvedValue({ ...detail, executions });
+			const wrapper = mountPanel(props, { renderTimelineTable: true });
+			await flushPromises();
+			return wrapper;
+		}
+
+		it('renders the card directly below a budget stop in the latest run', async () => {
+			const wrapper = await mountWithExecutions([
+				keyboardExecution,
+				budgetStopExecution('budget.session'),
+			]);
+
+			const noticeRow = wrapper.get('[data-test-id="timeline-notice-row"]');
+			const stopRow = noticeRow.element.previousElementSibling;
+			expect(stopRow?.getAttribute('data-test-id')).toBe('timeline-row');
+			expect(stopRow?.textContent).toContain('The session reached its cost cap.');
+			expect(noticeRow.find(budgetCard).exists()).toBe(true);
+		});
+
+		it('does not render the card for a stop without budget copy', async () => {
+			const wrapper = await mountWithExecutions([budgetStopExecution('budget.credits')]);
+
+			expect(wrapper.find(budgetCard).exists()).toBe(false);
+		});
+
+		it('does not render the card when a later run got past the stop', async () => {
+			const wrapper = await mountWithExecutions([
+				budgetStopExecution('budget.monthly', 'execution-0'),
+				keyboardExecution,
+			]);
+
+			expect(wrapper.find(budgetCard).exists()).toBe(false);
+		});
+
+		it('hides the increase action when the user cannot raise the cap', async () => {
+			const wrapper = await mountWithExecutions([budgetStopExecution('budget.session')]);
+
+			expect(wrapper.find(budgetCard).exists()).toBe(true);
+			expect(wrapper.find('[data-testid="agent-budget-notice-increase"]').exists()).toBe(false);
+		});
+
+		it.each([
+			[true, false],
+			[false, true],
+		])('when the save resolves %s, the card stays: %s', async (saved, cardStays) => {
+			const increaseBudget = vi.fn().mockResolvedValue(saved);
+			const wrapper = await mountWithExecutions([budgetStopExecution('budget.session')], {
+				increaseBudget,
+			});
+
+			const payload = { field: 'sessionCostCapUsd', amount: 20 };
+			wrapper.getComponent(AgentBudgetNoticeCard).vm.$emit('increase', payload);
+			await flushPromises();
+
+			expect(increaseBudget).toHaveBeenCalledWith(payload);
+			expect(wrapper.find(budgetCard).exists()).toBe(cardStays);
+		});
+
+		it('shows the card again when a newer run stops at the raised cap', async () => {
+			const increaseBudget = vi.fn().mockResolvedValue(true);
+			const firstStop = budgetStopExecution('budget.session', 'execution-2');
+			const wrapper = await mountWithExecutions([firstStop], { increaseBudget });
+
+			wrapper
+				.getComponent(AgentBudgetNoticeCard)
+				.vm.$emit('increase', { field: 'sessionCostCapUsd', amount: 20 });
+			await flushPromises();
+			expect(wrapper.find(budgetCard).exists()).toBe(false);
+
+			getThreadDetail.mockResolvedValue({
+				...detail,
+				executions: [firstStop, budgetStopExecution('budget.session', 'execution-3')],
+			});
+			emitPush();
+			await flushPromises();
+
+			expect(wrapper.find(budgetCard).exists()).toBe(true);
 		});
 	});
 });

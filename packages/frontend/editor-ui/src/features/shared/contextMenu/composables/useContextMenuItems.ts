@@ -157,7 +157,7 @@ export function useContextMenuItems(
 		if (isRestricted(node)) return false;
 
 		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-		if (!nodeType) return false;
+		if (!nodeType || nodeTypesStore.isNodeDeprecated(node)) return false;
 		if (NOT_DUPLICATABLE_NODE_TYPES.includes(nodeType.name)) return false;
 
 		return canAddNodeOfType(nodeType);
@@ -329,7 +329,7 @@ export function useContextMenuItems(
 						divided: true,
 						label: i18n.baseText('contextMenu.extract', i18nOptions),
 						shortcut: { altKey: true, keys: ['X'] },
-						disabled: isReadOnly.value,
+						disabled: isReadOnly.value || nodes.some(nodeTypesStore.isNodeDeprecated),
 					},
 				];
 
@@ -489,7 +489,7 @@ export function useContextMenuItems(
 						? i18n.baseText('contextMenu.activate', i18nOptions)
 						: i18n.baseText('contextMenu.deactivate', i18nOptions),
 					shortcut: { keys: ['D'] },
-					disabled: isReadOnly.value,
+					disabled: isReadOnly.value || nodes.some(nodeTypesStore.isNodeDeprecated),
 				},
 				!onlyStickies && {
 					id: 'toggle_pin',
@@ -581,7 +581,11 @@ export function useContextMenuItems(
 							{
 								id: 'execute',
 								label: i18n.baseText('contextMenu.test'),
-								disabled: isReadOnly.value || isRestricted(nodes[0]) || !isExecutable(nodes[0]),
+								disabled:
+									isReadOnly.value ||
+									isRestricted(nodes[0]) ||
+									!isExecutable(nodes[0]) ||
+									nodeTypesStore.isNodeDeprecated(nodes[0]),
 							},
 							...copyWebhookActions,
 							{
@@ -589,7 +593,7 @@ export function useContextMenuItems(
 								id: 'rename',
 								label: i18n.baseText('contextMenu.rename'),
 								shortcut: { keys: ['Space'] },
-								disabled: isReadOnly.value,
+								disabled: isReadOnly.value || nodeTypesStore.isNodeDeprecated(nodes[0]),
 							},
 							{
 								id: 'replace',

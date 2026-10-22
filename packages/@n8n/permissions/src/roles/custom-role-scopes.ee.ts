@@ -128,7 +128,7 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 			'aiAssistant:manage', // n8n Assistant
 			'instanceAi:manage',
 			'instanceAi:message',
-			'instanceAi:gateway', // computer-use gateway pairing
+			'instanceAi:gateway', // Browser Use pairing
 			'mcp:manage', // Instance-level MCP
 			'mcp:oauth', // MCP OAuth clients
 			'mcpApiKey:create', // MCP personal API key

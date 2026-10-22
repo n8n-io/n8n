@@ -24,6 +24,13 @@ const { confirm, showMessage, createBinding } = vi.hoisted(() => ({
 }));
 
 vi.mock('../promotions.api');
+vi.mock('../components/preview/PromotionWorkflowDiff.vue', () => ({
+	__esModule: true,
+	default: {
+		props: ['resourceKey'],
+		template: '<div data-test-id="active-workflow-diff" :data-resource-key="resourceKey" />',
+	},
+}));
 vi.mock('../promotionsSettings.api');
 // The projects store loads the project of the route on its own.
 vi.mock('@/features/collaboration/projects/projects.api');
@@ -115,6 +122,41 @@ const treeRow = (getAllByTestId: (id: string) => HTMLElement[], key: string) => 
 	return within(row);
 };
 
+const card = (getAllByTestId: (id: string) => HTMLElement[], key: string) => {
+	const element = getAllByTestId('promotion-preview-card').find(
+		(element) => element.dataset.resourceKey === key,
+	);
+	if (!element) throw new Error(`No card for ${key}`);
+	return within(element);
+};
+
+const cardToggle = (getAllByTestId: (id: string) => HTMLElement[], key: string) =>
+	card(getAllByTestId, key).getByTestId('promotion-preview-card-toggle');
+
+// The details endpoint answers each workflow with a small workflow that this instance adds.
+const answerWorkflowDetails = () =>
+	vi
+		.mocked(api.getPromotionResourceDetails)
+		.mockImplementation(async (_context, _project, _direction, { keys }) => ({
+			details: keys
+				.filter((key) => key.startsWith('workflow:'))
+				.map((key) => ({
+					key,
+					type: 'workflow' as const,
+					before: null,
+					after: {
+						id: key,
+						name: key,
+						nodes: [],
+						connections: {},
+						parentFolderId: null,
+						isArchived: false,
+					},
+					revision: { before: null, after: 'blob' },
+				})),
+			missingKeys: [],
+		}));
+
 describe('PromotionPreviewView', () => {
 	beforeEach(() => {
 		invalidateInstancePromotionConnection();
@@ -141,15 +183,95 @@ describe('PromotionPreviewView', () => {
 		expect(router.currentRoute.value.query.resource).toBe('dataTable:t1');
 	});
 
-	it('should load the content of changed resources other than workflows with the preview', async () => {
+	it('should load the changed resources and only the active workflow with the preview', async () => {
 		await render();
 
 		expect(api.getPromotionResourceDetails).toHaveBeenCalledTimes(1);
 		expect(vi.mocked(api.getPromotionResourceDetails).mock.calls[0][3].keys).toEqual([
 			'folder:f1',
+			'workflow:w1',
 			'dataTable:t1',
 			'variable:global:API_URL',
 		]);
+	});
+
+	it('should switch the active diff without collapsing or scrolling cards', async () => {
+		answerWorkflowDetails();
+		const { getAllByTestId, queryAllByTestId } = await render();
+		const workflowCard = (key: string) => card(getAllByTestId, key);
+		const order = () =>
+			getAllByTestId('promotion-preview-card').map((element) => element.dataset.resourceKey);
+		const initialOrder = order();
+		const requestedKeys = () =>
+			vi.mocked(api.getPromotionResourceDetails).mock.calls.flatMap(([, , , { keys }]) => keys);
+		await waitFor(() =>
+			expect(workflowCard('workflow:w1').getByTestId('active-workflow-diff')).toBeInTheDocument(),
+		);
+
+		await userEvent.click(
+			workflowCard('workflow:w3').getByRole('button', { name: 'Show diff of Weekly KPI report' }),
+		);
+		await waitFor(() =>
+			expect(workflowCard('workflow:w3').getByTestId('active-workflow-diff')).toBeInTheDocument(),
+		);
+		expect(queryAllByTestId('active-workflow-diff')).toHaveLength(1);
+		expect(cardToggle(getAllByTestId, 'workflow:w1')).toHaveAttribute('data-state', 'open');
+		expect(order()).toEqual(initialOrder);
+		expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
+
+		// Returning to a diff uses the content that already loaded.
+		await userEvent.click(
+			workflowCard('workflow:w1').getByRole('button', {
+				name: 'Show diff of Invoice reconciliation',
+			}),
+		);
+		await waitFor(() =>
+			expect(workflowCard('workflow:w1').getByTestId('active-workflow-diff')).toBeInTheDocument(),
+		);
+		expect(requestedKeys().filter((key) => key === 'workflow:w1')).toHaveLength(1);
+
+		// A collapsed card gives up its diff.
+		await userEvent.click(cardToggle(getAllByTestId, 'workflow:w1'));
+		await userEvent.click(cardToggle(getAllByTestId, 'workflow:w1'));
+		expect(
+			workflowCard('workflow:w1').getByRole('button', {
+				name: 'Show diff of Invoice reconciliation',
+			}),
+		).toBeInTheDocument();
+	});
+
+	it('should activate the diff of a linked workflow instead of the first one', async () => {
+		answerWorkflowDetails();
+		const { getAllByTestId } = await render('/projects/p1/promotions/promote?resource=workflow:w3');
+		const workflowCard = (key: string) => card(getAllByTestId, key);
+
+		await waitFor(() =>
+			expect(workflowCard('workflow:w3').getByTestId('active-workflow-diff')).toBeInTheDocument(),
+		);
+		expect(
+			workflowCard('workflow:w1').getByRole('button', {
+				name: 'Show diff of Invoice reconciliation',
+			}),
+		).toBeInTheDocument();
+		await waitFor(() => expect(Element.prototype.scrollIntoView).toHaveBeenCalled());
+	});
+
+	it('should activate a different workflow when the route changes', async () => {
+		answerWorkflowDetails();
+		const { getAllByTestId } = await render('/projects/p1/promotions/promote?resource=workflow:w1');
+		await waitFor(() =>
+			expect(
+				card(getAllByTestId, 'workflow:w1').getByTestId('active-workflow-diff'),
+			).toBeInTheDocument(),
+		);
+
+		await router.push('/projects/p1/promotions/promote?resource=workflow:w3');
+
+		await waitFor(() =>
+			expect(
+				card(getAllByTestId, 'workflow:w3').getByTestId('active-workflow-diff'),
+			).toBeInTheDocument(),
+		);
 	});
 
 	it('should open the card of a direct link', async () => {
@@ -158,7 +280,9 @@ describe('PromotionPreviewView', () => {
 		const card = getAllByTestId('promotion-preview-card').find(
 			(element) => element.dataset.resourceKey === 'tag:g1',
 		);
-		expect(vi.mocked(Element.prototype.scrollIntoView).mock.contexts).toEqual([card]);
+		await waitFor(() =>
+			expect(vi.mocked(Element.prototype.scrollIntoView).mock.contexts).toEqual([card]),
+		);
 	});
 
 	it('should scroll to the card again when the same item is inspected twice', async () => {

@@ -327,6 +327,10 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 				dirtiness: dirtinessByNodeId.get(node.id)?.value,
 				icon,
 				placeholder: node.placeholder === true || isEmptyGroupAnchorNode,
+				deprecated: Boolean(nodeType?.deprecated),
+				deprecatedReplacementName: nodeType?.replacedByNodeType
+					? nodeTypesStore.getNodeType(nodeType.replacedByNodeType)?.displayName
+					: undefined,
 			},
 		};
 	}
