@@ -563,9 +563,9 @@ function headerAuthNode(credential: { id: string; name: string }): INode {
  */
 async function promoteCredentialWorkflows() {
 	const remote = await createRemote();
-	const connection = await createInstanceConnection(remote.bareDir);
-	await service.clone(connection.id, 'promote');
-	await service.clone(connection.id, 'apply');
+	const environments = await createInstanceEnvironments(remote.bareDir);
+	await service.clone(environments.promote.id);
+	await service.clone(environments.apply.id);
 	const project = await createTeamProject('Billing', owner);
 	const credential = await saveCredential(
 		{ name: 'Billing header', type: 'httpHeaderAuth', data: { name: 'X-Token', value: 'secret' } },
@@ -583,11 +583,11 @@ async function promoteCredentialWorkflows() {
 		{ name: 'Report', nodes: [headerAuthNode(reportCredential)], connections: {} },
 		project,
 	);
-	await service.promote(connection.id, owner, {
+	await service.promote(environments.promote.id, owner, {
 		canExportVariableValues: true,
 		commitMessage: 'Export billing',
 	});
-	return { remote, connection, project, credential, reportCredential, workflow, reportWorkflow };
+	return { remote, environments, project, credential, reportCredential, workflow, reportWorkflow };
 }
 
 /** Changes credential files on the branch, as a later promotion from the source would. */
@@ -2108,13 +2108,14 @@ describe('Apply credential changes', () => {
 	const EXPRESSION = '={{ $vars.billingToken }}';
 
 	it('writes the branch name and expression values to a matched credential on a full apply', async () => {
-		const { remote, connection, credential, reportCredential } = await promoteCredentialWorkflows();
+		const { remote, environments, credential, reportCredential } =
+			await promoteCredentialWorkflows();
 		await changeBranchCredentials(remote, {
 			[credential.id]: { name: 'Billing header v2', data: { value: EXPRESSION } },
 		});
 		const reportBefore = await storedCredential(reportCredential.id);
 
-		const result = await service.apply(connection.id, owner);
+		const result = await service.apply(environments.apply.id, owner);
 
 		expect(result).toMatchObject({
 			status: 'applied',
@@ -2128,14 +2129,14 @@ describe('Apply credential changes', () => {
 	});
 
 	it('writes nothing when the same branch is applied again', async () => {
-		const { remote, connection, credential } = await promoteCredentialWorkflows();
+		const { remote, environments, credential } = await promoteCredentialWorkflows();
 		await changeBranchCredentials(remote, {
 			[credential.id]: { name: 'Billing header v2', data: { value: EXPRESSION } },
 		});
-		await service.apply(connection.id, owner);
+		await service.apply(environments.apply.id, owner);
 		const before = await storedCredential(credential.id);
 
-		const result = await service.apply(connection.id, owner);
+		const result = await service.apply(environments.apply.id, owner);
 
 		expect(result).toMatchObject({
 			status: 'applied',
