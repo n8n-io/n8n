@@ -60,7 +60,7 @@ n8n-cli --url=https://my-n8n.app.n8n.cloud --api-key=n8n_api_xxxxx workflow list
 | `data-table` | `list`, `get`, `create`, `delete`, `rows`, `add-rows`, `update-rows`, `upsert-rows`, `delete-rows` |
 | `user` | `list`, `get` |
 | `config` | `set-url`, `set-api-key`, `show` |
-| `promotion-provider` | `list`, `get`, `create`, `update`, `delete` |
+| `promotion-provider` | `list`, `get`, `create`, `update`, `delete`, `list-repositories`, `list-branches` |
 | `promotion-environment` | `list`, `get`, `create`, `update`, `delete`, `connect`, `disconnect`, `list-changes`, `promote`, `promote-selection`, `apply`, `apply-continue`, `apply-selection`, `apply-selection-continue`, `list-projects`, `add-project`, `remove-project` |
 | `source-control` | `pull` |
 | `package` | `export`, `import` _(beta)_, `import-selection` _(beta)_ |
