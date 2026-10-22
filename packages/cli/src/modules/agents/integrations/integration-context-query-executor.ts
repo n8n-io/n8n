@@ -92,4 +92,4 @@ export class ChatIntegrationContextQueryExecutor implements IntegrationContextQu
 
 // Re-export the Linear normalizers used by tests / action executor message-context
 // construction. Tests reference these via this module path.
-export { normalizeLinearComment, normalizeLinearIssue } from './platforms/linear-operations';
+export { normalizeLinearComment, normalizeLinearIssue } from './platforms/linear/linear-operations';

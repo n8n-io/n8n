@@ -128,6 +128,9 @@ export type Refused = {
 
 export type AdmissionResult = Admitted | Refused;
 
+/** What a challenge needs. A `Refused` fits. Without a reason, the challenge has no error. */
+export type Refusal = Pick<Refused, 'advertised'> & { reason?: RefusalReason };
+
 /**
  * What every surface does between taking a credential off the wire and acting as the caller:
  * stamp the inbound with the resource, run the pipeline, ask the resource to authorize the
@@ -150,8 +153,17 @@ export abstract class ResourceAdmission {
 		token: string,
 	): Promise<AdmissionResult>;
 
-	/** The `WWW-Authenticate` value for a refusal: the advertised challenge, then the RFC 6750 error. */
-	abstract challenge(refused: Refused): Promise<string>;
+	/**
+	 * The `WWW-Authenticate` value for a refusal: the advertised challenge, then the RFC 6750
+	 * error. A refusal without a reason, or for a missing credential, gets no error (RFC 6750 §3.1).
+	 */
+	abstract challenge(refusal: Refusal): Promise<string>;
+
+	/**
+	 * Refuses for a reason the surface decides itself, before or after the pipeline, and writes
+	 * the one denial line. The line has no token, no external subject and no email.
+	 */
+	abstract refuse(inbound: Inbound, reason: RefusalReason, context?: SecurityContext): Refused;
 }
 
 /** The dispatcher. Owns what every method shares: driver lookup and surface acceptance. */

@@ -113,6 +113,20 @@ describe('OAuth2CredentialController', () => {
 			expect(oauthService.renderCallbackError).not.toHaveBeenCalled();
 		});
 
+		it('should render the consent page, not resolve a credential, when the approval carries a state', async () => {
+			const consentReq = mock<OAuthRequest.OAuth2Credential.Callback>();
+			consentReq.query = {
+				admin_consent: 'True',
+				tenant: 'tenant-1',
+				state: 'proxy-state',
+			} as unknown as OAuthRequest.OAuth2Credential.Callback['query'];
+
+			await controller.handleCallback(consentReq, res);
+
+			expect(res.render).toHaveBeenCalledWith('admin-consent-callback');
+			expect(oauthService.resolveCredential).not.toHaveBeenCalled();
+		});
+
 		it('should render the error page when an administrator refused the app', async () => {
 			const consentReq = mock<OAuthRequest.OAuth2Credential.Callback>();
 			consentReq.query = {

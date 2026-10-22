@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
+import { InstanceRegistryProxyService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import { ProjectRelationRepository, ProjectRepository, UserRepository } from '@n8n/db';
@@ -1502,6 +1503,10 @@ describe('Telemetry', () => {
 					'project:personalOwner': 0,
 					'project:viewer': 0,
 				},
+				processes: [
+					{ type: 'main', cpu: 2, memory_kib: 2048, version: '1.0.0', count: 1 },
+					{ type: 'worker', cpu: null, memory_kib: null, version: '1.0.0', count: 1 },
+				],
 			});
 		});
 
@@ -1544,6 +1549,34 @@ describe('Telemetry', () => {
 
 /** Registers the services the pulse packet reads its counters from. */
 const mockPulsePacketSources = () => {
+	mockInstance(InstanceRegistryProxyService, {
+		getAllInstances: async () => [
+			{
+				schemaVersion: 1,
+				instanceKey: 'k1',
+				hostId: 'main-1',
+				instanceType: 'main',
+				instanceRole: 'leader',
+				version: '1.0.0',
+				registeredAt: 0,
+				lastSeen: 0,
+				cpuLimit: 2,
+				memoryLimit: 2048 * 1024,
+			},
+			{
+				schemaVersion: 1,
+				instanceKey: 'k2',
+				hostId: 'worker-1',
+				instanceType: 'worker',
+				instanceRole: 'unset',
+				version: '1.0.0',
+				registeredAt: 0,
+				lastSeen: 0,
+				cpuLimit: null,
+				memoryLimit: null,
+			},
+		],
+	});
 	mockInstance(SourceControlPreferencesService, {
 		getPreferences: () => mock({ branchName: 'main', branchReadOnly: true }),
 		isSourceControlSetup: () => 'main',

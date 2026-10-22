@@ -174,6 +174,49 @@ function makeStreamingConsumer(
 	});
 }
 
+describe('AgentChatStreamConsumer — stream delivery failure', () => {
+	it('continues past a failed post and clears status after reporting the error', async () => {
+		const localThread = mock<Thread<unknown, unknown>>();
+		const error = new Error('Slack delivery failed');
+		localThread.post.mockRejectedValue(error);
+		const postErrorToThread = vi.fn().mockResolvedValue(undefined);
+		const consumer = makeStreamingConsumer({ postErrorToThread });
+		const clearBeforeResponse = vi.fn().mockResolvedValue(undefined);
+		const resumeAfterResponse = vi.fn().mockResolvedValue(undefined);
+		const toolStarted = vi.fn();
+		async function* stream(): AsyncGenerator<StreamChunk> {
+			yield { type: 'text-delta', id: 't-1', delta: 'Saving the reply.' };
+			yield { type: 'text-end', id: 't-1' };
+			yield { type: 'tool-call', toolCallId: 'save', toolName: 'save_reply', input: {} };
+			toolStarted();
+			yield { type: 'finish', finishReason: 'stop' };
+		}
+
+		await consumer.consume(stream(), localThread, {
+			statusHandle: {
+				keepDuringResponse: true,
+				clearBeforeResponse,
+				resumeAfterResponse,
+			},
+		});
+
+		expect(postErrorToThread).toHaveBeenCalledOnce();
+		expect(postErrorToThread).toHaveBeenCalledWith(localThread, error, undefined);
+		expect(toolStarted).toHaveBeenCalledOnce();
+		expect(toolStarted.mock.invocationCallOrder[0]).toBeGreaterThan(
+			localThread.post.mock.invocationCallOrder[0],
+		);
+		expect(postErrorToThread.mock.invocationCallOrder[0]).toBeGreaterThan(
+			toolStarted.mock.invocationCallOrder[0],
+		);
+		expect(resumeAfterResponse).toHaveBeenCalled();
+		expect(clearBeforeResponse).toHaveBeenCalledOnce();
+		expect(clearBeforeResponse.mock.invocationCallOrder[0]).toBeGreaterThan(
+			postErrorToThread.mock.invocationCallOrder[0],
+		);
+	});
+});
+
 describe.each([
 	['streaming', false],
 	['buffered', true],
@@ -245,6 +288,52 @@ describe.each([
 		expect(result).toEqual(
 			disableStreaming ? [{ markdown: 'Before' }, { markdown: 'After' }] : ['Before', 'After'],
 		);
+	});
+});
+
+describe.each([
+	['streaming', false],
+	['buffered', true],
+])('AgentChatStreamConsumer — custom replies after progress (%s)', (_name, disableStreaming) => {
+	it('calls the handler for each custom reply after visible progress', async () => {
+		const { thread, streamedText, discrete } = makeStreamingThread();
+		const replies: Array<Extract<StreamChunk, { type: 'message' }>> = [
+			{
+				type: 'message',
+				message: { role: 'assistant', content: [{ type: 'text', text: 'First custom reply' }] },
+			},
+			{
+				type: 'message',
+				message: { role: 'assistant', content: [{ type: 'text', text: 'Second custom reply' }] },
+			},
+		];
+		const handleMessage = vi.fn().mockResolvedValue(true);
+		const consumer = makeStreamingConsumer({ disableStreaming, handleMessage });
+
+		await consumer.consume(
+			makeStream([
+				{ type: 'text-delta', id: 'progress', delta: 'Preparing the replies.' },
+				...replies,
+				{ type: 'finish', finishReason: 'stop' },
+			]),
+			thread,
+		);
+
+		expect(handleMessage).toHaveBeenCalledTimes(2);
+		expect(handleMessage).toHaveBeenNthCalledWith(
+			1,
+			replies[0],
+			thread,
+			...(disableStreaming ? [undefined] : []),
+		);
+		expect(handleMessage).toHaveBeenNthCalledWith(
+			2,
+			replies[1],
+			thread,
+			...(disableStreaming ? [undefined] : []),
+		);
+		expect(discrete).toEqual(disableStreaming ? [{ markdown: 'Preparing the replies.' }] : []);
+		expect(streamedText).toEqual(disableStreaming ? [] : ['Preparing the replies.']);
 	});
 });
 

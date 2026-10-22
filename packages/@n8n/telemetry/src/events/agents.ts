@@ -64,7 +64,7 @@ const agentConfigurationTelemetry = {
 // is stable across an editing session rather than only true on the first edit.
 const builderPreWriteStatus = agentStatus.describe("Agent status before the builder's write");
 
-const sessionId = z.string().describe('Editor push session id (pushRef)');
+const pushRef = z.string().describe('Editor push reference (pushRef)');
 
 const agentConfigFingerprint = z.object({
 	instructions: z.string(),
@@ -192,10 +192,16 @@ const agentPublish = {
 	version_id: z.string().describe('AgentHistory versionId that became active'),
 	knowledge_file_count: z
 		.number()
-		.describe('Knowledge files of the agent at publish time. Files have no versions.'),
+		.optional()
+		.describe(
+			'Knowledge files of the agent at publish time. Files have no versions. Absent when the server could not read the files.',
+		),
 	knowledge_total_bytes: z
 		.number()
-		.describe('Sum of the original sizes of the knowledge files at publish time'),
+		.optional()
+		.describe(
+			'Sum of the original sizes of the knowledge files at publish time. Absent when the server could not read the files.',
+		),
 };
 
 export const AGENTS_TELEMETRY = defineTelemetryEvents({
@@ -406,6 +412,23 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			'A user saved a tracked configuration or resource change to an existing Agent. Emitted after the change commits. Incomplete Agents also count. No-op and cosmetic-only saves emit nothing. Creation emits User created agent instead. The profile describes the saved configuration. Version 2 removes the configured-state gate and creation inference.',
 		properties: z.object({
 			...agentWrite,
+			changed_settings: z
+				.array(
+					z.enum([
+						'monthly_budget',
+						'budget_alert',
+						'session_cost_cap',
+						'custom_model_routing',
+						'memory_model',
+						'cache_duration',
+						'tool_concurrency',
+						'max_iterations',
+					]),
+				)
+				.optional()
+				.describe(
+					'Names of tracked settings changed by the committed user write, in the listed order. New emissions include an empty array when none changed. Compares stored fields, including added or removed overrides. Model settings compare model IDs, not credentials. Budget settings compare amounts and the alert threshold, not the shared enabled flag. Never includes setting values.',
+				),
 			event_version: z.literal('2'),
 		}),
 	},
@@ -488,7 +511,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			agent_id: z.string(),
 			dont_show_again: z.boolean(),
-			session_id: sessionId.optional(),
+			push_ref: pushRef.optional(),
 		}),
 	},
 	INSTANCE_AI_OPENED_FROM_AGENT_PREVIEW: {
@@ -621,7 +644,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					'Deprecated: the "Create agent manually" entry point was removed. No longer emitted.',
 				),
-			session_id: sessionId,
+			push_ref: pushRef,
 		}),
 	},
 	USER_SUBMITTED_MESSAGE_TO_AGENT: {
@@ -633,7 +656,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			mode: z.literal('test').describe('Constant dimension kept for warehouse-schema stability'),
 			status: agentStatus,
 			agent_config: agentConfigFingerprint,
-			session_id: sessionId,
+			push_ref: pushRef,
 		}),
 	},
 	USER_ADDED_TRIGGER_TO_AGENT: {
@@ -645,7 +668,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			triggers: z.array(z.string()).describe('Configured trigger types after the change'),
 			config_version: z.string(),
 			status: agentStatus,
-			session_id: sessionId,
+			push_ref: pushRef,
 		}),
 	},
 	USER_ADDED_AGENT_NODE: {
@@ -671,7 +694,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			agent_id: z.string(),
 			tool_type: z.string(),
-			session_id: sessionId,
+			push_ref: pushRef,
 		}),
 	},
 	USER_OPENED_AGENT_SKILL: {
@@ -680,7 +703,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			agent_id: z.string(),
 			skill_id: z.string(),
-			session_id: sessionId,
+			push_ref: pushRef,
 		}),
 	},
 	USER_OPENED_ADD_SKILL_MODAL: {
@@ -688,7 +711,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 		description: 'The user opened the add-skill modal in the builder.',
 		properties: z.object({
 			agent_id: z.string(),
-			session_id: sessionId,
+			push_ref: pushRef,
 		}),
 	},
 	USER_IMPORTED_AGENT_SKILL: {
@@ -701,7 +724,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			status: z.enum(['success', 'error']),
 			reference_count: z.number(),
 			error: z.string().optional(),
-			session_id: sessionId,
+			push_ref: pushRef,
 		}),
 	},
 	USER_STARTED_ADDING_AGENT_TOOL: {
@@ -723,11 +746,127 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			agent_id: optionalAgentId,
 		}),
 	},
+	USER_CLICKED_AGENTS_TAB: {
+		name: 'User clicked agents tab',
+		description:
+			'The user activated a Build, Sessions, Knowledge, or Settings tab in the agent builder. Includes repeated clicks on the active tab. Excludes programmatic tab changes.',
+		properties: z.object({
+			agent_id: z.string(),
+			name: z.enum(['build', 'sessions', 'knowledge', 'settings']).describe('Activated tab'),
+			push_ref: pushRef,
+		}),
+	},
+	USER_CLICKED_KNOWLEDGE_UPLOAD: {
+		name: 'User clicked knowledge upload',
+		description:
+			'The user opened the knowledge file picker in the agent builder. Includes clicks followed by cancellation. Does not report selected files.',
+		properties: z.object({
+			agent_id: z.string(),
+			push_ref: pushRef,
+		}),
+	},
+	USER_CLICKED_TRACE_ITEM: {
+		name: 'User clicked trace item',
+		description:
+			'The user selected an agent session timeline item with the chart, table, or keyboard. Excludes selection restoration and deselection.',
+		properties: z.object({
+			agent_id: z.string(),
+			item_type: z
+				.enum([
+					'user',
+					'agent',
+					'skill',
+					'tool',
+					'node',
+					'workflow',
+					'execution-error',
+					'suspension',
+					'hitl-response',
+					'background-task-signal',
+				])
+				.describe('Selected timeline item kind. Does not include item content.'),
+			push_ref: pushRef,
+		}),
+	},
+	USER_APPLIED_SESSION_FILTER: {
+		name: 'User applied session filter',
+		description:
+			'The user changed or cleared agent session filters. Fires once per action before results load, with only the names of changed fields.',
+		properties: z.object({
+			agent_id: z.string(),
+			filter_names: z
+				.array(z.enum(['status', 'origin', 'start_date', 'end_date']))
+				.describe('Changed filter fields. Does not include filter values or dates.'),
+			push_ref: pushRef,
+		}),
+	},
+	USER_CLICKED_NEW_TEST_CHAT_ICON_FROM_TEST_PANEL: {
+		name: 'User clicked new test chat icon from test panel',
+		description:
+			'The user started a new test chat from the preview dock icon, its shortcut, or the standalone preview button.',
+		properties: z.object({
+			agent_id: z.string(),
+			source: z
+				.enum(['test-panel', 'shortcut', 'standalone'])
+				.describe('Origin of the new chat action'),
+			push_ref: pushRef,
+		}),
+	},
+	USER_CLICKED_MORE_OPTIONS_FROM_TEST_PANEL: {
+		name: 'User clicked more options from test panel',
+		description:
+			'The user opened the preview dock More menu. Excludes menu closure and metadata refresh.',
+		properties: z.object({
+			agent_id: z.string(),
+			push_ref: pushRef,
+		}),
+	},
+	USER_CLICKED_AN_OPTION_FROM_MORE_LIST: {
+		name: 'User clicked an option from more list',
+		description:
+			'The user selected an enabled preview dock More menu action. Fires before the action, even if it fails or the user cancels confirmation.',
+		properties: z.object({
+			agent_id: z.string(),
+			option: z
+				.enum([
+					'copy-link',
+					'copy-conversation',
+					'open-in-new-tab',
+					'toggle-full-width',
+					'export-session',
+					'delete-session',
+				])
+				.describe('Selected menu action'),
+			push_ref: pushRef,
+		}),
+	},
 	USER_OPENED_AGENT_PREVIEW: {
 		name: 'User opened agent preview',
 		description: 'The user opened the agent preview panel in the builder.',
 		properties: z.object({
 			agent_id: z.string(),
+			source: z
+				.enum(['icon', 'primary'])
+				.optional()
+				.describe('The button that opened the preview. Omit this for non-button openings.'),
+		}),
+	},
+	USER_REVERTED_CHANGES_ON_AGENT: {
+		name: 'User reverted changes on agent',
+		description:
+			'The user successfully reverted draft changes to the published version or a selected version in the Agent Builder.',
+		properties: z.object({
+			agent_id: z.string(),
+			push_ref: pushRef,
+		}),
+	},
+	USER_CLICKED_TRACE_DETAILS_FROM_TEST_PANEL: {
+		name: 'User clicked trace details from test panel',
+		description:
+			'The user activated the enabled Trace details control in the agent preview. Fires before navigation, not after trace loading.',
+		properties: z.object({
+			agent_id: z.string(),
+			push_ref: pushRef,
 		}),
 	},
 	USER_SAVED_AGENT_SKILL: {
@@ -765,7 +904,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			agent_id: z.string(),
 			channel_type: z.string(),
-			session_id: sessionId,
+			push_ref: pushRef,
 		}),
 	},
 	USER_CLOSED_AGENT_CHANNEL_SETUP: {
@@ -776,7 +915,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			agent_id: z.string(),
 			channel_type: z.string(),
 			completed: z.boolean().describe('True when the channel was connected'),
-			session_id: sessionId,
+			push_ref: pushRef,
 		}),
 	},
 	USER_FAILED_TO_CONNECT_AGENT_CHANNEL: {
@@ -792,7 +931,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 					'persist: saving the agent failed; before_save: the platform pre-save step failed; connect: the connect request failed',
 				),
 			conflict: z.boolean().describe('True when the connect request answered 409'),
-			session_id: sessionId,
+			push_ref: pushRef,
 		}),
 	},
 	USER_CHECKED_TEAMS_CHANNEL_CREDENTIAL: {
@@ -811,7 +950,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					'Only when status is failed. request_failed: the request to n8n failed, so Microsoft was never asked',
 				),
-			session_id: sessionId,
+			push_ref: pushRef,
 		}),
 	},
 	USER_CLICKED_DEPLOY_TO_AZURE_FOR_TEAMS_CHANNEL: {
@@ -819,7 +958,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 		description: 'The user clicked the Deploy to Azure button in the Teams channel setup.',
 		properties: z.object({
 			agent_id: z.string(),
-			session_id: sessionId,
+			push_ref: pushRef,
 		}),
 	},
 	USER_DOWNLOADED_TEAMS_APP_PACKAGE: {
@@ -828,7 +967,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			agent_id: z.string(),
 			status: z.enum(['success', 'error']),
-			session_id: sessionId,
+			push_ref: pushRef,
 		}),
 	},
 	USER_SELECTED_N8N_CHAT_AGENT: {
@@ -839,7 +978,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			agent_id: z.string(),
 			source: z.enum(['card', 'library', 'dropdown']),
 			variant: n8nChatVariant,
-			session_id: sessionId,
+			push_ref: pushRef,
 		}),
 	},
 	USER_SENT_MESSAGE_TO_N8N_CHAT_AGENT: {
@@ -850,7 +989,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			thread_id: z.string(),
 			is_new_thread: z.boolean(),
 			variant: n8nChatVariant,
-			session_id: sessionId,
+			push_ref: pushRef,
 		}),
 	},
 	USER_CLICKED_N8N_CHAT_SIDEBAR_ITEM: {
@@ -861,13 +1000,13 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			z.object({
 				item: z.literal('new_chat'),
 				variant: n8nChatVariant,
-				session_id: sessionId,
+				push_ref: pushRef,
 			}),
 			z.object({
 				item: z.literal('chat'),
 				chat_type: z.enum(['assistant', 'agent']),
 				variant: n8nChatVariant,
-				session_id: sessionId,
+				push_ref: pushRef,
 			}),
 		]),
 	},

@@ -87,12 +87,23 @@ describe('AgentKnowledgeUsageTracker', () => {
 		expect(tracker.takeRunUsage('undefined')).toBeUndefined();
 	});
 
-	it('drops a run without calls for more than an hour', () => {
+	it('keeps a run that makes no knowledge calls for several hours', () => {
+		vi.useFakeTimers();
+		const tracker = new AgentKnowledgeUsageTracker(mock<Telemetry>());
+		tracker.recordToolCall('long-run', 'file_search', 0);
+
+		vi.advanceTimersByTime(6 * 60 * 60 * 1000);
+		tracker.recordToolCall('new-run', 'file_search', 0);
+
+		expect(tracker.takeRunUsage('long-run')).toMatchObject({ file_search_count: 1 });
+	});
+
+	it('drops a run without calls for more than a day', () => {
 		vi.useFakeTimers();
 		const tracker = new AgentKnowledgeUsageTracker(mock<Telemetry>());
 		tracker.recordToolCall('stale-run', 'file_search', 0);
 
-		vi.advanceTimersByTime(60 * 60 * 1000 + 1);
+		vi.advanceTimersByTime(24 * 60 * 60 * 1000 + 1);
 		tracker.recordToolCall('new-run', 'file_search', 0);
 
 		expect(tracker.takeRunUsage('stale-run')).toBeUndefined();

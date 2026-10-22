@@ -4,7 +4,6 @@ export type {
 	OutputParserContext,
 	NodeSchemaContext,
 	PinDataGenerationInstructions,
-	DataTableColumnInfo,
 	DeclaredFieldContract,
 } from './types';
 export {
@@ -25,7 +24,9 @@ export {
 } from './context';
 export {
 	literalParameter,
+	readDataTableLocator,
 	readDataTableReadParameters,
+	type DataTableLocator,
 	type DataTableReadCondition,
 	type DataTableReadParameters,
 } from './data-table-read';

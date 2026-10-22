@@ -7,6 +7,7 @@ import {
 	type SkillCreateMethod,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { ProjectScopeService } from '@n8n/backend-services';
 import { TransactionRunner, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import isEqual from 'lodash/isEqual';
@@ -15,6 +16,17 @@ import { UserError } from 'n8n-workflow';
 import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { findIntroducedNameClashes, findNameClashGroups } from '@/modules/skills/skill-names';
+import {
+	SkillService,
+	withTrimmedName,
+	type SkillMoveOptions,
+} from '@/modules/skills/skill.service';
+import {
+	SkillsTelemetry,
+	type SkillTelemetryMethod,
+	type SkillTelemetrySource,
+} from '@/modules/skills/skills-telemetry';
 
 import {
 	type AgentMutationTelemetryContext,
@@ -26,14 +38,6 @@ import type { Agent } from './entities/agent.entity';
 import { composeJsonConfig } from './json-config/agent-config-composition';
 import type { AgentSkillRefs } from './json-config/agent-document';
 import { AgentRepository } from './repositories/agent.repository';
-import { findIntroducedNameClashes, findNameClashGroups } from './skills/skill-names';
-import type { SkillTarget } from './repositories/skill.repository';
-import { SkillService, withTrimmedName } from './skills/skill.service';
-import {
-	SkillsTelemetry,
-	type SkillTelemetryMethod,
-	type SkillTelemetrySource,
-} from './skills/skills-telemetry';
 import { getAgentConfigHash, getAgentSkillHash } from './utils/agent-config-hash';
 import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
@@ -58,6 +62,7 @@ export class AgentSkillsService {
 		private readonly skillService: SkillService,
 		private readonly transactionRunner: TransactionRunner,
 		private readonly skillsTelemetry: SkillsTelemetry,
+		private readonly projectScopeService: ProjectScopeService,
 	) {}
 
 	/** The skills of the agent draft, keyed by skill id: the versions that the draft runs. */
@@ -167,6 +172,7 @@ export class AgentSkillsService {
 				bodies,
 				context.user.id,
 				availableTo,
+				telemetrySourceOf(context),
 				ctx,
 			);
 			const nextRefs: AgentJsonSkillConfig[] = [
@@ -260,11 +266,16 @@ export class AgentSkillsService {
 		this.validateSkill(updated);
 
 		const nextAvailability = await this.availabilityChange(skillId, availableTo);
-		let checkedSource: SkillTarget | undefined;
+		let moveOptions: SkillMoveOptions = {};
 		if (nextAvailability) {
 			await this.skillService.assertCanEdit(context.user, [skillId]);
-			checkedSource = await this.skillService.assertCanMove(context.user, skillId);
+			const checkedSource = await this.skillService.assertCanMove(context.user, skillId);
 			await this.assertCanCreateSkills(context.user, entity.projectId, nextAvailability);
+			// A refused move names only the agents the user may read.
+			const agentProjectIds = await this.projectScopeService.getProjectIds(context.user, [
+				'agent:read',
+			]);
+			moveOptions = { checkedSource, agentProjectIds: agentProjectIds ?? 'all' };
 		}
 
 		if (isEqual(existing, updated)) {
@@ -274,9 +285,7 @@ export class AgentSkillsService {
 					skillId,
 					nextAvailability,
 					{},
-					{
-						checkedSource,
-					},
+					moveOptions,
 				);
 			}
 			return {
@@ -309,8 +318,8 @@ export class AgentSkillsService {
 			if (nextAvailability) {
 				// The move checks the name the skill has after the save, not the old one.
 				await this.agentSkillRefs.setAvailability(entity, skillId, nextAvailability, ctx, {
+					...moveOptions,
 					nameAfterMove: updated.name,
-					checkedSource,
 				});
 			}
 			if (pinned) {

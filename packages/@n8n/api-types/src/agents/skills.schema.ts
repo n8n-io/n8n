@@ -12,6 +12,7 @@ import { paginationSchema } from '../dto/pagination/pagination.dto';
 import { Z } from '../zod-class';
 
 export const SKILLS_MAX_PAGE_SIZE = 100;
+export const ASSISTANT_SKILLS_FLAG = '130_attach_skills_to_assistant';
 
 /** Optional on purpose: without `take` the caller gets every visible skill. */
 const optionalTake = z
@@ -28,7 +29,11 @@ export const skillScopeSchema = z.enum(['project', 'agent', 'instance']);
 
 export type SkillScope = z.infer<typeof skillScopeSchema>;
 
-export type SkillSource = 'ui' | 'agent';
+/**
+ * How a skill was created: `ui` in the skills hub, `agent` from the agent builder or the
+ * migration, `mcp` from an MCP client, `assistant` from n8n Assistant.
+ */
+export type SkillSource = 'ui' | 'agent' | 'mcp' | 'assistant';
 
 /** The user who created a skill, as the settings list names them. */
 export type SkillUserDto = {
@@ -59,6 +64,7 @@ export type SkillListItem = {
 	latestVersion: number;
 	/** Distinct agents that use the skill: draft refs plus published pins. */
 	usedByAgents: number;
+	availableToAssistant: boolean;
 	canEdit: boolean;
 	canDelete: boolean;
 	createdAt: string;
@@ -159,14 +165,16 @@ export class CreateSkillDto extends Z.class({
  * started from: a save based on an older version is refused with 409.
  */
 export class SaveSkillDto extends Z.class({
+	availableToAssistant: z.boolean().optional(),
 	name: skillNameSchema.optional(),
 	description: agentSkillShape.description.optional(),
 	instructions: agentSkillShape.instructions.optional(),
 	references: agentSkillShape.references.optional(),
 	baseSkillHash: z.string().min(1),
 	/**
-	 * Moves the skill to the instance or to a project. Refused with 409 while an agent
-	 * uses it. An agent skill is made from inside its agent, so `agent` is not a choice.
+	 * Moves the skill to the instance or to a project. Refused with 409 when an agent that
+	 * uses the skill cannot use it there. An agent skill is made from inside its agent, so
+	 * `agent` is not a choice.
 	 */
 	scope: z.enum(['project', 'instance']).optional(),
 	/** Required when `scope` is `project`, absent otherwise. */
