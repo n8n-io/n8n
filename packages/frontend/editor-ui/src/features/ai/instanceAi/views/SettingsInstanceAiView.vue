@@ -39,7 +39,6 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import DefaultEditorSetting from '@/experiments/openWorkflowInAssistant/components/DefaultEditorSetting.vue';
-import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
 import {
 	isContextPreferencesEnabled,
 	isContextSkillsEnabled,
@@ -69,8 +68,6 @@ const {
 	searchCredential,
 	searchState,
 } = useInstanceAiConfiguration();
-
-const { isFeatureEnabled: isComputerUseExperimentEnabled } = useInstanceAiComputerUseExperiment();
 
 const DOCS_URL = 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant';
 const DATA_SHARING_DOCS_URL =
@@ -212,7 +209,7 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
 	{
 		id: 'system',
 		labelKey: 'settings.n8nAgent.permissions.group.system',
-		keys: ['readFilesystem', 'cleanupTestExecutions'],
+		keys: ['cleanupTestExecutions'],
 	},
 	{
 		id: 'web',
@@ -445,11 +442,6 @@ async function handleStatusAction(action: string) {
 		},
 	);
 	if (confirmed === MODAL_CONFIRM) await store.persistEnabled(false);
-}
-
-function handleComputerUseToggle(value: boolean) {
-	store.setField('localGatewayDisabled', !value);
-	void store.save();
 }
 
 function handleBrowserUseToggle(value: boolean) {
@@ -694,23 +686,6 @@ async function handleDataSharingToggle(value: boolean) {
 								{{ searchValue }}
 							</N8nText>
 							<N8nSettingsRowConfigure v-else :value="searchValue" />
-						</template>
-					</N8nSettingsRow>
-
-					<N8nSettingsRow
-						v-if="isComputerUseExperimentEnabled"
-						:class="{ [$style.dim]: isOff }"
-						:title="i18n.baseText('settings.n8nAgent.computerUse.label')"
-						:description="i18n.baseText('settings.n8nAgent.computerUse.description')"
-					>
-						<template #action>
-							<N8nSwitch
-								:model-value="!(store.settings?.localGatewayDisabled ?? false)"
-								:disabled="store.isSaving || isOff"
-								:aria-label="i18n.baseText('settings.n8nAgent.computerUse.label')"
-								data-test-id="n8n-agent-computer-use-toggle"
-								@update:model-value="handleComputerUseToggle"
-							/>
 						</template>
 					</N8nSettingsRow>
 

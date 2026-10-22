@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { SkillListItem } from '@n8n/api-types';
-import { N8nActionToggle, N8nDataTableServer, N8nText, N8nUserInfo } from '@n8n/design-system';
+import {
+	N8nActionToggle,
+	N8nBadge,
+	N8nDataTableServer,
+	N8nText,
+	N8nTooltip,
+	N8nUserInfo,
+} from '@n8n/design-system';
 import type { TableHeader, TableOptions } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@n8n/stores/users.store';
@@ -27,6 +34,7 @@ const props = defineProps<{
 	skills: SkillListItem[];
 	itemsLength: number;
 	loading?: boolean;
+	showAssistantAvailability?: boolean;
 	/** The table renders its cover row whenever the slot exists, so the slot is withheld. */
 	showEmpty?: boolean;
 }>();
@@ -162,9 +170,27 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 
 			<template #[`item.name`]="{ item }">
 				<div :class="$style.skillCell">
-					<N8nText size="medium" color="text-dark" data-test-id="skill-name">
-						{{ item.name }}
-					</N8nText>
+					<div :class="$style.skillTitle">
+						<N8nText size="medium" color="text-dark" data-test-id="skill-name">
+							{{ item.name }}
+						</N8nText>
+						<N8nTooltip
+							v-if="
+								props.showAssistantAvailability &&
+								item.scope !== 'agent' &&
+								item.availableToAssistant
+							"
+							:content="i18n.baseText('settings.context.skills.assistant.label')"
+						>
+							<N8nBadge
+								variant="secondary"
+								leading-icon="n8n-assistant"
+								data-test-id="skill-assistant-badge"
+							>
+								{{ i18n.baseText('settings.context.skills.assistant.badge') }}
+							</N8nBadge>
+						</N8nTooltip>
+					</div>
 					<N8nText size="small" color="text-light" :class="$style.description">
 						{{ item.description }}
 					</N8nText>
@@ -224,6 +250,13 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 .creator {
 	padding-block: var(--spacing--2xs);
 	min-width: 0;
+}
+
+.skillTitle {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs);
 }
 
 .description {

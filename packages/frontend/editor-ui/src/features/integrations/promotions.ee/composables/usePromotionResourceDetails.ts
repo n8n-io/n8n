@@ -15,14 +15,15 @@ export type DetailEntry =
 	| { status: 'error' };
 
 /**
- * Loads the before and after content of the changed resources other than workflows with each
- * preview, in batches that the endpoint accepts.
+ * Loads the before and after content of the changed resources with each preview, in batches
+ * that the endpoint accepts. A workflow loads only when the user activates its diff.
  */
 export function usePromotionResourceDetails(
 	projectId: Ref<string>,
 	direction: Ref<PromotionDirection>,
 	preview: Ref<PromotionPreview | null>,
 	graph: Ref<SelectionGraph | null>,
+	activeWorkflowKey: Ref<ResourceKey | undefined>,
 ) {
 	const rootStore = useRootStore();
 	const entries = ref(new Map<ResourceKey, DetailEntry>());
@@ -33,9 +34,15 @@ export function usePromotionResourceDetails(
 		generation++;
 		entries.value = new Map();
 		const changed = [...(graph.value?.resources.values() ?? [])].filter(
-			(resource) => resource.change !== 'unchanged' && resource.type !== 'workflow',
+			(resource) =>
+				resource.change !== 'unchanged' &&
+				(resource.type !== 'workflow' || resource.key === activeWorkflowKey.value),
 		);
 		await request(changed.map((resource) => resource.key));
+	});
+
+	watch(activeWorkflowKey, async (key) => {
+		if (key) await request([key]);
 	});
 
 	async function fetchBatch(

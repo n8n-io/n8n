@@ -32,6 +32,8 @@ export const AgentMessageIntegrationOriginSchema = z.discriminatedUnion('type', 
 			identifier: id.optional(),
 			title: z.string().min(1).optional(),
 			projectId: id.optional(),
+			teamId: id.optional(),
+			teamName: z.string().min(1).optional(),
 		})
 		.strict(),
 	z

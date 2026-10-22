@@ -7,6 +7,10 @@ import {
 	N8nIcon,
 	N8nMarkdownEditor,
 } from '@n8n/design-system';
+import {
+	getViolationVerdict,
+	SCOPE_LABEL_KEY,
+} from '@n8n/frontend-module-type-availability-policies';
 import { useI18n } from '@n8n/i18n';
 import { computed, toRef } from 'vue';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
@@ -186,8 +190,10 @@ function toolStepRefusal(tc: ToolCall) {
 function toolStepError(tc: ToolCall): string | undefined {
 	if (isRecoverablePlanError(tc)) return i18n.baseText('agents.chat.plan.error.rejected');
 	if (tc.state !== TOOL_CALL_STATE.ERROR) return undefined;
-	if (toolStepRefusal(tc)) {
-		return i18n.baseText('typeAvailabilityPolicies.restrictedNode.scope.instance');
+	const refusal = toolStepRefusal(tc);
+	if (refusal) {
+		const { scope } = getViolationVerdict(refusal.violations[0]);
+		return i18n.baseText(SCOPE_LABEL_KEY[scope ?? 'instance']);
 	}
 	if (isEmptyToolErrorPayload(tc.output)) {
 		return i18n.baseText('agents.chat.toolError.generic');

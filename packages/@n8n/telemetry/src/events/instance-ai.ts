@@ -380,21 +380,6 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 				.describe('Whether the document was visible when the response rendered'),
 		}),
 	},
-	COMPUTER_USE_MODAL_OPENED: {
-		name: 'User opened computer use connection modal',
-		description: 'The user opened the Computer Use connection interface.',
-		properties: z.object({
-			is_connected: z.boolean(),
-			source: z.enum(['input_menu', 'tools_modal']),
-		}),
-	},
-	COMPUTER_USE_CONNECTION_COMMAND_COPIED: {
-		name: 'User copied computer use connection command',
-		description: 'The user copied the Computer Use connection command.',
-		properties: z.object({
-			os: z.enum(['mac', 'windows', 'linux']),
-		}),
-	},
 	BUILDER_SPECCED_TEMPLATED_CRED: {
 		name: 'Builder specced templated cred',
 		description:

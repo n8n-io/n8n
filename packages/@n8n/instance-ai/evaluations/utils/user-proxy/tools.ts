@@ -104,9 +104,9 @@ const pickResourceDecisionSchema = z.object({
  *  - `auto`   → `{kind:'credentialAutoSetup', credentialType}` — triggers an
  *    agent rebuild server-side (tool State 4). Live-captured tool result:
  *    `{success:false, needsBrowserSetup:true, credentialType:"slackApi", docsUrl:"...", requiredFields:[...]}`,
- *    followed by the assistant loading the `credential-setup-with-computer-use`
+ *    followed by the assistant loading the `credential-setup-with-browser-use`
  *    skill as designed. Reachable and its shape is real, but not further
- *    implemented — the harness has no Computer Use tools attached, so a case
+ *    implemented — the harness has no Browser Use tools attached, so a case
  *    scripting this will stall afterward. Do not push such a case to the
  *    gated CI suite.
  *  - `skip`   → `{kind:'approval', approved:false}` — tool State 2 (deferred).
