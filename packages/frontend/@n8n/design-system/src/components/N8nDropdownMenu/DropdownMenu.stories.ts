@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import { ref, computed, onBeforeUnmount } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 
 import N8nCheckbox from '../../v2/components/Checkbox/Checkbox.vue';
 import N8nBadge from '../N8nBadge/Badge.vue';
@@ -57,6 +57,31 @@ export const Default: Story = {
 			{ id: 'dataTables', label: 'Data tables', icon: { type: 'icon', value: 'table' } },
 			{ id: 'settings', label: 'Settings', icon: { type: 'icon', value: 'settings' } },
 			{ id: 'thrash', label: 'Delete', icon: { type: 'icon', value: 'trash-2' }, divided: true },
+		] as Array<DropdownMenuItemProps<string>>,
+	},
+};
+
+export const WithSectionHeader: Story = {
+	render: (args) => ({
+		components: { DropdownMenu },
+		setup() {
+			const handleSelect = (action: string) => {
+				console.log('Selected:', action);
+			};
+			return { args, handleSelect };
+		},
+		template: `
+		<div>
+			<DropdownMenu placement="bottom-start" :items="args.items" @select="handleSelect" />
+		</div>
+		`,
+	}),
+	args: {
+		items: [
+			{ id: 'section-workflows', label: 'Workflows', header: true },
+			{ id: 'orders', label: 'Orders workflow', icon: { type: 'icon', value: 'workflow' } },
+			{ id: 'invoices', label: 'Invoices workflow', icon: { type: 'icon', value: 'workflow' } },
+			{ id: 'customers', label: 'Customers workflow', icon: { type: 'icon', value: 'workflow' } },
 		] as Array<DropdownMenuItemProps<string>>,
 	},
 };
@@ -904,6 +929,83 @@ export const ExternalSearch: Story = {
 				:external-focus-target="textareaRef"
 				searchable
 				search-mode="external"
+				@select="handleSelect"
+			/>
+		</div>
+		`,
+	}),
+	args: {
+		items: [] as Array<DropdownMenuItemProps<string>>,
+	},
+};
+
+export const ExternalSearchWithHeader: Story = {
+	render: () => ({
+		components: { DropdownMenu },
+		setup() {
+			const dropdownRef = ref<DropdownMenuExposed | null>(null);
+			const textareaRef = ref<HTMLTextAreaElement | null>(null);
+			const isOpen = ref(true);
+			const query = ref('');
+			const allItems: Array<DropdownMenuItemProps<string>> = [
+				{ id: 'section-workflows', label: 'Workflows', header: true },
+				{ id: 'orders', label: 'Orders workflow' },
+				{ id: 'invoices', label: 'Invoices workflow' },
+				{ id: 'customers', label: 'Customers workflow' },
+			];
+			const filteredItems = computed(() => {
+				const term = query.value.trim().toLowerCase();
+				if (!term) return allItems;
+				return allItems.filter((item) => !item.header && item.label.toLowerCase().includes(term));
+			});
+
+			const handleKeydown = (event: KeyboardEvent) => {
+				const handled = dropdownRef.value?.handleExternalKeydown(event) ?? false;
+				// An unhandled Up or Down moves the caret. The mention menu treats that as leaving the query and closes.
+				if (!handled && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+					isOpen.value = false;
+				}
+			};
+
+			const handleSelect = (action: string) => {
+				console.log('Selected:', action);
+			};
+
+			onMounted(async () => {
+				await nextTick();
+				dropdownRef.value?.highlightFirstItem();
+			});
+
+			return {
+				dropdownRef,
+				textareaRef,
+				isOpen,
+				query,
+				filteredItems,
+				handleKeydown,
+				handleSelect,
+			};
+		},
+		template: `
+		<div style="display: flex; flex-direction: column; align-items: flex-start; gap: var(--spacing--xs);">
+			<p style="margin: 0;">
+				A section header sits above the first row. Press Up. The highlight stays on the first row, and the menu stays open.
+			</p>
+			<textarea
+				ref="textareaRef"
+				v-model="query"
+				placeholder="Type to filter workflows"
+				@focus="isOpen = true"
+				@keydown="handleKeydown"
+			/>
+			<DropdownMenu
+				ref="dropdownRef"
+				v-model="isOpen"
+				:items="filteredItems"
+				:external-focus-target="textareaRef"
+				searchable
+				search-mode="external"
+				placement="bottom-start"
 				@select="handleSelect"
 			/>
 		</div>

@@ -970,6 +970,30 @@ describe('N8nDropdownMenu', () => {
 			expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
 		});
 
+		it('keeps the menu open when ArrowUp is pressed on the first item below a header', async () => {
+			const wrapper = renderExternalDropdown([
+				{ id: 'section', label: 'Workflows', header: true },
+				{ id: 'orders', label: 'Orders' },
+				{ id: 'invoices', label: 'Invoices' },
+			]);
+			const textarea = wrapper.container.querySelector('textarea')!;
+			await waitFor(() => expect(document.activeElement).toBe(textarea));
+
+			await userEvent.keyboard('{ArrowDown}');
+			const orders = await waitFor(() => {
+				const item = wrapper.getByRole('menuitem', { name: 'Orders' });
+				expect(item).toHaveAttribute('data-virtual-highlighted');
+				return item;
+			});
+
+			await userEvent.keyboard('{ArrowUp}{ArrowUp}');
+
+			await waitFor(() => {
+				expect(orders).toHaveAttribute('data-virtual-highlighted');
+			});
+			expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
+		});
+
 		it('should navigate and select from the external textarea', async () => {
 			const wrapper = renderExternalDropdown();
 			const textarea = wrapper.container.querySelector('textarea')!;
