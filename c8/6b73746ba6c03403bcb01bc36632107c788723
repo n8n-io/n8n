@@ -1,0 +1,49 @@
+packages/nodes-base/nodes/HelpScout/test/HelpScout.requests.test.ts
+  s_2e1fa95fc44f8f::t_e540f8c4c76b05 1-52
+packages/nodes-base/nodes/Gumroad/__test__/GumroadTrigger.requests.test.ts
+  s_2e1fa95fc44f8f::t_1ce0e1313b0be5 1-42
+  s_2e1fa95fc44f8f::t_4eb93f3c895eca 43-44
+packages/nodes-base/nodes/Harvest/test/Harvest.requests.test.ts
+  s_2e1fa95fc44f8f::t_6bcc0e10e21662 1-24
+  s_2e1fa95fc44f8f::t_eea07f5d950acc 25-26
+packages/nodes-base/nodes/HackerNews/test/workflow/HackerNews.workflow.test.ts
+  s_0c8ab979236670::t_69286bca6447e9 1-26
+packages/nodes-base/nodes/HackerNews/test/workflow/requests.workflow.json
+  s_0c8ab979236670::t_36db0f1b11621d 1-131
+packages/nodes-base/nodes/Harvest/test/workflow/Harvest.workflow.test.ts
+  s_0c8ab979236670::t_32d87ecd30a69b 1-178
+packages/nodes-base/nodes/Harvest/test/workflow/requests.workflow.json
+  s_0c8ab979236670::t_2a4173c690f525 1-2043
+packages/nodes-base/nodes/HelpScout/test/workflow/HelpScout.workflow.test.ts
+  s_0c8ab979236670::t_54a5d42066d48b 1-75
+packages/nodes-base/nodes/HelpScout/test/workflow/requests.workflow.json
+  s_0c8ab979236670::t_a82554d67bd5d0 1-476
+packages/nodes-base/nodes/HumanticAI/test/workflow/HumanticAI.workflow.test.ts
+  s_0c8ab979236670::t_e1da63ef3e067a 1-32
+packages/nodes-base/nodes/HumanticAI/test/workflow/requests.workflow.json
+  s_0c8ab979236670::t_0a4fed94314594 1-117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c86b73746ba6c03403bcb01bc36632107c788723",
+  "prompts": {},
+  "sessions": {
+    "s_0c8ab979236670": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a5725a58c20a2e923",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

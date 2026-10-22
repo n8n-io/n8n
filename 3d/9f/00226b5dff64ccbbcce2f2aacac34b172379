@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Okta/UserDescription.ts
+  s_2e1fa95fc44f8f::t_e2cd6432749ae0 40,64,106
+packages/nodes-base/nodes/Okta/test/Okta.node.test.ts
+  s_2e1fa95fc44f8f::t_8cfdc435f41b7b 1-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3d9f00226b5dff64ccbbcce2f2aacac34b172379",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

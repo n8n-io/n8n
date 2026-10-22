@@ -1,0 +1,24 @@
+packages/cli/docs/adr/ADR-20261005-replay-the-first-public-api-response-for-an-idempotency-key.md
+  s_97b2e2a4f3d080::t_bd8d92050f9997 51
+packages/cli/docs/adr/ADR-20261005-store-public-api-idempotency-keys-in-the-instance-database.md
+  s_97b2e2a4f3d080::t_87309221511061 65-66
+  s_97b2e2a4f3d080::t_f11614f6bc6521 51-53
+  s_97b2e2a4f3d080::t_dfd49e57075394 31-34
+  s_97b2e2a4f3d080::t_6f4f88c03c6b65 40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4d79f4bd9da4091eba52a7c21c0d04fd043765e7",
+  "prompts": {},
+  "sessions": {
+    "s_97b2e2a4f3d080": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ac7b07c7-7d74-41fb-80d6-220b6bac9b5a",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,46 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_71ad2034164515::t_d0c9a0533b79c6 42,388,411
+  s_71ad2034164515::t_96981c7a4670b6 42,388,411
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-import-match.service.test.ts
+  s_71ad2034164515::t_d0c9a0533b79c6 105-106,110
+  s_d3c0f6f6f7d41c::t_763c6d0cacd958 105-106,110
+packages/cli/src/modules/n8n-packages/entities/import-id-policy.ts
+  s_71ad2034164515::t_d0c9a0533b79c6 1,3,5-6,8,11-12
+  s_71ad2034164515::t_c2d6dfe2cc3f21 1,3,5-6,8,11-12
+packages/cli/src/modules/n8n-packages/entities/match-source-ids.ts
+  s_71ad2034164515::t_d0c9a0533b79c6 1-36
+  s_d3c0f6f6f7d41c::t_2ddec02c030e3d 1-36
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import-match.service.ts
+  s_71ad2034164515::t_d0c9a0533b79c6 18-19,109
+  s_d3c0f6f6f7d41c::t_5787ae9fae4a71 18-19,109
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-import-match.service.ts
+  s_71ad2034164515::t_d0c9a0533b79c6 6-7,79-83,85,87-88,92-93,97,105
+  s_d3c0f6f6f7d41c::t_61c2863417d998 6-7,79-83,85,87-88,92-93,97,105
+packages/cli/src/modules/n8n-packages/entities/__tests__/import-id-policy.test.ts
+  s_71ad2034164515::t_d0c9a0533b79c6 1,3,5-6,12,20
+  s_71ad2034164515::t_e9dbbcc483fb31 1,3,5-6,12,20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a73536244f27683fe844e4a5e22aa3d755b3c988",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_d3c0f6f6f7d41c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a152e5-4005-7111-8ca3-6a9ab5e71d29",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

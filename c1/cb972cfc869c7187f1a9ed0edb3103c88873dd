@@ -1,0 +1,43 @@
+packages/nodes-base/nodes/OpenThesaurus/test/requests.workflow.json
+  s_2e1fa95fc44f8f::t_2fbc990acca930 1-44
+packages/nodes-base/nodes/Onfleet/test/workflow/Onfleet.workflow.test.ts
+  s_2e1fa95fc44f8f::t_2700b9e719dab2 1-94
+packages/nodes-base/nodes/Oura/test/oura.node.test.ts
+  s_2e1fa95fc44f8f::t_3017d62cc525b8 58-64,67-69
+packages/nodes-base/nodes/OpenWeatherMap/test/workflow.json
+  s_2e1fa95fc44f8f::t_323b6a8de0321e 138-147
+  s_2e1fa95fc44f8f::t_655d6dcfc15402 163-167
+  s_2e1fa95fc44f8f::t_ffaa1857818bab 62-79
+packages/nodes-base/nodes/OpenWeatherMap/test/OpenWeatherMap.test.ts
+  s_2e1fa95fc44f8f::t_ac59a2758456fd 15-23,26-28
+packages/nodes-base/nodes/OpenThesaurus/test/OpenThesaurus.workflow.test.ts
+  s_2e1fa95fc44f8f::t_b42b44e6665f91 1-18
+packages/nodes-base/nodes/Onfleet/test/workflow/requests.workflow.json
+  s_41adc0d6ba8be8::t_2f112c71dcd4fc 1-1140
+packages/nodes-base/nodes/Oura/test/oura_test_workflow.json
+  s_41adc0d6ba8be8::t_9caa15995dff5d 35-91,106-130,141-155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c1cb972cfc869c7187f1a9ed0edb3103c88873dd",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_41adc0d6ba8be8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a2283f46c77d5a9a1",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

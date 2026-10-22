@@ -1,0 +1,21 @@
+packages/@n8n/decorators/src/system-task/__tests__/run-options.test.ts
+  s_efaf9bfb3b3880::t_d01c3dce83e700 108-119
+packages/@n8n/decorators/src/system-task/system-task.ts
+  s_efaf9bfb3b3880::t_bc5903e00da2a1 79-81,151,268-272
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e1639dbaba8f1fa425db615a57edbddf7d9a5e12",
+  "prompts": {},
+  "sessions": {
+    "s_efaf9bfb3b3880": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d2662479-8c2c-4fda-861a-88e195714051",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

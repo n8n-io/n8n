@@ -1,0 +1,35 @@
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.test.ts
+  s_d008edd39c5ee6::t_62f4d969c1d871 408-411
+  s_d008edd39c5ee6::t_3ac2d497b268b0 468,479-481,483-489
+  s_d008edd39c5ee6::t_ce7de2ae41e43e 397
+  s_d008edd39c5ee6::t_4b244f7405c3e6 2,5,482
+  s_d008edd39c5ee6::t_126650b0f50a4d 287-289,291-300,305,307,310,314-316,322,338,345,354,359-364,366-371,373-390
+  s_d008edd39c5ee6::t_ddac4f8ad40447 290,365,372,406,473
+packages/cli/src/modules/agents/__tests__/agent-thread.repository.integration.test.ts
+  s_d008edd39c5ee6::t_ddac4f8ad40447 43,47,60,71,82
+packages/cli/src/modules/agents/repositories/agent-thread.repository.ts
+  s_d008edd39c5ee6::t_ddac4f8ad40447 31
+packages/cli/src/modules/agents/integrations/n8n-memory.ts
+  s_d008edd39c5ee6::t_d4c300b986c1e8 168-173,175-190
+  s_d008edd39c5ee6::t_ce7de2ae41e43e 207-208,222
+  s_d008edd39c5ee6::t_ddac4f8ad40447 174,205,219
+  s_d008edd39c5ee6::t_3ac2d497b268b0 210-218,229
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.integration.test.ts
+  s_d008edd39c5ee6::t_6afb5050ba1b95 1-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e3abde8bf299b6f8352b8d705e81459ac4fc9697",
+  "prompts": {},
+  "sessions": {
+    "s_d008edd39c5ee6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae0321af-63ce-4ca0-822a-fe8c0f310f93",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

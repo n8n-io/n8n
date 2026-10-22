@@ -1,0 +1,71 @@
+packages/@n8n/decorators/src/pubsub/pubsub-metadata.ts
+  s_233b83c0de8338::t_6040b8a1af259d 44
+packages/cli/src/modules/mcp/__tests__/search-executions.schema.test.ts
+  s_233b83c0de8338::t_15f39d3ffae09c 85,93
+  s_233b83c0de8338::t_51770204ecfe96 90-92
+  s_233b83c0de8338::t_ba442f58fb1592 212
+  s_233b83c0de8338::t_98dffebc308c2e 6,12
+  s_233b83c0de8338::t_e5d5da8e3c5d2f 97-100,194
+  s_233b83c0de8338::t_845a25d2dd55d8 3-4,175-193,195-199,201,203,215-224,226-227
+  s_233b83c0de8338::t_9d2c6c90e1a690 32-35,38-40,63-71,74-84,86-87,89,94-96,102-130,137-147,152-155,162-168
+  s_233b83c0de8338::t_8af5bd9302ae8a 1-2,5,7-11,13-31,36-37,41-62,72-73,101,131-136,148-151,156-161,169-174,228-229
+  s_233b83c0de8338::t_2bf69383c58663 88
+packages/cli/src/modules/mcp/__tests__/mcp.controller.test.ts
+  s_233b83c0de8338::t_c52c47dfd5a66e 173-179,186-190
+  s_233b83c0de8338::t_c0cb3607689d75 14,58,101,104,118-121
+  s_233b83c0de8338::t_7a0ac6e99c5380 180-185
+packages/cli/src/modules/mcp/__tests__/mcp-tool-change.service.test.ts
+  s_233b83c0de8338::t_7a0ac6e99c5380 40-46,48-50,52-54,104-105,118-123,125-130,181-189,191-197,199-216
+  s_233b83c0de8338::t_6040b8a1af259d 115
+  s_233b83c0de8338::t_9907c81c0f4f79 4-6,10-11,116-117,124,131-132,134-142
+  s_233b83c0de8338::t_1b675645208531 198
+  s_233b83c0de8338::t_925929d843e139 1,176-180,190,217-241
+  s_233b83c0de8338::t_521ee2aaebd500 2-3,7-9,12-25,27-39,47,51,55-103,106-114,133,143-175,242-243
+  s_233b83c0de8338::t_51770204ecfe96 26
+packages/cli/src/scaling/constants.ts
+  s_233b83c0de8338::t_c32a6b6b495630 43
+packages/cli/src/modules/mcp/mcp-tool-change.service.ts
+  s_233b83c0de8338::t_6040b8a1af259d 11,104
+  s_233b83c0de8338::t_ac7ec234168e4d 21,91-94,127
+  s_233b83c0de8338::t_7a0ac6e99c5380 34-43,48-50,59-62,96-100,116-118
+  s_233b83c0de8338::t_c32a6b6b495630 1-10,12-20,22-33,44-47,51-58,63-90,95,101-103,105-107,110-115,119-126,128-129
+  s_233b83c0de8338::t_3ed663eca6c912 108-109
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_233b83c0de8338::t_c32a6b6b495630 51
+packages/cli/src/modules/mcp/mcp.controller.ts
+  s_233b83c0de8338::t_c32a6b6b495630 13,46,234-236,243-247,250,257-263
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_233b83c0de8338::t_7a0ac6e99c5380 24-29
+  s_233b83c0de8338::t_c0cb3607689d75 21,233-235,239-240,375,415-422,427-428,515-518,850
+  s_233b83c0de8338::t_c52c47dfd5a66e 236-238,498
+packages/cli/src/modules/mcp/__tests__/mcp.service.test.ts
+  s_233b83c0de8338::t_f3033f6d95cd69 1
+  s_233b83c0de8338::t_2bf69383c58663 32,906
+  s_233b83c0de8338::t_7a0ac6e99c5380 654-656,659-661,669,671-685,1179-1185
+  s_233b83c0de8338::t_c52c47dfd5a66e 26,650-653,657-658,662-668,670,686
+packages/cli/src/scaling/pubsub/pubsub.types.ts
+  s_233b83c0de8338::t_c32a6b6b495630 82,138
+CONTEXT-242-reproduction.md
+  s_233b83c0de8338::t_699bfdbd3100cf 84-101
+  s_233b83c0de8338::t_3b6f94f14d261f 73,130-137
+  s_233b83c0de8338::t_c81573442723fe 29,83,105-129
+  s_233b83c0de8338::t_8cbff7247ed481 138
+  s_233b83c0de8338::t_7e3b3662ccf9a8 1-28,30-72,74-82
+  s_233b83c0de8338::t_477816673af74c 102-104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "681c933f29af5ff934a78aee25904e5feec7c168",
+  "prompts": {},
+  "sessions": {
+    "s_233b83c0de8338": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13561-4571-7a83-ae89-cbac378a383d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

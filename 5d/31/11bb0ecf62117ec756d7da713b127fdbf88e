@@ -1,0 +1,52 @@
+packages/nodes-base/nodes/Taiga/test/workflow/Taiga.workflow.test.ts
+  s_2e1fa95fc44f8f::t_d367592b77336c 1-79
+packages/nodes-base/nodes/Taiga/test/TaigaTrigger.node.test.ts
+  s_2e1fa95fc44f8f::t_6eac92cd1b2f52 2
+  s_2e1fa95fc44f8f::t_2058ab3769cd8b 99-118,121-127
+  s_4ebde64ab825df::t_155cb1bc762ce9 1,119-120
+packages/nodes-base/nodes/Taiga/test/workflow/cloud.workflow.json
+  s_a1964e2e590dea::t_11a640cb58b790 1-55
+packages/nodes-base/nodes/Taiga/test/workflow/requests.workflow.json
+  s_a1964e2e590dea::t_c33047e3d3851c 1-699
+packages/nodes-base/nodes/Taiga/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_69a0cf73109ff5 1-26
+  s_2e1fa95fc44f8f::t_4d8157feb52d3a 27-30
+packages/nodes-base/nodes/Taiga/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_c1fe7c04c7cf70 12-13,15,29-42,54,58,64,76-77,95,131,159
+packages/nodes-base/nodes/Taiga/Taiga.node.ts
+  s_2e1fa95fc44f8f::t_c1f8ea3baa5fea 10,104,117,130,139-141,145,158,171,184,195,208,221,236,249,262,304,312-316,325,338,354,356-361,384,392-396,405,418,434,436-441,464,472-476,485,498,514,516-521,544-549,557,567,581-588,604-607,612
+packages/nodes-base/nodes/Taiga/TaigaTrigger.node.ts
+  s_2e1fa95fc44f8f::t_5278782d23046e 11,129,131-137,158,189,199-203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5d3111bb0ecf62117ec756d7da713b127fdbf88e",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_4ebde64ab825df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a9b9b2bb511b5c44a",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_a1964e2e590dea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ab678de8ad8e75b22",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

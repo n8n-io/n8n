@@ -1,0 +1,29 @@
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_71ad2034164515::t_5908d2558b726d 32,110-119,124,137,171-238
+packages/cli/src/modules/agents/agent-config-preparation.service.ts
+  s_71ad2034164515::t_f20e3273593316 173-174,182-187
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_71ad2034164515::t_1225df777c4f60 122
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_71ad2034164515::t_7929092223a3c1 533-536
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  s_71ad2034164515::t_35eb26867345d5 185-191,314-315
+packages/cli/test/integration/database/repositories/agent.repository.test.ts
+  s_71ad2034164515::t_09e41b1709f1bf 633-643
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f95431e66ce3614356a36ed911494847af4a7cbb",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/workbookSearch.ts
+  s_2e1fa95fc44f8f::t_6ae5209a034662 29
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/workbook/getAll.test.ts
+  s_2e1fa95fc44f8f::t_c3545c01d1ec95 83-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "40b2d27e444239e3747212a7c682d213a7aa0f93",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

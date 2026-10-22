@@ -1,0 +1,33 @@
+packages/cli/src/modules/inbound-auth-core/database/repositories/trusted-source-identity.repository.ts
+  s_60f5633681e4e3::t_a8d9ca209d3b52 11
+  s_60f5633681e4e3::t_4322ff1d3074c6 90-99
+packages/cli/src/modules/inbound-auth-core/identity/trusted-source-identity.service.ts
+  s_60f5633681e4e3::t_5d92abdab1add4 24-28
+  s_60f5633681e4e3::t_d590eb0afa235b 354,357,366-367
+  s_60f5633681e4e3::t_8b20295b78ba57 243
+  s_60f5633681e4e3::t_ebf8c6ea005e68 174,180-186
+  s_60f5633681e4e3::t_c1957f93aea0bf 307
+  s_60f5633681e4e3::t_7193cf6723389e 98,103,107-111,113-114,116,123,130,140-146,159
+  s_60f5633681e4e3::t_f64bd3638f892d 282,284-286
+  s_60f5633681e4e3::t_80dbe35d6f838b 191,195-197,206,208-209,213-214
+  s_60f5633681e4e3::t_f79cfbdcbdebe9 85
+packages/cli/src/modules/provisioning.ee/provisioning.module.ts
+  s_60f5633681e4e3::t_5d9254ec40e7d9 4,6-8,12,16-20,30-36
+  s_60f5633681e4e3::t_ccdb64911fbd70 37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2be1a63e9b44cd999fd8ef5aa8d0b51a239c8fbc",
+  "prompts": {},
+  "sessions": {
+    "s_60f5633681e4e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "233f5aab-347d-4e5c-a26e-befd59b0253f",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

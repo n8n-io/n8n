@@ -1,0 +1,60 @@
+packages/@n8n/agents/src/runtime/__tests__/observation-log-observer.test.ts
+  s_335d839e4c47ec::t_87322c42b7dc6b 4-5,7,645-654,682-734,736,759,776,790,809,817,825
+  s_335d839e4c47ec::t_c75f2205d0ec1c 6,735,737-758,760-775,777-789,791-808,810-816,818-824,826-827
+packages/@n8n/agents/src/runtime/memory/observation-log-batch.ts
+  s_335d839e4c47ec::t_87322c42b7dc6b 1-54
+packages/@n8n/agents/docs/observation-log-storage.md
+  s_335d839e4c47ec::t_b1bbc01cac68ba 29-31
+  s_335d839e4c47ec::t_0582f33df11cc2 1-28,32-39
+packages/@n8n/agents/src/runtime/memory/memory-store.ts
+  s_335d839e4c47ec::t_42b9328683406f 11,39-40,287,289-311,313
+  s_335d839e4c47ec::t_a2fce94099f4dd 288,312,314
+packages/@n8n/agents/src/index.ts
+  s_335d839e4c47ec::t_0522e9f5932007 107-109,428
+packages/@n8n/agents/src/runtime/__tests__/observation-log-store.test.ts
+  s_335d839e4c47ec::t_b57952fe767899 2-33,36-118
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_335d839e4c47ec::t_e2575394082787 129
+packages/@n8n/agents/src/runtime/memory/observation-log-observer.ts
+  s_335d839e4c47ec::t_f88c6a1971e361 12,73-83,86-90,224-227,252-297,305-306,312-313,319,322-323,325-330,344,348,355,360
+packages/@n8n/agents/src/runtime/memory/observation-log-store.ts
+  s_335d839e4c47ec::t_877882af258d93 8
+packages/@n8n/agents/src/sdk/__tests__/memory-builder-observational.test.ts
+  s_335d839e4c47ec::t_a0f582d7531631 175,190-194
+packages/@n8n/agents/src/types/index.ts
+  s_335d839e4c47ec::t_6fde322c91907e 143-145
+packages/@n8n/agents/src/types/sdk/observation-log.ts
+  s_335d839e4c47ec::t_44acf3f0ee7710 3,45-60,165
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_335d839e4c47ec::t_ee4b548b886619 182
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.integration.test.ts
+  s_335d839e4c47ec::t_dc842229b65680 1-2,8-10,16-17,25-34,50-215
+packages/cli/src/modules/agents/integrations/n8n-memory.ts
+  s_335d839e4c47ec::t_48f65630921e16 33-34,325-330
+packages/cli/src/modules/agents/repositories/agent-observation.repository.ts
+  s_335d839e4c47ec::t_400fe579a3c761 1-8,10,12,15-16,18-84
+packages/cli/src/modules/instance-ai/repositories/__tests__/instance-ai-observation.repository.integration.test.ts
+  s_335d839e4c47ec::t_38faaf73d3d489 1,3,9,11-12,21,27,31,45,87-240
+packages/cli/src/modules/instance-ai/repositories/instance-ai-observation.repository.ts
+  s_335d839e4c47ec::t_dceffb203a3155 1-8,10,12,15-16,18-76
+packages/cli/src/modules/instance-ai/storage/typeorm-agent-memory.ts
+  s_335d839e4c47ec::t_74d7add523b698 10-11,571-576
+packages/cli/src/modules/instance-ai/storage/typeorm-observation-log-store.ts
+  s_335d839e4c47ec::t_d4bb4e16e77665 12-13,57-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9d7d23156480be3e56f35f93711ed4c9cf51841a",
+  "prompts": {},
+  "sessions": {
+    "s_335d839e4c47ec": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15d24-9392-7fa3-ac49-bf255f932428",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,39 @@
+packages/@n8n/agents/src/runtime/model/__tests__/prompt-cache.test.ts
+  s_5af63b805b3deb::t_72fa7387c554e5 358-361,427-429,453-454
+  s_5af63b805b3deb::t_7446eba68bdea7 430-452
+packages/@n8n/agents/src/runtime/model/native-tool-deferral/anthropic.ts
+  s_5af63b805b3deb::t_2e5ea46bb02fdf 51,73-91,95-96
+packages/@n8n/agents/src/runtime/model/__tests__/native-tool-deferral.test.ts
+  s_5af63b805b3deb::t_041aff8f365683 7,257
+  s_5af63b805b3deb::t_7446eba68bdea7 324-349
+  s_5af63b805b3deb::t_72fa7387c554e5 255-256,258-289,291-295,297-318,321-323,350-351
+  s_e99de54a53d3e4::t_9ddd1b344a9dcc 352
+packages/@n8n/agents/docs/prompt-caching.md
+  s_5af63b805b3deb::t_2e5ea46bb02fdf 104-105
+packages/@n8n/agents/src/runtime/model/prompt-cache.ts
+  s_5af63b805b3deb::t_2e5ea46bb02fdf 92,95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "43b94dcea4fe58b1c4c4ff5cb5fdcf23356e64f8",
+  "prompts": {},
+  "sessions": {
+    "s_5af63b805b3deb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12fb6-49d7-72f2-be9b-f4dc5396a6e1",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_e99de54a53d3e4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11e9d-276c-7820-8033-49b70e62dd41",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

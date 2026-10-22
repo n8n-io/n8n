@@ -1,0 +1,23 @@
+packages/@n8n/nodes-langchain/utils/output_parsers/langchainParserError.test.ts
+  s_96294034a51a0e::t_8e629a160c6a3b 119-150
+  s_96294034a51a0e::t_f1493b339fdd6e 151-163
+packages/@n8n/nodes-langchain/utils/output_parsers/langchainParserError.ts
+  s_96294034a51a0e::t_f1493b339fdd6e 2,14-15,73-77,79-88,104
+  s_96294034a51a0e::t_8a843554f9d488 52-56,64,78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7a48f48fabe453f2ad534f8630f6a46bd77b087d",
+  "prompts": {},
+  "sessions": {
+    "s_96294034a51a0e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "51d40c67-5234-46f5-bdd0-105f8272b7db",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

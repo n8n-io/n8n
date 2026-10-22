@@ -1,0 +1,119 @@
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  s_71ad2034164515::t_0cc0f308625948 22-23,55-56,90-91,116-122,128,324,326,500-501,530
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-selection-request.dto.test.ts
+  s_71ad2034164515::t_cb34db9d43ddaa 23,43,129,135,144,150,158,160,162-163,192
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_71ad2034164515::t_c5d730978eceea 22-23,121,124-126,177,243-244
+packages/@n8n/api-types/src/dto/packages/import-package-request.openapi.ts
+  s_71ad2034164515::t_f915c8f0849ae1 55,57-67,69,71,73-74,81,259
+packages/@n8n/api-types/src/dto/packages/import-result.dto.ts
+  s_71ad2034164515::t_6ddd2316ec48d6 53,84
+packages/@n8n/cli/README.md
+  s_71ad2034164515::t_7749f5a2e2a0e3 73-79
+packages/@n8n/cli/docs/commands/package.md
+  s_71ad2034164515::t_47f184543e3e7f 3,9-11,14-15,27,32,39-45,65-68,71,73-75,81,84-86,91-92,104-106,116-131,135-136,203-204
+packages/@n8n/cli/package.json
+  s_71ad2034164515::t_24df32e287e4a7 76,87
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_71ad2034164515::t_b0064e209282aa 287,290-293,302-304,321-328,468,484,508,540-542,555-566,650,677-687,689-695,697-700,704
+packages/@n8n/cli/src/__tests__/package-error.test.ts
+  s_71ad2034164515::t_1ee293cc1d1405 7-66
+packages/@n8n/cli/src/__tests__/package-export.test.ts
+  s_71ad2034164515::t_e36c58cd3b0691 1,13,67-112,427-438
+packages/@n8n/cli/src/__tests__/package-import-selection.test.ts
+  s_71ad2034164515::t_5f0fa65bbef58c 18-19,56-57,73,82,92,98-99,103-104,156-157,162-166,186-203
+packages/@n8n/cli/src/__tests__/package-import.test.ts
+  s_71ad2034164515::t_94ae5a828c7d73 18-20,65,70-72,101-102,133-157,160,183-187,191-209,249-262
+packages/@n8n/cli/src/client.ts
+  s_71ad2034164515::t_626afcb2a14270 1-7,19-23,25-31,33,37-39,736-737,775,781,789,795,806
+packages/@n8n/cli/src/commands/package/export.ts
+  s_71ad2034164515::t_4a31a6204bd8d5 14,17,28-29,32-33,45-49,73,76,79-80,82,85-87,92-94,98,100-101,105-106,109,112,117,128-130,132-135,154,186-188,191
+packages/@n8n/cli/src/commands/package/import-selection.ts
+  s_71ad2034164515::t_08bb770e8023bb 1,16,41,43,45-47,49-52,55,57,70,78-79
+packages/@n8n/cli/src/commands/package/import.ts
+  s_71ad2034164515::t_a2e27718d85cd2 1,10,14-16,31,33,35-37,39-48,50-57,59-60,63,65-66,69,71-72,75,77-78,80,82-83,86,88-89,91,93-94,97,99-100,103,105-106,109,111-112,115,117-118,121,123-124,127,129-130,133,135,152,159-161
+packages/@n8n/cli/src/commands/package/package-error.ts
+  s_71ad2034164515::t_b34c8814361b15 1,6-8,37-54
+packages/cli/BREAKING-CHANGES.md
+  s_71ad2034164515::t_f46ca90f46e787 21-30
+packages/cli/src/modules/n8n-packages/CLAUDE.md
+  s_71ad2034164515::t_e5fedffc5cc625 79,81,83
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  s_71ad2034164515::t_7e4473dbc49303 471,516,554,569,581,592,606,627,656,672,691,710,736,739,772,803
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-planning.integration.test.ts
+  s_71ad2034164515::t_19f25e5fc619c3 452,543
+packages/cli/src/modules/n8n-packages/__tests__/export-stable-targets.integration.test.ts
+  s_71ad2034164515::t_1250de428b8b5a 51-52
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/import-request.ts
+  s_71ad2034164515::t_20aae6b6445ef6 15-16
+packages/cli/src/modules/n8n-packages/__tests__/import-agent-package.integration.test.ts
+  s_71ad2034164515::t_706a48d0760ea5 92
+packages/cli/src/modules/n8n-packages/__tests__/import-package-policy.integration.test.ts
+  s_71ad2034164515::t_420202ad519a78 233-234
+packages/cli/src/modules/n8n-packages/__tests__/import-package-selection.integration.test.ts
+  s_71ad2034164515::t_2b701bd65ccc4e 283,287,447-450,452-453,458,461
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_71ad2034164515::t_1fa6c54b72306c 283,298,367,376,400,406,434,442,454,468,477,493,502,520,534,558,568,597,611,645,658,682,691,712,722,747,762,780,793,1266,1272-1274,1505,1518,2298,2366,2886,2905,2919,2933,2939,2960-2961,2996,3031,3073,3108,3147,3197,3243,3347,3356,3399,3427
+packages/cli/src/modules/n8n-packages/__tests__/import-project-from-directory.integration.test.ts
+  s_71ad2034164515::t_5b747e1c1fe115 39-40
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_71ad2034164515::t_f3f43c828ae706 300,1041,2142
+packages/cli/src/modules/n8n-packages/__tests__/import-subworkflows.integration.test.ts
+  s_71ad2034164515::t_43713b7a886f33 30,102,129,158,184,205,218,270-271
+packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-variables.integration.test.ts
+  s_71ad2034164515::t_d702b8fe077455 156-157
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_71ad2034164515::t_9081fe47ed3e1f 177,181,286-291
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_71ad2034164515::t_25539848e8ee7e 117,332,354
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  s_71ad2034164515::t_e9f0caa40c3ecf 116-118,122
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_71ad2034164515::t_d44d420f707622 210
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_71ad2034164515::t_6adb1c1cb1e57d 191
+packages/cli/src/modules/n8n-packages/entities/agent/agent-importer.ts
+  s_71ad2034164515::t_34b113db52108d 27,108,120,154,184
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-importer.test.ts
+  s_71ad2034164515::t_29445392fd7cfb 415-416,456-457
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_71ad2034164515::t_449c7f23cd03f1 96,99
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_71ad2034164515::t_276e74f94b6b1d 105,126,640
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_71ad2034164515::t_d191ddc22d3592 313,322,338,340-341,344,405,411,413-416
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_71ad2034164515::t_96469de2cf3f8d 1235-1236
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_71ad2034164515::t_07b0778e20fcd1 92-93
+packages/cli/src/public-api/v1/controllers/openapi/n8n-packages.openapi.ts
+  s_71ad2034164515::t_1bb10b2c13eccc 47-48,65-66,102,106-108
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackage.generated.yml
+  s_71ad2034164515::t_ccddfcf3f16353 8,20,68,76-77,83,90
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackageSelection.generated.yml
+  s_71ad2034164515::t_7175b5220e90c2 12,43
+packages/cli/src/public-api/v1/shared/spec/schemas/importResultDto.generated.yml
+  s_71ad2034164515::t_9e80ba51fbc758 27,111
+packages/cli/test/integration/public-api/n8n-packages-import-agents.test.ts
+  s_71ad2034164515::t_800f0a6b8dfc76 149,219,270,278,283-284,288,290,293-294,297-298,303-306,308-309,314,347,360,373,375,435
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_71ad2034164515::t_4fcac17ee95ef9 226,324-325,505
+pnpm-lock.yaml
+  s_71ad2034164515::t_5679f3b749ff76 2115-2117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "697613fa2b81acf176a77d5cb7f162b4b00d2017",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

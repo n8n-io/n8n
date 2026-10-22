@@ -1,0 +1,19 @@
+packages/cli/src/public-api/media-types/binary-response.ts
+  s_8631ec10eb1199::t_16c076b40efabd 16-20,24,26,47-51,64,69-70,73,86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a24f7a984b7f3ade5fdab5db0052335e96b8b10e",
+  "prompts": {},
+  "sessions": {
+    "s_8631ec10eb1199": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77132272-9e69-4c36-85e9-f1136efb4942",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

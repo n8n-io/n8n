@@ -1,0 +1,36 @@
+packages/cli/src/modules/inbound-auth-core/__tests__/authentication-pipeline.test.ts
+  s_1e4e51c4f2614c::t_94cf3fede8df52 94-104,106-113,115-116,139-142,144,146-148
+  s_1e4e51c4f2614c::t_e63f711e0dda16 1-93,105,114,117-120,122-138,143,145,149-150
+  s_1e4e51c4f2614c::t_ca7531f22ac684 121
+packages/cli/src/modules/inbound-auth-core/authentication-pipeline.ts
+  h_435b1d7d3e52c0 1-46
+packages/@n8n/inbound-auth/src/contracts.ts
+  h_435b1d7d3e52c0 99-102
+  s_1e4e51c4f2614c::t_bd59f2371c9342 95-98
+packages/cli/src/modules/inbound-auth-core/inbound-auth-core.module.ts
+  h_435b1d7d3e52c0 5,59-61
+packages/cli/src/modules/inbound-auth-core/__tests__/inbound-auth-core.module.test.ts
+  s_1e4e51c4f2614c::t_fb6e5559660a4f 58-61
+  s_1e4e51c4f2614c::t_271ece7f20af92 4,15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "86e5b235d21b8ee0fbec68837f5ae19d93b4952b",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1e4e51c4f2614c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a44d8518-a0b9-4f86-9e39-845bc18e3295",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

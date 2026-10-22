@@ -1,0 +1,28 @@
+packages/@n8n/telemetry/src/events/agents.ts
+  s_8c384ca8ef3fe0::t_8d231b7b92c9ff 21
+packages/cli/src/modules/agents/agent-tool-approval.service.ts
+  s_8c384ca8ef3fe0::t_8d231b7b92c9ff 41
+packages/cli/src/telemetry/index.ts
+  s_8c384ca8ef3fe0::t_8d231b7b92c9ff 475,502
+packages/cli/src/telemetry/__tests__/telemetry.test.ts
+  s_8c384ca8ef3fe0::t_14bb852136a029 819,831,849,858
+  s_8c384ca8ef3fe0::t_8d231b7b92c9ff 536,573-576
+packages/cli/src/modules/agents/__tests__/agent-tool-approval.service.test.ts
+  s_8c384ca8ef3fe0::t_8d231b7b92c9ff 108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7947849e68fe349665f2e0d63b9915a6f114c919",
+  "prompts": {},
+  "sessions": {
+    "s_8c384ca8ef3fe0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11751-dee6-7193-9479-bfa31c4f9d0d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+packages/nodes-base/nodes/PayPal/test/PayPalTrigger.node.test.ts
+  s_2e1fa95fc44f8f::t_324315d0bb55c1 7-26
+  s_2e1fa95fc44f8f::t_1456466db3f2eb 1-6,27
+packages/nodes-base/nodes/PayPal/test/PayPal.workflow.test.ts
+  s_2e1fa95fc44f8f::t_d1d2af229bc7f7 1-61
+packages/nodes-base/nodes/PayPal/test/requests.workflow.json
+  s_c7efece433dc7c::t_de3231fa5fb20f 1-192
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fb14c539a8dfb88b4e190dd04b633b8858c5c35a",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_c7efece433dc7c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a7721a4c2917990d3",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

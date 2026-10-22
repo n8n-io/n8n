@@ -1,0 +1,53 @@
+packages/cli/test/integration/public-api/n8n-packages-import-agents.test.ts
+  s_d3c0f6f6f7d41c::t_98469f31465e05 214
+  s_71ad2034164515::t_9bebf2afd3606f 150,230,242,253,272,282,292,333,360,389,416,441-443
+  s_71ad2034164515::t_d24fba256f90ee 150,230,242,253,272,282,292,333,360,389,416,441-443
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  s_71ad2034164515::t_8c948a08ac5af8 362
+  s_71ad2034164515::t_74a4b542efc135 362
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_71ad2034164515::t_957fc4fff45756 130
+  s_71ad2034164515::t_857f598cf9c93e 130
+packages/@n8n/api-types/src/dto/packages/import-package-request.openapi.ts
+  s_71ad2034164515::t_24a9ac640c66c5 79-81
+  s_71ad2034164515::t_aedeb9298c7254 79-81
+packages/@n8n/api-types/src/dto/packages/import-result.dto.ts
+  s_71ad2034164515::t_414b679dfa90d1 84-85
+  s_71ad2034164515::t_d9d91af2ed5aa5 84-85
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/import-request.ts
+  s_71ad2034164515::t_26bc887a6beedb 17
+  s_71ad2034164515::t_fa9a1ca6b04c5f 17
+packages/cli/src/public-api/v1/controllers/openapi/n8n-packages.openapi.ts
+  s_71ad2034164515::t_0f669354d6b1f9 64
+  s_71ad2034164515::t_df75d93ddeeafd 64
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackage.generated.yml
+  s_71ad2034164515::t_9e7e1d9958d845 20,89
+  s_71ad2034164515::t_0362eddcd5b6b3 20,89
+packages/cli/src/public-api/v1/shared/spec/schemas/importResultDto.generated.yml
+  s_71ad2034164515::t_f99ba175fd29f2 27
+  s_71ad2034164515::t_34a834c037722c 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "76eacbc11a3dcd4b645ecbbcd1111e9072ba6124",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_d3c0f6f6f7d41c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a152e5-4005-7111-8ca3-6a9ab5e71d29",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
