@@ -26,7 +26,7 @@ describe('toPublicApiError', () => {
 		const error = toPublicApiError(new MulterError('LIMIT_UNEXPECTED_FILE'));
 
 		expect(error).toBeInstanceOf(InternalServerError);
-		expect(error.message).toBe('Unexpected field');
+		expect(error.message).toBe('Unexpected file field');
 	});
 
 	it('maps any other multer error to a 400 BadRequestError', () => {

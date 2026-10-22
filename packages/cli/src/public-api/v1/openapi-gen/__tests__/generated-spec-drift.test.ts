@@ -71,7 +71,7 @@ describe('Apply response documentation', () => {
 						(candidate.properties?.status as OpenAPIV3.SchemaObject).enum?.[0] === status,
 				);
 				expect(outcome?.required).toEqual(
-					expect.arrayContaining(['status', 'connectionId', 'configId', 'git', ...fields]),
+					expect.arrayContaining(['status', 'environmentId', 'git', ...fields]),
 				);
 				if (status !== 'applied') expect(outcome?.properties).not.toHaveProperty('counts');
 			}

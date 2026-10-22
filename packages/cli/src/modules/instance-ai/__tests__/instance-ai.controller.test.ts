@@ -82,6 +82,7 @@ import type { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Request, Response } from 'express';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -898,6 +899,87 @@ describe('InstanceAiController', () => {
 
 			// The stream should be closed, not written to
 			expect(sseRes.end).toHaveBeenCalled();
+			expect(sseRes.write).not.toHaveBeenCalled();
+		});
+
+		it('checks ownership before a bootstrap frame for a thread created after subscription', async () => {
+			stubLiveRun([RUN_START]);
+			memoryService.checkThreadOwnership
+				.mockResolvedValueOnce('not_found')
+				.mockResolvedValueOnce('other_user');
+			eventBus.subscribe.mockReturnValue(vi.fn());
+			const { sseReq, sseRes } = sseIo();
+
+			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
+
+			expect(sseRes.end).toHaveBeenCalled();
+			expect(sseRes.write).not.toHaveBeenCalled();
+		});
+
+		it('refuses an existing internal thread before subscribing or reading events', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
+			const { sseReq, sseRes } = sseIo();
+
+			await expect(
+				controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(eventBus.subscribe).not.toHaveBeenCalled();
+			expect(eventLog.getEventsAfter).not.toHaveBeenCalled();
+		});
+
+		it('checks ownership before replaying producer events to a precreation subscription', async () => {
+			stubLiveRun([RUN_START]);
+			memoryService.checkThreadOwnership
+				.mockResolvedValueOnce('not_found')
+				.mockResolvedValueOnce('other_user');
+			eventBus.subscribe.mockReturnValue(vi.fn());
+			eventLog.getEventsAfter.mockResolvedValueOnce([{ id: 1, event: RUN_START }] as never);
+			const { sseReq, sseRes } = sseIo();
+
+			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
+
+			expect(sseRes.end).toHaveBeenCalled();
+			expect(sseRes.write).not.toHaveBeenCalled();
+		});
+
+		it('preserves event order when ownership resolves during live delivery', async () => {
+			const ownership = createDeferredPromise<'owned'>();
+			memoryService.checkThreadOwnership
+				.mockResolvedValueOnce('not_found')
+				.mockReturnValueOnce(ownership.promise);
+			instanceAiService.getThreadStatus.mockReturnValue({
+				hasActiveRun: false,
+				isSuspended: false,
+				backgroundTasks: [],
+			});
+			type Subscriber = Parameters<InProcessEventBus['subscribe']>[1];
+			let deliver: Subscriber | undefined;
+			eventBus.subscribe.mockImplementation((_threadId, handler) => {
+				deliver ??= handler;
+				return vi.fn();
+			});
+			const { sseReq, sseRes, frames } = sseIo();
+			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
+			const emit = (id: number) =>
+				deliver?.({
+					id,
+					event: {
+						type: 'text-delta',
+						runId: 'run-1',
+						agentId: 'a1',
+						payload: { text: String(id) },
+					},
+				});
+			emit(1);
+			emit(2);
+			const incoming = ownership.promise.then(() => emit(3));
+
+			ownership.resolve('owned');
+			await incoming;
+
+			expect(frames().map((frame) => frame.match(/^id: (\d+)/)?.[1])).toEqual(['1', '2', '3']);
+			expect(memoryService.checkThreadOwnership).toHaveBeenCalledTimes(2);
 		});
 
 		it('should close SSE stream when deferred ownership check rejects', async () => {
@@ -945,6 +1027,54 @@ describe('InstanceAiController', () => {
 
 			expect(sseRes.end).toHaveBeenCalled();
 		});
+	});
+
+	describe('thread access boundary', () => {
+		const calls: Array<[string, () => Promise<unknown>]> = [
+			['thread details', async () => await controller.getThread(req, res, THREAD_ID)],
+			['messages', async () => await controller.getThreadMessages(req, res, THREAD_ID, mock())],
+			[
+				'raw messages and attachments',
+				async () =>
+					await controller.getThreadMessages(
+						req,
+						res,
+						THREAD_ID,
+						mock<InstanceAiThreadMessagesQuery>({ raw: 'true' }),
+					),
+			],
+			['status', async () => await controller.getThreadStatus(req, res, THREAD_ID)],
+			['artifact tabs', async () => await controller.getThreadTabs(req, res, THREAD_ID)],
+			['debug data', async () => await controller.listThreadDebugRuns(req, res, THREAD_ID)],
+			['run debug data', async () => await controller.getRunDebug(req, res, 'run-1')],
+			['context memory', async () => await controller.getEvalThreadMemory(req, res, THREAD_ID)],
+			['cancellation', async () => await controller.cancel(req, res, THREAD_ID)],
+			[
+				'metadata updates',
+				async () =>
+					await controller.renameThread(req, res, THREAD_ID, mock({ title: 'New title' })),
+			],
+			[
+				'chat continuation',
+				async () => await controller.chat(req, res, THREAD_ID, mock({ message: 'Continue' })),
+			],
+		];
+
+		it.each(calls)(
+			'rejects %s when the actor does not own the storage resource',
+			async (_name, call) => {
+				memoryService.checkThreadOwnership.mockResolvedValue('other_user');
+				instanceAiService.isRunDebugEnabled.mockReturnValue(true);
+				instanceAiService.getRunDebug.mockReturnValue(mock({ threadId: THREAD_ID }));
+
+				await expect(call()).rejects.toThrow(ForbiddenError);
+
+				expect(memoryService.checkThreadOwnership).toHaveBeenCalledWith(USER_ID, THREAD_ID);
+				expect(instanceAiService.startRun).not.toHaveBeenCalled();
+				expect(instanceAiService.routeCancelRun).not.toHaveBeenCalled();
+				expect(memoryService.updateThread).not.toHaveBeenCalled();
+			},
+		);
 	});
 
 	describe('cancel', () => {

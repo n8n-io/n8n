@@ -5,10 +5,10 @@ import {
 	N8nButton,
 	N8nDropdownMenu,
 	N8nEmptyState,
+	N8nEnterpriseReadinessBadge,
 	N8nIcon,
 	N8nLoading,
 	N8nOption,
-	N8nPreviewBadge,
 	N8nSelect,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
@@ -37,7 +37,10 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import DefaultEditorSetting from '@/experiments/openWorkflowInAssistant/components/DefaultEditorSetting.vue';
 import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
-import { isContextPreferencesEnabled } from '@/features/settings/context/context.utils';
+import {
+	isContextPreferencesEnabled,
+	isContextSkillsEnabled,
+} from '@/features/settings/context/context.utils';
 import { useInstanceCredentialTest } from '../composables/useInstanceCredentialTest';
 import { useInstanceAiConfiguration } from '../composables/useInstanceAiConfiguration';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
@@ -224,11 +227,17 @@ const PREFERENCES_PERMISSION_GROUP: PermissionGroup = {
 	keys: ['createPreference'],
 };
 
-const permissionGroups = computed(() =>
-	isContextPreferencesEnabled()
-		? [...PERMISSION_GROUPS, PREFERENCES_PERMISSION_GROUP]
-		: PERMISSION_GROUPS,
-);
+const SKILLS_PERMISSION_GROUP: PermissionGroup = {
+	id: 'skills',
+	labelKey: 'settings.n8nAgent.permissions.group.skills',
+	keys: ['createSkill', 'updateSkill', 'deleteSkill'],
+};
+
+const permissionGroups = computed(() => [
+	...PERMISSION_GROUPS,
+	...(isContextPreferencesEnabled() ? [PREFERENCES_PERMISSION_GROUP] : []),
+	...(isContextSkillsEnabled() ? [SKILLS_PERMISSION_GROUP] : []),
+]);
 
 const expandedGroups = reactive<Record<string, boolean>>({});
 
@@ -465,8 +474,11 @@ function openAiUsageSettings() {
 			:docs-url="DOCS_URL"
 			:docs-label="i18n.baseText('settings.n8nAgent.docsLabel')"
 		>
-			<template #titleTrailing>
-				<N8nPreviewBadge size="xsmall" />
+			<template v-if="settingsStore.isEnterprisePlan" #titleTrailing>
+				<N8nEnterpriseReadinessBadge
+					size="xsmall"
+					data-test-id="n8n-agent-enterprise-readiness-badge"
+				/>
 			</template>
 		</N8nSettingsPageHeader>
 

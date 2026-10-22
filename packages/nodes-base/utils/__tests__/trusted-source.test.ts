@@ -1,7 +1,7 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { listRedirectLoginTrustedSources } from '../trusted-source';
+import { listBearerTrustedSources, listRedirectLoginTrustedSources } from '../trusted-source';
 
 describe('listRedirectLoginTrustedSources', () => {
 	it('asks for the sources on the trigger surface with the redirect-login capability', async () => {
@@ -27,5 +27,20 @@ describe('listRedirectLoginTrustedSources', () => {
 		const context = mock<ILoadOptionsFunctions>({ helpers: {} });
 
 		await expect(listRedirectLoginTrustedSources.call(context)).resolves.toEqual([]);
+	});
+});
+
+describe('listBearerTrustedSources', () => {
+	it('asks for the sources on the trigger surface with the verify-jwt capability', async () => {
+		const listTrustedSources = vi.fn().mockResolvedValue([{ id: 'idp-1', name: 'Acme IdP' }]);
+		const context = mock<ILoadOptionsFunctions>({ helpers: { listTrustedSources } });
+
+		const options = await listBearerTrustedSources.call(context);
+
+		expect(listTrustedSources).toHaveBeenCalledWith({
+			surface: 'trigger',
+			capability: 'verify-jwt',
+		});
+		expect(options).toEqual([{ name: 'Acme IdP', value: 'idp-1' }]);
 	});
 });

@@ -23,7 +23,6 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { computed, onMounted, ref, watch } from 'vue';
 import { getResourcePermissions } from '@n8n/permissions';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { useDependencies } from '@/app/composables/useDependencies';
 
 import { N8nButton, N8nEmptyState, N8nInfoTip, N8nText, N8nTooltip } from '@n8n/design-system';
@@ -56,9 +55,6 @@ const rolesStore = useRolesStore();
 
 const pageRedirectionHelper = usePageRedirectionHelper();
 
-const { check: envFeatureFlag } = useEnvFeatureFlag();
-const isCredSharingEnabled = computed(() => envFeatureFlag.value('CRED_SHARING'));
-
 const sharedWithProjects = ref([...(props.credential?.sharedWithProjects ?? [])]);
 
 const isSharingEnabled = computed(
@@ -68,8 +64,6 @@ const credentialOwnerName = computed(() => {
 	const { name, email } = splitName(props.credential?.homeProject?.name ?? '');
 	return name ?? email ?? '';
 });
-
-const credentialOwnerFirstName = computed(() => credentialOwnerName.value.split(' ')[0]);
 
 const credentialDataHomeProject = computed<ProjectSharingData | undefined>(() => {
 	const credentialContainsProjectSharingData = (
@@ -92,11 +86,6 @@ const homeProject = computed<ProjectSharingData | undefined>(
 	() => props.credential?.homeProject ?? credentialDataHomeProject.value,
 );
 const isHomeTeamProject = computed(() => homeProject.value?.type === ProjectTypes.Team);
-const isOwnedByViewer = computed(
-	() =>
-		homeProject.value?.type === ProjectTypes.Personal &&
-		homeProject.value?.id === projectsStore.personalProject?.id,
-);
 const isPersonalSpaceRestricted = computed(
 	() =>
 		homeProject.value?.type === ProjectTypes.Personal &&
@@ -105,20 +94,13 @@ const isPersonalSpaceRestricted = computed(
 );
 const credentialRoleTranslations = computed<Record<string, string>>(() => {
 	return {
-		'credential:user': isCredSharingEnabled.value
-			? i18n.baseText('credentialEdit.credentialSharing.role.user.canUse')
-			: i18n.baseText('credentialEdit.credentialSharing.role.user'),
+		'credential:user': i18n.baseText('credentialEdit.credentialSharing.role.user.canUse'),
 	};
 });
 
-const credentialRoleDescriptions = computed<Record<string, string> | undefined>(() => {
-	if (!isCredSharingEnabled.value) return undefined;
-	return {
-		'credential:user': i18n.baseText(
-			'credentialEdit.credentialSharing.role.user.canUse.description',
-		),
-	};
-});
+const credentialRoleDescriptions = computed<Record<string, string>>(() => ({
+	'credential:user': i18n.baseText('credentialEdit.credentialSharing.role.user.canUse.description'),
+}));
 
 const credentialRoles = computed<AllRolesMap['credential']>(() => {
 	return rolesStore.processedCredentialRoles.map(
@@ -134,31 +116,26 @@ const credentialRoles = computed<AllRolesMap['credential']>(() => {
 	);
 });
 
-const confirmRemoval = computed(() => {
-	if (!isCredSharingEnabled.value) return undefined;
-	return (project: ProjectSharingData) => {
-		const { name } = splitName(project.name ?? '');
-		return {
-			title: i18n.baseText('credentialEdit.credentialSharing.unshare.confirm.title'),
-			message: i18n.baseText('credentialEdit.credentialSharing.unshare.confirm.message', {
-				interpolate: { name: name ?? project.name ?? '' },
-			}),
-			confirmButtonText: i18n.baseText(
-				'credentialEdit.credentialSharing.unshare.confirm.confirmButtonText',
-			),
-			cancelButtonText: i18n.baseText(
-				'credentialEdit.credentialSharing.unshare.confirm.cancelButtonText',
-			),
-		};
+const confirmRemoval = (project: ProjectSharingData) => {
+	const { name } = splitName(project.name ?? '');
+	return {
+		title: i18n.baseText('credentialEdit.credentialSharing.unshare.confirm.title'),
+		message: i18n.baseText('credentialEdit.credentialSharing.unshare.confirm.message', {
+			interpolate: { name: name ?? project.name ?? '' },
+		}),
+		confirmButtonText: i18n.baseText(
+			'credentialEdit.credentialSharing.unshare.confirm.confirmButtonText',
+		),
+		cancelButtonText: i18n.baseText(
+			'credentialEdit.credentialSharing.unshare.confirm.cancelButtonText',
+		),
 	};
-});
+};
 
 const { fetchDependencies, getDependencies } = useDependencies();
 
 onMounted(() => {
-	if (isCredSharingEnabled.value) {
-		void fetchDependencies([props.credentialId], 'credential');
-	}
+	void fetchDependencies([props.credentialId], 'credential');
 });
 
 /**
@@ -167,8 +144,6 @@ onMounted(() => {
  * so the share permission only gates the Share button.
  */
 const usedInProjects = computed(() => {
-	if (!isCredSharingEnabled.value) return [];
-
 	const deps = getDependencies(props.credentialId, 'credential');
 	if (!deps) return [];
 
@@ -206,14 +181,6 @@ const usedInProjects = computed(() => {
 	return result;
 });
 
-const usedInAccessText = computed(() =>
-	isOwnedByViewer.value
-		? i18n.baseText('credentialEdit.credentialSharing.availableToYou')
-		: i18n.baseText('credentialEdit.credentialSharing.availableToOwner', {
-				interpolate: { name: credentialOwnerFirstName.value },
-			}),
-);
-
 /** A personal project is named "Name <email>"; the project row hides the email, so the copy does too. */
 function usedInProjectName(project: Pick<ProjectSharingData, 'name'>) {
 	return splitName(project.name ?? '').name;
@@ -239,18 +206,6 @@ function usedInShareTooltip(project: ProjectSharingData) {
 				interpolate: { project: name },
 			})
 		: '';
-}
-
-function usedInAccessTooltip(project: Pick<ProjectSharingData, 'name'>) {
-	const projectName = project.name ?? '';
-
-	return isOwnedByViewer.value
-		? i18n.baseText('credentialEdit.credentialSharing.availableToYou.tooltip', {
-				interpolate: { project: projectName },
-			})
-		: i18n.baseText('credentialEdit.credentialSharing.availableToOwner.tooltip', {
-				interpolate: { name: credentialOwnerFirstName.value, project: projectName },
-			});
 }
 
 const viewerHasInstanceWideUse = computed(
@@ -339,7 +294,7 @@ function goToUpgrade() {
 				:roles="credentialRoles"
 				:role-descriptions="credentialRoleDescriptions"
 				:confirm-removal="confirmRemoval"
-				:sort-selected="isCredSharingEnabled"
+				sort-selected
 				:unshared-projects="usedInProjects"
 				:home-project="homeProject"
 				:readonly="!credentialPermissions.share"
@@ -357,7 +312,7 @@ function goToUpgrade() {
 				@update:share-with-all-users="emit('update:shareWithAllUsers', $event)"
 			>
 				<template #unshared-actions="{ project }">
-					<div :class="$style.onlyYou">
+					<div :class="$style.usedInActions">
 						<N8nTooltip v-if="hasInstanceWideUse(project)" placement="top">
 							<template #content>
 								{{
@@ -374,9 +329,17 @@ function goToUpgrade() {
 								{{ i18n.baseText('credentialEdit.credentialSharing.usedIn.personalSpace') }}
 							</N8nText>
 						</N8nTooltip>
-						<N8nTooltip v-else :content="usedInAccessTooltip(project)" placement="top">
-							<N8nText :class="$style.accessText" color="text-light">
-								{{ usedInAccessText }}
+						<N8nTooltip
+							v-else
+							:content="i18n.baseText('credentialEdit.credentialSharing.canView.tooltip')"
+							placement="top"
+						>
+							<N8nText
+								:class="$style.accessText"
+								color="text-light"
+								data-test-id="credential-used-in-can-view"
+							>
+								{{ i18n.baseText('credentialEdit.credentialSharing.canView') }}
 							</N8nText>
 						</N8nTooltip>
 						<N8nTooltip
@@ -411,7 +374,7 @@ function goToUpgrade() {
 	}
 }
 
-.onlyYou {
+.usedInActions {
 	display: flex;
 	align-items: center;
 	flex-shrink: 0;

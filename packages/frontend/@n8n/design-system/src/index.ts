@@ -24,7 +24,12 @@ export { default as N8nSelect2Item } from './v2/components/Select/SelectItem.vue
 export type * from './v2/components/Select/Select.types';
 export { default as N8nCheckbox } from './v2/components/Checkbox/Checkbox.vue';
 export type * from './v2/components/Checkbox/Checkbox.types';
-export type * from './components/N8nPagination/Pagination.types';
+export type {
+	PaginationEmits,
+	PaginationProps,
+	PaginationSizes,
+	PaginationSlots,
+} from './components/N8nPagination/Pagination.types';
 export { default as N8nLoading2 } from './v2/components/Loading/Loading.vue';
 export type * from './v2/components/Loading/Loading.types';
 export { default as N8nRadioGroupItem } from './components/N8nRadioGroup/RadioGroupItem.vue';

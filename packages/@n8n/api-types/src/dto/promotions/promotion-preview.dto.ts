@@ -3,6 +3,13 @@ import { z } from 'zod';
 import { promotionChangesSchema } from './promotable-resource.dto';
 import { promotionDataTableChangeSchema } from './promotion-binding-preflight.dto';
 import { Z } from '../../zod-class';
+import { serializedCredentialSchema } from '../packages/credential.schema';
+import { serializedDataTableSchema } from '../packages/data-table.schema';
+import { serializedFolderSchema } from '../packages/folder.schema';
+import { serializedProjectSchema } from '../packages/project.schema';
+import { serializedTagSchema } from '../packages/tag.schema';
+import { serializedVariableSchema } from '../packages/variable.schema';
+import { serializedWorkflowSchema } from '../packages/workflow.schema';
 
 export const promotionResourceTypeSchema = z.enum([
 	'project',
@@ -40,6 +47,8 @@ export const promotionResourceSchema = z.object({
 	id: z.string(),
 	name: z.string(),
 	previousName: z.string().optional(),
+	/** Only for tags on Apply: the local tag with this name that Apply moves to the branch id. */
+	previousId: z.string().optional(),
 	/** The project or folder that holds the resource. `null` for instance-wide resources. */
 	parentKey: z.string().nullable(),
 	previousParentKey: z.string().nullable().optional(),
@@ -79,18 +88,37 @@ export class PromotionResourceDetailsRequestDto extends Z.class(
 	{ strict: true },
 ) {}
 
-export const promotionResourceDetailSchema = z.object({
-	key: z.string(),
-	type: promotionResourceTypeSchema,
-	/** The resource file content on each side, as stored in the package. */
-	before: z.record(z.string(), z.unknown()).nullable(),
-	after: z.record(z.string(), z.unknown()).nullable(),
-	revision: revisionSchema,
-	/** True when variable values are left out, because the user cannot list variables. */
-	valueHidden: z.boolean().optional(),
-	/** Column and name changes of a data table that exists on both sides. */
-	dataTableChanges: z.array(promotionDataTableChangeSchema).optional(),
-});
+const resourceDetailSchema = <Type extends PromotionResourceType, Content extends z.ZodTypeAny>(
+	type: Type,
+	content: Content,
+) =>
+	z.object({
+		key: z.string(),
+		type: z.literal(type),
+		/**
+		 * The content of the resource file on each side. `null` when the side has no file, or
+		 * when its file does not match the package format. In the second case, the revision is set.
+		 */
+		before: content.nullable(),
+		after: content.nullable(),
+		revision: revisionSchema,
+	});
+
+export const promotionResourceDetailSchema = z.discriminatedUnion('type', [
+	resourceDetailSchema('project', serializedProjectSchema),
+	resourceDetailSchema('folder', serializedFolderSchema),
+	resourceDetailSchema('workflow', serializedWorkflowSchema),
+	resourceDetailSchema('credential', serializedCredentialSchema),
+	resourceDetailSchema('dataTable', serializedDataTableSchema).extend({
+		/** Column and name changes of a data table that exists on both sides. */
+		dataTableChanges: z.array(promotionDataTableChangeSchema).optional(),
+	}),
+	resourceDetailSchema('variable', serializedVariableSchema).extend({
+		/** True when variable values are left out, because the user cannot list variables. */
+		valueHidden: z.boolean().optional(),
+	}),
+	resourceDetailSchema('tag', serializedTagSchema),
+]);
 
 export type PromotionResourceDetail = z.infer<typeof promotionResourceDetailSchema>;
 

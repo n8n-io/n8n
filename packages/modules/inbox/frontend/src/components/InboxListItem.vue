@@ -18,6 +18,17 @@ const emit = defineEmits<{ select: [] }>();
 const i18n = useI18n();
 const rootStore = useRootStore();
 
+function itemTitle(item: InboxItem) {
+	switch (item.type) {
+		case 'workflow_review':
+			return item.title;
+		case 'self_healing_result':
+			return item.summary;
+		case 'promotion_review':
+			return item.title ?? item.branchName ?? i18n.baseText('inbox.promotionReview.untitled');
+	}
+}
+
 function outcomeLabel(item: InboxSelfHealingItem) {
 	switch (item.outcome) {
 		case 'fix_ready':
@@ -57,12 +68,19 @@ function outcomeLabel(item: InboxSelfHealingItem) {
 						$style.cardTitle,
 						{ [$style.assistantTitle]: item.type === 'self_healing_result' },
 					]"
-					>{{ item.type === 'workflow_review' ? item.title : item.summary }}</N8nText
+					>{{ itemTitle(item) }}</N8nText
 				>
 				<WorkflowReviewStatusDot
 					v-if="item.type === 'workflow_review'"
 					:state="item.state"
 					:decision="item.decision"
+				/>
+				<span
+					v-else-if="item.type === 'promotion_review'"
+					:class="[$style.statusDot, $style[item.reviewState]]"
+					role="img"
+					:aria-label="i18n.baseText(`inbox.promotionReview.state.${item.reviewState}`)"
+					data-test-id="inbox-promotion-status"
 				/>
 				<span
 					v-else
@@ -80,12 +98,25 @@ function outcomeLabel(item: InboxSelfHealingItem) {
 				/>
 			</div>
 			<div :class="$style.meta">
-				<N8nBadge v-if="item.workflowName" variant="outline" :class="$style.workflowBadge">
+				<N8nBadge
+					v-if="item.type === 'promotion_review'"
+					variant="outline"
+					leading-icon="git-branch"
+					:class="$style.workflowBadge"
+					>{{ i18n.baseText('inbox.promotionReview.badge') }}</N8nBadge
+				>
+				<N8nBadge v-else-if="item.workflowName" variant="outline" :class="$style.workflowBadge">
 					<span :class="$style.workflowBadgeText" :title="item.workflowName"
 						><N8nIcon icon="workflow" size="small" /><span>{{ item.workflowName }}</span></span
 					>
 				</N8nBadge>
 				<div :class="$style.metaActions">
+					<N8nText
+						v-if="item.type === 'promotion_review' && item.remoteError"
+						size="xsmall"
+						color="warning"
+						>{{ i18n.baseText(`inbox.promotionReview.remoteError.${item.remoteError}`) }}</N8nText
+					>
 					<N8nText :class="$style.time" size="xsmall" color="text-light">
 						<N8nTimeAgo :date="item.updatedAt" :locale="rootStore.defaultLocale" />
 					</N8nText>
@@ -204,5 +235,14 @@ function outcomeLabel(item: InboxSelfHealingItem) {
 }
 .closed {
 	background-color: var(--color--neutral-500);
+}
+.open {
+	background-color: var(--color--blue-500);
+}
+.changes_requested {
+	background-color: var(--color--yellow-500);
+}
+.merged {
+	background-color: var(--color--green-500);
 }
 </style>
