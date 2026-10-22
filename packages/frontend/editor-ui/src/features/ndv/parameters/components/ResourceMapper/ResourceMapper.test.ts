@@ -140,6 +140,29 @@ describe('ResourceMapper.vue', () => {
 		expect(fetchFieldsSpy).not.toHaveBeenCalled();
 	});
 
+	it('does not fetch fields in read only mode when a dependency changes', async () => {
+		const { rerender } = renderComponent({
+			props: {
+				isReadOnly: true,
+				dependentParametersValues: null,
+				node: createTestNode({
+					parameters: { columns: { mappingMode: 'defineBelow', value: null } },
+				}),
+			},
+			global: {
+				provide: {
+					[ResourceMapperRefreshEmptySchemaKey as symbol]: true,
+				},
+			},
+		});
+		await waitAllPromises();
+
+		await rerender({ dependentParametersValues: 'table-id' });
+		await waitAllPromises();
+
+		expect(fetchFieldsSpy).not.toHaveBeenCalled();
+	});
+
 	it('renders add mode properly', async () => {
 		const { getByTestId, queryByTestId } = renderComponent(
 			{
