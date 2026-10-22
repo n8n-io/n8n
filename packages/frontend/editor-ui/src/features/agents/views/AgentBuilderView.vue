@@ -1039,7 +1039,6 @@ async function onUploadAgentFiles(files: File[]) {
 
 	const oversizedFiles = files.filter((file) => file.size > MAX_AGENT_FILE_SIZE_BYTES);
 	if (oversizedFiles.length > 0) {
-		builderTelemetry.trackRejectedFileUpload('file_size', oversizedFiles.length);
 		showError(
 			new Error(
 				locale.baseText('agents.builder.files.uploadFileTooLarge.message', {
@@ -1049,8 +1048,13 @@ async function onUploadAgentFiles(files: File[]) {
 			locale.baseText('agents.builder.files.uploadFileTooLarge.title'),
 		);
 	}
+	// Make sure each upload reports one client rejection at most: report the oversized files
+	// only when no later check rejects the upload.
 	const filesWithinLimit = files.filter((file) => file.size <= MAX_AGENT_FILE_SIZE_BYTES);
-	if (filesWithinLimit.length === 0) return;
+	if (filesWithinLimit.length === 0) {
+		builderTelemetry.trackRejectedFileUpload('file_size', oversizedFiles.length);
+		return;
+	}
 
 	if (filesWithinLimit.length > MAX_AGENT_FILES_PER_UPLOAD) {
 		builderTelemetry.trackRejectedFileUpload('too_many_files', filesWithinLimit.length);
@@ -1081,6 +1085,10 @@ async function onUploadAgentFiles(files: File[]) {
 			locale.baseText('agents.builder.files.uploadTotalTooLarge.title' as BaseTextKey),
 		);
 		return;
+	}
+
+	if (oversizedFiles.length > 0) {
+		builderTelemetry.trackRejectedFileUpload('file_size', oversizedFiles.length);
 	}
 
 	const targetProjectId = projectId.value;
