@@ -11,6 +11,7 @@ export * from './cron';
 export * from './data-table.types';
 export * from './execution-context';
 export * from './execution-context-establishment-hooks';
+export * from './execution-cancellation';
 export * from './redaction-channels';
 export * from './dynamic-credentials-helpers';
 export * from './safe-regex';

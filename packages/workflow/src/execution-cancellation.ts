@@ -1,14 +1,18 @@
 import { sleep } from '@n8n/utils/sleep';
-import { NodeOperationError } from 'n8n-workflow';
-import type { IExecuteFunctions } from 'n8n-workflow';
 
-export function throwIfExecutionCancelled(context: IExecuteFunctions) {
+import { NodeOperationError } from './errors';
+import type { IExecuteFunctions } from './interfaces';
+
+export function throwIfExecutionCancelled(context: IExecuteFunctions): void {
 	if (context.getExecutionCancelSignal()?.aborted) {
 		throw new NodeOperationError(context.getNode(), 'The execution was canceled');
 	}
 }
 
-export async function sleepUnlessCancelled(context: IExecuteFunctions, ms: number) {
+export async function sleepUnlessExecutionCancelled(
+	context: IExecuteFunctions,
+	ms: number,
+): Promise<void> {
 	throwIfExecutionCancelled(context);
 	try {
 		await sleep(ms, context.getExecutionCancelSignal());

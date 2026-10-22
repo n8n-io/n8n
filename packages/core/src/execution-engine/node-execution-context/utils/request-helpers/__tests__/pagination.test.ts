@@ -234,7 +234,11 @@ describe('requestWithAuthenticationPaginated', () => {
 		});
 
 		const request = vi.fn().mockResolvedValue({ body: {}, headers: {}, statusCode: 200 });
-		const ctx = { helpers: { request } } as unknown as IExecuteFunctions;
+		const ctx = {
+			helpers: { request },
+			getExecutionCancelSignal: () => undefined,
+			getNode: () => node,
+		} as unknown as IExecuteFunctions;
 
 		return { ctx, requestOptions, paginationOptions, resolveValue, request, capturedKeys };
 	};
@@ -326,6 +330,7 @@ describe('requestWithAuthenticationPaginated', () => {
 			const ctx = {
 				helpers: { request },
 				getExecutionCancelSignal: () => signal,
+				getNode: () => node,
 			} as unknown as IExecuteFunctions;
 
 			return { ctx, paginationOptions, resolveValue, request };

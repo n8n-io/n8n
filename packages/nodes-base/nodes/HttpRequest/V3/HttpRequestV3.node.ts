@@ -24,6 +24,8 @@ import {
 	jsonParse,
 	removeCircularRefs,
 	setSafeObjectProperty,
+	sleepUnlessExecutionCancelled,
+	throwIfExecutionCancelled,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
@@ -46,7 +48,6 @@ import {
 } from '../GenericFunctions';
 import { setFilename } from './utils/binaryData';
 import { mimeTypeFromResponse } from './utils/parse';
-import { sleepUnlessCancelled, throwIfExecutionCancelled } from '../shared/cancellation';
 import { configureResponseOptimizer } from '../shared/optimizeResponse';
 
 import { binaryToStringWithEncodingDetection } from './utils/buffer-decoding';
@@ -347,7 +348,7 @@ export class HttpRequestV3 implements INodeType {
 
 				if (itemIndex > 0 && batchSize >= 0 && batchInterval > 0) {
 					if (itemIndex % batchSize === 0) {
-						await sleepUnlessCancelled(this, batchInterval);
+						await sleepUnlessExecutionCancelled(this, batchInterval);
 					}
 				}
 
