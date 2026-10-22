@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useToast } from '@n8n/composables/useToast';
-import { useEventListener } from '@vueuse/core';
+import { onClickOutside, useEventListener } from '@vueuse/core';
 import DiffBadge from '@/features/workflows/workflowDiff/DiffBadge.vue';
 import WorkflowDiffEmptyState from '@/features/workflows/workflowDiff/WorkflowDiffEmptyState.vue';
 import NodeDiff from '@/features/workflows/workflowDiff/NodeDiff.vue';
@@ -32,6 +32,7 @@ const props = withDefaults(
 		tidyUp?: boolean;
 		showBackButton?: boolean;
 		showFullscreenButton?: boolean;
+		requireCanvasFocus?: boolean;
 		/** Hides the workflow name when the parent already shows it. Fullscreen still shows it. */
 		hideTitle?: boolean;
 		canvasIdPrefix?: string;
@@ -44,6 +45,7 @@ const props = withDefaults(
 		targetLabel: 'After',
 		showBackButton: false,
 		showFullscreenButton: false,
+		requireCanvasFocus: false,
 		hideTitle: false,
 		canvasIdPrefix: undefined,
 		source: 'unknown',
@@ -57,13 +59,31 @@ const { selectedDetailId, onNodeClick, syncIsEnabled } = useProvideViewportSync(
 
 // Teleported, not just `position: fixed`: a `container-type` ancestor would trap it.
 const isFullscreen = ref(false);
+const viewer = ref<HTMLElement>();
+const isCanvasFocused = ref(false);
+const isWheelEnabled = computed(
+	() => !props.requireCanvasFocus || isFullscreen.value || isCanvasFocused.value,
+);
+
+onClickOutside(viewer, () => {
+	isCanvasFocused.value = false;
+});
+
+function onFocusOut(event: FocusEvent) {
+	if (!(event.relatedTarget instanceof Node) || !viewer.value?.contains(event.relatedTarget)) {
+		isCanvasFocused.value = false;
+	}
+}
 
 function toggleFullscreen() {
 	isFullscreen.value = !isFullscreen.value;
+	isCanvasFocused.value = false;
 }
 
 useEventListener(document, 'keydown', (event: KeyboardEvent) => {
-	if (event.key !== 'Escape' || !isFullscreen.value) return;
+	if (event.key !== 'Escape') return;
+	isCanvasFocused.value = false;
+	if (!isFullscreen.value) return;
 	event.preventDefault();
 	isFullscreen.value = false;
 });
@@ -149,8 +169,19 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 <template>
 	<Teleport to="body" :disabled="!isFullscreen">
 		<div
-			:class="[$style.workflowDiffViewContainer, { [$style.fullscreen]: isFullscreen }]"
+			ref="viewer"
+			:class="[
+				$style.workflowDiffViewContainer,
+				{
+					[$style.fullscreen]: isFullscreen,
+					nowheel: !isWheelEnabled,
+				},
+			]"
+			:tabindex="requireCanvasFocus && !isFullscreen ? 0 : undefined"
 			data-test-id="workflow-diff-view"
+			@pointerdown="isCanvasFocused = true"
+			@focusin="isCanvasFocused = true"
+			@focusout="onFocusOut"
 		>
 			<WorkflowDiffToolbar
 				v-model:sync-is-enabled="syncIsEnabled"
@@ -273,48 +304,98 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 				</template>
 			</WorkflowDiffToolbar>
 
-			<WorkflowDiffContent
-				:source-nodes="source.nodes"
-				:source-connections="source.connections"
-				:source-render-data="sourceRenderData"
-				:target-nodes="target.nodes"
-				:target-connections="target.connections"
-				:target-render-data="targetRenderData"
-				:source-label="sourceLabel"
-				:target-label="targetLabel"
-				:source-exists="!!sourceWorkflow"
-				:target-exists="!!targetWorkflow"
-				:selected-node="selectedNode"
-				:node-diffs="nodeDiffs"
-				:is-source-workflow-new="isSourceWorkflowNew"
-				:apply-layout="tidyUp"
-				:nodes-diff="nodesDiff"
-				:connections-diff="connectionsDiff"
-				:canvas-id-prefix="canvasIdPrefix"
-				@close-aside="selectedDetailId = undefined"
+			<div
+				:class="[
+					$style.canvasArea,
+					{ [$style.focused]: requireCanvasFocus && isCanvasFocused && !isFullscreen },
+				]"
+				data-test-id="workflow-diff-canvas-area"
 			>
-				<template v-if="$slots.sourceLabel" #sourceLabel>
-					<slot name="sourceLabel" />
-				</template>
-				<template v-if="$slots.sourceEmptyText" #sourceEmptyText>
-					<slot name="sourceEmptyText" />
-				</template>
-				<template v-if="$slots.targetLabel" #targetLabel>
-					<slot name="targetLabel" />
-				</template>
-				<template v-if="$slots.targetEmptyText" #targetEmptyText>
-					<slot name="targetEmptyText" />
-				</template>
-			</WorkflowDiffContent>
+				<WorkflowDiffContent
+					:class="$style.canvasContent"
+					:source-nodes="source.nodes"
+					:source-connections="source.connections"
+					:source-render-data="sourceRenderData"
+					:target-nodes="target.nodes"
+					:target-connections="target.connections"
+					:target-render-data="targetRenderData"
+					:source-label="sourceLabel"
+					:target-label="targetLabel"
+					:source-exists="!!sourceWorkflow"
+					:target-exists="!!targetWorkflow"
+					:selected-node="selectedNode"
+					:node-diffs="nodeDiffs"
+					:is-source-workflow-new="isSourceWorkflowNew"
+					:apply-layout="tidyUp"
+					:nodes-diff="nodesDiff"
+					:connections-diff="connectionsDiff"
+					:canvas-id-prefix="canvasIdPrefix"
+					@close-aside="selectedDetailId = undefined"
+				>
+					<template v-if="$slots.sourceLabel" #sourceLabel>
+						<slot name="sourceLabel" />
+					</template>
+					<template v-if="$slots.sourceEmptyText" #sourceEmptyText>
+						<slot name="sourceEmptyText" />
+					</template>
+					<template v-if="$slots.targetLabel" #targetLabel>
+						<slot name="targetLabel" />
+					</template>
+					<template v-if="$slots.targetEmptyText" #targetEmptyText>
+						<slot name="targetEmptyText" />
+					</template>
+				</WorkflowDiffContent>
+				<N8nText v-if="!isWheelEnabled" size="small" color="text-light" :class="$style.focusHint">
+					{{ i18n.baseText('promotions.preview.workflow.activateCanvas') }}
+				</N8nText>
+			</div>
 		</div>
 	</Teleport>
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/focus';
+
 .workflowDiffViewContainer {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	height: 100%;
+}
+
+.canvasArea {
+	position: relative;
+	flex: 1;
+	min-height: 0;
+}
+
+.canvasContent {
+	position: relative;
+	z-index: 0;
+}
+
+.focused::after {
+	@include focus.focus-ring;
+
+	content: '';
+	position: absolute;
+	inset: 0;
+	outline-offset: calc(-1 * var(--focus--border-width));
+	border-radius: 0 0 var(--radius--xs) var(--radius--xs);
+	pointer-events: none;
+	z-index: 1;
+}
+
+.focusHint {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	padding: var(--spacing--3xs) var(--spacing--2xs);
+	background: color-mix(in srgb, var(--background--surface) 85%, transparent);
+	pointer-events: none;
+	white-space: nowrap;
+	z-index: 1;
 }
 
 .fullscreen {

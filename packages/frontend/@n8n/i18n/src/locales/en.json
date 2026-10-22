@@ -9988,6 +9988,7 @@
 	"promotions.preview.workflow.showDiff": "Show diff",
 	"promotions.preview.workflow.showDiffOf": "Show diff of {name}",
 	"promotions.preview.workflow.loadingDiff": "Loading diff…",
+	"promotions.preview.workflow.activateCanvas": "Click anywhere in the canvas to pan and zoom",
 	"promotions.preview.badge.promote": "{count} change to promote | {count} changes to promote",
 	"promotions.preview.badge.apply": "{count} incoming change | {count} incoming changes",
 	"promotions.preview.badge.failed.promote": "Couldn't check for changes to promote. Reload the page to try again.",

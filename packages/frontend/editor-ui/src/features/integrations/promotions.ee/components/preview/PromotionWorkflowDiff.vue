@@ -65,6 +65,7 @@ function emptyTextOf(side: DetailSide) {
 			:target-workflow="target"
 			:canvas-id-prefix="resourceKey"
 			show-fullscreen-button
+			require-canvas-focus
 			hide-title
 		>
 			<template #sourceLabel>
