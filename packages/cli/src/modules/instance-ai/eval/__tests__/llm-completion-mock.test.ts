@@ -187,6 +187,32 @@ describe('createLlmCompletionMockHandler', () => {
 		expect(submitCapture.endsTurn?.('Invalid: kind="tool_call" requires toolName.')).toBe(false);
 	});
 
+	it('rejects a tool name the request does not declare, so the model can retry', async () => {
+		const handler = createLlmCompletionMockHandler();
+		await handler(
+			chatRequest({
+				messages: [{ role: 'user', content: 'hi' }],
+				tools: [{ type: 'function', function: { name: 'search_web', parameters: {} } }],
+			}),
+			node,
+		);
+
+		expect(await submitCapture.handler?.({ kind: 'tool_call', toolName: 'web_search' })).toMatch(
+			/^Invalid:/,
+		);
+		expect(await submitCapture.handler?.({ kind: 'tool_call', toolName: 'search_web' })).toBe(
+			'Accepted.',
+		);
+	});
+
+	it('rejects a final step with no content, so the turn never ends empty', async () => {
+		const handler = createLlmCompletionMockHandler();
+		await handler(chatRequest({ messages: [{ role: 'user', content: 'hi' }] }), node);
+
+		expect(await submitCapture.handler?.({ kind: 'final' })).toMatch(/^Invalid:/);
+		expect(await submitCapture.handler?.({ kind: 'final', content: '' })).toMatch(/^Invalid:/);
+	});
+
 	it('emits content for a final answer', async () => {
 		submitQueue.push({ kind: 'final', content: 'done' });
 		const handler = createLlmCompletionMockHandler();

@@ -280,6 +280,9 @@ export function createLlmCompletionMockHandler(
 					// A named tool always wins, even on a step labeled "final" — structured-output
 					// agents finalize by calling the tool. Capture it regardless of `kind`.
 					if (input.toolName) {
+						if (!tools.some((tool) => tool.name === input.toolName)) {
+							return `Invalid: no tool named "${input.toolName}". Use one of the listed tools.`;
+						}
 						capture.kind = 'tool_call';
 						capture.toolName = input.toolName;
 						capture.toolArguments = input.toolArguments ?? {};
@@ -287,6 +290,9 @@ export function createLlmCompletionMockHandler(
 					}
 					if (input.kind === 'tool_call') {
 						return 'Invalid: kind="tool_call" requires toolName. Call submit_agent_step again.';
+					}
+					if (!input.structuredContent && !input.content) {
+						return 'Invalid: kind="final" requires content or structuredContent. Call submit_agent_step again.';
 					}
 					capture.kind = 'final';
 					// Serialized here, so quotes inside long values (HTML, prose) never break the JSON.
