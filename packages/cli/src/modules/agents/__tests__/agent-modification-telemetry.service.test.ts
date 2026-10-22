@@ -128,6 +128,27 @@ describe('knowledge reuse telemetry', () => {
 		}
 	});
 
+	it('sends the event without fingerprints when the fingerprints fail', () => {
+		const telemetry = mock<Telemetry>();
+		const brokenInstanceSettings = mock<InstanceSettings>();
+		Object.defineProperty(brokenInstanceSettings, 'hmacSignatureSecret', {
+			get: () => {
+				throw new Error('secret unavailable');
+			},
+		});
+
+		new AgentModificationTelemetryService(
+			telemetry,
+			brokenInstanceSettings,
+			mock<EventService>(),
+		).record(event());
+
+		expect(telemetry.track).toHaveBeenCalledTimes(1);
+		const [[, payload]] = telemetry.track.mock.calls;
+		expect(payload).toMatchObject({ user_id: 'user-1' });
+		expect(payload).not.toHaveProperty('vector_store_fingerprints');
+	});
+
 	it('does not emit for an unchanged configuration', () => {
 		const telemetry = mock<Telemetry>();
 		new AgentModificationTelemetryService(telemetry, instanceSettings, mock<EventService>()).record(

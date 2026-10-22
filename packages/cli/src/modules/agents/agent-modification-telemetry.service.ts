@@ -212,14 +212,7 @@ export class AgentModificationTelemetryService {
 			const { by } = event;
 			const properties = {
 				...modificationProperties(event),
-				...(event.changedParts.includes('vectorStores')
-					? {
-							vector_store_fingerprints: buildVectorStoreFingerprints(
-								event.config?.vectorStores ?? [],
-								this.instanceSettings.hmacSignatureSecret,
-							),
-						}
-					: {}),
+				...this.vectorStoreFingerprints(event),
 			};
 			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 			this.recordAssistantActivity(event, properties.capability_count, event.changedParts);
@@ -241,6 +234,26 @@ export class AgentModificationTelemetryService {
 			this.telemetry.track(entry, { ...properties, event_version: '2' });
 		} catch {
 			// Telemetry must never fail a write that already succeeded.
+		}
+	}
+
+	/** Make sure a failed fingerprint leaves out only the fingerprints, not the whole event. */
+	private vectorStoreFingerprints(event: AgentModificationEvent): {
+		vector_store_fingerprints?: string[];
+	} {
+		if (!event.changedParts.includes('vectorStores')) {
+			return {};
+		}
+
+		try {
+			return {
+				vector_store_fingerprints: buildVectorStoreFingerprints(
+					event.config?.vectorStores ?? [],
+					this.instanceSettings.hmacSignatureSecret,
+				),
+			};
+		} catch {
+			return {};
 		}
 	}
 
