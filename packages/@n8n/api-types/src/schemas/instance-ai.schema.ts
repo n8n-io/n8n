@@ -1805,6 +1805,7 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
  * - `agent_preview` — send a preview chat session to Instance AI
  * - `assistant_page` — first message typed on the Instance AI empty/home page
  * - `onboarding` — seeded "Welcome to n8n" thread for a new user; the greeting is stored before the first user turn
+ * - `preferences_empty_state` — "Suggest preferences" on the empty AI preferences page
  * - `evals` — Instance AI evaluation harness / offline eval runners
  * - `playwright` — Playwright E2E helpers that create threads via the REST API
  * Experiment cleanup: remove with openWorkflowInAssistant.
@@ -1824,6 +1825,7 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'agent_preview',
 	'assistant_page',
 	'onboarding',
+	'preferences_empty_state', // Experiment cleanup (127_preferences_empty_state)
 	// Experiment cleanup: remove with openWorkflowInAssistant.
 	'workflow_list_auto',
 	'workflow_list_button',
@@ -1870,6 +1872,8 @@ export type InstanceAiThreadSourcePersisted =
  *   hand-offs stash the attachment and wait for the user's first prompt.
  * - `contextual_followup` — the follow-up the composer offers as a placeholder
  *   after a build, accepted with Tab; lands mid-thread
+ * - `preferences_suggestion` — the "Suggest preferences" message from the empty
+ *   AI preferences page, put in the composer for the user to send
  */
 export const INSTANCE_AI_PREFILL_TYPES = [
 	'handoff_execution_error',
@@ -1883,6 +1887,7 @@ export const INSTANCE_AI_PREFILL_TYPES = [
 	'v1_opener',
 	'workflow_attachment_opener',
 	'contextual_followup',
+	'preferences_suggestion', // Experiment cleanup (127_preferences_empty_state)
 ] as const;
 export type InstanceAiPrefillType = (typeof INSTANCE_AI_PREFILL_TYPES)[number];
 

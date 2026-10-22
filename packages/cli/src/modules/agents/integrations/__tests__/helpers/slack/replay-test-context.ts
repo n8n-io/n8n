@@ -1,5 +1,6 @@
 import type { StreamChunk } from '@n8n/agents';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
+import { createHmac } from 'node:crypto';
 import nock from 'nock';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -11,8 +12,9 @@ import type {
 	getIntegrationToolConnectionDescriptors,
 	IntegrationMessageContext,
 } from '../../../integration-tools';
-import { SlackIntegration } from '../../../platforms/slack/slack-integration';
+import { createSlackSourceAdapter } from '../../../platforms/slack/slack-adapter';
 import { SLACK_STREAMING_OPTIONS } from '../../../platforms/slack/slack-bridge-behavior';
+import { SlackIntegration } from '../../../platforms/slack/slack-integration';
 import {
 	createReplayContextSetup,
 	type MemoryMessageContextStore,
@@ -76,7 +78,7 @@ export interface SlackReplayContext
 	descriptor: ReturnType<typeof getIntegrationToolConnectionDescriptors>[number];
 	integration: AgentIntegrationConfig;
 	messageContextStore: MemoryMessageContextStore;
-	sendWebhook: (payload: unknown) => Promise<Response>;
+	sendWebhook: (payload: unknown, headers?: Headers) => Promise<Response>;
 	latestContext: () => IntegrationMessageContext | undefined;
 	latestThreadId: () => string | undefined;
 	lastPost: () => SlackApiCall | undefined;
@@ -84,6 +86,18 @@ export interface SlackReplayContext
 
 const SLACK_BOT_TOKEN = 'xoxb-test-token';
 const SLACK_API_URL = 'https://slack.com/api/';
+const SLACK_SIGNING_SECRET = 'slack-test-signing-secret';
+
+function signedHeaders(payload: unknown): Headers {
+	const timestamp = String(Math.floor(Date.now() / 1000));
+	const signature = createHmac('sha256', SLACK_SIGNING_SECRET)
+		.update(`v0:${timestamp}:${JSON.stringify(payload)}`)
+		.digest('hex');
+	return new Headers({
+		'x-slack-request-timestamp': timestamp,
+		'x-slack-signature': `v0=${signature}`,
+	});
+}
 
 /** Extract the Web API method (`chat.postMessage`, `auth.test`, …) from a URL. */
 function slackMethodFromUri(uri: string): string {
@@ -194,17 +208,15 @@ export async function createSlackReplayContext(
 ): Promise<SlackReplayContext> {
 	const stub = installSlackApiNock(fixtures.botUserId);
 
-	const { createSlackAdapter } = await import('@chat-adapter/slack');
 	const { Chat } = await import('chat');
 	const { createMemoryState } = await import('@chat-adapter/state-memory');
 
-	const adapter = createSlackAdapter({
+	const adapter = await createSlackSourceAdapter({
 		botToken: SLACK_BOT_TOKEN,
 		nativeStreaming: false,
 		// Provided so the adapter skips the `auth.test` identity lookup on connect.
 		botUserId: fixtures.botUserId,
-		// Replay fixtures carry sanitized signatures, so bypass signature checks.
-		webhookVerifier: () => true,
+		signingSecret: SLACK_SIGNING_SECRET,
 		mode: 'webhook',
 		apiUrl: SLACK_API_URL,
 	});
@@ -228,11 +240,12 @@ export async function createSlackReplayContext(
 	await chat.initialize();
 
 	const webhooks = chat.webhooks as Record<string, ReplayWebhookHandler>;
-	const sendWebhook = async (payload: unknown) =>
+	const sendWebhook = async (payload: unknown, headers = signedHeaders(payload)) =>
 		await setup.sendJsonWebhook(
 			async (request, requestOptions) => await webhooks.slack(request, requestOptions),
 			'https://n8n.example.com/rest/projects/project-1/agents/v2/agent-1/webhooks/slack',
 			payload,
+			headers,
 		);
 
 	return {

@@ -30,6 +30,13 @@ export const IDLE_THRESHOLD_MS = 10 * 60 * 1000;
 
 const LOAD_SKILL_TOOL_NAME = 'load_skill';
 
+const GUARDRAIL_STOP_MESSAGE_KEYS: Partial<Record<string, BaseTextKey>> = {
+	'budget.session': 'agentSessions.timeline.guardrailStop.session',
+	'budget.monthly': 'agentSessions.timeline.guardrailStop.monthly',
+	'budget.credits': 'agentSessions.timeline.guardrailStop.credits',
+	'budget.freeCredits': 'agentSessions.timeline.guardrailStop.freeCredits',
+};
+
 export function endTimestampOf(item: TimelineItem): number {
 	return item.endTimestamp ?? item.timestamp;
 }
@@ -156,6 +163,7 @@ export function backgroundJobSignalSummary(
 }
 
 export function executionErrorLabel(item: TimelineItem, i18n: TimelineI18n): string {
+	if (item.guardrailCode) return i18n.baseText('agentSessions.timeline.guardrailStop.label');
 	return i18n.baseText(
 		item.executionStatus === 'interrupted'
 			? 'agentSessions.timeline.executionInterrupted'
@@ -164,6 +172,12 @@ export function executionErrorLabel(item: TimelineItem, i18n: TimelineI18n): str
 }
 
 export function executionErrorMessage(item: TimelineItem, i18n: TimelineI18n): string {
+	if (item.guardrailCode) {
+		return i18n.baseText(
+			GUARDRAIL_STOP_MESSAGE_KEYS[item.guardrailCode] ??
+				'agentSessions.timeline.guardrailStop.fallback',
+		);
+	}
 	if (item.content) return item.content;
 	return i18n.baseText(
 		item.executionStatus === 'interrupted'
@@ -476,6 +490,12 @@ interface RawBackgroundJobSignalEvent {
 	signal: AgentBackgroundJobSignal;
 }
 
+interface GuardrailEvent {
+	type: 'guardrail';
+	timestamp: number;
+	code: string;
+}
+
 type RawEvent =
 	| RawToolCallEvent
 	| RawTextEvent
@@ -483,7 +503,8 @@ type RawEvent =
 	| RawInputEvent
 	| RawSuspensionEvent
 	| RawHitlResponseEvent
-	| RawBackgroundJobSignalEvent;
+	| RawBackgroundJobSignalEvent
+	| GuardrailEvent;
 
 /**
  * Cast the loose API timeline shape (`Record<string, unknown> & { type }`)
@@ -844,6 +865,13 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 				if (!hitlContext) continue;
 				hitlContext.hasExplicitResponse = true;
 				items.push(hitlResponseItem(hitlContext, exec.id, event.response, event.timestamp ?? 0));
+			} else if (event.type === 'guardrail') {
+				items.push({
+					kind: 'execution-error',
+					executionId: exec.id,
+					guardrailCode: event.code,
+					timestamp: event.timestamp ?? 0,
+				});
 			}
 		}
 		flushThinking();

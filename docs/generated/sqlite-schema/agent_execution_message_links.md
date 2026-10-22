@@ -65,6 +65,8 @@ erDiagram
   INTEGER duration
   TEXT error
   TEXT failureSummary
+  varchar_32_ finishReason
+  varchar_64_ guardrailCode
   varchar_16_ hitlStatus
   varchar_36_ id PK
   varchar_255_ model

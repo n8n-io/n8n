@@ -332,7 +332,7 @@ describe('AgentSessionsListView', () => {
 			});
 			expect(track).toHaveBeenCalledExactlyOnceWith(
 				TELEMETRY_EVENT.AGENTS.USER_APPLIED_SESSION_FILTER,
-				{ agent_id: 'agent-1', session_id: 'session-xyz', filter_names: ['status'] },
+				{ agent_id: 'agent-1', push_ref: 'session-xyz', filter_names: ['status'] },
 			);
 			expect(track.mock.invocationCallOrder[0]).toBeLessThan(
 				setFilters.mock.invocationCallOrder[0],
@@ -385,7 +385,7 @@ describe('AgentSessionsListView', () => {
 			}
 			expect(track).toHaveBeenCalledExactlyOnceWith(
 				TELEMETRY_EVENT.AGENTS.USER_APPLIED_SESSION_FILTER,
-				{ agent_id: 'agent-1', session_id: 'session-xyz', filter_names: filterNames },
+				{ agent_id: 'agent-1', push_ref: 'session-xyz', filter_names: filterNames },
 			);
 		},
 	);

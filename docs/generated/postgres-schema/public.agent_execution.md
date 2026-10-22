@@ -13,6 +13,8 @@
 | duration | integer | 0 | false |  |  |  |
 | error | text |  | true |  |  |  |
 | failureSummary | json |  | true |  |  | Execution failure projection as {count, latest} for session list queries |
+| finishReason | varchar(32) |  | true |  |  | Why the run ended, e.g. stop or guardrail. Null for older runs. |
+| guardrailCode | varchar(64) |  | true |  |  | Code of the guardrail that stopped the run, e.g. budget.session. |
 | hitlStatus | varchar(16) |  | true |  |  |  |
 | id | varchar(36) |  | false | [public.agent_background_job](public.agent_background_job.md) [public.agent_execution_message_links](public.agent_execution_message_links.md) [public.agent_message_queue](public.agent_message_queue.md) |  |  |
 | model | varchar(255) |  | true |  |  |  |
@@ -75,6 +77,8 @@ erDiagram
   integer duration
   text error
   json failureSummary
+  varchar_32_ finishReason
+  varchar_64_ guardrailCode
   varchar_16_ hitlStatus
   varchar_36_ id
   varchar_255_ model

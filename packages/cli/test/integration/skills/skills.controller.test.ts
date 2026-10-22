@@ -680,7 +680,7 @@ describe('SkillsController', () => {
 				.expect(200);
 		});
 
-		it('answers 409 while an agent uses the skill and saves nothing', async () => {
+		it('moves a skill in use to the instance, where every agent keeps it', async () => {
 			const { id, skillHash } = await create(editor, {
 				scope: 'project',
 				projectId: project.id,
@@ -690,11 +690,39 @@ describe('SkillsController', () => {
 
 			await owner
 				.patch(`/skills/${id}`)
-				.send({ instructions: 'Be very brief.', scope: 'instance', baseSkillHash: skillHash })
+				.send({ scope: 'instance', baseSkillHash: skillHash })
+				.expect(200);
+			const read = await owner.get(`/skills/${id}`).expect(200);
+
+			expect(read.body.data).toMatchObject({ scope: 'instance', projectId: null });
+		});
+
+		it('answers 409 to a move that takes the skill from an agent, and saves nothing', async () => {
+			const other = await createTeamProject('Other team');
+			const { id, skillHash } = await create(editor, {
+				scope: 'project',
+				projectId: project.id,
+				skill: body,
+			});
+			await attachToNewAgent(id, 'Support bot', project.id);
+
+			const response = await owner
+				.patch(`/skills/${id}`)
+				.send({
+					instructions: 'Be very brief.',
+					scope: 'project',
+					projectId: other.id,
+					baseSkillHash: skillHash,
+				})
 				.expect(409);
 			const read = await owner.get(`/skills/${id}`).expect(200);
 
-			expect(read.body.data).toMatchObject({ scope: 'project', latestVersion: 1 });
+			expect(response.body.message).toContain('"Support bot" would lose access to this skill.');
+			expect(read.body.data).toMatchObject({
+				scope: 'project',
+				projectId: project.id,
+				latestVersion: 1,
+			});
 		});
 
 		it('needs a project id to move a skill to a project', async () => {

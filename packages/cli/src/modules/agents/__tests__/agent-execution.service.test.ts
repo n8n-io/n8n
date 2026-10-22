@@ -86,6 +86,7 @@ function makeMessageRecord(overrides: Partial<MessageRecord> = {}): MessageRecor
 		startTime: 0,
 		duration: 1,
 		error: null,
+		guardrailCode: null,
 		...overrides,
 	};
 }
@@ -728,6 +729,25 @@ describe('AgentExecutionService', () => {
 		},
 	);
 
+	it('stores the finish reason and guardrail code on the execution row', async () => {
+		await service.finalizeExecution('execution-1', {
+			threadId: 'thread-1',
+			agentId: 'agent-1',
+			agentName: 'Agent',
+			projectId: 'project-1',
+			userMessage: null,
+			record: makeMessageRecord({ finishReason: 'guardrail', guardrailCode: 'budget.monthly' }),
+		});
+
+		expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
+			'execution-1',
+			expect.objectContaining({ finishReason: 'guardrail', guardrailCode: 'budget.monthly' }),
+			undefined,
+			expect.any(Object),
+			undefined,
+		);
+	});
+
 	it('keeps terminal persistence successful when usage totals and model backfill fail', async () => {
 		agentExecutionThreadRepository.incrementUsage.mockRejectedValue(
 			new Error('usage update failed'),
@@ -966,6 +986,7 @@ describe('AgentExecutionService', () => {
 				startTime: Date.parse('2026-05-07T10:00:00Z'),
 				duration: 1234,
 				error: null,
+				guardrailCode: null,
 			};
 			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({ thread, created: true });
 			agentExecutionRepository.create.mockImplementation((entity) => entity as AgentExecution);
