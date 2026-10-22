@@ -3051,6 +3051,8 @@
 	"pushConnection.pollingNode.dataNotFound.message": "We didn’t find any data in {service} to simulate an event. Please create one in {service} and try again.",
 	"pushConnection.executionFailed": "Execution failed",
 	"pushConnection.executionFailed.message": "There might not be enough memory to finish the execution. Tips for avoiding this <a target=\"_blank\" href=\"https://docs.n8n.io/flow-logic/error-handling/memory-errors/\">here</a>",
+	"pushConnection.executionNotSaved": "Execution result not available",
+	"pushConnection.executionNotSaved.message": "The connection dropped during the run, so we couldn’t load the result. If this workflow doesn’t save manual executions, run it again to see the result.",
 	"pushConnection.executionError": "There was a problem executing the workflow{error}",
 	"pushConnection.executionError.openNode": "Open errored node",
 	"pushConnection.executionError.details": "<br /><strong>{details}</strong>",
