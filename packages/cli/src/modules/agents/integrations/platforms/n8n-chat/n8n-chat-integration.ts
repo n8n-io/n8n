@@ -73,6 +73,11 @@ export class N8nChatIntegration extends AgentChatIntegration {
 		return undefined;
 	}
 
+	/** Internal n8n chat does not go through the bridge, so it never resolves a channel scope. */
+	resolveEpisodicScope() {
+		return null;
+	}
+
 	async createAdapter(): Promise<unknown> {
 		throw new UnexpectedError('The n8n chat integration has no platform adapter.');
 	}

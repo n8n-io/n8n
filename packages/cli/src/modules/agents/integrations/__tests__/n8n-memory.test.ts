@@ -28,6 +28,12 @@ import { N8nMemory } from '../n8n-memory';
 
 type N8nMemoryImplementation = ReturnType<N8nMemory['getImplementation']>;
 
+/** A channel decision that shares notes by thread. */
+const threadEpisodic = {
+	writeScopeId: 'thread:thread-1',
+	readScopeIds: ['integration:slack:U_ALICE', 'thread:thread-1'],
+};
+
 describe('N8nMemory', () => {
 	let memory: N8nMemoryImplementation;
 	let memoryService: N8nMemory;
@@ -1168,7 +1174,7 @@ describe('N8nMemory', () => {
 			return { updateQueryBuilder, insertQueryBuilder };
 		};
 
-		it('locks integration runs on the thread scope shared by every author', async () => {
+		it('locks on the write scope shared by every author of a thread', async () => {
 			const { insertQueryBuilder } = mockEpisodicLockWrite({
 				updateAffected: 0,
 				claimed: {
@@ -1180,7 +1186,7 @@ describe('N8nMemory', () => {
 			});
 
 			const handle = await memory.episodic.taskLock?.acquire(
-				{ resourceId: 'integration:slack:U_ALICE', threadId: 'thread-1' },
+				{ resourceId: 'integration:slack:U_ALICE', threadId: 'thread-1', episodic: threadEpisodic },
 				{ ttlMs: 60_000, holderId: 'A' },
 			);
 
@@ -1193,6 +1199,32 @@ describe('N8nMemory', () => {
 				}),
 			);
 			expect(observationLockRepository.createQueryBuilder).not.toHaveBeenCalled();
+		});
+
+		it('locks on the resolved write scope instead of the derived thread scope', async () => {
+			const { insertQueryBuilder } = mockEpisodicLockWrite({
+				updateAffected: 0,
+				claimed: {
+					agentId: 'agent-1',
+					resourceId: 'slack:T1:C1',
+					holderId: 'A',
+					heldUntil: new Date(Date.now() + 60_000),
+				} as AgentMemoryEntryLockEntity,
+			});
+
+			const handle = await memory.episodic.taskLock?.acquire(
+				{
+					resourceId: 'integration:slack:U_ALICE',
+					threadId: 'thread-1',
+					episodic: { writeScopeId: 'slack:T1:C1', readScopeIds: ['slack:T1:C1'] },
+				},
+				{ ttlMs: 60_000, holderId: 'A' },
+			);
+
+			expect(handle).toMatchObject({ resourceId: 'slack:T1:C1' });
+			expect(insertQueryBuilder.values).toHaveBeenCalledWith(
+				expect.objectContaining({ resourceId: 'slack:T1:C1' }),
+			);
 		});
 
 		it('uses the bound agent id for episodic task lock isolation', async () => {
@@ -1285,10 +1317,11 @@ describe('N8nMemory', () => {
 			});
 		});
 
-		it('stores an integration entry once, under the thread it was said in', async () => {
+		it('stores an integration entry once, under its resolved write scope', async () => {
 			const result = await memory.episodic.saveEntryWithSources(
 				{
 					resourceId: 'integration:slack:U_BOB',
+					episodic: threadEpisodic,
 					content: 'The Flan recipe uses three eggs.',
 					embedding: [1, 0],
 					embeddingModel: 'openai/text-embedding-3-small',
@@ -1310,30 +1343,37 @@ describe('N8nMemory', () => {
 		});
 
 		it.each([
-			['resource-1', 'resource-1'],
-			['integration:slack:U_BOB', 'thread:thread-1'],
-		])('looks up exact hashes in the write scope for %s', async (resourceId, writeScope) => {
-			memoryEntryRepository.findByContentHashes.mockResolvedValue([
-				makeMemoryEntryEntity({ status: 'dropped', resourceId: writeScope }),
-			]);
+			['resource-1', 'resource-1', undefined],
+			['integration:slack:U_BOB', 'thread:thread-1', threadEpisodic],
+		])(
+			'looks up exact hashes in the write scope for %s',
+			async (resourceId, writeScope, episodic) => {
+				memoryEntryRepository.findByContentHashes.mockResolvedValue([
+					makeMemoryEntryEntity({ status: 'dropped', resourceId: writeScope }),
+				]);
 
-			const entries = await memory.episodic.getEntriesByContentHashes(
-				{ resourceId, threadId: 'thread-1' },
-				['hash-1'],
-			);
+				const entries = await memory.episodic.getEntriesByContentHashes(
+					{ resourceId, threadId: 'thread-1', ...(episodic && { episodic }) },
+					['hash-1'],
+				);
 
-			expect(memoryEntryRepository.findByContentHashes).toHaveBeenCalledExactlyOnceWith(
-				'agent-1',
-				writeScope,
-				['hash-1'],
-			);
-			expect(entries).toEqual([
-				expect.objectContaining({ id: 'memory-1', status: 'dropped', embedding: [1, 0] }),
-			]);
-		});
+				expect(memoryEntryRepository.findByContentHashes).toHaveBeenCalledExactlyOnceWith(
+					'agent-1',
+					writeScope,
+					['hash-1'],
+				);
+				expect(entries).toEqual([
+					expect.objectContaining({ id: 'memory-1', status: 'dropped', embedding: [1, 0] }),
+				]);
+			},
+		);
 
-		it('enqueues and drains capture candidates under the thread scope', async () => {
-			const scope = { resourceId: 'integration:slack:U_BOB', threadId: 'thread-1' };
+		it('enqueues and drains capture candidates under the resolved write scope', async () => {
+			const scope = {
+				resourceId: 'integration:slack:U_BOB',
+				threadId: 'thread-1',
+				episodic: threadEpisodic,
+			};
 			memoryEntryCandidateRepository.enqueueCandidate.mockImplementation(
 				async (input) =>
 					({
@@ -1397,11 +1437,11 @@ describe('N8nMemory', () => {
 			expect(results.map((result) => result.id)).toEqual(['memory-1']);
 		});
 
-		it('limits integration write-scope searches to the current thread', async () => {
+		it('limits write-scope searches to the resolved write scope', async () => {
 			memoryEntryRepository.find.mockResolvedValue([]);
 
 			await memory.episodic.searchEntries(
-				{ resourceId: 'integration:slack:U1', threadId: 'thread-1' },
+				{ resourceId: 'integration:slack:U1', threadId: 'thread-1', episodic: threadEpisodic },
 				'shared fact',
 				{ writeScopeOnly: true },
 			);
@@ -1413,49 +1453,109 @@ describe('N8nMemory', () => {
 					status: In(['active']),
 				},
 			});
-			expect(messageRepository.findRecentThreadIdsByResourceId).not.toHaveBeenCalled();
 		});
 
-		it('recalls from the author scope, the current thread and the threads they posted in', async () => {
-			messageRepository.findRecentThreadIdsByResourceId.mockResolvedValue([
-				'thread-1',
-				'thread-old',
-			]);
-			memoryEntryRepository.find.mockResolvedValue([
-				makeMemoryEntryEntity({
-					id: 'memory-old',
-					resourceId: 'thread:thread-old',
-					contentHash: 'dog-hash',
-					content: "Robin's dog is called Phoebe.",
-					lastSeenAt: new Date('2026-05-01T00:00:00Z'),
-				}),
-				makeMemoryEntryEntity({
-					id: 'memory-current',
-					resourceId: 'thread:thread-1',
-					contentHash: 'dog-hash',
-					content: "Robin's dog is called Phoebe.",
-					lastSeenAt: new Date('2026-05-09T00:00:00Z'),
-				}),
-			]);
+		describe('without a resolved scope on an integration resource', () => {
+			const scope = { resourceId: 'integration:slack:U1', threadId: 'thread-1' };
 
-			const results = await memory.episodic.searchEntries(
-				{ resourceId: 'integration:slack:U_SINDHUJA', threadId: 'thread-1' },
-				'Phoebe dog',
-			);
-
-			expect(messageRepository.findRecentThreadIdsByResourceId).toHaveBeenCalledWith(
-				'agent-1',
-				'integration:slack:U_SINDHUJA',
-				200,
-			);
-			expect(memoryEntryRepository.find).toHaveBeenCalledWith({
-				where: {
-					agentId: 'agent-1',
-					resourceId: In(['integration:slack:U_SINDHUJA', 'thread:thread-1', 'thread:thread-old']),
-					status: In(['active']),
-				},
+			it('recalls nothing and reads no entries', async () => {
+				await expect(memory.episodic.searchEntries(scope, 'shared fact')).resolves.toEqual([]);
+				await expect(
+					memory.episodic.searchEntries(scope, 'shared fact', { writeScopeOnly: true }),
+				).resolves.toEqual([]);
+				expect(memoryEntryRepository.find).not.toHaveBeenCalled();
 			});
-			expect(results.map((result) => result.id)).toEqual(['memory-current']);
+
+			it.each([
+				['capture', async () => await memory.episodic.getPendingCaptureCandidates(scope)],
+				[
+					'locking',
+					async () =>
+						await memory.episodic.taskLock?.acquire(scope, { ttlMs: 60_000, holderId: 'A' }),
+				],
+				[
+					'saving',
+					async () =>
+						await memory.episodic.saveEntryWithSources(
+							{ resourceId: scope.resourceId, content: 'A fact.' },
+							[{ candidateId: 'candidate-1', threadId: 'thread-1', evidenceText: 'A fact.' }],
+						),
+				],
+			])('refuses %s instead of widening the scope', async (_label, run) => {
+				await expect(run()).rejects.toThrow('needs a resolved episodic memory scope');
+				expect(memoryEntryRepository.saveEntryWithSources).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('with a resolved episodic scope', () => {
+			const episodic = {
+				writeScopeId: 'slack:T1:channel:C1',
+				readScopeIds: ['slack:T1:channel:C1'],
+			};
+			const scope = { resourceId: 'integration:slack:U_ALICE', threadId: 'thread-1', episodic };
+
+			it('captures and drains candidates under the resolved write scope', async () => {
+				memoryEntryCandidateRepository.enqueueCandidate.mockImplementation(
+					async (input) => ({ ...input, id: 'candidate-1' }) as AgentMemoryEntryCandidateEntity,
+				);
+				memoryEntryCandidateRepository.findPendingForResource.mockResolvedValue([]);
+
+				await memory.episodic.enqueueCaptureCandidate({
+					...scope,
+					sourceMessageId: null,
+					runId: 'run-1',
+					toolCallId: 'call-1',
+					content: 'The Flan recipe uses three eggs.',
+					evidenceText: 'Use three eggs.',
+					kind: 'fact',
+				});
+				await memory.episodic.getPendingCaptureCandidates(scope);
+
+				const enqueued = memoryEntryCandidateRepository.enqueueCandidate.mock.calls[0][0];
+				expect(enqueued).toMatchObject({ resourceId: 'slack:T1:channel:C1' });
+				expect(enqueued).not.toHaveProperty('episodic');
+				expect(memoryEntryCandidateRepository.findPendingForResource).toHaveBeenCalledWith(
+					'agent-1',
+					'slack:T1:channel:C1',
+					100,
+				);
+			});
+
+			it('recalls only from the resolved read scopes', async () => {
+				memoryEntryRepository.find.mockResolvedValue([]);
+				const readScopeIds = ['slack:T1:channel:C1', 'slack:T1:user:U_ALICE'];
+
+				await memory.episodic.searchEntries(
+					{ ...scope, episodic: { writeScopeId: episodic.writeScopeId, readScopeIds } },
+					'shared fact',
+				);
+
+				expect(messageRepository.findRecentThreadIdsByResourceId).not.toHaveBeenCalled();
+				expect(memoryEntryRepository.find).toHaveBeenCalledWith({
+					where: {
+						agentId: 'agent-1',
+						resourceId: In(readScopeIds),
+						status: In(['active']),
+					},
+				});
+			});
+
+			it('saves entries under the resolved write scope without storing the scope itself', async () => {
+				await memory.episodic.saveEntryWithSources(
+					{ resourceId: scope.resourceId, episodic, content: 'User chose Postgres.' },
+					[
+						{
+							candidateId: 'candidate-1',
+							threadId: 'thread-1',
+							evidenceText: 'Use Postgres.',
+						},
+					],
+				);
+
+				const saved = memoryEntryRepository.saveEntryWithSources.mock.calls[0][1];
+				expect(saved.resourceId).toBe('slack:T1:channel:C1');
+				expect(saved).not.toHaveProperty('episodic');
+			});
 		});
 
 		it('propagates transactional save failures', async () => {
@@ -1564,7 +1664,7 @@ describe('N8nMemory', () => {
 				.mockResolvedValueOnce([]);
 
 			const result = await memory.episodic.applyReflection(
-				{ resourceId: 'integration:slack:U_ALICE', threadId: 'thread-1' },
+				{ resourceId: 'integration:slack:U_ALICE', threadId: 'thread-1', episodic: threadEpisodic },
 				{
 					drop: ['noise', 'other-thread-entry'],
 					merge: [

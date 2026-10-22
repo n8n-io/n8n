@@ -1720,6 +1720,18 @@ export interface InstanceAiContext {
 	 */
 	markWorkflowSetupHandled?: (workflowId: string) => Promise<void>;
 	/**
+	 * Rejects a write target outside the thread's project with the error the
+	 * adapter throws on write. Lets tools fail before an approval card or sandbox
+	 * work. The adapter still enforces the rule. Absent: no pre-check.
+	 */
+	assertInThreadProject?: (
+		target:
+			| { kind: 'workflow'; id: string }
+			| { kind: 'credential'; id: string }
+			| { kind: 'data-table'; id: string; projectId?: string }
+			| { kind: 'project'; id: string },
+	) => Promise<void>;
+	/**
 	 * Called after a tool creates or changes a workflow, data table, or agent,
 	 * and after it reads a data table, as the frontend previews those too.
 	 * The host shows the artifact's tab also when no browser shows the run.
