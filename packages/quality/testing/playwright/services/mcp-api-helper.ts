@@ -527,12 +527,6 @@ export class McpApiHelper {
 		path: string,
 		options?: { headers?: Record<string, string> },
 	): Promise<McpSession> {
-		const initMessage = this.createMessage('initialize', {
-			protocolVersion: '2024-11-05',
-			capabilities: {},
-			clientInfo: { name: 'n8n-e2e-test', version: '1.0.0' },
-		});
-
 		const response = await this.trigger(path, {
 			method: 'POST',
 			headers: {
@@ -540,7 +534,7 @@ export class McpApiHelper {
 				Accept: 'application/json, text/event-stream',
 				...options?.headers,
 			},
-			data: initMessage,
+			data: this.createInitializeMessage(),
 		});
 
 		const sessionId = response.headers()['mcp-session-id'];
@@ -724,6 +718,14 @@ export class McpApiHelper {
 			method,
 			...(params !== undefined && { params }),
 		};
+	}
+
+	private createInitializeMessage(): McpJsonRpcRequest {
+		return this.createMessage('initialize', {
+			protocolVersion: '2024-11-05',
+			capabilities: {},
+			clientInfo: { name: 'n8n-e2e-test', version: '1.0.0' },
+		});
 	}
 
 	/**
@@ -944,6 +946,17 @@ export class McpApiHelper {
 			},
 			data: message,
 		});
+	}
+
+	/**
+	 * Sends `initialize` to the internal MCP service with a bearer token, or with
+	 * no credential when the token is omitted. Returns the raw response.
+	 */
+	async internalMcpInitialize(token?: string): Promise<APIResponse> {
+		const message = this.createInitializeMessage();
+		return token
+			? await this.internalMcpSendMessage(token, message)
+			: await this.internalMcpSendMessageNoAuth(message);
 	}
 
 	/**
