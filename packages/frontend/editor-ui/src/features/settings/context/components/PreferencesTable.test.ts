@@ -175,6 +175,15 @@ describe('PreferencesTable', () => {
 		expect(getByTestId('preference-updated-at')).not.toBeEmptyDOMElement();
 	});
 
+	// Other n8n tables use the horizontal ellipsis for the row menu.
+	it('shows the row menu as a horizontal ellipsis', () => {
+		const { getByTestId } = render([preference()]);
+
+		const toggle = getByTestId('preference-actions');
+		expect(toggle.querySelector('[data-icon="ellipsis-12"]')).not.toBeNull();
+		expect(toggle.querySelector('[data-icon="ellipsis-vertical-12"]')).toBeNull();
+	});
+
 	it('enables both actions when the row carries write scopes', async () => {
 		const { getByTestId } = render([preference({ scopes: WRITABLE })]);
 

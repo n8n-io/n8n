@@ -185,7 +185,6 @@ const headers = computed<Array<TableHeader<Preference>>>(() => [
 				<div :class="$style.actions" @click.stop>
 					<N8nActionToggle
 						:actions="actionsFor(item)"
-						icon-orientation="vertical"
 						data-test-id="preference-actions"
 						@action="(action: PreferenceAction) => onAction(item, action)"
 					/>
