@@ -90,7 +90,6 @@ component_management:
         - packages/@n8n/extension-sdk/**
         - packages/@n8n/imap/**
         - packages/@n8n/inbound-auth/**
-        - packages/@n8n/local-gateway/**
         - packages/@n8n/permissions/**
         - packages/@n8n/scan-community-package/**
         - packages/@n8n/syslog-client/**
@@ -123,7 +122,6 @@ component_management:
         - packages/@n8n/ai-utilities/**
         - packages/@n8n/ai-workflow-builder.ee/**
         - packages/@n8n/chat-hub/**
-        - packages/@n8n/computer-use/**
         - packages/@n8n/instance-ai/**
         - packages/@n8n/mcp-browser/**
         - packages/@n8n/mcp-browser-extension/**

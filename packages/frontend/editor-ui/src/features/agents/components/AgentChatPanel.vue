@@ -79,7 +79,7 @@ import type {
 } from '../types';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { buildAgentConfigFingerprint } from '../composables/agentTelemetry.utils';
-import { AGENT_SESSION_DETAIL_VIEW, TOOL_CALL_STATE } from '../constants';
+import { AGENT_SESSION_DETAIL_VIEW, CHAT_MESSAGE_ROLE, TOOL_CALL_STATE } from '../constants';
 import {
 	isBudgetStopCode,
 	budgetNoticeCodesForField,
@@ -928,7 +928,7 @@ const isSubmissionBlocked = computed(
 );
 const retryMessageId = computed(() => {
 	if (!isRetryableChatError(messages.value.at(-1))) return undefined;
-	return messages.value.findLast((message) => message.role === 'user')?.id;
+	return messages.value.findLast((message) => message.role === CHAT_MESSAGE_ROLE.USER)?.id;
 });
 const retryDisabled = computed(
 	() =>
@@ -1059,7 +1059,7 @@ const isCenteredEmpty = computed(
 
 watch(isStreaming, (v) => emit('update:streaming', v));
 watch(
-	() => messages.value.find((message) => message.role === 'user')?.content,
+	() => messages.value.find((message) => message.role === CHAT_MESSAGE_ROLE.USER)?.content,
 	(text) => emit('first-user-message', text),
 	{ immediate: true },
 );
@@ -1304,7 +1304,7 @@ function getConversationMarkdown(): string {
 	return messages.value
 		.filter((message) => message.content.trim().length > 0)
 		.map((message) => {
-			const speaker = message.role === 'user' ? 'User' : 'Agent';
+			const speaker = message.role === CHAT_MESSAGE_ROLE.USER ? 'User' : 'Agent';
 			return `**${speaker}:**\n\n${message.content.trim()}`;
 		})
 		.join('\n\n---\n\n');
@@ -1642,16 +1642,6 @@ onBeforeUnmount(() => {
 					@files-selected="handleFilesSelected"
 					@keydown="onChatInputKeydown"
 				>
-					<template v-if="currentPlan" #header>
-						<AgentChatPlan
-							v-if="currentPlan"
-							:key="`${agentId}:${continueSessionId ?? ''}:${currentPlan.planId}`"
-							:plan="currentPlan"
-							:trace-route="
-								continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
-							"
-						/>
-					</template>
 					<template #above>
 						<ChatMessageQueue
 							v-if="displayedQueueRows.length"
@@ -1670,6 +1660,14 @@ onBeforeUnmount(() => {
 							@steer="steerQueuedMessage"
 							@edit="editQueuedMessage"
 							@remove="removeQueuedMessage"
+						/>
+						<AgentChatPlan
+							v-else-if="currentPlan"
+							:key="`${agentId}:${continueSessionId ?? ''}:${currentPlan.planId}`"
+							:plan="currentPlan"
+							:trace-route="
+								continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
+							"
 						/>
 					</template>
 					<template
@@ -1787,7 +1785,6 @@ onBeforeUnmount(() => {
 	--ai-activity-step--min-height: var(--height--xl);
 	--ai-activity-step--padding: var(--spacing--xs) var(--spacing--sm);
 	--ai-activity-step--color: var(--text-color);
-	display: none;
 	background: var(--background--surface);
 	box-shadow: var(--shadow--outline), var(--shadow--xs);
 	border-radius: var(--radius--xs);

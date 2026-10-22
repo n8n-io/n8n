@@ -281,6 +281,50 @@ describe('CanvasNodeToolbar', () => {
 		expect(queryByTestId('disable-node-button')).not.toBeInTheDocument();
 	});
 
+	it('should hide execute and disable buttons when node is deprecated', () => {
+		const { queryByTestId } = renderComponent({
+			pinia,
+			global: {
+				provide: {
+					...createCanvasNodeProvide({
+						data: {
+							render: {
+								type: CanvasNodeRenderType.Default,
+								options: { configuration: false, deprecated: true },
+							},
+						},
+					}),
+					...createCanvasProvide(),
+				},
+			},
+		});
+
+		expect(queryByTestId('execute-node-button')).not.toBeInTheDocument();
+		expect(queryByTestId('disable-node-button')).not.toBeInTheDocument();
+	});
+
+	it('should show execute and disable buttons when node is not deprecated', () => {
+		const { getByTestId } = renderComponent({
+			pinia,
+			global: {
+				provide: {
+					...createCanvasNodeProvide({
+						data: {
+							render: {
+								type: CanvasNodeRenderType.Default,
+								options: { configuration: false },
+							},
+						},
+					}),
+					...createCanvasProvide(),
+				},
+			},
+		});
+
+		expect(getByTestId('execute-node-button')).toBeInTheDocument();
+		expect(getByTestId('disable-node-button')).toBeInTheDocument();
+	});
+
 	it('should have "forceVisible" class when hovered', async () => {
 		const { getByTestId } = renderComponent({
 			pinia,
@@ -300,10 +344,9 @@ describe('CanvasNodeToolbar', () => {
 	});
 
 	describe('when the workflow uses a credential the user cannot use', () => {
-		const renderWithCredentials = (currentUserCanUse: boolean, sharingEnabled = true) => {
+		const renderWithCredentials = (currentUserCanUse: boolean) => {
 			const testingPinia = createTestingPinia({ stubActions: false });
 			setActivePinia(testingPinia);
-			useSettingsStore().settings.granularCredentialSharing = sharingEnabled;
 
 			const documentStore = {
 				usedCredentials: {
@@ -350,12 +393,6 @@ describe('CanvasNodeToolbar', () => {
 
 		it('should keep the execute node button enabled when the user can use the credential', () => {
 			const { getByTestId } = renderWithCredentials(true);
-
-			expect(getByTestId('execute-node-button')).toBeEnabled();
-		});
-
-		it('should keep the execute node button enabled when credential sharing is off', () => {
-			const { getByTestId } = renderWithCredentials(false, false);
 
 			expect(getByTestId('execute-node-button')).toBeEnabled();
 		});

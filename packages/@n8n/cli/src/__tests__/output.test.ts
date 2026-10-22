@@ -13,15 +13,15 @@ describe('table output', () => {
 	});
 
 	it('reads a dotted column from a nested field and names it after the last segment', () => {
-		const rows = [{ id: 'conn-1', target: { schemaVersion: 1, remoteUrl: 'git@host:acme/a.git' } }];
+		const rows = [{ id: 'env-1', remote: { schemaVersion: 1, remoteUrl: 'git@host:acme/a.git' } }];
 
 		const lines = formatOutput(rows, {
 			format: 'table',
-			columns: ['id', 'target.remoteUrl'],
+			columns: ['id', 'remote.remoteUrl'],
 		}).split('\n');
 
 		expect(lines[0]).toContain('REMOTEURL');
-		expect(lines[0]).not.toContain('TARGET');
+		expect(lines[0]).not.toContain('REMOTE.');
 		expect(lines[2]).toContain('git@host:acme/a.git');
 		// The nested wrapper never reaches the table.
 		expect(lines[2]).not.toContain('schemaVersion');

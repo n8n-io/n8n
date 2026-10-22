@@ -184,7 +184,7 @@ function validateInputDataShape(node: INode, inputData: Record<string, unknown>)
 	const looksWrapped = typeof formFieldsValue === 'object' && formFieldsValue !== null;
 	if (looksWrapped) {
 		throw new Error(
-			'verify-built-workflow: inputData for a Form Trigger must be a flat field map ' +
+			'workflow_builder_verify_built_workflow: inputData for a Form Trigger must be a flat field map ' +
 				'(e.g. {name: "Alice", email: "a@b.c"}), NOT wrapped in `formFields`. ' +
 				'The production Form Trigger emits fields directly on $json, so downstream ' +
 				'expressions like $json.name are correct. Re-run with the flat shape.',

@@ -213,6 +213,8 @@ describe('emitPackageImportedEvent', () => {
 						matched: ['credA'],
 						stubbed: [],
 						seeded: [],
+						incomplete: [],
+						updated: [],
 					},
 					requirements: [requirement('credA')],
 					dataTable: { matched: 1, created: 0, updated: 1, requirements: 2 },
@@ -226,12 +228,15 @@ describe('emitPackageImportedEvent', () => {
 						bindings: new Map([
 							['credB', 'stub-b'],
 							['credC', 'seed-c'],
+							['credD', 'incomplete-d'],
 						]),
 						matched: [],
 						stubbed: ['credB'],
 						seeded: ['credC'],
+						incomplete: ['credD'],
+						updated: [],
 					},
-					requirements: [requirement('credB'), requirement('credC')],
+					requirements: [requirement('credB'), requirement('credC'), requirement('credD')],
 					dataTable: { matched: 0, created: 2, requirements: 2 },
 					variables: {
 						matched: 0,
@@ -260,16 +265,15 @@ describe('emitPackageImportedEvent', () => {
 		// A multi-scope import has no single folder to attribute the event to.
 		expect(payload.folderId).toBeNull();
 		// Credential ids are resolved through each scope's binding map (source id -> target id).
-		// Seeded credentials count as created alongside stubs.
 		expect(payload.credentialIds).toEqual({
 			matched: ['target-a'],
-			created: ['stub-b', 'seed-c'],
+			created: ['stub-b', 'seed-c', 'incomplete-d'],
 			updated: [],
 		});
 		expect(payload.counts).toEqual({
 			workflows: { created: 1, updated: 1, skipped: 1, archived: 0, deleted: 0 },
 			folders: { removed: 0 },
-			credentials: { matched: 1, created: 2, requirements: 3 },
+			credentials: { matched: 1, created: 3, updated: 0, requirements: 4 },
 			dataTables: { matched: 1, created: 2, updated: 1, requirements: 4 },
 			// scope 2's two missing requirements were created, so post-apply missing is 0; its
 			// overwritten name matched first but is counted as updated, not matched.
@@ -286,6 +290,44 @@ describe('emitPackageImportedEvent', () => {
 		expect(payload.options.tagConflictPolicy).toBe('rename');
 	});
 
+	it('counts an updated credential once across scopes, and not as matched', () => {
+		const eventService = mock<EventService>();
+		const credentialResult = (updated: string[]): CredentialApplyResult => ({
+			bindings: new Map([
+				['credA', 'target-a'],
+				['credB', 'target-b'],
+			]),
+			matched: ['credA', 'credB'],
+			stubbed: [],
+			seeded: [],
+			incomplete: [],
+			updated,
+		});
+
+		emitPackageImportedEvent(eventService, {
+			request,
+			manifest,
+			scopes: [
+				scope({ projectId: 'P1', outcomes: [], credentialResult: credentialResult(['credA']) }),
+				// The second scope found credA already written, so it only matched it.
+				scope({ projectId: 'P2', outcomes: [], credentialResult: credentialResult([]) }),
+			],
+		});
+
+		const payload = lastImportedPayload(eventService);
+		expect(payload.credentialIds).toEqual({
+			matched: ['target-b', 'target-b'],
+			created: [],
+			updated: ['target-a'],
+		});
+		expect(payload.counts.credentials).toEqual({
+			matched: 2,
+			created: 0,
+			updated: 1,
+			requirements: 0,
+		});
+	});
+
 	it('still counts a missing requirement the import left unfilled', () => {
 		const eventService = mock<EventService>();
 
@@ -296,7 +338,14 @@ describe('emitPackageImportedEvent', () => {
 				scope({
 					projectId: 'P1',
 					outcomes: [outcome('wf1', 'WF1', 'created')],
-					credentialResult: { bindings: new Map(), matched: [], stubbed: [], seeded: [] },
+					credentialResult: {
+						bindings: new Map(),
+						matched: [],
+						stubbed: [],
+						seeded: [],
+						incomplete: [],
+						updated: [],
+					},
 					// Of three missing requirements, one was created with a value and one already existed.
 					variables: { matched: 0, missing: 3, requirements: 3, createdWithValue: 1, existing: 1 },
 				}),
@@ -327,13 +376,27 @@ describe('emitPackageImportedEvent', () => {
 				scope({
 					projectId: 'P1',
 					outcomes: [outcome('wf1', 'WF1', 'created')],
-					credentialResult: { bindings: new Map(), matched: [], stubbed: [], seeded: [] },
+					credentialResult: {
+						bindings: new Map(),
+						matched: [],
+						stubbed: [],
+						seeded: [],
+						incomplete: [],
+						updated: [],
+					},
 					variables: { matched: 0, missing: 1, requirements: 1, createdWithValue: 1 },
 				}),
 				scope({
 					projectId: 'P2',
 					outcomes: [outcome('wf2', 'WF2', 'created')],
-					credentialResult: { bindings: new Map(), matched: [], stubbed: [], seeded: [] },
+					credentialResult: {
+						bindings: new Map(),
+						matched: [],
+						stubbed: [],
+						seeded: [],
+						incomplete: [],
+						updated: [],
+					},
 					variables: { matched: 0, missing: 1, requirements: 1, existing: 1 },
 				}),
 			],
@@ -371,7 +434,14 @@ describe('emitPackageImportedEvent', () => {
 					removedFolders: [
 						{ folderId: 'F-stale', name: 'stale', projectId: 'P1', parentFolderId: null },
 					],
-					credentialResult: { bindings: new Map(), matched: [], stubbed: [], seeded: [] },
+					credentialResult: {
+						bindings: new Map(),
+						matched: [],
+						stubbed: [],
+						seeded: [],
+						incomplete: [],
+						updated: [],
+					},
 				}),
 			],
 		});
@@ -400,7 +470,14 @@ describe('emitPackageImportedEvent', () => {
 					projectId: 'P1',
 					folderId: 'F1',
 					outcomes: [outcome('wf1', 'WF1', 'created')],
-					credentialResult: { bindings: new Map(), matched: [], stubbed: [], seeded: [] },
+					credentialResult: {
+						bindings: new Map(),
+						matched: [],
+						stubbed: [],
+						seeded: [],
+						incomplete: [],
+						updated: [],
+					},
 				}),
 			],
 		});

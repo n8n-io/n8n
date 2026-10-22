@@ -30,6 +30,7 @@ import { ImportOrchestrator } from './import-orchestrator';
 import {
 	buildImportResult,
 	identifyRequirements,
+	reconcileCredentialSummary,
 	toImportedWorkflowSummaries,
 	toPackageSummary,
 	toTagSummary,
@@ -148,6 +149,7 @@ export class WorkflowPackageImporter {
 			tagRequest,
 			options: request,
 			subWorkflowRequirements: identifyRequirements(manifest.requirements?.workflows, workflows),
+			checkRootPlacement: false,
 		});
 
 		const missingCredentialIds = new Set(
@@ -201,11 +203,7 @@ export class WorkflowPackageImporter {
 			folders: content.folderSummaries,
 			projects: [],
 			bindings: content.bindings,
-			credentials: {
-				matched: content.credentialResult.matched,
-				stubbed: content.credentialResult.stubbed,
-				seeded: content.credentialResult.seeded,
-			},
+			credentials: reconcileCredentialSummary(content.credentialResult),
 			dataTables: {
 				matched: content.dataTablePlan.matchedCount,
 				created: content.dataTablePlan.creations.length,

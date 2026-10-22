@@ -105,4 +105,24 @@ describe('Instance AI thread history', () => {
 			(await repository.listHistoryPage('user-1', 2, undefined, first[1])).map((row) => row.id),
 		).toEqual([ids[1], ids[0]]);
 	});
+
+	it('excludes internal producer threads from actor lists and searches', async () => {
+		const internalThreadId = randomUUID();
+		await repository.insert({
+			id: internalThreadId,
+			projectId,
+			resourceId: 'ia-self-healing:user-1',
+			title: 'Invoice',
+			createdAt: older,
+			updatedAt: newer,
+		});
+
+		const listed = await memory.listThreads({ filter: { resourceId: 'user-1' } });
+		expect(listed.threads.map((thread) => thread.id)).not.toContain(internalThreadId);
+		expect(listed.total).toBe(ids.length);
+		for (const search of [undefined, 'invoice']) {
+			const page = await memory.listThreadHistory('user-1', 10, search);
+			expect(page.map((thread) => thread.id)).toEqual([ids[3], ids[2], ids[1], ids[0]]);
+		}
+	});
 });

@@ -288,7 +288,7 @@ on every correct build. See "Credential validity" below for how to script a
 card-created credential that deliberately does not authenticate.
 
 **`auto` is reachable but inert** — the product genuinely rebuilds the agent
-and returns `needsBrowserSetup:true`, but this harness has no Computer Use
+and returns `needsBrowserSetup:true`, but this harness has no Browser Use
 tools attached, so the conversation stalls afterward (expected, not a bug).
 Keep any case scripting `auto` a local smoke test, never part of the gated
 suite — it will time out.

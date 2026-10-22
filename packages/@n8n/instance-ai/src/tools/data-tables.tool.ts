@@ -1,8 +1,9 @@
 /**
- * Consolidated data-tables tool — list, schema, query, create, delete,
+ * Consolidated data_tables tool — list, schema, query, create, delete,
  * add-column, delete-column, rename-column, insert-rows, update-rows, delete-rows.
  */
 import {
+	getLegacyBuilderToolNames,
 	instanceAiApprovalDetailsSchema,
 	instanceAiApprovalResumeSchema,
 	buildDataTablesSessionGrantKey,
@@ -13,8 +14,8 @@ import { Tool } from '@n8n/agents';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
+import { restrictToolActions } from './restrict-tool-actions';
 import { DATA_TABLES_TOOL_ID } from './tool-ids';
 
 // ── Shared schemas ─────────────────────────────────────────────────────────
@@ -107,13 +108,24 @@ const filterDescribe =
 	'case-sensitive. Values without `%` are wrapped as `%value%`.';
 
 const projectIdDescribe =
-	'Project ID. Scopes list/create (defaults to personal); for id-based actions, disambiguates when `dataTableId` is a name found in multiple accessible projects. Ignored when `dataTableId` is a UUID.';
+	"Project ID. Scopes list (defaults to this conversation's project); for id-based actions, disambiguates when `dataTableId` is a name found in multiple accessible projects. Ignored when `dataTableId` is a UUID.";
 
 const dataTableNameDescribe =
 	'Data table name for the approval card. Pass whenever known so users see a name instead of an ID.';
 
 const columnNameForCardDescribe =
 	'Current column name for the approval card. Pass whenever known so users see a name instead of an ID.';
+
+async function assertTableInThreadProject(
+	context: InstanceAiContext,
+	input: DataTableReferenceInput,
+): Promise<void> {
+	await context.assertInThreadProject?.({
+		kind: 'data-table',
+		id: input.dataTableId,
+		projectId: input.projectId,
+	});
+}
 
 /** Name shown in the approval card title. Falls back to the id when the agent passed no name. */
 function dataTableResourceName(input: DataTableReferenceInput): string {
@@ -498,7 +510,7 @@ async function handleQuery(
 	}
 	if (remaining > 0) {
 		hints.push(
-			`${remaining} more rows available. Use additional paginated data-tables queries for bulk operations.`,
+			`${remaining} more rows available. Use additional paginated data_tables queries for bulk operations.`,
 		);
 	}
 
@@ -527,15 +539,9 @@ async function handleCreate(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		let message = `Create the table with ${input.columns.length} ${input.columns.length === 1 ? 'column' : 'columns'}: ${input.columns.map((column) => `"${column.name}"`).join(', ')}`;
-		if (input.projectId) {
-			const project = await context.workspaceService?.getProject?.(input.projectId);
-			const projectLabel = project?.name ?? input.projectId;
-			message += ` in project "${projectLabel}"`;
-		}
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message,
+			message: `Create the table with ${input.columns.length} ${input.columns.length === 1 ? 'column' : 'columns'}: ${input.columns.map((column) => `"${column.name}"`).join(', ')}`,
 			resourceName: input.name,
 			severity: 'info' as const,
 		});
@@ -561,7 +567,7 @@ async function handleCreate(
 		if (isNameConflictError(error)) {
 			return {
 				denied: true,
-				reason: `Table "${input.name}" already exists. Use data-tables(action="list") to find it and data-tables(action="schema") to check its columns.`,
+				reason: `Table "${input.name}" already exists. Use data_tables(action="list") to find it and data_tables(action="schema") to check its columns.`,
 			};
 		}
 		throw error;
@@ -584,6 +590,7 @@ async function handleDelete(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await assertTableInThreadProject(context, input);
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: 'Permanently delete the table and all its rows',
@@ -622,6 +629,7 @@ async function handleAddColumn(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await assertTableInThreadProject(context, input);
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Add column "${input.columnName}" (${input.type})`,
@@ -669,6 +677,7 @@ async function handleDeleteColumn(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await assertTableInThreadProject(context, input);
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Delete column "${input.currentColumnName ?? input.columnId}" and its values`,
@@ -713,6 +722,7 @@ async function handleRenameColumn(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await assertTableInThreadProject(context, input);
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Rename column "${input.currentColumnName ?? input.columnId}" to "${input.newName}"`,
@@ -758,6 +768,7 @@ async function handleInsertRows(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await assertTableInThreadProject(context, input);
 		const rowDescriptions = input.rows.slice(0, MAX_DESCRIBED_ROWS).map((row, index) => {
 			const changes = describeRowChanges(row);
 			return `Row ${index + 1}: ${changes ? `set ${changes}` : 'no column values supplied'}`;
@@ -815,6 +826,7 @@ async function handleUpdateRows(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await assertTableInThreadProject(context, input);
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message:
@@ -870,6 +882,7 @@ async function handleDeleteRows(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await assertTableInThreadProject(context, input);
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Delete rows where ${describeRowFilter(input.filter)}`,
@@ -909,19 +922,29 @@ async function handleDeleteRows(
 
 // ── Tool factory ───────────────────────────────────────────────────────────
 
-export function createDataTablesTool(context: InstanceAiContext) {
-	const inputSchema = sanitizeInputSchema(z.discriminatedUnion('action', [...allActions]));
+interface DataTablesToolOptions {
+	allowedActions?: ReadonlyArray<FullInput['action']>;
+	description?: string;
+}
+
+export function createDataTablesTool(
+	context: InstanceAiContext,
+	options: DataTablesToolOptions = {},
+) {
+	const inputSchema = restrictToolActions(allActions, options.allowedActions);
 
 	return new Tool(DATA_TABLES_TOOL_ID)
+		.legacyNames(...getLegacyBuilderToolNames(DATA_TABLES_TOOL_ID))
 		.description(
-			'Manage data tables — list, query, create, modify columns, and manage rows. ' +
-				'Load `data-table-manager` via `load_skill` before calling this tool — including natural ' +
-				'list/show requests like "what data tables do I have?" or "show/list my tables". ' +
-				'For workflow builds that create or write Data Tables, load `data-table-manager` then ' +
-				'`workflow-builder` before `build-workflow`. Use list, create, and schema before ' +
-				'referencing tables in SDK code. Keep queries targeted (column filter and/or limit ≤ 5), ' +
-				'especially when diagnosing — never pull a table unfiltered, and after a failed or 0-row ' +
-				'query only retry strictly narrower.',
+			options.description ??
+				'Manage data tables — list, query, create, modify columns, and manage rows. ' +
+					'Load `data-table-manager` via `load_skill` before calling this tool — including natural ' +
+					'list/show requests like "what data tables do I have?" or "show/list my tables". ' +
+					'For workflow builds that create or write Data Tables, load `data-table-manager` then ' +
+					'`workflow-builder` before `workflow_builder_build_workflow`. Use list, create, and schema before ' +
+					'referencing tables in SDK code. Keep queries targeted (column filter and/or limit ≤ 5), ' +
+					'especially when diagnosing — never pull a table unfiltered, and after a failed or 0-row ' +
+					'query only retry strictly narrower.',
 		)
 		.input(inputSchema)
 		.suspend(confirmationSuspendSchema)

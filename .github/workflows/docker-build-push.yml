@@ -8,7 +8,7 @@ run-name: "${{ github.event_name == 'workflow_dispatch' && format('Docker: Build
 
 env:
   NODE_OPTIONS: '--max-old-space-size=7168'
-  NODE_VERSION: '26.10.0'
+  NODE_VERSION: '26.12.1'
 
 on:
   schedule:
@@ -55,6 +55,12 @@ on:
       n8n_digest:
         description: 'Multi-arch manifest digest of the n8n image'
         value: ${{ jobs.create_multi_arch_manifest.outputs.n8n_digest }}
+      n8n_pc_image:
+        description: 'GHCR repo for the pointer-compressed n8n image (no tag; same repo as n8n)'
+        value: ${{ jobs.create_multi_arch_manifest.outputs.n8n_pc_image }}
+      n8n_pc_digest:
+        description: 'Multi-arch manifest digest of the pointer-compressed n8n image'
+        value: ${{ jobs.create_multi_arch_manifest.outputs.n8n_pc_digest }}
       runners_image:
         description: 'GHCR repo for the runners image (no tag)'
         value: ${{ jobs.create_multi_arch_manifest.outputs.runners_image }}

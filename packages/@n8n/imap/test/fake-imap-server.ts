@@ -23,8 +23,17 @@ export class FakeImapServer {
 	/** When true the server accepts IDLE but never sends the `+` continuation that confirms it. */
 	withholdIdleContinuation = false;
 
+	/** Close the socket without a response to the first CAPABILITY command. */
+	disconnectOnCapability = false;
+
 	/** Messages the mailbox reports on SELECT. */
 	exists = 0;
+
+	/**
+	 * Advertise IMAP4rev2 and, once a client enables it, answer every SEARCH with an ESEARCH
+	 * that leaves out ALL, as STRATO's RZimapd does. The mailbox holds unseen UID 1.
+	 */
+	brokenRev2Search = false;
 
 	constructor(secure: boolean) {
 		const handler = (socket: net.Socket) => {
@@ -33,6 +42,7 @@ export class FakeImapServer {
 			socket.on('error', () => {});
 
 			let idleTag: string | undefined;
+			let rev2 = false;
 			const write = (line: string) => {
 				if (!this.silent) socket.write(line + CRLF);
 			};
@@ -54,11 +64,28 @@ export class FakeImapServer {
 						continue;
 					}
 
-					const [tag, command] = line.split(' ');
+					const [tag, command, subcommand] = line.split(' ');
 					const verb = (command ?? '').toUpperCase();
+					const uidVerb = verb === 'UID' ? (subcommand ?? '').toUpperCase() : undefined;
 
 					if (verb === 'CAPABILITY') {
-						write('* CAPABILITY IMAP4rev1 IDLE');
+						if (this.disconnectOnCapability) {
+							socket.destroy();
+							continue;
+						}
+
+						write(
+							this.brokenRev2Search
+								? '* CAPABILITY IMAP4rev1 IMAP4rev2 ENABLE IDLE'
+								: '* CAPABILITY IMAP4rev1 IDLE',
+						);
+					} else if (verb === 'ENABLE') {
+						rev2 = this.brokenRev2Search && /IMAP4rev2/i.test(line);
+						if (rev2) write('* ENABLED IMAP4rev2');
+					} else if (uidVerb === 'SEARCH') {
+						write(rev2 ? `* ESEARCH (TAG "${tag}") UID` : '* SEARCH 1');
+					} else if (uidVerb === 'FETCH') {
+						write('* 1 FETCH (UID 1 FLAGS ())');
 					} else if (verb === 'LIST') {
 						write('* LIST (\\Noselect) "/" ""');
 					} else if (verb === 'SELECT' || verb === 'EXAMINE') {

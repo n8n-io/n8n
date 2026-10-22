@@ -146,13 +146,14 @@ Body:
 { "status": "wont_fix" }
 ```
 
-Sets the status of the finding of one workflow rule on one workflow. A user can set `open` or `wont_fix`. The rule's metadata gives the target version. The route needs the `breakingChanges:migrate` scope and returns no data.
+Sets the status of the finding of one workflow rule on one workflow. A user can set `open` or `wont_fix`. The rule's metadata gives the target version. The route needs the `breakingChanges:list` scope and edit access to the workflow (`workflow:update`), and returns no data. The bulk status, owner and migrate routes use the same check. The bulk route changes only the listed workflows that the user can edit.
 
 - A `wont_fix` finding counts as resolved. A `notified` finding does not: the owner was emailed, but nothing is fixed. The overview gives each rule its `open` plus `notified` count in `nbAffectedWorkflows` and its `wont_fix` count in `nbWontFixWorkflows`.
 - The overview keeps a rule with only `wont_fix` findings, with a count of zero. Its detail page is the only place to set them back to `open`.
 - The rule detail lists `open`, `notified` and `wont_fix` findings, each with its `status` and, once notified, its `notifiedAt`.
 - Setting a `notified` finding to `open` clears its `notifiedAt`, so the next notification is not a reminder.
 - When a scan no longer detects a `wont_fix` or `notified` finding, the sync marks it `fixed`.
+- The route returns 404 when the user cannot edit the workflow, as for a workflow that does not exist.
 - The route returns 404 when the rule is unknown or is not a workflow rule.
 - The route returns 404 when the finding does not exist or is in a status that only the scan sets, for example `fixed`. This is also true when a sync marks the finding `fixed` during the request.
 
@@ -189,8 +190,11 @@ Each rule states what happens if the user does not fix it before the update. Set
 | --- | --- | --- |
 | `upgradeBlocked` | The instance does not start, or the update cannot proceed. | A removed storage or deployment mode that the new version refuses to boot with. |
 | `executionsFail` | Affected executions error. | A removed node or expression helper. |
-| `behaviorChanges` | Executions keep running, but the result changes. | A changed default or fixed semantics. |
+| `executionsMightFail` | A default changes. Affected executions can error, depending on the workload, and the admin can keep the current value through configuration. | A lowered default limit or timeout. |
+| `behaviorChanges` | Executions keep running, but the result changes. | A changed default that gives a different result, or fixed semantics. |
 | `capabilityRemoved` | No runtime impact. A removed capability is no longer available. | A removed UI option or CLI flag. |
+
+A changed default whose runs keep going with a different result is `behaviorChanges`. A changed default that can make runs error is `executionsMightFail`.
 
 Pick the impact from the effect on the user, not from how many workflows a rule touches. The migration report sorts rules by impact, from `upgradeBlocked` down to `capabilityRemoved`.
 

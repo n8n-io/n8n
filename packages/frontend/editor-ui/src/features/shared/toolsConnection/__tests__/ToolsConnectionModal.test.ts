@@ -94,7 +94,7 @@ function renderWith(
 		showSuggestionFooter: boolean;
 		groupSearchResults: boolean;
 		createAction: {
-			category: ToolCategoryKey;
+			category?: ToolCategoryKey;
 			label: string;
 			testId?: string;
 		};
@@ -254,6 +254,37 @@ describe('ToolsConnectionModal', () => {
 		});
 	});
 
+	it('lists connectors on Gateway credits first on the Connectors tab, keeping their order', async () => {
+		const connector = (title: string, freeCredits = false): ToolConnectionItem => ({
+			id: `registry:${title}`,
+			kind: 'mcp-server',
+			title,
+			description: `${title} MCP`,
+			status: 'none',
+			availableTools: [],
+			freeCredits,
+		});
+		const { getAllByTestId } = renderWith({
+			items: [
+				connector('Notion'),
+				connector('Firecrawl', true),
+				connector('GitHub'),
+				connector('Brave', true),
+			],
+			categories: ['mcp'],
+		});
+
+		await waitFor(() => {
+			const titles = getAllByTestId('tools-connection-row').map((row) => row.textContent);
+			expect(titles.map((title) => title?.match(/Notion|Firecrawl|GitHub|Brave/)?.[0])).toEqual([
+				'Firecrawl',
+				'Brave',
+				'Notion',
+				'GitHub',
+			]);
+		});
+	});
+
 	it('labels and populates the n8n-connect tab and finds its items in search', async () => {
 		const gatewayItem: ToolConnectionItem = {
 			id: 'n8n-connect:slack',
@@ -342,7 +373,20 @@ describe('ToolsConnectionModal', () => {
 		expect(getByTestId('tools-connection-empty')).toBeTruthy();
 
 		await fireEvent.click(getByTestId('tools-connection-create-workflow'));
-		expect(emitted().create).toEqual([[]]);
+		expect(emitted().create).toEqual([['workflows']]);
+	});
+
+	it('offers the create action on every tab when it has no category', async () => {
+		const { getByTestId } = renderWith({
+			categories: ['all', 'mcp', 'workflows'],
+			createAction: { label: 'Create', testId: 'tools-connection-create-any' },
+		});
+
+		expect(getByTestId('tools-connection-create-any')).toBeTruthy();
+		await fireEvent.click(getByTestId('tab-mcp'));
+		expect(getByTestId('tools-connection-create-any')).toBeTruthy();
+		await fireEvent.click(getByTestId('tab-workflows'));
+		expect(getByTestId('tools-connection-create-any')).toBeTruthy();
 	});
 
 	it('renders the detail view when a detailItem is set', () => {
