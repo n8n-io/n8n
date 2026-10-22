@@ -227,7 +227,7 @@ export type RelayEventMap = {
 	'workflow-pre-execute': {
 		executionId: string;
 		userId?: string;
-		data: IWorkflowExecutionDataProcess /* main process */ | IWorkflowBase /* worker */;
+		data: IWorkflowBase;
 		mode: WorkflowExecuteMode;
 		projectId?: string;
 		projectName?: string;
