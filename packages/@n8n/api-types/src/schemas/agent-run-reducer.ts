@@ -486,6 +486,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					runId: event.runId,
 					tools: event.payload.tools,
 					taskId: event.payload.taskId,
+					...(event.detachedFromTurn ? { detachedFromTurn: true } : {}),
 					kind: event.payload.kind,
 					activity: event.payload.activity,
 					title: event.payload.title,
@@ -649,6 +650,9 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				(!state.currentRunId || state.currentRunId === event.runId);
 			if (status !== 'completed') {
 				for (const agent of Object.values(state.agentsById)) {
+					// An agent detached from its turn outlives the run that started it. Its own
+					// `agent-completed` ends it.
+					if (agent.detachedFromTurn) continue;
 					if (agent.status === 'active' && (agent.runId === event.runId || cancelGroup)) {
 						agent.status = status === 'error' ? 'error' : 'cancelled';
 						if (agent.runId && isSafeObjectKey(agent.runId))
@@ -761,6 +765,7 @@ export function stateFromAgentTree(tree: InstanceAiAgentNode): AgentRunState | u
 	state.currentRunId = currentRunId;
 	if (tree.status === 'cancelled' || tree.status === 'error') {
 		for (const node of Object.values(state.agentsById)) {
+			if (node.detachedFromTurn) continue;
 			if (node.status === 'active') node.status = tree.status;
 			if (isAdoptableId(node.runId)) state.lifecycle.closedRuns[node.runId] = true;
 			for (const tc of node.toolCalls) tc.isLoading = false;

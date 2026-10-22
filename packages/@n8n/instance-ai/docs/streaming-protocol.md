@@ -67,9 +67,15 @@ Every event follows this schema:
   userId?: string;     // user attribution when supplied by the publisher
   responseId?: string; // groups events from one streamed response segment
   ts?: number;         // epoch ms stamped at publish — replays reconstruct real timing from it
+  detachedFromTurn?: boolean; // the agent outlives the turn that started it (cloud browser tasks)
   payload: object;     // event-specific data
 }
 ```
+
+An agent detached from its turn keeps publishing after its run ends with an
+error or a cancel. The `detachedFromTurn` flag on its events keeps them, because
+a writer that rebuilds the run's lifecycle from stored terminal facts does not
+know about the agent.
 
 The `runId` correlates all events started by one user message. This includes
 events from detached work that continues after the orchestrator responds. The

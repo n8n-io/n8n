@@ -163,6 +163,7 @@ describe('InstanceAiCloudBrowserTaskService', () => {
 				runId: 'run-1',
 				role: 'cloud-browser',
 				messageGroupId: 'group-1',
+				detachedFromTurn: true,
 			});
 			expect(await records()).toEqual([
 				expect.objectContaining({ title: 'Find the price', status: 'running', runId: 'run-1' }),
@@ -171,9 +172,11 @@ describe('InstanceAiCloudBrowserTaskService', () => {
 				THREAD_ID,
 				expect.objectContaining({
 					type: 'agent-spawned',
+					detachedFromTurn: true,
 					payload: expect.objectContaining({
 						role: 'cloud-browser',
 						kind: 'cloud-browser',
+						detachedFromTurn: true,
 						title: 'Find the price',
 						goal: 'Find the price of the Pro plan',
 					}),
@@ -466,6 +469,44 @@ describe('InstanceAiCloudBrowserTaskService', () => {
 			expect(backgroundTaskManager.touchTask).toHaveBeenCalledWith(THREAD_ID, taskId);
 		});
 
+		it('marks every event the agent publishes as detached from its turn', async () => {
+			const { service, run, eventBus, runSpawnedTask } = setup();
+			await service.startTask(task, run);
+			await runSpawnedTask();
+			eventBus.publish.mockClear();
+			const agentEventBus = vi.mocked(runCloudBrowserAgent).mock.calls[0][0].eventBus;
+
+			agentEventBus.publish(THREAD_ID, {
+				type: 'tool-call',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				payload: { toolCallId: 'tc-1', toolName: 'browser_navigate', args: {} },
+			});
+
+			expect(eventBus.publish).toHaveBeenCalledWith(THREAD_ID, {
+				type: 'tool-call',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				detachedFromTurn: true,
+				payload: { toolCallId: 'tc-1', toolName: 'browser_navigate', args: {} },
+			});
+		});
+
+		it('passes subscriptions of the agent through to the event bus', async () => {
+			const { service, run, eventBus, runSpawnedTask } = setup();
+			const unsubscribe = vi.fn();
+			eventBus.subscribe.mockReturnValue(unsubscribe);
+			await service.startTask(task, run);
+			await runSpawnedTask();
+			const agentEventBus = vi.mocked(runCloudBrowserAgent).mock.calls[0][0].eventBus;
+			const handler = vi.fn();
+
+			const result = agentEventBus.subscribe(THREAD_ID, handler);
+
+			expect(eventBus.subscribe).toHaveBeenCalledWith(THREAD_ID, handler);
+			expect(result).toBe(unsubscribe);
+		});
+
 		it('closes the card in the sidebar with the result when the task completes', async () => {
 			const { service, run, eventBus, tracing, spawnOptions } = setup();
 			await service.startTask(task, run);
@@ -479,6 +520,7 @@ describe('InstanceAiCloudBrowserTaskService', () => {
 				type: 'agent-completed',
 				runId: 'run-1',
 				agentId: spawnOptions().agentId,
+				detachedFromTurn: true,
 				payload: { role: 'cloud-browser', result: '$20 a month', status: 'completed' },
 			});
 		});
@@ -501,6 +543,7 @@ describe('InstanceAiCloudBrowserTaskService', () => {
 					type: 'agent-completed',
 					runId: 'run-1',
 					agentId: spawnOptions().agentId,
+					detachedFromTurn: true,
 					payload: { role: 'cloud-browser', result: '', error: expected, status: 'error' },
 				});
 			},

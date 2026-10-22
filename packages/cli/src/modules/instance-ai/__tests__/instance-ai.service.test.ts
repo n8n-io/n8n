@@ -136,6 +136,7 @@ vi.mock('@n8n/instance-ai', async () => {
 		WorkflowLoopStorage: class {},
 		ThreadTaskStorage: class {},
 		PlannedTaskStorage: class {},
+		CloudBrowserTaskStorage: class {},
 		PlannedTaskCoordinator: class {},
 		InstanceAiTerminalResponseGuard: class {
 			constructor(private readonly options: { runId: string; rootAgentId: string }) {}
@@ -617,6 +618,7 @@ type TerminalGuardOrderServiceInternals = {
 	syncPlannedTasksToUi: Mock;
 	taskProjector: { syncFromWorkflowLoop: Mock };
 	maybeStartWorkflowSetupFollowUp: Mock;
+	cloudBrowserTaskService: { startTask: Mock; deliverPendingResults: Mock };
 	finalizeRun: Mock;
 	preserveHitlOnShutdown: Set<string>;
 	inFlightExecutions: Set<Promise<unknown>>;
@@ -742,6 +744,10 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	return service;
 }
 
+function stubCloudBrowserTaskService() {
+	return { startTask: vi.fn(), deliverPendingResults: vi.fn(async () => {}) };
+}
+
 function stubInitialRunSurface(
 	service: TerminalGuardOrderServiceInternals,
 	instanceContextEnabled = false,
@@ -772,6 +778,7 @@ function stubInitialRunSurface(
 		resolveProjectContextSection: vi.fn(async () => ''),
 		createAgentFromEnvironment: vi.fn(async () => ({})),
 		buildOrchestratorAgentStreamOptions: vi.fn(() => ({})),
+		cloudBrowserTaskService: stubCloudBrowserTaskService(),
 		domainAccessTrackersByThread: new Map(),
 	});
 	vi.mocked(createInstanceAiTraceContext).mockResolvedValueOnce(undefined);
@@ -1011,6 +1018,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.schedulePlannedTasks = vi.fn();
 		service.sendCorrectionToTask = vi.fn();
 		service.domainAccessTrackersByThread = new Map();
+		Object.assign(service, { cloudBrowserTaskService: stubCloudBrowserTaskService() });
 		service.browserSessionService = { findMcpServer: vi.fn(() => undefined) };
 		service.threadGrantRepo = { findKeys: vi.fn(async () => new Set<string>()) };
 		service.sandboxService = new InstanceAiSandboxService({
@@ -1370,6 +1378,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.schedulePlannedTasks = vi.fn();
 		service.sendCorrectionToTask = vi.fn();
 		service.domainAccessTrackersByThread = new Map();
+		Object.assign(service, { cloudBrowserTaskService: stubCloudBrowserTaskService() });
 		service.browserSessionService = { findMcpServer: vi.fn(() => undefined) };
 		service.threadGrantRepo = { findKeys: vi.fn(async () => new Set<string>()) };
 		service.sandboxService = new InstanceAiSandboxService({
@@ -1426,6 +1435,150 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			expect.objectContaining({ allowSendingParameterValues }),
 		);
 	});
+
+	it.each([
+		{ cloudBrowserEnabled: true, isAvailable: true, wired: true },
+		{ cloudBrowserEnabled: true, isAvailable: false, wired: false },
+		{ cloudBrowserEnabled: false, isAvailable: true, wired: false },
+	])(
+		'sets startCloudBrowserTask only when the cloud browser is enabled and available (%j)',
+		async ({ cloudBrowserEnabled, isAvailable, wired }) => {
+			const service = Object.create(InstanceAiService.prototype) as unknown as {
+				createExecutionEnvironment: (
+					user: User,
+					threadId: string,
+					runId: string,
+					abortSignal: AbortSignal,
+				) => Promise<{
+					orchestrationContext: {
+						startCloudBrowserTask?: (input: { title: string; goal: string }) => Promise<unknown>;
+					};
+				}>;
+			};
+			const cloudBrowserTaskService = stubCloudBrowserTaskService();
+			cloudBrowserTaskService.startTask.mockResolvedValue({ status: 'started', taskId: 'task-1' });
+			const cloudBrowserService = { isAvailable: vi.fn(async () => isAvailable) };
+			Object.assign(service, {
+				areMcpConnectionsAvailable: vi.fn(() => false),
+				skillsService: new InstanceAiSkillsService(new AssistantSkillProviderProxy()),
+				settingsService: {
+					getAdminSettings: vi.fn(() => ({ sandboxEnabled: false, cloudBrowserEnabled })),
+					getSandboxStatus: vi.fn(() => ({
+						enabled: false,
+						provider: 'n8n-sandbox',
+						workflowBuilderAvailable: false,
+						unavailableReason: null,
+					})),
+					getPermissions: vi.fn(() => ({})),
+				},
+				aiService: { isProxyEnabled: vi.fn(() => false) },
+				adapterService: {
+					createContext: vi.fn(() => ({ credentialService: { getCredentialFields: vi.fn() } })),
+					getNodeDefinitionDirs: vi.fn(() => []),
+					resolveExperimentGates: vi.fn().mockResolvedValue({
+						configEvalsEnabled: false,
+						conversationHistoryEnabled: false,
+						progressiveBuildingEnabled: false,
+						nodeUsageEnabled: false,
+						nodeContextEnabled: false,
+						folderExplorationEnabled: false,
+						aiPreferencesEnabled: false,
+					}),
+				},
+				instanceWriteAccess: { isReadOnly: vi.fn(() => false) },
+				modelService: {
+					resolveAgentModelConfig: vi.fn(async () => 'model-1'),
+					resolveProxyModel: vi.fn(async () => 'model-1'),
+					resolveMemoryModelConfig: vi.fn(async () => undefined),
+					getCredits: vi.fn(async () => ({
+						creditsQuota: UNLIMITED_CREDITS,
+						creditsClaimed: 0,
+					})),
+				},
+				ensureThreadExists: vi.fn(async () => {}),
+				agentMemory: {
+					getThreadProjectId: vi.fn(async () => 'project-1'),
+					getThread: vi.fn(async () => undefined),
+				},
+				dbIterationLogStorage: {},
+				dbSnapshotStorage: {},
+				checkpointStore: {},
+				instanceAiConfig: {},
+				aiConfig: {},
+				defaultTimeZone: 'UTC',
+				eventBus: {},
+				logger: { warn: vi.fn() },
+				telemetry: { track: vi.fn() },
+				oauth2CallbackUrl: 'http://localhost/rest/oauth2-credential/callback',
+				webhookBaseUrl: 'http://localhost/webhook',
+				formBaseUrl: 'http://localhost/form',
+				runState: {
+					touchActiveRun: vi.fn(),
+					registerPendingConfirmation: vi.fn(),
+					getBuildMode: vi.fn(() => undefined),
+					getPromptVersion: vi.fn(),
+					getPromptConfiguration: vi.fn(),
+					setPromptConfiguration: vi.fn(),
+					setBuildMode: vi.fn(),
+					setSetupPanelEnabled: vi.fn(),
+					setPromptVersion: vi.fn(),
+					setObserverThresholdTokens: vi.fn(),
+					getBrowserUseAvailable: vi.fn(() => undefined),
+				},
+				cancelBackgroundTask: vi.fn(),
+				backgroundTasks: { touchTask: vi.fn() },
+				schedulePlannedTasks: vi.fn(),
+				sendCorrectionToTask: vi.fn(),
+				domainAccessTrackersByThread: new Map(),
+				cloudBrowserTaskService,
+				cloudBrowserService,
+				browserSessionService: { findMcpServer: vi.fn(() => undefined) },
+				threadGrantRepo: { findKeys: vi.fn(async () => new Set<string>()) },
+				sandboxService: new InstanceAiSandboxService({
+					config: { sandboxEnabled: false } as InstanceAiConfig,
+					logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+					errorReporter: { error: vi.fn() } as unknown as ErrorReporter,
+					runState: {
+						getActiveRunId: vi.fn(() => undefined),
+						hasSuspendedRun: vi.fn(() => false),
+					},
+					backgroundTasks: { getRunningTasks: vi.fn(() => []) },
+					settingsService: {
+						resolveDaytonaConfig: vi.fn(async () => ({})),
+						resolveN8nSandboxConfig: vi.fn(async () => ({})),
+					},
+					aiService: { isProxyEnabled: vi.fn(() => false), getClient: vi.fn() },
+				}),
+				evalCredentialAllowlists: new EvalThreadCredentialAllowlistService(),
+				instanceAiErrorReporter: createInstanceAiErrorReporterMock(),
+				aiUsageService: { isParameterValueSharingAllowed: vi.fn(async () => true) },
+				creditService: { claimRunUsage: vi.fn() },
+			});
+
+			const { orchestrationContext } = await service.createExecutionEnvironment(
+				fakeUser,
+				'thread-1',
+				'run-1',
+				new AbortController().signal,
+			);
+
+			if (cloudBrowserEnabled) expect(cloudBrowserService.isAvailable).toHaveBeenCalled();
+			else expect(cloudBrowserService.isAvailable).not.toHaveBeenCalled();
+			if (!wired) {
+				expect(orchestrationContext.startCloudBrowserTask).toBeUndefined();
+				return;
+			}
+			const input = { title: 'Find the price', goal: 'Find the price of the Pro plan' };
+			await expect(orchestrationContext.startCloudBrowserTask?.(input)).resolves.toEqual({
+				status: 'started',
+				taskId: 'task-1',
+			});
+			expect(cloudBrowserTaskService.startTask).toHaveBeenCalledWith(
+				input,
+				expect.objectContaining({ runId: 'run-1', user: fakeUser, threadId: 'thread-1' }),
+			);
+		},
+	);
 });
 
 describe('InstanceAiService — shutdown', () => {
@@ -1472,6 +1625,7 @@ describe('InstanceAiService — shutdown', () => {
 		service.sandboxService = { stopSandboxExpiryTimers: vi.fn() };
 		service.browserSessionService = { shutdown: vi.fn(async () => {}) };
 		service.domainAccessTrackersByThread = new Map();
+		Object.assign(service, { cloudBrowserTaskService: stubCloudBrowserTaskService() });
 		service.eventBus = { clear: vi.fn() };
 		service.eventLog = { flushAll: vi.fn(async () => {}) };
 		service._mcpClientManager = { disconnect: vi.fn(async () => {}) };
@@ -4399,6 +4553,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			inFlightExecutions: new Set<Promise<unknown>>(),
 			browserSessionService: { shutdown: vi.fn(async () => {}) },
 			sandboxService: { stopSandboxExpiryTimers: vi.fn() },
+			cloudBrowserTaskService: stubCloudBrowserTaskService(),
 			domainAccessTrackersByThread: new Map(),
 			eventLog: { flushAll: vi.fn(async () => {}) },
 		});
@@ -5393,6 +5548,16 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 		service.maybeStartWorkflowSetupFollowUp = vi.fn(async () => {
 			callOrder.push('maybeStartWorkflowSetupFollowUp');
 		});
+		Object.assign(service, {
+			settingsService: { isCloudBrowserEnabled: () => true },
+			cloudBrowserService: { isAvailable: async () => true },
+		});
+		service.cloudBrowserTaskService = {
+			...stubCloudBrowserTaskService(),
+			deliverPendingResults: vi.fn(async () => {
+				callOrder.push('deliverPendingResults');
+			}),
+		};
 		service.finalizeRun = vi.fn(async () => {
 			callOrder.push('finalizeRun');
 		});
@@ -5418,8 +5583,90 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 			'schedulePlannedTasks',
 			'syncFromWorkflowLoop',
 			'maybeStartWorkflowSetupFollowUp',
+			'deliverPendingResults',
 			'endRun',
 		]);
+	});
+
+	it.each([
+		{ cloudBrowserEnabled: false, isAvailable: true },
+		{ cloudBrowserEnabled: true, isAvailable: false },
+	])(
+		'does not deliver cloud browser task results when the cloud browser is off (%j)',
+		async ({ cloudBrowserEnabled, isAvailable }) => {
+			const service = createTerminalGuardOrderService();
+			const abortController = new AbortController();
+			service.runState.hasSuspendedRun = vi.fn(() => false);
+			service.taskProjector = { syncFromWorkflowLoop: vi.fn(async () => {}) };
+			service.maybeStartWorkflowSetupFollowUp = vi.fn(async () => {});
+			Object.assign(service, {
+				settingsService: { isCloudBrowserEnabled: () => cloudBrowserEnabled },
+				cloudBrowserService: { isAvailable: async () => isAvailable },
+			});
+			service.cloudBrowserTaskService = stubCloudBrowserTaskService();
+			mockClaimedResumeResult({
+				status: 'completed',
+				agentRunId: 'agent-run-1',
+				text: Promise.resolve('done'),
+				workSummary: emptyWorkSummary(),
+			});
+
+			await service.processResumedStream({}, {}, resumedStreamOpts(abortController));
+
+			expect(service.cloudBrowserTaskService.deliverPendingResults).not.toHaveBeenCalled();
+			expect(service.instanceAiErrorReporter.endRun).toHaveBeenCalledWith(
+				'run-1',
+				service.instanceAiErrorReporter.beginRun.mock.results[0].value,
+			);
+		},
+	);
+
+	it('logs a failed cloud browser result delivery and still finishes the run', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		service.runState.hasSuspendedRun = vi.fn(() => false);
+		service.taskProjector = { syncFromWorkflowLoop: vi.fn(async () => {}) };
+		service.maybeStartWorkflowSetupFollowUp = vi.fn(async () => {});
+		service.finalizeRun = vi.fn(async () => {});
+		Object.assign(service, {
+			settingsService: { isCloudBrowserEnabled: () => true },
+			cloudBrowserService: { isAvailable: async () => true },
+		});
+		service.cloudBrowserTaskService = {
+			...stubCloudBrowserTaskService(),
+			deliverPendingResults: vi.fn(async () => {
+				throw new Error('Store unavailable');
+			}),
+		};
+		mockClaimedResumeResult({
+			status: 'completed',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve('done'),
+			workSummary: emptyWorkSummary(),
+		});
+
+		await expect(
+			service.processResumedStream({}, {}, resumedStreamOpts(abortController)),
+		).resolves.toBeUndefined();
+
+		expect(service.cloudBrowserTaskService.deliverPendingResults).toHaveBeenCalledWith(
+			fakeUser,
+			'thread-a',
+		);
+		expect(service.logger.error).toHaveBeenCalledWith(
+			'Failed to deliver the cloud browser task results',
+			{ threadId: 'thread-a', error: 'Store unavailable' },
+		);
+		expect(service.finalizeRun).toHaveBeenCalledWith(
+			'thread-a',
+			'run-1',
+			'completed',
+			expect.any(Object),
+		);
+		expect(service.instanceAiErrorReporter.endRun).toHaveBeenCalledWith(
+			'run-1',
+			service.instanceAiErrorReporter.beginRun.mock.results[0].value,
+		);
 	});
 
 	it('skips post-run scheduling when the resumed run was cancelled', async () => {
@@ -5535,6 +5782,7 @@ describe('InstanceAiService run input gates', () => {
 			shouldPreserveHitlOnShutdown: vi.fn(() => true),
 			runState: { clearActiveRun: vi.fn(), hasSuspendedRun: vi.fn(() => true) },
 			telemetry: { track: vi.fn() },
+			cloudBrowserTaskService: stubCloudBrowserTaskService(),
 			domainAccessTrackersByThread: new Map(),
 			updateInternalFollowUpFailureStreak: vi.fn(),
 		}) as {
@@ -5663,6 +5911,7 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 		// hasSuspendedRun → true short-circuits the finally's post-run scheduling
 		service.runState = { clearActiveRun: vi.fn(), hasSuspendedRun: vi.fn(() => true) };
 		service.domainAccessTrackersByThread = new Map();
+		Object.assign(service, { cloudBrowserTaskService: stubCloudBrowserTaskService() });
 		service.instanceAiErrorReporter = {
 			beginRun: vi.fn(() => Symbol('error-reporter-execution')),
 			endRun: vi.fn(),
@@ -5769,7 +6018,11 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 
 describe('InstanceAiService — planned task settlement', () => {
 	type SettlementService = {
-		cancelRun: (threadId: string, reason?: string) => void;
+		cancelRun: (
+			threadId: string,
+			reason?: string,
+			options?: { skipTasksDetachedFromTurn?: boolean },
+		) => void;
 		cancelBackgroundTask: (threadId: string, taskId: string) => void;
 		schedulePlannedTasks: Mock;
 		syncPlannedTasksToUi: Mock;
@@ -5896,6 +6149,69 @@ describe('InstanceAiService — planned task settlement', () => {
 				payload: { role: 'builder', result: '', status: 'cancelled' },
 			}),
 		);
+	});
+
+	it('forwards the option to skip tasks detached from their turn when the thread is cancelled', () => {
+		const { service } = createSettlementService();
+
+		service.cancelRun('thread-a', 'user_cancelled', { skipTasksDetachedFromTurn: true });
+
+		expect(service.backgroundTasks.cancelThread).toHaveBeenCalledWith('thread-a', undefined, {
+			skipTasksDetachedFromTurn: true,
+		});
+	});
+
+	it('marks the agent-completed event of a detached task when the thread is cancelled', async () => {
+		const { service } = createSettlementService();
+		service.backgroundTasks.cancelThread.mockReturnValue([
+			{ ...task, plannedTaskId: undefined, role: 'cloud-browser', detachedFromTurn: true },
+		]);
+
+		service.cancelRun('thread-a');
+		await flush();
+
+		expect(service.eventBus.publish).toHaveBeenCalledWith('thread-a', {
+			type: 'agent-completed',
+			runId: 'task-run-1',
+			agentId: 'agent-1',
+			detachedFromTurn: true,
+			payload: { role: 'cloud-browser', result: '', status: 'cancelled' },
+		});
+	});
+
+	it('does not mark the agent-completed event of a task that is not detached', async () => {
+		const { service } = createSettlementService();
+
+		service.cancelRun('thread-a');
+		await flush();
+
+		expect(service.eventBus.publish).toHaveBeenCalledWith('thread-a', {
+			type: 'agent-completed',
+			runId: 'task-run-1',
+			agentId: 'agent-1',
+			payload: { role: 'builder', result: '', status: 'cancelled' },
+		});
+	});
+
+	it('marks the agent-completed event of a detached task when that task is cancelled', async () => {
+		const { service } = createSettlementService();
+		service.backgroundTasks.cancelTask.mockReturnValue({
+			...task,
+			plannedTaskId: undefined,
+			role: 'cloud-browser',
+			detachedFromTurn: true,
+		});
+
+		service.cancelBackgroundTask('thread-a', 'task-1');
+		await flush();
+
+		expect(service.eventBus.publish).toHaveBeenCalledWith('thread-a', {
+			type: 'agent-completed',
+			runId: 'task-run-1',
+			agentId: 'agent-1',
+			detachedFromTurn: true,
+			payload: { role: 'cloud-browser', result: '', status: 'cancelled' },
+		});
 	});
 });
 
@@ -6591,7 +6907,9 @@ describe('InstanceAiService — cross-main task-control routing', () => {
 
 			await service.routeCancelRun('thread-a');
 
-			expect(service.cancelRun).toHaveBeenCalledWith('thread-a');
+			expect(service.cancelRun).toHaveBeenCalledWith('thread-a', 'user_cancelled', {
+				skipTasksDetachedFromTurn: true,
+			});
 			expect(service.publisher.publishCommand).toHaveBeenCalledWith({
 				command: 'relay-instance-ai-task-control',
 				payload: { threadId: 'thread-a', action: 'cancel-thread' },
@@ -6603,7 +6921,9 @@ describe('InstanceAiService — cross-main task-control routing', () => {
 
 			await service.routeCancelRun('thread-a');
 
-			expect(service.cancelRun).toHaveBeenCalledWith('thread-a');
+			expect(service.cancelRun).toHaveBeenCalledWith('thread-a', 'user_cancelled', {
+				skipTasksDetachedFromTurn: true,
+			});
 			expect(service.publisher.publishCommand).not.toHaveBeenCalled();
 		});
 
@@ -6665,7 +6985,9 @@ describe('InstanceAiService — cross-main task-control routing', () => {
 				});
 
 				expect(service.cancelBackgroundTask).toHaveBeenCalledWith('thread-a', 'task-1');
-				expect(service.cancelRun).toHaveBeenCalledWith('thread-a');
+				expect(service.cancelRun).toHaveBeenCalledWith('thread-a', 'user_cancelled', {
+					skipTasksDetachedFromTurn: true,
+				});
 				expect(service.clearThreadState).toHaveBeenCalledWith('thread-a', userId);
 				expect(service.publisher.publishCommand).not.toHaveBeenCalled();
 			},
@@ -6725,6 +7047,7 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 		service.failedInternalFollowUpStreaks = new Map();
 		service.liveness = { clearThreadState: vi.fn() };
 		service.domainAccessTrackersByThread = new Map();
+		Object.assign(service, { cloudBrowserTaskService: stubCloudBrowserTaskService() });
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		service.eventBus = { clearThread: vi.fn() };
 		service.tracing = {

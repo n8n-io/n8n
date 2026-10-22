@@ -9,7 +9,9 @@ import {
 	type CloudBrowserAgentBrief,
 	type CloudBrowserAgentResult,
 	type CloudBrowserCredentialToCreate,
+	type CloudBrowserTaskInput,
 	type CloudBrowserTaskRecord,
+	type CloudBrowserTaskStartResult,
 	type ConfirmationData,
 	type InstanceAiCredentialService,
 	type InstanceAiEventBus,
@@ -38,23 +40,6 @@ import {
 
 /** Same role as the cloud browser agent's. It names the task's events and its untrusted result. */
 const CLOUD_BROWSER_AGENT_ROLE = 'cloud-browser';
-
-/** What the orchestrator passes to start a task. */
-export interface CloudBrowserTaskInput {
-	/** A short name for the task, shown in the chat. */
-	title: string;
-	/** What to do in the browser, with everything the browser agent needs: it cannot see the conversation. */
-	goal: string;
-	/** The page to open first. */
-	startUrl?: string;
-	/** New n8n credentials the browser agent creates from values it finds on the pages. */
-	credentialsToCreate?: Array<{ type: string; name: string }>;
-}
-
-export type CloudBrowserTaskStartResult =
-	| { status: 'started'; taskId: string }
-	/** `message` says why, in words the orchestrator can pass on to the user. */
-	| { status: 'rejected'; message: string };
 
 export interface InstanceAiCloudBrowserTaskServiceOptions {
 	logger: Logger;
@@ -183,6 +168,8 @@ export class InstanceAiCloudBrowserTaskService {
 				role: CLOUD_BROWSER_AGENT_ROLE,
 				agentId,
 				messageGroupId: runOptions.messageGroupId,
+				// The user keeps chatting while the task runs.
+				detachedFromTurn: true,
 				// The task's own trace, so it outlives the run that started it. The manager
 				// creates it when the task starts and the cancel paths close it.
 				createTraceContext: async () =>
@@ -201,6 +188,7 @@ export class InstanceAiCloudBrowserTaskService {
 						type: 'agent-completed',
 						runId,
 						agentId,
+						detachedFromTurn: true,
 						payload: { role: task.role, result: task.result ?? '', status: 'completed' },
 					});
 				},
@@ -210,6 +198,7 @@ export class InstanceAiCloudBrowserTaskService {
 						type: 'agent-completed',
 						runId,
 						agentId,
+						detachedFromTurn: true,
 						payload: {
 							role: task.role,
 							result: '',
@@ -242,11 +231,13 @@ export class InstanceAiCloudBrowserTaskService {
 			type: 'agent-spawned',
 			runId,
 			agentId,
+			detachedFromTurn: true,
 			payload: {
 				parentId: orchestratorAgentId(runId),
 				role: CLOUD_BROWSER_AGENT_ROLE,
 				tools: [],
 				taskId,
+				detachedFromTurn: true,
 				title: input.title,
 				goal: input.goal,
 				kind: 'cloud-browser',
@@ -292,6 +283,11 @@ export class InstanceAiCloudBrowserTaskService {
 		run: CloudBrowserRunOptions,
 	): Promise<{ text: string; outcome: { outcome: string } }> {
 		const { cloudBrowserService, eventBus, backgroundTaskManager, logger } = this.options;
+		// The agent outlives the turn that started it, so every event it publishes says so.
+		const agentEventBus: InstanceAiEventBus = {
+			publish: (id, event) => eventBus.publish(id, { ...event, detachedFromTurn: true }),
+			subscribe: (id, handler) => eventBus.subscribe(id, handler),
+		};
 		const { taskId, agentId } = task;
 		const { user, runId, threadId } = run;
 		const confirmationCards = new Set<string>();
@@ -311,7 +307,7 @@ export class InstanceAiCloudBrowserTaskService {
 					modelId: run.modelId,
 					threadId,
 					runId,
-					eventBus,
+					eventBus: agentEventBus,
 					logger,
 					abortSignal: signal,
 					waitForConfirmation: async (requestId) =>

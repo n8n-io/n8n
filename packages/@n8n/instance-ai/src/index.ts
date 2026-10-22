@@ -299,6 +299,10 @@ export {
 	withBoundAgentTarget,
 } from './tools/orchestration/agent-target-binding';
 export type { AgentBuilderTarget } from './tools/orchestration/agent-target-binding';
+export type {
+	CloudBrowserTaskInput,
+	CloudBrowserTaskStartResult,
+} from './tools/orchestration/start-cloud-browser-task.tool';
 export {
 	resolveAgentPreviewSession,
 	saveAgentPreviewSession,

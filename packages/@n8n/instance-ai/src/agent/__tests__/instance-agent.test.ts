@@ -627,6 +627,31 @@ describe('createInstanceAgent', () => {
 		);
 	});
 
+	it.each([
+		{ startCloudBrowserTask: vi.fn(), cloudBrowserEnabled: true },
+		{ startCloudBrowserTask: undefined, cloudBrowserEnabled: false },
+	])(
+		'renders the Cloud Browser section only when the host sets startCloudBrowserTask (enabled: $cloudBrowserEnabled)',
+		async ({ startCloudBrowserTask, cloudBrowserEnabled }) => {
+			await createInstanceAgent({
+				modelId: 'test-model',
+				context: {
+					runLabel: 'cloud-browser-prompt',
+					browserUseState: undefined,
+					licenseHints: undefined,
+					localMcpServer: undefined,
+				},
+				orchestrationContext: { runId: 'cloud-browser-prompt', startCloudBrowserTask },
+				memoryConfig: {},
+				mcpManager: createMcpManagerStub(new Map()),
+			} as never);
+
+			expect(getSystemPrompt).toHaveBeenCalledWith(
+				expect.objectContaining({ cloudBrowserEnabled }),
+			);
+		},
+	);
+
 	describe('connected MCP services', () => {
 		const lastDomainToolContext = () => {
 			const calls = createOrchestratorDomainTools.mock.calls as Array<

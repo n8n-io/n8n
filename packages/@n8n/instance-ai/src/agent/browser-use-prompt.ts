@@ -25,7 +25,7 @@ const SIGNALS: Array<{ bullet: string; compact?: string }> = [
 	},
 ];
 
-const CONNECT_INSTRUCTIONS =
+export const CONNECT_INSTRUCTIONS =
 	'To connect, the user should select the + button beside the chat input. They should select "Connect browser", then follow the instructions in the setup dialog.';
 
 /** Not connected: cover only what Browser Use is and how to connect, not the

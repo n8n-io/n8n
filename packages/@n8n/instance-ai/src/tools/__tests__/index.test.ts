@@ -336,4 +336,17 @@ describe('domain tool construction', () => {
 		);
 		expect(withSession.has('get-session')).toBe(true);
 	});
+
+	it('registers start-cloud-browser-task only when the host sets startCloudBrowserTask', () => {
+		const withoutCloudBrowser = createOrchestrationTools(
+			makeContext({ domainContext: {} } as Partial<InstanceAiContext>) as never,
+		);
+		expect(withoutCloudBrowser.has('start-cloud-browser-task')).toBe(false);
+
+		const withCloudBrowser = createOrchestrationTools({
+			...makeContext({ domainContext: {} } as Partial<InstanceAiContext>),
+			startCloudBrowserTask: vi.fn(),
+		} as never);
+		expect(withCloudBrowser.has('start-cloud-browser-task')).toBe(true);
+	});
 });

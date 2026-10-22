@@ -29,7 +29,8 @@ export function canAcceptInstanceAiEvent(
 ): boolean {
 	if (!isSafeObjectKey(event.runId) || !isSafeObjectKey(event.agentId)) return false;
 	if (!isRunActivity(event)) return true;
-	if (state.closedRuns[event.runId]) return false;
+	// A detached agent outlives its run, so its events are kept after the run ends.
+	if (state.closedRuns[event.runId] && event.detachedFromTurn !== true) return false;
 	if (
 		event.type === 'agent-spawned' &&
 		(!isSafeObjectKey(event.payload.parentId) ||

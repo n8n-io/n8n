@@ -61,6 +61,10 @@ const loadGetSessionTool = lazyMod(
 	() =>
 		require('./orchestration/get-session.tool') as typeof import('./orchestration/get-session.tool'),
 );
+const loadStartCloudBrowserTaskTool = lazyMod(
+	() =>
+		require('./orchestration/start-cloud-browser-task.tool') as typeof import('./orchestration/start-cloud-browser-task.tool'),
+);
 const loadCompleteCheckpointTool = lazyMod(
 	() =>
 		require('./orchestration/complete-checkpoint.tool') as typeof import('./orchestration/complete-checkpoint.tool'),
@@ -262,6 +266,16 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 		for (const tool of loadAgentBuilderTools().createAgentBuilderTools(context, builderDelegate)) {
 			tools.push([tool.name, tool]);
 		}
+	}
+
+	// Presence is the gate: the host sets it only when this run can use the cloud browser.
+	if (context.startCloudBrowserTask) {
+		tools.push([
+			ORCHESTRATION_TOOL_IDS.START_CLOUD_BROWSER_TASK,
+			loadStartCloudBrowserTaskTool().createStartCloudBrowserTaskTool(
+				context.startCloudBrowserTask,
+			),
+		]);
 	}
 
 	if (context.domainContext?.agentPreviewSession && context.domainContext?.resolvePreviewSession) {
