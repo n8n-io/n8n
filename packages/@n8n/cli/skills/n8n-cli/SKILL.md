@@ -213,7 +213,7 @@ n8n-cli promotion-environment connect <promoteId>
 n8n-cli promotion-environment connect <applyId>
 
 # 4. Promote from this instance, or apply to it.
-n8n-cli promotion-environment promote <promoteId> -m "Promote team projects"
+n8n-cli promotion-environment promote <promoteId>
 n8n-cli promotion-environment apply <applyId>
 ```
 

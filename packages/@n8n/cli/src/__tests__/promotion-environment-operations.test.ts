@@ -120,6 +120,21 @@ describe('promotion-environment promote command', () => {
 			PROMOTE_RESULT,
 		);
 	});
+
+	it('leaves the commit message out when no message is given', async () => {
+		const command = new PromotionEnvironmentPromote([], {} as Config);
+		const promotePackage = vi.fn().mockResolvedValue(PROMOTE_RESULT);
+		stubCommand(command, { force: false }, {
+			promotePackage,
+		} as unknown as Partial<N8nClient>);
+
+		await command.run();
+
+		expect(promotePackage).toHaveBeenCalledWith('env-1', {
+			commitMessage: undefined,
+			force: false,
+		});
+	});
 });
 
 describe('promotion-environment apply command', () => {

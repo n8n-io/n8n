@@ -195,13 +195,13 @@ the deployment can hold a different checkout.
 Export all team projects, commit them, and push to the configured branch.
 
 ```bash
-n8n-cli promotion-environment promote env-1 --message="Promote team projects"
+n8n-cli promotion-environment promote env-1
 n8n-cli promotion-environment promote env-1 -m "Promote team projects" --force
 ```
 
 | Flag | Description |
 |------|-------------|
-| `-m, --message` | Commit message. Required. |
+| `-m, --message` | Commit message. A default is used when omitted. |
 | `--force` | Overwrite the remote branch when it has diverged. |
 
 Personal projects are not included. Connect the environment first. This command

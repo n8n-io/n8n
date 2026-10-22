@@ -9,12 +9,12 @@ import {
 } from '../promotion-operations.dto';
 
 describe('PromotePackageDto', () => {
-	it('requires a non-blank commit message and accepts an optional force flag', () => {
+	it('accepts an optional non-blank commit message and an optional force flag', () => {
+		expect(PromotePackageDto.safeParse({}).success).toBe(true);
 		expect(PromotePackageDto.safeParse({ commitMessage: 'Update projects' }).success).toBe(true);
 		expect(PromotePackageDto.safeParse({ commitMessage: 'Update', force: true }).success).toBe(
 			true,
 		);
-		expect(PromotePackageDto.safeParse({}).success).toBe(false);
 		expect(PromotePackageDto.safeParse({ commitMessage: '   ' }).success).toBe(false);
 	});
 
