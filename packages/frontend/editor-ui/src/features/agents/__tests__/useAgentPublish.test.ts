@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { flushPromises } from '@vue/test-utils';
+import type { AgentVersionMetadataModalData } from '../components/AgentVersionMetadataModal.vue';
 import { useAgentPublish } from '../composables/useAgentPublish';
 import {
 	AGENT_PUBLISHED_MODAL_KEY,
@@ -9,6 +11,9 @@ import type { AgentResource } from '../types';
 
 const {
 	publishAgentMock,
+	getAgentMock,
+	getAgentVersionMock,
+	openVersionMetadataMock,
 	showMessageMock,
 	showErrorMock,
 	openModalWithDataMock,
@@ -16,6 +21,9 @@ const {
 	openAgentConfirmationModalMock,
 } = vi.hoisted(() => ({
 	publishAgentMock: vi.fn(),
+	getAgentMock: vi.fn(),
+	getAgentVersionMock: vi.fn(),
+	openVersionMetadataMock: vi.fn(),
 	showMessageMock: vi.fn(),
 	showErrorMock: vi.fn(),
 	openModalWithDataMock: vi.fn(),
@@ -49,8 +57,14 @@ vi.mock('../composables/useAgentConfirmationModal', () => ({
 
 vi.mock('../composables/useAgentApi', () => ({
 	publishAgent: publishAgentMock,
+	getAgent: getAgentMock,
+	getAgentVersion: getAgentVersionMock,
 	unpublishAgent: vi.fn(),
 	revertAgentToPublished: vi.fn(),
+}));
+
+vi.mock('../composables/useAgentVersionMetadataModal', () => ({
+	useAgentVersionMetadataModal: () => ({ openVersionMetadata: openVersionMetadataMock }),
 }));
 
 vi.mock('../composables/useProjectAgentsList', () => ({
@@ -67,6 +81,16 @@ describe('useAgentPublish', () => {
 	beforeEach(() => {
 		localStorage.removeItem(LOCAL_STORAGE_HIDE_AGENT_PUBLISHED_CONFIRMATION);
 		publishAgentMock.mockReset();
+		getAgentMock.mockReset().mockResolvedValue({ versionId: 'v2' });
+		getAgentVersionMock
+			.mockReset()
+			.mockResolvedValue({ versionId: 'v2', name: 'Release', description: 'Changes' });
+		openVersionMetadataMock
+			.mockReset()
+			.mockImplementation(
+				async (options: AgentVersionMetadataModalData) =>
+					await options.onSubmit({ name: 'Release', description: 'Changes' }),
+			);
 		showMessageMock.mockClear();
 		showErrorMock.mockClear();
 		openModalWithDataMock.mockClear();
@@ -107,5 +131,68 @@ describe('useAgentPublish', () => {
 		expect(updated).toBeNull();
 		expect(showErrorMock).toHaveBeenCalled();
 		expect(openModalWithDataMock).not.toHaveBeenCalled();
+	});
+	it('selects the list agent version once before the dialog opens', async () => {
+		const current = { versionId: 'v2' };
+		getAgentMock.mockResolvedValue(current);
+		openVersionMetadataMock.mockImplementationOnce(
+			async (options: AgentVersionMetadataModalData) => {
+				current.versionId = 'v3';
+				return await options.onSubmit({ name: 'Release', description: 'Line one\nLine two' });
+			},
+		);
+		publishAgentMock.mockResolvedValue({
+			...agentResource,
+			versionId: 'v3',
+			activeVersionId: 'v2',
+		});
+		const result = await useAgentPublish().publish('p1', 'a1');
+		expect(publishAgentMock).toHaveBeenCalledWith({}, 'p1', 'a1', 'v2', {
+			name: 'Release',
+			description: 'Line one\nLine two',
+		});
+		expect(result?.versionId).toBe('v3');
+	});
+
+	it('publishes the selected history version without reading the current draft', async () => {
+		publishAgentMock.mockResolvedValue(agentResource);
+		await useAgentPublish().publish('p1', 'a1', 'older-version');
+		expect(getAgentMock).not.toHaveBeenCalled();
+		expect(getAgentVersionMock).toHaveBeenCalledWith({}, 'p1', 'a1', 'older-version');
+		expect(publishAgentMock).toHaveBeenCalledWith(
+			{},
+			'p1',
+			'a1',
+			'older-version',
+			expect.anything(),
+		);
+	});
+
+	it('cancels without changing metadata or publication state', async () => {
+		openVersionMetadataMock.mockResolvedValueOnce(false);
+		const flow = useAgentPublish();
+		expect(await flow.publish('p1', 'a1', 'v2')).toBeNull();
+		expect(publishAgentMock).not.toHaveBeenCalled();
+		expect(flow.publishing.value).toBe(false);
+	});
+
+	it('keeps the selected version and accepts a retry after publication fails', async () => {
+		publishAgentMock
+			.mockRejectedValueOnce(new Error('temporarily unavailable'))
+			.mockResolvedValueOnce(agentResource);
+		openVersionMetadataMock.mockImplementationOnce(
+			async (options: AgentVersionMetadataModalData) => {
+				expect(await options.onSubmit({ name: 'Release', description: null })).toBe(false);
+				expect(await options.onSubmit({ name: 'Release', description: null })).toBe(true);
+				return true;
+			},
+		);
+		const flow = useAgentPublish();
+		const pending = flow.publish('p1', 'a1', 'v2');
+		expect(await flow.publish('p1', 'a1', 'v3')).toBeNull();
+		await flushPromises();
+		expect(await pending).toBe(agentResource);
+		expect(publishAgentMock).toHaveBeenCalledTimes(2);
+		expect(publishAgentMock.mock.calls.every((call) => call[3] === 'v2')).toBe(true);
 	});
 });

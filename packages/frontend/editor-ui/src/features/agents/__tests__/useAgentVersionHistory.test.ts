@@ -1,5 +1,6 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { AgentVersionMetadataModalData } from '../components/AgentVersionMetadataModal.vue';
 import type { AgentVersionListItemDto } from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
@@ -8,7 +9,8 @@ const mocks = vi.hoisted(() => ({
 	publishAgent: vi.fn(),
 	revertAgentToVersion: vi.fn(),
 	openAgentConfirmationModal: vi.fn(),
-	showAgentPublishedConfirmation: vi.fn(),
+	openVersionMetadata: vi.fn(),
+	updateAgentVersion: vi.fn(),
 	showMessage: vi.fn(),
 	showError: vi.fn(),
 	track: vi.fn(),
@@ -20,12 +22,16 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 
 vi.mock('../composables/useAgentApi', () => ({
 	listAgentVersions: mocks.listAgentVersions,
-	publishAgent: mocks.publishAgent,
+	updateAgentVersion: mocks.updateAgentVersion,
 	revertAgentToVersion: mocks.revertAgentToVersion,
 }));
 
 vi.mock('../composables/useAgentPublish', () => ({
-	showAgentPublishedConfirmation: mocks.showAgentPublishedConfirmation,
+	useAgentPublish: () => ({ publish: mocks.publishAgent }),
+}));
+
+vi.mock('../composables/useAgentVersionMetadataModal', () => ({
+	useAgentVersionMetadataModal: () => ({ openVersionMetadata: mocks.openVersionMetadata }),
 }));
 
 vi.mock('../composables/useAgentConfirmationModal', () => ({
@@ -278,43 +284,56 @@ describe('useAgentVersionHistory', () => {
 	});
 
 	describe('publishVersion', () => {
-		it('calls publishAgent with versionId, refreshes the list, and shows a toast', async () => {
-			const updatedAgent = { id: 'agent-1', activeVersionId: 'v1' };
-			mocks.publishAgent.mockResolvedValue(updatedAgent);
-			mocks.listAgentVersions.mockResolvedValue([makeVersion('v1', { isActive: true })]);
-
+		it('uses the shared publish dialog for the selected version and refreshes on success', async () => {
+			const updated = { id: 'agent-1', activeVersionId: 'v1' };
+			mocks.publishAgent.mockResolvedValue(updated);
+			mocks.listAgentVersions.mockResolvedValue([makeVersion('v1')]);
 			const history = useAgentVersionHistory();
-			const result = await history.publishVersion('project-1', 'agent-1', 'v1');
-
-			expect(mocks.publishAgent).toHaveBeenCalledWith(
-				expect.anything(),
-				'project-1',
-				'agent-1',
-				'v1',
-			);
-			expect(mocks.openAgentConfirmationModal).not.toHaveBeenCalled();
-			expect(mocks.showMessage).toHaveBeenCalledWith(
-				expect.objectContaining({
-					title: 'agents.versionHistory.publish.toast.title',
-					type: 'success',
-				}),
-			);
-			expect(mocks.showAgentPublishedConfirmation).toHaveBeenCalledWith('agent-1');
-			expect(result).toBe(updatedAgent);
+			expect(await history.publishVersion('project-1', 'agent-1', 'v1')).toBe(updated);
+			expect(mocks.publishAgent).toHaveBeenCalledWith('project-1', 'agent-1', 'v1');
+			expect(history.items.value).toEqual([makeVersion('v1')]);
 		});
-
-		it('surfaces an error toast and returns null when the API fails', async () => {
-			mocks.publishAgent.mockRejectedValue(new Error('500'));
-
+		it('leaves the list unchanged when the publish dialog is cancelled', async () => {
+			mocks.publishAgent.mockResolvedValue(null);
 			const history = useAgentVersionHistory();
-			const result = await history.publishVersion('project-1', 'agent-1', 'v1');
-
-			expect(mocks.showError).toHaveBeenCalledWith(
-				expect.any(Error),
-				'agents.versionHistory.publish.error',
-			);
-			expect(mocks.showAgentPublishedConfirmation).not.toHaveBeenCalled();
-			expect(result).toBeNull();
+			expect(await history.publishVersion('project-1', 'agent-1', 'v1')).toBeNull();
+			expect(mocks.listAgentVersions).not.toHaveBeenCalled();
 		});
+	});
+
+	it('edits the selected version metadata without creating a publication', async () => {
+		const version = makeVersion('v1', { name: 'Release', description: 'Notes' });
+		mocks.listAgentVersions.mockResolvedValue([version]);
+		mocks.openVersionMetadata.mockImplementationOnce(
+			async (options: AgentVersionMetadataModalData) => {
+				expect(options).toMatchObject({ mode: 'edit', name: 'Release', description: 'Notes' });
+				return await options.onSubmit({ name: null, description: null });
+			},
+		);
+		const history = useAgentVersionHistory();
+		await history.refresh('project-1', 'agent-1');
+		await history.editVersion('project-1', 'agent-1', 'v1');
+		expect(mocks.updateAgentVersion).toHaveBeenCalledWith(
+			expect.anything(),
+			'project-1',
+			'agent-1',
+			'v1',
+			{ name: null, description: null },
+		);
+		expect(mocks.publishAgent).not.toHaveBeenCalled();
+	});
+	it('does not replace another agent history after a pending publish completes', async () => {
+		const publication = deferred<null | { id: string }>();
+		mocks.publishAgent.mockReturnValue(publication.promise);
+		mocks.listAgentVersions.mockResolvedValue([
+			makeVersion('other-version', { agentId: 'agent-2' }),
+		]);
+		const history = useAgentVersionHistory();
+		const pending = history.publishVersion('project-1', 'agent-1', 'v1');
+		await history.refresh('project-1', 'agent-2');
+		publication.resolve({ id: 'agent-1' });
+		await pending;
+		expect(mocks.listAgentVersions).toHaveBeenCalledTimes(1);
+		expect(history.items.value[0].agentId).toBe('agent-2');
 	});
 });

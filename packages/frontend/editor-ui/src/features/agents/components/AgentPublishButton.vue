@@ -150,9 +150,14 @@ const dropdownActions = computed(() => {
 
 async function onPublishClick() {
 	if (isPublishDisabled.value) return;
+	const { projectId, agentId } = props;
 	if (props.beforePublish && !(await props.beforePublish())) return;
-	const updated = await publish(props.projectId, props.agentId);
-	if (updated) emit('published', updated);
+	if (projectId !== props.projectId || agentId !== props.agentId) return;
+	const versionId = props.agent?.versionId;
+	if (!versionId) return;
+	const updated = await publish(projectId, agentId, versionId);
+	if (updated && projectId === props.projectId && agentId === props.agentId)
+		emit('published', updated);
 }
 
 useKeybindings({

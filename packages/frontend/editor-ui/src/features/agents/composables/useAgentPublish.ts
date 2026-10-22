@@ -9,8 +9,15 @@ import {
 	AGENT_PUBLISHED_MODAL_KEY,
 	LOCAL_STORAGE_HIDE_AGENT_PUBLISHED_CONFIRMATION,
 } from '../constants';
-import { publishAgent, revertAgentToPublished, unpublishAgent } from './useAgentApi';
+import {
+	getAgent,
+	getAgentVersion,
+	publishAgent,
+	revertAgentToPublished,
+	unpublishAgent,
+} from './useAgentApi';
 import { useAgentConfirmationModal } from './useAgentConfirmationModal';
+import { useAgentVersionMetadataModal } from './useAgentVersionMetadataModal';
 import { useAgentTelemetry } from './useAgentTelemetry';
 import { upsertProjectAgentsListCache } from './useProjectAgentsList';
 import type { AgentResource } from '../types';
@@ -41,15 +48,52 @@ export function useAgentPublish() {
 	const { trackRevertedChangesOnAgent } = useAgentTelemetry();
 
 	const publishing = ref(false);
+	const { openVersionMetadata } = useAgentVersionMetadataModal();
 
-	async function publish(projectId: string, agentId: string): Promise<AgentResource | null> {
+	async function publish(
+		projectId: string,
+		agentId: string,
+		versionId?: string,
+	): Promise<AgentResource | null> {
 		if (publishing.value) return null;
 		publishing.value = true;
 		try {
-			const updated = await publishAgent(rootStore.restApiContext, projectId, agentId);
-			upsertProjectAgentsListCache(projectId, updated);
-			showMessage({ title: locale.baseText('agents.publish.toast.published'), type: 'success' });
-			showAgentPublishedConfirmation(agentId);
+			const selectedId =
+				versionId ?? (await getAgent(rootStore.restApiContext, projectId, agentId)).versionId;
+			if (!selectedId) return null;
+			const version = await getAgentVersion(
+				rootStore.restApiContext,
+				projectId,
+				agentId,
+				selectedId,
+			);
+			let updated: AgentResource | null = null;
+			const published = await openVersionMetadata({
+				mode: 'publish',
+				name: version.name,
+				description: version.description,
+				onSubmit: async (metadata) => {
+					try {
+						updated = await publishAgent(
+							rootStore.restApiContext,
+							projectId,
+							agentId,
+							selectedId,
+							metadata,
+						);
+						upsertProjectAgentsListCache(projectId, updated);
+						showMessage({
+							title: locale.baseText('agents.publish.toast.published'),
+							type: 'success',
+						});
+						return true;
+					} catch (error) {
+						showError(error, locale.baseText('agents.publish.error.publish'));
+						return false;
+					}
+				},
+			});
+			if (published) showAgentPublishedConfirmation(agentId);
 			return updated;
 		} catch (error) {
 			showError(error, locale.baseText('agents.publish.error.publish'));

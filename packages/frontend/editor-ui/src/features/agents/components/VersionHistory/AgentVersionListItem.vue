@@ -2,14 +2,14 @@
 import { computed } from 'vue';
 import type { AgentVersionListItemDto } from '@n8n/api-types';
 import type { UserAction } from '@n8n/design-system';
-import { N8nActionToggle, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nActionToggle, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import type { IUser } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
 import AgentVersionStatusIndicator from './AgentVersionStatusIndicator.vue';
 import { getVersionLabel } from '@n8n/composables/useWorkflowVersionLabel';
 import { formatTimestamp } from './agentVersionHistory.utils';
 
-export type AgentVersionAction = 'revert' | 'publish' | 'unpublish';
+export type AgentVersionAction = 'edit' | 'revert' | 'publish' | 'unpublish';
 
 const props = defineProps<{
 	item: AgentVersionListItemDto;
@@ -75,7 +75,7 @@ function onAction(value: string) {
 		data-test-id="agent-version-history-list-item"
 	>
 		<N8nTooltip :content="statusTooltip">
-			<span :class="$style.timelineColumn" :aria-label="statusLabel" role="img">
+			<span :class="$style.timelineColumn" :aria-label="statusLabel" role="img" tabindex="0">
 				<AgentVersionStatusIndicator :status="status" />
 			</span>
 		</N8nTooltip>
@@ -103,7 +103,7 @@ function onAction(value: string) {
 			</N8nText>
 			<div :class="$style.metaRow">
 				<N8nText size="small" color="text-base" :class="$style.metaAuthor">
-					{{ item.author }}
+					{{ item.author }},
 				</N8nText>
 				<N8nText tag="time" size="small" color="text-base" :class="$style.metaTime">
 					{{ formattedCreatedAt }}
@@ -119,7 +119,18 @@ function onAction(value: string) {
 			data-test-id="agent-version-history-item-actions"
 			@action="onAction"
 			@click.stop
-		/>
+		>
+			<N8nIconButton
+				icon="ellipsis-12"
+				variant="ghost"
+				size="small"
+				:aria-label="
+					i18n.baseText('agents.versionHistory.item.actions.label', {
+						interpolate: { version: versionLabel },
+					})
+				"
+			/>
+		</N8nActionToggle>
 	</li>
 </template>
 

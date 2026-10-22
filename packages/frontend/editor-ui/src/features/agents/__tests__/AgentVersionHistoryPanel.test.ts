@@ -17,6 +17,7 @@ const versionHistoryMock = {
 	fetchMore: vi.fn(),
 	revertToVersion: vi.fn(),
 	publishVersion: vi.fn(),
+	editVersion: vi.fn(),
 };
 
 vi.mock('../composables/useAgentVersionHistory', () => ({
@@ -99,7 +100,7 @@ describe('AgentVersionHistoryPanel — RBAC gating of row actions', () => {
 
 		const list = wrapper.findComponent({ name: 'AgentVersionList' });
 		const actions = list.props('actions') as Array<{ value: string }>;
-		expect(actions.map((a) => a.value)).toEqual(['revert', 'publish']);
+		expect(actions.map((a) => a.value)).toEqual(['edit', 'revert', 'publish']);
 	});
 
 	it('omits the revert action when the user cannot update', async () => {
@@ -119,7 +120,7 @@ describe('AgentVersionHistoryPanel — RBAC gating of row actions', () => {
 
 		const list = wrapper.findComponent({ name: 'AgentVersionList' });
 		const actions = list.props('actions') as Array<{ value: string }>;
-		expect(actions.map((a) => a.value)).toEqual(['revert']);
+		expect(actions.map((a) => a.value)).toEqual(['edit', 'revert']);
 	});
 
 	it('exposes no row actions for a read-only viewer', async () => {
@@ -148,7 +149,7 @@ describe('AgentVersionHistoryPanel — published-row actions', () => {
 
 		const list = wrapper.findComponent({ name: 'AgentVersionList' });
 		const activeActions = list.props('activeActions') as Array<{ value: string }>;
-		expect(activeActions.map((a) => a.value)).toEqual(['revert', 'unpublish']);
+		expect(activeActions.map((a) => a.value)).toEqual(['edit', 'revert', 'unpublish']);
 	});
 
 	it('disables Revert when the draft already matches the published version', async () => {
@@ -182,7 +183,7 @@ describe('AgentVersionHistoryPanel — published-row actions', () => {
 
 		const list = wrapper.findComponent({ name: 'AgentVersionList' });
 		const activeActions = list.props('activeActions') as Array<{ value: string }>;
-		expect(activeActions.map((a) => a.value)).toEqual(['revert']);
+		expect(activeActions.map((a) => a.value)).toEqual(['edit', 'revert']);
 	});
 
 	it('omits Revert on the published row when the user cannot update', async () => {
@@ -308,4 +309,20 @@ it('selects the requested tab and keeps tab changes in sync with its parent', as
 	expect(wrapper.findComponent({ name: 'AgentVersionList' }).exists()).toBe(true);
 	wrapper.getComponent({ name: 'N8nTabs' }).vm.$emit('update:modelValue', 'timeline');
 	expect(wrapper.emitted('update:activeTab')).toEqual([['timeline']]);
+});
+
+it('checks update access again before editing version details', async () => {
+	agentPermissionsMock.canUpdate.value = true;
+	const wrapper = mountPanel();
+	await flushPromises();
+	const list = wrapper.findComponent({ name: 'AgentVersionList' });
+	list.vm.$emit('action', { action: 'edit', versionId: 'v1' });
+	await flushPromises();
+	expect(versionHistoryMock.editVersion).toHaveBeenCalledWith('project-1', 'agent-1', 'v1');
+	versionHistoryMock.editVersion.mockClear();
+	agentPermissionsMock.canUpdate.value = false;
+	list.vm.$emit('action', { action: 'edit', versionId: 'v1' });
+	await flushPromises();
+	expect(versionHistoryMock.editVersion).not.toHaveBeenCalled();
+	wrapper.unmount();
 });

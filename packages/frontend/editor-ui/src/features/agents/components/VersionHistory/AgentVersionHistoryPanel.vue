@@ -51,6 +51,7 @@ const {
 	fetchMore,
 	revertToVersion,
 	publishVersion,
+	editVersion,
 } = useAgentVersionHistory();
 const { unpublish } = useAgentPublish();
 
@@ -63,6 +64,11 @@ const agentCollaborationStore = useAgentCollaborationStore();
 const actions = computed<Array<UserAction<IUser>>>(() => {
 	const result: Array<UserAction<IUser>> = [];
 	if (canUpdate.value) {
+		result.push({
+			label: i18n.baseText('agents.versionHistory.metadata.editTitle'),
+			value: 'edit',
+			disabled: Boolean(props.editingLocked),
+		});
 		result.push({
 			label: i18n.baseText('agents.versionHistory.item.actions.revert'),
 			value: 'revert',
@@ -86,6 +92,11 @@ const actions = computed<Array<UserAction<IUser>>>(() => {
 const activeActions = computed<Array<UserAction<IUser>>>(() => {
 	const result: Array<UserAction<IUser>> = [];
 	if (canUpdate.value) {
+		result.push({
+			label: i18n.baseText('agents.versionHistory.metadata.editTitle'),
+			value: 'edit',
+			disabled: Boolean(props.editingLocked),
+		});
 		result.push({
 			label: i18n.baseText('agents.versionHistory.item.actions.revert'),
 			value: 'revert',
@@ -115,25 +126,29 @@ watch(
 
 async function onAction({ action, versionId }: { action: AgentVersionAction; versionId: string }) {
 	if (props.editingLocked) return;
-	if (action === 'revert' && !canUpdate.value) return;
+	if ((action === 'revert' || action === 'edit') && !canUpdate.value) return;
 	if (action === 'publish' && !canPublish.value) return;
 	if (action === 'unpublish' && !canUnpublish.value) return;
 	// Acquire the write lock before any mutating version action — the lock
 	// is lazy (acquired on first edit, released on inactivity), matching
 	// the workflow collaboration pattern.
 	agentCollaborationStore.requestWriteAccess();
-	if (action === 'revert') {
-		const result = await revertToVersion(props.projectId, props.agentId, versionId);
-		if (result) emit('reverted', result);
+	const { projectId, agentId } = props;
+	const isCurrentAgent = () => projectId === props.projectId && agentId === props.agentId;
+	if (action === 'edit') {
+		await editVersion(projectId, agentId, versionId);
+	} else if (action === 'revert') {
+		const result = await revertToVersion(projectId, agentId, versionId);
+		if (result && isCurrentAgent()) emit('reverted', result);
 	} else if (action === 'publish') {
-		const result = await publishVersion(props.projectId, props.agentId, versionId);
-		if (result) emit('published', result);
+		const result = await publishVersion(projectId, agentId, versionId);
+		if (result && isCurrentAgent()) emit('published', result);
 	} else {
 		// Unpublish reuses the shared publish flow (confirmation modal + toast +
 		// telemetry); refresh the list ourselves since that flow doesn't own it.
-		const result = await unpublish(props.projectId, props.agentId, props.agentName);
-		if (result) {
-			await refresh(props.projectId, props.agentId);
+		const result = await unpublish(projectId, agentId, props.agentName);
+		if (result && isCurrentAgent()) {
+			await refresh(projectId, agentId);
 			emit('unpublished', result);
 		}
 	}
