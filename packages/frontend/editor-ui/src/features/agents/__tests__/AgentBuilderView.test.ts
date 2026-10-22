@@ -3369,6 +3369,25 @@ describe('AgentBuilderView — configuration validation', () => {
 		expect(openModalWithDataMock).not.toHaveBeenCalled();
 	});
 
+	it.each([false, true])(
+		'flushes history edits without blocking on an invalid current draft (save fails: %s)',
+		async (saveFails) => {
+			const wrapper = await renderView();
+			getAgentConfigValidationMock.mockResolvedValue({
+				status: 'invalid',
+				issues: [{ code: 'missing_required', path: 'model', capability: { kind: 'agent' } }],
+			});
+			const vm = wrapper.vm as unknown as {
+				flushBeforePublish: () => Promise<boolean>;
+				onConfigFieldUpdate: (updates: Partial<TestAgentConfig>) => void;
+			};
+			if (saveFails) updateConfigMock.mockRejectedValueOnce(new Error('Save failed'));
+			vm.onConfigFieldUpdate({ instructions: 'New draft instructions' });
+			await expect(vm.flushBeforePublish()).resolves.toBe(!saveFails);
+			expect(updateConfigMock).toHaveBeenCalled();
+		},
+	);
+
 	it('flushes pending edits and revalidates before publishing, aborting when still invalid', async () => {
 		getAgentConfigValidationMock
 			.mockResolvedValueOnce({ status: 'valid', issues: [] })

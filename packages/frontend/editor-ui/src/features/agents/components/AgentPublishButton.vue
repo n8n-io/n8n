@@ -155,7 +155,12 @@ async function onPublishClick() {
 	if (projectId !== props.projectId || agentId !== props.agentId) return;
 	const versionId = props.agent?.versionId;
 	if (!versionId) return;
-	const updated = await publish(projectId, agentId, versionId);
+	const updated = await publish(
+		projectId,
+		agentId,
+		versionId,
+		() => projectId === props.projectId && agentId === props.agentId,
+	);
 	if (updated && projectId === props.projectId && agentId === props.agentId)
 		emit('published', updated);
 }

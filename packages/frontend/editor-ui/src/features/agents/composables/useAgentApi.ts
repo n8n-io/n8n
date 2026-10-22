@@ -650,13 +650,14 @@ export const updateAgentVersion = async (
 	agentId: string,
 	versionId: string,
 	metadata: UpdateAgentVersionDto,
-): Promise<AgentVersionListItemDto> =>
+): Promise<void> => {
 	await makeRestApiRequest(
 		context,
 		'PATCH',
 		`/projects/${projectId}/agents/v2/${agentId}/versions/${versionId}`,
 		metadata,
 	);
+};
 
 export const listAgentVersions = async (
 	context: IRestApiContext,

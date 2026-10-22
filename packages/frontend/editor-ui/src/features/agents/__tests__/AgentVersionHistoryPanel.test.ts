@@ -326,3 +326,43 @@ it('checks update access again before editing version details', async () => {
 	expect(versionHistoryMock.editVersion).not.toHaveBeenCalled();
 	wrapper.unmount();
 });
+
+describe('AgentVersionHistoryPanel — pending draft edits', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		agentPermissionsMock.canPublish.value = true;
+	});
+
+	it('flushes the draft before publishing the selected saved version', async () => {
+		const flush = Promise.withResolvers<boolean>();
+		const beforePublish = vi.fn().mockReturnValue(flush.promise);
+		const wrapper = mountPanel({ beforePublish });
+		await flushPromises();
+		wrapper
+			.findComponent({ name: 'AgentVersionList' })
+			.vm.$emit('action', { action: 'publish', versionId: 'older-version' });
+		expect(beforePublish).toHaveBeenCalled();
+		expect(versionHistoryMock.publishVersion).not.toHaveBeenCalled();
+		await wrapper.setProps({ currentVersionId: 'new-autosave' });
+		flush.resolve(true);
+		await flushPromises();
+		expect(versionHistoryMock.publishVersion).toHaveBeenCalledWith(
+			'project-1',
+			'agent-1',
+			'older-version',
+		);
+	});
+
+	it.each(['failed-save', 'changed-agent'])('stops publication after %s', async (reason) => {
+		const flush = Promise.withResolvers<boolean>();
+		const wrapper = mountPanel({ beforePublish: () => flush.promise });
+		await flushPromises();
+		wrapper
+			.findComponent({ name: 'AgentVersionList' })
+			.vm.$emit('action', { action: 'publish', versionId: 'older-version' });
+		if (reason === 'changed-agent') await wrapper.setProps({ agentId: 'agent-2' });
+		flush.resolve(reason !== 'failed-save');
+		await flushPromises();
+		expect(versionHistoryMock.publishVersion).not.toHaveBeenCalled();
+	});
+});

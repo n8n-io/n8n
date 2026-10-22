@@ -25,6 +25,7 @@ const props = defineProps<{
 	// edits — disables revert/publish/unpublish actions to avoid requests
 	// that can only fail with 409/423.
 	editingLocked?: boolean;
+	beforePublish?: () => Promise<boolean>;
 }>();
 
 const emit = defineEmits<{
@@ -141,6 +142,8 @@ async function onAction({ action, versionId }: { action: AgentVersionAction; ver
 		const result = await revertToVersion(projectId, agentId, versionId);
 		if (result && isCurrentAgent()) emit('reverted', result);
 	} else if (action === 'publish') {
+		if (props.beforePublish && !(await props.beforePublish())) return;
+		if (!isCurrentAgent() || props.editingLocked) return;
 		const result = await publishVersion(projectId, agentId, versionId);
 		if (result && isCurrentAgent()) emit('published', result);
 	} else {

@@ -196,3 +196,15 @@ describe('useAgentPublish', () => {
 		expect(publishAgentMock.mock.calls.every((call) => call[3] === 'v2')).toBe(true);
 	});
 });
+
+it('does not open a publish dialog after the target agent changes during loading', async () => {
+	const version = Promise.withResolvers<{ versionId: string }>();
+	getAgentVersionMock.mockReturnValueOnce(version.promise);
+	openVersionMetadataMock.mockClear();
+	let isCurrent = true;
+	const pending = useAgentPublish().publish('p1', 'a1', 'v1', () => isCurrent);
+	isCurrent = false;
+	version.resolve({ versionId: 'v1' });
+	expect(await pending).toBeNull();
+	expect(openVersionMetadataMock).not.toHaveBeenCalled();
+});

@@ -1974,27 +1974,24 @@ watch(isEditingLocked, (locked) => {
 	mcpAvailabilityOverride.value = null;
 });
 
-/**
- * Authoritative pre-publish gate for the frontend: flush any pending edit so
- * the backend validates the config the user is about to publish (not a
- * stale persisted version), then refresh the readiness result and report
- * whether it is safe to call the publish endpoint. The publish endpoint
- * re-validates independently, so this is a UX affordance, not the only guard.
- */
-async function refreshValidationBeforePublish(): Promise<boolean> {
-	// Capture the target before the awaits: when the autosave flush or the
-	// validation refresh resolves, the user may have switched to another
-	// agent, and the continuation must not act on the stale one.
+async function flushBeforePublish(): Promise<boolean> {
 	const targetProjectId = projectId.value;
 	const targetAgentId = agentId.value;
-	// Acquire the write lock before publishing — the lock is lazy.
 	agentCollaborationStore.requestWriteAccess();
 	try {
-		await flushAutosave();
+		return (
+			isPersistedSave(await flushAutosave()) && !isStaleAgentTarget(targetProjectId, targetAgentId)
+		);
 	} catch {
 		return false;
 	}
-	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
+}
+
+/** Save current edits, then check whether the current draft can be published. */
+async function refreshValidationBeforePublish(): Promise<boolean> {
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
+	if (!(await flushBeforePublish())) return false;
 	await refreshConfigValidation(targetProjectId, targetAgentId);
 	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
 	if (configValidation.value === null) return false;
@@ -3448,6 +3445,7 @@ useKeybindings({
 					"
 					:agent-name="agent?.name ?? agentName"
 					:editing-locked="isEditingLocked"
+					:before-publish="flushBeforePublish"
 					@close="onCloseVersionHistory"
 					@reverted="onReverted"
 					@published="onPublished"

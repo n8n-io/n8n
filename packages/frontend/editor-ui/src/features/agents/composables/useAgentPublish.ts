@@ -54,6 +54,7 @@ export function useAgentPublish() {
 		projectId: string,
 		agentId: string,
 		versionId?: string,
+		isCurrent: () => boolean = () => true,
 	): Promise<AgentResource | null> {
 		if (publishing.value) return null;
 		publishing.value = true;
@@ -67,9 +68,11 @@ export function useAgentPublish() {
 				agentId,
 				selectedId,
 			);
+			if (!isCurrent()) return null;
 			let updated: AgentResource | null = null;
 			const published = await openVersionMetadata({
 				mode: 'publish',
+				isCurrent,
 				name: version.name,
 				description: version.description,
 				onSubmit: async (metadata) => {
@@ -93,7 +96,7 @@ export function useAgentPublish() {
 					}
 				},
 			});
-			if (published) showAgentPublishedConfirmation(agentId);
+			if (published && isCurrent()) showAgentPublishedConfirmation(agentId);
 			return updated;
 		} catch (error) {
 			showError(error, locale.baseText('agents.publish.error.publish'));

@@ -29,7 +29,7 @@ export function useAgentVersionHistory() {
 	const hasMore = ref(true);
 	const acting = ref(false);
 	const hasLoadError = ref(false);
-	let agentKey = '';
+	const agentKey = ref('');
 	let fetchedCount = 0;
 
 	// Guards against out-of-order responses. Each load captures the current
@@ -40,8 +40,8 @@ export function useAgentVersionHistory() {
 	let requestToken = 0;
 
 	async function refresh(projectId: string, agentId: string): Promise<void> {
-		if (agentKey !== `${projectId}/${agentId}`) {
-			agentKey = `${projectId}/${agentId}`;
+		if (agentKey.value !== `${projectId}/${agentId}`) {
+			agentKey.value = `${projectId}/${agentId}`;
 			items.value = [];
 			isInitialLoad.value = true;
 			fetchedCount = 0;
@@ -125,7 +125,8 @@ export function useAgentVersionHistory() {
 				title: locale.baseText('agents.versionHistory.revert.toast.title'),
 				type: 'success',
 			});
-			if (!agentKey || agentKey === `${projectId}/${agentId}`) await refresh(projectId, agentId);
+			if (!agentKey.value || agentKey.value === `${projectId}/${agentId}`)
+				await refresh(projectId, agentId);
 			return updated;
 		} catch (error) {
 			showError(error, locale.baseText('agents.versionHistory.revert.error'));
@@ -144,8 +145,13 @@ export function useAgentVersionHistory() {
 
 		acting.value = true;
 		try {
-			const updated = await publish(projectId, agentId, versionId);
-			if (updated && (!agentKey || agentKey === `${projectId}/${agentId}`))
+			const updated = await publish(
+				projectId,
+				agentId,
+				versionId,
+				() => !agentKey.value || agentKey.value === `${projectId}/${agentId}`,
+			);
+			if (updated && (!agentKey.value || agentKey.value === `${projectId}/${agentId}`))
 				await refresh(projectId, agentId);
 			return updated;
 		} finally {
@@ -161,6 +167,7 @@ export function useAgentVersionHistory() {
 		try {
 			await openVersionMetadata({
 				mode: 'edit',
+				isCurrent: () => !agentKey.value || agentKey.value === `${projectId}/${agentId}`,
 				name: version.name,
 				description: version.description,
 				onSubmit: async (metadata) => {
@@ -172,7 +179,7 @@ export function useAgentVersionHistory() {
 							versionId,
 							metadata,
 						);
-						if (!agentKey || agentKey === `${projectId}/${agentId}`)
+						if (!agentKey.value || agentKey.value === `${projectId}/${agentId}`)
 							await refresh(projectId, agentId);
 						return true;
 					} catch (error) {

@@ -290,7 +290,12 @@ describe('useAgentVersionHistory', () => {
 			mocks.listAgentVersions.mockResolvedValue([makeVersion('v1')]);
 			const history = useAgentVersionHistory();
 			expect(await history.publishVersion('project-1', 'agent-1', 'v1')).toBe(updated);
-			expect(mocks.publishAgent).toHaveBeenCalledWith('project-1', 'agent-1', 'v1');
+			expect(mocks.publishAgent).toHaveBeenCalledWith(
+				'project-1',
+				'agent-1',
+				'v1',
+				expect.any(Function),
+			);
 			expect(history.items.value).toEqual([makeVersion('v1')]);
 		});
 		it('leaves the list unchanged when the publish dialog is cancelled', async () => {
