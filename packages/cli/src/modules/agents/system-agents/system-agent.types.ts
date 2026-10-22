@@ -4,6 +4,7 @@ import type {
 	JSONObject,
 	ResumeOptions,
 	RunOptions,
+	SideCallUsageReport,
 } from '@n8n/agents';
 import type { User } from '@n8n/db';
 
@@ -75,9 +76,25 @@ export interface SystemAgentTurnHandle {
 	/**
 	 * Extra SDK run options, such as telemetry. `abortSignal` stops the turn at
 	 * any time. The host sets `persistence`, so a provider cannot change it.
+	 * Use `onSideCallUsage` on the handle, not here.
 	 */
-	runOptions?: Omit<Partial<RunOptions & ExecutionOptions> & Partial<ResumeOptions>, 'persistence'>;
+	runOptions?: Omit<
+		Partial<RunOptions & ExecutionOptions> & Partial<ResumeOptions>,
+		'persistence' | 'onSideCallUsage'
+	>;
 	onChunk?: (chunk: AgentExecutionStreamChunk) => void;
+	/**
+	 * Called once for each model call that runs beside the turn: title
+	 * generation, the observation-log observer and reflector, and episodic
+	 * memory. The report has the model, the token usage, the cost and a
+	 * `reportId` that is stable for the call, so a provider can bill it once.
+	 * The runtime sends no report for a call without usage, or when it cannot
+	 * get a cost: the catalog is unavailable or the model has no pricing. Do
+	 * not use this callback as a complete count of model calls.
+	 * The host still adds the cost to the execution. A failing callback only
+	 * logs a warning.
+	 */
+	onSideCallUsage?: (report: SideCallUsageReport) => void | Promise<void>;
 	/**
 	 * Called once per turn with its outcome, before the runtime stores the
 	 * turn record. A turn without an execution record settles after it fails.

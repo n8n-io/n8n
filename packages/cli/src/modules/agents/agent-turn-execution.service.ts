@@ -619,12 +619,36 @@ export class AgentTurnExecutionService {
 		// Forward side-call model costs (title generation, observation-log
 		// observer/reflector, episodic-memory model calls) onto this execution
 		// row and its thread. The SDK prices each call; the host only adds the
-		// cost. Best-effort and idempotent per reportId.
+		// cost. Best-effort and idempotent per reportId. A caller's own callback
+		// still receives every report, for example to bill it.
 		const threadId = config.context.threadId;
+		const callerOnSideCallUsage = turn.options.onSideCallUsage;
 		turn.options.onSideCallUsage = (report: SideCallUsageReport) => {
 			void this.agentExecutionService.recordSideCallUsage(executionId, threadId, report);
+			if (callerOnSideCallUsage) this.forwardSideCallUsage(callerOnSideCallUsage, report);
 		};
 		return await this.startTurn(turn, config, recorder, state);
+	}
+
+	/**
+	 * Call a caller's side-call usage callback. A side call runs inside memory
+	 * processing, so a failing callback only logs a warning.
+	 */
+	private forwardSideCallUsage(
+		onSideCallUsage: NonNullable<ExecutionOptions['onSideCallUsage']>,
+		report: SideCallUsageReport,
+	): void {
+		const warn = (error: unknown) =>
+			this.logger.warn('Agent side-call usage callback failed', {
+				task: report.task,
+				reportId: report.reportId,
+				error,
+			});
+		try {
+			void Promise.resolve(onSideCallUsage(report)).catch(warn);
+		} catch (error) {
+			warn(error);
+		}
 	}
 
 	private *streamStartTurnNotices(

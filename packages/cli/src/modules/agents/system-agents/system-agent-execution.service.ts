@@ -94,10 +94,16 @@ interface TurnWorkspace {
 	release(outcome: SystemAgentTurnOutcome): Promise<void>;
 }
 
-/** The SDK run options of a handle, without its abort signal. `runTurn` links that signal. */
+/**
+ * The SDK run options of a handle, without its abort signal. `runTurn` links
+ * that signal. Adds the handle's side-call usage callback.
+ */
 function runOptionsOf(handle: SystemAgentTurnHandle) {
 	const { abortSignal: _abortSignal, ...runOptions } = handle.runOptions ?? {};
-	return runOptions;
+	return {
+		...runOptions,
+		...(handle.onSideCallUsage ? { onSideCallUsage: handle.onSideCallUsage } : {}),
+	};
 }
 
 /**
