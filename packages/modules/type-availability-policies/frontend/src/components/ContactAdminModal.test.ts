@@ -190,7 +190,7 @@ describe('ContactAdminModal', () => {
 			);
 		});
 
-		it('lists the instance owners and admins when the project has no admin of its own', async () => {
+		it('lists the instance owners and admins as instance admins when the project has no admin of its own', async () => {
 			setup([owner]);
 			mockPolicyProject({
 				type: 'team',
@@ -212,12 +212,13 @@ describe('ContactAdminModal', () => {
 					},
 				],
 			});
-			const { findByTestId } = renderComponent({
+			const { findByTestId, getByText } = renderComponent({
 				props: { open: true, nodeTypeName: 'Slack', audience: 'project' },
 			});
 
 			const list = await findByTestId('contact-admin-list');
 
+			expect(getByText('Instance admins')).toBeInTheDocument();
 			expect(list).toHaveTextContent('Katherine Johnson');
 			expect(list).toHaveTextContent('Margaret Hamilton');
 			expect(list).not.toHaveTextContent('Alan Turing');

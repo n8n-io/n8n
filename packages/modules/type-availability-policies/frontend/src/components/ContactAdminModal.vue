@@ -44,12 +44,6 @@ const policiesStore = useTypeAvailabilityPoliciesStore();
 const isLoading = ref(false);
 let lookupId = 0;
 
-const copy = computed(() => CONTACT_DIALOG_COPY[audience]);
-const description = computed(() =>
-	i18n.baseText(copy.value.description[kind], {
-		interpolate: { nodeType: nodeTypeName },
-	}),
-);
 const mailSubject = computed(() =>
 	i18n.baseText(RESTRICTED_TYPE_COPY[kind].mailSubject, {
 		interpolate: { nodeType: nodeTypeName },
@@ -78,16 +72,34 @@ const projectManagerRoles = computed(() => {
 	]);
 });
 
-const projectAdmins = computed<Admin[]>(() => {
-	const project = policiesStore.policyProject;
-	const explicitAdmins = (project?.relations ?? [])
+const projectManagers = computed<Admin[]>(() =>
+	(policiesStore.policyProject?.relations ?? [])
 		.filter((relation) => projectManagerRoles.value.has(relation.role))
-		.filter(hasEmail);
-	return explicitAdmins.length ? explicitAdmins : (project?.implicitMembers ?? []).filter(hasEmail);
+		.filter(hasEmail),
+);
+
+const implicitInstanceAdmins = computed<Admin[]>(() =>
+	(policiesStore.policyProject?.implicitMembers ?? []).filter(hasEmail),
+);
+
+const listedAudience = computed<ContactAudience>(() =>
+	audience === 'project' &&
+	projectManagers.value.length === 0 &&
+	implicitInstanceAdmins.value.length > 0
+		? 'instance'
+		: audience,
+);
+
+const admins = computed(() => {
+	if (audience === 'instance') return instanceAdmins.value;
+	return listedAudience.value === 'project' ? projectManagers.value : implicitInstanceAdmins.value;
 });
 
-const admins = computed(() =>
-	audience === 'project' ? projectAdmins.value : instanceAdmins.value,
+const copy = computed(() => CONTACT_DIALOG_COPY[listedAudience.value]);
+const description = computed(() =>
+	i18n.baseText(copy.value.description[kind], {
+		interpolate: { nodeType: nodeTypeName },
+	}),
 );
 
 watch(
