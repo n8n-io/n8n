@@ -93,7 +93,7 @@ export class AgentSkillRefsService {
 	): Promise<AgentJsonSkillConfig[]> {
 		if (!this.usesSkillsHub) return readLegacyRefs(version.schema);
 		const skillIds = await this.agentSkillRepository.findPinnedSkillIds(version.versionId, ctx);
-		return toSkillRefs(skillIds.map((id) => ({ id })));
+		return versionRefs(version.schema, skillIds);
 	}
 
 	/** The refs of the agent draft and the skill bodies the draft runs. */
@@ -115,7 +115,7 @@ export class AgentSkillRefsService {
 			return { skillRefs, skills: pickBodies(version.skills ?? {}, skillRefs) };
 		}
 		const pinned = await this.agentSkillRepository.findPinned(version.versionId, ctx);
-		const skillRefs = toSkillRefs([...pinned.keys()].map((id) => ({ id })));
+		const skillRefs = versionRefs(version.schema, [...pinned.keys()]);
 		const skills = Object.fromEntries(
 			[...pinned].map(([skillId, row]) => [skillId, toAgentSkill(row)]),
 		);
@@ -406,7 +406,7 @@ export class AgentSkillRefsService {
 				pins: new Map(),
 			};
 		}
-		const { skills, versionByRef } = await this.skillService.snapshotForPublish(
+		const { skills, versionByRef } = await this.skillService.snapshotForSave(
 			toServiceRefs(refs),
 			ctx,
 		);
@@ -417,11 +417,7 @@ export class AgentSkillRefsService {
 		return { schema, skills, pins: versionByRef };
 	}
 
-	/**
-	 * Publish: pin each draft ref to the saved version it runs now. Call it in
-	 * the publish transaction, after the `agent_history` row exists.
-	 */
-	/** Publish, after the `agent_history` row exists: pin the versions of `versionSnapshot`. */
+	/** Pin the resolved skills after the history row exists, in the same transaction. */
 	async pinVersion(
 		agentVersionId: string,
 		snapshot: VersionSnapshot,
@@ -429,6 +425,19 @@ export class AgentSkillRefsService {
 	): Promise<void> {
 		if (snapshot.pins.size === 0) return;
 		await this.agentSkillUsage.pinForPublish(agentVersionId, snapshot.pins, ctx);
+	}
+
+	async assertVersionAccess(
+		agent: Pick<Agent, 'id' | 'projectId'>,
+		version: AgentHistory,
+		ctx: OperationContext,
+	): Promise<void> {
+		if (!this.usesSkillsHub) return;
+		await this.agentSkillUsage.assertVersionAccess(
+			agent,
+			await this.refsForVersion(version, ctx),
+			ctx,
+		);
 	}
 
 	async availabilityOf(
@@ -522,4 +531,15 @@ function toSkillRefs(refs: Array<{ id: string; versionId?: string }>): AgentJson
 		id,
 		...(versionId ? { versionId } : {}),
 	}));
+}
+
+/** Startup skill copies remap legacy IDs. New snapshots retain missing refs for validation. */
+function versionRefs(
+	schema: StoredAgentConfig | null,
+	pinnedIds: string[],
+): AgentJsonSkillConfig[] {
+	const saved = readLegacyRefs(schema);
+	return pinnedIds.some((id) => !saved.some((ref) => ref.id === id))
+		? toSkillRefs(pinnedIds.map((id) => ({ id })))
+		: saved;
 }

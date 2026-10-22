@@ -6,15 +6,9 @@ import { ConflictError } from '@n8n/errors';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
 
-/**
- * Start a new draft if the agent is currently in sync with the published snapshot.
- * Any mutation that changes how the agent would run must call this so that
- * `hasUnpublishedChanges` stays accurate.
- */
+/** Each changed definition needs an ID that cannot refer to an older snapshot. */
 export function markAgentDraftDirty(agent: Agent): void {
-	if (agent.versionId !== null && agent.versionId === agent.activeVersionId) {
-		agent.versionId = uuid();
-	}
+	agent.versionId = uuid();
 }
 
 /**

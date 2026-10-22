@@ -875,8 +875,8 @@ describe('SkillService', () => {
 		});
 	});
 
-	describe('snapshotForPublish', () => {
-		it('locks the skills and resolves the version each ref runs', async () => {
+	describe('snapshotForSave', () => {
+		it('reads saved versions without taking the publication lock', async () => {
 			const a = skillRow('skill_a');
 			const b = skillRow('skill_b');
 			const pinnedB = versionRow(b, 1);
@@ -888,12 +888,12 @@ describe('SkillService', () => {
 			);
 			skills.findVersionsByIds.mockResolvedValue(new Map([[pinnedB.version.id, pinnedB]]));
 
-			const snapshot = await service.snapshotForPublish(
+			const snapshot = await service.snapshotForSave(
 				[{ id: 'skill_a' }, { id: 'skill_b', versionId: pinnedB.version.id }],
 				TX_CTX,
 			);
 
-			expect(skills.lockForPublish).toHaveBeenCalledWith(['skill_a', 'skill_b'], TX_CTX);
+			expect(skills.lockForPublish).not.toHaveBeenCalled();
 			expect(Object.keys(snapshot.skills)).toEqual(['skill_a', 'skill_b']);
 			expect([...snapshot.versionByRef]).toEqual([
 				['skill_a', 'skill_a-v3'],

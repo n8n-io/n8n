@@ -88,8 +88,33 @@ describe('AgentSkillUsageService', () => {
 		agentSkills.findDependencies.mockResolvedValue(new Map());
 		agentSkills.findFollowingAgents.mockResolvedValue([]);
 		agentSkills.findFollowingAgentIds.mockResolvedValue([]);
-		agents.markDraftChangedIfInSync.mockResolvedValue([]);
+		agents.markFollowerDraftsChanged.mockResolvedValue([]);
 		agents.findProjectIdsByIds.mockResolvedValue([]);
+	});
+
+	describe('saved-version access', () => {
+		it.each([{ rows: [] }, { rows: [skillRow('skill_a', { projectId: 'another-project' })] }])(
+			'refuses missing or inaccessible saved skills',
+			async ({ rows }) => {
+				skills.findByIds.mockResolvedValue(rows);
+				await expect(
+					service.assertVersionAccess(
+						{ id: 'agent-1', projectId: PROJECT },
+						[{ id: 'skill_a' }],
+						TX_CTX,
+					),
+				).rejects.toThrow('A saved skill is no longer available to this agent');
+			},
+		);
+		it('holds the skill lock through publication and accepts an accessible skill', async () => {
+			skills.findByIds.mockResolvedValue([skillRow('skill_a', { projectId: PROJECT })]);
+			await service.assertVersionAccess(
+				{ id: 'agent-1', projectId: PROJECT },
+				[{ id: 'skill_a' }],
+				TX_CTX,
+			);
+			expect(skills.lockForPublish).toHaveBeenCalledWith(['skill_a'], TX_CTX);
+		});
 	});
 
 	describe('pinForPublish', () => {
@@ -349,7 +374,7 @@ describe('AgentSkillUsageService', () => {
 
 			expect(ids).toEqual(['agent-1', 'agent-2']);
 			expect(agentSkills.findFollowingAgentIds).toHaveBeenCalledWith(['skill_a'], TX_CTX);
-			expect(agents.markDraftChangedIfInSync).toHaveBeenCalledWith(['agent-1', 'agent-2'], TX_CTX);
+			expect(agents.markFollowerDraftsChanged).toHaveBeenCalledWith(['agent-1', 'agent-2'], TX_CTX);
 		});
 	});
 

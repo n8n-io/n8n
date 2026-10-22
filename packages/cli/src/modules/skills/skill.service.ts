@@ -410,18 +410,13 @@ export class SkillService {
 		}
 	}
 
-	// ---------------------------------------------------------------- publish
+	// ---------------------------------------------------------------- snapshots
 
-	/**
-	 * Publish, step 1: the version each ref resolves to. Publish
-	 * creates no version. Needs the caller's transaction for the publish lock.
-	 */
-	async snapshotForPublish(
+	/** Saved bodies are immutable. Read them without reversing the skill-edit lock order. */
+	async snapshotForSave(
 		refs: SkillRef[],
 		ctx: OperationContext,
 	): Promise<{ skills: Record<string, AgentSkill>; versionByRef: Map<string, string> }> {
-		const refIds = [...new Set(refs.map((ref) => ref.id))];
-		await this.skillRepository.lockForPublish(refIds, ctx);
 		const rows = await this.resolveRows(refs, ctx);
 		const versionByRef = new Map([...rows].map(([refId, row]) => [refId, row.version.id]));
 		return { skills: toRecord(rows), versionByRef };
