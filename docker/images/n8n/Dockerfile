@@ -1,12 +1,15 @@
-ARG NODE_VERSION=24.13.1
+ARG NODE_VERSION=24.22.1
 ARG N8N_VERSION=snapshot
 ARG LAUNCHER_VERSION=1.4.3
 ARG TARGETPLATFORM
 
+ARG BUILDER_IMAGE=node:24.22.1-alpine3.24@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53
+ARG RUNTIME_IMAGE=n8nio/base:24.22.1@sha256:711f03f1f2cfaa3bc0bc65bdf9dbd0cd929d8e4620fcdb5729b53b51d85578f2
+
 # ==============================================================================
 # STAGE 1: System Dependencies & Base Setup
 # ==============================================================================
-FROM n8nio/base:${NODE_VERSION} AS system-deps
+FROM ${RUNTIME_IMAGE} AS system-deps
 
 # ==============================================================================
 # STAGE 2: Application Artifact Processor
@@ -47,11 +50,11 @@ RUN set -e; \
 # avoids npm rebuild's double-build behavior (built-in node-gyp + install-script
 # node-gyp) which races on dep-file state. Build tooling stays in this throwaway
 # stage so the runtime image ships no compilers.
-FROM node:${NODE_VERSION}-alpine3.22 AS native-builder
+FROM ${BUILDER_IMAGE} AS native-builder
 
 COPY --from=app-artifact-processor /app /usr/local/lib/node_modules/n8n
 
-RUN apk add --no-cache python3 make g++ && \
+RUN apk add --no-cache python3 make g++ openssl && \
     cd /usr/local/lib/node_modules/n8n/node_modules/isolated-vm && \
     rm -rf prebuilds && \
     npx --yes node-gyp rebuild --release -j max
@@ -65,13 +68,13 @@ ARG N8N_VERSION
 ARG N8N_RELEASE_TYPE=dev
 ENV NODE_ENV=production
 ENV N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE}
-ENV NODE_ICU_DATA=/usr/local/lib/node_modules/full-icu
 ENV SHELL=/bin/sh
 
 WORKDIR /home/node
 
 COPY --from=app-artifact-processor /app /usr/local/lib/node_modules/n8n
 COPY --from=launcher-downloader /launcher-bin/* /usr/local/bin/
+COPY --from=native-builder /usr/bin/openssl /usr/bin/openssl
 # Overlay the musl-rebuilt isolated-vm binary (see native-builder stage).
 COPY --from=native-builder /usr/local/lib/node_modules/n8n/node_modules/isolated-vm/build /usr/local/lib/node_modules/n8n/node_modules/isolated-vm/build
 COPY docker/images/n8n/docker-entrypoint.sh /
@@ -85,19 +88,6 @@ RUN cd /usr/local/lib/node_modules/n8n && \
     chown -R node:node /home/node
 
 RUN cd /usr/local/lib/node_modules/n8n/node_modules/pdfjs-dist && npm install @napi-rs/canvas
-
-# Patch all npm bundled tar copies to 7.5.7 for CVE fixes (CVE-2026-23745, CVE-2026-23950, CVE-2026-24842)
-RUN set -e; \
-    TAR_TGZ=$(mktemp); \
-    wget -qO "$TAR_TGZ" https://registry.npmjs.org/tar/-/tar-7.5.7.tgz; \
-    for dir in \
-      /usr/local/lib/node_modules/npm/node_modules/tar \
-      /usr/local/lib/node_modules/npm/node_modules/cacache/node_modules/tar \
-      /usr/local/lib/node_modules/npm/node_modules/node-gyp/node_modules/tar; \
-    do \
-      [ -d "$dir" ] && rm -rf "$dir" && mkdir -p "$dir" && tar -xzf "$TAR_TGZ" --strip-components=1 -C "$dir"; \
-    done; \
-    rm -f "$TAR_TGZ"
 
 EXPOSE 5678/tcp
 USER node

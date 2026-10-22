@@ -9,6 +9,7 @@ import type {
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
+import { Socket } from 'net';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { Readable } from 'stream';
@@ -32,10 +33,10 @@ const workflowId = 'workflow123';
 const executionId = 'execution456';
 
 const bufferToIncomingMessage = (buffer: Buffer, encoding = 'utf-8') => {
-	const incomingMessage = Readable.from(buffer) as IncomingMessage;
+	const incomingMessage = new IncomingMessage(new Socket());
 	incomingMessage.headers = { 'content-type': `application/json;charset=${encoding}` };
-	// @ts-expect-error need this hack to fake `instanceof IncomingMessage` checks
-	incomingMessage.__proto__ = IncomingMessage.prototype;
+	incomingMessage.push(buffer);
+	incomingMessage.push(null);
 	return incomingMessage;
 };
 
