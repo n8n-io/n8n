@@ -7,5 +7,14 @@
 		"sourceMap": false
 	},
 	"include": ["src"],
-	"exclude": ["build", "dist", "node_modules", "temp", "tmp", "test", "sample"]
+	"exclude": [
+		"build",
+		"dist",
+		"node_modules",
+		"temp",
+		"tmp",
+		"test",
+		"sample",
+		"src/**/__tests__/**"
+	]
 }

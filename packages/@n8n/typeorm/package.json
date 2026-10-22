@@ -57,6 +57,7 @@
     "sqlite-orm"
   ],
   "devDependencies": {
+    "@n8n/vitest-config": "workspace:*",
     "@tsconfig/node16": "^16.1.1",
     "@types/app-root-path": "^1.2.4",
     "@types/chai": "^4.3.4",
@@ -81,7 +82,8 @@
     "sinon-chai": "^3.7.0",
     "source-map-support": "catalog:",
     "sqlite3": "5.1.7",
-    "typescript": "catalog:typescript"
+    "typescript": "catalog:typescript",
+    "vitest": "catalog:"
   },
   "peerDependencies": {
     "pg": "^8.17.0",
@@ -120,7 +122,7 @@
   },
   "scripts": {
     "test": "tsc && mocha --file ./build/compiled/test/utils/test-setup.js --recursive --timeout 90000 ./build/compiled/test",
-    "test:unit": "echo \"No unit tests for @n8n/typeorm (vendored)\" && exit 0",
+    "test:unit": "vitest run",
     "test-fast": "mocha --file ./build/compiled/test/utils/test-setup.js --bail --recursive --timeout 90000 ./build/compiled/test",
     "typecheck": "tsc --noEmit",
     "build": "pnpm compile",
