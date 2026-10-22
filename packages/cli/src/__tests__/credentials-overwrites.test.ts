@@ -1514,7 +1514,7 @@ describe('CredentialsOverwrites', () => {
 				});
 
 				// The child sets its own client, so it keeps its own app and its own version 1.
-				expect(instance.getDefaultVersion('notionOAuth2Api')).toBe(1);
+				expect(instance.getNewConnectionVersion('notionOAuth2Api', managed())).toBe(1);
 				expect(instance.getOverwrites('notionOAuth2Api')).toMatchObject(baseApp);
 				expect(instance.getNewerAppProperties('notionOAuth2Api')).toEqual([]);
 				expect(instance.applyOverwrite('notionOAuth2Api', managed())).toMatchObject(baseApp);
@@ -1527,7 +1527,7 @@ describe('CredentialsOverwrites', () => {
 					notionOAuth2Api: { scope: 'read' },
 				});
 
-				expect(instance.getDefaultVersion('notionOAuth2Api')).toBe(2);
+				expect(instance.getNewConnectionVersion('notionOAuth2Api', managed())).toBe(2);
 				expect(
 					instance.applyOverwrite(
 						'notionOAuth2Api',
@@ -1638,13 +1638,13 @@ describe('CredentialsOverwrites', () => {
 			it('should be the version of the base entry when there is no rollout', async () => {
 				const instance = await createInstance({ notionOAuth2Api: baseApp });
 
-				expect(instance.getDefaultVersion('notionOAuth2Api')).toBe(1);
+				expect(instance.getNewConnectionVersion('notionOAuth2Api', managed())).toBe(1);
 			});
 
 			it('should be the version of the base entry after a migration', async () => {
 				const instance = await createInstance({ notionOAuth2Api: { version: 2, ...newApp } });
 
-				expect(instance.getDefaultVersion('notionOAuth2Api')).toBe(2);
+				expect(instance.getNewConnectionVersion('notionOAuth2Api', managed())).toBe(2);
 			});
 
 			it('should be the version of the newer app during a rollout', async () => {
@@ -1653,14 +1653,14 @@ describe('CredentialsOverwrites', () => {
 					__versions: { notionOAuth2Api: { version: 2, ...newApp } },
 				});
 
-				expect(instance.getDefaultVersion('notionOAuth2Api')).toBe(2);
+				expect(instance.getNewConnectionVersion('notionOAuth2Api', managed())).toBe(2);
 			});
 
 			it('should be undefined for a type without an overwrite or a non-OAuth type', async () => {
 				const instance = await createInstance({ notionApi: { apiKey: 'k' } });
 
-				expect(instance.getDefaultVersion('notionOAuth2Api')).toBeUndefined();
-				expect(instance.getDefaultVersion('notionApi')).toBeUndefined();
+				expect(instance.getNewConnectionVersion('notionOAuth2Api', managed())).toBeUndefined();
+				expect(instance.getNewConnectionVersion('notionApi', managed())).toBeUndefined();
 			});
 		});
 
@@ -1786,7 +1786,7 @@ describe('CredentialsOverwrites', () => {
 				});
 
 				expect(logger.warn).not.toHaveBeenCalled();
-				expect(instance.getDefaultVersion('notionOAuth2Api')).toBe(2);
+				expect(instance.getNewConnectionVersion('notionOAuth2Api', managed())).toBe(2);
 			});
 
 			it('should compare a versions entry with the base version of a parent type', async () => {
@@ -1810,7 +1810,7 @@ describe('CredentialsOverwrites', () => {
 					__versions: { notionOAuth2Api: { version: 3, ...newApp } },
 				});
 				expect(logger.warn).not.toHaveBeenCalled();
-				expect(instance.getDefaultVersion('notionOAuth2Api')).toBe(3);
+				expect(instance.getNewConnectionVersion('notionOAuth2Api', managed())).toBe(3);
 			});
 
 			it('should skip a versions entry that has no base entry', async () => {
@@ -1841,7 +1841,7 @@ describe('CredentialsOverwrites', () => {
 					expect.stringContaining('must be an integer of at least 1'),
 				);
 				expect(instance.getOverwrites('notionOAuth2Api')).toEqual(baseApp);
-				expect(instance.getDefaultVersion('notionOAuth2Api')).toBe(1);
+				expect(instance.getNewConnectionVersion('notionOAuth2Api', managed())).toBe(1);
 			});
 
 			it('should load no overwrites when the payload is not an object', async () => {

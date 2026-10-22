@@ -250,28 +250,20 @@ export class CredentialsOverwrites {
 	}
 
 	/**
-	 * The version of the default app of an OAuth type that has an overwrite: the newer app
-	 * of a rollout, or the base entry. `undefined` for any other type.
+	 * The version to store when a credential connects. When the overwrite supplies the client, it
+	 * is the version of the default app: the newer app of a rollout, or the base entry.
+	 * It is `undefined` for a user-owned app, for a type without an overwrite and for a non-OAuth type.
 	 */
-	getDefaultVersion(type: string): number | undefined {
-		if (!this.getClientFields(type) || this.get(type) === undefined) return undefined;
+	getNewConnectionVersion(type: string, data: ICredentialDataDecryptedObject): number | undefined {
+		const clientFields = this.getClientFields(type);
+		if (!clientFields || !hasEmptyClientFields(data, clientFields)) return undefined;
+		if (this.get(type) === undefined) return undefined;
 
 		return (
 			this.versionValue(type, this.newerApps)?.version ??
 			this.versionValue(type, this.entryVersions) ??
 			IMPLICIT_MANAGED_VERSION
 		);
-	}
-
-	/**
-	 * The version to store when a credential connects. It is the default version when the
-	 * overwrite supplies the client, and `undefined` for a user-owned app.
-	 */
-	getNewConnectionVersion(type: string, data: ICredentialDataDecryptedObject): number | undefined {
-		const clientFields = this.getClientFields(type);
-		if (!clientFields || !hasEmptyClientFields(data, clientFields)) return undefined;
-
-		return this.getDefaultVersion(type);
 	}
 
 	/**
