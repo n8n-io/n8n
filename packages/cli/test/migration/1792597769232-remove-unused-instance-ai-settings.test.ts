@@ -9,7 +9,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const migrationName = 'RemoveUnusedInstanceAiSettings1792584485672';
+const migrationName = 'RemoveUnusedInstanceAiSettings1792597769232';
 const instanceAiSettingsKey = 'instanceAi.settings';
 
 function parseRecord(value: string | Record<string, unknown>): Record<string, unknown> {
