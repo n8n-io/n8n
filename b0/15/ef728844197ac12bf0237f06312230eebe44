@@ -1,0 +1,142 @@
+packages/@n8n/ai-utilities/src/model-discovery/index.ts
+  s_b58def8bfaa5ac::t_2ddcc856675886 11,40,88
+packages/cli/src/modules/agents/builder/interactive/__tests__/resolve-llm.tool.test.ts
+  s_b58def8bfaa5ac::t_d23ae69975321c 28
+  s_b58def8bfaa5ac::t_135890e84c1a23 48,59,63-64,69-71
+  s_b58def8bfaa5ac::t_ffc851fe258628 49-58,60-62,65-68
+packages/frontend/editor-ui/src/features/agents/__tests__/useModelCatalog.test.ts
+  s_b58def8bfaa5ac::t_ffc851fe258628 56-66,74-76,81-83
+  s_b58def8bfaa5ac::t_26b8d818705727 68,77-78
+  s_b58def8bfaa5ac::t_135890e84c1a23 54-55,67,69-73,79-80,84-86
+packages/@n8n/agents/src/__tests__/integration/cassettes/ollama/streams-a-response-and-token-usage.json
+  s_b58def8bfaa5ac::t_1587d1190bb49b 2-32
+  s_b58def8bfaa5ac::t_da40ad083f63eb 1
+packages/@n8n/agents/src/runtime/model/provider-credentials.ts
+  s_b58def8bfaa5ac::t_2ddcc856675886 26
+packages/@n8n/api-types/src/agents/model-providers.ts
+  s_b58def8bfaa5ac::t_2ddcc856675886 4,43
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentAdvancedPanel.test.ts
+  s_b58def8bfaa5ac::t_4d8d7a8c92d24d 27
+packages/@n8n/agents/src/__tests__/integration/cassettes/ollama/generates-a-response-without-an-api-key.json
+  s_b58def8bfaa5ac::t_1587d1190bb49b 2-53
+  s_b58def8bfaa5ac::t_5e09bfb580c0cc 1
+packages/cli/src/modules/agents/__tests__/model-catalog.test.ts
+  s_b58def8bfaa5ac::t_1587d1190bb49b 38-40
+  s_b58def8bfaa5ac::t_cec38d7ecbdb0c 10
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentInfoPanel.spec.ts
+  s_b58def8bfaa5ac::t_3774f641de5ba5 144
+packages/cli/src/modules/agents/json-config/__tests__/credential-field-mapping.test.ts
+  s_b58def8bfaa5ac::t_ffc851fe258628 9-17
+  s_b58def8bfaa5ac::t_135890e84c1a23 8,18
+packages/@n8n/agents/src/runtime/__tests__/model-factory.test.ts
+  s_b58def8bfaa5ac::t_ffc851fe258628 1236-1241,1245-1259
+  s_b58def8bfaa5ac::t_135890e84c1a23 1233-1235,1242-1244,1260-1261
+  s_b58def8bfaa5ac::t_93375ac5dafa1c 1263-1264
+packages/@n8n/agents/vitest.integration.setup.ts
+  s_b58def8bfaa5ac::t_ffc851fe258628 52-55,144-145
+  s_b58def8bfaa5ac::t_cb9bd41a1fe2a5 45,139,194,204,207,210
+packages/@n8n/ai-utilities/src/model-discovery/__tests__/ollama.test.ts
+  s_b58def8bfaa5ac::t_0a54ab3f16bbea 12-13,25-26
+  s_b58def8bfaa5ac::t_93375ac5dafa1c 1-11,24,27,34-38,42-44,55-56,65-69,74-76,82,86-93,97-104,111-112
+  s_b58def8bfaa5ac::t_ffc851fe258628 14-23,28-33,39-41,45-54,57-64,70-73,77-81,83-85,94-96,105-110
+packages/@n8n/agents/src/sdk/__tests__/catalog.test.ts
+  s_b58def8bfaa5ac::t_26b8d818705727 1,11-15
+  s_b58def8bfaa5ac::t_2f39330b532c79 16-17
+packages/@n8n/agents/src/runtime/model/model-factory.ts
+  s_b58def8bfaa5ac::t_2ddcc856675886 284-297
+packages/@n8n/ai-utilities/src/model-discovery/types.ts
+  s_b58def8bfaa5ac::t_2ddcc856675886 9-14
+packages/frontend/editor-ui/src/features/agents/composables/useModelCatalog.ts
+  s_b58def8bfaa5ac::t_ffc851fe258628 106-110
+  s_b58def8bfaa5ac::t_4d8d7a8c92d24d 12,105,111-119,235
+packages/cli/src/modules/agents/model-catalog.ts
+  s_b58def8bfaa5ac::t_cec38d7ecbdb0c 9-10
+packages/cli/src/modules/agents/builder/__tests__/builder-model-live-lookup.service.test.ts
+  s_b58def8bfaa5ac::t_ffc851fe258628 60-71,73-79,82-84,86-89
+  s_b58def8bfaa5ac::t_135890e84c1a23 72,80-81,85,90
+packages/cli/src/modules/agents/json-config/credential-field-mapping.ts
+  s_b58def8bfaa5ac::t_2ddcc856675886 38
+packages/@n8n/ai-utilities/src/model-discovery/request.ts
+  s_b58def8bfaa5ac::t_2ddcc856675886 5,11,16
+packages/@n8n/agents/src/__tests__/integration/ollama.test.ts
+  s_b58def8bfaa5ac::t_4d8d7a8c92d24d 46,48-51,55-58
+  s_b58def8bfaa5ac::t_8415aa5be1a62b 22,31
+  s_b58def8bfaa5ac::t_ffc851fe258628 15-21,23-25,29-30,32,40-42,52-53,66-69,73-75
+  s_b58def8bfaa5ac::t_cb9bd41a1fe2a5 1-14,26-28,33-39,43-45,47,59-65,70-72,76-79
+  s_b58def8bfaa5ac::t_e7b3130bc332ec 54
+packages/@n8n/agents/src/sdk/catalog.ts
+  s_b58def8bfaa5ac::t_26b8d818705727 302-304
+packages/cli/src/modules/agents/llm-provider-defaults.ts
+  s_b58def8bfaa5ac::t_cec38d7ecbdb0c 9-11
+  s_b58def8bfaa5ac::t_d23ae69975321c 21-22,26,107
+packages/cli/src/modules/agents/__tests__/agent-model-catalog.service.test.ts
+  s_b58def8bfaa5ac::t_135890e84c1a23 66-67,81,97,105-108,114-119,130,137-139
+  s_b58def8bfaa5ac::t_ffc851fe258628 68-80,82-96,98-104,109-113,120-129,131-136
+packages/@n8n/agents/docs/ollama.md
+  s_b58def8bfaa5ac::t_cec38d7ecbdb0c 1-46
+packages/frontend/editor-ui/src/features/agents/components/AgentAdvancedPanel.vue
+  s_b58def8bfaa5ac::t_4d8d7a8c92d24d 22
+  s_b58def8bfaa5ac::t_77abba95999e39 43-47
+packages/@n8n/agents/src/runtime/__tests__/provider-quirks.test.ts
+  s_b58def8bfaa5ac::t_1587d1190bb49b 207-209
+  s_b58def8bfaa5ac::t_8415aa5be1a62b 205-206,210-212
+packages/@n8n/ai-utilities/src/model-discovery/providers/ollama.ts
+  s_b58def8bfaa5ac::t_2ddcc856675886 1-5,9-19,21-32,34,73-79
+  s_b58def8bfaa5ac::t_1587d1190bb49b 35-72
+  s_b58def8bfaa5ac::t_e7b3130bc332ec 6-8,20,33
+packages/cli/src/modules/agents/builder/model-lookup.types.ts
+  s_b58def8bfaa5ac::t_2ddcc856675886 1-2,8
+packages/@n8n/ai-utilities/src/model-discovery/__tests__/model-discovery.test.ts
+  s_b58def8bfaa5ac::t_9b0116f251fec1 424
+packages/@n8n/agents/src/__tests__/integration/cassettes/ollama/executes-a-tool-and-continues-the-stream.json
+  s_b58def8bfaa5ac::t_3774f641de5ba5 1
+  s_b58def8bfaa5ac::t_1587d1190bb49b 2-129
+packages/@n8n/agents/src/__tests__/integration/cassettes/ollama/returns-structured-output.json
+  s_b58def8bfaa5ac::t_1587d1190bb49b 2-71
+  s_b58def8bfaa5ac::t_f488628b51a118 1
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentModelSelector.spec.ts
+  s_b58def8bfaa5ac::t_ffc851fe258628 322-325
+  s_b58def8bfaa5ac::t_26b8d818705727 320-321,326
+packages/cli/src/modules/agents/agent-model-catalog.service.ts
+  s_b58def8bfaa5ac::t_2ddcc856675886 82,96,121
+  s_b58def8bfaa5ac::t_cec38d7ecbdb0c 122
+packages/cli/src/modules/agents/builder/interactive/resolve-llm.tool.ts
+  s_b58def8bfaa5ac::t_ffc851fe258628 229-230
+  s_b58def8bfaa5ac::t_d23ae69975321c 103-104,108,164,167,233-235
+packages/frontend/editor-ui/src/features/agents/model-providers.ts
+  s_b58def8bfaa5ac::t_2ddcc856675886 43
+packages/cli/src/modules/agents/builder/builder-model-live-lookup.service.ts
+  s_b58def8bfaa5ac::t_d23ae69975321c 117
+  s_b58def8bfaa5ac::t_2ddcc856675886 174-176,187-188,198
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_b58def8bfaa5ac::t_4d8d7a8c92d24d 78,268
+packages/@n8n/agents/src/runtime/model/provider-quirks.ts
+  s_b58def8bfaa5ac::t_8415aa5be1a62b 179
+packages/cli/src/modules/agents/__tests__/agent-default-model-resolver.service.test.ts
+  s_b58def8bfaa5ac::t_26b8d818705727 30,34-37
+  s_b58def8bfaa5ac::t_ffc851fe258628 31-33
+packages/cli/src/modules/agents/agent-default-model-resolver.service.ts
+  s_b58def8bfaa5ac::t_ffc851fe258628 11-15
+  s_b58def8bfaa5ac::t_d23ae69975321c 88,96,139
+packages/@n8n/agents/src/types/sdk/provider.ts
+  s_b58def8bfaa5ac::t_2ddcc856675886 17
+packages/@n8n/agents/src/__tests__/integration/cassettes/ollama/discovers-installed-models-with-native-metadata.json
+  s_b58def8bfaa5ac::t_1587d1190bb49b 2-83
+  s_b58def8bfaa5ac::t_883397d630138a 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b015ef728844197ac12bf0237f06312230eebe44",
+  "prompts": {},
+  "sessions": {
+    "s_b58def8bfaa5ac": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15f4e-f2c9-7461-b685-b0553dd0cc7d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
