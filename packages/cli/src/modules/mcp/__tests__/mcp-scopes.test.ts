@@ -41,7 +41,6 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { ExecutionService } from '@/executions/execution.service';
-import { SkillRepository } from '@/modules/skills/skill.repository';
 import { SkillsApiService } from '@/modules/skills/skills-api.service';
 import { SkillsHubRollout } from '@/modules/skills/skills-hub-rollout';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
@@ -311,7 +310,6 @@ describe('McpService scope enforcement', () => {
 		'declares the skills extension with %s',
 		async (_, skillsHubEnabled, skillsExtensionEnabled, grantedScopes, declared) => {
 			mockInstance(SkillsApiService);
-			mockInstance(SkillRepository);
 			mockInstance(SkillsHubRollout, { isEnabled: skillsHubEnabled });
 			const server = await buildService({
 				builderEnabled: false,
