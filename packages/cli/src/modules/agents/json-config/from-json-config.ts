@@ -655,5 +655,6 @@ async function resolveMemoryWorkerModelConfig(
 		config.model,
 		config.credential,
 		credentialProvider,
+		config.modelDeploymentName,
 	);
 }

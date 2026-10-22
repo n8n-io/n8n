@@ -798,7 +798,11 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 				return { apiKey: 'low-key', url: 'https://low.example/v1' };
 			}
 			if (credentialId === 'high-cred') {
-				return { apiKey: 'high-key' };
+				return {
+					apiKey: 'high-key',
+					endpointType: 'foundry',
+					foundryEndpoint: 'https://res.services.ai.azure.com/openai/v1',
+				};
 			}
 			throw new Error(`unexpected credential ${credentialId}`);
 		});
@@ -811,7 +815,11 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 						model: 'google-vertex/gemini-3-flash-preview',
 						credential: 'vertex-cred',
 					},
-					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'high-cred' },
+					high: {
+						model: 'azure-openai/gpt-4.1',
+						credential: 'high-cred',
+						modelDeploymentName: 'My-Chat',
+					},
 				},
 			},
 		});
@@ -837,8 +845,11 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 				privateKey: 'private-key',
 			},
 			high: {
-				id: 'anthropic/claude-sonnet-4-5',
+				id: 'azure-openai/gpt-4.1',
 				apiKey: 'high-key',
+				baseURL: 'https://res.services.ai.azure.com/openai/v1',
+				endpointType: 'foundry',
+				deploymentName: 'My-Chat',
 			},
 		});
 	});

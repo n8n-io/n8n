@@ -5,6 +5,7 @@
  */
 
 import { AGENT_MODEL_STRING_REGEX } from '@n8n/api-types';
+import type { AgentModelSelection, AgentModelsByProvider } from '../model-providers';
 
 export interface ParsedModel {
 	provider: string;
@@ -44,4 +45,21 @@ export function parseProvider(
 export function sanitizeModelId(provider: string, modelId: string): string {
 	if (provider === 'google') return modelId.replace(/^models\//, '');
 	return modelId;
+}
+
+export function resolveModelSelection(
+	selection: AgentModelSelection,
+	models: AgentModelsByProvider,
+): { model: string; modelDeploymentName?: string } {
+	const selected = models[selection.provider]?.models.find(
+		(model) => model.model === selection.model,
+	);
+	const catalogModelId = selected?.catalogModelId;
+	const modelId = sanitizeModelId(selection.provider, catalogModelId ?? selection.model);
+	return {
+		model: `${selection.provider}/${modelId}`,
+		...(selection.provider === 'azure-openai' && catalogModelId
+			? { modelDeploymentName: selection.model }
+			: {}),
+	};
 }

@@ -9,6 +9,7 @@ export {
 export interface AgentModelOption {
 	provider: AgentModelProvider;
 	model: string;
+	catalogModelId?: string;
 	name: string;
 	description?: string | null;
 	createdAt?: string | null;

@@ -48,6 +48,7 @@ function toAgentModel(provider: AgentModelProvider, model: ModelInfo): AgentMode
 	return {
 		provider,
 		model: model.id,
+		...(model.catalogModelId ? { catalogModelId: model.catalogModelId } : {}),
 		name: model.name,
 		description: null,
 		createdAt: model.releaseDate ?? null,

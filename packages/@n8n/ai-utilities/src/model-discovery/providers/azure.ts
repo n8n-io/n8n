@@ -74,7 +74,13 @@ export interface AzureOpenAiListModelsOptions {
 interface AzureDeployment {
 	name?: unknown;
 	modelName?: unknown;
+	modelPublisher?: unknown;
 	capabilities?: Record<string, unknown>;
+}
+
+export interface AzureOpenAiModel extends ProviderModel {
+	modelName?: string;
+	modelPublisher?: string;
 }
 
 /**
@@ -97,7 +103,7 @@ export function shouldIncludeAzureModel(
  */
 export async function listAzureOpenAiModels(
 	options: AzureOpenAiListModelsOptions,
-): Promise<ProviderModel[]> {
+): Promise<AzureOpenAiModel[]> {
 	const fetchFn = options.fetch ?? globalThis.fetch;
 	const apiVersion = options.apiVersion ?? 'v1';
 	const base = options.baseURL.replace(/\/+$/, '');
@@ -137,6 +143,10 @@ export async function listAzureOpenAiModels(
 				typeof deployment.modelName === 'string'
 					? `${deployment.name} (${deployment.modelName})`
 					: deployment.name,
+			...(typeof deployment.modelName === 'string' ? { modelName: deployment.modelName } : {}),
+			...(typeof deployment.modelPublisher === 'string'
+				? { modelPublisher: deployment.modelPublisher }
+				: {}),
 		}))
 		.sort(byName);
 }

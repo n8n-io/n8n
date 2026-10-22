@@ -6,6 +6,7 @@ import { ref } from 'vue';
 
 import AgentInfoPanel from '../components/AgentInfoPanel.vue';
 import type { ProviderCatalog } from '../composables/useAgentApi';
+import type { AgentModelOption } from '../model-providers';
 import type { AgentJsonConfig } from '../types';
 
 const ensureLoadedMock = vi.fn();
@@ -45,6 +46,7 @@ function makeCatalog(): ProviderCatalog {
 }
 
 const modelCatalog = ref<ProviderCatalog>(makeCatalog());
+const azureModels = ref<AgentModelOption[]>([]);
 
 // Mutable holder so tests can vary the composable's (localStorage-backed) selection state.
 const { credsHolder } = vi.hoisted(() => ({
@@ -144,6 +146,7 @@ vi.mock('../composables/useModelCatalog', () => ({
 		catalog: modelCatalog,
 		ensureLoaded: ensureLoadedMock,
 		getModelsForPicker: () => ({
+			'azure-openai': { models: azureModels.value },
 			anthropic: {
 				models: [
 					{
@@ -225,6 +228,7 @@ describe('AgentInfoPanel', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		modelCatalog.value = makeCatalog();
+		azureModels.value = [];
 		credsHolder.value = { anthropic: 'credential-1' };
 		defaultModelHolder.value = null;
 		credentialsByIdHolder.value = {};
@@ -785,8 +789,26 @@ describe('AgentInfoPanel', () => {
 
 		it('seeds modelDeploymentName from the model id on a classic model change', async () => {
 			seedAzureCredential('azure-key-1', 'classic', 'azureOpenAiApi');
-			const wrapper = mountAzurePanel('azure-key-1');
+			azureModels.value = [
+				{
+					provider: 'azure-openai',
+					model: 'gpt-4o',
+					name: 'GPT-4o',
+					metadata: { functionCalling: true, available: true },
+				},
+			];
+			const wrapper = mountModelPanel({
+				name: 'Azure agent',
+				instructions: 'Help users.',
+				model: 'azure-openai/gpt-4o',
+				credential: 'azure-key-1',
+				modelDeploymentName: 'Custom-Deployment',
+			});
 			await flushAsync(wrapper);
+			expect(selectorProps(wrapper).selectedModel).toMatchObject({
+				model: 'gpt-4o',
+				name: 'GPT-4o',
+			});
 
 			wrapper.findComponent({ name: 'AgentModelSelector' }).vm.$emit('change', {
 				provider: 'azure-openai',
@@ -798,6 +820,46 @@ describe('AgentInfoPanel', () => {
 			const last = events.at(-1)?.[0] as Partial<AgentJsonConfig>;
 			expect(last.modelDeploymentName).toBe('gpt-4o');
 		});
+
+		it.each(['first switch', 'shared credential'])(
+			'keeps the deployment ID on %s',
+			async (scenario) => {
+				credsHolder.value['azure-openai'] = 'azure-shared-1';
+				azureModels.value = [
+					{
+						provider: 'azure-openai',
+						model: 'My-Chat',
+						catalogModelId: 'gpt-4.1',
+						name: 'My-Chat (gpt-4.1)',
+						metadata: { functionCalling: true, available: true },
+					},
+				];
+				const wrapper = mountModelPanel({
+					name: 'Agent',
+					instructions: 'Help users.',
+					model:
+						scenario === 'first switch' ? 'anthropic/claude-sonnet-4-5' : 'azure-openai/gpt-4o',
+					credential: scenario === 'first switch' ? 'credential-1' : 'azure-shared-1',
+				});
+				await flushAsync(wrapper);
+				wrapper.findComponent({ name: 'AgentModelSelector' }).vm.$emit('change', {
+					provider: 'azure-openai',
+					model: 'My-Chat',
+				});
+				await wrapper.vm.$nextTick();
+				const changes = wrapper.emitted('update:config')?.at(-1)?.[0] as Partial<AgentJsonConfig>;
+				expect(changes).toMatchObject({
+					model: 'azure-openai/gpt-4.1',
+					modelDeploymentName: 'My-Chat',
+					credential: 'azure-shared-1',
+				});
+				await wrapper.setProps({ config: { ...wrapper.props('config'), ...changes } });
+				expect(selectorProps(wrapper).selectedModel).toMatchObject({
+					model: 'My-Chat',
+					name: 'My-Chat (gpt-4.1)',
+				});
+			},
+		);
 
 		it('clears modelDeploymentName on a foundry model change', async () => {
 			seedAzureCredential('azure-foundry-1', 'foundry', 'azureOpenAiApi');

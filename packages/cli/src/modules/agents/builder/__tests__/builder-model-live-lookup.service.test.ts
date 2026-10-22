@@ -357,8 +357,19 @@ describe('BuilderModelLiveLookupService', () => {
 				apiKey: 'az-key',
 			});
 			listAzureOpenAiModels.mockResolvedValue([
-				{ id: 'my-chat', name: 'my-chat (gpt-4.1)' },
-				{ id: 'my-other', name: 'my-other (gpt-4.1-mini)' },
+				{ id: 'my-chat', name: 'my-chat (gpt-4.1)', modelName: 'gpt-4.1' },
+				{ id: 'my-other', name: 'my-other (gpt-4.1-mini)', modelName: 'gpt-4.1-mini' },
+				{
+					id: 'support-assistant',
+					name: 'support-assistant (claude-sonnet-4-6)',
+					modelName: 'claude-sonnet-4-6',
+				},
+				{
+					id: 'other-assistant',
+					name: 'other-assistant',
+					modelPublisher: 'Anthropic',
+				},
+				{ id: 'claude-backup', name: 'claude-backup (gpt-4.1)', modelName: 'gpt-4.1' },
 			]);
 
 			const result = await service.lookup(
@@ -373,8 +384,13 @@ describe('BuilderModelLiveLookupService', () => {
 				status: 'success',
 				policy: 'endpoint-only',
 				models: [
-					{ name: 'my-chat (gpt-4.1)', value: 'my-chat' },
-					{ name: 'my-other (gpt-4.1-mini)', value: 'my-other' },
+					{ name: 'my-chat (gpt-4.1)', value: 'my-chat', catalogModelId: 'gpt-4.1' },
+					{
+						name: 'my-other (gpt-4.1-mini)',
+						value: 'my-other',
+						catalogModelId: 'gpt-4.1-mini',
+					},
+					{ name: 'claude-backup (gpt-4.1)', value: 'claude-backup', catalogModelId: 'gpt-4.1' },
 				],
 			});
 			// The list call takes the origin of the Foundry endpoint, not its path.
@@ -420,7 +436,7 @@ describe('BuilderModelLiveLookupService', () => {
 			expect(result).toEqual({
 				status: 'success',
 				policy: 'endpoint-only',
-				models: [{ name: 'my-chat (gpt-4.1)', value: 'my-chat' }],
+				models: [{ name: 'my-chat (gpt-4.1)', value: 'my-chat', catalogModelId: 'my-chat' }],
 			});
 			// The deployments list needs the Foundry audience, not the inference
 			// audience, and the token mint runs through the instance's SSRF policy.
@@ -537,6 +553,30 @@ describe('BuilderModelLiveLookupService', () => {
 			);
 
 			expect(result).toEqual({ status: 'unavailable', policy: 'endpoint-only', error });
+		});
+
+		it('returns an empty verified list when only Claude deployments are available', async () => {
+			const { service, credentialsService, credentialsHelper } = makeService();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
+				usable('cred-1', 'azureOpenAiApi'),
+			);
+			credentialsHelper.getDecrypted.mockResolvedValue({
+				endpointType: 'foundry',
+				foundryEndpoint: 'https://res.services.ai.azure.com/openai/v1',
+				project: 'my-project',
+				apiKey: 'az-key',
+			});
+			listAzureOpenAiModels.mockResolvedValue([
+				{
+					id: 'support-assistant',
+					name: 'support-assistant',
+					modelName: 'claude-sonnet-4-6',
+					modelPublisher: 'Anthropic',
+				},
+			]);
+			await expect(
+				service.lookup(user, projectId, 'cred-1', 'azureOpenAiApi', 'azure-openai'),
+			).resolves.toEqual({ status: 'success', policy: 'endpoint-only', models: [] });
 		});
 
 		it('preserves endpoint-only policy when the project lists no deployments', async () => {

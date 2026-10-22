@@ -5,6 +5,7 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { SsrfProtectionConfig } from '@n8n/config';
 import { UserError } from 'n8n-workflow';
+import type { AzureOpenAiModel } from '@n8n/ai-utilities/model-discovery';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsHelper } from '@/credentials-helper';
@@ -48,6 +49,13 @@ function isAcceptedCredentialType(provider: string, actual: string, requested: s
 		return getAgentModelProviderCredentialTypes(provider).includes(actual);
 	}
 	return actual === requested;
+}
+
+function supportsFoundryChatCompletions(model: AzureOpenAiModel): boolean {
+	return (
+		model.modelPublisher?.toLowerCase() !== 'anthropic' &&
+		!model.modelName?.toLowerCase().startsWith('claude')
+	);
 }
 
 /**
@@ -279,8 +287,8 @@ export class BuilderModelLiveLookupService {
 	 * through `listModelsForProvider` (see `providers/azure.ts` in
 	 * `@n8n/ai-utilities`); the shared helper is called directly instead.
 	 *
-	 * The deployment *name* is what the inference call accepts, so it becomes
-	 * the model id the picker offers and saves.
+	 * The picker uses deployment names as unique IDs and retains the underlying
+	 * model ID for pricing and capabilities.
 	 */
 	private async discoverAzureFoundryDeployments(
 		rawData: Record<string, unknown>,
@@ -307,22 +315,7 @@ export class BuilderModelLiveLookupService {
 		const { listAzureOpenAiModels } = await import('@n8n/ai-utilities/model-discovery');
 
 		try {
-			let headers: Record<string, string>;
-			if (isAzureEntraCredential(rawData)) {
-				// The deployments list needs a token for the Foundry audience, minted
-				// through the instance's SSRF policy.
-				const token = await createEntraTokenProvider(
-					mapped,
-					AZURE_AI_FOUNDRY_AUDIENCE,
-					this.getSsrfBridge(),
-				)();
-				headers = { Authorization: `Bearer ${token}` };
-			} else if (typeof rawData.apiKey === 'string' && rawData.apiKey.trim() !== '') {
-				headers = { 'api-key': rawData.apiKey };
-			} else {
-				throw new UserError('The credential has neither an API key nor a connected Entra ID');
-			}
-
+			const headers = await this.getFoundryHeaders(rawData, mapped);
 			const models = await listAzureOpenAiModels({
 				baseURL,
 				project,
@@ -339,11 +332,33 @@ export class BuilderModelLiveLookupService {
 				status: 'success',
 				// The live deployment list is authoritative: deployment names are
 				// not catalog model ids, so the static catalog must not prune them.
-				models: models.map((model) => ({ name: model.name, value: model.id })),
+				models: models.filter(supportsFoundryChatCompletions).map((model) => ({
+					name: model.name,
+					value: model.id,
+					catalogModelId: model.modelName || model.id,
+				})),
 				policy: 'endpoint-only',
 			};
 		} catch (error) {
 			return { status: 'unavailable', error, policy: 'endpoint-only' };
 		}
+	}
+
+	private async getFoundryHeaders(
+		rawData: Record<string, unknown>,
+		mapped: ReturnType<typeof mapCredentialForProvider>,
+	): Promise<Record<string, string>> {
+		if (isAzureEntraCredential(rawData)) {
+			const token = await createEntraTokenProvider(
+				mapped,
+				AZURE_AI_FOUNDRY_AUDIENCE,
+				this.getSsrfBridge(),
+			)();
+			return { Authorization: `Bearer ${token}` };
+		}
+		if (typeof rawData.apiKey === 'string' && rawData.apiKey.trim() !== '') {
+			return { 'api-key': rawData.apiKey };
+		}
+		throw new UserError('The credential has neither an API key nor a connected Entra ID');
 	}
 }

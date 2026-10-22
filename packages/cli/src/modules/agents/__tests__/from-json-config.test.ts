@@ -1311,6 +1311,8 @@ describe('buildFromJson()', () => {
 			resolve: vi.fn(async (credentialId: string) => ({
 				apiKey: `${credentialId}-api-key`,
 				url: `https://${credentialId}.example/v1`,
+				endpointType: 'foundry',
+				foundryEndpoint: `https://${credentialId}.services.ai.azure.com/openai/v1`,
 				email: `${credentialId}@example.iam.gserviceaccount.com`,
 				privateKey: `${credentialId}-private-key`,
 				region: 'europe-west4',
@@ -1333,7 +1335,8 @@ describe('buildFromJson()', () => {
 						credential: 'observer-key',
 					},
 					reflectorModel: {
-						model: 'anthropic/claude-sonnet-4-5',
+						model: 'azure-openai/gpt-4.1',
+						modelDeploymentName: 'My-Chat',
 						credential: 'reflector-key',
 					},
 				},
@@ -1367,9 +1370,11 @@ describe('buildFromJson()', () => {
 			location: 'europe-west4',
 		});
 		expect(reflectSpy).toHaveBeenCalledWith({
-			id: 'anthropic/claude-sonnet-4-5',
+			id: 'azure-openai/gpt-4.1',
 			apiKey: 'reflector-key-api-key',
-			baseURL: 'https://reflector-key.example/v1',
+			baseURL: 'https://reflector-key.services.ai.azure.com/openai/v1',
+			endpointType: 'foundry',
+			deploymentName: 'My-Chat',
 		});
 		expect(credentialProvider.resolve).toHaveBeenCalledWith('observer-key');
 		expect(credentialProvider.resolve).toHaveBeenCalledWith('reflector-key');

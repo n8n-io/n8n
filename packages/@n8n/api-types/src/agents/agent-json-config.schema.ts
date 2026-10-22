@@ -39,6 +39,7 @@ const EpisodicMemoryCredentialSchema = z.union([
 const MemoryWorkerModelSchema = z.object({
 	model: AgentModelSchema,
 	credential: CredentialIdSchema,
+	modelDeploymentName: z.string().trim().optional(),
 });
 
 const ObservationalMemoryConfigSchema = z.object({
@@ -146,6 +147,7 @@ const SubAgentDifficultyModelConfigSchema = z
 	.object({
 		model: AgentModelSchema,
 		credential: z.string().trim(),
+		modelDeploymentName: z.string().trim().optional(),
 	})
 	.strict();
 
@@ -610,7 +612,8 @@ export type BudgetGuardrailConfig = z.infer<typeof BudgetGuardrailConfigSchema>;
 export interface AgentBudgetSpend {
 	spentUsd: number;
 }
-export type AgentModelCredentialConfig = Required<Pick<AgentJsonConfig, 'model' | 'credential'>>;
+export type AgentModelCredentialConfig = Required<Pick<AgentJsonConfig, 'model' | 'credential'>> &
+	Pick<AgentJsonConfig, 'modelDeploymentName'>;
 export type RunnableAgentJsonConfig = z.infer<typeof RunnableAgentJsonConfigSchema>;
 export type AgentJsonToolConfig = z.infer<typeof AgentJsonToolConfigSchema>;
 export type AgentJsonWorkflowToolConfig = Extract<AgentJsonToolConfig, { type: 'workflow' }>;

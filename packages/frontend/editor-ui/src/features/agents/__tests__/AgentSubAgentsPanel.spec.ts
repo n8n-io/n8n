@@ -94,6 +94,17 @@ vi.mock('../composables/useModelCatalog', async () => {
 						},
 					],
 				},
+				'azure-openai': {
+					models: [
+						{
+							provider: 'azure-openai',
+							model: 'My-Chat',
+							catalogModelId: 'gpt-4.1',
+							name: 'My-Chat (gpt-4.1)',
+							metadata: { functionCalling: true, available: true },
+						},
+					],
+				},
 			}),
 			isLoading: ref(false),
 		}),
@@ -555,6 +566,32 @@ describe('AgentSubAgentsPanel', () => {
 				},
 			},
 		]);
+	});
+
+	it('saves and restores a Foundry deployment for a difficulty model', async () => {
+		credentialsByProviderRef.value['azure-openai'] = 'azure-credential';
+		const wrapper = await mountPanel(defaultConfig);
+		await enableCustomModelRouting(wrapper);
+		await flushPromises();
+		emitDifficultyModelChange('agent-sub-agents-difficulty-high-model', {
+			provider: 'azure-openai',
+			model: 'My-Chat',
+		});
+		await flushPromises();
+		const changes = wrapper.emitted('update:config')?.[0]?.[0] as Partial<AgentJsonConfig>;
+		expect(changes.subAgents?.modelsByDifficulty?.high).toEqual({
+			model: 'azure-openai/gpt-4.1',
+			modelDeploymentName: 'My-Chat',
+			credential: 'azure-credential',
+		});
+		await wrapper.setProps({ config: { ...defaultConfig, ...changes } });
+		const selector = wrapper.findComponent(
+			'[data-testid="agent-sub-agents-difficulty-high-model"]',
+		);
+		expect(selector.props('selectedModel')).toMatchObject({
+			model: 'My-Chat',
+			name: 'My-Chat (gpt-4.1)',
+		});
 	});
 
 	it('turns custom model routing off and clears difficulty mappings', async () => {

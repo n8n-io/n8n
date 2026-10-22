@@ -67,6 +67,7 @@ export {
 	listAzureOpenAiModels,
 	shouldIncludeAzureModel,
 	type AzureOpenAiListModelsOptions,
+	type AzureOpenAiModel,
 	findEntraTenantIdIssue,
 	type EntraTenantIdIssue,
 } from './providers/azure';

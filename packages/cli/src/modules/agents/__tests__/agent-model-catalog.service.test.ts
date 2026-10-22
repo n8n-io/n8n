@@ -513,19 +513,30 @@ describe('AgentModelCatalogService', () => {
 				id: 'azure-openai',
 				name: 'Azure OpenAI',
 				models: {
-					'gpt-4.1': { id: 'gpt-4.1', name: 'GPT-4.1', toolCall: true },
+					'gpt-4.1': {
+						id: 'gpt-4.1',
+						name: 'GPT-4.1',
+						toolCall: true,
+						reasoning: false,
+						cost: { input: 2, output: 8 },
+					},
 				},
 			},
 		};
 
 		it('returns a Foundry credential deployments as exact, verified models', async () => {
 			const { service, lookupService } = makeService();
+			fetchProviderCatalog.mockResolvedValue(azureCatalog);
 			lookupService.lookup.mockResolvedValue({
 				status: 'success',
 				policy: 'endpoint-only',
 				models: [
-					{ name: 'my-chat (gpt-4.1)', value: 'my-chat' },
-					{ name: 'my-other (gpt-4.1-mini)', value: 'my-other' },
+					{ name: 'my-chat (gpt-4.1)', value: 'my-chat', catalogModelId: 'gpt-4.1' },
+					{
+						name: 'my-other (gpt-4.1-mini)',
+						value: 'my-other',
+						catalogModelId: 'gpt-4.1-mini',
+					},
 				],
 			});
 
@@ -540,8 +551,20 @@ describe('AgentModelCatalogService', () => {
 				provider: 'azure-openai',
 				verified: true,
 				models: [
-					{ id: 'my-chat', name: 'my-chat (gpt-4.1)', toolCall: true },
-					{ id: 'my-other', name: 'my-other (gpt-4.1-mini)', toolCall: true },
+					{
+						id: 'my-chat',
+						name: 'my-chat (gpt-4.1)',
+						catalogModelId: 'gpt-4.1',
+						toolCall: true,
+						reasoning: false,
+						cost: { input: 2, output: 8 },
+					},
+					{
+						id: 'my-other',
+						name: 'my-other (gpt-4.1-mini)',
+						catalogModelId: 'gpt-4.1-mini',
+						toolCall: true,
+					},
 				],
 			});
 			expect(lookupService.lookup).toHaveBeenCalledWith(
@@ -551,8 +574,6 @@ describe('AgentModelCatalogService', () => {
 				'azureOpenAiApi',
 				'azure-openai',
 			);
-			// The live deployment list is authoritative; the catalog is not consulted.
-			expect(fetchProviderCatalog).not.toHaveBeenCalled();
 		});
 
 		it('falls back to the catalog list when the credential cannot list deployments', async () => {

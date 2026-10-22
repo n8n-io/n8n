@@ -64,6 +64,7 @@ export function getAgentModelProviderCredentialTypes(provider: string): readonly
 /** A model offered in the agent model picker. Mirrors the catalog's `ModelInfo` shape. */
 export interface AgentCatalogModel {
 	id: string;
+	catalogModelId?: string;
 	name: string;
 	releaseDate?: string;
 	reasoning?: boolean;

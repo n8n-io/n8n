@@ -88,7 +88,12 @@ describe('listAzureOpenAiModels', () => {
 					modelName: 'text-embedding-3-small',
 					capabilities: { embeddings: 'true' },
 				},
-				{ name: 'my-gpt4', modelName: 'gpt-4.1-nano', capabilities: { chat_completion: 'true' } },
+				{
+					name: 'my-gpt4',
+					modelName: 'gpt-4.1-nano',
+					modelPublisher: 'OpenAI',
+					capabilities: { chat_completion: 'true' },
+				},
 				{ name: 'a-chat-model', modelName: 'gpt-4o', capabilities: { chat_completion: 'true' } },
 			],
 		});
@@ -105,8 +110,13 @@ describe('listAzureOpenAiModels', () => {
 		);
 		expect(calledHeaders(fetch)).toEqual({ 'api-key': 'key' });
 		expect(models).toEqual([
-			{ id: 'a-chat-model', name: 'a-chat-model (gpt-4o)' },
-			{ id: 'my-gpt4', name: 'my-gpt4 (gpt-4.1-nano)' },
+			{ id: 'a-chat-model', name: 'a-chat-model (gpt-4o)', modelName: 'gpt-4o' },
+			{
+				id: 'my-gpt4',
+				name: 'my-gpt4 (gpt-4.1-nano)',
+				modelName: 'gpt-4.1-nano',
+				modelPublisher: 'OpenAI',
+			},
 		]);
 	});
 

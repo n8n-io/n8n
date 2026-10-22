@@ -135,6 +135,28 @@ describe('useModelCatalog', () => {
 		);
 	});
 
+	it('keeps Foundry deployment IDs separate from catalog model IDs', async () => {
+		mocks.getModelCatalog.mockResolvedValue({});
+		mocks.getProviderModels.mockResolvedValue({
+			provider: 'azure-openai',
+			verified: true,
+			models: [
+				{ ...model('My-Chat', 'My-Chat (gpt-4.1)'), catalogModelId: 'gpt-4.1' },
+				{ ...model('Other-Chat', 'Other-Chat (gpt-4.1)'), catalogModelId: 'gpt-4.1' },
+			],
+		});
+		const { useModelCatalog } = await import('../composables/useModelCatalog');
+		const { ensureLoaded, getModelsForPicker } = useModelCatalog();
+		await ensureLoaded('project-1');
+		const credentials = { 'azure-openai': 'azure-credential' };
+		getModelsForPicker(credentials);
+		await flushAsync();
+		expect(getModelsForPicker(credentials)['azure-openai']?.models).toMatchObject([
+			{ model: 'My-Chat', catalogModelId: 'gpt-4.1', name: 'My-Chat (gpt-4.1)' },
+			{ model: 'Other-Chat', catalogModelId: 'gpt-4.1', name: 'Other-Chat (gpt-4.1)' },
+		]);
+	});
+
 	it('lists models with a priority first and the rest by name', async () => {
 		mocks.getModelCatalog.mockResolvedValue({});
 		mocks.getProviderModels.mockResolvedValue({

@@ -129,14 +129,24 @@ export class AgentModelCatalogService {
 			return await this.unavailableModels(provider, credentialId, lookup.error, lookup.policy);
 		}
 		if (lookup.policy === 'endpoint-only') {
+			const catalogModels: Record<string, AgentCatalogModel> = lookup.models.some(
+				(model) => model.catalogModelId,
+			)
+				? await this.getCatalogModels(provider)
+				: {};
 			return this.withDefaultModel(provider, credentialId, {
 				provider,
 				verified: true,
-				models: lookup.models.map((live) => ({
-					id: live.value,
-					name: live.name || live.value,
-					toolCall: true,
-				})),
+				models: lookup.models.map((live) => {
+					const catalogModel = catalogModels[live.catalogModelId ?? live.value];
+					return {
+						toolCall: true,
+						...catalogModel,
+						id: live.value,
+						name: live.name || live.value,
+						...(live.catalogModelId ? { catalogModelId: live.catalogModelId } : {}),
+					};
+				}),
 			});
 		}
 
