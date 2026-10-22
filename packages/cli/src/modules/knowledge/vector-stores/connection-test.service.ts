@@ -5,9 +5,9 @@ import { Service } from '@n8n/di';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 
-import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
-import { resolveEmbeddingProviderOptionsFromCredential } from './json-config/embedding-credential';
-import { buildVectorStoreBackend } from './json-config/vector-store-factory';
+import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-credential-provider';
+import { resolveEmbeddingProviderOptionsFromCredential } from './embedding-credential';
+import { buildVectorStoreBackend } from './factory';
 
 const TEST_QUERY = 'n8n connection test';
 const TEST_TIMEOUT_MS = 15_000;

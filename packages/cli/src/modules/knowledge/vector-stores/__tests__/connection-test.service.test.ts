@@ -8,15 +8,15 @@ import { mock } from 'vitest-mock-extended';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsHelper } from '@/credentials-helper';
 
-import { AgentVectorStoresService } from '../agent-vector-stores.service';
-import { resolveEmbeddingProviderOptionsFromCredential } from '../json-config/embedding-credential';
-import { buildVectorStoreBackend } from '../json-config/vector-store-factory';
+import { AgentVectorStoresService } from '../connection-test.service';
+import { resolveEmbeddingProviderOptionsFromCredential } from '../embedding-credential';
+import { buildVectorStoreBackend } from '../factory';
 
-vi.mock('../json-config/vector-store-factory', () => ({
+vi.mock('../factory', () => ({
 	buildVectorStoreBackend: vi.fn(),
 }));
 
-vi.mock('../json-config/embedding-credential', () => ({
+vi.mock('../embedding-credential', () => ({
 	resolveEmbeddingProviderOptionsFromCredential: vi.fn().mockResolvedValue({}),
 }));
 

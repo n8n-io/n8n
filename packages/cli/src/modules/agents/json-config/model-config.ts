@@ -4,7 +4,7 @@ import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { UserError } from 'n8n-workflow';
 
-import { mapCredentialForProvider } from './credential-field-mapping';
+import { mapCredentialForProvider } from '@/credentials/credential-field-mapping';
 
 export async function resolveCredentialAwareModelConfig(
 	model: string,
