@@ -4,6 +4,7 @@ import { z } from 'zod';
 export const POLICY_VIOLATION_KIND = {
 	nodeTypeUnavailable: 'node-type-unavailable',
 	credentialTypeUnavailable: 'credential-type-unavailable',
+	nodeTypeDeprecated: 'node-type-deprecated',
 } as const;
 
 /** The `subjectType` values n8n emits today. The schema stays open to others. */

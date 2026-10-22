@@ -23,12 +23,13 @@ const NAME_KEY_BY_KIND: Record<string, BaseTextKey | undefined> = {
 	[POLICY_VIOLATION_KIND.nodeTypeUnavailable]: 'typeAvailabilityPolicies.violations.nodeType',
 	[POLICY_VIOLATION_KIND.credentialTypeUnavailable]:
 		'typeAvailabilityPolicies.violations.credentialType',
-	'node-type-deprecated': 'typeAvailabilityPolicies.violations.nodeType',
+	[POLICY_VIOLATION_KIND.nodeTypeDeprecated]: 'typeAvailabilityPolicies.violations.nodeType',
 };
 
 /** Headings for kinds that have no scope, so their items can stay as short as scoped ones. */
 const HEADING_KEY_BY_KIND: Record<string, BaseTextKey | undefined> = {
-	'node-type-deprecated': 'typeAvailabilityPolicies.violations.deprecatedHeading',
+	[POLICY_VIOLATION_KIND.nodeTypeDeprecated]:
+		'typeAvailabilityPolicies.violations.deprecatedHeading',
 };
 
 const SCOPE_ORDER = ['instance', 'project'];
