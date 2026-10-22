@@ -1,5 +1,5 @@
 import type { AgentJsonVectorStoreConfig } from '@n8n/api-types';
-import { createHmac, type Hmac } from 'node:crypto';
+import { createHmac } from 'node:crypto';
 
 const KNOWLEDGE_TELEMETRY_KEY_LABEL = 'agent-knowledge-telemetry';
 
@@ -7,7 +7,7 @@ const KNOWLEDGE_TELEMETRY_KEY_LABEL = 'agent-knowledge-telemetry';
  * Make sure a knowledge code cannot be matched to a known file or source name outside this instance.
  * The derived key keeps these codes apart from other uses of the instance secret.
  */
-export function createKnowledgeTelemetryHmac(instanceSecret: string): Hmac {
+export function createKnowledgeTelemetryHmac(instanceSecret: string) {
 	const key = createHmac('sha256', instanceSecret).update(KNOWLEDGE_TELEMETRY_KEY_LABEL).digest();
 	return createHmac('sha256', key);
 }
