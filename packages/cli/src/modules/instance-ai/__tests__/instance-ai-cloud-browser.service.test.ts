@@ -30,6 +30,8 @@ describe('InstanceAiCloudBrowserService', () => {
 		logger.scoped.mockReturnValue(logger);
 		aiGatewayBrowserUseService = mock<AiGatewayBrowserUseService>();
 		aiGatewayBrowserUseService.isGatewayBrowserUseEnabled.mockReturnValue(true);
+		postHogClient.getFeatureFlagForInstance.mockReset();
+		postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
 		service = new InstanceAiCloudBrowserService(
 			logger,
 			aiGatewayBrowserUseService,
@@ -201,7 +203,16 @@ describe('InstanceAiCloudBrowserService', () => {
 		aiGatewayBrowserUseService.isGatewayBrowserUseEnabled.mockReturnValue(false);
 
 		await expect(service.createServer('user-1', 'thread-1', 'task-1', domainGate)).rejects.toThrow(
-			'Cloud browser use is not enabled',
+			'The cloud browser is not available on this instance',
+		);
+		expect(service.findServer('task-1')).toBeUndefined();
+	});
+
+	it('refuses to create a server when the rollout flag is off', async () => {
+		postHogClient.getFeatureFlagForInstance.mockResolvedValue(false);
+
+		await expect(service.createServer('user-1', 'thread-1', 'task-1', domainGate)).rejects.toThrow(
+			'The cloud browser is not available on this instance',
 		);
 		expect(service.findServer('task-1')).toBeUndefined();
 	});

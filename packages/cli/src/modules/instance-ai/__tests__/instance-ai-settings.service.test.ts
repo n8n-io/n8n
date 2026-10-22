@@ -1838,10 +1838,12 @@ describe('InstanceAiSettingsService', () => {
 
 		it('turns on on cloud, where other fields are managed', async () => {
 			globalConfig.deployment.type = 'cloud';
+			globalConfig.instanceAi.cloudBrowserEnabled = false;
 
 			await expect(
 				service.updateAdminSettings({ cloudBrowserEnabled: true }, admin),
 			).resolves.toMatchObject({ cloudBrowserEnabled: true });
+			expect(persistedSettingsValue).toContain('"cloudBrowserEnabled":true');
 		});
 
 		it('refuses to turn on, and saves nothing, when the instance cannot use the cloud browser', async () => {
