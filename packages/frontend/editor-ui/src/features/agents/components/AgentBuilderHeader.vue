@@ -52,7 +52,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'header-action': [item: string];
-	'open-preview': [];
+	'open-preview': [source: 'primary'];
 	'close-preview': [];
 	'publish-ready': [ready: boolean];
 	published: [agent: AgentResource];
@@ -246,7 +246,7 @@ function onMenuSelect(id: string) {
 				:is-preview-open="props.isPreviewOpen"
 				:validation-issues="props.configValidationIssues ?? []"
 				test-id="agent-header-preview-btn"
-				@open-preview="emit('open-preview')"
+				@open-preview="emit('open-preview', 'primary')"
 				@close-preview="emit('close-preview')"
 			/>
 			<AgentPublishButton

@@ -199,7 +199,9 @@ describe('EngineV2ManualRunPlanner', () => {
 				}),
 			);
 
-			expect(plan.seeded).toEqual([{ nodeId: A.id, outputs: [[item({ pinned: true })]] }]);
+			expect(plan.seeded).toEqual([
+				{ nodeId: A.id, outputs: [[{ json: { pinned: true }, pairedItem: { item: 0 } }]] },
+			]);
 		});
 
 		it('seeds outputs that contain binary data as they are', () => {
@@ -275,7 +277,26 @@ describe('EngineV2ManualRunPlanner', () => {
 
 			expect(nodeNames(plan)).toEqual([TRIGGER.name, A.name, B.name, C.name]);
 			expect(plan.triggerOutputs).toEqual([[{ json: {} }]]);
-			expect(plan.seeded).toEqual([{ nodeId: B.id, outputs: [[item({ pinned: true })]] }]);
+			expect(plan.seeded).toEqual([
+				{ nodeId: B.id, outputs: [[{ json: { pinned: true }, pairedItem: { item: 0 } }]] },
+			]);
+		});
+
+		it('pairs each pinned item with the input item of the same index, keeping lineage it already has', () => {
+			const plan = planner.plan(
+				runData({
+					triggerToStartFrom: { name: TRIGGER.name },
+					pinData: {
+						[B.name]: [item({ i: 0 }), { json: { i: 1 }, pairedItem: { item: 5 } }, item({ i: 2 })],
+					},
+				}),
+			);
+
+			expect(plan.seeded[0].outputs[0].map((i) => i.pairedItem)).toEqual([
+				{ item: 0 },
+				{ item: 5 },
+				{ item: 2 },
+			]);
 		});
 
 		it('prefers the fired trigger payload over pinned data on the trigger', () => {
@@ -367,6 +388,12 @@ describe('EngineV2ManualRunPlanner', () => {
 					}),
 				),
 			).toThrow(/Cannot start from a disabled trigger/);
+		});
+
+		it('refuses run data without a destination', () => {
+			expect(() => planner.plan(runData({ runData: fullRunData(TRIGGER, A) }))).toThrow(
+				/needs a destination node/,
+			);
 		});
 	});
 });

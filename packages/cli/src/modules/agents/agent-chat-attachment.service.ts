@@ -112,6 +112,17 @@ export class AgentChatAttachmentService {
 		}
 	}
 
+	/**
+	 * An attachment that a system chat stored for one memory resource. The
+	 * caller checks access to its thread.
+	 */
+	async getForSystemAgent(
+		attachmentId: string,
+		scope: { agentId: string; resourceId: string; source: string },
+	): Promise<AgentChatAttachment | null> {
+		return await this.repository.findByIdForSystemAgent(attachmentId, scope);
+	}
+
 	/** Return metadata only when the caller can read the session. */
 	async getForAgent(
 		attachmentId: string,

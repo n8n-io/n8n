@@ -5,6 +5,7 @@ import type {
 	Project,
 	ProjectRepository,
 	Role,
+	Transaction,
 	User,
 	WorkflowRepository,
 } from '@n8n/db';
@@ -185,11 +186,13 @@ describe('WorkflowCreationService', () => {
 		const transactionManager = {
 			save: vi.fn().mockRejectedValue(new Error('Stopping for test')),
 		};
+		const transaction = mock<Transaction>();
 
 		// The create body still hands the manager to its co-writers; only the workflow row
 		// itself goes through the token-gated repository method.
 		workflowRepositoryMock.runInTransaction.mockImplementation(
-			async (ctx, fn) => await fn(transactionManager as unknown as EntityManager, ctx),
+			async (ctx, fn) =>
+				await fn(transactionManager as unknown as EntityManager, { ...ctx, trx: transaction }),
 		);
 		workflowRepositoryMock.createContent.mockRejectedValue(new Error('Stopping for test'));
 
@@ -199,7 +202,7 @@ describe('WorkflowCreationService', () => {
 			} as never);
 		}
 
-		return { transactionManager };
+		return { transactionManager, transaction };
 	}
 
 	/** A minimal workflow that carries one group, so the save path reads the flag. */
@@ -213,6 +216,35 @@ describe('WorkflowCreationService', () => {
 	}
 
 	describe('createWorkflow()', () => {
+		it.each([false, true])(
+			'rechecks project access in the workflow transaction with publicApi=%s',
+			async (publicApi) => {
+				const user = mock<User>();
+				const project = mock<Project>({ id: 'project-1' });
+				const { transaction } = setupTransactionMocks();
+				projectServiceMock.getProjectWithScope.mockImplementation(
+					async (_user, _id, _scopes, ctx) => (ctx?.trx === transaction ? null : project),
+				);
+
+				await expect(
+					workflowCreationService.createWorkflow(user, makeWorkflow(), {
+						projectId: project.id,
+						publicApi,
+					}),
+				).rejects.toThrow(publicApi ? ForbiddenError : BadRequestError);
+
+				expect(projectServiceMock.getProjectWithScope).toHaveBeenNthCalledWith(
+					2,
+					user,
+					project.id,
+					['workflow:create'],
+					expect.objectContaining({ trx: transaction }),
+				);
+				expect(workflowRepositoryMock.createContent).not.toHaveBeenCalled();
+				expect(workflowHistoryServiceMock.saveVersion).not.toHaveBeenCalled();
+			},
+		);
+
 		it('relaxes the group rules for a user inside the rollout', async () => {
 			nodeGroupRulesFlagGateMock.getEnabledRules.mockResolvedValue(ALL_RULES_RELAXED);
 			licenseStateMock.isSharingLicensed.mockReturnValue(false);

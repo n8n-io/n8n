@@ -1,4 +1,4 @@
-import type { SelfHealingExecutionReference } from '@n8n/api-types';
+import type { SelfHealingExecutionReference, WorkflowSuggestionBaseline } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ExecutionRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -46,6 +46,39 @@ export class SelfHealingExecutionReferenceService {
 		const execution = await this.findReference(executionId);
 		if (execution && execution.workflowId !== workflowId) {
 			throw new BadRequestError('The execution does not belong to this workflow.');
+		}
+	}
+
+	async validateFailure(
+		user: User,
+		baseline: WorkflowSuggestionBaseline,
+		executionId: string,
+	): Promise<void> {
+		if (!(await this.canReadExecution(user, baseline.workflowId))) {
+			throw new ForbiddenError('Workflow and execution read access is required.');
+		}
+		if (isExecutionIdV2(executionId)) {
+			throw new BadRequestError('Engine v2 executions are not supported for self-healing.');
+		}
+		const execution = await this.executions.findSingleExecution(executionId, {
+			includeData: false,
+			includeAnnotation: false,
+		});
+		if (!execution) throw new BadRequestError('The failed execution is unavailable.');
+		if (
+			execution.workflowId !== baseline.workflowId ||
+			execution.workflowVersionId !== baseline.expectedBaseline.publishedVersionId
+		) {
+			throw new BadRequestError(
+				'The failure must belong to the current published workflow version.',
+			);
+		}
+		if (
+			(execution.status !== 'error' && execution.status !== 'crashed') ||
+			execution.mode === 'manual' ||
+			execution.mode === 'evaluation'
+		) {
+			throw new BadRequestError('The execution is not an eligible production failure.');
 		}
 	}
 

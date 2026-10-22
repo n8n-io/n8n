@@ -62,7 +62,7 @@ export type ScannedBranch = {
 /**
  * Applies a selective export to the exported working copy of a branch. It reads
  * the branch, runs the guards, then overlays. The caller resolves the
- * connection, runs the exporter and commits.
+ * environment, runs the exporter and commits.
  *
  */
 @Service()

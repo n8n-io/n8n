@@ -1,5 +1,6 @@
 import type { InstanceAiAgentNode, InstanceAiMessage } from '@n8n/api-types';
 
+import { buildThreadArtifactsBlock, buildThreadContextBlock } from '../internal-messages';
 import {
 	collectConfirmationRequestIds,
 	markExpiredConfirmations,
@@ -28,6 +29,113 @@ function makeSnapshotTree(text = 'Snapshot text'): InstanceAiAgentNode {
 
 describe('parseStoredMessages', () => {
 	describe('user messages', () => {
+		// AGENT-1090: History must restore the image parts beside the user text.
+		it.each(['Build from this image', ''])('restores a saved image with user text %j', (text) => {
+			const result = parseStoredMessages([
+				{
+					id: 'msg-image',
+					role: 'user',
+					createdAt: makeDate(),
+					content: [
+						{
+							type: 'text',
+							text: `${text}\n\n[ATTACHMENTS]\n- [0] \`diagram.png\` (image/png): not a supported structured format\n[/ATTACHMENTS]`,
+						},
+						{ type: 'file', mediaType: 'image/png', data: 'aW1hZ2U=' },
+					],
+				},
+			]);
+
+			expect(result[0].content).toBe(text);
+			expect(result[0].attachments).toEqual([
+				{ type: 'file', fileName: 'diagram.png', mimeType: 'image/png', data: 'aW1hZ2U=' },
+			]);
+		});
+
+		it('keeps the names and order of images beside structured attachments', () => {
+			const result = parseStoredMessages([
+				{
+					id: 'msg-files',
+					role: 'user',
+					createdAt: makeDate(),
+					content: [
+						{
+							type: 'text',
+							text: 'Compare these\n\n[ATTACHMENTS]\n- [0] `rows.csv` (text/csv): parseable via parse-file (format: csv)\n- [1] `first.png` (image/png): not a supported structured format\n- [2] `second.png` (image/png): not a supported structured format\n[/ATTACHMENTS]',
+						},
+						{ type: 'file', mediaType: 'image/png', data: 'Zmlyc3Q=' },
+						{ type: 'file', mediaType: 'image/png', data: 'c2Vjb25k' },
+					],
+				},
+			]);
+
+			expect(result[0].attachments).toEqual([
+				{ type: 'file', fileName: 'first.png', mimeType: 'image/png', data: 'Zmlyc3Q=' },
+				{ type: 'file', fileName: 'second.png', mimeType: 'image/png', data: 'c2Vjb25k' },
+			]);
+			expect(result[0].content).toBe(
+				'Compare these\n\n[ATTACHMENTS]\n- [0] `rows.csv` (text/csv): parseable via parse-file (format: csv)\n[/ATTACHMENTS]',
+			);
+		});
+
+		it('keeps attachment-like user text when there are no saved files', () => {
+			const content =
+				'Explain [ATTACHMENTS]\n- [0] `file.png` (image/png): example\n[/ATTACHMENTS]';
+			const result = parseStoredMessages([
+				{ id: 'msg-1', role: 'user', content, createdAt: makeDate() },
+			]);
+
+			expect(result[0].content).toBe(content);
+			expect(result[0].attachments).toBeUndefined();
+		});
+
+		it('restores image and resource attachments after it removes internal context', () => {
+			const workflow = { type: 'workflow' as const, id: 'wf-1', name: 'Digest' };
+			const context = buildThreadContextBlock([buildThreadArtifactsBlock(undefined, [workflow])]);
+			const result = parseStoredMessages([
+				{
+					id: 'msg-mixed',
+					role: 'user',
+					createdAt: makeDate(),
+					content: [
+						{
+							type: 'text',
+							text: `${context}\n\nUpdate this\n\n[ATTACHMENTS]\n- [0] \`diagram.png\` (image/png): not a supported structured format\n[/ATTACHMENTS]`,
+						},
+						{ type: 'file', mediaType: 'image/png', data: 'aW1hZ2U=' },
+					],
+				},
+			]);
+
+			expect(result[0].content).toBe('Update this');
+			expect(result[0].attachments).toEqual([
+				workflow,
+				{ type: 'file', fileName: 'diagram.png', mimeType: 'image/png', data: 'aW1hZ2U=' },
+			]);
+		});
+
+		it('restores files without a manifest and skips incomplete file parts', () => {
+			const result = parseStoredMessages([
+				{
+					id: 'msg-files',
+					role: 'user',
+					createdAt: makeDate(),
+					content: [
+						{ type: 'text', text: 'Look at this' },
+						{ type: 'file', mediaType: 'image/png', data: 'aW1hZ2U=' },
+						{ type: 'file', mediaType: 'image/png' },
+						{ type: 'file', data: 'aW1hZ2U=' },
+						{ type: 'file', mediaType: 'image/png', data: '' },
+					],
+				},
+			]);
+
+			expect(result[0].content).toBe('Look at this');
+			expect(result[0].attachments).toEqual([
+				{ type: 'file', fileName: 'attachment', mimeType: 'image/png', data: 'aW1hZ2U=' },
+			]);
+		});
+
 		it('should parse user message with string content', () => {
 			const messages: StoredAgentMessage[] = [
 				{

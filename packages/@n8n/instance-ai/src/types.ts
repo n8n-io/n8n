@@ -19,11 +19,15 @@ import type {
 	AgentJsonConfig,
 	AgentSessionStatus,
 	AgentSkill,
+	SaveSkillDto,
+	SkillDetail,
+	SkillListResponse,
+	SkillSaveResponse,
+	SkillScope,
 	EvaluationMetric,
 	TaskList,
 	InstanceAiPromptConfiguration,
 	InstanceAiFileAttachment,
-	ComputerUseChannel,
 	InstanceAiPermissions,
 	InstanceAiSetupItem,
 	InstanceAiThreadArtifact,
@@ -190,9 +194,25 @@ export interface ExecutionResult {
 	 * about the trigger's ingress (auth, payload shape, response mode).
 	 */
 	injectedTriggerNodeName?: string;
+	/**
+	 * Set when n8n redacted this execution's data for the current user, the same
+	 * way the executions list in the editor does. Output items are then empty and
+	 * errors carry only their type. `reason` is n8n's redaction reason, e.g.
+	 * `credential_inaccessible` or `workflow_redaction_policy`.
+	 */
+	redaction?: ExecutionRedaction;
 	error?: string;
 	startedAt?: string;
 	finishedAt?: string;
+}
+
+export interface ExecutionRedaction {
+	reason: string;
+	/**
+	 * Whether the user can reveal the data in the editor. Always false for
+	 * `credential_inaccessible` and `dynamic_credentials`.
+	 */
+	canReveal: boolean;
 }
 
 /** How a step run produced the target node's input. */
@@ -264,6 +284,13 @@ export interface NodeOutputResult {
 	 * are all read; a node in the main graph reports the last of them.
 	 */
 	totalRuns?: number;
+	/**
+	 * Set when n8n redacted this execution's data for the current user, the same
+	 * way the executions list in the editor does. Output items are then empty and
+	 * errors carry only their type. `reason` is n8n's redaction reason, e.g.
+	 * `credential_inaccessible` or `workflow_redaction_policy`.
+	 */
+	redaction?: ExecutionRedaction;
 }
 
 export interface ResolvedExpressionFailure {
@@ -322,8 +349,11 @@ export interface ResolvedNodeParametersResult {
 	 * fields downstream when the runtime did not throw.
 	 */
 	emptyResolutions: EmptyExpressionResolution[];
-	/** Present only when the resolution was refused (e.g. parameter-values gate is off). */
-	suppressed?: 'parameter-values-disabled';
+	/**
+	 * Present only when the resolution was refused: the parameter-values gate is
+	 * off, or n8n redacted the execution's data for the current user.
+	 */
+	suppressed?: 'parameter-values-disabled' | 'execution-redacted';
 }
 
 /**
@@ -1124,6 +1154,25 @@ export interface InstanceAiPreferenceService {
 	): void;
 }
 
+export interface InstanceAiSkillService {
+	list(options: {
+		query?: string;
+		scope?: SkillScope;
+		projectId?: string;
+		attachableToAgentId?: string;
+		limit: number;
+		skip: number;
+	}): Promise<SkillListResponse>;
+	get(skillId: string): Promise<SkillDetail>;
+	create(input: {
+		scope: 'project' | 'instance';
+		projectId?: string;
+		skill: Omit<AgentSkill, 'allowedTools'>;
+	}): Promise<SkillDetail>;
+	update(skillId: string, input: SaveSkillDto): Promise<SkillSaveResponse>;
+	delete(skillId: string): Promise<void>;
+}
+
 export interface InstanceAiDataTableService {
 	list(options?: { projectId?: string }): Promise<DataTableSummary[]>;
 	create(
@@ -1306,11 +1355,11 @@ export interface InstanceAiWebResearchService {
 	): Promise<FetchedPage>;
 }
 
-// ── Filesystem MCP server ────────────────────────────────────────────────────
+// ── Local MCP server ─────────────────────────────────────────────────────────
 
 /**
- * Minimal interface for a connected filesystem MCP server.
- * Implemented by `LocalGateway` (remote daemon) in the CLI module.
+ * Minimal interface for a connected local MCP server.
+ * Implemented by the Browser Use server in the CLI module.
  */
 export interface LocalMcpServer {
 	getAvailableTools(): McpTool[];
@@ -1441,22 +1490,15 @@ export interface AgentValidationSummary {
 	capabilityCount: number;
 }
 
-// ── Computer Use state ──────────────────────────────────────────────────────
+// ── Browser Use state ───────────────────────────────────────────────────────
 
-export type ComputerUseChannelState =
+export type BrowserUseState =
 	/** Not offered to this user, so the + menu has no entry to name. */
 	| { status: 'unavailable' }
-	/** In the + menu, not paired. */
+	/** In the + menu, extension not connected. */
 	| { status: 'disconnected' }
-	/** In the + menu, switched off in the user's own settings. */
-	| { status: 'disabledByUser' }
-	/** Live. `toolCategories` are the categories this channel serves, in the
-	 *  daemon's own vocabulary: `filesystem`, `shell`, `browser`, … */
-	| { status: 'connected'; toolCategories: string[] };
-
-export type ComputerUseState = Record<ComputerUseChannel, ComputerUseChannelState>;
-
-export type { ComputerUseChannel };
+	/** Live: the `browser_*` tools are available. */
+	| { status: 'connected' };
 
 // ── Conversation history ─────────────────────────────────────────────────────
 
@@ -1576,6 +1618,7 @@ export interface InstanceAiContext {
 	/** Present only when saved preferences are enabled for this user; its
 	 *  absence hides the `save_user_preference` tool. */
 	aiPreferenceService?: InstanceAiPreferenceService;
+	skillService?: InstanceAiSkillService;
 	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
 	 *  agent is built, which is also when its MCP tools are attached, so it always
 	 *  matches what this agent can actually call. */
@@ -1602,11 +1645,11 @@ export interface InstanceAiContext {
 	workspaceService?: InstanceAiWorkspaceService;
 	workflowTemplateService: InstanceAiWorkflowTemplateService;
 	/**
-	 * Connected remote MCP server (e.g. computer-use daemon). When set, dynamic tools are created from its advertised capabilities.
+	 * Connected local MCP server (the Browser Use session). When set, dynamic tools are created from its advertised capabilities.
 	 */
 	localMcpServer?: LocalMcpServer;
-	/** Per-channel Computer Use state — drives system prompt guidance. */
-	computerUseState?: ComputerUseState;
+	/** Browser Use state — drives system prompt guidance. */
+	browserUseState?: BrowserUseState;
 	/** Per-action HITL permission overrides. When absent, tools default to requiring approval. */
 	permissions?: InstanceAiPermissions;
 	/** When set, `runWorkflow: 'always_allow'` only short-circuits HITL approval for these workflow IDs.
@@ -1668,6 +1711,18 @@ export interface InstanceAiContext {
 	 * Wired by the host only while the setup panel flag is on.
 	 */
 	markWorkflowSetupHandled?: (workflowId: string) => Promise<void>;
+	/**
+	 * Rejects a write target outside the thread's project with the error the
+	 * adapter throws on write. Lets tools fail before an approval card or sandbox
+	 * work. The adapter still enforces the rule. Absent: no pre-check.
+	 */
+	assertInThreadProject?: (
+		target:
+			| { kind: 'workflow'; id: string }
+			| { kind: 'credential'; id: string }
+			| { kind: 'data-table'; id: string; projectId?: string }
+			| { kind: 'project'; id: string },
+	) => Promise<void>;
 	/**
 	 * Called after a tool creates or changes a workflow, data table, or agent,
 	 * and after it reads a data table, as the frontend previews those too.
@@ -2203,7 +2258,7 @@ export interface OrchestrationContext {
 	abortSignal: AbortSignal;
 	taskStorage: TaskStorage;
 	tracing?: InstanceAiTraceContext;
-	/** Local MCP server (Computer Use daemon) for filesystem, shell, browser, and related tools. */
+	/** Local MCP server (Browser Use session) for the browser tools. */
 	localMcpServer?: LocalMcpServer;
 	/** Validated, approval-wrapped MCP tools available to Agent Builder. */
 	mcpTools?: InstanceAiToolRegistry;

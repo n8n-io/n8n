@@ -40,11 +40,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node-version: [24.18.1, 26.5.1]
+        node-version: [24.22.1, 26.12.1]
     with:
       ref: ${{ github.sha }}
       nodeVersion: ${{ matrix.node-version }}
-      collectCoverage: ${{ matrix.node-version == '24.18.1' }}
+      collectCoverage: ${{ matrix.node-version == '24.22.1' }}
     secrets: inherit
 
   lint:

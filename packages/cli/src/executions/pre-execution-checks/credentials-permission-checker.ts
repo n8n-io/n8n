@@ -6,7 +6,6 @@ import { hasGlobalScope } from '@n8n/permissions';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { getActiveCredentialTypes, UserError } from 'n8n-workflow';
 
-import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { CredentialsFinderService, type UnusableCredential } from '@n8n/backend-services';
 import { NodeTypes } from '@/node-types';
 import { OwnershipService } from '@/services/ownership.service';
@@ -109,26 +108,19 @@ export class CredentialsPermissionChecker {
 
 		if (notGranted.length === 0) return;
 
-		const nodeToFlag = credIdsToNodes[notGranted[0].id][0];
-		// The richer message is part of the feature, so it stays behind the flag
-		// along with everything else the user can see.
-		throw isCredSharingEnabled()
-			? new UnusableCredentialForUserError(nodeToFlag, notGranted[0])
-			: new InaccessibleCredentialForUserError(nodeToFlag);
+		throw new UnusableCredentialForUserError(credIdsToNodes[notGranted[0].id][0], notGranted[0]);
 	}
 
 	/**
 	 * Non-throwing, named-credential check for publish validation: what a triggered
 	 * run acting as the publisher could not use in this workflow (see
-	 * {@link findUnusableInWorkflow}). Gated behind {@link isCredSharingEnabled}.
+	 * {@link findUnusableInWorkflow}).
 	 */
 	async findInaccessibleForUser(
 		userId: string,
 		nodes: INode[],
 		workflowId: string,
 	): Promise<Array<{ id: string; name: string; exists: boolean }>> {
-		if (!isCredSharingEnabled()) return [];
-
 		const credIdsToNodes = this.mapCredIdsToNodes(nodes);
 		const workflowCredIds = Object.keys(credIdsToNodes);
 
@@ -354,14 +346,10 @@ export class CredentialsPermissionChecker {
 			return { homeProject, inaccessibleIds: [], unusableForActingUser: [] };
 		}
 
-		// Behind the flag, and only for what the project route rejected. Without an
-		// acting user we cannot tell a colleague's personal credential from one
-		// simply never shared here, so keep the sharing answer, which is the
-		// accurate one for the common case.
-		if (!isCredSharingEnabled()) {
-			return { homeProject, inaccessibleIds: rejectedByProject, unusableForActingUser: [] };
-		}
-
+		// Only for what the project route rejected. Without an acting user we
+		// cannot tell a colleague's personal credential from one simply never
+		// shared here, so keep the sharing answer, which is the accurate one for
+		// the common case.
 		if (!actingUserId) {
 			// Says out loud what the sharing message cannot: the run was refused for
 			// want of an identity, not because the credential was never shared. Hit by
@@ -404,8 +392,8 @@ export class CredentialsPermissionChecker {
 	}
 
 	/**
-	 * Behind {@link isCredSharingEnabled}: the credentials `userId` may not use in
-	 * this workflow. The workflow payload and the publish check share it.
+	 * The credentials `userId` may not use in this workflow. The workflow payload
+	 * and the publish check share it.
 	 *
 	 * Global credentials and credentials of any team project the workflow is in
 	 * are usable. Anything else needs the user's own access, and in a team project
@@ -418,7 +406,7 @@ export class CredentialsPermissionChecker {
 		credentialIds: string[],
 		userId: string,
 	): Promise<UnusableCredential[]> {
-		if (!isCredSharingEnabled() || credentialIds.length === 0) return [];
+		if (credentialIds.length === 0) return [];
 
 		const homeProject = await this.ownershipService.getWorkflowProjectCached(workflowId);
 		const isTeamProject = homeProject.type === 'team';

@@ -7,14 +7,21 @@ import type {
 import { NodeApiError } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
-import { OPENAPI_DISABLED_NOTICE } from '../actions/lakebase/openApiDocument';
-import { fetchLakebaseColumns } from '../actions/lakebase/schema';
+import {
+	FUNCTION_ARGUMENTS_UNAVAILABLE_NOTICE,
+	OPENAPI_DISABLED_NOTICE,
+} from '../actions/lakebase/openApiDocument';
+import { fetchLakebaseColumns, fetchLakebaseFunctionArguments } from '../actions/lakebase/schema';
 import type { LakebaseColumn } from '../actions/lakebase/schema';
-import { getLakebaseMappingColumns } from '../methods/resourceMapping';
+import {
+	getLakebaseFunctionArguments,
+	getLakebaseMappingColumns,
+} from '../methods/resourceMapping';
 
 vi.mock('../actions/lakebase/schema', async (importOriginal) => ({
 	...(await importOriginal<typeof import('../actions/lakebase/schema')>()),
 	fetchLakebaseColumns: vi.fn(async () => []),
+	fetchLakebaseFunctionArguments: vi.fn(async () => []),
 }));
 
 // The real resolver reads the branch's compute host from the management API,
@@ -83,8 +90,29 @@ describe('Lakebase -> column mapping', () => {
 		const { fields } = await getLakebaseMappingColumns.call(setup());
 
 		expect(fields).toEqual([
-			expect.objectContaining({ id: 'sku', displayName: 'sku', display: true, type: 'string' }),
+			expect.objectContaining({
+				id: 'sku',
+				displayName: 'sku (string)',
+				display: true,
+				type: 'string',
+			}),
 		]);
+	});
+
+	it.each([
+		['a required column', { format: 'text', isRequired: true }, 'sku (text) *'],
+		[
+			'a column the database fills in',
+			{ format: 'text', isRequired: true, hasDefault: true },
+			'sku (text)',
+		],
+		['a column with no type in the document', { type: undefined }, 'sku'],
+	])('labels %s with its Postgres type and a required marker', async (_name, overrides, label) => {
+		vi.mocked(fetchLakebaseColumns).mockResolvedValue([column(overrides)]);
+
+		const { fields } = await getLakebaseMappingColumns.call(setup());
+
+		expect(fields[0].displayName).toBe(label);
 	});
 
 	it.each([
@@ -145,6 +173,8 @@ describe('Lakebase -> column mapping', () => {
 		['boolean', { type: 'boolean' }, 'boolean'],
 		['array', { type: 'array' }, 'array'],
 		['object', { type: 'object' }, 'object'],
+		['json', { format: 'json' }, 'object'],
+		['jsonb', { format: 'jsonb' }, 'object'],
 		['text', { type: 'string' }, 'string'],
 		['a timestamp', { type: 'string', format: 'timestamp with time zone' }, 'dateTime'],
 		['a date', { type: 'string', format: 'date' }, 'dateTime'],
@@ -197,5 +227,142 @@ describe('Lakebase -> column mapping', () => {
 
 		expect(fields).toEqual([]);
 		expect(fetchLakebaseColumns).not.toHaveBeenCalled();
+	});
+});
+
+describe('Lakebase -> function arguments', () => {
+	const setup = (locators: Record<string, string> = {}) => {
+		const values: Record<string, string> = {
+			lakebaseProject: 'proj',
+			lakebaseBranch: 'main',
+			lakebaseDatabase: 'app',
+			lakebaseSchema: 'public',
+			lakebaseFunction: 'spike_add',
+			authentication: 'oAuth2',
+			...locators,
+		};
+		const context = mockDeep<ILoadOptionsFunctions>();
+		context.getNode.mockReturnValue(node);
+		context.getNodeParameter.mockReturnValue('oAuth2');
+		context.getCurrentNodeParameter.mockImplementation(
+			(name: string) => values[name] as unknown as NodeParameterValueType,
+		);
+		context.getCredentials.mockResolvedValue({ host: 'https://host.example' });
+		return context;
+	};
+	const argument = (overrides: Partial<LakebaseColumn> = {}) =>
+		column({ name: 'a', type: 'integer', ...overrides });
+
+	beforeEach(() => {
+		vi.mocked(fetchLakebaseFunctionArguments).mockReset();
+	});
+
+	it('lists the arguments as mappable fields', async () => {
+		vi.mocked(fetchLakebaseFunctionArguments).mockResolvedValue([argument()]);
+
+		const { fields } = await getLakebaseFunctionArguments.call(setup());
+
+		expect(fields).toEqual([
+			{
+				id: 'a',
+				displayName: 'a (integer)',
+				required: false,
+				display: true,
+				defaultMatch: false,
+				canBeUsedToMatch: false,
+				type: 'number',
+			},
+		]);
+	});
+
+	it.each([
+		['a required argument', { isRequired: true }, true, 'a (integer) *'],
+		['an argument with a default', { isRequired: false }, false, 'a (integer)'],
+	])('marks %s required=%s', async (_name, overrides, expected, label) => {
+		vi.mocked(fetchLakebaseFunctionArguments).mockResolvedValue([argument(overrides)]);
+
+		const { fields } = await getLakebaseFunctionArguments.call(setup());
+
+		expect(fields[0].required).toBe(expected);
+		expect(fields[0].displayName).toBe(label);
+	});
+
+	it.each([
+		['integer', { type: 'integer' }, 'number'],
+		['boolean', { type: 'boolean' }, 'boolean'],
+		['text', { type: 'string' }, 'string'],
+		['a timestamp', { type: 'string', format: 'timestamp with time zone' }, 'dateTime'],
+		['jsonb', { type: undefined, format: 'jsonb' }, 'object'],
+		['an unknown type', { type: 'inet' }, 'string'],
+	])('maps %s to %s', async (_name, overrides, expected) => {
+		vi.mocked(fetchLakebaseFunctionArguments).mockResolvedValue([argument(overrides)]);
+
+		const { fields } = await getLakebaseFunctionArguments.call(setup());
+
+		expect(fields[0].type).toBe(expected);
+	});
+
+	it('offers the enum values of an enum argument', async () => {
+		vi.mocked(fetchLakebaseFunctionArguments).mockResolvedValue([
+			argument({ type: 'string', format: 'order_status', enum: ['open', 'shipped'] }),
+		]);
+
+		const { fields } = await getLakebaseFunctionArguments.call(setup());
+
+		expect(fields[0].type).toBe('options');
+		expect(fields[0].options).toEqual(['open', 'shipped'].map((value) => ({ name: value, value })));
+	});
+
+	it('explains the JSON fallback when the schema document is off', async () => {
+		const unavailable = new NodeApiError(node, { message: 'Not found' } as JsonObject);
+		unavailable.context.data = { code: 'PGRST205' };
+		vi.mocked(fetchLakebaseFunctionArguments).mockRejectedValue(unavailable);
+
+		const result = await getLakebaseFunctionArguments.call(setup());
+
+		expect(result).toEqual({
+			fields: [],
+			emptyFieldsNotice: FUNCTION_ARGUMENTS_UNAVAILABLE_NOTICE,
+		});
+	});
+
+	it('explains the JSON fallback when the document lists no arguments', async () => {
+		vi.mocked(fetchLakebaseFunctionArguments).mockResolvedValue([]);
+
+		const result = await getLakebaseFunctionArguments.call(setup());
+
+		expect(result).toEqual({
+			fields: [],
+			emptyFieldsNotice: FUNCTION_ARGUMENTS_UNAVAILABLE_NOTICE,
+		});
+	});
+
+	it('still fails on an error that is not a missing schema document', async () => {
+		const denied = new NodeApiError(node, { message: 'Forbidden' } as JsonObject);
+		denied.context.data = { code: '42501' };
+		vi.mocked(fetchLakebaseFunctionArguments).mockRejectedValue(denied);
+
+		await expect(getLakebaseFunctionArguments.call(setup())).rejects.toBe(denied);
+	});
+
+	it.each([
+		'lakebaseProject',
+		'lakebaseBranch',
+		'lakebaseDatabase',
+		'lakebaseSchema',
+		'lakebaseFunction',
+	])('returns no fields while %s is unset', async (missing) => {
+		const result = await getLakebaseFunctionArguments.call(setup({ [missing]: '' }));
+
+		expect(result).toEqual({ fields: [] });
+		expect(fetchLakebaseFunctionArguments).not.toHaveBeenCalled();
+	});
+
+	it('does not need a table', async () => {
+		vi.mocked(fetchLakebaseFunctionArguments).mockResolvedValue([argument()]);
+
+		const { fields } = await getLakebaseFunctionArguments.call(setup({ lakebaseTable: '' }));
+
+		expect(fields).toHaveLength(1);
 	});
 });

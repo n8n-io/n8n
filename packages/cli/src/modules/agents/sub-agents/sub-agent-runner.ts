@@ -11,6 +11,7 @@ import {
 	type DelegateSubAgentCancelRequest,
 	type DelegateSubAgentResumeRequest,
 	type GenerateResult,
+	type EpisodicScopeDecision,
 	type JSONObject,
 	type JSONValue,
 	type SerializableAgentState,
@@ -38,6 +39,7 @@ import type { AgentRunTelemetryType } from '@/interfaces';
 
 import type { StartExecutionParams } from '../agent-execution.service';
 import { EXECUTION_METADATA_KEY } from '../types/agent-queued-message';
+import { episodicScopeHostMetadata } from '../utils/episodic-scope-metadata';
 import { bindExecutionInput } from '../utils/execution-input';
 import { BACKGROUND_SUB_AGENT_METADATA_KEY } from '../background/sub-agent-background-state';
 import type { IntegrationMessageContext } from '../integrations/integration-tool-types';
@@ -66,6 +68,8 @@ import {
 } from './sub-agent-source-resolver';
 
 export interface SubAgentRunContext {
+	/** The parent turn's episodic scope decision. A disabled decision stays disabled for the child. */
+	parentEpisodicScope?: EpisodicScopeDecision;
 	projectId: string;
 	/** Saved n8n agent id of the delegating parent agent, used to link the child session back. */
 	parentAgentId: string;
@@ -314,7 +318,9 @@ export class SubAgentRunner {
 		const { executionId } = admission;
 		let executionStarted = false;
 		let executionError: unknown;
+		let runId: string | undefined;
 		let agent: BuiltAgent | undefined;
+
 		try {
 			context.abortSignal?.throwIfAborted();
 			if (operation.type !== 'run') await context.beforeResume?.();
@@ -397,6 +403,7 @@ export class SubAgentRunner {
 									runtimeSource,
 									sandboxPrincipalHash,
 								),
+								...episodicScopeHostMetadata(resourceId, context.parentEpisodicScope),
 								[EXECUTION_METADATA_KEY]: executionId,
 							},
 						},
@@ -428,16 +435,20 @@ export class SubAgentRunner {
 					},
 				});
 			}
+
+			runId = resultStream.runId;
 			const consumed = await consumeAgentStream(
 				resultStream,
 				recorder,
 				createAttributionTracker(reconstructed.mcpServerAttributions),
 				context.onChunk,
 			);
+
 			executionError = consumed.executionError;
 			const { result } = consumed;
 			const suspended = recorder.suspended;
 			let status: SubAgentRunResult['status'] = 'completed';
+
 			if (result.finishReason === 'paused') status = 'paused';
 			else if (suspended) status = 'suspended';
 			else if (result.finishReason === 'error' || result.error !== undefined) status = 'failed';
@@ -481,6 +492,7 @@ export class SubAgentRunner {
 								? 'resumed'
 								: undefined,
 					},
+					runId,
 				});
 			} finally {
 				await agent?.close().catch((error) => {

@@ -299,7 +299,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			text_length: textLength.optional(),
 		}),
 	},
-	// ─── Skills hub ───
+	// ─── Skills ───
 
 	USER_VIEWED_SKILLS: {
 		name: 'User viewed skills',
@@ -322,10 +322,23 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			read_only: z.boolean().describe('Whether the user may only read the skill'),
 		}),
 	},
+	USER_DOWNLOADED_SKILL: {
+		name: 'User downloaded skill',
+		description:
+			'A user downloaded one skill from the row menu on the Skills settings page. Fires once the browser gets the file.',
+		properties: z.object({
+			skill_id: skillId,
+			scope: skillScope,
+			project_id: skillProjectId,
+			format: z
+				.enum(['markdown', 'zip'])
+				.describe('`markdown` is a lone SKILL.md. `zip` holds SKILL.md and its reference files'),
+		}),
+	},
 	USER_CREATED_SKILL: {
 		name: 'User created skill',
 		description:
-			'A skill was created in the skills hub, from the settings page, the agent builder, n8n Assistant or an MCP client. Fires once the create commits. A copy that the server makes on its own, such as the startup copy or an agent duplicate, reports nothing.',
+			'A skill was created from the settings page, the agent builder, n8n Assistant or an MCP client. Fires once the create commits. A copy that the server makes on its own, such as the startup copy or an agent duplicate, reports nothing.',
 		properties: z.object({
 			user_id: userId,
 			skill_id: skillId,
@@ -338,7 +351,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	USER_UPDATED_SKILL: {
 		name: 'User updated skill',
 		description:
-			'A save stored a new version of a skill in the skills hub. A save with unchanged content stores no version and reports nothing, also when it moves the skill. Reports the scope after the save.',
+			'A save stored a new version of a skill. A save with unchanged content stores no version and reports nothing, also when it moves the skill. Reports the scope after the save.',
 		properties: z.object({
 			user_id: userId,
 			skill_id: skillId,
@@ -352,7 +365,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	USER_DELETED_SKILL: {
 		name: 'User deleted skill',
 		description:
-			'A user deleted a skill from the skills hub, from the settings page, n8n Assistant or an MCP client. Fires once the delete commits. Removing a skill from one agent keeps the hub skill and reports nothing here.',
+			'A user deleted a skill from the settings page, n8n Assistant or an MCP client. Fires once the delete commits. Removing a skill from one agent keeps the skill and reports nothing here.',
 		properties: z.object({
 			user_id: userId,
 			skill_id: skillId,

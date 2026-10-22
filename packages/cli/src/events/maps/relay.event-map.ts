@@ -366,6 +366,12 @@ export type RelayEventMap = {
 		reason?: string;
 	};
 
+	'user-login-email-conflict': {
+		user: UserLike;
+		authenticationMethod: AuthenticationMethod;
+		assertedEmail: string;
+	};
+
 	'user-changed-role': {
 		userId: string;
 		targetUserId: string;
@@ -1210,7 +1216,8 @@ export type RelayEventMap = {
 					| '2fa_enforcement'
 					| 'workflow_publishing'
 					| 'workflow_sharing'
-					| 'workflow_reviews';
+					| 'workflow_reviews'
+					| 'public_api_rate_limit';
 				value: boolean;
 		  }
 		| {

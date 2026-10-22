@@ -27,11 +27,6 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
-const flags = { credSharingEnabled: false };
-vi.mock('@/constants/credential-sharing', () => ({
-	isCredSharingEnabled: () => flags.credSharingEnabled,
-}));
-
 describe('EnterpriseWorkflowService', () => {
 	let service: EnterpriseWorkflowService;
 	const workflowRepository = mock<WorkflowRepository>();
@@ -53,7 +48,6 @@ describe('EnterpriseWorkflowService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		nodeTypes.getByNameAndVersion.mockReset();
-		flags.credSharingEnabled = false;
 		service = new EnterpriseWorkflowService(
 			mock(), // logger
 			mock(), // sharedWorkflowRepository
@@ -293,34 +287,7 @@ describe('EnterpriseWorkflowService', () => {
 			);
 		});
 
-		it('describes every referenced credential regardless of access', async () => {
-			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
-			const workflow = buildWorkflow();
-
-			await service.addCredentialsToWorkflow(workflow, user);
-
-			expect(workflow.usedCredentials).toMatchObject([
-				{ id: 'cred-1', name: 'Google', type: 'googlePalmApi', currentUserCanUse: false },
-			]);
-		});
-
-		it('when the flag is off, asks the project-scoped check', async () => {
-			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
-				mock({ id: 'cred-1' }),
-			]);
-			const workflow = buildWorkflow();
-
-			await service.addCredentialsToWorkflow(workflow, user);
-
-			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
-				workflowId: 'workflow-1',
-			});
-			expect(credentialsPermissionChecker.findUnusableInWorkflow).not.toHaveBeenCalled();
-			expect(workflow.usedCredentials).toMatchObject([{ id: 'cred-1', currentUserCanUse: true }]);
-		});
-
-		it('when the flag is on, asks the rule a run acting as the user follows', async () => {
-			flags.credSharingEnabled = true;
+		it('asks the rule a run acting as the user follows', async () => {
 			credentialsPermissionChecker.findUnusableInWorkflow.mockResolvedValue([]);
 			const workflow = buildWorkflow();
 
@@ -331,12 +298,10 @@ describe('EnterpriseWorkflowService', () => {
 				['cred-1'],
 				user.id,
 			);
-			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
 			expect(workflow.usedCredentials).toMatchObject([{ id: 'cred-1', currentUserCanUse: true }]);
 		});
 
-		it('when the flag is on, a credential that rule rejects is unusable', async () => {
-			flags.credSharingEnabled = true;
+		it('describes a credential that rule rejects, and marks it unusable', async () => {
 			credentialsPermissionChecker.findUnusableInWorkflow.mockResolvedValue([
 				{ id: 'cred-1', name: 'Google', exists: true, ownerProject: null },
 			]);
@@ -344,7 +309,9 @@ describe('EnterpriseWorkflowService', () => {
 
 			await service.addCredentialsToWorkflow(workflow, user);
 
-			expect(workflow.usedCredentials).toMatchObject([{ id: 'cred-1', currentUserCanUse: false }]);
+			expect(workflow.usedCredentials).toMatchObject([
+				{ id: 'cred-1', name: 'Google', type: 'googlePalmApi', currentUserCanUse: false },
+			]);
 		});
 	});
 

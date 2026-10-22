@@ -13,7 +13,7 @@ import {
 } from '@n8n/typeorm';
 import { v7 as uuidv7 } from 'uuid';
 
-import { PromotionConnection } from './promotion-connection.entity';
+import { PromotionEnvironment } from './promotion-environment.entity';
 import { PromotionRun } from './promotion-run.entity';
 
 /**
@@ -23,7 +23,7 @@ import { PromotionRun } from './promotion-run.entity';
  */
 @Entity('promotion_review')
 @Index(['state', 'createdAt'])
-@Index(['connectionId', 'remoteReviewId'], {
+@Index(['environmentId', 'remoteReviewId'], {
 	unique: true,
 	where: '"remoteReviewId" IS NOT NULL',
 })
@@ -37,8 +37,8 @@ export class PromotionReview extends WithCreatedAt {
 	}
 
 	@Index()
-	@Column({ type: 'varchar', length: 36, nullable: true })
-	connectionId: string | null;
+	@Column({ type: 'uuid', nullable: true })
+	environmentId: string | null;
 
 	/** Where the review lives. The application checks the value. */
 	@Column({ type: 'varchar', length: 16 })
@@ -69,9 +69,9 @@ export class PromotionReview extends WithCreatedAt {
 	@DateTimeColumn({ nullable: true })
 	approvedAt: Date | null;
 
-	@ManyToOne(() => PromotionConnection, { onDelete: 'SET NULL', nullable: true })
-	@JoinColumn({ name: 'connectionId' })
-	connection: Relation<PromotionConnection> | null;
+	@ManyToOne(() => PromotionEnvironment, { onDelete: 'SET NULL', nullable: true })
+	@JoinColumn({ name: 'environmentId' })
+	environment: Relation<PromotionEnvironment> | null;
 
 	@ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
 	@JoinColumn({ name: 'createdById' })

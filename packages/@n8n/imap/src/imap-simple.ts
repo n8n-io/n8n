@@ -256,20 +256,21 @@ export class ImapSimple {
 
 	private async open(): Promise<ImapTransport> {
 		const client = this.createTransport();
-		await client.connect();
 
-		// Wired before the SELECT, so a transport that drops under it is still recovered from.
+		// Startup can report errors after connect() rejects, so attach listeners before it starts.
 		client.on('error', (error: Error) => this.onTransportError(error, client));
 		client.on('close', () => this.onTransportClose(client));
 
-		const mailbox = this.reconnectOptions?.mailbox;
-		if (mailbox !== undefined) {
-			try {
+		try {
+			await client.connect();
+
+			const mailbox = this.reconnectOptions?.mailbox;
+			if (mailbox !== undefined) {
 				this.assertRan(await client.mailboxOpen(mailbox), 'SELECT', client);
-			} catch (error) {
-				this.discard(client);
-				throw error;
 			}
+		} catch (error) {
+			this.discard(client);
+			throw error;
 		}
 
 		return client;

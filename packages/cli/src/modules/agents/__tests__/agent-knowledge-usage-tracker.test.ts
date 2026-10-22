@@ -1,0 +1,144 @@
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { mock } from 'vitest-mock-extended';
+
+import type { Telemetry } from '@/telemetry';
+
+import { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
+
+describe('AgentKnowledgeUsageTracker', () => {
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('counts each kind of knowledge call of a run', () => {
+		const tracker = new AgentKnowledgeUsageTracker(mock<Telemetry>());
+
+		tracker.recordToolCall('run-1', 'file_find');
+		tracker.recordToolCall('run-1', 'file_search');
+		tracker.recordToolCall('run-1', 'file_search');
+		tracker.recordToolCall('run-1', 'file_read');
+		tracker.recordToolCall('run-1', 'vector_store_search');
+
+		expect(tracker.takeRunUsage('run-1')).toEqual({
+			file_find_count: 1,
+			file_search_count: 2,
+			file_read_count: 1,
+			vector_store_search_count: 1,
+		});
+	});
+
+	it('keeps concurrent runs apart', () => {
+		const tracker = new AgentKnowledgeUsageTracker(mock<Telemetry>());
+
+		tracker.recordToolCall('run-1', 'file_search');
+		tracker.recordToolCall('run-2', 'vector_store_search');
+
+		expect(tracker.takeRunUsage('run-1')).toMatchObject({
+			file_search_count: 1,
+			vector_store_search_count: 0,
+		});
+		expect(tracker.takeRunUsage('run-2')).toMatchObject({
+			file_search_count: 0,
+			vector_store_search_count: 1,
+		});
+	});
+
+	it('forgets a run after its usage is taken', () => {
+		const tracker = new AgentKnowledgeUsageTracker(mock<Telemetry>());
+		tracker.recordToolCall('run-1', 'file_read');
+
+		tracker.takeRunUsage('run-1');
+
+		expect(tracker.takeRunUsage('run-1')).toBeUndefined();
+	});
+
+	it('returns nothing for a run without knowledge calls', () => {
+		const tracker = new AgentKnowledgeUsageTracker(mock<Telemetry>());
+
+		expect(tracker.takeRunUsage('run-1')).toBeUndefined();
+	});
+
+	it('ignores a call without a run id', () => {
+		const tracker = new AgentKnowledgeUsageTracker(mock<Telemetry>());
+
+		tracker.recordToolCall(undefined, 'file_search');
+
+		expect(tracker.takeRunUsage('undefined')).toBeUndefined();
+	});
+
+	it('keeps a run that makes no knowledge calls for several hours', () => {
+		vi.useFakeTimers();
+		const tracker = new AgentKnowledgeUsageTracker(mock<Telemetry>());
+		tracker.recordToolCall('long-run', 'file_search');
+
+		vi.advanceTimersByTime(6 * 60 * 60 * 1000);
+		tracker.recordToolCall('new-run', 'file_search');
+
+		expect(tracker.takeRunUsage('long-run')).toMatchObject({ file_search_count: 1 });
+	});
+
+	it('drops a run without calls for more than a day', () => {
+		vi.useFakeTimers();
+		const tracker = new AgentKnowledgeUsageTracker(mock<Telemetry>());
+		tracker.recordToolCall('stale-run', 'file_search');
+
+		vi.advanceTimersByTime(24 * 60 * 60 * 1000 + 1);
+		tracker.recordToolCall('new-run', 'file_search');
+
+		expect(tracker.takeRunUsage('stale-run')).toBeUndefined();
+		expect(tracker.takeRunUsage('new-run')).toMatchObject({ file_search_count: 1 });
+	});
+
+	describe('sendRunUsage', () => {
+		it('sends the counts of a run that used knowledge, then forgets the run', () => {
+			const telemetry = mock<Telemetry>();
+			const tracker = new AgentKnowledgeUsageTracker(telemetry);
+			tracker.recordToolCall('run-1', 'file_search');
+			tracker.recordToolCall('run-1', 'vector_store_search');
+
+			tracker.sendRunUsage('run-1', {
+				agentId: 'agent-1',
+				runType: 'production',
+				userId: 'user-1',
+			});
+
+			expect(telemetry.track).toHaveBeenCalledTimes(1);
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.AGENT_RUN_USED_KNOWLEDGE,
+				{
+					agent_id: 'agent-1',
+					run_id: 'run-1',
+					run_type: 'production',
+					user_id: 'user-1',
+					file_find_count: 0,
+					file_search_count: 1,
+					file_read_count: 0,
+					vector_store_search_count: 1,
+				},
+			);
+			expect(tracker.takeRunUsage('run-1')).toBeUndefined();
+		});
+
+		it('leaves out user_id for a run without a user', () => {
+			const telemetry = mock<Telemetry>();
+			const tracker = new AgentKnowledgeUsageTracker(telemetry);
+			tracker.recordToolCall('run-1', 'file_read');
+
+			tracker.sendRunUsage('run-1', { agentId: 'agent-1', runType: 'test' });
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.AGENT_RUN_USED_KNOWLEDGE,
+				expect.not.objectContaining({ user_id: expect.anything() }),
+			);
+		});
+
+		it('sends nothing for a run without knowledge calls', () => {
+			const telemetry = mock<Telemetry>();
+			const tracker = new AgentKnowledgeUsageTracker(telemetry);
+
+			tracker.sendRunUsage('run-1', { agentId: 'agent-1', runType: 'production' });
+
+			expect(telemetry.track).not.toHaveBeenCalled();
+		});
+	});
+});

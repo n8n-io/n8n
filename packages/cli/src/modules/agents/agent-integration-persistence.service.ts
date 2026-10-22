@@ -23,6 +23,7 @@ import { AgentSkillRefsService } from './agent-skill-refs.service';
 import type { Agent, ProjectAgent } from './entities/agent.entity';
 import { toAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
+import { assertSingleConnections } from './integrations/single-connection';
 import { AgentRepository } from './repositories/agent.repository';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import type { IntegrationRef } from './utils/agent-channel';
@@ -224,6 +225,7 @@ export class AgentIntegrationPersistenceService {
 		}
 
 		const integrations = projectIntegrations(current, { add, remove });
+		assertSingleConnections(this.chatIntegrationRegistry, integrations);
 		// A channel write keeps the skill refs as they are.
 		const skillRefs = await this.agentSkillRefs.refsForDraft(agent, {});
 		const written = await this.persistIntegrations(

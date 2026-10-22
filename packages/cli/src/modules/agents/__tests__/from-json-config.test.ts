@@ -179,6 +179,7 @@ describe('buildFromJson()', () => {
 		getMessages: vi.fn().mockResolvedValue([]),
 		saveMessages: vi.fn(),
 		deleteMessages: vi.fn(),
+		commitObservationLogBatch: vi.fn(),
 		appendObservationLogEntries: vi.fn(),
 		getActiveObservationLog: vi.fn(),
 		getObservationLog: vi.fn(),
@@ -1759,7 +1760,7 @@ describe('buildFromJson()', () => {
 				description: vectorStoreConfig.useWhen,
 				handler: vi.fn(),
 			};
-			const mockVectorStore = { asTool: vi.fn().mockReturnValue(fakeTool) };
+			const mockVectorStore = { asTool: vi.fn().mockReturnValue({ build: () => fakeTool }) };
 			vi.mocked(buildVectorStore).mockResolvedValue(mockVectorStore as never);
 
 			const agent = await buildFromJson(
@@ -1777,6 +1778,38 @@ describe('buildFromJson()', () => {
 				description: vectorStoreConfig.useWhen,
 			});
 			expect(agent.snapshot.tools.some((t) => t.name === 'search_product_docs')).toBe(true);
+		});
+
+		it('reports each vector store search with the run id, then runs the search', async () => {
+			const searchHandler = vi.fn().mockResolvedValue({ results: [] });
+			const fakeTool = {
+				name: 'search_product_docs',
+				description: vectorStoreConfig.useWhen,
+				handler: searchHandler,
+			};
+			const mockVectorStore = { asTool: vi.fn().mockReturnValue({ build: () => fakeTool }) };
+			vi.mocked(buildVectorStore).mockResolvedValue(mockVectorStore as never);
+			const onVectorStoreSearch = vi.fn();
+
+			const agent = await buildFromJson(
+				makeConfig({ vectorStores: [vectorStoreConfig] }),
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+					onVectorStoreSearch,
+				},
+			);
+			const searchTool = agent.declaredTools.find((t) => t.name === 'search_product_docs');
+			const input = { query: 'refund policy' };
+			const ctx = { runId: 'run-1' };
+
+			await expect(searchTool?.handler?.(input, ctx)).resolves.toEqual({ results: [] });
+
+			expect(onVectorStoreSearch).toHaveBeenCalledTimes(1);
+			expect(onVectorStoreSearch).toHaveBeenCalledWith('run-1');
+			expect(searchHandler).toHaveBeenCalledWith(input, ctx);
 		});
 
 		it.each([

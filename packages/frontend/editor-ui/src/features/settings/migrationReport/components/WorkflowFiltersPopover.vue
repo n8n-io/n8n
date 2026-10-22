@@ -1,11 +1,13 @@
 <script lang="ts" setup>
 import {
+	N8nBadge,
 	N8nButton,
 	N8nOption,
 	N8nPopover,
 	N8nSegmentControl,
 	N8nSelect,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
@@ -16,12 +18,16 @@ import {
 	type AgeFilter,
 	type ExecutionsFilter,
 	type PublishedFilter,
+	type StateFilter,
 	type WorkflowFilters,
 } from '../workflowFilters';
 
 defineProps<{
 	/** The owners of the listed workflows. */
 	owners: Array<{ id: string; label: string }>;
+	currentUserId?: string;
+	/** The number of workflows that each quick filter shows. */
+	counts: { assignedToMe: number; open: number; wontFix: number; unassigned: number };
 }>();
 
 const filters = defineModel<WorkflowFilters>({ required: true });
@@ -33,6 +39,22 @@ const activeCount = computed(() => countActiveFilters(filters.value));
 
 function setFilter<K extends keyof WorkflowFilters>(key: K, value: WorkflowFilters[K]) {
 	filters.value = { ...filters.value, [key]: value };
+}
+
+// A quick filter sets one filter to a value. A second click resets that filter.
+function toggleFilter<K extends 'owner' | 'state'>(key: K, value: WorkflowFilters[K]) {
+	setFilter(key, filters.value[key] === value ? DEFAULT_WORKFLOW_FILTERS[key] : value);
+}
+
+function quickFilterLabel(
+	key:
+		| 'settings.migrationReport.detail.quickFilter.assignedToMe'
+		| 'settings.migrationReport.detail.quickFilter.open'
+		| 'settings.migrationReport.detail.quickFilter.wontFix'
+		| 'settings.migrationReport.detail.quickFilter.unassigned',
+	count: number,
+): string {
+	return i18n.baseText(key, { interpolate: { count: String(count) } });
 }
 
 const anyLabel = computed(() => i18n.baseText('settings.migrationReport.detail.filters.any'));
@@ -69,6 +91,12 @@ const executionsOptions = computed<Array<{ value: ExecutionsFilter; label: strin
 	},
 ]);
 
+const stateOptions = computed<Array<{ value: StateFilter; label: string }>>(() => [
+	{ value: 'any', label: anyLabel.value },
+	{ value: 'open', label: i18n.baseText('settings.migrationReport.detail.state.open') },
+	{ value: 'wont_fix', label: i18n.baseText('settings.migrationReport.detail.state.wontFix') },
+]);
+
 const publishedOptions = computed<Array<{ value: PublishedFilter; label: string }>>(() => [
 	{ value: 'any', label: anyLabel.value },
 	{ value: 'published', label: i18n.baseText('settings.migrationReport.detail.table.published') },
@@ -80,20 +108,112 @@ const publishedOptions = computed<Array<{ value: PublishedFilter; label: string 
 </script>
 
 <template>
-	<N8nPopover v-model:open="open" width="420px" align="start">
+	<!-- A short window cannot fit every filter, so the popover scrolls in the space below the trigger. -->
+	<N8nPopover
+		v-model:open="open"
+		width="420px"
+		max-height="var(--reka-popover-content-available-height)"
+		align="end"
+	>
+		<!-- The trigger matches the filter button of the Overview lists. -->
 		<template #trigger>
-			<N8nButton variant="outline" size="small" data-test-id="migration-rule-filters">
-				{{
-					activeCount
-						? i18n.baseText('settings.migrationReport.detail.filters.buttonWithCount', {
-								interpolate: { count: String(activeCount) },
-							})
-						: i18n.baseText('settings.migrationReport.detail.filters.button')
-				}}
-			</N8nButton>
+			<span :class="$style.trigger">
+				<N8nTooltip :content="i18n.baseText('settings.migrationReport.detail.filters.button')">
+					<N8nButton
+						variant="outline"
+						size="small"
+						icon="funnel"
+						:icon-only="activeCount === 0"
+						:aria-label="i18n.baseText('settings.migrationReport.detail.filters.button')"
+						data-test-id="migration-rule-filters"
+					>
+						<N8nBadge
+							v-if="activeCount > 0"
+							variant="primary"
+							data-test-id="migration-rule-filters-count"
+						>
+							{{ activeCount }}
+						</N8nBadge>
+					</N8nButton>
+				</N8nTooltip>
+			</span>
 		</template>
 		<template #content>
 			<div :class="$style.content" data-test-id="migration-rule-filters-content">
+				<div :class="$style.group">
+					<N8nText size="small" color="text-dark" bold>
+						{{ i18n.baseText('settings.migrationReport.detail.filters.quickFilters') }}
+					</N8nText>
+					<div :class="$style.quickFilters">
+						<N8nButton
+							v-if="currentUserId"
+							:variant="filters.owner === currentUserId ? 'solid' : 'outline'"
+							size="small"
+							icon="user"
+							:aria-pressed="filters.owner === currentUserId"
+							data-test-id="migration-rule-quick-filter-mine"
+							@click="toggleFilter('owner', currentUserId)"
+						>
+							{{
+								quickFilterLabel(
+									'settings.migrationReport.detail.quickFilter.assignedToMe',
+									counts.assignedToMe,
+								)
+							}}
+						</N8nButton>
+						<N8nButton
+							:variant="filters.state === 'open' ? 'solid' : 'outline'"
+							size="small"
+							:aria-pressed="filters.state === 'open'"
+							data-test-id="migration-rule-quick-filter-open"
+							@click="toggleFilter('state', 'open')"
+						>
+							{{
+								quickFilterLabel('settings.migrationReport.detail.quickFilter.open', counts.open)
+							}}
+						</N8nButton>
+						<N8nButton
+							:variant="filters.state === 'wont_fix' ? 'solid' : 'outline'"
+							size="small"
+							:aria-pressed="filters.state === 'wont_fix'"
+							data-test-id="migration-rule-quick-filter-wont-fix"
+							@click="toggleFilter('state', 'wont_fix')"
+						>
+							{{
+								quickFilterLabel(
+									'settings.migrationReport.detail.quickFilter.wontFix',
+									counts.wontFix,
+								)
+							}}
+						</N8nButton>
+						<N8nButton
+							:variant="filters.owner === UNASSIGNED_OWNER ? 'solid' : 'outline'"
+							size="small"
+							:aria-pressed="filters.owner === UNASSIGNED_OWNER"
+							data-test-id="migration-rule-quick-filter-unassigned"
+							@click="toggleFilter('owner', UNASSIGNED_OWNER)"
+						>
+							{{
+								quickFilterLabel(
+									'settings.migrationReport.detail.quickFilter.unassigned',
+									counts.unassigned,
+								)
+							}}
+						</N8nButton>
+					</div>
+				</div>
+				<div :class="[$style.group, $style.allFilters]">
+					<N8nText size="small" color="text-dark" bold>
+						{{ i18n.baseText('settings.migrationReport.detail.filters.state') }}
+					</N8nText>
+					<N8nSegmentControl
+						size="small"
+						:options="stateOptions"
+						:model-value="filters.state"
+						data-test-id="migration-rule-filter-state"
+						@update:model-value="setFilter('state', $event)"
+					/>
+				</div>
 				<div :class="$style.group">
 					<N8nText size="small" color="text-dark" bold>
 						{{ i18n.baseText('settings.migrationReport.detail.filters.lastRun') }}
@@ -200,6 +320,26 @@ const publishedOptions = computed<Array<{ value: PublishedFilter; label: string 
 	flex-direction: column;
 	align-items: flex-start;
 	gap: var(--spacing--3xs);
+}
+
+.trigger {
+	display: inline-flex;
+}
+
+.trigger[data-state='open'] button {
+	background-color: var(--button--color--background-active);
+}
+
+.quickFilters {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs);
+}
+
+/* Separates the quick filters from the full filters. */
+.allFilters {
+	padding-top: var(--spacing--sm);
+	border-top: var(--border);
 }
 
 .ownerSelect {

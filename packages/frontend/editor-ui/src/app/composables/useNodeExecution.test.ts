@@ -15,7 +15,6 @@ import { needsAgentInput } from '@/app/utils/nodes/nodeTransforms';
 import { generateCodeForAiTransform } from '@/features/ndv/parameters/utils/buttonParameter.utils';
 import type { INodeUi } from '@/Interface';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import {
 	WEBHOOK_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
@@ -508,10 +507,6 @@ describe('useNodeExecution', () => {
 				];
 			};
 
-			beforeEach(() => {
-				useSettingsStore().settings.granularCredentialSharing = true;
-			});
-
 			it('should name the credential and its owner when the user cannot use it', () => {
 				useCredential(foreignCredential);
 				const node = ref(createTestNode());
@@ -573,16 +568,6 @@ describe('useNodeExecution', () => {
 
 			it('should return empty string when the user can use the credential', () => {
 				useCredential({ ...foreignCredential, currentUserCanUse: true });
-				const node = ref(createTestNode());
-
-				const { disabledReason } = useNodeExecution(node);
-
-				expect(disabledReason.value).toBe('');
-			});
-
-			it('should return empty string while the feature flag is off', () => {
-				useSettingsStore().settings.granularCredentialSharing = false;
-				useCredential(foreignCredential);
 				const node = ref(createTestNode());
 
 				const { disabledReason } = useNodeExecution(node);

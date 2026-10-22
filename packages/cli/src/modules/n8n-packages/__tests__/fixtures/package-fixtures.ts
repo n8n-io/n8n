@@ -1,3 +1,12 @@
+import type {
+	SerializedCredential,
+	SerializedDataTable,
+	SerializedFolder,
+	SerializedProject,
+	SerializedVariable,
+	SerializedWorkflow,
+	SerializedWorkflowMetadata,
+} from '@n8n/api-types';
 import { randomCredentialPayload, type CredentialPayload } from '@n8n/backend-test-utils';
 import type { WorkflowEntity } from '@n8n/db';
 import { EXECUTE_WORKFLOW_NODE_TYPE, getSubworkflowId, type INode } from 'n8n-workflow';
@@ -14,13 +23,6 @@ import type {
 	PackageRequirementConsumer,
 	PackageWorkflowRequirement,
 } from '../../spec/requirements.schema';
-import type { SerializedCredential } from '../../spec/serialized/credential.schema';
-import type { SerializedDataTable } from '../../spec/serialized/data-table.schema';
-import type { SerializedFolder } from '../../spec/serialized/folder.schema';
-import type { SerializedProject } from '../../spec/serialized/project.schema';
-import type { SerializedVariable } from '../../spec/serialized/variable.schema';
-import type { SerializedWorkflowMetadata } from '../../spec/serialized/workflow-metadata.schema';
-import type { SerializedWorkflow } from '../../spec/serialized/workflow.schema';
 import { streamToBuffer } from '../utils/tar-support';
 
 /** `versionId` every workflow fixture carries, so a test can name it as published. */
