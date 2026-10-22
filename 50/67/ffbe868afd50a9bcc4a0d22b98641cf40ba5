@@ -1,0 +1,45 @@
+packages/core/src/execution-engine/__tests__/active-workflow-triggers.test.ts
+  s_dac697a899c600::t_89f01ca84ea46f 333,338-351,353-357,359,425-426
+  s_dac697a899c600::t_c7be97d18dfd82 27,29,31
+  s_dac697a899c600::t_23686b5b31e1cf 408-411
+  s_dac697a899c600::t_8eb9680e0e7459 21-22
+  s_dac697a899c600::t_4b0bae0b13a819 334-337
+  s_dac697a899c600::t_48c8a3284c662f 38
+  s_dac697a899c600::t_39cf1a66681640 360-401,405-407,412-424
+  s_dac697a899c600::t_f5d9ba11f4756f 352,358
+  s_dac697a899c600::t_b83e6abfad20a3 402,404
+  s_dac697a899c600::t_a92f7860f661dc 2
+  s_dac697a899c600::t_370f93196458f7 6-7,12
+  s_dac697a899c600::t_4c8e850b842bc8 403
+packages/workflow/src/errors/workflow-activation.error.ts
+  s_dac697a899c600::t_14679a3622cfef 3,9,14
+  s_dac697a899c600::t_4e2ce909474cc3 7-8,13
+  s_dac697a899c600::t_bf7fb4129a8d44 10-11,15
+  s_dac697a899c600::t_fc4f875c911ca1 12
+  s_dac697a899c600::t_ba8213e9515ccd 62,65,72
+  s_dac697a899c600::t_f9d95ac890c9a7 71
+  s_dac697a899c600::t_5202cb6f06e952 4
+  s_dac697a899c600::t_be18be4489f796 16
+  s_dac697a899c600::t_b7d020f0c00842 73-75
+packages/workflow/test/errors/workflow-activation.error.test.ts
+  s_dac697a899c600::t_359fddbb5c04ea 3-7
+  s_dac697a899c600::t_b7e7417ea26b93 55-74,96-97
+  s_dac697a899c600::t_dd150a69e1ac84 1-2,8
+  s_dac697a899c600::t_d33b27012f43e5 75-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5067ffbe868afd50a9bcc4a0d22b98641cf40ba5",
+  "prompts": {},
+  "sessions": {
+    "s_dac697a899c600": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5eba02b-e750-44ca-a941-61d11b88a267",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
