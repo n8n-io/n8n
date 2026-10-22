@@ -1,10 +1,11 @@
 import { IncomingMessage } from 'http';
-import { PassThrough, Readable } from 'stream';
+import { Readable } from 'stream';
 
 import { binaryToString } from '../binary-string';
+import { Socket } from 'net';
 
 const bufferToIncomingMessage = (buffer: Buffer, encoding = 'utf-8') => {
-	const incomingMessage = new IncomingMessage(new PassThrough());
+	const incomingMessage = new IncomingMessage(new Socket());
 	incomingMessage.headers = { 'content-type': `application/json;charset=${encoding}` };
 	incomingMessage.push(buffer);
 	incomingMessage.push(null);
