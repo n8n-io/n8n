@@ -238,6 +238,11 @@ export interface StepStore {
 	 */
 	loadAllSteps(executionId: string): Promise<StepRecord[]>;
 
+	/**
+	 * Every step of the execution in the `waiting` status, with its wait
+	 * declaration, whatever that declaration says. The caller decides which
+	 * waits it can act on.
+	 */
 	loadWaitingSteps(executionId: string): Promise<StepRecord[]>;
 
 	/**
