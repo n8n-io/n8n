@@ -81,6 +81,7 @@ import {
 import {
 	DATA_TABLE_NODE_TYPES,
 	generateDataTableRows,
+	picksDataTableByExpression,
 	resolveDataTableNodeId,
 } from './data-table-rows';
 import { generatePinData } from './pin-data-generator';
@@ -443,6 +444,12 @@ export class EvalExecutionService {
 			const seeded = new Set(seededDataTableIds);
 			const nodesByTableId = new Map<string, INode[]>();
 			for (const node of nodes) {
+				if (picksDataTableByExpression(node)) {
+					const warning = `Data Table node "${node.name}" picks its table with an expression, so the eval cannot prepare its rows; it reads whatever the table holds`;
+					this.logger.warn(`[EvalMock] ${warning}`);
+					hints.warnings.push(warning);
+					continue;
+				}
 				const tableId = await resolveDataTableNodeId(this.dataTableService, node, projectId);
 				if (!tableId || seeded.has(tableId)) continue;
 				nodesByTableId.set(tableId, [...(nodesByTableId.get(tableId) ?? []), node]);

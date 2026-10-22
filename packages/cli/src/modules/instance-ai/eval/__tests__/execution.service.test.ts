@@ -2104,6 +2104,25 @@ describe('EvalExecutionService', () => {
 			);
 		});
 
+		it('warns, and touches no table, when a node picks its table with an expression', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({
+					nodes: [
+						makeStartNode(),
+						dataTableNode('Read', { __rl: true, mode: 'id', value: '={{ $json.tableId }}' }),
+					],
+				}) as never,
+			);
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(result.hints?.warnings).toContain(
+				'Data Table node "Read" picks its table with an expression, so the eval cannot prepare its rows; it reads whatever the table holds',
+			);
+			expect(dataTableService.findDataTablesByIds).not.toHaveBeenCalled();
+			expect(dataTableService.clearRows).not.toHaveBeenCalled();
+		});
+
 		it('finishes filling the tables before it reports a pin data failure', async () => {
 			const bypass = {
 				id: 'pg',

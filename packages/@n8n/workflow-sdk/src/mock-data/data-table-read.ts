@@ -45,10 +45,11 @@ export interface DataTableLocator {
 
 /** A Data Table node's `dataTableId`: the id, or the name in `name` mode. The eval
  *  server prepares the table it names, and the eval harness keys its run lock on it,
- *  so both read it here and cannot drift apart. */
+ *  so both read it here and cannot drift apart. An expression names no table before
+ *  the run, so it reads as nothing. */
 export function readDataTableLocator(dataTableId: unknown): DataTableLocator | undefined {
 	const locator = isRecord(dataTableId) ? dataTableId : undefined;
-	const value = locator ? locator.value : dataTableId;
+	const value = literalParameter(locator ? locator.value : dataTableId).literal;
 	if (typeof value !== 'string' || value.length === 0) return undefined;
 	if (locator?.mode === 'name') return { mode: 'name', value };
 	const cachedName = locator?.cachedResultName;

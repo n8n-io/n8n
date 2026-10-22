@@ -240,6 +240,17 @@ describe('readDataTableLocator', () => {
 		expect(readDataTableLocator('')).toBeUndefined();
 		expect(readDataTableLocator({ __rl: true, mode: 'id', value: '' })).toBeUndefined();
 	});
+
+	it('reads nothing from an expression, and the literal from a bare `=` value', () => {
+		expect(readDataTableLocator('={{ $json.tableId }}')).toBeUndefined();
+		expect(
+			readDataTableLocator({ __rl: true, mode: 'name', value: '={{ $json.name }}' }),
+		).toBeUndefined();
+		expect(readDataTableLocator({ __rl: true, mode: 'name', value: '=posts' })).toEqual({
+			mode: 'name',
+			value: 'posts',
+		});
+	});
 });
 
 describe('buildPinDataUserPrompt', () => {

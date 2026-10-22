@@ -8,7 +8,7 @@
 import { extractJsonCandidate } from '@n8n/ai-utilities/llm-output';
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import { isRecord } from '@n8n/utils/is-record';
-import { buildDateAnchors, readDataTableLocator } from '@n8n/workflow-sdk';
+import { buildDateAnchors, literalParameter, readDataTableLocator } from '@n8n/workflow-sdk';
 import { type DataTableRows, type INode, jsonParse, OperationalError } from 'n8n-workflow';
 
 import type { DataTableService } from '@/modules/data-table/data-table.service';
@@ -34,6 +34,12 @@ export async function resolveDataTableNodeId(
 		take: 1,
 	});
 	return data.at(0)?.id;
+}
+
+/** True when the node picks its table with an expression, so no table is known before the run. */
+export function picksDataTableByExpression(node: INode): boolean {
+	const dataTableId: unknown = node.parameters?.dataTableId;
+	return literalParameter(isRecord(dataTableId) ? dataTableId.value : dataTableId).isExpression;
 }
 
 const DATA_TABLE_ROWS_LLM_TIMEOUT_MS = 180_000;
