@@ -1,0 +1,37 @@
+packages/quality/testing/playwright/tests/e2e/agents/agent-evals-not-graded.spec.ts
+  s_cdb8e2d26dadad::t_bb9b52f20fff0e 15-17,24-28,63-68,130-135,150
+  s_cdb8e2d26dadad::t_454393987affb8 5,83-84
+packages/@n8n/agents/src/evals/__tests__/parse-judge-response.test.ts
+  s_cdb8e2d26dadad::t_363c953617229d 76
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiTestAgentPreviewPanel.vue
+  s_cdb8e2d26dadad::t_92416a44432d54 16,100
+packages/frontend/editor-ui/src/features/agents/utils/agent-eval-review.ts
+  s_cdb8e2d26dadad::t_d46d76eb76bd37 133-135,137-141,146
+packages/@n8n/agents/src/evals/parse-judge-response.ts
+  s_cdb8e2d26dadad::t_f2351a158a9951 47-48,52-55
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalTryRow.test.ts
+  s_cdb8e2d26dadad::t_8115edd30fdd6b 255,261,263,267-274
+  s_cdb8e2d26dadad::t_f694e579f0a05a 275
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalChecksPanel.test.ts
+  s_cdb8e2d26dadad::t_9a8a41e3fe1e82 376-386
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalChecksPanel.vue
+  s_cdb8e2d26dadad::t_59959afe21a106 118-121,196
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalTryRow.vue
+  s_cdb8e2d26dadad::t_fc8580f68348a3 138-139,147-148,234,268,418-440
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bcddd17e6a3f1f8cadbed62985494554caf2e134",
+  "prompts": {},
+  "sessions": {
+    "s_cdb8e2d26dadad": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1600a-d56d-71c5-97e1-b1e6fe7943fe",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
