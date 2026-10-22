@@ -373,6 +373,8 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 		} = options;
 
 		const sharedWorkflow = await em.findOne(SharedWorkflow, {
+			// Load tags separately so tags and sharing do not multiply the workflow JSON.
+			relationLoadStrategy: includeTags ? 'query' : 'join',
 			where: {
 				workflowId,
 				...where,
