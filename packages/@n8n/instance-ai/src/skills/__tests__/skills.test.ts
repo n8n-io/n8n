@@ -169,7 +169,7 @@ describe('Instance AI skills', () => {
 			'config-eval-playbook',
 			'config-evals',
 			'credential-recipe-research',
-			'credential-setup-with-computer-use',
+			'credential-setup-with-browser-use',
 			'error-workflows',
 			'model-selection',
 			'one-off-operations',
@@ -185,16 +185,16 @@ describe('Instance AI skills', () => {
 		expect(loaded).not.toContain('[Linked files');
 	});
 
-	it('shares the Computer Use credential setup reference with agent-builder', async () => {
+	it('shares the Browser Use credential setup reference with agent-builder', async () => {
 		const source = loadInstanceAiSkills();
 		const skill = source.registry.skills.find(
-			(entry) => entry.id === 'credential-setup-with-computer-use',
+			(entry) => entry.id === 'credential-setup-with-browser-use',
 		);
 
 		expect(skill?.parents).toEqual(['workflow-builder', 'agent-builder']);
 		expect(
 			skillLoadText(await createSkillLoadTool(source).handler?.({ skillId: 'agent-builder' }, {})),
-		).toContain('- "credential-setup-with-computer-use": ');
+		).toContain('- "credential-setup-with-browser-use": ');
 	});
 
 	it('loads the bundled data-table-manager skill and its linked files', async () => {
@@ -312,13 +312,13 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain('Never say Runs tab');
 	});
 
-	it('loads the bundled Computer Use credential setup skill', async () => {
+	it('loads the bundled Browser Use credential setup skill', async () => {
 		const source = loadInstanceAiSkills();
 		const skill = source.registry.skills.find(
-			(entry) => entry.name === 'credential-setup-with-computer-use',
+			(entry) => entry.name === 'credential-setup-with-browser-use',
 		);
 
-		expect(skill?.name).toBe('credential-setup-with-computer-use');
+		expect(skill?.name).toBe('credential-setup-with-browser-use');
 		for (const tool of [
 			'research',
 			'workflow_builder_ask_user',
@@ -331,8 +331,8 @@ describe('Instance AI skills', () => {
 		}
 		expect(skill?.linkedFiles.references).toEqual([]);
 
-		const loaded = await source.loadSkill('credential-setup-with-computer-use');
-		expect(loaded?.instructions).toContain('Computer Use browser tools');
+		const loaded = await source.loadSkill('credential-setup-with-browser-use');
+		expect(loaded?.instructions).toContain('Browser Use tools');
 		expect(loaded?.instructions).toContain('browser_capture_secret');
 		expect(loaded?.instructions).toContain('interactive: false');
 		expect(loaded?.instructions).toContain('`ref`');

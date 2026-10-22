@@ -120,7 +120,7 @@ export function describeFieldChanges(
 		.map((field) => ({ field, before: before[field], after: after[field] }));
 }
 
-/** The page loads no workflow files, so a workflow card shows the rename and move of the resource. */
+/** The rename and move of a workflow. The workflow diff shows the rest. */
 export function describeWorkflowFieldChanges(context: FieldContext): FieldChange[] {
 	const { resource } = context;
 	const changes: FieldChange[] = [];

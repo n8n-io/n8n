@@ -2,6 +2,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
+import { within } from '@testing-library/vue';
 import { ref } from 'vue';
 
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -61,15 +62,17 @@ function preference(overrides: Partial<Preference> = {}): Preference {
  * a button that plays the dialog's `saved` event back to the page.
  */
 const PreferenceModalStub = {
-	props: ['open', 'preference'],
+	props: ['open', 'preference', 'example'],
 	emits: ['saved', 'update:open'],
 	template: `
 		<div
 			data-test-id="preference-modal-stub"
 			:data-open="String(open)"
 			:data-preference-id="preference?.id ?? ''"
+			:data-example-id="example?.id ?? ''"
 		>
 			<button data-test-id="preference-modal-stub-saved" @click="$emit('saved')" />
+			<button data-test-id="preference-modal-stub-close" @click="$emit('update:open', false)" />
 		</div>
 	`,
 };
@@ -359,7 +362,6 @@ describe('SettingsPreferencesView', () => {
 	it.each([
 		{ variant: 'assistant' as const, count: 1 },
 		{ variant: 'control' as const, count: 0 },
-		{ variant: 'examples' as const, count: 0 },
 	])(
 		'shows the toolbar and table for the $variant variant with $count preferences',
 		async ({ variant, count }) => {
@@ -374,6 +376,63 @@ describe('SettingsPreferencesView', () => {
 			expect(getByText(/^Last updated/)).toBeInTheDocument();
 		},
 	);
+
+	it('shows only the example cards, without the table and the toolbar, in the examples variant', async () => {
+		contextStore.preferences = [];
+		contextStore.count = 0;
+		emptyStateVariant.value = 'examples';
+
+		const { findByTestId, queryByTestId } = renderView();
+
+		expect(await findByTestId('preferences-empty-state-examples')).toBeInTheDocument();
+		expect(queryByTestId('preferences-table')).not.toBeInTheDocument();
+		expect(queryByTestId('preferences-create-button')).not.toBeInTheDocument();
+	});
+
+	it('shows the table and the toolbar in the examples variant once preferences exist', async () => {
+		contextStore.preferences = [preference()];
+		contextStore.count = 1;
+		emptyStateVariant.value = 'examples';
+
+		const { findByTestId, queryByTestId, getByTestId } = renderView();
+
+		expect(await findByTestId('preferences-table')).toBeInTheDocument();
+		expect(getByTestId('preferences-create-button')).toBeInTheDocument();
+		expect(queryByTestId('preferences-empty-state-examples')).not.toBeInTheDocument();
+	});
+
+	it('opens the create modal with the example from "Use example"', async () => {
+		contextStore.preferences = [];
+		contextStore.count = 0;
+		emptyStateVariant.value = 'examples';
+
+		const { findByTestId, getByTestId } = renderView();
+		await userEvent.click(
+			within(await findByTestId('preferences-example-answers')).getByRole('button'),
+		);
+
+		const modal = getByTestId('preference-modal-stub');
+		expect(modal).toHaveAttribute('data-open', 'true');
+		expect(modal).toHaveAttribute('data-preference-id', '');
+		expect(modal).toHaveAttribute('data-example-id', 'answers');
+	});
+
+	it('opens the create modal without the example after an example was closed', async () => {
+		contextStore.preferences = [];
+		contextStore.count = 0;
+		emptyStateVariant.value = 'examples';
+
+		const { findByTestId, getByTestId } = renderView();
+		await userEvent.click(
+			within(await findByTestId('preferences-example-answers')).getByRole('button'),
+		);
+		await userEvent.click(getByTestId('preference-modal-stub-close'));
+		await userEvent.click(getByTestId('preferences-empty-state-write-own'));
+
+		const modal = getByTestId('preference-modal-stub');
+		expect(modal).toHaveAttribute('data-open', 'true');
+		expect(modal).toHaveAttribute('data-example-id', '');
+	});
 
 	it('tracks no empty state experiment exposure when the page has preferences', async () => {
 		contextStore.preferences = [preference()];

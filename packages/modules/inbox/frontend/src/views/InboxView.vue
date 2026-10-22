@@ -204,6 +204,7 @@ onBeforeUnmount(() => {
 								selectedPromotionItem && !store.disabledSources.includes('promotion_review')
 							"
 							:item="selectedPromotionItem"
+							:on-item-change="onItemChange"
 						/>
 						<InboxEmptyState v-else />
 					</div>

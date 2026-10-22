@@ -131,7 +131,6 @@ describe('ProjectsNavigation', () => {
 			'instance-ai': {
 				enabled: true,
 				mcpConnectionsAvailable: true,
-				localGatewayDisabled: false,
 				browserUseEnabled: true,
 				proxyEnabled: false,
 				cloudManaged: false,

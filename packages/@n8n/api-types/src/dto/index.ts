@@ -22,6 +22,10 @@ export {
 	AiGatewayConfigDto,
 	AiGatewayProviderConfigEntry,
 } from './ai/ai-gateway-config-response.dto';
+export {
+	AiGatewayMcpServersResponse,
+	type AiGatewayMcpServer,
+} from './ai/ai-gateway-mcp-servers-response.dto';
 export { AiGatewayUsageQueryDto } from './ai/ai-gateway-usage-response.dto';
 export type {
 	AiGatewayUsageEntry,
@@ -838,6 +842,7 @@ export {
 	type PromotionRunType,
 } from './promotions/promotion-run.dto';
 export {
+	ApprovePromotionReviewDto,
 	ListPromotionReviewsQueryDto,
 	PromotionReviewDetailDto,
 	PromotionReviewListPublicDto,

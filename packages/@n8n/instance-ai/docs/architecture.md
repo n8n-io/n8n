@@ -46,9 +46,9 @@ graph TB
         DurableLog --> EventsTable[(instance_ai_events)]
     end
 
-    subgraph Filesystem ["Filesystem Access"]
-        Service --> Gateway[LocalGateway]
-        Gateway -->|SSE + HTTP POST| Daemon["@n8n/computer-use daemon"]
+    subgraph Browser ["Browser Use"]
+        Service --> BrowserServer[BrowserLocalMcpServer]
+        BrowserServer -->|WebSocket relay| Extension["n8n Browser Use extension"]
     end
 
     subgraph n8n ["n8n Services"]
@@ -116,7 +116,7 @@ Plans are stored in thread-scoped storage.
 
 Work runs in the orchestrator itself: workflow building via the
 `workflow-builder` skill and `workflow_builder_build_workflow`, data-table operations, web
-research, credential setup with Computer Use, config-based evaluations, and MCP tools.
+research, credential setup with Browser Use, config-based evaluations, and MCP tools.
 
 ### 3. Observational Memory
 
@@ -206,7 +206,7 @@ implements. It still depends on shared n8n packages such as `n8n-workflow`.
 The n8n integration layer.
 
 - **Module** — lifecycle management, DI registration, settings exposure. Only runs on `main` instance type.
-- **Controller** — REST endpoints for messages, SSE events, confirmations, threads, credits, and gateway
+- **Controller** — REST endpoints for messages, SSE events, confirmations, threads, credits, and Browser Use
 - **Service** — orchestrates agent creation, config parsing, storage setup, planned task scheduling, background task management
 - **Adapter** — bridges n8n services to agent interfaces, enforces RBAC permissions
 - **Memory service** — thread lifecycle, message persistence, expiration
@@ -214,8 +214,7 @@ The n8n integration layer.
 - **Event bus** — live fan-out only: in-process EventEmitter (single instance)
   plus a Redis Pub/Sub relay to sibling mains (queue mode). Persistence and
   replay belong to the durable event log, not the bus
-- **Filesystem** — `LocalGateway` (remote daemon via SSE protocol).
-  See `docs/filesystem-access.md`
+- **Browser Use** — `BrowserLocalMcpServer` (extension session via CDP relay).
 - **Persistence** — 12 TypeORM entity/repository pairs for threads, messages,
   resources, observations, observation cursors and locks, checkpoints,
   event-log entries, pending confirmations, iteration logs, thread
@@ -231,7 +230,7 @@ The contract between frontend and backend.
 - **Task types** — `TaskItem`, `TaskList` for progress tracking
 - **Confirmation types** — approval, text input, questions, plan review payloads
 - **DTOs** — request/response shapes for REST API
-- **Push types** — gateway state changes, credit metering events
+- **Push types** — Browser Use state changes, credit metering events
 - **Reducer** — `AgentRunState`, `InstanceAiMessage` for frontend state machine
 
 ### `packages/frontend/.../instanceAi/` (Frontend)
@@ -427,9 +426,9 @@ The embedded Agent Builder receives the same per-run, approval-wrapped MCP tool
 registry as the orchestrator. Builder-native tool names remain reserved, so an
 MCP connector cannot shadow configuration or lifecycle tools.
 
-The local Computer Use server is separate from external MCP configuration. Its
+The local Browser Use server is separate from external MCP configuration. Its
 browser tools are available directly to the orchestrator and are guided by the
-`credential-setup-with-computer-use` skill when credential setup requires a
+`credential-setup-with-browser-use` skill when credential setup requires a
 browser.
 
 ## Tracing & Observability
@@ -467,11 +466,8 @@ allowing the user to approve or deny access to specific hosts.
 - **Sandbox isolation** — when enabled, code execution runs through the n8n
   sandbox service or Daytona, not on the n8n host. Workspace paths are scoped
   to the provider root. See `docs/sandboxing.md` for details.
-- **Computer Use safety** — the local gateway advertises only the capabilities
-  enabled by its permission configuration. Read access defaults to `allow`.
-  Write and browser access default to `ask`. Shell and computer control default
-  to `deny`. Resource rules and path scoping are enforced in the daemon. Gateway
-  calls have a 60-second server-side timeout. See `docs/filesystem-access.md`.
+- **Browser Use safety** — browser tool calls pass through the domain-access gate,
+  and credential creation follows the `createCredential` permission mode.
 - **Web research safety** — SSRF protection blocks private IPs, loopback, and non-HTTP(S) schemes.
   Post-redirect SSRF check prevents open-redirect attacks. Fetched content is treated as untrusted.
 - **Module gating** — `InstanceAiSettingsService.isInstanceAiEnabled()` gates
