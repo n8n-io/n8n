@@ -699,6 +699,7 @@ describe('MemoryGuardService', () => {
 		) => {
 			addExecution(id, { megabytes: 300, mode, workflowId: 'repeat' });
 			readMemoryUsageOnce(0.96);
+			readMemoryUsageOnce(0.96);
 			readMemoryUsageOnce(after);
 			await sample();
 			await vi.advanceTimersByTimeAsync(0);
