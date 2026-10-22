@@ -1,7 +1,7 @@
 import { createTestingPinia } from '@pinia/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
-import { ref, type ComponentPublicInstance } from 'vue';
+import { ref } from 'vue';
 import {
 	AI_GATEWAY_MANAGED_TAG,
 	SUB_AGENT_MAX_CHILDREN_DEFAULT,
@@ -9,6 +9,7 @@ import {
 	SUB_AGENT_MAX_CHILDREN_MIN,
 } from '@n8n/api-types';
 
+import type AgentModelSelector from '../components/AgentModelSelector.vue';
 import type { AgentJsonConfig } from '../types';
 import type { AgentModelSelection } from '../model-providers';
 
@@ -598,7 +599,7 @@ describe('AgentSubAgentsPanel', () => {
 			credential: 'azure-credential',
 		});
 		await wrapper.setProps({ config: { ...defaultConfig, ...changes } });
-		const selector = wrapper.getComponent<ComponentPublicInstance>(
+		const selector = wrapper.getComponent<InstanceType<typeof AgentModelSelector>>(
 			'[data-testid="agent-sub-agents-difficulty-high-model"]',
 		);
 		expect(selector.props('selectedModel')).toMatchObject({
@@ -620,7 +621,7 @@ describe('AgentSubAgentsPanel', () => {
 				},
 			},
 		});
-		const selector = wrapper.getComponent<ComponentPublicInstance>(
+		const selector = wrapper.getComponent<InstanceType<typeof AgentModelSelector>>(
 			'[data-testid="agent-sub-agents-difficulty-high-model"]',
 		);
 		expect(selector.props('selectedModel')).toMatchObject({
