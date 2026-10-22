@@ -4,6 +4,7 @@ import type { Application } from 'express';
 import type { AdmittanceService } from '../admittance';
 import { MIN_SECRET_LENGTH } from '../auth';
 import type { IdentityVerifier } from '../auth/identity.types';
+import { UnexpectedError } from '../common';
 import { createStores } from '../database';
 import type { EngineStores } from '../database';
 import type { ExternalDependencies } from '../dependencies';
@@ -26,7 +27,6 @@ import { InMemoryWorkQueue } from '../queue';
 import type { OrchestrationMessage, StepMessage } from '../queue';
 import type { ExecutionResponseSender } from '../response-channel';
 import { createEngineServer } from '../server';
-import { UnexpectedError } from '../common';
 
 export interface EngineRuntimeOptions {
 	/** The data plane database, already initialized and migrated. */
@@ -52,9 +52,8 @@ export interface EngineRuntimeOptions {
 	 */
 	externalDependencies?: (stores: EngineStores) => ExternalDependencies;
 	/**
-	 * Signs and verifies the tokens that resume URLs carry. A change of it ends
-	 * every open resume URL. Absent, the engine accepts no resume request and
-	 * both resume routes answer 501.
+	 * Verifies the tokens that resume URLs carry. If it changes, every open
+	 * resume URL stops working. Absent or empty, both resume routes answer 501.
 	 */
 	resumeSecret?: string;
 	/** How often to fire waits whose deadline has passed. Defaults to a minute. */
@@ -86,9 +85,11 @@ export function createEngineRuntime({
 	logger = createConsoleLogger(),
 	responseSender,
 	externalDependencies,
-	resumeSecret,
+	resumeSecret: givenResumeSecret,
 	waitSweepIntervalMs,
 }: EngineRuntimeOptions): EngineRuntime {
+	// An empty value is how an unset environment variable usually arrives.
+	const resumeSecret = givenResumeSecret || undefined;
 	// Refused here and not at the first request: a weak secret would otherwise
 	// fail every resume without a word.
 	if (resumeSecret !== undefined && resumeSecret.length < MIN_SECRET_LENGTH) {
