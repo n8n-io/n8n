@@ -29,7 +29,7 @@ export const descriptions: INodeProperties[] = [
 				value: 'appendOrUpdate',
 				description: 'Append a new row or update an existing one (upsert)',
 				action: 'Append or update row in sheet',
-				annotations: { effect: 'write', destructive: true, idempotent: true },
+				annotations: { effect: 'write', destructive: true, idempotent: false },
 			},
 			{
 				name: 'Append Row',

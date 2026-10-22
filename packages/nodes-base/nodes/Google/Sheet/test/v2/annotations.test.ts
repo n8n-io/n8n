@@ -15,6 +15,22 @@ describe('GoogleSheetsV2, annotations', () => {
 			{ effect: 'write', destructive: true, idempotent: true },
 		],
 		[
+			{ resource: 'sheet', operation: 'appendOrUpdate' },
+			{ effect: 'write', destructive: true, idempotent: false },
+		],
+		[
+			{ resource: 'sheet', operation: 'clear' },
+			{ effect: 'write', destructive: true, idempotent: true },
+		],
+		[
+			{ resource: 'sheet', operation: 'remove' },
+			{ effect: 'write', destructive: true, idempotent: false },
+		],
+		[
+			{ resource: 'spreadsheet', operation: 'deleteSpreadsheet' },
+			{ effect: 'write', destructive: true, idempotent: false },
+		],
+		[
 			{ resource: 'sheet', operation: 'delete' },
 			{ effect: 'write', destructive: true, idempotent: false },
 		],

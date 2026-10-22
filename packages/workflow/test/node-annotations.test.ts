@@ -128,7 +128,7 @@ describe('resolveNodeAnnotations', () => {
 	});
 
 	it('ignores a hidden property', () => {
-		expect(resolve(node, { resource: 'table', operation: 'list', mode: 'safe' })).toEqual(READ);
+		expect(resolve(node, { resource: 'table', operation: 'list', mode: 'strict' })).toEqual(READ);
 	});
 
 	it('lets a restrictive value win over a permissive value', () => {
@@ -147,9 +147,47 @@ describe('resolveNodeAnnotations', () => {
 	});
 
 	it('uses the most restrictive option when visibility depends on an expression', () => {
-		expect(resolve(node, { resource: '={{ $json.resource }}', operation: 'get' })).toEqual(
+		const recordNode = describeNode([resourceProperty, recordOperations]);
+		expect(resolve(recordNode, { resource: 'record', operation: 'get' })).toEqual(READ);
+		expect(resolve(recordNode, { resource: '={{ $json.resource }}', operation: 'get' })).toEqual(
 			RESTRICTIVE,
 		);
+	});
+
+	it('uses the restrictive default for a value that matches no option', () => {
+		const allRead = describeNode([
+			{ ...tableOperations, displayOptions: undefined, options: [listOption] },
+		]);
+		expect(resolve(allRead, { operation: 'removed' })).toEqual(RESTRICTIVE);
+	});
+
+	describe('multiOptions parameters', () => {
+		const WRITE = { effect: 'write', destructive: false, idempotent: false };
+		const fieldsNode = describeNode([
+			{
+				displayName: 'Fields',
+				name: 'fields',
+				type: 'multiOptions',
+				default: [],
+				options: [
+					{ name: 'Read', value: 'read', annotations: READ },
+					{ name: 'Write', value: 'write', annotations: WRITE },
+				],
+			},
+		]);
+
+		it('applies the annotations of every selected option', () => {
+			expect(resolve(fieldsNode, { fields: ['read'] })).toEqual(READ);
+			expect(resolve(fieldsNode, { fields: ['read', 'write'] })).toEqual(WRITE);
+		});
+
+		it('keeps the default when nothing is selected', () => {
+			expect(resolve(fieldsNode, { fields: [] })).toEqual(RESTRICTIVE);
+		});
+
+		it('uses the most restrictive option when the value is an expression', () => {
+			expect(resolve(fieldsNode, { fields: '={{ $json.fields }}' })).toEqual(WRITE);
+		});
 	});
 
 	describe('nested parameters', () => {

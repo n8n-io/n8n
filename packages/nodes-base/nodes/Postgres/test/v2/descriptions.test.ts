@@ -41,7 +41,7 @@ describe('PostgresV2, annotations', () => {
 	it.each([
 		[{ operation: 'select' }, READ_ONLY_ANNOTATIONS],
 		[{ operation: 'insert' }, { effect: 'write', destructive: false, idempotent: false }],
-		[{ operation: 'upsert' }, { effect: 'write', destructive: true, idempotent: true }],
+		[{ operation: 'upsert' }, { effect: 'write', destructive: true, idempotent: false }],
 		[{ operation: 'executeQuery' }, { effect: 'write', destructive: true, idempotent: false }],
 		[
 			{ operation: 'deleteTable', table, deleteCommand: 'truncate' },
@@ -49,7 +49,7 @@ describe('PostgresV2, annotations', () => {
 		],
 		[
 			{ operation: 'deleteTable', table, deleteCommand: 'drop' },
-			{ effect: 'write', destructive: true, idempotent: false },
+			{ effect: 'write', destructive: true, idempotent: true },
 		],
 		[
 			{ operation: 'deleteTable', deleteCommand: 'truncate' },

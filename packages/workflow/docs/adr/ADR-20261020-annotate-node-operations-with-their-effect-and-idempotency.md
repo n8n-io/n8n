@@ -30,8 +30,9 @@ A node can declare `annotations` with three fields:
   data is not destructive.
 - `idempotent`: a second run with the same input succeeds and has no additional effect.
 
-The annotations go on the option values of any `options` parameter, and on the node description.
-The property and each field are optional.
+The annotations go on the option values of any `options` or `multiOptions` parameter, also inside
+a `collection` or a `fixedCollection`, and on the node description. The property and each field
+are optional.
 
 One resolver in `n8n-workflow` reads the node parameters and returns a complete value. It
 resolves each field separately:
@@ -45,7 +46,8 @@ resolves each field separately:
 
 Only parameters that are visible for the current configuration count. When an expression in a
 parameter does not resolve to one option before the run, the parameter counts as the most
-restrictive of its annotated options.
+restrictive of its annotated options. A value that matches no option counts as the restrictive
+default.
 
 The main reason: node authors put the deciding logic on different parameters. Community nodes
 can set annotations wherever the logic of the node is. A fixed list of deciding parameters would
@@ -71,15 +73,19 @@ not allow this.
 2. A node that sets no annotations is treated as a destructive, non-idempotent write. Community
    nodes keep this default until their authors set annotations.
 3. A permissive annotation on one parameter cannot hide a write that another parameter declares.
-4. The resolver must check the visibility of each parameter. Its cost grows with the number of
-   annotated parameters. An index of these parameters, built when the node type loads, keeps
-   the cost low.
+4. The resolver checks the visibility of each parameter, also of nested parameters. Its cost
+   grows with the number of visible parameters. Most of the cost comes from filling in the
+   parameter defaults, and it stays below a millisecond for each call on the largest nodes.
 5. A new annotation field must be optional and must have a restrictive default. Then it does not
    change behavior for nodes that do not set it.
 6. An operation whose effect cannot be known, such as a raw SQL query, sets no annotation and
    stays at the default.
 7. Annotations on `boolean` parameters are not possible. A node that needs them must model the
    choice as an `options` parameter.
+8. Each node version has its own description, so each version has its own annotations. A version
+   without annotations keeps the restrictive default.
+9. A `collection` child that the user did not set counts with its default value. This is correct
+   only when the node code uses the same default.
 
 ## Links
 

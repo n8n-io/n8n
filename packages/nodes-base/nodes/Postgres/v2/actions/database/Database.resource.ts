@@ -44,7 +44,7 @@ export const description: INodeProperties[] = [
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-upsert
 				description: 'Insert or update rows in a table',
 				action: 'Insert or update rows in a table',
-				annotations: { effect: 'write', destructive: true, idempotent: true },
+				annotations: { effect: 'write', destructive: true, idempotent: false },
 			},
 			{
 				name: 'Select',

@@ -48,6 +48,8 @@ function mergeAnnotations(sources: Annotations[], strict = false): NodeOperation
 	};
 }
 
+const RESTRICTIVE_ANNOTATIONS = mergeAnnotations([]);
+
 const isNodeParameters = (value: unknown): value is INodeParameters => isObject(value);
 
 const toEntries = (value: unknown): INodeParameters[] =>
@@ -75,18 +77,20 @@ function optionAnnotations(
 	}
 
 	const value = values[property.name] ?? property.default;
-	const selected =
-		isExpression(value) || dependsOnExpression(property, values, root)
-			? undefined
-			: options.find((option) => option.value === value);
-	if (selected) return [selected.annotations ?? {}];
+	if (isExpression(value) || dependsOnExpression(property, values, root)) {
+		return [
+			mergeAnnotations(
+				options.map((option) => option.annotations ?? {}),
+				true,
+			),
+		];
+	}
 
-	return [
-		mergeAnnotations(
-			options.map((option) => option.annotations ?? {}),
-			true,
-		),
-	];
+	const selectedValues = property.type === 'multiOptions' && Array.isArray(value) ? value : [value];
+	return selectedValues.map((selectedValue) => {
+		const selected = options.find((option) => option.value === selectedValue);
+		return selected ? (selected.annotations ?? {}) : RESTRICTIVE_ANNOTATIONS;
+	});
 }
 
 function collectAnnotations(
@@ -100,7 +104,9 @@ function collectAnnotations(
 		}
 
 		const { options } = property;
-		if (property.type === 'options') return optionAnnotations(property, values, context.root);
+		if (property.type === 'options' || property.type === 'multiOptions') {
+			return optionAnnotations(property, values, context.root);
+		}
 
 		if (property.type === 'collection' && isINodePropertiesList(options)) {
 			const [children = {}] = toEntries(values[property.name]);
