@@ -353,8 +353,7 @@ function onOpenAutoFocus(event: Event) {
 }
 
 .bodyAboveFooter[data-slot='dialog-body'][data-scrollable] {
-	--agent-modal-body--padding-block-end: 0;
-	padding-block-end: 0;
+	padding-block-end: var(--agent-modal-body--padding-block-end);
 }
 
 .body[data-flush='true'][data-slot='dialog-body'][data-scrollable] {
@@ -421,7 +420,7 @@ function onOpenAutoFocus(event: Event) {
 	.footerActions {
 		width: 100%;
 
-		button {
+		button:not([role='checkbox']) {
 			flex: 1;
 		}
 	}
