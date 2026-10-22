@@ -42,6 +42,7 @@ export abstract class BaseError extends Error {
 	) {
 		super(message, rest);
 
+		// Defined, not assigned: assignment throws when `Error.prototype` is frozen (task runner secure mode)
 		Object.defineProperty(this, 'name', {
 			value: this.constructor.name,
 			writable: true,
