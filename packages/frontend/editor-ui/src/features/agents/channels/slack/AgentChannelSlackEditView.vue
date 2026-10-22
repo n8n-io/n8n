@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { AgentSlackSettingsSchema, type AgentSlackIntegrationSettings } from '@n8n/api-types';
-import { N8nSwitch2 } from '@n8n/design-system';
+import { N8nSettingsRow, N8nSettingsRowGroup, N8nSwitch2, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import AgentIntegrationCredentialConnection from '../../components/AgentIntegrationCredentialConnection.vue';
@@ -78,19 +78,33 @@ defineExpose({ currentSettings, validationError, loading, beforeSave });
 			@create="emit('create')"
 			@edit="emit('edit')"
 		/>
-		<AgentFormSettingRow
-			control-id="slack-only-respond-when-mentioned"
-			:title="i18n.baseText('agents.channels.slack.settings.onlyRespondWhenMentioned')"
-			:description="i18n.baseText('agents.channels.slack.settings.onlyRespondWhenMentionedHint')"
-		>
-			<N8nSwitch2
-				id="slack-only-respond-when-mentioned"
-				v-model="onlyRespondWhenMentioned"
-				:aria-label="i18n.baseText('agents.channels.slack.settings.onlyRespondWhenMentioned')"
-				:disabled="disabled || loading"
-				data-testid="slack-only-respond-when-mentioned"
-			/>
-		</AgentFormSettingRow>
+		<section :class="$style.conversations" aria-labelledby="slack-conversations-heading">
+			<N8nText id="slack-conversations-heading" tag="h3" size="medium" bold>
+				{{ i18n.baseText('agents.channels.slack.settings.label') }}
+			</N8nText>
+			<N8nSettingsRowGroup :class="$style.settingsGroup" data-testid="slack-conversation-settings">
+				<N8nSettingsRow layout="custom">
+					<AgentFormSettingRow
+						control-id="slack-only-respond-when-mentioned"
+						:title="i18n.baseText('agents.channels.slack.settings.onlyRespondWhenMentioned')"
+						:description="
+							i18n.baseText('agents.channels.slack.settings.onlyRespondWhenMentionedHint')
+						"
+					>
+						<N8nSwitch2
+							id="slack-only-respond-when-mentioned"
+							v-model="onlyRespondWhenMentioned"
+							:aria-label="i18n.baseText('agents.channels.slack.settings.onlyRespondWhenMentioned')"
+							:disabled="disabled || loading"
+							data-testid="slack-only-respond-when-mentioned"
+						/>
+					</AgentFormSettingRow>
+				</N8nSettingsRow>
+				<N8nSettingsRow v-if="$slots.additionalSettings" layout="custom">
+					<slot name="additionalSettings" />
+				</N8nSettingsRow>
+			</N8nSettingsRowGroup>
+		</section>
 		<AgentChannelSlackManagedSettings
 			v-if="managed"
 			ref="settingsRef"
@@ -112,5 +126,15 @@ defineExpose({ currentSettings, validationError, loading, beforeSave });
 	&:focus {
 		outline: none;
 	}
+}
+
+.conversations {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+
+.settingsGroup.settingsGroup {
+	background: transparent;
 }
 </style>
