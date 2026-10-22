@@ -1734,6 +1734,15 @@ describe('CredentialsOverwrites', () => {
 				expect(instance.getDefaultVersion('notionOAuth2Api')).toBe(1);
 			});
 
+			it('should load no overwrites when the payload is not an object', async () => {
+				const instance = await createInstance(null as never);
+
+				expect(logger.warn).toHaveBeenCalledWith(
+					expect.stringContaining('it must be an object keyed by credential type'),
+				);
+				expect(instance.getOverwrites('notionOAuth2Api')).toEqual({});
+			});
+
 			it('should skip an entry that is not an object', async () => {
 				const instance = await createInstance({ notionOAuth2Api: [baseApp] });
 

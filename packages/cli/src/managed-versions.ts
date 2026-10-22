@@ -80,7 +80,7 @@ export function withTokenVersion(
  * @param parentTypesOf returns the parent types of a credential type, nearest first. A base `version` on a parent applies to a child without its own.
  */
 export function parseOverwritesPayload(
-	payload: Record<string, unknown>,
+	payload: unknown,
 	clientFieldsOf: (type: string) => readonly string[] | undefined,
 	isKnownType: (type: string) => boolean,
 	parentTypesOf: (type: string) => readonly string[],
@@ -89,6 +89,13 @@ export function parseOverwritesPayload(
 	const entryVersions: Record<string, number> = {};
 	const versions: Record<string, ManagedVersionEntry> = {};
 	const problems: string[] = [];
+
+	if (!isRecord(payload)) {
+		problems.push(
+			'Ignoring the credentials overwrite: it must be an object keyed by credential type.',
+		);
+		return { entries, entryVersions, versions, problems };
+	}
 
 	for (const [type, value] of Object.entries(payload)) {
 		if (type === VERSIONS_PAYLOAD_KEY) continue;
