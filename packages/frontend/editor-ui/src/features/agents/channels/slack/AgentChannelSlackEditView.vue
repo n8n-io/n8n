@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { AgentSlackSettingsSchema, type AgentSlackIntegrationSettings } from '@n8n/api-types';
-import { N8nSettingsRow, N8nSwitch2 } from '@n8n/design-system';
+import { N8nSwitch2 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import AgentIntegrationCredentialConnection from '../../components/AgentIntegrationCredentialConnection.vue';
 import AgentChannelSlackManagedSettings from '../../components/AgentChannelSlackManagedSettings.vue';
+import AgentFormSettingRow from '../../components/AgentFormSettingRow.vue';
 import type { AgentChannelViewProps } from '../types';
 import type { SlackChannelRuntime } from './useSlackChannelRuntime';
 
@@ -77,22 +78,19 @@ defineExpose({ currentSettings, validationError, loading, beforeSave });
 			@create="emit('create')"
 			@edit="emit('edit')"
 		/>
-		<N8nSettingsRow
+		<AgentFormSettingRow
+			control-id="slack-only-respond-when-mentioned"
 			:title="i18n.baseText('agents.channels.slack.settings.onlyRespondWhenMentioned')"
 			:description="i18n.baseText('agents.channels.slack.settings.onlyRespondWhenMentionedHint')"
-			:truncate-title="false"
-			:max-description-lines="3"
-			:show-divider="false"
 		>
-			<template #action>
-				<N8nSwitch2
-					v-model="onlyRespondWhenMentioned"
-					:aria-label="i18n.baseText('agents.channels.slack.settings.onlyRespondWhenMentioned')"
-					:disabled="disabled || loading"
-					data-testid="slack-only-respond-when-mentioned"
-				/>
-			</template>
-		</N8nSettingsRow>
+			<N8nSwitch2
+				id="slack-only-respond-when-mentioned"
+				v-model="onlyRespondWhenMentioned"
+				:aria-label="i18n.baseText('agents.channels.slack.settings.onlyRespondWhenMentioned')"
+				:disabled="disabled || loading"
+				data-testid="slack-only-respond-when-mentioned"
+			/>
+		</AgentFormSettingRow>
 		<AgentChannelSlackManagedSettings
 			v-if="managed"
 			ref="settingsRef"

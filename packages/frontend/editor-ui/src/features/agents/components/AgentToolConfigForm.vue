@@ -417,7 +417,7 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 .contentWrapper {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--md);
 	overflow-x: hidden;
 
 	:global(.ndv-connection-hint-notice) {
@@ -434,7 +434,7 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 	display: flex;
 	min-height: 0;
 	flex-direction: column;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--md);
 }
 
 .customToolViewer {

@@ -8,11 +8,12 @@
  * there to narrow or widen that.
  */
 import { computed, ref, watch } from 'vue';
-import { N8nSwitch2, N8nText } from '@n8n/design-system';
+import { N8nSwitch2 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { AgentApproval, ChatIntegrationApprovableAction } from '@n8n/api-types';
 
 import AgentApprovalSelector from './AgentApprovalSelector.vue';
+import AgentFormSettingRow from './AgentFormSettingRow.vue';
 
 /**
  * The catalog names actions, so a new action appears here without a label. It
@@ -92,24 +93,19 @@ function handleToggle(value: boolean) {
 
 <template>
 	<div :class="$style.container">
-		<div :class="$style.toggleRow">
-			<div :class="$style.toggleText">
-				<label :for="toggleId">
-					<N8nText step="sm" bold>
-						{{ i18n.baseText('agents.channels.approval.label') }}
-					</N8nText>
-				</label>
-				<N8nText size="small" color="text-light">
-					{{ i18n.baseText('agents.channels.approval.hint') }}
-				</N8nText>
-			</div>
+		<AgentFormSettingRow
+			:control-id="toggleId"
+			:title="i18n.baseText('agents.channels.approval.label')"
+			:description="i18n.baseText('agents.channels.approval.hint')"
+		>
 			<N8nSwitch2
 				:id="toggleId"
 				:model-value="enabled"
+				:aria-label="i18n.baseText('agents.channels.approval.label')"
 				data-test-id="agent-channel-approval-toggle"
 				@update:model-value="handleToggle"
 			/>
-		</div>
+		</AgentFormSettingRow>
 
 		<AgentApprovalSelector
 			v-if="enabled"
@@ -130,20 +126,5 @@ function handleToggle(value: boolean) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
-}
-
-.toggleRow {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--sm);
-	padding-top: var(--spacing--2xs);
-}
-
-.toggleText {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-	min-width: 0;
 }
 </style>
