@@ -10,12 +10,14 @@ import {
 import { Service } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
 import type { Scope } from '@n8n/permissions';
-import { DataSource, IsNull } from '@n8n/typeorm';
+import { DataSource, IsNull, MoreThan } from '@n8n/typeorm';
 
 import { SelfHealingConfigurationReviewer } from './self-healing-configuration-reviewer.entity';
+import { SelfHealingInvestigation } from './self-healing-investigation.entity';
 import { SelfHealingResult } from './self-healing-result.entity';
 
 const inboxState = `CASE WHEN result.dismissedAt IS NULL
+	AND result.outcome <> 'could_not_fix'
 	AND (result.suggestionId IS NULL OR suggestion.state = 'pending')
 	THEN 'open' ELSE 'closed' END`;
 
@@ -91,6 +93,38 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 			.where({ workflowId, projectId })
 			.andWhere(`(${inboxState}) = :state`, { state: 'open' })
 			.getOne();
+	}
+
+	async hasRecentCannotFixForVersion(
+		{
+			workflowId,
+			projectId,
+			publishedVersionId,
+			completedAfter,
+		}: {
+			workflowId: string;
+			projectId: string;
+			publishedVersionId: string;
+			completedAfter: Date;
+		},
+		ctx: OperationContext,
+	): Promise<boolean> {
+		const investigations = await this.managerFor(ctx).find(SelfHealingInvestigation, {
+			select: { baseline: true },
+			where: {
+				result: {
+					workflowId,
+					projectId,
+					outcome: 'could_not_fix',
+					completedAt: MoreThan(completedAfter),
+				},
+			},
+		});
+
+		// PostgreSQL accepts escaped NUL in json columns, but JSON extraction rejects it.
+		return investigations.some(
+			({ baseline }) => baseline.expectedBaseline.publishedVersionId === publishedVersionId,
+		);
 	}
 
 	async listForInbox(

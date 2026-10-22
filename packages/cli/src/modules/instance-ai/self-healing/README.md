@@ -121,17 +121,26 @@ There is no public launch endpoint.
 
 ## Investigate again
 
-Admission uses the same Open and Closed states as Inbox. An undismissed result stays open
-when it has no suggestion or its suggestion is pending. This includes Fix ready,
-Needs attention, and Could not fix reports.
+Admission blocks new investigations while a Fix ready or Needs attention result is Open.
+An undismissed result stays Open when it has no suggestion or its suggestion is pending.
+Could not fix results are Closed immediately and return the `dismissed` review state.
+Automatic closure leaves `dismissedAt` and `dismissedById` empty.
 
 Dismissal, discard, or outdated reconciliation permits another eligible production failure
 on the same published version. Apply saves a draft. Another investigation requires successful
 publication and a new eligible failure. Closing a result, opening the editor, changing a
 configuration, and publishing do not start an investigation.
 
-A report without a suggestion stays open until dismissed, even after a new publication.
-Pause, resume, and configuration edits do not clear this block. Configuration deletion removes
+A Needs attention report without a suggestion stays Open until dismissed, even after a new publication.
+
+A Could not fix result blocks investigations for 24 hours after its completion. The block applies
+to the workflow, its owning project, and the investigated published version. Admission checks
+recent matching results inside the claim transaction. Skipped failures do not extend the cooldown.
+Another accepted Could not fix result starts a new cooldown. A different successfully published
+version becomes eligible immediately. Both cases require another eligible production failure.
+Republishing the same version does not reset the cooldown. No background job clears it.
+
+Pause, resume, and configuration edits do not clear either block. Configuration deletion removes
 its history and resets the block. Results from a previous owning project do not block the new project.
 
 Crashes, interruptions, and turn limits without an accepted result release the running claim.
@@ -221,11 +230,11 @@ The investigation instructions must keep sensitive values out of reports, summar
 suggestion explanations, and error context. The text filter handles recognized patterns.
 It does not remove arbitrary private information.
 
-| Outcome         | Suggestion | Actions                                      |
-| --------------- | ---------- | -------------------------------------------- |
+| Outcome         | Suggestion | Actions                                     |
+| --------------- | ---------- | ------------------------------------------- |
 | `fix_ready`     | Required   | Approve and publish, Open in editor, Discard |
 | `needs_you`     | Optional   | Continue in chat, Dismiss                    |
-| `could_not_fix` | None       | Continue in chat, Dismiss                    |
+| `could_not_fix` | None       | Continue in chat                            |
 
 The summary is a plain-language title with at most 80 characters.
 The agent writes the report as one Markdown string with two sections: **What happened**
@@ -273,7 +282,8 @@ check the current workflow before writing. If Apply fails, keep the review open 
 
 Both Discard and Dismiss buttons call `POST /:resultId/dismiss`.
 Dismissal discards an attached pending suggestion. Fix-ready results derive their discarded state
-from the suggestion; informational results also record dismissal in the same transaction.
+from the suggestion. Needs attention results also record dismissal in the same transaction.
+Dismissal leaves automatically closed Could not fix results unchanged.
 Already applied, discarded, or outdated suggestions keep their existing closure.
 Apply uses the existing suggestion action service. An applied result stays applied if publication
 returns an error. `publishError` describes that request only. The response includes the workflow
@@ -299,5 +309,6 @@ The shared Inbox reads result rows through `SelfHealingResultService.listForInbo
 It reads counts through `countForInbox()`. Both use current reviewer membership, editor access, and original-project ownership.
 The source selects rows before applying the shared pagination boundary and limit.
 The shared API uses `GET /inbox` and `GET /inbox/summary`.
-Open and Closed derive from result dismissal and suggestion closure. Inbox reads do not change either state.
+Open and Closed derive from result outcome, dismissal, and suggestion closure.
+Could not fix results are Closed. Inbox reads do not change either state.
 The review UI will provide review screens and chat and editor navigation.

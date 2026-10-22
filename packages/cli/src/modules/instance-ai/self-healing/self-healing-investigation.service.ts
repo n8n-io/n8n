@@ -30,6 +30,8 @@ import {
 	type SelfHealingResultInput,
 } from './self-healing-result.service';
 
+const CANNOT_FIX_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+
 type StartInvestigation = {
 	workflowId: string;
 	projectId: string;
@@ -175,6 +177,8 @@ export class SelfHealingInvestigationService {
 			if (existing) return existing;
 
 			await this.suggestions.requireCurrentBaseline(baseline, ctx);
+			if (await this.isInCooldown(baseline, ctx)) return null;
+
 			return await this.investigations.createInvestigation(
 				{
 					baseline,
@@ -186,6 +190,19 @@ export class SelfHealingInvestigationService {
 				ctx,
 			);
 		});
+	}
+
+	private async isInCooldown(baseline: WorkflowSuggestionBaseline, ctx: OperationContext) {
+		const completedAfter = new Date(Date.now() - CANNOT_FIX_COOLDOWN_MS);
+		return await this.resultRepository.hasRecentCannotFixForVersion(
+			{
+				workflowId: baseline.workflowId,
+				projectId: baseline.projectId,
+				publishedVersionId: baseline.expectedBaseline.publishedVersionId,
+				completedAfter,
+			},
+			ctx,
+		);
 	}
 
 	private async run(investigation: SelfHealingInvestigation, user: User) {
