@@ -390,13 +390,17 @@ export class N8nClient {
 
 	async listPromotionProviderRepositories(id: string, search?: string, limit?: number) {
 		return await this.paginate<PromotionRepository>(
-			`/promotions/providers/${encodeURIComponent(id)}/repositories`,
+			`/promotions/providers/${id}/repositories`,
 			search ? { search } : {},
 			limit,
 		);
 	}
 
-	/** `repositoryId` is a plain full path such as `group/repo`, or a Git host project ID. */
+	/**
+	 * `repositoryId` is a plain full path such as `group/repo`, or a Git host
+	 * project ID. A full path contains slashes, so it is encoded into one path
+	 * segment here.
+	 */
 	async listPromotionProviderBranches(
 		id: string,
 		repositoryId: string,
@@ -404,7 +408,7 @@ export class N8nClient {
 		limit?: number,
 	) {
 		return await this.paginate<PromotionBranch>(
-			`/promotions/providers/${encodeURIComponent(id)}/repositories/${encodeURIComponent(repositoryId)}/branches`,
+			`/promotions/providers/${id}/repositories/${encodeURIComponent(repositoryId)}/branches`,
 			search ? { search } : {},
 			limit,
 		);

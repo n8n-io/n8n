@@ -352,11 +352,11 @@ describe('N8nClient packages', () => {
 				fetchMock.mockResolvedValue(jsonResponse(200, { data: branches, nextCursor: null }));
 
 				await expect(
-					client.listPromotionProviderBranches('prov/1', 'acme/platform/flows', 'rel'),
+					client.listPromotionProviderBranches('prov-1', 'acme/platform/flows', 'rel'),
 				).resolves.toEqual(branches);
 
 				expect(requestLines(fetchMock)).toEqual([
-					'GET https://n8n.example.com/api/v1/promotions/providers/prov%2F1/repositories/acme%2Fplatform%2Fflows/branches?search=rel',
+					'GET https://n8n.example.com/api/v1/promotions/providers/prov-1/repositories/acme%2Fplatform%2Fflows/branches?search=rel',
 				]);
 			});
 		});
