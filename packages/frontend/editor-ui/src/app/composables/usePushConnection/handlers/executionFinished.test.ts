@@ -9,7 +9,12 @@ import {
 	refreshWalletAfterBilledRun,
 	type SimplifiedExecution,
 } from './executionFinished';
-import type { IRunExecutionData, ITaskData, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	ExecutionError,
+	IRunExecutionData,
+	ITaskData,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 import {
 	createRunExecutionData,
 	EVALUATION_TRIGGER_NODE_TYPE,
@@ -780,7 +785,7 @@ describe('executionFinished', () => {
 
 		const executionId = 'crashed-exec';
 		useWorkflowExecutionStateStore(documentId).setActiveExecutionId(executionId);
-		const error = { message: 'Workflow crashed', name: 'WorkflowCrashedError' };
+		const error = { message: 'Workflow crashed', name: 'WorkflowCrashedError' } as ExecutionError;
 		vi.spyOn(useWorkflowsStore(), 'fetchExecutionDataById').mockResolvedValue({
 			id: executionId,
 			workflowId: '1',
