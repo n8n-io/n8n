@@ -1979,9 +1979,14 @@ async function flushBeforePublish(): Promise<boolean> {
 	const targetAgentId = agentId.value;
 	agentCollaborationStore.requestWriteAccess();
 	try {
-		return (
-			isPersistedSave(await flushAutosave()) && !isStaleAgentTarget(targetProjectId, targetAgentId)
-		);
+		let result = await flushAutosave();
+		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
+		if (result === 'skipped' && !isEditingLocked.value && localConfig.value) {
+			// Retry the current config after the lock clears. Its hash rejects intervening edits.
+			replaceConfigAndScheduleSave(localConfig.value);
+			result = await flushAutosave();
+		}
+		return isPersistedSave(result) && !isStaleAgentTarget(targetProjectId, targetAgentId);
 	} catch {
 		return false;
 	}

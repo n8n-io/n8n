@@ -689,7 +689,7 @@ const commonStubs = {
 	AgentVersionHistoryPanel: {
 		name: 'AgentVersionHistoryPanel',
 		template: '<aside />',
-		props: ['activeTab'],
+		props: ['activeTab', 'beforePublish'],
 		emits: ['update:activeTab', 'close'],
 	},
 	InstanceAiChatPanel: {
@@ -3293,6 +3293,54 @@ describe('AgentBuilderView — configuration validation', () => {
 		expect(getAgentConfigValidationMock).toHaveBeenCalledTimes(2);
 		expect(vm.configValidation?.status).toBe('valid');
 	});
+
+	it.each([false, true])(
+		'recovers a skipped save before history publication with intervening edits=%s',
+		async (changedRemotely) => {
+			const wrapper = await renderView();
+			await wrapper.get('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
+			const assistant = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
+			wrapper
+				.getComponent({ name: 'AgentBuilderHeader' })
+				.vm.$emit('header-action', 'version-history');
+			await nextTick();
+			const beforePublish = wrapper
+				.getComponent({ name: 'AgentVersionHistoryPanel' })
+				.props('beforePublish') as () => Promise<boolean>;
+			const vm = wrapper.vm as unknown as {
+				onConfigFieldUpdate: (updates: Partial<TestAgentConfig>) => void;
+				flushAutosave: () => Promise<string | undefined>;
+			};
+			vm.onConfigFieldUpdate({ instructions: 'Local edit' });
+			const saving = vm.flushAutosave();
+			assistant.vm.$emit('update:building', true);
+			await expect(saving).resolves.toBe('skipped');
+			await expect(beforePublish()).resolves.toBe(false);
+			expect(updateConfigMock).not.toHaveBeenCalled();
+
+			if (changedRemotely) {
+				intendedConfig = { name: 'Agent One', ...defaultLlmConfig, instructions: 'Remote edit' };
+				updateConfigMock.mockRejectedValueOnce(
+					new ResponseError('Agent config was changed elsewhere', { httpStatusCode: 409 }),
+				);
+			}
+			assistant.vm.$emit('update:building', false);
+			await nextTick();
+
+			await expect(beforePublish()).resolves.toBe(!changedRemotely);
+			expect(updateConfigMock).toHaveBeenCalledExactlyOnceWith(
+				'p1',
+				'a1',
+				expect.objectContaining({ instructions: 'Local edit' }),
+				'hash-1',
+			);
+			expect(
+				wrapper.getComponent({ name: 'AgentBuilderEditorColumn' }).props('localConfig'),
+			).toMatchObject({ instructions: changedRemotely ? 'Remote edit' : 'Local edit' });
+			await expect(beforePublish()).resolves.toBe(true);
+			expect(updateConfigMock).toHaveBeenCalledTimes(1);
+		},
+	);
 
 	it('surfaces unpublished workflow tools in a modal and aborts the publish', async () => {
 		const notPublished = {
