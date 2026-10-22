@@ -764,7 +764,7 @@ it('checks authentication, the scopes of each direction, and the promotions lice
 	await server.authAgentFor(member).get(endpoint).expect(403);
 	await server.authAgentFor(member).get(applyEndpoint).expect(403);
 	await server.authAgentFor(member).get(blockersEndpoint).expect(403);
-	// A project admin manages the project, but lacks the global git connection scopes.
+	// A project admin manages the project, but lacks the global promotion scopes.
 	await linkUserToProject(member, project, 'project:admin');
 	await server.authAgentFor(member).get(endpoint).expect(403);
 	await server.authAgentFor(member).get(applyEndpoint).expect(403);

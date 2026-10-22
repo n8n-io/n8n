@@ -193,45 +193,49 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		description: 'Allows creating, editing, and deleting project role definitions.',
 	},
 	'promotions:create': {
-		displayName: 'Create Git Connection',
-		description: 'Allows creating Git connections and their authentication material.',
+		displayName: 'Create promotion setup',
+		description:
+			'Allows creating promotion providers, including their credentials, and promotion environments.',
 	},
 	'promotions:read': {
-		displayName: 'Read Git Connection',
-		description: 'Allows reading Git connection configuration. Secrets are never returned.',
+		displayName: 'Read promotion setup',
+		description:
+			'Allows reading promotion providers, environments, their linked projects, and change previews. Credentials are never returned.',
 	},
 	'promotions:update': {
-		displayName: 'Update Git Connection',
-		description: 'Allows updating Git connections, including their authentication material.',
+		displayName: 'Update promotion setup',
+		description:
+			'Allows updating promotion providers, including their credentials, and promotion environments.',
 	},
 	'promotions:delete': {
-		displayName: 'Delete Git Connection',
-		description: 'Allows deleting Git connections and their local files.',
+		displayName: 'Delete promotion setup',
+		description:
+			'Allows deleting promotion providers and environments. Deleting an environment also removes its local working copy.',
 	},
 	'promotions:list': {
-		displayName: 'List Git Connections',
-		description: 'Allows listing Git connections.',
+		displayName: 'List promotion setup',
+		description: 'Allows listing promotion providers and environments.',
 	},
 	'promotions:discover': {
-		displayName: 'Discover Git repositories',
+		displayName: 'Discover promotion repositories',
 		description: 'Allows listing remote repositories and branches with saved provider credentials.',
 	},
 	'promotions:connect': {
-		displayName: 'Clone Git Connection',
-		description: 'Allows cloning and removing the local working copy of a Git connection.',
+		displayName: 'Connect promotion environment',
+		description: 'Allows creating and removing the local working copy of a promotion environment.',
 	},
 	'promotions:promote': {
-		displayName: 'Push Git Connection',
-		description: 'Allows pushing all projects linked to a Git connection to its remote repository.',
+		displayName: 'Promote',
+		description: 'Allows promoting team projects to the Git branch of a promotion environment.',
 	},
 	'promotions:manageProjects': {
-		displayName: 'Manage Git Connection Projects',
-		description: 'Allows adding projects to and removing projects from a Git connection.',
+		displayName: 'Manage promotion environment projects',
+		description: 'Allows adding projects to and removing projects from a promotion environment.',
 	},
 	'promotions:apply': {
-		displayName: 'Pull Git Connection',
+		displayName: 'Apply',
 		description:
-			'Allows importing all projects from a Git connection working copy into the instance.',
+			'Allows applying changes from the Git branch of a promotion environment to this instance.',
 	},
 	'promotions:readReviews': {
 		displayName: 'Read promotion reviews',
