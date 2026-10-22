@@ -181,11 +181,6 @@ const menuItems = computed<MentionMenuItem[]>(() => {
 			if (!failedToLoadWorkflows) return [];
 			return [
 				{
-					id: 'section:workflows',
-					label: i18n.baseText('instanceAi.mentions.workflowsSection'),
-					header: true,
-				},
-				{
 					id: 'state:workflows-error',
 					label: i18n.baseText('instanceAi.mentions.loadError'),
 					disabled: true,
@@ -197,18 +192,7 @@ const menuItems = computed<MentionMenuItem[]>(() => {
 				},
 			];
 		}
-		return [
-			{
-				id: `section:${section.id}`,
-				label: i18n.baseText(
-					section.id === 'artifacts'
-						? 'instanceAi.mentions.artifactsSection'
-						: 'instanceAi.mentions.workflowsSection',
-				),
-				header: true,
-			},
-			...section.items,
-		];
+		return section.items;
 	});
 });
 

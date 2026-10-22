@@ -155,7 +155,7 @@ describe('AssistantAtMentionPicker', () => {
 		expect(queryByText('Artifacts')).toBeNull();
 	});
 
-	it('hides the workflows section when only artifacts are available', async () => {
+	it('shows open workflows without a section header', async () => {
 		const { findByText, queryByText } = renderComponent({
 			props: {
 				modelValue: true,
@@ -166,7 +166,7 @@ describe('AssistantAtMentionPicker', () => {
 		});
 
 		expect(await findByText('Orders')).toBeVisible();
-		expect(await findByText('Artifacts')).toBeVisible();
+		expect(queryByText('Artifacts')).toBeNull();
 		expect(queryByText('Workflows')).toBeNull();
 		expect(queryByText('No recent workflows')).toBeNull();
 	});
@@ -438,7 +438,7 @@ describe('AssistantAtMentionPicker', () => {
 		vi.mocked(recentWorkflowsStore.resolveRecentWorkflows).mockRejectedValue(
 			new Error('Request failed'),
 		);
-		const { findByText, getByRole } = renderComponent({
+		const { findByText, getByRole, queryByText } = renderComponent({
 			props: {
 				modelValue: true,
 				query: '',
@@ -449,6 +449,8 @@ describe('AssistantAtMentionPicker', () => {
 
 		expect(await findByText('Orders')).toBeVisible();
 		expect(await findByText("Workflows couldn't load. Try again.")).toBeVisible();
+		expect(queryByText('Workflows')).toBeNull();
+		expect(queryByText('Artifacts')).toBeNull();
 		await userEvent.click(getByRole('menuitem', { name: 'Retry' }));
 		expect(recentWorkflowsStore.resolveRecentWorkflows).toHaveBeenCalledTimes(2);
 	});
