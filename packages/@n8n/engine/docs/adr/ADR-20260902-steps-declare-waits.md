@@ -15,8 +15,8 @@ by how it resumes. Engine v2 must support both.
 
 A third kind of pause ends by neither. A parent execution that waits for a
 sub-workflow parks on a sentinel date that the poller never fires, and the
-child's completion resumes it. That pause is out of scope here.
-ADR-20261020-run-sub-workflows-as-child-executions covers it.
+child's completion resumes it. That pause is out of scope here, because a
+sub-workflow is its own step type.
 
 In engine v1, the node starts the pause. The node calls `putExecutionToWait`.
 The engine then writes the full execution to the database. A poller or a
@@ -51,10 +51,10 @@ or do both. When it does both, the first of the two ends the wait.
    declaration and returns it as the step result. How a wait is implemented is
    the engine's decision and not the node's. Engine v1 sleeps in the process for
    a short time wait. Engine v2 declares every wait, including a wait with no
-   deadline. A wait for a sub-execution is no declaration.
-   ADR-20261020-run-sub-workflows-as-child-executions covers it. The converter
-   does not rewrite wait nodes. This one mechanism covers the Wait node, all
-   send-and-wait nodes, and expression-valued wait parameters.
+   deadline. A wait for a sub-execution is no declaration: the shim fails that
+   step until a sub-workflow step exists. The converter does not rewrite wait
+   nodes. This one mechanism covers the Wait node, all send-and-wait nodes, and
+   expression-valued wait parameters.
 2. **The engine suspends the step.** A step that returns a declaration moves to
    the new `waiting` status. `waiting` is not a settled status. Therefore the
    existing settlement rules stop the engine from planning the steps behind it.
@@ -72,11 +72,9 @@ or do both. When it does both, the first of the two ends the wait.
    late. The control plane sends what the method produced to the data plane,
    which records it as the resume payload and moves the step to `queued`. The
    worker that takes the step emits that payload as the step's outputs. The
-   engine never runs the node's execute method again for a deadline or a
-   request resume. A child resume does run it again; see
-   ADR-20261020-run-sub-workflows-as-child-executions. Nothing moves a step
-   from `waiting` to `completed` in one step. Every resume passes through
-   `queued` and the worker path.
+   engine never runs the node's execute method again. Nothing moves a step from
+   `waiting` to `completed` in one step. Every resume passes through `queued`
+   and the worker path.
 4. **The engine fires the time waits.** A wait fires at its deadline and not
    before it. A step suspended after the engine planned its next check fires at
    its deadline too. A wait fires once, however many replicas run. The step row
@@ -183,9 +181,10 @@ or do both. When it does both, the first of the two ends the wait.
   or sweeps, so the bound is one sweep interval. Engine v1 fires a short time
   wait on time and loses it if the worker dies, so engine v2 matches v1 on time
   and improves on it after a failure.
-- A v1 node that waits for a sub-execution does not declare a wait. It asks for
-  a child, and the engine suspends the step on the child. The Context puts that
-  pause out of scope here.
+- A v1 node that waits for a sub-execution fails on engine v2. The step does not
+  complete at once, because a step that completed would report a child that
+  never ran. A sub-workflow step will carry that wait; the Context puts it out
+  of scope here.
 - Because the execution row records a status that the step rows decide, one
   statement must calculate the status and write it. Two statements are not
   enough. A step could change between the read and the write. The write would
@@ -215,4 +214,4 @@ RFC: -
 
 Documentation: https://app.notion.com/p/n8n/34b5b6e0c94f81feba4bdb59a65d55dc
 
-Related ADRs: ADR-20260828-obtain-trigger-output-before-creating-the-execution, ADR-20260904-store-the-workflow-revision-that-ran-with-the-execution, ADR-20261020-run-sub-workflows-as-child-executions
+Related ADRs: ADR-20260828-obtain-trigger-output-before-creating-the-execution, ADR-20260904-store-the-workflow-revision-that-ran-with-the-execution

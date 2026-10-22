@@ -16,7 +16,9 @@ A parent that waits for the child parks on a sentinel date, and the child's comp
 resumes it.
 
 Engine v2 cannot do this today. The shim has no `executeWorkflow`, and it fails a step that
-waits for a sub-execution. The engine cannot load a workflow or build a graph
+waits for a sub-execution. ADR-20260902-steps-declare-waits left that pause out of scope and
+expected a step type of its own to carry it; this ADR takes a different route, below. The
+engine cannot load a workflow or build a graph
 (ADR-20260904-store-the-workflow-revision-that-ran-with-the-execution). A step cannot block
 for the length of a child run
 (ADR-20260828-obtain-trigger-output-before-creating-the-execution). The caller policy and
@@ -28,9 +30,10 @@ the credential checks read control-plane state.
    child and resumes it when the child ends, as it suspends and resumes a waiting step
    (ADR-20260902-steps-declare-waits). The step does not declare a wait. It asks for a
    child, and the engine suspends it on that child. On resume the Execute Sub-workflow node
-   runs again, and the call returns the child's result. This holds for that node because
-   its work before the call has no side effects. A fire-and-forget call does not suspend,
-   but the child still records its parent.
+   runs again, and the call returns the child's result. This narrows the wait ADR's rule
+   that no node code runs on a resume to deadline and request resumes; that ADR stays as
+   written. It holds for that node because its work before the call has no side effects. A
+   fire-and-forget call does not suspend, but the child still records its parent.
 2. **The control plane resolves the child, and the engine starts it.** When a node asks
    for a sub-workflow, the shim calls the control plane. The control plane looks up the
    workflow, applies the caller policy and the credential checks, and returns the graph.
