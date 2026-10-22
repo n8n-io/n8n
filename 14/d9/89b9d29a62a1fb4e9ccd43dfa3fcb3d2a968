@@ -1,0 +1,68 @@
+packages/cli/src/modules/n8n-packages/entities/requirement-source.ts
+  s_2397c9db9d923f::t_4141c5cb560e99 3-19
+  s_2397c9db9d923f::t_50d10d5625d487 1-2
+  s_2397c9db9d923f::t_77d54dff786964 20-22
+  s_dd171702c7a424::t_82459814ef9a90 23-33
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-requirement.exporter.ts
+  s_2397c9db9d923f::t_2534fa89ebfb8f 31
+  s_2397c9db9d923f::t_882d9f35e407d6 30
+  s_2397c9db9d923f::t_a6d7798bf68984 9,29,32,36,39-40,48
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/package-fixtures.ts
+  s_71ad2034164515::t_1e8af0da447aa8 14,325,330
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  s_71ad2034164515::t_52f2de351cb737 97,621-623,642-644,729-733,1260-1262
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-result.test.ts
+  s_d3c0f6f6f7d41c::t_4a520765883c9d 3-6,13-16,20,32-42,46,58-60,66-68,80-81
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential.exporter.test.ts
+  s_71ad2034164515::t_b938752f9cf0b6 132
+packages/cli/src/modules/n8n-packages/entities/credential/credential.exporter.ts
+  s_71ad2034164515::t_9672e13c4914c5 15,17,47,92,112-117
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table.exporter.test.ts
+  s_71ad2034164515::t_a55dceb8b63401 129
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.exporter.ts
+  s_2397c9db9d923f::t_2bda65e2275409 14,47-48,74
+packages/cli/src/modules/n8n-packages/entities/variable/variable.exporter.ts
+  s_71ad2034164515::t_2d3f67592157ec 20,22,74,92,150-151,153-154
+packages/cli/src/modules/n8n-packages/entities/__tests__/requirement-source.test.ts
+  s_dd171702c7a424::t_759ab59df63bc6 1-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "14d989b9d29a62a1fb4e9ccd43dfa3fcb3d2a968",
+  "prompts": {},
+  "sessions": {
+    "s_2397c9db9d923f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11062-0f35-7542-b063-84df367d8ec4",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_d3c0f6f6f7d41c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a152e5-4005-7111-8ca3-6a9ab5e71d29",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_dd171702c7a424": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11a3d-30e8-73a3-9e06-925aae6a1701",
+        "model": "unknown"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
