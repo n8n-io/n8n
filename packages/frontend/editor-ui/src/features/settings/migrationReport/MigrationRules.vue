@@ -29,10 +29,13 @@ import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 import type { BreakingChangeLightReportResult, BreakingChangeRuleImpact } from '@n8n/api-types';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { hasPermission } from '@/app/utils/rbac/permissions';
+import { useToast } from '@n8n/composables/useToast';
+import { saveAs } from 'file-saver';
 
 const $style = useCssModule();
 const rootStore = useRootStore();
 const i18n = useI18n();
+const toast = useToast();
 
 useDocumentTitle().set(i18n.baseText('settings.migrationReport'));
 
@@ -79,6 +82,24 @@ const openWorkflowRulesCount = computed(
 
 async function refreshReport() {
 	await execute(0, true);
+}
+
+const isExporting = ref(false);
+
+// The server builds and names the file, so an instance without telemetry can still share its counts.
+async function exportReport() {
+	isExporting.value = true;
+	try {
+		const { blob, filename } = await breakingChangesApi.exportReport(
+			rootStore.restApiContext,
+			versionQuery,
+		);
+		saveAs(blob, filename);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.migrationReport.export.error.title'));
+	} finally {
+		isExporting.value = false;
+	}
 }
 
 const tabs = computed(() => {
@@ -237,6 +258,15 @@ const sortedInstanceResults = computed(() => {
 					>
 						{{ i18n.baseText('settings.migrationReport.neverUpdated') }}
 					</N8nText>
+					<N8nButton
+						variant="outline"
+						:label="i18n.baseText('settings.migrationReport.exportButton')"
+						icon="download"
+						:loading="isExporting"
+						:disabled="isLoading || isExporting || !state"
+						data-test-id="migration-report-export"
+						@click="exportReport"
+					/>
 					<N8nButton
 						v-if="canManageReport"
 						variant="outline"

@@ -4,15 +4,19 @@ import {
 	type EpisodicMemoryScope,
 	type NewEpisodicMemoryEntry,
 	type NewEpisodicMemoryEntrySourceForEntry,
+	type ObservationCursor,
+	type ObservationLogBatch,
 } from '@n8n/agents';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 
-import { AgentThreadRepository } from '../../repositories/agent-thread.repository';
+import { AgentObservationEntity } from '../../entities/agent-observation.entity';
 import { AgentMemoryEntryRepository } from '../../repositories/agent-memory-entry.repository';
 import { AgentMemoryEntrySourceRepository } from '../../repositories/agent-memory-entry-source.repository';
+import { AgentObservationRepository } from '../../repositories/agent-observation.repository';
+import { AgentThreadRepository } from '../../repositories/agent-thread.repository';
 import { AgentRepository } from '../../repositories/agent.repository';
 import { N8nMemory, type N8nMemoryImpl } from '../n8n-memory';
 
@@ -20,6 +24,7 @@ describe('N8nMemoryImpl', () => {
 	let repository: AgentThreadRepository;
 	let memory: N8nMemoryImpl;
 	let otherMemory: N8nMemoryImpl;
+	let observations: AgentObservationRepository;
 	let entryRepository: AgentMemoryEntryRepository;
 
 	beforeAll(async () => {
@@ -28,6 +33,7 @@ describe('N8nMemoryImpl', () => {
 		await testModules.loadModules(['agents']);
 		await testDb.init();
 		repository = Container.get(AgentThreadRepository);
+		observations = Container.get(AgentObservationRepository);
 		entryRepository = Container.get(AgentMemoryEntryRepository);
 		const project = await createTeamProject();
 		const agentRepository = Container.get(AgentRepository);
@@ -56,6 +62,188 @@ describe('N8nMemoryImpl', () => {
 		const row = await repository.findOneByOrFail({ id: 'thread-1' });
 		return jsonParse(row.metadata ?? 'null');
 	}
+
+	describe('commitObservationLogBatch', () => {
+		const now = new Date('2026-05-12T10:00:00.000Z');
+
+		beforeEach(async () => {
+			await memory.saveThread({ id: 'thread-1', resourceId: 'user-1' });
+			await memory.saveThread({ id: 'thread-2', resourceId: 'user-1' });
+		});
+
+		function batch(
+			expectedCursor: ObservationCursor | null = null,
+			observationScopeId = 'thread-1',
+		): ObservationLogBatch {
+			return {
+				observationScopeId,
+				expectedCursor,
+				nextCursor: {
+					observationScopeId,
+					lastObservedMessageId: 'm2',
+					lastObservedAt: new Date(2),
+					updatedAt: now,
+				},
+				entries: [
+					{
+						marker: 'important',
+						text: 'Decision',
+						parentIndex: null,
+						tokenCount: 2,
+						createdAt: now,
+					},
+					{
+						marker: 'completion',
+						text: 'Done',
+						parentIndex: 0,
+						tokenCount: 3,
+						createdAt: new Date(now.getTime() + 1),
+					},
+				],
+			};
+		}
+
+		it('persists a complete ordered batch and rejects its replay', async () => {
+			const input = batch();
+			expect(await memory.commitObservationLogBatch(input)).toBe('committed');
+			const rows = await memory.getObservationLog(input);
+			expect(rows).toMatchObject([
+				{ text: 'Decision', parentId: null, tokenCount: 2, createdAt: now },
+				{
+					text: 'Done',
+					parentId: rows[0].id,
+					tokenCount: 3,
+					createdAt: new Date(now.getTime() + 1),
+				},
+			]);
+			expect(await memory.getCursor('thread-1')).toEqual(input.nextCursor);
+			expect(await memory.commitObservationLogBatch(input)).toBe('stale');
+			expect(await memory.getObservationLog(input)).toEqual(rows);
+		});
+
+		it('advances a cursor-only batch without changing active observations', async () => {
+			await memory.commitObservationLogBatch(batch());
+			const input = batch(await memory.getCursor('thread-1'));
+			const rows = await memory.getActiveObservationLog(input);
+			input.entries = [];
+			input.nextCursor.lastObservedMessageId = 'm3';
+			input.nextCursor.lastObservedAt = new Date(3);
+
+			expect(await memory.commitObservationLogBatch(input)).toBe('committed');
+			expect(await memory.getCursor('thread-1')).toEqual({
+				...input.nextCursor,
+				updatedAt: new Date(now.getTime() + 1),
+			});
+			expect(await memory.getObservationLog(input)).toEqual(rows);
+		});
+
+		it.each([false, true])(
+			'accepts only one competing writer with an existing cursor: %s',
+			async (existing) => {
+				if (existing) await memory.commitObservationLogBatch(batch());
+				const input = batch(await memory.getCursor('thread-1'));
+				if (existing) {
+					input.nextCursor.lastObservedMessageId = 'm3';
+					input.nextCursor.lastObservedAt = new Date(3);
+					input.nextCursor.updatedAt = new Date(0);
+				}
+				const results = await Promise.all([
+					memory.commitObservationLogBatch(input),
+					memory.commitObservationLogBatch(input),
+				]);
+				expect(results.sort()).toEqual(['committed', 'stale']);
+				expect(await memory.getObservationLog(input)).toHaveLength(existing ? 4 : 2);
+				expect(await memory.getCursor('thread-1')).toEqual({
+					...input.nextCursor,
+					updatedAt: new Date(now.getTime() + (existing ? 1 : 0)),
+				});
+			},
+		);
+
+		it.each(['message', 'time', 'revision', 'backwards-time', 'backwards-id'])(
+			'rejects %s progress without changing stored state',
+			async (change) => {
+				await memory.commitObservationLogBatch(batch());
+				const cursor = await memory.getCursor('thread-1');
+				const input = batch(cursor);
+				const rows = await memory.getObservationLog(input);
+				if (change === 'message')
+					input.expectedCursor = { ...cursor!, lastObservedMessageId: 'm1' };
+				if (change === 'time') input.expectedCursor = { ...cursor!, lastObservedAt: new Date(0) };
+				if (change === 'revision') input.expectedCursor = { ...cursor!, updatedAt: new Date(0) };
+				if (change === 'backwards-time') input.nextCursor.lastObservedAt = new Date(1);
+				if (change === 'backwards-id') input.nextCursor.lastObservedMessageId = 'm1';
+				expect(await memory.commitObservationLogBatch(input)).toBe('stale');
+				expect(await memory.getObservationLog(input)).toEqual(rows);
+				expect(await memory.getCursor('thread-1')).toEqual(cursor);
+			},
+		);
+
+		it('rebuilds an unchanged boundary once with a monotonic cursor revision', async () => {
+			await memory.commitObservationLogBatch(batch());
+			await observations.delete({ observationScopeId: 'thread-1' });
+			const input = batch(await memory.getCursor('thread-1'));
+			expect(await memory.commitObservationLogBatch(input)).toBe('committed');
+			expect(await memory.getCursor('thread-1')).toEqual({
+				...input.nextCursor,
+				updatedAt: new Date(now.getTime() + 1),
+			});
+			expect(await memory.commitObservationLogBatch(input)).toBe('stale');
+			expect(await memory.getActiveObservationLog(input)).toHaveLength(2);
+		});
+
+		it.each([
+			{ failure: 'observation', existing: false },
+			{ failure: 'observation', existing: true },
+			{ failure: 'observation-unique', existing: true },
+			{ failure: 'cursor', existing: false },
+			{ failure: 'cursor', existing: true },
+		])(
+			'rolls back a $failure failure with an existing cursor: $existing',
+			async ({ failure, existing }) => {
+				if (existing) await memory.commitObservationLogBatch(batch());
+				const cursor = await memory.getCursor('thread-1');
+				const input = batch(cursor);
+				const rows = await memory.getObservationLog(input);
+				if (failure === 'observation') input.entries[1].text = null as unknown as string;
+				if (failure === 'cursor')
+					input.nextCursor.lastObservedMessageId = null as unknown as string;
+				const generateId = vi.spyOn(AgentObservationEntity.prototype, 'generateId');
+				if (failure === 'observation-unique')
+					generateId.mockImplementation(function (this: AgentObservationEntity) {
+						this.id = 'batch-entry';
+					});
+				try {
+					await expect(memory.commitObservationLogBatch(input)).rejects.toThrow();
+				} finally {
+					generateId.mockRestore();
+				}
+				expect(await memory.getObservationLog(input)).toEqual(rows);
+				expect(await memory.getCursor('thread-1')).toEqual(cursor);
+				input.entries[1].text = 'Done';
+				input.nextCursor.lastObservedMessageId = 'm2';
+				expect(await memory.commitObservationLogBatch(input)).toBe('committed');
+				expect(await memory.commitObservationLogBatch(input)).toBe('stale');
+				expect(await memory.getObservationLog(input)).toHaveLength(rows.length + 2);
+			},
+		);
+
+		it('keeps guards and observations isolated by agent and scope', async () => {
+			await memory.commitObservationLogBatch(batch());
+			const cursor = await memory.getCursor('thread-1');
+			expect(await otherMemory.commitObservationLogBatch(batch(cursor))).toBe('stale');
+			expect(await otherMemory.getCursor('thread-1')).toBeNull();
+			expect(await otherMemory.getObservationLog({ observationScopeId: 'thread-1' })).toEqual([]);
+			expect(await otherMemory.commitObservationLogBatch(batch())).toBe('committed');
+			expect(await memory.commitObservationLogBatch(batch(null, 'thread-2'))).toBe('committed');
+			expect(await memory.getCursor('thread-1')).toEqual(cursor);
+			expect(await memory.getObservationLog({ observationScopeId: 'thread-1' })).toHaveLength(2);
+			expect(await otherMemory.getObservationLog({ observationScopeId: 'thread-1' })).toHaveLength(
+				2,
+			);
+			expect(await memory.getObservationLog({ observationScopeId: 'thread-2' })).toHaveLength(2);
+		});
+	});
 
 	async function captureEntry(
 		store: N8nMemoryImpl,
