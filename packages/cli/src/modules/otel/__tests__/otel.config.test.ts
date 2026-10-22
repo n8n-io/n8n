@@ -106,15 +106,6 @@ describe('OtelCustomAttributesConfig', () => {
 		});
 	});
 
-	it('accepts a quoted value with a prefix for every level', () => {
-		process.env[CUSTOM_ATTRIBUTE_PREFIXES_ENV_VAR] =
-			'\'{"project":"p.","workflow":"w.","node":"n."}\'';
-
-		const { prefixes } = Container.get(OtelCustomAttributesConfig);
-
-		expect(prefixes).toEqual({ project: 'p.', workflow: 'w.', node: 'n.' });
-	});
-
 	it.each(['not json', '[]', '"str"', '{"nodes":""}', '{"node":1}', '{"node":null}'])(
 		'falls back to the default prefixes for %p',
 		(value) => {

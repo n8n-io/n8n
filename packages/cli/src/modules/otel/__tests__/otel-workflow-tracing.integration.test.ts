@@ -441,46 +441,42 @@ describe('Custom Telemetry Tags', () => {
 		expect(nodeSpan.attributes['n8n.workflow.custom.workflowName']).toBeUndefined();
 	});
 
-	describe('with empty custom attribute prefixes', () => {
-		beforeEach(() => {
-			Container.get(OtelCustomAttributesConfig).prefixes = { project: '', workflow: '', node: '' };
+	it('should send tags under their own keys when the prefixes are empty', async () => {
+		const customAttributesConfig = Container.get(OtelCustomAttributesConfig);
+		customAttributesConfig.prefixes = { project: '', workflow: '', node: '' };
+		onTestFinished(() => {
+			customAttributesConfig.prefixes = DEFAULT_CUSTOM_ATTRIBUTE_PREFIXES;
 		});
 
-		afterEach(() => {
-			Container.get(OtelCustomAttributesConfig).prefixes = { ...DEFAULT_CUSTOM_ATTRIBUTE_PREFIXES };
+		const project = await createTeamProject();
+		await Container.get(ProjectRepository).update(project.id, {
+			customTelemetryTags: [
+				{ key: 'environment', value: 'project' },
+				{ key: 'gen_ai.system', value: 'openai' },
+				{ key: 'n8n.execution.id', value: 'forged' },
+			],
 		});
+		const workflow = await createWorkflow(
+			{
+				...createWorkflowWithCustomTagsFixture(),
+				settings: { customTelemetryTags: [{ key: 'environment', value: 'workflow' }] },
+			},
+			project,
+		);
+		const executionId = await executeWorkflow(workflowRunner, workflow, project.id);
+		await waitForExecution(executionRepository, executionId);
 
-		it('should send tags under their own keys, with the more specific level winning', async () => {
-			const project = await createTeamProject();
-			await Container.get(ProjectRepository).update(project.id, {
-				customTelemetryTags: [
-					{ key: 'environment', value: 'project' },
-					{ key: 'gen_ai.system', value: 'openai' },
-					{ key: 'n8n.execution.id', value: 'forged' },
-				],
-			});
-			const workflow = await createWorkflow(
-				{
-					...createWorkflowWithCustomTagsFixture(),
-					settings: { customTelemetryTags: [{ key: 'environment', value: 'workflow' }] },
-				},
-				project,
-			);
-			const executionId = await executeWorkflow(workflowRunner, workflow, project.id);
-			await waitForExecution(executionRepository, executionId);
+		const spans = otel.getFinishedSpans();
+		const workflowSpan = spans.find((s) => s.name === 'workflow.execute')!;
+		const nodeSpan = spans.find(
+			(s) => s.name === 'node.execute' && s.attributes['n8n.node.name'] === 'DebugHelper',
+		)!;
 
-			const spans = otel.getFinishedSpans();
-			const workflowSpan = spans.find((s) => s.name === 'workflow.execute')!;
-			const nodeSpan = spans.find(
-				(s) => s.name === 'node.execute' && s.attributes['n8n.node.name'] === 'DebugHelper',
-			)!;
-
-			expect(workflowSpan.attributes['gen_ai.system']).toBe('openai');
-			expect(workflowSpan.attributes.environment).toBe('workflow');
-			expect(workflowSpan.attributes['n8n.execution.id']).toBe(executionId);
-			expect(nodeSpan.attributes['gen_ai.system']).toBe('openai');
-			expect(nodeSpan.attributes.environment).toBe('production');
-			expect(nodeSpan.attributes['n8n.execution.id']).toBe(executionId);
-		});
+		expect(workflowSpan.attributes['gen_ai.system']).toBe('openai');
+		expect(workflowSpan.attributes.environment).toBe('workflow');
+		expect(workflowSpan.attributes['n8n.execution.id']).toBe(executionId);
+		expect(nodeSpan.attributes['gen_ai.system']).toBe('openai');
+		expect(nodeSpan.attributes.environment).toBe('production');
+		expect(nodeSpan.attributes['n8n.execution.id']).toBe(executionId);
 	});
 });
