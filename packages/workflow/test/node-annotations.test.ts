@@ -162,7 +162,7 @@ describe('resolveNodeAnnotations', () => {
 	});
 
 	describe('multiOptions parameters', () => {
-		const WRITE = { effect: 'write', destructive: false, idempotent: false };
+		const WRITE = { effect: 'write', destructive: false, idempotent: false } as const;
 		const fieldsNode = describeNode([
 			{
 				displayName: 'Fields',
@@ -191,7 +191,7 @@ describe('resolveNodeAnnotations', () => {
 	});
 
 	describe('nested parameters', () => {
-		const NOTIFY = { effect: 'write', destructive: false, idempotent: false };
+		const NOTIFY = { effect: 'write', destructive: false, idempotent: false } as const;
 
 		const sideEffect = (
 			defaultValue = 'none',
