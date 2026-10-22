@@ -477,9 +477,9 @@ describe('TrustedSourceIdentityService (integration)', () => {
 				status: 'active',
 			} as const;
 
-			await identities.insertIfAbsent({ ...row, userId: first.id });
+			await identities.insertIfAbsent({ ...row, userId: first.id }, {});
 			await expect(
-				identities.insertIfAbsent({ ...row, userId: second.id }),
+				identities.insertIfAbsent({ ...row, userId: second.id }, {}),
 			).resolves.toBeUndefined();
 
 			expect(await bindings.count()).toBe(1);
