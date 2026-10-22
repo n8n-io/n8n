@@ -1,0 +1,26 @@
+packages/cli/src/modules/promotions.ee/promotion-commit-message.ts
+  s_148fd5e0b59695::t_423a91cf8aaa89 30
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.test.ts
+  s_148fd5e0b59695::t_726c93f716c118 400-411
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromoteSelectionDialog.vue
+  s_148fd5e0b59695::t_f115cc21e595a5 13,31-32,34
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.vue
+  s_148fd5e0b59695::t_e66b71e1505e74 502
+  s_148fd5e0b59695::t_df6ca09fa4efc2 222-223
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "17dac0674ffd83a08ae8a3a63897fa22c2ff3814",
+  "prompts": {},
+  "sessions": {
+    "s_148fd5e0b59695": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bfa606cf-78af-44a1-9e0f-0f72160bc0f7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
