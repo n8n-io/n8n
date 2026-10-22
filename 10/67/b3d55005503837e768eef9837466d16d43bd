@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/WorkflowDiffPlaceholder.vue
+  s_ffcee02881150d::t_e598a7df6b5945 85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1067b3d55005503837e768eef9837466d16d43bd",
+  "prompts": {},
+  "sessions": {
+    "s_ffcee02881150d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72bd9a74-7de7-486b-aad9-6ff981ea1973",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

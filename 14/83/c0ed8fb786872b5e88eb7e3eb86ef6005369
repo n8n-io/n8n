@@ -1,0 +1,21 @@
+packages/cli/src/modules/instance-ai/eval/__tests__/thread-restore.service.test.ts
+  s_71ad2034164515::t_741d352f41b825 612-617,678-680,712,723,751-752,758,802,824,832,843,856
+packages/cli/src/modules/agents/__tests__/agent-setup-completion.service.test.ts
+  s_71ad2034164515::t_5bdfea125f2a4d 69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1483c0ed8fb786872b5e88eb7e3eb86ef6005369",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

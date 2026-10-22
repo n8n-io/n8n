@@ -1,0 +1,99 @@
+packages/cli/src/modules/agents/integrations/platforms/teams/teams-integration.ts
+  s_852389bc7751db::t_2d7584e5d8ad1e 24,26
+  s_852389bc7751db::t_bd16bf5e7cbe44 335-336
+  s_852389bc7751db::t_c10ac73fd941a4 337-338
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_852389bc7751db::t_c09eb18e54520b 38
+  s_852389bc7751db::t_73c00c1b674adc 66,946,953,956-961,982
+packages/cli/src/modules/agents/types/agent-queued-message.ts
+  s_852389bc7751db::t_c09eb18e54520b 50
+packages/cli/src/modules/agents/integrations/platforms/n8n-chat/n8n-chat-integration.ts
+  s_852389bc7751db::t_2d7584e5d8ad1e 76-80
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_852389bc7751db::t_28bd98156620b5 37
+  s_852389bc7751db::t_c09eb18e54520b 141,240,1687
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_852389bc7751db::t_9f4e1196483e97 2616-2633,2635-2658
+packages/cli/src/modules/agents/integrations/__tests__/integration-action-executor.test.ts
+  s_852389bc7751db::t_f1b459339fdbb7 110-113
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.integration.test.ts
+  s_852389bc7751db::t_20a8758c5d4ce5 272,339-345,347-348,368,373
+packages/cli/src/modules/agents/integrations/platforms/whatsapp/whatsapp-integration.ts
+  s_852389bc7751db::t_2d7584e5d8ad1e 27,29
+  s_852389bc7751db::t_bd16bf5e7cbe44 281-282
+  s_852389bc7751db::t_c10ac73fd941a4 283-284
+packages/cli/src/modules/agents/integrations/n8n-memory.ts
+  s_852389bc7751db::t_12fe95d2072dff 86,88-93,734
+  s_852389bc7751db::t_5350909eededcf 73-79,81-85,94-96,735
+  s_852389bc7751db::t_73c00c1b674adc 80,713-714
+  s_852389bc7751db::t_ce0f39becc131c 736
+  s_852389bc7751db::t_d9ce1e072491bf 87
+packages/cli/src/modules/agents/utils/episodic-scope-metadata.ts
+  s_852389bc7751db::t_f1b459339fdbb7 12
+  s_852389bc7751db::t_c09eb18e54520b 1-11,13-17
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_852389bc7751db::t_5eee6d4b4a3166 3641,3648,3651,3655,3658-3666,3751-3753
+  s_852389bc7751db::t_f1b459339fdbb7 249-252,269-272,295-298,319-322,3693-3694,4201-4203
+  s_852389bc7751db::t_aac3f9f54720d8 17,402-404
+  s_852389bc7751db::t_9f3a8e66bfc40a 3621,3638-3640,3649,3654,3657,3669-3672
+  s_852389bc7751db::t_4ba605462aa652 3695-3696,4204
+packages/cli/src/modules/agents/integrations/platforms/discord/discord-integration.ts
+  s_852389bc7751db::t_bd16bf5e7cbe44 226-227
+  s_852389bc7751db::t_c10ac73fd941a4 228-229
+  s_852389bc7751db::t_2d7584e5d8ad1e 27
+  s_852389bc7751db::t_8ba2bf92b687c3 29
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-integration.ts
+  s_852389bc7751db::t_bd16bf5e7cbe44 206-207
+  s_852389bc7751db::t_2d7584e5d8ad1e 23,25
+  s_852389bc7751db::t_c10ac73fd941a4 208-209
+packages/cli/src/modules/agents/integrations/platforms/telegram/telegram-integration.ts
+  s_852389bc7751db::t_2d7584e5d8ad1e 24
+  s_852389bc7751db::t_bd16bf5e7cbe44 164-165
+  s_852389bc7751db::t_c10ac73fd941a4 166-167
+  s_852389bc7751db::t_8ba2bf92b687c3 26
+packages/cli/src/modules/agents/integrations/thread-shared-episodic-scope.ts
+  s_852389bc7751db::t_c10ac73fd941a4 1-29
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_852389bc7751db::t_c10ac73fd941a4 427-437
+  s_852389bc7751db::t_ad84d89090e405 57,59-60,63-64,67
+packages/cli/src/modules/agents/integrations/episodic-scope-resolver.ts
+  s_852389bc7751db::t_bc3bf80e7e1abe 1,7-9,11,15-16,18
+packages/cli/src/modules/agents/integrations/__tests__/chat-integration.service.test.ts
+  s_852389bc7751db::t_f1b459339fdbb7 90-93
+packages/cli/src/modules/agents/integrations/__tests__/episodic-scope-resolver.test.ts
+  s_852389bc7751db::t_9f4e1196483e97 5,12,14,17,20,22,24,26-28,30,33-39
+packages/cli/src/modules/agents/integrations/__tests__/thread-shared-episodic-scope.test.ts
+  s_852389bc7751db::t_9f4e1196483e97 1-31
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.test.ts
+  s_852389bc7751db::t_ce0f39becc131c 1466
+  s_852389bc7751db::t_6227e2dbafc58d 31-36,1177,1189,1320,1324,1346-1353,1355-1358,1360-1369,1371-1376,1440,1444,1458-1459,1461-1465,1467,1469-1486,1663
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_852389bc7751db::t_28bd98156620b5 41,401
+packages/cli/src/modules/agents/integrations/platforms/linear/linear-integration.ts
+  s_852389bc7751db::t_c10ac73fd941a4 117-118
+  s_852389bc7751db::t_2d7584e5d8ad1e 10
+  s_852389bc7751db::t_bd16bf5e7cbe44 115-116
+  s_852389bc7751db::t_8ba2bf92b687c3 12
+packages/cli/src/modules/agents/integrations/__tests__/agent-channel-reconciler.service.test.ts
+  s_852389bc7751db::t_f1b459339fdbb7 44-47
+packages/cli/src/modules/agents/integrations/__tests__/helpers/replay-test-helpers.ts
+  s_852389bc7751db::t_24a25743592d61 21,257-259
+packages/@n8n/agents/src/types/sdk/memory.ts
+  s_852389bc7751db::t_339172a5ea909e 101-102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "52016d045784e0d43be7b7e6dfaf25afc4d8dea5",
+  "prompts": {},
+  "sessions": {
+    "s_852389bc7751db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b39fb8af-51ee-491e-ab8c-cc0c219fdfa6",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

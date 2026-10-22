@@ -1,0 +1,89 @@
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_71ad2034164515::t_756206b03fb0b5 1360-1362,1366,1369-1371
+  s_71ad2034164515::t_7b7becd7975ccb 1363-1365,1367-1368,1372-1377
+  s_71ad2034164515::t_f503a1f5ea96b7 1378
+  s_71ad2034164515::t_dc61184db5fe6d 1378
+packages/cli/src/modules/n8n-packages/entities/credential/credential-missing-mode.ts
+  s_71ad2034164515::t_3a71746ecec9f5 65-66
+  s_71ad2034164515::t_9dcaf4a35bc391 3-7,69,76-77
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/missing-node-type-mode.test.ts
+  s_71ad2034164515::t_7b7becd7975ccb 8,140
+  s_71ad2034164515::t_2268e87da48e5c 141-162,164-165,167-169
+packages/cli/src/modules/n8n-packages/entities/workflow/missing-node-type-mode.ts
+  s_71ad2034164515::t_9dcaf4a35bc391 4-5,53-58
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_71ad2034164515::t_3a71746ecec9f5 19,487,688,692-703
+  s_71ad2034164515::t_3e3d0801b47879 13,59,70-75,520-522,524,538-560,687,689-691,704-715
+  s_71ad2034164515::t_0ed85105b6a158 457,488,716
+  s_71ad2034164515::t_ca41720d00464f 457,488,716
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-publisher.ts
+  s_71ad2034164515::t_9dcaf4a35bc391 24,182
+packages/cli/src/modules/n8n-packages/entities/publishing.ts
+  s_71ad2034164515::t_3a71746ecec9f5 10-13
+  s_71ad2034164515::t_9dcaf4a35bc391 1-9,14-31
+packages/cli/src/modules/n8n-packages/spec/requirement-consumers.ts
+  s_71ad2034164515::t_9dcaf4a35bc391 9-16
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import.types.ts
+  s_71ad2034164515::t_9dcaf4a35bc391 11
+  s_71ad2034164515::t_69cce3bd37abee 33,36-42
+  s_71ad2034164515::t_a36e4ee1e45d85 33,36-42
+packages/cli/src/modules/n8n-packages/entities/agent/agent-publisher.ts
+  s_71ad2034164515::t_a7ecc2c9bcccfa 83
+  s_71ad2034164515::t_2268e87da48e5c 90-92
+  s_71ad2034164515::t_9dcaf4a35bc391 1-82,84-89,93-100
+  s_d3c0f6f6f7d41c::t_138ec319c7fe9d 83
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_71ad2034164515::t_3e3d0801b47879 207,209
+  s_71ad2034164515::t_0954dbbe9d5e90 292
+  s_71ad2034164515::t_ddf1e3d331b36d 292
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-publishing-policy.types.ts
+  s_71ad2034164515::t_9dcaf4a35bc391 24-29
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  s_71ad2034164515::t_d68f82422c3370 633,635
+  s_71ad2034164515::t_0794bd7cfd2540 539,575,590,600,611,625,627,646,648,712,715-722,728-729,731,755,757
+  s_71ad2034164515::t_3d9b10fc4e8b7a 601,612,626,647,676,692,711,730,756,759
+  s_71ad2034164515::t_bdb4ae1c30be57 529,531-534,559,571
+  s_71ad2034164515::t_87f57b02bb38e3 602,613
+  s_71ad2034164515::t_fd56670ecfc4d8 29-30,42,49,54,76,88-90,98-101,106,120-122,153-154,175-201,208-210,213-218,498-499,503,520-528,520-524,527-528,530,540-546,556-558,570,581-587,583-589,595,597,598-599,600-601,603,605,607-609,609-611,618,620
+  s_71ad2034164515::t_afba49176fd889 535-538
+  s_71ad2034164515::t_2268e87da48e5c 91-97,123,151-152,202-207,211-212,547-555,560-569,572-574,578-579,580-581,596-597,598-599,604-606,606-608,610,612,613-617,615-619,622-623,624-625,629-630,631-632,635-645,637-647,649-675,651-677,678-691,680-693,693-703,695-705,705-709,707-711,713-714,715-716,723-727,725-729,732-748,734-756,750-754,758,760-803,760,762-803
+  s_71ad2034164515::t_9a9a7d00120382 576-577,578-579,580,582,591-594,593-596,619-621,621-623,624,626,628,630,631,633,634,636,677,679,704,706,749
+  s_71ad2034164515::t_734ba3dd007431 576,591,603,614,628,649,678,694,710,713,732,758
+  s_71ad2034164515::t_34025cb8b4ad73 24,148,632
+  s_71ad2034164515::t_e704c6f76a1d04 761
+  s_71ad2034164515::t_464c0ddc018bb1 539,575,577,590,592,602,604,627,629,648,650,712,714,717-724,730-731,733,757,759
+  s_71ad2034164515::t_e68333360fced8 24,148,634
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  s_71ad2034164515::t_3e3d0801b47879 4
+  s_71ad2034164515::t_0bcede06943446 33
+  s_71ad2034164515::t_871bcc2db8fc45 33
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_71ad2034164515::t_9dcaf4a35bc391 141,145-148,277,281-284
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_71ad2034164515::t_21b04abec203f5 187,189,233
+  s_71ad2034164515::t_b0ca9ad454c22b 187,189,233
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "713a859b9bb571d2b14379ca4492005f46e71cc9",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_d3c0f6f6f7d41c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a152e5-4005-7111-8ca3-6a9ab5e71d29",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
