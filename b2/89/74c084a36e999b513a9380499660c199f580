@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ResourceMapper/ResourceMapper.test.ts
+  s_ffade853fd5bfb::t_55b95259091046 143-165
+packages/cli/src/services/dynamic-node-parameters.service.ts
+  s_ffade853fd5bfb::t_7d7ecfdf8efb00 118,125-138
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.test.ts
+  s_ffade853fd5bfb::t_55b95259091046 1366,1393,1465-1472
+  s_ffade853fd5bfb::t_c7fb044b655848 1473-1474
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ResourceMapper/ResourceMapper.vue
+  s_ffade853fd5bfb::t_7d7ecfdf8efb00 407-408
+packages/@n8n/permissions/src/utilities/__tests__/roles-with-scope.test.ts
+  s_ffade853fd5bfb::t_7d7ecfdf8efb00 37
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.vue
+  s_ffade853fd5bfb::t_7d7ecfdf8efb00 1486-1487
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b28974c084a36e999b513a9380499660c199f580",
+  "prompts": {},
+  "sessions": {
+    "s_ffade853fd5bfb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f20fdff-6f39-4123-83e9-02b5e9c84dee",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
