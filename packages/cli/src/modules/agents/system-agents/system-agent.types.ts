@@ -5,6 +5,7 @@ import type {
 	ResumeOptions,
 	RunOptions,
 	SideCallUsageReport,
+	TokenUsage,
 } from '@n8n/agents';
 import type { User } from '@n8n/db';
 
@@ -189,4 +190,30 @@ export interface SystemAgentProvider<TLease = unknown> {
 	): Promise<SystemAgentTurnOptions>;
 	/** Convert a resume payload from a client into the tool's resume data. */
 	normalizeResumeData?(resumeData: unknown): unknown;
+	/**
+	 * Called once for each execution of a run that a turn of this agent
+	 * delegated, foreground or background. `thread` is the thread of that
+	 * turn. A failing callback only logs a warning.
+	 */
+	onDelegatedRunUsage?(
+		report: SystemAgentDelegatedRunUsageReport,
+		scope: { thread: AgentExecutionThread },
+	): void | Promise<void>;
+}
+
+/** The usage of one execution of a delegated run. */
+export interface SystemAgentDelegatedRunUsageReport {
+	/** The execution of the delegated run. Stable, so a provider can bill it once. */
+	executionId: string;
+	/** The child thread of the delegated run. */
+	threadId: string;
+	/** The execution of the turn that delegated the run. */
+	parentExecutionId: string;
+	status: AgentTurnStatus;
+	model: string | null;
+	/**
+	 * The usage from the run's `finish` chunk: tokens, cache details, the
+	 * prompt-size split and the cost. Side calls of the run are not included.
+	 */
+	usage: TokenUsage;
 }

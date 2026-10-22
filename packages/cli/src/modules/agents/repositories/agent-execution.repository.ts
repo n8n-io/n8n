@@ -147,6 +147,12 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 		return await this.managerFor(ctx).findOneBy(AgentExecution, { id: executionId });
 	}
 
+	/** The thread of an execution, without loading the execution row. */
+	async findThreadIdOf(executionId: string): Promise<string | null> {
+		const execution = await this.findOne({ select: ['threadId'], where: { id: executionId } });
+		return execution?.threadId ?? null;
+	}
+
 	async findLatestByThreadId(threadId: string): Promise<AgentExecution | null> {
 		return await this.findOne({ where: { threadId }, order: { createdAt: 'DESC', id: 'DESC' } });
 	}

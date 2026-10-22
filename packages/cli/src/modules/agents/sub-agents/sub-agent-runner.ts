@@ -19,6 +19,7 @@ import {
 	type StreamResult,
 	type SubAgentTaskDifficulty,
 	type SubAgentTaskPath,
+	type TokenUsage,
 } from '@n8n/agents';
 import type {
 	AgentBudgetNotice,
@@ -70,6 +71,8 @@ import {
 	SubAgentSourceResolver,
 	type ResolvedSubAgentRuntimeSource,
 } from './sub-agent-source-resolver';
+import { SystemAgentUsageRelay } from '../system-agents/system-agent-usage-relay';
+import type { AgentTurnStatus } from '../types/agent-turn-outcome';
 
 export interface SubAgentRunContext {
 	/** The parent turn's episodic scope decision. A disabled decision stays disabled for the child. */
@@ -181,6 +184,7 @@ export class SubAgentRunner {
 		private readonly aiConfig: AiConfig,
 		private readonly toolApprovalService: AgentToolApprovalService,
 		private readonly executionRepository: AgentExecutionRepository,
+		private readonly usageRelay: SystemAgentUsageRelay,
 	) {}
 
 	async run(
@@ -326,6 +330,7 @@ export class SubAgentRunner {
 		let executionStarted = false;
 		let executionError: unknown;
 		let agent: BuiltAgent | undefined;
+		let finish: FinishUsage | undefined;
 		try {
 			context.abortSignal?.throwIfAborted();
 			if (operation.type !== 'run') await context.beforeResume?.();
@@ -447,6 +452,7 @@ export class SubAgentRunner {
 				context.onChunk,
 			);
 			executionError = consumed.executionError;
+			finish = consumed.finish;
 			const { result } = consumed;
 			const suspended = recorder.suspended;
 			let status: SubAgentRunResult['status'] = 'completed';
@@ -476,6 +482,17 @@ export class SubAgentRunner {
 			recorder.record({ type: 'finish', finishReason: 'error' });
 			throw error;
 		} finally {
+			this.reportDelegatedRunUsage({
+				executionId,
+				threadId,
+				executionLinks,
+				finish,
+				status: delegatedRunStatus(
+					context.abortSignal?.aborted === true,
+					recorder.suspended,
+					executionError !== undefined || recorder.getMessageRecord().error !== null,
+				),
+			});
 			try {
 				const record = recorder.getMessageRecord();
 				await this.turnExecutionService.finalizeExecution({
@@ -503,6 +520,29 @@ export class SubAgentRunner {
 				});
 			}
 		}
+	}
+
+	/**
+	 * Report the usage of this execution to the system agent of the turn that
+	 * delegated it. Without a parent link or usage there is nothing to route.
+	 */
+	private reportDelegatedRunUsage(params: {
+		executionId: string;
+		threadId: string;
+		executionLinks: AgentExecutionLinks | undefined;
+		finish: FinishUsage | undefined;
+		status: AgentTurnStatus;
+	}): void {
+		const { executionLinks, finish } = params;
+		if (!executionLinks || !finish) return;
+		this.usageRelay.reportDelegatedRun({
+			executionId: params.executionId,
+			threadId: params.threadId,
+			parentExecutionId: executionLinks.parentExecutionId,
+			status: params.status,
+			model: finish.model,
+			usage: finish.usage,
+		});
 	}
 
 	/**
@@ -571,16 +611,37 @@ async function getReconstructionService() {
 	return Container.get(AgentRuntimeReconstructionService);
 }
 
+/** The usage and model from the `finish` chunk of a delegated run. */
+interface FinishUsage {
+	usage: TokenUsage;
+	model: string | null;
+}
+
+function delegatedRunStatus(
+	cancelled: boolean,
+	suspended: boolean,
+	errored: boolean,
+): AgentTurnStatus {
+	if (cancelled) return 'cancelled';
+	if (suspended) return 'suspended';
+	return errored ? 'errored' : 'completed';
+}
+
 async function consumeAgentStream(
 	resultStream: StreamResult,
 	recorder: ExecutionRecorder,
 	attributionTracker: ReturnType<typeof createAttributionTracker>,
 	onChunk?: (chunk: StreamChunk) => void,
-): Promise<{ result: GenerateResult; executionError: unknown }> {
+): Promise<{
+	result: GenerateResult;
+	executionError: unknown;
+	finish: FinishUsage | undefined;
+}> {
 	const pendingSuspend: NonNullable<GenerateResult['pendingSuspend']> = [];
 	let structuredOutput: unknown;
 	let executionError: unknown;
 	let guardrail: GenerateResult['guardrail'];
+	let finish: FinishUsage | undefined;
 
 	for await (const value of streamAgentChunks(resultStream.stream)) {
 		recorder.record(value);
@@ -607,12 +668,16 @@ async function consumeAgentStream(
 			// The recorder keeps only the finish reason; the stop code lives
 			// on the chunk, so capture it here or it is lost.
 			if (value.guardrail !== undefined) guardrail = value.guardrail;
+			// The recorder keeps only the token totals. The chunk also has the
+			// cache details and the prompt-size split that billing needs.
+			if (value.usage !== undefined) finish = { usage: value.usage, model: value.model ?? null };
 		}
 	}
 
 	const messageRecord = recorder.getMessageRecord();
 	return {
 		executionError,
+		finish,
 		result: buildGenerateResultFromRecord(
 			resultStream.runId,
 			messageRecord,
