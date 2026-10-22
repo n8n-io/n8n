@@ -25,13 +25,14 @@ export const SAMPLES_TO_ACT = 2;
 
 /**
  * Longest wait of a held execution before the guard stops the execution that holds the
- * most run data. The wait starts again after each stop, so that stops do not follow each other.
+ * most run data. The wait counts again from each stop, so these stops are at least this far apart.
  */
 export const HOLD_LIMIT_MS = 30_000;
 
 /**
- * Least time between two held executions that start because nothing runs. An execution
- * shows as running only after a database write, which can take longer than one sample.
+ * During a hold with nothing running, the guard lets one held execution start this often at
+ * most. An execution shows as running only after a database write, which can take longer
+ * than one sample.
  */
 export const STARVATION_ADMIT_INTERVAL_MS = 1_000;
 
@@ -52,7 +53,7 @@ export const REMEASURE_TIMEOUT_MS = 3_000;
 
 export const REMEASURE_INTERVAL_MS = 500;
 
-/** Share of the stopped run data estimate that memory must drop by for a stop to count. */
+/** A stop frees memory if memory drops by at least this share of the stopped execution's estimate. */
 export const FREED_SHARE = 0.5;
 
 export const MEMORY_DOCS_URL =

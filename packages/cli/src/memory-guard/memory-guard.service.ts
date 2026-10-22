@@ -81,8 +81,8 @@ export class MemoryGuardService {
 	private isStandingDown = false;
 
 	/**
-	 * Set when a held execution waits too long and no stop can end the hold, until memory
-	 * falls below the resume level.
+	 * Set when a held execution waits too long and no stop can help. The guard then ends the
+	 * hold and starts no new hold until memory falls below the resume level.
 	 */
 	private isHoldSuspended = false;
 
@@ -163,7 +163,7 @@ export class MemoryGuardService {
 		if (this.isHolding) {
 			this.admitBatch = 1;
 			// With nothing running, no stop can free memory, so let one held execution start.
-			// Wait for a pending stop, because its engine runs after it leaves the active list.
+			// Not during a stop, because the stopped engine still runs after it leaves the active list.
 			if (!this.pendingStop && !this.hasRunningExecution()) this.admitOneHeld();
 		} else {
 			this.admitHeldGradually(utilization);
@@ -356,8 +356,8 @@ export class MemoryGuardService {
 	private findStopTarget(): StopTarget | undefined {
 		const trees = new Map<string, Array<{ executionId: string; depth: number }>>();
 		for (const { id, status } of this.activeExecutions.getActiveExecutions()) {
-			// A finishing execution is saving its result, and a stop then would save it twice.
 			if (status !== 'running') continue;
+			// A finishing execution is saving its result, and a stop then would save it twice.
 			if (this.stoppedExecutions.isStopped(id) || this.stoppedExecutions.isFinishing(id)) continue;
 			// Before the engine is attached, a stop would leave the engine running.
 			if (!this.activeExecutions.getExecutionOrFail(id).workflowExecution) continue;
