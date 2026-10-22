@@ -137,8 +137,8 @@ describe('WorkflowExecutionService', () => {
 
 	beforeEach(() => {
 		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
-		defaultTestWebhooks.needsWebhook.mockReset();
-		defaultTestWebhooks.needsWebhook.mockResolvedValue([]);
+		defaultTestWebhooks.registerWebhooks.mockReset();
+		defaultTestWebhooks.registerWebhooks.mockResolvedValue([]);
 	});
 
 	describe('runWorkflow()', () => {
@@ -999,7 +999,7 @@ describe('WorkflowExecutionService', () => {
 				const runPayload: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload = {
 					triggerToStartFrom: { name: formTriggerNode.name },
 				};
-				defaultTestWebhooks.needsWebhook.mockResolvedValue([formTriggerNode.name]);
+				defaultTestWebhooks.registerWebhooks.mockResolvedValue([formTriggerNode.name]);
 
 				const result = await workflowExecutionService.executeManually(
 					workflowData,
@@ -1007,7 +1007,7 @@ describe('WorkflowExecutionService', () => {
 					user,
 				);
 
-				expect(defaultTestWebhooks.needsWebhook).toHaveBeenCalledWith(
+				expect(defaultTestWebhooks.registerWebhooks).toHaveBeenCalledWith(
 					expect.objectContaining({ triggerToStartFrom: runPayload.triggerToStartFrom }),
 				);
 				expect(result).toEqual({
@@ -1022,7 +1022,7 @@ describe('WorkflowExecutionService', () => {
 				const runPayload: WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload = {
 					destinationNode: { nodeName: hackerNewsNode.name, mode: 'inclusive' },
 				};
-				defaultTestWebhooks.needsWebhook.mockResolvedValue([
+				defaultTestWebhooks.registerWebhooks.mockResolvedValue([
 					webhookNode.name,
 					formTriggerNode.name,
 				]);
@@ -1033,7 +1033,7 @@ describe('WorkflowExecutionService', () => {
 					user,
 				);
 
-				expect(defaultTestWebhooks.needsWebhook).toHaveBeenCalledWith(
+				expect(defaultTestWebhooks.registerWebhooks).toHaveBeenCalledWith(
 					expect.objectContaining({ destinationNode: runPayload.destinationNode }),
 				);
 				expect(result).toEqual({
@@ -1048,7 +1048,7 @@ describe('WorkflowExecutionService', () => {
 				const runPayload: WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload = {
 					destinationNode: { nodeName: hackerNewsNode.name, mode: 'inclusive' },
 				};
-				defaultTestWebhooks.needsWebhook.mockResolvedValue([]);
+				defaultTestWebhooks.registerWebhooks.mockResolvedValue([]);
 				workflowRunner.run.mockResolvedValue('fake-execution-id');
 
 				const result = await workflowExecutionService.executeManually(
@@ -1057,7 +1057,7 @@ describe('WorkflowExecutionService', () => {
 					user,
 				);
 
-				expect(defaultTestWebhooks.needsWebhook).toHaveBeenCalledTimes(1);
+				expect(defaultTestWebhooks.registerWebhooks).toHaveBeenCalledTimes(1);
 				expect(result).toEqual({ executionId: 'fake-execution-id' });
 			});
 
@@ -1079,7 +1079,7 @@ describe('WorkflowExecutionService', () => {
 					user,
 				);
 
-				expect(defaultTestWebhooks.needsWebhook).not.toHaveBeenCalled();
+				expect(defaultTestWebhooks.registerWebhooks).not.toHaveBeenCalled();
 				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 				const [runData] = workflowRunner.run.mock.calls[0];
 				expect([webhookNode.name, secondWebhookNode.name]).toContain(
@@ -1089,7 +1089,7 @@ describe('WorkflowExecutionService', () => {
 			});
 		});
 
-		test('should pass workflowIsActive to testWebhooks.needsWebhook', async () => {
+		test('should pass workflowIsActive to testWebhooks.registerWebhooks', async () => {
 			const userId = 'user-id';
 			const user = mock<User>({ id: userId });
 			const testWebhooks = mock<TestWebhooks>();
@@ -1139,7 +1139,7 @@ describe('WorkflowExecutionService', () => {
 				triggerToStartFrom: { name: telegramTrigger.name },
 			};
 
-			testWebhooks.needsWebhook.mockRejectedValue(
+			testWebhooks.registerWebhooks.mockRejectedValue(
 				new Error(
 					'Cannot test webhook for node "Telegram Trigger" while workflow is active. Please deactivate the workflow first.',
 				),
@@ -1149,7 +1149,7 @@ describe('WorkflowExecutionService', () => {
 				'Cannot test webhook for node "Telegram Trigger" while workflow is active. Please deactivate the workflow first.',
 			);
 
-			expect(testWebhooks.needsWebhook).toHaveBeenCalledWith(
+			expect(testWebhooks.registerWebhooks).toHaveBeenCalledWith(
 				expect.objectContaining({
 					workflowIsActive: true,
 				}),
@@ -1187,7 +1187,7 @@ describe('WorkflowExecutionService', () => {
 				chatSessionId: 'test-session-123',
 			};
 
-			testWebhooks.needsWebhook.mockResolvedValue([chatTrigger.name]);
+			testWebhooks.registerWebhooks.mockResolvedValue([chatTrigger.name]);
 
 			const service = new WorkflowExecutionService(
 				mock(),
@@ -1212,7 +1212,7 @@ describe('WorkflowExecutionService', () => {
 
 			const result = await service.executeManually(workflowData, runPayload, user);
 
-			expect(testWebhooks.needsWebhook).toHaveBeenCalledWith(
+			expect(testWebhooks.registerWebhooks).toHaveBeenCalledWith(
 				expect.objectContaining({ chatSessionId: 'test-session-123' }),
 			);
 			expect(result).toEqual({

@@ -396,7 +396,7 @@ export class TestWebhooks implements IWebhookManager {
 	 * registration order. An empty array means the run does not need to listen for a
 	 * webhook call.
 	 */
-	async needsWebhook(options: {
+	async registerWebhooks(options: {
 		userId: string;
 		workflowEntity: IWorkflowBase;
 		additionalData: IWorkflowExecuteAdditionalData;

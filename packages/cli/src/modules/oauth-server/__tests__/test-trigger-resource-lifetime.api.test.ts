@@ -54,7 +54,7 @@ const oauth2WebhookNode = (requireExecuteAccess?: boolean): INode => ({
 	},
 });
 
-/** Mirrors what `TestWebhooks.needsWebhook` writes when the editor starts listening. */
+/** Mirrors what `TestWebhooks.registerWebhooks` writes when the editor starts listening. */
 const registerTestWebhook = async (
 	webhookPath: string,
 	node: INode,

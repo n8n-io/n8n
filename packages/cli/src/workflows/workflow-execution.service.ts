@@ -396,7 +396,7 @@ export class WorkflowExecutionService {
 			// We must always register the webhook - even when the Chat Trigger has
 			// pinned data – because the chat SDK will POST the message to it.
 			if (payload.chatSessionId || triggerHasNoPinnedData(workflowData, payload)) {
-				const registeredTriggerNodes = await this.testWebhooks.needsWebhook({
+				const registeredTriggerNodes = await this.testWebhooks.registerWebhooks({
 					userId: user.id,
 					workflowEntity: workflowData,
 					additionalData: await WorkflowExecuteAdditionalData.getBase({
@@ -437,7 +437,7 @@ export class WorkflowExecutionService {
 			);
 
 			if (pinnedTrigger === undefined) {
-				const registeredTriggerNodes = await this.testWebhooks.needsWebhook({
+				const registeredTriggerNodes = await this.testWebhooks.registerWebhooks({
 					userId: user.id,
 					workflowEntity: workflowData,
 					additionalData: await WorkflowExecuteAdditionalData.getBase({
