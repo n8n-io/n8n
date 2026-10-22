@@ -1,0 +1,125 @@
+import { GlobalConfig, type InstanceAiConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
+import { mock, mockReset } from 'vitest-mock-extended';
+
+import { SandboxSettingsService } from '@/services/sandbox-settings.service';
+
+import { resolveAppSandboxConfig } from '../sandbox-settings';
+
+describe('resolveAppSandboxConfig', () => {
+	const settings = mock<SandboxSettingsService>();
+	const config = mock<InstanceAiConfig>();
+	const globalConfig = mock<GlobalConfig>({ instanceAi: config });
+
+	beforeEach(() => {
+		mockReset(settings);
+		config.sandboxImage = 'test-image';
+		config.sandboxSnapshot = 'test-snapshot';
+		config.sandboxTimeout = 120_000;
+		settings.getProvider.mockReturnValue('daytona');
+		settings.resolveDaytonaConfig.mockResolvedValue({
+			apiUrl: 'https://daytona.example.com/api',
+			apiKey: 'daytona-key',
+		});
+		settings.resolveN8nSandboxConfig.mockResolvedValue({
+			serviceUrl: 'https://sandbox.example.com',
+			apiKey: 'sandbox-key',
+		});
+		Container.set(GlobalConfig, globalConfig);
+		Container.set(SandboxSettingsService, settings);
+	});
+
+	afterEach(() => Container.reset());
+
+	it('resolves the Daytona credentials and build settings', async () => {
+		await expect(resolveAppSandboxConfig()).resolves.toEqual({
+			enabled: true,
+			provider: 'daytona',
+			daytonaApiUrl: 'https://daytona.example.com/api',
+			daytonaApiKey: 'daytona-key',
+			image: 'test-image',
+			snapshot: 'test-snapshot',
+			timeout: 120_000,
+		});
+		expect(settings.registerCredentialUses).toHaveBeenCalledOnce();
+		expect(settings.resolveDaytonaConfig).toHaveBeenCalledOnce();
+		expect(settings.resolveN8nSandboxConfig).not.toHaveBeenCalled();
+	});
+
+	it.each([undefined, ''])('disables Daytona when its API key is %s', async (apiKey) => {
+		settings.resolveDaytonaConfig.mockResolvedValue({
+			apiUrl: 'https://daytona.example.com/api',
+			apiKey,
+		});
+
+		await expect(resolveAppSandboxConfig()).resolves.toEqual({
+			enabled: false,
+			provider: 'daytona',
+		});
+		expect(settings.resolveN8nSandboxConfig).not.toHaveBeenCalled();
+	});
+
+	it('allows Daytona to use its default API URL', async () => {
+		settings.resolveDaytonaConfig.mockResolvedValue({ apiKey: 'daytona-key' });
+
+		await expect(resolveAppSandboxConfig()).resolves.toMatchObject({
+			enabled: true,
+			provider: 'daytona',
+			daytonaApiUrl: undefined,
+			daytonaApiKey: 'daytona-key',
+		});
+	});
+
+	it('omits empty Daytona image and snapshot settings', async () => {
+		config.sandboxImage = '';
+		config.sandboxSnapshot = '';
+
+		await expect(resolveAppSandboxConfig()).resolves.toMatchObject({
+			enabled: true,
+			provider: 'daytona',
+			image: undefined,
+			snapshot: undefined,
+		});
+	});
+
+	it('resolves the n8n sandbox credentials and timeout', async () => {
+		settings.getProvider.mockReturnValue('n8n-sandbox');
+
+		await expect(resolveAppSandboxConfig()).resolves.toEqual({
+			enabled: true,
+			provider: 'n8n-sandbox',
+			serviceUrl: 'https://sandbox.example.com',
+			apiKey: 'sandbox-key',
+			timeout: 120_000,
+		});
+		expect(settings.registerCredentialUses).toHaveBeenCalledOnce();
+		expect(settings.resolveN8nSandboxConfig).toHaveBeenCalledOnce();
+		expect(settings.resolveDaytonaConfig).not.toHaveBeenCalled();
+	});
+
+	it.each([undefined, ''])('disables the n8n sandbox when its URL is %s', async (serviceUrl) => {
+		settings.getProvider.mockReturnValue('n8n-sandbox');
+		settings.resolveN8nSandboxConfig.mockResolvedValue({ serviceUrl, apiKey: 'sandbox-key' });
+
+		await expect(resolveAppSandboxConfig()).resolves.toEqual({
+			enabled: false,
+			provider: 'n8n-sandbox',
+		});
+		expect(settings.resolveDaytonaConfig).not.toHaveBeenCalled();
+	});
+
+	it('allows an n8n sandbox service without an API key', async () => {
+		settings.getProvider.mockReturnValue('n8n-sandbox');
+		settings.resolveN8nSandboxConfig.mockResolvedValue({
+			serviceUrl: 'https://sandbox.example.com',
+		});
+
+		await expect(resolveAppSandboxConfig()).resolves.toEqual({
+			enabled: true,
+			provider: 'n8n-sandbox',
+			serviceUrl: 'https://sandbox.example.com',
+			apiKey: undefined,
+			timeout: 120_000,
+		});
+	});
+});
