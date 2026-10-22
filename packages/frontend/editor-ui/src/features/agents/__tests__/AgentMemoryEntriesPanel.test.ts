@@ -132,6 +132,23 @@ describe('AgentMemoryEntriesPanel', () => {
 		expect(wrapper.find('[data-testid="agent-memory-entries-load-more"]').exists()).toBe(false);
 	});
 
+	it('tells the parent when the full list opens and closes, and drops the inline header', async () => {
+		listAgentMemoryEntries.mockResolvedValue(page([makeEntry('e1')], { total: 14 }));
+		const wrapper = await mountPanel();
+
+		await wrapper.find('[data-testid="agent-memory-entries-view-all"]').trigger('click');
+		await flushPromises();
+
+		expect(wrapper.emitted('update:showAll')?.[0]).toEqual([true]);
+		expect(wrapper.find('[data-testid="agent-memory-entries-view-all"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-memory-entries-back"]').exists()).toBe(true);
+
+		await wrapper.find('[data-testid="agent-memory-entries-back"]').trigger('click');
+		await flushPromises();
+
+		expect(wrapper.emitted('update:showAll')?.[1]).toEqual([false]);
+	});
+
 	it('removes an entry after the delete is confirmed', async () => {
 		openAgentConfirmationModal.mockResolvedValue(MODAL_CONFIRM);
 		listAgentMemoryEntries

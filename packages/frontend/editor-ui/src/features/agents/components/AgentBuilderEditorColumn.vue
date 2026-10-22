@@ -75,10 +75,19 @@ provideAgentPersonalisation(
 	() => props.localConfig?.personalisation ?? props.agent?.schema?.personalisation,
 );
 const isKnowledgeAdvancedExpanded = ref(false);
+const isMemoryViewAll = ref(false);
 
 const settingsStore = useSettingsStore();
 const isMcpAvailable = computed(
 	() => settingsStore.isModuleActive('mcp') && !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
+);
+
+// The full memory list replaces the Knowledge cards, so leaving the tab must close it.
+watch(
+	() => props.activeMainTab,
+	() => {
+		isMemoryViewAll.value = false;
+	},
 );
 
 const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
@@ -296,7 +305,7 @@ defineExpose({ onSetupTaskAction });
 					data-testid="agent-knowledge-tab-content"
 				>
 					<AgentPanel
-						v-if="knowledgeBaseEnabled"
+						v-if="knowledgeBaseEnabled && !isMemoryViewAll"
 						:header="i18n.baseText('agents.builder.files.title')"
 						:description="i18n.baseText('agents.builder.files.titleTooltip')"
 					>
@@ -314,11 +323,15 @@ defineExpose({ onSetupTaskAction });
 					</AgentPanel>
 					<AgentMemoryEntriesPanel
 						v-if="!agentUnsaved"
+						v-model:show-all="isMemoryViewAll"
 						:project-id="projectId"
 						:agent-id="agentId"
 						:disabled="childrenDisabled"
 					/>
-					<AgentPanel :header="i18n.baseText('agents.builder.knowledge.advanced.title')">
+					<AgentPanel
+						v-if="!isMemoryViewAll"
+						:header="i18n.baseText('agents.builder.knowledge.advanced.title')"
+					>
 						<template #header="{ headerId }">
 							<button
 								:id="headerId"

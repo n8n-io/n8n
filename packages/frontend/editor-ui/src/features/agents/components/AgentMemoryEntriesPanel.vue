@@ -36,7 +36,8 @@ const nextCursor = ref<string | null>(null);
 const loading = ref(false);
 const loadFailed = ref(false);
 const deletingId = ref<string | null>(null);
-const showAll = ref(false);
+/** The parent hides the other Knowledge cards while this is true. */
+const showAll = defineModel<boolean>('showAll', { default: false });
 
 const pageSize = computed(() => (showAll.value ? FULL_PAGE_SIZE : INLINE_PAGE_SIZE));
 
@@ -179,94 +180,112 @@ watch(
 </script>
 
 <template>
-	<AgentPanel
-		:header="i18n.baseText('agents.builder.memory.entries.title' as BaseTextKey)"
-		:description="i18n.baseText('agents.builder.memory.entries.description' as BaseTextKey)"
-		data-testid="agent-memory-entries-panel"
-	>
-		<template #header="{ headerId }">
-			<div :class="$style.header">
-				<N8nIconButton
-					v-if="showAll"
-					icon="arrow-left"
-					variant="ghost"
-					size="small"
-					:aria-label="i18n.baseText('agents.builder.memory.entries.back' as BaseTextKey)"
-					data-testid="agent-memory-entries-back"
-					@click="setShowAll(false)"
-				/>
-				<div :class="$style.copy">
-					<N8nText :id="headerId" tag="h3" step="sm" :bold="true">
-						{{ i18n.baseText('agents.builder.memory.entries.title' as BaseTextKey) }}
-					</N8nText>
-					<N8nText v-if="!showAll" color="text-light">
-						{{ i18n.baseText('agents.builder.memory.entries.description' as BaseTextKey) }}
-					</N8nText>
+	<div :class="$style.root" data-testid="agent-memory-entries-panel">
+		<div v-if="showAll" :class="$style.backRow">
+			<N8nIconButton
+				icon="arrow-left"
+				variant="ghost"
+				size="small"
+				:aria-label="i18n.baseText('agents.builder.memory.entries.back' as BaseTextKey)"
+				data-testid="agent-memory-entries-back"
+				@click="setShowAll(false)"
+			/>
+			<N8nText tag="h3" step="sm" :bold="true">
+				{{ i18n.baseText('agents.builder.memory.entries.title' as BaseTextKey) }}
+			</N8nText>
+		</div>
+		<AgentPanel
+			:header="i18n.baseText('agents.builder.memory.entries.title' as BaseTextKey)"
+			:header-visibility="showAll ? 'visually-hidden' : 'visible'"
+		>
+			<template v-if="!showAll" #header="{ headerId }">
+				<div :class="$style.header">
+					<div :class="$style.copy">
+						<N8nText :id="headerId" tag="h3" step="sm" :bold="true">
+							{{ i18n.baseText('agents.builder.memory.entries.title' as BaseTextKey) }}
+						</N8nText>
+						<N8nText color="text-light">
+							{{ i18n.baseText('agents.builder.memory.entries.description' as BaseTextKey) }}
+						</N8nText>
+					</div>
+					<N8nButton
+						v-if="total > INLINE_PAGE_SIZE"
+						variant="ghost"
+						data-testid="agent-memory-entries-view-all"
+						@click="setShowAll(true)"
+					>
+						{{
+							i18n.baseText('agents.builder.memory.entries.viewAll' as BaseTextKey, {
+								interpolate: { count: String(total) },
+							})
+						}}
+						<N8nIcon icon="chevron-right" size="small" />
+					</N8nButton>
 				</div>
-				<N8nButton
-					v-if="!showAll && total > INLINE_PAGE_SIZE"
-					variant="ghost"
-					data-testid="agent-memory-entries-view-all"
-					@click="setShowAll(true)"
-				>
-					{{
-						i18n.baseText('agents.builder.memory.entries.viewAll' as BaseTextKey, {
-							interpolate: { count: String(total) },
-						})
-					}}
-					<N8nIcon icon="chevron-right" size="small" />
-				</N8nButton>
-			</div>
-		</template>
+			</template>
 
-		<N8nText
-			v-if="!loading && !loadFailed && entries.length === 0"
-			color="text-light"
-			data-testid="agent-memory-entries-empty"
-		>
-			{{ i18n.baseText('agents.builder.memory.entries.empty' as BaseTextKey) }}
-		</N8nText>
-		<ul v-else :class="$style.list">
-			<li
-				v-for="entry in entries"
-				:key="entry.id"
-				:class="$style.row"
-				data-testid="agent-memory-entry"
+			<N8nText
+				v-if="!loading && !loadFailed && entries.length === 0"
+				color="text-light"
+				data-testid="agent-memory-entries-empty"
 			>
-				<div :class="$style.entryCopy">
-					<N8nText :class="$style.content" data-testid="agent-memory-entry-content">
-						{{ entry.content }}
-					</N8nText>
-					<span :class="$style.meta" data-testid="agent-memory-entry-meta">
-						<N8nIcon :icon="sourceIcon(entry.source)" size="small" />
-						<N8nText size="small" color="text-light">{{ metaLine(entry) }}</N8nText>
-					</span>
-				</div>
-				<N8nIconButton
-					v-if="!props.disabled"
-					icon="trash-2"
-					variant="ghost"
-					size="small"
-					:disabled="deletingId !== null"
-					:aria-label="i18n.baseText('agents.builder.memory.entries.delete' as BaseTextKey)"
-					data-testid="agent-memory-entry-delete"
-					@click="onDelete(entry)"
-				/>
-			</li>
-		</ul>
-		<N8nButton
-			v-if="showAll && nextCursor"
-			variant="ghost"
-			:loading="loading"
-			data-testid="agent-memory-entries-load-more"
-			@click="loadEntries({ append: true })"
-		>
-			{{ i18n.baseText('agents.builder.memory.entries.loadMore' as BaseTextKey) }}
-		</N8nButton>
-	</AgentPanel>
+				{{ i18n.baseText('agents.builder.memory.entries.empty' as BaseTextKey) }}
+			</N8nText>
+			<ul v-else :class="$style.list">
+				<li
+					v-for="entry in entries"
+					:key="entry.id"
+					:class="$style.row"
+					data-testid="agent-memory-entry"
+				>
+					<div :class="$style.entryCopy">
+						<N8nText :class="$style.content" data-testid="agent-memory-entry-content">
+							{{ entry.content }}
+						</N8nText>
+						<span :class="$style.meta" data-testid="agent-memory-entry-meta">
+							<N8nIcon :icon="sourceIcon(entry.source)" size="small" />
+							<N8nText size="small" color="text-light">{{ metaLine(entry) }}</N8nText>
+						</span>
+					</div>
+					<N8nIconButton
+						v-if="!props.disabled"
+						icon="trash-2"
+						variant="ghost"
+						size="small"
+						:disabled="deletingId !== null"
+						:aria-label="i18n.baseText('agents.builder.memory.entries.delete' as BaseTextKey)"
+						data-testid="agent-memory-entry-delete"
+						@click="onDelete(entry)"
+					/>
+				</li>
+			</ul>
+			<N8nButton
+				v-if="showAll && nextCursor"
+				variant="ghost"
+				:loading="loading"
+				data-testid="agent-memory-entries-load-more"
+				@click="loadEntries({ append: true })"
+			>
+				{{ i18n.baseText('agents.builder.memory.entries.loadMore' as BaseTextKey) }}
+			</N8nButton>
+		</AgentPanel>
+	</div>
 </template>
 
 <style module lang="scss">
+.root {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	width: 100%;
+}
+
+.backRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
 .header {
 	display: flex;
 	align-items: flex-start;
