@@ -184,6 +184,33 @@ describe('SnapshotAppBuildResultStore', () => {
 		expect(artifacts.discard).toHaveBeenCalledWith(artifact);
 	});
 
+	it.each([0, 1])(
+		'rejects the transaction when attachment finishes %i ms after the deadline',
+		async (overrunMs) => {
+			const { builds, config, artifacts, artifact, versions, ctx, locks } = createStores();
+			const startedAt = new Date();
+			vi.useFakeTimers({ toFake: ['Date'] });
+			vi.setSystemTime(startedAt);
+			config.buildTimeoutMs = 1000;
+			versions.attachBundle.mockImplementation(async () => {
+				vi.setSystemTime(startedAt.getTime() + config.buildTimeoutMs + overrunMs);
+				return true;
+			});
+
+			await expect(
+				builds.recordSuccess(version.appId, version.id, files, { attemptNumber: 1, startedAt }),
+			).rejects.toThrow('The app build timed out.');
+			await expect(locks.withLockContext.mock.results[0].value).rejects.toThrow(ConflictError);
+			expect(versions.attachBundle).toHaveBeenCalledExactlyOnceWith(
+				version.id,
+				artifact.id,
+				1,
+				ctx,
+			);
+			expect(artifacts.discard).toHaveBeenCalledWith(artifact);
+		},
+	);
+
 	it('attaches the uploaded bundle in the upload-completion transaction', async () => {
 		const { builds, archives, artifacts, versions, artifact, ctx, locks } = createStores();
 

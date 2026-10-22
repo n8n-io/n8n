@@ -116,9 +116,7 @@ export class SnapshotAppBuildResultStore extends AppBuildResultStore {
 					if (!version || version.appId !== appId)
 						throw new NotFoundError('App version not found.');
 					await this.artifacts.completeUpload(artifact, ctx);
-					if (Date.now() >= attempt.startedAt.getTime() + this.config.buildTimeoutMs) {
-						throw new ConflictError('The app build timed out. Retry the build.');
-					}
+					this.assertBuildNotTimedOut(attempt);
 					if (
 						!(await this.versions.attachBundle(versionId, artifact.id, attempt.attemptNumber, ctx))
 					) {
@@ -126,6 +124,7 @@ export class SnapshotAppBuildResultStore extends AppBuildResultStore {
 							'This app version cannot accept a bundle. Check its build status.',
 						);
 					}
+					this.assertBuildNotTimedOut(attempt);
 				},
 				{ subKey: appStorageLockSubKey(appId) },
 			);
@@ -144,5 +143,11 @@ export class SnapshotAppBuildResultStore extends AppBuildResultStore {
 
 	async removeBundles(versionIds: string[], ctx: OperationContext): Promise<void> {
 		await this.versions.clearBundles(versionIds, ctx);
+	}
+
+	private assertBuildNotTimedOut(attempt: AppBuildAttempt): void {
+		if (Date.now() >= attempt.startedAt.getTime() + this.config.buildTimeoutMs) {
+			throw new ConflictError('The app build timed out. Retry the build.');
+		}
 	}
 }
