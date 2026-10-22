@@ -25,6 +25,13 @@ const isRefusal = (error: unknown) =>
 const subWorkflowCheckKey = (parentWorkflowId: string, subWorkflowId: string) =>
 	`${parentWorkflowId}:${subWorkflowId}`;
 
+/** Only the unavailable entries of one project, for both kinds, and the project itself. */
+type ProjectRestrictions = {
+	nodeTypes: ReadonlyMap<string, NodeTypeAvailability>;
+	credentialTypes: ReadonlyMap<string, CredentialTypeAvailability>;
+	project: Project | null;
+};
+
 function unavailableByName<T extends { name: string; available: boolean }>(
 	entries: T[],
 ): ReadonlyMap<string, T> {
@@ -37,15 +44,14 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 		const rootStore = useRootStore();
 		const settingsStore = useSettingsStore();
 
-		const restrictedNodeTypes = shallowRef<ReadonlyMap<string, NodeTypeAvailability>>(new Map());
-		const restrictedCredentialTypes = shallowRef<ReadonlyMap<string, CredentialTypeAvailability>>(
-			new Map(),
-		);
-		const loadedProjectId = ref<string | null>(null);
+		const restrictionsByProject = shallowRef<ReadonlyMap<string, ProjectRestrictions>>(new Map());
+		/** The project that lookups without an explicit project answer for. */
+		const activeProjectId = ref<string | null>(null);
+		/** The active project's record, so the contact dialog can name its admins. */
 		const policyProject = shallowRef<Project | null>(null);
-		const requestedProjectId = ref<string | null>(null);
-		const isLoading = ref(false);
-		let latestRequest = 0;
+		const latestRequestByProject = new Map<string, number>();
+		const inFlightByProject = new Map<string, Promise<void>>();
+		let requestCount = 0;
 
 		/**
 		 * Keyed by parent and sub-workflow, because the answer depends on whether the parent may
@@ -61,25 +67,38 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 			() => settingsStore.isModuleActive(TYPE_AVAILABILITY_POLICIES_MODULE_ID) ?? false,
 		);
 
+		/**
+		 * Makes `projectId` the active project and loads it. A project that is already loaded
+		 * keeps answering while a switch back to it refreshes the answer.
+		 */
 		async function fetchForProject(projectId: string): Promise<void> {
 			if (!isEnabled.value) return;
 
-			requestedProjectId.value = projectId;
-			latestRequest++;
+			const isSwitch = activeProjectId.value !== projectId;
+			activeProjectId.value = projectId;
+			if (isSwitch) syncPolicyProject();
 
-			if (projectId === loadedProjectId.value) {
-				isLoading.value = false;
+			const inFlight = inFlightByProject.get(projectId);
+			if (inFlight) {
+				await inFlight;
 				return;
 			}
+			if (restrictionsByProject.value.has(projectId) && !isSwitch) return;
 
 			await load(projectId);
 		}
 
-		/** Refetches the current project after the server's node set changed. */
+		/** Refetches the active project after the server's node set changed. */
 		async function reload(): Promise<void> {
-			if (!isEnabled.value || requestedProjectId.value === null) return;
+			if (!isEnabled.value || activeProjectId.value === null) return;
 
-			await load(requestedProjectId.value);
+			const projectId = activeProjectId.value;
+			setRestrictions((all) => {
+				for (const id of all.keys()) {
+					if (id !== projectId) all.delete(id);
+				}
+			});
+			await load(projectId);
 		}
 
 		/**
@@ -88,47 +107,72 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 		 * neither is.
 		 */
 		async function load(projectId: string): Promise<void> {
-			const request = ++latestRequest;
-			isLoading.value = true;
-			try {
-				const [nodeTypes, credentialTypes, project] = await Promise.all([
-					fetchAvailableTypes(rootStore.restApiContext, projectId),
-					fetchAvailableCredentialTypes(rootStore.restApiContext, projectId),
-					getProject(rootStore.restApiContext, projectId).catch(() => null),
-				]);
-				if (request !== latestRequest) return;
+			const request = ++requestCount;
+			latestRequestByProject.set(projectId, request);
+			const isLatest = () => latestRequestByProject.get(projectId) === request;
 
-				restrictedNodeTypes.value = unavailableByName(nodeTypes);
-				restrictedCredentialTypes.value = unavailableByName(credentialTypes);
-				policyProject.value = project;
-				loadedProjectId.value = projectId;
-			} catch (error) {
-				if (request !== latestRequest) return;
+			const pending = (async () => {
+				try {
+					const [nodeTypes, credentialTypes, project] = await Promise.all([
+						fetchAvailableTypes(rootStore.restApiContext, projectId),
+						fetchAvailableCredentialTypes(rootStore.restApiContext, projectId),
+						getProject(rootStore.restApiContext, projectId).catch(() => null),
+					]);
+					if (!isLatest()) return;
 
-				console.error('Failed to fetch available types for project', projectId, error);
-				restrictedNodeTypes.value = new Map();
-				restrictedCredentialTypes.value = new Map();
-				policyProject.value = null;
-				loadedProjectId.value = null;
-			} finally {
-				if (request === latestRequest) isLoading.value = false;
-			}
+					setRestrictions((all) =>
+						all.set(projectId, {
+							nodeTypes: unavailableByName(nodeTypes),
+							credentialTypes: unavailableByName(credentialTypes),
+							project,
+						}),
+					);
+				} catch (error) {
+					if (!isLatest()) return;
+
+					console.error('Failed to fetch available types for project', projectId, error);
+					setRestrictions((all) => all.delete(projectId));
+				} finally {
+					if (isLatest()) {
+						latestRequestByProject.delete(projectId);
+						inFlightByProject.delete(projectId);
+					}
+				}
+			})();
+
+			inFlightByProject.set(projectId, pending);
+			await pending;
 		}
 
-		function getNodeTypeAvailability(name: string): NodeTypeAvailability {
-			if (loadedProjectId.value !== requestedProjectId.value) return { name, available: true };
-
-			return restrictedNodeTypes.value.get(name) ?? { name, available: true };
+		function setRestrictions(update: (all: Map<string, ProjectRestrictions>) => void): void {
+			const next = new Map(restrictionsByProject.value);
+			update(next);
+			restrictionsByProject.value = next;
+			syncPolicyProject();
 		}
 
-		function isNodeTypeAvailable(name: string): boolean {
-			return getNodeTypeAvailability(name).available;
+		function syncPolicyProject(): void {
+			policyProject.value = restrictionsFor()?.project ?? null;
 		}
 
-		function getCredentialTypeAvailability(name: string): CredentialTypeAvailability {
-			if (loadedProjectId.value !== requestedProjectId.value) return { name, available: true };
+		function restrictionsFor(projectId?: string): ProjectRestrictions | undefined {
+			const id = projectId ?? activeProjectId.value;
+			return id === null ? undefined : restrictionsByProject.value.get(id);
+		}
 
-			return restrictedCredentialTypes.value.get(name) ?? { name, available: true };
+		function getNodeTypeAvailability(name: string, projectId?: string): NodeTypeAvailability {
+			return restrictionsFor(projectId)?.nodeTypes.get(name) ?? { name, available: true };
+		}
+
+		function isNodeTypeAvailable(name: string, projectId?: string): boolean {
+			return getNodeTypeAvailability(name, projectId).available;
+		}
+
+		function getCredentialTypeAvailability(
+			name: string,
+			projectId?: string,
+		): CredentialTypeAvailability {
+			return restrictionsFor(projectId)?.credentialTypes.get(name) ?? { name, available: true };
 		}
 
 		/**
@@ -190,23 +234,20 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 		}
 
 		function reset(): void {
-			latestRequest++;
 			subWorkflowGeneration++;
 			subWorkflowChecks.clear();
 			failedSubWorkflowChecks.clear();
 			subWorkflowRequests.clear();
-			restrictedNodeTypes.value = new Map();
-			restrictedCredentialTypes.value = new Map();
+			latestRequestByProject.clear();
+			inFlightByProject.clear();
+			restrictionsByProject.value = new Map();
+			activeProjectId.value = null;
 			policyProject.value = null;
-			loadedProjectId.value = null;
-			requestedProjectId.value = null;
-			isLoading.value = false;
 		}
 
 		return {
 			isEnabled,
-			isLoading,
-			loadedProjectId,
+			activeProjectId,
 			policyProject,
 			fetchForProject,
 			reload,

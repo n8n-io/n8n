@@ -120,7 +120,7 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 				expect.objectContaining({ baseUrl: 'http://localhost' }),
 				'project-a',
 			);
-			expect(store.loadedProjectId).toBe('project-a');
+			expect(store.activeProjectId).toBe('project-a');
 			expect(store.getNodeTypeAvailability(RESTRICTED)).toEqual({
 				name: RESTRICTED,
 				available: false,
@@ -215,9 +215,33 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 			await store.fetchForProject('project-a');
 			await store.fetchForProject('project-b');
 
-			expect(store.loadedProjectId).toBe('project-b');
+			expect(store.activeProjectId).toBe('project-b');
 			expect(store.isNodeTypeAvailable(ALLOWED)).toBe(false);
 			expect(store.isNodeTypeAvailable(RESTRICTED)).toBe(true);
+		});
+
+		it('answers for an explicit project, whichever project is active', async () => {
+			mocks.fetchAvailableTypes
+				.mockResolvedValueOnce(PROJECT_A_RESPONSE)
+				.mockResolvedValueOnce(PROJECT_B_RESPONSE);
+			const store = useTypeAvailabilityPoliciesStore();
+
+			await store.fetchForProject('project-a');
+			await store.fetchForProject('project-b');
+
+			expect(store.isNodeTypeAvailable(RESTRICTED, 'project-a')).toBe(false);
+			expect(store.isNodeTypeAvailable(RESTRICTED)).toBe(true);
+			expect(store.isNodeTypeAvailable(RESTRICTED, 'project-c')).toBe(true);
+		});
+
+		it('shares one request between callers of the same project', async () => {
+			mocks.fetchAvailableTypes.mockResolvedValue(PROJECT_A_RESPONSE);
+			const store = useTypeAvailabilityPoliciesStore();
+
+			await Promise.all([store.fetchForProject('project-a'), store.fetchForProject('project-a')]);
+
+			expect(mocks.fetchAvailableTypes).toHaveBeenCalledTimes(1);
+			expect(store.isNodeTypeAvailable(RESTRICTED)).toBe(false);
 		});
 
 		it('reports every type as available while a project switch is in flight', async () => {
@@ -243,7 +267,7 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 			expect(store.isNodeTypeAvailable(RESTRICTED)).toBe(true);
 		});
 
-		it('discards a response for a project that is no longer requested', async () => {
+		it('keeps answering for the active project when an earlier project responds late', async () => {
 			const deferredA = createDeferredPromise<AvailableTypesResponse>();
 			mocks.fetchAvailableTypes
 				.mockReturnValueOnce(deferredA.promise)
@@ -255,28 +279,47 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 			deferredA.resolve(PROJECT_A_RESPONSE);
 			await pendingA;
 
-			expect(store.loadedProjectId).toBe('project-b');
+			expect(store.activeProjectId).toBe('project-b');
 			expect(store.isNodeTypeAvailable(ALLOWED)).toBe(false);
-			expect(store.isLoading).toBe(false);
+			expect(store.isNodeTypeAvailable(RESTRICTED, 'project-a')).toBe(false);
 		});
 
-		it('discards an in-flight response when the user returns to the loaded project', async () => {
+		it('keeps the loaded answer when the user returns to a project, then refreshes it', async () => {
 			const deferredB = createDeferredPromise<AvailableTypesResponse>();
+			const refreshA = createDeferredPromise<AvailableTypesResponse>();
 			mocks.fetchAvailableTypes
 				.mockResolvedValueOnce(PROJECT_A_RESPONSE)
-				.mockReturnValueOnce(deferredB.promise);
+				.mockReturnValueOnce(deferredB.promise)
+				.mockReturnValueOnce(refreshA.promise);
 			const store = useTypeAvailabilityPoliciesStore();
 
 			await store.fetchForProject('project-a');
 			const pendingB = store.fetchForProject('project-b');
-			await store.fetchForProject('project-a');
+			const pendingA = store.fetchForProject('project-a');
 			deferredB.resolve(PROJECT_B_RESPONSE);
 			await pendingB;
 
-			expect(store.loadedProjectId).toBe('project-a');
+			expect(store.activeProjectId).toBe('project-a');
 			expect(store.isNodeTypeAvailable(ALLOWED)).toBe(true);
 			expect(store.isNodeTypeAvailable(RESTRICTED)).toBe(false);
-			expect(store.isLoading).toBe(false);
+
+			refreshA.resolve(PROJECT_B_RESPONSE);
+			await pendingA;
+
+			expect(store.isNodeTypeAvailable(ALLOWED)).toBe(false);
+		});
+
+		it('drops the other projects on reload', async () => {
+			mocks.fetchAvailableTypes.mockResolvedValue(PROJECT_A_RESPONSE);
+			const store = useTypeAvailabilityPoliciesStore();
+
+			await store.fetchForProject('project-a');
+			await store.fetchForProject('project-b');
+			await store.reload();
+
+			expect(mocks.fetchAvailableTypes).toHaveBeenLastCalledWith(expect.anything(), 'project-b');
+			expect(store.isNodeTypeAvailable(RESTRICTED, 'project-a')).toBe(true);
+			expect(store.isNodeTypeAvailable(RESTRICTED, 'project-b')).toBe(false);
 		});
 
 		it('degrades to available and logs when the request fails', async () => {
@@ -286,8 +329,6 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 			await store.fetchForProject('project-a');
 
 			expect(errorSpy).toHaveBeenCalledTimes(1);
-			expect(store.loadedProjectId).toBeNull();
-			expect(store.isLoading).toBe(false);
 			expect(store.isNodeTypeAvailable(RESTRICTED)).toBe(true);
 		});
 
@@ -301,7 +342,6 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 			await store.fetchForProject('project-a');
 
 			expect(mocks.fetchAvailableTypes).toHaveBeenCalledTimes(2);
-			expect(store.loadedProjectId).toBe('project-a');
 			expect(store.isNodeTypeAvailable(RESTRICTED)).toBe(false);
 		});
 
@@ -312,7 +352,7 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 			await store.fetchForProject('project-a');
 			store.reset();
 
-			expect(store.loadedProjectId).toBeNull();
+			expect(store.activeProjectId).toBeNull();
 			expect(store.policyProject).toBeNull();
 			expect(store.isNodeTypeAvailable(RESTRICTED)).toBe(true);
 		});
@@ -330,6 +370,49 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 			expect(store.policyProject).toEqual(TEAM_PROJECT);
 		});
 
+		it('follows the active project when switching between loaded projects', async () => {
+			const projectB = { id: 'project-b', type: 'team', relations: [] };
+			const refreshA = createDeferredPromise<AvailableTypesResponse>();
+			mocks.fetchAvailableTypes
+				.mockResolvedValueOnce(PROJECT_A_RESPONSE)
+				.mockResolvedValueOnce(PROJECT_B_RESPONSE)
+				.mockReturnValueOnce(refreshA.promise);
+			mocks.getProject.mockResolvedValueOnce(TEAM_PROJECT).mockResolvedValueOnce(projectB);
+			const store = useTypeAvailabilityPoliciesStore();
+
+			await store.fetchForProject('project-a');
+			await store.fetchForProject('project-b');
+			expect(store.policyProject).toEqual(projectB);
+
+			const pending = store.fetchForProject('project-a');
+
+			expect(store.policyProject).toEqual(TEAM_PROJECT);
+			refreshA.resolve(PROJECT_A_RESPONSE);
+			await pending;
+		});
+
+		it('clears the project record while an unloaded project is loading', async () => {
+			const projectB = { id: 'project-b', type: 'team', relations: [] };
+			const deferredTypes = createDeferredPromise<AvailableTypesResponse>();
+			const deferredProject = createDeferredPromise<typeof projectB>();
+			mocks.fetchAvailableTypes
+				.mockResolvedValueOnce(PROJECT_A_RESPONSE)
+				.mockReturnValueOnce(deferredTypes.promise);
+			mocks.getProject
+				.mockResolvedValueOnce(TEAM_PROJECT)
+				.mockReturnValueOnce(deferredProject.promise);
+			const store = useTypeAvailabilityPoliciesStore();
+
+			await store.fetchForProject('project-a');
+			const pending = store.fetchForProject('project-b');
+
+			expect(store.policyProject).toBeNull();
+			deferredTypes.resolve(PROJECT_B_RESPONSE);
+			deferredProject.resolve(projectB);
+			await pending;
+			expect(store.policyProject).toEqual(projectB);
+		});
+
 		it('keeps the availability when the caller cannot read the project', async () => {
 			mocks.fetchAvailableTypes.mockResolvedValue(PROJECT_A_RESPONSE);
 			mocks.getProject.mockRejectedValue(new Error('Forbidden'));
@@ -338,7 +421,7 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 			await store.fetchForProject('project-a');
 
 			expect(store.policyProject).toBeNull();
-			expect(store.loadedProjectId).toBe('project-a');
+			expect(store.activeProjectId).toBe('project-a');
 			expect(store.isNodeTypeAvailable(RESTRICTED)).toBe(false);
 		});
 	});
@@ -384,7 +467,7 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 			deferredB.resolve([]);
 			await pendingB;
 
-			expect(store.loadedProjectId).toBe('project-b');
+			expect(store.activeProjectId).toBe('project-b');
 			expect(store.getCredentialTypeAvailability(RESTRICTED_CREDENTIAL).available).toBe(true);
 		});
 
@@ -410,7 +493,6 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 			await store.fetchForProject('project-a');
 
 			expect(errorSpy).toHaveBeenCalledTimes(1);
-			expect(store.loadedProjectId).toBeNull();
 			expect(store.isNodeTypeAvailable(RESTRICTED)).toBe(true);
 			expect(store.getCredentialTypeAvailability(RESTRICTED_CREDENTIAL).available).toBe(true);
 		});

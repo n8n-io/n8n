@@ -57,7 +57,10 @@ import {
 	removePreviewToken,
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { useRestrictedNodeWarning } from '@/features/shared/nodeCreator/composables/useRestrictedNodeWarning';
-import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import {
+	useTypeAvailability,
+	useTypeAvailabilityPoliciesStore,
+} from '@n8n/frontend-module-type-availability-policies';
 import type { IWorkflowDb } from '@/Interface';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
 import McpRegistrySuggestionFooter from '@/app/components/McpRegistrySuggestionFooter.vue';
@@ -160,6 +163,7 @@ const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
+useTypeAvailability(() => props.data.projectId);
 const toolTelemetry = useAgentToolTelemetry(props.data.agentId);
 const { createCredentialAdapter, fetchCatalog, preloadCredentials } = useAgentMcpDiscovery(
 	() => props.data.projectId,
@@ -371,14 +375,6 @@ credentialListeners.run(() => {
 	});
 });
 onBeforeUnmount(() => credentialListeners.stop());
-
-watch(
-	() => props.data.projectId,
-	(projectId) => {
-		if (projectId) void typeAvailabilityPoliciesStore.fetchForProject(projectId);
-	},
-	{ immediate: true },
-);
 
 function makeUniqueName(
 	baseName: string,

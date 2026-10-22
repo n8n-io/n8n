@@ -104,7 +104,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import { useTypeAvailability } from '@n8n/frontend-module-type-availability-policies';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
@@ -219,7 +219,6 @@ const environmentsStore = useEnvironmentsStore();
 const canvasStore = useCanvasStore();
 const npsSurveyStore = useNpsSurveyStore();
 const projectsStore = useProjectsStore();
-const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
 const usersStore = useUsersStore();
 const tagsStore = useTagsStore();
 
@@ -1914,15 +1913,7 @@ const workflowProjectId = computed(
 		projectsStore.personalProject?.id,
 );
 
-watch(
-	workflowProjectId,
-	(projectId) => {
-		if (!projectId) return;
-
-		void typeAvailabilityPoliciesStore.fetchForProject(projectId);
-	},
-	{ immediate: true },
-);
+useTypeAvailability(workflowProjectId);
 
 watch(
 	() => {
