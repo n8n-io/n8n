@@ -872,6 +872,7 @@ describe('AiGatewayService', () => {
 				authType: '__aiGatewayManaged',
 				remotes: [{ type: 'streamable-http', url: `${BASE_URL}/v1/gateway/mcp/firecrawl` }],
 				requiredCapabilities: ['n8n-connect'],
+				isOfficial: false,
 				websiteUrl: 'https://firecrawl.dev',
 				tags: ['web'],
 			});

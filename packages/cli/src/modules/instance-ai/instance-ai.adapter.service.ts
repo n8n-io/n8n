@@ -859,11 +859,13 @@ export class InstanceAiAdapterService {
 		// Templated rows are dropped rather than offered: this path reads credentials
 		// without resolving expressions, so `createConnection` refuses them. Offering
 		// one would walk the user to a credential picker and then an error.
-		// Gateway-only rows (`authentication: 'none'`) are dropped for the same reason:
-		// this path connects with a stored credential only.
+		// Gateway-only rows are dropped for the same reason: this path connects with a
+		// stored credential only.
+		const isAiGatewayOnly = (server: McpRegistrySearchResult) =>
+			server.authentication === 'none' && server.credential === AI_GATEWAY_MANAGED_TAG;
 		const toSummaries = (servers: McpRegistrySearchResult[]): McpRegistryServerSummary[] =>
 			servers
-				.filter((server) => !server.isTemplated && server.authentication !== 'none')
+				.filter((server) => !server.isTemplated && !isAiGatewayOnly(server))
 				.map((server) => ({
 					slug: server.slug,
 					title: server.title,

@@ -206,7 +206,7 @@ export const firecrawlAiGatewayMockServer = {
 	authType: AI_GATEWAY_MANAGED_AUTH_TYPE,
 	remotes: [{ type: 'streamable-http', url: 'https://gateway.n8n.test/v1/gateway/mcp/firecrawl' }],
 	tools: [{ name: 'firecrawl_scrape', title: 'Scrape', annotations: { readOnlyHint: true } }],
-	isOfficial: true,
+	isOfficial: false,
 	origin: 'registry',
 	status: 'active',
 	requiredCapabilities: [AI_GATEWAY_MCP_CAPABILITY],

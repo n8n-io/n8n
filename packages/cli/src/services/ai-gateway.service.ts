@@ -70,7 +70,8 @@ function toAiGatewayRegistryServer(server: AiGatewayMcpServer, baseUrl: string):
 			...(title ? { title } : {}),
 			...(readOnlyHint !== undefined ? { annotations: { readOnlyHint } } : {}),
 		})),
-		isOfficial: true,
+		// n8n hosts the server, so the service vendor does not publish it.
+		isOfficial: false,
 		origin: 'registry',
 		status: 'active',
 		requiredCapabilities: [AI_GATEWAY_MCP_CAPABILITY],

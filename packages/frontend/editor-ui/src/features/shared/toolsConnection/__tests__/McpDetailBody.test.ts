@@ -63,6 +63,42 @@ describe('McpDetailBody', () => {
 		);
 	});
 
+	it('shows n8n as the maintainer of a gateway-only server before it is connected', () => {
+		const { getByText, getByTestId } = renderComponent({
+			props: {
+				item: item({
+					title: 'Brave Search',
+					publisher: { name: 'Brave Search', url: 'https://brave.com' },
+					credentials: [{ authType: 'n8nConnectBraveSearchMcpAiGatewayApi', aiGateway: true }],
+				}),
+			},
+		});
+
+		expect(getByText('Brave Search via Gateway credits')).toBeVisible();
+		expect(getByTestId('tools-connection-detail-metadata')).toHaveTextContent('Maintained by n8n');
+	});
+
+	it('shows the publisher of a paired server until Gateway credits are selected', () => {
+		const { getByText, getByTestId } = renderComponent({
+			props: {
+				item: item({
+					title: 'Firecrawl',
+					isOfficial: true,
+					publisher: { name: 'Firecrawl', url: 'https://firecrawl.dev' },
+					credentials: [
+						{ authType: 'n8nConnectFirecrawlMcpAiGatewayApi', aiGateway: true },
+						{ authType: 'firecrawlMcpOAuth2Api' },
+					],
+				}),
+			},
+		});
+
+		expect(getByText('Official Firecrawl MCP server')).toBeVisible();
+		expect(getByTestId('tools-connection-detail-metadata')).toHaveTextContent(
+			'Published by Firecrawl',
+		);
+	});
+
 	it('omits unavailable metadata and description rows', () => {
 		const { getByText, queryByTestId } = renderComponent({
 			props: { item: item() },

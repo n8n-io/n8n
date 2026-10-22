@@ -12,12 +12,16 @@ const props = defineProps<{
 const i18n = useI18n();
 
 // With Gateway credits, n8n runs the connection, so the server's publisher does not apply.
-const usesAiGateway = computed(
-	() =>
-		props.item.credentials?.some(
+// A gateway-only server has no other option, so this holds before it is connected too.
+const usesAiGateway = computed(() => {
+	const credentials = props.item.credentials ?? [];
+	return (
+		credentials.some(
 			({ aiGateway, credentialId }) => aiGateway && credentialId === AI_GATEWAY_MANAGED_TAG,
-		) ?? false,
-);
+		) ||
+		(credentials.length > 0 && credentials.every(({ aiGateway }) => aiGateway))
+	);
+});
 const hasPublisher = computed(() => usesAiGateway.value || Boolean(props.item.publisher));
 const hasMetadata = computed(() => hasPublisher.value || Boolean(props.item.version));
 </script>

@@ -23,9 +23,15 @@ export interface McpRegistrySearchResult {
 	transport: 'streamableHttp' | 'sse';
 	authentication: string;
 	credentialType: string;
-	/** Set on a Gateway credits server: the entry stores this marker and needs no credential step. */
+	/**
+	 * Gateway-only row: an AI Gateway server with no registry twin. Gateway credits are its
+	 * only auth, so this is the `mcpServers[].credential` value.
+	 */
 	credential?: string;
-	/** Set on a server that also runs on Gateway credits: the marker to store instead of an own credential. */
+	/**
+	 * Registry row paired with an AI Gateway twin: it keeps its own `credentialType`, and
+	 * Gateway credits are an extra option with this credential value.
+	 */
 	aiGatewayCredential?: string;
 	tools: Array<{ name: string; title?: string }>;
 	metadata: { nodeTypeName: string };

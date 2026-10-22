@@ -7952,12 +7952,16 @@ describe('MCP registry discovery', () => {
 
 		it('never offers Gateway credits in search results or slug lookups', async () => {
 			stubContainer({
-				registrySearch: vi
-					.fn()
-					.mockResolvedValue([
-						registryHit,
-						{ ...registryHit, slug: 'n8n-connect-brave-search', authentication: 'none' },
-					]),
+				registrySearch: vi.fn().mockResolvedValue([
+					registryHit,
+					{
+						...registryHit,
+						slug: 'n8n-connect-brave-search',
+						authentication: 'none',
+						credential: AI_GATEWAY_MANAGED_TAG,
+					},
+					{ ...registryHit, slug: 'no-auth-server', authentication: 'none' },
+				]),
 				registryGetBySlugs: vi
 					.fn()
 					.mockResolvedValue(
@@ -7969,10 +7973,13 @@ describe('MCP registry discovery', () => {
 			});
 			const context = createAdapter().createContext(user, { mcpConnectionsAvailable: true });
 
-			const searchResults = await context.mcpService!.search(['drive', 'brave']);
+			const searchResults = await context.mcpService!.search(['drive', 'brave', 'no-auth']);
 			const servers = await context.mcpService!.getServers(['firecrawl']);
 
-			expect(searchResults.map((result) => result.slug)).toEqual(['google-drive']);
+			expect(searchResults.map((result) => result.slug)).toEqual([
+				'google-drive',
+				'no-auth-server',
+			]);
 			expect(servers.map(({ slug, usesCredentials }) => ({ slug, usesCredentials }))).toEqual([
 				{
 					slug: 'firecrawl',
