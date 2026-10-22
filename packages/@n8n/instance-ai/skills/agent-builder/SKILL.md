@@ -3,11 +3,11 @@ name: agent-builder
 description: >-
   An n8n Agent is a standalone AI assistant with its own instructions, tools,
   and memory. It is not an AI Agent node inside a workflow.
-  Load before the first agent_builder_* call.
-  Governs how you create, configure, test, and publish n8n Agents yourself with
-  the agent_builder_* tools: targeting, prerequisites, initial build, config
-  freshness, interactive setup, models, memory, tools, and reply style. Use
-  directly for routine Agent follow-ups.
+  It can chat on channels such as Slack, Telegram, or Discord, run tasks on a
+  schedule, use n8n nodes, workflows, and MCP servers as tools, and delegate to
+  sub-agents. Load before the first agent_builder_* call when you create,
+  configure, test, or publish an Agent yourself. Use directly for routine Agent
+  follow-ups.
 shared_references:
   - credential-setup-with-computer-use
 recommended_tools:
