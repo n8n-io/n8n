@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_9c4a490e9ce50a::t_b154fb1cc34ddd 798,813-817,839,841-842
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentInfoPanel.spec.ts
+  s_9c4a490e9ce50a::t_5d0cb6ce8cae7a 813,854-870
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_9c4a490e9ce50a::t_e3dfe70fb106c3 151-152,154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8f8daf6c6f73288c45f149eb3442cb2493b76b4d",
+  "prompts": {},
+  "sessions": {
+    "s_9c4a490e9ce50a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71d0b6d7-e930-4d3e-bd58-690a100f6790",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
