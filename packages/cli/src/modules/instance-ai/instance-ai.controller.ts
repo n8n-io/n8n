@@ -27,6 +27,7 @@ import {
 } from '@n8n/api-types';
 import type {
 	InstanceAiAdminSettingsResponse,
+	InstanceAiCloudBrowserLiveViewResponse,
 	InstanceAiEvalThreadMemoryResponse,
 	InstanceAiEvent,
 	InstanceAiThreadTabsResponse,
@@ -66,6 +67,7 @@ import {
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
+import { InstanceAiCloudBrowserService } from './browser/instance-ai-cloud-browser.service';
 import { EvalAgentExecutionService } from './eval/agent-execution.service';
 import { EvalExecutionService } from './eval/execution.service';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
@@ -118,6 +120,7 @@ export class InstanceAiController {
 		private readonly preferenceCardService: InstanceAiPreferenceCardService,
 		globalConfig: GlobalConfig,
 		private readonly threadTabsService: InstanceAiThreadTabsService,
+		private readonly cloudBrowserService: InstanceAiCloudBrowserService,
 	) {
 		this.instanceAiConfig = globalConfig.instanceAi;
 	}
@@ -659,6 +662,20 @@ export class InstanceAiController {
 		await this.assertThreadAccess(req.user.id, threadId);
 		await this.instanceAiService.routeCancelBackgroundTask(threadId, taskId);
 		return { ok: true };
+	}
+
+	/** The live view of a cloud browser task. The link is never stored, so the client asks again. */
+	@Get('/chat/:threadId/tasks/:taskId/cloud-browser-live-view')
+	@GlobalScope('instanceAi:message')
+	async cloudBrowserLiveView(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Param('taskId') taskId: string,
+	): Promise<InstanceAiCloudBrowserLiveViewResponse> {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return await this.cloudBrowserService.getLiveView(req.user.id, threadId, taskId);
 	}
 
 	@Post('/chat/:threadId/tasks/:taskId/correct')

@@ -473,6 +473,16 @@ export class InstanceAiCloudBrowserTaskService {
 				buildTasksCompletedMessage(undelivered),
 				messageGroupId,
 			);
+			if (!runId) return;
+
+			for (const task of undelivered) {
+				this.options.eventBus.publish(threadId, {
+					type: 'agent-result-delivered',
+					runId: task.runId,
+					agentId: task.agentId,
+					payload: {},
+				});
+			}
 		} finally {
 			if (!runId) await this.taskStore.releaseClaim(threadId, undelivered);
 		}

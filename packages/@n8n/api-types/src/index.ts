@@ -704,6 +704,7 @@ export type {
 	InstanceGatewayResourceDecision,
 	InstanceAiBrowserCreateLinkResponse,
 	InstanceAiBrowserStatusResponse,
+	InstanceAiCloudBrowserLiveViewResponse,
 	ToolCategory,
 	InstanceAiWorkflowSetupNode,
 	PlannedTaskArg,

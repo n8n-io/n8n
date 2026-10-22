@@ -1,4 +1,7 @@
-import { INSTANCE_AI_CLOUD_BROWSER_FLAG } from '@n8n/api-types';
+import {
+	INSTANCE_AI_CLOUD_BROWSER_FLAG,
+	type InstanceAiCloudBrowserLiveViewResponse,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { UserRepository } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
@@ -25,7 +28,7 @@ export class InstanceAiCloudBrowserService {
 
 	private readonly serversByTaskId = new Map<
 		string,
-		{ userId: string; server: CloudBrowserLocalMcpServer }
+		{ userId: string; threadId: string; server: CloudBrowserLocalMcpServer }
 	>();
 
 	constructor(
@@ -102,12 +105,26 @@ export class InstanceAiCloudBrowserService {
 			domainGate,
 			logger: this.logger,
 		});
-		this.serversByTaskId.set(taskId, { userId, server });
+		this.serversByTaskId.set(taskId, { userId, threadId, server });
 		return server;
 	}
 
 	findServer(taskId: string): CloudBrowserLocalMcpServer | undefined {
 		return this.serversByTaskId.get(taskId)?.server;
+	}
+
+	/**
+	 * The live view of the task's browser, for its owner only. A task that another user or thread
+	 * owns reads as not found, so the response does not tell whether it exists.
+	 */
+	async getLiveView(
+		userId: string,
+		threadId: string,
+		taskId: string,
+	): Promise<InstanceAiCloudBrowserLiveViewResponse> {
+		const entry = this.serversByTaskId.get(taskId);
+		if (entry?.userId !== userId || entry.threadId !== threadId) return { status: 'not-found' };
+		return await entry.server.getLiveView();
 	}
 
 	/** Ends the task's browser and forgets its server. Called when the task ends. */
@@ -146,6 +163,14 @@ export class InstanceAiCloudBrowserService {
 					attribution: { instanceAiThreadId: threadId, instanceAiTaskId: taskId },
 					sessionId,
 				}),
+			getSessionLiveViewUrl: async ({ userId, threadId, taskId }, sessionId) => {
+				const { debuggerFullscreenUrl } = await this.aiGatewayBrowserUseService.getLiveView({
+					userId,
+					attribution: { instanceAiThreadId: threadId, instanceAiTaskId: taskId },
+					sessionId,
+				});
+				return debuggerFullscreenUrl;
+			},
 		};
 	}
 }
