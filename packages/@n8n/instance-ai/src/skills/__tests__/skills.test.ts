@@ -389,7 +389,12 @@ describe('Instance AI skills', () => {
 			'workflow_builder_executions',
 		]);
 		expect(skill?.description).toContain('Load before calling workflow_builder_build_workflow');
-		expect(skill?.description).toContain('Default path for all single-workflow work');
+		expect(skill?.description).not.toContain('Default path');
+		expect(skill?.description).toContain('new one-off workflows');
+		expect(skill?.description).toContain('Once the user wants a workflow, load it before you ask');
+		expect(skill?.description).toContain(
+			'For any other new workflow, load intent-recognition first when it is listed',
+		);
 		expect(skill?.description).toContain('workflow-sdk validate');
 		expect(skill?.description).toContain('load data-table-manager first');
 		expect(skill?.description).toContain(

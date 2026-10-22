@@ -241,6 +241,10 @@ class BufferingTestIntegration extends AgentChatIntegration {
 	readonly displayLabel = 'Test Buffered';
 	readonly displayIcon = 'circle';
 	readonly disableStreaming = true;
+	buildOriginDraft() {
+		return undefined;
+	}
+
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		return {};
 	}
@@ -253,6 +257,10 @@ class StreamingTestIntegration extends AgentChatIntegration {
 	readonly description = '';
 	readonly displayLabel = 'Test Streaming';
 	readonly displayIcon = 'circle';
+	buildOriginDraft() {
+		return undefined;
+	}
+
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		return {};
 	}
@@ -271,6 +279,10 @@ class FormattedBufferedTestIntegration extends AgentChatIntegration {
 			`chat:${thread.adapter?.botUserId ?? 'bot'}-${thread.id}`,
 		toSdk: (threadId: string) => threadId.split('-').slice(1).join('-'),
 	};
+	buildOriginDraft() {
+		return undefined;
+	}
+
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		return {};
 	}
@@ -287,6 +299,10 @@ class RestrictedTestIntegration extends AgentChatIntegration {
 	isUserAllowed(author: Author): boolean {
 		return author.userId === 'allowed-user';
 	}
+	buildOriginDraft() {
+		return undefined;
+	}
+
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		return {};
 	}
@@ -3531,6 +3547,52 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.startTyping).not.toHaveBeenCalled();
 			expect(thread.post).not.toHaveBeenCalled();
 		});
+
+		it('queues the typed platform context of the incoming message', async () => {
+			const { bot, handlers } = makeBot();
+			const queue = mock<AgentMessageQueueService>();
+			queue.enqueue.mockResolvedValue({ status: 'accepted', item: mock<AgentMessageQueue>() });
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				makeAgentExecutor([finishChunk]) as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{ type: 'slack', credentialId: 'cred-1' } as unknown as AgentIntegrationConfig,
+				undefined,
+				undefined,
+				undefined,
+				queue,
+			);
+			const thread = {
+				...makeThread('slack:C1:1.2', {
+					decodeThreadId: vi.fn().mockReturnValue({ channel: 'C1', threadTs: '1.2' }),
+				} as unknown as FakeThread['adapter']),
+				isDM: false,
+				channel: { fetchMetadata: vi.fn().mockResolvedValue({ name: 'general' }) },
+			};
+
+			await handlers.subscribed!(thread, {
+				text: 'hi',
+				author: { userId: 'u1', userName: 'user1' },
+				raw: { team_id: 'T1' },
+			});
+
+			expect(queue.enqueue).toHaveBeenCalledWith(
+				expect.objectContaining({
+					payload: expect.objectContaining({
+						integrationOrigin: {
+							type: 'slack',
+							workspaceId: 'T1',
+							conversationKind: 'channel',
+							channelId: 'C1',
+							channelName: 'general',
+						},
+					}),
+				}),
+			);
+		});
 	});
 
 	describe('status handle cleanup', () => {
@@ -3546,6 +3608,10 @@ describe('AgentChatBridge — consumeStream', () => {
 				readonly displayLabel = 'Test Status Handle';
 				readonly displayIcon = 'circle';
 				readonly disableStreaming = true;
+				buildOriginDraft() {
+					return undefined;
+				}
+
 				async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 					return {};
 				}
@@ -4043,6 +4109,10 @@ class ListeningTestIntegration extends AgentChatIntegration {
 	getReplyExpectation({ message }: { message: { isMention?: boolean } }): 'required' | 'optional' {
 		return message.isMention ? 'required' : 'optional';
 	}
+	buildOriginDraft() {
+		return undefined;
+	}
+
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		return {};
 	}

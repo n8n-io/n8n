@@ -109,6 +109,7 @@ describe('LogStreamingEventRelay', () => {
 					credentials: {
 						matched: 1,
 						created: 0,
+						updated: 0,
 						requirements: 1,
 					},
 					dataTables: {
@@ -3060,6 +3061,60 @@ describe('LogStreamingEventRelay', () => {
 					_firstName: 'Ninth',
 					_lastName: 'Admin',
 					globalRole: 'global:admin',
+				},
+			});
+		});
+
+		it('should log `public-api-rate-limit.enabled` when public_api_rate_limit is turned on', () => {
+			const event: RelayEventMap['instance-policies-updated'] = {
+				user: {
+					id: 'user707',
+					email: 'admin10@example.com',
+					firstName: 'Tenth',
+					lastName: 'Admin',
+					role: { slug: 'global:owner' },
+				},
+				settingName: 'public_api_rate_limit',
+				value: true,
+			};
+
+			eventService.emit('instance-policies-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.public-api-rate-limit.enabled',
+				payload: {
+					userId: 'user707',
+					_email: 'admin10@example.com',
+					_firstName: 'Tenth',
+					_lastName: 'Admin',
+					globalRole: 'global:owner',
+				},
+			});
+		});
+
+		it('should log `public-api-rate-limit.disabled` when public_api_rate_limit is turned off', () => {
+			const event: RelayEventMap['instance-policies-updated'] = {
+				user: {
+					id: 'user707',
+					email: 'admin10@example.com',
+					firstName: 'Tenth',
+					lastName: 'Admin',
+					role: { slug: 'global:owner' },
+				},
+				settingName: 'public_api_rate_limit',
+				value: false,
+			};
+
+			eventService.emit('instance-policies-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.public-api-rate-limit.disabled',
+				payload: {
+					userId: 'user707',
+					_email: 'admin10@example.com',
+					_firstName: 'Tenth',
+					_lastName: 'Admin',
+					globalRole: 'global:owner',
 				},
 			});
 		});

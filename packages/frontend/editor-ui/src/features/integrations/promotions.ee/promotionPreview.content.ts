@@ -120,18 +120,37 @@ export function describeFieldChanges(
 		.map((field) => ({ field, before: before[field], after: after[field] }));
 }
 
+/** The page loads no workflow files, so a workflow card shows the rename and move of the resource. */
+export function describeWorkflowFieldChanges(context: FieldContext): FieldChange[] {
+	const { resource } = context;
+	const changes: FieldChange[] = [];
+	if (resource.previousName !== undefined) {
+		changes.push({ field: 'name', before: resource.previousName, after: resource.name });
+	}
+	if (resource.previousParentKey !== undefined) {
+		const before = locationOf(context, 'before').location;
+		const after = locationOf(context, 'after').location;
+		changes.push({ field: 'location', before, after });
+	}
+	return changes;
+}
+
 export type DataTableDescription = {
 	/** Column changes of a table that exists on both sides. */
 	changes: PromotionDataTableChange[];
+	/**
+	 * True when the card warns about changes that remove data. Promote cannot know the table on the
+	 * instance that applies the branch, so only Apply warns.
+	 */
+	warnsAboutDataLoss: boolean;
 	/** The columns of a table that the operation creates. */
 	addedColumns: SerializedDataTableColumn[];
-	/** True when a change removes stored values, such as a removed column or a new column type. */
-	hasDataLoss: boolean;
 };
 
 export function describeDataTable(
 	detail: Extract<PromotionResourceDetail, { type: 'dataTable' }>,
 	resource: PromotionResource,
+	direction: PromotionDirection,
 ): DataTableDescription {
 	const changes = resource.change === 'modified' ? (detail.dataTableChanges ?? []) : [];
 	const after = sideState(detail, 'after');
@@ -139,7 +158,7 @@ export function describeDataTable(
 		resource.change === 'added' && after.kind === 'content'
 			? [...after.content.columns].sort((a, b) => a.index - b.index)
 			: [];
-	return { changes, addedColumns, hasDataLoss: changes.some((change) => change.destructive) };
+	return { changes, warnsAboutDataLoss: direction === 'apply', addedColumns };
 }
 
 /** True when the files changed after the preview loaded, so the card can be out of date. */

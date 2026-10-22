@@ -7,10 +7,11 @@ import {
 	type ListAppsQueryDto,
 } from '@n8n/api-types';
 import { ProjectScopeService } from '@n8n/backend-services';
-import type { User } from '@n8n/db';
+import { DbLock, DbLockService, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
+import { appStorageLockSubKey } from './app-storage-lock';
 import type { App } from './app.entity';
 import { AppRepository } from './app.repository';
 
@@ -33,6 +34,7 @@ export class AppsService {
 	constructor(
 		private readonly appRepository: AppRepository,
 		private readonly projectScopeService: ProjectScopeService,
+		private readonly locks: DbLockService,
 	) {}
 
 	async createApp(projectId: string, dto: CreateAppDto): Promise<AppResponse> {
@@ -42,7 +44,7 @@ export class AppsService {
 
 	async getApp(projectId: string, appId: string): Promise<AppResponse> {
 		this.assertValidAppId(appId);
-		const app = await this.appRepository.findOneBy({ id: appId, projectId });
+		const app = await this.appRepository.findInProject(projectId, appId);
 		if (!app) throw new NotFoundError('App not found');
 		return toResponse(app);
 	}
@@ -71,9 +73,12 @@ export class AppsService {
 
 	async deleteApp(projectId: string, appId: string) {
 		this.assertValidAppId(appId);
-		// TODO: need to clean up resources related to app versions here, once it's added
-		const result = await this.appRepository.delete({ id: appId, projectId });
-		if (!result.affected) {
+		const deleted = await this.locks.withLockContext(
+			DbLock.APPS_STORAGE,
+			async (ctx) => await this.appRepository.deleteInProject(projectId, appId, ctx),
+			{ subKey: appStorageLockSubKey(appId) },
+		);
+		if (!deleted) {
 			throw new NotFoundError('App not found');
 		}
 	}

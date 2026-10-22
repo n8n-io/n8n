@@ -81,6 +81,21 @@ graph TB
     end
 ```
 
+## Internal self-healing invocation
+
+`InstanceAiService.startSelfHealingRun` registers one internal run in the existing host lifecycle.
+The CLI `SelfHealingAgentService` prepares the captured workflow baseline and calls
+`createSelfHealingAgent` from this package. The dedicated factory selects its prompt, skill,
+restricted tools, and structured output schema together. It uses the shared SDK loop,
+storage, sandbox, tracing, and billing services.
+
+The producer uses `ia-self-healing:<actorId>` as its storage resource.
+The actor remains separate for authorization and billing.
+Existing resource ownership checks exclude the thread from public chat and conversation history.
+This factory is not a selectable chat profile. It requires a backend candidate verifier.
+See the [self-healing contract](../../../cli/src/modules/instance-ai/self-healing/README.md)
+for invocation input, output, cleanup, and result acceptance.
+
 ## Deep Agent Architecture
 
 The system implements the four pillars of the deep agent pattern:
