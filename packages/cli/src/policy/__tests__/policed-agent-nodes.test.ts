@@ -5,7 +5,11 @@ import { mock } from 'vitest-mock-extended';
 
 import { NodeTypes } from '@/node-types';
 
-import { toPolicedNodes, withInlineAgentToolNodes } from '../policed-agent-nodes';
+import {
+	toPolicedMcpNodes,
+	toPolicedNodes,
+	withInlineAgentToolNodes,
+} from '../policed-agent-nodes';
 
 const nodeTypes = mockInstance(NodeTypes);
 
@@ -150,7 +154,7 @@ describe('toPolicedNodes, MCP servers', () => {
 	it('turns a server into one node that runs the MCP client', () => {
 		expect(toPolicedNodes([], [server])).toEqual([
 			{
-				id: 'agent-mcp-0',
+				id: 'agent-mcp-0-0',
 				name: 'Docs',
 				type: MCP_CLIENT_TOOL_NODE_TYPE,
 				typeVersion: 1,
@@ -168,7 +172,7 @@ describe('toPolicedNodes, MCP servers', () => {
 		};
 
 		expect(toPolicedNodes([], [registryServer]).map((node) => [node.id, node.type])).toEqual([
-			['agent-mcp-0', '@n8n/mcp-registry.github'],
+			['agent-mcp-0-0', '@n8n/mcp-registry.github'],
 			['agent-mcp-0-1', MCP_CLIENT_TOOL_NODE_TYPE],
 		]);
 	});
@@ -187,7 +191,7 @@ describe('toPolicedNodes, MCP servers', () => {
 	it('keeps tool nodes and server nodes side by side', () => {
 		expect(toPolicedNodes([dateTimeTool], [server]).map((node) => node.id)).toEqual([
 			'agent-tool-0',
-			'agent-mcp-0',
+			'agent-mcp-0-0',
 		]);
 	});
 
@@ -195,12 +199,32 @@ describe('toPolicedNodes, MCP servers', () => {
 		expect(toPolicedNodes([dateTimeTool]).map((node) => node.id)).toEqual(['agent-tool-0']);
 	});
 
-	it.each([undefined, null, 'servers', [null, 'x', {}, { name: 1 }]])(
+	it.each([undefined, null, 'servers', [null, 'x']])(
 		'returns no server nodes for malformed input %p',
 		(servers) => {
 			expect(toPolicedNodes([], servers)).toEqual([]);
 		},
 	);
+
+	it('still polices a server without a usable name, under a name from its position', () => {
+		const nodes = toPolicedNodes([], [{}, { name: 1 }, { name: ' ' }]);
+
+		expect(nodes.map(({ name, type }) => [name, type])).toEqual([
+			['MCP server 1', MCP_CLIENT_TOOL_NODE_TYPE],
+			['MCP server 2', MCP_CLIENT_TOOL_NODE_TYPE],
+			['MCP server 3', MCP_CLIENT_TOOL_NODE_TYPE],
+		]);
+	});
+
+	it('reads the servers on their own, as toPolicedNodes does next to the tools', () => {
+		expect(toPolicedMcpNodes([server])).toEqual(toPolicedNodes([], [server]));
+	});
+
+	it('does not police an empty registry type', () => {
+		const nodes = toPolicedNodes([], [{ ...server, metadata: { nodeTypeName: '' } }]);
+
+		expect(nodes.map(({ type }) => type)).toEqual([MCP_CLIENT_TOOL_NODE_TYPE]);
+	});
 });
 
 describe('withInlineAgentToolNodes', () => {
@@ -228,7 +252,7 @@ describe('withInlineAgentToolNodes', () => {
 		const embedded = withInlineAgentToolNodes([agentNode]).slice(1);
 
 		expect(embedded.map((node) => [node.id, node.type])).toEqual([
-			['n1-mcp-0', MCP_CLIENT_TOOL_NODE_TYPE],
+			['n1-mcp-0-0', MCP_CLIENT_TOOL_NODE_TYPE],
 		]);
 	});
 

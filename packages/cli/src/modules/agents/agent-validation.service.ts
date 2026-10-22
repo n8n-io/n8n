@@ -36,7 +36,11 @@ import {
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 import { deniedNodeTypes } from '@/modules/type-availability-policies/type-violation';
 import { NodeTypes } from '@/node-types';
-import { toPolicedNodes, withInlineAgentToolNodes } from '@/policy/policed-agent-nodes';
+import {
+	toPolicedMcpNodes,
+	toPolicedNodes,
+	withInlineAgentToolNodes,
+} from '@/policy/policed-agent-nodes';
 import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
@@ -708,7 +712,7 @@ export class AgentValidationService {
 
 		const servers = config.mcpServers ?? [];
 		for (let index = 0; index < servers.length; index++) {
-			const restriction = firstDenied(toPolicedNodes([], [servers[index]]));
+			const restriction = firstDenied(toPolicedMcpNodes([servers[index]]));
 			if (!restriction) continue;
 
 			mcpIndexes.add(index);
