@@ -37,6 +37,7 @@ import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
 import { AgentValidationService } from './agent-validation.service';
+import type { AgentPublishHistory } from './entities/agent-publish-history.entity';
 import type { AgentHistory } from './entities/agent-history.entity';
 import type { Agent, ProjectAgent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
@@ -486,10 +487,20 @@ export class AgentPublishService {
 
 		const versions = await this.agentHistoryRepository.findByAgentId(agentId, take, skip);
 
-		return versions.map((version) => this.versionSummary(agent, version));
+		const publications = await this.publishHistory.findLatestForVersions(
+			agentId,
+			versions.map(({ versionId }) => versionId),
+		);
+		return versions.map((version) =>
+			this.versionSummary(agent, version, publications.get(version.versionId)),
+		);
 	}
 
-	private versionSummary(agent: Agent, version: AgentHistory): AgentVersionListItemDto {
+	private versionSummary(
+		agent: Agent,
+		version: AgentHistory,
+		publication?: AgentPublishHistory,
+	): AgentVersionListItemDto {
 		return {
 			versionId: version.versionId,
 			agentId: version.agentId,
@@ -500,6 +511,15 @@ export class AgentPublishService {
 			isCurrent: version.versionId === agent.versionId,
 			name: version.name ?? null,
 			description: version.description ?? null,
+			...(publication
+				? {
+						lastPublished: {
+							author: publication.author,
+							createdAt: publication.createdAt.toISOString(),
+							isLegacy: publication.isLegacy,
+						},
+					}
+				: {}),
 		};
 	}
 
@@ -511,7 +531,8 @@ export class AgentPublishService {
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 		const version = await this.agentHistoryRepository.findSummary(agentId, versionId);
 		if (!version) throw new NotFoundError(`Version "${versionId}" not found`);
-		return this.versionSummary(agent, version);
+		const publications = await this.publishHistory.findLatestForVersions(agentId, [versionId]);
+		return this.versionSummary(agent, version, publications.get(versionId));
 	}
 
 	async hasVersionHistory(agentId: string): Promise<boolean> {

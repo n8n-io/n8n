@@ -127,6 +127,11 @@ describe('Agent version history', () => {
 			{ event: 'activated', isActive: false, name: 'Release' },
 		]);
 		expect(events[2].endedAt).toBe(events[1].createdAt);
+		expect((await service.getVersionSummary(agentId, projectId, versionId)).lastPublished).toEqual({
+			author: events[0].author,
+			createdAt: events[0].createdAt,
+			isLegacy: false,
+		});
 	});
 
 	it('rolls back labels and activation when the publication event cannot be saved', async () => {

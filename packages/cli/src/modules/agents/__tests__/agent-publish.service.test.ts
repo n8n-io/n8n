@@ -135,6 +135,7 @@ function makeService() {
 		async () => await agentRepository.findByIdAndProjectId(agentId, projectId),
 	);
 	publishHistory.hasPublication.mockResolvedValue(false);
+	publishHistory.findLatestForVersions.mockResolvedValue(new Map());
 	agentRepository.saveDraftFenced.mockResolvedValue(true);
 	agentHistoryRepository.saveVersion.mockResolvedValue(makeHistory());
 	customToolsService.snapshotConfiguredTools.mockReturnValue(null);

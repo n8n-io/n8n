@@ -265,6 +265,7 @@ export interface AgentVersionListItemDto {
 	name?: string | null;
 	description?: string | null;
 	isCurrent?: boolean;
+	lastPublished?: Pick<AgentPublishHistoryItemDto, 'author' | 'createdAt' | 'isLegacy'>;
 }
 
 export interface AgentPublishHistoryItemDto {
