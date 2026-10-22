@@ -19,8 +19,15 @@ vi.mock('vue-router', () => ({
 	RouterLink: vi.fn(),
 }));
 
-const ModalStub = {
-	template: '<div><slot name="header" /><slot name="content" /><slot name="footer" /></div>',
+const AlertDialogStub = {
+	props: ['title', 'description', 'actionLabel', 'cancelLabel'],
+	template: `
+		<div role="alertdialog">
+			<h2>{{ title }}</h2>
+			<p>{{ description }}</p>
+			<slot />
+		</div>
+	`,
 };
 
 const renderModal = (workflowId: string) =>
@@ -30,7 +37,7 @@ const renderModal = (workflowId: string) =>
 			data: { workflowId, versionName: 'v3', eventBus: createEventBus() },
 		},
 		pinia: createTestingPinia(),
-		global: { stubs: { Modal: ModalStub } },
+		global: { stubs: { AlertDialog: AlertDialogStub } },
 	});
 
 const noCounts = {
