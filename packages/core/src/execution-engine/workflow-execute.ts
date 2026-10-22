@@ -1851,6 +1851,19 @@ export class WorkflowExecute {
 		];
 	}
 
+	/**
+	 * Wait before the next retry of a node, unless cancelled.
+	 * Returns whether the retry may run, so the caller stops retrying after a cancel.
+	 */
+	private async waitForRetry(waitBetweenTries: number): Promise<boolean> {
+		if (this.isCancelled) return false;
+
+		// TODO(legacy): Improve that in the future and check if other nodes can be executed in the meantime
+		await sleep(waitBetweenTries, this.abortController.signal).catch(() => {});
+
+		return !this.isCancelled;
+	}
+
 	/** The pinned output of a node, or undefined if the node has none. */
 	private getPinnedOutput(node: INode): INodeExecutionData[][] | undefined {
 		const { pinData } = this.runExecutionData.resultData;
@@ -2364,18 +2377,11 @@ export class WorkflowExecute {
 					for (let tryIndex = 0; tryIndex < maxTries; tryIndex++) {
 						try {
 							if (tryIndex !== 0) {
+								// Keep the error of the previous try if the execution was cancelled
+								if (!(await this.waitForRetry(waitBetweenTries))) break;
+
 								// Reset executionError from previous error try
 								executionError = undefined;
-								if (waitBetweenTries !== 0) {
-									// TODO: Improve that in the future and check if other nodes can
-									//       be executed in the meantime
-
-									await new Promise((resolve) => {
-										setTimeout(() => {
-											resolve(undefined);
-										}, waitBetweenTries);
-									});
-								}
 							}
 
 							const pinnedOutput = this.getPinnedOutput(executionNode);
@@ -2404,7 +2410,7 @@ export class WorkflowExecute {
 								let nodeFailed = checkFailure(runNodeData);
 
 								while (nodeFailed && tryIndex !== maxTries - 1) {
-									await sleep(waitBetweenTries);
+									if (!(await this.waitForRetry(waitBetweenTries))) break;
 
 									runNodeData = await this.runNode(
 										workflow,
