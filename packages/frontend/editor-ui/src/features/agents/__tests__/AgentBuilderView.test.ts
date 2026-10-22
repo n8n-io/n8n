@@ -2981,7 +2981,8 @@ describe('AgentBuilderView — configuration validation', () => {
 		async (isRunnable) => {
 			getAgentMock.mockResolvedValue(makeAgentResponse({ isRunnable }));
 			intendedConfig = {
-				...intendedConfig,
+				name: 'Agent One',
+				...defaultLlmConfig,
 				instructions: 'Help the user',
 				tools: [{ type: 'custom', id: 'custom_tool' }],
 			};
