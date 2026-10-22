@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
 import type { Scope } from '@n8n/permissions';
-import type { ExecutionListPagination } from '@n8n/api-types';
+import type { ExecutionListPagination, ManualRunResponse } from '@n8n/api-types';
 
 export type ExecutionFilterMetadata = {
 	key: string;
@@ -70,8 +70,10 @@ export interface IExecutionFlattedResponse extends IExecutionFlatted {
 export interface IExecutionPushResponse {
 	executionId?: string;
 	waitingForWebhook?: boolean;
-	/** Names of the trigger nodes whose test webhooks the backend registered for this run. */
-	registeredTriggerNodes?: string[];
+	registeredTriggerNodes?: Extract<
+		ManualRunResponse,
+		{ waitingForWebhook: true }
+	>['registeredTriggerNodes'];
 }
 
 export interface IExecutionResponse extends IExecutionBase {
