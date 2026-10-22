@@ -310,7 +310,11 @@ describe('TeamsManagerTokenService', () => {
 			throw new UserError('no app with version 2');
 		});
 
-		await expect(service.acquire(credential, GRAPH_RESOURCE)).rejects.toThrow(
+		const error = await service.acquire(credential, GRAPH_RESOURCE).catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(BadRequestError);
+		expect(error).toHaveProperty(
+			'message',
 			'Reconnect the Microsoft Teams credential to use the recommended setup.',
 		);
 		expect(credentialsOverwrites.getOverwrites).toHaveBeenCalledWith(
@@ -329,7 +333,11 @@ describe('TeamsManagerTokenService', () => {
 	it('refuses when the instance has no manager client credentials', async () => {
 		credentialsOverwrites.getOverwrites.mockReturnValue(undefined as never);
 
-		await expect(service.acquire(credential, GRAPH_RESOURCE)).rejects.toThrow(
+		const error = await service.acquire(credential, GRAPH_RESOURCE).catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(BadRequestError);
+		expect(error).toHaveProperty(
+			'message',
 			'The recommended Microsoft Teams setup is not available here.',
 		);
 		expect(request).not.toHaveBeenCalled();

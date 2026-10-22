@@ -1328,7 +1328,11 @@ describe('Slack setup services', () => {
 		it('should ask for a reconnect when the app of the stored version is gone', async () => {
 			setUp('missing-app');
 
-			await expect(readSettings()).rejects.toThrow(
+			const error = await readSettings().catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(BadRequestError);
+			expect(error).toHaveProperty(
+				'message',
 				'Reconnect the Slack credential to use the managed app',
 			);
 			expect(requestMock).not.toHaveBeenCalled();
@@ -1337,7 +1341,11 @@ describe('Slack setup services', () => {
 		it('should keep the message for a credential that is not managed', async () => {
 			setUp('not-managed');
 
-			await expect(readSettings()).rejects.toThrow(
+			const error = await readSettings().catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(BadRequestError);
+			expect(error).toHaveProperty(
+				'message',
 				'The selected Slack credential does not use managed OAuth',
 			);
 			expect(requestMock).not.toHaveBeenCalled();
