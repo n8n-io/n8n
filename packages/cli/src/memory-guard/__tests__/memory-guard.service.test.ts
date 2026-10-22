@@ -31,6 +31,14 @@ import { ProductionHold } from '../production-hold';
 import type { RunDataEstimate, RunDataTracker } from '../run-data-tracker';
 import { MemoryStoppedExecutions } from '../memory-stopped-executions';
 
+// A real full collection on every sample makes the tests slow. Only the test that checks
+// what the stop releases runs real collections.
+const { forceGc } = vi.hoisted(() => ({ forceGc: vi.fn() }));
+vi.mock('../memory-guard.utils', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../memory-guard.utils')>()),
+	exposeGc: () => forceGc,
+}));
+
 vi.mock('../memory-usage', () => ({
 	getContainerLimit: () => 1_000,
 	readMemoryUsage: vi.fn(),
@@ -193,6 +201,7 @@ describe('MemoryGuardService', () => {
 		guard.shutdown();
 		vi.useRealTimers();
 		vi.clearAllMocks();
+		forceGc.mockReset();
 	});
 
 	describe('hold', () => {
@@ -657,6 +666,9 @@ describe('MemoryGuardService', () => {
 		});
 
 		it('should not hold the result of a stopped engine when it measures memory', async () => {
+			const { exposeGc } =
+				await vi.importActual<typeof import('../memory-guard.utils')>('../memory-guard.utils');
+			forceGc.mockImplementation(exposeGc()!);
 			// The engine result references the full run data, which the stop must free.
 			const addEngineWithResult = () => {
 				const result = { data: { items: new Array(100_000).fill(0) } } as unknown as IRun;
