@@ -1,6 +1,6 @@
 import { createWorkflow, testDb } from '@n8n/backend-test-utils';
-import { TestRunRepository } from '@n8n/db';
-import type { IWorkflowDb, WorkflowEntity } from '@n8n/db';
+import { TestCaseExecutionRepository, TestRunRepository, TransactionRunner } from '@n8n/db';
+import type { IWorkflowDb, TestRun, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { createTestCaseExecution, createTestRun } from '@test-integration/db/evaluation';
@@ -78,6 +78,98 @@ describe('TestRunRepository', () => {
 					metrics: { total: 1, success: 1 },
 				}),
 			);
+		});
+	});
+
+	describe('markAsCancelledIfActive', () => {
+		// Multi-main race guard: a cancel that lands after another main has
+		// already finished the run must not overwrite the terminal state.
+		it.each<[TestRun['status'], boolean]>([
+			['new', true],
+			['running', true],
+			['completed', false],
+			['error', false],
+			['cancelled', false],
+		])('a %s run is flipped to cancelled: %s', async (status, flipped) => {
+			const workflow = await createWorkflow();
+			const completedAt = flipped ? null : new Date('2026-01-01T00:00:00.000Z');
+			const run = await createTestRun(workflow.id, { status, completedAt });
+
+			expect(await testRunRepository.markAsCancelledIfActive(run.id)).toBe(flipped);
+
+			const after = await testRunRepository.findOneByOrFail({ id: run.id });
+			if (flipped) {
+				expect(after.status).toBe('cancelled');
+				expect(after.completedAt).toEqual(expect.any(Date));
+			} else {
+				expect(after.status).toBe(status);
+				expect(after.completedAt).toEqual(completedAt);
+			}
+		});
+
+		it('joins the transaction carried by ctx', async () => {
+			const workflow = await createWorkflow();
+			const run = await createTestRun(workflow.id, { status: 'running' });
+			const txRunner = Container.get(TransactionRunner);
+
+			await expect(
+				txRunner.run({}, async (ctx) => {
+					expect(await testRunRepository.markAsCancelledIfActive(run.id, ctx)).toBe(true);
+					throw new Error('roll back');
+				}),
+			).rejects.toThrow('roll back');
+
+			const after = await testRunRepository.findOneByOrFail({ id: run.id });
+			expect(after.status).toBe('running');
+		});
+	});
+
+	describe('markAsCancelled + markAllPendingAsCancelled', () => {
+		it('cancel the run and its pending cases, leaving finished cases untouched', async () => {
+			const workflow = await createWorkflow();
+			const run = await createTestRun(workflow.id, { status: 'running' });
+			const [pendingNew, pendingRunning, finished] = await Promise.all([
+				createTestCaseExecution(run.id, { status: 'new' }),
+				createTestCaseExecution(run.id, { status: 'running' }),
+				createTestCaseExecution(run.id, { status: 'success' }),
+			]);
+			const txRunner = Container.get(TransactionRunner);
+			const testCaseExecutionRepository = Container.get(TestCaseExecutionRepository);
+
+			await txRunner.run({}, async (ctx) => {
+				await testRunRepository.markAsCancelled(run.id, ctx);
+				await testCaseExecutionRepository.markAllPendingAsCancelled(run.id, ctx);
+			});
+
+			const runAfter = await testRunRepository.findOneByOrFail({ id: run.id });
+			expect(runAfter.status).toBe('cancelled');
+			expect(runAfter.completedAt).toEqual(expect.any(Date));
+			const statusOf = async (id: string) =>
+				(await testCaseExecutionRepository.findOneByOrFail({ id })).status;
+			expect(await statusOf(pendingNew.id)).toBe('cancelled');
+			expect(await statusOf(pendingRunning.id)).toBe('cancelled');
+			expect(await statusOf(finished.id)).toBe('success');
+		});
+
+		it('join the transaction carried by ctx', async () => {
+			const workflow = await createWorkflow();
+			const run = await createTestRun(workflow.id, { status: 'running' });
+			const pending = await createTestCaseExecution(run.id, { status: 'new' });
+			const txRunner = Container.get(TransactionRunner);
+			const testCaseExecutionRepository = Container.get(TestCaseExecutionRepository);
+
+			await expect(
+				txRunner.run({}, async (ctx) => {
+					await testRunRepository.markAsCancelled(run.id, ctx);
+					await testCaseExecutionRepository.markAllPendingAsCancelled(run.id, ctx);
+					throw new Error('roll back');
+				}),
+			).rejects.toThrow('roll back');
+
+			const runAfter = await testRunRepository.findOneByOrFail({ id: run.id });
+			const caseAfter = await testCaseExecutionRepository.findOneByOrFail({ id: pending.id });
+			expect(runAfter.status).toBe('running');
+			expect(caseAfter.status).toBe('new');
 		});
 	});
 });

@@ -45,20 +45,24 @@ export function toTokenUsage(
 	const noCache = usage.inputTokenDetails?.noCacheTokens;
 	const cacheRead = usage.inputTokenDetails?.cacheReadTokens;
 	const cacheWrite = usage.inputTokenDetails?.cacheWriteTokens;
-	if (noCache || cacheRead || cacheWrite) {
+	// Keep a reported zero: "no cache hit" and "the provider did not say" are
+	// different facts for readers of the usage.
+	const reported = {
+		...(noCache !== undefined && { noCache }),
+		...(cacheRead !== undefined && { cacheRead }),
+		...(cacheWrite !== undefined && { cacheWrite }),
+	};
+	const hasPositiveDetail = (noCache ?? 0) > 0 || (cacheRead ?? 0) > 0 || (cacheWrite ?? 0) > 0;
+	const openaiCacheRead = hasPositiveDetail
+		? undefined
+		: getOpenAiCachedPromptTokens(providerMetadata);
+	if (openaiCacheRead) {
 		result.inputTokenDetails = {
-			...(noCache && { noCache }),
-			...(cacheRead && { cacheRead }),
-			...(cacheWrite && { cacheWrite }),
+			noCache: Math.max(result.promptTokens - openaiCacheRead, 0),
+			cacheRead: openaiCacheRead,
 		};
-	} else {
-		const openaiCacheRead = getOpenAiCachedPromptTokens(providerMetadata);
-		if (openaiCacheRead) {
-			result.inputTokenDetails = {
-				noCache: Math.max(result.promptTokens - openaiCacheRead, 0),
-				cacheRead: openaiCacheRead,
-			};
-		}
+	} else if (Object.keys(reported).length > 0) {
+		result.inputTokenDetails = reported;
 	}
 
 	if (usage.outputTokenDetails?.reasoningTokens !== undefined) {

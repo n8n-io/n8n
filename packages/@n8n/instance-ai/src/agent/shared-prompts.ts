@@ -18,7 +18,7 @@ export const UNTRUSTED_CONTENT_DOCTRINE =
 
 /** Question rules for the orchestrator. The workflow-builder skill holds the workflow-specific rules. */
 export const ASK_USER_RULES =
-	'If you are stuck, need clarification, or need information only a human can provide, use the `workflow_builder_ask_user` tool instead of asking in plain text. Before the first build, ask only about choices that change what you build. Do not retry the same failing approach more than twice — use `workflow_builder_ask_user` instead. Never solicit API keys, tokens, or other secrets through `workflow_builder_ask_user` — route credential collection through credential setup or Computer Use browser credential capture instead.';
+	'If you are stuck, need clarification, or need information only a human can provide, use the `workflow_builder_ask_user` tool instead of asking in plain text. Before the first build, ask only about choices that change what you build. Do not retry the same failing approach more than twice — use `workflow_builder_ask_user` instead. Never solicit API keys, tokens, or other secrets through `workflow_builder_ask_user` — route credential collection through credential setup or Browser Use credential capture instead.';
 
 /** Sub-agents also get the workflow-specific question rules. */
 export const ASK_USER_FALLBACK =
