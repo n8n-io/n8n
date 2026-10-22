@@ -266,8 +266,18 @@ const isConfirmedActive = computed(() => {
 // Watch for workflow activation
 watch(isConfirmedActive, async (isActive, wasActive) => {
 	if (isActive && !wasActive) {
+		const workflowId = workflowDocumentStore?.value?.workflowId;
+		if (!workflowId) {
+			return;
+		}
+
+		// Ensure settings are loaded before checking firstActivatedAt so an
+		// already-activated workflow does not re-open the checklist on page reload
+		const settings = await workflowsCache.getWorkflowSettings(workflowId);
+		cachedSettings.value = settings;
+
 		// Check if this is the first activation
-		if (!cachedSettings.value?.firstActivatedAt) {
+		if (!settings.firstActivatedAt) {
 			if (isAnyModalOpen.value) {
 				// Defer opening until any open modal closes so the popover
 				// doesn't paint over it.
@@ -285,7 +295,8 @@ watch(isConfirmedActive, async (isActive, wasActive) => {
 		}
 
 		// Update firstActivatedAt after opening popover
-		await workflowsCache.updateFirstActivatedAt(workflowDocumentStore?.value?.workflowId ?? '');
+		await workflowsCache.updateFirstActivatedAt(workflowId);
+		cachedSettings.value = await workflowsCache.getWorkflowSettings(workflowId);
 	}
 });
 
