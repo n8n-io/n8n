@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiTestAgentExamplesPanel.vue
+  s_cdb8e2d26dadad::t_1f95f1d231e62a 47-48,163
+packages/@n8n/agents/src/evals/parse-judge-response.ts
+  s_cdb8e2d26dadad::t_3b0a4a15e1893e 52-53
+  s_cdb8e2d26dadad::t_6dee5fb86909ab 54-56
+packages/@n8n/agents/src/evals/__tests__/parse-judge-response.test.ts
+  s_cdb8e2d26dadad::t_5258ef338d592c 42-43,68
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiTestAgentPreviewPanel.vue
+  s_cdb8e2d26dadad::t_08a25b44b8e843 618
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c9237c75f7bdb0f201cddb6a5cf3d2ead884a157",
+  "prompts": {},
+  "sessions": {
+    "s_cdb8e2d26dadad": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1600a-d56d-71c5-97e1-b1e6fe7943fe",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
