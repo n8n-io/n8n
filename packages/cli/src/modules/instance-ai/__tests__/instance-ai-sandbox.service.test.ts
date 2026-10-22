@@ -529,6 +529,72 @@ describe('InstanceAiSandboxService', () => {
 			expect(setupSandboxWorkspace).toHaveBeenCalledTimes(1);
 		});
 
+		it('reruns workspace setup when the provider recreated the sandbox', async () => {
+			const { service } = createSandboxService({
+				config: {
+					sandboxEnabled: true,
+					sandboxProvider: 'n8n-sandbox',
+					n8nSandboxServiceUrl: 'https://env.sandbox',
+				},
+			});
+			const sandbox = {
+				id: 'sandbox-1',
+				startCount: 1,
+				refreshStatus: vi.fn(async () => {}),
+				_start: vi.fn(async () => {}),
+			};
+			const workspace = { init: vi.fn(async () => {}), destroy: vi.fn(async () => {}) };
+			(createSandbox as Mock).mockResolvedValue(sandbox);
+			(createWorkspace as Mock).mockReturnValue(workspace);
+			(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
+
+			const entry = await service.getOrCreateWorkspace(
+				'thread-1',
+				fakeUser,
+				{} as InstanceAiContext,
+			);
+			expect(sandbox.refreshStatus).not.toHaveBeenCalled();
+			await service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext);
+			expect(sandbox.refreshStatus).toHaveBeenCalledTimes(1);
+			expect(setupSandboxWorkspace).toHaveBeenCalledTimes(1);
+
+			entry?.verifiedBundles.set('skills', 'digest');
+			sandbox._start.mockImplementationOnce(async () => {
+				sandbox.startCount = 2;
+			});
+			await service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext);
+
+			expect(setupSandboxWorkspace).toHaveBeenCalledTimes(2);
+			expect(entry?.verifiedBundles.size).toBe(0);
+			await service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext);
+			expect(setupSandboxWorkspace).toHaveBeenCalledTimes(2);
+		});
+
+		it('leaves setup incomplete when the sandbox is recreated during setup', async () => {
+			const { service } = createSandboxService({
+				config: {
+					sandboxEnabled: true,
+					sandboxProvider: 'n8n-sandbox',
+					n8nSandboxServiceUrl: 'https://env.sandbox',
+				},
+			});
+			const sandbox = { id: 'sandbox-1', startCount: 1, _start: vi.fn(async () => {}) };
+			const workspace = { init: vi.fn(async () => {}), destroy: vi.fn(async () => {}) };
+			(createSandbox as Mock).mockResolvedValue(sandbox);
+			(createWorkspace as Mock).mockReturnValue(workspace);
+			(setupSandboxWorkspace as Mock)
+				.mockImplementationOnce(async () => {
+					sandbox.startCount = 2;
+				})
+				.mockResolvedValue(undefined);
+
+			await service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext);
+			await service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext);
+			await service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext);
+
+			expect(setupSandboxWorkspace).toHaveBeenCalledTimes(2);
+		});
+
 		it('passes the verified bundles of the sandbox to workspace setup', async () => {
 			const { service } = createSandboxService({
 				config: { sandboxEnabled: true, sandboxProvider: 'daytona' },

@@ -18,6 +18,7 @@ export abstract class BaseSandbox implements WorkspaceSandbox {
 	readonly processes?: SandboxProcessManager;
 
 	private startPromise?: Promise<void>;
+	private starts = 0;
 	private stopPromise?: Promise<void>;
 	private destroyPromise?: Promise<void>;
 
@@ -32,6 +33,10 @@ export abstract class BaseSandbox implements WorkspaceSandbox {
 		this.onStartHook = options?.onStart;
 		this.onStopHook = options?.onStop;
 		this.onDestroyHook = options?.onDestroy;
+	}
+
+	get startCount(): number {
+		return this.starts;
 	}
 
 	abstract start(): Promise<void>;
@@ -120,6 +125,9 @@ export abstract class BaseSandbox implements WorkspaceSandbox {
 		this.status = 'pending';
 	}
 
+	/** Providers that can lose the remote out of band override this. */
+	async refreshStatus(): Promise<void> {}
+
 	async ensureRunning(options?: AbortableOptions): Promise<void> {
 		if (this.status === 'destroyed') {
 			throw new Error(`Sandbox "${this.name}" has been destroyed`);
@@ -168,6 +176,7 @@ export abstract class BaseSandbox implements WorkspaceSandbox {
 		try {
 			await this.start();
 			this.status = 'running';
+			this.starts++;
 			try {
 				await this.onStartHook?.({ sandbox: this });
 			} catch {

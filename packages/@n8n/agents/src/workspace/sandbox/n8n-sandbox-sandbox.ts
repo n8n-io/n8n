@@ -5,7 +5,17 @@ import { randomUUID } from 'node:crypto';
 import { BaseSandbox } from './base-sandbox';
 import { toShellCommand } from './shell-command';
 import { raceWithAbort } from '../../sdk/abort';
-import type { CommandResult, ExecuteCommandOptions, ProviderStatus, SandboxInfo } from '../types';
+import type {
+	AbortableOptions,
+	CommandResult,
+	ExecuteCommandOptions,
+	ProviderStatus,
+	SandboxInfo,
+} from '../types';
+
+function isNotFound(error: unknown): boolean {
+	return error instanceof SandboxServiceError && error.status === 404;
+}
 
 export interface N8nSandboxServiceSandboxOptions {
 	/** Lowercase UUID to create or reconnect to; the service generates one when omitted. */
@@ -39,6 +49,8 @@ export class N8nSandboxServiceSandbox extends BaseSandbox {
 	private sandboxId?: string;
 
 	private createdAt?: Date;
+
+	private recoveryPromise?: Promise<void>;
 
 	constructor(private readonly options: N8nSandboxServiceSandboxOptions) {
 		super();
@@ -105,16 +117,19 @@ export class N8nSandboxServiceSandbox extends BaseSandbox {
 		args: string[] = [],
 		options?: ExecuteCommandOptions,
 	): Promise<CommandResult> {
-		await this.ensureRunning({ abortSignal: options?.abortSignal });
-		const result = await this.client.exec(this.requireSandboxId(), {
-			command: toShellCommand(command, args),
-			env: this.compactEnv(options?.env),
-			workdir: options?.cwd,
-			timeoutMs: options?.timeout ?? this.timeout,
-			abortSignal: options?.abortSignal,
-			onStdout: options?.onStdout,
-			onStderr: options?.onStderr,
-		});
+		const result = await this.withClient(
+			async (client, sandboxId) =>
+				await client.exec(sandboxId, {
+					command: toShellCommand(command, args),
+					env: this.compactEnv(options?.env),
+					workdir: options?.cwd,
+					timeoutMs: options?.timeout ?? this.timeout,
+					abortSignal: options?.abortSignal,
+					onStdout: options?.onStdout,
+					onStderr: options?.onStderr,
+				}),
+			options,
+		);
 
 		return {
 			command,
@@ -129,8 +144,58 @@ export class N8nSandboxServiceSandbox extends BaseSandbox {
 		};
 	}
 
+	/**
+	 * Run an operation against the remote sandbox. If the service removed the
+	 * sandbox (idle reaping, runner restart), create it again under the same id
+	 * and retry once. The new sandbox starts empty.
+	 */
+	async withClient<T>(
+		op: (client: SandboxClient, sandboxId: string) => Promise<T>,
+		options?: AbortableOptions,
+	): Promise<T> {
+		const attempt = async () => {
+			await this.ensureRunning({ abortSignal: options?.abortSignal });
+			return await op(this.client, this.requireSandboxId());
+		};
+		try {
+			return await attempt();
+		} catch (error) {
+			// A 404 can also mean a missing file or execution, so ask the service
+			// whether the sandbox itself is gone before recreating it.
+			if (!isNotFound(error) || !(await this.isRemoteGone())) throw error;
+			await this.recover();
+			return await attempt();
+		}
+	}
+
+	override async refreshStatus(): Promise<void> {
+		if (this.status !== 'running' || !this.sandboxId) return;
+		if (await this.isRemoteGone()) this.markNeedsStart();
+	}
+
 	getClient(): SandboxClient {
 		return this.client;
+	}
+
+	private async isRemoteGone(): Promise<boolean> {
+		if (!this.sandboxId) return false;
+		try {
+			await this.client.getSandbox(this.sandboxId);
+			return false;
+		} catch (error) {
+			return isNotFound(error);
+		}
+	}
+
+	/** Concurrent failed operations share one recreate. */
+	private async recover(): Promise<void> {
+		this.recoveryPromise ??= (async () => {
+			this.markNeedsStart();
+			await this.ensureRunning();
+		})().finally(() => {
+			this.recoveryPromise = undefined;
+		});
+		await this.recoveryPromise;
 	}
 
 	private async createSandbox() {
