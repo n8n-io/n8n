@@ -10,7 +10,8 @@ import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
 import type { Response } from 'express';
 import { FileNotFoundError, getHtmlSandboxCSP } from 'n8n-core';
-import { pipeline } from 'node:stream/promises';
+
+import { sendStreamToResponse } from '@/response-helper';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentMessageQueueService } from './agent-message-queue.service';
@@ -174,34 +175,21 @@ export class AgentChatRelayService {
 			throw error;
 		}
 
-		res.setHeader('Content-Type', attachment.mimeType);
-		res.setHeader('Content-Length', attachment.fileSizeBytes);
-		res.setHeader('X-Content-Type-Options', 'nosniff');
-		// Sandbox anything rendered inline: attachments are user-supplied content
-		// served same-origin, so active content in them must never script against
-		// the n8n session (same posture as the binary-data controller).
-		res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
-		// Non-viewable types must not render inline in the browser.
-		if (!ViewableMimeTypes.includes(attachment.mimeType.toLowerCase())) {
-			res.setHeader(
-				'Content-Disposition',
-				`attachment; filename="${sanitizeFilename(attachment.fileName)}"`,
-			);
-		}
-
-		// pipeline destroys the source when the client disconnects mid-transfer,
-		// so aborted downloads don't leak file descriptors or object-store sockets.
-		try {
-			await pipeline(stream, res);
-		} catch (error) {
-			if (
-				error instanceof Error &&
-				'code' in error &&
-				error.code === 'ERR_STREAM_PREMATURE_CLOSE'
-			) {
-				return;
+		await sendStreamToResponse(res, stream, () => {
+			res.setHeader('Content-Type', attachment.mimeType);
+			res.setHeader('Content-Length', attachment.fileSizeBytes);
+			res.setHeader('X-Content-Type-Options', 'nosniff');
+			// Sandbox anything rendered inline: attachments are user-supplied content
+			// served same-origin, so active content in them must never script against
+			// the n8n session (same posture as the binary-data controller).
+			res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
+			// Non-viewable types must not render inline in the browser.
+			if (!ViewableMimeTypes.includes(attachment.mimeType.toLowerCase())) {
+				res.setHeader(
+					'Content-Disposition',
+					`attachment; filename="${sanitizeFilename(attachment.fileName)}"`,
+				);
 			}
-			throw error;
-		}
+		});
 	}
 }

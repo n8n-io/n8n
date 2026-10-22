@@ -16,35 +16,47 @@
 #
 # Validated by ci-owners-validation.yml (`node .github/scripts/owners/owners.mjs --check`).
 
-# Default catch-all (ensures every file gets at least one reviewer)
-*                                                       @n8n-io/catalysts
+# Default catch-all (ensures every file gets at least one reviewer).
+# Developer Platform finds the right owner for unassigned files.
+*                                                       @n8n-io/qa-dx
 
-# Catalysts
+# Core Execution
 
-packages/core/                                          @n8n-io/catalysts
-packages/workflow/                                      @n8n-io/catalysts
+packages/core/                                          @n8n-io/core-execution
+packages/workflow/                                      @n8n-io/core-execution
 packages/workflow/stryker.config.mjs                    @n8n-io/qa-dx
-packages/@n8n/config/                                   @n8n-io/catalysts
-packages/@n8n/backend-common/                           @n8n-io/catalysts
-packages/@n8n/backend-network/                          @n8n-io/catalysts
-packages/@n8n/backend-services/                         @n8n-io/catalysts
+packages/@n8n/db/                                       @n8n-io/core-execution
+packages/@n8n/typeorm/                                  @n8n-io/core-execution
+packages/@n8n/blob-storage/                             @n8n-io/core-execution
+packages/@n8n/engine/                                   @n8n-io/core-execution
+packages/@n8n/task-runner/                              @n8n-io/core-execution
+packages/@n8n/task-runner-python/                       @n8n-io/core-execution
+packages/@n8n/expression-runtime/                       @n8n-io/core-execution
+packages/@n8n/tournament/                               @n8n-io/core-execution
+
+# Core Application
+
+packages/@n8n/scheduler/                                @n8n-io/core-application
+packages/@n8n/config/                                   @n8n-io/core-application
+packages/@n8n/backend-common/                           @n8n-io/core-application
+packages/@n8n/backend-network/                          @n8n-io/core-application
+packages/@n8n/backend-services/                         @n8n-io/core-application
 packages/@n8n/backend-services/src/services/role.service.ts       @n8n-io/iam
 packages/@n8n/backend-services/src/services/role-cache.service.ts @n8n-io/iam
 packages/@n8n/backend-services/src/services/jwt.service.ts @n8n-io/iam
-packages/@n8n/backend-test-utils/                       @n8n-io/catalysts
-packages/@n8n/di/                                       @n8n-io/catalysts
-packages/@n8n/errors/                                   @n8n-io/catalysts
-packages/@n8n/constants/                                @n8n-io/catalysts
-packages/@n8n/utils/                                    @n8n-io/catalysts
-packages/@n8n/api-types/                                @n8n-io/catalysts
+packages/@n8n/backend-test-utils/                       @n8n-io/core-application
+packages/@n8n/di/                                       @n8n-io/core-application
+packages/@n8n/errors/                                   @n8n-io/core-application
+packages/@n8n/constants/                                @n8n-io/core-application
+packages/@n8n/utils/                                    @n8n-io/core-application
+packages/@n8n/api-types/                                @n8n-io/core-application
+packages/@n8n/decorators/                               @n8n-io/core-application
+packages/@n8n/json-schema-to-zod/                       @n8n-io/core-application
+packages/@n8n/crdt/                                     @n8n-io/core-application
+packages/@n8n/extension-sdk/                            @n8n-io/core-application
+
+# Other @n8n packages
 packages/@n8n/workflow-sdk/                             @n8n-io/ai-assistant
-packages/@n8n/task-runner/                              @n8n-io/catalysts
-packages/@n8n/task-runner-python/                       @n8n-io/catalysts
-packages/@n8n/expression-runtime/                       @n8n-io/catalysts
-packages/@n8n/db/                                       @n8n-io/catalysts
-packages/@n8n/json-schema-to-zod/                       @n8n-io/catalysts
-packages/@n8n/crdt/                                     @n8n-io/catalysts
-packages/@n8n/extension-sdk/                            @n8n-io/catalysts
 packages/@n8n/eslint-config/                            @n8n-io/qa-dx required
 packages/@n8n/typescript-config/                        @n8n-io/qa-dx
 
@@ -69,22 +81,29 @@ packages/@n8n/cli/src/commands/variable/                @n8n-io/ligo
 packages/@n8n/cli/src/commands/skill/                   @n8n-io/context
 
 # packages/cli
-packages/cli/                                           @n8n-io/catalysts
-packages/cli/src/scaling/                               @n8n-io/catalysts
-packages/cli/src/concurrency/                           @n8n-io/catalysts
-packages/cli/src/execution-lifecycle/                   @n8n-io/catalysts
-packages/cli/src/executions/                            @n8n-io/catalysts
-packages/cli/src/task-runners/                          @n8n-io/catalysts
-packages/cli/src/webhooks/                              @n8n-io/catalysts
-packages/cli/src/push/                                  @n8n-io/catalysts
-packages/cli/src/commands/                              @n8n-io/catalysts
-packages/cli/src/config/                                @n8n-io/catalysts
-packages/cli/src/eventbus/                              @n8n-io/catalysts
-packages/cli/src/events/                                @n8n-io/catalysts
-packages/cli/src/security-audit/                        @n8n-io/catalysts
-packages/cli/src/modules/workflow-index/                @n8n-io/catalysts
-packages/cli/src/modules/breaking-changes/              @n8n-io/catalysts
-packages/cli/src/workflows/publication/                 @n8n-io/catalysts required
+packages/cli/                                           @n8n-io/core-application
+packages/cli/src/webhooks/                              @n8n-io/core-application
+packages/cli/src/push/                                  @n8n-io/core-application
+packages/cli/src/collaboration/                         @n8n-io/core-application
+packages/cli/src/commands/                              @n8n-io/core-application
+packages/cli/src/config/                                @n8n-io/core-application
+packages/cli/src/security-audit/                        @n8n-io/core-application
+packages/cli/src/modules/workflow-index/                @n8n-io/core-application
+packages/cli/src/modules/breaking-changes/              @n8n-io/core-application
+packages/cli/src/workflows/publication/                 @n8n-io/core-application required
+
+packages/cli/src/scaling/                               @n8n-io/core-execution
+packages/cli/src/concurrency/                           @n8n-io/core-execution
+packages/cli/src/execution-lifecycle/                   @n8n-io/core-execution
+packages/cli/src/executions/                            @n8n-io/core-execution
+packages/cli/src/task-runners/                          @n8n-io/core-execution
+packages/cli/src/binary-data/                           @n8n-io/core-execution
+packages/cli/src/eventbus/                              @n8n-io/core-execution
+packages/cli/src/events/                                @n8n-io/core-execution
+packages/cli/src/modules/engine-v2/                     @n8n-io/core-execution
+packages/cli/src/workflow-runner.ts                     @n8n-io/core-execution
+packages/cli/src/wait-tracker.ts                        @n8n-io/core-execution
+packages/cli/src/active-executions.ts                   @n8n-io/core-execution
 
 packages/cli/src/auth/                                  @n8n-io/iam
 packages/cli/src/credentials/                           @n8n-io/iam
@@ -110,9 +129,7 @@ packages/cli/src/modules/source-control.ee/             @n8n-io/ligo
 packages/cli/src/modules/external-secrets.ee/           @n8n-io/ligo
 packages/modules/insights/                              @n8n-io/ligo
 
-packages/cli/src/collaboration/                         @n8n-io/catalysts
-packages/cli/src/binary-data/                           @n8n-io/catalysts
-packages/cli/src/posthog/                               @n8n-io/growth
+packages/cli/src/posthog/                              @n8n-io/growth
 packages/cli/src/modules/data-table/                    @n8n-io/knowledge
 packages/cli/src/modules/knowledge/                     @n8n-io/knowledge
 
@@ -148,7 +165,7 @@ packages/cli/src/controllers/folder.controller.ts       						@n8n-io/context
 packages/cli/src/controllers/tags.controller.ts         						@n8n-io/context
 packages/cli/src/controllers/binary-data.controller.ts  						@n8n-io/knowledge
 packages/cli/src/controllers/posthog.controller.ts      						@n8n-io/context
-packages/cli/src/controllers/translation.controller.ts  						@n8n-io/catalysts
+packages/cli/src/controllers/translation.controller.ts  						@n8n-io/core-application
 packages/cli/src/controllers/project.controller.ts      						@n8n-io/ligo
 packages/cli/src/controllers/workflow-statistics.controller.ts 			@n8n-io/ligo
 packages/cli/src/controllers/node-types.controller.ts   						@n8n-io/nodes
@@ -171,7 +188,7 @@ packages/cli/src/services/annotation-tag.service.ee.ts  @n8n-io/context
 packages/cli/src/services/folder.service.ts             @n8n-io/context
 packages/cli/src/services/tag.service.ts                @n8n-io/context
 packages/cli/src/services/cta.service.ts                @n8n-io/knowledge
-packages/cli/src/services/frontend.service.ts           @n8n-io/catalysts
+packages/cli/src/services/frontend.service.ts           @n8n-io/core-application
 packages/cli/src/services/banner.service.ts             @n8n-io/context
 packages/cli/src/services/project.service.ee.ts         @n8n-io/ligo
 packages/cli/src/services/workflow-statistics.service.ts @n8n-io/ligo
@@ -267,7 +284,6 @@ packages/nodes-base/nodes/Form/                         @n8n-io/nodes required
 packages/nodes-base/nodes/Wait/                         @n8n-io/nodes required
 packages/nodes-base/utils/sendAndWait/                  @n8n-io/nodes required
 packages/nodes-base/nodes/Git/                          @n8n-io/nodes required
-packages/@n8n/decorators/                               @n8n-io/catalysts
 packages/node-dev/                                      @n8n-io/nodes
 packages/@n8n/imap/                                     @n8n-io/nodes
 packages/@n8n/computer-use/                             @n8n-io/nodes required

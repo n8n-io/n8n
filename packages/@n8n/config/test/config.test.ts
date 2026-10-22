@@ -226,11 +226,11 @@ describe('GlobalConfig', () => {
 				enabled: false,
 				globalReadLimit: 1200,
 				globalReadWindowSeconds: 60,
-				globalWriteLimit: 300,
+				globalWriteLimit: 600,
 				globalWriteWindowSeconds: 60,
-				endpointReadLimit: 600,
+				endpointReadLimit: 1000,
 				endpointReadWindowSeconds: 60,
-				endpointWriteLimit: 200,
+				endpointWriteLimit: 500,
 				endpointWriteWindowSeconds: 60,
 			},
 		},
@@ -606,6 +606,9 @@ describe('GlobalConfig', () => {
 			webhookResponseRelayOffloadEnabled: false,
 			preExecuteErrorCreatesExecution: false,
 		},
+		memoryGuard: {
+			enabled: false,
+		},
 		diagnostics: {
 			enabled: true,
 			frontendConfig: '1zPn9bgWPzlQc0p8Gj1uiK6DOTn;https://telemetry.n8n.io',
@@ -706,6 +709,7 @@ describe('GlobalConfig', () => {
 			lazyAcquire: false,
 			compileCache: false,
 			nativeEvaluation: false,
+			nativeEvaluationVerifySample: 0,
 		},
 		instanceSettingsLoader: {
 			ownerManagedByEnv: false,
@@ -1070,7 +1074,7 @@ describe('GlobalConfig', () => {
 			(value) => {
 				process.env = { N8N_PUBLIC_API_RATE_LIMIT_GLOBAL_WRITE_LIMIT: value };
 				const config = Container.get(GlobalConfig);
-				expect(config.publicApi.rateLimit.globalWriteLimit).toBe(300);
+				expect(config.publicApi.rateLimit.globalWriteLimit).toBe(600);
 				expect(consoleWarnMock).toHaveBeenCalledWith(
 					expect.stringContaining('N8N_PUBLIC_API_RATE_LIMIT_GLOBAL_WRITE_LIMIT'),
 				);

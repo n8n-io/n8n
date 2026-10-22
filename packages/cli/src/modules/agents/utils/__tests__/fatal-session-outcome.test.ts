@@ -28,6 +28,7 @@ function record(overrides: Partial<MessageRecord> = {}): MessageRecord {
 		startTime: 0,
 		duration: 1,
 		error: null,
+		guardrailCode: null,
 		...overrides,
 	};
 }
