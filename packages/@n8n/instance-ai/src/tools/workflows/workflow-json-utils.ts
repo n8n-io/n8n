@@ -9,6 +9,7 @@ import {
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	isTriggerNodeType as isCanonicalTriggerNodeType,
+	remapToolAvailabilitySourceIds,
 } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
@@ -316,6 +317,7 @@ export async function preserveExistingNodeIds(
 	for (const group of json.nodeGroups ?? []) {
 		group.nodeIds = group.nodeIds.map((nodeId) => recoveredIds.get(nodeId) ?? nodeId);
 	}
+	remapToolAvailabilitySourceIds(json.nodes, recoveredIds);
 }
 
 /**

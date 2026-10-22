@@ -145,6 +145,7 @@ import {
 	isEmptyGroupAnchor,
 	isHitlToolType,
 	isResourceLocatorValue,
+	remapToolAvailabilitySourceIds,
 } from 'n8n-workflow';
 import { TELEMETRY_EVENT, type InferTelemetryProps, type TelemetryEventDef } from '@n8n/telemetry';
 import { computed, nextTick, ref, type DeepReadonly } from 'vue';
@@ -184,7 +185,7 @@ import {
 	pinDataToExecutionData,
 	injectWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
-import { remapToolAvailabilitySourceIds, serializeNode } from '@/app/utils/nodes/nodeTransforms';
+import { serializeNode } from '@/app/utils/nodes/nodeTransforms';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;

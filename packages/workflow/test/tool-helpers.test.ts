@@ -1,5 +1,6 @@
+import { AGENT_LANGCHAIN_NODE_TYPE } from '../src/constants';
 import type { INode } from '../src/interfaces';
-import { nodeNameToToolName } from '../src/tool-helpers';
+import { nodeNameToToolName, remapToolAvailabilitySourceIds } from '../src/tool-helpers';
 
 describe('nodeNameToToolName', () => {
 	const getNodeWithName = (name: string): INode => ({
@@ -118,5 +119,71 @@ describe('nodeNameToToolName', () => {
 		it('should replace various special characters with underscores', () => {
 			expect(nodeNameToToolName('Test#+*()[]{}:;,<>/\\\'"%$Node')).toBe('Test_Node');
 		});
+	});
+});
+
+describe('remapToolAvailabilitySourceIds', () => {
+	it('remaps mapped sources and preserves other rules and parameter values', () => {
+		const parameters = {
+			promptType: 'define',
+			text: 'Use the available tools',
+			toolAvailability: {
+				rules: [
+					{ sourceNodeId: 'old-tool', available: '={{ $json.allowTool }}' },
+					{ sourceNodeId: 'external-tool', available: false },
+					{ sourceNodeId: 'saved-tool', available: true },
+				],
+			},
+		};
+
+		remapToolAvailabilitySourceIds(
+			[{ type: AGENT_LANGCHAIN_NODE_TYPE, parameters }],
+			new Map([['old-tool', 'saved-tool']]),
+		);
+
+		expect(parameters).toEqual({
+			promptType: 'define',
+			text: 'Use the available tools',
+			toolAvailability: {
+				rules: [
+					{ sourceNodeId: 'saved-tool', available: '={{ $json.allowTool }}' },
+					{ sourceNodeId: 'external-tool', available: false },
+					{ sourceNodeId: 'saved-tool', available: true },
+				],
+			},
+		});
+	});
+
+	it('leaves other node types unchanged', () => {
+		const parameters = {
+			toolAvailability: { rules: [{ sourceNodeId: 'old-tool', available: true }] },
+		};
+
+		remapToolAvailabilitySourceIds(
+			[{ type: 'n8n-nodes-base.set', parameters }],
+			new Map([['old-tool', 'saved-tool']]),
+		);
+
+		expect(parameters.toolAvailability.rules[0].sourceNodeId).toBe('old-tool');
+	});
+
+	it.each([
+		undefined,
+		null,
+		{},
+		{ toolAvailability: null },
+		{ toolAvailability: '={{ $json.rules }}' },
+		{ toolAvailability: {} },
+		{ toolAvailability: { rules: {} } },
+		{ toolAvailability: { rules: [null, 'invalid', {}, { sourceNodeId: 1 }] } },
+	])('leaves unsupported parameter shapes unchanged: %j', (parameters) => {
+		const original = structuredClone(parameters);
+
+		remapToolAvailabilitySourceIds(
+			[{ type: AGENT_LANGCHAIN_NODE_TYPE, parameters }],
+			new Map([['old-tool', 'saved-tool']]),
+		);
+
+		expect(parameters).toEqual(original);
 	});
 });

@@ -22,7 +22,7 @@ import { useCanvasStore } from '@/app/stores/canvas.store';
 import type { IUpdateInformation, IWorkflowDb } from '@/Interface';
 import type { WorkflowDataCreate, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { ResponseError } from '@n8n/rest-api-client';
-import { isExpression, type IDataObject } from 'n8n-workflow';
+import { isExpression, remapToolAvailabilitySourceIds, type IDataObject } from 'n8n-workflow';
 import { useToast } from '@n8n/composables/useToast';
 import { useExternalHooks } from './useExternalHooks';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -47,7 +47,6 @@ import { useInvalidNodeGroupCleanup } from '@/app/composables/useInvalidNodeGrou
 import { usePolicyViolationToast } from '@/app/composables/usePolicyViolationToast';
 import { getPolicyViolations } from '@n8n/frontend-module-type-availability-policies';
 import { removeEmptyCanvasGroupsFromWorkflowData } from '@/features/workflows/canvas/emptyGroup.utils';
-import { remapToolAvailabilitySourceIds } from '@/app/utils/nodes/nodeTransforms';
 
 function getErrorMessage(error: unknown): string {
 	if (error instanceof Error) {
