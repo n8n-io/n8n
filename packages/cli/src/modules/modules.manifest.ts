@@ -9,4 +9,5 @@ export const packagedModules: PackagedModules = {
 	'quick-connect': async () => await import('@n8n/backend-module-quick-connect/module'),
 	'workflow-builder': async () => await import('@n8n/backend-module-workflow-builder/module'),
 	apps: async () => await import('@n8n/backend-module-apps/module'),
+	'llm-usage': async () => await import('@n8n/backend-module-llm-usage/module'),
 };
