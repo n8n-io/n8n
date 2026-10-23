@@ -48,6 +48,7 @@ export type SkillListFilter = {
 	/** What this agent may attach: instance skills, its project's skills and its own. */
 	attachableTo?: { agentId: string; projectId: string };
 	search?: string;
+	availableToMCP?: boolean;
 	skip: number;
 	take?: number;
 };
@@ -137,6 +138,11 @@ export class SkillRepository extends BaseRepository<Skill> {
 					),
 					{ search: `%${escapeLike(filter.search.toLowerCase())}%` },
 				);
+		}
+		if (filter.availableToMCP !== undefined) {
+			query.andWhere('skill.availableToMCP = :availableToMCP', {
+				availableToMCP: filter.availableToMCP,
+			});
 		}
 		query.orderBy('skill.updatedAt', 'DESC').addOrderBy('skill.id', 'ASC').offset(filter.skip);
 		if (filter.take !== undefined) query.limit(filter.take);

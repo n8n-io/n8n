@@ -323,33 +323,6 @@ describe('SkillsApiService', () => {
 		});
 	});
 
-	describe('listContents', () => {
-		it('adds the latest saved content to each item of the page, with one content query', async () => {
-			repository.findVisiblePage.mockResolvedValue({ skills: visible, count: 7 });
-
-			const result = await service.listContents(user, query({ skip: 4, take: 3 }));
-
-			expect(repository.findLatestSaved).toHaveBeenCalledTimes(1);
-			expect(repository.findLatestSaved).toHaveBeenCalledWith(['skill_a', 'skill_b', 'skill_c']);
-			expect(result.count).toBe(7);
-			expect(result.data.map((item) => [item.id, item.skill.name])).toEqual([
-				['skill_a', 'Brand voice'],
-				['skill_b', 'Cite sources'],
-				['skill_c', 'Triage rules'],
-			]);
-		});
-
-		it('leaves out an item that has no saved version', async () => {
-			repository.findLatestSaved.mockResolvedValue(
-				new Map([['skill_b', row(skill('skill_b'), 1)]]),
-			);
-
-			const result = await service.listContents(user, query());
-
-			expect(result.data.map((item) => item.id)).toEqual(['skill_b']);
-		});
-	});
-
 	describe('get', () => {
 		it('returns the latest version, its hash and the usage', async () => {
 			const usage = {

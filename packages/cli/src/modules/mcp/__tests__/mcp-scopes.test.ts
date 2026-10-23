@@ -41,6 +41,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { ExecutionService } from '@/executions/execution.service';
+import { SkillService } from '@/modules/skills/skill.service';
 import { SkillsApiService } from '@/modules/skills/skills-api.service';
 import { SkillsHubRollout } from '@/modules/skills/skills-hub-rollout';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
@@ -310,11 +311,14 @@ describe('McpService scope enforcement', () => {
 		'declares the skills extension with %s',
 		async (_, skillsHubEnabled, skillsExtensionEnabled, grantedScopes, declared) => {
 			mockInstance(SkillsApiService);
+			mockInstance(SkillService);
 			mockInstance(SkillsHubRollout, { isEnabled: skillsHubEnabled });
-			const server = await buildService({
-				builderEnabled: false,
-				agentsActive: true,
-			}).getServer(user, mcpFeatureFlags({ skillsExtensionEnabled }), undefined, { grantedScopes });
+			const server = await buildService({ builderEnabled: false }).getServer(
+				user,
+				mcpFeatureFlags({ skillsExtensionEnabled }),
+				undefined,
+				{ grantedScopes },
+			);
 
 			expect(server.server.getCapabilities().extensions).toEqual(
 				declared ? { 'io.modelcontextprotocol/skills': {} } : undefined,

@@ -478,6 +478,19 @@ describe('SkillRepository', () => {
 			expect(ids(page)).toEqual([percent]);
 		});
 
+		it('lists only the skills that are available to MCP when the filter asks for them', async () => {
+			const available = await createSkill();
+			const unavailable = await createSkill();
+			await skills.updateAvailableToMCP(available, true);
+			const visibility = { projectIds: [], agentIds: [] };
+
+			const page = await skills.findVisiblePage(visibility, { skip: 0, availableToMCP: true });
+
+			expect(ids(page)).toEqual([available]);
+			expect(page.count).toBe(1);
+			expect(ids(await skills.findVisiblePage(visibility, firstPage))).toContain(unavailable);
+		});
+
 		it('cuts the page with skip and take, and answers past the end with the full count', async () => {
 			for (let i = 0; i < 3; i++) await createSkill();
 			const visibility = { projectIds: [], agentIds: [] };
