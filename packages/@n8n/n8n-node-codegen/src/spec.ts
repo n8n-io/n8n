@@ -118,11 +118,16 @@ function unsupportedReason(operation: OpenAPIV3.OperationObject, responseTypes: 
 }
 
 export async function readSpecOperations(specDir: string): Promise<SpecOperation[]> {
-	const { bundle: document } = await bundle({
+	const { bundle: document, problems } = await bundle({
 		ref: path.join(specDir, 'openapi.decorator-routes.generated.yml'),
 		config: await createConfig({}),
 		dereference: true,
 	});
+	const errors = problems.filter((problem) => problem.severity === 'error');
+	if (errors.length) {
+		const messages = errors.map((problem) => problem.message).join('\n- ');
+		throw new Error(`Cannot read the public API spec:\n- ${messages}`);
+	}
 	const doc: unknown = document.parsed;
 	if (!isDocument(doc)) throw new Error('The public API spec is not an OpenAPI 3 document');
 
