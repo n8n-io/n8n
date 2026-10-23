@@ -105,10 +105,9 @@ const firstCheckTitleKey = computed(() => {
 	return 'instanceAi.testAgentPreview.firstCheckNeedsWork';
 });
 // The confirmed try's own state in the examples panel. A try that was never graded
-// reads as a pass there. An ungraded try shows the neutral idle look, not needs work.
-const previewStatus = computed(() =>
-	isUngradedVerdict(previewVerdict.value) ? 'idle' : toAvatarKind('success', previewVerdict.value),
-);
+// reads as a pass there. A judge error reads as `work`, which `previewNotGraded` turns
+// into the neutral look.
+const previewStatus = computed(() => toAvatarKind('success', previewVerdict.value));
 const previewReasoning = computed(() => readVerdictReasoning(previewVerdict.value));
 // "Keep as is" hides the card until a different suggestion arrives, so a new proposal is
 // never swallowed by an old dismissal.
@@ -481,7 +480,11 @@ function onDontCreateEvals() {
 				data-test-id="instance-ai-test-agent-preview-first-check"
 			>
 				<div :class="$style.firstCheckHeader">
-					<AgentAvatar :kind="firstCheckPassed ? 'pass' : 'work'" size="sm" />
+					<AgentAvatar
+						:kind="firstCheckPassed ? 'pass' : 'work'"
+						:not-graded="firstCheckNotGraded"
+						size="sm"
+					/>
 					<N8nText
 						bold
 						size="medium"

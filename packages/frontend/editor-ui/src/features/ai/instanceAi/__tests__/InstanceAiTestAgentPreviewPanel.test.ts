@@ -1327,6 +1327,15 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 				);
 			});
 
+			it('shows a neutral avatar, not the "needs work" one', async () => {
+				const { getByTestId } = await renderCard({ verdict: UNGRADED_VERDICT });
+
+				const card = getByTestId('instance-ai-test-agent-preview-first-check');
+				const avatar = within(card).getByRole('img', { name: /Couldn’t grade/ });
+				expect(avatar).toHaveAttribute('data-tone', 'neutral');
+				expect(within(card).queryByRole('img', { name: /Needs work/ })).not.toBeInTheDocument();
+			});
+
 			it('still lets the user go on to harder cases, since nothing actually failed', async () => {
 				const { user, store, getByTestId, emitted, findByTestId } = await renderCard({
 					verdict: UNGRADED_VERDICT,

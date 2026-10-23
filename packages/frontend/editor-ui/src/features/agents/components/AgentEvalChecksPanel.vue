@@ -186,9 +186,9 @@ const STATUS_RANK: Record<AgentAvatarKind, number> = {
 	strong: 2,
 };
 
-const sortedRows = computed(() =>
-	[...rows.value].sort((a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status]),
-);
+// An ungraded row carries `work` but asks for no fix, so it ranks with the neutral rows.
+const rankOf = (row: CheckRow) => STATUS_RANK[row.notGraded ? 'idle' : row.status];
+const sortedRows = computed(() => [...rows.value].sort((a, b) => rankOf(a) - rankOf(b)));
 
 const filteredRows = computed(() => {
 	if (statusFilter.value === 'pass') return sortedRows.value.filter((row) => row.status === 'pass');

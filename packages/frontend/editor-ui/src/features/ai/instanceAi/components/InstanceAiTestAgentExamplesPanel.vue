@@ -253,7 +253,7 @@ function onCheckYourAgent() {
 					<AgentAvatar
 						v-for="run in caseRuns"
 						:key="run.rowId"
-						:kind="run.notGraded ? 'idle' : run.status"
+						:kind="run.status"
 						:not-graded="run.notGraded"
 						:label="run.label"
 						size="row"

@@ -402,6 +402,23 @@ describe('AgentEvalChecksPanel', () => {
 		expect(rows[1]).toHaveAttribute('data-testid', 'agent-eval-check-pass-1');
 	});
 
+	it('sorts an ungraded row below needs-work rows and above passing ones', () => {
+		const judgeError = {
+			...result('judge-error-1', 'success'),
+			verdict: { status: 'error' as const, outcome: null, reasoning: 'No clear verdict.' },
+		};
+		const { getAllByTestId } = render({
+			results: [result('pass-1', 'success'), judgeError, result('fail-1', 'error')],
+		});
+
+		const rows = getAllByTestId(/agent-eval-check-/);
+		expect(rows.map((row) => row.getAttribute('data-testid'))).toEqual([
+			'agent-eval-check-fail-1',
+			'agent-eval-check-judge-error-1',
+			'agent-eval-check-pass-1',
+		]);
+	});
+
 	it('counts needs-work and pass pills off the results', () => {
 		const { getByTestId } = render({
 			results: [

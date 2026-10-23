@@ -13,11 +13,14 @@ const props = defineProps<{
 	 *  accessible label so a collapsed summary pill's avatars don't reduce to
 	 *  status alone. */
 	label?: string;
-	/** The judge gave no readable verdict: the neutral look, labelled "Couldn't grade" rather than "Not run". */
+	/** The judge gave no readable verdict: overrides `kind` with the neutral look, labelled "Couldn't grade" rather than "Not run". */
 	notGraded?: boolean;
 }>();
 
 const i18n = useI18n();
+
+// Derived here, not by each caller, so the look and the label can never disagree.
+const displayKind = computed<AgentAvatarKind>(() => (props.notGraded ? 'idle' : props.kind));
 
 const toneByKind: Record<AgentAvatarKind, 'good' | 'warn' | 'bad' | 'none' | 'neutral'> = {
 	pass: 'good',
@@ -28,7 +31,7 @@ const toneByKind: Record<AgentAvatarKind, 'good' | 'warn' | 'bad' | 'none' | 'ne
 	waiting: 'none',
 };
 
-const tone = computed(() => toneByKind[props.kind]);
+const tone = computed(() => toneByKind[displayKind.value]);
 
 const iconByKind: Record<AgentAvatarKind, IconName> = {
 	pass: 'bot-pass',
@@ -39,7 +42,7 @@ const iconByKind: Record<AgentAvatarKind, IconName> = {
 	waiting: 'bot-waiting',
 };
 
-const icon = computed(() => iconByKind[props.kind]);
+const icon = computed(() => iconByKind[displayKind.value]);
 
 const statusLabel = computed(() => {
 	const labelByKind: Record<AgentAvatarKind, string> = {
@@ -51,7 +54,7 @@ const statusLabel = computed(() => {
 		waiting: i18n.baseText('instanceAi.testAgentPreview.avatar.notRun'),
 	};
 	if (props.notGraded) return i18n.baseText('instanceAi.testAgentPreview.avatar.notGraded');
-	return labelByKind[props.kind];
+	return labelByKind[displayKind.value];
 });
 
 const accessibleLabel = computed(() =>
@@ -63,13 +66,13 @@ const accessibleLabel = computed(() =>
 	<span
 		:class="[$style.avatar, $style[size], $style[tone]]"
 		:data-tone="tone"
-		:data-waiting="kind === 'waiting' ? '' : undefined"
+		:data-waiting="displayKind === 'waiting' ? '' : undefined"
 		:aria-label="accessibleLabel"
 		:title="accessibleLabel"
 		role="img"
 	>
 		<N8nIcon :class="$style.icon" :icon="icon" />
-		<span v-if="kind === 'strong'" :class="$style.sparkle" aria-hidden="true">✦</span>
+		<span v-if="displayKind === 'strong'" :class="$style.sparkle" aria-hidden="true">✦</span>
 	</span>
 </template>
 
