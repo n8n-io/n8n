@@ -2640,6 +2640,7 @@ async function onHeaderAction(action: string) {
 			description: locale.baseText('agents.delete.modal.description', {
 				interpolate: { name: agentName.value },
 			}),
+			isDestructive: true,
 			confirmButtonText: locale.baseText('agents.delete.modal.button.delete'),
 			cancelButtonText: locale.baseText('generic.cancel'),
 		});

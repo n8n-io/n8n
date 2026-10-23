@@ -353,8 +353,7 @@ function onOpenAutoFocus(event: Event) {
 }
 
 .bodyAboveFooter[data-slot='dialog-body'][data-scrollable] {
-	--agent-modal-body--padding-block-end: 0;
-	padding-block-end: 0;
+	padding-block-end: var(--agent-modal-body--padding-block-end, var(--spacing--md));
 }
 
 .body[data-flush='true'][data-slot='dialog-body'][data-scrollable] {
