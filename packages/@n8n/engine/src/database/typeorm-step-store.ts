@@ -259,6 +259,14 @@ export class TypeOrmStepStore implements StepStore {
 	}
 
 	async failStep(id: string, error: StepError): Promise<boolean> {
+		return await this.failStepFrom('running', id, error);
+	}
+
+	async failWaitingStep(id: string, error: StepError): Promise<boolean> {
+		return await this.failStepFrom('waiting', id, error);
+	}
+
+	private async failStepFrom(from: StepStatus, id: string, error: StepError): Promise<boolean> {
 		// Locking the execution row makes concurrent claims and planning inserts
 		// wait for this failure to commit (see `claimStep` and `createSteps`).
 		// NO KEY UPDATE, not UPDATE, so plain FK checks don't queue behind it.
@@ -271,7 +279,7 @@ export class TypeOrmStepStore implements StepStore {
 			);
 			const result = await manager.update(
 				WorkflowStepExecution,
-				{ id, status: 'running' },
+				{ id, status: from },
 				{ error, status: 'failed' },
 			);
 			return result.affected === 1;

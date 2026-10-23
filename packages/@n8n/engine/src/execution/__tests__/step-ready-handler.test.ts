@@ -12,7 +12,7 @@ import {
 	type StepStatus,
 	type WaitDeclaration,
 } from '../execution.types';
-import { resolveInputReads, StepReadyHandler } from '../step-ready-handler';
+import { resolveInputReads, StepReadyHandler, type ChildStarter } from '../step-ready-handler';
 import type { StepRecord, StepStore, StepSummary } from '../step-store';
 
 /** Key for a `loadStepsByKeys` result at iteration 0, as the handler requests them. */
@@ -51,6 +51,10 @@ function makeLifecycleEventPublisher(): LifecycleEventPublisher {
 }
 
 /** Handler with a throwaway publisher, for the tests that ignore it. */
+function makeChildStarter(): ChildStarter {
+	return { start: vi.fn().mockResolvedValue({ executionId: 'exec-child' }) };
+}
+
 function makeHandler(
 	executionStore: ExecutionStore,
 	stepStore: StepStore,
@@ -59,6 +63,7 @@ function makeHandler(
 	lifecycleEventPublisher: LifecycleEventPublisher = makeLifecycleEventPublisher(),
 	responseSender: ExecutionResponseSender = noopExecutionResponseSender,
 	onStepSuspended?: () => void,
+	childStarter: ChildStarter = makeChildStarter(),
 ): StepReadyHandler {
 	return new StepReadyHandler(
 		executionStore,
@@ -67,6 +72,7 @@ function makeHandler(
 		dependencies,
 		lifecycleEventPublisher,
 		responseSender,
+		childStarter,
 		onStepSuspended,
 	);
 }
@@ -131,6 +137,7 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 		resumeStep: vi.fn().mockResolvedValue(true),
 		resumeDueSteps: vi.fn().mockResolvedValue([]),
 		nextWaitDeadline: vi.fn().mockResolvedValue(null),
+		failWaitingStep: vi.fn().mockResolvedValue(true),
 		...overrides,
 	} satisfies StepStore;
 }
@@ -935,6 +942,25 @@ describe('StepReadyHandler waits', () => {
 		);
 	});
 
+	it('fails the step when the executor declares a child wait instead of a child declaration', async () => {
+		// Only the engine suspends a step on a child, before it starts one. A
+		// declaration from outside would wait for a child that nothing starts.
+		const stepStore = makeStepStore();
+		const handler = makeHandler(makeExecutionStore(), stepStore, makeQueue(), {
+			v1StepExecutor: makeExecutor({
+				wait: { childExecutionId: 'exec-child', acceptsResumeRequest: false },
+			}),
+		});
+
+		await handler.handle(event);
+
+		expect(stepStore.suspendStep).not.toHaveBeenCalled();
+		expect(stepStore.failStep).toHaveBeenCalledWith(
+			'step-a',
+			expect.objectContaining({ message: expect.stringContaining('child') as string }),
+		);
+	});
+
 	it('fails the step when the declaration can never resume', async () => {
 		// No deadline and no resume request means nothing would ever end this
 		// wait, so suspending would strand the execution. The declaration comes
@@ -1079,6 +1105,152 @@ describe('StepReadyHandler resumes', () => {
 		expect(executor.execute).toHaveBeenCalledWith(
 			expect.not.objectContaining({ resumeRequest: expect.anything() as unknown }),
 		);
+	});
+});
+
+describe('StepReadyHandler child executions', () => {
+	const childGraph: WorkflowGraph = {
+		nodes: [
+			{ id: 'trigger', name: 'When Executed by Another Workflow', type: 'trigger' },
+			{ id: 'x', name: 'X', type: 'v1-node' },
+		],
+		edges: [{ from: 'trigger', to: 'x', outputIndex: 0, inputIndex: 0 }],
+	};
+	const child = {
+		executionId: 'exec-child',
+		workflowId: 'wf-child',
+		graph: childGraph,
+		workflow: { id: 'wf-child' },
+		triggerOutputs: [[{ json: { in: 1 } }]],
+	};
+	const childWait: WaitDeclaration = {
+		childExecutionId: 'exec-child',
+		acceptsResumeRequest: false,
+	};
+
+	it('suspends the step on the child before it starts the child, with the parent link', async () => {
+		const order: string[] = [];
+		const stepStore = makeStepStore(
+			{},
+			{
+				suspendStep: vi.fn().mockImplementation(async () => {
+					order.push('suspend');
+					return await Promise.resolve(true);
+				}),
+			},
+		);
+		const childStarter: ChildStarter = {
+			start: vi.fn().mockImplementation(async () => {
+				order.push('start');
+				return await Promise.resolve({ executionId: 'exec-child' });
+			}),
+		};
+		const queue = makeQueue();
+		const executionStore = makeExecutionStore();
+		const handler = makeHandler(
+			executionStore,
+			stepStore,
+			queue,
+			{ v1StepExecutor: makeExecutor({ child }) },
+			undefined,
+			undefined,
+			undefined,
+			childStarter,
+		);
+
+		await handler.handle(event);
+
+		expect(stepStore.suspendStep).toHaveBeenCalledWith('step-a', childWait);
+		expect(childStarter.start).toHaveBeenCalledWith({
+			executionId: 'exec-child',
+			workflowId: 'wf-child',
+			graph: childGraph,
+			workflow: { id: 'wf-child' },
+			triggerOutputs: child.triggerOutputs,
+			mode: 'production',
+			callerContext: { hostMode: 'trigger' },
+			parent: { executionId: 'exec-1', stepId: 'step-a', awaited: true },
+		});
+		// The child cannot end before the parent step can be resumed.
+		expect(order).toEqual(['suspend', 'start']);
+		expect(stepStore.completeStep).not.toHaveBeenCalled();
+		expect(queue.publish).not.toHaveBeenCalled();
+		expect(executionStore.refreshLiveStatus).toHaveBeenCalledExactlyOnceWith('exec-1');
+	});
+
+	it('starts no child when another owner took the step over', async () => {
+		const stepStore = makeStepStore({}, { suspendStep: vi.fn().mockResolvedValue(false) });
+		const childStarter = makeChildStarter();
+		const handler = makeHandler(
+			makeExecutionStore(),
+			stepStore,
+			makeQueue(),
+			{ v1StepExecutor: makeExecutor({ child }) },
+			undefined,
+			undefined,
+			undefined,
+			childStarter,
+		);
+
+		await handler.handle(event);
+
+		expect(childStarter.start).not.toHaveBeenCalled();
+	});
+
+	it('fails the waiting step and reports it when the child cannot start', async () => {
+		const stepStore = makeStepStore();
+		const childStarter: ChildStarter = {
+			start: vi.fn().mockRejectedValue(new Error('admittance rejected')),
+		};
+		const queue = makeQueue();
+		const publisher = makeLifecycleEventPublisher();
+		const handler = makeHandler(
+			makeExecutionStore(),
+			stepStore,
+			queue,
+			{ v1StepExecutor: makeExecutor({ child }) },
+			publisher,
+			undefined,
+			undefined,
+			childStarter,
+		);
+
+		await handler.handle(event);
+
+		expect(stepStore.failWaitingStep).toHaveBeenCalledWith(
+			'step-a',
+			expect.objectContaining({ name: 'Error', message: 'admittance rejected' }),
+		);
+		expect(publisher.publish).toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'step:failed', stepId: 'step-a' }),
+		);
+		expect(queue.publish).toHaveBeenCalledWith({
+			type: 'step:settled',
+			executionId: 'exec-1',
+			stepId: 'step-a',
+		});
+	});
+
+	it('runs the node again with the child result when a child resume dispatches the step', async () => {
+		const cause = {
+			kind: 'child' as const,
+			executionId: 'exec-child',
+			status: 'completed' as const,
+			result: [{ nodeId: 'x', iteration: 0, outputs: [[{ json: { from: 'child' } }]] }],
+		};
+		const stepStore = makeStepStore({ waitDeclaration: childWait, resumeCause: cause });
+		const executor = makeExecutor({ outputs: [[{ json: { shaped: true } }]] });
+		const handler = makeHandler(makeExecutionStore(), stepStore, makeQueue(), {
+			v1StepExecutor: executor,
+		});
+
+		await handler.handle(event);
+
+		// The node runs again, with its inputs and the child's result.
+		expect(executor.execute).toHaveBeenCalledWith(
+			expect.objectContaining({ inputs: [{}], resume: cause }),
+		);
+		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { shaped: true } }]]);
 	});
 });
 

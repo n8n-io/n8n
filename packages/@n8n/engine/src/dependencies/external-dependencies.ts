@@ -1,5 +1,13 @@
-import type { CallerContext, ExecutionMode, StepSlots, WaitDeclaration } from '../execution';
-import type { GraphNode } from '../graph';
+import type {
+	CallerContext,
+	ChildResumeCause,
+	ExecutionMode,
+	StepSlots,
+	TriggerOutputs,
+	WaitDeclaration,
+	WorkflowDocument,
+} from '../execution';
+import type { GraphNode, WorkflowGraph } from '../graph';
 import type { LifecycleEventCallback } from '../lifecycle-events';
 import type { ResponseEmitter, ResponseExpectation } from '../response-channel';
 
@@ -53,26 +61,51 @@ export interface StepExecutionRequest {
 	 * plane side via the execution response channel.
 	 */
 	respond: ResponseEmitter;
+	/**
+	 * Set when a child execution the step waited for has ended. The executor
+	 * answers the node's child call from it instead of asking for a child again.
+	 */
+	resume?: ChildResumeCause;
+}
+
+/**
+ * A child execution the step asks for. The executor minted the id and had the
+ * workflow resolved; the engine starts the child and suspends the step on it.
+ */
+export interface ChildDeclaration {
+	executionId: string;
+	workflowId: string;
+	graph: WorkflowGraph;
+	workflow: WorkflowDocument;
+	triggerOutputs?: TriggerOutputs | null;
 }
 
 /**
  * What running a step produced: its output slots, or a declaration that it is
  * not done. Exclusive — a step that waits has no outputs yet, and the outputs
- * a deadline would emit ride inside the declaration.
+ * a deadline would emit ride inside the declaration. A child declaration is a
+ * wait too: the step suspends until the child ends.
  *
- * The `?: never` members give both branches the same keys, so `result.wait`
+ * The `?: never` members give every branch the same keys, so `result.wait`
  * reads on the union and narrows it — without them a caller could only test
- * `'wait' in result`, and a value carrying both fields would type-check.
+ * `'wait' in result`, and a value carrying two fields would type-check.
  */
 export type StepExecutionResult =
 	| {
 			/** Output slots; persisted by the engine without inspecting slot contents. */
 			outputs: StepSlots;
 			wait?: never;
+			child?: never;
 	  }
 	| {
 			wait: WaitDeclaration;
 			outputs?: never;
+			child?: never;
+	  }
+	| {
+			child: ChildDeclaration;
+			outputs?: never;
+			wait?: never;
 	  };
 
 /**

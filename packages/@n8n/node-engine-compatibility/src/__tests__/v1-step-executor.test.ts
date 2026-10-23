@@ -53,7 +53,9 @@ const graphWith = (type: string, parameters = {}): WorkflowGraph =>
 
 /** The outputs of a result, for a test that feeds one step's output into the next. */
 function outputsOf(result: StepExecutionResult): StepSlots {
-	if (result.wait) throw new Error('the step declared a wait, but the test expects outputs');
+	if (result.wait || result.child) {
+		throw new Error('the step declared a wait, but the test expects outputs');
+	}
 	return result.outputs;
 }
 
