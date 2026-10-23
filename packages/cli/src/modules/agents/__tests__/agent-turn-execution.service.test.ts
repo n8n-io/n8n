@@ -1,4 +1,9 @@
 import type { Agent as RuntimeAgent, StreamChunk } from '@n8n/agents';
+import {
+	getLlmCallContext,
+	setLlmUsageSink,
+	type LlmCallContext,
+} from '@n8n/ai-utilities/llm-usage';
 import type { Logger } from '@n8n/backend-common';
 import { mock } from 'vitest-mock-extended';
 
@@ -160,5 +165,54 @@ describe('onBeforeFinalize', () => {
 		});
 
 		expect(executions.finalizeExecution).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('LLM usage scope', () => {
+	afterEach(() => setLlmUsageSink(undefined));
+
+	it('runs the turn in a scope with the agent, thread, project, execution and user', async () => {
+		setLlmUsageSink({ write: () => {} });
+		const executions = mock<AgentExecutionService>();
+		executions.getAbortSignal.mockReturnValue(new AbortController().signal);
+		const service = new AgentTurnExecutionService(
+			mock<Logger>(),
+			executions,
+			mock<AgentChatExecutionService>(),
+			mock<AgentMessageQueueService>(),
+			mock<AgentMessageSteeringService>(),
+			mock<AgentToolApprovalService>(),
+		);
+		let context: LlmCallContext | undefined;
+		const agentInstance = mock<RuntimeAgent>();
+		agentInstance.stream.mockImplementation(async () => {
+			context = getLlmCallContext();
+			return { stream: new ReadableStream({ start: (controller) => controller.close() }) } as never;
+		});
+		const turn = {
+			type: 'start',
+			input: 'hello',
+			options: {},
+			recording: { telemetry: { userId: 'user-1' } },
+		} as unknown as AgentTurnRequest;
+		for await (const _chunk of service.execute({
+			admittedExecution: { executionId: 'exec-1', startedAt: new Date(), inputMessageIds: [] },
+			agentInstance,
+			toolRegistry: new Map(),
+			mcpServerAttributions: new Map(),
+			context: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+			prepare: async () => turn,
+		})) {
+			// Read the stream to the end.
+		}
+
+		expect(context).toEqual({
+			callerType: 'agent',
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			threadId: 'thread-1',
+			executionId: 'exec-1',
+			userId: 'user-1',
+		});
 	});
 });

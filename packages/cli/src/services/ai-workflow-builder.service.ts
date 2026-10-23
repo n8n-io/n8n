@@ -4,12 +4,15 @@ import {
 	createPassthroughSsrfGuard,
 	ChatPayload,
 } from '@n8n/ai-workflow-builder';
+import { getLlmUsageSink, type LlmCallContext } from '@n8n/ai-utilities/llm-usage';
+import { withLangChainUsageIterable } from '@n8n/ai-utilities/llm-usage/langchain';
 import { Logger } from '@n8n/backend-common';
 import { WorkflowBuilderSessionRepository } from '@n8n/backend-module-workflow-builder';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { BUILTIN_NODES_PACKAGES } from '@n8n/constants';
-import { Service } from '@n8n/di';
+import { ProjectRepository, SharedWorkflowRepository } from '@n8n/db';
+import { Container, Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import * as fs from 'fs';
 import { InstanceSettings } from 'n8n-core';
@@ -207,7 +210,22 @@ export class WorkflowBuilderService {
 
 	async *chat(payload: ChatPayload, user: IUser, abortSignal?: AbortSignal) {
 		const service = await this.getService();
-		yield* service.chat(payload, user, abortSignal);
+		const llmContext = await this.llmCallContext(payload, user);
+		yield* withLangChainUsageIterable(llmContext, service.chat(payload, user, abortSignal));
+	}
+
+	/** A new, unsaved workflow has no owner yet, so its calls go to the user's personal project. */
+	private async llmCallContext(payload: ChatPayload, user: IUser): Promise<LlmCallContext> {
+		const workflowId = payload.workflowContext?.currentWorkflow?.id;
+		const context: LlmCallContext = { callerType: 'workflow-builder', userId: user.id, workflowId };
+		// Without the llm-usage module nothing reads the context, so the project lookups are skipped.
+		if (!getLlmUsageSink()) return context;
+		const owningProject = workflowId
+			? await Container.get(SharedWorkflowRepository).getWorkflowOwningProject(workflowId)
+			: undefined;
+		const project =
+			owningProject ?? (await Container.get(ProjectRepository).getPersonalProjectForUser(user.id));
+		return { ...context, projectId: project?.id };
 	}
 
 	async getSessions(workflowId: string | undefined, user: IUser, isCodeBuilder?: boolean) {

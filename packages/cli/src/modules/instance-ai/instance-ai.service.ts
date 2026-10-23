@@ -8,6 +8,7 @@ import type {
 	MemoryTaskUsageReport,
 } from '@n8n/agents';
 import { getPromptWorkspaceRoot, getWorkspaceRoot } from '@n8n/agents/sandbox';
+import { enrichLlmCallContext, runWithLlmCallContext } from '@n8n/ai-utilities/llm-usage';
 import {
 	applyBranchReadOnlyOverrides,
 	buildProxyHeaders,
@@ -2328,15 +2329,35 @@ export class InstanceAiService {
 	 */
 	private startExecuteRun(...args: Parameters<InstanceAiService['executeRun']>): void {
 		const [, threadId, runId] = args;
-		this.trackInFlightExecution(this.executeRun(...args), { threadId, runId });
+		const run = this.runInLlmUsageScope(
+			args[0],
+			threadId,
+			async () => await this.executeRun(...args),
+		);
+		this.trackInFlightExecution(run, { threadId, runId });
 	}
 
 	/** Same shutdown-drain contract as `startExecuteRun`, for the resume path. */
 	private startProcessResumedStream(
 		...args: Parameters<InstanceAiService['processResumedStream']>
 	): void {
-		const { threadId, runId } = args[2];
-		this.trackInFlightExecution(this.processResumedStream(...args), { threadId, runId });
+		const { threadId, runId, user, orchestrationContext } = args[2];
+		const run = this.runInLlmUsageScope(user, threadId, async () => {
+			// A resume skips `createExecutionEnvironment`, where a new run adds its project.
+			enrichLlmCallContext({
+				projectId:
+					orchestrationContext?.projectId ??
+					(await this.agentMemory.getThreadProjectId(threadId)) ??
+					undefined,
+			});
+			return await this.processResumedStream(...args);
+		});
+		this.trackInFlightExecution(run, { threadId, runId });
+	}
+
+	/** Attributes the LLM calls of a run to its thread and user; the project follows when it loads. */
+	private runInLlmUsageScope<T>(user: User, threadId: string, run: () => T): T {
+		return runWithLlmCallContext({ callerType: 'instance-ai', threadId, userId: user.id }, run);
 	}
 
 	/**
@@ -2722,6 +2743,8 @@ export class InstanceAiService {
 				`Instance AI thread "${threadId}" has no bound project; it must be created via POST /instance-ai/threads before a run can start`,
 			);
 		}
+		// The run's LLM calls start after this point, so they all carry the project.
+		enrichLlmCallContext({ projectId: boundProjectId });
 
 		const adminSettings = await this.settingsService.getAdminSettings();
 		const browserUseEnabledGlobally = adminSettings.browserUseEnabled;

@@ -6,6 +6,7 @@ import type {
 	SideCallUsageReport,
 	StreamChunk,
 } from '@n8n/agents';
+import { runWithLlmCallContext, type LlmCallContext } from '@n8n/ai-utilities/llm-usage';
 import type { AgentBackgroundJobSignal } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
@@ -624,7 +625,20 @@ export class AgentTurnExecutionService {
 		turn.options.onSideCallUsage = (report: SideCallUsageReport) => {
 			void this.agentExecutionService.recordSideCallUsage(executionId, threadId, report);
 		};
-		return await this.startTurn(turn, config, recorder, state);
+		const { projectId, agentId } = config.context;
+		const userId = turn.recording.telemetry?.userId ?? chatControl?.userId;
+		const llmContext: LlmCallContext = {
+			callerType: 'agent',
+			projectId,
+			agentId,
+			threadId,
+			executionId,
+			userId,
+		};
+		return await runWithLlmCallContext(
+			llmContext,
+			async () => await this.startTurn(turn, config, recorder, state),
+		);
 	}
 
 	private *streamStartTurnNotices(
