@@ -153,18 +153,18 @@ export async function startSink({
 			}
 
 			for (const record of records) {
-				// The backend sends each event to RudderStack and to PostHog, so PostHog shows copies.
-				if (record.source === 'posthog' && !posthog) {
-					continue;
-				}
-
 				if (filter && !filter.test(record.event ?? '')) {
 					continue;
 				}
 
 				received++;
-				log(formatLine(record));
 				file.write(`${JSON.stringify(record)}\n`);
+
+				// Most PostHog events copy a RudderStack event, so the screen hides them.
+				// The file keeps them, because some events, such as experiment exposures, exist only in PostHog.
+				if (record.source !== 'posthog' || posthog) {
+					log(formatLine(record));
+				}
 			}
 
 			// PostHog reads flags from some answers, and an empty object means no flags.
@@ -192,8 +192,8 @@ Options:
   --out <file>     File for the events (default: telemetry.ndjson in the repo root)
   --grep <regex>   Show and write only the events whose name matches (case-insensitive)
   --raw            Also show requests that carry no event, such as PostHog flag requests
-  --posthog        Also show PostHog events. Hidden by default, because the backend
-                   sends each event to PostHog as a copy of the RudderStack event
+  --posthog        Also show PostHog events on screen. Hidden by default, because most
+                   of them copy a RudderStack event. The file always keeps them.
   -h, --help       Show this help
 
 Start the backend with \`pnpm dev:be:telemetry\` to send its telemetry to the default port.

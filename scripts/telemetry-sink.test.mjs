@@ -124,16 +124,12 @@ describe('formatLine', () => {
 	});
 });
 
-/** Starts a sink on a free port, sends one request, and returns the lines it showed. */
+/** Starts a sink on a free port, sends one request, and returns what it showed and wrote. */
 async function sendToSink(options, path, body) {
 	const directory = mkdtempSync(join(tmpdir(), 'telemetry-sink-'));
+	const out = join(directory, 'telemetry.ndjson');
 	const lines = [];
-	const server = await startSink({
-		port: 0,
-		out: join(directory, 'telemetry.ndjson'),
-		log: (line) => lines.push(line),
-		...options,
-	});
+	const server = await startSink({ port: 0, out, log: (line) => lines.push(line), ...options });
 	try {
 		const { port } = server.address();
 		await fetch(`http://127.0.0.1:${port}${path}`, {
@@ -141,9 +137,10 @@ async function sendToSink(options, path, body) {
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify(body),
 		});
-		return lines;
-	} finally {
 		await server.stop();
+		const written = readFileSync(out, 'utf8').trim().split('\n').filter(Boolean);
+		return { lines, written: written.map((line) => JSON.parse(line)) };
+	} finally {
 		rmSync(directory, { recursive: true, force: true });
 	}
 }
@@ -151,14 +148,18 @@ async function sendToSink(options, path, body) {
 describe('startSink', () => {
 	const posthogBatch = [{ event: 'Agent run used knowledge', distinct_id: 'u1', properties: {} }];
 
-	it('hides PostHog events by default', async () => {
-		const lines = await sendToSink({}, '/batch/', posthogBatch);
+	it('hides PostHog events on screen by default, but writes them to the file', async () => {
+		const { lines, written } = await sendToSink({}, '/batch/', posthogBatch);
 
 		assert.deepEqual(lines, []);
+		assert.deepEqual(
+			written.map(({ source, event }) => ({ source, event })),
+			[{ source: 'posthog', event: 'Agent run used knowledge' }],
+		);
 	});
 
-	it('shows PostHog events with the posthog option', async () => {
-		const lines = await sendToSink({ posthog: true }, '/batch/', posthogBatch);
+	it('shows PostHog events on screen with the posthog option', async () => {
+		const { lines } = await sendToSink({ posthog: true }, '/batch/', posthogBatch);
 
 		assert.equal(lines.length, 1);
 		assert.match(lines[0], /posthog\s+Agent run used knowledge/);
