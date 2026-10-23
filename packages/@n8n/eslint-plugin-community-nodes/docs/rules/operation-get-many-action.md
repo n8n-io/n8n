@@ -12,6 +12,8 @@ This rule checks the action of every operation with the value `getAll`. `n8n-nod
 
 The rule finds the operation parameter by its shape. It also checks operations in description files outside the node class.
 
+Change only `action`. Keep `value` as it is: saved workflows store it, so changing it breaks them.
+
 ## Examples
 
 ### ❌ Incorrect
