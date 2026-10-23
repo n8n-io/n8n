@@ -8,7 +8,7 @@ import { useCommunityNodesStore } from '../communityNodes.store';
 import { findVettedCommunityNodeAttributes, isNodesApiVersionError } from '../communityNodes.utils';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { CommunityNodeType } from '@n8n/api-types';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -115,31 +115,13 @@ const getModalContent = computed(() => {
 	};
 });
 
-const onModalClose = () => {
-	return !loading.value;
-};
-
-// Cancel unmounts this instance while the request still runs.
-// A late close uses the shared modal key and would dismiss a dialog the user opened again.
-let isUnmounted = false;
-
-onBeforeUnmount(() => {
-	isUnmounted = true;
-});
-
-async function closeDialog() {
-	if (isUnmounted) {
-		return;
-	}
-	const shouldClose = onModalClose();
-	if (shouldClose === false) {
-		return;
-	}
+function closeDialog() {
 	uiStore.closeModal(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY);
 }
 
 function onDialogOpenUpdate(open: boolean) {
-	if (!open) void closeDialog();
+	// The request must finish. Escape and the overlay stay ignored until it does.
+	if (!open && !loading.value) closeDialog();
 }
 
 const onConfirmButtonClick = async () => {
@@ -173,7 +155,7 @@ const onUninstall = async () => {
 		toast.showError(error, i18n.baseText('settings.communityNodes.messages.uninstall.error'));
 	} finally {
 		loading.value = false;
-		void closeDialog();
+		closeDialog();
 	}
 };
 
@@ -219,7 +201,7 @@ const onUpdate = async () => {
 		);
 	} finally {
 		loading.value = false;
-		void closeDialog();
+		closeDialog();
 	}
 };
 
@@ -251,10 +233,6 @@ function setPackageVersion() {
 	}
 }
 
-const onClick = async () => {
-	uiStore.closeModal(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY);
-};
-
 onMounted(async () => {
 	if (props.activePackageName) {
 		await fetchPackageInfo();
@@ -276,7 +254,8 @@ onMounted(async () => {
 		:open="modalOpen"
 		:size="props.mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL ? 'medium' : 'large'"
 		:header="getModalContent.title"
-		:show-close-button="!loading"
+		:close-on-overlay-click="false"
+		:close-on-escape="!loading"
 		@update:open="onDialogOpenUpdate"
 	>
 		<N8nDialogBody>
@@ -302,9 +281,10 @@ onMounted(async () => {
 		<N8nDialogFooter>
 			<N8nButton
 				variant="outline"
+				:disabled="loading"
 				:label="i18n.baseText('settings.communityNodes.confirmModal.cancel')"
 				data-test-id="close-button"
-				@click="onClick"
+				@click="closeDialog"
 			/>
 			<N8nButton
 				:loading="loading"
