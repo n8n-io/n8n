@@ -962,7 +962,12 @@ describe('ExecutionLevelTracer', () => {
 					throw new Error('settings unavailable');
 				},
 			} as unknown as OtelSettingsService;
-			const failingTracer = new ExecutionLevelTracer(otel.asOtelService(), failingSettings, logger);
+			const failingTracer = new ExecutionLevelTracer(
+				otel.asOtelService(),
+				failingSettings,
+				logger,
+				new OtelCustomAttributesConfig(),
+			);
 
 			const headers: Record<string, string> = {};
 			expect(() => failingTracer.injectTraceHeaders('exec-fail', 'HTTP', headers)).not.toThrow();
