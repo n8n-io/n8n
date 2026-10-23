@@ -1,14 +1,12 @@
-import { JwtService } from '@n8n/backend-services';
 import { testDb } from '@n8n/backend-test-utils';
-import { UserRepository, type User } from '@n8n/db';
+import { SettingsRepository, UserRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { getApiKeyScopesForRole } from '@n8n/permissions';
+import { jsonParse } from 'n8n-workflow';
 
-import { PublicApiKeyService } from '@/services/public-api-key.service';
 import { createAdmin, createMember, createOwner } from '@test-integration/db/users';
 import * as utils from '@test-integration/utils';
 
-import { ScimTokenRepository } from '../database/scim-token.repository';
+import { SCIM_TOKEN_SETTINGS_KEY, ScimTokenRepository } from '../database/scim-token.repository';
 import { hashScimToken } from '../scim-token.service';
 import { ScimSettingsService } from '../scim-settings.service';
 
@@ -54,7 +52,7 @@ const scimTokenRepository = () => Container.get(ScimTokenRepository);
 
 beforeEach(async () => {
 	await testDb.truncate(['ApiKey', 'AuthIdentity', 'ProjectRelation', 'Project', 'User']);
-	await scimTokenRepository().delete({});
+	await Container.get(SettingsRepository).delete({ key: SCIM_TOKEN_SETTINGS_KEY });
 
 	owner = await createOwner();
 	admin = await createAdmin();
@@ -149,8 +147,10 @@ describe('SCIM instance token', () => {
 		await testServer.authAgentFor(owner).delete(`/users/${admin.id}`).expect(200);
 
 		expect((await scimRequest('get', '/Users')).status).toBe(200);
+		// The token keeps the ID of its deleted creator.
 		expect(await scimTokenRepository().findInstanceToken({})).toMatchObject({
-			createdById: null,
+			tokenHash: hashScimToken(token),
+			createdById: admin.id,
 		});
 	});
 
@@ -163,7 +163,10 @@ describe('SCIM instance token', () => {
 		expect(newToken).not.toBe(token);
 		expect((await scimRequest('get', '/Users')).status).toBe(401);
 		expect((await scimRequest('get', '/Users', { bearer: newToken })).status).toBe(200);
-		expect(await scimTokenRepository().count()).toBe(1);
+		expect(await scimTokenRepository().findInstanceToken({})).toMatchObject({
+			tokenHash: hashScimToken(newToken),
+			createdById: otherAdmin.id,
+		});
 	});
 
 	it('lets another admin revoke the token', async () => {
@@ -175,61 +178,49 @@ describe('SCIM instance token', () => {
 	});
 
 	it.each([
-		['replace the same token', true],
-		['create the first token', false],
-	])('accepts one of two rotations that %s and returns 409 to the other', async (_, withToken) => {
-		if (!withToken) await testServer.authAgentFor(admin).delete('/scim/token').expect(200);
+		['replace the same token', 'token'],
+		['create the first token after a revoke', 'revoked'],
+		['create the first token on an instance that never had one', 'none'],
+	])('accepts one of two rotations that %s and returns 409 to the other', async (_, start) => {
+		if (start === 'revoked') await testServer.authAgentFor(admin).delete('/scim/token').expect(200);
+		if (start === 'none') {
+			await Container.get(SettingsRepository).delete({ key: SCIM_TOKEN_SETTINGS_KEY });
+		}
 		// Both requests read the token state before either one writes it.
 		const seen = await scimTokenRepository().findInstanceToken({});
-		vi.spyOn(scimTokenRepository(), 'findInstanceToken').mockResolvedValue(seen);
+		const staleRead = vi.spyOn(scimTokenRepository(), 'findInstanceToken').mockResolvedValue(seen);
 
 		const responses = await Promise.all([tokenRequest(admin), tokenRequest(owner)]);
+		staleRead.mockRestore();
 
 		expect(responses.map(({ status }) => status).sort()).toEqual([201, 409]);
-		expect(await scimTokenRepository().count()).toBe(1);
 		const winner = responses.find(({ status }) => status === 201);
 		const bearer: string = winner?.body.data.token;
+		expect(await scimTokenRepository().findInstanceToken({})).toMatchObject({
+			tokenHash: hashScimToken(bearer),
+		});
 		expect((await scimRequest('get', '/Users', { bearer })).status).toBe(200);
 	});
 
-	it('creates the token for a user with a public API key of the former SCIM label', async () => {
-		await testServer.authAgentFor(admin).delete('/scim/token').expect(200);
-		await Container.get(PublicApiKeyService).createPublicApiKeyForUser(admin, {
-			label: 'SCIM Provisioning API Key',
-			expiresAt: null,
-			scopes: getApiKeyScopesForRole(admin),
-		});
+	it('returns 401 for a token in the right format that the instance did not issue', async () => {
+		const otherToken = `n8n_scim_${'A'.repeat(39)}${token.slice(-4)}`;
 
-		await tokenRequest(admin).expect(201);
+		expect((await scimRequest('get', '/Users', { bearer: otherToken })).status).toBe(401);
 	});
 
-	it('accepts a stored token that has a user as its subject', async () => {
-		// Tokens from before the instance token name their creator as subject.
-		const legacyToken = Container.get(JwtService).sign('scimApiKey', {
-			sub: admin.id,
-			iss: 'n8n',
-			jti: 'legacy-token',
-		});
-		const current = await scimTokenRepository().findInstanceToken({});
-		await scimTokenRepository().replace(
-			current?.tokenHash ?? null,
-			{
-				tokenHash: hashScimToken(legacyToken),
-				tokenHint: legacyToken.slice(-4),
-				createdById: admin.id,
-			},
-			{},
-		);
-
-		expect((await scimRequest('get', '/Users', { bearer: legacyToken })).status).toBe(200);
+	it('issues a random token with a recognizable prefix', () => {
+		expect(token).toMatch(/^n8n_scim_[\w-]{43}$/);
 	});
 
 	// Show-once: no code path needs the value, so a database read must not give a working token.
 	it('stores only a hash and the last four characters of the token', async () => {
-		const stored = await scimTokenRepository().findInstanceToken({});
+		const row = await Container.get(SettingsRepository).findByKey(SCIM_TOKEN_SETTINGS_KEY);
 
-		expect(stored).toMatchObject({ tokenHash: hashScimToken(token), tokenHint: token.slice(-4) });
-		expect(JSON.stringify(stored)).not.toContain(token);
+		expect(row).toMatchObject({ loadOnStartup: false });
+		expect(row?.value).not.toContain(token);
+		expect(jsonParse(row?.value ?? '')).toMatchObject({
+			current: { tokenHash: hashScimToken(token), tokenHint: token.slice(-4) },
+		});
 	});
 });
 
