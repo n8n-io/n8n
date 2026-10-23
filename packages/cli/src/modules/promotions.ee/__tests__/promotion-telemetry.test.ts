@@ -4,17 +4,20 @@ import {
 	InternalServerError,
 	NotFoundError,
 	ServiceUnavailableError,
+	TooManyRequestsError,
 } from '@n8n/errors';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { PromotionConflictError } from '../database/promotion-conflict.error';
 import { classifyPromotionFailure, observePromotion } from '../promotion-telemetry';
-import { PromotionGitError } from '../promotions-git.error';
+import { PromotionGitError, PromotionLocalGitError } from '../promotions-git.error';
 
 describe('classifyPromotionFailure', () => {
 	it.each([
 		['a Git failure', new PromotionGitError('Could not complete the Git operation'), 'git_remote'],
 		['an unavailable host', new ServiceUnavailableError('timed out'), 'git_remote'],
+		['a rate-limited host', new TooManyRequestsError('slow down'), 'git_remote'],
+		['a local Git step', new PromotionLocalGitError('local'), 'unexpected'],
 		['a bad request', new BadRequestError('bad'), 'user'],
 		['a conflict', new ConflictError('conflict'), 'user'],
 		['a missing resource', new NotFoundError('missing'), 'user'],

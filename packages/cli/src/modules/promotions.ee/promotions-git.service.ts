@@ -22,7 +22,7 @@ import {
 	GIT_READ_CONCURRENCY,
 	PROMOTION_KEY_COMMENT,
 } from './constants';
-import { PromotionGitError } from './promotions-git.error';
+import { PromotionGitError, PromotionLocalGitError } from './promotions-git.error';
 import { buildHttpsGitConfig, buildSshCommand, generateSshKeyPair } from './promotions-git.utils';
 import type { PromotionGitCredentials } from './promotions.types';
 
@@ -849,11 +849,28 @@ export class PromotionsGitService {
 		}
 
 		this.logger.warn('Git operation failed', ctx);
-		// Only an error from Git itself counts as a remote failure. A local file error does not.
-		return error instanceof GitError
+		return isRemoteGitError(error)
 			? new PromotionGitError('Could not complete the Git operation')
-			: new BadRequestError('Could not complete the Git operation');
+			: new PromotionLocalGitError('Could not complete the Git operation');
 	}
+}
+
+const REMOTE_GIT_COMMANDS = new Set(['clone', 'fetch', 'push', 'pull', 'ls-remote']);
+
+/** Reads the Git subcommand, not the message, which can hold secrets. */
+function isRemoteGitError(error: unknown): boolean {
+	if (!(error instanceof GitError)) return false;
+	const commands = error.task?.commands ?? [];
+	for (let index = 0; index < commands.length; index++) {
+		// `-c key=value` passes config before the subcommand.
+		if (commands[index] === '-c') {
+			index++;
+			continue;
+		}
+		if (commands[index].startsWith('-')) continue;
+		return REMOTE_GIT_COMMANDS.has(commands[index]);
+	}
+	return false;
 }
 
 async function hasCommit(git: SimpleGit, commitSha: string): Promise<boolean> {

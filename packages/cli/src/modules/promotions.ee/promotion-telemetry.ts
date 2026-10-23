@@ -1,15 +1,20 @@
-import { ResponseError, ServiceUnavailableError } from '@n8n/errors';
+import { ResponseError, ServiceUnavailableError, TooManyRequestsError } from '@n8n/errors';
 import { UserError } from 'n8n-workflow';
 
-import { PromotionGitError } from './promotions-git.error';
+import { PromotionGitError, PromotionLocalGitError } from './promotions-git.error';
 
 export type PromotionFailureKind = 'user' | 'git_remote' | 'unexpected';
 
 /** Maps a thrown error to a coarse kind. It never reads the message, which can hold secrets. */
 export function classifyPromotionFailure(error: unknown): PromotionFailureKind {
-	if (error instanceof PromotionGitError || error instanceof ServiceUnavailableError) {
+	if (
+		error instanceof PromotionGitError ||
+		error instanceof ServiceUnavailableError ||
+		error instanceof TooManyRequestsError
+	) {
 		return 'git_remote';
 	}
+	if (error instanceof PromotionLocalGitError) return 'unexpected';
 	if (error instanceof UserError) return 'user';
 	if (error instanceof ResponseError && error.httpStatusCode >= 400 && error.httpStatusCode < 500) {
 		return 'user';

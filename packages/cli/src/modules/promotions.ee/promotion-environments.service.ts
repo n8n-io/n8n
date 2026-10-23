@@ -161,19 +161,22 @@ export class PromotionEnvironmentsService {
 				'The environment changed during the update. Reload it and try again.',
 			);
 		}
-		this.eventService.emit('promotion-environment-updated', {
-			user: actor,
-			environmentId: id,
-			direction: current.direction,
-			changedFields: [
-				...(input.name !== undefined ? ['name' as const] : []),
-				...(input.remote !== undefined ? ['remote' as const] : []),
-				...(input.providerId !== undefined && input.providerId !== current.providerId
-					? ['provider' as const]
-					: []),
-				...(input.settings !== undefined ? ['settings' as const] : []),
-			],
-		});
+		const changedFields = [
+			...(input.name !== undefined ? ['name' as const] : []),
+			...(input.remote !== undefined ? ['remote' as const] : []),
+			...(input.providerId !== undefined && input.providerId !== current.providerId
+				? ['provider' as const]
+				: []),
+			...(input.settings !== undefined ? ['settings' as const] : []),
+		];
+		if (changedFields.length > 0) {
+			this.eventService.emit('promotion-environment-updated', {
+				user: actor,
+				environmentId: id,
+				direction: current.direction,
+				changedFields,
+			});
+		}
 		return await this.findOne(id);
 	}
 
@@ -183,13 +186,15 @@ export class PromotionEnvironmentsService {
 	 */
 	async delete(id: string, actor: User): Promise<void> {
 		const { id: environmentId, direction, scope } = await this.getEntity(id);
-		await this.environmentRepository.deleteEnvironment(environmentId);
-		this.eventService.emit('promotion-environment-deleted', {
-			user: actor,
-			environmentId,
-			direction,
-			environmentScope: scope,
-		});
+		const deleted = await this.environmentRepository.deleteEnvironment(environmentId);
+		if (deleted) {
+			this.eventService.emit('promotion-environment-deleted', {
+				user: actor,
+				environmentId,
+				direction,
+				environmentScope: scope,
+			});
+		}
 		await this.purgeCache(environmentId);
 	}
 

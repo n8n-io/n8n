@@ -110,6 +110,8 @@ describe('PromotionEnvironmentsService', () => {
 	});
 
 	it('emits an event with the direction and scope of the environment it deletes', async () => {
+		environmentRepository.deleteEnvironment.mockResolvedValue(true);
+
 		await service.delete(ENVIRONMENT_ID, actor);
 
 		expect(eventService.emit).toHaveBeenCalledWith('promotion-environment-deleted', {
@@ -118,6 +120,22 @@ describe('PromotionEnvironmentsService', () => {
 			direction: 'promote',
 			environmentScope: 'projects',
 		});
+	});
+
+	it('emits no event when a concurrent request already deleted the environment', async () => {
+		environmentRepository.deleteEnvironment.mockResolvedValue(false);
+
+		await service.delete(ENVIRONMENT_ID, actor);
+
+		expect(eventService.emit).not.toHaveBeenCalled();
+	});
+
+	it('emits no event for an update that changes nothing', async () => {
+		environmentRepository.updateEnvironment.mockResolvedValue(true);
+
+		await service.update(ENVIRONMENT_ID, { providerId: 'prov1' }, actor);
+
+		expect(eventService.emit).not.toHaveBeenCalled();
 	});
 
 	it('does not report the provider as changed when the request resends the current one', async () => {

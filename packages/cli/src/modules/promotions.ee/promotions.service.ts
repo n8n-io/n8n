@@ -550,8 +550,6 @@ export class PromotionsService {
 		// the user previewed. resolveForProject validates the project and environment too.
 		const input = await this.resolver.resolveForProject(projectId, 'promote');
 
-		const selection = await this.classifySelection(projectId, request.workflowIds);
-
 		return await this.trackPromote(
 			input,
 			actor,
@@ -564,7 +562,7 @@ export class PromotionsService {
 						commitMessage: request.commitMessage ?? PROMOTE_SELECTION_COMMIT_MESSAGE,
 						canExportVariableValues: request.canExportVariableValues,
 					},
-					selection,
+					await this.classifySelection(projectId, request.workflowIds),
 				),
 		);
 	}

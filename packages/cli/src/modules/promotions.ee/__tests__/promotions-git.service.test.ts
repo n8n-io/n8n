@@ -8,7 +8,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError, ServiceUnavailableError } from '@n8n/errors';
 
-import { PromotionGitError } from '../promotions-git.error';
+import { PromotionGitError, PromotionLocalGitError } from '../promotions-git.error';
 import { PromotionsGitService } from '../promotions-git.service';
 
 const { mockGit, simpleGitMock, GitError, GitPluginError } = vi.hoisted(() => {
@@ -29,14 +29,21 @@ const { mockGit, simpleGitMock, GitError, GitPluginError } = vi.hoisted(() => {
 	};
 	instance.env.mockReturnValue(instance);
 	// Match simple-git's error classes. Every error from Git extends GitError.
-	class GitError extends Error {}
+	class GitError extends Error {
+		constructor(
+			readonly task?: { commands: string[] },
+			message?: string,
+		) {
+			super(message);
+		}
+	}
 	class GitPluginError extends GitError {
 		constructor(
-			readonly task: unknown,
+			task: { commands: string[] } | undefined,
 			readonly plugin: string,
 			message: string,
 		) {
-			super(message);
+			super(task, message);
 		}
 	}
 	return { mockGit: instance, simpleGitMock: vi.fn(() => instance), GitError, GitPluginError };
@@ -726,21 +733,33 @@ describe('PromotionsGitService (git operations)', () => {
 			expect(result).toEqual({ commitSha: 'def456' });
 		});
 
-		it('reports a failure from Git as a Git error', async () => {
-			mockGit.fetch.mockRejectedValueOnce(new GitError());
+		it('reports a failed call to the remote as a Git error', async () => {
+			mockGit.fetch.mockRejectedValueOnce(
+				new GitError({ commands: ['-c', 'protocol.version=2', 'fetch', 'origin'] }),
+			);
 
 			const error = await call().catch((e: unknown) => e);
 
 			expect(error).toBeInstanceOf(PromotionGitError);
 		});
 
-		it('does not report a local file failure as a Git error', async () => {
+		it('reports a failed local Git command as a local error', async () => {
+			mockGit.fetch.mockRejectedValueOnce(new GitError({ commands: ['checkout', 'main'] }));
+
+			const error = await call().catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(PromotionLocalGitError);
+			expect(error).not.toBeInstanceOf(PromotionGitError);
+		});
+
+		it('reports a local file failure as a local error, with the same response', async () => {
 			mockGit.fetch.mockRejectedValueOnce(new Error('EACCES: permission denied'));
 
 			const error = await call().catch((e: unknown) => e);
 
+			expect(error).toBeInstanceOf(PromotionLocalGitError);
 			expect(error).toBeInstanceOf(BadRequestError);
-			expect(error).not.toBeInstanceOf(PromotionGitError);
+			expect((error as Error).message).toBe('Could not complete the Git operation');
 		});
 
 		it('redacts a fetch failure instead of surfacing raw git output', async () => {

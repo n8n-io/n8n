@@ -184,7 +184,10 @@ export class PromotionProvidersService {
 		if ((await this.environmentRepository.countByProviderId(id)) > 0) {
 			throw new ConflictError('This provider is used by a promotion environment');
 		}
-		await mapPromotionConflicts(async () => await this.providerRepository.deleteProvider(id));
+		const deleted = await mapPromotionConflicts(
+			async () => await this.providerRepository.deleteProvider(id),
+		);
+		if (!deleted) return;
 		this.eventService.emit('promotion-provider-deleted', {
 			user: actor,
 			providerId: id,

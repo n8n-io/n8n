@@ -205,10 +205,10 @@ describe('Promotion reviews in the Inbox', () => {
 		delete process.env.N8N_ENV_FEAT_PROMOTIONS;
 	});
 
-	let emitSpy: MockInstance;
+	let emitSpy: MockInstance | undefined;
 
 	afterEach(() => {
-		emitSpy.mockRestore();
+		emitSpy?.mockRestore();
 	});
 
 	beforeEach(async () => {

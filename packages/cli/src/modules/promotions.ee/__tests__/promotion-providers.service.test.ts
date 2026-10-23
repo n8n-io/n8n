@@ -269,6 +269,7 @@ describe('PromotionProvidersService', () => {
 		it('emits an event after it deletes an unused provider', async () => {
 			providerRepository.findById.mockResolvedValue(sshProvider());
 			environmentRepository.countByProviderId.mockResolvedValue(0);
+			providerRepository.deleteProvider.mockResolvedValue(true);
 
 			await service.delete('prov1', actor);
 
@@ -277,6 +278,16 @@ describe('PromotionProvidersService', () => {
 				providerId: 'prov1',
 				providerType: 'git',
 			});
+		});
+
+		it('emits no event when a concurrent request already deleted the provider', async () => {
+			providerRepository.findById.mockResolvedValue(sshProvider());
+			environmentRepository.countByProviderId.mockResolvedValue(0);
+			providerRepository.deleteProvider.mockResolvedValue(false);
+
+			await service.delete('prov1', actor);
+
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
 		it('emits no event for a provider that an environment uses', async () => {
