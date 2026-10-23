@@ -169,7 +169,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 		 * intentionally not wired into the change-event mechanism below.
 		 */
 		const executingNode = useExecutingNode({
-			allowsConcurrentNodes: () => documentStore.settings.engineType === 'v2',
+			engineType: () => documentStore.settings.engineType,
 		});
 		const activeAgentCapabilityCalls = shallowReactive(
 			new Map<

@@ -1534,13 +1534,13 @@ describe('workflowExecutionState.store', () => {
 			it('shows every running node as executing on engine v2', () => {
 				const executionStateStore = setUpTwoNodes('v2');
 
-				executionStateStore.executingNode.addExecutingNode('Node A', 0);
-				executionStateStore.executingNode.addExecutingNode('Node B', 1);
+				executionStateStore.executingNode.addExecutingNode('Node A', 0, 0);
+				executionStateStore.executingNode.addExecutingNode('Node B', 1, 1);
 
 				expect(executionStateStore.executionRunningByNodeId.get('a-id')?.value).toBe(true);
 				expect(executionStateStore.executionRunningByNodeId.get('b-id')?.value).toBe(true);
 
-				executionStateStore.executingNode.removeExecutingNode('Node A');
+				executionStateStore.executingNode.removeExecutingNode('Node A', 0);
 
 				expect(executionStateStore.executionRunningByNodeId.get('a-id')?.value).toBe(false);
 				expect(executionStateStore.executionRunningByNodeId.get('b-id')?.value).toBe(true);
@@ -1553,10 +1553,10 @@ describe('workflowExecutionState.store', () => {
 				);
 				executionStateStore.setActiveExecutionId('exec-1');
 
-				executionStateStore.executingNode.addExecutingNode('Node B', 0);
-				executionStateStore.executingNode.addExecutingNode('Node A', 1);
-				executionStateStore.executingNode.removeExecutingNode('Node A');
-				executionStateStore.executingNode.removeExecutingNode('Node B');
+				executionStateStore.executingNode.addExecutingNode('Node B', 0, 0);
+				executionStateStore.executingNode.addExecutingNode('Node A', 1, 1);
+				executionStateStore.executingNode.removeExecutingNode('Node A', 1);
+				executionStateStore.executingNode.removeExecutingNode('Node B', 0);
 
 				expect(executionStateStore.executionRunningByNodeId.get('a-id')?.value).toBe(false);
 				expect(executionStateStore.executionRunningByNodeId.get('b-id')?.value).toBe(false);
@@ -1567,8 +1567,8 @@ describe('workflowExecutionState.store', () => {
 			it('shows only the latest node as executing on engine v1', () => {
 				const executionStateStore = setUpTwoNodes('v1');
 
-				executionStateStore.executingNode.addExecutingNode('Node A', 0);
-				executionStateStore.executingNode.addExecutingNode('Node B', 1);
+				executionStateStore.executingNode.addExecutingNode('Node A', 0, 0);
+				executionStateStore.executingNode.addExecutingNode('Node B', 1, 1);
 
 				expect(executionStateStore.executionRunningByNodeId.get('a-id')?.value).toBe(false);
 				expect(executionStateStore.executionRunningByNodeId.get('b-id')?.value).toBe(true);

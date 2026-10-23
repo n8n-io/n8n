@@ -1,4 +1,5 @@
-import { ref, type Ref } from 'vue';
+import { ref, toValue, type MaybeRefOrGetter, type Ref } from 'vue';
+import type { IWorkflowSettings } from 'n8n-workflow';
 
 interface ExecutingNodeRefs {
 	executingNode: Ref<string[]>;
@@ -6,8 +7,8 @@ interface ExecutingNodeRefs {
 }
 
 interface ExecutingNodeStrategy {
-	add(nodeName: string, sequenceNumber: number): void;
-	remove(nodeName: string): void;
+	add(nodeName: string, sequenceNumber: number, executionIndex: number | undefined): void;
+	remove(nodeName: string, executionIndex: number | undefined): void;
 }
 
 /**
@@ -54,8 +55,10 @@ function createLatestNodeStrategy({
 
 /**
  * Shows every node that started and did not finish. Engine v2 runs nodes in
- * parallel, and one node can have more than one run in flight, so it counts the
- * runs of each node. A node stops showing when its count is 0.
+ * parallel, and one node can have more than one run in flight. Each
+ * `nodeExecuteAfter` finishes only the run whose `nodeExecuteBefore` carried the
+ * same `executionIndex`. An After for another run, or with no Before, changes
+ * nothing.
  *
  * It ignores `sequenceNumber`: a step's `nodeExecuteBefore` never follows its
  * own `nodeExecuteAfter`, the transport is ordered, and the editor handles push
@@ -65,28 +68,25 @@ function createConcurrentNodeStrategy({
 	executingNode,
 	lastAddedExecutingNode,
 }: ExecutingNodeRefs): ExecutingNodeStrategy {
-	const runsInFlight = new Map<string, number>();
+	// The node name of each run in flight, by the run's `executionIndex`.
+	const runsInFlight = new Map<number | undefined, string>();
 
 	return {
-		add(nodeName) {
-			runsInFlight.set(nodeName, (runsInFlight.get(nodeName) ?? 0) + 1);
+		add(nodeName, _sequenceNumber, executionIndex) {
+			runsInFlight.set(executionIndex, nodeName);
 			lastAddedExecutingNode.value = nodeName;
 			if (!executingNode.value.includes(nodeName)) {
 				executingNode.value = [...executingNode.value, nodeName];
 			}
 		},
-		remove(nodeName) {
-			const runs = runsInFlight.get(nodeName);
-			if (runs === undefined) return;
+		remove(nodeName, executionIndex) {
+			if (runsInFlight.get(executionIndex) !== nodeName) return;
+			runsInFlight.delete(executionIndex);
 
 			// "Waiting for next" follows the node that finished last, not a node that
 			// started later and already finished.
 			lastAddedExecutingNode.value = nodeName;
-			if (runs > 1) {
-				runsInFlight.set(nodeName, runs - 1);
-				return;
-			}
-			runsInFlight.delete(nodeName);
+			if ([...runsInFlight.values()].includes(nodeName)) return;
 			executingNode.value = executingNode.value.filter((name) => name !== nodeName);
 		},
 	};
@@ -96,13 +96,15 @@ function createConcurrentNodeStrategy({
  * Tracks the nodes rendered as executing (the per-node loading spinner).
  *
  * A v1 run shows only the latest node. An engine v2 run shows every node that
- * is running. The first node of a run selects the strategy from
- * `allowsConcurrentNodes`. The strategy stays fixed until
- * `clearNodeExecutionQueue`.
+ * is running. The first node of a run reads `engineType` to select the
+ * strategy. The strategy stays fixed until `clearNodeExecutionQueue`.
  *
- * `executingNode` stays an array for its consumers' sake.
+ * `executingNode` stays an array for its consumers' sake. The push handlers
+ * pass each event's `executionIndex`, which pairs a run's start and finish.
  */
-export function useExecutingNode(options: { allowsConcurrentNodes?: () => boolean } = {}) {
+export function useExecutingNode(
+	options: { engineType?: MaybeRefOrGetter<IWorkflowSettings['engineType']> } = {},
+) {
 	const executingNode = ref<string[]>([]);
 	/**
 	 * The node for the "waiting for next" state. On v1, the node that started
@@ -112,16 +114,16 @@ export function useExecutingNode(options: { allowsConcurrentNodes?: () => boolea
 	// Null until the first node of a run selects a strategy.
 	let strategy: ExecutingNodeStrategy | null = null;
 
-	function addExecutingNode(nodeName: string, sequenceNumber: number) {
+	function addExecutingNode(nodeName: string, sequenceNumber: number, executionIndex?: number) {
 		strategy ??=
-			options.allowsConcurrentNodes?.() === true
+			toValue(options.engineType) === 'v2'
 				? createConcurrentNodeStrategy({ executingNode, lastAddedExecutingNode })
 				: createLatestNodeStrategy({ executingNode, lastAddedExecutingNode });
-		strategy.add(nodeName, sequenceNumber);
+		strategy.add(nodeName, sequenceNumber, executionIndex);
 	}
 
-	function removeExecutingNode(nodeName: string) {
-		strategy?.remove(nodeName);
+	function removeExecutingNode(nodeName: string, executionIndex?: number) {
+		strategy?.remove(nodeName, executionIndex);
 	}
 
 	function clearNodeExecutionQueue() {
