@@ -80,6 +80,9 @@ export function extractErrorDescription(rawError: SplunkError) {
 }
 
 export function toUnixEpoch(timestamp: string) {
+	// Splunk reads a bare number as epoch seconds, and `0` as all time, but
+	// `Date.parse` reads `0`, `1` or `-1` as a year, so pass numbers through.
+	if (/^-?\d+(\.\d+)?$/.test(timestamp)) return timestamp;
 	const parsed = Date.parse(timestamp);
 	// Splunk's relative specifiers — `-15m`, `-24h`, `-1d@d`, `now`, `@d` — are
 	// not dates `Date.parse` understands, and the search API takes them exactly
