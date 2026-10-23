@@ -18,6 +18,7 @@ import { Container } from '@n8n/di';
 import * as fastGlob from 'fast-glob';
 import { Cipher } from 'n8n-core';
 import type { IWorkflowSettings } from 'n8n-workflow';
+import { randomUUID } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import { basename, isAbsolute } from 'node:path';
 import type { Mock } from 'vitest';
@@ -719,11 +720,12 @@ describe('SourceControlService', () => {
 			'$name',
 			async ({ localSettings, remoteSettings, expectedSettings, changeVersion }) => {
 				const workflow = await createWorkflow({ settings: localSettings }, projectA);
+				const versionId = changeVersion ? randomUUID() : workflow.versionId;
 				const workflowRepository = Container.get(WorkflowRepository);
 				const fileName = `${SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER}/${workflow.id}.json`;
 				gitFiles[fileName] = {
 					...toExportableWorkflow(workflow, projectA),
-					versionId: changeVersion ? 'remote-version' : workflow.versionId,
+					versionId,
 					...(remoteSettings !== undefined && { settings: remoteSettings }),
 				};
 				const floorSpy = vi
@@ -744,9 +746,7 @@ describe('SourceControlService', () => {
 
 					const updatedWorkflow = await workflowRepository.findOneByOrFail({ id: workflow.id });
 					expect(updatedWorkflow.settings).toEqual(expectedSettings);
-					expect(updatedWorkflow.versionId).toBe(
-						changeVersion ? 'remote-version' : workflow.versionId,
-					);
+					expect(updatedWorkflow.versionId).toBe(versionId);
 					const nextStatus = await statusService.getStatus(globalAdmin, options);
 					expect(nextStatus.filter((file) => file.id === workflow.id)).toEqual([]);
 				} finally {
