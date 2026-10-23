@@ -25,6 +25,7 @@ import { extractNodeConfig } from './node-config';
 import {
 	applyProviderShapeNormalizers,
 	findProviderShapeViolation,
+	isModelInferenceRequest,
 	type ProviderRequestInfo,
 } from './provider-shapes';
 import { redactBinaryBody } from './request-binary-redactor';
@@ -155,14 +156,17 @@ const MAX_LEDGER_ENTRIES = 8;
 const LEDGER_BODY_MAX = 600;
 const LEDGER_TOTAL_MAX = 4000;
 
-/** One write the mock served successfully in this execution. Body and query are redacted snapshots. */
+/**
+ * One write the mock served successfully in this execution. Body and query are
+ * redacted, serialized and clipped when the write is recorded.
+ */
 export interface WriteLedgerEntry {
 	hostname: string;
 	method: string;
 	endpoint: string;
 	nodeName: string;
-	body?: unknown;
-	qs?: unknown;
+	body?: string;
+	qs?: string;
 }
 
 interface MockRequest {
@@ -217,6 +221,19 @@ function serializeForLedger(value: unknown): string {
 	}
 }
 
+/** Redacted, serialized and clipped: the form a ledger entry keeps and the prompt shows. */
+function ledgerSnapshot(value: unknown): string {
+	return clip(serializeForLedger(redactSecretKeys(value)), LEDGER_BODY_MAX);
+}
+
+/** A success status whose body reports a failure: `ok: false`, or GraphQL errors with no data. */
+function isInBandFailure(body: unknown): boolean {
+	if (!isRecord(body)) return false;
+	if (body.ok === false) return true;
+	const hasErrors = Array.isArray(body.errors) && body.errors.length > 0;
+	return hasErrors && (body.data === null || body.data === undefined);
+}
+
 /** Record a write the node received a success for: a failed write changed nothing. */
 function recordWrite(
 	ledger: WriteLedgerEntry[],
@@ -226,19 +243,26 @@ function recordWrite(
 ): void {
 	if (!request.url || !isWriteRequest(request)) return;
 	if (response.statusCode >= 400 || isMockErrorSentinel(response)) return;
+	if (isInBandFailure(response.body)) return;
 	const hostname = extractHostname(request.url);
 	if (!hostname) return;
+	const method = (request.method ?? 'GET').toUpperCase();
+	// A model call's prompt is not data a later request reads; recording it would
+	// show earlier prompts to later completions.
+	if (isModelInferenceRequest({ method, pathname: extractEndpointPath(request.url), hostname })) {
+		return;
+	}
 	ledger.push({
 		hostname,
-		method: (request.method ?? 'GET').toUpperCase(),
+		method,
 		endpoint: redactSecretSearchParams(extractEndpoint(request.url)),
 		nodeName,
-		// Redact now: the snapshot must not change when node code mutates the body later.
+		// Snapshot now: the entry must not change when node code mutates the body later.
 		body:
 			request.body === undefined
 				? undefined
-				: redactSecretKeys(redactBinaryBody(request.body, getContentType(request.headers))),
-		qs: request.qs && Object.keys(request.qs).length > 0 ? redactSecretKeys(request.qs) : undefined,
+				: ledgerSnapshot(redactBinaryBody(request.body, getContentType(request.headers))),
+		qs: request.qs && Object.keys(request.qs).length > 0 ? ledgerSnapshot(request.qs) : undefined,
 	});
 }
 
@@ -258,12 +282,8 @@ export function formatWriteLedger(
 	const firstShown = Math.max(0, sameHost.length - MAX_LEDGER_ENTRIES);
 	const lines = sameHost.slice(firstShown).map((entry, index) => {
 		let line = `- [${firstShown + index + 1}] ${entry.method} ${entry.endpoint} ("${entry.nodeName}")`;
-		if (entry.qs !== undefined) {
-			line += ` query: ${clip(serializeForLedger(entry.qs), LEDGER_BODY_MAX)}`;
-		}
-		if (entry.body !== undefined) {
-			line += ` body: ${clip(serializeForLedger(entry.body), LEDGER_BODY_MAX)}`;
-		}
+		if (entry.qs !== undefined) line += ` query: ${entry.qs}`;
+		if (entry.body !== undefined) line += ` body: ${entry.body}`;
 		return clip(line, LEDGER_TOTAL_MAX);
 	});
 	// Over the total budget, drop the oldest: the newest writes matter most.

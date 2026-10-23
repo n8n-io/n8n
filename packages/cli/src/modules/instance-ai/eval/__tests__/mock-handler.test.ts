@@ -705,6 +705,86 @@ describe('earlier writes ledger', () => {
 		expect(section).not.toContain('tok-1234567890');
 	});
 
+	it.each([
+		['OpenAI Responses', 'https://api.openai.com/v1/responses', { input: 'FIRST-PROMPT' }],
+		[
+			'OpenAI chat completions',
+			'https://api.openai.com/v1/chat/completions',
+			{ messages: [{ role: 'user', content: 'FIRST-PROMPT' }] },
+		],
+		[
+			'Anthropic messages',
+			'https://api.anthropic.com/v1/messages',
+			{ messages: [{ role: 'user', content: 'FIRST-PROMPT' }] },
+		],
+	])('does not show an earlier %s inference call as a write', async (_name, url, firstBody) => {
+		llmSubmits({ type: 'json', body: { id: 'gen-1' } });
+		llmSubmits({ type: 'json', body: { id: 'gen-2' } });
+		const handler = createLlmMockHandler();
+		const modelNode = { name: 'Model', type: '@n8n/n8n-nodes-langchain.openAi' } as INode;
+
+		await handler({ url, method: 'POST', body: firstBody } as IHttpRequestOptions, modelNode);
+		await handler(
+			{ url, method: 'POST', body: { input: 'SECOND-PROMPT' } } as IHttpRequestOptions,
+			modelNode,
+		);
+
+		expect(promptOf(1)).not.toContain(SECTION);
+		expect(promptOf(1)).not.toContain('FIRST-PROMPT');
+	});
+
+	it('leaves out a GraphQL mutation answered with errors and no data', async () => {
+		llmSubmits({ type: 'json', body: { errors: [{ message: 'Forbidden' }], data: null } });
+		llmSubmits({ type: 'json', body: { data: { issues: { nodes: [] } } } });
+		const handler = createLlmMockHandler();
+		const graphqlUrl = 'https://api.linear.app/graphql';
+
+		await handler(
+			{
+				url: graphqlUrl,
+				method: 'POST',
+				body: {
+					query: 'mutation CreateIssue { issueCreate(input: { title: "Bug" }) { success } }',
+				},
+			} as IHttpRequestOptions,
+			baseNode,
+		);
+		await handler(
+			{
+				url: graphqlUrl,
+				method: 'POST',
+				body: { query: 'query Issues { issues { nodes { id } } }' },
+			} as IHttpRequestOptions,
+			baseNode,
+		);
+
+		expect(promptOf(1)).not.toContain(SECTION);
+	});
+
+	it('leaves out a write answered with ok: false', async () => {
+		llmSubmits({ type: 'json', body: { ok: false, error: 'channel_not_found' } });
+		llmSubmits({ type: 'json', body: { ok: true, messages: [] } });
+		const handler = createLlmMockHandler();
+
+		await handler(
+			{
+				url: 'https://slack.com/api/chat.postMessage',
+				method: 'POST',
+				body: { channel: 'C1', text: 'posted' },
+			} as IHttpRequestOptions,
+			baseNode,
+		);
+		await handler(
+			{
+				url: 'https://slack.com/api/conversations.history?channel=C1',
+				method: 'GET',
+			} as IHttpRequestOptions,
+			baseNode,
+		);
+
+		expect(promptOf(1)).not.toContain(SECTION);
+	});
+
 	it('regenerates an identical read after a write to the same service', async () => {
 		llmSubmits({ type: 'json', body: { values: [] } });
 		llmSubmits({ type: 'json', body: { updates: { updatedRows: 1 } } });

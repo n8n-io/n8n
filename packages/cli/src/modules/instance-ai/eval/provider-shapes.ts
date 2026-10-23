@@ -75,6 +75,26 @@ function isGeminiGenerate(host: string, path: string): boolean {
 	return host === 'generativelanguage.googleapis.com' && path.includes('generatecontent');
 }
 
+function isAnthropicMessages(host: string, path: string): boolean {
+	return host === 'api.anthropic.com' && /\/v\d+\/messages\/?$/.test(path);
+}
+
+/**
+ * True for a model-provider inference call: OpenAI-style responses, chat
+ * completions and image generation, Anthropic messages, Gemini generateContent.
+ * Such a POST generates an answer; it changes no data a later request reads.
+ */
+export function isModelInferenceRequest(info: ProviderRequestInfo): boolean {
+	const path = info.pathname.toLowerCase();
+	const host = (info.hostname ?? '').toLowerCase();
+	return (
+		isOpenAiCompletion(path) !== null ||
+		isOpenAiImagesGeneration(path) ||
+		isGeminiGenerate(host, path) ||
+		isAnthropicMessages(host, path)
+	);
+}
+
 function isRedditWrite(host: string, path: string, method: string): 'submit' | 'comment' | null {
 	if (method.toUpperCase() !== 'POST' || !host.includes('reddit.com')) return null;
 	if (path.includes('api/comment')) return 'comment';
