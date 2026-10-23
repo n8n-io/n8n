@@ -71,3 +71,11 @@ export function sumBinaryDataBytes(data: IRunExecutionData | undefined): number 
 	for (const bytes of bytesByBlobId.values()) total += bytes;
 	return total;
 }
+
+/** Whether execution data points at binary stored outside its JSON bundle. */
+export function hasExternalBinaryData(data: IRunExecutionData | undefined): boolean {
+	for (const binary of iterateBinary(data)) {
+		if (binary?.id) return true;
+	}
+	return false;
+}

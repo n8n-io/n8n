@@ -105,12 +105,16 @@ export class ExecutionPersistence {
 		const executionEntity = { ...rest, createdAt: new Date(), storedAt, workflowVersionId };
 
 		let reclaimedTombstone: DeletionTarget | null = null;
+		const failedCreate: {
+			blobTarget: (ExecutionRef & { storedAt: BlobStorageLocation }) | null;
+		} = { blobTarget: null };
 		try {
 			const executionId = await this.executionRepository.runInTransaction(ctx, async (tx) => {
 				reclaimedTombstone = await this.reclaimTombstone(tx, executionEntity.deduplicationKey);
 				const { identifiers } = await tx.insert(ExecutionEntity, executionEntity);
 				const executionId = String(identifiers[0].id);
 				const ref = { workflowId: id, executionId };
+				if (storedAt !== 'db') failedCreate.blobTarget = { ...ref, storedAt };
 
 				const jsonSizeBytes = await this.trackWrite(storedAt, ref.workflowId, async () => {
 					const bundle: ExecutionDataPayload = {
@@ -136,6 +140,19 @@ export class ExecutionPersistence {
 
 			return executionId;
 		} catch (error) {
+			const failedTarget = failedCreate.blobTarget;
+			if (failedTarget) {
+				try {
+					await this.jsonStore.delete([failedTarget]);
+				} catch (cleanupError) {
+					this.errorReporter.error(cleanupError, {
+						extra: {
+							executionId: failedTarget.executionId,
+							storedAt: failedTarget.storedAt,
+						},
+					});
+				}
+			}
 			if (executionEntity.deduplicationKey && this.isDuplicateExecutionError(error)) {
 				throw new DuplicateExecutionError(executionEntity.deduplicationKey, error);
 			}
@@ -657,6 +674,22 @@ export class ExecutionPersistence {
 		]);
 
 		await this.executionRepository.deleteByIds(targets.map((t) => t.executionId));
+	}
+
+	/** Resolve and remove one execution together with every storage-backed payload it owns. */
+	async hardDeleteById(executionId: string) {
+		const execution = await this.executionRepository.findOne({
+			select: ['id', 'workflowId', 'storedAt'],
+			where: { id: executionId },
+			withDeleted: true,
+		});
+		if (!execution) return;
+
+		await this.hardDelete({
+			executionId: execution.id,
+			workflowId: execution.workflowId,
+			storedAt: execution.storedAt,
+		});
 	}
 
 	async hardDeleteBy(criteria: ExecutionDeletionCriteria) {

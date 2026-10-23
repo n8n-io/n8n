@@ -293,6 +293,22 @@ describe('ExecutionPersistence', () => {
 
 				await expect(executionPersistence.create(createPayload)).rejects.toThrow(fsWriteError);
 			});
+
+			it('removes a filesystem blob when the database transaction fails after writing it', async () => {
+				const mockTx = createMockTransaction();
+				const commitError = new Error('Commit failed');
+				jsonStore.write.mockResolvedValue(123);
+				executionRepository.runInTransaction.mockImplementation(async (_ctx, callback) => {
+					await callback(mockTx, {});
+					throw commitError;
+				});
+
+				await expect(executionPersistence.create(createPayload)).rejects.toBe(commitError);
+
+				expect(jsonStore.delete).toHaveBeenCalledWith([
+					{ workflowId: 'workflow-123', executionId: 'exec-1', storedAt: 'fs' },
+				]);
+			});
 		});
 
 		describe('deduplication key handling', () => {
@@ -2037,6 +2053,45 @@ describe('ExecutionPersistence', () => {
 			const [binary] = binaryDataService.deleteMany.mock.invocationCallOrder;
 			const [blobs] = jsonStore.delete.mock.invocationCallOrder;
 			expect(rows).toBeGreaterThan(Math.max(binary, blobs));
+		});
+	});
+
+	describe('hardDeleteById', () => {
+		const executionPersistence = createPersistenceService('db');
+
+		it('resolves storage ownership before deleting the row and blob payloads', async () => {
+			executionRepository.findOne.mockResolvedValue(
+				Object.assign(new ExecutionEntity(), {
+					id: 'exec-1',
+					workflowId: 'wf-1',
+					storedAt: 'fs' as const,
+				}),
+			);
+
+			await executionPersistence.hardDeleteById('exec-1');
+
+			expect(executionRepository.findOne).toHaveBeenCalledWith({
+				select: ['id', 'workflowId', 'storedAt'],
+				where: { id: 'exec-1' },
+				withDeleted: true,
+			});
+			expect(executionRepository.deleteByIds).toHaveBeenCalledWith(['exec-1']);
+			expect(binaryDataService.deleteMany).toHaveBeenCalledWith([
+				{ type: 'execution', executionId: 'exec-1', workflowId: 'wf-1', storedAt: 'fs' },
+			]);
+			expect(jsonStore.delete).toHaveBeenCalledWith([
+				{ executionId: 'exec-1', workflowId: 'wf-1', storedAt: 'fs' },
+			]);
+		});
+
+		it('does nothing when the execution no longer exists', async () => {
+			executionRepository.findOne.mockResolvedValue(null);
+
+			await executionPersistence.hardDeleteById('missing');
+
+			expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
+			expect(binaryDataService.deleteMany).not.toHaveBeenCalled();
+			expect(jsonStore.delete).not.toHaveBeenCalled();
 		});
 	});
 
