@@ -277,9 +277,14 @@ async function searchAgents(term = '') {
 
 const onAgentSearch = useDebounceFn(searchAgents, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 
+// Only the newest read fills the creators, so a slow earlier one cannot win.
+const { next: nextCreatorsLoad } = useLatestFetch();
+
 async function loadCreators() {
+	const isLatest = nextCreatorsLoad();
 	try {
 		const users = await skillsStore.fetchCreators();
+		if (!isLatest()) return;
 		creators.value = [...users].sort((a, b) => creatorLabel(a).localeCompare(creatorLabel(b)));
 	} catch {
 		// The filter is optional: a failed read leaves the previous options.

@@ -928,6 +928,25 @@ describe('AgentRepository', () => {
 		});
 	});
 
+	describe('findSummariesByProjectIds - search', () => {
+		it('matches % and _ in the search as plain text', async () => {
+			const underscore = await createAgent({ name: 'Ops_bot' });
+			const percent = await createAgent({ name: '100% bot' });
+			await createAgent({ name: 'Opsxbot' });
+			await createAgent({ name: '100 bot' });
+
+			const byUnderscore = await agentRepo.findSummariesByProjectIds([projectId], {
+				query: 'ops_',
+			});
+			const byPercent = await agentRepo.findSummariesByProjectIds([projectId], {
+				query: '100%',
+			});
+
+			expect(byUnderscore.map((agent) => agent.id)).toEqual([underscore.id]);
+			expect(byPercent.map((agent) => agent.id)).toEqual([percent.id]);
+		});
+	});
+
 	describe('findByProjectIdsPaginated - ids filter', () => {
 		it('returns only the requested agents', async () => {
 			const first = await createAgent();

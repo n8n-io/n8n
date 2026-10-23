@@ -2,7 +2,12 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
-import { SKILL_NAME_TAKEN_MESSAGE, type SkillDetail, type SkillListItem } from '@n8n/api-types';
+import {
+	SKILL_NAME_TAKEN_MESSAGE,
+	type SkillDetail,
+	type SkillListItem,
+	type SkillUserDto,
+} from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { IUser } from '@n8n/rest-api-client/api/users';
@@ -553,6 +558,27 @@ describe('SettingsSkillsView', () => {
 			});
 			// The new row is the feedback, as on the preferences page.
 			expect(showMessageMock).not.toHaveBeenCalled();
+		});
+
+		it('keeps the refreshed creators when a slower earlier read answers last', async () => {
+			const first = Promise.withResolvers<SkillUserDto[]>();
+			skillsStore.fetchCreators.mockReturnValueOnce(first.promise);
+			skillsStore.createSkill.mockResolvedValue(detail({ id: 's-new' }));
+			const view = renderView();
+			await new Promise(process.nextTick);
+			await userEvent.click(view.getByTestId('skills-create-button'));
+			lastModalData().onConfirm({
+				skill: { name: 'brand-voice', description: 'Write copy.', instructions: 'Be brief.' },
+				scope: 'project:personal-1',
+			});
+			await new Promise(process.nextTick);
+
+			first.resolve([{ id: 'user-3', email: 'old@example.com', firstName: 'Old', lastName: null }]);
+			await new Promise(process.nextTick);
+
+			await userEvent.click(view.getByTestId('resources-list-filters-trigger'));
+			const items = await getDropdownItems(await view.findByTestId('skills-filter-created-by'));
+			expect([...items].map((item) => item.textContent?.trim())).toEqual(['Ada Lovelace']);
 		});
 
 		it('reloads the creator filter after a create, so a first-time creator is listed', async () => {
