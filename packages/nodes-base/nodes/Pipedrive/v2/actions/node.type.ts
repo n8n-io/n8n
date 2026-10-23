@@ -5,7 +5,7 @@ type NodeMap = {
 	deal: 'create' | 'delete' | 'duplicate' | 'get' | 'getAll' | 'search' | 'update';
 	dealProduct: 'add' | 'getAll' | 'remove' | 'update';
 	file: 'create' | 'delete' | 'download' | 'get' | 'update';
-	lead: 'create' | 'delete' | 'get' | 'getAll' | 'update';
+	lead: 'create' | 'delete' | 'get' | 'getAll' | 'search' | 'update';
 	note: 'create' | 'delete' | 'get' | 'getAll' | 'update';
 	organization: 'create' | 'delete' | 'get' | 'getAll' | 'search' | 'update';
 	person: 'create' | 'delete' | 'get' | 'getAll' | 'search' | 'update';
