@@ -9,7 +9,6 @@ import type { IrreversibleMigration, MigrationContext } from '../migration-types
 
 type AgentRow = { id: string; schema: unknown; skills: unknown };
 type HistoryRow = { schema: unknown; skills: unknown };
-type VersionRow = { id: string; skillId: string; version: number; contentHash: string };
 
 type SkillFileContent = { path: string; content: string };
 type SkillContent = {
@@ -57,18 +56,17 @@ const STARTUP_COPY_PROGRESS_KEY = 'agents.skillsHubCopy';
 /**
  * Copies the inline skills of agents (`agents.skills`, `agent_history.skills`) into the
  * skills hub, so every instance reads agent skills from the hub. Each inline skill becomes
- * an agent skill of its agent. It applies the rules of the startup copy that ran while the
- * hub was behind `N8N_AGENTS_SKILLS_HUB_ENABLED`:
- * - A published version is copied only while it pins nothing. Its bodies become versions
- *   and it pins them.
- * - A draft is copied only while the agent has no hub rows at all. Its refs become
- *   dependency rows, and its current text becomes the newest version of each skill.
+ * an agent skill of its agent:
+ * - Each published version pins versions that hold its bodies.
+ * - The draft refs become dependency rows, and the draft text becomes the newest version
+ *   of each skill.
  * - Content that a skill of the agent already holds is reused, found by content hash.
  * - Refs that were switched off, and bodies that no ref uses, are not copied.
  *
  * An instance where the startup copy ran (its settings row `agents.skillsHubCopy` exists)
  * already reads its skills from the hub, so the migration copies nothing there. A copy
  * would bring back skills that users deleted, because the legacy columns still hold them.
+ * Every other instance had the hub off, so its agents have no hub rows yet.
  *
  * The legacy columns stay as they are. A later migration removes them.
  */
@@ -142,8 +140,8 @@ export class MigrateAgentSkillsToHub1792707342429 implements IrreversibleMigrati
 		const { queryRunner, logger, migrationName } = context;
 		const draft = this.readInline(context, `agent ${agent.id}`, agent.schema, agent.skills);
 		// Published versions are loaded one at a time: an agent can have many large ones.
-		const versionIds = await this.findUnpinnedVersionIds(context, agent.id);
-		const copyDraft = draft.length > 0 && !(await this.hasHubState(context, agent.id));
+		const versionIds = await this.findVersionIds(context, agent.id);
+		const copyDraft = draft.length > 0;
 		if (versionIds.length === 0 && !copyDraft) {
 			counts.skipped++;
 			return undefined;
@@ -152,8 +150,7 @@ export class MigrateAgentSkillsToHub1792707342429 implements IrreversibleMigrati
 		await queryRunner.query('SAVEPOINT copy_agent_skills');
 		const agentCounts = { skills: 0, versions: 0, pins: 0 };
 		try {
-			// An agent whose draft is copied has no hub rows, so there is nothing to load.
-			const state = copyDraft ? emptyState() : await this.loadState(context, agent.id);
+			const state = emptyState();
 			for (const versionId of versionIds) {
 				const version = await this.findVersion(context, versionId);
 				const skills = version
@@ -210,7 +207,7 @@ export class MigrateAgentSkillsToHub1792707342429 implements IrreversibleMigrati
 			return message;
 		}
 		if (!copyDraft && agentCounts.pins === 0) {
-			// Its unpinned versions had no inline skills.
+			// Its published versions had no inline skills.
 			counts.skipped++;
 			return undefined;
 		}
@@ -260,33 +257,8 @@ export class MigrateAgentSkillsToHub1792707342429 implements IrreversibleMigrati
 		return result;
 	}
 
-	/** Whether the agent has a dependency row, an agent skill or a pinned published version. */
-	private async hasHubState(context: MigrationContext, agentId: string): Promise<boolean> {
-		const { escape, runQuery } = context;
-		const [row] = await runQuery<Array<{ found: number }>>(
-			`SELECT 1 AS found WHERE EXISTS (
-				SELECT 1 FROM ${escape.tableName('agent_skill_dependency')} WHERE ${escape.columnName('agentId')} = :agentId
-			) OR EXISTS (
-				SELECT 1 FROM ${escape.tableName('skill')} WHERE ${escape.columnName('agentId')} = :agentId
-			) OR EXISTS (
-				SELECT 1 FROM ${escape.tableName('agent_version_skill_dependency')} pin
-				INNER JOIN ${escape.tableName('agent_history')} history
-					ON history.${escape.columnName('versionId')} = pin.${escape.columnName('agentVersionId')}
-				WHERE history.${escape.columnName('agentId')} = :agentId
-			)`,
-			{ agentId },
-		);
-		return row !== undefined;
-	}
-
-	/**
-	 * The ids of the published versions of an agent that pin no skill and have inline
-	 * skills, oldest first.
-	 */
-	private async findUnpinnedVersionIds(
-		context: MigrationContext,
-		agentId: string,
-	): Promise<string[]> {
+	/** The ids of the published versions of an agent that have inline skills, oldest first. */
+	private async findVersionIds(context: MigrationContext, agentId: string): Promise<string[]> {
 		const { escape, runQuery } = context;
 		const versionId = escape.columnName('versionId');
 		const rows = await runQuery<Array<{ versionId: string }>>(
@@ -294,10 +266,6 @@ export class MigrateAgentSkillsToHub1792707342429 implements IrreversibleMigrati
 			FROM ${escape.tableName('agent_history')} history
 			WHERE history.${escape.columnName('agentId')} = :agentId
 			AND history.${escape.columnName('skills')} IS NOT NULL
-			AND NOT EXISTS (
-				SELECT 1 FROM ${escape.tableName('agent_version_skill_dependency')} pin
-				WHERE pin.${escape.columnName('agentVersionId')} = history.${versionId}
-			)
 			ORDER BY history.${escape.columnName('createdAt')} ASC, history.${versionId} ASC`,
 			{ agentId },
 		);
@@ -315,36 +283,6 @@ export class MigrateAgentSkillsToHub1792707342429 implements IrreversibleMigrati
 			{ versionId },
 		);
 		return row;
-	}
-
-	/** Every version of the skills the agent owns or its draft refers to, oldest first. */
-	private async loadState(context: MigrationContext, agentId: string): Promise<AgentState> {
-		const { escape, runQuery } = context;
-		const skillId = escape.columnName('skillId');
-		const rows = await runQuery<VersionRow[]>(
-			`SELECT version.${escape.columnName('id')} AS ${escape.columnName('id')}, version.${skillId} AS ${skillId},
-				version.${escape.columnName('version')} AS ${escape.columnName('version')},
-				version.${escape.columnName('contentHash')} AS ${escape.columnName('contentHash')}
-			FROM ${escape.tableName('skill_version')} version
-			INNER JOIN ${escape.tableName('skill')} skill ON skill.${escape.columnName('id')} = version.${skillId}
-			WHERE skill.${escape.columnName('agentId')} = :agentId
-			OR skill.${escape.columnName('id')} IN (
-				SELECT dep.${skillId} FROM ${escape.tableName('agent_skill_dependency')} dep
-				WHERE dep.${escape.columnName('agentId')} = :agentId
-			)
-			ORDER BY version.${escape.columnName('version')} ASC`,
-			{ agentId },
-		);
-		const state = emptyState();
-		for (const row of rows) {
-			const version = Number(row.version);
-			addByHash(state, row.contentHash, { id: row.id, skillId: row.skillId });
-			const current = state.latest.get(row.skillId);
-			if (!current || version > current.version) {
-				state.latest.set(row.skillId, { hash: row.contentHash, version });
-			}
-		}
-		return state;
 	}
 
 	/**

@@ -329,47 +329,6 @@ describe('MigrateAgentSkillsToHub migration', () => {
 		expect(await skillsOf(agentId)).toHaveLength(1);
 	});
 
-	it('leaves the draft of an agent that already has hub rows, and copies its unpinned versions', async () => {
-		const agentId = await insertAgent([ref('skill_a')], {
-			skill_a: body('alpha', 'Inline draft.'),
-		});
-		// Hub rows that a user already created for this agent.
-		await insertRow('skill', { id: 'skill_a', agentId, source: 'agent' });
-		const hubVersionId = randomUUID();
-		await insertRow('skill_version', {
-			id: hubVersionId,
-			skillId: 'skill_a',
-			version: 1,
-			name: 'alpha',
-			description: 'Use for alpha',
-			instructions: 'Hub draft.',
-			contentHash: skillContentHash({
-				...body('alpha', 'Hub draft.'),
-				frontmatter: null,
-				files: [],
-			}),
-		});
-		await insertRow('agent_skill_dependency', { agentId, skillId: 'skill_a' });
-		// Published from the inline columns, so it pins nothing yet.
-		const published = await insertVersion(
-			agentId,
-			[ref('skill_a')],
-			{ skill_a: body('alpha', 'Hub draft.') },
-			1,
-		);
-
-		await migrate();
-
-		expect(await draftOf(agentId)).toEqual([
-			{ skillId: 'skill_a', version: 1, name: 'alpha', instructions: 'Hub draft.' },
-		]);
-		// The published body matches the hub version by hash, so it reuses it.
-		expect(await pinsOf(published)).toEqual([
-			expect.objectContaining({ skillId: 'skill_a', version: 1 }),
-		]);
-		expect(await count('skill_version')).toBe(1);
-	});
-
 	it('copies nothing on an instance where the startup copy ran', async () => {
 		// A user removed every skill from this draft after the startup copy.
 		const agentId = await insertAgent([ref('skill_a')], { skill_a: body('alpha') });
