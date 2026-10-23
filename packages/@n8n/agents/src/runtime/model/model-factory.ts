@@ -3,7 +3,6 @@
 import { isGoogleVertexAnthropicModel, splitModelId } from '@n8n/ai-utilities/agent-config';
 import { ensureUrlPathSuffix, isOpenAiCustomEndpoint } from '@n8n/ai-utilities/model-discovery';
 import type { EmbeddingModel, LanguageModel } from 'ai';
-import type * as Undici from 'undici';
 
 import { createGoogleVertexModel, parseGoogleVertexAuthOptions } from './google-vertex';
 import type { NativeToolDeferral } from './native-tool-deferral';
@@ -25,6 +24,7 @@ import type { BuiltTelemetry } from '../../types/telemetry';
 import { traceModelRequests } from '../telemetry/model-request-tracing';
 import type { ModelConfig } from '../../types/sdk/agent';
 import { getModelIdString } from '../../utils/model';
+import { getProxyFetch } from '../../utils/proxy-fetch';
 
 /**
  * A `fetch`-compatible function. Callers may inject a proxy-aware `fetch` so
@@ -45,34 +45,10 @@ function isLanguageModel(config: unknown): config is LanguageModel {
 }
 
 /**
- * Env-proxy `fetch` fallback for standalone SDK use.
- *
- * `@n8n/agents` is a standalone SDK and deliberately does not depend on `@n8n/backend-network`,
- * so it cannot build the backend's centrally-guarded transport itself.
- * Inside the n8n backend that guarded `fetch` is always injected into {@link createModel} / {@link createEmbeddingModel}
- * (see cli's `createAiProxyFetch`, which wraps `@n8n/backend-network`), and this fallback is never reached.
- */
-/**
  * Resolves `globalThis.fetch` per request, the same way the SDK does when no
  * `fetch` is passed, so a transport installed after the model was built is used.
  */
 const globalFetch: FetchFn = async (input, init) => await globalThis.fetch(input, init);
-
-function getProxyFetch(): FetchFn | undefined {
-	const { HTTPS_PROXY, https_proxy, HTTP_PROXY, http_proxy } = process.env;
-	if (!HTTPS_PROXY && !https_proxy && !HTTP_PROXY && !http_proxy) return undefined;
-
-	// eslint-disable-next-line n8n-local-rules/no-uncentralized-http -- standalone SDK cannot depend on @n8n/backend-network; the backend always injects its guarded transport, so this env-proxy path runs only outside the backend (see doc comment above). To drop this: make `fetch` a required arg of createModel/createEmbeddingModel and delete the fallback, so standalone callers always supply their own transport
-	const { EnvHttpProxyAgent } = require('undici') as typeof Undici;
-	// Picks the proxy per target scheme and honors NO_PROXY.
-	const dispatcher = new EnvHttpProxyAgent();
-	return async (url, init) =>
-		await globalThis.fetch(url, {
-			...init,
-			// @ts-expect-error dispatcher is a valid undici option for Node.js fetch
-			dispatcher,
-		});
-}
 
 type EntryBuilder<P extends ProviderId> = (
 	creds: ProviderCredentials<P>,

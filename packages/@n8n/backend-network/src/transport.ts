@@ -3,7 +3,7 @@
  *
  * Exposes the dispatcher/fetch core of the outbound HTTP transport with no DI,
  * `@n8n/config`, `@n8n/backend-common` or `n8n-workflow` dependency: its only
- * runtime import is `undici`. This is the construction path for DI-less callers
+ * runtime imports are `undici` and `proxy-from-env`. This is the construction path for DI-less callers
  * (e.g. task-runner code) that must build a proxy/SSRF-aware transport without
  * dragging the full `OutboundHttp` service — and its backend dependencies —
  * into their bundle.

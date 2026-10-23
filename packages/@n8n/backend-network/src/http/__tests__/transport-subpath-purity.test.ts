@@ -101,9 +101,9 @@ describe('@n8n/backend-network/transport subpath purity', () => {
 		}
 	});
 
-	it('only depends on undici at runtime', () => {
+	it('only depends on undici and proxy-from-env at runtime', () => {
 		const externals = collectRuntimeExternals(ENTRY);
 
-		expect([...externals].sort()).toEqual(['undici']);
+		expect([...externals].sort()).toEqual(['proxy-from-env', 'undici']);
 	});
 });
