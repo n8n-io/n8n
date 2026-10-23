@@ -1,0 +1,38 @@
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-search-pagination.ts
+  s_b82caf968b8c36::t_29046cf972984b 8,16-20,28,38,44,50-65
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-operations.ts
+  s_b82caf968b8c36::t_42ef9432e8fb0b 175-186,200-205,210,216-223,241,250-251,259-260,280-282,302,316-317,325-326
+packages/cli/src/modules/agents/integrations/integration-context-query-executor.ts
+  s_b82caf968b8c36::t_04a338ebb676d4 48-52,55
+packages/cli/src/modules/agents/integrations/__tests__/channel-rate-limit.test.ts
+  s_b82caf968b8c36::t_cc38564a9f1bae 198-220
+packages/cli/src/modules/agents/integrations/__tests__/integration-action-executor.test.ts
+  s_b82caf968b8c36::t_cc38564a9f1bae 186-231
+packages/cli/src/modules/agents/integrations/__tests__/integration-context-query-executor.test.ts
+  s_b82caf968b8c36::t_f7ac8f6165e650 979-1000
+  s_b82caf968b8c36::t_84ae4cdcc3b52f 791-801,844-859
+  s_b82caf968b8c36::t_04a338ebb676d4 973,1001
+  s_b82caf968b8c36::t_14a1fcfc7c08ae 974-978
+packages/cli/src/modules/agents/BUILT_IN_TOOLS.md
+  s_b82caf968b8c36::t_cc38564a9f1bae 93-94,96
+packages/cli/src/modules/agents/integrations/__tests__/slack-operations.test.ts
+  s_b82caf968b8c36::t_eeac66ce52c4d2 36,58,98,111,132,235-253,256-260,361,405,418,447
+  s_b82caf968b8c36::t_e450a5e2c2e209 173-190,195-204,297-318,481-486,491-500
+  s_b82caf968b8c36::t_2dafc48abbd68f 191-194,261-264,487-490
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4f72c3558c14d1eb9e757afaeefa352e7d456318",
+  "prompts": {},
+  "sessions": {
+    "s_b82caf968b8c36": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1630e-8c2e-7cb1-ab55-c37ffdbc2763",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
