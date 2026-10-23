@@ -51,7 +51,7 @@
     "@n8n/vitest-config": "workspace:*",
     "ist": "1.1.7",
     "vitest": "catalog:",
-    "rollup": "^2.52.2"
+    "rollup": "^2.80.0"
   },
   "repository": {
     "type": "git",

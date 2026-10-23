@@ -191,6 +191,49 @@ describe('PromotionEnvironmentView', () => {
 		);
 	});
 
+	it('saves the environment when the user presses Enter in a text field', async () => {
+		api.fetchPromotionEnvironments.mockResolvedValue([applyEnvironment()]);
+		api.createPromotionEnvironment.mockResolvedValue(applyEnvironment());
+		await renderAt('/add/promote');
+
+		await userEvent.click(await screen.findByTestId('promotion-provider-type-git'));
+		await fillInput('promotion-environment-name-input', 'Production{Enter}');
+
+		await waitFor(() => expect(api.createPromotionEnvironment).toHaveBeenCalledTimes(1));
+	});
+
+	it('keeps the branch when the user picks the same GitLab repository again', async () => {
+		const gitlabProvider = { ...gitProvider, id: 'provider-gitlab', type: 'gitlab' as const };
+		api.fetchPromotionEnvironment.mockResolvedValue(
+			applyEnvironment({
+				provider: gitlabProvider,
+				remote: {
+					schemaVersion: 1,
+					remoteUrl: repository.remoteUrl,
+					repositoryPath: repository.fullPath,
+				},
+				settings: { schemaVersion: 1, branchName: 'release' },
+			}),
+		);
+		api.fetchPromotionRepositories.mockResolvedValue({ data: [repository], nextCursor: null });
+		api.fetchPromotionBranches.mockResolvedValue({ data: [], nextCursor: null });
+		api.updatePromotionEnvironment.mockResolvedValue(applyEnvironment());
+		await renderAt('/edit/environment-apply');
+
+		const repositorySelect = await screen.findByTestId('promotion-environment-repository-select');
+		await userEvent.click(within(repositorySelect).getByRole('combobox'));
+		await userEvent.click(await screen.findByRole('option', { name: 'team/workflows' }));
+		await userEvent.click(screen.getByTestId('promotion-environment-save'));
+
+		await waitFor(() =>
+			expect(api.updatePromotionEnvironment).toHaveBeenCalledWith(
+				expect.anything(),
+				'environment-apply',
+				expect.objectContaining({ settings: { schemaVersion: 1, branchName: 'release' } }),
+			),
+		);
+	});
+
 	it('saves a changed branch and connects again', async () => {
 		allowClone();
 		api.fetchPromotionEnvironment.mockResolvedValue(applyEnvironment());

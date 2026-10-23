@@ -28,7 +28,6 @@ import { useInstanceAiMcpStore } from '../../instanceAiMcp.store';
 import type { InstanceAiMcpConnection } from '../../instanceAiMcp.store';
 import { useInstanceAiMcpTelemetry } from '../../instanceAiMcp.telemetry';
 import { useInstanceAiBrowserUseTelemetry } from '../../instanceAiBrowserUse.telemetry';
-import { useInstanceAiComputerUseTelemetry } from '../../instanceAiComputerUse.telemetry';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
 import { useMcpServerConnect } from '../../composables/useMcpServerConnect';
 import type {
@@ -39,8 +38,7 @@ import type {
 import type { BaseTextKey } from '@n8n/i18n';
 
 import BrowserUseSetupContent from './BrowserUseSetupContent.vue';
-import ComputerUseSetupContent from './ComputerUseSetupContent.vue';
-import { BROWSER_USE_CONNECTION_TYPE, COMPUTER_USE_CONNECTION_TYPE } from '../../constants';
+import { BROWSER_USE_CONNECTION_TYPE } from '../../constants';
 
 interface ServiceConnectionDefinition {
 	id: string;
@@ -66,7 +64,6 @@ const credentialsStore = useCredentialsStore();
 const mcpStore = useInstanceAiMcpStore();
 const mcpTelemetry = useInstanceAiMcpTelemetry();
 const browserUseTelemetry = useInstanceAiBrowserUseTelemetry();
-const computerUseTelemetry = useInstanceAiComputerUseTelemetry();
 const settingsStore = useInstanceAiSettingsStore();
 const message = useMessage();
 
@@ -83,9 +80,8 @@ interface McpConnectionDraft {
 const draftConnection = ref<McpConnectionDraft | null>(null);
 const { invalidate: invalidateDiscovery, next: nextDiscovery } = useLatestFetch();
 
-// The store owns Computer Use availability, so every entry point and the message
+// The store owns Browser Use availability, so every entry point and the message
 // payload report the same thing.
-const isComputerUseEnabled = computed(() => settingsStore.isComputerUseAvailable);
 const isBrowserUseEnabled = computed(() => settingsStore.isBrowserUseAvailable);
 function readConnectionIdPayload(data: unknown): string | null {
 	if (data === null || typeof data !== 'object') return null;
@@ -278,17 +274,7 @@ const builtInServiceDefinitions = computed<ServiceConnectionDefinition[]>(() => 
 			detailComponent: BrowserUseSetupContent,
 			detailProps: { embedded: true },
 			isAvailable: isBrowserUseEnabled.value,
-			isConnected: settingsStore.isBrowserUseConnected,
-		},
-		{
-			id: COMPUTER_USE_CONNECTION_TYPE,
-			titleKey: 'instanceAi.connections.add.computerUse',
-			descriptionKey: 'instanceAi.connections.types.computerUse.description',
-			iconSource: { type: 'icon', name: 'mouse-pointer' },
-			detailComponent: ComputerUseSetupContent,
-			detailProps: { embedded: true },
-			isAvailable: isComputerUseEnabled.value,
-			isConnected: settingsStore.isGatewayConnected,
+			isConnected: settingsStore.browserConnected,
 		},
 	];
 });
@@ -482,8 +468,6 @@ function handleDetailItemUpdate(item: ToolConnectionItem | null) {
 
 	if (item.serviceId === BROWSER_USE_CONNECTION_TYPE) {
 		browserUseTelemetry.trackModalOpened('tools_modal');
-	} else if (item.serviceId === COMPUTER_USE_CONNECTION_TYPE) {
-		computerUseTelemetry.trackModalOpened(settingsStore.isGatewayConnected, 'tools_modal');
 	}
 }
 

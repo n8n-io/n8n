@@ -51,6 +51,9 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentExecutionService } = await import('./agent-execution.service.js');
 		Container.get(AgentExecutionService);
 
+		const { registerUserDeletionHandler } = await import('./register-user-deletion-handler.js');
+		registerUserDeletionHandler();
+
 		// Register blob backends for agent execution logs and knowledge files.
 		// The fs backend is always available; s3/az reuse the clients base-command
 		// already initialized (initBinaryDataService runs before module init in
@@ -98,17 +101,23 @@ export class AgentsModule implements ModuleInterface {
 			'./integrations/platforms/slack/slack-integration.js'
 		);
 		const { TelegramIntegration } = await import(
-			'./integrations/platforms/telegram-integration.js'
+			'./integrations/platforms/telegram/telegram-integration.js'
 		);
-		const { LinearIntegration } = await import('./integrations/platforms/linear-integration.js');
-		const { DiscordIntegration } = await import('./integrations/platforms/discord-integration.js');
+		const { LinearIntegration } = await import(
+			'./integrations/platforms/linear/linear-integration.js'
+		);
+		const { DiscordIntegration } = await import(
+			'./integrations/platforms/discord/discord-integration.js'
+		);
 		const { WhatsAppIntegration } = await import(
 			'./integrations/platforms/whatsapp/whatsapp-integration.js'
 		);
 		const { TeamsIntegration } = await import(
 			'./integrations/platforms/teams/teams-integration.js'
 		);
-		const { N8nChatIntegration } = await import('./integrations/platforms/n8n-chat-integration.js');
+		const { N8nChatIntegration } = await import(
+			'./integrations/platforms/n8n-chat/n8n-chat-integration.js'
+		);
 		const registry = Container.get(ChatIntegrationRegistry);
 		registry.register(Container.get(SlackIntegration));
 		registry.register(Container.get(TelegramIntegration));

@@ -1,4 +1,6 @@
+import { createTestingPinia } from '@pinia/testing';
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
+import { setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
@@ -118,21 +120,20 @@ vi.mock('@n8n/frontend-module-type-availability-policies', async (importOriginal
 			return scope ? { name, available: false, scope } : { name, available: true };
 		},
 	}),
-	ContactInstanceAdminModal: {
-		name: 'ContactInstanceAdminModal',
-		props: ['open', 'nodeTypeName', 'kind'],
-		template:
-			'<div v-if="open" data-testid="contact-instance-admin-modal">{{ nodeTypeName }}</div>',
+	ContactAdminModal: {
+		name: 'ContactAdminModal',
+		props: ['open', 'nodeTypeName', 'kind', 'audience'],
+		template: '<div v-if="open" data-testid="contact-admin-modal">{{ nodeTypeName }}</div>',
 	},
 }));
 
 vi.mock('../components/model-selector/ModelSelectorRestrictedMarker.vue', () => ({
 	default: {
 		name: 'ModelSelectorRestrictedMarker',
-		props: ['name', 'scope'],
+		props: ['name', 'restriction'],
 		emits: ['contactAdmin'],
 		template:
-			'<button data-testid="restricted-marker" @click="$emit(\'contactAdmin\')">{{ name }}</button>',
+			'<button data-testid="restricted-marker" @click="$emit(\'contactAdmin\', \'project\')">{{ name }}</button>',
 	},
 }));
 
@@ -274,6 +275,7 @@ async function mountSelector(
 		credentialModalAppendToBody?: boolean;
 		boundCredentialId?: string | null;
 		selectedModel?: AgentModelOption | null;
+		modelsByProvider?: AgentModelsByProvider;
 	} = {},
 ) {
 	const { default: AgentModelSelector } = await import('../components/AgentModelSelector.vue');
@@ -319,6 +321,7 @@ function getFreeOpenAiCreditsItem(wrapper: VueWrapper) {
 
 describe('AgentModelSelector', () => {
 	beforeEach(() => {
+		setActivePinia(createTestingPinia());
 		vi.clearAllMocks();
 		credentialsByType.value = {
 			anthropicApi: [{ id: 'anthropic-cred', name: 'Anthropic credential', type: 'anthropicApi' }],
@@ -430,16 +433,20 @@ describe('AgentModelSelector', () => {
 		const wrapper = await mountSelector({ anthropic: null });
 		const marker = wrapper.findComponent({ name: 'ModelSelectorRestrictedMarker' });
 
-		expect(marker.props()).toEqual({ name: 'OpenAI credentials', scope: 'project' });
-		expect(wrapper.findComponent({ name: 'ContactInstanceAdminModal' }).props('open')).toBe(false);
+		expect(marker.props()).toEqual({
+			name: 'OpenAI credentials',
+			restriction: { name: 'openAiApi', available: false, scope: 'project' },
+		});
+		expect(wrapper.findComponent({ name: 'ContactAdminModal' }).props('open')).toBe(false);
 
 		await marker.find('button').trigger('click');
 
 		expect(closeMenu).toHaveBeenCalledOnce();
-		expect(wrapper.findComponent({ name: 'ContactInstanceAdminModal' }).props()).toEqual({
+		expect(wrapper.findComponent({ name: 'ContactAdminModal' }).props()).toEqual({
 			open: true,
 			kind: 'credential',
 			nodeTypeName: 'OpenAI credentials',
+			audience: 'project',
 		});
 	});
 
@@ -630,6 +637,30 @@ describe('AgentModelSelector', () => {
 		getDropdown(wrapper).vm.$emit('select', 'anthropic::n8nConnect::anthropicApi');
 
 		expect(wrapper.emitted('selectCredential')).toEqual([['anthropic', AI_GATEWAY_MANAGED_TAG]]);
+	});
+
+	it('says how to fix an Azure credential that lists no deployments', async () => {
+		credentialsByType.value = {
+			azureOpenAiApi: [{ id: 'azure-cred', name: 'Azure credential', type: 'azureOpenAiApi' }],
+		};
+
+		const wrapper = await mountSelector(
+			{ 'azure-openai': 'azure-cred' },
+			{
+				selectedModel: null,
+				modelsByProvider: {
+					'azure-openai': { models: [], unavailable: true, unavailableReason: 'project_missing' },
+				},
+			},
+		);
+		const azureItem = getProviderItem(wrapper, 'azure-openai');
+
+		expect(
+			getMenuItemByLabel(
+				azureItem?.children ?? [],
+				'agents.modelSelector.unavailable.projectMissing',
+			)?.data?.description,
+		).toBe('agents.modelSelector.unavailable.projectMissingHint');
 	});
 
 	it('lists models when the managed tag is the selected credential', async () => {
