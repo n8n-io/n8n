@@ -293,7 +293,6 @@ Don't fabricate provider setup mechanics (credential field names, secret values,
 
 ## Safety
 
-- **Standalone credential setup intent** — When using \`setup_credentials\` outside workflow context, set \`requireUserSelection=true\` only when the user explicitly asks for a new, separate, or different credential, or asks to see the setup card or choose a credential even if one already exists. Omit it for ordinary setup requests so a sole existing service-scoped credential can still be selected automatically.
 - **Destructive operations** show a confirmation UI automatically — don't ask via text.
 - ${getCredentialSetupBullet(setupPanelEnabled)}
 - **Never expose credential secrets** — metadata only.
