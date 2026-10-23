@@ -8,6 +8,7 @@ import type {
 	DomainAccessTracker,
 	InstanceAiContext,
 	InstanceAiEventBus,
+	ManagedBackgroundTask,
 	OrchestrationContext,
 	SandboxConfig,
 } from '@n8n/instance-ai';
@@ -16,7 +17,14 @@ import type { TypeORMAgentMemory } from '../storage/typeorm-agent-memory';
 
 /** The thread memory reads that the turn setup needs. */
 export type AssistantTurnMemory = BuiltMemory &
-	Pick<TypeORMAgentMemory, 'getThread' | 'getThreadProjectId'>;
+	Pick<
+		TypeORMAgentMemory,
+		| 'getThread'
+		| 'getThreadProjectId'
+		| 'getCursor'
+		| 'getActiveObservationLog'
+		| 'getMessagesForObservationScope'
+	>;
 
 /** Turn settings that the runtime keeps for one thread between turns. */
 export interface AssistantTurnState {
@@ -74,4 +82,6 @@ export interface AssistantTurnRuntime
 		resolveConfig(): Promise<SandboxConfig>;
 		getOrCreateWorkspace(context: InstanceAiContext): Promise<Workspace | undefined>;
 	};
+	/** Detached background tasks of the thread that still run. */
+	getRunningBackgroundTasks?(): ManagedBackgroundTask[];
 }
