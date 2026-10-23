@@ -1637,12 +1637,13 @@ export class InstanceAiAdapterService {
 			},
 
 			async getLatestRunData(workflowId: string) {
-				// Caller must be able to read the workflow to see its execution history.
-				// Silent null on no-access keeps validation usable even when access was
-				// revoked between fetches — validation degrades gracefully instead of
-				// throwing in the middle of a per-node loop.
+				// Caller must be able to read the workflow's executions, the same scopes
+				// the executions API requires. Silent null on no-access keeps validation
+				// usable even when access was revoked between fetches — validation
+				// degrades gracefully instead of throwing in the middle of a per-node loop.
 				const accessible = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:read',
+					'execution:read',
 				]);
 				if (!accessible) return null;
 
@@ -2064,11 +2065,13 @@ export class InstanceAiAdapterService {
 
 		/**
 		 * Verify that the user has access to the workflow that owns this execution.
+		 * Reads require `execution:read`, as in the executions API, because a
+		 * custom role can grant `workflow:read` without it.
 		 * Returns the execution or throws "not found" if unauthorized/missing.
 		 */
 		const assertExecutionAccess = async (
 			executionId: string,
-			scopes: Scope[] = ['workflow:read'],
+			scopes: Scope[] = ['workflow:read', 'execution:read'],
 		) => {
 			const execution = await executionRepository.findSingleExecution(executionId, {
 				includeData: false,
@@ -2089,10 +2092,10 @@ export class InstanceAiAdapterService {
 
 		return {
 			async list(options) {
-				const scope: Scope = 'workflow:read';
+				const scope: Scope = 'execution:read';
 
 				// Visibility from role scopes, not the sharing license — mirrors
-				// ExecutionService.buildSharingOptions and the REST executions list.
+				// ExecutionListService.buildSharingOptions and the REST executions list.
 				const projectRoles = await roleService.rolesWithScope('project', [scope]);
 				const workflowRoles = await roleService.rolesWithScope('workflow', [scope]);
 				const sharingOptions: ExecutionSummaries.RangeQuery['sharingOptions'] = {

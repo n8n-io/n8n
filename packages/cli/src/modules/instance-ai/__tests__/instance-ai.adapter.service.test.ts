@@ -5136,7 +5136,7 @@ describe('createExecutionAdapter', () => {
 				expect.objectContaining({
 					user: mockUser,
 					sharingOptions: {
-						scopes: ['workflow:read'],
+						scopes: ['execution:read'],
 						projectRoles: ['project:editor'],
 						workflowRoles: ['workflow:owner', 'workflow:editor'],
 					},

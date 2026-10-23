@@ -369,7 +369,7 @@ describe('stop execution — workflow:execute scope', () => {
 		]);
 	});
 
-	it('read methods (getStatus) still use workflow:read scope', async () => {
+	it('read methods (getStatus) require workflow:read and execution:read', async () => {
 		executionRepository.findSingleExecution.mockResolvedValue({
 			id: 'exec-1',
 			workflowId: 'wf-1',
@@ -385,6 +385,7 @@ describe('stop execution — workflow:execute scope', () => {
 
 		expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith('wf-1', user, [
 			'workflow:read',
+			'execution:read',
 		]);
 	});
 });
