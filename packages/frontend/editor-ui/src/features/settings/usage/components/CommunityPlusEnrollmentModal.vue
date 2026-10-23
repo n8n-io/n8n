@@ -169,8 +169,8 @@ const confirm = async () => {
 				</N8nText>
 			</div>
 		</N8nDialogBody>
-		<N8nDialogFooter>
-			<N8nButton variant="ghost" :class="$style.skip" :disabled="isLoading" @click="closeDialog">{{
+		<N8nDialogFooter :class="$style.footer">
+			<N8nButton variant="ghost" :disabled="isLoading" @click="closeDialog">{{
 				i18n.baseText('communityPlusModal.button.skip')
 			}}</N8nButton>
 			<N8nButton :disabled="!valid || isLoading" variant="solid" @click="confirm">
@@ -183,6 +183,10 @@ const confirm = async () => {
 <style lang="scss" module>
 .notice {
 	margin-top: var(--spacing--lg);
+}
+
+.footer {
+	justify-content: space-between;
 }
 
 .features {
