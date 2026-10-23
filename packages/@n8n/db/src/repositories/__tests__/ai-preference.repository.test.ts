@@ -130,9 +130,9 @@ describe('AiPreferenceRepository', () => {
 			for (const branch of where) {
 				const operator = branch.content as FindOperator<string>;
 				expect(operator.type).toBe('raw');
-				expect(operator.objectLiteralParameters).toEqual({ contentSearch: '%100\\%\\_off%' });
+				expect(operator.objectLiteralParameters).toEqual({ contentSearch: '%100\\%\\_Off%' });
 				expect((operator.getSql as (column: string) => string)('"AiPreference"."content"')).toBe(
-					'LOWER("AiPreference"."content") LIKE :contentSearch ESCAPE \'\\\'',
+					'LOWER("AiPreference"."content") LIKE LOWER(:contentSearch) ESCAPE \'\\\'',
 				);
 			}
 		});

@@ -117,10 +117,14 @@ const SORT_ORDERS = {
 
 const RELATIONS = { project: true, user: true, createdBy: true } as const;
 
-/** `LOWER` on both sides, so the match ignores case on every driver. */
+/**
+ * The database applies `LOWER` to both sides, so the column and the term fold the same
+ * way. Folding the term in JS would break exact-case matches of non-ASCII text on SQLite,
+ * whose `LOWER` folds only ASCII.
+ */
 function containsIgnoringCase(term: string) {
-	return Raw((column) => `LOWER(${column}) LIKE :contentSearch ${LIKE_ESCAPE_CLAUSE}`, {
-		contentSearch: `%${escapeLike(term.toLowerCase())}%`,
+	return Raw((column) => `LOWER(${column}) LIKE LOWER(:contentSearch) ${LIKE_ESCAPE_CLAUSE}`, {
+		contentSearch: `%${escapeLike(term)}%`,
 	});
 }
 
