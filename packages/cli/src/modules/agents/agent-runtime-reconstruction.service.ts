@@ -40,7 +40,6 @@ import { nanoid } from 'nanoid';
 import { ActiveExecutions } from '@/active-executions';
 import { N8N_VERSION } from '@/constants';
 import { CredentialsFinderService } from '@n8n/backend-services';
-import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { AgentRunTelemetryType } from '@/interfaces';
@@ -51,11 +50,13 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { createAiMcpFetch, createAiProxyFetch, createWebSearchFetch } from '@/utils/ai-proxy-fetch';
+import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentKnowledgeMirrorService } from './agent-knowledge-mirror.service';
+import { AgentKnowledgeUsageTracker } from './agent-knowledge-usage-tracker';
 import type { AgentSandboxPrincipalHash } from './agent-sandbox-principal';
 import {
 	AgentSandboxRuntimeService,
@@ -295,6 +296,8 @@ export class AgentRuntimeReconstructionService {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
 		private readonly credentialsService: CredentialsService,
+		private readonly knowledgeUsageTracker: AgentKnowledgeUsageTracker,
+		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -407,7 +410,7 @@ export class AgentRuntimeReconstructionService {
 	}> {
 		const canExecute = await userHasScopes(user, ['workflow:execute'], false, { projectId });
 		// Load once per pass, and only when a node tool uses credentials.
-		let usableIdsLoad: Promise<Set<string> | undefined> | undefined;
+		let usableIdsLoad: Promise<Set<string>> | undefined;
 		const loadUsableIds = async () =>
 			await (usableIdsLoad ??= this.loadAgentUsableCredentialIds(projectId, user));
 		const filtered: AgentJsonToolConfig[] = [];
@@ -448,13 +451,8 @@ export class AgentRuntimeReconstructionService {
 		};
 	}
 
-	/** Returns the credential IDs agents can use, or `undefined` when no restriction applies. */
-	private async loadAgentUsableCredentialIds(
-		projectId: string,
-		user: User,
-	): Promise<Set<string> | undefined> {
-		if (!isCredSharingEnabled()) return undefined;
-
+	/** Returns the credential IDs agents can use. */
+	private async loadAgentUsableCredentialIds(projectId: string, user: User): Promise<Set<string>> {
 		const usable = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
 			projectId,
 			excludePersonalRoute: true,
@@ -467,7 +465,7 @@ export class AgentRuntimeReconstructionService {
 		projectId: string,
 		user: User,
 		canExecute: boolean,
-		loadUsableIds: () => Promise<Set<string> | undefined>,
+		loadUsableIds: () => Promise<Set<string>>,
 	): Promise<UserToolAccessSnapshot | UnavailableTool | undefined> {
 		const denied = (message: string): UnavailableTool => ({
 			toolName: toolRefName(ref),
@@ -535,7 +533,7 @@ export class AgentRuntimeReconstructionService {
 		if (credentials.some((credential) => credential === null)) return false;
 		if (snapshot.credentialIds.length > 0) {
 			const usableIds = await this.loadAgentUsableCredentialIds(projectId, user);
-			if (usableIds && !snapshot.credentialIds.every((id) => usableIds.has(id))) return false;
+			if (!snapshot.credentialIds.every((id) => usableIds.has(id))) return false;
 		}
 
 		const workflows = await Promise.all(
@@ -707,6 +705,8 @@ export class AgentRuntimeReconstructionService {
 			buildMcpClient,
 			resolveManagedEmbeddingProviderOptions: async () =>
 				await this.resolveManagedEmbeddingProviderOptions(projectId),
+			onVectorStoreSearch: (runId) =>
+				this.knowledgeUsageTracker.startToolCall(runId, 'vector_store_search'),
 			modelFetch: instrumentation?.modelFetch ?? aiProxyFetch,
 			fallbackWebSearch: instrumentation?.webSearch,
 			// Only the mock MCP transport makes attaching auth-pending servers safe.
@@ -997,7 +997,10 @@ export class AgentRuntimeReconstructionService {
 		const parentWorkspaceHandle = await this.attachWorkspace(params);
 		throwIfAborted(params.abortSignal);
 		const { agent, agentId, projectId } = params;
-		const hasFiles = await this.agentFileRepository.hasFilesForAgent(agentId);
+		// Module check first, so the file repository is not touched while knowledge is off.
+		const hasFiles =
+			this.knowledgeAvailabilityService.isModuleActive() &&
+			(await this.agentFileRepository.hasFilesForAgent(agentId));
 		throwIfAborted(params.abortSignal);
 		if (hasFiles) {
 			const { createKnowledgeRetrievalTools } = await import(
@@ -1009,6 +1012,7 @@ export class AgentRuntimeReconstructionService {
 					projectId,
 					agentId,
 					knowledgeMirrorService: this.agentKnowledgeMirrorService,
+					startToolCall: (runId, call) => this.knowledgeUsageTracker.startToolCall(runId, call),
 				}),
 			);
 		}

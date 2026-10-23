@@ -60,6 +60,11 @@
 			"reason": "Dropped via FK cascade today. Revisit: agents created by the deleted user are lost on transfer."
 		},
 		{
+			"name": "App",
+			"path": "packages/modules/apps/backend/src/app.entity.ts",
+			"reason": "Apps stay in their source project. The project FK cascade deletes apps and their versions."
+		},
+		{
 			"name": "AgentExecutionThread",
 			"path": "packages/cli/src/modules/agents/entities/agent-execution-thread.entity.ts",
 			"reason": "Dropped via FK cascade together with its Agent."
@@ -85,13 +90,13 @@
 			"reason": "Not transferred with the project. Open reviews are closed when their workflow is archived, moved to another project, or deleted (workflow lifecycle hooks); rows are removed via the projectId FK cascade when the source project itself is deleted, as in ownership-transfer flows. WorkflowReviewActivity and WorkflowReviewActivityComment ride this entity's cascade and have no projectId of their own, so they never appear in this manifest."
 		},
 		{
-			"name": "PromotionConnectionProject",
-			"path": "packages/cli/src/modules/promotions.ee/database/entities/promotion-connection-project.entity.ts",
-			"reason": "Promotion configuration for the project (which connection it is linked to), not user data. Dropped via the projectId FK cascade when the source project is deleted, as in ownership-transfer flows."
+			"name": "PromotionEnvironmentProject",
+			"path": "packages/cli/src/modules/promotions.ee/database/entities/promotion-environment-project.entity.ts",
+			"reason": "Promotion configuration for the project (which environment it uses for each direction), not user data. Dropped via the projectId FK cascade when the source project is deleted, as in ownership-transfer flows."
 		},
 		{
 			"name": "Skill",
-			"path": "packages/cli/src/modules/agents/entities/skill.entity.ts",
+			"path": "packages/cli/src/modules/skills/skill.entity.ts",
 			"reason": "Project-scoped skills belong to the project's agents, which are not transferred either (see Agent); both are dropped via FK cascade. Instance skills carry no projectId."
 		},
 		{
@@ -107,7 +112,22 @@
 		{
 			"name": "SelfHealingResult",
 			"path": "packages/cli/src/modules/instance-ai/self-healing/database/self-healing-result.entity.ts",
-			"reason": "Keeps the original project and investigation identity. Deleted via FK cascade when the original project, workflow, background user, or attached suggestion is deleted."
+			"reason": "Keeps the original project and investigation identity. Deleted via FK cascade when the configuration, original project, workflow, background user, or linked suggestion is deleted. Configuration removal explicitly deletes linked suggestions."
+		},
+		{
+			"name": "SelfHealingInvestigation",
+			"path": "packages/cli/src/modules/instance-ai/self-healing/database/self-healing-investigation.entity.ts",
+			"reason": "Keeps the original actor, project, and workflow baseline. A workflow transfer prevents completion. Deleted via FK cascade with the configuration, original project, workflow, background user, or completed result."
+		},
+		{
+			"name": "SelfHealingConfiguration",
+			"path": "packages/cli/src/modules/instance-ai/self-healing/database/self-healing-configuration.entity.ts",
+			"reason": "Project settings remain in the original project. They are not transferred. Deleting the enabling user clears that reference. Deleting the source project deletes the configuration through its foreign key."
+		},
+		{
+			"name": "SelfHealingConfigurationWorkflow",
+			"path": "packages/cli/src/modules/instance-ai/self-healing/database/self-healing-configuration-workflow.entity.ts",
+			"reason": "Workflow selections belong to the original project configuration. A transfer to another project removes them. Deleting the configuration, project, or workflow also removes them through its foreign key."
 		}
 	]
 }

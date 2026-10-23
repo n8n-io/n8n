@@ -1,3 +1,18 @@
+import {
+	type SerializedCredential,
+	serializedCredentialSchema,
+	type SerializedDataTable,
+	serializedDataTableSchema,
+	type SerializedFolder,
+	serializedFolderSchema,
+	type SerializedProject,
+	serializedProjectSchema,
+	type SerializedVariable,
+	serializedVariableSchema,
+	type SerializedWorkflow,
+	type SerializedWorkflowMetadata,
+	serializedWorkflowMetadataSchema,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -29,23 +44,6 @@ import {
 	serializedAgentMetadataSchema,
 	type SerializedAgent,
 } from '../spec/serialized/agent.schema';
-import {
-	serializedCredentialSchema,
-	type SerializedCredential,
-} from '../spec/serialized/credential.schema';
-import { serializedDataTableSchema } from '../spec/serialized/data-table.schema';
-import type { SerializedDataTable } from '../spec/serialized/data-table.schema';
-import { serializedFolderSchema, type SerializedFolder } from '../spec/serialized/folder.schema';
-import { serializedProjectSchema, type SerializedProject } from '../spec/serialized/project.schema';
-import {
-	serializedVariableSchema,
-	type SerializedVariable,
-} from '../spec/serialized/variable.schema';
-import {
-	serializedWorkflowMetadataSchema,
-	type SerializedWorkflowMetadata,
-} from '../spec/serialized/workflow-metadata.schema';
-import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
 /**
  * Parses the typed entities out of a `.n8np` package — the read-side counterpart

@@ -1,281 +1,305 @@
 <script setup lang="ts">
+import { promotionDirectionSchema, type PromotionDirection } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import {
+	N8nButton,
 	N8nEmptyState,
-	N8nIcon,
+	N8nExternalLink,
 	N8nLoading2,
+	N8nPreviewBadge,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nSettingsRow,
-	N8nSettingsRowConfigure,
 	N8nSettingsRowGroup,
 	N8nSettingsSection,
+	N8nSwitch,
+	N8nText,
+	useMessage,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { nextTick, onMounted, ref, useTemplateRef } from 'vue';
+import { nextTick, onMounted, reactive, ref, type ComponentPublicInstance } from 'vue';
+import { I18nT } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useLatestFetch } from '@/app/composables/useLatestFetch';
-import PromoteApplyInstanceSection from '../components/PromoteApplyInstanceSection.vue';
-import PromotionConnectionForm from '../components/PromotionConnectionForm.vue';
-import PromotionProviderDialog from '../components/PromotionProviderDialog.vue';
+import { MODAL_CONFIRM } from '@/app/constants';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import PromotionEnvironmentCard from '../components/PromotionEnvironmentCard.vue';
 import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
+import { usePromotionCheckout } from '../composables/usePromotionCheckout';
 import {
-	fetchPromotionConnection,
-	fetchPromotionConnections,
-	fetchPromotionProviders,
-	type PromotionConnection,
-	type PromotionProviderSummary,
+	PROMOTIONS_ENVIRONMENT_ADD_VIEW,
+	PROMOTIONS_ENVIRONMENT_EDIT_VIEW,
+} from '../promotions.constants';
+import {
+	deletePromotionEnvironment,
+	deleteProviderIfUnused,
+	fetchPromotionEnvironment,
+	fetchPromotionEnvironments,
+	type PromotionEnvironment,
 } from '../promotionsSettings.api';
-import type { PromotionProviderChange } from '../promotionsSettings.utils';
 
 const i18n = useI18n();
 const toast = useToast();
+const message = useMessage();
+const router = useRouter();
 const rootStore = useRootStore();
 const documentTitle = useDocumentTitle();
 const { next: nextLoad } = useLatestFetch();
+const { connectErrors, canClone, connect } = usePromotionCheckout();
+const sourceControlStore = useSourceControlStore();
 
-const providers = ref<PromotionProviderSummary[]>([]);
-const connection = ref<PromotionConnection | null>(null);
+const environments = ref<Partial<Record<PromotionDirection, PromotionEnvironment>>>({});
 const isInitialLoading = ref(true);
 const loadError = ref(false);
-const hasLoaded = ref(false);
-const dialogOpen = ref(false);
-const editingId = ref<string | undefined>(undefined);
-const providerToFocus = ref<string | undefined>(undefined);
-const selectAfterCreate = ref(false);
-
-const list = useTemplateRef<HTMLElement>('list');
-const addRow = useTemplateRef<{ $el?: HTMLElement }>('addRow');
-const page = useTemplateRef<{ $el?: HTMLElement }>('page');
-const connectionForm =
-	useTemplateRef<InstanceType<typeof PromotionConnectionForm>>('connectionForm');
-
-let connectionRevision = 0;
-let pendingLoad: Promise<void> = Promise.resolve();
+const busy = reactive(new Map<string, 'retry' | 'remove'>());
+const protectionBusy = ref(true);
+const addButtons: Partial<Record<PromotionDirection, Element | ComponentPublicInstance | null>> =
+	{};
 
 async function load() {
 	const isLatestLoad = nextLoad();
-	const revision = connectionRevision;
-	// Keep the list mounted during refresh so focus can return to a row.
-	isInitialLoading.value = !hasLoaded.value;
 	loadError.value = false;
 	try {
-		const [loadedProviders, connections] = await Promise.all([
-			fetchPromotionProviders(rootStore.publicApiContext),
-			fetchPromotionConnections(rootStore.publicApiContext, { scope: 'instance' }),
-		]);
+		const context = rootStore.publicApiContext;
+		const summaries = await fetchPromotionEnvironments(context, { scope: 'instance' });
+		const details = await Promise.all(
+			summaries.map(async ({ id }) => await fetchPromotionEnvironment(context, id)),
+		);
 		if (!isLatestLoad()) return;
-		const summary = connections[0];
-		const loadedConnection = summary
-			? await fetchPromotionConnection(rootStore.publicApiContext, summary.id)
-			: null;
-		if (!isLatestLoad()) return;
-		providers.value = loadedProviders;
-		// A save can finish while connection detail is loading.
-		if (revision === connectionRevision) connection.value = loadedConnection;
-		hasLoaded.value = true;
+		environments.value = Object.fromEntries(details.map((detail) => [detail.direction, detail]));
 	} catch (error) {
-		if (!isLatestLoad() || revision !== connectionRevision) return;
+		if (!isLatestLoad()) return;
 		loadError.value = true;
-		if (
-			error instanceof ResponseError &&
-			(error.httpStatusCode === 401 || error.httpStatusCode === 403)
-		) {
-			hasLoaded.value = false;
-			providers.value = [];
-			connection.value = null;
-		}
-		toast.showError(error, i18n.baseText('settings.promotions.providers.error.title'));
+		toast.showError(error, i18n.baseText('settings.promotions.environments.error.title'));
 	} finally {
 		if (isLatestLoad()) isInitialLoading.value = false;
 	}
 }
 
+async function loadProtection() {
+	try {
+		await sourceControlStore.getPreferences();
+		protectionBusy.value = false;
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.promotions.protected.toast.error.load'), {
+			message: i18n.baseText('settings.promotions.protected.toast.error.description'),
+		});
+	}
+}
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.promotions.title'));
-	await load();
+	await Promise.all([load(), loadProtection()]);
 });
 
-function authTypeLabel(provider: PromotionProviderSummary) {
-	if (provider.type === 'gitlab') return i18n.baseText('settings.promotions.providers.type.gitlab');
-	return i18n.baseText(
-		provider.authType === 'ssh-key'
-			? 'settings.promotions.providers.authType.sshKey'
-			: 'settings.promotions.providers.authType.token',
-	);
-}
-
-function openCreateDialog(fromConnectionForm = false) {
-	editingId.value = undefined;
-	providerToFocus.value = undefined;
-	selectAfterCreate.value = fromConnectionForm;
-	dialogOpen.value = true;
-}
-
-function openEditDialog(id: string) {
-	editingId.value = id;
-	providerToFocus.value = id;
-	selectAfterCreate.value = false;
-	dialogOpen.value = true;
-}
-
-function onProviderSaved(change: PromotionProviderChange) {
-	const { id } = change;
-	providerToFocus.value = id;
-	connectionForm.value?.applyProviderChange(change);
-	if (selectAfterCreate.value) {
-		selectAfterCreate.value = false;
-		pendingLoad = load().then(() => {
-			if (providers.value.some((provider) => provider.id === id)) {
-				connectionForm.value?.selectProvider(id);
-			}
+async function setProtected(branchReadOnly: boolean) {
+	protectionBusy.value = true;
+	try {
+		await sourceControlStore.updatePreferences({ branchReadOnly });
+		toast.showMessage({
+			title: i18n.baseText('settings.sourceControl.saved.title'),
+			type: 'success',
 		});
-		return;
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.promotions.protected.toast.error.save'), {
+			message: i18n.baseText('settings.promotions.protected.toast.error.description'),
+		});
+	} finally {
+		protectionBusy.value = false;
 	}
-	pendingLoad = load();
 }
 
-function onProviderDeleted() {
-	providerToFocus.value = undefined;
-	pendingLoad = load();
+async function retry(environment: PromotionEnvironment) {
+	busy.set(environment.id, 'retry');
+	if (await connect(environment.id)) await load();
+	busy.delete(environment.id);
 }
 
-function onConnectionSaved(saved: PromotionConnection) {
-	connectionRevision++;
-	connection.value = saved;
-	// The project header caches the instance connection per page load.
+async function remove(environment: PromotionEnvironment) {
+	const confirmed = await message.confirm(
+		i18n.baseText('settings.promotions.environment.remove.confirm.message', {
+			interpolate: { name: environment.name },
+		}),
+		i18n.baseText('settings.promotions.environment.remove.confirm.title'),
+		{
+			confirmButtonText: i18n.baseText('settings.promotions.environment.remove.confirm.button'),
+			cancelButtonText: i18n.baseText('generic.cancel'),
+			customClass: 'el-message-box--destructive',
+			showClose: true,
+		},
+	);
+	if (confirmed !== MODAL_CONFIRM) return;
+
+	const context = rootStore.publicApiContext;
+	busy.set(environment.id, 'remove');
+	try {
+		await deletePromotionEnvironment(context, environment.id);
+	} catch (error) {
+		if (!(error instanceof ResponseError && error.httpStatusCode === 404)) {
+			busy.delete(environment.id);
+			toast.showError(error, i18n.baseText('settings.promotions.environment.toast.error.remove'));
+			return;
+		}
+	}
+	try {
+		await deleteProviderIfUnused(context, environment.provider.id);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.promotions.provider.toast.error.delete'));
+	}
+	connectErrors.delete(environment.id);
 	invalidateInstancePromotionConnection();
-}
-
-function onConnectionRefresh() {
-	invalidateInstancePromotionConnection();
-	void load();
-}
-
-async function focusProvider(id: string | undefined) {
+	await load();
+	busy.delete(environment.id);
+	toast.showMessage({
+		title: i18n.baseText('settings.promotions.environment.toast.removed', {
+			interpolate: { name: environment.name },
+		}),
+		type: 'success',
+	});
 	await nextTick();
-	const row = id ? list.value?.querySelector<HTMLElement>(`[data-provider-id="${id}"]`) : undefined;
-	// Fall back to the page when the provider row is unavailable.
-	(row ?? addRow.value?.$el ?? page.value?.$el)?.focus();
-}
-
-async function onDialogOpenChange(open: boolean) {
-	dialogOpen.value = open;
-	if (open) return;
-	// Wait for the provider row before restoring focus.
-	await pendingLoad;
-	await focusProvider(providerToFocus.value);
+	const addButton = addButtons[environment.direction];
+	if (addButton && '$el' in addButton && addButton.$el instanceof HTMLElement)
+		addButton.$el.focus();
 }
 </script>
 
 <template>
-	<N8nSettingsLayout ref="page" :class="$style.layout" tabindex="-1">
+	<N8nSettingsLayout :class="$style.layout">
 		<N8nSettingsPageHeader
 			:title="i18n.baseText('settings.promotions.title')"
 			:description="i18n.baseText('settings.promotions.description')"
 			:show-docs-link="false"
-		/>
-
-		<PromoteApplyInstanceSection :connection="connection" />
-
-		<N8nSettingsSection
-			:title="i18n.baseText('settings.promotions.providers.title')"
-			:description="i18n.baseText('settings.promotions.providers.description')"
 		>
+			<template #titleTrailing>
+				<N8nPreviewBadge size="xsmall" />
+			</template>
+		</N8nSettingsPageHeader>
+
+		<N8nSettingsSection :title="i18n.baseText('settings.promotions.environments.title')">
+			<template #description>
+				<N8nText size="small" color="text-base">
+					<I18nT keypath="settings.promotions.environments.description" tag="span" scope="global">
+						<template #environments>
+							<!-- FIXME: link to the environments docs page once it exists. -->
+							<N8nExternalLink inline size="small" href="#">{{
+								i18n.baseText('settings.promotions.environments.description.link')
+							}}</N8nExternalLink>
+						</template>
+					</I18nT>
+				</N8nText>
+			</template>
 			<N8nLoading2 v-if="isInitialLoading" :rows="2" :shrink-last="false" />
 			<N8nEmptyState
 				v-else-if="loadError"
-				:heading="i18n.baseText('settings.promotions.providers.error.title')"
-				:description="i18n.baseText('settings.promotions.providers.error.description')"
+				:heading="i18n.baseText('settings.promotions.environments.error.title')"
+				:description="i18n.baseText('settings.promotions.environments.error.description')"
 				:button-text="i18n.baseText('generic.retry')"
-				data-test-id="promotion-providers-load-error"
+				data-test-id="promotion-environments-load-error"
 				@click:button="load"
 			/>
-			<template v-if="!isInitialLoading && hasLoaded">
-				<div ref="list" :class="$style.list">
-					<N8nSettingsRowGroup v-for="provider in providers" :key="provider.id">
-						<N8nSettingsRow
-							clickable
-							:title="provider.name"
-							:description="authTypeLabel(provider)"
-							:data-provider-id="provider.id"
-							data-test-id="promotion-provider-row"
-							@click="openEditDialog(provider.id)"
-						>
-							<template #visual>
-								<N8nIcon icon="git-branch" color="text-dark" :size="20" />
-							</template>
-							<template #action>
-								<N8nSettingsRowConfigure />
-							</template>
-						</N8nSettingsRow>
-					</N8nSettingsRowGroup>
+			<N8nSettingsRowGroup v-else>
+				<div :class="$style.columns">
+					<template v-for="direction in promotionDirectionSchema.options" :key="direction">
+						<PromotionEnvironmentCard
+							v-if="environments[direction]"
+							:key="environments[direction].id"
+							:class="$style.column"
+							:environment="environments[direction]"
+							:busy="busy.get(environments[direction].id)"
+							:connect-error="connectErrors.get(environments[direction].id)"
+							:can-clone="canClone"
+							:data-test-id="`promotion-environment-card-${direction}`"
+							@retry="retry(environments[direction])"
+							@edit="
+								router.push({
+									name: PROMOTIONS_ENVIRONMENT_EDIT_VIEW,
+									params: { environmentId: environments[direction].id },
+								})
+							"
+							@remove="remove(environments[direction])"
+						/>
+						<div v-else :class="$style.column">
+							<N8nSettingsRow
+								:title="i18n.baseText(`settings.promotions.environments.${direction}.title`)"
+								:show-divider="false"
+							/>
+							<div :class="$style.empty">
+								<N8nButton
+									:ref="(button) => (addButtons[direction] = button)"
+									variant="outline"
+									icon="plus"
+									:data-test-id="`promotion-environment-add-${direction}`"
+									@click="
+										router.push({ name: PROMOTIONS_ENVIRONMENT_ADD_VIEW, params: { direction } })
+									"
+								>
+									{{ i18n.baseText('settings.promotions.environments.add') }}
+								</N8nButton>
+							</div>
+						</div>
+					</template>
 				</div>
-
-				<N8nSettingsRowGroup>
-					<N8nSettingsRow
-						ref="addRow"
-						clickable
-						:title="i18n.baseText('settings.promotions.providers.add')"
-						:description="i18n.baseText('settings.promotions.providers.add.description')"
-						data-test-id="promotion-providers-add"
-						@click="openCreateDialog()"
-					>
-						<template #visual>
-							<N8nIcon icon="plus" color="text-dark" :size="20" />
-						</template>
-						<template #action>
-							<N8nIcon icon="chevron-right" color="text-light" size="small" />
-						</template>
-					</N8nSettingsRow>
-				</N8nSettingsRowGroup>
-			</template>
+			</N8nSettingsRowGroup>
+			<N8nSettingsRowGroup>
+				<N8nSettingsRow
+					:title="i18n.baseText('settings.sourceControl.protected.bold')"
+					:description="i18n.baseText('settings.promotions.protected.description')"
+				>
+					<template #action>
+						<N8nSwitch
+							:model-value="sourceControlStore.preferences.branchReadOnly"
+							:disabled="protectionBusy"
+							:aria-label="i18n.baseText('settings.sourceControl.protected.bold')"
+							data-test-id="promotion-protected-instance-switch"
+							@update:model-value="setProtected"
+						/>
+					</template>
+				</N8nSettingsRow>
+			</N8nSettingsRowGroup>
 		</N8nSettingsSection>
-
-		<N8nSettingsSection
-			:title="i18n.baseText('settings.promotions.connection.title')"
-			:description="i18n.baseText('settings.promotions.connection.description')"
-		>
-			<N8nLoading2 v-if="isInitialLoading" :rows="3" :shrink-last="false" />
-			<PromotionConnectionForm
-				v-else-if="hasLoaded"
-				ref="connectionForm"
-				:providers="providers"
-				:connection="connection"
-				@saved="onConnectionSaved"
-				@refresh="onConnectionRefresh"
-				@add-provider="openCreateDialog(true)"
-			/>
-		</N8nSettingsSection>
-
-		<PromotionProviderDialog
-			v-if="dialogOpen"
-			:key="editingId ?? 'new'"
-			:open="dialogOpen"
-			:provider-id="editingId"
-			@update:open="onDialogOpenChange"
-			@saved="onProviderSaved"
-			@deleted="onProviderDeleted"
-		/>
 	</N8nSettingsLayout>
 </template>
 
 <style lang="scss" module>
-// The settings layout supplies the top spacing.
-.layout {
-	padding-top: 0;
+@use '@/app/css/variables' as *;
 
-	&:focus {
-		outline: none;
+.layout {
+	container-type: inline-size;
+	padding-top: 0;
+}
+
+.columns {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+
+	@container (max-width: #{$breakpoint-2xs}) {
+		grid-template-columns: minmax(0, 1fr);
 	}
 }
 
-.list {
+.column {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xs);
+
+	& + & {
+		border-inline-start: var(--border-width, 1px) solid var(--border-color--subtle);
+
+		@container (max-width: #{$breakpoint-2xs}) {
+			border-inline-start: none;
+			border-block-start: var(--border-width, 1px) solid var(--border-color--subtle);
+		}
+	}
+}
+
+.empty {
+	display: flex;
+	flex: 1;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing--lg) var(--spacing--sm);
 }
 </style>

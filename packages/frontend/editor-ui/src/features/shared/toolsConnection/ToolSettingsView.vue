@@ -43,7 +43,7 @@ function onReconnect() {
 
 <template>
 	<div :class="$style.container" data-test-id="tools-connection-settings">
-		<header :class="$style.header">
+		<header :class="$style.header" data-slot="dialog-header">
 			<div :class="$style.headerLeft">
 				<N8nIconButton
 					v-if="!hideBackButton"
@@ -111,7 +111,9 @@ function onReconnect() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xl);
-	min-height: 100%;
+	flex: 1 1 auto;
+	height: 100%;
+	min-height: 0;
 }
 
 .header {
@@ -119,6 +121,8 @@ function onReconnect() {
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
+	padding: var(--n8n-dialog-region--padding, var(--spacing--md));
+	padding-block-end: 0;
 }
 
 .headerLeft {
@@ -164,6 +168,6 @@ function onReconnect() {
 	display: flex;
 	flex-direction: column;
 	min-height: 0;
-	overflow-y: auto;
+	overflow: hidden;
 }
 </style>

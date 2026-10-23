@@ -50,6 +50,7 @@ import { BadRequestError, ConflictError, InternalServerError, NotFoundError } fr
 import type { IExecutionFlattedResponse } from '@/interfaces';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import { ExecutionStopService } from '@/scaling/execution-stop.service';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
@@ -62,7 +63,7 @@ import { MissingExecutionDataError } from './execution-data/missing-execution-da
 import { isExecutionIdV2, type ExecutionIdV2 } from './execution-id';
 import { ExecutionPersistence } from './execution-persistence';
 
-import type { ExecutionRequest, StopResult } from './execution.types';
+import type { ExecutionRequest, RetriedExecution, StopResult } from './execution.types';
 
 export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
@@ -205,10 +206,10 @@ export class ExecutionService {
 		redactExecutionData?: boolean,
 	): Promise<IExecutionResponse | undefined> {
 		// A workflow runs on one engine, and only that engine holds its executions.
-		const workflow = await this.workflowRepository.findOneBy({ id: workflowId });
+		const settings = await this.workflowRepository.findSettings(workflowId);
 		const execution =
-			workflow?.settings?.engineType === 'v2'
-				? await this.lastSuccessfulEngineV2Execution(workflowId)
+			settings?.engineType === 'v2'
+				? await this.engineV2ExecutionReader.findLatest({ status: ['success'] }, [workflowId])
 				: await this.lastSuccessfulV1Execution(workflowId);
 		if (!execution) return undefined;
 
@@ -242,20 +243,6 @@ export class ExecutionService {
 		return executions[0];
 	}
 
-	/** The data plane lists newest first, and only the full read carries the run data. */
-	private async lastSuccessfulEngineV2Execution(
-		workflowId: string,
-	): Promise<IExecutionResponse | undefined> {
-		const { items } = await this.engineV2ExecutionReader.findMany(
-			{ status: ['success'], limit: 1 },
-			[workflowId],
-		);
-		const latest = items[0];
-		if (!latest || !isExecutionIdV2(latest.id)) return undefined;
-
-		return await this.engineV2ExecutionReader.findOne(latest.id, [workflowId]);
-	}
-
 	async retry({
 		executionId,
 		options = {},
@@ -266,7 +253,7 @@ export class ExecutionService {
 		options?: { loadWorkflow?: boolean; redactExecutionData?: boolean };
 		sharedWorkflowIds: string[];
 		user: User;
-	}): Promise<Omit<IExecutionResponse, 'createdAt'>> {
+	}): Promise<RetriedExecution> {
 		const execution = await this.executionPersistence.findWithUnflattenedData(
 			executionId,
 			sharedWorkflowIds,
@@ -404,7 +391,7 @@ export class ExecutionService {
 			source: 'user-retry',
 		});
 
-		const response: Omit<IExecutionResponse, 'createdAt'> = {
+		const summary: RetriedExecution = {
 			id: retriedExecutionId,
 			mode: executionData.mode,
 			startedAt: executionData.startedAt,
@@ -414,11 +401,22 @@ export class ExecutionService {
 			retryOf: executionId,
 			status: executionData.status,
 			waitTill: executionData.waitTill,
+			storedAt: execution.storedAt,
+		};
+
+		// A retry carries over the data of the nodes that ran before, so the data
+		// is only returned to a user who may read the workflow's executions.
+		const canReadExecutions = await userHasScopes(user, ['execution:read'], false, {
+			workflowId: execution.workflowId,
+		});
+		if (!canReadExecutions) return summary;
+
+		const response: Omit<IExecutionResponse, 'createdAt'> = {
+			...summary,
 			data: executionData.data,
 			workflowData: execution.workflowData,
 			customData: execution.customData,
 			annotation: execution.annotation,
-			storedAt: execution.storedAt,
 		};
 
 		await this.executionRedactionServiceProxy.processExecution(response, {

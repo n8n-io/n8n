@@ -15,7 +15,13 @@ import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { AuthError, ForbiddenError } from '@n8n/errors';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
-import { JwtService, UrlService } from '@n8n/backend-services';
+import {
+	JwtService,
+	UrlService,
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	EventService,
+	// EOF Experiment cleanup
+} from '@n8n/backend-services';
 
 interface AuthJwtPayload {
 	/** User Id */
@@ -96,6 +102,9 @@ export class AuthService {
 	private skipBrowserIdCheckEndpoints: Array<string | RegExp>;
 
 	constructor(
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		private readonly eventService: EventService,
+		// EOF Experiment cleanup
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly license: License,
@@ -295,7 +304,22 @@ export class AuthService {
 		}
 	}
 
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	issueCookie(
+		res: Response,
+		user: User,
+		usedMfa: boolean,
+		browserId?: string,
+		isEmbed?: boolean,
+		cookieOverrides?: { sameSite?: 'strict' | 'lax' | 'none'; secure?: boolean },
+	) {
+		this.setAuthCookie(res, user, usedMfa, browserId, isEmbed, cookieOverrides);
+		this.eventService.emit('experiment-user-first-login', { userId: user.id, at: Date.now() });
+	}
+	// EOF Experiment cleanup
+
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users): rename setAuthCookie to public issueCookie; keep the method body.
+	private setAuthCookie(
 		res: Response,
 		user: User,
 		usedMfa: boolean,
@@ -474,7 +498,8 @@ export class AuthService {
 			const embedCookieOverrides = jwtPayload.isEmbed
 				? ({ sameSite: 'none' as const, secure: true } as const)
 				: undefined;
-			this.issueCookie(
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users): call issueCookie instead of setAuthCookie; keep the call and its arguments.
+			this.setAuthCookie(
 				res,
 				user,
 				jwtPayload.usedMfa ?? false,

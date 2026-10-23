@@ -46,6 +46,7 @@ import {
 } from '../utils/agent-channel';
 import { AgentRepository } from '../repositories/agent.repository';
 import { AgentChannelStatusReporter } from './agent-channel-status-reporter';
+import { SLACK_STREAMING_OPTIONS } from './platforms/slack/slack-bridge-behavior';
 
 // ---------------------------------------------------------------------------
 // Chat SDK local interfaces
@@ -143,6 +144,7 @@ async function getAgentExecutionOrchestratorService() {
  * Hence a little above the SDK's 500ms default rather than at it.
  */
 function streamingOptionsFor(type: AgentIntegrationConfig['type']) {
+	if (type === 'slack') return SLACK_STREAMING_OPTIONS;
 	if (type !== 'teams') return {};
 	return { fallbackStreamingPlaceholderText: '…', streamingUpdateIntervalMs: 750 };
 }

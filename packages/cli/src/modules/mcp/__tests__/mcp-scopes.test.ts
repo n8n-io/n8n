@@ -41,7 +41,8 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { ExecutionService } from '@/executions/execution.service';
-import { SkillsApiService } from '@/modules/agents/skills/skills-api.service';
+import { SkillsApiService } from '@/modules/skills/skills-api.service';
+import { SkillsHubRollout } from '@/modules/skills/skills-hub-rollout';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { InstanceContextService } from '@/modules/instance-ai/instance-context.service';
 import {
@@ -144,12 +145,14 @@ describe('getAllowedToolNames', () => {
 	});
 
 	it('grants only the read skill tools with skill:read', () => {
-		expect(getAllowedToolNames(['skill:read'])).toEqual(new Set(['search_skills', 'get_skill']));
+		expect(getAllowedToolNames(['skill:read'])).toEqual(
+			new Set(['search_n8n_skills', 'get_skill']),
+		);
 	});
 
 	it('grants the read skill tools with skill:write too', () => {
 		expect(getAllowedToolNames(['skill:write'])).toEqual(
-			new Set(['create_skill', 'update_skill', 'delete_skill', 'search_skills', 'get_skill']),
+			new Set(['create_skill', 'update_skill', 'delete_skill', 'search_n8n_skills', 'get_skill']),
 		);
 	});
 
@@ -172,14 +175,12 @@ describe('McpService scope enforcement', () => {
 		foldersLicensed = true,
 		instanceAiActive = false,
 		agentsActive = false,
-		skillsHubEnabled = false,
 		postHogClient = mockInstance(PostHogClient),
 	}: {
 		builderEnabled?: boolean;
 		foldersLicensed?: boolean;
 		instanceAiActive?: boolean;
 		agentsActive?: boolean;
-		skillsHubEnabled?: boolean;
 		postHogClient?: PostHogClient;
 	} = {}) =>
 		new McpService(
@@ -201,7 +202,6 @@ describe('McpService scope enforcement', () => {
 				},
 				tags: { disabled: false },
 				diagnostics: { enabled: false, frontendConfig: '' },
-				agents: { skillsHubEnabled },
 			}),
 			mockInstance(Telemetry),
 			mockInstance(WorkflowRunner),
@@ -250,6 +250,7 @@ describe('McpService scope enforcement', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockInstance(SkillsHubRollout, { isEnabled: false });
 	});
 
 	it('every tool registered by getServer is covered by the scope map (drift guard)', async () => {
@@ -286,10 +287,10 @@ describe('McpService scope enforcement', () => {
 		'registers the skill tools only when the skills hub is on: %s',
 		async (skillsHubEnabled) => {
 			mockInstance(SkillsApiService);
+			mockInstance(SkillsHubRollout, { isEnabled: skillsHubEnabled });
 			const server = await buildService({
 				builderEnabled: false,
 				agentsActive: true,
-				skillsHubEnabled,
 			}).getServer(user, mcpFeatureFlags());
 			const registered = getRegisteredToolNames(server);
 

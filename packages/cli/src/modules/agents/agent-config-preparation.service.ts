@@ -14,7 +14,12 @@ import { UserError } from 'n8n-workflow';
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 
-import { diffAgentConfigParts, type AgentConfigPart } from './agent-modification-telemetry.service';
+import {
+	diffAgentConfigParts,
+	diffAgentConfigSettings,
+	type AgentConfigPart,
+	type AgentConfigSetting,
+} from './agent-modification-telemetry.service';
 import { AgentPolicyService } from './agent-policy.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
 import type { Agent, ProjectAgent } from './entities/agent.entity';
@@ -40,6 +45,7 @@ export interface ConfigReplacement {
 	nextIntegrations: NonNullable<Agent['integrations']>;
 	previousIntegrations: NonNullable<Agent['integrations']>;
 	changedParts: AgentConfigPart[];
+	changedSettings: AgentConfigSetting[];
 }
 
 @Service()
@@ -221,11 +227,13 @@ export class AgentConfigPreparationService {
 			previousIntegrations,
 			nextIntegrations,
 		);
+		const changedSettings = diffAgentConfigSettings(previousSchema, nextSchema);
 		return {
 			nextSchema,
 			nextIntegrations,
 			previousIntegrations,
 			changedParts,
+			changedSettings,
 		};
 	}
 
@@ -255,10 +263,11 @@ export class AgentConfigPreparationService {
 			);
 		}
 
-		// Both are trimmed by the schema; an empty string clears the stored value.
-		for (const field of ['description', 'modelDeploymentName'] as const) {
-			if (decomposedSchema[field] === '') delete nextSchema[field];
-		}
+		// Trimmed by the schema; an empty string clears the stored value.
+		if (decomposedSchema.description === '') delete nextSchema.description;
+		// Agents no longer use a separate deployment name. Older configs still
+		// carry it, so drop it here rather than keep it from `previousSchema`.
+		Reflect.deleteProperty(nextSchema, 'modelDeploymentName');
 		return nextSchema;
 	}
 
@@ -340,7 +349,6 @@ function mergePersonalisationWithPreviousGradient(
 const OPTIONAL_SCHEMA_FIELDS = [
 	'credential',
 	'description',
-	'modelDeploymentName',
 	'personalisation',
 	'memory',
 	'subAgents',

@@ -603,6 +603,47 @@ describe('useInstanceAiHandoff', () => {
 		expect(mocks.showError).not.toHaveBeenCalled();
 	});
 
+	it('opens a thread with a composer draft without sending it', async () => {
+		const { openThreadWithDraft } = useInstanceAiHandoff();
+
+		const opened = await openThreadWithDraft(
+			'project-1',
+			{ text: 'Suggest my preferences', prefillType: 'preferences_suggestion' },
+			{ source: 'preferences_empty_state', origin: 'internal' },
+		);
+
+		expect(opened).toBe(true);
+		expect(mocks.syncThread).toHaveBeenCalledWith('thread-1', 'project-1', {
+			source: 'preferences_empty_state',
+			origin: 'internal',
+		});
+		expect(mocks.sendMessage).not.toHaveBeenCalled();
+		expect(mocks.routerPush).toHaveBeenCalledWith({
+			name: 'InstanceAiThread',
+			params: { threadId: 'thread-1' },
+		});
+		expect(getPendingComposerDraft('thread-1')).toEqual({
+			text: 'Suggest my preferences',
+			prefillType: 'preferences_suggestion',
+		});
+	});
+
+	it('stashes no draft when the draft thread cannot be created', async () => {
+		mocks.syncThread.mockRejectedValueOnce(new Error('offline'));
+		const { openThreadWithDraft } = useInstanceAiHandoff();
+
+		const opened = await openThreadWithDraft(
+			'project-1',
+			{ text: 'Suggest my preferences', prefillType: 'preferences_suggestion' },
+			{ source: 'preferences_empty_state', origin: 'internal' },
+		);
+
+		expect(opened).toBe(false);
+		expect(getPendingComposerDraft('thread-1')).toBeNull();
+		expect(mocks.routerPush).not.toHaveBeenCalled();
+		expect(mocks.showError).toHaveBeenCalledOnce();
+	});
+
 	describe('before setup is finished', () => {
 		beforeEach(() => {
 			mocks.instanceAiReady.value = false;
@@ -634,6 +675,20 @@ describe('useInstanceAiHandoff', () => {
 				}),
 				{ source: 'credential_edit', origin: 'internal' },
 				{ newTab: true },
+			);
+
+			expect(opened).toBe(false);
+			expect(mocks.syncThread).not.toHaveBeenCalled();
+			expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'InstanceAi' });
+		});
+
+		it('routes openThreadWithDraft to the assistant without minting a thread', async () => {
+			const { openThreadWithDraft } = useInstanceAiHandoff();
+
+			const opened = await openThreadWithDraft(
+				'project-1',
+				{ text: 'Suggest my preferences', prefillType: 'preferences_suggestion' },
+				{ source: 'preferences_empty_state', origin: 'internal' },
 			);
 
 			expect(opened).toBe(false);

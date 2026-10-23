@@ -12,6 +12,7 @@ export type * from './community-node-types';
 export type * from './quick-connect';
 export * from './agents/index';
 export * from './builder-tool-names';
+export * from './schemas/app.schema';
 export * from './schemas/mcp-tool-permissions.schema';
 export * from './instance-registry-types';
 export type * from './instance-reporting';
@@ -170,8 +171,8 @@ export {
 	folderIdParamSchema,
 	logStreamingDestinationIdParamSchema,
 	projectIdParamSchema,
-	promotionConnectionIdParamSchema,
 	promotionDirectionParamSchema,
+	promotionEnvironmentIdParamSchema,
 	promotionProviderIdParamSchema,
 	roleMappingRuleIdParamSchema,
 	roleSlugParamSchema,
@@ -444,7 +445,6 @@ export {
 	setupItemsPayloadSchema,
 	aiPreferencesAppliedPayloadSchema,
 	errorPayloadSchema,
-	filesystemRequestPayloadSchema,
 	mcpToolSchema,
 	mcpToolCallRequestSchema,
 	mcpToolCallResultSchema,
@@ -470,7 +470,6 @@ export {
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
-	computerUseChannelSchema,
 	INSTANCE_CONTEXT_SURFACE_DEPTH,
 	instanceContextSurfaceSchema,
 	instanceContextReachSchema,
@@ -510,8 +509,6 @@ export {
 	AI_GATEWAY_MANAGED_TAG,
 	InstanceAiEvalRestoreThreadRequest,
 	InstanceAiEvalSeedDataTableRowsRequest,
-	instanceAiGatewayKeySchema,
-	InstanceAiGatewayEventsQuery,
 	InstanceAiEventsQuery,
 	InstanceAiCorrectTaskRequest,
 	InstanceAiEnsureThreadRequest,
@@ -543,10 +540,6 @@ export {
 	InstanceAiVerifyModelRequest,
 	InstanceAiVerifySandboxRequest,
 	InstanceAiVerifySearchRequest,
-	InstanceAiUserPreferencesUpdateRequest,
-	InstanceAiGatewayCapabilitiesDto,
-	InstanceAiGatewayCreateCredentialDto,
-	InstanceAiFilesystemResponseDto,
 	instanceAiEvalSeedDataTableSchema,
 	instanceAiEvalSeedAgentSchema,
 	instanceAiEvalSeedFolderSchema,
@@ -584,7 +577,6 @@ export type {
 	InstanceAiSetupStateInput,
 	InstanceAiRunLimitReason,
 	InstanceAiRunLimitMeta,
-	ComputerUseChannel,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -633,9 +625,6 @@ export type {
 	PreferenceCardPayload,
 	AiPreferencesAppliedPayload,
 	InstanceAiErrorEvent,
-	InstanceAiFilesystemRequestEvent,
-	InstanceAiFilesystemResponse,
-	InstanceAiGatewayCapabilities,
 	McpTool,
 	McpToolAnnotations,
 	McpToolCallRequest,
@@ -1002,6 +991,7 @@ export {
 	type JwksResponse,
 } from './schemas/jwks.schema';
 
+export * from './self-healing-configurations';
 export type {
 	ScimUser,
 	ScimUserCreate,

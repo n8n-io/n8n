@@ -126,8 +126,8 @@ export abstract class BaseCommand extends Command {
 			if (error instanceof ApiError) {
 				const exitCode = error.statusCode === 401 ? EXIT_AUTH : EXIT_ERROR;
 				const message = error.hint
-					? `Error: ${error.message} (${error.statusCode})\nHint: ${error.hint}`
-					: `Error: ${error.message}`;
+					? `${error.message} (${error.statusCode})\nHint: ${error.hint}`
+					: error.message;
 				this.error(message, { exit: exitCode });
 			}
 			throw error;

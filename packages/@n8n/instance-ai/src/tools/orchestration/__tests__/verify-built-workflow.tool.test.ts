@@ -685,6 +685,24 @@ async function runTool(
 }
 
 describe('workflow_builder_verify_built_workflow tool', () => {
+	it('finalizes verification when cancellation arrives after it starts', async () => {
+		const controller = new AbortController();
+		const ctx = createContext({ abortSignal: controller.signal });
+		vi.mocked(ctx.workflowTaskService!.startVerification).mockImplementationOnce(async () => {
+			controller.abort(new Error('Verification canceled.'));
+			return undefined;
+		});
+		const tool = createVerifyBuiltWorkflowTool(ctx);
+
+		await expect(executeTool(tool, { workItemId: 'wi_1', workflowId: 'wf_1' })).rejects.toThrow(
+			'Verification canceled.',
+		);
+		expect(ctx.domainContext?.executionService.run).not.toHaveBeenCalled();
+		expect(ctx.workflowTaskService!.updateBuildOutcome).toHaveBeenCalledWith('wi_1', {
+			verification: expect.objectContaining({ status: 'error', success: false, attempted: true }),
+		});
+	});
+
 	it('persists a success verification record onto the build outcome', async () => {
 		const { ctx, updateBuildOutcome } = makeContext(makeBuildOutcome(), {
 			executionId: 'exec-1',

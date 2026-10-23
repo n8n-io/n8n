@@ -82,6 +82,7 @@ export namespace PubSub {
 		export type ReloadMcpRegistry = ToCommand<'reload-mcp-registry'>;
 		export type ReloadOtelConfig = ToCommand<'reload-otel-config'>;
 		export type ReloadInstanceAiSettings = ToCommand<'reload-instance-ai-settings'>;
+		export type SelfHealingFailure = ToCommand<'self-healing-failure'>;
 		export type ReloadAgentsSettings = ToCommand<'reload-agents-settings'>;
 		export type CancelTestRun = ToCommand<'cancel-test-run'>;
 		export type CancelCollection = ToCommand<'cancel-collection'>;
@@ -92,6 +93,7 @@ export namespace PubSub {
 		export type AgentConfigChanged = ToCommand<'agent-config-changed'>;
 		export type AgentTasksChanged = ToCommand<'agent-tasks-changed'>;
 		export type RedactionFloorChanged = ToCommand<'redaction-floor-changed'>;
+		export type ReloadTypeAvailabilityPolicies = ToCommand<'reload-type-availability-policies'>;
 	}
 
 	/** Command sent via the `n8n.commands` pubsub channel. */
@@ -138,6 +140,7 @@ export namespace PubSub {
 		| Commands.ReloadMcpRegistry
 		| Commands.ReloadOtelConfig
 		| Commands.ReloadInstanceAiSettings
+		| Commands.SelfHealingFailure
 		| Commands.ReloadAgentsSettings
 		| Commands.CancelTestRun
 		| Commands.CancelCollection
@@ -147,7 +150,8 @@ export namespace PubSub {
 		| Commands.AgentChatLeaderChannelResult
 		| Commands.AgentConfigChanged
 		| Commands.AgentTasksChanged
-		| Commands.RedactionFloorChanged;
+		| Commands.RedactionFloorChanged
+		| Commands.ReloadTypeAvailabilityPolicies;
 
 	// ----------------------------------
 	//         worker responses

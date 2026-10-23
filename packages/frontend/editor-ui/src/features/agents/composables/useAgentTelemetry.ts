@@ -16,13 +16,26 @@ export type AgentCreateSource =
 	| 'empty_state_template'
 	| 'command_bar';
 export type N8nChatAgentSource = 'card' | 'library' | 'dropdown';
+export type KnowledgeUploadClientFailureReason = Extract<
+	InferTelemetryProps<typeof TELEMETRY_EVENT.AGENTS.USER_FAILED_AGENT_KNOWLEDGE_UPLOAD>,
+	{ stage: 'client' }
+>['reason'];
+export type AgentSessionFilterName = InferTelemetryProps<
+	typeof TELEMETRY_EVENT.AGENTS.USER_APPLIED_SESSION_FILTER
+>['filter_names'][number];
+export type AgentPreviewNewChatSource = InferTelemetryProps<
+	typeof TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_TEST_CHAT_ICON_FROM_TEST_PANEL
+>['source'];
+export type AgentPreviewMoreOption = InferTelemetryProps<
+	typeof TELEMETRY_EVENT.AGENTS.USER_CLICKED_AN_OPTION_FROM_MORE_LIST
+>['option'];
 
 export function useAgentTelemetry() {
 	const telemetry = useTelemetry();
 	const rootStore = useRootStore();
 	const isAgentsN8nChatFlag = useAgentsN8nChatFlag();
 
-	const common = () => ({ session_id: rootStore.pushRef });
+	const common = () => ({ push_ref: rootStore.pushRef });
 
 	// Reports `null` when the user has no flag value for this experiment.
 	function currentN8nChatVariant(): string | null {
@@ -39,6 +52,76 @@ export function useAgentTelemetry() {
 		} catch {
 			// Swallow — telemetry must not break user-facing flows.
 		}
+	}
+
+	function trackClickedAgentsTab(params: {
+		agentId: string;
+		name: InferTelemetryProps<typeof TELEMETRY_EVENT.AGENTS.USER_CLICKED_AGENTS_TAB>['name'];
+	}) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CLICKED_AGENTS_TAB, {
+			agent_id: params.agentId,
+			name: params.name,
+			...common(),
+		});
+	}
+
+	function trackClickedKnowledgeUpload(params: { agentId: string }) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CLICKED_KNOWLEDGE_UPLOAD, {
+			agent_id: params.agentId,
+			...common(),
+		});
+	}
+
+	function trackClickedTraceItem(params: {
+		agentId: string;
+		itemType: InferTelemetryProps<
+			typeof TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_ITEM
+		>['item_type'];
+	}) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_ITEM, {
+			agent_id: params.agentId,
+			item_type: params.itemType,
+			...common(),
+		});
+	}
+
+	function trackAppliedSessionFilter(params: {
+		agentId: string;
+		filterNames: InferTelemetryProps<
+			typeof TELEMETRY_EVENT.AGENTS.USER_APPLIED_SESSION_FILTER
+		>['filter_names'];
+	}) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_APPLIED_SESSION_FILTER, {
+			agent_id: params.agentId,
+			filter_names: params.filterNames,
+			...common(),
+		});
+	}
+
+	function trackClickedNewTestChat(params: { agentId: string; source: AgentPreviewNewChatSource }) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_TEST_CHAT_ICON_FROM_TEST_PANEL, {
+			agent_id: params.agentId,
+			source: params.source,
+			...common(),
+		});
+	}
+
+	function trackClickedPreviewMoreOptions(params: { agentId: string }) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CLICKED_MORE_OPTIONS_FROM_TEST_PANEL, {
+			agent_id: params.agentId,
+			...common(),
+		});
+	}
+
+	function trackClickedPreviewMoreOption(params: {
+		agentId: string;
+		option: AgentPreviewMoreOption;
+	}) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CLICKED_AN_OPTION_FROM_MORE_LIST, {
+			agent_id: params.agentId,
+			option: params.option,
+			...common(),
+		});
 	}
 
 	function trackClickedNewAgent(source: AgentCreateSource, agentId: string, templateId?: string) {
@@ -99,6 +182,20 @@ export function useAgentTelemetry() {
 
 	function trackOpenedAddSkillModal(params: { agentId: string }) {
 		safeTrack(TELEMETRY_EVENT.AGENTS.USER_OPENED_ADD_SKILL_MODAL, {
+			agent_id: params.agentId,
+			...common(),
+		});
+	}
+
+	function trackRevertedChangesOnAgent(params: { agentId: string }) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_REVERTED_CHANGES_ON_AGENT, {
+			agent_id: params.agentId,
+			...common(),
+		});
+	}
+
+	function trackClickedTraceDetailsFromTestPanel(params: { agentId: string }) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_DETAILS_FROM_TEST_PANEL, {
 			agent_id: params.agentId,
 			...common(),
 		});
@@ -254,13 +351,55 @@ export function useAgentTelemetry() {
 		});
 	}
 
+	function trackOpenedKnowledgeTab(params: { agentId: string }) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_KNOWLEDGE_TAB, {
+			agent_id: params.agentId,
+			...common(),
+		});
+	}
+
+	function trackStartedAddingKnowledge(
+		params: { agentId: string } & ({ kind: 'file'; fileCount: number } | { kind: 'vector_store' }),
+	) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_STARTED_ADDING_AGENT_KNOWLEDGE, {
+			agent_id: params.agentId,
+			kind: params.kind,
+			...(params.kind === 'file' ? { file_count: params.fileCount } : {}),
+			...common(),
+		});
+	}
+
+	/** Server rejections are sent by the backend, so the editor reports only its own checks. */
+	function trackFailedKnowledgeUpload(params: {
+		agentId: string;
+		reason: KnowledgeUploadClientFailureReason;
+		fileCount: number;
+	}) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_FAILED_AGENT_KNOWLEDGE_UPLOAD, {
+			stage: 'client',
+			agent_id: params.agentId,
+			file_count: params.fileCount,
+			reason: params.reason,
+			...common(),
+		});
+	}
+
 	return {
+		trackClickedAgentsTab,
+		trackClickedKnowledgeUpload,
+		trackClickedTraceItem,
+		trackAppliedSessionFilter,
+		trackClickedNewTestChat,
+		trackClickedPreviewMoreOptions,
+		trackClickedPreviewMoreOption,
 		trackClickedNewAgent,
 		trackSubmittedMessage,
 		trackAddedTrigger,
 		trackOpenedToolFromList,
 		trackOpenedSkillFromList,
 		trackOpenedAddSkillModal,
+		trackRevertedChangesOnAgent,
+		trackClickedTraceDetailsFromTestPanel,
 		trackImportedSkill,
 		trackDuplicatedAgent,
 		trackDismissedAgentPublishedModal,
@@ -273,5 +412,8 @@ export function useAgentTelemetry() {
 		trackSelectedN8nChatAgent,
 		trackSentMessageToN8nChatAgent,
 		trackClickedSidebarItem,
+		trackOpenedKnowledgeTab,
+		trackStartedAddingKnowledge,
+		trackFailedKnowledgeUpload,
 	};
 }

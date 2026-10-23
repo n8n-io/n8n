@@ -282,17 +282,12 @@ function fieldTypeToZod(type: string | undefined, label: string): z.ZodTypeAny {
 
 export type WorkflowInputFieldDef = { name: string; type?: string };
 
-/**
- * Resolve the Execute Workflow Trigger `inputSource`. Mirrors the runtime
- * fallback in `getNodeParameter(INPUT_SOURCE, 0, PASSTHROUGH)`: when the
- * parameter is absent (legacy node versions < 1.1, or imported triggers that
- * never saved it), the trigger treats the workflow as passthrough and passes
- * all input data through unchanged. Defaulting to PASSTHROUGH here keeps the
- * inferred schema open so undeclared input fields are not dropped.
- */
+/** Apply the trigger's version-specific default before workflow execution adds node defaults. */
 function getExecuteWorkflowInputSource(triggerNode: INode): string {
 	const params = triggerNode.parameters ?? {};
-	return (params[INPUT_SOURCE] as string | undefined) ?? PASSTHROUGH;
+	const inputSource = params[INPUT_SOURCE];
+	const defaultInputSource = triggerNode.typeVersion >= 1.1 ? WORKFLOW_INPUTS : PASSTHROUGH;
+	return typeof inputSource === 'string' ? inputSource : defaultInputSource;
 }
 
 /** Declared field defs from an Execute Workflow Trigger (empty for passthrough). */

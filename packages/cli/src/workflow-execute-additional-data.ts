@@ -63,7 +63,6 @@ import type { WorkflowAgentRunOptions } from './modules/agents/agent-workflow-ex
 import { createWorkflowAgentStreamObserver } from './modules/agents/workflow-agent-stream';
 
 import { ActiveExecutions } from '@/active-executions';
-import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { CredentialsHelper } from '@/credentials-helper';
 import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
 import type { AiEventPayload } from '@/events/maps/ai.event-map';
@@ -252,8 +251,8 @@ export async function getPublishedWorkflowData(
 		};
 	}
 
-	throw new UnexpectedError('Workflow is not active and cannot be executed.', {
-		extra: { workflowId: workflowInfo.id },
+	throw new OperationalError('Workflow is not active and cannot be executed.', {
+		extra: { workflowId: workflowInfo.id, parentWorkflowId },
 	});
 }
 
@@ -617,9 +616,9 @@ async function startExecution(
 
 	// Reported to the caller so its redaction covers this run's output: the parent's own
 	// nodes do not reference these credentials.
-	const workflowCredentialIds = isCredSharingEnabled()
-		? Container.get(CredentialsPermissionChecker).getCredentialIdsForNodes(workflowData.nodes)
-		: [];
+	const workflowCredentialIds = Container.get(
+		CredentialsPermissionChecker,
+	).getCredentialIdsForNodes(workflowData.nodes);
 
 	let data;
 	try {

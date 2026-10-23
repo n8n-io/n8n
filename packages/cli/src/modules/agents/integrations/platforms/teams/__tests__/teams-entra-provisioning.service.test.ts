@@ -465,6 +465,15 @@ describe('TeamsEntraProvisioningService', () => {
 			);
 		});
 
+		it('looks for the earlier credential in the project only, never a personal one', async () => {
+			await service.provision(options);
+
+			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(
+				options.user,
+				expect.objectContaining({ excludePersonalRoute: true }),
+			);
+		});
+
 		/**
 		 * Losing the credential and running again adds another secret to the app
 		 * that survived. Entra caps how many one may hold, so the dead ones go --

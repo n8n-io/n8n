@@ -6,6 +6,7 @@ import type {
 } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import { configure, fireEvent, waitFor, within } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { computed, defineComponent, ref } from 'vue';
 
@@ -18,6 +19,9 @@ import { ActionDropdownTestStub } from '../../__tests__/utils/ActionDropdownTest
 import { AGENT_PERSONALISATION_KEY } from '../agentPersonalisation';
 
 vi.mock('file-saver', () => ({ saveAs: vi.fn() }));
+
+const confirm = vi.fn();
+vi.mock('@/app/composables/useMessage', () => ({ useMessage: () => ({ confirm }) }));
 
 vi.mock('./api', () => ({
 	fetchTeamsAppPackage: vi.fn().mockResolvedValue(new Blob()),
@@ -64,6 +68,7 @@ const setupState = (overrides: Partial<TeamsManagedSetupState> = {}): TeamsManag
 const buildRuntime = (overrides: Partial<TeamsChannelRuntime> = {}): TeamsChannelRuntime => ({
 	managedSetup: ref(setupState()),
 	setupKind: ref('managed'),
+	nextSetupKind: ref(null),
 	managerCredentialId: ref(''),
 	loading: computed(() => false),
 	load: vi.fn(),
@@ -81,6 +86,7 @@ const buildRuntime = (overrides: Partial<TeamsChannelRuntime> = {}): TeamsChanne
 	reportManualBotRoute: vi.fn().mockResolvedValue(undefined),
 	publishApp: vi.fn().mockResolvedValue(true),
 	refreshCatalogState: vi.fn(),
+	reset: vi.fn(),
 	...overrides,
 });
 
@@ -219,6 +225,108 @@ describe('AgentChannelTeamsManagedSetup', () => {
 		expect(queryByTestId('teams-create-bot')).not.toBeInTheDocument();
 	});
 
+	describe('switching the sign-in once the channel is saved', () => {
+		const PickerStub = {
+			props: ['disabled'],
+			emits: ['credential-selected', 'new-credential'],
+			template: `<div data-testid="teams-manager-credential-select" :data-disabled="String(disabled)">
+				<button data-testid="pick-sign-in" @click="$emit('credential-selected', 'cred-2')" />
+				<button data-testid="add-sign-in" @click="$emit('new-credential')" />
+			</div>`,
+		};
+		const renderSaved = (overrides: Record<string, unknown> = {}) =>
+			renderComponent({
+				props: props({
+					modelValue: 'cred-1',
+					setup: setupState({
+						managerCredentials: [connectedCredential, { ...connectedCredential, id: 'cred-2' }],
+					}),
+					channelConnected: true,
+					...overrides,
+				}),
+				pinia: createTestingPinia(),
+				global: { stubs: { ...stubs, CredentialsDropdown: PickerStub } },
+			});
+
+		it('locks the sign-in while a step is running', async () => {
+			const runtime = buildRuntime({
+				provisionApp: vi.fn(async () => await new Promise<boolean>(() => {})),
+			});
+			const { getByTestId } = renderSaved({ runtime, channelConnected: false });
+
+			await fireEvent.click(getByTestId('teams-create-app'));
+
+			await waitFor(() =>
+				expect(getByTestId('teams-manager-credential-select')).toHaveAttribute(
+					'data-disabled',
+					'true',
+				),
+			);
+		});
+
+		it('switches without asking while nothing is saved', async () => {
+			const { getByTestId, emitted } = renderSaved({ channelConnected: false });
+
+			await fireEvent.click(getByTestId('pick-sign-in'));
+			await flushPromises();
+
+			expect(confirm).not.toHaveBeenCalled();
+			expect(emitted()['update:modelValue']).toEqual([['cred-2']]);
+			expect(emitted()).not.toHaveProperty('restart');
+		});
+
+		it('sets up again with the new sign-in once the user confirms', async () => {
+			confirm.mockResolvedValue('confirm');
+			const { getByTestId, emitted } = renderSaved();
+
+			await fireEvent.click(getByTestId('pick-sign-in'));
+
+			await waitFor(() =>
+				expect(emitted().restart).toEqual([[{ credentialId: '', signInCredentialId: 'cred-2' }]]),
+			);
+			// The switch waits for the channel to be removed, so a failed removal changes nothing.
+			expect(emitted()).not.toHaveProperty('update:modelValue');
+		});
+
+		it('keeps the sign-in when the user cancels', async () => {
+			confirm.mockResolvedValue('cancel');
+			const { getByTestId, emitted } = renderSaved();
+
+			await fireEvent.click(getByTestId('pick-sign-in'));
+			await flushPromises();
+
+			expect(emitted()).not.toHaveProperty('update:modelValue');
+			expect(emitted()).not.toHaveProperty('restart');
+		});
+
+		it('sets up again after a new sign-in', async () => {
+			confirm.mockResolvedValue('confirm');
+			const runtime = buildRuntime({
+				connectManagerCredential: vi.fn().mockResolvedValue('cred-new'),
+			});
+			const { getByTestId, emitted } = renderSaved({ runtime });
+
+			await fireEvent.click(getByTestId('add-sign-in'));
+
+			await waitFor(() =>
+				expect(emitted().restart).toEqual([[{ credentialId: '', signInCredentialId: 'cred-new' }]]),
+			);
+			expect(runtime.connectManagerCredential).toHaveBeenCalledWith(undefined, { select: false });
+		});
+
+		it('keeps the channel when the new sign-in does not finish', async () => {
+			confirm.mockResolvedValue('confirm');
+			const runtime = buildRuntime({ connectManagerCredential: vi.fn().mockResolvedValue(null) });
+			const { getByTestId, emitted } = renderSaved({ runtime });
+
+			await fireEvent.click(getByTestId('add-sign-in'));
+			await flushPromises();
+
+			expect(runtime.connectManagerCredential).toHaveBeenCalled();
+			expect(emitted()).not.toHaveProperty('restart');
+		});
+	});
+
 	it('offers a picker when the project already has a sign-in', () => {
 		const { getByTestId } = render({
 			setup: setupState({
@@ -280,7 +388,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 
 		await fireEvent.click(getByTestId('teams-manager-connect'));
 		// Re-consents the same credential rather than creating a second one.
-		await waitFor(() => expect(connectManagerCredential).toHaveBeenCalledWith('cred-1'));
+		await waitFor(() => expect(connectManagerCredential).toHaveBeenCalledWith('cred-1', undefined));
 	});
 
 	it('signs in with a new credential when there is none to reuse', async () => {
@@ -289,7 +397,9 @@ describe('AgentChannelTeamsManagedSetup', () => {
 
 		await fireEvent.click(getByTestId('teams-manager-connect'));
 
-		await waitFor(() => expect(connectManagerCredential).toHaveBeenCalledWith(undefined));
+		await waitFor(() =>
+			expect(connectManagerCredential).toHaveBeenCalledWith(undefined, undefined),
+		);
 	});
 
 	it('reports a sign-in that did not finish', async () => {
