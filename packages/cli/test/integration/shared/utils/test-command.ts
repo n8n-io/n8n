@@ -3,6 +3,7 @@ import { CommandMetadata, type CommandClass } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import argvParser from 'yargs-parser';
 
+import { KeyManagerService } from '@/encryption/key-manager.service';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 
@@ -15,6 +16,9 @@ export const setupTestCommand = <T extends CommandClass>(Command: T) => {
 
 	beforeAll(async () => {
 		await testDb.init();
+		// A command's base init wires the real key manager, which needs an active
+		// data-encryption key. Seed it here as production does at startup.
+		await Container.get(KeyManagerService).bootstrapGcmKey();
 	});
 
 	beforeEach(() => {

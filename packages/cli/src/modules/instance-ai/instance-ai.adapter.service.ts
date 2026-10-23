@@ -2398,12 +2398,9 @@ export class InstanceAiAdapterService {
 				// serialization, so wrap them into `executionData` — mirroring
 				// `workflow-execution.service`. A trigger run already carries its stack in
 				// `executionData`, so only wrap when it's absent.
-				const offloadingManualExecutionsInQueueMode =
-					globalConfig.executions?.mode === 'queue' &&
-					process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true';
 				if (
 					runData.executionMode === 'manual' &&
-					offloadingManualExecutionsInQueueMode &&
+					globalConfig.executions?.mode === 'queue' &&
 					!runData.executionData
 				) {
 					runData.executionData = createRunExecutionData({
@@ -2713,10 +2710,7 @@ export class InstanceAiAdapterService {
 				// `workflow-execution.service` persists. `runData` stays `null` when the
 				// plan has none, so `createRunExecutionData` does not initialize it and
 				// turn a chain run into a partial one.
-				const offloadingManualExecutionsInQueueMode =
-					globalConfig.executions?.mode === 'queue' &&
-					process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true';
-				if (offloadingManualExecutionsInQueueMode) {
+				if (globalConfig.executions?.mode === 'queue') {
 					runData.executionData = createRunExecutionData({
 						startData: { destinationNode: runData.destinationNode },
 						resultData: { pinData: stepPinData, runData: plan.runData ?? null },

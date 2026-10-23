@@ -6233,41 +6233,34 @@ describe('createExecutionAdapter run()', () => {
 		);
 	});
 
-	it('wraps manual metadata into executionData when offloading to workers so the worker can run it', async () => {
-		const original = process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
-		process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
-		try {
-			const { adapter, mockWorkflowRunner } = createRunAdapterForTests(
-				{
-					id: 'wf-1',
-					// No trigger node: the adapter sets neither startNodes nor executionData,
-					// so an offloaded worker would receive an execution with no run data.
-					nodes: [
-						{
-							id: 'n1',
-							name: 'Set',
-							type: 'n8n-nodes-base.set',
-							typeVersion: 3,
-							position: [0, 0],
-							parameters: {},
-						},
-					],
-					settings: { executionOrder: 'v1' },
-				},
-				{ queueMode: true, execution: makeExecution({ status: 'success' }) },
-			);
+	it('wraps manual metadata into executionData in queue mode so the worker can run it', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests(
+			{
+				id: 'wf-1',
+				// No trigger node: the adapter sets neither startNodes nor executionData,
+				// so an offloaded worker would receive an execution with no run data.
+				nodes: [
+					{
+						id: 'n1',
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				settings: { executionOrder: 'v1' },
+			},
+			{ queueMode: true, execution: makeExecution({ status: 'success' }) },
+		);
 
-			await adapter.run('wf-1');
+		await adapter.run('wf-1');
 
-			const runData = mockWorkflowRunner.run.mock.calls[0][0];
-			// Offloaded workers reconstruct the run from execution.data (= runData.executionData).
-			// Without this wrapping it is undefined and job-processor throws "without run data".
-			expect(runData.executionData).toBeDefined();
-			expect(runData.executionData?.manualData?.userId).toBe('user-1');
-		} finally {
-			if (original === undefined) delete process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
-			else process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = original;
-		}
+		const runData = mockWorkflowRunner.run.mock.calls[0][0];
+		// Offloaded workers reconstruct the run from execution.data (= runData.executionData).
+		// Without this wrapping it is undefined and job-processor throws "without run data".
+		expect(runData.executionData).toBeDefined();
+		expect(runData.executionData?.manualData?.userId).toBe('user-1');
 	});
 });
 
@@ -6538,51 +6531,39 @@ describe('createExecutionAdapter runStep()', () => {
 	});
 
 	it('persists the partial-run shape the worker rebuilds from in queue mode', async () => {
-		const previous = process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
-		process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
-		try {
-			const { runData } = await runStepOn(
-				chainWorkflow,
-				'Send',
-				{ mockInput: [{ a: 1 }] },
-				{ queueMode: true },
-			);
+		const { runData } = await runStepOn(
+			chainWorkflow,
+			'Send',
+			{ mockInput: [{ a: 1 }] },
+			{ queueMode: true },
+		);
 
-			// The worker takes the `runManually` branch only when `executionData`
-			// carries no node execution stack, and reads these three fields.
-			expect(runData.executionData.startData.destinationNode).toEqual({
-				nodeName: 'Send',
-				mode: 'inclusive',
-			});
-			expect(runData.executionData.resultData.runData.Fetch).toBeDefined();
-			expect(runData.executionData.manualData.dirtyNodeNames).toEqual(['Send']);
-			expect(runData.executionData.manualData.source).toBe('instance_ai');
-		} finally {
-			// Assigning `undefined` stores the string "undefined", which leaves the
-			// variable set for every later test in this file.
-			if (previous === undefined) delete process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
-			else process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = previous;
-		}
+		// The worker takes the `runManually` branch only when `executionData`
+		// carries no node execution stack, and reads these three fields.
+		expect(runData.executionData.startData.destinationNode).toEqual({
+			nodeName: 'Send',
+			mode: 'inclusive',
+		});
+		expect(runData.executionData.resultData.runData.Fetch).toBeDefined();
+		expect(runData.executionData.manualData.dirtyNodeNames).toEqual(['Send']);
+		expect(runData.executionData.manualData.source).toBe('instance_ai');
 	});
 
 	it('leaves run data unset in queue mode for a chain run, so the worker runs the chain', async () => {
-		const previous = process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
-		process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
-		try {
-			const { runData } = await runStepOn(chainWorkflow, 'Send', undefined, { queueMode: true });
+		const { runData } = await runStepOn(chainWorkflow, 'Send', undefined, { queueMode: true });
 
-			// `createRunExecutionData` turns the explicit null into undefined, and
-			// the worker's `runManually` routes a chain run on exactly that.
-			expect(runData.executionData.resultData.runData).toBeUndefined();
-			// No node execution stack, so `job-processor` rebuilds through
-			// `runManually` instead of replaying a prepared stack.
-			expect(runData.executionData.executionData).toBeUndefined();
-		} finally {
-			// Assigning `undefined` stores the string "undefined", which leaves the
-			// variable set for every later test in this file.
-			if (previous === undefined) delete process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
-			else process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = previous;
-		}
+		// `createRunExecutionData` turns the explicit null into undefined, and
+		// the worker's `runManually` routes a chain run on exactly that.
+		expect(runData.executionData.resultData.runData).toBeUndefined();
+		// No node execution stack, so `job-processor` rebuilds through
+		// `runManually` instead of replaying a prepared stack.
+		expect(runData.executionData.executionData).toBeUndefined();
+	});
+
+	it('leaves execution data unset outside queue mode, so the main runs the step', async () => {
+		const { runData } = await runStepOn(chainWorkflow, 'Send', { mockInput: [{ a: 1 }] });
+
+		expect(runData.executionData).toBeUndefined();
 	});
 
 	it("drops the target's pin so the step actually executes the node", async () => {
@@ -7272,28 +7253,19 @@ describe('createExecutionAdapter runStep()', () => {
 		});
 
 		it('carries the agent request to a worker in queue mode', async () => {
-			const previous = process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
-			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
-			try {
-				const { runData } = await runStepOn(
-					agentWorkflow,
-					'Calculator',
-					{ mockInput: [{}], toolArguments: { input: '2 + 2' } },
-					{ queueMode: true },
-				);
+			const { runData } = await runStepOn(
+				agentWorkflow,
+				'Calculator',
+				{ mockInput: [{}], toolArguments: { input: '2 + 2' } },
+				{ queueMode: true },
+			);
 
-				// The transient top-level fields do not survive the hand-off, so the
-				// worker rebuilds the run from `execution.data`.
-				expect(runData.executionData.manualData.agentRequest).toEqual({
-					query: { Calculator: { input: '2 + 2' } },
-					tool: { name: '' },
-				});
-			} finally {
-				// Assigning `undefined` stores the string "undefined", which leaves the
-				// variable set for every later test in this file.
-				if (previous === undefined) delete process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
-				else process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = previous;
-			}
+			// The transient top-level fields do not survive the hand-off, so the
+			// worker rebuilds the run from `execution.data`.
+			expect(runData.executionData.manualData.agentRequest).toEqual({
+				query: { Calculator: { input: '2 + 2' } },
+				tool: { name: '' },
+			});
 		});
 	});
 

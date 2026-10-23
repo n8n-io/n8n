@@ -136,7 +136,6 @@ export const defaultSettings: FrontendSettings = {
 	},
 	workflowCallerPolicyDefaultOption: 'any',
 	excludeNodes: [],
-	workflowTagsDisabled: false,
 	workflowsAutosaveDisabled: false,
 	workflowsGroupsWithTriggersEnabled: false,
 	workflowsGroupsWithManyBoundariesEnabled: false,
@@ -149,14 +148,11 @@ export const defaultSettings: FrontendSettings = {
 	banners: {
 		dismissed: [],
 	},
-	binaryDataMode: 'default',
+	binaryDataMode: 'filesystem',
 	previewMode: false,
 	mfa: {
 		enabled: false,
 		enforced: false,
-	},
-	askAi: {
-		enabled: false,
 	},
 	aiBuilder: {
 		enabled: false,

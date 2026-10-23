@@ -2,7 +2,6 @@ import type { PushMessage } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService, ExecutionRedactionServiceProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { ExecutionsConfig } from '@n8n/config';
 import type { Project, User } from '@n8n/db';
 import { ExecutionRepository, UserRepository } from '@n8n/db';
 import { LifecycleMetadata } from '@n8n/decorators';
@@ -58,9 +57,6 @@ import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.serv
 describe('Execution Lifecycle Hooks', () => {
 	mockInstance(Logger);
 	mockInstance(InstanceSettings);
-	const executionsConfig = mockInstance(ExecutionsConfig, {
-		preExecuteErrorCreatesExecution: false,
-	});
 	const errorReporter = mockInstance(ErrorReporter);
 	const eventService = mockInstance(EventService);
 	const executionRepository = mockInstance(ExecutionRepository);
@@ -216,7 +212,6 @@ describe('Execution Lifecycle Hooks', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		executionsConfig.preExecuteErrorCreatesExecution = false;
 		userRepository.findOne.mockResolvedValue(mock<User>());
 		redactionProxy.processExecution.mockImplementation(async (execution) => execution);
 		workflowData.settings = {};
@@ -1137,23 +1132,6 @@ describe('Execution Lifecycle Hooks', () => {
 				expect(externalHooks.run).not.toHaveBeenCalled();
 			});
 
-			it('should run workflow.preExecute on workflowExecuteBefore when legacy flag is on', async () => {
-				executionsConfig.preExecuteErrorCreatesExecution = true;
-				lifecycleHooks = getLifecycleHooksForRegularMain(
-					{ executionMode: 'manual', workflowData, pushRef, retryOf, userId },
-					executionId,
-				);
-
-				await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
-
-				expect(externalHooks.run).toHaveBeenCalledWith('workflow.preExecute', [
-					workflow,
-					'manual',
-					workflowHookContext,
-					undefined,
-				]);
-			});
-
 			it('should send redacted flattedRunData when redaction modifies it', async () => {
 				const originalRunData = {
 					[nodeName]: [
@@ -1570,29 +1548,6 @@ describe('Execution Lifecycle Hooks', () => {
 
 				expect(externalHooks.run).not.toHaveBeenCalled();
 			});
-
-			it('should run workflow.preExecute when legacy flag is on', async () => {
-				executionsConfig.preExecuteErrorCreatesExecution = true;
-				lifecycleHooks = getLifecycleHooksForScalingMain(
-					{
-						executionMode: 'manual',
-						workflowData,
-						pushRef,
-						retryOf,
-						userId,
-					},
-					executionId,
-				);
-
-				await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
-
-				expect(externalHooks.run).toHaveBeenCalledWith('workflow.preExecute', [
-					workflow,
-					'manual',
-					workflowHookContext,
-					undefined,
-				]);
-			});
 		});
 
 		describe('workflowExecuteAfter', () => {
@@ -1793,20 +1748,6 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(handlers.nodeFetchedData).toHaveLength(1);
 			expect(handlers.sendResponse).toHaveLength(0);
 			expect(handlers.sendChunk).toHaveLength(0);
-		});
-
-		it('should run workflow.preExecute when legacy flag is on', async () => {
-			executionsConfig.preExecuteErrorCreatesExecution = true;
-			lifecycleHooks = createHooks();
-
-			await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
-
-			expect(externalHooks.run).toHaveBeenCalledWith('workflow.preExecute', [
-				workflow,
-				'manual',
-				workflowHookContext,
-				undefined,
-			]);
 		});
 
 		describe('saving static data', () => {

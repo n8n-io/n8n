@@ -38,7 +38,6 @@ vi.mock('@/app/composables/useEditorContext', async () => {
 		useEditorContext: () => ({
 			aiAssistant: computed(() => true),
 			aiBuilder: computed(() => true),
-			askAi: computed(() => true),
 			instanceAi: computed(() => false),
 			readOnly: computed(() => false),
 		}),
@@ -133,10 +132,10 @@ describe('NodeErrorView.vue', () => {
 		expect(errorMessage).toHaveTextContent('Unexpected identifier [line 1]');
 	});
 
-	it('should not render AI assistant button when error happens in deprecated function node', () => {
+	it('should not render AI assistant button when error happens in a hidden node', () => {
 		// @ts-expect-error - Mock node type store method
 		mockNodeTypeStore.getNodeType = vi.fn(() => ({
-			type: 'n8n-nodes-base.function',
+			type: 'n8n-nodes-base.test',
 			typeVersion: 1,
 			hidden: true,
 		}));
@@ -148,7 +147,7 @@ describe('NodeErrorView.vue', () => {
 				error: {
 					node: {
 						...error.node,
-						type: 'n8n-nodes-base.function',
+						type: 'n8n-nodes-base.test',
 						typeVersion: 1,
 					},
 				} as NodeError,

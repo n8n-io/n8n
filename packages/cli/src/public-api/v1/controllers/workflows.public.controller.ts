@@ -26,7 +26,6 @@ import {
 	workflowVersionIdParamSchema,
 } from '@n8n/api-types';
 import { EventService } from '@n8n/backend-services';
-import { GlobalConfig } from '@n8n/config';
 import type {
 	AuthenticatedRequest,
 	Folder,
@@ -216,20 +215,9 @@ export class WorkflowsPublicController {
 		private readonly workflowService: WorkflowService,
 		private readonly enterpriseWorkflowService: EnterpriseWorkflowService,
 		private readonly eventService: EventService,
-		private readonly globalConfig: GlobalConfig,
 		private readonly tagService: TagService,
 		private readonly redactionEnforcementService: RedactionEnforcementService,
 	) {}
-
-	private get workflowTagsEnabled(): boolean {
-		return !this.globalConfig.tags.disabled;
-	}
-
-	private assertWorkflowTagsEnabled() {
-		if (!this.workflowTagsEnabled) {
-			throw new BadRequestError('Workflow Tags Disabled');
-		}
-	}
 
 	@Get('/')
 	@ApiKeyScope('workflow:list')
@@ -269,7 +257,7 @@ export class WorkflowsPublicController {
 				offset,
 				limit,
 				includePinnedData: !query.excludePinnedData,
-				includeTags: this.workflowTagsEnabled,
+				includeTags: true,
 				includeActiveVersion: true,
 				includeParentFolder: query.includeParentFolder,
 			},
@@ -365,7 +353,7 @@ export class WorkflowsPublicController {
 			req.user,
 			['workflow:read'],
 			{
-				includeTags: this.workflowTagsEnabled,
+				includeTags: true,
 				includeActiveVersion: true,
 				includeParentFolder: true,
 			},
@@ -810,8 +798,6 @@ export class WorkflowsPublicController {
 		_res: Response,
 		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 	): Promise<WorkflowTagsPublicDto> {
-		this.assertWorkflowTagsEnabled();
-
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, req.user, [
 			'workflow:read',
 		]);
@@ -839,8 +825,6 @@ export class WorkflowsPublicController {
 		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 		@Body body: TagIdsPublicDto,
 	): Promise<WorkflowTagsPublicDto> {
-		this.assertWorkflowTagsEnabled();
-
 		const tagIds = body.map((tag) => tag.id);
 		const tags = await this.workflowService.updateWorkflowTags(req.user, workflowId, tagIds);
 
