@@ -768,8 +768,17 @@ export class CommunityPackagesService {
 
 			const onDiskVersion = await this.readInstalledPackageVersion(packageName);
 			if (onDiskVersion === packageVersion) {
+				const loadedVersion = this.loadNodesAndCredentials.loaders[packageName]?.packageJson.version;
+				if (loadedVersion === packageVersion) {
+					this.logger.debug(
+						`Community package ${packageName} already loaded at ${packageVersion}, skipping`,
+					);
+					return;
+				}
+
 				// A peer can finish the shared-volume write before this event arrives. Load those
-				// files instead of downloading the same package into the same directory again.
+				// files instead of downloading the same package into the same directory again. Only
+				// replace an absent or stale loader, so a redundant event cannot remove a working one.
 				await this.assertPackageApiVersionSupported(packageName);
 				await this.reloadPackage(packageName);
 				this.logger.info(`Community package loaded from disk: ${packageName}`);

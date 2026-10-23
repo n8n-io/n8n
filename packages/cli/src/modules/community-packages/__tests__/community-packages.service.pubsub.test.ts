@@ -449,6 +449,27 @@ describe('CommunityPackagesService pubsub handlers', () => {
 		expect(loadNodesAndCredentials.postProcessLoaders).toHaveBeenCalled();
 	});
 
+	test('should preserve a matching package that is already loaded in memory', async () => {
+		const service = createService();
+		arrangeInstalledPackage();
+		arrangeOnDiskVersion(PACKAGE_VERSION);
+		const currentLoader = mock<PackageDirectoryLoader>({
+			packageJson: { name: PACKAGE_NAME, version: PACKAGE_VERSION },
+		});
+		loadNodesAndCredentials.loaders = { [PACKAGE_NAME]: currentLoader };
+		loadNodesAndCredentials.loadPackage.mockRejectedValue(new Error('broken package'));
+
+		await service.handleInstallEvent({
+			packageName: PACKAGE_NAME,
+			packageVersion: PACKAGE_VERSION,
+		});
+
+		expect(executeNpmCommand).not.toHaveBeenCalled();
+		expect(loadNodesAndCredentials.unloadPackage).not.toHaveBeenCalled();
+		expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
+		expect(loadNodesAndCredentials.loaders[PACKAGE_NAME]).toBe(currentLoader);
+	});
+
 	test('should reload matching files when an older version is loaded in memory', async () => {
 		const service = createService();
 		arrangeInstalledPackage();
