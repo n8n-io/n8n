@@ -262,7 +262,7 @@ const treeResizer = useResizablePanel({
 	container: panes,
 	width: {
 		localStorageKey: 'N8N_PROMOTION_PREVIEW_TREE_WIDTH',
-		defaultSize: (size) => Math.min(Math.max(size * 0.28, 280), 420),
+		defaultSize: (size) => Math.min(Math.max(size * 0.24, 240), 340),
 		minSize: 240,
 		maxSize: (size) => Math.min(size * 0.5, 640),
 		snap: true,
@@ -410,7 +410,6 @@ const treeResizer = useResizablePanel({
 						:inspected-key="inspectedKey"
 						:disabled="blockers.blocked"
 						:locked="operation.isBusy.value"
-						:direction="direction"
 						:blockers="blockers"
 						@show-blockers="activeTab = 'blockers'"
 						@toggle="selection.toggle"

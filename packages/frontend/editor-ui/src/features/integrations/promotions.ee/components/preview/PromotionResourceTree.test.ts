@@ -27,7 +27,6 @@ function render(selectedKeys: string[]) {
 			totalChanges: 0,
 			disabled: new Set(),
 			locked: false,
-			direction: 'promote',
 			blockers: indexBlockers([]),
 		},
 	});

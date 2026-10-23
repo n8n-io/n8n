@@ -199,7 +199,6 @@ const treeResizer = useResizablePanel({
 						:inspected-key="inspectedKey"
 						:disabled="noKeys"
 						:locked="true"
-						direction="promote"
 						:blockers="noBlockers"
 						:selectable="false"
 						@inspect="inspect"
