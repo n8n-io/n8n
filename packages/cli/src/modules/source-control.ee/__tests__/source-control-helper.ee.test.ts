@@ -243,6 +243,7 @@ describe('Source Control Helper', () => {
 			expect(getRepoType('git@github.com:n8ntest/n8n_testrepo.git')).toBe('github');
 			expect(getRepoType('git@gitlab.com:n8ntest/n8n_testrepo.git')).toBe('gitlab');
 			expect(getRepoType('git@mygitea.io:n8ntest/n8n_testrepo.git')).toBe('other');
+			expect(getRepoType(undefined)).toBe('other');
 		});
 	});
 

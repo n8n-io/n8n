@@ -24,6 +24,7 @@ import { DEBOUNCE_TIME, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { PREFERENCES_EMPTY_STATE_EXPERIMENT } from '@/app/constants/experiments';
 import PreferencesEmptyStateAssistant from '@/experiments/preferencesEmptyState/components/PreferencesEmptyStateAssistant.vue';
 import PreferencesEmptyStateExamples from '@/experiments/preferencesEmptyState/components/PreferencesEmptyStateExamples.vue';
+import type { PreferenceExample } from '@/experiments/preferencesEmptyState/preferenceExamples';
 import { usePreferencesEmptyStateExperiment } from '@/experiments/preferencesEmptyState/usePreferencesEmptyStateExperiment';
 
 import PreferenceModal from '../components/PreferenceModal.vue';
@@ -58,6 +59,7 @@ const loadFailed = ref(false);
 let latestLoad = 0;
 
 const dialogTarget = ref<Preference | 'new' | null>(null);
+const openedExample = ref<PreferenceExample>();
 
 // The search runs on the server: the count and the page both describe the matching rows.
 // The applied term counts too, so clearing a search with no matches does not show the
@@ -67,6 +69,15 @@ const isFiltered = computed(() => search.value.trim() !== '' || appliedSearch.va
 // search that matches nothing shows an empty table, not "No preferences yet".
 const showEmptyState = computed(
 	() => !contextStore.loading && !loadFailed.value && !isFiltered.value && contextStore.count === 0,
+);
+const showAssistantEmptyState = computed(
+	() =>
+		showEmptyState.value &&
+		emptyStateVariant.value === PREFERENCES_EMPTY_STATE_EXPERIMENT.assistant,
+);
+const showExamplesEmptyState = computed(
+	() =>
+		showEmptyState.value && emptyStateVariant.value === PREFERENCES_EMPTY_STATE_EXPERIMENT.examples,
 );
 const selectedCount = computed(() => selection.value.length);
 
@@ -132,6 +143,12 @@ async function onOptionsUpdate(options: TableOptions) {
 }
 
 function openCreateModal() {
+	openedExample.value = undefined;
+	dialogTarget.value = 'new';
+}
+
+function openExampleModal(example: PreferenceExample) {
+	openedExample.value = example;
 	dialogTarget.value = 'new';
 }
 
@@ -252,8 +269,10 @@ onMounted(async () => {
 			:show-docs-link="false"
 		/>
 
-		<PreferencesEmptyStateAssistant
-			v-if="showEmptyState && emptyStateVariant === PREFERENCES_EMPTY_STATE_EXPERIMENT.assistant"
+		<PreferencesEmptyStateAssistant v-if="showAssistantEmptyState" @write-own="openCreateModal" />
+		<PreferencesEmptyStateExamples
+			v-else-if="showExamplesEmptyState"
+			@use-example="openExampleModal"
 			@write-own="openCreateModal"
 		/>
 		<template v-else>
@@ -305,11 +324,7 @@ onMounted(async () => {
 				@update:options="onOptionsUpdate"
 			>
 				<template #empty>
-					<PreferencesEmptyStateExamples
-						v-if="emptyStateVariant === PREFERENCES_EMPTY_STATE_EXPERIMENT.examples"
-						@write-own="openCreateModal"
-					/>
-					<div v-else :class="$style.empty" data-test-id="preferences-empty-state">
+					<div :class="$style.empty" data-test-id="preferences-empty-state">
 						<N8nHeading tag="h2" size="medium" bold>
 							{{ i18n.baseText('settings.context.preferences.empty.title') }}
 						</N8nHeading>
@@ -329,6 +344,7 @@ onMounted(async () => {
 		<PreferenceModal
 			:open="dialogTarget !== null"
 			:preference="dialogTarget === 'new' ? null : dialogTarget"
+			:example="dialogTarget === 'new' ? openedExample : undefined"
 			@update:open="(open) => (dialogTarget = open ? dialogTarget : null)"
 			@saved="onSaved"
 		/>
