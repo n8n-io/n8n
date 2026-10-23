@@ -1,21 +1,41 @@
 import { testDb } from '@n8n/backend-test-utils';
-import { HeldTaskFenceRepository, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
-import type { OperationContext } from '@n8n/db';
+import {
+	DbConnectionOptions,
+	ScheduledJobRepository,
+	ScheduledTask,
+	ScheduledTaskRepository,
+	TransactionRunner,
+} from '@n8n/db';
+import type { HostedClaimedRef, OperationContext } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Lease, LeaseKind, LeaseSpec } from '@n8n/leases';
 import { LeaseEndedError, LeaseService } from '@n8n/leases';
 import type { Scheduler, SchedulerPasses } from '@n8n/scheduler';
+import { DataSource } from '@n8n/typeorm';
+import { sleep } from '@n8n/utils/sleep';
 
 import { HeldTaskProvisioner } from '@/scheduling/held-tasks/held-task-provisioner';
 import { DurableSchedulerLeaseProvider } from '@/scheduling/leases/durable-scheduler-lease-provider';
 
 import { retryUntil } from '../shared/retry-until';
 import { buildHeldTaskMain } from './shared/held-task-main';
+import { createDueJobFactory, seedDueTask } from './shared/job-factory';
 
+const isPostgres = process.env.DB_TYPE === 'postgresdb';
 const KIND = 'test-socket';
+const TASK_TYPE = 'lease:fence-test';
+const HOST = 'main-a';
 const LEASE_SECONDS = 6;
 
 type Hold = { host: string; key: string; data: unknown; fencingToken: number; ended?: unknown };
+
+beforeAll(async () => {
+	await testDb.init();
+});
+
+afterAll(async () => {
+	await testDb.terminate();
+});
 
 describe('leases on the durable scheduler across two mains', () => {
 	let desired: LeaseSpec[];
@@ -56,7 +76,7 @@ describe('leases on the durable scheduler across two mains', () => {
 					registerJobOwner: () => {},
 				},
 				Container.get(HeldTaskProvisioner),
-				Container.get(HeldTaskFenceRepository),
+				Container.get(ScheduledTaskRepository),
 				host,
 			),
 		);
@@ -67,10 +87,6 @@ describe('leases on the durable scheduler across two mains', () => {
 
 	const live = () => holds.filter((hold) => hold.ended === undefined);
 
-	beforeAll(async () => {
-		await testDb.init();
-	});
-
 	beforeEach(async () => {
 		desired = [];
 		holds = [];
@@ -79,10 +95,6 @@ describe('leases on the durable scheduler across two mains', () => {
 
 	afterEach(async () => {
 		await Promise.all(mains.splice(0).map(async (main) => await main.stop()));
-	});
-
-	afterAll(async () => {
-		await testDb.terminate();
 	});
 
 	it('holds each desired lease on one main, fenced by the task epoch', async () => {
@@ -192,4 +204,110 @@ describe('leases on the durable scheduler across two mains', () => {
 		await retryUntil(async () => expect(live().map((hold) => hold.host)).toEqual(['main-b']));
 		expect(holds[0].ended).toEqual(new LeaseEndedError('shutdown'));
 	}, 30_000);
+});
+
+describe('ScheduledTaskRepository.isHeld', () => {
+	let tasks: ScheduledTaskRepository;
+	let transactions: TransactionRunner;
+	let createJob: ReturnType<typeof createDueJobFactory>;
+	let secondaryDataSource: DataSource | undefined;
+
+	beforeAll(async () => {
+		tasks = Container.get(ScheduledTaskRepository);
+		transactions = Container.get(TransactionRunner);
+		createJob = createDueJobFactory(Container.get(ScheduledJobRepository), TASK_TYPE, 'fence');
+
+		if (isPostgres) {
+			secondaryDataSource = new DataSource(Container.get(DbConnectionOptions).getOptions());
+			await secondaryDataSource.initialize();
+		}
+	});
+
+	beforeEach(async () => {
+		await testDb.truncate(['ScheduledTask', 'ScheduledJob']);
+	});
+
+	afterAll(async () => {
+		if (secondaryDataSource?.isInitialized) await secondaryDataSource.destroy();
+	});
+
+	const claimHeldTask = async (): Promise<HostedClaimedRef> => {
+		const job = await createJob();
+		await seedDueTask(tasks, TASK_TYPE, job.id);
+		const [claimed] = await tasks.claimDueTasks({
+			host: HOST,
+			taskTypes: [TASK_TYPE],
+			lookaheadMs: 0,
+			leaseMs: 60_000,
+			batchSize: 1,
+		});
+		return { id: claimed.id, claimedEpoch: claimed.leaseEpoch, host: HOST };
+	};
+
+	const isHeld = async (claim: HostedClaimedRef) =>
+		await transactions.run({}, async (ctx) => await tasks.isHeld(claim, ctx));
+
+	it('passes for the live holder', async () => {
+		const claim = await claimHeldTask();
+
+		await expect(isHeld(claim)).resolves.toBe(true);
+	});
+
+	it('rejects a holder whose lease epoch changed', async () => {
+		const claim = await claimHeldTask();
+		await tasks.update({ id: claim.id }, { leaseEpoch: claim.claimedEpoch + 1 });
+
+		await expect(isHeld(claim)).resolves.toBe(false);
+	});
+
+	it('rejects a holder whose task left running', async () => {
+		const claim = await claimHeldTask();
+		await tasks.completeTask(claim);
+
+		await expect(isHeld(claim)).resolves.toBe(false);
+	});
+
+	it('rejects a claim of another host', async () => {
+		const claim = await claimHeldTask();
+
+		await expect(isHeld({ ...claim, host: 'main-b' })).resolves.toBe(false);
+	});
+
+	it('rejects a holder whose lease expired', async () => {
+		const claim = await claimHeldTask();
+		await tasks.renewLease(claim, -60_000);
+
+		await expect(isHeld(claim)).resolves.toBe(false);
+	});
+
+	it('refuses a check outside a transaction', async () => {
+		const claim = await claimHeldTask();
+
+		await expect(tasks.isHeld(claim, {})).rejects.toThrow(
+			'A held task fence must be checked inside a transaction',
+		);
+	});
+
+	it.skipIf(!isPostgres)(
+		'keeps a new claim of the task waiting until the checking transaction ends',
+		async () => {
+			const claim = await claimHeldTask();
+			let handedOver = false;
+			let handOver: Promise<void> | undefined;
+
+			await transactions.run({}, async (ctx) => {
+				expect(await tasks.isHeld(claim, ctx)).toBe(true);
+				handOver = secondaryDataSource!.manager
+					.update(ScheduledTask, { id: claim.id }, { leaseEpoch: claim.claimedEpoch + 1 })
+					.then(() => {
+						handedOver = true;
+					});
+				await sleep(300);
+				expect(handedOver).toBe(false);
+			});
+
+			await handOver;
+			expect(handedOver).toBe(true);
+		},
+	);
 });
