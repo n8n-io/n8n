@@ -22,6 +22,7 @@ import { callEvalMockHandler, normalizeLegacyRequest } from '@/execution-engine/
 
 import { httpRequestWithAuthentication, requestWithAuthentication } from './authentication';
 import { proxyRequestToAxios } from './legacy-request-adapter';
+import { withLlmUsageCapture } from './llm-usage-capture';
 import { refreshOAuth2Token, requestOAuth1, requestOAuth2 } from './oauth';
 import { requestWithAuthenticationPaginated } from './pagination';
 
@@ -31,6 +32,7 @@ export const getRequestHelperFunctions = (
 	additionalData: IWorkflowExecuteAdditionalData,
 	runExecutionData: IRunExecutionData | null = null,
 	connectionInputData: INodeExecutionData[] = [],
+	executionMode?: WorkflowExecuteMode,
 ): RequestHelperFunctions => {
 	const getResolvedValue = (
 		parameterValue: NodeParameterValueType,
@@ -66,6 +68,14 @@ export const getRequestHelperFunctions = (
 	// Eval LLM mock handler: extract once for use in direct helpers below
 	const evalLlmMock = additionalData.evalLlmMockHandler;
 
+	// Reports the LLM calls that the helpers below send, with the node and its run.
+	const captureLlmUsage = async <T>(requestBody: unknown, send: () => Promise<T>) =>
+		await withLlmUsageCapture(
+			{ workflow, node, additionalData, llmUsageRun: { runExecutionData, mode: executionMode } },
+			requestBody,
+			send,
+		);
+
 	return {
 		httpRequest: async (requestOptions: IHttpRequestOptions) => {
 			if (evalLlmMock) {
@@ -85,7 +95,10 @@ export const getRequestHelperFunctions = (
 					requestOptions.headers as Record<string, string>,
 				);
 			}
-			return await Container.get(OutboundHttp).requests().request(requestOptions);
+			return await captureLlmUsage(
+				requestOptions.body,
+				async () => await Container.get(OutboundHttp).requests().request(requestOptions),
+			);
 		},
 		getSecureEgressFilter: (useDefaultSsrfPolicy) =>
 			Container.get(OutboundHttp).egressFilter(useDefaultSsrfPolicy),
@@ -118,14 +131,18 @@ export const getRequestHelperFunctions = (
 			additionalCredentialOptions,
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		): Promise<any> {
-			return await httpRequestWithAuthentication.call(
-				this,
-				credentialsType,
-				requestOptions,
-				workflow,
-				node,
-				additionalData,
-				additionalCredentialOptions,
+			return await captureLlmUsage(
+				requestOptions.body,
+				async () =>
+					await httpRequestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					),
 			);
 		},
 		async refreshOAuth2Token(
@@ -163,8 +180,12 @@ export const getRequestHelperFunctions = (
 					target.headers as Record<string, string>,
 				);
 			}
-			// oxlint-disable-next-line typescript/no-deprecated
-			return await proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);
+			return await captureLlmUsage(
+				(typeof uriOrObject === 'string' ? options : uriOrObject)?.body,
+				async () =>
+					// oxlint-disable-next-line typescript/no-deprecated
+					await proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options),
+			);
 		},
 
 		async requestWithAuthentication(
@@ -175,16 +196,20 @@ export const getRequestHelperFunctions = (
 			itemIndex,
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		): Promise<any> {
-			// oxlint-disable-next-line typescript/no-deprecated
-			return await requestWithAuthentication.call(
-				this,
-				credentialsType,
-				requestOptions,
-				workflow,
-				node,
-				additionalData,
-				additionalCredentialOptions,
-				itemIndex,
+			return await captureLlmUsage(
+				requestOptions.body,
+				async () =>
+					// oxlint-disable-next-line typescript/no-deprecated
+					await requestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+						itemIndex,
+					),
 			);
 		},
 

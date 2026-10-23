@@ -6,6 +6,7 @@ import type { EmbeddingModel, LanguageModel } from 'ai';
 import type * as Undici from 'undici';
 
 import { createGoogleVertexModel, parseGoogleVertexAuthOptions } from './google-vertex';
+import { withLlmUsageReporting } from './llm-usage-middleware';
 import type { NativeToolDeferral } from './native-tool-deferral';
 import { anthropicToolDeferral } from './native-tool-deferral/anthropic';
 import { openAiToolDeferral } from './native-tool-deferral/openai';
@@ -517,7 +518,8 @@ export function createModel(
 	telemetry?: BuiltTelemetry,
 ): LanguageModel {
 	if (isLanguageModel(config)) {
-		return config;
+		// `LanguageModel` also types model ID strings. Only model objects are wrapped.
+		return typeof config === 'string' ? config : withLlmUsageReporting(config);
 	}
 
 	const rawId = typeof config === 'string' ? config : config.id;
@@ -570,7 +572,12 @@ export function createModel(
 		? traceModelRequests(transport ?? globalFetch, telemetry, provider, modelName)
 		: transport;
 	// Type cast: the registry guarantees the schema and builder are aligned per provider.
-	return (entry.build as EntryBuilder<typeof provider>)(parsed.data, modelName, resolvedFetch);
+	const model = (entry.build as EntryBuilder<typeof provider>)(
+		parsed.data,
+		modelName,
+		resolvedFetch,
+	);
+	return typeof model === 'string' ? model : withLlmUsageReporting(model, provider);
 }
 
 /**

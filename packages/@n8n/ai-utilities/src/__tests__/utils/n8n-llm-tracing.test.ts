@@ -6,6 +6,7 @@ import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 
+import { setLlmUsageSink, type LlmUsageRecord } from 'src/llm-usage';
 import * as logAiEventModule from 'src/utils/log-ai-event';
 import { anthropicTokensUsageParser, N8nLlmTracing } from 'src/utils/n8n-llm-tracing';
 import * as tokenEstimatorModule from 'src/utils/tokenizer/token-estimator';
@@ -1158,6 +1159,112 @@ describe('anthropicTokensUsageParser', () => {
 			promptTokens: 0,
 			completionTokens: 0,
 			totalTokens: 0,
+		});
+	});
+
+	describe('LLM usage', () => {
+		const usageContext = {
+			callerType: 'node' as const,
+			workflowId: 'wf-1',
+			nodeName: 'OpenAI Chat Model',
+			nodeType: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+		};
+		let records: LlmUsageRecord[];
+		let executionFunctions: Mocked<ISupplyDataFunctions>;
+
+		beforeEach(() => {
+			records = [];
+			setLlmUsageSink({ write: (record) => records.push(record) });
+			executionFunctions = {
+				getNode: vi.fn().mockReturnValue({ name: 'OpenAI Chat Model' }),
+				addOutputData: vi.fn(),
+				addInputData: vi.fn().mockReturnValue({ index: 0 }),
+				getNextRunIndex: vi.fn().mockReturnValue(0),
+				setMetadata: vi.fn(),
+				getLlmUsageContext: vi.fn().mockReturnValue(usageContext),
+			} as unknown as Mocked<ISupplyDataFunctions>;
+		});
+
+		afterEach(() => setLlmUsageSink(undefined));
+
+		it('reports each model call with the context of the model node', async () => {
+			const tracer = new N8nLlmTracing(executionFunctions);
+			const message = new AIMessage({
+				content: 'OK',
+				id: 'chatcmpl-1',
+				usage_metadata: {
+					input_tokens: 11,
+					output_tokens: 7,
+					total_tokens: 18,
+					input_token_details: { cache_read: 3 },
+				},
+				response_metadata: { model_name: 'gpt-x-2026' },
+			});
+
+			await tracer.handleLLMStart(
+				{} as Serialized,
+				['hi'],
+				'run-1',
+				undefined,
+				undefined,
+				undefined,
+				{
+					ls_provider: 'openai',
+				},
+			);
+			await tracer.handleLLMEnd(
+				{ generations: [[{ text: 'OK', message } as ChatGeneration]] },
+				'run-1',
+			);
+
+			expect(records).toHaveLength(1);
+			expect(records[0]).toMatchObject({
+				provider: 'openai',
+				model: 'gpt-x-2026',
+				providerResponseId: 'chatcmpl-1',
+				inputTokens: 11,
+				outputTokens: 7,
+				cacheReadTokens: 3,
+				startedAt: expect.any(Date),
+				context: usageContext,
+			});
+		});
+
+		it("takes the provider from the node's credential", async () => {
+			// The DeepSeek node is built on ChatOpenAI, which reports `openai`.
+			const node: INode = {
+				id: 'node-1',
+				name: 'DeepSeek Chat Model',
+				type: '@n8n/n8n-nodes-langchain.lmChatDeepSeek',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+				credentials: { deepSeekApi: { id: '1', name: 'x' } },
+			};
+			executionFunctions.getNode.mockReturnValue(node);
+			const tracer = new N8nLlmTracing(executionFunctions);
+			const message = new AIMessage({
+				content: 'OK',
+				usage_metadata: { input_tokens: 1, output_tokens: 1, total_tokens: 2 },
+			});
+
+			await tracer.handleLLMStart(
+				{} as Serialized,
+				['hi'],
+				'run-1',
+				undefined,
+				undefined,
+				undefined,
+				{
+					ls_provider: 'openai',
+				},
+			);
+			await tracer.handleLLMEnd(
+				{ generations: [[{ text: 'OK', message } as ChatGeneration]] },
+				'run-1',
+			);
+
+			expect(records[0].provider).toBe('deepseek');
 		});
 	});
 });

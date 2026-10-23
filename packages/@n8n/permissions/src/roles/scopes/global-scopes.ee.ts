@@ -153,6 +153,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'project:manageMembers',
 	'insights:list',
 	'insights:read',
+	'llmUsage:read',
 	'folder:move',
 	'folder:read',
 	'folder:update',

@@ -11,6 +11,8 @@ import type { LLMResult } from '@langchain/core/outputs';
 import type { IDataObject, ISupplyDataFunctions, JsonObject } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow';
 
+import { LangChainUsageTracker } from '../llm-usage/langchain-handler';
+import { providerFromCredentials } from '../llm-usage/report';
 import { toRunDataGeneration } from './extract-responding-model';
 import { logAiEvent } from './log-ai-event';
 import { redactHeaderValues } from './redact-headers';
@@ -99,6 +101,8 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 
 	#parentRunIndex?: number;
 
+	private readonly usageTracker = new LangChainUsageTracker();
+
 	/**
 	 * A map to associate LLM run IDs to run details.
 	 * Key: Unique identifier for each LLM run (run ID)
@@ -143,6 +147,16 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		this.options = { ...this.options, ...options };
 	}
 
+	/**
+	 * The vendor that the node's credential names. Nodes built on the OpenAI client (DeepSeek,
+	 * xAI, OpenRouter and others) report `openai` to LangChain.
+	 */
+	private credentialProvider(): string | undefined {
+		return providerFromCredentials(
+			Object.keys(this.executionFunctions.getNode().credentials ?? {}),
+		);
+	}
+
 	async estimateTokensFromGeneration(generations: LLMResult['generations']) {
 		const messages = generations.flatMap((gen) => gen.map((g) => g.text));
 		return await this.estimateTokensFromStringList(messages);
@@ -154,6 +168,14 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 	}
 
 	async handleLLMEnd(output: LLMResult, runId: string) {
+		// Read the usage before the generations are converted for the logs panel below.
+		this.usageTracker.end(
+			output,
+			runId,
+			this.executionFunctions.getLlmUsageContext?.(),
+			this.credentialProvider(),
+		);
+
 		// The fallback should never happen since handleLLMStart should always set the run details
 		// but just in case, we set the index to the length of the runsMap
 		const runDetails = this.runsMap[runId] ?? { index: Object.keys(this.runsMap).length };
@@ -232,7 +254,16 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		});
 	}
 
-	async handleLLMStart(llm: Serialized, prompts: string[], runId: string) {
+	async handleLLMStart(
+		llm: Serialized,
+		prompts: string[],
+		runId: string,
+		_parentRunId?: string,
+		_extraParams?: Record<string, unknown>,
+		_tags?: string[],
+		metadata?: Record<string, unknown>,
+	) {
+		this.usageTracker.start(runId, metadata);
 		const estimatedTokens = await this.estimateTokensFromStringList(prompts);
 		const sourceNodeRunIndex =
 			this.#parentRunIndex !== undefined
@@ -269,6 +300,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 	}
 
 	async handleLLMError(error: IDataObject | Error, runId: string, parentRunId?: string) {
+		this.usageTracker.discard(runId);
 		const runDetails = this.runsMap[runId] ?? { index: Object.keys(this.runsMap).length };
 
 		stripNonXHeaders(error);

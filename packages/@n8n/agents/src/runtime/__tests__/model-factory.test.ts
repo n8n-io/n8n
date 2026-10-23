@@ -8,6 +8,12 @@ import {
 	supportsSplitSystemMessages,
 } from '../model/model-factory';
 import { forgetEndpointApiStyles } from '../model/openai-api-style';
+import { withLlmUsageReporting } from '../model/llm-usage-middleware';
+
+// These tests check how each provider model is built; the usage wrapper has its own tests.
+vi.mock('../model/llm-usage-middleware', () => ({
+	withLlmUsageReporting: vi.fn((model: unknown) => model),
+}));
 
 type ProviderOpts = {
 	apiKey?: string;
@@ -329,6 +335,12 @@ function fakeEndpoint(routes: Record<string, number>) {
 }
 
 describe('createModel', () => {
+	it('reports usage for every model, with the configured provider', () => {
+		createModel({ id: 'anthropic/claude-sonnet-4-5', apiKey: 'sk-test' });
+
+		expect(withLlmUsageReporting).toHaveBeenLastCalledWith(expect.anything(), 'anthropic');
+	});
+
 	const originalEnv = process.env;
 
 	beforeEach(() => {

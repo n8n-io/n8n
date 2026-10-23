@@ -354,6 +354,25 @@ export type { FolderPublic } from './folders/folder-public.dto';
 export { ListInsightsWorkflowQueryDto } from './insights/list-workflow-query.dto';
 export { InsightsDateFilterDto } from './insights/date-filter.dto';
 export {
+	LLM_USAGE_CALL_SORT_KEYS,
+	LLM_USAGE_GROUP_BY,
+	LLM_USAGE_RANGE_DAYS,
+	LLM_USAGE_TOP_GROUPS,
+	LlmUsageCallsQueryDto,
+	LlmUsageQueryDto,
+	type LlmUsageCallSortKey,
+	type LlmUsageGroupBy,
+	type LlmUsageTopGroup,
+} from './llm-usage/llm-usage-query.dto';
+export type {
+	LlmUsageCallItem,
+	LlmUsageCallsResponse,
+	LlmUsageDay,
+	LlmUsageGroup,
+	LlmUsageSummaryResponse,
+	LlmUsageTotals,
+} from './llm-usage/llm-usage-response.dto';
+export {
 	InsightsSummaryPublicDto,
 	InsightsSummaryQueryPublicDto,
 } from './insights/insights-summary-public.dto';

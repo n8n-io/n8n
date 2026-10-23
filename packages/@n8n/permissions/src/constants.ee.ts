@@ -89,6 +89,7 @@ export const RESOURCES = {
 	] as const,
 	folder: [...DEFAULT_OPERATIONS, 'move'] as const,
 	insights: ['list', 'read'] as const,
+	llmUsage: ['read'] as const,
 	oidc: ['manage'] as const,
 	provisioning: ['manage'] as const,
 	scim: ['manage'] as const,
