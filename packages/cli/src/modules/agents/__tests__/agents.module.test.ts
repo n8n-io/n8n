@@ -1,6 +1,6 @@
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { AgentsConfig } from '@n8n/config';
+import { AgentsConfig, GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
@@ -14,6 +14,7 @@ import { SkillAgentsProxy } from '@/modules/skills/skill-agents-proxy.service';
 import { SkillsHubRollout } from '@/modules/skills/skills-hub-rollout';
 
 import { AgentChannelMediaRetentionTask } from '../agent-channel-media-retention.task';
+import { AgentKnowledgeSnapshotTask } from '../agent-knowledge-snapshot.task';
 import { AgentCheckpointPruningTask } from '../agent-checkpoint-pruning.task';
 import { AgentInterruptedExecutionSweepTask } from '../agent-interrupted-execution-sweep.task';
 import { AgentsSettingsService } from '../agents-settings.service';
@@ -124,7 +125,20 @@ describe('AgentsModule', () => {
 	});
 
 	describe('systemTasks()', () => {
-		it('registers the pruning, sweep and media retention tasks', async () => {
+		it('registers the pruning, sweep, media retention and knowledge snapshot tasks', async () => {
+			Container.set(GlobalConfig, mock<GlobalConfig>({ diagnostics: { enabled: true } }));
+
+			await expect(module.systemTasks()).resolves.toEqual([
+				AgentCheckpointPruningTask,
+				AgentInterruptedExecutionSweepTask,
+				AgentChannelMediaRetentionTask,
+				AgentKnowledgeSnapshotTask,
+			]);
+		});
+
+		it('leaves out the knowledge snapshot task when telemetry is off', async () => {
+			Container.set(GlobalConfig, mock<GlobalConfig>({ diagnostics: { enabled: false } }));
+
 			await expect(module.systemTasks()).resolves.toEqual([
 				AgentCheckpointPruningTask,
 				AgentInterruptedExecutionSweepTask,

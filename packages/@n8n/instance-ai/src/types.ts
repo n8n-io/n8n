@@ -2043,8 +2043,19 @@ export interface InstanceAiMemoryConfig {
 
 type NativeLanguageModelConfig = Extract<NativeModelConfig, { specificationVersion: string }>;
 
+/** OpenAI-compatible or api-key-only endpoint. An empty `url` keeps the provider default. */
+export type EndpointModelConfig = {
+	kind: 'endpoint';
+	id: `${string}/${string}`;
+	url: string;
+	apiKey?: string;
+	headers?: Record<string, string>;
+	supportsStructuredOutputs?: boolean;
+};
+
 /** Direct Google Vertex Claude (Anthropic Messages via `:rawPredict`). */
 export type VertexAnthropicModelConfig = {
+	kind: 'vertex-anthropic';
 	id: `google-vertex-anthropic/${string}`;
 	project: string;
 	location: string;
@@ -2054,10 +2065,11 @@ export type VertexAnthropicModelConfig = {
 /** Model identifier: plain string for built-in providers, object for OpenAI-compatible endpoints,
  *  Vertex Claude, or a pre-built LanguageModel instance (e.g. from @ai-sdk/anthropic with a custom baseURL).
  *
+ *  Object configs carry a `kind` tag, so code never infers the variant from its fields.
  *  The LanguageModel variant exists for proxy routes that need a provider-native transport. */
 export type ModelConfig =
 	| string
-	| { id: `${string}/${string}`; url: string; apiKey?: string; headers?: Record<string, string> }
+	| EndpointModelConfig
 	| VertexAnthropicModelConfig
 	| NativeLanguageModelConfig;
 

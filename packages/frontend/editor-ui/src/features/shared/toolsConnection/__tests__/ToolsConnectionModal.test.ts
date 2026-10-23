@@ -732,4 +732,21 @@ describe('ToolsConnectionModal', () => {
 			expect(rendered.length).toBe(300);
 		});
 	});
+
+	it('shows a loading screen instead of the list while loading', async () => {
+		const { getByTestId, getByPlaceholderText, queryByTestId, rerender } = renderModal({
+			props: { open: true, items: realisticItems, categories: ALL_CATEGORIES, loading: true },
+			pinia: createTestingPinia(),
+		});
+
+		expect(getByTestId('tools-connection-loading')).toBeInTheDocument();
+		expect(queryByTestId('tools-connection-search')).toBeNull();
+
+		await rerender({ loading: false });
+
+		expect(queryByTestId('tools-connection-loading')).toBeNull();
+		await waitFor(() => {
+			expect(document.activeElement).toBe(getByPlaceholderText('Search all tools...'));
+		});
+	});
 });
