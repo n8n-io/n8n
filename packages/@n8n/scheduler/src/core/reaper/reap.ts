@@ -164,7 +164,8 @@ async function retireStale(
  * effect boundary: a task the owner already dispatched is completed as succeeded
  * (its effect happened, so it is never redelivered), whatever its attempts. A
  * never-dispatched task with attempts left goes back to `pending` with a backoff and
- * a bumped epoch; one at its last attempt fails terminally. Returns the counts.
+ * a bumped epoch; one at its last attempt fails terminally. A held task whose
+ * holder reported ready goes back to `pending` with no attempt. Returns the counts.
  *
  * Cancellation (`signal`, aborted when the driving loop times the pass out or
  * shuts down) is task-granular.

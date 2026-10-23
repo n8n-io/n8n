@@ -127,9 +127,9 @@ export interface HoldRun {
  *
  * The handler arms its resource, calls `holder.ready()`, waits on `run.signal`,
  * disarms and returns. A clean return releases the task back to `pending` with no
- * attempt counted, so another instance, or this one, claims it again. A throw before
- * `ready()` is a failed start: it counts an attempt and backs off. A throw after
- * `ready()` releases with a backoff and counts no attempt.
+ * attempt counted, so another instance, or this one, claims it again. A throw or a
+ * return before `ready()` is a failed start: it counts an attempt and backs off. A
+ * throw after `ready()` releases with a backoff and counts no attempt.
  *
  * Held tasks have no run timeout: the job's `timeoutSeconds` bounds only the time
  * from the claim to `ready()`.

@@ -45,7 +45,7 @@ export interface ClaimDueTasksOptions {
 	takeExpiredHeld?: boolean;
 }
 
-/** One claim in a batched lease renewal (see {@link ScheduledTaskRepository.renewLeases}). */
+/** One claim in a batched lease renewal. */
 export interface LeaseRenewal {
 	id: string;
 	claimedEpoch: number;
@@ -588,7 +588,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 
 	/**
 	 * Extend the leases of many running claims of one host in one statement.
-	 * Each claim is fenced on its own epoch, as {@link renewLease} is.
+	 * Each claim is fenced on its own epoch.
 	 *
 	 * @returns the ids whose lease was extended. A claim missing from it is gone.
 	 */

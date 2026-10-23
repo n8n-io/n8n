@@ -32,7 +32,8 @@ export class AddHeldTasksToScheduler1792747791223 implements ReversibleMigration
 				await runQuery(`${addition} CONSTRAINT ${name} CHECK (${check})`);
 				return;
 			}
-			// NOT VALID skips the scan of existing rows under the exclusive lock; each holds the default or NULL, which the CHECK accepts.
+			// NOT VALID skips the scan of existing rows under the exclusive lock. Each of
+			// them holds the default or NULL, which the CHECK accepts.
 			await runQuery(addition);
 			await runQuery(`ALTER TABLE ${tableName} ADD CONSTRAINT ${name} CHECK (${check}) NOT VALID`);
 		};

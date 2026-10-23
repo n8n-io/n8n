@@ -506,11 +506,7 @@ export class Executor {
 		}
 	}
 
-	/**
-	 * Keep one held task: run the holder while its lease is renewed, then record how
-	 * it let go. A clean return or a throw after `ready()` releases the task with no
-	 * attempt counted. A throw before `ready()` is a failed start and counts one.
-	 */
+	/** Keep one held task: run the holder while its lease is renewed, then record how it let go. */
 	private async runHold(
 		task: ClaimedTask,
 		claim: ClaimedTaskRef,
@@ -723,7 +719,8 @@ export class Executor {
 
 	/**
 	 * Cancel scheduled-but-unfired timers and release their claims (shutdown); without
-	 * the release they stay `running`+leased until the reaper reclaims them.
+	 * the release they stay `running`+leased until the reaper reclaims them. Then tell
+	 * running holders to let go, and release the ones still running after the grace.
 	 *
 	 * Driver contract: stop calling {@link claimAndSchedule} before this. A tick whose
 	 * claim is still in flight (e.g. abandoned at its timeout) is safe: once `stopping`

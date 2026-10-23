@@ -23,9 +23,9 @@ interface Entry extends BatchedLease {
 }
 
 /**
- * Renews the leases of every claim one host keeps with one write per beat, instead
- * of one write per claim. Each claim keeps its own epoch fence and its own expiry
- * alarm, which reports `expired` `fenceMarginMs` before its lease runs out.
+ * Renews the leases of every claim one host keeps with one write per beat. Each
+ * claim keeps its own epoch fence and its own expiry alarm, which reports
+ * `expired` `fenceMarginMs` before its lease runs out.
  */
 export class BatchedLeaseRenewer {
 	private readonly entries = new Map<string, Entry>();

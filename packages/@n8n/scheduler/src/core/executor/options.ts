@@ -32,8 +32,8 @@ export interface HoldOptions {
 	/** `per-row`: one renewal write per held task. `batched`: one write per beat for all of them. */
 	renewal: 'per-row' | 'batched';
 	/**
-	 * How long before its lease runs out a holder is told to let go. Defaults to an
-	 * eighth of the lease, at most 5 seconds.
+	 * How long before its lease runs out a holder is told to let go. Defaults to half
+	 * a renewal interval, at most 5 seconds.
 	 */
 	fenceMarginMs?: number;
 	/** How long `stop()` waits for holders to return before it releases their claims. */
