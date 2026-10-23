@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_e6fa52747a5db9::t_87261b971ddf59 2-8,33,489-496
+  s_e6fa52747a5db9::t_e9437065562a16 1,9-10,36,43,91,472-481,488,497-503
+  s_e6fa52747a5db9::t_9d0104df419ac6 482-487
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_e6fa52747a5db9::t_fdb316b5d08451 1842-1846
+  s_e6fa52747a5db9::t_8be0ffc0c6a4bc 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f543d36a63733ea4e465fe13be4145e33083b8f0",
+  "prompts": {},
+  "sessions": {
+    "s_e6fa52747a5db9": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a15f20-8500-70a9-b3fb-ea213e23e197",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+packages/workflow/docs/adr/ADR-20261020-annotate-node-operations-with-their-effect-and-idempotency.md
+  s_9fa44fd7f5f4f9::t_fc85b6063564da 79-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "af004d4b9eb67b542cd32df0d6f7c7df41fecd6c",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_9fa44fd7f5f4f9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a4f2caf8-81a4-4cde-81be-cbe4f2b17bd8",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
