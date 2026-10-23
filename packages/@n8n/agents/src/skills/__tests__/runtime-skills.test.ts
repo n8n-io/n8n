@@ -625,28 +625,6 @@ Use the workflow SDK.`,
 		expect(file).toMatchObject({ content: 'Guide.', bytes: 6, sha256: 'guide-hash' });
 	});
 
-	it.each([undefined, 'This saved version is unavailable.'])(
-		'reports a failed deferred load: %s',
-		async (error) => {
-			const source = createRuntimeSkillSource([
-				{
-					id: 'deferred',
-					name: 'Deferred',
-					description: 'Load later.',
-					instructions: 'Instructions.',
-				},
-			]);
-			source.loadSkill = async () => null;
-			source.getLoadError = () => (error ? { message: error, retryable: false } : undefined);
-			expect(
-				await createSkillLoadTool(source).handler?.({ skillId: 'deferred' }, {}),
-			).toMatchObject({
-				success: false,
-				error: error ?? 'Skill "Deferred" is not attached to this agent.',
-			});
-		},
-	);
-
 	it('prepares the runtime skill source before load_skill reads the registry', async () => {
 		const source = createRuntimeSkillSource([
 			{

@@ -1,7 +1,4 @@
-import { toJsonValue } from '@n8n/utils/json/to-json-value';
-
 import { createRuntimeSkillSource, filterRuntimeSkillSource } from '../../skills/registry';
-import { createSkillLoadTool } from '../../skills/tools';
 import type { RuntimeSkillSource } from '../../skills/types';
 import { InMemoryMemory } from '../memory/memory-store';
 import { AgentMessageList } from '../model/message-list';
@@ -180,13 +177,7 @@ describe('active skills', () => {
 
 	it('keeps the saved skill snapshot when the model receives a newer version', async () => {
 		const list = new AgentMessageList();
-		const active = new ActiveSkills(source, 'assistant');
-		await active.restore(list);
-		const output = await createSkillLoadTool(source).handler?.(
-			{ skillId: 'builder' },
-			{ loadSkill: active.load.bind(active) },
-		);
-		expect(output).toMatchObject({ success: true, content: 'Build one workflow.' });
+		list.activeSkillIds = ['builder'];
 		list.addHistory([
 			{
 				role: 'assistant',
@@ -197,7 +188,7 @@ describe('active skills', () => {
 						toolCallId: 'builder-load',
 						input: { skillId: 'builder' },
 						state: 'resolved',
-						output: toJsonValue(output),
+						output: { success: true, skillId: 'builder', content: 'Build one workflow.' },
 					},
 				],
 			},

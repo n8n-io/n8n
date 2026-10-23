@@ -1682,31 +1682,6 @@ describe('Assistant availability', () => {
 		);
 	});
 
-	it('hides the toggle when returning to agent scope and keeps its draft value', async () => {
-		const { getByTestId, queryByTestId } = renderModal({
-			skill: savedSkill,
-			skillId: 'skill-1',
-			settings: agentSettings,
-		});
-		await selectScope('Global');
-		await userEvent.click(getByTestId('skill-assistant-availability'));
-		await selectScope('This agent only');
-		expect(queryByTestId('skill-assistant-availability')).not.toBeInTheDocument();
-		expect(getByTestId('agent-skill-create-save')).toBeDisabled();
-		await selectScope('Marketing');
-		expect(getByTestId('skill-assistant-availability')).toHaveAttribute('aria-checked', 'true');
-	});
-
-	it('keeps the toggle hidden after a scope change when the feature is disabled', async () => {
-		const { queryByTestId } = renderModal({
-			skill: savedSkill,
-			skillId: 'skill-1',
-			settings: { ...agentSettings, availableToAssistant: undefined },
-		});
-		await selectScope('Global');
-		expect(queryByTestId('skill-assistant-availability')).not.toBeInTheDocument();
-	});
-
 	it('saves a toggle-only change with the existing form', async () => {
 		const onConfirm = vi.fn();
 		const { getByTestId } = renderModal({

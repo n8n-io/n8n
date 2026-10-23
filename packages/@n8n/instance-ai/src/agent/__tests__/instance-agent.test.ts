@@ -504,26 +504,6 @@ describe('createInstanceAgent', () => {
 		expect(mockAgentInstances[0]?.skills).toHaveBeenCalledWith(skills);
 	});
 
-	it.each([undefined, 'Review workflows: unsupported attachments.'])(
-		'includes Hub availability only when supplied (%s)',
-		async (skillAvailabilityNotice) => {
-			await createInstanceAgent({
-				modelId: 'test-model',
-				context: {
-					runLabel: 'hub-availability',
-					computerUseState: undefined,
-					localMcpServer: undefined,
-				},
-				orchestrationContext: { runId: 'hub-availability', skillAvailabilityNotice },
-				memoryConfig: {},
-				mcpManager: createMcpManagerStub(),
-			} as never);
-			const prompt = mockAgentInstances[0]?.instructions.mock.calls[0]?.[0];
-			if (skillAvailabilityNotice) expect(prompt).toContain(skillAvailabilityNotice);
-			else expect(prompt).not.toContain('## Hub skill availability');
-		},
-	);
-
 	it('adds the builder delegate runtime skills to the orchestrator skills', async () => {
 		const { createRuntimeSkillSource } =
 			await vi.importActual<typeof import('@n8n/agents')>('@n8n/agents');

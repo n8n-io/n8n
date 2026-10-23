@@ -70,13 +70,8 @@ export class ActiveSkills {
 		const retainedIds = new Set<string>();
 		for (const id of new Set(ids)) {
 			const skill = registered.has(id) ? await this.source.loadSkill(id) : null;
-			if (skill) {
-				this.loaded.set(id, skill);
-				retainedIds.add(id);
-			} else if (this.source.getLoadError?.(id)?.retryable) {
-				// Retain the selection for recovery without supplying stale instructions.
-				retainedIds.add(id);
-			}
+			if (skill) this.loaded.set(id, skill);
+			if (skill || this.source.getLoadError?.(id)?.retryable) retainedIds.add(id);
 		}
 		list.activeSkillIds = [...retainedIds];
 		const storeIsCurrent =

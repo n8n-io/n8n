@@ -23,6 +23,7 @@ import { createHash } from 'node:crypto';
 
 const HUB_SKILL_DIRECTORY = '.n8n/skills/hub';
 const HUB_SKILL_ID_PREFIX = 'hub-';
+const HUB_UNAVAILABLE_NOTICE = 'Hub skills are temporarily unavailable. Do not use earlier copies.';
 
 export interface HubRunSkills {
 	source: RuntimeSkillSource;
@@ -31,7 +32,6 @@ export interface HubRunSkills {
 
 type LoadedHubSkill = RuntimeSkillContent & Pick<RuntimeSkillRegistryEntry, 'linkedFiles'>;
 
-/** Discover metadata only. Each turn resolves its selected versions on demand. */
 export async function loadHubRunSkills(
 	builtIns: RuntimeSkillSource,
 	provider: AssistantSkillProvider,
@@ -39,27 +39,20 @@ export async function loadHubRunSkills(
 ): Promise<HubRunSkills> {
 	try {
 		if (!(await provider.isEnabled())) return { source: builtIns };
+		const summaries = await provider.listSkills(context);
+		return createDeferredHubSource(builtIns, provider, context, summaries);
 	} catch {
-		return unavailableHubSource(builtIns);
+		return createDeferredHubSource(builtIns, provider, context, null);
 	}
-
-	let summaries: AssistantSkillSummary[] = [];
-	try {
-		summaries = await provider.listSkills(context);
-	} catch {
-		return unavailableHubSource(builtIns);
-	}
-
-	return createDeferredHubSource(builtIns, provider, context, summaries);
 }
 
 function createDeferredHubSource(
 	builtIns: RuntimeSkillSource,
 	provider: AssistantSkillProvider,
 	context: AssistantSkillContext,
-	summaries: AssistantSkillSummary[],
+	summaries: AssistantSkillSummary[] | null,
 ): HubRunSkills {
-	const hubSkills = createHubCatalog(builtIns, summaries);
+	const hubSkills = createHubCatalog(builtIns, summaries ?? []);
 	const entries = [...hubSkills.values()].map(({ entry }) => entry);
 	const pending = new Map<string, Promise<LoadedHubSkill | null>>();
 	const errors = new Map<string, RuntimeSkillLoadError>();
@@ -84,11 +77,11 @@ function createDeferredHubSource(
 		return await result;
 	};
 
-	const mergedRegistry = () => ({
-		...builtIns.registry,
-		skills: [...builtIns.registry.skills, ...entries],
-		skillsHash: hashRuntimeSkillRegistry([...builtIns.registry.skills, ...entries]),
-	});
+	const mergedRegistry = () => {
+		if (entries.length === 0) return builtIns.registry;
+		const skills = [...builtIns.registry.skills, ...entries];
+		return { ...builtIns.registry, skills, skillsHash: hashRuntimeSkillRegistry(skills) };
+	};
 	const source: RuntimeSkillSource = {
 		...builtIns,
 		registry: mergedRegistry(),
@@ -106,7 +99,15 @@ function createDeferredHubSource(
 			errors.delete(id);
 			return file;
 		},
-		getLoadError: (id) => errors.get(id) ?? builtIns.getLoadError?.(id),
+		getLoadError: (id) => {
+			if (
+				summaries === null &&
+				id.startsWith(HUB_SKILL_ID_PREFIX) &&
+				!builtIns.registry.skills.some((entry) => entry.id === id)
+			)
+				return { message: HUB_UNAVAILABLE_NOTICE, retryable: true };
+			return errors.get(id) ?? builtIns.getLoadError?.(id);
+		},
 	};
 
 	if (builtIns.prepare) {
@@ -119,29 +120,12 @@ function createDeferredHubSource(
 	return {
 		source,
 		availabilityNotice:
-			entries.length > 0
-				? 'Hub skill labels include their scope. Paths under .n8n/skills/hub are virtual skill identifiers, not workspace files. Load by exact skillId. Read references with load_skill and a relative filePath from linkedFiles. If matching skills are ambiguous, ask which one to use. Do not choose a scope by default.'
-				: undefined,
+			summaries === null
+				? HUB_UNAVAILABLE_NOTICE
+				: entries.length > 0
+					? 'Hub skill labels include their scope. Paths under .n8n/skills/hub are virtual skill identifiers, not workspace files. Load by exact skillId. Read references with load_skill and a relative filePath from linkedFiles. If matching skills are ambiguous, ask which one to use. Do not choose a scope by default.'
+					: undefined,
 	};
-}
-
-function unavailableHubSource(builtIns: RuntimeSkillSource): HubRunSkills {
-	const notice = 'Hub skills are temporarily unavailable. Do not use earlier copies.';
-	const source: RuntimeSkillSource = {
-		...builtIns,
-		getLoadError: (id) =>
-			id.startsWith(HUB_SKILL_ID_PREFIX) &&
-			!builtIns.registry.skills.some((entry) => entry.id === id)
-				? { message: notice, retryable: true }
-				: builtIns.getLoadError?.(id),
-	};
-	if (builtIns.prepare) {
-		source.prepare = async () => {
-			await builtIns.prepare?.();
-			source.registry = builtIns.registry;
-		};
-	}
-	return { source, availabilityNotice: notice };
 }
 
 function createHubCatalog(builtIns: RuntimeSkillSource, summaries: AssistantSkillSummary[]) {

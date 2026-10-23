@@ -239,7 +239,6 @@ async function loadSkill(
 			skillId: skillEntry.id,
 			name: skillEntry.name,
 			hash: skillEntry.hash,
-			// Keep the loaded snapshot visible in chat. The model receives refreshed instructions.
 			content: cap(skill.instructions),
 			...(references.length > 0
 				? {

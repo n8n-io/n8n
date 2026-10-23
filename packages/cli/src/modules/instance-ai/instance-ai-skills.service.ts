@@ -1,8 +1,4 @@
-import {
-	filterRuntimeSkillSource,
-	type RuntimeSkillContent,
-	type RuntimeSkillSource,
-} from '@n8n/agents';
+import { filterRuntimeSkillSource, type RuntimeSkillContent } from '@n8n/agents';
 import { AssistantSkillProviderProxy, type AssistantSkillContext } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import { loadInstanceAiPromptSkills, type PromptProfile } from '@n8n/instance-ai';
@@ -36,8 +32,6 @@ export interface InstanceAiSkillScope {
 }
 
 export interface InstanceAiRunSkills extends HubRunSkills {
-	/** The active skills, which the run can load. */
-	source: RuntimeSkillSource;
 	/** Tools that the prompt profile turns off. */
 	disabledTools: string[];
 }

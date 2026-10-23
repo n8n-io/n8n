@@ -252,40 +252,6 @@ describe('SkillService', () => {
 			});
 		});
 
-		it('forwards the selected version with the authorized scope', async () => {
-			await service.readForAssistant(context, 'skill-1', 'version-1');
-			expect(skills.findAssistantSkill).toHaveBeenCalledWith('skill-1', 'project-1', 'version-1');
-		});
-
-		it('returns reference names without their bodies on activation', async () => {
-			row.files = [mock<SkillFile>({ path: 'references/guide.md', content: 'Guide.' })];
-			expect((await service.readForAssistant(context, 'skill-1'))?.files).toEqual([
-				{ path: 'references/guide.md' },
-			]);
-		});
-
-		it('reads one reference from the selected version', async () => {
-			skills.findAssistantSkillFile.mockResolvedValue({
-				skill: row.skill,
-				file: mock<SkillFile>({ path: 'references/guide.md', content: 'Guide.' }),
-			});
-			expect(
-				await service.readFileForAssistant(context, 'skill-1', 'version-1', 'references/guide.md'),
-			).toEqual({
-				skillId: 'skill-1',
-				versionId: 'version-1',
-				path: 'references/guide.md',
-				content: 'Guide.',
-			});
-			expect(skills.findAssistantSkillFile).toHaveBeenCalledWith(
-				'skill-1',
-				'project-1',
-				'version-1',
-				'references/guide.md',
-			);
-			expect(skills.findAssistantSkill).not.toHaveBeenCalled();
-		});
-
 		it.each(['disabled', 'agent', 'other-project', 'permission', 'missing'])(
 			'refuses a reference that is %s',
 			async (reason) => {

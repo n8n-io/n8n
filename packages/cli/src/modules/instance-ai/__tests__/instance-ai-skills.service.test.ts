@@ -118,12 +118,6 @@ describe('Assistant Hub provider boundary', () => {
 			version: 1,
 		};
 		provider.listSkills.mockResolvedValue([summary]);
-		provider.readSkill.mockResolvedValue({
-			...summary,
-			instructions: 'Check retries.',
-			frontmatter: null,
-			files: [],
-		});
 		proxy.registerProvider(provider);
 		const service = new InstanceAiSkillsService(proxy);
 		const result = await service.loadSkills(openScope, context);
@@ -131,7 +125,7 @@ describe('Assistant Hub provider boundary', () => {
 			result.source.registry.skills.some(({ metadata }) => metadata?.hubSkillId === 'skill-1'),
 		).toBe(true);
 		expect(provider.listSkills).toHaveBeenCalledWith(context);
-		expect(result).not.toHaveProperty('prepareWorkspace');
+		expect(provider.readSkill).not.toHaveBeenCalled();
 	});
 
 	it('supplies no Hub skills without a registered provider', async () => {
@@ -140,7 +134,6 @@ describe('Assistant Hub provider boundary', () => {
 		expect(await service.readHubSkill(context, 'unknown')).toBeNull();
 		const run = await service.loadSkills(openScope, context);
 		expect(run.source.registry.skills.length).toBeGreaterThan(0);
-		expect(run).not.toHaveProperty('prepareWorkspace');
 		expect(run.availabilityNotice).toBeUndefined();
 	});
 });
