@@ -628,7 +628,7 @@ async function startExecution(
 	).getCredentialIdsForNodes(workflowData.nodes);
 
 	let hooks: ExecutionLifecycleHooks | undefined;
-	let preRunChecksPassed = false;
+	let credentialChecksPassed = false;
 
 	let data;
 	try {
@@ -677,13 +677,15 @@ async function startExecution(
 				additionalData.userId,
 			);
 		}
+		credentialChecksPassed = true;
+
+		// A refused caller must not start executions in this workflow's project.
 		await Container.get(SubworkflowPolicyChecker).check(
 			workflow,
 			options.parentWorkflowId,
 			options.node,
 			additionalData.userId,
 		);
-		preRunChecksPassed = true;
 
 		// Create new additionalData to have different workflow loaded and to call
 		// different webhooks
@@ -781,7 +783,7 @@ async function startExecution(
 			});
 
 		try {
-			if (hooks && !preRunChecksPassed) {
+			if (hooks && !credentialChecksPassed) {
 				// `WorkflowExecute` never started, so run its hooks here, as `WorkflowRunner.failExecution`
 				// does for a top-level run. The save hook stores the failure and starts the error workflow.
 				// No workflow instance: nothing runs, so the before hooks skip their pre-run gates.

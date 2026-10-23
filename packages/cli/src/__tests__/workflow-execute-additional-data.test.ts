@@ -688,40 +688,43 @@ describe('WorkflowExecuteAdditionalData', () => {
 			const failPolicyCheck = () =>
 				vi
 					.mocked(Container.get(SubworkflowPolicyChecker).check)
-					.mockRejectedValueOnce(
-						new Error('Node "Trigger" does not have access to the credential'),
-					);
+					.mockRejectedValueOnce(new Error('Target workflow refuses this caller'));
 
-			describe.each([
-				['credential check', failCredentialCheck],
-				['sub-workflow policy check', failPolicyCheck],
-			])('when the %s fails', (_, failCheck) => {
-				it('starts the sub-workflow error workflow and fails the caller', async () => {
-					failCheck();
+			it('starts the sub-workflow error workflow and fails the caller', async () => {
+				failCredentialCheck();
 
-					await expect(runSubWorkflow(false)).rejects.toThrow('does not have access');
+				await expect(runSubWorkflow(false)).rejects.toThrow('does not have access');
 
-					expect(WorkflowExecute).not.toHaveBeenCalled();
-					expect(executeErrorWorkflow).toHaveBeenCalledTimes(1);
-					const [workflowData, fullRunData, mode, executionId] = executeErrorWorkflow.mock.calls[0];
-					expect(workflowData.settings.errorWorkflow).toBe('error-workflow-id');
-					expect(fullRunData.status).toBe('error');
-					expect(fullRunData.data.resultData.error.message).toContain('does not have access');
-					expect(mode).toBe('integrated');
-					expect(executionId).toBe(EXECUTION_ID);
+				expect(WorkflowExecute).not.toHaveBeenCalled();
+				expect(executeErrorWorkflow).toHaveBeenCalledTimes(1);
+				const [workflowData, fullRunData, mode, executionId] = executeErrorWorkflow.mock.calls[0];
+				expect(workflowData.settings.errorWorkflow).toBe('error-workflow-id');
+				expect(fullRunData.status).toBe('error');
+				expect(fullRunData.data.resultData.error.message).toContain('does not have access');
+				expect(mode).toBe('integrated');
+				expect(executionId).toBe(EXECUTION_ID);
+			});
+
+			it('starts the sub-workflow error workflow when the caller does not wait', async () => {
+				failCredentialCheck();
+
+				await expect(runSubWorkflow(true)).resolves.toEqual({
+					executionId: EXECUTION_ID,
+					data: [null],
 				});
 
-				it('starts the sub-workflow error workflow when the caller does not wait', async () => {
-					failCheck();
+				await vi.waitFor(() => expect(executeErrorWorkflow).toHaveBeenCalledTimes(1));
+				expect(WorkflowExecute).not.toHaveBeenCalled();
+			});
 
-					await expect(runSubWorkflow(true)).resolves.toEqual({
-						executionId: EXECUTION_ID,
-						data: [null],
-					});
+			it('records the failure without the error workflow when the sub-workflow policy refuses the caller', async () => {
+				failPolicyCheck();
 
-					await vi.waitFor(() => expect(executeErrorWorkflow).toHaveBeenCalledTimes(1));
-					expect(WorkflowExecute).not.toHaveBeenCalled();
-				});
+				await expect(runSubWorkflow(false)).rejects.toThrow('refuses this caller');
+
+				expect(WorkflowExecute).not.toHaveBeenCalled();
+				expect(executeErrorWorkflow).not.toHaveBeenCalled();
+				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(1);
 			});
 
 			it('runs the before hooks without a workflow instance', async () => {
@@ -738,7 +741,9 @@ describe('WorkflowExecuteAdditionalData', () => {
 			});
 
 			it('records the failure when a before hook throws', async () => {
-				onTestFinished(() => eventService.emit.mockReset());
+				onTestFinished(() => {
+					eventService.emit.mockReset();
+				});
 				eventService.emit.mockImplementation((eventName) => {
 					if (eventName === 'workflow-pre-execute') throw new Error('hook failed');
 					return true;
