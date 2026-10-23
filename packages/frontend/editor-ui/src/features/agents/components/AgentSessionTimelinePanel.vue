@@ -7,9 +7,9 @@ import type {
 	AgentExecution,
 	ThreadDetail,
 } from '@/features/agents/composables/useAgentThreadsApi';
-import AgentBudgetNoticeCard from "@/features/agents/components/AgentBudgetNoticeCard.vue";
-import { isBudgetStopCode, type BudgetAmountField } from "@/features/agents/utils/budget-config";
-import { useAgentTelemetry } from "@/features/agents/composables/useAgentTelemetry";
+import AgentBudgetNoticeCard from '@/features/agents/components/AgentBudgetNoticeCard.vue';
+import { isBudgetStopCode, type BudgetAmountField } from '@/features/agents/utils/budget-config';
+import { useAgentTelemetry } from '@/features/agents/composables/useAgentTelemetry';
 import SessionEventFilter from '@/features/agents/components/SessionEventFilter.vue';
 import SessionTimelineTable from '@/features/agents/components/SessionTimelineTable.vue';
 import SessionTimelineChart from '@/features/agents/components/SessionTimelineChart.vue';
@@ -155,7 +155,6 @@ async function onIncreaseBudget(payload: { field: BudgetAmountField; amount: num
 	}
 }
 
-
 const bounds = computed(() => sessionBounds(items.value));
 
 function labelForKey(key: string): string {
@@ -259,9 +258,9 @@ function selectTimelineItem(index: number | null) {
 }
 
 function onTimelineItemSelect(index: number | null) {
- selectTimelineItem(index);
- const item = index === null ? undefined : items.value[index];
- if (item) agentTelemetry.trackClickedTraceItem({ agentId: props.agentId, itemType: item.kind });
+	selectTimelineItem(index);
+	const item = index === null ? undefined : items.value[index];
+	if (item) agentTelemetry.trackClickedTraceItem({ agentId: props.agentId, itemType: item.kind });
 }
 
 function onChartSelect(index: number): void {
@@ -274,7 +273,7 @@ function timelineItemKey(item: TimelineItem): string {
 }
 
 function loadThreadDetail() {
- resolvedBudgetStopExecutionId.value = null;
+	resolvedBudgetStopExecutionId.value = null;
 	executions.value = [];
 	selectedFilters.value = new Set();
 	searchQuery.value = '';
@@ -428,7 +427,13 @@ useKeybindings({
 			<div v-if="showLoading" :class="$style.loading">
 				{{ i18n.baseText('generic.loadingEllipsis') }}
 			</div>
- <AgentBudgetNoticeCard v-if="budgetStop" :code="budgetStop.code" :can-increase="props.increaseBudget !== undefined" :pending="budgetIncreasePending" @increase="onIncreaseBudget" />
+			<AgentBudgetNoticeCard
+				v-if="budgetStop"
+				:code="budgetStop.code"
+				:can-increase="props.increaseBudget !== undefined"
+				:pending="budgetIncreasePending"
+				@increase="onIncreaseBudget"
+			/>
 
 			<SessionTimelineTable
 				v-if="!showLoading"
