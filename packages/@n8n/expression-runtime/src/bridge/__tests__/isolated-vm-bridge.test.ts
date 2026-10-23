@@ -92,12 +92,21 @@ describe('IsolatedVmBridge', () => {
 	});
 
 	describe('workflow data', () => {
+		let bridge: IsolatedVmBridge;
+
+		beforeEach(async () => {
+			bridge = new IsolatedVmBridge();
+			await bridge.initialize();
+		});
+
+		afterEach(async () => {
+			await bridge.dispose();
+		});
+
 		it('should free the data of a finished call after the bridge is disposed', async () => {
 			setFlagsFromString('--expose_gc');
 			const gc = runInNewContext('gc') as unknown as () => void;
 
-			const bridge = new IsolatedVmBridge();
-			await bridge.initialize();
 			let data: { $json: { value: number } } | undefined = { $json: { value: 42 } };
 			const dataRef = new WeakRef(data);
 			expect(bridge.execute('return this.$json.value', data)).toBe(42);
@@ -111,15 +120,16 @@ describe('IsolatedVmBridge', () => {
 			expect(dataRef.deref()).toBeUndefined();
 		});
 
-		it('should return an error from a callback that runs after its call finished', async () => {
-			const bridge = new IsolatedVmBridge();
-			await bridge.initialize();
-			bridge.execute('globalThis.__getValueAtPath = $0; return 1', { $json: { value: 42 } });
+		it('should return an error from a callback that runs after its call failed', () => {
+			expect(() =>
+				bridge.execute('globalThis.__getValueAtPath = $0; throw new Error("boom")', {
+					$json: { value: 42 },
+				}),
+			).toThrow('boom');
 
 			expect(() =>
 				bridge.execute('return globalThis.__getValueAtPath(["$json", "value"])', {}),
 			).toThrow('Host callback called after its expression finished');
-			await bridge.dispose();
 		});
 	});
 });
