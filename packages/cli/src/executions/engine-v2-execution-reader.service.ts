@@ -13,6 +13,7 @@ import type {
 	ExecutionSummary,
 	Workflow,
 } from 'n8n-workflow';
+import type { ExecutionLinks } from '@n8n/node-engine-compatibility';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
@@ -20,7 +21,7 @@ import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.
 import { resolveV2Statuses, toV1Mode, toV1Status } from './engine-v2-mapping';
 import type { ExecutionPosition } from './execution-cursor';
 import { toWorkflowSnapshot, type WorkflowSnapshot } from './execution-data/types';
-import type { ExecutionIdV2 } from './execution-id';
+import { isExecutionIdV2, type ExecutionIdV2 } from './execution-id';
 
 /**
  * Workflow visibility scope for engine v2. Marks which workflows can be
@@ -49,6 +50,9 @@ export interface EngineV2SearchQuery {
  * now; splitting it across several searches can come later.
  */
 const MAX_SCOPE_SIZE = 10_000;
+
+/** The most children one read notes. A step starts one child, so a run rarely has many. */
+const MAX_CHILDREN = 100;
 
 /**
  * Reads an engine v2 execution for display. The data plane is its only store:
@@ -174,8 +178,52 @@ export class EngineV2ExecutionReader {
 		return this.toExecutionResponse(
 			snapshot,
 			workflow,
-			toV1RunExecutionData(snapshot.graph, snapshot.steps ?? []),
+			toV1RunExecutionData(
+				snapshot.graph,
+				snapshot.steps ?? [],
+				await this.findLinks(snapshot, sharedWorkflowIds),
+			),
 		);
+	}
+
+	/**
+	 * The parent and the children of the execution, for the links the editor
+	 * shows, limited to the workflows the caller can read: a link names an
+	 * execution, and naming one the caller cannot open tells them it exists.
+	 * The row holds the parent's id only, so its workflow is read from the parent.
+	 */
+	private async findLinks(
+		snapshot: ExecutionSnapshot,
+		sharedWorkflowIds: string[],
+	): Promise<ExecutionLinks> {
+		const parentId = snapshot.parent?.executionId;
+		const readable = [...new Set(sharedWorkflowIds)];
+		const [parent, children] = await Promise.all([
+			// Only the engine sets the link, with an id it minted.
+			parentId !== undefined && isExecutionIdV2(parentId)
+				? this.dataPlane.getExecution(parentId, { includeSteps: false })
+				: undefined,
+			// A scope one search cannot hold yields no links rather than an error.
+			readable.length <= MAX_SCOPE_SIZE
+				? this.dataPlane.searchExecutions({
+						workflowIds: readable,
+						parentExecutionId: snapshot.id,
+						limit: MAX_CHILDREN,
+					})
+				: undefined,
+		]);
+
+		return {
+			parent:
+				parent && readable.includes(parent.workflowId)
+					? { executionId: parent.id, workflowId: parent.workflowId }
+					: undefined,
+			children: (children?.items ?? []).flatMap((child) =>
+				child.parent
+					? [{ stepId: child.parent.stepId, executionId: child.id, workflowId: child.workflowId }]
+					: [],
+			),
+		};
 	}
 
 	private toExecutionResponse(
