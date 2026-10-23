@@ -12,13 +12,19 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type { Readable } from 'stream';
 import { Builder } from 'xml2js';
 
-import { uriEncodeS3CopySource } from '../../../../credentials/common/aws/utils';
+import { uriEncodeS3CopySource } from '@credentials/common/aws/utils';
 import { bucketFields, bucketOperations } from './BucketDescription';
 import { fileFields, fileOperations } from './FileDescription';
 import { folderFields, folderOperations } from './FolderDescription';
-import { awsApiRequestREST, awsApiRequestRESTAllItems } from './GenericFunctions';
+import {
+	awsApiRequestREST,
+	awsApiRequestRESTAllItems,
+	getPresignedS3Url,
+	normalizeS3Region,
+} from './GenericFunctions';
 import { awsNodeAuthOptions, awsNodeCredentials } from '../../utils';
 import { getAwsCredentials } from '../../GenericFunctions';
+import type { AwsCredentialsTypeBase, AwsIamCredentialsType } from '@credentials/common/aws/types';
 
 // Minimum size 5MB for multipart upload in S3
 const UPLOAD_CHUNK_SIZE = 5120 * 1024;
@@ -86,7 +92,7 @@ export class AwsS3V2 implements INodeType {
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
-		const { credentials } = await getAwsCredentials(this);
+		const { credentials, credentialsType } = await getAwsCredentials(this);
 
 		for (let i = 0; i < items.length; i++) {
 			let headers: IDataObject = {};
@@ -779,6 +785,99 @@ export class AwsS3V2 implements INodeType {
 							);
 							returnData.push(...executionData);
 						}
+					}
+					//https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-query-string-auth.html
+					if (operation === 'getPresignedUrl') {
+						const s3Endpoint = (credentials as AwsCredentialsTypeBase).s3Endpoint;
+						
+						if (s3Endpoint?.trim()) {
+							throw new NodeOperationError(
+								this.getNode(),
+								"Presigned URLs are not supported with a custom S3 endpoint. Clear the S3 Endpoint setting to use the default AWS S3 Endpoint."
+							);
+						}
+						
+						const bucketName = this.getNodeParameter('bucketName', i) as string;
+
+						if (!bucketName) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Bucket name is required to generate a presigned URL',
+							);
+						} else if (
+							typeof bucketName !== 'string' ||
+							bucketName.trim() === '' ||
+							bucketName.trim() === '.'
+						) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Bucket name should be a non-empty string',
+							);
+						}
+
+						const servicePath = bucketName?.includes('.') ? 's3' : `${bucketName}.s3`;
+						const basePath = bucketName?.includes('.') ? `/${bucketName}` : '';
+						const fileKey = this.getNodeParameter('fileKey', i) as string;
+
+						const setCustomExpiry = this.getNodeParameter('setUrlExpiryTime', i, false) as boolean;
+						const requestedExpiresIn = setCustomExpiry
+							? (this.getNodeParameter('urlExpiryTime', i, 3600) as number)
+							: 3600;
+
+						const usesTemporaryCredentials =
+							credentialsType === 'awsAssumeRole' ||
+							(credentialsType === 'aws' &&
+								(credentials as AwsIamCredentialsType).temporaryCredentials);
+
+						const expiresIn = usesTemporaryCredentials
+							? Math.min(requestedExpiresIn, 3600)
+							: requestedExpiresIn;
+						const options = this.getNodeParameter('options', i);
+						let ContentDisposition: string | undefined;
+
+						if (options.noContentDisposition) {
+							ContentDisposition = undefined;
+						} else {
+							ContentDisposition = `attachment; filename="${fileKey.split('/').pop()}"`;
+						}
+
+						if (!fileKey || fileKey.endsWith('/')) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Presigned url for a whole directory is not supported, please provide a file key',
+							);
+						}
+
+						const responseData = await awsApiRequestREST.call(
+							this,
+							servicePath,
+							'GET',
+							basePath,
+							'',
+							{
+								location: '',
+							},
+						);
+
+						const region = normalizeS3Region(responseData.LocationConstraint._);
+						const expectedExpirationTime = new Date(Date.now() + expiresIn * 1000).toISOString();
+
+						const url = await getPresignedS3Url.call(
+							this,
+							'GET',
+							bucketName,
+							fileKey,
+							region,
+							expiresIn,
+							ContentDisposition,
+						);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ url, expectedExpirationTime }),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push.apply(returnData, executionData);
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html
 					if (operation === 'upload') {
