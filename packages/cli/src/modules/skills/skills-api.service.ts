@@ -1,6 +1,8 @@
 import type {
 	CreateSkillDto,
+	ListSkillAgentsQueryDto,
 	ListSkillsQueryDto,
+	SkillAgentOption,
 	SkillDetail,
 	SkillListItem,
 	SkillListResponse,
@@ -105,6 +107,15 @@ export class SkillsApiService {
 			await this.visibilityOf(projectIds),
 		);
 		return [...(await this.findCreators(creatorIds)).values()];
+	}
+
+	/** The agents the user may read, for the agent filter. Global readers see every agent. */
+	async listAgents(user: User, query: ListSkillAgentsQueryDto): Promise<SkillAgentOption[]> {
+		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:read']);
+		return await this.skillAgents.findAgentSummaries(projectIds, {
+			search: query.search,
+			limit: query.take,
+		});
 	}
 
 	async get(user: User, skillId: string): Promise<SkillDetail> {

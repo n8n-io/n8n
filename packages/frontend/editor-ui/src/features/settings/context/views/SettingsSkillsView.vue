@@ -7,12 +7,12 @@ import {
 	SKILLS_SORT_OPTIONS,
 	type AgentSkill,
 	type SkillCreateMethod,
+	type SkillAgentOption,
 	type SkillListItem,
 	type SkillUserDto,
 } from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
-import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -39,7 +39,6 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useAssistantSkillsExperiment } from '@/experiments/assistantSkills/useAssistantSkillsExperiment';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { AGENT_SKILL_MODAL_KEY } from '@/features/agents/constants';
-import { listAgentsGlobal } from '@/features/agents/composables/useAgentApi';
 import { isSkillNameTakenError } from '@/features/agents/utils/agentSkill';
 import { exportAgentSkill } from '@/features/agents/utils/agentSkillExport';
 import type {
@@ -83,7 +82,6 @@ const message = useMessage();
 const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 const skillsStore = useSkillsStore();
-const rootStore = useRootStore();
 const { isEnabled: assistantSkillsEnabled } = useAssistantSkillsExperiment();
 const telemetry = useTelemetry();
 const { showError, showMessage } = useToast();
@@ -96,7 +94,15 @@ const tableOptions = ref<TableOptions>({
 });
 const search = ref('');
 const filters = ref<SkillFilters>({ ...NO_FILTERS });
-const agentOptions = ref<Array<{ id: string; name: string }>>([]);
+const agentOptions = ref<SkillAgentOption[]>([]);
+const selectedAgent = ref<SkillAgentOption | null>(null);
+const agentsLoading = ref(false);
+// The picked agent stays in the list when the current search does not return it.
+const agentFilterOptions = computed(() =>
+	selectedAgent.value && !agentOptions.value.some((agent) => agent.id === selectedAgent.value?.id)
+		? [selectedAgent.value, ...agentOptions.value]
+		: agentOptions.value,
+);
 const creators = ref<SkillUserDto[]>([]);
 const loadFailed = ref(false);
 
@@ -246,6 +252,40 @@ async function setFilter(key: keyof SkillFilters, value: unknown) {
 	await resetPage();
 }
 
+/** Keeps the picked agent, so its name still shows when a later search leaves it out. */
+async function onAgentFilter(value: unknown) {
+	selectedAgent.value = agentFilterOptions.value.find((agent) => agent.id === value) ?? null;
+	await setFilter('agentId', value);
+}
+
+// Only the newest search fills the options, so a slow earlier one cannot win.
+const { next: nextAgentSearch } = useLatestFetch();
+
+/** The agent filter searches on the server and lists a capped page of matches. */
+async function searchAgents(term = '') {
+	const isLatest = nextAgentSearch();
+	agentsLoading.value = true;
+	try {
+		const agents = await skillsStore.fetchAgents(term.trim() ? { search: term.trim() } : {});
+		if (isLatest()) agentOptions.value = agents;
+	} catch {
+		// The filter is optional: a failed search leaves the previous options.
+	} finally {
+		if (isLatest()) agentsLoading.value = false;
+	}
+}
+
+const onAgentSearch = useDebounceFn(searchAgents, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
+
+async function loadCreators() {
+	try {
+		const users = await skillsStore.fetchCreators();
+		creators.value = [...users].sort((a, b) => creatorLabel(a).localeCompare(creatorLabel(b)));
+	} catch {
+		// The filter is optional: a failed read leaves the previous options.
+	}
+}
+
 async function resetFilters() {
 	filters.value = { ...NO_FILTERS };
 	await resetPage();
@@ -253,19 +293,7 @@ async function resetFilters() {
 
 /** Options for the filters. Each one is optional, so a failed read leaves its list empty. */
 async function loadFilterOptions() {
-	await Promise.all([
-		listAgentsGlobal(rootStore.restApiContext, { sortBy: 'name:asc' })
-			.then((agents) => {
-				agentOptions.value = agents.map(({ id, name }) => ({ id, name }));
-			})
-			.catch(() => undefined),
-		skillsStore
-			.fetchCreators()
-			.then((users) => {
-				creators.value = [...users].sort((a, b) => creatorLabel(a).localeCompare(creatorLabel(b)));
-			})
-			.catch(() => undefined),
-	]);
+	await Promise.all([searchAgents(), loadCreators()]);
 }
 
 function openModal(data: AgentSkillModalData) {
@@ -335,6 +363,8 @@ async function onCreate(
 	} catch (error) {
 		return saveFailed(error);
 	}
+	// The creator may be new to the list. The table does not wait for the filter options.
+	void loadCreators();
 	await load();
 	confirmIfHidden(createdId, 'created');
 	return undefined;
@@ -474,6 +504,8 @@ async function onDelete(skill: SkillListItem) {
 		// An agent may have attached the skill since the list loaded: that answers 409.
 		showError(error, i18n.baseText('settings.context.skills.error.delete'));
 	}
+	// The deleted skill may have been the last one of its creator.
+	void loadCreators();
 	await load();
 }
 
@@ -572,13 +604,16 @@ onMounted(async () => {
 						:model-value="filters.agentId"
 						size="medium"
 						filterable
+						remote
+						:remote-method="onAgentSearch"
+						:loading="agentsLoading"
 						clearable
 						:placeholder="i18n.baseText('settings.context.skills.filter.anyAgent')"
 						data-test-id="skills-filter-agent"
-						@update:model-value="setFilter('agentId', $event)"
+						@update:model-value="onAgentFilter"
 					>
 						<N8nOption
-							v-for="agent in agentOptions"
+							v-for="agent in agentFilterOptions"
 							:key="agent.id"
 							:value="agent.id"
 							:label="agent.name"

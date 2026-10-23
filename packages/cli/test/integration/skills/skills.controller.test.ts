@@ -456,6 +456,36 @@ describe('SkillsController', () => {
 			await owner.get('/skills').query({ sortBy: 'scope:asc' }).expect(400);
 		});
 
+		it('lists only the agents the user may read, searched by name and cut to take', async () => {
+			const support = await newAgent('Support bot', project.id);
+			await newAgent('Sales bot', project.id);
+			const other = await createTeamProject('Other team');
+			const hidden = await newAgent('Hidden bot', other.id);
+			const ids = (response: { body: { data: Array<{ id: string; name: string }> } }) =>
+				response.body.data.map((agent) => agent.name).sort();
+
+			const forEditor = await editor.get('/skills/agents').expect(200);
+			const forOutsider = await outsider.get('/skills/agents').expect(200);
+			const forOwner = await owner.get('/skills/agents').expect(200);
+			const searched = await editor.get('/skills/agents').query({ search: 'SUPP' }).expect(200);
+			const cut = await editor.get('/skills/agents').query({ take: 1 }).expect(200);
+
+			expect(ids(forEditor)).toEqual(['Sales bot', 'Support bot']);
+			expect(forOutsider.body.data).toEqual([]);
+			expect(ids(forOwner)).toEqual(expect.arrayContaining(['Hidden bot', 'Support bot']));
+			expect(searched.body.data).toEqual([{ id: support.id, name: 'Support bot' }]);
+			expect(cut.body.data).toHaveLength(1);
+			expect(forOwner.body.data.find((a: { id: string }) => a.id === hidden.id)).toEqual({
+				id: hidden.id,
+				name: 'Hidden bot',
+			});
+			await editor.get('/skills/agents').query({ take: 0 }).expect(400);
+		});
+
+		it('refuses a creator filter that is not a UUID', async () => {
+			await owner.get('/skills').query({ createdById: 'not-a-uuid' }).expect(400);
+		});
+
 		it('names the creators of the skills the user may see', async () => {
 			await create(owner, { scope: 'instance', skill: body });
 			await create(editor, { scope: 'project', projectId: project.id, skill: body });

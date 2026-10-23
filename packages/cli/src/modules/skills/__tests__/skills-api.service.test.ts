@@ -407,6 +407,33 @@ describe('SkillsApiService', () => {
 		});
 	});
 
+	describe('listAgents', () => {
+		it('searches the agents in the projects where the user may read agents', async () => {
+			skillAgents.findAgentSummaries.mockResolvedValue([{ id: 'agent-1', name: 'Support bot' }]);
+
+			const result = await service.listAgents(user, { search: 'bot', take: 50 });
+
+			expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(user, ['agent:read']);
+			expect(skillAgents.findAgentSummaries).toHaveBeenCalledWith(['project-1'], {
+				search: 'bot',
+				limit: 50,
+			});
+			expect(result).toEqual([{ id: 'agent-1', name: 'Support bot' }]);
+		});
+
+		it('searches every project for a user with the global agent scope', async () => {
+			projectScopeService.getProjectIds.mockResolvedValue(null);
+			skillAgents.findAgentSummaries.mockResolvedValue([]);
+
+			await service.listAgents(user, { take: 10 });
+
+			expect(skillAgents.findAgentSummaries).toHaveBeenCalledWith(null, {
+				search: undefined,
+				limit: 10,
+			});
+		});
+	});
+
 	describe('listCreators', () => {
 		it('names the creators of the skills the user may see', async () => {
 			repository.findVisibleCreatorIds.mockResolvedValue(['user-2']);

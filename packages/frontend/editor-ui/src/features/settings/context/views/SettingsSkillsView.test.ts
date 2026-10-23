@@ -8,7 +8,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useUsersStore } from '@n8n/stores/users.store';
 import userEvent from '@testing-library/user-event';
-import { waitFor } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
 import { mock } from 'vitest-mock-extended';
 
 import { getDropdownItems } from '@/__tests__/utils';
@@ -27,12 +27,6 @@ const showMessageMock = vi.fn();
 const showErrorMock = vi.fn();
 const trackMock = vi.fn();
 const saveAsMock = vi.fn();
-
-const listAgentsMock = vi.fn();
-
-vi.mock('@/features/agents/composables/useAgentApi', () => ({
-	listAgentsGlobal: async (...args: unknown[]) => await listAgentsMock(...args),
-}));
 
 vi.mock('file-saver', () => ({ saveAs: (...args: unknown[]) => saveAsMock(...args) }));
 
@@ -143,8 +137,7 @@ describe('SettingsSkillsView', () => {
 		showErrorMock.mockClear();
 		trackMock.mockClear();
 		saveAsMock.mockClear();
-		listAgentsMock.mockReset();
-		listAgentsMock.mockResolvedValue([{ id: 'agent-1', name: 'Support bot', projectId: 'team-1' }]);
+		skillsStore.fetchAgents.mockResolvedValue([{ id: 'agent-1', name: 'Support bot' }]);
 		skillsStore.fetchCreators.mockResolvedValue([
 			{ id: 'user-2', email: 'ada@example.com', firstName: 'Ada', lastName: 'Lovelace' },
 		]);
@@ -361,7 +354,7 @@ describe('SettingsSkillsView', () => {
 				sortBy: 'updatedAt:desc',
 			}),
 		);
-		expect(listAgentsMock).toHaveBeenCalledWith(expect.anything(), { sortBy: 'name:asc' });
+		expect(skillsStore.fetchAgents).toHaveBeenCalledWith({});
 		expect(view.getByTestId('resources-list-filters-count')).toHaveTextContent('2');
 		vi.useRealTimers();
 	});
@@ -384,8 +377,53 @@ describe('SettingsSkillsView', () => {
 		},
 	);
 
+	it('searches agents on the server for the agent filter', async () => {
+		vi.useFakeTimers({ shouldAdvanceTime: true });
+		const view = renderView();
+		await new Promise(process.nextTick);
+		await userEvent.click(view.getByTestId('resources-list-filters-trigger'));
+		const select = await view.findByTestId('skills-filter-agent');
+
+		await userEvent.type(within(select).getByRole('combobox'), 'sup');
+		await vi.runAllTimersAsync();
+
+		expect(skillsStore.fetchAgents).toHaveBeenLastCalledWith({ search: 'sup' });
+		vi.useRealTimers();
+	});
+
+	it('keeps the name of the picked agent when a later search leaves it out', async () => {
+		const view = renderView();
+		await new Promise(process.nextTick);
+		await pickFilter(view, 'skills-filter-agent', 'Support bot');
+
+		skillsStore.fetchAgents.mockResolvedValue([{ id: 'agent-2', name: 'Sales bot' }]);
+		vi.useFakeTimers({ shouldAdvanceTime: true });
+		await userEvent.type(
+			within(view.getByTestId('skills-filter-agent')).getByRole('combobox'),
+			'sal',
+		);
+		await vi.runAllTimersAsync();
+		vi.useRealTimers();
+
+		// The dropdown is still open from the search, so read its options directly.
+		const trigger = view
+			.getByTestId('skills-filter-agent')
+			.querySelector('.select-trigger[aria-describedby]');
+		const dropdown = document.getElementById(trigger?.getAttribute('aria-describedby') ?? '');
+		await waitFor(() =>
+			expect(
+				[...(dropdown?.querySelectorAll('.el-select-dropdown__item') ?? [])].map((item) =>
+					item.textContent?.trim(),
+				),
+			).toEqual(['Support bot', 'Sales bot']),
+		);
+		expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith(
+			expect.objectContaining({ agentId: 'agent-1' }),
+		);
+	});
+
 	it('still loads the list when the filter options fail to load', async () => {
-		listAgentsMock.mockRejectedValue(new Error('offline'));
+		skillsStore.fetchAgents.mockRejectedValue(new Error('offline'));
 		skillsStore.fetchCreators.mockRejectedValue(new Error('offline'));
 
 		renderView();
@@ -515,6 +553,22 @@ describe('SettingsSkillsView', () => {
 			});
 			// The new row is the feedback, as on the preferences page.
 			expect(showMessageMock).not.toHaveBeenCalled();
+		});
+
+		it('reloads the creator filter after a create, so a first-time creator is listed', async () => {
+			skillsStore.createSkill.mockResolvedValue(detail({ id: 's-new' }));
+			const { getByTestId } = renderView();
+			await new Promise(process.nextTick);
+			expect(skillsStore.fetchCreators).toHaveBeenCalledTimes(1);
+			await userEvent.click(getByTestId('skills-create-button'));
+
+			lastModalData().onConfirm({
+				skill: { name: 'brand-voice', description: 'Write copy.', instructions: 'Be brief.' },
+				scope: 'project:personal-1',
+			});
+			await new Promise(process.nextTick);
+
+			expect(skillsStore.fetchCreators).toHaveBeenCalledTimes(2);
 		});
 
 		it('keeps the modal open with the error on the name when the name is taken', async () => {

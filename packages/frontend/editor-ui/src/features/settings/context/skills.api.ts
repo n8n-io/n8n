@@ -1,6 +1,7 @@
 import type {
 	CreateSkillDto,
 	SaveSkillDto,
+	SkillAgentOption,
 	SkillDetail,
 	SkillListResponse,
 	SkillNewNameResponse,
@@ -35,6 +36,16 @@ export async function getSkills(
 /** The users who created a skill that the current user can see. */
 export async function getSkillCreators(context: IRestApiContext): Promise<SkillUserDto[]> {
 	return await makeRestApiRequest<SkillUserDto[]>(context, 'GET', `${ENDPOINT}/creators`);
+}
+
+/** The agents the current user can read, searched by name, for the agent filter. */
+export async function getSkillAgents(
+	context: IRestApiContext,
+	query: { search?: string; take?: number } = {},
+): Promise<SkillAgentOption[]> {
+	return await makeRestApiRequest<SkillAgentOption[]>(context, 'GET', `${ENDPOINT}/agents`, {
+		...query,
+	});
 }
 
 /** A name that no skill in the scope has yet: the requested name, or the name with a number. */
