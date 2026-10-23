@@ -266,19 +266,22 @@ export async function execute(
 	sheet: GoogleSheet,
 	sheetName: string,
 	sheetId: string,
+	selectedItemIndexes?: number[],
 ): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
+	const itemIndexes = selectedItemIndexes ?? items.map((_, index) => index);
+	const firstItemIndex = itemIndexes[0] ?? 0;
 	const nodeVersion = this.getNode().typeVersion;
 
 	const range = `${sheetName}!A:Z`;
 
 	const valueInputMode = this.getNodeParameter(
 		'options.cellFormat',
-		0,
+		firstItemIndex,
 		cellFormatDefault(nodeVersion),
 	) as ValueInputOption;
 
-	const options = this.getNodeParameter('options', 0, {});
+	const options = this.getNodeParameter('options', firstItemIndex, {});
 
 	const valueRenderMode = (options.valueRenderMode || 'UNFORMATTED_VALUE') as ValueRenderOption;
 
@@ -298,8 +301,8 @@ export async function execute(
 
 	let dataMode =
 		nodeVersion < 4
-			? (this.getNodeParameter('dataMode', 0) as string)
-			: (this.getNodeParameter('columns.mappingMode', 0) as string);
+			? (this.getNodeParameter('dataMode', firstItemIndex) as string)
+			: (this.getNodeParameter('columns.mappingMode', firstItemIndex) as string);
 
 	let columnNames: string[] = [];
 
@@ -319,7 +322,7 @@ export async function execute(
 	columnNames = sheetData[keyRowIndex] ?? [];
 
 	if (nodeVersion >= 4.4) {
-		const schema = this.getNodeParameter('columns.schema', 0) as ResourceMapperField[];
+		const schema = this.getNodeParameter('columns.schema', firstItemIndex) as ResourceMapperField[];
 		checkForSchemaChanges(this.getNode(), columnNames, schema);
 	}
 
@@ -327,12 +330,12 @@ export async function execute(
 
 	let columnsToMatchOn: string[];
 	if (nodeVersion < 4) {
-		columnsToMatchOn = [this.getNodeParameter('columnToMatchOn', 0) as string];
+		columnsToMatchOn = [this.getNodeParameter('columnToMatchOn', firstItemIndex) as string];
 	} else {
 		// Use a fallback so the missing upsert key gets an operation-specific error.
 		const matchingColumns = this.getNodeParameter(
 			'columns.matchingColumns',
-			0,
+			firstItemIndex,
 			[] as string[],
 		) as string[];
 		if (!Array.isArray(matchingColumns) || matchingColumns.length === 0) {
@@ -378,7 +381,7 @@ export async function execute(
 	};
 
 	const mappedValues: IDataObject[] = [];
-	for (let i = 0; i < items.length; i++) {
+	for (const i of itemIndexes) {
 		if (dataMode === 'nothing') continue;
 
 		const inputData: IDataObject[] = [];
@@ -518,7 +521,8 @@ export async function execute(
 	}
 
 	if (nodeVersion < 4 || dataMode === 'autoMapInputData') {
-		return items.map((item, index) => {
+		return itemIndexes.map((index) => {
+			const item = items[index];
 			item.pairedItem = { item: index };
 			return item;
 		});
@@ -527,7 +531,7 @@ export async function execute(
 		for (const [index, entry] of mappedValues.entries()) {
 			returnData.push({
 				json: entry,
-				pairedItem: { item: index },
+				pairedItem: { item: itemIndexes[index] },
 			});
 		}
 		return returnData;

@@ -208,10 +208,15 @@ export async function getExistingSheetNames(sheet: GoogleSheet) {
 	return ((sheets as IDataObject[]) || []).map((entry) => (entry.properties as IDataObject)?.title);
 }
 
-export function mapFields(this: IExecuteFunctions, inputSize: number) {
+export function mapFields(
+	this: IExecuteFunctions,
+	inputSize: number,
+	selectedItemIndexes?: number[],
+) {
 	const returnData: IDataObject[] = [];
+	const itemIndexes = selectedItemIndexes ?? Array.from({ length: inputSize }, (_, index) => index);
 
-	for (let i = 0; i < inputSize; i++) {
+	for (const i of itemIndexes) {
 		const nodeVersion = this.getNode().typeVersion;
 		if (nodeVersion < 4) {
 			const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as IDataObject[];
@@ -242,6 +247,7 @@ export async function autoMapInputData(
 	items: INodeExecutionData[],
 	options: IDataObject,
 	prefetchedColumnNames?: string[],
+	originalItemIndexes?: number[],
 ) {
 	const returnData: IDataObject[] = [];
 	const [sheetName, _sheetRange] = sheetNameWithRange.split('!');
@@ -311,7 +317,7 @@ export async function autoMapInputData(
 			Object.keys(item.json).forEach((key) => {
 				if (!columnNames.includes(key)) {
 					throw new NodeOperationError(this.getNode(), 'Unexpected fields in node input', {
-						itemIndex,
+						itemIndex: originalItemIndexes?.[itemIndex] ?? itemIndex,
 						description: `The input field '${key}' doesn't match any column in the Sheet. You can ignore this by changing the 'Handling extra data' field, which you can find under 'Options'.`,
 					});
 				}

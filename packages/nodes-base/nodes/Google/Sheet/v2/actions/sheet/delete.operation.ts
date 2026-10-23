@@ -1,6 +1,6 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
-import { generatePairedItemData, wrapData } from '../../../../../../utils/utilities';
+import { wrapData } from '../../../../../../utils/utilities';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
 import type { SheetProperties } from '../../helpers/GoogleSheets.types';
 import { getColumnNumber, untilSheetSelected } from '../../helpers/GoogleSheets.utils';
@@ -115,10 +115,13 @@ export async function execute(
 	this: IExecuteFunctions,
 	sheet: GoogleSheet,
 	sheetName: string,
+	_sheetId = '',
+	selectedItemIndexes?: number[],
 ): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
+	const itemIndexes = selectedItemIndexes ?? items.map((_, index) => index);
 
-	for (let i = 0; i < items.length; i++) {
+	for (const i of itemIndexes) {
 		const requests: IDataObject[] = [];
 		let startIndex, endIndex, numberToDelete;
 		const deleteType = this.getNodeParameter('toDelete', i) as string;
@@ -166,7 +169,7 @@ export async function execute(
 		await sheet.spreadsheetBatchUpdate(requests);
 	}
 
-	const itemData = generatePairedItemData(this.getInputData().length);
+	const itemData = itemIndexes.map((item) => ({ item }));
 	const returnData = this.helpers.constructExecutionMetaData(wrapData({ success: true }), {
 		itemData,
 	});

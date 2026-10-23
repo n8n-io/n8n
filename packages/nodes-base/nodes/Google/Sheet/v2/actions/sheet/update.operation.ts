@@ -254,19 +254,23 @@ export async function execute(
 	this: IExecuteFunctions,
 	sheet: GoogleSheet,
 	sheetName: string,
+	_sheetId = '',
+	selectedItemIndexes?: number[],
 ): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
+	const itemIndexes = selectedItemIndexes ?? items.map((_, index) => index);
+	const firstItemIndex = itemIndexes[0] ?? 0;
 	const nodeVersion = this.getNode().typeVersion;
 
 	const range = `${sheetName}!A:Z`;
 
 	const valueInputMode = this.getNodeParameter(
 		'options.cellFormat',
-		0,
+		firstItemIndex,
 		cellFormatDefault(nodeVersion),
 	) as ValueInputOption;
 
-	const options = this.getNodeParameter('options', 0, {});
+	const options = this.getNodeParameter('options', firstItemIndex, {});
 
 	const valueRenderMode = (options.valueRenderMode || 'UNFORMATTED_VALUE') as ValueRenderOption;
 
@@ -300,12 +304,12 @@ export async function execute(
 	const newColumns = new Set<string>();
 
 	const columnsToMatchOn: string[] =
-		nodeVersion < 4 ? [this.getNodeParameter('columnToMatchOn', 0) as string] : [];
+		nodeVersion < 4 ? [this.getNodeParameter('columnToMatchOn', firstItemIndex) as string] : [];
 	if (nodeVersion >= 4) {
 		// Use a fallback so the missing update key gets an operation-specific error.
 		const matchingColumns = this.getNodeParameter(
 			'columns.matchingColumns',
-			0,
+			firstItemIndex,
 			[] as string[],
 		) as string[];
 		if (!Array.isArray(matchingColumns) || matchingColumns.length === 0) {
@@ -323,8 +327,8 @@ export async function execute(
 
 	const dataMode =
 		nodeVersion < 4
-			? (this.getNodeParameter('dataMode', 0) as string)
-			: (this.getNodeParameter('columns.mappingMode', 0) as string);
+			? (this.getNodeParameter('dataMode', firstItemIndex) as string)
+			: (this.getNodeParameter('columns.mappingMode', firstItemIndex) as string);
 
 	// TODO: Add support for multiple columns to match on in the next overhaul
 	const keyIndex = columnNames.indexOf(columnsToMatchOn[0]);
@@ -357,7 +361,7 @@ export async function execute(
 		}
 	};
 
-	for (let i = 0; i < items.length; i++) {
+	for (const i of itemIndexes) {
 		if (dataMode === 'nothing') continue;
 
 		const inputData: IDataObject[] = [];
@@ -493,7 +497,8 @@ export async function execute(
 	}
 
 	if (nodeVersion < 4 || dataMode === 'autoMapInputData') {
-		return items.map((item, index) => {
+		return itemIndexes.map((index) => {
+			const item = items[index];
 			item.pairedItem = { item: index };
 			return item;
 		});
@@ -506,7 +511,7 @@ export async function execute(
 		for (const [index, entry] of mappedValues.entries()) {
 			returnData.push({
 				json: entry,
-				pairedItem: { item: index },
+				pairedItem: { item: itemIndexes[index] },
 			});
 		}
 		return returnData;
