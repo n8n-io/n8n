@@ -560,6 +560,14 @@ describe('AgentModelCatalogService', () => {
 			});
 		});
 
+		it('does not send the n8n Connect managed tag to the Foundry lookup', async () => {
+			const { service, lookupService } = makeService();
+
+			await service.getProviderModels(user, 'project-1', 'azure-openai', AI_GATEWAY_MANAGED_TAG);
+
+			expect(lookupService.lookupAzureFoundryDeployments).not.toHaveBeenCalled();
+		});
+
 		it('does not use the catalog when the credential cannot be read', async () => {
 			const { service, lookupService } = makeService();
 			lookupService.lookupAzureFoundryDeployments.mockRejectedValue(new Error('not accessible'));

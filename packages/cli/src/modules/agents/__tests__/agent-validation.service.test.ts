@@ -449,6 +449,7 @@ describe('AgentValidationService — structured issues', () => {
 			'runtime',
 		);
 
+		expect(publish.status).toBe('invalid');
 		expect(publish.issues).toContainEqual({
 			code: 'incompatible_credential',
 			path: 'credential',

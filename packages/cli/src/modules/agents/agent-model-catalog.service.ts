@@ -66,7 +66,8 @@ export class AgentModelCatalogService {
 	): Promise<AgentProviderModelsResponse> {
 		if (!credentialId) return await this.unverifiedCatalog(provider);
 
-		if (provider === 'azure-openai') {
+		// The n8n Connect managed tag has no stored credential to list deployments from.
+		if (provider === 'azure-openai' && credentialId !== AI_GATEWAY_MANAGED_TAG) {
 			return await this.modelsFromLiveLookup(
 				provider,
 				credentialId,
