@@ -469,7 +469,8 @@ test-workflows-nightly.yml  (manual dispatch only — nightly schedule disabled,
 │                                                                            │
 │  Inputs:                                                                   │
 │  ├─ release-type: patch │ minor │ major │ experimental │ premajor          │
-│  └─ base-branch: default master                                            │
+│  ├─ base-branch: default master                                            │
+│  └─ prerelease: skip release channel and branch maintenance                │
 │                          │                                                 │
 │                          ▼                                                 │
 │  STAGE 2: CI Validation                                                    │
@@ -506,6 +507,37 @@ test-workflows-nightly.yml  (manual dispatch only — nightly schedule disabled,
 │                                                                            │
 └────────────────────────────────────────────────────────────────────────────┘
 ```
+
+### Standalone prereleases
+
+Set `prerelease: true` on `release-create-pr.yml` to publish a bare SemVer as a
+prerelease without moving the stable or beta release channels. This mode:
+
+- publishes public packages under the npm `rc` dist-tag;
+- publishes versioned Docker images without moving channel tags;
+- marks the GitHub release as a prerelease and populates cloud with the same
+  non-experimental payload as a normal minor or patch release;
+- skips pointer tag updates, backport label updates, release notifications, and
+  release-candidate branch maintenance; and
+- fast-forwards `3.x` to the release tag so the next minor version increments
+  from the released version.
+
+Standalone prereleases require `base-branch: 3.x`, a bare v3 version, and a
+`major`, `minor`, or `patch` release type. The release tag update shares a
+concurrency group with the master-to-`3.x` sync. The publish workflow verifies
+that the release descends from the current `3.x` branch before it publishes any
+artifacts. The final branch update fails unless `3.x` can move with a
+fast-forward. Do not merge or push other changes to `3.x` from release PR
+creation until the release tag returns to `3.x`.
+
+For the first v3 prerelease, use `base-branch: 3.x`, `release-type: major`, and
+`prerelease: true`. For later weekly prereleases, use `base-branch: 3.x`,
+`release-type: minor`, and `prerelease: true`.
+
+A major release marks every public package as dirty and increments every package
+by one major version. This gives parallel release lines separate npm version
+namespaces. Minor and patch releases continue to bump only changed packages and
+their dependents.
 
 ### Recovering a failed release
 

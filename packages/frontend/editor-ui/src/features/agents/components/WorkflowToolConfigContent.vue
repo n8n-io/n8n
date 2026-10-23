@@ -21,6 +21,7 @@ import { useAgentToolCatalog } from '../composables/useAgentToolCatalog';
 import type { WorkflowToolRef } from '../types';
 import { listWorkflowToolInputFields } from '../utils/workflowToolInputFields';
 import WorkflowToolInputs from './WorkflowToolInputs.vue';
+import AgentFormSettingRow from './AgentFormSettingRow.vue';
 import { workflowToolTriggerLabel } from '../utils/workflowToolTriggers';
 
 const props = defineProps<{
@@ -454,21 +455,19 @@ defineExpose({
 				<N8nIcon :icon="advancedExpanded ? 'chevron-up' : 'chevron-down'" size="small" />
 			</button>
 			<div id="workflow-tool-advanced" v-show="advancedExpanded" :class="$style.advancedContent">
-				<div :class="$style.toggleRow">
-					<div :class="$style.toggleText">
-						<N8nText size="small" :bold="true">
-							{{ i18n.baseText('agents.toolConfig.workflow.allOutputs') }}
-						</N8nText>
-						<N8nText size="small" color="text-light">
-							{{ i18n.baseText('agents.toolConfig.workflow.allOutputs.hint') }}
-						</N8nText>
-					</div>
+				<AgentFormSettingRow
+					control-id="agent-workflow-tool-all-outputs"
+					:title="i18n.baseText('agents.toolConfig.workflow.allOutputs')"
+					:description="i18n.baseText('agents.toolConfig.workflow.allOutputs.hint')"
+				>
 					<N8nSwitch2
+						id="agent-workflow-tool-all-outputs"
 						:model-value="allOutputs"
+						:aria-label="i18n.baseText('agents.toolConfig.workflow.allOutputs')"
 						data-test-id="agent-workflow-tool-all-outputs"
 						@update:model-value="allOutputs = $event"
 					/>
-				</div>
+				</AgentFormSettingRow>
 
 				<N8nText size="small" bold>{{
 					i18n.baseText('agents.toolConfig.workflow.inputs')
@@ -530,21 +529,6 @@ defineExpose({
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--medium);
 	color: var(--color--text);
-}
-
-.toggleRow {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--sm);
-	padding-top: var(--spacing--2xs);
-}
-
-.toggleText {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-	min-width: 0;
 }
 
 .controlRow {

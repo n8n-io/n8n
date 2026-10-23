@@ -72,7 +72,12 @@ type DropdownStubWrapper = VueWrapper<{
 }>;
 
 type BreadcrumbsStubWrapper = VueWrapper<{
-	items: Array<{ id: string; label: string; href?: string }>;
+	items: Array<{
+		id: string;
+		label: string;
+		href?: string;
+		icon?: { type: 'icon' | 'emoji'; value: string };
+	}>;
 	$emit: (event: 'itemSelected', value: { id: string }) => void;
 }>;
 
@@ -121,12 +126,11 @@ describe('AgentSessionTimelineHeader', () => {
 		expect(wrapper.text()).toContain('1.2s');
 	});
 
-	it('shows the project icon before the breadcrumb', () => {
+	it('passes the project icon to the first breadcrumb', () => {
 		const wrapper = mountHeader();
-		const icon = wrapper.getComponent({ name: 'ProjectIcon' });
+		const breadcrumbs = wrapper.findComponent({ name: 'N8nBreadcrumbs' }) as BreadcrumbsStubWrapper;
 
-		expect(icon.props('icon')).toEqual({ type: 'icon', value: 'user' });
-		expect(icon.props('size')).toBe('mini');
+		expect(breadcrumbs.vm.items[0].icon).toEqual({ type: 'icon', value: 'user' });
 	});
 
 	it('hides metrics and close button while metrics are unavailable', () => {

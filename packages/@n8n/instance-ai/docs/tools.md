@@ -104,9 +104,16 @@ The plan is shown to the user for approval before execution starts.
 **Returns**: `{ result: string, taskCount: number }`
 
 **Behavior**:
+- First call rejects the plan without asking for approval when a
+  `build-workflow` task cannot save: an admin set `createWorkflow` (new
+  workflow) or `updateWorkflow` (task with `workflowId`) to `blocked`. The
+  result tells the LLM to inform the user
 - First call persists the plan, publishes `tasks-update` event, and **suspends**
   for user approval
-- On approval: calls `schedulePlannedTasks()` to start detached execution
+- On approval: calls `schedulePlannedTasks()` to start detached execution.
+  Build and checkpoint follow-up runs lift `require_approval` to
+  `always_allow` for their task family; admin `blocked` settings stay in
+  force
 - On rejection: returns feedback for the LLM to revise the plan
 - On denial: cancels the graph and blocks same-turn resubmission
 

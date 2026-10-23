@@ -431,6 +431,99 @@ describe('ExecutionRecorder', () => {
 		});
 	});
 
+	describe('prompt-cache tokens', () => {
+		it('stores the prompt-cache tokens of the finish usage as subsets of the prompt tokens', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.record({
+				type: 'finish',
+				finishReason: 'stop',
+				usage: {
+					promptTokens: 1000,
+					completionTokens: 40,
+					totalTokens: 1040,
+					cost: 0.1,
+					inputTokenDetails: { noCache: 100, cacheRead: 800, cacheWrite: 100 },
+				},
+			});
+
+			const record = recorder.getMessageRecord();
+			expect(record.usage).toEqual({
+				promptTokens: 1000,
+				completionTokens: 40,
+				totalTokens: 1040,
+			});
+			expect(record.cacheReadTokens).toBe(800);
+			expect(record.cacheWriteTokens).toBe(100);
+		});
+
+		it('keeps zero cache reads apart from a missing value', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.record({
+				type: 'finish',
+				finishReason: 'stop',
+				usage: {
+					promptTokens: 10,
+					completionTokens: 1,
+					totalTokens: 11,
+					inputTokenDetails: { cacheRead: 0 },
+				},
+			});
+
+			const record = recorder.getMessageRecord();
+			expect(record.cacheReadTokens).toBe(0);
+			expect(record.cacheWriteTokens).toBeNull();
+		});
+
+		it('has no cache tokens when the turn reports none', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.record({
+				type: 'finish',
+				finishReason: 'stop',
+				usage: { promptTokens: 10, completionTokens: 1, totalTokens: 11 },
+			});
+
+			const record = recorder.getMessageRecord();
+			expect(record.cacheReadTokens).toBeNull();
+			expect(record.cacheWriteTokens).toBeNull();
+		});
+
+		it('does not add sub-agent usage to the turn', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.record({
+				type: 'subagent-completed',
+				taskName: 'builder',
+				taskPath: 'builder',
+				parentToolCallId: 'tc1',
+				status: 'completed',
+				startedAt: 0,
+				finishedAt: 1,
+				durationMs: 1,
+				usage: { promptTokens: 300, completionTokens: 30, totalTokens: 330, cost: 0.03 },
+			});
+			recorder.record({
+				type: 'finish',
+				finishReason: 'stop',
+				usage: {
+					promptTokens: 1000,
+					completionTokens: 40,
+					totalTokens: 1040,
+					cost: 0.1,
+					inputTokenDetails: { cacheRead: 900 },
+				},
+			});
+
+			// The child records its own execution, linked to this one.
+			const record = recorder.getMessageRecord();
+			expect(record.usage).toEqual({ promptTokens: 1000, completionTokens: 40, totalTokens: 1040 });
+			expect(record.totalCost).toBe(0.1);
+			expect(record.cacheReadTokens).toBe(900);
+		});
+	});
+
 	describe('secret scrubbing', () => {
 		it('sanitizes tool inputs and outputs in timeline entries', () => {
 			const recorder = new ExecutionRecorder();
@@ -481,6 +574,88 @@ describe('ExecutionRecorder', () => {
 			const timelineEntry = record.timeline.find((e) => e.type === 'tool-call');
 
 			expect(timelineEntry).toMatchObject({ output: { error: '[REDACTED]' } });
+		});
+	});
+
+	describe('host events', () => {
+		it('records a host event between the text segments around it', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.record({ type: 'text-delta', id: 't1', delta: 'before' });
+			recorder.recordHostEvent('test.notice', { level: 'info' });
+			recorder.record({ type: 'text-delta', id: 't2', delta: 'after' });
+
+			const { timeline } = recorder.getMessageRecord();
+			expect(timeline.map((event) => event.type)).toEqual(['text', 'host-event', 'text']);
+			expect(timeline[1]).toMatchObject({
+				type: 'host-event',
+				name: 'test.notice',
+				payload: { level: 'info' },
+			});
+		});
+
+		it('sanitizes the payload and returns the recorded event', () => {
+			const recorder = new ExecutionRecorder();
+
+			const recorded = recorder.recordHostEvent('test.notice', {
+				apiKey: 'secret-api-key',
+				message: 'ok',
+			});
+
+			expect(recorded.payload).toEqual({ apiKey: '[REDACTED]', message: 'ok' });
+			expect(recorder.getMessageRecord().timeline).toEqual([recorded]);
+		});
+
+		it('replaces a keyed event in its position and keeps its timestamp', () => {
+			const recorder = new ExecutionRecorder();
+
+			const first = recorder.recordHostEvent('test.progress', { done: 0 }, 'build');
+			recorder.record({ type: 'text-delta', id: 't1', delta: 'working' });
+			const replaced = recorder.recordHostEvent('test.progress', { done: 1 }, 'build');
+			recorder.record({ type: 'text-delta', id: 't1', delta: ' more' });
+
+			const { timeline } = recorder.getMessageRecord();
+			expect(timeline).toEqual([
+				{
+					type: 'host-event',
+					name: 'test.progress',
+					key: 'build',
+					payload: { done: 1 },
+					timestamp: first.timestamp,
+				},
+				expect.objectContaining({ type: 'text', content: 'working more' }),
+			]);
+			expect(replaced).toEqual(timeline[0]);
+		});
+
+		it('keeps streaming text in the snapshot of a keyed replacement', () => {
+			const onTimelineSnapshot = vi.fn();
+			const recorder = new ExecutionRecorder(undefined, onTimelineSnapshot);
+
+			recorder.recordHostEvent('test.progress', { done: 0 }, 'build');
+			recorder.record({ type: 'text-delta', id: 't1', delta: 'working' });
+			recorder.recordHostEvent('test.progress', { done: 1 }, 'build');
+
+			expect(onTimelineSnapshot).toHaveBeenLastCalledWith([
+				expect.objectContaining({ type: 'host-event', payload: { done: 1 } }),
+				expect.objectContaining({ type: 'text', content: 'working' }),
+			]);
+		});
+
+		it('appends events without a key, or with another name or key', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.recordHostEvent('test.progress', { done: 0 });
+			recorder.recordHostEvent('test.progress', { done: 1 });
+			recorder.recordHostEvent('test.progress', { done: 2 }, 'a');
+			recorder.recordHostEvent('test.progress', { done: 3 }, 'b');
+			recorder.recordHostEvent('test.other', { done: 4 }, 'a');
+
+			expect(
+				recorder
+					.getMessageRecord()
+					.timeline.map((event) => (event.type === 'host-event' ? event.payload : event.type)),
+			).toEqual([{ done: 0 }, { done: 1 }, { done: 2 }, { done: 3 }, { done: 4 }]);
 		});
 	});
 });

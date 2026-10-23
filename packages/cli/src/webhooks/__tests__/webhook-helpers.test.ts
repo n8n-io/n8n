@@ -2328,7 +2328,7 @@ describe('executeWebhook additional data', () => {
 		const context: SecurityContext = {
 			subject: {
 				id: 'user-1',
-				type: 'human',
+				type: 'person',
 				email: 'alice@example.com',
 				firstName: 'Alice',
 				lastName: 'Example',
