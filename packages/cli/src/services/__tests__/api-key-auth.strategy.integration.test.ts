@@ -206,21 +206,21 @@ describe('ApiKeyAuthStrategy', () => {
 	});
 
 	describe('authenticate (wrapper)', () => {
-		it('returns null when no x-n8n-api-key header is present', async () => {
-			expect(await strategy.authenticate(mockReqWithoutApiKey())).toBeNull();
+		it('abstains when no x-n8n-api-key header is present', async () => {
+			expect(await strategy.authenticate(mockReqWithoutApiKey())).toEqual({ outcome: 'abstained' });
 		});
 
-		it('returns true and populates req.user + req.tokenGrant on success', async () => {
+		it('authenticates and populates req.user + req.tokenGrant on success', async () => {
 			const owner = await createOwnerWithApiKey();
 			const [{ apiKey }] = owner.apiKeys;
 			const req = mockReqWith(apiKey);
 
-			expect(await strategy.authenticate(req)).toBe(true);
+			expect(await strategy.authenticate(req)).toEqual({ outcome: 'authenticated' });
 			expect(req.user.id).toBe(owner.id);
 			expect(req.tokenGrant?.subject.id).toBe(owner.id);
 		});
 
-		it('abstains (returns null) when N8N_PUBLIC_API_DISABLED is set, even with a valid API key', async () => {
+		it('abstains when N8N_PUBLIC_API_DISABLED is set, even with a valid API key', async () => {
 			const globalConfig = Container.get(GlobalConfig);
 			globalConfig.publicApi.disabled = true;
 
@@ -229,7 +229,7 @@ describe('ApiKeyAuthStrategy', () => {
 				const [{ apiKey }] = owner.apiKeys;
 				const req = mockReqWith(apiKey);
 
-				expect(await strategy.authenticate(req)).toBeNull();
+				expect(await strategy.authenticate(req)).toEqual({ outcome: 'abstained' });
 			} finally {
 				globalConfig.publicApi.disabled = false;
 			}

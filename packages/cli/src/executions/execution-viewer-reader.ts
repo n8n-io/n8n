@@ -1,7 +1,6 @@
 import { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
 import type { IExecutionResponse, User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { ExecutionRedaction } from '@n8n/instance-ai';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 
@@ -12,7 +11,7 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
  *
  * This is the only place the Assistant may read execution data from. The
  * extractors take the loaded execution, so they cannot read raw data. The
- * caller checks that the viewer can read the workflow first.
+ * caller must check that the viewer has `execution:read` on the workflow first.
  */
 export async function loadExecutionForViewer(
 	executionId: string,
@@ -38,7 +37,7 @@ export async function loadExecutionForViewer(
  */
 export function getExecutionRedaction(
 	execution: IExecutionResponse,
-): ExecutionRedaction | undefined {
+): { reason: string; canReveal: boolean } | undefined {
 	const info = execution.data?.redactionInfo;
 	return info?.isRedacted ? { reason: info.reason, canReveal: info.canReveal } : undefined;
 }

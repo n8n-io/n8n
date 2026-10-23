@@ -34,6 +34,8 @@ const PUBLISH_REASON_SPECIFIC_KEYS: Record<string, BaseTextKey> = {
 	incompatible_nodes: 'agents.publish.issue.tool.workflow.incompatibleNodes' as BaseTextKey,
 	no_supported_trigger: 'agents.publish.issue.tool.workflow.noSupportedTrigger' as BaseTextKey,
 	not_published: 'agents.publish.issue.tool.workflow.notPublished' as BaseTextKey,
+	azure_classic_endpoint:
+		'agents.publish.issue.agent.credential.azureClassicEndpoint' as BaseTextKey,
 };
 
 const CORE_PATH_KEYS: Record<string, BaseTextKey> = {
@@ -55,8 +57,6 @@ const PREVIEW_PATH_SPECIFIC_KEYS: Record<string, BaseTextKey> = {
 		'agents.builder.preview.issue.agent.credential.invalidCredential' as BaseTextKey,
 	'agent.credential.incompatible_credential':
 		'agents.builder.preview.issue.agent.credential.incompatibleCredential' as BaseTextKey,
-	'agent.modelDeploymentName.missing_required':
-		'agents.builder.preview.issue.agent.modelDeploymentName.missingRequired' as BaseTextKey,
 	'mcpServer.url.missing_required':
 		'agents.builder.preview.issue.mcpServer.missingRequired' as BaseTextKey,
 };
@@ -72,8 +72,6 @@ const PUBLISH_PATH_SPECIFIC_KEYS: Record<string, BaseTextKey> = {
 		'agents.publish.issue.agent.credential.invalidCredential' as BaseTextKey,
 	'agent.credential.incompatible_credential':
 		'agents.publish.issue.agent.credential.incompatibleCredential' as BaseTextKey,
-	'agent.modelDeploymentName.missing_required':
-		'agents.publish.issue.agent.modelDeploymentName.missingRequired' as BaseTextKey,
 	'mcpServer.url.missing_required': 'agents.publish.issue.mcpServer.missingRequired' as BaseTextKey,
 	'tool.node.url.invalid_value': 'agents.publish.issue.tool.node.url.invalidValue' as BaseTextKey,
 };
