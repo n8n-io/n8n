@@ -5,6 +5,7 @@ import type {
 	BuiltTool,
 	CheckpointStore,
 	ExecutionOptions,
+	FetchFn,
 	MemoryTaskUsageReport,
 	RuntimeSkill,
 	RuntimeSkillSource,
@@ -2335,4 +2336,6 @@ export interface CreateInstanceAgentOptions {
 	/** When false, extended thinking / reasoning is not enabled. Defaults to true. */
 	thinkingEnabled?: boolean;
 	onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
+	/** Transport for the agent's model calls. Sub-agents and memory tasks inherit it. */
+	modelFetch?: FetchFn;
 }
