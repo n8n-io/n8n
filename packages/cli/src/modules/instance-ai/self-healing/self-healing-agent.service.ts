@@ -391,6 +391,7 @@ export class SelfHealingAgentService {
 			projectId: input.baseline.projectId,
 			searchProxyConfig: proxy.searchProxyConfig,
 			modelId,
+			modelFetch: this.models.getModelFetch(),
 			allowSendingParameterValues: shareParameters,
 		});
 		context.runId = options.runId;

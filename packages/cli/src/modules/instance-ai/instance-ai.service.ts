@@ -2809,6 +2809,7 @@ export class InstanceAiService {
 			credentialDescriptionsEnabled,
 			aiPreferencesEnabled,
 			modelId,
+			modelFetch: this.modelService.getModelFetch(),
 			allowSendingParameterValues,
 		});
 
@@ -3004,6 +3005,7 @@ export class InstanceAiService {
 			setupPanelEnabled: isSetupPanelEnabled(context),
 			orchestratorAgentId: orchestratorAgentId(runId),
 			modelId,
+			modelFetch: this.modelService.getModelFetch(),
 			modelStreamStallOptions: modelStreamStallOptions(this.aiConfig),
 			eventBus: this.eventBus,
 			logger: this.logger,

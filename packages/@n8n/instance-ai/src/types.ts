@@ -1597,6 +1597,8 @@ export interface InstanceAiContext {
 	 * from environment API keys that proxy-managed deployments don't have.
 	 */
 	modelId?: ModelConfig;
+	/** Transport for those utility LLM calls. It carries no run labels. */
+	modelFetch?: FetchFn;
 	workflowService: InstanceAiWorkflowService;
 	executionService: InstanceAiExecutionService;
 	credentialService: InstanceAiCredentialService;
@@ -2231,6 +2233,8 @@ export interface OrchestrationContext {
 	setupPanelEnabled?: boolean;
 	orchestratorAgentId: string;
 	modelId: ModelConfig;
+	/** Transport for utility LLM calls (see `InstanceAiContext.modelFetch`). */
+	modelFetch?: FetchFn;
 	/**
 	 * Operator overrides for the model-stream stall deadlines, forwarded to
 	 * sub-agent runs so they honor the same limits as the orchestrator.
