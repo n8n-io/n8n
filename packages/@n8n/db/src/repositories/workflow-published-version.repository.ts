@@ -1,6 +1,7 @@
 import { Service } from '@n8n/di';
 import { DataSource, In } from '@n8n/typeorm';
-import type { IWorkflowBase } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import type { INode, IWorkflowBase } from 'n8n-workflow';
 
 import { BaseRepository } from './base-repository';
 import { WorkflowPublishedVersion } from '../entities';
@@ -89,6 +90,25 @@ export class WorkflowPublishedVersionRepository extends BaseRepository<WorkflowP
 				publishedVersion: true,
 			},
 		});
+	}
+
+	/** The published nodes of each published workflow, or of `workflowIds` only when given. */
+	async findPublishedNodes(
+		workflowIds?: readonly string[],
+	): Promise<Array<{ workflowId: string; nodes: INode[] }>> {
+		if (workflowIds?.length === 0) return [];
+		const query = this.createQueryBuilder('mapping')
+			.innerJoin('mapping.publishedVersion', 'publishedVersion')
+			.select('mapping.workflowId', 'workflowId')
+			.addSelect('publishedVersion.nodes', 'nodes');
+		if (workflowIds !== undefined) {
+			query.where('mapping.workflowId IN (:...workflowIds)', { workflowIds: [...workflowIds] });
+		}
+		const rows = await query.getRawMany<{ workflowId: string; nodes: INode[] | string }>();
+		return rows.map(({ workflowId, nodes }) => ({
+			workflowId,
+			nodes: typeof nodes === 'string' ? jsonParse<INode[]>(nodes) : nodes,
+		}));
 	}
 
 	async getPublishedVersionForExecution(

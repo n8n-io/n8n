@@ -45,6 +45,8 @@ import {
 	type TriggerTeardownFailure,
 } from '@/workflows/triggers/workflow-trigger-activator';
 import { WorkflowPublishedDataService } from '@n8n/backend-services';
+import { LeasedTriggerPolicy } from '@/workflows/triggers/leased/leased-trigger-policy';
+import { WorkflowTriggerLeases } from '@/workflows/triggers/leased/workflow-trigger-leases';
 
 /** A node whose type this instance cannot load, with the loader's error. */
 type UnresolvableNode = { node: INode; error: Error };
@@ -92,6 +94,8 @@ export class WorkflowPublicationApplier {
 		private readonly ownershipService: OwnershipService,
 		private readonly workflowScheduledJobOwner: WorkflowScheduledJobOwner,
 		private readonly durableJobProvisioner: DurableJobProvisioner,
+		private readonly leasedTriggerPolicy: LeasedTriggerPolicy,
+		private readonly workflowTriggerLeases: WorkflowTriggerLeases,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
@@ -129,12 +133,39 @@ export class WorkflowPublicationApplier {
 		// A null `activeVersionId` means the workflow has been unpublished, so we
 		// reconcile its triggers down to nothing rather than to a target version.
 		if (workflow.activeVersionId === null) {
-			return await this.unpublish(workflow, oldVersion, record, abort);
+			const result = await this.unpublish(workflow, oldVersion, record, abort);
+			await this.workflowTriggerLeases.changed(record.workflowId, [oldVersion?.nodes]);
+			return result;
 		}
 
 		if (!newVersion) return { type: 'version-missing' };
 
-		return await this.publish(workflow, oldVersion, newVersion, record, abort);
+		const result = await this.publish(workflow, oldVersion, newVersion, record, abort);
+		await this.workflowTriggerLeases.changed(record.workflowId, [
+			oldVersion?.nodes,
+			newVersion.nodes,
+		]);
+		return result;
+	}
+
+	/** The enabled trigger nodes of a version that the leader activates itself. */
+	private leaderTriggerNodes(version: WorkflowTriggerVersion | null): INode[] {
+		return this.leasedTriggerPolicy.withoutLeased(
+			this.workflowTriggerActivator.getEnabledTriggerNodes(version),
+		);
+	}
+
+	/**
+	 * Where each trigger lives once activated. A leased trigger runs on whichever
+	 * main holds its lease, so it is `persisted`: the reconciler never looks for it
+	 * in the leader's in-memory registry.
+	 */
+	private triggerKinds(nodes: INode[]): Map<INode['id'], WorkflowPublicationTriggerKind> {
+		const kinds = this.workflowTriggerActivator.getTriggerKinds(nodes);
+		for (const node of nodes) {
+			if (this.leasedTriggerPolicy.isLeased(node)) kinds.set(node.id, 'persisted');
+		}
+		return kinds;
 	}
 
 	/**
@@ -168,8 +199,9 @@ export class WorkflowPublicationApplier {
 		if (blocked !== null) return blocked;
 
 		const { old, oldTriggerCandidates } = this.resolveOldTriggerCandidates(oldVersion);
-		const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion);
-		const triggerKinds = this.workflowTriggerActivator.getTriggerKinds(desiredTriggerNodes);
+		const statusTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion);
+		const desiredTriggerNodes = this.leasedTriggerPolicy.withoutLeased(statusTriggerNodes);
+		const triggerKinds = this.triggerKinds(statusTriggerNodes);
 
 		const { toAdd, toRemove } = computeTriggerDiff(oldTriggerCandidates, desiredTriggerNodes, {
 			versionChanged: oldVersion !== null && oldVersion.versionId !== newVersion.versionId,
@@ -205,7 +237,7 @@ export class WorkflowPublicationApplier {
 			await this.advancePublishedVersion(record);
 			return {
 				type: 'completed',
-				triggerStatuses: this.buildTriggerStatuses(desiredTriggerNodes, triggerKinds, {
+				triggerStatuses: this.buildTriggerStatuses(statusTriggerNodes, triggerKinds, {
 					activated: [],
 					failures: [],
 				}),
@@ -248,7 +280,7 @@ export class WorkflowPublicationApplier {
 					abort,
 				);
 				return withTeardownFailures(
-					this.classifyActivationOutcome(outcome, desiredTriggerNodes, triggerKinds),
+					this.classifyActivationOutcome(outcome, statusTriggerNodes, triggerKinds),
 				);
 			}
 
@@ -261,7 +293,7 @@ export class WorkflowPublicationApplier {
 
 		return withTeardownFailures({
 			type: 'completed',
-			triggerStatuses: this.buildTriggerStatuses(desiredTriggerNodes, triggerKinds, {
+			triggerStatuses: this.buildTriggerStatuses(statusTriggerNodes, triggerKinds, {
 				activated: [],
 				failures: [],
 			}),
@@ -305,8 +337,8 @@ export class WorkflowPublicationApplier {
 	} {
 		const old = oldVersion === null ? null : this.partitionByResolvability(oldVersion);
 		const oldTriggerCandidates = [
-			...this.workflowTriggerActivator.getEnabledTriggerNodes(old?.runnable ?? null),
-			...(old?.unresolvable ?? []).map(({ node }) => node),
+			...this.leaderTriggerNodes(old?.runnable ?? null),
+			...this.leasedTriggerPolicy.withoutLeased((old?.unresolvable ?? []).map(({ node }) => node)),
 		];
 		return { old, oldTriggerCandidates };
 	}
@@ -365,7 +397,7 @@ export class WorkflowPublicationApplier {
 			)}`,
 		);
 		const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(runnable);
-		const triggerKinds = this.workflowTriggerActivator.getTriggerKinds(desiredTriggerNodes);
+		const triggerKinds = this.triggerKinds(desiredTriggerNodes);
 		const triggerStatuses: TriggerPublicationStatus[] = [
 			...this.buildTriggerStatuses(desiredTriggerNodes, triggerKinds, {
 				activated: [],
@@ -468,7 +500,7 @@ export class WorkflowPublicationApplier {
 			// Report every trigger as failed: `activated` rows left behind read as drift
 			// to the reconciler, which would then re-enqueue this forever.
 			const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion);
-			const triggerKinds = this.workflowTriggerActivator.getTriggerKinds(desiredTriggerNodes);
+			const triggerKinds = this.triggerKinds(desiredTriggerNodes);
 
 			return {
 				type: 'failed',

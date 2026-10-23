@@ -87,6 +87,43 @@ describe('NonWebhookTriggerRegistrar', () => {
 		);
 	});
 
+	test('hands the trigger functions the run override of the registration', async () => {
+		const factory = mock<TriggerExecutionContextFactory>();
+		const registrar = new NonWebhookTriggerRegistrar(
+			logger,
+			mock<ActiveWorkflowTriggers>(),
+			factory,
+			scheduleTriggerJobRegistrar,
+			pollTriggerJobRegistrar,
+			tracing,
+		);
+		const runWorkflow = vi.fn();
+		const onTriggerFailure = vi.fn();
+		const resolveWorkflowData = async () => mock<IWorkflowBase>();
+		const additionalData = mock<IWorkflowExecuteAdditionalData>();
+		const dbWorkflow = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow' });
+
+		registrar.createRegistrationContext(dbWorkflow, {
+			activationMode: 'activate',
+			executionMode: 'trigger',
+			additionalData,
+			resolveWorkflowData,
+			onTriggerFailure,
+			runWorkflow,
+		});
+
+		expect(factory.getExecuteTriggerFunctions).toHaveBeenCalledWith(
+			dbWorkflow,
+			additionalData,
+			'trigger',
+			'activate',
+			resolveWorkflowData,
+			onTriggerFailure,
+			scheduleCollectionSession,
+			runWorkflow,
+		);
+	});
+
 	test('deregisters one trigger or poll node id', async () => {
 		const activeWorkflowTriggers = mock<ActiveWorkflowTriggers>();
 		activeWorkflowTriggers.removeTriggers.mockResolvedValue();

@@ -37,6 +37,7 @@ import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
 import { ClusterLeases } from '@/scheduling/leases/cluster-leases';
+import { WorkflowTriggerLeases } from '@/workflows/triggers/leased/workflow-trigger-leases';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
 import { mainSystemTasks } from '@/scheduling/system-tasks/main-system-tasks';
 import { Server } from '@/server';
@@ -439,6 +440,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		// before the scheduler can claim one.
 		await this.initSystemTasks(await mainSystemTasks(this.globalConfig));
 		Container.get(DurableScheduler).start();
+		Container.get(WorkflowTriggerLeases).init();
 		await Container.get(ClusterLeases).start();
 
 		if (this.globalConfig.executions.mode === 'regular') {

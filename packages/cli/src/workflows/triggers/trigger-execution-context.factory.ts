@@ -68,6 +68,18 @@ export type TriggerFailureHandler = (opts: {
 	activation: WorkflowActivateMode;
 }) => void;
 
+/** Starts the run of one trigger emit, or resolves to `undefined` when it starts none. */
+export type TriggerWorkflowRunner = (
+	workflowData: IWorkflowBase,
+	node: INode,
+	data: INodeExecutionData[][],
+	additionalData: IWorkflowExecuteAdditionalData,
+	mode: WorkflowExecuteMode,
+	responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+	deduplicationKey?: string,
+	callerAwaitsOutcome?: IWorkflowExecutionDataProcess['callerAwaitsOutcome'],
+) => Promise<string | undefined>;
+
 /** A poll run by a claimed occurrence: the fence of its writes, and the timeout of the occurrence. */
 export interface LeasedPoll {
 	fence: PollLeaseFence;
@@ -205,7 +217,10 @@ export class TriggerExecutionContextFactory {
 		// so the commit/discard that follows registration consumes the rules this
 		// attempt collected, never a concurrent attempt's.
 		scheduleCollectionSession: ScheduleTriggerCollectionSession,
+		runWorkflow?: TriggerWorkflowRunner,
 	): IGetExecuteTriggerFunctions {
+		const startRun: TriggerWorkflowRunner =
+			runWorkflow ?? (async (...args) => await this.workflowExecutionService.runWorkflow(...args));
 		return (workflow: Workflow, node: INode) => {
 			const emit = (
 				data: INodeExecutionData[][],
@@ -227,7 +242,7 @@ export class TriggerExecutionContextFactory {
 							this.assertEngineV2Supported(data, { responsePromise, donePromise });
 						}
 
-						return await this.workflowExecutionService.runWorkflow(
+						return await startRun(
 							freshWorkflowData,
 							node,
 							data,

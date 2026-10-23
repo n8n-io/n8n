@@ -22,7 +22,10 @@ import type {
 import type { ScheduleTriggerCollectionSession } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-trigger-job-registrar';
 import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
-import type { TriggerFailureHandler } from '@/workflows/triggers/trigger-execution-context.factory';
+import type {
+	TriggerFailureHandler,
+	TriggerWorkflowRunner,
+} from '@/workflows/triggers/trigger-execution-context.factory';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 
 export interface NonWebhookTriggerRegistrationContext {
@@ -31,6 +34,8 @@ export interface NonWebhookTriggerRegistrationContext {
 	additionalData: IWorkflowExecuteAdditionalData;
 	resolveWorkflowData: () => Promise<IWorkflowBase>;
 	onTriggerFailure: TriggerFailureHandler;
+	/** Starts the runs of trigger emits in place of the default execution path. */
+	runWorkflow?: TriggerWorkflowRunner;
 }
 
 export interface PreparedNonWebhookTriggerRegistration {
@@ -85,6 +90,7 @@ export class NonWebhookTriggerRegistrar {
 			additionalData,
 			resolveWorkflowData,
 			onTriggerFailure,
+			runWorkflow,
 		}: NonWebhookTriggerRegistrationContext,
 	) {
 		const scheduleCollectionSession = this.scheduleTriggerJobRegistrar.createSession();
@@ -97,6 +103,7 @@ export class NonWebhookTriggerRegistrar {
 			resolveWorkflowData,
 			onTriggerFailure,
 			scheduleCollectionSession,
+			runWorkflow,
 		);
 
 		const getPollFunctions = this.triggerExecutionContextFactory.getExecutePollFunctions(

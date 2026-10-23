@@ -26,6 +26,8 @@ import type { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-
 import type { WorkflowTriggerActivator } from '@/workflows/triggers/workflow-trigger-activator';
 import type { WorkflowPublishedDataService } from '@n8n/backend-services';
 import type { WorkflowService } from '@/workflows/workflow.service';
+import type { LeasedTriggerPolicy } from '@/workflows/triggers/leased/leased-trigger-policy';
+import type { WorkflowTriggerLeases } from '@/workflows/triggers/leased/workflow-trigger-leases';
 
 describe('WorkflowPublicationApplier', () => {
 	const logger = mock<Logger>();
@@ -47,6 +49,9 @@ describe('WorkflowPublicationApplier', () => {
 		ownerId: workflowId,
 	}));
 	const durableJobProvisioner = mock<DurableJobProvisioner>();
+	const leasedTriggerPolicy = mock<LeasedTriggerPolicy>();
+	leasedTriggerPolicy.withoutLeased.mockImplementation((nodes) => nodes);
+	const workflowTriggerLeases = mock<WorkflowTriggerLeases>();
 
 	const applier = new WorkflowPublicationApplier(
 		logger,
@@ -62,6 +67,8 @@ describe('WorkflowPublicationApplier', () => {
 		ownershipService,
 		workflowScheduledJobOwner,
 		durableJobProvisioner,
+		leasedTriggerPolicy,
+		workflowTriggerLeases,
 	);
 
 	function makeRecord(
@@ -1471,6 +1478,59 @@ describe('WorkflowPublicationApplier', () => {
 			const result = await applier.apply(makeRecord(), abort);
 
 			expect(result).toEqual({ type: 'skipped', reason: 'node-ids-healed' });
+		});
+	});
+
+	describe('leased triggers', () => {
+		afterEach(() => {
+			leasedTriggerPolicy.withoutLeased.mockImplementation((nodes) => nodes);
+			leasedTriggerPolicy.isLeased.mockReturnValue(false);
+		});
+
+		test('leaves leased triggers out of the leader activation and reports them persisted', async () => {
+			leasedTriggerPolicy.isLeased.mockImplementation(
+				(node) => node.type === 'n8n-nodes-base.kafkaTrigger',
+			);
+			leasedTriggerPolicy.withoutLeased.mockImplementation((nodes) =>
+				nodes.filter((node) => node.type !== 'n8n-nodes-base.kafkaTrigger'),
+			);
+			setTriggerSets(
+				[],
+				[triggerNode('a'), triggerNode('k', { type: 'n8n-nodes-base.kafkaTrigger' })],
+			);
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(workflowTriggerActivator.activate).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'wf-1' }),
+				newVersion,
+				new Set(['a']),
+				expect.anything(),
+				abort,
+			);
+			expect(result).toMatchObject({
+				triggerStatuses: [
+					expect.objectContaining({ nodeId: 'a', triggerKind: 'in-memory', status: 'activated' }),
+					expect.objectContaining({ nodeId: 'k', triggerKind: 'persisted', status: 'activated' }),
+				],
+			});
+		});
+
+		test('syncs the workflow leases with the old and new version nodes after a publish', async () => {
+			await applier.apply(makeRecord(), abort);
+
+			expect(workflowTriggerLeases.changed).toHaveBeenCalledWith('wf-1', [
+				oldVersion.nodes,
+				newVersion.nodes,
+			]);
+		});
+
+		test('syncs the workflow leases with the old version nodes after an unpublish', async () => {
+			workflowRepository.findOneBy.mockResolvedValue(makeWorkflow({ activeVersionId: null }));
+
+			await applier.apply(makeRecord(), abort);
+
+			expect(workflowTriggerLeases.changed).toHaveBeenCalledWith('wf-1', [oldVersion.nodes]);
 		});
 	});
 });

@@ -170,6 +170,46 @@ describe('TriggerExecutionContextFactory', () => {
 				});
 			});
 
+			test('starts the run through the given runner in place of the default path', async () => {
+				const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
+				const additionalData = mock<IWorkflowExecuteAdditionalData>();
+				const workflow = mock<Workflow>({ name: 'Test Workflow' });
+				const node = mock<INode>({ name: 'Trigger Node' });
+				const triggerData: INodeExecutionData[][] = [[]];
+				const runWorkflow = vi.fn().mockResolvedValue(undefined);
+
+				const getTriggerFunctions = factory.getExecuteTriggerFunctions(
+					workflowData,
+					additionalData,
+					'trigger',
+					'activate',
+					async () => workflowData,
+					vi.fn(),
+					scheduleCollectionSession,
+					runWorkflow,
+				);
+				getTriggerFunctions(workflow, node, additionalData, 'trigger', 'activate').emit(
+					triggerData,
+					undefined,
+					undefined,
+					'dedup-1',
+				);
+				await sleep(0);
+
+				expect(runWorkflow).toHaveBeenCalledWith(
+					workflowData,
+					node,
+					triggerData,
+					expect.objectContaining({ userId: undefined }),
+					'trigger',
+					undefined,
+					'dedup-1',
+					'none',
+				);
+				expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
+				expect(eventService.emit).not.toHaveBeenCalledWith('workflow-executed', expect.anything());
+			});
+
 			// A registration outlives republishes: `resolveWorkflowData` re-reads the
 			// published version at every emit, so the publisher has to be read on the
 			// same beat or the run is attributed to whoever published at registration.

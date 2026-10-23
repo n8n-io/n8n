@@ -32,6 +32,15 @@ export class WorkflowsConfig {
 	@Env('N8N_USE_WORKFLOW_PUBLICATION_SERVICE')
 	useWorkflowPublicationService: boolean = true;
 
+	/**
+	 * Comma-separated node types, for example `n8n-nodes-base.kafkaTrigger`, whose
+	 * triggers any main can hold through a cluster lease instead of only the leader.
+	 * Empty by default. Needs the durable scheduler with held tasks enabled on every
+	 * main.
+	 */
+	@Env('N8N_WORKFLOW_LEASED_TRIGGER_NODE_TYPES')
+	leasedTriggerNodeTypes: string = '';
+
 	/** Interval in milliseconds between polls of the workflow publication outbox on the leader. */
 	@Env('N8N_WORKFLOW_PUBLICATION_OUTBOX_POLL_INTERVAL_MS')
 	publicationOutboxPollIntervalMs: number = 15 * Time.seconds.toMilliseconds;
