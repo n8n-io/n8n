@@ -1,9 +1,15 @@
 import type { SerializableAgentState } from '@n8n/agents';
-import type { AgentSseEvent } from '@n8n/api-types';
+import type {
+	AgentExecutionUsage,
+	AgentExecutionUsageEntry,
+	AgentSseEvent,
+	AgentThreadUsageResponse,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { NotFoundError } from '@n8n/errors';
+import { ConflictError, NotFoundError } from '@n8n/errors';
+import { sleep } from '@n8n/utils/sleep';
 import { UserError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
@@ -18,7 +24,10 @@ import { chatErrorCode, emitChunkEvents } from '../agent-sse-stream';
 import { AgentTurnExecutionService, type AgentTurnRequest } from '../agent-turn-execution.service';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
-import { AgentExecutionRepository } from '../repositories/agent-execution.repository';
+import {
+	AgentExecutionRepository,
+	type AgentExecutionUsageRow,
+} from '../repositories/agent-execution.repository';
 import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import { AgentRepository } from '../repositories/agent.repository';
 import type { StoredAttachmentRef } from '../types/agent-chat-attachment';
@@ -28,6 +37,7 @@ import { systemChatMemoryResourceId } from '../utils/agent-memory-scope';
 import { buildInboundUserMessage } from '../utils/inbound-attachments';
 import { SYSTEM_CHAT_SOURCE } from '../utils/agent-thread-access';
 import { canUseSystemAgent } from './system-agent-access';
+import { SystemAgentHostEventChannel } from './system-agent-host-events';
 import { SystemAgentRegistry } from './system-agent-registry';
 import type {
 	SystemAgentProvider,
@@ -86,11 +96,26 @@ interface TurnWorkspace {
 	release(outcome: SystemAgentTurnOutcome): Promise<void>;
 }
 
-/** The SDK run options of a handle, without its abort signal. `runTurn` links that signal. */
+/**
+ * The SDK run options of a handle, without its abort signal. `runTurn` links
+ * that signal. Adds the handle's side-call usage callback.
+ */
 function runOptionsOf(handle: SystemAgentTurnHandle) {
 	const { abortSignal: _abortSignal, ...runOptions } = handle.runOptions ?? {};
-	return runOptions;
+	return {
+		...runOptions,
+		...(handle.onSideCallUsage ? { onSideCallUsage: handle.onSideCallUsage } : {}),
+	};
 }
+
+type SessionRef = Pick<AgentExecutionThread, 'id' | 'agentId' | 'projectId'>;
+
+/**
+ * User deletion stops a running turn first. The turn records its end
+ * asynchronously, so the delete retries a few times before it gives up.
+ */
+const USER_DELETION_DELETE_ATTEMPTS = 5;
+const USER_DELETION_RETRY_DELAY_MS = 1_000;
 
 /**
  * Runs code-defined instance agents on the Agents runtime. A conversation is
@@ -282,14 +307,139 @@ export class SystemAgentExecutionService {
 	/** Delete a thread with its executions, memory and stored files. */
 	async deleteThread(agentId: string, user: User, threadId: string): Promise<void> {
 		const thread = await this.getThread(agentId, user, threadId);
+		await this.deleteOwnedThread(thread, user.id);
+	}
+
+	/**
+	 * Delete every private system agent session of a user, before the user is
+	 * deleted. The owner column is `ON DELETE SET NULL`, so a session that is
+	 * not deleted here stays without an owner and nobody can open it again.
+	 *
+	 * It does not need a registered provider or the Agents feature toggle:
+	 * sessions created while either was on must go too. The child sessions of
+	 * delegated runs go too: they copy the owner of their parent. A running
+	 * turn is stopped first. The deletion is best effort: a session that fails
+	 * is logged and skipped, so it does not block the others or the user
+	 * deletion.
+	 */
+	async deleteThreadsOfUser(userId: string): Promise<void> {
+		let sessions: SessionRef[];
+		try {
+			sessions = await this.threadRepository.findOwnedSystemAgentSessions(userId);
+		} catch (error) {
+			this.logger.warn('Failed to find the system agent sessions of a deleted user', {
+				userId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return;
+		}
+		for (const session of sessions) {
+			let descendants: SessionRef[];
+			try {
+				descendants = await this.findDescendantSessions(session);
+				await this.stopRunningTurn(session, [session, ...descendants], userId);
+			} catch (error) {
+				this.logUserSessionDeletionFailure(userId, session, error);
+				continue;
+			}
+			// Children first, deepest level first: only the parent links to them.
+			for (const thread of [...descendants.reverse(), session]) {
+				try {
+					await this.deleteWithRetry(thread, userId);
+				} catch (error) {
+					this.logUserSessionDeletionFailure(userId, thread, error);
+				}
+			}
+		}
+	}
+
+	private logUserSessionDeletionFailure(userId: string, thread: SessionRef, error: unknown) {
+		this.logger.warn('Failed to delete a system agent session of a deleted user', {
+			userId,
+			agentId: thread.agentId,
+			threadId: thread.id,
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
+
+	/** Child sessions of delegated runs, level by level. A child stays in the project of its parent. */
+	private async findDescendantSessions(root: SessionRef): Promise<SessionRef[]> {
+		const descendants: SessionRef[] = [];
+		const visited = new Set([root.id]);
+		let level = [root];
+		while (level.length > 0) {
+			const next: SessionRef[] = [];
+			for (const parent of level) {
+				for (const child of await this.threadRepository.findByParentThreadId(
+					parent.id,
+					parent.projectId,
+				)) {
+					if (visited.has(child.id)) continue;
+					visited.add(child.id);
+					next.push({ id: child.id, agentId: child.agentId, projectId: child.projectId });
+				}
+			}
+			descendants.push(...next);
+			level = next;
+		}
+		return descendants;
+	}
+
+	/**
+	 * Cancel the latest turn of the root session when any session of the tree
+	 * runs. The cancel also stops the background jobs of the root session,
+	 * which run the child sessions.
+	 */
+	private async stopRunningTurn(
+		session: SessionRef,
+		tree: SessionRef[],
+		userId: string,
+	): Promise<void> {
+		let running = false;
+		for (const thread of tree) {
+			if (await this.executionRepository.existsRunningByThread(thread.id)) {
+				running = true;
+				break;
+			}
+		}
+		if (!running) return;
+		const latest = await this.executionRepository.findLatestByThreadId(session.id);
+		if (!latest) return;
+		await this.chatExecutionService.requestCancel({
+			projectId: session.projectId,
+			agentId: session.agentId,
+			threadId: session.id,
+			executionId: latest.id,
+			userId,
+			surface: 'system',
+		});
+	}
+
+	/** `deleteThread` refuses a session with a running turn. Wait for the stopped turn to end. */
+	private async deleteWithRetry(session: SessionRef, userId: string): Promise<void> {
+		for (let attempt = 1; ; attempt++) {
+			try {
+				await this.deleteOwnedThread(session, userId);
+				return;
+			} catch (error) {
+				if (!(error instanceof ConflictError) || attempt >= USER_DELETION_DELETE_ATTEMPTS) {
+					throw error;
+				}
+				await sleep(USER_DELETION_RETRY_DELAY_MS);
+			}
+		}
+	}
+
+	/** Delete a session with its sandbox. The caller checks ownership. */
+	private async deleteOwnedThread(thread: SessionRef, userId: string): Promise<void> {
 		const deleted = await this.executionService.deleteThread(
 			thread.projectId,
-			agentId,
+			thread.agentId,
 			thread.id,
-			user.id,
+			userId,
 		);
 		if (!deleted) throw new NotFoundError('Session not found');
-		await this.destroyThreadWorkspace(agentId, thread.id, user.id);
+		await this.destroyThreadWorkspace(thread.agentId, thread.id, userId);
 	}
 
 	/**
@@ -338,6 +488,31 @@ export class SystemAgentExecutionService {
 		if (suspendedCheckpoint) return { status: 'suspended', checkpoint: suspendedCheckpoint };
 		const queued = await this.messageQueue.hasQueuedMessages(thread.id, ctx);
 		return { status: queued ? 'running' : 'idle', checkpoint: null };
+	}
+
+	/**
+	 * Token usage of every turn in the thread, for usage and cost readers. Each
+	 * turn lists its delegated runs (they record their own executions in child
+	 * threads) and the sum of its own and their usage.
+	 */
+	async getUsage(thread: AgentExecutionThread): Promise<AgentThreadUsageResponse> {
+		const turns = await this.executionRepository.findUsageByThreadId(thread.id);
+		const children = await this.executionRepository.findChildUsageByParentIds(
+			turns.map((turn) => turn.id),
+		);
+		const childrenByParent = new Map<string, AgentExecutionUsageEntry[]>();
+		for (const row of children) {
+			if (row.parentExecutionId === null) continue;
+			const entries = childrenByParent.get(row.parentExecutionId) ?? [];
+			entries.push(toUsageEntry(row));
+			childrenByParent.set(row.parentExecutionId, entries);
+		}
+		const executions = turns.map((turn) => {
+			const own = toUsageEntry(turn);
+			const children = childrenByParent.get(turn.id) ?? [];
+			return { ...own, descendants: children, total: sumUsage([own, ...children]) };
+		});
+		return { executions, total: sumUsage(executions.map((turn) => turn.total)) };
 	}
 
 	// ── Messages ─────────────────────────────────────────────────────────────
@@ -398,6 +573,7 @@ export class SystemAgentExecutionService {
 		signal.throwIfAborted();
 		const { resourceId } = payload;
 		const attachments = payload.attachments ?? [];
+		const hostEvents = this.createHostEventChannel(thread, send);
 		const workspace = await this.acquireWorkspace(provider, thread, user);
 		const controller = new AbortController();
 		// Until the runtime takes the turn, the claim signal (Stop, lost ownership) stops provider setup.
@@ -408,20 +584,27 @@ export class SystemAgentExecutionService {
 		if (signal.aborted) stopSetup();
 		let handle: SystemAgentTurnHandle;
 		try {
-			handle = await this.prepareOrRelease(workspace, controller.signal, thread, async () => {
-				return await provider.prepareTurn({
-					type: 'start',
-					user,
-					thread,
-					resourceId,
-					abortSignal: controller.signal,
-					...(workspace ? { workspace: workspace.lease } : {}),
-					executionId: admission.executionId,
-					message: payload.message,
-					attachments,
-					options: payload.options ?? {},
-				});
-			});
+			handle = await this.prepareOrRelease(
+				workspace,
+				hostEvents,
+				controller.signal,
+				thread,
+				async () => {
+					return await provider.prepareTurn({
+						type: 'start',
+						user,
+						thread,
+						resourceId,
+						abortSignal: controller.signal,
+						...(workspace ? { workspace: workspace.lease } : {}),
+						emitHostEvent: hostEvents.emit,
+						executionId: admission.executionId,
+						message: payload.message,
+						attachments,
+						options: payload.options ?? {},
+					});
+				},
+			);
 		} finally {
 			signal.removeEventListener('abort', stopSetup);
 		}
@@ -434,6 +617,7 @@ export class SystemAgentExecutionService {
 			thread,
 			handle,
 			workspace,
+			hostEvents,
 			send,
 			controller,
 			admission,
@@ -487,9 +671,12 @@ export class SystemAgentExecutionService {
 		}
 		const checkpointHostMetadata = checkpoint.persistence.hostMetadata ?? {};
 		const controller = new AbortController();
+		const send = params.send ?? (() => {});
+		const hostEvents = this.createHostEventChannel(thread, send);
 		const workspace = await this.acquireWorkspace(provider, thread, params.user);
 		const handle = await this.prepareOrRelease(
 			workspace,
+			hostEvents,
 			controller.signal,
 			thread,
 			async () =>
@@ -500,6 +687,7 @@ export class SystemAgentExecutionService {
 					resourceId,
 					abortSignal: controller.signal,
 					...(workspace ? { workspace: workspace.lease } : {}),
+					emitHostEvent: hostEvents.emit,
 					runId,
 					toolCallId: pending.toolCallId,
 					checkpointHostMetadata,
@@ -521,7 +709,8 @@ export class SystemAgentExecutionService {
 			thread,
 			handle,
 			workspace,
-			send: params.send ?? (() => {}),
+			hostEvents,
+			send,
 			controller,
 			onExecutionStarted: params.onExecutionStarted,
 			prepare: async () => ({
@@ -703,6 +892,7 @@ export class SystemAgentExecutionService {
 	 */
 	private async prepareOrRelease(
 		workspace: TurnWorkspace | undefined,
+		hostEvents: SystemAgentHostEventChannel,
 		signal: AbortSignal,
 		thread: AgentExecutionThread,
 		prepare: () => Promise<SystemAgentTurnHandle>,
@@ -712,9 +902,26 @@ export class SystemAgentExecutionService {
 			this.attachFileStore(handle, thread);
 			return handle;
 		} catch (error) {
+			hostEvents.close();
 			await workspace?.release({ status: signal.aborted ? 'cancelled' : 'errored', error });
 			throw error;
 		}
+	}
+
+	/**
+	 * The host event channel of one turn. It sends to the same stream as the
+	 * turn, and the turn recorder records its events.
+	 */
+	private createHostEventChannel(
+		thread: AgentExecutionThread,
+		send: (event: AgentSseEvent) => void,
+	): SystemAgentHostEventChannel {
+		return new SystemAgentHostEventChannel(send, (name) => {
+			this.logger.debug('System agent host event after the turn settled was dropped', {
+				threadId: thread.id,
+				name,
+			});
+		});
 	}
 
 	/**
@@ -726,6 +933,7 @@ export class SystemAgentExecutionService {
 		thread,
 		handle,
 		workspace,
+		hostEvents,
 		send,
 		controller,
 		admission,
@@ -735,6 +943,7 @@ export class SystemAgentExecutionService {
 		thread: AgentExecutionThread;
 		handle: SystemAgentTurnHandle;
 		workspace?: TurnWorkspace;
+		hostEvents: SystemAgentHostEventChannel;
 		send: (event: AgentSseEvent) => void;
 		controller: AbortController;
 		/** Set when the queue admitted the turn. A resume admits its own turn. */
@@ -775,7 +984,13 @@ export class SystemAgentExecutionService {
 					executionId = id;
 					onExecutionStarted?.(id, threadId, inputMessageIds);
 				},
-				onBeforeFinalize: settle,
+				onRecorderCreated: (recorder) => hostEvents.attach(recorder),
+				// The settle hook runs before the record is final, so that the
+				// events it emits are stored with the turn.
+				onBeforeFinalize: async (outcome) => {
+					await settle(outcome);
+					hostEvents.close();
+				},
 				prepare,
 				formatError,
 			});
@@ -802,6 +1017,8 @@ export class SystemAgentExecutionService {
 			throw caught;
 		} finally {
 			providerSignal?.removeEventListener('abort', stopTurn);
+			// The turn record is final here. A later event cannot be stored.
+			hostEvents.close();
 			// The runtime settles every turn that has an execution record. A turn
 			// that failed or stopped before it had one settles here.
 			if (!settled.outcome) {
@@ -861,4 +1078,51 @@ export class SystemAgentExecutionService {
 			return undefined;
 		}
 	}
+}
+
+function toUsageEntry(row: AgentExecutionUsageRow): AgentExecutionUsageEntry {
+	return {
+		executionId: row.id,
+		threadId: row.threadId,
+		parentExecutionId: row.parentExecutionId,
+		status: row.status,
+		model: row.model,
+		startedAt: row.startedAt?.toISOString() ?? null,
+		stoppedAt: row.stoppedAt?.toISOString() ?? null,
+		duration: row.duration,
+		promptTokens: row.promptTokens,
+		completionTokens: row.completionTokens,
+		totalTokens: row.totalTokens,
+		cacheReadTokens: row.cacheReadTokens,
+		cacheWriteTokens: row.cacheWriteTokens,
+		cost: row.cost,
+	};
+}
+
+const USAGE_FIELDS = [
+	'promptTokens',
+	'completionTokens',
+	'totalTokens',
+	'cacheReadTokens',
+	'cacheWriteTokens',
+	'cost',
+] as const satisfies ReadonlyArray<keyof AgentExecutionUsage>;
+
+/** Sums each field. A field stays null when no entry reported it, so zero and missing differ. */
+function sumUsage(entries: AgentExecutionUsage[]): AgentExecutionUsage {
+	const total: AgentExecutionUsage = {
+		promptTokens: null,
+		completionTokens: null,
+		totalTokens: null,
+		cacheReadTokens: null,
+		cacheWriteTokens: null,
+		cost: null,
+	};
+	for (const entry of entries) {
+		for (const field of USAGE_FIELDS) {
+			const value = entry[field];
+			if (value !== null) total[field] = (total[field] ?? 0) + value;
+		}
+	}
+	return total;
 }
