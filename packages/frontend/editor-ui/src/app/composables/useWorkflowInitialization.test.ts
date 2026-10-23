@@ -11,6 +11,8 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import { mockedStore } from '@/__tests__/utils';
 import type { IWorkflowDb } from '@/Interface';
+import { NODE_ID_MAX_LENGTH } from '@n8n/constants';
+import { WorkflowStructureValidationError } from 'n8n-workflow';
 
 const mockSetDocumentTitle = vi.hoisted(() => vi.fn());
 const mockResetDocumentTitle = vi.hoisted(() => vi.fn());
@@ -62,9 +64,11 @@ vi.mock('@/app/composables/useExternalHooks', () => ({
 	})),
 }));
 
+const mockShowError = vi.hoisted(() => vi.fn());
+
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn(() => ({
-		showError: vi.fn(),
+		showError: mockShowError,
 		showMessage: vi.fn(),
 	})),
 }));
@@ -221,6 +225,37 @@ describe('useWorkflowInitialization', () => {
 			await initializeWorkspaceForNewWorkflow();
 
 			expect(mockWorkflowDocumentStore.setHydrated).toHaveBeenCalledWith(true);
+		});
+	});
+
+	describe('workflow structure check', () => {
+		it('opens a stored workflow with a node id longer than NODE_ID_MAX_LENGTH without an error', async () => {
+			let openWorkflow!: (data: IWorkflowDb) => Promise<void>;
+			renderWithComposable((init) => {
+				openWorkflow = init.openWorkflow;
+			});
+
+			await openWorkflow({
+				id: 'wf-1',
+				name: 'Long node id',
+				nodes: [
+					{
+						id: 'n'.repeat(NODE_ID_MAX_LENGTH + 1),
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+			} as unknown as IWorkflowDb);
+
+			expect(mockShowError).not.toHaveBeenCalledWith(
+				expect.any(WorkflowStructureValidationError),
+				expect.anything(),
+				expect.anything(),
+			);
 		});
 	});
 

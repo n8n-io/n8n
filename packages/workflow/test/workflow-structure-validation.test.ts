@@ -271,14 +271,22 @@ describe('workflow-structure-validation', () => {
 		]);
 	});
 
-	test('rejects a node id longer than NODE_ID_MAX_LENGTH', () => {
-		const result = safeParseWorkflowStructure({
-			...validWorkflow,
-			nodes: [
-				validWorkflow.nodes[0],
-				{ ...validWorkflow.nodes[1], id: 'n'.repeat(NODE_ID_MAX_LENGTH + 1) },
-			],
-		});
+	const workflowWithSetNodeId = (id: string) => ({
+		...validWorkflow,
+		nodes: [validWorkflow.nodes[0], { ...validWorkflow.nodes[1], id }],
+	});
+
+	test.each([
+		['by default', undefined],
+		[
+			'when only another id is exempt',
+			{ nodeIdLengthValidation: { enabled: true, exemptIds: ['other-id'] } },
+		],
+	])('rejects a node id longer than NODE_ID_MAX_LENGTH %s', (_, options) => {
+		const result = safeParseWorkflowStructure(
+			workflowWithSetNodeId('n'.repeat(NODE_ID_MAX_LENGTH + 1)),
+			options,
+		);
 
 		expect(result.success).toBe(false);
 		if (result.success) return;
@@ -296,13 +304,26 @@ describe('workflow-structure-validation', () => {
 		['ASCII', 'n'],
 		['astral', '😀'],
 	])('accepts a node id of exactly NODE_ID_MAX_LENGTH %s characters', (_, character) => {
-		const result = safeParseWorkflowStructure({
-			...validWorkflow,
-			nodes: [
-				validWorkflow.nodes[0],
-				{ ...validWorkflow.nodes[1], id: character.repeat(NODE_ID_MAX_LENGTH) },
-			],
-		});
+		const result = safeParseWorkflowStructure(
+			workflowWithSetNodeId(character.repeat(NODE_ID_MAX_LENGTH)),
+		);
+
+		expect(result.success).toBe(true);
+	});
+
+	test.each([
+		['the validation is disabled', { nodeIdLengthValidation: { enabled: false } }],
+		[
+			'the id is exempt',
+			{
+				nodeIdLengthValidation: { enabled: true, exemptIds: ['n'.repeat(NODE_ID_MAX_LENGTH + 1)] },
+			},
+		],
+	])('accepts a node id longer than NODE_ID_MAX_LENGTH when %s', (_, options) => {
+		const result = safeParseWorkflowStructure(
+			workflowWithSetNodeId('n'.repeat(NODE_ID_MAX_LENGTH + 1)),
+			options,
+		);
 
 		expect(result.success).toBe(true);
 	});

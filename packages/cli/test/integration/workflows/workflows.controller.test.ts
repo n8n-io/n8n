@@ -3492,6 +3492,20 @@ describe('PATCH /workflows/:workflowId', () => {
 			expect(response.body.data.name).toBe('name updated');
 		});
 
+		test('should allow a structural update of a workflow whose stored node id is too long', async () => {
+			const longIdNode = nodeWithId('n'.repeat(NODE_ID_MAX_LENGTH + 1));
+			const workflow = await createWorkflow({ nodes: [longIdNode], connections: {} }, owner);
+
+			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+				versionId: workflow.versionId,
+				nodes: [{ ...longIdNode, position: [480, 300] }],
+				connections: {},
+			});
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data.nodes[0].position).toEqual([480, 300]);
+		});
+
 		test('should reject an update that sends a node id longer than NODE_ID_MAX_LENGTH', async () => {
 			const workflow = await createWorkflow({}, owner);
 

@@ -23,7 +23,7 @@ import { MAX_CONNECTION_INDEX } from './common/map-connections-by-destination';
  *   - Connection entries have valid node/type/index
  *   - No duplicate node names
  *   - No duplicate node ids, where present
- *   - Node ids, where present, fit NODE_ID_MAX_LENGTH
+ *   - Node ids, where present, fit NODE_ID_MAX_LENGTH (unless `nodeIdLengthValidation` disables it)
  *   - Connection source/target keys reference existing nodes
  *
  * Does NOT validate:
@@ -99,6 +99,15 @@ export type WorkflowStructureValidationResult =
 	| WorkflowStructureValidationSuccess
 	| WorkflowStructureValidationFailure;
 
+export type WorkflowStructureValidationOptions = {
+	/**
+	 * Rejects node ids longer than NODE_ID_MAX_LENGTH, which the columns keyed on a node id
+	 * hold. Disable it for a workflow that is never stored. Ids in `exemptIds` skip the check,
+	 * so a stored workflow that already has a long id stays editable.
+	 */
+	nodeIdLengthValidation?: { enabled: boolean; exemptIds?: readonly string[] };
+};
+
 export const formatWorkflowStructureIssuePath = (path: Array<string | number>): string => {
 	if (path.length === 0) return 'workflow';
 
@@ -124,7 +133,12 @@ export class WorkflowStructureValidationError extends Error {
 	}
 }
 
-export function safeParseWorkflowStructure(input: unknown): WorkflowStructureValidationResult {
+export function safeParseWorkflowStructure(
+	input: unknown,
+	{
+		nodeIdLengthValidation = { enabled: true, exemptIds: [] },
+	}: WorkflowStructureValidationOptions = {},
+): WorkflowStructureValidationResult {
 	const parsed = workflowStructureSchema.safeParse(input);
 
 	if (!parsed.success) {
@@ -138,6 +152,7 @@ export function safeParseWorkflowStructure(input: unknown): WorkflowStructureVal
 	const issues: WorkflowStructureIssue[] = [];
 	const nodeNames = new Set<string>();
 	const nodeNameById = new Map<string, string>();
+	const exemptNodeIds = new Set(nodeIdLengthValidation.exemptIds);
 
 	for (const [index, node] of nodes.entries()) {
 		// Ids are optional in the schema because the backend fills in absent and empty ones on
@@ -145,7 +160,11 @@ export function safeParseWorkflowStructure(input: unknown): WorkflowStructureVal
 		// per-node state keyed on it would otherwise be shared between two nodes.
 		if (node.id !== undefined && node.id !== '') {
 			// Count code points, as Postgres varchar does, not UTF-16 code units.
-			if ([...node.id].length > NODE_ID_MAX_LENGTH)
+			if (
+				nodeIdLengthValidation.enabled &&
+				!exemptNodeIds.has(node.id) &&
+				[...node.id].length > NODE_ID_MAX_LENGTH
+			)
 				issues.push({
 					path: ['nodes', index, 'id'],
 					message: `Node "${node.name}" has an ID longer than ${NODE_ID_MAX_LENGTH} characters`,

@@ -262,10 +262,11 @@ export function useWorkflowInitialization() {
 	}
 
 	async function openWorkflow(data: IWorkflowDb) {
-		const validationResult = safeParseWorkflowStructure({
-			nodes: data.nodes,
-			connections: data.connections,
-		});
+		// Opening does not store the workflow, and the backend accepts ids that are already stored.
+		const validationResult = safeParseWorkflowStructure(
+			{ nodes: data.nodes, connections: data.connections },
+			{ nodeIdLengthValidation: { enabled: false } },
+		);
 
 		if (!validationResult.success) {
 			toast.showError(

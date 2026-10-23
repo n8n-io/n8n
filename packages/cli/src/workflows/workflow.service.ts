@@ -700,10 +700,15 @@ export class WorkflowService {
 		// re-persists an already-validated graph, so re-checking is redundant and could block on
 		// legacy data. Both are safe to read off workflowUpdateData: it was backfilled above.
 		if (saveNewVersion) {
-			WorkflowHelpers.validateWorkflowStructure({
-				nodes: workflowUpdateData.nodes,
-				connections: workflowUpdateData.connections,
-			});
+			WorkflowHelpers.validateWorkflowStructure(
+				{ nodes: workflowUpdateData.nodes, connections: workflowUpdateData.connections },
+				{
+					nodeIdLengthValidation: {
+						enabled: true,
+						exemptIds: workflow.nodes.map((node) => node.id),
+					},
+				},
+			);
 			// Only a workflow with groups needs the flags.
 			const rules = workflowUpdateData.nodeGroups?.length
 				? await this.nodeGroupRulesFlagGate.getEnabledRules(user)

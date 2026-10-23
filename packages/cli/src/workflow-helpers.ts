@@ -27,6 +27,7 @@ import {
 	type ITaskData,
 	type IWorkflowBase,
 	type IWorkflowSettings,
+	type WorkflowStructureValidationOptions,
 	type RelatedExecution,
 	type GetNodeTypeForGrouping,
 	type NodeGroupRuleOptions,
@@ -196,8 +197,11 @@ export class WorkflowStructureBadRequestError extends BadRequestError {
 	}
 }
 
-export function validateWorkflowStructure(workflow: Pick<IWorkflowBase, 'nodes' | 'connections'>) {
-	const result = safeParseWorkflowStructure(workflow);
+export function validateWorkflowStructure(
+	workflow: Pick<IWorkflowBase, 'nodes' | 'connections'>,
+	options?: WorkflowStructureValidationOptions,
+) {
+	const result = safeParseWorkflowStructure(workflow, options);
 
 	if (result.success) return;
 

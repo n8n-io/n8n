@@ -2,6 +2,7 @@ import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { EventService, UrlService, WorkflowPublishedDataService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig, type NodesConfig, WorkflowsConfig } from '@n8n/config';
+import { NODE_ID_MAX_LENGTH } from '@n8n/constants';
 import type { WorkflowEntity, Project, WorkflowHistory } from '@n8n/db';
 import {
 	ExecutionRepository,
@@ -1489,6 +1490,22 @@ describe('WorkflowExecuteAdditionalData', () => {
 				expect(result.id).toBe('parent-workflow-id');
 			},
 		);
+
+		it('runs inline nodes whose id is longer than NODE_ID_MAX_LENGTH', async () => {
+			const node: INode = {
+				id: 'n'.repeat(NODE_ID_MAX_LENGTH + 1),
+				name: 'Set',
+				type: 'n8n-nodes-base.set',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			};
+			const workflowCode = { nodes: [node], connections: {} } as unknown as IWorkflowBase;
+
+			await expect(loadWorkflow({ code: workflowCode }, 'parent-workflow-id')).resolves.toEqual(
+				expect.objectContaining({ id: 'parent-workflow-id' }),
+			);
+		});
 
 		it('refuses inline nodes of a deprecated type', async () => {
 			const nodes = [mock<INode>({ type: 'n8n-nodes-base.function', typeVersion: 1 })];
