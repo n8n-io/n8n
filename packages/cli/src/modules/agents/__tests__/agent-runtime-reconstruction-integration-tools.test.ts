@@ -56,6 +56,7 @@ import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentTurnExecutionService } from '../agent-turn-execution.service';
 import type { AgentToolApprovalService } from '../agent-tool-approval.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
+import type { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import { AgentSaveCompletionService } from '../agent-save-completion.service';
 import { AgentDefinitionService } from '../agent-definition.service';
@@ -153,6 +154,7 @@ function makeRuntimeReconstructionService(
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
 		mock<CredentialsService>(),
+		mock<AgentKnowledgeUsageTracker>(),
 		makeKnowledgeAvailabilityService(),
 	);
 }
@@ -311,6 +313,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 				mock<AgentMessageQueueService>(),
 				mock<AgentMessageSteeringService>(),
 				mock<AgentToolApprovalService>(),
+				mock<AgentKnowledgeUsageTracker>(),
 			),
 			telemetry,
 			runtimeCacheService,
@@ -361,6 +364,9 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			definitionService,
 			new AgentPolicyService(new PolicyEnforcementService()),
 			skillRefs,
+			mock<AgentFileRepository>({
+				getKnowledgeTotals: async () => ({ fileCount: 0, totalBytes: 0 }),
+			}),
 			mock<AgentPublishHistoryRepository>(),
 		);
 		agentTestChatService = new AgentTestChatService(n8nMemory, mock<AgentChatAttachmentService>());

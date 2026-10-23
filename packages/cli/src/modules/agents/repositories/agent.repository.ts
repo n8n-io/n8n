@@ -1,6 +1,10 @@
 import isEqual from 'lodash/isEqual';
 import { N8N_CHAT_INTEGRATION_TYPE, isCredentialAgentIntegration } from '@n8n/api-types';
-import type { AgentIntegrationConfig, ListAgentsQueryDto } from '@n8n/api-types';
+import type {
+	AgentIntegrationConfig,
+	AgentVectorStoreProvider,
+	ListAgentsQueryDto,
+} from '@n8n/api-types';
 import {
 	BaseRepository,
 	chunkIds,
@@ -38,6 +42,11 @@ const projectScope = 'project' as const;
 const projectScopeSql = "agent.scope = 'project'";
 /** The same filter for UPDATE builders, which have no `agent` alias. */
 const projectScopeUpdateSql = "scope = 'project'";
+
+export interface PublishedAgentVectorStores {
+	agentId: string;
+	vectorStoreProviders: AgentVectorStoreProvider[];
+}
 
 /** In-memory twin of `AgentRepository.publishedN8nChatSql`: the published integrations carry n8n Chat. */
 export function hasN8nChatChannel(integrations: Array<{ type: string }> | undefined): boolean {
@@ -982,6 +991,36 @@ export class AgentRepository extends BaseRepository<Agent> {
 			.where('id = :id', { id: agent.id })
 			.andWhere(projectScopeUpdateSql)
 			.execute();
+	}
+
+	/**
+	 * Returns up to `limit` published project agents, sorted by id.
+	 * For each agent, it lists the vector store providers of the published version. The draft is ignored.
+	 * To read the next page, pass the last `agentId` of this page as `afterId`.
+	 */
+	async findPublishedVectorStoreProvidersPage(
+		afterId: string | null,
+		limit: number,
+	): Promise<PublishedAgentVectorStores[]> {
+		const query = this.createQueryBuilder('agent')
+			.innerJoin('agent.activeVersion', 'activeVersion')
+			.select(['agent.id', 'activeVersion.versionId', 'activeVersion.schema'])
+			.where(projectScopeSql)
+			.orderBy('agent.id', 'ASC')
+			.limit(limit);
+
+		if (afterId) {
+			query.andWhere('agent.id > :afterId', { afterId });
+		}
+
+		const agents = await query.getMany();
+
+		return agents.map((agent) => ({
+			agentId: agent.id,
+			vectorStoreProviders: (agent.activeVersion?.schema?.vectorStores ?? []).map(
+				(vectorStore) => vectorStore.provider,
+			),
+		}));
 	}
 }
 

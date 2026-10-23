@@ -148,6 +148,15 @@ const agentCapabilityProfile = {
 	tool_types: z.array(z.string()).describe('Tool types, never user-authored tool names'),
 };
 
+const agentKnowledgeModification = {
+	vector_store_fingerprints: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Codes that identify the knowledge sources connected to the agent after a change. Each code is a keyed hash of the provider and source name, and of the Pinecone namespace when one is set, with a key that is different for each instance. In one instance, the same provider and source name produce the same code, even across different accounts. The list contains each code once. An empty list means no sources remain. This field is sent when the vector store settings change, also when the connected sources stay the same.',
+		),
+};
+
 /**
  * Shared by the six creation and modification events, which differ only in
  * which surface wrote and whether the write was the agent's first — so they
@@ -190,7 +199,34 @@ const agentPublish = {
 	...agentCapabilityProfile,
 	trigger: agentPublishTrigger,
 	version_id: z.string().describe('AgentHistory versionId that became active'),
+	knowledge_file_count: z
+		.number()
+		.optional()
+		.describe(
+			'Knowledge files of the agent at publish time. Files have no versions. Absent when the server could not read the files.',
+		),
+	knowledge_total_bytes: z
+		.number()
+		.optional()
+		.describe(
+			'Sum of the original sizes of the knowledge files at publish time. Absent when the server could not read the files.',
+		),
 };
+
+/** Upload checks that the editor makes before it sends the files. */
+const knowledgeUploadClientFailureReason = z.enum(['file_size', 'too_many_files', 'total_limit']);
+
+/** Upload checks that the server makes. `unknown` covers every other error. */
+const knowledgeUploadServerFailureReason = z.enum([
+	'file_type',
+	'file_size',
+	'too_many_files',
+	'total_limit',
+	'duplicate_name',
+	'pdf_no_text',
+	'invalid_file_name',
+	'unknown',
+]);
 
 export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	AGENT_TEAMS_SETUP_STEP: {
@@ -266,6 +302,42 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			status: agentStatus,
 		}),
 	},
+	AGENT_RUN_USED_KNOWLEDGE: {
+		name: 'Agent run used knowledge',
+		description:
+			'Sent when an agent run ends, if the agent used its knowledge files or vector stores at least once in that run. A run without knowledge use sends no event. A run that pauses for an approval and then resumes sends one event for each part, with the same run_id, so count distinct run_id values to count runs.',
+		properties: z.object({
+			agent_id: z.string(),
+			run_id: z.string().describe('Run id of the agent runtime'),
+			run_type: agentRunType,
+			user_id: z
+				.string()
+				.optional()
+				.describe('Absent for runs without an n8n user, such as some chat integrations'),
+			file_find_count: z.number().describe('Calls that listed knowledge files by name'),
+			file_search_count: z.number().describe('Calls that searched text inside knowledge files'),
+			file_read_count: z.number().describe('Calls that read part of a knowledge file'),
+			vector_store_search_count: z.number().describe('Searches in any vector store of the agent'),
+			file_content_chars: z
+				.number()
+				.describe(
+					'Characters that successful knowledge file tool calls sent to the model in the run. Failed calls add nothing. A result over 50,000 tokens counts in full, but the model gets a shorter version.',
+				),
+			vector_store_content_chars: z
+				.number()
+				.describe(
+					'Characters that successful vector store searches sent to the model in the run. Counted like file_content_chars.',
+				),
+			file_failed_count: z
+				.number()
+				.describe('Knowledge file tool calls that failed. Each one also counts in its call count'),
+			vector_store_failed_count: z
+				.number()
+				.describe(
+					'Vector store searches that failed. Each one also counts in vector_store_search_count',
+				),
+		}),
+	},
 	AGENT_EXECUTION_COUNT: {
 		name: 'Agent execution count',
 		description:
@@ -314,6 +386,31 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			...agentConfigurationTelemetry,
 		}),
 	},
+	AGENT_KNOWLEDGE_SNAPSHOT: {
+		name: 'Agent knowledge snapshot',
+		description:
+			'Daily count of the published agents of the instance and the knowledge they use. One event per instance, sent by one main instance only. An instance without published agents sends no event. A vector store counts only when it is in the published version of the agent. Knowledge files have no versions, so the file counts are the current files of each published agent. Includes agents published before this event existed. Each event carries totals, not increments: do not sum snapshots over time; take the latest one for each instance in a window.',
+		properties: z.object({
+			published_agent_count: z.number(),
+			published_with_files_count: z
+				.number()
+				.describe('Published agents with at least one knowledge file'),
+			published_with_vector_stores_count: z
+				.number()
+				.describe('Published agents with at least one vector store in the published version'),
+			published_with_both_count: z
+				.number()
+				.describe('Published agents with knowledge files and vector stores'),
+			knowledge_file_count: z.number().describe('Knowledge files of all published agents'),
+			knowledge_total_bytes: z
+				.number()
+				.describe('Sum of the original sizes of the knowledge files of all published agents'),
+			vector_store_count: z.number().describe('Vector stores in all published versions'),
+			vector_store_providers: z
+				.record(z.string(), z.number())
+				.describe('Vector stores for each provider, for example { pinecone: 3, qdrant: 1 }'),
+		}),
+	},
 	BUILDER_CREATED_AGENT: {
 		name: 'Builder created agent',
 		description:
@@ -347,6 +444,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			'A user saved a tracked configuration or resource change to an existing Agent. Emitted after the change commits. Incomplete Agents also count. No-op and cosmetic-only saves emit nothing. Creation emits User created agent instead. The profile describes the saved configuration. Version 2 removes the configured-state gate and creation inference.',
 		properties: z.object({
 			...agentWrite,
+			...agentKnowledgeModification,
 			changed_settings: z
 				.array(
 					z.enum([
@@ -373,6 +471,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			'The Instance AI builder saved a tracked configuration or resource change to an existing Agent. Emitted after the change commits, including the first generated configuration of a saved draft. No-op and cosmetic-only saves emit nothing. Creation emits Builder created agent instead. The profile describes the saved configuration. Version 2 removes the configured-state gate and creation inference.',
 		properties: z.object({
 			...agentWrite,
+			...agentKnowledgeModification,
 			event_version: z.literal('2'),
 		}),
 	},
@@ -382,6 +481,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			'An MCP client saved a tracked configuration or resource change to an existing Agent through mutate_agent. Emitted after the change commits. Incomplete Agents also count. No-op and cosmetic-only saves emit nothing. Creation emits MCP created agent instead. User called mcp tool also reports the tool call. Version 2 removes the configured-state gate and creation inference.',
 		properties: z.object({
 			...agentWrite,
+			...agentKnowledgeModification,
 			event_version: z.literal('2'),
 		}),
 	},
@@ -810,6 +910,88 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			agent_id: z.string(),
 			skill_id: z.string(),
+		}),
+	},
+	USER_UPLOADED_AGENT_KNOWLEDGE_FILES: {
+		name: 'User uploaded agent knowledge files',
+		description:
+			'The user uploaded one or more files to the knowledge of an agent. Fires once for each upload request that stored all of its files. A failed upload stores no files and sends "User failed agent knowledge upload" instead.',
+		properties: z.object({
+			agent_id: z.string(),
+			project_id: z.string(),
+			user_id: z.string(),
+			file_count: z.number(),
+			total_bytes: z.number().describe('Sum of size_bytes for all files in the upload'),
+			files: z.array(
+				z.object({
+					mime_type: z.string().describe('MIME type that the browser sent with the file'),
+					content_hash: z
+						.string()
+						.optional()
+						.describe(
+							'Keyed hash of the original uploaded bytes, independent of the file name. The key is different for each instance, so the same file produces the same code only in one instance. Omitted if the telemetry hash could not be computed.',
+						),
+					size_bytes: z
+						.number()
+						.describe('Size of the original file, not of the stored text extracted from a PDF'),
+				}),
+			),
+		}),
+	},
+	USER_OPENED_AGENT_KNOWLEDGE_TAB: {
+		name: 'User opened agent knowledge tab',
+		description:
+			'The knowledge tab of the agent builder became the active tab, by a click or by opening a URL with the knowledge section. When the page opens on the tab, the event can fire before the agent finishes loading. First step of the knowledge funnel.',
+		properties: z.object({
+			agent_id: z.string(),
+			push_ref: pushRef,
+		}),
+	},
+	USER_STARTED_ADDING_AGENT_KNOWLEDGE: {
+		name: 'User started adding agent knowledge',
+		description:
+			'The user chose files to upload to the knowledge of an agent, or opened the modal to add a vector store. Sent before any check. The success step is "User uploaded agent knowledge files" for files, and "User modified agent" with the vectorStores part for vector stores.',
+		properties: z.object({
+			agent_id: z.string(),
+			kind: z.enum(['file', 'vector_store']),
+			file_count: z.number().optional().describe('Files chosen. Only for kind file.'),
+			push_ref: pushRef,
+		}),
+	},
+	USER_FAILED_AGENT_KNOWLEDGE_UPLOAD: {
+		name: 'User failed agent knowledge upload',
+		description:
+			'A file upload to the knowledge of an agent was rejected. stage client: the editor rejected it before sending. stage server: the server rejected it, and sent no files. When only some chosen files are too large, the editor reports a client file_size failure and still uploads the other files, so the same upload can also send "User uploaded agent knowledge files".',
+		properties: z.discriminatedUnion('stage', [
+			z.object({
+				stage: z.literal('client'),
+				agent_id: z.string(),
+				file_count: z.number().describe('Files rejected by the check'),
+				reason: knowledgeUploadClientFailureReason,
+				push_ref: pushRef,
+			}),
+			z.object({
+				stage: z.literal('server'),
+				agent_id: z.string(),
+				project_id: z.string(),
+				user_id: z.string(),
+				file_count: z
+					.number()
+					.describe(
+						'Files that the server received in the rejected request. The server stores none of them. When the server rejects a file while it reads the request, the count does not include that file or any file after it.',
+					),
+				reason: knowledgeUploadServerFailureReason,
+			}),
+		]),
+	},
+	USER_REMOVED_AGENT_KNOWLEDGE: {
+		name: 'User removed agent knowledge',
+		description:
+			'The server deleted one knowledge file of an agent at the request of a user. Not sent when the agent itself is deleted. Removing a vector store sends "User modified agent" with the vectorStores part instead.',
+		properties: z.object({
+			agent_id: z.string(),
+			project_id: z.string(),
+			user_id: z.string(),
 		}),
 	},
 	USER_STARTED_AGENT_CHANNEL_SETUP: {

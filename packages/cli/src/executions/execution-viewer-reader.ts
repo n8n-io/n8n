@@ -1,7 +1,6 @@
 import { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
 import type { IExecutionResponse, User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { ExecutionRedaction } from '@n8n/instance-ai';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 
@@ -38,7 +37,7 @@ export async function loadExecutionForViewer(
  */
 export function getExecutionRedaction(
 	execution: IExecutionResponse,
-): ExecutionRedaction | undefined {
+): { reason: string; canReveal: boolean } | undefined {
 	const info = execution.data?.redactionInfo;
 	return info?.isRedacted ? { reason: info.reason, canReveal: info.canReveal } : undefined;
 }
