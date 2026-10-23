@@ -251,6 +251,7 @@ jobs:
       bump: ${{ needs.determine-version-info.outputs.bump }}
       new_stable_version: ${{ needs.determine-version-info.outputs.new_stable_version }}
       release_type: ${{ needs.determine-version-info.outputs.release_type }}
+      prerelease: ${{ needs.determine-version-info.outputs.prerelease == 'true' }}
     secrets: inherit
 
   notify-on-failure:

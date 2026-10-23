@@ -515,7 +515,8 @@ prerelease without moving the stable or beta release channels. This mode:
 
 - publishes public packages under the npm `rc` dist-tag;
 - publishes versioned Docker images without moving channel tags;
-- marks the GitHub release and cloud release as prereleases;
+- marks the GitHub release as a prerelease and sends `is_early_access: true` to
+  the cloud release dashboard;
 - skips pointer tag updates, backport label updates, release notifications, and
   release-candidate branch maintenance; and
 - fast-forwards `3.x` to the release tag so the next minor version increments

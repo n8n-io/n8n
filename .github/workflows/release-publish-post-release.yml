@@ -27,6 +27,10 @@ on:
         description: 'Release type acquired from determine-version-info. (stable or rc)'
         required: true
         type: string
+      prerelease:
+        description: 'Whether this is a standalone early-access prerelease.'
+        required: true
+        type: boolean
 
 jobs:
   push-new-release-to-channel:
@@ -95,6 +99,7 @@ jobs:
       previous-version: ${{ inputs.previous_version }}
       version: ${{ inputs.version }}
       experimental: ${{ inputs.release_type == 'rc' }}
+      early-access: ${{ inputs.prerelease }}
     secrets: inherit
 
   send-version-release-notification:

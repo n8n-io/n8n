@@ -16,6 +16,10 @@ on:
         description: 'If publishing experimental version'
         type: boolean
         default: false
+      early-access:
+        description: 'If publishing an early-access version'
+        type: boolean
+        default: false
   workflow_call:
     inputs:
       previous-version:
@@ -28,6 +32,10 @@ on:
         type: string
       experimental:
         description: 'If publishing experimental version'
+        type: boolean
+        default: false
+      early-access:
+        description: 'If publishing an early-access version'
         type: boolean
         default: false
 
@@ -68,6 +76,7 @@ jobs:
               "has_node_enhancements": ${{ steps.get-changes.outputs.has_node_enhancements }},
               "has_core_changes": ${{ steps.get-changes.outputs.has_core_changes }},
               "has_breaking_change": false,
-              "is_experimental": ${{ inputs.experimental }}
+              "is_experimental": ${{ inputs.experimental }},
+              "is_early_access": ${{ inputs.early-access }}
             }
         run: node ./.github/scripts/populate-cloud-databases.mjs
