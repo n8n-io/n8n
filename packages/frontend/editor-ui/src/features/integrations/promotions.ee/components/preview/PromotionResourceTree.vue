@@ -16,21 +16,26 @@ import {
 } from '../../promotionPreview.selection';
 import { flattenPreviewTree, isContainer, type PreviewTreeItem } from '../../promotionPreview.tree';
 
-const props = defineProps<{
-	tree: PreviewTreeItem[];
-	graph: SelectionGraph;
-	selected: ReadonlySet<ResourceKey>;
-	inclusion: Inclusion;
-	/** Included changes, out of the total in the tab above the tree. */
-	includedChanges: number;
-	totalChanges: number;
-	inspectedKey?: ResourceKey;
-	/** Blocked workflows, which users cannot add. */
-	disabled: DisabledKeys;
-	locked: boolean;
-	direction: PromotionDirection;
-	blockers: BlockerIndex;
-}>();
+const props = withDefaults(
+	defineProps<{
+		tree: PreviewTreeItem[];
+		graph: SelectionGraph;
+		selected: ReadonlySet<ResourceKey>;
+		inclusion: Inclusion;
+		/** Included changes, out of the total in the tab above the tree. */
+		includedChanges: number;
+		totalChanges: number;
+		inspectedKey?: ResourceKey;
+		/** Blocked workflows, which users cannot add. */
+		disabled: DisabledKeys;
+		locked: boolean;
+		direction: PromotionDirection;
+		blockers: BlockerIndex;
+		/** False for a list that users only read, such as a review. Rows then only open their card. */
+		selectable?: boolean;
+	}>(),
+	{ selectable: true },
+);
 
 const emit = defineEmits<{
 	toggle: [key: ResourceKey];
@@ -90,7 +95,7 @@ function onToggle(resource: PromotionResource) {
 
 <template>
 	<div :class="$style.tree" data-test-id="promotion-preview-tree">
-		<div :class="$style.row">
+		<div v-if="selectable" :class="$style.row">
 			<N8nCheckbox
 				:model-value="allState === 'checked'"
 				:indeterminate="allState === 'indeterminate'"
@@ -130,6 +135,7 @@ function onToggle(resource: PromotionResource) {
 					:data-resource-key="item.id"
 				>
 					<N8nCheckbox
+						v-if="selectable"
 						:model-value="check.checked"
 						:indeterminate="check.indeterminate"
 						:disabled="check.disabled"
@@ -197,10 +203,15 @@ function onToggle(resource: PromotionResource) {
 	border-radius: var(--radius--3xs);
 }
 
-/* Same color for hover and selection as the items of the main menu. */
-.resource:hover,
-.inspected {
-	background-color: var(--background--subtle);
+/* The same hover and selection as the inbox list. Both colors are transparent, so they show on
+   any page background. */
+.resource:hover {
+	background-color: var(--background--hover);
+}
+
+.inspected,
+.inspected:hover {
+	background-color: var(--background--active);
 }
 
 .resource.blocked {

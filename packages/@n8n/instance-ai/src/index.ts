@@ -265,6 +265,7 @@ const loadValidateAttachments = lazyModule(
 );
 
 export { MAX_STEPS } from './constants/max-steps';
+export { RESOURCE_EXPLORATION_UNAVAILABLE } from './constants/resource-exploration';
 export { parseModelHeadersJson } from './utils/parse-model-headers';
 export { modelConfigId } from './utils/model-config-id';
 export { isEndpointModelConfig } from './utils/modal-session';
@@ -537,6 +538,8 @@ export type { RuntimeWorkspaceResolver } from './workspace/lazy-runtime-workspac
 export const setupSandboxWorkspace: typeof SandboxSetupMod.setupSandboxWorkspace = lazyFunction(
 	() => loadSandboxSetup().setupSandboxWorkspace,
 );
+export const isSandboxWorkspaceInitialized: typeof SandboxSetupMod.isSandboxWorkspaceInitialized =
+	lazyFunction(() => loadSandboxSetup().isSandboxWorkspaceInitialized);
 export type BuilderTemplatesService = BuilderTemplatesServiceMod.BuilderTemplatesService;
 export const BuilderTemplatesService: typeof BuilderTemplatesServiceMod.BuilderTemplatesService =
 	lazyClass(() => loadBuilderTemplatesService().BuilderTemplatesService);

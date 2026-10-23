@@ -209,16 +209,14 @@ describe('PromotionPreviewView', () => {
 		});
 	});
 
-	it('should load the changed resources and only the active workflow with the preview', async () => {
+	it('should load the changed resources and only the active workflow at the commit of the preview', async () => {
 		await render();
 
 		expect(api.getPromotionResourceDetails).toHaveBeenCalledTimes(1);
-		expect(vi.mocked(api.getPromotionResourceDetails).mock.calls[0][3].keys).toEqual([
-			'folder:f1',
-			'workflow:w1',
-			'dataTable:t1',
-			'variable:global:API_URL',
-		]);
+		expect(vi.mocked(api.getPromotionResourceDetails).mock.calls[0][3]).toEqual({
+			commitSha: COMMIT_SHA,
+			keys: ['folder:f1', 'workflow:w1', 'dataTable:t1', 'variable:global:API_URL'],
+		});
 	});
 
 	it('should switch the active diff without collapsing or scrolling cards', async () => {

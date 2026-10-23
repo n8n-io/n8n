@@ -14,20 +14,24 @@ import {
 import { isContainer } from '../../promotionPreview.tree';
 import PromotionChangeCard from './PromotionChangeCard.vue';
 
-const props = defineProps<{
-	order: ResourceKey[];
-	graph: SelectionGraph;
-	direction: PromotionDirection;
-	selected: ReadonlySet<ResourceKey>;
-	inclusion: Inclusion;
-	/** Blocked workflows, which users cannot add. */
-	disabled: DisabledKeys;
-	locked: boolean;
-	entries: ReadonlyMap<ResourceKey, DetailEntry>;
-	inspectedKey?: ResourceKey;
-	blockers: BlockerIndex;
-	branchName?: string;
-}>();
+const props = withDefaults(
+	defineProps<{
+		order: ResourceKey[];
+		graph: SelectionGraph;
+		direction: PromotionDirection;
+		selected: ReadonlySet<ResourceKey>;
+		inclusion: Inclusion;
+		/** Blocked workflows, which users cannot add. */
+		disabled: DisabledKeys;
+		locked: boolean;
+		entries: ReadonlyMap<ResourceKey, DetailEntry>;
+		inspectedKey?: ResourceKey;
+		blockers: BlockerIndex;
+		/** False for a list that users only read. */
+		selectable?: boolean;
+	}>(),
+	{ selectable: true },
+);
 
 const activeWorkflow = defineModel<ResourceKey | undefined>('activeWorkflow');
 
@@ -86,8 +90,8 @@ defineExpose({ scrollToCard });
 			:entry="entries.get(resource.key)"
 			:inspected="inspectedKey === resource.key"
 			:blockers="blockersOf(blockers, resource)"
-			:branch-name="branchName"
 			:diff-active="activeWorkflow === resource.key"
+			:selectable="selectable"
 			@activate-diff="activeWorkflow = resource.key"
 			@deactivate-diff="activeWorkflow = undefined"
 			@inspect="emit('inspect', $event)"
