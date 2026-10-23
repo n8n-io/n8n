@@ -140,7 +140,9 @@ describe('SandboxSettingsService', () => {
 
 		await expect(
 			service.resolveDaytonaSandboxConfig('project', { image: 'direct-image', snapshot: ' ' }),
-		).rejects.toThrow('The Daytona proxy requires a sandbox snapshot.');
+		).rejects.toThrow(
+			'The Daytona proxy requires a sandbox snapshot. For Agent sandboxes, set N8N_AGENTS_AI_SANDBOX_SNAPSHOT. For app builds, set N8N_INSTANCE_AI_SANDBOX_SNAPSHOT.',
+		);
 		expect(instanceCredentialBroker.resolveForUse).not.toHaveBeenCalled();
 	});
 

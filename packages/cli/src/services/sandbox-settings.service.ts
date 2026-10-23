@@ -145,7 +145,7 @@ export class SandboxSettingsService {
 
 		if (!snapshot) {
 			throw new OperationalError(
-				'The Daytona proxy requires a sandbox snapshot. Configure a sandbox snapshot for this feature.',
+				'The Daytona proxy requires a sandbox snapshot. For Agent sandboxes, set N8N_AGENTS_AI_SANDBOX_SNAPSHOT. For app builds, set N8N_INSTANCE_AI_SANDBOX_SNAPSHOT.',
 			);
 		}
 		const client = await this.aiService.getClient();
