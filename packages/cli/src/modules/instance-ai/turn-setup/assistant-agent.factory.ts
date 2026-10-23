@@ -32,7 +32,7 @@ import { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { InstanceAiMcpRegistryService } from '../mcp';
 import { formatPreviewSessionContext } from '../format-agent-session-context';
 import type { AssistantTurnRuntime, AssistantTurnState } from './assistant-turn-runtime';
-import type { AssistantTurnEnvironment } from './assistant-turn-input.builder';
+import type { AssistantTurnEnvironment } from './assistant-turn-environment.factory';
 import { canAccessAgentPreviewHandoff } from '../agent-preview-handoff';
 
 /** The built orchestrator agent type returned by `createInstanceAgent`. */
