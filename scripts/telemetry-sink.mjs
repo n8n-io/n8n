@@ -22,7 +22,8 @@ const EDITOR_PATHS = new Set(['/v1/track', '/v1/identify', '/v1/page']);
 
 /** Environment for a backend that sends its telemetry to this listener. */
 export function diagnosticsEnv(port) {
-	const target = `http://localhost:${port}`;
+	// Not `localhost`: it can resolve to the IPv6 address, and the listener binds IPv4 loopback only.
+	const target = `http://${HOST}:${port}`;
 	return {
 		N8N_DIAGNOSTICS_ENABLED: 'true',
 		N8N_DIAGNOSTICS_CONFIG_BACKEND: `local;${target}`,
