@@ -90,7 +90,7 @@ import {
 	isQuotaExhaustedError,
 	PlannedTaskCoordinator,
 	PlannedTaskStorage,
-	PLANNED_TASK_PERMISSION_OVERRIDES,
+	applyPlannedTaskPermissionOverrides,
 	releaseTraceClient,
 	resumeAgentRun,
 	RunStateRegistry,
@@ -4193,10 +4193,12 @@ export class InstanceAiService {
 				orchestrationContext.checkpointTaskId = checkpoint.checkpointTaskId;
 				// Plan approval authorizes verification; grant runWorkflow on the adapter context
 				// because createInstanceAgent builds domain tools from `context`, not `orchestrationContext.domainContext`.
-				context.permissions = {
-					...context.permissions,
-					...(PLANNED_TASK_PERMISSION_OVERRIDES.checkpoint ?? {}),
-				} as typeof context.permissions;
+				if (context.permissions) {
+					context.permissions = applyPlannedTaskPermissionOverrides(
+						context.permissions,
+						'checkpoint',
+					);
+				}
 				// Scope the runWorkflow override to the workflows this checkpoint is verifying:
 				// the orchestrator can call `workflow_builder_executions(action="run")` on a depended-on workflow
 				// without HITL, but any other workflow id still requires user approval.
@@ -4207,10 +4209,12 @@ export class InstanceAiService {
 			}
 
 			if (plannedBuild?.isPlannedBuildFollowUp) {
-				context.permissions = {
-					...context.permissions,
-					...(PLANNED_TASK_PERMISSION_OVERRIDES['build-workflow'] ?? {}),
-				} as typeof context.permissions;
+				if (context.permissions) {
+					context.permissions = applyPlannedTaskPermissionOverrides(
+						context.permissions,
+						'build-workflow',
+					);
+				}
 				context.workflowBuildContext = {
 					threadId,
 					runId,

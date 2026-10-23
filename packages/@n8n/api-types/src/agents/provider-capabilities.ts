@@ -193,8 +193,24 @@ export function isOpenRouterAnthropicModel(modelId: string): boolean {
 	return provider === 'openrouter' && model.startsWith('anthropic/claude-');
 }
 
+/**
+ * Prefix of a Claude deployment on Microsoft Foundry, after the provider:
+ * `azure-openai/anthropic/<deployment>`. A deployment name is user-chosen, so
+ * the prefix records that the deployment answers on the Anthropic Messages API.
+ */
+export const AZURE_FOUNDRY_ANTHROPIC_PREFIX = 'anthropic/';
+
+export function isAzureFoundryAnthropicModel(modelId: string): boolean {
+	const { provider, model } = splitModelId(modelId);
+	return provider === 'azure-openai' && model.startsWith(AZURE_FOUNDRY_ANTHROPIC_PREFIX);
+}
+
 export function isRoutedAnthropicModel(modelId: string): boolean {
-	return isGoogleVertexAnthropicModel(modelId) || isOpenRouterAnthropicModel(modelId);
+	return (
+		isGoogleVertexAnthropicModel(modelId) ||
+		isOpenRouterAnthropicModel(modelId) ||
+		isAzureFoundryAnthropicModel(modelId)
+	);
 }
 
 /** Cache support depends on the model when the provider routes to several vendors. */

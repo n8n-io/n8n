@@ -9,6 +9,7 @@ import { BadRequestError } from '@n8n/errors';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { OperationalError, UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Telemetry } from '@/telemetry';
@@ -107,7 +108,11 @@ function setup(options: SetupOptions = {}) {
 			chatIntegrationRegistry,
 			eventService,
 			// Experiment cleanup (123_surface_mcp_to_claude_trial_users): remove only the mock<EventService>() argument.
-			new AgentModificationTelemetryService(telemetry, mock<EventService>()),
+			new AgentModificationTelemetryService(
+				telemetry,
+				mock<InstanceSettings>(),
+				mock<EventService>(),
+			),
 			credentialsService,
 			setupCompletionService,
 			createAgentSkillRefsService(),
