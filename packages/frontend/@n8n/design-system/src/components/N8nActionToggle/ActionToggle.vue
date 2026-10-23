@@ -15,7 +15,8 @@ const props = withDefaults(defineProps<ActionToggleProps<T>>(), {
 	actions: () => [],
 	placement: 'bottom-end',
 	theme: 'default',
-	iconOrientation: 'horizontal',
+	size: 'small',
+	iconSize: 'small',
 	loading: false,
 	loadingRowCount: 3,
 	disabled: false,
@@ -101,8 +102,9 @@ defineExpose({
 					<N8nIconButton
 						variant="ghost"
 						:class="$style[theme]"
-						:icon="iconOrientation === 'horizontal' ? 'ellipsis-12' : 'ellipsis-vertical-12'"
-						size="small"
+						icon="ellipsis-12"
+						:size="size"
+						:icon-size="iconSize"
 						:disabled="disabled"
 						role="button"
 						:aria-controls="dropdownId"

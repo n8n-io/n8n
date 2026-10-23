@@ -16,6 +16,14 @@ import { ApiKey, Project, ProjectRelation, User } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 
+/**
+ * Loads accounts of both kinds. A full row comes back as the child entity that
+ * its `kind` names (`Person` or `ServiceAccount`). Use `PersonRepository` or
+ * `ServiceAccountRepository` when only one kind can appear.
+ *
+ * The query methods below predate service accounts. They stay here until their
+ * callers move to `PersonRepository`, so that a caller sees no change.
+ */
 @Service()
 export class UserRepository extends BaseRepository<User> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {

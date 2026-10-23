@@ -942,8 +942,9 @@ export class MemoryOrchestrator {
 
 	/**
 	 * Price a side-call model turn and forward it to the host so it can add the
-	 * USD cost to the execution and thread totals. Best-effort: a catalog
-	 * lookup or host failure is logged and never fails the memory task.
+	 * USD cost to the execution and thread totals. An unpriced call is still
+	 * forwarded without `cost`, so the host can bill its tokens. Best-effort: a
+	 * host failure is logged and never fails the memory task.
 	 */
 	private async forwardSideCallUsage(
 		onSideCallUsage: OnSideCallUsage | undefined,
@@ -954,8 +955,13 @@ export class MemoryOrchestrator {
 		if (!onSideCallUsage || !usage || !model) return;
 		try {
 			const cost = await computeSideCallCost(model, usage, this.config.promptCaching);
-			if (cost === undefined) return;
-			await onSideCallUsage({ task, model, usage, cost, reportId: crypto.randomUUID() });
+			await onSideCallUsage({
+				task,
+				model,
+				usage,
+				...(cost !== undefined ? { cost } : {}),
+				reportId: crypto.randomUUID(),
+			});
 		} catch (error) {
 			logger.warn('Failed to report side-call usage', { error, task });
 		}
