@@ -57,6 +57,23 @@ export class ScimSettingsService {
 	}
 
 	/**
+	 * Reads the saved switch, not the cache. The read lock waits for an
+	 * `update` or a `turnOff` that holds the switch, so the read sees the
+	 * value that they commit.
+	 */
+	async isSavedEnabled(): Promise<boolean> {
+		return await this.transactionRunner.run({}, async (ctx) => {
+			const row = await this.settingsRepository.getOrCreateWithReadLock(
+				ENABLED_KEY,
+				'false',
+				true,
+				ctx,
+			);
+			return row.value === 'true';
+		});
+	}
+
+	/**
 	 * Turns the switch off and tells if it was on. It reads the saved switch
 	 * under the lock that `update` takes, not the cache. Thus it also turns
 	 * off an enable that committed while the cache still held the old value.
