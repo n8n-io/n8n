@@ -1,14 +1,10 @@
 /* eslint-disable @typescript-eslint/consistent-type-imports */
 /* eslint-disable @typescript-eslint/no-require-imports */
-import {
-	AZURE_FOUNDRY_ANTHROPIC_PREFIX,
-	isAzureFoundryAnthropicModel,
-	isGoogleVertexAnthropicModel,
-	splitModelId,
-} from '@n8n/ai-utilities/agent-config';
+import { AZURE_FOUNDRY_ANTHROPIC_PREFIX, splitModelId } from '@n8n/ai-utilities/agent-config';
 import {
 	AZURE_AI_FOUNDRY_AUDIENCE,
 	ensureUrlPathSuffix,
+	getAzureFoundryOrigin,
 	isOpenAiCustomEndpoint,
 } from '@n8n/ai-utilities/model-discovery';
 import type { ClientOAuth2Options } from '@n8n/client-oauth2';
@@ -20,6 +16,7 @@ import type { NativeToolDeferral } from './native-tool-deferral';
 import { anthropicToolDeferral } from './native-tool-deferral/anthropic';
 import { openAiToolDeferral } from './native-tool-deferral/openai';
 import { wrapOpenRouterModel } from './openrouter';
+import { isAnthropicMessagesProvider } from './prompt-cache';
 import {
 	endpointRouteKey,
 	guardOpenAiRoutes,
@@ -231,10 +228,8 @@ export function isOfficialOpenAiBaseUrl(baseURL: string | undefined): boolean {
 /** Whether a model accepts the stable and volatile prompt sections as separate system messages. */
 export function supportsSplitSystemMessages(model: ModelConfig): boolean {
 	const modelId = getModelIdString(model);
-	if (isGoogleVertexAnthropicModel(modelId) || isAzureFoundryAnthropicModel(modelId)) return true;
+	if (isAnthropicMessagesProvider(modelId)) return true;
 	switch (modelId.split('/')[0]) {
-		case 'anthropic':
-		case 'google-vertex-anthropic':
 		case 'openrouter':
 			return true;
 		case 'openai': {
@@ -301,7 +296,7 @@ function buildAzureFoundryAnthropicModel(
 	if (!baseURL) throw new Error('baseURL is required for a Microsoft Foundry credential');
 	const { createAnthropic } = require('@ai-sdk/anthropic') as typeof import('@ai-sdk/anthropic');
 	return createAnthropic({
-		baseURL: `${new URL(baseURL).origin}/anthropic/v1`,
+		baseURL: `${getAzureFoundryOrigin(baseURL)}/anthropic/v1`,
 		// Without an API key the SDK needs some credential. The placeholder bearer
 		// token also keeps it from reading ANTHROPIC_API_KEY off the host; the Entra
 		// transport replaces it on every request.
