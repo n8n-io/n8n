@@ -125,9 +125,9 @@ function onDialogOpenUpdate(open: boolean) {
 </script>
 
 <template>
-	<N8nDialog :open="modalOpen" size="large" :header="title" @update:open="onDialogOpenUpdate">
+	<N8nDialog :open="modalOpen" size="medium" :header="title" @update:open="onDialogOpenUpdate">
 		<N8nDialogBody>
-			<div :data-test-id="`${modalName}-modal`" @keyup.enter="onSubmit">
+			<form id="delete-user-form" data-test-id="delete-user-modal" @submit.prevent="onSubmit">
 				<div v-if="isPending">
 					<N8nText color="text-base">{{
 						i18n.baseText('settings.users.confirmUserDeletion')
@@ -180,16 +180,17 @@ function onDialogOpenUpdate(open: boolean) {
 						</N8nInputLabel>
 					</div>
 				</div>
-			</div>
+			</form>
 		</N8nDialogBody>
 		<N8nDialogFooter>
 			<N8nButton
+				type="submit"
+				form="delete-user-form"
 				variant="destructive"
 				:loading="loading"
 				:disabled="!enabled"
 				:label="i18n.baseText('settings.users.delete')"
 				data-test-id="confirm-delete-user-button"
-				@click="onSubmit"
 			/>
 		</N8nDialogFooter>
 	</N8nDialog>
@@ -199,6 +200,14 @@ function onDialogOpenUpdate(open: boolean) {
 .content {
 	> *:not(:last-child) {
 		margin-bottom: var(--spacing--sm);
+	}
+
+	// Element Plus keeps the radio label on one line. Remove this override
+	// when the radio selection uses the Reka UI design-system component.
+	:global(.el-radio) {
+		max-width: 100%;
+		margin-right: 0;
+		white-space: normal;
 	}
 }
 
