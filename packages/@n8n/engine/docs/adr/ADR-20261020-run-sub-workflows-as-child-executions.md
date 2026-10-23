@@ -26,34 +26,34 @@ the credential checks read control-plane state.
 
 ## Decision
 
-1. **A sub-workflow call uses a similar mechanism to wait-resume.** We record the
-   child execution in the shim and return a `child` declaration, similar to `wait`.
-   The engine is responsible for suspending the parent, running the child, and resuming 
-   the parent when the child is complete.
-2. **We re-invoke the execute method when the parent is resumed.** On the second
+1. **A sub-workflow call uses a similar mechanism to wait-resume.** We receive the
+   child execution request in the shim and return a `child` declaration, similar to `wait`.
+   The engine is responsible for persisting child declaration: suspending the parent,
+   running the child, and resuming the parent when the child is complete.
+3. **We re-invoke the execute method when the parent is resumed.** On the second
    invocation, the shim answers the `executeWorkflow` call with the output of the child
    execution. Then all of the existing post-processing is automatically applied. We would
    prefer a two-phase approach similarto wait/resume but that change touches the node
    interface, so we will defer it for future work. This decision supersedes the decision
    in ADR-20260902-steps-declare-waits which states that we do not re-invoke execute.
    That decision still holds for waiting, but not sub-workflows.
-3. **The control plane resolves the child, and the engine starts it.** When a node asks
+4. **The control plane resolves the child, and the engine starts it.** When a node asks
    for a sub-workflow, the shim calls the control plane. The control plane looks up the
    workflow, applies the caller policy and the credential checks, and returns the graph.
    The engine then starts the child itself as it processes the step result. Starting it in
    the engine keeps admittance and the parent link in one place.
-4. **Suspend before start.** The engine suspends the parent step before it starts the
+5. **Suspend before start.** The engine suspends the parent step before it starts the
    child, so the child cannot end before the parent can resume. When the start fails,
    reconciliation recovers the waiting step.
-5. **The child returns all its terminal branches, concatenated.** The branches are ordered
+6. **The child returns all its terminal branches, concatenated.** The branches are ordered
    as engine v1 orders execution, by canvas position from top to bottom, and then by run.
    Engine v1 returns the output of the last node that ran. This is a breaking change for a
    child with several end branches. We may revisit this decision when we look at backwards
    compatible execution order in https://linear.app/n8n/issue/CET-460.
-6. **Cancellation cascades.** Cancelling a parent cancels its children, awaited or not. A
+7. **Cancellation cascades.** Cancelling a parent cancels its children, awaited or not. A
    timeout that ends the parent does the same, once engine v2 has timeouts. We may later
    introduce a sub-workflow execution mode that detaches the child fully from the parent.
-7. **Dropped or postponed features.** The "run once for each item" mode and the inline,
+8. **Dropped or postponed features.** The "run once for each item" mode and the inline,
    local file and URL sources are refused. v1-v2 cross-engine sub-workflow executions are
    not supported. 
 
