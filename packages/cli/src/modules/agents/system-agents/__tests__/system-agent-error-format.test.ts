@@ -141,6 +141,7 @@ function setup(
 		mock<TransactionRunner>(),
 		mock(),
 		mock(),
+		mock(),
 	);
 
 	const events: AgentSseEvent[] = [];
