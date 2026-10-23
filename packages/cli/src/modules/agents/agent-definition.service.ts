@@ -6,7 +6,7 @@ import { deepCopy } from 'n8n-workflow';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
 import type { AgentHistory } from './entities/agent-history.entity';
 import type { Agent } from './entities/agent.entity';
-import { fromAgentDocument, keepLegacySkillRefs } from './json-config/agent-document';
+import { fromAgentDocument } from './json-config/agent-document';
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
@@ -75,7 +75,7 @@ export class AgentDefinitionService {
 			? fromAgentDocument(document)
 			: { config: null, skillRefs: undefined };
 		return await this.transactionRunner.run(ctx, async (txCtx) => {
-			agent.schema = config ? keepLegacySkillRefs(agent.schema, config) : null;
+			agent.schema = config;
 			agent.tools = deepCopy(definition.tools);
 			if (agent.schema) agent.name = agent.schema.name;
 			await saveAgentDraftFenced(this.agentRepository, agent, txCtx);

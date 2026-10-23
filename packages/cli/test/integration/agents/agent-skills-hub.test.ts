@@ -321,7 +321,7 @@ describe('Agent skills in the skills hub', () => {
 		expect(await Container.get(SkillRepository).findByIds([created.id])).toHaveLength(1);
 	});
 
-	it('publishes without writing the legacy skill columns of the version', async () => {
+	it('publishes the skills as pins and writes no agent_history.skills', async () => {
 		const skill = await createSkill(body('Published', 'Published text.'));
 		const published = (await publish(await createAgent([skill])))!;
 		const version = published.activeVersion!;
@@ -334,14 +334,12 @@ describe('Agent skills in the skills hub', () => {
 		expect(await instructionsOf(skills)).toEqual({ [skill]: 'Published text.' });
 	});
 
-	it('keeps the legacy skill columns of a draft as they were on skill writes', async () => {
+	it('does not write agents.skills on skill writes, publish or revert', async () => {
 		const agent = await createAgent([]);
-		const legacySkills = { legacy: body('Legacy') };
-		const legacyRefs = [{ type: 'skill', id: 'legacy' }];
-		// Values that an earlier release wrote. Nothing reads or clears them.
+		// A value that an earlier release wrote.
+		const oldSkills = { old: body('Old') };
 		const stored = await reload(agent);
-		stored.skills = legacySkills;
-		stored.schema = { ...stored.schema, skills: legacyRefs } as unknown as Agent['schema'];
+		stored.skills = oldSkills;
 		await agentRepository.save(stored);
 		const context = { user: editor, modifiedBy: 'builder' as const };
 
@@ -364,14 +362,12 @@ describe('Agent skills in the skills hub', () => {
 		await publishService.revertToPublishedAgent(agent.id, project.id, owner, 'user');
 
 		const row = await reload(agent);
-		expect(row.skills).toEqual(legacySkills);
-		expect(row.schema?.skills).toEqual(legacyRefs);
-		// The revert pins the ref to the published version. The legacy refs stay unread.
+		expect(row.skills).toEqual(oldSkills);
+		// The revert pins the ref to the published version.
 		expect(await skillRefs.refsForDraft(row, {})).toEqual([
 			{ type: 'skill', id: created.id, versionId: expect.any(String) },
 		]);
 		expect(published.activeVersion?.skills).toBeNull();
-		expect(published.activeVersion?.schema).not.toHaveProperty('skills');
 	});
 
 	it('keeps a skill for this agent only, and copies it for a duplicate', async () => {

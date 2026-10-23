@@ -24,24 +24,3 @@ export function fromAgentDocument(document: AgentJsonConfig): {
 	const { skills, ...config } = document;
 	return { config, skillRefs: skills };
 }
-
-/**
- * `next` with the legacy `skills` key of `previous`, when `previous` has one. A draft
- * save does not clear the legacy value. Nothing reads it, and a later release drops it.
- */
-export function keepLegacySkillRefs(
-	previous: StoredAgentConfig | null,
-	next: StoredAgentConfig,
-): StoredAgentConfig {
-	if (previous?.skills === undefined) return next;
-	return { ...next, skills: previous.skills };
-}
-
-/**
- * A stored config without the legacy `skills` key. Configs written before the
- * skills hub can still hold it. Nothing reads it, so do not copy it on.
- */
-export function withoutLegacySkillRefs(config: StoredAgentConfig): StoredAgentConfig {
-	const { skills: _legacy, ...rest } = config;
-	return rest;
-}

@@ -24,11 +24,7 @@ import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { assertSingleConnections } from './integrations/single-connection';
 import { composeJsonConfig } from './json-config/agent-config-composition';
-import {
-	fromAgentDocument,
-	keepLegacySkillRefs,
-	type AgentSkillRefs,
-} from './json-config/agent-document';
+import { fromAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
@@ -119,7 +115,7 @@ export class AgentConfigService {
 			});
 		assertSingleConnections(this.chatIntegrationRegistry, replacement.nextIntegrations);
 		const next = fromAgentDocument(replacement.nextSchema);
-		entity.schema = keepLegacySkillRefs(entity.schema, next.config);
+		entity.schema = next.config;
 		entity.name = validatedConfig.name;
 		entity.integrations = replacement.nextIntegrations;
 		markAgentDraftDirty(entity);

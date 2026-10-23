@@ -19,7 +19,6 @@ import type { AgentCustomToolsService } from '../agent-custom-tools.service';
 import { AgentSaveCompletionService } from '../agent-save-completion.service';
 import { AgentDefinitionService } from '../agent-definition.service';
 import { AgentPublishService } from '../agent-publish.service';
-import { withoutLegacySkillRefs } from '../json-config/agent-document';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import { AgentSetupCompletionService } from '../agent-setup-completion.service';
@@ -567,9 +566,8 @@ describe('AgentPublishService', () => {
 			{
 				versionId,
 				agentId,
-				// The legacy skill columns are not written. The pins hold the skills.
 				schema: {
-					...withoutLegacySkillRefs(agent.schema!),
+					...agent.schema!,
 					integrations: [{ type: 'n8n_chat', credentialId: '' }],
 				},
 				tools: configuredTools,
@@ -1158,8 +1156,7 @@ describe('AgentPublishService', () => {
 			await service.publishAgent(agentId, projectId, user, byBuilder);
 
 			const [[saved, saveCtx]] = agentHistoryRepository.saveVersion.mock.calls;
-			// The pins hold the refs. The published schema has no legacy `skills` key.
-			expect(saved.schema).not.toHaveProperty('skills');
+			// The pins hold the skills, so publish writes no `agent_history.skills`.
 			expect(saved).not.toHaveProperty('skills');
 			expect(refsService.versionSnapshot).toHaveBeenCalledWith(agent, ctx);
 			expect(refsService.pinVersion).toHaveBeenCalledWith(

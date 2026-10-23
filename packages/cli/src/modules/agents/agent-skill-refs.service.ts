@@ -3,7 +3,6 @@ import type {
 	AgentSkill,
 	AgentSkillAvailability,
 	SkillSource,
-	StoredAgentConfig,
 } from '@n8n/api-types';
 import type { OperationContext, User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -20,14 +19,12 @@ import {
 import { AgentSkillUsageService } from './agent-skill-usage.service';
 import type { AgentHistory } from './entities/agent-history.entity';
 import type { Agent } from './entities/agent.entity';
-import { withoutLegacySkillRefs, type AgentSkillRefs } from './json-config/agent-document';
+import type { AgentSkillRefs } from './json-config/agent-document';
 import { AgentSkillRepository } from './repositories/agent-skill.repository';
 import { getAgentSkillHash } from './utils/agent-config-hash';
 
-/** What a publish writes to `agent_history`, and the hub versions to pin. */
+/** The hub versions that a publish pins. */
 export type PublishSnapshot = {
-	/** The draft config without the legacy `skills` key. */
-	schema: StoredAgentConfig | null;
 	/** Hub skill version id for each skill ref, in draft order. */
 	pins: Map<string, string>;
 };
@@ -46,10 +43,6 @@ export interface AgentSkillsSnapshot {
  * The refs of a draft are the `agent_skill_dependency` rows. The refs of a
  * published version are the `agent_version_skill_dependency` pins, in attach
  * order. The skill bodies come from the skills hub.
- *
- * This service does not read or write the legacy `skills` columns of `agents`
- * and `agent_history`, or the `skills` key of their `schema`. A later release
- * drops them.
  */
 @Service()
 export class AgentSkillRefsService {
@@ -315,25 +308,23 @@ export class AgentSkillRefsService {
 	}
 
 	/**
-	 * What a publish writes to `agent_history`: the draft config without the legacy
-	 * `skills` key, and the hub version of each draft ref. Pin the versions once the
-	 * `agent_history` row exists (see `pinVersion`). Call it in the publish
-	 * transaction: it takes the publish lock on the skills.
+	 * The hub version of each draft ref. Pin the versions once the `agent_history`
+	 * row exists (see `pinVersion`). Call it in the publish transaction: it takes
+	 * the publish lock on the skills.
 	 */
 	async versionSnapshot(
 		agent: Pick<Agent, 'id' | 'schema'>,
 		ctx: OperationContext,
 	): Promise<PublishSnapshot> {
-		if (!agent.schema) return { schema: null, pins: new Map() };
-		const schema = withoutLegacySkillRefs(agent.schema);
+		if (!agent.schema) return { pins: new Map() };
 		const refs = await this.refsForDraft(agent, ctx);
-		if (refs.length === 0) return { schema, pins: new Map() };
+		if (refs.length === 0) return { pins: new Map() };
 		const { versionByRef } = await this.skillService.snapshotForPublish(toServiceRefs(refs), ctx);
 		const missing = refs.filter((ref) => !versionByRef.has(ref.id)).map((ref) => ref.id);
 		if (missing.length > 0) {
 			throw new UserError(`Cannot publish agent with missing skills: ${missing.join(', ')}`);
 		}
-		return { schema, pins: versionByRef };
+		return { pins: versionByRef };
 	}
 
 	/** Publish, after the `agent_history` row exists: pin the versions of `versionSnapshot`. */

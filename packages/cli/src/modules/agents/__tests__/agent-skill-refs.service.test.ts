@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests reference unbound methods */
-import type { AgentJsonSkillConfig, StoredAgentConfig } from '@n8n/api-types';
+import type { AgentJsonSkillConfig } from '@n8n/api-types';
 import type { OperationContext, User } from '@n8n/db';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -508,7 +508,7 @@ describe('AgentSkillRefsService', () => {
 	describe('versionSnapshot and pinVersion', () => {
 		const notes = { name: 'Notes', description: 'Take notes', instructions: 'Write it down.' };
 
-		it('pins the versions the draft runs and writes no legacy skill columns', async () => {
+		it('pins the versions the draft runs', async () => {
 			agentSkillRepository.findDependencies.mockResolvedValue(
 				new Map([
 					[
@@ -536,7 +536,7 @@ describe('AgentSkillRefsService', () => {
 				[{ id: 'zeta' }, { id: 'alpha', versionId: pinId }],
 				ctx,
 			);
-			expect(snapshot).toEqual({ schema: baseConfig, pins: versionByRef });
+			expect(snapshot).toEqual({ pins: versionByRef });
 			expect(agentSkillUsage.pinForPublish).toHaveBeenCalledWith('version-1', versionByRef, ctx);
 		});
 
@@ -555,24 +555,9 @@ describe('AgentSkillRefsService', () => {
 			const snapshot = await service.versionSnapshot(agent, ctx);
 			await service.pinVersion('version-1', snapshot, ctx);
 
-			expect(snapshot).toEqual({ schema: baseConfig, pins: new Map() });
+			expect(snapshot).toEqual({ pins: new Map() });
 			expect(skillService.snapshotForPublish).not.toHaveBeenCalled();
 			expect(agentSkillUsage.pinForPublish).not.toHaveBeenCalled();
-		});
-	});
-
-	it('drops the legacy skills key of the draft config from the published schema', async () => {
-		const legacy = {
-			...agent,
-			schema: {
-				...baseConfig,
-				skills: [{ type: 'skill', id: 'old' }],
-			} as unknown as StoredAgentConfig,
-		} as Agent;
-
-		await expect(service.versionSnapshot(legacy, ctx)).resolves.toEqual({
-			schema: baseConfig,
-			pins: new Map(),
 		});
 	});
 });

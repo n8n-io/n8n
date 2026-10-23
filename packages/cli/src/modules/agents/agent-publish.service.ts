@@ -724,7 +724,7 @@ export class AgentPublishService {
 	) {
 		try {
 			const snapshot = await this.agentSkillRefs.versionSnapshot(agent, ctx);
-			const { schema } = snapshot;
+			const { schema } = agent;
 			const history = await this.agentHistoryRepository.saveVersion(
 				{
 					versionId,

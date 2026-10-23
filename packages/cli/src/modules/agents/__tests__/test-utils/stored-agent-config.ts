@@ -10,7 +10,7 @@ import type { AgentSkillRefsService } from '../../agent-skill-refs.service';
 import type { AgentHistory } from '../../entities/agent-history.entity';
 import type { Agent } from '../../entities/agent.entity';
 import { composeJsonConfig } from '../../json-config/agent-config-composition';
-import { withoutLegacySkillRefs, type AgentSkillRefs } from '../../json-config/agent-document';
+import type { AgentSkillRefs } from '../../json-config/agent-document';
 import type { AgentRunSource } from '../../utils/agent-published-snapshot';
 
 /**
@@ -103,12 +103,10 @@ export function createAgentSkillRefsService(
 			),
 		),
 	);
-	// As the real seam: the schema has no legacy `skills` key, and the pins hold the skills.
 	service.versionSnapshot.mockImplementation(async (agent) => {
-		if (!agent.schema) return { schema: null, pins: new Map() };
+		if (!agent.schema) return { pins: new Map() };
 		const skillRefs = readDraftRefs(agent);
 		return {
-			schema: withoutLegacySkillRefs(agent.schema),
 			pins: new Map(skillRefs.map((ref) => [ref.id, ref.versionId ?? `${ref.id}-latest`])),
 		};
 	});

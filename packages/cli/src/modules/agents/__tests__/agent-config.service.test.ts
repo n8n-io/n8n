@@ -856,30 +856,6 @@ describe('AgentConfigService', () => {
 			]);
 		});
 
-		it('keeps the legacy skill columns of the draft as they were on a config save', async () => {
-			const { service, agentRepository } = makeService();
-			const legacy = { name: 'Legacy', description: 'Legacy', instructions: 'Old.' };
-			const legacyRefs = [{ type: 'skill' as const, id: 'legacy' }];
-			const agent = makeAgent({
-				schema: { ...baseConfig, skills: legacyRefs },
-				skills: { legacy },
-			});
-			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-
-			await service.updateConfig(
-				agentId,
-				projectId,
-				{ ...baseConfig, instructions: 'New instructions.', skills: [] },
-				user,
-				fencedOn(agent),
-			);
-
-			const saved = agentRepository.saveDraftFenced.mock.calls[0][0];
-			expect(saved.skills).toEqual({ legacy });
-			expect(saved.schema?.skills).toEqual(legacyRefs);
-			expect(saved.schema?.instructions).toBe('New instructions.');
-		});
-
 		it('removes config refs and stored bodies that no longer have matching definitions', async () => {
 			const { service, agentRepository, agentTaskRepository, skillRefs, runtimeCacheService } =
 				makeService();
@@ -1366,8 +1342,8 @@ describe('AgentConfigService', () => {
 			expect(refsCtx).toBe(saveCtx);
 			expect(written).toBe(agent);
 			expect(refs).toEqual(skillRefs);
-			// A config save keeps the legacy `skills` key of the stored config as it was.
-			expect(agent.schema?.skills).toEqual(skillRefs);
+			// The stored config holds no skill refs.
+			expect(agent.schema).not.toHaveProperty('skills');
 		});
 
 		it('passes the submitted refs to the skill refs seam', async () => {
