@@ -5,10 +5,12 @@ import type { RuntimeBridge, BridgeConfig, ExecuteOptions, WorkflowData } from '
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
 import type { ErrorSentinel } from '../runtime/lazy-proxy';
 import { unwrapLuxonValues } from '../runtime/luxon-transfer';
+import type { DataHolder } from './host-functions';
 import {
 	dispatchHostCall,
 	getArrayElement,
 	getValueAtPath,
+	heldData,
 	isErrorSentinel,
 	reconstructError,
 	serializeError,
@@ -109,16 +111,6 @@ function loadRuntimeBundle(): string {
 	throw new Error(
 		`Could not find runtime bundle (${BUNDLE_RELATIVE_PATH}) in any parent of ${__dirname}`,
 	);
-}
-
-/** Workflow data for one `execute()` call, cleared when the call ends. */
-interface DataHolder {
-	data?: WorkflowData;
-}
-
-function heldData(holder: DataHolder): WorkflowData {
-	if (!holder.data) throw new Error('Host callback called after its expression finished');
-	return holder.data;
 }
 
 /**

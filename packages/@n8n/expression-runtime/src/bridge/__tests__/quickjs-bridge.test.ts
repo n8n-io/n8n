@@ -1,5 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { setFlagsFromString } from 'node:v8';
+import { runInNewContext } from 'node:vm';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ExpressionEvaluator } from '../../evaluator/expression-evaluator';
@@ -149,6 +151,51 @@ describe('QuickJsBridge after a host error in a guest call', () => {
 		expect(() => next.initializeSync()).toThrow(/not loaded yet/);
 		await waitForReplacementModule();
 		expect(bridge.execute('return 1 + 1;', {})).toBe(2);
+	});
+});
+
+describe('QuickJsBridge workflow data', () => {
+	const bridges: RuntimeBridge[] = [];
+
+	async function newBridge(): Promise<QuickJsBridge> {
+		const bridge = new QuickJsBridge({ timeout: 5000 });
+		bridges.push(bridge);
+		await bridge.initialize();
+		return bridge;
+	}
+
+	afterEach(async () => {
+		await Promise.all(bridges.splice(0).map(async (bridge) => await bridge.dispose()));
+	});
+
+	it('should free the data of a finished call while the bridge is alive', async () => {
+		setFlagsFromString('--expose_gc');
+		const gc = runInNewContext('gc') as unknown as () => void;
+
+		const bridge = await newBridge();
+		let data: { $json: { value: number } } | undefined = { $json: { value: 42 } };
+		const dataRef = new WeakRef(data);
+		expect(bridge.execute('return this.$json.value', data)).toBe(42);
+		data = undefined;
+
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		gc();
+
+		expect(dataRef.deref()).toBeUndefined();
+	});
+
+	it('should return an error from a callback that runs after its call finished', async () => {
+		const bridge = await newBridge();
+		expect(() =>
+			bridge.execute(
+				'globalThis.__getValueAtPath = __getValueAtPathImpl; throw new Error("boom")',
+				{ $json: { value: 42 } },
+			),
+		).toThrow('boom');
+
+		expect(() =>
+			bridge.execute('return globalThis.__getValueAtPath(["$json", "value"])', {}),
+		).toThrow('Host callback called after its expression finished');
 	});
 });
 
