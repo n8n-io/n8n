@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useMessage } from '@/app/composables/useMessage';
+import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
@@ -61,7 +61,7 @@ const threadTitleOf = useThreadTitle();
 const route = useRoute();
 const router = useRouter();
 const toast = useToast();
-const message = useMessage();
+const { openAgentConfirmationModal } = useAgentConfirmationModal();
 const sessionsStore = useAgentSessionsStore();
 const agentTelemetry = useAgentTelemetry();
 let disposed = false;
@@ -232,15 +232,13 @@ async function onAction(actionId: string, thread: AgentExecutionThread) {
 
 	if (actionId !== 'delete') return;
 
-	const confirmed = await message.confirm(
-		i18n.baseText('agentSessions.deleteConfirm.message'),
-		i18n.baseText('agentSessions.deleteConfirm.headline'),
-		{
-			type: 'warning',
-			confirmButtonText: i18n.baseText('agentSessions.deleteConfirm.confirmButtonText'),
-			cancelButtonText: '',
-		},
-	);
+	const confirmed = await openAgentConfirmationModal({
+		title: i18n.baseText('agentSessions.deleteConfirm.headline'),
+		description: i18n.baseText('agentSessions.deleteConfirm.message'),
+		isDestructive: true,
+		confirmButtonText: i18n.baseText('agentSessions.deleteConfirm.confirmButtonText'),
+		cancelButtonText: i18n.baseText('generic.cancel'),
+	});
 
 	if (confirmed !== MODAL_CONFIRM) return;
 
