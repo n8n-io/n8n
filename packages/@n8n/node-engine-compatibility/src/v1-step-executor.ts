@@ -62,7 +62,7 @@ function toStepResult(
 	// The node ran to the end on an empty result; the child it asked for is
 	// what the step owes, and the node runs again once the child ends.
 	const { awaited, detached } = context.subWorkflowCalls;
-	if (awaited) return { spawn: awaited };
+	if (awaited) return { child: awaited };
 
 	const { waitTill } = context.runExecutionData;
 	if (waitTill === undefined) {

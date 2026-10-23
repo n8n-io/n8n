@@ -79,7 +79,7 @@ export type {
 	ExecutionLocation,
 	ExternalDependencies,
 	IStepExecutor,
-	SpawnDeclaration,
+	ChildDeclaration,
 	StepExecutionContext,
 	StepExecutionRequest,
 	StepExecutionResult,
