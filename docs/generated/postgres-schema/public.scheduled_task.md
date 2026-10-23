@@ -31,8 +31,8 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| CHK_scheduled_task_leaseSeconds | CHECK | CHECK (("leaseSeconds" > 0)) |
-| CHK_scheduled_task_mode | CHECK | CHECK (((mode)::text = ANY ((ARRAY['once'::character varying, 'hold'::character varying])::text[]))) |
+| CHK_scheduled_task_leaseSeconds | CHECK | CHECK (("leaseSeconds" > 0)) NOT VALID |
+| CHK_scheduled_task_mode | CHECK | CHECK (((mode)::text = ANY ((ARRAY['once'::character varying, 'hold'::character varying])::text[]))) NOT VALID |
 | CHK_scheduled_task_running_lease | CHECK | CHECK ((((status)::text <> 'running'::text) OR ("leaseExpiresAt" IS NOT NULL))) |
 | CHK_scheduled_task_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'running'::character varying, 'succeeded'::character varying, 'failed'::character varying, 'missed'::character varying, 'cancelled'::character varying])::text[]))) |
 | CHK_scheduled_task_timeoutSeconds | CHECK | CHECK ((("timeoutSeconds" > 0) AND ("timeoutSeconds" <= 2147483))) NOT VALID |

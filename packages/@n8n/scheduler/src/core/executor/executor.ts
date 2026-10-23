@@ -4,12 +4,13 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { backoff } from './backoff';
 import { BatchedLeaseRenewer } from './batched-lease-renewer';
 import {
+	HolderNotReadyError,
 	HolderShutdownError,
 	HoldStoreMissingError,
 	LeaseLostError,
 	TaskTimeoutError,
 } from '../errors';
-import { MIN_RENEWAL_INTERVAL_MS } from './lease-constants';
+import { defaultFenceMarginMs, MIN_RENEWAL_INTERVAL_MS } from './lease-constants';
 import { LeaseHeartbeat } from './lease-heartbeat';
 import type { LeaseRenewalResult } from './lease-heartbeat';
 import { DEFAULT_EXECUTOR_OPTIONS, type ExecutorOptions } from './options';
@@ -33,6 +34,15 @@ type ClaimedEntry = { host: string; task: ClaimedTask };
 type HolderEntry = { claim: ClaimedTaskRef; run: AbortController; settled: Promise<void> };
 
 type HoldStore = Required<Pick<ExecutorTaskStore, 'markHeld' | 'releaseHeld'>>;
+
+type HoldEndReason = 'shutdown' | 'lease-lost' | 'start-timeout' | 'error' | 'returned';
+
+function holdEndReason(abortReason: unknown, threw: boolean): HoldEndReason {
+	if (abortReason instanceof HolderShutdownError) return 'shutdown';
+	if (abortReason instanceof LeaseLostError) return 'lease-lost';
+	if (abortReason instanceof TaskTimeoutError) return 'start-timeout';
+	return threw ? 'error' : 'returned';
+}
 
 type HeartbeatRun = {
 	claim: ClaimedTaskRef;
@@ -517,7 +527,6 @@ export class Executor {
 			this.hooks.onHoldReleased?.(task, 'shutdown');
 			return { outcome: 'released' };
 		}
-		this.hooks.onDispatch?.(task.taskType, 0);
 
 		const run = new AbortController();
 		let isReady = false;
@@ -587,49 +596,35 @@ export class Executor {
 			abortReason,
 		}: { failure?: { error: unknown }; isReady: boolean; abortReason: unknown },
 	): Promise<FireResult> {
-		const shutdown = abortReason instanceof HolderShutdownError;
-		const reason = shutdown
-			? 'shutdown'
-			: abortReason instanceof LeaseLostError
-				? 'lease-lost'
-				: abortReason instanceof TaskTimeoutError
-					? 'start-timeout'
-					: failure !== undefined
-						? 'error'
-						: 'returned';
-
-		const leaseLost = abortReason instanceof LeaseLostError;
-		if (failure === undefined && !isReady && !shutdown && !leaseLost) {
-			const error =
-				abortReason instanceof TaskTimeoutError
-					? abortReason
-					: new Error('The holder returned before it reported ready');
-			return await this.recordHandlerFailure(task, claim, error, {
-				dispatchWasReported: false,
-				abortReason,
-			});
+		const reason = holdEndReason(abortReason, failure !== undefined);
+		if (reason === 'shutdown' || (failure === undefined && (isReady || reason === 'lease-lost'))) {
+			return await this.releaseHeldTask(task, claim, store, 0, reason, failure);
 		}
-
-		if (failure === undefined || shutdown) {
-			const errorMessage = failure === undefined ? null : ensureError(failure.error).message;
-			const rows = await store.releaseHeld(claim, 0, errorMessage);
-			if (rows === 0) return { outcome: 'skipped-not-owned' };
-			this.hooks.onHoldReleased?.(task, reason);
-			return { outcome: 'released' };
-		}
-
-		const errorMessage = ensureError(failure.error).message;
 		if (isReady) {
-			const rows = await store.releaseHeld(claim, backoff(1), errorMessage);
-			if (rows === 0) return { outcome: 'skipped-not-owned', errorMessage };
-			this.hooks.onHoldReleased?.(task, reason);
-			return { outcome: 'released', errorMessage };
+			return await this.releaseHeldTask(task, claim, store, backoff(1), reason, failure);
 		}
-
-		return await this.recordHandlerFailure(task, claim, failure.error, {
+		const error =
+			failure?.error ??
+			(abortReason instanceof TaskTimeoutError ? abortReason : new HolderNotReadyError());
+		return await this.recordHandlerFailure(task, claim, error, {
 			dispatchWasReported: false,
 			abortReason,
 		});
+	}
+
+	private async releaseHeldTask(
+		task: ClaimedTask,
+		claim: ClaimedTaskRef,
+		store: HoldStore,
+		delayMs: number,
+		reason: HoldEndReason,
+		failure?: { error: unknown },
+	): Promise<FireResult> {
+		const errorMessage = failure === undefined ? undefined : ensureError(failure.error).message;
+		const rows = await store.releaseHeld(claim, delayMs, errorMessage ?? null);
+		if (rows > 0) this.hooks.onHoldReleased?.(task, reason);
+		const outcome = rows > 0 ? 'released' : 'skipped-not-owned';
+		return errorMessage === undefined ? { outcome } : { outcome, errorMessage };
 	}
 
 	/** Renew a held task's lease until the returned function is called. */
@@ -640,8 +635,7 @@ export class Executor {
 		leaseSetAt: number,
 		onRenewal: (result: LeaseRenewalResult) => void,
 	): () => void {
-		const fenceMarginMs =
-			this.options.hold?.stopBudgetMs ?? Math.min(5_000, Math.floor(leaseMs / 8));
+		const fenceMarginMs = this.options.hold?.fenceMarginMs ?? defaultFenceMarginMs(leaseMs);
 		if (this.options.hold?.renewal === 'batched') {
 			return this.renewerFor(claim.host).add(
 				claim,

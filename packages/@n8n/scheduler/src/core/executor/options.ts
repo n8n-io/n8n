@@ -35,7 +35,7 @@ export interface HoldOptions {
 	 * How long before its lease runs out a holder is told to let go. Defaults to an
 	 * eighth of the lease, at most 5 seconds.
 	 */
-	stopBudgetMs?: number;
+	fenceMarginMs?: number;
 	/** How long `stop()` waits for holders to return before it releases their claims. */
 	shutdownGraceMs: number;
 }

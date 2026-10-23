@@ -40,7 +40,7 @@
 | CHK_scheduled_job_fire_at | CHECK | CHECK ((((kind)::text <> 'one_off'::text) OR ("fireAt" IS NOT NULL))) |
 | CHK_scheduled_job_interval_seconds | CHECK | CHECK ((((kind)::text <> 'interval'::text) OR ("intervalSeconds" IS NOT NULL))) |
 | CHK_scheduled_job_kind | CHECK | CHECK (((kind)::text = ANY ((ARRAY['cron'::character varying, 'interval'::character varying, 'one_off'::character varying, 'recurring_cron'::character varying, 'hold'::character varying])::text[]))) |
-| CHK_scheduled_job_leaseSeconds | CHECK | CHECK (("leaseSeconds" > 0)) |
+| CHK_scheduled_job_leaseSeconds | CHECK | CHECK (("leaseSeconds" > 0)) NOT VALID |
 | CHK_scheduled_job_misfireGraceSeconds | CHECK | CHECK (("misfireGraceSeconds" > 0)) |
 | CHK_scheduled_job_misfirePolicy | CHECK | CHECK ((("misfirePolicy")::text = ANY ((ARRAY['coalesce'::character varying, 'skip'::character varying, 'coalesce_owner'::character varying])::text[]))) |
 | CHK_scheduled_job_recurrence_size | CHECK | CHECK (("recurrenceSize" >= 2)) |

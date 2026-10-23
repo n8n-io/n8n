@@ -87,6 +87,13 @@ export class InvalidRunOptionError extends Error {
  * The abort reason of a handler's signal when its run reaches the timeout of
  * its occurrence. The executor stops renewing the lease at the same time.
  */
+export class HolderNotReadyError extends Error {
+	constructor() {
+		super('The holder returned before it reported ready');
+		this.name = 'HolderNotReadyError';
+	}
+}
+
 export class HolderShutdownError extends Error {
 	constructor() {
 		super('The executor is stopping, so the holder must let go');

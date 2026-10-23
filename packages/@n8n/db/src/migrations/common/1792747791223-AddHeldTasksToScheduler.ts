@@ -17,7 +17,6 @@ const modeValues = ['once', 'hold'];
 export class AddHeldTasksToScheduler1792747791223 implements ReversibleMigration {
 	async up(context: MigrationContext) {
 		const { runQuery, escape, tablePrefix, isPostgres, queryRunner } = context;
-		const job = escape.tableName(jobTable);
 		const task = escape.tableName(taskTable);
 		const leaseSeconds = escape.columnName('leaseSeconds');
 		const mode = escape.columnName('mode');
@@ -25,17 +24,26 @@ export class AddHeldTasksToScheduler1792747791223 implements ReversibleMigration
 		const timestamp = isPostgres ? 'timestamptz(3)' : 'datetime(3)';
 		const modeList = modeValues.map((value) => `'${value}'`).join(', ');
 
-		await runQuery(
-			`ALTER TABLE ${job} ADD COLUMN ${leaseSeconds} int ` +
-				`CONSTRAINT "CHK_${tablePrefix}scheduled_job_leaseSeconds" CHECK (${leaseSeconds} > 0)`,
-		);
-		await runQuery(
-			`ALTER TABLE ${task} ADD COLUMN ${leaseSeconds} int ` +
-				`CONSTRAINT "CHK_${tablePrefix}scheduled_task_leaseSeconds" CHECK (${leaseSeconds} > 0)`,
-		);
-		await runQuery(
-			`ALTER TABLE ${task} ADD COLUMN ${mode} varchar(16) NOT NULL DEFAULT 'once' ` +
-				`CONSTRAINT "CHK_${tablePrefix}scheduled_task_mode" CHECK (${mode} IN (${modeList}))`,
+		const addColumn = async (table: string, column: string, definition: string, check: string) => {
+			const name = `"CHK_${tablePrefix}${table}_${column}"`;
+			const tableName = escape.tableName(table);
+			const addition = `ALTER TABLE ${tableName} ADD COLUMN ${escape.columnName(column)} ${definition}`;
+			if (!isPostgres) {
+				await runQuery(`${addition} CONSTRAINT ${name} CHECK (${check})`);
+				return;
+			}
+			// NOT VALID skips the scan of existing rows under the exclusive lock; each holds the default or NULL, which the CHECK accepts.
+			await runQuery(addition);
+			await runQuery(`ALTER TABLE ${tableName} ADD CONSTRAINT ${name} CHECK (${check}) NOT VALID`);
+		};
+
+		await addColumn(jobTable, 'leaseSeconds', 'int', `${leaseSeconds} > 0`);
+		await addColumn(taskTable, 'leaseSeconds', 'int', `${leaseSeconds} > 0`);
+		await addColumn(
+			taskTable,
+			'mode',
+			"varchar(16) NOT NULL DEFAULT 'once'",
+			`${mode} IN (${modeList})`,
 		);
 		await runQuery(`ALTER TABLE ${task} ADD COLUMN ${heldSince} ${timestamp}`);
 

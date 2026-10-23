@@ -1,3 +1,8 @@
+import {
+	DEFAULT_MISFIRE_GRACE_SECONDS,
+	ScheduledJobKind,
+	ScheduledJobMisfirePolicy,
+} from '@n8n/constants';
 import type { ScheduledJobOwner } from '@n8n/db';
 import { DataSource, ScheduledJobRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -39,7 +44,7 @@ export class HeldTaskProvisioner {
 					...job.owner,
 					taskType: job.taskType,
 					payload: job.payload,
-					kind: 'hold',
+					kind: ScheduledJobKind.Hold,
 					cronExpression: null,
 					timezone: null,
 					recurrenceUnit: null,
@@ -49,8 +54,8 @@ export class HeldTaskProvisioner {
 					nextRunAt: null,
 					maxAttempts: job.maxAttempts,
 					timeoutSeconds: job.timeoutSeconds,
-					misfirePolicy: 'skip',
-					misfireGraceSeconds: 60,
+					misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+					misfireGraceSeconds: DEFAULT_MISFIRE_GRACE_SECONDS,
 					concurrencyLimit: null,
 					leaseSeconds: job.leaseSeconds,
 				})),

@@ -492,15 +492,15 @@ describe('Executor hold mode', () => {
 		});
 
 		it.each([
-			{ leaseSeconds: 60, stopBudgetMs: undefined, fenceAtMs: 55_000 },
-			{ leaseSeconds: 16, stopBudgetMs: undefined, fenceAtMs: 14_000 },
-			{ leaseSeconds: 60, stopBudgetMs: 10_000, fenceAtMs: 50_000 },
+			{ leaseSeconds: 60, fenceMarginMs: undefined, fenceAtMs: 55_000 },
+			{ leaseSeconds: 16, fenceMarginMs: undefined, fenceAtMs: 14_000 },
+			{ leaseSeconds: 60, fenceMarginMs: 10_000, fenceAtMs: 50_000 },
 		])(
-			'aborts with a LeaseLostError at $fenceAtMs ms when renewals fail (lease $leaseSeconds s, stop budget $stopBudgetMs)',
-			async ({ leaseSeconds, stopBudgetMs, fenceAtMs }) => {
+			'aborts with a LeaseLostError at $fenceAtMs ms when renewals fail (lease $leaseSeconds s, fence margin $fenceMarginMs)',
+			async ({ leaseSeconds, fenceMarginMs, fenceAtMs }) => {
 				const { store, registry, hooks, executor } = setup({
 					leaseSeconds,
-					hold: { ...HOLD, stopBudgetMs },
+					hold: { ...HOLD, fenceMarginMs },
 				});
 				const { handler, signal } = holding();
 				registry.resolve.mockReturnValue(handler);
@@ -666,7 +666,10 @@ describe('Executor hold mode', () => {
 			await vi.advanceTimersByTimeAsync(0);
 			await stopping;
 
-			await expect(firing).resolves.toEqual({ outcome: 'released' });
+			await expect(firing).resolves.toEqual({
+				outcome: 'released',
+				errorMessage: new HolderShutdownError().message,
+			});
 			expect(store.releaseHeld).toHaveBeenCalledWith(
 				claimOf(task),
 				0,
