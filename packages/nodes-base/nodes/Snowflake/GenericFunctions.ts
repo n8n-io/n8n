@@ -1,3 +1,4 @@
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import { createPrivateKey } from 'crypto';
 import pick from 'lodash/pick';
@@ -211,4 +212,9 @@ export async function prepareQueryResults(
 		}
 	}
 	return returnData;
+}
+
+/** Build an error item with the source input item. */
+export function toErrorItem(error: unknown, itemIndex: number): INodeExecutionData {
+	return { json: { error: getErrorMessage(error) }, pairedItem: { item: itemIndex } };
 }
