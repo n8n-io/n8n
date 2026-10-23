@@ -285,6 +285,10 @@ describe('snapToGrid', () => {
 	it('should return 0 and not -0 for a small negative value', () => {
 		expect(snapToGrid(-8)).toBe(0);
 	});
+
+	it('should keep NaN', () => {
+		expect(snapToGrid(Number.NaN)).toBeNaN();
+	});
 });
 
 describe('getNewNodePosition', () => {
@@ -307,6 +311,13 @@ describe('getNewNodePosition', () => {
 		const newPosition: XYPosition = [96, 96];
 		const result = getNewNodePosition(nodes, newPosition);
 		expect(result).toEqual([240, 240]);
+	});
+
+	it('should move by at least one grid cell when the offset is smaller than half a cell', () => {
+		const nodes: INodeUi[] = [createTestNode({ id: '1', position: [96, 96], type: SET_NODE_TYPE })];
+		const newPosition: XYPosition = [96, 96];
+		const result = getNewNodePosition(nodes, newPosition, { offset: [7, 7] });
+		expect(result).toEqual([208, 208]);
 	});
 
 	it('should skip nodes in the conflict allowlist', () => {

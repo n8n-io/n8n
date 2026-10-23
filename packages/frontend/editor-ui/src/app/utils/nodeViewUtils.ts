@@ -165,8 +165,9 @@ export function snapPositionToGrid(position: XYPosition): XYPosition {
 }
 
 export function snapToGrid(value: number): number {
-	// `|| 0` turns -0 into 0
-	return Math.round(value / GRID_SIZE) * GRID_SIZE || 0;
+	const snapped = Math.round(value / GRID_SIZE) * GRID_SIZE;
+	// Turn -0 into 0 and keep NaN
+	return snapped === 0 ? 0 : snapped;
 }
 
 /**
@@ -187,7 +188,11 @@ export const getNewNodePosition = (
 		normalize?: boolean;
 	} = {},
 ): XYPosition => {
-	const resolvedOffset = snapPositionToGrid(offset);
+	// Step at least one grid cell, so that the conflict loop always moves the position
+	const resolvedOffset: XYPosition = [
+		Math.max(snapToGrid(offset[0]), GRID_SIZE),
+		Math.max(snapToGrid(offset[1]), GRID_SIZE),
+	];
 	const resolvedPosition: XYPosition = snapPositionToGrid(initialPosition);
 
 	if (normalize) {
