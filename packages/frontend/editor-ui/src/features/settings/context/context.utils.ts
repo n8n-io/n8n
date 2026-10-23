@@ -10,7 +10,6 @@ import {
 	CONTEXT_PREFERENCES_FLAG,
 } from '@n8n/api-types';
 import type { TableOptions } from '@n8n/design-system';
-import type { BaseTextKey } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import { ResponseError } from '@n8n/rest-api-client';
 
@@ -95,21 +94,6 @@ export function preferenceAudience(
 			}
 			return { kind: 'project', name: row.project?.name ?? null };
 	}
-}
-
-export function preferenceCreatorLabel(
-	i18n: {
-		baseText: (key: BaseTextKey, options?: { interpolate: Record<string, string> }) => string;
-	},
-	row: Pick<Preference, 'createdBy' | 'source'>,
-): string {
-	const source = i18n.baseText(`settings.context.preferences.source.${row.source}`);
-	const name = preferenceUserName(row.createdBy);
-	if (!name) return source;
-	if (row.source === 'ui') return name;
-	return i18n.baseText('settings.context.preferences.createdBy.withSource', {
-		interpolate: { name, source },
-	});
 }
 
 export function preferenceUserName(user: AiPreferenceUserDto | null): string {

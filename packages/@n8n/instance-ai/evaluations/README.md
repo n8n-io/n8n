@@ -66,14 +66,14 @@ You need an n8n instance running with Instance AI enabled, a seeded owner accoun
    LANGSMITH_API_KEY=...
    ```
 
-2. **Start the instance**:
+2. **Start the instance**. `N8N_INSTANCE_AI_EVAL_INSTANCE=true` registers the eval routes the harness calls:
    ```bash
-   dotenvx run -f .env.local -- pnpm dev:ai
+   N8N_INSTANCE_AI_EVAL_INSTANCE=true dotenvx run -f .env.local -- pnpm dev:ai
    ```
 
 3. **Create the owner account**. First time only: open `http://localhost:5678`, sign up with the email/password from your `.env.local`. If you'd rather reset to a known state (useful after deleting the DB or between iterations), start the server with `E2E_TESTS=true` and `curl` the reset endpoint:
    ```bash
-   E2E_TESTS=true dotenvx run -f .env.local -- pnpm dev:ai
+   N8N_INSTANCE_AI_EVAL_INSTANCE=true E2E_TESTS=true dotenvx run -f .env.local -- pnpm dev:ai
    # then in another shell:
    curl -sf -X POST http://localhost:5678/rest/e2e/reset \
      -H "Content-Type: application/json" \
@@ -98,6 +98,7 @@ docker run -d --name n8n-eval \
   -e E2E_TESTS=true \
   -e N8N_ENABLED_MODULES=instance-ai,agents \
   -e N8N_AI_ENABLED=true \
+  -e N8N_INSTANCE_AI_EVAL_INSTANCE=true \
   -e N8N_INSTANCE_AI_MODEL_API_KEY=your-key \
   -p 5678:5678 \
   n8nio/n8n:local
@@ -364,7 +365,7 @@ on disk. Losing this field turns it into a normal attachment test.
 | `N8N_AI_ASSISTANT_BASE_URL` | No | Set to `""` to bypass the hosted AI proxy and hit Anthropic directly — useful to avoid per-tenant quota during large batch runs |
 | `INSTANCE_AI_BRAVE_SEARCH_API_KEY` | No | Set on the **target n8n instance** (note: no `N8N_` prefix) to enable the builder's `web-search` action. Unset = the action returns zero results, which reads to the agent as "nothing found". A licensed instance with `N8N_AI_ASSISTANT_BASE_URL` set routes search through the AI proxy instead and ignores this key |
 | `N8N_INSTANCE_AI_RUN_DEBUG_ENABLED` | No | Set to `true` on the target n8n instance to capture orchestrator LLM steps and workflow code for the eval LLM debug report (`workflow-eval-llm-debug.html`). Off by default. |
-| `N8N_INSTANCE_AI_EVAL_INSTANCE` | No | Set to `true` on a throwaway eval instance, never on a daily dev instance. Feature flags then come only from env overrides (`N8N_FEATURE_FLAG_OVERRIDES`, `N8N_INSTANCE_AI_*_ENABLED`): every flag-gated feature runs its default arm unless a run turns it on, instead of each fresh instance drawing its own flags from the live PostHog rollout. It also lets an eval run reset Remove Duplicates history between scenarios. `run-eval-lanes.sh` and LangTracer's eval n8n containers (compose bundle, Kubernetes pool) set it. A dispatcher pointed at an n8n you start yourself does not: set it on that n8n. When a feature reaches 100% rollout, delete its flag from the code or add it to the eval overrides, or evals keep testing the old path. |
+| `N8N_INSTANCE_AI_EVAL_INSTANCE` | No | Set to `true` on a throwaway eval instance, never on a daily dev instance. Feature flags then come only from env overrides (`N8N_FEATURE_FLAG_OVERRIDES`, `N8N_INSTANCE_AI_*_ENABLED`): every flag-gated feature runs its default arm unless a run turns it on, instead of each fresh instance drawing its own flags from the live PostHog rollout. It also lets an eval run reset Remove Duplicates history between scenarios. It registers the `/rest/instance-ai/eval/` routes and allows the `observerThresholdTokens` chat override. Without it, the harness gets 404 from those routes. `run-eval-lanes.sh` and LangTracer's eval n8n containers (compose bundle, Kubernetes pool) set it. A dispatcher pointed at an n8n you start yourself does not: set it on that n8n. When a feature reaches 100% rollout, delete its flag from the code or add it to the eval overrides, or evals keep testing the old path. |
 
 **LangSmith caveat:** if `LANGSMITH_API_KEY` is set in `.env.local`, local runs also land in the shared `instance-ai-workflow-evals` dataset. Unset it (or run without `dotenvx`) to keep exploratory runs out of team results.
 
@@ -894,6 +895,8 @@ If the agent still reads a workflow that its build did not create or seed, the r
 By default a build sees **no credentials**: the harness pins every build thread's credential view to the case's declared set (empty unless declared), so concurrent cases — and whatever happens to live on the instance — can never leak into a build. Every node mocks during verification.
 
 Agent Builder model catalog requests also stay local. Eval threads return one deterministic fake model for each model provider. They do not decrypt the placeholder credential or contact the provider. Production threads continue to use live model catalogs.
+
+Live resource lookups (`workflow_builder_nodes(action="explore-resources")`) on a declared credential stay local too: they return "Resource exploration is not available.", the answer production gives when lookups are not available, and they do not contact the provider. A credential declared `valid: false` or `blank: true` still runs the live lookup, so it fails the way a broken credential does. Setting a live `EVAL_*_ACCESS_TOKEN` does not turn lookups back on.
 
 A case that tests credential behaviour declares what should exist:
 

@@ -38,10 +38,11 @@ export class ScimApiKeyRepository extends BaseRepository<ApiKey> {
 		});
 	}
 
+	/** The key with its user and the user's role, whose scopes load eagerly. */
 	async findByKey(apiKey: string, ctx: OperationContext) {
 		return await this.managerFor(ctx).findOne(ApiKey, {
 			where: { apiKey, audience: this.audience },
-			relations: ['user'],
+			relations: { user: { role: true } },
 		});
 	}
 
