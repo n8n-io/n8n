@@ -112,14 +112,10 @@ export function extractErrorDescription(rawError: SplunkError) {
 }
 
 export function toUnixEpoch(timestamp: string) {
-	// Splunk reads a bare number as epoch seconds, and `0` as all time, but
-	// `Date.parse` reads `0`, `1` or `-1` as dates in 2000 or 2001, so pass
-	// numbers through. A four-digit number keeps its meaning as a year.
+	// Splunk reads a bare number as epoch seconds; a four-digit one stays a year.
 	if (/^-?\d+(\.\d+)?$/.test(timestamp) && !/^\d{4}$/.test(timestamp)) return timestamp;
 	const parsed = Date.parse(timestamp);
-	// Relative specifiers such as `-15m`, `-1d@d` or `now` are no dates for
-	// `Date.parse`, which made them `NaN`; Splunk ignores a `NaN` bound and
-	// searches a wider range than asked for (#38530). Pass them through.
+	// Relative specifiers such as -15m or now are passed through for Splunk to read.
 	return Number.isNaN(parsed) ? timestamp : parsed / 1000;
 }
 

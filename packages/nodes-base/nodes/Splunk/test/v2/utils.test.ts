@@ -276,9 +276,6 @@ describe('Splunk, toUnixEpoch', () => {
 		expect(toUnixEpoch(timestamp)).toBe(expected);
 	});
 
-	// `Date.parse` cannot read these, and the old `Date.parse(t) / 1000` sent
-	// the literal string `NaN`. Splunk answers 201 and ignores the bound, so
-	// the search ran over a wider range than asked for, with no error (#38530).
 	test.each(['-15m', '-24h', '-1d@d', '@d', 'now', '-5m@m', '+1h'])(
 		'passes the relative specifier %s through for Splunk to read',
 		(specifier) => {
@@ -286,8 +283,6 @@ describe('Splunk, toUnixEpoch', () => {
 		},
 	);
 
-	// Splunk reads these as epoch seconds and `0` as all time, but `Date.parse`
-	// read `0`, `1` and `-1` as dates in 2000 or 2001.
 	test.each(['0', '1', '-1', '1577836800', '1577836800.5'])(
 		'passes the epoch time %s through unchanged',
 		(epoch) => {
@@ -301,7 +296,7 @@ describe('Splunk, toUnixEpoch', () => {
 
 	test('never produces NaN', () => {
 		for (const input of ['-15m', 'now', 'not a time at all', '']) {
-			expect(toUnixEpoch(input)).not.toBeNaN();
+			expect(String(toUnixEpoch(input))).not.toBe('NaN');
 		}
 	});
 });
