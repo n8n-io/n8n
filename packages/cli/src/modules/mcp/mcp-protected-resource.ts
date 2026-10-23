@@ -11,7 +11,7 @@ import { Container, Service } from '@n8n/di';
 
 import type { ProtectedResource, ResourcePrincipal, ResourceUser } from '@n8n/inbound-auth';
 import { UrlService } from '@n8n/backend-services';
-import { SkillsHubRollout } from '@/modules/skills/skills-hub-rollout';
+import { SkillAgentsProxy } from '@/modules/skills/skill-agents-proxy.service';
 import { PostHogClient } from '@/posthog';
 
 import {
@@ -79,7 +79,7 @@ export class McpProtectedResource implements ProtectedResource {
 
 	get scopes(): string[] {
 		const agentsAvailable = areAgentToolsAvailable(this.globalConfig, this.moduleRegistry);
-		const skillsAvailable = areSkillToolsAvailable(Container.get(SkillsHubRollout));
+		const skillsAvailable = areSkillToolsAvailable(Container.get(SkillAgentsProxy));
 		return SUPPORTED_SCOPES.filter(
 			(scope) =>
 				(agentsAvailable || !AGENT_SCOPES.has(scope)) &&

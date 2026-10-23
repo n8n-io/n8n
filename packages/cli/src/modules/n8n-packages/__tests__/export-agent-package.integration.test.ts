@@ -9,7 +9,6 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
-import { setSkillsHubFlag } from '@/modules/skills/__tests__/test-utils/skills-hub-flag';
 import { registerSkillAgentsProvider } from '@/modules/agents/register-skill-agents-provider';
 import { AgentSkillDependency } from '@/modules/agents/entities/agent-skill-dependency.entity';
 import { AgentVersionSkillDependency } from '@/modules/agents/entities/agent-version-skill-dependency.entity';
@@ -71,7 +70,6 @@ async function readSourceRecords() {
 }
 
 beforeAll(async () => {
-	setSkillsHubFlag(true);
 	await testModules.loadModules(['skills', 'agents']);
 	await testDb.init();
 	registerSkillAgentsProvider();

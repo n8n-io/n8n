@@ -143,7 +143,7 @@ describe('isCommunityNodeInstallAvailable', () => {
 });
 
 describe('areSkillToolsAvailable', () => {
-	it.each([true, false])('follows the skills hub gate: %s', (isEnabled) => {
-		expect(areSkillToolsAvailable({ isEnabled })).toBe(isEnabled);
+	it.each([true, false])('follows the agents provider: %s', (hasProvider) => {
+		expect(areSkillToolsAvailable({ hasProvider })).toBe(hasProvider);
 	});
 });

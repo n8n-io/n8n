@@ -16,7 +16,6 @@ import { TransactionRunner, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
-import { setSkillsHubFlag } from '@/modules/skills/__tests__/test-utils/skills-hub-flag';
 import { registerSkillAgentsProvider } from '@/modules/agents/register-skill-agents-provider';
 import { AgentPublishService } from '@/modules/agents/agent-publish.service';
 import { AgentRuntimeCacheService } from '@/modules/agents/agent-runtime-cache.service';
@@ -65,7 +64,6 @@ describe('Agent skills in the skills hub', () => {
 	const broadcaster = mockInstance(AgentUpdateBroadcaster);
 
 	beforeAll(async () => {
-		setSkillsHubFlag(true);
 		mockInstance(Telemetry);
 		mockInstance(AgentRuntimeCacheService);
 		mockInstance(AgentTaskService).requestReconcile.mockResolvedValue(undefined);

@@ -10,11 +10,7 @@ import { Container } from '@n8n/di';
 @BackendModule({ name: 'skills' })
 export class SkillsModule implements ModuleInterface {
 	async init() {
-		// Turn the skills hub on before the agents module starts and registers its provider.
-		const { SkillsHubRollout } = await import('./skills-hub-rollout.js');
-		Container.get(SkillsHubRollout).init();
-
-		// The agents module registers its provider later. Check the rollout on each Assistant read.
+		// The agents module registers its provider later, so check it on each Assistant read.
 		const { AssistantSkillProviderProxy } = await import('@n8n/backend-services');
 		const { HubAssistantSkillProvider } = await import('./hub-assistant-skill-provider.service.js');
 		Container.get(AssistantSkillProviderProxy).registerProvider(

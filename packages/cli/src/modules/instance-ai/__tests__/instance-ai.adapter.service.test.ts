@@ -1982,7 +1982,6 @@ import type {
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { InstanceAiBuilderDelegateAdapterService } from '../instance-ai-builder-delegate.adapter';
 import { InstanceAiSkillsAdapterService } from '../instance-ai-skills.adapter';
-import { SkillsHubRollout } from '@/modules/skills/skills-hub-rollout';
 import { AgentsBuilderService } from '@/modules/agents/builder/agents-builder.service';
 import type { AgentCredentialProvider } from '@/modules/agents/agent-credential-provider.contracts';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -8974,34 +8973,24 @@ describe('createContext — skill service wiring', () => {
 
 	it.each([
 		{
-			name: 'wires skills when the hub is on',
+			name: 'wires skills when the agents module is active',
 			moduleActive: true,
-			hubEnabled: true,
 			agentsEnabled: true,
 			expected: true,
 		},
 		{
 			name: 'wires skills when Settings > Agents is off',
 			moduleActive: true,
-			hubEnabled: true,
 			agentsEnabled: false,
 			expected: true,
 		},
 		{
-			name: 'omits skills when the hub is off',
-			moduleActive: true,
-			hubEnabled: false,
-			agentsEnabled: true,
-			expected: false,
-		},
-		{
 			name: 'omits skills when the agents module is inactive',
 			moduleActive: false,
-			hubEnabled: true,
 			agentsEnabled: true,
 			expected: false,
 		},
-	])('$name', ({ moduleActive, hubEnabled, agentsEnabled, expected }) => {
+	])('$name', ({ moduleActive, agentsEnabled, expected }) => {
 		const skillService = mock<InstanceAiSkillService>();
 		const moduleRegistry = {
 			isActive: vi.fn().mockReturnValue(moduleActive),
@@ -9009,7 +8998,6 @@ describe('createContext — skill service wiring', () => {
 		};
 		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
 			if (token === ModuleRegistry) return moduleRegistry;
-			if (token === SkillsHubRollout) return { isEnabled: hubEnabled };
 			if (token === InstanceAiSkillsAdapterService) {
 				return { createService: vi.fn().mockReturnValue(skillService) };
 			}
