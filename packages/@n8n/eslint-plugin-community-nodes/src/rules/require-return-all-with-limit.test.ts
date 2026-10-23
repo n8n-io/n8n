@@ -184,6 +184,103 @@ describe.each(['recommended', 'recommendedWithoutN8nCloudSupport'] as const)(
 				expect(lint(properties)).toEqual([]);
 			});
 
+			it('matches object-valued conditions regardless of key and condition order', () => {
+				const properties = `{
+					name: 'returnAll', type: 'boolean', default: false,
+					displayOptions: { show: {
+						'@version': [{ _cnd: { lte: 2.6 } }, -1],
+						count: [{ _cnd: { between: { from: 1, to: 3 } } }],
+					} },
+				}, ${limitProperty(`displayOptions: { show: {
+					returnAll: [false], '@version': [-1, { '_cnd': { lte: 2.6 } }],
+					count: [{ _cnd: { between: { to: 3, from: 1 } } }],
+				} },`)}`;
+
+				expect(lint(properties)).toEqual([]);
+			});
+
+			it.each(['[1, 3]', '[3, 1]'])('preserves nested array order in conditions: %s', (value) => {
+				const properties = `{
+					name: 'returnAll', type: 'boolean', default: false,
+					displayOptions: { show: { selection: [{ _cnd: { eq: ${value} } }] } },
+				}, ${limitProperty(`displayOptions: { show: {
+					returnAll: [false], selection: [{ _cnd: { eq: [1, 3] } }],
+				} },`)}`;
+
+				expect(lint(properties)).toEqual(
+					value === '[1, 3]'
+						? []
+						: [expect.objectContaining({ message: missingCompanionMessage, severity: 1 })],
+				);
+			});
+
+			it.each([
+				'{ _cnd: { lte: 2.5 } }',
+				'{ _cnd: { gte: 2.6 } }',
+				'{ _cnd: { lte: 2.6, gte: 1 } }',
+			])('rejects a companion with a different object condition: %s', (condition) => {
+				const properties = `{
+					name: 'returnAll', type: 'boolean', default: false,
+					displayOptions: { show: { '@version': [${condition}] } },
+				}, ${limitProperty(`displayOptions: { show: {
+					returnAll: [false], '@version': [{ _cnd: { lte: 2.6 } }],
+				} },`)}`;
+
+				expect(lint(properties)).toEqual([
+					expect.objectContaining({ message: missingCompanionMessage, severity: 1 }),
+				]);
+			});
+
+			it.each([
+				{ companion: 'displayOptions: sharedOptions', limit: 'displayOptions: gatedOptions' },
+				{
+					companion: 'displayOptions: sharedOptions',
+					limit: "displayOptions: { show: { operation: ['getMany'], returnAll: [false] } }",
+				},
+				{
+					companion: 'displayOptions: { show: sharedShow }',
+					limit: 'displayOptions: gatedOptions',
+				},
+				{
+					companion: 'displayOptions: { ...sharedOptions }',
+					limit: 'displayOptions: { ...gatedOptions }',
+				},
+				{
+					companion: 'displayOptions: { show: { ...sharedShow } }',
+					limit: 'displayOptions: { show: { ...sharedShow, returnAll: [false] } }',
+				},
+				{
+					companion: 'displayOptions: { show: { [conditionKey]: [conditionValue] } }',
+					limit:
+						'displayOptions: { show: { returnAll: [false], [conditionKey]: [conditionValue] } }',
+				},
+				{
+					companion: "displayOptions: { show: { '@version': [{ _cnd: { lte: version } }] } }",
+					limit: "displayOptions: { show: { '@version': [2.6], returnAll: [false] } }",
+				},
+				{
+					companion: "displayOptions: { show: { operation: ['getMany'] } }",
+					limit: 'displayOptions: { show: { operation: [...operations], returnAll: [false] } }',
+				},
+				{ companion: '...sharedReturnAll', limit: '...sharedLimit' },
+			])('skips unknown display conditions: %o', ({ companion, limit }) => {
+				expect(
+					lint(`{ name: 'returnAll', type: 'boolean', ${companion} }, ${limitProperty(limit)}`),
+				).toEqual([]);
+			});
+
+			it('skips a Return All gate defined through an identifier', () => {
+				expect(
+					lint(`${returnAll}, ${limitProperty('displayOptions: { show: { returnAll: gate } },')}`),
+				).toEqual([]);
+			});
+
+			it('still reports a known missing gate when the companion conditions are unknown', () => {
+				expect(
+					lint(`{ name: 'returnAll', displayOptions: sharedOptions }, ${limitProperty()}`),
+				).toEqual([expect.objectContaining({ message: ungatedLimitMessage, severity: 1 })]);
+			});
+
 			it.each([
 				"operation: ['search'], resource: ['record']",
 				"operation: ['getMany'], resource: ['other']",

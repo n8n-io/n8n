@@ -12,6 +12,8 @@ This rule checks node descriptions in `*.node.ts` files and exported `INodePrope
 
 The comparison excludes the `returnAll` condition. The order of condition keys and values does not matter. A Return All field for a different resource or operation is not a companion. The rule also reports Return All when it gates another field while Limit has no Return All gate.
 
+The rule compares object-valued conditions, such as `@version: [{ _cnd: { lte: 2.6 } }]`, by their values. It skips companion comparisons when identifiers, object spreads, or other expressions make the conditions unknown. It still checks a Limit gate when it can determine that gate.
+
 The rule does not check whether execution retrieves all pages.
 
 ## Examples

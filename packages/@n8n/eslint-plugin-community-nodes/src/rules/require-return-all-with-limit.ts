@@ -13,56 +13,94 @@ import {
 	isNodeTypeClass,
 } from '../utils/index.js';
 
-function getShow(property: TSESTree.ObjectExpression): TSESTree.ObjectExpression | null {
-	const displayOptions = findObjectProperty(property, 'displayOptions')?.value;
-	if (displayOptions?.type !== AST_NODE_TYPES.ObjectExpression) return null;
+function getStaticProperties(
+	object: TSESTree.ObjectExpression,
+): Map<string, TSESTree.Property> | undefined {
+	const properties = new Map<string, TSESTree.Property>();
+	for (const property of object.properties) {
+		if (property.type !== AST_NODE_TYPES.Property || property.kind !== 'init' || property.method) {
+			return undefined;
+		}
+		const key = getPropertyKeyName(property);
+		if (key === null) return undefined;
+		properties.set(key, property);
+	}
+	return properties;
+}
 
-	const show = findObjectProperty(displayOptions, 'show')?.value;
-	return show?.type === AST_NODE_TYPES.ObjectExpression ? show : null;
+// An empty map means no show conditions. Undefined means the conditions are unknown.
+function getShow(property: TSESTree.ObjectExpression): Map<string, TSESTree.Property> | undefined {
+	const properties = getStaticProperties(property);
+	if (!properties) return undefined;
+	const displayOptions = properties.get('displayOptions')?.value;
+	if (!displayOptions) return new Map();
+	if (displayOptions.type !== AST_NODE_TYPES.ObjectExpression) return undefined;
+
+	const displayProperties = getStaticProperties(displayOptions);
+	if (!displayProperties) return undefined;
+	const show = displayProperties.get('show')?.value;
+	if (!show) return new Map();
+	return show.type === AST_NODE_TYPES.ObjectExpression ? getStaticProperties(show) : undefined;
+}
+
+function serializeConditionValue(node: TSESTree.Node | null): string | undefined {
+	if (node?.type === AST_NODE_TYPES.Literal) {
+		if (node.value === null || ['string', 'number', 'boolean'].includes(typeof node.value)) {
+			return JSON.stringify(node.value);
+		}
+	}
+	if (
+		node?.type === AST_NODE_TYPES.UnaryExpression &&
+		(node.operator === '-' || node.operator === '+') &&
+		node.argument.type === AST_NODE_TYPES.Literal &&
+		typeof node.argument.value === 'number'
+	) {
+		return JSON.stringify(node.operator === '-' ? -node.argument.value : node.argument.value);
+	}
+	if (node?.type === AST_NODE_TYPES.ArrayExpression) {
+		const values = node.elements.map(serializeConditionValue);
+		return values.includes(undefined) ? undefined : `[${values.join(',')}]`;
+	}
+	if (node?.type === AST_NODE_TYPES.ObjectExpression) {
+		const properties = getStaticProperties(node);
+		if (!properties) return undefined;
+		const entries: string[] = [];
+		for (const [key, property] of properties) {
+			const value = serializeConditionValue(property.value);
+			if (value === undefined) return undefined;
+			entries.push(`${JSON.stringify(key)}:${value}`);
+		}
+		return `{${entries.sort().join(',')}}`;
+	}
+	return undefined;
+}
+
+function getConditions(property: TSESTree.ObjectExpression): Map<string, string> | undefined {
+	const show = getShow(property);
+	if (!show) return undefined;
+	const conditions = new Map<string, string>();
+	for (const [key, condition] of show) {
+		if (key === 'returnAll') continue;
+		if (condition.value.type !== AST_NODE_TYPES.ArrayExpression) return undefined;
+		const values = condition.value.elements.map(serializeConditionValue);
+		if (values.includes(undefined)) return undefined;
+		// Show values are alternatives. Arrays inside a condition keep their order.
+		conditions.set(key, JSON.stringify([...new Set(values)].sort()));
+	}
+	return conditions;
 }
 
 function hasSameConditions(
 	left: TSESTree.ObjectExpression,
 	right: TSESTree.ObjectExpression,
-): boolean {
-	const conditions = (property: TSESTree.ObjectExpression) =>
-		(getShow(property)?.properties ?? []).filter(
-			(condition) =>
-				condition.type !== AST_NODE_TYPES.Property || getPropertyKeyName(condition) !== 'returnAll',
-		);
-	const leftConditions = conditions(left);
-	const rightConditions = conditions(right);
-	if (leftConditions.length !== rightConditions.length) return false;
-
-	return leftConditions.every((condition) => {
-		if (condition.type !== AST_NODE_TYPES.Property) return false;
-		const key = getPropertyKeyName(condition);
-		const other = rightConditions.find(
-			(candidate) =>
-				candidate.type === AST_NODE_TYPES.Property && getPropertyKeyName(candidate) === key,
-		);
-		if (
-			key === null ||
-			other?.type !== AST_NODE_TYPES.Property ||
-			condition.value.type !== AST_NODE_TYPES.ArrayExpression ||
-			other.value.type !== AST_NODE_TYPES.ArrayExpression
-		) {
-			return false;
-		}
-
-		const otherValues = other.value.elements;
-		return (
-			condition.value.elements.length === otherValues.length &&
-			condition.value.elements.every(
-				(value) =>
-					value?.type === AST_NODE_TYPES.Literal &&
-					otherValues.some(
-						(otherValue) =>
-							otherValue?.type === AST_NODE_TYPES.Literal && otherValue.value === value.value,
-					),
-			)
-		);
-	});
+): boolean | undefined {
+	const leftConditions = getConditions(left);
+	const rightConditions = getConditions(right);
+	if (!leftConditions || !rightConditions) return undefined;
+	return (
+		leftConditions.size === rightConditions.size &&
+		[...leftConditions].every(([key, value]) => rightConditions.get(key) === value)
+	);
 }
 
 export const RequireReturnAllWithLimitRule = createRule({
@@ -94,15 +132,22 @@ export const RequireReturnAllWithLimitRule = createRule({
 			for (const limit of properties) {
 				if (nameOf(limit) !== 'limit') continue;
 
-				const companion = properties.find(
-					(property) => nameOf(property) === 'returnAll' && hasSameConditions(limit, property),
+				const companions = properties.filter((property) => nameOf(property) === 'returnAll');
+				const companion = companions.find(
+					(property) => hasSameConditions(limit, property) === true,
 				);
-				if (!companion) {
+				if (
+					!companion &&
+					getConditions(limit) !== undefined &&
+					companions.every((property) => hasSameConditions(limit, property) === false)
+				) {
 					context.report({ node: limit, messageId: 'missingCompanion' });
 				}
 
 				const show = getShow(limit);
-				const gate = show ? findObjectProperty(show, 'returnAll')?.value : undefined;
+				if (!show) continue;
+				const gate = show.get('returnAll')?.value;
+				if (gate && serializeConditionValue(gate) === undefined) continue;
 				if (
 					gate?.type === AST_NODE_TYPES.ArrayExpression &&
 					gate.elements.length === 1 &&
@@ -116,9 +161,7 @@ export const RequireReturnAllWithLimitRule = createRule({
 					const gatedFields = properties.filter((property) => {
 						const otherShow = getShow(property);
 						return (
-							otherShow !== null &&
-							findObjectProperty(otherShow, 'returnAll') !== null &&
-							hasSameConditions(limit, property)
+							otherShow?.has('returnAll') === true && hasSameConditions(limit, property) === true
 						);
 					});
 					if (
