@@ -4,14 +4,13 @@ import {
 	SharedWorkflow,
 	SharedWorkflowRepository,
 	TransactionRunner,
-	WorkflowEntity,
 	type OperationContext,
 	type User,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
 import type { Scope } from '@n8n/permissions';
-import { DataSource, IsNull, MoreThan } from '@n8n/typeorm';
+import { DataSource, IsNull } from '@n8n/typeorm';
 
 import { SelfHealingConfigurationReviewer } from './self-healing-configuration-reviewer.entity';
 import { SelfHealingInvestigation } from './self-healing-investigation.entity';
@@ -108,33 +107,16 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 		{ workflowId, projectId, completedAfter }: CooldownQuery,
 		ctx: OperationContext = {},
 	): Promise<boolean> {
-		const investigations = await this.managerFor(ctx).find(SelfHealingInvestigation, {
-			select: ['baseline'],
-			where: {
-				result: {
-					workflowId,
-					projectId,
-					outcome: 'could_not_fix',
-					completedAt: MoreThan(completedAfter),
-				},
-			},
-		});
-		// Most workflows have no recent result, so skip the workflow read.
-		if (investigations.length === 0) return false;
-
-		const workflow = await this.managerFor(ctx).findOne(WorkflowEntity, {
-			select: { activeVersionId: true },
-			where: { id: workflowId },
-		});
-		const activeVersionId = workflow?.activeVersionId;
-
-		// PostgreSQL accepts escaped NUL in json columns, but JSON extraction rejects it.
-		return (
-			!!activeVersionId &&
-			investigations.some(
-				({ baseline }) => baseline.expectedBaseline.publishedVersionId === activeVersionId,
+		return await this.managerFor(ctx)
+			.createQueryBuilder(SelfHealingResult, 'result')
+			.innerJoin(SelfHealingInvestigation, 'investigation', 'investigation.resultId = result.id')
+			.innerJoin('result.workflow', 'workflow')
+			.where({ workflowId, projectId, outcome: 'could_not_fix' })
+			.andWhere('result.completedAt > :completedAfter', { completedAfter })
+			.andWhere(
+				"investigation.expectedBaseline ->> 'publishedVersionId' = workflow.activeVersionId",
 			)
-		);
+			.getExists();
 	}
 
 	async listForInbox(

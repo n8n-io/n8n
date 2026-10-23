@@ -38,6 +38,9 @@ A selected-workflow configuration takes precedence over all-workflow coverage, e
 The call returns `null` when no enabled configuration authorizes the investigation.
 It also returns `null` during a Could not fix cooldown. See [Investigate again](#investigate-again).
 It captures the baseline with `WorkflowSuggestionService.captureBaseline()`.
+The investigation stores the version checks and the workflow snapshot in separate columns.
+Queries read only the version checks. PostgreSQL cannot read a json field when the same document
+contains an escaped NUL, and pin data can contain one.
 The workflow must be fully published. The failure must belong to its current published version.
 Manual and evaluation executions are ineligible.
 Credential and network failures can still need investigation.

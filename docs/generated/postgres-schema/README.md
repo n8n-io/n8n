@@ -136,7 +136,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.self_healing_configuration](public.self_healing_configuration.md) | 7 |  | BASE TABLE |
 | [public.self_healing_configuration_reviewer](public.self_healing_configuration_reviewer.md) | 2 |  | BASE TABLE |
 | [public.self_healing_configuration_workflow](public.self_healing_configuration_workflow.md) | 3 |  | BASE TABLE |
-| [public.self_healing_investigation](public.self_healing_investigation.md) | 13 |  | BASE TABLE |
+| [public.self_healing_investigation](public.self_healing_investigation.md) | 14 |  | BASE TABLE |
 | [public.self_healing_result](public.self_healing_result.md) | 16 |  | BASE TABLE |
 | [public.settings](public.settings.md) | 3 |  | BASE TABLE |
 | [public.shared_credentials](public.shared_credentials.md) | 5 |  | BASE TABLE |
@@ -1758,12 +1758,13 @@ erDiagram
 }
 "public.self_healing_investigation" {
   uuid backgroundUserId FK
-  json baseline
   integer configurationId FK
   timestamp_3__with_time_zone createdAt
   varchar_36_ executionId
+  json expectedBaseline
   timestamp_3__with_time_zone finishedAt
   varchar_36_ id
+  json original
   varchar_36_ projectId FK
   varchar_36_ resultId FK
   uuid runId
