@@ -283,13 +283,19 @@ function unhandledSubmits(messages: readonly unknown[]): string[] {
 	return found;
 }
 
+/** Rejected submits shown in the log: the first and the last, with a count of the rest. */
+function summarizeRejected(all: string[]): string {
+	if (all.length === 0) return 'none (no submit_agent_step call)';
+	if (all.length <= 2) return all.join(' | ');
+	return `${all[0]} | (+${all.length - 2} more) | ${all[all.length - 1]}`;
+}
+
 /** Why an attempt accepted no step, in one bounded line for the log and the re-ask. */
 function describeFailedAttempt(result: GenerateResult, rejected: string[]): string {
 	const parts = [`finishReason=${String(result.finishReason)}`];
 	if (result.error) parts.push(`error=${truncate(String(result.error))}`);
 	if (result.guardrail) parts.push(`guardrail=${result.guardrail.code}`);
-	const all = [...rejected, ...unhandledSubmits(result.messages)];
-	parts.push(`rejected: ${all.length > 0 ? all.join(' | ') : 'none (no submit_agent_step call)'}`);
+	parts.push(`rejected: ${summarizeRejected([...rejected, ...unhandledSubmits(result.messages)])}`);
 	return parts.join('; ');
 }
 
@@ -379,11 +385,20 @@ export function createLlmCompletionMockHandler(
 				});
 			}
 
+			// A run that ended in an error (provider error, timeout) is not asked again:
+			// log what the attempt did, then rethrow the error as `extractText` raises it.
+			let text: string;
+			try {
+				text = extractText(result);
+			} catch (error) {
+				Container.get(Logger).warn(
+					`[EvalMock] llm-completion-mock attempt ${attempt}/${MAX_SUBMIT_ATTEMPTS} ended in an error for "${node.name}": ${describeFailedAttempt(result, rejected)}`,
+				);
+				throw error;
+			}
+
 			// The model answered in prose instead of submitting: use that text.
-			const fallback = conformContentToSchema(
-				unwrapProviderEnvelope(extractText(result).trim()),
-				outputSchema,
-			);
+			const fallback = conformContentToSchema(unwrapProviderEnvelope(text.trim()), outputSchema);
 			if (fallback) {
 				Container.get(Logger).warn(
 					`[EvalMock] llm-completion-mock produced no submit_agent_step for "${node.name}"; using raw text fallback`,
