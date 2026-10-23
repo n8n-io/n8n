@@ -905,7 +905,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					'Only when status is failed. not_found: the user cannot use that credential; request_failed: the request to n8n failed, so Meta was never asked; save_failed: n8n could not save the new agent, so no check ran',
 				),
-			session_id: sessionId,
+			push_ref: pushRef,
 		}),
 	},
 	USER_CLICKED_WHATSAPP_CHANNEL_LINK: {
@@ -919,7 +919,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					'meta_dashboard: Open Meta App Dashboard in the setup; whatsapp_manager: Edit in WhatsApp Manager in the settings; meta_app: Find your Meta app in the settings',
 				),
-			session_id: sessionId,
+			push_ref: pushRef,
 		}),
 	},
 	USER_CLICKED_DEPLOY_TO_AZURE_FOR_TEAMS_CHANNEL: {
