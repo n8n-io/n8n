@@ -706,6 +706,26 @@ describe('eval-mock-helpers', () => {
 
 			expect(resolveEvalMockRequestUrl(request, 'aws')).toBe(request);
 		});
+
+		it('should return the request unchanged when the service makes an invalid URL', () => {
+			const request: IHttpRequestOptions = {
+				method: 'GET',
+				url: '',
+				qs: { service: 'my bucket.s3', path: '/', _region: 'eu-west-1' },
+			};
+
+			expect(resolveEvalMockRequestUrl(request, 'aws')).toBe(request);
+		});
+
+		it('should return the request unchanged when the region makes an invalid URL', () => {
+			const request: IHttpRequestOptions = {
+				method: 'GET',
+				url: '',
+				qs: { service: 's3', path: '/my-bucket/', _region: 'EU (Ireland)' },
+			};
+
+			expect(resolveEvalMockRequestUrl(request, 'aws')).toBe(request);
+		});
 	});
 
 	// -----------------------------------------------------------------------

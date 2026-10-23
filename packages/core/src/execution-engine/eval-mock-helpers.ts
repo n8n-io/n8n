@@ -210,7 +210,8 @@ function nonEmptyString(value: unknown): string | undefined {
  * AWS nodes send no URL: they put `service`, `path` and `query` in `qs`, and the AWS
  * credential's `authenticate` builds the endpoint URL. The eval mock intercepts before
  * `authenticate`, so build the same default endpoint here. Credentials are not read, so
- * custom endpoints are ignored. Any other request is returned unchanged.
+ * custom endpoints are ignored. Any other request, or one whose service or region makes
+ * no valid URL, is returned unchanged.
  * Takes the legacy shape too: resolve before `normalizeLegacyRequest`, which drops the
  * top-level `region` and `baseURL`.
  */
@@ -233,7 +234,14 @@ export function resolveEvalMockRequestUrl<T extends IHttpRequestOptions | IReque
 	const domain = region.startsWith('cn-') ? 'amazonaws.com.cn' : 'amazonaws.com';
 	const path = nonEmptyString(qs.path) ?? '';
 
-	const url = new URL(`https://${service}.${region}.${domain}${path}`);
+	let url: URL;
+	try {
+		url = new URL(`https://${service}.${region}.${domain}${path}`);
+	} catch {
+		// A service or region that makes no valid host (e.g. `EU (Ireland)`): the mock
+		// sees the request as the node sent it.
+		return requestOptions;
+	}
 	if (isRecord(qs.query)) {
 		for (const [key, value] of Object.entries(qs.query)) {
 			url.searchParams.append(key, String(value));
