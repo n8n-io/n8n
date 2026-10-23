@@ -287,13 +287,17 @@ describe('Splunk, toUnixEpoch', () => {
 	);
 
 	// Splunk reads these as epoch seconds and `0` as all time, but `Date.parse`
-	// reads them as years, so `0` became 946684800 (2000-01-01).
+	// read `0`, `1` and `-1` as dates in 2000 or 2001.
 	test.each(['0', '1', '-1', '1577836800', '1577836800.5'])(
 		'passes the epoch time %s through unchanged',
 		(epoch) => {
 			expect(toUnixEpoch(epoch)).toBe(epoch);
 		},
 	);
+
+	test('still reads a four-digit number as a year', () => {
+		expect(toUnixEpoch('2024')).toBe(1704067200);
+	});
 
 	test('never produces NaN', () => {
 		for (const input of ['-15m', 'now', 'not a time at all', '']) {
