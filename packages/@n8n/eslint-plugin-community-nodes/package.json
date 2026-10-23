@@ -32,12 +32,14 @@
     "@typescript-eslint/typescript-estree": "catalog:",
     "@typescript-eslint/utils": "catalog:",
     "change-case": "catalog:",
-    "fastest-levenshtein": "catalog:"
+    "fastest-levenshtein": "catalog:",
+    "pluralize": "catalog:"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@types/node": "catalog:",
+    "@types/pluralize": "catalog:",
     "n8n-workflow": "workspace:*",
     "@typescript-eslint/rule-tester": "catalog:",
     "eslint-doc-generator": "^2.2.2",

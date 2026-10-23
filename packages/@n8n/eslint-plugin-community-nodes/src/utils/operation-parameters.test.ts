@@ -13,15 +13,14 @@ describe('repeatsResource', () => {
 		expect(repeatsResource('Send HTTP Request', 'httpRequest')).toBe(true);
 	});
 
-	it('ignores a plural "s" in the name and in the resource', () => {
+	it('ignores plurals in the name and in the resource', () => {
 		expect(repeatsResource('Get Contacts', 'contact')).toBe(true);
 		expect(repeatsResource('Delete File', 'files')).toBe(true);
 		expect(repeatsResource('List Orders', 'orders')).toBe(true);
-	});
-
-	it('does not match plurals that do not end in a plain "s"', () => {
-		expect(repeatsResource('List Activities', 'activity')).toBe(false);
-		expect(repeatsResource('Get Statuses', 'status')).toBe(false);
+		expect(repeatsResource('List Activities', 'activity')).toBe(true);
+		expect(repeatsResource('Get Statuses', 'status')).toBe(true);
+		expect(repeatsResource('Get Status', 'status')).toBe(true);
+		expect(repeatsResource('List People', 'person')).toBe(true);
 	});
 
 	it('allows operations that name another object', () => {

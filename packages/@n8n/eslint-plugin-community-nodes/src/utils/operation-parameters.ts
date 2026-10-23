@@ -1,5 +1,6 @@
 import { TSESTree } from '@typescript-eslint/utils';
 import { split } from 'change-case';
+import pluralize from 'pluralize';
 
 import { findObjectProperty, getStringLiteralValue } from './ast-utils.js';
 
@@ -47,16 +48,14 @@ const ARTICLES = new Set(['a', 'an', 'the']);
 /** A note in brackets, like "(Account View)", is not part of the name. */
 const BRACKETED_TEXT = /\([^)]*\)/g;
 
-const PLURAL_SUFFIX = /s$/;
-
 /**
- * Lowercase words without plural "s" or articles. "directoryContext",
+ * Lowercase singular words without articles. "directoryContext",
  * "directory_context" and "Directory Contexts" all give ["directory", "context"].
  */
 function normalizedWords(text: string): string[] {
 	// split() handles camelCase, acronyms, separators and punctuation.
 	return split(text.replace(BRACKETED_TEXT, ' '))
-		.map((word) => word.toLowerCase().replace(PLURAL_SUFFIX, ''))
+		.map((word) => pluralize.singular(word.toLowerCase()))
 		.filter((word) => !ARTICLES.has(word));
 }
 

@@ -479,6 +479,9 @@ catalogs:
     '@types/oracledb':
       specifier: 6.10.3
       version: 6.10.3
+    '@types/pluralize':
+      specifier: ^0.0.33
+      version: 0.0.33
     '@types/proxy-from-env':
       specifier: ^1.0.4
       version: 1.0.4
@@ -716,6 +719,9 @@ catalogs:
     playwright-core:
       specifier: 1.62.1
       version: 1.62.1
+    pluralize:
+      specifier: ^8.0.0
+      version: 8.0.0
     posthog-node:
       specifier: 5.49.1
       version: 5.49.1
@@ -2867,6 +2873,9 @@ importers:
       fastest-levenshtein:
         specifier: 'catalog:'
         version: 1.0.16
+      pluralize:
+        specifier: 'catalog:'
+        version: 8.0.0
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
@@ -2877,6 +2886,9 @@ importers:
       '@types/node':
         specifier: ^20.17.50
         version: 20.19.41
+      '@types/pluralize':
+        specifier: 'catalog:'
+        version: 0.0.33
       '@typescript-eslint/rule-tester':
         specifier: 'catalog:'
         version: 8.70.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
@@ -15144,6 +15156,9 @@ packages:
 
   '@types/pg@8.20.0':
     resolution: {integrity: sha512-bEPFOaMAHTEP1EzpvHTbmwR8UsFyHSKsRisLIHVMXnpNefSbGA1bD6CVy+qKjGSqmZqNqBDV2azOBo8TgkcVow==}
+
+  '@types/pluralize@0.0.33':
+    resolution: {integrity: sha512-JOqsl+ZoCpP4e8TDke9W79FDcSgPAR0l6pixx2JHkhnRjvShyYiAYw2LVsnA7K08Y6DeOnaU6ujmENO4os/cYg==}
 
   '@types/promise-ftp-common@1.1.0':
     resolution: {integrity: sha512-mqo6D4qdiJdzeqlzFwEIchQQZk2hZacjssmjoAX7nClcREmRUUsnmgbWXEfA2qK986rwOPqepfRoSu7rsjAKag==}
@@ -32701,6 +32716,8 @@ snapshots:
       '@types/node': 20.19.41
       pg-protocol: 1.15.0
       pg-types: 2.2.0
+
+  '@types/pluralize@0.0.33': {}
 
   '@types/promise-ftp-common@1.1.0': {}
 
