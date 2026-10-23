@@ -194,23 +194,21 @@ describe('instanceAiEventSchema', () => {
 		expect(instanceAiEventSchema.parse(event)).toEqual(event);
 	});
 
-	it('parses a turn that reused an earlier block, naming the run that sent it', () => {
-		const event = {
-			type: 'preferences-applied',
-			runId: 'run-2',
-			agentId: 'agent-1',
-			payload: {
-				preferences: [{ id: 'pref-1', scope: 'instance' }],
-				renderedLength: 240,
-				injectedThisTurn: false,
-				carriedFromRunId: 'run-1',
-			},
+	it('parses an older stored event that still names a carrying run', () => {
+		// Events written before the field was removed stay in the durable log.
+		const payload = {
+			preferences: [{ id: 'pref-1', scope: 'instance' }],
+			renderedLength: 240,
+			injectedThisTurn: false,
 		};
+		const event = { type: 'preferences-applied', runId: 'run-2', agentId: 'agent-1', payload };
 
-		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+		expect(
+			instanceAiEventSchema.parse({ ...event, payload: { ...payload, carriedFromRunId: 'run-1' } }),
+		).toEqual(event);
 	});
 
-	it('parses a reused block with no carrying run named', () => {
+	it('parses a turn that reused an earlier block', () => {
 		const event = {
 			type: 'preferences-applied',
 			runId: 'run-2',
@@ -234,24 +232,6 @@ describe('instanceAiEventSchema', () => {
 		};
 
 		expect(instanceAiEventSchema.parse(event)).toEqual(event);
-	});
-
-	it('refuses a turn that claims both a fresh injection and a carrying run', () => {
-		// The pair says the block was sent now and also comes from an earlier run. A client
-		// cannot discriminate on `injectedThisTurn` if both can be true at once.
-		const result = instanceAiEventSchema.safeParse({
-			type: 'preferences-applied',
-			runId: 'run-2',
-			agentId: 'agent-1',
-			payload: {
-				preferences: [{ id: 'pref-1', scope: 'user' }],
-				renderedLength: 240,
-				injectedThisTurn: true,
-				carriedFromRunId: 'run-1',
-			},
-		});
-
-		expect(result.success).toBe(false);
 	});
 
 	it('keeps preferences-applied durable, so a reload still reports the turn', () => {

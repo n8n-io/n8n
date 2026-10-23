@@ -5682,19 +5682,12 @@ export class InstanceAiService {
 			lastBlock !== undefined &&
 			asStoredThreadContextSection(freshBlock) === lastBlock
 		) {
-			// A lookup failure only costs the run attribution, never the skip itself.
-			const carriedFromRunId = await this.bestEffort(
-				'Instance AI failed to resolve which run sent the AI preferences block',
-				{ threadId },
-				async () => await this.eventLog.getLastPreferencesInjectionRunId(threadId),
-			);
 			return {
 				block: undefined,
 				payload: buildAppliedPreferencesPayload({
 					preferences,
 					renderedLength: freshBlock.length,
 					injectedThisTurn: false,
-					...(carriedFromRunId ? { carriedFromRunId } : {}),
 				}),
 			};
 		}
