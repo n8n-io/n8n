@@ -10,6 +10,8 @@ import { positiveIntSchema } from '../schemas';
  */
 const jitterRatioSchema = z.number({ coerce: true }).nonnegative().lt(1);
 
+const heldTaskRenewalSchema = z.enum(['per-row', 'batched']);
+
 /**
  * Configuration for the durable scheduler: the engine that runs time-based
  * workflows (such as Schedule Trigger nodes) from a database-backed queue.
@@ -327,6 +329,32 @@ export class SchedulerConfig {
 	 */
 	@Env('N8N_SCHEDULER_AGENT_TASKS_ENABLED')
 	enabledForAgentTasks: boolean = false;
+
+	/**
+	 * Whether the durable scheduler runs held tasks: work that one main keeps for
+	 * as long as it runs, and that another main takes over when the first one
+	 * stops or crashes. Off by default. Requires {@link enabled} to also be on.
+	 *
+	 * Give every main the same value, and change it with a full restart, not a
+	 * rolling one.
+	 */
+	@Env('N8N_SCHEDULER_HELD_TASKS_ENABLED')
+	enabledForHeldTasks: boolean = false;
+
+	/**
+	 * How a main renews the leases of the held tasks it keeps. `per-row` writes
+	 * one update for each held task. `batched` writes one update for all of them.
+	 * Defaults to `per-row`.
+	 */
+	@Env('N8N_SCHEDULER_HELD_TASK_RENEWAL', heldTaskRenewalSchema)
+	heldTaskRenewal: z.infer<typeof heldTaskRenewalSchema> = 'per-row';
+
+	/**
+	 * How long, in seconds, a main that shuts down waits for its held tasks to
+	 * stop before it releases them. Defaults to 10 seconds.
+	 */
+	@Env('N8N_SCHEDULER_HELD_TASK_SHUTDOWN_GRACE', positiveIntSchema)
+	heldTaskShutdownGraceSeconds: number = 10;
 
 	/**
 	 * How many times a scheduled run may be reclaimed (for example after a crash)
