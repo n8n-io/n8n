@@ -696,8 +696,24 @@ export class Zammad implements INodeType {
 							article: {},
 							title: this.getNodeParameter('title', i) as string,
 							group: this.getNodeParameter('group', i) as string,
-							customer: this.getNodeParameter('customer', i) as string,
 						};
+
+						const customer = this.getNodeParameter('customer', i) as string;
+						const createCustomer = this.getNodeParameter(
+							'createCustomerIfNotExists',
+							i,
+							false,
+						) as boolean;
+						// The "guess:" prefix makes Zammad find the customer by email address or create the
+						// customer. It works only with an email address, so other values are sent as before.
+						const guessEmail = String(customer)
+							.trim()
+							.replace(/^guess:/, '');
+						if (createCustomer && guessEmail.includes('@')) {
+							body.customer_id = `guess:${guessEmail}`;
+						} else {
+							body.customer = customer;
+						}
 
 						const { customFieldsUi, ...additionalFields } = this.getNodeParameter(
 							'additionalFields',
