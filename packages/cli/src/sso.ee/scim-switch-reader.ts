@@ -7,21 +7,24 @@ import { Service } from '@n8n/di';
 export const SCIM_PROVISIONING_ENABLED_KEY = 'scim.provisioning.enabled';
 
 /**
- * Reads the SCIM provisioning switch for SSO code, for `sso-login-disabled`.
- * The SCIM module sets the read when it starts, so that SSO code needs no
- * import of that module.
+ * Connects SSO code to the SCIM provisioning switch, for
+ * `sso-login-disabled`. The SCIM module sets the read and the turn-off when
+ * it starts, so that SSO code needs no import of that module.
  */
 @Service()
 export class ScimSwitchReader {
 	private read?: () => Promise<boolean>;
+
+	private turnOffScim?: (protocol: 'saml' | 'oidc') => Promise<void>;
 
 	constructor(
 		private readonly licenseState: LicenseState,
 		private readonly settingsRepository: SettingsRepository,
 	) {}
 
-	register(read: () => Promise<boolean>) {
+	register(read: () => Promise<boolean>, turnOff: (protocol: 'saml' | 'oidc') => Promise<void>) {
 		this.read = read;
+		this.turnOffScim = turnOff;
 	}
 
 	/**
@@ -36,5 +39,14 @@ export class ScimSwitchReader {
 
 		const row = await this.settingsRepository.findByKey(SCIM_PROVISIONING_ENABLED_KEY);
 		return row?.value === 'true';
+	}
+
+	/**
+	 * Turns SCIM off, because `protocol` sign-in turned off. An error reaches
+	 * the caller. Before the SCIM module starts, this does nothing: the module
+	 * turns SCIM off at its own start.
+	 */
+	async turnOff(protocol: 'saml' | 'oidc'): Promise<void> {
+		await this.turnOffScim?.(protocol);
 	}
 }

@@ -1,7 +1,7 @@
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
 import { SettingsRepository, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { InternalServerError } from '@n8n/errors';
 
 import { ScimSwitchReader } from '@/sso.ee/scim-switch-reader';
 import { isSamlOrOidcLoginEnabled } from '@/sso.ee/sso-helpers';
@@ -19,11 +19,8 @@ import { ScimSettingsService } from './scim-settings.service';
  */
 @Service()
 export class ScimSsoService {
-	private listening = false;
-
 	constructor(
 		private readonly logger: Logger,
-		private readonly eventService: EventService,
 		private readonly scimSettingsService: ScimSettingsService,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly scimSwitchReader: ScimSwitchReader,
@@ -52,29 +49,37 @@ export class ScimSsoService {
 	}
 
 	/**
-	 * Turns SCIM off on each later `sso-login-disabled` event, and once now.
-	 * The check now covers single sign-on that turned off while the instance
-	 * was down, for example an expired license or a changed env variable.
+	 * Turns SCIM off each time SSO code turns single sign-on off, and once
+	 * now. The check now covers single sign-on that turned off while the
+	 * instance was down, for example an expired license or a changed env
+	 * variable.
 	 *
-	 * The event reports if SCIM was on, so SSO code reads the switch through
+	 * SSO code reads the switch and turns SCIM off through
 	 * `ScimSwitchReader`, which this module sets here.
 	 */
 	async init() {
-		if (!this.listening) {
-			this.listening = true;
-			this.scimSwitchReader.register(async () => await this.scimSettingsService.isEnabled());
-			this.eventService.on('sso-login-disabled', async ({ protocol }) => {
-				await this.turnOffScim(`${protocol.toUpperCase()} single sign-on turned off`);
-			});
-		}
+		this.scimSwitchReader.register(
+			async () => await this.scimSettingsService.isEnabled(),
+			async (protocol) =>
+				await this.turnOffScim(`${protocol.toUpperCase()} single sign-on turned off`),
+		);
 
-		if (!this.isSsoEnabled()) await this.turnOffScim('single sign-on is off at startup');
+		if (this.isSsoEnabled()) return;
+
+		try {
+			await this.turnOffScim('single sign-on is off at startup');
+		} catch {
+			// `turnOffScim` logs the failure. The start continues, because the
+			// SCIM routes reject requests while single sign-on is off.
+		}
 	}
 
 	/**
-	 * A failure must not reach the caller: the single sign-on change is
-	 * already saved, and the SCIM routes reject requests while single sign-on
-	 * is off.
+	 * A failure reaches the caller. Thus the request that turns single sign-on
+	 * off fails, and the admin knows that SCIM is still on. That request saves
+	 * only part of the change and does not tell the other mains. The message
+	 * thus tells the admin to turn SCIM off and then single sign-on again.
+	 * Until then, this main rejects SCIM requests.
 	 */
 	private async turnOffScim(reason: string) {
 		try {
@@ -83,7 +88,10 @@ export class ScimSsoService {
 			this.logger.error('SCIM: Failed to turn off SCIM provisioning without single sign-on', {
 				error,
 			});
-			return;
+			throw new InternalServerError(
+				'SCIM provisioning did not turn off, so single sign-on did not turn off fully. Turn off SCIM provisioning in the SCIM settings. Then turn off single sign-on again.',
+				error,
+			);
 		}
 
 		this.logger.info(

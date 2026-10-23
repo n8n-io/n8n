@@ -1,7 +1,7 @@
 import type { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
-import { EventService } from '@n8n/backend-services';
 import type { SettingsRepository } from '@n8n/db';
+import { InternalServerError } from '@n8n/errors';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -12,7 +12,6 @@ import type { ScimSettingsService } from '../scim-settings.service';
 import { ScimSsoService } from '../scim-sso.service';
 
 describe('ScimSsoService', () => {
-	let eventService: EventService;
 	let scimSettingsService: Mocked<ScimSettingsService>;
 	let moduleRegistry: Mocked<ModuleRegistry>;
 	let logger: ReturnType<typeof mockLogger>;
@@ -23,20 +22,11 @@ describe('ScimSsoService', () => {
 	const ssoOn = (on: boolean) =>
 		vi.spyOn(ssoHelpers, 'isSamlOrOidcLoginEnabled').mockReturnValue(on);
 
-	/**
-	 * Calls the registered listener directly, because `emit` does not wait for
-	 * an async listener.
-	 */
-	const emitSsoOff = async (protocol: 'saml' | 'oidc') => {
-		const listeners = eventService.listeners('sso-login-disabled');
-		expect(listeners).toHaveLength(1);
-		const [listener] = listeners;
-		await (listener({ protocol, scimWasEnabled: true }) as Promise<void>);
-	};
+	/** Turns SCIM off the way SSO code does when single sign-on turns off. */
+	const emitSsoOff = async (protocol: 'saml' | 'oidc') => await scimSwitchReader.turnOff(protocol);
 
 	beforeEach(() => {
 		vi.restoreAllMocks();
-		eventService = new EventService();
 		scimSettingsService = mock<ScimSettingsService>();
 		moduleRegistry = mock<ModuleRegistry>();
 		logger = mockLogger();
@@ -44,7 +34,6 @@ describe('ScimSsoService', () => {
 		settingsRepository = mock<SettingsRepository>();
 		service = new ScimSsoService(
 			logger,
-			eventService,
 			scimSettingsService,
 			moduleRegistry,
 			scimSwitchReader,
@@ -107,7 +96,7 @@ describe('ScimSsoService', () => {
 		});
 	});
 
-	describe('on sso-login-disabled', () => {
+	describe('when SSO code turns single sign-on off', () => {
 		beforeEach(async () => {
 			ssoOn(true);
 			await service.init();
@@ -158,14 +147,23 @@ describe('ScimSsoService', () => {
 			expect(logger.info).not.toHaveBeenCalled();
 		});
 
-		it('logs a failure and does not throw', async () => {
-			scimSettingsService.turnOff.mockRejectedValue(new Error('db down'));
+		// A silent failure leaves SCIM on, and SCIM serves again when single
+		// sign-on turns on again.
+		it('logs a failure and throws an error that tells the admin to turn SCIM off', async () => {
+			const cause = new Error('db down');
+			scimSettingsService.turnOff.mockRejectedValue(cause);
 
-			await emitSsoOff('oidc');
+			const error = await emitSsoOff('oidc').catch((e: unknown) => e);
 
+			expect(error).toBeInstanceOf(InternalServerError);
+			expect(error).toMatchObject({
+				message:
+					'SCIM provisioning did not turn off, so single sign-on did not turn off fully. Turn off SCIM provisioning in the SCIM settings. Then turn off single sign-on again.',
+				cause,
+			});
 			expect(logger.error).toHaveBeenCalledWith(
 				'SCIM: Failed to turn off SCIM provisioning without single sign-on',
-				expect.anything(),
+				{ error: cause },
 			);
 			expect(moduleRegistry.refreshModuleSettings).not.toHaveBeenCalled();
 		});
@@ -183,10 +181,13 @@ describe('ScimSsoService', () => {
 			);
 		});
 
-		it('registers the listener once', async () => {
+		it('turns SCIM off once when the module starts again', async () => {
+			scimSettingsService.turnOff.mockResolvedValue(true);
 			await service.init();
 
-			expect(eventService.listenerCount('sso-login-disabled')).toBe(1);
+			await emitSsoOff('saml');
+
+			expect(scimSettingsService.turnOff).toHaveBeenCalledTimes(1);
 		});
 	});
 
@@ -229,15 +230,5 @@ describe('ScimSsoService', () => {
 			await expect(service.init()).resolves.toBeUndefined();
 			expect(logger.error).toHaveBeenCalled();
 		});
-	});
-
-	// Single sign-on on never turns SCIM on, so the service listens only for
-	// single sign-on turning off.
-	it('listens only for single sign-on turning off', async () => {
-		ssoOn(true);
-
-		await service.init();
-
-		expect(eventService.eventNames()).toEqual(['sso-login-disabled']);
 	});
 });
