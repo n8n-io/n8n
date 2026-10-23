@@ -1,6 +1,7 @@
 import { testDb } from '@n8n/backend-test-utils';
 import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { createScheduler } from '@n8n/scheduler';
 import type {
 	ClaimedTask,
 	HoldReporter,
@@ -8,12 +9,13 @@ import type {
 	HoldTaskHandler,
 	Scheduler,
 	SchedulerPasses,
+	SchedulerTaskStore,
 } from '@n8n/scheduler';
 
+import { buildMaterializerTransaction } from '@/scheduling/durable-scheduler';
 import { HeldTaskProvisioner } from '@/scheduling/held-tasks/held-task-provisioner';
 
 import { retryUntil } from '../shared/retry-until';
-import { buildHeldTaskMain } from './shared/held-task-main';
 
 const TASK_TYPE = 'integration-held-task';
 const LEASE_SECONDS = 6;
@@ -56,6 +58,21 @@ class RecordingHolder implements HoldTaskHandler {
 	}
 }
 
+function partitionable(store: ScheduledTaskRepository) {
+	const state = { partitioned: false };
+	const proxy = new Proxy(store, {
+		get(target, property, receiver) {
+			const value: unknown = Reflect.get(target, property, receiver);
+			if (typeof value !== 'function') return value;
+			return async (...args: unknown[]) => {
+				if (state.partitioned) throw new Error('partitioned');
+				return await (value as (...a: unknown[]) => Promise<unknown>).apply(target, args);
+			};
+		},
+	});
+	return { store: proxy as unknown as SchedulerTaskStore, state };
+}
+
 function overlappingHolds(events: ArmEvent[]): string[] {
 	const holders = new Map<string, Set<string>>();
 	const overlaps: string[] = [];
@@ -92,11 +109,26 @@ describe('held tasks across two mains over one database', () => {
 	const mains: Array<Scheduler & SchedulerPasses> = [];
 
 	const buildMain = (hostId: string) => {
-		const { scheduler, partition } = buildHeldTaskMain(hostId);
+		const { store, state } = partitionable(taskRepo);
 		const holder = new RecordingHolder(hostId, events);
+		const scheduler = createScheduler({
+			hostId,
+			materializerTransaction: buildMaterializerTransaction(
+				Container.get(DataSource),
+				jobRepo,
+				taskRepo,
+			),
+			taskStore: store,
+			executor: {
+				leaseSeconds: 30,
+				lookaheadSeconds: 5,
+				batchSize: 100,
+				hold: { shutdownGraceMs: 2_000 },
+			},
+		});
 		scheduler.registerTaskHandler(TASK_TYPE, holder);
 		mains.push(scheduler);
-		return { scheduler, holder, partition };
+		return { scheduler, holder, partition: state };
 	};
 
 	const provision = async (count: number) =>

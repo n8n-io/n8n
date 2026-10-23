@@ -10,15 +10,16 @@ import type { HostedClaimedRef, OperationContext } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Lease, LeaseKind, LeaseSpec } from '@n8n/leases';
 import { LeaseEndedError, LeaseService } from '@n8n/leases';
-import type { Scheduler, SchedulerPasses } from '@n8n/scheduler';
+import { createScheduler } from '@n8n/scheduler';
+import type { Scheduler, SchedulerPasses, SchedulerTaskStore } from '@n8n/scheduler';
 import { DataSource } from '@n8n/typeorm';
 import { sleep } from '@n8n/utils/sleep';
 
+import { buildMaterializerTransaction } from '@/scheduling/durable-scheduler';
 import { HeldTaskProvisioner } from '@/scheduling/held-tasks/held-task-provisioner';
 import { DurableSchedulerLeaseProvider } from '@/scheduling/leases/durable-scheduler-lease-provider';
 
 import { retryUntil } from '../shared/retry-until';
-import { buildHeldTaskMain } from './shared/held-task-main';
 import { createDueJobFactory, seedDueTask } from './shared/job-factory';
 
 const isPostgres = process.env.DB_TYPE === 'postgresdb';
@@ -28,6 +29,42 @@ const HOST = 'main-a';
 const LEASE_SECONDS = 6;
 
 type Hold = { host: string; key: string; data: unknown; fencingToken: number; ended?: unknown };
+
+function partitionable(store: ScheduledTaskRepository) {
+	const state = { partitioned: false };
+	const proxy = new Proxy(store, {
+		get(target, property, receiver) {
+			const value: unknown = Reflect.get(target, property, receiver);
+			if (typeof value !== 'function') return value;
+			return async (...args: unknown[]) => {
+				if (state.partitioned) throw new Error('partitioned');
+				return await (value as (...a: unknown[]) => Promise<unknown>).apply(target, args);
+			};
+		},
+	});
+	return { store: proxy as unknown as SchedulerTaskStore, state };
+}
+
+function buildHeldTaskMain(hostId: string) {
+	const tasks = Container.get(ScheduledTaskRepository);
+	const { store, state } = partitionable(tasks);
+	const scheduler: Scheduler & SchedulerPasses = createScheduler({
+		hostId,
+		materializerTransaction: buildMaterializerTransaction(
+			Container.get(DataSource),
+			Container.get(ScheduledJobRepository),
+			tasks,
+		),
+		taskStore: store,
+		executor: {
+			leaseSeconds: 30,
+			lookaheadSeconds: 5,
+			batchSize: 100,
+			hold: { shutdownGraceMs: 2_000 },
+		},
+	});
+	return { scheduler, partition: state };
+}
 
 beforeAll(async () => {
 	await testDb.init();
