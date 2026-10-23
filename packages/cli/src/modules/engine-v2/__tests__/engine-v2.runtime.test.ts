@@ -261,11 +261,11 @@ describe('EngineV2Runtime', () => {
 			expect(deps.resumeToken?.({ executionId: 'exec-1' })).toBe('token-for-exec-1');
 		});
 
-		it('gives the engine no resume secret without one, so it accepts no resume request', async () => {
+		it('passes an unset secret through and gives the executor no minter', async () => {
 			await newRuntime().init(responseSender());
 
 			expect(mocks.createEngineRuntime).toHaveBeenCalledWith(
-				expect.objectContaining({ resumeSecret: undefined }),
+				expect.objectContaining({ resumeSecret: '' }),
 			);
 			externalDependencies({ executionStore: {}, stepStore: {} });
 			expect(mocks.V1StepExecutor.mock.calls[0][0]).toEqual(

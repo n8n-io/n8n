@@ -111,7 +111,7 @@ export class EngineV2Runtime {
 			identityVerifier: new SharedSecretIdentityVerifier(this.engineConfig.authSecret),
 			logger: this.logger,
 			responseSender,
-			resumeSecret: this.resumeSecret(),
+			resumeSecret: this.engineConfig.resumeSecret,
 			externalDependencies: ({ executionStore, stepStore }) => ({
 				lifecycleEventCallback: async (events, signal) =>
 					await this.controlPlaneClient.sendLifecycleEvents(events, signal),
@@ -131,17 +131,6 @@ export class EngineV2Runtime {
 		engine.start();
 
 		this.engine = engine;
-	}
-
-	/**
-	 * The secret the engine signs and verifies resume tokens with. Read here, in
-	 * the data-plane composition root, and nowhere on the control plane: the
-	 * control plane forwards a resume token without reading it
-	 * (ADR-20260904-a-derived-token-authorizes-a-resume-request, decision 7).
-	 * Unset or empty, the engine accepts no resume request.
-	 */
-	private resumeSecret(): string | undefined {
-		return this.engineConfig.resumeSecret || undefined;
 	}
 
 	/**
