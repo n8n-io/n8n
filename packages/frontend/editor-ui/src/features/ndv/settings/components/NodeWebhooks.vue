@@ -16,8 +16,14 @@ import { computedAsync } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 
-import { ElCol, ElCollapseTransition, ElRow } from 'element-plus';
-import { N8nIcon, N8nSegmentControl, N8nTooltip } from '@n8n/design-system';
+import { ElCol, ElRow } from 'element-plus';
+import {
+	CollapsibleRoot,
+	N8nAnimatedCollapsibleContent,
+	N8nIcon,
+	N8nSegmentControl,
+	N8nTooltip,
+} from '@n8n/design-system';
 const props = defineProps<{
 	node: INodeUi;
 	nodeTypeDescription: INodeTypeDescription | null;
@@ -210,36 +216,38 @@ watch(
 			<N8nIcon icon="chevron-right" class="minimize-button minimize-icon" />
 			{{ baseText.toggleTitle }}
 		</div>
-		<ElCollapseTransition>
-			<div v-if="!isMinimized" class="node-webhooks">
-				<div v-if="!isProductionOnly" class="url-selection">
-					<ElRow>
-						<ElCol :span="24">
-							<N8nSegmentControl v-model="showUrlFor" :options="urlOptions" />
-						</ElCol>
-					</ElRow>
-				</div>
+		<CollapsibleRoot :open="!isMinimized">
+			<N8nAnimatedCollapsibleContent>
+				<div class="node-webhooks">
+					<div v-if="!isProductionOnly" class="url-selection">
+						<ElRow>
+							<ElCol :span="24">
+								<N8nSegmentControl v-model="showUrlFor" :options="urlOptions" />
+							</ElCol>
+						</ElRow>
+					</div>
 
-				<N8nTooltip
-					v-for="(item, index) in visibleWebhookUrls"
-					:key="index"
-					class="item"
-					:content="baseText.clickToCopy"
-					placement="left"
-				>
-					<div class="webhook-wrapper">
-						<div v-if="item.isMethodVisible" class="http-field">
-							<div class="http-method">{{ item.httpMethod }}</div>
-						</div>
-						<div class="url-field">
-							<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(item)">
-								{{ item.url }}
+					<N8nTooltip
+						v-for="(item, index) in visibleWebhookUrls"
+						:key="index"
+						class="item"
+						:content="baseText.clickToCopy"
+						placement="left"
+					>
+						<div class="webhook-wrapper">
+							<div v-if="item.isMethodVisible" class="http-field">
+								<div class="http-method">{{ item.httpMethod }}</div>
+							</div>
+							<div class="url-field">
+								<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(item)">
+									{{ item.url }}
+								</div>
 							</div>
 						</div>
-					</div>
-				</N8nTooltip>
-			</div>
-		</ElCollapseTransition>
+					</N8nTooltip>
+				</div>
+			</N8nAnimatedCollapsibleContent>
+		</CollapsibleRoot>
 	</div>
 </template>
 

@@ -1,5 +1,7 @@
 <script lang="ts" setup>
 import {
+	CollapsibleRoot,
+	CollapsibleTrigger,
 	N8nButton,
 	N8nIcon,
 	type IconName,
@@ -13,7 +15,6 @@ import type {
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed } from 'vue';
 import type { AgentPreviewTarget } from '@/features/agents/utils/agentPreviewUrl';
 import { HIDDEN_TOOLS, isStreamingTimelineEntry } from '../agentTimeline.utils';

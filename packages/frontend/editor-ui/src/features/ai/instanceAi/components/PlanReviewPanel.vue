@@ -1,5 +1,7 @@
 <script lang="ts" setup>
 import {
+	CollapsibleRoot,
+	CollapsibleTrigger,
 	N8nButton,
 	N8nIcon,
 	N8nText,
@@ -15,7 +17,6 @@ import {
 import type { PlannedTaskArg } from '@n8n/api-types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed, ref } from 'vue';
-import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 
 export type PlanReviewStatus = 'pending' | 'approved' | 'changes-requested' | 'denied';

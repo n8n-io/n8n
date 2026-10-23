@@ -2,11 +2,13 @@
 import { computed, ref, watch } from 'vue';
 
 import { capitalCase } from 'change-case';
-import { CollapsibleRoot, CollapsibleTrigger, VisuallyHidden } from 'reka-ui';
+import { VisuallyHidden } from 'reka-ui';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 
 import {
+	CollapsibleRoot,
+	CollapsibleTrigger,
 	N8nAnimatedCollapsibleContent,
 	N8nBadge,
 	N8nCheckbox,

@@ -186,6 +186,11 @@ export { default as N8nAiActivityStepChevron } from './N8nAiActivityStepChevron'
 export { default as N8nAiActivityStepGroup } from './N8nAiActivityStepGroup';
 export { default as N8nAiActivityStepResultSection } from './N8nAiActivityStepResultSection';
 export { default as N8nAiActivityStep } from './N8nAiActivityStep';
+export {
+	CollapsibleContent,
+	CollapsibleRoot,
+	CollapsibleTrigger,
+} from './N8nAnimatedCollapsibleContent/reka-ui';
 export { default as N8nAnimatedCollapsibleContent } from './N8nAnimatedCollapsibleContent';
 export { default as N8nToggle } from './N8nToggle';
 export { default as N8nToggleGroup } from './N8nToggleGroup';

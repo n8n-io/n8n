@@ -20,4 +20,14 @@ describe('frontendConfig', () => {
 			)?.rules?.['n8n-local-rules/no-reka-ui-pagination'],
 		).toBe('error');
 	});
+
+	it('enables the collapse transition import bans as errors', () => {
+		const rules = frontendConfig.find(
+			(config) =>
+				config.rules?.['n8n-local-rules/no-element-plus-collapse-transition'] !== undefined,
+		)?.rules;
+
+		expect(rules?.['n8n-local-rules/no-element-plus-collapse-transition']).toBe('error');
+		expect(rules?.['n8n-local-rules/no-reka-ui-collapsible']).toBe('error');
+	});
 });
