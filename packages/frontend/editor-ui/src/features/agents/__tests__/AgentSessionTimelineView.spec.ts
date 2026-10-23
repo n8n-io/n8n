@@ -5,11 +5,7 @@ import { nextTick, reactive, ref } from 'vue';
 import AgentSessionTimelineView from '../views/AgentSessionTimelineView.vue';
 import AgentSessionTimelinePanel from '../components/AgentSessionTimelinePanel.vue';
 import AgentSessionTimelineHeader from '../components/AgentSessionTimelineHeader.vue';
-import {
-	AGENT_BUILDER_VIEW,
-	AGENT_SESSION_DETAIL_VIEW,
-	AGENT_SESSIONS_LIST_VIEW,
-} from '../constants';
+import { AGENT_SESSION_DETAIL_VIEW, AGENT_SESSIONS_LIST_VIEW } from '../constants';
 
 enableAutoUnmount(afterEach);
 
@@ -154,18 +150,19 @@ describe('AgentSessionTimelineView', () => {
 		});
 	});
 
-	it('opens the agent editor without a session-list query', async () => {
+	it('returns to the session list when closed without a previous route', async () => {
 		const wrapper = await renderTimeline();
-		wrapper.findComponent(AgentSessionTimelineHeader).vm.$emit('edit');
+		wrapper.findComponent(AgentSessionTimelineHeader).vm.$emit('close');
 
 		expect(routerPush).toHaveBeenCalledExactlyOnceWith({
-			name: AGENT_BUILDER_VIEW,
+			name: AGENT_SESSIONS_LIST_VIEW,
 			params: { projectId: 'p1', agentId: 'a1' },
 		});
 	});
 
-	it('uses the visible Edit agent text as the button name and emits edit', async () => {
+	it('gives the Close button an accessible name and emits close', () => {
 		const wrapper = shallowMount(AgentSessionTimelineHeader, {
+			global: { stubs: { N8nTooltip: { template: '<slot />' } } },
 			props: {
 				breadcrumbItems: [],
 				projectIcon: { type: 'icon', value: 'user' },
@@ -175,12 +172,12 @@ describe('AgentSessionTimelineView', () => {
 				langsmithExportLoading: false,
 			},
 		});
-		const button = wrapper.get('[data-testid="agent-session-timeline-edit"]');
+		const button = wrapper.getComponent('[data-testid="agent-session-timeline-close"]');
 
-		expect(button.attributes('aria-label')).toBeUndefined();
-		await button.trigger('click');
-		expect(wrapper.emitted('edit')).toEqual([[]]);
-		expect(wrapper.emitted('close')).toBeUndefined();
+		expect(button.attributes('aria-label')).toBe('Close');
+		button.vm.$emit('click');
+		expect(wrapper.emitted('close')).toEqual([[]]);
+		expect(wrapper.emitted('edit')).toBeUndefined();
 	});
 
 	it('copies a link to the loaded trace', async () => {

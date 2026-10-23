@@ -226,23 +226,23 @@ describe('AgentSessionTimelineHeader', () => {
 
 		breadcrumbs.vm.$emit('itemSelected', { id: 'project-1' });
 		sessionPicker.vm.$emit('select', 'thread-1');
-		await wrapper.find('[data-testid="agent-session-timeline-edit"]').trigger('click');
+		await wrapper.find('[data-testid="agent-session-timeline-close"]').trigger('click');
 
 		expect(wrapper.emitted('breadcrumb-select')).toEqual([[{ id: 'project-1' }]]);
 		expect(wrapper.emitted('session-select')).toEqual([['thread-1']]);
-		expect(wrapper.emitted('edit')).toEqual([[]]);
+		expect(wrapper.emitted('close')).toEqual([[]]);
 	});
 
-	it('shows an outline Edit agent button with a pencil icon', () => {
+	it('shows a ghost Close button with an x icon', () => {
 		const wrapper = mountNavigationHeader();
-		const editButton = wrapper.find('[data-testid="agent-session-timeline-edit"]');
+		const editButton = wrapper.find('[data-testid="agent-session-timeline-close"]');
 
-		expect(editButton.attributes('data-variant')).toBe('outline');
+		expect(editButton.attributes('data-variant')).toBe('ghost');
 		expect(editButton.attributes('data-size')).toBe('medium');
-		expect(editButton.attributes('data-icon-only')).toBeUndefined();
-		expect(editButton.find('[data-icon="pencil"]').exists()).toBe(true);
-		expect(editButton.text()).toBe('agentNode.ndv.referenced.editInBuilder');
-		expect(editButton.attributes('aria-label')).toBeUndefined();
+		expect(editButton.attributes('data-icon-only')).toBe('true');
+		expect(editButton.find('[data-icon="x"]').exists()).toBe(true);
+		expect(editButton.text()).toBe('');
+		expect(editButton.attributes('aria-label')).toBe('generic.close');
 	});
 });
 
@@ -341,7 +341,7 @@ describe('AgentSessionTimelineHeader metadata', () => {
 });
 
 describe('AgentSessionTimelineHeader menu', () => {
-	it('places session actions after Edit in builder', () => {
+	it('places session actions before Close', () => {
 		const wrapper = mountHeader({
 			hasSession: true,
 			canDeleteSession: true,
@@ -350,7 +350,7 @@ describe('AgentSessionTimelineHeader menu', () => {
 		const menu = wrapper.getComponent(
 			'[data-testid="agent-session-timeline-more-menu"]',
 		) as DropdownStubWrapper;
-		expect(menu.props('items')).toEqual([
+		expect(menu.vm.items).toEqual([
 			expect.objectContaining({ id: 'copy-link', disabled: false }),
 			expect.objectContaining({ id: 'export-session', disabled: false }),
 			expect.objectContaining({
@@ -361,8 +361,8 @@ describe('AgentSessionTimelineHeader menu', () => {
 			}),
 		]);
 		const buttons = wrapper.findAll('button');
-		expect(buttons.at(-2)?.attributes('data-testid')).toBe('agent-session-timeline-edit');
-		expect(buttons.at(-1)?.attributes('data-testid')).toBe('agent-session-timeline-more-btn');
+		expect(buttons.at(-1)?.attributes('data-testid')).toBe('agent-session-timeline-close');
+		expect(buttons.at(-2)?.attributes('data-testid')).toBe('agent-session-timeline-more-btn');
 	});
 
 	it('emits the enabled menu actions', () => {
@@ -386,7 +386,7 @@ describe('AgentSessionTimelineHeader menu', () => {
 		const menu = wrapper.getComponent(
 			'[data-testid="agent-session-timeline-more-menu"]',
 		) as DropdownStubWrapper;
-		expect(menu.props('items')).toEqual([expect.objectContaining({ id: 'copy-link' })]);
+		expect(menu.vm.items).toEqual([expect.objectContaining({ id: 'copy-link' })]);
 		menu.vm.$emit('select', 'export-session');
 		menu.vm.$emit('select', 'delete-session');
 		expect(wrapper.emitted('langsmith-export')).toBeUndefined();
@@ -401,7 +401,7 @@ describe('AgentSessionTimelineHeader menu', () => {
 		const menu = wrapper.getComponent(
 			'[data-testid="agent-session-timeline-more-menu"]',
 		) as DropdownStubWrapper;
-		expect(menu.props('items').slice(1)).toEqual([
+		expect(menu.vm.items.slice(1)).toEqual([
 			expect.objectContaining({ id: 'export-session', disabled: true }),
 			expect.objectContaining({ id: 'delete-session', disabled: true }),
 		]);
