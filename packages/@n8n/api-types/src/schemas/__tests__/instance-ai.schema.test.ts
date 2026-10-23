@@ -975,6 +975,19 @@ describe('instanceAiEvalSeedAgentSchema resource references', () => {
 		expect(result.success).toBe(true);
 	});
 
+	it('keeps the untrusted-output marker of a custom tool body', () => {
+		const body = toolBody('my_tool');
+		const result = instanceAiEvalSeedAgentSchema.safeParse(
+			agent({
+				config: { ...config, tools: [{ type: 'custom', id: 'my_tool' }] },
+				tools: {
+					my_tool: { ...body, descriptor: { ...body.descriptor, outputTrust: 'untrusted' } },
+				},
+			}),
+		);
+		expect(result.success && result.data.tools?.my_tool.descriptor.outputTrust).toBe('untrusted');
+	});
+
 	it('rejects a custom tool reference with no body', () => {
 		const result = instanceAiEvalSeedAgentSchema.safeParse(
 			agent({ config: { ...config, tools: [{ type: 'custom', id: 'my_tool' }] } }),
@@ -1554,6 +1567,11 @@ describe('InstanceAiEvalRestoreThreadRequest workflow node groups', () => {
 		expect(
 			InstanceAiEvalRestoreThreadRequest.safeParse(request([{ id: 'group-1', nodeIds: 'node-1' }]))
 				.success,
+		).toBe(false);
+		expect(
+			InstanceAiEvalRestoreThreadRequest.safeParse(
+				request([{ id: 'group-1', name: '', nodeIds: ['node-1'] }]),
+			).success,
 		).toBe(false);
 	});
 });

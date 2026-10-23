@@ -3053,7 +3053,7 @@ const instanceAiEvalSeedWorkflowSchema = z.object({
 			z
 				.object({
 					id: z.string().min(1),
-					name: z.string(),
+					name: z.string().min(1),
 					nodeIds: z.array(z.string()),
 					description: z.string().max(155).optional(),
 				})
@@ -3179,10 +3179,6 @@ export const instanceAiEvalSeedDataTableSchema = z.object({
 
 export type InstanceAiEvalSeedDataTable = z.infer<typeof instanceAiEvalSeedDataTableSchema>;
 
-/** An agent a conversation seed references, recreated at its given id in the
- *  thread's project. `config`/`skills` are the shapes the agent's own config and
- *  skills routes return, so a seed can be authored from a fetched agent verbatim.
- *  Credential ids in the config are blanked on restore. */
 /** A custom tool descriptor as the agent row stores it beside the tool's code. */
 const instanceAiEvalAgentToolDescriptorSchema = z
 	.object({
@@ -3195,6 +3191,7 @@ const instanceAiEvalAgentToolDescriptorSchema = z
 		hasResume: z.boolean(),
 		hasToMessage: z.boolean(),
 		requireApproval: z.boolean(),
+		outputTrust: z.literal('untrusted').nullable().optional(),
 		providerOptions: z.record(z.string(), z.unknown()).nullable(),
 	})
 	.strict();
@@ -3210,6 +3207,10 @@ export const instanceAiEvalAgentToolBodiesSchema = z.record(
 		.strict(),
 );
 
+/** An agent a conversation seed references, recreated at its given id in the
+ *  thread's project. `config`/`skills` are the shapes the agent's own config and
+ *  skills routes return, so a seed can be authored from a fetched agent verbatim.
+ *  Credential ids in the config are blanked on restore. */
 export const instanceAiEvalSeedAgentSchema = z
 	.object({
 		id: instanceAiEvalSeedArtifactIdSchema,
