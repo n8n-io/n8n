@@ -122,6 +122,22 @@ describe('AgentChannelApprovalSetting', () => {
 
 		expect(toggle(wrapper).attributes('data-checked')).toBe('true');
 		expect(wrapper.find('[data-testid="agent-channel-approval-tools"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-channel-approval-mode"]').exists()).toBe(false);
+		expect(wrapper.text()).not.toContain('agents.channels.approval.actions.hint');
+	});
+
+	it('keeps action edits in the approval setting', async () => {
+		const wrapper = renderComponent({
+			modelValue: { mode: 'selected', tools: ['send_dm'] },
+		});
+
+		await wrapper
+			.find('[data-testid="agent-channel-approval-tools"] [data-value="add_reaction"]')
+			.trigger('click');
+
+		expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([
+			{ mode: 'selected', tools: ['send_dm', 'add_reaction'] },
+		]);
 	});
 
 	it('offers only the actions that reach outside the conversation', async () => {

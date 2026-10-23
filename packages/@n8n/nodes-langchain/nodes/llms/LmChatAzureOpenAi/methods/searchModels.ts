@@ -1,5 +1,5 @@
 import { proxyFetch } from '@n8n/ai-utilities';
-import { listAzureOpenAiModels } from '@n8n/ai-utilities/model-discovery';
+import { getAzureFoundryOrigin, listAzureOpenAiModels } from '@n8n/ai-utilities/model-discovery';
 import type { ILoadOptionsFunctions, INode, INodeListSearchResult } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -21,7 +21,7 @@ interface AzureResourceCredential {
  * only reachable through the ARM control plane, which this call doesn't use.
  */
 function resolveFoundryBaseURL(node: INode, foundryEndpoint?: string): string {
-	return new URL(requireFoundryEndpoint(node, foundryEndpoint)).origin;
+	return getAzureFoundryOrigin(requireFoundryEndpoint(node, foundryEndpoint));
 }
 
 // The dropdown shows only the message, so it also says how to fix the problem.
