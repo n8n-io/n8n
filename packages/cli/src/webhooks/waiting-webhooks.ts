@@ -27,7 +27,7 @@ import type {
 	WaitingWebhookRequest,
 } from './webhook.types';
 
-import { ConflictError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ConflictError, NotFoundError, NotImplementedError } from '@n8n/errors';
 import { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
@@ -439,14 +439,15 @@ export class WaitingWebhooks implements IWebhookManager {
 
 		const located = await this.dataPlane.locateResumeTarget(executionId, { token });
 		if (!located.ok) {
-			// Relayed without detail, so a caller learns no more than in v1.
 			if (located.status === 401) return this.respondInvalidToken(res);
 			if (located.status === 404) {
 				throw new NotFoundError(`The execution "${executionId}" does not exist.`);
 			}
-			throw new ConflictError(
-				`The execution "${executionId}" cannot be resumed: ${located.error}.`,
-			);
+			const refusal = `The execution "${executionId}" cannot be resumed: ${located.error}.`;
+			if (located.status === 409) throw new ConflictError(refusal);
+			// A data plane without a resume secret, so not a wait that is over.
+			if (located.status === 501) throw new NotImplementedError(refusal);
+			throw new BadRequestError(refusal);
 		}
 
 		this.stripTokenFromRequest(req);

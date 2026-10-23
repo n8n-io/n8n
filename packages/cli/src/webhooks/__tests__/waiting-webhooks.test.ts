@@ -9,7 +9,7 @@ import type { INodeParameters, IWebhookData, IWorkflowBase, Workflow } from 'n8n
 import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { ConflictError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ConflictError, NotFoundError, NotImplementedError } from '@n8n/errors';
 import type { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
@@ -2102,6 +2102,18 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 		await expect(
 			waitingWebhooks.executeWebhook(request({ [WAITING_TOKEN_QUERY_PARAM]: 't' }), response()),
 		).rejects.toThrow(NotFoundError);
+	});
+
+	it.each([
+		[409, 'ambiguous', ConflictError],
+		[501, 'unimplemented', NotImplementedError],
+		[400, 'invalid_request', BadRequestError],
+	])("answers the data plane's %s refusal with its own status", async (status, error, expected) => {
+		dataPlane.locateResumeTarget.mockResolvedValue({ ok: false, status, error });
+
+		await expect(
+			waitingWebhooks.executeWebhook(request({ [WAITING_TOKEN_QUERY_PARAM]: 't' }), response()),
+		).rejects.toThrow(expected);
 	});
 
 	it.each([
