@@ -38,7 +38,12 @@ export function useProjectResourceSearch({
 	const results = computed((): ArtifactTab[] => {
 		const excludedKeys = new Set(excludedTabs().map(resourceKey));
 		const visible = resources.value.filter((resource) => !excludedKeys.has(resourceKey(resource)));
-		const counts: Record<ArtifactTab['type'], number> = { workflow: 0, 'data-table': 0, agent: 0 };
+		const counts: Record<ArtifactTab['type'], number> = {
+			workflow: 0,
+			'data-table': 0,
+			agent: 0,
+			skill: 0,
+		};
 		return visible
 			.filter((resource) => ++counts[resource.type] <= RESULTS_PER_TYPE)
 			.sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))

@@ -8057,6 +8057,8 @@
 	"instanceAi.dataTablePreview.title": "Data table preview",
 	"instanceAi.dataTablePreview.open": "Open",
 	"instanceAi.dataTablePreview.fetchError": "Could not load data table",
+	"instanceAi.skillPreview.fetchError": "Could not load the skill",
+	"instanceAi.skillPreview.openInSkills": "Open in Skills",
 	"instanceAi.dataTableCard.title": "Managing data table",
 	"instanceAi.dataTableCard.phase.checking": "Checking tables",
 	"instanceAi.dataTableCard.phase.schema": "Modifying schema",

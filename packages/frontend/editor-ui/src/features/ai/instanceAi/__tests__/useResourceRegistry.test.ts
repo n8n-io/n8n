@@ -1197,6 +1197,110 @@ describe('useResourceRegistry', () => {
 		});
 	});
 
+	describe('producedArtifacts — skill registration', () => {
+		function skillsMessage(calls: Array<Partial<InstanceAiToolCallState>>) {
+			return makeMessage({
+				agentTree: makeAgentNode({
+					toolCalls: calls.map((call, index) =>
+						makeToolCall({ toolCallId: `tc-${index}`, toolName: 'skills', ...call }),
+					),
+				}),
+			});
+		}
+
+		test('registers a skill the assistant created', async () => {
+			const { messages, producedArtifacts, producedArtifactOrigins } = setup();
+
+			messages.value = [
+				skillsMessage([
+					{
+						args: { action: 'create', scope: 'instance' },
+						result: { success: true, skill: { id: 'skill-1', name: 'Brand voice' } },
+					},
+				]),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('skill-1')).toEqual({
+				type: 'skill',
+				id: 'skill-1',
+				name: 'Brand voice',
+			});
+			expect(producedArtifactOrigins.get('skill-1')).toBe('built');
+		});
+
+		test('registers a skill the assistant saved, with the name from the result', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				skillsMessage([
+					{
+						args: { action: 'update', skillId: 'skill-1' },
+						result: { success: true, saved: { id: 'skill-1', name: 'Brand voice v2' } },
+					},
+				]),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('skill-1')).toEqual(
+				expect.objectContaining({ type: 'skill', name: 'Brand voice v2' }),
+			);
+		});
+
+		test('keeps the known name when a saved result has no name', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				skillsMessage([
+					{
+						args: { action: 'create' },
+						result: { success: true, skill: { id: 'skill-1', name: 'Brand voice' } },
+					},
+					{
+						args: { action: 'update', skillId: 'skill-1' },
+						result: { success: true, saved: { id: 'skill-1' } },
+					},
+				]),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('skill-1')?.name).toBe('Brand voice');
+		});
+
+		test('does not register a skill that the assistant only read, listed or failed to write', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				skillsMessage([
+					{
+						args: { action: 'list' },
+						result: { count: 1, skills: [{ id: 'skill-1', name: 'Brand voice' }] },
+					},
+					{
+						args: { action: 'get', skillId: 'skill-1' },
+						result: { id: 'skill-1', name: 'Brand voice', skill: {} },
+					},
+					{
+						args: { action: 'create' },
+						result: { success: false, denied: true, reason: 'User denied the action' },
+					},
+					{
+						args: { action: 'update', skillId: 'skill-1' },
+						result: { success: false, refused: true, reason: 'No permission' },
+					},
+					{
+						args: { action: 'create' },
+						isLoading: true,
+						result: undefined,
+					},
+				]),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.size).toBe(0);
+		});
+	});
+
 	describe('list results do not populate producedArtifacts', () => {
 		test('workflows action=list result is indexed by name only, never in producedArtifacts', async () => {
 			const { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = setup();

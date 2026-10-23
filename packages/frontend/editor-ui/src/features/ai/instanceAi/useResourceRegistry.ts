@@ -12,8 +12,10 @@ import type {
 	InstanceAiWorkflowAttachment,
 } from '@n8n/api-types';
 
+import { getSkillArtifactFromToolCall } from './canvasPreview.utils';
+
 export type ResourceEntry = {
-	type: 'workflow' | 'credential' | 'data-table' | 'agent';
+	type: 'workflow' | 'credential' | 'data-table' | 'agent' | 'skill';
 	id: string;
 	name: string;
 	createdAt?: string;
@@ -237,8 +239,24 @@ function extractFromAgentBuilderResult(tc: InstanceAiToolCallState, col: Collect
 	recordProduced(col, entry);
 }
 
+/**
+ * Skills hub results: a successful `skills` create or update. A list or get only
+ * reads the skill, so it does not register an artifact.
+ */
+function extractFromSkillsResult(tc: InstanceAiToolCallState, col: Collections): void {
+	const skill = getSkillArtifactFromToolCall(tc);
+	if (!skill) return;
+	const existing = col.produced.get(skill.skillId);
+	recordProduced(col, {
+		type: 'skill',
+		id: skill.skillId,
+		name: skill.name ?? existing?.name ?? 'Untitled',
+	});
+}
+
 function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): void {
 	extractFromAgentBuilderResult(tc, col);
+	extractFromSkillsResult(tc, col);
 	if (!ARTIFACT_TOOLS.has(tc.toolName)) return;
 	if (!tc.result || typeof tc.result !== 'object') return;
 	const result = tc.result as Record<string, unknown>;
