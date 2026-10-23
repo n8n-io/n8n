@@ -41,7 +41,6 @@ describe('LmChatGoogleVertex - Thinking Budget', () => {
 			projectId: ' target-project ',
 		});
 		mockContext.getNode = vi.fn().mockReturnValue(mockNode);
-		//@ts-expect-error - Mocking
 		mockContext.getNodeParameter = vi.fn();
 
 		mockedMakeN8nLlmFailedAttemptHandler.mockReturnValue(vi.fn());
