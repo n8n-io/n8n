@@ -67,6 +67,7 @@ describe('AgentModificationTelemetryService Assistant activity', () => {
 		},
 	);
 
+<<<<<<< HEAD
 	it('does not count renaming an empty agent shell', () => {
 		const emptyConfig = { name: 'New name', model: '', instructions: '' } satisfies AgentJsonConfig;
 		service.record({
@@ -80,6 +81,28 @@ describe('AgentModificationTelemetryService Assistant activity', () => {
 		expect(activity.emit).not.toHaveBeenCalled();
 		expect(telemetry.track).not.toHaveBeenCalled();
 	});
+=======
+	it.each(['name', 'description'] as const)(
+		'does not count a %s change to an empty agent shell',
+		(part) => {
+			const emptyConfig = {
+				name: 'New name',
+				description: 'Answers billing questions',
+				model: '',
+				instructions: '',
+			} satisfies AgentJsonConfig;
+			service.record({
+				...event,
+				agent: Object.assign(new Agent(), { schema: emptyConfig, integrations: [] }),
+				config: emptyConfig,
+				changedParts: [part],
+			});
+
+			expect(activity.emit).not.toHaveBeenCalled();
+			expect(telemetry.track).toHaveBeenCalledOnce();
+		},
+	);
+>>>>>>> 3f72e8f3 (feat: Add agents to n8n Chat by default and guide users to it (no-changelog) (#41837))
 
 	it('does not count creating an empty agent shell', () => {
 		const emptyConfig = {

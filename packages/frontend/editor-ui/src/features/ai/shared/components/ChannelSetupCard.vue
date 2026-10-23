@@ -16,8 +16,9 @@ import {
 	updatedIconSet,
 	type IconName,
 } from '@n8n/design-system';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
-import type { ChatIntegrationDescriptor } from '@n8n/api-types';
+import { N8N_CHAT_INTEGRATION_TYPE, type ChatIntegrationDescriptor } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, watch } from 'vue';
 
@@ -29,8 +30,23 @@ import {
 	isRegisteredAgentChannelPlatform,
 } from '@/features/agents/channels/registry';
 import { provideAgentPersonalisation } from '@/features/agents/channels/agentPersonalisation';
+<<<<<<< HEAD
 import type { AgentChannelRuntime, AgentChannelViewExpose } from '@/features/agents/channels/types';
 import { getAgent } from '@/features/agents/composables/useAgentApi';
+=======
+import { useN8nChatChannel } from '@/features/agents/channels/n8nChat/useN8nChatChannel';
+import type {
+	AgentChannelRestart,
+	AgentChannelRuntime,
+	AgentChannelViewExpose,
+} from '@/features/agents/channels/types';
+import {
+	getAgent,
+	getAgentConfig,
+	updateAgentConfig,
+} from '@/features/agents/composables/useAgentApi';
+import { useAgentChannelRemoval } from '@/features/agents/composables/useAgentChannelRemoval';
+>>>>>>> 3f72e8f3 (feat: Add agents to n8n Chat by default and guide users to it (no-changelog) (#41837))
 import { useAgentChannelSetup } from '@/features/agents/composables/useAgentChannelSetup';
 import { useAgentIntegrationStatus } from '@/features/agents/composables/useAgentIntegrationStatus';
 import { useAgentIntegrationsCatalog } from '@/features/agents/composables/useAgentIntegrationsCatalog';
@@ -55,8 +71,11 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const toast = useToast();
 const rootStore = useRootStore();
 const { catalog, ensureLoaded, reload: reloadCatalog } = useAgentIntegrationsCatalog();
+// n8n Chat is not in the public catalog. It is offered only while its flag is on.
+const { withN8nChat } = useN8nChatChannel();
 const {
 	fetchStatus,
 	connectedCredentials,
@@ -78,10 +97,15 @@ const agent = ref<AgentResource | null>(null);
 provideAgentPersonalisation(() => agent.value?.schema?.personalisation);
 const catalogLoading = ref(false);
 const catalogLoadFailed = ref(false);
+const isN8nChat = computed(() => props.integrationType === N8N_CHAT_INTEGRATION_TYPE);
+/** Seeds the n8n Chat view, which reads it once when it mounts. */
+const savedDescription = ref('');
 
 const currentIntegration = computed<ChatIntegrationDescriptor>(() => {
 	return (
-		catalog.value?.find((integration) => integration.type === props.integrationType) ?? {
+		withN8nChat(catalog.value ?? []).find(
+			(integration) => integration.type === props.integrationType,
+		) ?? {
 			type: props.integrationType,
 			label: props.integrationType,
 			icon: 'zap',
@@ -245,19 +269,58 @@ async function finishSetup() {
 	if (await writeChannelConfig()) finish(true);
 }
 
+/** Same order as the channel modal: the description lands before n8n Chat connects. */
+async function saveN8nChat() {
+	if (isBlocked() || channelActionInFlight.value) return;
+	const description = channelViewRef.value?.description;
+	if (description === undefined) return;
+
+	connectionInFlight.value = true;
+	try {
+		const { config, configHash } = await getAgentConfig(
+			rootStore.restApiContext,
+			props.projectId,
+			props.agentId,
+		);
+		if ((config.description ?? '') !== description) {
+			await updateAgentConfig(
+				rootStore.restApiContext,
+				props.projectId,
+				props.agentId,
+				{ ...config, description },
+				configHash,
+			);
+		}
+		await connect(N8N_CHAT_INTEGRATION_TYPE, '');
+	} catch (error) {
+		// The n8n Chat view shows no inline error.
+		toast.showError(error, i18n.baseText('agents.channels.modal.saveChannelError'));
+		return;
+	} finally {
+		connectionInFlight.value = false;
+	}
+	notifyAgentUpdated();
+	finish(true);
+}
+
 function handlePlatformConnected() {
 	if (isBlocked()) return;
 	notifyAgentUpdated();
 	finish(true);
 }
 
+async function loadSavedDescription() {
+	const { config } = await getAgentConfig(rootStore.restApiContext, props.projectId, props.agentId);
+	savedDescription.value = config.description ?? '';
+}
+
 async function loadChannelState(forceReload = false) {
 	catalogLoading.value = true;
 	catalogLoadFailed.value = false;
 	try {
-		let integrations = await (forceReload
-			? reloadCatalog(props.projectId)
-			: ensureLoaded(props.projectId));
+		let integrations = withN8nChat(
+			await (forceReload ? reloadCatalog(props.projectId) : ensureLoaded(props.projectId)),
+		);
 		const requiresDescriptor =
 			props.integrationType !== 'slack' && isRegisteredAgentChannelPlatform(props.integrationType);
 
@@ -266,7 +329,7 @@ async function loadChannelState(forceReload = false) {
 			!forceReload &&
 			!integrations.some((integration) => integration.type === props.integrationType)
 		) {
-			integrations = await reloadCatalog(props.projectId);
+			integrations = withN8nChat(await reloadCatalog(props.projectId));
 		}
 
 		if (
@@ -277,7 +340,11 @@ async function loadChannelState(forceReload = false) {
 			return;
 		}
 
-		await Promise.all([loadSharedChannelState(integrations), currentRuntime.value.load()]);
+		await Promise.all([
+			loadSharedChannelState(integrations),
+			currentRuntime.value.load(),
+			isN8nChat.value ? loadSavedDescription() : undefined,
+		]);
 
 		try {
 			agent.value = await getAgent(rootStore.restApiContext, props.projectId, props.agentId);
@@ -369,6 +436,7 @@ watch(
 				:force-new-credential="true"
 				:simple-setup="true"
 				:runtime="currentRuntime"
+				:saved-description="isN8nChat ? savedDescription : undefined"
 				@create="createCredential"
 				@edit="editCredential"
 				@connect="saveChannelConfig"
@@ -388,6 +456,18 @@ watch(
 				@click="skipSetup"
 			>
 				{{ i18n.baseText('instanceAi.workflowSetup.later') }}
+			</N8nButton>
+			<!-- The n8n Chat view has no save action of its own. -->
+			<N8nButton
+				v-if="isN8nChat && !catalogLoading && !catalogLoadFailed"
+				variant="solid"
+				size="medium"
+				:loading="connectionInFlight"
+				:disabled="channelActionInFlight || isBlocked()"
+				data-testid="channel-setup-card-n8n-chat-save"
+				@click="saveN8nChat"
+			>
+				{{ i18n.baseText('agents.channels.n8nChat.makeAvailable') }}
 			</N8nButton>
 		</footer>
 	</div>
@@ -430,6 +510,7 @@ watch(
 .footer {
 	display: flex;
 	justify-content: flex-end;
+	gap: var(--spacing--2xs);
 	padding: 0 var(--spacing--sm) var(--spacing--sm);
 }
 </style>
