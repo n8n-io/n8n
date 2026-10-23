@@ -123,17 +123,44 @@ describe('PromotionPreviewBadges', () => {
 		},
 	);
 
-	it('should show that the check failed instead of a count', async () => {
-		vi.mocked(api.getPromotionPreview).mockRejectedValue(new Error('offline'));
+	it.each(['promote', 'apply'] as const)(
+		'should keep the %s arrow and show an unknown count when the check fails',
+		async (direction) => {
+			vi.mocked(api.getPromotionPreview).mockRejectedValue(new Error('offline'));
 
-		const { findByTestId } = renderComponent();
-		await waitAllPromises();
+			const { findByTestId, findByText, getByTestId } = renderComponent();
+			await waitAllPromises();
+			const badge = await findByTestId(`promotion-preview-badge-${direction}`);
+			const label =
+				direction === 'promote'
+					? "Couldn't check for changes to promote. Reload the page to try again."
+					: "Couldn't check for incoming changes. Reload the page to try again.";
 
-		expect(await findByTestId('promotion-preview-badge-apply')).toHaveAttribute(
-			'aria-label',
-			"Couldn't check for incoming changes. Reload the page to try again.",
-		);
-	});
+			expect(badge).toHaveTextContent(/^\?$/);
+			expect(badge.querySelector('[data-icon]')).toHaveAttribute(
+				'data-icon',
+				direction === 'promote' ? 'arrow-up' : 'arrow-down',
+			);
+			expect(badge.querySelector('.n8n-badge')?.className).toContain('warning');
+			expect(badge).toHaveAttribute('data-route', `${PROMOTION_PREVIEW_VIEWS[direction]}:p1`);
+			expect(badge).not.toHaveAttribute('aria-disabled');
+			expect(badge).toHaveAttribute('aria-label', label);
+			badge.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' }));
+			expect(await findByText(label)).toBeVisible();
+
+			vi.mocked(api.getPromotionPreview).mockResolvedValue(billingPreview());
+			promotionEventBus.emit('applied', { projectId: 'p1' });
+			await waitFor(() =>
+				expect(getByTestId(`promotion-preview-badge-${direction}`)).toHaveTextContent(/^5$/),
+			);
+			const loadedBadge = getByTestId(`promotion-preview-badge-${direction}`);
+			expect(loadedBadge.querySelector('.n8n-badge')?.className).not.toContain('warning');
+			expect(loadedBadge).toHaveAttribute(
+				'aria-label',
+				direction === 'promote' ? '5 changes to promote' : '5 incoming changes',
+			);
+		},
+	);
 
 	it.each(['feature', 'export', 'list', 'read', 'personal'] as const)(
 		'should not load changes without the %s requirement',

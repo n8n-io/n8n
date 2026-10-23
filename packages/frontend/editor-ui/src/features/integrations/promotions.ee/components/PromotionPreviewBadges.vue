@@ -137,9 +137,9 @@ const badges = computed(() => {
 				<N8nBadge
 					:variant="badge.failed ? 'warning' : 'subtle'"
 					size="xsmall"
-					:leading-icon="badge.failed ? 'circle-alert' : ICONS[badge.direction]"
+					:leading-icon="ICONS[badge.direction]"
 				>
-					<template v-if="!badge.failed">{{ badge.changeCount }}</template>
+					{{ badge.failed ? '?' : badge.changeCount }}
 				</N8nBadge>
 			</component>
 		</N8nTooltip>
