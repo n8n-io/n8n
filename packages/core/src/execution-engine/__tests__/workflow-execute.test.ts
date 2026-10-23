@@ -1794,18 +1794,20 @@ describe('WorkflowExecute', () => {
 		);
 
 		test.each([
-			{ name: 'returns nothing', nodeType: passThroughNode, output: [[]] },
+			{ name: 'returns nothing', nodeType: passThroughNode, output: [[]], laterOutputs: [] },
 			{
 				name: 'only has data on a later output',
 				nodeType: twoOutputNode,
 				output: [[], [{ json: { x: 1 } }]],
+				laterOutputs: [[expect.objectContaining({ json: { x: 1 } })]],
 			},
 		])(
 			'should still add an empty item to the first output with alwaysOutputData when the node $name',
-			async ({ nodeType, output }) => {
+			async ({ nodeType, output, laterOutputs }) => {
 				const main = await runWithErrorOutput(output, { alwaysOutputData: true, nodeType });
 
 				expect(main[0]).toEqual([expect.objectContaining({ json: {} })]);
+				expect(main.slice(1, -1)).toEqual(laterOutputs);
 				expect(main.at(-1)).toEqual([]);
 			},
 		);
