@@ -43,6 +43,50 @@ Reserve 480 pixels for the editor. When both panels are open, share the
 remaining width in proportion to each panel's requested extra width above
 320 pixels. Do not save automatic layout adjustments as user resize choices.
 
+## Chat-first builder
+
+The standalone builder and Agent artifacts in the Assistant use one chat area
+for Build and Test. Keep each chat mounted when the mode changes. Preserve each
+draft, session, and active response.
+Put the grouped Build/Test selector first in the composer toolbar. Use wrench
+and flask icons. Show a purple active state in both themes. Stop the discovery
+pulse after the first message. Disable the pulse for reduced motion.
+
+In the standalone builder, start chat at 65% and configuration at 35% of the
+workspace beside the sidebar.
+Save manual resize choices as a ratio. Keep this preference separate from the
+saved Assistant dock width and the previous fixed configuration width. Keep the
+ratio when the window or sidebar changes size. Double-click the divider to reset
+to 65/35. Reserve at least 360 pixels for configuration and 320 pixels for chat.
+Do not cap configuration at a fixed maximum width. Below 680 pixels of available
+workspace, fill the viewport with one panel at a time, above the sidebar. Measure
+the original workspace to keep this layout stable when the sidebar is open.
+Close either chat to show the full-width configuration. Use Chat to reopen the
+selected mode. Keep both panels mounted. Keep the mode selector and composer
+actions inside the input at narrow widths. Show the same preview disclaimer
+below both composers, including empty chats. Use the same footer spacing.
+
+Keep both composers at the same fixed height. Put the placeholder and prompt text
+at the top left. Show the attachment row only when it has content. Put attached
+agents and files above the text. Scroll long prompts and attachment lists inside
+the composer. Use a plus icon for the Test file picker, in the same position as
+the Build menu.
+
+Keep chat width and test placement independent. The control layout keeps its
+existing docks. An Agent artifact uses the main Assistant chat area for Test and
+keeps configuration in the artifact panel. On narrow Assistant layouts, use one
+panel at a time. The preview button switches between chat and configuration.
+Keep both mounted and preserve the selected chat mode.
+Always show the selector in the standalone builder. In the Assistant, show it
+when an Agent artifact is open and its initial build finishes. Test readiness
+does not control visibility. Disable Test when the Agent cannot run. Use the
+same validation tooltip as the header Test button to explain the setup issues.
+Keep the selector visible during later Assistant work, with both modes disabled.
+Hide it when the Agent artifact closes. Do not show a link from the standalone
+build chat to the full Assistant. Test links and task
+previews select Test. An accepted Fix with Assistant request selects Build.
+Keep Test selected if the Assistant refuses the request to preserve a draft.
+
 ## Preview history
 
 Use the shared `ChatHistoryDropdownTrigger` in the Preview dock and the Assistant.

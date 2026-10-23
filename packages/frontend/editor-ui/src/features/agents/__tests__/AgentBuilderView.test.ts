@@ -82,6 +82,7 @@ const {
 	setCredentialsMock: vi.fn(),
 	agentPermissionsMock: {
 		canCreate: { value: true },
+		canExecute: { value: true },
 		canUpdate: { value: true },
 		canDelete: { value: false },
 		canPublish: { value: true },
@@ -541,7 +542,7 @@ async function renderView({
 	useNodeTypesStore().loadNodeTypesIfNotLoaded = loadNodeTypesIfNotLoadedMock;
 	seedStores?.();
 	const wrapper = mount(AgentBuilderView, {
-		props,
+		props: { builderLayout: { chatWidth: 'current', testChat: 'dock' }, ...props },
 		global: {
 			plugins: [pinia],
 			stubs: commonStubs,
@@ -659,9 +660,13 @@ const commonStubs = {
 	},
 	AgentPreviewDock: {
 		name: 'AgentPreviewDock',
-		template: '<aside data-testid="stub-agent-preview-dock" />',
+		template:
+			'<aside data-testid="stub-agent-preview-dock"><slot name="composer-start" /><slot name="composer-footer" /></aside>',
 		props: [
 			'isOpen',
+			'inline',
+			'closable',
+			'placeholder',
 			'sessionTitle',
 			'sessionOptions',
 			'hasSession',
@@ -707,10 +712,20 @@ const commonStubs = {
 			'<button data-testid="ai-panel-emit-building" @click="$emit(\'update:building\', true)" />' +
 			'<button data-testid="ai-panel-stop-building" @click="$emit(\'update:building\', false)" />' +
 			'<button data-testid="ai-panel-emit-close" @click="$emit(\'close\')" />' +
-			'<slot name="empty" />' +
+			'<slot name="empty" /><slot name="composer-start" /><slot name="composer-footer" />' +
 			'</div>',
-		props: ['subject', 'launch', 'threadId', 'beforeNewThread', 'beforeSend'],
-		emits: ['update:threadId', 'update:building', 'close'],
+		props: [
+			'subject',
+			'launch',
+			'threadId',
+			'beforeNewThread',
+			'beforeSend',
+			'visible',
+			'closable',
+			'showOpenFullAssistant',
+			'placeholder',
+		],
+		emits: ['update:threadId', 'update:building', 'update:working', 'close', 'message-sent'],
 		// Stands in for the real `defineExpose`d `handoff`, `setPrefill` and `submitSuggestion` — the
 		// view calls these through a template ref, not a prop or emit.
 		methods: {
@@ -831,7 +846,8 @@ function resetViewMocks() {
 		if (
 			key?.startsWith('N8N_AGENT_PREVIEW_OPEN') ||
 			key?.startsWith('N8N_AGENT_AI_PANEL_OPEN') ||
-			key === 'N8N_AGENT_AI_PANEL_WIDTH'
+			key === 'N8N_AGENT_AI_PANEL_WIDTH' ||
+			key?.startsWith('N8N_AGENT_BUILDER_')
 		) {
 			localStorage.removeItem(key);
 		}
@@ -6693,3 +6709,167 @@ describe(
 		});
 	},
 );
+
+describe('chat-first builder', () => {
+	beforeEach(() => {
+		resetViewMocks();
+		agentPermissionsMock.canUpdate.value = true;
+	});
+	it('opens the wide builder by default and keeps both chats mounted across mode changes', async () => {
+		const wrapper = await renderView({ props: { builderLayout: undefined } });
+		const assistant = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
+		const preview = wrapper.getComponent({ name: 'AgentPreviewDock' });
+		expect(assistant.props('closable')).toBe(false);
+		expect(assistant.props('showOpenFullAssistant')).toBe(false);
+		expect(preview.props('inline')).toBe(true);
+		expect(assistant.props('visible')).toBe(true);
+		await assistant.get('[data-testid="agent-builder-mode-test"]').trigger('click');
+		await flushPromises();
+		expect(preview.props('isOpen')).toBe(true);
+		expect(assistant.props('visible')).toBe(false);
+		expect(wrapper.getComponent({ name: 'InstanceAiChatPanel' }).vm).toBe(assistant.vm);
+		await preview.get('[data-testid="agent-builder-mode-build"]').trigger('click');
+		await flushPromises();
+		expect(assistant.props('visible')).toBe(true);
+		expect(preview.props('isOpen')).toBe(false);
+		expect(wrapper.getComponent({ name: 'AgentPreviewDock' }).vm).toBe(preview.vm);
+	});
+
+	it('keeps the standalone selector visible when the agent cannot run', async () => {
+		getAgentMock.mockResolvedValue(makeAgentResponse({ isRunnable: false }));
+		const wrapper = await renderView({ props: { builderLayout: undefined } });
+		const selector = wrapper.getComponent({ name: 'AgentBuilderChatMode' });
+		expect(selector.props('testDisabled')).toBe(true);
+		expect(selector.props('testDisabledReason')).toBe('agents.builder.preview.disabledTooltip');
+		expect(
+			selector.get('[data-testid="agent-builder-mode-test"]').attributes('disabled'),
+		).toBeDefined();
+		expect(
+			selector.get('[data-testid="agent-builder-mode-build"]').attributes('disabled'),
+		).toBeUndefined();
+	});
+
+	it.each([true, false])(
+		'shows the artifact selector after its initial build, with runnable status %s',
+		async (runnable) => {
+			getAgentMock.mockResolvedValue(makeAgentResponse({ isRunnable: runnable }));
+			const wrapper = await renderView({
+				props: {
+					artifactMode: true,
+					artifactProjectId: 'p1',
+					artifactAgentId: 'a1',
+					artifactAssistantWorking: true,
+				},
+			});
+			expect(wrapper.vm.chatModeState.visible).toBe(false);
+			await wrapper.setProps({ artifactAssistantWorking: false });
+			expect(wrapper.vm.chatModeState.visible).toBe(true);
+			expect(wrapper.vm.chatModeState.testDisabledReason).toBe(
+				runnable ? undefined : 'agents.builder.preview.disabledTooltip',
+			);
+			await wrapper.setProps({ artifactAssistantWorking: true });
+			expect(wrapper.vm.chatModeState.visible).toBe(true);
+			expect(wrapper.vm.chatModeState.disabled).toBe(true);
+		},
+	);
+
+	it('keeps both mode selectors visible and disabled while the Assistant works', async () => {
+		const wrapper = await renderView({ props: { builderLayout: undefined } });
+		const assistant = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
+		assistant.vm.$emit('update:working', true);
+		await nextTick();
+		for (const selector of wrapper.findAllComponents({ name: 'AgentBuilderChatMode' })) {
+			expect(selector.props('disabled')).toBe(true);
+			for (const button of selector.findAll('button'))
+				expect(button.attributes('disabled')).toBeDefined();
+		}
+		await assistant.get('[data-testid="agent-builder-mode-test"]').trigger('click');
+		expect(wrapper.getComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(false);
+		assistant.vm.$emit('update:working', false);
+		await nextTick();
+		await assistant.get('[data-testid="agent-builder-mode-test"]').trigger('click');
+		await flushPromises();
+		expect(wrapper.getComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(true);
+	});
+
+	it.each([true, false])(
+		'switches from Test to Build only after an accepted handoff (%s)',
+		async (accepted) => {
+			handoffMock.mockReturnValueOnce(accepted);
+			const wrapper = await renderView({ props: { builderLayout: undefined } });
+			const assistant = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
+			await assistant.get('[data-testid="agent-builder-mode-test"]').trigger('click');
+			await flushPromises();
+			const preview = wrapper.getComponent({ name: 'AgentPreviewDock' });
+			preview.vm.$emit('send-to-assistant');
+			await flushPromises();
+			expect(handoffMock).toHaveBeenCalled();
+			expect(preview.props('isOpen')).toBe(!accepted);
+			expect(assistant.props('visible')).toBe(accepted);
+			expect(
+				assistant.get('[data-testid="agent-builder-mode-build"]').attributes('aria-pressed'),
+			).toBe(String(accepted));
+		},
+	);
+
+	it('keeps width and test placement independent', async () => {
+		const wrapper = await renderView({
+			props: { builderLayout: { chatWidth: 'current', testChat: 'inline' } },
+		});
+		(wrapper.vm as unknown as { builderContainerWidth: number }).builderContainerWidth = 1440;
+		await nextTick();
+		expect(wrapper.get('[data-testid="agent-builder-container"]').attributes('style')).toContain(
+			'--agent-ai-panel-width: 432px',
+		);
+		expect(wrapper.getComponent({ name: 'AgentPreviewDock' }).props('inline')).toBe(true);
+		await wrapper.setProps({ builderLayout: { chatWidth: 'wide', testChat: 'dock' } });
+		expect(wrapper.get('[data-testid="agent-builder-container"]').attributes('style')).toContain(
+			'--agent-ai-panel-width: 936px',
+		);
+		expect(wrapper.getComponent({ name: 'AgentPreviewDock' }).props('inline')).toBe(false);
+	});
+
+	it('keeps configuration accessible on a narrow screen without unmounting chat', async () => {
+		const wrapper = await renderView({ props: { builderLayout: undefined } });
+		(wrapper.vm as unknown as { builderHostWidth: number }).builderHostWidth = 375;
+		await nextTick();
+		const assistant = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
+		expect(assistant.props('closable')).toBe(true);
+		assistant.vm.$emit('close');
+		await nextTick();
+		expect(assistant.props('visible')).toBe(false);
+		await wrapper.get('[data-testid="agent-builder-show-chat"]').trigger('click');
+		expect(assistant.props('visible')).toBe(true);
+		expect(wrapper.getComponent({ name: 'InstanceAiChatPanel' }).vm).toBe(assistant.vm);
+		await assistant.get('[data-testid="agent-builder-mode-test"]').trigger('click');
+		await flushPromises();
+		const preview = wrapper.getComponent({ name: 'AgentPreviewDock' });
+		expect(preview.props('closable')).toBe(true);
+		preview.vm.$emit('close');
+		await nextTick();
+		expect(preview.props('isOpen')).toBe(false);
+		await wrapper.get('[data-testid="agent-builder-show-chat"]').trigger('click');
+		expect(assistant.props('visible')).toBe(false);
+		expect(preview.props('isOpen')).toBe(true);
+		expect(wrapper.getComponent({ name: 'AgentPreviewDock' }).vm).toBe(preview.vm);
+	});
+
+	it('shows the same disclaimer in both empty chats', async () => {
+		const wrapper = await renderView({ props: { builderLayout: undefined } });
+		for (const name of ['InstanceAiChatPanel', 'AgentPreviewDock']) {
+			expect(
+				wrapper.getComponent({ name }).get('[data-testid="agent-builder-chat-disclaimer"]').text(),
+			).toBe('instanceAi.input.disclaimer');
+		}
+	});
+
+	it('ends the discovery hint in both composers after the first message', async () => {
+		const wrapper = await renderView({ props: { builderLayout: undefined } });
+		const assistant = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
+		assistant.vm.$emit('message-sent');
+		await nextTick();
+		for (const mode of wrapper.findAllComponents({ name: 'AgentBuilderChatMode' })) {
+			expect(mode.props('discovery')).toBe(false);
+		}
+	});
+});

@@ -41,6 +41,7 @@ const props = defineProps<{
 	beforeRevertToPublished?: () => Promise<void> | void;
 	artifactMode?: boolean;
 	isPreviewOpen?: boolean;
+	hidePreviewButton?: boolean;
 	/** True while the AI is actively building/mutating this agent in artifact mode — disables publish/revert/unpublish without hiding them. */
 	editingLocked?: boolean;
 	configValidationStatus?: 'valid' | 'invalid' | null;
@@ -238,6 +239,7 @@ function onMenuSelect(id: string) {
 				@action="emit('setup-task-action', $event)"
 			/>
 			<AgentPreviewButton
+				v-if="!props.hidePreviewButton"
 				:is-runnable="props.agent?.isRunnable === true"
 				:is-preview-open="props.isPreviewOpen"
 				:validation-issues="props.configValidationIssues ?? []"

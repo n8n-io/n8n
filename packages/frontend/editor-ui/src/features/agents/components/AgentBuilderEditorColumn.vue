@@ -57,6 +57,7 @@ const props = defineProps<{
 	generatingEvalCases?: boolean;
 	tasksReloadKey?: number;
 	artifactMode?: boolean;
+	chatFirst?: boolean;
 	preventScroll?: boolean;
 	embeddedAiBuilding?: boolean;
 	/** No agent row exists yet, so agent-scoped endpoints would 404. */
@@ -166,7 +167,13 @@ defineExpose({ onSetupTaskAction });
 
 <template>
 	<section
-		:class="[$style.editorColumn, { [$style.embeddedAiBuilding]: props.embeddedAiBuilding }]"
+		:class="[
+			$style.editorColumn,
+			{
+				[$style.embeddedAiBuilding]: props.embeddedAiBuilding,
+				[$style.chatFirst]: props.chatFirst,
+			},
+		]"
 		:aria-label="i18n.baseText('agents.builder.editorColumn.ariaLabel')"
 		data-testid="agent-builder-editor-column"
 	>
@@ -537,6 +544,12 @@ defineExpose({ onSetupTaskAction });
 	max-width: var(--agent-builder-content-max-width);
 	margin: 0 auto;
 	padding: var(--spacing--2xl) var(--agent-builder-content-padding-inline) var(--spacing--xl);
+}
+
+.chatFirst .identityHeader {
+	flex-direction: column;
+	text-align: center;
+	gap: var(--spacing--xs);
 }
 
 .tabsRow {
