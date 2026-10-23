@@ -200,7 +200,7 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 	'promotions:read': {
 		displayName: 'Read promotion setup',
 		description:
-			'Allows reading promotion providers, environments, their linked projects, and change previews. Credentials are never returned.',
+			'Allows reading promotion providers, environments, and their linked projects. Credentials are never returned.',
 	},
 	'promotions:update': {
 		displayName: 'Update promotion setup',
@@ -226,7 +226,8 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 	},
 	'promotions:promote': {
 		displayName: 'Promote',
-		description: 'Allows promoting team projects to the Git branch of a promotion environment.',
+		description:
+			'Allows previewing and promoting changes from team projects to the Git branch of a promotion environment.',
 	},
 	'promotions:manageProjects': {
 		displayName: 'Manage promotion environment projects',
@@ -235,7 +236,7 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 	'promotions:apply': {
 		displayName: 'Apply',
 		description:
-			'Allows applying changes from the Git branch of a promotion environment to this instance.',
+			'Allows previewing and applying changes from the Git branch of a promotion environment to this instance.',
 	},
 	'promotions:readReviews': {
 		displayName: 'Read promotion reviews',
