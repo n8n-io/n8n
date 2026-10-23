@@ -1696,6 +1696,26 @@ describe('AgentConfigService', () => {
 		});
 
 		it.each([
+			['user', TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT],
+			['builder', TELEMETRY_EVENT.AGENTS.BUILDER_MODIFIED_AGENT],
+		] as const)('reports a description-only %s save', async (modifiedBy, entry) => {
+			const { service, agentRepository, telemetry } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, description: 'Answers billing questions' },
+				user,
+				{ ...byUser, modifiedBy },
+			);
+
+			expect(modifiedEvent(telemetry, entry)).toEqual(
+				expect.objectContaining({ agent_id: agentId, changed_parts: ['description'] }),
+			);
+		});
+
+		it.each([
 			['builder', TELEMETRY_EVENT.AGENTS.BUILDER_MODIFIED_AGENT],
 			['mcp', TELEMETRY_EVENT.AGENTS.MCP_MODIFIED_AGENT],
 		] as const)('routes a %s save to its own event', async (modifiedBy, entry) => {

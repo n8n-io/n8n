@@ -44,6 +44,10 @@ vi.mock('@n8n/composables/useToast', () => {
 	return { useToast: () => ({ showMessage, showError }) };
 });
 
+vi.mock('../composables/useAgentsN8nChatFlag', () => ({
+	useAgentsN8nChatFlag: () => ({ value: false }),
+}));
+
 const openModalWithDataMock = vi.fn();
 const closeModalMock = vi.fn();
 
