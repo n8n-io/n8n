@@ -1122,6 +1122,7 @@ describe('createInstanceAgent', () => {
 		// Embedded specialist agents reuse context.modelId / orchestration context.modelId,
 		// so mutating the sticky header here covers those paths too.
 		const modalModel = {
+			kind: 'endpoint' as const,
 			id: 'custom/moonshotai/Kimi-K3' as const,
 			url: 'https://n8ngmbh--ep-kimi-k3-server.us-west.modal.direct/v1',
 			apiKey: 'wk-test.ws-test',

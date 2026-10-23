@@ -267,13 +267,13 @@ erDiagram
 }
 "self_healing_investigation" {
   varchar backgroundUserId FK
-  TEXT baseline
   INTEGER configurationId FK
   datetime_3_ createdAt
   varchar_36_ executionId
   datetime_3_ finishedAt
   varchar_36_ id PK
   varchar_36_ projectId FK
+  varchar_36_ publishedVersionId
   varchar_36_ resultId FK
   varchar runId
   varchar threadId
