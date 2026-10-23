@@ -95,8 +95,10 @@ export class MemoryGuardService {
 	 */
 	private isHoldSuspended = false;
 
+	/** Counted stops by workflow, until a successful production run or a deactivation. */
 	private readonly stopsByWorkflow = new Map<string, number>();
 
+	/** Workflows with a deactivation in progress, so that later stops do not start another. */
 	private readonly deactivating = new Set<string>();
 
 	constructor(
