@@ -1,0 +1,72 @@
+{
+	"name": "CustomerIo Event Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "c1d2e3f4-0003-0003-0003-000000000001",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "event",
+				"operation": "track",
+				"customerId": "1",
+				"eventName": "signup",
+				"jsonParameters": false,
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.customerIo",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "c1d2e3f4-0003-0003-0003-000000000002",
+			"name": "CustomerIo - Event - Track",
+			"credentials": {
+				"customerIoApi": {
+					"id": "1",
+					"name": "CustomerIo account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "event",
+				"operation": "trackAnonymous",
+				"eventName": "page_view",
+				"jsonParameters": false,
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.customerIo",
+			"typeVersion": 1,
+			"position": [220, 200],
+			"id": "c1d2e3f4-0003-0003-0003-000000000003",
+			"name": "CustomerIo - Event - TrackAnonymous",
+			"credentials": {
+				"customerIoApi": {
+					"id": "1",
+					"name": "CustomerIo account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"CustomerIo - Event - Track": [{ "json": { "success": true } }],
+		"CustomerIo - Event - TrackAnonymous": [{ "json": { "success": true } }]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{ "node": "CustomerIo - Event - Track", "type": "main", "index": 0 },
+					{ "node": "CustomerIo - Event - TrackAnonymous", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
