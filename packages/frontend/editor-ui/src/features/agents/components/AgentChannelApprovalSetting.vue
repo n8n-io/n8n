@@ -124,6 +124,6 @@ function handleToggle(value: boolean) {
 .container {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--sm);
 }
 </style>
