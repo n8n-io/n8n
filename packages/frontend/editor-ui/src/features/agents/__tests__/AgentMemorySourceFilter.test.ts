@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
-import { ref } from 'vue';
-import { N8nDropdownMenu } from '@n8n/design-system';
+import { ref, type Component } from 'vue';
+import { N8nDropdownMenu, type DropdownMenuItemProps } from '@n8n/design-system';
 import type { AgentMemorySourceFacetGroupDto } from '@n8n/api-types';
 
 import AgentMemorySourceFilter from '../components/AgentMemorySourceFilter.vue';
@@ -35,9 +35,19 @@ function mountFilter(modelValue = {}) {
 	});
 }
 
+/** N8nDropdownMenu is generic, so `findComponent` cannot infer its props on its own. */
+function findMenu(wrapper: ReturnType<typeof mountFilter>) {
+	const menu = wrapper.findComponent(N8nDropdownMenu as Component);
+	const { items } = menu.props() as { items: Array<DropdownMenuItemProps<string>> };
+	return {
+		items,
+		select: (id: string | undefined) => menu.vm.$emit('select', id),
+	};
+}
+
 describe('AgentMemorySourceFilter', () => {
 	it('nests the sources of each integration under it', () => {
-		const items = mountFilter().findComponent(N8nDropdownMenu).props('items');
+		const { items } = findMenu(mountFilter());
 
 		expect(items.map(({ label }) => label)).toEqual([
 			'agents.builder.memory.entries.filter.all',
@@ -56,12 +66,12 @@ describe('AgentMemorySourceFilter', () => {
 
 	it('selects a channel, a whole integration, or all sources', async () => {
 		const wrapper = mountFilter();
-		const menu = wrapper.findComponent(N8nDropdownMenu);
-		const [all, slack] = menu.props('items');
+		const { items, select } = findMenu(wrapper);
+		const [all, slack] = items;
 
-		menu.vm.$emit('select', slack.children?.[2].id);
-		menu.vm.$emit('select', slack.children?.[0].id);
-		menu.vm.$emit('select', all.id);
+		select(slack.children?.[2].id);
+		select(slack.children?.[0].id);
+		select(all.id);
 
 		expect(wrapper.emitted('update:modelValue')).toEqual([
 			[{ source: 'slack', sourceFacet: 'channel', sourceFacetId: 'C1' }],
