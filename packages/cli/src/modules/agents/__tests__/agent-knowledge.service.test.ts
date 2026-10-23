@@ -508,18 +508,22 @@ describe('AgentKnowledgeService', () => {
 		it('gives a PDF without text the pdf_no_text reason', async () => {
 			loadMock.mockResolvedValue([{ pageContent: '   ' }]);
 			const tempDirectory = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-upload-'));
-			const pdfFilePath = path.join(tempDirectory, 'scan.pdf');
-			await writeFile(pdfFilePath, '%PDF-1.4');
+			try {
+				const pdfFilePath = path.join(tempDirectory, 'scan.pdf');
+				await writeFile(pdfFilePath, '%PDF-1.4');
 
-			await expect(
-				service.uploadFiles(agentId, projectId, [
-					makeMulterFile({
-						originalname: 'scan.pdf',
-						mimetype: 'application/pdf',
-						path: pdfFilePath,
-					}),
-				]),
-			).rejects.toMatchObject({ reason: 'pdf_no_text' });
+				await expect(
+					service.uploadFiles(agentId, projectId, [
+						makeMulterFile({
+							originalname: 'scan.pdf',
+							mimetype: 'application/pdf',
+							path: pdfFilePath,
+						}),
+					]),
+				).rejects.toMatchObject({ reason: 'pdf_no_text' });
+			} finally {
+				await rm(tempDirectory, { recursive: true, force: true });
+			}
 		});
 	});
 
