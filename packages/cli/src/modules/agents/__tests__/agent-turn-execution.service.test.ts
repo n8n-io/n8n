@@ -2,6 +2,7 @@ import type { Agent as RuntimeAgent, SideCallUsageReport, StreamChunk } from '@n
 import type { Logger } from '@n8n/backend-common';
 import { mock } from 'vitest-mock-extended';
 
+import type { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
 import type { AgentChatExecutionService } from '../agent-chat-execution.service';
 import type { AgentExecutionService, RecordMessageParams } from '../agent-execution.service';
 import type { AgentMessageQueueService } from '../agent-message-queue.service';
@@ -24,6 +25,7 @@ it('ends a preview turn stopped during preparation without recording an error', 
 		mock<AgentMessageQueueService>(),
 		mock<AgentMessageSteeringService>(),
 		mock<AgentToolApprovalService>(),
+		mock<AgentKnowledgeUsageTracker>(),
 	);
 	const controller = new AbortController();
 	const turn: AgentTurnRequest = {
@@ -88,6 +90,7 @@ describe('onBeforeFinalize', () => {
 			mock<AgentMessageQueueService>(),
 			mock<AgentMessageSteeringService>(),
 			mock<AgentToolApprovalService>(),
+			mock<AgentKnowledgeUsageTracker>(),
 		);
 		const agentInstance = mock<RuntimeAgent>();
 		agentInstance.stream.mockImplementation(async () => {
@@ -216,6 +219,7 @@ describe('onSideCallUsage', () => {
 			mock<AgentMessageQueueService>(),
 			mock<AgentMessageSteeringService>(),
 			mock<AgentToolApprovalService>(),
+			mock<AgentKnowledgeUsageTracker>(),
 		);
 		const emptyStream = () =>
 			new ReadableStream<StreamChunk>({

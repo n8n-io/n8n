@@ -10,6 +10,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { QueryFailedError } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@n8n/errors';
@@ -30,6 +31,7 @@ import type { AgentHistory } from '../entities/agent-history.entity';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 import type { Agent, ProjectAgent } from '../entities/agent.entity';
 import { ChatIntegrationService } from '../integrations/chat-integration.service';
+import type { AgentFileRepository } from '../repositories/agent-file.repository';
 import type { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
@@ -122,6 +124,8 @@ function makeService() {
 	agentTaskRepository.replaceForAgent.mockResolvedValue(false);
 	Container.set(AgentRuntimeCacheService, runtimeCacheService);
 	const agentPolicyService = mock<AgentPolicyService>();
+	const agentFileRepository = mock<AgentFileRepository>();
+	agentFileRepository.getKnowledgeTotals.mockResolvedValue({ fileCount: 0, totalBytes: 0 });
 
 	agentRepository.claimSetupCompleted.mockResolvedValue(true);
 	agentRepository.setActiveVersionFenced.mockResolvedValue(true);
@@ -164,7 +168,11 @@ function makeService() {
 			eventService,
 			agentUpdateBroadcaster,
 			// Experiment cleanup (123_surface_mcp_to_claude_trial_users): remove only the mock<EventService>() argument.
-			new AgentModificationTelemetryService(telemetry, mock<EventService>()),
+			new AgentModificationTelemetryService(
+				telemetry,
+				mock<InstanceSettings>(),
+				mock<EventService>(),
+			),
 		),
 		new AgentDefinitionService(
 			agentTaskRepository,
@@ -176,12 +184,14 @@ function makeService() {
 		),
 		agentPolicyService,
 		skillRefs,
+		agentFileRepository,
 		publishHistory,
 	);
 
 	return {
 		publishHistory,
 		service,
+		agentFileRepository,
 		skillRefs,
 		agentPolicyService,
 		agentUpdateBroadcaster,
@@ -837,6 +847,48 @@ describe('AgentPublishService', () => {
 		expect(telemetry.track).not.toHaveBeenCalledWith(
 			TELEMETRY_EVENT.AGENTS.BUILDER_PUBLISHED_AGENT,
 			expect.anything(),
+		);
+	});
+
+	it.each([
+		['user', TELEMETRY_EVENT.AGENTS.USER_PUBLISHED_AGENT],
+		['builder', TELEMETRY_EVENT.AGENTS.BUILDER_PUBLISHED_AGENT],
+		['mcp', TELEMETRY_EVENT.AGENTS.MCP_PUBLISHED_AGENT],
+	] as const)(
+		'adds the knowledge file totals to the %s publish event',
+		async (by, publishedEvent) => {
+			const { service, agentRepository, agentFileRepository, telemetry } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			agentFileRepository.getKnowledgeTotals.mockResolvedValue({
+				fileCount: 3,
+				totalBytes: 4096,
+			});
+
+			await service.publishAgent(agentId, projectId, user, { by, trigger: 'explicit' });
+
+			expect(agentFileRepository.getKnowledgeTotals).toHaveBeenCalledWith(agentId);
+			expect(telemetry.track).toHaveBeenCalledWith(
+				publishedEvent,
+				expect.objectContaining({ knowledge_file_count: 3, knowledge_total_bytes: 4096 }),
+			);
+		},
+	);
+
+	it('publishes and sends the event without knowledge totals when the totals read fails', async () => {
+		const { service, agentRepository, agentFileRepository, telemetry } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		agentFileRepository.getKnowledgeTotals.mockRejectedValue(new Error('read failed'));
+
+		await service.publishAgent(agentId, projectId, user, byUser);
+
+		expect(agentRepository.setActiveVersionFenced).toHaveBeenCalled();
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.USER_PUBLISHED_AGENT,
+			expect.not.objectContaining({ knowledge_file_count: expect.anything() }),
+		);
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.USER_PUBLISHED_AGENT,
+			expect.not.objectContaining({ knowledge_total_bytes: expect.anything() }),
 		);
 	});
 

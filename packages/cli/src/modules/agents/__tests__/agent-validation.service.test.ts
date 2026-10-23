@@ -306,13 +306,13 @@ describe('AgentValidationService — structured issues', () => {
 			...runnableConfig,
 			model: 'azure-openai/gpt-4o',
 			credential: 'azure-main',
-			modelDeploymentName: 'my-gpt4o-deployment',
 		};
+		const foundry = () => ({ endpointType: 'foundry' });
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent(azureConfig));
 		const azureResult = await service.validateAgentConfiguration(
 			agentId,
 			projectId,
-			makeCredentialProvider([{ id: 'azure-main', type: 'azureOpenAiApi' }]),
+			makeCredentialProvider([{ id: 'azure-main', type: 'azureOpenAiApi' }], foundry),
 		);
 		expect(azureResult).toEqual({ status: 'valid', issues: [] });
 
@@ -320,13 +320,15 @@ describe('AgentValidationService — structured issues', () => {
 			...runnableConfig,
 			model: 'azure-openai/gpt-4o',
 			credential: 'azure-entra',
-			modelDeploymentName: 'my-gpt4o-deployment',
 		};
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent(azureEntraConfig));
 		const azureEntraResult = await service.validateAgentConfiguration(
 			agentId,
 			projectId,
-			makeCredentialProvider([{ id: 'azure-entra', type: 'azureEntraCognitiveServicesOAuth2Api' }]),
+			makeCredentialProvider(
+				[{ id: 'azure-entra', type: 'azureEntraCognitiveServicesOAuth2Api' }],
+				foundry,
+			),
 		);
 		expect(azureEntraResult).toEqual({ status: 'valid', issues: [] });
 
@@ -423,7 +425,7 @@ describe('AgentValidationService — structured issues', () => {
 		).resolves.toEqual({ status: 'valid', issues: [] });
 	});
 
-	it('flags a classic Azure OpenAI credential without a deployment name', async () => {
+	it('flags a classic Azure OpenAI credential on publish only', async () => {
 		const { service, agentRepository } = makeService();
 		const azureConfig: AgentJsonConfig = {
 			...runnableConfig,
@@ -431,46 +433,35 @@ describe('AgentValidationService — structured issues', () => {
 			credential: 'azure-main',
 		};
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent(azureConfig));
+		const credentialProvider = makeCredentialProvider(
+			[{ id: 'azure-main', type: 'azureOpenAiApi' }],
+			() => ({ endpointType: 'classic' }),
+		);
 
-		const result = await service.validateAgentConfiguration(
+		const publish = await service.validateAgentConfiguration(
 			agentId,
 			projectId,
-			makeCredentialProvider([{ id: 'azure-main', type: 'azureOpenAiApi' }], () => ({
-				endpointType: 'classic',
-			})),
+			credentialProvider,
+			'publish',
 		);
-
-		expect(result.status).toBe('invalid');
-		expect(result.issues).toContainEqual(
-			expect.objectContaining({
-				code: 'missing_required',
-				path: 'modelDeploymentName',
-				capability: { kind: 'agent' },
-			}),
-		);
-	});
-
-	it('accepts a Foundry Azure OpenAI credential without a deployment name', async () => {
-		const { service, agentRepository } = makeService();
-		const azureConfig: AgentJsonConfig = {
-			...runnableConfig,
-			model: 'azure-openai/gpt-4o',
-			credential: 'azure-foundry',
-		};
-		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent(azureConfig));
-
-		const result = await service.validateAgentConfiguration(
+		const runtime = await service.validateAgentConfiguration(
 			agentId,
 			projectId,
-			makeCredentialProvider([{ id: 'azure-foundry', type: 'azureOpenAiApi' }], () => ({
-				endpointType: 'foundry',
-			})),
+			credentialProvider,
+			'runtime',
 		);
 
-		expect(result).toEqual({ status: 'valid', issues: [] });
+		expect(publish.status).toBe('invalid');
+		expect(publish.issues).toContainEqual({
+			code: 'incompatible_credential',
+			path: 'credential',
+			capability: { kind: 'agent' },
+			reason: 'azure_classic_endpoint',
+		});
+		expect(runtime).toEqual({ status: 'valid', issues: [] });
 	});
 
-	it('does not require a deployment name when Azure credential resolve fails', async () => {
+	it('does not flag the Azure endpoint when the credential resolve fails', async () => {
 		const { service, agentRepository } = makeService();
 		const azureConfig: AgentJsonConfig = {
 			...runnableConfig,
@@ -488,11 +479,7 @@ describe('AgentValidationService — structured issues', () => {
 
 		const result = await service.validateAgentConfiguration(agentId, projectId, credentialProvider);
 
-		expect(result.issues).not.toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({ code: 'missing_required', path: 'modelDeploymentName' }),
-			]),
-		);
+		expect(result).toEqual({ status: 'valid', issues: [] });
 	});
 
 	it('flags a cross-provider mismatch between an Azure OpenAI credential and an OpenAI model', async () => {

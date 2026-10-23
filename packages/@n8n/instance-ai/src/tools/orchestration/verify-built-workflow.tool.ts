@@ -230,6 +230,21 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			const { target } = targetResult;
 			const { input: resolvedInput, workflowId, workflowTaskService } = target;
 
+			// Verification executes the workflow, so it follows the same admin policy as
+			// workflow_builder_executions(action="run"). Plan approval does not lift a block.
+			if (target.domainContext.permissions?.runWorkflow === 'blocked') {
+				return await handleBlockedVerification({
+					input: resolvedInput,
+					context,
+					workflowTaskService,
+					workflowId,
+					reason: 'permission_blocked',
+					guidance:
+						'Verification was not run because an admin blocked running workflows on this instance. ' +
+						'Tell the user the workflow is saved but untested, and that an instance admin can change this permission.',
+				});
+			}
+
 			// Credentials assigned after the build never rebuild the plan, so
 			// refresh stale mocked-credential verdicts before pinning.
 			const buildOutcome = await reconcileStaleCredentialPlan({
