@@ -98,9 +98,6 @@ function onUsageUpdated(update: AgentUsageUpdate) {
 	};
 }
 
-watch([() => props.projectId, () => props.agentId, () => props.effectiveSessionId], () => {
-	usageUpdates.value = {};
-});
 const agentTelemetry = useAgentTelemetry();
 const dock = useTemplateRef<HTMLElement>('dock');
 const {

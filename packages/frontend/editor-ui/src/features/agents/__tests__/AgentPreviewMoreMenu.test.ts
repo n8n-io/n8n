@@ -437,6 +437,23 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 		expect(wrapper.text()).not.toContain('$');
 	});
 
+	it('hides a partial session price when the live turn has a zero cost', async () => {
+		const wrapper = mountMenu();
+		await flushPromises();
+		await wrapper.setProps({
+			usageUpdates: {
+				'live-1': {
+					sessionId: 'thread-1',
+					executionId: 'live-1',
+					complete: false,
+					usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0 },
+				},
+			},
+		});
+		expect(wrapper.text()).toContain('140t');
+		expect(wrapper.text()).not.toContain('$');
+	});
+
 	it('replaces turn snapshots and reconciles them with the saved result', async () => {
 		const wrapper = mountMenu();
 		await flushPromises();

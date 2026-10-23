@@ -178,7 +178,7 @@ describe('AgentPreviewDock', () => {
 		localStorage.removeItem('N8N_AGENT_PREVIEW_LAYOUT');
 	});
 
-	it('keeps the last usage on completion and clears it when the session changes', async () => {
+	it('keeps the last usage on completion', async () => {
 		const wrapper = mountDock();
 		const chat = wrapper.getComponent({ name: 'AgentPreviewChatPage' });
 		const menu = wrapper.getComponent({ name: 'AgentPreviewMoreMenu' });
@@ -194,10 +194,30 @@ describe('AgentPreviewDock', () => {
 		chat.vm.$emit('usage-updated', { ...update, usage: undefined, complete: true });
 		await wrapper.vm.$nextTick();
 		expect(menu.props('usageUpdates')).toEqual({ 'execution-1': { ...update, complete: true } });
-		await wrapper.setProps({ effectiveSessionId: 'thread-2' });
+	});
+
+	it('keeps live usage when switching away from a session and back', async () => {
+		const wrapper = mountDock();
+		const chat = wrapper.getComponent({ name: 'AgentPreviewChatPage' });
+		const menu = wrapper.getComponent({ name: 'AgentPreviewMoreMenu' });
+		const update = {
+			sessionId: 'thread-1',
+			executionId: 'execution-1',
+			usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.01 },
+			complete: false,
+		};
 		chat.vm.$emit('usage-updated', update);
 		await wrapper.vm.$nextTick();
-		expect(menu.props('usageUpdates')).toEqual({});
+		await wrapper.setProps({ effectiveSessionId: 'thread-2' });
+		const otherUpdate = { ...update, sessionId: 'thread-2', executionId: 'execution-2' };
+		chat.vm.$emit('usage-updated', otherUpdate);
+		chat.vm.$emit('usage-updated', { ...update, usage: { ...update.usage, cost: 1 } });
+		await wrapper.vm.$nextTick();
+		await wrapper.setProps({ effectiveSessionId: 'thread-1' });
+		expect(menu.props('usageUpdates')).toEqual({
+			'execution-1': update,
+			'execution-2': otherUpdate,
+		});
 	});
 
 	it('shows the session title only after a session starts', async () => {

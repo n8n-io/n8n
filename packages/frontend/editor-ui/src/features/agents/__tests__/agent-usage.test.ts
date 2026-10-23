@@ -93,13 +93,16 @@ describe('getAgentSessionUsage', () => {
 		expect(getAgentSessionUsage(detail).cost).toBeNull();
 	});
 
-	it('hides a partial price when the live execution has no price', () => {
-		const unpriced = {
-			...live,
-			usage: { promptTokens: 20, completionTokens: 10, totalTokens: 30 },
-		};
-		expect(
-			getAgentSessionUsage({ thread, executions: [] }, { [live.executionId]: unpriced }),
-		).toEqual({ totalTokens: 155, cost: null });
-	});
+	it.each([undefined, 0, -1, Number.NaN, Number.POSITIVE_INFINITY])(
+		'hides a partial price when the live execution has an unavailable price (%s)',
+		(cost) => {
+			const unpriced = {
+				...live,
+				usage: { promptTokens: 20, completionTokens: 10, totalTokens: 30, cost },
+			};
+			expect(
+				getAgentSessionUsage({ thread, executions: [] }, { [live.executionId]: unpriced }),
+			).toEqual({ totalTokens: 155, cost: null });
+		},
+	);
 });

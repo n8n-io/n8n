@@ -37,7 +37,7 @@ export function getAgentSessionUsage(
 		totalTokens += update.usage.totalTokens;
 		if (update.usage.totalTokens <= 0) continue;
 		const liveCost = update.usage.cost;
-		if (liveCost === undefined || !Number.isFinite(liveCost) || liveCost < 0) priceKnown = false;
+		if (liveCost === undefined || !Number.isFinite(liveCost) || liveCost <= 0) priceKnown = false;
 		else cost += liveCost;
 	}
 	return { totalTokens, cost: priceKnown ? cost : null };
