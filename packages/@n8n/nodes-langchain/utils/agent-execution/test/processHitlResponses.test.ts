@@ -221,4 +221,39 @@ describe('processHitlResponses', () => {
 			expect(result.pendingGatedToolRequest?.metadata?.previousRequests).toHaveLength(1);
 		});
 	});
+
+	describe('input batches', () => {
+		const approvedFor = (itemIndex: number): ExecuteNodeResult<RequestResponseMetadata> => {
+			const actionResponse = createHitlActionResponse(true, hitlMetadata, 'hitl-1');
+			actionResponse.action.metadata = { ...actionResponse.action.metadata, itemIndex };
+			return actionResponse;
+		};
+
+		it('releases an approval only for the batch of the item that requested it', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [approvedFor(0)],
+				metadata: {},
+			};
+
+			const results = [0, 1, 2].map((startIndex) => processHitlResponses(response, startIndex, 1));
+
+			expect(results[0].pendingGatedToolRequest?.actions).toHaveLength(1);
+			expect(results[1].pendingGatedToolRequest).toBeUndefined();
+			expect(results[2].pendingGatedToolRequest).toBeUndefined();
+			expect(results[1].hasApprovedHitlTools).toBe(false);
+			expect(results[1].processedResponse.actionResponses).toHaveLength(0);
+		});
+
+		it('binds the gated call to the requesting item inside a larger batch', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [approvedFor(2)],
+				metadata: {},
+			};
+
+			const result = processHitlResponses(response, 0, 3);
+
+			expect(result.pendingGatedToolRequest?.actions).toHaveLength(1);
+			expect(result.pendingGatedToolRequest?.actions[0].metadata?.itemIndex).toBe(2);
+		});
+	});
 });
