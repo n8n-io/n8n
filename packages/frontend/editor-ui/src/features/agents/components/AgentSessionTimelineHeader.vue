@@ -211,6 +211,7 @@ const breadcrumbItems = computed(() =>
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
+	font-variant-numeric: tabular-nums;
 	white-space: nowrap;
 }
 

@@ -343,7 +343,7 @@ watch(
 			<template #footer>
 				<ul :class="$style.sessionMetadata">
 					<li v-if="triggerLabel"><N8nIcon :icon="triggerIcon" :size="12" />{{ triggerLabel }}</li>
-					<li v-if="sessionMetadata">
+					<li v-if="sessionMetadata" :class="$style.metrics">
 						<span v-if="tokenSpendLabel">{{ tokenSpendLabel }} • </span>{{ durationLabel }}
 					</li>
 					<li v-if="sessionMetadata?.updatedAt">
@@ -366,6 +366,10 @@ watch(
 
 .layoutSwitch {
 	pointer-events: none;
+}
+
+.metrics {
+	font-variant-numeric: tabular-nums;
 }
 
 .sessionMetadata {
