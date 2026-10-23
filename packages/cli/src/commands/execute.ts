@@ -47,17 +47,17 @@ export class Execute extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async run() {
 		const { flags } = this;
 
-		if (!flags.id) {
-			this.logger.info('"--id" has to be set!');
-			return;
-		}
-
 		// oxlint-disable-next-line typescript/no-deprecated
 		if (flags.file) {
 			throw new UserError(
 				'The --file flag is no longer supported. Please first import the workflow and then execute it using the --id flag.',
 				{ level: 'warning' },
 			);
+		}
+
+		if (!flags.id) {
+			this.logger.info('"--id" has to be set!');
+			return;
 		}
 
 		let workflowId: string | undefined;

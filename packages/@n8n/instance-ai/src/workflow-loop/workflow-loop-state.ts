@@ -409,8 +409,6 @@ export const workflowBuildOutcomeSchema = z.object({
 	 * verify (workflow_builder_verify_built_workflow merges it under the new pin data).
 	 */
 	verificationPinData: z.record(z.array(z.record(z.unknown()))).optional(),
-	/** @deprecated See `verificationPinData`. No longer written. */
-	usesWorkflowPinDataForVerification: z.boolean().optional(),
 	/**
 	 * Per-node execute-vs-simulate plan for verification. Sidecar — scoped to
 	 * this build, never persisted to the workflow.
