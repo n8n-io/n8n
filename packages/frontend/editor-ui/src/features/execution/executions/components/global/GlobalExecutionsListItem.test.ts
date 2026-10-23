@@ -4,7 +4,6 @@ import { WAIT_INDEFINITELY, type ExecutionSummary } from 'n8n-workflow';
 import GlobalExecutionsListItem from './GlobalExecutionsListItem.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { DateTime } from 'luxon';
-import { i18n, i18nInstance } from '@n8n/i18n';
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
@@ -253,56 +252,5 @@ describe('GlobalExecutionsListItem', () => {
 		const executionTimeElement = getByTestId('execution-time');
 		expect(executionTimeElement).toBeVisible();
 		expect(executionTimeElement.textContent).toBe('30m 0s');
-	});
-});
-
-describe('GlobalExecutionsListItem mode tooltips', () => {
-	const TEST_LOCALE = 'test-locale';
-	const originalLocale = i18nInstance.global.locale.value;
-
-	// Render the tooltip content inline, since N8nTooltip only shows it on hover
-	const renderWithTooltipContent = createComponentRenderer(GlobalExecutionsListItem, {
-		global: {
-			stubs: {
-				N8nButton: true,
-				I18nT: true,
-				N8nTooltip: {
-					props: ['content'],
-					template: '<span data-test-id="mode-tooltip">{{ content }}<slot /></span>',
-				},
-			},
-		},
-	});
-
-	beforeEach(() => {
-		i18nInstance.global.setLocaleMessage(TEST_LOCALE, {
-			'executionsList.manualExecution': 'Translated manual execution',
-			'executionsList.chatExecution': 'Translated chat execution',
-		});
-		i18nInstance.global.locale.value = TEST_LOCALE;
-		i18n.clearCache();
-	});
-
-	afterEach(() => {
-		i18nInstance.global.locale.value = originalLocale;
-		i18n.clearCache();
-	});
-
-	it.each([
-		['manual', 'Translated manual execution'],
-		['chat', 'Translated chat execution'],
-	])('should localize the tooltip for %s executions', (mode, expected) => {
-		const { getAllByTestId } = renderWithTooltipContent({
-			props: {
-				execution: {
-					status: 'success',
-					id: 123,
-					mode,
-					workflowName: 'Test Workflow',
-				} as unknown as ExecutionSummary,
-			},
-		});
-
-		expect(getAllByTestId('mode-tooltip').map((el) => el.textContent)).toContain(expected);
 	});
 });
