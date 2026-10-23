@@ -100,7 +100,7 @@ export const DEFAULT_AGENT_PERSONALISATION = {
 	},
 } as const;
 
-const AgentPersonalisationGradientSchema = z
+export const AgentPersonalisationGradientSchema = z
 	.object({
 		from: HexColorSchema,
 		to: HexColorSchema,
